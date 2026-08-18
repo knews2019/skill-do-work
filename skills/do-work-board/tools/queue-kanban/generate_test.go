@@ -1915,6 +1915,181 @@ process.stdout.write(JSON.stringify({
 	}
 }
 
+// ---- panel B's slowest-day annotation, and the faces around it ------------
+//
+// Both faces below are the browser's answer, because a face is the browser's
+// answer and no arithmetic over the constants under test can produce it. Panel
+// B's title draws at .durations-axis-title (12px, weight 600) and the
+// annotation at .durations-mark-label (11px). Every number is rounded UP, which
+// GROWS the boxes the assertion holds apart, so a pass can never be an artefact
+// of the rounding.
+//
+// Procedure, reproducible from any board directory `queue-kanban generate`
+// wrote: load index.html, activate the Durations view, and read getBBox()
+// against the node's own `y` on the two <text> nodes. Measured in headless
+// Chromium (Playwright 1.59) at 1400x1200 — the SVG is a fixed viewBox at
+// width:100%, so user units are zoom- and window-independent. The title box
+// came back 14.815 units tall, 12.0372 above the baseline and 2.7778 below; the
+// annotation's 12.9631 tall, 10.1853 above and 2.7778 below. The mark-label
+// ascent is rounded to 10.5 so it also covers the 10.4278 the same face
+// measured for REQ-241 on a different Chromium.
+const durationsMeasuredAxisTitleAscentUnits = 12.1
+const durationsMeasuredAxisTitleDescentUnits = 2.8
+const durationsMeasuredMarkLabelAscentUnits = 10.5
+const durationsMeasuredMarkLabelDescentUnits = 2.8
+
+// durationsSlowestDayAnnotationCases drive the annotation through both
+// dimensions that decided whether the defect was visible: WHERE on the calendar
+// axis the slowest day sits, and HOW TALL its bar is. The leftmost case is the
+// one this repository's own data has never produced, and it is the case the
+// defect hid behind — the annotation is centred on its day, so its x follows the
+// slowest day wherever that lands.
+var durationsSlowestDayAnnotationCases = []struct {
+	caseName      string
+	dayCentreX    float64
+	medianMinutes float64
+}{
+	{"leftmost day, over the ceiling", 54, 209},
+	{"leftmost day, a hair left of the plot", 38.9, 209},
+	{"leftmost day, at the ceiling", 54, 45},
+	{"leftmost day, a flat bar", 54, 0},
+	{"mid-plot day, over the ceiling", 618, 209},
+	{"rightmost day, over the ceiling", 1182, 209},
+}
+
+// The defect this pins (REQ-242): the slowest-day annotation was drawn 7 units
+// above its bar's top, which for an over-ceiling day is a baseline of 355
+// against panel B's own title baseline of 350 — two boxes sharing eight units of
+// vertical space, colliding at every x where their text ranges met. It never
+// showed here because this repository's slowest day falls to the right of where
+// the title's text ends, which is luck and not design.
+//
+// The annotation now sits below panel B's baseline, so the clearance is the same
+// for every x and every bar height — which is what the assertion states by
+// driving the renderer's own drawing function through the extremes of both and
+// demanding one unchanging baseline that clears every neighbour that strip has:
+// panel B's title, panel B's "0" axis tick, panel C's title, and the plot the
+// bars occupy.
+func TestJavaScriptBehaviorDurationsSlowestDayAnnotationClearsItsNeighbours(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	probeCases, encodeError := json.Marshal(durationsSlowestDayAnnotationProbeCases())
+	if encodeError != nil {
+		t.Fatalf("encode annotation probe cases: %v", encodeError)
+	}
+	javascriptProbe := fmt.Sprintf("var DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y = %v;\n",
+		durationsRendererConstant(t, "DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y")) +
+		"var drawnNodes = [];\n" +
+		"function makeDurationsSvgNode(svg, name, attributes, textContent) { drawnNodes.push({ name: name, attributes: attributes, text: textContent }); }\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function drawDurationsSlowestDayAnnotation(") + `
+var probeCases = ` + string(probeCases) + `;
+probeCases.forEach(function (probeCase) {
+  drawDurationsSlowestDayAnnotation(null, { medianMinutes: probeCase.medianMinutes }, probeCase.dayCentreX);
+});
+process.stdout.write(JSON.stringify(drawnNodes.map(function (node) {
+  return { y: Number(node.attributes.y), x: Number(node.attributes.x), anchor: node.attributes["text-anchor"], text: node.text };
+})));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "durations slowest-day annotation", javascriptProbe)
+	var drawnAnnotations []struct {
+		Y      float64 `json:"y"`
+		X      float64 `json:"x"`
+		Anchor string  `json:"anchor"`
+		Text   string  `json:"text"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &drawnAnnotations); decodeError != nil {
+		t.Fatalf("decode slowest-day annotation behavior: %v (output %q)", decodeError, probeOutput)
+	}
+	if len(drawnAnnotations) != len(durationsSlowestDayAnnotationCases) {
+		t.Fatalf("the renderer drew %d annotations for %d cases — it must draw exactly one per slowest day",
+			len(drawnAnnotations), len(durationsSlowestDayAnnotationCases))
+	}
+
+	// Every box below is the taller of the two models of its own face: the one
+	// the renderer declares and the one the browser draws.
+	annotationAscent := math.Max(durationsRendererConstant(t, "DURATIONS_LABEL_TEXT_ASCENT"), durationsMeasuredMarkLabelAscentUnits)
+	annotationDescent := math.Max(durationsLabelTextDescentUnits, durationsMeasuredMarkLabelDescentUnits)
+	medianBaseline := durationsRendererConstant(t, "DURATIONS_MEDIAN_BOTTOM")
+
+	// The annotation's neighbours in the strip it now occupies. Panel B's "0"
+	// tick is the one a render caught and no arithmetic would have: it sits in
+	// the y-axis gutter, so it is only ever in the annotation's way when the
+	// slowest day is the leftmost — the same luck-of-x that hid the original
+	// defect. The ticks for 15/30/45 need no case of their own: their baselines
+	// are above DURATIONS_MEDIAN_BOTTOM, which the baseline check below covers.
+	neighbourBoxes := []struct {
+		neighbourName string
+		baseline      float64
+		ascent        float64
+		descent       float64
+	}{
+		{
+			"panel B's title",
+			durationsRendererConstant(t, "DURATIONS_MEDIAN_TITLE_Y"),
+			durationsMeasuredAxisTitleAscentUnits,
+			durationsMeasuredAxisTitleDescentUnits,
+		},
+		{
+			"panel B's \"0\" axis tick",
+			durationsRendererConstant(t, "DURATIONS_MEDIAN_BOTTOM") + durationsRendererConstant(t, "DURATIONS_TICK_BASELINE_DROP"),
+			annotationAscent,
+			annotationDescent,
+		},
+		{
+			"panel C's title",
+			durationsRendererConstant(t, "DURATIONS_COUNT_TITLE_Y"),
+			durationsMeasuredAxisTitleAscentUnits,
+			durationsMeasuredAxisTitleDescentUnits,
+		},
+	}
+	for _, neighbour := range neighbourBoxes {
+		neighbourTop := neighbour.baseline - neighbour.ascent
+		neighbourBottom := neighbour.baseline + neighbour.descent
+		for caseIndex, probeCase := range durationsSlowestDayAnnotationCases {
+			drawn := drawnAnnotations[caseIndex]
+			annotationTop := drawn.Y - annotationAscent
+			annotationBottom := drawn.Y + annotationDescent
+			if annotationBottom >= neighbourTop && annotationTop <= neighbourBottom {
+				t.Fatalf("%s: the annotation's text box [%.2f, %.2f] intersects %s's box [%.2f, %.2f] — the two overprint wherever their x ranges meet, and x follows whichever day is slowest",
+					probeCase.caseName, annotationTop, annotationBottom, neighbour.neighbourName, neighbourTop, neighbourBottom)
+			}
+		}
+	}
+	for caseIndex, probeCase := range durationsSlowestDayAnnotationCases {
+		drawn := drawnAnnotations[caseIndex]
+		if drawn.Y-annotationAscent <= medianBaseline {
+			t.Fatalf("%s: the annotation's text box starts at %.2f, above panel B's baseline at %.2f — inside the plot it overprints the bars, which are 4 units wide and shoulder to shoulder on a dense board",
+				probeCase.caseName, drawn.Y-annotationAscent, medianBaseline)
+		}
+		if drawn.Y != drawnAnnotations[0].Y {
+			t.Fatalf("%s: the annotation's baseline is %.2f but %s put it at %.2f — a baseline that moves with the day's position or its bar's height is a clearance that holds only for the days this repository happens to have",
+				probeCase.caseName, drawn.Y, durationsSlowestDayAnnotationCases[0].caseName, drawnAnnotations[0].Y)
+		}
+		if drawn.X != probeCase.dayCentreX || drawn.Anchor != "middle" {
+			t.Fatalf("%s: the annotation was drawn at x=%.2f anchored %q, want x=%.2f anchored \"middle\" — it must stay centred on the day it describes",
+				probeCase.caseName, drawn.X, drawn.Anchor, probeCase.dayCentreX)
+		}
+		if wantText := fmt.Sprintf("%.0f min", probeCase.medianMinutes); drawn.Text != wantText {
+			t.Fatalf("%s: the annotation reads %q, want %q — moving it must not cost it the value it exists to state",
+				probeCase.caseName, drawn.Text, wantText)
+		}
+	}
+}
+
+// durationsSlowestDayAnnotationProbeCases hands the probe only the two fields it
+// drives the renderer with; the case name stays on the Go side for the failure
+// messages.
+func durationsSlowestDayAnnotationProbeCases() []map[string]float64 {
+	probeCases := make([]map[string]float64, 0, len(durationsSlowestDayAnnotationCases))
+	for _, probeCase := range durationsSlowestDayAnnotationCases {
+		probeCases = append(probeCases, map[string]float64{
+			"dayCentreX":    probeCase.dayCentreX,
+			"medianMinutes": probeCase.medianMinutes,
+		})
+	}
+	return probeCases
+}
+
 // durationLabelWidthSampleMinutes spans the renderer's formatting branches: sub-hour
 // with a decimal, negative, exactly on the hour, and multi-hour.
 var durationLabelWidthSampleMinutes = []float64{7.5, -25, 60, 95.4, 655.2, 1440}

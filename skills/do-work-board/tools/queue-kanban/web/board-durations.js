@@ -57,6 +57,11 @@
   // rather than inside it, and it makes TestDurationsLabelRowsClearTheMarkBands
   // demand more clearance from the mark band than the ink actually needs.
   var DURATIONS_LABEL_TEXT_ASCENT = 11;
+  // An axis tick's baseline sits this far below the y it labels, which is what
+  // optically centres an 11px face on that line. A named number because a tick
+  // row is a neighbour some other text has to clear, and a test cannot read a
+  // literal buried in an attribute.
+  var DURATIONS_TICK_BASELINE_DROP = 4;
   var DURATIONS_LANE_LABEL_ROW_Y = 56;
   var DURATIONS_REVERSED_LABEL_ROW_Y = 322;
   // Panel B — median minutes per active day.
@@ -69,6 +74,23 @@
   // Every over-ceiling day gets one, not only the slowest.
   var DURATIONS_MEDIAN_OVER_CEILING_GAP = 6;
   var DURATIONS_MEDIAN_OVER_CEILING_HEIGHT = 3;
+  // The slowest day's annotation goes BELOW the panel's baseline, centred under
+  // its bar. Above the bar is not available: the tallest bar's top is
+  // DURATIONS_MEDIAN_TOP and the strip over it belongs to this panel's title,
+  // which the annotation used to print straight through whenever the slowest day
+  // fell under the title's text (REQ-242 — it read "209 miB · Median minutes…"
+  // on a fixture whose leftmost day was slowest). Inside the plot is not
+  // available either: at a dense day count the bars are 4 units wide and a label
+  // there would overprint its neighbours.
+  //
+  // That leaves the strip under the baseline, and it has two occupants of its
+  // own: the "0" tick, whose baseline is DURATIONS_MEDIAN_BOTTOM +
+  // DURATIONS_TICK_BASELINE_DROP, and panel C's title. This number centres the
+  // annotation's text box between them, so the clearance is the same at every x
+  // and every bar height — which is the whole point. Every one of these
+  // neighbours is asserted, because the original defect was invisible here for
+  // no better reason than where this repository's slowest day happens to fall.
+  var DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y = 467;
   // Panel C — REQs completed per day.
   var DURATIONS_COUNT_TITLE_Y = 484;
   var DURATIONS_COUNT_TOP = 502;
@@ -133,6 +155,25 @@
   // reserves this row's right edge to match.
   function durationsRemainderBaselineY(bandRowY) {
     return bandRowY + (DURATIONS_LABEL_ROW_COUNT - 1) * DURATIONS_LABEL_ROW_HEIGHT;
+  }
+
+  // Panel B's one annotation: the slowest day's median, stated in figures because
+  // a clipped bar cannot state its own value. It lives in its own function so a
+  // behavior probe can ask where it lands for a day at ANY x and ANY median —
+  // its placement was wrong from the day the view shipped and invisible here
+  // purely because the slowest day fell clear of the title's text.
+  function drawDurationsSlowestDayAnnotation(svg, slowestDay, dayCentreX) {
+    makeDurationsSvgNode(
+      svg,
+      "text",
+      {
+        x: dayCentreX.toFixed(1),
+        y: DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y,
+        class: "durations-mark-label",
+        "text-anchor": "middle"
+      },
+      slowestDay.medianMinutes.toFixed(0) + " min"
+    );
   }
 
   function makeDurationsSvgNode(svg, name, attributes, textContent) {
@@ -236,7 +277,12 @@
       makeDurationsSvgNode(
         svg,
         "text",
-        { x: DURATIONS_MARGIN_LEFT - 8, y: y + 4, class: "durations-tick", "text-anchor": "end" },
+        {
+          x: DURATIONS_MARGIN_LEFT - 8,
+          y: y + DURATIONS_TICK_BASELINE_DROP,
+          class: "durations-tick",
+          "text-anchor": "end"
+        },
         label
       );
     }
@@ -261,7 +307,7 @@
       "text",
       {
         x: DURATIONS_MARGIN_LEFT - 8,
-        y: DURATIONS_LANE_MARK_Y + 4,
+        y: DURATIONS_LANE_MARK_Y + DURATIONS_TICK_BASELINE_DROP,
         class: "durations-tick",
         "text-anchor": "end"
       },
@@ -424,22 +470,7 @@
       }
     });
     if (slowestDay) {
-      makeDurationsSvgNode(
-        svg,
-        "text",
-        {
-          x: xOfEpoch(Date.parse(slowestDay.dayTime)).toFixed(1),
-          y: (
-            yOfDayMedian(slowestDay.medianMinutes) -
-            (slowestDay.medianMinutes > DURATIONS_MEDIAN_CEILING
-              ? DURATIONS_MEDIAN_OVER_CEILING_GAP + 7
-              : 7)
-          ).toFixed(1),
-          class: "durations-mark-label",
-          "text-anchor": "middle"
-        },
-        slowestDay.medianMinutes.toFixed(0) + " min"
-      );
+      drawDurationsSlowestDayAnnotation(svg, slowestDay, xOfEpoch(Date.parse(slowestDay.dayTime)));
     }
 
     // ---- panel C: REQs completed per day ----
@@ -464,7 +495,7 @@
       "text",
       {
         x: DURATIONS_MARGIN_LEFT - 8,
-        y: DURATIONS_COUNT_TOP + 4,
+        y: DURATIONS_COUNT_TOP + DURATIONS_TICK_BASELINE_DROP,
         class: "durations-tick",
         "text-anchor": "end"
       },
