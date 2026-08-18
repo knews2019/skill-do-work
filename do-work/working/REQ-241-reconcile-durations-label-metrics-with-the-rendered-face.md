@@ -1,8 +1,8 @@
 ---
 id: REQ-241
 title: Reconcile the Durations label metrics with the face actually rendered
-status: pending
-status_changed_at: 2026-08-18T12:17:03Z
+status: claimed
+status_changed_at: 2026-08-18T12:43:06Z
 created_at: 2026-08-18T12:09:46Z
 user_request: UR-051
 addendum_to: REQ-237
@@ -20,6 +20,19 @@ write_set:
 - skills/do-work-board/tools/queue-kanban/durations.go
 - skills/do-work-board/tools/queue-kanban/durations_test.go
 - skills/do-work-board/tools/queue-kanban/web/board-durations.js
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  calculated_at: 2026-08-18T12:43:06Z
+  basis:
+    - Route B
+    - 3-file write set
+    - 2 subsystems involved
+    - 5 acceptance criteria
+    - browser evidence
+    - cross-route regression gates
+claimed_at: 2026-08-18T12:43:06Z
+route: B
 ---
 
 # Reconcile the Durations Label Metrics With the Face Actually Rendered

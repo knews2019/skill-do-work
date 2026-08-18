@@ -1,8 +1,8 @@
 ---
 id: REQ-243
 title: Check that shipped markdown pointers actually resolve
-status: pending
-status_changed_at: 2026-08-18T12:24:42Z
+status: claimed
+status_changed_at: 2026-08-18T12:43:06Z
 created_at: 2026-08-18T12:20:30Z
 user_request: UR-042
 addendum_to: REQ-238
@@ -16,6 +16,17 @@ depends_on: []
 maintenance: true
 write_set:
 - _dev/tests/prescribed-shell-canonicalization.sh
+estimate:
+  p50_active_minutes: 20
+  confidence: medium
+  calculated_at: 2026-08-18T12:43:06Z
+  basis:
+    - Route B
+    - 1-file write set
+    - 5 acceptance criteria
+    - full-suite verification
+claimed_at: 2026-08-18T12:43:06Z
+route: B
 ---
 
 # Check That Shipped Markdown Pointers Actually Resolve

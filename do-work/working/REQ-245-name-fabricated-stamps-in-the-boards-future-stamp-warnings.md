@@ -1,7 +1,7 @@
 ---
 id: REQ-245
 title: Name fabricated stamps in the board's future-stamp warnings
-status: pending
+status: claimed
 created_at: 2026-08-18T12:28:33Z
 user_request: UR-055
 domain: general
@@ -14,6 +14,14 @@ related: [REQ-244]
 batch: timestamp-stamping-integrity
 effort_estimate: trivial
 write_set: ["skills/do-work-board/tools/queue-kanban/model.go", "skills/do-work-board/tools/queue-kanban/verify.go", "skills/do-work-board/tools/queue-kanban/*_test.go"]
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-18T12:43:06Z
+  basis:
+    - trivial short-circuit
+claimed_at: 2026-08-18T12:43:06Z
+route: A
 ---
 
 # Name Fabricated Stamps in the Board's Future-Stamp Warnings
