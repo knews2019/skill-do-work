@@ -44,7 +44,7 @@ Everything below is for humans and debugging. The paste block above is sufficien
 
 | Fact | Value |
 |---|---|
-| HEAD | `0a1ecf9` |
+| Last work commit | `0a1ecf9` — this handoff file and its corrections sit on top of it |
 | Version | 0.212.7 (`VERSION`, `skills/do-work/VERSION`, `skills/do-work/actions/version.md` all agree) |
 | `maintainer-verify.sh` | exit 0 |
 | `queue-kanban verify` | OK: no findings |
@@ -196,10 +196,15 @@ Those answers are what the two REQs now build. Do not re-ask them.
   it to add. The override is recorded in REQ-244's archived Review Remediation section with the
   diff quoted. REQ-254 fixes this. *Who should act:* whoever hits a `+print(` FAIL — read the
   diff, and if it is a contract's output, record the override rather than silencing it.
-- **A builder left a compiled `queue-kanban` binary in the source tree** during the previous
-  session. It is gitignored so git stays clean, but it inflates every install-probe copy. If the
-  installer suite starts failing on space, check
-  `skills/do-work-board/tools/queue-kanban/queue-kanban` first.
+- **A compiled `queue-kanban` binary keeps reappearing in the source tree, and on a full disk it
+  is what breaks `maintainer-verify.sh`.** Anyone running a bare `go build` in
+  `skills/do-work-board/tools/queue-kanban/` writes an 11 MB `queue-kanban` there. It is
+  gitignored, so git stays clean and nothing warns you — but the installer probe copies the whole
+  skills tree several times, so it multiplies. It was removed twice during the previous session
+  and reappeared within the hour, built by a second session. **If the installer suite fails on
+  space, check `skills/do-work-board/tools/queue-kanban/queue-kanban` before anything else** —
+  removing it took the volume from 263 MiB to 935 MiB free and turned a red verify green with no
+  other change. *Who should act:* everyone — build with `go build -o /tmp/<name> .`, never bare.
 
 ## Where the evidence lives
 
