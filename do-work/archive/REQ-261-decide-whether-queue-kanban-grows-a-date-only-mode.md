@@ -3,6 +3,7 @@ id: REQ-261
 title: Delete the date-only tripwire and keep the rule
 status: completed
 completed_at: 2026-08-18T23:14:21Z
+commit: 210abba
 claimed_at: 2026-08-18T22:59:48Z
 route: A
 created_at: 2026-08-18T19:30:47Z
