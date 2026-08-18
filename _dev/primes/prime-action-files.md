@@ -88,7 +88,9 @@ Action files follow a consistent structure. When adding or modifying actions, us
 
 ## Cross-Referencing
 
-Cross-reference same-package actions by their local path (for example `actions/work.md`); cross a package boundary with an explicit sibling path such as `../do-work-knowledge/actions/bkb.md`. Shipped files must never cite this repo's own `CLAUDE.md` or `AGENTS.md` — both are export-ignored maintainer instructions, so the citation dangles in every consumer install. `_dev/tests/contract-regressions.sh` enforces this across the shipped `skills/` tree.
+Cross-reference same-package actions by their local path (for example `actions/work.md`). Cross a package boundary with the **literal relative path from the citing file's own directory** — the spelling a reader could paste into a terminal there and have resolve, in both the source tree and an install. The depth is per-file, not a fixed prefix: from a package-root `SKILL.md` the sibling is `../do-work-board/...`, from `actions/` or `crew-members/` it is `../../do-work-board/...`, and from `tools/queue-kanban/` it is `../../../do-work/...`. Never write `../<package>/...` as shorthand for "up to the skills folder" — that skill-root-relative reading was retired by REQ-249, and from anywhere below a package root it points at nothing. Fenced template/example blocks are exempt: their text lands in some other file (a consumer's REQ, a report), so it is content, not a citation from here. `_dev/tests/shipped-package-reference-contract.sh` checks backticked cross-package citations resolve in both topologies (alongside its Markdown-link checks).
+
+Shipped files must never cite this repo's own `CLAUDE.md` or `AGENTS.md` — both are export-ignored maintainer instructions, so the citation dangles in every consumer install. `_dev/tests/contract-regressions.sh` enforces this across the shipped `skills/` tree.
 
 ## Descriptions Are Triggers, Not Summaries
 
