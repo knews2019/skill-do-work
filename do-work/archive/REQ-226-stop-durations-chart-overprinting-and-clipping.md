@@ -3,6 +3,7 @@ id: REQ-226
 title: Stop the Durations chart from silently overprinting and clipping
 status: completed
 completed_at: 2026-08-18T00:55:23Z
+commit: 787c846
 claimed_at: 2026-08-18T00:25:12Z
 created_at: 2026-08-17T23:51:17Z
 user_request: UR-051
