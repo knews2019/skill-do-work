@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.205.1 — One Shared Rule for Verifying Publications (2026-08-18)
+
+The shell guide now says once, in its own section, that a publication whose destination could already be occupied has to check the path it actually wrote. It used to say it inside one script's section, which is how the same defect got fixed four separate times without anyone reading the guide catching it — and writing it down immediately turned up two more helpers that don't check.
+
+- New `## Verified exact publication` section in `skills/do-work/docs/prescribed-shell-primitives.md`, keyed on the condition rather than on a list of scripts, so a helper added later is covered without anyone remembering to update anything
+- The portfolio-summary and report-image-batch sections point at it instead of each restating it; each keeps its own policy for what to do about a nested write
+- The atomic-download section, which never carried the rule at all, now points at it and records that neither it nor the screenshot install makes the check yet
+- The new heading joins the exact-match heading ratchet, so deleting the section fails the suite instead of silently stranding three links
+
 ## 0.205.0 — Always-On Communication Style Crew Member (2026-08-17)
 
 Every install now talks like a concise senior engineer. A new crew member carries the communication contract (plain specific language, answer-first replies, reference codes, banned filler, `scr`/`eli`/`foc`/`ref` aliases), and the installer links it from the project's `CLAUDE.md` so it applies to every session, not just pipeline work. Adapted from [disler/fixing-smartass-opus-5](https://github.com/disler/fixing-smartass-opus-5).

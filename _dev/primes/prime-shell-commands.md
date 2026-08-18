@@ -45,3 +45,4 @@ When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep 
 - [REQ-216: macOS bash 3.2 makes empty-array expansion fatal under `set -u`; use `set --` for optional arguments](../../do-work/archive/UR-049/REQ-216-harden-atomic-download-retry-and-credentials.md#lessons-learned)
 - [REQ-217: only `git archive` honors `export-ignore`; a mirrored script must probe both sibling depths](../../do-work/archive/UR-049/REQ-217-add-upstream-archive-fetcher-with-git-fallback.md#lessons-learned)
 - [REQ-208: pass data needles to grep with `--` — a pattern starting with `-` parses as options](../../do-work/archive/UR-047/REQ-208-deterministic-p50-estimator-script-reference-schema.md#lessons-learned)
+- [REQ-225: `ln` refuses an occupied file but nests on an occupied directory; a bare rename's exit status is not proof of publication](../../do-work/archive/REQ-225-state-verified-exact-publication-as-a-shared-condition.md#lessons-learned)
