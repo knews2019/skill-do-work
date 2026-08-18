@@ -1,9 +1,11 @@
 ---
 id: REQ-249
 title: Decide the cross-package citation path form and sweep to match
-status: claimed
+status: completed
 created_at: 2026-08-18T13:54:59Z
 claimed_at: 2026-08-18T16:09:27Z
+completed_at: 2026-08-18T18:08:42Z
+kb_status: pending
 route: B
 status_changed_at: 2026-08-18T14:12:05Z
 user_request: UR-055
@@ -172,6 +174,74 @@ Transcribed by the orchestrator from the builder hand-back:
 ## Qualification
 
 Passed — 48 files verified in merge range `e8c6f80..cc1083c`, requirements traced (rule stated in `prime-action-files.md` § Cross-Referencing with per-file depth examples and the retired shorthand named; spot-resolved swept citations from `present-work.md` land on real files; checker present in the reference contract), P-A-U audited (sweep scripts stayed in session scratch, no stray binary, no debug artifacts in the merged diff). The 122-vs-140 count difference from the brief is explained and verified by the builder's condition-derived extent (fenced content and `<skill-root>/../` invocations are not citations under the decided rule).
+
+## Review
+
+**Overall: 97%** | 2026-08-18T18:05:59Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 95% |
+| Test Adequacy | 95% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+### Requirements Checklist
+
+- [x] **One spelling is the documented rule, stated in `_dev/primes/prime-action-files.md`** — delivered: § Cross-Referencing states the literal rule with per-file depth examples, retires the skill-root shorthand by REQ number, states the fenced-block exemption, points at the checker. *(reproduced-by-reading)*
+- [x] **Every shipped backticked citation matches it** — delivered, independently confirmed. The reviewer's own scanner (deliberately not derived from the checker) over all tracked `skills/**/*.md`: 146 citation-shaped spans; 141 resolve in **both** the source topology and the installed four-sibling topology; the 5 non-resolving are verified-legitimate non-citations (a generic refactor example, a templated worktrees path, three consumer-state lesson-link computation examples). **Zero spans the scanner flags that the shipped checker passes.** Counts reconcile exactly: 122 rewritten + 19 already-correct = 141. *(reproduced-by-execution)*
+- [x] **Mechanical-checkability answered and implemented** — against the pre-sweep tree the checker reports **exactly 122** failures, reproducing the Implementation Summary's claim verbatim. *(reproduced-by-execution)*
+- [x] **`bash _dev/tests/maintainer-verify.sh` exits 0** — reproduced un-piped after all mutation probes were restored.
+
+### Mutation testing of the checker (all restored; final `git status` clean)
+
+Wrong-depth prose citation → FAIL with file:line ✓ · deleted non-core file → FAIL ✓ · broken citation in a fenced block → PASS (D-01) ✓ · broken backticked citation in an HTML comment → FAIL (D-02) ✓ · D-03 residual probed deliberately: a prose citation to a deleted **core** file passes silently — real, and honestly documented, condition-keyed on the name collision and pinned by a fixture ✓ · `<skill-root>/../` invocation → skipped ✓ · wrong-depth citation with arguments → FAIL on first token only (D-04) ✓ · bogus `#anchor` on a correct citation → passes (Minor 1).
+
+**Parser refactor (D-05):** read line-by-line against the pre-image — behavior-identity confirmed; pre-existing parser fixtures pass; live corpus produces identical link-check results. *(argued-from-reading, fixture-locked)*
+
+### Findings
+
+**Important:**
+
+- **The retired skill-root-relative reading survives outside backtick spans — three shipped sites the sweep and the checker are both structurally blind to.** (1) `skills/do-work/SKILL.md:16` — the retired resolution rule stated as prose in the core router, now contradicting the prime; applied to the new `../../` form it computes wrong paths. (2) `skills/do-work/actions/commit.md:17` — bare `../do-work-toolbox/actions/inspect.md`, wrong depth from `actions/`. (3) `skills/do-work/crew-members/security.md:3` — bare `../do-work-toolbox/actions/code-review.md` in the JIT_CONTEXT comment (the checker's comment scan covers backticked spans only). A Restatement Sweep finding, **not** builder scope drift: the user-confirmed rule's letter covers backticked citations, and these are bare text — but the diff retired the *reading*, and these sites still state or use it. *(reproduced-by-execution)* — gate: **rule-change** → sweep REQ-259 (`sweep_key: retired-reading-outside-backtick-spans`), created `pending-answers` per the generation-≥2 reroute.
+
+**Minor:** 3 (report only)
+1. Anchor fragments on backticked citations are discarded (`.split("#")[0]`), never validated. Latent: no live backticked cross-package citation carries an anchor today.
+2. The fenced-yaml Request File Schema comments (`work-reference.md:130/132/137`) carry live parser-lock-step citations in the retired form, permanently checker-exempt via D-01 — the exemption reasoning fits true templates but sits awkwardly on schema documentation a maintainer follows.
+3. `scope-drift.sh` exits 1 flagging all 46 swept files: the Scope section declares package trees as prose and `write_set` covers them as globs (all 48 changed files inside it), but the tool only reads enumerated paths. Tool limitation surfaced by sweep-shaped REQs, not builder drift.
+
+**Confirmed exemptions (verified, not re-litigated):** the `code-review.md`/`validate-feedback.md` fenced templates (D-01's reasoning holds); `install-last30days.sh:133`'s shell path is runtime-anchored and already resolves in both topologies. No serial-only file in the merge range.
+
+### Acceptance Testing
+
+**Result: Pass** — checker catches every mutation class it claims (7 live probes), passes the post-sweep corpus, reports exactly 122 on the pre-sweep tree, independent scan finds zero holes in the backticked class, verify exit 0 after restoration.
+
+**Suggested testing:** (1) run the checker in a real consumer install once to confirm the modeled installed topology matches a deployed one; (2) add anchor validation before backticked citations grow anchors.
+
+### Reviewer-Recommended Disposition
+
+**Approve with follow-ups.** The decided backticked-citation class is genuinely closed (sweep complete, checker sound, both topologies modeled, residuals honestly documented); the retired *reading* survives at three unbackticked sites — exactly the instance-vs-class shape this review hunts — landing as one root-cause sweep, rerouted `pending-answers` per the depth cap.
+
+**Important findings (audit record):**
+- Retired reading survives at three unbackticked shipped sites — gate: rule-change → sweep REQ-259 (pending-answers)
+
+**Acceptance:** Pass · **Follow-ups created:** REQ-259 (by orchestrator, orchestrated mode) · **Sweeps appended to:** none (no matching candidate under UR-055)
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Deriving the extent mechanically (condition over the corpus) instead of trusting the capture counts — the brief's grep said 140, the condition said 122+19, and the review's independent scanner reconciled to the same 141 exactly. Making the sweep's condition BE the checker's condition means the two cannot disagree by construction. Refactoring the existing CommonMark walk instead of writing a second parser kept the fixtures as the identity proof.
+
+**What didn't:** The class boundary was drawn at backtick spans — the letter of the decided rule — and the retired *reading* survived at three bare-text sites, including the core SKILL.md stating the old resolution rule as prose (REQ-259). Seventh consecutive occurrence of the instance-vs-class shape; the class this time was "the reading", not "the spelling".
+
+**Worth knowing:** `do-work` names both the core package and the consumer queue root, so the checker deliberately skips core-package spans whose tail names nothing real — a citation to a *deleted core* file is invisible to it (documented, fixture-pinned; the other three packages still catch deletions). Anchor fragments on backticked citations are discarded, not validated. Fenced blocks are exempt by design.
+
+## Orientation
+
+Now every backticked cross-package citation in shipped markdown is a real relative path a reader can paste, in both source and installed topologies, and the reference contract enforces it mechanically. Lives in the shipped-docs convention layer (`_dev/primes/prime-action-files.md` § Cross-Referencing) plus `_dev/tests/shipped-package-reference-contract.sh`. [MAP CHANGED] — the citation convention flipped from skill-root-relative to literal, and a checker now guards the class; writers of new action files inherit the rule from the prime. Prime staleness spot-check: `prime-action-files.md` paths still resolve; not stale.
 
 ## Pre-Flight
 

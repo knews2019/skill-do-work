@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.10 — Cross-Package Citations Are Literal Paths, and Checked (2026-08-18)
+
+Backticked cross-package citations in shipped markdown now resolve as real relative paths from the citing file's own directory — the spelling a reader can paste — and the reference contract enforces it mechanically.
+
+- 122 citations swept across 46 files to per-file literal depth (`../../` from `actions/`/`crew-members/`/`docs/`, `../../../` from the board tool); the skill-root-relative shorthand is retired and `_dev/primes/prime-action-files.md` § Cross-Referencing states the rule.
+- `_dev/tests/shipped-package-reference-contract.sh` now checks backticked citations in both the source and installed topologies, reusing the existing CommonMark walk; against the pre-sweep tree it reports exactly the 122 swept citations.
+- Fenced template/example blocks are exempt by design; the core-package/queue-root name collision is a documented, fixture-pinned skip.
+
 ## 0.212.9 — Wrong Queue Timestamps Repair Themselves at Session Start (2026-08-18)
 
 The SessionStart hook now mechanically corrects detectably wrong `*_at` stamps in `do-work/queue/` and `do-work/working/` — no agent judgment in the repair path, so a fabricated future stamp gets fixed regardless of agent compliance.

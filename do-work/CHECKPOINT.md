@@ -11,7 +11,6 @@ session_depth: heavy
 ## In Progress (interrupted)
 
 - REQ-248: Anchor the Durations day buckets to UTC midnight so Panel B stays on canvas — claimed 2026-08-18T16:09:27Z — writer: vm:/home/user/skill-do-work
-- REQ-249: Decide the cross-package citation path form and sweep to match — claimed 2026-08-18T16:09:27Z — writer: vm:/home/user/skill-do-work
 
 ## Completed This Session
 
