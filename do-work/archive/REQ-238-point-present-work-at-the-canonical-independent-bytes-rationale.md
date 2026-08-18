@@ -3,7 +3,7 @@ id: REQ-238
 title: "Review fix: point present-work at the canonical independent-bytes rationale"
 status: completed
 completed_at: 2026-08-18T12:20:30Z
-commit:
+commit: d783ec9
 claimed_at: 2026-08-18T11:57:10Z
 route: B
 estimate:
