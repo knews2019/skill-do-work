@@ -1573,6 +1573,8 @@ var requestsById = boardData.requests;
 var userRequestsById = boardData.userRequests;
 var viewState = { windowHours: 24 };
 var filterState = { searchText: "", domain: "", status: "", userRequestActivity: "active" };
+// The always-open reading of this lens; the folded one has its own probe.
+var userRequestCardsFolded = false;
 function makeNode() {
   return {
     childNodes: [],
@@ -2302,4 +2304,249 @@ process.stdout.write(JSON.stringify({
 			t.Fatalf("%s activated %+v; it must open nothing", ignored.keyName, *ignored.result)
 		}
 	}
+}
+
+// The Lens group must offer all three readings. URs only selects the by-UR lens
+// and adds the fold, so it carries the same data-lens-target as By UR plus the
+// fold attribute — that is what keeps every other "is the UR lens on screen"
+// test (filters, testing transitions, the recently-done chip) correct for it.
+func TestGenerateOffersThreeLensButtons(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	for _, requiredToken := range []string{
+		`data-lens-target="flat"`,
+		`data-lens-target="user-request"`,
+		`data-ur-cards="folded"`,
+		"URs&nbsp;only",
+		`applyLensSelection(button.getAttribute("data-lens-target"), button.getAttribute("data-ur-cards"))`,
+	} {
+		if !strings.Contains(indexHtml, requiredToken) {
+			t.Fatalf("lens group is missing %q in the generated page", requiredToken)
+		}
+	}
+}
+
+// One UR group as the probe reports it back: which UR it names, whether its
+// header announces an expanded fold, which REQ cards are actually in the DOM,
+// and which nodes inside it still open the UR detail drawer.
+type renderedUserRequestRow struct {
+	UserRequestId  string   `json:"userRequestId"`
+	Expanded       string   `json:"expanded"`
+	CardIds        []string `json:"cardIds"`
+	DrawerTriggers []string `json:"drawerTriggers"`
+}
+
+// URs only is the by-UR lens with its REQ cards folded away, rendered by the
+// same function, so this drives the production renderer under Node: folded it
+// must emit one row per UR and no cards until a row is opened, opening a row
+// must reveal exactly that UR's filtered cards, and the Active scope plus a
+// status filter must hide exactly the URs they hide in the by-UR lens.
+func TestJavaScriptBehaviorUserRequestsOnlyLensFoldsCardsUntilARowIsOpened(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function isTerminalResolvedStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function hasActiveFilters("),
+		sliceBalancedBlockAfter(t, indexHtml, "function searchMatchesRequest("),
+		sliceBalancedBlockAfter(t, indexHtml, "function searchMatchesUserRequest("),
+		sliceBalancedBlockAfter(t, indexHtml, "function requestMatchesFilters("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestHasOpenOrRecentWork("),
+		sliceBalancedBlockAfter(t, indexHtml, "function recentWindowPhrase("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestLensEmptyText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function recentlyDoneIds("),
+		sliceBalancedBlockAfter(t, indexHtml, "function renderUserRequestLens("),
+	}
+	javascriptProbe := `
+Date.now = function () { return Date.parse("2026-08-15T12:00:00Z"); };
+var boardData = {
+  requests: {
+    "REQ-601": { status: "pending", title: "alpha open", domain: "general" },
+    "REQ-602": { status: "completed", title: "alpha shipped", domain: "general" },
+    "REQ-603": { status: "claimed", title: "beta running", domain: "general" },
+    "REQ-604": { status: "completed", title: "gamma archived", domain: "general" }
+  },
+  userRequests: {
+    "UR-401": { requestIds: ["REQ-601", "REQ-602"], title: "alpha request", inputFilePresent: true },
+    "UR-402": { requestIds: ["REQ-603"], title: "beta request", inputFilePresent: true },
+    "UR-403": { requestIds: ["REQ-604"], title: "gamma request", inputFilePresent: false }
+  },
+  userRequestOrder: ["UR-401", "UR-402", "UR-403"],
+  calendar: [
+    { id: "REQ-602", completionTime: "2026-08-15T06:00:00Z" },
+    { id: "REQ-604", completionTime: "2026-08-01T06:00:00Z" }
+  ]
+};
+var requestsById = boardData.requests;
+var userRequestsById = boardData.userRequests;
+var viewState = { view: "board", lens: "user-request", windowHours: 24 };
+var filterState = { searchText: "", domain: "", status: "", userRequestActivity: "all" };
+var userRequestCardsFolded = true;
+
+function makeNode() {
+  return {
+    childNodes: [],
+    dataset: {},
+    attributes: {},
+    listeners: {},
+    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; },
+    removeChild: function (childNode) {
+      var childIndex = this.childNodes.indexOf(childNode);
+      if (childIndex !== -1) { this.childNodes.splice(childIndex, 1); }
+      return childNode;
+    },
+    setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = attributeValue; },
+    getAttribute: function (attributeName) {
+      return Object.prototype.hasOwnProperty.call(this.attributes, attributeName)
+        ? this.attributes[attributeName]
+        : null;
+    },
+    addEventListener: function (eventName, handler) {
+      this.listeners[eventName] = (this.listeners[eventName] || []).concat([handler]);
+    },
+    dispatch: function (eventName) {
+      (this.listeners[eventName] || []).forEach(function (handler) { handler(); });
+    }
+  };
+}
+var userRequestLensNode = makeNode();
+var document = {
+  getElementById: function (nodeId) { return nodeId === "user-request-lens" ? userRequestLensNode : null; },
+  createElement: function () { return makeNode(); }
+};
+function makeRequestCard(requestId) { return { className: "req-card", requestId: requestId }; }
+` + strings.Join(functionBlocks, "\n") + `
+function collectByClassName(node, wantedClassName, found) {
+  found = found || [];
+  if (node.className === wantedClassName) { found.push(node); }
+  (node.childNodes || []).forEach(function (child) { collectByClassName(child, wantedClassName, found); });
+  return found;
+}
+function collectDrawerTriggers(node, found) {
+  found = found || [];
+  if (node.dataset && node.dataset.detailKind === "ur") { found.push(node.dataset.detailId); }
+  (node.childNodes || []).forEach(function (child) { collectDrawerTriggers(child, found); });
+  return found;
+}
+function renderGroups() {
+  userRequestLensNode = makeNode();
+  renderUserRequestLens();
+  return userRequestLensNode.childNodes.filter(function (node) { return node.className === "ur-group"; });
+}
+function headOf(group) { return collectByClassName(group, "ur-group-head")[0]; }
+function describeGroups(groups) {
+  return groups.map(function (group) {
+    var cardIds = [];
+    collectByClassName(group, "ur-group-cards").forEach(function (cardsNode) {
+      cardsNode.childNodes.forEach(function (card) { cardIds.push(card.requestId); });
+    });
+    return {
+      userRequestId: collectByClassName(group, "ur-id")[0].textContent,
+      expanded: headOf(group).getAttribute("aria-expanded") || "",
+      cardIds: cardIds,
+      drawerTriggers: collectDrawerTriggers(group)
+    };
+  });
+}
+
+var foldedGroups = renderGroups();
+var foldedInitial = describeGroups(foldedGroups);
+headOf(foldedGroups[0]).dispatch("click");
+var afterOpen = describeGroups(foldedGroups);
+headOf(foldedGroups[0]).dispatch("click");
+var afterClose = describeGroups(foldedGroups);
+
+filterState.userRequestActivity = "active";
+filterState.status = "pending";
+var scopedFoldedGroups = renderGroups();
+headOf(scopedFoldedGroups[0]).dispatch("click");
+var scopedFolded = describeGroups(scopedFoldedGroups);
+userRequestCardsFolded = false;
+var scopedByUserRequest = describeGroups(renderGroups());
+
+process.stdout.write(JSON.stringify({
+  foldedInitial: foldedInitial,
+  afterOpen: afterOpen,
+  afterClose: afterClose,
+  scopedFolded: scopedFolded,
+  scopedByUserRequest: scopedByUserRequest
+}));
+`
+	probeOutput := runJavaScriptBehaviorProbe(t, "URs-only fold", javascriptProbe)
+
+	var result struct {
+		FoldedInitial       []renderedUserRequestRow `json:"foldedInitial"`
+		AfterOpen           []renderedUserRequestRow `json:"afterOpen"`
+		AfterClose          []renderedUserRequestRow `json:"afterClose"`
+		ScopedFolded        []renderedUserRequestRow `json:"scopedFolded"`
+		ScopedByUserRequest []renderedUserRequestRow `json:"scopedByUserRequest"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode URs-only fold output: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// Folded: one row per UR, no cards, and the drawer still reachable from each row.
+	wantUserRequestIds := []string{"UR-401", "UR-402", "UR-403"}
+	if len(result.FoldedInitial) != len(wantUserRequestIds) {
+		t.Fatalf("URs only rendered %d rows, want %d: %#v", len(result.FoldedInitial), len(wantUserRequestIds), result.FoldedInitial)
+	}
+	for rowIndex, row := range result.FoldedInitial {
+		if row.UserRequestId != wantUserRequestIds[rowIndex] {
+			t.Fatalf("URs only row %d = %q, want %q", rowIndex, row.UserRequestId, wantUserRequestIds[rowIndex])
+		}
+		if len(row.CardIds) != 0 {
+			t.Fatalf("URs only row %s rendered cards %#v before it was opened, want none", row.UserRequestId, row.CardIds)
+		}
+		if row.Expanded != "false" {
+			t.Fatalf("URs only row %s aria-expanded = %q, want \"false\"", row.UserRequestId, row.Expanded)
+		}
+		if len(row.DrawerTriggers) != 1 || row.DrawerTriggers[0] != row.UserRequestId {
+			t.Fatalf("URs only row %s drawer triggers = %#v, want exactly one for itself", row.UserRequestId, row.DrawerTriggers)
+		}
+	}
+
+	// Opening one row reveals exactly that UR's cards and leaves the others folded.
+	openedRow := result.AfterOpen[0]
+	if openedRow.Expanded != "true" {
+		t.Fatalf("opened row %s aria-expanded = %q, want \"true\"", openedRow.UserRequestId, openedRow.Expanded)
+	}
+	if strings.Join(openedRow.CardIds, ",") != "REQ-601,REQ-602" {
+		t.Fatalf("opened row %s cards = %#v, want REQ-601 and REQ-602", openedRow.UserRequestId, openedRow.CardIds)
+	}
+	for _, stillFolded := range result.AfterOpen[1:] {
+		if len(stillFolded.CardIds) != 0 {
+			t.Fatalf("row %s unfolded with a sibling: cards %#v", stillFolded.UserRequestId, stillFolded.CardIds)
+		}
+	}
+
+	// Activating it again folds it back.
+	closedRow := result.AfterClose[0]
+	if closedRow.Expanded != "false" || len(closedRow.CardIds) != 0 {
+		t.Fatalf("re-activated row = %#v, want aria-expanded false and no cards", closedRow)
+	}
+
+	// Active scope plus a status filter must decide identically in both lenses.
+	foldedScopedIds := userRequestIdsOf(result.ScopedFolded)
+	byUserRequestScopedIds := userRequestIdsOf(result.ScopedByUserRequest)
+	if strings.Join(foldedScopedIds, ",") != strings.Join(byUserRequestScopedIds, ",") {
+		t.Fatalf("URs only showed %#v under Active+status:pending, by-UR showed %#v; the two lenses must hide the same URs",
+			foldedScopedIds, byUserRequestScopedIds)
+	}
+	if strings.Join(foldedScopedIds, ",") != "UR-401" {
+		t.Fatalf("Active+status:pending showed %#v, want only UR-401", foldedScopedIds)
+	}
+	if strings.Join(result.ScopedFolded[0].CardIds, ",") != "REQ-601" {
+		t.Fatalf("opened row under a status filter showed %#v, want only the matching REQ-601", result.ScopedFolded[0].CardIds)
+	}
+	// The fold is the folded lens's alone: a by-UR head announces no expanded state.
+	if result.ScopedByUserRequest[0].Expanded != "" {
+		t.Fatalf("by-UR head carries aria-expanded=%q; the fold must not leak into the always-open lens",
+			result.ScopedByUserRequest[0].Expanded)
+	}
+}
+
+func userRequestIdsOf(rows []renderedUserRequestRow) []string {
+	ids := make([]string, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.UserRequestId)
+	}
+	return ids
 }
