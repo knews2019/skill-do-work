@@ -2110,6 +2110,13 @@ body.is-resizing-detail .detail-resizer::before {
   cursor: grabbing;
 }
 
+/* Drawn inward: .timeline-scroll is an overflow container flush under the axis,
+   so a positive offset would put the ring where the surrounding card clips it. */
+.timeline-scroll:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: -2px;
+}
+
 .timeline-row-hit {
   fill: transparent;
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -2301,5 +2302,206 @@ process.stdout.write(JSON.stringify({
 		if ignored.result != nil {
 			t.Fatalf("%s activated %+v; it must open nothing", ignored.keyName, *ignored.result)
 		}
+	}
+}
+
+// Zoom and pan now have two drivers — a pointer and a keyboard — and two drivers
+// that each compute a window are two definitions of where the window goes. The
+// keyboard path is written as pure transforms over the SAME timelineZoomedWindow
+// the wheel and the zoom buttons call; this drives both to their edges and
+// requires them to arrive at the same ones.
+func TestJavaScriptBehaviorTimelineKeyboardMovesTheSameWindowAsThePointer(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_ZOOM_STEP", "TIMELINE_PAN_FRACTION") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineZoomedWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePannedWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineKeyboardWindow(") + `
+var boundStart = 0;
+var boundEnd = 30 * 24 * 3600 * 1000;   // a 30-day board
+
+// Start half zoomed in, so a pan has room to run in both directions before it
+// meets a bound.
+var halfway = timelineZoomedWindow(boundStart, boundEnd, 2, 0.5, boundStart, boundEnd);
+var halfSpanMs = halfway.windowEndMs - halfway.windowStartMs;
+
+function pressKey(currentWindow, keyName) {
+  var moved = timelineKeyboardWindow(
+    keyName, currentWindow.windowStartMs, currentWindow.windowEndMs, boundStart, boundEnd);
+  return moved || currentWindow;
+}
+function repeatKey(currentWindow, keyName, pressCount) {
+  for (var press = 0; press < pressCount; press++) {
+    currentWindow = pressKey(currentWindow, keyName);
+  }
+  return currentWindow;
+}
+
+var pannedRight = pressKey(halfway, "ArrowRight");
+var pannedLeft = pressKey(halfway, "ArrowLeft");
+
+// Held to the edges: the window must stop AT the bound, keeping its span.
+var atRightEdge = repeatKey(halfway, "ArrowRight", 40);
+var atLeftEdge = repeatKey(halfway, "ArrowLeft", 40);
+
+// The pointer path's own floor and ceiling, reached through the wheel's
+// off-centre anchor rather than the keyboard's centred one.
+var pointerFloor = halfway;
+var pointerCeiling = halfway;
+for (var pointerStep = 0; pointerStep < 40; pointerStep++) {
+  pointerFloor = timelineZoomedWindow(
+    pointerFloor.windowStartMs, pointerFloor.windowEndMs, TIMELINE_ZOOM_STEP, 0.25, boundStart, boundEnd);
+  pointerCeiling = timelineZoomedWindow(
+    pointerCeiling.windowStartMs, pointerCeiling.windowEndMs, 1 / TIMELINE_ZOOM_STEP, 0.25, boundStart, boundEnd);
+}
+var keyboardFloor = repeatKey(halfway, "+", 40);
+var keyboardCeiling = repeatKey(halfway, "-", 40);
+
+process.stdout.write(JSON.stringify({
+  panStepMs: pannedRight.windowStartMs - halfway.windowStartMs,
+  panBackStepMs: halfway.windowStartMs - pannedLeft.windowStartMs,
+  wantPanStepMs: halfSpanMs * TIMELINE_PAN_FRACTION,
+  windowSpanMs: halfSpanMs,
+  panKeepsSpan:
+    pannedRight.windowEndMs - pannedRight.windowStartMs === halfSpanMs &&
+    pannedLeft.windowEndMs - pannedLeft.windowStartMs === halfSpanMs,
+  rightEdgeMs: atRightEdge.windowEndMs,
+  leftEdgeMs: atLeftEdge.windowStartMs,
+  boundStartMs: boundStart,
+  boundEndMs: boundEnd,
+  edgesKeepSpan:
+    atRightEdge.windowEndMs - atRightEdge.windowStartMs === halfSpanMs &&
+    atLeftEdge.windowEndMs - atLeftEdge.windowStartMs === halfSpanMs,
+  keyboardFloorSpanMs: keyboardFloor.windowEndMs - keyboardFloor.windowStartMs,
+  pointerFloorSpanMs: pointerFloor.windowEndMs - pointerFloor.windowStartMs,
+  minSpanMs: TIMELINE_MIN_SPAN_MS,
+  keyboardCeilingSpanMs: keyboardCeiling.windowEndMs - keyboardCeiling.windowStartMs,
+  pointerCeilingSpanMs: pointerCeiling.windowEndMs - pointerCeiling.windowStartMs,
+  boundSpanMs: boundEnd - boundStart,
+  unownedKeys: ["Enter", " ", "Spacebar", "Tab", "ArrowUp", "ArrowDown", "a"].map(function (keyName) {
+    return timelineKeyboardWindow(keyName, halfway.windowStartMs, halfway.windowEndMs, boundStart, boundEnd);
+  })
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline keyboard pan and zoom", javascriptProbe)
+	var keyboardResult struct {
+		PanStepMs             float64            `json:"panStepMs"`
+		PanBackStepMs         float64            `json:"panBackStepMs"`
+		WantPanStepMs         float64            `json:"wantPanStepMs"`
+		WindowSpanMs          float64            `json:"windowSpanMs"`
+		PanKeepsSpan          bool               `json:"panKeepsSpan"`
+		RightEdgeMs           float64            `json:"rightEdgeMs"`
+		LeftEdgeMs            float64            `json:"leftEdgeMs"`
+		BoundStartMs          float64            `json:"boundStartMs"`
+		BoundEndMs            float64            `json:"boundEndMs"`
+		EdgesKeepSpan         bool               `json:"edgesKeepSpan"`
+		KeyboardFloorSpanMs   float64            `json:"keyboardFloorSpanMs"`
+		PointerFloorSpanMs    float64            `json:"pointerFloorSpanMs"`
+		MinSpanMs             float64            `json:"minSpanMs"`
+		KeyboardCeilingSpanMs float64            `json:"keyboardCeilingSpanMs"`
+		PointerCeilingSpanMs  float64            `json:"pointerCeilingSpanMs"`
+		BoundSpanMs           float64            `json:"boundSpanMs"`
+		UnownedKeys           []*json.RawMessage `json:"unownedKeys"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &keyboardResult); decodeError != nil {
+		t.Fatalf("decode timeline keyboard behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// A pan step has to be a fraction of what is on screen: a fixed number of
+	// milliseconds is either imperceptible zoomed out or a jump zoomed in.
+	if math.Abs(keyboardResult.PanStepMs-keyboardResult.WantPanStepMs) > 1 {
+		t.Fatalf("ArrowRight moved the window %.0f ms, want %.0f ms — one step of the visible span",
+			keyboardResult.PanStepMs, keyboardResult.WantPanStepMs)
+	}
+	if math.Abs(keyboardResult.PanBackStepMs-keyboardResult.WantPanStepMs) > 1 {
+		t.Fatalf("ArrowLeft moved the window %.0f ms, want %.0f ms back",
+			keyboardResult.PanBackStepMs, keyboardResult.WantPanStepMs)
+	}
+	if keyboardResult.PanStepMs <= 0 || keyboardResult.PanStepMs >= keyboardResult.WindowSpanMs {
+		t.Fatalf("a pan step of %.0f ms against a %.0f ms window is not a bounded step; a reader loses their place",
+			keyboardResult.PanStepMs, keyboardResult.WindowSpanMs)
+	}
+	if !keyboardResult.PanKeepsSpan {
+		t.Fatal("panning changed the window span; panning moves the window, zooming resizes it")
+	}
+
+	// Held down, a pan must stop at the range edge rather than walking the window
+	// off the data — the same clamp the drag path applies.
+	if math.Abs(keyboardResult.RightEdgeMs-keyboardResult.BoundEndMs) > 1 {
+		t.Fatalf("panning right settled with the window ending at %.0f ms, want the range edge %.0f ms",
+			keyboardResult.RightEdgeMs, keyboardResult.BoundEndMs)
+	}
+	if math.Abs(keyboardResult.LeftEdgeMs-keyboardResult.BoundStartMs) > 1 {
+		t.Fatalf("panning left settled with the window starting at %.0f ms, want the range edge %.0f ms",
+			keyboardResult.LeftEdgeMs, keyboardResult.BoundStartMs)
+	}
+	if !keyboardResult.EdgesKeepSpan {
+		t.Fatal("clamping at a range edge changed the window span; it must only stop the window, not shrink it")
+	}
+
+	// The point of routing the keys through timelineZoomedWindow: one floor and
+	// one ceiling, whichever driver arrives at them.
+	if keyboardResult.KeyboardFloorSpanMs != keyboardResult.PointerFloorSpanMs {
+		t.Fatalf("`+` bottomed out at %.0f ms but the pointer path bottoms out at %.0f ms; the two have diverged",
+			keyboardResult.KeyboardFloorSpanMs, keyboardResult.PointerFloorSpanMs)
+	}
+	if keyboardResult.KeyboardFloorSpanMs != keyboardResult.MinSpanMs {
+		t.Fatalf("`+` bottomed out at %.0f ms, want the renderer's %.0f ms floor",
+			keyboardResult.KeyboardFloorSpanMs, keyboardResult.MinSpanMs)
+	}
+	if keyboardResult.KeyboardCeilingSpanMs != keyboardResult.PointerCeilingSpanMs {
+		t.Fatalf("`-` topped out at %.0f ms but the pointer path tops out at %.0f ms; the two have diverged",
+			keyboardResult.KeyboardCeilingSpanMs, keyboardResult.PointerCeilingSpanMs)
+	}
+	if keyboardResult.KeyboardCeilingSpanMs != keyboardResult.BoundSpanMs {
+		t.Fatalf("`-` topped out at %.0f ms, want the full range span %.0f ms",
+			keyboardResult.KeyboardCeilingSpanMs, keyboardResult.BoundSpanMs)
+	}
+
+	// Enter and Space belong to row activation, and Up/Down to scrolling the
+	// queue. Claiming any of them would take a working interaction away.
+	unownedKeyNames := []string{"Enter", "Space", "Spacebar", "Tab", "ArrowUp", "ArrowDown", "a"}
+	if len(keyboardResult.UnownedKeys) != len(unownedKeyNames) {
+		t.Fatalf("probe reported %d unowned-key results, want %d", len(keyboardResult.UnownedKeys), len(unownedKeyNames))
+	}
+	for keyIndex, unownedKeyName := range unownedKeyNames {
+		if keyboardResult.UnownedKeys[keyIndex] != nil {
+			t.Fatalf("%s moved the time window to %s; that key belongs to row activation or to scrolling",
+				unownedKeyName, string(*keyboardResult.UnownedKeys[keyIndex]))
+		}
+	}
+}
+
+// The interaction has to be discoverable without seeing the hint line beside the
+// chart, and focusable on the element that actually takes the keys. Both are one
+// attribute each, and both are silently droppable in a template edit.
+func TestTimelinePanelStatesItsKeyboardInteraction(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	panelStart := strings.Index(indexHtml, `<section id="view-timeline"`)
+	if panelStart == -1 {
+		t.Fatal("the generated page carries no timeline panel")
+	}
+	panelOpeningTag := indexHtml[panelStart : panelStart+strings.Index(indexHtml[panelStart:], ">")+1]
+	for _, wantPhrase := range []struct {
+		requirement string
+		phrase      string
+	}{
+		{"the panel is still named", "Timeline"},
+		{"which keys pan", "arrow keys"},
+		{"which keys zoom", "plus and minus"},
+	} {
+		if !strings.Contains(panelOpeningTag, wantPhrase.phrase) {
+			t.Fatalf("the timeline panel's accessible name does not state %s (wanted %q in %q)",
+				wantPhrase.requirement, wantPhrase.phrase, panelOpeningTag)
+		}
+	}
+
+	scrollStart := strings.Index(indexHtml, `id="timeline-scroll"`)
+	if scrollStart == -1 {
+		t.Fatal("the generated page carries no timeline scroll container")
+	}
+	scrollOpeningTag := indexHtml[strings.LastIndex(indexHtml[:scrollStart], "<") : scrollStart+strings.Index(indexHtml[scrollStart:], ">")+1]
+	if !strings.Contains(scrollOpeningTag, `tabindex="0"`) {
+		t.Fatalf("the chart cannot be focused, so its keyboard path is unreachable: %q", scrollOpeningTag)
 	}
 }

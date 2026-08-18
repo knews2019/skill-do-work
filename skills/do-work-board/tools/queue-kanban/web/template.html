@@ -224,7 +224,7 @@
       <!-- Timeline — one bar per REQ across real time: the wait from capture to
            claim, then the work from claim to completion. Rows are virtualized,
            so only the scrolled window carries SVG nodes. -->
-      <section id="view-timeline" class="view-panel" aria-label="Timeline" hidden>
+      <section id="view-timeline" class="view-panel" aria-label="Timeline. With the chart focused, arrow keys pan the time axis and the plus and minus keys zoom it." hidden>
         <div class="timeline-intro">
           <h2 class="timeline-heading">How long each REQ waited, and how long it took</h2>
           <p class="timeline-subhead" id="timeline-summary"></p>
@@ -246,11 +246,13 @@
         </div>
         <div class="timeline-chart">
           <div class="timeline-axis" id="timeline-axis"></div>
-          <div class="timeline-scroll" id="timeline-scroll"></div>
+          <!-- tabindex="0" is what makes the chart itself reachable by Tab, so the
+               arrow-key pan and +/− zoom below have somewhere to land. -->
+          <div class="timeline-scroll" id="timeline-scroll" tabindex="0"></div>
         </div>
         <p class="timeline-forecast" id="timeline-forecast"></p>
         <div class="timeline-excluded" id="timeline-excluded"></div>
-        <p class="timeline-hint">Scroll to move down the queue. Hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Click a row for its full detail.</p>
+        <p class="timeline-hint">Scroll to move down the queue. Hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Click a row for its full detail. From the keyboard: Tab to the chart, then ← and → to pan and + and − to zoom.</p>
         <p class="timeline-readout" id="timeline-readout" role="status" aria-live="polite"></p>
         <details class="timeline-table">
           <summary>Every REQ, as a table</summary>

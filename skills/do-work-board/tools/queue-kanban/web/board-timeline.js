@@ -31,6 +31,7 @@
   var TIMELINE_OVERSCAN_ROWS = 4;
   var TIMELINE_MIN_SPAN_MS = 3600000; // one hour in ms — as far in as zoom goes
   var TIMELINE_ZOOM_STEP = 1.6;
+  var TIMELINE_PAN_FRACTION = 0.15;
   var TIMELINE_HATCH_PATTERN_ID = "timeline-projected-hatch";
   var TIMELINE_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -112,6 +113,47 @@
       nextStartMs = nextEndMs - zoomedSpanMs;
     }
     return { windowStartMs: nextStartMs, windowEndMs: nextEndMs };
+  }
+
+  // Panning slides the window without resizing it, and stops at the bounds — the
+  // same clamp the drag path applies, written once so a held arrow key and a long
+  // drag cannot stop in different places. The step is a FRACTION of what is on
+  // screen rather than a fixed number of milliseconds: a fixed step is
+  // imperceptible zoomed out and a jump zoomed in.
+  function timelinePannedWindow(windowStartMs, windowEndMs, panFraction, boundStartMs, boundEndMs) {
+    var windowSpanMs = windowEndMs - windowStartMs;
+    var nextStartMs = Math.min(
+      Math.max(windowStartMs + windowSpanMs * panFraction, boundStartMs),
+      Math.max(boundEndMs - windowSpanMs, boundStartMs)
+    );
+    return { windowStartMs: nextStartMs, windowEndMs: nextStartMs + windowSpanMs };
+  }
+
+  // The whole keyboard path, as one pure decision: which keys move the window,
+  // and where to. It routes zoom through timelineZoomedWindow — the function the
+  // wheel and the zoom buttons call — so the keyboard cannot acquire its own
+  // floor, ceiling or clamp. Returns null for every key the view does not own,
+  // which is what leaves Enter and Space to row activation and Up/Down to
+  // scrolling the queue.
+  function timelineKeyboardWindow(keyName, windowStartMs, windowEndMs, boundStartMs, boundEndMs) {
+    if (keyName === "ArrowLeft" || keyName === "ArrowRight") {
+      return timelinePannedWindow(
+        windowStartMs,
+        windowEndMs,
+        keyName === "ArrowRight" ? TIMELINE_PAN_FRACTION : -TIMELINE_PAN_FRACTION,
+        boundStartMs,
+        boundEndMs
+      );
+    }
+    // "=" and "_" are the unshifted faces of the "+" and "−" keys, so a reader
+    // who does not reach for Shift still zooms.
+    if (keyName === "+" || keyName === "=") {
+      return timelineZoomedWindow(windowStartMs, windowEndMs, TIMELINE_ZOOM_STEP, 0.5, boundStartMs, boundEndMs);
+    }
+    if (keyName === "-" || keyName === "_") {
+      return timelineZoomedWindow(windowStartMs, windowEndMs, 1 / TIMELINE_ZOOM_STEP, 0.5, boundStartMs, boundEndMs);
+    }
+    return null;
   }
 
   // Which rows have SVG nodes. Everything above and below the scrolled window is
@@ -583,13 +625,48 @@
     // ---- interaction ----
     addTimelineListener(scrollHost, "scroll", renderVisibleRows);
 
+    // One keydown listener for the whole chart, registered through the teardown
+    // registry like every other listener this view binds to a node that outlives
+    // a render. Activation is asked first so Enter and Space keep meaning "open
+    // this row" even though the same listener now also moves the window.
     addTimelineListener(scrollHost, "keydown", function (keyEvent) {
       var activation = timelineKeyboardActivationTarget(keyEvent);
-      if (!activation) {
+      if (activation) {
+        keyEvent.preventDefault();
+        openDetail(activation.detailKind, activation.detailId);
+        return;
+      }
+
+      var movedWindow = timelineKeyboardWindow(
+        keyEvent.key,
+        timelineViewState.windowStartMs,
+        timelineViewState.windowEndMs,
+        boundStartMs,
+        boundEndMs
+      );
+      if (!movedWindow) {
         return;
       }
       keyEvent.preventDefault();
-      openDetail(activation.detailKind, activation.detailId);
+      timelineViewState.windowStartMs = movedWindow.windowStartMs;
+      timelineViewState.windowEndMs = movedWindow.windowEndMs;
+
+      // Rendering rebuilds every row node, so a row that had focus is gone by the
+      // time the next key arrives and focus would have fallen to the body —
+      // leaving one arrow press followed by dead keys. Moving the window never
+      // moves the vertical scroll, so the same row is still in the virtualized
+      // slice; put focus back on its replacement.
+      var focusedRow = document.activeElement && document.activeElement.closest
+        ? document.activeElement.closest("[data-row-index]")
+        : null;
+      var focusedRowId = focusedRow ? focusedRow.getAttribute("data-detail-id") : null;
+      renderAll();
+      if (focusedRowId) {
+        var rebuiltRow = rowsSvg.querySelector('[data-detail-id="' + focusedRowId + '"]');
+        if (rebuiltRow) {
+          rebuiltRow.focus();
+        }
+      }
     });
 
     addTimelineListener(scrollHost, "mousemove", function (moveEvent) {
