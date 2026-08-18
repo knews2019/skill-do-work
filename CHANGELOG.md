@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.15 — The Timestamp Rule's Last Two Boundary Cases Are Settled (2026-08-18)
+
+Every clock write in shipped action text is now governed by a stated rule.
+
+- The ui-review report header's date is deliberately UTC: named in the Timestamp rule's date-only paragraph, cited at the site, and the template placeholder now reads `[today's UTC date]`.
+- The `## HH:MM UTC` daily-log headings are declared outside the Timestamp rule's scope — the log's dated filename already carries the date — with a canonical statement in memory-reference.md and greppable markers at every write site, so future sweeps walk past instead of converting them.
+
 ## 0.212.14 — Archive Timestamps Get a Git-Driven Audit Tool (2026-08-18)
 
 The archive can now be audited and mechanically repaired — deliberately, never from a hook.

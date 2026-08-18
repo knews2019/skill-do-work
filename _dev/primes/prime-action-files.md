@@ -102,6 +102,7 @@ A skill or action description is loaded whether or not the thing gets used, so i
 
 ## Lessons
 
+- [REQ-253: close a site class by its condition, not the REQ's line list — the listed line was a read site and the real write sites were elsewhere](../../do-work/archive/REQ-253-decide-the-timestamp-rule-boundary-cases.md#lessons-learned)
 - [REQ-249: make the sweep's condition BE the checker's condition — and expect the class to be wider than the marked spans; the retired reading survived as bare prose the sweep was structurally blind to](../../do-work/archive/REQ-249-decide-the-cross-package-citation-path-form.md#lessons-learned)
 - [REQ-193: key closed-state authority to the archived-fallback condition and return review-generated completions in place](../../do-work/archive/UR-043/REQ-193-keep-archived-urs-closed-during-review.md#lessons-learned)
 - [REQ-194: retain canonical structured detector evidence and test the source seam directly](../../do-work/archive/UR-043/REQ-194-forward-stray-reqs-through-forensics.md#lessons-learned)
