@@ -19,6 +19,7 @@
   var DURATIONS_MARGIN_LEFT = 54;
   var DURATIONS_MARGIN_RIGHT = 18;
   var DURATIONS_PLOT_WIDTH = DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_LEFT - DURATIONS_MARGIN_RIGHT;
+  var DURATIONS_DAY_MS = 86400000;
 
   // Panel A — the overflow lane above a scale break exists so three long spans
   // cannot squash the 90% of samples that live under 35 minutes. Marks keep the
@@ -248,21 +249,46 @@
     var sampleTimes = samples.map(function (sample) {
       return Date.parse(sample.completionTime);
     });
-    var timeStart = Math.min.apply(null, sampleTimes);
-    var timeEnd = Math.max.apply(null, sampleTimes);
-    var timeSpan = timeEnd - timeStart || 1;
+    var firstCompletionMs = Math.min.apply(null, sampleTimes);
+    var lastCompletionMs = Math.max.apply(null, sampleTimes);
+    // The axis domain is whole UTC days: the first completion floored to its
+    // UTC midnight, and the midnight AFTER the last (REQ-248). The day buckets
+    // (dayTime) sit at their days' midnights, so a domain that began at the
+    // first completion INSTANT put every bucket left of its samples — and
+    // pushed Panels B and C off canvas entirely at one or two active days.
+    // durations.go's durationLabelTimeRange anchors the Go-side label planner
+    // to this same domain; the day-buckets behavior test holds the two together.
+    var timeStart = Math.floor(firstCompletionMs / DURATIONS_DAY_MS) * DURATIONS_DAY_MS;
+    var timeEnd = Math.floor(lastCompletionMs / DURATIONS_DAY_MS) * DURATIONS_DAY_MS + DURATIONS_DAY_MS;
+    var timeSpan = timeEnd - timeStart;
 
     svg.setAttribute(
       "aria-label",
       "Three stacked panels sharing a calendar axis from " +
-        formatDurationDayLabel(timeStart) +
+        formatDurationDayLabel(firstCompletionMs) +
         " to " +
-        formatDurationDayLabel(timeEnd) +
+        formatDurationDayLabel(lastCompletionMs) +
         ". Panel A plots each archived REQ's duration in minutes coloured by route. Panel B plots the median minutes per active day. Panel C counts REQs completed per day. Every value is also listed in the table below."
     );
 
     function xOfEpoch(epochMs) {
       return DURATIONS_MARGIN_LEFT + ((epochMs - timeStart) / timeSpan) * DURATIONS_PLOT_WIDTH;
+    }
+    // A day bucket's marks (bar, annotation, hover target) centre on the day's
+    // noon — the middle of the [midnight, next midnight) slot the domain gives
+    // it. A bucket drawn AT its midnight would straddle the previous day, and
+    // the first day's would straddle the axis.
+    function durationsDayCentreX(dayEpochMs) {
+      return xOfEpoch(dayEpochMs + DURATIONS_DAY_MS / 2);
+    }
+    // A day-centred bar fits its own slot while barWidth <= dayWidth - 2; past
+    // ~280 active days the 4-unit minimum width exceeds the slot, so the
+    // outermost bars are nudged back inside the plot instead of bleeding into
+    // the gutters.
+    function durationsBarLeftX(dayCentreX, barWidth) {
+      var barLeft = dayCentreX - barWidth / 2;
+      var rightmostLeft = DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT - barWidth;
+      return Math.min(Math.max(barLeft, DURATIONS_MARGIN_LEFT), rightmostLeft);
     }
     function yOfMinutes(minutes) {
       var clamped = Math.min(minutes, DURATIONS_CEILING_MINUTES);
@@ -450,7 +476,7 @@
       );
     });
 
-    var dayWidth = (DURATIONS_PLOT_WIDTH * 86400000) / timeSpan;
+    var dayWidth = (DURATIONS_PLOT_WIDTH * DURATIONS_DAY_MS) / timeSpan;
     var barWidth = Math.max(4, Math.min(24, dayWidth - 2));
     var slowestDay = null;
     days.forEach(function (day) {
@@ -458,9 +484,10 @@
         return;
       }
       var dayEpochMs = Date.parse(day.dayTime);
+      var barLeftX = durationsBarLeftX(durationsDayCentreX(dayEpochMs), barWidth);
       var barTop = yOfDayMedian(day.medianMinutes);
       makeDurationsSvgNode(svg, "rect", {
-        x: (xOfEpoch(dayEpochMs) - barWidth / 2).toFixed(1),
+        x: barLeftX.toFixed(1),
         y: barTop.toFixed(1),
         width: barWidth.toFixed(1),
         height: Math.max(2, DURATIONS_MEDIAN_BOTTOM - barTop).toFixed(1),
@@ -469,7 +496,7 @@
       });
       if (day.medianMinutes > DURATIONS_MEDIAN_CEILING) {
         makeDurationsSvgNode(svg, "rect", {
-          x: (xOfEpoch(dayEpochMs) - barWidth / 2).toFixed(1),
+          x: barLeftX.toFixed(1),
           y: (DURATIONS_MEDIAN_TOP - DURATIONS_MEDIAN_OVER_CEILING_GAP).toFixed(1),
           width: barWidth.toFixed(1),
           height: DURATIONS_MEDIAN_OVER_CEILING_HEIGHT,
@@ -482,7 +509,7 @@
       }
     });
     if (slowestDay) {
-      drawDurationsSlowestDayAnnotation(svg, slowestDay, xOfEpoch(Date.parse(slowestDay.dayTime)));
+      drawDurationsSlowestDayAnnotation(svg, slowestDay, durationsDayCentreX(Date.parse(slowestDay.dayTime)));
     }
 
     // ---- panel C: REQs completed per day ----
@@ -517,7 +544,7 @@
       var dayEpochMs = Date.parse(day.dayTime);
       var columnHeight = (day.completedCount / peakCount) * (DURATIONS_COUNT_BOTTOM - DURATIONS_COUNT_TOP);
       makeDurationsSvgNode(svg, "rect", {
-        x: (xOfEpoch(dayEpochMs) - barWidth / 2).toFixed(1),
+        x: durationsBarLeftX(durationsDayCentreX(dayEpochMs), barWidth).toFixed(1),
         y: (DURATIONS_COUNT_BOTTOM - columnHeight).toFixed(1),
         width: barWidth.toFixed(1),
         height: Math.max(2, columnHeight).toFixed(1),
@@ -544,7 +571,7 @@
         class: "durations-tick",
         "text-anchor": "end"
       },
-      formatDurationDayLabel(timeEnd)
+      formatDurationDayLabel(lastCompletionMs)
     );
     var firstMonth = new Date(timeStart);
     var monthCursor = Date.UTC(firstMonth.getUTCFullYear(), firstMonth.getUTCMonth() + 1, 1);
@@ -620,7 +647,7 @@
       var nearestDay = null;
       var nearestDayDistance = Infinity;
       days.forEach(function (day) {
-        var distance = Math.abs(xOfEpoch(Date.parse(day.dayTime)) - pointerX);
+        var distance = Math.abs(durationsDayCentreX(Date.parse(day.dayTime)) - pointerX);
         if (distance < nearestDayDistance) {
           nearestDayDistance = distance;
           nearestDay = day;
