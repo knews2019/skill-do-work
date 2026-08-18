@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.9 — Wrong Queue Timestamps Repair Themselves at Session Start (2026-08-18)
+
+The SessionStart hook now mechanically corrects detectably wrong `*_at` stamps in `do-work/queue/` and `do-work/working/` — no agent judgment in the repair path, so a fabricated future stamp gets fixed regardless of agent compliance.
+
+- New `scripts/repair-req-timestamps.sh`: detects future stamps beyond the board's 2-minute skew allowance (any top-level `*_at` field) and impossible orderings among `created_at`/`claimed_at`/`completed_at`; rewrites from file mtime (dirty files) or the introducing commit's author time (committed files), clamped to `created ≤ claimed ≤ completed ≤ now`.
+- Guard style matches `record-commit-hash.sh`: verify-before-replace, atomic rename, a tripped guard leaves the file byte-identical, one audit line per correction. Log-only — no new frontmatter fields.
+- Runs from the SessionStart hook beside the reservation cleanup, presence-guarded so a partial install still gets its banner; also directly invocable. Archived files are untouched (that audit is REQ-247's, still queued).
+
 ## 0.212.8 — JavaScript Behavior Probes Run From Stdin (2026-08-18)
 
 The board's JavaScript behavior probes now hand their script to Node on stdin instead of as a command-line argument, so the large ones run on Linux as well as macOS.

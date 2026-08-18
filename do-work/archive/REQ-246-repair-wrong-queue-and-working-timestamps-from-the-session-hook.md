@@ -1,9 +1,11 @@
 ---
 id: REQ-246
 title: Repair detectably wrong queue and working timestamps from the session hook
-status: claimed
+status: completed
 created_at: 2026-08-18T12:38:26Z
 claimed_at: 2026-08-18T16:09:27Z
+completed_at: 2026-08-18T17:49:50Z
+kb_status: pending
 route: C
 user_request: UR-056
 domain: general
@@ -146,6 +148,103 @@ See `do-work/user-requests/UR-056/input.md` for complete verbatim input.
 ## Qualification
 
 Passed — 4 files verified in the merge range `e427aa1..270a2d0` (573-line script is substantive, not placeholder), all six requirement clusters traced (skew-120s detection, file-state-decided replacement, record-commit-hash guard style, log-only audit trail, hook + direct invocation, queue+working scope), P-A-U audited against the diff (no debug artifacts; the script's success/audit lines are its contract output, not instrumentation). Orchestrator spot-check: the hook's `2>/dev/null` does not lose failure lines — the repairer prints FAILED lines to stdout by design (D-03), only the cannot-read-clock abort uses stderr.
+
+## Decisions
+
+Transcribed by the orchestrator from the builder hand-back (the run artifact is uncommitted by contract, so the durable record lives here — review Minor finding 2).
+
+- **D-01 (DECIDE & STATE): quoted stamps are comparable and repairable.** The schema's YAML readers unquote values, so a quoted future stamp is board-detectable; one matching pair of wrapping quotes is stripped for comparison and the replacement is written canonical-unquoted. Locked in by the committed-file case.
+- **D-02 (DECIDE & STATE): the `_at` suffix is the detection rule, not a field list.** Ordering constraints still name the three schema anchors; the future check covers every top-level `*_at`, matching forensics Check 11 and § Closed Enumerations Go Stale.
+- **D-03 (DECIDE & STATE): the hook keeps repairer output on failure (`|| true`) instead of discarding.** The repairer's failure lines ARE the audit trail for a tripped guard; the banner still can never break. (Verified by execution in review.)
+- **D-04 (DECIDE & STATE): non-comparable shapes are left alone.** Numeric offsets and fractional seconds need timezone arithmetic to judge; the conservative direction for an unattended hook is not to touch what it cannot prove.
+- **D-05 (DECIDE & STATE): ordering repairs rewrite the later field of the pair; the earlier anchors.** The earlier stamp has the stronger provenance.
+- **D-06 (DECIDE & STATE): epoch-to-stamp conversion is probed, not guessed.** GNU `date -d @EPOCH` vs BSD `date -r EPOCH` verified against epoch 0 before use.
+
+## Review
+
+**Overall: 78%** | 2026-08-18T17:44:44Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 90% |
+| Code Quality | 85% |
+| Test Adequacy | 80% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial |
+
+**Verdict: Approve with follow-ups** — the mechanism is real and well-guarded (every stated acceptance criterion reproduced by hand, boundary-exact, and the guard architecture held under every mutant thrown at it), but the repair-side parser recognizes a strictly narrower set of shapes than the read-side detectors it claims parity with, and in one reproduced case it rewrites a detectable stamp into a *worse*, unparseable value.
+
+### Requirements Checklist (each walked against the diff and re-run, not taken from the hand-back)
+
+- [x] **Future `created_at` rewritten to file mtime, correction logged** — reproduced directly (`created_at: 2093-01-01T00:00:00Z -> 2026-08-10T12:00:00Z (file mtime)`), plus suite case re-run green.
+- [x] **Detection is exactly now+120s, matching board/forensics** — boundary probed by execution: now+119s passed byte-identical; now+121s repaired. Strictly-greater-than-horizon semantics match `futureTimestampSkewAllowance`.
+- [x] **`_at`-suffix class, not a field list** — reproduced: a future `status_changed_at` (non-anchor field) was repaired.
+- [x] **Ordering violations repaired, clamped `created ≤ claimed ≤ completed ≤ now`** — reproduced: both later fields clamp to the floor; `completed_at < created_at` with `claimed_at` absent repairs against the right anchor; a pass-1 future repair landing earlier than `created_at` is caught by pass 2 and clamped up.
+- [x] **Replacement source decided by file state** — reproduced both branches beyond the suite: a dirty *tracked* file in a git repo uses mtime (the suite's mtime cases are git-less, so that path had never actually been exercised); a committed file uses the *introducing* commit's author time even when a later commit edited other lines.
+- [x] **Never writes a worse instant from clamping's point of view** — a fabricated future mtime (`touch -t 2090…`) is clamped to now via `earlier_of`.
+- [x] **Guard style of `record-commit-hash.sh`** — reproduced: truncation-floor trip leaves the file byte-identical, exits 1, names the reason.
+- [x] **Audit trail log-only, no new frontmatter fields** — delivered (caveat under Finding I1).
+- [x] **Hook wiring + direct invocation** — reproduced end-to-end: a tripped guard's `FAILED` line survives the hook's `2>/dev/null` and reaches the banner while the hook still exits 0 (D-03 verified by execution); all adversarial runs were direct invocations with explicit project root.
+- [x] **Queue + working only; archive untouched; symlinks refused** — reproduced: archive fixture byte-identical; a symlinked REQ file with a future stamp left untouched and still a symlink.
+- [x] **`bash _dev/tests/maintainer-verify.sh` exits 0** — re-run un-piped by the reviewer: exit 0.
+- [x] **Scope check** — `scope-drift.sh` exit 0; diff touches exactly the four declared write-set files.
+
+### Findings
+
+**Important:**
+
+- **I1 (reproduced by execution): a space-separated instant is mangled, not repaired — the one case found where the script writes a *worse* value.** Fixture `created_at: 2093-01-01 00:00:00` (unquoted) came out as `created_at: 2026-08-10T12:00:00Z 00:00:00` — the extractor tokenizes at the first whitespace, the leading date fragment matches the date-only pattern and gets "repaired", and the time-of-day survives as a phantom suffix, producing an unparseable YAML value. The board detects the original shape (`model.go` `parseTimestamp` includes layout `"2006-01-02 15:04:05"`), so this is detectable-wrong made worse. The script's header claim "a space may stand in for the `T`" is unreachable dead logic in `comparison_key_for`; the quoted form is silently skipped. The audit line also under-reports the old value. File: `skills/do-work/scripts/repair-req-timestamps.sh`. — gate: **user-visible** → sweep REQ-255 (shared root cause below).
+- **I2 (reproduced by execution): CRLF- and BOM-fenced REQ files are invisible to the repairer while fully visible to the board.** The awk fence match `$0 == "---"` fails on `---\r` and on a BOM, while the board's `frontmatter.go` handles both. The environment most likely to produce CRLF files and wrong local-time stamps (Windows agents) is exactly where the shipped repair silently no-ops while the board keeps warning — the detection-without-repair gap this REQ exists to close. Undocumented (unlike D-04's numeric offsets). Conservative direction held (no corruption). — gate: **rule-change** → sweep REQ-255.
+
+  **Shared root cause (one sweep, not two REQs):** the repairer's hand-rolled shape recognition is narrower than the read-side detectors it claims parity with — the D-01 argument applied to the shapes D-01 missed. `sweep_key: repairer-detector-shape-parity`. Instances: unquoted space-separated instants (mangled — fix or refuse, never half-rewrite), quoted space-separated instants (skipped), CRLF fences (skipped), BOM fences (skipped).
+
+- **I3 (restatement sweep, argued from reading): README's hook description is stale in a way the diff widens.** `README.md:188` — "SessionStart hook that injects the installed version and pending REQ count" — now omits that the hook *writes repairs into the user's queue/working files* at session start. A consumer auditing "what writes to my repo at session start" is misled. Routed to follow-up REQ-256, not builder scope drift (README was correctly outside the declared write set). — gate: **user-visible**.
+
+**Minor:** 3 (report only)
+- `frontmatter_value_for` (script line 177) is defined and never called — dead code.
+- The D-01…D-06 decision records live only in the untracked run artifact; the durable REQ cites D-03/D-04 without defining them. (Orchestrator note: the Decisions are now transcribed below.)
+- The audit line's old-value truncation (subsumed by I1's fix).
+
+**Nit:** 1 — the 120-second skew constant now has a fourth hand-kept copy; a trivial lock-in grep tying `future_stamp_skew_seconds=120` to the board const would match how the repo pins cause-clause pairs.
+
+### Acceptance Testing
+
+**Result: Partial** — every acceptance criterion passes end-to-end, reproduced against the real script and the real hook (both suites re-run green; maintainer-verify exit 0; twelve hand-built adversarial fixtures under the session scratchpad, none in the repo's `do-work/`). Partial, not Pass, because a detectable edge shape actively misbehaves under the shipped code (I1 writes a corrupted value). Red-green evidence in the hand-back is consistent with re-running; GREEN independently confirmed. Cross-REQ test updates: none (additions only). P-A-U consistent with the diff.
+
+**Not tested (environment limits):** the BSD `date -r` branch (Linux box), Windows/PowerShell behavior, two concurrent sessions racing one REQ file (argued safe from mktemp-per-run + atomic rename, not run).
+
+### Suggested Additional Testing
+
+- Lock-in cases for whichever way the sweep resolves I1/I2 (repair or documented refusal) — the space-separated mangle especially.
+- A BSD/macOS run of the behavior suite before the next release.
+- A two-session concurrency smoke if consumer reports ever hint at temp-file debris.
+
+### Reviewer-Recommended Disposition
+
+**Approve with follow-ups.** Merge stands. One sweep follow-up (REQ-255, `sweep_key: repairer-detector-shape-parity`) carrying I1+I2, with I1 fixed first — until then, the mangle is the one path where running the shipped hook makes a file worse than it found it. I3 → REQ-256 (doc line). Minor findings report-only per Step 10's threshold.
+
+**Important findings (audit record):**
+- I1 space-separated instant mangled into unparseable value — gate: user-visible → sweep REQ-255
+- I2 CRLF/BOM-fenced files board-detectable but silently unrepairable, undocumented — gate: rule-change → sweep REQ-255
+- I3 README hook description omits that the hook now writes to user files — gate: user-visible → REQ-256
+
+**Acceptance:** Partial — all stated criteria pass reproduced; one edge shape corrupts (I1)
+**Follow-ups created:** REQ-255 (sweep), REQ-256 (doc) — created by orchestrator per orchestrated mode
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Cloning the guard architecture of `record-commit-hash.sh` wholesale (verify-before-replace, atomic rename, byte-identical on trip) survived every adversarial mutant the review threw at it — including a fabricated future mtime. Small commits (script+RED, GREEN, hook wiring) made two transport-level interruptions nearly free to resume.
+
+**What didn't:** The repair-side parser was hand-rolled instead of derived from the read-side detectors it claims parity with — so it recognizes strictly fewer shapes than the board (space-separated instants, CRLF/BOM fences), and in one shape (unquoted space-separated) it half-rewrites and corrupts. The session's standing class-vs-instance warning fired anyway, one layer deeper than the builder looked: D-01 closed quoted stamps and the review found the shapes D-01 missed (REQ-255).
+
+**Worth knowing:** The hook's `2>/dev/null` is safe only because the repairer deliberately prints failure lines to stdout (D-03) — anyone adding stderr output to the script will silently lose it in the banner. `comparison_key_for`'s space-fold is dead code until REQ-255 resolves it. The 120s skew constant now has a fourth hand-kept copy.
+
+## Orientation
+
+Now the queue repairs itself: detectably wrong `*_at` stamps in `do-work/queue/` and `do-work/working/` are mechanically corrected at session start (SessionStart hook), with no agent judgment in the path — replacement values derive from file mtime or the introducing commit's author time. Lives in core's `scripts/` + `hooks/` subsystem alongside the reservation cleaner. [MAP CHANGED] — the SessionStart hook is now a *write* surface on consumer queue files, not just a banner (which is exactly what follow-up REQ-256 documents). Prime staleness spot-check: `_dev/primes/prime-shell-commands.md` paths still resolve; not stale.
 
 ## Pre-Flight
 
