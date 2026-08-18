@@ -30,7 +30,7 @@ Optional argument may scope the report (id tokens — `REQ-NNN` and `UR-NNN` —
 - `in-progress` — only `do-work/working/` REQs
 - `done` — only archived REQs
 - `UR-NNN` — scope to a single user request and its REQs
-- `REQ-NNN` — scope to a single REQ: its status, dependency position (what it waits on and what waits on it), a feasibility read, and its sibling REQs under the same UR for context. The output is thin by nature — one card's worth of status plus its dependency neighbourhood, **not** a mini-report; per-REQ detail is `do-work-toolbox inspect`'s job (`../do-work-toolbox/actions/inspect.md`), and duplicating it here would be the failure to avoid.
+- `REQ-NNN` — scope to a single REQ: its status, dependency position (what it waits on and what waits on it), a feasibility read, and its sibling REQs under the same UR for context. The output is thin by nature — one card's worth of status plus its dependency neighbourhood, **not** a mini-report; per-REQ detail is `do-work-toolbox inspect`'s job (`../../do-work-toolbox/actions/inspect.md`), and duplicating it here would be the failure to avoid.
 - `since <date>` — filter archive entries to those completed on/after the date
 
 **Multiple id tokens resolve to their union** (e.g. `do-work roadmap REQ-067 REQ-070`), each surveyed as above. If the argument is unrecognized, default to the full survey and note the unrecognized argument in the report — only a recognized `REQ-`/`UR-` id token is scoped; a genuinely unrecognized token (e.g. `banana`) still falls through to the full survey with its note.
@@ -89,7 +89,7 @@ For each REQ in `do-work/archive/`:
 - Note any UR with all REQs completed (candidate for UR archival — surface, don't act).
 - Note lessons with non-terminal `kb_status` and split by state. Critical: `kb_status: promoted` is a one-way stamp written when the handoff dropped a file into `raw/inbox/` — it does **not** mean the file is still there. The `kb_entry` filename survives bkb's later moves through `raw/capture/` and `raw/processed/` (per the handoff contract in `actions/kb-lessons-handoff.md` — `kb_entry` is the filename only, never a path), so the REQ keeps `kb_status: promoted` even after triage and ingest. The bkb pipeline organizes those later locations into subdirectories — `raw/capture/<type>/` (triage sorts by source type) and `raw/processed/YYYY-MM-DD/` (ingest groups by date), so a top-level glob will miss every triaged or processed file. **Search recursively** for `kb_entry` under each branch of `<kb>/raw/`:
 
-  Match the exact filename **and** any six-digit-prefixed collision copy. Per `../do-work-knowledge/actions/bkb.md` Step 6 in the ingest sub-command, bkb prefixes `HHMMSS-` (six digits + dash) when the destination directory already contains a file of that name; without matching the prefix variant, those collision-renamed files would surface as "file not found" even though they exist:
+  Match the exact filename **and** any six-digit-prefixed collision copy. Per `../../do-work-knowledge/actions/bkb.md` Step 6 in the ingest sub-command, bkb prefixes `HHMMSS-` (six digits + dash) when the destination directory already contains a file of that name; without matching the prefix variant, those collision-renamed files would surface as "file not found" even though they exist:
 
   ```
   find <kb>/raw/inbox     \( -name '<kb_entry>' -o -name '[0-9][0-9][0-9][0-9][0-9][0-9]-<kb_entry>' \) -print

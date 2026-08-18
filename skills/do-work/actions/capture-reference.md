@@ -1,6 +1,6 @@
 # Capture Requests — Reference
 
-> **Companion file to `actions/capture.md`.** Holds the REQ/UR templates, the schema-alias table, and the addendum-REQ template — the hard-contract field specifications that `actions/work.md`, `actions/roadmap.md`, and `../do-work-board/tools/queue-kanban/model.go` all read. Each section below is pointed to by name from the matching step in `actions/capture.md`. Loading this file is only necessary when you reach the step that references it — and read only the named section. If this file is already in context from an earlier step this session, reuse it; don't re-read it at every reference site.
+> **Companion file to `actions/capture.md`.** Holds the REQ/UR templates, the schema-alias table, and the addendum-REQ template — the hard-contract field specifications that `actions/work.md`, `actions/roadmap.md`, and `../../do-work-board/tools/queue-kanban/model.go` all read. Each section below is pointed to by name from the matching step in `actions/capture.md`. Loading this file is only necessary when you reach the step that references it — and read only the named section. If this file is already in context from an earlier step this session, reuse it; don't re-read it at every reference site.
 
 ---
 
