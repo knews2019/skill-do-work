@@ -3,7 +3,7 @@ id: REQ-240
 title: Stop the Timeline axis printing a fake minute
 status: completed
 completed_at: 2026-08-18T12:03:00Z
-commit:
+commit: 664b269
 claimed_at: 2026-08-18T11:42:03Z
 route: B
 estimate:
