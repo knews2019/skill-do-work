@@ -1491,9 +1491,11 @@ printf '%s' "$audit_shapes_output" \
   || fail_case 'audit-archive-timestamps widened-shapes case did not report the full old value in the audit line'
 
 # audit-archive-timestamps: the refused and duplicate-key shapes hold through
-# the archive scan too — a calendar-impossible stamp stays byte-identical (and
-# is not a defect), while a duplicated anchor repairs on its effective (last)
-# occurrence from the introducing commit's author time (REQ-255).
+# the archive scan too — a calendar-impossible stamp and a numeric-offset stamp
+# stay byte-identical (and are not defects), while a duplicated anchor repairs
+# on its effective (last) occurrence from the introducing commit's author time
+# (REQ-255; REQ-257). The refusals belong to the sourced library, so this is
+# what fails if the auditor ever grows its own recognizer beside the shared one.
 audit_parity_project="$fixture_root/audit-parity-project"
 fixture_repo_init "$audit_parity_project"
 mkdir -p "$audit_parity_project/do-work/archive"
@@ -1501,20 +1503,25 @@ printf -- '---\nid: REQ-911\nstatus: completed\ncreated_at: 9999-99-99T99:99:99Z
   > "$audit_parity_project/do-work/archive/REQ-911-impossible.md"
 printf -- '---\nid: REQ-912\nstatus: completed\ncreated_at: 2026-08-10T12:00:00Z\nclaimed_at: 2026-08-11T12:00:00Z\nclaimed_at: 2026-08-01T09:00:00Z\n---\nbody\n' \
   > "$audit_parity_project/do-work/archive/REQ-912-duplicate-anchor.md"
+printf -- '---\nid: REQ-913\nstatus: completed\ncreated_at: 2093-01-01T00:00:00+02:00\n---\nbody\n' \
+  > "$audit_parity_project/do-work/archive/REQ-913-offset.md"
 git -C "$audit_parity_project" add -A
 GIT_AUTHOR_DATE='2026-08-12T10:00:00Z' GIT_COMMITTER_DATE='2026-08-12T10:05:00Z' \
   git -C "$audit_parity_project" commit -qm fixture
 cp "$audit_parity_project/do-work/archive/REQ-911-impossible.md" "$fixture_root/audit-impossible-before.md"
+cp "$audit_parity_project/do-work/archive/REQ-913-offset.md" "$fixture_root/audit-offset-before.md"
 audit_parity_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_parity_project")" \
   || fail_case 'audit-archive-timestamps refusal-parity case returned nonzero'
 cmp -s "$fixture_root/audit-impossible-before.md" "$audit_parity_project/do-work/archive/REQ-911-impossible.md" \
   || fail_case 'audit-archive-timestamps refusal-parity case erased a calendar-impossible stamp in the archive'
+cmp -s "$fixture_root/audit-offset-before.md" "$audit_parity_project/do-work/archive/REQ-913-offset.md" \
+  || fail_case 'audit-archive-timestamps refusal-parity case repaired a numeric-offset stamp in the archive — the offset refusal is the sourced library one and must reach every tool built on it'
 grep -q '^claimed_at: 2026-08-12T10:00:00Z$' "$audit_parity_project/do-work/archive/REQ-912-duplicate-anchor.md" \
   || fail_case 'audit-archive-timestamps refusal-parity case did not repair the effective (last) anchor occurrence'
 grep -q '^claimed_at: 2026-08-11T12:00:00Z$' "$audit_parity_project/do-work/archive/REQ-912-duplicate-anchor.md" \
   || fail_case 'audit-archive-timestamps refusal-parity case rewrote the shadowed first occurrence'
-printf '%s' "$audit_parity_output" | grep -q 'REQ-911' \
-  && fail_case 'audit-archive-timestamps refusal-parity case logged the impossible stamp as a correction'
+printf '%s' "$audit_parity_output" | grep -qE 'REQ-911|REQ-913' \
+  && fail_case 'audit-archive-timestamps refusal-parity case logged a refused stamp as a correction'
 
 # repair-req-timestamps: the 2-minute future-skew constant stays in lock-step
 # with the board's futureTimestampSkewAllowance — a fourth hand-kept copy of
