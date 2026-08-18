@@ -3,7 +3,7 @@ id: REQ-236
 title: Add a URs-only lens to the Board view
 status: completed
 completed_at: 2026-08-18T11:20:00Z
-commit:
+commit: 456ee9d
 claimed_at: 2026-08-18T11:00:00Z
 route: C
 estimate:
