@@ -13,7 +13,7 @@ The core package owns the durable request lifecycle: capture intent, verify it, 
 - `do-work-knowledge` — BKB, memory, dream, interviews, and prompts
 - `do-work-toolbox` — audits, reports, presentation, inspection, and repository utilities
 
-When a core action names a sibling path, resolve it from the parent directory containing these four skill roots. Do not search the core package for an extension action.
+When a core file names a sibling path, it is literal: resolve it from the directory of the file you are reading, at the depth the path itself spells. Do not search the core package for an extension action.
 
 > **Capture does not execute.** A capture always creates a UR preserving the input and one or more linked REQs. Stop after capture unless the same user invocation explicitly requested execution too.
 
