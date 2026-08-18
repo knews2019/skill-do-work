@@ -21,6 +21,9 @@ Every hash was confirmed with `record-commit-hash.sh --verify`. `maintainer-veri
 
 ## In Progress (interrupted)
 
+- REQ-230: Review fix: point caller docs at the canonical publication rationale — claimed 2026-08-18T10:56:00Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- REQ-234: Stop the shell behavior suite counting its own cases — claimed 2026-08-18T10:56:00Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
 
 ## Still Queued
 
