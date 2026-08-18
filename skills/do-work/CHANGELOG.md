@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.17 — Measured Board Constants Name Their Browser (2026-08-18)
+
+A browser-measured number that names no build cannot be re-derived or argued with — two sessions proved it by measuring the same face on different Chromium builds and colliding at integration.
+
+- All seven `durationsMeasured*` constants now name the Chromium build their number came from, with current-build cross-checks; a vacuity-guarded AST test holds the package to the convention.
+- The Panel B clearance budget prose states it is per-browser and carries all three recorded measurements (1.364 / 0.185 / 1.111 across three builds — a 7× spread), with a re-measure-before-spending warning.
+- The hyphen-vs-U+2212 divergence and the remainder reserve's deliberate over-shoot are documented with sourced numbers; no constant's value changed.
+
 ## 0.212.16 — Qualify Tells a Check's Own Output From Instrumentation (2026-08-18)
 
 The debug-artifact gate no longer cries wolf on a checker's success line.

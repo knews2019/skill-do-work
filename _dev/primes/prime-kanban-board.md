@@ -24,6 +24,7 @@
 
 ## Lessons
 
+- [REQ-252: hold a documentation convention with a vacuity-guarded AST test, and capture Discovered Tasks in the REQ itself — hand-back prose is one slip from evaporating](../../do-work/archive/REQ-252-record-the-browser-with-every-measured-face-number.md#lessons-learned)
 - [REQ-251: fixtures that need production wording should call the production helper, never hold a pasted copy — the third copy strands at the next message move exactly as the first two did](../../do-work/archive/REQ-251-retire-the-stale-copies-of-the-future-stamp-message.md#lessons-learned)
 - [REQ-248: pin shared geometry with a both-directions agreement assertion — one domain read by two languages needs a test that fails whichever side drifts alone](../../do-work/archive/REQ-248-anchor-durations-day-buckets-to-utc-midnight.md#lessons-learned)
 - [REQ-241: state the supremum over the space, not the worst case of a sample — and say what makes the sweep complete, next to the number](../../do-work/archive/REQ-241-reconcile-durations-label-metrics-with-the-rendered-face.md#lessons-learned)

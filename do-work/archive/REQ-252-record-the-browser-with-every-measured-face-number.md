@@ -1,9 +1,11 @@
 ---
 id: REQ-252
 title: Record the browser with every measured-face number in the Durations tests
-status: claimed
+status: completed
 created_at: 2026-08-18T13:56:12Z
 claimed_at: 2026-08-18T19:12:47Z
+completed_at: 2026-08-18T20:08:09Z
+kb_status: pending
 route: B
 status_changed_at: 2026-08-18T13:56:12Z
 user_request: UR-051
@@ -47,10 +49,10 @@ That resolution is sound and stays. What it exposed is that these numbers carry 
 
 ## Instances
 
-- [ ] **The Panel B clearance budget is per-browser and roughly 7× thinner on a current build than recorded.** REQ-241's D-03 measured 1.364 units of headroom above Panel B's title and named a row pitch of 15 as the point where it breaks. REQ-242's reviewer measured **0.185 units** on Chromium 146 — still positive, still zero intersections, and demonstrably not caused by REQ-242 (the SVG for that region is byte-identical across its range). Anyone about to spend that budget must re-measure first, and the prose should say so.
-- [ ] **No measured-face constant records the Chromium build it came from.** `generate_test.go`'s block documents the procedure and viewport, which is most of the way there; `durations_test.go`'s do not. A number that differs between builds and does not name its build cannot be re-derived or argued with.
-- [ ] **`durations.go`'s `formatDurationLabelMinutes` emits an ASCII hyphen where the renderer draws U+2212.** The two glyphs differ by 1.73 units in this face, so the Go side models a narrower string than the browser draws. **Currently width-neutral** — both are one character and the width model counts characters — but it becomes a real under-estimate the moment anyone replaces the flat constant with a per-glyph model, which REQ-241 attempted and abandoned. Worth a comment at minimum.
-- [ ] **`durationsLabelRemainderReserveUnits` over-reserves more at the new width.** It scales as `24 × durationsLabelCharacterWidthUnits`, so raising that constant to 7.15 widened the reservation to 171.6 against a widest composable remainder sentence of 123.18 units. Over-reserving is the safe direction — it drops a label, which the remainder counts — but the gap is now large enough to be a deliberate choice rather than an accident.
+- [x] **The Panel B clearance budget is per-browser and roughly 7× thinner on a current build than recorded.** REQ-241's D-03 measured 1.364 units of headroom above Panel B's title and named a row pitch of 15 as the point where it breaks. REQ-242's reviewer measured **0.185 units** on Chromium 146 — still positive, still zero intersections, and demonstrably not caused by REQ-242 (the SVG for that region is byte-identical across its range). Anyone about to spend that budget must re-measure first, and the prose should say so.
+- [x] **No measured-face constant records the Chromium build it came from.** `generate_test.go`'s block documents the procedure and viewport, which is most of the way there; `durations_test.go`'s do not. A number that differs between builds and does not name its build cannot be re-derived or argued with.
+- [x] **`durations.go`'s `formatDurationLabelMinutes` emits an ASCII hyphen where the renderer draws U+2212.** The two glyphs differ by 1.73 units in this face, so the Go side models a narrower string than the browser draws. **Currently width-neutral** — both are one character and the width model counts characters — but it becomes a real under-estimate the moment anyone replaces the flat constant with a per-glyph model, which REQ-241 attempted and abandoned. Worth a comment at minimum.
+- [x] **`durationsLabelRemainderReserveUnits` over-reserves more at the new width.** It scales as `24 × durationsLabelCharacterWidthUnits`, so raising that constant to 7.15 widened the reservation to 171.6 against a widest composable remainder sentence of 123.18 units. Over-reserving is the safe direction — it drops a label, which the remainder counts — but the gap is now large enough to be a deliberate choice rather than an accident.
 
 ---
 
@@ -86,6 +88,54 @@ Transcribed from the builder hand-back:
 ## Qualification
 
 Passed — 3 files in merge range `ca0cc84..c752529`, requirements traced (all 7 constants carry builds — RED transcript names each; budget prose carries three measurements + warning; no behaviour change — `git diff` shows comments, test, and the one-character gofmt fix only), P-A-U audited. Armed qualify note: the scan WARNs on the provenance test's own output lines (it owns its process exit) — confirmed from the diff as the test's failure messages, i.e. contract output.
+
+## Discovered Tasks
+
+Captured durably per review F1 (they previously lived only in hand-back prose):
+
+- **[normal]** Raise `durationsMeasuredLabelBoxHeightUnits` (12.84 → ≥12.97) and `durationsMeasuredLabelBoxDescentUnits` (2.41 → ≥2.78) — Chromium 141.0.7390.37 measures above both; no assertion flips today. → REQ-265 (pending-answers).
+- **[normal]** `web/board-durations.js` measured numbers (12.83/10.43/2.41) carry no build provenance — the same gap on the JS surface. → REQ-266 (pending-answers, `sweep_key: durations-measured-face-constants-lack-provenance`).
+
+## Review
+
+**Overall: 97%** | 2026-08-18T20:04:59Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 95% |
+| Test Adequacy | 95% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Verdict: Approve** — provenance recorded faithfully on all seven measured constants, the enforcement test is mutation-falsifiable and vacuity-guarded, and the no-behaviour-change claim is proven mechanically (comment-stripped ASTs identical across the range; suite exit 0).
+
+**Requirements:** all three delivered — every constant carries its build (mutation-verified: stripping one comment FAILs naming that constant); the budget prose carries all three measurements with builds plus the re-measure warning, figures matching the archived records exactly; zero semantic diff beyond the new test and the two-space gofmt fix.
+
+**Acceptance highlights (reproduced by execution):** every current-build figure in the builder's comments independently reproduced in a freshly launched isolated Chromium 141.0.7390.37 (Playwright 1.56.1) with `location.href` in the same evaluate — line box 12.9631, title ascent 11.1112, live Panel B headroom 1.1110. Direction-of-error audit of the two under-bounding constants: both err unsafe in isolation, no consumer live-wrong on any recorded build (pitch 13 clears the real box; the ceiling's paired over-bounding ascent compensates by 0.99 — a coincidence of one consumer, hence REQ-265). Restatement sweep clean: surviving old figures are provenance'd historical citations only.
+
+**Important findings (audit record):**
+- F1a: the declared raise Discovered Task existed in no durable artifact — gate: trivial → REQ-265 (pending-answers, generation ≥2)
+- F1b: JS measured numbers unprovenance'd — gate: rule-change → REQ-266 (pending-answers, carrying the sweep key; new file per the append rule since this REQ is the claimed sweep)
+
+**Minor:** 3 (report only) — a future grouped `const (...)` block comment could satisfy every constant inside it (latent; all 7 individually documented today); the build matcher checks presence, not well-formedness; "one character" in the trail understates the two-space gofmt fix. **Nit:** 1.
+
+**Follow-ups created:** REQ-265, REQ-266 (by orchestrator) · REQ-260 is satisfied by this merge — discard at clarify (D-03).
+
+*Reviewed by review-work action (independent adversarial pass, orchestrated mode; merge range `ca0cc84..c752529`)*
+
+## Lessons Learned
+
+**What worked:** Enforcing a documentation convention with a real AST-walking test (vacuity-guarded, mutation-falsifiable) instead of trusting comments to stay honest — RED on all seven constants proved the gap before any edit. Recording provenance identifiers exactly as the archives state them, inconsistencies included, rather than inventing tidier versions.
+
+**What didn't:** Discovered Tasks that live only in hand-back prose are one integration slip from evaporating — the review caught that neither had a durable artifact. Capture them in the REQ's own section at hand-back time.
+
+**Worth knowing:** The 11px mark-label box measures LARGER than its recorded constant on Chromium 141 (12.9631 vs 12.84) — the raise is REQ-265; until it lands, the pitch-13 floor clears reality by 0.037 units, not the 0.16 the constant implies. Even the hyphen-vs-U+2212 delta is per-browser (1.73 recorded vs 5.24 measured here). The `durationsMeasured` prefix is a convention the test enforces comments for; a smuggled number under another name is review's job.
+
+## Orientation
+
+Now every browser-measured constant in the Durations Go suite names the build it came from, a package-wide test holds the convention, and the Panel B budget prose tells the next builder to re-measure before spending. Lives in the board's Durations test layer. Leaf change (documentation + one read-only test); map unchanged.
 
 ## Requirements
 
