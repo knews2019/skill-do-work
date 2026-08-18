@@ -43,7 +43,19 @@
   // file's constants against the Go ones.
   var DURATIONS_LABEL_ROW_COUNT = 2;
   var DURATIONS_LABEL_GAP = 9;
-  var DURATIONS_LABEL_ROW_HEIGHT = 12;
+  // Row pitch is the label text box, never less. The 11px sans face measures
+  // 12.83 user units tall on the board's own page — 10.43 above the baseline,
+  // 2.41 below — and the box this file DECLARES rounds both up, to an ascent of
+  // 11 and (in durations_test.go) a descent of 2. So 13 is the binding number,
+  // and TestDurationsLabelRowPitchClearsTheLabelTextBox holds the pitch there.
+  // It stood at 12 until REQ-241: two rows of line box then intersected by 0.83
+  // units, which was padding rather than ink — the render showed two clean rows
+  // — but it made row-against-row separation unassertable.
+  var DURATIONS_LABEL_ROW_HEIGHT = 13;
+  // Rounded up from the face's measured 10.43-unit ascent. The round-up is the
+  // safe direction for both readers: it ends the leader tick above the text
+  // rather than inside it, and it makes TestDurationsLabelRowsClearTheMarkBands
+  // demand more clearance from the mark band than the ink actually needs.
   var DURATIONS_LABEL_TEXT_ASCENT = 11;
   var DURATIONS_LANE_LABEL_ROW_Y = 56;
   var DURATIONS_REVERSED_LABEL_ROW_Y = 322;
