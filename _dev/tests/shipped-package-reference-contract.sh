@@ -1365,7 +1365,7 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
     for target_start, _, target in markdown_targets(markdown_text):
         line_number = markdown_text.count("\n", 0, target_start) + 1
         target = normalize_markdown_target(target)
-        if not target or target.startswith("#") or is_dynamic_target(target):
+        if not target or is_dynamic_target(target):
             continue
 
         parsed = urllib.parse.urlsplit(target)
@@ -1380,7 +1380,12 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
 
         decoded_target = urllib.parse.unquote(parsed.path)
         if not decoded_target:
-            continue
+            if not parsed.fragment:
+                continue
+            # A bare #fragment names the file that carries it. Resolving it as this
+            # file's own name sends it through the same target-and-anchor machinery
+            # as every other relative link, in both topologies.
+            decoded_target = markdown_path.name
         relative_target = pathlib.PurePosixPath(decoded_target)
         source_target = pathlib.PurePosixPath(os.path.normpath((markdown_path.parent / relative_target).as_posix()))
         installed_target = pathlib.PurePosixPath(os.path.normpath((installed_file.parent / relative_target).as_posix()))
@@ -1404,9 +1409,9 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
         # carries both a fragment and a Markdown target. Everything skipped is skipped
         # because this checker cannot resolve it without leaving the repository or
         # guessing — a scheme'd URL (http(s), mailto, anything else) is not read; a
-        # bare fragment names no file to resolve against; a root-absolute or templated
-        # target has no single on-disk meaning; and a heading only exists in Markdown,
-        # so a fragment on any other suffix is an application's own addressing scheme.
+        # root-absolute or templated target has no single on-disk meaning; and a
+        # heading only exists in Markdown, so a fragment on any other suffix is an
+        # application's own addressing scheme.
         # Anchors resolve against ATX headings, which is what this repository writes; a
         # heading declared any other way reports here as a missing anchor.
         anchor = urllib.parse.unquote(parsed.fragment)
