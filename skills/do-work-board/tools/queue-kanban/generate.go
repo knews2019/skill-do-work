@@ -268,10 +268,49 @@ type generatedDurationDay struct {
 // parseable created_at, plus the range those rows span and the single instant
 // every open span was measured against.
 type generatedTimeline struct {
-	Rows       []generatedTimelineRow `json:"rows"`
-	RangeStart string                 `json:"rangeStart"`
-	RangeEnd   string                 `json:"rangeEnd"`
-	Now        string                 `json:"now"`
+	Rows       []generatedTimelineRow      `json:"rows"`
+	RangeStart string                      `json:"rangeStart"`
+	RangeEnd   string                      `json:"rangeEnd"`
+	Now        string                      `json:"now"`
+	Projection generatedTimelineProjection `json:"projection"`
+}
+
+// generatedTimelineProjection is the forward half of the view: where each
+// unstarted REQ lands in a serial chain, which REQs cannot be scheduled at all,
+// and every figure the forecast rests on so the view can state its assumptions
+// rather than imply them. `confident` false means the history was too thin —
+// `rows` and `queueEnd` are then empty and `declinedReason` says why.
+type generatedTimelineProjection struct {
+	Rows           []generatedTimelineProjectedRow `json:"rows"`
+	Excluded       []generatedTimelineExclusion    `json:"excluded"`
+	QueueEnd       string                          `json:"queueEnd,omitempty"`
+	ChainStart     string                          `json:"chainStart"`
+	WindowSize     int                             `json:"windowSize"`
+	WindowSamples  int                             `json:"windowSamples"`
+	TrivialSamples int                             `json:"trivialSamples"`
+	NormalSamples  int                             `json:"normalSamples"`
+	TrivialMinutes float64                         `json:"trivialMinutes"`
+	NormalMinutes  float64                         `json:"normalMinutes"`
+	MinimumSamples int                             `json:"minimumSamples"`
+	Confident      bool                            `json:"confident"`
+	DeclinedReason string                          `json:"declinedReason,omitempty"`
+}
+
+// generatedTimelineProjectedRow is one unstarted REQ's forecast slot, keyed by id
+// onto the measured row it belongs to.
+type generatedTimelineProjectedRow struct {
+	RequestId string `json:"id"`
+	StartTime string `json:"startTime"`
+	EndTime   string `json:"endTime"`
+	Bucket    string `json:"bucket"`
+	Position  int    `json:"position"`
+}
+
+// generatedTimelineExclusion names a REQ the projection refuses to schedule and
+// why, in plain words rather than by echoing its status.
+type generatedTimelineExclusion struct {
+	RequestId string `json:"id"`
+	Reason    string `json:"reason"`
 }
 
 // generatedTimelineRow carries timing only. Title, route, status and domain stay
@@ -607,6 +646,34 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 	data.Timeline.RangeStart = formatTimestamp(timelineAggregate.RangeStart)
 	data.Timeline.RangeEnd = formatTimestamp(timelineAggregate.RangeEnd)
 	data.Timeline.Now = formatTimestamp(timelineAggregate.Now)
+
+	timelineProjection := buildTimelineProjection(board.AllRequests, durationAggregate, board.GeneratedAt)
+	for _, row := range timelineProjection.Rows {
+		data.Timeline.Projection.Rows = append(data.Timeline.Projection.Rows, generatedTimelineProjectedRow{
+			RequestId: row.RequestId,
+			StartTime: formatTimestamp(row.StartTime),
+			EndTime:   formatTimestamp(row.EndTime),
+			Bucket:    row.Bucket,
+			Position:  row.Position,
+		})
+	}
+	for _, exclusion := range timelineProjection.Excluded {
+		data.Timeline.Projection.Excluded = append(data.Timeline.Projection.Excluded, generatedTimelineExclusion{
+			RequestId: exclusion.RequestId,
+			Reason:    exclusion.Reason,
+		})
+	}
+	data.Timeline.Projection.QueueEnd = formatTimestamp(timelineProjection.QueueEnd)
+	data.Timeline.Projection.ChainStart = formatTimestamp(timelineProjection.ChainStart)
+	data.Timeline.Projection.WindowSize = timelineProjection.WindowSize
+	data.Timeline.Projection.WindowSamples = timelineProjection.WindowSampleCount
+	data.Timeline.Projection.TrivialSamples = timelineProjection.TrivialSampleCount
+	data.Timeline.Projection.NormalSamples = timelineProjection.NormalSampleCount
+	data.Timeline.Projection.TrivialMinutes = timelineProjection.TrivialMedianMinutes
+	data.Timeline.Projection.NormalMinutes = timelineProjection.NormalMedianMinutes
+	data.Timeline.Projection.MinimumSamples = timelineProjection.MinimumSamples
+	data.Timeline.Projection.Confident = timelineProjection.Confident
+	data.Timeline.Projection.DeclinedReason = timelineProjection.DeclinedReason
 	for _, day := range durationAggregate.Days {
 		data.Durations.Days = append(data.Durations.Days, generatedDurationDay{
 			DayKey:         day.DayKey,

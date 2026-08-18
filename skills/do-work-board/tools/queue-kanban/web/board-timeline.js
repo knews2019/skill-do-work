@@ -31,6 +31,7 @@
   var TIMELINE_OVERSCAN_ROWS = 4;
   var TIMELINE_MIN_SPAN_MS = 3600000; // one hour in ms — as far in as zoom goes
   var TIMELINE_ZOOM_STEP = 1.6;
+  var TIMELINE_HATCH_PATTERN_ID = "timeline-projected-hatch";
   var TIMELINE_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   // The visible time window, held OUTSIDE renderedOnce so switching tabs and
@@ -122,6 +123,29 @@
     return { firstRow: firstRow, lastRow: Math.min(rowCount, firstRow + visibleCount) };
   }
 
+  // A projected bar must never read as a measured one, so it is hatched rather
+  // than merely tinted: opacity alone is what a disabled control looks like, and
+  // the dashed outline is already spoken for by an OPEN measured bar. The hatch
+  // lines carry a class instead of a literal stroke so both themes style them.
+  function appendTimelineHatchPattern(svg) {
+    var defs = document.createElementNS(TIMELINE_SVG_NS, "defs");
+    var pattern = document.createElementNS(TIMELINE_SVG_NS, "pattern");
+    pattern.setAttribute("id", TIMELINE_HATCH_PATTERN_ID);
+    pattern.setAttribute("width", "6");
+    pattern.setAttribute("height", "6");
+    pattern.setAttribute("patternUnits", "userSpaceOnUse");
+    pattern.setAttribute("patternTransform", "rotate(45)");
+    var hatchLine = document.createElementNS(TIMELINE_SVG_NS, "line");
+    hatchLine.setAttribute("x1", "0");
+    hatchLine.setAttribute("y1", "0");
+    hatchLine.setAttribute("x2", "0");
+    hatchLine.setAttribute("y2", "6");
+    hatchLine.setAttribute("class", "timeline-hatch-line");
+    pattern.appendChild(hatchLine);
+    defs.appendChild(pattern);
+    svg.appendChild(defs);
+  }
+
   function makeTimelineSvgNode(parent, name, attributes, textContent) {
     var node = document.createElementNS(TIMELINE_SVG_NS, name);
     Object.keys(attributes).forEach(function (key) {
@@ -132,6 +156,89 @@
     }
     parent.appendChild(node);
     return node;
+  }
+
+  // The queue-end line and its assumptions, side by side. A forecast that states
+  // a date without stating what it assumed is the artifact people screenshot and
+  // quote; the assumptions are not a footnote here, they are the other half of
+  // the sentence.
+  function renderTimelineForecast(projection, rows) {
+    var forecastNode = document.getElementById("timeline-forecast");
+    var excludedNode = document.getElementById("timeline-excluded");
+    if (!forecastNode || !excludedNode) {
+      return;
+    }
+    forecastNode.textContent = "";
+    excludedNode.textContent = "";
+
+    if (!projection.confident) {
+      forecastNode.textContent =
+        "No end estimate: " + (projection.declinedReason || "not enough completed work to forecast from") + ".";
+      forecastNode.classList.add("is-declined");
+    } else {
+      forecastNode.classList.remove("is-declined");
+      var chainCount = (projection.rows || []).length;
+      if (chainCount === 0) {
+        forecastNode.textContent = "Nothing left to schedule — every remaining REQ is listed below.";
+      } else {
+        forecastNode.textContent =
+          "Queue empties around " +
+          timelineFormatStamp(Date.parse(projection.queueEnd)) +
+          " — " +
+          chainCount +
+          " REQ" +
+          (chainCount === 1 ? "" : "s") +
+          " run one at a time from " +
+          timelineFormatStamp(Date.parse(projection.chainStart)) +
+          ". Assumes the median of the last " +
+          projection.windowSamples +
+          " completed REQs (" +
+          projection.normalSamples +
+          " normal at " +
+          timelineFormatSpanMinutes(projection.normalMinutes) +
+          ", " +
+          projection.trivialSamples +
+          " trivial at " +
+          timelineFormatSpanMinutes(projection.trivialMinutes) +
+          "), one REQ at a time, no parallel builders, and a queue that stops growing. Paused and reversed spans are excluded from both medians." +
+          (projection.trivialSamples < projection.minimumSamples ||
+          projection.normalSamples < projection.minimumSamples
+            ? " A bucket with fewer than " +
+              projection.minimumSamples +
+              " samples of its own borrows the overall median."
+            : "");
+      }
+    }
+
+    var excluded = projection.excluded || [];
+    if (excluded.length === 0) {
+      return;
+    }
+    var excludedHeading = document.createElement("p");
+    excludedHeading.className = "timeline-excluded-heading";
+    excludedHeading.textContent =
+      excluded.length +
+      " REQ" +
+      (excluded.length === 1 ? " is" : "s are") +
+      " not in that estimate, because " +
+      (excluded.length === 1 ? "it cannot" : "they cannot") +
+      " be given an honest start time:";
+    excludedNode.appendChild(excludedHeading);
+    var excludedList = document.createElement("ul");
+    excludedList.className = "timeline-excluded-list";
+    excluded.forEach(function (exclusion) {
+      var item = document.createElement("li");
+      var trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "timeline-excluded-id";
+      trigger.setAttribute("data-detail-kind", "request");
+      trigger.setAttribute("data-detail-id", exclusion.id);
+      trigger.textContent = exclusion.id;
+      item.appendChild(trigger);
+      item.appendChild(document.createTextNode(" — " + exclusion.reason));
+      excludedList.appendChild(item);
+    });
+    excludedNode.appendChild(excludedList);
   }
 
   function renderTimelineView() {
@@ -158,6 +265,15 @@
       nowMs = generatedAtMs;
     }
 
+    // The forward half. Keyed by id onto the rows above: a pending REQ already
+    // has a row carrying its open wait, and its projected work attaches there
+    // rather than becoming a second row for the same REQ.
+    var projection = timeline.projection || {};
+    var projectedById = {};
+    (projection.rows || []).forEach(function (projectedRow) {
+      projectedById[projectedRow.id] = projectedRow;
+    });
+
     axisHost.textContent = "";
     scrollHost.textContent = "";
     tableBody.textContent = "";
@@ -174,6 +290,10 @@
     if (isNaN(boundStartMs) || isNaN(boundEndMs) || boundEndMs <= boundStartMs) {
       boundStartMs = Date.parse(rows[0].createdTime);
       boundEndMs = boundStartMs + TIMELINE_MIN_SPAN_MS;
+    }
+    var queueEndMs = Date.parse(projection.queueEnd);
+    if (!isNaN(queueEndMs) && queueEndMs > boundEndMs) {
+      boundEndMs = queueEndMs;
     }
     // A little breathing room so a bar that ends exactly at the range edge is
     // not drawn flush against the frame.
@@ -202,6 +322,8 @@
       " still open, measured to the now-line at " +
       timelineFormatStamp(nowMs) +
       (anomalyCount ? ". " + anomalyCount + " with broken stamps, drawn as breaks." : ".");
+
+    renderTimelineForecast(projection, rows);
 
     var axisSvg = makeTimelineSvgNode(axisHost, "svg", {
       class: "timeline-axis-svg",
@@ -258,6 +380,7 @@
 
     function renderVisibleRows() {
       rowsSvg.textContent = "";
+      appendTimelineHatchPattern(rowsSvg);
       var visible = timelineVisibleRowRange(scrollHost.scrollTop, scrollHost.clientHeight, rows.length);
       for (var rowIndex = visible.firstRow; rowIndex < visible.lastRow; rowIndex++) {
         var row = rows[rowIndex];
@@ -291,6 +414,10 @@
         drawSegment(rowGroup, rowTopY, createdMs, claimedMs,
           "timeline-segment timeline-segment-wait" + (row.waitOpen ? " is-open" : ""));
 
+        var projectedRow = projectedById[row.id];
+        if (projectedRow) {
+          drawProjectedSegment(rowGroup, rowTopY, projectedRow);
+        }
         if (row.hasWork) {
           var workStartMs = Date.parse(row.claimedTime);
           var workEndMs = row.completedTime ? Date.parse(row.completedTime) : nowMs;
@@ -312,6 +439,15 @@
         }
       }
       drawNowRule();
+    }
+
+    function drawProjectedSegment(rowGroup, rowTopY, projectedRow) {
+      var startMs = Date.parse(projectedRow.startTime);
+      var endMs = Date.parse(projectedRow.endTime);
+      if (isNaN(startMs) || isNaN(endMs)) {
+        return;
+      }
+      drawSegment(rowGroup, rowTopY, startMs, endMs, "timeline-segment timeline-segment-projected");
     }
 
     // One node for the whole column, appended after the rows so it reads as an
@@ -388,6 +524,18 @@
         parts.push("worked " + timelineFormatSpanMinutes(row.workMinutes) + (row.workOpen ? " so far" : ""));
       } else {
         parts.push("not started");
+      }
+      var projectedRow = projectedById[row.id];
+      if (projectedRow) {
+        parts.push(
+          "projected #" +
+            projectedRow.position +
+            " in the queue, " +
+            timelineFormatSpanMinutes((Date.parse(projectedRow.endTime) - Date.parse(projectedRow.startTime)) / 60000) +
+            " (forecast, " +
+            projectedRow.bucket +
+            ")"
+        );
       }
       if (row.anomaly) {
         parts.push("broken stamps: " + row.anomalyReason);
@@ -500,6 +648,18 @@
     wireZoomButton("timeline-zoom-fit", function () {
       timelineViewState.windowStartMs = boundStartMs;
       timelineViewState.windowEndMs = boundEndMs;
+    });
+    // Zooming anchors at the centre, so the forecast at the far right takes a
+    // long drag to reach once you have zoomed in far enough to read it. A
+    // forecast you have to hunt for does not answer "when does the queue empty".
+    wireZoomButton("timeline-zoom-now", function () {
+      var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs;
+      var centredStartMs = Math.min(
+        Math.max(nowMs - windowSpanMs / 2, boundStartMs),
+        Math.max(boundEndMs - windowSpanMs, boundStartMs)
+      );
+      timelineViewState.windowStartMs = centredStartMs;
+      timelineViewState.windowEndMs = centredStartMs + windowSpanMs;
     });
 
     addTimelineListener(window, "resize", renderAll);

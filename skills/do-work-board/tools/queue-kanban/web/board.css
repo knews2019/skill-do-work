@@ -97,6 +97,10 @@
      work it brackets rather than on the waiting. */
   --timeline-wait: #3a4655;
   --timeline-work: #4d8fe0;
+  /* Projected work is a forecast, so it takes a hue of its own rather than a
+     lighter shade of the measured one — a reader must not have to judge
+     saturation to tell a measurement from a guess. */
+  --timeline-projected: #9a7bc8;
 }
 
 /* ---------------------------------------------------------------------------
@@ -153,6 +157,7 @@
     --durations-critical: #c0392b;
     --timeline-wait: #c2ccd9;
     --timeline-work: #2f6fc0;
+    --timeline-projected: #7d57b0;
 
     /* Tints behind badges/dots — accent hues, low alpha, visible on white. */
     --tint-pending: rgba(143, 94, 16, 0.12);
@@ -2031,6 +2036,15 @@ body.is-resizing-detail .detail-resizer::before {
   border: 1px solid var(--timeline-work);
 }
 
+.timeline-swatch[data-segment="projected"] {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--timeline-projected) 0 2px,
+    transparent 2px 5px
+  );
+  border: 1px solid var(--timeline-projected);
+}
+
 .timeline-swatch[data-segment="broken"] {
   background: var(--durations-critical);
 }
@@ -2125,6 +2139,19 @@ body.is-resizing-detail .detail-resizer::before {
   stroke: var(--timeline-wait);
 }
 
+/* Hatched, not merely tinted: reduced opacity alone reads as a disabled
+   control, and the dashed outline is already what an OPEN measured bar uses. */
+.timeline-segment-projected {
+  fill: url(#timeline-projected-hatch);
+  stroke: var(--timeline-projected);
+  stroke-width: 1;
+}
+
+.timeline-hatch-line {
+  stroke: var(--timeline-projected);
+  stroke-width: 2;
+}
+
 .timeline-segment-broken {
   fill: var(--durations-critical);
 }
@@ -2185,4 +2212,50 @@ body.is-resizing-detail .detail-resizer::before {
   position: sticky;
   top: 0;
   background: var(--surface-1);
+}
+
+.timeline-forecast {
+  padding: 10px 24px 0;
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+  max-width: 108ch;
+}
+
+.timeline-forecast.is-declined {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.timeline-excluded {
+  padding: 6px 24px 0;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.timeline-excluded-heading {
+  margin: 0 0 4px;
+}
+
+.timeline-excluded-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.timeline-excluded-list li {
+  margin-bottom: 2px;
+}
+
+.timeline-excluded-id {
+  font-family: var(--font-mono);
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent-claimed);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.timeline-excluded-id:hover {
+  text-decoration: underline;
 }

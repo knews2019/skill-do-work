@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sort"
 	"time"
 )
@@ -153,4 +154,289 @@ func timelineRange(rows []TimelineRow, now time.Time) (time.Time, time.Time) {
 		}
 	}
 	return rangeStart, rangeEnd
+}
+
+// ---- forward projection -----------------------------------------------------
+//
+// The measured half of this view answers "what happened". This answers "what is
+// left, in what order, and roughly when does it end" — deliberately with the
+// crudest model that can be honest: one REQ at a time, each taking the median of
+// recent work in its own effort bucket. No parallelism knob, no per-REQ estimate
+// field, no cleverness.
+//
+// The crudeness is the point. A forecast is the kind of artifact people
+// screenshot and quote, and this one ignores parallel builders, review loops,
+// blocked-then-unblocked churn, and the fact that the queue grows while it
+// drains. The mitigation is that the view states what it assumed and declines
+// when the history is too thin — not that the number is made cleverer.
+//
+// Three rules this file CONSUMES and does not restate:
+//   - which spans count: DurationSample carries the read-time rule's verdict,
+//     decided once in dayMedianExclusionReason;
+//   - which REQs are ready: RequestTicket.UnmetDependencies, computed against
+//     depends_on by buildBoard;
+//   - what order they run in: actions/work.md Step 1 takes dependency-ready
+//     REQs in numeric id order, which is exactly the chain below. If the two can
+//     disagree, the ordering source here is wrong.
+
+const (
+	// The rolling window: the most recent in-rule completions the medians are
+	// taken over. Long enough to survive a slow week, short enough that a
+	// six-month-old pace does not outvote this month's.
+	timelineProjectionWindowSize = 60
+
+	// Below this many samples a median is a coincidence. Applied per bucket
+	// (fall back to the window's overall median) and again to the window as a
+	// whole (decline entirely).
+	timelineProjectionMinimumSamples = 5
+)
+
+// TimelineProjectedRow is one unstarted REQ's forecast slot.
+type TimelineProjectedRow struct {
+	RequestId string
+	StartTime time.Time
+	EndTime   time.Time
+	Bucket    string // "trivial" or "normal" — the effort bucket its span came from
+	Position  int    // 1-based place in the chain
+}
+
+// TimelineExclusion is one REQ the projection refuses to schedule, and why.
+// Every one is listed: silently folding these into the chain is the single
+// easiest way to make this view lie.
+type TimelineExclusion struct {
+	RequestId string
+	Reason    string
+}
+
+// TimelineProjection is the forward half of the view.
+type TimelineProjection struct {
+	Rows       []TimelineProjectedRow
+	Excluded   []TimelineExclusion
+	QueueEnd   time.Time // zero when nothing was scheduled
+	ChainStart time.Time
+
+	// What the forecast rests on, so the view can state it rather than imply it.
+	WindowSize           int
+	WindowSampleCount    int
+	TrivialSampleCount   int
+	NormalSampleCount    int
+	TrivialMedianMinutes float64
+	NormalMedianMinutes  float64
+	MinimumSamples       int
+
+	// Confident is false when the window holds too little history to forecast
+	// from. Rows and QueueEnd are then empty and DeclinedReason says why.
+	Confident      bool
+	DeclinedReason string
+}
+
+// buildTimelineProjection forecasts the unstarted queue.
+func buildTimelineProjection(tickets []*RequestTicket, aggregate DurationAggregate, now time.Time) TimelineProjection {
+	projection := TimelineProjection{
+		WindowSize:     timelineProjectionWindowSize,
+		MinimumSamples: timelineProjectionMinimumSamples,
+		ChainStart:     now.UTC(),
+	}
+
+	trivialMinutes, normalMinutes, windowMinutes := timelineProjectionWindow(aggregate)
+	projection.TrivialSampleCount = len(trivialMinutes)
+	projection.NormalSampleCount = len(normalMinutes)
+	projection.WindowSampleCount = len(windowMinutes)
+
+	windowMedian, hasWindowMedian := medianOf(windowMinutes)
+	if !hasWindowMedian || len(windowMinutes) < timelineProjectionMinimumSamples {
+		projection.DeclinedReason = fmt.Sprintf(
+			"only %d completed REQ%s inside the read-time rule; %d are needed before a median means anything",
+			len(windowMinutes), pluralSuffix(len(windowMinutes)), timelineProjectionMinimumSamples)
+		return projection
+	}
+	projection.Confident = true
+	// A bucket too thin to speak for itself borrows the window's overall median
+	// rather than inventing one from two samples.
+	projection.TrivialMedianMinutes = timelineBucketMedian(trivialMinutes, windowMedian)
+	projection.NormalMedianMinutes = timelineBucketMedian(normalMinutes, windowMedian)
+
+	projection.ChainStart = timelineChainStart(tickets, projection, now)
+	projection.Rows, projection.Excluded = timelineChain(tickets, projection)
+	if len(projection.Rows) > 0 {
+		projection.QueueEnd = projection.Rows[len(projection.Rows)-1].EndTime
+	}
+	return projection
+}
+
+// timelineProjectionWindow takes the most recent in-rule samples and splits them
+// by effort bucket. The samples arrive already classified by the read-time rule,
+// so nothing here decides what a paused or reversed span is.
+func timelineProjectionWindow(aggregate DurationAggregate) ([]float64, []float64, []float64) {
+	var trivialMinutes, normalMinutes, windowMinutes []float64
+	for sampleIndex := len(aggregate.Samples) - 1; sampleIndex >= 0; sampleIndex-- {
+		sample := aggregate.Samples[sampleIndex]
+		if sample.ExcludedFromDayMedian() {
+			continue
+		}
+		if len(windowMinutes) >= timelineProjectionWindowSize {
+			break
+		}
+		windowMinutes = append(windowMinutes, sample.WallMinutes)
+		if sample.EffortEstimate == "trivial" {
+			trivialMinutes = append(trivialMinutes, sample.WallMinutes)
+		} else {
+			normalMinutes = append(normalMinutes, sample.WallMinutes)
+		}
+	}
+	return trivialMinutes, normalMinutes, windowMinutes
+}
+
+// timelineBucketMedian is a bucket's own median once it has enough samples to
+// mean anything, and the window's overall median until then.
+func timelineBucketMedian(bucketMinutes []float64, windowMedian float64) float64 {
+	if len(bucketMinutes) < timelineProjectionMinimumSamples {
+		return windowMedian
+	}
+	bucketMedian, hasBucketMedian := medianOf(bucketMinutes)
+	if !hasBucketMedian {
+		return windowMedian
+	}
+	return bucketMedian
+}
+
+// timelineProjectedSpan is how long one REQ is forecast to take.
+func timelineProjectedSpan(ticket *RequestTicket, projection TimelineProjection) (time.Duration, string) {
+	// effort_estimate is a closed two-value triage bit whose documented default
+	// is "normal"; absent reads as normal rather than as a third case.
+	if ticket.EffortEstimate == "trivial" {
+		return time.Duration(projection.TrivialMedianMinutes * float64(time.Minute)), "trivial"
+	}
+	return time.Duration(projection.NormalMedianMinutes * float64(time.Minute)), "normal"
+}
+
+// timelineChainStart is when the first unstarted REQ can begin: after whatever is
+// already running. The in-flight REQ's own `estimate:` block would be the better
+// offset for exactly this bar, but the board parses no nested frontmatter blocks,
+// and adding that surface for one bar is the sophistication this REQ trades for a
+// stated assumption.
+func timelineChainStart(tickets []*RequestTicket, projection TimelineProjection, now time.Time) time.Time {
+	chainStart := now.UTC()
+	for _, ticket := range tickets {
+		if ticket == nil || ticket.Status != "claimed" {
+			continue
+		}
+		claimedInstant, claimedParsed := parseTimestamp(ticket.ClaimedAt)
+		if !claimedParsed {
+			continue
+		}
+		projectedSpan, _ := timelineProjectedSpan(ticket, projection)
+		projectedFinish := claimedInstant.UTC().Add(projectedSpan)
+		if projectedFinish.After(chainStart) {
+			chainStart = projectedFinish
+		}
+	}
+	return chainStart
+}
+
+// timelineChain places every schedulable pending REQ, and reports the rest.
+//
+// The placement rule is work.md's: among REQs whose dependencies have all
+// resolved or been placed already, take the lowest id. Repeating that until
+// nothing more can be placed is what makes the chain agree with what `do-work
+// run` would actually claim next.
+func timelineChain(tickets []*RequestTicket, projection TimelineProjection) ([]TimelineProjectedRow, []TimelineExclusion) {
+	var pendingTickets []*RequestTicket
+	var exclusions []TimelineExclusion
+	for _, ticket := range tickets {
+		if ticket == nil {
+			continue
+		}
+		switch {
+		case ticket.Status == "pending":
+			pendingTickets = append(pendingTickets, ticket)
+		case isNeedsInputOrBlockedStatus(ticket.Status) && ticket.Status != "failed":
+			exclusions = append(exclusions, TimelineExclusion{
+				RequestId: ticket.RequestId,
+				Reason:    timelineExclusionReason(ticket),
+			})
+		}
+	}
+	sort.SliceStable(pendingTickets, func(earlier, later int) bool {
+		return pendingTickets[earlier].RequestId < pendingTickets[later].RequestId
+	})
+
+	placedIds := map[string]bool{}
+	var rows []TimelineProjectedRow
+	chainCursor := projection.ChainStart
+	for {
+		nextIndex := -1
+		for ticketIndex, ticket := range pendingTickets {
+			if ticket == nil {
+				continue
+			}
+			ready := true
+			for _, dependencyId := range ticket.UnmetDependencies {
+				if !placedIds[dependencyId] {
+					ready = false
+					break
+				}
+			}
+			if ready {
+				nextIndex = ticketIndex
+				break
+			}
+		}
+		if nextIndex == -1 {
+			break
+		}
+		ticket := pendingTickets[nextIndex]
+		pendingTickets[nextIndex] = nil
+		projectedSpan, bucket := timelineProjectedSpan(ticket, projection)
+		rows = append(rows, TimelineProjectedRow{
+			RequestId: ticket.RequestId,
+			StartTime: chainCursor,
+			EndTime:   chainCursor.Add(projectedSpan),
+			Bucket:    bucket,
+			Position:  len(rows) + 1,
+		})
+		placedIds[ticket.RequestId] = true
+		chainCursor = chainCursor.Add(projectedSpan)
+	}
+
+	// Whatever the loop could not place can never be placed: its dependency
+	// chain reaches something excluded, dangling, or circular. Reporting it is
+	// what keeps the queue-end figure from quietly describing a subset.
+	for _, ticket := range pendingTickets {
+		if ticket == nil {
+			continue
+		}
+		exclusions = append(exclusions, TimelineExclusion{
+			RequestId: ticket.RequestId,
+			Reason:    "waiting on a dependency that is itself unschedulable, missing, or circular",
+		})
+	}
+	sort.SliceStable(exclusions, func(earlier, later int) bool {
+		return exclusions[earlier].RequestId < exclusions[later].RequestId
+	})
+	return rows, exclusions
+}
+
+// timelineExclusionReason says in plain words why a REQ cannot be given a start
+// time, rather than echoing its status back at the reader.
+func timelineExclusionReason(ticket *RequestTicket) string {
+	switch ticket.Status {
+	case "pending-answers":
+		return "waiting on an answer from you"
+	case "blocked":
+		return "waiting on an external condition"
+	case "blocked-archive-collision":
+		return "held: its id is already archived"
+	case "blocked-dependency-cycle":
+		return "held: its dependency chain is circular"
+	default:
+		return "not schedulable in its current state"
+	}
+}
+
+func pluralSuffix(count int) string {
+	if count == 1 {
+		return ""
+	}
+	return "s"
 }

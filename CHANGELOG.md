@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.207.0 — Timeline Projects the Remaining Queue (2026-08-18)
+
+The Timeline now runs forward as well as back. Every REQ nobody has started yet gets a projected bar, chained one after another in the order `do-work run` would actually claim them, and the view says when the queue empties.
+
+- The estimate states what it assumed right next to itself: the median of the last 60 completed REQs split by triage size, one REQ at a time, no parallel builders, a queue that stops growing
+- Paused and reversed spans are excluded from the medians — the same rule the Durations view already applies, not a second copy of it
+- Too little history and it declines instead of guessing: no bars, no date, and a line saying how many completions it needs
+- REQs waiting on you, waiting on something external, or stuck behind one that is, are listed by name with a plain reason and left out of the estimate — never quietly folded in
+- Projected bars are hatched in their own colour so a forecast can never be mistaken for a measurement, and a new `Now` button jumps you to the forecast at any zoom
+
 ## 0.206.0 — Timeline View: One Bar Per REQ, Wait and Work (2026-08-18)
 
 A fifth board view. Every REQ gets a horizontal bar across real time, in two parts: how long it sat waiting to be claimed, then how long it took once someone started. Two things the board could never show before — the wait was measured nowhere, and a REQ running right now appeared in no view at all.

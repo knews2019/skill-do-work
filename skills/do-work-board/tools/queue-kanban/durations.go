@@ -43,6 +43,14 @@ type DurationSample struct {
 	// "paused" (over the ceiling), "reversed" (negative), or "" when it counts.
 	DayMedianExclusion string
 
+	// The REQ's effort_estimate bucket, normalized ("trivial" or "normal";
+	// absent reads as normal, per the closed two-value enum in model.go). Panel
+	// A and the medians ignore it; the Timeline's forward projection splits its
+	// medians by it, and carrying it here is what lets that projection read the
+	// bucket off a sample the read-time rule has ALREADY classified rather than
+	// re-walking the tickets and re-deciding what counts.
+	EffortEstimate string
+
 	// Direct-label verdict, decided by planDurationLabels. LabelRow is the text
 	// row inside this sample's band, or durationsLabelRowUnplaced when the
 	// collision rule could not fit a label. LabelAnchor is the SVG text-anchor
@@ -106,6 +114,7 @@ func buildDurationAggregate(tickets []*RequestTicket) DurationAggregate {
 			DayKey:             completedInstant.UTC().Format("2006-01-02"),
 			WallMinutes:        wallSpan.Minutes(),
 			DayMedianExclusion: dayMedianExclusionReason(wallSpan),
+			EffortEstimate:     ticket.EffortEstimate,
 		})
 	}
 

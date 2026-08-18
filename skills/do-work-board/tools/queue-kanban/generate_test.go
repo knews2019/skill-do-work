@@ -2100,3 +2100,114 @@ process.stdout.write(JSON.stringify({
 			sliceResult.AtBottomLastRow, sliceResult.RowCount)
 	}
 }
+
+// timelineForecastDomStub is the smallest DOM renderTimelineForecast touches. It
+// is a stub rather than a headless browser because what is being pinned is the
+// SENTENCE — which figures reach the reader — not the layout.
+const timelineForecastDomStub = `
+function makeStubNode() {
+  return {
+    textContent: "",
+    className: "",
+    children: [],
+    classList: { add: function () {}, remove: function () {} },
+    setAttribute: function () {},
+    appendChild: function (child) { this.children.push(child); return child; }
+  };
+}
+var stubNodes = { "timeline-forecast": makeStubNode(), "timeline-excluded": makeStubNode() };
+var document = {
+  getElementById: function (id) { return stubNodes[id] || null; },
+  createElement: function () { return makeStubNode(); },
+  createTextNode: function (text) { return { textContent: text }; }
+};
+function collectText(node) {
+  var text = node.textContent || "";
+  (node.children || []).forEach(function (child) { text += " " + collectText(child); });
+  return text;
+}
+`
+
+// The REQ calls the honesty requirements load-bearing rather than decoration: a
+// forecast that states a date without stating what it assumed is exactly the
+// artifact people screenshot and quote. These pin that the sentence carries its
+// own assumptions, and that thin history declines instead of guessing.
+func TestJavaScriptBehaviorTimelineForecastStatesItsAssumptions(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineForecastDomStub +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineFormatSpanMinutes(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineFormatStamp(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function renderTimelineForecast(") + `
+var confidentProjection = {
+  confident: true,
+  chainStart: "2026-06-20T12:00:00Z",
+  queueEnd: "2026-06-20T14:30:00Z",
+  windowSamples: 60, windowSize: 60, minimumSamples: 5,
+  normalSamples: 55, normalMinutes: 40,
+  trivialSamples: 5, trivialMinutes: 10,
+  rows: [{ id: "REQ-401" }, { id: "REQ-402" }],
+  excluded: [{ id: "REQ-404", reason: "waiting on an external condition" }]
+};
+renderTimelineForecast(confidentProjection, []);
+var confidentText = collectText(stubNodes["timeline-forecast"]);
+var confidentExcludedText = collectText(stubNodes["timeline-excluded"]);
+
+stubNodes["timeline-forecast"] = makeStubNode();
+stubNodes["timeline-excluded"] = makeStubNode();
+renderTimelineForecast({
+  confident: false,
+  declinedReason: "only 2 completed REQs inside the read-time rule; 5 are needed before a median means anything",
+  rows: [], excluded: [], windowSamples: 2, minimumSamples: 5
+}, []);
+var declinedText = collectText(stubNodes["timeline-forecast"]);
+
+process.stdout.write(JSON.stringify({
+  confidentText: confidentText,
+  confidentExcludedText: confidentExcludedText,
+  declinedText: declinedText
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline forecast", javascriptProbe)
+	var forecastResult struct {
+		ConfidentText         string `json:"confidentText"`
+		ConfidentExcludedText string `json:"confidentExcludedText"`
+		DeclinedText          string `json:"declinedText"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &forecastResult); decodeError != nil {
+		t.Fatalf("decode timeline forecast behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// Each of these is a separate requirement, so each is asserted separately —
+	// a single "contains everything" check would report one failure for any of
+	// four different regressions.
+	for _, wantFragment := range []struct {
+		requirement string
+		fragment    string
+	}{
+		{"the end instant itself", "2026-06-20 14:30 UTC"},
+		{"the window's sample size", "last 60 completed REQs"},
+		{"each bucket's sample count and median", "55 normal at 40 min"},
+		{"the serial assumption", "one REQ at a time"},
+		{"the no-parallelism assumption", "no parallel builders"},
+		{"the static-queue assumption", "queue that stops growing"},
+		{"the read-time rule's exclusions", "Paused and reversed spans are excluded"},
+	} {
+		if !strings.Contains(forecastResult.ConfidentText, wantFragment.fragment) {
+			t.Fatalf("the forecast sentence does not state %s (wanted %q in %q)",
+				wantFragment.requirement, wantFragment.fragment, forecastResult.ConfidentText)
+		}
+	}
+	if !strings.Contains(forecastResult.ConfidentExcludedText, "REQ-404") ||
+		!strings.Contains(forecastResult.ConfidentExcludedText, "waiting on an external condition") {
+		t.Fatalf("the excluded list must name every unschedulable REQ and its reason; got %q",
+			forecastResult.ConfidentExcludedText)
+	}
+
+	if strings.Contains(forecastResult.DeclinedText, "Queue empties") {
+		t.Fatalf("thin history produced an end date: %q", forecastResult.DeclinedText)
+	}
+	if !strings.Contains(forecastResult.DeclinedText, "No end estimate") ||
+		!strings.Contains(forecastResult.DeclinedText, "5 are needed") {
+		t.Fatalf("declining must say so and carry the reason; got %q", forecastResult.DeclinedText)
+	}
+}
