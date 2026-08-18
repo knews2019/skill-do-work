@@ -2283,6 +2283,209 @@ process.stdout.write(JSON.stringify(` + string(probeValues) + `.map(formatDurati
 	}
 }
 
+// ---- panel B/C day buckets and the shared axis domain ----------------------
+
+// durationsRenderDomStubPreamble is the smallest DOM renderDurationsView
+// touches, so the probe below can run the REAL renderer rather than sliced
+// fragments of it. Every SVG node records its tag and attributes; nothing here
+// re-implements layout.
+const durationsRenderDomStubPreamble = `
+function makeStubNode(nodeName) {
+  return {
+    stubName: nodeName,
+    attributes: {},
+    children: [],
+    textContent: "",
+    setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = String(attributeValue); },
+    appendChild: function (childNode) { this.children.push(childNode); return childNode; },
+    addEventListener: function () {}
+  };
+}
+var durationsStubHosts = {
+  "durations-chart": makeStubNode("div"),
+  "durations-summary": makeStubNode("p"),
+  "durations-readout": makeStubNode("p"),
+  "durations-table-body": makeStubNode("tbody")
+};
+var document = {
+  getElementById: function (nodeId) { return durationsStubHosts[nodeId] || null; },
+  createElementNS: function (namespaceUri, nodeName) { return makeStubNode(nodeName); },
+  createElement: function (nodeName) { return makeStubNode(nodeName); },
+  createTextNode: function (nodeText) { return { textContent: nodeText }; }
+};
+`
+
+// durationsRenderProbeDriver renders the fixture board and reports every drawn
+// bar's x-interval, the slowest-day annotation's anchor x (the only mid-anchored
+// text at the annotation baseline), and every Panel A mark centre in draw order.
+const durationsRenderProbeDriver = `
+renderDurationsView();
+var drawnBars = [], drawnAnnotationXs = [], drawnMarkCxs = [];
+function walkDrawnNodes(parentNode) {
+  (parentNode.children || []).forEach(function (childNode) {
+    var attributes = childNode.attributes || {};
+    if (childNode.stubName === "rect" && String(attributes["class"] || "").indexOf("durations-bar") !== -1) {
+      drawnBars.push({ class: attributes["class"], x: Number(attributes.x), width: Number(attributes.width) });
+    }
+    if (childNode.stubName === "circle") {
+      drawnMarkCxs.push(Number(attributes.cx));
+    }
+    if (childNode.stubName === "text" && attributes["text-anchor"] === "middle" &&
+        Number(attributes.y) === DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y) {
+      drawnAnnotationXs.push(Number(attributes.x));
+    }
+    walkDrawnNodes(childNode);
+  });
+}
+walkDrawnNodes(durationsStubHosts["durations-chart"]);
+process.stdout.write(JSON.stringify({ bars: drawnBars, annotationXs: drawnAnnotationXs, markCxs: drawnMarkCxs }));
+`
+
+// durationsDayCountFixtureTickets builds dayCount active days of archived REQs.
+// The first completion of each day lands 13:54 into it — the offset that put
+// the real board's leftmost bar in the axis gutter (REQ-248).
+func durationsDayCountFixtureTickets(dayCount int) []*RequestTicket {
+	firstDay := time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC)
+	tickets := make([]*RequestTicket, 0, dayCount*2)
+	for dayIndex := 0; dayIndex < dayCount; dayIndex++ {
+		dayStart := firstDay.AddDate(0, 0, dayIndex)
+		for sampleIndex, completionOffset := range []time.Duration{
+			13*time.Hour + 54*time.Minute,
+			16*time.Hour + 54*time.Minute,
+		} {
+			completedAt := dayStart.Add(completionOffset)
+			claimedAt := completedAt.Add(-time.Duration(24+10*sampleIndex) * time.Minute)
+			tickets = append(tickets, durationTicket(
+				fmt.Sprintf("REQ-%03d%d", dayIndex, sampleIndex),
+				"B",
+				claimedAt.Format(time.RFC3339),
+				completedAt.Format(time.RFC3339),
+			))
+		}
+	}
+	return tickets
+}
+
+// REQ-248: Panel B placed its day bars at xOfEpoch(day midnight) while the axis
+// domain began at the FIRST COMPLETION INSTANT, so the leftmost bar always sat
+// left of the plot by however far into its day the first sample fell — and on a
+// one- or two-day board the disagreement dominated the whole span and Panels B
+// and C rendered off canvas entirely (live-DOM baselines: bar x=-5184.4 at one
+// active day, x=-564.5 at two, x=-8.3 at fourteen against a left margin of 54;
+// Chromium 141.0.7390.37 via Playwright 1.56.1).
+//
+// This drives the REAL renderDurationsView over a stub DOM at one, two,
+// fourteen and four hundred active days and asserts, from the drawn attributes:
+// every Panel B and C bar inside the plot area, exactly one slowest-day
+// annotation anchored inside it, and every Panel A mark at the x the Go-side
+// label planner assumed. That last assertion is the drift pin: the renderer's
+// axis domain and durations.go's durationLabelTimeRange must stay one
+// definition, and it fails in whichever direction either side moves alone.
+func TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+
+	marginLeft := durationsRendererConstant(t, "DURATIONS_MARGIN_LEFT")
+	plotRight := durationsRendererConstant(t, "DURATIONS_VIEW_WIDTH") -
+		durationsRendererConstant(t, "DURATIONS_MARGIN_RIGHT")
+
+	for _, dayCount := range []int{1, 2, 14, 400} {
+		dayCount := dayCount
+		t.Run(fmt.Sprintf("%d-active-days", dayCount), func(t *testing.T) {
+			fixtureTickets := durationsDayCountFixtureTickets(dayCount)
+			aggregate := buildDurationAggregate(fixtureTickets)
+			fixtureBoard := &Board{
+				GeneratedAt: time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC),
+				AllRequests: fixtureTickets,
+			}
+			generatedData, buildError := buildGeneratedBoardData(fixtureBoard)
+			if buildError != nil {
+				t.Fatalf("buildGeneratedBoardData: %v", buildError)
+			}
+			durationsJson, encodeError := json.Marshal(generatedData.Durations)
+			if encodeError != nil {
+				t.Fatalf("encode durations payload: %v", encodeError)
+			}
+
+			javascriptProbe := durationsRenderDomStubPreamble +
+				"var boardData = { durations: " + string(durationsJson) + " };\n" +
+				string(rendererFragment) +
+				durationsRenderProbeDriver
+			probeOutput := runJavaScriptBehaviorProbe(t,
+				fmt.Sprintf("durations day buckets (%d active days)", dayCount), javascriptProbe)
+
+			var drawn struct {
+				Bars []struct {
+					Class string  `json:"class"`
+					X     float64 `json:"x"`
+					Width float64 `json:"width"`
+				} `json:"bars"`
+				AnnotationXs []float64 `json:"annotationXs"`
+				MarkCxs      []float64 `json:"markCxs"`
+			}
+			if decodeError := json.Unmarshal(probeOutput, &drawn); decodeError != nil {
+				t.Fatalf("decode drawn durations geometry: %v (output starts %q)",
+					decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+			}
+
+			// (1) Every Panel B and C bar inside the plot area. 0.05 covers the
+			// renderer's toFixed(1) rounding and nothing else.
+			panelBBarCount := 0
+			for _, bar := range drawn.Bars {
+				if !strings.Contains(bar.Class, "durations-bar-count") &&
+					!strings.Contains(bar.Class, "durations-bar-over-ceiling") {
+					panelBBarCount++
+				}
+				if bar.X < marginLeft-0.05 || bar.X+bar.Width > plotRight+0.05 {
+					t.Errorf("%q bar spans x %.1f–%.1f, outside the plot area [%.0f, %.0f]",
+						bar.Class, bar.X, bar.X+bar.Width, marginLeft, plotRight)
+				}
+			}
+
+			// (2) One Panel B bar per day with a median — the guard against a
+			// render that went off the rails and drew nothing to check.
+			medianDayCount := 0
+			for _, day := range aggregate.Days {
+				if day.HasMedian {
+					medianDayCount++
+				}
+			}
+			if panelBBarCount != medianDayCount {
+				t.Errorf("drew %d Panel B bars for %d days with a median", panelBBarCount, medianDayCount)
+			}
+
+			// (3) Exactly one slowest-day annotation, anchored inside the plot —
+			// it exists to state a value a clipped bar cannot, and cannot do
+			// that from off-screen.
+			if len(drawn.AnnotationXs) != 1 {
+				t.Fatalf("drew %d slowest-day annotations, want exactly 1", len(drawn.AnnotationXs))
+			}
+			if annotationX := drawn.AnnotationXs[0]; annotationX < marginLeft-0.05 || annotationX > plotRight+0.05 {
+				t.Errorf("slowest-day annotation anchored at x=%.1f, outside the plot area [%.0f, %.0f]",
+					annotationX, marginLeft, plotRight)
+			}
+
+			// (4) Every Panel A mark at the x the Go-side label planner assumed.
+			rangeStart, rangeEnd, hasRange := durationLabelTimeRange(aggregate.Samples)
+			if !hasRange {
+				t.Fatal("fixture produced no label time range")
+			}
+			if len(drawn.MarkCxs) != len(aggregate.Samples) {
+				t.Fatalf("drew %d marks for %d samples", len(drawn.MarkCxs), len(aggregate.Samples))
+			}
+			for sampleIndex, sample := range aggregate.Samples {
+				plannedMarkX := marginLeft + durationLabelPlotX(sample.CompletionTime, rangeStart, rangeEnd)
+				if math.Abs(drawn.MarkCxs[sampleIndex]-plannedMarkX) > 0.06 {
+					t.Errorf("%s mark drawn at x=%.2f but the label planner assumed %.2f — renderer and durations.go no longer share one axis domain",
+						sample.RequestId, drawn.MarkCxs[sampleIndex], plannedMarkX)
+				}
+			}
+		})
+	}
+}
+
 func floatPointer(value float64) *float64 {
 	return &value
 }
