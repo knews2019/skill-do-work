@@ -3,7 +3,7 @@ id: REQ-239
 title: Give the Timeline's rows a real focus ring
 status: completed
 completed_at: 2026-08-18T12:27:21Z
-commit:
+commit: 1d76ad1
 claimed_at: 2026-08-18T11:57:10Z
 route: B
 estimate:
