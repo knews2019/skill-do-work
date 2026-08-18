@@ -185,7 +185,7 @@ If your agent has limited context, prioritize: **owning sibling SKILL.md → act
 
 The suite installer enables one core Claude Code hook:
 
-- **`skills/do-work/hooks/session-start.sh`** — SessionStart hook that injects the installed version and pending REQ count at the beginning of each session.
+- **`skills/do-work/hooks/session-start.sh`** — SessionStart hook that injects the installed version and pending REQ count at the beginning of each session, and also writes to your queue files: it reaps stale REQ-number reservation markers (`skills/do-work/scripts/cleanup-req-reservations.sh`) and mechanically repairs detectably wrong `*_at` stamps in `do-work/queue/` and `do-work/working/` (`skills/do-work/scripts/repair-req-timestamps.sh`).
 
 Fresh installs do not enable memory capture. To opt in later, run `do-work-knowledge setup-memory`; it composes the knowledge hook fragment without clobbering existing settings.
 
