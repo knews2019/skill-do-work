@@ -23,14 +23,12 @@ Every hash was confirmed with `record-commit-hash.sh --verify`. `maintainer-veri
 - REQ-233: Give the Timeline a keyboard path to zoom and pan — claimed 2026-08-18T11:00:00Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 - REQ-236: Add a URs-only lens to the Board view — claimed 2026-08-18T11:00:00Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-234: Stop the shell behavior suite counting its own cases — claimed 2026-08-18T10:56:00Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 
 ## Still Queued
 
 - REQ-230: Point caller docs at the canonical publication rationale (pending-answers — 1 question). Sweep, one instance: `present-work.md:137` restates the container-not-a-collision rationale that REQ-225 gave a single home.
 - REQ-233: Give the Timeline a keyboard path to zoom and pan (pending-answers — 1 question). New capability to finish, not a regression to repair.
-- REQ-234: Stop the shell behavior suite counting its own cases (pending-answers — 1 question). Its closing literal claimed 45 against 40 derivable cases.
 
 All four are `pending-answers` by design, not by accident: three are cascade-depth or scope-boundary decisions, and the fourth needs a definition of "one case" that only the maintainer should pick. `do-work clarify` is the next step.
 

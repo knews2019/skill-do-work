@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.208.2 — The Shell Behavior Suite Counts Its Own Cases (2026-08-18)
+
+That suite used to finish by announcing how many cases it ran, from a number typed in by hand — and it was already wrong, claiming 47 against a file nobody could get 47 out of. It now counts them, and says out loud what it is counting.
+
+- The closing line greps the case-header shape out of the file at run time; no literal remains
+- The definition of "one case" is stated beside the count, so the number and the file cannot disagree
+- The reported figure moves 47 → 42, deliberately: no rule over the file yielded 47
+- No test case was added, removed, or weakened
+
 ## 0.208.1 — Present-Work Points at the Shared Publication Rule (2026-08-18)
 
 One shipped instruction file was carrying its own word-for-word copy of a shell rule that already lives in the shared guide. It now points at the guide and keeps only its own policy, and the canonicalization suite will fail the next copy instead of letting it through.
