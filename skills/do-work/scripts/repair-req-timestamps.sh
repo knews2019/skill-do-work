@@ -209,25 +209,31 @@ frontmatter_value_for() {
   ' "$1"
 }
 
-# Emits one `<line-number>\t<field-name>\t<value-token>` row per top-level
-# frontmatter key whose name ends in `_at`. The value token is the first
-# whitespace-delimited word after the colon, so a trailing YAML comment is never
-# part of it — and never part of what gets rewritten either.
+# Emits one `<line-number>\t<field-name>\t<value>` row per top-level frontmatter
+# key whose name ends in `_at`. The value is everything after the colon up to a
+# trailing YAML comment (a `#` preceded by whitespace — the read-side YAML
+# parsers use the same boundary), trimmed of surrounding whitespace, so a
+# space-separated instant survives whole instead of truncating at the first
+# space — the truncation is what once half-rewrote `2093-01-01 00:00:00` into
+# an unparseable date-plus-phantom-suffix. The comment itself is never part of
+# the value, and never part of what gets rewritten either.
 extract_timestamp_fields() {
   awk '
-    NR == 1 && $0 == "---" { inside_frontmatter = 1; next }
-    inside_frontmatter && $0 == "---" { exit }
+    { line_body = $0 }
+    NR == 1 && line_body == "---" { inside_frontmatter = 1; next }
+    inside_frontmatter && line_body == "---" { exit }
     inside_frontmatter {
-      colon_index = index($0, ":")
+      colon_index = index(line_body, ":")
       if (colon_index < 2) next
-      field_name = substr($0, 1, colon_index - 1)
+      field_name = substr(line_body, 1, colon_index - 1)
       if (field_name !~ /^[A-Za-z_][A-Za-z0-9_]*_at$/) next
-      field_rest = substr($0, colon_index + 1)
+      field_rest = substr(line_body, colon_index + 1)
+      comment_start = match(field_rest, /[ \t]#/)
+      if (comment_start > 0) field_rest = substr(field_rest, 1, comment_start - 1)
       sub(/^[ \t]+/, "", field_rest)
-      value_token = field_rest
-      sub(/[ \t].*$/, "", value_token)
-      if (value_token == "") next
-      print NR "\t" field_name "\t" value_token
+      sub(/[ \t]+$/, "", field_rest)
+      if (field_rest == "") next
+      print NR "\t" field_name "\t" field_rest
     }
   ' "$1"
 }
@@ -460,7 +466,7 @@ repair_request_file() {
   while [ "$index" -lt "$field_count" ]; do
     if [ -n "${field_new_values[$index]}" ]; then
       byte_delta=$((byte_delta + ${#field_new_values[$index]} - ${#field_tokens[$index]}))
-      plan_spec="$plan_spec${field_line_numbers[$index]}=${field_new_values[$index]};"
+      plan_spec="$plan_spec${field_line_numbers[$index]}=${#field_tokens[$index]}:${field_new_values[$index]};"
     fi
     index=$((index + 1))
   done
@@ -487,8 +493,11 @@ repair_request_file() {
   fi
 
   # Only the planned lines are rebuilt: prefix through the colon, the original
-  # spacing, the new value, then everything after the old token (a trailing YAML
-  # comment survives verbatim). Every other line streams through untouched.
+  # spacing, the new value, then everything after the old value's byte span (a
+  # trailing YAML comment — and a CRLF ending's carriage return — survives
+  # verbatim). The span length rides in the plan because the old value may
+  # contain spaces; re-guessing a token boundary here is what once split a
+  # space-separated instant. Every other line streams through untouched.
   awk -v plan_spec="$plan_spec" '
     BEGIN {
       plan_entry_count = split(plan_spec, plan_entries, ";")
@@ -496,7 +505,10 @@ repair_request_file() {
         if (plan_entries[plan_index] == "") continue
         separator_index = index(plan_entries[plan_index], "=")
         planned_line = substr(plan_entries[plan_index], 1, separator_index - 1) + 0
-        planned_value[planned_line] = substr(plan_entries[plan_index], separator_index + 1)
+        plan_entry_rest = substr(plan_entries[plan_index], separator_index + 1)
+        length_boundary = index(plan_entry_rest, ":")
+        planned_old_length[planned_line] = substr(plan_entry_rest, 1, length_boundary - 1) + 0
+        planned_value[planned_line] = substr(plan_entry_rest, length_boundary + 1)
       }
     }
     NR in planned_value {
@@ -506,8 +518,7 @@ repair_request_file() {
       match(line_rest, /^[ \t]*/)
       value_spacing = substr(line_rest, 1, RLENGTH)
       token_and_suffix = substr(line_rest, RLENGTH + 1)
-      match(token_and_suffix, /^[^ \t]+/)
-      line_suffix = substr(token_and_suffix, RLENGTH + 1)
+      line_suffix = substr(token_and_suffix, planned_old_length[NR] + 1)
       print line_prefix value_spacing planned_value[NR] line_suffix
       next
     }

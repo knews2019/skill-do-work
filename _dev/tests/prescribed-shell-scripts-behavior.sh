@@ -1188,6 +1188,39 @@ cmp -s "$fixture_root/repair-guard-before.md" "$repair_guard_project/do-work/que
 printf '%s' "$repair_guard_output" | grep -q 'content was lost before this run' \
   || fail_case 'repair-req-timestamps tripped-guard case did not name the truncation as the reason'
 
+# repair-req-timestamps: an unquoted space-separated future instant is repaired
+# whole — never half-rewritten into a date plus a phantom time-of-day — and the
+# audit line reports the full old value (REQ-255 I1, the corrupting shape).
+repair_space_project="$fixture_root/repair-space-project"
+mkdir -p "$repair_space_project/do-work/queue"
+printf -- '---\nid: REQ-807\nstatus: pending\ncreated_at: 2093-01-01 00:00:00\n---\nbody\n' \
+  > "$repair_space_project/do-work/queue/REQ-807-space.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_space_project/do-work/queue/REQ-807-space.md"
+repair_space_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_space_project")" \
+  || fail_case 'repair-req-timestamps space-separated case returned nonzero'
+grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_space_project/do-work/queue/REQ-807-space.md" \
+  || fail_case 'repair-req-timestamps space-separated case did not rewrite the whole value to the canonical form'
+grep -q '00:00:00$' "$repair_space_project/do-work/queue/REQ-807-space.md" \
+  && fail_case 'repair-req-timestamps space-separated case left a phantom time-of-day suffix behind'
+printf '%s' "$repair_space_output" \
+  | grep -q 'REQ-807-space.md created_at: 2093-01-01 00:00:00 -> 2026-08-10T12:00:00Z (file mtime)' \
+  || fail_case 'repair-req-timestamps space-separated case did not report the full old value in the audit line'
+
+# repair-req-timestamps: a quoted space-separated future instant is repaired to
+# the canonical unquoted form instead of silently truncating at the unmatched
+# quote and passing through (REQ-255 I1's quoted sibling).
+repair_quoted_space_project="$fixture_root/repair-quoted-space-project"
+mkdir -p "$repair_quoted_space_project/do-work/queue"
+printf -- '---\nid: REQ-808\nstatus: pending\ncreated_at: "2093-01-01 00:00:00"\n---\nbody\n' \
+  > "$repair_quoted_space_project/do-work/queue/REQ-808-quoted-space.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_quoted_space_project/do-work/queue/REQ-808-quoted-space.md"
+repair_quoted_space_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_quoted_space_project")" \
+  || fail_case 'repair-req-timestamps quoted-space case returned nonzero'
+grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_quoted_space_project/do-work/queue/REQ-808-quoted-space.md" \
+  || fail_case 'repair-req-timestamps quoted-space case did not repair the quoted instant to the canonical unquoted form'
+printf '%s' "$repair_quoted_space_output" | grep -q 'REQ-808-quoted-space.md created_at' \
+  || fail_case 'repair-req-timestamps quoted-space case did not log the correction'
+
 # audit-archive-timestamps: under --fix, a future stamp in a committed archived REQ
 # (inside an archived UR folder, proving the recursive scan) is rewritten to the
 # introducing commit's author time and the correction logs the sourcing commit hash.
