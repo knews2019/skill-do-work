@@ -1,7 +1,19 @@
 ---
 id: REQ-236
 title: Add a URs-only lens to the Board view
-status: pending
+status: claimed
+claimed_at: 2026-08-18T11:00:00Z
+route: C
+estimate:
+  p50_active_minutes: 60
+  confidence: medium
+  calculated_at: 2026-08-18T11:00:00Z
+  basis:
+    - Route C
+    - 5-file write set
+    - 2 subsystems involved
+    - 6 acceptance criteria
+    - browser evidence
 created_at: 2026-08-18T10:30:00Z
 user_request: UR-054
 domain: general

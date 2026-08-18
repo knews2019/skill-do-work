@@ -1,7 +1,18 @@
 ---
 id: REQ-233
 title: Give the Timeline a keyboard path to zoom and pan
-status: pending
+status: claimed
+claimed_at: 2026-08-18T11:00:00Z
+route: B
+estimate:
+  p50_active_minutes: 30
+  confidence: medium
+  calculated_at: 2026-08-18T11:00:00Z
+  basis:
+    - Route B
+    - 3-file write set
+    - browser evidence
+    - cross-route regression gates
 status_changed_at: 2026-08-18T10:26:34Z
 domain: general
 created_at: 2026-08-18T01:18:57Z
