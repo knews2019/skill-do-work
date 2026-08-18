@@ -3,6 +3,7 @@ id: REQ-260
 title: Run the Go formatter as part of the canonical verify
 status: completed
 completed_at: 2026-08-18T22:36:02Z
+commit: 307e146
 claimed_at: 2026-08-18T21:16:24Z
 route: A
 created_at: 2026-08-18T18:41:26Z
