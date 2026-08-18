@@ -88,3 +88,33 @@ Transcribed by the orchestrator from `do-work/runs/work-2026-08-18-230100/REQ-26
 
 - **[normal] `record-commit-hash.sh`'s read helpers scan to EOF on an unterminated fence, so `--verify` can read a body `commit:` as the frontmatter one.** Helpers at `:108-122`, called at `:247` and `:318-338`. Their own header says that confusion is structurally impossible; it is not. The script's *writer* already refuses the fence-broken shape — the readers do not, so the guard is asymmetric. **This matters more than its severity suggests:** `record-commit-hash.sh --verify` is the last check every REQ in this pipeline passes through, and it is the one that exists because free-form frontmatter edits once truncated six archived REQs to zero bytes. Out of this REQ's write set.
 
+---
+
+## Testing
+
+**Tests run:** `bash _dev/tests/maintainer-verify.sh` against the merged tree (range `05c4630..f7441d7`), un-piped with the exit code read directly
+**Result:** ✓ `GATE_EXIT=0` — "Maintainer verification passed." The suite reports **69 named script cases**, up from 66: this REQ's three lock-ins are present and passing in the integrated tree. This run is both Step 6.5's testing and Step 8's post-merge verification.
+
+**Red-green validation** — RED run against pre-change code at `2fc89fe`, not a prototype:
+
+- **Instance 1, face one** — a *body* line rewritten under an unterminated fence: the pre-change script reported `repaired … created_at: 2093-01-01T00:00:00Z -> 2026-08-10T12:00:00Z (file mtime)` and exited 0, while the real board binary answered `has no frontmatter block` (exit 2) on the very same file. GREEN: exits 0, file byte-identical.
+- **Instance 1, face two — the permanent-failure loop, demonstrated over three consecutive runs.** Each printed `FAILED to repair … the rewrite touched 2 diff lines; expected 4 — the edit was rejected and discarded`, exited 1, and left the file byte-identical with no self-heal. GREEN: exits 0 on repeated runs, file byte-identical.
+- **Instance 2** — the board's `frontmatter get` returned the padded quoted stamp and flagged it, while the repairer refused it. GREEN: repairs to `created_at: 2026-08-10T12:00:00Z`, with the audit line reporting the full padded old value.
+
+**Fuzz, because an instance list is a sample.** Two harnesses against real oracles — the board binary's `frontmatter get` for visibility, and a Go probe replicating `parseTimestamp`'s four layouts and the 2-minute skew for the verdict:
+
+- **Structural** (fence / BOM / CRLF / EOF shapes): 204 shapes, **34 divergences before, 0 after**. All 34 were one family — a valid opening fence with no exact `---` close, in all four spellings of "not closed" crossed with BOM/CRLF/EOF. No family beyond instance 1.
+- **Value space** (quote style × leading pad × trailing pad × 8 value shapes): 408 shapes, **120 divergences before, 0 after**. The documented refusals — offset, fractional, calendar-impossible, non-ASCII padding — are asserted as *refused* rather than skipped, so the fuzz cannot pass by ignoring them.
+
+Both fuzzes were run against the pre-change script recovered with `git show HEAD~1:` to prove they go honestly red, then against the committed tree to prove they go green.
+
+**The methodological finding worth keeping:** the structural fuzz initially **missed the wedge entirely**, because the wedge *refuses* rather than rewrites — a parity fuzz that compares only file mutation is blind to a shape that fails. Adding the repairer's exit status as a second oracle dimension is what surfaced it.
+
+**Mutation testing of the new lock-ins:** with the fixed script swapped for the pre-change one, the new cases fail with 8 distinct assertions across both scan scopes — so the lock-ins pin behaviour rather than merely accompanying it.
+
+**New tests added:** three named cases (66 → 69), covering both faces of instance 1 and instance 2, through both the repairer's and the archive auditor's scan scopes.
+
+**Existing tests updated (cross-REQ impact):** the stale comment at `_dev/tests/prescribed-shell-scripts-behavior.sh:1150` — which justified the offset refusal with the reason REQ-257 repudiated two hours earlier — was corrected in the same commit. No prior REQ's asserted behaviour changed.
+
+*Verified by work action*
+
