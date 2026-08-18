@@ -39,16 +39,29 @@
 # `created_at <= claimed_at <= completed_at <= now`. An ordering repair rewrites
 # the LATER field of the offending pair — the earlier one is the anchor.
 #
-# SHAPES LEFT ALONE, deliberately. A value is only comparable when it reads
-# `YYYY-MM-DD`, `YYYY-MM-DDTHH:MM:SS`, or `YYYY-MM-DDTHH:MM:SSZ` (a space may
-# stand in for the `T`), optionally wrapped in one matching pair of quotes —
-# the schema's YAML readers unquote, so a quoted future stamp is flagged
-# read-side and must be repairable here too (its replacement is written in the
-# canonical unquoted form the Timestamp rule prescribes). A numeric UTC offset,
-# fractional seconds, or anything unparseable is NOT provably wrong without
-# timezone arithmetic, so it is never touched — the conservative direction.
+# SHAPES LEFT ALONE, deliberately — and the parity rule that scopes the list:
+# a value is only comparable when it reads `YYYY-MM-DD`, `YYYY-MM-DDTHH:MM:SS`,
+# or `YYYY-MM-DDTHH:MM:SSZ` (a space may stand in for the `T`; the whole value
+# after the colon is read, comment-aware, so a space-separated instant is
+# repaired whole — never split at the space and half-rewritten), optionally
+# wrapped in one matching pair of quotes — the schema's YAML readers unquote,
+# so a quoted future stamp is flagged read-side and must be repairable here too
+# (its replacement is written in the canonical unquoted form the Timestamp rule
+# prescribes). Everything else is REFUSED byte-identical, never half-rewritten:
+#   - A numeric UTC offset or fractional seconds: NOT provably wrong without
+#     timezone arithmetic — the conservative direction.
+#   - A shape-valid but calendar-impossible instant (a 99th month, April 31, a
+#     non-leap-year February 29): the read-side parser rejects it, so erasing
+#     it to a derived instant would destroy the malformed evidence the board
+#     leaves visible for diagnosis.
+#   - Anything else unparseable.
 # Indented keys are skipped too: `estimate.calculated_at` is a nested field,
 # and every other reader in this skill anchors frontmatter keys at column zero.
+# A repeated top-level key is read by its LAST occurrence — the value every
+# YAML reader effectively sees — and the shadowed earlier lines are invisible
+# to those readers, so they are never examined and never rewritten. CRLF line
+# endings and a leading UTF-8 BOM are tolerated and preserved, exactly as the
+# board's splitFrontmatter tolerates them.
 #
 # GUARD STYLE is deliberately `tools/checks/record-commit-hash.sh`'s, and that is
 # a hard requirement rather than a stylistic nod: free-form frontmatter edits once
@@ -157,12 +170,41 @@ file_modified_epoch() {
   printf '%s' "$modified_epoch"
 }
 
+# The read-side parser (the board's parseTimestamp, backed by Go's time.Parse)
+# rejects a shape-valid but calendar-impossible instant — 9999-99-99, April 31,
+# February 29 outside a leap year — so treating one as comparable here would
+# "repair" (erase) exactly the malformed evidence the board leaves visible for
+# diagnosis. Components are validated against the real calendar before any
+# string comparison; an impossible value is not comparable and stays untouched.
+calendar_components_valid() {
+  local canonical_stamp="$1" month_day_ceiling
+  local year_number=$((10#${canonical_stamp:0:4})) month_number=$((10#${canonical_stamp:5:2}))
+  local day_number=$((10#${canonical_stamp:8:2})) hour_number=$((10#${canonical_stamp:11:2}))
+  local minute_number=$((10#${canonical_stamp:14:2})) second_number=$((10#${canonical_stamp:17:2}))
+  [ "$month_number" -ge 1 ] && [ "$month_number" -le 12 ] || return 1
+  [ "$hour_number" -le 23 ] || return 1
+  [ "$minute_number" -le 59 ] || return 1
+  [ "$second_number" -le 59 ] || return 1
+  case "$month_number" in
+    4 | 6 | 9 | 11) month_day_ceiling=30 ;;
+    2)
+      month_day_ceiling=28
+      if [ $((year_number % 4)) -eq 0 ] && \
+        { [ $((year_number % 100)) -ne 0 ] || [ $((year_number % 400)) -eq 0 ]; }; then
+        month_day_ceiling=29
+      fi
+      ;;
+    *) month_day_ceiling=31 ;;
+  esac
+  [ "$day_number" -ge 1 ] && [ "$day_number" -le "$month_day_ceiling" ]
+}
+
 # A comparison key is a canonical `YYYY-MM-DDTHH:MM:SSZ` string, which orders
 # correctly under a plain string comparison — that is what lets this script
 # compare instants without any date-parsing dependency. Empty output means the
 # value is not comparable and must be left alone.
 comparison_key_for() {
-  local raw_value="$1" separator_normalized
+  local raw_value="$1" separator_normalized candidate_key
   # One matching pair of wrapping quotes is stripped first: YAML readers hand
   # the board the unquoted value, so a quoted stamp is comparable here too.
   case "$raw_value" in
@@ -171,16 +213,21 @@ comparison_key_for() {
   esac
   # A space separator is folded to `T` so the patterns below never have to
   # carry a literal space inside a bracket expression, where its quoting is
-  # shell-dependent.
+  # shell-dependent. With whole-value extraction this is what makes the
+  # board-parseable `YYYY-MM-DD HH:MM:SS` layout comparable — and repairable.
   separator_normalized="${raw_value/ /T}"
+  candidate_key=''
   case "$separator_normalized" in
     [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])
-      printf '%sT00:00:00Z' "$separator_normalized" ;;
+      candidate_key="${separator_normalized}T00:00:00Z" ;;
     [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9])
-      printf '%sZ' "$separator_normalized" ;;
+      candidate_key="${separator_normalized}Z" ;;
     [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z)
-      printf '%s' "$separator_normalized" ;;
+      candidate_key="$separator_normalized" ;;
+    *) return 0 ;;
   esac
+  calendar_components_valid "$candidate_key" || return 0
+  printf '%s' "$candidate_key"
   return 0
 }
 
@@ -191,43 +238,43 @@ later_of() {
   if [[ "$1" > "$2" ]]; then printf '%s' "$1"; else printf '%s' "$2"; fi
 }
 
-# Frontmatter scope is line 1 `---` up to the next `---`, and keys are anchored at
-# column zero. A `status:` in body prose or an indented `  calculated_at:` under
-# `estimate:` is therefore unreachable — which is what keeps this script off the
-# nested fields no other reader in this skill treats as schema.
-frontmatter_value_for() {
-  awk -v field_name="$2" '
-    NR == 1 && $0 == "---" { inside_frontmatter = 1; next }
-    inside_frontmatter && $0 == "---" { exit }
-    inside_frontmatter && index($0, field_name ":") == 1 {
-      field_value = substr($0, length(field_name) + 2)
-      sub(/^[ \t]+/, "", field_value)
-      sub(/[ \t]+$/, "", field_value)
-      print field_value
-      exit
-    }
-  ' "$1"
-}
-
-# Emits one `<line-number>\t<field-name>\t<value-token>` row per top-level
-# frontmatter key whose name ends in `_at`. The value token is the first
-# whitespace-delimited word after the colon, so a trailing YAML comment is never
-# part of it — and never part of what gets rewritten either.
+# Frontmatter scope is line 1 `---` up to the next `---`, and keys are anchored
+# at column zero. A `status:` in body prose or an indented `  calculated_at:`
+# under `estimate:` is therefore unreachable — which is what keeps this script
+# off the nested fields no other reader in this skill treats as schema.
+#
+# Emits one `<line-number>\t<field-name>\t<value>` row per top-level frontmatter
+# key whose name ends in `_at`. The value is everything after the colon up to a
+# trailing YAML comment (a `#` preceded by whitespace — the read-side YAML
+# parsers use the same boundary), trimmed of surrounding whitespace, so a
+# space-separated instant survives whole instead of truncating at the first
+# space — the truncation is what once half-rewrote `2093-01-01 00:00:00` into
+# an unparseable date-plus-phantom-suffix. The comment itself is never part of
+# the value, and never part of what gets rewritten either. Fence matching
+# tolerates what the board's splitFrontmatter tolerates: a UTF-8 BOM before the
+# opening fence and a CRLF ending on any line — Windows agents are the
+# likeliest source of both AND of the wrong local-time stamps this script
+# exists to repair. The BOM and every CR live outside the value span, so a
+# rewrite leaves them byte-for-byte in place.
 extract_timestamp_fields() {
   awk '
-    NR == 1 && $0 == "---" { inside_frontmatter = 1; next }
-    inside_frontmatter && $0 == "---" { exit }
+    BEGIN { utf8_bom = sprintf("%c%c%c", 239, 187, 191) }
+    NR == 1 && index($0, utf8_bom) == 1 { $0 = substr($0, length(utf8_bom) + 1) }
+    { line_body = $0; sub(/\r$/, "", line_body) }
+    NR == 1 && line_body == "---" { inside_frontmatter = 1; next }
+    inside_frontmatter && line_body == "---" { exit }
     inside_frontmatter {
-      colon_index = index($0, ":")
+      colon_index = index(line_body, ":")
       if (colon_index < 2) next
-      field_name = substr($0, 1, colon_index - 1)
+      field_name = substr(line_body, 1, colon_index - 1)
       if (field_name !~ /^[A-Za-z_][A-Za-z0-9_]*_at$/) next
-      field_rest = substr($0, colon_index + 1)
+      field_rest = substr(line_body, colon_index + 1)
+      comment_start = match(field_rest, /[ \t]#/)
+      if (comment_start > 0) field_rest = substr(field_rest, 1, comment_start - 1)
       sub(/^[ \t]+/, "", field_rest)
-      value_token = field_rest
-      sub(/[ \t].*$/, "", value_token)
-      if (value_token == "") next
-      print NR "\t" field_name "\t" value_token
+      sub(/[ \t]+$/, "", field_rest)
+      if (field_rest == "") next
+      print NR "\t" field_name "\t" field_rest
     }
   ' "$1"
 }
@@ -250,7 +297,7 @@ repair_request_file() {
   local changed_line_count expected_changed_lines byte_delta trailing_newline_added
   local file_matches_head path_tracked head_blob_bytes
   local pending_insertions pending_deletions post_insertions post_deletions
-  local ordered_field_names ordered_name planned_count awk_status
+  local ordered_field_names ordered_name planned_count awk_status field_slot
   local -a field_line_numbers=() field_names=() field_tokens=()
   local -a field_keys=() field_new_values=() field_sources=()
 
@@ -263,16 +310,28 @@ repair_request_file() {
   field_rows="$(extract_timestamp_fields "$request_file")"
   [ -n "$field_rows" ] || return 0
 
+  # A repeated top-level key keeps only its LAST occurrence, because that is
+  # what every YAML reader on the read side effectively sees (the board's
+  # duplicate-key recovery keeps the last value). Later rows overwrite the
+  # earlier slot, so a shadowed first occurrence is never examined and never
+  # rewritten — matching the readers is what makes a duplicated anchor's real
+  # ordering defect detectable instead of reported clean.
   field_count=0
   while IFS=$'\t' read -r line_number field_name value_token; do
     [ -n "${line_number:-}" ] || continue
-    field_line_numbers[field_count]="$line_number"
-    field_names[field_count]="$field_name"
-    field_tokens[field_count]="$value_token"
-    field_keys[field_count]="$(comparison_key_for "$value_token")"
-    field_new_values[field_count]=''
-    field_sources[field_count]=''
-    field_count=$((field_count + 1))
+    field_slot="$field_count"
+    index=0
+    while [ "$index" -lt "$field_count" ]; do
+      [ "${field_names[$index]}" = "$field_name" ] && field_slot="$index"
+      index=$((index + 1))
+    done
+    [ "$field_slot" -eq "$field_count" ] && field_count=$((field_count + 1))
+    field_line_numbers[field_slot]="$line_number"
+    field_names[field_slot]="$field_name"
+    field_tokens[field_slot]="$value_token"
+    field_keys[field_slot]="$(comparison_key_for "$value_token")"
+    field_new_values[field_slot]=''
+    field_sources[field_slot]=''
   done <<< "$field_rows"
   [ "$field_count" -gt 0 ] || return 0
 
@@ -460,7 +519,7 @@ repair_request_file() {
   while [ "$index" -lt "$field_count" ]; do
     if [ -n "${field_new_values[$index]}" ]; then
       byte_delta=$((byte_delta + ${#field_new_values[$index]} - ${#field_tokens[$index]}))
-      plan_spec="$plan_spec${field_line_numbers[$index]}=${field_new_values[$index]};"
+      plan_spec="$plan_spec${field_line_numbers[$index]}=${#field_tokens[$index]}:${field_new_values[$index]};"
     fi
     index=$((index + 1))
   done
@@ -487,8 +546,11 @@ repair_request_file() {
   fi
 
   # Only the planned lines are rebuilt: prefix through the colon, the original
-  # spacing, the new value, then everything after the old token (a trailing YAML
-  # comment survives verbatim). Every other line streams through untouched.
+  # spacing, the new value, then everything after the old value's byte span (a
+  # trailing YAML comment — and a CRLF ending's carriage return — survives
+  # verbatim). The span length rides in the plan because the old value may
+  # contain spaces; re-guessing a token boundary here is what once split a
+  # space-separated instant. Every other line streams through untouched.
   awk -v plan_spec="$plan_spec" '
     BEGIN {
       plan_entry_count = split(plan_spec, plan_entries, ";")
@@ -496,7 +558,10 @@ repair_request_file() {
         if (plan_entries[plan_index] == "") continue
         separator_index = index(plan_entries[plan_index], "=")
         planned_line = substr(plan_entries[plan_index], 1, separator_index - 1) + 0
-        planned_value[planned_line] = substr(plan_entries[plan_index], separator_index + 1)
+        plan_entry_rest = substr(plan_entries[plan_index], separator_index + 1)
+        length_boundary = index(plan_entry_rest, ":")
+        planned_old_length[planned_line] = substr(plan_entry_rest, 1, length_boundary - 1) + 0
+        planned_value[planned_line] = substr(plan_entry_rest, length_boundary + 1)
       }
     }
     NR in planned_value {
@@ -506,8 +571,7 @@ repair_request_file() {
       match(line_rest, /^[ \t]*/)
       value_spacing = substr(line_rest, 1, RLENGTH)
       token_and_suffix = substr(line_rest, RLENGTH + 1)
-      match(token_and_suffix, /^[^ \t]+/)
-      line_suffix = substr(token_and_suffix, RLENGTH + 1)
+      line_suffix = substr(token_and_suffix, planned_old_length[NR] + 1)
       print line_prefix value_spacing planned_value[NR] line_suffix
       next
     }
