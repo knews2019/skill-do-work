@@ -3,7 +3,7 @@ id: REQ-231
 title: Keep Panel A's direct labels clear of the mark band
 status: completed
 completed_at: 2026-08-18T10:52:30Z
-commit:
+commit: 720f23c
 claimed_at: 2026-08-18T10:15:00Z
 route: B
 estimate:
