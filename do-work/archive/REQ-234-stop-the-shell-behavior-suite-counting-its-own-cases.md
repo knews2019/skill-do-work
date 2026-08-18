@@ -3,7 +3,7 @@ id: REQ-234
 title: Stop the shell behavior suite counting its own cases
 status: completed
 completed_at: 2026-08-18T11:22:00Z
-commit:
+commit: 48ed251
 claimed_at: 2026-08-18T10:56:00Z
 estimate:
   p50_active_minutes: 5
