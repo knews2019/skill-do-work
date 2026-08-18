@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.3 — Durations Label Width Bounded by the Font, Not by a Sample (2026-08-18)
+
+The Durations chart's label-width constant claimed to be a generous over-estimate and was actually 7% short of what the browser draws. It is now proven to sit above every label the chart can compose, and its test pins it from both sides so it cannot drift back.
+
+- `durationsLabelCharacterWidthUnits` raised from 6.2 to 7.15, calibrated as the supremum over the whole label space rather than the worst case of a sample — only digits can repeat without limit, so per-character width converges to a pure digit run's 7.14 and cannot pass it
+- Row pitch raised from 12 to 13, which clears both the box the code declares and the 12.83-unit line box the browser actually draws; cross-row box intersections went from 19 to 0 on a saturated lane
+- The label-clearance budget above Panel B's title is now an assertion instead of a sentence in a document — it fails if a future row-pitch bump eats it
+- Your own board is unchanged at three labels; dense fixtures draw a few fewer, and the remainder sentence counts every one
+
 ## 0.212.2 — Timeline Rows Get the Board's Focus Ring (2026-08-18)
 
 The chart itself got a focus ring earlier today; the rows inside it still had theirs switched off, leaving a keyboard user with only a faint background tint to say where they were. They now draw the same ring as everything else on the board.

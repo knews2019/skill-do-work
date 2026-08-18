@@ -1,8 +1,8 @@
 ---
 id: REQ-241
 title: Reconcile the Durations label metrics with the face actually rendered
-status: claimed
-status_changed_at: 2026-08-18T12:43:06Z
+status: completed
+status_changed_at: 2026-08-18T13:51:09Z
 created_at: 2026-08-18T12:09:46Z
 user_request: UR-051
 addendum_to: REQ-237
@@ -33,6 +33,8 @@ estimate:
     - cross-route regression gates
 claimed_at: 2026-08-18T12:43:06Z
 route: B
+completed_at: 2026-08-18T13:51:09Z
+commit:
 ---
 
 # Reconcile the Durations Label Metrics With the Face Actually Rendered
