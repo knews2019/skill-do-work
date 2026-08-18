@@ -1,116 +1,13 @@
----
-id: REQ-244
-title: Cite the Timestamp rule at every timestamp write site
-status: claimed
-created_at: 2026-08-18T12:28:33Z
-user_request: UR-055
-domain: general
-prime_files: [_dev/primes/prime-action-files.md]
-tdd: true
-suggested_spec:
-depends_on: []
-maintenance: false
-related: [REQ-245]
-batch: timestamp-stamping-integrity
-write_set:
-- _dev/tests/contract-regressions.sh
-- skills/do-work/actions/work-reference.md
-- skills/do-work/actions/work.md
-- skills/do-work/actions/clarify.md
-- skills/do-work/actions/review-work.md
-- skills/do-work/actions/forensics.md
-- skills/do-work/actions/roadmap.md
-- skills/do-work-toolbox/actions/code-review.md
-- skills/do-work-toolbox/actions/present-work.md
-- skills/do-work-toolbox/actions/deep-explore.md
-- skills/do-work-toolbox/actions/deep-explore-reference.md
-- skills/do-work-knowledge/actions/interview.md
-- skills/do-work-knowledge/actions/interview-reference.md
-estimate:
-  p50_active_minutes: 55
-  confidence: low
-  calculated_at: 2026-08-18T13:05:12Z
-  basis:
-    - Route C
-    - 12-file write set
-    - 1 new files
-    - 4 subsystems involved
-    - 4 acceptance criteria
-    - cross-route regression gates
-    - full-suite verification
-claimed_at: 2026-08-18T13:05:12Z
-route: C
----
+# REQ-244 Hand-back — Cite the Timestamp Rule at Every Stamp Write Site
 
-# Cite the Timestamp Rule at Every Timestamp Write Site
+Written 2026-08-18T13:16:47Z (clock read at stamp time).
 
-## What
+## Branch
 
-Sweep all four skills for every timestamp write site — templates and action steps carrying `[timestamp]`, `<timestamp>`, `<now>`, `[UTC timestamp]`, or any `*_at:`/date-shaped placeholder — normalize each to the spellings the Timestamp rule recognizes (`<timestamp>` / `<now>`), and add an inline citation of the rule (`Timestamp rule, actions/work-reference.md`) at each site that lacks one.
-
-## AI Execution State (P-A-U Loop)
-
-<!-- Filled from the builder's hand-back; a builder may not write do-work/ in worktree dispatch
-     mode. Source of record: do-work/runs/work-2026-08-18-124358/REQ-244-handback.md -->
-
-
-- [x] **[PLAN]:** Read `_dev/primes/prime-action-files.md`, `_dev/primes/prime-shell-commands.md`, `CLAUDE.md`, the three always-on crew members, and the Timestamp rule itself (`skills/do-work/actions/work-reference.md:99-113`). Approach: (1) sweep all four skills for placeholder-shaped stamp sites and classify each as instant / date-only / directory name; (2) normalize every bracket-form placeholder to the two spellings the rule recognizes (`<timestamp>`, `<now>`) — never copying a clock command, since work-reference.md ~line 101 reserves that to itself; (3) add an inline citation at each uncited site, using the plain `actions/work-reference.md` form inside core and the `../do-work/actions/work-reference.md` sibling form from toolbox/knowledge per the `actions/memory.md` precedent the REQ names; (4) lock it in with a condition-keyed check placed in the existing REQ-078 timestamp block rather than a new file. No code written during this step.
-- [x] **[APPLY]:** Applied exactly the planned scope through a fail-loud patch script (each replacement asserted to match exactly once, so a silent miss or a double-apply aborts). 26 replacements across 12 action files, plus the check in `contract-regressions.sh`. No file outside the declared Scope was written.
-- [x] **[UNIFY]:** `git diff --stat` reviewed; 13 files, +123/−28. Verified per file:
-  - `_dev/tests/contract-regressions.sh` — the only added block is the checker plus its rationale comment; ShellCheck clean (it ran over 50 tracked files inside `maintainer-verify`); the block uses the file's existing `if ! python3 - "$repo_root" <<'PY' … PY then … fi` idiom and increments `fail_count` like its neighbours.
-  - `work-reference.md` — read lines 336, 627, 893 in context: run-directory placeholder now matches the `work-<YYYY-MM-DD-HHMMSS>` form the file's own dispatch table already uses at line 393; both fenced YAML templates carry a same-line comment citation.
-  - `work.md`, `clarify.md` — citation inserted mid-parenthetical; the surrounding claims (`mandatory on every terminal flip`, `blocked_at is removed on this flip`) are preserved verbatim, and I checked `contract-regressions.sh` for assertions pinning those two lines (the `status_changed_at` assertion at :1824 targets Crash Recovery in work-reference.md, not these).
-  - `review-work.md`, `forensics.md`, `roadmap.md`, `present-work.md` — rendered each fence and its introducing line; the templates still read as templates, and no citation text landed inside a rendered report body except the two YAML comments, which are valid YAML if copied.
-  - `code-review.md`, `deep-explore.md`, `deep-explore-reference.md`, `interview.md`, `interview-reference.md` — all use the sibling citation form; `deep-explore-reference.md`'s `session_dir` now matches the `date +%Y%m%d-%H%M%S` its own action prescribes at `deep-explore.md:111`.
-  - No debug artifacts: `git status --untracked-files=all` shows only the 13 tracked modifications; all scratch lives in `/tmp/req244/`.
-
-## Why (if provided)
-
-An agent filling a template from context never re-reads the rule when nothing at the site points to it; a fabricated `created_at` on two review-generated REQs was reported as the resulting incident. The rule's own design already mandates "Every other site cites the rule and stops" — uncited bare placeholders are drift from that architecture.
-
-## Detailed Requirements
-
-Sites confirmed uncited at capture (starting set — the sweep is the requirement, this list is not the extent):
-
-- `skills/do-work/actions/review-work.md:365` — "Review Fix" follow-up template `created_at: [timestamp]` (the site that produced the reported incident)
-- `skills/do-work/actions/review-work.md:425` — report footer `**Overall: [X]%** | [timestamp]`
-- `skills/do-work/actions/work-reference.md:627` — Builder-Decided Follow-up Template `created_at: [timestamp]`
-- `skills/do-work/actions/work-reference.md:893` — Session Checkpoint Template `session_ended: [timestamp]`
-- `skills/do-work-toolbox/actions/code-review.md:301` — follow-up template `created_at: [timestamp]`
-- `skills/do-work/actions/forensics.md:216,257` and `skills/do-work/actions/roadmap.md:135,244` — `**Scan date:** [timestamp]`
-- `skills/do-work-toolbox/actions/present-work.md:86` — `**Generated:** [UTC timestamp]`
-- `skills/do-work-toolbox/actions/deep-explore.md:250` — `completed_at: <timestamp>` (recognized spelling, no citation in a skill that never loads the rule)
-- `skills/do-work-knowledge/actions/interview.md` / `interview-reference.md` — the `<now>` cluster (`started_at`, `last_activity_at`, `approved_at`, `last_validated_at`, `review_completed_at`, `last_exported_at`); recognized spelling, cross-skill, uncited
-
-Grep-verified at capture: `grep -c "Timestamp rule"` returns 0 for review-work.md, code-review.md, roadmap.md, present-work.md, and interview.md.
-
-## Constraints
-
-- **Citations only, never command copies.** `skills/do-work/actions/work-reference.md` ~line 101 states the Timestamp rule's paragraph "is the only place in `actions/` that spells a command for obtaining one" and documents why per-site copies failed (Windows agents). The sweep must not recreate that.
-- Cross-skill citations from do-work-toolbox / do-work-knowledge follow the existing precedent in `skills/do-work-knowledge/actions/memory.md`.
-- Distinguish instants from date-only stamps: the rule's own "Date-only stamps" paragraph governs `YYYY-MM-DD` sites (log filenames, headings) — do not convert those to instant placeholders. Path slugs like `work-<timestamp>` in run-directory names are names, not stamps, and are out of scope.
-- Finding provenance (validate-feedback triage, this session): verdict Accept; Surface-cost N/A — aligning sites to an existing documented rule, no new defensive surface.
-
-## Red-Green Proof
-
-**RED prompt/case:** A new lock-in check in `_dev/tests/` (wired into `maintainer-verify.sh`) greps shipped `skills/*/actions/` for bare timestamp placeholders (`[timestamp]`, `[UTC timestamp]`) and for stamp write sites in files that never cite the Timestamp rule — it fails on the current tree, naming the sites listed above.
-**Why RED now:** Those sites exist today with no citation; an agent filling them has nothing pointing at the rule or a clock command.
-**GREEN when:** Every stamp write site uses a recognized spelling with an inline Timestamp-rule citation, the lock-in check passes, and `bash _dev/tests/maintainer-verify.sh` exits 0.
-**Validation:** Inferred during capture
-
-## Builder Guidance
-
-Certainty: Firm on the sweep and citations; the exact lock-in check pattern (how "uncited site" is detected mechanically) is the builder's call — keep it condition-keyed, not a hand-maintained site list, per CLAUDE.md's Closed Enumerations rule.
-
-## Full Context
-
-See `do-work/user-requests/UR-055/input.md` for complete verbatim input.
-
----
-*Source: validate-feedback Finding 1 — "AUDIT: sweep all four skills for every timestamp write site … and bring each under the Timestamp rule with an inline citation, normalizing placeholder spelling to the forms the rule recognizes. The list above is a starting set, not the full extent."*
+`worktree-agent-REQ-244-cite-the-timestamp-rule-at-every-stamp-write-site`
+Implementation commit: `c417c58`
 
 ## Scope
-
 
 Declared after the sweep, before any write. This is the list the diff should be judged against.
 
@@ -142,51 +39,50 @@ Declared after the sweep, before any write. This is the list the diff should be 
 
 Diff matches Scope exactly: 13 files, all declared.
 
-*Declared by the builder after the sweep and before any write, as this REQ's `write_set` absence requires. The `write_set` frontmatter above is mirrored from this section — one direction only. Diff matched Scope exactly: 13 files, all declared.*
+## P-A-U
 
-## Pre-Flight
+- [x] **[PLAN]:** Read `_dev/primes/prime-action-files.md`, `_dev/primes/prime-shell-commands.md`, `CLAUDE.md`, the three always-on crew members, and the Timestamp rule itself (`skills/do-work/actions/work-reference.md:99-113`). Approach: (1) sweep all four skills for placeholder-shaped stamp sites and classify each as instant / date-only / directory name; (2) normalize every bracket-form placeholder to the two spellings the rule recognizes (`<timestamp>`, `<now>`) — never copying a clock command, since work-reference.md ~line 101 reserves that to itself; (3) add an inline citation at each uncited site, using the plain `actions/work-reference.md` form inside core and the `../do-work/actions/work-reference.md` sibling form from toolbox/knowledge per the `actions/memory.md` precedent the REQ names; (4) lock it in with a condition-keyed check placed in the existing REQ-078 timestamp block rather than a new file. No code written during this step.
+- [x] **[APPLY]:** Applied exactly the planned scope through a fail-loud patch script (each replacement asserted to match exactly once, so a silent miss or a double-apply aborts). 26 replacements across 12 action files, plus the check in `contract-regressions.sh`. No file outside the declared Scope was written.
+- [x] **[UNIFY]:** `git diff --stat` reviewed; 13 files, +123/−28. Verified per file:
+  - `_dev/tests/contract-regressions.sh` — the only added block is the checker plus its rationale comment; ShellCheck clean (it ran over 50 tracked files inside `maintainer-verify`); the block uses the file's existing `if ! python3 - "$repo_root" <<'PY' … PY then … fi` idiom and increments `fail_count` like its neighbours.
+  - `work-reference.md` — read lines 336, 627, 893 in context: run-directory placeholder now matches the `work-<YYYY-MM-DD-HHMMSS>` form the file's own dispatch table already uses at line 393; both fenced YAML templates carry a same-line comment citation.
+  - `work.md`, `clarify.md` — citation inserted mid-parenthetical; the surrounding claims (`mandatory on every terminal flip`, `blocked_at is removed on this flip`) are preserved verbatim, and I checked `contract-regressions.sh` for assertions pinning those two lines (the `status_changed_at` assertion at :1824 targets Crash Recovery in work-reference.md, not these).
+  - `review-work.md`, `forensics.md`, `roadmap.md`, `present-work.md` — rendered each fence and its introducing line; the templates still read as templates, and no citation text landed inside a rendered report body except the two YAML comments, which are valid YAML if copied.
+  - `code-review.md`, `deep-explore.md`, `deep-explore-reference.md`, `interview.md`, `interview-reference.md` — all use the sibling citation form; `deep-explore-reference.md`'s `session_dir` now matches the `date +%Y%m%d-%H%M%S` its own action prescribes at `deep-explore.md:111`.
+  - No debug artifacts: `git status --untracked-files=all` shows only the 13 tracked modifications; all scratch lives in `/tmp/req244/`.
 
-**Git:** ✓ clean at claim (`2ad71eb`); builder worked in an isolated worktree on its own branch
-**Tests baseline:** ✓ `maintainer-verify.sh` exit 0 before dispatch, with REQ-243's link+anchor checker already live
-**Dependencies:** ✓ Go 1.26.1, ShellCheck 0.11.0, python3
+## Files Changed
 
-*Checked by work action*
+```
+ _dev/tests/contract-regressions.sh                 | 91 ++++++++++++++++++++++
+ .../actions/interview-reference.md                 | 12 +--
+ skills/do-work-knowledge/actions/interview.md      |  6 +-
+ skills/do-work-toolbox/actions/code-review.md      |  2 +-
+ .../actions/deep-explore-reference.md              |  2 +-
+ skills/do-work-toolbox/actions/deep-explore.md     |  2 +-
+ skills/do-work-toolbox/actions/present-work.md     |  4 +-
+ skills/do-work/actions/clarify.md                  |  2 +-
+ skills/do-work/actions/forensics.md                |  8 +-
+ skills/do-work/actions/review-work.md              |  6 +-
+ skills/do-work/actions/roadmap.md                  |  8 +-
+ skills/do-work/actions/work-reference.md           |  6 +-
+ skills/do-work/actions/work.md                     |  2 +-
+ 13 files changed, 123 insertions(+), 28 deletions(-)
+```
 
-## Implementation Summary
+- **`_dev/tests/contract-regressions.sh`** — the lock-in check, inserted directly after the REQ-078 "only work-reference.md may spell a timestamp command" check, because it enforces the other half of that same arrangement. Two conditions, both keyed on shape: a bracket-form placeholder naming a timestamp fails anywhere in shipped `skills/*/actions/*.md`; every `<timestamp>`/`<now>` must carry `Timestamp rule` on its own line or on the nearest non-blank line above its fence's opening delimiter. Plus a zero-site guard.
+- **`skills/do-work/actions/work-reference.md`** — `created_at` (Builder-Decided Follow-up Template) and `session_ended` (Session Checkpoint Template) normalized to `<timestamp>` with a same-line citation comment; `work-<timestamp>/` in Sole integrator respelled `work-<YYYY-MM-DD-HHMMSS>/`.
+- **`skills/do-work/actions/work.md`** — the Step 8 failure path's `completed_at: <timestamp>` now cites the rule, matching its three already-cited siblings in the same file.
+- **`skills/do-work/actions/clarify.md`** — the unblock path's `status_changed_at: <timestamp>` now cites the rule, matching the other four cited sites in the same file.
+- **`skills/do-work/actions/review-work.md`** — the "Review Fix" follow-up template's `created_at` (the site the reported incident came from) and the report footer stamp.
+- **`skills/do-work/actions/forensics.md`, `roadmap.md`** — both `**Scan date:**` report templates in each file; the placeholder was already spelled "timestamp", so normalizing to `<timestamp>` preserves its existing instant meaning rather than changing it.
+- **`skills/do-work-toolbox/actions/present-work.md`** — `**Generated:** [UTC timestamp]` → `<timestamp>`, cited on the line introducing the template.
+- **`skills/do-work-toolbox/actions/code-review.md`** — follow-up template `created_at`, sibling citation form.
+- **`skills/do-work-toolbox/actions/deep-explore.md`** — the state.json `completed_at` write, in a skill that never loads the rule.
+- **`skills/do-work-toolbox/actions/deep-explore-reference.md`** — `session_dir` respelled `<YYYYMMDD-HHMMSS>`, matching `deep-explore.md:111`.
+- **`skills/do-work-knowledge/actions/interview.md`, `interview-reference.md`** — the nine-site `<now>` cluster (`started_at`, `last_activity_at` ×2, `last_validated_at` ×3, `approved_at` ×2, `review_completed_at`, `last_exported_at`), each with a sibling citation.
 
-**Files changed:**
-- `_dev/tests/contract-regressions.sh` (modified)
-- `skills/do-work/actions/work-reference.md` (modified)
-- `skills/do-work/actions/work.md` (modified)
-- `skills/do-work/actions/clarify.md` (modified)
-- `skills/do-work/actions/review-work.md` (modified)
-- `skills/do-work/actions/forensics.md` (modified)
-- `skills/do-work/actions/roadmap.md` (modified)
-- `skills/do-work-toolbox/actions/code-review.md` (modified)
-- `skills/do-work-toolbox/actions/present-work.md` (modified)
-- `skills/do-work-toolbox/actions/deep-explore.md` (modified)
-- `skills/do-work-toolbox/actions/deep-explore-reference.md` (modified)
-- `skills/do-work-knowledge/actions/interview.md` (modified)
-- `skills/do-work-knowledge/actions/interview-reference.md` (modified)
-
-**What was done:** Swept all four skills for timestamp write sites, normalized every bracket-form placeholder to the two spellings the Timestamp rule recognizes, and added an inline citation at each of the 24 uncited sites — five of which the REQ's starting list did not name. No site gained a copy of the clock command. The lock-in check went into the existing REQ-078 timestamp block in `contract-regressions.sh`, keyed on position rather than on a site list.
-
-## Testing
-
-**Tests run:** `bash _dev/tests/maintainer-verify.sh`
-**Result:** ✓ exit 0 (unpiped; `echo $?` printed `0` on its own line). The check's own GREEN: `OK: 43 stamp sites, all cited`.
-
-**Red-green validation:**
-- shipped checker vs the pre-change tree: ✗ naming **24 uncited sites** with file, line and reason
-- mutation, one citation removed from the fixed tree (placeholder left intact): ✗ at exactly the mutated site — proving the citation clause fails for its own reason and not merely because a bracket form is present
-- anti-vacuity: a tree with `skills/*/actions/` present but no recognized placeholder: ✗ *"no recognized stamp placeholder was found in any shipped action file — the spellings this check keys on were renamed and it has gone blind"*
-
-**Method note:** the pre-change tree was materialized with `git archive HEAD skills | tar -x` rather than by stashing. A `git stash push` on a clean file stashes nothing, and the resulting green reads as proof.
-
-*Verified by work action*
-
-### Red-Green Evidence (verbatim from hand-back)
-
+## Red-Green Evidence
 
 The check went in first, then failed for the reason it exists. All three REDs run the **checker extracted from the committed `contract-regressions.sh`**, not a hand-copy, so what fails is the shipped code.
 
@@ -259,8 +155,51 @@ OK: 43 stamp sites, all cited
 exit=0
 ```
 
-## Decisions
+## Verification
 
+```
+maintainer-verify: aggregate contract suite
+Maintainer verification self-test passed.
+Suite manifest contract probes passed.
+shipped package reference contract: PASS
+Shell-block lint self-test passed.
+Shell-block lint passed: 74 fenced blocks and 31 shipped shell files; ShellCheck enabled.
+SessionStart hook behavior probes passed.
+Prescribed shell primitive canonicalization checks passed.
+Defensive-surface exact deletion regressions passed.
+record-commit-hash and blanked-req-scan guard probes passed.
+update-script behavior probes passed.
+Prescribed shell script behavior probes passed (42 named script cases).
+staged skills contract: PASS
+suite installer behavior probes passed.
+p50 estimator suite: all probes passed.
+Contract regression checks passed.
+maintainer-verify: queue-kanban go vet
+maintainer-verify: queue-kanban uncached ordinary tests
+ok  	github.com/knews2019/skill-do-work/queue-kanban	15.352s
+maintainer-verify: queue-kanban strict JavaScript behavior lane
+=== RUN   TestMaintainerStrictJavaScriptBehaviorLane
+--- PASS: TestMaintainerStrictJavaScriptBehaviorLane (4.68s)
+PASS
+ok  	github.com/knews2019/skill-do-work/queue-kanban	4.866s
+maintainer-verify: audit-metrics go vet
+maintainer-verify: audit-metrics uncached tests
+ok  	github.com/knews2019/skill-do-work/audit-metrics	1.658s
+Maintainer verification passed.
+0
+```
+
+Run unpiped from the worktree root; `echo $?` printed `0`.
+
+REQ-243's link+anchor checker (live in this worktree, reported above as `shipped package reference contract: PASS`) did not fire on any citation — expected, since it resolves Markdown `[text](target)` links and link definitions, and every citation I added is a backticked path, matching the convention `actions/memory.md` established. Worth knowing: **backticked cross-package pointers are not covered by that checker**, so their correctness rests on convention, not enforcement. See Lessons.
+
+## Integration Seams
+
+None. No shared registry, no cross-REQ text, nothing for the orchestrator to apply by hand. Merge the branch as-is.
+
+One note for the integrator, not a seam: the diff touches `skills/do-work-toolbox/` and `skills/do-work-knowledge/` action markdown only — no overlap with REQ-242's or REQ-245's board paths.
+
+## Decisions
 
 - **D-01 — The check lives in the existing REQ-078 timestamp block, not a new `_dev/tests/` file.** That block already enforces "only the rule's home spells a clock command"; this is the same arrangement's other half ("every other site cites the rule"), and separating them would let one drift from the other. No new suite file was added.
 - **D-02 — "Uncited site" is defined by position, not by a site list.** A recognized placeholder must carry `Timestamp rule` on its own line, or — when it sits inside a fenced block whose lines are copied verbatim into a generated artifact — on the nearest non-blank line above the fence's opening delimiter. Those are the only two positions a reader of the site actually sees; a citation elsewhere in the file is not *at* the site, which is the failure mode this REQ exists to close. The fence clause is a position, not an exemption: fenced YAML takes the same-line form as a trailing `#` comment (the `capture-reference.md:16` precedent), so it needs no carve-out at all.
@@ -271,23 +210,15 @@ exit=0
 
 ## Lessons Learned
 
-
 - **A rule that centralizes a command creates an obligation at every site that does not have it.** REQ-078 moved the clock command to one home for a real reason (Windows agents kept getting an unreachable fix). That move is only safe if every other site points home — and nothing enforced the second half for eight months, until a stamp was fabricated. When a future REQ centralizes something, the citation obligation at the periphery is part of the same change, not a follow-up.
 - **The `<timestamp>` token was doing two jobs.** It marked stamps *and* appeared inside directory names, which is precisely why a mechanical check looked like it needed an exception. It did not need one — it needed the two jobs separated. Reach for "which of these uses is actually the odd one out" before writing a carve-out into a detector.
 - **Backticked cross-package pointers are unenforced.** REQ-243's checker resolves Markdown link syntax; the repo's dominant convention for citing another action file is a backticked path, which that checker never sees. Two spellings of the sibling path (`../` and `../../`) coexist today because nothing can tell them apart. If cross-package pointer correctness matters, either the convention moves to Markdown links or a separate resolver has to read backticked paths — a candidate REQ, not something I did here.
 - **`git archive HEAD <path> | tar -x -C <dir>` is a clean way to get a pre-change tree for a RED.** It never touches the working tree, so there is no stash to forget to pop and no risk of the vacuous "stashed a clean file" green.
 
-## Builder Pushback
-
+## Pushback
 
 Two things I did not do, flagged rather than silently absorbed:
 
 1. **`skills/do-work-toolbox/actions/ui-review.md:216` — `**Date**: [today]` — is a real uncited clock-write site that this REQ's framing leaves uncovered.** It is date-shaped, so the REQ's "any `*_at:`/date-shaped placeholder" arguably reaches it, but the brief's hard constraint is not to convert date-only stamps to instants, and nothing states whether that header wants a UTC date or a deliberate local one. Converting it either way would be me deciding a question the REQ did not answer, so I left it and it is listed in Scope as untouched. If you want it governed, the cheap version is one line in the rule's Date-only paragraph plus a citation there — but somebody has to decide UTC vs. local for a human-facing report header first.
 
 2. **The `../` vs `../../` split in cross-package backtick citations is a genuine inconsistency and I propagated the more common half.** `../do-work/actions/work-reference.md` does not resolve from `skills/do-work-toolbox/actions/`; `../../do-work/actions/work-reference.md` does, in both the source and installed topologies. The REQ told me to follow `actions/memory.md`, which uses `../`, and `prime-action-files.md` prescribes that form, so that is what I used — nine new citations' worth. If the intended reading is literal path resolution rather than "sibling package", then the prime and roughly a dozen existing citations are wrong together and want one sweep, not a per-REQ correction. I would rather that be decided deliberately than have me quietly pick the other form mid-REQ.
-
-**Orchestrator resolution.** Both points accepted, neither folded in.
-
-On `ui-review.md:216` (`**Date**: [today]`): the builder is right that converting it either way would decide a question the REQ did not answer — UTC or deliberately-local for a human-facing report header. Left untouched and routed as a follow-up.
-
-On the `../` vs `../../` cross-package citation split: **verified independently rather than taken on trust.** `../do-work/actions/work-reference.md` does not resolve from `skills/do-work-toolbox/actions/` in either topology; `../../` does, and `present-work.md:37` already uses it. `prime-action-files.md:91` and `actions/memory.md` prescribe the `../` form, which only coheres read as *skill-root*-relative rather than directory-relative. The builder followed the documented convention and flagged the conflict instead of silently picking the other form mid-REQ — the correct call. Which reading is intended is a maintainer decision affecting the prime plus roughly a dozen existing citations, and it is routed as its own REQ rather than settled here. Note REQ-243's new checker cannot arbitrate it: it resolves Markdown link syntax, and every one of these is a backticked path.

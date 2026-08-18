@@ -1,97 +1,10 @@
----
-id: REQ-242
-title: Stop Panel B's slowest-day annotation colliding with its own title
-status: claimed
-status_changed_at: 2026-08-18T13:05:12Z
-created_at: 2026-08-18T12:09:46Z
-user_request: UR-051
-addendum_to: REQ-237
-domain: general
-review_generated: true
-effort_estimate: trivial
-prime_files: [_dev/primes/prime-kanban-board.md]
-tdd: true
-suggested_spec: bug-fix
-depends_on: []
-maintenance: false
-write_set:
-- skills/do-work-board/tools/queue-kanban/web/board-durations.js
-- skills/do-work-board/tools/queue-kanban/generate_test.go
-estimate:
-  p50_active_minutes: 25
-  confidence: medium
-  calculated_at: 2026-08-18T13:05:12Z
-  basis:
-    - Route B
-    - 2-file write set
-    - 4 acceptance criteria
-    - browser evidence
-claimed_at: 2026-08-18T13:05:12Z
-route: B
----
+# REQ-242 — Stop Panel B's Slowest-Day Annotation Colliding With Its Own Title
 
-# Stop Panel B's Slowest-Day Annotation Colliding With Its Own Title
+## Branch
 
-## What
+`worktree-agent-REQ-242-stop-panel-b-annotation-colliding-with-its-title` — one commit, `b139805`.
 
-In the Durations view, Panel B's slowest-day annotation is drawn at `y = 355` while Panel B's own title sits at `y = 350` (`DURATIONS_MEDIAN_TITLE_Y`). The two overlap: on a synthetic fixture the annotation `209 min` renders directly through the words "paused and broken spans excluded".
-
-## Context
-
-Found while reviewing REQ-237 by rendering a dense fixture and looking at it. **It is not a REQ-237 regression** — the same annotation sits at the identical `x = 357.2, y = 355.0` on a board built from the pre-REQ-237 binary, checked side by side. It is pre-existing and was simply never looked at on a fixture whose slowest day lands under the title text.
-
-It is invisible on this repository's own board because the annotation's x-position depends on which day is slowest, and here that day falls clear of the title's width. That is luck, not design — which is why it wants pinning rather than nudging.
-
-The annotation reuses the `durations-mark-label` class, so it is not part of either label band's row packing and is not covered by REQ-231's mark-band geometry test or by REQ-237's row-fill test. Nothing in the suite looks at it at all.
-
-## Requirements
-
-- Panel B's slowest-day annotation does not overlap Panel B's title at any x-position the annotation can take, including when the slowest day is the leftmost one.
-- The annotation stays associated with the bar it describes — moving it somewhere it no longer reads as belonging to that day is not a fix.
-- No change to Panel A, Panel C, or the label bands; no change to `describeAtPointer`'s panel boundary.
-- A test pins the separation, so the next person to move `DURATIONS_MEDIAN_TITLE_Y` finds out.
-
-## Red-Green Proof
-
-**RED prompt/case:** an assertion that the slowest-day annotation's text box and Panel B's title text box do not intersect, read from the renderer's own constants the way `TestDurationsLabelRowsClearTheMarkBands` reads them — evaluated at the annotation's worst-case x, not at whichever x this repository's data happens to produce.
-**Why RED now:** the title's baseline is 350 and the annotation's is 355, so their boxes intersect wherever their x-ranges do; reproduced on a fixture as `209 min` drawn through the title.
-**GREEN when:** the assertion passes and a rendered fixture whose slowest day sits under the title shows the two clear of each other.
-**Validation:** Review finding on REQ-237; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
-
-## Open Questions
-
-- [x] While reviewing REQ-237 I rendered the Durations chart on a test board and found the little "209 min" note that marks the slowest day printed straight through the heading above it — the note sits five units below a heading that is taller than five units. It has been like this since before any of today's work; it does not show on your own board only because the slowest day happens to fall to the right of where the heading's text ends, which is chance rather than design. The fix is small — move the note, or move the heading, and add an assertion so the next person who shifts either one finds out. I am asking rather than doing it because "move which one, and where" is a look-and-feel choice about a chart you read regularly, and there is more than one reasonable answer. Should I process this as a new task?
-  Recommended: Yes, add to queue (will flip to 'pending').
-  Also: No, discard it — it only shows on contrived data and the note is legible enough where it is.
-  → Confirmed: Yes, add to queue (builder picks placement, pinned by a test). [2026-08-18, via do-work clarify]
-
-## Scope
-
-**Files I will touch:**
-- `skills/do-work-board/tools/queue-kanban/web/board-durations.js` (modify) — move the slowest-day annotation to a fixed baseline clear of both neighbours
-- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modify) — the geometric assertion, driven at the extremes of x
-
-**Files I will NOT touch:** `durations.go`, `durations_test.go` (REQ-241's files, already merged), `DURATIONS_MEDIAN_TITLE_Y`, anything under `do-work/`, the version files, `CHANGELOG.md`.
-
-**Acceptance criteria (restated from REQ):**
-- [x] The annotation does not overlap Panel B's title at any x it can take, including the leftmost day
-- [x] It stays associated with the bar it describes
-- [x] No change to Panel A, Panel C, the label bands, or `describeAtPointer`'s panel boundary
-- [x] A test pins the separation, so the next person to move `DURATIONS_MEDIAN_TITLE_Y` finds out
-
-## Pre-Flight
-
-**Git:** ✓ clean at claim (`2ad71eb`), with REQ-241's retuned constants already merged
-**Tests baseline:** ✓ `maintainer-verify.sh` exit 0 before dispatch
-**Dependencies:** ✓ Go 1.26.1, Playwright/Chromium for live-DOM measurement
-
-*Checked by work action*
-
-## AI Execution State (P-A-U Loop)
-
-<!-- Filled from the builder's hand-back; a builder may not write do-work/ in worktree dispatch
-     mode. Source of record: do-work/runs/work-2026-08-18-124358/REQ-242-handback.md -->
-
+## P-A-U
 
 - [x] **PLAN** — Read `_dev/primes/prime-kanban-board.md`, `CLAUDE.md`, and the three always-on crew members, then the whole of `web/board-durations.js` and the geometry tests in `durations_test.go` (`TestDurationsLabelRowsClearTheMarkBands`, `TestDurationsLabelRowPitchClearsTheLabelTextBox`) for the shape a geometric assertion takes here.
 
@@ -103,28 +16,18 @@ The annotation reuses the `durations-mark-label` class, so it is not part of eit
 
 - [x] **UNIFY** — `git diff --stat` is the two files below and nothing else; `git diff --name-only <merge-base>...HEAD -- do-work/` is empty; `VERSION`, `skills/do-work/VERSION`, `actions/version.md` and `CHANGELOG.md` are untouched. Reviewed both files line by line: `gofmt -l .` clean, `go vet` clean via maintainer-verify, no debug prints, no leftover scratch (all fixtures, boards and screenshots live under `/tmp/qk-242` and `/tmp/board-242-*`). Re-generated the board from the committed source and re-measured it in the browser as the last step. `bash _dev/tests/maintainer-verify.sh` exits 0.
 
-## Implementation Summary
+## Files Changed
 
-**Files changed:**
-- `skills/do-work-board/tools/queue-kanban/web/board-durations.js` (modified)
-- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified)
+```
+ .../tools/queue-kanban/generate_test.go            | 175 +++++++++++++++++++++
+ .../tools/queue-kanban/web/board-durations.js      |  69 +++++---
+ 2 files changed, 225 insertions(+), 19 deletions(-)
+```
 
-**What was done:** Moved Panel B's slowest-day annotation to a single fixed baseline below the median line, clear of both Panel B's title and the axis tick row, and named `DURATIONS_TICK_BASELINE_DROP` so a test can read the tick row's offset instead of a literal buried in an attribute. Panel B's title did not move.
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js` — the annotation's placement moves from "7 units above the bar's top" (a baseline of 355 for an over-ceiling day) to a single fixed baseline of 467, below panel B's own baseline and centred between the `0` tick row and panel C's title. The drawing moves into `drawDurationsSlowestDayAnnotation` so a probe can call it; `DURATIONS_TICK_BASELINE_DROP` replaces the three literal `+ 4` tick offsets so the test can read the tick row instead of copying the number.
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` — `TestJavaScriptBehaviorDurationsSlowestDayAnnotationClearsItsNeighbours` plus the four browser-measured face constants it needs. Six cases span both dimensions that decided whether the defect showed (where the slowest day sits, how tall its bar is) and assert one unchanging baseline whose text box clears panel B's title, panel B's `0` axis tick, panel C's title, and the plot the bars occupy — and that the annotation still says what it said and stays centred on its day.
 
-## Testing
-
-**Tests run:** `bash _dev/tests/maintainer-verify.sh`
-**Result:** ✓ exit 0 (unpiped; `echo $?` printed `0` on its own line)
-
-**Red-green validation:**
-- **RED 0 — the defect itself, in a live browser, measured with REQ-241 already in the tree.** On a fixture whose *leftmost* day is the slowest, `getBoundingClientRect()` intersection is real in both axes and the screenshot reads `209 miB · Median minutes per active day …`. **The collision survives REQ-241** — so this REQ was not resolved by it.
-- **RED 1 —** the assertion failing for the reason it exists, with the code in place and one rule broken (`DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y` set back to the shipped `355`): ✗ → ✓.
-- **A second collision, found by rendering rather than by reasoning.** The first fix passed a fresh, purpose-built geometric assertion — and the render showed it printing through Panel B's `0` axis tick, which lives in the y-axis gutter and is therefore invisible as a neighbour at every x except the extreme left. Exactly the luck-of-x this REQ exists to remove, reproduced a second time inside the same REQ.
-
-*Verified by work action*
-
-### Red-Green Evidence (verbatim from hand-back)
-
+## Red-Green Evidence
 
 ### RED 0 — the defect itself, in a live browser
 
@@ -202,8 +105,31 @@ B · Median minutes per active day · paused and broken spans excluded
 
 The annotation's x range (70.91–117.13) still overlaps the title's (110.33–559.39) — that is the point: the separation is now purely vertical, so no x can bring it back. I looked at both renders; the title reads clean and "209 min" sits directly under its bar. Also rendered this worktree's own board (slowest day mid-plot, "42 min"): same placement, no intersection with anything, still legibly attached to its bar.
 
-## Decisions
+## Verification
 
+```
+maintainer-verify: queue-kanban go vet
+maintainer-verify: queue-kanban uncached ordinary tests
+ok  	github.com/knews2019/skill-do-work/queue-kanban	15.069s
+maintainer-verify: queue-kanban strict JavaScript behavior lane
+=== RUN   TestMaintainerStrictJavaScriptBehaviorLane
+--- PASS: TestMaintainerStrictJavaScriptBehaviorLane (4.71s)
+PASS
+ok  	github.com/knews2019/skill-do-work/queue-kanban	4.905s
+maintainer-verify: audit-metrics go vet
+maintainer-verify: audit-metrics uncached tests
+ok  	github.com/knews2019/skill-do-work/audit-metrics	1.301s
+Maintainer verification passed.
+0
+```
+
+Run unpiped from the worktree root; `echo $?` on its own line printed `0`.
+
+## Integration Seams
+
+None. Both files are mine alone this wave, no shared registry or cross-REQ text was touched, and `durations.go` / `durations_test.go` are untouched. One thing to note for whoever writes the changelog entry: the visible change is *where panel B's slowest-day figure sits*, which a reader of the board will notice.
+
+## Decisions
 
 - **D-01 — The annotation moved; the title did not.** `DURATIONS_MEDIAN_TITLE_Y` is unchanged, so `describeAtPointer`'s A/B boundary (`pointerY <= DURATIONS_MEDIAN_TITLE_Y - 12`) is unchanged and REQ-241's 1.364 units of headroom above the title are untouched. No proof about pointer probes is owed, because no pointer geometry moved.
 - **D-02 — The guarantee is vertical, therefore x-free.** The annotation now sits at one fixed baseline for every day and every bar height. This is deliberate over any scheme that dodges the title horizontally: the defect existed *because* the clearance depended on x, and a horizontal dodge would only move the dependence. The test states it by driving the extremes of x and asserting the baseline never varies.
@@ -213,17 +139,11 @@ The annotation's x range (70.91–117.13) still overlaps the title's (110.33–5
 
 ## Lessons Learned
 
-
 - **A chart's empty space is only empty at the x you looked at.** The first fix passed a test suite that included a fresh, purpose-built geometric assertion — and the render showed it printing through panel B's `0` axis tick. The tick lives in the y-axis gutter, so it is invisible as a neighbour at every x except the extreme left, which is precisely the luck-of-x this REQ existed to remove. Reproducing that failure twice in one REQ is the strongest case yet for `prime-kanban-board.md`'s "generate a board and look at it": the second collision was found the same way as the first, and neither was reachable by reasoning over the constants the fix was about.
 - **When a defect is "invisible because of where the data happens to fall", the fix is to remove the dependence, not to widen the margin.** A larger gap above the title would still have been a clearance that held for some slowest days and not others.
 - **A measured face is per-Chromium.** The 11px label face measured 10.4278 ascent for REQ-241 and 10.1853 here on a different build. Both constants round up and away from the model, so a test written that way survives the difference — but a test asserting an exact measured number would not.
 
-## Builder Pushback
-
+## Pushback
 
 - The brief's third point — "test at the annotation's worst-case x" — is satisfied, but by making x irrelevant rather than by pinning a worst-case x. Six cases spanning the leftmost, mid-plot and rightmost day are in the test and all assert the same baseline; if a future change ties the baseline back to the bar, the case set fails on the disagreement rather than on any one coordinate. Flagging it because "pin the worst-case x" and "prove x cannot matter" are different tests and I chose the second.
 - **Unrelated pre-existing quirk, not fixed here:** the leftmost day's bar is drawn at x = 38.9, i.e. *left of* `DURATIONS_MARGIN_LEFT` (54) and outside the plot area. `xOfEpoch` maps the day bucket's midnight while `timeStart` is the first completion instant, so a day whose first REQ completed at 09:00 renders 15 hours' worth of axis to the left of the plot. Visible on the live board too (the `29 May` bar sits in the gutter). It is a placement bug of its own — worth a REQ, outside this write set.
-
-**Orchestrator resolution.** The first point is accepted, and the builder's choice is the better one. The brief said "test at the annotation's worst-case x"; the builder instead made x irrelevant and asserted the baseline never varies across six cases spanning the leftmost, mid-plot and rightmost day. Those are different tests, and proving x cannot matter is stronger than pinning the x that happens to be worst today — the defect existed *because* clearance depended on x. If a future change ties the baseline back to the bar, the case set fails on the disagreement rather than on any one coordinate.
-
-The second point — the leftmost day's bar drawn at x = 38.9, left of `DURATIONS_MARGIN_LEFT` and outside the plot area, because `xOfEpoch` maps the day bucket's midnight while `timeStart` is the first completion instant — is a real pre-existing placement bug visible on this repository's own board. Correctly left alone and routed as a follow-up.

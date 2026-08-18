@@ -376,3 +376,178 @@ a `[see below](#some-section)` pointing at a heading that was renamed is silentl
 I left it out because the REQ named it a skip deliberately rather than by omission, and narrowing or
 widening a scope decision the author made on purpose is the author's call, not mine. If you want it,
 it is a very small follow-up.
+
+---
+
+## Addendum — Review Remediation
+
+Second commit on the same branch, addressing findings 1 and 2 from the adversarial review.
+
+**Commit:** `7b6d8fc` — *split heading lines on newlines only, and cover the installed topology*
+
+```
+ _dev/tests/shipped-package-reference-contract.sh | 154 ++++++++++++++++++-----
+ 1 file changed, 126 insertions(+), 28 deletions(-)
+```
+
+Still one file. Queue guard and serial-file guard over the full two-commit range: both empty.
+
+### Finding 1 — `splitlines()` desync
+
+Confirmed on the real functions before changing anything. Both of the reviewer's documents
+reproduce exactly:
+
+```
+=== A: formfeed inside a fence ===
+raw_lines = 8  masked_lines = 7
+slugs = []
+
+=== B: formfeed in inline code ===
+raw_lines = 5  masked_lines = 4
+slugs = ['fake']
+
+=== control: split('\n') counts agree in both cases ===
+A raw: 8 masked: 8
+B raw: 5 masked: 5
+```
+
+Fix is `.split("\n")` in the two places that built the arrays, so the code depends on exactly the
+property the existing parser fixtures lock — length and `\n` positions — and nothing stronger. The
+comment that claimed "preserves byte and line offsets" is replaced with one that names the nine code
+points, says masking turns each into a space, and states the consequence. The overclaim was half the
+defect and it is gone.
+
+**One correction to the finding's characterization, which changed what I asserted.** Document B is
+described as a false negative *plus* a false positive — "a link to `target.md#fake` PASSES though no
+such anchor exists". `#fake` does exist there. The backtick opening line two never closes, so it is
+literal text and `# Fake` on line three is a genuine ATX heading. Verified against the fixed code:
+
+```
+masked repr: '     \n`open\n# Fake\n# Real Heading\n'
+slugs B (fixed): ['fake', 'real-heading']
+```
+
+So the defect in both directions is the same one: the desynced gate **drops real headings**, and a
+valid anchor gets reported broken. I also tried to construct a genuine false accept — a fenced
+`# heading` promoted by the shift — and could not:
+
+```
+C fenced heading promoted?
+   buggy=[]
+   fixed=['live']
+```
+
+I mention it because I nearly wrote a fixture asserting `{"real-heading"}` for document B on the
+strength of the finding's wording. That fixture would have been green on broken code and red on
+correct code. The fixture asserts the verified truth instead.
+
+New fixtures in `run_anchor_slug_fixtures` (now 8 cases):
+
+```python
+(
+    "only newlines divide lines, so a masked form feed cannot shift the gate",
+    "```sh\nprintf 'a\x0cb'\n```\n\n# Real One\n\n# Real Two\n",
+    {"real-one", "real-two"},
+),
+(
+    # The unclosed backtick on line two is literal text, so both headings below
+    # it are genuine; a desynced gate finds only the first.
+    "a masked form feed leaves the headings after it aligned",
+    "`a\x0cb`\n`open\n# One\n# Two\n",
+    {"one", "two"},
+),
+```
+
+**RED A** — `.splitlines()` put back in both places:
+
+```
+FAIL: anchor fixture 'only newlines divide lines, so a masked form feed cannot shift the gate': expected ['real-one', 'real-two'], got []
+FAIL: anchor fixture 'a masked form feed leaves the headings after it aligned': expected ['one', 'two'], got ['one']
+exit=1
+```
+
+Both fail for the reason they exist — headings lost to the shift, not a reference error. Restored →
+`shipped package reference contract: PASS`, `exit=0`.
+
+### Finding 2 — installed topology never executed
+
+Confirmed: the dedup guard suppressed the second pass on all 27 live anchors. Extracted two units so
+the branch is reachable without a synthetic dual-topology tree:
+
+- `link_topology_targets(source_target, installed_source_target)` — the pair a pointer must satisfy.
+- `anchor_failure_messages(anchor, topology_targets, read_anchor_slugs)` — the per-topology walk,
+  returning messages instead of calling `fail` directly.
+
+Four fixtures in `run_anchor_topology_fixtures`: both topologies resolving to one target read once
+(the live case), a distinct installed target read on its own, an unreadable installed target
+reported rather than skipped, and an anchor missing from both reported twice.
+
+**RED B** — first attempt did not go red, and that is worth recording. Dropping the installed
+topology from the *call site* left the suite green: the fixtures called
+`anchor_failure_messages` with hand-built tuples, so they covered the function but not the wiring,
+and the live corpus cannot tell the two topologies apart. Rather than report that as a residual gap
+I moved the pairing into `link_topology_targets` and had every fixture build its pair through it.
+
+**RED B1** — installed dropped from the pairing:
+
+```
+FAIL: anchor topology fixture 'a distinct installed target is read on its own': expected ['anchor #present is not a heading in installed topology target installed.md'], got []
+FAIL: anchor topology fixture 'an unreadable installed target is reported, not skipped': expected ['cannot read installed topology target unreadable.md'], got []
+FAIL: anchor topology fixture 'an anchor missing from both topologies is reported twice': expected [... 'installed topology target installed.md'], got ['anchor #absent is not a heading in source topology target source.md']
+exit=1
+```
+
+Restored → PASS, `exit=0`.
+
+### Verification
+
+```
+maintainer-verify: ShellCheck warning-level lint (50 tracked files)
+maintainer-verify: aggregate contract suite
+Maintainer verification self-test passed.
+Suite manifest contract probes passed.
+shipped package reference contract: PASS
+...
+Contract regression checks passed.
+maintainer-verify: queue-kanban go vet
+maintainer-verify: queue-kanban uncached ordinary tests
+ok  	github.com/knews2019/skill-do-work/queue-kanban	16.054s
+maintainer-verify: queue-kanban strict JavaScript behavior lane
+--- PASS: TestMaintainerStrictJavaScriptBehaviorLane (4.87s)
+ok  	github.com/knews2019/skill-do-work/queue-kanban	5.085s
+maintainer-verify: audit-metrics go vet
+maintainer-verify: audit-metrics uncached tests
+ok  	github.com/knews2019/skill-do-work/audit-metrics	1.523s
+Maintainer verification passed.
+0
+```
+
+`echo $?` → `0`.
+
+Working tree clean; all Python extractions used for probing deleted from `/tmp` and none written
+into the repo.
+
+### New Decisions
+
+**D-06 — Depend on the invariant that is locked, not the one that is true today.** The masked and
+raw arrays are split on `"\n"` alone. `strip_markdown_code` happens to preserve more than that, but
+only length and `\n` positions are fixture-locked, and `splitlines()` silently needed more. Where a
+consumer can be written against the weaker guarantee, write it against the weaker guarantee — then
+the fixture that exists is the fixture that protects it. Reach: anything else pairing masked and raw
+markdown must split on `"\n"`, and the comment there says so.
+
+**D-07 — A branch the corpus cannot reach becomes a named unit.** `link_topology_targets` and
+`anchor_failure_messages` exist because the source and installed topologies resolve to one file for
+every link in this repository, so the installed branch had no execution path. Extracting the pairing
+as well as the walk is what makes the mutation "drop a topology" fail; extracting only the walk left
+the wiring untested and a mutation survived. Reach: when coverage for a branch is impossible from
+real data, the fix is a seam at the point the *data* is constructed, not only at the point it is
+consumed.
+
+### Note on the follow-ups
+
+Not touched, as instructed: HTML tags/entities in heading text, blockquoted ATX headings, same-file
+bare `#anchor` validation, and the `os.path.normpath` path-escape. Agreed on the last one being the
+only real hole — and worth flagging that my change does escalate it, since an escaping `..` target
+now reaches `read_text()` rather than only `stat()`. It is bounded by the missing-target `continue`
+(the path must exist in both topologies to be read at all), but that is a weaker bound than clamping.
