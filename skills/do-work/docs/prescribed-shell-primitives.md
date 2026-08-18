@@ -79,7 +79,7 @@ Credentials are opt-in. When `GH_TOKEN` or `GITHUB_TOKEN` is non-empty the helpe
 
 Cleanup never converts a failed download into success. When review occurs between download and publication, later command blocks must re-derive the deterministic reviewed path and verify it exists; they must not silently download again.
 
-Publication here is governed by [Verified exact publication](#verified-exact-publication), and neither this helper nor the screenshot install that shares these mechanics makes that check yet: one publishes with a bare `mv` and the other with a bare `ln`, so a zero exit status is not yet proof that the destination holds the published file.
+Publication here makes the [Verified exact publication](#verified-exact-publication) check, and so does the screenshot install that shares these mechanics: each verifies the path it actually wrote, removes only its own nested artifact, and exits nonzero with the occupying directory untouched. For the screenshot install that ordering is what protects the staged source, since a staged capture is removed only after a publication that verifiably happened.
 
 ## Portfolio summary publication
 

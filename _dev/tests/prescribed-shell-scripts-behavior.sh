@@ -129,6 +129,56 @@ GH_TOKEN='' GITHUB_TOKEN=fallback-token PATH="$atomic_retry_bin:$PATH" \
 [ "$(cat "$fixture_root/atomic-fallback-header")" = 'Authorization: Bearer fallback-token' ] \
   || fail_case 'atomic-download fallback-credential case did not fall back to GITHUB_TOKEN'
 
+# atomic-download: a target occupied by a DIRECTORY must fail closed. `mv` treats a
+# directory operand as a container rather than a collision, so the download nests
+# inside it and exits zero — and the caller reads that status as proof the file
+# landed. The canonical statement of the rule is the shipped guide's
+# "Verified exact publication" section.
+atomic_success_bin="$fixture_root/atomic-success-bin"
+mkdir -p "$atomic_success_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'output_path=""' \
+  'while [ "$#" -gt 0 ]; do case "$1" in -o) output_path="$2"; shift 2 ;; *) shift ;; esac; done' \
+  'printf complete-payload > "$output_path"' \
+  'exit 0' \
+  > "$atomic_success_bin/curl"
+chmod +x "$atomic_success_bin/curl"
+
+atomic_occupied_target="$fixture_root/atomic-occupied-target"
+mkdir -p "$atomic_occupied_target"
+printf 'occupant\n' > "$atomic_occupied_target/pre-existing.txt"
+PATH="$atomic_success_bin:$PATH" \
+  "$core_scripts/atomic-download.sh" https://example.invalid/payload "$atomic_occupied_target" >/dev/null 2>&1 \
+  && fail_case 'atomic-download occupied-target case reported success for a publication that nested'
+[ -d "$atomic_occupied_target" ] \
+  || fail_case 'atomic-download occupied-target case did not leave the occupying directory in place'
+[ "$(cat "$atomic_occupied_target/pre-existing.txt")" = occupant ] \
+  || fail_case 'atomic-download occupied-target case disturbed the occupying directory contents'
+find "$atomic_occupied_target" -name '*.download.*' -print -quit | grep -q . \
+  && fail_case 'atomic-download occupied-target case abandoned its private file inside the occupant'
+
+# capture-screenshot: a destination occupied by a DIRECTORY must fail closed and keep
+# the staged source. `ln` refuses an occupied FILE — which is where the no-clobber
+# guarantee comes from — but nests on a directory and exits zero, and under --staged
+# that zero is read as permission to delete the staged source. The dispatch holds the
+# only copy, so a false success there destroys it.
+capture_occupied_root="$fixture_root/capture-occupied"
+mkdir -p "$capture_occupied_root/stage" "$capture_occupied_root/assets/result.png"
+printf 'the only copy' > "$capture_occupied_root/stage/source.png"
+printf 'occupant\n' > "$capture_occupied_root/assets/result.png/pre-existing.txt"
+"$core_scripts/capture-screenshot.sh" --staged \
+  "$capture_occupied_root/stage/source.png" "$capture_occupied_root/assets/result.png" >/dev/null 2>&1 \
+  && fail_case 'capture-screenshot occupied-destination case reported success for a publication that nested'
+[ -f "$capture_occupied_root/stage/source.png" ] \
+  || fail_case 'capture-screenshot occupied-destination case destroyed the staged source it never published'
+[ -d "$capture_occupied_root/assets/result.png" ] \
+  || fail_case 'capture-screenshot occupied-destination case did not leave the occupying directory in place'
+[ "$(cat "$capture_occupied_root/assets/result.png/pre-existing.txt")" = occupant ] \
+  || fail_case 'capture-screenshot occupied-destination case disturbed the occupying directory contents'
+find "$capture_occupied_root/assets/result.png" -name '*.copying.*' -print -quit | grep -q . \
+  && fail_case 'capture-screenshot occupied-destination case abandoned its private copy inside the occupant'
+
 # capture-screenshot: coordinate two writers so the loser cannot publish the winner's private copy.
 capture_root="$fixture_root/capture"
 mkdir -p "$capture_root/a" "$capture_root/b" "$capture_root/assets"
@@ -1046,4 +1096,4 @@ reservation_symlink_output="$("$core_scripts/cleanup-req-reservations.sh" "$rese
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
-printf 'Prescribed shell script behavior probes passed (45 named script cases).\n'
+printf 'Prescribed shell script behavior probes passed (47 named script cases).\n'

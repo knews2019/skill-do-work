@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.207.1 — Downloads and Screenshots Check Where They Landed (2026-08-18)
+
+Two shipped helpers published a file and returned without checking it arrived. If the destination path happened to be a directory, `mv` and `ln` tuck the file inside it and exit zero, so both reported success for something that never happened.
+
+- The screenshot helper's version was the worse one: under `--staged` it deleted the staged capture on the strength of that false success, so the only copy was destroyed and the destination never received it. It now keeps the source and refuses.
+- The download helper now refuses too, leaving the occupying directory exactly as it was and cleaning up only its own file
+- Both cases are pinned by new tests that fail on the old code, including the one that proves the staged screenshot survives
+- Found by reading the rule the previous release wrote down, rather than by another review sweep — which was the argument for writing it down
+
 ## 0.207.0 — Timeline Projects the Remaining Queue (2026-08-18)
 
 The Timeline now runs forward as well as back. Every REQ nobody has started yet gets a projected bar, chained one after another in the order `do-work run` would actually claim them, and the view says when the queue empties.
