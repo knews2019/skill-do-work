@@ -10,7 +10,6 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-- REQ-267: claimed 2026-08-18T22:59:48Z — writer: vm:/home/user/skill-do-work
 - REQ-265: claimed 2026-08-18T22:59:48Z — writer: vm:/home/user/skill-do-work
 
 

@@ -1,7 +1,8 @@
 ---
 id: REQ-267
 title: Close the two remaining repairer shape divergences
-status: claimed
+status: completed
+completed_at: 2026-08-18T23:39:58Z
 claimed_at: 2026-08-18T22:59:48Z
 route: B
 created_at: 2026-08-18T21:03:15Z
@@ -46,7 +47,7 @@ REQ-255 closed six shape divergences between the timestamp repairer and the boar
 
 ## Instances
 
-- [x] **An unterminated frontmatter block is repaired where the board sees only body text (reproduced by execution).** A file whose opening fence never closes is scanned to end-of-file by the extractor and its stamp lines are rewritten by the unattended hook, while the board's `splitFrontmatter` returns *no frontmatter* for exactly that shape. The script's own scope comment states the fence-bounded contract the code does not honour here. **Second face of the same root cause:** when such a file also ends with the defective stamp on its final line with no trailing newline, the changed-line guard expects four diff lines and sees two, so the repair is refused and the SessionStart hook exits 1 **every session, permanently**, with no self-heal. Refusing the fence-broken shape the way the read side does closes both at once.
+- [x] **An unterminated frontmatter block is repaired where the board sees only body text (reproduced by execution).** A file whose opening fence never closes is scanned to end-of-file by the extractor and its stamp lines are rewritten by the unattended hook, while the board's `splitFrontmatter` returns *no frontmatter* for exactly that shape. The script's own scope comment states the fence-bounded contract the code does not honour here. **Second face of the same root cause:** when such a file also ends with the defective stamp on its final line with no trailing newline, the changed-line guard expects four diff lines and sees two, so the repair is refused and the repairer exits 1 and prints a FAILED line into the session banner **every session, permanently**, with no self-heal. Refusing the fence-broken shape the way the read side does closes both at once.
 - [x] **Quoted stamps with padding inside the quotes are board-parseable but refused, and the refusal is undocumented (reproduced by execution).** A Go probe replicating the board's pipeline (YAML unquote, then trim, then parse) accepts `"2093-01-01 00:00:00 "` and would flag it future; the repairer refuses it byte-identical and the refusal falls into the header's catch-all "anything else unparseable", which is false for this shape. The header's parity rule claims the opposite family-wide, so the documentation is wrong rather than merely silent.
 
 - [x] **The clean-fixture comment still justifies the offset refusal with the reason REQ-257 repudiated (added from REQ-257's review, Important 3).** `_dev/tests/prescribed-shell-scripts-behavior.sh:1150` says the repairer must not touch "a numeric-offset value **it cannot compare without timezone arithmetic**" — verbatim the justification REQ-257's header now states is wrong ("the arithmetic is the risk, not the obstacle"). Same family as instance 2: a statement about what the repairer refuses that is wrong rather than merely silent. This file is already in this REQ's write set.
@@ -117,4 +118,58 @@ Both fuzzes were run against the pre-change script recovered with `git show HEAD
 **Existing tests updated (cross-REQ impact):** the stale comment at `_dev/tests/prescribed-shell-scripts-behavior.sh:1150` — which justified the offset refusal with the reason REQ-257 repudiated two hours earlier — was corrected in the same commit. No prior REQ's asserted behaviour changed.
 
 *Verified by work action*
+
+---
+
+## Correction to this REQ's own framing
+
+**The SessionStart hook does not exit nonzero.** `skills/do-work/hooks/session-start.sh:59` runs the repairer under `|| true`, deliberately — its comment says that on a tripped guard the script's failure lines *are* the audit trail and must reach the banner. `report_failure` writes to stdout, the hook captures it into `REPAIR_SUMMARY` and echoes it, and the hook exits **0**.
+
+Verified three ways by this REQ's review: reading the hook, reading `report_failure`'s output stream, and running the real hook against a wedge fixture with the pre-change script — banner prints `do-work: FAILED to repair …`, `HOOK EXIT=0`.
+
+The defect is real and the fix is unchanged: the **script** exits 1 on every run and prints a FAILED line into every session's start banner, permanently, with no self-heal. But this REQ was written — and approved, and prioritised into its wave — on the stronger claim, and the orchestrator repeated it to the maintainer twice before a builder checked the hook. The same false mechanism is still stated in three live docs; that is REQ-274.
+
+---
+
+## Review
+
+**Overall: 96%** | 2026-08-18T23:39:40Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 96% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded gate disposition — this is the durable audit record the gate mandates):**
+- The repudiated "the SessionStart hook exits nonzero" framing is still stated in three live maintainer docs, one of them a standing decision rationale (`CHECKPOINT.md:76`, REQ-255 D-04 — the decision is right, the argument for it names a mechanism that does not exist). — gate: rule-change → REQ-274 created
+- **A third divergence family exists, on an axis neither fuzz covered: the field name.** The repairer repairs any top-level `_at` field by suffix rule; the board's `detectFutureTimestampFields` checks a fixed six-name list. Confirmed by execution — `reviewed_at` set beyond the horizon is rewritten unattended and never badged. Latent, not live: nothing in today's schema is missed and no corruption occurs, but it is the one axis where the unattended writer sits provably outside the read side's envelope. — gate: rule-change → REQ-275 created
+
+**Minor findings:** 3 (report only)
+- No positive lock-in for a **closed** fence with no trailing newline — the live path of the changed-line arithmetic. Verified correct by execution and pre-existing, so not opened by this diff.
+- The new fence lock-ins pin LF only; 24 of the reviewer's 33 pre-change divergences lived in the BOM and CRLF crossings. The fix handles all of them, but a regression in the BOM strip or the `\r` sub would not be caught by these cases.
+- This REQ's own record still stated the wrong mechanism, because the builder's Pushback and D-01–D-05 were never transcribed — root cause REQ-270. **Corrected in place above.**
+
+**Acceptance:** Pass — the reviewer built its own oracle rather than reusing the builder's, copying the `queue-kanban` package to scratch and calling the **real** `splitFrontmatter` / `parseFrontmatterFields` / `coerceScalarToString` / `parseTimestamp`. Structural fuzz of 410 shapes: **33 divergences before, 0 after**, with every edge probed — no frontmatter, empty block, fence at EOF without trailing newline, CRLF, BOM ordering, `---` in body — behaving identically on both sides. Independent 704-shape value fuzz: **456 divergences before, 336 after**, and every one of the 336 falls inside a *documented* refusal family (offset 88, fractional 88, non-ASCII pad 160) — the 120 undocumented ones went to zero. Permanent-failure loop reproduced pre-change over three consecutive runs and absent after. Mutation tested **both directions**: the pre-change script fails the new cases with 8 assertions, and teaching the trim to strip U+00A0 turns the residual fixture red — so the documented residual is genuinely pinned rather than merely described. Regression: extractor output byte-identical across all 209 real `_at` rows in `queue/`, `working/` and `archive/`.
+**Suggested testing:** 3 items
+**Follow-ups created:** REQ-274, REQ-275, and REQ-276 from the builder's Discovered Task; **sweeps appended to:** None
+
+*Reviewed by review-work action*
+
+---
+
+## Lessons Learned
+
+**What worked:** Fixing at the primitive. Buffering the extractor's rows and emitting only on the closing fence closed both faces of instance 1 in one refusal — the body-prose rewrite and the permanent banner failure — rather than special-casing the wedge. And bidirectional mutation testing: the residual this fix *creates* (non-ASCII whitespace padding, which Go trims and `LC_ALL=C` byte matching does not) is pinned by a fixture that goes red if someone later teaches the trim to strip U+00A0. A documented limitation that can fail is worth more than one that is merely written down.
+
+**What didn't:** The first structural fuzz missed the wedge entirely, because the wedge *refuses* rather than rewrites — a parity fuzz comparing only file mutation is blind to every shape that fails instead of corrupting. Adding the exit status as a second oracle dimension is what surfaced it. Then the same limitation recurred one axis over: both the builder's fuzz and the reviewer's held the **field name** constant, so neither could see that the repairer keys on the `_at` suffix while the board keys on six names. That is REQ-275.
+
+**Worth knowing:** **A fuzz's blind spots are exactly the axes it holds constant, and its oracle decides which failures are visible at all.** Twice in one REQ the limiting factor was the measurement rather than the fix. When the next parity sweep is written here, vary the field name, and give the oracle both "what did it write" and "did it succeed". Separately: the hook runs this script under `|| true` on purpose, so a repairer failure is a banner line and never a broken session — a claim inherited rather than re-derived can be right in its conclusion and false in its mechanism, and this one travelled far enough to set the REQ's own approval framing.
+
+## Orientation
+
+A REQ file whose frontmatter fence never closes is now refused by the unattended timestamp repairer exactly as the board's reader refuses it — closing both the body-prose rewrite and the permanent banner-failure loop — and a quoted stamp padded inside its quotes repairs instead of being refused; lives in the do-work core's SessionStart repair path, shared by sourcing with the archive auditor, governed by `_dev/primes/prime-shell-commands.md`. No map change: one parser gained a gate, one recognizer gained a trim, and the refusal list gained two honest entries including a residual the fix itself creates.
 

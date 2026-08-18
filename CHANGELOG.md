@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.212.24 — A Broken Frontmatter Fence No Longer Gets Rewritten (2026-08-18)
+
+A REQ file whose opening `---` never closes reads as having no frontmatter at all to the board — but the startup timestamp repairer was scanning it to the end of the file and rewriting body prose. Worse, one variant made the repairer fail on every single session with nothing able to fix it. Both are gone.
+
+- The extractor now refuses an unterminated fence exactly as the board's reader does, which closes both faults in one refusal
+- A quoted stamp padded inside its quotes (`"2093-01-01 00:00:00 "`) now repairs instead of being refused — the board unquotes and then trims, so it was always a value the board could see
+- The refusal list gained an honest new entry for a residual the fix itself creates: padding made of non-ASCII whitespace, which Go trims and this shell code does not
+
 ## 0.212.23 — The Date-Only Rule Stands on Its Reason, Not a Head Count (2026-08-18)
 
 The Timestamp rule carried a note saying not to add a date-only mode to the board tool for one consumer, but to revisit if a second showed up. A second showed up, so the note had already fired — and the rule never needed the count anyway.
