@@ -3,7 +3,7 @@ id: REQ-237
 title: Backfill the Durations label rows when the longest spans cluster
 status: completed
 completed_at: 2026-08-18T12:10:30Z
-commit:
+commit: 3720ab9
 claimed_at: 2026-08-18T11:42:03Z
 route: B
 estimate:
