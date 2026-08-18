@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.4 — Shipped Markdown Anchors Are Checked, Not Assumed (2026-08-18)
+
+When a repeated paragraph gets replaced by a link to the one place it lives, nothing used to confirm the link's `#anchor` actually names a heading. Now something does, and it caught a way of missing broken links that nobody had noticed.
+
+- Heading-anchor resolution added to the markdown walk the shipped-package reference contract already performed — 27 anchors across four packages are checked on every verify
+- Only the anchor half was new: the relative-path half turned out to be already implemented and already catching wrong link depths, so half the specified work was deleted rather than rebuilt
+- The heading walk no longer splits lines with `str.splitlines()`, which breaks on nine code points the code-masking step does not preserve. That desync could silently accept a link to a non-existent anchor while rejecting the real one
+
 ## 0.212.3 — Durations Label Width Bounded by the Font, Not by a Sample (2026-08-18)
 
 The Durations chart's label-width constant claimed to be a generous over-estimate and was actually 7% short of what the browser draws. It is now proven to sit above every label the chart can compose, and its test pins it from both sides so it cannot drift back.

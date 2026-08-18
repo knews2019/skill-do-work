@@ -1,8 +1,8 @@
 ---
 id: REQ-243
 title: Check that shipped markdown pointers actually resolve
-status: claimed
-status_changed_at: 2026-08-18T12:43:06Z
+status: completed
+status_changed_at: 2026-08-18T13:51:43Z
 created_at: 2026-08-18T12:20:30Z
 user_request: UR-042
 addendum_to: REQ-238
@@ -27,6 +27,8 @@ estimate:
     - full-suite verification
 claimed_at: 2026-08-18T12:43:06Z
 route: B
+completed_at: 2026-08-18T13:51:43Z
+commit:
 ---
 
 # Check That Shipped Markdown Pointers Actually Resolve
