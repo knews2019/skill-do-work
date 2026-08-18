@@ -47,21 +47,33 @@ const futureTimestampSkewAllowance = 2 * time.Minute
 
 // futureStampCauseClause is the shared diagnosis for a stamp that cannot be
 // real, spliced into every message that reports one. Both causes are observed,
-// and naming only the second tells a reader who guessed the stamp that their
-// clock is misconfigured — a bug they will not find, because an extrapolated
-// stamp is not a timezone problem. The remedy is the same either way — rewrite
-// with the current UTC instant — so each call site keeps its own fix
-// instruction and shares only the diagnosis.
+// and naming only the timezone one tells a reader who guessed the stamp that
+// their clock is misconfigured — a bug they will not find, because an
+// extrapolated stamp is not a timezone problem. The remedy is the same either
+// way — rewrite with the current UTC instant — so each call site keeps its own
+// fix instruction and shares only the diagnosis.
+//
+// Both causes are named before the parenthetical, deliberately: an elaboration
+// placed between them lets a skimmer stop early and read a one-cause sentence,
+// which is a milder form of the defect this constant exists to fix.
+//
 // One constant because three renderers say it — the generate-time data warning,
 // the reversed-span completion-anomaly reason, and verify's future-`claimed_at`
 // finding — and three hand-maintained copies is how a fourth cause gets added to
 // one of them and not the others. Mirrored verbatim by futureStampCauseText in
 // web/board-core.js, which the client's two tooltips render — keep the two in
 // lock-step; nothing in the build compares them, so
-// TestFutureStampCauseClauseMatchesTheShippedClient is the guard. That copy is
-// why this REQ existed: the Go half gained a cause and the JS half did not.
-const futureStampCauseClause = "a fabricated value (guessed or extrapolated instead of read from the clock) " +
-	"or local wall-clock time written with a Z suffix"
+// TestFutureStampCauseClauseMatchesTheShippedClient and the badge/stopwatch
+// behavior probes are the guard. That copy is why this REQ existed: the Go half
+// gained a cause and the JS half did not.
+//
+// One more copy lives outside this module and cannot be reached from here:
+// skills/do-work/actions/forensics.md check 12 prescribes the same diagnosis for
+// an agent to emit. It is a different skill package with no build-time link to
+// this constant, so no test can hold it in step — nothing but this sentence will
+// point the next editor at it. Change it in the same commit as this one.
+const futureStampCauseClause = "local wall-clock time written with a Z suffix, " +
+	"or a fabricated value (guessed or extrapolated instead of read from the clock)"
 
 // RequestTicket is one parsed REQ-*.md file: its frontmatter fields (with status
 // normalized and commit-hash variants collapsed), the raw Markdown body kept for

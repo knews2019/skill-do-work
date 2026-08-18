@@ -109,11 +109,12 @@
   // so the two can never tell a reader different stories. Byte-identical to
   // futureStampCauseClause in model.go — keep the two in lock-step; nothing in
   // the build compares them, so TestFutureStampCauseClauseMatchesTheShippedClient
-  // is what catches an edit to one and not the other.
+  // is what catches an edit to one and not the other, and the two behavior
+  // probes catch a rename that leaves the literal sitting unused in the file.
   // Deliberately one unbroken literal, not a wrapped concatenation: the lock-step
   // test matches it against the Go constant verbatim, and a split literal would
   // force that check to reassemble JavaScript before it could compare.
-  var futureStampCauseText = "a fabricated value (guessed or extrapolated instead of read from the clock) or local wall-clock time written with a Z suffix";
+  var futureStampCauseText = "local wall-clock time written with a Z suffix, or a fabricated value (guessed or extrapolated instead of read from the clock)";
   var clockSkewExplanationText =
     "This timestamp is ahead of your clock by more than the 2-minute skew allowance — " +
     "likely " + futureStampCauseText + ". Fix the frontmatter with " +
@@ -222,8 +223,8 @@
   }
 
   // Keeps a duration node's explanatory tooltip in step with the skew marker:
-  // present while the marker shows, removed the moment the wall clock catches
-  // up and the stopwatch starts ticking for real.
+  // present while the marker shows, removed the moment the stamp is corrected
+  // (or the wall clock catches up) and the stopwatch starts ticking for real.
   function syncClockSkewTitle(durationNode, labelText) {
     if (labelText === clockSkewMarkerText) {
       durationNode.title = clockSkewExplanationText;
