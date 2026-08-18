@@ -93,6 +93,10 @@ just_target=''
 just_existed=''
 settings_target="$project_root/.claude/settings.json"
 settings_existed=''
+instructions_target="$project_root/CLAUDE.md"
+instructions_existed=''
+instructions_begin_marker='<!-- >>> do-work:communication-style >>> -->'
+instructions_end_marker='<!-- <<< do-work:communication-style <<< -->'
 git_index_existed=''
 
 recover_install() {
@@ -122,6 +126,11 @@ recover_install() {
     cp -p "$backup_root/settings.json" "$settings_target" || recovery_failed=1
   fi
 
+  rm -rf -- "$instructions_target" || recovery_failed=1
+  if [ "$instructions_existed" = 1 ]; then
+    cp -p "$backup_root/agent-instructions" "$instructions_target" || recovery_failed=1
+  fi
+
   if [ "$git_index_existed" = 1 ]; then
     index_restore_temporary="$(mktemp "$(dirname "$git_index_path")/.do-work-index.restore.XXXXXX")" \
       || recovery_failed=1
@@ -142,8 +151,8 @@ recover_install() {
   set -e
 
   if [ -n "$recovery_failed" ]; then
-    printf 'do-work suite install: automatic recovery was incomplete; inspect the four skill directories, %s, %s, and Git index %s\n' \
-      "$just_target" "$settings_target" "$git_index_path" >&2
+    printf 'do-work suite install: automatic recovery was incomplete; inspect the four skill directories, %s, %s, %s, and Git index %s\n' \
+      "$just_target" "$settings_target" "$instructions_target" "$git_index_path" >&2
     return 1
   fi
   printf 'do-work suite install: restored every managed path and the Git index to their exact pre-install state.\n' >&2
@@ -223,8 +232,10 @@ done
 
 board_template="$source_root/skills/do-work-board/justfile.template"
 core_hooks="$source_root/skills/do-work/hooks/hooks.json"
+instructions_template="$source_root/skills/do-work/agent-instructions.template.md"
 [ -s "$board_template" ] && [ ! -L "$board_template" ] || fail 'board Justfile template is missing or unsafe'
 [ -s "$core_hooks" ] && [ ! -L "$core_hooks" ] || fail 'core hook fragment is missing or unsafe'
+[ -s "$instructions_template" ] && [ ! -L "$instructions_template" ] || fail 'core agent instructions template is missing or unsafe'
 
 for justfile_name in justfile Justfile .justfile; do
   candidate_path="$(find "$project_root" -mindepth 1 -maxdepth 1 \
@@ -282,6 +293,37 @@ if command -v just >/dev/null 2>&1; then
     || fail 'Justfile candidate does not parse; no client files were changed'
 fi
 
+# The agent instructions template is exactly one managed section, so it doubles as the
+# fresh-file template: an existing CLAUDE.md gets the section appended or replaced in
+# place, an absent one is created holding only the section.
+if [ -e "$instructions_target" ] || [ -L "$instructions_target" ]; then
+  [ -f "$instructions_target" ] && [ ! -L "$instructions_target" ] \
+    || fail "agent instructions target must be a regular file: $instructions_target"
+  instructions_existed=1
+else
+  instructions_existed=0
+fi
+
+instructions_candidate="$install_tmp/agent-instructions.candidate"
+if command -v python3 >/dev/null 2>&1; then
+  if [ "$instructions_existed" = 1 ]; then
+    cp -p "$instructions_target" "$instructions_candidate"
+  fi
+  bash "$section_replacer" --target "$instructions_candidate" --section-file "$instructions_template" \
+    --template-file "$instructions_template" \
+    --begin-marker "$instructions_begin_marker" --end-marker "$instructions_end_marker" \
+    || fail 'agent instructions reconciliation failed; no client files were changed'
+else
+  [ "$instructions_existed" = 0 ] \
+    || fail 'python3 is required to reconcile an existing CLAUDE.md safely; no client files were changed'
+  cp -p "$instructions_template" "$instructions_candidate"
+fi
+[ "$(grep -cF "$instructions_begin_marker" "$instructions_candidate")" -eq 1 ] \
+  && [ "$(grep -cF "$instructions_end_marker" "$instructions_candidate")" -eq 1 ] \
+  || fail 'agent instructions candidate has invalid managed markers'
+grep -q 'crew-members/communication-style.md' "$instructions_candidate" \
+  || fail 'agent instructions candidate does not link the communication-style crew member'
+
 settings_tool='manual'
 settings_candidate=''
 if command -v jq >/dev/null 2>&1; then
@@ -303,7 +345,9 @@ if [ "$settings_tool" != manual ]; then
   settings_candidate="$install_tmp/settings.candidate.json"
   if [ "$settings_existed" = 1 ]; then
     cp -p "$settings_target" "$settings_input"
-    settings_mode="$(stat -f '%Lp' "$settings_target" 2>/dev/null || stat -c '%a' "$settings_target" 2>/dev/null || true)"
+    # GNU form first: BSD `stat -f` does not fail cleanly on GNU stat — it prints
+    # filesystem info to stdout and poisons the captured mode.
+    settings_mode="$(stat -c '%a' "$settings_target" 2>/dev/null || stat -f '%Lp' "$settings_target" 2>/dev/null || true)"
   else
     printf '{}\n' > "$settings_input"
     settings_mode=644
@@ -416,6 +460,7 @@ fi
 printf 'Ready to install do-work suite v%s into %s:\n' "$suite_version" "$project_root"
 printf '  %s\n' "${module_relatives[@]}"
 printf '  Justfile: %s\n' "${just_target#"$project_root"/}"
+printf '  agent instructions: %s\n' "${instructions_target#"$project_root"/}"
 printf '  settings reconciler: %s\n' "$settings_tool"
 
 review_diff="$install_tmp/install.diff"
@@ -436,6 +481,14 @@ else
   diff -u /dev/null "$just_candidate" >> "$review_diff" 2>&1 || diff_status=$?
 fi
 [ "$diff_status" -le 1 ] || fail 'could not compare the managed Justfile candidate'
+printf '\n--- managed configuration: %s ---\n' "${instructions_target#"$project_root"/}" >> "$review_diff"
+diff_status=0
+if [ "$instructions_existed" = 1 ]; then
+  diff -u "$instructions_target" "$instructions_candidate" >> "$review_diff" 2>&1 || diff_status=$?
+else
+  diff -u /dev/null "$instructions_candidate" >> "$review_diff" 2>&1 || diff_status=$?
+fi
+[ "$diff_status" -le 1 ] || fail 'could not compare the agent instructions candidate'
 printf '\n--- managed configuration: .claude/settings.json ---\n' >> "$review_diff"
 if [ "$settings_tool" = manual ]; then
   printf '%s\n' "$manual_settings_instruction" >> "$review_diff"
@@ -452,7 +505,8 @@ printf 'Reviewing the complete managed install before overwrite:\n'
 cat "$review_diff"
 
 dirty_managed="$(git -C "$project_root" status --porcelain -- \
-  "${module_relatives[@]}" "${just_target#"$project_root"/}" '.claude/settings.json')"
+  "${module_relatives[@]}" "${just_target#"$project_root"/}" '.claude/settings.json' \
+  "${instructions_target#"$project_root"/}")"
 if [ -n "$dirty_managed" ]; then
   printf 'Managed install paths have uncommitted changes. Continuing discards those changes in managed modules and replaces only the owned configuration bytes:\n%s\n' \
     "$dirty_managed" >&2
@@ -480,6 +534,9 @@ if [ "$just_existed" = 1 ]; then
 fi
 if [ "$settings_existed" = 1 ]; then
   cp -p "$settings_target" "$backup_root/settings.json"
+fi
+if [ "$instructions_existed" = 1 ]; then
+  cp -p "$instructions_target" "$backup_root/agent-instructions"
 fi
 
 git_index_existed=0
@@ -522,11 +579,17 @@ if [ "$settings_tool" != manual ]; then
   mv "$settings_temporary" "$settings_target"
 fi
 
+instructions_temporary="$(mktemp "$project_root/.do-work-instructions.install.XXXXXX")"
+cp -p "$instructions_candidate" "$instructions_temporary"
+mv "$instructions_temporary" "$instructions_target"
+
 for module_index in "${!module_destinations[@]}"; do
   diff -qr "${module_sources[$module_index]}" "${module_destinations[$module_index]}" >/dev/null \
     || fail "installed bytes do not match ${module_relatives[$module_index]}"
 done
 cmp -s "$just_candidate" "$just_target" || fail 'installed Justfile does not match its validated candidate'
+cmp -s "$instructions_candidate" "$instructions_target" \
+  || fail 'installed agent instructions do not match their validated candidate'
 if command -v just >/dev/null 2>&1; then
   just --justfile "$just_target" --list >/dev/null 2>&1 \
     || fail 'installed Justfile failed post-write validation'

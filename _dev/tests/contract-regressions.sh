@@ -3165,6 +3165,7 @@ assert_contains \
 # is the point.
 shipped_citation_paths=(SKILL.md next-steps.md README.md actions crew-members prompts interviews specs docs hooks tools)
 maintainer_doc_mention_allowlist=(
+  tools/install-do-work-suite.sh
   actions/prime.md
   docs/prime-guide.md
   actions/version.md
@@ -3866,7 +3867,7 @@ else
     printf 'FAIL: replace-text-section changed bytes outside the managed section or wrote the wrong replacement.\n' >&2
     fail_count=$((fail_count + 1))
   fi
-  target_mode="$(stat -f '%Lp' "$byte_target" 2>/dev/null || stat -c '%a' "$byte_target" 2>/dev/null || true)"
+  target_mode="$(stat -c '%a' "$byte_target" 2>/dev/null || stat -f '%Lp' "$byte_target" 2>/dev/null || true)"
   if [ "$target_mode" != 640 ]; then
     printf 'FAIL: replace-text-section changed the existing target mode (got %s, want 640).\n' "$target_mode" >&2
     fail_count=$((fail_count + 1))
@@ -3885,7 +3886,7 @@ else
     printf 'FAIL: replace-text-section did not create an absent target from the complete supplied template.\n' >&2
     fail_count=$((fail_count + 1))
   fi
-  absent_mode="$(stat -f '%Lp' "$absent_target" 2>/dev/null || stat -c '%a' "$absent_target" 2>/dev/null || true)"
+  absent_mode="$(stat -c '%a' "$absent_target" 2>/dev/null || stat -f '%Lp' "$absent_target" 2>/dev/null || true)"
   if [ "$absent_mode" != 750 ]; then
     printf 'FAIL: replace-text-section did not preserve the complete template mode on create (got %s, want 750).\n' "$absent_mode" >&2
     fail_count=$((fail_count + 1))

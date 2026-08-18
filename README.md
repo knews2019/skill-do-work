@@ -28,7 +28,7 @@ One reviewed archive installs four required sibling skills at one shared version
 - `.claude/skills/do-work-knowledge/` — BKB, memory, dreams, interviews, and prompts
 - `.claude/skills/do-work-toolbox/` — audits, reports, presentation, and repository utilities
 
-The installer validates all four modules before the first managed write, asks once, verifies every installed byte before reporting success, and restores every changed managed module/configuration path after failure. It creates or refreshes the sentinel-owned Just section, enables core hooks, leaves memory capture disabled on fresh installs, and preserves existing optional knowledge hooks. Project `do-work/`, `kb/`, application files, and unrelated Just/settings bytes stay outside the managed plan.
+The installer validates all four modules before the first managed write, asks once, verifies every installed byte before reporting success, and restores every changed managed module/configuration path after failure. It creates or refreshes the sentinel-owned Just section, links the always-on communication-style crew member from a managed section in the project's `CLAUDE.md` (creating the file when absent, touching nothing outside the markers), enables core hooks, leaves memory capture disabled on fresh installs, and preserves existing optional knowledge hooks. Project `do-work/`, `kb/`, application files, and unrelated Just/settings bytes stay outside the managed plan.
 
 Claude Code can invoke the four skill names directly. In Codex or Gemini, point the agent at the appropriate sibling `SKILL.md` once per session, or add those pointers to the project's agent instructions. Commit all four `.claude/skills/do-work*` directories so each repository carries its suite.
 

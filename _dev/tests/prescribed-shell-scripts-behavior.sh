@@ -196,8 +196,17 @@ blocked_status=$?
 blocked_wrapper_pid="$(cat "$fixture_root/blocked-wrapper.pid")"
 blocked_descendant_pid="$(cat "$fixture_root/blocked-descendant.pid")"
 background_process_ids="$background_process_ids $blocked_wrapper_pid $blocked_descendant_pid"
-kill -0 "$blocked_wrapper_pid" 2>/dev/null && fail_case 'run-blocked-check process-tree case left the wrapper alive'
-kill -0 "$blocked_descendant_pid" 2>/dev/null && fail_case 'run-blocked-check process-tree case left the descendant alive'
+# kill -0 counts zombies as alive; a killed-but-unreaped descendant (reparent target
+# reaps lazily, e.g. container PID 1) must read as dead, so check the process state.
+process_runs_unreaped_excluded() {
+  local process_state
+  process_state="$(ps -o stat= -p "$1" 2>/dev/null | tr -d '[:space:]')" || return 1
+  [ -n "$process_state" ] || return 1
+  case "$process_state" in Z*) return 1 ;; esac
+  return 0
+}
+process_runs_unreaped_excluded "$blocked_wrapper_pid" && fail_case 'run-blocked-check process-tree case left the wrapper alive'
+process_runs_unreaped_excluded "$blocked_descendant_pid" && fail_case 'run-blocked-check process-tree case left the descendant alive'
 kill -0 "$unrelated_process_id" 2>/dev/null || fail_case 'run-blocked-check process-tree cleanup killed an unrelated process in the test runner group'
 : > "$fixture_root/test-runner-survived-timeout"
 [ -e "$fixture_root/test-runner-survived-timeout" ] || fail_case 'run-blocked-check process-tree cleanup killed the test runner group'

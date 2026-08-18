@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.205.0 — Always-On Communication Style Crew Member (2026-08-17)
+
+Every install now talks like a concise senior engineer. A new crew member carries the communication contract (plain specific language, answer-first replies, reference codes, banned filler, `scr`/`eli`/`foc`/`ref` aliases), and the installer links it from the project's `CLAUDE.md` so it applies to every session, not just pipeline work. Adapted from [disler/fixing-smartass-opus-5](https://github.com/disler/fixing-smartass-opus-5).
+
+- New `crew-members/communication-style.md`, always loaded during implementation (work.md Step 6) alongside `general.md` and `coding-guardrails.md`.
+- The suite installer gains one managed surface: an HTML-comment-delimited section in the consumer project's `CLAUDE.md` linking the crew member — created, refreshed, diff-reviewed, backed up, and recovered like the Just section; bytes outside the markers are never touched.
+- `replace-text-section.sh` accepts `--begin-marker`/`--end-marker` so the atomic section replacer can own non-Justfile sections.
+- Fixed a Linux-only installer failure: the settings mode probe ran the BSD `stat -f` form first, which poisons the captured mode under GNU stat and broke every re-install/update with an existing `.claude/settings.json`.
 ## 0.204.0 — The AI-Report Image Batch Gets Its Own Shipped Script (2026-08-17)
 
 The parallel image-generation machinery for AI reports lived as ~110 lines of shell inside a Markdown reference file — so the test suite had to `awk` it back out of the prose just to run it. It now ships as a real script, and the reference file keeps what's actually per-report: the style brief and the prompts.

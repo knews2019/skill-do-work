@@ -15,6 +15,9 @@ import stat
 import sys
 import tempfile
 
+# Default markers own the managed Just recipe section; --begin-marker/--end-marker
+# retarget the replacer at any other single-line marker pair (e.g. the HTML-comment
+# markers used inside a consumer project's Markdown agent instructions).
 BEGIN = b"# >>> do-work:recipes >>>"
 END = b"# <<< do-work:recipes <<<"
 JUST_IDENTIFIER = re.compile(rb"[A-Za-z_][A-Za-z0-9_-]*")
@@ -257,21 +260,43 @@ def atomic_replace(path: str, content: bytes, mode: int) -> None:
                 pass
 
 
+USAGE = (
+    "usage: replace-text-section.sh --target <path> --section-file <path>"
+    " [--template-file <path>] [--reject-recipe-collisions]"
+    " [--begin-marker <line> --end-marker <line>]"
+)
+
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument("--target")
 parser.add_argument("--section-file")
 parser.add_argument("--template-file")
 parser.add_argument("--reject-recipe-collisions", action="store_true")
+parser.add_argument("--begin-marker")
+parser.add_argument("--end-marker")
 parser.add_argument("--help", action="store_true")
 try:
     arguments, residue = parser.parse_known_args()
 except SystemExit:
-    die("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>] [--reject-recipe-collisions]")
+    die(USAGE)
 if arguments.help:
-    sys.stdout.write("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>] [--reject-recipe-collisions]\n")
+    sys.stdout.write(USAGE + "\n")
     raise SystemExit(0)
 if residue or not arguments.target or not arguments.section_file:
-    die("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>] [--reject-recipe-collisions]")
+    die(USAGE)
+
+if (arguments.begin_marker is None) != (arguments.end_marker is None):
+    die("--begin-marker and --end-marker must be supplied together")
+if arguments.begin_marker is not None:
+    for marker_name, marker_value in (
+        ("--begin-marker", arguments.begin_marker),
+        ("--end-marker", arguments.end_marker),
+    ):
+        if not marker_value or "\n" in marker_value or "\r" in marker_value:
+            die(f"{marker_name} must be one non-empty line")
+    if arguments.begin_marker == arguments.end_marker:
+        die("--begin-marker and --end-marker must differ")
+    BEGIN = arguments.begin_marker.encode("utf-8")
+    END = arguments.end_marker.encode("utf-8")
 
 section_data = read_regular(arguments.section_file, "section file")
 section_span = marker_span(section_data, "section file", require_section_only=True)
