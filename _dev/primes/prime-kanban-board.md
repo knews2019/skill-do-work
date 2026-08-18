@@ -19,6 +19,7 @@
 
 ## Lessons
 
+- [REQ-240: a threshold that depends on a count must read that count, or it rots the next time someone edits the other](../../do-work/archive/REQ-240-stop-the-timeline-axis-printing-a-fake-minute.md#lessons-learned)
 - [REQ-235: derive state instead of storing it and a whole class of invalidation bug stops existing](../../do-work/archive/REQ-235-add-period-zoom-and-jump-to-now-on-the-timeline.md#lessons-learned)
 - [REQ-236: a document-wide DOM count is only evidence when its root is the thing under test](../../do-work/archive/REQ-236-add-a-urs-only-lens-to-the-board.md#lessons-learned)
 - [REQ-233: a programmatic .focus() cannot answer a :focus-visible question, and will say the ring is broken when it is not](../../do-work/archive/REQ-233-give-the-timeline-a-keyboard-path-to-zoom-and-pan.md#lessons-learned)

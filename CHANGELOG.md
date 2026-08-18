@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.211.1 — Timeline Axis Labels Tell the Truth About the Time (2026-08-18)
+
+The axis printed the minute as a hardcoded `:00`, so once you zoomed in far enough several ticks all read the same thing. Clicking `Now` landed you in exactly that state — seven ticks, two labels.
+
+- Tick labels read the real minute off the instant, so no two ticks at different times read alike
+- The time now appears once two ticks could fall on the same day, instead of at an arbitrary three-day cutoff — which also fixed a second duplicate-label band nobody had noticed
+- Long views gain the year, so a day-and-month that comes round twice stays distinguishable
+- Day, Week, Month and `Fit all` keep exactly the labels they had
+
 ## 0.211.0 — Timeline Steps by Day, Week and Month (2026-08-18)
 
 On a board covering months, the Timeline could only be dragged sideways and there was no way to land on the work still open. It now steps by calendar period, and `Now` takes you to the remaining work in one click.
