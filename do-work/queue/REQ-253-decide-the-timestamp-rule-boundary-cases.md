@@ -12,7 +12,7 @@ effort_estimate: trivial
 prime_files: [_dev/primes/prime-action-files.md]
 tdd: false
 suggested_spec:
-depends_on: []
+depends_on: [REQ-249]
 maintenance: true
 ---
 
@@ -42,3 +42,10 @@ REQ-244 sweeps every timestamp write site under the rule. Its builder correctly 
 
 - Each answer lands in `skills/do-work/actions/work-reference.md`'s Timestamp rule, in the paragraph the answer implies.
 - Every affected site is then either cited under the rule or explicitly marked out of scope — no site is left in the state that produced this REQ, where a sweep reaches it and has nothing to apply.
+
+## Ordering Gate
+
+- [~] **D-01: gated behind REQ-249 rather than left free-running.** Both REQs edit the same shipped files — `skills/do-work/actions/work-reference.md` (this REQ adds paragraphs to the Timestamp rule; REQ-249 rewrites citation paths throughout), plus `ui-review.md`, `memory.md` and `memory-reference.md`, which this REQ marks and REQ-249 sweeps. Running them together is a guaranteed textual conflict in at least four files.
+  **Ordering chosen: REQ-249 first.** Its sweep establishes which citation form is the rule and updates `_dev/primes/prime-action-files.md` to say so. This REQ then adds its two or three new citations already conforming. The reverse order has this REQ writing citations in a form that REQ-249 is about to rewrite — correct in the end, but it means writing something known-wrong on purpose.
+  **Value:** the one-line resume cannot schedule them together, and the second one to run inherits a settled convention rather than a contested one.
+  **Risk:** this REQ is small and now waits on a large sweep. Accepted — the user has already answered both of this REQ's questions, so nothing is lost but ordering.

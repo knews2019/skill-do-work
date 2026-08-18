@@ -14,7 +14,7 @@ sweep_key: durations-measured-face-constants-lack-provenance
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec: bug-fix
-depends_on: []
+depends_on: [REQ-248]
 maintenance: false
 write_set:
 - skills/do-work-board/tools/queue-kanban/durations_test.go
@@ -53,3 +53,9 @@ That resolution is sound and stays. What it exposed is that these numbers carry 
 **Why RED now:** `durations_test.go`'s measured constants name no build, and the two files disagreed by 0.86 units on the same face.
 **GREEN when:** each constant carries its provenance and the suite still exits 0.
 **Validation:** Integration seam on REQ-241/REQ-242 plus REQ-242's review finding F3.
+
+## Ordering Gate
+
+- [~] **D-01: gated behind REQ-248 rather than left free-running.** Two reasons, and the second is the binding one. Textual: both REQs write `skills/do-work-board/tools/queue-kanban/generate_test.go`, and this session proved that two REQs in one Go package can collide in a way git cannot see — REQ-241 and REQ-242 each declared `durationsMeasuredAxisTitleAscentUnits` in different files, never touched adjacent lines, and the merge failed to compile. Semantic: this REQ records the provenance of measurements taken against Panel B's geometry, and REQ-248 moves that geometry. Recording provenance for a layout about to change would produce numbers that are wrong on arrival.
+  **Value:** the one-line `do-work run` resume cannot schedule these two together, because auto-wave reads `depends_on` and deliberately does not read `write_set`.
+  **Risk:** if REQ-248 is abandoned, this REQ stays gated behind it and needs the gate cleared by hand. Acceptable — REQ-248 is the highest-value item in the queue.
