@@ -1,5 +1,12 @@
   // ---- view / lens / window switching ------------------------------------
 
+  // The Lens group's third choice, URs only, is the by-UR lens with its REQ
+  // cards folded away — not a lens of its own. viewState.lens therefore stays
+  // "user-request" for both, so every other test of whether the UR lens is on
+  // screen (the shared filters, a testing transition, the recently-done chip)
+  // keeps deciding correctly without knowing this fold exists.
+  var userRequestCardsFolded = false;
+
   function setActiveButton(groupSelector, attributeName, value) {
     var buttons = document.querySelectorAll(groupSelector + " [" + attributeName + "]");
     buttons.forEach(function (button) {
@@ -54,6 +61,31 @@
     }
   }
 
+  // Two of the three lens buttons select the same lens, so the active one is
+  // keyed on the lens plus the fold rather than on data-lens-target alone.
+  // A button without data-ur-cards means the always-open reading.
+  function setActiveLensButton() {
+    document.querySelectorAll("#lens-group [data-lens-target]").forEach(function (button) {
+      var isActive =
+        button.getAttribute("data-lens-target") === viewState.lens &&
+        (button.getAttribute("data-ur-cards") === "folded") === userRequestCardsFolded;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+  }
+
+  // One lens button click: the two readings render different DOM from the same
+  // renderer, so the cached lens is always dropped before applyLens re-renders.
+  function applyLensSelection(lensName, userRequestCardsFold) {
+    viewState.lens = lensName;
+    userRequestCardsFolded = userRequestCardsFold === "folded";
+    setActiveLensButton();
+    renderedOnce.userRequestLens = false;
+    if (viewState.view === "board") {
+      applyLens();
+    }
+  }
+
   function applyLens() {
     var columns = document.getElementById("kanban-columns");
     var lensHost = document.getElementById("user-request-lens");
@@ -61,6 +93,7 @@
 
     columns.hidden = byUserRequest;
     lensHost.hidden = !byUserRequest;
+    lensHost.classList.toggle("is-folded", userRequestCardsFolded);
     updateUserRequestActivityVisibility();
 
     if (byUserRequest && !renderedOnce.userRequestLens) {
@@ -87,11 +120,7 @@
 
     document.querySelectorAll("[data-lens-target]").forEach(function (button) {
       button.addEventListener("click", function () {
-        viewState.lens = button.getAttribute("data-lens-target");
-        setActiveButton("#lens-group", "data-lens-target", viewState.lens);
-        if (viewState.view === "board") {
-          applyLens();
-        }
+        applyLensSelection(button.getAttribute("data-lens-target"), button.getAttribute("data-ur-cards"));
       });
     });
 

@@ -1099,6 +1099,59 @@ body.is-resizing-detail {
   padding: 16px 18px 18px;
 }
 
+/* URs only: the same lens with its REQ cards folded away. The header row splits
+   into the fold toggle (the header itself) and a separate drawer control, so
+   one element never means two things, and the whole list tightens up — the
+   point of this reading is seeing many user requests at once. */
+.user-request-lens.is-folded {
+  gap: 8px;
+}
+.ur-group-row {
+  display: flex;
+  align-items: stretch;
+}
+.ur-group-row .ur-group-head {
+  border-bottom: 0;
+}
+.user-request-lens.is-folded .ur-group-head {
+  padding: 9px 14px;
+}
+.ur-group-row + .ur-group-cards {
+  border-top: 1px solid var(--line-soft);
+}
+
+.ur-fold-marker {
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1;
+  flex: none;
+  transition: transform 120ms ease;
+}
+.ur-group-head[aria-expanded="true"] .ur-fold-marker {
+  transform: rotate(90deg);
+}
+
+.ur-group-detail {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--line-soft);
+  color: var(--ink-faint);
+  font: inherit;
+  font-size: 12px;
+  padding: 0 14px;
+  cursor: pointer;
+  flex: none;
+}
+.ur-group-detail:hover {
+  background-color: var(--surface-2);
+  color: var(--ink-strong);
+}
+.ur-group-detail:focus-visible {
+  outline: 2px solid var(--accent-ur);
+  outline-offset: -2px;
+}
+
 /* Empty state and the "n resolved URs hidden" footer for the by-UR lens. */
 .ur-lens-empty {
   color: var(--ink-faint);

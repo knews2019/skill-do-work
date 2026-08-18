@@ -505,10 +505,31 @@
 
       var group = createElement("section", "ur-group");
 
+      // Both readings of this lens build the same grid; the folded one just
+      // builds it late, when the reader opens the row, and drops it again on
+      // collapse. Nothing outlives the nodes — the next render rebuilds them,
+      // so the click listener below needs no teardown.
+      function makeUserRequestCards() {
+        var cardsNode = createElement("div", "ur-group-cards");
+        shownRequestIds.forEach(function (requestId) {
+          cardsNode.appendChild(makeRequestCard(requestId, { showCompleted: true }));
+        });
+        return cardsNode;
+      }
+
       var head = createElement("button", "ur-group-head");
       head.type = "button";
-      head.dataset.detailKind = "ur";
-      head.dataset.detailId = userRequestId;
+      if (userRequestCardsFolded) {
+        // The row is the fold control here, so it cannot also be the drawer
+        // trigger — one element must not mean two things. The drawer moves to
+        // its own button beside it (both are real buttons, both keyboard-
+        // operable), and the fold state is announced on the row that owns it.
+        head.setAttribute("aria-expanded", "false");
+        head.appendChild(createElement("span", "ur-fold-marker", "▸"));
+      } else {
+        head.dataset.detailKind = "ur";
+        head.dataset.detailId = userRequestId;
+      }
       head.appendChild(createElement("span", "ur-id", userRequestId));
       head.appendChild(createElement("span", "ur-title", userRequest.title || "(no input.md title)"));
       if (!userRequest.inputFilePresent) {
@@ -523,13 +544,33 @@
             : requestIds.length + " REQ"
         )
       );
-      group.appendChild(head);
+      if (userRequestCardsFolded) {
+        var headRow = createElement("div", "ur-group-row");
+        headRow.appendChild(head);
+        var detailButton = createElement("button", "ur-group-detail", "Details");
+        detailButton.type = "button";
+        detailButton.dataset.detailKind = "ur";
+        detailButton.dataset.detailId = userRequestId;
+        detailButton.setAttribute("aria-label", "Open details for " + userRequestId);
+        headRow.appendChild(detailButton);
+        group.appendChild(headRow);
 
-      var cards = createElement("div", "ur-group-cards");
-      shownRequestIds.forEach(function (requestId) {
-        cards.appendChild(makeRequestCard(requestId, { showCompleted: true }));
-      });
-      group.appendChild(cards);
+        var openCards = null;
+        head.addEventListener("click", function () {
+          if (openCards) {
+            group.removeChild(openCards);
+            openCards = null;
+            head.setAttribute("aria-expanded", "false");
+            return;
+          }
+          openCards = makeUserRequestCards();
+          group.appendChild(openCards);
+          head.setAttribute("aria-expanded", "true");
+        });
+      } else {
+        group.appendChild(head);
+        group.appendChild(makeUserRequestCards());
+      }
 
       host.appendChild(group);
     });

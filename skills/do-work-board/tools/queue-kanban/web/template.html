@@ -93,6 +93,17 @@
           <button type="button" class="control-button" data-lens-target="user-request" aria-pressed="false">
             By&nbsp;UR
           </button>
+          <!-- URs only is the same lens with its REQ cards folded away, so it
+               selects the same target and adds the fold. -->
+          <button
+            type="button"
+            class="control-button"
+            data-lens-target="user-request"
+            data-ur-cards="folded"
+            aria-pressed="false"
+          >
+            URs&nbsp;only
+          </button>
         </div>
 
         <div class="control-group" role="group" aria-label="Recently-done window" id="recent-window-group">
