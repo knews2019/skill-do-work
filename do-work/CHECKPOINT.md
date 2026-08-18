@@ -1,57 +1,62 @@
 ---
-session_ended: 2026-08-18T01:54:45Z
-last_completed: REQ-232
-queue_state: 0 pending, 4 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
-reqs_processed_this_session: 6
+session_ended: 2026-08-18T12:29:36Z
+last_completed: REQ-239
+queue_state: 2 pending, 1 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
+reqs_processed_this_session: 10
 session_depth: heavy
 ---
 
 # Session Checkpoint
 
-## Completed This Session
-
-- REQ-225: State verified-exact-publication once as a condition in the shipped shell guide (Route B, 95%) — commit `a54d5c4`, shipped as **0.205.1**
-- REQ-226: Stop the Durations chart from silently overprinting and clipping (Route C, 94%) — commit `787c846`, shipped as **0.205.2**
-- REQ-227: Add the Timeline view with two-segment REQ bars (Route C, 92%) — commit `17b9422`, shipped as **0.206.0**
-- REQ-228: Project the remaining queue onto the Timeline (Route C, 94%) — commit `2daefd1`, shipped as **0.207.0**
-- REQ-229: Verify the published path in the download and screenshot helpers (Route B, 96%) — commit `2f1cde5`, shipped as **0.207.1**
-- REQ-232: Stop shipped prose from counting the board's views (Route B, 96%) — commit `ea6b1c3`, shipped as **0.207.2**
-
-Every hash was confirmed with `record-commit-hash.sh --verify`. `maintainer-verify.sh` exits 0 at hand-back.
-
 ## In Progress (interrupted)
 
+## Completed This Session
 
+- REQ-231: Keep Panel A's direct labels clear of the mark band (Route B, 97%) — commit `720f23c`, shipped as **0.208.0**
+- REQ-230: Point caller docs at the canonical publication rationale (Route B, 98%) — commit `19669fc`, shipped as **0.208.1**
+- REQ-234: Stop the shell behavior suite counting its own cases (Route A, 97%) — commit `48ed251`, shipped as **0.208.2**
+- REQ-233: Give the Timeline a keyboard path to zoom and pan (Route B, 96%) — commit `9b2578b`, shipped as **0.209.0**
+- REQ-236: Add a URs-only lens to the Board view (Route C, 97%) — commit `456ee9d`, shipped as **0.210.0**
+- REQ-235: Give the Timeline period navigation and a jump to now (Route C, 95%) — commit `7cae7a4`, shipped as **0.211.0**
+- REQ-240: Stop the Timeline axis printing a fake minute (Route B, 97%) — commit `664b269`, shipped as **0.211.1**
+- REQ-237: Backfill the Durations label rows when the longest spans cluster (Route B, 96%) — commit `3720ab9`, shipped as **0.212.0**
+- REQ-238: Point present-work at the canonical independent-bytes rationale (Route B, 98%) — commit `d783ec9`, shipped as **0.212.1**
+- REQ-239: Give the Timeline's rows a real focus ring (Route B, 97%) — commit `1d76ad1`, shipped as **0.212.2**
+
+Every hash was confirmed with `record-commit-hash.sh --verify`. `maintainer-verify.sh` exits 0 at every commit boundary. All ten ran as worktree builders; every worktree and `worktree-agent-*` branch was removed with `git worktree remove` / `git branch -d` (never `-D`), and `git worktree list` shows only the main tree.
 
 ## Still Queued
 
-- REQ-230: Point caller docs at the canonical publication rationale (pending-answers — 1 question). Sweep, one instance: `present-work.md:137` restates the container-not-a-collision rationale that REQ-225 gave a single home.
+- **REQ-241** (pending): Reconcile the Durations label metrics with the rendered face. Sweep, two instances — `durationsLabelCharacterWidthUnits = 6.2` against a measured 6.61 units/char, and `DURATIONS_LABEL_ROW_HEIGHT = 12` against a declared 13-unit text box. Approved via clarify.
+- **REQ-242** (pending): Stop Panel B's slowest-day annotation colliding with its own title. Pre-existing; `209 min` renders through the title on a fixture whose slowest day falls under it. Approved via clarify.
+- **REQ-243** (pending-answers): Check that shipped markdown pointers actually resolve. New machinery rather than a repair, which is why it is asking.
 
-All four are `pending-answers` by design, not by accident: three are cascade-depth or scope-boundary decisions, and the fourth needs a definition of "one case" that only the maintainer should pick. `do-work clarify` is the next step.
+**REQ-241 and REQ-242 must not run in parallel with each other.** Both write `web/board-durations.js`, and REQ-241 may move `DURATIONS_LABEL_ROW_HEIGHT` — which shifts every panel below it, including the Panel B title REQ-242 is separating an annotation from. Run REQ-241 first, then re-measure REQ-242's collision against the result: it may change size or disappear. REQ-243 is fully disjoint (`_dev/tests/prescribed-shell-canonicalization.sh`) and can run alongside either.
 
 ## Session Notes
 
-- **The environment had no working baseline on arrival.** `maintainer-verify.sh` could not run at all: no `shellcheck`, no `just`, and Go 1.24.7 against the required exactly-`go1.26.1`. ShellCheck 0.11.0, just 1.43.0 and Go 1.26.1 were installed into a session-local directory and prepended to `PATH`; nothing in the repository was changed to accommodate the gap. A future session in a fresh container will hit the same wall — the three-line install is worth having written down somewhere runnable.
-- **Writing a rule down worked, immediately and on its own author.** REQ-225 moved the verified-exact-publication rule out of one script's section into a shared condition. Reading the guide's three publication sections against that single statement surfaced two more helpers that never verified — one of them (`capture-screenshot.sh --staged`) destroying the dispatch's only copy of a screenshot on a false success. That is the fifth and sixth closure of this defect class here, and the first found by reading rather than by a review sweep.
-- **Three of the four defects fixed this session were invisible to the test suite and visible in a render.** The Durations label blob, the clipped Panel B bar, and the remainder sentence overprinted by the marks it described all passed every assertion before and after. Generate a board and look at it; a passing suite is not evidence about pixels.
-- **A restore from a mid-session copy silently reverted a fix** (REQ-226, D-03) and the whole suite still passed, because nothing pinned which row the remainder used. The near-miss is why `durationsRemainderBaselineY` exists as a named function with its own probe rather than as an inline expression. Prefer re-applying an edit over restoring a file whose copy predates other edits.
-- **The board's two chart views now have opposite listener disciplines.** Durations binds to nodes it rebuilds each render and needs no teardown; Timeline binds to the scroll container and `window`, which outlive a render, and keeps an explicit teardown registry. Copying either one's habit into a third view without asking which case it is will be wrong half the time (REQ-227, D-07).
-- **Pre-existing anomaly, not touched:** `do-work/user-requests/UR-049/` still holds an `input.md` byte-identical to the one already archived at `do-work/archive/UR-049/input.md`. Commit `c0331e8` consolidated the UR by copying rather than moving. Cleanup never deletes durable artifacts, so it was reported rather than removed; `do-work forensics` is the right place to decide.
-- Reservation markers under `do-work/.req-reservations/` are left untracked as usual; `cleanup-req-reservations.sh` reaps them on SessionStart.
+- **Every visual REQ this session had a defect that the suite passed and a render caught.** REQ-231's dot-on-label overprinting (55 overlapping pairs → 0), REQ-240's axis reading `18 Aug 11:00` five times, REQ-237's under-filled label rows, REQ-239's open question about whether a ring even suited an 18px row. In each case the assertions were green before and after the discovery. The rule from REQ-226 held for the fourth, fifth and sixth time: generate a board and look at it.
+- **A shared browser instance silently invalidates cross-builder DOM evidence.** REQ-237's builder measured a sibling's page and got confident, well-formed, wrong numbers; only unfamiliar REQ ids gave it away. REQ-239's builder was warned mid-build and re-took every reading in an isolated context with `location.href` and the page's own `cssRuleText` returned from the same `evaluate` — all identical. Both facts are now conventions in `_dev/primes/prime-kanban-board.md`.
+- **Two builders pushed back on their briefs, and both were right.** REQ-237's brief said `TestOverflowLabelsGoToTheLongestSpans` must pass unchanged; that test's assertions *were* the six-label cap the REQ removes, so no correct implementation could satisfy both. REQ-235's builder wrote a period-index clamp, found the tests passed without it, and deleted it as unearned. A builder that had quietly edited the test, or kept the dead clamp, would have looked identical in the diff.
+- **Merge conflicts in `generate_test.go` are not all alike.** Three occurred; two were clean appends where stripping markers works, and REQ-239's was not — both sides ended mid-function with their shared closing braces folded into the common tail, so the naive strip made one function swallow the other. Nothing in the marker positions distinguishes the cases. Compile, then run *both sides'* tests.
+- **Three self-inflicted errors, all caught and corrected:** three future-dated `completed_at` stamps written by extrapolating the clock instead of reading it (caught by the board's own future-timestamp check, commit `818ea17`); a dispatch brief that omitted the P-A-U instruction, so two REQs' boxes were filled by the orchestrator from hand-back evidence with an HTML comment saying so; and a `git mv` that ran after its frontmatter edit had already failed, archiving REQ-237 still reading `status: claimed`.
+- **Estimator calibration this session:** ten REQs, estimate vs actual wall minutes — 35/37, 20/6, 5/11, 30/70, 60/20, 75/24, 25/21, 30/28, 15/23, 20/30. The two Route C estimates (60, 75) overshot badly against 20 and 24 actual; Route B clustered close except REQ-233 (30 est / 70 actual, the one REQ that needed an integration seam). Worth a recalibration pass.
+- A builder left `timeline-focus-ring.png` in the main tree root — a write-set violation. Removed, and every subsequent brief carried a "scratch goes in /tmp" line.
 
 ## Context Summary (heavy sessions only)
 
-**Read these fresh before starting; six REQs of carried-over assumptions are not reliable.**
+**Read these fresh before starting; ten REQs of carried-over assumptions are not reliable.**
 
-- `_dev/primes/prime-kanban-board.md` — gained three lesson links this session (REQ-226, REQ-227, REQ-228, REQ-232) and is the entry point for anything touching `skills/do-work-board/tools/queue-kanban/`.
-- `_dev/primes/prime-shell-commands.md` — gained REQ-225 and REQ-229. Its § *Closed Enumerations Go Stale* was applied three separate times this session (REQ-225, REQ-232, and REQ-234's finding), which is worth noticing as a pattern rather than as three coincidences.
-- `skills/do-work/docs/prescribed-shell-primitives.md` § **Verified exact publication** — new this session, and now the canonical statement six shipped helpers are measured against.
+- `_dev/primes/prime-kanban-board.md` — gained five lesson links (REQ-233, 235, 236, 237, 239, 240) and **two new conventions** this session: render-and-look, and assert page identity inside the measuring call. Entry point for anything under `skills/do-work-board/tools/queue-kanban/`.
+- `_dev/primes/prime-shell-commands.md` — gained REQ-230, REQ-234 and REQ-238.
+- `skills/do-work-board/tools/queue-kanban/web/board-timeline.js` — changed by three REQs today (233, 235, 240) and is the file REQ-241/242's neighbours sit beside.
 
 **Decisions with reach beyond their own REQ:**
 
-- REQ-226 D-02 — placement anchors labels *before* the mark by preference, because a left-to-right greedy walk reuses space it has already passed. Anchoring after cost a label on the real board.
-- REQ-227 D-07 — the listener teardown registry, above.
-- REQ-228 D-02 — the forecast uses bucket medians rather than the REQ's own `estimate:` block, because the board parses no nested frontmatter blocks. If nested parsing ever lands, that is the first consumer.
-- REQ-228's own lesson is the constraint to preserve: the projection can be wrong about *timing* without being wrong about *order*, because it borrows work.md's ordering rule rather than inventing a scheduler. Anything that makes the duration model cleverer must not change the ordering source.
+- **REQ-233 D-01 through D-06 established that every way of moving the Timeline's window goes through `timelineZoomedWindow`.** REQ-235 then added period navigation as a *third* driver without adding a fourth rule — it computes a candidate window and hands it to that same function. Anything that later moves the window must do the same, or the guarantee stops holding.
+- **REQ-235 D-02: the period level is derived from the window, never stored.** That is why "a free zoom marks the level inexact" needed no code. Do not add a `periodLevel` field.
+- **REQ-236 D-01: a lens and a lens button are no longer one-to-one.** `viewState.lens` holds two values while the Lens group offers three; the third is a fold modifier. Four sites read `viewState.lens === "user-request"` and are correct for both readings *because* of that. A future lens must check this assumption.
+- **REQ-237 [MAP CHANGED]: Durations label selection and placement are one descending-magnitude pass.** There is no candidate list and no `durationsLabelTopCount`. Row occupancy is an interval list because a magnitude-ordered walk does not visit x monotonically. Anything influencing *which* spans get labelled has one place to do it and must not reintroduce a pre-placement filter.
+- **REQ-240 D-02: the axis label format keys on the gap between ticks, not the window span.** `TIMELINE_AXIS_TICK_COUNT` exists so the formatter's threshold and `renderAxis`'s loop read one number. A third reader must join the same constant.
 
-**Architectural note:** `timeline.go` is the first thing on the board that produces a future instant. Its projection is deliberately crude and its honesty machinery — the stated assumptions, the exclusion list, the decline-on-thin-history gate — is what makes it publishable. Adding sophistication there should mean adding caveats, not adding cleverness.
+**Architectural note:** the board now has three chart-ish views with different disciplines — Durations rebuilds its nodes each render and needs no teardown; Timeline binds to the scroll host and `window` and keeps an explicit teardown registry; the Board lenses share one renderer with a fold flag. Copying any one's habit into a fourth view without asking which case it is will be wrong two times in three.
