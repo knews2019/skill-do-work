@@ -66,6 +66,8 @@ Files in `working/` and `archive/` are **immutable**. If someone wants to add to
 
 **Exception (mechanical timestamp repair):** `scripts/audit-archive-timestamps.sh` may rewrite a detectably wrong `*_at` stamp in an archived REQ to the author time of the git commit that introduced it — a mechanical correction of recorded metadata sourced from git history, not a content change. It is never wired into any hook: the user invokes it deliberately as an audit, and the repaired files are committed through the normal flow. These are the only exceptions; neither is a precedent for editing archived content.
 
+**Session-start stamp repair (queue/working, never archive):** `scripts/repair-req-timestamps.sh` (run by the SessionStart hook) mechanically corrects detectably wrong `*_at` stamps in `do-work/queue/` and `do-work/working/` at session start — the same metadata-correction class, not a content change.
+
 ## File Naming
 
 - **REQ files:** `REQ-[number]-[slug].md` in `do-work/queue/`
