@@ -3,6 +3,7 @@ id: REQ-227
 title: Add the Timeline view with two-segment REQ bars
 status: completed
 completed_at: 2026-08-18T01:19:09Z
+commit: 17b9422
 claimed_at: 2026-08-18T00:58:19Z
 created_at: 2026-08-17T23:51:17Z
 user_request: UR-051
