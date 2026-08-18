@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.0 — Durations Lane Fills Both Label Rows (2026-08-18)
+
+The chart picked its six longest jobs to label, then dropped any that could not fit side by side — and gave the freed space to nobody. On a board where several long jobs finish close together that left two labels in a strip with room for twenty.
+
+- Selection and placement are one pass now: longest first, each offered a row until nothing more fits
+- On a clustered 60-sample board the lane goes from 2 labels to 21; the remainder count drops from 58 to 39 to match
+- Every drawn label is still one of the band's longest — a shorter span can never take a longer one's place
+- No dot overprints a label, at any density, exactly as before
+
 ## 0.211.1 — Timeline Axis Labels Tell the Truth About the Time (2026-08-18)
 
 The axis printed the minute as a hardcoded `:00`, so once you zoomed in far enough several ticks all read the same thing. Clicking `Now` landed you in exactly that state — seven ticks, two labels.
