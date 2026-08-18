@@ -1,7 +1,18 @@
 ---
 id: REQ-237
 title: Backfill the Durations label rows when the longest spans cluster
-status: pending
+status: claimed
+claimed_at: 2026-08-18T11:42:03Z
+route: B
+estimate:
+  p50_active_minutes: 30
+  confidence: medium
+  calculated_at: 2026-08-18T11:42:03Z
+  basis:
+    - Route B
+    - 2-file write set
+    - 3 acceptance criteria
+    - browser evidence
 status_changed_at: 2026-08-18T10:46:58Z
 created_at: 2026-08-18T10:52:00Z
 user_request: UR-051
