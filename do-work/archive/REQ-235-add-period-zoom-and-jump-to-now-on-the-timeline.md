@@ -3,7 +3,7 @@ id: REQ-235
 title: "Addendum: give the Timeline period-based navigation and a jump to now"
 status: completed
 completed_at: 2026-08-18T11:37:10Z
-commit:
+commit: 7cae7a4
 claimed_at: 2026-08-18T11:13:25Z
 route: C
 estimate:
