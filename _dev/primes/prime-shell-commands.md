@@ -30,6 +30,7 @@ When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep 
 
 ## Lessons
 
+- [REQ-250: grep the same primitive across the file before calling a class closed — the genuinely silent instance lived in a different checker's copy of it; and pin every documented limitation with a fixture that can fail](../../do-work/archive/REQ-250-close-the-remaining-markdown-link-checker-gaps.md#lessons-learned)
 - [REQ-246: derive a repair-side parser from the read-side detectors it claims parity with — a hand-rolled recognizer covers fewer shapes and can half-rewrite what it half-recognizes](../../do-work/archive/REQ-246-repair-wrong-queue-and-working-timestamps-from-the-session-hook.md#lessons-learned)
 - [REQ-244: recognition broad, requirement narrow — a detector that only recognizes the spellings it already fixed locks in nothing](../../do-work/archive/REQ-244-cite-the-timestamp-rule-at-every-stamp-write-site.md#lessons-learned)
 - [REQ-243: run the stated RED against pre-change code before building — a "RED" that was already red is the cheapest signal the work is half done](../../do-work/archive/REQ-243-check-that-shipped-markdown-pointers-resolve.md#lessons-learned)

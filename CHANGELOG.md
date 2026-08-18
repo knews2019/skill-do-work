@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.13 — Link Checker Validates Bare Anchors and Refuses Path Escapes (2026-08-18)
+
+The shipped-reference checker closes two of its four known limits and states the other two so they cannot drift.
+
+- Bare `#anchor` links are now validated against the carrying file's own headings — previously silently broken.
+- `..`-escaping targets are refused before any filesystem probe, class-wide: the hunt found the genuinely silent case in the citation checker's consumer-queue probe, which could stat files outside the repository; it is closed and fixture-locked.
+- The HTML-slug divergence and blockquoted-heading limits are documented with their failure directions named, each pinned by a fixture that fails if the behavior changes.
+
 ## 0.212.12 — Stale Future-Stamp Wording Retired From Shipped Source (2026-08-18)
 
 A grep for the board's future-stamp diagnosis now finds only the production wording.

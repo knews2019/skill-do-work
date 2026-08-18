@@ -1,9 +1,11 @@
 ---
 id: REQ-250
 title: Close the remaining markdown link checker gaps
-status: claimed
+status: completed
 created_at: 2026-08-18T13:55:32Z
 claimed_at: 2026-08-18T18:25:40Z
+completed_at: 2026-08-18T18:58:44Z
+kb_status: pending
 route: B
 status_changed_at: 2026-08-18T13:55:32Z
 user_request: UR-042
@@ -77,6 +79,71 @@ Transcribed from the builder hand-back:
 ## Qualification
 
 Passed — 1 file verified in merge range `beb3b7b..330797b` (+67/−8), all three requirement clusters traced (each instance closed-or-stated with failure direction; suite green with the 27 pre-existing anchors plus 3 newly validated; maintenance posture honored — two edges resolved by statement, not machinery), P-A-U audited. The builder's pushback on instance 2's framing (the corpus read-risk was overstated; the real silent hole was in the citation checker's consumer-queue probe) is verified by its RED-2a/RED-2b transcripts and accepted as the more accurate account.
+
+## Review
+
+**Overall: 97%** | 2026-08-18T19:12:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 95% |
+| Test Adequacy | 95% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Verdict: Approve** — all four instances land as demanded (two closed by execution-verified mechanism, two stated with failure directions and mutation-verified pins); the `..`-escape class claim survives adversarial enumeration; maintenance posture honored (the core fix is a deleted skip, not new machinery).
+
+### Requirements Checklist
+
+- [x] **Instance 1 (bare anchors): closed.** *Reproduced by execution:* injected broken bare anchor fails at HEAD with the right message, silently passes at `beb3b7b`. Instrumented count 27 → 30 anchor-checked links; the 3 new are exactly the corpus's live bare-anchor links, all resolving. Fence/comment masking verified; uppercase fragment fails loudly (correct — GitHub slugs are lowercase); `%`-encoded fragment decodes.
+- [x] **Instance 2 (`..`-escape): closed class-wide.** *Reproduced by execution, class verified by enumeration:* escaping link fails pre-probe at HEAD; interior-`..` citation silently absorbed at `beb3b7b` (exit 0) and fails at HEAD; the `/etc/hostname` reach reproduced via probe-recording harness at `beb3b7b` (two out-of-repo stats) with **zero** filesystem probes at HEAD for the same span. Enumeration of every corpus-path-to-filesystem site found no unclamped probe; the citation installed-topology probe is structurally safe (leading-`..` can never `relative_to`-match a destination root) and its branch is fixture-executed.
+- [x] **Instance 3 (HTML slug divergence): documented, not closed** — judged sound as the REQ invited: zero live cases, closure needs code-span-aware HTML decoding, fails earned-defense. The statement's claimed GitHub slugs verified accurate by mutation.
+- [x] **Instance 4 (blockquoted headings): documented as always-loud** — direction correct, zero corpus cases, same sound reasoning.
+- [x] **`maintainer-verify` exit 0, 27 anchors still resolve** — observed on the full un-piped run after all probes reverted (`git status --porcelain` empty).
+- [x] **Maintenance clause honored** — instance 1 closes by *deleting* a skip and reusing the pipeline; the +67 is dominated by limitation prose and pins.
+
+### Findings
+
+**Important:** None
+
+**Minor (report only, 2):**
+1. **The REQ's D-02 transcription overstated clamp uniformity** — the citation checker's installed-topology probe has no explicit clamp; its safety leans on destination-root geometry (real, fixture-executed). The builder's hand-back scoped the claim correctly ("both **main-loop** topologies"); the qualifier was dropped in the orchestrator's transcription. *(Corrected in the Decisions section below this review.)*
+2. **The recorded pushback is itself slightly overstated:** pre-change, a *re-entrant* escape (`../../../../.claude/skills/...`) could silently pass both topologies on a machine with the suite installed at home-level `.claude/` — the standard consumer topology — so the corpus read path had a realistic silent case too. No code consequence: HEAD fails the shape pre-probe (verified).
+
+**Restatement sweep:** every remaining statement of the old behavior lives in frozen records; the only other `startswith("#")` in the codebase is an unrelated TSV filter. No stale live restatement.
+
+**Scope:** `scope-drift.sh` exit 0; one file, matching the write set; the clamp edits inside REQ-249's checker are D-05's documented same-primitive judgment, with all seven prior citation fixtures still passing beside the new eighth.
+
+### Acceptance Testing
+
+**Result: Pass** — four adversarial REDs injected and reverted, each failing at HEAD with the right message and the two claimed silent holes reproducing at `beb3b7b`; all three pinning fixtures proven mutation-falsifiable (none vacuous); full gate exit 0 on a clean tree after reverts.
+
+### Suggested Additional Testing
+
+- Symlink escape is a different, unclamped-by-design class (no shipped symlinks today) — worth a limitation line or a mode probe if one ever appears.
+- Consumer-topology spot check of the re-entrant escape shape on a machine with `~/.claude/skills/` installed.
+
+**Follow-ups created:** None · **Sweeps appended to:** None
+
+*Reviewed by review-work action (independent adversarial pass, orchestrated mode; merge range `beb3b7b..330797b`)*
+
+### Orchestrator correction (review Minor 1)
+
+D-02 as transcribed above should read: the `".." in parts` clamp guards **both main-loop topologies** explicitly; the citation checker's consumer-queue and source probes carry their own clamps, and its installed-topology probe is safe by destination-root geometry (leading-`..` cannot `relative_to`-match), executed by the escaping-tail fixture rather than clamped explicitly.
+
+## Lessons Learned
+
+**What worked:** The hole-hunt discipline finally beat the class-vs-instance curse — greping the same primitive (`normpath`-then-probe) across the file before calling the class closed found the genuinely silent hole in a *different* checker's probe, and the review's independent enumeration then found nothing left. Mutation-falsifiable pins: each documented limitation carries a fixture that FAILS if the behavior changes, so statement and behavior cannot drift apart silently.
+
+**What didn't:** Two records-precision slips, both in the orchestrator's transcription rather than the code: D-02's clamp-uniformity claim dropped the builder's "main-loop" qualifier, and the recorded pushback missed the re-entrant-escape case where the pre-change corpus read path was silently unsafe on the standard consumer topology. The builder's own hand-back was the more accurate record both times — transcribe, don't paraphrase.
+
+**Worth knowing:** The escape clamp is `".." in <normalized>.parts` — in repo-relative PurePosixPaths that IS the escape condition. Symlink escapes are a different, deliberately unclamped class (no shipped symlinks exist). Closing the HTML-slug divergence needs code-span-aware entity decoding; the pinning fixture predicts the exact GitHub slugs if anyone attempts it.
+
+## Orientation
+
+Now the reference contract validates bare `#anchor` links, refuses `..`-escaping targets before any filesystem probe (including the citation checker's consumer-queue absorb, which could previously stat `/etc/hostname`), and states its two remaining slug limitations with failure directions and mutation-falsifiable pins. Lives in `_dev/tests/shipped-package-reference-contract.sh`. Leaf change to the checker; map unchanged.
 
 ## Red-Green Proof
 
