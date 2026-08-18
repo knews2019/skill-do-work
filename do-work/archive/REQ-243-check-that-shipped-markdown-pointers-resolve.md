@@ -28,7 +28,7 @@ estimate:
 claimed_at: 2026-08-18T12:43:06Z
 route: B
 completed_at: 2026-08-18T13:51:43Z
-commit:
+commit: 37d7729
 ---
 
 # Check That Shipped Markdown Pointers Actually Resolve
