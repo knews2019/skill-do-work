@@ -1147,8 +1147,9 @@ printf '%s' "$repair_blame_output" | grep -q 'author time' \
 
 # repair-req-timestamps: a clean fixture passes through byte-identical — including
 # the shapes the repairer must not touch: a nested (indented) calculated_at, a
-# numeric-offset value it cannot compare without timezone arithmetic, and an
-# archive-scope directory it must never scan.
+# numeric-offset value it refuses permanently because the timezone arithmetic is
+# the risk and not the obstacle (REQ-257), and an archive-scope directory it must
+# never scan.
 repair_clean_project="$fixture_root/repair-clean-project"
 mkdir -p "$repair_clean_project/do-work/queue" "$repair_clean_project/do-work/archive"
 printf -- '---\nid: REQ-804\nstatus: pending\ncreated_at: 2026-08-10T12:00:00Z   # trailing comment\nblocked_at: 2026-08-11T09:00:00+09:00\nestimate:\n  calculated_at: 2093-06-06T06:06:06Z\n---\nbody\n' \
@@ -1356,6 +1357,57 @@ cmp -s "$fixture_root/repair-shadowed-before.md" "$repair_duplicate_project/do-w
 printf '%s' "$repair_duplicate_output" | grep -q 'REQ-815-duplicate-anchor.md claimed_at: 2026-08-01T09:00:00Z -> 2026-08-12T12:00:00Z' \
   || fail_case 'repair-req-timestamps duplicate-anchor case did not log the effective-occurrence correction'
 
+# repair-req-timestamps: a file whose opening fence is never closed is refused
+# whole, because the board's splitFrontmatter reports NO frontmatter for that
+# shape and renders every line as body (REQ-267 I1). The second fixture is the
+# shape that could wedge the repair permanently: the file ends on the defective
+# stamp with no trailing newline, so a last-line rewrite can never produce the
+# final-newline diff pair the changed-line guard expects — the repair was
+# rejected and the script exited 1 on EVERY run, with nothing able to heal it.
+# The run must therefore be clean and silent, not merely non-destructive.
+repair_unterminated_project="$fixture_root/repair-unterminated-project"
+mkdir -p "$repair_unterminated_project/do-work/queue"
+printf -- '---\nid: REQ-823\nstatus: pending\n\n# Body prose, and the fence above was never closed\n\ncreated_at: 2093-01-01T00:00:00Z\n' \
+  > "$repair_unterminated_project/do-work/queue/REQ-823-unterminated-body.md"
+printf -- '---\nid: REQ-824\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z' \
+  > "$repair_unterminated_project/do-work/queue/REQ-824-unterminated-eof.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_unterminated_project/do-work/queue/"REQ-82*.md
+for unterminated_fixture in REQ-823-unterminated-body REQ-824-unterminated-eof; do
+  cp "$repair_unterminated_project/do-work/queue/$unterminated_fixture.md" "$fixture_root/$unterminated_fixture-before.md"
+done
+repair_unterminated_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_unterminated_project")" \
+  || fail_case 'repair-req-timestamps unterminated-fence case exited nonzero — a shape that fails every session with no self-heal is exactly the defect'
+[ -z "$repair_unterminated_output" ] \
+  || fail_case 'repair-req-timestamps unterminated-fence case printed output for a file the read side sees no frontmatter in'
+for unterminated_fixture in REQ-823-unterminated-body REQ-824-unterminated-eof; do
+  cmp -s "$fixture_root/$unterminated_fixture-before.md" "$repair_unterminated_project/do-work/queue/$unterminated_fixture.md" \
+    || fail_case "repair-req-timestamps unterminated-fence case rewrote $unterminated_fixture — the board reads that whole file as body text"
+done
+
+# repair-req-timestamps: a stamp padded INSIDE its quotes is repaired, because
+# the read side unquotes and then trims and so parses and future-badges it
+# (REQ-267 I2). The non-ASCII-padded sibling pins the stated boundary of that
+# trim — this script matches bytes under LC_ALL=C, so a U+00A0-padded value the
+# read side still parses stays refused byte-identical, and the header says so.
+repair_padded_quote_project="$fixture_root/repair-padded-quote-project"
+mkdir -p "$repair_padded_quote_project/do-work/queue"
+printf -- '---\nid: REQ-825\nstatus: pending\ncreated_at: "2093-01-01 00:00:00 "\n---\nbody\n' \
+  > "$repair_padded_quote_project/do-work/queue/REQ-825-padded-quote.md"
+printf -- '---\nid: REQ-826\nstatus: pending\ncreated_at: "2093-01-01T00:00:00Z\xc2\xa0"\n---\nbody\n' \
+  > "$repair_padded_quote_project/do-work/queue/REQ-826-non-ascii-pad.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_padded_quote_project/do-work/queue/"REQ-82*.md
+cp "$repair_padded_quote_project/do-work/queue/REQ-826-non-ascii-pad.md" "$fixture_root/repair-non-ascii-pad-before.md"
+repair_padded_quote_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_padded_quote_project")" \
+  || fail_case 'repair-req-timestamps padded-quote case returned nonzero'
+grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_padded_quote_project/do-work/queue/REQ-825-padded-quote.md" \
+  || fail_case 'repair-req-timestamps padded-quote case refused a padded quoted instant the board parses and future-badges'
+cmp -s "$fixture_root/repair-non-ascii-pad-before.md" "$repair_padded_quote_project/do-work/queue/REQ-826-non-ascii-pad.md" \
+  || fail_case 'repair-req-timestamps padded-quote case repaired a non-ASCII-padded value — the header states that residual is refused'
+printf '%s' "$repair_padded_quote_output" | grep -q 'REQ-825-padded-quote.md created_at: "2093-01-01 00:00:00 " -> 2026-08-10T12:00:00Z' \
+  || fail_case 'repair-req-timestamps padded-quote case did not report the full padded old value in the audit line'
+printf '%s' "$repair_padded_quote_output" | grep -q 'REQ-826' \
+  && fail_case 'repair-req-timestamps padded-quote case logged a correction for the refused non-ASCII-padded value'
+
 # audit-archive-timestamps: under --fix, a future stamp in a committed archived REQ
 # (inside an archived UR folder, proving the recursive scan) is rewritten to the
 # introducing commit's author time and the correction logs the sourcing commit hash.
@@ -1522,6 +1574,31 @@ grep -q '^claimed_at: 2026-08-11T12:00:00Z$' "$audit_parity_project/do-work/arch
   || fail_case 'audit-archive-timestamps refusal-parity case rewrote the shadowed first occurrence'
 printf '%s' "$audit_parity_output" | grep -qE 'REQ-911|REQ-913' \
   && fail_case 'audit-archive-timestamps refusal-parity case logged a refused stamp as a correction'
+
+# audit-archive-timestamps: the fence and padding shapes reach the archive scan
+# too, because both live in the sourced extractor and recognizer rather than in
+# the queue/working scan (REQ-267, both instances through the second scope). An
+# unterminated fence is refused whole here as well; a stamp padded inside its
+# quotes is repaired from the introducing commit's author time.
+audit_shape_project="$fixture_root/audit-shape-project"
+fixture_repo_init "$audit_shape_project"
+mkdir -p "$audit_shape_project/do-work/archive"
+printf -- '---\nid: REQ-914\nstatus: completed\ncreated_at: 2093-01-01T00:00:00Z' \
+  > "$audit_shape_project/do-work/archive/REQ-914-unterminated.md"
+printf -- '---\nid: REQ-915\nstatus: completed\ncreated_at: "2093-01-01 00:00:00 "\n---\nbody\n' \
+  > "$audit_shape_project/do-work/archive/REQ-915-padded-quote.md"
+git -C "$audit_shape_project" add -A
+GIT_AUTHOR_DATE='2026-08-12T10:00:00Z' GIT_COMMITTER_DATE='2026-08-12T10:05:00Z' \
+  git -C "$audit_shape_project" commit -qm fixture
+cp "$audit_shape_project/do-work/archive/REQ-914-unterminated.md" "$fixture_root/audit-unterminated-before.md"
+audit_shape_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_shape_project")" \
+  || fail_case 'audit-archive-timestamps shape-parity case returned nonzero'
+cmp -s "$fixture_root/audit-unterminated-before.md" "$audit_shape_project/do-work/archive/REQ-914-unterminated.md" \
+  || fail_case 'audit-archive-timestamps shape-parity case rewrote an archived file whose fence never closes'
+grep -q '^created_at: 2026-08-12T10:00:00Z$' "$audit_shape_project/do-work/archive/REQ-915-padded-quote.md" \
+  || fail_case 'audit-archive-timestamps shape-parity case refused a padded quoted instant in the archive'
+printf '%s' "$audit_shape_output" | grep -q 'REQ-914' \
+  && fail_case 'audit-archive-timestamps shape-parity case logged a finding for the refused unterminated file'
 
 # repair-req-timestamps: the 2-minute future-skew constant stays in lock-step
 # with the board's futureTimestampSkewAllowance — a fourth hand-kept copy of
