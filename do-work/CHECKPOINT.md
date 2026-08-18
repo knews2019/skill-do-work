@@ -10,7 +10,6 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-- REQ-257: Decide whether the timestamp repairer learns offset and fractional stamps — claimed 2026-08-18T21:16:24Z — writer: vm:/home/user/skill-do-work
 
 ## Completed This Session
 

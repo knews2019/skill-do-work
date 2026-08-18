@@ -1,7 +1,8 @@
 ---
 id: REQ-257
 title: Decide whether the timestamp repairer learns offset and fractional stamps
-status: claimed
+status: completed
+completed_at: 2026-08-18T22:58:40Z
 claimed_at: 2026-08-18T21:16:24Z
 route: B
 created_at: 2026-08-18T17:49:24Z
@@ -34,7 +35,7 @@ estimate:
 
 ## What
 
-REQ-246's repairer deliberately refuses stamps with numeric UTC offsets (`2093-01-01T00:00:00+02:00`) or fractional seconds — repairing them needs timezone arithmetic, and a wrong guess would rewrite a correct stamp (REQ-246 D-04, documented in the script header). The board and forensics still detect and warn on those shapes, so they remain a detection-without-repair residual. **Correction (REQ-255 review, I-2):** these are no longer the *only* such residual — a quoted stamp with padding inside the quotes is also board-parseable and refused here; that one is tracked in REQ-267. This asks whether that residual matters enough to implement offset arithmetic in `comparison_key_for`, or whether the documented refusal is the permanent answer.
+REQ-246's repairer deliberately refuses stamps with numeric UTC offsets (`2093-01-01T00:00:00+02:00`) or fractional seconds — repairing them needs timezone arithmetic, and a wrong guess would rewrite a correct stamp (REQ-246 D-04, documented in the script header). **Corrected during the build, by execution:** the board and forensics do *not* warn on those shapes as such — they warn on them *when the instant is future*. An offset or fractional stamp that is simply correct is read correctly, produces right elapsed-time math, and is never flagged by anything. `detectFutureTimestampFields` appends only when the parsed instant is after the skew horizon; shape never enters the predicate. So the residual is not "offset/fractional stamps", it is "offset/fractional stamps that are **also** fabricated or misordered" — a much smaller and stranger population, and that narrowing is most of why the refusal wins. The original sentence read: *"The board and forensics still detect and warn on those shapes, so they remain a detection-without-repair residual."* **Correction (REQ-255 review, I-2):** these are no longer the *only* such residual — a quoted stamp with padding inside the quotes is also board-parseable and refused here; that one is tracked in REQ-267. This asks whether that residual matters enough to implement offset arithmetic in `comparison_key_for`, or whether the documented refusal is the permanent answer.
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Read `_dev/primes/prime-shell-commands.md` including its REQ-255, REQ-250, REQ-246 and REQ-243 lessons, four crew-member files, the whole repairer, `audit-archive-timestamps.sh`, the board's `parseTimestamp` and `detectFutureTimestampFields` seams, forensics Check 11, and the existing `# repair-req-timestamps:` case group. Plan: establish **empirically** what the read side actually does with each shape — the REQ's premise, which turned out to be wrong — then decide on merits, then either implement or pin. In the pin case the RED has to come from a mutation, because a lock-in for existing behaviour cannot go red on its own.
@@ -150,4 +151,50 @@ Zero leaks. The 48 accepted are exactly the fraction-less, offset-less-or-`Z` sh
 **Existing tests updated (cross-REQ impact):** the archive-parity block gained a fixture and a widened assertion; no prior REQ's asserted behaviour changed.
 
 *Verified by work action*
+
+---
+
+## Review
+
+**Overall: 90%** | 2026-08-18T22:58:27Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 82% |
+| Test Adequacy | 80% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded gate disposition — this is the durable audit record the gate mandates):**
+- The read-side layout lock-step is blind to most spellings it exists to catch: its `sed` captures only `time.RFC3339` or a `"2006…"`-prefixed literal, so adding `time.RFC3339Nano`, `time.DateTime`, `time.RFC1123` or a non-`2006` literal to `parseTimestamp` leaves the suite green. `time.RFC3339Nano` is precisely the layout a fractional-support widening would add, so the guard is blind in its own headline scenario. — gate: rule-change → REQ-271 created
+- Same line: `\|` is GNU BRE alternation, so on BSD/macOS `sed` the extraction returns empty and the case fails spuriously — **the whole maintainer gate goes red on macOS**. Only `\|`-in-sed construct in the `_dev/tests/` tree. — gate: rule-change → REQ-271 (same root cause, same line, same fix)
+- Stale restatement inside a declared and touched file: `_dev/tests/prescribed-shell-scripts-behavior.sh:1150` still justifies the offset refusal as one the repairer "cannot compare without timezone arithmetic" — verbatim the reason this REQ's header repudiates. — gate: trivial → appended to REQ-267 as an instance (same file, already in its write set, same family as its instance 2)
+- Four shipped citations point `do-work forensics` **Check 11** at the future-dated-timestamp check, which is Check 12; three of the four are in the header this REQ rewrote, and the decision's disclosure argument rests on that pointer being followable. Pre-existing. — gate: trivial → REQ-272 created (as a sweep, because four sites found by one reviewer reading one diff is a sample)
+
+**Minor findings:** 3 (report only)
+- The header's headline reason under-covers half the class it justifies: "normalizing an offset means carrying civil-date arithmetic" is offset-only, while fractional truncation is monotone and can never manufacture a false future or a false ordering defect. The decision still stands on the population argument, but this is the same "right answer, wrong reason" pattern the builder correctly diagnosed in REQ-246 D-04, reproduced at half scale.
+- The hand-back's "exactly the six board-parseable shapes" is overstated — it is six of a ten-shape sample; the reviewer found five more board-parseable, future-warned, refused spellings. No behavioural consequence, since `comparison_key_for` is an allowlist and anything unlisted is refused by construction.
+- The REQ's `## What` still carried the premise the build disproved; corrected in place above rather than left standing.
+
+**Acceptance:** Pass — the reviewer re-derived everything rather than accepting it. The hazard reproduced from scratch: with the naive widening, a stamp whose true instant was two hours in the *past* was silently rewritten two hours later than the truth, exit 0, unattended. The refusal side proven inert in the opposite direction (both defect passes skip a field with an empty comparison key), which is the whole asymmetry the decision rests on. The premise re-derived against a self-built board binary — past offset/fractional stamps produce zero warnings, their 2093 twins warn. RED-by-mutation reproduced independently (exit 1, six refusal assertions plus both auditor-parity assertions). Auditor inheritance proven by execution in both directions: with the repairer mutated, the same auditor invocation repaired the offset stamp.
+**Suggested testing:** 3 items
+**Follow-ups created:** REQ-271, REQ-272; **sweeps appended to:** REQ-267
+
+*Reviewed by review-work action*
+
+---
+
+## Lessons Learned
+
+**What worked:** Testing the REQ's own premise before deciding on it. The REQ asserted the board warns on offset and fractional shapes; ten fixtures through a board binary showed it warns on six, and only when the instant is future. That correction shrank the residual from "these shapes" to "these shapes *and* fabricated", which is most of the case for refusing — a decision made on the REQ's stated premise would have been argued on a false population. Second: fuzzing the recognizer instead of listing cases. 1,440 shapes through `comparison_key_for`, zero leaks, and the 48 accepted are exactly the intended set.
+
+**What didn't:** The secondary lock-in — the one guarding against the board's layouts changing underneath the decision — enumerates the spellings it already knew about instead of keying on the condition, so it is green against `time.RFC3339Nano`, the very layout a fractional-support widening would add. The same line uses GNU-only `sed` alternation, which would turn the whole gate red on macOS. A guard that cannot fail is worse than no guard, because it is read as coverage; both are REQ-271.
+
+**Worth knowing:** REQ-246 D-04 was **right for the wrong reason**, and the wrong reason survived a build, a review, and a follow-up REQ before anyone checked it. "We can't decide this without timezone arithmetic" invites the next reader to go build the arithmetic; "we can, and we must not" closes the question. When a refusal is inherited rather than re-derived, read its stated reason as sceptically as its answer — REQ-267 carries a refusal justified the same way and is queued behind this. Also: this REQ's own header now states a reason that covers offsets but not fractional seconds, so the pattern is not fully escaped yet.
+
+## Orientation
+
+The timestamp repairer's refusal of offset and fractional stamps is now a settled, argued, and tested boundary rather than an open gap — a reader of the script meets the reason where the refusal lives, and the archive auditor inherits it through the shared sourced body with no edit of its own; lives in the do-work core's unattended SessionStart repair path, governed by `_dev/primes/prime-shell-commands.md`. No map change — no executable line changed anywhere; `comparison_key_for` is byte-identical to its pre-REQ state.
 

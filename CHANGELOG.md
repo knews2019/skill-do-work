@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.212.22 — The Offset Timestamp Refusal Is Now a Decision, Not a Gap (2026-08-18)
+
+The repairer has always refused stamps carrying a UTC offset or fractional seconds, on the grounds that it couldn't decide them without timezone arithmetic. That reason was wrong — an offset names an exact instant — so the refusal now stands on the real one: the arithmetic is the risk, not the obstacle.
+
+- A repairer that reads the wall clock and ignores the offset sees `2026-08-19T00:29:11+05:00` as five hours later than it is, and erases a correct stamp as future-dated — unattended, from a session hook. Refusing can only fail to fix; repairing can destroy
+- No code changed: the recognizer is byte-identical, and the decision is pinned by lock-ins that fail if anyone quietly widens it
+- The archive auditor inherits the refusal through the shared code body, with no edit of its own
+
 ## 0.212.21 — The Gate Now Catches Unformatted Go (2026-08-18)
 
 `maintainer-verify.sh` ran `go vet` but never the formatter, so a formatting slip could land and sit there silently — one did. It now checks every tracked Go file and fails naming the ones that need `gofmt -w`.
