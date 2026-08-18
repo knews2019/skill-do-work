@@ -41,9 +41,9 @@ estimate:
 REQ-249 retired the skill-root-relative citation reading and swept every **backticked** cross-package citation to the literal form — but the retired *reading* survives at three shipped sites that are bare text, which both the sweep and the new checker are structurally blind to. One of them states the retired resolution rule as prose in the core router, now contradicting the prime and the swept corpus.
 
 ## AI Execution State (P-A-U Loop)
-- [x] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `general.md`, `coding-guardrails.md`, `communication-style.md` and `maintenance.md` from the worktree (`tdd: false`, so `testing.md` was not loaded), `_dev/primes/prime-action-files.md` in full including its `## Lessons` links, the archived REQ-249 lesson this REQ descends from, and `_dev/tests/shipped-package-reference-contract.sh`'s `backticked_citation_messages` so the sweep could be strictly wider than the checker. Plan: sweep the primitive in three passes first, fix only what the sweep confirms is in scope, re-sweep. Deletion of the `SKILL.md` sentence was weighed first per `maintenance.md` § 1 and rejected — see D-02.
+- [x] **[APPLY]:** One scripted edit pass, three literal string replacements, each asserted to match exactly once in its file. No file outside the write set was opened for writing. `git diff --stat` after apply: 3 files, 3 insertions, 3 deletions.
+- [x] **[UNIFY]:** `git diff --stat 662788c..HEAD` → the three write-set files, 3 insertions / 3 deletions, no others. Read the full diff line by line: three single-line text hunks, no collateral edits, no debug artifacts, no stray whitespace. `git status --porcelain` empty — no scratch file left in the worktree. Each file verified individually: `SKILL.md`'s new sentence checked against the prime's § Cross-Referencing; both corrected paths resolved by hand from their own directory and confirmed to exist, then confirmed checker-covered now that they are backticked; `crew-members/security.md` diffed against the toolbox copy to confirm the two are proper mirror images. Gate run un-piped with the exit code captured directly: **`GATE_EXIT=0`**.
 
 ## Context
 
@@ -51,9 +51,9 @@ Found by REQ-249's independent review (Important, gate: rule-change; reproduced 
 
 ## Instances
 
-- [ ] **`skills/do-work/SKILL.md:16`** — "When a core action names a sibling path, resolve it from the parent directory containing these four skill roots" is the retired resolution rule stated as prose in the core router; applied to the new `../../` form it computes wrong paths. Restate to match the literal rule in `_dev/primes/prime-action-files.md` § Cross-Referencing.
-- [ ] **`skills/do-work/actions/commit.md:17`** — bare `../do-work-toolbox/actions/inspect.md`, wrong depth from `actions/`.
-- [ ] **`skills/do-work/crew-members/security.md:3`** — bare `../do-work-toolbox/actions/code-review.md` in the JIT_CONTEXT comment; the checker's comment scan covers backticked spans only, so this evades.
+- [x] **`skills/do-work/SKILL.md:16`** — "When a core action names a sibling path, resolve it from the parent directory containing these four skill roots" is the retired resolution rule stated as prose in the core router; applied to the new `../../` form it computes wrong paths. Restate to match the literal rule in `_dev/primes/prime-action-files.md` § Cross-Referencing.
+- [x] **`skills/do-work/actions/commit.md:17`** — bare `../do-work-toolbox/actions/inspect.md`, wrong depth from `actions/`.
+- [x] **`skills/do-work/crew-members/security.md:3`** — bare `../do-work-toolbox/actions/code-review.md` in the JIT_CONTEXT comment; the checker's comment scan covers backticked spans only, so this evades.
 
 ## Requirements
 
@@ -107,3 +107,14 @@ The rule to agree with is `_dev/primes/prime-action-files.md` § Cross-Referenci
 - [ ] `skills/do-work/SKILL.md`'s prose agrees with `_dev/primes/prime-action-files.md` § Cross-Referencing
 - [ ] Any site found beyond the three is either fixed here or reported with its reason
 - [ ] `bash _dev/tests/maintainer-verify.sh` exits 0
+
+---
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/SKILL.md` (modified)
+- `skills/do-work/actions/commit.md` (modified)
+- `skills/do-work/crew-members/security.md` (modified)
+
+**What was done:** Three one-line text edits, backed by a three-pass corpus sweep for the primitive. `SKILL.md:16` no longer states the retired skill-root-relative resolution rule — it now says a sibling path is literal and resolves from the citing file's own directory at the depth the path spells, matching `_dev/primes/prime-action-files.md` § Cross-Referencing. The two bare sibling paths in `actions/commit.md:17` and `crew-members/security.md:3` were corrected from one `../` to `../../` and backticked, which moves both into `_dev/tests/shipped-package-reference-contract.sh`'s enforcement so they cannot silently rot again. The sweep (every `(../)+<package>/` token in every file type regardless of backticks; prose stating a skill-root resolution rule with no path in it; the same reading spelled with no `../`) found nothing further in the `../`-led class — 10 non-resolving unfenced tokens before, 8 after, and all 8 survivors are `<skill-root>/`-anchored invocations or consumer-queue example paths that are correct as written.
