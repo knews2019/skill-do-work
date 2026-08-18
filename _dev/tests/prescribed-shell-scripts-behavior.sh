@@ -3,6 +3,8 @@
 set -uo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Absolute path to this file, so the closing count can read it from any caller's directory.
+suite_file="$repo_root/_dev/tests/${BASH_SOURCE[0]##*/}"
 # shellcheck source=_dev/tests/fixture-repo.sh
 source "$repo_root/_dev/tests/fixture-repo.sh"
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/prescribed-shell-scripts.XXXXXX")" || exit 1
@@ -1096,4 +1098,9 @@ reservation_symlink_output="$("$core_scripts/cleanup-req-reservations.sh" "$rese
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
-printf 'Prescribed shell script behavior probes passed (47 named script cases).\n'
+# One case is one fixture block, and every block opens with a header comment of the shape
+# `<script-name>: <what it proves>` at column zero. That shape is the definition, and the
+# count below is that shape grepped out of this file at run time — so the reported number
+# and the file cannot disagree, and nothing here is a remembered figure.
+named_case_count="$(grep -cE '^# [a-z0-9][a-z0-9-]*: ' "$suite_file")"
+printf 'Prescribed shell script behavior probes passed (%s named script cases).\n' "$named_case_count"
