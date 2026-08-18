@@ -3,7 +3,7 @@ id: REQ-236
 title: Add a URs-only lens to the Board view
 status: pending
 created_at: 2026-08-18T10:30:00Z
-user_request: UR-053
+user_request: UR-054
 domain: general
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
