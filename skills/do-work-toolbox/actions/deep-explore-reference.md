@@ -314,7 +314,7 @@ After capturing, write `session/sources/manifest.md`:
 
 ## State File Schema
 
-`session/state.json` tracks exploration progress for the orchestrator and for continue mode. The run directory's root `manifest.md` separately tracks the shared lifecycle (`in-progress` → `synthesized` → `consumed`) used by recovery and cleanup; do not use this nested state file as cleanup's deletion signal.
+`session/state.json` tracks exploration progress for the orchestrator and for continue mode. Its `created_at`/`completed_at` are the current UTC instant (Timestamp rule, `../do-work/actions/work-reference.md`). The run directory's root `manifest.md` separately tracks the shared lifecycle (`in-progress` → `synthesized` → `consumed`) used by recovery and cleanup; do not use this nested state file as cleanup's deletion signal.
 
 ```json
 {
@@ -323,7 +323,7 @@ After capturing, write `session/sources/manifest.md`:
   "session_dir": "do-work/runs/deep-explore-<sanitized-slug>-<YYYYMMDD-HHMMSS>",
   "status": "active | complete",
   "research_mode": "pre-session | on-demand | none",
-  "created_at": "ISO 8601 timestamp",
+  "created_at": "<timestamp>",
   "completed_at": null,
   "rounds": [
     {

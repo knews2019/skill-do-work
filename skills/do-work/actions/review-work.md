@@ -354,7 +354,7 @@ Record the answer on the finding's line — in the report and in the appended `#
 - **Only a genuinely non-trivial, thematically unrelated finding (`gate: user-visible`, standing alone) earns its own REQ** — and its body must state in one line why it couldn't fold into a sweep.
 - At generation ≥ 2, appends stay allowed (the depth stop below is creation-only); a NEW sweep falls under the reroute like any other creation (`status: pending-answers`; critical pierces).
 
-For each finding that routes to its own REQ (and for each new sweep), create the follow-up, stamping `effort_estimate` from the gate token — `gate: trivial` → `effort_estimate: trivial`, `gate: user-visible`/`gate: rule-change` → `effort_estimate: normal` (the field is the board's triage chip; schema: `actions/work-reference.md` → Request File Schema):
+For each finding that routes to its own REQ (and for each new sweep), create the follow-up, stamping `effort_estimate` from the gate token — `gate: trivial` → `effort_estimate: trivial`, `gate: user-visible`/`gate: rule-change` → `effort_estimate: normal` (the field is the board's triage chip; schema: `actions/work-reference.md` → Request File Schema). Its `created_at` is the current UTC instant (Timestamp rule, `actions/work-reference.md`):
 
 ```markdown
 ---
@@ -362,7 +362,7 @@ id: REQ-NNN
 title: "Review fix: [brief description]"
 status: pending
 domain: [same domain as the reviewed REQ]
-created_at: <timestamp>   # current UTC instant (Timestamp rule, actions/work-reference.md)
+created_at: <timestamp>
 user_request: [same UR as the reviewed REQ]
 addendum_to: [reviewed REQ id]
 review_generated: true

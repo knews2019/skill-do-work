@@ -123,25 +123,25 @@ Four independent status fields live in session state. They do not share a lifecy
 
 ## `session.json` Schema
 
-Session state lives at `./do-work/interview/<template>/session.json`. Full shape:
+Session state lives at `./do-work/interview/<template>/session.json`. Every `*_at` value is the current UTC instant (Timestamp rule, `../do-work/actions/work-reference.md`). Full shape:
 
 ```json
 {
   "template": "work-operating-model",
   "template_version": "2.0.0",
   "session_id": "<uuid>",
-  "started_at": "<iso>",
-  "last_activity_at": "<iso>",
+  "started_at": "<timestamp>",
+  "last_activity_at": "<timestamp>",
   "status": "in_progress | complete",
   "pending_layer": "<layer-id> | null",
   "previous_version": "<version-id> | null",
-  "review_completed_at": "<iso> | null",
+  "review_completed_at": "<timestamp> | null",
   "review_runs": 0,
-  "last_exported_at": "<iso> | null",
+  "last_exported_at": "<timestamp> | null",
   "layers": {
     "<layer-id>": {
       "approved": true,
-      "approved_at": "<iso>",
+      "approved_at": "<timestamp>",
       "entries": [ /* canonical entries */ ]
     }
   }

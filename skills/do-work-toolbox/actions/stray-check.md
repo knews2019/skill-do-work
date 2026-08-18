@@ -86,10 +86,12 @@ Otherwise:
 
 ## Output Format
 
+The report's `<timestamp>` is the current UTC instant (Timestamp rule, `../do-work/actions/work-reference.md`).
+
 ```markdown
 # Stray-Check Report
 
-**Scan date:** <ISO 8601 timestamp>
+**Scan date:** <timestamp>
 **Scope:** <path or "repo root">
 **Scanned:** <N> tracked + <N> untracked files (<M> skipped: vendored / ignored / do-work)
 
@@ -119,12 +121,12 @@ If `fix` mode and auto-fixable items exist, follow the Summary with the consent 
 <M> items are auto-fixable. Apply? [all / numbers / none]
 ```
 
-If nothing was found:
+If nothing was found — same `<timestamp>` stamping (Timestamp rule, `../do-work/actions/work-reference.md`):
 
 ```
 # Stray-Check Report
 
-**Scan date:** <ISO 8601 timestamp>
+**Scan date:** <timestamp>
 **Scope:** <path or "repo root">
 
 All clear — no stray, misplaced, or orphan files detected.

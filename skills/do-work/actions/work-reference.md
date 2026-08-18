@@ -619,12 +619,14 @@ The existence-verify check on the resolved path runs in Step 8 (post-move) — t
 
 ## Builder-Decided Follow-up Template (Step 8)
 
+Its `created_at` is the current UTC instant (Timestamp rule, above).
+
    ```markdown
    ---
    id: REQ-NNN
    title: "Confirm: [brief description of the choice]"
    status: pending-answers
-   created_at: <timestamp>   # current UTC instant (Timestamp rule, actions/work-reference.md)
+   created_at: <timestamp>
    user_request: [same UR as the original REQ]
    addendum_to: [original REQ id]
    builder_decided: true
@@ -888,9 +890,11 @@ This ensures the `commit:` field in the archived REQ contains the real implement
 
 ## Session Checkpoint Template (Step 10)
 
+Its `session_ended` is the current UTC instant (Timestamp rule, above).
+
 ```markdown
 ---
-session_ended: <timestamp>   # current UTC instant (Timestamp rule, actions/work-reference.md)
+session_ended: <timestamp>
 last_completed: REQ-NNN
 queue_state: [N pending, N pending-answers, N blocked, N blocked-archive-collision, N blocked-dependency-cycle, N in-progress]
 reqs_processed_this_session: N
