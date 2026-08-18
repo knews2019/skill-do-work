@@ -3028,3 +3028,42 @@ process.stdout.write(JSON.stringify({
 			periodResult.ScrollTop, periodResult.WantScrollTop)
 	}
 }
+
+// The Timeline's rows are keyboard-focusable SVG <g> nodes whose outline board.css
+// used to switch off outright, leaving a focused row with only a one-step background
+// tint while every other focusable thing on the board drew a 2px ring. This pins the
+// row's ring to the SAME width and token as the board's reference ring, so a later
+// change to one cannot quietly weaken the other, and pins the offset as inset: at a
+// positive offset the ring is clipped on three sides — the rows SVG's own viewport
+// takes the left and right edges and the scroll container takes the top — which
+// paints a divider under the next row instead of a ring around this one.
+func TestGenerateGivesTimelineRowsTheBoardsFocusRing(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	const rowFocusSelector = ".timeline-row:focus-visible {"
+	if !strings.Contains(indexHtml, rowFocusSelector) {
+		t.Fatalf("Timeline rows carry no %q rule: a keyboard-focused row has no ring, only the tint", rowFocusSelector)
+	}
+	rowFocusRule := sliceBalancedBlockAfter(t, indexHtml, rowFocusSelector)
+	referenceRingRule := sliceBalancedBlockAfter(t, indexHtml, ".control-button:focus-visible {")
+
+	ringPattern := regexp.MustCompile(`outline:\s*(\d+)px\s+solid\s+var\((--[a-z0-9-]+)\)`)
+	referenceRing := ringPattern.FindStringSubmatch(referenceRingRule)
+	if referenceRing == nil {
+		t.Fatalf("the board's reference ring no longer declares a token-coloured outline: %q", referenceRingRule)
+	}
+	rowRing := ringPattern.FindStringSubmatch(rowFocusRule)
+	if rowRing == nil {
+		t.Fatalf("a keyboard-focused Timeline row draws no token-coloured outline: %q", rowFocusRule)
+	}
+	if rowRing[1] != referenceRing[1] || rowRing[2] != referenceRing[2] {
+		t.Fatalf("the Timeline row ring is %spx var(%s), but the board's rings are %spx var(%s)",
+			rowRing[1], rowRing[2], referenceRing[1], referenceRing[2])
+	}
+
+	offsetPattern := regexp.MustCompile(`outline-offset:\s*(-?\d+)px`)
+	rowOffset := offsetPattern.FindStringSubmatch(rowFocusRule)
+	if rowOffset == nil || !strings.HasPrefix(rowOffset[1], "-") {
+		t.Fatalf("the Timeline row ring must be drawn inward — an outward ring is clipped by the rows SVG and the scroll container; rule is %q", rowFocusRule)
+	}
+}
