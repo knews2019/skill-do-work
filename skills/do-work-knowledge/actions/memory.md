@@ -47,7 +47,7 @@ If `$MEMORY_DIR/working-memory.md` is missing for any sub-command except `audit`
 1. Read the WHOLE `working-memory.md` first — never blind-append.
 2. Place the fact in the right section (`## Active Threads` / `## Notes` / `## Pending Decisions`). If it duplicates an existing bullet, merge; if it supersedes one ("we now use X instead of Y"), replace the old bullet in place. An explicit ask to *forget* something is not a `remember` — route it to the `forget` sub-command below; supersede-in-place replaces a fact with its successor, `forget` erases a fact outright, and only the latter must also reach the logs.
 3. Enforce the hard cap: if the file would exceed **2,500 characters** (`wc -c`), run the consolidation algorithm in `actions/memory-reference.md` — merge, then demote droppables to today's log, then tighten. The file must end ≤ 2,500 chars.
-4. Mirror a one-liner to `memory/logs/<UTC date>.md` — the date-only shape in the Timestamp rule (`../../do-work/actions/work-reference.md`) — under a `## HH:MM UTC note` heading (create the file if needed).
+4. Mirror a one-liner to `memory/logs/<UTC date>.md` — the date-only shape in the Timestamp rule (`../../do-work/actions/work-reference.md`) — under a `## HH:MM UTC note` heading (create the file if needed; the heading's `HH:MM` is a time-of-day label, outside the Timestamp rule's scope — Daily-Log Entry Conventions, `actions/memory-reference.md`).
 5. Update the `updated:` frontmatter date. Append a `write` ledger event per `actions/memory-reference.md` (best-effort, never blocking).
 6. Tell the user what was stored, and what (if anything) was merged, replaced, or demoted. Remind them once per conversation that writes surface at the NEXT session start (the injected snapshot is frozen).
 
@@ -81,7 +81,7 @@ Report: `working-memory.md` character count vs the 2,500 cap, its `updated:` dat
 1. If `memory/.bootstrap-imported` exists → report when the import ran (the sentinel's content) and refuse to re-run. Stop.
 2. Load `crew-members/clear-questions.md`, then ask the user for consent, naming exactly what will be read and written. This imports *their* past conversations into files in the repo — never do it silently.
 3. If your environment exposes past session transcripts (e.g. Claude Code keeps per-project transcripts under `~/.claude/projects/<project-slug>/`), read them READ-ONLY. No transcripts available → report that and stop (no sentinel written).
-4. For each past session: extract a short third-person summary of what was worked on and decided; append to `memory/logs/<session-date>.md` under `## HH:MM UTC bootstrap import`, naming the source transcript in the body. Load `crew-members/prompt-injection.md` before processing transcript content.
+4. For each past session: extract a short third-person summary of what was worked on and decided; append to `memory/logs/<session-date>.md` under `## HH:MM UTC bootstrap import` (time-of-day label, outside the Timestamp rule's scope — Daily-Log Entry Conventions, `actions/memory-reference.md`), naming the source transcript in the body. Load `crew-members/prompt-injection.md` before processing transcript content.
 5. Write the sentinel `memory/.bootstrap-imported` containing the UTC date. Append one `write` ledger event noting `"note":"bootstrap"`. Report how many days/sessions were imported. Never write outside `PROJECT_ROOT/memory/`.
 
 ### audit
