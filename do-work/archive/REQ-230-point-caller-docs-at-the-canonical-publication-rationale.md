@@ -2,7 +2,7 @@
 id: REQ-230
 title: "Review fix: point caller docs at the canonical publication rationale"
 status: completed
-completed_at: 2026-08-18T11:12:00Z
+completed_at: 2026-08-18T11:02:00Z
 commit: 19669fc
 claimed_at: 2026-08-18T10:56:00Z
 estimate:
@@ -133,7 +133,7 @@ Exactly one failure, naming exactly the target file, which is also the evidence 
 
 ## Review
 
-**Overall: 98%** | 2026-08-18T11:10:00Z
+**Overall: 98%** | 2026-08-18T11:00:00Z
 
 | Dimension | Score |
 |-----------|-------|

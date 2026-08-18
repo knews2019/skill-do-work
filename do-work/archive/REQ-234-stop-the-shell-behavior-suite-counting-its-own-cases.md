@@ -2,7 +2,7 @@
 id: REQ-234
 title: Stop the shell behavior suite counting its own cases
 status: completed
-completed_at: 2026-08-18T11:22:00Z
+completed_at: 2026-08-18T11:07:00Z
 commit: 48ed251
 claimed_at: 2026-08-18T10:56:00Z
 estimate:
@@ -110,7 +110,7 @@ Judgment checks, run against the merged tree rather than taken from the builder'
 
 ## Review
 
-**Overall: 97%** | 2026-08-18T11:20:00Z
+**Overall: 97%** | 2026-08-18T11:05:00Z
 
 | Dimension | Score |
 |-----------|-------|

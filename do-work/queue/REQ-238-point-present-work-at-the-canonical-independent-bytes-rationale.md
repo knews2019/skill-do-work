@@ -2,7 +2,7 @@
 id: REQ-238
 title: "Review fix: point present-work at the canonical independent-bytes rationale"
 status: pending-answers
-created_at: 2026-08-18T11:10:00Z
+created_at: 2026-08-18T11:00:00Z
 user_request: UR-042
 addendum_to: REQ-230
 domain: general
