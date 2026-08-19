@@ -120,6 +120,18 @@
   li { margin-bottom: 7px; }
   footer { padding: 36px 0 0; color: var(--muted); font-size: 14.5px; }
 
+  .decision {
+    margin: 26px 0 0; padding: 20px 24px; border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--ok);
+  }
+  .decision p { margin: 0 0 10px; font-size: 16px; }
+  .decision p:last-child { margin-bottom: 0; }
+  .decision-tag {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ok); font-weight: 600;
+  }
+  .decision-reqs { color: var(--muted); font-size: 15px; }
+
   .chart text { font-family: var(--mono); fill: var(--muted); }
   .chart .facename { fill: var(--text); font-size: 12px; }
   .chart .facename.here { font-weight: 700; }
@@ -138,9 +150,20 @@
 <header class="hero">
   <div class="measure">
     <p class="kicker">Board · Durations view · successor to the cancelled REQ-278</p>
-    <h1>The label face is unbounded. Bound it — don't survey it.</h1>
-    <p class="verdict"><strong>Recommendation: ship one font file and pin the chart labels to it (O1).</strong> Sections 1, 3 and 4 are measured live by your own browser as this page loads, so the report shows the case instead of asserting it.</p>
+    <h1>The label face is unbounded. Measure it where the font is.</h1>
+    <p class="verdict"><strong>Recommended O1 (ship one font file). Maintainer chose O2 (measure in the browser).</strong> Sections 1, 3 and 4 are measured live by your own browser as this page loads, so the report shows the case instead of asserting it.</p>
     <p class="sub" id="platform-line">Solutions report, 2026-08-19.</p>
+  </div>
+
+  <div class="decision measure">
+    <p class="decision-tag">Decided 2026-08-19</p>
+    <p><b>The maintainer chose O2</b> — move placement into the browser and measure for real —
+    and supplied the browser test lane this report priced as O2's cost. The recommendation below
+    preferred O1 on that cost alone; with a browser in the test path the objection is answered,
+    so the argument stands but the conclusion does not. Everything below is left as written, because
+    the reasoning is the record.</p>
+    <p class="decision-reqs">Captured as <b>UR-061</b> → <b>REQ-291</b> (browser behavior probe lane)
+    then <b>REQ-292</b> (move placement, delete the measured-face constants).</p>
   </div>
 </header>
 
@@ -305,8 +328,8 @@
 
   <div class="opts">
 
-    <div class="opt pick">
-      <span class="tag">O1 · Recommended</span>
+    <div class="opt">
+      <span class="tag">O1 · Recommended, not chosen</span>
       <h3>Ship a font file and pin the chart labels to it</h3>
       <p>Embed one subset <code>.woff2</code> beside the assets <code>generate.go:22</code> already embeds, declare an <code>@font-face</code>, and point the label class at that family instead of at a stack ending in an open generic. Both constants then describe a file this project ships — measured once, on any machine, true everywhere the board is opened.</p>
 
@@ -335,8 +358,8 @@
       </dl>
     </div>
 
-    <div class="opt maybe">
-      <span class="tag">O2</span>
+    <div class="opt pick">
+      <span class="tag">O2 · Chosen</span>
       <h3>Move placement into the browser and measure for real</h3>
       <p>Delete both constants. Render, measure each label with <code>getComputedTextLength()</code> and <code>getBBox()</code>, then run collision and row assignment in JS against real extents — the same thing this report just did to produce section 1.</p>
 
