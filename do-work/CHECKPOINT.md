@@ -23,7 +23,7 @@ Both hashes confirmed with `record-commit-hash.sh --verify`. `maintainer-verify.
 
 ## Still Queued
 
-**Twenty-nine** — 28 `pending`, 1 `pending-answers`. The queue grew by three this session (two shipped, five created), and every one of the six came from a review or a builder's stop-and-report finding something real.
+**Twenty-nine** — 28 `pending`, 1 `pending-answers`. The queue grew by three this session (two shipped, five created), and every one of the five came from a review or a builder's stop-and-report finding something real.
 
 **Needs you (`pending-answers`):**
 - **REQ-296** — should the retired `trivial`/`normal` vocabulary left in internal names (the board's projection keys, the estimator's `--trivial` flag) follow the rename? Both were deliberate non-goals with stated reasons; the REQ asks whether that stays the answer.
