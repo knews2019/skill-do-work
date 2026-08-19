@@ -1,8 +1,8 @@
 ---
-session_ended: 2026-08-19T16:40:00Z
-last_completed: REQ-290
-queue_state: 28 pending, 1 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
-reqs_processed_this_session: 2
+session_ended: 2026-08-19T20:52:00Z
+last_completed: REQ-282
+queue_state: 26 pending, 2 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
+reqs_processed_this_session: 4
 session_depth: moderate
 ---
 
@@ -10,42 +10,41 @@ session_depth: moderate
 
 ## In Progress (interrupted)
 
-
 ## Completed This Session
 
-`do-work run UR-060` — both members shipped, each with an independent adversarial review:
+`do-work run REQ-268 REQ-270 REQ-276 REQ-282` — four independent correctness REQs, serial mode, each with its own adversarial review:
 
-- REQ-289: separate impact from effort, with unique greppable tokens on both axes (Route C, 88%) — `2ea7be5`, **0.214.0**
-- REQ-290: surface impact in REQ titles and add a run filter that skips negligible work (Route B, 70% → remediated) — `225e287`, **0.215.0**
+- REQ-268: never report clean for a state that was never verified (Route B, 91%) — `ec5e550`, **0.215.1**
+- REQ-270: carry a worktree builder's hand-back sections into Step 8 (Route B, 58% Partial) — `9fe63fa`, **0.215.2**
+- REQ-276: give record-commit-hash's readers the writer's fence guard (Route A, 94%) — `fa19f69`, **0.215.3**
+- REQ-282: make the release probes run in a suite checkout (Route B, 98%) — `bc809fd`, **0.216.0**
 
-Both hashes confirmed with `record-commit-hash.sh --verify`. `maintainer-verify.sh` exited 0 at every commit boundary. Serial mode throughout — no worktrees created, so none to clean up.
-
-**UR-060 stays open** in `user-requests/`: it gained five follow-ups, all still queued.
+Every hash confirmed with `record-commit-hash.sh --verify`; `maintainer-verify.sh` exited 0 at every commit boundary. Serial throughout — no worktrees created, none to clean up. One pre-session bookkeeping commit (`fd86625`) recorded REQ-296's abandonment, which was complete in the tree but uncommitted.
 
 ## Still Queued
 
-**Twenty-nine** — 28 `pending`, 1 `pending-answers`. The queue grew by three this session (two shipped, five created), and every one of the five came from a review or a builder's stop-and-report finding something real.
+**Twenty-eight** — 26 `pending`, 2 `pending-answers`. Net −2 (four shipped, two follow-ups created).
 
-**Needs you (`pending-answers`):**
-- **REQ-296** — should the retired `trivial`/`normal` vocabulary left in internal names (the board's projection keys, the estimator's `--trivial` flag) follow the rename? Both were deliberate non-goals with stated reasons; the REQ asks whether that stays the answer.
-
-**New this session (`pending`):** REQ-293 (sweep, 6 instances — the impact/effort lock-in checks pin a spelling rather than the property), REQ-294 (capture's impact guard is one-directional), REQ-295 (bare "impact" wordings in the toolbox audit), REQ-297 (targeted mode under-reports what the new flag skipped).
+**Needs you (`pending-answers`, both generation-≥2 follow-ups):**
+- **REQ-298** — the unchecked-exit-status primitive REQ-268 fixed was copied from `tools/checks/record-commit-hash.sh`, which still carries it. **Sequence after REQ-276's file work, not before.**
+- **REQ-299** — `## Decisions` has REQ-270's exact defect at two read sites outside Step 8 (review-work's traceability check, and the Decision Brief's HANDLED block), so under fan-out a builder's judgment calls never reach the user.
 
 ## Session Notes
 
-**The reviews earned their cost twice, and one of the catches was the orchestrator's.**
+**Every one of the four reviews found something the builder's own sweep missed, and three of the four findings were in the same file the REQ had just edited.**
 
-- I mutation-tested REQ-289's four lock-in checks and reported them sound. The reviewer showed my mutation for the main check used the word "stamping" — the single literal that check greps. Re-run with six realistic re-drift phrasings, it catches one. A mutation written in the check author's own vocabulary tests the vocabulary, not the property. That is REQ-293's F2.
-- REQ-290's builder justified its always-double-quote rule by claiming an unquoted tagged title leaves a REQ's status, UR pointer and dependencies riding on strict parsing. The parser's own comment says the opposite — recovery exists so that does not happen — and a live parse confirmed nothing is lost. I corrected the reason; the reviewer then found the *true* reason is stronger than my correction: a title opening `[` and closing `]` is parsed as a YAML flow list and comes back altered, commas silently eaten. Verified, and it is what the convention now says.
+- REQ-268 swept for the primitive and stopped at the three instances the REQ listed; three more of the same shape sat below them, including the post-rename guard that runs *after* the file is replaced and whose `0/0` fallback made `[ 0 -gt threshold ]` false for every threshold.
+- REQ-270 swept Step 8's substeps correctly and never grepped outside Step 8. An always-loaded crew file still told every builder to do the thing the fix forbids — that one had to be fixed inside the REQ, because shipping the reader-side fix alone would have shipped a fix that does not work.
+- REQ-276's helper was defined below the `--verify` branch that calls it. Caught by running the suite, not by reading it.
 
-**Three right rules, three wrong reasons, in two REQs.** Every one was caught by someone other than its author, and only by checking arguments rather than verdicts. Nothing in the suite tests a justification.
+**The pattern across all three: the sweep was for the instance across one scope, when the condition needed sweeping across the repo.** REQ-270's lesson names it directly.
 
-**A REQ that adds a condition to a list must sweep every gloss of that list.** REQ-290 added a fifth auto-wave ready-set condition and updated the canonical list correctly; three restatements of "the four conditions" survived inside the two files it was already editing, one of them thirteen lines below the condition it contradicted. All fixed in place rather than deferred.
+**A near-miss worth keeping.** REQ-282's obvious one-line implementation — widen the shared version-file resolver — satisfies the feature and silently breaks the constraint the REQ spent a paragraph on, because that resolver is also `next-version`'s writer. The REQ named the constraint; only a test enforced it.
 
-**Estimator calibration held.** REQ-289 estimated 60 active minutes against a 66-minute wall span; REQ-290 estimated 15 against 40 — the second inflated by serial review latency, not by work. Two rows appended to `do-work/calibration-log.tsv`; do not recalibrate off a sample of two.
+**Estimator ran under on three of four:** 20→33, 15→19, 10→19, 20→12 minutes. The overage is serial review latency, not build time. Four rows appended to `do-work/calibration-log.tsv`; do not recalibrate off four.
 
 ## Context Summary
 
-**The impact/effort split is complete and shipped, but its guard rails are not.** The field, the vocabulary, the parser, the board chip, the title tag, and the run filter all exist and were each proven live rather than asserted. What is missing is the layer that keeps them true: REQ-293 now carries six instances of checks that pin a spelling instead of a property, including the one property REQ-290's filter depends on — that `impact:` defaults to `impact-user-visible` and never to `impact-negligible`. Flip that default and the filter silently skips every REQ predating the field, with a green suite.
+**Two of tonight's four REQs were about the same thing wearing different clothes: a check that answers "fine" for work it never did.** REQ-268 was that condition in the timestamp scripts, REQ-282 was three release probes that had been silently off since the four-skill split — including the duplicate-version-number check that CLAUDE.md says has caught real failures before. Both are now loud. REQ-298 is the remaining reach of the first, and it is the one queued item that touches a file the pipeline depends on every single run.
 
-**REQ-294 is the one that decides whether any of this pays off.** Three forces — the capture template, the contract default, and a one-directional "never invent impact-negligible" guard — all push a new REQ toward `impact-user-visible`. If every REQ lands on the default, the field is decorative and the filter has nothing to filter. It carries an open question.
+**Prove a check bites, never that it went quiet.** REQ-282's acceptance needed a deliberate `9.9.9` mismatch on the real repo, because a disabled probe and a working one print the same thing on a clean tree. That test shape is now in `release_test.go` and is worth copying wherever a probe is added.
