@@ -283,7 +283,7 @@ Confidence can change: medium → high when a second source confirms the claim. 
 
 ### Schema Read Contract
 
-The wiki page frontmatter above has three enum-valued fields (`type`, `rel`, `confidence`) and one namespace-string field (`topic_cluster`). To prevent muscle-memory typos from silently misclassifying articles — the same failure mode that `0.76.2`'s `dependencies:` → `depends_on` patch addressed in `../do-work/actions/work.md` — every read site in bkb sub-commands (`triage`, `ingest`, `lint`, `garden`, `defrag`, `query`) honors a uniform **normalize-and-warn contract**:
+The wiki page frontmatter above has three enum-valued fields (`type`, `rel`, `confidence`) and one namespace-string field (`topic_cluster`). To prevent muscle-memory typos from silently misclassifying articles — the same failure mode that `0.76.2`'s `dependencies:` → `depends_on` patch addressed in `../../do-work/actions/work.md` — every read site in bkb sub-commands (`triage`, `ingest`, `lint`, `garden`, `defrag`, `query`) honors a uniform **normalize-and-warn contract**:
 
 1. **Normalize first.** Apply the per-field alias map below; if a canonical match results, use it silently.
 2. **Warn-on-fallback.** If after normalization the value still doesn't match the canonical enum, emit `⚠ {field}: '{value}' not recognized — expected one of [{enum}]. Treating as '{default}'.` and proceed with the default.

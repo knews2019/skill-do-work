@@ -56,7 +56,7 @@ The four phases run in order. Phases 1–2 are strictly read-only reconnaissance
 4. **Find the wiki dir.** Try `<dir>/wiki/` → `<dir>/pages/` → `<dir>` itself — pick the first that contains `*.md` files (excluding the index). Call this `<wiki>`.
 
 5. **Acquire the lock.** Check `<dir>/.lock`:
-   - If absent: create it with the current UTC instant inside (Timestamp rule, `../do-work/actions/work-reference.md`), then continue.
+   - If absent: create it with the current UTC instant inside (Timestamp rule, `../../do-work/actions/work-reference.md`), then continue.
    - If present and its mtime is within the last 5 minutes: stop with `Another dream pass may be running (.lock is recent). If you're sure it isn't, delete <dir>/.lock and re-run.`
    - If present and older than 5 minutes: treat as stale — note it in the eventual summary, remove it, create a fresh one, continue.
 

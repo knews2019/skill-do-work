@@ -267,7 +267,13 @@ func runJavaScriptBehaviorProbe(t *testing.T, probeName string, javascriptProbe 
 	t.Helper()
 	nodePath := lookupNodeForJavaScriptProbe(t)
 
-	probeCommand := exec.Command(nodePath, "-e", javascriptProbe)
+	// The probe arrives on stdin rather than as an "-e" argument: a probe that
+	// embeds the assembled client exceeds Linux's 128 KiB per-argument limit and
+	// fails the exec with "argument list too long" — a limit macOS does not have,
+	// so an "-e" invocation passes for the maintainer and fails in CI-like Linux
+	// environments on probe size alone.
+	probeCommand := exec.Command(nodePath, "-")
+	probeCommand.Stdin = strings.NewReader(javascriptProbe)
 	javaScriptBehaviorProbeCount.Add(1)
 	probeOutput, probeError := probeCommand.CombinedOutput()
 	if probeError != nil {
@@ -1926,26 +1932,42 @@ process.stdout.write(JSON.stringify({
 //
 // Procedure, reproducible from any board directory `queue-kanban generate`
 // wrote: load index.html, activate the Durations view, and read getBBox()
-// against the node's own `y` on the two <text> nodes. Measured in headless
-// Chromium (Playwright 1.59) at 1400x1200 — the SVG is a fixed viewBox at
-// width:100%, so user units are zoom- and window-independent. The title box
-// came back 14.815 units tall, 12.0372 above the baseline and 2.7778 below; the
-// annotation's 12.9631 tall, 10.1853 above and 2.7778 below. The mark-label
-// ascent is rounded to 10.5 so it also covers the 10.4278 the same face
-// measured for REQ-241 on a different Chromium.
+// against the node's own `y` on the two <text> nodes, at 1400x1200 — the SVG is
+// a fixed viewBox at width:100%, so user units are zoom- and window-independent.
 //
-// The title ascent gets the same treatment for the same reason, and it is why
-// this constant is declared here for the whole package rather than once per
-// test file. REQ-241's clearance assertion measured 11.2300 for this face on a
-// different Chromium and would have rounded to 11.24; the two REQs merged into
-// one package and disagreed by 0.86 units. 12.1 is the larger, so it is the one
-// kept: a title box that reaches HIGHER makes every clearance test demand more
-// room than the render needs, which is the safe direction for both callers. A
-// future re-measurement may only raise this number, never lower it, without
-// re-checking every assertion that reads it.
+// A measured face is PER-BROWSER, so each constant's own doc comment names the
+// Chromium build its number was taken on — durations_test.go's
+// TestDurationsMeasuredConstantsNameTheirChromiumBuild enforces that for every
+// durationsMeasured constant in the package, and its comment records the
+// collision that earned the rule. A re-measurement on another build may only
+// RAISE a constant, never lower it: a box that reaches further makes every
+// clearance test demand more room than the render needs, which is the safe
+// direction for every caller.
+
+// The 12px title face's ascent, rounded up from the 12.0372 REQ-242 measured on
+// Chromium 146 (Playwright 1.59). This constant is declared here for the whole
+// package rather than once per test file because REQ-241's clearance assertion
+// measured the same face at 11.2300 on its own Chromium (recorded only as
+// browser build chromium-1228) and declared its own constant; the two REQs
+// merged into one package, disagreed by 0.86 units, and failed to compile. 12.1
+// is the larger, so it is the one kept. Chromium 141.0.7390.37 (Playwright
+// 1.56.1, REQ-252) measures 11.1112 — smaller, so the constant stands.
 const durationsMeasuredAxisTitleAscentUnits = 12.1
+
+// The same title box's descent, rounded up from the 2.7778 REQ-242 measured on
+// Chromium 146 (Playwright 1.59); Chromium 141.0.7390.37 (REQ-252) measures the
+// same 2.7778.
 const durationsMeasuredAxisTitleDescentUnits = 2.8
+
+// The 11px annotation face's ascent, rounded to 10.5 so it covers both the
+// 10.1853 REQ-242 measured on Chromium 146 (Playwright 1.59) and the 10.4278
+// the same face measured for REQ-241 on its chromium-1228 build; Chromium
+// 141.0.7390.37 (REQ-252) measures 10.1853.
 const durationsMeasuredMarkLabelAscentUnits = 10.5
+
+// The annotation box's descent, rounded up from the 2.7778 REQ-242 measured on
+// Chromium 146 (Playwright 1.59); Chromium 141.0.7390.37 (REQ-252) measures the
+// same 2.7778.
 const durationsMeasuredMarkLabelDescentUnits = 2.8
 
 // durationsAnnotationCase is one (position, bar height) the annotation can be
@@ -1970,10 +1992,11 @@ var durationsAnnotationNamedExtremes = []durationsAnnotationCase{
 	{"rightmost day, over the ceiling", 1182, 209},
 }
 
-// Sweep bounds. x runs WIDER than the plot because xOfEpoch puts a day's centre
-// outside it whenever the first sample of the first day completed after
-// midnight; the median range covers everything under the four-hour read-time
-// ceiling that admits a sample at all.
+// Sweep bounds. x runs WIDER than the plot on purpose: the day-anchored domain
+// (REQ-248) keeps every real day centre inside it, but this sweep is a property
+// of the drawing function at ANY x it could ever be handed, so it still covers
+// the off-plot band the pre-REQ-248 renderer produced. The median range covers
+// everything under the four-hour read-time ceiling that admits a sample at all.
 const (
 	durationsAnnotationSweepLeftX      = -400.0
 	durationsAnnotationSweepRightX     = 1400.0
@@ -2274,6 +2297,209 @@ process.stdout.write(JSON.stringify(` + string(probeValues) + `.map(formatDurati
 				minutes, rendererTexts[valueIndex], rendererLength,
 				formatDurationLabelMinutes(minutes), modelLength)
 		}
+	}
+}
+
+// ---- panel B/C day buckets and the shared axis domain ----------------------
+
+// durationsRenderDomStubPreamble is the smallest DOM renderDurationsView
+// touches, so the probe below can run the REAL renderer rather than sliced
+// fragments of it. Every SVG node records its tag and attributes; nothing here
+// re-implements layout.
+const durationsRenderDomStubPreamble = `
+function makeStubNode(nodeName) {
+  return {
+    stubName: nodeName,
+    attributes: {},
+    children: [],
+    textContent: "",
+    setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = String(attributeValue); },
+    appendChild: function (childNode) { this.children.push(childNode); return childNode; },
+    addEventListener: function () {}
+  };
+}
+var durationsStubHosts = {
+  "durations-chart": makeStubNode("div"),
+  "durations-summary": makeStubNode("p"),
+  "durations-readout": makeStubNode("p"),
+  "durations-table-body": makeStubNode("tbody")
+};
+var document = {
+  getElementById: function (nodeId) { return durationsStubHosts[nodeId] || null; },
+  createElementNS: function (namespaceUri, nodeName) { return makeStubNode(nodeName); },
+  createElement: function (nodeName) { return makeStubNode(nodeName); },
+  createTextNode: function (nodeText) { return { textContent: nodeText }; }
+};
+`
+
+// durationsRenderProbeDriver renders the fixture board and reports every drawn
+// bar's x-interval, the slowest-day annotation's anchor x (the only mid-anchored
+// text at the annotation baseline), and every Panel A mark centre in draw order.
+const durationsRenderProbeDriver = `
+renderDurationsView();
+var drawnBars = [], drawnAnnotationXs = [], drawnMarkCxs = [];
+function walkDrawnNodes(parentNode) {
+  (parentNode.children || []).forEach(function (childNode) {
+    var attributes = childNode.attributes || {};
+    if (childNode.stubName === "rect" && String(attributes["class"] || "").indexOf("durations-bar") !== -1) {
+      drawnBars.push({ class: attributes["class"], x: Number(attributes.x), width: Number(attributes.width) });
+    }
+    if (childNode.stubName === "circle") {
+      drawnMarkCxs.push(Number(attributes.cx));
+    }
+    if (childNode.stubName === "text" && attributes["text-anchor"] === "middle" &&
+        Number(attributes.y) === DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y) {
+      drawnAnnotationXs.push(Number(attributes.x));
+    }
+    walkDrawnNodes(childNode);
+  });
+}
+walkDrawnNodes(durationsStubHosts["durations-chart"]);
+process.stdout.write(JSON.stringify({ bars: drawnBars, annotationXs: drawnAnnotationXs, markCxs: drawnMarkCxs }));
+`
+
+// durationsDayCountFixtureTickets builds dayCount active days of archived REQs.
+// The first completion of each day lands 13:54 into it — the offset that put
+// the real board's leftmost bar in the axis gutter (REQ-248).
+func durationsDayCountFixtureTickets(dayCount int) []*RequestTicket {
+	firstDay := time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC)
+	tickets := make([]*RequestTicket, 0, dayCount*2)
+	for dayIndex := 0; dayIndex < dayCount; dayIndex++ {
+		dayStart := firstDay.AddDate(0, 0, dayIndex)
+		for sampleIndex, completionOffset := range []time.Duration{
+			13*time.Hour + 54*time.Minute,
+			16*time.Hour + 54*time.Minute,
+		} {
+			completedAt := dayStart.Add(completionOffset)
+			claimedAt := completedAt.Add(-time.Duration(24+10*sampleIndex) * time.Minute)
+			tickets = append(tickets, durationTicket(
+				fmt.Sprintf("REQ-%03d%d", dayIndex, sampleIndex),
+				"B",
+				claimedAt.Format(time.RFC3339),
+				completedAt.Format(time.RFC3339),
+			))
+		}
+	}
+	return tickets
+}
+
+// REQ-248: Panel B placed its day bars at xOfEpoch(day midnight) while the axis
+// domain began at the FIRST COMPLETION INSTANT, so the leftmost bar always sat
+// left of the plot by however far into its day the first sample fell — and on a
+// one- or two-day board the disagreement dominated the whole span and Panels B
+// and C rendered off canvas entirely (live-DOM baselines: bar x=-5184.4 at one
+// active day, x=-564.5 at two, x=-8.3 at fourteen against a left margin of 54;
+// Chromium 141.0.7390.37 via Playwright 1.56.1).
+//
+// This drives the REAL renderDurationsView over a stub DOM at one, two,
+// fourteen and four hundred active days and asserts, from the drawn attributes:
+// every Panel B and C bar inside the plot area, exactly one slowest-day
+// annotation anchored inside it, and every Panel A mark at the x the Go-side
+// label planner assumed. That last assertion is the drift pin: the renderer's
+// axis domain and durations.go's durationLabelTimeRange must stay one
+// definition, and it fails in whichever direction either side moves alone.
+func TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+
+	marginLeft := durationsRendererConstant(t, "DURATIONS_MARGIN_LEFT")
+	plotRight := durationsRendererConstant(t, "DURATIONS_VIEW_WIDTH") -
+		durationsRendererConstant(t, "DURATIONS_MARGIN_RIGHT")
+
+	for _, dayCount := range []int{1, 2, 14, 400} {
+		dayCount := dayCount
+		t.Run(fmt.Sprintf("%d-active-days", dayCount), func(t *testing.T) {
+			fixtureTickets := durationsDayCountFixtureTickets(dayCount)
+			aggregate := buildDurationAggregate(fixtureTickets)
+			fixtureBoard := &Board{
+				GeneratedAt: time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC),
+				AllRequests: fixtureTickets,
+			}
+			generatedData, buildError := buildGeneratedBoardData(fixtureBoard)
+			if buildError != nil {
+				t.Fatalf("buildGeneratedBoardData: %v", buildError)
+			}
+			durationsJson, encodeError := json.Marshal(generatedData.Durations)
+			if encodeError != nil {
+				t.Fatalf("encode durations payload: %v", encodeError)
+			}
+
+			javascriptProbe := durationsRenderDomStubPreamble +
+				"var boardData = { durations: " + string(durationsJson) + " };\n" +
+				string(rendererFragment) +
+				durationsRenderProbeDriver
+			probeOutput := runJavaScriptBehaviorProbe(t,
+				fmt.Sprintf("durations day buckets (%d active days)", dayCount), javascriptProbe)
+
+			var drawn struct {
+				Bars []struct {
+					Class string  `json:"class"`
+					X     float64 `json:"x"`
+					Width float64 `json:"width"`
+				} `json:"bars"`
+				AnnotationXs []float64 `json:"annotationXs"`
+				MarkCxs      []float64 `json:"markCxs"`
+			}
+			if decodeError := json.Unmarshal(probeOutput, &drawn); decodeError != nil {
+				t.Fatalf("decode drawn durations geometry: %v (output starts %q)",
+					decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+			}
+
+			// (1) Every Panel B and C bar inside the plot area. 0.05 covers the
+			// renderer's toFixed(1) rounding and nothing else.
+			panelBBarCount := 0
+			for _, bar := range drawn.Bars {
+				if !strings.Contains(bar.Class, "durations-bar-count") &&
+					!strings.Contains(bar.Class, "durations-bar-over-ceiling") {
+					panelBBarCount++
+				}
+				if bar.X < marginLeft-0.05 || bar.X+bar.Width > plotRight+0.05 {
+					t.Errorf("%q bar spans x %.1f–%.1f, outside the plot area [%.0f, %.0f]",
+						bar.Class, bar.X, bar.X+bar.Width, marginLeft, plotRight)
+				}
+			}
+
+			// (2) One Panel B bar per day with a median — the guard against a
+			// render that went off the rails and drew nothing to check.
+			medianDayCount := 0
+			for _, day := range aggregate.Days {
+				if day.HasMedian {
+					medianDayCount++
+				}
+			}
+			if panelBBarCount != medianDayCount {
+				t.Errorf("drew %d Panel B bars for %d days with a median", panelBBarCount, medianDayCount)
+			}
+
+			// (3) Exactly one slowest-day annotation, anchored inside the plot —
+			// it exists to state a value a clipped bar cannot, and cannot do
+			// that from off-screen.
+			if len(drawn.AnnotationXs) != 1 {
+				t.Fatalf("drew %d slowest-day annotations, want exactly 1", len(drawn.AnnotationXs))
+			}
+			if annotationX := drawn.AnnotationXs[0]; annotationX < marginLeft-0.05 || annotationX > plotRight+0.05 {
+				t.Errorf("slowest-day annotation anchored at x=%.1f, outside the plot area [%.0f, %.0f]",
+					annotationX, marginLeft, plotRight)
+			}
+
+			// (4) Every Panel A mark at the x the Go-side label planner assumed.
+			rangeStart, rangeEnd, hasRange := durationLabelTimeRange(aggregate.Samples)
+			if !hasRange {
+				t.Fatal("fixture produced no label time range")
+			}
+			if len(drawn.MarkCxs) != len(aggregate.Samples) {
+				t.Fatalf("drew %d marks for %d samples", len(drawn.MarkCxs), len(aggregate.Samples))
+			}
+			for sampleIndex, sample := range aggregate.Samples {
+				plannedMarkX := marginLeft + durationLabelPlotX(sample.CompletionTime, rangeStart, rangeEnd)
+				if math.Abs(drawn.MarkCxs[sampleIndex]-plannedMarkX) > 0.06 {
+					t.Errorf("%s mark drawn at x=%.2f but the label planner assumed %.2f — renderer and durations.go no longer share one axis domain",
+						sample.RequestId, drawn.MarkCxs[sampleIndex], plannedMarkX)
+				}
+			}
+		})
 	}
 }
 

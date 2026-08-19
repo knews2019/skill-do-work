@@ -99,7 +99,7 @@ Evaluate the implementation quality by reading the diff:
 - Naming clarity, readability, maintainability
 - Appropriate error handling for the context
 - No obvious bugs or logic errors in the diff
-- Diff hygiene — no debug artifacts, console.log/print statements, or temporary files left behind. **Protect lessons learned** — comments that document *why* something was done, what was tried and didn't work, or architectural reasoning are valuable and should stay. Strip noise, keep knowledge.
+- Diff hygiene — no debug artifacts — console.log/print lines no contract reads (a check's own reporting is contract output), or temporary files left behind. **Protect lessons learned** — comments that document *why* something was done, what was tried and didn't work, or architectural reasoning are valuable and should stay. Strip noise, keep knowledge.
 
 **Test Adequacy (0-100%)**
 - Are there tests for the new/changed behavior?
@@ -316,7 +316,7 @@ After presenting the review report, perform a self-validation pass — no human 
 
 4. **Update prime files (Standalone mode only).** Check the REQ's `prime_files` frontmatter. For each listed prime file where the lesson is relevant:
 
-   - **Check for the inline-only marker first.** Look at the prime file's `## Lessons` section (if it already exists). If it opens with an HTML comment containing the phrase "inlined, not linked" (the pattern is `<!-- Lessons are inlined, not linked: ... -->` — see `../do-work-board/tools/queue-kanban/prime-do-kanban.md`'s `## Lessons` header for the exact wording), the prime has declared itself inline-only: append a plain bullet with the lesson summary instead — `- REQ-NNN: 1-line summary` (no link, matching the prime's existing inlined entries) — and skip the link steps below.
+   - **Check for the inline-only marker first.** Look at the prime file's `## Lessons` section (if it already exists). If it opens with an HTML comment containing the phrase "inlined, not linked" (the pattern is `<!-- Lessons are inlined, not linked: ... -->` — see `../../do-work-board/tools/queue-kanban/prime-do-kanban.md`'s `## Lessons` header for the exact wording), the prime has declared itself inline-only: append a plain bullet with the lesson summary instead — `- REQ-NNN: 1-line summary` (no link, matching the prime's existing inlined entries) — and skip the link steps below.
    - Otherwise (no marker present), append a link under a `## Lessons` section (create it if it doesn't exist):
 
      ```markdown

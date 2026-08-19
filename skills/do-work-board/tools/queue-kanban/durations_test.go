@@ -2,10 +2,15 @@ package main
 
 import (
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"math"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -453,19 +458,28 @@ const durationsLabelTextDescentUnits = 2.0
 
 // ---- the rendered face, measured ------------------------------------------
 //
-// Both numbers below come from the browser, because the face is the browser's
+// Every number below comes from the browser, because the face is the browser's
 // answer and no amount of arithmetic over the constants under test can produce
 // it — computing a guarantee from the constant it is meant to judge is circular.
 // They are recorded here so a Go test can hold the model to the face without a
-// browser in the loop, and both are rounded AWAY from the model (up), so a
+// browser in the loop, and each is rounded AWAY from the model (up), so a
 // passing assertion can never be an artefact of the rounding.
 //
 // Procedure, reproducible from any board directory `queue-kanban generate` wrote:
 // load index.html, activate the Durations view, append an SVG <text> carrying
 // class "durations-mark-label" to the chart's own <svg>, and read
-// getComputedTextLength() and getBBox() off it. Measured in Chromium 1228 at the
-// class's declared 11px over the board's --font-sans stack; the SVG is a fixed
-// viewBox at width:100%, so user units are zoom- and window-independent.
+// getComputedTextLength() and getBBox() off it, at the class's declared 11px
+// over the board's --font-sans stack; the SVG is a fixed viewBox at width:100%,
+// so user units are zoom- and window-independent.
+//
+// A measured face is PER-BROWSER — the same probe returns different numbers on
+// different Chromium builds, because the face resolves through the build and
+// the machine's font stack. So each constant's own doc comment names the build
+// its number was taken on (TestDurationsMeasuredConstantsNameTheirChromiumBuild
+// enforces this for every durationsMeasured constant in the package), a
+// re-measurement on another build may only RAISE a constant, never lower it,
+// and any new browser measurement takes the durationsMeasured prefix so the
+// same test covers it.
 
 // The SUPREMUM of units per character over the whole label space — not the worst
 // case of a sweep. The distinction is the entire point, and getting it wrong is
@@ -491,6 +505,12 @@ const durationsLabelTextDescentUnits = 2.0
 // at 10 010 and 7.1417 at 40 010: rising, and still under 7.1441. A randomized
 // search over 4 000 mixed-digit labels confirms a uniform "4" run is the worst
 // case, so the exhaustive region's shape is right.
+//
+// Build: measured for REQ-241 on the Chromium bundled by its Playwright 1.59,
+// recorded only as browser build chromium-1228 — no version number survives.
+// On Chromium 141.0.7390.37 (Playwright 1.56.1, REQ-252) the same "4" run
+// measures 6.9865 and the worst minus-bearing short label 6.8952 per character:
+// smaller, so the larger recorded supremum stands.
 const durationsMeasuredLabelWidthSupremumUnits = 7.1441
 
 // How far above the supremum the model may sit. A width model must over-estimate,
@@ -498,16 +518,41 @@ const durationsMeasuredLabelWidthSupremumUnits = 7.1441
 // could have carried — so the pin is two-sided and this is the slack it allows.
 const durationsLabelWidthModelSlackUnits = 0.25
 
-// The same face's rendered line box: 12.8343 units tall, 10.4278 above the
-// baseline and 2.4064 below, and constant whether or not the string carries
-// descenders — it is the line box, not the ink. Rounded up to 12.84.
-const durationsMeasuredLabelBoxHeightUnits = 12.84
-
-// The label box's descent below its baseline, rounded up from the measured
-// 2.4064. Distinct from durationsLabelTextDescentUnits, which is the smaller
-// value the code DECLARES; this is what the browser actually draws, and it is the
-// one a clearance question has to use.
-const durationsMeasuredLabelBoxDescentUnits = 2.41
+// The same face's rendered line box — the height getBBox() reports for a
+// .durations-mark-label <text>, constant whether or not the string carries
+// descenders, because it is the line box and not the ink. It is exactly that
+// face's ascent plus its descent, and generate_test.go already bounds both
+// parts for the whole package, as durationsMeasuredMarkLabelAscentUnits and
+// durationsMeasuredMarkLabelDescentUnits. The box gets a constant of its own
+// anyway because the SUM of those two bounds is 13.3: each was rounded up from
+// the build that maximised it, the maxima fall on different builds, and no
+// build has ever drawn both together — so the sum over-bounds every face ever
+// measured, while the pitch floor below needs a bound a real face can be held
+// to.
+//
+// Sampled builds, ascent + descent = box:
+//
+//	chromium-1228 (Playwright 1.59, REQ-241)             10.4278 + 2.4064 = 12.8343
+//	Chromium 146 (Playwright 1.59, REQ-242)              10.1853 + 2.7778 = 12.9631
+//	Chromium 141.0.7390.37 (Playwright 1.56.1, REQ-252)  10.1853 + 2.7778 = 12.9631
+//
+// REQ-265 re-ran the procedure above on Chromium 141.0.7390.37 and read the
+// same three numbers to four decimals. 12.97 is the largest sampled box,
+// rounded up.
+//
+// What this constant is NOT is a supremum over the face space, and that gap
+// matters more than the 0.13 units the REQ-265 raise moved it. The face is
+// whatever --font-sans resolves to, and board.css ends that stack in the open
+// generic sans-serif; every sample above is one Linux container's answer to it.
+// The design's own cap is the row pitch: 13 units over an 11-unit font size is
+// an (ascent+descent)/em ratio of 1.1818, and the largest ratio ever sampled is
+// 1.1785 — 0.03 units of slack under the floor below. So this number is wrong,
+// with the pitch wrong behind it, the first time the board renders somewhere
+// --font-sans resolves to a face whose ratio clears 1.1818. Padding it toward
+// that cap would buy nothing and hide exactly that, so it is not padded: the
+// raise-only rule keeps it honest, and a measurement that exceeds it is meant
+// to cost somebody an edit.
+const durationsMeasuredLabelBoxHeightUnits = 12.97
 
 // The 12px axis-title face's ascent is declared once for the whole package, in
 // generate_test.go's measured-face block, because REQ-241 and REQ-242 each
@@ -564,22 +609,45 @@ func TestDurationsLabelRowPitchClearsTheLabelTextBox(t *testing.T) {
 
 // The row pitch has a ceiling as well as a floor, and this is it. The reversed
 // band's rows grow DOWNWARD into the gap above Panel B's title, so every unit
-// added to the pitch is taken from that gap — at the shipped pitch of 13 the
-// last row's box bottom sits 1.36 units above the title's box top, and a pitch of
-// 15 would put it through.
+// added to the pitch is taken from that gap — in this assertion's own model the
+// shipped pitch of 13 leaves 0.10 units between the last row's box bottom and
+// the title's box top, and a pitch of 14 would put it through.
 //
-// REQ-241 established that budget by measurement and then left it in prose, where
-// nothing enforces it: the row-pitch floor above and this ceiling are the two
-// halves of one constraint, and a future change that raises the pitch to clear a
-// bigger face would satisfy the floor and silently eat the ceiling. The band's
-// last row is the one that matters because the marks sit level with the first.
+// The descent below is the package's one bound for the 11px
+// .durations-mark-label face — durationsMeasuredMarkLabelDescentUnits, in
+// generate_test.go, which the slowest-day annotation's clearance reads for the
+// same face and the same reason. It is deliberately the DRAWN descent and not
+// durationsLabelTextDescentUnits, the smaller box the renderer declares; a
+// clearance question has to use what the browser puts on the page. Until
+// REQ-265 this test read a second constant declared here at 2.41 while that one
+// already stood at 2.8 — two numbers for one quantity of one face, in two files
+// of one package, which is the same shape that made REQ-241's and REQ-242's
+// title-face measurements collide. REQ-252 made every such constant name its
+// build; the duplicate is gone so there is one bound per face and quantity for
+// a build name to be attached to.
+//
+// That budget is PER-BROWSER, and the live headroom has measured very
+// differently on different builds: REQ-241 read 1.364 units on its Chromium
+// (recorded only as browser build chromium-1228, Playwright 1.59), REQ-242's
+// review read 0.185 on Chromium 146 over byte-identical SVG, and REQ-252 read
+// 1.111 on Chromium 141.0.7390.37 (Playwright 1.56.1) after REQ-248's
+// day-anchoring. Anyone about to spend this budget must re-measure it on their
+// own build first — the roughly 7x spread between recorded values is real, not
+// a mistake.
+//
+// REQ-241 established the budget by measurement and then left it in prose,
+// where nothing enforced it: the row-pitch floor above and this ceiling are the
+// two halves of one constraint, and a future change that raises the pitch to
+// clear a bigger face would satisfy the floor and silently eat the ceiling. The
+// band's last row is the one that matters because the marks sit level with the
+// first.
 func TestDurationsLastLabelRowClearsPanelBTitle(t *testing.T) {
 	reversedRowY := durationsRendererConstant(t, "DURATIONS_REVERSED_LABEL_ROW_Y")
 	rowCount := durationsRendererConstant(t, "DURATIONS_LABEL_ROW_COUNT")
 	rowHeight := durationsRendererConstant(t, "DURATIONS_LABEL_ROW_HEIGHT")
 	panelBTitleY := durationsRendererConstant(t, "DURATIONS_MEDIAN_TITLE_Y")
 
-	lastRowBoxBottom := reversedRowY + (rowCount-1)*rowHeight + durationsMeasuredLabelBoxDescentUnits
+	lastRowBoxBottom := reversedRowY + (rowCount-1)*rowHeight + durationsMeasuredMarkLabelDescentUnits
 	panelBTitleBoxTop := panelBTitleY - durationsMeasuredAxisTitleAscentUnits
 	if lastRowBoxBottom >= panelBTitleBoxTop {
 		t.Fatalf("the reversed band's last label row ends at %.2f but Panel B's title starts at %.2f — the label rows have grown into the title",
@@ -617,6 +685,70 @@ func TestDurationsLabelRowsClearTheMarkBands(t *testing.T) {
 					band.bandName, rowIndex, textTop, textBottom, markY-markRadius, markY+markRadius)
 			}
 		}
+	}
+}
+
+// The defect this pins (REQ-252): a browser measurement is only arguable while
+// it names the browser it came from. REQ-241 and REQ-242 measured the same 12px
+// axis-title face on different Chromium builds, got 11.2300 and 12.0372, and
+// declared the same constant in different files of one package — a collision
+// git could not see, because the two edits never touched adjacent lines. The
+// package's convention closes that class: a constant holding a browser's answer
+// takes the durationsMeasured prefix, and its own doc comment names the
+// Chromium build the number was taken on. This test enforces the second half
+// over every Go file in the package. The prefix half stays convention — a
+// browser number smuggled into a differently named constant is caught only by
+// review, because no comment-reading test can know where a number came from.
+func TestDurationsMeasuredConstantsNameTheirChromiumBuild(t *testing.T) {
+	// Matches "Chromium 146", "Chromium 141.0.7390.37" and the Playwright
+	// browser-build form "chromium-1228" — a browser name with no digits after
+	// it (e.g. "a different Chromium") is not a build.
+	chromiumBuildPattern := regexp.MustCompile(`(?i)chromium[ -]\d`)
+	fileSet := token.NewFileSet()
+	packageEntries, readDirError := os.ReadDir(".")
+	if readDirError != nil {
+		t.Fatalf("read package directory: %v", readDirError)
+	}
+	measuredConstantCount := 0
+	for _, packageEntry := range packageEntries {
+		if packageEntry.IsDir() || !strings.HasSuffix(packageEntry.Name(), ".go") {
+			continue
+		}
+		parsedFile, parseError := parser.ParseFile(fileSet, packageEntry.Name(), nil, parser.ParseComments)
+		if parseError != nil {
+			t.Fatalf("parse %s: %v", packageEntry.Name(), parseError)
+		}
+		for _, topLevelDecl := range parsedFile.Decls {
+			constDecl, isGenDecl := topLevelDecl.(*ast.GenDecl)
+			if !isGenDecl || constDecl.Tok != token.CONST {
+				continue
+			}
+			for _, constSpec := range constDecl.Specs {
+				valueSpec, isValueSpec := constSpec.(*ast.ValueSpec)
+				if !isValueSpec {
+					continue
+				}
+				for _, constName := range valueSpec.Names {
+					if !strings.HasPrefix(constName.Name, "durationsMeasured") {
+						continue
+					}
+					measuredConstantCount++
+					provenanceComment := ""
+					if valueSpec.Doc != nil {
+						provenanceComment = valueSpec.Doc.Text()
+					} else if constDecl.Doc != nil {
+						provenanceComment = constDecl.Doc.Text()
+					}
+					if !chromiumBuildPattern.MatchString(provenanceComment) {
+						t.Errorf("%s: %s is a browser measurement whose doc comment names no Chromium build — the number cannot be re-derived or argued with on another machine",
+							packageEntry.Name(), constName.Name)
+					}
+				}
+			}
+		}
+	}
+	if measuredConstantCount == 0 {
+		t.Fatal("found no durationsMeasured constants in the package — the walk is broken or the naming convention changed; fix this test to scan the real declarations")
 	}
 }
 

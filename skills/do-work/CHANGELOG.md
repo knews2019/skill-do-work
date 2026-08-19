@@ -2,11 +2,153 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.212.25 — One Bound Per Face, Instead of Two That Disagreed (2026-08-18)
+
+Two constants in two files were measuring the same thing — the descent of the Durations mark-label face — and they disagreed, 2.41 against 2.8. That is the same shape that made two earlier board changes collide invisibly. There is now one.
+
+- The duplicate is deleted and the clearance test reads the surviving bound, so the effective bound rose rather than fell
+- The line-box bound moved 12.84 → 12.97 to match what a current Chromium actually draws, deliberately not padded past it, with its falsifier written beside it
+- Both guards were proven live by perturbation — a bound nothing would notice changing is not a bound
+
+## 0.212.24 — A Broken Frontmatter Fence No Longer Gets Rewritten (2026-08-18)
+
+A REQ file whose opening `---` never closes reads as having no frontmatter at all to the board — but the startup timestamp repairer was scanning it to the end of the file and rewriting body prose. Worse, one variant made the repairer fail on every single session with nothing able to fix it. Both are gone.
+
+- The extractor now refuses an unterminated fence exactly as the board's reader does, which closes both faults in one refusal
+- A quoted stamp padded inside its quotes (`"2093-01-01 00:00:00 "`) now repairs instead of being refused — the board unquotes and then trims, so it was always a value the board could see
+- The refusal list gained an honest new entry for a residual the fix itself creates: padding made of non-ASCII whitespace, which Go trims and this shell code does not
+
+## 0.212.23 — The Date-Only Rule Stands on Its Reason, Not a Head Count (2026-08-18)
+
+The Timestamp rule carried a note saying not to add a date-only mode to the board tool for one consumer, but to revisit if a second showed up. A second showed up, so the note had already fired — and the rule never needed the count anyway.
+
+- Both the tripwire and the "for a single consumer" premise are gone; the reason survives intact — a date-only subcommand would spend the skill's narrow compiled-tooling exception on something `date -u +%F` already covers
+- No subcommand added, and the rule still governs exactly the same sites: the citation contract is unmoved at 54 instant and 17 date-only
+
+## 0.212.22 — The Offset Timestamp Refusal Is Now a Decision, Not a Gap (2026-08-18)
+
+The repairer has always refused stamps carrying a UTC offset or fractional seconds, on the grounds that it couldn't decide them without timezone arithmetic. That reason was wrong — an offset names an exact instant — so the refusal now stands on the real one: the arithmetic is the risk, not the obstacle.
+
+- A repairer that reads the wall clock and ignores the offset sees `2026-08-19T00:29:11+05:00` as five hours later than it is, and erases a correct stamp as future-dated — unattended, from a session hook. Refusing can only fail to fix; repairing can destroy
+- No code changed: the recognizer is byte-identical, and the decision is pinned by lock-ins that fail if anyone quietly widens it
+- The archive auditor inherits the refusal through the shared code body, with no edit of its own
+
+## 0.212.21 — The Gate Now Catches Unformatted Go (2026-08-18)
+
+`maintainer-verify.sh` ran `go vet` but never the formatter, so a formatting slip could land and sit there silently — one did. It now checks every tracked Go file and fails naming the ones that need `gofmt -w`.
+
+- New formatter lane beside the ShellCheck lane, selecting files with `git ls-files` so a future third module is covered with no edit
+- The formatter is resolved out of the pinned toolchain's GOROOT rather than PATH, so it inherits the gate's exact Go version pin
+- Reads the emptiness of the formatter's output, not its exit status — gofmt lists unformatted files and still exits zero, so an exit-status check would have been decorative
+- Self-test pins the lane against six ways of disarming it, including deleting it outright
+
+## 0.212.20 — The Core Router's Path Rule Now Matches the Paths (2026-08-18)
+
+The core `SKILL.md` was still telling agents to resolve a sibling package path from the folder holding all four skills — a rule that was retired in 0.212.10 and computes one directory too high against every path we actually ship. It now says what the paths mean: literal, resolved from the directory of the file you are reading.
+
+- `skills/do-work/SKILL.md` states the literal per-file resolution rule instead of the retired skill-root-relative one
+- Two sibling citations in `actions/commit.md` and `crew-members/security.md` corrected to the right depth and backticked, which puts them inside the shipped reference contract's enforcement — they cannot silently rot again
+- Verified by mutation, not assertion: reverting either path now fails the reference contract naming the file and line
+
 > Covers **0.121.1 onward**. Older releases live in dated archives, each named for the range it holds: [0.110.0–0.121.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-07-13-up-to-v0.121.0.md) · [0.65.0–0.109.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-07-07-up-to-v0.109.0.md) · [0.50.0–0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md) · [0.1.0–0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md). They are tracked in git but export-ignored from the distribution tarball, so a tarball install browses them at <https://github.com/knews2019/skill-do-work/tree/main>.
 >
 > Keep this note short: `actions/version.md` reads only the first ~80 lines to find the newest 5 entries.
 
 ---
+
+## 0.212.19 — The Timestamp Repairer and the Board Agree on What a Stamp Is (2026-08-18)
+
+Six shapes where the session-start repairer disagreed with the board's readers are closed at the shared primitive — including the one case where the repairer made a file worse than it found it.
+
+- Space-separated instants now repair whole instead of leaving a phantom time-of-day behind; the rewrite splices by the byte span the extractor measured, so a token boundary is never re-guessed.
+- Files behind a CRLF fence or a byte-order mark are scanned and repaired with those bytes preserved — the Windows shape that was previously invisible.
+- Calendar-impossible values (`9999-99-99`, April 31, Feb 29 in a non-leap century year) are refused byte-identical so the malformed evidence survives for diagnosis; real leap days still repair.
+- Duplicate stamp keys are read by their last occurrence, matching every YAML reader, so a board-visible reversed ordering is no longer audited as clean.
+- The archive auditor inherits all of it by sourcing, pinned by cases in both scan scopes; the suite grew from 55 to 64 named cases.
+
+## 0.212.18 — The Docs Disclose the Session Hook's Write Surface (2026-08-18)
+
+A consumer auditing "what writes to my repo at session start" now gets a straight answer.
+
+- README's hook description says session-start.sh also writes to queue files: reaping stale REQ-number reservations and mechanically repairing detectably wrong `*_at` stamps in `do-work/queue/` and `do-work/working/`.
+- `actions/capture.md` documents the session-start stamp repair beside the Immutability Rule's archive-audit exception — the same metadata-correction class, never the archive.
+
+## 0.212.17 — Measured Board Constants Name Their Browser (2026-08-18)
+
+A browser-measured number that names no build cannot be re-derived or argued with — two sessions proved it by measuring the same face on different Chromium builds and colliding at integration.
+
+- All seven `durationsMeasured*` constants now name the Chromium build their number came from, with current-build cross-checks; a vacuity-guarded AST test holds the package to the convention.
+- The Panel B clearance budget prose states it is per-browser and carries all three recorded measurements (1.364 / 0.185 / 1.111 across three builds — a 7× spread), with a re-measure-before-spending warning.
+- The hyphen-vs-U+2212 divergence and the remainder reserve's deliberate over-shoot are documented with sourced numbers; no constant's value changed.
+
+## 0.212.16 — Qualify Tells a Check's Own Output From Instrumentation (2026-08-18)
+
+The debug-artifact gate no longer cries wolf on a checker's success line.
+
+- `qualify.sh`'s output-primitive tokens (`print(`, `console.log`) are now judged by process-exit ownership: a file that ends its own process has a terminal audience, so its added output surfaces as a legible WARN for judgment; a file that never ends its process is library code, so the same line still FAILs, naming the file and reason. Unfinished-work markers (`TODO`, `FIXME`, `debugger`) FAIL anywhere, unchanged.
+- Three lock-ins pin the boundary, including that the reporter exemption never pardons a TODO.
+- Known accepted limit, stated in the script: the gate cannot see intent, so a forgotten debug print inside a checker WARNs rather than FAILs — reviewers still read the diff.
+
+## 0.212.15 — The Timestamp Rule's Last Two Boundary Cases Are Settled (2026-08-18)
+
+Every clock write in shipped action text is now governed by a stated rule.
+
+- The ui-review report header's date is deliberately UTC: named in the Timestamp rule's date-only paragraph, cited at the site, and the template placeholder now reads `[today's UTC date]`.
+- The `## HH:MM UTC` daily-log headings are declared outside the Timestamp rule's scope — the log's dated filename already carries the date — with a canonical statement in memory-reference.md and greppable markers at every write site, so future sweeps walk past instead of converting them.
+
+## 0.212.14 — Archive Timestamps Get a Git-Driven Audit Tool (2026-08-18)
+
+The archive can now be audited and mechanically repaired — deliberately, never from a hook.
+
+- New `scripts/audit-archive-timestamps.sh`: scans `do-work/archive/` at any depth for the same detectably-wrong-stamp predicate the session-start repairer uses, deriving every replacement from the introducing commit's author time — file mtimes are never consulted for committed archive content. Report-only by default (exit 1 on findings), `--fix` writes through the full guard set.
+- The repairer became a sourceable library, so the two tools share one predicate, shape recognizer, clamp, and guard path — a future shape fix lands in both at once.
+- The archive-immutability rule in `actions/capture.md` names mechanical timestamp repair as its second and final bounded exception, amended in the same commit as the tool.
+
+## 0.212.13 — Link Checker Validates Bare Anchors and Refuses Path Escapes (2026-08-18)
+
+The shipped-reference checker closes two of its four known limits and states the other two so they cannot drift.
+
+- Bare `#anchor` links are now validated against the carrying file's own headings — previously silently broken.
+- `..`-escaping targets are refused before any filesystem probe, class-wide: the hunt found the genuinely silent case in the citation checker's consumer-queue probe, which could stat files outside the repository; it is closed and fixture-locked.
+- The HTML-slug divergence and blockquoted-heading limits are documented with their failure directions named, each pinned by a fixture that fails if the behavior changes.
+
+## 0.212.12 — Stale Future-Stamp Wording Retired From Shipped Source (2026-08-18)
+
+A grep for the board's future-stamp diagnosis now finds only the production wording.
+
+- The two `verify_test.go` fixtures that held hand-typed copies of the retired reversed-span reason now derive it from production via `reversedSpanAnomalyReason(t)`, so the next message change cannot strand another copy.
+- `timestamp.go`'s comment no longer overstates its own test's claim — it matches its test twin: the Z-suffix relabel is one of the two corruptions the diagnosis names, not "the exact corruption".
+
+## 0.212.11 — Panel B Stays on Canvas at Every Day Count (2026-08-18)
+
+The board's Durations view no longer draws its day bars off-canvas — a one- or two-day board used to render Panel B entirely off-screen, and even the many-day board had its leftmost bar struck through by the axis.
+
+- The axis domain is anchored to whole UTC days (first completion's midnight through the midnight after the last), with day buckets centred on each day's noon and the outermost bars clamped inside the plot past ~280 active days.
+- The Go label planner floors and ceils to the same domain, and a new mark-position agreement assertion fails whichever side ever drifts alone — renderer and planner cannot silently become two definitions again.
+- Verified in the live DOM at 1 through 400 active days on Chromium 141: zero bars or annotations outside the plot area, existing label-separation guarantees intact.
+
+## 0.212.10 — Cross-Package Citations Are Literal Paths, and Checked (2026-08-18)
+
+Backticked cross-package citations in shipped markdown now resolve as real relative paths from the citing file's own directory — the spelling a reader can paste — and the reference contract enforces it mechanically.
+
+- 122 citations swept across 46 files to per-file literal depth (`../../` from `actions/`/`crew-members/`/`docs/`, `../../../` from the board tool); the skill-root-relative shorthand is retired and `_dev/primes/prime-action-files.md` § Cross-Referencing states the rule.
+- `_dev/tests/shipped-package-reference-contract.sh` now checks backticked citations in both the source and installed topologies, reusing the existing CommonMark walk; against the pre-sweep tree it reports exactly the 122 swept citations.
+- Fenced template/example blocks are exempt by design; the core-package/queue-root name collision is a documented, fixture-pinned skip.
+
+## 0.212.9 — Wrong Queue Timestamps Repair Themselves at Session Start (2026-08-18)
+
+The SessionStart hook now mechanically corrects detectably wrong `*_at` stamps in `do-work/queue/` and `do-work/working/` — no agent judgment in the repair path, so a fabricated future stamp gets fixed regardless of agent compliance.
+
+- New `scripts/repair-req-timestamps.sh`: detects future stamps beyond the board's 2-minute skew allowance (any top-level `*_at` field) and impossible orderings among `created_at`/`claimed_at`/`completed_at`; rewrites from file mtime (dirty files) or the introducing commit's author time (committed files), clamped to `created ≤ claimed ≤ completed ≤ now`.
+- Guard style matches `record-commit-hash.sh`: verify-before-replace, atomic rename, a tripped guard leaves the file byte-identical, one audit line per correction. Log-only — no new frontmatter fields.
+- Runs from the SessionStart hook beside the reservation cleanup, presence-guarded so a partial install still gets its banner; also directly invocable. Archived files are untouched (that audit is REQ-247's, still queued).
+
+## 0.212.8 — JavaScript Behavior Probes Run From Stdin (2026-08-18)
+
+The board's JavaScript behavior probes now hand their script to Node on stdin instead of as a command-line argument, so the large ones run on Linux as well as macOS.
+
+- A probe embedding the assembled client exceeded Linux's 128 KiB per-argument limit and failed the exec with "argument list too long" — the slowest-day annotation probe hit it, which made `maintainer-verify.sh` red on Linux for a reason that had nothing to do with the code under test.
+- macOS has no equivalent per-argument cap, so the same suite stayed green there; the fix removes the size ceiling on every probe rather than the one that happened to cross it.
 
 ## 0.212.7 — Every Timestamp Template Points at the Rule (2026-08-18)
 

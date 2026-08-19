@@ -26,7 +26,7 @@ Write for the person, not the transcript. Domain terms the user introduced are f
 
 ### 5. Concrete options, never open-ended
 
-Every question presents choices the user can pick from — the choices themselves clarify the question, so even a user who doesn't fully follow the wording can select the closest option and move forward. (This is `../do-work/actions/capture.md`'s "How to ask" rule; it applies everywhere, not just in capture.)
+Every question presents choices the user can pick from — the choices themselves clarify the question, so even a user who doesn't fully follow the wording can select the closest option and move forward. (This is `../../do-work/actions/capture.md`'s "How to ask" rule; it applies everywhere, not just in capture.)
 
 ### 6. The read-once test
 
@@ -38,7 +38,7 @@ If a question was escalated, name the rule or authority that forced the escalati
 
 ### 8. The answer has to outlive the transcript
 
-An answer obtained interactively exists only in the asking session's context — dispatched agents start fresh, and the archive is the permanent intent trail. So before acting on an answer that changes what gets built, write it into the durable record the work will be read from. For a question stored in a REQ that means the **Canonical answered-question format** (`../do-work/actions/clarify.md`): flip `- [ ]` to `- [x] [question] → [the answer]`, plus a dated note carrying the reasoning, including anything the answer put out of scope. Any *new* work the answer implies gets captured as its own REQ instead of living as a sentence in a reply. A plain consent gate — proceed/abort, a condition confirmed — is already recorded by whatever it gates and needs nothing extra; this principle is about decisions the work is later read from. Same stance `crew-members/background-agents.md` takes for fan-out findings: the transcript is the worst available place to keep a result.
+An answer obtained interactively exists only in the asking session's context — dispatched agents start fresh, and the archive is the permanent intent trail. So before acting on an answer that changes what gets built, write it into the durable record the work will be read from. For a question stored in a REQ that means the **Canonical answered-question format** (`../../do-work/actions/clarify.md`): flip `- [ ]` to `- [x] [question] → [the answer]`, plus a dated note carrying the reasoning, including anything the answer put out of scope. Any *new* work the answer implies gets captured as its own REQ instead of living as a sentence in a reply. A plain consent gate — proceed/abort, a condition confirmed — is already recorded by whatever it gates and needs nothing extra; this principle is about decisions the work is later read from. Same stance `crew-members/background-agents.md` takes for fan-out findings: the transcript is the worst available place to keep a result.
 
 ## Example
 

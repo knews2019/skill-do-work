@@ -13,7 +13,7 @@ Map references → design target → present plan → *(user approves)* → `git
 
 **Do NOT use when:**
 - The problem is junk — temp/backup files, committed build artifacts, should-be-gitignored files → use `actions/stray-check.md` (deletes pollution; this action relocates legitimate files)
-- The clutter is do-work's own bookkeeping — loose REQs, misplaced `do-work/` directories → use `../do-work/actions/cleanup.md`
+- The clutter is do-work's own bookkeeping — loose REQs, misplaced `do-work/` directories → use `../../do-work/actions/cleanup.md`
 - The user wants code-structure refactoring (splitting modules, moving source between packages, renaming symbols) → capture as a REQ via `do-work capture-request:` — import-rewriting churn belongs in the work pipeline with tests, not a layout pass
 
 ## Input

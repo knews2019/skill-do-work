@@ -32,11 +32,12 @@ const canonicalTimestampLayout = "2006-01-02T15:04:05Z"
 // formatCanonicalTimestamp renders an instant as the schema's UTC stamp.
 //
 // The instant is converted to UTC, never relabelled: writing local wall-clock
-// time with a Z suffix is the exact corruption the Timestamp rule warns about —
-// in any zone east of UTC it yields a *future* instant, which freezes the board's
-// state timer and flags the card with a clock-skew warning. Sub-second precision
-// is truncated rather than rounded, so a stamp can never round forward past the
-// board's own `now`.
+// time with a Z suffix is one of the two corruptions the board diagnoses
+// (futureStampCauseClause names both; fabricating a value is the other, and no
+// writer can prevent that one) — in any zone east of UTC it yields a *future*
+// instant, which freezes the board's state timer and flags the card with a
+// clock-skew warning. Sub-second precision is truncated rather than rounded,
+// so a stamp can never round forward past the board's own `now`.
 func formatCanonicalTimestamp(instant time.Time) string {
 	return instant.UTC().Truncate(time.Second).Format(canonicalTimestampLayout)
 }

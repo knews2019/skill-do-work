@@ -47,6 +47,13 @@ case "$command_name" in
       fi
       exit 0
     fi
+    if [ "$1" = 'env' ]; then
+      if [ "$#" -ne 2 ] || [ "$2" != 'GOROOT' ]; then
+        exit 64
+      fi
+      printf '%s\n' "${MAINTAINER_VERIFY_SELFTEST_GOROOT:?}"
+      exit 0
+    fi
     case "$PWD" in
       */skills/do-work-board/tools/queue-kanban)
         if [ "$#" -eq 2 ] && [ "$1" = 'vet' ] && [ "$2" = './...' ]; then
@@ -76,6 +83,18 @@ case "$command_name" in
       *) exit 64 ;;
     esac
     ;;
+  gofmt)
+    if [ "$#" -ne 3 ] || [ "$1" != '-l' ] || [ "$2" != '--' ] || \
+      [ "$3" != '_dev/tests/fixture-go.go' ]; then
+      exit 64
+    fi
+    if [ "$failure_stage" = 'gofmt-unformatted' ]; then
+      printf '%s\n' 'gofmt-lint' >> "$stage_log"
+      printf '%s\n' '_dev/tests/fixture-go.go'
+      exit 0
+    fi
+    record_stage 'gofmt-lint'
+    ;;
   shellcheck)
     if [ "${1:-}" = '--version' ]; then
       if [ "$#" -ne 1 ]; then
@@ -99,11 +118,14 @@ case "$command_name" in
   git)
     if [ "$#" -ne 6 ] || [ "$1" != '-C' ] || \
       [ "$2" != "${MAINTAINER_VERIFY_EXPECTED_REPO_ROOT:?}" ] || \
-      [ "$3" != 'ls-files' ] || [ "$4" != '-z' ] || \
-      [ "$5" != '--' ] || [ "$6" != '*.sh' ]; then
+      [ "$3" != 'ls-files' ] || [ "$4" != '-z' ] || [ "$5" != '--' ]; then
       exit 64
     fi
-    printf '%s\0' '_dev/tests/fixture-shell.sh'
+    case "$6" in
+      '*.sh') printf '%s\0' '_dev/tests/fixture-shell.sh' ;;
+      '*.go') printf '%s\0' '_dev/tests/fixture-go.go' ;;
+      *) exit 64 ;;
+    esac
     ;;
   bash)
     if [ "${1##*/}" != 'contract-regressions.sh' ] || [ "$#" -ne 1 ]; then
@@ -141,14 +163,14 @@ assert_success_stages() {
   local expected_stage
   local actual_count
   local total_count=0
-  local expected_count=8
+  local expected_count=9
   local stage_line
 
   if [ "$expect_strict" = 'yes' ]; then
-    expected_count=9
+    expected_count=10
   fi
   for expected_stage in \
-    go-version shellcheck-version shellcheck-lint aggregate \
+    go-version shellcheck-version shellcheck-lint gofmt-lint aggregate \
     board-vet board-test audit-vet audit-test; do
     actual_count="$(count_stage_occurrences "$expected_stage" "$log_path")"
     if [ "$actual_count" -ne 1 ]; then
@@ -175,6 +197,7 @@ run_self_test() {
   local self_test_root
   local fixture_root
   local fixture_script
+  local fixture_go_root
   local with_node_bin
   local without_node_bin
   local generic_shim
@@ -192,17 +215,19 @@ run_self_test() {
   trap 'rm -rf -- "$self_test_root"' EXIT
   fixture_root="$self_test_root/repository"
   fixture_script="$fixture_root/_dev/tests/maintainer-verify.sh"
+  fixture_go_root="$self_test_root/go-root"
   with_node_bin="$self_test_root/with-node-bin"
   without_node_bin="$self_test_root/without-node-bin"
   mkdir -p \
     "$fixture_root/_dev/tests" \
     "$fixture_root/skills/do-work-board/tools/queue-kanban" \
     "$fixture_root/skills/do-work-toolbox/tools/audit-metrics" \
-    "$with_node_bin" "$without_node_bin"
+    "$fixture_go_root/bin" "$with_node_bin" "$without_node_bin"
   cp "$script_path" "$fixture_script"
   chmod +x "$fixture_script"
   printf '%s\n' '#!/usr/bin/env bash' > "$fixture_root/_dev/tests/fixture-shell.sh"
   printf '%s\n' '#!/usr/bin/env bash' > "$fixture_root/_dev/tests/contract-regressions.sh"
+  printf '%s\n' 'package fixture' > "$fixture_root/_dev/tests/fixture-go.go"
 
   generic_shim="$self_test_root/command-shim"
   write_command_shim "$generic_shim"
@@ -212,6 +237,7 @@ run_self_test() {
   for stage_name in go shellcheck git bash; do
     ln -s "$generic_shim" "$without_node_bin/$stage_name"
   done
+  ln -s "$generic_shim" "$fixture_go_root/bin/gofmt"
 
   success_log="$self_test_root/success.log"
   success_output="$self_test_root/success.out"
@@ -219,6 +245,7 @@ run_self_test() {
   if ! PATH="$with_node_bin" \
     MAINTAINER_VERIFY_SELFTEST_LOG="$success_log" \
     MAINTAINER_VERIFY_EXPECTED_REPO_ROOT="$fixture_root" \
+    MAINTAINER_VERIFY_SELFTEST_GOROOT="$fixture_go_root" \
     /bin/bash "$fixture_script" > "$success_output" 2>&1; then
     sed 's/^/  /' "$success_output" >&2
     fail_self_test 'the all-success fixture exited nonzero'
@@ -232,6 +259,7 @@ run_self_test() {
   if ! PATH="$without_node_bin" \
     MAINTAINER_VERIFY_SELFTEST_LOG="$no_node_log" \
     MAINTAINER_VERIFY_EXPECTED_REPO_ROOT="$fixture_root" \
+    MAINTAINER_VERIFY_SELFTEST_GOROOT="$fixture_go_root" \
     /bin/bash "$fixture_script" > "$no_node_output" 2>&1; then
     sed 's/^/  /' "$no_node_output" >&2
     fail_self_test 'the no-Node fixture exited nonzero'
@@ -244,17 +272,23 @@ run_self_test() {
   fi
 
   for stage_name in \
-    go-version shellcheck-version shellcheck-lint aggregate \
-    board-vet board-test board-strict audit-vet audit-test; do
+    go-version shellcheck-version shellcheck-lint gofmt-lint gofmt-unformatted \
+    aggregate board-vet board-test board-strict audit-vet audit-test; do
     failure_log="$self_test_root/failure-$stage_name.log"
     failure_output="$self_test_root/failure-$stage_name.out"
     : > "$failure_log"
     if PATH="$with_node_bin" \
       MAINTAINER_VERIFY_SELFTEST_LOG="$failure_log" \
       MAINTAINER_VERIFY_EXPECTED_REPO_ROOT="$fixture_root" \
+      MAINTAINER_VERIFY_SELFTEST_GOROOT="$fixture_go_root" \
       MAINTAINER_VERIFY_FAIL_STAGE="$stage_name" \
       /bin/bash "$fixture_script" > "$failure_output" 2>&1; then
       fail_self_test "$stage_name failure exited zero"
+      return 1
+    fi
+    if [ "$stage_name" = 'gofmt-unformatted' ] && \
+      ! grep -q '_dev/tests/fixture-go.go' "$failure_output"; then
+      fail_self_test 'the unformatted-Go failure did not name the offending file'
       return 1
     fi
   done
@@ -293,6 +327,10 @@ run_verification() {
   local shellcheck_version_text=''
   local tracked_shell_file
   local tracked_shell_files=()
+  local gofmt_command
+  local tracked_go_file
+  local tracked_go_files=()
+  local unformatted_go_files
 
   for required_command in git go shellcheck bash; do
     if ! command -v "$required_command" >/dev/null 2>&1; then
@@ -307,6 +345,15 @@ run_verification() {
   if [ "$go_version_text" != "$required_go_version" ]; then
     printf 'maintainer-verify: Go version is %s; require exactly %s\n' \
       "$go_version_text" "$required_go_version" >&2
+    return 1
+  fi
+  # gofmt carries no version flag, so take it from the already-pinned toolchain's
+  # GOROOT rather than from PATH: a stray older gofmt formats differently and would
+  # make this gate's verdict depend on which Go happens to come first on PATH.
+  gofmt_command="$(go env GOROOT)/bin/gofmt"
+  if [ ! -x "$gofmt_command" ]; then
+    printf 'maintainer-verify: the pinned Go toolchain has no usable formatter at %s\n' \
+      "$gofmt_command" >&2
     return 1
   fi
 
@@ -336,6 +383,25 @@ run_verification() {
     cd "$repo_root"
     shellcheck --severity=warning -- "${tracked_shell_files[@]}"
   )
+
+  while IFS= read -r -d '' tracked_go_file; do
+    tracked_go_files+=("$tracked_go_file")
+  done < <(git -C "$repo_root" ls-files -z -- '*.go')
+  if [ "${#tracked_go_files[@]}" -eq 0 ]; then
+    printf 'maintainer-verify: git reported no tracked Go files\n' >&2
+    return 1
+  fi
+  printf 'maintainer-verify: gofmt formatting check (%s tracked files)\n' \
+    "${#tracked_go_files[@]}"
+  # gofmt exits zero even when it lists unformatted files, so the verdict is the
+  # emptiness of its output, never its status.
+  unformatted_go_files="$(cd "$repo_root" && "$gofmt_command" -l -- "${tracked_go_files[@]}")"
+  if [ -n "$unformatted_go_files" ]; then
+    printf 'maintainer-verify: tracked Go files are not gofmt-formatted:\n' >&2
+    printf '%s\n' "$unformatted_go_files" >&2
+    printf 'maintainer-verify: run "gofmt -w" on the files listed above\n' >&2
+    return 1
+  fi
 
   printf 'maintainer-verify: aggregate contract suite\n'
   bash "$repo_root/_dev/tests/contract-regressions.sh"

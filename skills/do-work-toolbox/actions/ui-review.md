@@ -207,13 +207,13 @@ Note in the report that visual verification was attempted but the app could not 
 
 ### Step 9: Synthesize Report
 
-Compile all findings into a structured markdown report. **Do not modify any files** — output the report only.
+Compile all findings into a structured markdown report. **Do not modify any files** — output the report only. The header's `**Date**` is the current **UTC** calendar date — the date-only shape in the Timestamp rule (`../../do-work/actions/work-reference.md`).
 
 ```markdown
 # UI Review Report
 
 **Scope**: [list of reviewed files/directories]
-**Date**: [today]
+**Date**: [today's UTC date]
 **frontend-design skill**: [Installed / Not installed — recommend `do-work-toolbox install ui-design`]
 **Visual verification**: [Playwright CLI / Bowser skill / Skipped — recommend `do-work-toolbox install bowser`]
 
@@ -282,7 +282,7 @@ If the user wants to act on findings, offer to capture high and medium severity 
 
 If the user confirms:
 - Group related findings into logical units (e.g., all accessibility issues in one REQ, all component inconsistencies in another)
-- Create REQ files using `../do-work/actions/capture.md`'s format with `domain: ui-design`
+- Create REQ files using `../../do-work/actions/capture.md`'s format with `domain: ui-design`
 - Reference the review report findings by number in each REQ
 
 If the user declines or doesn't respond, skip this step. The report stands on its own.

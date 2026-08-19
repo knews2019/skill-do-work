@@ -24,6 +24,9 @@
 
 ## Lessons
 
+- [REQ-252: hold a documentation convention with a vacuity-guarded AST test, and capture Discovered Tasks in the REQ itself — hand-back prose is one slip from evaporating](../../do-work/archive/REQ-252-record-the-browser-with-every-measured-face-number.md#lessons-learned)
+- [REQ-251: fixtures that need production wording should call the production helper, never hold a pasted copy — the third copy strands at the next message move exactly as the first two did](../../do-work/archive/REQ-251-retire-the-stale-copies-of-the-future-stamp-message.md#lessons-learned)
+- [REQ-248: pin shared geometry with a both-directions agreement assertion — one domain read by two languages needs a test that fails whichever side drifts alone](../../do-work/archive/REQ-248-anchor-durations-day-buckets-to-utc-midnight.md#lessons-learned)
 - [REQ-241: state the supremum over the space, not the worst case of a sample — and say what makes the sweep complete, next to the number](../../do-work/archive/REQ-241-reconcile-durations-label-metrics-with-the-rendered-face.md#lessons-learned)
 - [REQ-242: when the claim is that an input is unused, an exact structural check beats a bigger sweep — a band narrower than the sampling slips through](../../do-work/archive/REQ-242-stop-panel-b-annotation-colliding-with-its-title.md#lessons-learned)
 - [REQ-245: asserting a phrase is absent is not a guard — it passes when the whole string is replaced](../../do-work/archive/REQ-245-name-fabricated-stamps-in-the-boards-future-stamp-warnings.md#lessons-learned)
@@ -44,3 +47,5 @@
 - [REQ-227: a view that binds to persistent nodes owns its listener teardown; draw in pixels so a zoom has no scale to invalidate](../../do-work/archive/REQ-227-timeline-view-with-two-segment-req-bars.md#lessons-learned)
 - [REQ-228: a forecast may be wrong about timing, never about order — take the ordering rule from the action that will actually claim next](../../do-work/archive/REQ-228-project-the-remaining-queue-onto-the-timeline.md#lessons-learned)
 - [REQ-232: describe the board by what its switcher covers, not by naming some of its tabs](../../do-work/archive/REQ-232-stop-shipped-prose-counting-the-boards-views.md#lessons-learned)
+- [REQ-261: a conditional keyed on a count that does not bear on the argument is clutter; one keyed on a condition that does is a boundary — the discriminator is not which directory it lives in](../../do-work/archive/REQ-261-decide-whether-queue-kanban-grows-a-date-only-mode.md#lessons-learned)
+- [REQ-265: grep the quantity, not the constant name — two names for one measured face is how REQ-241 and REQ-242 collided; and a handed-back integration seam is the one part a builder cannot test, so the integrator must check its claims rather than apply them verbatim](../../do-work/archive/REQ-265-raise-the-two-under-bounding-mark-label-constants.md#lessons-learned)

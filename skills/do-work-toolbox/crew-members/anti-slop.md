@@ -38,7 +38,7 @@ Quick question → quick answer. Real decision → real thinking, which usually 
 
 ### 8. Lead with the decision, not the self-grade
 
-When the artifact surfaces a decision, a question, or a verdict, put that first — the decision and its default, in words. Self-grading (scores, confidence %, coverage tables) is not a decision and the reader usually can't independently verify it; demote it below the decision or cut it. A review that opens with "Approve — ships clean" then shows the score table reads faster than one that opens with "87%". Scale context to reach: a leaf change gets one line; a change that alters the system's shape earns a short paragraph and a "why this matters." For *what to surface vs. decide silently*, see `crew-members/coding-guardrails.md` § Think Before Coding (the decide-vs-escalate gate); for the full hand-back shape, see `../do-work/actions/work-reference.md` → **Decision Brief (hand-back format)**.
+When the artifact surfaces a decision, a question, or a verdict, put that first — the decision and its default, in words. Self-grading (scores, confidence %, coverage tables) is not a decision and the reader usually can't independently verify it; demote it below the decision or cut it. A review that opens with "Approve — ships clean" then shows the score table reads faster than one that opens with "87%". Scale context to reach: a leaf change gets one line; a change that alters the system's shape earns a short paragraph and a "why this matters." For *what to surface vs. decide silently*, see `crew-members/coding-guardrails.md` § Think Before Coding (the decide-vs-escalate gate); for the full hand-back shape, see `../../do-work/actions/work-reference.md` → **Decision Brief (hand-back format)**.
 
 ## Persistence
 

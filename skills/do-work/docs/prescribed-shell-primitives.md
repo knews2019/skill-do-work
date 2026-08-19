@@ -13,12 +13,12 @@ This is the canonical shipped rationale and executable-home contract for shell u
 | `scripts/run-blocked-check.sh` | GNU timeout selection and isolated stock-Bash process-group timeout/cleanup |
 | `scripts/protected-inventory.sh` | Run-level secret quarantine around the existing inventory/association checks |
 | `scripts/stage-exact-deletion.sh` | Cached-metadata-only exact deletion staging |
-| `../do-work-knowledge/scripts/lexical-memory-recall.sh` | Query sanitization, lexical ranking, and attribution |
-| `../do-work-knowledge/scripts/install-memory-hooks.sh` | Independent hook merge, verification, and rollback |
-| `../do-work-toolbox/scripts/generate-report-image.sh` | Backend selection, launched-process-tree ownership, verified exact invocation-private publication, and exact opt-in agentic scratch |
-| `../do-work-toolbox/scripts/generate-report-image-batch.sh` | Parallel batch launch, retained per-image statuses, launched-process-tree ownership, and verified all-or-nothing directory publication |
-| `../do-work-toolbox/scripts/publish-portfolio-summary.sh` | Verified single-source canonical refresh and snapshot-first exclusive publication |
-| `../do-work-toolbox/scripts/install-last30days.sh` | Complete-payload validation and verified exact transactional project-local publication/repair |
+| `../../do-work-knowledge/scripts/lexical-memory-recall.sh` | Query sanitization, lexical ranking, and attribution |
+| `../../do-work-knowledge/scripts/install-memory-hooks.sh` | Independent hook merge, verification, and rollback |
+| `../../do-work-toolbox/scripts/generate-report-image.sh` | Backend selection, launched-process-tree ownership, verified exact invocation-private publication, and exact opt-in agentic scratch |
+| `../../do-work-toolbox/scripts/generate-report-image-batch.sh` | Parallel batch launch, retained per-image statuses, launched-process-tree ownership, and verified all-or-nothing directory publication |
+| `../../do-work-toolbox/scripts/publish-portfolio-summary.sh` | Verified single-source canonical refresh and snapshot-first exclusive publication |
+| `../../do-work-toolbox/scripts/install-last30days.sh` | Complete-payload validation and verified exact transactional project-local publication/repair |
 
 `tools/install-do-work-suite.sh` remains self-contained because it is the bootstrap that installs these packages. Atomic REQ reservation remains owned only by the board package's Go tool; it has no shell twin.
 
@@ -83,7 +83,7 @@ Publication here makes the [Verified exact publication](#verified-exact-publicat
 
 ## Portfolio summary publication
 
-Invoke `../do-work-toolbox/scripts/publish-portfolio-summary.sh` with one retained source and the action-selected mode. The helper copies and verifies that source into a private file adjacent to the canonical target, once per output. `--canonical-only` atomically replaces only the canonical file. `--with-snapshot` first publishes an exclusive snapshot from its own verified copy, advances occupied candidates with numeric suffixes, and only then atomically replaces the canonical file from the same bytes.
+Invoke `../../do-work-toolbox/scripts/publish-portfolio-summary.sh` with one retained source and the action-selected mode. The helper copies and verifies that source into a private file adjacent to the canonical target, once per output. `--canonical-only` atomically replaces only the canonical file. `--with-snapshot` first publishes an exclusive snapshot from its own verified copy, advances occupied candidates with numeric suffixes, and only then atomically replaces the canonical file from the same bytes.
 
 The two outputs carry identical bytes but never share storage: a snapshot linked to the canonical file would follow every later in-place edit of it. Each publication makes the [Verified exact publication](#verified-exact-publication) check, and this helper's answers to it are that a snapshot candidate occupied by a directory advances to the next suffix, a canonical path occupied by a directory fails closed, and neither leaves a private file nested inside it.
 
@@ -91,7 +91,7 @@ An exclusive snapshot failure leaves the prior canonical unchanged. A later cano
 
 ## Report image batch publication
 
-Generate a report's images through `../do-work-toolbox/scripts/generate-report-image-batch.sh <report-directory> <style-brief> <target-name>:<prompt> …` rather than orchestrating the per-image helper yourself. Each pair splits on its first colon, and a target name must be a bare filename because the batch joins it to its own invocation-private staging directory adjacent to `generated/`.
+Generate a report's images through `../../do-work-toolbox/scripts/generate-report-image-batch.sh <report-directory> <style-brief> <target-name>:<prompt> …` rather than orchestrating the per-image helper yourself. Each pair splits on its first colon, and a target name must be a bare filename because the batch joins it to its own invocation-private staging directory adjacent to `generated/`.
 
 The batch launches one helper per image, retains every PID and status, and waits each one even after an earlier failure — a bare `wait` would discard the mixed statuses that decide which images are current. An image is current only when its own helper status is zero and its staged target is non-empty; failed targets are removed. Publication happens once, as a single same-filesystem rename of the complete verified batch, and only when at least one image is current. `generated/` must be absent both before staging and immediately before the rename, and the rename makes the [Verified exact publication](#verified-exact-publication) check: a nested stage means someone else owns `generated/`, so the batch discards only its own stage, leaves that directory untouched, and exits nonzero.
 

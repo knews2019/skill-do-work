@@ -52,6 +52,8 @@ where `<kind>` is one of (illustrative, not exhaustive — new writers add new k
 - `session capture <hash8>` — appended by `hooks/memory-stop-capture.sh`; `<hash8>` is the first 8 hex chars of the sha256 of the captured text and is the dedup key.
 - `bootstrap import` — written once by `memory bootstrap`; body must name the source transcript.
 
+The heading's `HH:MM` is the entry's UTC **time-of-day label, outside the Timestamp rule's scope** (`../../do-work/actions/work-reference.md`): it is neither an instant nor a date-only stamp, because the log's dated filename already carries the date. A timestamp sweep walks past every `## HH:MM UTC` heading; the write sites point here.
+
 **A `session capture` section's end is decided by format, not by heading grammar.** Raw capture text can contain any line at all, including `## 12:34 UTC note` — heading grammar is trivially spoofable by anything that reaches a transcript, so it cannot on its own end a section that `hooks/memory-session-start.sh` is suppressing. The contract that makes the boundary unspoofable:
 
 - A writer emitting verbatim third-party text MUST open the section with the sentinel `<!-- do-work:capture-body quoted -->` as its first non-blank line, and MUST `> `-prefix every body line after it (including the framing line).
@@ -82,7 +84,7 @@ command -v embed >/dev/null 2>&1               # a standalone embed CLI
 [ -n "${OPENAI_API_KEY:-}${VOYAGE_API_KEY:-}" ] # an embeddings API key is exported
 ```
 
-If a backend is found: chunk candidates by daily-log `##` headings (working-memory.md is one chunk per section), embed query + chunks, rank by cosine similarity, then **merge with the lexical results by reciprocal-rank fusion** (score = Σ 1/(60 + rank) across both lists) and keep each chunk's attribution. If no backend is found: silently proceed lexical-only — same graceful degradation as `../do-work-board/actions/board.md` without Go. Never install, download, or prompt for a backend from inside `recall`.
+If a backend is found: chunk candidates by daily-log `##` headings (working-memory.md is one chunk per section), embed query + chunks, rank by cosine similarity, then **merge with the lexical results by reciprocal-rank fusion** (score = Σ 1/(60 + rank) across both lists) and keep each chunk's attribution. If no backend is found: silently proceed lexical-only — same graceful degradation as `../../do-work-board/actions/board.md` without Go. Never install, download, or prompt for a backend from inside `recall`.
 
 ## Consolidation Algorithm (the 2,500-char cap)
 
@@ -90,7 +92,7 @@ Runs inside `memory remember` when a write would push `working-memory.md` over 2
 
 1. Read the whole file. Group bullets by section.
 2. Merge duplicates and near-duplicates into single bullets; a superseded fact is replaced, not kept alongside its replacement.
-3. Still over cap → move the lowest-value droppables (resolved threads, stale notes, decided decisions) into today's log as `## HH:MM UTC note` entries — **consolidation never destroys content, it demotes it to the log**.
+3. Still over cap → move the lowest-value droppables (resolved threads, stale notes, decided decisions) into today's log as `## HH:MM UTC note` entries (time-of-day label, outside the Timestamp rule's scope — Daily-Log Entry Conventions above) — **consolidation never destroys content, it demotes it to the log**.
 4. Still over cap → tighten wording of survivors. The new fact always fits; what leaves is the oldest resolved material.
 5. Update the `updated:` frontmatter date. Verify `wc -c` ≤ 2,500 before finishing.
 
@@ -106,7 +108,7 @@ Files: `memory/usage-ledger.jsonl` (memory engine) and `usage-ledger.jsonl` at t
 
 | Field | Value |
 | --- | --- |
-| `ts` | current UTC instant (Timestamp rule, `../do-work/actions/work-reference.md`) |
+| `ts` | current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`) |
 | `engine` | `memory` \| `bkb` |
 | `event` | memory: `inject`, `capture`, `write`, `recall`, `hit_cited` · bkb: `query`, `ingest`, `hit_cited` (illustrative — new events allowed, auditor buckets unknown events as "other") |
 | `query` | recall/query events only; sanitized token form (same text-operation sanitize as lexical recall), never raw user text |
@@ -114,7 +116,7 @@ Files: `memory/usage-ledger.jsonl` (memory engine) and `usage-ledger.jsonl` at t
 | `source` | file path of the writer (e.g. `hooks/memory-stop-capture.sh`) |
 | `note` | free text, usually empty |
 
-Prescribed append (derive-then-substitute; `$utc_now`, `$safe_query` and `$hit_count` are already-derived values — `$utc_now` per the Timestamp rule, `../do-work/actions/work-reference.md`):
+Prescribed append (derive-then-substitute; `$utc_now`, `$safe_query` and `$hit_count` are already-derived values — `$utc_now` per the Timestamp rule, `../../do-work/actions/work-reference.md`):
 
 ```bash
 printf '{"ts":"%s","engine":"memory","event":"recall","query":"%s","hits":%d,"source":"actions/memory.md","note":""}\n' \
@@ -132,7 +134,7 @@ Used by `hooks/memory-stop-capture.sh`:
 3. `capture_text` = the redacted sides composed as `User: …\n\nAgent: …`, truncated to ~1,500 characters total. Every byte-budget cut is piped through `iconv -c -f UTF-8 -t UTF-8` (plain cut when `iconv` is absent) so a mid-character cut in multi-byte text — routine for CJK at ~3 bytes/char — drops the torn trailing sequence instead of feeding invalid bytes into the persisted text and the dedup hash. A cut can at worst clip a `[REDACTED]` marker, never expose a credential fragment.
 4. `hash8="$(printf '%s' "$capture_text" | sha256sum | cut -c1-8)"` (fall back to `shasum -a 256` on systems without `sha256sum`).
 5. `grep -q "session capture $hash8" "$today_log"` → already captured, exit 0 (idempotent across duplicate Stop firings).
-6. Append, in this order: heading `## HH:MM UTC session capture <hash8>`, the sentinel `<!-- do-work:capture-body quoted -->`, the framing line `> Session capture — final exchange between the user and the agent:`, then the text **with every line prefixed `> `**. Sentinel first, everything after it quoted — see Daily-Log Entry Conventions for why both are required to make the section boundary unspoofable. Quoting happens at write time only; the hash is computed over the unquoted text at step 4, so the dedup key stays stable. **The whole section lands in one `write()`** — compose it first and append with a single `printf`, never a multi-statement block: every session in the project appends to the same daily log, and separate `O_APPEND` writes from two near-simultaneous stops can interleave and garble section structure. A lock is not the fix here — it would fight step 7's never-block contract, and `flock` doesn't exist on macOS.
+6. Append, in this order: heading `## HH:MM UTC session capture <hash8>` (time-of-day label, outside the Timestamp rule's scope — Daily-Log Entry Conventions above), the sentinel `<!-- do-work:capture-body quoted -->`, the framing line `> Session capture — final exchange between the user and the agent:`, then the text **with every line prefixed `> `**. Sentinel first, everything after it quoted — see Daily-Log Entry Conventions for why both are required to make the section boundary unspoofable. Quoting happens at write time only; the hash is computed over the unquoted text at step 4, so the dedup key stays stable. **The whole section lands in one `write()`** — compose it first and append with a single `printf`, never a multi-statement block: every session in the project appends to the same daily log, and separate `O_APPEND` writes from two near-simultaneous stops can interleave and garble section structure. A lock is not the fix here — it would fight step 7's never-block contract, and `flock` doesn't exist on macOS.
 7. The hook ALWAYS exits 0 — capture is never worth blocking a session end.
 
 ## Capture Redaction Spec
@@ -145,7 +147,7 @@ The memory store is split by durability: the curated `working-memory.md` is **co
 
 ## Hook Install Internals (used by actions/setup-memory.md → memory-module)
 
-`hooks/memory-hooks.json` is a fragment shaped exactly like `../do-work/hooks/hooks.json`. The shipped installer appends only missing entries into the consumer's `.claude/settings.json` — compose, never clobber:
+`hooks/memory-hooks.json` is a fragment shaped exactly like `../../do-work/hooks/hooks.json`. The shipped installer appends only missing entries into the consumer's `.claude/settings.json` — compose, never clobber:
 
 ```bash
 <skill-root>/scripts/install-memory-hooks.sh "$PROJECT_ROOT" "<skill-root>/hooks/memory-hooks.json"

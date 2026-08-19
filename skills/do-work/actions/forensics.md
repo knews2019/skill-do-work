@@ -151,7 +151,7 @@ Judge each remaining value against the `status` row of the Schema Read Contract 
 - **Warning** for each REQ whose status is outside the vocabulary and alias set (e.g., a hand-edited `in-progress`, a typo like `pnding`, or a foreign tool's status): "REQ-NNN has unrecognized status '{status}' — the work scan skips it and the Kanban board parks it under Needs input / Blocked with an invalid-status highlight."
   **Suggested fix:** Edit the REQ's `status:` field to the recognized value that matches its actual state (see the Schema Read Contract). A REQ mid-work is `claimed`; one waiting in the queue is `pending`.
 
-This check is the mechanical sweep behind the board's invalid-status warning (`../do-work-board/tools/queue-kanban/model.go` `bucketColumns`), which points users at `do-work forensics`.
+This check is the mechanical sweep behind the board's invalid-status warning (`../../do-work-board/tools/queue-kanban/model.go` `bucketColumns`), which points users at `do-work forensics`.
 
 ### 12. Future-Dated Timestamps
 
@@ -160,7 +160,7 @@ Scan every REQ file — `do-work/queue/REQ-*.md`, `do-work/working/REQ-*.md`, an
 - **Warning** for each field that parses to later than now + skew: "REQ-NNN's `{field}` is `{value}` — {N} in the future. Likely local wall-clock time written with a `Z` suffix, or a fabricated value — guessed or extrapolated instead of read from the clock (the Timestamp rule in `actions/work-reference.md` requires the current UTC instant). For as long as the stamp stands, elapsed-time math built on it is wrong: the board's stopwatch shows a clock-skew marker, and queue-wait / implementation-time spans go negative."
   **Suggested fix:** Rewrite the field with the instant the event actually happened if recoverable (e.g., from the REQ file's git history), otherwise with the current UTC instant.
 
-This check is the mechanical sweep behind the board's future-stamp badge and data warning (`../do-work-board/tools/queue-kanban/model.go` `detectFutureTimestampFields`). The warning above says the same thing the board says, and both causes must stay named in both places — the board's copy is `futureStampCauseClause` in that file, mirrored by `futureStampCauseText` in `web/board-core.js`. Those two are held together by a test; this one is in a different skill package and nothing can reach it, so it is kept in step by hand.
+This check is the mechanical sweep behind the board's future-stamp badge and data warning (`../../do-work-board/tools/queue-kanban/model.go` `detectFutureTimestampFields`). The warning above says the same thing the board says, and both causes must stay named in both places — the board's copy is `futureStampCauseClause` in that file, mirrored by `futureStampCauseText` in `web/board-core.js`. Those two are held together by a test; this one is in a different skill package and nothing can reach it, so it is kept in step by hand.
 
 ### 13. Blanked or Unparseable REQ Files
 
@@ -196,11 +196,11 @@ Exit 0 means no findings. Exit 1 means findings were printed — **a finding, no
 | version file vs. newest `CHANGELOG.md` entry (they must agree; the direction of a mismatch names the cause) | the release ritual's version/changelog lock-step |
 | newest entry's version not strictly greater than an earlier entry's | same — this is the duplicate-version-number failure |
 | newest entry's title already used by an earlier entry | same |
-| duplicate REQ numbers across queue / working / archive | `../do-work-board/tools/queue-kanban/model.go`'s duplicate-id resolution |
+| duplicate REQ numbers across queue / working / archive | `../../do-work-board/tools/queue-kanban/model.go`'s duplicate-id resolution |
 | `do-work/CHECKPOINT.md` naming a REQ that no longer exists — read an entry under another checkout's `writer:` label as expected rather than stale: it can name a REQ that was archived over there, and it is that checkout's to clear | — (nothing else checks it; it matters because the checkpoint is crash recovery's input, `actions/work-reference.md` → Crash Recovery (Step 1)) |
 | stale, unparseable, future-dated, or absent `claimed_at` on a claimed REQ | Check 1 and Check 12 above |
 | finished REQs stranded in `queue/` or `working/` | Check 9 above |
-| every `REQ-*.md` found outside `queue/`, `working/`, and `archive/`, regardless of status — one non-fixable finding per structured `StrayRequestFiles` path; these files remain outside card and ordinary REQ probes | `../do-work-board/tools/queue-kanban/model.go`'s existing stray detector and warning path |
+| every `REQ-*.md` found outside `queue/`, `working/`, and `archive/`, regardless of status — one non-fixable finding per structured `StrayRequestFiles` path; these files remain outside card and ordinary REQ probes | `../../do-work-board/tools/queue-kanban/model.go`'s existing stray detector and warning path |
 | `worktree-agent-*` leftovers, classified by merge state — only an already-merged one is marked `[fixable]`; unmerged (which may be a builder still in flight) and undetermined ones are reported and left to you | `actions/cleanup.md` Pass 5, whose mechanical half is exactly the merged case |
 | a builder that wrote `do-work/` — reported in two states, uncommitted in its worktree or committed on its branch, because the remedies differ (discard the working-tree edits vs. drop the commits before the branch is merged). Neither is `[fixable]` | the "state stays home" / "sole integrator" rules, `actions/work-reference.md` → Worktree Dispatch Mode |
 | a **non-terminally-resolved** REQ in `do-work/working/` still carrying `assigned_to` (`failed` is outside the Terminal-resolved set, so it fires this row) — the claim did not clear the marker, so it now tells every other checkout to skip a REQ this one is building. A terminally-resolved REQ in that position is the stranded-finished row above, not this one, and only that row fires. Not `[fixable]`: whose claim stands is a human call | Step 2's clear-on-claim, `actions/work.md` Step 1/Step 2 |

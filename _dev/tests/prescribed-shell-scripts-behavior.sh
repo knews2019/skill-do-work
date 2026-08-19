@@ -1095,6 +1095,589 @@ reservation_symlink_output="$("$core_scripts/cleanup-req-reservations.sh" "$rese
 [ -f "$reservation_external_store/REQ-000042" ] \
   || fail_case 'cleanup-req-reservations symlinked-directory case deleted through the symlinked store'
 
+# repair-req-timestamps: a future created_at in the queue is rewritten to the
+# file's own mtime — the actual write instant — and the correction is logged.
+repair_mtime_project="$fixture_root/repair-mtime-project"
+mkdir -p "$repair_mtime_project/do-work/queue"
+printf -- '---\nid: REQ-801\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z\n---\n\nbody\n' \
+  > "$repair_mtime_project/do-work/queue/REQ-801-future.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_mtime_project/do-work/queue/REQ-801-future.md"
+repair_mtime_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_mtime_project")" \
+  || fail_case 'repair-req-timestamps future-stamp case returned nonzero'
+grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_mtime_project/do-work/queue/REQ-801-future.md" \
+  || fail_case 'repair-req-timestamps future-stamp case did not rewrite the stamp to the file mtime'
+printf '%s' "$repair_mtime_output" \
+  | grep -q 'REQ-801-future.md created_at: 2093-01-01T00:00:00Z -> 2026-08-10T12:00:00Z (file mtime)' \
+  || fail_case 'repair-req-timestamps future-stamp case did not log the correction'
+
+# repair-req-timestamps: impossible orderings in working/ are repaired and
+# clamped so created_at <= claimed_at <= completed_at <= now — here the derived
+# mtime precedes created_at, so both later fields land exactly on the clamp floor.
+repair_order_project="$fixture_root/repair-order-project"
+mkdir -p "$repair_order_project/do-work/working"
+printf -- '---\nid: REQ-802\nstatus: completed\ncreated_at: 2026-08-10T12:00:00Z\nclaimed_at: 2026-08-01T09:00:00Z\ncompleted_at: 2026-08-03T10:00:00Z\n---\nbody\n' \
+  > "$repair_order_project/do-work/working/REQ-802-order.md"
+TZ=UTC touch -m -t 202608050800.00 "$repair_order_project/do-work/working/REQ-802-order.md"
+repair_order_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_order_project")" \
+  || fail_case 'repair-req-timestamps ordering case returned nonzero'
+grep -q '^claimed_at: 2026-08-10T12:00:00Z$' "$repair_order_project/do-work/working/REQ-802-order.md" \
+  || fail_case 'repair-req-timestamps ordering case did not clamp claimed_at up to created_at'
+grep -q '^completed_at: 2026-08-10T12:00:00Z$' "$repair_order_project/do-work/working/REQ-802-order.md" \
+  || fail_case 'repair-req-timestamps ordering case did not clamp completed_at up to the repaired claimed_at'
+printf '%s' "$repair_order_output" | grep -q 'clamped to 2026-08-10T12:00:00Z' \
+  || fail_case 'repair-req-timestamps ordering case did not log the clamp'
+
+# repair-req-timestamps: a committed file that matches HEAD is repaired to the
+# author time of the commit that introduced the stamp line, not to a fresh clone's
+# meaningless mtime.
+repair_blame_project="$fixture_root/repair-blame-project"
+fixture_repo_init "$repair_blame_project"
+mkdir -p "$repair_blame_project/do-work/queue"
+printf -- '---\nid: REQ-803\nstatus: pending\ncreated_at: 2026-08-14T09:00:00Z\nclaimed_at: "2093-02-02T02:02:02Z"\n---\nbody\n' \
+  > "$repair_blame_project/do-work/queue/REQ-803-committed.md"
+git -C "$repair_blame_project" add -A
+GIT_AUTHOR_DATE='2026-08-15T14:00:00Z' GIT_COMMITTER_DATE='2026-08-15T14:05:00Z' \
+  git -C "$repair_blame_project" commit -qm fixture
+repair_blame_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_blame_project")" \
+  || fail_case 'repair-req-timestamps committed-file case returned nonzero'
+grep -q '^claimed_at: 2026-08-15T14:00:00Z$' "$repair_blame_project/do-work/queue/REQ-803-committed.md" \
+  || fail_case 'repair-req-timestamps committed-file case did not use the introducing commit author time (quoted stamps must be repairable too)'
+printf '%s' "$repair_blame_output" | grep -q 'author time' \
+  || fail_case 'repair-req-timestamps committed-file case did not name the commit author time as the replacement source'
+
+# repair-req-timestamps: a clean fixture passes through byte-identical — including
+# the shapes the repairer must not touch: a nested (indented) calculated_at, a
+# numeric-offset value it refuses permanently because the timezone arithmetic is
+# the risk and not the obstacle (REQ-257), and an archive-scope directory it must
+# never scan.
+repair_clean_project="$fixture_root/repair-clean-project"
+mkdir -p "$repair_clean_project/do-work/queue" "$repair_clean_project/do-work/archive"
+printf -- '---\nid: REQ-804\nstatus: pending\ncreated_at: 2026-08-10T12:00:00Z   # trailing comment\nblocked_at: 2026-08-11T09:00:00+09:00\nestimate:\n  calculated_at: 2093-06-06T06:06:06Z\n---\nbody\n' \
+  > "$repair_clean_project/do-work/queue/REQ-804-clean.md"
+printf -- '---\nid: REQ-805\nstatus: completed\ncreated_at: 2093-03-03T03:03:03Z\n---\nbody\n' \
+  > "$repair_clean_project/do-work/archive/REQ-805-archived.md"
+cp "$repair_clean_project/do-work/queue/REQ-804-clean.md" "$fixture_root/repair-clean-before.md"
+cp "$repair_clean_project/do-work/archive/REQ-805-archived.md" "$fixture_root/repair-archive-before.md"
+repair_clean_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_clean_project")" \
+  || fail_case 'repair-req-timestamps clean-fixture case returned nonzero'
+[ -z "$repair_clean_output" ] \
+  || fail_case 'repair-req-timestamps clean-fixture case printed output for a no-op run'
+cmp -s "$fixture_root/repair-clean-before.md" "$repair_clean_project/do-work/queue/REQ-804-clean.md" \
+  || fail_case 'repair-req-timestamps clean-fixture case changed a file with nothing provably wrong'
+cmp -s "$fixture_root/repair-archive-before.md" "$repair_clean_project/do-work/archive/REQ-805-archived.md" \
+  || fail_case 'repair-req-timestamps clean-fixture case wrote into archive scope'
+
+# repair-req-timestamps: a tripped guard leaves the file byte-identical and exits
+# nonzero — here the truncation floor: a file at less than half its committed size
+# lost content before the run, and repairing a stamp in the remains would help
+# commit the loss.
+repair_guard_project="$fixture_root/repair-guard-project"
+fixture_repo_init "$repair_guard_project"
+mkdir -p "$repair_guard_project/do-work/queue"
+{
+  printf -- '---\nid: REQ-806\nstatus: pending\ncreated_at: 2093-04-04T04:04:04Z\n---\n'
+  awk 'BEGIN { for (line_index = 1; line_index <= 200; line_index++) print "ballast decision-trail line " line_index }'
+} > "$repair_guard_project/do-work/queue/REQ-806-truncated.md"
+fixture_repo_commit_all "$repair_guard_project" fixture
+head -n 5 "$repair_guard_project/do-work/queue/REQ-806-truncated.md" > "$fixture_root/repair-truncated.tmp"
+mv "$fixture_root/repair-truncated.tmp" "$repair_guard_project/do-work/queue/REQ-806-truncated.md"
+cp "$repair_guard_project/do-work/queue/REQ-806-truncated.md" "$fixture_root/repair-guard-before.md"
+repair_guard_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_guard_project")" \
+  && fail_case 'repair-req-timestamps tripped-guard case exited zero on a truncated file'
+cmp -s "$fixture_root/repair-guard-before.md" "$repair_guard_project/do-work/queue/REQ-806-truncated.md" \
+  || fail_case 'repair-req-timestamps tripped-guard case modified the truncated file'
+printf '%s' "$repair_guard_output" | grep -q 'content was lost before this run' \
+  || fail_case 'repair-req-timestamps tripped-guard case did not name the truncation as the reason'
+
+# repair-req-timestamps: an unquoted space-separated future instant is repaired
+# whole — never half-rewritten into a date plus a phantom time-of-day — and the
+# audit line reports the full old value (REQ-255 I1, the corrupting shape).
+repair_space_project="$fixture_root/repair-space-project"
+mkdir -p "$repair_space_project/do-work/queue"
+printf -- '---\nid: REQ-807\nstatus: pending\ncreated_at: 2093-01-01 00:00:00\n---\nbody\n' \
+  > "$repair_space_project/do-work/queue/REQ-807-space.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_space_project/do-work/queue/REQ-807-space.md"
+repair_space_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_space_project")" \
+  || fail_case 'repair-req-timestamps space-separated case returned nonzero'
+grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_space_project/do-work/queue/REQ-807-space.md" \
+  || fail_case 'repair-req-timestamps space-separated case did not rewrite the whole value to the canonical form'
+grep -q '00:00:00$' "$repair_space_project/do-work/queue/REQ-807-space.md" \
+  && fail_case 'repair-req-timestamps space-separated case left a phantom time-of-day suffix behind'
+printf '%s' "$repair_space_output" \
+  | grep -q 'REQ-807-space.md created_at: 2093-01-01 00:00:00 -> 2026-08-10T12:00:00Z (file mtime)' \
+  || fail_case 'repair-req-timestamps space-separated case did not report the full old value in the audit line'
+
+# repair-req-timestamps: a quoted space-separated future instant is repaired to
+# the canonical unquoted form instead of silently truncating at the unmatched
+# quote and passing through (REQ-255 I1's quoted sibling).
+repair_quoted_space_project="$fixture_root/repair-quoted-space-project"
+mkdir -p "$repair_quoted_space_project/do-work/queue"
+printf -- '---\nid: REQ-808\nstatus: pending\ncreated_at: "2093-01-01 00:00:00"\n---\nbody\n' \
+  > "$repair_quoted_space_project/do-work/queue/REQ-808-quoted-space.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_quoted_space_project/do-work/queue/REQ-808-quoted-space.md"
+repair_quoted_space_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_quoted_space_project")" \
+  || fail_case 'repair-req-timestamps quoted-space case returned nonzero'
+grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_quoted_space_project/do-work/queue/REQ-808-quoted-space.md" \
+  || fail_case 'repair-req-timestamps quoted-space case did not repair the quoted instant to the canonical unquoted form'
+printf '%s' "$repair_quoted_space_output" | grep -q 'REQ-808-quoted-space.md created_at' \
+  || fail_case 'repair-req-timestamps quoted-space case did not log the correction'
+
+# repair-req-timestamps: a CRLF-fenced file is scanned like the board scans it,
+# and a repair preserves every line's CRLF ending — Windows agents are the
+# likeliest source of both CRLF files and wrong local-time stamps (REQ-255 I2).
+repair_crlf_project="$fixture_root/repair-crlf-project"
+mkdir -p "$repair_crlf_project/do-work/queue"
+printf -- '---\r\nid: REQ-809\r\nstatus: pending\r\ncreated_at: 2093-03-03T03:03:03Z\r\n---\r\nbody\r\n' \
+  > "$repair_crlf_project/do-work/queue/REQ-809-crlf.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_crlf_project/do-work/queue/REQ-809-crlf.md"
+repair_crlf_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_crlf_project")" \
+  || fail_case 'repair-req-timestamps CRLF case returned nonzero'
+grep -q $'^created_at: 2026-08-10T12:00:00Z\r$' "$repair_crlf_project/do-work/queue/REQ-809-crlf.md" \
+  || fail_case 'repair-req-timestamps CRLF case did not repair the stamp behind the CRLF fence (or dropped the CR)'
+[ "$(grep -c $'\r$' "$repair_crlf_project/do-work/queue/REQ-809-crlf.md")" -eq 6 ] \
+  || fail_case 'repair-req-timestamps CRLF case did not preserve every CRLF line ending'
+printf '%s' "$repair_crlf_output" | grep -q 'REQ-809-crlf.md created_at: 2093-03-03T03:03:03Z -> 2026-08-10T12:00:00Z' \
+  || fail_case 'repair-req-timestamps CRLF case did not log the correction'
+
+# repair-req-timestamps: a BOM-prefixed file is scanned like the board scans it
+# (the board strips the BOM before the fence match), and a repair keeps the BOM
+# bytes in place (REQ-255 I2).
+repair_bom_project="$fixture_root/repair-bom-project"
+mkdir -p "$repair_bom_project/do-work/queue"
+printf -- '\xef\xbb\xbf---\nid: REQ-810\nstatus: pending\ncreated_at: 2093-04-04T04:04:04Z\n---\nbody\n' \
+  > "$repair_bom_project/do-work/queue/REQ-810-bom.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_bom_project/do-work/queue/REQ-810-bom.md"
+repair_bom_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_bom_project")" \
+  || fail_case 'repair-req-timestamps BOM case returned nonzero'
+grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_bom_project/do-work/queue/REQ-810-bom.md" \
+  || fail_case 'repair-req-timestamps BOM case did not repair the stamp behind the BOM-prefixed fence'
+[ "$(head -c 3 "$repair_bom_project/do-work/queue/REQ-810-bom.md")" = "$(printf '\xef\xbb\xbf')" ] \
+  || fail_case 'repair-req-timestamps BOM case did not keep the BOM bytes in place'
+printf '%s' "$repair_bom_output" | grep -q 'REQ-810-bom.md created_at: 2093-04-04T04:04:04Z -> 2026-08-10T12:00:00Z' \
+  || fail_case 'repair-req-timestamps BOM case did not log the correction'
+
+# repair-req-timestamps: a shape-valid but calendar-impossible stamp is left
+# byte-identical for diagnosis — the board's parser rejects it, so erasing it
+# to a derived instant would destroy the malformed evidence while claiming
+# parity (REQ-255, PR #145 external review). The range check must match the
+# read side's real calendar: month, day-in-that-month, leap years, and time
+# components — a real leap-day future stamp must still be repaired.
+repair_calendar_project="$fixture_root/repair-calendar-project"
+mkdir -p "$repair_calendar_project/do-work/queue"
+printf -- '---\nid: REQ-811\nstatus: pending\ncreated_at: 9999-99-99T99:99:99Z\n---\nbody\n' \
+  > "$repair_calendar_project/do-work/queue/REQ-811-impossible.md"
+printf -- '---\nid: REQ-812\nstatus: pending\ncreated_at: 2093-04-31T10:00:00Z\n---\nbody\n' \
+  > "$repair_calendar_project/do-work/queue/REQ-812-april-31.md"
+printf -- '---\nid: REQ-813\nstatus: pending\ncreated_at: 2093-02-29T10:00:00Z\n---\nbody\n' \
+  > "$repair_calendar_project/do-work/queue/REQ-813-not-a-leap-year.md"
+printf -- '---\nid: REQ-814\nstatus: pending\ncreated_at: 2092-02-29T10:00:00Z\n---\nbody\n' \
+  > "$repair_calendar_project/do-work/queue/REQ-814-real-leap-day.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_calendar_project/do-work/queue/"REQ-81*.md
+for impossible_fixture in REQ-811-impossible REQ-812-april-31 REQ-813-not-a-leap-year; do
+  cp "$repair_calendar_project/do-work/queue/$impossible_fixture.md" "$fixture_root/$impossible_fixture-before.md"
+done
+repair_calendar_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_calendar_project")" \
+  || fail_case 'repair-req-timestamps calendar case returned nonzero'
+for impossible_fixture in REQ-811-impossible REQ-812-april-31 REQ-813-not-a-leap-year; do
+  cmp -s "$fixture_root/$impossible_fixture-before.md" "$repair_calendar_project/do-work/queue/$impossible_fixture.md" \
+    || fail_case "repair-req-timestamps calendar case erased the impossible stamp in $impossible_fixture instead of leaving it for diagnosis"
+done
+grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_calendar_project/do-work/queue/REQ-814-real-leap-day.md" \
+  || fail_case 'repair-req-timestamps calendar case refused a real leap-day future stamp the board parses'
+printf '%s' "$repair_calendar_output" | grep -q 'REQ-811\|REQ-812\|REQ-813' \
+  && fail_case 'repair-req-timestamps calendar case logged a correction for a value it must not touch'
+
+# repair-req-timestamps: a numeric UTC offset or fractional seconds is refused
+# permanently — the decided answer to the residual, not a to-do (REQ-257). Every
+# such shape the read side parses and future-badges is left byte-identical, is
+# never logged, and does not fail the run. This case is what fails if someone
+# quietly teaches comparison_key_for offset arithmetic: a refusal that lived only
+# in a header comment pinned nothing, and the risk being refused is real —
+# repairing here would rewrite an instant the read side already reads correctly.
+repair_refused_shape_project="$fixture_root/repair-refused-shape-project"
+mkdir -p "$repair_refused_shape_project/do-work/queue"
+printf -- '---\nid: REQ-817\nstatus: pending\ncreated_at: 2093-01-01T00:00:00+02:00\n---\nbody\n' \
+  > "$repair_refused_shape_project/do-work/queue/REQ-817-offset-ahead.md"
+printf -- '---\nid: REQ-818\nstatus: pending\ncreated_at: 2093-01-01T00:00:00-05:00\n---\nbody\n' \
+  > "$repair_refused_shape_project/do-work/queue/REQ-818-offset-behind.md"
+printf -- '---\nid: REQ-819\nstatus: pending\ncreated_at: "2093-01-01T00:00:00+02:00"\n---\nbody\n' \
+  > "$repair_refused_shape_project/do-work/queue/REQ-819-quoted-offset.md"
+printf -- '---\nid: REQ-820\nstatus: pending\ncreated_at: 2093-01-01T00:00:00.500Z\n---\nbody\n' \
+  > "$repair_refused_shape_project/do-work/queue/REQ-820-fractional-zulu.md"
+printf -- '---\nid: REQ-821\nstatus: pending\ncreated_at: 2093-01-01T00:00:00.5\n---\nbody\n' \
+  > "$repair_refused_shape_project/do-work/queue/REQ-821-fractional-bare.md"
+printf -- '---\nid: REQ-822\nstatus: pending\ncreated_at: 2093-01-01 00:00:00.5\n---\nbody\n' \
+  > "$repair_refused_shape_project/do-work/queue/REQ-822-fractional-space.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_refused_shape_project/do-work/queue/"REQ-8[12]*.md
+for refused_fixture in "$repair_refused_shape_project/do-work/queue/"REQ-8[12]*.md; do
+  cp "$refused_fixture" "$fixture_root/refused-$(basename "$refused_fixture")"
+done
+repair_refused_shape_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_refused_shape_project")" \
+  || fail_case 'repair-req-timestamps refused-shape case returned nonzero for shapes it deliberately does not repair'
+[ -z "$repair_refused_shape_output" ] \
+  || fail_case 'repair-req-timestamps refused-shape case logged a correction for an offset or fractional stamp'
+for refused_fixture in "$repair_refused_shape_project/do-work/queue/"REQ-8[12]*.md; do
+  cmp -s "$fixture_root/refused-$(basename "$refused_fixture")" "$refused_fixture" \
+    || fail_case "repair-req-timestamps refused-shape case rewrote $(basename "$refused_fixture") — the offset/fractional refusal is a decided permanent answer; changing it means re-deciding it, not widening comparison_key_for"
+done
+
+# repair-req-timestamps: the read-side layout list the refusal is scoped against
+# stays in lock-step — the residual is the GAP between the board's parser and
+# this script's, so pinning only the refusing side would let a widened board grow
+# the gap silently. A new layout here means the offset/fractional decision (and
+# the header paragraph stating it) gets re-made, not inherited.
+board_timestamp_layouts="$(awk '/^func parseTimestamp\(/, /^}/' \
+  "$repo_root/skills/do-work-board/tools/queue-kanban/model.go" \
+  | sed -n 's/^[[:space:]]*\(time\.RFC3339\|"2006[^"]*"\),$/\1/p' | tr '\n' ' ')"
+[ "$board_timestamp_layouts" = 'time.RFC3339 "2006-01-02T15:04:05" "2006-01-02 15:04:05" "2006-01-02" ' ] \
+  || fail_case "repair-req-timestamps read-side-layout case: the board's parseTimestamp layouts are now [$board_timestamp_layouts] — re-decide what repair-req-timestamps.sh refuses before widening the read side"
+
+# repair-req-timestamps: a duplicated anchor key follows the last occurrence,
+# exactly like the read side (the board's YAML dedup keeps the LAST value of a
+# repeated top-level key) — a later-then-earlier claimed_at pair is a real
+# ordering defect on the board and must not be reported clean; and a future
+# FIRST occurrence shadowed by a clean last one is invisible to every YAML
+# reader and must stay untouched (REQ-255, PR #145 external review).
+repair_duplicate_project="$fixture_root/repair-duplicate-project"
+mkdir -p "$repair_duplicate_project/do-work/working"
+printf -- '---\nid: REQ-815\nstatus: claimed\ncreated_at: 2026-08-10T12:00:00Z\nclaimed_at: 2026-08-11T12:00:00Z\nclaimed_at: 2026-08-01T09:00:00Z\n---\nbody\n' \
+  > "$repair_duplicate_project/do-work/working/REQ-815-duplicate-anchor.md"
+printf -- '---\nid: REQ-816\nstatus: pending\ncreated_at: 2026-08-01T09:00:00Z\nblocked_at: 2093-01-01T00:00:00Z\nblocked_at: 2026-08-02T09:00:00Z\n---\nbody\n' \
+  > "$repair_duplicate_project/do-work/working/REQ-816-shadowed-first.md"
+TZ=UTC touch -m -t 202608121200.00 "$repair_duplicate_project/do-work/working/"REQ-81*.md
+cp "$repair_duplicate_project/do-work/working/REQ-816-shadowed-first.md" "$fixture_root/repair-shadowed-before.md"
+repair_duplicate_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_duplicate_project")" \
+  || fail_case 'repair-req-timestamps duplicate-anchor case returned nonzero'
+grep -q '^claimed_at: 2026-08-12T12:00:00Z$' "$repair_duplicate_project/do-work/working/REQ-815-duplicate-anchor.md" \
+  || fail_case 'repair-req-timestamps duplicate-anchor case reported clean instead of repairing the effective (last) occurrence'
+grep -q '^claimed_at: 2026-08-11T12:00:00Z$' "$repair_duplicate_project/do-work/working/REQ-815-duplicate-anchor.md" \
+  || fail_case 'repair-req-timestamps duplicate-anchor case rewrote the shadowed first occurrence'
+cmp -s "$fixture_root/repair-shadowed-before.md" "$repair_duplicate_project/do-work/working/REQ-816-shadowed-first.md" \
+  || fail_case 'repair-req-timestamps duplicate-anchor case touched a future first occurrence no YAML reader can see'
+printf '%s' "$repair_duplicate_output" | grep -q 'REQ-815-duplicate-anchor.md claimed_at: 2026-08-01T09:00:00Z -> 2026-08-12T12:00:00Z' \
+  || fail_case 'repair-req-timestamps duplicate-anchor case did not log the effective-occurrence correction'
+
+# repair-req-timestamps: a file whose opening fence is never closed is refused
+# whole, because the board's splitFrontmatter reports NO frontmatter for that
+# shape and renders every line as body (REQ-267 I1). The second fixture is the
+# shape that could wedge the repair permanently: the file ends on the defective
+# stamp with no trailing newline, so a last-line rewrite can never produce the
+# final-newline diff pair the changed-line guard expects — the repair was
+# rejected and the script exited 1 on EVERY run, with nothing able to heal it.
+# The run must therefore be clean and silent, not merely non-destructive.
+repair_unterminated_project="$fixture_root/repair-unterminated-project"
+mkdir -p "$repair_unterminated_project/do-work/queue"
+printf -- '---\nid: REQ-823\nstatus: pending\n\n# Body prose, and the fence above was never closed\n\ncreated_at: 2093-01-01T00:00:00Z\n' \
+  > "$repair_unterminated_project/do-work/queue/REQ-823-unterminated-body.md"
+printf -- '---\nid: REQ-824\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z' \
+  > "$repair_unterminated_project/do-work/queue/REQ-824-unterminated-eof.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_unterminated_project/do-work/queue/"REQ-82*.md
+for unterminated_fixture in REQ-823-unterminated-body REQ-824-unterminated-eof; do
+  cp "$repair_unterminated_project/do-work/queue/$unterminated_fixture.md" "$fixture_root/$unterminated_fixture-before.md"
+done
+repair_unterminated_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_unterminated_project")" \
+  || fail_case 'repair-req-timestamps unterminated-fence case exited nonzero — a shape that fails every session with no self-heal is exactly the defect'
+[ -z "$repair_unterminated_output" ] \
+  || fail_case 'repair-req-timestamps unterminated-fence case printed output for a file the read side sees no frontmatter in'
+for unterminated_fixture in REQ-823-unterminated-body REQ-824-unterminated-eof; do
+  cmp -s "$fixture_root/$unterminated_fixture-before.md" "$repair_unterminated_project/do-work/queue/$unterminated_fixture.md" \
+    || fail_case "repair-req-timestamps unterminated-fence case rewrote $unterminated_fixture — the board reads that whole file as body text"
+done
+
+# repair-req-timestamps: a stamp padded INSIDE its quotes is repaired, because
+# the read side unquotes and then trims and so parses and future-badges it
+# (REQ-267 I2). The non-ASCII-padded sibling pins the stated boundary of that
+# trim — this script matches bytes under LC_ALL=C, so a U+00A0-padded value the
+# read side still parses stays refused byte-identical, and the header says so.
+repair_padded_quote_project="$fixture_root/repair-padded-quote-project"
+mkdir -p "$repair_padded_quote_project/do-work/queue"
+printf -- '---\nid: REQ-825\nstatus: pending\ncreated_at: "2093-01-01 00:00:00 "\n---\nbody\n' \
+  > "$repair_padded_quote_project/do-work/queue/REQ-825-padded-quote.md"
+printf -- '---\nid: REQ-826\nstatus: pending\ncreated_at: "2093-01-01T00:00:00Z\xc2\xa0"\n---\nbody\n' \
+  > "$repair_padded_quote_project/do-work/queue/REQ-826-non-ascii-pad.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_padded_quote_project/do-work/queue/"REQ-82*.md
+cp "$repair_padded_quote_project/do-work/queue/REQ-826-non-ascii-pad.md" "$fixture_root/repair-non-ascii-pad-before.md"
+repair_padded_quote_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_padded_quote_project")" \
+  || fail_case 'repair-req-timestamps padded-quote case returned nonzero'
+grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_padded_quote_project/do-work/queue/REQ-825-padded-quote.md" \
+  || fail_case 'repair-req-timestamps padded-quote case refused a padded quoted instant the board parses and future-badges'
+cmp -s "$fixture_root/repair-non-ascii-pad-before.md" "$repair_padded_quote_project/do-work/queue/REQ-826-non-ascii-pad.md" \
+  || fail_case 'repair-req-timestamps padded-quote case repaired a non-ASCII-padded value — the header states that residual is refused'
+printf '%s' "$repair_padded_quote_output" | grep -q 'REQ-825-padded-quote.md created_at: "2093-01-01 00:00:00 " -> 2026-08-10T12:00:00Z' \
+  || fail_case 'repair-req-timestamps padded-quote case did not report the full padded old value in the audit line'
+printf '%s' "$repair_padded_quote_output" | grep -q 'REQ-826' \
+  && fail_case 'repair-req-timestamps padded-quote case logged a correction for the refused non-ASCII-padded value'
+
+# audit-archive-timestamps: under --fix, a future stamp in a committed archived REQ
+# (inside an archived UR folder, proving the recursive scan) is rewritten to the
+# introducing commit's author time and the correction logs the sourcing commit hash.
+audit_fix_project="$fixture_root/audit-fix-project"
+fixture_repo_init "$audit_fix_project"
+mkdir -p "$audit_fix_project/do-work/archive/UR-901"
+printf -- '---\nid: REQ-901\nstatus: completed\ncreated_at: 2026-08-10T09:00:00Z\nclaimed_at: 2026-08-10T10:00:00Z\ncompleted_at: 2093-05-05T05:05:05Z\n---\nbody\n' \
+  > "$audit_fix_project/do-work/archive/UR-901/REQ-901-future.md"
+git -C "$audit_fix_project" add -A
+GIT_AUTHOR_DATE='2026-08-12T10:00:00Z' GIT_COMMITTER_DATE='2026-08-12T10:05:00Z' \
+  git -C "$audit_fix_project" commit -qm fixture
+audit_fix_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_fix_project")" \
+  || fail_case 'audit-archive-timestamps fixing case returned nonzero'
+grep -q '^completed_at: 2026-08-12T10:00:00Z$' "$audit_fix_project/do-work/archive/UR-901/REQ-901-future.md" \
+  || fail_case 'audit-archive-timestamps fixing case did not rewrite the stamp to the introducing commit author time'
+printf '%s' "$audit_fix_output" \
+  | grep -Eq 'REQ-901-future\.md completed_at: 2093-05-05T05:05:05Z -> 2026-08-12T10:00:00Z \(commit [0-9a-f]{7} author time\)' \
+  || fail_case 'audit-archive-timestamps fixing case did not log the correction with its sourcing commit hash'
+
+# audit-archive-timestamps: without --fix the default run only reports — the pending
+# correction prints as `would repair`, the archived file keeps its bytes, and the
+# exit code is nonzero so a caller can gate on findings.
+audit_report_project="$fixture_root/audit-report-project"
+fixture_repo_init "$audit_report_project"
+mkdir -p "$audit_report_project/do-work/archive"
+printf -- '---\nid: REQ-902\nstatus: completed\ncreated_at: 2026-08-10T09:00:00Z\ncompleted_at: 2093-05-05T05:05:05Z\n---\nbody\n' \
+  > "$audit_report_project/do-work/archive/REQ-902-future.md"
+git -C "$audit_report_project" add -A
+GIT_AUTHOR_DATE='2026-08-12T10:00:00Z' GIT_COMMITTER_DATE='2026-08-12T10:05:00Z' \
+  git -C "$audit_report_project" commit -qm fixture
+cp "$audit_report_project/do-work/archive/REQ-902-future.md" "$fixture_root/audit-report-before.md"
+audit_report_output="$("$core_scripts/audit-archive-timestamps.sh" "$audit_report_project")" \
+  && fail_case 'audit-archive-timestamps report-only case exited zero with a correction pending'
+printf '%s' "$audit_report_output" \
+  | grep -q 'would repair do-work/archive/REQ-902-future.md completed_at: 2093-05-05T05:05:05Z -> 2026-08-12T10:00:00Z' \
+  || fail_case 'audit-archive-timestamps report-only case did not print the pending correction'
+cmp -s "$fixture_root/audit-report-before.md" "$audit_report_project/do-work/archive/REQ-902-future.md" \
+  || fail_case 'audit-archive-timestamps report-only case changed bytes without --fix'
+
+# audit-archive-timestamps: a clean committed archive passes through byte-identical
+# with exit zero — and queue scope is never scanned: a wrong queue stamp belongs to
+# the hook-run repairer, not the archive audit.
+audit_clean_project="$fixture_root/audit-clean-project"
+fixture_repo_init "$audit_clean_project"
+mkdir -p "$audit_clean_project/do-work/archive" "$audit_clean_project/do-work/queue"
+printf -- '---\nid: REQ-903\nstatus: completed\ncreated_at: 2026-08-01T09:00:00Z\nclaimed_at: 2026-08-02T09:00:00Z\ncompleted_at: 2026-08-03T09:00:00Z\n---\nbody\n' \
+  > "$audit_clean_project/do-work/archive/REQ-903-clean.md"
+printf -- '---\nid: REQ-904\nstatus: pending\ncreated_at: 2093-06-06T06:06:06Z\n---\nbody\n' \
+  > "$audit_clean_project/do-work/queue/REQ-904-queue.md"
+git -C "$audit_clean_project" add -A
+GIT_AUTHOR_DATE='2026-08-04T09:00:00Z' GIT_COMMITTER_DATE='2026-08-04T09:00:00Z' \
+  git -C "$audit_clean_project" commit -qm fixture
+cp "$audit_clean_project/do-work/archive/REQ-903-clean.md" "$fixture_root/audit-clean-before.md"
+cp "$audit_clean_project/do-work/queue/REQ-904-queue.md" "$fixture_root/audit-queue-before.md"
+audit_clean_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_clean_project")" \
+  || fail_case 'audit-archive-timestamps clean-archive case returned nonzero'
+printf '%s' "$audit_clean_output" | grep -q 'archive audit clean' \
+  || fail_case 'audit-archive-timestamps clean-archive case did not report a clean audit'
+cmp -s "$fixture_root/audit-clean-before.md" "$audit_clean_project/do-work/archive/REQ-903-clean.md" \
+  || fail_case 'audit-archive-timestamps clean-archive case changed a clean archived file'
+cmp -s "$fixture_root/audit-queue-before.md" "$audit_clean_project/do-work/queue/REQ-904-queue.md" \
+  || fail_case 'audit-archive-timestamps clean-archive case wrote into queue scope'
+
+# audit-archive-timestamps: an impossible ordering in a committed archived REQ is
+# clamped so created_at <= claimed_at <= completed_at — the introducing commit's
+# author time precedes the anchor here, so both later fields land on the clamp floor.
+audit_order_project="$fixture_root/audit-order-project"
+fixture_repo_init "$audit_order_project"
+mkdir -p "$audit_order_project/do-work/archive"
+printf -- '---\nid: REQ-905\nstatus: completed\ncreated_at: 2026-08-10T12:00:00Z\nclaimed_at: 2026-08-01T09:00:00Z\ncompleted_at: 2026-08-03T10:00:00Z\n---\nbody\n' \
+  > "$audit_order_project/do-work/archive/REQ-905-order.md"
+git -C "$audit_order_project" add -A
+GIT_AUTHOR_DATE='2026-08-05T08:00:00Z' GIT_COMMITTER_DATE='2026-08-05T08:00:00Z' \
+  git -C "$audit_order_project" commit -qm fixture
+audit_order_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_order_project")" \
+  || fail_case 'audit-archive-timestamps ordering case returned nonzero'
+grep -q '^claimed_at: 2026-08-10T12:00:00Z$' "$audit_order_project/do-work/archive/REQ-905-order.md" \
+  || fail_case 'audit-archive-timestamps ordering case did not clamp claimed_at up to created_at'
+grep -q '^completed_at: 2026-08-10T12:00:00Z$' "$audit_order_project/do-work/archive/REQ-905-order.md" \
+  || fail_case 'audit-archive-timestamps ordering case did not clamp completed_at up to the repaired claimed_at'
+printf '%s' "$audit_order_output" | grep -q 'clamped to 2026-08-10T12:00:00Z' \
+  || fail_case 'audit-archive-timestamps ordering case did not log the clamp'
+
+# audit-archive-timestamps: an archived defect whose introducing commit cannot be
+# blamed (an uncommitted file) is reported and left byte-identical — replacements
+# derive from git alone, and the file mtime is never consulted as a fallback.
+audit_blameless_project="$fixture_root/audit-blameless-project"
+fixture_repo_init "$audit_blameless_project"
+mkdir -p "$audit_blameless_project/do-work/archive"
+printf -- '---\nid: REQ-906\nstatus: completed\ncreated_at: 2093-07-07T07:07:07Z\n---\nbody\n' \
+  > "$audit_blameless_project/do-work/archive/REQ-906-untracked.md"
+TZ=UTC touch -m -t 202608101200.00 "$audit_blameless_project/do-work/archive/REQ-906-untracked.md"
+cp "$audit_blameless_project/do-work/archive/REQ-906-untracked.md" "$fixture_root/audit-blameless-before.md"
+audit_blameless_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_blameless_project")" \
+  && fail_case 'audit-archive-timestamps blameless case exited zero on an unrepairable defect'
+printf '%s' "$audit_blameless_output" | grep -q 'FAILED to repair' \
+  || fail_case 'audit-archive-timestamps blameless case did not report the unrepairable defect'
+printf '%s' "$audit_blameless_output" | grep -q 'file mtime' \
+  && fail_case 'audit-archive-timestamps blameless case offered the file mtime as a source'
+cmp -s "$fixture_root/audit-blameless-before.md" "$audit_blameless_project/do-work/archive/REQ-906-untracked.md" \
+  || fail_case 'audit-archive-timestamps blameless case changed the file it could not derive for'
+
+# audit-archive-timestamps: the widened shapes (space-separated, quoted, CRLF,
+# BOM) repair through the archive scan too — the fix lives in the sourced
+# library, and this pins the shared-fix-reaches-both-tools property instead of
+# assuming it (REQ-255; REQ-247 review).
+audit_shapes_project="$fixture_root/audit-shapes-project"
+fixture_repo_init "$audit_shapes_project"
+mkdir -p "$audit_shapes_project/do-work/archive"
+printf -- '---\nid: REQ-907\nstatus: completed\ncreated_at: 2093-01-01 00:00:00\n---\nbody\n' \
+  > "$audit_shapes_project/do-work/archive/REQ-907-space.md"
+printf -- '---\nid: REQ-908\nstatus: completed\ncreated_at: "2093-01-01 00:00:00"\n---\nbody\n' \
+  > "$audit_shapes_project/do-work/archive/REQ-908-quoted-space.md"
+printf -- '---\r\nid: REQ-909\r\nstatus: completed\r\ncreated_at: 2093-03-03T03:03:03Z\r\n---\r\nbody\r\n' \
+  > "$audit_shapes_project/do-work/archive/REQ-909-crlf.md"
+printf -- '\xef\xbb\xbf---\nid: REQ-910\nstatus: completed\ncreated_at: 2093-04-04T04:04:04Z\n---\nbody\n' \
+  > "$audit_shapes_project/do-work/archive/REQ-910-bom.md"
+git -C "$audit_shapes_project" add -A
+GIT_AUTHOR_DATE='2026-08-12T10:00:00Z' GIT_COMMITTER_DATE='2026-08-12T10:05:00Z' \
+  git -C "$audit_shapes_project" commit -qm fixture
+audit_shapes_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_shapes_project")" \
+  || fail_case 'audit-archive-timestamps widened-shapes case returned nonzero'
+for widened_fixture in REQ-907-space REQ-908-quoted-space REQ-910-bom; do
+  grep -q '^created_at: 2026-08-12T10:00:00Z$' "$audit_shapes_project/do-work/archive/$widened_fixture.md" \
+    || fail_case "audit-archive-timestamps widened-shapes case did not repair $widened_fixture through the archive scan"
+done
+grep -q $'^created_at: 2026-08-12T10:00:00Z\r$' "$audit_shapes_project/do-work/archive/REQ-909-crlf.md" \
+  || fail_case 'audit-archive-timestamps widened-shapes case did not repair the CRLF file (or dropped the CR)'
+[ "$(head -c 3 "$audit_shapes_project/do-work/archive/REQ-910-bom.md")" = "$(printf '\xef\xbb\xbf')" ] \
+  || fail_case 'audit-archive-timestamps widened-shapes case did not keep the BOM bytes in place'
+printf '%s' "$audit_shapes_output" \
+  | grep -q 'REQ-907-space.md created_at: 2093-01-01 00:00:00 -> 2026-08-12T10:00:00Z' \
+  || fail_case 'audit-archive-timestamps widened-shapes case did not report the full old value in the audit line'
+
+# audit-archive-timestamps: the refused and duplicate-key shapes hold through
+# the archive scan too — a calendar-impossible stamp and a numeric-offset stamp
+# stay byte-identical (and are not defects), while a duplicated anchor repairs
+# on its effective (last) occurrence from the introducing commit's author time
+# (REQ-255; REQ-257). The refusals belong to the sourced library, so this is
+# what fails if the auditor ever grows its own recognizer beside the shared one.
+audit_parity_project="$fixture_root/audit-parity-project"
+fixture_repo_init "$audit_parity_project"
+mkdir -p "$audit_parity_project/do-work/archive"
+printf -- '---\nid: REQ-911\nstatus: completed\ncreated_at: 9999-99-99T99:99:99Z\n---\nbody\n' \
+  > "$audit_parity_project/do-work/archive/REQ-911-impossible.md"
+printf -- '---\nid: REQ-912\nstatus: completed\ncreated_at: 2026-08-10T12:00:00Z\nclaimed_at: 2026-08-11T12:00:00Z\nclaimed_at: 2026-08-01T09:00:00Z\n---\nbody\n' \
+  > "$audit_parity_project/do-work/archive/REQ-912-duplicate-anchor.md"
+printf -- '---\nid: REQ-913\nstatus: completed\ncreated_at: 2093-01-01T00:00:00+02:00\n---\nbody\n' \
+  > "$audit_parity_project/do-work/archive/REQ-913-offset.md"
+git -C "$audit_parity_project" add -A
+GIT_AUTHOR_DATE='2026-08-12T10:00:00Z' GIT_COMMITTER_DATE='2026-08-12T10:05:00Z' \
+  git -C "$audit_parity_project" commit -qm fixture
+cp "$audit_parity_project/do-work/archive/REQ-911-impossible.md" "$fixture_root/audit-impossible-before.md"
+cp "$audit_parity_project/do-work/archive/REQ-913-offset.md" "$fixture_root/audit-offset-before.md"
+audit_parity_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_parity_project")" \
+  || fail_case 'audit-archive-timestamps refusal-parity case returned nonzero'
+cmp -s "$fixture_root/audit-impossible-before.md" "$audit_parity_project/do-work/archive/REQ-911-impossible.md" \
+  || fail_case 'audit-archive-timestamps refusal-parity case erased a calendar-impossible stamp in the archive'
+cmp -s "$fixture_root/audit-offset-before.md" "$audit_parity_project/do-work/archive/REQ-913-offset.md" \
+  || fail_case 'audit-archive-timestamps refusal-parity case repaired a numeric-offset stamp in the archive — the offset refusal is the sourced library one and must reach every tool built on it'
+grep -q '^claimed_at: 2026-08-12T10:00:00Z$' "$audit_parity_project/do-work/archive/REQ-912-duplicate-anchor.md" \
+  || fail_case 'audit-archive-timestamps refusal-parity case did not repair the effective (last) anchor occurrence'
+grep -q '^claimed_at: 2026-08-11T12:00:00Z$' "$audit_parity_project/do-work/archive/REQ-912-duplicate-anchor.md" \
+  || fail_case 'audit-archive-timestamps refusal-parity case rewrote the shadowed first occurrence'
+printf '%s' "$audit_parity_output" | grep -qE 'REQ-911|REQ-913' \
+  && fail_case 'audit-archive-timestamps refusal-parity case logged a refused stamp as a correction'
+
+# audit-archive-timestamps: the fence and padding shapes reach the archive scan
+# too, because both live in the sourced extractor and recognizer rather than in
+# the queue/working scan (REQ-267, both instances through the second scope). An
+# unterminated fence is refused whole here as well; a stamp padded inside its
+# quotes is repaired from the introducing commit's author time.
+audit_shape_project="$fixture_root/audit-shape-project"
+fixture_repo_init "$audit_shape_project"
+mkdir -p "$audit_shape_project/do-work/archive"
+printf -- '---\nid: REQ-914\nstatus: completed\ncreated_at: 2093-01-01T00:00:00Z' \
+  > "$audit_shape_project/do-work/archive/REQ-914-unterminated.md"
+printf -- '---\nid: REQ-915\nstatus: completed\ncreated_at: "2093-01-01 00:00:00 "\n---\nbody\n' \
+  > "$audit_shape_project/do-work/archive/REQ-915-padded-quote.md"
+git -C "$audit_shape_project" add -A
+GIT_AUTHOR_DATE='2026-08-12T10:00:00Z' GIT_COMMITTER_DATE='2026-08-12T10:05:00Z' \
+  git -C "$audit_shape_project" commit -qm fixture
+cp "$audit_shape_project/do-work/archive/REQ-914-unterminated.md" "$fixture_root/audit-unterminated-before.md"
+audit_shape_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_shape_project")" \
+  || fail_case 'audit-archive-timestamps shape-parity case returned nonzero'
+cmp -s "$fixture_root/audit-unterminated-before.md" "$audit_shape_project/do-work/archive/REQ-914-unterminated.md" \
+  || fail_case 'audit-archive-timestamps shape-parity case rewrote an archived file whose fence never closes'
+grep -q '^created_at: 2026-08-12T10:00:00Z$' "$audit_shape_project/do-work/archive/REQ-915-padded-quote.md" \
+  || fail_case 'audit-archive-timestamps shape-parity case refused a padded quoted instant in the archive'
+printf '%s' "$audit_shape_output" | grep -q 'REQ-914' \
+  && fail_case 'audit-archive-timestamps shape-parity case logged a finding for the refused unterminated file'
+
+# repair-req-timestamps: the 2-minute future-skew constant stays in lock-step
+# with the board's futureTimestampSkewAllowance — a fourth hand-kept copy of
+# the same allowance, pinned the way the repo pins cause-clause pairs
+# (REQ-255 rider; REQ-246 review nit).
+grep -q '^future_stamp_skew_seconds=120$' "$core_scripts/repair-req-timestamps.sh" \
+  || fail_case 'repair-req-timestamps skew-constant case: the repairer no longer declares future_stamp_skew_seconds=120'
+grep -q '^const futureTimestampSkewAllowance = 2 \* time\.Minute$' \
+  "$repo_root/skills/do-work-board/tools/queue-kanban/model.go" \
+  || fail_case 'repair-req-timestamps skew-constant case: the board constant moved or changed — keep the two allowances in lock-step'
+
+# qualify: an output line added to a file that owns its process exit is the file's own
+# reporting, not a debug artifact — the scan passes it and names the reason (REQ-254; the
+# scan once FAILed a checker's only success line, REQ-244's remediation). Both output
+# primitives (print(, console.log) get the same treatment: the condition is the class,
+# not the token. Serial and range modes are both exercised — each reads a different diff.
+core_checks="$repo_root/skills/do-work/tools/checks"
+qualify_repo="$fixture_root/qualify-repo"
+fixture_repo_init "$qualify_repo"
+mkdir -p "$qualify_repo/src" "$qualify_repo/do-work"
+printf '%s\n' '#!/usr/bin/env bash' 'python3 - <<PY' 'import sys' 'if sites_missing:' \
+  '    raise SystemExit("site check failed")' 'PY' > "$qualify_repo/site-checker.sh"
+printf '%s\n' 'if (writeFailed) {' '  process.exit(1);' '}' > "$qualify_repo/report-writer.js"
+printf '%s\n' 'def parse_value(raw_text):' '    return raw_text.strip()' > "$qualify_repo/src/value_parser.py"
+fixture_repo_commit_all "$qualify_repo" base
+qualify_base_commit="$(git -C "$qualify_repo" rev-parse HEAD)"
+printf '%s\n' '## Implementation Summary' \
+  '- `site-checker.sh` (modified) — success line' \
+  '- `report-writer.js` (modified) — success line' \
+  '' '## AI Execution State' \
+  '- [x] **[PLAN]** done' '- [x] **[APPLY]** done' '- [x] **[UNIFY]** done' \
+  > "$qualify_repo/do-work/REQ-950-reporting.md"
+printf 'print("site check: all sites cited")\n' >> "$qualify_repo/site-checker.sh"
+printf 'console.log("report written");\n' >> "$qualify_repo/report-writer.js"
+qualify_reporting_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-950-reporting.md 2>&1)" \
+  || fail_case 'qualify reporter-output serial case FAILed a check file on its own success line'
+printf '%s' "$qualify_reporting_output" | grep -q 'reporting' \
+  || fail_case 'qualify reporter-output serial case did not name the pass reason (reporting)'
+fixture_repo_commit_all "$qualify_repo" reporting
+qualify_reporting_commit="$(git -C "$qualify_repo" rev-parse HEAD)"
+(cd "$qualify_repo" && DO_WORK_DIFF_RANGE="$qualify_base_commit..$qualify_reporting_commit" \
+  "$core_checks/qualify.sh" do-work/REQ-950-reporting.md >/dev/null 2>&1) \
+  || fail_case 'qualify reporter-output range case FAILed a check file on its own success line'
+
+# qualify: an output primitive added to a file that never ends its own process still FAILs
+# as leftover instrumentation, and the FAIL names the file and the reason (REQ-254).
+printf '%s\n' '## Implementation Summary' \
+  '- `src/value_parser.py` (modified) — parsing tweak' \
+  '' '## AI Execution State' \
+  '- [x] **[PLAN]** done' '- [x] **[APPLY]** done' '- [x] **[UNIFY]** done' \
+  > "$qualify_repo/do-work/REQ-951-instrumentation.md"
+printf 'print(raw_text)\n' >> "$qualify_repo/src/value_parser.py"
+qualify_instrumentation_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-951-instrumentation.md 2>&1)" \
+  && fail_case 'qualify instrumentation serial case passed a debug print in library code'
+printf '%s' "$qualify_instrumentation_output" | grep -q 'instrumentation' \
+  || fail_case 'qualify instrumentation serial case did not name the FAIL reason (instrumentation)'
+printf '%s' "$qualify_instrumentation_output" | grep -q 'src/value_parser.py' \
+  || fail_case 'qualify instrumentation serial case did not name the offending file'
+fixture_repo_commit_all "$qualify_repo" instrumentation
+qualify_instrumentation_commit="$(git -C "$qualify_repo" rev-parse HEAD)"
+(cd "$qualify_repo" && DO_WORK_DIFF_RANGE="$qualify_reporting_commit..$qualify_instrumentation_commit" \
+  "$core_checks/qualify.sh" do-work/REQ-951-instrumentation.md >/dev/null 2>&1) \
+  && fail_case 'qualify instrumentation range case passed a debug print in library code'
+
+# qualify: the reporter exemption covers output primitives only — an unfinished-work
+# marker (TODO) added to the same reporter file still FAILs (REQ-254; pins the hole a
+# file-level exemption would open).
+printf '%s\n' '## Implementation Summary' \
+  '- `site-checker.sh` (modified) — regex note' \
+  '' '## AI Execution State' \
+  '- [x] **[PLAN]** done' '- [x] **[APPLY]** done' '- [x] **[UNIFY]** done' \
+  > "$qualify_repo/do-work/REQ-952-marker.md"
+printf '# TODO: tighten the site regex\n' >> "$qualify_repo/site-checker.sh"
+qualify_marker_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-952-marker.md 2>&1)" \
+  && fail_case 'qualify unfinished-marker case let a reporter file carry a fresh TODO'
+printf '%s' "$qualify_marker_output" | grep -q 'debug artifacts' \
+  || fail_case 'qualify unfinished-marker case did not report the TODO as a debug artifact'
+git -C "$qualify_repo" checkout -q -- site-checker.sh
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi

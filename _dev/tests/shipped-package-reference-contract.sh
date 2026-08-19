@@ -16,6 +16,10 @@ import urllib.parse
 repo_root = pathlib.Path(sys.argv[1]).resolve()
 manifest_path = repo_root / "suite/modules.tsv"
 repository_slug = "knews2019/skill-do-work"
+# The consumer project's queue root. Named here because the core package's directory
+# shares this name, and backticked_citation_messages keys its one documented
+# ambiguity on that collision.
+consumer_queue_directory = "do-work"
 
 
 def fail(message):
@@ -206,7 +210,9 @@ def escaped_reference_definition_end(markdown_text, line_start, line_end):
     return None
 
 
-def strip_markdown_code(markdown_text):
+def mask_block_code(markdown_text):
+    # Phase 1 of strip_markdown_code, shared with backticked_span_texts: mask fenced,
+    # list-fenced, and indented code line-by-line, returning the character list.
     code_free_text = list(markdown_text)
     fence_character = None
     fence_length = 0
@@ -309,14 +315,20 @@ def strip_markdown_code(markdown_text):
         if line_is_code:
             mask_text_range(code_free_text, line_start, line_end)
         line_start = line_end
+    return code_free_text
 
-    rendered_text = "".join(code_free_text)
+
+def inline_code_regions(rendered_text):
+    # Phase 2 of strip_markdown_code, shared with backticked_span_texts: walk the
+    # block-masked text yielding HTML comments and inline code spans in document
+    # order, never overlapping. A span region runs from its opening backticks
+    # through its closing backticks; marker_length is that backtick-run length.
     index = 0
-    while index < len(code_free_text):
+    while index < len(rendered_text):
         if rendered_text.startswith("<!--", index):
             comment_end = rendered_text.find("-->", index + 4)
             masked_end = len(rendered_text) if comment_end < 0 else comment_end + 3
-            mask_text_range(code_free_text, index, masked_end)
+            yield "comment", index, masked_end, 0
             index = masked_end
             continue
         if rendered_text[index] != "`" or punctuation_is_escaped(rendered_text, index):
@@ -346,8 +358,40 @@ def strip_markdown_code(markdown_text):
             index = run_end
             continue
         masked_end = closing_start + marker_length
-        mask_text_range(code_free_text, index, masked_end)
+        yield "span", index, masked_end, marker_length
         index = masked_end
+
+
+comment_backtick_span = re.compile(r"(?<!`)(`+)([^`]+?)\1(?!`)")
+
+
+def backticked_span_texts(markdown_text):
+    # Inline code spans outside fenced/indented code, as (content_offset, content)
+    # pairs. The offset indexes the raw text — block masking preserves length and
+    # newlines, so line numbers computed from it hold. HTML comments are included
+    # deliberately: a comment in shipped markdown is agent-facing plain text (the
+    # JIT_CONTEXT headers carry real cross-package citations), not rendered
+    # markdown, so its interior is scanned with a plain backtick-pairing match
+    # rather than the CommonMark walk.
+    rendered_text = "".join(mask_block_code(markdown_text))
+    for region_kind, region_start, region_end, marker_length in inline_code_regions(
+        rendered_text
+    ):
+        if region_kind == "comment":
+            for span_match in comment_backtick_span.finditer(
+                rendered_text, region_start, region_end
+            ):
+                yield span_match.start(2), span_match.group(2)
+            continue
+        content_start = region_start + marker_length
+        content_end = region_end - marker_length
+        yield content_start, rendered_text[content_start:content_end]
+
+
+def strip_markdown_code(markdown_text):
+    code_free_text = mask_block_code(markdown_text)
+    for _, region_start, region_end, _ in inline_code_regions("".join(code_free_text)):
+        mask_text_range(code_free_text, region_start, region_end)
 
     rendered_text = "".join(code_free_text)
     label_start = 0
@@ -548,6 +592,18 @@ def normalize_markdown_target(target):
 # A heading anchor is generated from the heading's *rendered* text: lowercase it, drop
 # every character that is not a word character, a hyphen, or a space, then turn spaces
 # into hyphens. Repeated slugs take a -1, -2 … suffix in document order.
+#
+# Stated limitation, deliberately left open: HTML tags and entities in heading text
+# slug literally here ("## <kbd>Ctrl</kbd> and stuff" -> kbdctrlkbd-and-stuff,
+# "## Tom &amp; Jerry" -> tom-amp-jerry) while GitHub strips the tags and decodes
+# the entities first (ctrl-and-stuff, tom--jerry). Failure direction: both. A link
+# written to GitHub's true slug fails loudly here (spurious FAIL the author sees);
+# a link written to this checker's divergent slug passes silently while broken in
+# every renderer. No shipped heading contains a tag or an entity today, and correct
+# decoding would need code-span awareness inside the heading (entities in inline
+# code stay literal), so closing this buys HTML parsing with no live case. The
+# anchor fixture below pins the divergence; closing it later must update this
+# statement in the same change.
 inline_link_label_pattern = re.compile(r"!?\[([^\[\]]*)\](?:\([^()]*\)|\[[^\[\]]*\])")
 atx_heading_pattern = re.compile(r"^[ ]{0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
 heading_slug_cache = {}
@@ -571,6 +627,11 @@ def heading_anchor_slugs_from_text(markdown_text):
     # A line whose masked form no longer opens with # sat inside a fence, an indented
     # block, or an HTML comment and is not a heading. Slugs come from the raw line,
     # because masking blanks inline code that the rendered heading text keeps.
+    #
+    # Stated limitation: a blockquoted ATX heading ("> # Quoted") yields no anchor
+    # here, because its line opens with ">", while GitHub does generate one. Failure
+    # direction: loud — a link to such an anchor reports as missing (spurious FAIL);
+    # it is never silently accepted.
     #
     # Both arrays are split on "\n" alone, never str.splitlines(). masking guarantees only
     # that the length and the "\n" positions survive — the property the parser fixtures
@@ -752,6 +813,21 @@ def run_anchor_slug_fixtures():
             "a masked form feed leaves the headings after it aligned",
             "`a\x0cb`\n`open\n# One\n# Two\n",
             {"one", "two"},
+        ),
+        (
+            # Pins the stated limitation above heading_anchor_slug, not desired
+            # behavior: GitHub slugs these ctrl-and-stuff and tom--jerry. Closing
+            # the divergence must update that statement and this fixture together.
+            "HTML tags and entities slug literally, diverging from GitHub",
+            "## <kbd>Ctrl</kbd> and stuff\n## Tom &amp; Jerry\n",
+            {"kbdctrlkbd-and-stuff", "tom-amp-jerry"},
+        ),
+        (
+            # Pins the stated limitation in heading_anchor_slugs_from_text: GitHub
+            # generates quoted-heading; here a link to it fails loudly, never silently.
+            "blockquoted headings yield no anchor",
+            "> # Quoted Heading\n\n# Plain Heading\n",
+            {"plain-heading"},
         ),
     ]
 
@@ -1104,6 +1180,153 @@ def resolve_installed_target(installed_path, modules):
     return None
 
 
+backticked_citation_lead = re.compile(r"^(?:\.\./)+")
+
+
+def backticked_citation_messages(
+    span_text, source_directory, installed_directory, package_parent, modules, path_exists
+):
+    # Backticked cross-package citations (REQ-249; prime-action-files.md →
+    # Cross-Referencing) must resolve as real relative paths from the citing file's
+    # own directory, in both topologies. A span is citation-shaped when its first
+    # whitespace token leads with ../ segments and then names a package directory —
+    # later tokens are invocation arguments, never part of the path. The skips are
+    # conditions: a templated token has no single on-disk meaning, and a token whose
+    # first post-lead segment names no package is not a package citation. One skip
+    # is a documented ambiguity rather than a resolution limit: the core package's
+    # directory name equals the consumer queue root, so a ../-led do-work/ tail
+    # naming no real package content reads as a consumer-state example path (the
+    # prime-lesson-link computation examples) and cannot be told apart from a
+    # citation to a deleted core file. Those spans are skipped; every other
+    # package's tail is unambiguous, so citing a deleted file there still fails.
+    # A tail or resolved target still carrying ../ segments after the lead strip
+    # is treated as unresolvable, never probed: no path leaves the repository root.
+    stripped_span = span_text.strip()
+    if not stripped_span:
+        return []
+    token = stripped_span.split()[0]
+    lead_match = backticked_citation_lead.match(token)
+    if lead_match is None or is_dynamic_target(token):
+        return []
+    tail_text = token[lead_match.end() :].split("#")[0]
+    if not tail_text:
+        return []
+    tail_path = pathlib.PurePosixPath(tail_text)
+    if tail_path.parts[0] not in {source_root.name for source_root, _ in modules}:
+        return []
+    if (
+        tail_path.parts[0] == consumer_queue_directory
+        and ".." not in tail_path.parts
+        and not path_exists(package_parent / tail_path)
+    ):
+        return []
+    relative_target = pathlib.PurePosixPath(token.split("#")[0])
+    missing_locations = []
+    source_target = pathlib.PurePosixPath(
+        os.path.normpath((source_directory / relative_target).as_posix())
+    )
+    if ".." in source_target.parts or not path_exists(source_target):
+        missing_locations.append("source")
+    installed_target = pathlib.PurePosixPath(
+        os.path.normpath((installed_directory / relative_target).as_posix())
+    )
+    installed_source_target = resolve_installed_target(installed_target, modules)
+    if installed_source_target is None or not path_exists(installed_source_target):
+        missing_locations.append("installed")
+    if missing_locations:
+        return [
+            "backticked citation does not resolve in "
+            f"{' and '.join(missing_locations)} topology: {token}"
+        ]
+    return []
+
+
+def run_backticked_span_fixtures():
+    # Fenced and indented spans are template/example content, never citations from
+    # this file. Comment-wrapped spans DO surface — JIT_CONTEXT headers are the
+    # live case — and the prose span surfaces with them.
+    fixture_document = (
+        "Prose cites `../../do-work/actions/work.md` here.\n"
+        "```markdown\n"
+        "A template citing `../do-work/actions/work.md` stays exempt.\n"
+        "```\n"
+        "<!-- JIT_CONTEXT: comments cite `../../do-work/actions/capture.md` too -->\n"
+        "Indented code stays exempt:\n"
+        "\n"
+        "    `../do-work/actions/work.md`\n"
+    )
+    surfaced_spans = [content for _, content in backticked_span_texts(fixture_document)]
+    if surfaced_spans != [
+        "../../do-work/actions/work.md",
+        "../../do-work/actions/capture.md",
+    ]:
+        fail(f"backticked span fixtures surfaced {surfaced_spans!r}")
+        raise SystemExit(1)
+
+
+def run_backticked_citation_fixtures():
+    # The live corpus is all-correct after the REQ-249 sweep, so without these the
+    # failure branch would never execute anywhere.
+    fixture_modules = [
+        (
+            pathlib.PurePosixPath("skills/do-work"),
+            pathlib.PurePosixPath(".claude/skills/do-work"),
+        ),
+        (
+            pathlib.PurePosixPath("skills/do-work-board"),
+            pathlib.PurePosixPath(".claude/skills/do-work-board"),
+        ),
+    ]
+    fixture_files = {
+        "skills/do-work/actions/work.md",
+        "skills/do-work-board/actions/board.md",
+    }
+    fixture_cases = [
+        ("wrong-depth citation must fail", "../do-work/actions/work.md", True),
+        ("literal citation must pass", "../../do-work/actions/work.md", False),
+        (
+            "invocation arguments never join the path",
+            "../../do-work/actions/work.md --flag <value>",
+            False,
+        ),
+        (
+            "consumer-state do-work path is not a citation",
+            "../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned",
+            False,
+        ),
+        ("non-package lead is not a citation", "../lib/helpers.md", False),
+        ("templated token is skipped", "../<repo>-worktrees/worktree-agent-REQ", False),
+        (
+            "citing a deleted non-core file must still fail",
+            "../../do-work-board/actions/gone.md",
+            True,
+        ),
+        (
+            # Interior ../ segments survive the lead strip, so an escaping tail could
+            # both probe the filesystem above the repository root and be silently
+            # absorbed by the consumer-queue skip. It must fail as a citation instead.
+            "escaping do-work tail is a failing citation, not a consumer-state skip",
+            "../../do-work/../../../elsewhere.md",
+            True,
+        ),
+    ]
+    for fixture_name, fixture_span, expect_failure in fixture_cases:
+        fixture_messages = backticked_citation_messages(
+            fixture_span,
+            pathlib.PurePosixPath("skills/do-work-board/actions"),
+            pathlib.PurePosixPath(".claude/skills/do-work-board/actions"),
+            pathlib.PurePosixPath("skills"),
+            fixture_modules,
+            lambda candidate: candidate.as_posix() in fixture_files,
+        )
+        if bool(fixture_messages) != expect_failure:
+            fail(
+                f"backticked citation fixture {fixture_name!r} produced "
+                f"{fixture_messages!r}"
+            )
+            raise SystemExit(1)
+
+
 def path_is_tracked(relative_path, tracked_paths):
     normalized = relative_path.as_posix()
     return normalized in tracked_paths
@@ -1145,6 +1368,8 @@ def validate_first_party_url(target, tracked_paths):
 run_parser_fixtures()
 run_anchor_slug_fixtures()
 run_anchor_topology_fixtures()
+run_backticked_span_fixtures()
+run_backticked_citation_fixtures()
 modules = read_manifest()
 tracked_paths = {
     os.fsdecode(path_bytes)
@@ -1165,11 +1390,12 @@ broken_references = 0
 for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix()):
     source_file = repo_root / markdown_path
     try:
-        markdown_text = strip_markdown_code(source_file.read_text(encoding="utf-8"))
+        raw_markdown_text = source_file.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as error:
         fail(f"cannot inspect {markdown_path}: {error}")
         broken_references += 1
         continue
+    markdown_text = strip_markdown_code(raw_markdown_text)
 
     owning_module = next(
         (module for module in modules if markdown_path.is_relative_to(module[0])),
@@ -1183,7 +1409,7 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
     for target_start, _, target in markdown_targets(markdown_text):
         line_number = markdown_text.count("\n", 0, target_start) + 1
         target = normalize_markdown_target(target)
-        if not target or target.startswith("#") or is_dynamic_target(target):
+        if not target or is_dynamic_target(target):
             continue
 
         parsed = urllib.parse.urlsplit(target)
@@ -1198,10 +1424,25 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
 
         decoded_target = urllib.parse.unquote(parsed.path)
         if not decoded_target:
-            continue
+            if not parsed.fragment:
+                continue
+            # A bare #fragment names the file that carries it. Resolving it as this
+            # file's own name sends it through the same target-and-anchor machinery
+            # as every other relative link, in both topologies.
+            decoded_target = markdown_path.name
         relative_target = pathlib.PurePosixPath(decoded_target)
         source_target = pathlib.PurePosixPath(os.path.normpath((markdown_path.parent / relative_target).as_posix()))
         installed_target = pathlib.PurePosixPath(os.path.normpath((installed_file.parent / relative_target).as_posix()))
+        # os.path.normpath clamps nothing: enough ../ segments walk a target above the
+        # repository root, and every path this checker stats or reads must stay inside
+        # it. Escapes fail here, before any filesystem access outside the repository.
+        if ".." in source_target.parts or ".." in installed_target.parts:
+            fail(
+                f"{markdown_path}:{line_number}: relative target escapes the "
+                f"repository root: {target}"
+            )
+            broken_references += 1
+            continue
         installed_source_target = resolve_installed_target(installed_target, modules)
 
         missing_locations = []
@@ -1222,9 +1463,9 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
         # carries both a fragment and a Markdown target. Everything skipped is skipped
         # because this checker cannot resolve it without leaving the repository or
         # guessing — a scheme'd URL (http(s), mailto, anything else) is not read; a
-        # bare fragment names no file to resolve against; a root-absolute or templated
-        # target has no single on-disk meaning; and a heading only exists in Markdown,
-        # so a fragment on any other suffix is an application's own addressing scheme.
+        # root-absolute or templated target has no single on-disk meaning; and a
+        # heading only exists in Markdown, so a fragment on any other suffix is an
+        # application's own addressing scheme.
         # Anchors resolve against ATX headings, which is what this repository writes; a
         # heading declared any other way reports here as a missing anchor.
         anchor = urllib.parse.unquote(parsed.fragment)
@@ -1239,6 +1480,19 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
             lambda resolved_target: heading_anchor_slugs(repo_root / resolved_target),
         ):
             fail(f"{markdown_path}:{line_number}: {anchor_message}: {target}")
+            broken_references += 1
+
+    for span_offset, span_content in backticked_span_texts(raw_markdown_text):
+        for citation_message in backticked_citation_messages(
+            span_content,
+            markdown_path.parent,
+            installed_file.parent,
+            source_root.parent,
+            modules,
+            lambda candidate: (repo_root / candidate).exists(),
+        ):
+            span_line_number = raw_markdown_text.count("\n", 0, span_offset) + 1
+            fail(f"{markdown_path}:{span_line_number}: {citation_message}")
             broken_references += 1
 
 root_changelog = repo_root / "CHANGELOG.md"

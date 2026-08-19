@@ -88,7 +88,9 @@ Action files follow a consistent structure. When adding or modifying actions, us
 
 ## Cross-Referencing
 
-Cross-reference same-package actions by their local path (for example `actions/work.md`); cross a package boundary with an explicit sibling path such as `../do-work-knowledge/actions/bkb.md`. Shipped files must never cite this repo's own `CLAUDE.md` or `AGENTS.md` — both are export-ignored maintainer instructions, so the citation dangles in every consumer install. `_dev/tests/contract-regressions.sh` enforces this across the shipped `skills/` tree.
+Cross-reference same-package actions by their local path (for example `actions/work.md`). Cross a package boundary with the **literal relative path from the citing file's own directory** — the spelling a reader could paste into a terminal there and have resolve, in both the source tree and an install. The depth is per-file, not a fixed prefix: from a package-root `SKILL.md` the sibling is `../do-work-board/...`, from `actions/` or `crew-members/` it is `../../do-work-board/...`, and from `tools/queue-kanban/` it is `../../../do-work/...`. Never write `../<package>/...` as shorthand for "up to the skills folder" — that skill-root-relative reading was retired by REQ-249, and from anywhere below a package root it points at nothing. Fenced template/example blocks are exempt: their text lands in some other file (a consumer's REQ, a report), so it is content, not a citation from here. `_dev/tests/shipped-package-reference-contract.sh` checks backticked cross-package citations resolve in both topologies (alongside its Markdown-link checks).
+
+Shipped files must never cite this repo's own `CLAUDE.md` or `AGENTS.md` — both are export-ignored maintainer instructions, so the citation dangles in every consumer install. `_dev/tests/contract-regressions.sh` enforces this across the shipped `skills/` tree.
 
 ## Descriptions Are Triggers, Not Summaries
 
@@ -100,6 +102,8 @@ A skill or action description is loaded whether or not the thing gets used, so i
 
 ## Lessons
 
+- [REQ-253: close a site class by its condition, not the REQ's line list — the listed line was a read site and the real write sites were elsewhere](../../do-work/archive/REQ-253-decide-the-timestamp-rule-boundary-cases.md#lessons-learned)
+- [REQ-249: make the sweep's condition BE the checker's condition — and expect the class to be wider than the marked spans; the retired reading survived as bare prose the sweep was structurally blind to](../../do-work/archive/REQ-249-decide-the-cross-package-citation-path-form.md#lessons-learned)
 - [REQ-193: key closed-state authority to the archived-fallback condition and return review-generated completions in place](../../do-work/archive/UR-043/REQ-193-keep-archived-urs-closed-during-review.md#lessons-learned)
 - [REQ-194: retain canonical structured detector evidence and test the source seam directly](../../do-work/archive/UR-043/REQ-194-forward-stray-reqs-through-forensics.md#lessons-learned)
 - [REQ-189: shared instruction contracts must inherit upstream token grammars and align prescribed shell publication timing](../../do-work/archive/REQ-189-canonical-ai-report-and-shared-evidence-contract.md#lessons-learned)
@@ -113,3 +117,4 @@ A skill or action description is loaded whether or not the thing gets used, so i
 - [REQ-204: state both runtime boundaries in the prose beside the block so contract and code cannot drift](../../do-work/archive/REQ-204-harden-ai-report-generated-batch-lifecycle.md#lessons-learned)
 - [REQ-206: `require(file, token)` tests vocabulary, not behavior — anchor an active directive to its step](../../do-work/archive/REQ-206-finish-active-publication-delegation.md#lessons-learned)
 - [REQ-203: a substring match on a verb is not an assertion about meaning — police active directives with a replayed mutation matrix](../../do-work/archive/REQ-203-harden-presentation-target-id-source-seam.md#lessons-learned)
+- [REQ-259: sweeping for the primitive beats sweeping for the token — but a sweep that finds a site and then dismisses it by its punctuation has still drawn the class at the marker](../../do-work/archive/REQ-259-retire-the-skill-root-reading-outside-backtick-spans.md#lessons-learned)
