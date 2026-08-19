@@ -3,7 +3,7 @@ id: REQ-289
 title: Separate impact from effort, with unique greppable tokens on both axes
 status: completed
 completed_at: 2026-08-19T15:48:05Z
-commit:
+commit: 2ea7be5
 claimed_at: 2026-08-19T14:41:49Z
 created_at: 2026-08-19T14:33:51Z
 user_request: UR-060
