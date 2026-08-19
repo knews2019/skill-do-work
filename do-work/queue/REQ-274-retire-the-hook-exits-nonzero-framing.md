@@ -41,9 +41,17 @@ The real consequence is still bad: the script exits 1 on every run and prints a 
 
 ## Instances
 
-- [ ] `do-work/RESTART-PROMPT.md:39`
-- [ ] `do-work/CHECKPOINT.md:76` — REQ-255 D-04's rationale
-- [ ] `_dev/primes/prime-shell-commands.md:34`
+- [x] `do-work/RESTART-PROMPT.md` — **already corrected.** Both files were rewritten wholesale at the end of the session that
+  created this REQ, and the orchestrator wrote the true framing rather than reproducing a claim it knew to be false. Verify
+  rather than assume: re-grep before deciding this instance is closed.
+- [x] `do-work/CHECKPOINT.md` — **already corrected**, same rewrite. REQ-255 D-04's rationale no longer appears there at all,
+  because the checkpoint was replaced by the next session's; if that decision's reasoning is still wanted in a durable place,
+  its archived REQ is the home, and archived REQs are immutable.
+- [ ] `_dev/primes/prime-shell-commands.md:34` — **still live.** This is the one that matters: a prime is loaded and acted on.
+
+## Note added after the instance list was written
+
+Two of the three instances sat in `do-work/` state files that the session rewrites at its end. Rather than deliberately re-writing a known-false sentence to preserve a tidy sweep, the orchestrator wrote the correct framing into both. **This REQ is therefore mostly about the prime**, plus the sweep that checks nothing else restates the old mechanism. Do not read the two ticked boxes as work done by this REQ's builder — read them as instances that expired, and re-grep to confirm.
 
 ## Requirements
 
