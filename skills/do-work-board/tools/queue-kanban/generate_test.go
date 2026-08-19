@@ -2759,7 +2759,7 @@ process.stdout.write(JSON.stringify({
 	}{
 		{"the end instant itself", "2026-06-20 14:30 UTC"},
 		{"the window's sample size", "last 60 completed REQs"},
-		{"each bucket's sample count and median", "55 normal at 40 min"},
+		{"each bucket's sample count and median", "55 substantive at 40 min"},
 		{"the serial assumption", "one REQ at a time"},
 		{"the no-parallelism assumption", "no parallel builders"},
 		{"the static-queue assumption", "queue that stops growing"},

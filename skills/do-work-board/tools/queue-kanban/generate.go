@@ -148,11 +148,19 @@ type generatedRequest struct {
 	Route             string   `json:"route"`
 	OriginalRoute     string   `json:"originalRoute,omitempty"`
 	RouteUnrecognized bool     `json:"routeUnrecognized,omitempty"`
+	// Whether anyone would ever notice the work (see RequestTicket.Impact).
+	// Display only — a card chip rendered for every value except the
+	// impact-user-visible default, plus a drawer row; never column or scheduling
+	// meaning. Same raw provenance as domain/route so the chip can say what was
+	// declared, not just what it normalized to.
+	Impact             string `json:"impact,omitempty"`
+	OriginalImpact     string `json:"originalImpact,omitempty"`
+	ImpactUnrecognized bool   `json:"impactUnrecognized,omitempty"`
 	// Triage bit separating small mechanical fixes from real work (see
 	// RequestTicket.EffortEstimate). Display only — a card chip rendered only
-	// when trivial, plus a drawer row; never column or scheduling meaning.
-	// Carries the same raw provenance as domain/route so the chip can say what
-	// was declared, not just what it normalized to.
+	// when effort-mechanical, plus a drawer row; never column or scheduling
+	// meaning. Carries the same raw provenance as domain/route so the chip can
+	// say what was declared, not just what it normalized to.
 	EffortEstimate             string `json:"effortEstimate,omitempty"`
 	OriginalEffortEstimate     string `json:"originalEffortEstimate,omitempty"`
 	EffortEstimateUnrecognized bool   `json:"effortEstimateUnrecognized,omitempty"`
@@ -546,6 +554,9 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			Route:                      ticket.Route,
 			OriginalRoute:              ticket.OriginalRoute,
 			RouteUnrecognized:          ticket.RouteUnrecognized,
+			Impact:                     ticket.Impact,
+			OriginalImpact:             ticket.OriginalImpact,
+			ImpactUnrecognized:         ticket.ImpactUnrecognized,
 			EffortEstimate:             ticket.EffortEstimate,
 			OriginalEffortEstimate:     ticket.OriginalEffortEstimate,
 			EffortEstimateUnrecognized: ticket.EffortEstimateUnrecognized,

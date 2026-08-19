@@ -1674,6 +1674,195 @@ assert_file_missing \
   "actions/prime-req-reservation.md" \
   'the reservation prime doc must stay removed along with the reserve action.'
 
+# Impact/effort separation (REQ-289). `effort_estimate` had two writers with two
+# different meanings: capture judged SIZE, while review MUST-stamped it from an
+# IMPACT gate. The split gave each axis its own field, and every value on both
+# axes a token that is unique repo-wide by plain-text search.
+
+# Check A — no action file derives effort_estimate from an impact judgment. This
+# is the defect the REQ names: review-work.md's follow-up step and
+# work-reference.md's Discovered Tasks Classification both stamped the SIZE field
+# from an IMPACT verdict, which is what let work.md's mechanical-effort
+# short-circuit forecast a three-hour fix at five minutes.
+#
+# The pin is the derivation VERB applied to this field, not mere co-occurrence:
+# `stamp` is what the defect always said ("stamp it from the review gate's
+# recorded disposition"), and after the split only `impact:` is ever stamped from
+# a verdict — `effort_estimate` is judged as size by whoever writes it. The
+# proximity window keeps an unrelated `stamp calculated_at` in the same sentence
+# from false-positiving. `gate` is the retired routing field and is dead beside
+# `effort_estimate` in any spelling.
+if ! python3 - "$core_root/actions" "$toolbox_root/actions" <<'PY'
+import pathlib
+import re
+import sys
+
+derivation_pattern = re.compile(
+    r"stamp\w*[^.]{0,80}effort_estimate"
+    r"|effort_estimate[^.]{0,80}stamp\w*"
+    r"|\bgate\b",
+    flags=re.IGNORECASE,
+)
+offending_lines = []
+for actions_directory in sys.argv[1:]:
+    for action_file in sorted(pathlib.Path(actions_directory).glob("*.md")):
+        for line_number, line in enumerate(action_file.read_text().splitlines(), start=1):
+            if "effort_estimate" in line and derivation_pattern.search(line):
+                offending_lines.append(f"  {action_file}:{line_number}")
+if offending_lines:
+    raise SystemExit("\n".join(offending_lines))
+PY
+then
+  printf 'FAIL: an action file stamps or gates effort_estimate (REQ-289) — judge effort as effort, and stamp impact: from the two questions in actions/review-work.md Step 10. Offending lines listed above.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# Check B leg 1 — the six tokens are defined, not aspirational. A vocabulary the
+# schema names but no action file uses is a rename that never landed.
+for impact_effort_token in \
+  'impact-critical' \
+  'impact-user-visible' \
+  'impact-rule-change' \
+  'impact-negligible' \
+  'effort-mechanical' \
+  'effort-substantive'; do
+  if ! grep -rqI -- "$impact_effort_token" "$core_root/actions"; then
+    printf 'FAIL: impact/effort token "%s" appears nowhere under skills/do-work/actions (REQ-289) — the split vocabulary must be defined where it is written, not only described.\n' \
+      "$impact_effort_token" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+
+# Check B leg 2 — the bare axis words never survive un-prefixed. Without this a
+# stray `gate: user-visible` re-enters and one grep starts returning two axes
+# again, which is the whole reason the tokens were renamed.
+unprefixed_axis_word_hits="$(grep -rInoE -- '(^|[^-])(user-visible|rule-change)' \
+  "$core_root/actions" "$toolbox_root/actions" "$board_root/tools/queue-kanban" 2>/dev/null || true)"
+if [ -n "$unprefixed_axis_word_hits" ]; then
+  printf 'FAIL: the axis words user-visible/rule-change appear without the impact- prefix (REQ-289) — every value on both axes must be a repo-unique token, or two axes collapse back under one grep:\n%s\n' \
+    "$unprefixed_axis_word_hits" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# Check C — the read-only legacy aliases resolve on BOTH sides. Over forty
+# archived REQs carry the literal `effort_estimate: trivial|normal`; dropping the
+# aliases would invalidate every one of them, which the REQ forbids.
+assert_contains \
+  "actions/work-reference.md" \
+  '`trivial` → `effort-mechanical`' \
+  'actions/work-reference.md Schema Read Contract must carry the read-only alias `trivial` → `effort-mechanical` (REQ-289) — without it every archived REQ written before the rename stops resolving.'
+assert_contains \
+  "actions/work-reference.md" \
+  '`normal` → `effort-substantive`' \
+  'actions/work-reference.md Schema Read Contract must carry the read-only alias `normal` → `effort-substantive` (REQ-289) — without it every archived REQ written before the rename stops resolving.'
+
+if ! python3 - "$board_root/tools/queue-kanban/model.go" <<'PY'
+import pathlib
+import re
+import sys
+
+model_source = pathlib.Path(sys.argv[1]).read_text()
+constant_values = dict(
+    re.findall(r'^\s*(\w+)\s*=\s*"((?:impact|effort)-[a-z-]+)"\s*$', model_source, flags=re.MULTILINE)
+)
+
+
+def schema_entry_body(field_name):
+    entry_match = re.search(
+        r'"' + field_name + r'":\s*\{(.*?)\n\t\},', model_source, flags=re.DOTALL
+    )
+    if entry_match is None:
+        raise SystemExit(f"no schemaReadContractFields entry for {field_name!r}")
+    return entry_match.group(1)
+
+
+effort_entry = schema_entry_body("effort_estimate")
+alias_pairs = {
+    alias: constant_values.get(target, target)
+    for alias, target in re.findall(r'"([a-z_]+)":\s*(\w+|"[a-z-]+")', effort_entry)
+}
+alias_pairs = {alias: target.strip('"') for alias, target in alias_pairs.items()}
+missing = [
+    f"{alias} -> {expected}"
+    for alias, expected in (("trivial", "effort-mechanical"), ("normal", "effort-substantive"))
+    if alias_pairs.get(alias) != expected
+]
+if missing:
+    raise SystemExit("effort_estimate aliases missing or wrong: " + ", ".join(missing))
+PY
+then
+  printf 'FAIL: tools/queue-kanban/model.go effort_estimate entry must map the read-only legacy aliases trivial -> effort-mechanical and normal -> effort-substantive (REQ-289) — the board is the reader that makes an archived REQ still resolve.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# Check D — the board parser and the schema row agree in BOTH directions.
+# actions/work-reference.md tells its own impact: line to keep the parser in
+# lock-step "both changing in the same commit"; until now that sentence had no
+# enforcement, so either side could drift alone and stay green.
+if ! python3 - "$core_root/actions/work-reference.md" "$board_root/tools/queue-kanban/model.go" <<'PY'
+import pathlib
+import re
+import sys
+
+schema_text = pathlib.Path(sys.argv[1]).read_text()
+model_source = pathlib.Path(sys.argv[2]).read_text()
+
+schema_line = next(
+    (line for line in schema_text.splitlines() if line.startswith("impact: ")), None
+)
+if schema_line is None:
+    raise SystemExit("actions/work-reference.md has no `impact:` schema line")
+schema_tokens = set(re.findall(r"impact-[a-z-]+", schema_line))
+
+constant_values = dict(
+    re.findall(r'^\s*(\w+)\s*=\s*"(impact-[a-z-]+)"\s*$', model_source, flags=re.MULTILINE)
+)
+impact_entry = re.search(r'"impact":\s*\{(.*?)\n\t\},', model_source, flags=re.DOTALL)
+if impact_entry is None:
+    raise SystemExit('model.go has no schemaReadContractFields entry for "impact"')
+canonical_match = re.search(
+    r"canonicalValues:\s*\[\]string\{([^}]*)\}", impact_entry.group(1)
+)
+if canonical_match is None:
+    raise SystemExit('model.go "impact" entry declares no canonicalValues')
+parser_tokens = {
+    constant_values.get(item.strip(), item.strip().strip('"'))
+    for item in canonical_match.group(1).split(",")
+    if item.strip()
+}
+
+if schema_tokens != parser_tokens:
+    raise SystemExit(
+        "impact vocabulary disagrees — only in the schema row: "
+        f"{sorted(schema_tokens - parser_tokens)}; only in model.go: "
+        f"{sorted(parser_tokens - schema_tokens)}"
+    )
+PY
+then
+  printf 'FAIL: the impact vocabulary in actions/work-reference.md and tools/queue-kanban/model.go disagree (REQ-289) — the schema line requires the parser in lock-step, both changing in the same commit.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# The retired impact vocabularies. `gate:` had its own three-word vocabulary and
+# the Discovered Tasks ladder had a third; both collapse onto the four impact-
+# tokens, so no shipped file may keep either alive. Narrowing this loop to make a
+# straggler pass is exactly how a retired vocabulary survives.
+for retired_impact_token in \
+  'gate: user-visible' \
+  'gate: rule-change' \
+  'gate: trivial' \
+  '\*\*\[critical\]\*\*' \
+  '\*\*\[normal\]\*\*' \
+  '\*\*\[low\]\*\*'; do
+  retired_impact_hits="$(grep -rIlE -- "$retired_impact_token" \
+    "$core_root/actions" "$core_root/docs" "$toolbox_root/actions" "$board_root/tools/queue-kanban" 2>/dev/null || true)"
+  if [ -n "$retired_impact_hits" ]; then
+    printf 'FAIL: retired impact vocabulary "%s" still present in a shipped file (REQ-289 — the gate: field and the [critical]/[normal]/[low] ladder both collapse onto the four impact- tokens):\n%s\n' \
+      "$retired_impact_token" "$retired_impact_hits" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+
 assert_contains \
   "actions/work-reference.md" \
   '^## Execution Model — Claim Anywhere, One Releaser' \

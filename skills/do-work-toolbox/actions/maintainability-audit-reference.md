@@ -161,9 +161,9 @@ Never emit per-instance findings. Group instances under root-cause classes; emit
 - sweep_key: [root-cause slug]
 - Claim: [one refutable sentence, specifics verbatim]
 - Label: VERIFIED | INFERRED
-- gate: user-visible | rule-change | trivial
+- impact: impact-critical | impact-user-visible | impact-rule-change | impact-negligible
 - Impact: [1-5] — churn: [pasted number], complexity: [pasted number], blast radius: [pasted count]
-- effort_estimate: trivial | normal
+- effort_estimate: effort-mechanical | effort-substantive
 - Reproduce: [exact command, runnable as-is from the repo root]
 - Challenges-decision: [path]   <!-- only when the finding collides with a documented decision -->
 
@@ -179,10 +179,10 @@ Field rules:
 
 - **Label**: `VERIFIED` = tool output or grep hit demonstrates it; `INFERRED` = judgment after reading code. The validator scrutinizes INFERRED hardest — correct and expected.
 - **Instances coordinates are grep-pattern-first**: `path — greppable pattern`. A line number is an optional annotation valid **only at the audited SHA** — path:line tables rot within hours on an active repo, grep patterns survive. (The checklist heading is `#### Instances`, deliberately below `###` so the pasted `## Findings` section stays one self-contained block.)
-- **Severity comes from impact alone**: impact ≥ 4 → P1, impact 3 → P2, impact ≤ 2 → P3. `gate` is a separate routing field with the review-flow tokens (`user-visible` | `rule-change` | `trivial`); "trivial" as a gate value routes the review flow and never doubles as a severity.
+- **Severity comes from the 1-5 `Impact` score alone**: 4-5 → P1, 3 → P2, 1-2 → P3. The lowercase `impact:` line is a different thing: it is the REQ frontmatter token any follow-up carries (`../../do-work/actions/work-reference.md` → Request File Schema, via `../../do-work/actions/review-work.md` Step 10's two questions), it routes how the fix lands, and it never doubles as a severity.
 - **Impact shows its three inputs** — the churn, complexity, and blast-radius numbers behind the 1-5 call, pasted, not narrated.
-- **`effort_estimate`** uses the canonical enum `trivial | normal` only.
-- **Ranking** (decided, not optional): order classes by impact **descending**; break ties by `effort_estimate` (`trivial` before `normal`). There is no Score field and no impact/effort division.
+- **`effort_estimate`** uses the canonical enum `effort-mechanical | effort-substantive` only, and means SIZE — never derive it from the `impact:` token.
+- **Ranking** (decided, not optional): order classes by impact **descending**; break ties by `effort_estimate` (`effort-mechanical` before `effort-substantive`). There is no Score field and no impact/effort division.
 - **Surface-cost**: `N/A` for deletions, simplifications, renames, and direct fixes. Any remedy that adds a guard, rule, or warning apparatus — and a lock-in limit is added surface — supplies all four elements inline: the concrete incident or replay case, **the surface that will remain**, the cost judgment (is the fix still cheaper than the surface it adds?), and the regression test that keeps it live.
 
 ## Report Template

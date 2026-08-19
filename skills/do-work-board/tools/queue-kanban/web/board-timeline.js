@@ -420,11 +420,11 @@
           projection.windowSamples +
           " completed REQs (" +
           projection.normalSamples +
-          " normal at " +
+          " substantive at " +
           timelineFormatSpanMinutes(projection.normalMinutes) +
           ", " +
           projection.trivialSamples +
-          " trivial at " +
+          " mechanical at " +
           timelineFormatSpanMinutes(projection.trivialMinutes) +
           "), one REQ at a time, no parallel builders, and a queue that stops growing. Paused and reversed spans are excluded from both medians." +
           (projection.trivialSamples < projection.minimumSamples ||

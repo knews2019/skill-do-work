@@ -207,27 +207,27 @@ func TestTimelineProjectionChainsTheQueueSerially(t *testing.T) {
 	// Six normal spans with median 40, and six trivial spans with median 10.
 	for spanIndex, spanMinutes := range []float64{20, 30, 35, 45, 50, 60} {
 		tickets = append(tickets, completedSpanTicket(
-			fmt.Sprintf("REQ-1%02d", spanIndex), "normal",
+			fmt.Sprintf("REQ-1%02d", spanIndex), effortSubstantive,
 			now.Add(-time.Duration(spanIndex+1)*time.Hour), spanMinutes))
 	}
 	for spanIndex, spanMinutes := range []float64{5, 8, 9, 11, 12, 15} {
 		tickets = append(tickets, completedSpanTicket(
-			fmt.Sprintf("REQ-2%02d", spanIndex), "trivial",
+			fmt.Sprintf("REQ-2%02d", spanIndex), effortMechanical,
 			now.Add(-time.Duration(spanIndex+1)*time.Hour), spanMinutes))
 	}
 	// One paused (over the four-hour ceiling) and one reversed span. Both are
 	// normal-bucket and both are enormous, so if either reached the median the
 	// normal figure could not stay at 40.
-	tickets = append(tickets, completedSpanTicket("REQ-300", "normal", now.Add(-30*time.Minute), 900))
-	tickets = append(tickets, completedSpanTicket("REQ-301", "normal", now.Add(-20*time.Minute), -120))
+	tickets = append(tickets, completedSpanTicket("REQ-300", effortSubstantive, now.Add(-30*time.Minute), 900))
+	tickets = append(tickets, completedSpanTicket("REQ-301", effortSubstantive, now.Add(-20*time.Minute), -120))
 
 	// Four pending REQs. REQ-402 depends on REQ-403, so it must be scheduled
 	// after it even though its id sorts first.
 	tickets = append(tickets,
-		projectionTicket("REQ-401", "pending", "trivial", nil),
-		projectionTicket("REQ-402", "pending", "normal", []string{"REQ-403"}),
-		projectionTicket("REQ-403", "pending", "normal", nil),
-		projectionTicket("REQ-404", "blocked", "normal", nil),
+		projectionTicket("REQ-401", "pending", effortMechanical, nil),
+		projectionTicket("REQ-402", "pending", effortSubstantive, []string{"REQ-403"}),
+		projectionTicket("REQ-403", "pending", effortSubstantive, nil),
+		projectionTicket("REQ-404", "blocked", effortSubstantive, nil),
 	)
 	resolveUnmetDependenciesForTest(tickets)
 
@@ -304,9 +304,9 @@ func resolveUnmetDependenciesForTest(tickets []*RequestTicket) {
 func TestTimelineProjectionDeclinesOnThinHistory(t *testing.T) {
 	now := time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)
 	tickets := []*RequestTicket{
-		completedSpanTicket("REQ-100", "normal", now.Add(-2*time.Hour), 30),
-		completedSpanTicket("REQ-101", "normal", now.Add(-1*time.Hour), 50),
-		projectionTicket("REQ-401", "pending", "normal", nil),
+		completedSpanTicket("REQ-100", effortSubstantive, now.Add(-2*time.Hour), 30),
+		completedSpanTicket("REQ-101", effortSubstantive, now.Add(-1*time.Hour), 50),
+		projectionTicket("REQ-401", "pending", effortSubstantive, nil),
 	}
 	resolveUnmetDependenciesForTest(tickets)
 
@@ -333,15 +333,15 @@ func TestTimelineProjectionExcludesREQsBlockedBehindAnUnschedulableOne(t *testin
 	tickets := []*RequestTicket{}
 	for spanIndex, spanMinutes := range []float64{20, 30, 40, 50, 60, 70} {
 		tickets = append(tickets, completedSpanTicket(
-			fmt.Sprintf("REQ-1%02d", spanIndex), "normal",
+			fmt.Sprintf("REQ-1%02d", spanIndex), effortSubstantive,
 			now.Add(-time.Duration(spanIndex+1)*time.Hour), spanMinutes))
 	}
 	tickets = append(tickets,
-		projectionTicket("REQ-401", "pending", "normal", nil),
-		projectionTicket("REQ-402", "pending", "normal", []string{"REQ-403"}), // behind a blocked REQ
-		projectionTicket("REQ-403", "blocked", "normal", nil),
-		projectionTicket("REQ-404", "pending", "normal", []string{"REQ-405"}), // dangling dependency
-		projectionTicket("REQ-406", "pending-answers", "normal", nil),
+		projectionTicket("REQ-401", "pending", effortSubstantive, nil),
+		projectionTicket("REQ-402", "pending", effortSubstantive, []string{"REQ-403"}), // behind a blocked REQ
+		projectionTicket("REQ-403", "blocked", effortSubstantive, nil),
+		projectionTicket("REQ-404", "pending", effortSubstantive, []string{"REQ-405"}), // dangling dependency
+		projectionTicket("REQ-406", "pending-answers", effortSubstantive, nil),
 	)
 	resolveUnmetDependenciesForTest(tickets)
 
@@ -373,14 +373,14 @@ func TestTimelineProjectionStartsAfterWorkAlreadyInFlight(t *testing.T) {
 	tickets := []*RequestTicket{}
 	for spanIndex, spanMinutes := range []float64{20, 30, 40, 50, 60, 70} {
 		tickets = append(tickets, completedSpanTicket(
-			fmt.Sprintf("REQ-1%02d", spanIndex), "normal",
+			fmt.Sprintf("REQ-1%02d", spanIndex), effortSubstantive,
 			now.Add(-time.Duration(spanIndex+1)*time.Hour), spanMinutes))
 	}
 	// Claimed 10 minutes ago; the normal median is 45, so it has 35 left.
 	inFlight := timelineTicket("REQ-300", "claimed",
 		"2026-06-01T09:00:00Z", now.Add(-10*time.Minute).Format(time.RFC3339), "")
-	inFlight.EffortEstimate = "normal"
-	tickets = append(tickets, inFlight, projectionTicket("REQ-401", "pending", "normal", nil))
+	inFlight.EffortEstimate = effortSubstantive
+	tickets = append(tickets, inFlight, projectionTicket("REQ-401", "pending", effortSubstantive, nil))
 	resolveUnmetDependenciesForTest(tickets)
 
 	projection := buildTimelineProjection(tickets, buildDurationAggregate(tickets), now)
@@ -404,17 +404,17 @@ func TestTimelineProjectionSchedulesDependentsOfClaimedWork(t *testing.T) {
 	tickets := []*RequestTicket{}
 	for spanIndex, spanMinutes := range []float64{20, 30, 40, 50, 60, 70} {
 		tickets = append(tickets, completedSpanTicket(
-			fmt.Sprintf("REQ-1%02d", spanIndex), "normal",
+			fmt.Sprintf("REQ-1%02d", spanIndex), effortSubstantive,
 			now.Add(-time.Duration(spanIndex+1)*time.Hour), spanMinutes))
 	}
 	// Claimed 10 minutes ago against a normal median of 45, so it has 35 left.
 	inFlight := timelineTicket("REQ-300", "claimed",
 		"2026-06-01T09:00:00Z", now.Add(-10*time.Minute).Format(time.RFC3339), "")
-	inFlight.EffortEstimate = "normal"
+	inFlight.EffortEstimate = effortSubstantive
 	tickets = append(tickets,
 		inFlight,
-		projectionTicket("REQ-401", "pending", "normal", []string{"REQ-300"}),
-		projectionTicket("REQ-402", "pending", "normal", []string{"REQ-401"}),
+		projectionTicket("REQ-401", "pending", effortSubstantive, []string{"REQ-300"}),
+		projectionTicket("REQ-402", "pending", effortSubstantive, []string{"REQ-401"}),
 	)
 	resolveUnmetDependenciesForTest(tickets)
 
@@ -444,8 +444,8 @@ func TestTimelineProjectionSchedulesDependentsOfClaimedWork(t *testing.T) {
 	// fix widens what counts as resolvable without weakening the exclusion.
 	blockedTickets := append([]*RequestTicket{}, tickets...)
 	blockedTickets = append(blockedTickets,
-		projectionTicket("REQ-403", "blocked", "normal", nil),
-		projectionTicket("REQ-404", "pending", "normal", []string{"REQ-403"}),
+		projectionTicket("REQ-403", "blocked", effortSubstantive, nil),
+		projectionTicket("REQ-404", "pending", effortSubstantive, []string{"REQ-403"}),
 	)
 	resolveUnmetDependenciesForTest(blockedTickets)
 	blockedProjection := buildTimelineProjection(blockedTickets, buildDurationAggregate(blockedTickets), now)
@@ -468,12 +468,12 @@ func TestTimelineProjectionChainOrderIsNumericNotLexical(t *testing.T) {
 	tickets := []*RequestTicket{}
 	for spanIndex, spanMinutes := range []float64{20, 30, 40, 50, 60, 70} {
 		tickets = append(tickets, completedSpanTicket(
-			fmt.Sprintf("REQ-1%02d", spanIndex), "normal",
+			fmt.Sprintf("REQ-1%02d", spanIndex), effortSubstantive,
 			now.Add(-time.Duration(spanIndex+1)*time.Hour), spanMinutes))
 	}
 	tickets = append(tickets,
-		projectionTicket("REQ-1000", "pending", "normal", nil),
-		projectionTicket("REQ-999", "pending", "normal", nil),
+		projectionTicket("REQ-1000", "pending", effortSubstantive, nil),
+		projectionTicket("REQ-999", "pending", effortSubstantive, nil),
 	)
 	resolveUnmetDependenciesForTest(tickets)
 

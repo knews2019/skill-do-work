@@ -181,12 +181,28 @@ type RequestTicket struct {
 	Route string
 	Batch string
 
+	// impact — whether anyone would ever notice the work (impact-critical |
+	// impact-user-visible | impact-rule-change | impact-negligible), judged by
+	// the two questions in actions/review-work.md Step 10. Written by capture
+	// and by automatic follow-up creation from the finding's recorded token —
+	// the token IS the field value. Absent or unrecognized reads as the contract
+	// default impact-user-visible, deliberately never impact-negligible, so
+	// absence is not mistakable for the user's stop signal. DISPLAY ONLY — a
+	// card chip (rendered for every value except the default) and a drawer row;
+	// the board never buckets, orders, or schedules on it. Keep this parser in
+	// lock-step with the Schema Read Contract in actions/work-reference.md — a
+	// change to either lands in the same commit as the other.
+	Impact             string
+	OriginalImpact     string // verbatim frontmatter impact before normalization ("" when absent)
+	ImpactUnrecognized bool
+
 	// effort_estimate — the triage bit separating small mechanical fixes from
-	// real work (trivial | normal). Stamped by automatic follow-up creation
-	// (review + discovered-tasks flows, actions/work.md Steps 7-8) from the
-	// review gate's disposition; capture MAY set it. Absent or unrecognized
-	// reads as the contract default `normal`. DISPLAY ONLY at any builder
-	// count — a card chip (rendered only when trivial) and a drawer row; the
+	// real work (effort-mechanical | effort-substantive). A judgment about SIZE,
+	// made by whoever writes the REQ and never derived from the impact verdict;
+	// capture MAY set it. Absent or unrecognized reads as the contract default
+	// effort-substantive, and the read-only `trivial`/`normal` aliases carry
+	// every REQ written before the rename. DISPLAY ONLY at any builder count —
+	// a card chip (rendered only when effort-mechanical) and a drawer row; the
 	// board never buckets, orders, or schedules on it. Keep this parser in
 	// lock-step with the Schema Read Contract in actions/work-reference.md — a
 	// change to either lands in the same commit as the other.
@@ -711,10 +727,10 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 	}
 	// effort_estimate follows the domain pattern: present-value-only guard, so
 	// absence stays "" and board-cards.js's gates don't chip a card that never carried
-	// the field (absent reads as `normal` semantically, and `normal` renders no
-	// chip anyway). resolveSchemaField substitutes the contract default (normal)
-	// for an unrecognized PRESENT value; the flag raises the data warning — the
-	// value resolves, the footprint is not optional.
+	// the field (absent reads as `effort-substantive` semantically, and
+	// `effort-substantive` renders no chip anyway). resolveSchemaField substitutes
+	// the contract default for an unrecognized PRESENT value; the flag raises the
+	// data warning — the value resolves, the footprint is not optional.
 	originalEffortEstimate := coerceScalarToString(fields["effort_estimate"])
 	normalizedEffortEstimate := ""
 	effortEstimateUnrecognized := false
@@ -722,6 +738,18 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		var effortEstimateRecognized bool
 		normalizedEffortEstimate, effortEstimateRecognized = resolveSchemaField("effort_estimate", originalEffortEstimate)
 		effortEstimateUnrecognized = !effortEstimateRecognized
+	}
+	// impact carries the identical present-value-only shape. The absence branch
+	// is the load-bearing half: a REQ that never declared the field must leave ""
+	// here so the chip never fires on it, even though the contract default is
+	// impact-user-visible for every reader that asks what an absent field means.
+	originalImpact := coerceScalarToString(fields["impact"])
+	normalizedImpact := ""
+	impactUnrecognized := false
+	if strings.TrimSpace(originalImpact) != "" {
+		var impactRecognized bool
+		normalizedImpact, impactRecognized = resolveSchemaField("impact", originalImpact)
+		impactUnrecognized = !impactRecognized
 	}
 	// Failure details are display-only. `error` has no vocabulary and therefore
 	// stays verbatim. `error_type` follows the present-value-only schema rule:
@@ -772,6 +800,9 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		Route:                      normalizedRoute,
 		OriginalRoute:              originalRoute,
 		RouteUnrecognized:          routeUnrecognized,
+		Impact:                     normalizedImpact,
+		OriginalImpact:             originalImpact,
+		ImpactUnrecognized:         impactUnrecognized,
 		EffortEstimate:             normalizedEffortEstimate,
 		OriginalEffortEstimate:     originalEffortEstimate,
 		EffortEstimateUnrecognized: effortEstimateUnrecognized,
@@ -917,6 +948,22 @@ func isNeedsInputOrBlockedStatus(normalizedStatus string) bool {
 // the field name arrives as runtime data at the consumer this REQ's sibling adds
 // (a CLI flag naming the field), which a hardcoded function per field cannot
 // serve without a switch that re-derives this table anyway.
+// The two schema vocabularies the board reads for a REQ's worth and its size.
+// Every value is prefixed, so one plain-text search finds every use of a token
+// and never the other axis — actions/work-reference.md's Request File Schema is
+// the source of truth for both. These are named rather than inlined because
+// timeline.go buckets its forward projection on the effort values, and a bare
+// literal there is a rename that compiles and is silently wrong.
+const (
+	effortMechanical  = "effort-mechanical"
+	effortSubstantive = "effort-substantive"
+
+	impactCritical    = "impact-critical"
+	impactUserVisible = "impact-user-visible"
+	impactRuleChange  = "impact-rule-change"
+	impactNegligible  = "impact-negligible"
+)
+
 type schemaFieldContract struct {
 	canonicalValues []string
 	aliases         map[string]string
@@ -994,12 +1041,29 @@ var schemaReadContractFields = map[string]schemaFieldContract{
 		},
 		defaultValue: "pending",
 	},
-	"effort_estimate": {
-		// Deliberately a closed two-value enum — a triage bit, not an
-		// estimation system. Do not grow it toward t-shirt sizes.
-		canonicalValues: []string{"trivial", "normal"},
+	"impact": {
+		// Whether anyone would ever notice the work — the axis effort_estimate
+		// was never able to answer. New prefix-unique vocabulary, so no aliases.
+		// The default is deliberately impact-user-visible and never
+		// impact-negligible: absence must not be mistakable for the user's stop
+		// signal, or a filter built on this field would skip every REQ written
+		// before it existed.
+		canonicalValues: []string{impactCritical, impactUserVisible, impactRuleChange, impactNegligible},
 		aliases:         map[string]string{},
-		defaultValue:    "normal",
+		defaultValue:    impactUserVisible,
+	},
+	"effort_estimate": {
+		// Deliberately a closed two-value enum — a triage bit about SIZE, not an
+		// estimation system, and never derived from the impact verdict. Do not
+		// grow it toward t-shirt sizes. `trivial`/`normal` are the pre-rename
+		// spellings, kept as read-only aliases so the forty-odd archived REQs
+		// carrying them stay valid unchanged; nothing writes them back.
+		canonicalValues: []string{effortMechanical, effortSubstantive},
+		aliases: map[string]string{
+			"trivial": effortMechanical,
+			"normal":  effortSubstantive,
+		},
+		defaultValue: effortSubstantive,
 	},
 	// status and testing_status carry a canonical VOCABULARY here but no alias
 	// map: their aliases live in normalizeStatus / normalizeTestingStatus, which
@@ -1143,6 +1207,7 @@ func collectSchemaFieldWarnings(tickets []*RequestTicket) []string {
 		}{
 			{"domain", ticket.DomainUnrecognized, ticket.OriginalDomain},
 			{"route", ticket.RouteUnrecognized, ticket.OriginalRoute},
+			{"impact", ticket.ImpactUnrecognized, ticket.OriginalImpact},
 			{"effort_estimate", ticket.EffortEstimateUnrecognized, ticket.OriginalEffortEstimate},
 			{"error_type", ticket.ErrorTypeUnrecognized, ticket.OriginalErrorType},
 		} {

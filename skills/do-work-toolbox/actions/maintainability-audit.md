@@ -104,7 +104,7 @@ Same fallback rule as Step 2. For churn and hotspots, add one `--exclude-path` p
 
 ### Step 5: Judgment
 
-Read only: hotspot files, entry points, the public API surface, their tests — plus any area the user named at the gate. Weight the dimensions as agreed there. Findings that collide with a documented decision or a recorded lesson from Step 2 are either dropped into **Pre-empted** (with the covering path) or emitted with an explicit `Challenges-decision: <path>` field and gate `rule-change` — never emitted as if the decision didn't exist.
+Read only: hotspot files, entry points, the public API surface, their tests — plus any area the user named at the gate. Weight the dimensions as agreed there. Findings that collide with a documented decision or a recorded lesson from Step 2 are either dropped into **Pre-empted** (with the covering path) or emitted with an explicit `Challenges-decision: <path>` field and `impact-rule-change` — never emitted as if the decision didn't exist.
 
 1. **Naming** — apply `../../do-work/crew-members/coding-guardrails.md` § 5 (Naming for Reach) as the canonical rule set; do not restate it here. One audit-specific addition on top of it: names should match the project's *own* vocabulary — which in a do-work repo lives in the URs (the user's words), the prime files, and REQ titles, not primarily the README.
 2. **Abstraction** — repetition that wants a shared helper; helpers with a single caller; leaky layers (SQL in HTTP handlers, transport concerns in domain logic).
@@ -166,7 +166,7 @@ The persistent report at `do-work/audits/audit-YYYY-MM-DD.md`, plus a short term
 
 - [ ] Calibration gate happened: bundled proposal presented, user approved, agreed config recorded in the report header.
 - [ ] Every metric is pasted tool output or NOT-MEASURED — no estimates anywhere.
-- [ ] Every finding class carries Claim, Label, gate, Impact with its three shown inputs, effort_estimate, Reproduce, greppable Instances, Remedy with Surface-cost, and a lock-in-limit proposal or a stated reason why none.
+- [ ] Every finding class carries Claim, Label, its `impact:` token, the 1-5 Impact score with its three shown inputs, effort_estimate, Reproduce, greppable Instances, Remedy with Surface-cost, and a lock-in-limit proposal or a stated reason why none.
 - [ ] Classes are ranked impact-descending with effort as tie-break; severity derives from impact alone.
 - [ ] The report exists at `do-work/audits/audit-YYYY-MM-DD.md`; nothing outside `do-work/audits/` was modified.
 - [ ] Deltas computed against the prior report, or "no baseline" stated; no waived class re-flagged.

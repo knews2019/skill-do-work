@@ -24,6 +24,7 @@
 
 ## Lessons
 
+- [REQ-289: when renaming an enum, grep the VALUE across the whole module, not the constant name — the tests held the bare literal too, so the rename would have compiled, passed, and silently mis-bucketed every REQ](../../do-work/archive/REQ-289-separate-impact-from-effort-with-unique-tokens.md#lessons-learned)
 - [REQ-252: hold a documentation convention with a vacuity-guarded AST test, and capture Discovered Tasks in the REQ itself — hand-back prose is one slip from evaporating](../../do-work/archive/REQ-252-record-the-browser-with-every-measured-face-number.md#lessons-learned)
 - [REQ-251: fixtures that need production wording should call the production helper, never hold a pasted copy — the third copy strands at the next message move exactly as the first two did](../../do-work/archive/REQ-251-retire-the-stale-copies-of-the-future-stamp-message.md#lessons-learned)
 - [REQ-248: pin shared geometry with a both-directions agreement assertion — one domain read by two languages needs a test that fails whichever side drifts alone](../../do-work/archive/REQ-248-anchor-durations-day-buckets-to-utc-midnight.md#lessons-learned)

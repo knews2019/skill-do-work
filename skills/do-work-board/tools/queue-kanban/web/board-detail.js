@@ -339,6 +339,12 @@
         schemaFieldDetailValue(request.originalRoute, request.route, request.routeUnrecognized)
       );
     }
+    if (request.impact || request.originalImpact) {
+      appendMetaRow(
+        "Impact",
+        schemaFieldDetailValue(request.originalImpact, request.impact, request.impactUnrecognized)
+      );
+    }
     if (request.effortEstimate || request.originalEffortEstimate) {
       appendMetaRow(
         "Effort estimate",

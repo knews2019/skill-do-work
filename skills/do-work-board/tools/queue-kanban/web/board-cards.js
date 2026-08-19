@@ -161,30 +161,66 @@
         "reorders, blocks, or hides on this.";
       badges.appendChild(assignedBadge);
     }
-    if (request.effortEstimate === "trivial" || request.effortEstimateUnrecognized) {
-      // The triage bit from the review gate: this REQ is a small mechanical fix,
-      // not real work. Only `trivial` chips — `normal` is the default and would
-      // chip every card into noise. Display only: the board never buckets,
+    if (request.effortEstimate === "effort-mechanical" || request.effortEstimateUnrecognized) {
+      // The size triage bit: this REQ is a small mechanical fix, not real work.
+      // Only `effort-mechanical` chips — `effort-substantive` is the default and
+      // would chip every card into noise. Display only: the board never buckets,
       // orders, or schedules on it; it exists so the user can tell at a glance
       // which queued follow-ups are cheap to approve or batch.
       //
-      // An UNRECOGNIZED value also chips, even though it resolves to `normal`:
-      // the resolved value alone would render nothing, so the card would be the
-      // one place a typo'd effort_estimate left no footprint — the same
-      // never-silently-drop leg domain and route carry on their badges.
-      var effortEstimateBadge = makeBadge("badge-effort-estimate", null, request.effortEstimate || "normal");
+      // An UNRECOGNIZED value also chips, even though it resolves to
+      // `effort-substantive`: the resolved value alone would render nothing, so
+      // the card would be the one place a typo'd effort_estimate left no
+      // footprint — the same never-silently-drop leg domain and route carry on
+      // their badges.
+      var effortEstimateBadge = makeBadge(
+        "badge-effort-estimate",
+        null,
+        request.effortEstimate || "effort-substantive"
+      );
       if (request.effortEstimateUnrecognized) {
         effortEstimateBadge.appendChild(createElement("span", "status-invalid-flag", "invalid"));
         effortEstimateBadge.title =
           'Unrecognized effort_estimate "' +
           (request.originalEffortEstimate || request.effortEstimate) +
-          '" — expected trivial or normal; treated as normal.';
+          '" — expected effort-mechanical or effort-substantive; treated as effort-substantive.';
       } else {
         effortEstimateBadge.title =
-          "effort_estimate: trivial — a small mechanical fix, stamped by the review gate " +
-          "(or capture). Display only: the board never reorders, blocks, or hides on this.";
+          "effort_estimate: effort-mechanical — a small mechanical fix. This is the SIZE axis, " +
+          "judged by whoever wrote the REQ and never derived from the impact verdict. " +
+          "Display only: the board never reorders, blocks, or hides on this.";
       }
       badges.appendChild(effortEstimateBadge);
+    }
+    if (
+      (request.impact && request.impact !== "impact-user-visible") ||
+      request.impactUnrecognized
+    ) {
+      // Whether anyone would ever notice the work — the axis effort_estimate was
+      // never able to answer. Every value chips except `impact-user-visible`,
+      // which is the contract default and would chip every card into noise.
+      // Display only: the board never buckets, orders, or schedules on it.
+      //
+      // An UNRECOGNIZED value also chips, for the same never-silently-drop
+      // reason the effort chip above carries: it resolves to the default, which
+      // renders nothing, so without this leg a typo'd impact would leave no
+      // footprint on the card.
+      var impactBadge = makeBadge("badge-impact", null, request.impact || "impact-user-visible");
+      if (request.impactUnrecognized) {
+        impactBadge.appendChild(createElement("span", "status-invalid-flag", "invalid"));
+        impactBadge.title =
+          'Unrecognized impact "' +
+          (request.originalImpact || request.impact) +
+          '" — expected impact-critical, impact-user-visible, impact-rule-change, or ' +
+          "impact-negligible; treated as impact-user-visible.";
+      } else {
+        impactBadge.title =
+          "impact: " +
+          request.impact +
+          " — whether anyone would ever notice this work, judged at capture or at follow-up " +
+          "creation. Display only: the board never reorders, blocks, or hides on this.";
+      }
+      badges.appendChild(impactBadge);
     }
     if (request.completionAnomaly) {
       // Broken completion bookkeeping (flagged by the Go side) — mark the card

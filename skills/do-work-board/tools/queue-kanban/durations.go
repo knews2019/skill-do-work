@@ -43,8 +43,10 @@ type DurationSample struct {
 	// "paused" (over the ceiling), "reversed" (negative), or "" when it counts.
 	DayMedianExclusion string
 
-	// The REQ's effort_estimate bucket, normalized ("trivial" or "normal";
-	// absent reads as normal, per the closed two-value enum in model.go). Panel
+	// The REQ's effort_estimate bucket, normalized (effortMechanical or
+	// effortSubstantive; absent reads as substantive, per the closed two-value
+	// enum in model.go, whose read-only aliases carry the pre-rename
+	// trivial/normal spellings on archived REQs). Panel
 	// A and the medians ignore it; the Timeline's forward projection splits its
 	// medians by it, and carrying it here is what lets that projection read the
 	// bucket off a sample the read-time rule has ALREADY classified rather than

@@ -1,6 +1,6 @@
 # P50 Estimation — Reference
 
-> **Companion file to `actions/work.md` (ensure-estimate step) and `actions/verify-requests.md` (post-repair recalculation).** Holds the signal-extraction guide, the `estimate:` frontmatter block template, the confidence rubric, and the presentation formats. Load it only at an estimation moment — never during ordinary claiming, building, or review. If it is already in context this session, reuse it. The `effort_estimate: trivial` short-circuit below deliberately skips this file entirely.
+> **Companion file to `actions/work.md` (ensure-estimate step) and `actions/verify-requests.md` (post-repair recalculation).** Holds the signal-extraction guide, the `estimate:` frontmatter block template, the confidence rubric, and the presentation formats. Load it only at an estimation moment — never during ordinary claiming, building, or review. If it is already in context this session, reuse it. The `effort_estimate: effort-mechanical` short-circuit below deliberately skips this file entirely.
 
 ## What the Estimate Means
 
@@ -54,19 +54,19 @@ The output lines map directly onto the block: `p50_active_minutes`, `confidence`
 
 ## Confidence Rubric (deterministic — computed by the script)
 
-- **high** — trivial short-circuit, or Route A with a raw score ≤ 10 minutes.
+- **high** — mechanical-effort short-circuit, or Route A with a raw score ≤ 10 minutes.
 - **low** — Route C with a write set ≥ 15 files, ≥ 3 subsystems, or a raw score ≥ 75 minutes: wide scope, wide error bars.
 - **medium** — everything else.
 
-## The Trivial Short-Circuit
+## The Mechanical-Effort Short-Circuit
 
-A REQ with `effort_estimate: trivial` (or obvious Route A indicators) gets the floor estimate without loading this file or extracting signals:
+A REQ with `effort_estimate: effort-mechanical` (or obvious Route A indicators) gets the floor estimate without loading this file or extracting signals:
 
 ```bash
 <skill-root>/tools/estimate-p50.sh --trivial
 ```
 
-That keeps estimation overhead near zero exactly where the estimate is worth the least. `effort_estimate` itself stays the closed two-value triage chip (`actions/work-reference.md` → Request File Schema); this short-circuit is the only bridge between the two fields.
+The `--trivial` flag names the estimator's own floor mode, not the schema token — it is the script's interface and does not change with the field's vocabulary. That keeps estimation overhead near zero exactly where the estimate is worth the least. `effort_estimate` itself stays the closed two-value triage chip, `effort-mechanical` | `effort-substantive` (`actions/work-reference.md` → Request File Schema); this short-circuit is the only bridge between the two fields.
 
 ## Multi-REQ Totals and Critical Path
 

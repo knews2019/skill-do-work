@@ -196,7 +196,7 @@ type TimelineProjectedRow struct {
 	RequestId string
 	StartTime time.Time
 	EndTime   time.Time
-	Bucket    string // "trivial" or "normal" — the effort bucket its span came from
+	Bucket    string // effortMechanical or effortSubstantive — the effort bucket its span came from
 	Position  int    // 1-based place in the chain
 }
 
@@ -278,7 +278,7 @@ func timelineProjectionWindow(aggregate DurationAggregate) ([]float64, []float64
 			break
 		}
 		windowMinutes = append(windowMinutes, sample.WallMinutes)
-		if sample.EffortEstimate == "trivial" {
+		if sample.EffortEstimate == effortMechanical {
 			trivialMinutes = append(trivialMinutes, sample.WallMinutes)
 		} else {
 			normalMinutes = append(normalMinutes, sample.WallMinutes)
@@ -303,11 +303,14 @@ func timelineBucketMedian(bucketMinutes []float64, windowMedian float64) float64
 // timelineProjectedSpan is how long one REQ is forecast to take.
 func timelineProjectedSpan(ticket *RequestTicket, projection TimelineProjection) (time.Duration, string) {
 	// effort_estimate is a closed two-value triage bit whose documented default
-	// is "normal"; absent reads as normal rather than as a third case.
-	if ticket.EffortEstimate == "trivial" {
-		return time.Duration(projection.TrivialMedianMinutes * float64(time.Minute)), "trivial"
+	// is effort-substantive; absent reads as substantive rather than as a third
+	// case. Compared against the named constants on purpose: a bare literal here
+	// is what makes a rename of the vocabulary compile and silently drop every
+	// REQ into the substantive median.
+	if ticket.EffortEstimate == effortMechanical {
+		return time.Duration(projection.TrivialMedianMinutes * float64(time.Minute)), effortMechanical
 	}
-	return time.Duration(projection.NormalMedianMinutes * float64(time.Minute)), "normal"
+	return time.Duration(projection.NormalMedianMinutes * float64(time.Minute)), effortSubstantive
 }
 
 // timelineChainStart is when the first unstarted REQ can begin: after whatever is

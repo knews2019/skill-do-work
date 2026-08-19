@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.214.0 — Impact and Effort Are Now Two Separate Fields (2026-08-19)
+
+A REQ can finally tell you whether anyone would ever notice the work, separately from how big it is. Before this, one field answered both questions badly: capture wrote `effort_estimate` meaning size, the review flow stamped the same field from an impact test, and a finding nobody would notice but that takes three hours to fix got labelled a small mechanical fix and forecast at five minutes.
+
+- New `impact:` field with four values — `impact-critical`, `impact-user-visible`, `impact-rule-change`, `impact-negligible`. Every one carries the prefix, so one search finds every REQ's verdict.
+- `effort_estimate` means size only now, with its values renamed to `effort-mechanical` and `effort-substantive`. Nothing you have already written needs changing — the old `trivial` and `normal` still read correctly through read-only aliases.
+- Retired the `gate:` field and the `[critical]`/`[normal]`/`[low]` discovered-task words. Three vocabularies described one axis; now there is one, and the token a review records is the token that lands in the follow-up.
+- The board shows impact as a card chip and a drawer row, and flags a misspelled value instead of silently swallowing it.
+
 ## 0.213.0 — Session Handoff Command and a Shorter TTS Alias (2026-08-19)
 
 `do-work handoff` writes a restart prompt a fresh session can resume from with one pasted command — the plan itself goes into the queue as dependency gates and statuses, because that's what `do-work run` actually reads. The `ttsr` shorthand also got cut down and now names where its appendix starts.

@@ -907,13 +907,25 @@ body.is-resizing-detail {
   font-family: var(--font-mono);
   max-width: 100%;
 }
-/* "trivial" — the effort_estimate triage bit: this REQ is a small mechanical
-   fix, stamped by the review gate (or capture). Only the trivial value chips
-   (normal is the default and would be noise on every card). Neutral/muted like
-   .badge-assigned: it describes the work's size, not a state, and must not
-   compete with blocked/done accents. Display only — nothing on the board
-   branches on it. */
+/* "effort-mechanical" — the effort_estimate triage bit: this REQ is a small
+   mechanical fix. Only that value chips (effort-substantive is the default and
+   would be noise on every card). Neutral/muted like .badge-assigned: it
+   describes the work's size, not a state, and must not compete with
+   blocked/done accents. Display only — nothing on the board branches on it. */
 .badge-effort-estimate {
+  color: var(--ink-soft);
+  background-color: var(--surface-3);
+  border-color: var(--line-firm);
+  font-style: italic;
+}
+/* The impact token — whether anyone would ever notice the work. Chips for every
+   value except the impact-user-visible default. Deliberately the same
+   neutral/muted treatment as .badge-effort-estimate and .badge-assigned,
+   including impact-critical: this badge describes the work's worth, not a state,
+   and giving the critical value the blocked accent would put a red mark on a
+   card whose pipeline state is fine — exactly the confusion the accent colours
+   exist to avoid. Display only — nothing on the board branches on it. */
+.badge-impact {
   color: var(--ink-soft);
   background-color: var(--surface-3);
   border-color: var(--line-firm);

@@ -781,10 +781,18 @@ func TestNormalizeSchemaFieldCoversContractAliases(t *testing.T) {
 		{"kb_status", "skip", "skipped"},
 		{"kb_status", "rejected", "declined"},
 		{"kb_status", "promoted", "promoted"},
-		// effort_estimate — no aliases; closed two-value enum, case-folded.
-		{"effort_estimate", "trivial", "trivial"},
-		{"effort_estimate", " TRIVIAL ", "trivial"},
-		{"effort_estimate", "Normal", "normal"},
+		// effort_estimate — closed two-value enum, case-folded, plus the two
+		// read-only legacy aliases that keep every REQ written before the
+		// impact/effort rename resolving unchanged.
+		{"effort_estimate", "effort-mechanical", "effort-mechanical"},
+		{"effort_estimate", " EFFORT-MECHANICAL ", "effort-mechanical"},
+		{"effort_estimate", "Effort-Substantive", "effort-substantive"},
+		{"effort_estimate", "trivial", "effort-mechanical"},
+		{"effort_estimate", " TRIVIAL ", "effort-mechanical"},
+		{"effort_estimate", "Normal", "effort-substantive"},
+		// impact — no aliases; new prefix-unique vocabulary, case-folded.
+		{"impact", "impact-critical", "impact-critical"},
+		{"impact", " Impact-Negligible ", "impact-negligible"},
 	}
 	for _, testCase := range testCases {
 		if got := normalizeSchemaField(testCase.fieldName, testCase.raw); got != testCase.want {
@@ -811,8 +819,10 @@ func TestResolveSchemaFieldFallsBackWithoutSilentRemap(t *testing.T) {
 		{"tdd", "sometimes", "false", false},
 		{"error_type", "cosmic-ray", "code", false},
 		{"kb_status", "half-promoted", "pending", false},
-		{"effort_estimate", "huge", "normal", false},
-		{"effort_estimate", "", "normal", true},
+		{"effort_estimate", "huge", "effort-substantive", false},
+		{"effort_estimate", "", "effort-substantive", true},
+		{"impact", "sort-of-important", "impact-user-visible", false},
+		{"impact", "", "impact-user-visible", true},
 		{"route", "Z", "", false},
 		// An absent field is not an unrecognized value — it resolves to the
 		// default and must NOT warn, or every REQ omitting an optional field
@@ -1072,8 +1082,8 @@ func TestUnrecognizedEffortEstimateFlagsAndWarns(t *testing.T) {
 	if !ticket.EffortEstimateUnrecognized {
 		t.Errorf("EffortEstimateUnrecognized = false, want true")
 	}
-	if ticket.EffortEstimate != "normal" {
-		t.Errorf("EffortEstimate = %q, want %q — the contract's documented default still applies", ticket.EffortEstimate, "normal")
+	if ticket.EffortEstimate != "effort-substantive" {
+		t.Errorf("EffortEstimate = %q, want %q — the contract's documented default still applies", ticket.EffortEstimate, "effort-substantive")
 	}
 	if ticket.OriginalEffortEstimate != "huge" {
 		t.Errorf("OriginalEffortEstimate = %q, want %q — the warning has to name what was actually written",
@@ -1090,11 +1100,92 @@ func TestUnrecognizedEffortEstimateFlagsAndWarns(t *testing.T) {
 	}
 }
 
+// TestImpactFieldFollowsPresentValueOnlyContract covers the field's three states
+// at the buildBoard seam. The absent case is the one that matters most: absence
+// must leave "" here so the card chip never fires on a REQ that never carried the
+// field, even though every reader asking what an absent impact MEANS gets
+// impact-user-visible — and never impact-negligible, which would let a filter
+// built on this field skip the whole pre-rename queue.
+func TestImpactFieldFollowsPresentValueOnlyContract(t *testing.T) {
+	repoRoot := t.TempDir()
+	queueDir := filepath.Join(repoRoot, "do-work", "queue")
+	if mkdirError := os.MkdirAll(queueDir, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir: %v", mkdirError)
+	}
+	for _, fixture := range []struct {
+		fileName        string
+		requestId       string
+		frontmatterLine string
+	}{
+		{"REQ-0120-bad-impact.md", "REQ-0120", "impact: quite-important\n"},
+		{"REQ-0121-cased-impact.md", "REQ-0121", "impact: Impact-Negligible\n"},
+		{"REQ-0122-no-impact.md", "REQ-0122", ""},
+	} {
+		reqFileContent := "---\nid: " + fixture.requestId +
+			"\ntitle: Fixture\nstatus: pending\n" + fixture.frontmatterLine + "---\nbody\n"
+		if writeError := os.WriteFile(filepath.Join(queueDir, fixture.fileName), []byte(reqFileContent), 0o644); writeError != nil {
+			t.Fatalf("write fixture %s: %v", fixture.fileName, writeError)
+		}
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+
+	unrecognizedTicket := board.RequestsById["REQ-0120"]
+	if unrecognizedTicket == nil {
+		t.Fatalf("REQ-0120 not parsed")
+	}
+	if !unrecognizedTicket.ImpactUnrecognized {
+		t.Errorf("ImpactUnrecognized = false, want true — a typo'd impact may not vanish silently")
+	}
+	if unrecognizedTicket.Impact != "impact-user-visible" {
+		t.Errorf("Impact = %q, want %q — the contract's documented default still applies",
+			unrecognizedTicket.Impact, "impact-user-visible")
+	}
+	if unrecognizedTicket.OriginalImpact != "quite-important" {
+		t.Errorf("OriginalImpact = %q, want %q — the warning has to name what was actually written",
+			unrecognizedTicket.OriginalImpact, "quite-important")
+	}
+	impactWarningFound := false
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "impact") && strings.Contains(warningText, "quite-important") {
+			impactWarningFound = true
+		}
+	}
+	if !impactWarningFound {
+		t.Errorf("no impact warning naming the written value; got %v", board.Warnings)
+	}
+
+	casedTicket := board.RequestsById["REQ-0121"]
+	if casedTicket == nil {
+		t.Fatalf("REQ-0121 not parsed")
+	}
+	if casedTicket.Impact != "impact-negligible" || casedTicket.ImpactUnrecognized {
+		t.Errorf("cased ticket: Impact = %q, ImpactUnrecognized = %v — want %q, false",
+			casedTicket.Impact, casedTicket.ImpactUnrecognized, "impact-negligible")
+	}
+
+	absentTicket := board.RequestsById["REQ-0122"]
+	if absentTicket == nil {
+		t.Fatalf("REQ-0122 not parsed")
+	}
+	if absentTicket.Impact != "" || absentTicket.ImpactUnrecognized {
+		t.Errorf("absent-impact ticket: Impact = %q, ImpactUnrecognized = %v — want empty, false; "+
+			"defaulting at the parse layer would chip every legacy card",
+			absentTicket.Impact, absentTicket.ImpactUnrecognized)
+	}
+}
+
 // TestRecognizedEffortEstimateRaisesNoWarning is the silence half: a case-folded
 // canonical value and an absent field must both stay quiet, and the absent field
 // must stay empty at the parse layer (board-cards.js chips only on the literal
-// "trivial", so defaulting absence would be invisible today — the guard is what
-// keeps that true if the frontend gate ever loosens).
+// "effort-mechanical", so defaulting absence would be invisible today — the guard
+// is what keeps that true if the frontend gate ever loosens). The cased fixture
+// spells the PRE-RENAME value on purpose: `Trivial` is now a read-only legacy
+// alias, and this is where the forty-odd archived REQs carrying it are proved to
+// still resolve — through buildBoard, the seam a real board read goes through.
 func TestRecognizedEffortEstimateRaisesNoWarning(t *testing.T) {
 	repoRoot := t.TempDir()
 	queueDir := filepath.Join(repoRoot, "do-work", "queue")
@@ -1129,9 +1220,10 @@ func TestRecognizedEffortEstimateRaisesNoWarning(t *testing.T) {
 	if casedTicket == nil {
 		t.Fatalf("REQ-0111 not parsed")
 	}
-	if casedTicket.EffortEstimate != "trivial" || casedTicket.EffortEstimateUnrecognized {
-		t.Errorf("cased ticket: EffortEstimate = %q, EffortEstimateUnrecognized = %v — want %q, false",
-			casedTicket.EffortEstimate, casedTicket.EffortEstimateUnrecognized, "trivial")
+	if casedTicket.EffortEstimate != "effort-mechanical" || casedTicket.EffortEstimateUnrecognized {
+		t.Errorf("cased ticket: EffortEstimate = %q, EffortEstimateUnrecognized = %v — want %q, false — "+
+			"the legacy `trivial` alias must still resolve, or every archived REQ predating the rename breaks",
+			casedTicket.EffortEstimate, casedTicket.EffortEstimateUnrecognized, "effort-mechanical")
 	}
 	absentTicket := board.RequestsById["REQ-0112"]
 	if absentTicket == nil {
