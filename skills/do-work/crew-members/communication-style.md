@@ -62,3 +62,5 @@ These exact standalone tokens are user shorthand. When one arrives as the messag
 - `eli` — Explain this like I'm 18: simpler language, shorter response.
 - `foc` — Focus on what matters most here: boil the response down to the single most important thing.
 - `ref` — Rewrite your last response using reference codes.
+- `ttsr` — TTS briefing + reference appendix: Body: flowing prose, no bullets/headers/code/paths. Zero prior context: first mention of any ID (ticket, table, service) states what it is in the same sentence — "REQ 168, dropping the redundant indexes on the results table" — never a bare number, never a bare description. Keep real IDs, dates, figures in the prose so they're searchable; write them as they should be spoken. Appendix: marked section I skip when listening — exact paths with line numbers, paste-ready commands, URLs, one-line ID→description map.
+
