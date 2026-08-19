@@ -5,7 +5,7 @@ status: completed
 created_at: 2026-08-19T13:42:45Z
 claimed_at: 2026-08-19T20:31:30Z
 completed_at: 2026-08-19T20:44:05Z
-commit:
+commit: bc809fd
 user_request: UR-057
 domain: general
 prime_files: [_dev/primes/prime-kanban-board.md]
