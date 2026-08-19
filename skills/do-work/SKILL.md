@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Core request capture, queue orchestration, verification, review, and maintenance for the modular do-work suite
-argument-hint: "capture-request: <task> | run [REQ|UR] | verify-requests [REQ|UR|--against source] | review-work [REQ|UR] | clarify | abandon [REQ|UR] | cleanup | commit | forensics | roadmap | version | update | recap | help"
+argument-hint: "capture-request: <task> | run [REQ|UR] | verify-requests [REQ|UR|--against source] | review-work [REQ|UR] | clarify | abandon [REQ|UR] | cleanup | commit | forensics | roadmap | handoff | version | update | recap | help"
 ---
 
 # Do-Work Core Skill
@@ -36,6 +36,7 @@ Check these patterns in order; first match wins.
 | `commit`, `commit changes`, `save changes` | `./actions/commit.md` |
 | `forensics`, `diagnose`, `health check` | `./actions/forensics.md` |
 | `roadmap`, `queue-status`, `where are we`, `what's left` | `./actions/roadmap.md` |
+| `handoff`, `hand off`, `restart prompt`, `restart-with-parallel-handoff` | `./actions/restart-with-parallel-handoff.md` |
 | `version`, `update`, `updates`, `what version`, `what's new`, `what's changed`, `release notes`, `history`, `recap` | `./actions/version.md` |
 | `capture-request:` / `capture request:` or unmatched descriptive multi-word input | `./actions/capture.md` |
 

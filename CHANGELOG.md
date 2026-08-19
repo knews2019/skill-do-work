@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.213.0 — Session Handoff Command and a Shorter TTS Alias (2026-08-19)
+
+`do-work handoff` writes a restart prompt a fresh session can resume from with one pasted command — the plan itself goes into the queue as dependency gates and statuses, because that's what `do-work run` actually reads. The `ttsr` shorthand also got cut down and now names where its appendix starts.
+
+- New `do-work handoff` action: encode holds as queue state, survey git, classify every in-flight REQ and worktree, then write and commit `do-work/RESTART-PROMPT.md`.
+- New read-only `scripts/handoff-state-survey.sh` behind it — history, worktrees, merged and unmerged builder branches, and the dirty state of every checkout.
+- Worktrees are only ever marked removable, never removed, and foreign claims are left byte-identical.
+- The `ttsr` alias dropped from 89 words to five short lines, and its appendix now goes under a `## Reference` heading so the output shape stops varying between sessions.
+- New `phandoff` shorthand for the handoff action.
+
 ## 0.212.26 — No Home Directory in a Shipped Code Comment (2026-08-19)
 
 A doc comment in the board tool used the maintainer's own home path as its worked example. An absolute path means something else, or nothing, in anyone else's checkout.
