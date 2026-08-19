@@ -1,8 +1,9 @@
 ---
 id: REQ-296
 title: "[impact-negligible] Decide whether the retired vocabulary left in internal names should follow"
-status: pending-answers
+status: cancelled
 created_at: 2026-08-19T15:48:05Z
+completed_at: 2026-08-19T17:24:37Z
 user_request: UR-060
 addendum_to: REQ-289
 domain: general
@@ -59,12 +60,12 @@ schema calls its values.
 
 ## Open Questions
 
-- [ ] Should the board's timeline projection internals (`trivialSamples`, `normalMinutes`,
+- [x] Should the board's timeline projection internals (`trivialSamples`, `normalMinutes`,
   `TrivialMedianMinutes`, and siblings) be renamed to match the labels they render?
   Recommended: No — they are internal payload names with no schema meaning, the rendered labels are
   already correct, and the rename costs two more files plus their tests for no user-visible gain.
   Also: Yes, rename them so no spelling of the retired vocabulary survives anywhere in the module.
-- [ ] Should `tools/estimate-p50.sh --trivial` and its basis string be renamed?
+- [x] Should `tools/estimate-p50.sh --trivial` and its basis string be renamed?
   Recommended: No — the flag names the estimator's floor mode rather than the schema token, that
   distinction is now documented at `estimate-reference.md`, and renaming changes a CLI surface and a
   pinned determinism test for a cosmetic gain.
@@ -78,3 +79,23 @@ reasons. The third discovered task (no JavaScript behavior probe covers the card
 queued as instance F5 of REQ-293 and is not repeated here.
 
 See `do-work/user-requests/UR-060/input.md`.
+
+## Cancelled
+
+- **When:** 2026-08-19T17:24:37Z
+- **Why:** Both open questions answered No — the recommended answer in each case. Q1 (board
+  timeline internals): `TrivialSamples` / `NormalMedianMinutes` and siblings are internal JSON
+  payload names with no schema meaning, the labels they render were already renamed, and the change
+  would cost `generate.go`, `timeline.go`, `board-timeline.js`, and `generate_test.go` for no
+  user-visible gain. Q2 (`estimate-p50.sh --trivial`): renaming it to `--mechanical` would be
+  actively wrong — it would re-import the schema token into a flag that names the estimator's floor
+  mode, recreating the one-word-two-meanings problem UR-060 set out to remove. The distinction is
+  documented at `skills/do-work/actions/estimate-reference.md:69`.
+- **Correction to this REQ's premise:** the "case for doing it anyway" claimed these are the last
+  two places the retired spelling survives. That is false. `trivial` appears as ordinary English
+  throughout the suite (`crew-members/coding-guardrails.md:41`, `actions/work.md:345`,
+  `actions/review-work.md:343,354,524`, `../do-work-toolbox/actions/quick-wins.md`,
+  `../do-work-toolbox/actions/present-video.md`, `../do-work-toolbox/actions/validate-feedback.md`,
+  and more). A grep for `trivial` will never come back clean, so renaming four Go identifiers buys
+  no triage savings for a future reader.
+- **Decided by:** user, via `do-work abandon`
