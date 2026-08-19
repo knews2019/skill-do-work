@@ -97,6 +97,23 @@
 # endings and a leading UTF-8 BOM are tolerated and preserved, exactly as the
 # board's splitFrontmatter tolerates them.
 #
+# SILENCE IS NEVER A CLEAN ANSWER. Every command and process substitution in this
+# file is judged by its EXIT STATUS first and its content second: empty output from
+# a tool that failed means "nothing was inspected", never "nothing was wrong". That
+# is the condition, not a list of the sites that once broke it — a new substitution
+# added below inherits it.
+#
+# REFUSALS ARE COUNTED ALWAYS AND PRINTED ON REQUEST. A refused value (the SHAPES
+# LEFT ALONE list below) is never a repair and never a failure, so `refusal_count`
+# rises while the exit status does not. Printing is opt-in through
+# `timestamp_repair_voice_refusals` because the two callers want opposite things:
+# this file runs unattended from the SessionStart hook, where a permanent refusal
+# would print the same unhealable line into every session's start banner forever —
+# REQ-267's wedge, and REQ-274's live complaint — while
+# scripts/audit-archive-timestamps.sh is a deliberate human inspection where that
+# same line IS the product, and swallowing it is what let an archive holding
+# nothing but a refused stamp report as clean (REQ-268 instance 1).
+#
 # GUARD STYLE is deliberately `tools/checks/record-commit-hash.sh`'s, and that is
 # a hard requirement rather than a stylistic nod: free-form frontmatter edits once
 # truncated six archived REQ files to 0 bytes in a consumer repo. Every guard runs
@@ -133,9 +150,13 @@ future_stamp_skew_seconds=120
 #   timestamp_repair_apply_mode  0 = plan and report only, write nothing
 #   timestamp_repair_git_only    1 = replacements come from git blame alone;
 #                                    the file-mtime fallback is disabled
+#   timestamp_repair_voice_refusals
+#                                1 = print one line per refused value; the count
+#                                    is kept either way for the caller's summary
 # ---------------------------------------------------------------------------
 timestamp_repair_apply_mode="${timestamp_repair_apply_mode:-1}"
 timestamp_repair_git_only="${timestamp_repair_git_only:-0}"
+timestamp_repair_voice_refusals="${timestamp_repair_voice_refusals:-0}"
 replacement_source_names='git blame or the file mtime'
 [ "$timestamp_repair_git_only" -eq 1 ] && replacement_source_names='git blame'
 
@@ -145,9 +166,22 @@ failure_count=0
 repair_count=0
 pending_repair_count=0
 
+refusal_count=0
+
 report_failure() {
   printf 'do-work: FAILED to repair %s — %s The file is unchanged.\n' "$1" "$2"
   failure_count=$((failure_count + 1))
+}
+
+# A value this file recognizes as a stamp field but deliberately will not touch (a
+# numeric offset, fractional seconds, a calendar-impossible instant, non-ASCII
+# padding — the SHAPES LEFT ALONE list in the header). Always counted, printed only
+# when the caller asked to hear it; never touches the exit status either way.
+report_refusal() {
+  refusal_count=$((refusal_count + 1))
+  [ "$timestamp_repair_voice_refusals" -eq 1 ] || return 0
+  printf 'do-work: refused %s %s (%s) — not a shape this repairer will rewrite; left byte-identical.\n' \
+    "$1" "$2" "$3"
 }
 
 # Never write through a link: a symlinked do-work/ or scan directory could put an
@@ -333,6 +367,14 @@ extract_timestamp_fields() {
 
 git_available=0
 git -C "$project_root" rev-parse --git-dir >/dev/null 2>&1 && git_available=1
+# Every guard below that compares against HEAD needs one to exist. A repo with no
+# commit yet has no baseline at all — a real absence, not a git that failed to
+# answer — and the two must not be folded together: reading the absence as a
+# failure refuses to repair a perfectly ordinary staged-but-uncommitted REQ, and
+# reading a failure as an absence is the fail-open this REQ exists to close.
+head_commit_exists=0
+[ "$git_available" -eq 1 ] && git -C "$project_root" rev-parse --verify -q HEAD >/dev/null 2>&1 \
+  && head_commit_exists=1
 
 # ---------------------------------------------------------------------------
 # One REQ file. Detects, derives, guards, and rewrites; prints one audit line per
@@ -350,6 +392,8 @@ repair_request_file() {
   local file_matches_head path_tracked head_blob_bytes
   local pending_insertions pending_deletions post_insertions post_deletions
   local ordered_field_names ordered_name planned_count awk_status field_slot
+  local extraction_status reparse_rows reparse_status verified_count
+  local head_relative_path pending_numstat post_numstat numstat_status
   local -a field_line_numbers=() field_names=() field_tokens=()
   local -a field_keys=() field_new_values=() field_sources=()
 
@@ -360,6 +404,12 @@ repair_request_file() {
   [ -s "$request_file" ] || return 0
 
   field_rows="$(extract_timestamp_fields "$request_file")"
+  extraction_status=$?
+  if [ "$extraction_status" -ne 0 ]; then
+    report_failure "$display_path" \
+      "the frontmatter scan exited $extraction_status, so no field in this file was inspected."
+    return 0
+  fi
   [ -n "$field_rows" ] || return 0
 
   # A repeated top-level key keeps only its LAST occurrence, because that is
@@ -386,6 +436,16 @@ repair_request_file() {
     field_sources[field_slot]=''
   done <<< "$field_rows"
   [ "$field_count" -gt 0 ] || return 0
+
+  # Every field whose value the recognizer would not accept. Voiced here, before any
+  # defect pass, because the passes below skip an empty comparison key — which is
+  # exactly how a file holding nothing but a refused stamp used to read as clean.
+  index=0
+  while [ "$index" -lt "$field_count" ]; do
+    [ -n "${field_keys[$index]}" ] || \
+      report_refusal "$display_path" "${field_names[$index]}" "${field_tokens[$index]}"
+    index=$((index + 1))
+  done
 
   path_tracked=0
   file_matches_head=0
@@ -545,19 +605,45 @@ repair_request_file() {
 
   pending_insertions=0
   pending_deletions=0
-  if [ "$path_tracked" -eq 1 ]; then
-    head_blob_bytes="$(git -C "$project_root" cat-file -s \
-      "HEAD:$(git -C "$project_root" ls-files --full-name -- "$request_file")" 2>/dev/null || echo 0)"
+  if [ "$path_tracked" -eq 1 ] && [ "$head_commit_exists" -eq 1 ]; then
     # The truncation floor: a timestamp repair changes single lines, so a file at
     # less than half its committed size lost content BEFORE this run — repairing
     # a stamp in the remains would help commit the loss.
-    if [ "${head_blob_bytes:-0}" -gt 0 ] && [ "$((pre_edit_bytes * 2))" -lt "$head_blob_bytes" ]; then
+    #
+    # `-e` asks the question `-s` cannot answer alone: a tracked path with no blob
+    # in HEAD (staged-but-never-committed) has no floor to compare against, which is
+    # a real absence, while a blob that EXISTS and whose size will not read is a
+    # failed inspection. Folded together behind `|| echo 0` those two were one
+    # value, and the guard below silently skipped for both.
+    head_relative_path="$(git -C "$project_root" ls-files --full-name -- "$request_file" 2>/dev/null)"
+    if [ -n "$head_relative_path" ] && \
+      git -C "$project_root" cat-file -e "HEAD:$head_relative_path" 2>/dev/null; then
+      head_blob_bytes="$(git -C "$project_root" cat-file -s "HEAD:$head_relative_path" 2>/dev/null)"
+      case "${head_blob_bytes:-}" in
+        '' | *[!0-9]*)
+          report_failure "$display_path" \
+            "its HEAD blob exists but its size could not be read, so the truncation floor was never checked."
+          return 0
+          ;;
+      esac
+      if [ "$head_blob_bytes" -gt 0 ] && [ "$((pre_edit_bytes * 2))" -lt "$head_blob_bytes" ]; then
+        report_failure "$display_path" \
+          "the file is $pre_edit_bytes bytes on disk but $head_blob_bytes bytes in HEAD — content was lost before this run; recover it first (git checkout HEAD -- <file>)."
+        return 0
+      fi
+    fi
+    # The baseline the post-rename guard measures against. Run as its own command so
+    # its exit status survives: consumed straight into `read`, only `read`'s status
+    # was ever visible (and it is nonzero on the ordinary no-pending-changes case),
+    # so a git that could not answer became a silent 0/0 baseline.
+    pending_numstat="$(git -C "$project_root" diff --numstat --no-renames HEAD -- "$request_file" 2>/dev/null)"
+    numstat_status=$?
+    if [ "$numstat_status" -ne 0 ]; then
       report_failure "$display_path" \
-        "the file is $pre_edit_bytes bytes on disk but $head_blob_bytes bytes in HEAD — content was lost before this run; recover it first (git checkout HEAD -- <file>)."
+        "its pending-change baseline could not be read (git diff --numstat exited $numstat_status); the rewrite was not attempted."
       return 0
     fi
-    read -r pending_insertions pending_deletions _ <<< "$(git -C "$project_root" \
-      diff --numstat --no-renames HEAD -- "$request_file" 2>/dev/null)" || true
+    read -r pending_insertions pending_deletions _ <<< "$pending_numstat" || true
     case "${pending_insertions:-0}${pending_deletions:-0}" in
       *[!0-9]*) pending_insertions=0; pending_deletions=0 ;;
     esac
@@ -649,17 +735,33 @@ repair_request_file() {
   # Re-parse the rewrite with the same extractor that planned it: every planned
   # field must now read exactly its planned value.
   if [ "$guard_verdict" = 'ok' ]; then
-    while IFS=$'\t' read -r line_number field_name value_token; do
-      [ -n "${line_number:-}" ] || continue
-      index=0
-      while [ "$index" -lt "$field_count" ]; do
-        if [ "${field_line_numbers[$index]}" = "$line_number" ] && [ -n "${field_new_values[$index]}" ] && \
-          [ "$value_token" != "${field_new_values[$index]}" ]; then
-          guard_verdict="line $line_number reads '$value_token' after the rewrite; expected '${field_new_values[$index]}'"
-        fi
-        index=$((index + 1))
-      done
-    done <<< "$(extract_timestamp_fields "$temp_file")"
+    # Materialized before the loop, and its status read: consumed through a
+    # herestring the extractor could fail, produce zero rows, and leave this guard
+    # verifying nothing while reporting ok. The verified count is what proves the
+    # loop actually saw each planned line, rather than a silent no-iteration pass.
+    reparse_rows="$(extract_timestamp_fields "$temp_file")"
+    reparse_status=$?
+    verified_count=0
+    if [ "$reparse_status" -ne 0 ]; then
+      guard_verdict="the post-rewrite re-parse exited $reparse_status, so the rewrite was never verified"
+    else
+      while IFS=$'\t' read -r line_number field_name value_token; do
+        [ -n "${line_number:-}" ] || continue
+        index=0
+        while [ "$index" -lt "$field_count" ]; do
+          if [ "${field_line_numbers[$index]}" = "$line_number" ] && [ -n "${field_new_values[$index]}" ]; then
+            if [ "$value_token" != "${field_new_values[$index]}" ]; then
+              guard_verdict="line $line_number reads '$value_token' after the rewrite; expected '${field_new_values[$index]}'"
+            else
+              verified_count=$((verified_count + 1))
+            fi
+          fi
+          index=$((index + 1))
+        done
+      done <<< "$reparse_rows"
+      [ "$guard_verdict" != 'ok' ] || [ "$verified_count" -eq "$planned_count" ] || \
+        guard_verdict="the post-rewrite re-parse confirmed $verified_count of $planned_count planned field(s)"
+    fi
   fi
   if [ "$guard_verdict" != 'ok' ]; then
     rm -f -- "$temp_file" "$backup_file"
@@ -676,12 +778,29 @@ repair_request_file() {
   # Post-rename numstat guard: against HEAD the pending delta may only have grown
   # by the planned lines. A failure here restores the pre-edit bytes from the
   # backup, so even this last guard leaves the file byte-identical.
-  if [ "$path_tracked" -eq 1 ]; then
-    read -r post_insertions post_deletions _ <<< "$(git -C "$project_root" \
-      diff --numstat --no-renames HEAD -- "$request_file" 2>/dev/null)" || true
+  if [ "$path_tracked" -eq 1 ] && [ "$head_commit_exists" -eq 1 ]; then
+    # Same separation as the pre-edit baseline, and it matters more here: this runs
+    # AFTER the rename, so a git that could not answer used to fall back to 0/0, and
+    # `[ 0 -gt threshold ]` is false for every threshold — the last guard standing
+    # between a bad rewrite and a `repaired` line silently passed. A guard that
+    # could not run is a tripped guard: restore the file and say so.
+    post_numstat="$(git -C "$project_root" diff --numstat --no-renames HEAD -- "$request_file" 2>/dev/null)"
+    numstat_status=$?
+    read -r post_insertions post_deletions _ <<< "$post_numstat" || true
     case "${post_insertions:-0}${post_deletions:-0}" in
       *[!0-9]*) post_insertions=0; post_deletions=0 ;;
     esac
+    if [ "$numstat_status" -ne 0 ]; then
+      if cp -p "$backup_file" "$request_file"; then
+        report_failure "$display_path" \
+          "the post-rewrite diff check could not run (git diff --numstat exited $numstat_status); the file was RESTORED to its pre-edit content."
+      else
+        printf 'do-work: FAILED to repair %s — the post-rewrite diff check could not run AND the restore failed; recover with git checkout HEAD -- <file>.\n' "$display_path"
+        failure_count=$((failure_count + 1))
+      fi
+      rm -f -- "$backup_file"
+      return 0
+    fi
     if [ "${post_insertions:-0}" -gt "$((pending_insertions + planned_count + trailing_newline_added))" ] || \
       [ "${post_deletions:-0}" -gt "$((pending_deletions + planned_count + trailing_newline_added))" ]; then
       if cp -p "$backup_file" "$request_file"; then

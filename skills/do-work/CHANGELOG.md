@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.215.1 — Never Report Clean for an Inspection That Never Ran (2026-08-19)
+
+The archive audit and the session-start timestamp repairer used to answer "clean" for work they never actually did — a failed file walk, an extractor that could not run, a verification that was skipped. Now they say what they could not inspect, and a value they deliberately refuse to touch shows up in the audit instead of vanishing.
+
+- `do-work forensics`' archive audit fails loudly when its file walk or its shared library cannot load, instead of reporting `clean (0 file(s) scanned)`
+- A timestamp value the repairer refuses by design is listed in the audit output, and the summary says "not clean" rather than swallowing it — the unattended session hook stays silent, so nothing new lands in your start banner
+- The repairer's verify-before-replace guard, its truncation floor, and its post-rewrite diff check can no longer pass by never running; a guard that could not run now restores the file and says so
+- Seven new lock-in cases, each reproduced against the old code first
+
 ## 0.215.0 — Skip the Work Nobody Would Notice (2026-08-19)
 
 The impact verdict you can now put on a REQ became something you can act on. `do-work run --skip-impact-negligible` builds the queue and leaves the negligible work where it is, telling you how many it passed over so a narrowed run never looks like an empty queue.

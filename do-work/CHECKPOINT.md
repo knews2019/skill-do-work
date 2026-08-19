@@ -10,6 +10,7 @@ session_depth: moderate
 
 ## In Progress (interrupted)
 
+
 ## Completed This Session
 
 `do-work run UR-060` — both members shipped, each with an independent adversarial review:

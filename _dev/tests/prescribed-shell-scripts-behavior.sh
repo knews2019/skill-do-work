@@ -1572,7 +1572,7 @@ grep -q '^claimed_at: 2026-08-12T10:00:00Z$' "$audit_parity_project/do-work/arch
   || fail_case 'audit-archive-timestamps refusal-parity case did not repair the effective (last) anchor occurrence'
 grep -q '^claimed_at: 2026-08-11T12:00:00Z$' "$audit_parity_project/do-work/archive/REQ-912-duplicate-anchor.md" \
   || fail_case 'audit-archive-timestamps refusal-parity case rewrote the shadowed first occurrence'
-printf '%s' "$audit_parity_output" | grep -qE 'REQ-911|REQ-913' \
+printf '%s' "$audit_parity_output" | grep -E '(would repair|repaired) ' | grep -qE 'REQ-911|REQ-913' \
   && fail_case 'audit-archive-timestamps refusal-parity case logged a refused stamp as a correction'
 
 # audit-archive-timestamps: the fence and padding shapes reach the archive scan
@@ -1597,8 +1597,201 @@ cmp -s "$fixture_root/audit-unterminated-before.md" "$audit_shape_project/do-wor
   || fail_case 'audit-archive-timestamps shape-parity case rewrote an archived file whose fence never closes'
 grep -q '^created_at: 2026-08-12T10:00:00Z$' "$audit_shape_project/do-work/archive/REQ-915-padded-quote.md" \
   || fail_case 'audit-archive-timestamps shape-parity case refused a padded quoted instant in the archive'
-printf '%s' "$audit_shape_output" | grep -q 'REQ-914' \
-  && fail_case 'audit-archive-timestamps shape-parity case logged a finding for the refused unterminated file'
+printf '%s' "$audit_shape_output" | grep -E '(would repair|repaired) ' | grep -q 'REQ-914' \
+  && fail_case 'audit-archive-timestamps shape-parity case logged a correction for the refused unterminated file'
+
+# audit-archive-timestamps: a value the recognizer refused is voiced, and the summary
+# stops calling the run clean. The refusal itself is right and permanent, so the exit
+# status stays 0 — a nonzero exit here would print a FAILED line into every session
+# that no one can ever heal, which is the REQ-267 wedge (REQ-268 instance 1).
+audit_voiced_project="$fixture_root/audit-voiced-project"
+fixture_repo_init "$audit_voiced_project"
+mkdir -p "$audit_voiced_project/do-work/archive"
+printf -- '---\nid: REQ-916\nstatus: completed\ncreated_at: 9999-99-99T99:99:99Z\n---\nbody\n' \
+  > "$audit_voiced_project/do-work/archive/REQ-916-impossible.md"
+fixture_repo_commit_all "$audit_voiced_project" fixture
+cp "$audit_voiced_project/do-work/archive/REQ-916-impossible.md" "$fixture_root/audit-voiced-before.md"
+audit_voiced_output="$("$core_scripts/audit-archive-timestamps.sh" "$audit_voiced_project")" \
+  || fail_case 'audit-archive-timestamps voiced-refusal case exited nonzero on a permanent refusal'
+printf '%s' "$audit_voiced_output" | grep -q 'REQ-916-impossible.md' \
+  || fail_case 'audit-archive-timestamps voiced-refusal case did not name the file holding the refused value'
+printf '%s' "$audit_voiced_output" | grep -q 'refused' \
+  || fail_case 'audit-archive-timestamps voiced-refusal case did not say the value was refused'
+printf '%s' "$audit_voiced_output" | grep -q 'audit clean' \
+  && fail_case 'audit-archive-timestamps voiced-refusal case still reported clean for a value it never inspected'
+cmp -s "$fixture_root/audit-voiced-before.md" "$audit_voiced_project/do-work/archive/REQ-916-impossible.md" \
+  || fail_case 'audit-archive-timestamps voiced-refusal case changed the file it refused'
+
+# audit-archive-timestamps: a file walk that could not complete is a failure, never a
+# clean answer with a count of zero. The exit status of the walk is what decides, not
+# the number of iterations it managed (REQ-268 instance 2).
+audit_walk_project="$fixture_root/audit-walk-project"
+fixture_repo_init "$audit_walk_project"
+mkdir -p "$audit_walk_project/do-work/archive"
+printf -- '---\nid: REQ-917\nstatus: completed\ncreated_at: 2026-08-10T12:00:00Z\n---\nbody\n' \
+  > "$audit_walk_project/do-work/archive/REQ-917-clean.md"
+fixture_repo_commit_all "$audit_walk_project" fixture
+audit_walk_bin="$fixture_root/audit-walk-bin"
+mkdir -p "$audit_walk_bin"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 3' > "$audit_walk_bin/find"
+chmod +x "$audit_walk_bin/find"
+audit_walk_output="$(PATH="$audit_walk_bin:$PATH" "$core_scripts/audit-archive-timestamps.sh" "$audit_walk_project" 2>&1)" \
+  && fail_case 'audit-archive-timestamps failed-walk case exited zero after the walk failed'
+printf '%s' "$audit_walk_output" | grep -q 'audit clean' \
+  && fail_case 'audit-archive-timestamps failed-walk case reported clean for an archive it never scanned'
+
+# audit-archive-timestamps: without its shared library the auditor inspects nothing, so
+# it must say so rather than counting files it never read. A lone copy of the script is
+# the real shape of this — a partial install, or a moved sibling (REQ-268 sweep).
+audit_lone_project="$fixture_root/audit-lone-project"
+fixture_repo_init "$audit_lone_project"
+mkdir -p "$audit_lone_project/do-work/archive"
+printf -- '---\nid: REQ-918\nstatus: completed\ncreated_at: 2093-01-01T00:00:00Z\n---\nbody\n' \
+  > "$audit_lone_project/do-work/archive/REQ-918-future.md"
+fixture_repo_commit_all "$audit_lone_project" fixture
+audit_lone_dir="$fixture_root/audit-lone-dir"
+fixture_repo_clone_script "$core_scripts/audit-archive-timestamps.sh" "$audit_lone_dir/audit-archive-timestamps.sh"
+audit_lone_output="$("$audit_lone_dir/audit-archive-timestamps.sh" "$audit_lone_project" 2>&1)" \
+  && fail_case 'audit-archive-timestamps missing-library case exited zero with its shared machinery absent'
+printf '%s' "$audit_lone_output" | grep -q 'audit clean' \
+  && fail_case 'audit-archive-timestamps missing-library case reported clean without its detection predicate'
+
+# repair-req-timestamps: an extractor that could not run is a failure, not a file with no
+# timestamp fields. With a failing awk the repairer once returned byte-identical, silent,
+# and exit 0 on a file carrying a future stamp (REQ-268 instance 3).
+repair_extract_project="$fixture_root/repair-extract-project"
+mkdir -p "$repair_extract_project/do-work/queue"
+printf -- '---\nid: REQ-919\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z\n---\nbody\n' \
+  > "$repair_extract_project/do-work/queue/REQ-919-future.md"
+cp "$repair_extract_project/do-work/queue/REQ-919-future.md" "$fixture_root/repair-extract-before.md"
+repair_extract_bin="$fixture_root/repair-extract-bin"
+mkdir -p "$repair_extract_bin"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 2' > "$repair_extract_bin/awk"
+chmod +x "$repair_extract_bin/awk"
+repair_extract_output="$(PATH="$repair_extract_bin:$PATH" "$core_scripts/repair-req-timestamps.sh" "$repair_extract_project" 2>&1)" \
+  && fail_case 'repair-req-timestamps failed-extraction case exited zero after the extraction failed'
+printf '%s' "$repair_extract_output" | grep -q 'REQ-919-future.md' \
+  || fail_case 'repair-req-timestamps failed-extraction case never named the file it could not inspect'
+cmp -s "$fixture_root/repair-extract-before.md" "$repair_extract_project/do-work/queue/REQ-919-future.md" \
+  || fail_case 'repair-req-timestamps failed-extraction case wrote to a file it could not read'
+
+# repair-req-timestamps: the verify-before-replace re-parse must actually run. Its output
+# was consumed through a herestring, so an extractor that failed there produced zero rows,
+# every planned field went unchecked, `guard_verdict` stayed ok, and the rewrite was
+# accepted unverified — the guard whose whole job is verification passing vacuously
+# (REQ-268, found by the sweep the REQ asked for rather than listed in it).
+repair_reparse_project="$fixture_root/repair-reparse-project"
+mkdir -p "$repair_reparse_project/do-work/queue"
+printf -- '---\nid: REQ-922\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z\n---\nbody\n' \
+  > "$repair_reparse_project/do-work/queue/REQ-922-future.md"
+cp "$repair_reparse_project/do-work/queue/REQ-922-future.md" "$fixture_root/repair-reparse-before.md"
+repair_reparse_bin="$fixture_root/repair-reparse-bin"
+mkdir -p "$repair_reparse_bin"
+# Fails only the SECOND frontmatter extraction — the post-rewrite re-parse. The first
+# extraction plans the repair, and the rewrite awk in between carries no `utf8_bom`, so
+# the counter names exactly the verification call and nothing else.
+{
+  printf '%s\n' '#!/usr/bin/env bash'
+  printf 'real_awk=%q\n' "$(command -v awk)"
+  printf 'counter_file=%q\n' "$repair_reparse_bin/extraction-count"
+  printf '%s\n' \
+    'for awk_argument in "$@"; do' \
+    '  case "$awk_argument" in' \
+    '    *utf8_bom*)' \
+    '      extraction_count=0' \
+    '      [ -f "$counter_file" ] && extraction_count="$(cat "$counter_file")"' \
+    '      extraction_count=$((extraction_count + 1))' \
+    '      printf %s "$extraction_count" > "$counter_file"' \
+    '      [ "$extraction_count" -ge 2 ] && exit 4' \
+    '      ;;' \
+    '  esac' \
+    'done' \
+    'exec "$real_awk" "$@"'
+} > "$repair_reparse_bin/awk"
+chmod +x "$repair_reparse_bin/awk"
+repair_reparse_output="$(PATH="$repair_reparse_bin:$PATH" "$core_scripts/repair-req-timestamps.sh" "$repair_reparse_project" 2>&1)" \
+  && fail_case 'repair-req-timestamps unverified-rewrite case exited zero after its verification never ran'
+printf '%s' "$repair_reparse_output" | grep -q 'repaired do-work/queue/REQ-922-future.md' \
+  && fail_case 'repair-req-timestamps unverified-rewrite case reported a repair it never verified'
+cmp -s "$fixture_root/repair-reparse-before.md" "$repair_reparse_project/do-work/queue/REQ-922-future.md" \
+  || fail_case 'repair-req-timestamps unverified-rewrite case replaced the file without verifying the rewrite'
+
+# repair-req-timestamps: a guard that could not run is a tripped guard. The post-rename
+# diff check is the last thing standing between a bad rewrite and a `repaired` line, and
+# it read git's answer through a herestring: a git that could not answer fell back to a
+# 0/0 count, `[ 0 -gt threshold ]` is false for every threshold, and the check silently
+# passed on a file already renamed into place (REQ-268 review, finding I1).
+repair_postguard_project="$fixture_root/repair-postguard-project"
+fixture_repo_init "$repair_postguard_project"
+mkdir -p "$repair_postguard_project/do-work/queue"
+printf -- '---\nid: REQ-923\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z\n---\nbody\n' \
+  > "$repair_postguard_project/do-work/queue/REQ-923-future.md"
+fixture_repo_commit_all "$repair_postguard_project" fixture
+cp "$repair_postguard_project/do-work/queue/REQ-923-future.md" "$fixture_root/repair-postguard-before.md"
+repair_postguard_bin="$fixture_root/repair-postguard-bin"
+mkdir -p "$repair_postguard_bin"
+# Answers every git query the run needs except `diff --numstat`, which is the one the
+# post-rename guard depends on. Failing all of git would stop the run far earlier and
+# would never reach the guard this case exists to pin.
+{
+  printf '%s\n' '#!/usr/bin/env bash'
+  printf 'real_git=%q\n' "$(command -v git)"
+  printf '%s\n' \
+    'for git_argument in "$@"; do' \
+    '  [ "$git_argument" = "--numstat" ] && exit 9' \
+    'done' \
+    'exec "$real_git" "$@"'
+} > "$repair_postguard_bin/git"
+chmod +x "$repair_postguard_bin/git"
+repair_postguard_output="$(PATH="$repair_postguard_bin:$PATH" "$core_scripts/repair-req-timestamps.sh" "$repair_postguard_project" 2>&1)" \
+  && fail_case 'repair-req-timestamps unrunnable-guard case exited zero with its diff check unable to run'
+printf '%s' "$repair_postguard_output" | grep -q 'repaired do-work/queue/REQ-923-future.md' \
+  && fail_case 'repair-req-timestamps unrunnable-guard case reported a repair its last guard never checked'
+cmp -s "$fixture_root/repair-postguard-before.md" "$repair_postguard_project/do-work/queue/REQ-923-future.md" \
+  || fail_case 'repair-req-timestamps unrunnable-guard case left the rewrite in place instead of restoring it'
+
+# repair-req-timestamps: an unreadable HEAD blob size is a failed inspection, not an
+# absent baseline. Both used to collapse to 0 behind `|| echo 0`, which skipped the
+# truncation floor — the guard that refuses to repair a stamp inside a file that already
+# lost content (REQ-268 review, finding I1). A tracked path with no blob in HEAD is the
+# real absence, and it must still repair.
+repair_floor_project="$fixture_root/repair-floor-project"
+fixture_repo_init "$repair_floor_project"
+mkdir -p "$repair_floor_project/do-work/queue"
+printf -- '---\nid: REQ-924\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z\n---\nbody\n' \
+  > "$repair_floor_project/do-work/queue/REQ-924-future.md"
+fixture_repo_commit_all "$repair_floor_project" fixture
+cp "$repair_floor_project/do-work/queue/REQ-924-future.md" "$fixture_root/repair-floor-before.md"
+repair_floor_bin="$fixture_root/repair-floor-bin"
+mkdir -p "$repair_floor_bin"
+{
+  printf '%s\n' '#!/usr/bin/env bash'
+  printf 'real_git=%q\n' "$(command -v git)"
+  # `cat-file -e` still answers (the blob exists); only the size read fails.
+  printf '%s\n' \
+    'if [ "${1:-}" = "-C" ] && [ "${3:-}" = "cat-file" ] && [ "${4:-}" = "-s" ]; then' \
+    '  exit 9' \
+    'fi' \
+    'exec "$real_git" "$@"'
+} > "$repair_floor_bin/git"
+chmod +x "$repair_floor_bin/git"
+repair_floor_output="$(PATH="$repair_floor_bin:$PATH" "$core_scripts/repair-req-timestamps.sh" "$repair_floor_project" 2>&1)" \
+  && fail_case 'repair-req-timestamps unreadable-floor case exited zero with the truncation floor unchecked'
+printf '%s' "$repair_floor_output" | grep -q 'truncation floor' \
+  || fail_case 'repair-req-timestamps unreadable-floor case did not say which guard could not run'
+cmp -s "$fixture_root/repair-floor-before.md" "$repair_floor_project/do-work/queue/REQ-924-future.md" \
+  || fail_case 'repair-req-timestamps unreadable-floor case repaired a file whose truncation floor it never read'
+# The real absence — tracked, staged, never committed — still has no floor and still repairs.
+repair_uncommitted_project="$fixture_root/repair-uncommitted-project"
+fixture_repo_init "$repair_uncommitted_project"
+mkdir -p "$repair_uncommitted_project/do-work/queue"
+printf -- '---\nid: REQ-925\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z\n---\nbody\n' \
+  > "$repair_uncommitted_project/do-work/queue/REQ-925-future.md"
+git -C "$repair_uncommitted_project" add -A
+"$core_scripts/repair-req-timestamps.sh" "$repair_uncommitted_project" >/dev/null 2>&1 \
+  || fail_case 'repair-req-timestamps uncommitted-baseline case failed a staged-but-uncommitted file that simply has no HEAD blob'
+grep -q '^created_at: 2093-01-01T00:00:00Z$' "$repair_uncommitted_project/do-work/queue/REQ-925-future.md" \
+  && fail_case 'repair-req-timestamps uncommitted-baseline case left a future stamp unrepaired because HEAD held no blob'
 
 # repair-req-timestamps: the 2-minute future-skew constant stays in lock-step
 # with the board's futureTimestampSkewAllowance — a fourth hand-kept copy of
