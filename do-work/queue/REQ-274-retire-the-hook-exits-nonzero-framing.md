@@ -1,9 +1,9 @@
 ---
 id: REQ-274
 title: Retire the "the SessionStart hook exits nonzero" framing where it is still stated
-status: pending-answers
+status: pending
 created_at: 2026-08-18T23:38:35Z
-status_changed_at: 2026-08-18T23:38:35Z
+status_changed_at: 2026-08-19T13:45:20Z
 user_request: UR-056
 addendum_to: REQ-267
 domain: general
@@ -69,6 +69,6 @@ This is REQ-257's lesson arriving one REQ later, and it is worth stating plainly
 
 ## Open Questions
 
-- [ ] REQ-267's review found that three live maintainer docs state a repairer failure as making the SessionStart hook exit nonzero, which it does not — including a standing decision rationale that rests on it. Should I process this as a new task?
+- [x] REQ-267's review found that three live maintainer docs state a repairer failure as making the SessionStart hook exit nonzero, which it does not — including a standing decision rationale that rests on it. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it — the affected decisions are all still correct, so accept the wrong mechanism in the record.

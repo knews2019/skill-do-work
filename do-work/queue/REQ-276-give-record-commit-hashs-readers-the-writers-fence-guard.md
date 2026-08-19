@@ -1,9 +1,9 @@
 ---
 id: REQ-276
 title: Give record-commit-hash's readers the same fence guard its writer already has
-status: pending-answers
+status: pending
 created_at: 2026-08-18T23:38:58Z
-status_changed_at: 2026-08-18T23:38:58Z
+status_changed_at: 2026-08-19T13:45:20Z
 user_request: UR-056
 addendum_to: REQ-267
 domain: general
@@ -36,10 +36,26 @@ The script's own header at `:103-106` claims both halves use one parser. They do
 
 ## Requirements
 
-- The read helpers refuse an unterminated fence exactly as the writer does — ideally by **sharing one parser** rather than by growing a second copy of the guard, since the header already claims they share one.
-- The header stops claiming a property the code does not have, whichever way the fix goes.
-- **Check the class, not this script.** `_dev/tests/prescribed-shell-scripts-behavior.sh` and `blanked-req-scan.sh:91` already require a closing fence; `repair-req-timestamps.sh` gained the same guard in REQ-267. Grep every awk or shell frontmatter parser that ships and confirm each one gates on the closing fence; report any that does not.
-- Lock-in cases for the read path, and `bash _dev/tests/maintainer-verify.sh` exits 0.
+Scope was narrowed by the user during clarify (see `## Decision Record` below). Refuse the file at
+the door rather than teaching each reader a guard.
+
+- Add one `require_closed_frontmatter` helper — an awk that fails when a file opens `---` on line 1
+  and never closes it — and call it at exactly **two** sites:
+  - on `$request_file` at startup, beside the existing CRLF refusal (`:310`), which covers every
+    reader call on that file (`:318`, `:322`, `:328`, `:336-338`, `:566-570`) without editing any of them;
+  - on the parent blob fetched by `--verify` (`:247`), the only reader input that is not `$request_file`.
+- The header comment at `:103-106` stops claiming the readers and the writer share one guard, and says
+  what is actually true: an unterminated fence is refused up front, so no reader ever sees one.
+- Two lock-in cases: a file whose fence never closes and whose body carries a column-0 `commit:` line is
+  refused on the write path and on the `--verify` path. Each names the failure it pins.
+- `bash _dev/tests/maintainer-verify.sh` exits 0.
+
+**Explicitly out of scope** — do not do these under this REQ:
+
+- Refactoring the three readers to share one parser with the writer. A single precondition is smaller
+  than threading a guard through each awk, and buys the same property.
+- The repo-wide sweep of every shipped awk or shell frontmatter parser. Different scope, different
+  write set; the user declined to capture it as a separate REQ during this clarify.
 
 ## Context
 
@@ -49,6 +65,19 @@ Classified `[normal]`, so it enters as `pending-answers` under the Discovered Ta
 
 ## Open Questions
 
-- [ ] REQ-267's builder found that `record-commit-hash.sh` guards against an unterminated frontmatter fence when writing but not when reading, so `--verify` can read a body `commit:` as the frontmatter one — on the last check every REQ in the pipeline passes through. Should I process this as a new task?
+- [x] REQ-267's builder found that `record-commit-hash.sh` guards against an unterminated frontmatter fence when writing but not when reading, so `--verify` can read a body `commit:` as the frontmatter one — on the last check every REQ in the pipeline passes through. Should I process this as a new task? → Yes, add to queue — with the scope simplified to one up-front guard (see the Decision Record).
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it — the writer's guard means the pipeline never produces such a file itself.
+
+## Decision Record
+
+- **[2026-08-19] Scope narrowed to one up-front refusal.** The user reviewed this REQ during
+  `do-work clarify`, judged the original requirements over-complicated, and chose the simplified
+  form now in `## Requirements`. Reasoning: the three readers already run the same four-line awk;
+  the defect is that none of them gates on the closing fence, and a single precondition checked once
+  at startup fixes every reader at once. Sharing one parser with the writer would be a larger diff
+  for the same property.
+- **Put out of scope by the same decision:** the reader/writer parser-sharing refactor, and the
+  repo-wide sweep of other shipped frontmatter parsers. The user was offered the sweep as its own
+  REQ and declined it, so it is not captured anywhere — reopen deliberately if wanted.
+- **Decided by:** user, via `do-work clarify`.

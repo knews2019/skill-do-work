@@ -1,7 +1,8 @@
 ---
 id: REQ-278
 title: Measure the mark-label face where the sans stack resolves off Linux
-status: pending-answers
+status: cancelled
+completed_at: 2026-08-19T13:45:20Z
 created_at: 2026-08-18T23:53:40Z
 status_changed_at: 2026-08-18T23:53:40Z
 user_request: UR-051
@@ -49,6 +50,23 @@ Escalated by REQ-265's builder as D-05 and assessed by its independent review, w
 
 ## Open Questions
 
-- [ ] The Durations row pitch has 0.037 units of slack against the largest face ever measured here, every measurement was taken on Linux, and the sans stack ends in an open generic — so nothing bounds what a Mac or Windows machine draws, and two faces this repo has already measured sum past the pitch when recombined. The consequence off Linux is that the model's clearance claim stops being true, not that the board looks broken. Should I process this as a new task?
+- [x] The Durations row pitch has 0.037 units of slack against the largest face ever measured here, every measurement was taken on Linux, and the sans stack ends in an open generic — so nothing bounds what a Mac or Windows machine draws, and two faces this repo has already measured sum past the pitch when recombined. The consequence off Linux is that the model's clearance claim stops being true, not that the board looks broken. Should I process this as a new task? → Discarded — the measurement scope is the wrong direction; see the Cancelled section.
   Recommended: Yes, add to queue (will flip to 'pending') — scoped to measuring, with a closed font stack on the table as the cheap fix.
   Also: No, discard it — accept that the clearance model is only proven for the Linux fallback face.
+
+## Cancelled
+
+- **When:** 2026-08-19T13:45:20Z
+- **Why:** user rejected the scope, not the finding. Measuring what Segoe UI, SF, or Noto draw on
+  machines this project does not have produces a number that goes stale on the next OS font update
+  and still leaves the face unbounded. The user asked for a robust solution instead — explicitly
+  open to re-engineering the label layout — and for a solutions report with several options before
+  any direction is chosen. Verbatim: "this is the wrong direction, need a more robust HTML solution,
+  I'm good even in reengineering the layout if we have to... We definetely do not want to manually
+  measure fonts on different operating systems."
+- **The finding survives this cancellation.** `--font-sans` ending in the open `sans-serif` generic
+  leaves both the vertical pitch and the horizontal per-character width model unbounded. The
+  successor work is chosen from the solutions report at
+  `ai-reports/2026-08-19_1345_durations-label-face-robustness/index.html`, and gets captured as its
+  own REQ once the user picks a direction.
+- **Decided by:** user, via `do-work clarify`

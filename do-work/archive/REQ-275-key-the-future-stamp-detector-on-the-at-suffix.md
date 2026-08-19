@@ -1,7 +1,8 @@
 ---
 id: REQ-275
 title: Key the board's future-stamp detector on the _at suffix instead of six hand-kept names
-status: pending-answers
+status: cancelled
+completed_at: 2026-08-19T13:45:20Z
 created_at: 2026-08-18T23:38:35Z
 status_changed_at: 2026-08-18T23:38:35Z
 user_request: UR-056
@@ -61,6 +62,12 @@ Worth knowing: **both fuzzes missed this**, the builder's and the reviewer's, be
 
 ## Open Questions
 
-- [ ] REQ-267's review found a third repairer/board divergence on an axis neither fuzz covered: the repairer repairs any `_at` field by suffix while the board checks six hand-kept names, so a future `_at` field would be rewritten unattended and never badged. Latent today. Should I process this as a new task?
+- [x] REQ-267's review found a third repairer/board divergence on an axis neither fuzz covered: the repairer repairs any `_at` field by suffix while the board checks six hand-kept names, so a future `_at` field would be rewritten unattended and never badged. Latent today. Should I process this as a new task? → Discarded
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it — nothing in today's schema is missed, so accept the divergence until a new `_at` field is added.
+
+## Cancelled
+
+- **When:** 2026-08-19T13:45:20Z
+- **Why:** user discarded this during clarify — declined to widen the board's future-stamp detector from six named fields to the `_at` suffix rule while the divergence is latent.
+- **Decided by:** user, via `do-work clarify`
