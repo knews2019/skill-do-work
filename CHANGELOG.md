@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.216.0 — Release Probes That Actually Run (2026-08-19)
+
+Three checks on the release ritual — version file against the newest changelog entry, versions going up, titles not reused — had been quietly off since the suite split into four packages. They run again. And in your own project, where they were never yours to hold, they now say "not applicable" instead of nagging you as skipped forever.
+
+- `queue-kanban verify` finds the version file at the modular suite path, so the three release probes run in the repo that owns them
+- A project that isn't a do-work suite checkout gets `~ not applicable` for those probes, rendered distinctly from a real `- skipped`
+- Every genuine skip stays a skip — an unreadable version file or a changelog in another format is still an unverified invariant
+- `next-version` is untouched, including its deliberate write-nothing path in a consumer install
+
 ## 0.215.3 — Refuse an Unterminated Frontmatter Fence Before Reading It (2026-08-19)
 
 The guard that records a commit hash on your REQ files could be fooled by a file whose `---` block was never closed: it read on into the body and could mistake a `commit:` line in the prose for the real one. Now it refuses that file outright, before anything reads it.

@@ -442,3 +442,166 @@ func TestRejectLeftoverArgumentsIsTheSharedRule(t *testing.T) {
 		t.Errorf("error must name the subcommand and the offending token, got %q", leftoverError.Error())
 	}
 }
+
+// writeSuiteLayoutReleaseFixture seeds a MAINTAINER-shaped repo root: the version file at
+// the modular suite path (skills/do-work/actions/version.md, where it has lived since the
+// four-skill split) and the release CHANGELOG.md at the root, which is the pair the commit
+// ritual bumps together. Nothing exists at the pre-split root actions/version.md.
+func writeSuiteLayoutReleaseFixture(t *testing.T, versionLine string, changelogBody string) string {
+	t.Helper()
+	repoRoot := t.TempDir()
+	suiteActionsDirectory := filepath.Join(repoRoot, "skills", "do-work", "actions")
+	if mkdirError := os.MkdirAll(suiteActionsDirectory, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir suite actions: %v", mkdirError)
+	}
+	versionFileBody := "# Version Action\n\n> Reports the installed version.\n\n" + versionLine + "\n\nMore prose below.\n"
+	if writeError := os.WriteFile(filepath.Join(suiteActionsDirectory, "version.md"), []byte(versionFileBody), 0o644); writeError != nil {
+		t.Fatalf("write suite version.md: %v", writeError)
+	}
+	if writeError := os.WriteFile(filepath.Join(repoRoot, "CHANGELOG.md"), []byte(changelogBody), 0o644); writeError != nil {
+		t.Fatalf("write CHANGELOG.md: %v", writeError)
+	}
+	return repoRoot
+}
+
+// TestReleaseProbesRunInASuiteCheckoutAndAreNotApplicableElsewhere asserts BOTH halves of
+// REQ-282 in one test, deliberately: a not-applicable path that also fired in a suite
+// checkout would silence the three release probes permanently and read as clean, which is
+// the failure the REQ exists to end. Splitting these into two tests would let either half
+// be satisfied by breaking the other.
+func TestReleaseProbesRunInASuiteCheckoutAndAreNotApplicableElsewhere(t *testing.T) {
+	changelogBody := "# Changelog\n\n## 1.4.0 — Newest Entry (2026-08-19)\n\nprose\n\n## 1.3.0 — Older Entry (2026-08-18)\n\nprose\n"
+
+	// --- Half one: a suite checkout runs the probes, and they find nothing. -------------
+	agreeingRoot := writeSuiteLayoutReleaseFixture(t, "**Current version**: 1.4.0", changelogBody)
+	agreeingReport := VerifyReport{RepoRoot: agreeingRoot}
+	appendReleaseFindings(&agreeingReport, agreeingRoot)
+	if len(agreeingReport.Findings) != 0 {
+		t.Fatalf("a suite checkout whose version agrees with its newest entry must report no findings, got %v", agreeingReport.Findings)
+	}
+	for _, skippedProbe := range agreeingReport.SkippedProbes {
+		if strings.Contains(skippedProbe, "version-vs-changelog") {
+			t.Fatalf("the release probes must RUN in a suite checkout, not skip: %q", skippedProbe)
+		}
+	}
+	if len(agreeingReport.NotApplicableProbes) != 0 {
+		t.Fatalf("a suite checkout is exactly where these probes apply, got not-applicable: %v", agreeingReport.NotApplicableProbes)
+	}
+
+	// The probes must actually BITE here, not merely stay silent. A report with no findings
+	// is what both a working probe and a disabled one produce on a clean repo.
+	mismatchedRoot := writeSuiteLayoutReleaseFixture(t, "**Current version**: 9.9.9", changelogBody)
+	mismatchedReport := VerifyReport{RepoRoot: mismatchedRoot}
+	appendReleaseFindings(&mismatchedReport, mismatchedRoot)
+	foundMismatch := false
+	for _, finding := range mismatchedReport.Findings {
+		if finding.Category == verifyCategoryVersionChangelogMismatch {
+			foundMismatch = true
+		}
+	}
+	if !foundMismatch {
+		t.Fatalf("a suite checkout whose version file disagrees with its newest entry must produce a mismatch finding, got %v", mismatchedReport.Findings)
+	}
+
+	// --- Half two: a consumer root is not applicable, not skipped. ----------------------
+	// do-work/ and CHANGELOG.md at the root, the suite vendored under .claude/skills/, and
+	// no version file at either location the probes know about.
+	consumerRoot := t.TempDir()
+	if mkdirError := os.MkdirAll(filepath.Join(consumerRoot, "do-work", "queue"), 0o755); mkdirError != nil {
+		t.Fatalf("mkdir consumer queue: %v", mkdirError)
+	}
+	if mkdirError := os.MkdirAll(filepath.Join(consumerRoot, ".claude", "skills", "do-work", "actions"), 0o755); mkdirError != nil {
+		t.Fatalf("mkdir vendored suite: %v", mkdirError)
+	}
+	if writeError := os.WriteFile(filepath.Join(consumerRoot, ".claude", "skills", "do-work", "actions", "version.md"),
+		[]byte("**Current version**: 1.4.0\n"), 0o644); writeError != nil {
+		t.Fatalf("write vendored version.md: %v", writeError)
+	}
+	if writeError := os.WriteFile(filepath.Join(consumerRoot, "CHANGELOG.md"),
+		[]byte("# Consumer Changelog\n\n## 7.0.0 — The Consumer's Own Release (2026-08-19)\n\nprose\n"), 0o644); writeError != nil {
+		t.Fatalf("write consumer CHANGELOG.md: %v", writeError)
+	}
+	consumerReport := VerifyReport{RepoRoot: consumerRoot}
+	appendReleaseFindings(&consumerReport, consumerRoot)
+	if len(consumerReport.Findings) != 0 {
+		t.Fatalf("a consumer root must produce no release findings — its CHANGELOG.md is its own: %v", consumerReport.Findings)
+	}
+	for _, skippedProbe := range consumerReport.SkippedProbes {
+		if strings.Contains(skippedProbe, "version-vs-changelog") || strings.Contains(skippedProbe, "release probes") {
+			t.Fatalf("a consumer root must report the release probes as not applicable, not skipped: %q", skippedProbe)
+		}
+	}
+	if len(consumerReport.NotApplicableProbes) != 1 {
+		t.Fatalf("a consumer root must report exactly one not-applicable entry, got %v", consumerReport.NotApplicableProbes)
+	}
+	notApplicableEntry := consumerReport.NotApplicableProbes[0]
+	if !strings.Contains(notApplicableEntry, "suite checkout") {
+		t.Errorf("the not-applicable reason must name the suite-checkout condition, got %q", notApplicableEntry)
+	}
+	// No path in the message: a path reads as "look here and fix it", and there is nothing
+	// for a consumer to fix — the probes verify a release ritual that is not theirs.
+	if strings.Contains(notApplicableEntry, consumerRoot) || strings.Contains(notApplicableEntry, "version.md") {
+		t.Errorf("the not-applicable reason must not name a path — nothing is missing: %q", notApplicableEntry)
+	}
+	// A not-applicable probe is no more a failure than a skipped one.
+	if consumerReport.ExitCode() != 0 {
+		t.Errorf("not-applicable release probes must not fail the run, got exit %d", consumerReport.ExitCode())
+	}
+}
+
+// TestGenuineReleaseProbeSkipsStaySkipped pins the line between the two buckets. Only the
+// not-a-suite-checkout case is not-applicable; every case reachable AFTER a version file
+// resolves is a real unverified invariant and must keep saying so, or half two would
+// swallow half one by relabelling failures as "does not apply here".
+func TestGenuineReleaseProbeSkipsStaySkipped(t *testing.T) {
+	testCases := []struct {
+		caseName      string
+		versionLine   string
+		changelogBody string
+	}{
+		{
+			caseName:      "a resolved version file with no version line",
+			versionLine:   "**Version**: 1.4.0",
+			changelogBody: "# Changelog\n\n## 1.4.0 — Newest (2026-08-19)\n\nprose\n",
+		},
+		{
+			caseName:      "a changelog with no house-format entries",
+			versionLine:   "**Current version**: 1.4.0",
+			changelogBody: "# Changelog\n\nRelease 1.4.0, shipped Tuesday.\n",
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.caseName, func(t *testing.T) {
+			repoRoot := writeSuiteLayoutReleaseFixture(t, testCase.versionLine, testCase.changelogBody)
+			report := VerifyReport{RepoRoot: repoRoot}
+			appendReleaseFindings(&report, repoRoot)
+			if len(report.NotApplicableProbes) != 0 {
+				t.Fatalf("this is an unverified invariant in a suite checkout, not an inapplicable probe: %v", report.NotApplicableProbes)
+			}
+			if len(report.SkippedProbes) == 0 {
+				t.Fatalf("a probe that could not run must be reported as skipped, got nothing")
+			}
+		})
+	}
+}
+
+// TestNextVersionResolutionIsUnchangedBySuiteFallback is the REQ's third Constraint held as
+// a test: next-version WRITES, so teaching the shared resolver about the modular layout
+// would make it start rewriting skills/do-work/actions/version.md in a repo where it
+// deliberately finds nothing and reports nothing today. The release probes' own resolver is
+// separate for exactly this reason.
+func TestNextVersionResolutionIsUnchangedBySuiteFallback(t *testing.T) {
+	repoRoot := writeSuiteLayoutReleaseFixture(t, "**Current version**: 1.4.0",
+		"# Changelog\n\n## 1.4.0 — Newest (2026-08-19)\n\nprose\n")
+	resolvedPath := resolveVersionFilePath(repoRoot, "")
+	if resolvedPath != filepath.Join(repoRoot, "actions", "version.md") {
+		t.Fatalf("resolveVersionFilePath must still yield the repo-root default for next-version, got %q", resolvedPath)
+	}
+	if _, statError := os.Stat(resolvedPath); statError == nil {
+		t.Fatalf("the suite fixture must not create the pre-split path — the point is that next-version finds nothing here")
+	}
+	overridePath := filepath.Join(repoRoot, "elsewhere", "version.md")
+	if resolveVersionFilePath(repoRoot, overridePath) != overridePath {
+		t.Fatalf("the --version-file override must still win")
+	}
+}

@@ -25,6 +25,15 @@ const currentVersionLinePrefix = "**Current version**: "
 // accelerator for a repo that matches do-work's convention, never a dependency.
 const defaultVersionFileRelativePath = "actions/version.md"
 
+// suiteVersionFileRelativePath is where the SAME version line lives in the suite's own
+// development checkout since the four-skill split: the core package became a subdirectory,
+// so `actions/version.md` stopped resolving from the repo root while the release CHANGELOG.md
+// stayed at the root. One additional known location, not a search — and deliberately NOT
+// consulted by resolveVersionFilePath, because that function is next-version's writer path
+// and teaching it this location would make next-version start rewriting a file it correctly
+// finds nothing at today (REQ-282).
+const suiteVersionFileRelativePath = "skills/do-work/actions/version.md"
+
 // semanticVersionPattern matches a bare X.Y.Z. Pre-release and build metadata are
 // deliberately unsupported: do-work versions are plain triples, and quietly
 // accepting 1.2.3-rc1 would mean quietly deciding how to bump it.
@@ -48,12 +57,39 @@ type ChangelogEntry struct {
 }
 
 // resolveVersionFilePath returns the version file to read or write: the override
-// when non-empty, else <repoRoot>/actions/version.md.
+// when non-empty, else <repoRoot>/actions/version.md. Read-and-WRITE, so its resolution is
+// deliberately narrow — see resolveReleaseProbeVersionFilePath for the read-only variant.
 func resolveVersionFilePath(repoRoot string, versionFileOverride string) string {
 	if strings.TrimSpace(versionFileOverride) != "" {
 		return versionFileOverride
 	}
 	return filepath.Join(repoRoot, defaultVersionFileRelativePath)
+}
+
+// resolveReleaseProbeVersionFilePath finds the version file the READ-ONLY release probes
+// should compare against, and reports whether this repo root is a suite checkout at all.
+//
+// Two known locations, tried in order — the pre-split root path first so nothing that
+// already worked changes, then the modular suite path. Existence is the whole test: the
+// REQ's constraint is that detecting "not a suite checkout" must not become its own
+// inference engine, and it does not need to be, because these are the only two layouts the
+// suite has ever had.
+//
+// Neither present means this root is not a suite checkout — a consumer install, where the
+// root CHANGELOG.md belongs to the consumer and the release ritual being probed is not
+// theirs. That is reported as NOT APPLICABLE rather than skipped: a skipped probe is an
+// unverified invariant someone should act on, and there is nothing here to act on.
+// Deliberately NOT a walk up to a vendored suite root — see the REQ-282 constraint and
+// decisions/records/adr-019-four-skill-suite-contract.md, which already assigns install
+// integrity to the updater.
+func resolveReleaseProbeVersionFilePath(repoRoot string) (versionFilePath string, isSuiteCheckout bool) {
+	for _, relativePath := range []string{defaultVersionFileRelativePath, suiteVersionFileRelativePath} {
+		candidatePath := filepath.Join(repoRoot, relativePath)
+		if fileInfo, statError := os.Stat(candidatePath); statError == nil && !fileInfo.IsDir() {
+			return candidatePath, true
+		}
+	}
+	return "", false
 }
 
 // readCurrentVersion returns the X.Y.Z on the file's `**Current version**: `

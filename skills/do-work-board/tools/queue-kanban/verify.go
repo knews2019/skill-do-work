@@ -67,13 +67,20 @@ type VerifyFinding struct {
 	Remedy   string
 }
 
-// VerifyReport is the whole read-only result: what was wrong, and which probes
-// could not run. A skipped probe is reported, never silently dropped — silence
-// would read as "checked and clean."
+// VerifyReport is the whole read-only result: what was wrong, which probes could not run,
+// and which do not apply to this repo at all. A skipped probe is reported, never silently
+// dropped — silence would read as "checked and clean."
+//
+// SkippedProbes and NotApplicableProbes are different claims and are rendered separately.
+// Skipped means "this invariant is real here and went unverified" — someone should act.
+// Not applicable means "this invariant is not this repo's" — there is nothing to act on,
+// and filing it as a skip trains readers to scroll past the skipped section, including on
+// the day a genuinely skipped probe means something (REQ-282).
 type VerifyReport struct {
-	RepoRoot      string
-	Findings      []VerifyFinding
-	SkippedProbes []string
+	RepoRoot            string
+	Findings            []VerifyFinding
+	SkippedProbes       []string
+	NotApplicableProbes []string
 }
 
 // FixableCount is how many findings `do-work cleanup` can resolve mechanically.
@@ -87,8 +94,9 @@ func (report VerifyReport) FixableCount() int {
 	return fixableCount
 }
 
-// ExitCode is 1 when there are findings, 0 otherwise. Skipped probes do not fail
-// the run — a missing git binary is not a repo defect.
+// ExitCode is 1 when there are findings, 0 otherwise. Neither skipped nor not-applicable
+// probes fail the run — a missing git binary is not a repo defect, and neither is a repo
+// that simply is not the suite.
 func (report VerifyReport) ExitCode() int {
 	if len(report.Findings) > 0 {
 		return 1
@@ -149,7 +157,17 @@ func appendStrayRequestFileFindings(report *VerifyReport, board *Board) {
 // CHANGELOG.md entry, and that entry's title must not already be in use. They are
 // the two cross-file checks, and the two that have already been gotten wrong.
 func appendReleaseFindings(report *VerifyReport, repoRoot string) {
-	versionFilePath := resolveVersionFilePath(repoRoot, "")
+	// Not the writer's resolver: this one knows the modular suite layout, and it separates
+	// "no version file anywhere" (this is not a suite checkout, so the probes do not apply)
+	// from every failure reachable after one resolves (a real unverified invariant, still
+	// skipped). Collapsing those two is what would let the not-applicable path silence the
+	// probes in the very repo that owns them — the failure REQ-282 exists to end.
+	versionFilePath, isSuiteCheckout := resolveReleaseProbeVersionFilePath(repoRoot)
+	if !isSuiteCheckout {
+		report.NotApplicableProbes = append(report.NotApplicableProbes,
+			"release probes: they verify the suite's own release ritual, and this repo root is not a suite checkout")
+		return
+	}
 	changelogPath := filepath.Join(repoRoot, "CHANGELOG.md")
 
 	currentVersion, versionError := readCurrentVersion(versionFilePath)
@@ -864,6 +882,11 @@ func renderVerifyReport(report VerifyReport) string {
 	}
 	for _, skippedProbe := range report.SkippedProbes {
 		fmt.Fprintf(&builder, "  - skipped %s\n", skippedProbe)
+	}
+	// Rendered with its own marker and word so a reader can tell the two apart at a glance:
+	// a skip is work left undone, a not-applicable is a question this repo was never asked.
+	for _, notApplicableProbe := range report.NotApplicableProbes {
+		fmt.Fprintf(&builder, "  ~ not applicable: %s\n", notApplicableProbe)
 	}
 	if fixableCount := report.FixableCount(); fixableCount > 0 {
 		fmt.Fprintf(&builder, "  %d fixable: run do-work cleanup\n", fixableCount)

@@ -208,6 +208,8 @@ Exit 0 means no findings. Exit 1 means findings were printed — **a finding, no
 
 **The table is the probe set as it stands, not a contract** — the tool is the authority, and its output names every probe that ran, so read the output rather than assuming this list is complete. A probe it could not run (no git, no version line, a changelog in a different convention) is reported as `- skipped …` rather than passing silently. Report those too — a skipped probe is an unverified invariant, not a clean one.
 
+**`~ not applicable: …` is a different claim from `- skipped …`, and only the second is unverified work.** Not-applicable means the invariant is not this repo's to hold, so there is nothing to act on and nothing to report as a gap. **In a consumer install, expect the three release probes there**: they check the do-work suite's own release ritual — its version file against its newest `CHANGELOG.md` entry, versions strictly increasing, titles not reused — and a consumer's root `CHANGELOG.md` is the consumer's own. Reporting that as a skip is what trains a reader to scroll past the skipped section, including on the day a genuinely skipped probe means something. In the suite's own development checkout those three probes **do** run, and a skip there is a real gap.
+
 ## Output Format
 
 The report's `<timestamp>` is the current UTC instant (Timestamp rule, `actions/work-reference.md`).
