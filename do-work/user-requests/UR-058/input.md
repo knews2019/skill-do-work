@@ -25,14 +25,14 @@ independently (the mtime cache's behaviour, and the probe cost).
 | Finding | Verdict | Captured as |
 |---|---|---|
 | F1 — render all sixteen categories on the board | Accept | REQ-284 (producer) + REQ-285 (client) |
-| F2 — C1, the mtime cache cannot see time or git state | Diagnosis accepted, 5s TTL rejected | **Held** — serve-path placement under discussion with the maintainer |
+| F2 — C1, the mtime cache cannot see time or git state | Diagnosis accepted, 5s TTL rejected | REQ-284 — serve computes findings fresh per request, no TTL. Maintainer confirmed: the dataset is small and the tool runs on fast machines |
 | F3 — C2, probe cost is ~30ms | Accept (measured independently: 0.13s summary vs 0.17s verify on this repo) | No work — evidence only |
 | F4 — C3, three categories would render three times | Accept | REQ-284 (suppression in the Go producer) |
-| F5 — C4, `generate` publishes a shareable snapshot | Discuss | **Held** — the `scope` enum is disputed; agent-name half already ships |
+| F5 — C4, `generate` publishes a shareable snapshot | Accept, remedy replaced | REQ-284 — no `scope` enum; no absolute path in the emitted JSON at all, pinned by a `generate_test.go` assertion |
 | F6 — C5, permanent unfixable version-probe skip | Accept, remedy amended | **Already queued as REQ-282** (UR-057, captured minutes earlier from a different upstream document by the same consumer) — not re-captured |
 | F7 — suggested code shape | Accept, minus the `scope` parameter | REQ-284, REQ-285 |
 | F8 — tests worth adding | Accept, two cases amended | REQ-284, REQ-285, REQ-286 |
-| F9 — lesser alternative, a `kanban-verify` just recipe | Push back | **Held** — closing the discussion with the maintainer |
+| F9 — lesser alternative, a `kanban-verify` just recipe | Push back | Not captured. Superseded by queued REQ-283 (UR-057), which routes `verify` through `do-work-board` with no Justfile surface |
 
 ## Batch Constraints
 
@@ -59,6 +59,16 @@ Three premise errors in the document, verified against the code, that the builde
    `--version-file` override. All three release categories are dead by default everywhere.
 
 One path slip: the installer is `tools/install-do-work-suite.sh`, not `do-work/tools/…`.
+
+## Decisions taken with the maintainer
+
+- **F2 — no cache.** Findings are computed on every `/board-data.js` request. The maintainer's reason: the
+  dataset is small and this tool runs on fast machines. The mtime cache on the board build stays.
+- **F5 — nothing that leaves the machine carries an absolute path.** Stated by the maintainer as the
+  general rule: a path that resolves here means something else, or nothing, elsewhere. It replaces the
+  upstream `scope` enum, applies to both callers, and is pinned by a test rather than by prose.
+- **F9 — no Justfile recipe.** REQ-283 already delivers the reachability half through the skill that owns
+  the tool. Nothing was queued for F9, so there was nothing to cancel.
 
 ## Duplicate found at capture
 

@@ -12,7 +12,13 @@ depends_on: []
 maintenance: false
 related: [REQ-285, REQ-280, REQ-281, REQ-282]
 batch: verify-findings-on-board
-write_set: [skills/do-work-board/tools/queue-kanban/verify.go, skills/do-work-board/tools/queue-kanban/verify_test.go, skills/do-work-board/tools/queue-kanban/generate.go, skills/do-work-board/tools/queue-kanban/generate_test.go]
+write_set:
+- skills/do-work-board/tools/queue-kanban/verify.go
+- skills/do-work-board/tools/queue-kanban/verify_test.go
+- skills/do-work-board/tools/queue-kanban/generate.go
+- skills/do-work-board/tools/queue-kanban/generate_test.go
+- skills/do-work-board/tools/queue-kanban/serve.go
+- skills/do-work-board/tools/queue-kanban/board_live_test.go
 ---
 
 # Emit Every Verify Finding From the Board's Go Producer
@@ -22,7 +28,8 @@ write_set: [skills/do-work-board/tools/queue-kanban/verify.go, skills/do-work-bo
 Split `runVerifyProbes` into a board-taking `collectVerifyFindings(repoRoot, board, now)` plus a thin
 wrapper that builds the board first, then carry the resulting findings into `generatedBoardData` as
 `verifyFindings` and `verifySkipped`. Suppress the three categories the board already renders, in the
-producer, so the client can render the list blindly.
+producer, so the client can render the list blindly. Wire both callers: `generate` for the static
+snapshot, and `serve` per `/board-data.js` request outside the mtime cache.
 
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
@@ -61,9 +68,16 @@ is the pattern to follow here.
   a third time. Suppression happens in the Go producer, not in JS.
 - `verifySkipped` still carries skipped probes. A skipped probe that renders as nothing reads as "checked
   and clean", which is the same never-silent rule `verify.go` already states about its integration-ref skip.
+- **Serve computes findings fresh on every `/board-data.js` request**, calling
+  `collectVerifyFindings(repoRoot, cachedBoard, time.Now())` outside `refreshBoardData`'s mtime-gated
+  path. No TTL, no second cache. The mtime cache on the board build itself stays exactly as it is.
+- **No absolute filesystem path may appear anywhere in the emitted JSON.** The worktree probe's detail
+  carries `git worktree list --porcelain` output, which is absolute. Reduce it where
+  `generatedVerifyFinding` is built, once, for both callers. The CLI report keeps its absolute paths —
+  they are useful next to a shell on the machine that produced them.
 - Do **not** add a `scope` parameter. The upstream document proposed `scope: all | queueOnly` to keep
-  git-derived findings out of the shareable static snapshot; that concern is being resolved separately
-  and its remedy is expected to be relativizing paths at the source rather than a per-caller enum.
+  git-derived findings out of the shareable static snapshot. The path reduction above covers the same
+  risk for both surfaces without a per-caller enum, and needs no test asserting an enum behaves.
 
 ## Constraints
 
@@ -74,6 +88,18 @@ is the pattern to follow here.
   `verifySkipped` list this REQ adds carries whatever that probe reports, before or after REQ-282 lands.
 - The `fixable` flag must keep its exact current meaning — `do-work cleanup` can mechanically resolve it.
   An inflated count sends the user to a command that will not help (`verify.go`, `VerifyFinding` doc comment).
+
+**Two decisions made with the maintainer during capture — do not re-litigate them mid-build:**
+
+- **No cache for the findings.** The upstream document proposed a 5s TTL. Measured on this repo at 280
+  tickets, best of three warm: `summary` 0.13s, `verify` 0.17s — roughly 40ms for the whole probe set, on
+  a page that only reloads manually. The board build is the expensive half and is correctly keyed on
+  mtime, because claim data cannot change without a file changing; the probes are the cheap half and two
+  of their inputs are not files at all. A second cache added to work around the first cache's blind spot
+  reintroduces the exact failure being fixed: a stale cache hiding a finding.
+- **Nothing that leaves this machine carries an absolute path.** A path that is meaningful here means
+  something else, or nothing, on the machine that opens the shared snapshot. This is the reason for the
+  path reduction above, and the `generate_test.go` assertion below is what keeps it true.
 
 ## Dependencies
 
@@ -87,8 +113,9 @@ resolve if two land close together.
 
 ## Builder Guidance
 
-Firm. The shape is specified and the suppression list is closed. Keep the diff to the four files in the
-write set; the serve wiring is deliberately a separate REQ that does not exist yet.
+Firm. The shape is specified, the suppression list is closed, and the two capture decisions above are
+settled. The serve wiring is three lines and a test, which is why it is folded in here rather than
+carried as its own REQ.
 
 ## Red-Green Proof
 
@@ -105,11 +132,23 @@ purely because `now` advanced; and `verifyFindings` in the generated JSON contai
 finding with its remedy while containing no `completion-anomaly`, `duplicate-req-id`, or
 `stray-req-file` entry.
 
-**Validation:** User confirmed (accepted as F1, F4, F7 in the `do-work validate-feedback` triage).
+**Two further cases, each pinning one of the capture decisions:**
+
+- `generate_test.go` — with a `worktree-agent-*` leftover present, no string in the emitted JSON starts
+  with the repo root or any other absolute path. RED today because the field does not exist; it stays
+  meaningful afterwards because the worktree probe's detail is absolute at its source, so the assertion
+  fails the moment someone forwards it unreduced. This test is the durable record of the no-absolute-paths
+  decision — prose would drift, the assertion cannot.
+- `board_live_test.go` — two successive `/board-data.js` requests with no file changed between them, and
+  a claim that crosses the threshold between them, both carry the finding on the second request. RED today
+  because `refreshBoardData` returns the cached payload with only `GeneratedAt` rewritten (`serve.go:318-327`).
+
+**Validation:** User confirmed (accepted as F1, F4, F7 in the `do-work validate-feedback` triage; the
+caching and absolute-path decisions confirmed directly during capture).
 
 ## Full Context
 
 See `do-work/user-requests/UR-058/input.md` for the complete verbatim input and the triage verdicts.
 
 ---
-*Source: upstream suggestion for `knews2019/skill-do-work`, observed against v0.212.25 — "Suggested shape" items 1 and 2, plus C3.*
+*Source: upstream suggestion for `knews2019/skill-do-work`, observed against v0.212.25 — "Suggested shape" items 1, 2 and 4, plus C1, C3 and C4.*
