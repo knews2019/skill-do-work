@@ -11,11 +11,16 @@
     --rule: #ddd5c7;
     --accent: #9a3412;
     --accent-soft: #c2694a;
-    --pick: #3f6152;
-    --warn: #a13d2d;
+    --ok: #3f6152;
+    --bad: #a13d2d;
     --cool: #2f5d7c;
+    --slot: rgba(154, 52, 18, 0.13);
+    --box: rgba(47, 93, 124, 0.16);
     --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    /* Copied verbatim from board.css:65 — the stack under discussion. */
+    --board-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -27,9 +32,11 @@
       --rule: #3a352a;
       --accent: #e2825c;
       --accent-soft: #c2694a;
-      --pick: #86b39c;
-      --warn: #e08a72;
+      --ok: #86b39c;
+      --bad: #e08a72;
       --cool: #7fb0d4;
+      --slot: rgba(226, 130, 92, 0.18);
+      --box: rgba(127, 176, 212, 0.20);
     }
   }
   * { box-sizing: border-box; }
@@ -38,160 +45,356 @@
     font-family: var(--display); font-size: 17px; line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
-  .page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }
-  .measure { max-width: 76ch; }
+  .page { width: 100%; padding: 0 clamp(20px, 2.6vw, 56px) 90px; }
+  .measure { max-width: 74ch; }
   .kicker {
     font-family: var(--mono); font-size: 12px; letter-spacing: .14em;
     text-transform: uppercase; color: var(--muted); margin: 0 0 10px;
   }
-  header.hero { padding: 60px 0 36px; border-bottom: 2px solid var(--rule); }
-  h1 { font-size: clamp(32px, 4.2vw, 52px); line-height: 1.08; margin: 0 0 22px; font-weight: 600; letter-spacing: -.015em; }
-  .verdict { font-size: clamp(19px, 1.7vw, 23px); line-height: 1.5; margin: 0 0 10px; }
+  header.hero { padding: 56px 0 34px; border-bottom: 2px solid var(--rule); }
+  h1 { font-size: clamp(31px, 4vw, 50px); line-height: 1.08; margin: 0 0 20px; font-weight: 600; letter-spacing: -.015em; }
+  .verdict { font-size: clamp(18px, 1.6vw, 22px); line-height: 1.5; margin: 0 0 10px; }
   .verdict strong { color: var(--accent); font-weight: 600; }
-  .sub { color: var(--muted); font-size: 15.5px; margin-top: 18px; }
-  section { padding: 44px 0; border-bottom: 1px solid var(--rule); }
-  h2 { font-size: clamp(23px, 2.2vw, 30px); margin: 0 0 14px; font-weight: 600; letter-spacing: -.01em; }
-  h3 { font-size: 19px; margin: 0 0 8px; font-weight: 600; }
-  p { margin: 0 0 16px; }
-  code, .m { font-family: var(--mono); font-size: .87em; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
-  .opts { display: flex; flex-direction: column; gap: 20px; margin: 26px 0 0; }
+  .sub { color: var(--muted); font-size: 15px; margin-top: 16px; }
+  section { padding: 42px 0; border-bottom: 1px solid var(--rule); }
+  h2 { font-size: clamp(22px, 2.1vw, 29px); margin: 0 0 12px; font-weight: 600; letter-spacing: -.01em; }
+  h3 { font-size: 18.5px; margin: 0 0 8px; font-weight: 600; }
+  p { margin: 0 0 15px; }
+  code, .m { font-family: var(--mono); font-size: .86em; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+
+  figure { margin: 26px 0 0; }
+  figure svg { max-width: 100%; height: auto; display: block; }
+  .figframe {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 20px 22px; overflow-x: auto;
+  }
+  figcaption {
+    font-size: 14.5px; color: var(--muted); margin-top: 12px; max-width: 78ch; line-height: 1.5;
+  }
+  figcaption b { color: var(--text); font-weight: 600; }
+
+  /* Live probes render real SVG <text> at the board's own 11px sizes. */
+  .live text { font-size: 11px; }
+  .live .board { font-family: var(--board-sans); }
+  /* .over and .tall are assigned at load from the widest / tallest face this
+     machine actually has — see the chart script. */
+  .live .over, .live .tall { font-family: sans-serif; }
+  .live .ink { fill: currentColor; }
+  .live .slotrect { fill: var(--slot); }
+  .live .boxrect { fill: var(--box); }
+  .live .guide { stroke: currentColor; stroke-width: .3; opacity: .35; }
+  .live .tinylabel { font-family: var(--mono); font-size: 3.4px; fill: currentColor; opacity: .6; }
+
+  .tablewrap { overflow-x: auto; margin: 22px 0 0; }
+  table { border-collapse: collapse; font-size: 15px; min-width: 560px; }
+  th, td { text-align: left; padding: 9px 18px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .num { font-family: var(--mono); }
+  .pass { color: var(--ok); font-weight: 600; }
+  .fail { color: var(--bad); font-weight: 600; }
+  .warn { color: var(--accent); font-weight: 600; }
+
+  .opts { display: flex; flex-direction: column; gap: 18px; margin: 24px 0 0; }
   .opt {
     background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--rule);
-    border-radius: 10px; padding: 22px 26px; max-width: 90ch;
+    border-radius: 10px; padding: 20px 24px; max-width: 96ch;
   }
-  .opt.pick { border-left-color: var(--pick); }
-  .opt.no { border-left-color: var(--warn); }
+  .opt.pick { border-left-color: var(--ok); }
+  .opt.no { border-left-color: var(--bad); }
   .opt.maybe { border-left-color: var(--cool); }
   .opt .tag {
     font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase;
     color: var(--muted); display: block; margin-bottom: 6px;
   }
-  .opt.pick .tag { color: var(--pick); }
-  .opt dl { margin: 14px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 15.5px; }
-  .opt dt { font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-top: 4px; }
+  .opt.pick .tag { color: var(--ok); }
+  .opt dl { margin: 12px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 15px; }
+  .opt dt { font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-top: 4px; }
   .opt dd { margin: 0; }
-  .tablewrap { overflow-x: auto; margin: 24px 0 0; }
-  table { border-collapse: collapse; font-size: 15px; min-width: 640px; }
-  th, td { text-align: left; padding: 9px 16px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
-  th { font-family: var(--mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
-  .num { font-family: var(--mono); }
+
   .callout {
     background: var(--surface-2); border-left: 3px solid var(--accent-soft);
-    padding: 18px 24px; border-radius: 0 8px 8px 0; margin: 24px 0; max-width: 84ch;
+    padding: 16px 22px; border-radius: 0 8px 8px 0; margin: 22px 0; max-width: 82ch;
   }
   .callout p:last-child { margin-bottom: 0; }
-  ul { margin: 0 0 16px; padding-left: 22px; }
-  li { margin-bottom: 8px; }
-  footer { padding: 40px 0 0; color: var(--muted); font-size: 14.5px; }
+  ul { margin: 0 0 15px; padding-left: 22px; }
+  li { margin-bottom: 7px; }
+  footer { padding: 36px 0 0; color: var(--muted); font-size: 14.5px; }
+
+  .chart text { font-family: var(--mono); fill: var(--muted); }
+  .chart .facename { fill: var(--text); font-size: 12px; }
+  .chart .facename.here { font-weight: 700; }
+  .chart .value { font-size: 11.5px; }
+  .chart .bar { fill: var(--cool); }
+  .chart .bar.over { fill: var(--bad); }
+  .chart .bar.here { stroke: var(--text); stroke-width: 1.4; }
+  .chart .ceiling { stroke: var(--text); stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .8; }
+  .chart .ceilinglabel { font-size: 11.5px; fill: var(--text); }
+  .chart .charttitle { font-size: 13px; fill: var(--text); font-family: var(--display); }
+  .chart .axis { stroke: var(--rule); stroke-width: 1; }
 </style>
 
 <div class="page">
 
 <header class="hero">
   <div class="measure">
-    <p class="kicker">Board · Durations view · successor to REQ-278</p>
-    <h1>The label face is unbounded. Bound it, don't survey it.</h1>
-    <p class="verdict"><strong>Recommendation: bundle one font and pin the labels to it (O1).</strong> It is the only option that closes both the vertical and the horizontal exposure at once, keeps every existing Go test meaningful, and needs no measurement anyone has to repeat.</p>
-    <p class="sub">Solutions report, written 2026-08-19 after REQ-278 was cancelled for scoping the work as cross-OS font measurement. Every number quoted below is read from this repo's own source and comments; none was re-measured for this report.</p>
+    <p class="kicker">Board · Durations view · successor to the cancelled REQ-278</p>
+    <h1>The label face is unbounded. Bound it — don't survey it.</h1>
+    <p class="verdict"><strong>Recommendation: ship one font file and pin the chart labels to it (O1).</strong> Sections 1, 3 and 4 are measured live by your own browser as this page loads, so the report shows the case instead of asserting it.</p>
+    <p class="sub" id="platform-line">Solutions report, 2026-08-19.</p>
   </div>
 </header>
 
 <section>
   <div class="measure">
-    <h2>The actual constraint</h2>
-    <p>The Durations view draws each sample's label as an SVG <code>&lt;text&gt;</code> element. Two numbers govern whether those labels collide, and <em>both</em> are hard-coded measurements of one particular typeface:</p>
+    <h2>1 · What your machine actually draws</h2>
+    <p>The board sizes its Durations labels from two constants baked into the source. Both were measured in a Linux container. This page just rendered the same 11px text in the same font stack on <em>your</em> machine and measured it:</p>
   </div>
+
+  <svg id="probe-svg" width="1" height="1" style="position:absolute;opacity:0;pointer-events:none" aria-hidden="true">
+    <text id="probe-text" x="0" y="0"></text>
+  </svg>
+
   <div class="tablewrap">
-    <table>
-      <tr><th>Number</th><th>Where</th><th>What it claims</th><th>Failure mode if wrong</th></tr>
+    <table id="probe-table">
       <tr>
-        <td class="num">7.15</td>
-        <td class="m">durations.go:250</td>
-        <td>units of width per label character — the collision model's upper bound</td>
-        <td><strong>Visible.</strong> Under-estimate and two labels overprint — the exact defect UR-051 was raised to fix.</td>
+        <th>Quantity</th><th>Recorded on Linux</th><th>Your browser draws</th><th>Against the design's own ceiling</th>
       </tr>
-      <tr>
-        <td class="num">13</td>
-        <td class="m">board-durations.js:60</td>
-        <td>vertical pitch between the two label rows</td>
-        <td><strong>Not visible.</strong> Rows overlap in <em>line box</em>, which is padding; the ink stays clear. What breaks is the clearance claim, not the render.</td>
-      </tr>
+      <tbody id="probe-rows">
+        <tr><td colspan="4" class="num">measuring…</td></tr>
+      </tbody>
     </table>
   </div>
+
   <div class="measure">
-    <p>The largest label box ever measured here is <span class="num">12.9631</span> units against that 13-unit pitch — <span class="num">0.037</span> of slack. Every sample was taken in a Linux container, and <code>board.css:65</code> ends <code>--font-sans</code> in the open <code>sans-serif</code> generic, so nothing constrains what a Mac or Windows machine resolves. The repo's own comment already says so, at <code>durations_test.go</code>: <em>"What this constant is NOT is a supremum over the face space."</em></p>
-
-    <div class="callout">
-      <p><strong>The horizontal axis is the dangerous one, and REQ-278 never mentioned it.</strong> A wider face than 7.15 units per character causes real overprinting; a taller face only invalidates a claim. Any fix that addresses only the pitch leaves the visible failure in place.</p>
-    </div>
-
-    <p>There is a second structural fact that shapes every option below: <strong>label placement runs in Go, at generate time, before any browser exists.</strong> <code>planDurationLabels</code> (<code>durations.go:481-518</code>) assigns each sample a row and an anchor side using the 7.15 constant. It cannot measure the font that will resolve at view time, because at that moment there is no font. Runtime measurement therefore is not a tweak — it means moving or duplicating that algorithm.</p>
+    <p class="sub" id="probe-note"></p>
   </div>
 </section>
 
 <section>
   <div class="measure">
-    <h2>Options</h2>
-    <p>Ordered by how much of the problem each one actually closes.</p>
+    <h2>2 · Why nobody can fix this by measuring</h2>
+    <p>Label placement is decided in Go, when the HTML file is generated. The font is decided by the browser, when someone opens it. The constant never meets the face it is describing.</p>
+  </div>
+
+  <figure>
+    <div class="figframe">
+      <svg viewBox="0 0 900 296" role="img" width="900"
+           aria-label="Generate time in Go decides the 7.15-unit width constant and the 13-unit row pitch with no font available; view time in the browser resolves the open sans-serif generic to an unknown face. The constant assumes a face it never sees.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+          <marker id="ar-warn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#c2694a"/>
+          </marker>
+        </defs>
+
+        <path d="M 125 76 C 125 12 780 12 748 104" fill="none" stroke="#c2694a" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#ar-warn)"/>
+        <text x="330" y="24" font-size="13" font-family="ui-monospace, monospace" fill="#c2694a" font-weight="600">assumes a face it never measures</text>
+
+        <line x1="565" y1="52" x2="565" y2="258" stroke="currentColor" stroke-width="1" stroke-dasharray="5 5" opacity=".45"/>
+
+        <rect x="10" y="76" width="230" height="78" rx="7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="26" y="102" font-size="14" fill="currentColor" font-weight="600">durations.go</text>
+        <text x="26" y="124" font-size="12.5" font-family="ui-monospace, monospace" fill="currentColor">7.15 units / char</text>
+        <text x="26" y="142" font-size="12.5" font-family="ui-monospace, monospace" fill="currentColor">planDurationLabels()</text>
+
+        <rect x="10" y="180" width="230" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="26" y="206" font-size="14" fill="currentColor" font-weight="600">board-durations.js</text>
+        <text x="26" y="226" font-size="12.5" font-family="ui-monospace, monospace" fill="currentColor">ROW_HEIGHT = 13</text>
+
+        <rect x="320" y="130" width="180" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="336" y="156" font-size="14" fill="currentColor" font-weight="600">board.html</text>
+        <text x="336" y="176" font-size="12.5" font-family="ui-monospace, monospace" fill="currentColor">x, y already fixed</text>
+
+        <rect x="620" y="130" width="250" height="60" rx="7" fill="none" stroke="#c2694a" stroke-width="1.8"/>
+        <text x="636" y="156" font-size="14" fill="currentColor" font-weight="600">whatever --font-sans hits</text>
+        <text x="636" y="176" font-size="12.5" font-family="ui-monospace, monospace" fill="currentColor">…, Arial, sans-serif</text>
+
+        <line x1="240" y1="115" x2="316" y2="146" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+        <line x1="240" y1="210" x2="316" y2="176" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+        <line x1="500" y1="160" x2="616" y2="160" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+        <text x="516" y="152" font-size="11.5" font-family="ui-monospace, monospace" fill="currentColor" opacity=".7">renders</text>
+
+        <text x="10" y="278" font-size="12" font-family="ui-monospace, monospace" fill="currentColor" opacity=".6">GENERATE TIME · no browser exists</text>
+        <text x="600" y="278" font-size="12" font-family="ui-monospace, monospace" fill="currentColor" opacity=".6">VIEW TIME · the font resolves</text>
+      </svg>
+    </div>
+    <figcaption><b>The gap the constants sit across.</b> Placement runs before a browser exists, so the only two ways to close it are to make the right-hand box deterministic (O1) or to move placement into it (O2). Everything else patches a symptom.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="measure">
+    <h2>3 · The face space, measured on your machine</h2>
+    <p>"Unbounded" is a claim, so here it is as data. Every face below was rendered at 11px in a real SVG <code>&lt;text&gt;</code> when this page loaded, and measured the same way the recorded constants were. Faces your system does not have are dropped rather than silently substituted.</p>
+  </div>
+
+  <figure>
+    <div class="figframe" id="chart-box"></div>
+    <figcaption><b>Line box height against the 13-unit row pitch.</b> The pitch is the design's own ceiling — a face above the line breaks the clearance the model claims. The theatrical faces (Zapfino, Papyrus and friends) are deliberately excluded; the risk is an ordinary UI face, not a novelty one.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="figframe" id="chart-width"></div>
+    <figcaption><b>Width per character against the 7.15 units the collision model reserves.</b> Measured on a run of digits, the worst case the repo's own constant is calibrated against. A face above this line makes labels overrun the slots the placement algorithm assigned them — the overprinting defect, arriving through the back door.</figcaption>
+  </figure>
+
+  <div class="measure">
+    <div class="callout" id="spread-callout"><p>Measuring…</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="measure">
+    <h2>4 · What each failure looks like, drawn at 3×</h2>
+    <p>Real SVG <code>&lt;text&gt;</code> at the board's own geometry, magnified 3× and drawn by your browser now. Tinted blocks are what the model reserved.</p>
+  </div>
+
+  <figure class="live">
+    <div class="figframe">
+      <svg id="fig-horizontal" viewBox="0 0 660 180" role="img" width="660"
+           aria-label="A worst-case digit run inside the slot the collision model reserved for it. In the board's face the text fits; in a wider face the same string overruns into the next slot.">
+        <g transform="scale(3)">
+          <text class="tinylabel" id="fh-label-a" x="2" y="8">board face</text>
+          <rect class="slotrect" x="2" y="11" width="71.5" height="13"/>
+          <rect class="slotrect" x="74.5" y="11" width="71.5" height="13"/>
+          <text class="board ink" x="2" y="21">4444444444</text>
+          <text class="board ink" x="74.5" y="21">4444444444</text>
+
+          <text class="tinylabel" id="fh-label-b" x="2" y="37">a wider face</text>
+          <rect class="slotrect" x="2" y="40" width="71.5" height="13"/>
+          <rect class="slotrect" x="74.5" y="40" width="71.5" height="13"/>
+          <text class="over ink" x="2" y="50">4444444444</text>
+          <text class="over ink" x="74.5" y="50">4444444444</text>
+          <line id="fh-overrun" x1="73.5" y1="42" x2="73.5" y2="55" stroke="#a13d2d" stroke-width="0.6"/>
+        </g>
+      </svg>
+    </div>
+    <figcaption><b>Horizontal — this one is visible.</b> Each block is exactly <span class="num">10 × 7.15</span> units, the width the Go collision model reserved before any font existed. When the resolved face draws wider, the label crosses into its neighbour. The cancelled REQ-278 never mentioned this axis; it is the half that actually breaks the render.</figcaption>
+  </figure>
+
+  <figure class="live">
+    <div class="figframe">
+      <svg id="fig-vertical" viewBox="0 0 660 250" role="img" width="660"
+           aria-label="Two label rows 13 units apart. In a taller face their line boxes overlap while the drawn glyphs stay clear, so the render looks correct while the clearance claim is false.">
+        <g transform="scale(3)">
+          <text class="tinylabel" id="fv-label-a" x="2" y="8">board face</text>
+          <rect class="boxrect" id="vbox-a1" x="2" y="9" width="104" height="13"/>
+          <rect class="boxrect" id="vbox-a2" x="2" y="22" width="104" height="13"/>
+          <text class="board ink" x="2" y="19">REQ-274 2h 14m</text>
+          <text class="board ink" x="2" y="32">REQ-276 1h 02m</text>
+
+          <text class="tinylabel" id="fv-label-b" x="2" y="48">a taller face</text>
+          <rect class="boxrect" id="vbox-b1" x="2" y="49" width="104" height="13.5"/>
+          <rect class="boxrect" id="vbox-b2" x="2" y="62" width="104" height="13.5"/>
+          <text class="tall ink" x="2" y="59">REQ-274 2h 14m</text>
+          <text class="tall ink" x="2" y="72">REQ-276 1h 02m</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption><b>Vertical — this one is not visible.</b> The tinted rectangles are line boxes, which are padding rather than ink. Where they intersect the glyphs still read as two clean rows. What breaks is the ability to <em>assert</em> row-against-row separation, which is why this half is a record-correctness problem and not a shipped rendering defect. Fixing it alone would be fixing the harmless half.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="measure">
+    <h2>5 · Options</h2>
+    <p>Ordered by how much of the problem each one closes. The small diagram in each is the same pipeline as section 2, with the edge that option changes drawn in colour.</p>
   </div>
 
   <div class="opts">
 
     <div class="opt pick">
       <span class="tag">O1 · Recommended</span>
-      <h3>Ship a font and pin the labels to it</h3>
-      <p>Embed one <code>.woff2</code> next to the existing assets — <code>generate.go:22</code> already does <code>//go:embed web/template.html web/board.css web/*.js</code>, so an added file needs one glob and no new machinery — declare it as an <code>@font-face</code>, and set <code>.durations-mark-label</code> (and the tick and axis-title faces, which have the same exposure) to that family with a concrete last-resort fallback rather than the open generic.</p>
-      <p>Both constants then describe a typeface this project ships. They are measured once, on any machine, and they are true everywhere the board is ever opened. The whole class of "what does Segoe UI draw" questions stops existing rather than being answered.</p>
+      <h3>Ship a font file and pin the chart labels to it</h3>
+      <p>Embed one subset <code>.woff2</code> beside the assets <code>generate.go:22</code> already embeds, declare an <code>@font-face</code>, and point the label class at that family instead of at a stack ending in an open generic. Both constants then describe a file this project ships — measured once, on any machine, true everywhere the board is opened.</p>
+
+      <figure>
+        <div class="figframe">
+          <svg viewBox="0 0 700 126" role="img" width="700"
+               aria-label="With a bundled font, the view-time box holds a known font file, so the generate-time constant describes something determinate.">
+            <rect x="8" y="30" width="170" height="52" rx="7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="22" y="52" font-size="13" fill="currentColor" font-weight="600">durations.go</text>
+            <text x="22" y="70" font-size="11.5" font-family="ui-monospace, monospace" fill="currentColor">7.15 units / char</text>
+            <rect x="400" y="30" width="212" height="52" rx="7" fill="none" stroke="#3f6152" stroke-width="2"/>
+            <text x="414" y="52" font-size="13" fill="currentColor" font-weight="600">bundled .woff2</text>
+            <text x="414" y="70" font-size="11.5" font-family="ui-monospace, monospace" fill="currentColor">one known face, always</text>
+            <line x1="178" y1="56" x2="396" y2="56" stroke="#3f6152" stroke-width="2" marker-end="url(#ar)"/>
+            <text x="212" y="48" font-size="11.5" font-family="ui-monospace, monospace" fill="#3f6152" font-weight="600">describes — verifiably</text>
+            <text x="8" y="108" font-size="11.5" fill="currentColor" opacity=".7">The dashed guess in figure 2 becomes a solid claim. Nothing else moves.</text>
+          </svg>
+        </div>
+      </figure>
+
       <dl>
         <dt>Closes</dt><dd>Both axes. Width and box height become properties of a known file.</dd>
-        <dt>Cost</dt><dd>15–40 KB embedded, depending on the face and subsetting. One <code>@font-face</code> block. A licence check on whatever face is chosen.</dd>
-        <dt>Locks in</dt><dd>Chart labels stop matching the reader's OS UI font. On the chart specifically, that is arguably an improvement — it is a data graphic, not chrome.</dd>
-        <dt>Test impact</dt><dd>None negative. Every existing clearance test keeps its meaning and finally gets a defensible referent.</dd>
+        <dt>Cost</dt><dd>15–40 KB embedded depending on subsetting, one <code>@font-face</code> block, one licence check.</dd>
+        <dt>Locks in</dt><dd>Chart labels stop matching the reader's OS UI font. On a data graphic that is arguably an improvement — it is the one part of the board where consistency beats native feel.</dd>
+        <dt>Tests</dt><dd>No loss. Every existing clearance test keeps its meaning and finally gets a defensible referent.</dd>
       </dl>
     </div>
 
     <div class="opt maybe">
       <span class="tag">O2</span>
       <h3>Move placement into the browser and measure for real</h3>
-      <p>Delete both constants. Render the labels, measure each with <code>getComputedTextLength()</code> and <code>getBBox()</code>, then run collision and row assignment in JS against real extents. Correct by construction on any face, on any OS, forever.</p>
+      <p>Delete both constants. Render, measure each label with <code>getComputedTextLength()</code> and <code>getBBox()</code>, then run collision and row assignment in JS against real extents — the same thing this report just did to produce section 1.</p>
+
+      <figure>
+        <div class="figframe">
+          <svg viewBox="0 0 700 140" role="img" width="700"
+               aria-label="With placement moved to the browser, the collision algorithm leaves Go and runs after render, feeding back from measured text extents.">
+            <rect x="8" y="34" width="170" height="52" rx="7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="5 4" opacity=".5"/>
+            <text x="22" y="56" font-size="13" fill="currentColor" font-weight="600" opacity=".55">durations.go</text>
+            <text x="22" y="74" font-size="11.5" font-family="ui-monospace, monospace" fill="currentColor" opacity=".55">constants deleted</text>
+            <rect x="360" y="34" width="252" height="52" rx="7" fill="none" stroke="#2f5d7c" stroke-width="2"/>
+            <text x="374" y="56" font-size="13" fill="currentColor" font-weight="600">browser</text>
+            <text x="374" y="74" font-size="11.5" font-family="ui-monospace, monospace" fill="currentColor">measure → place → redraw</text>
+            <path d="M 486 86 C 486 118 400 118 380 96" fill="none" stroke="#2f5d7c" stroke-width="2" marker-end="url(#ar)"/>
+            <text x="392" y="126" font-size="11.5" font-family="ui-monospace, monospace" fill="#2f5d7c" font-weight="600">feedback loop — reflows after paint</text>
+            <text x="188" y="64" font-size="11.5" font-family="ui-monospace, monospace" fill="currentColor" opacity=".55">algorithm moves →</text>
+          </svg>
+        </div>
+      </figure>
+
       <dl>
-        <dt>Closes</dt><dd>Both axes, permanently, with no constant to go stale.</dd>
-        <dt>Cost</dt><dd>High. A tested Go algorithm moves into JS. A measure-then-place pass means the chart reflows after first paint unless it is rendered offscreen first.</dd>
-        <dt>Locks in</dt><dd>The Go test suite loses its grip on placement — <code>durations_test.go</code>'s row-assignment, remainder-count, and clearance tests all assert against the Go model. Replacing them needs a headless browser in the test path. <code>maintainer-verify.sh</code> runs Go throughout and one optional Node lane it skips when Node is absent; it has never needed a browser.</dd>
-        <dt>Note</dt><dd>This is the textbook-correct answer. It is also the one that trades a cheap, fast, deterministic test suite for a slow, flaky one.</dd>
+        <dt>Closes</dt><dd>Both axes, permanently, with no constant left to go stale.</dd>
+        <dt>Cost</dt><dd>High. A tested Go algorithm moves into JS, and the chart reflows after first paint unless it renders offscreen first.</dd>
+        <dt>Locks in</dt><dd>The Go suite loses its grip — the row-assignment, remainder-count, and clearance tests all assert against the Go model. Replacing them puts a headless browser in the test path; <code>maintainer-verify.sh</code> runs Go throughout plus one optional Node lane, and has never needed a browser.</dd>
+        <dt>Note</dt><dd>The textbook-correct answer, and the one that trades a fast deterministic suite for a slow flaky one.</dd>
       </dl>
     </div>
 
     <div class="opt maybe">
       <span class="tag">O3</span>
       <h3>Go plans, the browser repairs</h3>
-      <p>Keep Go's placement as-is, and add a small JS pass after render that measures actual extents and hides any label that genuinely collides. The Go model becomes a hint; the browser has the final say.</p>
+      <p>Keep Go's placement, add a JS pass after render that measures real extents and hides any label that actually collides. Go becomes a hint; the browser has the final say.</p>
       <dl>
         <dt>Closes</dt><dd>The visible width failure. The pitch claim stays unproven.</dd>
-        <dt>Cost</dt><dd>Moderate, and it is additive — nothing existing is rewritten.</dd>
-        <dt>Locks in</dt><dd>Two places decide one thing. The remainder count ("+N more") computed in Go stops agreeing with what the browser actually drew, so either that number becomes a lie or it has to be recomputed client-side too.</dd>
+        <dt>Cost</dt><dd>Moderate, and additive — nothing existing is rewritten.</dd>
+        <dt>Locks in</dt><dd>Two places decide one thing. The "+N more" remainder Go computes stops matching what was drawn, so it becomes a lie or has to be recomputed client-side too.</dd>
       </dl>
     </div>
 
     <div class="opt no">
       <span class="tag">O4</span>
-      <h3>Widen the pitch to a defensible upper bound</h3>
-      <p>Stop deriving the pitch from measured metrics and set it from a ratio no realistic UI face exceeds — 1.5 em, or about 16.5 units at the 11px label size — with the constant's comment saying it is a bound, not a measurement.</p>
+      <h3>Widen the pitch to a defensible bound</h3>
+      <p>Set the pitch from a ratio no realistic UI face exceeds — around 1.5 em, roughly 16.5 units at 11px — with the comment saying it is a bound, not a measurement.</p>
       <dl>
-        <dt>Closes</dt><dd>The vertical claim only, and only for faces under the chosen ratio.</dd>
-        <dt>Cost</dt><dd>Lowest of any option here: one number and one comment.</dd>
-        <dt>Locks in</dt><dd>Leaves the width exposure entirely — the failure that is actually visible. It also spends vertical budget REQ-265 just narrowed to 0.10 units against the Panel B ceiling, so raising the pitch on its own is not free.</dd>
-        <dt>Verdict</dt><dd>Not sufficient alone. Reasonable as a same-commit companion to O1.</dd>
+        <dt>Closes</dt><dd>The vertical claim only, and only under the chosen ratio.</dd>
+        <dt>Cost</dt><dd>Lowest here: one number and one comment.</dd>
+        <dt>Locks in</dt><dd>Leaves the width exposure — the half that is actually visible, per section 4 — and spends vertical budget REQ-265 just narrowed to 0.10 units against the Panel B ceiling.</dd>
+        <dt>Verdict</dt><dd>Not sufficient alone. Fine as a same-commit companion to O1.</dd>
       </dl>
     </div>
 
     <div class="opt no">
       <span class="tag">O5</span>
       <h3>Draw fewer labels</h3>
-      <p>Replace per-sample direct labels with a hover or focus readout, or a side table, and let the collision problem stop existing.</p>
+      <p>Replace direct labels with a hover or focus readout and let the collision problem stop existing.</p>
       <dl>
         <dt>Closes</dt><dd>Everything, by deleting the feature that has the problem.</dd>
-        <dt>Cost</dt><dd>Large, and it walks back what UR-051 asked for — the labels were the point. It also costs the keyboard and print paths, which a hover readout does not serve.</dd>
+        <dt>Cost</dt><dd>Walks back what UR-051 asked for, and a hover readout serves neither the keyboard path nor print.</dd>
         <dt>Verdict</dt><dd>Listed for completeness. Recommend against.</dd>
       </dl>
     </div>
@@ -201,20 +404,20 @@
 
 <section>
   <div class="measure">
-    <h2>Why O1 over O2</h2>
-    <p>O2 is more principled and I would pick it in a codebase that already ran a browser in its test suite. This one does not. <code>maintainer-verify.sh</code> is fast, deterministic, and shell-and-Go only; every measurement in <code>durations_test.go</code> got there by someone running Playwright by hand and pasting the number into a comment with the build recorded beside it. O2 would make that manual ritual mandatory and continuous. O1 makes it unnecessary — one measurement, one file, one time.</p>
-    <p>Put differently: O2 removes the constants by making them dynamic. O1 removes the <em>uncertainty</em> by making them true. The uncertainty is what you actually objected to.</p>
+    <h2>6 · Why O1 over O2</h2>
+    <p>O2 is more principled, and I would pick it in a codebase that already ran a browser in its tests. This one does not. Every number in <code>durations_test.go</code> got there by somebody running Playwright by hand and pasting the result into a comment with the build recorded beside it. O2 makes that ritual mandatory and continuous; O1 makes it unnecessary — one measurement, one file, once.</p>
+    <p>O2 removes the constants by making them dynamic. O1 removes the <em>uncertainty</em> by making them true. The uncertainty is what you objected to.</p>
   </div>
 </section>
 
 <section>
   <div class="measure">
-    <h2>If O1 is chosen, the REQ is roughly this</h2>
+    <h2>7 · If O1 is chosen, the REQ is roughly this</h2>
     <ul>
-      <li>Pick and subset a face with a permissive licence — Inter, Public Sans, and Source Sans 3 are all OFL and metrically documented. Subsetting to digits, latin, and the handful of punctuation the labels use keeps it small.</li>
-      <li>Embed it, add the <code>@font-face</code>, and point <code>.durations-mark-label</code> and <code>.durations-axis-title</code> at it — both sit on <code>--font-sans</code> today. <code>.durations-tick</code> is on <code>--font-mono</code>, whose stack ends in the open <code>monospace</code> generic and carries the same exposure; decide deliberately whether it gets a bundled mono in the same pass or is left as a known gap. Leave the rest of the board on the existing stacks — the chart is what needs determinism, not the cards.</li>
-      <li>Re-measure the width supremum and the box height <em>once</em> against the bundled face, and rewrite the comment blocks in <code>durations_test.go</code> so they stop hedging about an open face space and instead name the file the numbers describe.</li>
-      <li>A lock-in that fails if the chart label stack ever regains an open generic fallback — that is the defect, and it is a one-line grep-shaped assertion.</li>
+      <li>Pick and subset an open-licence face — Inter, Public Sans, and Source Sans 3 are all OFL with documented metrics. Subsetting to digits, latin, and the few punctuation marks the labels use keeps it small.</li>
+      <li>Embed it, add the <code>@font-face</code>, and point <code>.durations-mark-label</code> and <code>.durations-axis-title</code> at it — both sit on <code>--font-sans</code> today. <code>.durations-tick</code> is on <code>--font-mono</code>, whose stack ends in the open <code>monospace</code> generic and carries the same exposure; decide deliberately whether it gets a bundled mono in the same pass or is recorded as a known gap.</li>
+      <li>Re-measure the width supremum and the box height <em>once</em> against the bundled face, and rewrite the comment blocks in <code>durations_test.go</code> so they name the file the numbers describe instead of hedging about an open face space.</li>
+      <li>A lock-in that fails if the chart label stack ever regains an open generic fallback. That is the defect, and it is a grep-shaped assertion.</li>
       <li><code>bash _dev/tests/maintainer-verify.sh</code> exits 0.</li>
     </ul>
   </div>
@@ -222,8 +425,309 @@
 
 <footer>
   <div class="measure">
-    <p>Sources read for this report: <code>durations.go</code>, <code>durations_test.go</code>, <code>board-durations.js</code>, <code>board.css</code>, <code>generate.go</code>, and the cancelled <code>REQ-278</code>. Nothing was rendered or re-measured — the option costs are engineering judgement, not measurements, and the 15–40 KB and 1.5 em figures are estimates.</p>
+    <p>Read for this report: <code>durations.go</code>, <code>durations_test.go</code>, <code>board-durations.js</code>, <code>board.css</code>, <code>generate.go</code>, and the cancelled REQ-278. Sections 1, 3 and 4 are live measurements of your browser, taken when this page loaded; the numbers change with the machine reading them. The option costs are engineering judgement, not measurements; the 15–40 KB and 1.5 em figures are estimates.</p>
   </div>
 </footer>
 
 </div>
+
+<script>
+(function () {
+  "use strict";
+
+  // The board's own stack, copied from board.css:65. Measured through a real SVG
+  // <text> because getBBox() on <text> is exactly what the repo's recorded
+  // ascent/descent/box numbers came from.
+  var BOARD_STACK = getComputedStyle(document.documentElement)
+    .getPropertyValue("--board-sans").trim();
+
+  var LABEL_FONT_PX = 11;          // .durations-mark-label font-size
+  var ROW_PITCH = 13;              // DURATIONS_LABEL_ROW_HEIGHT (board-durations.js:60)
+  var WIDTH_MODEL = 7.15;          // durationsLabelCharacterWidthUnits (durations.go:250)
+  var LINUX_BOX = 12.97;           // durationsMeasuredLabelBoxHeightUnits
+  var LINUX_WIDTH_SUP = 7.1441;    // durationsMeasuredLabelWidthSupremumUnits
+  var WIDTH_SAMPLE = "4444444444"; // the repo's recorded worst case: a uniform "4" run
+
+  var probeText = document.getElementById("probe-text");
+
+  function measure(fontStack, sample) {
+    probeText.style.fontFamily = fontStack;
+    probeText.style.fontSize = LABEL_FONT_PX + "px";
+    probeText.textContent = sample;
+    var box = probeText.getBBox();
+    return {
+      // The <text> baseline sits at y=0, so -box.y is the ascent above it.
+      ascent: -box.y,
+      descent: box.y + box.height,
+      height: box.height,
+      width: box.width
+    };
+  }
+
+  function fixed(value) { return value.toFixed(4); }
+
+  // Three states, because "within the pitch" and "within what was recorded" are
+  // different questions and this face can pass one while failing the other.
+  function row(quantity, recordedText, drawnText, state, verdict, note) {
+    return "<tr><td>" + quantity + "</td>" +
+           "<td class='num'>" + recordedText + "</td>" +
+           "<td class='num'>" + drawnText + "</td>" +
+           "<td class='" + state + "'>" + verdict +
+           (note ? " — " + note : "") + "</td></tr>";
+  }
+
+  try {
+    var boxProbe = measure(BOARD_STACK, "REQ-274 2h 14m");
+    var widthProbe = measure(BOARD_STACK, WIDTH_SAMPLE);
+    var perChar = widthProbe.width / WIDTH_SAMPLE.length;
+    var boxSlack = ROW_PITCH - boxProbe.height;
+    var widthSlack = WIDTH_MODEL - perChar;
+
+    var html = "";
+    html += row(
+      "Label line box",
+      LINUX_BOX + " — the recorded maximum",
+      fixed(boxProbe.height),
+      boxProbe.height > ROW_PITCH ? "fail" : (boxProbe.height > LINUX_BOX ? "warn" : "pass"),
+      boxProbe.height > ROW_PITCH ? "OVER THE PITCH"
+        : (boxProbe.height > LINUX_BOX ? "past the recorded maximum" : "within"),
+      "pitch is " + ROW_PITCH + ", leaving " + fixed(boxSlack) + " of slack here"
+    );
+    html += row(
+      "Width per character, worst-case digits",
+      LINUX_WIDTH_SUP + " — the recorded supremum",
+      fixed(perChar),
+      perChar > WIDTH_MODEL ? "fail" : (perChar > LINUX_WIDTH_SUP ? "warn" : "pass"),
+      perChar > WIDTH_MODEL ? "OVERRUNNING THE SLOTS"
+        : (perChar > LINUX_WIDTH_SUP ? "past the recorded supremum" : "within"),
+      "model assumes " + WIDTH_MODEL + ", leaving " + fixed(widthSlack) + " of slack here"
+    );
+    html += row(
+      "Ascent / descent",
+      "10.4278 / 2.7778 — recorded maxima",
+      fixed(boxProbe.ascent) + " / " + fixed(boxProbe.descent),
+      "pass", "shown for comparison", ""
+    );
+    document.getElementById("probe-rows").innerHTML = html;
+
+    var lines = [];
+    if (perChar > WIDTH_MODEL) {
+      lines.push("Your machine is drawing labels wider than the collision model reserved — " +
+                 "that is the visible failure, happening now.");
+    }
+    if (boxProbe.height > LINUX_BOX) {
+      lines.push("Your machine already draws a taller line box than the largest value " +
+                 "ever recorded here (" + LINUX_BOX + "), which was pinned as the maximum. " +
+                 "The survey was stale before it was proposed.");
+    }
+    if (!lines.length) {
+      lines.push("On this machine the current constants hold.");
+    }
+    lines.push("Either way this is one data point on one browser, taken for free. " +
+               "It is not a bound, and the next OS font update can move it with nobody watching. " +
+               "Linux comparison values are read from durations_test.go.");
+    document.getElementById("probe-note").textContent = lines.join(" ");
+  } catch (probeError) {
+    document.getElementById("probe-rows").innerHTML =
+      "<tr><td colspan='4'>Live measurement unavailable in this viewer: " +
+      String(probeError && probeError.message) + "</td></tr>";
+  }
+
+  // ---------------------------------------------------------------------------
+  // Section 3: measure the face space this machine actually has, and chart it.
+  // A face the system lacks silently falls back, which would make the chart a
+  // list of the same default under many names — so availability is tested first.
+  // ---------------------------------------------------------------------------
+  var CANDIDATE_FACES = [
+    "system-ui", "-apple-system", "sans-serif",
+    "Helvetica Neue", "Helvetica", "Arial", "Verdana", "Tahoma",
+    "Trebuchet MS", "Lucida Grande", "Segoe UI", "Roboto", "Noto Sans",
+    "Arial Black", "Optima", "Futura", "Gill Sans", "Georgia", "Impact",
+    "Comic Sans MS", "Avenir", "Avenir Next", "SF Pro Text"
+  ];
+  var DIGIT_RUN = "4444444444";
+
+  function quoted(face) {
+    return /[^a-zA-Z0-9-]/.test(face) ? '"' + face + '"' : face;
+  }
+
+  // A face is present if naming it changes the metrics away from the fallback it
+  // is paired with. Two fallbacks, because a face can coincide with one of them.
+  function faceIsAvailable(face) {
+    var probes = ["monospace", "serif"];
+    for (var index = 0; index < probes.length; index++) {
+      var baseline = measure(probes[index], DIGIT_RUN).width;
+      var candidate = measure(quoted(face) + ", " + probes[index], DIGIT_RUN).width;
+      if (Math.abs(candidate - baseline) > 0.01) { return true; }
+    }
+    return false;
+  }
+
+  function buildBarChart(mountId, config) {
+    var mount = document.getElementById(mountId);
+    if (!mount) { return; }
+
+    var rows = config.rows;
+    var barHeight = 15;
+    var rowGap = 7;
+    var nameWidth = 168;
+    var plotLeft = nameWidth + 14;
+    var plotWidth = 470;
+    var valueGap = 8;
+    var top = 44;
+    var height = top + rows.length * (barHeight + rowGap) + 26;
+    var width = plotLeft + plotWidth + 190;
+    var domainMax = Math.max(config.ceiling, rows[0].value) * 1.12;
+    var scale = function (value) { return (value / domainMax) * plotWidth; };
+
+    var parts = [];
+    parts.push('<svg class="chart" viewBox="0 0 ' + width + ' ' + height + '" width="' + width +
+      '" role="img" aria-label="' + config.ariaLabel + '">');
+    parts.push('<text class="charttitle" x="0" y="16">' + config.title + '</text>');
+
+    var ceilingX = plotLeft + scale(config.ceiling);
+    parts.push('<line class="ceiling" x1="' + ceilingX + '" y1="' + (top - 16) +
+      '" x2="' + ceilingX + '" y2="' + (height - 18) + '"/>');
+    parts.push('<text class="ceilinglabel" x="' + (ceilingX + 6) + '" y="' + (top - 20) +
+      '">' + config.ceilingLabel + '</text>');
+    parts.push('<line class="axis" x1="' + plotLeft + '" y1="' + (height - 18) +
+      '" x2="' + (plotLeft + plotWidth) + '" y2="' + (height - 18) + '"/>');
+
+    rows.forEach(function (entry, index) {
+      var y = top + index * (barHeight + rowGap);
+      var barWidth = Math.max(scale(entry.value), 1);
+      var classes = "bar" + (entry.value > config.ceiling ? " over" : "") + (entry.isBoard ? " here" : "");
+      parts.push('<text class="facename' + (entry.isBoard ? " here" : "") + '" x="' + nameWidth +
+        '" y="' + (y + barHeight - 3) + '" text-anchor="end">' + entry.label + '</text>');
+      // 4px rounded data-end, anchored at the baseline the bars grow from.
+      parts.push('<rect class="' + classes + '" x="' + plotLeft + '" y="' + y +
+        '" width="' + barWidth + '" height="' + barHeight + '" rx="3"/>');
+      // The value is always written out, so an over-the-line bar is never
+      // identified by colour alone.
+      // Values live in a fixed column rather than at the bar end, so nothing
+      // collides with the ceiling rule. Always written out, so an over-the-line
+      // bar is never identified by colour alone.
+      parts.push('<text class="value" x="' + (plotLeft + plotWidth + valueGap) + '" y="' +
+        (y + barHeight - 3) + '">' + entry.value.toFixed(2) +
+        (entry.value > config.ceiling ? "  ▲ over" : "") +
+        (entry.isBoard ? "   ◀ this board" : "") + '</text>');
+    });
+
+    parts.push('</svg>');
+    mount.innerHTML = parts.join("");
+  }
+
+  try {
+    var available = [];
+    CANDIDATE_FACES.forEach(function (face) {
+      if (!faceIsAvailable(face)) { return; }
+      var stack = quoted(face) + ", sans-serif";
+      var digits = measure(stack, DIGIT_RUN);
+      available.push({
+        label: face,
+        stack: stack,
+        box: digits.height,
+        perChar: digits.width / DIGIT_RUN.length,
+        isBoard: false
+      });
+    });
+
+    var boardDigits = measure(BOARD_STACK, DIGIT_RUN);
+    available.push({
+      label: "--font-sans (the board)",
+      stack: BOARD_STACK,
+      box: boardDigits.height,
+      perChar: boardDigits.width / DIGIT_RUN.length,
+      isBoard: true
+    });
+
+    var byBox = available.slice().sort(function (a, b) { return b.box - a.box; });
+    var byWidth = available.slice().sort(function (a, b) { return b.perChar - a.perChar; });
+
+    buildBarChart("chart-box", {
+      title: "Line box height at 11px, in SVG user units",
+      ceiling: ROW_PITCH,
+      ceilingLabel: "row pitch " + ROW_PITCH,
+      ariaLabel: "Horizontal bar chart of measured line box height for each font face available on this machine, against the 13 unit row pitch.",
+      rows: byBox.map(function (entry) {
+        return { label: entry.label, value: entry.box, isBoard: entry.isBoard };
+      })
+    });
+
+    buildBarChart("chart-width", {
+      title: "Width per character on a digit run, in SVG user units",
+      ceiling: WIDTH_MODEL,
+      ceilingLabel: "model reserves " + WIDTH_MODEL,
+      ariaLabel: "Horizontal bar chart of measured width per character for each font face available on this machine, against the 7.15 units the collision model reserves.",
+      rows: byWidth.map(function (entry) {
+        return { label: entry.label, value: entry.perChar, isBoard: entry.isBoard };
+      })
+    });
+
+    // Section 4's two demonstrations use the real extremes this machine holds,
+    // not a face picked to make the point.
+    var tallest = byBox.filter(function (entry) { return !entry.isBoard; })[0];
+    var widest = byWidth.filter(function (entry) { return !entry.isBoard; })[0];
+    var board = available[available.length - 1];
+
+    var overNodes = document.querySelectorAll(".live .over");
+    for (var i = 0; i < overNodes.length; i++) { overNodes[i].style.fontFamily = widest.stack; }
+    var tallNodes = document.querySelectorAll(".live .tall");
+    for (var j = 0; j < tallNodes.length; j++) { tallNodes[j].style.fontFamily = tallest.stack; }
+
+    var slotUnits = DIGIT_RUN.length * WIDTH_MODEL;
+    var boardRun = measure(BOARD_STACK, DIGIT_RUN).width;
+    var wideRun = measure(widest.stack, DIGIT_RUN).width;
+
+    document.getElementById("fh-label-a").textContent =
+      "the board's own stack — slot " + slotUnits.toFixed(1) + ", drawn " + boardRun.toFixed(1) +
+      (boardRun > slotUnits ? " — overruns by " + (boardRun - slotUnits).toFixed(1) : " — fits");
+    document.getElementById("fh-label-b").textContent =
+      widest.label + ", the widest face here — slot " + slotUnits.toFixed(1) +
+      ", drawn " + wideRun.toFixed(1) +
+      (wideRun > slotUnits ? " — overruns by " + (wideRun - slotUnits).toFixed(1) : " — fits");
+
+    var overrunMark = document.getElementById("fh-overrun");
+    if (overrunMark) {
+      if (wideRun > slotUnits) {
+        overrunMark.setAttribute("x1", String(2 + wideRun));
+        overrunMark.setAttribute("x2", String(2 + wideRun));
+      } else {
+        overrunMark.setAttribute("opacity", "0");
+      }
+    }
+
+    document.getElementById("fv-label-a").textContent =
+      "the board's own stack — line box " + board.box.toFixed(2) + " on a " + ROW_PITCH + "-unit pitch";
+    document.getElementById("fv-label-b").textContent =
+      tallest.label + ", the tallest face here — line box " + tallest.box.toFixed(2) +
+      (tallest.box > ROW_PITCH ? ", over the pitch by " + (tallest.box - ROW_PITCH).toFixed(2) : "");
+
+    document.getElementById("vbox-b1").setAttribute("height", String(tallest.box));
+    document.getElementById("vbox-b2").setAttribute("height", String(tallest.box));
+    document.getElementById("vbox-a1").setAttribute("height", String(board.box));
+    document.getElementById("vbox-a2").setAttribute("height", String(board.box));
+
+    var overBox = byBox.filter(function (e) { return e.box > ROW_PITCH; }).length;
+    var overWidth = byWidth.filter(function (e) { return e.perChar > WIDTH_MODEL; }).length;
+    document.getElementById("spread-callout").innerHTML =
+      "<p>Of the <b>" + available.length + "</b> faces this machine has, <b>" + overBox +
+      "</b> " + (overBox === 1 ? "draws" : "draw") +
+      " a line box taller than the " + ROW_PITCH + "-unit row pitch and <b>" + overWidth +
+      "</b> " + (overWidth === 1 ? "draws" : "draw") +
+      " wider than the " + WIDTH_MODEL + " units the collision model reserves. " +
+      "The board's own stack resolves to a line box of <b>" + board.box.toFixed(2) +
+      "</b> here — against a recorded maximum of " + LINUX_BOX + " and a pitch of " + ROW_PITCH +
+      ". None of this was known before this page loaded, and none of it is a bound: it is one " +
+      "machine's answer, and the stack's final <code>sans-serif</code> means the real answer is " +
+      "whatever the reader's system decides.</p>";
+  } catch (chartError) {
+    var mountBox = document.getElementById("chart-box");
+    if (mountBox) { mountBox.textContent = "Live measurement unavailable: " + String(chartError && chartError.message); }
+  }
+
+  document.getElementById("platform-line").textContent =
+    "Solutions report, 2026-08-19. Live figures measured in this browser — " +
+    navigator.userAgent;
+})();
+</script>
