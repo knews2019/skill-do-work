@@ -232,13 +232,18 @@ assert_equals "$duplicate_bytes_before" \
 
 # --- Probe 7: unterminated frontmatter --------------------------------------------------
 # The awk buffers the frontmatter block; without an END flush it would emit nothing here and
-# the script would become the truncation it exists to prevent.
+# the script would become the truncation it exists to prevent. Since REQ-276 the refusal
+# happens EARLIER and harder: `require_closed_frontmatter` rejects the shape as bad input
+# (exit 2) before any reader runs, so the writer's END-flush guard is no longer the thing
+# that catches it — same class as the CRLF refusal in Probe 8 directly below, and asserted
+# the same way. The property this probe pins is unchanged: nonzero, and the file byte-for-
+# byte as found.
 printf -- '---\nid: REQ-1283\nstatus: completed\ncompleted_at: 2026-07-30T10:00:00Z\n\n# No closing delimiter\n' \
   > "$fixture_root/do-work/archive/UR-900/REQ-1283-unterminated.md"
 commit_fixture "seed unterminated fixture"
 unterminated_bytes_before="$(wc -c < "$fixture_root/do-work/archive/UR-900/REQ-1283-unterminated.md" | tr -d '[:space:]')"
 run_record_script "do-work/archive/UR-900/REQ-1283-unterminated.md" "$implementation_hash"
-assert_status 1 "unterminated: exits 1"
+assert_status 2 "unterminated: refused as bad input before any reader runs"
 assert_equals "$unterminated_bytes_before" \
   "$(wc -c < "$fixture_root/do-work/archive/UR-900/REQ-1283-unterminated.md" | tr -d '[:space:]')" \
   "unterminated: the file is left exactly as found"
@@ -617,6 +622,64 @@ assert_output_matches 'Fully repaired 0 of 1' \
 # The content half must still have landed — a partial repair is reported, never rolled back.
 assert_equals "$partial_intact_bytes" "$(wc -c < "$partial_target" | tr -d '[:space:]')" \
   "restore partial: the recovered content is written even though the hash failed"
+
+# --- Probe 20: a fence that never closes is refused on the write path -----------------------
+# The rewrite awk buffers the frontmatter and emits it only after the closing `---`, so the
+# WRITE path could never corrupt such a file. The three READERS scan to end of file, so on
+# this shape they reach the body's `commit: deadbee` line and take it for the schema field —
+# and the readers run first, at startup, deciding the id, the duplicate count and the
+# pre-edit status before the writer is ever consulted.
+#
+# What this fixture demonstrates, precisely: it has a frontmatter `commit:` AND the body's
+# fenced `commit: deadbee`, so before the fix the duplicate-count reader saw TWO and refused
+# with "frontmatter has 2 'commit:' lines" — the readers counting a body line as schema is
+# the misread itself, wearing a different error message. The assertions below discriminate
+# the two eras by exit code and reason, not merely by failing: exit 2 and "never closed"
+# versus the old exit 1 and "ambiguous". Probe 21 is the one that exercises the silent
+# misattribution end to end, on the path where it can pass something wrong (REQ-276).
+unclosed_fence_path="do-work/archive/UR-900/REQ-1288-unclosed-fence.md"
+write_request_fixture "$unclosed_fence_path" "0000000"
+# Remove ONLY the closing fence, leaving the opening one and the whole body intact.
+awk 'NR == 1 { print; next } $0 == "---" && !dropped { dropped = 1; next } { print }' \
+  "$fixture_root/$unclosed_fence_path" > "$fixture_root/unclosed-fence.tmp"
+mv "$fixture_root/unclosed-fence.tmp" "$fixture_root/$unclosed_fence_path"
+commit_fixture "seed unclosed-fence fixture"
+# Precondition: the shape really is what the probe claims, and the body bait is really there.
+assert_equals "1" "$(grep -c '^---$' "$fixture_root/$unclosed_fence_path")" \
+  "unclosed fence: the fixture opens a fence and never closes it"
+assert_equals "1" "$(body_commit_line_count "$unclosed_fence_path")" \
+  "unclosed fence: the body still carries the column-0 commit: line a scanning reader would find"
+unclosed_fence_bytes="$(wc -c < "$fixture_root/$unclosed_fence_path" | tr -d '[:space:]')"
+run_record_script "$unclosed_fence_path" "$implementation_hash"
+assert_status 2 "unclosed fence: refused as bad input rather than acted on"
+assert_output_matches 'never closed' \
+  "unclosed fence: names the fence as the reason instead of failing somewhere downstream"
+assert_equals "$unclosed_fence_bytes" "$(wc -c < "$fixture_root/$unclosed_fence_path" | tr -d '[:space:]')" \
+  "unclosed fence: the refused file is byte-identical"
+
+# --- Probe 21: --verify refuses a PARENT blob whose fence never closes ----------------------
+# The parent blob is the one reader input that is not $request_file, so the startup guard
+# above cannot cover it. --verify reads HEAD^'s copy to decide what the metadata commit was
+# allowed to remove; if that read scans past a missing fence into the body, the expected
+# removal is a guess about prose and a corrupted file can verify clean. This is the last
+# check every REQ in the pipeline passes through (REQ-276).
+verify_fence_path="do-work/archive/UR-900/REQ-1289-verify-fence.md"
+write_request_fixture "$verify_fence_path" ""
+awk 'NR == 1 { print; next } $0 == "---" && !dropped { dropped = 1; next } { print }' \
+  "$fixture_root/$verify_fence_path" > "$fixture_root/verify-fence.tmp"
+mv "$fixture_root/verify-fence.tmp" "$fixture_root/$verify_fence_path"
+commit_fixture "seed verify parent-fence fixture"
+# The parent commit now holds the unclosed-fence content. Give HEAD a closed-fence version so
+# the startup guard passes and --verify gets as far as reading the parent.
+write_request_fixture "$verify_fence_path" "$implementation_hash"
+git -C "$fixture_root" commit -q -m "[REQ-1289] record commit hash $implementation_hash" -- "$verify_fence_path"
+assert_equals "1" \
+  "$(git -C "$fixture_root" show "HEAD^:$verify_fence_path" | grep -c '^---$')" \
+  "verify parent fence: the parent blob really is the unclosed-fence shape"
+run_record_script --verify "$verify_fence_path" "$implementation_hash"
+assert_status 1 "verify parent fence: refuses rather than verifying against an unreadable parent"
+assert_output_matches 'never closed' \
+  "verify parent fence: names the parent's fence as the reason"
 
 if [ "$fail_count" -gt 0 ]; then
   printf '%s guard probe(s) failed.\n' "$fail_count" >&2

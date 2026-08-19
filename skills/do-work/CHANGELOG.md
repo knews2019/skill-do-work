@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.215.3 — Refuse an Unterminated Frontmatter Fence Before Reading It (2026-08-19)
+
+The guard that records a commit hash on your REQ files could be fooled by a file whose `---` block was never closed: it read on into the body and could mistake a `commit:` line in the prose for the real one. Now it refuses that file outright, before anything reads it.
+
+- One precondition at the door instead of a guard in each reader, so a reader added later inherits it
+- `--verify` applies the same refusal to the parent commit's copy — the one input the startup guard cannot cover
+- Two lock-in probes, both run against the old code first to confirm they catch the real misread
+
 ## 0.215.2 — A Parallel Builder's Findings Reach Step 8 (2026-08-19)
 
 When builders run in separate worktrees they can't write the REQ file, so everything they noticed on the side — the out-of-scope bugs and missing prerequisites — quietly went nowhere. Those now travel in the hand-back and get queued like they always should have.

@@ -47,7 +47,8 @@
 # Exit 1 — a guard tripped. STOP: do not retry, do not hand-edit around it, do not commit.
 #     The REQ file is left as it was found unless a printed line says otherwise.
 # Exit 2 — usage error: bad argument count or hash shape, or <req-file> is not a usable REQ
-#     file (missing, 0 bytes, a symlink, CRLF, no frontmatter, or no valid id:).
+#     file (missing, 0 bytes, a symlink, CRLF, an opening '---' that is never closed, no
+#     frontmatter, or no valid id:).
 #
 # This script never runs `git show <hash>`: on a merge commit — worktree dispatch mode's
 # <merge_hash> — that prints an EMPTY combined diff, so it would validate nothing. It only
@@ -104,6 +105,14 @@ git rev-parse --git-dir >/dev/null 2>&1 && git_available=1
 # counts as the frontmatter `commit:` line with the same parser. --verify reads the PARENT
 # blob through these; a second, hand-rolled reader there would be free to drift from the
 # writer's idea of frontmatter, which is precisely the confusion a body `commit:` exploits.
+#
+# These three readers scan to end of file; the rewrite awk further down does not — it
+# buffers the frontmatter and emits it only once the closing `---` is seen, so an
+# unterminated fence is unwritable. That asymmetry is not resolved in these readers, and
+# this is not the place it is resolved: `require_closed_frontmatter` refuses such a file at
+# the door, before any reader runs, so no reader here ever meets one (REQ-276). A reader
+# below is safe because of that precondition, not because of anything in its own four
+# lines — read the guard before adding a fifth reader.
 # ---------------------------------------------------------------------------
 frontmatter_line_for() {
   awk -v field_name="$2" '
@@ -131,6 +140,37 @@ frontmatter_value_for() {
   field_value="${field_value%\"}"; field_value="${field_value#\"}"
   field_value="${field_value%\'}"; field_value="${field_value#\'}"
   printf '%s' "$field_value"
+}
+
+# ---------------------------------------------------------------------------
+# One precondition instead of a guard threaded through each reader. The rewrite awk buffers
+# the frontmatter and emits it only after the closing `---`, so the WRITE path already
+# refuses a file whose fence never closes. The three readers above scan to end of file, so
+# on that same shape they read a body `commit:` line as the frontmatter one — and on
+# --verify, the last check every REQ in this pipeline passes through, that turns a corrupted
+# file into a verified one. Refusing the file gives every reader the writer's property at one
+# site: a fourth reader inherits it with nothing to remember.
+#
+# Defined here, beside the readers it protects and ahead of --verify, because --verify exits
+# long before the write path's guards are reached — a definition further down would be
+# missing exactly where the parent-blob call below needs it.
+#
+# A file with no opening `---` on line 1 is not this guard's business: it has no frontmatter
+# to leave unclosed, and the `id:` check further down is what rejects it.
+#
+# Nor is a CRLF file: `$0` keeps the trailing \r, so a CRLF `---` is not the delimiter and
+# this guard reads such a file as having no frontmatter at all. For $request_file that is
+# moot — the CRLF refusal above it runs first. The parent blob has no CRLF check at all,
+# before or after this guard; that gap is pre-existing and fails SAFE (the parent reads as
+# having no frontmatter `commit:`, so --verify expects an insert and reports a mismatch
+# rather than passing something wrong).
+# ---------------------------------------------------------------------------
+require_closed_frontmatter() {
+  awk '
+    NR == 1 && $0 == "---" { inside_frontmatter = 1; next }
+    inside_frontmatter && $0 == "---" { frontmatter_closed = 1; exit }
+    END { if (inside_frontmatter && !frontmatter_closed) exit 1 }
+  ' "$1"
 }
 
 # ---------------------------------------------------------------------------
@@ -244,6 +284,14 @@ if [ "$verify_mode" -eq 1 ]; then
   # feeds the parent blob to the same reader the write path uses; `git cat-file -e` on
   # `HEAD^:` already succeeded above (an absent parent file is a declared skip), so an empty
   # result here means the parent genuinely had no frontmatter `commit:` field.
+  # The parent blob is the only reader input that is not $request_file, so the startup
+  # precondition does not cover it. Same refusal, same reason: a parent whose fence never
+  # closes makes the expected-removal line below a guess about body prose.
+  if ! require_closed_frontmatter <(git cat-file blob "HEAD^:$committed_full_name" 2>/dev/null); then
+    echo "FAIL: HEAD^'s copy of $committed_full_name opens a '---' frontmatter fence that is never closed, so its 'commit:' field cannot be read and there is nothing to verify this patch against."
+    echo "  Nothing was written. Fix the fence in the parent commit's content before trusting this verification."
+    exit 1
+  fi
   parent_frontmatter_commit_line="$(frontmatter_line_for \
     <(git cat-file blob "HEAD^:$committed_full_name" 2>/dev/null) commit)"
   if [ -n "$parent_frontmatter_commit_line" ]; then
@@ -310,6 +358,11 @@ fi
 # like a silent no-op. Refuse rather than guess.
 if grep -q $'\r' "$request_file"; then
   echo "usage: $0 [--verify] <req-file> <hash> — '$request_file' has CRLF line endings; normalise to LF first (frontmatter delimiters are matched exactly)." >&2
+  exit 2
+fi
+
+if ! require_closed_frontmatter "$request_file"; then
+  echo "usage: $0 [--verify] <req-file> <hash> — '$request_file' opens a '---' frontmatter fence that is never closed; every reader here would scan on into the body and could take a body 'commit:' line for the schema one. Close the fence first." >&2
   exit 2
 fi
 
@@ -501,6 +554,12 @@ if [ "$existing_commit_value" != "$commit_hash" ]; then
     END {
       # Without this flush an unterminated frontmatter block would make THIS SCRIPT the
       # truncation it exists to prevent. Flush the buffer, then fail.
+      #
+      # Since REQ-276 this is a BACKSTOP, not the primary defense: `require_closed_frontmatter`
+      # refuses the same shape at startup on the identical predicate, so the only way to
+      # arrive here is the narrow race where $request_file was rewritten between that check
+      # and this read. Keep it anyway — it costs nothing and it is the flush that makes the
+      # race non-destructive.
       if (inside_frontmatter) {
         for (line_index = 1; line_index <= buffered_count; line_index++) print buffered_line[line_index]
         exit 4
