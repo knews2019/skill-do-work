@@ -3,7 +3,7 @@ id: REQ-290
 title: Surface impact in REQ titles and add a run filter that skips negligible work
 status: completed
 completed_at: 2026-08-19T16:35:00Z
-commit:
+commit: 225e287
 claimed_at: 2026-08-19T15:54:19Z
 created_at: 2026-08-19T14:33:51Z
 user_request: UR-060
