@@ -2,6 +2,12 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.212.26 — No Home Directory in a Shipped Code Comment (2026-08-19)
+
+A doc comment in the board tool used the maintainer's own home path as its worked example. An absolute path means something else, or nothing, in anyone else's checkout.
+
+- `deriveProjectName`'s example is now a neutral path, so the comment reads the same in every clone
+
 ## 0.212.25 — One Bound Per Face, Instead of Two That Disagreed (2026-08-18)
 
 Two constants in two files were measuring the same thing — the descent of the Durations mark-label face — and they disagreed, 2.41 against 2.8. That is the same shape that made two earlier board changes collide invisibly. There is now one.

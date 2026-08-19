@@ -71,8 +71,8 @@ func isSkillInstallDirectory(candidateDirectory string) bool {
 }
 
 // deriveProjectName returns a human-facing project name for a repo root: the base
-// name of its absolute path (e.g. "/Users/t2/2code/g1w-game-find-the-difference"
-// → "g1w-game-find-the-difference"). It falls back to the un-absolutized base when
+// name of its absolute path (e.g. "/srv/projects/find-the-difference" →
+// "find-the-difference"). It falls back to the un-absolutized base when
 // filepath.Abs fails, and to "do-work" when even that collapses to "." or "/", so
 // the board title is never blank.
 func deriveProjectName(repoRoot string) string {

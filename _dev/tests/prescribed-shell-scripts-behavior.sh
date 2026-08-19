@@ -1328,7 +1328,7 @@ done
 # the header paragraph stating it) gets re-made, not inherited.
 board_timestamp_layouts="$(awk '/^func parseTimestamp\(/, /^}/' \
   "$repo_root/skills/do-work-board/tools/queue-kanban/model.go" \
-  | sed -n 's/^[[:space:]]*\(time\.RFC3339\|"2006[^"]*"\),$/\1/p' | tr '\n' ' ')"
+  | sed -n -E 's/^[[:space:]]*(time\.RFC3339|"2006[^"]*"),$/\1/p' | tr '\n' ' ')"
 [ "$board_timestamp_layouts" = 'time.RFC3339 "2006-01-02T15:04:05" "2006-01-02 15:04:05" "2006-01-02" ' ] \
   || fail_case "repair-req-timestamps read-side-layout case: the board's parseTimestamp layouts are now [$board_timestamp_layouts] — re-decide what repair-req-timestamps.sh refuses before widening the read side"
 
