@@ -1,62 +1,50 @@
 ---
-session_ended: 2026-08-19T09:57:20Z
-last_completed: REQ-265
-queue_state: 12 pending, 4 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
-reqs_processed_this_session: 6
-session_depth: heavy
+session_ended: 2026-08-19T16:40:00Z
+last_completed: REQ-290
+queue_state: 28 pending, 1 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
+reqs_processed_this_session: 2
+session_depth: moderate
 ---
 
 # Session Checkpoint
 
 ## In Progress (interrupted)
 
-
 ## Completed This Session
 
-Six REQs shipped across two waves, 0.212.20 through 0.212.25, each with an independent adversarial review:
+`do-work run UR-060` — both members shipped, each with an independent adversarial review:
 
-- REQ-259: retire the skill-root citation reading at its three unbackticked sites (Route B, 91%) — merge `4081c50`, **0.212.20**
-- REQ-260: run the Go formatter as part of the canonical verify (Route A, 96%) — `307e146`, **0.212.21**
-- REQ-257: decide the offset/fractional refusal — permanent, and pinned (Route B, 90%) — `6afcbd5`, **0.212.22**
-- REQ-261: delete the date-only tripwire and keep the rule (Route A, 96%) — `210abba`, **0.212.23**
-- REQ-267: close the two remaining repairer shape divergences (Route B, 96%) — `f7441d7`, **0.212.24**
-- REQ-265: raise the mark-label line-box bound and drop its duplicate descent (Route A, 92%) — `1227678`, **0.212.25**
+- REQ-289: separate impact from effort, with unique greppable tokens on both axes (Route C, 88%) — `2ea7be5`, **0.214.0**
+- REQ-290: surface impact in REQ titles and add a run filter that skips negligible work (Route B, 70% → remediated) — `225e287`, **0.215.0**
 
-Every hash confirmed with `record-commit-hash.sh --verify`. `maintainer-verify.sh` exited 0 at every commit boundary. All six worktrees and branches removed with `git worktree remove` / `git branch -d` (never `-D`); `git worktree list` shows only the main tree.
+Both hashes confirmed with `record-commit-hash.sh --verify`. `maintainer-verify.sh` exited 0 at every commit boundary. Serial mode throughout — no worktrees created, so none to clean up.
+
+**UR-060 stays open** in `user-requests/`: it gained five follow-ups, all still queued.
 
 ## Still Queued
 
-**Sixteen** — twelve `pending`, four `pending-answers`. The queue **grew** this session: six shipped, ten created. Every one of the ten came from an adversarial review or an external one finding a real defect, so this is the process working rather than failing — but it means "drain the queue" is not a reachable end state. Stop when the findings stop being worth fixing.
+**Twenty-nine** — 28 `pending`, 1 `pending-answers`. The queue grew by three this session (two shipped, five created), and every one of the six came from a review or a builder's stop-and-report finding something real.
 
 **Needs you (`pending-answers`):**
-- **REQ-274** — the "SessionStart hook exits nonzero" mechanism is false and still stated where it carries a decision's rationale
-- **REQ-275** — a third repairer/board divergence on the field-name axis: the repairer keys on the `_at` suffix, the board on six hand-kept names. Latent today
-- **REQ-276** — `record-commit-hash.sh` guards its writer against an unterminated fence but not its readers, on the last check every REQ passes through
-- **REQ-278** — nothing bounds the Durations label face off Linux; scoped to *measuring*, with a closed font stack as the cheap option
+- **REQ-296** — should the retired `trivial`/`normal` vocabulary left in internal names (the board's projection keys, the estimator's `--trivial` flag) follow the rename? Both were deliberate non-goals with stated reasons; the REQ asks whether that stays the answer.
 
-**Ready to build (`pending`):** REQ-258, 262, 263, 264, 266, 268, 269, 270, 271, 272, 273, 277.
+**New this session (`pending`):** REQ-293 (sweep, 6 instances — the impact/effort lock-in checks pin a spelling rather than the property), REQ-294 (capture's impact guard is one-directional), REQ-295 (bare "impact" wordings in the toolbox audit), REQ-297 (targeted mode under-reports what the new flag skipped).
 
 ## Session Notes
 
-**The scheduling bottleneck is one file.** `_dev/tests/prescribed-shell-scripts-behavior.sh` is written by REQ-258, 263, 264, 268 and 271, so exactly one of those can run per wave. It forces roughly four more waves regardless of builder count. REQ-258 restructures that file wholesale, so it should probably run alone or first.
+**The reviews earned their cost twice, and one of the catches was the orchestrator's.**
 
-**Corrections made on the record this session, each caught by someone other than its author:**
-- REQ-267's severity framing was wrong — the hook runs the repairer under `|| true`, so a failure prints a banner line and never breaks a session. The orchestrator repeated the false claim twice before a builder read the hook. Residue tracked as REQ-274.
-- REQ-265's integration seam, applied by the orchestrator, shipped a false safety claim ("the declared parts round both up" — the declared descent rounds *down*). Its reviewer caught it; fixed before shipping rather than deferred.
-- REQ-261's record said "same sentence" where it was "same paragraph, three sentences earlier". Corrected in place.
-- Two builders reached right conclusions via provably false arguments (REQ-257 on why offsets are refused, REQ-265 on what triggers the pitch alarm). Both were caught only because the reviewers checked the *reasoning* and not just the verdict.
+- I mutation-tested REQ-289's four lock-in checks and reported them sound. The reviewer showed my mutation for the main check used the word "stamping" — the single literal that check greps. Re-run with six realistic re-drift phrasings, it catches one. A mutation written in the check author's own vocabulary tests the vocabulary, not the property. That is REQ-293's F2.
+- REQ-290's builder justified its always-double-quote rule by claiming an unquoted tagged title leaves a REQ's status, UR pointer and dependencies riding on strict parsing. The parser's own comment says the opposite — recovery exists so that does not happen — and a live parse confirmed nothing is lost. I corrected the reason; the reviewer then found the *true* reason is stronger than my correction: a title opening `[` and closing `]` is parsed as a YAML flow list and comes back altered, commas silently eaten. Verified, and it is what the convention now says.
 
-**The measurement lesson, twice in one REQ.** REQ-267's fuzz first missed the wedge because it compared only whether a file was *mutated*, and the wedge *refuses*. Then both its fuzz and its reviewer's held the field name constant, so neither could see the `_at`-suffix divergence. A fuzz's blind spots are the axes it holds constant, and its oracle decides which failures are visible at all.
+**Three right rules, three wrong reasons, in two REQs.** Every one was caught by someone other than its author, and only by checking arguments rather than verdicts. Nothing in the suite tests a justification.
 
-**Do not recalibrate the estimator from this session's rows.** Six rows appended to `do-work/calibration-log.tsv`; the wall spans measure serial integration queuing and review latency far more than they measure work — REQ-265's 15-minute estimate carries a 53-minute span almost entirely spent waiting for the integration slot.
+**A REQ that adds a condition to a list must sweep every gloss of that list.** REQ-290 added a fifth auto-wave ready-set condition and updated the canonical list correctly; three restatements of "the four conditions" survived inside the two files it was already editing, one of them thirteen lines below the condition it contradicted. All fixed in place rather than deferred.
+
+**Estimator calibration held.** REQ-289 estimated 60 active minutes against a 66-minute wall span; REQ-290 estimated 15 against 40 — the second inflated by serial review latency, not by work. Two rows appended to `do-work/calibration-log.tsv`; do not recalibrate off a sample of two.
 
 ## Context Summary
 
-**Re-read prime files fresh; do not trust carried-over assumptions.** Both `_dev/primes/prime-shell-commands.md` and `_dev/primes/prime-kanban-board.md` gained lessons this session, and `prime-shell-commands.md` also gained a new trap entry (a checking tool that reports on stdout while exiting zero makes an exit-status-shaped gate lane decorative).
+**The impact/effort split is complete and shipped, but its guard rails are not.** The field, the vocabulary, the parser, the board chip, the title tag, and the run filter all exist and were each proven live rather than asserted. What is missing is the layer that keeps them true: REQ-293 now carries six instances of checks that pin a spelling instead of a property, including the one property REQ-290's filter depends on — that `impact:` defaults to `impact-user-visible` and never to `impact-negligible`. Flip that default and the filter silently skips every REQ predating the field, with a green suite.
 
-**Decisions with reach made this session:**
-- The offset/fractional refusal in the timestamp repairer is **permanent and pinned**, and the reason is now "the arithmetic is the risk, not the obstacle" — not the repudiated "we cannot decide it".
-- A fence-broken REQ file is **refused** by the repairer, matching the board's reader exactly. The refusal list gained an honest entry for a residual the fix itself creates (non-ASCII whitespace padding).
-- The canonical gate now fails on unformatted Go, reading the formatter's *output* rather than its exit status.
-- The Durations mark-label face has **one** measured descent bound, not two disagreeing ones.
-- A conditional in standing prose is clutter when it keys on a count that does not bear on the argument, and a boundary when it keys on a condition that does. The directory it lives in is not the discriminator.
+**REQ-294 is the one that decides whether any of this pays off.** Three forces — the capture template, the contract default, and a one-directional "never invent impact-negligible" guard — all push a new REQ toward `impact-user-visible`. If every REQ lands on the default, the field is decorative and the filter has nothing to filter. It carries an open question.
