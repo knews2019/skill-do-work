@@ -1,6 +1,6 @@
 ---
 id: REQ-268
-title: Make the archive audit's clean answer trustworthy
+title: Never report clean for a state that was never verified
 status: pending
 created_at: 2026-08-18T21:03:15Z
 status_changed_at: 2026-08-18T22:20:09Z
@@ -16,14 +16,15 @@ depends_on: []
 maintenance: false
 write_set:
 - skills/do-work/scripts/audit-archive-timestamps.sh
+- skills/do-work/scripts/repair-req-timestamps.sh
 - _dev/tests/prescribed-shell-scripts-behavior.sh
 ---
 
-# Make the Archive Audit's Clean Answer Trustworthy
+# Never Report Clean for a State That Was Never Verified
 
 ## What
 
-The archive auditor's product is its answer, and today "clean" is reported in two situations where nothing was verified. Both reproduced by execution.
+**The condition, not the file:** an unchecked exit status turns an inspection that never happened into a clean answer. Three instances are known, in two scripts, and all three are reproduced by execution. The REQ was originally scoped to the archive auditor; an external review found the same root cause in the repairer, which is why it is now keyed on the condition instead.
 
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
@@ -35,9 +36,12 @@ The archive auditor's product is its answer, and today "clean" is reported in tw
 - [ ] **A refused stamp is reported as clean.** An archive holding only a calendar-impossible stamp yields `archive audit clean (1 file(s) scanned)` and exit 0, in both report-only and fixing modes. The refusal itself is right — the malformed value is deliberately preserved as evidence — but the reasoning for preserving it is that a human can then see it, and the one tool a person runs deliberately to inspect the archive is exactly where it disappears. Voicing refusals as informational lines, without changing the exit status, keeps the refusal and the report contract consistent.
 - [ ] **A failed scan is reported as clean.** The file walk runs inside a process substitution, so a nonzero exit from the walk or the sort never reaches the loop's status: with a failing `find` on PATH the auditor prints `archive audit clean (0 file(s) scanned)` and exits 0 while a defective archive file sits untouched. Materialise and validate the walk's output before entering the loop, so an incomplete scan can never be reported as a clean one.
 
+- [ ] **The repairer reports clean when its own field extraction fails (added from an external review on PR #145, reproduced by the orchestrator).** `skills/do-work/scripts/repair-req-timestamps.sh:362` assigns `field_rows="$(extract_timestamp_fields "$request_file")"` and then tests only `[ -n "$field_rows" ]`, so a nonzero `awk` exit is discarded and empty output reads as "this file has no timestamp fields". Observed with a failing `awk` first on PATH: a queue file carrying `created_at: 2093-01-01T00:00:00Z` came back **byte-identical and the script exited 0 with no output at all** — while the same file with a working `awk` is repaired. The SessionStart hook discards the script's stderr, so nothing reaches the banner either. This is the third face of the same condition, in the second script.
+
 ## Requirements
 
-- "Clean" is printed only when every archive file was actually read and none needed repair.
+- **"Clean" is printed only when the inspection actually completed** — every archive file read, every field extraction succeeded — and nothing needed repair. State this as the condition in each script, so a fourth call site inherits it.
+- **Sweep the primitive:** every place either script takes a command substitution or a process substitution and then judges only the *content* of the output. These three were found by two independent reviewers looking at other things, so they are a sample.
 - A refused defect is visible in the tool's own output, with the exit contract stated to match whatever the builder chooses.
 - A scan that could not complete fails loudly rather than reporting a count of zero as success.
 - Lock-in cases for both, and `bash _dev/tests/maintainer-verify.sh` exits 0.
