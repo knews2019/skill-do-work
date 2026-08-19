@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.215.2 — A Parallel Builder's Findings Reach Step 8 (2026-08-19)
+
+When builders run in separate worktrees they can't write the REQ file, so everything they noticed on the side — the out-of-scope bugs and missing prerequisites — quietly went nowhere. Those now travel in the hand-back and get queued like they always should have.
+
+- Step 8 reads `## Discovered Tasks` from the builder's hand-back when the REQ file cannot carry it, keyed on the condition so a section added later inherits it
+- The builder is told where to put it, in the action file and in the always-loaded crew contract that used to say the opposite
+- A run that can find neither the section nor a readable hand-back now says so, instead of reading silence as "nothing found"
+
 ## 0.215.1 — Never Report Clean for an Inspection That Never Ran (2026-08-19)
 
 The archive audit and the session-start timestamp repairer used to answer "clean" for work they never actually did — a failed file walk, an extractor that could not run, a verification that was skipped. Now they say what they could not inspect, and a value they deliberately refuse to touch shows up in the audit instead of vanishing.

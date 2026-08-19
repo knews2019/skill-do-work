@@ -36,6 +36,6 @@ Never delete a failing test without doing this analysis. Deleted tests without j
 
 ## Discovered-Tasks Contract
 
-If you discover unrelated bugs, technical debt, or missing prerequisites during implementation, **do not fix them inline**. Append a `## Discovered Tasks` section to the REQ (a top-level section, not nested inside Implementation Summary) and list each finding as a bullet. The orchestrator (Step 8) classifies and queues them as follow-up REQs.
+If you discover unrelated bugs, technical debt, or missing prerequisites during implementation, **do not fix them inline**. Append a `## Discovered Tasks` section (a top-level section, not nested inside Implementation Summary) and list each finding as a bullet. It goes in the REQ file — or, when you are building in a worktree you were told not to write the main tree from, in your hand-back under that same heading, because the REQ file is one of the paths you may not write. The orchestrator (Step 8) reads whichever of the two carries it, then classifies and queues them as follow-up REQs.
 
 Inline fixes blow the declared scope, break traceability, and inflate the diff so it can't be safely reviewed.

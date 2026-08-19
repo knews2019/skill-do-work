@@ -395,7 +395,7 @@ What fan-out adds:
 | --- | --- |
 | run directory | `do-work/runs/work-<YYYY-MM-DD-HHMMSS>/`, created before any spawn |
 | per-builder input | `REQ-NNN-brief.md` — REQ body, worktree path, branch name, never-touch list, hand-back format |
-| per-builder output | `REQ-NNN-handback.md` — branch, file manifest, integration seams. The one main-tree path a builder may write (*Sole integrator*, above) |
+| per-builder output | `REQ-NNN-handback.md` — branch, file manifest, integration seams, and **every `##` section the builder would have written into the REQ file** (`## Discovered Tasks` today), under its own heading, because Step 8 reads them from here when the REQ lacks them (`actions/work.md` Step 8 → *Where a builder-authored section is read from*). The one main-tree path a builder may write (*Sole integrator*, above) |
 | `manifest.md` | REQ id → builder, `<operative_name>`, handback file, landed status — **the orchestrator's**, never written by a builder |
 | bounded waves | builders per wave, sized to the harness concurrency limit |
 
