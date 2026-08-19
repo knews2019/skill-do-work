@@ -1,6 +1,6 @@
 ---
 id: REQ-294
-title: Make capture's impact guard symmetric so the field is judged rather than defaulted
+title: "Make capture's impact guard symmetric so the field is judged rather than defaulted"
 status: pending
 created_at: 2026-08-19T15:48:05Z
 user_request: UR-060

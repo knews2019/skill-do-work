@@ -1,6 +1,6 @@
 ---
 id: REQ-293
-title: Make the impact/effort lock-in checks pin the property instead of one spelling of it
+title: "[impact-rule-change] Make the impact/effort lock-in checks pin the property instead of one spelling of it"
 status: pending
 created_at: 2026-08-19T15:48:05Z
 user_request: UR-060
@@ -76,6 +76,15 @@ default) and nothing pins it.
   in about ten lines with no node runtime. REQ-289's own Discovered Task framed this as needing a
   JavaScript behavior probe; the cheaper precedent was next to it.
 
+- [ ] **F6 — nothing pins `--skip-impact-negligible` to its declaration sites.** REQ-290 declares the
+  flag at six places that must agree: `work.md`'s `## Input` bullet, the argument-strip list, both
+  usage-string branches, Step 1's skip paragraph, the Orchestrator Checklist Step 0, and
+  `work-reference.md`'s auto-wave condition 5. No check holds them together. This is not
+  hypothetical: REQ-290's own review found **three** already-stale restatements of the ready-set
+  conditions inside the same two files, one of them thirteen lines from the condition it
+  contradicted. Add the assertion REQ-289's precedent (`contract-regressions.sh:1736-1742`)
+  established, and pin the title tag's emitter set the same way.
+
 ## Acceptance
 
 - Each instance's property survives a re-drift written in different words — verify by mutation, and
@@ -87,5 +96,5 @@ default) and nothing pins it.
 
 ## Full Context
 
-Findings F1-F5 from REQ-289's review; F1, F2, and F3 independently reproduced by the orchestrator
+Findings F1-F5 from REQ-289's review and F6 from REQ-290's; F1, F2, and F3 independently reproduced by the orchestrator
 before this REQ was created. See `do-work/user-requests/UR-060/input.md`.

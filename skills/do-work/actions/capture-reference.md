@@ -4,6 +4,21 @@
 
 ---
 
+## REQ Title Convention
+
+**Canonical home for the `title:` shape.** Every action that mints a REQ title follows this section — `actions/capture.md`, `actions/review-work.md` Step 10, `actions/work-reference.md`'s Builder-Decided Follow-up template and its **Discovered Tasks Classification (Step 8)** flow, and `../../do-work-toolbox/actions/code-review.md`. The condition is the rule — **any flow that mints a REQ carrying an `impact:` value follows this section** — so a new one inherits it without this list being re-counted.
+
+```
+title: "[<impact token>] <Kind prefix>: <brief description>"
+```
+
+- **The impact tag is a bracketed classification tag, not a kind prefix.** It composes with the existing `<Kind prefix>: ` conventions (`Addendum: `, `Review fix: `, `Confirm: `, `Code review: `) instead of competing for the same slot — a review-fix REQ that is also negligible reads `"[impact-negligible] Review fix: guard misses hex shorthand"`, never a double-colon title. Both parts are optional and independent: a plain capture with no kind prefix is `"[impact-negligible] Retitle the export button"`.
+- **Emit the tag only when `impact:` is something other than the `impact-user-visible` default.** That mirrors the board's impact chip, which renders for every value except that default (`actions/work-reference.md` → Request File Schema), so the title and the card agree and the common case stays unadorned. An absent `impact:` reads as the default, so it gets no tag either.
+- **The tag goes in `title:` and nowhere else.** Not in the filename — `REQ-NNN-slug.md` is unchanged, because a filename-borne token would mean renaming a file mid-pipeline whenever the verdict is revised, breaking every path already pointing at it. Not in the body `# H1` either: the H1 is Title-Cased prose, and Title-Casing a token would break the exact string the tag exists to be searched for.
+- **Write the token in full, exactly as the `impact:` enum spells it** — `impact-critical`, `impact-user-visible`, `impact-rule-change`, `impact-negligible`. Never an abbreviated form: the full prefixed token is what makes one `grep` return one axis, and it is what the board's search box matches (`../../do-work-board/tools/queue-kanban/web/board-filters.js` matches a case-insensitive substring on the title).
+- **Double-quote the whole value, always.** A title carrying a colon or a leading `[` is not a plain YAML scalar, so an unquoted one makes strict YAML reject the whole block and the REQ is read only by the board parser's last-resort line-based recovery (`../../do-work-board/tools/queue-kanban/frontmatter.go`). That recovery is good — it exists so one bad line cannot cost a REQ its status, UR pointer, and dependencies, and it does hold — but it is a salvage path with a narrower contract than the parser proper, and it can corrupt the very titles this convention creates: recovery splits a value that opens with `[` and closes with `]` as a YAML flow list, so `title: [impact-negligible] Retitle export, again [v2]` is read back as `[impact-negligible] Retitle export again [v2]` — the comma silently eaten, no warning raised. Quoting costs two characters and takes the whole class off the table.
+- **`impact:` is the source of truth; the title is a mirror.** When the two disagree the field wins, and every reader that acts on impact — Step 1's `--skip-impact-negligible` filter included — reads the field, never the title. The title tag exists so a human searching the board finds the REQ.
+
 ## Request File Formats
 
 ### Simple REQ
@@ -11,7 +26,7 @@
 ```markdown
 ---
 id: REQ-001
-title: Brief descriptive title
+title: "Brief descriptive title"   # always double-quoted; prefix `[<impact token>] ` when impact: is anything other than impact-user-visible — REQ Title Convention above
 status: pending
 created_at: 2025-01-26T10:00:00Z  # current UTC instant, never local time with a Z suffix (Timestamp rule, actions/work-reference.md)
 user_request: UR-001
@@ -164,7 +179,7 @@ Written for **Addendum for in-flight/completed requests** (`actions/capture.md` 
 ```markdown
 ---
 id: REQ-021
-title: "Addendum: dark mode sidebar support"
+title: "Addendum: dark mode sidebar support"   # a non-default impact prefixes the tag ahead of the kind prefix — "[impact-negligible] Addendum: …" (REQ Title Convention above)
 status: pending
 created_at: 2025-01-27T09:00:00Z  # current UTC instant (Timestamp rule, actions/work-reference.md)
 user_request: UR-006        ← new UR created for this addendum

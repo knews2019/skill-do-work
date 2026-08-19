@@ -31,15 +31,23 @@ do-work/
 ```yaml
 ---
 id: REQ-001
-title: Brief descriptive title
+title: "Brief descriptive title"
 status: pending
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001
 domain: frontend | backend | ui-design | general | security | testing | cms
 prime_files: []
 tdd: false
+impact: impact-critical | impact-user-visible | impact-rule-change | impact-negligible
 ---
 ```
+
+Titles are always double-quoted, and a REQ whose impact verdict is anything other than the
+`impact-user-visible` default carries that verdict as a leading tag —
+`title: "[impact-negligible] Retitle the export button"`. The tag never appears in the filename, so
+`REQ-NNN-slug.md` is unchanged. It is there so the board's search box (which matches titles) finds
+every negligible REQ at once; `do-work run --skip-impact-negligible` reads the `impact:` field
+itself, not the title.
 
 Key sections inside a REQ:
 

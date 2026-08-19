@@ -291,7 +291,7 @@ Create REQ files for these? (The user can run `do-work run` to process them late
 
 Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward.
 
-When the user confirms, create REQ files using the standard format — `created_at` is the current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`):
+When the user confirms, create REQ files using the standard format — `created_at` is the current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`). The `title:` follows `../../do-work/actions/capture-reference.md` → **REQ Title Convention** — always double-quoted, and it carries **no** `[<impact token>] ` tag because this action writes no `impact:` verdict, so its REQs read as the `impact-user-visible` default:
 
 ```markdown
 ---

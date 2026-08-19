@@ -1,6 +1,6 @@
 ---
 id: REQ-295
-title: Disambiguate the remaining bare "impact" wordings in the maintainability audit
+title: "[impact-rule-change] Disambiguate the remaining bare impact wordings in the maintainability audit"
 status: pending
 created_at: 2026-08-19T15:48:05Z
 user_request: UR-060

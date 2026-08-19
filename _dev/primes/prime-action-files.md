@@ -102,6 +102,7 @@ A skill or action description is loaded whether or not the thing gets used, so i
 
 ## Lessons
 
+- [REQ-290: a REQ that adds a condition to a list must sweep every *gloss* of that list — three restatements survived inside the two files it was already editing, one thirteen lines from the condition it contradicted](../../do-work/archive/REQ-290-surface-impact-in-req-titles-and-a-run-filter.md#lessons-learned)
 - [REQ-289: a file arguing against a problem is not evidence it avoided it — the third consumer of the retired vocabulary stated this REQ's thesis in its own words while carrying the conflation](../../do-work/archive/REQ-289-separate-impact-from-effort-with-unique-tokens.md#lessons-learned)
 - [REQ-253: close a site class by its condition, not the REQ's line list — the listed line was a read site and the real write sites were elsewhere](../../do-work/archive/REQ-253-decide-the-timestamp-rule-boundary-cases.md#lessons-learned)
 - [REQ-249: make the sweep's condition BE the checker's condition — and expect the class to be wider than the marked spans; the retired reading survived as bare prose the sweep was structurally blind to](../../do-work/archive/REQ-249-decide-the-cross-package-citation-path-form.md#lessons-learned)

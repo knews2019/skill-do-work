@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.215.0 — Skip the Work Nobody Would Notice (2026-08-19)
+
+The impact verdict you can now put on a REQ became something you can act on. `do-work run --skip-impact-negligible` builds the queue and leaves the negligible work where it is, telling you how many it passed over so a narrowed run never looks like an empty queue.
+
+- The impact token also rides at the front of a REQ's title, so typing `impact-negligible` into the board's search box lists exactly those REQs. No board changes were needed — the search already matched titles.
+- The flag errs toward doing the work: a REQ nobody has judged, or one with a misspelled value, reads as user-visible and is never skipped.
+- It picks *which* REQs run, so it stacks with `--wave` and composes with `--fan-out`. Naming a REQ outright still builds it — an explicit name beats the filter, the same way it beats dependency gating.
+- New `REQ Title Convention` section covering every flow that mints a REQ title, keyed on the condition rather than a list of places that would drift.
+
 ## 0.214.0 — Impact and Effort Are Now Two Separate Fields (2026-08-19)
 
 A REQ can finally tell you whether anyone would ever notice the work, separately from how big it is. Before this, one field answered both questions badly: capture wrote `effort_estimate` meaning size, the review flow stamped the same field from an impact test, and a finding nobody would notice but that takes three hours to fix got labelled a small mechanical fix and forecast at five minutes.

@@ -1,6 +1,6 @@
 ---
 id: REQ-296
-title: Decide whether the retired vocabulary left in internal names should follow
+title: "[impact-negligible] Decide whether the retired vocabulary left in internal names should follow"
 status: pending-answers
 created_at: 2026-08-19T15:48:05Z
 user_request: UR-060
