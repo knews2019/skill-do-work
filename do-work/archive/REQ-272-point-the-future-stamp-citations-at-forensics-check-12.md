@@ -1,9 +1,10 @@
 ---
 id: REQ-272
 title: Point the future-stamp citations at forensics Check 12
-status: pending
+status: cancelled
 created_at: 2026-08-18T22:57:49Z
 status_changed_at: 2026-08-18T22:57:49Z
+completed_at: 2026-08-20T13:21:13Z
 user_request: UR-056
 addendum_to: REQ-257
 domain: general
@@ -56,3 +57,16 @@ Worth knowing while this sits in the queue: nothing mechanical checks a by-numbe
 ## Open Questions
 
 None — the review verified all four sites and the correct number against `forensics.md` directly.
+
+## Cancelled
+
+- **When:** 2026-08-20T13:21:13Z
+- **Why:** folded into the standing prose sweep REQ-307
+- **Decided by:** user, via `do-work abandon`
+
+**Where the work went.** This REQ's finding is now an instance on REQ-307's `## Instances`
+checklist, with its file:line citations intact and re-verified against the tree on 2026-08-20
+rather than carried over on trust. Nothing is dropped; what changes is that it drains in a batch
+with its own class instead of costing a dispatch, a review, a version bump and two commits on its
+own. That is the whole point of UR-063, and this REQ is one of the two seed instances that gives
+REQ-307 something to hold on its first day.

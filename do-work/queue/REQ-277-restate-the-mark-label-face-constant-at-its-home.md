@@ -1,10 +1,9 @@
 ---
 id: REQ-277
 title: State the mark-label face constant's real scope at its canonical home
-status: cancelled
+status: pending
 created_at: 2026-08-18T23:53:40Z
-status_changed_at: 2026-08-18T23:53:40Z
-completed_at: 2026-08-20T11:38:27Z
+status_changed_at: 2026-08-20T13:21:13Z
 user_request: UR-051
 addendum_to: REQ-265
 domain: general
@@ -15,7 +14,7 @@ effort_estimate: trivial
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: false
 suggested_spec: bug-fix
-depends_on: []
+depends_on: [REQ-292]
 maintenance: true
 write_set:
 - skills/do-work-board/tools/queue-kanban/generate_test.go
@@ -57,21 +56,12 @@ REQ-265's independent review, Important finding 2 plus a Minor (gate: trivial ea
 
 Worth knowing: `TestDurationsMeasuredConstantsNameTheirChromiumBuild` enforces that each measured constant names its build, and its vacuity guard is `count == 0` — so it survived REQ-265's deletion without hollowing out. Nothing, however, checks that a constant's stated *scope* matches its readers. That gap is why this REQ exists.
 
-## Cancelled
+REQ-292 may delete the subject of this REQ entirely. Re-read this REQ against the post-292
+tree before starting it; closing as no-longer-applicable is the expected outcome.
 
-- **When:** 2026-08-20T11:38:27Z
-- **Why:** REQ-292 deletes the measured-face model this documentation describes. Cancel as superseded.
-- **Decided by:** user, via `do-work abandon`
-
-**What supersedes it.** All three `## Instances` are comments *about* measured-face constants, and
-REQ-292 deletes those constants rather than adjusting them: it requires that
-`durationsLabelCharacterWidthUnits` "and the measured-face constant block in `durations_test.go` are
-deleted, not adjusted," and it names `TestDurationsMeasuredConstantsNameTheirChromiumBuild` among the
-tests whose properties are re-pinned as browser probes or recorded as deliberately dropped. Both files
-this REQ writes — `generate_test.go` and `durations_test.go` — hold constants inside that block:
-`durationsMeasuredMarkLabelDescentUnits` (instances 1 and 2), and
-`durationsMeasuredLabelWidthSupremumUnits` / `durationsMeasuredLabelBoxHeightUnits` (instance 3).
-Correcting a doc comment's stated scope is work with no surviving subject once the constant it
-describes is gone. Nothing folds forward: the *sweep* requirement here — that a constant read from
-more than one file says so at its declaration — is about a cross-file-constant pattern REQ-292
-removes from this package outright.
+**Cancelled and restored (2026-08-20).** This REQ was cancelled as superseded by REQ-292
+earlier in the same session, then restored at the user's direction because REQ-292 has not
+built yet. The `## Cancelled` section was removed on restore rather than left standing over a
+`pending` REQ, which would have been a contradiction; the supersession reasoning it carried is
+preserved in the Context line above and in the `depends_on: [REQ-292]` gate. Closing this REQ
+as no-longer-applicable after REQ-292 lands remains the expected outcome.
