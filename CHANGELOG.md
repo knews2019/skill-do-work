@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.217.0 — Fold Findings Into Pending REQs Before Minting New Ones (2026-08-20)
+
+The queue was refilling as fast as it drained because every finding minted its own REQ file. Now any flow about to create a REQ first scans the whole queue — across URs — for a pending, unclaimed REQ sharing the root cause and folds the finding in as a checklist instance; a new file is the stated exception.
+
+- New canonical **Fold-First Rule** section in `actions/capture-reference.md`, followed by capture, review Step 10, builder follow-ups/discovered tasks, and toolbox code-review.
+- Review sweeps are cross-UR: the same-UR candidate filter is gone, and a plain pending REQ converts to a sweep once when a second finding shares its root cause. Instance lines carry `(found by REQ-NNN / UR-NNN)` attribution.
+- Capture's impact guard is now symmetric — asserting `impact-user-visible` unjudged is as wrong as inventing `impact-negligible` — and the REQ template no longer pre-fills a verdict (REQ-294). Absence still reads as `impact-user-visible`.
+- `--skip-impact-negligible` reports its skips in targeted mode too, and the skipped count's scope is defined per run mode (REQ-297).
+- Toolbox code-review REQs now carry a judged `impact:` instead of silently defaulting.
+- Decision recorded as ADR-020 ([decisions/records/adr-020-fold-findings-into-pending-reqs-before-minting.md](https://github.com/knews2019/skill-do-work/blob/main/decisions/records/adr-020-fold-findings-into-pending-reqs-before-minting.md)).
+
 ## 0.216.2 — Per-Script Shell Behavior Test Files (2026-08-20)
 
 The prescribed-shell behavior suite was one 1882-line file holding 76 cases for 17 different scripts. It's now one file per script, so you can run just the ones you care about and a failure tells you which script broke before you read a line.
