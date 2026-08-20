@@ -6,6 +6,7 @@ created_at: 2026-08-20T08:37:00Z
 status_changed_at: 2026-08-20T11:38:27Z
 claimed_at: 2026-08-20T12:28:39Z
 completed_at: 2026-08-20T12:38:40Z
+commit: cded56b
 route: B
 estimate:
   p50_active_minutes: 25
