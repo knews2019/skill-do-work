@@ -2,7 +2,7 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
-## 0.218.0 — Run the Queue's Mechanical Work on a Cheaper Model (2026-08-20)
+## 0.220.0 — Run the Queue's Mechanical Work on a Cheaper Model (2026-08-20)
 
 Launch a session on a smaller model and `do-work run-simple-reqs` tells you which queued REQs are safe to build there, what the batch costs in active minutes, and which mechanical REQs it held back and why — then hands the set to the normal pipeline after one confirmation. Nothing names or switches a model; you bring the environment, the suite brings the selection.
 
@@ -11,6 +11,26 @@ Launch a session on a smaller model and `do-work run-simple-reqs` tells you whic
 - Dependency-readiness is checked before the handoff, because an explicitly-named `REQ-NNN` bypasses `depends_on` by design — without that check the new verb would have been a silent gate bypass.
 - Held-back REQs are always reported with a reason, so a mis-tagged REQ is fixable instead of invisible.
 - `_dev/tests/select-simple-reqs-behavior.sh` pins all of it, every probe mutation-tested to confirm it can fail.
+
+## 0.219.0 — The Calendar Now Shows the Whole Queue, Colour-Keyed by Status (2026-08-20)
+
+The board's Calendar view only ever showed finished work, in one shade of green, and `failed` REQs appeared on no day at all. It now carries every REQ: what hasn't started sits in a band at the top, claimed REQs sit on the day they were claimed, and each chip is coloured by its status.
+
+- Work that has not started — pending, needs-answers, and the blocked family — collects in an "In the queue" band pinned above the newest day.
+- Claimed REQs are placed on their `claimed_at` day, so a claim still sitting on an old day reads as the staleness signal it is.
+- `failed` REQs now appear, on the day they failed. They are dated from `completed_at` directly, so the detail drawer still never shows a "Completed" row for work that did not complete.
+- Chips take the same status colours the board's cards already use, including the struck-through treatment for cancelled work (`abandoned`, `canceled`, `wont-do` and `wontfix` all normalize to `cancelled`, so one colour covers them). "Completed with issues" keeps the success hue and adds a dotted underline rather than a second shade of green.
+- Each day label now counts what happened on it ("2 done  1 claimed  1 failed", each in its status colour) instead of a bare "N done", and the summary line above the calendar carries the same segments — which makes it the colour key.
+- Every REQ appears exactly once, so nothing can silently drop out of the view; the Board view's "Recently done" window is unchanged and still excludes claimed and failed work.
+
+## 0.218.0 — Fold-First Becomes a Ladder, and the Board Learns to Count Sweeps (2026-08-20)
+
+An adversarial review of 0.217.0 found the prose-only rule unreachable from the flow that produces most prose findings, the standing sweep's lifecycle broken by step ordering, and the queue count blind to instances hiding inside sweeps. All three are fixed, and the rule got shorter doing it.
+
+- The Fold-First Rule is now a first-match destination ladder (append → convert → standing sweep → new REQ) with a named prose-only test; the citing files point at it instead of restating it, and review Step 10 plus toolbox code-review now route prose-only findings to the standing sweep explicitly.
+- The default work scan never selects a standing sweep — it drains only when explicitly named or opportunistically, as a lightweight pass that skips the build pipeline, returns to `pending` with `status_changed_at` stamped, and records its commit hash in a `## Drains` line. The queue summary prints its open-instance count.
+- Conversion targets must be unassigned and dependency-free, and conversion clears `write_set` and the frozen estimate; racing duplicate standing sweeps merge by rule; a critical escalation ticks the consent question it bypasses; a fold-only capture is a legitimate complete capture.
+- The board parses `sweep`/`standing` into a card chip and drawer row showing open/done instance counts, so queue depth stays honest under folding, and `queue-kanban verify` no longer tells you to abandon the standing sweep after its UR archives.
 
 ## 0.217.0 — Fold Findings Into Pending REQs Before Minting New Ones (2026-08-20)
 

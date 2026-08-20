@@ -1,6 +1,6 @@
 ---
 name: do-work-board
-description: Queue-kanban board, Testing workflow, completion calendar, summaries, and terminal digest for the modular do-work suite
+description: Queue-kanban board, Testing workflow, queue activity calendar, summaries, and terminal digest for the modular do-work suite
 argument-hint: "board [serve|static|summary|cli] [--port N|--out DIR] | help"
 ---
 

@@ -508,6 +508,13 @@ func appendArchivedUserRequestLiveMemberFindings(report *VerifyReport, board *Bo
 			if memberTicket.ReviewGenerated {
 				continue
 			}
+			// A standing sweep never terminally resolves by contract and is
+			// excluded from UR membership (Terminal-resolved status set's
+			// standing carve-out, actions/work-reference.md) — it legitimately
+			// stays in the queue after its UR archives.
+			if memberTicket.Standing {
+				continue
+			}
 			liveMemberIds = append(liveMemberIds, memberRequestId)
 		}
 		if len(liveMemberIds) == 0 {

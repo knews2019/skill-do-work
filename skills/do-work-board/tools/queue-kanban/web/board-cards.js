@@ -222,6 +222,31 @@
       }
       badges.appendChild(impactBadge);
     }
+    if (request.sweep) {
+      // A consolidation sweep holds many instances behind one card, so the raw
+      // column count understates real work — the chip's open/total count is
+      // what keeps queue depth honest. `standing` marks the never-closing
+      // standing sweep the Fold-First Rule routes prose-only findings to; it
+      // drains only when explicitly named, never by the default scan. Display
+      // only: the board never buckets, orders, or schedules on either marker.
+      var sweepInstancesOpen = request.sweepInstancesOpen || 0;
+      var sweepInstancesDone = request.sweepInstancesDone || 0;
+      var sweepInstancesTotal = sweepInstancesOpen + sweepInstancesDone;
+      var sweepBadge = makeBadge(
+        "badge-sweep",
+        request.standing ? "standing sweep" : "sweep",
+        sweepInstancesOpen + " open of " + sweepInstancesTotal
+      );
+      sweepBadge.title =
+        (request.standing
+          ? "standing: true — the never-closing standing sweep; drains only when explicitly named. "
+          : "sweep: true — one REQ per root cause, holding an ## Instances checklist. ") +
+        sweepInstancesOpen +
+        " unticked instance(s) of " +
+        sweepInstancesTotal +
+        ". Display only: the board never reorders, blocks, or hides on this.";
+      badges.appendChild(sweepBadge);
+    }
     if (request.completionAnomaly) {
       // Broken completion bookkeeping (flagged by the Go side) — mark the card
       // wherever it renders, not just inside the anomalies strip.
@@ -376,7 +401,16 @@
     var cutoffMs = Date.now() - windowHours * 3600 * 1000;
     var ids = [];
     (boardData.calendar || []).forEach(function (entry) {
-      var ms = Date.parse(entry.completionTime);
+      // The calendar carries every REQ — queued, claimed, and failed included —
+      // so this cannot treat an entry's presence as "done". The gate mirrors
+      // Go's bucketColumns RecentlyDone exactly: terminal-RESOLVED only, which
+      // keeps cancelled in (it shares that column) and keeps failed out (it
+      // belongs to Needs-input/Blocked). Without it, a REQ claimed an hour ago
+      // shows up in "Recently done".
+      if (!isTerminalResolvedStatus(entry.status)) {
+        return;
+      }
+      var ms = Date.parse(entry.entryTime);
       if (!isNaN(ms) && ms > cutoffMs) {
         ids.push(entry.id);
       }

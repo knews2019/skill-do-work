@@ -47,7 +47,7 @@ Check `do-work/user-requests/` for UR folders that are ready to archive.
 
 For each UR folder in `do-work/user-requests/`:
 
-1. **Collect the UR's REQs** by reading the `user_request` field of every `REQ-*.md` in all four locations and keeping those whose value is this UR's id:
+1. **Collect the UR's REQs** by reading the `user_request` field of every `REQ-*.md` in all four locations and keeping those whose value is this UR's id — except a REQ carrying `standing: true`, which the Terminal-resolved set's standing carve-out excludes from membership (`actions/work-reference.md`): the standing sweep never counts, never holds a UR open, and stays in the queue when its UR archives:
    - `do-work/queue/REQ-*.md` (pending, pending-answers, blocked, claimed)
    - `do-work/working/REQ-*.md` (in flight)
    - `do-work/archive/REQ-*.md` (loose in archive root — non-recursive; `archive/legacy/` REQs have no `user_request` by definition)

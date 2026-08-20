@@ -129,7 +129,7 @@ func writeBoardSummary(outputWriter io.Writer, board *Board) {
 	for _, anomalousTicket := range board.Columns.CompletionAnomalies {
 		fmt.Fprintf(outputWriter, "    ! %s — %s\n", anomalousTicket.RequestId, anomalousTicket.CompletionAnomalyReason)
 	}
-	fmt.Fprintf(outputWriter, "  calendar entries    : %d\n", len(board.Calendar))
+	fmt.Fprintf(outputWriter, "  calendar entries    : %d (one per REQ — queued, claimed, and resolved)\n", len(board.Calendar))
 	fmt.Fprintf(outputWriter, "  dependency edges    : %d\n", len(board.DependencyGraph.Edges))
 	if len(board.Warnings) > 0 {
 		fmt.Fprintf(outputWriter, "  warnings            : %d\n", len(board.Warnings))

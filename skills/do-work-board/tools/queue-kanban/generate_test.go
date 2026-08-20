@@ -1393,11 +1393,18 @@ func TestJavaScriptBehaviorByUserRequestLensCountsRecentlyDoneAsActive(t *testin
 		sliceBalancedBlockAfter(t, indexHtml, "function userRequestHasOpenOrRecentWork("),
 		sliceBalancedBlockAfter(t, indexHtml, "function recentlyDoneIds("),
 	}
+	// The calendar carries EVERY REQ, so the stub holds a claimed-an-hour-ago and
+	// a failed-an-hour-ago entry alongside the completions. Both are inside the
+	// 24h window and neither may reach Recently done: recentlyDoneIds is gated on
+	// terminal-resolved, not on mere presence in the array.
 	javascriptProbe := `
 Date.now = function () { return Date.parse("2026-08-15T12:00:00Z"); };
 var boardData = { calendar: [
-  { id: "REQ-recent", completionTime: "2026-08-15T06:00:00Z" },
-  { id: "REQ-old", completionTime: "2026-08-13T06:00:00Z" }
+  { id: "REQ-claimed", status: "claimed", entryTime: "2026-08-15T11:00:00Z" },
+  { id: "REQ-failed", status: "failed", entryTime: "2026-08-15T11:00:00Z" },
+  { id: "REQ-queued", status: "pending", entryTime: "" },
+  { id: "REQ-recent", status: "completed", entryTime: "2026-08-15T06:00:00Z" },
+  { id: "REQ-old", status: "completed", entryTime: "2026-08-13T06:00:00Z" }
 ] };
 var requestsById = {
   "REQ-recent": { status: "completed" },
@@ -1425,7 +1432,8 @@ process.stdout.write(JSON.stringify({
 		t.Fatalf("decode by-UR recent-work result: %v (output %q)", decodeError, probeOutput)
 	}
 	if len(result.RecentIds) != 1 || result.RecentIds[0] != "REQ-recent" {
-		t.Fatalf("recentlyDoneIds(24) = %#v, want only REQ-recent", result.RecentIds)
+		t.Fatalf("recentlyDoneIds(24) = %#v, want only REQ-recent — a claimed, failed, or queued calendar "+
+			"entry inside the window must never reach the Recently done column", result.RecentIds)
 	}
 	if !result.RecentActive || result.OldActive || !result.OpenActive {
 		t.Fatalf("Active predicate result = recent:%v old:%v open:%v, want true, false, true",
@@ -1573,8 +1581,8 @@ var boardData = {
   },
   userRequestOrder: ["UR-301", "UR-302"],
   calendar: [
-    { id: "REQ-502", completionTime: "2026-08-15T06:00:00Z" },
-    { id: "REQ-501", completionTime: "2026-08-13T06:00:00Z" }
+    { id: "REQ-502", status: "completed", entryTime: "2026-08-15T06:00:00Z" },
+    { id: "REQ-501", status: "completed", entryTime: "2026-08-13T06:00:00Z" }
   ]
 };
 var requestsById = boardData.requests;
@@ -3812,6 +3820,61 @@ process.stdout.write(JSON.stringify(` + string(probeValues) + `.map(function (ro
 			t.Errorf("%s: timelineFormatSpanMinutes(%.2f) drew %q, want %q",
 				roundingCase.Requirement, roundingCase.Minutes,
 				drawnTexts[caseIndex].TimelineText, roundingCase.WantTimelineText)
+		}
+	}
+}
+
+// TestJavaScriptBehaviorCalendarDayBreakdownGroupsStatuses executes the real
+// calendarDayBreakdown from the assembled client. The count line it feeds ("12
+// done · 2 cancelled") is the calendar's main at-a-glance signal, so a status
+// landing in the wrong group misreports the day — counting abandoned or
+// still-open work as "done" is the failure that matters. It also pins that only
+// non-zero groups render, that the three blocked variants collapse into one
+// group while an unrecognized status does NOT join them, and the fixed group
+// order the colours in board.css are written against.
+func TestJavaScriptBehaviorCalendarDayBreakdownGroupsStatuses(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function calendarDayBreakdown(") + `
+var entries = [
+  { id: "REQ-1", status: "cancelled" },
+  { id: "REQ-2", status: "completed" },
+  { id: "REQ-3", status: "blocked-archive-collision" },
+  { id: "REQ-4", status: "completed" },
+  { id: "REQ-5", status: "blocked" },
+  { id: "REQ-6", status: "completed-with-issues" },
+  { id: "REQ-7", status: "blockd-dependency-cycle" },
+  { id: "REQ-8", status: "claimed" },
+  { id: "REQ-9" }
+];
+process.stdout.write(JSON.stringify(calendarDayBreakdown(entries)));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "calendar day breakdown", javascriptProbe)
+
+	var breakdown []struct {
+		Group string `json:"group"`
+		Label string `json:"label"`
+		Count int    `json:"count"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &breakdown); decodeError != nil {
+		t.Fatalf("decode calendar day breakdown: %v (output %q)", decodeError, probeOutput)
+	}
+	want := []struct {
+		group string
+		count int
+	}{
+		{"done", 2},
+		{"with-issues", 1},
+		{"claimed", 1},
+		{"blocked", 2},      // `blocked` + `blocked-archive-collision`, one group
+		{"cancelled", 1},    // never folded into done
+		{"unrecognized", 2}, // the typo'd status and the one with no status at all
+	}
+	if len(breakdown) != len(want) {
+		t.Fatalf("breakdown = %#v, want %d non-zero groups (empty groups must not render)", breakdown, len(want))
+	}
+	for index, wantPart := range want {
+		if breakdown[index].Group != wantPart.group || breakdown[index].Count != wantPart.count {
+			t.Fatalf("breakdown[%d] = %s×%d, want %s×%d (fixed group order, exact status matching)",
+				index, breakdown[index].Group, breakdown[index].Count, wantPart.group, wantPart.count)
 		}
 	}
 }

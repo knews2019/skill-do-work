@@ -164,15 +164,22 @@ type generatedRequest struct {
 	EffortEstimate             string `json:"effortEstimate,omitempty"`
 	OriginalEffortEstimate     string `json:"originalEffortEstimate,omitempty"`
 	EffortEstimateUnrecognized bool   `json:"effortEstimateUnrecognized,omitempty"`
-	Batch                      string `json:"batch"`
-	TreeSection                string `json:"treeSection"`
-	CreatedAt                  string `json:"createdAt"`
-	ClaimedAt                  string `json:"claimedAt"`
-	CompletedAt                string `json:"completedAt"`
-	StatusChangedAt            string `json:"statusChangedAt,omitempty"` // last no-dedicated-stamp status flip (see RequestTicket.StatusChangedAt)
-	FileModifiedAt             string `json:"fileModifiedAt,omitempty"`  // file mtime at generation, RFC3339 — state-timer fallback only, never completion dating
-	CompletionTime             string `json:"completionTime"`
-	CompletionTimeSource       string `json:"completionTimeSource"`
+	// Sweep markers + instance counts (see RequestTicket.Sweep/Standing).
+	// Display only — a card chip and a drawer row; no column or scheduling
+	// meaning.
+	Sweep                bool   `json:"sweep,omitempty"`
+	Standing             bool   `json:"standing,omitempty"`
+	SweepInstancesOpen   int    `json:"sweepInstancesOpen,omitempty"`
+	SweepInstancesDone   int    `json:"sweepInstancesDone,omitempty"`
+	Batch                string `json:"batch"`
+	TreeSection          string `json:"treeSection"`
+	CreatedAt            string `json:"createdAt"`
+	ClaimedAt            string `json:"claimedAt"`
+	CompletedAt          string `json:"completedAt"`
+	StatusChangedAt      string `json:"statusChangedAt,omitempty"` // last no-dedicated-stamp status flip (see RequestTicket.StatusChangedAt)
+	FileModifiedAt       string `json:"fileModifiedAt,omitempty"`  // file mtime at generation, RFC3339 — state-timer fallback only, never completion dating
+	CompletionTime       string `json:"completionTime"`
+	CompletionTimeSource string `json:"completionTimeSource"`
 
 	CompletionAnomaly       bool   `json:"completionAnomaly,omitempty"`
 	CompletionAnomalyReason string `json:"completionAnomalyReason,omitempty"`
@@ -217,12 +224,16 @@ type generatedNote struct {
 	NoteText string `json:"text"`
 }
 
-// generatedCalendarEntry plots one completed REQ on the completion timeline.
+// generatedCalendarEntry plots one REQ on the calendar timeline. `status` rides
+// along so a chip colours itself and recentlyDoneIds filters the array without a
+// per-entry requestsById lookup; `entryTime` is a completion instant, a claim
+// instant, or empty, per the entry's day bucket (see buildCalendar).
 type generatedCalendarEntry struct {
-	RequestId      string `json:"id"`
-	CompletionTime string `json:"completionTime"`
-	DayKey         string `json:"dayKey"`
-	TimeSource     string `json:"timeSource"`
+	RequestId  string `json:"id"`
+	Status     string `json:"status"`
+	EntryTime  string `json:"entryTime"`
+	DayKey     string `json:"dayKey"`
+	TimeSource string `json:"timeSource"`
 }
 
 // generatedDurations is the Durations view's data: one measured sample per
@@ -560,6 +571,10 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			EffortEstimate:             ticket.EffortEstimate,
 			OriginalEffortEstimate:     ticket.OriginalEffortEstimate,
 			EffortEstimateUnrecognized: ticket.EffortEstimateUnrecognized,
+			Sweep:                      ticket.Sweep,
+			Standing:                   ticket.Standing,
+			SweepInstancesOpen:         ticket.SweepInstancesOpen,
+			SweepInstancesDone:         ticket.SweepInstancesDone,
 			Batch:                      ticket.Batch,
 			TreeSection:                ticket.TreeSection,
 			CreatedAt:                  ticket.CreatedAt,
@@ -610,10 +625,11 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 
 	for _, entry := range board.Calendar {
 		data.Calendar = append(data.Calendar, generatedCalendarEntry{
-			RequestId:      entry.RequestId,
-			CompletionTime: formatTimestamp(entry.CompletionTime),
-			DayKey:         entry.DayKey,
-			TimeSource:     string(entry.TimeSource),
+			RequestId:  entry.RequestId,
+			Status:     entry.Status,
+			EntryTime:  formatTimestamp(entry.EntryTime),
+			DayKey:     entry.DayKey,
+			TimeSource: string(entry.TimeSource),
 		})
 	}
 
