@@ -13,7 +13,7 @@ Every invocation produces exactly two things, always paired:
 1. **A UR folder** at `do-work/user-requests/UR-NNN/` with `input.md` containing the full verbatim input
 2. **One or more REQ files** at `do-work/queue/REQ-NNN-slug.md`, each linked via `user_request: UR-NNN` in frontmatter
 
-Never create one without the other. A REQ without `user_request` is orphaned. A UR without REQs is pointless — with one exception: a capture whose every request the fold-first scan resolved (Step 2) legitimately produces a UR whose `requests:` array is empty and whose `folded into REQ-NNN` lines in `input.md` are the record of where the work went. actions/verify-requests.md depends on this linkage.
+Never create one without the other. A REQ without `user_request` is orphaned. A UR without REQs is pointless — with one exception: a capture whose every request the fold-first scan resolved (Step 2) legitimately produces a UR whose `requests:` array is empty and whose `## Folded Requests` section in `input.md` is the record of where the work went — one line per fold, `- REQ-NNN (<sweep_key or title>) — <the input request it absorbed>`, per the **UR input.md** template in `actions/capture-reference.md`. actions/verify-requests.md depends on this linkage, and reads that section by name.
 
 **Principles:**
 - Represent, don't expand — if the user says 5 words, write a 5-word request (with structure)

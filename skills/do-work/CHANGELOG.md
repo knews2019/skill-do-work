@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.221.1 — One Spelling of the Fold-Only Invariant (2026-08-20)
+
+A review bot caught capture.md describing its fold record two different ways in one file — the drift class this release was about in the first place.
+
+- Capture's Philosophy paragraph named bare `folded into REQ-NNN` lines while Step 5, the red flag, and the checklist named `## Folded Requests`. It now points at that section and its canonical line format, so the reader who hits the invariant first and the reader who hits the checklist last agree.
+- The untracked-scan binary guard states its limit beside itself: the verdict is grep's own binary detection, deliberately the same detection the scans apply, so guard and scan never disagree about what a binary is.
+
 ## 0.221.0 — Folds and Standing Sweeps Reach Their Remaining Readers (2026-08-20)
 
 An external review of 0.217.0 found four contracts downstream of the Fold-First Rule still assuming every captured request mints a REQ file and every finished REQ gets archived. 0.218.0 fixed two of them; these are the rest, plus the residue the reconciliation exposed.

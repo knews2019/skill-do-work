@@ -553,7 +553,12 @@ if [ "$git_available" -eq 1 ]; then
       # later inherits it: a binary asset that happens to carry the bytes `TODO` or `print(`
       # is not source, and on greps that report a binary match on stdout (BSD, GNU before
       # 3.5) it lands in a FAIL list as a "match" nobody can read — then reaches the
-      # ownership probe, which reads the whole file into a variable.
+      # ownership probe, which reads the whole file into a variable. The verdict is grep's own
+      # binary detection on purpose — the same detection the scans below apply, so guard and
+      # scan agree on what a binary is. A NUL past grep's read window therefore reads as text
+      # here AND there: the scans report that file's real markers on real lines, which is the
+      # correct answer for a text file with a stray trailing NUL, not the unreadable
+      # binary-match diagnostic this guard exists to keep out.
       grep -Iq '' -- "$untracked_path" || continue
       untracked_marker_lines="$(grep -nE "$unfinished_marker_regex" -- "$untracked_path" || true)"
       if [ -n "$untracked_marker_lines" ] && [ "$unify_box_checked" -eq 1 ]; then
