@@ -6,6 +6,7 @@ created_at: 2026-08-18T22:57:26Z
 status_changed_at: 2026-08-18T22:57:26Z
 claimed_at: 2026-08-20T12:41:45Z
 completed_at: 2026-08-20T12:55:37Z
+commit: a773dc6
 route: B
 estimate:
   p50_active_minutes: 20
