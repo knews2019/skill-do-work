@@ -195,6 +195,17 @@ add keyboard shortcuts
 
 For complex requests, add a Summary, an Extracted Requests table, and a Batch Constraints section before the Full Verbatim Input. The verbatim section must contain the COMPLETE, UNEDITED input — never summarize or clean it up.
 
+**`## Folded Requests` — written only when the fold-first scan resolved a request** (`actions/capture.md` Step 5), placed above the Full Verbatim Input so it never edits the verbatim body. One line per fold, naming the destination REQ and the part of the input it absorbed:
+
+```markdown
+## Folded Requests
+
+- REQ-018 (durations-measured-face-constants-lack-provenance) — the second finding, that the face numbers carry no provenance
+- REQ-307 (prose-only-discrepancy-reconciliation) — the stale "two write surfaces" count
+```
+
+This section is the whole record of a folded request: the destination REQ keeps its own `user_request`, and a folded request never enters this UR's `requests` array. Both halves of each line are load-bearing — the REQ id is what `actions/verify-requests.md` opens, and the trailing description is the input portion it grades that REQ against.
+
 ## Addendum REQ Template
 
 Written for **Addendum for in-flight/completed requests** (`actions/capture.md` Step 2) — a new UR + REQ pair where the REQ's `addendum_to` links back to the original. The fenced block shows the exact frontmatter and body shape, including the `## Prior Implementation` section used when the original is archived:

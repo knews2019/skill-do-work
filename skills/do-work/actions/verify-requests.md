@@ -55,14 +55,16 @@ do-work verify-requests --against <superseded-decision-path|REQ-NNN> [--against 
 
 1. Read `do-work/user-requests/UR-NNN/input.md`
 2. Extract the full verbatim input section
-3. Note the `requests` array to know which REQs to evaluate
-4. Note any Batch Constraints section
+3. Note the `requests` array to know which REQs this capture created
+4. Note any `## Folded Requests` section — each line names a REQ that absorbed part of this input instead of a new REQ file (`actions/capture.md` Step 5). Those REQs are evaluated too: the array alone under-reports coverage for a capture that folded anything, and grading the input against created REQs only would report a folded request as a dropped requirement
+5. Note any Batch Constraints section
 
 ### Step 3: Read All Related REQs
 
-1. Find all REQ files listed in the UR's `requests` array
+1. Find all REQ files listed in the UR's `requests` array, plus every REQ named in its `## Folded Requests` section
 2. Check `do-work/queue/`, `do-work/` (root, legacy fallback), `do-work/working/`, and `do-work/archive/` for each
 3. Read the full content of each REQ file
+4. **Score a folded REQ only against the input portion its fold line names.** It belongs to another UR — its `user_request`, its other instances, and its Builder Guidance answer to that UR, so the Intent Signals and Batch Context dimensions are graded there, not here. What this run asks of it is narrower: does the REQ now carry the folded request faithfully (for a sweep, as an instance line specific enough to act on), or did the fold lose it? Report a lost fold as an Important gap the same way a dropped requirement is reported
 
 ### Step 4: Evaluate Each REQ
 
@@ -272,7 +274,7 @@ Omit an empty candidate section. If there are no candidates, say so and still re
 
 ## Verification Checklist
 
-- [ ] Every REQ scored on all applicable dimensions
+- [ ] Every REQ scored on all applicable dimensions — including every REQ named in `## Folded Requests`, each against the input portion its fold line names
 - [ ] Original input compared against REQ content word by word (not skimmed)
 - [ ] Gap severity rated for every identified gap (Important, Minor, Nit, Ambiguous)
 - [ ] Ambiguous gaps resolved on the spot with user input
