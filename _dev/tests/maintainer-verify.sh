@@ -1,14 +1,49 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-required_go_version="go1.26.1"
-required_shellcheck_version="0.11.0"
+# Version FLOORS, not exact pins: this gate must be runnable on a machine that has a
+# newer toolchain than the one it was written against. The exact pins these replaced were
+# buying one thing — gofmt has no version flag and its output can change between Go
+# releases, so a newer toolchain can reformat a file this repo considers formatted and the
+# gofmt lane will name it. That is a legible failure with a legible fix (run the newer
+# gofmt, commit the result, or raise this floor), which is the trade this floor accepts.
+minimum_go_version="go1.26.1"
+minimum_shellcheck_version="0.11.0"
 script_path="${BASH_SOURCE[0]}"
 script_directory="${script_path%/*}"
 if [ "$script_directory" = "$script_path" ]; then
   script_directory='.'
 fi
 repo_root="$(cd "$script_directory/../.." && pwd)"
+
+# Returns 0 when $1 is at or above the floor $2. Compares dot-separated components as
+# integers, so 0.11.0 clears a 0.9.9 floor where a lexical compare would not. A missing
+# component reads as 0 (`0.11` clears `0.11.0`), and a trailing non-digit run is dropped
+# so a prerelease like `1.27rc1` compares as 27.
+version_at_least() {
+  local candidate_rest="$1"
+  local floor_rest="$2"
+  local candidate_part
+  local floor_part
+
+  while [ -n "$candidate_rest" ] || [ -n "$floor_rest" ]; do
+    candidate_part="${candidate_rest%%.*}"
+    floor_part="${floor_rest%%.*}"
+    candidate_part="${candidate_part%%[!0-9]*}"
+    floor_part="${floor_part%%[!0-9]*}"
+    [ -z "$candidate_part" ] && candidate_part=0
+    [ -z "$floor_part" ] && floor_part=0
+    if [ "$candidate_part" -gt "$floor_part" ]; then
+      return 0
+    fi
+    if [ "$candidate_part" -lt "$floor_part" ]; then
+      return 1
+    fi
+    case "$candidate_rest" in *.*) candidate_rest="${candidate_rest#*.}" ;; *) candidate_rest='' ;; esac
+    case "$floor_rest" in *.*) floor_rest="${floor_rest#*.}" ;; *) floor_rest='' ;; esac
+  done
+  return 0
+}
 
 fail_self_test() {
   printf 'FAIL: maintainer-verify self-test: %s\n' "$1" >&2
@@ -41,6 +76,8 @@ case "$command_name" in
       fi
       printf '%s\n' 'go-version' >> "$stage_log"
       if [ "$failure_stage" = 'go-version' ]; then
+        printf '%s\n' 'go version go1.20.0 fixture/arch'
+      elif [ -n "${MAINTAINER_VERIFY_SELFTEST_NEWER_TOOLS:-}" ]; then
         printf '%s\n' 'go version go1.99.0 fixture/arch'
       else
         printf '%s\n' 'go version go1.26.1 fixture/arch'
@@ -103,6 +140,8 @@ case "$command_name" in
       printf '%s\n' 'shellcheck-version' >> "$stage_log"
       printf '%s\n' 'ShellCheck - shell script analysis tool'
       if [ "$failure_stage" = 'shellcheck-version' ]; then
+        printf '%s\n' 'version: 0.9.9'
+      elif [ -n "${MAINTAINER_VERIFY_SELFTEST_NEWER_TOOLS:-}" ]; then
         printf '%s\n' 'version: 9.9.9'
       else
         printf '%s\n' 'version: 0.11.0'
@@ -206,6 +245,8 @@ run_self_test() {
   local success_output
   local no_node_log
   local no_node_output
+  local newer_tools_log
+  local newer_tools_output
   local failure_log
   local failure_output
   local mutated_fixture_script
@@ -270,6 +311,21 @@ run_self_test() {
     fail_self_test 'the no-Node success path did not print its explicit skip'
     return 1
   fi
+
+  newer_tools_log="$self_test_root/newer-tools.log"
+  newer_tools_output="$self_test_root/newer-tools.out"
+  : > "$newer_tools_log"
+  if ! PATH="$with_node_bin" \
+    MAINTAINER_VERIFY_SELFTEST_LOG="$newer_tools_log" \
+    MAINTAINER_VERIFY_EXPECTED_REPO_ROOT="$fixture_root" \
+    MAINTAINER_VERIFY_SELFTEST_GOROOT="$fixture_go_root" \
+    MAINTAINER_VERIFY_SELFTEST_NEWER_TOOLS=yes \
+    /bin/bash "$fixture_script" > "$newer_tools_output" 2>&1; then
+    sed 's/^/  /' "$newer_tools_output" >&2
+    fail_self_test 'a toolchain newer than the floor was rejected — these gates are floors, not exact pins'
+    return 1
+  fi
+  assert_success_stages "$newer_tools_log" yes
 
   for stage_name in \
     go-version shellcheck-version shellcheck-lint gofmt-lint gofmt-unformatted \
@@ -339,34 +395,36 @@ run_verification() {
     fi
   done
 
-  printf 'maintainer-verify: checking Go %s\n' "$required_go_version"
+  printf 'maintainer-verify: checking Go %s or newer\n' "$minimum_go_version"
   go_version_output="$(go version)"
   read -r _ _ go_version_text _ <<< "$go_version_output"
-  if [ "$go_version_text" != "$required_go_version" ]; then
-    printf 'maintainer-verify: Go version is %s; require exactly %s\n' \
-      "$go_version_text" "$required_go_version" >&2
+  if ! version_at_least "${go_version_text#go}" "${minimum_go_version#go}"; then
+    printf 'maintainer-verify: Go version is %s; require %s or newer\n' \
+      "$go_version_text" "$minimum_go_version" >&2
     return 1
   fi
-  # gofmt carries no version flag, so take it from the already-pinned toolchain's
-  # GOROOT rather than from PATH: a stray older gofmt formats differently and would
-  # make this gate's verdict depend on which Go happens to come first on PATH.
+  # gofmt carries no version flag, so take it from the toolchain this run just
+  # version-checked, via its GOROOT, rather than from PATH: a stray older gofmt formats
+  # differently and would make this gate's verdict depend on which Go happens to come
+  # first on PATH. That matters more under a floor than it did under an exact pin.
   gofmt_command="$(go env GOROOT)/bin/gofmt"
   if [ ! -x "$gofmt_command" ]; then
-    printf 'maintainer-verify: the pinned Go toolchain has no usable formatter at %s\n' \
+    printf 'maintainer-verify: the selected Go toolchain has no usable formatter at %s\n' \
       "$gofmt_command" >&2
     return 1
   fi
 
-  printf 'maintainer-verify: checking ShellCheck %s\n' "$required_shellcheck_version"
+  printf 'maintainer-verify: checking ShellCheck %s or newer\n' "$minimum_shellcheck_version"
   shellcheck_version_output="$(shellcheck --version)"
   while IFS= read -r shellcheck_version_line; do
     case "$shellcheck_version_line" in
       'version: '*) shellcheck_version_text="${shellcheck_version_line#version: }" ;;
     esac
   done <<< "$shellcheck_version_output"
-  if [ "$shellcheck_version_text" != "$required_shellcheck_version" ]; then
-    printf 'maintainer-verify: ShellCheck version is %s; require exactly %s\n' \
-      "${shellcheck_version_text:-unknown}" "$required_shellcheck_version" >&2
+  if [ -z "$shellcheck_version_text" ] || \
+    ! version_at_least "$shellcheck_version_text" "$minimum_shellcheck_version"; then
+    printf 'maintainer-verify: ShellCheck version is %s; require %s or newer\n' \
+      "${shellcheck_version_text:-unknown}" "$minimum_shellcheck_version" >&2
     return 1
   fi
 

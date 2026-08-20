@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.222.1 — The Maintainer Gate Accepts a Newer Toolchain (2026-08-20)
+
+`maintainer-verify.sh` demanded exactly `go1.26.1` and exactly ShellCheck `0.11.0`, so a machine with anything newer could not run the canonical gate at all — it refused before checking a single thing. The two version checks are now floors.
+
+- Go and ShellCheck are checked as "this version or newer", compared component-wise as integers so `0.11.0` clears a `0.9.9` floor and a prerelease like `1.27rc1` compares as `27`.
+- The self-test gained a pass that runs the whole gate against a *newer* fixture toolchain and expects success — the case an exact pin fails, so it can fail if anyone tightens the gates back. The two failure fixtures now report versions below the floor instead of above it.
+- The floors are still floors, not suggestions: `gofmt` has no version flag and its output can change between Go releases, so a newer toolchain may reformat a file this repo considers formatted, and the gofmt lane will name it. The remedy is stated beside the floor.
+
 ## 0.222.0 — Run the Queue's Mechanical Work on a Cheaper Model (2026-08-20)
 
 Launch a session on a smaller model and `do-work run-simple-reqs` tells you which queued REQs are safe to build there, what the batch costs in active minutes, and which mechanical REQs it held back and why — then hands the set to the normal pipeline after one confirmation. Nothing names or switches a model; you bring the environment, the suite brings the selection.
