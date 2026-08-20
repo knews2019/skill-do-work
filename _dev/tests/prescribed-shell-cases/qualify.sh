@@ -284,4 +284,43 @@ printf '%s' "$qualify_mixed_output" | grep -q 'relocated, not added' \
   || fail_case 'qualify fresh-beside-moved case dropped the moved marker instead of reporting it alongside the FAIL'
 rm -rf "$qualify_repo/relocation" "$qualify_repo/do-work/REQ-97"*.md
 
+# qualify: a P-A-U section that keeps PLAN and APPLY but drops UNIFY is disarmed too. The
+# artifact FAILs all key on a CHECKED [UNIFY] line, so a REQ with no UNIFY box at all
+# satisfies them by absence exactly as a sectionless one does — counting all three boxes
+# left this hole, and a PR review found it (REQ-264 remediation).
+printf '%s\n' '## Implementation Summary' \
+  '- `src/value_parser.py` (modified) — parsing tweak' \
+  '' '## AI Execution State (P-A-U Loop)' \
+  '- [x] **[PLAN]:** done' '- [x] **[APPLY]:** done' \
+  > "$qualify_repo/do-work/REQ-961-no-unify-box.md"
+printf 'print(raw_text)\n' >> "$qualify_repo/src/value_parser.py"
+qualify_no_unify_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-961-no-unify-box.md 2>&1)"
+printf '%s' "$qualify_no_unify_output" | grep -q 'DISARMED' \
+  || fail_case 'qualify no-UNIFY-box case printed no disarmed-audit warning — a REQ keeping PLAN and APPLY but dropping UNIFY still passes Check 4 silently'
+printf '%s' "$qualify_no_unify_output" | grep -q 'no \[UNIFY\] box' \
+  || fail_case 'qualify no-UNIFY-box case did not distinguish a missing UNIFY box from a missing section — the remedies differ'
+git -C "$qualify_repo" checkout -q -- src/value_parser.py
+
+# qualify: ownership follows a RENAMED file back to its base path. A renamed file does not
+# exist at the base under its new path, so a bare probe fell through to the post-change
+# working copy and read the file as brand new — handing a rename that also adds an exit
+# idiom and a debug print the very reporter exemption the base-revision rule denies
+# (REQ-263 remediation, found by a PR review).
+printf '%s\n' 'def render_row(raw_text):' '    return raw_text' > "$qualify_repo/src/row_renderer.py"
+fixture_repo_commit_all "$qualify_repo" row-renderer
+printf '%s\n' '## Implementation Summary' \
+  '- `src/row_renderer_v2.py` (modified) — renamed and tweaked' \
+  '' '## AI Execution State (P-A-U Loop)' \
+  '- [x] **[PLAN]:** done' '- [x] **[APPLY]:** done' '- [x] **[UNIFY]:** done' \
+  > "$qualify_repo/do-work/REQ-962-renamed-ownership.md"
+git -C "$qualify_repo" mv src/row_renderer.py src/row_renderer_v2.py
+printf '%s\n' 'print("debug", raw_text)' '' 'if True:' '    import sys' '    sys.exit(0)' \
+  >> "$qualify_repo/src/row_renderer_v2.py"
+qualify_renamed_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-962-renamed-ownership.md 2>&1)" \
+  && fail_case 'qualify renamed-ownership case let a rename plus a same-change exit idiom excuse a debug print — ownership was judged on post-change content instead of the base path'
+printf '%s' "$qualify_renamed_output" | grep -q 'src/row_renderer_v2.py' \
+  || fail_case 'qualify renamed-ownership case did not name the renamed file'
+git -C "$qualify_repo" checkout -q -- . 2>/dev/null || true
+git -C "$qualify_repo" reset -q 2>/dev/null || true
+
 prescribed_shell_finish

@@ -200,10 +200,22 @@ fi
 # REQ, not a supported mode; it is a WARN and not a FAIL because the missing section is
 # the orchestrator's paperwork rather than evidence about the code, and because REQs
 # written before the section existed are still legitimately qualifiable.
-# Counts boxes in ANY state — the question is whether the audit exists, not its verdict.
-pau_box_total="$(grep -cE '^[[:space:]]*-[[:space:]]\[( |x|~)\][[:space:]]\*\*\[(PLAN|APPLY|UNIFY)\]' "$request_file" || true)"
-if [ "${pau_box_total:-0}" -eq 0 ]; then
-  echo "WARN: no 'AI Execution State (P-A-U Loop)' section in this REQ — Check 4's box audit is DISARMED, not passed: every [UNIFY]-gated FAIL below is unreachable, so a debug artifact in the diff cannot fail this run. Add the section (work.md Step 6 makes P-A-U phasing mandatory) and re-run before trusting an OK."
+# The arming condition is the [UNIFY] BOX, in any state — not the section, and not any box.
+# Counting all three was the first attempt and left a hole a review caught: a legacy or
+# hand-edited REQ that keeps PLAN and APPLY but drops UNIFY has a nonzero box count, so the
+# warning stayed quiet, while every artifact FAIL below still keys on a CHECKED [UNIFY] and
+# stayed unreachable. That REQ exited 0 with a clean OK — the exact defect this warning
+# exists to expose, one step narrower.
+# A [UNIFY] box present but UNCHECKED needs no warning: the unchecked-box FAIL right below
+# fires on it, so that state is already loud. Only absence is silent.
+unify_box_total="$(grep -cE '^[[:space:]]*-[[:space:]]\[( |x|~)\][[:space:]]\*\*\[UNIFY\]' "$request_file" || true)"
+if [ "${unify_box_total:-0}" -eq 0 ]; then
+  pau_box_total="$(grep -cE '^[[:space:]]*-[[:space:]]\[( |x|~)\][[:space:]]\*\*\[(PLAN|APPLY|UNIFY)\]' "$request_file" || true)"
+  if [ "${pau_box_total:-0}" -eq 0 ]; then
+    echo "WARN: no 'AI Execution State (P-A-U Loop)' section in this REQ — Check 4's box audit is DISARMED, not passed: every [UNIFY]-gated FAIL below is unreachable, so a debug artifact in the diff cannot fail this run. Add the section (work.md Step 6 makes P-A-U phasing mandatory) and re-run before trusting an OK."
+  else
+    echo "WARN: this REQ has a P-A-U section but no [UNIFY] box — Check 4's box audit is DISARMED, not passed: every [UNIFY]-gated FAIL below keys on a checked [UNIFY] line and is unreachable without one, so a debug artifact in the diff cannot fail this run. Add the missing box (work.md Step 6 makes P-A-U phasing mandatory) and re-run before trusting an OK."
+  fi
 fi
 unchecked_boxes="$(grep -cE '^[[:space:]]*-[[:space:]]\[ \][[:space:]]\*\*\[(PLAN|APPLY|UNIFY)\]' "$request_file" || true)"
 if [ "${unchecked_boxes:-0}" -gt 0 ]; then
@@ -251,12 +263,51 @@ if [ "$git_available" -eq 1 ]; then
   # `grep -c` rather than `grep -q` at the end of a pipe on purpose: -q quits on the
   # first match, the upstream grep dies of SIGPIPE, and pipefail then reports the
   # pipeline as failed — the exact trap already documented above $changed_file_list.
+  # A renamed file does not exist at the base under its NEW path, so a bare cat-file probe
+  # falls through to the post-change working copy and reads the file as brand new — which
+  # hands a rename that also adds an exit idiom and a debug print exactly the reporter
+  # exemption the base-revision rule exists to deny. A review caught this. Ownership is a
+  # property of the file's IDENTITY, and git's rename detection is precisely a statement
+  # about identity, so `--find-renames` is the right tool here — unlike the relocation
+  # question below, which is about content and deliberately does not use it.
+  # Read in shell rather than through `awk -v`, which processes escape sequences in the
+  # value and would mangle a path containing a backslash.
+  resolve_base_path_before_rename() {
+    local current_path="$1"
+    local rename_status_stream
+    local change_status
+    local old_path
+    local new_path
+    if [ -n "$diff_range" ]; then
+      rename_status_stream="$(git diff --find-renames --name-status "$diff_range" 2>/dev/null || true)"
+    else
+      rename_status_stream="$({ git diff --find-renames --name-status; \
+        git diff --staged --find-renames --name-status; } 2>/dev/null || true)"
+    fi
+    [ -z "$rename_status_stream" ] && return 1
+    while IFS="$(printf '\t')" read -r change_status old_path new_path; do
+      case "$change_status" in R*) ;; *) continue;; esac
+      if [ -n "$new_path" ] && [ "$new_path" = "$current_path" ]; then
+        printf '%s' "$old_path"
+        return 0
+      fi
+    done <<< "$rename_status_stream"
+    return 1
+  }
   file_owns_process_exit() {
     local probe_path="$1"
     local probe_content
     local probe_hit_count
-    if [ -n "$ownership_base" ] && git cat-file -e "${ownership_base}:${probe_path}" 2>/dev/null; then
-      probe_content="$(git show "${ownership_base}:${probe_path}" 2>/dev/null)"
+    local base_probe_path="$probe_path"
+    local renamed_from_path
+    if [ -n "$ownership_base" ] && ! git cat-file -e "${ownership_base}:${probe_path}" 2>/dev/null; then
+      renamed_from_path="$(resolve_base_path_before_rename "$probe_path" || true)"
+      if [ -n "$renamed_from_path" ]; then
+        base_probe_path="$renamed_from_path"
+      fi
+    fi
+    if [ -n "$ownership_base" ] && git cat-file -e "${ownership_base}:${base_probe_path}" 2>/dev/null; then
+      probe_content="$(git show "${ownership_base}:${base_probe_path}" 2>/dev/null)"
     elif [ -f "$probe_path" ]; then
       probe_content="$(cat -- "$probe_path")"
     else

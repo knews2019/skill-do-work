@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.216.7 — Two Holes in the New Qualification Gates (2026-08-20)
+
+An automated review of the previous two releases found two ways the sharpened debug-artifact gate could
+still be talked out of a finding. Both are closed, each pinned by a test that fails without the fix.
+
+- A request that keeps its PLAN and APPLY boxes but drops UNIFY was treated as armed, because the check counted all three boxes. Every artifact failure keys on a checked UNIFY line, so such a request exited clean with the audit unreachable — the same defect the warning was added to expose. The arming condition is now the UNIFY box specifically, and the warning names whether the box or the whole section is missing.
+- A renamed file does not exist at the base revision under its new path, so ownership fell through to post-change content and read the file as brand new. A rename that also added an exit idiom and a debug print therefore got the reporter exemption the base-revision rule exists to deny. Ownership now follows git's rename detection back to the file's original path first.
+- Rename detection is right for ownership and still wrong for relocation: ownership is a claim about a file's identity, relocation a claim about content. The two questions use different tools on purpose.
+
 ## 0.216.6 — Qualification Tells a Moved Line From a New One (2026-08-20)
 
 Every request that relocated code failed the debug-artifact audit on markers that already existed —
