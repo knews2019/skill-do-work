@@ -2,8 +2,8 @@
 id: REQ-301
 title: "Let qualify tell a moved line from an added one"
 status: pending-answers
-created_at: 2026-08-20T09:06:00Z
-status_changed_at: 2026-08-20T09:06:00Z
+created_at: 2026-08-20T08:37:00Z
+status_changed_at: 2026-08-20T08:37:00Z
 user_request: UR-056
 addendum_to: REQ-258
 domain: general

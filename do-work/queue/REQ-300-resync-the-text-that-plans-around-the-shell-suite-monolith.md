@@ -2,8 +2,8 @@
 id: REQ-300
 title: "Resync the text that still plans around the pre-split shell behavior suite"
 status: pending
-created_at: 2026-08-20T09:05:00Z
-status_changed_at: 2026-08-20T09:05:00Z
+created_at: 2026-08-20T08:37:00Z
+status_changed_at: 2026-08-20T08:37:00Z
 user_request: UR-056
 addendum_to: REQ-258
 domain: general

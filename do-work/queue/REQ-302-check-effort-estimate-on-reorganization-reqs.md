@@ -2,8 +2,8 @@
 id: REQ-302
 title: "[impact-negligible] Check whether capture's effort judgment under-sizes reorganization REQs"
 status: pending-answers
-created_at: 2026-08-20T09:07:00Z
-status_changed_at: 2026-08-20T09:07:00Z
+created_at: 2026-08-20T08:37:00Z
+status_changed_at: 2026-08-20T08:37:00Z
 user_request: UR-056
 addendum_to: REQ-258
 domain: general
