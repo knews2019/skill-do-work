@@ -13,7 +13,7 @@ Every invocation produces exactly two things, always paired:
 1. **A UR folder** at `do-work/user-requests/UR-NNN/` with `input.md` containing the full verbatim input
 2. **One or more REQ files** at `do-work/queue/REQ-NNN-slug.md`, each linked via `user_request: UR-NNN` in frontmatter
 
-Never create one without the other. A REQ without `user_request` is orphaned. A UR without REQs is pointless — with one exception: a capture whose every request the fold-first scan resolved (Step 2) legitimately produces a UR whose `requests:` array is empty and whose `folded into REQ-NNN` lines in `input.md` are the record of where the work went. actions/verify-requests.md depends on this linkage.
+Never create one without the other. A REQ without `user_request` is orphaned. A UR without REQs is pointless — with one exception: a capture whose every request the fold-first scan resolved (Step 2) legitimately produces a UR whose `requests:` array is empty and whose `## Folded Requests` section in `input.md` is the record of where the work went — one line per fold, `- REQ-NNN (<sweep_key or title>) — <the input request it absorbed>`, per the **UR input.md** template in `actions/capture-reference.md`. actions/verify-requests.md depends on this linkage, and reads that section by name.
 
 **Principles:**
 - Represent, don't expand — if the user says 5 words, write a 5-word request (with structure)
@@ -231,9 +231,9 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 
 **For all requests (simple and complex):**
 1. Create `do-work/user-requests/UR-NNN/input.md` with verbatim input (leave `requests` array empty initially), per the **UR input.md** template in `actions/capture-reference.md`.
-2. Create REQ-NNN-slug.md files using the **Simple REQ** or **Complex REQ (additional sections)** template in `actions/capture-reference.md` — **excluding any request Step 2's fold-first scan already resolved**: a folded finding landed on an existing queued REQ (or the on-demand standing sweep) and gets no new file here; record its destination in the UR's `input.md` as a `folded into REQ-NNN (<sweep_key or title>)` line so the capture's provenance survives without a duplicate. For the rest, create the file, adding user_request: UR-NNN, the inferred domain, the prime_files array populated with any discovered paths, and `maintenance: true` when the Step 1 maintenance assessment flagged this as a removal/narrowing pass on the skill's own instructions (otherwise emit `maintenance: false`). If any field's value doesn't match the canonical enum, apply the **Schema Aliases** section's normalize-and-warn contract before writing.
+2. Create REQ-NNN-slug.md files using the **Simple REQ** or **Complex REQ (additional sections)** template in `actions/capture-reference.md` — **excluding any request Step 2's fold-first scan already resolved**: a folded finding landed on an existing queued REQ (or the on-demand standing sweep) and gets no new file here; record its destination in the UR's `input.md` under `## Folded Requests`, one line per fold, per that section in the **UR input.md** template in `actions/capture-reference.md`. That line is the fold's only record, so it carries both the destination REQ and the part of the input that went there — enough for `actions/verify-requests.md` to grade the folded portion against the REQ now holding it, without a duplicate REQ existing. For the rest, create the file, adding user_request: UR-NNN, the inferred domain, the prime_files array populated with any discovered paths, and `maintenance: true` when the Step 1 maintenance assessment flagged this as a removal/narrowing pass on the skill's own instructions (otherwise emit `maintenance: false`). If any field's value doesn't match the canonical enum, apply the **Schema Aliases** section's normalize-and-warn contract before writing.
 3. If the request is behavior-changing and has a meaningful RED/GREEN proof target, add a `## Red-Green Proof` section. If `tdd: true`, this section is required.
-4. Update the UR's `requests` array with all created REQ IDs — folded requests created no REQ, so they never enter the array; their `folded into` lines in `input.md` are the record
+4. Update the UR's `requests` array with all created REQ IDs — folded requests created no REQ, so they never enter the array; their `## Folded Requests` lines in `input.md` are the record, and the array plus that section is what makes the capture whole
 5. When `next-req` supplied an id, keep its `do-work/.req-reservations/REQ-NNNNNN` marker; it is the durable record that prevents a later allocator from reissuing the number while this capture is still landing. Do not clean markers up yourself: once a commit holds the REQ file (in queue, working, or archive) the file itself holds the number, and `scripts/cleanup-req-reservations.sh` — run mechanically by the SessionStart hook — deletes the redundant marker, plus any marker older than two days whose capture never landed. Committed is the trigger, not present-on-disk, so a concurrent session's cleanup can never delete the marker this capture is about to stage.
 
 **The `requests:` array is the capture-time record only — never the UR's closure predicate.** It names the REQs *this capture* created, and nothing appends to it afterward: review-spawned follow-ups (`actions/work.md` Step 8), addendum REQs, and clarify-derived REQs all carry `user_request: UR-NNN` without ever landing in the array. So "is this UR finished?" is always answered by scanning `user_request:` frontmatter across `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` — the condition `actions/work.md` Step 8 and `actions/cleanup.md` Pass 1 both evaluate. The array's legitimate readers are the ones asking *what the user originally asked for* (e.g. `actions/verify-requests.md`, which grades capture coverage against the original input); any reader deciding whether a UR may close must use the scan instead.
@@ -312,7 +312,7 @@ Guard against these during capture:
 ## Red Flags
 
 - REQ file has no `user_request` frontmatter field (orphaned — can't trace to original input)
-- UR folder exists but contains no REQ files AND its `input.md` has no `folded into` lines (capture incomplete — a fold-only capture is complete)
+- UR folder exists but contains no REQ files AND its `input.md` has no `## Folded Requests` lines (capture incomplete — a fold-only capture is complete)
 - Single REQ created from input containing 3+ distinct requests (under-splitting)
 - RED/GREEN section missing from a request that describes observable behavioral change
 - Open Questions section has items with no recommended resolution
@@ -321,7 +321,7 @@ Guard against these during capture:
 
 - [ ] UR folder created at `do-work/user-requests/UR-NNN/` with `input.md` containing verbatim input
 - [ ] Every REQ file has `user_request: UR-NNN` in frontmatter
-- [ ] Every distinct request in the input is accounted for — a created REQ file or a `folded into REQ-NNN` line in the UR's `input.md`
+- [ ] Every distinct request in the input is accounted for — a created REQ file, or a line under `## Folded Requests` in the UR's `input.md` naming the REQ that absorbed it
 - [ ] Every REQ's `impact:` is a judged verdict, or the judgment was put to the user, or the field was left absent because neither was possible — never a copied default
 - [ ] Every REQ whose `impact:` is not `impact-user-visible` carries the matching `[<impact token>] ` tag in its double-quoted `title:`, and none carries it in its filename
 - [ ] RED/GREEN proof captured for behavioral requests (or explicitly noted as not applicable)

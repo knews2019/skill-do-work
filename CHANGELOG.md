@@ -2,7 +2,7 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
-## 0.220.0 — Run the Queue's Mechanical Work on a Cheaper Model (2026-08-20)
+## 0.222.0 — Run the Queue's Mechanical Work on a Cheaper Model (2026-08-20)
 
 Launch a session on a smaller model and `do-work run-simple-reqs` tells you which queued REQs are safe to build there, what the batch costs in active minutes, and which mechanical REQs it held back and why — then hands the set to the normal pipeline after one confirmation. Nothing names or switches a model; you bring the environment, the suite brings the selection.
 
@@ -13,7 +13,31 @@ Launch a session on a smaller model and `do-work run-simple-reqs` tells you whic
 - `--skip-impact-negligible` is applied by the selector rather than forwarded to the handoff. Forwarded it was inert — explicit REQ naming overrides it — so the flag looked like it worked while the negligible REQs got built anyway. `--wave` is now rejected up front, since it can never combine with the targeting tokens the handoff always passes.
 - A present-but-unrecognized enum value is reported instead of silently defaulted, closing the Schema Read Contract's warn-on-fallback leg: a typo'd `effort_estimate` used to make a qualifying REQ vanish from both the selected and the held-back list.
 - `depends_on` wins outright over the legacy `dependencies` key, and the scans use `find -exec … {} +` rather than the GNU-only `xargs -r` the stock-macOS floor does not have.
+- A `standing: true` sweep is never selected. The default scan never claims one, and this verb names its set explicitly — which is exactly how a standing sweep drains — so selecting one would convert the queue's never-closing batching REQ into an unrequested drain.
 - `_dev/tests/select-simple-reqs-behavior.sh` pins all of it, every probe mutation-tested to confirm it can fail.
+
+## 0.221.1 — One Spelling of the Fold-Only Invariant (2026-08-20)
+
+A review bot caught capture.md describing its fold record two different ways in one file — the drift class this release was about in the first place.
+
+- Capture's Philosophy paragraph named bare `folded into REQ-NNN` lines while Step 5, the red flag, and the checklist named `## Folded Requests`. It now points at that section and its canonical line format, so the reader who hits the invariant first and the reader who hits the checklist last agree.
+- The untracked-scan binary guard states its limit beside itself: the verdict is grep's own binary detection, deliberately the same detection the scans apply, so guard and scan never disagree about what a binary is.
+
+## 0.221.0 — Folds and Standing Sweeps Reach Their Remaining Readers (2026-08-20)
+
+An external review of 0.217.0 found four contracts downstream of the Fold-First Rule still assuming every captured request mints a REQ file and every finished REQ gets archived. 0.218.0 fixed two of them; these are the rest, plus the residue the reconciliation exposed.
+
+- A fold now has a defined home. `## Folded Requests` in the UR's `input.md` records one line per fold — destination REQ plus the part of the input it absorbed — and `do-work verify-requests` reads it, so a folded request is graded against the REQ that now carries it instead of being reported as a dropped requirement. Capture's fold-only red flag and checklist point at that section.
+- A queue holding only standing sweeps has a defined exit. The composed exit summary gained a matching headline and a standing-sweep section carrying each sweep's open-instance count, so the state a never-auto-selected REQ creates no longer falls through Step 1 with no report that fits it.
+- A drained standing sweep's queue file is staged. Its provenance rule already skipped the `commit:` field for the `## Drains` line, but nothing named the requeued file for staging, so the ticked instances could be left dirty. The Commit Phase's procedure now states both substitutions in one place.
+
+## 0.220.0 — Qualify's Untracked-File Probes Leave the Repository Alone (2026-08-20)
+
+An external review caught qualify's read-only probes writing to the repository they were only supposed to read, and reading files they had no business opening. Both are fixed with lock-in cases that fail without them.
+
+- The rename probe now redirects `GIT_OBJECT_DIRECTORY` alongside `GIT_INDEX_FILE`. It was staging the whole tree into a private index but writing every blob into the real object database, so each qualification left an unreachable copy of every untracked file — build outputs and credentials included — behind in the repository.
+- The untracked artifact scans skip binary files before reading them. A binary asset carrying the bytes `TODO` or `print(` produced a grep diagnostic naming a file nobody can inspect, and on BSD grep (and GNU before 3.5) that diagnostic lands on stdout, where it read as a matched source line and could fail a checked `[UNIFY]`.
+- Two new fixture cases in `_dev/tests/prescribed-shell-cases/qualify.sh`: one asserts the fixture repository's object count is unchanged by a qualify run, one asserts a binary asset never appears in the output while an untracked text file still fails. Suite total: 92 to 94.
 
 ## 0.219.0 — The Calendar Now Shows the Whole Queue, Colour-Keyed by Status (2026-08-20)
 

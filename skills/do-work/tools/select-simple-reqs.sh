@@ -29,6 +29,15 @@
 #   domain: security   — a gate exists, but the cost of a miss is unbounded.
 #   impact-critical    — same.
 #
+# `standing: true` is excluded for a different reason, and it is not a judgment
+# call: actions/work.md Step 1 states that the default scan NEVER selects a
+# standing sweep, because batching instances is the whole economy of one. It
+# drains only when a human names it or opportunistically. Since this selector
+# hands its set to `do-work run REQ-NNN ...`, auto-selecting one would name it
+# explicitly — the exact drain trigger — and turn a batching REQ into an
+# unrequested drain. Same lesson as --skip-impact-negligible below: a rule that
+# must survive the handoff has to be applied before it.
+#
 # `tdd: true` is DELIBERATELY NOT a veto, and re-adding one is a regression
 # (_dev/tests/select-simple-reqs-behavior.sh pins it). A TDD REQ carries an
 # objective pass/fail gate, often with a captured RED case in its
@@ -243,6 +252,7 @@ if ! find "$queue_directory" -maxdepth 1 -name '*.md' -type f -exec awk \
       else if (normalize_effort(effort) != "effort-mechanical")  { reason = "not mechanical" }
       else if (claimed != "")                                   { reason = "already claimed" }
       else if (assigned != "")                                  { reason = "assigned to " assigned }
+      else if (truthy(standing))                                { reason = "standing sweep: drains only when named or opportunistically" }
       else if (truthy(maintenance))                             { reason = "maintenance: rule prose has no test" }
       else if (normalize_domain(domain) == "security")           { reason = "security: cost of a miss is unbounded" }
       else if (normalize_impact(impact) == "impact-critical")     { reason = "impact-critical" }
@@ -275,7 +285,7 @@ if ! find "$queue_directory" -maxdepth 1 -name '*.md' -type f -exec awk \
     FNR == 1 {
       emit()
       delimiters = 0; identifier = ""; state = ""; effort = ""; impact = ""
-      maintenance = ""; domain = ""; title = ""; claimed = ""; assigned = ""
+      maintenance = ""; domain = ""; title = ""; claimed = ""; assigned = ""; standing = ""
       frozen_p50 = ""; dependency_count = 0; collecting = ""
       canonical_count = 0; legacy_count = 0; depends_on_seen = 0
       delete dependencies; delete canonical; delete legacy
@@ -302,6 +312,7 @@ if ! find "$queue_directory" -maxdepth 1 -name '*.md' -type f -exec awk \
       else if ($0 ~ /^effort_estimate:/) { effort = value_of($0) }
       else if ($0 ~ /^impact:/)     { impact      = value_of($0) }
       else if ($0 ~ /^maintenance:/){ maintenance = value_of($0) }
+      else if ($0 ~ /^standing:/)   { standing    = value_of($0) }
       else if ($0 ~ /^domain:/)     { domain      = value_of($0) }
       else if ($0 ~ /^claimed_at:/) { claimed     = value_of($0) }
       else if ($0 ~ /^assigned_to:/){ assigned    = value_of($0); gsub(/^"|"$/, "", assigned) }

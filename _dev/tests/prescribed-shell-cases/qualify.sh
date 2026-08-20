@@ -370,4 +370,54 @@ git -C "$qualify_repo" diff --cached --name-only | grep -q 'cell_renderer' \
 rm -f "$qualify_repo/src/cell_renderer_v2.py"
 git -C "$qualify_repo" checkout -q -- . 2>/dev/null || true
 
+# qualify: the rename probe's private index must not add objects to the real repository
+# either. `git add -A` writes a blob for every file it stages, so with only GIT_INDEX_FILE
+# redirected this read-only probe left an unreachable copy of every untracked file inside
+# the repository, surviving the temporary index it was staged into (found by a PR review).
+printf '%s\n' 'def render_grid(raw_text):' '    return raw_text' > "$qualify_repo/src/grid_renderer.py"
+fixture_repo_commit_all "$qualify_repo" grid-renderer
+printf '%s\n' '## Implementation Summary' \
+  '- `src/grid_renderer_v2.py` (modified) — moved with plain mv and tweaked' \
+  '' '## AI Execution State (P-A-U Loop)' \
+  '- [x] **[PLAN]:** done' '- [x] **[APPLY]:** done' '- [x] **[UNIFY]:** done' \
+  > "$qualify_repo/do-work/REQ-975-private-object-database.md"
+mv "$qualify_repo/src/grid_renderer.py" "$qualify_repo/src/grid_renderer_v2.py"
+printf '%s\n' 'print("debug", raw_text)' '' 'if True:' '    import sys' '    sys.exit(0)' \
+  >> "$qualify_repo/src/grid_renderer_v2.py"
+# An untracked file the probe would stage: its blob is what used to leak into the repository.
+awk 'BEGIN { for (line_number = 1; line_number <= 2000; line_number++)
+  print "untracked-payload-line", line_number }' > "$qualify_repo/uncommitted-payload.txt"
+qualify_object_count_before="$(find "$qualify_repo/.git/objects" -type f | wc -l | tr -d '[:space:]')"
+(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-975-private-object-database.md >/dev/null 2>&1) || true
+qualify_object_count_after="$(find "$qualify_repo/.git/objects" -type f | wc -l | tr -d '[:space:]')"
+[ "$qualify_object_count_before" = "$qualify_object_count_after" ] \
+  || fail_case "qualify private-object-database case left $((qualify_object_count_after - qualify_object_count_before)) new object(s) in the fixture repository — the rename probe must redirect GIT_OBJECT_DIRECTORY as well as GIT_INDEX_FILE, or every staged untracked file outlives the probe as an unreachable blob"
+rm -f "$qualify_repo/uncommitted-payload.txt" "$qualify_repo/src/grid_renderer_v2.py"
+git -C "$qualify_repo" checkout -q -- . 2>/dev/null || true
+
+# qualify: the untracked artifact scans read text files only. A binary asset carrying the
+# bytes `TODO` or `print(` is not source, and on greps that report a binary match on stdout
+# (BSD, GNU before 3.5) it became an unreadable FAIL line and then reached the ownership
+# probe, which reads the whole file into a variable. On GNU grep >= 3.5 the diagnostic goes
+# to stderr instead, which the scans never redirect — so pre-fix it still surfaced in
+# qualify's own output, naming a file the reader cannot inspect. Asserting the path appears
+# nowhere in the combined output pins both flavors; the text half pins the guard against
+# over-skipping real source.
+printf '%s\n' '## Implementation Summary' \
+  '- `src/new_helper.py` (new) — untracked helper carrying a debug print' \
+  '' '## AI Execution State (P-A-U Loop)' \
+  '- [x] **[PLAN]:** done' '- [x] **[APPLY]:** done' '- [x] **[UNIFY]:** done' \
+  > "$qualify_repo/do-work/REQ-976-binary-untracked-scan.md"
+printf 'def build_row(raw_text):\n    print(raw_text)\n    return raw_text\n' > "$qualify_repo/src/new_helper.py"
+mkdir -p "$qualify_repo/assets"
+printf 'ICON\000 TODO \000 print( \000\n' > "$qualify_repo/assets/thumbnail.bin"
+qualify_binary_scan_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-976-binary-untracked-scan.md 2>&1)" \
+  && fail_case 'qualify binary-untracked-scan case passed a debug print in an untracked text file — the binary guard must skip binaries only'
+printf '%s' "$qualify_binary_scan_output" | grep -q 'src/new_helper.py' \
+  || fail_case 'qualify binary-untracked-scan case stopped scanning untracked TEXT files — the binary guard is over-skipping real source'
+printf '%s' "$qualify_binary_scan_output" | grep -q 'thumbnail.bin' \
+  && fail_case 'qualify binary-untracked-scan case reported an untracked BINARY asset as a source artifact — the scans must skip binaries before reading them'
+rm -rf "$qualify_repo/assets" "$qualify_repo/src/new_helper.py"
+git -C "$qualify_repo" checkout -q -- . 2>/dev/null || true
+
 prescribed_shell_finish
