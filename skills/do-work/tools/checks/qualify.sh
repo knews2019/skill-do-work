@@ -297,6 +297,14 @@ if [ "$git_available" -eq 1 ]; then
     #    that way. `git add -A` into GIT_INDEX_FILE sees the untracked destination, still
     #    honors .gitignore, and touches neither the real index nor the working tree.
     #
+    #    Source 2 redirects the OBJECT DATABASE as well as the index, and the two
+    #    redirections are one mechanism, not a belt-and-braces pair: `git add -A` writes a
+    #    blob for every file it stages, so with only GIT_INDEX_FILE set this read-only
+    #    probe leaves an unreachable copy of the whole untracked tree — build outputs,
+    #    fixtures, credentials — inside the real repository, outliving the index it was
+    #    staged into. GIT_ALTERNATE_OBJECT_DIRECTORIES is what keeps $ownership_base
+    #    readable from the temporary database; without it read-tree cannot find the base.
+    #
     # Source 2 uses a LOOSER similarity threshold on purpose. It stages working-tree
     # content, so a file that moved *and* grew scores below the 50% default — the case it
     # exists for is precisely a move plus an edit. The loosening is safe for THIS question
@@ -309,12 +317,23 @@ if [ "$git_available" -eq 1 ]; then
     rename_status_stream_cache="$({ git diff --find-renames --name-status; \
       git diff --staged --find-renames --name-status; } 2>/dev/null || true)"
     local private_index_directory
+    local real_object_database
+    local private_rename_status
     private_index_directory="$(mktemp -d "${TMPDIR:-/tmp}/qualify-rename.XXXXXX" 2>/dev/null)" || return 0
-    if GIT_INDEX_FILE="$private_index_directory/index" git read-tree "$ownership_base" 2>/dev/null \
-      && GIT_INDEX_FILE="$private_index_directory/index" git add -A 2>/dev/null; then
-      rename_status_stream_cache="$(printf '%s\n%s\n' "$rename_status_stream_cache" \
-        "$(GIT_INDEX_FILE="$private_index_directory/index" \
-          git diff --cached --find-renames=30% --name-status "$ownership_base" 2>/dev/null || true)")"
+    # Absolute path: each git process reads the alternates variable relative to its own cwd,
+    # while `git rev-parse --git-path` answers relative to the repository root.
+    real_object_database="$(cd "$(git rev-parse --git-path objects 2>/dev/null)" 2>/dev/null && pwd)"
+    if [ -n "$real_object_database" ] && mkdir -p "$private_index_directory/objects" 2>/dev/null; then
+      private_rename_status="$(
+        export GIT_INDEX_FILE="$private_index_directory/index" \
+          GIT_OBJECT_DIRECTORY="$private_index_directory/objects" \
+          GIT_ALTERNATE_OBJECT_DIRECTORIES="$real_object_database"
+        git read-tree "$ownership_base" 2>/dev/null \
+          && git add -A 2>/dev/null \
+          && git diff --cached --find-renames=30% --name-status "$ownership_base" 2>/dev/null
+      )" || private_rename_status=""
+      [ -n "$private_rename_status" ] && rename_status_stream_cache="$(printf '%s\n%s\n' \
+        "$rename_status_stream_cache" "$private_rename_status")"
     fi
     rm -rf "$private_index_directory"
     return 0
@@ -530,6 +549,12 @@ if [ "$git_available" -eq 1 ]; then
       [ -z "$untracked_path" ] && continue
       case "$untracked_path" in do-work/*) continue;; esac
       [ -f "$untracked_path" ] || continue
+      # Text files only. The guard sits here rather than on each scan below, so a scan added
+      # later inherits it: a binary asset that happens to carry the bytes `TODO` or `print(`
+      # is not source, and on greps that report a binary match on stdout (BSD, GNU before
+      # 3.5) it lands in a FAIL list as a "match" nobody can read — then reaches the
+      # ownership probe, which reads the whole file into a variable.
+      grep -Iq '' -- "$untracked_path" || continue
       untracked_marker_lines="$(grep -nE "$unfinished_marker_regex" -- "$untracked_path" || true)"
       if [ -n "$untracked_marker_lines" ] && [ "$unify_box_checked" -eq 1 ]; then
         partition_matched_lines_by_relocation "$untracked_marker_lines"

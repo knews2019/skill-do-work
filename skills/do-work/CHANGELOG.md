@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.218.0 — Qualify's Untracked-File Probes Leave the Repository Alone (2026-08-20)
+
+An external review caught qualify's read-only probes writing to the repository they were only supposed to read, and reading files they had no business opening. Both are fixed with lock-in cases that fail without them.
+
+- The rename probe now redirects `GIT_OBJECT_DIRECTORY` alongside `GIT_INDEX_FILE`. It was staging the whole tree into a private index but writing every blob into the real object database, so each qualification left an unreachable copy of every untracked file — build outputs and credentials included — behind in the repository.
+- The untracked artifact scans skip binary files before reading them. A binary asset carrying the bytes `TODO` or `print(` produced a grep diagnostic naming a file nobody can inspect, and on BSD grep (and GNU before 3.5) that diagnostic lands on stdout, where it read as a matched source line and could fail a checked `[UNIFY]`.
+- Two new fixture cases in `_dev/tests/prescribed-shell-cases/qualify.sh`: one asserts the fixture repository's object count is unchanged by a qualify run, one asserts a binary asset never appears in the output while an untracked text file still fails. Suite total: 92 to 94.
+
 ## 0.217.0 — Fold Findings Into Pending REQs Before Minting New Ones (2026-08-20)
 
 The queue was refilling as fast as it drained because every finding minted its own REQ file. Now any flow about to create a REQ first scans the whole queue — across URs — for a pending, unclaimed REQ sharing the root cause and folds the finding in as a checklist instance; a new file is the stated exception.
