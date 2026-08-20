@@ -7,7 +7,7 @@ status_changed_at: 2026-08-19T13:45:20Z
 claimed_at: 2026-08-20T23:40:01Z
 completed_at: 2026-08-20T23:45:29Z
 kb_status: pending
-commit:
+commit: 0efefa6
 user_request: UR-056
 addendum_to: REQ-267
 domain: general
