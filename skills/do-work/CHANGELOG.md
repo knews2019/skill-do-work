@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.222.4 — Clarify Maintainability Audit Impact-Score Wording (2026-08-21)
+
+The maintainability-audit action and reference now clearly distinguish the numeric `Impact` score used for severity and ranking from the lowercase `impact:` token used for follow-up routing.
+
 ## 0.222.3 — Route Board Verification Through Its Owning Skill (2026-08-21)
 
 The board skill now exposes the queue-kanban tool's existing read-only invariant verifier as `do-work-board verify`, including its build-and-run path, findings exit status, and canonical Check 14 reference.
