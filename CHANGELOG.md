@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.222.5 — Restore the Green Maintainer Verify (2026-08-20)
+
+`maintainer-verify.sh` had been failing since REQ-283 routed board verification through its own skill without carrying the change into the contract test or core help. It exits 0 again.
+
+- Merged the board router's two `board.md` rows into one, so a single action keeps a single routing row.
+- Taught the staged-skills contract that `verify` is a real pass-through mode.
+- Mirrored `verify` into core help's board modes line.
+- Fixed an escaped line continuation in `record-commit-hash-guards.sh` that silently created a fixture as a 0-byte file instead of the intact prose the case asserts on.
+
 ## 0.222.4 — Clarify Maintainability Audit Impact-Score Wording (2026-08-21)
 
 The maintainability-audit action and reference now clearly distinguish the numeric `Impact` score used for severity and ranking from the lowercase `impact:` token used for follow-up routing.

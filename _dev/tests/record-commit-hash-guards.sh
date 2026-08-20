@@ -425,7 +425,7 @@ scan_target="$scan_root/do-work/archive/UR-900/REQ-1282-incident.md"
 printf -- '---\nid: REQ-1283\ntitle: Healthy\nstatus: completed\ncompleted_at: 2026-07-30T10:00:00Z\ncommit: 0000000\n---\n\n# Healthy\n\nIntact body.\n' \
   > "$scan_root/do-work/archive/UR-900/REQ-1283-healthy.md"
 mkdir -p "$scan_root/do-work/archive/UR-900/assets"
-printf -- '# Screenshot descriptions\n\nThis is intact prose, not a REQ record.\n' \\
+printf -- '# Screenshot descriptions\n\nThis is intact prose, not a REQ record.\n' \
   > "$scan_root/do-work/archive/UR-900/assets/REQ-1284-screenshot-descriptions.md"
 git -C "$scan_root" add -A
 git -C "$scan_root" commit -q -m "[REQ-1282] Incident fixture (Route C)"
