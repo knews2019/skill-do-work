@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.218.0 — Fold-First Becomes a Ladder, and the Board Learns to Count Sweeps (2026-08-20)
+
+An adversarial review of 0.217.0 found the prose-only rule unreachable from the flow that produces most prose findings, the standing sweep's lifecycle broken by step ordering, and the queue count blind to instances hiding inside sweeps. All three are fixed, and the rule got shorter doing it.
+
+- The Fold-First Rule is now a first-match destination ladder (append → convert → standing sweep → new REQ) with a named prose-only test; the citing files point at it instead of restating it, and review Step 10 plus toolbox code-review now route prose-only findings to the standing sweep explicitly.
+- The default work scan never selects a standing sweep — it drains only when explicitly named or opportunistically, as a lightweight pass that skips the build pipeline, returns to `pending` with `status_changed_at` stamped, and records its commit hash in a `## Drains` line. The queue summary prints its open-instance count.
+- Conversion targets must be unassigned and dependency-free, and conversion clears `write_set` and the frozen estimate; racing duplicate standing sweeps merge by rule; a critical escalation ticks the consent question it bypasses; a fold-only capture is a legitimate complete capture.
+- The board parses `sweep`/`standing` into a card chip and drawer row showing open/done instance counts, so queue depth stays honest under folding, and `queue-kanban verify` no longer tells you to abandon the standing sweep after its UR archives.
+
 ## 0.217.0 — Fold Findings Into Pending REQs Before Minting New Ones (2026-08-20)
 
 The queue was refilling as fast as it drained because every finding minted its own REQ file. Now any flow about to create a REQ first scans the whole queue — across URs — for a pending, unclaimed REQ sharing the root cause and folds the finding in as a checklist instance; a new file is the stated exception.
