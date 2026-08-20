@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.222.2 — Exclude Archive Assets From Blanked-REQ Recovery Scans (2026-08-21)
+
+The blanked-REQ detector no longer treats intact prose sidecars under archive `assets/` directories as damaged request records. Its regression fixture keeps genuine blanked REQs visible and Check 13 now documents the same boundary.
+
 ## 0.222.1 — The Maintainer Gate Accepts a Newer Toolchain (2026-08-20)
 
 `maintainer-verify.sh` demanded exactly `go1.26.1` and exactly ShellCheck `0.11.0`, so a machine with anything newer could not run the canonical gate at all — it refused before checking a single thing. The two version checks are now floors.

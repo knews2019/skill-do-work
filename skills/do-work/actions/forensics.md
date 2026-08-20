@@ -164,7 +164,7 @@ This check is the mechanical sweep behind the board's future-stamp badge and dat
 
 ### 13. Blanked or Unparseable REQ Files
 
-Run the shipped scanner, which walks `do-work/archive/`, `do-work/queue/`, and `do-work/working/` for `REQ-*.md` and `UR-*.md` files that are 0 bytes or have no parseable frontmatter, and resolves each one's recovery point from git history:
+Run the shipped scanner, which walks `do-work/archive/` (excluding any `assets/` subtree), `do-work/queue/`, and `do-work/working/` for `REQ-*.md` and `UR-*.md` files that are 0 bytes or have no parseable frontmatter, and resolves each one's recovery point from git history:
 
 ```bash
 <skill-root>/tools/checks/blanked-req-scan.sh
