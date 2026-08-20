@@ -296,7 +296,7 @@ When the user confirms, first run the fold-first scan (`../../do-work/actions/ca
 ```markdown
 ---
 id: REQ-NNN
-title: "Code review: [brief description]"
+title: "[<impact token>] Code review: [brief description]"   # omit the tag when the recorded token is impact-user-visible (../../do-work/actions/capture-reference.md → REQ Title Convention)
 status: pending
 created_at: <timestamp>
 review_generated: true
