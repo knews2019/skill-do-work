@@ -4,6 +4,7 @@ title: Scope the blanked-REQ scan to where REQ records actually live
 status: completed
 claimed_at: 2026-08-20T22:38:28Z
 completed_at: 2026-08-20T22:42:34Z
+commit: f487f04
 created_at: 2026-08-19T13:42:45Z
 user_request: UR-057
 domain: general
