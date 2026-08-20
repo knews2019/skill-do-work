@@ -11,6 +11,14 @@
 #   the working+staged diff. Unset/empty (the serial default) reads working+staged,
 #   byte-for-byte as before. Setting it only changes WHICH diff is read. A set-but-
 #   unresolvable range is a hard FAIL (exit 1) naming the range — never a silent OK.
+#
+# What the artifact scans read is NOT only a diff (REQ-263). In serial mode they also
+# read untracked, non-ignored files whole, because Step 6.3 runs before this REQ's commit
+# and a new source file the builder never staged appears in no diff at all. Ownership of
+# a file's process exit — the condition that sorts an added output line into WARN or FAIL
+# — is judged at the BASE revision for a path that exists there, and on the file's own
+# content for one that does not. Both behaviors are pinned in
+# _dev/tests/prescribed-shell-cases/qualify.sh.
 # Exit 0: all mechanical checks pass. Exit 1: at least one FAIL line.
 # Exit 2: usage error (missing/unreadable <req-file>).
 # WARN lines (wiring not found, etc.) do not fail the run — they are handed to
@@ -110,6 +118,25 @@ if [ "$git_available" -eq 1 ]; then
   fi
 fi
 
+# --- Ownership base: the revision that decides whether a file owns its process exit ---
+# The probe below used to read the POST-change working copy, so an exit idiom added in
+# the SAME diff as a debug print retroactively turned library code into a reporter and
+# downgraded the FAIL to a WARN (REQ-254's review reproduced it; REQ-263 closes it).
+# Ownership is judged at the revision the change started from instead: a file that was
+# library code before this REQ stays library code for this REQ's verdict. A file that
+# does not exist at the base is new and is judged on its own content — which is what
+# keeps a legitimately new checker, whose prints and whose exit arrive together in one
+# new file, a WARN rather than a FAIL. That case is why the categorical rule
+# ("exit added in this diff ⇒ FAIL") is wrong and is not what this implements.
+ownership_base=""
+if [ "$git_available" -eq 1 ]; then
+  if [ -n "$diff_range" ]; then
+    ownership_base="${diff_range%%..*}"
+  elif git rev-parse --verify --quiet HEAD >/dev/null 2>&1; then
+    ownership_base="HEAD"
+  fi
+fi
+
 # --- Check 1: every listed file matches its claimed state on disk / in diff ---
 while IFS= read -r summary_line; do
   # Portable extraction (no GNU-only grep -P): first backtick-quoted token, then the verb.
@@ -187,7 +214,45 @@ if [ "$git_available" -eq 1 ]; then
   # through FAILs.
   unfinished_marker_regex='debugger|TODO|FIXME'
   output_primitive_regex='console\.log|(^|[^[:alnum:]_])print\('
-  process_exit_regex='(^|[^[:alnum:]_])exit +[0-9$]|sys\.exit *\(|raise +SystemExit|os\._exit *\(|process\.exit *\('
+  # Code-shaped exit occurrences only (REQ-263). Two narrowings over the whole-file
+  # text grep this replaced, each earned by a reproduced false WARN:
+  #   1. The bare `exit N` form must be STATEMENT-shaped — beginning a statement (line
+  #      start, or after `;`/`&`/`|`, or after `then`/`else`/`do`) AND terminated right
+  #      after its status by end-of-line, `;`, `)`, `}`, or a comment. Prose reads
+  #      "...the caller should exit 1 on failure": a word before it, words after it, so
+  #      it no longer counts as ownership. A bare status-less `exit` did not match the
+  #      previous regex either, and still does not — this narrows, it never widens.
+  #   2. Full-line comments are dropped before the match (see file_owns_process_exit),
+  #      so `# exits 1 on failure` is not ownership either.
+  # The parenthesised forms are already code-shaped by their own punctuation.
+  # DOCUMENTED RESIDUAL, pinned by a fixture in _dev/tests/prescribed-shell-cases/qualify.sh:
+  # a prose line that both begins a statement and ends immediately after the status — a
+  # docstring line reading exactly `exit 1` — still reads as ownership. Separating that
+  # from real code needs a per-language parser, which is more machinery than this gate
+  # is worth; the fixture exists so the boundary is a stated limit rather than a surprise.
+  process_exit_regex='(^[[:space:]]*|[;&|][[:space:]]*|[[:space:]](then|else|do)[[:space:]]+)exit[[:space:]]+[0-9$][^[:space:];)}#]*[[:space:]]*([;)}#]|$)|sys\.exit[[:space:]]*\(|raise[[:space:]]+SystemExit|os\._exit[[:space:]]*\(|process\.exit[[:space:]]*\('
+
+  # Does this path own its process exit? Judged at $ownership_base when the path exists
+  # there, on the working copy when it does not (a new or untracked file).
+  # `grep -c` rather than `grep -q` at the end of a pipe on purpose: -q quits on the
+  # first match, the upstream grep dies of SIGPIPE, and pipefail then reports the
+  # pipeline as failed — the exact trap already documented above $changed_file_list.
+  file_owns_process_exit() {
+    local probe_path="$1"
+    local probe_content
+    local probe_hit_count
+    if [ -n "$ownership_base" ] && git cat-file -e "${ownership_base}:${probe_path}" 2>/dev/null; then
+      probe_content="$(git show "${ownership_base}:${probe_path}" 2>/dev/null)"
+    elif [ -f "$probe_path" ]; then
+      probe_content="$(cat -- "$probe_path")"
+    else
+      return 1
+    fi
+    probe_hit_count="$(printf '%s\n' "$probe_content" \
+      | grep -vE '^[[:space:]]*(#|//|\*)' \
+      | grep -cE "$process_exit_regex" || true)"
+    [ "${probe_hit_count:-0}" -gt 0 ]
+  }
   # do-work/ is excluded at the pathspec level, NOT with a `grep -v 'do-work/'`
   # on the piped lines: added-content lines carry no file path, so a content
   # grep cannot scope by file — it silently matched REQ prose that merely
@@ -216,14 +281,59 @@ if [ "$git_available" -eq 1 ]; then
       added_output_lines="$({ git diff -- "$changed_path"; git diff --staged -- "$changed_path"; } | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE "$output_primitive_regex" || true)"
     fi
     [ -z "$added_output_lines" ] && continue
-    if [ -f "$changed_path" ] && grep -qE "$process_exit_regex" "$changed_path"; then
-      echo "WARN: added print(/console.log line(s) in $changed_path read as the file's own reporting — it owns its process exit, so printed output is presumptively contract, not a debug artifact; confirm from the diff"
+    if file_owns_process_exit "$changed_path"; then
+      # The WARN prints its matched lines exactly as the FAIL branch does (REQ-263).
+      # Without them "confirm from the diff" cost a manual dig for the very lines the
+      # check had already found, which is how a WARN gets waved through.
+      echo "WARN: added print(/console.log line(s) in $changed_path read as the file's own reporting — it owns its process exit, so printed output is presumptively contract, not a debug artifact; confirm from these lines:"
+      printf '%s\n' "$added_output_lines" | head -10 | sed 's/^/  /'
     elif grep -qE '^[[:space:]]*-[[:space:]]\[x\][[:space:]]\*\*\[UNIFY\]' "$request_file"; then
       echo "FAIL: [UNIFY] is checked but the diff adds output line(s) to $changed_path, which never ends its own process — no terminal audience, so they read as leftover instrumentation:"
       printf '%s\n' "$added_output_lines" | head -10 | sed 's/^/  /'
       failure_count=$((failure_count + 1))
     fi
   done <<< "$changed_file_list"
+
+  # --- Both artifact scans, over untracked files, whole-file (REQ-263 addendum) ---
+  # Serial mode only. Step 6.3 runs BEFORE this REQ's commit, so a new source file the
+  # builder never staged is in neither `git diff` nor `git diff --staged`: both scans
+  # above never saw it, Check 1's (new) branch only tests that it is on disk, and a
+  # checked [UNIFY] could therefore ship with leftover instrumentation inside it.
+  # `git ls-files --others --exclude-standard` is the source: it lists untracked files
+  # individually — unlike `git status --porcelain`, which collapses a wholly-untracked
+  # directory into one row — and it drops correctly-ignored paths, so it doubles as the
+  # ignore filter (_dev/primes/prime-shell-commands.md).
+  # An untracked file has never been committed, so every line in it is added; scanning it
+  # whole does not weaken the added-lines-only contract the diffed paths get.
+  # This is a SEPARATE walk, deliberately: folding untracked paths into
+  # $changed_file_list would change Check 1's (modified)/(deleted) WARN behavior, which
+  # must stay exactly as it was. do-work/ is skipped per path, the same boundary as above.
+  # In worktree dispatch mode $diff_range reads committed work, so this block is skipped.
+  if [ -z "$diff_range" ]; then
+    unify_box_checked=0
+    grep -qE '^[[:space:]]*-[[:space:]]\[x\][[:space:]]\*\*\[UNIFY\]' "$request_file" && unify_box_checked=1
+    while IFS= read -r untracked_path; do
+      [ -z "$untracked_path" ] && continue
+      case "$untracked_path" in do-work/*) continue;; esac
+      [ -f "$untracked_path" ] || continue
+      untracked_marker_lines="$(grep -nE "$unfinished_marker_regex" -- "$untracked_path" || true)"
+      if [ -n "$untracked_marker_lines" ] && [ "$unify_box_checked" -eq 1 ]; then
+        echo "FAIL: [UNIFY] is checked but untracked file $untracked_path carries debug artifacts — un-check it and flag:"
+        printf '%s\n' "$untracked_marker_lines" | head -10 | sed 's/^/  /'
+        failure_count=$((failure_count + 1))
+      fi
+      untracked_output_lines="$(grep -nE "$output_primitive_regex" -- "$untracked_path" || true)"
+      [ -z "$untracked_output_lines" ] && continue
+      if file_owns_process_exit "$untracked_path"; then
+        echo "WARN: print(/console.log line(s) in untracked file $untracked_path read as the file's own reporting — it owns its process exit, so printed output is presumptively contract, not a debug artifact; confirm from these lines:"
+        printf '%s\n' "$untracked_output_lines" | head -10 | sed 's/^/  /'
+      elif [ "$unify_box_checked" -eq 1 ]; then
+        echo "FAIL: [UNIFY] is checked but untracked file $untracked_path carries output line(s), and it never ends its own process — no terminal audience, so they read as leftover instrumentation:"
+        printf '%s\n' "$untracked_output_lines" | head -10 | sed 's/^/  /'
+        failure_count=$((failure_count + 1))
+      fi
+    done <<< "$(git ls-files --others --exclude-standard)"
+  fi
 fi
 
 if [ "$failure_count" -eq 0 ]; then

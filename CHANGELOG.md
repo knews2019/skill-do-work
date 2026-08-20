@@ -2,6 +2,19 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.216.4 — The Debug-Artifact Gate Stops Excusing Itself (2026-08-20)
+
+The check that catches leftover `console.log`s and stray `TODO`s could be talked out of a finding three
+different ways, and it never looked at a file you hadn't staged yet. Both are closed, and every warning
+it raises now shows you the lines it found instead of telling you to go look.
+
+- Whether a file "owns its process exit" — the test that decides warn-versus-fail on an added output line — is now judged at the revision your change started from. Adding an `exit` in the same edit as a debug print no longer relabels library code as a reporter.
+- Only statement-shaped exits count. A docstring saying "the caller should exit 1 on failure", or a commented-out `# exits 1`, no longer buys a file the reporter exemption.
+- A brand-new checker, whose prints and whose exit arrive together, still gets the exemption — that case is pinned by its own test, because the obvious fix would have broken it.
+- Untracked, non-ignored files are now scanned whole in serial mode. Qualification runs before the commit, so a new source file you never staged was in no diff and neither artifact scan ever read it. Correctly ignored files stay unscanned, and worktree dispatch mode is unchanged.
+- Warnings print their matched lines the way failures always have.
+- `_dev/tests/prescribed-shell-cases/qualify.sh` goes 3 to 10 cases, each one mutation-tested to confirm it can actually fail. Suite total: 76 to 83.
+
 ## 0.216.3 — Queue Write Sets Name the Split Case Files (2026-08-20)
 
 Three queued requests still declared the one big shell-behavior test file that got split apart last
