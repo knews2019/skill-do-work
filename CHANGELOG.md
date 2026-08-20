@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.216.3 — Queue Write Sets Name the Split Case Files (2026-08-20)
+
+Three queued requests still declared the one big shell-behavior test file that got split apart last
+release, so the board's overlap badge and anyone planning what can run in parallel were reading a
+layout that no longer exists. They now name the per-script case files they actually write.
+
+- REQ-263 and REQ-264 declare `_dev/tests/prescribed-shell-cases/qualify.sh`, the file they share, so their real collision with each other stays visible.
+- REQ-271 declares `_dev/tests/prescribed-shell-cases/repair-req-timestamps.sh` — verified as the file holding the `parseTimestamp` layout guard it exists to fix — and is therefore disjoint from the other two.
+- Two of the sweep's five targets were already correct and were left alone: the restart prompt had been rewritten, and the dated defensive-surface audit declares itself a frozen historical snapshot rather than a live registry.
+- A stale case count in REQ-271's red-green proof went 66 to 76, reframed so the count reads as context and the `exit 0` stays the finding.
+
 ## 0.216.2 — Per-Script Shell Behavior Test Files (2026-08-20)
 
 The prescribed-shell behavior suite was one 1882-line file holding 76 cases for 17 different scripts. It's now one file per script, so you can run just the ones you care about and a failure tells you which script broke before you read a line.

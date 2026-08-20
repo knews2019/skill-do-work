@@ -15,7 +15,7 @@ suggested_spec: bug-fix
 depends_on: [REQ-300]
 maintenance: true
 write_set:
-- _dev/tests/prescribed-shell-scripts-behavior.sh
+- _dev/tests/prescribed-shell-cases/repair-req-timestamps.sh
 ---
 
 # Make the Read-Side Layout Lock-Step See Every Layout, in Any Spelling
@@ -50,7 +50,9 @@ Worth stating plainly: a guard that cannot fail is worse than no guard, because 
 
 ## Red-Green Proof
 
-**RED:** add `time.RFC3339Nano` to `parseTimestamp`'s layout slice in `skills/do-work-board/tools/queue-kanban/model.go` and run `bash _dev/tests/prescribed-shell-scripts-behavior.sh`. Observed today: **66 named cases, exit 0** — the guard does not notice. Revert the layout afterwards.
+**RED:** add `time.RFC3339Nano` to `parseTimestamp`'s layout slice in `skills/do-work-board/tools/queue-kanban/model.go` and run `bash _dev/tests/prescribed-shell-scripts-behavior.sh`. Observed: **exit 0** — the guard does not notice. (The suite reports **76 named cases across 17 per-script files** as of REQ-258's split; it read 66 when this REQ was captured. The count is context, not the finding — `exit 0` is.) Revert the layout afterwards.
+
+**Where the guard lives, post-split:** `_dev/tests/prescribed-shell-cases/repair-req-timestamps.sh:232-241` — the `board_timestamp_layouts` extraction and its `fail_case`. The command above is still the right entry point: the runner keeps its path and exit-status contract and executes every case file.
 
 **GREEN:** the same mutation fails the read-side-layout case, naming the changed layout list; the unmutated tree still passes; and the extraction contains no GNU-only construct.
 

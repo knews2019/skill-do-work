@@ -16,7 +16,7 @@ depends_on: [REQ-300, REQ-263]
 maintenance: true
 write_set:
 - skills/do-work/tools/checks/qualify.sh
-- _dev/tests/prescribed-shell-scripts-behavior.sh
+- _dev/tests/prescribed-shell-cases/qualify.sh
 ---
 
 # Make a Disarmed P-A-U Audit Visible in Qualify

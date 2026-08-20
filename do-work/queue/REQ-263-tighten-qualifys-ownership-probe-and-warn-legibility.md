@@ -16,7 +16,7 @@ depends_on: [REQ-300]
 maintenance: true
 write_set:
 - skills/do-work/tools/checks/qualify.sh
-- _dev/tests/prescribed-shell-scripts-behavior.sh
+- _dev/tests/prescribed-shell-cases/qualify.sh
 ---
 
 # Tighten Qualify's Ownership Probe and Make Its WARN Legible
