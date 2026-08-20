@@ -224,12 +224,16 @@ type generatedNote struct {
 	NoteText string `json:"text"`
 }
 
-// generatedCalendarEntry plots one completed REQ on the completion timeline.
+// generatedCalendarEntry plots one REQ on the calendar timeline. `status` rides
+// along so a chip colours itself and recentlyDoneIds filters the array without a
+// per-entry requestsById lookup; `entryTime` is a completion instant, a claim
+// instant, or empty, per the entry's day bucket (see buildCalendar).
 type generatedCalendarEntry struct {
-	RequestId      string `json:"id"`
-	CompletionTime string `json:"completionTime"`
-	DayKey         string `json:"dayKey"`
-	TimeSource     string `json:"timeSource"`
+	RequestId  string `json:"id"`
+	Status     string `json:"status"`
+	EntryTime  string `json:"entryTime"`
+	DayKey     string `json:"dayKey"`
+	TimeSource string `json:"timeSource"`
 }
 
 // generatedDurations is the Durations view's data: one measured sample per
@@ -621,10 +625,11 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 
 	for _, entry := range board.Calendar {
 		data.Calendar = append(data.Calendar, generatedCalendarEntry{
-			RequestId:      entry.RequestId,
-			CompletionTime: formatTimestamp(entry.CompletionTime),
-			DayKey:         entry.DayKey,
-			TimeSource:     string(entry.TimeSource),
+			RequestId:  entry.RequestId,
+			Status:     entry.Status,
+			EntryTime:  formatTimestamp(entry.EntryTime),
+			DayKey:     entry.DayKey,
+			TimeSource: string(entry.TimeSource),
 		})
 	}
 

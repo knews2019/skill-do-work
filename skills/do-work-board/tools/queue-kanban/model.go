@@ -31,10 +31,15 @@ const (
 	CompletionUnresolved CompletionTimeSource = "unresolved"
 )
 
-// undatedCalendarDayKey buckets completed REQs whose completion instant could
-// not be resolved. They stay visible on the calendar (never silently dropped)
-// but carry no fabricated date.
+// undatedCalendarDayKey buckets REQs that should carry a day but whose instant
+// could not be resolved. They stay visible on the calendar (never silently
+// dropped) but carry no fabricated date.
 const undatedCalendarDayKey = "undated"
+
+// queuedCalendarDayKey buckets REQs that have not started, so they have no day
+// to be placed on rather than a missing one. The band renders above the newest
+// dated day — the calendar reads newest-first, so "not yet" belongs at the top.
+const queuedCalendarDayKey = "queued"
 
 // futureTimestampSkewAllowance is how far past the board's `now` a frontmatter
 // timestamp may parse before it is flagged as future-dated. Two minutes absorbs
@@ -294,14 +299,35 @@ type DependencyGraph struct {
 	Dependents map[string][]string // RequestId → ids that depend on it
 }
 
-// CalendarEntry places one terminally resolved REQ (completed*/cancelled) on
-// the completion timeline, recording the resolved instant, how it was
-// resolved, and a UTC day bucket key.
+// CalendarEntryKind is why a CalendarEntry sits where it sits: which instant
+// placed it on the timeline. The kind drives the band ordering buildCalendar
+// emits; the chip's colour comes from Status, not from this.
+type CalendarEntryKind string
+
+const (
+	// CalendarCompletionEntry is a terminal REQ placed on the day it resolved —
+	// completed*, cancelled, or failed.
+	CalendarCompletionEntry CalendarEntryKind = "completion"
+	// CalendarClaimEntry is a claimed REQ placed on the day it was claimed. Its
+	// day is therefore a start, not an end, and an old one is a staleness signal.
+	CalendarClaimEntry CalendarEntryKind = "claim"
+	// CalendarQueuedEntry is a REQ that has not started, so it has no defensible
+	// day at all: pending, pending-answers, the blocked family, and anything
+	// whose status survived normalization unrecognized.
+	CalendarQueuedEntry CalendarEntryKind = "queued"
+)
+
+// CalendarEntry places one REQ on the calendar timeline, recording the instant
+// that placed it, how that instant was resolved, and a UTC day bucket key.
+// Every parsed REQ earns exactly one entry — the calendar is the whole queue,
+// not just its finished half.
 type CalendarEntry struct {
-	RequestId      string
-	CompletionTime time.Time
-	TimeSource     CompletionTimeSource
-	DayKey         string // "2006-01-02" UTC bucket
+	RequestId  string
+	Kind       CalendarEntryKind
+	Status     string    // normalized status; what the client colours the chip by
+	EntryTime  time.Time // completion instant, claim instant, or zero
+	TimeSource CompletionTimeSource
+	DayKey     string // "2006-01-02" UTC bucket, or the queued/undated sentinels
 }
 
 // QueueNote is one line of do-work/notes.md — a lightweight, dated next-step
@@ -419,6 +445,11 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	}
 
 	for _, ticket := range board.AllRequests {
+		// Deliberately still the terminal-RESOLVED set, not the wider terminal one:
+		// CompletionTime feeds a "Completed" row in the detail drawer
+		// (web/board-detail.js) and the completed instant on a card, and a `failed`
+		// REQ did not complete. The calendar dates a failure from completed_at
+		// itself — see buildCalendar.
 		if isTerminalResolvedStatus(ticket.Status) {
 			completionTime, completionSource := resolveCompletionTime(ticket, repoRoot, gitLookup)
 			ticket.CompletionTime = completionTime
@@ -1767,37 +1798,108 @@ func annotateWriteSetOverlap(tickets []*RequestTicket) {
 	}
 }
 
-// buildCalendar produces a completion-time-keyed index over every terminally
-// resolved (completed*/cancelled) ticket, sorted most-recent-first. Tickets
-// whose completion instant could not be resolved are kept — never silently
-// dropped — under the trailing "undated" day bucket (the zero CompletionTime
-// sorts them after every dated entry, and board-calendar.js falls back to rendering the
-// raw day key as the group label).
+// buildCalendar indexes EVERY parsed ticket onto the timeline — exactly one
+// entry each, so nothing in the queue is invisible in this view. Three
+// placements, and the third is a default rather than a list so a status added
+// upstream lands somewhere visible instead of vanishing:
+//
+//   - terminal-resolved (completed*, cancelled) → the day it resolved, via the
+//     already-resolved CompletionTime (frontmatter, else the commit's git date).
+//   - failed → the day it failed, read from completed_at HERE rather than from
+//     ticket.CompletionTime. The resolution step upstream deliberately skips
+//     `failed` so the drawer never shows a "Completed" row for work that did not
+//     complete, and the git half of that chain would not fire anyway: a commit
+//     hash is stamped on success. Before this, `failed` was terminal but not
+//     terminal-RESOLVED, so it appeared on no day at all.
+//   - claimed → the day it was CLAIMED, not a completion day it does not have.
+//     A claim sitting on an old day is exactly the staleness signal worth seeing.
+//   - anything else (pending, pending-answers, blocked*, unrecognized) → the
+//     leading "queued" band. These have no defensible day at all, which is a
+//     different fact from a day that failed to parse.
+//
+// A ticket in any of the first three rows whose instant will not resolve falls
+// to the trailing "undated" bucket — kept, never silently dropped, and never
+// given a fabricated date. That bucket means "should have a day, has none",
+// which is why an unstamped claimed REQ lands there rather than among work that
+// has not started.
+//
+// Entries come out in render order, because board-calendar.js groups days by
+// walking contiguous DayKeys: queued band, then dated days newest-first, then
+// undated. Within a day, claims lead terminal entries — open work reads before
+// finished work — and each group runs by time descending.
 func buildCalendar(tickets []*RequestTicket) []CalendarEntry {
 	var entries []CalendarEntry
 	for _, ticket := range tickets {
-		if !isTerminalResolvedStatus(ticket.Status) {
-			continue
+		entry := CalendarEntry{
+			RequestId: ticket.RequestId,
+			Status:    ticket.Status,
+			// Seeded once here and overwritten only by a branch that actually
+			// resolves an instant, so EntryTime and TimeSource cannot disagree
+			// about whether one was found. Setting it per-branch instead is what
+			// let a claim ship a real stamp labelled "unresolved".
+			TimeSource: CompletionUnresolved,
 		}
-		if ticket.CompletionTime.IsZero() {
-			entries = append(entries, CalendarEntry{
-				RequestId:  ticket.RequestId,
-				TimeSource: ticket.CompletionTimeSource,
-				DayKey:     undatedCalendarDayKey,
-			})
-			continue
+		switch {
+		case isTerminalResolvedStatus(ticket.Status):
+			entry.Kind = CalendarCompletionEntry
+			entry.EntryTime = ticket.CompletionTime
+			entry.TimeSource = ticket.CompletionTimeSource
+		case ticket.Status == "failed":
+			entry.Kind = CalendarCompletionEntry
+			if failedAt, ok := parseTimestamp(ticket.CompletedAt); ok {
+				entry.EntryTime = failedAt
+				entry.TimeSource = CompletionFromFrontmatter
+			}
+		case ticket.Status == "claimed":
+			entry.Kind = CalendarClaimEntry
+			if claimedAt, ok := parseTimestamp(ticket.ClaimedAt); ok {
+				entry.EntryTime = claimedAt
+				entry.TimeSource = CompletionFromFrontmatter
+			}
+		default:
+			entry.Kind = CalendarQueuedEntry
 		}
-		entries = append(entries, CalendarEntry{
-			RequestId:      ticket.RequestId,
-			CompletionTime: ticket.CompletionTime,
-			TimeSource:     ticket.CompletionTimeSource,
-			DayKey:         ticket.CompletionTime.UTC().Format("2006-01-02"),
-		})
+
+		switch {
+		case entry.Kind == CalendarQueuedEntry:
+			entry.DayKey = queuedCalendarDayKey
+		case entry.EntryTime.IsZero():
+			entry.DayKey = undatedCalendarDayKey
+		default:
+			entry.DayKey = entry.EntryTime.UTC().Format("2006-01-02")
+		}
+		entries = append(entries, entry)
 	}
+
 	sort.SliceStable(entries, func(i, j int) bool {
-		return entries[i].CompletionTime.After(entries[j].CompletionTime)
+		leftBand, rightBand := calendarBandRank(entries[i]), calendarBandRank(entries[j])
+		if leftBand != rightBand {
+			return leftBand < rightBand
+		}
+		if entries[i].DayKey != entries[j].DayKey {
+			return entries[i].DayKey > entries[j].DayKey // newest day first
+		}
+		if entries[i].Kind != entries[j].Kind {
+			return entries[i].Kind == CalendarClaimEntry
+		}
+		return entries[i].EntryTime.After(entries[j].EntryTime)
 	})
 	return entries
+}
+
+// calendarBandRank orders the calendar's three bands: the queued band leads,
+// dated days follow newest-first, and undated entries trail. The client groups
+// by walking contiguous day keys, so a band emitted out of order would render
+// as two separate sections of the same band.
+func calendarBandRank(entry CalendarEntry) int {
+	switch entry.DayKey {
+	case queuedCalendarDayKey:
+		return 0
+	case undatedCalendarDayKey:
+		return 2
+	default:
+		return 1
+	}
 }
 
 // deriveRequestIdFromFilename recovers the canonical REQ id from a filename like

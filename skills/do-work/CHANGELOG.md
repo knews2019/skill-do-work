@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.219.0 — The Calendar Now Shows the Whole Queue, Colour-Keyed by Status (2026-08-20)
+
+The board's Calendar view only ever showed finished work, in one shade of green, and `failed` REQs appeared on no day at all. It now carries every REQ: what hasn't started sits in a band at the top, claimed REQs sit on the day they were claimed, and each chip is coloured by its status.
+
+- Work that has not started — pending, needs-answers, and the blocked family — collects in an "In the queue" band pinned above the newest day.
+- Claimed REQs are placed on their `claimed_at` day, so a claim still sitting on an old day reads as the staleness signal it is.
+- `failed` REQs now appear, on the day they failed. They are dated from `completed_at` directly, so the detail drawer still never shows a "Completed" row for work that did not complete.
+- Chips take the same status colours the board's cards already use, including the struck-through treatment for cancelled work (`abandoned`, `canceled`, `wont-do` and `wontfix` all normalize to `cancelled`, so one colour covers them). "Completed with issues" keeps the success hue and adds a dotted underline rather than a second shade of green.
+- Each day label now counts what happened on it ("2 done  1 claimed  1 failed", each in its status colour) instead of a bare "N done", and the summary line above the calendar carries the same segments — which makes it the colour key.
+- Every REQ appears exactly once, so nothing can silently drop out of the view; the Board view's "Recently done" window is unchanged and still excludes claimed and failed work.
+
 ## 0.218.0 — Fold-First Becomes a Ladder, and the Board Learns to Count Sweeps (2026-08-20)
 
 An adversarial review of 0.217.0 found the prose-only rule unreachable from the flow that produces most prose findings, the standing sweep's lifecycle broken by step ordering, and the queue count blind to instances hiding inside sweeps. All three are fixed, and the rule got shorter doing it.
