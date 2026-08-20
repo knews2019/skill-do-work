@@ -10,6 +10,7 @@ session_depth: moderate
 
 ## In Progress (interrupted)
 
+
 ## Completed This Session
 
 `do-work run REQ-268 REQ-270 REQ-276 REQ-282` — four independent correctness REQs, serial mode, each with its own adversarial review:

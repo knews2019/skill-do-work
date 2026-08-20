@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.216.2 — Per-Script Shell Behavior Test Files (2026-08-20)
+
+The prescribed-shell behavior suite was one 1882-line file holding 76 cases for 17 different scripts. It's now one file per script, so you can run just the ones you care about and a failure tells you which script broke before you read a line.
+
+- `_dev/tests/prescribed-shell-scripts-behavior.sh` keeps its name and its exit status; it now dispatches to `_dev/tests/prescribed-shell-cases/`, one file per script under test.
+- Run a single script's proofs on their own: `bash _dev/tests/prescribed-shell-cases/repair-req-timestamps.sh`.
+- No case changed — content parity was proved line by line, and the reported case count is still grepped at run time rather than remembered.
+- Splitting surfaced two case groups that had been interleaved with a sibling's, and one fixture setup block filed under the wrong script entirely.
+
 ## 0.216.1 — Duration Labels Stop Showing "1h 60m" (2026-08-20)
 
 A span of 1h59m30s read as "1h 60m" on the board, because each unit was rounded on its own and the minutes had nowhere to carry. Same bug drew "1d 24h" and "60 min". Now the value is rounded first and the units are split off the rounded number.
