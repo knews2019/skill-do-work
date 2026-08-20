@@ -1,6 +1,6 @@
 # Board
 
-Renders the `do-work/` queue as a Kanban board in your browser, plus a completion calendar and a testing track. Read-only toward the work pipeline — it never claims a REQ or edits a `status`. The one thing it writes is the testing record (see Testing view).
+Renders the `do-work/` queue as a Kanban board in your browser, plus a queue activity calendar and a testing track. Read-only toward the work pipeline — it never claims a REQ or edits a `status`. The one thing it writes is the testing record (see Testing view).
 
 > **Needs the Go toolchain** — the only do-work capability that does. Without `go` on your `PATH` the board reports and stops; nothing else in the skill is affected.
 
@@ -22,7 +22,7 @@ Two strips sit above the columns and stay visible in every view:
 - **Notes** — your `do-work-toolbox note` lines, verbatim and collapsible. Hidden when there are none.
 - **Completion anomalies** — finished REQs whose completion bookkeeping is broken: an unresolvable completion instant, or an impossible one (`completed_at` earlier than `claimed_at`). Bookkeeping to fix, not recent work, so the strip ignores the filters and the window.
 
-The toolbar carries a text filter (id or title), domain and status selects, a **Recently done** window (24h / 48h / 7d), a **Lens** toggle (flat Columns vs. grouped **By UR**), and the **Board / Calendar / Testing** switch. In the By UR lens, **Active** shows URs with open work or a REQ inside the selected Recently done window; **All** also browses older resolved URs. Calendar shows completed work day by day.
+The toolbar carries a text filter (id or title), domain and status selects, a **Recently done** window (24h / 48h / 7d), a **Lens** toggle (flat Columns vs. grouped **By UR**), and the **Board / Calendar / Testing** switch. In the By UR lens, **Active** shows URs with open work or a REQ inside the selected Recently done window; **All** also browses older resolved URs. Calendar carries every REQ, colour-keyed by status: work that has not started sits in a band at the top, claimed REQs sit on the day they were claimed, and completed, cancelled, and failed REQs sit on the day they resolved. Each day label counts what happened on it, and the summary line above doubles as the colour key.
 
 ## Badges
 

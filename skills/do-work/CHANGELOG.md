@@ -2,23 +2,41 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
-## 0.219.0 — Folds and Standing Sweeps Reach Their Downstream Readers (2026-08-20)
+## 0.221.0 — Folds and Standing Sweeps Reach Their Remaining Readers (2026-08-20)
 
-Last release's Fold-First Rule was only half-landed: four contracts downstream of it still assumed every captured request mints a REQ file and every finished REQ gets archived. An external review found all four, and they are fixed together because they are one mistake.
+An external review of 0.217.0 found four contracts downstream of the Fold-First Rule still assuming every captured request mints a REQ file and every finished REQ gets archived. 0.218.0 fixed two of them; these are the rest, plus the residue the reconciliation exposed.
 
-- A fold now has a defined home. `## Folded Requests` in the UR's `input.md` records one line per fold — destination REQ plus the part of the input it absorbed — instead of a prose line with no stated place, and `do-work verify-requests` reads it, so a folded request is graded against the REQ that now carries it rather than reported as a dropped requirement.
-- Capture's own validation counts folds. The REQ-count check is now created REQs plus recorded folds, and an all-folded capture no longer trips the "UR folder with no REQ files" red flag.
-- An instance-free standing sweep has an exit path. The composed exit summary gained a matching headline and a standing-sweep section, so the permanent queue state a never-closing REQ creates no longer falls through Step 1 with no defined report.
-- A drained standing sweep has a commit path. The Commit Phase stages the requeued queue file in place of an archived REQ and records no `commit:` hash, because `commit:` is a terminal-completion field and this REQ by contract never finishes.
-- Step 1 and Step 10 stopped keeping their own copies of the exit-summary section list — the drift that hid the missing standing-sweep section in the first place.
+- A fold now has a defined home. `## Folded Requests` in the UR's `input.md` records one line per fold — destination REQ plus the part of the input it absorbed — and `do-work verify-requests` reads it, so a folded request is graded against the REQ that now carries it instead of being reported as a dropped requirement. Capture's fold-only red flag and checklist point at that section.
+- A queue holding only standing sweeps has a defined exit. The composed exit summary gained a matching headline and a standing-sweep section carrying each sweep's open-instance count, so the state a never-auto-selected REQ creates no longer falls through Step 1 with no report that fits it.
+- A drained standing sweep's queue file is staged. Its provenance rule already skipped the `commit:` field for the `## Drains` line, but nothing named the requeued file for staging, so the ticked instances could be left dirty. The Commit Phase's procedure now states both substitutions in one place.
 
-## 0.218.0 — Qualify's Untracked-File Probes Leave the Repository Alone (2026-08-20)
+## 0.220.0 — Qualify's Untracked-File Probes Leave the Repository Alone (2026-08-20)
 
 An external review caught qualify's read-only probes writing to the repository they were only supposed to read, and reading files they had no business opening. Both are fixed with lock-in cases that fail without them.
 
 - The rename probe now redirects `GIT_OBJECT_DIRECTORY` alongside `GIT_INDEX_FILE`. It was staging the whole tree into a private index but writing every blob into the real object database, so each qualification left an unreachable copy of every untracked file — build outputs and credentials included — behind in the repository.
 - The untracked artifact scans skip binary files before reading them. A binary asset carrying the bytes `TODO` or `print(` produced a grep diagnostic naming a file nobody can inspect, and on BSD grep (and GNU before 3.5) that diagnostic lands on stdout, where it read as a matched source line and could fail a checked `[UNIFY]`.
 - Two new fixture cases in `_dev/tests/prescribed-shell-cases/qualify.sh`: one asserts the fixture repository's object count is unchanged by a qualify run, one asserts a binary asset never appears in the output while an untracked text file still fails. Suite total: 92 to 94.
+
+## 0.219.0 — The Calendar Now Shows the Whole Queue, Colour-Keyed by Status (2026-08-20)
+
+The board's Calendar view only ever showed finished work, in one shade of green, and `failed` REQs appeared on no day at all. It now carries every REQ: what hasn't started sits in a band at the top, claimed REQs sit on the day they were claimed, and each chip is coloured by its status.
+
+- Work that has not started — pending, needs-answers, and the blocked family — collects in an "In the queue" band pinned above the newest day.
+- Claimed REQs are placed on their `claimed_at` day, so a claim still sitting on an old day reads as the staleness signal it is.
+- `failed` REQs now appear, on the day they failed. They are dated from `completed_at` directly, so the detail drawer still never shows a "Completed" row for work that did not complete.
+- Chips take the same status colours the board's cards already use, including the struck-through treatment for cancelled work (`abandoned`, `canceled`, `wont-do` and `wontfix` all normalize to `cancelled`, so one colour covers them). "Completed with issues" keeps the success hue and adds a dotted underline rather than a second shade of green.
+- Each day label now counts what happened on it ("2 done  1 claimed  1 failed", each in its status colour) instead of a bare "N done", and the summary line above the calendar carries the same segments — which makes it the colour key.
+- Every REQ appears exactly once, so nothing can silently drop out of the view; the Board view's "Recently done" window is unchanged and still excludes claimed and failed work.
+
+## 0.218.0 — Fold-First Becomes a Ladder, and the Board Learns to Count Sweeps (2026-08-20)
+
+An adversarial review of 0.217.0 found the prose-only rule unreachable from the flow that produces most prose findings, the standing sweep's lifecycle broken by step ordering, and the queue count blind to instances hiding inside sweeps. All three are fixed, and the rule got shorter doing it.
+
+- The Fold-First Rule is now a first-match destination ladder (append → convert → standing sweep → new REQ) with a named prose-only test; the citing files point at it instead of restating it, and review Step 10 plus toolbox code-review now route prose-only findings to the standing sweep explicitly.
+- The default work scan never selects a standing sweep — it drains only when explicitly named or opportunistically, as a lightweight pass that skips the build pipeline, returns to `pending` with `status_changed_at` stamped, and records its commit hash in a `## Drains` line. The queue summary prints its open-instance count.
+- Conversion targets must be unassigned and dependency-free, and conversion clears `write_set` and the frozen estimate; racing duplicate standing sweeps merge by rule; a critical escalation ticks the consent question it bypasses; a fold-only capture is a legitimate complete capture.
+- The board parses `sweep`/`standing` into a card chip and drawer row showing open/done instance counts, so queue depth stays honest under folding, and `queue-kanban verify` no longer tells you to abandon the standing sweep after its UR archives.
 
 ## 0.217.0 — Fold Findings Into Pending REQs Before Minting New Ones (2026-08-20)
 

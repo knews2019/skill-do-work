@@ -197,25 +197,28 @@ func TestLiveTreeCompletionTimeConsistent(t *testing.T) {
 	}
 }
 
-// TestLiveTreeCalendarCoversCompletions asserts a repo-independent invariant: the
-// completion calendar holds exactly one entry per terminally resolved REQ —
-// completed* or cancelled (see TestLiveTreeCompletionTimeResolved). The old
-// absolute ">= 900 tickets" ballpark was a source-monorepo snapshot that breaks
-// in this 33-REQ extraction; exact counts now live in TestSyntheticCountsAndCalendar.
-func TestLiveTreeCalendarCoversCompletions(t *testing.T) {
+// TestLiveTreeCalendarCoversEveryRequest asserts a repo-independent invariant:
+// the calendar holds exactly one entry per parsed REQ, whatever its status. It
+// is the whole queue's timeline, so nothing may silently drop out of it — the
+// reason buildCalendar's placement rule ends in a default branch rather than a
+// list of known statuses. A terminally resolved REQ additionally must never
+// land in the queued band, which would claim finished work had not started.
+// Exact placements live in TestSyntheticCountsAndCalendar.
+func TestLiveTreeCalendarCoversEveryRequest(t *testing.T) {
 	board := liveBoard(t)
 	if len(board.AllRequests) == 0 {
 		t.Fatalf("live tree parsed zero REQ tickets — the do-work walk found nothing")
 	}
 
-	resolvedCount := 0
-	for _, ticket := range board.AllRequests {
-		if isTerminalResolvedStatus(ticket.Status) {
-			resolvedCount++
-		}
+	if len(board.Calendar) != len(board.AllRequests) {
+		t.Fatalf("calendar entries = %d, want %d (one per REQ — queued, claimed, and resolved alike)",
+			len(board.Calendar), len(board.AllRequests))
 	}
-	if len(board.Calendar) != resolvedCount {
-		t.Fatalf("calendar entries = %d, want %d (one per terminally resolved REQ)", len(board.Calendar), resolvedCount)
+	for _, entry := range board.Calendar {
+		if isTerminalResolvedStatus(entry.Status) && entry.DayKey == queuedCalendarDayKey {
+			t.Fatalf("%s is %s but sits in the queued band — resolved work has a day or is undated, never 'not started'",
+				entry.RequestId, entry.Status)
+		}
 	}
 }
 

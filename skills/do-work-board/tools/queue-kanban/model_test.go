@@ -676,6 +676,72 @@ func TestParseRequestTicketLeavesAssignedToEmptyWhenAbsent(t *testing.T) {
 	}
 }
 
+func TestParseRequestTicketReadsSweepMarkersAndInstanceCounts(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-570-standing-sweep.md")
+	// The ## Instances count stops at the next heading: the ticked line under
+	// ## Drains below must not count, or a drain record would inflate done.
+	fixtureContent := `---
+id: REQ-570
+title: "[impact-negligible] Standing prose-reconciliation sweep"
+status: pending
+sweep: true
+standing: true
+sweep_key: prose-only-discrepancy-reconciliation
+impact: impact-negligible
+---
+
+## What
+The standing sweep.
+
+## Instances
+
+- [ ] file-a.md:3: stale count (found by REQ-100 / UR-010)
+- [x] file-b.md:9: wrong check number (found by REQ-101 / UR-011)
+- [ ] file-c.md:1: superseded comment (found by REQ-102 / UR-012)
+
+## Drains
+
+- [x] 2026-08-19 drained 1 instance
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if !ticket.Sweep || !ticket.Standing {
+		t.Fatalf("Sweep/Standing = %v/%v, want true/true from exact `true` markers", ticket.Sweep, ticket.Standing)
+	}
+	if ticket.SweepInstancesOpen != 2 || ticket.SweepInstancesDone != 1 {
+		t.Fatalf("instance counts = %d open / %d done, want 2/1 — the ## Drains checkbox must not count",
+			ticket.SweepInstancesOpen, ticket.SweepInstancesDone)
+	}
+}
+
+func TestParseRequestTicketNonCanonicalSweepMarkerReadsFalse(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-571-noncanonical.md")
+	fixtureContent := "---\nid: REQ-571\ntitle: Marker class is exact-true only\nstatus: pending\nsweep: \"TRUE\"\nstanding: yes\n---\n\n## Instances\n\n- [ ] never counted\n"
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.Sweep || ticket.Standing {
+		t.Fatalf("Sweep/Standing = %v/%v, want false/false — marker class reads exact `true` only, like review_generated", ticket.Sweep, ticket.Standing)
+	}
+	if ticket.SweepInstancesOpen != 0 || ticket.SweepInstancesDone != 0 {
+		t.Fatalf("instance counts = %d/%d, want 0/0 when the sweep marker did not read true",
+			ticket.SweepInstancesOpen, ticket.SweepInstancesDone)
+	}
+}
+
 func TestAssignedToNeverAffectsColumnPlacement(t *testing.T) {
 	temporaryDirectory := t.TempDir()
 	unassignedPath := filepath.Join(temporaryDirectory, "REQ-562-plain.md")

@@ -13,7 +13,7 @@ Every invocation produces exactly two things, always paired:
 1. **A UR folder** at `do-work/user-requests/UR-NNN/` with `input.md` containing the full verbatim input
 2. **One or more REQ files** at `do-work/queue/REQ-NNN-slug.md`, each linked via `user_request: UR-NNN` in frontmatter
 
-Never create one without the other. A REQ without `user_request` is orphaned. A UR without REQs is pointless. actions/verify-requests.md depends on this linkage.
+Never create one without the other. A REQ without `user_request` is orphaned. A UR without REQs is pointless — with one exception: a capture whose every request the fold-first scan resolved (Step 2) legitimately produces a UR whose `requests:` array is empty and whose `folded into REQ-NNN` lines in `input.md` are the record of where the work went. actions/verify-requests.md depends on this linkage.
 
 **Principles:**
 - Represent, don't expand — if the user says 5 words, write a 5-word request (with structure)
@@ -121,7 +121,7 @@ Read the user's input. Determine:
 
 If `do-work/` is freshly bootstrapped (no existing REQ files anywhere), skip duplicate checking entirely.
 
-For each parsed request, check for similar existing ones across both tiers. For finding-shaped captures — review, triage, or consumer-report findings — the duplicate check extends to the fold-first scan (`actions/capture-reference.md` → **Fold-First Rule**): a pending REQ in **any** UR sharing the finding's root cause receives it as an appended instance instead of a new REQ. A **prose-only** finding — the fix changes no behavior, no checker's predicate, and no rule's stated condition — never mints a new REQ even without a root-cause match: it lands on the queue's **standing prose-reconciliation sweep** (`sweep_key: prose-only-discrepancy-reconciliation`, created on demand when the queue lacks it — the Fold-First Rule's one capture-minted sweep), subject to that rule's three exemptions (critical, contradictions, user-facing artifact contracts), and the capture names that destination. The table's queued-enhancement row below is the same move for same-request amendments; the Fold-First Rule generalizes it to root causes across URs.
+For each parsed request, check for similar existing ones across both tiers. For finding-shaped captures — review, triage, or consumer-report findings — the duplicate check extends to the fold-first scan (`actions/capture-reference.md` → **Fold-First Rule**): its destination ladder decides whether the finding is appended to an existing `pending`/`pending-answers` REQ in any UR, lands on the standing prose-reconciliation sweep (a prose-only finding never mints a new file — the rule's prose-only test governs, exemptions included), or becomes a new REQ; whatever the destination, the capture names it. The table's queued-enhancement row below is the same move for same-request amendments; the Fold-First Rule generalizes it to root causes across URs.
 
 | Existing request is in... | Action | New REQ lands in |
 |---------------------------|--------|-----------------|
@@ -283,7 +283,7 @@ EOF
 
 **Format:** `[UR-NNN] captured {title} ({N} REQs)` — where `{title}` is the UR title and `{N}` is the count of REQ files created. List each REQ with its ID and title in the body.
 
-**For addenda and folds** (when appending to or converting an existing queued REQ instead of creating new files — an addendum section, a fold-first instance append, a sweep conversion or escalation, or an on-demand-created standing sweep), the commit message changes to: `[UR-NNN] addendum to REQ-NNN: {description}` (or `[UR-NNN] folded into REQ-NNN: {description}`). **Stage every queue file this capture modified or created through that path** along with the new UR folder — a fold target left unstaged leaves the captured finding as an unrelated dirty-tree edit, which is not durable.
+**For addenda and folds** (when appending to or converting an existing queued REQ instead of creating new files — an addendum section, a fold-first instance append, a sweep conversion or impact escalation, or an on-demand-created standing sweep), the commit message changes to: `[UR-NNN] addendum to REQ-NNN: {description}` (or `[UR-NNN] folded into REQ-NNN: {description}`). **Stage every queue file this capture modified or created through that path** along with the new UR folder — a fold target left unstaged leaves the captured finding as an unrelated dirty-tree edit, which is not durable.
 
 Stage only the specific files created by this capture — never `git add -A`/`.` or bypass a commit hook (see `actions/commit.md` § Rules for the full guard).
 
@@ -312,7 +312,7 @@ Guard against these during capture:
 ## Red Flags
 
 - REQ file has no `user_request` frontmatter field (orphaned — can't trace to original input)
-- UR folder exists with neither a REQ file nor a `## Folded Requests` line (capture incomplete — an all-folded capture creates no REQ file and is still complete, but only if that section says where every request went)
+- UR folder exists but contains no REQ files AND its `input.md` has no `## Folded Requests` lines (capture incomplete — a fold-only capture is complete)
 - Single REQ created from input containing 3+ distinct requests (under-splitting)
 - RED/GREEN section missing from a request that describes observable behavioral change
 - Open Questions section has items with no recommended resolution
@@ -321,7 +321,7 @@ Guard against these during capture:
 
 - [ ] UR folder created at `do-work/user-requests/UR-NNN/` with `input.md` containing verbatim input
 - [ ] Every REQ file has `user_request: UR-NNN` in frontmatter
-- [ ] Created REQ count plus recorded folds equals the number of distinct requests in the input — every fold accounted for by a `## Folded Requests` line, never by absence
+- [ ] Every distinct request in the input is accounted for — a created REQ file, or a line under `## Folded Requests` in the UR's `input.md` naming the REQ that absorbed it
 - [ ] Every REQ's `impact:` is a judged verdict, or the judgment was put to the user, or the field was left absent because neither was possible — never a copied default
 - [ ] Every REQ whose `impact:` is not `impact-user-visible` carries the matching `[<impact token>] ` tag in its double-quoted `title:`, and none carries it in its filename
 - [ ] RED/GREEN proof captured for behavioral requests (or explicitly noted as not applicable)
