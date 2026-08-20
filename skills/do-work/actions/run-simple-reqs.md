@@ -19,9 +19,16 @@
 
 ## Input
 
-`$ARGUMENTS` may carry any flag `do-work run` accepts (`--fan-out [N]`, `--skip-impact-negligible`); they are forwarded verbatim in Step 4.
+Two flags are accepted, and they are **not** interchangeable in how they travel:
+
+- **`--fan-out [N]`** — forwarded verbatim to `do-work run` in Step 4. It changes how many of the set run at once, never which, so the handoff is the right place for it.
+- **`--skip-impact-negligible`** — passed to the **Step 1 selector**, never forwarded to Step 4. Forwarding it would be silently inert: Step 4 names REQs explicitly, and an explicitly-named `REQ-NNN` overrides that flag by design (`actions/work.md` → Input), so the negligible work the user asked to omit would be built anyway. Any filter that must survive the handoff has to run before it.
+
+**`--wave N` is rejected.** It is mutually exclusive with every targeting token (`actions/work.md` → Input), and Step 4 always passes targeting tokens, so the combination could only ever fail at the handoff. Stop and report: `run-simple-reqs selects its own set, so --wave cannot apply — use do-work run --wave N for a depth-scoped run.`
 
 **Targeting tokens (`REQ-NNN` / `UR-NNN`) are rejected here.** This action computes its own set, so naming a REQ would either duplicate that set or contradict it. Stop and report: `run-simple-reqs computes its own set — use do-work run REQ-NNN to target a specific REQ.`
+
+Any other unrecognized argument is rejected rather than ignored, exactly as `actions/work.md` rejects residue.
 
 ## Steps
 
@@ -30,8 +37,10 @@
 Run the shipped selector from the project root:
 
 ```bash
-<skill-root>/tools/select-simple-reqs.sh
+<skill-root>/tools/select-simple-reqs.sh [--skip-impact-negligible]
 ```
+
+Pass `--skip-impact-negligible` through when the user gave it — that is the only place it can take effect.
 
 It prints one row per selected REQ with that REQ's p50 estimate, the batch totals, every mechanical REQ it held back with the reason for each, and a final `run_set: <ids>` line. That last line is the set Step 4 runs; read it rather than re-deriving the ids from the table.
 
@@ -52,8 +61,10 @@ Ask whether to run the listed REQs, quoting the count and the total estimate. Lo
 Run `do-work run` with the `run_set` ids and any forwarded flags:
 
 ```
-do-work run REQ-NNN REQ-NNN [forwarded flags]
+do-work run REQ-NNN REQ-NNN [--fan-out N]
 ```
+
+`--fan-out` is the only flag forwarded here. `--skip-impact-negligible` was already applied by the selector and must not be repeated, and `--wave` was rejected in Input.
 
 Every later step — claim, triage, build, qualify, test, review, archive — is `actions/work.md` unchanged. Do not reimplement any of it here, and do not pass a REQ the selector did not list.
 
@@ -73,6 +84,7 @@ The selector's report, then either the confirmation question or the empty-set st
 | "I'll add the REQ the selector skipped for `depends_on` — it looks independent"     | Run its dependency first, or leave it for the next pass                                          | Step 4 names REQs explicitly, and an explicitly-named REQ **bypasses `depends_on`** by design (`actions/work.md` → Input). The selector's readiness check is the only thing standing between this action and a silent dependency-gate bypass |
 | "This REQ is `maintenance: true` but the diff is one line, so it's mechanical"      | Leave it for a full-strength session                                                             | `crew-members/maintenance.md` work edits the skill's own operating instructions, where nothing tests a rule. Instruction REQs are always small in diff, so effort alone selects the queue's highest-judgment work first |
 | "`tdd: true` means extra ceremony — hold it back too"                               | Select it; test-first work is a **better** fit, not a worse one                                   | A `tdd: true` REQ carries an objective pass/fail gate, often a captured RED case in `## Red-Green Proof` — a stronger check than the qualification-plus-review a non-TDD REQ gets                                    |
+| "The user passed `--skip-impact-negligible`, so I'll forward it to `do-work run`" | Pass it to the Step 1 selector instead                                                           | Step 4 names REQs explicitly, and explicit naming overrides that flag (`actions/work.md` → Input). Forwarded, it is inert, and the queue builds the negligible REQs the user asked to skip |
 | "Nothing qualified, so I'll relax the filter and pick the closest few"              | Report the empty set and stop                                                                    | The held-back list already names what to fix; loosening the predicate at read time makes the queue's own `effort_estimate` and marker fields meaningless                                                             |
 
 ## Verification Checklist

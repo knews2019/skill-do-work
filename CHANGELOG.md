@@ -10,6 +10,9 @@ Launch a session on a smaller model and `do-work run-simple-reqs` tells you whic
 - The selector normalizes `effort_estimate` through the Schema Read Contract, so the legacy `trivial` spelling counts. On the live queue that is the difference between finding three mechanical REQs and finding seven.
 - Dependency-readiness is checked before the handoff, because an explicitly-named `REQ-NNN` bypasses `depends_on` by design — without that check the new verb would have been a silent gate bypass.
 - Held-back REQs are always reported with a reason, so a mis-tagged REQ is fixable instead of invisible.
+- `--skip-impact-negligible` is applied by the selector rather than forwarded to the handoff. Forwarded it was inert — explicit REQ naming overrides it — so the flag looked like it worked while the negligible REQs got built anyway. `--wave` is now rejected up front, since it can never combine with the targeting tokens the handoff always passes.
+- A present-but-unrecognized enum value is reported instead of silently defaulted, closing the Schema Read Contract's warn-on-fallback leg: a typo'd `effort_estimate` used to make a qualifying REQ vanish from both the selected and the held-back list.
+- `depends_on` wins outright over the legacy `dependencies` key, and the scans use `find -exec … {} +` rather than the GNU-only `xargs -r` the stock-macOS floor does not have.
 - `_dev/tests/select-simple-reqs-behavior.sh` pins all of it, every probe mutation-tested to confirm it can fail.
 
 ## 0.219.0 — The Calendar Now Shows the Whole Queue, Colour-Keyed by Status (2026-08-20)

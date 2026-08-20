@@ -25,6 +25,22 @@
 #   T5  An empty selection must exit 0 with a stated answer. A selector that
 #       failed here would be indistinguishable from a broken one, and its caller
 #       cannot tell "nothing qualifies" from "the scan died" out of stderr.
+#   T6  --skip-impact-negligible has to be applied HERE. Forwarded to the
+#       handoff it is inert, because explicit REQ naming overrides it
+#       downstream — so the flag would appear to work while building exactly
+#       the REQs the user asked to omit.
+#   T7  `depends_on` wins outright when the legacy `dependencies` key is also
+#       present. Merging both lists lets a stale id under the legacy key hold
+#       back a REQ whose real dependencies have all landed.
+#   T8  A PRESENT but unrecognized enum value must be reported. Silently
+#       defaulting a typo'd `effort_estimate` to substantive makes a qualifying
+#       REQ vanish from BOTH the selected and the held-back list, leaving the
+#       user nothing to diagnose — the exact failure the Schema Read Contract's
+#       warn-on-fallback leg exists to prevent.
+#   T9  No GNU-only tool flags. `xargs -r` is a GNU extension absent from the
+#       BSD xargs macOS ships, and this script claims the stock-macOS floor.
+#       Worse than unportable: with the pipeline broken and no `set -e`, the
+#       scan would report an empty selection and exit 0.
 #
 # Exit 0: every probe passed. Exit 1: at least one FAIL line above.
 set -uo pipefail
@@ -154,6 +170,31 @@ domain: general
 effort_estimate: effort-mechanical
 assigned_to: "cloud-alpha"'
 
+# T6 — mechanical, ready, and negligible. Selected by default; dropped only when
+# the flag is passed to the selector.
+write_req 'do-work/queue/REQ-114-negligible.md' 'id: REQ-114
+title: "Nobody would notice"
+status: pending
+domain: general
+impact: impact-negligible
+effort_estimate: effort-mechanical'
+
+# T7 — canonical depends_on (met) alongside a stale legacy dependencies key.
+write_req 'do-work/queue/REQ-115-both-dependency-keys.md' 'id: REQ-115
+title: "Corrected REQ that kept the legacy key"
+status: pending
+domain: general
+effort_estimate: effort-mechanical
+depends_on: [REQ-900]
+dependencies: [REQ-999]'
+
+# T8 — present but unrecognized effort value.
+write_req 'do-work/queue/REQ-116-typo-effort.md' 'id: REQ-116
+title: "Typo in the effort token"
+status: pending
+domain: general
+effort_estimate: effort-mechanial'
+
 selected_ids="$(bash "$selector" --repo-root "$fixture_root" --ids-only)"
 
 assert_selected() {
@@ -185,6 +226,39 @@ assert_not_selected REQ-108 "T3 veto: impact-critical must be held back"
 # T4
 assert_selected REQ-109 "T4 tdd is not a veto: test-first work carries an objective gate and must stay selected"
 
+# T6 — default keeps the negligible REQ; the flag removes it.
+assert_selected REQ-114 "T6 default: an impact-negligible REQ is mechanical work and stays selected without the flag"
+negligible_filtered_ids="$(bash "$selector" --repo-root "$fixture_root" --skip-impact-negligible --ids-only)"
+if printf '%s\n' "$negligible_filtered_ids" | grep -qx REQ-114; then
+  report_failure "T6 --skip-impact-negligible: REQ-114 must be dropped by the selector, since forwarding the flag to the handoff is inert"
+fi
+if ! printf '%s\n' "$negligible_filtered_ids" | grep -qx REQ-104; then
+  report_failure "T6 --skip-impact-negligible: the flag must remove only negligible REQs, not narrow the set further"
+fi
+negligible_filtered_report="$(bash "$selector" --repo-root "$fixture_root" --skip-impact-negligible 2>/dev/null)"
+if ! printf '%s' "$negligible_filtered_report" | grep -q 'REQ-114'; then
+  report_failure "T6 --skip-impact-negligible: the dropped REQ must still be reported with its reason"
+fi
+
+# T7 — depends_on wins over the legacy alias.
+assert_selected REQ-115 "T7 alias precedence: depends_on wins when both keys are present, so a stale legacy dependencies id must not hold the REQ back"
+
+# T8 — warn on a present-but-unrecognized value, never silently default.
+typo_warnings="$(bash "$selector" --repo-root "$fixture_root" 2>&1 >/dev/null)"
+if ! printf '%s' "$typo_warnings" | grep -q 'REQ-116'; then
+  report_failure "T8 warn-on-fallback: an unrecognized effort_estimate must be reported naming the REQ, not silently defaulted"
+fi
+if ! printf '%s' "$typo_warnings" | grep -q 'effort-mechanial'; then
+  report_failure "T8 warn-on-fallback: the warning must quote the value as written, so the typo is diagnosable"
+fi
+assert_not_selected REQ-116 "T8 warn-on-fallback: the documented default still applies — an unrecognized value reads as effort-substantive"
+
+# T9 — no GNU-only tool flags, against the stated stock-macOS floor.
+selector_code_only="$(sed 's/[[:space:]]*#.*$//' "$selector")"
+if printf '%s' "$selector_code_only" | grep -qE 'xargs.*(-r\b|--no-run-if-empty)'; then
+  report_failure "T9 portability: xargs -r is a GNU extension absent from the BSD xargs macOS ships; with the pipeline broken and no set -e the scan would report an empty selection and exit 0"
+fi
+
 # Controls
 assert_not_selected REQ-110 "control: effort-substantive must never be selected"
 assert_not_selected REQ-111 "control: an absent effort_estimate defaults to effort-substantive and must not be selected"
@@ -193,7 +267,7 @@ assert_not_selected REQ-113 "control: a REQ assigned to another session must not
 
 # The held-back REQs must be REPORTED, not silently dropped: the reason is what
 # lets a user fix a mis-tagged REQ instead of wondering where it went.
-report_output="$(bash "$selector" --repo-root "$fixture_root")"
+report_output="$(bash "$selector" --repo-root "$fixture_root" 2>/dev/null)"
 for held_back_id in REQ-103 REQ-106 REQ-107 REQ-108; do
   if ! printf '%s' "$report_output" | grep -q "$held_back_id"; then
     report_failure "held-back $held_back_id must appear in the report with its reason, not be dropped silently"
