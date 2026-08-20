@@ -1,7 +1,10 @@
 ---
 id: REQ-279
 title: Scope the blanked-REQ scan to where REQ records actually live
-status: pending
+status: completed
+claimed_at: 2026-08-20T22:38:28Z
+completed_at: 2026-08-20T22:42:34Z
+commit: f487f04
 created_at: 2026-08-19T13:42:45Z
 user_request: UR-057
 domain: general
@@ -27,9 +30,9 @@ write_set:
 Exclude `assets/` at any depth from the enumeration.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Narrow only the archived arm of the scanner's candidate `find` with an `assets/` path exclusion, update Check 13's scope sentence, and add a fixture proving asset prose is ignored while a real blanked REQ remains visible.
+- [x] **[APPLY]:** Code written exactly as planned. Scope stayed within the scanner, Check 13, and the behavioral fixture.
+- [x] **[UNIFY]:** Reviewed the 3-file diff and git diff --stat; ran bash -n on the changed shell files and the behavioral probe. No debug artifacts are present.
 
 ## Why
 
@@ -68,3 +71,60 @@ See `do-work/user-requests/UR-057/input.md` for the complete verbatim upstream r
 
 ---
 *Source: upstream defect report D2, severity high, from `g1w-game-find-the-difference` running v0.212.25 — verbatim claim: "`blanked-req-scan.sh` reports intact asset sidecars as destroyed content … it invites a destructive repair against undamaged files." Accepted by `do-work-toolbox validate-feedback` triage (2026-08-19). Evidence: `skills/do-work/tools/checks/blanked-req-scan.sh:285` unscoped find; `:88` `has_parseable_frontmatter` is the damage test; `skills/do-work/actions/forensics.md:174` reports Critical; `skills/do-work/actions/cleanup.md:157` Pass 6 offers the overwrite; precedent fix at `skills/do-work-board/tools/queue-kanban/walk.go:195` and `CHANGELOG.md` 0.150.12. Surface-cost: N/A — narrowing an over-broad `find`, a direct fix.*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The request names the scanner, its existing behavioral fixture, and one documentation site. The fix is a focused path predicate plus a regression assertion.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/checks/blanked-req-scan.sh` (modified) — excludes every `assets/` subtree only from the archive candidate scan.
+- `skills/do-work/actions/forensics.md` (modified) — documents the archive `assets/` exclusion in Check 13.
+- `_dev/tests/record-commit-hash-guards.sh` (modified) — verifies intact prose under archive assets is ignored while a genuinely blanked REQ remains reported.
+
+## Qualification
+
+Passed — 3 project files verified, all requirements traced, and the P-A-U change stayed within the declared write set.
+
+## Testing
+
+- `record-commit-hash-guards.sh` behavioral probes passed through the maintainer harness path, including the new archive-assets regression fixture.
+- `bash -n skills/do-work/tools/checks/blanked-req-scan.sh _dev/tests/record-commit-hash-guards.sh` passed.
+- The captured RED case is the intact no-frontmatter asset sidecar being reported as damaged; the GREEN assertion confirms it is ignored while the real blanked REQ still produces exit 1.
+
+## Review
+
+**Overall: 100%**
+
+**Requirements:** Pass — the archive arm excludes `assets/` at any depth, the queue/working arm is unchanged, the scanner logic and exit codes are untouched, and Check 13 matches the runtime scope.
+
+**Code quality:** Pass — the change is a single focused `find` predicate and a targeted fixture assertion.
+
+**Test adequacy:** Pass — the regression covers both the false positive and the true positive.
+
+**Scope:** Pass — only the two declared deliverables and their shared behavioral fixture changed.
+
+**Acceptance:** Pass — the scanner probes pass and no additional testing is needed.
+
+## Lessons Learned
+
+**What worked:** The existing shared guard-probe fixture could exercise the scanner against a committed archive shape without adding another test runner.
+**What didn't:** A direct invocation of the probe uses its maintainer-tree path assumption; the repository's harness substitution is required for the shipped script path.
+**Worth knowing:** Archive assets are deliverables, not REQ records, even when their filenames resemble REQ files.
+
+## Orientation
+
+The blanked-record detector now reports only queue records and archive records outside `assets/`, while preserving its existing damage detection and recovery behavior.

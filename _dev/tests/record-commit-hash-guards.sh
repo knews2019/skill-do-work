@@ -424,6 +424,9 @@ scan_target="$scan_root/do-work/archive/UR-900/REQ-1282-incident.md"
 # A healthy neighbour: the scan must not report it.
 printf -- '---\nid: REQ-1283\ntitle: Healthy\nstatus: completed\ncompleted_at: 2026-07-30T10:00:00Z\ncommit: 0000000\n---\n\n# Healthy\n\nIntact body.\n' \
   > "$scan_root/do-work/archive/UR-900/REQ-1283-healthy.md"
+mkdir -p "$scan_root/do-work/archive/UR-900/assets"
+printf -- '# Screenshot descriptions\n\nThis is intact prose, not a REQ record.\n' \\
+  > "$scan_root/do-work/archive/UR-900/assets/REQ-1284-screenshot-descriptions.md"
 git -C "$scan_root" add -A
 git -C "$scan_root" commit -q -m "[REQ-1282] Incident fixture (Route C)"
 recovery_source_sha="$(git -C "$scan_root" rev-parse HEAD)"
@@ -445,6 +448,10 @@ assert_output_matches "Recoverable: $intact_bytes bytes" \
   "scan: reports the recoverable byte count from the pre-blanking commit"
 if printf '%s' "$probe_output" | grep -q 'REQ-1283-healthy'; then
   printf 'FAIL: scan: reported the intact neighbour REQ-1283 as blanked.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+if printf '%s' "$probe_output" | grep -q 'REQ-1284-screenshot-descriptions'; then
+  printf 'FAIL: scan: reported intact prose under archive/assets as blanked.\n' >&2
   fail_count=$((fail_count + 1))
 fi
 

@@ -2,7 +2,7 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
-## 0.223.0 — Prose Findings Move to a Plain Backlog File (2026-08-20)
+## 0.223.0 — Prose Findings Move to a Plain Backlog File (2026-08-21)
 
 A prose-only finding — a stale count, a wrong cross-reference, a comment describing a superseded mechanism — now lands as one line in `do-work/prose-backlog.md` instead of on a never-closing queue REQ. Draining it is an ordinary REQ with no exceptions anywhere in the pipeline.
 
@@ -12,6 +12,18 @@ A prose-only finding — a stale count, a wrong cross-reference, a comment descr
 - Fixing a backlog item inside a REQ that already touches that file is still the cheapest path, and now there is nothing to reset afterwards — delete the line and move on.
 - Consolidation sweeps (`sweep: true` + `sweep_key:`) are unchanged. They are ordinary REQs that close, and nothing about them needed a carve-out.
 - **If your queue holds a `standing: true` REQ:** move its unticked `## Instances` lines into `do-work/prose-backlog.md` (creating the file from the template in the Fold-First Rule), then complete or abandon the REQ. Nothing reads the marker any more, so a REQ left carrying it becomes an ordinary selectable REQ.
+## 0.222.4 — Clarify Maintainability Audit Impact-Score Wording (2026-08-21)
+
+The maintainability-audit action and reference now clearly distinguish the numeric `Impact` score used for severity and ranking from the lowercase `impact:` token used for follow-up routing.
+
+## 0.222.3 — Route Board Verification Through Its Owning Skill (2026-08-21)
+
+The board skill now exposes the queue-kanban tool's existing read-only invariant verifier as `do-work-board verify`, including its build-and-run path, findings exit status, and canonical Check 14 reference.
+
+## 0.222.2 — Exclude Archive Assets From Blanked-REQ Recovery Scans (2026-08-21)
+
+The blanked-REQ detector no longer treats intact prose sidecars under archive `assets/` directories as damaged request records. Its regression fixture keeps genuine blanked REQs visible and Check 13 now documents the same boundary.
+
 ## 0.222.1 — The Maintainer Gate Accepts a Newer Toolchain (2026-08-20)
 
 `maintainer-verify.sh` demanded exactly `go1.26.1` and exactly ShellCheck `0.11.0`, so a machine with anything newer could not run the canonical gate at all — it refused before checking a single thing. The two version checks are now floors.

@@ -110,11 +110,11 @@ Read only: hotspot files, entry points, the public API surface, their tests — 
 2. **Abstraction** — repetition that wants a shared helper; helpers with a single caller; leaky layers (SQL in HTTP handlers, transport concerns in domain logic).
 3. **Consistency** — the same thing done more than one way: error handling, config access, response shapes, logging, folder conventions. Inconsistency outranks any single ugly function.
 4. **Test quality** — per hotspot: do tests assert behavior and contract, or restate implementation? Change-detector signals: assertions against mock internals, tests that break under behavior-preserving refactors, high mock-to-assertion ratio. Also the inverse gap: is the public contract covered at all?
-5. **Discoverability and context coverage** — can a newcomer, human or dispatched builder, load an area's purpose, invariants, and known traps within five minutes? An area REQs keep returning to with no covering prime is a missing-prime finding: the impact evidence is the REQ-touch count (the tax recurs per REQ — always stated with the legacy-coverage caveat from Step 4), the remedy is consolidation (seed the prime from scattered lessons and archive notes), `Surface-cost: N/A`. **This dimension is judgment-only: never propose a lock-in limit for it** (reference § Lock-In Limits, dimension-5 exception).
+5. **Discoverability and context coverage** — can a newcomer, human or dispatched builder, load an area's purpose, invariants, and known traps within five minutes? An area REQs keep returning to with no covering prime is a missing-prime finding: the `Impact`-score evidence is the REQ-touch count (the tax recurs per REQ — always stated with the legacy-coverage caveat from Step 4), the remedy is consolidation (seed the prime from scattered lessons and archive notes), `Surface-cost: N/A`. **This dimension is judgment-only: never propose a lock-in limit for it** (reference § Lock-In Limits, dimension-5 exception).
 
 ### Step 6: Consolidate by Root Cause
 
-Group instances into at most FINDINGS_MAX root-cause classes using `actions/maintainability-audit-reference.md` § Finding-Class Template — every field, including its severity-from-impact rule (impact ≥ 4 → P1, 3 → P2, ≤ 2 → P3), the impact-descending / effort-tie-break ranking, grep-pattern-first Instances, Surface-cost pre-classification, and one lock-in-limit proposal (with its red case) or a one-sentence reason why none is possible. Never re-flag anything listed in `do-work/audits/waivers.md`.
+Group instances into at most FINDINGS_MAX root-cause classes using `actions/maintainability-audit-reference.md` § Finding-Class Template — every field, including its severity-from-`Impact`-score rule (`Impact` ≥ 4 → P1, 3 → P2, ≤ 2 → P3), the 1-5 `Impact`-score-descending / `effort_estimate` tie-break ranking, grep-pattern-first Instances, Surface-cost pre-classification, and one lock-in-limit proposal (with its red case) or a one-sentence reason why none is possible. Never re-flag anything listed in `do-work/audits/waivers.md`.
 
 ### Step 7: Write the Report
 
@@ -167,7 +167,7 @@ The persistent report at `do-work/audits/audit-YYYY-MM-DD.md`, plus a short term
 - [ ] Calibration gate happened: bundled proposal presented, user approved, agreed config recorded in the report header.
 - [ ] Every metric is pasted tool output or NOT-MEASURED — no estimates anywhere.
 - [ ] Every finding class carries Claim, Label, its `impact:` token, the 1-5 Impact score with its three shown inputs, effort_estimate, Reproduce, greppable Instances, Remedy with Surface-cost, and a lock-in-limit proposal or a stated reason why none.
-- [ ] Classes are ranked impact-descending with effort as tie-break; severity derives from impact alone.
+- [ ] Classes are ranked by the 1-5 `Impact` score descending with `effort_estimate` as tie-break; severity derives from that score alone.
 - [ ] The report exists at `do-work/audits/audit-YYYY-MM-DD.md`; nothing outside `do-work/audits/` was modified.
 - [ ] Deltas computed against the prior report, or "no baseline" stated; no waived class re-flagged.
 - [ ] The Findings section is self-contained and addressed to `do-work-toolbox validate-feedback`.
