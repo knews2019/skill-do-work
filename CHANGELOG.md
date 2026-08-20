@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.219.0 — Folds and Standing Sweeps Reach Their Downstream Readers (2026-08-20)
+
+Last release's Fold-First Rule was only half-landed: four contracts downstream of it still assumed every captured request mints a REQ file and every finished REQ gets archived. An external review found all four, and they are fixed together because they are one mistake.
+
+- A fold now has a defined home. `## Folded Requests` in the UR's `input.md` records one line per fold — destination REQ plus the part of the input it absorbed — instead of a prose line with no stated place, and `do-work verify-requests` reads it, so a folded request is graded against the REQ that now carries it rather than reported as a dropped requirement.
+- Capture's own validation counts folds. The REQ-count check is now created REQs plus recorded folds, and an all-folded capture no longer trips the "UR folder with no REQ files" red flag.
+- An instance-free standing sweep has an exit path. The composed exit summary gained a matching headline and a standing-sweep section, so the permanent queue state a never-closing REQ creates no longer falls through Step 1 with no defined report.
+- A drained standing sweep has a commit path. The Commit Phase stages the requeued queue file in place of an archived REQ and records no `commit:` hash, because `commit:` is a terminal-completion field and this REQ by contract never finishes.
+- Step 1 and Step 10 stopped keeping their own copies of the exit-summary section list — the drift that hid the missing standing-sweep section in the first place.
+
 ## 0.218.0 — Qualify's Untracked-File Probes Leave the Repository Alone (2026-08-20)
 
 An external review caught qualify's read-only probes writing to the repository they were only supposed to read, and reading files they had no business opening. Both are fixed with lock-in cases that fail without them.
