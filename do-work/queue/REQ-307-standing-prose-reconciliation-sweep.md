@@ -1,6 +1,6 @@
 ---
 id: REQ-307
-title: "Standing prose-reconciliation sweep"
+title: "[impact-negligible] Standing prose-reconciliation sweep"
 status: pending
 created_at: 2026-08-20T13:21:13Z
 user_request: UR-063
@@ -40,16 +40,17 @@ The board's overlaps badge reads `write_set`, so an empty field means *unknown* 
 
 ## Cadence
 
-**Drain when the instance list reaches roughly eight entries, or when a claimed REQ's write set
-already includes an instance's file — whichever comes first.** Both halves matter:
+**The default work scan never selects this REQ** (`skills/do-work/actions/work.md` Step 1) — it
+drains only when explicitly named (`do-work run REQ-307`) or opportunistically. Two guides for
+choosing when to name it:
 
-- **Eight** is a batch large enough that one dispatch, one review, and one commit are amortized
+- **Roughly eight entries** is a batch large enough that one drain and one commit are amortized
   across it, and small enough that the instances have not aged past the point where the reader can
-  still tell whether each one is still true. The number is a default, not a gate; nine is fine and
-  so is six.
+  still tell whether each one is still true. Advisory, not a gate; the queue status summary's
+  `(standing sweep …: K open instances)` line is the signal.
 - **Opportunistic folding beats waiting.** When any REQ is claimed whose declared scope already
   contains a file this list names, fix that instance in that REQ and tick it here. That is
-  cheaper than a dispatch and it is the mechanism REQ-306's rule points at first.
+  cheaper than a dispatch and it is the mechanism the Fold-First Rule points at first.
 
 A drain does not close this REQ. It ticks the drained instances, commits, and leaves the REQ
 `pending` with whatever remains. If the list is empty, there is nothing to drain and that is the
