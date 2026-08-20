@@ -355,6 +355,14 @@
         )
       );
     }
+    if (request.sweep) {
+      var detailSweepOpen = request.sweepInstancesOpen || 0;
+      var detailSweepDone = request.sweepInstancesDone || 0;
+      appendMetaRow(
+        request.standing ? "Standing sweep" : "Sweep",
+        detailSweepOpen + " open, " + detailSweepDone + " done of " + (detailSweepOpen + detailSweepDone) + " instances"
+      );
+    }
     if (request.createdAt) {
       appendMetaRow("Created", makeInstantWithRelativeNode(request.createdAt) || request.createdAt);
     }

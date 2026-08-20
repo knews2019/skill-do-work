@@ -931,6 +931,14 @@ body.is-resizing-detail {
   border-color: var(--line-firm);
   font-style: italic;
 }
+/* Sweep chip — one REQ holding many instances; the open/total count is what
+   keeps queue depth honest under fold-first. Same neutral treatment as the
+   other classification badges. Display only — nothing branches on it. */
+.badge-sweep {
+  color: var(--ink-soft);
+  background-color: var(--surface-3);
+  border-color: var(--line-firm);
+}
 /* Completion anomaly — broken completion bookkeeping (see the strip styles
    above). Marks the card wherever it renders, not just inside the strip. */
 .badge-completion-anomaly {

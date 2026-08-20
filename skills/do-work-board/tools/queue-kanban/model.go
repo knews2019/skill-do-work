@@ -124,7 +124,14 @@ type RequestTicket struct {
 	CommitHashField string // the frontmatter key CommitHash came from, "" when absent
 	UserRequestId   string // "UR-NNN" upward pointer (the reliable REQ→UR link), "" when absent
 	ReviewGenerated bool   // exact review_generated: true marker; verify-only, with no display or scheduling role
-	Domain          string
+	Sweep           bool   // exact sweep: true marker — a consolidation sweep carrying an ## Instances checklist (Fold-First Rule, actions/capture-reference.md); display-only card chip + drawer row, no column logic
+	Standing        bool   // exact standing: true marker — the never-closing standing sweep; display-only, plus a verify carve-out (a standing member never counts as a live member of an archived UR)
+	// Instance counts parsed from the body's ## Instances checklist when Sweep
+	// is set: unticked `- [ ]` vs ticked `- [x]` lines up to the next ## heading.
+	// Display-only — the work pipeline reads the file itself, never these.
+	SweepInstancesOpen int
+	SweepInstancesDone int
+	Domain             string
 
 	// Testing-track placeholders written by the board's testing view (see
 	// testing.go). Orthogonal to Status: the work pipeline never reads them and
@@ -812,6 +819,8 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		CommitHashField:            commitHashField,
 		UserRequestId:              coerceScalarToString(fields["user_request"]),
 		ReviewGenerated:            coerceScalarToString(fields["review_generated"]) == "true",
+		Sweep:                      coerceScalarToString(fields["sweep"]) == "true",
+		Standing:                   coerceScalarToString(fields["standing"]) == "true",
 		Domain:                     normalizedDomain,
 		OriginalDomain:             originalDomain,
 		DomainUnrecognized:         domainUnrecognized,
@@ -843,10 +852,42 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		FilePath:                   filePath,
 		TreeSection:                treeSection,
 	}
+	if ticket.Sweep {
+		ticket.SweepInstancesOpen, ticket.SweepInstancesDone = countSweepInstances(bodyText)
+	}
 	if fileInfo, statError := os.Stat(filePath); statError == nil {
 		ticket.FileModifiedAt = fileInfo.ModTime()
 	}
 	return ticket, nil
+}
+
+// countSweepInstances counts unticked and ticked checklist lines inside the
+// body's "## Instances" section, stopping at the next "## " heading. Only the
+// first such section is read; a sweep without one counts zero/zero. The counts
+// are display-only (card chip + drawer row) — the work pipeline reads the
+// checklist itself, never these numbers.
+func countSweepInstances(bodyMarkdown string) (openCount int, doneCount int) {
+	insideInstances := false
+	for _, rawLine := range strings.Split(bodyMarkdown, "\n") {
+		trimmedLine := strings.TrimSpace(rawLine)
+		if strings.HasPrefix(trimmedLine, "## ") {
+			if insideInstances {
+				break
+			}
+			insideInstances = strings.EqualFold(trimmedLine, "## Instances")
+			continue
+		}
+		if !insideInstances {
+			continue
+		}
+		switch {
+		case strings.HasPrefix(trimmedLine, "- [ ]"):
+			openCount++
+		case strings.HasPrefix(trimmedLine, "- [x]"), strings.HasPrefix(trimmedLine, "- [X]"):
+			doneCount++
+		}
+	}
+	return openCount, doneCount
 }
 
 // parseUserRequestTicket reads and parses a single UR input.md into a ticket.
