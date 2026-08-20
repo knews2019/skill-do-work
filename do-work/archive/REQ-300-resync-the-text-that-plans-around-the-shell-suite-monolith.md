@@ -6,6 +6,7 @@ created_at: 2026-08-20T08:37:00Z
 status_changed_at: 2026-08-20T08:37:00Z
 claimed_at: 2026-08-20T11:42:38Z
 completed_at: 2026-08-20T11:51:20Z
+commit: c308029
 route: B
 estimate:
   p50_active_minutes: 5
