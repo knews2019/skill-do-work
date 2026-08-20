@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.221.2 — The Maintainer Gate Accepts a Newer Toolchain (2026-08-20)
+
+`maintainer-verify.sh` demanded exactly `go1.26.1` and exactly ShellCheck `0.11.0`, so a machine with anything newer could not run the canonical gate at all — it refused before checking a single thing. The two version checks are now floors.
+
+- Go and ShellCheck are checked as "this version or newer", compared component-wise as integers so `0.11.0` clears a `0.9.9` floor and a prerelease like `1.27rc1` compares as `27`.
+- The self-test gained a pass that runs the whole gate against a *newer* fixture toolchain and expects success — the case an exact pin fails, so it can fail if anyone tightens the gates back. The two failure fixtures now report versions below the floor instead of above it.
+- The floors are still floors, not suggestions: `gofmt` has no version flag and its output can change between Go releases, so a newer toolchain may reformat a file this repo considers formatted, and the gofmt lane will name it. The remedy is stated beside the floor.
+
 ## 0.221.1 — One Spelling of the Fold-Only Invariant (2026-08-20)
 
 A review bot caught capture.md describing its fold record two different ways in one file — the drift class this release was about in the first place.
