@@ -2,6 +2,20 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.217.0 — Fold Findings Into Pending REQs Before Minting New Ones (2026-08-20)
+
+The queue was refilling as fast as it drained because every finding minted its own REQ file. Now any flow about to create a REQ first scans the whole queue — across URs — for a pending, unclaimed REQ sharing the root cause and folds the finding in as a checklist instance; a new file is the stated exception.
+
+- New canonical **Fold-First Rule** section in `actions/capture-reference.md`, followed by capture, review Step 10, builder follow-ups/discovered tasks, and toolbox code-review.
+- Review sweeps are cross-UR: the same-UR candidate filter is gone, and a plain pending REQ converts to a sweep once when a second finding shares its root cause. Instance lines carry `(found by REQ-NNN / UR-NNN)` attribution.
+- Capture's impact guard is now symmetric — asserting `impact-user-visible` unjudged is as wrong as inventing `impact-negligible` — and the REQ template no longer pre-fills a verdict (REQ-294). Absence still reads as `impact-user-visible`.
+- `--skip-impact-negligible` reports its skips in targeted mode too, and the skipped count's scope is defined per run mode (REQ-297).
+- Toolbox code-review REQs now carry a judged `impact:` instead of silently defaulting, and the template's title mirrors the impact tag.
+- Folding escalates, never buries: an instance whose judged impact outranks its sweep's promotes the sweep's `impact:`, and a critical instance flips a `pending-answers` sweep to `pending` — the critical pierce applies to folds too.
+- A prose-only discrepancy (no behavior, checker-predicate, or rule-condition change) never mints a new REQ: it lands on the standing prose-reconciliation sweep or the next commit touching that file, with explicit exemptions for critical findings, instruction contradictions, and user-facing artifact prose (completes UR-063's REQ-306).
+- The standing sweep is identified by its `sweep_key`, created on demand when a queue lacks it (so consumer installs are covered), skipped by the work scan while empty, and survives every drain: instances tick, status returns to `pending`, and it never archives or holds its UR open.
+- Decision recorded as ADR-020 ([decisions/records/adr-020-fold-findings-into-pending-reqs-before-minting.md](https://github.com/knews2019/skill-do-work/blob/main/decisions/records/adr-020-fold-findings-into-pending-reqs-before-minting.md)).
+
 ## 0.216.9 — Two More Ways the Artifact Gate Could Be Talked Around (2026-08-20)
 
 A second automated review pass found two more bypasses in the sharpened debug-artifact gate, one in

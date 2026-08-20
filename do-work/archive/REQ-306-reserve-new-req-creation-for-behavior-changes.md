@@ -1,7 +1,9 @@
 ---
 id: REQ-306
 title: "[impact-rule-change] Reserve new-REQ creation for behavior changes, not prose discrepancies"
-status: pending
+status: completed
+completed_at: 2026-08-20T14:51:04Z
+commit: f955d28
 created_at: 2026-08-20T13:21:13Z
 user_request: UR-063
 domain: general

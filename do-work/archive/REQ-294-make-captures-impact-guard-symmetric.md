@@ -1,7 +1,9 @@
 ---
 id: REQ-294
 title: "Make capture's impact guard symmetric so the field is judged rather than defaulted"
-status: pending
+status: completed
+completed_at: 2026-08-20T13:28:52Z
+commit: b44e9df
 created_at: 2026-08-19T15:48:05Z
 user_request: UR-060
 addendum_to: REQ-289
@@ -67,7 +69,10 @@ Every lazy path lands on `impact-user-visible`. The field goes decorative and RE
 
 ## Open Questions
 
-- [ ] Should the template line be commented out, or kept uncommented with a placeholder note?
+- [x] Should the template line be commented out, or kept uncommented with a placeholder note?
+  → Commented out, per the Recommended option: an uncommented value in a template is copied far
+  more often than it is judged, and the contract default already covers absence safely.
+  Implemented with ADR-020's fold-first change (maintainer-directed, outside a work run).
   Recommended: comment it out — an uncommented value in a template is copied far more often than it
   is judged, and the contract default already covers absence safely.
   Also: keep it uncommented with an explicit "replace this, do not accept it" note, which keeps the

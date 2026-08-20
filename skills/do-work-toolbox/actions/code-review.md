@@ -291,16 +291,17 @@ Create REQ files for these? (The user can run `do-work run` to process them late
 
 Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward.
 
-When the user confirms, create REQ files using the standard format — `created_at` is the current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`). The `title:` follows `../../do-work/actions/capture-reference.md` → **REQ Title Convention** — always double-quoted, and it carries **no** `[<impact token>] ` tag because this action writes no `impact:` verdict, so its REQs read as the `impact-user-visible` default:
+When the user confirms, first run the fold-first scan (`../../do-work/actions/capture-reference.md` → **Fold-First Rule**): a finding whose root cause already has a pending REQ — any UR — is appended there as an instance; only the rest become new files. For each new file, judge `impact:` with the two questions in `../../do-work/actions/review-work.md` Step 10 and write the recorded token. Create REQ files using the standard format — `created_at` is the current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`). The `title:` follows `../../do-work/actions/capture-reference.md` → **REQ Title Convention** — always double-quoted, carrying the `[<impact token>] ` tag when the verdict is not the `impact-user-visible` default:
 
 ```markdown
 ---
 id: REQ-NNN
-title: "Code review: [brief description]"
+title: "[<impact token>] Code review: [brief description]"   # omit the tag when the recorded token is impact-user-visible (../../do-work/actions/capture-reference.md → REQ Title Convention)
 status: pending
 created_at: <timestamp>
 review_generated: true
 source: code-review
+impact: [the finding's recorded token, verbatim]
 scope: [prime file or directory that surfaced this]
 ---
 
