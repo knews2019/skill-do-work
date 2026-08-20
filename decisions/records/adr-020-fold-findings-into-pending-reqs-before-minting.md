@@ -9,6 +9,8 @@ sources:
   - do-work/user-requests/UR-060/input.md
   - do-work/archive/REQ-294-make-captures-impact-guard-symmetric.md
   - do-work/archive/REQ-297-report-skipped-negligible-reqs-in-targeted-mode.md
+  - do-work/archive/REQ-306-reserve-new-req-creation-for-behavior-changes.md
+  - do-work/queue/REQ-307-standing-prose-reconciliation-sweep.md
   - skills/do-work/actions/capture-reference.md (Fold-First Rule)
   - skills/do-work/actions/review-work.md (Step 10 Sweep consolidation)
 related:
@@ -45,11 +47,12 @@ Load-bearing properties:
 - **Non-sweep pending REQs convert once.** On a root-cause match a plain pending REQ gains `sweep: true`, a `sweep_key:`, and an `## Instances` checklist seeded with its own original instance. This one-time frontmatter edit happens in the same window capture already edits queued REQs; afterwards the append-only rule governs. Instance lines carry `(found by REQ-NNN / UR-NNN)` as the cross-UR attribution.
 - **Impact judgment stays per-REQ and becomes symmetric.** A folded instance inherits its sweep's `impact:`, with one escalation-only exception: an instance whose judged impact outranks the sweep's promotes the sweep's `impact:` to the instance's verdict, and an `impact-critical` instance also flips a `pending-answers` sweep to `pending` — the critical pierce applies to folds exactly as to creation, so folding can never bury an urgent finding behind a consent gate or the skip filter. A created REQ carries a judged verdict. Capture's guard now blocks unjudged assertion in both directions — asserting `impact-user-visible` because it is the default is as wrong as inventing `impact-negligible` — and the template's pre-filled verdict is commented out. The Schema Read Contract default (absence reads as `impact-user-visible`) is deliberately unchanged: absence must never be mistakable for the user's stop signal.
 - **Consumer-report findings get no exemption.** What matters is whether one fix closes the class, not who found the instance.
+- **A prose-only discrepancy never mints a REQ at all.** Prose-only — the fix changes no behavior, no checker's predicate, no rule's stated condition — routes to the queue's standing prose-reconciliation sweep (REQ-307, `standing: true`, never closes) when no root-cause match exists, with three explicit exemptions: critical findings are never deferred; a contradiction between two shipped instructions changes behavior and stays first-class; user-facing artifact-contract prose is judged on its reader. Absorbed from UR-063's REQ-306, which specified this boundary independently and was completed by the same change that merged the two designs.
 - **Simplification refactors stay legitimate.** A refactor that leaves the system both simpler and more robust judges as `impact-rule-change` on its merits; the brake targets unjudged defaults and one-REQ-per-prose-discrepancy, not pragmatic quality work.
 
 ## Alternatives
 
-1. **A single standing prose-reconciliation sweep drained on a cadence** (the queue analysis's original proposal). Folded into this decision rather than adopted as stated: fold-first subsumes it — a cross-UR sweep for a prose root cause is exactly what the rule produces — without inventing a new ledger format, a cadence mechanism, or a second place findings can land.
+1. **A single standing prose-reconciliation sweep drained on a cadence, alone** (the queue analysis's original proposal). Adopted as one component rather than the whole answer: UR-063 captured it independently as REQ-307 and it became the prose-only boundary's guaranteed destination, but fold-first is the general rule — any root cause, not only prose — so the standing sweep is where prose-only findings land when nothing more specific matches, not a second ledger format beside the queue.
 2. **Drop prose-only findings entirely.** Rejected: the Restatement Sweep's findings are real (a wrong cross-reference does send readers to the wrong place); the fix is where they land, not whether they are recorded.
 3. **Keep the same-UR filter and rely on `--skip-impact-negligible` alone.** Rejected: the filter governs *processing*, not *arrival*. The maintainer's stated cost is thinking about queue complexity; only fewer files reduces it.
 

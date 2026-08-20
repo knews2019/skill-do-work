@@ -29,8 +29,9 @@ that drifted from the thing it restates.
 
 The class is defined by what the fix touches, not by how it was found: **no behavior changes, no
 checker's predicate changes, no rule's stated condition changes.** If a fix would alter any of
-those three, it is not this REQ's business and earns its own capture (REQ-306 states that boundary
-canonically; do not re-derive it here).
+those three, it is not this REQ's business and earns its own capture (the boundary's canonical home
+is `skills/do-work/actions/capture-reference.md` → **Fold-First Rule**, shipped by REQ-306; do not
+re-derive it here).
 
 `write_set` is deliberately empty and stays empty. A standing sweep touches whatever files its
 current instances name, so a declared write set would be stale the moment an instance is appended.

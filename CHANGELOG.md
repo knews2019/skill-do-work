@@ -10,7 +10,9 @@ The queue was refilling as fast as it drained because every finding minted its o
 - Review sweeps are cross-UR: the same-UR candidate filter is gone, and a plain pending REQ converts to a sweep once when a second finding shares its root cause. Instance lines carry `(found by REQ-NNN / UR-NNN)` attribution.
 - Capture's impact guard is now symmetric — asserting `impact-user-visible` unjudged is as wrong as inventing `impact-negligible` — and the REQ template no longer pre-fills a verdict (REQ-294). Absence still reads as `impact-user-visible`.
 - `--skip-impact-negligible` reports its skips in targeted mode too, and the skipped count's scope is defined per run mode (REQ-297).
-- Toolbox code-review REQs now carry a judged `impact:` instead of silently defaulting.
+- Toolbox code-review REQs now carry a judged `impact:` instead of silently defaulting, and the template's title mirrors the impact tag.
+- Folding escalates, never buries: an instance whose judged impact outranks its sweep's promotes the sweep's `impact:`, and a critical instance flips a `pending-answers` sweep to `pending` — the critical pierce applies to folds too.
+- A prose-only discrepancy (no behavior, checker-predicate, or rule-condition change) never mints a new REQ: it lands on the standing prose-reconciliation sweep (REQ-307) or the next commit touching that file, with explicit exemptions for critical findings, instruction contradictions, and user-facing artifact prose (completes UR-063's REQ-306).
 - Decision recorded as ADR-020 ([decisions/records/adr-020-fold-findings-into-pending-reqs-before-minting.md](https://github.com/knews2019/skill-do-work/blob/main/decisions/records/adr-020-fold-findings-into-pending-reqs-before-minting.md)).
 
 ## 0.216.9 — Two More Ways the Artifact Gate Could Be Talked Around (2026-08-20)

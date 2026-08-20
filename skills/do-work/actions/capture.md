@@ -121,7 +121,7 @@ Read the user's input. Determine:
 
 If `do-work/` is freshly bootstrapped (no existing REQ files anywhere), skip duplicate checking entirely.
 
-For each parsed request, check for similar existing ones across both tiers. For finding-shaped captures — review, triage, or consumer-report findings — the duplicate check extends to the fold-first scan (`actions/capture-reference.md` → **Fold-First Rule**): a pending REQ in **any** UR sharing the finding's root cause receives it as an appended instance instead of a new REQ. The table's queued-enhancement row below is the same move for same-request amendments; the Fold-First Rule generalizes it to root causes across URs.
+For each parsed request, check for similar existing ones across both tiers. For finding-shaped captures — review, triage, or consumer-report findings — the duplicate check extends to the fold-first scan (`actions/capture-reference.md` → **Fold-First Rule**): a pending REQ in **any** UR sharing the finding's root cause receives it as an appended instance instead of a new REQ. A **prose-only** finding — the fix changes no behavior, no checker's predicate, and no rule's stated condition — never mints a new REQ even without a root-cause match: it lands on the queue's **standing prose-reconciliation sweep** (`sweep_key: prose-only-discrepancy-reconciliation`), subject to the Fold-First Rule's three exemptions (critical, contradictions, user-facing artifact contracts), and the capture names that destination. The table's queued-enhancement row below is the same move for same-request amendments; the Fold-First Rule generalizes it to root causes across URs.
 
 | Existing request is in... | Action | New REQ lands in |
 |---------------------------|--------|-----------------|
