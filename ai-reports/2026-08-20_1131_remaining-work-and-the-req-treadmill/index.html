@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remaining Work and the REQ Treadmill — do-work queue analysis, 2026-08-20</title>
+<style>
+:root{
+  --bg:#f7f4ee; --surface:#fffdf8; --surface-2:#f1ece2; --line:#ddd5c6;
+  --text:#241f1a; --muted:#6b6157; --accent:#8a4b1f; --accent-soft:#c98b56;
+  --good:#3f6b4a; --warn:#9a7211; --bad:#9c3521;
+  --r1:#f0e2d2; --r2:#e0c3a3; --r3:#cfa476; --r4:#b8814c; --r5:#96602f;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#16130f; --surface:#1e1a15; --surface-2:#262019; --line:#3a3128;
+    --text:#ece5da; --muted:#a29686; --accent:#e0a56d; --accent-soft:#a86f3d;
+    --good:#7fb08c; --warn:#d6ad4e; --bad:#e08a72;
+    --r1:#3a2f24; --r2:#4e3d2c; --r3:#6b5335; --r4:#8d6c3f; --r5:#b3894c;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16.5px;line-height:1.6}
+.page{width:100%;padding:0 clamp(20px,2.6vw,60px) 96px}
+.measure{max-width:74ch}
+h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.01em;line-height:1.15;margin:0}
+h1{font-size:clamp(34px,4vw,52px)}
+h2{font-size:clamp(25px,2.3vw,33px);margin:0 0 6px}
+h3{font-size:20px;margin:0 0 6px}
+.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+p{margin:0 0 14px}
+a{color:var(--accent)}
+code{font-family:var(--mono);font-size:.88em;background:var(--surface-2);padding:1px 5px;border-radius:3px}
+header.masthead{padding:56px 0 34px;border-bottom:2px solid var(--text)}
+section{padding:44px 0;border-bottom:1px solid var(--line)}
+.row{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.row > *{min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:24px 26px}
+.tiles{display:flex;flex-wrap:wrap;gap:18px;margin-top:30px}
+.tile{flex:1 1 190px;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:4px;padding:16px 18px}
+.tile .lab{font-size:13px;color:var(--muted);line-height:1.35}
+.tile .val{font-size:40px;font-family:var(--sans);font-weight:600;line-height:1.05;margin:6px 0 2px}
+.tile .sub{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.verdict{border-left:3px solid var(--accent);background:var(--surface);padding:24px 28px;border-radius:0 6px 6px 0}
+.verdict p:last-child{margin-bottom:0}
+table{border-collapse:collapse;width:100%;font-size:14.5px;display:block;overflow-x:auto}
+@media (min-width:900px){table{display:table}}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;border-bottom:1px solid var(--text)}
+td.id{font-family:var(--mono);font-size:13px;white-space:nowrap}
+td.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+tbody tr:hover{background:var(--surface-2)}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;padding:2px 7px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);white-space:nowrap;display:inline-block}
+.tag.a{border-color:var(--accent);color:var(--accent)}
+.tag.b{border-color:var(--good);color:var(--good)}
+.tag.c{border-color:var(--warn);color:var(--warn)}
+.tag.e{border-color:var(--muted);color:var(--muted)}
+.chart{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:20px 22px 14px;overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:620px;height:auto}
+.cap{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
+.swatch{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:6px}
+.legend{display:flex;flex-wrap:wrap;gap:18px;font-size:13px;color:var(--muted);margin-top:6px}
+pre{background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.55;margin:0 0 14px}
+.move{flex:1 1 300px;background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:0 0 6px 6px;padding:22px 24px}
+.move .n{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.12em}
+ul{margin:0 0 14px;padding-left:20px}
+li{margin-bottom:6px}
+.ladder{font-family:var(--mono);font-size:13px;line-height:1.9}
+footer{padding:40px 0 0;color:var(--muted);font-size:13.5px}
+.note{font-size:14px;color:var(--muted);border-left:2px solid var(--line);padding-left:14px}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="masthead">
+  <div class="kicker">do-work suite · queue analysis · 2026-08-20 11:31 UTC</div>
+  <h1>Remaining Work, and How the Story Ends</h1>
+  <p class="measure" style="font-size:19px;margin-top:16px;color:var(--muted)">
+    Every pending REQ in <code>do-work/queue/</code>, classified by what breaks if it is never done, measured
+    against the 267 REQs already archived. The question behind the request — why the queue never empties —
+    has a numeric answer, and it is not throughput.
+  </p>
+  <div class="tiles">
+    <div class="tile"><div class="lab">Pending REQs</div><div class="val">31</div><div class="sub">across 9 open URs</div></div>
+    <div class="tile"><div class="lab">Archived REQs</div><div class="val">267</div><div class="sub">265 completed, 1 with issues, 1 cancelled</div></div>
+    <div class="tile"><div class="lab">Spawned by another REQ</div><div class="val">49%</div><div class="sub">145 of 298 lifetime</div></div>
+    <div class="tile"><div class="lab">Median REQ wall time</div><div class="val">20<span style="font-size:22px"> min</span></div><div class="sub">n=63, p90 = 55 min</div></div>
+    <div class="tile"><div class="lab">Queue growth, Aug 18–20</div><div class="val">+27</div><div class="sub">from 4 pending to 31 in three days</div></div>
+  </div>
+</header>
+
+<section>
+  <div class="kicker">Verdict</div>
+  <h2>The queue is not a backlog. It is an equilibrium.</h2>
+  <div class="verdict measure">
+    <p><strong>Throughput is not the constraint.</strong> Between 3 and 20 August the pipeline created 228 REQs
+    and finished 197. The median REQ takes 20 minutes of wall time; the whole 31-REQ queue is roughly twelve to
+    twenty hours of run time. It could be drained in two days. It has never drained because intake tracks output
+    almost exactly, and it does so because the pipeline is its own largest customer: 145 of the 298 REQs ever
+    written were spawned by a prior REQ's review or build, and in the current queue that share is 19 of 31.
+    Only three of the 31 came from neither a prior REQ nor an audit batch.</p>
+
+    <p><strong>The brake already exists and is not engaged.</strong> UR-060 built exactly the mechanism that
+    would stop this — an <code>impact:</code> field plus a <code>--skip-impact-negligible</code> filter. Nineteen
+    of the 31 pending REQs carry no <code>impact:</code> field at all, and an absent field reads as
+    <code>impact-user-visible</code>. The filter currently removes one REQ from the queue. REQ-294 is the REQ that
+    says why: three forces in the capture path push the value to user-visible, and the anti-invention guard blocks
+    <code>impact-negligible</code> — the one value the filter needs.</p>
+
+    <p><strong>Seven of the 31 should be closed with a sentence, not built.</strong> Four class-closing REQs retire
+    generators with documented histories — REQ-269 alone ends a defect class that has produced eight consecutive
+    REQs. Ten are genuine defects that must ship. The rest are prose reconciliation, and prose reconciliation is
+    the engine.</p>
+
+    <p style="margin-bottom:0"><strong>The exit is a rule change, not a sprint.</strong> A discrepancy between two
+    sentences in the instruction corpus should stop being a REQ. Make it an entry on one standing sweep that runs
+    on a cadence. Everything else in this report is sequencing.</p>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">Finding F1</div>
+  <h2>Three weeks at zero, then three days at thirty-one</h2>
+  <p class="measure">Queue depth is not drifting upward. It was held between zero and seven for the whole of early
+  August, which means the pipeline <em>can</em> reach empty and repeatedly did. The current 31 is a step function,
+  not a trend: two upstream consumer reports and one review round landed on 18–20 August against near-zero
+  completions.</p>
+
+  <div class="row">
+    <div class="chart" style="flex:3 1 560px">
+      <svg viewBox="0 0 1000 330" role="img" aria-label="Pending REQ count per day, 27 July to 20 August 2026">
+        <g stroke="var(--line)" stroke-width="1">
+          <line x1="70" y1="280" x2="950" y2="280"/>
+          <line x1="70" y1="208.75" x2="950" y2="208.75" stroke-dasharray="2 4"/>
+          <line x1="70" y1="137.5" x2="950" y2="137.5" stroke-dasharray="2 4"/>
+          <line x1="70" y1="66.25" x2="950" y2="66.25" stroke-dasharray="2 4"/>
+        </g>
+        <g fill="var(--muted)" font-size="12" font-family="ui-monospace,monospace" text-anchor="end">
+          <text x="60" y="284">0</text><text x="60" y="213">10</text>
+          <text x="60" y="142">20</text><text x="60" y="70">30</text>
+        </g>
+        <polygon fill="var(--r2)" opacity=".55" points="70,280 70.0,280.0 106.7,229.7 143.3,280.0 180.0,265.6 216.7,280.0 253.3,280.0 290.0,280.0 326.7,229.7 363.3,265.6 400.0,272.8 436.7,272.8 473.3,258.4 510.0,251.2 546.7,258.4 583.3,280.0 620.0,272.8 656.7,272.8 693.3,251.2 730.0,265.6 766.7,251.2 803.3,229.7 840.0,251.2 876.7,165.0 913.3,93.1 950.0,57.2 950.0,280"/>
+        <polyline fill="none" stroke="var(--r5)" stroke-width="2.5" stroke-linejoin="round" points="70.0,280.0 106.7,229.7 143.3,280.0 180.0,265.6 216.7,280.0 253.3,280.0 290.0,280.0 326.7,229.7 363.3,265.6 400.0,272.8 436.7,272.8 473.3,258.4 510.0,251.2 546.7,258.4 583.3,280.0 620.0,272.8 656.7,272.8 693.3,251.2 730.0,265.6 766.7,251.2 803.3,229.7 840.0,251.2 876.7,165.0 913.3,93.1 950.0,57.2"/>
+        <circle cx="950" cy="57.2" r="4.5" fill="var(--r5)"/>
+        <text x="938" y="52" text-anchor="end" font-size="13" font-weight="600" fill="var(--text)" font-family="ui-sans-serif,system-ui,sans-serif">31 pending</text>
+        <line x1="876.7" y1="120" x2="876.7" y2="280" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="866" y="132" text-anchor="end" font-size="12" fill="var(--accent)" font-family="ui-monospace,monospace">Aug 18 — two consumer reports land</text>
+        <text x="470" y="205" text-anchor="middle" font-size="12" fill="var(--muted)" font-family="ui-monospace,monospace">three weeks held between 0 and 7</text>
+        <g fill="var(--muted)" font-size="11.5" font-family="ui-monospace,monospace">
+          <text x="70" y="302" text-anchor="start">Jul 27</text>
+          <text x="290" y="302" text-anchor="middle">Aug 2</text>
+          <text x="510" y="302" text-anchor="middle">Aug 8</text>
+          <text x="730" y="302" text-anchor="middle">Aug 14</text>
+          <text x="950" y="302" text-anchor="end">Aug 20</text>
+        </g>
+        <text x="70" y="322" font-size="11.5" fill="var(--muted)" font-family="ui-monospace,monospace">pending REQ count at end of day</text>
+      </svg>
+      <p class="cap">Derived from <code>created_at</code> and <code>completed_at</code> on all 298 REQ files
+      (queue plus archive). Nine July REQs carry no <code>completed_at</code>; their <code>status_changed_at</code>
+      stands in, which is why the series closes on exactly 31 — the file count in <code>do-work/queue/</code>.</p>
+    </div>
+
+    <div class="card" style="flex:2 1 300px">
+      <h3>What the flat stretch proves</h3>
+      <p>Between 1 and 17 August the queue sat at four or fewer on eleven of seventeen days. A pipeline that
+      reaches zero that often is not overloaded. It is being refilled at the rate it empties.</p>
+      <p class="note">Aug 3–20: <strong>228 created, 197 completed</strong>. The 31-REQ gap is entirely the last
+      three days. Take those three days out and creation and completion differ by under 5%.</p>
+      <p style="margin-top:16px">The felt experience of "never ending" is accurate and the cause is not volume.
+      Finishing faster produces the same graph shifted left.</p>
+    </div>
+  </div>
+
+  <div class="chart" style="margin-top:28px">
+    <svg viewBox="0 0 1000 300" role="img" aria-label="REQs created versus completed per day, 3 to 20 August 2026">
+      <g stroke="var(--line)" stroke-width="1">
+        <line x1="70" y1="250" x2="960" y2="250"/>
+        <line x1="70" y1="170" x2="960" y2="170" stroke-dasharray="2 4"/>
+        <line x1="70" y1="90" x2="960" y2="90" stroke-dasharray="2 4"/>
+      </g>
+      <g fill="var(--muted)" font-size="12" font-family="ui-monospace,monospace" text-anchor="end">
+        <text x="60" y="254">0</text><text x="60" y="174">20</text><text x="60" y="94">40</text>
+      </g>
+      <g fill="var(--r3)">
+        <rect x="73.9" y="170.0" width="18.6" height="80.0"/><rect x="122.8" y="194.0" width="18.6" height="56.0"/>
+        <rect x="171.7" y="206.0" width="18.6" height="44.0"/><rect x="220.6" y="210.0" width="18.6" height="40.0"/>
+        <rect x="269.5" y="166.0" width="18.6" height="84.0"/><rect x="318.4" y="214.0" width="18.6" height="36.0"/>
+        <rect x="367.2" y="238.0" width="18.6" height="12.0"/><rect x="416.1" y="234.0" width="18.6" height="16.0"/>
+        <rect x="465.0" y="206.0" width="18.6" height="44.0"/><rect x="562.8" y="238.0" width="18.6" height="12.0"/>
+        <rect x="611.7" y="242.0" width="18.6" height="8.0"/><rect x="660.6" y="142.0" width="18.6" height="108.0"/>
+        <rect x="709.5" y="238.0" width="18.6" height="12.0"/><rect x="758.4" y="190.0" width="18.6" height="60.0"/>
+        <rect x="807.2" y="50.0" width="18.6" height="200.0"/><rect x="856.1" y="174.0" width="18.6" height="76.0"/>
+        <rect x="905.0" y="226.0" width="18.6" height="24.0"/>
+      </g>
+      <g fill="var(--r5)">
+        <rect x="94.5" y="198.0" width="18.6" height="52.0"/><rect x="143.4" y="174.0" width="18.6" height="76.0"/>
+        <rect x="192.3" y="202.0" width="18.6" height="48.0"/><rect x="241.2" y="210.0" width="18.6" height="40.0"/>
+        <rect x="290.0" y="174.0" width="18.6" height="76.0"/><rect x="338.9" y="218.0" width="18.6" height="32.0"/>
+        <rect x="387.8" y="234.0" width="18.6" height="16.0"/><rect x="436.7" y="222.0" width="18.6" height="28.0"/>
+        <rect x="485.6" y="210.0" width="18.6" height="40.0"/><rect x="632.3" y="234.0" width="18.6" height="16.0"/>
+        <rect x="681.2" y="150.0" width="18.6" height="100.0"/><rect x="778.9" y="178.0" width="18.6" height="72.0"/>
+        <rect x="827.8" y="98.0" width="18.6" height="152.0"/><rect x="876.7" y="214.0" width="18.6" height="36.0"/>
+        <rect x="925.6" y="246.0" width="18.6" height="4.0"/>
+      </g>
+      <g fill="var(--muted)" font-size="11.5" font-family="ui-monospace,monospace">
+        <text x="83" y="270" text-anchor="middle">3</text><text x="230" y="270" text-anchor="middle">6</text>
+        <text x="377" y="270" text-anchor="middle">9</text><text x="524" y="270" text-anchor="middle">12</text>
+        <text x="670" y="270" text-anchor="middle">15</text><text x="817" y="270" text-anchor="middle">18</text>
+        <text x="915" y="270" text-anchor="middle">20</text>
+        <text x="70" y="290" text-anchor="start">August 2026</text>
+      </g>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--r3)"></span>REQs created</span>
+      <span><span class="swatch" style="background:var(--r5)"></span>REQs completed</span>
+    </div>
+    <p class="cap">The two series move together for sixteen days. The divergence is 18–20 August: 75 created, 48
+    completed, and the two most recent days produced ten completions against twenty-five arrivals.</p>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">Finding F2</div>
+  <h2>Where the work comes from</h2>
+  <p class="measure">Each REQ file records <code>addendum_to</code> when a builder or reviewer discovered it while
+  working on another REQ, and <code>batch</code> when it arrived as part of an audit or consumer report. Those two
+  fields account for 28 of the 31 pending REQs.</p>
+
+  <div class="row">
+    <div class="chart" style="flex:2 1 420px">
+      <svg viewBox="0 0 720 300" role="img" aria-label="Origin of the 31 pending REQs and chain-depth distribution across all 298 REQs">
+        <text x="20" y="26" font-size="13" font-weight="600" fill="var(--text)" font-family="ui-sans-serif,system-ui,sans-serif">Origin of the 31 pending REQs</text>
+        <rect x="20" y="44" width="404.5" height="34" fill="var(--r5)"/>
+        <rect x="424.5" y="44" width="191.6" height="34" fill="var(--r3)"/>
+        <rect x="616.1" y="44" width="63.9" height="34" fill="var(--r1)" stroke="var(--line)"/>
+        <text x="30" y="66" font-size="13" fill="#fffdf8" font-family="ui-sans-serif,system-ui,sans-serif">19 · spawned by a prior REQ</text>
+        <text x="434" y="66" font-size="13" fill="var(--text)" font-family="ui-sans-serif,system-ui,sans-serif">9 · audit batch</text>
+        <text x="670" y="96" font-size="12" fill="var(--muted)" text-anchor="end" font-family="ui-monospace,monospace">3 · neither</text>
+
+        <text x="20" y="146" font-size="13" font-weight="600" fill="var(--text)" font-family="ui-sans-serif,system-ui,sans-serif">Generations of descent, all 298 REQs</text>
+        <g font-family="ui-monospace,monospace" font-size="11.5" fill="var(--muted)">
+          <text x="20" y="176">gen 0</text><text x="20" y="196">gen 1</text><text x="20" y="216">gen 2</text>
+          <text x="20" y="236">gen 3</text><text x="20" y="256">gen 4+</text>
+        </g>
+        <g>
+          <rect x="78" y="164" width="459" height="15" fill="var(--r1)" stroke="var(--line)"/>
+          <rect x="78" y="184" width="195" height="15" fill="var(--r2)"/>
+          <rect x="78" y="204" width="123" height="15" fill="var(--r3)"/>
+          <rect x="78" y="224" width="60" height="15" fill="var(--r4)"/>
+          <rect x="78" y="244" width="57" height="15" fill="var(--r5)"/>
+        </g>
+        <g font-family="ui-monospace,monospace" font-size="11.5" fill="var(--muted)">
+          <text x="545" y="176">153 — raised directly</text>
+          <text x="281" y="196">65</text><text x="209" y="216">41</text><text x="146" y="236">20</text><text x="143" y="256">19</text>
+        </g>
+        <text x="20" y="286" font-size="11.5" fill="var(--muted)" font-family="ui-monospace,monospace">80 REQs — 27% of all work ever queued — are second generation or later</text>
+      </svg>
+      <p class="cap">Hand-authored from the <code>addendum_to</code> chain in every REQ's frontmatter. No generated
+      imagery is used anywhere in this report.</p>
+    </div>
+
+    <div class="card" style="flex:2 1 340px">
+      <h3>The deepest chain runs eight generations</h3>
+      <p style="margin-bottom:12px">Read bottom-up. Each line was discovered while working on the line below it.</p>
+      <div class="ladder">
+        <div style="padding-left:0">REQ-189 · canonicalize the ai-report evidence contract</div>
+        <div style="padding-left:14px">↳ REQ-198 · publish generated dir only after image success</div>
+        <div style="padding-left:28px">↳ REQ-204 · harden the generated-batch lifecycle</div>
+        <div style="padding-left:42px">↳ REQ-220 · extend runtime-boundary ownership</div>
+        <div style="padding-left:56px">↳ REQ-225 · state verified-exact-publication once</div>
+        <div style="padding-left:70px">↳ REQ-230 · point caller docs at the rationale</div>
+        <div style="padding-left:84px">↳ REQ-238 · point present-work at the rationale</div>
+        <div style="padding-left:98px">↳ REQ-243 · check that markdown pointers resolve</div>
+        <div style="padding-left:112px">↳ REQ-250 · close the remaining link-checker gaps</div>
+      </div>
+      <p style="margin-top:16px">The first three lines are the ai-report feature. The last four are the corpus
+      checking whether it wrote its own cross-references correctly. Somewhere around generation five the work stops
+      being about the product and starts being about the prose describing the product.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">Finding F3</div>
+  <h2>The brake was built. It is disengaged.</h2>
+  <p class="measure">This is not an unrecognized problem. <code>skills/do-work/actions/review-work.md:343</code>
+  states the failure mode in the repository's own words: <em>"one UR's review chain minted sixteen REQs over two
+  days, fifteen of them facets of a single root cause."</em> UR-060 exists to fix it. The mechanism shipped: an
+  <code>impact:</code> enum, a mandatory token on every review finding, sweep-REQ folding for shared root causes,
+  and a <code>--skip-impact-negligible</code> run filter.</p>
+
+  <div class="row">
+    <div class="card" style="flex:1 1 300px">
+      <h3>Adoption in the live queue</h3>
+      <table style="margin-top:8px">
+        <tbody>
+          <tr><td>No <code>impact:</code> field at all</td><td class="num"><strong>19</strong> / 31</td></tr>
+          <tr><td><code>impact-user-visible</code></td><td class="num">6</td></tr>
+          <tr><td><code>impact-rule-change</code></td><td class="num">5</td></tr>
+          <tr><td><code>impact-negligible</code></td><td class="num">1</td></tr>
+          <tr><td><code>impact-critical</code></td><td class="num">0</td></tr>
+        </tbody>
+      </table>
+      <p class="cap" style="margin-top:12px">An absent field is read as <code>impact-user-visible</code> by
+      design, so the filter treats 25 of 31 as must-do work.</p>
+    </div>
+    <div class="card" style="flex:2 1 400px">
+      <h3>Why the filter can't bite</h3>
+      <p>REQ-294 names the mechanism directly: three separate forces in the shipped capture path push a new REQ's
+      <code>impact:</code> to <code>impact-user-visible</code>, and the only stated anti-invention guard blocks the
+      one value UR-060 exists to surface. The template pre-fills a verdict, and the guard that is supposed to stop
+      invention only fires in the direction that would reduce the queue.</p>
+      <p style="margin-bottom:0">REQ-297 is the second half: <code>--skip-impact-negligible</code> has two
+      reporting paths and a targeted run reaches neither, so a skip is invisible. A filter nobody can audit is a
+      filter nobody trusts. Together these two REQs are the only work in the queue that changes the arrival rate
+      rather than the queue length.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">The 31, classified</div>
+  <h2>What must be done, what is trivial, what should be closed</h2>
+  <p class="measure">Five tiers, ordered by whether the item changes the rate, retires a generator, fixes a real
+  defect, or only reconciles two sentences. The "if skipped" column is the actual consequence of never doing it,
+  read from each REQ's own reproduction notes.</p>
+
+  <h3 style="margin-top:30px"><span class="tag a">Tier A</span> &nbsp;Changes the arrival rate — do these first (5)</h3>
+  <table>
+    <thead><tr><th style="width:78px">REQ</th><th>What it does</th><th style="width:34%">If skipped</th><th style="width:96px">Effort</th></tr></thead>
+    <tbody>
+      <tr><td class="id">REQ-294</td><td>Make capture's <code>impact:</code> guard symmetric so the field is judged rather than defaulted</td><td>The skip filter stays inert. Every future review round adds work at today's rate.</td><td>mechanical</td></tr>
+      <tr><td class="id">REQ-297</td><td>Report skipped-negligible REQs in targeted mode, and define what the count counts</td><td>Skips are invisible, so the filter is never trusted enough to be used.</td><td>mechanical</td></tr>
+      <tr><td class="id">REQ-293</td><td>Make the impact/effort lock-in checks pin the property instead of one spelling of it</td><td>The five checks guarding UR-060 re-drift the moment anyone rewords them. The brake un-installs itself.</td><td>substantive</td></tr>
+      <tr><td class="id">REQ-288</td><td>Fix three shipped contradictions in <code>clarify.md</code> Step 4</td><td>Clarify is the gate where you approve or discard REQs. Contradictory instructions there degrade the only human filter in the pipeline.</td><td>normal</td></tr>
+      <tr><td class="id">REQ-269</td><td>Draw the cross-package citation class by what a citation is, not by the punctuation around it</td><td>Documented: eight consecutive REQs have each closed one spelling and left the class open. The ninth is already implied.</td><td>normal</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:34px"><span class="tag b">Tier B</span> &nbsp;Retires a generator (4)</h3>
+  <table>
+    <thead><tr><th style="width:78px">REQ</th><th>What it does</th><th style="width:34%">If skipped</th><th style="width:96px">Effort</th></tr></thead>
+    <tbody>
+      <tr><td class="id">REQ-298</td><td>Sweep the unchecked-exit-status primitive across every shipped script, and state the condition once</td><td>A tool that never ran keeps reading as a tool that found nothing. The template that seeds new scripts still carries the pattern, so every new script re-imports it.</td><td>normal</td></tr>
+      <tr><td class="id">REQ-299</td><td>Carry builder-authored sections past Step 8, starting with <code>## Decisions</code></td><td>Under fan-out, every builder's recorded decisions are silently dropped and review reports clean on an absence it cannot distinguish from "no decisions were made".</td><td>substantive</td></tr>
+      <tr><td class="id">REQ-291</td><td>Build a browser behavior probe lane beside the Node lane</td><td>Prerequisite for REQ-292. Without it, font constants keep being measured by hand and pasted into comments.</td><td>normal</td></tr>
+      <tr><td class="id">REQ-292</td><td>Move Durations label placement into the browser and delete the measured-face constants</td><td>Closes UR-051's original overprinting defect and deletes the constants that have generated REQ-252, 265, 266, 277 and 278. The vertical clearance claim is currently false: the board's own stack measures 13.0000 units against a 13-unit pitch.</td><td>substantive</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:34px"><span class="tag c">Tier C</span> &nbsp;Real defects — must ship, but they do not change the rate (10)</h3>
+  <table>
+    <thead><tr><th style="width:78px">REQ</th><th>What it does</th><th style="width:34%">If skipped</th><th style="width:96px">Effort</th></tr></thead>
+    <tbody>
+      <tr><td class="id">REQ-279</td><td>Scope the blanked-REQ scan away from <code>assets/</code></td><td>The scanner reports permanent data loss on intact screenshot sidecars. One line of <code>find</code> exclusion; highest alarm-cost-to-effort ratio in the queue.</td><td>trivial</td></tr>
+      <tr><td class="id">REQ-303</td><td>Run the pinned live-archive assertions only in a suite checkout</td><td>The <code>_test.go</code> files ship. In a consumer install they load that project's queue and fail on medians calibrated against this repo. This is the only pending REQ that breaks something in a user's checkout.</td><td>mechanical</td></tr>
+      <tr><td class="id">REQ-271</td><td>Make the read-side layout lock-step see every spelling, portably</td><td>Two defects in one line: the guard only fires on a <code>"2006…"</code> literal, so <code>time.RFC3339Nano</code> — its own headline scenario — passes; and <code>\|</code> is GNU BRE, so the whole maintainer gate goes red on macOS.</td><td>normal</td></tr>
+      <tr><td class="id">REQ-263</td><td>Tighten qualify's ownership probe and make its WARN legible</td><td>A whole-file grep stands in for the stated condition. A library file whose docstring merely says "exit 1 on failure" WARNs.</td><td>trivial</td></tr>
+      <tr><td class="id">REQ-264</td><td>Make a disarmed P-A-U audit visible in qualify</td><td>A REQ with no P-A-U section passes Check 4 with the FAIL half silently off. REQ-250 through REQ-254 all qualified that way.</td><td>trivial</td></tr>
+      <tr><td class="id">REQ-301</td><td>Let qualify tell a moved line from an added one</td><td>Every code-relocation REQ fails the debug-artifact audit on markers that already existed. A gate that cries wolf on a whole category trains builders to wave it away — which is the reflex it exists to prevent.</td><td>normal</td></tr>
+      <tr><td class="id">REQ-283</td><td>Route <code>verify</code> through the board skill that owns it</td><td>A real subcommand of the tool this package owns prints help and stops. Two rows of routing table.</td><td>trivial</td></tr>
+      <tr><td class="id">REQ-280</td><td>Add a timestamp-ordering probe and point forensics Check 12 at the shipped repair</td><td>Nothing anywhere checks <code>created_at ≤ claimed_at ≤ completed_at</code>. Check 12 still tells the reader to reconstruct instants by hand from git history, though the mechanical repairer shipped.</td><td>normal</td></tr>
+      <tr><td class="id">REQ-304</td><td>Draw a reversed wait as a break, not as a valid bar</td><td>The Timeline paints a negative wait span as an ordinary positive-width bar. The work segment already handles this correctly; the wait segment does not.</td><td>mechanical</td></tr>
+      <tr><td class="id">REQ-305</td><td>Say the timeline forecast describes the whole queue, not the filtered rows</td><td>With a filter active the view can show three REQs above a forecast that schedules the entire queue and an excluded list naming IDs that are not on screen.</td><td>mechanical</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:34px"><span class="tag" style="border-color:var(--accent-soft);color:var(--accent-soft)">Tier D</span> &nbsp;Requested or worthwhile, not urgent (5)</h3>
+  <table>
+    <thead><tr><th style="width:78px">REQ</th><th>What it does</th><th style="width:34%">If skipped</th><th style="width:96px">Effort</th></tr></thead>
+    <tbody>
+      <tr><td class="id">REQ-284</td><td>Emit every verify finding from the board's Go producer</td><td>Half of UR-058, which you raised explicitly: "seeing the board means seeing the problems." Sixteen finding categories exist; three reach the board.</td><td>normal</td></tr>
+      <tr><td class="id">REQ-285</td><td>Render a verify-findings strip on the board</td><td>The other half. Without it <code>verify</code> stays a command nobody runs unless an agent runs it for them.</td><td>normal</td></tr>
+      <tr><td class="id">REQ-281</td><td>Reconcile the calibration log against the frontmatter it was derived from</td><td>The estimator's corpus is never checked against its source. Estimation gates nothing, so the cost of being wrong is a wrong number in a report.</td><td>normal</td></tr>
+      <tr><td class="id">REQ-274</td><td>Retire the "the SessionStart hook exits nonzero" framing where it is still stated</td><td>Three maintainer docs state a mechanism that does not exist. One is a standing decision rationale — the decision is right, the argument for it names something untrue.</td><td>normal</td></tr>
+      <tr><td class="id">REQ-295</td><td>Disambiguate the remaining bare "impact" wordings in the maintainability audit</td><td>Three sites where the token field and the numeric 1–5 score share a word. Reader friction, no behavior change.</td><td>mechanical</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:34px"><span class="tag e">Tier E</span> &nbsp;Close with a sentence or a single edit (7)</h3>
+  <table>
+    <thead><tr><th style="width:78px">REQ</th><th>Recommendation</th><th style="width:40%">Reasoning</th></tr></thead>
+    <tbody>
+      <tr><td class="id">REQ-300</td><td><strong>Close — 90% already done</strong></td><td>Its headline instance, <code>RESTART-PROMPT.md:33</code>, was rewritten at commit <code>6500808</code>. The three <code>write_set</code> instances self-heal at Step 5.5 and the restart prompt already calls them cosmetic. What remains is eleven Coverage rows in a dated audit record, where the REQ itself notes REQ-234 set the precedent to leave dated history alone. Tick that box with the reasoning and close. <em>This unblocks four gated REQs.</em></td></tr>
+      <tr><td class="id">REQ-302</td><td><strong>Close</strong></td><td>Self-classified <code>impact-negligible</code>, and its own text says "if not, close this". Estimation gates nothing. One data point is not a bias.</td></tr>
+      <tr><td class="id">REQ-262</td><td><strong>Decide, do not build</strong></td><td>Asks whether three prompt-kit <code>Date: [today]</code> headers join the timestamp rule or are declared template-content-out-of-scope. Answer it in one sentence in the rule; the fenced-block exemption is the precedent.</td></tr>
+      <tr><td class="id">REQ-266</td><td><strong>Hold behind REQ-292, then re-check</strong></td><td>Names build provenance beside the JS measured-face numbers in <code>board-durations.js</code>. REQ-292 rewrites that file and deletes the measured-face model outright, including <code>TestDurationsMeasuredConstantsNameTheirChromiumBuild</code>. Likely nothing left to document.</td></tr>
+      <tr><td class="id">REQ-277</td><td><strong>Hold behind REQ-292, then re-check</strong></td><td>Restates <code>durationsMeasuredMarkLabelDescentUnits</code>' scope at its canonical home. REQ-292's Requirements delete the measured-face constant block in <code>durations_test.go</code>.</td></tr>
+      <tr><td class="id">REQ-272</td><td><strong>Do it — five minutes</strong></td><td>Four shipped citations point at forensics Check 11; the future-stamp check is Check 12, and <code>forensics.md:201</code> already says so. The file contradicts itself and the wrong number is the majority spelling.</td></tr>
+      <tr><td class="id">REQ-273</td><td><strong>Do it — five minutes</strong></td><td>Two Go comments say the tool has two write surfaces; it has three. Worth noting that <code>CLAUDE.md</code> carries a co-location rule requiring this exact sentence to be amended in the same commit that adds a surface. The rule did not hold, which is itself a finding.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <div class="kicker">The exit</div>
+  <h2>Three moves, then a rule change</h2>
+  <p class="measure">Draining the queue is not the exit — the graph in F1 shows it has been drained repeatedly and
+  refilled every time. These are ordered so that the rate changes before the length does.</p>
+
+  <div class="row" style="margin-top:26px">
+    <div class="move">
+      <div class="n">MOVE 1</div>
+      <h3 style="margin-top:8px">Close seven, unblock four</h3>
+      <p>Tier E, in one sitting. REQ-300 and REQ-302 close on their own stated reasoning; REQ-262 is a decision;
+      REQ-272 and REQ-273 are single edits. Closing REQ-300 releases the <code>depends_on</code> gates on REQ-263,
+      REQ-264, REQ-271 and REQ-301 — the four-deep critical path named in the restart prompt.</p>
+      <p style="margin-bottom:0"><strong>Result:</strong> 31 → 24 pending, critical path collapses from four deep
+      to flat. Cost: under an hour.</p>
+    </div>
+    <div class="move">
+      <div class="n">MOVE 2</div>
+      <h3 style="margin-top:8px">Finish the brake before touching anything else</h3>
+      <p>Tier A: REQ-294, REQ-297, REQ-293, then REQ-288 and REQ-269. Until <code>impact:</code> is judged rather
+      than defaulted and the skip is auditable, every review round after this one adds work at the current rate,
+      and the four class-closers in Tier B will each spawn their own review follow-ups on the way out.</p>
+      <p style="margin-bottom:0"><strong>Result:</strong> the next review round can produce a queue that shrinks.
+      This is the only work here that changes the derivative.</p>
+    </div>
+    <div class="move">
+      <div class="n">MOVE 3</div>
+      <h3 style="margin-top:8px">Retire the generators, then ship the defects</h3>
+      <p>Tier B (REQ-298, REQ-299, REQ-291 → REQ-292) before Tier C, because each one removes a class that would
+      otherwise keep producing. Then Tier C in the order listed — REQ-279 and REQ-303 first, since one cries data
+      loss falsely and the other ships a failing test to every consumer install.</p>
+      <p style="margin-bottom:0"><strong>Result:</strong> queue reaches single digits with the arrival rate already
+      lowered, so it stays there.</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:30px;border-left:3px solid var(--accent)">
+    <h3>The rule change that actually ends it</h3>
+    <p class="measure">The pipeline currently treats any discrepancy between two statements in the instruction
+    corpus as a defect that earns a REQ. Across 156 cross-referencing markdown files under <code>skills/</code>,
+    the number of possible discrepancies grows with the square of the corpus, and every fix writes new sentences
+    that can drift. That is the generator. Reviews are just what finds it.</p>
+    <p class="measure">Four of the five deepest descent chains in this repository terminate in prose or comment
+    reconciliation — REQ-250 and REQ-243 on markdown pointers, REQ-277 and REQ-266 on comment provenance — and the
+    eight-deep chain in F2 turns from product work into corpus-consistency work at generation five. Both REQ-266
+    and REQ-277 are still pending, at generations six and seven, and both are Tier E hold-candidates here. The
+    archive holds seventy-one <code>maintenance: true</code> REQs.</p>
+    <p class="measure" style="margin-bottom:0"><strong>Proposal:</strong> a prose-only discrepancy — a stale count,
+    a wrong cross-reference number, a comment that describes a superseded mechanism — stops being a REQ. It becomes
+    a line appended to one standing sweep REQ that is run on a cadence you choose, or folded into the next commit
+    that touches the file for another reason. Reserve REQ creation for changes to behavior, to a checker's
+    predicate, or to a rule's stated condition. This is the same judgment <code>review-work.md:349</code> already
+    encodes for <code>impact-negligible</code> findings — applied to the class that is actually producing the
+    volume, and applied at capture rather than at review.</p>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">Evidence</div>
+  <h2>How every number here was obtained</h2>
+  <p class="measure">UI captures were not expected for this work. Every figure comes from REQ frontmatter, the
+  calibration log, and the shipped action files in this checkout at <code>6500808</code>. Every chart is
+  hand-authored SVG plotted from those values; no image was generated and none is a screenshot.</p>
+
+  <div class="row">
+    <div class="card" style="flex:1 1 460px">
+      <h3>Reproduce the counts</h3>
+      <pre># queue size, and how much of it descends from other work
+ls do-work/queue/*.md | wc -l
+grep -l '^addendum_to:' do-work/queue/*.md | wc -l
+grep -l '^batch:'      do-work/queue/*.md | wc -l
+
+# impact-field adoption in the live queue
+grep -h '^impact:' do-work/queue/*.md | sort | uniq -c
+grep -L '^impact:' do-work/queue/*.md | wc -l
+
+# lifetime descent rate
+grep -l '^addendum_to:' do-work/queue/*.md \
+  do-work/archive/REQ-*.md do-work/archive/*/REQ-*.md | wc -l
+
+# throughput
+awk -F'\t' 'NR>1{print $4}' do-work/calibration-log.tsv \
+  | sort -n | awk '{a[NR]=$1} END{print "median",a[int(NR/2)],"p90",a[int(NR*0.9)]}'
+
+# creation and completion by day
+grep -h '^created_at:'   do-work/queue/*.md do-work/archive/REQ-*.md \
+  do-work/archive/*/REQ-*.md | cut -c14-23 | sort | uniq -c
+grep -h '^completed_at:' do-work/archive/REQ-*.md \
+  do-work/archive/*/REQ-*.md | cut -c16-25 | sort | uniq -c</pre>
+      <p class="cap">Run from the repository root. All commands are read-only and were run to produce this report.</p>
+    </div>
+
+    <div class="card" style="flex:1 1 330px">
+      <h3>Primary sources</h3>
+      <table>
+        <tbody>
+          <tr><td><code>do-work/queue/</code></td><td class="num">31 files</td></tr>
+          <tr><td><code>do-work/archive/</code></td><td class="num">267 REQs</td></tr>
+          <tr><td><code>do-work/calibration-log.tsv</code></td><td class="num">63 rows</td></tr>
+          <tr><td><code>do-work/RESTART-PROMPT.md</code></td><td class="num">gates, ordering</td></tr>
+          <tr><td><code>do-work/CHECKPOINT.md</code></td><td class="num">session state</td></tr>
+          <tr><td><code>skills/do-work/actions/review-work.md</code></td><td class="num">L343, L349</td></tr>
+          <tr><td><code>skills/do-work/actions/capture-reference.md</code></td><td class="num">impact contract</td></tr>
+        </tbody>
+      </table>
+      <h3 style="margin-top:22px">Known limits of this analysis</h3>
+      <ul style="font-size:14.5px;color:var(--muted);margin-bottom:0">
+        <li>Nine July REQs carry no <code>completed_at</code>; <code>status_changed_at</code> stands in. All nine
+        opened and closed on 2026-07-29, so only that day's bar is affected.</li>
+        <li>Effort labels mix two vocabularies — <code>trivial</code>/<code>normal</code> on older REQs,
+        <code>effort-mechanical</code>/<code>effort-substantive</code> on newer ones. Both are shown as written.</li>
+        <li>The REQ-266 and REQ-277 obsolescence calls are read from REQ-292's Requirements section, not from a
+        build. Re-check them after REQ-292 ships rather than closing them now.</li>
+        <li>Twelve pending REQs carry no <code>effort_estimate</code>, so the twelve-to-twenty-hour drain figure
+        applies the recorded median and p90 to them.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section style="border-bottom:none">
+  <div class="kicker">Open questions</div>
+  <h2>Three things this analysis cannot decide for you</h2>
+  <div class="row">
+    <div class="card" style="flex:1 1 280px">
+      <h3>Q1 · What cadence for the standing sweep?</h3>
+      <p style="margin-bottom:0">Prose reconciliation still has to happen eventually — the Check 11/Check 12 error
+      in REQ-272 does send readers to the wrong place. Weekly, per release, or per N merged REQs are all defensible.
+      The point is that it batches, not that it stops.</p>
+    </div>
+    <div class="card" style="flex:1 1 280px">
+      <h3>Q2 · Do consumer reports get the same treatment?</h3>
+      <p style="margin-bottom:0">Nine of the 31 arrived as <code>upstream-consumer-report</code> batches, and those
+      are outside intent — a real user hit them. They may deserve exemption from the prose-sweep rule even when the
+      finding is prose-shaped.</p>
+    </div>
+    <div class="card" style="flex:1 1 280px">
+      <h3>Q3 · Is the corpus itself too large?</h3>
+      <p style="margin-bottom:0">Not analyzed here, and the more interesting question. The generator's rate scales
+      with cross-references, not with features. Deleting instruction text would lower it more permanently than any
+      checker will.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Generated 2026-08-20 11:31 UTC from the working tree at commit <code>6500808</code>, branch
+  <code>claude/work-remaining-impact-analysis-6sgmth</code>. Non-visual evidence mode: UI captures were not expected
+  for this work. All charts are hand-authored SVG plotted from REQ frontmatter; no generated or synthetic imagery
+  appears in this report. Layout render-verification status is recorded in the accompanying session summary.</p>
+</footer>
+
+</div>
+</body>
+</html>
