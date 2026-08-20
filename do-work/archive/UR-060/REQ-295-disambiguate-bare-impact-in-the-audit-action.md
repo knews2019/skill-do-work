@@ -4,6 +4,7 @@ title: "[impact-rule-change] Disambiguate the remaining bare impact wordings in 
 status: completed
 claimed_at: 2026-08-20T22:45:21Z
 completed_at: 2026-08-20T22:48:01Z
+commit: 0b2261b
 created_at: 2026-08-19T15:48:05Z
 user_request: UR-060
 addendum_to: REQ-289
