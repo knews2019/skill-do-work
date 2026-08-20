@@ -312,7 +312,128 @@ func TestSyntheticCountsAndCalendar(t *testing.T) {
 	if archivedResolved != 3 {
 		t.Fatalf("archived terminally resolved = %d, want 3 (completed pair + cancelled)", archivedResolved)
 	}
-	if got := len(board.Calendar); got != 3 {
-		t.Fatalf("calendar entries = %d, want 3 (both completed REQs and the cancelled REQ resolve a completion time)", got)
+	// The calendar holds every REQ, not just the finished ones. Asserting the
+	// exact sequence pins the render-order contract board-calendar.js depends on:
+	// it groups days by walking contiguous DayKeys, so a band emitted out of
+	// order renders as two separate sections of the same band.
+	if got := len(board.Calendar); got != len(board.AllRequests) {
+		t.Fatalf("calendar entries = %d, want %d (one per REQ — queued and claimed work belong on the calendar too)",
+			got, len(board.AllRequests))
+	}
+	wantCalendar := []struct {
+		requestId string
+		dayKey    string
+	}{
+		{"REQ-9001", queuedCalendarDayKey},  // pending — never started
+		{"REQ-9006", queuedCalendarDayKey},  // blocked — also never started
+		{"REQ-9005", "2026-06-28"},          // cancelled, dated by completed_at
+		{"REQ-9004", "2026-06-10"},          // completed, dated by completed_at
+		{"REQ-9003", "2026-03-04"},          // completed, dated by the deadbeef commit
+		{"REQ-9002", undatedCalendarDayKey}, // claimed with no claimed_at to place it on
+	}
+	for index, want := range wantCalendar {
+		got := board.Calendar[index]
+		if got.RequestId != want.requestId || got.DayKey != want.dayKey {
+			t.Fatalf("calendar[%d] = %s on %q, want %s on %q (order is queued band, then days newest-first, then undated)",
+				index, got.RequestId, got.DayKey, want.requestId, want.dayKey)
+		}
+	}
+}
+
+// TestCalendarDatesClaimsAndFailuresFromTheirOwnStamps pins the two placements
+// that do NOT come from the shared completion-resolution chain.
+//
+// A claimed REQ is dated by claimed_at — the day work STARTED — because it has
+// no completion instant to be dated by; getting this wrong would either hide
+// in-flight work or date it by a stale leftover field. A failed REQ is dated by
+// completed_at read here rather than by ticket.CompletionTime, because the
+// resolution step deliberately skips `failed` so the detail drawer never shows a
+// "Completed" row for work that did not complete; before this it appeared on no
+// day at all. Either stamp missing means the entry falls to the undated bucket,
+// never to a fabricated date and never out of the view.
+func TestCalendarDatesClaimsAndFailuresFromTheirOwnStamps(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeFixture := func(relativePath string, content string) {
+		absolutePath := filepath.Join(repoRoot, relativePath)
+		if mkdirError := os.MkdirAll(filepath.Dir(absolutePath), 0o755); mkdirError != nil {
+			t.Fatalf("mkdir %s: %v", relativePath, mkdirError)
+		}
+		if writeError := os.WriteFile(absolutePath, []byte(content), 0o644); writeError != nil {
+			t.Fatalf("write %s: %v", relativePath, writeError)
+		}
+	}
+	request := func(requestId string, status string, extraFrontmatter string) string {
+		return "---\nid: " + requestId + "\ntitle: Fixture " + requestId +
+			"\nstatus: " + status + "\n" + extraFrontmatter + "---\n\nBody.\n"
+	}
+
+	// The claimed REQ carries a completed_at as well, left over from an earlier
+	// run: the claim must still be dated by claimed_at, not by that stamp.
+	writeFixture(filepath.Join("do-work", "working", "REQ-9101-claimed.md"),
+		request("REQ-9101", "claimed", "claimed_at: 2026-06-29T09:00:00Z\ncompleted_at: 2026-06-20T09:00:00Z\n"))
+	writeFixture(filepath.Join("do-work", "archive", "REQ-9102-failed.md"),
+		request("REQ-9102", "failed", "completed_at: 2026-06-27T10:00:00Z\nerror: exploded\n"))
+	writeFixture(filepath.Join("do-work", "archive", "REQ-9103-failed-unstamped.md"),
+		request("REQ-9103", "failed", "error: exploded with no stamp\n"))
+
+	noGitLookup := func(_ string, _ string) (time.Time, bool) { return time.Time{}, false }
+	board, buildError := buildBoard(repoRoot, time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC), 7*24*time.Hour, noGitLookup)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+
+	byRequestId := map[string]CalendarEntry{}
+	for _, entry := range board.Calendar {
+		byRequestId[entry.RequestId] = entry
+	}
+
+	claimed := byRequestId["REQ-9101"]
+	if claimed.Kind != CalendarClaimEntry || claimed.DayKey != "2026-06-29" {
+		t.Fatalf("claimed REQ-9101 = %s on %q, want a claim entry on 2026-06-29 (its claimed_at day, not its stale completed_at)",
+			claimed.Kind, claimed.DayKey)
+	}
+
+	failed := byRequestId["REQ-9102"]
+	if failed.DayKey != "2026-06-27" || failed.TimeSource != CompletionFromFrontmatter {
+		t.Fatalf("failed REQ-9102 = %q via %q, want 2026-06-27 via frontmatter — a failure happened on a real day",
+			failed.DayKey, failed.TimeSource)
+	}
+
+	unstamped := byRequestId["REQ-9103"]
+	if unstamped.DayKey != undatedCalendarDayKey {
+		t.Fatalf("failed-without-completed_at REQ-9103 = %q, want %q (kept and visible, never given a fabricated date)",
+			unstamped.DayKey, undatedCalendarDayKey)
+	}
+
+	// The drawer must not gain a "Completed" row for failed work.
+	for _, ticket := range board.AllRequests {
+		if ticket.Status == "failed" && !ticket.CompletionTime.IsZero() {
+			t.Fatalf("%s is failed but carries CompletionTime %s — that field feeds the drawer's Completed row",
+				ticket.RequestId, ticket.CompletionTime)
+		}
+	}
+}
+
+// TestCalendarDayKeySentinelsMatchTheShippedClient keeps the two sentinel day
+// keys in lock-step across the language boundary. board-calendar.js matches the
+// queued key as a literal to pick the "In the queue" label, and reaches the
+// undated label by the same key failing to parse as a date. Renaming either
+// constant on the Go side alone compiles, passes every Go test, and silently
+// relabels a whole band in the browser — the queued band would render under
+// "Undated", which is the opposite of what it means.
+func TestCalendarDayKeySentinelsMatchTheShippedClient(t *testing.T) {
+	calendarSource, readError := embeddedWebAssets.ReadFile("web/board-calendar.js")
+	if readError != nil {
+		t.Fatalf("read web/board-calendar.js: %v", readError)
+	}
+	if !strings.Contains(string(calendarSource), `dayKey === "`+queuedCalendarDayKey+`"`) {
+		t.Errorf("web/board-calendar.js does not test for the queued day key %q, so the queued band will render with the undated label",
+			queuedCalendarDayKey)
+	}
+	// The undated branch is the client's fallback, so what must hold is that the
+	// key cannot parse as a date — otherwise it would be grouped as a real day.
+	if _, parseError := time.Parse("2006-01-02", undatedCalendarDayKey); parseError == nil {
+		t.Errorf("undated day key %q parses as a date, so board-calendar.js would render it as a day rather than the Undated band",
+			undatedCalendarDayKey)
 	}
 }

@@ -1196,6 +1196,11 @@ body.is-resizing-detail {
   margin: 0;
   font-size: 13px;
   color: var(--ink-faint);
+  /* Carries the same count segments as a day label, so it wraps the same way. */
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 14px;
+  row-gap: 1px;
 }
 
 .calendar-scroll {
@@ -1237,9 +1242,54 @@ body.is-resizing-detail {
   color: var(--ink-strong);
   font-family: var(--font-mono);
 }
+/* The queued band is not a day, so its label reads as a standing section rather
+   than a date: no mono date face, and a pending-accent rule marking the boundary
+   between "not started" and the dated history below it. */
+.calendar-day[data-day-key="queued"] {
+  border-top: none;
+  border-bottom: 1px solid var(--line-firm);
+}
+.calendar-day[data-day-key="queued"] .calendar-day-date,
+.calendar-day[data-day-key="undated"] .calendar-day-date {
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+.calendar-day[data-day-key="queued"] .calendar-day-weekday {
+  color: var(--accent-pending);
+}
+
+/* Per-day status breakdown ("12 done · 2 cancelled"). The same markup renders
+   the subhead, so the summary line doubles as this view's colour key. */
+/* Flex so a wrap can only fall BETWEEN segments, never inside one ("1 needs /
+   answers"). The segments carry no separator character: each is already a
+   distinct colour, and any separator glued to a segment strands at the end of a
+   wrapped line while a free-standing one wraps onto a line of its own. */
 .calendar-day-count {
   font-size: 12px;
+  color: var(--ink-faint);
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 1px;
+}
+.calendar-count-part[data-status-group="done"],
+.calendar-count-part[data-status-group="with-issues"] {
   color: var(--accent-done);
+}
+.calendar-count-part[data-status-group="claimed"] {
+  color: var(--accent-claimed);
+}
+.calendar-count-part[data-status-group="pending"] {
+  color: var(--accent-pending);
+}
+.calendar-count-part[data-status-group="needs-answers"],
+.calendar-count-part[data-status-group="blocked"],
+.calendar-count-part[data-status-group="failed"],
+.calendar-count-part[data-status-group="unrecognized"] {
+  color: var(--accent-blocked);
+}
+.calendar-count-part[data-status-group="cancelled"] {
+  color: var(--ink-faint);
 }
 
 .calendar-day-entries {
@@ -1250,6 +1300,12 @@ body.is-resizing-detail {
 }
 
 .calendar-chip {
+  /* Both overridden per status below. Muted ink is the accent fallback for an
+     entry whose status did not reach the client; routing the body colour through
+     a variable (rather than setting background-color per status) keeps the
+     :hover rule below winning for every status. */
+  --chip-accent: var(--ink-soft);
+  --chip-surface: var(--surface-2);
   appearance: none;
   font: inherit;
   cursor: pointer;
@@ -1257,7 +1313,7 @@ body.is-resizing-detail {
   align-items: center;
   gap: 8px;
   max-width: 320px;
-  background-color: var(--surface-2);
+  background-color: var(--chip-surface);
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-chip);
   padding: 6px 10px;
@@ -1269,14 +1325,14 @@ body.is-resizing-detail {
   border-color: var(--line-firm);
 }
 .calendar-chip:focus-visible {
-  outline: 2px solid var(--accent-done);
+  outline: 2px solid var(--chip-accent);
   outline-offset: 2px;
 }
 .calendar-chip-id {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
-  color: var(--accent-done);
+  color: var(--chip-accent);
   flex: none;
 }
 .calendar-chip-title {
@@ -1285,6 +1341,58 @@ body.is-resizing-detail {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Chip status identity, mirroring .req-card[data-status] above so the two views
+   never disagree about what a colour means. Statuses are enumerated, not
+   prefix-matched (see calendarCountGroups in board-calendar.js). `abandoned`,
+   `canceled`, `wont-do` and `wontfix` all arrive here as `cancelled` —
+   normalizeStatus collapses them before the board ever sees them. The fallback
+   is muted ink, for an entry whose status did not survive the trip. */
+.calendar-chip[data-status="completed"],
+.calendar-chip[data-status="completed-with-issues"] {
+  --chip-accent: var(--accent-done);
+}
+.calendar-chip[data-status="claimed"] {
+  --chip-accent: var(--accent-claimed);
+}
+.calendar-chip[data-status="pending"] {
+  --chip-accent: var(--accent-pending);
+}
+.calendar-chip[data-status="pending-answers"],
+.calendar-chip[data-status="blocked"],
+.calendar-chip[data-status="blocked-archive-collision"],
+.calendar-chip[data-status="blocked-dependency-cycle"],
+.calendar-chip[data-status="failed"],
+.calendar-chip.is-status-unrecognized {
+  --chip-accent: var(--accent-blocked);
+}
+.calendar-chip[data-status="cancelled"] {
+  --chip-accent: var(--ink-faint);
+}
+
+/* Claimed work is the only OPEN thing sitting on a dated day, so it carries a
+   tinted body as well as an accent — in-flight REQs should find the eye without
+   the reader hunting for a hue difference among finished ones. */
+.calendar-chip[data-status="claimed"] {
+  --chip-surface: var(--tint-claimed);
+}
+
+/* Cancelled (won't-do) — resolved, but visibly not a success. Same struck-through
+   treatment the card uses. */
+.calendar-chip[data-status="cancelled"] .calendar-chip-title {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  color: var(--ink-faint);
+}
+
+/* "Completed with issues" keeps the success hue — it did complete — and takes a
+   dotted underline rather than a second green. A shade difference would be the
+   one distinction a colourblind reader could not make, and the manifesto at the
+   top of this file rules out a glyph. */
+.calendar-chip[data-status="completed-with-issues"] .calendar-chip-id {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
 }
 
 /* --------------------------------------------------------------------------

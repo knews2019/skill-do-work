@@ -16,8 +16,9 @@ import (
 // per-ticket lines instead of counts alone: the open total (everything the board
 // buckets outside the terminal-resolved set), every claimed REQ with its title,
 // and every needs-input/blocked REQ with the status that put it there. Nothing
-// terminal appears at all — recently-done and the calendar are history, not open
-// work — which is why the recent-window is inert here.
+// terminal appears at all — recently-done is history, not open work — which is
+// why the recent-window is inert here. (The calendar is a different surface: it
+// carries every REQ, open ones included, and is not a model for this digest.)
 //
 // Read-only, like every subcommand but the two named write surfaces (the board's
 // testing view and `next-version`).
