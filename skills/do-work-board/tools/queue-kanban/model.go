@@ -1792,6 +1792,11 @@ func buildCalendar(tickets []*RequestTicket) []CalendarEntry {
 		entry := CalendarEntry{
 			RequestId: ticket.RequestId,
 			Status:    ticket.Status,
+			// Seeded once here and overwritten only by a branch that actually
+			// resolves an instant, so EntryTime and TimeSource cannot disagree
+			// about whether one was found. Setting it per-branch instead is what
+			// let a claim ship a real stamp labelled "unresolved".
+			TimeSource: CompletionUnresolved,
 		}
 		switch {
 		case isTerminalResolvedStatus(ticket.Status):
@@ -1800,20 +1805,18 @@ func buildCalendar(tickets []*RequestTicket) []CalendarEntry {
 			entry.TimeSource = ticket.CompletionTimeSource
 		case ticket.Status == "failed":
 			entry.Kind = CalendarCompletionEntry
-			entry.TimeSource = CompletionUnresolved
 			if failedAt, ok := parseTimestamp(ticket.CompletedAt); ok {
 				entry.EntryTime = failedAt
 				entry.TimeSource = CompletionFromFrontmatter
 			}
 		case ticket.Status == "claimed":
 			entry.Kind = CalendarClaimEntry
-			entry.TimeSource = CompletionUnresolved
 			if claimedAt, ok := parseTimestamp(ticket.ClaimedAt); ok {
 				entry.EntryTime = claimedAt
+				entry.TimeSource = CompletionFromFrontmatter
 			}
 		default:
 			entry.Kind = CalendarQueuedEntry
-			entry.TimeSource = CompletionUnresolved
 		}
 
 		switch {

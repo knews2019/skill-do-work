@@ -392,6 +392,24 @@ func TestCalendarDatesClaimsAndFailuresFromTheirOwnStamps(t *testing.T) {
 		t.Fatalf("claimed REQ-9101 = %s on %q, want a claim entry on 2026-06-29 (its claimed_at day, not its stale completed_at)",
 			claimed.Kind, claimed.DayKey)
 	}
+	if claimed.TimeSource != CompletionFromFrontmatter {
+		t.Fatalf("claimed REQ-9101 dated from claimed_at reports TimeSource %q, want %q",
+			claimed.TimeSource, CompletionFromFrontmatter)
+	}
+
+	// The condition, not the three cases: an entry either resolved an instant or
+	// it did not, and TimeSource has to agree with EntryTime about which. A
+	// branch that sets one and forgets the other serializes a real timestamp
+	// labelled "unresolved", which is worse than either alone.
+	for _, entry := range board.Calendar {
+		if !entry.EntryTime.IsZero() && entry.TimeSource == CompletionUnresolved {
+			t.Fatalf("%s carries EntryTime %s but TimeSource %q — a resolved instant must name where it came from",
+				entry.RequestId, entry.EntryTime, entry.TimeSource)
+		}
+		if entry.EntryTime.IsZero() && entry.TimeSource != CompletionUnresolved {
+			t.Fatalf("%s has no EntryTime but claims TimeSource %q", entry.RequestId, entry.TimeSource)
+		}
+	}
 
 	failed := byRequestId["REQ-9102"]
 	if failed.DayKey != "2026-06-27" || failed.TimeSource != CompletionFromFrontmatter {
