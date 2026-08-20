@@ -7,7 +7,7 @@ status_changed_at: 2026-08-18T22:20:09Z
 claimed_at: 2026-08-20T23:21:54Z
 completed_at: 2026-08-20T23:36:44Z
 kb_status: pending
-commit:
+commit: f71dfee
 user_request: UR-055
 addendum_to: REQ-259
 domain: general
