@@ -25,5 +25,6 @@ Most actions have a next step inferable from what just ran (after `code-review`,
 | After... | State | Suggest |
 | --- | --- | --- |
 | `capture-requests` | New REQs captured | `do-work verify-requests` before `do-work run` — check capture quality before building |
+| `capture-requests` | Every new REQ is `effort_estimate: effort-mechanical` | `do-work run-simple-reqs` — the batch is cheap enough to hand a smaller model, and it lists and estimates before running |
 | `clarify` | Questions still pending | `do-work clarify` again, not `do-work run` — unanswered REQs won't be picked up |
 | `clarify` | All answered | `do-work run` to process them |

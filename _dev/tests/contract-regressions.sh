@@ -4175,6 +4175,21 @@ elif ! bash "$p50_estimator_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
+# The cheaper-model selector decides which queued REQs a smaller model may build.
+# Its contracts are runtime predicates no grep can assert: the Schema Read
+# Contract's `trivial` alias (most pre-rename REQs spell it that way), the
+# dependency-readiness filter that keeps its caller's explicit `do-work run
+# REQ-NNN` handoff from becoming a `depends_on` bypass, the vetoes for work with
+# no objective gate, and the deliberate NON-veto for `tdd: true`.
+select_simple_reqs_probe="$repo_root/_dev/tests/select-simple-reqs-behavior.sh"
+if [ ! -f "$select_simple_reqs_probe" ]; then
+  printf 'FAIL: _dev/tests/select-simple-reqs-behavior.sh is missing — the cheaper-model selector has no lock-in coverage.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$select_simple_reqs_probe"; then
+  printf 'FAIL: cheaper-model selector probes failed (see the FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # Managed Just sections are a byte-preserving ownership boundary, not a prose convention.
 # Exercise the real utility across replacement, append, creation, malformed
 # markers, filename variants, spaces, modes, idempotence, and Just parsing.
