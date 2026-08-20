@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.216.5 — A Missing P-A-U Section Stops Reading as a Pass (2026-08-20)
+
+Qualification could print a clean OK because its checklist had nothing to check. Every debug-artifact
+failure keys on the state of the `[UNIFY]` box, so a request carrying no P-A-U section at all satisfied
+all of them by absence — the audit was disarmed, not passed, and nothing said so.
+
+- qualify now warns when a request has no `AI Execution State (P-A-U Loop)` section, and says plainly that every `[UNIFY]`-gated failure is unreachable, so an OK on such a request reads as what it is.
+- It stays a warning, not a failure: the missing section is paperwork, not evidence about the code, and older requests are still legitimately qualifiable.
+- The class is fixed at its source too. Both shipped templates that mint buildable review-generated requests — the review fix template and the code-review fix template — now emit the P-A-U block, and the check that already enumerates those templates enforces it.
+- Six queued requests were created without the block before this landed. They each warn when claimed rather than being silently rewritten.
+
 ## 0.216.4 — The Debug-Artifact Gate Stops Excusing Itself (2026-08-20)
 
 The check that catches leftover `console.log`s and stray `TODO`s could be talked out of a finding three

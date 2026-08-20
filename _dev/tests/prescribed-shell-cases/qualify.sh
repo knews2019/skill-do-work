@@ -206,4 +206,22 @@ printf '%s' "$qualify_range_untracked_output" | grep -q 'stray_helper.js' \
   && fail_case 'qualify range-untracked case scanned an untracked file in worktree dispatch mode — that mode reads committed work only'
 rm -f "$qualify_repo/src/stray_helper.js" "$qualify_repo/src/untracked_helper.js" "$qualify_repo/ignored-helper.js"
 
+# qualify: a REQ carrying NO P-A-U section leaves Check 4 disarmed rather than passed —
+# every [UNIFY]-gated FAIL keys on the box's state, so a missing box satisfies all of them
+# by absence. The run must say so instead of printing a bare OK (REQ-264; this is the shape
+# REQ-254's own qualification "Passed" with).
+printf '%s\n' '## Implementation Summary' \
+  '- `src/value_parser.py` (modified) — parsing tweak' \
+  > "$qualify_repo/do-work/REQ-960-no-pau.md"
+printf 'print(raw_text)\n' >> "$qualify_repo/src/value_parser.py"
+qualify_no_pau_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-960-no-pau.md 2>&1)"
+printf '%s' "$qualify_no_pau_output" | grep -q 'DISARMED' \
+  || fail_case 'qualify no-P-A-U case printed no disarmed-audit warning — a REQ with no P-A-U section still passes Check 4 silently'
+git -C "$qualify_repo" checkout -q -- src/value_parser.py
+
+# qualify: the vacuity guard on that warning — a REQ that DOES carry the section must not
+# get it, or the warning would fire on every run and mean nothing (REQ-264).
+printf '%s' "$qualify_reporting_output" | grep -q 'DISARMED' \
+  && fail_case 'qualify no-P-A-U warning fired on a REQ that carries the section — the check is keying on the wrong thing'
+
 prescribed_shell_finish

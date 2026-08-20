@@ -191,6 +191,20 @@ if [ "$non_dowork_count" -eq 0 ]; then
 fi
 
 # --- Check 4: P-A-U box audit + debug artifacts in the diff ---
+# A REQ with NO P-A-U section at all used to sail through this whole check (REQ-264).
+# Every UNIFY-gated FAIL below keys on a CHECKED [UNIFY] box, and the unchecked-box FAIL
+# keys on an UNCHECKED one, so a file carrying neither satisfies both by absence: the
+# audit is disarmed rather than passed, and nothing said so. That is the shape REQ-254's
+# own qualification "Passed" with — its review re-ran the range armed and got FAILs.
+# work.md Step 6 states P-A-U phasing is mandatory, so the absence is a defect in the
+# REQ, not a supported mode; it is a WARN and not a FAIL because the missing section is
+# the orchestrator's paperwork rather than evidence about the code, and because REQs
+# written before the section existed are still legitimately qualifiable.
+# Counts boxes in ANY state — the question is whether the audit exists, not its verdict.
+pau_box_total="$(grep -cE '^[[:space:]]*-[[:space:]]\[( |x|~)\][[:space:]]\*\*\[(PLAN|APPLY|UNIFY)\]' "$request_file" || true)"
+if [ "${pau_box_total:-0}" -eq 0 ]; then
+  echo "WARN: no 'AI Execution State (P-A-U Loop)' section in this REQ — Check 4's box audit is DISARMED, not passed: every [UNIFY]-gated FAIL below is unreachable, so a debug artifact in the diff cannot fail this run. Add the section (work.md Step 6 makes P-A-U phasing mandatory) and re-run before trusting an OK."
+fi
 unchecked_boxes="$(grep -cE '^[[:space:]]*-[[:space:]]\[ \][[:space:]]\*\*\[(PLAN|APPLY|UNIFY)\]' "$request_file" || true)"
 if [ "${unchecked_boxes:-0}" -gt 0 ]; then
   echo "FAIL: $unchecked_boxes P-A-U checkbox(es) still unchecked — the builder did not complete those phases"
