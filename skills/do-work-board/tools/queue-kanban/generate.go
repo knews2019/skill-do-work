@@ -164,15 +164,22 @@ type generatedRequest struct {
 	EffortEstimate             string `json:"effortEstimate,omitempty"`
 	OriginalEffortEstimate     string `json:"originalEffortEstimate,omitempty"`
 	EffortEstimateUnrecognized bool   `json:"effortEstimateUnrecognized,omitempty"`
-	Batch                      string `json:"batch"`
-	TreeSection                string `json:"treeSection"`
-	CreatedAt                  string `json:"createdAt"`
-	ClaimedAt                  string `json:"claimedAt"`
-	CompletedAt                string `json:"completedAt"`
-	StatusChangedAt            string `json:"statusChangedAt,omitempty"` // last no-dedicated-stamp status flip (see RequestTicket.StatusChangedAt)
-	FileModifiedAt             string `json:"fileModifiedAt,omitempty"`  // file mtime at generation, RFC3339 — state-timer fallback only, never completion dating
-	CompletionTime             string `json:"completionTime"`
-	CompletionTimeSource       string `json:"completionTimeSource"`
+	// Sweep markers + instance counts (see RequestTicket.Sweep/Standing).
+	// Display only — a card chip and a drawer row; no column or scheduling
+	// meaning.
+	Sweep                bool   `json:"sweep,omitempty"`
+	Standing             bool   `json:"standing,omitempty"`
+	SweepInstancesOpen   int    `json:"sweepInstancesOpen,omitempty"`
+	SweepInstancesDone   int    `json:"sweepInstancesDone,omitempty"`
+	Batch                string `json:"batch"`
+	TreeSection          string `json:"treeSection"`
+	CreatedAt            string `json:"createdAt"`
+	ClaimedAt            string `json:"claimedAt"`
+	CompletedAt          string `json:"completedAt"`
+	StatusChangedAt      string `json:"statusChangedAt,omitempty"` // last no-dedicated-stamp status flip (see RequestTicket.StatusChangedAt)
+	FileModifiedAt       string `json:"fileModifiedAt,omitempty"`  // file mtime at generation, RFC3339 — state-timer fallback only, never completion dating
+	CompletionTime       string `json:"completionTime"`
+	CompletionTimeSource string `json:"completionTimeSource"`
 
 	CompletionAnomaly       bool   `json:"completionAnomaly,omitempty"`
 	CompletionAnomalyReason string `json:"completionAnomalyReason,omitempty"`
@@ -560,6 +567,10 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			EffortEstimate:             ticket.EffortEstimate,
 			OriginalEffortEstimate:     ticket.OriginalEffortEstimate,
 			EffortEstimateUnrecognized: ticket.EffortEstimateUnrecognized,
+			Sweep:                      ticket.Sweep,
+			Standing:                   ticket.Standing,
+			SweepInstancesOpen:         ticket.SweepInstancesOpen,
+			SweepInstancesDone:         ticket.SweepInstancesDone,
 			Batch:                      ticket.Batch,
 			TreeSection:                ticket.TreeSection,
 			CreatedAt:                  ticket.CreatedAt,
