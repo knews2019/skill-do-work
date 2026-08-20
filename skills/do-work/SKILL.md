@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Core request capture, queue orchestration, verification, review, and maintenance for the modular do-work suite
-argument-hint: "capture-request: <task> | run [REQ|UR] | verify-requests [REQ|UR|--against source] | review-work [REQ|UR] | clarify | abandon [REQ|UR] | cleanup | commit | forensics | roadmap | handoff | version | update | recap | help"
+argument-hint: "capture-request: <task> | run [REQ|UR] | run-simple-reqs | verify-requests [REQ|UR|--against source] | review-work [REQ|UR] | clarify | abandon [REQ|UR] | cleanup | commit | forensics | roadmap | handoff | version | update | recap | help"
 ---
 
 # Do-Work Core Skill
@@ -26,6 +26,7 @@ Check these patterns in order; first match wins.
 | Trigger | Route |
 |---|---|
 | empty, `help` | `./actions/help.md` |
+| `run-simple-reqs`, `simple reqs`, `run simple` | `./actions/run-simple-reqs.md` |
 | `run`, `go`, `start`, `work`, `begin`, `process`, `execute`, `build`, `continue`, `resume` | `./actions/work.md` |
 | `check for updates`, `check for update`, `is there a newer version` | `./actions/version.md` |
 | `verify`, `verify-requests`, `check`, `review requests` | `./actions/verify-requests.md` |
