@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.223.0 — Prose Findings Move to a Plain Backlog File (2026-08-20)
+
+A prose-only finding — a stale count, a wrong cross-reference, a comment describing a superseded mechanism — now lands as one line in `do-work/prose-backlog.md` instead of on a never-closing queue REQ. Draining it is an ordinary REQ with no exceptions anywhere in the pipeline.
+
+- The `standing: true` marker is retired, and with it every special case it needed: the never-closing status, the rule that no default run may select it, `tools/select-simple-reqs.sh`'s veto, the terminal-resolved-set and UR-closure exclusions, `cleanup`'s membership skip, `work.md` Step 8's substep skipping, Step 9's staging substitution, the exit summary's standing-sweep section, and the board's `standing` chip, drawer row, parser field, and archived-UR carve-out.
+- A drain records its commit hash in `commit:` through `tools/checks/record-commit-hash.sh`, like every other REQ. The old path hand-edited a hash onto a body `## Drains` line — the single write in the pipeline that bypassed the guard written after free-form edits at that step truncated six archived REQs to 0 bytes.
+- Prose debt stays visible: the work scan's queue status summary appends `(prose backlog: K open items)`. It no longer appears on the Kanban board, which renders REQs.
+- Fixing a backlog item inside a REQ that already touches that file is still the cheapest path, and now there is nothing to reset afterwards — delete the line and move on.
+- Consolidation sweeps (`sweep: true` + `sweep_key:`) are unchanged. They are ordinary REQs that close, and nothing about them needed a carve-out.
+- **If your queue holds a `standing: true` REQ:** move its unticked `## Instances` lines into `do-work/prose-backlog.md` (creating the file from the template in the Fold-First Rule), then complete or abandon the REQ. Nothing reads the marker any more, so a REQ left carrying it becomes an ordinary selectable REQ.
+
 ## 0.222.0 — Run the Queue's Mechanical Work on a Cheaper Model (2026-08-20)
 
 Launch a session on a smaller model and `do-work run-simple-reqs` tells you which queued REQs are safe to build there, what the batch costs in active minutes, and which mechanical REQs it held back and why — then hands the set to the normal pipeline after one confirmation. Nothing names or switches a model; you bring the environment, the suite brings the selection.

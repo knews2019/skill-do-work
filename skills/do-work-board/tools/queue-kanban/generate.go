@@ -164,11 +164,10 @@ type generatedRequest struct {
 	EffortEstimate             string `json:"effortEstimate,omitempty"`
 	OriginalEffortEstimate     string `json:"originalEffortEstimate,omitempty"`
 	EffortEstimateUnrecognized bool   `json:"effortEstimateUnrecognized,omitempty"`
-	// Sweep markers + instance counts (see RequestTicket.Sweep/Standing).
+	// Sweep marker + instance counts (see RequestTicket.Sweep).
 	// Display only — a card chip and a drawer row; no column or scheduling
 	// meaning.
 	Sweep                bool   `json:"sweep,omitempty"`
-	Standing             bool   `json:"standing,omitempty"`
 	SweepInstancesOpen   int    `json:"sweepInstancesOpen,omitempty"`
 	SweepInstancesDone   int    `json:"sweepInstancesDone,omitempty"`
 	Batch                string `json:"batch"`
@@ -572,7 +571,6 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			OriginalEffortEstimate:     ticket.OriginalEffortEstimate,
 			EffortEstimateUnrecognized: ticket.EffortEstimateUnrecognized,
 			Sweep:                      ticket.Sweep,
-			Standing:                   ticket.Standing,
 			SweepInstancesOpen:         ticket.SweepInstancesOpen,
 			SweepInstancesDone:         ticket.SweepInstancesDone,
 			Batch:                      ticket.Batch,

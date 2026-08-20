@@ -1,13 +1,10 @@
 ---
 id: REQ-307
 title: "[impact-negligible] Standing prose-reconciliation sweep"
-status: pending
+status: completed
 created_at: 2026-08-20T13:21:13Z
 user_request: UR-063
 domain: general
-sweep: true
-sweep_key: prose-only-discrepancy-reconciliation
-standing: true
 impact: impact-negligible
 effort_estimate: effort-mechanical
 prime_files: [_dev/primes/prime-action-files.md]
@@ -16,9 +13,15 @@ suggested_spec:
 depends_on: []
 maintenance: true
 write_set: []
+completed_at: 2026-08-20T22:37:38Z
+commit:
 ---
 
 # Standing Prose-Reconciliation Sweep
+
+> **The mechanism described below was retired before this REQ ever drained.** Everything from `## What`
+> through `## Context` is the original request, kept as the record of what was asked. What shipped is
+> `do-work/prose-backlog.md` — see `## Implementation Summary` at the end.
 
 ## What
 
@@ -63,14 +66,8 @@ evidence rather than editing text that is already correct.
 
 ## Instances
 
-- [ ] **`repair-req-timestamps.sh:7`, `:22`, `:136`, and `actions/work-reference.md:285`** — all four
-  cite "forensics Check 11" for the future-dated-timestamp check. Check 11 is *Unrecognized Status
-  Values*; the future-stamp check is `### 12. Future-Dated Timestamps` (`actions/forensics.md:156`).
-  Verified against the tree on 2026-08-20. Folded from REQ-272.
-- [ ] **`skills/do-work-board/tools/queue-kanban/open_work.go:22` and `testing.go:42`** — both say the
-  board tool has "two write surfaces". It has three. `frontmatter_cli.go:34` already says "exactly
-  three", so the count is stated correctly in one Go file and staled in two others. Verified against
-  the tree on 2026-08-20. Folded from REQ-273.
+Both instances moved to `do-work/prose-backlog.md` unfixed and re-verified. Nothing here is
+actionable — read the backlog file, not this list.
 
 ## Context
 
@@ -92,6 +89,32 @@ here misleads a machine. Each instance misleads a *reader*, one hop from the tru
 fixing and is not worth a dispatch each.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
+- [x] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+
+## Implementation Summary
+
+**Delivered as `do-work/prose-backlog.md`, not as a never-closing REQ.** This REQ's purpose was to
+give the Fold-First Rule's prose-only destination somewhere to land on its first day. That
+destination now exists as a plain checklist file outside the pipeline, and the mechanism that made
+it a REQ is removed: `standing: true`, the never-closing status, the never-auto-select rule, the
+terminal-set and UR-closure carve-outs, the `## Drains` provenance line, Step 8's substep skipping,
+Step 9's staging substitution, and the board's `standing` parsing. The canonical rule is
+`skills/do-work/actions/capture-reference.md` -> **Fold-First Rule**, destination 3. The decision is
+recorded as ADR-021.
+
+Both instances migrated verbatim to `do-work/prose-backlog.md` and were re-verified against the
+tree while migrating: the "forensics Check 11" miscitation still holds at all four sites, and the
+"two write surfaces" count still holds at `open_work.go` (now line 23, was 22) and `testing.go:42`.
+Neither is fixed here -- they are open backlog items, and fixing them is an ordinary REQ.
+
+**The intent survives; only the mechanism was cancelled.** The prose-only class still has a
+guaranteed destination and no recorded finding was dropped. What changed is that the destination
+stopped being a pipeline REQ, which is what forced every selector, filter, terminal-set reader, and
+provenance rule to learn a special case.
+
+Files changed: `do-work/prose-backlog.md` (new), plus the mechanism removal across
+`skills/do-work/actions/`, `skills/do-work/tools/select-simple-reqs.sh`,
+`skills/do-work-toolbox/actions/code-review.md`, and
+`skills/do-work-board/tools/queue-kanban/`.
