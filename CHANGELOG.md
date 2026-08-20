@@ -2,6 +2,20 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.222.0 — Run the Queue's Mechanical Work on a Cheaper Model (2026-08-20)
+
+Launch a session on a smaller model and `do-work run-simple-reqs` tells you which queued REQs are safe to build there, what the batch costs in active minutes, and which mechanical REQs it held back and why — then hands the set to the normal pipeline after one confirmation. Nothing names or switches a model; you bring the environment, the suite brings the selection.
+
+- New `run-simple-reqs` verb and `tools/select-simple-reqs.sh`, the single home for the predicate. The rule is one condition — is there an objective gate on the result? — so `maintenance: true`, `domain: security`, and `impact-critical` are held back while `tdd: true` counts as a reason to select, not to skip.
+- The selector normalizes `effort_estimate` through the Schema Read Contract, so the legacy `trivial` spelling counts. On the live queue that is the difference between finding three mechanical REQs and finding seven.
+- Dependency-readiness is checked before the handoff, because an explicitly-named `REQ-NNN` bypasses `depends_on` by design — without that check the new verb would have been a silent gate bypass.
+- Held-back REQs are always reported with a reason, so a mis-tagged REQ is fixable instead of invisible.
+- `--skip-impact-negligible` is applied by the selector rather than forwarded to the handoff. Forwarded it was inert — explicit REQ naming overrides it — so the flag looked like it worked while the negligible REQs got built anyway. `--wave` is now rejected up front, since it can never combine with the targeting tokens the handoff always passes.
+- A present-but-unrecognized enum value is reported instead of silently defaulted, closing the Schema Read Contract's warn-on-fallback leg: a typo'd `effort_estimate` used to make a qualifying REQ vanish from both the selected and the held-back list.
+- `depends_on` wins outright over the legacy `dependencies` key, and the scans use `find -exec … {} +` rather than the GNU-only `xargs -r` the stock-macOS floor does not have.
+- A `standing: true` sweep is never selected. The default scan never claims one, and this verb names its set explicitly — which is exactly how a standing sweep drains — so selecting one would convert the queue's never-closing batching REQ into an unrequested drain.
+- `_dev/tests/select-simple-reqs-behavior.sh` pins all of it, every probe mutation-tested to confirm it can fail.
+
 ## 0.221.1 — One Spelling of the Fold-Only Invariant (2026-08-20)
 
 A review bot caught capture.md describing its fold record two different ways in one file — the drift class this release was about in the first place.
