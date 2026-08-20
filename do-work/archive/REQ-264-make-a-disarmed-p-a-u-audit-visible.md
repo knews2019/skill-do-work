@@ -6,6 +6,7 @@ created_at: 2026-08-18T19:52:15Z
 status_changed_at: 2026-08-18T20:55:14Z
 claimed_at: 2026-08-20T12:16:31Z
 completed_at: 2026-08-20T12:25:10Z
+commit: abf3554
 route: B
 estimate:
   p50_active_minutes: 5
