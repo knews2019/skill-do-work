@@ -2,6 +2,18 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.216.6 — Qualification Tells a Moved Line From a New One (2026-08-20)
+
+Every request that relocated code failed the debug-artifact audit on markers that already existed —
+the check reads added lines out of a diff, and moved text looks identical to written text. That trained
+people to wave through failures from the one gate that catches real leftover instrumentation.
+
+- A flagged line is compared by how many times its exact text occurs in the tree before and after the change. Unchanged means it moved: warned and named, not failed. Increased means it is genuinely new: failed exactly as before.
+- Occurrence count, not mere presence, is the test — so a line *copied* rather than moved still fails, wherever the copy lands.
+- Nothing is ever silently subtracted. A relocated line is printed under its own warning that says the text already exists in the pre-change tree and asks you to confirm the move was intended.
+- Applies to all four artifact scans, markers and output primitives alike, tracked files and untracked.
+- 3 new cases (suite total 85 to 88), each proven able to fail. Two of them exist only to pin the risk this fix could have introduced.
+
 ## 0.216.5 — A Missing P-A-U Section Stops Reading as a Pass (2026-08-20)
 
 Qualification could print a clean OK because its checklist had nothing to check. Every debug-artifact

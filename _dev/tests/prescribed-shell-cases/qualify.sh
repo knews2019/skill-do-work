@@ -224,4 +224,64 @@ git -C "$qualify_repo" checkout -q -- src/value_parser.py
 printf '%s' "$qualify_reporting_output" | grep -q 'DISARMED' \
   && fail_case 'qualify no-P-A-U warning fired on a REQ that carries the section — the check is keying on the wrong thing'
 
+# qualify: a MOVED debug-artifact marker is not an added one (REQ-301). Every scan reads
+# `^+` out of a diff, so relocated text used to read exactly like written text and every
+# code-relocation REQ FAILed the audit on markers that already existed — REQ-258 hit it on
+# four deliberate fixture TODO strings and had to override the FAIL with evidence. The move
+# is downgraded to a named WARN, never dropped.
+mkdir -p "$qualify_repo/relocation"
+printf '%s\n' '#!/usr/bin/env bash' 'case_alpha() {' '  printf "# TODO: alpha fixture\n" > f' '}' \
+  'case_beta() {' '  printf "# FIXME: beta fixture\n" > g' '}' > "$qualify_repo/relocation/suite.sh"
+fixture_repo_commit_all "$qualify_repo" relocation-base
+printf '%s\n' '## Implementation Summary' \
+  '- `relocation/suite.sh` (modified) — now dispatches' \
+  '- `relocation/alpha.sh` (new) — alpha case' \
+  '' '## AI Execution State' \
+  '- [x] **[PLAN]** done' '- [x] **[APPLY]** done' '- [x] **[UNIFY]** done' \
+  > "$qualify_repo/do-work/REQ-970-relocated-marker.md"
+printf '%s\n' '#!/usr/bin/env bash' 'case_alpha() {' '  printf "# TODO: alpha fixture\n" > f' '}' \
+  > "$qualify_repo/relocation/alpha.sh"
+printf '%s\n' '#!/usr/bin/env bash' 'source relocation/alpha.sh' \
+  'case_beta() {' '  printf "# FIXME: beta fixture\n" > g' '}' > "$qualify_repo/relocation/suite.sh"
+qualify_relocated_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-970-relocated-marker.md 2>&1)" \
+  || fail_case 'qualify relocated-marker case FAILed a marker that was moved, not added — every code-relocation REQ trips this'
+printf '%s' "$qualify_relocated_output" | grep -q 'relocated, not added' \
+  || fail_case 'qualify relocated-marker case did not name the moved marker — a relocation must be downgraded to a named WARN, never dropped'
+
+# qualify: the masking risk the REQ names, pinned. A marker DUPLICATED rather than moved
+# raises its occurrence count, so it is a genuine addition and must still FAIL — presence
+# at base is not the test, count is (REQ-301).
+printf '%s\n' '## Implementation Summary' \
+  '- `relocation/gamma.sh` (new) — duplicate, not a move' \
+  '' '## AI Execution State' \
+  '- [x] **[PLAN]** done' '- [x] **[APPLY]** done' '- [x] **[UNIFY]** done' \
+  > "$qualify_repo/do-work/REQ-971-duplicated-marker.md"
+# Byte-identical to the line still sitting in relocation/suite.sh, deliberately: the whole
+# point is that the text is unchanged and only its OCCURRENCE COUNT went up. A near-copy
+# would FAIL as fresh text under either rule and pin nothing.
+printf '%s\n' '#!/usr/bin/env bash' 'case_gamma() {' '  printf "# FIXME: beta fixture\n" > g' '}' \
+  > "$qualify_repo/relocation/gamma.sh"
+qualify_duplicated_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-971-duplicated-marker.md 2>&1)" \
+  && fail_case 'qualify duplicated-marker case excused a marker that was copied rather than moved — mere presence at base was used as the test instead of occurrence count'
+printf '%s' "$qualify_duplicated_output" | grep -q 'relocation/gamma.sh' \
+  || fail_case 'qualify duplicated-marker case did not name the file that gained the extra copy'
+rm -f "$qualify_repo/relocation/gamma.sh"
+
+# qualify: a fresh marker sitting beside a moved one in the SAME file still FAILs, and the
+# FAIL names only the fresh line while the moved one is reported separately (REQ-301). This
+# is what makes the downgrade safe: nothing is pooled and nothing is lost.
+printf '%s\n' '## Implementation Summary' \
+  '- `relocation/alpha.sh` (new) — alpha case plus a leftover' \
+  '' '## AI Execution State' \
+  '- [x] **[PLAN]** done' '- [x] **[APPLY]** done' '- [x] **[UNIFY]** done' \
+  > "$qualify_repo/do-work/REQ-972-fresh-beside-moved.md"
+printf '%s\n' '  # TODO: brand new leftover' >> "$qualify_repo/relocation/alpha.sh"
+qualify_mixed_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-972-fresh-beside-moved.md 2>&1)" \
+  && fail_case 'qualify fresh-beside-moved case passed a genuinely new marker because a moved one shared its file'
+printf '%s' "$qualify_mixed_output" | grep -q 'brand new leftover' \
+  || fail_case 'qualify fresh-beside-moved case did not name the fresh marker in its FAIL'
+printf '%s' "$qualify_mixed_output" | grep -q 'relocated, not added' \
+  || fail_case 'qualify fresh-beside-moved case dropped the moved marker instead of reporting it alongside the FAIL'
+rm -rf "$qualify_repo/relocation" "$qualify_repo/do-work/REQ-97"*.md
+
 prescribed_shell_finish

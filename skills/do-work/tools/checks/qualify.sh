@@ -267,6 +267,85 @@ if [ "$git_available" -eq 1 ]; then
       | grep -cE "$process_exit_regex" || true)"
     [ "${probe_hit_count:-0}" -gt 0 ]
   }
+
+  # --- Relocated lines are not added lines (REQ-301) ---
+  # Every scan below reads `^+` out of a diff (or a whole untracked file), so text that was
+  # MOVED reads exactly like text that was WRITTEN. Every REQ that relocates code therefore
+  # FAILed the artifact audit on markers that already existed: REQ-258 hit it on four
+  # deliberate fixture TODO strings, byte-identical in the pre-change tree, and had to
+  # override the FAIL with evidence. That is the dangerous direction — a gate that cries
+  # wolf on a whole category of change teaches builders to wave its FAILs through, and this
+  # is the gate that catches real leftover instrumentation.
+  #
+  # Of the two candidate fixes, this is the second: subtract from the flagged set any line
+  # whose content already exists in the pre-change tree. It is chosen over `git diff -C
+  # --find-copies-harder` because git's rename/copy detection is file-level, so it sees a
+  # file split (REQ-258's shape) but not a hunk moved within a file or between two files
+  # that both already existed — and those are relocations too. The condition is the content,
+  # not the file topology.
+  #
+  # The REQ warns this approach "can mask a genuinely re-added marker elsewhere in the same
+  # file." Mere presence at base is indeed too coarse — it cannot tell a MOVE from a
+  # DUPLICATE, and REQ-263's own same-diff-exit fixture proved it by appending a second
+  # copy of a line the tree already had and being excused for it. So the test is not
+  # presence but COUNT: a line is relocated only when the change did not increase how many
+  # times that exact text occurs in the tree. A move removes one occurrence and adds one
+  # (count unchanged); a genuine addition raises the count, wherever it lands.
+  #
+  # Belt and braces: even a relocated line is DOWNGRADED to a named WARN, never dropped.
+  # Nothing the scans found is ever silently discarded — only text whose occurrence count
+  # actually grew can FAIL.
+  #
+  # `do-work/` is excluded from both counts for the same reason the scans exclude it: a REQ
+  # file that merely discusses a TODO must not license one in shipped code. The post-change
+  # count passes `--untracked` so a relocation into a not-yet-staged file counts on both
+  # sides of the comparison — that is REQ-258's shape and the whole case for this fix.
+  fresh_matched_lines=""
+  relocated_matched_lines=""
+  count_matching_lines_in_tree() {
+    # $1 = revision to search, or empty for the working tree (+ untracked).
+    # `git grep -c` prints `path:count` per matching file, so sum the last field. It exits
+    # 1 on no match, which is a legitimate zero here, hence the `|| true` inside the
+    # substitution rather than a bare pipeline.
+    local search_revision="$1"
+    local search_pattern="$2"
+    if [ -n "$search_revision" ]; then
+      printf '%s' "$(git grep -c -F -e "$search_pattern" "$search_revision" \
+        -- . ':(exclude)do-work/' 2>/dev/null | awk -F: '{total += $NF} END {print total + 0}' || true)"
+    else
+      printf '%s' "$(git grep -c -F --untracked -e "$search_pattern" \
+        -- . ':(exclude)do-work/' 2>/dev/null | awk -F: '{total += $NF} END {print total + 0}' || true)"
+    fi
+  }
+  partition_matched_lines_by_relocation() {
+    local matched_block="$1"
+    local matched_line
+    local line_content
+    local base_occurrences
+    local current_occurrences
+    fresh_matched_lines=""
+    relocated_matched_lines=""
+    while IFS= read -r matched_line; do
+      [ -z "$matched_line" ] && continue
+      # Drop `grep -n`'s line number, then the diff's leading `+` when there is one
+      # (the untracked scan reads whole files, so its lines carry no `+`).
+      line_content="${matched_line#*:}"
+      line_content="${line_content#+}"
+      base_occurrences=0
+      current_occurrences=0
+      if [ -n "$ownership_base" ] && [ -n "$line_content" ]; then
+        # -e marks the pattern explicitly, so content starting with `-` is data, not options.
+        base_occurrences="$(count_matching_lines_in_tree "$ownership_base" "$line_content")"
+        current_occurrences="$(count_matching_lines_in_tree "" "$line_content")"
+      fi
+      if [ "${base_occurrences:-0}" -gt 0 ] \
+        && [ "${current_occurrences:-0}" -le "${base_occurrences:-0}" ]; then
+        relocated_matched_lines="${relocated_matched_lines}${matched_line}"$'\n'
+      else
+        fresh_matched_lines="${fresh_matched_lines}${matched_line}"$'\n'
+      fi
+    done <<< "$matched_block"
+  }
   # do-work/ is excluded at the pathspec level, NOT with a `grep -v 'do-work/'`
   # on the piped lines: added-content lines carry no file path, so a content
   # grep cannot scope by file — it silently matched REQ prose that merely
@@ -279,9 +358,16 @@ if [ "$git_available" -eq 1 ]; then
     debug_artifact_lines="$({ git diff -- . ':(exclude)do-work/'; git diff --staged -- . ':(exclude)do-work/'; } | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE "$unfinished_marker_regex" || true)"
   fi
   if [ -n "$debug_artifact_lines" ] && grep -qE '^[[:space:]]*-[[:space:]]\[x\][[:space:]]\*\*\[UNIFY\]' "$request_file"; then
-    echo "FAIL: [UNIFY] is checked but the diff adds debug artifacts — un-check it and flag:"
-    printf '%s\n' "$debug_artifact_lines" | head -10 | sed 's/^/  /'
-    failure_count=$((failure_count + 1))
+    partition_matched_lines_by_relocation "$debug_artifact_lines"
+    if [ -n "$fresh_matched_lines" ]; then
+      echo "FAIL: [UNIFY] is checked but the diff adds debug artifacts — un-check it and flag:"
+      printf '%s' "$fresh_matched_lines" | head -10 | sed 's/^/  /'
+      failure_count=$((failure_count + 1))
+    fi
+    if [ -n "$relocated_matched_lines" ]; then
+      echo "WARN: debug-artifact marker(s) in the diff whose exact text already exists in the pre-change tree — read as relocated, not added, so they do not fail this run; confirm the move was the intent:"
+      printf '%s' "$relocated_matched_lines" | head -10 | sed 's/^/  /'
+    fi
   fi
   # The output-primitive half needs file attribution (the ownership condition reads
   # the file that gained the line), so it walks the changed files instead of the
@@ -302,9 +388,16 @@ if [ "$git_available" -eq 1 ]; then
       echo "WARN: added print(/console.log line(s) in $changed_path read as the file's own reporting — it owns its process exit, so printed output is presumptively contract, not a debug artifact; confirm from these lines:"
       printf '%s\n' "$added_output_lines" | head -10 | sed 's/^/  /'
     elif grep -qE '^[[:space:]]*-[[:space:]]\[x\][[:space:]]\*\*\[UNIFY\]' "$request_file"; then
-      echo "FAIL: [UNIFY] is checked but the diff adds output line(s) to $changed_path, which never ends its own process — no terminal audience, so they read as leftover instrumentation:"
-      printf '%s\n' "$added_output_lines" | head -10 | sed 's/^/  /'
-      failure_count=$((failure_count + 1))
+      partition_matched_lines_by_relocation "$added_output_lines"
+      if [ -n "$fresh_matched_lines" ]; then
+        echo "FAIL: [UNIFY] is checked but the diff adds output line(s) to $changed_path, which never ends its own process — no terminal audience, so they read as leftover instrumentation:"
+        printf '%s' "$fresh_matched_lines" | head -10 | sed 's/^/  /'
+        failure_count=$((failure_count + 1))
+      fi
+      if [ -n "$relocated_matched_lines" ]; then
+        echo "WARN: output line(s) in $changed_path whose exact text already exists in the pre-change tree — read as relocated, not added, so they do not fail this run; confirm the move was the intent:"
+        printf '%s' "$relocated_matched_lines" | head -10 | sed 's/^/  /'
+      fi
     fi
   done <<< "$changed_file_list"
 
@@ -332,9 +425,16 @@ if [ "$git_available" -eq 1 ]; then
       [ -f "$untracked_path" ] || continue
       untracked_marker_lines="$(grep -nE "$unfinished_marker_regex" -- "$untracked_path" || true)"
       if [ -n "$untracked_marker_lines" ] && [ "$unify_box_checked" -eq 1 ]; then
-        echo "FAIL: [UNIFY] is checked but untracked file $untracked_path carries debug artifacts — un-check it and flag:"
-        printf '%s\n' "$untracked_marker_lines" | head -10 | sed 's/^/  /'
-        failure_count=$((failure_count + 1))
+        partition_matched_lines_by_relocation "$untracked_marker_lines"
+        if [ -n "$fresh_matched_lines" ]; then
+          echo "FAIL: [UNIFY] is checked but untracked file $untracked_path carries debug artifacts — un-check it and flag:"
+          printf '%s' "$fresh_matched_lines" | head -10 | sed 's/^/  /'
+          failure_count=$((failure_count + 1))
+        fi
+        if [ -n "$relocated_matched_lines" ]; then
+          echo "WARN: debug-artifact marker(s) in untracked file $untracked_path whose exact text already exists in the pre-change tree — read as relocated, not added, so they do not fail this run; confirm the move was the intent:"
+          printf '%s' "$relocated_matched_lines" | head -10 | sed 's/^/  /'
+        fi
       fi
       untracked_output_lines="$(grep -nE "$output_primitive_regex" -- "$untracked_path" || true)"
       [ -z "$untracked_output_lines" ] && continue
@@ -342,9 +442,16 @@ if [ "$git_available" -eq 1 ]; then
         echo "WARN: print(/console.log line(s) in untracked file $untracked_path read as the file's own reporting — it owns its process exit, so printed output is presumptively contract, not a debug artifact; confirm from these lines:"
         printf '%s\n' "$untracked_output_lines" | head -10 | sed 's/^/  /'
       elif [ "$unify_box_checked" -eq 1 ]; then
-        echo "FAIL: [UNIFY] is checked but untracked file $untracked_path carries output line(s), and it never ends its own process — no terminal audience, so they read as leftover instrumentation:"
-        printf '%s\n' "$untracked_output_lines" | head -10 | sed 's/^/  /'
-        failure_count=$((failure_count + 1))
+        partition_matched_lines_by_relocation "$untracked_output_lines"
+        if [ -n "$fresh_matched_lines" ]; then
+          echo "FAIL: [UNIFY] is checked but untracked file $untracked_path carries output line(s), and it never ends its own process — no terminal audience, so they read as leftover instrumentation:"
+          printf '%s' "$fresh_matched_lines" | head -10 | sed 's/^/  /'
+          failure_count=$((failure_count + 1))
+        fi
+        if [ -n "$relocated_matched_lines" ]; then
+          echo "WARN: output line(s) in untracked file $untracked_path whose exact text already exists in the pre-change tree — read as relocated, not added, so they do not fail this run; confirm the move was the intent:"
+          printf '%s' "$relocated_matched_lines" | head -10 | sed 's/^/  /'
+        fi
       fi
     done <<< "$(git ls-files --others --exclude-standard)"
   fi
