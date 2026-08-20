@@ -14,7 +14,7 @@ depends_on: []
 maintenance: true
 write_set: []
 completed_at: 2026-08-20T22:37:38Z
-commit:
+commit: 139c118
 ---
 
 # Standing Prose-Reconciliation Sweep
