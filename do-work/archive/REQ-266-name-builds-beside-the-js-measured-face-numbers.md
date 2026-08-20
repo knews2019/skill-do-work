@@ -1,9 +1,10 @@
 ---
 id: REQ-266
 title: Name builds beside the JS renderer's measured face numbers
-status: pending
+status: cancelled
 created_at: 2026-08-18T20:07:08Z
 status_changed_at: 2026-08-18T21:01:24Z
+completed_at: 2026-08-20T11:38:27Z
 user_request: UR-051
 addendum_to: REQ-252
 domain: general
@@ -42,3 +43,21 @@ REQ-252's declared Discovered Task, verified by its review (F1b, gate: rule-chan
   Also: No, discard it — the Go-side comments now carry the builds and the JS numbers are near-duplicates of them.
 
 **Answered [2026-08-18]:** User approved via `do-work clarify` — queued for a future work run.
+
+## Cancelled
+
+- **When:** 2026-08-20T11:38:27Z
+- **Why:** superseded by REQ-292 — fold any surviving provenance requirement into REQ-292; do not implement it independently before the broader replacement.
+- **Decided by:** user, via `do-work abandon`
+
+**What supersedes it.** REQ-292 moves Durations label placement into the browser and measures real
+extents, and requires that `durationsLabelCharacterWidthUnits` and the measured-face constant block
+"are deleted, not adjusted — the point of this REQ is that no such number survives." The two numbers
+this REQ was raised to document — `DURATIONS_LABEL_ROW_HEIGHT` and `DURATIONS_LABEL_TEXT_ASCENT` in
+`web/board-durations.js` — belong to that model, and `web/board-durations.js` is in REQ-292's write
+set. Naming a build beside a number that is about to be deleted is work with no surviving subject.
+
+**Folded forward.** The one part of this REQ that outlives the deletion is the *rule*, not the two
+numbers: if a browser-measured constant survives the move, it names the build it was measured on.
+That requirement has been added to REQ-292's `## Requirements`, so the provenance rule reaches the JS
+surface through the REQ that owns that surface's rewrite.

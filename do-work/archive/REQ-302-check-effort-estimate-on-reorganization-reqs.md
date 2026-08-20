@@ -1,9 +1,10 @@
 ---
 id: REQ-302
 title: "[impact-negligible] Check whether capture's effort judgment under-sizes reorganization REQs"
-status: pending-answers
+status: cancelled
 created_at: 2026-08-20T08:37:00Z
 status_changed_at: 2026-08-20T08:37:00Z
+completed_at: 2026-08-20T11:38:27Z
 user_request: UR-056
 addendum_to: REQ-258
 domain: general
@@ -31,9 +32,15 @@ Estimation never gates anything, which is why this is `impact-negligible` — th
 
 ## Open Questions
 
-- [ ] I discovered this out-of-scope task while working on REQ-258: `effort_estimate: trivial` produced a 5-minute estimate for a 19-file restructure, suggesting capture may judge reorganization REQs by per-edit size rather than total size. Should I process this as a new task?
+- [x] I discovered this out-of-scope task while working on REQ-258: `effort_estimate: trivial` produced a 5-minute estimate for a 19-file restructure, suggesting capture may judge reorganization REQs by per-edit size rather than total size. Should I process this as a new task? → Discarded
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it — one data point, and estimation gates nothing.
+
+## Cancelled
+
+- **When:** 2026-08-20T11:38:27Z
+- **Why:** explicitly `impact-negligible`; one data point, and estimation never gates work. Discard it.
+- **Decided by:** user, via `do-work clarify`
 
 ## Context
 

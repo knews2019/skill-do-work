@@ -1,9 +1,9 @@
 ---
 id: REQ-301
 title: "Let qualify tell a moved line from an added one"
-status: pending-answers
+status: pending
 created_at: 2026-08-20T08:37:00Z
-status_changed_at: 2026-08-20T08:37:00Z
+status_changed_at: 2026-08-20T11:38:27Z
 user_request: UR-056
 addendum_to: REQ-258
 domain: general
@@ -36,9 +36,11 @@ The first is git doing the work; the second is cheaper to reason about but can m
 
 ## Open Questions
 
-- [ ] I discovered this out-of-scope task while working on REQ-258: `tools/checks/qualify.sh` has no rename/copy detection, so every code-relocation REQ gets a false `[UNIFY]` FAIL on pre-existing debug markers inside the moved text. Should I process this as a new task?
+- [x] I discovered this out-of-scope task while working on REQ-258: `tools/checks/qualify.sh` has no rename/copy detection, so every code-relocation REQ gets a false `[UNIFY]` FAIL on pre-existing debug markers inside the moved text. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
+
+**Answered [2026-08-20]:** User approved at full scope via `do-work clarify`, in the 2026-08-20 remaining-work decision pass, which rated this "Moved code causes false failures, training builders to ignore a real safety gate. Approve after 263/264." The `depends_on: [REQ-263, REQ-264]` gate already encodes that ordering.
 
 ## Context
 

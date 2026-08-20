@@ -1,9 +1,10 @@
 ---
 id: REQ-277
 title: State the mark-label face constant's real scope at its canonical home
-status: pending
+status: cancelled
 created_at: 2026-08-18T23:53:40Z
 status_changed_at: 2026-08-18T23:53:40Z
+completed_at: 2026-08-20T11:38:27Z
 user_request: UR-051
 addendum_to: REQ-265
 domain: general
@@ -55,3 +56,22 @@ That is the restatement half of the very consolidation REQ-265 performed, and it
 REQ-265's independent review, Important finding 2 plus a Minor (gate: trivial each, so they fold into one sweep rather than earning separate REQs).
 
 Worth knowing: `TestDurationsMeasuredConstantsNameTheirChromiumBuild` enforces that each measured constant names its build, and its vacuity guard is `count == 0` — so it survived REQ-265's deletion without hollowing out. Nothing, however, checks that a constant's stated *scope* matches its readers. That gap is why this REQ exists.
+
+## Cancelled
+
+- **When:** 2026-08-20T11:38:27Z
+- **Why:** REQ-292 deletes the measured-face model this documentation describes. Cancel as superseded.
+- **Decided by:** user, via `do-work abandon`
+
+**What supersedes it.** All three `## Instances` are comments *about* measured-face constants, and
+REQ-292 deletes those constants rather than adjusting them: it requires that
+`durationsLabelCharacterWidthUnits` "and the measured-face constant block in `durations_test.go` are
+deleted, not adjusted," and it names `TestDurationsMeasuredConstantsNameTheirChromiumBuild` among the
+tests whose properties are re-pinned as browser probes or recorded as deliberately dropped. Both files
+this REQ writes — `generate_test.go` and `durations_test.go` — hold constants inside that block:
+`durationsMeasuredMarkLabelDescentUnits` (instances 1 and 2), and
+`durationsMeasuredLabelWidthSupremumUnits` / `durationsMeasuredLabelBoxHeightUnits` (instance 3).
+Correcting a doc comment's stated scope is work with no surviving subject once the constant it
+describes is gone. Nothing folds forward: the *sweep* requirement here — that a constant read from
+more than one file says so at its declaration — is about a cross-file-constant pattern REQ-292
+removes from this package outright.
