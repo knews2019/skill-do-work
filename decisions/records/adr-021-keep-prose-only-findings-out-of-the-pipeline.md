@@ -43,7 +43,7 @@ Load-bearing properties:
 
 ## Alternatives
 
-1. **Keep the standing sweep and extend `record-commit-hash.sh` to guard the `## Drains` line.** Rejected: it hardens the one symptom and leaves the eight other carve-outs, each of which a future reader still has to be taught. The guard would also gain a body-line write surface it was written to forbid.
+1. **Keep the standing sweep and extend `record-commit-hash.sh` to guard the `## Drains` line.** Rejected: it hardens the one symptom and leaves every other carve-out, each of which a future reader still has to be taught. The guard would also gain a body-line write surface it was written to forbid.
 2. **Drop prose-only findings entirely.** Rejected for the same reason ADR-020 rejected it: a wrong cross-reference does send readers to the wrong place. The question is where such a finding lands, never whether it is recorded.
 3. **Keep it as a REQ but let it close after each drain, re-created on the next prose finding.** Rejected: churn without a gain. Creation-on-demand already existed and the carve-outs came from the REQ-ness, not from the never-closing part alone.
 4. **Wait until it bites a third time.** It had, before this was written — the `0.222.0` selector veto was the third branch inside one day. Holding longer would have kept paying the cost in installments rather than once.

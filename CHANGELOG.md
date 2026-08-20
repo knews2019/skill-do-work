@@ -12,6 +12,13 @@ A prose-only finding — a stale count, a wrong cross-reference, a comment descr
 - Fixing a backlog item inside a REQ that already touches that file is still the cheapest path, and now there is nothing to reset afterwards — delete the line and move on.
 - Consolidation sweeps (`sweep: true` + `sweep_key:`) are unchanged. They are ordinary REQs that close, and nothing about them needed a carve-out.
 - **If your queue holds a `standing: true` REQ:** move its unticked `## Instances` lines into `do-work/prose-backlog.md` (creating the file from the template in the Fold-First Rule), then complete or abandon the REQ. Nothing reads the marker any more, so a REQ left carrying it becomes an ordinary selectable REQ.
+## 0.222.1 — The Maintainer Gate Accepts a Newer Toolchain (2026-08-20)
+
+`maintainer-verify.sh` demanded exactly `go1.26.1` and exactly ShellCheck `0.11.0`, so a machine with anything newer could not run the canonical gate at all — it refused before checking a single thing. The two version checks are now floors.
+
+- Go and ShellCheck are checked as "this version or newer", compared component-wise as integers so `0.11.0` clears a `0.9.9` floor and a prerelease like `1.27rc1` compares as `27`.
+- The self-test gained a pass that runs the whole gate against a *newer* fixture toolchain and expects success — the case an exact pin fails, so it can fail if anyone tightens the gates back. The two failure fixtures now report versions below the floor instead of above it.
+- The floors are still floors, not suggestions: `gofmt` has no version flag and its output can change between Go releases, so a newer toolchain may reformat a file this repo considers formatted, and the gofmt lane will name it. The remedy is stated beside the floor.
 
 ## 0.222.0 — Run the Queue's Mechanical Work on a Cheaper Model (2026-08-20)
 
