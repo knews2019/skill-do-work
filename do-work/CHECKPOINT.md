@@ -1,51 +1,40 @@
 ---
-session_ended: 2026-08-19T20:52:00Z
-last_completed: REQ-282
-queue_state: 26 pending, 2 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
-reqs_processed_this_session: 4
-session_depth: moderate
+session_ended: 2026-08-20T09:20:00Z
+last_completed: REQ-258
+queue_state: 29 pending, 2 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
+reqs_processed_this_session: 1
+session_depth: light
 ---
 
 # Session Checkpoint
 
 ## In Progress (interrupted)
 
-
 ## Completed This Session
 
-`do-work run REQ-268 REQ-270 REQ-276 REQ-282` — four independent correctness REQs, serial mode, each with its own adversarial review:
+`do-work run` — stopped by the user after one REQ, at the commit boundary, for a fresh-session handoff.
 
-- REQ-268: never report clean for a state that was never verified (Route B, 91%) — `ec5e550`, **0.215.1**
-- REQ-270: carry a worktree builder's hand-back sections into Step 8 (Route B, 58% Partial) — `9fe63fa`, **0.215.2**
-- REQ-276: give record-commit-hash's readers the writer's fence guard (Route A, 94%) — `fa19f69`, **0.215.3**
-- REQ-282: make the release probes run in a suite checkout (Route B, 98%) — `bc809fd`, **0.216.0**
+- **REQ-258**: Split the prescribed shell behavior suite per script (Route B, 94% / Acceptance Pass) — `1cc1836`, **0.216.2**
 
-Every hash confirmed with `record-commit-hash.sh --verify`; `maintainer-verify.sh` exited 0 at every commit boundary. Serial throughout — no worktrees created, none to clean up. One pre-session bookkeeping commit (`fd86625`) recorded REQ-296's abandonment, which was complete in the tree but uncommitted.
+Hash confirmed with `record-commit-hash.sh --verify`; `maintainer-verify.sh` exited 0 immediately before the commit. Serial mode — no worktrees created, none to clean up.
+
+**A second session was writing this repo concurrently.** Two commits landed mid-run from outside this session: `031c546` (clarify approving REQ-298 and REQ-299 to `pending`) and `1311300` (duration-label rounding, version 0.216.0 → 0.216.1). Neither touched any file REQ-258 wrote, verified by `git show --stat` on both. `031c546` did commit this session's in-flight `git mv` of REQ-258 into `working/` as an R100 rename, which was harmless — content was identical at that instant — and this session's archive move landed on top of it correctly.
 
 ## Still Queued
 
-**Twenty-eight** — 26 `pending`, 2 `pending-answers`. Net −2 (four shipped, two follow-ups created).
+**Thirty-one** — 29 `pending`, 2 `pending-answers`. Net +3 (one shipped, three follow-ups created, two flipped from `pending-answers` to `pending` by the parallel clarify).
 
-**Needs you (`pending-answers`, both generation-≥2 follow-ups):**
-- **REQ-298** — the unchecked-exit-status primitive REQ-268 fixed was copied from `tools/checks/record-commit-hash.sh`, which still carries it. **Sequence after REQ-276's file work, not before.**
-- **REQ-299** — `## Decisions` has REQ-270's exact defect at two read sites outside Step 8 (review-work's traceability check, and the Decision Brief's HANDLED block), so under fan-out a builder's judgment calls never reach the user.
+**Needs you (`pending-answers`, both REQ-258 discoveries awaiting the consent flow):**
+- **REQ-301** — `tools/checks/qualify.sh` has no rename/copy detection, so every code-relocation REQ gets a false `[UNIFY]` FAIL on pre-existing debug markers inside the moved text. REQ-258 hit it on four fixture `TODO` strings. The risk is habituation: a gate that cries wolf on a whole category of change trains builders to wave it away.
+- **REQ-302** — `effort_estimate: trivial` produced a 5-minute P50 for REQ-258's 19-file restructure. One data point; the REQ asks the question before proposing a fix.
+
+**Queued at `pending` and worth sequencing deliberately:**
+- **REQ-300** — the text that still plans around the pre-split shell suite: `RESTART-PROMPT.md:33` and the `write_set` of REQ-263, REQ-264, REQ-271. **Run it before those three**, or their board display and any wave planning read the dissolved monolith.
 
 ## Session Notes
 
-**Every one of the four reviews found something the builder's own sweep missed, and three of the four findings were in the same file the REQ had just edited.**
+**REQ-258's only real risk was unverifiable success.** A 1882-line file split 17 ways can claim "no case changes" and be wrong in a way no test catches, because the suite tests the *scripts*, not itself. The thing that made the claim checkable was a line-multiset comparison of every non-blank case line, original against split: 1756 in, 1756 out. That, plus a deliberate mutation proving the runner still exits 1, is the whole evidence base — the green run alone proves nothing, because a suite that silently ran zero cases prints the same thing.
 
-- REQ-268 swept for the primitive and stopped at the three instances the REQ listed; three more of the same shape sat below them, including the post-rename guard that runs *after* the file is replaced and whose `0/0` fallback made `[ 0 -gt threshold ]` false for every threshold.
-- REQ-270 swept Step 8's substeps correctly and never grepped outside Step 8. An always-loaded crew file still told every builder to do the thing the fix forbids — that one had to be fixed inside the REQ, because shipping the reader-side fix alone would have shipped a fix that does not work.
-- REQ-276's helper was defined below the `--verify` branch that calls it. Caught by running the suite, not by reading it.
+**The split surfaced two defects that were invisible while it was one file:** `generate-report-image`'s cases were interleaved around its `-batch` sibling's, `repair-req-timestamps`' around `audit-archive-timestamps`', and a `publish-portfolio-summary` fixture setup block sat under the `install-memory-hooks` header entirely. None of that was findable by reading 1882 lines top to bottom.
 
-**The pattern across all three: the sweep was for the instance across one scope, when the condition needed sweeping across the repo.** REQ-270's lesson names it directly.
-
-**A near-miss worth keeping.** REQ-282's obvious one-line implementation — widen the shared version-file resolver — satisfies the feature and silently breaks the constraint the REQ spent a paragraph on, because that resolver is also `next-version`'s writer. The REQ named the constraint; only a test enforced it.
-
-**Estimator ran under on three of four:** 20→33, 15→19, 10→19, 20→12 minutes. The overage is serial review latency, not build time. Four rows appended to `do-work/calibration-log.tsv`; do not recalibrate off four.
-
-## Context Summary
-
-**Two of tonight's four REQs were about the same thing wearing different clothes: a check that answers "fine" for work it never did.** REQ-268 was that condition in the timestamp scripts, REQ-282 was three release probes that had been silently off since the four-skill split — including the duplicate-version-number check that CLAUDE.md says has caught real failures before. Both are now loud. REQ-298 is the remaining reach of the first, and it is the one queued item that touches a file the pipeline depends on every single run.
-
-**Prove a check bites, never that it went quiet.** REQ-282's acceptance needed a deliberate `9.9.9` mismatch on the real repo, because a disabled probe and a working one print the same thing on a clean tree. That test shape is now in `release_test.go` and is worth copying wherever a probe is added.
+**Estimator ran badly under: 5 → 51 minutes.** Not an estimator fault — `effort_estimate: trivial` short-circuits signal extraction by design, and the field was misjudged at capture. That is REQ-302. One row appended to `do-work/calibration-log.tsv`; do not recalibrate off it.
