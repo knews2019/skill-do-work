@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.222.6 — Template Date Placeholders Are Out of the Timestamp Rule (2026-08-20)
+
+The Timestamp rule's date-only paragraph left one question open: what governs a `Date: [today]` line inside a prompt template. Now it says — nothing does, and it says so by condition rather than by naming files.
+
+- A date placeholder inside a template artifact's fenced block is a fill-in token addressed to the model that writes the user's document, not a stamp any pipeline step makes
+- Stated as a condition, so a template written tomorrow is covered without editing the sentence
+- The three prompt-kit templates that raised the question were deliberately left as they are
+
 ## 0.222.5 — Restore the Green Maintainer Verify (2026-08-20)
 
 `maintainer-verify.sh` had been failing since REQ-283 routed board verification through its own skill without carrying the change into the contract test or core help. It exits 0 again.
