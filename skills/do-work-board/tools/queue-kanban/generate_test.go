@@ -2262,8 +2262,11 @@ func durationsSlowestDayAnnotationProbeCases(annotationCases []durationsAnnotati
 }
 
 // durationLabelWidthSampleMinutes spans the renderer's formatting branches: sub-hour
-// with a decimal, negative, exactly on the hour, and multi-hour.
-var durationLabelWidthSampleMinutes = []float64{7.5, -25, 60, 95.4, 655.2, 1440}
+// with a decimal, negative, exactly on the hour, and multi-hour. The last two are
+// the rounding-carry values: they are the only ones where a per-unit rounding
+// regression changes the character count ("1h 60m" against "2h 0m"), so they keep
+// this width lock-step sensitive to it.
+var durationLabelWidthSampleMinutes = []float64{7.5, -25, 60, 95.4, 655.2, 1440, 119.5, 59.96}
 
 // Placement sizes a label from the text the renderer will draw, so it carries its
 // own width model of that text. The renderer stays the definition of the copy —
@@ -3744,5 +3747,71 @@ func TestGenerateGivesTimelineRowsTheBoardsFocusRing(t *testing.T) {
 	rowOffset := offsetPattern.FindStringSubmatch(rowFocusRule)
 	if rowOffset == nil || !strings.HasPrefix(rowOffset[1], "-") {
 		t.Fatalf("the Timeline row ring must be drawn inward — an outward ring is clipped by the rows SVG and the scroll container; rule is %q", rowFocusRule)
+	}
+}
+
+// spanRoundingCase is one duration and the exact text each renderer formatter
+// must draw for it. Both formatters are pinned in one probe because they had the
+// same defect for the same reason, and a fix applied to one is a regression in
+// the other's agreement with it.
+type spanRoundingCase struct {
+	Minutes           float64 `json:"minutes"`
+	WantDurationsText string  `json:"wantDurationsText"`
+	WantTimelineText  string  `json:"wantTimelineText"`
+	Requirement       string  `json:"-"`
+}
+
+// The renderers split a magnitude into units and round each unit on its own, so
+// a remainder that rounded up printed a value its own field cannot hold: "1h 60m"
+// for 119.5 minutes, "1d 24h" for 2879, "60 min" for 59.96. These are ordinary
+// REQ durations (1h59m30s is not a corner case), and the labels are what the
+// charts, hover text, tables and forecast sentence all read from.
+func TestJavaScriptBehaviorSpanFormattersCarryRoundedRemainders(t *testing.T) {
+	roundingCases := []spanRoundingCase{
+		{119.5, "2h 0m", "2h 0m", "the minute remainder rounds to a full hour"},
+		{-119.5, "−2h 0m", "−2h 0m", "the same carry on a reversed span"},
+		{59.96, "1h 0m", "1h 0m", "the sub-hour branch rounds up to the hour boundary"},
+		{119.4, "1h 59m", "1h 59m", "just under the carry still splits normally"},
+		{2879, "47h 59m", "2d 0h", "the hour remainder carries into the day field"},
+		{1439.5, "24h 0m", "1d 0h", "a day boundary carries the same way"},
+		{7.5, "7.5 min", "8 min", "each formatter keeps its own sub-hour precision"},
+	}
+	probeValues, encodeError := json.Marshal(roundingCases)
+	if encodeError != nil {
+		t.Fatalf("encode probe values: %v", encodeError)
+	}
+
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function formatDurationMinutes(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineFormatSpanMinutes(") + `
+process.stdout.write(JSON.stringify(` + string(probeValues) + `.map(function (roundingCase) {
+  return {
+    durationsText: formatDurationMinutes(roundingCase.minutes),
+    timelineText: timelineFormatSpanMinutes(roundingCase.minutes)
+  };
+})));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "span formatter rounding", javascriptProbe)
+	var drawnTexts []struct {
+		DurationsText string `json:"durationsText"`
+		TimelineText  string `json:"timelineText"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &drawnTexts); decodeError != nil {
+		t.Fatalf("decode span formatting: %v (output %q)", decodeError, probeOutput)
+	}
+	if len(drawnTexts) != len(roundingCases) {
+		t.Fatalf("probe returned %d results, want %d", len(drawnTexts), len(roundingCases))
+	}
+	for caseIndex, roundingCase := range roundingCases {
+		if drawnTexts[caseIndex].DurationsText != roundingCase.WantDurationsText {
+			t.Errorf("%s: formatDurationMinutes(%.2f) drew %q, want %q",
+				roundingCase.Requirement, roundingCase.Minutes,
+				drawnTexts[caseIndex].DurationsText, roundingCase.WantDurationsText)
+		}
+		if drawnTexts[caseIndex].TimelineText != roundingCase.WantTimelineText {
+			t.Errorf("%s: timelineFormatSpanMinutes(%.2f) drew %q, want %q",
+				roundingCase.Requirement, roundingCase.Minutes,
+				drawnTexts[caseIndex].TimelineText, roundingCase.WantTimelineText)
+		}
 	}
 }

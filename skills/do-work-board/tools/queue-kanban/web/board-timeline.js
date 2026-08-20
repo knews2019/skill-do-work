@@ -70,16 +70,21 @@
     timelineListenerTeardowns = [];
   }
 
+  // Each unit is derived from the already-rounded value of the unit below it, so
+  // a remainder that rounds up carries instead of overflowing its own field.
+  // Rounding per-unit gave "1h 60m" for 119.5 min and "1d 24h" for 2879 min, and
+  // rounding inside the sub-hour branch gave "60 min" for 59.96.
   function timelineFormatSpanMinutes(minutes) {
     var sign = minutes < 0 ? "−" : "";
-    var magnitude = Math.abs(minutes);
-    if (magnitude < 60) {
-      return sign + magnitude.toFixed(0) + " min";
+    var wholeMinutes = Math.round(Math.abs(minutes));
+    if (wholeMinutes < 60) {
+      return sign + wholeMinutes + " min";
     }
-    if (magnitude < 60 * 24) {
-      return sign + Math.floor(magnitude / 60) + "h " + Math.round(magnitude % 60) + "m";
+    if (wholeMinutes < 60 * 24) {
+      return sign + Math.floor(wholeMinutes / 60) + "h " + (wholeMinutes % 60) + "m";
     }
-    return sign + Math.floor(magnitude / (60 * 24)) + "d " + Math.round((magnitude % (60 * 24)) / 60) + "h";
+    var wholeHours = Math.round(wholeMinutes / 60);
+    return sign + Math.floor(wholeHours / 24) + "d " + (wholeHours % 24) + "h";
   }
 
   // Every part of a tick's label comes from the tick's own instant. The minute

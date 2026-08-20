@@ -320,17 +320,20 @@ func durationLabelText(sample DurationSample) string {
 // under-state every reversed label unless it models the minus the renderer
 // actually draws, not the hyphen this string carries.
 func formatDurationLabelMinutes(minutes float64) string {
-	magnitude := math.Abs(minutes)
 	sign := ""
 	if minutes < 0 {
 		sign = "-"
 	}
-	if magnitude < 60 {
-		return sign + strconv.FormatFloat(magnitude, 'f', 1, 64) + " min"
+	// Mirrors the renderer's rounding order, not just its branches: round to the
+	// displayed precision first, then split. Splitting first let the remainder
+	// round to 60 and print "1h 60m" for 119.5 — one character wider than the
+	// "2h 0m" the renderer should draw, so the width model was wrong too.
+	displayedMinutes := math.Round(math.Abs(minutes)*10) / 10
+	if displayedMinutes < 60 {
+		return sign + strconv.FormatFloat(displayedMinutes, 'f', 1, 64) + " min"
 	}
-	hours := int(magnitude) / 60
-	remainder := int(math.Round(magnitude - float64(hours*60)))
-	return sign + strconv.Itoa(hours) + "h " + strconv.Itoa(remainder) + "m"
+	wholeMinutes := int(math.Round(displayedMinutes))
+	return sign + strconv.Itoa(wholeMinutes/60) + "h " + strconv.Itoa(wholeMinutes%60) + "m"
 }
 
 // durationLabelTimeRange is the x-axis domain the renderer uses. Placement has

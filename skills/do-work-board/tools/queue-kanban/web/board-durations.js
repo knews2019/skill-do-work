@@ -135,13 +135,19 @@
   // Durations are read as magnitudes, so a negative span reads as "−30 min"
   // rather than as a subtraction. Long spans switch to hours so the overflow
   // labels stay short.
+  //
+  // Rounding happens BEFORE the split into units and before the branch, so the
+  // remainder can never carry: rounding 119.5 min per-unit gave "1h 60m", and
+  // rounding 59.96 min inside the sub-hour branch gave "60.0 min". Both are the
+  // same bug — a value displayed at one precision but split at another.
   function formatDurationMinutes(minutes) {
     var sign = minutes < 0 ? "−" : "";
-    var magnitude = Math.abs(minutes);
-    if (magnitude < 60) {
-      return sign + magnitude.toFixed(1) + " min";
+    var displayedMinutes = Math.round(Math.abs(minutes) * 10) / 10;
+    if (displayedMinutes < 60) {
+      return sign + displayedMinutes.toFixed(1) + " min";
     }
-    return sign + Math.floor(magnitude / 60) + "h " + Math.round(magnitude % 60) + "m";
+    var wholeMinutes = Math.round(displayedMinutes);
+    return sign + Math.floor(wholeMinutes / 60) + "h " + (wholeMinutes % 60) + "m";
   }
 
   function formatDurationDayLabel(epochMs) {

@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.216.1 — Duration Labels Stop Showing "1h 60m" (2026-08-20)
+
+A span of 1h59m30s read as "1h 60m" on the board, because each unit was rounded on its own and the minutes had nowhere to carry. Same bug drew "1d 24h" and "60 min". Now the value is rounded first and the units are split off the rounded number.
+
+- `formatDurationMinutes` (Durations chart labels, hover text, tables) carries a rounded remainder into the hour
+- `timelineFormatSpanMinutes` (Timeline hover text, table, forecast sentence) carries into the hour and the day
+- Go's `formatDurationLabelMinutes` width model mirrors the new rounding order, so label placement is sized against the text actually drawn
+- Node behavior probes pin the exact strings for both renderers, and the width lock-step now samples the carry values
+
 ## 0.216.0 — Release Probes That Actually Run (2026-08-19)
 
 Three checks on the release ritual — version file against the newest changelog entry, versions going up, titles not reused — had been quietly off since the suite split into four packages. They run again. And in your own project, where they were never yours to hold, they now say "not applicable" instead of nagging you as skipped forever.

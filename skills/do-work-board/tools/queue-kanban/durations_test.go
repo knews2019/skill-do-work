@@ -926,3 +926,29 @@ func TestDurationLabelGeometryMatchesTheRenderer(t *testing.T) {
 		}
 	}
 }
+
+// A span whose remainder rounds up must carry into the next unit. Splitting the
+// magnitude into units before rounding printed "1h 60m" for 119.5 minutes — a
+// unit field holding a value the unit cannot hold. 1h59m30s is an ordinary REQ
+// duration, so this reached real labels; the width model was wrong by a
+// character on the same values, which is why the fix lands in both.
+func TestDurationLabelMinutesCarriesRoundedRemaindersIntoTheNextUnit(t *testing.T) {
+	for _, roundingCase := range []struct {
+		minutes float64
+		want    string
+		name    string
+	}{
+		{119.5, "2h 0m", "the remainder rounds to a full hour"},
+		{-119.5, "-2h 0m", "the same carry on a reversed span"},
+		{59.96, "1h 0m", "the sub-hour branch rounds up to the hour boundary"},
+		{119.4, "1h 59m", "just under the carry still splits normally"},
+		{60, "1h 0m", "exactly on the hour"},
+		{7.5, "7.5 min", "sub-hour keeps its decimal"},
+		{1439.5, "24h 0m", "a day boundary carries the same way"},
+	} {
+		if got := formatDurationLabelMinutes(roundingCase.minutes); got != roundingCase.want {
+			t.Errorf("%s: %.2f min formatted as %q, want %q",
+				roundingCase.name, roundingCase.minutes, got, roundingCase.want)
+		}
+	}
+}
