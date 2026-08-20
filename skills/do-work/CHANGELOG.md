@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.223.0 — Cross-Package Citations Are Checked by What They Are (2026-08-20)
+
+The citation check used to be bounded by punctuation: it only looked inside backticks, only at paths starting with `../`, and never inside a fenced block. Each fix closed one spelling and left the class open. Now the condition is the rule — a token is a citation when its first segment names a sibling package, however it is written.
+
+- Bare, unbackticked citations are checked like any other; three had been sitting in shipped text
+- A fenced block's payload stays exempt for its real reason (its text lands in another file), while the annotations beside it are checked — which surfaced nine wrong-depth citations inside one schema block
+- Paths rooted elsewhere (`<skill-root>/…`, `.claude/skills/…`) are recognized as not-from-here rather than reported as broken
+- The identifiers and failure message no longer say "backticked", so the marker is gone from the durable places too
+- New fixtures pin both the predicate and which tokens it ever sees; both were mutation-tested
+
 ## 0.222.6 — Template Date Placeholders Are Out of the Timestamp Rule (2026-08-20)
 
 The Timestamp rule's date-only paragraph left one question open: what governs a `Date: [today]` line inside a prompt template. Now it says — nothing does, and it says so by condition rather than by naming files.

@@ -17,7 +17,7 @@ repo_root = pathlib.Path(sys.argv[1]).resolve()
 manifest_path = repo_root / "suite/modules.tsv"
 repository_slug = "knews2019/skill-do-work"
 # The consumer project's queue root. Named here because the core package's directory
-# shares this name, and backticked_citation_messages keys its one documented
+# shares this name, and citation_messages keys its one documented
 # ambiguity on that collision.
 consumer_queue_directory = "do-work"
 
@@ -210,9 +210,13 @@ def escaped_reference_definition_end(markdown_text, line_start, line_end):
     return None
 
 
-def mask_block_code(markdown_text):
+def mask_block_code(markdown_text, masked_line_ranges=None):
     # Phase 1 of strip_markdown_code, shared with backticked_span_texts: mask fenced,
     # list-fenced, and indented code line-by-line, returning the character list.
+    # Callers that need to reach back inside a masked block — the fence split in
+    # fenced_annotation_texts — pass a list for masked_line_ranges and receive the
+    # (start, end) offsets of every line this masked, so the fence-tracking state
+    # machine stays in exactly one place.
     code_free_text = list(markdown_text)
     fence_character = None
     fence_length = 0
@@ -314,6 +318,8 @@ def mask_block_code(markdown_text):
 
         if line_is_code:
             mask_text_range(code_free_text, line_start, line_end)
+            if masked_line_ranges is not None:
+                masked_line_ranges.append((line_start, line_end))
         line_start = line_end
     return code_free_text
 
@@ -1180,44 +1186,116 @@ def resolve_installed_target(installed_path, modules):
     return None
 
 
-backticked_citation_lead = re.compile(r"^(?:\.\./)+")
+citation_lead = re.compile(r"^(?:\.\./)*")
+citation_shape = re.compile(r"(?:\.\./)*(?:[A-Za-z0-9._-]+/)+[A-Za-z0-9._-]*")
+fenced_annotation = re.compile(r"(?:#|<!--)(.*)$")
 
 
-def backticked_citation_messages(
+def citation_candidate_tokens(markdown_text):
+    # Every path-shaped token a reader of THIS file is expected to resolve from this
+    # file's own directory, as (offset, token) pairs indexing the raw text. The class
+    # is drawn by what a citation is, not by the punctuation around it (REQ-269), so
+    # this deliberately does not gate on backticks, on a leading ../, or on a fence:
+    #
+    #   - prose text, inline code spans, and HTML comment interiors all contribute.
+    #     A comment's interior is plain agent-facing text, so it contributes whole —
+    #     not only its backticked runs, which is what hid three bare citations.
+    #   - a fenced or indented block contributes its ANNOTATIONS but not its payload.
+    #     That is REQ-249's stated rationale applied as the condition instead of as
+    #     the fence character: the payload is content that lands in some other file,
+    #     while a `#` or `<!--` annotation beside it is documentation addressed to
+    #     the reader of this file, and its paths are citations from here.
+    masked_line_ranges = []
+    rendered_text = "".join(mask_block_code(markdown_text, masked_line_ranges))
+
+    scanned_upto = 0
+    for region_kind, region_start, region_end, marker_length in inline_code_regions(
+        rendered_text
+    ):
+        yield from citation_tokens_in(rendered_text, scanned_upto, region_start)
+        if region_kind == "comment":
+            yield from citation_tokens_in(rendered_text, region_start, region_end)
+        else:
+            content_start = region_start + marker_length
+            content_end = region_end - marker_length
+            yield from citation_tokens_in(rendered_text, content_start, content_end)
+        scanned_upto = region_end
+    yield from citation_tokens_in(rendered_text, scanned_upto, len(rendered_text))
+
+    for line_start, line_end in masked_line_ranges:
+        annotation_match = fenced_annotation.search(markdown_text, line_start, line_end)
+        if annotation_match is None:
+            continue
+        yield from citation_tokens_in(
+            markdown_text, annotation_match.start(1), annotation_match.end(1)
+        )
+
+
+def citation_tokens_in(text, region_start, region_end):
+    # The path-shaped prefix of each whitespace-delimited token in [start, end).
+    # Matching the shape beats stripping punctuation off the ends: it stops at the
+    # closing backtick, quote, bracket or possessive on its own, and it never eats
+    # the leading ../ that a strip of "." would.
+    for token_match in re.finditer(r"\S+", text[region_start:region_end]):
+        raw_token = token_match.group(0)
+        opening_punctuation = len(raw_token) - len(raw_token.lstrip("`*_([\"'"))
+        # Anchored, never a mid-token search: a path is a citation from HERE only when
+        # it starts the token. Anything preceding it is a different root the reader is
+        # told to resolve from instead — <skill-root>/, <suite-root>/, .claude/skills/ —
+        # and a mid-token match would report the tail of such a path as a broken
+        # relative citation it never was.
+        shape_match = citation_shape.match(raw_token, opening_punctuation)
+        if shape_match is None or not shape_match.group(0):
+            continue
+        yield (
+            region_start + token_match.start() + shape_match.start(),
+            shape_match.group(0),
+        )
+
+
+def citation_messages(
     span_text, source_directory, installed_directory, package_parent, modules, path_exists
 ):
-    # Backticked cross-package citations (REQ-249; prime-action-files.md →
-    # Cross-Referencing) must resolve as real relative paths from the citing file's
-    # own directory, in both topologies. A span is citation-shaped when its first
-    # whitespace token leads with ../ segments and then names a package directory —
-    # later tokens are invocation arguments, never part of the path. The skips are
-    # conditions: a templated token has no single on-disk meaning, and a token whose
-    # first post-lead segment names no package is not a package citation. One skip
-    # is a documented ambiguity rather than a resolution limit: the core package's
-    # directory name equals the consumer queue root, so a ../-led do-work/ tail
-    # naming no real package content reads as a consumer-state example path (the
-    # prime-lesson-link computation examples) and cannot be told apart from a
-    # citation to a deleted core file. Those spans are skipped; every other
-    # package's tail is unambiguous, so citing a deleted file there still fails.
-    # A tail or resolved target still carrying ../ segments after the lead strip
-    # is treated as unresolvable, never probed: no path leaves the repository root.
+    # A cross-package citation (REQ-249, REQ-269; prime-action-files.md ->
+    # Cross-Referencing) must resolve as a real relative path from the citing file's
+    # own directory, in both topologies. Citation-shaped means exactly one thing: the
+    # first path segment, after any ../ lead, names a package directory. The lead is
+    # optional because a citation is one whether or not it is spelled with ../ — the
+    # spelling was never the rule, and requiring it is what let three bare citations
+    # sit in shipped text through eight consecutive REQs in this area.
+    #
+    # The skips are conditions, not markers. A templated token has no single on-disk
+    # meaning. A token whose first post-lead segment names no package is not a package
+    # citation. And one documented ambiguity survives, narrowed to the single package
+    # it actually affects: the core package's directory name equals the consumer queue
+    # root, so a BARE do-work/... token is the consuming project's own state rather
+    # than a citation, and is skipped. The other three package names have no
+    # consumer-state meaning at all, so a bare token leading with one of them is
+    # unambiguously a citation. A ../-led do-work/ tail naming no real package content
+    # reads as a consumer-state example path (the prime-lesson-link computation
+    # examples) and cannot be told apart from a citation to a deleted core file; those
+    # are skipped too, while every other package's tail stays unambiguous, so citing a
+    # deleted file there still fails.
+    #
+    # A tail or resolved target still carrying ../ segments after the lead strip is
+    # treated as unresolvable, never probed: no path leaves the repository root.
     stripped_span = span_text.strip()
     if not stripped_span:
         return []
     token = stripped_span.split()[0]
-    lead_match = backticked_citation_lead.match(token)
+    lead_match = citation_lead.match(token)
     if lead_match is None or is_dynamic_target(token):
         return []
+    has_lead = lead_match.end() > 0
     tail_text = token[lead_match.end() :].split("#")[0]
     if not tail_text:
         return []
     tail_path = pathlib.PurePosixPath(tail_text)
     if tail_path.parts[0] not in {source_root.name for source_root, _ in modules}:
         return []
-    if (
-        tail_path.parts[0] == consumer_queue_directory
-        and ".." not in tail_path.parts
-        and not path_exists(package_parent / tail_path)
+    if tail_path.parts[0] == consumer_queue_directory and (
+        not has_lead
+        or (".." not in tail_path.parts and not path_exists(package_parent / tail_path))
     ):
         return []
     relative_target = pathlib.PurePosixPath(token.split("#")[0])
@@ -1235,7 +1313,7 @@ def backticked_citation_messages(
         missing_locations.append("installed")
     if missing_locations:
         return [
-            "backticked citation does not resolve in "
+            "cross-package citation does not resolve in "
             f"{' and '.join(missing_locations)} topology: {token}"
         ]
     return []
@@ -1264,7 +1342,48 @@ def run_backticked_span_fixtures():
         raise SystemExit(1)
 
 
-def run_backticked_citation_fixtures():
+def run_citation_surface_fixtures():
+    # REQ-269. The predicate above decides whether a token is a citation; this decides
+    # which tokens it ever sees. Both halves were marker-bounded, so both are pinned.
+    surface_document = (
+        "Prose cites do-work-toolbox/actions/inspect.md bare.\n"
+        "<!-- A comment cites do-work-knowledge/actions/bkb.md bare. -->\n"
+        "A rooted path <skill-root>/../do-work/scripts/tool.sh is not from here.\n"
+        "An installed path .claude/skills/do-work/SKILL.md is not from here either.\n"
+        "```yaml\n"
+        "field: value   # annotated with ../do-work-board/actions/board.md\n"
+        "payload: ../do-work/actions/work.md\n"
+        "```\n"
+    )
+    surfaced = {token for _, token in citation_candidate_tokens(surface_document)}
+    expected_present = {
+        # bare, unbackticked, in prose — the backtick was never the rule
+        "do-work-toolbox/actions/inspect.md",
+        # bare inside an HTML comment — comment interiors are agent-facing plain text,
+        # and scanning only their backticked runs is what hid three live citations
+        "do-work-knowledge/actions/bkb.md",
+        # an annotation beside a fenced payload documents THIS file, so its paths are
+        # citations from here — REQ-249's rationale applied instead of its fence
+        "../do-work-board/actions/board.md",
+    }
+    expected_absent = {
+        # rooted at a placeholder, so the reader resolves it from there, not from here
+        "../do-work/scripts/tool.sh",
+        # the fenced payload itself lands in another file — this is the half of
+        # REQ-249's exemption that survives, kept for its reason rather than its fence
+        "../do-work/actions/work.md",
+    }
+    missing = sorted(expected_present - surfaced)
+    leaked = sorted(token for token in expected_absent if token in surfaced)
+    if missing or leaked:
+        fail(
+            f"citation surface fixtures missed {missing!r} and leaked {leaked!r} "
+            f"(surfaced {sorted(surfaced)!r})"
+        )
+        raise SystemExit(1)
+
+
+def run_citation_fixtures():
     # The live corpus is all-correct after the REQ-249 sweep, so without these the
     # failure branch would never execute anywhere.
     fixture_modules = [
@@ -1302,6 +1421,30 @@ def run_backticked_citation_fixtures():
             True,
         ),
         (
+            # REQ-269. The lead is not the rule: a bare token whose first segment names
+            # a non-core package is a citation, and it resolves from this file's own
+            # directory like any other. Three of these sat in shipped text because the
+            # predicate required a ../ that a citation never needed.
+            "bare non-core citation must fail",
+            "do-work-board/actions/board.md",
+            True,
+        ),
+        (
+            # The one ambiguity that survives, and the reason it is narrowed to the
+            # core package alone: do-work/ is also the consumer's queue root, so a bare
+            # do-work/ token is that project's own state and must never be probed.
+            "bare consumer-state do-work path is not a citation",
+            "do-work/queue/REQ-042-auth-fix.md",
+            False,
+        ),
+        (
+            # A ../-led core citation is unchanged by the lead becoming optional: it
+            # was checked before REQ-269 and is checked the same way after.
+            "core citation with a lead still resolves",
+            "../../do-work/actions/work.md",
+            False,
+        ),
+        (
             # Interior ../ segments survive the lead strip, so an escaping tail could
             # both probe the filesystem above the repository root and be silently
             # absorbed by the consumer-queue skip. It must fail as a citation instead.
@@ -1311,7 +1454,7 @@ def run_backticked_citation_fixtures():
         ),
     ]
     for fixture_name, fixture_span, expect_failure in fixture_cases:
-        fixture_messages = backticked_citation_messages(
+        fixture_messages = citation_messages(
             fixture_span,
             pathlib.PurePosixPath("skills/do-work-board/actions"),
             pathlib.PurePosixPath(".claude/skills/do-work-board/actions"),
@@ -1321,7 +1464,7 @@ def run_backticked_citation_fixtures():
         )
         if bool(fixture_messages) != expect_failure:
             fail(
-                f"backticked citation fixture {fixture_name!r} produced "
+                f"citation fixture {fixture_name!r} produced "
                 f"{fixture_messages!r}"
             )
             raise SystemExit(1)
@@ -1369,7 +1512,8 @@ run_parser_fixtures()
 run_anchor_slug_fixtures()
 run_anchor_topology_fixtures()
 run_backticked_span_fixtures()
-run_backticked_citation_fixtures()
+run_citation_surface_fixtures()
+run_citation_fixtures()
 modules = read_manifest()
 tracked_paths = {
     os.fsdecode(path_bytes)
@@ -1482,8 +1626,8 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
             fail(f"{markdown_path}:{line_number}: {anchor_message}: {target}")
             broken_references += 1
 
-    for span_offset, span_content in backticked_span_texts(raw_markdown_text):
-        for citation_message in backticked_citation_messages(
+    for span_offset, span_content in citation_candidate_tokens(raw_markdown_text):
+        for citation_message in citation_messages(
             span_content,
             markdown_path.parent,
             installed_file.parent,
