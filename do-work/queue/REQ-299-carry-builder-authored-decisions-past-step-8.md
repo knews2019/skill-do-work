@@ -1,8 +1,9 @@
 ---
 id: REQ-299
 title: "[impact-rule-change] Review fix: carry builder-authored sections past Step 8, starting with ## Decisions"
-status: pending-answers
+status: pending
 created_at: 2026-08-19T20:03:19Z
+status_changed_at: 2026-08-20T08:22:51Z
 user_request: UR-055
 addendum_to: REQ-270
 domain: general
@@ -19,7 +20,7 @@ write_set:
 - skills/do-work/actions/work.md
 - skills/do-work/actions/work-reference.md
 - skills/do-work/actions/review-work.md
-- _dev/tests/contract-regression.sh
+- _dev/tests/contract-regressions.sh
 ---
 
 # Review Fix: Carry Builder-Authored Sections Past Step 8, Starting with `## Decisions`
@@ -84,6 +85,9 @@ Created `pending-answers` per the generation-≥2 cascade depth stop: REQ-270 ca
   that may not write the main tree.
 - The Decision Brief and review-work's traceability check distinguish "no section anywhere"
   from "the builder recorded nothing", and say which.
+- **Every change holds in a consumer install**, where the suite is vendored under
+  `.claude/skills/` and only `do-work/` is at the project root — see **Consumer-Install
+  Constraint** below. Proven against a consumer-shaped fixture, not by reading.
 - `bash _dev/tests/maintainer-verify.sh` exits 0.
 
 ## Red-Green Proof
@@ -101,13 +105,17 @@ Ratchet (Step 6.5)**.
 
 ## Open Questions
 
-- [ ] REQ-270 made Step 8 read a worktree builder's `## Discovered Tasks` from its hand-back
+- [x] REQ-270 made Step 8 read a worktree builder's `## Discovered Tasks` from its hand-back
   when the REQ file cannot carry it. Its review found the same gap for `## Decisions` — the
   numbered record of the judgment calls a builder made — which is read by the code review and
   by the end-of-run report you see, both outside Step 8, so under parallel building those
   decisions silently never reach you. Closing it means moving where that rule lives so
   readers outside Step 8 inherit it, and adding a check that every section the builder is
   told to write is one the hand-back is told to carry. Should I process this as a new task?
+  → **Yes, add to queue — the full scope**, with one added constraint: it must work from the
+  perspective of the installed skill in another repo, not only in this maintainer checkout.
+  See **Consumer-Install Constraint** below, which the answer added to the Requirements.
+
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
 
@@ -116,3 +124,35 @@ Ratchet (Step 6.5)**.
   drew the boundary at Step 8, and widening it touches the review action and the hand-back
   format you read at the end of every run. It is also only worth paying for if you intend to
   keep using worktree fan-out; in a purely serial run nothing here ever fires.
+
+**Answered [2026-08-20]:** User approved via `do-work clarify` at full scope, after asking
+how the fix would work and being shown the two reader sites verbatim. The user added the
+consumer-install constraint in the same answer; it is a Requirement, not a nice-to-have.
+
+## Consumer-Install Constraint (added by the user at clarify, 2026-08-20)
+
+**Everything this REQ changes must hold in a consumer install, where the suite is vendored
+under `.claude/skills/` and only `do-work/` sits at the project root — not just in this
+maintainer checkout, where the two coincide.** The user asked for this explicitly. It is the
+same class of defect REQ-282 shipped a fix for the day before: a path that resolves in the
+maintainer layout and silently resolves to nothing in a consumer's.
+
+Concretely, before this REQ is done:
+
+- **The hand-back path must resolve for an installed skill.** The rule points a reader at
+  `do-work/runs/work-<stamp>/REQ-NNN-handback.md`. That is relative to the **project root**,
+  where `do-work/` lives in both layouts, so it should hold — **verify it rather than assume
+  it**, and state in the rule which root the path is relative to, since a builder resolving
+  it against the vendored skill directory finds nothing.
+- **No shipped instruction may cite a maintainer-only path.** The property check lives in
+  `_dev/tests/`, which is export-ignored and never installed; the *rule* it enforces ships.
+  Nothing in `work.md`, `work-reference.md`, or `review-work.md` may reference `_dev/`, the
+  check, or this repo's layout. `_dev/tests/shipped-package-reference-contract.sh` already
+  enforces that class — make sure it still passes and that it actually covers the new text.
+- **Cross-package citations stay resolvable from the citing file's own directory.** The
+  three touched action files are all in the core package, so no `../` hop should be needed;
+  if one appears, it must be correct at the installed depth, not the repo depth.
+- **Verification is an execution, not a reading.** Build a consumer-shaped fixture — suite
+  vendored under `.claude/skills/`, `do-work/` at the root — and confirm the instructions a
+  builder and an orchestrator would follow resolve there. REQ-282's review used exactly this
+  fixture shape and it is cheap to rebuild.
