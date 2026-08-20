@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.216.8 — The Timestamp-Layout Guard Can Fail Again (2026-08-20)
+
+A lock-in is supposed to force a decision to be re-made when the ground under it shifts. This one
+matched two known spellings of a date layout, so adding a third changed the board's parser and the
+guard stayed green — it read as coverage while being unable to fail.
+
+- The guard now reads every element of `parseTimestamp`'s layout slice by position instead of matching spellings it already knew about. Adding `time.RFC3339Nano`, `time.DateTime`, `time.RFC1123`, or any bare literal now fires it. All five were silent before and all five fire now.
+- It also refuses to pass when it extracts nothing. A structural read has a new failure mode — rename the function and it finds no layouts, compares empty to empty, and passes — so an explicit count assertion closes it.
+- The portability half of the original report was already fixed: the extraction uses POSIX ERE, not GNU alternation, so it behaves the same on macOS. Verified, not re-fixed.
+- No new case. The case that existed could not fail; now it can.
+
 ## 0.216.7 — Two Holes in the New Qualification Gates (2026-08-20)
 
 An automated review of the previous two releases found two ways the sharpened debug-artifact gate could
