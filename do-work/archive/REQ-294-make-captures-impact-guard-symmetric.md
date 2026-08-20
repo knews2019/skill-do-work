@@ -3,7 +3,7 @@ id: REQ-294
 title: "Make capture's impact guard symmetric so the field is judged rather than defaulted"
 status: completed
 completed_at: 2026-08-20T13:28:52Z
-commit:
+commit: b44e9df
 created_at: 2026-08-19T15:48:05Z
 user_request: UR-060
 addendum_to: REQ-289

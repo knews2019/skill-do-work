@@ -3,7 +3,7 @@ id: REQ-297
 title: "Report skipped-negligible REQs in targeted mode too"
 status: completed
 completed_at: 2026-08-20T13:28:52Z
-commit:
+commit: b44e9df
 created_at: 2026-08-19T16:35:00Z
 user_request: UR-060
 addendum_to: REQ-290
