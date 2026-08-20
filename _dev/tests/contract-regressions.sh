@@ -3597,9 +3597,21 @@ review_generated_field_count="$(
 )"
 review_generated_template_count=0
 
-while IFS=$'\t' read -r producer_file producer_line has_proof_shape has_named_red has_matching_green has_package_safe_citation; do
+while IFS=$'\t' read -r producer_file producer_line has_proof_shape has_named_red has_matching_green has_package_safe_citation has_pau_block; do
   producer_relative_path="${producer_file#"$repo_root/"}"
   review_generated_template_count=$((review_generated_template_count + 1))
+
+  # REQ-264: every template that mints a buildable REQ must emit the P-A-U block. Both of
+  # these produce `status: pending` work, and qualify.sh's Check 4 is DISARMED — not passed
+  # — on a REQ that carries no such section, because each of its FAIL branches keys on the
+  # box's state and a missing box satisfies all of them by absence. qualify now WARNs, and
+  # this is the other half: stop minting the REQs that trip it. Six queued REQs were
+  # created without the block before this assertion existed.
+  if [ "$has_pau_block" -ne 1 ]; then
+    printf 'FAIL: %s:%s review_generated template must emit the AI Execution State (P-A-U Loop) block with all three boxes; without it qualify.sh Check 4 is disarmed on every REQ it mints (REQ-264).\n' \
+      "$producer_relative_path" "$producer_line" >&2
+    fail_count=$((fail_count + 1))
+  fi
 
   if [ "$has_proof_shape" -ne 1 ]; then
     printf 'FAIL: %s:%s review_generated template must emit the canonical four-field Red-Green Proof shape.\n' \
@@ -3647,7 +3659,12 @@ done < <(
           } else {
             has_package_safe_citation = fence_block ~ /`\.\.\/do-work\/actions\/work-reference\.md`.*Finding-Closure Ratchet/
           }
-          printf "%s\t%d\t%d\t%d\t%d\t%d\n", FILENAME, fence_start, has_proof_shape, has_named_red, has_matching_green, has_package_safe_citation
+          has_pau_block = \
+            fence_block ~ /## AI Execution State \(P-A-U Loop\)/ \
+            && fence_block ~ /\*\*\[PLAN\]:\*\*/ \
+            && fence_block ~ /\*\*\[APPLY\]:\*\*/ \
+            && fence_block ~ /\*\*\[UNIFY\]:\*\*/
+          printf "%s\t%d\t%d\t%d\t%d\t%d\t%d\n", FILENAME, fence_start, has_proof_shape, has_named_red, has_matching_green, has_package_safe_citation, has_pau_block
         }
         inside_fence = 0
         fence_block = ""

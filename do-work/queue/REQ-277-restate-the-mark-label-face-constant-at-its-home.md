@@ -3,7 +3,7 @@ id: REQ-277
 title: State the mark-label face constant's real scope at its canonical home
 status: pending
 created_at: 2026-08-18T23:53:40Z
-status_changed_at: 2026-08-18T23:53:40Z
+status_changed_at: 2026-08-20T13:21:13Z
 user_request: UR-051
 addendum_to: REQ-265
 domain: general
@@ -14,7 +14,7 @@ effort_estimate: trivial
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: false
 suggested_spec: bug-fix
-depends_on: []
+depends_on: [REQ-292]
 maintenance: true
 write_set:
 - skills/do-work-board/tools/queue-kanban/generate_test.go
@@ -55,3 +55,13 @@ That is the restatement half of the very consolidation REQ-265 performed, and it
 REQ-265's independent review, Important finding 2 plus a Minor (gate: trivial each, so they fold into one sweep rather than earning separate REQs).
 
 Worth knowing: `TestDurationsMeasuredConstantsNameTheirChromiumBuild` enforces that each measured constant names its build, and its vacuity guard is `count == 0` — so it survived REQ-265's deletion without hollowing out. Nothing, however, checks that a constant's stated *scope* matches its readers. That gap is why this REQ exists.
+
+REQ-292 may delete the subject of this REQ entirely. Re-read this REQ against the post-292
+tree before starting it; closing as no-longer-applicable is the expected outcome.
+
+**Cancelled and restored (2026-08-20).** This REQ was cancelled as superseded by REQ-292
+earlier in the same session, then restored at the user's direction because REQ-292 has not
+built yet. The `## Cancelled` section was removed on restore rather than left standing over a
+`pending` REQ, which would have been a contradiction; the supersession reasoning it carried is
+preserved in the Context line above and in the `depends_on: [REQ-292]` gate. Closing this REQ
+as no-longer-applicable after REQ-292 lands remains the expected outcome.

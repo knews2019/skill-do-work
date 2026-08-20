@@ -79,6 +79,14 @@ the cost the solutions report priced.
   Deleting one without a replacement is how the defect that started UR-051 comes back. A
   property that genuinely no longer exists — the width-model bounds, for instance, once there
   is no width model — is recorded as deliberately dropped, in the commit and in this file.
+- **Any browser-measured number that survives the move names the build it was measured on.**
+  Folded in from REQ-266, cancelled as superseded on 2026-08-20: that REQ asked for build
+  provenance beside `DURATIONS_LABEL_ROW_HEIGHT` and `DURATIONS_LABEL_TEXT_ASCENT` in
+  `web/board-durations.js`, two numbers this REQ deletes. The rule outlives the numbers —
+  measuring at runtime is meant to leave no hardcoded face behind, so if one does survive,
+  it carries its build exactly as REQ-252 requires on the Go side, and the mechanism that
+  keeps that true (a JS-side check or a stated review convention) is recorded either way.
+  If none survives, say so; that is the requirement met, not skipped.
 - **The browser probes assert what a reader would see**, not what the code computed: no two
   drawn labels overlap; labels went to the longest spans; both rows fill when spans cluster;
   the remainder count equals the number actually not drawn; the last row clears the Panel B

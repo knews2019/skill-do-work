@@ -234,9 +234,37 @@ done
 # this script's, so pinning only the refusing side would let a widened board grow
 # the gap silently. A new layout here means the offset/fractional decision (and
 # the header paragraph stating it) gets re-made, not inherited.
-board_timestamp_layouts="$(awk '/^func parseTimestamp\(/, /^}/' \
-  "$repo_root/skills/do-work-board/tools/queue-kanban/model.go" \
-  | sed -n -E 's/^[[:space:]]*(time\.RFC3339|"2006[^"]*"),$/\1/p' | tr '\n' ' ')"
+# The extraction keys on the CONDITION — every element line inside parseTimestamp's layout
+# slice, whatever its spelling — never on an enumeration of the spellings that happen to be
+# there today (REQ-271; _dev/primes/prime-shell-commands.md § Closed Enumerations Go Stale).
+# The predecessor matched only `time.RFC3339` or a `"2006…"`-prefixed literal, so REQ-257's
+# own review added `time.RFC3339Nano` and `time.DateTime` to the slice and the suite stayed
+# green — blind in its headline scenario, since RFC3339Nano is exactly what someone reaching
+# for fractional-second support would add. A guard that cannot fail is read as coverage.
+# Structural, so a new spelling cannot hide: enter the function, enter the `[]string{`
+# composite literal, take every non-empty line until the closing brace, and strip only
+# indentation, a trailing line comment, and the trailing comma. POSIX awk throughout —
+# `[ \t]` rather than a character class, and no GNU-only regex construct anywhere, because
+# the predecessor's `\|` BRE alternation matched nothing under BSD/macOS sed and turned the
+# whole maintainer gate red there (REQ-216's macOS lesson, one file over).
+board_timestamp_layout_lines="$(awk '
+  /^func parseTimestamp\(/ { inside_function = 1 }
+  inside_function && /\[\]string/ { inside_layout_slice = 1; next }
+  inside_layout_slice && /^[ \t]*\}/ { exit }
+  inside_layout_slice {
+    layout_element = $0
+    sub(/[ \t]*\/\/.*$/, "", layout_element)
+    sub(/^[ \t]+/, "", layout_element)
+    sub(/,[ \t]*$/, "", layout_element)
+    if (layout_element != "") print layout_element
+  }
+' "$repo_root/skills/do-work-board/tools/queue-kanban/model.go")"
+board_timestamp_layout_count="$(printf '%s\n' "$board_timestamp_layout_lines" | grep -c . || true)"
+# Anti-vacuity: an extraction that finds nothing would compare equal to nothing and could
+# never fail. Assert it found layouts before trusting what it says about them.
+[ "${board_timestamp_layout_count:-0}" -gt 0 ] \
+  || fail_case "repair-req-timestamps read-side-layout case extracted ZERO layouts from parseTimestamp — the slice moved or was restructured, so this guard is blind rather than passing; fix the extraction before trusting a green run"
+board_timestamp_layouts="$(printf '%s\n' "$board_timestamp_layout_lines" | tr '\n' ' ')"
 [ "$board_timestamp_layouts" = 'time.RFC3339 "2006-01-02T15:04:05" "2006-01-02 15:04:05" "2006-01-02" ' ] \
   || fail_case "repair-req-timestamps read-side-layout case: the board's parseTimestamp layouts are now [$board_timestamp_layouts] — re-decide what repair-req-timestamps.sh refuses before widening the read side"
 
