@@ -28,6 +28,8 @@ Hash confirmed with `record-commit-hash.sh --verify`; `maintainer-verify.sh` exi
 - **REQ-301** — `tools/checks/qualify.sh` has no rename/copy detection, so every code-relocation REQ gets a false `[UNIFY]` FAIL on pre-existing debug markers inside the moved text. REQ-258 hit it on four fixture `TODO` strings. The risk is habituation: a gate that cries wolf on a whole category of change trains builders to wave it away.
 - **REQ-302** — `effort_estimate: trivial` produced a 5-minute P50 for REQ-258's 19-file restructure. One data point; the REQ asks the question before proposing a fix.
 
+**Captured by the parallel session, after this checkpoint's REQ counts were taken:** REQ-303, REQ-304 and REQ-305 (UR-062, the 2026-08-20 consumer review), plus an addendum folded into REQ-263. Committed at `2314327`. They are included in the 29.
+
 **Queued at `pending` and worth sequencing deliberately:**
 - **REQ-300** — the text that still plans around the pre-split shell suite: `RESTART-PROMPT.md:33` and the `write_set` of REQ-263, REQ-264, REQ-271. **Run it before those three**, or their board display and any wave planning read the dissolved monolith.
 
@@ -38,3 +40,10 @@ Hash confirmed with `record-commit-hash.sh --verify`; `maintainer-verify.sh` exi
 **The split surfaced two defects that were invisible while it was one file:** `generate-report-image`'s cases were interleaved around its `-batch` sibling's, `repair-req-timestamps`' around `audit-archive-timestamps`', and a `publish-portfolio-summary` fixture setup block sat under the `install-memory-hooks` header entirely. None of that was findable by reading 1882 lines top to bottom.
 
 **Estimator ran badly under: 5 → 51 minutes.** Not an estimator fault — `effort_estimate: trivial` short-circuits signal extraction by design, and the field was misjudged at capture. That is REQ-302. One row appended to `do-work/calibration-log.tsv`; do not recalibrate off it.
+
+## Handoff
+
+`do-work/RESTART-PROMPT.md` is current as of this checkpoint. Four `depends_on` gates were added
+to encode the collision constraints this session learned: REQ-263 and REQ-271 on REQ-300, REQ-264
+on REQ-300 and REQ-263, REQ-301 on REQ-263 and REQ-264. The reasons are in the restart prompt's
+ordering table; the gates themselves are the binding form.

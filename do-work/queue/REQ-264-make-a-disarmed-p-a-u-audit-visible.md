@@ -12,7 +12,7 @@ effort_estimate: trivial
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: true
 suggested_spec: bug-fix
-depends_on: []
+depends_on: [REQ-300, REQ-263]
 maintenance: true
 write_set:
 - skills/do-work/tools/checks/qualify.sh

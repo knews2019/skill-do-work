@@ -1,69 +1,66 @@
 ```
-do-work run --fan-out 3
+do-work clarify
+do-work run
 
 This command is sufficient; everything below it is context.
+
+Run `do-work clarify` first: two REQs sit at pending-answers and cannot be selected until you
+answer them. Then `do-work run` drains the queue in dependency order.
+
+Serial is the recommendation, not a limitation. 29 REQs are pending and only four have
+verified write-set relationships (encoded as depends_on gates). The other 25 have not been
+checked against each other, so `--fan-out` would be dispatching on unverified disjointness.
+If you want concurrency, `do-work run --fan-out 2` is the honest ceiling until someone
+audits the remaining write sets.
 ```
 
 ---
 
-# Reference
+## Reference
 
-## State at handoff
+### Session state
 
-| Fact | Value |
-|---|---|
-| Version | 0.212.25 (`VERSION`, `skills/do-work/VERSION`, `skills/do-work/actions/version.md` agree) |
-| `maintainer-verify.sh` | exit 0 |
-| Working tree | clean; `git worktree list` shows only the main tree; no `worktree-agent-*` branches |
-| `do-work/working/` | empty of REQs (`baseline.json` only, locally excluded) |
-| In-flight REQs | none — `CHECKPOINT.md`'s In Progress section is empty |
-| Queue | **16**: 12 `pending`, 4 `pending-answers`, 0 `blocked` |
-| Branch / PR | `claude/restart-prompt-handoff-nprlgd` → PR #145, open, everything pushed |
+- **Checkout:** `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2`, branch `main`, tree **clean**.
+- **Worktrees:** none. No `worktree-agent-*` branches exist, merged or unmerged. Nothing to remove.
+- **`do-work/working/`:** empty. No claim in flight, no foreign claim, `## In Progress (interrupted)` is empty.
+- **Version:** 0.216.2. `bash _dev/tests/maintainer-verify.sh` exits 0 at `2314327`.
 
-## Environment — read this first
+### What this session finished
 
-This checkout is a Linux container. A fresh one needs the same three repairs:
+**REQ-258 — Split the prescribed shell behavior suite per script.** Route B, review 94%, Acceptance Pass. Merged? Not applicable — serial mode, no worktree, no merge range. Committed at **`1cc1836`**, hash recorded at `35fb513` and confirmed with `record-commit-hash.sh --verify`. Archived at `do-work/archive/REQ-258-split-the-shell-behavior-suite-per-script.md`. Nothing remains on it.
 
-- **Go 1.26.1, ShellCheck 0.11.0 and `just` installed by hand.** The gate pins exact versions of the first two and fails closed without them. `apt-get install shellcheck` gives 0.9.0 — too old; fetch the release binary. Go 1.26.1 goes at `/usr/local/go`.
-- **The gate now also runs `gofmt`** (added by REQ-260, 0.212.21), resolved from `$(go env GOROOT)/bin/gofmt` rather than PATH. A Go install whose GOROOT lacks `bin/gofmt` fails the gate with a named path.
-- **Never run a bare `go build`** in `skills/do-work-board/tools/queue-kanban/` — it drops an 11 MB gitignored binary into the source tree. Build to scratch with `-o`.
+`_dev/tests/prescribed-shell-scripts-behavior.sh` keeps its path and exit-status contract but is now a 35-line runner. The 76 cases live one file per script in `_dev/tests/prescribed-shell-cases/`, over `_dev/tests/prescribed-shell-harness.sh`. **A REQ that adds a case now writes that script's case file, not the runner.**
 
-## The queue, and how it schedules
+### Heads-up list — things that will bite in the first ten minutes
 
-**One file is the whole bottleneck.** `_dev/tests/prescribed-shell-scripts-behavior.sh` is written by **REQ-258, 263, 264, 268 and 271** — at most one per wave. That forces about four more waves whatever the builder count. **REQ-258 restructures that file wholesale**, so run it alone or first; anything else sharing the file will land its cases in a file REQ-258 has dissolved.
+1. **A second session was writing this repo during this one, and may still be.** Four commits landed from outside this session: `031c546` (clarify), `1311300` (duration rounding, 0.216.0 → 0.216.1), and `2314327` (UR-062 capture: REQ-303, REQ-304, REQ-305, plus an addendum to REQ-263). None collided with REQ-258 — verified with `git show --stat` on each. **Whoever resumes should confirm no other session is mid-write before running,** because this checkout has no lock and none is coming.
+2. **`RESTART-PROMPT.md`'s previous version was wrong about the bottleneck, and REQ-300 exists to fix that class.** The old text said `prescribed-shell-scripts-behavior.sh` is written by five REQs at "at most one per wave." That file is no longer written by case-adding REQs. This file replaces that text; REQ-300 sweeps the rest.
+3. **`tools/checks/qualify.sh` will FAIL any REQ that relocates code.** It reads `git diff` with no `-M`/`-C`, so a moved line is an added line and every pre-existing `TODO`/`console.log` inside moved text trips the debug-artifact gate. REQ-258 hit it and overrode it with evidence (`git show HEAD:<file> | grep` proving the lines pre-exist). **Do not un-check `[UNIFY]` when this happens** — prove the lines pre-exist and record the override. REQ-301 is the fix, awaiting your approval.
+4. **Six reservation markers exist for REQ-300 through REQ-305** under `do-work/.req-reservations/`, all committed and all matched by real REQ files. Nothing to reap.
 
-Other write-set families, all mutually disjoint:
-- **qualify.sh** — REQ-263, REQ-264 (also suite writers; serialise against the above)
-- **Board / Durations** — REQ-266, REQ-273, REQ-277, REQ-278
-- **Docs, actions, citations** — REQ-262, REQ-269, REQ-270, REQ-272, REQ-274
+### Ordering, and where it is encoded
 
-A safe next wave: **REQ-258** (alone in the suite family), **REQ-266**, **REQ-262**.
+Every constraint below is a `depends_on` field, not prose. `do-work run` honors them with no reading.
 
-## Four REQs need a human first
+| REQ | `depends_on` | Why |
+|---|---|---|
+| REQ-263 | `[REQ-300]` | REQ-300 rewrites REQ-263's own frontmatter; a builder must not hold it while that happens |
+| REQ-271 | `[REQ-300]` | same |
+| REQ-264 | `[REQ-300, REQ-263]` | same, **plus** REQ-263 and REQ-264 both write `skills/do-work/tools/checks/qualify.sh` and both will write `_dev/tests/prescribed-shell-cases/qualify.sh` — they must not run concurrently |
+| REQ-301 | `[REQ-263, REQ-264]` | same two files again; the gate is pre-set so it holds whenever you approve it out of `pending-answers` |
 
-Run `do-work clarify` before or during the next run — all four are `pending-answers`:
+Pre-existing gates, unchanged: REQ-281 → REQ-280, REQ-285 → REQ-284, REQ-292 → REQ-291.
 
-- **REQ-274** — "the SessionStart hook exits nonzero" is **false** (`hooks/session-start.sh:59` runs the repairer under `|| true`). Real consequence: a FAILED line in every session banner, forever, no self-heal. The false mechanism is still stated where it carries REQ-255 D-04's rationale.
-- **REQ-275** — the repairer repairs any `_at` field by suffix; the board's `detectFutureTimestampFields` checks six hand-kept names. Latent until the schema grows an `_at` field.
-- **REQ-276** — `record-commit-hash.sh` guards its *writer* against an unterminated fence but not its *readers*, on the last check every REQ passes through.
-- **REQ-278** — nothing bounds the Durations label face off Linux. Scoped to measuring, not geometry surgery.
+**Not gated on purpose:** nothing forces REQ-300 to run before its own instance list goes stale. REQ-263/264/271's `write_set` values self-heal at Step 5.5, which overwrites the field from the fresh Scope declaration — so those three instances are cosmetic. REQ-300's durable value is this file and the eleven Coverage rows in `decisions/audits/2026-08-11-defensive-surface.md`.
 
-## What the last session learned, in one paragraph
+### Awaiting your answer (`do-work clarify`)
 
-Six REQs shipped and **ten** new ones were created — every one from a review finding a real defect. The queue does not converge; stop when the findings stop being worth fixing, not when the list empties. Three separate corrections landed on claims that were *right in conclusion and false in reasoning*: two builders argued correct decisions from provably false premises, and both were caught only because the reviewer checked the argument rather than the verdict. Twice the limiting factor was **measurement, not the fix** — a parity fuzz that compares only whether a file was mutated cannot see a shape that refuses, and a fuzz's blind spots are exactly the axes it holds constant.
+- **REQ-301 — let qualify tell a moved line from an added one.** The heads-up above is the case for it. The risk if declined is habituation: a gate that cries wolf on a whole category of change trains builders to wave it away, and that gate is the one that catches real leftover instrumentation.
+- **REQ-302 — check whether capture under-sizes reorganization REQs.** `effort_estimate: trivial` produced a 5-minute P50 for REQ-258's 19-file restructure. One data point, so the REQ asks the question before proposing a fix. Cheap to decline.
 
-## Standing rules that bit last time
+### Parallelism analysis
 
-- Read the clock with `date -u +%Y-%m-%dT%H:%M:%SZ` at the moment you stamp anything. Never carry one forward.
-- Exit code zero is the only proof a check passed. Never pipe the gate through `tail`.
-- **Check a handed-back integration seam before applying it.** A seam is the one part of a worktree REQ the builder cannot test, and the integrator is its only reader. One shipped a false safety claim last session and was caught by review, not by the integrator who applied it.
-- **Add the P-A-U block at claim time if the REQ lacks one.** Review-generated REQs often have none, and `qualify.sh`'s box audit then passes vacuously with the gate silently half-off (REQ-264 exists for this).
-- **Transcribe the hand-back's Discovered Tasks into the REQ before Step 8.** A worktree builder cannot write the REQ file, so Step 8 finds nothing and drops them silently (REQ-270 exists for this).
-- For anything that changes what appears on screen, generate a board and look at it.
-
-## Where the evidence lives
-
-- `do-work/CHECKPOINT.md` — the full session record: six shipped REQs with hashes and scores, corrections made, decisions with reach.
-- `do-work/runs/work-2026-08-18-{211613,230100}/` — two run directories: briefs, hand-backs with red-green evidence, orchestrator manifests.
-- `do-work/archive/REQ-2{57,59,60,61,65,67}-*.md` — each archived REQ carries its P-A-U trail, decisions, independent review, and lessons.
-- `do-work/calibration-log.tsv` — six rows appended. **Do not recalibrate from them**: the spans measure serial integration queuing, not work.
+- **Safe to run concurrently:** unknown for 25 of the 29 pending REQs. Their write sets have not been checked against each other, and `write_set` is display-only — it gates nothing and the merge, not the field, is what proves non-interference.
+- **Must not run concurrently:** REQ-263 with REQ-264 (and REQ-301 with either) — shared `qualify.sh` files. REQ-300 with REQ-263/264/271 — REQ-300 edits their files. All four encoded above.
+- **Critical path:** REQ-300 → REQ-263 → REQ-264 → REQ-301, four deep. Everything else is a leaf or a two-deep pair. Starting there is starting on the longest chain.
+- **Nothing held back.** No REQ is `blocked`, and no `blocked_check` probe exists in the queue.

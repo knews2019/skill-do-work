@@ -11,7 +11,7 @@ impact: impact-user-visible
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: false
 suggested_spec:
-depends_on: []
+depends_on: [REQ-263, REQ-264]
 maintenance: false
 write_set:
 - skills/do-work/tools/checks/qualify.sh

@@ -12,7 +12,7 @@ effort_estimate: normal
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: true
 suggested_spec: bug-fix
-depends_on: []
+depends_on: [REQ-300]
 maintenance: true
 write_set:
 - _dev/tests/prescribed-shell-scripts-behavior.sh
