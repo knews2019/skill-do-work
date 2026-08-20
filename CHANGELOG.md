@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.223.1 — Correct What a Repairer Failure Actually Does (2026-08-20)
+
+The shell prime told you a timestamp-repairer failure makes the SessionStart hook exit nonzero. It doesn't — the hook wraps the repairer in `|| true` on purpose, so the failure lines reach your session banner and the hook still exits 0. The consequence is just as bad and the decisions resting on it still stand; only the mechanism was wrong.
+
+- Corrected REQ-255's lesson link in `_dev/primes/prime-shell-commands.md`, the one live surface still on the old framing
+- Swept eight sites for the claim in any spelling; the contract text in the repairer script had been right all along
+- Verified against the real hook rather than inherited from the report, which is the whole point of the fix
+
 ## 0.223.0 — Cross-Package Citations Are Checked by What They Are (2026-08-20)
 
 The citation check used to be bounded by punctuation: it only looked inside backticks, only at paths starting with `../`, and never inside a fenced block. Each fix closed one spelling and left the class open. Now the condition is the rule — a token is a citation when its first segment names a sibling package, however it is written.
