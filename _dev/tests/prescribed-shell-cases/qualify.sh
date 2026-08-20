@@ -323,4 +323,51 @@ printf '%s' "$qualify_renamed_output" | grep -q 'src/row_renderer_v2.py' \
 git -C "$qualify_repo" checkout -q -- . 2>/dev/null || true
 git -C "$qualify_repo" reset -q 2>/dev/null || true
 
+# qualify: the relocation test compares WHOLE LINES, not substrings. Replacing a long marker
+# with a short one that is a substring of it leaves a substring count unchanged on both
+# sides, so a brand-new marker read as relocated and the WARN even claimed its exact text
+# already existed. `git grep` has no -x, so the exactness comes from piping its fixed-string
+# prefilter through real `grep -c -x -F` (REQ-301 remediation, found by a PR review).
+printf '%s\n' 'def parse_total(raw_text):' '    # TODO remove the deprecated total parser' \
+  '    return raw_text' > "$qualify_repo/src/total_parser.py"
+fixture_repo_commit_all "$qualify_repo" total-parser
+printf '%s\n' '## Implementation Summary' \
+  '- `src/total_parser.py` (modified) — shorten the note' \
+  '' '## AI Execution State (P-A-U Loop)' \
+  '- [x] **[PLAN]:** done' '- [x] **[APPLY]:** done' '- [x] **[UNIFY]:** done' \
+  > "$qualify_repo/do-work/REQ-973-substring-not-relocation.md"
+printf '%s\n' 'def parse_total(raw_text):' '    # TODO' '    return raw_text' \
+  > "$qualify_repo/src/total_parser.py"
+qualify_substring_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-973-substring-not-relocation.md 2>&1)" \
+  && fail_case 'qualify substring-not-relocation case excused a brand-new marker because its text is a substring of a line that was removed — the relocation test is counting substrings instead of whole lines'
+printf '%s' "$qualify_substring_output" | grep -q 'debug artifacts' \
+  || fail_case 'qualify substring-not-relocation case did not FAIL the fresh marker as a debug artifact'
+git -C "$qualify_repo" checkout -q -- src/total_parser.py
+
+# qualify: ownership resolves a rename whose destination is UNTRACKED. A plain `mv` (not
+# `git mv`) leaves the old path a tracked deletion and the destination untracked, so it is in
+# neither the working nor the staged diff and no rename can be paired from them. Without a
+# post-change private index the moved file falls through to its own content and takes the
+# reporter exemption the base-revision rule denies (REQ-263 remediation, second round, found
+# by a PR review).
+printf '%s\n' 'def render_cell(raw_text):' '    return raw_text' > "$qualify_repo/src/cell_renderer.py"
+fixture_repo_commit_all "$qualify_repo" cell-renderer
+printf '%s\n' '## Implementation Summary' \
+  '- `src/cell_renderer_v2.py` (modified) — moved with plain mv and tweaked' \
+  '' '## AI Execution State (P-A-U Loop)' \
+  '- [x] **[PLAN]:** done' '- [x] **[APPLY]:** done' '- [x] **[UNIFY]:** done' \
+  > "$qualify_repo/do-work/REQ-974-untracked-rename-ownership.md"
+mv "$qualify_repo/src/cell_renderer.py" "$qualify_repo/src/cell_renderer_v2.py"
+printf '%s\n' 'print("debug", raw_text)' '' 'if True:' '    import sys' '    sys.exit(0)' \
+  >> "$qualify_repo/src/cell_renderer_v2.py"
+qualify_untracked_rename_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-974-untracked-rename-ownership.md 2>&1)" \
+  && fail_case 'qualify untracked-rename case let a plain mv plus a same-change exit idiom excuse a debug print — the rename destination was untracked, so ownership fell through to post-change content'
+printf '%s' "$qualify_untracked_rename_output" | grep -q 'never ends its own process' \
+  || fail_case 'qualify untracked-rename case did not reach the base-revision ownership verdict for an untracked rename destination'
+# The private index must not disturb the real one: the move is still unstaged afterwards.
+git -C "$qualify_repo" diff --cached --name-only | grep -q 'cell_renderer' \
+  && fail_case 'qualify untracked-rename case left the fixture repo index modified — the rename probe must build its post-change tree in a PRIVATE index, never the real one'
+rm -f "$qualify_repo/src/cell_renderer_v2.py"
+git -C "$qualify_repo" checkout -q -- . 2>/dev/null || true
+
 prescribed_shell_finish

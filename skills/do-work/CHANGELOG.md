@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.216.9 — Two More Ways the Artifact Gate Could Be Talked Around (2026-08-20)
+
+A second automated review pass found two more bypasses in the sharpened debug-artifact gate, one in
+each of the last two fixes. Both reproduced, both closed, both pinned.
+
+- The relocation test counted substring matches, so replacing `# TODO remove deprecated parser` with a bare `# TODO` left the count unchanged and a brand-new marker read as relocated — while the warning claimed its exact text already existed. It now compares whole lines. `git grep` has no whole-line flag, so its fixed-string prefilter feeds a real `grep -c -x -F`, which needs no regex escaping on either side.
+- Ownership missed a rename whose destination was untracked. A plain `mv` rather than `git mv` leaves the old path a tracked deletion and the new path untracked, so neither the working nor the staged diff can pair them — and since untracked files are scanned, a moved library file that also gained an exit idiom took the reporter exemption. Rename detection now also reads a post-change tree built in a private index, which leaves the real index and working tree untouched.
+- Both rename sources are consulted, plain diffs first: a `git mv` stages the original bytes and reports a clean rename that the private index cannot see, because that index stages what the working tree holds now.
+
 ## 0.216.8 — The Timestamp-Layout Guard Can Fail Again (2026-08-20)
 
 A lock-in is supposed to force a decision to be re-made when the ground under it shifts. This one

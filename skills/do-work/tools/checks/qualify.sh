@@ -272,26 +272,71 @@ if [ "$git_available" -eq 1 ]; then
   # question below, which is about content and deliberately does not use it.
   # Read in shell rather than through `awk -v`, which processes escape sequences in the
   # value and would mangle a path containing a backslash.
+  # Loaded at most once per run, lazily — building the map costs an index write, so a run
+  # with no renamed-looking path never pays for it.
+  rename_status_stream_cache=""
+  rename_status_stream_loaded=0
+  load_rename_status_stream() {
+    [ "$rename_status_stream_loaded" -eq 1 ] && return 0
+    rename_status_stream_loaded=1
+    [ -z "$ownership_base" ] && return 0
+    if [ -n "$diff_range" ]; then
+      rename_status_stream_cache="$(git diff --find-renames --name-status "$diff_range" 2>/dev/null || true)"
+      return 0
+    fi
+    # Serial mode reads TWO sources, in this order, because neither covers the other.
+    #
+    # 1. The plain working and staged diffs. These are authoritative for a `git mv`: the
+    #    rename is staged with the ORIGINAL bytes, so it reports R100 even when the working
+    #    tree has since appended to the file. Source 2 cannot see that, which is why this
+    #    one goes first and wins.
+    # 2. A PRIVATE index holding the post-change tree. This is the only source that can see
+    #    a plain `mv` (rather than `git mv`), where the old path is a tracked DELETION and
+    #    the destination is UNTRACKED — present in neither diff above, so nothing can pair
+    #    them. A review found a moved library file taking the reporter exemption exactly
+    #    that way. `git add -A` into GIT_INDEX_FILE sees the untracked destination, still
+    #    honors .gitignore, and touches neither the real index nor the working tree.
+    #
+    # Source 2 uses a LOOSER similarity threshold on purpose. It stages working-tree
+    # content, so a file that moved *and* grew scores below the 50% default — the case it
+    # exists for is precisely a move plus an edit. The loosening is safe for THIS question
+    # and would not be for others: a mis-paired base path is still some pre-change file, and
+    # pre-change content is exactly what the exit probe wants. Failing to pair at all is the
+    # harmful direction, because it falls through to post-change content and hands the file
+    # the reporter exemption the base-revision rule exists to deny.
+    # No pathspec exclusion: a faithful tree keeps rename detection from pairing a real
+    # addition against an artificially "deleted" do-work/ path.
+    rename_status_stream_cache="$({ git diff --find-renames --name-status; \
+      git diff --staged --find-renames --name-status; } 2>/dev/null || true)"
+    local private_index_directory
+    private_index_directory="$(mktemp -d "${TMPDIR:-/tmp}/qualify-rename.XXXXXX" 2>/dev/null)" || return 0
+    if GIT_INDEX_FILE="$private_index_directory/index" git read-tree "$ownership_base" 2>/dev/null \
+      && GIT_INDEX_FILE="$private_index_directory/index" git add -A 2>/dev/null; then
+      rename_status_stream_cache="$(printf '%s\n%s\n' "$rename_status_stream_cache" \
+        "$(GIT_INDEX_FILE="$private_index_directory/index" \
+          git diff --cached --find-renames=30% --name-status "$ownership_base" 2>/dev/null || true)")"
+    fi
+    rm -rf "$private_index_directory"
+    return 0
+  }
+  # Sets $renamed_from_path_result rather than printing it: a command substitution would run
+  # this in a subshell, and the lazy cache above would then be discarded on every lookup.
+  renamed_from_path_result=""
   resolve_base_path_before_rename() {
     local current_path="$1"
-    local rename_status_stream
     local change_status
     local old_path
     local new_path
-    if [ -n "$diff_range" ]; then
-      rename_status_stream="$(git diff --find-renames --name-status "$diff_range" 2>/dev/null || true)"
-    else
-      rename_status_stream="$({ git diff --find-renames --name-status; \
-        git diff --staged --find-renames --name-status; } 2>/dev/null || true)"
-    fi
-    [ -z "$rename_status_stream" ] && return 1
+    renamed_from_path_result=""
+    load_rename_status_stream
+    [ -z "$rename_status_stream_cache" ] && return 1
     while IFS="$(printf '\t')" read -r change_status old_path new_path; do
       case "$change_status" in R*) ;; *) continue;; esac
       if [ -n "$new_path" ] && [ "$new_path" = "$current_path" ]; then
-        printf '%s' "$old_path"
+        renamed_from_path_result="$old_path"
         return 0
       fi
-    done <<< "$rename_status_stream"
+    done <<< "$rename_status_stream_cache"
     return 1
   }
   file_owns_process_exit() {
@@ -299,11 +344,9 @@ if [ "$git_available" -eq 1 ]; then
     local probe_content
     local probe_hit_count
     local base_probe_path="$probe_path"
-    local renamed_from_path
     if [ -n "$ownership_base" ] && ! git cat-file -e "${ownership_base}:${probe_path}" 2>/dev/null; then
-      renamed_from_path="$(resolve_base_path_before_rename "$probe_path" || true)"
-      if [ -n "$renamed_from_path" ]; then
-        base_probe_path="$renamed_from_path"
+      if resolve_base_path_before_rename "$probe_path" && [ -n "$renamed_from_path_result" ]; then
+        base_probe_path="$renamed_from_path_result"
       fi
     fi
     if [ -n "$ownership_base" ] && git cat-file -e "${ownership_base}:${base_probe_path}" 2>/dev/null; then
@@ -355,17 +398,30 @@ if [ "$git_available" -eq 1 ]; then
   relocated_matched_lines=""
   count_matching_lines_in_tree() {
     # $1 = revision to search, or empty for the working tree (+ untracked).
-    # `git grep -c` prints `path:count` per matching file, so sum the last field. It exits
-    # 1 on no match, which is a legitimate zero here, hence the `|| true` inside the
-    # substitution rather than a bare pipeline.
+    #
+    # WHOLE-LINE equality, not substring. Counting substring matches was wrong in one
+    # direction and a review caught it: replacing `# TODO remove deprecated parser` with a
+    # bare `# TODO` leaves the substring count unchanged at 1 on both sides, so a brand-new
+    # marker read as relocated and the WARN even claimed its exact text already existed.
+    #
+    # `git grep` has no `-x`/`--line-regexp` (verified: `error: unknown switch 'x'` on git
+    # 2.43), and anchoring with `-E '^...$'` would mean regex-escaping arbitrary source
+    # lines. So git grep does the cheap fixed-string prefilter with `-h` (which suppresses
+    # both the rev and the path prefix, leaving bare line content) and real `grep -c -x -F`
+    # does the exact comparison — no escaping anywhere on either side.
+    # `grep -c` reads to EOF so it cannot SIGPIPE the upstream under pipefail; `|| true`
+    # absorbs the no-match exit 1, which is a legitimate zero. The needle is passed after
+    # `--` so a line beginning with `-` is data rather than options (REQ-208's lesson).
     local search_revision="$1"
     local search_pattern="$2"
     if [ -n "$search_revision" ]; then
-      printf '%s' "$(git grep -c -F -e "$search_pattern" "$search_revision" \
-        -- . ':(exclude)do-work/' 2>/dev/null | awk -F: '{total += $NF} END {print total + 0}' || true)"
+      printf '%s' "$(git grep -h -F -e "$search_pattern" "$search_revision" \
+        -- . ':(exclude)do-work/' 2>/dev/null \
+        | grep -c -x -F -- "$search_pattern" || true)"
     else
-      printf '%s' "$(git grep -c -F --untracked -e "$search_pattern" \
-        -- . ':(exclude)do-work/' 2>/dev/null | awk -F: '{total += $NF} END {print total + 0}' || true)"
+      printf '%s' "$(git grep -h -F --untracked -e "$search_pattern" \
+        -- . ':(exclude)do-work/' 2>/dev/null \
+        | grep -c -x -F -- "$search_pattern" || true)"
     fi
   }
   partition_matched_lines_by_relocation() {
