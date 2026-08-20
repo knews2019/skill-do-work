@@ -15,6 +15,7 @@ The tool is a standalone Go module that ships inside the skill at `tools/queue-k
 - The user wants a shareable static HTML snapshot of queue state (`static` mode).
 - The user wants quick column counts without a browser (`summary` mode).
 - The user asks what's in flight / in progress / blocked right now and wants it in the terminal, not a browser tab (`open-work` mode — open count, claimed REQ titles, the status parking each needs-input REQ).
+- The user wants the board-owned cross-file invariant probes run (`verify` mode).
 
 **Do NOT use when:**
 - The user wants a text roadmap or dependency rollup → `../../do-work/actions/roadmap.md`.
@@ -31,6 +32,7 @@ The tool is a standalone Go module that ships inside the skill at `tools/queue-k
 | `static`, `generate`, `html` | generate | Self-contained static board written to `build/queue-kanban-board/` (opens from `file://`, zero network). |
 | `summary`, `status`, `counts` | summary | Prints column counts to the terminal — no browser. |
 | `cli`, `open`, `open-work`, `in-flight` | open-work | Prints the open-work digest to the terminal — open count, claimed REQs with titles, needs-input/blocked REQs with their statuses. No browser. |
+| `verify`, `check invariants`, `probes` | verify | Builds the tool and runs its read-only invariant probes; exit 1 means findings, not an execution error. See `../../do-work/actions/forensics.md` Check 14 for the canonical probe descriptions. |
 
 An optional trailing `--port N` (serve) or `--out DIR` (static) overrides the default; pass it straight through to the tool.
 
@@ -85,6 +87,7 @@ From `<skill-root>/tools/queue-kanban`:
   This generated snapshot uses the canonical [Local Git ignore](../../do-work/docs/prescribed-shell-primitives.md#local-git-ignore) primitive with a project-root-specific pattern. The local exclude preserves the action's read-only contract for tracked project files, the guard is idempotent, and a non-git project skips it silently.
 - **summary** — `./queue-kanban summary --repo-root "$REPO_ROOT"` and relay the printed counts.
 - **open-work** — `./queue-kanban open-work --repo-root "$REPO_ROOT"` and relay the printed digest. Terminal-resolved REQs never appear in it (recently-done is history, not open work — the calendar is a different surface and does carry open work), and parse warnings arrive as a count pointing at `summary` — if the user wants those details, that's the summary mode, not a second command here.
+- **verify** — `./queue-kanban verify --repo-root "$REPO_ROOT"`. Relay its findings; exit 1 is the expected findings status, not a launcher failure. The probe set and each invariant's meaning are owned by `../../do-work/actions/forensics.md` Check 14.
 
 A pending or claimed card carries an `overlaps` badge naming the other pending/claimed REQs whose declared `write_set` could touch the same files — an informational heads-up, never a block (the detail drawer shows the card's own write set and links each contending REQ). The badge schedules nothing at any builder count: under fan-out the declared set is advisory input to the human's pick and the merge is the non-interference proof, never the badge (`../../do-work/actions/work-reference.md` → Worktree Dispatch Mode → Fan-Out Dispatch). It just surfaces declared file contention for a human reading the board. No badge means no *declared* overlap: on a REQ that never declared a `write_set` that reads as unknown, not safe. Globs are matched with `path.Match` semantics (OS-independent, `/`-separated): `*` never crosses `/`, `**` is not recursive, and a malformed pattern is treated as no-match for that direction — but literal equality short-circuits first, so two REQs declaring the *identical* malformed pattern still badge each other. The badge can therefore miss real contention; illustrative miss-classes, not a closed list: glob-vs-glob, `**`, a malformed pattern against anything but its own twin, and an entry naming a directory (`actions/` never badges against `actions/board.md` — `path.Match` is false both for `actions/` and for `actions` against it).
 

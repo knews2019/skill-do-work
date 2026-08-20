@@ -1,7 +1,9 @@
 ---
 id: REQ-283
 title: Route verify through the do-work-board skill that owns it
-status: pending
+status: completed
+claimed_at: 2026-08-20T22:43:20Z
+completed_at: 2026-08-20T22:46:10Z
 created_at: 2026-08-19T13:42:45Z
 user_request: UR-057
 domain: general
@@ -27,9 +29,9 @@ write_set:
 So `do-work-board verify` falls to SKILL.md's rule "an unknown command prints board help and stops," for a real subcommand of the tool this package owns. Add the routing row and the board-action mode.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Add `verify` to the board router and argument hint, add the read-only mode to the board action, reuse the existing build-and-run flow, and point probe descriptions at Check 14.
+- [x] **[APPLY]:** Code written exactly as planned. Scope stayed within the board router and board action.
+- [x] **[UNIFY]:** Reviewed the 2-file diff and git diff --stat; ran gofmt-independent documentation checks, go test, go build, and the verify command. No debug artifacts or Go changes are present.
 
 ## Why
 
@@ -66,3 +68,60 @@ See `do-work/user-requests/UR-057/input.md` for the complete verbatim upstream r
 
 ---
 *Source: upstream defect report D4, severity low, from `g1w-game-find-the-difference` running v0.212.25 — verbatim claim: "`verify` is unreachable through the skill that owns it … Neither mentions `verify` … So `do-work-board verify` hits the rule 'an unknown command prints board help and stops' — for a real subcommand of the tool this package owns." Accepted by `do-work-toolbox validate-feedback` triage (2026-08-19), with its "unrunnable as typed" framing corrected: Check 14's direct binary invocation works, and the gap is routing through the owning skill. Evidence: `skills/do-work-board/SKILL.md` routing table (two rows, no `verify`); `grep -n -i verify skills/do-work-board/actions/board.md` empty; `skills/do-work-board/tools/queue-kanban/main.go:79` implements the subcommand; `skills/do-work/actions/forensics.md:181-200` documents its probes; `skills/do-work/actions/work-reference.md:63,345` depend on two of them. Surface-cost: N/A — a routing table row and a mode entry, no defensive surface.*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The request names both documentation files and the existing `verify` binary subcommand. It requires routing and a build-then-run mode entry only.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/SKILL.md` (modified) — routes `verify` aliases and advertises the mode in the argument hint.
+- `skills/do-work-board/actions/board.md` (modified) — documents the read-only verify mode, its build/run step, and Check 14 ownership.
+
+## Qualification
+
+Passed — 2 project files verified, all routing and execution requirements traced, and no production Go code changed.
+
+## Testing
+
+- `go test ./...` passed in `skills/do-work-board/tools/queue-kanban`.
+- Fresh `go build -o queue-kanban .` passed.
+- `./queue-kanban verify --repo-root "$(git rev-parse --show-toplevel)"` returned `OK: no findings` with exit 0.
+- The router and action now both contain `verify`, the accepted aliases, and the Check 14 pointer.
+
+## Review
+
+**Overall: 100%**
+
+**Requirements:** Pass — routing, argument hint, mode table, execution flow, read-only semantics, exit-1 meaning, and canonical Check 14 pointer are all present.
+
+**Code quality:** Pass — documentation-only, consistent with existing board modes, and no duplicated probe table.
+
+**Test adequacy:** Pass — the owned Go test suite and the actual verify command pass.
+
+**Scope:** Pass — only the two declared files changed.
+
+**Acceptance:** Pass — `verify` is now discoverable and runnable through its owning skill.
+
+## Lessons Learned
+
+**What worked:** The existing binary already owned the behavior, so the fix stayed at the routing/documentation boundary.
+**What didn't:** Running the binary from its nested module without an explicit project root makes it look for `do-work/` in the module directory; the action's explicit root resolution is essential.
+**Worth knowing:** Verify findings use exit 1 as a diagnostic result, not as a launcher failure.
+
+## Orientation
+
+The board skill now exposes its existing cross-file invariant verifier as a first-class `do-work-board verify` mode, with execution and probe ownership clearly separated.

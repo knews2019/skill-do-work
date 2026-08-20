@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.222.3 — Route Board Verification Through Its Owning Skill (2026-08-21)
+
+The board skill now exposes the queue-kanban tool's existing read-only invariant verifier as `do-work-board verify`, including its build-and-run path, findings exit status, and canonical Check 14 reference.
+
 ## 0.222.2 — Exclude Archive Assets From Blanked-REQ Recovery Scans (2026-08-21)
 
 The blanked-REQ detector no longer treats intact prose sidecars under archive `assets/` directories as damaged request records. Its regression fixture keeps genuine blanked REQs visible and Check 13 now documents the same boundary.
