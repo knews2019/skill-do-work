@@ -4,6 +4,7 @@ title: Route verify through the do-work-board skill that owns it
 status: completed
 claimed_at: 2026-08-20T22:43:20Z
 completed_at: 2026-08-20T22:46:10Z
+commit: 2308afd
 created_at: 2026-08-19T13:42:45Z
 user_request: UR-057
 domain: general
