@@ -3,6 +3,7 @@ id: REQ-258
 title: Split the prescribed shell behavior suite per script
 status: completed
 completed_at: 2026-08-20T09:08:00Z
+commit: 1cc1836
 claimed_at: 2026-08-20T08:17:28Z
 route: B
 created_at: 2026-08-18T17:49:24Z
