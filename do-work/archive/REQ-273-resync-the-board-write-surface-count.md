@@ -1,9 +1,10 @@
 ---
 id: REQ-273
 title: Resync the board tool's write-surface count where it is restated
-status: pending
+status: cancelled
 created_at: 2026-08-18T23:13:36Z
 status_changed_at: 2026-08-18T23:13:36Z
+completed_at: 2026-08-20T13:21:13Z
 user_request: UR-055
 addendum_to: REQ-261
 domain: general
@@ -53,3 +54,23 @@ This is the project's own **Closed Enumerations Go Stale** rule biting the file 
 ## Open Questions
 
 None — the drift and the correct count were both verified against the code by the review.
+
+## Cancelled
+
+- **When:** 2026-08-20T13:21:13Z
+- **Why:** folded into the standing prose sweep REQ-307
+- **Decided by:** user, via `do-work abandon`
+
+**Where the work went.** This REQ's finding is now an instance on REQ-307's `## Instances`
+checklist, with its file:line citations intact and re-verified against the tree on 2026-08-20
+rather than carried over on trust. Nothing is dropped; what changes is that it drains in a batch
+with its own class instead of costing a dispatch, a review, a version bump and two commits on its
+own. That is the whole point of UR-063, and this REQ is one of the two seed instances that gives
+REQ-307 something to hold on its first day.
+
+**This REQ is also the argument for its own folding.** `CLAUDE.md`'s board write-surface paragraph
+ends "Adding a fourth write surface means amending this sentence in the same commit; that is the
+co-location rule applied to itself." When the third surface landed, `CLAUDE.md` and
+`frontmatter_cli.go` were both amended and `open_work.go` and `testing.go` were not — so
+co-location held for the sites someone was looking at and missed the two they were not. Recorded on
+REQ-307 as the case for batching this class rather than trusting co-location to be remembered.

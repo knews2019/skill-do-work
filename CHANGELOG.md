@@ -13,6 +13,82 @@ The queue was refilling as fast as it drained because every finding minted its o
 - Toolbox code-review REQs now carry a judged `impact:` instead of silently defaulting.
 - Decision recorded as ADR-020 ([decisions/records/adr-020-fold-findings-into-pending-reqs-before-minting.md](https://github.com/knews2019/skill-do-work/blob/main/decisions/records/adr-020-fold-findings-into-pending-reqs-before-minting.md)).
 
+## 0.216.9 — Two More Ways the Artifact Gate Could Be Talked Around (2026-08-20)
+
+A second automated review pass found two more bypasses in the sharpened debug-artifact gate, one in
+each of the last two fixes. Both reproduced, both closed, both pinned.
+
+- The relocation test counted substring matches, so replacing `# TODO remove deprecated parser` with a bare `# TODO` left the count unchanged and a brand-new marker read as relocated — while the warning claimed its exact text already existed. It now compares whole lines. `git grep` has no whole-line flag, so its fixed-string prefilter feeds a real `grep -c -x -F`, which needs no regex escaping on either side.
+- Ownership missed a rename whose destination was untracked. A plain `mv` rather than `git mv` leaves the old path a tracked deletion and the new path untracked, so neither the working nor the staged diff can pair them — and since untracked files are scanned, a moved library file that also gained an exit idiom took the reporter exemption. Rename detection now also reads a post-change tree built in a private index, which leaves the real index and working tree untouched.
+- Both rename sources are consulted, plain diffs first: a `git mv` stages the original bytes and reports a clean rename that the private index cannot see, because that index stages what the working tree holds now.
+
+## 0.216.8 — The Timestamp-Layout Guard Can Fail Again (2026-08-20)
+
+A lock-in is supposed to force a decision to be re-made when the ground under it shifts. This one
+matched two known spellings of a date layout, so adding a third changed the board's parser and the
+guard stayed green — it read as coverage while being unable to fail.
+
+- The guard now reads every element of `parseTimestamp`'s layout slice by position instead of matching spellings it already knew about. Adding `time.RFC3339Nano`, `time.DateTime`, `time.RFC1123`, or any bare literal now fires it. All five were silent before and all five fire now.
+- It also refuses to pass when it extracts nothing. A structural read has a new failure mode — rename the function and it finds no layouts, compares empty to empty, and passes — so an explicit count assertion closes it.
+- The portability half of the original report was already fixed: the extraction uses POSIX ERE, not GNU alternation, so it behaves the same on macOS. Verified, not re-fixed.
+- No new case. The case that existed could not fail; now it can.
+
+## 0.216.7 — Two Holes in the New Qualification Gates (2026-08-20)
+
+An automated review of the previous two releases found two ways the sharpened debug-artifact gate could
+still be talked out of a finding. Both are closed, each pinned by a test that fails without the fix.
+
+- A request that keeps its PLAN and APPLY boxes but drops UNIFY was treated as armed, because the check counted all three boxes. Every artifact failure keys on a checked UNIFY line, so such a request exited clean with the audit unreachable — the same defect the warning was added to expose. The arming condition is now the UNIFY box specifically, and the warning names whether the box or the whole section is missing.
+- A renamed file does not exist at the base revision under its new path, so ownership fell through to post-change content and read the file as brand new. A rename that also added an exit idiom and a debug print therefore got the reporter exemption the base-revision rule exists to deny. Ownership now follows git's rename detection back to the file's original path first.
+- Rename detection is right for ownership and still wrong for relocation: ownership is a claim about a file's identity, relocation a claim about content. The two questions use different tools on purpose.
+
+## 0.216.6 — Qualification Tells a Moved Line From a New One (2026-08-20)
+
+Every request that relocated code failed the debug-artifact audit on markers that already existed —
+the check reads added lines out of a diff, and moved text looks identical to written text. That trained
+people to wave through failures from the one gate that catches real leftover instrumentation.
+
+- A flagged line is compared by how many times its exact text occurs in the tree before and after the change. Unchanged means it moved: warned and named, not failed. Increased means it is genuinely new: failed exactly as before.
+- Occurrence count, not mere presence, is the test — so a line *copied* rather than moved still fails, wherever the copy lands.
+- Nothing is ever silently subtracted. A relocated line is printed under its own warning that says the text already exists in the pre-change tree and asks you to confirm the move was intended.
+- Applies to all four artifact scans, markers and output primitives alike, tracked files and untracked.
+- 3 new cases (suite total 85 to 88), each proven able to fail. Two of them exist only to pin the risk this fix could have introduced.
+
+## 0.216.5 — A Missing P-A-U Section Stops Reading as a Pass (2026-08-20)
+
+Qualification could print a clean OK because its checklist had nothing to check. Every debug-artifact
+failure keys on the state of the `[UNIFY]` box, so a request carrying no P-A-U section at all satisfied
+all of them by absence — the audit was disarmed, not passed, and nothing said so.
+
+- qualify now warns when a request has no `AI Execution State (P-A-U Loop)` section, and says plainly that every `[UNIFY]`-gated failure is unreachable, so an OK on such a request reads as what it is.
+- It stays a warning, not a failure: the missing section is paperwork, not evidence about the code, and older requests are still legitimately qualifiable.
+- The class is fixed at its source too. Both shipped templates that mint buildable review-generated requests — the review fix template and the code-review fix template — now emit the P-A-U block, and the check that already enumerates those templates enforces it.
+- Six queued requests were created without the block before this landed. They each warn when claimed rather than being silently rewritten.
+
+## 0.216.4 — The Debug-Artifact Gate Stops Excusing Itself (2026-08-20)
+
+The check that catches leftover `console.log`s and stray `TODO`s could be talked out of a finding three
+different ways, and it never looked at a file you hadn't staged yet. Both are closed, and every warning
+it raises now shows you the lines it found instead of telling you to go look.
+
+- Whether a file "owns its process exit" — the test that decides warn-versus-fail on an added output line — is now judged at the revision your change started from. Adding an `exit` in the same edit as a debug print no longer relabels library code as a reporter.
+- Only statement-shaped exits count. A docstring saying "the caller should exit 1 on failure", or a commented-out `# exits 1`, no longer buys a file the reporter exemption.
+- A brand-new checker, whose prints and whose exit arrive together, still gets the exemption — that case is pinned by its own test, because the obvious fix would have broken it.
+- Untracked, non-ignored files are now scanned whole in serial mode. Qualification runs before the commit, so a new source file you never staged was in no diff and neither artifact scan ever read it. Correctly ignored files stay unscanned, and worktree dispatch mode is unchanged.
+- Warnings print their matched lines the way failures always have.
+- `_dev/tests/prescribed-shell-cases/qualify.sh` goes 3 to 10 cases, each one mutation-tested to confirm it can actually fail. Suite total: 76 to 83.
+
+## 0.216.3 — Queue Write Sets Name the Split Case Files (2026-08-20)
+
+Three queued requests still declared the one big shell-behavior test file that got split apart last
+release, so the board's overlap badge and anyone planning what can run in parallel were reading a
+layout that no longer exists. They now name the per-script case files they actually write.
+
+- REQ-263 and REQ-264 declare `_dev/tests/prescribed-shell-cases/qualify.sh`, the file they share, so their real collision with each other stays visible.
+- REQ-271 declares `_dev/tests/prescribed-shell-cases/repair-req-timestamps.sh` — verified as the file holding the `parseTimestamp` layout guard it exists to fix — and is therefore disjoint from the other two.
+- Two of the sweep's five targets were already correct and were left alone: the restart prompt had been rewritten, and the dated defensive-surface audit declares itself a frozen historical snapshot rather than a live registry.
+- A stale case count in REQ-271's red-green proof went 66 to 76, reframed so the count reads as context and the `exit 0` stays the finding.
+
 ## 0.216.2 — Per-Script Shell Behavior Test Files (2026-08-20)
 
 The prescribed-shell behavior suite was one 1882-line file holding 76 cases for 17 different scripts. It's now one file per script, so you can run just the ones you care about and a failure tells you which script broke before you read a line.

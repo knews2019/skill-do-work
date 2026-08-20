@@ -11,6 +11,14 @@
 #   the working+staged diff. Unset/empty (the serial default) reads working+staged,
 #   byte-for-byte as before. Setting it only changes WHICH diff is read. A set-but-
 #   unresolvable range is a hard FAIL (exit 1) naming the range — never a silent OK.
+#
+# What the artifact scans read is NOT only a diff (REQ-263). In serial mode they also
+# read untracked, non-ignored files whole, because Step 6.3 runs before this REQ's commit
+# and a new source file the builder never staged appears in no diff at all. Ownership of
+# a file's process exit — the condition that sorts an added output line into WARN or FAIL
+# — is judged at the BASE revision for a path that exists there, and on the file's own
+# content for one that does not. Both behaviors are pinned in
+# _dev/tests/prescribed-shell-cases/qualify.sh.
 # Exit 0: all mechanical checks pass. Exit 1: at least one FAIL line.
 # Exit 2: usage error (missing/unreadable <req-file>).
 # WARN lines (wiring not found, etc.) do not fail the run — they are handed to
@@ -110,6 +118,25 @@ if [ "$git_available" -eq 1 ]; then
   fi
 fi
 
+# --- Ownership base: the revision that decides whether a file owns its process exit ---
+# The probe below used to read the POST-change working copy, so an exit idiom added in
+# the SAME diff as a debug print retroactively turned library code into a reporter and
+# downgraded the FAIL to a WARN (REQ-254's review reproduced it; REQ-263 closes it).
+# Ownership is judged at the revision the change started from instead: a file that was
+# library code before this REQ stays library code for this REQ's verdict. A file that
+# does not exist at the base is new and is judged on its own content — which is what
+# keeps a legitimately new checker, whose prints and whose exit arrive together in one
+# new file, a WARN rather than a FAIL. That case is why the categorical rule
+# ("exit added in this diff ⇒ FAIL") is wrong and is not what this implements.
+ownership_base=""
+if [ "$git_available" -eq 1 ]; then
+  if [ -n "$diff_range" ]; then
+    ownership_base="${diff_range%%..*}"
+  elif git rev-parse --verify --quiet HEAD >/dev/null 2>&1; then
+    ownership_base="HEAD"
+  fi
+fi
+
 # --- Check 1: every listed file matches its claimed state on disk / in diff ---
 while IFS= read -r summary_line; do
   # Portable extraction (no GNU-only grep -P): first backtick-quoted token, then the verb.
@@ -164,6 +191,32 @@ if [ "$non_dowork_count" -eq 0 ]; then
 fi
 
 # --- Check 4: P-A-U box audit + debug artifacts in the diff ---
+# A REQ with NO P-A-U section at all used to sail through this whole check (REQ-264).
+# Every UNIFY-gated FAIL below keys on a CHECKED [UNIFY] box, and the unchecked-box FAIL
+# keys on an UNCHECKED one, so a file carrying neither satisfies both by absence: the
+# audit is disarmed rather than passed, and nothing said so. That is the shape REQ-254's
+# own qualification "Passed" with — its review re-ran the range armed and got FAILs.
+# work.md Step 6 states P-A-U phasing is mandatory, so the absence is a defect in the
+# REQ, not a supported mode; it is a WARN and not a FAIL because the missing section is
+# the orchestrator's paperwork rather than evidence about the code, and because REQs
+# written before the section existed are still legitimately qualifiable.
+# The arming condition is the [UNIFY] BOX, in any state — not the section, and not any box.
+# Counting all three was the first attempt and left a hole a review caught: a legacy or
+# hand-edited REQ that keeps PLAN and APPLY but drops UNIFY has a nonzero box count, so the
+# warning stayed quiet, while every artifact FAIL below still keys on a CHECKED [UNIFY] and
+# stayed unreachable. That REQ exited 0 with a clean OK — the exact defect this warning
+# exists to expose, one step narrower.
+# A [UNIFY] box present but UNCHECKED needs no warning: the unchecked-box FAIL right below
+# fires on it, so that state is already loud. Only absence is silent.
+unify_box_total="$(grep -cE '^[[:space:]]*-[[:space:]]\[( |x|~)\][[:space:]]\*\*\[UNIFY\]' "$request_file" || true)"
+if [ "${unify_box_total:-0}" -eq 0 ]; then
+  pau_box_total="$(grep -cE '^[[:space:]]*-[[:space:]]\[( |x|~)\][[:space:]]\*\*\[(PLAN|APPLY|UNIFY)\]' "$request_file" || true)"
+  if [ "${pau_box_total:-0}" -eq 0 ]; then
+    echo "WARN: no 'AI Execution State (P-A-U Loop)' section in this REQ — Check 4's box audit is DISARMED, not passed: every [UNIFY]-gated FAIL below is unreachable, so a debug artifact in the diff cannot fail this run. Add the section (work.md Step 6 makes P-A-U phasing mandatory) and re-run before trusting an OK."
+  else
+    echo "WARN: this REQ has a P-A-U section but no [UNIFY] box — Check 4's box audit is DISARMED, not passed: every [UNIFY]-gated FAIL below keys on a checked [UNIFY] line and is unreachable without one, so a debug artifact in the diff cannot fail this run. Add the missing box (work.md Step 6 makes P-A-U phasing mandatory) and re-run before trusting an OK."
+  fi
+fi
 unchecked_boxes="$(grep -cE '^[[:space:]]*-[[:space:]]\[ \][[:space:]]\*\*\[(PLAN|APPLY|UNIFY)\]' "$request_file" || true)"
 if [ "${unchecked_boxes:-0}" -gt 0 ]; then
   echo "FAIL: $unchecked_boxes P-A-U checkbox(es) still unchecked — the builder did not complete those phases"
@@ -187,7 +240,219 @@ if [ "$git_available" -eq 1 ]; then
   # through FAILs.
   unfinished_marker_regex='debugger|TODO|FIXME'
   output_primitive_regex='console\.log|(^|[^[:alnum:]_])print\('
-  process_exit_regex='(^|[^[:alnum:]_])exit +[0-9$]|sys\.exit *\(|raise +SystemExit|os\._exit *\(|process\.exit *\('
+  # Code-shaped exit occurrences only (REQ-263). Two narrowings over the whole-file
+  # text grep this replaced, each earned by a reproduced false WARN:
+  #   1. The bare `exit N` form must be STATEMENT-shaped — beginning a statement (line
+  #      start, or after `;`/`&`/`|`, or after `then`/`else`/`do`) AND terminated right
+  #      after its status by end-of-line, `;`, `)`, `}`, or a comment. Prose reads
+  #      "...the caller should exit 1 on failure": a word before it, words after it, so
+  #      it no longer counts as ownership. A bare status-less `exit` did not match the
+  #      previous regex either, and still does not — this narrows, it never widens.
+  #   2. Full-line comments are dropped before the match (see file_owns_process_exit),
+  #      so `# exits 1 on failure` is not ownership either.
+  # The parenthesised forms are already code-shaped by their own punctuation.
+  # DOCUMENTED RESIDUAL, pinned by a fixture in _dev/tests/prescribed-shell-cases/qualify.sh:
+  # a prose line that both begins a statement and ends immediately after the status — a
+  # docstring line reading exactly `exit 1` — still reads as ownership. Separating that
+  # from real code needs a per-language parser, which is more machinery than this gate
+  # is worth; the fixture exists so the boundary is a stated limit rather than a surprise.
+  process_exit_regex='(^[[:space:]]*|[;&|][[:space:]]*|[[:space:]](then|else|do)[[:space:]]+)exit[[:space:]]+[0-9$][^[:space:];)}#]*[[:space:]]*([;)}#]|$)|sys\.exit[[:space:]]*\(|raise[[:space:]]+SystemExit|os\._exit[[:space:]]*\(|process\.exit[[:space:]]*\('
+
+  # Does this path own its process exit? Judged at $ownership_base when the path exists
+  # there, on the working copy when it does not (a new or untracked file).
+  # `grep -c` rather than `grep -q` at the end of a pipe on purpose: -q quits on the
+  # first match, the upstream grep dies of SIGPIPE, and pipefail then reports the
+  # pipeline as failed — the exact trap already documented above $changed_file_list.
+  # A renamed file does not exist at the base under its NEW path, so a bare cat-file probe
+  # falls through to the post-change working copy and reads the file as brand new — which
+  # hands a rename that also adds an exit idiom and a debug print exactly the reporter
+  # exemption the base-revision rule exists to deny. A review caught this. Ownership is a
+  # property of the file's IDENTITY, and git's rename detection is precisely a statement
+  # about identity, so `--find-renames` is the right tool here — unlike the relocation
+  # question below, which is about content and deliberately does not use it.
+  # Read in shell rather than through `awk -v`, which processes escape sequences in the
+  # value and would mangle a path containing a backslash.
+  # Loaded at most once per run, lazily — building the map costs an index write, so a run
+  # with no renamed-looking path never pays for it.
+  rename_status_stream_cache=""
+  rename_status_stream_loaded=0
+  load_rename_status_stream() {
+    [ "$rename_status_stream_loaded" -eq 1 ] && return 0
+    rename_status_stream_loaded=1
+    [ -z "$ownership_base" ] && return 0
+    if [ -n "$diff_range" ]; then
+      rename_status_stream_cache="$(git diff --find-renames --name-status "$diff_range" 2>/dev/null || true)"
+      return 0
+    fi
+    # Serial mode reads TWO sources, in this order, because neither covers the other.
+    #
+    # 1. The plain working and staged diffs. These are authoritative for a `git mv`: the
+    #    rename is staged with the ORIGINAL bytes, so it reports R100 even when the working
+    #    tree has since appended to the file. Source 2 cannot see that, which is why this
+    #    one goes first and wins.
+    # 2. A PRIVATE index holding the post-change tree. This is the only source that can see
+    #    a plain `mv` (rather than `git mv`), where the old path is a tracked DELETION and
+    #    the destination is UNTRACKED — present in neither diff above, so nothing can pair
+    #    them. A review found a moved library file taking the reporter exemption exactly
+    #    that way. `git add -A` into GIT_INDEX_FILE sees the untracked destination, still
+    #    honors .gitignore, and touches neither the real index nor the working tree.
+    #
+    # Source 2 uses a LOOSER similarity threshold on purpose. It stages working-tree
+    # content, so a file that moved *and* grew scores below the 50% default — the case it
+    # exists for is precisely a move plus an edit. The loosening is safe for THIS question
+    # and would not be for others: a mis-paired base path is still some pre-change file, and
+    # pre-change content is exactly what the exit probe wants. Failing to pair at all is the
+    # harmful direction, because it falls through to post-change content and hands the file
+    # the reporter exemption the base-revision rule exists to deny.
+    # No pathspec exclusion: a faithful tree keeps rename detection from pairing a real
+    # addition against an artificially "deleted" do-work/ path.
+    rename_status_stream_cache="$({ git diff --find-renames --name-status; \
+      git diff --staged --find-renames --name-status; } 2>/dev/null || true)"
+    local private_index_directory
+    private_index_directory="$(mktemp -d "${TMPDIR:-/tmp}/qualify-rename.XXXXXX" 2>/dev/null)" || return 0
+    if GIT_INDEX_FILE="$private_index_directory/index" git read-tree "$ownership_base" 2>/dev/null \
+      && GIT_INDEX_FILE="$private_index_directory/index" git add -A 2>/dev/null; then
+      rename_status_stream_cache="$(printf '%s\n%s\n' "$rename_status_stream_cache" \
+        "$(GIT_INDEX_FILE="$private_index_directory/index" \
+          git diff --cached --find-renames=30% --name-status "$ownership_base" 2>/dev/null || true)")"
+    fi
+    rm -rf "$private_index_directory"
+    return 0
+  }
+  # Sets $renamed_from_path_result rather than printing it: a command substitution would run
+  # this in a subshell, and the lazy cache above would then be discarded on every lookup.
+  renamed_from_path_result=""
+  resolve_base_path_before_rename() {
+    local current_path="$1"
+    local change_status
+    local old_path
+    local new_path
+    renamed_from_path_result=""
+    load_rename_status_stream
+    [ -z "$rename_status_stream_cache" ] && return 1
+    while IFS="$(printf '\t')" read -r change_status old_path new_path; do
+      case "$change_status" in R*) ;; *) continue;; esac
+      if [ -n "$new_path" ] && [ "$new_path" = "$current_path" ]; then
+        renamed_from_path_result="$old_path"
+        return 0
+      fi
+    done <<< "$rename_status_stream_cache"
+    return 1
+  }
+  file_owns_process_exit() {
+    local probe_path="$1"
+    local probe_content
+    local probe_hit_count
+    local base_probe_path="$probe_path"
+    if [ -n "$ownership_base" ] && ! git cat-file -e "${ownership_base}:${probe_path}" 2>/dev/null; then
+      if resolve_base_path_before_rename "$probe_path" && [ -n "$renamed_from_path_result" ]; then
+        base_probe_path="$renamed_from_path_result"
+      fi
+    fi
+    if [ -n "$ownership_base" ] && git cat-file -e "${ownership_base}:${base_probe_path}" 2>/dev/null; then
+      probe_content="$(git show "${ownership_base}:${base_probe_path}" 2>/dev/null)"
+    elif [ -f "$probe_path" ]; then
+      probe_content="$(cat -- "$probe_path")"
+    else
+      return 1
+    fi
+    probe_hit_count="$(printf '%s\n' "$probe_content" \
+      | grep -vE '^[[:space:]]*(#|//|\*)' \
+      | grep -cE "$process_exit_regex" || true)"
+    [ "${probe_hit_count:-0}" -gt 0 ]
+  }
+
+  # --- Relocated lines are not added lines (REQ-301) ---
+  # Every scan below reads `^+` out of a diff (or a whole untracked file), so text that was
+  # MOVED reads exactly like text that was WRITTEN. Every REQ that relocates code therefore
+  # FAILed the artifact audit on markers that already existed: REQ-258 hit it on four
+  # deliberate fixture TODO strings, byte-identical in the pre-change tree, and had to
+  # override the FAIL with evidence. That is the dangerous direction — a gate that cries
+  # wolf on a whole category of change teaches builders to wave its FAILs through, and this
+  # is the gate that catches real leftover instrumentation.
+  #
+  # Of the two candidate fixes, this is the second: subtract from the flagged set any line
+  # whose content already exists in the pre-change tree. It is chosen over `git diff -C
+  # --find-copies-harder` because git's rename/copy detection is file-level, so it sees a
+  # file split (REQ-258's shape) but not a hunk moved within a file or between two files
+  # that both already existed — and those are relocations too. The condition is the content,
+  # not the file topology.
+  #
+  # The REQ warns this approach "can mask a genuinely re-added marker elsewhere in the same
+  # file." Mere presence at base is indeed too coarse — it cannot tell a MOVE from a
+  # DUPLICATE, and REQ-263's own same-diff-exit fixture proved it by appending a second
+  # copy of a line the tree already had and being excused for it. So the test is not
+  # presence but COUNT: a line is relocated only when the change did not increase how many
+  # times that exact text occurs in the tree. A move removes one occurrence and adds one
+  # (count unchanged); a genuine addition raises the count, wherever it lands.
+  #
+  # Belt and braces: even a relocated line is DOWNGRADED to a named WARN, never dropped.
+  # Nothing the scans found is ever silently discarded — only text whose occurrence count
+  # actually grew can FAIL.
+  #
+  # `do-work/` is excluded from both counts for the same reason the scans exclude it: a REQ
+  # file that merely discusses a TODO must not license one in shipped code. The post-change
+  # count passes `--untracked` so a relocation into a not-yet-staged file counts on both
+  # sides of the comparison — that is REQ-258's shape and the whole case for this fix.
+  fresh_matched_lines=""
+  relocated_matched_lines=""
+  count_matching_lines_in_tree() {
+    # $1 = revision to search, or empty for the working tree (+ untracked).
+    #
+    # WHOLE-LINE equality, not substring. Counting substring matches was wrong in one
+    # direction and a review caught it: replacing `# TODO remove deprecated parser` with a
+    # bare `# TODO` leaves the substring count unchanged at 1 on both sides, so a brand-new
+    # marker read as relocated and the WARN even claimed its exact text already existed.
+    #
+    # `git grep` has no `-x`/`--line-regexp` (verified: `error: unknown switch 'x'` on git
+    # 2.43), and anchoring with `-E '^...$'` would mean regex-escaping arbitrary source
+    # lines. So git grep does the cheap fixed-string prefilter with `-h` (which suppresses
+    # both the rev and the path prefix, leaving bare line content) and real `grep -c -x -F`
+    # does the exact comparison — no escaping anywhere on either side.
+    # `grep -c` reads to EOF so it cannot SIGPIPE the upstream under pipefail; `|| true`
+    # absorbs the no-match exit 1, which is a legitimate zero. The needle is passed after
+    # `--` so a line beginning with `-` is data rather than options (REQ-208's lesson).
+    local search_revision="$1"
+    local search_pattern="$2"
+    if [ -n "$search_revision" ]; then
+      printf '%s' "$(git grep -h -F -e "$search_pattern" "$search_revision" \
+        -- . ':(exclude)do-work/' 2>/dev/null \
+        | grep -c -x -F -- "$search_pattern" || true)"
+    else
+      printf '%s' "$(git grep -h -F --untracked -e "$search_pattern" \
+        -- . ':(exclude)do-work/' 2>/dev/null \
+        | grep -c -x -F -- "$search_pattern" || true)"
+    fi
+  }
+  partition_matched_lines_by_relocation() {
+    local matched_block="$1"
+    local matched_line
+    local line_content
+    local base_occurrences
+    local current_occurrences
+    fresh_matched_lines=""
+    relocated_matched_lines=""
+    while IFS= read -r matched_line; do
+      [ -z "$matched_line" ] && continue
+      # Drop `grep -n`'s line number, then the diff's leading `+` when there is one
+      # (the untracked scan reads whole files, so its lines carry no `+`).
+      line_content="${matched_line#*:}"
+      line_content="${line_content#+}"
+      base_occurrences=0
+      current_occurrences=0
+      if [ -n "$ownership_base" ] && [ -n "$line_content" ]; then
+        # -e marks the pattern explicitly, so content starting with `-` is data, not options.
+        base_occurrences="$(count_matching_lines_in_tree "$ownership_base" "$line_content")"
+        current_occurrences="$(count_matching_lines_in_tree "" "$line_content")"
+      fi
+      if [ "${base_occurrences:-0}" -gt 0 ] \
+        && [ "${current_occurrences:-0}" -le "${base_occurrences:-0}" ]; then
+        relocated_matched_lines="${relocated_matched_lines}${matched_line}"$'\n'
+      else
+        fresh_matched_lines="${fresh_matched_lines}${matched_line}"$'\n'
+      fi
+    done <<< "$matched_block"
+  }
   # do-work/ is excluded at the pathspec level, NOT with a `grep -v 'do-work/'`
   # on the piped lines: added-content lines carry no file path, so a content
   # grep cannot scope by file — it silently matched REQ prose that merely
@@ -200,9 +465,16 @@ if [ "$git_available" -eq 1 ]; then
     debug_artifact_lines="$({ git diff -- . ':(exclude)do-work/'; git diff --staged -- . ':(exclude)do-work/'; } | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE "$unfinished_marker_regex" || true)"
   fi
   if [ -n "$debug_artifact_lines" ] && grep -qE '^[[:space:]]*-[[:space:]]\[x\][[:space:]]\*\*\[UNIFY\]' "$request_file"; then
-    echo "FAIL: [UNIFY] is checked but the diff adds debug artifacts — un-check it and flag:"
-    printf '%s\n' "$debug_artifact_lines" | head -10 | sed 's/^/  /'
-    failure_count=$((failure_count + 1))
+    partition_matched_lines_by_relocation "$debug_artifact_lines"
+    if [ -n "$fresh_matched_lines" ]; then
+      echo "FAIL: [UNIFY] is checked but the diff adds debug artifacts — un-check it and flag:"
+      printf '%s' "$fresh_matched_lines" | head -10 | sed 's/^/  /'
+      failure_count=$((failure_count + 1))
+    fi
+    if [ -n "$relocated_matched_lines" ]; then
+      echo "WARN: debug-artifact marker(s) in the diff whose exact text already exists in the pre-change tree — read as relocated, not added, so they do not fail this run; confirm the move was the intent:"
+      printf '%s' "$relocated_matched_lines" | head -10 | sed 's/^/  /'
+    fi
   fi
   # The output-primitive half needs file attribution (the ownership condition reads
   # the file that gained the line), so it walks the changed files instead of the
@@ -216,14 +488,80 @@ if [ "$git_available" -eq 1 ]; then
       added_output_lines="$({ git diff -- "$changed_path"; git diff --staged -- "$changed_path"; } | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE "$output_primitive_regex" || true)"
     fi
     [ -z "$added_output_lines" ] && continue
-    if [ -f "$changed_path" ] && grep -qE "$process_exit_regex" "$changed_path"; then
-      echo "WARN: added print(/console.log line(s) in $changed_path read as the file's own reporting — it owns its process exit, so printed output is presumptively contract, not a debug artifact; confirm from the diff"
-    elif grep -qE '^[[:space:]]*-[[:space:]]\[x\][[:space:]]\*\*\[UNIFY\]' "$request_file"; then
-      echo "FAIL: [UNIFY] is checked but the diff adds output line(s) to $changed_path, which never ends its own process — no terminal audience, so they read as leftover instrumentation:"
+    if file_owns_process_exit "$changed_path"; then
+      # The WARN prints its matched lines exactly as the FAIL branch does (REQ-263).
+      # Without them "confirm from the diff" cost a manual dig for the very lines the
+      # check had already found, which is how a WARN gets waved through.
+      echo "WARN: added print(/console.log line(s) in $changed_path read as the file's own reporting — it owns its process exit, so printed output is presumptively contract, not a debug artifact; confirm from these lines:"
       printf '%s\n' "$added_output_lines" | head -10 | sed 's/^/  /'
-      failure_count=$((failure_count + 1))
+    elif grep -qE '^[[:space:]]*-[[:space:]]\[x\][[:space:]]\*\*\[UNIFY\]' "$request_file"; then
+      partition_matched_lines_by_relocation "$added_output_lines"
+      if [ -n "$fresh_matched_lines" ]; then
+        echo "FAIL: [UNIFY] is checked but the diff adds output line(s) to $changed_path, which never ends its own process — no terminal audience, so they read as leftover instrumentation:"
+        printf '%s' "$fresh_matched_lines" | head -10 | sed 's/^/  /'
+        failure_count=$((failure_count + 1))
+      fi
+      if [ -n "$relocated_matched_lines" ]; then
+        echo "WARN: output line(s) in $changed_path whose exact text already exists in the pre-change tree — read as relocated, not added, so they do not fail this run; confirm the move was the intent:"
+        printf '%s' "$relocated_matched_lines" | head -10 | sed 's/^/  /'
+      fi
     fi
   done <<< "$changed_file_list"
+
+  # --- Both artifact scans, over untracked files, whole-file (REQ-263 addendum) ---
+  # Serial mode only. Step 6.3 runs BEFORE this REQ's commit, so a new source file the
+  # builder never staged is in neither `git diff` nor `git diff --staged`: both scans
+  # above never saw it, Check 1's (new) branch only tests that it is on disk, and a
+  # checked [UNIFY] could therefore ship with leftover instrumentation inside it.
+  # `git ls-files --others --exclude-standard` is the source: it lists untracked files
+  # individually — unlike `git status --porcelain`, which collapses a wholly-untracked
+  # directory into one row — and it drops correctly-ignored paths, so it doubles as the
+  # ignore filter (_dev/primes/prime-shell-commands.md).
+  # An untracked file has never been committed, so every line in it is added; scanning it
+  # whole does not weaken the added-lines-only contract the diffed paths get.
+  # This is a SEPARATE walk, deliberately: folding untracked paths into
+  # $changed_file_list would change Check 1's (modified)/(deleted) WARN behavior, which
+  # must stay exactly as it was. do-work/ is skipped per path, the same boundary as above.
+  # In worktree dispatch mode $diff_range reads committed work, so this block is skipped.
+  if [ -z "$diff_range" ]; then
+    unify_box_checked=0
+    grep -qE '^[[:space:]]*-[[:space:]]\[x\][[:space:]]\*\*\[UNIFY\]' "$request_file" && unify_box_checked=1
+    while IFS= read -r untracked_path; do
+      [ -z "$untracked_path" ] && continue
+      case "$untracked_path" in do-work/*) continue;; esac
+      [ -f "$untracked_path" ] || continue
+      untracked_marker_lines="$(grep -nE "$unfinished_marker_regex" -- "$untracked_path" || true)"
+      if [ -n "$untracked_marker_lines" ] && [ "$unify_box_checked" -eq 1 ]; then
+        partition_matched_lines_by_relocation "$untracked_marker_lines"
+        if [ -n "$fresh_matched_lines" ]; then
+          echo "FAIL: [UNIFY] is checked but untracked file $untracked_path carries debug artifacts — un-check it and flag:"
+          printf '%s' "$fresh_matched_lines" | head -10 | sed 's/^/  /'
+          failure_count=$((failure_count + 1))
+        fi
+        if [ -n "$relocated_matched_lines" ]; then
+          echo "WARN: debug-artifact marker(s) in untracked file $untracked_path whose exact text already exists in the pre-change tree — read as relocated, not added, so they do not fail this run; confirm the move was the intent:"
+          printf '%s' "$relocated_matched_lines" | head -10 | sed 's/^/  /'
+        fi
+      fi
+      untracked_output_lines="$(grep -nE "$output_primitive_regex" -- "$untracked_path" || true)"
+      [ -z "$untracked_output_lines" ] && continue
+      if file_owns_process_exit "$untracked_path"; then
+        echo "WARN: print(/console.log line(s) in untracked file $untracked_path read as the file's own reporting — it owns its process exit, so printed output is presumptively contract, not a debug artifact; confirm from these lines:"
+        printf '%s\n' "$untracked_output_lines" | head -10 | sed 's/^/  /'
+      elif [ "$unify_box_checked" -eq 1 ]; then
+        partition_matched_lines_by_relocation "$untracked_output_lines"
+        if [ -n "$fresh_matched_lines" ]; then
+          echo "FAIL: [UNIFY] is checked but untracked file $untracked_path carries output line(s), and it never ends its own process — no terminal audience, so they read as leftover instrumentation:"
+          printf '%s' "$fresh_matched_lines" | head -10 | sed 's/^/  /'
+          failure_count=$((failure_count + 1))
+        fi
+        if [ -n "$relocated_matched_lines" ]; then
+          echo "WARN: output line(s) in untracked file $untracked_path whose exact text already exists in the pre-change tree — read as relocated, not added, so they do not fail this run; confirm the move was the intent:"
+          printf '%s' "$relocated_matched_lines" | head -10 | sed 's/^/  /'
+        fi
+      fi
+    done <<< "$(git ls-files --others --exclude-standard)"
+  fi
 fi
 
 if [ "$failure_count" -eq 0 ]; then

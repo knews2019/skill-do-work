@@ -3,7 +3,7 @@ id: REQ-266
 title: Name builds beside the JS renderer's measured face numbers
 status: pending
 created_at: 2026-08-18T20:07:08Z
-status_changed_at: 2026-08-18T21:01:24Z
+status_changed_at: 2026-08-20T13:21:13Z
 user_request: UR-051
 addendum_to: REQ-252
 domain: general
@@ -14,7 +14,7 @@ effort_estimate: normal
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: false
 suggested_spec:
-depends_on: []
+depends_on: [REQ-292]
 maintenance: false
 write_set:
 - skills/do-work-board/tools/queue-kanban/web/board-durations.js
@@ -42,3 +42,13 @@ REQ-252's declared Discovered Task, verified by its review (F1b, gate: rule-chan
   Also: No, discard it — the Go-side comments now carry the builds and the JS numbers are near-duplicates of them.
 
 **Answered [2026-08-18]:** User approved via `do-work clarify` — queued for a future work run.
+
+REQ-292 may delete the subject of this REQ entirely. Re-read this REQ against the post-292
+tree before starting it; closing as no-longer-applicable is the expected outcome.
+
+**Cancelled and restored (2026-08-20).** This REQ was cancelled as superseded by REQ-292
+earlier in the same session, then restored at the user's direction because REQ-292 has not
+built yet. The `## Cancelled` section was removed on restore rather than left standing over a
+`pending` REQ, which would have been a contradiction; the supersession reasoning it carried is
+preserved in the Context line above and in the `depends_on: [REQ-292]` gate. Closing this REQ
+as no-longer-applicable after REQ-292 lands remains the expected outcome.
