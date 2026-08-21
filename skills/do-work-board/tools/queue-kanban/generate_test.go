@@ -4407,6 +4407,104 @@ func TestJavaScriptBehaviorReversedWaitDrawsAsABreak(t *testing.T) {
 	}
 }
 
+// TestJavaScriptBehaviorTimelineSummaryCountsRowsDrawnAsBreaks drives the whole
+// renderer because the contract spans two seams: the filtered row population
+// chosen by renderTimelineView and the three existing reasons its drawing pass
+// represents as broken. Counting causes would double-count REQ-914; counting
+// the unfiltered payload would make the filtered case report four instead of
+// one; counting row.anomaly alone would omit both reversed-span cases.
+func TestJavaScriptBehaviorTimelineSummaryCountsRowsDrawnAsBreaks(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
+	if readError != nil {
+		t.Fatalf("read web/board-timeline.js: %v", readError)
+	}
+
+	timelinePayload := `{
+	  "now": "2026-08-18T12:00:00Z",
+	  "rangeStart": "2026-08-18T08:00:00Z",
+	  "rangeEnd": "2026-08-18T13:00:00Z",
+	  "rows": [
+	    {"id":"REQ-911","createdTime":"2026-08-18T09:00:00Z","claimedTime":"2026-08-18T09:30:00Z",
+	     "completedTime":"2026-08-18T10:00:00Z","waitMinutes":30,"workMinutes":30,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":true},
+	    {"id":"REQ-912","createdTime":"2026-08-18T11:00:00Z","claimedTime":"2026-08-18T10:00:00Z",
+	     "completedTime":"2026-08-18T11:30:00Z","waitMinutes":-60,"workMinutes":90,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-913","createdTime":"2026-08-18T09:00:00Z","claimedTime":"2026-08-18T11:00:00Z",
+	     "completedTime":"2026-08-18T10:00:00Z","waitMinutes":120,"workMinutes":-60,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-914","createdTime":"2026-08-18T11:00:00Z","claimedTime":"2026-08-18T10:00:00Z",
+	     "completedTime":"2026-08-18T09:00:00Z","waitMinutes":-60,"workMinutes":-60,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-915","createdTime":"2026-08-18T09:00:00Z","claimedTime":"2026-08-18T10:00:00Z",
+	     "completedTime":"2026-08-18T11:00:00Z","waitMinutes":60,"workMinutes":60,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false}
+	  ]
+	}`
+
+	probeDriver := `
+function timelineSummaryWithFilter(visibleIds) {
+  [
+    "timeline-summary", "timeline-axis", "timeline-scroll", "timeline-readout",
+    "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state"
+  ].forEach(function (hostId) { timelineStubHosts[hostId] = makeStubNode("div"); });
+  timelineStubVisibleIds = visibleIds;
+  renderTimelineView();
+  return timelineStubHosts["timeline-summary"].textContent || "";
+}
+process.stdout.write(JSON.stringify({
+  unfiltered: timelineSummaryWithFilter(null),
+  filtered: timelineSummaryWithFilter(["REQ-912", "REQ-915"]),
+  anomalyOnly: timelineSummaryWithFilter(["REQ-911"]),
+  reversedPair: timelineSummaryWithFilter(["REQ-912", "REQ-913"]),
+  reversedWaitOnly: timelineSummaryWithFilter(["REQ-912"]),
+  reversedWorkOnly: timelineSummaryWithFilter(["REQ-913"]),
+  combinedCausesOnly: timelineSummaryWithFilter(["REQ-914"]),
+  healthyOnly: timelineSummaryWithFilter(["REQ-915"])
+}));
+`
+
+	javascriptProbe := timelineRenderDomStubPreamble +
+		"var boardData = { timeline: " + timelinePayload + " };\n" +
+		string(rendererFragment) +
+		probeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline summary break count", javascriptProbe)
+
+	var summaries struct {
+		Unfiltered         string `json:"unfiltered"`
+		Filtered           string `json:"filtered"`
+		AnomalyOnly        string `json:"anomalyOnly"`
+		ReversedPair       string `json:"reversedPair"`
+		ReversedWaitOnly   string `json:"reversedWaitOnly"`
+		ReversedWorkOnly   string `json:"reversedWorkOnly"`
+		CombinedCausesOnly string `json:"combinedCausesOnly"`
+		HealthyOnly        string `json:"healthyOnly"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &summaries); decodeError != nil {
+		t.Fatalf("decode rendered timeline summaries: %v (output starts %q)",
+			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+
+	wantBreakClause := func(caseName string, summary string, wantCount int) {
+		t.Helper()
+		wantClause := fmt.Sprintf(". %d with broken stamps, drawn as breaks.", wantCount)
+		if !strings.Contains(summary, wantClause) {
+			t.Errorf("%s summary must contain %q, got %q", caseName, wantClause, summary)
+		}
+	}
+
+	wantBreakClause("unfiltered", summaries.Unfiltered, 4)
+	wantBreakClause("filtered", summaries.Filtered, 1)
+	wantBreakClause("anomaly only", summaries.AnomalyOnly, 1)
+	wantBreakClause("reversed wait and work", summaries.ReversedPair, 2)
+	wantBreakClause("reversed wait only", summaries.ReversedWaitOnly, 1)
+	wantBreakClause("reversed work only", summaries.ReversedWorkOnly, 1)
+	wantBreakClause("combined causes", summaries.CombinedCausesOnly, 1)
+	if strings.Contains(summaries.HealthyOnly, "with broken stamps") {
+		t.Errorf("a healthy-only timeline must omit the break clause, got %q", summaries.HealthyOnly)
+	}
+}
+
 // TestJavaScriptBehaviorTimelineForecastLabelsAFilteredView drives the WHOLE
 // renderTimelineView, not renderTimelineForecast alone, because the defect lived
 // in the wiring: rows were filtered, projection never was, and the call site

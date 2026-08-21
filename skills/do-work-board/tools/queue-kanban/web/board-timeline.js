@@ -556,8 +556,8 @@
     var openCount = rows.filter(function (row) {
       return row.waitOpen || row.workOpen;
     }).length;
-    var anomalyCount = rows.filter(function (row) {
-      return row.anomaly;
+    var brokenRowCount = rows.filter(function (row) {
+      return row.anomaly || row.waitMinutes < 0 || (row.hasWork && row.workMinutes < 0);
     }).length;
     summaryNode.textContent =
       rows.length +
@@ -567,7 +567,7 @@
       openCount +
       " still open, measured to the now-line at " +
       timelineFormatStamp(nowMs) +
-      (anomalyCount ? ". " + anomalyCount + " with broken stamps, drawn as breaks." : ".");
+      (brokenRowCount ? ". " + brokenRowCount + " with broken stamps, drawn as breaks." : ".");
 
     // The rows above are filtered; this projection is the whole queue's and is
     // never re-derived client-side (see the filter note above). All the forecast

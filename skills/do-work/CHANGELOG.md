@@ -2,6 +2,18 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.7 — Timeline Break Count Matches the Render (2026-08-21)
+
+The Timeline summary now counts unique filtered rows across all three preserved break causes:
+completion anomalies, reversed waits, and reversed work spans. A row with two reversed segments
+counts once, hidden rows do not leak into the number, and a healthy view keeps the existing sentence
+without a zero-break clause.
+
+The renderer remains a consumer of anomaly verdicts rather than a second model authority. A
+real-renderer DOM test mutation-pins every cause, row deduplication, filtering, and the zero case;
+independent review passed at 99%. Completing the review addendum also consolidated UR-062 and its
+four REQs into the archive.
+
 ## 0.236.6 — Same-Package Shipped Citations Are Verified (2026-08-21)
 
 The shipped-reference contract now verifies citations within a skill package as well as citations
