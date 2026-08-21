@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.228.0 — Clarify Stops Contradicting Itself (2026-08-21)
+
+Clarify's Step 4 carried three pairs of instructions that could not both be followed, and two of them destroyed work: a REQ could be archived while still holding an unanswered question, and an approved follow-up could be archived "completed" without anyone building it. All three are fixed in one pass.
+
+- Answering one question and discarding another now works: a per-question verb records only that question, and the REQ's status is decided once at the end from every answer together
+- A REQ holding any unanswered question stays in the queue. Nothing with an open question is archived
+- The confirm-to-completed fast path routes on the `builder_decided` marker instead of on a question's wording, so rephrasing a consent question can no longer send a follow-up to the archive unbuilt
+- Answers are recorded with their reasoning and with whatever the answer put out of scope, so the next reader stops re-deriving the decision from the builder's old recommendation
+- The Timestamp rule's date-only paragraph now says which dates it governs by condition, instead of naming two files and going stale
+
 ## 0.227.0 — Verify Findings Show Up on the Board (2026-08-21)
 
 Seeing the board should mean seeing the problems. A new strip lists every finding `queue-kanban verify` detects — what is wrong and what to do about it — so the thirteen categories that previously reached nobody without a shell are on the page you already look at.

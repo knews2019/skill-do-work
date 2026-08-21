@@ -3874,6 +3874,73 @@ verify_input_block="$(sed -n '/^## Input/,/^## Capture QA Workflow/p' "$core_roo
 verify_revalidation_block="$(sed -n '/^## Decision Revalidation Workflow/,/^## What NOT To Do/p' "$core_root/actions/verify-requests.md")"
 clarify_revalidation_block="$(sed -n '/^### Step 5\.25: Revalidate queued work after reversals/,/^### Step 5\.5:/p' "$core_root/actions/clarify.md")"
 
+# REQ-288 K2/K3/K4 — the three shipped contradictions in clarify's Step 4. Each check
+# names the defect it pins, and each pins a rule that a plausible edit would undo:
+# K3 and K4 both destroy work when they regress (an archived REQ holding an open
+# question; an approved follow-up archived completed without ever being built).
+clarify_step4_block="$(sed -n '/^### Step 4: Collect answers/,/^### Step 5\.25:/p' "$core_root/actions/clarify.md")"
+clarify_checklist_block="$(sed -n '/^## Verification Checklist/,$p' "$core_root/actions/clarify.md")"
+
+# --- K2: the durable record is the answer line PLUS a dated reasoning note ---
+assert_block_contains \
+  "$clarify_step4_block" \
+  'durable record is the .- \[x\] \[question\] → \[answer\]. form below \*\*together with a dated note' \
+  "K2: clarify's canonical answered-question block must define the durable record as the answer line PLUS the dated reasoning note (clear-questions.md Principle 8), not the answer line alone."
+
+assert_block_contains \
+  "$clarify_step4_block" \
+  'put out of scope' \
+  'K2: the dated note must be required to carry anything the answer put out of scope, or the next reader re-derives the decision from Recommended:.'
+
+# K2's date constraint: cite the rule, never copy a clock command into an action file.
+assert_block_contains \
+  "$clarify_step4_block" \
+  'Timestamp rule.s date-only paragraph .`actions/work-reference\.md`. — cite it, never spell a clock command' \
+  "K2: clarify's dated note must cite the Timestamp rule's date-only paragraph rather than spelling a command; ungoverned prose dates get fabricated (UR-055)."
+
+assert_block_not_contains \
+  "$(cat "$core_root/actions/clarify.md")" \
+  'date -u \+%F|date -u \+%Y|Get-Date' \
+  'K2: clarify.md must never spell a clock command — work-reference.md is the only place in actions/ that does.'
+
+# The date-only paragraph itself must key on the condition, not on a consumer list.
+assert_block_contains \
+  "$(cat "$core_root/actions/work-reference.md")" \
+  'any UTC calendar date written into a durable record' \
+  "K2: the Timestamp rule's date-only paragraph must key on the condition; an enumerated consumer list goes stale and left REQ prose notes ungoverned (CLAUDE.md 'State conditions, not lists')."
+
+# --- K3: per-question verbs set no REQ-level state; Step 5 aggregates once ---
+assert_block_contains \
+  "$clarify_step4_block" \
+  'never sets the REQ.s status and never archives' \
+  'K3: a per-question verb must not set whole-file state — discarding one question while skipping another made two branches unfollowable at once.'
+
+assert_block_contains \
+  "$clarify_checklist_block" \
+  'stayed .pending-answers. in .do-work/queue/' \
+  'K3: a REQ holding even one remaining unanswered question must never be archived; the checklist is what makes that auditable.'
+
+assert_block_contains \
+  "$(sed -n '/^### Step 5: Resolve each REQ/,/^### Step 5\.25:/p' "$core_root/actions/clarify.md")" \
+  'Any remaining .- \[ \]. wins' \
+  "K3: Step 5 must compute status once from every question's outcome, with any open question holding the REQ in pending-answers."
+
+# --- K4: the completed fast path routes on the marker, never on question prose ---
+assert_block_contains \
+  "$(sed -n '/^### Step 5: Resolve each REQ/,/^### Step 5\.25:/p' "$core_root/actions/clarify.md")" \
+  'builder_decided: true. follow-up whose questions were all confirmed' \
+  'K4: the completed fast path must key on the builder_decided marker; keyed on question prose, a reworded consent question archives an approved follow-up without ever building it.'
+
+assert_block_contains \
+  "$(sed -n '/^### Step 5: Resolve each REQ/,/^### Step 5\.25:/p' "$core_root/actions/clarify.md")" \
+  'Never infer this branch from question prose' \
+  'K4: the marker must be stated as the entire test, so a future edit cannot reintroduce prose matching as a fallback.'
+
+assert_block_not_contains \
+  "$(cat "$core_root/actions/clarify.md")" \
+  'whose question is "Should I process this as a new task\?"' \
+  'K4: clarify must not route on the literal discriminator phrase any more — that is the defense review-work.md predicted would fail.'
+
 assert_block_contains \
   "$verify_input_block" \
   'Repeating `--against` batches several reversals into one queue scan' \
