@@ -1,49 +1,105 @@
 ---
-session_ended: 2026-08-20T08:41:00Z
-last_completed: REQ-258
-queue_state: 29 pending, 2 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
-reqs_processed_this_session: 1
-session_depth: light
+session_ended: 2026-08-21T09:08:21Z
+last_completed: REQ-308
+queue_state: 0 pending, 6 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
+reqs_processed_this_session: 22
+session_depth: heavy
 ---
 
 # Session Checkpoint
 
-## In Progress (interrupted)
-
 ## Completed This Session
 
-`do-work run` — stopped by the user after one REQ, at the commit boundary, for a fresh-session handoff.
+`do-work run` — drained every claimable REQ in the queue, serial mode, one commit per REQ.
 
-- **REQ-258**: Split the prescribed shell behavior suite per script (Route B, 94% / Acceptance Pass) — `1cc1836`, **0.216.2**
+- **REQ-279**: Exclude archive assets from blanked-REQ scans — `f487f04`
+- **REQ-283**: Route board verification through its skill — `2308afd`
+- **REQ-295**: Clarify maintainability audit impact score wording — `0b2261b`
+- **REQ-262**: Govern the prompt-kit templates' date headers (Route B) — `24587e5`
+- **REQ-269**: Draw the cross-package citation class by what a citation is (Route C) — `f71dfee`
+- **REQ-274**: Retire the "the SessionStart hook exits nonzero" framing (Route B) — `0efefa6`
+- **REQ-280**: Probe timestamp ordering, point Check 12 at the shipped repair (Route B) — `5e180d0`
+- **REQ-281**: Reconcile the calibration log against its own frontmatter (Route B) — `a868827`
+- **REQ-284**: Emit every verify finding from the board's Go producer (Route B) — `8f61f69`
+- **REQ-285**: Render a verify-findings strip on the board (Route B) — `fed89c9`
+- **REQ-288**: Fix the three unfiled contradictions in clarify's Step 4 (Route C) — `c25ee71`
+- **REQ-291**: Browser behavior probe lane beside the Node behavior lane (Route B) — `6fa130d`
+- **REQ-292**: Move Durations label placement into the browser (Route C) — `ce28510`
+- **REQ-266**: Name builds beside the JS renderer's measured face numbers (Route A) — `8fe9eb6`
+- **REQ-277**: State the mark-label face constant's real scope at its home (Route B) — `54282b0`
+- **REQ-293**: Make the impact/effort lock-in checks pin the property (Route B) — `df976d9`
+- **REQ-298**: Sweep the unchecked-exit-status primitive across shipped scripts (Route C) — `01abc28`
+- **REQ-299**: Carry builder-authored sections past Step 8 (Route C, 94%) — `3469b39`, **0.233.0**
+- **REQ-303**: Run the pinned live-archive assertions only in a suite checkout (Route B, 96%) — `69f3319`, **0.233.1**
+- **REQ-304**: Draw a reversed wait as a break, not as a valid bar (Route B, 95%) — `5e08a31`, **0.233.2**
+- **REQ-305**: Say the timeline forecast describes the whole queue (Route B, 96%) — `ef0cc55`, **0.233.3**
+- **REQ-308**: Judge effort_estimate on every capture, as impact already is (Route B, 95%) — `9bce005`, **0.234.0**
 
-Hash confirmed with `record-commit-hash.sh --verify`; `maintainer-verify.sh` exited 0 immediately before the commit. Serial mode — no worktrees created, none to clean up.
+`maintainer-verify.sh` exited 0 immediately before every commit, and each implementation hash was
+confirmed with `record-commit-hash.sh --verify`. Serial mode throughout — no worktrees created,
+none to clean up.
 
-**A second session was writing this repo concurrently.** Two commits landed mid-run from outside this session: `031c546` (clarify approving REQ-298 and REQ-299 to `pending`) and `1311300` (duration-label rounding, version 0.216.0 → 0.216.1). Neither touched any file REQ-258 wrote, verified by `git show --stat` on both. `031c546` did commit this session's in-flight `git mv` of REQ-258 into `working/` as an R100 rename, which was harmless — content was identical at that instant — and this session's archive move landed on top of it correctly.
+## In Progress (interrupted)
+
+None. `do-work/working/` is empty.
 
 ## Still Queued
 
-**Thirty-one** — 29 `pending`, 2 `pending-answers`. Net +3 (one shipped, three follow-ups created, two flipped from `pending-answers` to `pending` by the parallel clarify).
+- REQ-309: Run the repo's canonical gate before hand-back, not only the changed area's tests (pending-answers — 1 question)
+- REQ-310: Check a template payload's citations against where the payload lands (pending-answers — 1 question)
+- REQ-311: Resolve the nine calibration-log rows that disagree with their frontmatter (pending-answers — 1 question)
+- REQ-312: Resolve same-package citations in the shipped reference contract (pending-answers — 1 question)
+- REQ-313: Count the breaks the timeline actually draws (pending-answers — 1 question)
+- REQ-314: Judge effort_estimate on review-minted follow-ups too (pending-answers — 1 question)
 
-**Needs you (`pending-answers`, both REQ-258 discoveries awaiting the consent flow):**
-- **REQ-301** — `tools/checks/qualify.sh` has no rename/copy detection, so every code-relocation REQ gets a false `[UNIFY]` FAIL on pre-existing debug markers inside the moved text. REQ-258 hit it on four fixture `TODO` strings. The risk is habituation: a gate that cries wolf on a whole category of change trains builders to wave it away.
-- **REQ-302** — `effort_estimate: trivial` produced a 5-minute P50 for REQ-258's 19-file restructure. One data point; the REQ asks the question before proposing a fix.
-
-**Captured by the parallel session, after this checkpoint's REQ counts were taken:** REQ-303, REQ-304 and REQ-305 (UR-062, the 2026-08-20 consumer review), plus an addendum folded into REQ-263. Committed at `2314327`. They are included in the 29.
-
-**Queued at `pending` and worth sequencing deliberately:**
-- **REQ-300** — the text that still plans around the pre-split shell suite: `RESTART-PROMPT.md:33` and the `write_set` of REQ-263, REQ-264, REQ-271. **Run it before those three**, or their board display and any wave planning read the dissolved monolith.
+Nothing is claimable. All six await `do-work clarify`.
 
 ## Session Notes
 
-**REQ-258's only real risk was unverifiable success.** A 1882-line file split 17 ways can claim "no case changes" and be wrong in a way no test catches, because the suite tests the *scripts*, not itself. The thing that made the claim checkable was a line-multiset comparison of every non-blank case line, original against split: 1756 in, 1756 out. That, plus a deliberate mutation proving the runner still exits 1, is the whole evidence base — the green run alone proves nothing, because a suite that silently ran zero cases prints the same thing.
+- **The canonical gate was red on arrival.** `_dev/tests/record-commit-hash-guards.sh:428` carried
+  `\\` where a line continuation was meant, so a `printf` never ran and a bare redirect created its
+  fixture at 0 bytes. Red since `2308afd` (REQ-283). Repaired first, because every hand-back in the
+  run depends on that exit code.
+- **Environment had to be built.** Go 1.26.1 (`/usr/local/go-1.26`) and ShellCheck 0.11.0
+  (`/usr/local/bin`) were installed to meet the repo's minimums; `just` came from apt. The standard
+  invocation for the full gate is
+  `QUEUE_KANBAN_BROWSER=/opt/pw-browsers/chromium-1194/chrome-linux/chrome bash _dev/tests/maintainer-verify.sh`
+  with `/usr/local/go-1.26/bin` and `/usr/local/bin` on PATH.
+- **Working standard adopted for the run, and kept:** reproduce the captured RED on the untouched
+  tree before writing the fix; mutation-test every new check by reverting the fix it guards; measure
+  against the real corpus rather than fixtures alone; drive a real browser for anything visual.
+- **Cleanup archived seven closed URs** (051, 056, 058, 059, 060, 061, 063), moving 46 loose archive
+  REQs into their folders. That broke 38 citations pointing at the old flat paths; all were rewritten
+  mechanically and every archive citation in the repo was then verified to resolve. Eleven of the
+  repaired files are archived REQ bodies — a path substitution only, no other content touched.
+- **Merged `origin/main` after the run.** It arrived as `0.223.0`, renumbered to `0.235.0` here
+  because this branch already carried a different `0.223.0`. Main retired `standing: true` for
+  `do-work/prose-backlog.md`, so REQ-307 is archived rather than queued and the queue holds only
+  `pending-answers` REQs. The merged release is 0.235.0; see the changelog's reconciliation section
+  for what each of the four duplicated fixes resolved to.
+- **`do-work/runs/` holds eight run directories** from 2026-08-18. None were produced by this
+  session and none carry a `Status: consumed` marker, so Pass 4 left them alone.
 
-**The split surfaced two defects that were invisible while it was one file:** `generate-report-image`'s cases were interleaved around its `-batch` sibling's, `repair-req-timestamps`' around `audit-archive-timestamps`', and a `publish-portfolio-summary` fixture setup block sat under the `install-memory-hooks` header entirely. None of that was findable by reading 1882 lines top to bottom.
+## Context Summary (heavy sessions only)
 
-**Estimator ran badly under: 5 → 51 minutes.** Not an estimator fault — `effort_estimate: trivial` short-circuits signal extraction by design, and the field was misjudged at capture. That is REQ-302. One row appended to `do-work/calibration-log.tsv`; do not recalibrate off it.
+**Re-read before starting:** `_dev/primes/prime-action-files.md`, `_dev/primes/prime-shell-commands.md`,
+and `_dev/primes/prime-kanban-board.md`. All three gained lessons this session and their `## Lessons`
+lists are the compressed record of what went wrong.
 
-## Handoff
+**Decisions worth carrying:**
 
-`do-work/RESTART-PROMPT.md` is current as of this checkpoint. Four `depends_on` gates were added
-to encode the collision constraints this session learned: REQ-263 and REQ-271 on REQ-300, REQ-264
-on REQ-300 and REQ-263, REQ-301 on REQ-263 and REQ-264. The reasons are in the restart prompt's
-ordering table; the gates themselves are the binding form.
+- **REQ-299 D-01** — a check that needs a list of sections can be turned into a check that every
+  section mention states who writes it. The list moves into the prose, co-located with what it
+  describes.
+- **REQ-303 D-01 / REQ-305 D-03** — the same lesson from two directions: a test that calls the
+  function under test directly cannot hold its call site, and an inline `t.Fatalf` chain cannot be
+  proven to still bite. Extract findings; drive the real entry point.
+- **REQ-308 D-01/D-02** — two write-set extensions, both because a sweep found sites the REQ had not
+  listed. Enumerating sites in a REQ is a starting point, never the set.
+
+**Patterns established this session:** the browser behavior lane (REQ-291) and the timeline DOM
+probe (REQ-304) are both new harnesses that later work should extend rather than duplicate.
+
+**Open thread:** the six `pending-answers` REQs are the run's output as much as the code is. Three
+were created by this session's own reviews (312, 313, 314) and each names why the decision is the
+user's rather than the agent's.

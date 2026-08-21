@@ -693,4 +693,94 @@ if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi
 
+# REQ-298 — the truncation floor must REFUSE when git cannot answer, not skip.
+#
+# The reproduced incident: `head_blob_bytes="$(git cat-file -s ... || true)"`
+# collapsed "there is no blob in HEAD" and "git could not answer" into one empty
+# string, and the `-n` test then skipped the floor for both. Against a 13,900-byte
+# archived REQ truncated to 57 bytes, with everything real except a failing
+# `git cat-file -s`, the script printed "all content guards passed", wrote the
+# hash into the remnant, and told the operator to commit it.
+#
+# The stub shadows only `git cat-file -s` and delegates every other git call to
+# the real binary, so this probe changes exactly one thing about the run.
+size_query_root="$(mktemp -d)"
+git -C "$size_query_root" init -q .
+git -C "$size_query_root" config user.email probe@example.com
+git -C "$size_query_root" config user.name 'Guard Probe'
+mkdir -p "$size_query_root/do-work/archive"
+size_query_req="$size_query_root/do-work/archive/REQ-1301-truncated.md"
+{
+  printf -- '---\nid: REQ-1301\ntitle: Truncated\nstatus: completed\ncompleted_at: 2026-08-19T10:00:00Z\ncommit:\n---\n\n# Truncated\n\n'
+  padding_index=0
+  while [ "$padding_index" -lt 200 ]; do
+    printf -- '- a durable decision line that must be recoverable from git history.\n'
+    padding_index=$((padding_index + 1))
+  done
+} > "$size_query_req"
+git -C "$size_query_root" add -A
+git -C "$size_query_root" commit -q -m "[REQ-1301] Truncation fixture (Route C)"
+size_query_hash="$(git -C "$size_query_root" rev-parse --short HEAD)"
+# Now truncate it on disk, the shape of the original incident.
+printf -- '---\nid: REQ-1301\ntitle: Truncated\nstatus: completed\ncommit:\n---\n' > "$size_query_req"
+
+size_query_stub_bin="$size_query_root/stub-bin"
+mkdir -p "$size_query_stub_bin"
+real_git_path="$(command -v git)"
+{
+  printf -- '#!/usr/bin/env bash\n'
+  printf -- 'if [ "$1" = "cat-file" ] && [ "$2" = "-s" ]; then exit 1; fi\n'
+  printf -- 'exec %s "$@"\n' "$real_git_path"
+} > "$size_query_stub_bin/git"
+chmod +x "$size_query_stub_bin/git"
+
+size_query_output="$(cd "$size_query_root" && PATH="$size_query_stub_bin:$PATH" \
+  bash "$record_script" "do-work/archive/REQ-1301-truncated.md" "$size_query_hash" 2>&1)" \
+  && size_query_status=0 || size_query_status=$?
+
+if printf '%s' "$size_query_output" | grep -q 'all content guards passed'; then
+  printf 'FAIL: the truncation floor reported success while git could not size the HEAD blob — the guard failed OPEN (REQ-298).\n%s\n' \
+    "$size_query_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+if [ "$size_query_status" -eq 0 ]; then
+  printf 'FAIL: record-commit-hash.sh exited 0 with an unreadable HEAD size against a truncated REQ (REQ-298).\n%s\n' \
+    "$size_query_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+if ! printf '%s' "$size_query_output" | grep -q 'size could not be read'; then
+  printf 'FAIL: the refusal did not name the real reason (an unreadable HEAD size) — a reader sent hunting the wrong cause is why this matters (REQ-298).\n%s\n' \
+    "$size_query_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+# The file must be untouched: refusing means writing nothing.
+if ! grep -q '^commit:$' "$size_query_req"; then
+  printf 'FAIL: the hash was written into the truncated remnant despite the refusal (REQ-298).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# The control: with a working git, the floor itself fires and says so.
+git -C "$size_query_root" checkout -q HEAD -- do-work/archive/REQ-1301-truncated.md
+printf -- '---\nid: REQ-1301\ntitle: Truncated\nstatus: completed\ncommit:\n---\n' > "$size_query_req"
+size_query_control="$(cd "$size_query_root" && bash "$record_script" \
+  "do-work/archive/REQ-1301-truncated.md" "$size_query_hash" 2>&1)" || true
+if ! printf '%s' "$size_query_control" | grep -q 'content was lost BEFORE this script ran'; then
+  printf 'FAIL: the control run did not trip the truncation floor, so the stubbed run proves nothing (REQ-298).\n%s\n' \
+    "$size_query_control" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# A file with no blob in HEAD is a legitimate skip, not a refusal: the fix must
+# not turn "this file is new" into a failure.
+size_query_new_req="$size_query_root/do-work/archive/REQ-1302-new.md"
+printf -- '---\nid: REQ-1302\ntitle: New\nstatus: completed\ncompleted_at: 2026-08-19T10:00:00Z\ncommit:\n---\n\n# New\n\nbody line one\nbody line two\n' > "$size_query_new_req"
+size_query_new_output="$(cd "$size_query_root" && bash "$record_script" \
+  "do-work/archive/REQ-1302-new.md" "$size_query_hash" 2>&1)" || true
+if printf '%s' "$size_query_new_output" | grep -q 'size could not be read'; then
+  printf 'FAIL: a file absent from HEAD was refused instead of skipped — the no-blob case is legitimate (REQ-298).\n%s\n' \
+    "$size_query_new_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$size_query_root"
+
 printf 'record-commit-hash and blanked-req-scan guard probes passed.\n'

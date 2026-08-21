@@ -73,7 +73,7 @@ Finding recorded in `REQ-178`'s Review section (gate token audit trail). See `do
 
 - `_dev/tests/contract-regressions.sh` reads `Justfile` (capital J) in `extract_kanban_shutdown_line`, but the tracked file is lowercase `justfile` — on a case-sensitive filesystem the awk open fails and `set -e` aborts the suite with exit 2 at that line, skipping every check after it (~1500 lines never run). Passes only on case-insensitive filesystems. Pre-existing; observed in the baseline run before any REQ-179 change.
 - Known environmental flake confirmed flaky: `prescribed-shell-scripts-behavior.sh`'s "run-blocked-check process-tree case left the descendant alive" failed in the baseline and RED runs but passed in the GREEN run of this session — same sandbox, no related change.
-- `scope-drift.sh` run against `do-work/archive/REQ-178-audit-metrics-mechanical-tool.md` now reports symmetric drift because that REQ's Scope declared bare filenames (`churn.go`) while its Implementation Summary reported full paths (`skills/do-work-toolbox/tools/audit-metrics/churn.go`). That is REQ-178's REQ-file formatting, not a tool defect — noting in case the orchestrator wants a Scope-path-spelling convention or normalization follow-up.
+- `scope-drift.sh` run against `do-work/archive/UR-040/REQ-178-audit-metrics-mechanical-tool.md` now reports symmetric drift because that REQ's Scope declared bare filenames (`churn.go`) while its Implementation Summary reported full paths (`skills/do-work-toolbox/tools/audit-metrics/churn.go`). That is REQ-178's REQ-file formatting, not a tool defect — noting in case the orchestrator wants a Scope-path-spelling convention or normalization follow-up.
 
 ## Implementation Summary
 

@@ -284,6 +284,7 @@ run_self_test() {
   success_output="$self_test_root/success.out"
   : > "$success_log"
   if ! PATH="$with_node_bin" \
+    QUEUE_KANBAN_BROWSER='' \
     MAINTAINER_VERIFY_SELFTEST_LOG="$success_log" \
     MAINTAINER_VERIFY_EXPECTED_REPO_ROOT="$fixture_root" \
     MAINTAINER_VERIFY_SELFTEST_GOROOT="$fixture_go_root" \
@@ -298,6 +299,7 @@ run_self_test() {
   no_node_output="$self_test_root/no-node.out"
   : > "$no_node_log"
   if ! PATH="$without_node_bin" \
+    QUEUE_KANBAN_BROWSER='' \
     MAINTAINER_VERIFY_SELFTEST_LOG="$no_node_log" \
     MAINTAINER_VERIFY_EXPECTED_REPO_ROOT="$fixture_root" \
     MAINTAINER_VERIFY_SELFTEST_GOROOT="$fixture_go_root" \
@@ -316,6 +318,7 @@ run_self_test() {
   newer_tools_output="$self_test_root/newer-tools.out"
   : > "$newer_tools_log"
   if ! PATH="$with_node_bin" \
+    QUEUE_KANBAN_BROWSER='' \
     MAINTAINER_VERIFY_SELFTEST_LOG="$newer_tools_log" \
     MAINTAINER_VERIFY_EXPECTED_REPO_ROOT="$fixture_root" \
     MAINTAINER_VERIFY_SELFTEST_GOROOT="$fixture_go_root" \
@@ -482,6 +485,31 @@ run_verification() {
     )
   else
     printf 'SKIP: Node is unavailable; strict JavaScript behavior lane was not run.\n'
+  fi
+  # The browser behavior lane, guarded exactly as the Node lane above is: run it when
+  # an engine is present, print an explicit SKIP naming what did not run when it is
+  # not. Either way this script exits 0 — the lane's own zero-probe guard is what
+  # stops a skipped run from being mistaken for a green one when it IS selected.
+  # QUEUE_KANBAN_BROWSER names an engine that is not on PATH under a well-known name.
+  browser_probe_binary=""
+  if [ -n "${QUEUE_KANBAN_BROWSER:-}" ]; then
+    browser_probe_binary="$QUEUE_KANBAN_BROWSER"
+  else
+    for browser_probe_candidate in google-chrome google-chrome-stable chromium chromium-browser chrome; do
+      if command -v "$browser_probe_candidate" >/dev/null 2>&1; then
+        browser_probe_binary="$browser_probe_candidate"
+        break
+      fi
+    done
+  fi
+  if [ -n "$browser_probe_binary" ]; then
+    printf 'maintainer-verify: queue-kanban strict browser behavior lane\n'
+    (
+      cd "$repo_root/skills/do-work-board/tools/queue-kanban"
+      go test -count=1 -run '^TestMaintainerStrictBrowserBehaviorLane$' -v .
+    )
+  else
+    printf 'SKIP: no browser is available; strict browser behavior lane was not run. Set QUEUE_KANBAN_BROWSER to name one.\n'
   fi
 
   printf 'maintainer-verify: audit-metrics go vet\n'

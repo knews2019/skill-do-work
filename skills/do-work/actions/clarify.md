@@ -94,25 +94,37 @@ Builder-marked `- [~]` decisions reflect the "Think Before Coding" guardrail (`c
 
 ### Step 4: Collect answers
 
-> **Named entry point — Canonical answered-question format.** The `- [x] [question] → [answer]` form below is the durable record for **any** caller that obtains a user answer to a REQ question, not just clarify (`crew-members/clear-questions.md` Principle 8) — an orchestrator that asked and got an answer mid-run writes the same form before dispatch (`actions/work.md` Step 3.5). Callers cite it by this name, not by step number. What is clarify-local is Step 5's `pending-answers` → `pending` flip: a REQ already in flight has no such status to leave.
+> **Named entry point — Canonical answered-question format.** The durable record is the `- [x] [question] → [answer]` form below **together with a dated note carrying the reasoning, including anything the answer put out of scope** (`crew-members/clear-questions.md` Principle 8, which defines both halves). The answer line alone is not the record: it says what was chosen and not why, so the next reader re-derives the decision from the stored `Recommended:` rationale — which the answer may have just overruled. Both halves are the durable record for **any** caller that obtains a user answer to a REQ question, not just clarify — an orchestrator that asked and got an answer mid-run writes the same form before dispatch (`actions/work.md` Step 3.5). Callers cite it by this name, not by step number. What is clarify-local is Step 5's `pending-answers` → `pending` flip: a REQ already in flight has no such status to leave.
 
 If your environment has a structured question prompt (multi-question UI), batch questions in groups of **at most 4 per prompt** — chunk by question count, not by REQ. A REQ with 6 questions needs 2 prompts.
 
 Before writing answers, initialize one deduplicated `overturned_decision_sources` set for this clarify session. A source enters it only when its REQ carries `builder_decided: true` and the user's answer is semantically different from the stored `Recommended:` builder choice. Preserve the recommendation before replacing the question line so the comparison and later decision-revalidation source both retain old → new provenance. Confirmation, discard, discovery approval, and an ambiguous same-choice paraphrase never enter the set.
 
+**A per-question verb records that question's outcome and nothing else. It never sets the REQ's status and never archives.** A REQ can hold several questions and the user can answer them differently — discard one and skip the next — so a verb that flipped whole-file state would make two branches unfollowable at once, and could archive a REQ still holding an open `- [ ]`. Step 5 computes the REQ's status once, from the whole set of outcomes.
+
+Every answered line is written with its dated note (**Canonical answered-question format**, above): the answer, then the reasoning and anything the answer put out of scope. Obtain the date per the Timestamp rule's date-only paragraph (`actions/work-reference.md`) — cite it, never spell a clock command here.
+
 For each question, the user can:
 
-- **Answer it** → update to `- [x] [question] → [user's answer]`; when this is a `builder_decided: true` follow-up and the answer differs from `Recommended:`, add its REQ id to `overturned_decision_sources`
-- **Confirm builder's choice** → update to `- [x] [question] → Confirmed: [builder's choice]`. Then check the REQ type:
-  - *Discovered-task REQ* (has a "Should I process this as a new task?" question with recommended "Yes, add to queue"): flip `status` to `pending` so the task enters the work queue — see "Approved Discovered Task" below
-  - *All other REQs* (builder-decision follow-ups): mark `status: completed` (no implementation needed — see "Builder Was Right" below)
-- **Pick a different option** → update to `- [x] [question] → [user's chosen option]`; when this is a `builder_decided: true` follow-up, add its REQ id to `overturned_decision_sources`
-- **Skip for now** → leave as `- [ ]`, REQ stays `pending-answers`
-- **Discard it** → update to `- [x] [question] → Discarded`, then mark the REQ `status: cancelled`, `completed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), and archive it directly (same fast-path as "Builder Was Right", but with the honest won't-do status — no work happened and none is wanted; see "Discarded" below)
+- **Answer it** → update to `- [x] [question] → [user's answer]`, plus the dated note; when this is a `builder_decided: true` follow-up and the answer differs from `Recommended:`, add its REQ id to `overturned_decision_sources`
+- **Confirm builder's choice** → update to `- [x] [question] → Confirmed: [builder's choice]`, plus the dated note
+- **Pick a different option** → update to `- [x] [question] → [user's chosen option]`, plus the dated note; when this is a `builder_decided: true` follow-up, add its REQ id to `overturned_decision_sources`
+- **Skip for now** → leave as `- [ ]`
+- **Discard it** → update to `- [x] [question] → Discarded`, plus the dated note saying why
 
-### Step 5: Activate answered REQs
+### Step 5: Resolve each REQ's status from its whole question set
 
-For each REQ that wasn't already completed or discarded: if all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending` and stamp `status_changed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`; the board's state timer reads it, so the card shows time since the answers landed rather than time since capture). These enter the queue for the next `do-work run`.
+Step 4 wrote answers; this step decides what each REQ now *is*. Compute it **once per REQ, from every question's outcome together** — never from the last verb the user happened to use.
+
+**Any remaining `- [ ]` wins.** If even one question is still open, the REQ stays `pending-answers` and stays in `do-work/queue/`, whatever the other answers were. A REQ is never archived while it holds an unanswered question: the answers already given are recorded and the REQ comes back to the next clarify session for the rest.
+
+Otherwise every question is `[x]` or `[~]`, and the REQ's disposition follows from the answers:
+
+- **Every question discarded** → `status: cancelled`, `completed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), archive directly. The honest won't-do status: no work happened and none is wanted — see "Discarded" below.
+- **Otherwise, a `builder_decided: true` follow-up whose questions were all confirmed** → `status: completed` (no implementation needed — see "Builder Was Right" below). **The marker is the entire test.** It is stamped at creation by the Builder-Decided Follow-up Template (`actions/work-reference.md` → Step 8) and by nothing else, so routing cannot be changed by rewording a question. Never infer this branch from question prose: a follow-up that still needs building, confirmed down this path, is archived `completed` without anyone building it.
+- **Everything else** → flip `status` from `pending-answers` to `pending` so the work loop picks it up — an approved discovered task, an answered review follow-up, a partially-discarded REQ with real answers left in it. See "Approved Discovered Task" below.
+
+On any flip, stamp `status_changed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`; the board's state timer reads it, so the card shows time since the answers landed rather than time since capture). REQs flipped to `pending` enter the queue for the next `do-work run`.
 
 ### Step 5.25: Revalidate queued work after reversals
 
@@ -183,7 +195,7 @@ When the user reviews a `pending-answers` follow-up and confirms that the builde
 
 ## Approved Discovered Task
 
-When the user reviews a discovered-task follow-up (one whose question is "Should I process this as a new task?" with recommended "Yes, add to queue") and confirms the recommendation:
+When a REQ comes out of Step 5 on the flip-to-`pending` branch — the ordinary case for a discovered-task follow-up, which carries no `builder_decided: true` marker — and the user confirmed the recommendation:
 
 1. Update the question to `- [x] [question] → Confirmed: Yes, add to queue`
 2. Update frontmatter: `status: pending` (NOT `completed` — this task needs to be built), plus `status_changed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`)
@@ -224,8 +236,12 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 - [ ] No story contained a file path, bare identifier, or unglossed technical token.
 - [ ] Layer 3 detail was offered, not rendered, unless the user asked for it.
 - [ ] Each `blocked` REQ presented in Step 5.5 carried a one-sentence "what it was for" line.
-- [ ] Every answer written into a REQ used the **Canonical answered-question format** (`- [x] [question] → [answer]`) — the same form any mid-run caller must use, so the answer survives the session that heard it.
-- [ ] Answered REQs with all questions resolved flipped to `status: pending` (or `completed` for builder-was-right, `cancelled` for discarded).
+- [ ] Every answer written into a REQ used the **Canonical answered-question format** — the answer line **and** its dated note carrying the reasoning and anything the answer put out of scope. The same form any mid-run caller must use, so the decision survives the session that heard it rather than being re-derived from `Recommended:`.
+- [ ] Every dated note **cited** the Timestamp rule's date-only paragraph for its date. No clock command was spelled anywhere in this file.
+- [ ] No per-question verb set a REQ-level status or archived anything. Status was computed once per REQ, in Step 5, from every question's outcome together.
+- [ ] **A REQ holding even one remaining `- [ ]` stayed `pending-answers` in `do-work/queue/`** — including one where another question was discarded. Nothing with an open question was archived.
+- [ ] REQs with every question resolved flipped to `status: pending` — except all-discarded ones (`cancelled`) and confirmed `builder_decided: true` follow-ups (`completed`).
+- [ ] The `completed` fast path was taken **only** on the `builder_decided: true` marker, never inferred from a question's wording.
 - [ ] Approved discovered-task REQs flipped to `pending` and stayed in `do-work/queue/` — not archived.
 - [ ] Skipped REQs remained `pending-answers` — nothing lost.
 - [ ] Every genuinely different answer on a `builder_decided: true` follow-up entered one deduplicated reversal set; confirmations, discards, and discovered-task approvals did not.

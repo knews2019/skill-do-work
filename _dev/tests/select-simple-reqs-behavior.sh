@@ -41,6 +41,13 @@
 #       BSD xargs macOS ships, and this script claims the stock-macOS floor.
 #       Worse than unportable: with the pipeline broken and no `set -e`, the
 #       scan would report an empty selection and exit 0.
+#  T11  The warn legs for `impact` and `domain` fail in the PROMOTION
+#       direction, which T8 does not cover. A typo'd `impact-critcal` or
+#       `securty` normalizes to the documented default (`impact-user-visible`,
+#       `general`), so neither veto fires and the REQ lands in the run set a
+#       cheaper model then builds — the opposite of T8's silent omission and the
+#       reason those two warn legs are not narrowable to `effort_estimate`
+#       alone. The warning is the only signal either case produces.
 #
 # Exit 0: every probe passed. Exit 1: at least one FAIL line above.
 set -uo pipefail
@@ -195,7 +202,32 @@ status: pending
 domain: general
 effort_estimate: effort-mechanial'
 
-selected_ids="$(bash "$selector" --repo-root "$fixture_root" --ids-only)"
+# T11 — typo'd vetoes. Both were MEANT to be held back; both normalize to the
+# documented default instead, so the report warns and selects them anyway.
+write_req 'do-work/queue/REQ-118-typo-impact.md' 'id: REQ-118
+title: "Typo in the impact-critical token"
+status: pending
+domain: general
+impact: impact-critcal
+effort_estimate: effort-mechanical'
+
+write_req 'do-work/queue/REQ-119-typo-domain.md' 'id: REQ-119
+title: "Typo in the security domain"
+status: pending
+domain: securty
+effort_estimate: effort-mechanical'
+
+# The report's final `run_set:` line IS the selector's machine-readable
+# contract (actions/run-simple-reqs.md reads exactly this line), so the probes
+# below read it rather than a second output mode: an ids-only path that exits
+# before the warning block would hide every T8 and T11 diagnostic from the very
+# assertions meant to catch them.
+run_set_ids() {
+  bash "$selector" --repo-root "$fixture_root" "$@" 2>/dev/null \
+    | sed -n 's/^run_set: //p' | tr ' ' '\n'
+}
+
+selected_ids="$(run_set_ids)"
 
 assert_selected() {
   if ! printf '%s\n' "$selected_ids" | grep -qx "$1"; then
@@ -228,7 +260,7 @@ assert_selected REQ-109 "T4 tdd is not a veto: test-first work carries an object
 
 # T6 — default keeps the negligible REQ; the flag removes it.
 assert_selected REQ-114 "T6 default: an impact-negligible REQ is mechanical work and stays selected without the flag"
-negligible_filtered_ids="$(bash "$selector" --repo-root "$fixture_root" --skip-impact-negligible --ids-only)"
+negligible_filtered_ids="$(run_set_ids --skip-impact-negligible)"
 if printf '%s\n' "$negligible_filtered_ids" | grep -qx REQ-114; then
   report_failure "T6 --skip-impact-negligible: REQ-114 must be dropped by the selector, since forwarding the flag to the handoff is inert"
 fi
@@ -252,6 +284,21 @@ if ! printf '%s' "$typo_warnings" | grep -q 'effort-mechanial'; then
   report_failure "T8 warn-on-fallback: the warning must quote the value as written, so the typo is diagnosable"
 fi
 assert_not_selected REQ-116 "T8 warn-on-fallback: the documented default still applies — an unrecognized value reads as effort-substantive"
+
+# T11 — the promotion direction: a typo'd veto field selects rather than drops,
+# so the warning is the whole diagnosis. Narrowing the warn legs to
+# `effort_estimate` would make both of these silent.
+promotion_warnings="$(bash "$selector" --repo-root "$fixture_root" 2>&1 >/dev/null)"
+assert_selected REQ-118 "T11 promotion: a typo'd impact normalizes to impact-user-visible, so the impact-critical veto cannot fire — the documented default, pinned so the warning below is understood as the only signal"
+assert_selected REQ-119 "T11 promotion: a typo'd domain normalizes to general, so the security veto cannot fire"
+for promotion_case in 'REQ-118 impact impact-critcal' 'REQ-119 domain securty'; do
+  set -- $promotion_case
+  for promotion_needle in "$1" "$3"; do
+    if ! printf '%s' "$promotion_warnings" | grep -q -- "$promotion_needle"; then
+      report_failure "T11 promotion: the $2 warn leg must name '$promotion_needle' — with the veto silently not firing, this warning is the only thing standing between a typo and a cheaper model building $1"
+    fi
+  done
+done
 
 # T9 — no GNU-only tool flags, against the stated stock-macOS floor.
 selector_code_only="$(sed 's/[[:space:]]*#.*$//' "$selector")"

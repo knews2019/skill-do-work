@@ -3,13 +3,15 @@
 # with, plus a P50 estimate for the batch. Backs actions/run-simple-reqs.md.
 #
 # Usage: tools/select-simple-reqs.sh [--repo-root DIR] [--skip-impact-negligible]
-#                                    [--ids-only]
 # Output (default): a human report — one row per selected REQ with its p50, the
 #         dropped REQs with the reason each was dropped, any Schema Read
 #         Contract warnings, then the batch totals. The final line is always
 #         "run_set: <ids>" (empty when none qualify), which is the line
-#         actions/run-simple-reqs.md reads to build its handoff command.
-#        (--ids-only): the selected ids, one per line, and nothing else.
+#         actions/run-simple-reqs.md reads to build its handoff command. There
+#         is deliberately no ids-only output mode: an early-exiting second
+#         output path printed the ids while never reaching the Schema Read
+#         Contract warnings below, so a typo'd `impact` or `domain` reached the
+#         caller's run set with nothing on stderr to diagnose it.
 # Exit 0: report emitted, INCLUDING when nothing qualifies — an empty queue of
 #         mechanical work is a normal answer, not an error, and the caller must
 #         be able to tell the two apart without parsing stderr.
@@ -72,7 +74,6 @@
 set -uo pipefail
 
 repository_root="."
-ids_only="false"
 skip_impact_negligible="false"
 
 while [ $# -gt 0 ]; do
@@ -85,21 +86,13 @@ while [ $# -gt 0 ]; do
       repository_root="$2"
       shift 2
       ;;
-    --ids-only)
-      ids_only="true"
-      shift
-      ;;
     --skip-impact-negligible)
       skip_impact_negligible="true"
       shift
       ;;
-    -h|--help)
-      sed -n '2,/^set -uo/p' "$0" | sed 's/^# \{0,1\}//; $d'
-      exit 0
-      ;;
     *)
       printf 'select-simple-reqs: unrecognized argument %s\n' "$1" >&2
-      printf 'usage: select-simple-reqs.sh [--repo-root DIR] [--skip-impact-negligible] [--ids-only]\n' >&2
+      printf 'usage: select-simple-reqs.sh [--repo-root DIR] [--skip-impact-negligible]\n' >&2
       exit 2
       ;;
   esac
@@ -366,15 +359,6 @@ while IFS="$(printf '\t')" read -r kind identifier detail title; do
 done < "$selection_rows"
 
 selected_ids="${selected_ids# }"
-
-if [ "$ids_only" = "true" ]; then
-  # shellcheck disable=SC2086
-  # Word splitting is intended: selected_ids is a space-separated id list.
-  for identifier in $selected_ids; do
-    printf '%s\n' "$identifier"
-  done
-  exit 0
-fi
 
 if [ "$selected_count" -eq 0 ]; then
   printf 'No pending REQ currently qualifies for a cheaper model.\n'

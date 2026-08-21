@@ -63,7 +63,7 @@ saw the consumer copy.
    display truncation from value normalization.
 
 Context, not a REQ: the consumer sync arrived without `decisions/records/adr-018-*`
-and `do-work/archive/REQ-095-two-clone-acceptance-run.md`, both of which the
+and `do-work/archive/UR-018/REQ-095-two-clone-acceptance-run.md`, both of which the
 CHANGELOG/work-reference cite. If they exist here, it's a consumer-side partial
 sync (ignore); if they don't, that's a fourth finding — the 0.174.2 entry announces
 an ADR that was never committed.
