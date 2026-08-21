@@ -96,7 +96,7 @@ One committed `do-work/RESTART-PROMPT.md`, any queue-state edits Step 1 made, an
 
 ## Rules
 
-- **Never ask the user anything in the main thread.** Per `actions/work.md` Step 3.5, mark the item `- [~] ... D-NN: chose X. Reasoning. Value. Risk.` and proceed. Per Step 8, queue user-facing questions as a follow-up REQ with `status: pending-answers`; the user answers them with `do-work clarify`.
+- **Never ask the user anything in the main thread.** Per `actions/work.md` Step 3.5, mark the item `- [~] ... D-NN: chose X. Reasoning. Value. Risk.` and proceed. Per Step 8, queue user-facing questions as a follow-up REQ with `status: pending-answers` (the user answers them with `do-work clarify`); a question carrying an outside `Answerer:` routes to that person's stakeholder REQ instead (`do-work stakeholder-answers` ingests their reply).
 - **Do any more work after writing the handoff and you rewrite it before handing over.**
 - **When rewriting `do-work/CHECKPOINT.md`, carry through verbatim every In Progress entry you did not write** (`actions/work-reference.md` → **Session Checkpoint Template (Step 10)**).
 - Explorers, planners, and reviewers write full output to `do-work/runs/<run>/` and reply with a short summary, so the handoff's context stays clear.

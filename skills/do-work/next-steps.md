@@ -28,3 +28,6 @@ Most actions have a next step inferable from what just ran (after `code-review`,
 | `capture-requests` | Every new REQ is `effort_estimate: effort-mechanical` | `do-work run-simple-reqs` — the batch is cheap enough to hand a smaller model, and it lists and estimates before running |
 | `clarify` | Questions still pending | `do-work clarify` again, not `do-work run` — unanswered REQs won't be picked up |
 | `clarify` | All answered | `do-work run` to process them |
+| `run` | Questions were routed to a stakeholder REQ | Share the printed report path with that person — there is no do-work command for the human step; `do-work stakeholder-answers` once their reply is in hand |
+| `stakeholder-answers` | Overrides minted change REQs | `do-work run` to build the changes |
+| `stakeholder-answers` | Questions still open | Nothing — waiting on a person isn't actionable here; the REQ stays blocked with its regenerated report |

@@ -2,6 +2,31 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.2 — Three More Codex Findings Closed on the Stakeholder Workflow (2026-08-21)
+
+Codex's second pass over PR #159 found three more real gaps. All verified and closed.
+
+- Targeting a reply by stakeholder name now disambiguates against the archive: Q-NN ids restart on every fresh REQ, so when the same person also has an archived one, `stakeholder-answers` lists the candidate reports and asks which one the reply answers instead of routing by name alone. The report footer's REQ id stays the authoritative target.
+- The report generator looks for a question's source REQ in `do-work/working/` as well as the archive — generation runs before the archive move, so the first report no longer claims its source context is missing.
+- The Commit Phase's staging contracts (serial and worktree, prose and example block) now name the stakeholder REQ and its fresh `ai-reports/` bundle, so the `blocked_by:` path never dangles on another checkout.
+
+## 0.236.1 — Three Stakeholder Workflow Fixes From Codex Review (2026-08-21)
+
+Codex reviewed PR #159 and found three real gaps in the new workflow. All three verified and closed.
+
+- A stakeholder REQ no longer carries `user_request:` — UR membership would have held the first source UR (and its completed REQs) out of the archive until the outside person replied, in every closure reader. Question provenance stays in each entry's `Source:` line, and the REQ archives standalone with a no-changes `## Implementation` note so forensics reads it as legitimate.
+- A failed report generation no longer strands a phantom path: `blocked_by:` reads "report pending regeneration" until a bundle lands, and clarify's routing summary plus `stakeholder-answers` regenerate whenever the recorded bundle is pending or missing — retry is condition-keyed, not left to a future fold.
+- A reply that arrives after its stakeholder REQ archived now resolves against the archive: shown read-only, and a differing late answer can still mint a change REQ.
+
+## 0.236.0 — Stakeholder Questions Workflow (2026-08-21)
+
+Questions whose real answerer is an outside person — a designer, an editorial owner — no longer pile up in your clarify queue. The build proceeds on the builder's assumption; the question lands on one blocked REQ per stakeholder with a shareable HTML report, and their answers route back by question number.
+
+- Capture and the work loop record `Answerer: <name>` on a question and route it at archive time: one open `status: blocked` REQ per stakeholder (new `stakeholder:` frontmatter field), questions folding in as durable `Q-NN` entries. Nothing blocks, ever — an irreversible assumption is flagged prominently, never gated on.
+- Each fold regenerates a fresh one-way HTML report under `ai-reports/` (new non-routed `stakeholder-report.md` in the toolbox) presenting every open question with its Q-ID and the assumed answer as confirm-or-override.
+- New `do-work stakeholder-answers` ingests the person's reply behind the prompt-injection guardrail, routes each answer by its printed Q-ID, and turns overrides into cheap change REQs through the normal queue; when every question resolves, the REQ archives.
+- `do-work clarify` prints a one-line routing summary for open stakeholder REQs and can reclaim a mis-routed question back to you; it never ingests stakeholder replies. The composed exit summary and the Decision Brief gain a WAITING ON OTHERS view with each report's path to share.
+
 ## 0.235.2 — Selector Flag Cleanup and Three Prose-Backlog Repairs (2026-08-21)
 
 The cheaper-model selector loses two options nothing outside its own tests called, and the prose-backlog move gets the three repairs it was missing. Reconciled from `0.223.1`–`0.223.3` on a branch that predated the `0.235.0` renumber; those numbers were never released.

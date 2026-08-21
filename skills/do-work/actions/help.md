@@ -14,6 +14,8 @@ do-work — core request and queue orchestration
                                       Check capture quality or revalidate queued work after a reversal
   do-work review-work [REQ|UR]      Review completed implementation and acceptance evidence
   do-work clarify                   Resolve pending questions in a batch
+  do-work stakeholder-answers [REQ]
+                                      Route an outside stakeholder's reply back into the queue by question number
   do-work abandon [REQ|UR] [why]    Cancel and archive work that should not be done
   do-work cleanup                   Consolidate completed archive records
   do-work commit                    Build focused, traceable commits

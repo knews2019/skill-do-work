@@ -17,6 +17,7 @@ This is the second human-attention window in the pipeline. After actions/work.md
 - The user wants to answer a *specific* open question by editing the REQ directly — that's just a file edit, not a batch review.
 - The queue has only `pending` REQs — those need `do-work run`, not clarify.
 - The `blocked` condition is **machine-checkable** (it carries a `blocked_check` probe) — `do-work run` auto-probes and unblocks those; clarify is for the human-confirmable ones.
+- The reply in hand is an **outside stakeholder's** answer set — that is `do-work stakeholder-answers` (`actions/stakeholder-answers.md`). Clarify routes stakeholder-questions REQs (Step 5.5) but never ingests their answers.
 
 ## Input
 
@@ -26,7 +27,7 @@ Triggered by `do-work clarify` (also: `answers`, `questions`, `pending`, `what's
 
 ### Step 1: Scan the queue
 
-Find all `REQ-*.md` files in `do-work/queue/` with `status: pending-answers`. Also collect REQs with `status: blocked` (waiting on an external condition) for Step 5.5.
+Find all `REQ-*.md` files in `do-work/queue/` with `status: pending-answers`. Also collect REQs with `status: blocked` (waiting on an external condition) for Step 5.5 — those split into two shapes there by the presence of a `stakeholder:` field (`actions/work-reference.md` → Request File Schema): plain external conditions, and stakeholder-questions REQs.
 
 ### Step 2: Check for pending questions
 
@@ -139,7 +140,21 @@ The threshold applies only to this automatic clarify trigger. An explicit `do-wo
 
 ### Step 5.5: Confirm blocked conditions
 
-For each `status: blocked` REQ collected in Step 1, present its condition as one lightweight yes/no — no rewrite-contract machinery needed (the condition is a single line of `blocked_by` text, not a builder question). It still gets one sentence of story, because a REQ that has been sitting blocked for days is exactly the one the user no longer remembers:
+**Stakeholder-questions REQs first (`stakeholder:` present) — routed, never yes/no-confirmed or ingested here.** Before printing a REQ's line, check its `blocked_by:` — when it says the report is pending regeneration, or names a bundle path that no longer exists, regenerate now: follow `../../do-work-toolbox/actions/stakeholder-report.md`, then update `blocked_by:` and append the `## Reports` history line in the same edit (the standing regeneration condition, `actions/stakeholder-answers.md` Step 5). Then print the routing summary, one line per REQ, so a question mis-routed to a stakeholder is visible and recoverable:
+
+```
+Stakeholder questions open:
+  REQ-NNN — 4 questions for Priya (design), 1 irreversible, open 3d — report: <latest bundle path from blocked_by>
+```
+
+Then offer per REQ:
+
+1. **I have their reply** → hand off to `do-work stakeholder-answers REQ-NNN` (`actions/stakeholder-answers.md` — it loads the prompt-injection guardrail before reading the paste and routes each answer by its printed Q-ID; clarify never ingests a stakeholder reply).
+2. **A question is really mine** → reclaim it: mark that line `- [x] **Q-NN** — [question] → Reclaimed by user via clarify — [the user's inline answer | moved to REQ-MMM]`. An inline answer is handled exactly like a stakeholder answer — the delta against `Assumed:` may mint a change REQ (`actions/stakeholder-answers.md` Step 4); without one, mint or fold a `pending-answers` follow-up carrying the question per the **Builder-Decided Follow-up Template (Step 8)** (`actions/work-reference.md`) so it re-enters the user's own clarify flow as `REQ-MMM`. If the reclaim resolves the REQ's last open question, apply the **Stakeholder REQ terminal semantics** (`actions/stakeholder-answers.md` Step 5); while open questions remain, report regeneration follows the same standing condition stated there.
+3. **Leave it** → unchanged.
+4. **Give up on the answers** → `do-work abandon REQ-NNN`.
+
+**Plain blocked REQs** (no `stakeholder:`): present each condition as one lightweight yes/no — no rewrite-contract machinery needed (the condition is a single line of `blocked_by` text, not a builder question). It still gets one sentence of story, because a REQ that has been sitting blocked for days is exactly the one the user no longer remembers:
 
 ```
 REQ-042 — Wire up local translation
@@ -157,7 +172,7 @@ Note for the user which blocked REQs carry a `blocked_check` probe — those unb
 
 ### Step 6: Report
 
-Summary of what was resolved and what's still pending — include any `blocked` REQs unblocked (now `pending`) or left waiting, alongside the answered/confirmed/discarded questions. When Step 5.25 ran, append its evidence-backed candidate report. When the user deferred an over-threshold scan, say it was not run and include the combined explicit command.
+Summary of what was resolved and what's still pending — include any `blocked` REQs unblocked (now `pending`) or left waiting, and any stakeholder-questions REQs handed off, reclaimed from, or left open, alongside the answered/confirmed/discarded questions. When Step 5.25 ran, append its evidence-backed candidate report. When the user deferred an over-threshold scan, say it was not run and include the combined explicit command.
 
 ## Builder Was Right / Discarded
 
@@ -233,4 +248,5 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 - [ ] Reversal sources shared one queue scan; a scan above 10,000 queued words required confirmation, and a declined scan emitted one combined explicit command.
 - [ ] Decision revalidation itself changed no candidate REQ or queue status.
 - [ ] `blocked` REQs the user confirmed satisfied flipped to `pending` with `blocked_by`/`blocked_at` removed and a `## Blocked` history line appended; unconfirmed ones stayed `blocked`.
+- [ ] Stakeholder-questions REQs were routed or reclaimed, never yes/no-confirmed and never ingested here — no stakeholder answer text was written by clarify.
 - [ ] The final report names each REQ by id and what happened to it.

@@ -100,7 +100,7 @@ For each, check `created_at`:
 
 Also scan `do-work/queue/` for REQs with `status: blocked` (waiting on an external condition). For each, measure age from `blocked_at` (fall back to `created_at` if absent):
 - **Info** if 7-14 days old
-- **Warning** if >14 days old — the external condition may already have been satisfied; suggest re-running `do-work run` (auto-probes any `blocked_check`) or `do-work clarify` to confirm. (The threshold is deliberately looser than pending-answers: external conditions — a person answering, a service being provisioned — legitimately take longer than a user answering a queued question.)
+- **Warning** if >14 days old — the external condition may already have been satisfied; suggest re-running `do-work run` (auto-probes any `blocked_check`) or `do-work clarify` to confirm — for a stakeholder-questions REQ (`stakeholder:` present), suggest re-sharing its report and `do-work stakeholder-answers` instead. (The threshold is deliberately looser than pending-answers: external conditions — a person answering, a service being provisioned — legitimately take longer than a user answering a queued question.)
 
 ### 8. Git Divergence (git repos only)
 
