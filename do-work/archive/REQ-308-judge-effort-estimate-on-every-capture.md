@@ -7,7 +7,7 @@ status_changed_at: 2026-08-21T08:45:00Z
 claimed_at: 2026-08-21T08:45:00Z
 completed_at: 2026-08-21T08:57:04Z
 kb_status: pending
-commit:
+commit: 9bce005
 user_request: UR-064
 domain: general
 impact: impact-rule-change
