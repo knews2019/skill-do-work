@@ -16,7 +16,7 @@ Follow **Safety Load Order** in `completed-work-presentation-reference.md` — p
 
 ### Step 2: Read the Questions and Their Sources
 
-Read the REQ's `## Questions` section. For each open (`- [ ]`) entry, pull one line of plain-language context from its `Source:` REQ's `## What` — the source is archived under `do-work/archive/`; when it cannot be found, say so in the report rather than inventing context. Answered (`- [x]`) entries feed the history section only.
+Read the REQ's `## Questions` section. For each open (`- [ ]`) entry, pull one line of plain-language context from its `Source:` REQ's `## What`. The source may still sit in `do-work/working/` — during `do-work run`, report generation (Step 8 substep 3) runs before the archive move (substep 6) — or already under `do-work/archive/`; look in both, and when it is in neither, say so in the report rather than inventing context. Answered (`- [x]`) entries feed the history section only.
 
 ### Step 3: Derive the Bundle Path
 

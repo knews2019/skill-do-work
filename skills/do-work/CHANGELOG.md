@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.2 — Three More Codex Findings Closed on the Stakeholder Workflow (2026-08-21)
+
+Codex's second pass over PR #159 found three more real gaps. All verified and closed.
+
+- Targeting a reply by stakeholder name now disambiguates against the archive: Q-NN ids restart on every fresh REQ, so when the same person also has an archived one, `stakeholder-answers` lists the candidate reports and asks which one the reply answers instead of routing by name alone. The report footer's REQ id stays the authoritative target.
+- The report generator looks for a question's source REQ in `do-work/working/` as well as the archive — generation runs before the archive move, so the first report no longer claims its source context is missing.
+- The Commit Phase's staging contracts (serial and worktree, prose and example block) now name the stakeholder REQ and its fresh `ai-reports/` bundle, so the `blocked_by:` path never dangles on another checkout.
+
 ## 0.236.1 — Three Stakeholder Workflow Fixes From Codex Review (2026-08-21)
 
 Codex reviewed PR #159 and found three real gaps in the new workflow. All three verified and closed.
