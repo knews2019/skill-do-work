@@ -198,6 +198,13 @@ func TestMain(testMain *testing.M) {
 		fmt.Fprintln(os.Stderr, strictJavaScriptBehaviorDiagnostic)
 		exitCode = 1
 	}
+	// Same guard for the browser lane (browser_probe_test.go): a strict run whose
+	// probes all skipped must not report green, which is what makes the ordinary
+	// skip safe. Both lanes gate here because TestMain is per-package, not per-file.
+	if exitCode == 0 && os.Getenv(strictBrowserBehaviorMarker) == "1" && browserBehaviorProbeCount.Load() == 0 {
+		fmt.Fprintln(os.Stderr, strictBrowserBehaviorDiagnostic)
+		exitCode = 1
+	}
 	os.Exit(exitCode)
 }
 

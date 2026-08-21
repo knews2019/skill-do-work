@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.229.0 — Tests Can Measure Real Rendered Text (2026-08-21)
+
+Every font measurement in the Durations view got there by someone running a browser by hand and pasting the number into a comment. That is why those constants are stale. There is now a test lane that asks a real rendering engine instead.
+
+- A page renders in headless Chrome or Chromium, measures, and hands the numbers back as data the test asserts on
+- No package manager: it drives a browser binary directly, and the code says why that was chosen and when to reach for something bigger
+- No browser on your machine? The probe skips and everything else still runs — but the maintainer's strict lane fails loudly rather than skipping quietly, and a lane that ran zero probes can't report green
+- No sleeps anywhere: readiness is a sentinel the page writes, not a timer
+- Nothing about the Durations view changed yet; this builds the capability that makes fixing it possible
+
 ## 0.228.0 — Clarify Stops Contradicting Itself (2026-08-21)
 
 Clarify's Step 4 carried three pairs of instructions that could not both be followed, and two of them destroyed work: a REQ could be archived while still holding an unanswered question, and an approved follow-up could be archived "completed" without anyone building it. All three are fixed in one pass.
