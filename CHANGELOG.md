@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.10 — Canonical Gate Holds Survive Error Handling (2026-08-21)
+
+An unrelated whole-repository failure no longer risks being archived as if the current request
+caused it. The generic repeated-test handler now preserves the claim and checkpoint for resumption,
+while attributable focused or current-diff failures keep their existing remediation path.
+
+REQ-309's semantic contract now covers both the gate lane and its downstream error reader with 23
+mutations. Independent review passed at 99%, and the completed UR-055 lineage is consolidated.
+
 ## 0.236.9 — Calibration Uses Persisted Timestamps (2026-08-21)
 
 Calibration rows can no longer drift because an agent remembered an earlier timestamp instead of

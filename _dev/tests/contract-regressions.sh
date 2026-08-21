@@ -2394,8 +2394,9 @@ assert_block_contains \
 
 # REQ-309 — focused tests answer whether the changed area regressed; they do not prove
 # that a repository's declared whole-repo pass/fail contract is green. Pin the added
-# Step 6.5 lane by meaning, then mutate each behavior that made REQ-283's hand-back
-# possible so a broad vocabulary match cannot satisfy the check.
+# Step 6.5 lane and downstream Error Handling row by meaning, then mutate each behavior
+# that made REQ-283's hand-back possible so a broad vocabulary match cannot satisfy the
+# check. Extract the two sections independently so one cannot lend vocabulary to the other.
 if ! python3 - "$core_root/actions/work.md" <<'PY'
 import pathlib
 import re
@@ -2419,6 +2420,20 @@ def extract_canonical_gate_lane(source):
         flags=re.DOTALL | re.MULTILINE | re.IGNORECASE,
     )
     return None if lane_match is None else lane_match.group(0)
+
+
+def extract_repeated_failure_row(source):
+    error_handling_match = re.search(
+        r"^## Error Handling\n(?P<body>.*?)^## Progress Reporting$",
+        source,
+        flags=re.DOTALL | re.MULTILINE,
+    )
+    if error_handling_match is None:
+        return None
+    for line in error_handling_match.group("body").splitlines():
+        if line.startswith("|") and "fail repeatedly" in line.lower():
+            return line
+    return None
 
 
 def canonical_gate_defects(source):
@@ -2452,6 +2467,42 @@ def canonical_gate_defects(source):
         for defect_name, predicate in predicates.items()
         if re.search(predicate, normalized) is None
     }
+
+
+def repeated_failure_defects(source):
+    row = extract_repeated_failure_row(source)
+    if row is None:
+        return {"missing repeated-failure row"}
+
+    columns = [column.strip() for column in row.strip().strip("|").split("|")]
+    if len(columns) != 2:
+        return {"malformed repeated-failure row"}
+    trigger = " ".join(columns[0].lower().split())
+    action = " ".join(columns[1].lower().split())
+    predicates = {
+        "focused-test trigger": (trigger, r"focused tests?"),
+        "current-diff gate trigger":
+            (trigger, r"current-diff canonical repository gate"),
+        "three-attempt remediation": (action, r"after 3 fix attempts"),
+        "Code classification": (action, r"classify as code failure"),
+        "follow-up failure details":
+            (action, r"create (?:a )?follow-up req with .*failure details"),
+        "failed archive path": (action, r"archive as failed"),
+        "canonical hold exception":
+            (action, r"excludes an unrelated or pre-existing canonical repository gate failure"),
+        "claim and checkpoint preserved":
+            (action, r"preserve the claimed req and its checkpoint"),
+        "never archive hold": (action, r"never archive (?:it|the req)"),
+        "Step 6.5 hold owner": (action, r"step 6\.5 owns (?:that|the) hold"),
+    }
+    defects = {
+        defect_name
+        for defect_name, (text, predicate) in predicates.items()
+        if re.search(predicate, text) is None
+    }
+    if trigger == "tests fail repeatedly":
+        defects.add("broad repeated-test trigger")
+    return defects
 
 
 live_defects = canonical_gate_defects(work_text)
@@ -2489,9 +2540,46 @@ for mutation_name, old, new, expected_defect in mutations:
             f"canonical repository gate mutation {mutation_name!r} escaped "
             f"{expected_defect!r}; found {sorted(mutation_defects)!r}"
         )
+
+live_error_defects = repeated_failure_defects(work_text)
+if live_error_defects:
+    raise SystemExit(
+        "actions/work.md Error Handling repeated-failure contract is incomplete: "
+        + ", ".join(sorted(live_error_defects))
+    )
+live_error_row = extract_repeated_failure_row(work_text)
+
+error_mutations = (
+    ("broad trigger restored", "Focused tests or a current-diff canonical repository gate fail repeatedly", "Tests fail repeatedly", "broad repeated-test trigger"),
+    ("focused trigger removed", "Focused tests or a current-diff canonical repository gate", "Tests or a current-diff canonical repository gate", "focused-test trigger"),
+    ("current-diff trigger removed", "current-diff canonical repository gate", "canonical repository gate", "current-diff gate trigger"),
+    ("three attempts removed", "After 3 fix attempts", "After remediation", "three-attempt remediation"),
+    ("Code classification changed", "classify as Code failure", "classify as Environment failure", "Code classification"),
+    ("follow-up failure details removed", "create a follow-up REQ with the focused-test or current-diff gate failure details", "note the failure", "follow-up failure details"),
+    ("failed archive path removed", "archive as failed", "stop processing", "failed archive path"),
+    ("canonical hold exception removed", "excludes an unrelated or pre-existing canonical repository gate failure", "also consumes an unrelated or pre-existing canonical repository gate failure", "canonical hold exception"),
+    ("claim and checkpoint discarded", "preserve the claimed REQ and its checkpoint", "discard the claimed REQ and its checkpoint", "claim and checkpoint preserved"),
+    ("never-archive hold inverted", "never archive it", "always archive it", "never archive hold"),
+    ("never-archive hold removed", " and never archive it", "", "never archive hold"),
+    ("Step 6.5 hold owner removed", "Step 6.5 owns that hold", "the table owns that hold", "Step 6.5 hold owner"),
+)
+
+for mutation_name, old, new, expected_defect in error_mutations:
+    mutated_row = live_error_row.replace(old, new, 1)
+    if mutated_row == live_error_row:
+        raise SystemExit(
+            f"Error Handling mutation {mutation_name!r} changed nothing"
+        )
+    mutated_text = work_text.replace(live_error_row, mutated_row, 1)
+    mutation_defects = repeated_failure_defects(mutated_text)
+    if expected_defect not in mutation_defects:
+        raise SystemExit(
+            f"Error Handling mutation {mutation_name!r} escaped "
+            f"{expected_defect!r}; found {sorted(mutation_defects)!r}"
+        )
 PY
 then
-  printf 'FAIL: actions/work.md Step 6.5 must hard-gate hand-back on any explicitly declared canonical repository-wide gate, in addition to focused tests (REQ-309).\n' >&2
+  printf 'FAIL: actions/work.md Step 6.5 and Error Handling must agree on the hold for an unrelated or pre-existing canonical repository gate failure (REQ-309/REQ-317).\n' >&2
   fail_count=$((fail_count + 1))
 fi
 
