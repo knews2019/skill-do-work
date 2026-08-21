@@ -1020,40 +1020,6 @@ func TestVerifyAllowsReviewGeneratedMemberUnderClosedUserRequest(t *testing.T) {
 	}
 }
 
-func TestVerifyAllowsStandingSweepMemberUnderClosedUserRequest(t *testing.T) {
-	// The standing sweep never terminally resolves by contract (Fold-First Rule)
-	// and is excluded from UR membership, so it legitimately stays pending in
-	// the queue after its UR archives. Before the Standing carve-out this probe
-	// emitted a permanent, unfixable finding whose remedy told the user to
-	// abandon the sweep — the exact opposite of its never-closes contract.
-	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
-		{"actions/version.md", cleanVersionFile},
-		{"CHANGELOG.md", cleanChangelog},
-		{"do-work/archive/UR-096/input.md", "---\nid: UR-096\ntitle: closed UR that seeded the standing sweep\nrequests: [REQ-095]\n---\n"},
-		{"do-work/queue/REQ-095-standing-sweep.md",
-			"---\nid: REQ-095\nstatus: pending\ntitle: \"[impact-negligible] Standing prose-reconciliation sweep\"\nuser_request: UR-096\nsweep: true\nstanding: true\nsweep_key: prose-only-discrepancy-reconciliation\nimpact: impact-negligible\n---\n\n## Instances\n\n- [ ] somewhere.md:1: stale count (found by REQ-090 / UR-095)\n"},
-		{"do-work/queue/REQ-096-ordinary.md",
-			"---\nid: REQ-096\nstatus: pending\ntitle: ordinary live member stays reported\nuser_request: UR-096\n---\n"},
-	})
-
-	report, verifyError := runVerifyProbes(repoRoot, time.Now())
-	if verifyError != nil {
-		t.Fatalf("runVerifyProbes: %v", verifyError)
-	}
-	liveMemberFindings := findingsMentioning(report, verifyCategoryArchivedUserRequestLiveMember)
-	if len(liveMemberFindings) != 1 {
-		t.Fatalf("got %d archived-UR-live-member findings, want exactly 1 for the ordinary sibling:\n%s",
-			len(liveMemberFindings), renderVerifyReport(report))
-	}
-	detail := liveMemberFindings[0].Detail
-	if strings.Contains(detail, "REQ-095") {
-		t.Errorf("standing sweep REQ-095 must never be reported as a live member of its archived UR, got %q", detail)
-	}
-	if !strings.Contains(detail, "REQ-096") {
-		t.Errorf("ordinary member REQ-096 must remain reported, got %q", detail)
-	}
-}
-
 // A UR moves to do-work/archive/ only once every member REQ is terminally
 // resolved (actions/work.md Step 8). A member still in queue/ or working/ after
 // the UR was archived means the closure check passed on stale information, or a

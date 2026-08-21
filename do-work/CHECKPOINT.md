@@ -1,7 +1,7 @@
 ---
 session_ended: 2026-08-21T09:08:21Z
 last_completed: REQ-308
-queue_state: 1 pending, 6 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
+queue_state: 0 pending, 6 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
 reqs_processed_this_session: 22
 session_depth: heavy
 ---
@@ -45,7 +45,6 @@ None. `do-work/working/` is empty.
 
 ## Still Queued
 
-- REQ-307: Standing prose-reconciliation sweep (pending, `standing: true` — the default scan never selects it)
 - REQ-309: Run the repo's canonical gate before hand-back, not only the changed area's tests (pending-answers — 1 question)
 - REQ-310: Check a template payload's citations against where the payload lands (pending-answers — 1 question)
 - REQ-311: Resolve the nine calibration-log rows that disagree with their frontmatter (pending-answers — 1 question)
@@ -53,8 +52,7 @@ None. `do-work/working/` is empty.
 - REQ-313: Count the breaks the timeline actually draws (pending-answers — 1 question)
 - REQ-314: Judge effort_estimate on review-minted follow-ups too (pending-answers — 1 question)
 
-Nothing is claimable. Six REQs await `do-work clarify`; the seventh is a standing sweep that only
-runs on demand.
+Nothing is claimable. All six await `do-work clarify`.
 
 ## Session Notes
 
@@ -74,6 +72,11 @@ runs on demand.
   REQs into their folders. That broke 38 citations pointing at the old flat paths; all were rewritten
   mechanically and every archive citation in the repo was then verified to resolve. Eleven of the
   repaired files are archived REQ bodies — a path substitution only, no other content touched.
+- **Merged `origin/main` after the run.** It arrived as `0.223.0`, renumbered to `0.235.0` here
+  because this branch already carried a different `0.223.0`. Main retired `standing: true` for
+  `do-work/prose-backlog.md`, so REQ-307 is archived rather than queued and the queue holds only
+  `pending-answers` REQs. The merged release is 0.235.0; see the changelog's reconciliation section
+  for what each of the four duplicated fixes resolved to.
 - **`do-work/runs/` holds eight run directories** from 2026-08-18. None were produced by this
   session and none carry a `Status: consumed` marker, so Pass 4 left them alone.
 

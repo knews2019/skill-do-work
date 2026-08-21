@@ -2,6 +2,26 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.235.0 — Prose Findings Move to a Plain Backlog File (2026-08-21)
+
+A prose-only finding — a stale count, a wrong cross-reference, a comment describing a superseded mechanism — now lands as one line in `do-work/prose-backlog.md` instead of on a never-closing queue REQ. Draining it is an ordinary REQ with no exceptions anywhere in the pipeline.
+
+- The `standing: true` marker is retired, and with it every special case it needed: the never-closing status, the rule that no default run may select it, `tools/select-simple-reqs.sh`'s veto, the terminal-resolved-set and UR-closure exclusions, `cleanup`'s membership skip, `work.md` Step 8's substep skipping, Step 9's staging substitution, the exit summary's standing-sweep section, and the board's `standing` chip, drawer row, parser field, and archived-UR carve-out.
+- A drain records its commit hash in `commit:` through `tools/checks/record-commit-hash.sh`, like every other REQ. The old path hand-edited a hash onto a body `## Drains` line — the single write in the pipeline that bypassed the guard written after free-form edits at that step truncated six archived REQs to 0 bytes.
+- Prose debt stays visible: the work scan's queue status summary appends `(prose backlog: K open items)`. It no longer appears on the Kanban board, which renders REQs.
+- Fixing a backlog item inside a REQ that already touches that file is still the cheapest path, and now there is nothing to reset afterwards — tick the line `- [x] ... (drained by REQ-NNN)` and move on. Ticking rather than deleting is what lets `verify-requests` tell a resolved prose fold from a lost one; the queue summary counts only unticked lines, so the open count stays exact.
+- Consolidation sweeps (`sweep: true` + `sweep_key:`) are unchanged. They are ordinary REQs that close, and nothing about them needed a carve-out.
+- **If your queue holds a `standing: true` REQ:** move its unticked `## Instances` lines into `do-work/prose-backlog.md` (creating the file from the template in the Fold-First Rule), then complete or abandon the REQ. Nothing reads the marker any more, so a REQ left carrying it becomes an ordinary selectable REQ.
+
+Renumbered above `0.234.0` and reconciled with the queue run that landed in `0.223.0`–`0.234.0`. Four things both sides had fixed independently, resolved to one implementation each:
+
+- **The `record-commit-hash-guards.sh:428` line continuation.** Same diagnosis, same fix, both sides. Merged clean, one copy in the tree.
+- **The board's duplicate `verify` routing row.** Both sides folded the two rows into one. Kept this release's wording, which points at `actions/board.md`'s Input table instead of listing the tokens a second time — a hand-maintained token list is what goes stale.
+- **`work-reference.md`'s `sweep:` schema line.** Kept this release's text, which retires `standing:`, but at the two-hop citation depth `0.223.0` corrected — `actions/work-reference.md` reaches a sibling package through `../../`, not `../`.
+- **UR-063's closure.** Both sides consolidated it into `do-work/archive/UR-063/`. One copy, no duplicate REQ id anywhere in the queue, working set, or archive.
+
+The queue run had also archived seven closed URs, which moved 46 REQ files out of the archive root. Every path this release's ADR and prime-file edits named was repointed to where the file now is, and all 138 archive citations in the repo were re-verified to resolve. `do-work/prose-backlog.md`'s three line references were re-verified against the merged tree; one had shifted by a line and was corrected.
+
 ## 0.234.0 — Capture Judges How Big a Request Is, Instead of Skipping It (2026-08-21)
 
 Capture had to judge whether anyone would notice a request, but was only ever allowed to judge how big it was. Since `do-work run-simple-reqs` picks the queue's small work by that second field, a request nobody sized quietly read as "big" and dropped out — 8 of 22 pending requests were in that state, none of them because anyone decided so.

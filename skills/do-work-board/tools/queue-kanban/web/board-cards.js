@@ -225,22 +225,18 @@
     if (request.sweep) {
       // A consolidation sweep holds many instances behind one card, so the raw
       // column count understates real work — the chip's open/total count is
-      // what keeps queue depth honest. `standing` marks the never-closing
-      // standing sweep the Fold-First Rule routes prose-only findings to; it
-      // drains only when explicitly named, never by the default scan. Display
-      // only: the board never buckets, orders, or schedules on either marker.
+      // what keeps queue depth honest. Display only: the board never buckets,
+      // orders, or schedules on the marker.
       var sweepInstancesOpen = request.sweepInstancesOpen || 0;
       var sweepInstancesDone = request.sweepInstancesDone || 0;
       var sweepInstancesTotal = sweepInstancesOpen + sweepInstancesDone;
       var sweepBadge = makeBadge(
         "badge-sweep",
-        request.standing ? "standing sweep" : "sweep",
+        "sweep",
         sweepInstancesOpen + " open of " + sweepInstancesTotal
       );
       sweepBadge.title =
-        (request.standing
-          ? "standing: true — the never-closing standing sweep; drains only when explicitly named. "
-          : "sweep: true — one REQ per root cause, holding an ## Instances checklist. ") +
+        "sweep: true — one REQ per root cause, holding an ## Instances checklist. " +
         sweepInstancesOpen +
         " unticked instance(s) of " +
         sweepInstancesTotal +

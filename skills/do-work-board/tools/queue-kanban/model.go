@@ -125,7 +125,6 @@ type RequestTicket struct {
 	UserRequestId   string // "UR-NNN" upward pointer (the reliable REQ→UR link), "" when absent
 	ReviewGenerated bool   // exact review_generated: true marker; verify-only, with no display or scheduling role
 	Sweep           bool   // exact sweep: true marker — a consolidation sweep carrying an ## Instances checklist (Fold-First Rule, actions/capture-reference.md); display-only card chip + drawer row, no column logic
-	Standing        bool   // exact standing: true marker — the never-closing standing sweep; display-only, plus a verify carve-out (a standing member never counts as a live member of an archived UR)
 	// Instance counts parsed from the body's ## Instances checklist when Sweep
 	// is set: unticked `- [ ]` vs ticked `- [x]` lines up to the next ## heading.
 	// Display-only — the work pipeline reads the file itself, never these.
@@ -821,7 +820,6 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		UserRequestId:              coerceScalarToString(fields["user_request"]),
 		ReviewGenerated:            coerceScalarToString(fields["review_generated"]) == "true",
 		Sweep:                      coerceScalarToString(fields["sweep"]) == "true",
-		Standing:                   coerceScalarToString(fields["standing"]) == "true",
 		Domain:                     normalizedDomain,
 		OriginalDomain:             originalDomain,
 		DomainUnrecognized:         domainUnrecognized,

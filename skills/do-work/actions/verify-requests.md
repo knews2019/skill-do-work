@@ -56,15 +56,15 @@ do-work verify-requests --against <superseded-decision-path|REQ-NNN> [--against 
 1. Read `do-work/user-requests/UR-NNN/input.md`
 2. Extract the full verbatim input section
 3. Note the `requests` array to know which REQs this capture created
-4. Note any `## Folded Requests` section — each line names a REQ that absorbed part of this input instead of a new REQ file (`actions/capture.md` Step 5). Those REQs are evaluated too: the array alone under-reports coverage for a capture that folded anything, and grading the input against created REQs only would report a folded request as a dropped requirement
+4. Note any `## Folded Requests` section — each line names where part of this input landed instead of a new REQ file (`actions/capture.md` Step 5): a REQ id, or the literal `prose-backlog` for a prose-only finding recorded in `do-work/prose-backlog.md`. Those destinations are evaluated too: the array alone under-reports coverage for a capture that folded anything, and grading the input against created REQs only would report a folded request as a dropped requirement
 5. Note any Batch Constraints section
 
 ### Step 3: Read All Related REQs
 
-1. Find all REQ files listed in the UR's `requests` array, plus every REQ named in its `## Folded Requests` section
+1. Find all REQ files listed in the UR's `requests` array, plus every REQ named in its `## Folded Requests` section (a `prose-backlog` line names no REQ — see Step 4's rule for it)
 2. Check `do-work/queue/`, `do-work/` (root, legacy fallback), `do-work/working/`, and `do-work/archive/` for each
 3. Read the full content of each REQ file
-4. **Score a folded REQ only against the input portion its fold line names.** It belongs to another UR — its `user_request`, its other instances, and its Builder Guidance answer to that UR, so the Intent Signals and Batch Context dimensions are graded there, not here. What this run asks of it is narrower: does the REQ now carry the folded request faithfully (for a sweep, as an instance line specific enough to act on), or did the fold lose it? Report a lost fold as an Important gap the same way a dropped requirement is reported
+4. **A `prose-backlog` fold line is checked for presence, never scored.** It is not a REQ and has no dimensions: confirm `do-work/prose-backlog.md` holds an item matching the input portion the line names. **A ticked `- [x]` item satisfies this exactly as an open `- [ ]` one does** — a drain ticks what it resolved and never deletes it (`actions/capture-reference.md` → **Fold-First Rule**, destination 3), so a resolved fold is evidence the finding landed, never a lost one. Only genuine absence — no matching item in either state — is an Important gap, reported exactly like a lost fold. **Score a folded REQ only against the input portion its fold line names.** It belongs to another UR — its `user_request`, its other instances, and its Builder Guidance answer to that UR, so the Intent Signals and Batch Context dimensions are graded there, not here. What this run asks of it is narrower: does the REQ now carry the folded request faithfully (for a sweep, as an instance line specific enough to act on), or did the fold lose it? Report a lost fold as an Important gap the same way a dropped requirement is reported
 
 ### Step 4: Evaluate Each REQ
 
