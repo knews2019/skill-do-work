@@ -296,7 +296,7 @@ When the user confirms, first run the fold-first scan (`../../do-work/actions/ca
 ```markdown
 ---
 id: REQ-NNN
-title: "[<impact token>] Code review: [brief description]"   # omit the tag when the recorded token is impact-user-visible (../../do-work/actions/capture-reference.md → REQ Title Convention)
+title: "[<impact token>] Code review: [brief description]"   # omit the tag when the recorded token is impact-user-visible (.claude/skills/do-work/actions/capture-reference.md → REQ Title Convention)
 status: pending
 created_at: <timestamp>
 review_generated: true
@@ -325,7 +325,7 @@ Found during code review of [scope]. [1 sentence on the specific finding.]
 **RED prompt/case:** [Named regression test/check that fails before the fix, or the exact finding surface to delete]
 **Why RED now:** [Failure the named check demonstrates, or evidence that the named deletion surface exists]
 **GREEN when:** [The same named test/check passes after the fix, or the exact named finding surface is absent]
-**Validation:** Review finding; apply `../do-work/actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
+**Validation:** Review finding; apply `.claude/skills/do-work/actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
 ```
 
 Do NOT auto-create REQs without confirmation. The report itself is the primary output.

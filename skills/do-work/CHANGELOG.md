@@ -2,6 +2,12 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.5 — Template Citations Resolve Where Their Payload Lands (2026-08-21)
+
+Two toolbox templates were carrying core-action paths that were correct only relative to the source package, not where their text is consumed. Generated code-review REQs and validate-feedback handoffs now emit consumer-root `.claude/skills/do-work/actions/...` citations, so the pointers remain valid after a REQ moves through queue, working, and archive.
+
+The existing review-generated producer contract now judges the emitted destination form rather than branching on the producer package, and explicitly rejects the retired `../do-work/actions/` payload spelling. The population was measured first: only the two affected blocks needed repair, so no destination-marker convention or new checker was added.
+
 ## 0.236.4 — Canonical Repository Gate Before Hand-Back (2026-08-21)
 
 The work loop now treats an explicitly project-declared repository-wide pass/fail gate as a required companion to focused tests. It runs from the project root on the final or merged tree, is judged by its direct exit status, and must return zero before successful archive, commit, or hand-back.

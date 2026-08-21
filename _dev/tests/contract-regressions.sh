@@ -4110,7 +4110,7 @@ review_generated_field_count="$(
 )"
 review_generated_template_count=0
 
-while IFS=$'\t' read -r producer_file producer_line has_proof_shape has_named_red has_matching_green has_package_safe_citation has_pau_block; do
+while IFS=$'\t' read -r producer_file producer_line has_proof_shape has_named_red has_matching_green has_destination_finding_closure_citation has_pau_block; do
   producer_relative_path="${producer_file#"$repo_root/"}"
   review_generated_template_count=$((review_generated_template_count + 1))
 
@@ -4141,8 +4141,8 @@ while IFS=$'\t' read -r producer_file producer_line has_proof_shape has_named_re
       "$producer_relative_path" "$producer_line" >&2
     fail_count=$((fail_count + 1))
   fi
-  if [ "$has_package_safe_citation" -ne 1 ]; then
-    printf 'FAIL: %s:%s review_generated template must cite core Finding-Closure Ratchet with a package-safe path.\n' \
+  if [ "$has_destination_finding_closure_citation" -ne 1 ]; then
+    printf 'FAIL: %s:%s review_generated template must cite the Finding-Closure Ratchet with a destination-safe path and contain no source-relative `../do-work/actions/` citation.\n' \
       "$producer_relative_path" "$producer_line" >&2
     fail_count=$((fail_count + 1))
   fi
@@ -4167,17 +4167,15 @@ done < <(
             && fence_block ~ /\*\*Validation:\*\*/
           has_named_red = fence_block ~ /RED prompt\/case:.*Named regression test\/check that fails before the fix.*exact finding surface to delete/
           has_matching_green = fence_block ~ /GREEN when:.*same named test\/check passes after the fix.*exact named finding surface is absent/
-          if (FILENAME ~ /\/skills\/do-work\/actions\//) {
-            has_package_safe_citation = fence_block ~ /`actions\/work-reference\.md`.*Finding-Closure Ratchet/
-          } else {
-            has_package_safe_citation = fence_block ~ /`\.\.\/do-work\/actions\/work-reference\.md`.*Finding-Closure Ratchet/
-          }
+          has_destination_finding_closure_citation = \
+            fence_block ~ /`(actions\/work-reference\.md|\.claude\/skills\/do-work\/actions\/work-reference\.md)`.*Finding-Closure Ratchet/ \
+            && fence_block !~ /(\.\.\/)+do-work\/actions\//
           has_pau_block = \
             fence_block ~ /## AI Execution State \(P-A-U Loop\)/ \
             && fence_block ~ /\*\*\[PLAN\]:\*\*/ \
             && fence_block ~ /\*\*\[APPLY\]:\*\*/ \
             && fence_block ~ /\*\*\[UNIFY\]:\*\*/
-          printf "%s\t%d\t%d\t%d\t%d\t%d\t%d\n", FILENAME, fence_start, has_proof_shape, has_named_red, has_matching_green, has_package_safe_citation, has_pau_block
+          printf "%s\t%d\t%d\t%d\t%d\t%d\t%d\n", FILENAME, fence_start, has_proof_shape, has_named_red, has_matching_green, has_destination_finding_closure_citation, has_pau_block
         }
         inside_fence = 0
         fence_block = ""

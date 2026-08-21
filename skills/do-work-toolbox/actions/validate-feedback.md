@@ -111,7 +111,7 @@ Lead with the framing line, then one block per finding, then the summary and a d
 [Draft response to the feedback provider — acknowledges the accepts, explains the push-backs with rationale, flags the discuss items. Skip if no external provider.]
 
 ## To act on the accepted findings:
-> Keep the accepted finding's **verbatim claim**, **original severity/source**, **Evidence**, and **Surface-cost** result together in the capture payload; this preserves finding provenance for `../do-work/actions/capture.md` and the closure contract in `../do-work/actions/work-reference.md`.
+> Keep the accepted finding's **verbatim claim**, **original severity/source**, **Evidence**, and **Surface-cost** result together in the capture payload; this preserves finding provenance for `.claude/skills/do-work/actions/capture.md` and the closure contract in `.claude/skills/do-work/actions/work-reference.md`.
 >   do-work capture-request: [paste that provenance-preserving accepted-finding block]   Capture it as a request
 >   do-work run                                            Process the captured fixes
 >   do-work-toolbox note "[a discuss item]"                        Park a Discuss item for later
