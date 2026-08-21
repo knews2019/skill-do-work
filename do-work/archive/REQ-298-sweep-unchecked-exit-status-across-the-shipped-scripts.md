@@ -7,7 +7,7 @@ status_changed_at: 2026-08-20T08:22:51Z
 claimed_at: 2026-08-21T02:30:39Z
 completed_at: 2026-08-21T02:48:28Z
 kb_status: pending
-commit:
+commit: 01abc28
 route: C
 user_request: UR-056
 addendum_to: REQ-268
