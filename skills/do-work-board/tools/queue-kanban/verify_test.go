@@ -1451,3 +1451,108 @@ func TestVerifyDoesNotDoubleReportTheOuterPair(t *testing.T) {
 			len(orderingFindings), renderVerifyReport(report))
 	}
 }
+
+// The captured RED from REQ-281, the REQ-233 shape observed live in this repo: a
+// 10-minute span logged as 70. Before this probe the fixture exited 0 — nothing in
+// the suite read calibration-log.tsv except the estimator at recalibration time,
+// which re-fits the scoring table from the rows without ever checking them.
+// The second row pins the tolerance: it agrees within a minute and must stay silent.
+func TestVerifyFlagsCalibrationRowDisagreeingWithFrontmatter(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-233-logged-wrong.md",
+			"---\nid: REQ-233\ntitle: fixture\nstatus: completed\n" +
+				"claimed_at: 2026-08-18T11:00:00Z\ncompleted_at: 2026-08-18T11:10:30Z\n---\n"},
+		{"do-work/archive/REQ-234-logged-right.md",
+			"---\nid: REQ-234\ntitle: fixture\nstatus: completed\n" +
+				"claimed_at: 2026-08-18T11:00:00Z\ncompleted_at: 2026-08-18T11:30:40Z\n---\n"},
+		{"do-work/calibration-log.tsv",
+			"req_id\troute\testimated_p50_minutes\twall_minutes\tcompleted_at\n" +
+				"REQ-233\tB\t25\t70\t2026-08-18T11:10:30Z\n" +
+				"REQ-234\tB\t25\t30\t2026-08-18T11:30:40Z\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	mismatches := findingsMentioning(report, verifyCategoryCalibrationLogMismatch)
+	if len(mismatches) != 1 {
+		t.Fatalf("got %d calibration mismatches, want 1 (the agreeing row must stay silent):\n%s",
+			len(mismatches), renderVerifyReport(report))
+	}
+	for _, required := range []string{"REQ-233", "70", "10"} {
+		if !strings.Contains(mismatches[0].Detail, required) {
+			t.Errorf("calibration mismatch detail %q omits %q", mismatches[0].Detail, required)
+		}
+	}
+	// It must not pick a winner: the frontmatter can legitimately have been rewritten.
+	if !strings.Contains(mismatches[0].Remedy, "either record may be the correct one") {
+		t.Errorf("calibration remedy %q does not say either record may be correct", mismatches[0].Remedy)
+	}
+	if mismatches[0].Fixable {
+		t.Error("calibration mismatch is marked Fixable, but no cleanup pass resolves it")
+	}
+	if report.ExitCode() != 1 {
+		t.Errorf("calibration mismatch exit code = %d, want 1", report.ExitCode())
+	}
+}
+
+// A row naming a REQ that exists nowhere, and a row whose REQ cannot yield a span,
+// are their own findings — never disagreements. Reporting them as a mismatch would
+// print a number next to a value that was never computed.
+func TestVerifyReportsUnreconcilableCalibrationRowsSeparately(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-236-no-stamps.md",
+			"---\nid: REQ-236\ntitle: fixture\nstatus: completed\n---\n"},
+		{"do-work/calibration-log.tsv",
+			"req_id\troute\testimated_p50_minutes\twall_minutes\tcompleted_at\n" +
+				"REQ-235\tB\t25\t30\t2026-08-18T11:30:00Z\n" + // names no REQ in the tree
+				"REQ-236\tB\t25\t30\t2026-08-18T11:30:00Z\n" + // present, but no parseable stamps
+				"REQ-237\tB\t25\tnot-a-number\t2026-08-18T11:30:00Z\n" + // malformed wall_minutes
+				"REQ-238\tB\n"}, // too few columns
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if unreconcilable := findingsMentioning(report, verifyCategoryCalibrationRowUnreconcilable); len(unreconcilable) != 4 {
+		t.Fatalf("got %d unreconcilable-row findings, want 4:\n%s",
+			len(unreconcilable), renderVerifyReport(report))
+	}
+	if mismatches := findingsMentioning(report, verifyCategoryCalibrationLogMismatch); len(mismatches) != 0 {
+		t.Errorf("got %d mismatches, want 0 — an unreconcilable row is never a disagreement:\n%s",
+			len(mismatches), renderVerifyReport(report))
+	}
+}
+
+// No log is normal in a repo that has archived nothing yet. It is not a finding —
+// but it is also not a verified invariant, so it must be reported as a skipped probe
+// rather than passing silently.
+func TestVerifySkipsCalibrationProbeWhenTheLogIsAbsent(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if findings := findingsMentioning(report, verifyCategoryCalibrationLogMismatch); len(findings) != 0 {
+		t.Errorf("absent log produced %d mismatches, want 0", len(findings))
+	}
+	skippedMentionsCalibration := false
+	for _, skipped := range report.SkippedProbes {
+		if strings.Contains(skipped, "calibration-log probe") {
+			skippedMentionsCalibration = true
+		}
+	}
+	if !skippedMentionsCalibration {
+		t.Errorf("absent log was not reported as a skipped probe:\n%s", renderVerifyReport(report))
+	}
+}

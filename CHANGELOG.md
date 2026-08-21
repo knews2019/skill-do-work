@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.225.0 — Audit the Calibration Log Against Its Own Source (2026-08-21)
+
+`do-work/calibration-log.tsv` is the corpus every estimate is fit from, and nothing had ever checked it against the frontmatter it was derived from. `queue-kanban verify` now does. It found nine disagreeing rows on this repo the first time it ran, six of them off by twenty minutes or more.
+
+- Recomputes each row's wall span and reports a gap beyond one minute, naming both values
+- Deliberately does not pick a winner: the log is written once, but frontmatter can be legitimately re-stamped afterwards by either repairer or by crash recovery
+- A row naming no REQ, or one whose stamps do not parse, is its own finding rather than a fake disagreement
+- No log at all is a reported skipped probe, never a silent pass
+- Nothing is marked fixable and nothing is repaired — resolving a row takes a judgment the probe cannot make
+
 ## 0.224.0 — Catch Timestamps That Could Not Have Happened (2026-08-20)
 
 Nothing checked that a REQ's stamps described a possible sequence of events. A `claimed_at` fabricated to any plausible past instant sailed through every check unless it happened to land after `completed_at`. `queue-kanban verify` now catches the whole class, including in the archive where nothing auto-repairs.

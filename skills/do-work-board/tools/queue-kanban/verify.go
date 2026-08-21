@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -31,6 +32,8 @@ const (
 	verifyCategoryArchivedUserRequestLiveMember = "ur-archived-with-live-member"
 	verifyCategoryCompletionAnomaly             = "completion-anomaly"
 	verifyCategoryTimestampOrdering             = "timestamp-ordering"
+	verifyCategoryCalibrationLogMismatch        = "calibration-log-mismatch"
+	verifyCategoryCalibrationRowUnreconcilable  = "calibration-row-unreconcilable"
 )
 
 // staleClaimThreshold is how long a `claimed` REQ may sit before verify reports
@@ -127,6 +130,7 @@ func runVerifyProbes(repoRootOverride string, now time.Time) (VerifyReport, erro
 	appendDuplicateRequestIdFindings(&report, board)
 	appendCompletionAnomalyFindings(&report, repoRoot, board)
 	appendTimestampOrderingFindings(&report, board)
+	appendCalibrationLogFindings(&report, repoRoot, board)
 	appendCheckpointGhostFindings(&report, repoRoot, board)
 	appendClaimFindings(&report, board, now)
 	appendStrandedFinishedFindings(&report, board)
@@ -980,4 +984,112 @@ func renderVerifyReport(report VerifyReport) string {
 		fmt.Fprintf(&builder, "  %d fixable: run do-work cleanup\n", fixableCount)
 	}
 	return builder.String()
+}
+
+// calibrationToleranceMinutes absorbs truncation-versus-rounding between the
+// writer and this reader, which is noise. Anything past it is a real divergence
+// between two records that were supposed to describe the same span.
+const calibrationToleranceMinutes = 1
+
+// appendCalibrationLogFindings reconciles do-work/calibration-log.tsv against the
+// frontmatter each row was derived from. The log is an independent third record —
+// written once by actions/work.md Step 8 substep 7.5 as completed_at − claimed_at,
+// never revised, and read back by actions/estimate-reference.md as the corpus the
+// scoring table is fit from. Nothing compared the two, so a corpus that feeds every
+// future estimate was decaying unaudited: measured on this repo, 10 of 72 rows
+// disagree and eight of those materially.
+//
+// It reports and never repairs, and it deliberately does NOT pick a winner. Either
+// record can legitimately be the wrong one: the log line is written once, while the
+// frontmatter can be rewritten afterwards by scripts/repair-req-timestamps.sh at
+// session start, by scripts/audit-archive-timestamps.sh --fix, or by a crash-recovery
+// pass that cleared and re-stamped a claim. Resolving the disagreement needs a human
+// who knows which happened, which is also why nothing here is Fixable.
+//
+// A row this probe cannot reconcile at all — malformed, naming a REQ that exists
+// nowhere, or naming one whose stamps are absent or unparseable — is its own finding
+// and never a disagreement. Reporting it as a mismatch would put a number next to a
+// value that was never computed.
+func appendCalibrationLogFindings(report *VerifyReport, repoRoot string, board *Board) {
+	logPath := filepath.Join(repoRoot, "do-work", "calibration-log.tsv")
+	logBytes, readError := os.ReadFile(logPath)
+	if readError != nil {
+		// A repo that has archived nothing yet has no log. That is not a defect, but
+		// it is also not a verified invariant, so it is reported rather than silent.
+		report.SkippedProbes = append(report.SkippedProbes, fmt.Sprintf(
+			"calibration-log probe: do-work/calibration-log.tsv is unreadable or absent (%v) — no rows to reconcile", readError))
+		return
+	}
+
+	for lineNumber, rawLine := range strings.Split(string(logBytes), "\n") {
+		trimmedLine := strings.TrimSpace(rawLine)
+		if trimmedLine == "" || strings.HasPrefix(trimmedLine, "req_id\t") {
+			continue // blank line, or the header
+		}
+		humanLineNumber := lineNumber + 1
+		columns := strings.Split(trimmedLine, "\t")
+		if len(columns) < 4 {
+			report.Findings = append(report.Findings, calibrationRowFinding(humanLineNumber,
+				fmt.Sprintf("has %d tab-separated column(s), want at least 4 (req_id, route, estimated_p50_minutes, wall_minutes)", len(columns))))
+			continue
+		}
+		requestId := strings.TrimSpace(columns[0])
+		loggedMinutes, parseError := strconv.Atoi(strings.TrimSpace(columns[3]))
+		if parseError != nil {
+			report.Findings = append(report.Findings, calibrationRowFinding(humanLineNumber,
+				fmt.Sprintf("%s: wall_minutes %q is not an integer", requestId, columns[3])))
+			continue
+		}
+
+		ticket, ticketFound := board.RequestsById[requestId]
+		if !ticketFound {
+			report.Findings = append(report.Findings, calibrationRowFinding(humanLineNumber,
+				fmt.Sprintf("%s: the log has a row for it, but no such REQ exists in queue/, working/, or archive/", requestId)))
+			continue
+		}
+		claimedInstant, claimedParsed := parseTimestamp(ticket.ClaimedAt)
+		completedInstant, completedParsed := parseTimestamp(ticket.CompletedAt)
+		if !claimedParsed || !completedParsed {
+			report.Findings = append(report.Findings, calibrationRowFinding(humanLineNumber,
+				fmt.Sprintf("%s: cannot recompute the span — claimed_at %q and completed_at %q do not both parse",
+					requestId, ticket.ClaimedAt, ticket.CompletedAt)))
+			continue
+		}
+
+		// Integer minutes, truncated, exactly as the write site computes it.
+		recomputedMinutes := int(completedInstant.Sub(claimedInstant).Minutes())
+		differenceMinutes := recomputedMinutes - loggedMinutes
+		if differenceMinutes < 0 {
+			differenceMinutes = -differenceMinutes
+		}
+		if differenceMinutes <= calibrationToleranceMinutes {
+			continue
+		}
+		report.Findings = append(report.Findings, VerifyFinding{
+			Category: verifyCategoryCalibrationLogMismatch,
+			Detail: fmt.Sprintf(
+				"do-work/calibration-log.tsv line %d: %s logs wall_minutes %d, but its frontmatter recomputes to %d (claimed_at %q → completed_at %q)",
+				humanLineNumber, requestId, loggedMinutes, recomputedMinutes, ticket.ClaimedAt, ticket.CompletedAt),
+			Fixable: false,
+			Remedy: "either record may be the correct one — the log row is written once and never revised, " +
+				"while the frontmatter can have been rewritten since by the SessionStart repairer, by " +
+				"audit-archive-timestamps.sh --fix, or by a crash-recovery re-stamp. Decide which describes " +
+				"what actually happened before changing anything; the estimator fits its scoring table from these rows",
+		})
+	}
+}
+
+// calibrationRowFinding is the not-a-disagreement case: the row could not be
+// reconciled at all, so no recomputed number exists to compare against. Kept as one
+// category with the specific reason in the detail, because the remedy is the same
+// question in every case — which record is wrong, the log or the tree.
+func calibrationRowFinding(lineNumber int, reason string) VerifyFinding {
+	return VerifyFinding{
+		Category: verifyCategoryCalibrationRowUnreconcilable,
+		Detail:   fmt.Sprintf("do-work/calibration-log.tsv line %d %s", lineNumber, reason),
+		Fixable:  false,
+		Remedy: "the row cannot be checked against any frontmatter — find the REQ it names, repair its stamps, " +
+			"or correct the row. The estimator reads this file as its corpus, so an unreconcilable row is an " +
+			"unverifiable input rather than a harmless one",
+	}
 }
