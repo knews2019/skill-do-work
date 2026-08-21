@@ -31,6 +31,13 @@ The process-tree, complete-directory, current-invocation artifact, and opt-in au
 
 When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep a guide in sync), state the trigger _condition_ in the rule's canonical home and mark any caller/value list as illustrative, not exhaustive. Hand-enumerated lists silently go stale the moment the set grows — one review traced four independent defects to this pattern (capture's stale domain enum, prompt-injection's five-caller list, the docs-exemption list, security.md's loader claims). When extending a set, grep for every other enumeration of it and update or generalize each one.
 
+## Every Flag on a Shipped Script Needs a Non-Test Caller
+
+Before adding an option to a script under `skills/*/tools/` or `skills/*/scripts/`, name the caller that is not the script's own test suite. No such caller means the option is configuration surface the suite does not otherwise have: these tools print usage on error and nothing else (`estimate-p50.sh --help` exits 2), and the single exception, `tools/replace-text-section.sh`, prints a static `USAGE` constant rather than deriving help from the file. Two shapes earned this rule, both from `tools/select-simple-reqs.sh` as first written:
+
+- **A help handler that parses its own header is coupled to the header's literal shape.** `sed -n '2,/^set -uo/p' "$0"` printed the comment block until the day someone wrote `set -euo pipefail`; the range then never terminated, so `-h` dumped all 428 lines of the script and exited 0. Print a literal string or offer no help flag.
+- **An early-exiting alternate output mode skips every leg below it.** An `--ids-only` path that returned before the Schema Read Contract warning block printed the selected ids while suppressing every diagnostic — and since a typo'd `impact` or `domain` normalizes to the *permissive* default rather than the veto, the ids it printed could include the REQ each veto existed to hold back. Emit alternate shapes from the same path that emits the diagnostics, or do not offer them.
+
 ## Lessons
 
 - [REQ-301: a subtracting gate's failure mode is silence, so downgrade-and-name instead of dropping — and "the text already exists" cannot tell a move from a duplicate; occurrence count can](../../do-work/archive/REQ-301-let-qualify-tell-a-moved-line-from-an-added-one.md#lessons-learned)
