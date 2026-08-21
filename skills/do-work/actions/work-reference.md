@@ -165,6 +165,7 @@ status: blocked               # waiting on an EXTERNAL condition — not user an
 blocked_by: "LM Studio running locally"   # free text naming the condition (always YAML-quoted — raw user text). Legacy note for the board: an old id-LIST value renders joined for display and is NOT a dependency edge — dependency gating is `depends_on` only.
 blocked_at: 2026-07-18T10:00:00Z          # stamped on every flip to blocked — the age anchor the exit summary, board drawer, and forensics read (no enforcement threshold; external conditions legitimately take weeks)
 blocked_check: "curl -sf http://localhost:1234/v1/models"   # OPTIONAL shell probe (always YAML-quoted). User-authored content, run VERBATIM by work Step 1 (exit 0 ⇒ unblock to pending; any non-zero / timeout / unreadable ⇒ stays blocked). Absent ⇒ manual/clarify unblock only.
+stakeholder: "Priya (design)"   # REQUIRED on stakeholder-questions REQs (meaningless elsewhere): the outside person whose confirm-or-override answers this REQ collects — presence is the marker, value is the fold discriminator (actions/capture-reference.md → Fold-First Rule → Stakeholder-audience questions). Verbatim-read class, like assigned_to: no alias map, no case folding, trim-only; greppable by design (grep -rl '^stakeholder: ' do-work/queue/). Always paired with status: blocked + blocked_by naming the person and the latest report bundle path + blocked_at; never with blocked_check (a person is not probeable). NOT parsed by the board — display rides the existing blocked_by badge, zero parser change. Nothing gates on this REQ: its source REQs completed on the builder's assumptions, and it exists only to route answers back (actions/stakeholder-answers.md); clarify routes it, never yes/no-confirms it (actions/clarify.md Step 5.5).
 
 # Set on ANY status flip that has no dedicated *_at stamp of its own — that
 # condition is the rule, the writers are illustrative: answered → pending
@@ -240,7 +241,7 @@ The enum-or-boolean-valued fields above (one table row each, below) are covered 
 
 **Write paths are unaffected.** Step 2 claim, Step 8 archive, Step 8 follow-up generation, the kb-lessons handoff, and capture emission always write the canonical key and canonical enum value — never an alias, never the typo'd input. The normalize-and-warn contract is read-only.
 
-**Fields with no canonical vocabulary are outside this contract and are read verbatim.** `prime_files`, `write_set`, and any future path list have no canonical vocabulary to normalize against — no alias map, no case folding, no path canonicalization, no warning. `assigned_to` joins them for the same reason: a session name is whatever the user or the assigning checkout called itself, so there is nothing to normalize *against* and folding case would silently make two distinct sessions look like one. A reader takes the strings as written, with one narrow exception that applies to **every** field in this class: **surrounding whitespace is trimmed.** YAML already strips it from unquoted scalars, so it only survives explicit quoting (`" cloud-alpha "`), it carries no meaning in a name or a path, and treating `" cloud-alpha "` and `"cloud-alpha"` as two different sessions would break the skip-and-report over a difference nobody intended. Verbatim here means *no alias map, no case folding, no path canonicalization* — not byte-preservation of padding. (`depends_on`, `related`, and `blocked_by` are likewise row-less here; `depends_on`/`related` carry alias keys, documented on their schema lines above, but their *values* are also read verbatim.)
+**Fields with no canonical vocabulary are outside this contract and are read verbatim.** `prime_files`, `write_set`, and any future path list have no canonical vocabulary to normalize against — no alias map, no case folding, no path canonicalization, no warning. `assigned_to` joins them for the same reason: a session name is whatever the user or the assigning checkout called itself, so there is nothing to normalize *against* and folding case would silently make two distinct sessions look like one. `stakeholder` is the same class again — a person's name is whatever the user called them, and folding case would make two people look like one; its literal-then-same-person fold match is stated in `actions/capture-reference.md` → Fold-First Rule → Stakeholder-audience questions. A reader takes the strings as written, with one narrow exception that applies to **every** field in this class: **surrounding whitespace is trimmed.** YAML already strips it from unquoted scalars, so it only survives explicit quoting (`" cloud-alpha "`), it carries no meaning in a name or a path, and treating `" cloud-alpha "` and `"cloud-alpha"` as two different sessions would break the skip-and-report over a difference nobody intended. Verbatim here means *no alias map, no case folding, no path canonicalization* — not byte-preservation of padding. (`depends_on`, `related`, and `blocked_by` are likewise row-less here; `depends_on`/`related` carry alias keys, documented on their schema lines above, but their *values* are also read verbatim.)
 
 ### Terminal-success status set
 
@@ -444,6 +445,14 @@ The exit report is **composed**, not picked from disjoint branches. Whenever the
    or confirm a human-checkable one via `do-work clarify`. To give up on one, `do-work abandon REQ-NNN`.
    ```
 
+   **A blocked REQ carrying `stakeholder:` renders in the stakeholder form instead** of the plain line above, led by `⚠ IRREVERSIBLE` when K > 0:
+
+   ```
+     REQ-NNN — questions for <stakeholder> (N open, K irreversible; since <age>) — report: <latest bundle path from blocked_by>
+   ```
+
+   and the section's remedy text gains: `To ingest a stakeholder's reply, run do-work stakeholder-answers REQ-NNN — share the report path with them first if you haven't.` Counting N and K is the one bounded exception to this summary's frontmatter-only stance: open the body of stakeholder REQs only — at most one per stakeholder, by construction — never the rest of the queue; if the body cannot be read, fall back to the plain blocked line for that REQ.
+
 4. **Blocked-archive-collision section** — applies if any REQ has status `blocked-archive-collision`. Read the matching archive path from each blocked REQ's frontmatter if recorded; otherwise re-run the Step 2.0 glob (`do-work/archive/**/REQ-NNN-*.md` and `do-work/archive/**/REQ-NNN.md`) to find it. Render:
 
    ```
@@ -632,6 +641,8 @@ The existence-verify check on the resolved path runs in Step 8 (post-move) — t
 
 ## Builder-Decided Follow-up Template (Step 8)
 
+This template is the *session-user* branch of Step 8's audience fork: a `- [~]` record carrying `Answerer: <name>` never lands here — it routes to that person's stakeholder REQ instead (**Stakeholder REQ Template (Step 8)**, below).
+
 Before creating one, run the fold-first scan (`actions/capture-reference.md` → **Fold-First Rule**) — a pending REQ in any UR sharing the root cause receives the follow-up as an appended instance instead of a new file. Its `created_at` is the current UTC instant (Timestamp rule, above).
 
    ```markdown
@@ -668,6 +679,52 @@ Before creating one, run the fold-first scan (`actions/capture-reference.md` →
    The `Value:`/`Risk:` lines come from the escalated `D-NN` entry's record (work.md Step 3.5/6). They let `do-work clarify` render the **DECISIONS FOR YOU** section of the Decision Brief so the user can judge in seconds. If the original decision was logged without them (older REQ), omit both lines — `clarify`'s fallback renders `Recommended:`/`Also:` alone.
 
    All template text the user will read — the question, `Recommended:`/`Also:`/`Value:`/`Risk:`, and the `## What` section — must satisfy `crew-members/clear-questions.md`: self-contained, no spec-internal shorthand or coined labels without a one-line gloss, and the why-this-was-escalated stated in `## What` or the question itself (Principle 7). The builder writing this template has the full spec in context; the user answering it in a later clarify session does not.
+
+## Stakeholder REQ Template (Step 8)
+
+The *stakeholder* branch of Step 8's audience fork mints one of these — but only when no open REQ for the person exists: the Fold-First Rule's **Stakeholder-audience questions** clause (`actions/capture-reference.md`) appends to an existing one first. One open REQ per stakeholder, by construction; when it archives (`actions/stakeholder-answers.md` → **Stakeholder REQ terminal semantics**), the next question for that person starts a fresh one at Q-01.
+
+Q-NN ids are unique within one REQ and never reused — an answered or reclaimed question keeps its line and id forever, because the id is the routing key a reply names (`actions/stakeholder-answers.md` Step 2). The counter comment mirrors the D-XX counter pattern (`actions/work.md` Step 3.5). Both `<timestamp>` stamps below are the current UTC instant (Timestamp rule, above).
+
+   ```markdown
+   ---
+   id: REQ-NNN
+   title: "Stakeholder questions: Priya (design)"   # stable across folds; no impact tag (the field is absent and reads as the default)
+   status: blocked
+   created_at: <timestamp>
+   user_request: UR-NNN            # the first source REQ's UR; later folds never change it (sweep precedent — Fold-First Rule)
+   stakeholder: "Priya (design)"   # marker + fold discriminator — verbatim-read class (Request File Schema above)
+   blocked_by: "answers from Priya (design) — latest report: ai-reports/<bundle-slug>/index.html"
+   blocked_at: <timestamp>
+   ---
+
+   # Stakeholder Questions: Priya (Design)
+
+   ## What
+   Open questions whose answerer is Priya (design), collected from builds that
+   proceeded on best-judgment assumptions. **Nothing waits on this REQ** — every
+   question below was answered by an assumption and its source REQ completed.
+   This REQ exists to route Priya's confirm-or-override answers back
+   (`actions/stakeholder-answers.md`).
+
+   ## Questions
+   - [ ] **Q-01** — [the question, complete for a cold outside reader]
+     Assumed: [the builder's implemented answer]
+     Value: [carried from the D-XX record]
+     Risk: [carried from the D-XX record, including reversibility]
+     Irreversible: yes — [why undoing is expensive]     <- only when the record has it
+     Source: REQ-NNN (D-04)
+
+   <!-- Q-NN counter: last used Q-01. Next question: Q-02. -->
+
+   ## Reports
+   - [<date>] ai-reports/<bundle-slug>/index.html — 1 open question at generation
+
+   ## Blocked
+   - [<date>] blocked on "answers from Priya (design)" — minted by REQ-NNN's archive step
+   ```
+
+   Answered forms (Canonical answered-question format, `actions/clarify.md` Step 4): `- [x] **Q-NN** — [question] → [answer]`, `→ Confirmed: [assumed answer]`, or `→ Reclaimed by user via clarify — [answer | moved to REQ-MMM]`. Per-question state lives in the checkbox and its id; REQ-level state lives in `status` alone — the two never stand in for each other. The heading is `## Questions`, deliberately **not** `## Open Questions`: every existing Open-Questions reader (work Step 3.5's scan, clarify's presentation, crash recovery's restore rule) must walk past this REQ untouched.
 
 ## Discovered Tasks Classification (Step 8)
 
@@ -992,11 +1049,15 @@ DECISIONS FOR YOU             (escalated by exception — each carries value + r
       Risk:   cost, reversibility, what breaks if the choice is wrong
       → recommend <X>; default if you say nothing: <X>
 
+WAITING ON OTHERS             (FYI — work is done; assumptions await outside confirmation)
+  • <name>: N questions (K irreversible) — share the report: <bundle path>
+
 HANDLED  (FYI — spot-check, don't ratify)
   • decided <Y> because <Z>     ← reversible calls made without asking
 ```
 
 - **WHAT'S BEING BUILT** renders each REQ's `## Orientation` block (work.md Step 7.5) at feature/subsystem altitude — not a file list. Anchor to the touched `prime_files`; flag `[MAP CHANGED]` only when the change alters the system's shape.
-- **DECISIONS FOR YOU** renders the **ESCALATE**-tier decisions — the `- [~]` / `D-NN` entries that became `pending-answers` follow-ups — each with the Value/Risk carried from the decision record. Source Value/Risk from the touched prime's `## Stakes` when present, else builder-derive.
+- **DECISIONS FOR YOU** renders the **ESCALATE**-tier decisions — the `- [~]` / `D-NN` entries that became `pending-answers` follow-ups — each with the Value/Risk carried from the decision record; entries routed to a stakeholder (`Answerer:` clause) render under WAITING ON OTHERS instead. Source Value/Risk from the touched prime's `## Stakes` when present, else builder-derive.
+- **WAITING ON OTHERS** renders the stakeholder-routed questions, one line per stakeholder REQ touched this run, with the latest report bundle path — the session user is the courier, and the share-the-report line is what closes the loop. Nothing here asks the user to decide anything; omit if empty.
 - **HANDLED** lists the **DECIDE & STATE** decisions (reversible `D-NN` entries) so the user can spot-check without being asked to ratify. Omit if empty.
 - **Scale context to reach.** A leaf REQ collapses to a single WHAT'S BEING BUILT line with no DECISIONS and a short HANDLED list; a map-changing REQ earns a short paragraph and a why-it-matters. Review scores never lead — they live under the decision (review-work Step 9) or in the per-REQ progress lines above.

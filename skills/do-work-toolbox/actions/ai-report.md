@@ -2,7 +2,7 @@
 
 > **Part of the do-work-toolbox skill.** Creates the canonical detailed stakeholder HTML for one completed UR or REQ. It adapts its evidence to visual UI work, backend work, refactors, infrastructure, and other non-visual changes while preserving a timestamped, self-contained `ai-reports/` bundle. User-facing walkthrough: [`docs/ai-report-guide.md`](../docs/ai-report-guide.md).
 
-`ai-report` is the only action that produces detailed stakeholder-facing HTML. Cross-project portfolio presentation belongs to `present-work`; an animated walkthrough belongs to the separate present-video action.
+`ai-report` is the only action that produces detailed stakeholder-facing HTML. The narrow open-questions digest for an outside stakeholder is not a detailed report — that is `stakeholder-report.md`, a non-routed file invoked by core. Cross-project portfolio presentation belongs to `present-work`; an animated walkthrough belongs to the separate present-video action.
 
 ## Philosophy
 

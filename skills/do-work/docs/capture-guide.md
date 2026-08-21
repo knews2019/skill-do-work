@@ -59,7 +59,7 @@ Key sections inside a REQ:
 
 Complex requests add: Detailed Requirements, Dependencies, Builder Guidance, Batch Context.
 
-If a request can't start until an **external condition** is met ("once LM Studio is running", "after the designer replies"), capture emits `status: blocked` with a `blocked_by` line naming the condition (and, only if you supply one, an optional `blocked_check` shell probe that `do-work run` re-checks to auto-unblock). This is distinct from `depends_on` (waiting on another REQ) and from an Open Question (`pending-answers`, a question for you).
+If a request can't start until an **external condition** is met ("once LM Studio is running", "after the designer replies"), capture emits `status: blocked` with a `blocked_by` line naming the condition (and, only if you supply one, an optional `blocked_check` shell probe that `do-work run` re-checks to auto-unblock). This is distinct from `depends_on` (waiting on another REQ) and from an Open Question (`pending-answers`, a question for you). A question a named outside person should *confirm while the work proceeds* is neither: name them ("the designer should pick the palette") and capture records `Answerer: <name>` on the Open Question — the builder proceeds on its best judgment, the question lands on that person's stakeholder REQ with a shareable HTML report, and `do-work stakeholder-answers` ingests their reply.
 
 ## Workflow
 

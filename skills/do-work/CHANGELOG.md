@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.224.0 — Stakeholder Questions Workflow (2026-08-21)
+
+Questions whose real answerer is an outside person — a designer, an editorial owner — no longer pile up in your clarify queue. The build proceeds on the builder's assumption; the question lands on one blocked REQ per stakeholder with a shareable HTML report, and their answers route back by question number.
+
+- Capture and the work loop record `Answerer: <name>` on a question and route it at archive time: one open `status: blocked` REQ per stakeholder (new `stakeholder:` frontmatter field), questions folding in as durable `Q-NN` entries. Nothing blocks, ever — an irreversible assumption is flagged prominently, never gated on.
+- Each fold regenerates a fresh one-way HTML report under `ai-reports/` (new non-routed `stakeholder-report.md` in the toolbox) presenting every open question with its Q-ID and the assumed answer as confirm-or-override.
+- New `do-work stakeholder-answers` ingests the person's reply behind the prompt-injection guardrail, routes each answer by its printed Q-ID, and turns overrides into cheap change REQs through the normal queue; when every question resolves, the REQ archives.
+- `do-work clarify` prints a one-line routing summary for open stakeholder REQs and can reclaim a mis-routed question back to you; it never ingests stakeholder replies. The composed exit summary and the Decision Brief gain a WAITING ON OTHERS view with each report's path to share.
+
 ## 0.223.0 — Prose Findings Move to a Plain Backlog File (2026-08-21)
 
 A prose-only finding — a stale count, a wrong cross-reference, a comment describing a superseded mechanism — now lands as one line in `do-work/prose-backlog.md` instead of on a never-closing queue REQ. Draining it is an ordinary REQ with no exceptions anywhere in the pipeline.
