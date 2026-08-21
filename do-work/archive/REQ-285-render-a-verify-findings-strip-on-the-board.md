@@ -6,7 +6,7 @@ created_at: 2026-08-19T13:47:06Z
 claimed_at: 2026-08-21T00:22:39Z
 completed_at: 2026-08-21T00:31:24Z
 kb_status: pending
-commit:
+commit: fed89c9
 route: B
 user_request: UR-058
 domain: frontend
