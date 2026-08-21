@@ -2,7 +2,7 @@
 id: UR-057
 title: Four defects in the do-work suite — upstream report from a consumer repo
 created_at: 2026-08-19T13:42:45Z
-requests: [REQ-279, REQ-280, REQ-281, REQ-282, REQ-283]
+requests: [REQ-279, REQ-280, REQ-281, REQ-282, REQ-283, REQ-311, REQ-316]
 word_count: 1827
 ---
 

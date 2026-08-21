@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.9 — Calibration Uses Persisted Timestamps (2026-08-21)
+
+Calibration rows can no longer drift because an agent remembered an earlier timestamp instead of
+the one that actually reached the REQ. Archive-time arithmetic now re-reads both endpoints from the
+just-archived frontmatter before recording `wall_minutes`.
+
+A clause-local regression contract rejects eight independent weakenings, including moving the right
+words away from the writer. Independent review passed at 100%, and the completed UR-057 lineage is
+now consolidated in one archive folder.
+
 ## 0.236.8 — Every REQ Writer Judges Effort (2026-08-21)
 
 Follow-up work no longer silently inherits “substantive” just because review or the work loop minted

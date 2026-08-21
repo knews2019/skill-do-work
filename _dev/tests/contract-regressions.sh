@@ -1503,6 +1503,172 @@ then
   fail_count=$((fail_count + 1))
 fi
 
+# REQ-316 — calibration-log arithmetic must project the stamps that actually
+# reached the archived REQ, not values an agent still carries from earlier in the
+# run. This is deliberately clause-local: generic timestamp prose elsewhere cannot
+# satisfy the source-selection boundary at the cross-file write. The in-memory
+# mutations replay the REQ-274 stale-stamp class and prove every semantic leg bites.
+if ! python3 - "$core_root/actions/work.md" <<'PY'
+import pathlib
+import re
+import sys
+
+work_path = pathlib.Path(sys.argv[1])
+work_text = work_path.read_text()
+
+
+def calibration_source_defects(source):
+    section_match = re.search(
+        r"^7\.5\. \*\*Append the calibration-log line\.\*\*(.*?)(?=^8\. \*\*Worktree cleanup)",
+        source,
+        flags=re.DOTALL | re.MULTILINE,
+    )
+    if section_match is None:
+        return {"section"}
+
+    paragraphs = [
+        " ".join(paragraph.split())
+        for paragraph in re.split(r"\n\s*\n", section_match.group(1))
+        if paragraph.strip()
+    ]
+    directives = [
+        paragraph
+        for paragraph in paragraphs
+        if re.search(r"\bread\b", paragraph, flags=re.IGNORECASE)
+        and ("`claimed_at`" in paragraph or "`completed_at`" in paragraph)
+        and re.search(
+            r"calculation time|just.archived|frontmatter|context",
+            paragraph,
+            flags=re.IGNORECASE,
+        )
+    ]
+    if len(directives) != 1:
+        return {"directive"}
+
+    directive = directives[0]
+    defects = set()
+    if "`claimed_at`" not in directive:
+        defects.add("claimed_at")
+    if "`completed_at`" not in directive:
+        defects.add("completed_at")
+    if re.search(r"\bjust.archived REQ\b", directive, flags=re.IGNORECASE) is None:
+        defects.add("just-archived-source")
+    if re.search(r"\bfrontmatter\b", directive, flags=re.IGNORECASE) is None:
+        defects.add("frontmatter")
+    if re.search(
+        r"\b(?:never|do not|must not)\b.{0,80}\breuse\b.{0,100}\b(?:held|carried)\b.{0,60}\b(?:context|earlier)\b",
+        directive,
+        flags=re.IGNORECASE,
+    ) is None:
+        defects.add("carried-value-ban")
+    return defects
+
+
+live_defects = calibration_source_defects(work_text)
+if live_defects:
+    raise SystemExit(
+        "actions/work.md Step 8 substep 7.5 has an incomplete persisted-stamp "
+        f"source contract: {sorted(live_defects)}"
+    )
+
+section_match = re.search(
+    r"^7\.5\. \*\*Append the calibration-log line\.\*\*(.*?)(?=^8\. \*\*Worktree cleanup)",
+    work_text,
+    flags=re.DOTALL | re.MULTILINE,
+)
+paragraphs = [
+    paragraph.strip()
+    for paragraph in re.split(r"\n\s*\n", section_match.group(1))
+    if paragraph.strip()
+]
+directive = next(
+    paragraph
+    for paragraph in paragraphs
+    if re.search(r"\bread\b", paragraph, flags=re.IGNORECASE)
+    and ("`claimed_at`" in paragraph or "`completed_at`" in paragraph)
+    and re.search(
+        r"calculation time|just.archived|frontmatter|context",
+        paragraph,
+        flags=re.IGNORECASE,
+    )
+)
+
+
+def replace_directive(replacement):
+    if directive not in work_text:
+        raise AssertionError("live calibration source directive is not replaceable")
+    return work_text.replace(directive, replacement, 1)
+
+
+def replace_once(source, old, new, mutation_name):
+    mutated = source.replace(old, new, 1)
+    if mutated == source:
+        raise AssertionError(f"calibration source mutation {mutation_name!r} changed nothing")
+    return mutated
+
+
+mutations = (
+    ("delete clause", replace_directive(""), "directive"),
+    (
+        "omit claimed_at",
+        replace_directive(replace_once(directive, "`claimed_at`", "the claim stamp", "omit claimed_at")),
+        "claimed_at",
+    ),
+    (
+        "omit completed_at",
+        replace_directive(replace_once(directive, "`completed_at`", "the completion stamp", "omit completed_at")),
+        "completed_at",
+    ),
+    (
+        "use generic context source",
+        replace_directive(
+            re.sub(
+                r"from the just.archived REQ(?: file)?(?:'s)? frontmatter",
+                "from context",
+                directive,
+                count=1,
+                flags=re.IGNORECASE,
+            )
+        ),
+        "just-archived-source",
+    ),
+    (
+        "remove frontmatter source",
+        replace_directive(replace_once(directive, " frontmatter", "", "remove frontmatter source")),
+        "frontmatter",
+    ),
+    (
+        "delete carried-value ban",
+        replace_directive(re.sub(r";\s*never\b.*?\.\*\*$", ".**", directive, count=1, flags=re.IGNORECASE)),
+        "carried-value-ban",
+    ),
+    (
+        "invert carried-value ban",
+        replace_directive(replace_once(directive, "never reuse", "may reuse", "invert carried-value ban")),
+        "carried-value-ban",
+    ),
+    (
+        "displace clause outside 7.5",
+        replace_directive("") + "\n\n" + directive + "\n",
+        "directive",
+    ),
+)
+
+for mutation_name, mutated_source, expected_defect in mutations:
+    if mutated_source == work_text:
+        raise SystemExit(f"calibration source mutation {mutation_name!r} changed nothing")
+    mutation_defects = calibration_source_defects(mutated_source)
+    if expected_defect not in mutation_defects:
+        raise SystemExit(
+            f"calibration source mutation {mutation_name!r} escaped "
+            f"{expected_defect!r}; found {sorted(mutation_defects)!r}"
+        )
+PY
+then
+  printf 'FAIL: actions/work.md Step 8 substep 7.5 must read claimed_at and completed_at from the just-archived REQ frontmatter at calculation time and forbid carried context values (REQ-316).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 timestamp_rule_block="$(sed -n '/^\*\*Timestamp rule —/,/^```yaml/p' "$core_root/actions/work-reference.md")"
 
 assert_block_contains \
