@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.1 — Three Stakeholder Workflow Fixes From Codex Review (2026-08-21)
+
+Codex reviewed PR #159 and found three real gaps in the new workflow. All three verified and closed.
+
+- A stakeholder REQ no longer carries `user_request:` — UR membership would have held the first source UR (and its completed REQs) out of the archive until the outside person replied, in every closure reader. Question provenance stays in each entry's `Source:` line, and the REQ archives standalone with a no-changes `## Implementation` note so forensics reads it as legitimate.
+- A failed report generation no longer strands a phantom path: `blocked_by:` reads "report pending regeneration" until a bundle lands, and clarify's routing summary plus `stakeholder-answers` regenerate whenever the recorded bundle is pending or missing — retry is condition-keyed, not left to a future fold.
+- A reply that arrives after its stakeholder REQ archived now resolves against the archive: shown read-only, and a differing late answer can still mint a change REQ.
+
 ## 0.236.0 — Stakeholder Questions Workflow (2026-08-21)
 
 Questions whose real answerer is an outside person — a designer, an editorial owner — no longer pile up in your clarify queue. The build proceeds on the builder's assumption; the question lands on one blocked REQ per stakeholder with a shareable HTML report, and their answers route back by question number.
