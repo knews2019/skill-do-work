@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -532,3 +533,78 @@ func runDurationsPlacementProbeWithFaceOverride(t *testing.T, overflowSpec strin
 // durationsProbeExtraStyle is appended to the probe page's stylesheet. Empty for
 // every probe except the face-response one above.
 var durationsProbeExtraStyle = ""
+
+// REQ-266's mechanism, chosen as a check rather than a review convention.
+//
+// The rule REQ-252 established on the Go side: a browser-measured number must
+// name the build it was measured on, because a face is per-browser and an undated
+// number reads as timeless fact. `go/parser` cannot reach the JS surface, which is
+// why the JS comments drifted into carrying three such numbers with no build
+// between them.
+//
+// THE DISCRIMINATOR IS WHAT THE NUMBER CLAIMS, not whether it is a measurement.
+// A measured number cited as EVIDENCE FOR A PAST DECISION is already dated — by
+// the REQ it names, which is a stronger anchor than a build string, since the REQ
+// carries the whole argument. A measured number presented as CURRENT FACT about
+// the face in use is the one that needs a build, and after REQ-292 the honest
+// answer for those is not to date them but to delete them: the engine answers at
+// test time instead.
+//
+// So this check enforces the rule in the direction that survives: a measured
+// number in a JS comment must sit beside either a REQ reference (evidence) or a
+// build name (dated fact). A bare one is neither, and is what this catches.
+func TestDurationsJavaScriptCommentsDateTheirMeasurements(t *testing.T) {
+	rendererBytes, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+
+	// A measurement claim: a decimal with two or more places, next to a word that
+	// makes it a statement about drawn text. Plain geometry constants (13, 11, 9)
+	// are declared numbers, not measurements, and are deliberately not matched.
+	measurementClaim := regexp.MustCompile(
+		`(?i)[0-9]+\.[0-9]{2,}[- ]?(?:unit|px|em)?s?\b[^\n]*?\b(?:measur|ascent|descent|line box|per character|draws)`)
+	alternate := regexp.MustCompile(
+		`(?i)\b(?:measur|ascent|descent|line box|per character|draws)\b[^\n]*?[0-9]+\.[0-9]{2,}`)
+	// Either anchor dates the claim: the REQ that measured it, or the build.
+	datingAnchor := regexp.MustCompile(`(?i)REQ-[0-9]{3}|chromium|playwright|firefox|webkit|safari`)
+
+	for lineNumber, line := range strings.Split(string(rendererBytes), "\n") {
+		commentStart := strings.Index(line, "//")
+		if commentStart < 0 {
+			continue
+		}
+		commentText := line[commentStart:]
+		if !measurementClaim.MatchString(commentText) && !alternate.MatchString(commentText) {
+			continue
+		}
+		// The dating anchor may sit anywhere in the surrounding comment block, not
+		// only on the claim's own line — a paragraph names its REQ once.
+		blockText := durationsSurroundingCommentBlock(string(rendererBytes), lineNumber)
+		if datingAnchor.MatchString(blockText) {
+			continue
+		}
+		t.Errorf("web/board-durations.js:%d carries a measured number with no REQ or build to date it:\n  %s\n"+
+			"A face is per-browser, so an undated measurement reads as timeless fact. Cite the REQ that "+
+			"measured it, name the build, or delete the number and let a browser probe answer at test time.",
+			lineNumber+1, strings.TrimSpace(commentText))
+	}
+}
+
+// durationsSurroundingCommentBlock returns the contiguous run of comment lines the
+// given line sits in, so a paragraph that names its REQ once dates every claim in it.
+func durationsSurroundingCommentBlock(sourceText string, lineNumber int) string {
+	lines := strings.Split(sourceText, "\n")
+	isComment := func(index int) bool {
+		return index >= 0 && index < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[index]), "//")
+	}
+	blockStart := lineNumber
+	for isComment(blockStart - 1) {
+		blockStart--
+	}
+	blockEnd := lineNumber
+	for isComment(blockEnd + 1) {
+		blockEnd++
+	}
+	return strings.Join(lines[blockStart:blockEnd+1], "\n")
+}

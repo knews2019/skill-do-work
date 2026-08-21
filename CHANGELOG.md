@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.230.1 — Measured Numbers in Comments Have to Say Where They Came From (2026-08-21)
+
+A face is per-browser, so a measurement written into a comment with no build beside it reads as timeless fact and quietly goes stale. The last such number in the Durations renderer is gone, and a check now fails the build if a new one appears undated.
+
+- The rule distinguishes what the number claims: evidence for a past decision is dated by the REQ it names, while a claim about the face in use needs a build — or deletion, letting a browser probe answer at test time
+- Also removes a comment still pointing at a test deleted in 0.230.0
+
 ## 0.230.0 — Durations Labels Are Placed Where the Font Is (2026-08-21)
 
 Label placement used to run in Go before a browser existed, reserving 7.15 units per character. That number described one Linux container's answer to `--font-sans` while the stylesheet ends in the open `sans-serif` generic — so it described a face it never met, and on a wider one the labels drew straight past their slots. Placement now happens in the browser and measures the text it is actually placing.

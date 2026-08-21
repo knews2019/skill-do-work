@@ -58,10 +58,16 @@
   // units, which was padding rather than ink — the render showed two clean rows
   // — but it made row-against-row separation unassertable.
   var DURATIONS_LABEL_ROW_HEIGHT = 13;
-  // Rounded up from the face's measured 10.43-unit ascent. The round-up is the
-  // safe direction for both readers: it ends the leader tick above the text
-  // rather than inside it, and it makes TestDurationsLabelRowsClearTheMarkBands
-  // demand more clearance from the mark band than the ink actually needs.
+  // A DECLARED number, not a measured one. It is deliberately at or above any
+  // ascent the 11px face draws, and the round-up is the safe direction for both
+  // readers: it ends the leader tick above the text rather than inside it, and it
+  // makes the mark-band clearance check demand more room than the ink needs.
+  //
+  // It used to cite a specific measured ascent as current fact with no build
+  // beside it (REQ-266). That number is gone rather than dated, because REQ-292
+  // made the ascent something the engine answers at test time:
+  // TestBrowserBehaviorDurationsLabelRowsClearTheirNeighbours measures the real
+  // line box on whatever machine runs it and fails there instead.
   var DURATIONS_LABEL_TEXT_ASCENT = 11;
   // An axis tick's baseline sits this far below the y it labels, which is what
   // optically centres an 11px face on that line. A named number because a tick
