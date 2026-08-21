@@ -162,7 +162,12 @@ restore_one_file() {
     printf 'skipped'
     return 0
   fi
-  recovered_bytes="$(git cat-file -s "$recovery_sha:$tracked_name" 2>/dev/null || echo 0)"
+  # Display only — this figure goes into a WOULD RESTORE line and decides nothing.
+  # The fallback is '?' rather than 0 because a 0 here reads as "the recoverable
+  # version is empty too", which is the opposite of the truth and would talk a
+  # reader out of a restore that would have worked. An unreadable size says so
+  # (REQ-298: a fallback must never be mistakable for a real answer).
+  recovered_bytes="$(git cat-file -s "$recovery_sha:$tracked_name" 2>/dev/null || echo '?')"
 
   if [ "$dry_run_mode" -eq 1 ]; then
     echo "WOULD RESTORE: $target_path — $recovered_bytes bytes from commit $recovery_sha, then set commit: ${recorded_hash}." >&2
@@ -253,6 +258,8 @@ while IFS= read -r candidate_file; do
   if [ "$porcelain_mode" -eq 0 ]; then
     echo "DATA LOSS: $candidate_file — $damage_kind."
     if [ "$recovery_sha" != "-" ]; then
+      # Display only, and '?' is deliberate: an unreadable size must not arrive as
+      # a number a reader would act on (REQ-298). Judged and kept as-is.
       recovered_bytes="$(git cat-file -s "$recovery_sha:$(git ls-files --full-name -- "$candidate_file")" 2>/dev/null || echo '?')"
       echo "  Recoverable: $recovered_bytes bytes at commit $recovery_sha."
       if [ "$recorded_hash" != "-" ]; then

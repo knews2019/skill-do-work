@@ -1674,6 +1674,40 @@ assert_file_missing \
   "actions/prime-req-reservation.md" \
   'the reservation prime doc must stay removed along with the reserve action.'
 
+# REQ-298 — a size query's failure must never arrive as a size.
+#
+# THE CONDITION, stated where shipped shell is governed
+# (`_dev/primes/prime-shell-commands.md` § Unchecked Exit Status): a command
+# substitution whose exit status is discarded while only its content is judged
+# lets a tool that never ran read as a tool that found nothing.
+#
+# WHY THIS CHECK IS NARROW, and it is a finding rather than a compromise. The
+# broad shape — any substitution with a `|| true` / `|| echo 0` fallback — was
+# measured across every shipped script: 15 sites, and every one of them is a
+# CORRECT use. `ps -o pgid=` returning empty means the process is gone; `git
+# rev-parse --show-toplevel` returning empty means this is not a repository;
+# `mktemp` returning empty is guarded and reported on the next line. In each the
+# emptiness IS the information, so a check on that shape would flag fifteen
+# correct lines to catch zero defects and would be muted within a week.
+#
+# What separates the defect from the correct use is semantic — does a guard then
+# make a safety decision on the value, where the collapsed value silently
+# satisfies the safe branch — and that is not greppable. So this pins the one
+# query where the distinction is unambiguous: `git cat-file -s` answers "how big
+# is this blob", the answer is only ever used in a size guard, and a failure
+# collapsed to empty or 0 is exactly the incident (a 13,900-byte archived REQ
+# truncated to 57 bytes passed the truncation floor and was written and staged).
+# A display-only caller may fall back to '?', which no reader can mistake for a
+# size. Anything numeric or empty may not.
+size_query_collapse_hits="$(grep -rnE "git cat-file -s[^|]*\|\|[[:space:]]*(true|echo[[:space:]]+0|echo[[:space:]]+\"\"|echo[[:space:]]+'')" \
+  --include="*.sh" "$repo_root/skills" 2>/dev/null | grep -v '_test' || true)"
+if [ -n "$size_query_collapse_hits" ]; then
+  printf 'FAIL: a `git cat-file -s` discards its exit status into a value indistinguishable from a real size (REQ-298) — check the blob exists first with `git cat-file -e` and refuse when an existing blob will not size, or fall back to a token no reader can mistake for a size:\n%s\n' \
+    "$size_query_collapse_hits" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+
 # Impact/effort separation (REQ-289). `effort_estimate` had two writers with two
 # different meanings: capture judged SIZE, while review MUST-stamped it from an
 # IMPACT gate. The split gave each axis its own field, and every value on both
@@ -1685,30 +1719,82 @@ assert_file_missing \
 # from an IMPACT verdict, which is what let work.md's mechanical-effort
 # short-circuit forecast a three-hour fix at five minutes.
 #
-# The pin is the derivation VERB applied to this field, not mere co-occurrence:
-# `stamp` is what the defect always said ("stamp it from the review gate's
-# recorded disposition"), and after the split only `impact:` is ever stamped from
-# a verdict — `effort_estimate` is judged as size by whoever writes it. The
-# proximity window keeps an unrelated `stamp calculated_at` in the same sentence
-# from false-positiving. `gate` is the retired routing field and is dead beside
-# `effort_estimate` in any spelling.
-if ! python3 - "$core_root/actions" "$toolbox_root/actions" <<'PY'
+# The pin is the derivation RELATION applied to this field, not one verb and not
+# mere co-occurrence. After the split only `impact:` is ever derived from a
+# verdict — `effort_estimate` is judged as size by whoever writes it.
+#
+# REQ-293 widened this on both axes, because the original pinned a spelling:
+#   * the VERB SET was the single literal `stamp*`, so "derive", "set from",
+#     "comes from" and "map to" all walked past. Measured at the time: 1 of 6
+#     realistic re-drifts caught. Worse, the mutation test that "confirmed" it
+#     used the word "stamping" — the one verb it greps — so the test was
+#     self-confirming.
+#   * the PROXIMITY WINDOW was `[^.]{0,80}`, which treats any period as a
+#     sentence end. A file path between the verb and the field breaks the window,
+#     and a cited path is this repo's dominant style — so the very sentences most
+#     likely to carry the defect were the ones it could not see.
+# The window is now "same line, either order", which is what the enclosing loop
+# already iterates by, and the verb set is a class.
+#
+# `gate` is the retired routing field and is dead beside `effort_estimate` in any
+# spelling.
+if ! python3 - "$core_root/actions" "$toolbox_root/actions" "$core_root/docs" "$core_root/crew-members" \
+  "$toolbox_root/actions" "$knowledge_root/actions" "$board_root/actions" \
+  "$core_root/SKILL.md" "$toolbox_root/SKILL.md" "$knowledge_root/SKILL.md" "$board_root/SKILL.md" <<'PY'
 import pathlib
 import re
 import sys
 
+# A derivation is any of these applied to effort_estimate, in either order on the
+# line. The set is the CLASS of "this field's value comes from that judgment",
+# deliberately not one verb — a re-drift is written by whoever writes it next, in
+# their own words.
+derivation_verbs = (
+    r"stamp\w*|deriv\w*|set\s+(?:it\s+)?from|comes?\s+from|taken\s+from|read\s+from"
+    r"|map(?:s|ped|ping)?\s+(?:it\s+)?(?:to|from)|infer\w*|follow\w*\s+from|based\s+on"
+    r"|translat\w*|copie[sd]?\s+from|mirror\w*"
+)
+# The window is `.{0,60}` — bounded, but NOT `[^.]`. Excluding the period was the
+# original bug: a cited file path between the verb and the field ended the window
+# early, and a cited path is this repo's dominant style. Sixty characters is
+# tight enough that a long schema line describing the separation correctly does
+# not trip it, and wide enough to span "derived from the review gate's recorded
+# disposition into effort_estimate".
 derivation_pattern = re.compile(
-    r"stamp\w*[^.]{0,80}effort_estimate"
-    r"|effort_estimate[^.]{0,80}stamp\w*"
+    r"(?:" + derivation_verbs + r").{0,60}effort_estimate"
+    r"|effort_estimate.{0,60}(?:" + derivation_verbs + r")"
     r"|\bgate\b",
     flags=re.IGNORECASE,
 )
+# An impact verdict named on the same line is what makes a derivation a
+# CROSS-AXIS one. Without it, "effort_estimate is set from your own judgment of
+# size" would fail, which is the correct behaviour being described.
+impact_axis_mention = re.compile(r"impact[-_ ]|verdict|gate", flags=re.IGNORECASE)
+negated_derivation = re.compile(
+    r"\b(?:never|not|no longer|rather than|instead of|cannot|must not|is a different axis)\b",
+    flags=re.IGNORECASE,
+)
 offending_lines = []
-for actions_directory in sys.argv[1:]:
-    for action_file in sorted(pathlib.Path(actions_directory).glob("*.md")):
+for scan_root in sys.argv[1:]:
+    root_path = pathlib.Path(scan_root)
+    scanned_files = [root_path] if root_path.is_file() else sorted(root_path.glob("*.md"))
+    for action_file in scanned_files:
+        if not action_file.is_file():
+            continue
         for line_number, line in enumerate(action_file.read_text().splitlines(), start=1):
-            if "effort_estimate" in line and derivation_pattern.search(line):
-                offending_lines.append(f"  {action_file}:{line_number}")
+            if "effort_estimate" not in line:
+                continue
+            if not derivation_pattern.search(line):
+                continue
+            if not impact_axis_mention.search(line):
+                continue
+            # A NEGATED derivation is the rule being stated, not broken: the
+            # action files say "effort_estimate is never derived from that token"
+            # in as many words, and that sentence is the contract. Skipping it is
+            # not a hole — a re-drift asserts the derivation, it does not deny it.
+            if negated_derivation.search(line):
+                continue
+            offending_lines.append(f"  {action_file}:{line_number}")
 if offending_lines:
     raise SystemExit("\n".join(offending_lines))
 PY
@@ -1831,6 +1917,35 @@ parser_tokens = {
     if item.strip()
 }
 
+# REQ-293 F4 — the DEFAULT, not only the token set. Check D compared the two
+# vocabularies and never read defaultValue, so nothing held the schema line's
+# "Absent or unrecognized reads as `impact-user-visible`" to anything.
+#
+# This is the highest-value pin in the REQ because REQ-290 depends on it: if the
+# default ever became `impact-negligible`, `do-work run --skip-impact-negligible`
+# would invert into "skip everything, including every REQ predating the field" —
+# and every check in this file would stay green. Absence must never be mistakable
+# for the user's stop signal.
+default_match = re.search(r'defaultValue:\s*(\w+|"[^"]+")', impact_entry.group(1))
+if default_match is None:
+    raise SystemExit('model.go "impact" entry declares no defaultValue')
+parser_default = constant_values.get(
+    default_match.group(1), default_match.group(1).strip('"')
+)
+if parser_default != "impact-user-visible":
+    raise SystemExit(
+        f'model.go\'s impact defaultValue is "{parser_default}", not "impact-user-visible" — '
+        "an absent or unrecognized impact must never read as the user's stop signal, "
+        "or --skip-impact-negligible inverts into skip-everything (REQ-290)"
+    )
+# ...and the schema line has to say the same thing, in the file a reader reads.
+if not re.search(r"[Aa]bsent or unrecognized reads as `impact-user-visible`", schema_line):
+    raise SystemExit(
+        "the impact schema line no longer states that absent or unrecognized reads as "
+        "`impact-user-visible` — the parser default and the documented default must agree, "
+        "and this is the half a reader acts on"
+    )
+
 if schema_tokens != parser_tokens:
     raise SystemExit(
         "impact vocabulary disagrees — only in the schema row: "
@@ -1847,13 +1962,20 @@ fi
 # the Discovered Tasks ladder had a third; both collapse onto the four impact-
 # tokens, so no shipped file may keep either alive. Narrowing this loop to make a
 # straggler pass is exactly how a retired vocabulary survives.
+# REQ-293 F3: the ladder tokens are matched by TOKEN, not by markup. The
+# original patterns required bold — `**[critical]**` — so `- [low] a style nit`
+# and the backticked `` `[critical]` `` both walked past clean, and the
+# backticked form is one the tree actually carried (review-work.md:201 before
+# REQ-289). The bracketed word IS the retired vocabulary; whatever emphasis
+# surrounds it is incidental. `[ ]`-style checkboxes are unaffected: the tokens
+# are words, not spaces.
 for retired_impact_token in \
   'gate: user-visible' \
   'gate: rule-change' \
   'gate: trivial' \
-  '\*\*\[critical\]\*\*' \
-  '\*\*\[normal\]\*\*' \
-  '\*\*\[low\]\*\*'; do
+  '\[critical\]' \
+  '\[normal\]' \
+  '\[low\]'; do
   retired_impact_hits="$(grep -rIlE -- "$retired_impact_token" \
     "$core_root/actions" "$core_root/docs" "$toolbox_root/actions" "$board_root/tools/queue-kanban" 2>/dev/null || true)"
   if [ -n "$retired_impact_hits" ]; then
@@ -1862,6 +1984,64 @@ for retired_impact_token in \
     fail_count=$((fail_count + 1))
   fi
 done
+
+# REQ-293 F6 — `--skip-impact-negligible` is declared in several places that must
+# agree, and nothing held them together. This is not hypothetical: REQ-290's own
+# review found THREE already-stale restatements of the ready-set conditions
+# inside these same two files, one of them thirteen lines from the condition it
+# contradicted.
+#
+# The pin is presence at each declaration site, in the file that owns it. A site
+# that loses the flag is a reader that will not know about it; a usage string
+# that loses it tells the user the flag does not exist.
+if ! skip_negligible_missing="$(python3 - "$core_root/actions/work.md" "$core_root/actions/work-reference.md" <<'SKIPSITES'
+import pathlib
+import sys
+
+work_text = pathlib.Path(sys.argv[1]).read_text()
+reference_text = pathlib.Path(sys.argv[2]).read_text()
+
+# Each entry is (where it lives, which file, a phrase unique to that site).
+required_sites = [
+    ("work.md `## Input` bullet", work_text, "**`--skip-impact-negligible`** (boolean flag)"),
+    ("work.md argument-strip list", work_text,
+     "After stripping `--wave N`, `--fan-out [N]`, and `--skip-impact-negligible`"),
+    ("work.md usage string, default branch", work_text,
+     "do-work run [REQ-NNN|UR-NNN ...] [--skip-impact-negligible]"),
+    ("work.md usage string, --wave branch", work_text,
+     "do-work run --wave N [--skip-impact-negligible]"),
+    ("work.md Step 1 skip paragraph", work_text,
+     "**`--skip-impact-negligible` skips negligible REQs and reports them, never silently.**"),
+    ("work.md Orchestrator Checklist Step 0", work_text,
+     "--skip-impact-negligible); reject unrecognized residue"),
+    ("work-reference.md auto-wave condition 5", reference_text,
+     "**Not dropped by `--skip-impact-negligible`**"),
+]
+missing = [where for where, text, phrase in required_sites if phrase not in text]
+if missing:
+    raise SystemExit("\n".join("  " + where for where in missing))
+SKIPSITES
+)"; then
+  printf 'FAIL: --skip-impact-negligible lost a declaration site (REQ-290, pinned by REQ-293 F6) — every site below must agree, or a reader acts on a flag one of them does not mention:\n%s\n' \
+    "$skip_negligible_missing" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# The same shape for the impact title tag's emitter set: every flow that mints a
+# REQ title must write the `[<impact token>] ` tag, or the board's title-matching
+# search box cannot find a non-default verdict — which is the whole reason the
+# tag exists beside the field.
+for title_tag_emitter in \
+  "$core_root/actions/capture-reference.md" \
+  "$core_root/actions/review-work.md" \
+  "$core_root/actions/work-reference.md"; do
+  if ! grep -qF -- '[<impact token>] ' "$title_tag_emitter"; then
+    printf 'FAIL: %s no longer names the `[<impact token>] ` title tag (REQ-290, pinned by REQ-293 F6) — a follow-up carrying the field but not the tag is invisible to the board title search.\n' \
+      "$title_tag_emitter" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+
 
 assert_contains \
   "actions/work-reference.md" \
@@ -2234,6 +2414,236 @@ assert_block_not_contains \
   "$worktree_dispatch_block" \
   'the queue, `working/`, `CHECKPOINT.md` — exists in the main tree only' \
   'actions/work-reference.md must not restore State stays home three-item enumeration — a hand-maintained list of what lives under do-work/ goes stale the moment a directory is added (REQ-082).'
+
+# REQ-299 — every `##` section Step 6 names is classified, and the routed ones match the
+# hand-back contents exactly. REQ-270 fixed `## Discovered Tasks` and left `## Decisions`
+# unqualified: Step 6 told a worktree builder to write a file `State stays home` forbids it
+# to touch, and the two readers outside Step 8 (review-work's traceability check, the
+# Decision Brief's HANDLED block) could not inherit a rule scoped to Step 8's substeps. The
+# failure was silent both ways — review reported clean, the brief rendered empty.
+#
+# The check carries no list of sections, deliberately. It classifies whatever Step 6
+# mentions: routed to the hand-back, or explicitly `not yours to write`. A section added to
+# Step 6 later that says neither fails here rather than shipping the same defect again.
+if ! python3 - "$core_root/actions/work.md" "$core_root/actions/work-reference.md" <<'PY'
+import pathlib
+import re
+import sys
+
+work_text = pathlib.Path(sys.argv[1]).read_text()
+reference_text = pathlib.Path(sys.argv[2]).read_text()
+
+builder_instruction_block = re.search(
+    r"^All routes include these instructions to the agent.*?^\*\*Hand-back merge",
+    work_text,
+    flags=re.DOTALL | re.MULTILINE,
+)
+if builder_instruction_block is None:
+    raise SystemExit(
+        "actions/work.md Step 6 no longer has an 'All routes include these instructions to "
+        "the agent' block ending at the hand-back merge — the extraction anchor moved"
+    )
+
+# One bullet per top-level `- ` item; continuation lines belong to the bullet above them.
+bullets = []
+for line in builder_instruction_block.group(0).splitlines():
+    if line.startswith("- "):
+        bullets.append(line)
+    elif bullets:
+        bullets[-1] += " " + line.strip()
+
+section_token = re.compile(r"`(## [A-Z][A-Za-z -]*)`")
+routing_clause = re.compile(r"that section goes in your hand-back", re.IGNORECASE)
+disclaimer_clause = re.compile(r"not yours to write", re.IGNORECASE)
+
+# Classification is per section, not per mention: several bullets may name the same
+# section, and one clear statement of who writes it is enough for a reader. What must
+# never happen is a section Step 6 names that no bullet classifies at all.
+routed_sections = set()
+disclaimed_sections = set()
+mentioned_sections = set()
+for bullet in bullets:
+    mentioned = set(section_token.findall(bullet))
+    mentioned_sections |= mentioned
+    if routing_clause.search(bullet):
+        routed_sections |= mentioned
+    if disclaimer_clause.search(bullet):
+        disclaimed_sections |= mentioned
+
+unclassified = mentioned_sections - routed_sections - disclaimed_sections
+if unclassified:
+    raise SystemExit(
+        f"actions/work.md Step 6 names {', '.join(sorted(unclassified))} without saying "
+        "whether the builder authors it: every `##` section the block names must either be "
+        "routed to the hand-back for worktree dispatch mode or be marked 'not yours to "
+        "write', or a builder is told to write a file it may not touch"
+    )
+
+if not routed_sections:
+    raise SystemExit(
+        "actions/work.md Step 6 routes no `##` section to the builder's hand-back — the "
+        "check would pass vacuously, so the routing clause itself must have changed"
+    )
+
+handback_row = next(
+    (line for line in reference_text.splitlines() if line.startswith("| per-builder output |")),
+    None,
+)
+if handback_row is None:
+    raise SystemExit(
+        "actions/work-reference.md Fan-Out Dispatch has no per-builder output row — the "
+        "hand-back contents contract moved"
+    )
+named_sections = set(section_token.findall(handback_row))
+
+if routed_sections != named_sections:
+    raise SystemExit(
+        "the sections Step 6 tells the builder to author and the sections the hand-back "
+        "contract names disagree — routed by Step 6 but not carried by the hand-back: "
+        f"{sorted(routed_sections - named_sections)}; named by the hand-back but not routed "
+        f"by Step 6: {sorted(named_sections - routed_sections)}"
+    )
+PY
+then
+  printf 'FAIL: actions/work.md Step 6 and actions/work-reference.md disagree about which `##` sections a worktree builder hands back (REQ-299) — a section Step 6 tells the builder to author that the hand-back never carries is lost silently.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# REQ-299 — the rule's home. REQ-270 stated it in actions/work.md Step 8's preamble, opening
+# "Some substeps below", so review-work's traceability check and the Decision Brief — both
+# outside Step 8 — could not inherit it. The rule now lives in the reference every reader
+# already loads, keyed on the condition, with its reader list explicitly illustrative.
+builder_section_rule_block="$(sed -n '/^## Reading a Builder-Authored Section (any step)/,/^## Composed Exit Summary/p' "$core_root/actions/work-reference.md")"
+
+if [ -z "$builder_section_rule_block" ]; then
+  printf 'FAIL: actions/work-reference.md has no `## Reading a Builder-Authored Section (any step)` section (REQ-299) — the rule must live outside actions/work.md Step 8, where readers at other steps can inherit it.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+assert_block_contains \
+  "$builder_section_rule_block" \
+  'The condition carries the rule, not any list of readers' \
+  'actions/work-reference.md Reading a Builder-Authored Section must key on the condition and mark its reader list illustrative (REQ-299) — a closed list of readers is how the rule missed review-work and the Decision Brief the first time.'
+
+assert_block_contains \
+  "$builder_section_rule_block" \
+  'relative to the project root' \
+  'actions/work-reference.md Reading a Builder-Authored Section must say which root the hand-back path resolves against (REQ-299) — a reader resolving do-work/runs/ against the vendored .claude/skills/ directory of a consumer install finds nothing.'
+
+assert_block_contains \
+  "$builder_section_rule_block" \
+  'Absence is only silence when you know you looked' \
+  'actions/work-reference.md Reading a Builder-Authored Section must carry the absence-vs-silence rule (REQ-299) — without it a reader cannot distinguish an unread hand-back from an empty one.'
+
+assert_contains \
+  'actions/work.md' \
+  'Reading a Builder-Authored Section \(any step\)' \
+  'actions/work.md Step 8 must point at actions/work-reference.md → Reading a Builder-Authored Section rather than restating the rule (REQ-299) — a Step-8-local copy is what kept readers outside Step 8 from inheriting it.'
+
+# Both readers outside Step 8 must inherit the rule and must say which absence they found.
+assert_contains \
+  'actions/review-work.md' \
+  'Reading a Builder-Authored Section \(any step\)' \
+  "actions/review-work.md Step 4's traceability check must read the REQ's ## Decisions per the shared rule (REQ-299) — under fan-out the section is in the hand-back, and reading the REQ file alone scores a missing section as clean."
+
+# The unreadable case is the half whose loss collapses the two facts: an empty hand-back
+# already reads as "nothing recorded" everywhere, so only the unread one needs naming.
+for builder_section_reader_path in actions/review-work.md actions/work-reference.md; do
+  if ! grep -q 'could not be read\|hand-back unread' "$(resolve_runtime_file "$builder_section_reader_path")"; then
+    printf 'FAIL: %s must distinguish "no section anywhere" from "the builder recorded nothing" (REQ-299) — an unread hand-back and an empty one are different facts and must never render the same.\n' "$builder_section_reader_path" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+
+# REQ-308 — capture judges effort_estimate by the same standard it judges impact.
+# capture.md required a judged `impact:` in a rule written to close exactly this hole
+# ("an absent impact: must not be the common case") while the neighbouring field was
+# only ever MAY-set. That stopped being cosmetic when `do-work run-simple-reqs` began
+# selecting work on effort_estimate: at capture time 14 of 22 pending REQs carried the
+# field, so 8 read as effort-substantive by default and were invisible to that verb —
+# not because anyone judged them substantive, but because nobody judged them.
+#
+# The check pins the PROPERTY, not the wording (REQ-293's lesson): the two checklist
+# lines must be the same sentence apart from the field they name. A rule that drifts on
+# one field and not the other fails here, whatever either sentence happens to say.
+if ! python3 - "$core_root/actions/capture.md" <<'PY'
+import pathlib
+import re
+import sys
+
+capture_text = pathlib.Path(sys.argv[1]).read_text()
+
+checklist_block = re.search(
+    r"^## Verification Checklist$(.*?)(?=^## |\Z)",
+    capture_text,
+    flags=re.DOTALL | re.MULTILINE,
+)
+if checklist_block is None:
+    raise SystemExit("actions/capture.md has no '## Verification Checklist' section — the anchor moved")
+
+judged_field_names = ("impact:", "effort_estimate:")
+lines_by_field = {field_name: [] for field_name in judged_field_names}
+for checklist_line in checklist_block.group(1).splitlines():
+    if not checklist_line.startswith("- [ ] "):
+        continue
+    for field_name in judged_field_names:
+        if f"`{field_name}`" in checklist_line:
+            lines_by_field[field_name].append(checklist_line)
+
+# The judged-verdict line is the one that states the three-way contract. A field can
+# carry other checklist lines (impact carries the title-mirror one), so the judged line
+# is identified by naming the field with no other field beside it.
+def judged_verdict_line(field_name):
+    candidates = [
+        checklist_line
+        for checklist_line in lines_by_field[field_name]
+        if checklist_line.count("`") == 2
+    ]
+    if len(candidates) != 1:
+        raise SystemExit(
+            f"actions/capture.md's checklist must carry exactly one line stating how "
+            f"`{field_name}` is decided; found {len(candidates)}: {candidates}"
+        )
+    return candidates[0]
+
+# Same sentence, different field. Strip the field token and compare what is left.
+skeletons = {
+    field_name: judged_verdict_line(field_name).replace(f"`{field_name}`", "<field>")
+    for field_name in judged_field_names
+}
+if skeletons["impact:"] != skeletons["effort_estimate:"]:
+    raise SystemExit(
+        "actions/capture.md judges impact: and effort_estimate: by different standards — "
+        "the two checklist lines must be one sentence apart from the field they name.\n"
+        f"  impact:          {skeletons['impact:']}\n"
+        f"  effort_estimate: {skeletons['effort_estimate:']}"
+    )
+
+# And the standard has to be the three-way one, or a matching pair of weak rules passes.
+judged_line = judged_verdict_line("impact:")
+for required_alternative, description in (
+    ("judged", "judge it yourself"),
+    ("put to the user", "ask the user"),
+    ("absent", "leave it absent"),
+):
+    if required_alternative not in judged_line:
+        raise SystemExit(
+            f"the judged-verdict checklist line no longer offers '{description}' — the "
+            f"three-way contract is what stops a copied default: {judged_line}"
+        )
+PY
+then
+  printf 'FAIL: actions/capture.md does not judge effort_estimate by the same standard as impact (REQ-308) — a field nobody judged reads as effort-substantive by default and is invisible to `do-work run-simple-reqs`.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# No shipped file may still say capture MAY set the field — the weaker rule survives
+# wherever it was restated, and a reader who lands on the restatement never sees the rule.
+capture_may_set_effort="$(cd "$repo_root" && grep -rIn 'apture MAY \(set\|emit\)' skills/ 2>/dev/null || true)"
+if [ -n "$capture_may_set_effort" ]; then
+  printf 'FAIL: a shipped file still says capture MAY set a field it must now judge (REQ-308):\n%s\n' "$capture_may_set_effort" >&2
+  fail_count=$((fail_count + 1))
+fi
 
 # The claim-time write (REQ-077) is the other half of REQ-071's gate. REQ-071 made recovery consume
 # the checkpoint's In Progress record, but Step 10 (session end) was its only write site — so a hard
@@ -3873,6 +4283,73 @@ assert_contains \
 verify_input_block="$(sed -n '/^## Input/,/^## Capture QA Workflow/p' "$core_root/actions/verify-requests.md")"
 verify_revalidation_block="$(sed -n '/^## Decision Revalidation Workflow/,/^## What NOT To Do/p' "$core_root/actions/verify-requests.md")"
 clarify_revalidation_block="$(sed -n '/^### Step 5\.25: Revalidate queued work after reversals/,/^### Step 5\.5:/p' "$core_root/actions/clarify.md")"
+
+# REQ-288 K2/K3/K4 — the three shipped contradictions in clarify's Step 4. Each check
+# names the defect it pins, and each pins a rule that a plausible edit would undo:
+# K3 and K4 both destroy work when they regress (an archived REQ holding an open
+# question; an approved follow-up archived completed without ever being built).
+clarify_step4_block="$(sed -n '/^### Step 4: Collect answers/,/^### Step 5\.25:/p' "$core_root/actions/clarify.md")"
+clarify_checklist_block="$(sed -n '/^## Verification Checklist/,$p' "$core_root/actions/clarify.md")"
+
+# --- K2: the durable record is the answer line PLUS a dated reasoning note ---
+assert_block_contains \
+  "$clarify_step4_block" \
+  'durable record is the .- \[x\] \[question\] → \[answer\]. form below \*\*together with a dated note' \
+  "K2: clarify's canonical answered-question block must define the durable record as the answer line PLUS the dated reasoning note (clear-questions.md Principle 8), not the answer line alone."
+
+assert_block_contains \
+  "$clarify_step4_block" \
+  'put out of scope' \
+  'K2: the dated note must be required to carry anything the answer put out of scope, or the next reader re-derives the decision from Recommended:.'
+
+# K2's date constraint: cite the rule, never copy a clock command into an action file.
+assert_block_contains \
+  "$clarify_step4_block" \
+  'Timestamp rule.s date-only paragraph .`actions/work-reference\.md`. — cite it, never spell a clock command' \
+  "K2: clarify's dated note must cite the Timestamp rule's date-only paragraph rather than spelling a command; ungoverned prose dates get fabricated (UR-055)."
+
+assert_block_not_contains \
+  "$(cat "$core_root/actions/clarify.md")" \
+  'date -u \+%F|date -u \+%Y|Get-Date' \
+  'K2: clarify.md must never spell a clock command — work-reference.md is the only place in actions/ that does.'
+
+# The date-only paragraph itself must key on the condition, not on a consumer list.
+assert_block_contains \
+  "$(cat "$core_root/actions/work-reference.md")" \
+  'any UTC calendar date written into a durable record' \
+  "K2: the Timestamp rule's date-only paragraph must key on the condition; an enumerated consumer list goes stale and left REQ prose notes ungoverned (CLAUDE.md 'State conditions, not lists')."
+
+# --- K3: per-question verbs set no REQ-level state; Step 5 aggregates once ---
+assert_block_contains \
+  "$clarify_step4_block" \
+  'never sets the REQ.s status and never archives' \
+  'K3: a per-question verb must not set whole-file state — discarding one question while skipping another made two branches unfollowable at once.'
+
+assert_block_contains \
+  "$clarify_checklist_block" \
+  'stayed .pending-answers. in .do-work/queue/' \
+  'K3: a REQ holding even one remaining unanswered question must never be archived; the checklist is what makes that auditable.'
+
+assert_block_contains \
+  "$(sed -n '/^### Step 5: Resolve each REQ/,/^### Step 5\.25:/p' "$core_root/actions/clarify.md")" \
+  'Any remaining .- \[ \]. wins' \
+  "K3: Step 5 must compute status once from every question's outcome, with any open question holding the REQ in pending-answers."
+
+# --- K4: the completed fast path routes on the marker, never on question prose ---
+assert_block_contains \
+  "$(sed -n '/^### Step 5: Resolve each REQ/,/^### Step 5\.25:/p' "$core_root/actions/clarify.md")" \
+  'builder_decided: true. follow-up whose questions were all confirmed' \
+  'K4: the completed fast path must key on the builder_decided marker; keyed on question prose, a reworded consent question archives an approved follow-up without ever building it.'
+
+assert_block_contains \
+  "$(sed -n '/^### Step 5: Resolve each REQ/,/^### Step 5\.25:/p' "$core_root/actions/clarify.md")" \
+  'Never infer this branch from question prose' \
+  'K4: the marker must be stated as the entire test, so a future edit cannot reintroduce prose matching as a fallback.'
+
+assert_block_not_contains \
+  "$(cat "$core_root/actions/clarify.md")" \
+  'whose question is "Should I process this as a new task\?"' \
+  'K4: clarify must not route on the literal discriminator phrase any more — that is the defense review-work.md predicted would fail.'
 
 assert_block_contains \
   "$verify_input_block" \

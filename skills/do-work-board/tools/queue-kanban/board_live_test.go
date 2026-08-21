@@ -16,6 +16,14 @@ import (
 // one git process per file. (lookupGitCommitDate itself is exercised separately.)
 func liveBoard(t *testing.T) *Board {
 	t.Helper()
+	return liveBoardAt(t, liveRepoRoot(t))
+}
+
+// liveRepoRoot is the root liveBoard resolves. Split out so a test can ask what
+// KIND of tree it landed on before asserting anything calibrated against a
+// particular one — see suiteCheckoutSkipReason.
+func liveRepoRoot(t *testing.T) string {
+	t.Helper()
 	workingDirectory, getwdError := os.Getwd()
 	if getwdError != nil {
 		t.Fatalf("getwd: %v", getwdError)
@@ -24,12 +32,36 @@ func liveBoard(t *testing.T) *Board {
 	if resolveError != nil {
 		t.Fatalf("resolveRepoRoot: %v", resolveError)
 	}
+	return repoRoot
+}
+
+func liveBoardAt(t *testing.T, repoRoot string) *Board {
+	t.Helper()
 	stubGitLookup := func(string, string) (time.Time, bool) { return time.Time{}, false }
 	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, stubGitLookup)
 	if buildError != nil {
 		t.Fatalf("buildBoard: %v", buildError)
 	}
 	return board
+}
+
+// suiteCheckoutSkipReason reports why a test whose expectations are pinned to
+// the suite's OWN archive does not apply to repoRoot, or "" when it does.
+//
+// The _test.go files ship — only `/do-work` is export-ignored — so a consumer
+// running the vendored tool's tests resolves their queue, not ours. A figure
+// calibrated against this archive is then asserted against a corpus it never
+// saw. REQ-282 already settled this shape for the release probes; this reuses
+// its detector rather than defining "suite checkout" a second time.
+//
+// The reason names the condition and no path, for the same reason
+// release_test.go pins that: a path reads as "look here and fix it", and a
+// consumer has nothing to fix.
+func suiteCheckoutSkipReason(repoRoot string) string {
+	if _, isSuiteCheckout := resolveReleaseProbeVersionFilePath(repoRoot); isSuiteCheckout {
+		return ""
+	}
+	return "not a do-work suite checkout — these figures are calibrated against the suite's own archive"
 }
 
 func TestLiveTreeExcludesMirrorAndDeliverables(t *testing.T) {

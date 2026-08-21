@@ -7,8 +7,8 @@ decided: 2026-08-20
 sources:
   - ai-reports/2026-08-20_1131_remaining-work-and-the-req-treadmill/index.html
   - do-work/user-requests/UR-060/input.md
-  - do-work/archive/REQ-294-make-captures-impact-guard-symmetric.md
-  - do-work/archive/REQ-297-report-skipped-negligible-reqs-in-targeted-mode.md
+  - do-work/archive/UR-060/REQ-294-make-captures-impact-guard-symmetric.md
+  - do-work/archive/UR-060/REQ-297-report-skipped-negligible-reqs-in-targeted-mode.md
   - do-work/archive/UR-063/REQ-306-reserve-new-req-creation-for-behavior-changes.md
   - do-work/archive/UR-063/REQ-307-standing-prose-reconciliation-sweep.md
   - skills/do-work/actions/capture-reference.md (Fold-First Rule)

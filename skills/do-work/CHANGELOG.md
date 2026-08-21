@@ -2,7 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
-## 0.223.0 — Prose Findings Move to a Plain Backlog File (2026-08-21)
+## 0.235.1 — Two Board Fixes From an Automated Review (2026-08-21)
+
+Codex reviewed PR #156 and found two real defects in the board tool. Both reproduced, both fixed, both now pinned by a test that fails without the fix.
+
+- A static board could leak the generating machine's directory layout. Absolute paths were redacted for `C:\Users\...` but not `C:/Users/...`, which is the form several Git commands emit on Windows — and because `C:` is not a word boundary, the POSIX branch could not catch it either, so the whole path shipped inside a shareable snapshot.
+- The Durations view's "+N more" sentence could be painted over the last label it was supposed to clear. Room was reserved from the label count of the first placement pass, but holding that room narrows the last row and hides more labels, so the sentence finally drawn counts higher — and past nine, is wider. Measured at 26 candidates: reserved for `+8 more`, drew `+10 more`. Placement now repeats until the count and the reserve agree.
+
+## 0.235.0 — Prose Findings Move to a Plain Backlog File (2026-08-21)
 
 A prose-only finding — a stale count, a wrong cross-reference, a comment describing a superseded mechanism — now lands as one line in `do-work/prose-backlog.md` instead of on a never-closing queue REQ. Draining it is an ordinary REQ with no exceptions anywhere in the pipeline.
 
@@ -13,11 +20,195 @@ A prose-only finding — a stale count, a wrong cross-reference, a comment descr
 - Consolidation sweeps (`sweep: true` + `sweep_key:`) are unchanged. They are ordinary REQs that close, and nothing about them needed a carve-out.
 - **If your queue holds a `standing: true` REQ:** move its unticked `## Instances` lines into `do-work/prose-backlog.md` (creating the file from the template in the Fold-First Rule), then complete or abandon the REQ. Nothing reads the marker any more, so a REQ left carrying it becomes an ordinary selectable REQ.
 
-Reconciled against `0.222.4` in the same release, which also fixed three things the merge surfaced:
+Renumbered above `0.234.0` and reconciled with the queue run that landed in `0.223.0`–`0.234.0`. Four things both sides had fixed independently, resolved to one implementation each:
 
-- `_dev/tests/record-commit-hash-guards.sh:428` ended in `\\` where a line continuation was meant, so the archive-assets fixture was written as a 0-byte file and its probe proved "an empty file under `assets/` is excluded" rather than the intact-prose property its message claims. Mutation-tested after the fix: removing the `*/assets/*` exclusion from `blanked-req-scan.sh` fails the probe.
-- `do-work-board` exposed `verify` as a second Routing row to the same action file. `verify` is a board *mode* — its token list is owned by `actions/board.md`'s Input table — so the row folds into the existing board-mode row and one action file keeps exactly one route. `actions/help.md` now mirrors `board [serve|static|summary|cli|verify]`, and the staged-skills contract's copy of the pass-through sentence gained the `verify` token it was missing.
-- UR-063 closed. Both members are terminal now that REQ-307 is archived, so the UR and its REQs consolidated into `do-work/archive/UR-063/` and the two ADRs citing them were repointed in the same commit.
+- **The `record-commit-hash-guards.sh:428` line continuation.** Same diagnosis, same fix, both sides. Merged clean, one copy in the tree.
+- **The board's duplicate `verify` routing row.** Both sides folded the two rows into one. Kept this release's wording, which points at `actions/board.md`'s Input table instead of listing the tokens a second time — a hand-maintained token list is what goes stale.
+- **`work-reference.md`'s `sweep:` schema line.** Kept this release's text, which retires `standing:`, but at the two-hop citation depth `0.223.0` corrected — `actions/work-reference.md` reaches a sibling package through `../../`, not `../`.
+- **UR-063's closure.** Both sides consolidated it into `do-work/archive/UR-063/`. One copy, no duplicate REQ id anywhere in the queue, working set, or archive.
+
+The queue run had also archived seven closed URs, which moved 46 REQ files out of the archive root. Every path this release's ADR and prime-file edits named was repointed to where the file now is, and all 138 archive citations in the repo were re-verified to resolve. `do-work/prose-backlog.md`'s three line references were re-verified against the merged tree; one had shifted by a line and was corrected.
+
+## 0.234.0 — Capture Judges How Big a Request Is, Instead of Skipping It (2026-08-21)
+
+Capture had to judge whether anyone would notice a request, but was only ever allowed to judge how big it was. Since `do-work run-simple-reqs` picks the queue's small work by that second field, a request nobody sized quietly read as "big" and dropped out — 8 of 22 pending requests were in that state, none of them because anyone decided so.
+
+- Capture now judges size on every request it mints, by the same judge-it / ask-me / leave-it-blank rule it already used for impact.
+- One question decides it: would a competent implementer finish this in one focused pass over a small, already-identified set of files?
+- Size and impact stay independent, in both directions — a negligible sweep can be substantial work, and a user-visible fix can be one line.
+- Nothing existing was rewritten and the two values are still the only two values.
+
+## 0.233.3 — The Timeline Forecast Says Whose Queue It Is Forecasting (2026-08-21)
+
+Filter the Timeline to one domain and it would tell you it holds three REQs, directly above a forecast scheduling all twenty-five and a list of excluded IDs you could not see. The forecast now says up front that it covers the whole queue.
+
+- The label leads the paragraph, so it survives being screenshotted on its own.
+- With no filter on, the wording is exactly what it was.
+- The forecast itself is unchanged — it is still built once, server-side, and never re-derived per filter.
+
+## 0.233.2 — A Backwards Wait No Longer Looks Like a Normal One (2026-08-21)
+
+On the Timeline, a REQ whose claim stamp landed before its capture stamp drew a perfectly ordinary waiting bar while the table beside it printed a negative number. The work segment already knew to draw a break marker in that case; the wait now does too.
+
+- Only genuinely reversed waits change — an ordinary wait and an open one still draw their bars exactly as before.
+- The break is the same fixed mark the work segment uses, so the two read as one kind of thing.
+- First DOM probe for the Timeline renderer, so the next change there has somewhere to assert.
+
+## 0.233.1 — Board Tests Skip the Figures That Are Only Ours (2026-08-21)
+
+The board tool's tests ship with the suite, and one of them pinned exact medians from this repo's own archive. Run inside your project it loaded your queue and failed on numbers it was never calibrated against. It now says why it does not apply, instead.
+
+- The pinned figures are unchanged and still catch a regression here — proven by changing one and watching the test fail.
+- The skip names the condition ("not a do-work suite checkout"), never a path, because nothing is missing on your side.
+- The repo-independent live tests still run everywhere, unchanged.
+
+## 0.233.0 — A Builder's Decisions Reach the End-of-Run Report (2026-08-21)
+
+Under parallel building, the numbered decisions a builder records went into its hand-back and nowhere else — the code review and the end-of-run brief both read the request file alone, found nothing, and reported clean. The rule for finding those sections now lives where every reader can cite it instead of inside one step.
+
+- `## Decisions` is routed to the hand-back the same way `## Discovered Tasks` already was, so a builder is no longer told to write a file it may not touch.
+- The review's traceability check and the Decision Brief now say which absence they found: an empty hand-back is "no decisions recorded", an unreadable one is an unknown and is reported as one.
+- Every `##` section the build step names now states who writes it, and a new check holds that set equal to the sections the hand-back contract carries.
+
+## 0.232.0 — The Truncation Guard Can No Longer Bless a Truncated File (2026-08-21)
+
+`record-commit-hash.sh` exists to stop an archived REQ being committed after something ate its body. It could be talked out of that by nothing more exotic than git failing to answer one question: the size query's `|| true` made "no blob in HEAD" and "git could not tell me" the same empty string, and the guard skipped for both. Reproduced against a 13,900-byte REQ truncated to 57 bytes — it reported all guards passed and told the operator to commit the remnant.
+
+- The guard asks whether the blob exists before asking how big it is, and refuses when an existing blob won't size. A new file is still a legitimate skip
+- The same treatment for its verify-mode twin, which failed safe but blamed a pre-commit hook that was never involved
+- Every shipped script swept: 15 sites discard an exit status and all 15 are correct, so the general rule is now stated in the shell prime rather than enforced by a check that would flag fifteen right answers to catch none
+- One check where the distinction is provable: a size query may not collapse into a number
+
+## 0.231.0 — Lock-In Checks Hold the Rule, Not the Wording (2026-08-21)
+
+The checks guarding the impact/effort split all passed, and each caught exactly the sentence it was written against — and almost nothing else. One greps a single verb, one requires bold markup, one scans two directories out of eight, and two properties had no check at all.
+
+- The "don't derive effort from impact" check now recognises a class of derivation verbs anywhere in shipped prose, including docs and crew files it never used to read
+- The retired `[critical]`/`[normal]`/`[low]` ladder is caught in any markup, not only when bolded
+- The impact default is pinned in both the parser and the schema line. If it ever became `impact-negligible`, `--skip-impact-negligible` would silently invert into skip-everything
+- The impact and effort chips have test coverage for the first time
+- `--skip-impact-negligible`'s seven declaration sites, and the title tag's three emitters, are held together
+
+Every one was mutation-tested with a different verb and a different file than the check contained — because the previous round's mutation used the one verb its own check greps, and so could only ever pass.
+
+## 0.230.2 — Restore the Name-Your-Build Check (2026-08-21)
+
+0.230.0 deleted the check that every measured face number names the browser build it came from, on the grounds that no such number survived. Four of them did. The check is back, living beside the constants it governs, and the comment that had gone on claiming it existed now points at the real one.
+
+- A measured face is per-browser: the same ascent measures 10.1853 on one Chromium and 10.4278 on another, which is how two REQs once collided
+- Swept every measured constant in the package against its actual readers; all are correctly scoped, and the report is in the REQ
+
+## 0.230.1 — Measured Numbers in Comments Have to Say Where They Came From (2026-08-21)
+
+A face is per-browser, so a measurement written into a comment with no build beside it reads as timeless fact and quietly goes stale. The last such number in the Durations renderer is gone, and a check now fails the build if a new one appears undated.
+
+- The rule distinguishes what the number claims: evidence for a past decision is dated by the REQ it names, while a claim about the face in use needs a build — or deletion, letting a browser probe answer at test time
+- Also removes a comment still pointing at a test deleted in 0.230.0
+
+## 0.230.0 — Durations Labels Are Placed Where the Font Is (2026-08-21)
+
+Label placement used to run in Go before a browser existed, reserving 7.15 units per character. That number described one Linux container's answer to `--font-sans` while the stylesheet ends in the open `sans-serif` generic — so it described a face it never met, and on a wider one the labels drew straight past their slots. Placement now happens in the browser and measures the text it is actually placing.
+
+- Every label's width is the drawn width; the per-character model and every hand-transcribed measured-face constant are deleted, with a check that fails if one comes back
+- The remainder count is produced by the code that decides what fits, so it can't disagree with what you see
+- Measured, then positioned, in one pass — the chart never visibly reflows
+- Seven properties the old Go tests asserted are now browser probes that assert what a reader would see: no two drawn labels overlap, labels go to the longest spans, both rows fill when spans cluster, the rows clear their neighbours in the face actually in use
+- The packing rules themselves are unchanged — longest span first, first row that fits, nothing silently dropped
+
+## 0.229.0 — Tests Can Measure Real Rendered Text (2026-08-21)
+
+Every font measurement in the Durations view got there by someone running a browser by hand and pasting the number into a comment. That is why those constants are stale. There is now a test lane that asks a real rendering engine instead.
+
+- A page renders in headless Chrome or Chromium, measures, and hands the numbers back as data the test asserts on
+- No package manager: it drives a browser binary directly, and the code says why that was chosen and when to reach for something bigger
+- No browser on your machine? The probe skips and everything else still runs — but the maintainer's strict lane fails loudly rather than skipping quietly, and a lane that ran zero probes can't report green
+- No sleeps anywhere: readiness is a sentinel the page writes, not a timer
+- Nothing about the Durations view changed yet; this builds the capability that makes fixing it possible
+
+## 0.228.0 — Clarify Stops Contradicting Itself (2026-08-21)
+
+Clarify's Step 4 carried three pairs of instructions that could not both be followed, and two of them destroyed work: a REQ could be archived while still holding an unanswered question, and an approved follow-up could be archived "completed" without anyone building it. All three are fixed in one pass.
+
+- Answering one question and discarding another now works: a per-question verb records only that question, and the REQ's status is decided once at the end from every answer together
+- A REQ holding any unanswered question stays in the queue. Nothing with an open question is archived
+- The confirm-to-completed fast path routes on the `builder_decided` marker instead of on a question's wording, so rephrasing a consent question can no longer send a follow-up to the archive unbuilt
+- Answers are recorded with their reasoning and with whatever the answer put out of scope, so the next reader stops re-deriving the decision from the builder's old recommendation
+- The Timestamp rule's date-only paragraph now says which dates it governs by condition, instead of naming two files and going stale
+
+## 0.227.0 — Verify Findings Show Up on the Board (2026-08-21)
+
+Seeing the board should mean seeing the problems. A new strip lists every finding `queue-kanban verify` detects — what is wrong and what to do about it — so the thirteen categories that previously reached nobody without a shell are on the page you already look at.
+
+- One card per finding: category, detail, and the remedy underneath, plus a "cleanup can fix" marker only where that is actually true
+- Probes that could not run get a collapsed footer of their own, because a skipped probe shown as nothing reads as "checked and clean"
+- The strip sits outside the view panels: no view switch, no filter combination, and no recently-done window can hide a finding
+- Visually subordinate to completion anomalies — broken bookkeeping still outranks process drift
+- Fixed a path-reduction bug from 0.226.0 that mangled relative paths in the skipped list
+
+## 0.226.0 — Verify Findings Reach the Board's Data (2026-08-21)
+
+`queue-kanban verify` finds sixteen categories of queue and process breakage; the board rendered three. The board's producer now carries every finding into the page data, so the surface a human actually looks at can show what the command nobody runs already knew.
+
+- Findings and skipped probes ride along in the board payload, from both the static snapshot and the live server
+- The three categories the board already shows another way are suppressed in Go, so the page can render the list blindly
+- Nothing that leaves this machine carries an absolute filesystem path
+- The server recomputes findings on every request on purpose: claim age and worktree state change while every file mtime stays identical, which is the blind spot that let claims sit stale for hours
+- `verify` itself is untouched — same report, same exit code, proved by diffing the output before and after
+
+## 0.225.0 — Audit the Calibration Log Against Its Own Source (2026-08-21)
+
+`do-work/calibration-log.tsv` is the corpus every estimate is fit from, and nothing had ever checked it against the frontmatter it was derived from. `queue-kanban verify` now does. It found nine disagreeing rows on this repo the first time it ran, six of them off by twenty minutes or more.
+
+- Recomputes each row's wall span and reports a gap beyond one minute, naming both values
+- Deliberately does not pick a winner: the log is written once, but frontmatter can be legitimately re-stamped afterwards by either repairer or by crash recovery
+- A row naming no REQ, or one whose stamps do not parse, is its own finding rather than a fake disagreement
+- No log at all is a reported skipped probe, never a silent pass
+- Nothing is marked fixable and nothing is repaired — resolving a row takes a judgment the probe cannot make
+
+## 0.224.0 — Catch Timestamps That Could Not Have Happened (2026-08-20)
+
+Nothing checked that a REQ's stamps described a possible sequence of events. A `claimed_at` fabricated to any plausible past instant sailed through every check unless it happened to land after `completed_at`. `queue-kanban verify` now catches the whole class, including in the archive where nothing auto-repairs.
+
+- One finding per violated pair, naming both fields and both raw values
+- The remedy points at whichever repair actually applies: the SessionStart hook for queue and working, `audit-archive-timestamps.sh` for the archive
+- Forensics Check 12 carries the ordering condition too, and stopped telling you to dig instants out of git by hand — both repairs already ship
+- Equal stamps stay legal, because a claim and its estimate can genuinely read the same instant
+- Zero findings against this repo's own 250+ REQs, which is the false-positive check that mattered
+
+## 0.223.1 — Correct What a Repairer Failure Actually Does (2026-08-20)
+
+The shell prime told you a timestamp-repairer failure makes the SessionStart hook exit nonzero. It doesn't — the hook wraps the repairer in `|| true` on purpose, so the failure lines reach your session banner and the hook still exits 0. The consequence is just as bad and the decisions resting on it still stand; only the mechanism was wrong.
+
+- Corrected REQ-255's lesson link in `_dev/primes/prime-shell-commands.md`, the one live surface still on the old framing
+- Swept eight sites for the claim in any spelling; the contract text in the repairer script had been right all along
+- Verified against the real hook rather than inherited from the report, which is the whole point of the fix
+
+## 0.223.0 — Cross-Package Citations Are Checked by What They Are (2026-08-20)
+
+The citation check used to be bounded by punctuation: it only looked inside backticks, only at paths starting with `../`, and never inside a fenced block. Each fix closed one spelling and left the class open. Now the condition is the rule — a token is a citation when its first segment names a sibling package, however it is written.
+
+- Bare, unbackticked citations are checked like any other; three had been sitting in shipped text
+- A fenced block's payload stays exempt for its real reason (its text lands in another file), while the annotations beside it are checked — which surfaced nine wrong-depth citations inside one schema block
+- Paths rooted elsewhere (`<skill-root>/…`, `.claude/skills/…`) are recognized as not-from-here rather than reported as broken
+- The identifiers and failure message no longer say "backticked", so the marker is gone from the durable places too
+- New fixtures pin both the predicate and which tokens it ever sees; both were mutation-tested
+
+## 0.222.6 — Template Date Placeholders Are Out of the Timestamp Rule (2026-08-20)
+
+The Timestamp rule's date-only paragraph left one question open: what governs a `Date: [today]` line inside a prompt template. Now it says — nothing does, and it says so by condition rather than by naming files.
+
+- A date placeholder inside a template artifact's fenced block is a fill-in token addressed to the model that writes the user's document, not a stamp any pipeline step makes
+- Stated as a condition, so a template written tomorrow is covered without editing the sentence
+- The three prompt-kit templates that raised the question were deliberately left as they are
+
+## 0.222.5 — Restore the Green Maintainer Verify (2026-08-20)
+
+`maintainer-verify.sh` had been failing since REQ-283 routed board verification through its own skill without carrying the change into the contract test or core help. It exits 0 again.
+
+- Merged the board router's two `board.md` rows into one, so a single action keeps a single routing row.
+- Taught the staged-skills contract that `verify` is a real pass-through mode.
+- Mirrored `verify` into core help's board modes line.
+- Fixed an escaped line continuation in `record-commit-hash-guards.sh` that silently created a fixture as a 0-byte file instead of the intact prose the case asserts on.
 
 ## 0.222.4 — Clarify Maintainability Audit Impact-Score Wording (2026-08-21)
 

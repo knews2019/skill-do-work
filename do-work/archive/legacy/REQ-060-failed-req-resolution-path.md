@@ -47,7 +47,7 @@ Fixing this needs the three closure readers updated in lock-step with whatever m
   **Resolved via `do-work clarify` (2026-07-29T15:34:19Z): Option A — let `do-work abandon` accept a `failed` REQ, cancelling it like any other unwanted item.** Implementation must drop `actions/abandon.md` Step 2's refusal of `failed` targets and update its Step 2 language accordingly; no new frontmatter field is needed.
 
 ## Full Context
-Discovered during REQ-059's adversarial review. See `do-work/archive/REQ-059-step8-failed-ur-closure-contradiction.md` → `## Discovered Tasks` (the REQ may still be in `do-work/working/` if that run has not archived yet).
+Discovered during REQ-059's adversarial review. See `do-work/archive/UR-008/REQ-059-step8-failed-ur-closure-contradiction.md` → `## Discovered Tasks` (the REQ may still be in `do-work/working/` if that run has not archived yet).
 
 **Secondary consideration for whoever implements this:** UR folders archived by older versions of the skill may already contain REQs still at `status: failed` — back then work Step 8 counted `failed` as finished and consolidated the UR anyway. Those legacy folders were never planned for by the current consolidation rules, so the chosen mechanism should either leave already-archived URs alone or state explicitly how they are migrated. Do not let a new closure rule re-open URs that are already sitting in `do-work/archive/`.
 

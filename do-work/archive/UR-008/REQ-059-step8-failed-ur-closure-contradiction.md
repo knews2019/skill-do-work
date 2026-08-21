@@ -27,7 +27,7 @@ Discovered during REQ-048. REQ-048 made cleanup Pass 1 treat `failed` as holding
 - [x] Which reader is correct on `failed` — does a `failed` REQ **hold its UR open** (work-reference.md's terminal-resolved set) or **close it** (work.md Step 8's table)? → Confirmed: a `failed` REQ **holds its UR open**. Align work.md Step 8's table to work-reference.md — drop `failed` from the finished set and cite the terminal-resolved set, so a UR with an unresolved `failed` REQ stays open until a follow-up resolves it. (Do NOT change work-reference.md's terminal-resolved set — the user chose the smaller-blast-radius fix.)
 
 ## Full Context
-Discovered task from REQ-048. See `do-work/archive/REQ-048-ur-closure-keying-consistency.md` → `## Discovered Tasks`.
+Discovered task from REQ-048. See `do-work/archive/UR-008/REQ-048-ur-closure-keying-consistency.md` → `## Discovered Tasks`.
 
 ## Implementation Summary
 

@@ -1245,3 +1245,350 @@ func TestHashOnlyAnomalySkippedWhenGitUnavailable(t *testing.T) {
 		t.Fatalf("SkippedProbes = %v, want the hash-only ticket REQ-9331 routed there", report.SkippedProbes)
 	}
 }
+
+// The captured RED from REQ-280: an archived REQ claimed before it was created,
+// with a forward claimed_at → completed_at span so detectCompletionAnomaly stays
+// silent. Before the ordering probe this fixture produced `OK: no findings` and
+// exit 0 — a fabricated claimed_at was invisible to every check the suite had
+// unless it happened to invert the one pair model.go already compared.
+func TestVerifyFlagsCreatedAfterClaimed(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-800-ordering-wedge.md",
+			"---\nid: REQ-800\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: 2026-08-18T09:00:00Z\n" +
+				"completed_at: 2026-08-19T14:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	orderingFindings := findingsMentioning(report, verifyCategoryTimestampOrdering)
+	if len(orderingFindings) != 1 {
+		t.Fatalf("got %d ordering findings, want 1:\n%s", len(orderingFindings), renderVerifyReport(report))
+	}
+	// Both field names and both raw values, so the reader can repair without reopening the file.
+	for _, required := range []string{"REQ-800", "created_at", "claimed_at",
+		"2026-08-19T12:00:00Z", "2026-08-18T09:00:00Z"} {
+		if !strings.Contains(orderingFindings[0].Detail, required) {
+			t.Errorf("ordering finding detail %q omits %q", orderingFindings[0].Detail, required)
+		}
+	}
+	// An archived file's remedy must name the archive repair, not hand git archaeology.
+	if !strings.Contains(orderingFindings[0].Remedy, "audit-archive-timestamps.sh") {
+		t.Errorf("archive remedy %q does not name audit-archive-timestamps.sh", orderingFindings[0].Remedy)
+	}
+	// `do-work cleanup` cannot rewrite stamps, so the fixable count must not claim it can.
+	if orderingFindings[0].Fixable {
+		t.Error("ordering finding is marked Fixable, but cleanup does not repair stamps")
+	}
+	if report.ExitCode() != 1 {
+		t.Errorf("ordering violation exit code = %d, want 1", report.ExitCode())
+	}
+}
+
+// A REQ can be wrong in both pairs. Each is its own finding, because collapsing
+// them would show the reader half the repair.
+func TestVerifyReportsEachViolatedTimestampPairSeparately(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-801-both-pairs.md",
+			"---\nid: REQ-801\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: 2026-08-18T09:00:00Z\n" +
+				"completed_at: 2026-08-17T08:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	orderingFindings := findingsMentioning(report, verifyCategoryTimestampOrdering)
+	if len(orderingFindings) != 2 {
+		t.Fatalf("got %d ordering findings, want 2 (one per violated pair):\n%s",
+			len(orderingFindings), renderVerifyReport(report))
+	}
+}
+
+// Queue and working files are repaired by the SessionStart hook, so their remedy
+// must say so rather than sending the reader to the archive-only tool.
+func TestVerifyRoutesQueueOrderingRemedyToTheSessionStartRepairer(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/queue/REQ-802-queue-ordering.md",
+			"---\nid: REQ-802\ntitle: fixture\nstatus: pending\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: 2026-08-18T09:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	orderingFindings := findingsMentioning(report, verifyCategoryTimestampOrdering)
+	if len(orderingFindings) != 1 {
+		t.Fatalf("got %d ordering findings, want 1:\n%s", len(orderingFindings), renderVerifyReport(report))
+	}
+	if !strings.Contains(orderingFindings[0].Remedy, "repair-req-timestamps.sh") {
+		t.Errorf("queue remedy %q does not name the SessionStart repairer", orderingFindings[0].Remedy)
+	}
+	if strings.Contains(orderingFindings[0].Remedy, "audit-archive-timestamps.sh") {
+		t.Errorf("queue remedy %q sends the reader to the archive-only tool", orderingFindings[0].Remedy)
+	}
+}
+
+// Equal stamps are legal and must not be reported: Step 2's claim and Step 3.6's
+// estimate legitimately read the same instant, and an absent or unparseable stamp
+// is other checks' territory — the same carve-out detectCompletionAnomaly holds.
+// Without this the probe would fire on a large share of a real queue.
+func TestVerifyAcceptsEqualAbsentAndUnparseableTimestamps(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-803-equal.md",
+			"---\nid: REQ-803\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: 2026-08-19T12:00:00Z\n" +
+				"completed_at: 2026-08-19T12:00:00Z\n---\n"},
+		{"do-work/archive/REQ-804-absent.md",
+			"---\nid: REQ-804\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\ncompleted_at: 2026-08-19T14:00:00Z\n---\n"},
+		{"do-work/archive/REQ-805-unparseable.md",
+			"---\nid: REQ-805\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: not-a-timestamp\n" +
+				"completed_at: 2026-08-19T14:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if orderingFindings := findingsMentioning(report, verifyCategoryTimestampOrdering); len(orderingFindings) != 0 {
+		t.Errorf("got %d ordering findings, want 0:\n%s", len(orderingFindings), renderVerifyReport(report))
+	}
+}
+
+// The outer pair: with claimed_at absent, nothing spans created_at and completed_at,
+// so an impossible ordering would pass every other comparison. Checked only in that
+// case, so a REQ with a parseable claimed_at never gets a third finding for a defect
+// the two inner pairs already report.
+func TestVerifyFlagsCreatedAfterCompletedWhenClaimedIsAbsent(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-806-outer-pair.md",
+			"---\nid: REQ-806\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\ncompleted_at: 2026-08-18T09:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	orderingFindings := findingsMentioning(report, verifyCategoryTimestampOrdering)
+	if len(orderingFindings) != 1 {
+		t.Fatalf("got %d ordering findings, want 1:\n%s", len(orderingFindings), renderVerifyReport(report))
+	}
+	if !strings.Contains(orderingFindings[0].Detail, "created_at") ||
+		!strings.Contains(orderingFindings[0].Detail, "completed_at") {
+		t.Errorf("outer-pair detail %q does not name both fields", orderingFindings[0].Detail)
+	}
+}
+
+// The guard: a fully-reversed REQ with a parseable claimed_at reports exactly the
+// two inner pairs, never a third for the outer one.
+func TestVerifyDoesNotDoubleReportTheOuterPair(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-807-fully-reversed.md",
+			"---\nid: REQ-807\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: 2026-08-18T09:00:00Z\n" +
+				"completed_at: 2026-08-17T08:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if orderingFindings := findingsMentioning(report, verifyCategoryTimestampOrdering); len(orderingFindings) != 2 {
+		t.Errorf("got %d ordering findings, want exactly 2:\n%s",
+			len(orderingFindings), renderVerifyReport(report))
+	}
+}
+
+// The captured RED from REQ-281, the REQ-233 shape observed live in this repo: a
+// 10-minute span logged as 70. Before this probe the fixture exited 0 — nothing in
+// the suite read calibration-log.tsv except the estimator at recalibration time,
+// which re-fits the scoring table from the rows without ever checking them.
+// The second row pins the tolerance: it agrees within a minute and must stay silent.
+func TestVerifyFlagsCalibrationRowDisagreeingWithFrontmatter(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-233-logged-wrong.md",
+			"---\nid: REQ-233\ntitle: fixture\nstatus: completed\n" +
+				"claimed_at: 2026-08-18T11:00:00Z\ncompleted_at: 2026-08-18T11:10:30Z\n---\n"},
+		{"do-work/archive/REQ-234-logged-right.md",
+			"---\nid: REQ-234\ntitle: fixture\nstatus: completed\n" +
+				"claimed_at: 2026-08-18T11:00:00Z\ncompleted_at: 2026-08-18T11:30:40Z\n---\n"},
+		{"do-work/calibration-log.tsv",
+			"req_id\troute\testimated_p50_minutes\twall_minutes\tcompleted_at\n" +
+				"REQ-233\tB\t25\t70\t2026-08-18T11:10:30Z\n" +
+				"REQ-234\tB\t25\t30\t2026-08-18T11:30:40Z\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	mismatches := findingsMentioning(report, verifyCategoryCalibrationLogMismatch)
+	if len(mismatches) != 1 {
+		t.Fatalf("got %d calibration mismatches, want 1 (the agreeing row must stay silent):\n%s",
+			len(mismatches), renderVerifyReport(report))
+	}
+	for _, required := range []string{"REQ-233", "70", "10"} {
+		if !strings.Contains(mismatches[0].Detail, required) {
+			t.Errorf("calibration mismatch detail %q omits %q", mismatches[0].Detail, required)
+		}
+	}
+	// It must not pick a winner: the frontmatter can legitimately have been rewritten.
+	if !strings.Contains(mismatches[0].Remedy, "either record may be the correct one") {
+		t.Errorf("calibration remedy %q does not say either record may be correct", mismatches[0].Remedy)
+	}
+	if mismatches[0].Fixable {
+		t.Error("calibration mismatch is marked Fixable, but no cleanup pass resolves it")
+	}
+	if report.ExitCode() != 1 {
+		t.Errorf("calibration mismatch exit code = %d, want 1", report.ExitCode())
+	}
+}
+
+// A row naming a REQ that exists nowhere, and a row whose REQ cannot yield a span,
+// are their own findings — never disagreements. Reporting them as a mismatch would
+// print a number next to a value that was never computed.
+func TestVerifyReportsUnreconcilableCalibrationRowsSeparately(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-236-no-stamps.md",
+			"---\nid: REQ-236\ntitle: fixture\nstatus: completed\n---\n"},
+		{"do-work/calibration-log.tsv",
+			"req_id\troute\testimated_p50_minutes\twall_minutes\tcompleted_at\n" +
+				"REQ-235\tB\t25\t30\t2026-08-18T11:30:00Z\n" + // names no REQ in the tree
+				"REQ-236\tB\t25\t30\t2026-08-18T11:30:00Z\n" + // present, but no parseable stamps
+				"REQ-237\tB\t25\tnot-a-number\t2026-08-18T11:30:00Z\n" + // malformed wall_minutes
+				"REQ-238\tB\n"}, // too few columns
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if unreconcilable := findingsMentioning(report, verifyCategoryCalibrationRowUnreconcilable); len(unreconcilable) != 4 {
+		t.Fatalf("got %d unreconcilable-row findings, want 4:\n%s",
+			len(unreconcilable), renderVerifyReport(report))
+	}
+	if mismatches := findingsMentioning(report, verifyCategoryCalibrationLogMismatch); len(mismatches) != 0 {
+		t.Errorf("got %d mismatches, want 0 — an unreconcilable row is never a disagreement:\n%s",
+			len(mismatches), renderVerifyReport(report))
+	}
+}
+
+// No log is normal in a repo that has archived nothing yet. It is not a finding —
+// but it is also not a verified invariant, so it must be reported as a skipped probe
+// rather than passing silently.
+func TestVerifySkipsCalibrationProbeWhenTheLogIsAbsent(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if findings := findingsMentioning(report, verifyCategoryCalibrationLogMismatch); len(findings) != 0 {
+		t.Errorf("absent log produced %d mismatches, want 0", len(findings))
+	}
+	skippedMentionsCalibration := false
+	for _, skipped := range report.SkippedProbes {
+		if strings.Contains(skipped, "calibration-log probe") {
+			skippedMentionsCalibration = true
+		}
+	}
+	if !skippedMentionsCalibration {
+		t.Errorf("absent log was not reported as a skipped probe:\n%s", renderVerifyReport(report))
+	}
+}
+
+// The captured RED from REQ-284's first half. collectVerifyFindings takes a board
+// the caller already built, and `now` stays a parameter — so the SAME board, with no
+// file mtime changing between calls, must start reporting a stale claim once enough
+// wall-clock time has passed. That is precisely the case an mtime-keyed cache cannot
+// see, and the reason serve calls this outside its cache.
+func TestCollectVerifyFindingsSeesAClaimGoStaleWithoutAnyFileChanging(t *testing.T) {
+	claimedAt := time.Date(2026, 8, 19, 9, 0, 0, 0, time.UTC)
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/working/REQ-810-in-flight.md",
+			"---\nid: REQ-810\ntitle: fixture\nstatus: claimed\n" +
+				"claimed_at: 2026-08-19T09:00:00Z\n---\n"},
+	})
+
+	// One board, built once, reused for both calls — no re-parse, no mtime change.
+	freshMoment := claimedAt.Add(1 * time.Minute)
+	board, buildError := buildBoard(repoRoot, freshMoment, defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+
+	fresh := collectVerifyFindings(repoRoot, board, freshMoment)
+	if claimFindings := findingsMentioning(fresh, verifyCategoryClaimNeedsAttention); len(claimFindings) != 0 {
+		t.Fatalf("a one-minute-old claim already needs attention: %s", renderVerifyReport(fresh))
+	}
+
+	stale := collectVerifyFindings(repoRoot, board, claimedAt.Add(4*time.Hour))
+	if claimFindings := findingsMentioning(stale, verifyCategoryClaimNeedsAttention); len(claimFindings) != 1 {
+		t.Fatalf("got %d claim findings after advancing now by 4h, want 1 — the same board must age:\n%s",
+			len(claimFindings), renderVerifyReport(stale))
+	}
+}
+
+// runVerifyProbes keeps its signature and its behavior: it is now the wrapper that
+// builds the board and delegates. The CLI contract (non-zero exit, same report)
+// depends on this staying true.
+func TestRunVerifyProbesStillReportsWhatCollectDoes(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-811-reversed.md",
+			"---\nid: REQ-811\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: 2026-08-18T09:00:00Z\n" +
+				"completed_at: 2026-08-19T14:00:00Z\n---\n"},
+	})
+	moment := time.Date(2026, 8, 19, 15, 0, 0, 0, time.UTC)
+
+	wrapped, verifyError := runVerifyProbes(repoRoot, moment)
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	direct := collectVerifyFindings(repoRoot, board, moment)
+
+	if len(wrapped.Findings) != len(direct.Findings) {
+		t.Fatalf("wrapper reported %d findings, direct call %d — they must not diverge",
+			len(wrapped.Findings), len(direct.Findings))
+	}
+	if wrapped.ExitCode() != 1 {
+		t.Errorf("runVerifyProbes exit code = %d, want 1 — the CLI contract", wrapped.ExitCode())
+	}
+	if wrapped.RepoRoot != repoRoot {
+		t.Errorf("wrapper RepoRoot = %q, want %q", wrapped.RepoRoot, repoRoot)
+	}
+}

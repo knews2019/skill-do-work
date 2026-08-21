@@ -198,6 +198,13 @@ func TestMain(testMain *testing.M) {
 		fmt.Fprintln(os.Stderr, strictJavaScriptBehaviorDiagnostic)
 		exitCode = 1
 	}
+	// Same guard for the browser lane (browser_probe_test.go): a strict run whose
+	// probes all skipped must not report green, which is what makes the ordinary
+	// skip safe. Both lanes gate here because TestMain is per-package, not per-file.
+	if exitCode == 0 && os.Getenv(strictBrowserBehaviorMarker) == "1" && browserBehaviorProbeCount.Load() == 0 {
+		fmt.Fprintln(os.Stderr, strictBrowserBehaviorDiagnostic)
+		exitCode = 1
+	}
 	os.Exit(exitCode)
 }
 
@@ -1824,12 +1831,18 @@ func TestUserRequestActivityToggleDocumentsWidenedRule(t *testing.T) {
 	}
 }
 
-// The renderer must DRAW the placement verdict, not re-derive it: a label
-// appears exactly where the payload says `labelRow >= 0`, on that sample's own
-// band, and a band whose remainder is zero prints nothing while a nonzero one
-// states the count. Both were the defect — the old pass labelled every overflow
-// sample from an index cycle and had no concept of a remainder at all.
-func TestJavaScriptBehaviorDurationsLabelsFollowTheShippedVerdict(t *testing.T) {
+// Band-and-row geometry, and the remainder sentence's all-or-nothing rule.
+//
+// Before REQ-292 this probe also pinned "draw the payload's verdict, do not
+// re-derive it" — the renderer is now the placer, so there is no payload verdict
+// left to obey and that half of the property is gone by construction rather than
+// by omission. What survives is still real and still worth pinning: a row index
+// maps to a baseline on the sample's OWN band, an out-of-range row is no label at
+// all rather than a label at a wrong y, and a band with nothing hidden prints no
+// remainder while a nonzero one states the count. The original defect this test
+// was written for — a pass that labelled every overflow sample from an index
+// cycle and had no concept of a remainder — is caught by the second half.
+func TestJavaScriptBehaviorDurationsLabelRowsAndRemainders(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 
 	constantPreamble := ""
@@ -1848,8 +1861,10 @@ func TestJavaScriptBehaviorDurationsLabelsFollowTheShippedVerdict(t *testing.T) 
 		"var svg = null;\n" +
 		"var drawnRemainders = [];\n" +
 		"function makeDurationsSvgNode(svg, name, attributes, textContent) { drawnRemainders.push(textContent); }\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function durationsBandRowY(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function durationsLabelBaselineY(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function durationsRemainderBaselineY(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function composeDurationsRemainderText(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function drawDurationsRemainder(") + `
 drawDurationsRemainder(0, durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y), "over 60 min");
 drawDurationsRemainder(23, durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y), "over 60 min");
@@ -1860,13 +1875,13 @@ process.stdout.write(JSON.stringify({
     durationsRemainderBaselineY(DURATIONS_REVERSED_LABEL_ROW_Y)
   ],
   baselines: [
-    durationsLabelBaselineY({ wallMinutes: 95, labelRow: 0 }),
-    durationsLabelBaselineY({ wallMinutes: 95, labelRow: 1 }),
-    durationsLabelBaselineY({ wallMinutes: 95, labelRow: -1 }),
-    durationsLabelBaselineY({ wallMinutes: -20, labelRow: 0 }),
-    durationsLabelBaselineY({ wallMinutes: -20, labelRow: 1 }),
-    durationsLabelBaselineY({ wallMinutes: -20, labelRow: -1 }),
-    durationsLabelBaselineY({ wallMinutes: 95 })
+    durationsLabelBaselineY({ wallMinutes: 95 }, 0),
+    durationsLabelBaselineY({ wallMinutes: 95 }, 1),
+    durationsLabelBaselineY({ wallMinutes: 95 }, -1),
+    durationsLabelBaselineY({ wallMinutes: -20 }, 0),
+    durationsLabelBaselineY({ wallMinutes: -20 }, 1),
+    durationsLabelBaselineY({ wallMinutes: -20 }, -1),
+    durationsLabelBaselineY({ wallMinutes: 95 }, undefined)
   ],
   remainders: drawnRemainders
 }));`
@@ -1944,10 +1959,10 @@ process.stdout.write(JSON.stringify({
 // a fixed viewBox at width:100%, so user units are zoom- and window-independent.
 //
 // A measured face is PER-BROWSER, so each constant's own doc comment names the
-// Chromium build its number was taken on — durations_test.go's
-// TestDurationsMeasuredConstantsNameTheirChromiumBuild enforces that for every
-// durationsMeasured constant in the package, and its comment records the
-// collision that earned the rule. A re-measurement on another build may only
+// Chromium build its number was taken on — TestMeasuredFaceConstantsNameTheirBuild
+// (below) enforces that for every durationsMeasured constant in the package, and
+// its comment records both the collision that earned the rule and why the
+// enforcer lives here now. A re-measurement on another build may only
 // RAISE a constant, never lower it: a box that reaches further makes every
 // clearance test demand more room than the render needs, which is the safe
 // direction for every caller.
@@ -2722,7 +2737,7 @@ var confidentProjection = {
   rows: [{ id: "REQ-401" }, { id: "REQ-402" }],
   excluded: [{ id: "REQ-404", reason: "waiting on an external condition" }]
 };
-renderTimelineForecast(confidentProjection, []);
+renderTimelineForecast(confidentProjection, false);
 var confidentText = collectText(stubNodes["timeline-forecast"]);
 var confidentExcludedText = collectText(stubNodes["timeline-excluded"]);
 
@@ -2732,8 +2747,27 @@ renderTimelineForecast({
   confident: false,
   declinedReason: "only 2 completed REQs inside the read-time rule; 5 are needed before a median means anything",
   rows: [], excluded: [], windowSamples: 2, minimumSamples: 5
-}, []);
+}, false);
 var declinedText = collectText(stubNodes["timeline-forecast"]);
+
+// The same projection with filters ON. The rows are a subset; the forecast is
+// not, and the copy has to say so.
+stubNodes["timeline-forecast"] = makeStubNode();
+stubNodes["timeline-excluded"] = makeStubNode();
+renderTimelineForecast(confidentProjection, true);
+var filteredText = collectText(stubNodes["timeline-forecast"]);
+var filteredExcludedText = collectText(stubNodes["timeline-excluded"]);
+
+// Declining with filters on carries the same label: the history it declined on
+// is the whole queue's, not the subset's.
+stubNodes["timeline-forecast"] = makeStubNode();
+stubNodes["timeline-excluded"] = makeStubNode();
+renderTimelineForecast({
+  confident: false,
+  declinedReason: "only 2 completed REQs inside the read-time rule; 5 are needed before a median means anything",
+  rows: [], excluded: [], windowSamples: 2, minimumSamples: 5
+}, true);
+var filteredDeclinedText = collectText(stubNodes["timeline-forecast"]);
 
 // The no-rows path clears both nodes without rendering anything: a forecast left
 // standing beside "no REQ matches" describes rows that are not on screen.
@@ -2745,6 +2779,9 @@ process.stdout.write(JSON.stringify({
   confidentText: confidentText,
   confidentExcludedText: confidentExcludedText,
   declinedText: declinedText,
+  filteredText: filteredText,
+  filteredExcludedText: filteredExcludedText,
+  filteredDeclinedText: filteredDeclinedText,
   clearedText: clearedText,
   clearedExcludedText: clearedExcludedText
 }));`
@@ -2754,6 +2791,9 @@ process.stdout.write(JSON.stringify({
 		ConfidentText         string `json:"confidentText"`
 		ConfidentExcludedText string `json:"confidentExcludedText"`
 		DeclinedText          string `json:"declinedText"`
+		FilteredText          string `json:"filteredText"`
+		FilteredExcludedText  string `json:"filteredExcludedText"`
+		FilteredDeclinedText  string `json:"filteredDeclinedText"`
 		ClearedText           string `json:"clearedText"`
 		ClearedExcludedText   string `json:"clearedExcludedText"`
 	}
@@ -2799,6 +2839,37 @@ process.stdout.write(JSON.stringify({
 	if !strings.Contains(forecastResult.DeclinedText, "No end estimate") ||
 		!strings.Contains(forecastResult.DeclinedText, "5 are needed") {
 		t.Fatalf("declining must say so and carry the reason; got %q", forecastResult.DeclinedText)
+	}
+
+	// REQ-305: rows are filtered, the projection never is. With a subset on
+	// screen the forecast schedules the whole queue and the excluded list names
+	// IDs no visible row carries, so the copy has to name its own population.
+	// The label has to read correctly alone, because this paragraph is the one
+	// people screenshot.
+	if !strings.Contains(forecastResult.FilteredText, "whole queue") {
+		t.Errorf("with filters on, the forecast must say it covers the whole queue rather than the rows shown; got %q",
+			forecastResult.FilteredText)
+	}
+	if !strings.Contains(forecastResult.FilteredExcludedText, "whole queue") {
+		t.Errorf("with filters on, the excluded list must say it lists the whole queue's exclusions — it names IDs no visible row carries; got %q",
+			forecastResult.FilteredExcludedText)
+	}
+	if !strings.Contains(forecastResult.FilteredDeclinedText, "whole queue") {
+		t.Errorf("a declined forecast declined on the whole queue's history, and must say so under a filter too; got %q",
+			forecastResult.FilteredDeclinedText)
+	}
+	// The label is added, never substituted: everything the unfiltered sentence
+	// promised is still in the filtered one.
+	if !strings.Contains(forecastResult.FilteredText, "Queue empties around") ||
+		!strings.Contains(forecastResult.FilteredText, "no parallel builders") {
+		t.Errorf("the filtered forecast must still carry the estimate and its assumptions; got %q",
+			forecastResult.FilteredText)
+	}
+	// And the unfiltered copy is untouched — the settled case stays settled.
+	if strings.Contains(forecastResult.ConfidentText, "whole queue") ||
+		strings.Contains(forecastResult.ConfidentExcludedText, "whole queue") {
+		t.Errorf("with no filter active there is nothing to disambiguate, so the label must not appear; got %q / %q",
+			forecastResult.ConfidentText, forecastResult.ConfidentExcludedText)
 	}
 }
 
@@ -3876,5 +3947,671 @@ process.stdout.write(JSON.stringify(calendarDayBreakdown(entries)));`
 			t.Fatalf("breakdown[%d] = %s×%d, want %s×%d (fixed group order, exact status matching)",
 				index, breakdown[index].Group, breakdown[index].Count, wantPart.group, wantPart.count)
 		}
+	}
+}
+
+// REQ-284's second captured RED: the emitted payload must carry what verify sees,
+// minus the three categories the board already renders by other means. Forwarding
+// those would print the same prose a second or third time — anomalies reach the page
+// through their own column, a per-card badge, AND board.Warnings.
+func TestGeneratedBoardDataCarriesVerifyFindingsWithoutTheOnesTheBoardAlreadyShows(t *testing.T) {
+	claimedAt := time.Date(2026, 8, 19, 9, 0, 0, 0, time.UTC)
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		// A stale claim: must appear in verifyFindings.
+		{"do-work/working/REQ-820-stale-claim.md",
+			"---\nid: REQ-820\ntitle: fixture\nstatus: claimed\n" +
+				"claimed_at: 2026-08-19T09:00:00Z\n---\n"},
+		// A completion anomaly: must NOT appear — the board renders it three ways.
+		{"do-work/archive/REQ-821-anomaly.md",
+			"---\nid: REQ-821\ntitle: fixture\nstatus: completed\n" +
+				"claimed_at: 2026-08-19T10:00:00Z\ncompleted_at: 2026-08-19T09:00:00Z\n---\n"},
+	})
+	moment := claimedAt.Add(4 * time.Hour)
+
+	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	boardData, projectError := buildGeneratedBoardData(board)
+	if projectError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", projectError)
+	}
+	attachVerifyFindings(&boardData, board, moment)
+
+	sawStaleClaim := false
+	for _, finding := range boardData.VerifyFindings {
+		if boardRenderedVerifyCategories[finding.Category] {
+			t.Errorf("suppressed category %q reached verifyFindings: %s", finding.Category, finding.Detail)
+		}
+		if finding.Category == verifyCategoryClaimNeedsAttention {
+			sawStaleClaim = true
+			if finding.Remedy == "" {
+				t.Error("stale-claim finding reached the page without its remedy")
+			}
+		}
+	}
+	if !sawStaleClaim {
+		t.Errorf("verifyFindings carries no stale-claim finding: %+v", boardData.VerifyFindings)
+	}
+	// The anomaly must still exist as a finding — it is suppressed from the page,
+	// not from verify. Otherwise this test would pass on a probe that stopped working.
+	report := collectVerifyFindings(repoRoot, board, moment)
+	if anomalies := findingsMentioning(report, verifyCategoryCompletionAnomaly); len(anomalies) == 0 {
+		t.Error("the fixture produced no completion anomaly, so the suppression assertion proves nothing")
+	}
+}
+
+// The no-absolute-paths capture decision, kept honest by assertion. The worktree
+// probe's detail is absolute at its source (`git worktree list --porcelain`), so
+// this fails the moment someone forwards a finding unreduced. A shared snapshot
+// must not describe the filesystem of the machine that produced it.
+func TestGeneratedVerifyPayloadCarriesNoAbsolutePaths(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/working/REQ-830-stale-claim.md",
+			"---\nid: REQ-830\ntitle: fixture\nstatus: claimed\n" +
+				"claimed_at: 2026-08-19T09:00:00Z\n---\n"},
+	})
+	moment := time.Date(2026, 8, 19, 13, 0, 0, 0, time.UTC)
+
+	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	boardData, projectError := buildGeneratedBoardData(board)
+	if projectError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", projectError)
+	}
+	// Seed a finding whose detail is absolute at the source, the way the worktree
+	// probe's is, so the reduction is under test rather than merely unexercised.
+	boardData.VerifyFindings = nil
+	syntheticReport := VerifyReport{Findings: []VerifyFinding{{
+		Category: verifyCategoryUnmergedWorktreeLeftover,
+		Detail:   "worktree " + filepath.Join(repoRoot, "..", "repo-worktrees", "worktree-agent-REQ-999") + " is unmerged",
+		Remedy:   "inspect " + filepath.Join(repoRoot, "do-work", "queue") + " first",
+	}}}
+	for _, finding := range syntheticReport.Findings {
+		boardData.VerifyFindings = append(boardData.VerifyFindings, generatedVerifyFinding{
+			Category: finding.Category,
+			Detail:   reduceAbsolutePaths(finding.Detail, board.RepoRoot),
+			Remedy:   reduceAbsolutePaths(finding.Remedy, board.RepoRoot),
+		})
+	}
+	attachVerifyFindings(&boardData, board, moment)
+
+	encoded, encodeError := encodeBoardDataForJsAssignment(boardData)
+	if encodeError != nil {
+		t.Fatalf("encodeBoardDataForJsAssignment: %v", encodeError)
+	}
+	if strings.Contains(encoded, repoRoot) {
+		t.Errorf("emitted payload contains the repo root %q", repoRoot)
+	}
+	for _, finding := range boardData.VerifyFindings {
+		for _, text := range []string{finding.Detail, finding.Remedy} {
+			if remainingAbsolutePath.MatchString(text) {
+				t.Errorf("verify payload still carries an absolute path: %q", text)
+			}
+		}
+	}
+}
+
+// The reduction must strip absolute paths WITHOUT touching relative ones. RE2 has
+// no lookbehind, so the boundary in remainingAbsolutePath is captured and restored;
+// the first version asserted nothing and matched the `/` inside an already-relative
+// path, turning "do-work/calibration-log.tsv" into "do-work<path…>" — mangling
+// precisely the paths the repo-root reduction had just produced.
+func TestReduceAbsolutePathsLeavesRelativePathsIntact(t *testing.T) {
+	repoRoot := filepath.Join("/tmp", "fixture-repo")
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			"repo-root path becomes relative and stays whole",
+			"calibration-log probe: " + filepath.Join(repoRoot, "do-work", "calibration-log.tsv") + " is absent",
+			"calibration-log probe: do-work/calibration-log.tsv is absent",
+		},
+		{
+			"an already-relative path is untouched",
+			"open do-work/queue/REQ-042-thing.md first",
+			"open do-work/queue/REQ-042-thing.md first",
+		},
+		{
+			"a path outside the repo is replaced wholesale",
+			"worktree /elsewhere/repo-worktrees/worktree-agent-REQ-999 is unmerged",
+			"worktree <path outside this repository> is unmerged",
+		},
+		{
+			"a Windows drive path with backslashes is replaced",
+			`worktree C:\Users\alice\proj\worktree-agent-REQ-999 is unmerged`,
+			"worktree <path outside this repository> is unmerged",
+		},
+		{
+			// Git on Windows emits this form too. A drive pattern that accepts only
+			// the backslash form let it through whole, and `C:` is not a boundary
+			// character so the POSIX branch could not catch the `/` after it either.
+			"a Windows drive path with forward slashes is replaced",
+			"worktree C:/Users/alice/proj/worktree-agent-REQ-999 is unmerged",
+			"worktree <path outside this repository> is unmerged",
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := reduceAbsolutePaths(testCase.input, repoRoot); got != testCase.want {
+				t.Errorf("reduceAbsolutePaths(%q)\n got %q\nwant %q", testCase.input, got, testCase.want)
+			}
+		})
+	}
+}
+
+// Every measured-face constant names the build its number came from.
+//
+// A face is per-browser: the same .durations-mark-label ascent measured 10.1853
+// on one Chromium and 10.4278 on another, and REQ-241 and REQ-242 collided
+// because a number measured on one build was read as fact on another. The rule
+// that came out of that is enforced, not remembered.
+//
+// WHY THIS LIVES HERE NOW. The rule used to be enforced by
+// durations_test.go's TestDurationsMeasuredConstantsNameTheirChromiumBuild.
+// REQ-292 deleted that test along with the width model, on the reasoning that no
+// measured constant survived to name a build — which was true of durations.go and
+// board-durations.js, the files REQ-292 was clearing, and NOT true of this file,
+// where four such constants live and are read. REQ-277's sweep found the rule's
+// stated enforcer pointing at a deleted test, which is the exact defect class
+// that REQ asks about: a comment claiming an arrangement that is no longer real.
+//
+// The vacuity guard is the same one the deleted test carried and for the same
+// reason: a scan that finds zero constants must fail rather than pass, or this
+// becomes a green check over an empty set the day someone renames the prefix.
+func TestMeasuredFaceConstantsNameTheirBuild(t *testing.T) {
+	measuredConstantDeclaration := regexp.MustCompile(`(?m)^const (durationsMeasured[A-Za-z]+)\s*=`)
+	buildAnchor := regexp.MustCompile(`(?i)chromium|playwright|firefox|webkit|safari`)
+
+	sourceText := readPackageSourceForTest(t, "generate_test.go")
+	declarations := measuredConstantDeclaration.FindAllStringSubmatchIndex(sourceText, -1)
+	if len(declarations) == 0 {
+		t.Fatal("found no durationsMeasured* constants to check — this scan must never pass on an empty set")
+	}
+
+	sourceLines := strings.Split(sourceText, "\n")
+	for _, declaration := range declarations {
+		constantName := sourceText[declaration[2]:declaration[3]]
+		declarationLine := strings.Count(sourceText[:declaration[0]], "\n")
+		// The doc comment is the contiguous run of // lines immediately above.
+		commentLines := []string{}
+		for lineIndex := declarationLine - 1; lineIndex >= 0; lineIndex-- {
+			if !strings.HasPrefix(strings.TrimSpace(sourceLines[lineIndex]), "//") {
+				break
+			}
+			commentLines = append(commentLines, sourceLines[lineIndex])
+		}
+		if !buildAnchor.MatchString(strings.Join(commentLines, "\n")) {
+			t.Errorf("%s has no browser build named in its doc comment — a measured face is per-browser, "+
+				"so an unnamed build makes the number read as timeless fact (REQ-241/REQ-242 collided on exactly that)",
+				constantName)
+		}
+	}
+}
+
+// readPackageSourceForTest reads one of this package's own source files off disk.
+// The measured constants live in a _test.go file, which go:embed cannot reach, so
+// this is a plain read rather than an embedded asset.
+func readPackageSourceForTest(t *testing.T, fileName string) string {
+	t.Helper()
+	sourceBytes, readError := os.ReadFile(fileName)
+	if readError != nil {
+		t.Fatalf("read %s: %v", fileName, readError)
+	}
+	return string(sourceBytes)
+}
+
+// TestGenerateInlinesImpactAndEffortChipRenderPath guards the frontend half of
+// the impact/effort split (REQ-289), which had NO test coverage of any kind until
+// REQ-293 — neither `badge-impact` nor `badge-effort-estimate` appeared in any
+// test file. The Go side pins the vocabulary and the parser; nothing proved the
+// chips still get rendered, so a refactor that dropped either renderer from
+// web/board-cards.js would ship a silent regression. The chips only appear when
+// the live tree happens to carry a non-default value, so a queue-dependent
+// assertion would be no assertion at all.
+//
+// These are code tokens from the assembled client and board.css, so the check
+// holds regardless of what the queue currently contains — the same shape
+// TestGenerateInlinesWriteSetOverlapBadgeRenderPath established for the overlap
+// badge. REQ-289's own Discovered Task framed this as needing a JavaScript
+// behavior probe; the cheaper precedent was in this file already.
+func TestGenerateInlinesImpactAndEffortChipRenderPath(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	for _, renderToken := range []string{
+		// The makeBadge() calls that emit the two chips. The quoted forms occur
+		// only in board-cards.js — the bare class names would also match the CSS.
+		`"badge-impact"`,
+		`"badge-effort-estimate"`,
+		// The payload field the impact chip reads, together with the default it
+		// falls back to. That default is the property REQ-290's
+		// --skip-impact-negligible depends on: absence must read as
+		// impact-user-visible, never as the user's stop signal.
+		`request.impact || "impact-user-visible"`,
+		// Without the stylesheet rules the chips render unstyled and invisible.
+		".badge-impact",
+		".badge-effort-estimate",
+	} {
+		if !strings.Contains(indexHtml, renderToken) {
+			t.Fatalf("impact/effort chip render path is missing from the generated page: %q not found in the assembled client/board.css", renderToken)
+		}
+	}
+}
+
+// ---- timeline: a reversed span is drawn as a break, never as a bar ----------
+
+// timelineRenderDomStubPreamble is the smallest DOM renderTimelineView touches,
+// so the probe below runs the REAL renderer rather than a sliced fragment of it.
+// Every SVG node records its tag and attributes; nothing here re-implements
+// layout. Same shape as durationsRenderDomStubPreamble, with the extra surface
+// the timeline uses: a scroll host with measurable geometry (row virtualization
+// asks for it), classList on the forecast nodes, and the two globals the module
+// reads from its siblings in the assembled client.
+const timelineRenderDomStubPreamble = `
+function makeStubNode(nodeName) {
+  return {
+    stubName: nodeName,
+    attributes: {},
+    children: [],
+    textContent: "",
+    clientWidth: 900,
+    clientHeight: 400,
+    scrollTop: 0,
+    style: {},
+    classList: { add: function () {}, remove: function () {}, toggle: function () {} },
+    setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = String(attributeValue); },
+    appendChild: function (childNode) { this.children.push(childNode); return childNode; },
+    addEventListener: function () {},
+    removeEventListener: function () {},
+    getBoundingClientRect: function () { return { width: 900, height: 400, left: 0, top: 0 }; }
+  };
+}
+var timelineStubHosts = {};
+[
+  "timeline-summary", "timeline-axis", "timeline-scroll", "timeline-readout",
+  "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state"
+].forEach(function (hostId) { timelineStubHosts[hostId] = makeStubNode("div"); });
+var document = {
+  getElementById: function (nodeId) { return timelineStubHosts[nodeId] || null; },
+  createElementNS: function (namespaceUri, nodeName) { return makeStubNode(nodeName); },
+  createElement: function (nodeName) { return makeStubNode(nodeName); },
+  createTextNode: function (nodeText) { return { textContent: nodeText }; },
+  querySelectorAll: function () { return []; },
+  querySelector: function () { return null; }
+};
+var window = { addEventListener: function () {}, removeEventListener: function () {} };
+var requestsById = {};
+var generatedAtMs = Date.parse("2026-08-18T12:00:00Z");
+// Overwrite timelineStubVisibleIds to simulate an active filter; null means no
+// filter, which is what the real requestMatchesFilters reports with none set.
+var timelineStubVisibleIds = null;
+function requestMatchesFilters(requestId) {
+  return timelineStubVisibleIds === null || timelineStubVisibleIds.indexOf(requestId) !== -1;
+}
+function setActiveButton() {}
+`
+
+// timelineRenderProbeDriver reports every drawn rect's class and width, in draw
+// order, grouped by the row group that carries them — the row id is the only
+// thing that ties a segment back to the fixture that produced it.
+const timelineRenderProbeDriver = `
+renderTimelineView();
+var drawnRows = [];
+function collectRowRects(node, sink) {
+  (node.children || []).forEach(function (childNode) {
+    var attributes = childNode.attributes || {};
+    if (childNode.stubName === "rect" && attributes["class"]) {
+      sink.push({ class: attributes["class"], width: Number(attributes.width) });
+    }
+    collectRowRects(childNode, sink);
+  });
+}
+function walkRowGroups(node) {
+  (node.children || []).forEach(function (childNode) {
+    var attributes = childNode.attributes || {};
+    if (childNode.stubName === "g" && attributes["data-detail-id"]) {
+      var rowRects = [];
+      collectRowRects(childNode, rowRects);
+      drawnRows.push({ id: attributes["data-detail-id"], rects: rowRects });
+      return;
+    }
+    walkRowGroups(childNode);
+  });
+}
+walkRowGroups(timelineStubHosts["timeline-scroll"]);
+process.stdout.write(JSON.stringify({ rows: drawnRows }));
+`
+
+// TestJavaScriptBehaviorReversedWaitDrawsAsABreak pins the wait segment to the
+// rule the work segment already followed: a span whose end precedes its start
+// has no width to draw honestly, so it is a break marker rather than a bar.
+//
+// drawSegment sorts its endpoints with Math.min/Math.max — correctly, for every
+// caller that should reach it — so a reversed wait handed to it painted as an
+// ordinary positive-width waiting bar while the table beside it printed the
+// signed value. A row whose numbers say "−60 min" and whose bar says "60 min of
+// waiting" is broken bookkeeping rendering as healthy.
+//
+// All three cases render in ONE pass over one payload, deliberately: the bug was
+// a missing branch, and a fix that turned every wait into a break would satisfy
+// a reversed-only test.
+func TestJavaScriptBehaviorReversedWaitDrawsAsABreak(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
+	if readError != nil {
+		t.Fatalf("read web/board-timeline.js: %v", readError)
+	}
+
+	// claimed_at precedes created_at on REQ-901 only. REQ-902 is an ordinary
+	// closed wait; REQ-903 is an unclaimed REQ whose wait runs to the now-line.
+	timelinePayload := `{
+	  "now": "2026-08-18T12:00:00Z",
+	  "rangeStart": "2026-08-18T09:00:00Z",
+	  "rangeEnd": "2026-08-18T13:00:00Z",
+	  "rows": [
+	    {"id":"REQ-901","createdTime":"2026-08-18T11:00:00Z","claimedTime":"2026-08-18T10:00:00Z",
+	     "completedTime":"2026-08-18T11:30:00Z","waitMinutes":-60,"workMinutes":90,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-902","createdTime":"2026-08-18T10:00:00Z","claimedTime":"2026-08-18T10:30:00Z",
+	     "completedTime":"2026-08-18T11:00:00Z","waitMinutes":30,"workMinutes":30,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-903","createdTime":"2026-08-18T11:00:00Z","claimedTime":null,
+	     "completedTime":null,"waitMinutes":60,"workMinutes":0,
+	     "waitOpen":true,"workOpen":false,"hasWork":false,"anomaly":false}
+	  ]
+	}`
+
+	javascriptProbe := timelineRenderDomStubPreamble +
+		"var boardData = { timeline: " + timelinePayload + " };\n" +
+		string(rendererFragment) +
+		timelineRenderProbeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline reversed wait", javascriptProbe)
+
+	var drawn struct {
+		Rows []struct {
+			Id    string `json:"id"`
+			Rects []struct {
+				Class string  `json:"class"`
+				Width float64 `json:"width"`
+			} `json:"rects"`
+		} `json:"rows"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &drawn); decodeError != nil {
+		t.Fatalf("decode drawn timeline rows: %v (output starts %q)",
+			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+	if len(drawn.Rows) != 3 {
+		t.Fatalf("want one drawn group per fixture row, got %d", len(drawn.Rows))
+	}
+
+	rowClasses := map[string][]string{}
+	rowWidths := map[string]map[string]float64{}
+	for _, drawnRow := range drawn.Rows {
+		rowWidths[drawnRow.Id] = map[string]float64{}
+		for _, rect := range drawnRow.Rects {
+			rowClasses[drawnRow.Id] = append(rowClasses[drawnRow.Id], rect.Class)
+			rowWidths[drawnRow.Id][rect.Class] = rect.Width
+		}
+	}
+
+	rowDrewClassContaining := func(rowId string, classFragment string) bool {
+		for _, drawnClass := range rowClasses[rowId] {
+			if strings.Contains(drawnClass, classFragment) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// (1) The reversed wait is a break, and there is no wait bar to misread.
+	if !rowDrewClassContaining("REQ-901", "timeline-segment-broken") {
+		t.Errorf("a wait whose claim precedes its capture must draw the break marker, got %v", rowClasses["REQ-901"])
+	}
+	if rowDrewClassContaining("REQ-901", "timeline-segment-wait") {
+		t.Errorf("a reversed wait must draw NO wait bar — the table prints the negative value beside it, got %v",
+			rowClasses["REQ-901"])
+	}
+	// Its work span is ordinary and must be untouched by the wait's branch.
+	if !rowDrewClassContaining("REQ-901", "timeline-segment-work") {
+		t.Errorf("a reversed wait must not suppress the row's ordinary work bar, got %v", rowClasses["REQ-901"])
+	}
+
+	// (2) An ordinary closed wait still draws its bar, with real width.
+	if !rowDrewClassContaining("REQ-902", "timeline-segment-wait") {
+		t.Errorf("an ordinary positive wait must still draw its bar, got %v", rowClasses["REQ-902"])
+	}
+	if rowDrewClassContaining("REQ-902", "timeline-segment-broken") {
+		t.Errorf("an ordinary positive wait must not draw a break marker, got %v", rowClasses["REQ-902"])
+	}
+
+	// (3) The open wait keeps its is-open bar: it is measured to the now-line and
+	// is never reversed, so the new branch must not reach it.
+	if !rowDrewClassContaining("REQ-903", "timeline-segment-wait is-open") {
+		t.Errorf("an unclaimed REQ must still draw its open wait bar, got %v", rowClasses["REQ-903"])
+	}
+	if rowDrewClassContaining("REQ-903", "timeline-segment-broken") {
+		t.Errorf("an open wait must not draw a break marker, got %v", rowClasses["REQ-903"])
+	}
+
+	// The break marker is a fixed-width mark, not a measured span — a break whose
+	// width tracked the reversed magnitude would be the same lie in a new shape.
+	if brokenWidth := rowWidths["REQ-901"]["timeline-segment-broken"]; brokenWidth != 6 {
+		t.Errorf("the break marker must be the same fixed 6-unit mark the work branch draws, got %v", brokenWidth)
+	}
+}
+
+// TestJavaScriptBehaviorTimelineForecastLabelsAFilteredView drives the WHOLE
+// renderTimelineView, not renderTimelineForecast alone, because the defect lived
+// in the wiring: rows were filtered, projection never was, and the call site
+// handed the forecast a filtered row list it then ignored. A probe that calls
+// the forecast function directly cannot tell a correct call site from one that
+// always says "unfiltered" — this one can.
+func TestJavaScriptBehaviorTimelineForecastLabelsAFilteredView(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
+	if readError != nil {
+		t.Fatalf("read web/board-timeline.js: %v", readError)
+	}
+
+	timelinePayload := `{
+	  "now": "2026-08-18T12:00:00Z",
+	  "rangeStart": "2026-08-18T09:00:00Z",
+	  "rangeEnd": "2026-08-18T13:00:00Z",
+	  "rows": [
+	    {"id":"REQ-901","createdTime":"2026-08-18T10:00:00Z","claimedTime":"2026-08-18T10:30:00Z",
+	     "completedTime":"2026-08-18T11:00:00Z","waitMinutes":30,"workMinutes":30,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-902","createdTime":"2026-08-18T10:00:00Z","claimedTime":"2026-08-18T10:30:00Z",
+	     "completedTime":"2026-08-18T11:00:00Z","waitMinutes":30,"workMinutes":30,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-903","createdTime":"2026-08-18T11:00:00Z","claimedTime":null,
+	     "completedTime":null,"waitMinutes":60,"workMinutes":0,
+	     "waitOpen":true,"workOpen":false,"hasWork":false,"anomaly":false}
+	  ],
+	  "projection": {
+	    "confident": true,
+	    "chainStart": "2026-08-18T12:00:00Z",
+	    "queueEnd": "2026-08-18T14:30:00Z",
+	    "windowSamples": 60, "windowSize": 60, "minimumSamples": 5,
+	    "normalSamples": 55, "normalMinutes": 40,
+	    "trivialSamples": 5, "trivialMinutes": 10,
+	    "rows": [{"id":"REQ-903","startTime":"2026-08-18T12:00:00Z","endTime":"2026-08-18T12:40:00Z"}],
+	    "excluded": [{"id":"REQ-904","reason":"waiting on an external condition"}],
+	    "queueEndSource": "median"
+	  }
+	}`
+
+	// One render per filter state, each from a fresh stub, so nothing carries over.
+	probeDriver := `
+function renderWithFilter(visibleIds) {
+  [
+    "timeline-summary", "timeline-axis", "timeline-scroll", "timeline-readout",
+    "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state"
+  ].forEach(function (hostId) { timelineStubHosts[hostId] = makeStubNode("div"); });
+  timelineStubVisibleIds = visibleIds;
+  renderTimelineView();
+  return {
+    summary: timelineStubHosts["timeline-summary"].textContent || "",
+    forecast: collectStubText(timelineStubHosts["timeline-forecast"]),
+    excluded: collectStubText(timelineStubHosts["timeline-excluded"])
+  };
+}
+function collectStubText(node) {
+  var text = node.textContent || "";
+  (node.children || []).forEach(function (child) { text += " " + collectStubText(child); });
+  return text;
+}
+process.stdout.write(JSON.stringify({
+  unfiltered: renderWithFilter(null),
+  filtered: renderWithFilter(["REQ-901"])
+}));
+`
+
+	javascriptProbe := timelineRenderDomStubPreamble +
+		"var boardData = { timeline: " + timelinePayload + " };\n" +
+		string(rendererFragment) +
+		probeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline forecast filter label", javascriptProbe)
+
+	type renderedView struct {
+		Summary  string `json:"summary"`
+		Forecast string `json:"forecast"`
+		Excluded string `json:"excluded"`
+	}
+	var rendered struct {
+		Unfiltered renderedView `json:"unfiltered"`
+		Filtered   renderedView `json:"filtered"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &rendered); decodeError != nil {
+		t.Fatalf("decode rendered timeline views: %v (output starts %q)",
+			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+
+	// The fixture has to actually produce the disagreement, or the assertions
+	// below pass against a view that was never filtered.
+	if !strings.Contains(rendered.Unfiltered.Summary, "3 REQs") {
+		t.Fatalf("the unfiltered render must show all three fixture rows, got summary %q", rendered.Unfiltered.Summary)
+	}
+	if !strings.Contains(rendered.Filtered.Summary, "1 REQ ") {
+		t.Fatalf("the filtered render must show one row, got summary %q", rendered.Filtered.Summary)
+	}
+
+	if strings.Contains(rendered.Unfiltered.Forecast, "whole queue") {
+		t.Errorf("an unfiltered view has nothing to disambiguate, so the forecast must carry no label; got %q",
+			rendered.Unfiltered.Forecast)
+	}
+	if !strings.Contains(rendered.Filtered.Forecast, "whole queue") {
+		t.Errorf("a filtered view forecasts the whole queue and must say so — this is the wiring, not the copy; got %q",
+			rendered.Filtered.Forecast)
+	}
+	if !strings.Contains(rendered.Filtered.Excluded, "whole queue") {
+		t.Errorf("the excluded list names REQ-904, which no visible row carries, and must say whose queue it lists; got %q",
+			rendered.Filtered.Excluded)
+	}
+	// Both renders still carry the estimate: the label is added, not substituted.
+	for viewName, view := range map[string]renderedView{
+		"unfiltered": rendered.Unfiltered,
+		"filtered":   rendered.Filtered,
+	} {
+		if !strings.Contains(view.Forecast, "Queue empties around") {
+			t.Errorf("the %s forecast lost its estimate: %q", viewName, view.Forecast)
+		}
+	}
+}
+
+// TestJavaScriptBehaviorDurationsReserveMatchesTheSentenceDrawn pins the reserve to
+// a fixed point rather than to two passes.
+//
+// Holding the remainder sentence's room narrows the last label row, which can hide
+// labels the unreserved pass had placed. The count therefore rises between the pass
+// the reserve was measured from and the pass whose result is drawn — and across a
+// digit boundary the sentence gets wider too, so `+10 more …` is painted into room
+// reserved for `+8 more …`, over the last placed label. That is the exact collision
+// the planner exists to prevent, and it was reachable before this: at 26 candidates
+// of one width the two passes hid 8 then 10.
+//
+// The invariant is stated as a relationship, not a number: whatever the final count
+// is, the reserve the final pass held must have been measured from that same count.
+// It sweeps a range of densities rather than pinning one fixture, because the
+// boundary moves with the face and the plot width.
+func TestJavaScriptBehaviorDurationsReserveMatchesTheSentenceDrawn(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+
+	probeDriver := `
+var lastMeasuredSentence = null;
+function measureRemainderWidth(sentenceText) {
+  lastMeasuredSentence = sentenceText;
+  return sentenceText.length * 7;   // monotone in the digit count, like a real face
+}
+var mismatches = [], remainderCases = 0, multiPassCases = 0;
+for (var candidateCount = 12; candidateCount <= 60; candidateCount += 1) {
+  for (var markStep = 20; markStep <= 45; markStep += 5) {
+    lastMeasuredSentence = null;
+    var candidates = [];
+    for (var index = 0; index < candidateCount; index += 1) {
+      candidates.push({
+        markX: DURATIONS_MARGIN_LEFT + 20 + index * markStep,
+        textWidth: 80,
+        id: "REQ-" + index
+      });
+    }
+    var unreserved = placeDurationsLabelBand(candidates, 0);
+    var band = packDurationsLabelBand(candidates, measureRemainderWidth, "not labelled");
+    if (band.hiddenCount === 0) { continue; }
+    remainderCases += 1;
+    if (band.hiddenCount > unreserved.hiddenCount) { multiPassCases += 1; }
+    var sentenceDrawn = composeDurationsRemainderText(band.hiddenCount, "not labelled");
+    if (lastMeasuredSentence !== sentenceDrawn) {
+      mismatches.push({
+        candidateCount: candidateCount, markStep: markStep,
+        reservedFor: lastMeasuredSentence, drawn: sentenceDrawn
+      });
+    }
+  }
+}
+process.stdout.write(JSON.stringify({
+  mismatches: mismatches, remainderCases: remainderCases, multiPassCases: multiPassCases
+}));
+`
+
+	javascriptProbe := string(rendererFragment) + probeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "durations remainder reserve", javascriptProbe)
+
+	var swept struct {
+		Mismatches []struct {
+			CandidateCount int    `json:"candidateCount"`
+			MarkStep       int    `json:"markStep"`
+			ReservedFor    string `json:"reservedFor"`
+			Drawn          string `json:"drawn"`
+		} `json:"mismatches"`
+		RemainderCases int `json:"remainderCases"`
+		MultiPassCases int `json:"multiPassCases"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &swept); decodeError != nil {
+		t.Fatalf("decode durations reserve sweep: %v (output starts %q)",
+			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+
+	// Guard the sweep itself: a fixture range that never produces a remainder, or
+	// never needs more than one reserved pass, would satisfy the invariant vacuously.
+	if swept.RemainderCases == 0 {
+		t.Fatal("no swept density produced a remainder — the sweep proves nothing about the reserve")
+	}
+	if swept.MultiPassCases == 0 {
+		t.Fatal("no swept density hid more under the reserve than without it — the sweep never reaches the case this pins")
+	}
+
+	for _, mismatch := range swept.Mismatches {
+		t.Errorf("%d candidates at step %d reserved room for %q but will draw %q",
+			mismatch.CandidateCount, mismatch.MarkStep, mismatch.ReservedFor, mismatch.Drawn)
 	}
 }

@@ -27,7 +27,7 @@ Discovered during REQ-045. `actions/capture-reference.md` (~:113) says capture's
 - [x] Fix this one-clause doc imprecision? → Confirmed: yes — add a clause noting a Route A REQ keeps the capture-seeded `write_set` (it never runs Step 5.5), consistent with REQ-045's Step 3 re-validation.
 
 ## Full Context
-Discovered task from REQ-045 (dispatch re-validation). See `do-work/archive/REQ-045-dispatch-revalidation-route-a-gap.md` → `## Discovered Tasks`.
+Discovered task from REQ-045 (dispatch re-validation). See `do-work/archive/UR-008/REQ-045-dispatch-revalidation-route-a-gap.md` → `## Discovered Tasks`.
 
 ## Triage
 

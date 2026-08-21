@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -30,6 +31,9 @@ const (
 	verifyCategoryAssignedElsewhereClaimedHere  = "assigned-elsewhere-claimed-here"
 	verifyCategoryArchivedUserRequestLiveMember = "ur-archived-with-live-member"
 	verifyCategoryCompletionAnomaly             = "completion-anomaly"
+	verifyCategoryTimestampOrdering             = "timestamp-ordering"
+	verifyCategoryCalibrationLogMismatch        = "calibration-log-mismatch"
+	verifyCategoryCalibrationRowUnreconcilable  = "calibration-row-unreconcilable"
 )
 
 // staleClaimThreshold is how long a `claimed` REQ may sit before verify reports
@@ -115,16 +119,33 @@ func runVerifyProbes(repoRootOverride string, now time.Time) (VerifyReport, erro
 	if resolveError != nil {
 		return VerifyReport{}, resolveError
 	}
-	report := VerifyReport{RepoRoot: repoRoot}
 
 	board, buildError := buildBoard(repoRoot, now, defaultRecentWindow, lookupGitCommitDate)
 	if buildError != nil {
 		return VerifyReport{}, buildError
 	}
 
+	return collectVerifyFindings(repoRoot, board, now), nil
+}
+
+// collectVerifyFindings is runVerifyProbes' body over a board the caller already
+// built. The split exists so the board's own producer can emit these findings into
+// the page without building the board a second time per request (REQ-284) — the
+// board build is the expensive half, the probes are the cheap half.
+//
+// `now` is a parameter rather than read here for the same reason it always was:
+// claim-age findings must be deterministic in tests, and — since serve calls this
+// outside its mtime cache — a claim must be able to cross the staleness threshold
+// on a tree where no file has changed. Passing a stale `now` would silently restore
+// the blind spot the split was made to remove.
+func collectVerifyFindings(repoRoot string, board *Board, now time.Time) VerifyReport {
+	report := VerifyReport{RepoRoot: repoRoot}
+
 	appendReleaseFindings(&report, repoRoot)
 	appendDuplicateRequestIdFindings(&report, board)
 	appendCompletionAnomalyFindings(&report, repoRoot, board)
+	appendTimestampOrderingFindings(&report, board)
+	appendCalibrationLogFindings(&report, repoRoot, board)
 	appendCheckpointGhostFindings(&report, repoRoot, board)
 	appendClaimFindings(&report, board, now)
 	appendStrandedFinishedFindings(&report, board)
@@ -133,7 +154,7 @@ func runVerifyProbes(repoRootOverride string, now time.Time) (VerifyReport, erro
 	appendArchivedUserRequestLiveMemberFindings(&report, board)
 	appendWorktreeFindings(&report, repoRoot)
 
-	return report, nil
+	return report
 }
 
 // appendStrayRequestFileFindings forwards the board walker's structured
@@ -305,6 +326,85 @@ func appendCompletionAnomalyFindings(report *VerifyReport, repoRoot string, boar
 				anomalousTicket.RequestId, anomalousTicket.Status, anomalousTicket.CompletionAnomalyReason),
 			Remedy: "repair the named frontmatter field(s) in the archived REQ — the reason states which stamp or hash is wrong and what to write instead",
 		})
+	}
+}
+
+// appendTimestampOrderingFindings reports a REQ whose stamps cannot describe a
+// real sequence of events: created_at after claimed_at, or claimed_at after
+// completed_at. detectCompletionAnomaly (model.go) already covers the single
+// completed_at < claimed_at case for terminal tickets, but only there — nothing
+// checked created_at at all, so a claimed_at fabricated to any instant before
+// completion passed every check the suite had. That is the class this probe
+// closes, and it deliberately covers queue, working AND archive: the archive is
+// where nothing auto-repairs, because the SessionStart repairer never touches it.
+//
+// The predicate is NOT a fourth spelling of the ordering rule. It is the same
+// created_at <= claimed_at <= completed_at that scripts/repair-req-timestamps.sh
+// enforces as a repair, restated in Go only because the read side cannot source
+// shell. Two boundary decisions are held identical to the shell side on purpose:
+// the comparison is strict (equal stamps are legal — Step 2's claim and Step 3.6's
+// estimate can read the same instant), and an absent or unparseable stamp is other
+// checks' territory rather than a violation here, matching detectCompletionAnomaly's
+// carve-out. If either spelling changes, change both.
+//
+// Each violated pair is its own finding: a REQ can be wrong in both pairs, and
+// collapsing them would hide half the repair. Not Fixable — `do-work cleanup` does
+// not rewrite stamps; the remedy names the tool that does, which differs by where
+// the file lives.
+func appendTimestampOrderingFindings(report *VerifyReport, board *Board) {
+	for _, ticket := range board.AllRequests {
+		createdInstant, createdParsed := parseTimestamp(ticket.CreatedAt)
+		claimedInstant, claimedParsed := parseTimestamp(ticket.ClaimedAt)
+		completedInstant, completedParsed := parseTimestamp(ticket.CompletedAt)
+
+		if createdParsed && claimedParsed && claimedInstant.Before(createdInstant) {
+			report.Findings = append(report.Findings, timestampOrderingFinding(
+				ticket, "created_at", ticket.CreatedAt, "claimed_at", ticket.ClaimedAt,
+				"claimed before it was created"))
+		}
+		if claimedParsed && completedParsed && completedInstant.Before(claimedInstant) {
+			report.Findings = append(report.Findings, timestampOrderingFinding(
+				ticket, "claimed_at", ticket.ClaimedAt, "completed_at", ticket.CompletedAt,
+				"completed before it was claimed"))
+		}
+		// The outer pair, checked ONLY when claimed_at cannot carry the comparison.
+		// created_at <= completed_at is implied transitively whenever claimed_at
+		// parses, so checking it there would report a third finding for the same
+		// defect; with claimed_at absent or unparseable the implication has nothing
+		// to travel through, and an impossible ordering would otherwise pass. That
+		// gap is the same shape as the one this whole probe closes — a real
+		// violation invisible because the checked pairs did not span it.
+		if !claimedParsed && createdParsed && completedParsed &&
+			completedInstant.Before(createdInstant) {
+			report.Findings = append(report.Findings, timestampOrderingFinding(
+				ticket, "created_at", ticket.CreatedAt, "completed_at", ticket.CompletedAt,
+				"completed before it was created, and no parseable claimed_at sits between them"))
+		}
+	}
+}
+
+// timestampOrderingFinding names both fields and both raw values, and routes the
+// remedy by where the file actually lives — a reader must never be sent to do by
+// hand what an installed script already does. The archive repair is deliberately a
+// conscious invocation and is never hook-wired (scripts/audit-archive-timestamps.sh
+// header), which is why the two halves of this remedy differ.
+func timestampOrderingFinding(
+	ticket *RequestTicket, earlierField string, earlierValue string,
+	laterField string, laterValue string, plainSummary string,
+) VerifyFinding {
+	remedy := "queue/ and working/ stamps are repaired mechanically by the SessionStart hook " +
+		"(skills/do-work/scripts/repair-req-timestamps.sh) on the next session — no hand edit needed"
+	if ticket.TreeSection == "archive" {
+		remedy = "run skills/do-work/scripts/audit-archive-timestamps.sh to report, and --fix to " +
+			"repair from the stamp's own git history — the SessionStart repairer deliberately never " +
+			"touches the archive, so this one is a conscious invocation"
+	}
+	return VerifyFinding{
+		Category: verifyCategoryTimestampOrdering,
+		Detail: fmt.Sprintf("%s (status %s): %s %q is later than %s %q — %s",
+			ticket.RequestId, ticket.Status, earlierField, earlierValue, laterField, laterValue, plainSummary),
+		Fixable: false,
+		Remedy:  remedy,
 	}
 }
 
@@ -892,4 +992,112 @@ func renderVerifyReport(report VerifyReport) string {
 		fmt.Fprintf(&builder, "  %d fixable: run do-work cleanup\n", fixableCount)
 	}
 	return builder.String()
+}
+
+// calibrationToleranceMinutes absorbs truncation-versus-rounding between the
+// writer and this reader, which is noise. Anything past it is a real divergence
+// between two records that were supposed to describe the same span.
+const calibrationToleranceMinutes = 1
+
+// appendCalibrationLogFindings reconciles do-work/calibration-log.tsv against the
+// frontmatter each row was derived from. The log is an independent third record —
+// written once by actions/work.md Step 8 substep 7.5 as completed_at − claimed_at,
+// never revised, and read back by actions/estimate-reference.md as the corpus the
+// scoring table is fit from. Nothing compared the two, so a corpus that feeds every
+// future estimate was decaying unaudited: measured on this repo, 10 of 72 rows
+// disagree and eight of those materially.
+//
+// It reports and never repairs, and it deliberately does NOT pick a winner. Either
+// record can legitimately be the wrong one: the log line is written once, while the
+// frontmatter can be rewritten afterwards by scripts/repair-req-timestamps.sh at
+// session start, by scripts/audit-archive-timestamps.sh --fix, or by a crash-recovery
+// pass that cleared and re-stamped a claim. Resolving the disagreement needs a human
+// who knows which happened, which is also why nothing here is Fixable.
+//
+// A row this probe cannot reconcile at all — malformed, naming a REQ that exists
+// nowhere, or naming one whose stamps are absent or unparseable — is its own finding
+// and never a disagreement. Reporting it as a mismatch would put a number next to a
+// value that was never computed.
+func appendCalibrationLogFindings(report *VerifyReport, repoRoot string, board *Board) {
+	logPath := filepath.Join(repoRoot, "do-work", "calibration-log.tsv")
+	logBytes, readError := os.ReadFile(logPath)
+	if readError != nil {
+		// A repo that has archived nothing yet has no log. That is not a defect, but
+		// it is also not a verified invariant, so it is reported rather than silent.
+		report.SkippedProbes = append(report.SkippedProbes, fmt.Sprintf(
+			"calibration-log probe: do-work/calibration-log.tsv is unreadable or absent (%v) — no rows to reconcile", readError))
+		return
+	}
+
+	for lineNumber, rawLine := range strings.Split(string(logBytes), "\n") {
+		trimmedLine := strings.TrimSpace(rawLine)
+		if trimmedLine == "" || strings.HasPrefix(trimmedLine, "req_id\t") {
+			continue // blank line, or the header
+		}
+		humanLineNumber := lineNumber + 1
+		columns := strings.Split(trimmedLine, "\t")
+		if len(columns) < 4 {
+			report.Findings = append(report.Findings, calibrationRowFinding(humanLineNumber,
+				fmt.Sprintf("has %d tab-separated column(s), want at least 4 (req_id, route, estimated_p50_minutes, wall_minutes)", len(columns))))
+			continue
+		}
+		requestId := strings.TrimSpace(columns[0])
+		loggedMinutes, parseError := strconv.Atoi(strings.TrimSpace(columns[3]))
+		if parseError != nil {
+			report.Findings = append(report.Findings, calibrationRowFinding(humanLineNumber,
+				fmt.Sprintf("%s: wall_minutes %q is not an integer", requestId, columns[3])))
+			continue
+		}
+
+		ticket, ticketFound := board.RequestsById[requestId]
+		if !ticketFound {
+			report.Findings = append(report.Findings, calibrationRowFinding(humanLineNumber,
+				fmt.Sprintf("%s: the log has a row for it, but no such REQ exists in queue/, working/, or archive/", requestId)))
+			continue
+		}
+		claimedInstant, claimedParsed := parseTimestamp(ticket.ClaimedAt)
+		completedInstant, completedParsed := parseTimestamp(ticket.CompletedAt)
+		if !claimedParsed || !completedParsed {
+			report.Findings = append(report.Findings, calibrationRowFinding(humanLineNumber,
+				fmt.Sprintf("%s: cannot recompute the span — claimed_at %q and completed_at %q do not both parse",
+					requestId, ticket.ClaimedAt, ticket.CompletedAt)))
+			continue
+		}
+
+		// Integer minutes, truncated, exactly as the write site computes it.
+		recomputedMinutes := int(completedInstant.Sub(claimedInstant).Minutes())
+		differenceMinutes := recomputedMinutes - loggedMinutes
+		if differenceMinutes < 0 {
+			differenceMinutes = -differenceMinutes
+		}
+		if differenceMinutes <= calibrationToleranceMinutes {
+			continue
+		}
+		report.Findings = append(report.Findings, VerifyFinding{
+			Category: verifyCategoryCalibrationLogMismatch,
+			Detail: fmt.Sprintf(
+				"do-work/calibration-log.tsv line %d: %s logs wall_minutes %d, but its frontmatter recomputes to %d (claimed_at %q → completed_at %q)",
+				humanLineNumber, requestId, loggedMinutes, recomputedMinutes, ticket.ClaimedAt, ticket.CompletedAt),
+			Fixable: false,
+			Remedy: "either record may be the correct one — the log row is written once and never revised, " +
+				"while the frontmatter can have been rewritten since by the SessionStart repairer, by " +
+				"audit-archive-timestamps.sh --fix, or by a crash-recovery re-stamp. Decide which describes " +
+				"what actually happened before changing anything; the estimator fits its scoring table from these rows",
+		})
+	}
+}
+
+// calibrationRowFinding is the not-a-disagreement case: the row could not be
+// reconciled at all, so no recomputed number exists to compare against. Kept as one
+// category with the specific reason in the detail, because the remedy is the same
+// question in every case — which record is wrong, the log or the tree.
+func calibrationRowFinding(lineNumber int, reason string) VerifyFinding {
+	return VerifyFinding{
+		Category: verifyCategoryCalibrationRowUnreconcilable,
+		Detail:   fmt.Sprintf("do-work/calibration-log.tsv line %d %s", lineNumber, reason),
+		Fixable:  false,
+		Remedy: "the row cannot be checked against any frontmatter — find the REQ it names, repair its stamps, " +
+			"or correct the row. The estimator reads this file as its corpus, so an unreconcilable row is an " +
+			"unverifiable input rather than a harmless one",
+	}
 }
