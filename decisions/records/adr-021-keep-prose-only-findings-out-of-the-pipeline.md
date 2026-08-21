@@ -5,7 +5,7 @@ status: accepted
 topic_cluster: workflow-orchestration
 decided: 2026-08-20
 sources:
-  - do-work/archive/REQ-307-standing-prose-reconciliation-sweep.md
+  - do-work/archive/UR-063/REQ-307-standing-prose-reconciliation-sweep.md
   - skills/do-work/actions/capture-reference.md (Fold-First Rule, destination 3)
   - skills/do-work/tools/checks/record-commit-hash.sh
 related:

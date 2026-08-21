@@ -12,6 +12,13 @@ A prose-only finding — a stale count, a wrong cross-reference, a comment descr
 - Fixing a backlog item inside a REQ that already touches that file is still the cheapest path, and now there is nothing to reset afterwards — delete the line and move on.
 - Consolidation sweeps (`sweep: true` + `sweep_key:`) are unchanged. They are ordinary REQs that close, and nothing about them needed a carve-out.
 - **If your queue holds a `standing: true` REQ:** move its unticked `## Instances` lines into `do-work/prose-backlog.md` (creating the file from the template in the Fold-First Rule), then complete or abandon the REQ. Nothing reads the marker any more, so a REQ left carrying it becomes an ordinary selectable REQ.
+
+Reconciled against `0.222.4` in the same release, which also fixed three things the merge surfaced:
+
+- `_dev/tests/record-commit-hash-guards.sh:428` ended in `\\` where a line continuation was meant, so the archive-assets fixture was written as a 0-byte file and its probe proved "an empty file under `assets/` is excluded" rather than the intact-prose property its message claims. Mutation-tested after the fix: removing the `*/assets/*` exclusion from `blanked-req-scan.sh` fails the probe.
+- `do-work-board` exposed `verify` as a second Routing row to the same action file. `verify` is a board *mode* — its token list is owned by `actions/board.md`'s Input table — so the row folds into the existing board-mode row and one action file keeps exactly one route. `actions/help.md` now mirrors `board [serve|static|summary|cli|verify]`, and the staged-skills contract's copy of the pass-through sentence gained the `verify` token it was missing.
+- UR-063 closed. Both members are terminal now that REQ-307 is archived, so the UR and its REQs consolidated into `do-work/archive/UR-063/` and the two ADRs citing them were repointed in the same commit.
+
 ## 0.222.4 — Clarify Maintainability Audit Impact-Score Wording (2026-08-21)
 
 The maintainability-audit action and reference now clearly distinguish the numeric `Impact` score used for severity and ranking from the lowercase `impact:` token used for follow-up routing.
