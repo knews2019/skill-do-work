@@ -44,16 +44,16 @@
   // file's constants against the Go ones.
   var DURATIONS_LABEL_ROW_COUNT = 2;
   var DURATIONS_LABEL_GAP = 9;
-  // Row pitch is the label text box, never less. The 11px sans face's line box
-  // measures 12.9631 user units on a current Chromium and 12.8343 on the build
-  // REQ-241 used — 10.1853 above the baseline and 2.7778 below on the former.
-  // The declared parts (an ascent of 11 here, a descent of 2 in
-  // durations_test.go) sum to 13, which clears that box by 0.037 — but the
-  // declared descent of 2 is deliberately UNDER the drawn one, which is why
-  // the clearance tests take math.Max against the measured constant rather
-  // than trusting the declared part. So 13 is the binding number, and
-  // TestDurationsLabelRowPitchClearsTheLabelTextBox holds the pitch there
-  // against durationsMeasuredLabelBoxHeightUnits.
+  // Row pitch is the label text box, never less.
+  //
+  // This is no longer held against a hand-recorded box height. REQ-292 deleted
+  // those constants because they described a face they never met — the board's
+  // own stack measures a 13.0000-unit line box against this 13-unit pitch, past
+  // the 12.97 the recorded maximum claimed was the ceiling. The pitch is now
+  // checked against the box the ENGINE draws, by
+  // TestBrowserBehaviorDurationsLabelRowsClearTheirNeighbours, which fails on
+  // whatever face the machine running it actually has.
+  //
   // It stood at 12 until REQ-241: two rows of line box then intersected by 0.83
   // units, which was padding rather than ink — the render showed two clean rows
   // — but it made row-against-row separation unassertable.
@@ -159,18 +159,158 @@
     return new Date(epochMs).toISOString().replace("T", " ").slice(0, 16) + " UTC";
   }
 
-  // The direct-label verdict is the payload's, not this file's: `labelRow` is the
-  // text row inside the sample's own band, and -1 when the collision rule could
-  // not place a label at all. Returns null for a sample that gets none, so the
-  // renderer has exactly one place where "is this labelled" is answered.
-  function durationsLabelBaselineY(sample) {
-    var labelRow = sample.labelRow;
+  // Which band a sample carries a direct label in, or "" for no direct label.
+  // Ported from durations.go's durationLabelBandOf: the two bands sit at
+  // different heights with unrelated local densities, so they pack independently.
+  function durationsLabelBandOf(sample) {
+    if (sample.wallMinutes < 0) {
+      return "reversed";
+    }
+    if (sample.wallMinutes > DURATIONS_CEILING_MINUTES) {
+      return "overflow";
+    }
+    return "";
+  }
+
+  function durationsBandRowY(sample) {
+    return sample.wallMinutes < 0 ? DURATIONS_REVERSED_LABEL_ROW_Y : DURATIONS_LANE_LABEL_ROW_Y;
+  }
+
+  // The baseline for a placed row index. `labelRow` is now decided HERE rather
+  // than arriving in the payload (REQ-292), because placement needs the width the
+  // engine actually draws and only the engine knows it.
+  function durationsLabelBaselineY(sample, labelRow) {
     if (typeof labelRow !== "number" || labelRow < 0 || labelRow >= DURATIONS_LABEL_ROW_COUNT) {
       return null;
     }
-    var bandRowY =
-      sample.wallMinutes < 0 ? DURATIONS_REVERSED_LABEL_ROW_Y : DURATIONS_LANE_LABEL_ROW_Y;
-    return bandRowY + labelRow * DURATIONS_LABEL_ROW_HEIGHT;
+    return durationsBandRowY(sample) + labelRow * DURATIONS_LABEL_ROW_HEIGHT;
+  }
+
+  // ---- direct-label placement (REQ-292) -----------------------------------
+  // Placement used to run in Go at generate time, sizing each label as character
+  // count times a constant 7.15 units. That constant described one Linux
+  // container's answer to --font-sans, and board.css ends that stack in the open
+  // `sans-serif` generic — so it described a face it never met. Measured live,
+  // Arial Black draws 7.34 units per character, which overprints; the board's own
+  // stack draws a 13.0000-unit line box against the 13-unit row pitch, which is a
+  // false clearance claim. Both close by asking the engine instead of guessing.
+  //
+  // The RULES ARE PORTED, NOT REINVENTED. Each has a REQ behind it and each is
+  // kept deliberately:
+  //   * longest-span-first order, stable over completion order (REQ-237). The
+  //     lane's text answers "where are the outliers", so magnitude order is the
+  //     whole of the labels-go-to-the-outliers rule; stability keeps equal spans
+  //     in left-to-right precedence so an archive full of identical durations
+  //     still places deterministically.
+  //   * first row where the text touches nothing already placed, with a
+  //     separation gap — not a "reaches this far right" high-water mark, because
+  //     the walk is ordered by magnitude rather than by x, so every placed
+  //     interval on the row has to be consulted.
+  //   * anchor before the mark first, after the mark as the fallback that keeps
+  //     the leftmost sample labellable (REQ-231). Kept as a consistency rule: a
+  //     label sits on the same side of its mark unless the plot edge forbids it.
+  //   * a sample that fits nowhere is COUNTED, never silently dropped.
+  //   * the two-pass reserve: the remainder sentence needs room at the last row's
+  //     right edge, but whether there IS a remainder is only known once placement
+  //     has finished — so pass one uses the full width and only a pass that
+  //     actually dropped something is redone with the reservation held back. A
+  //     board with no remainder pays nothing for one.
+  //
+  // WHAT IS GONE ON PURPOSE: the width model. There is no per-character constant
+  // and no supremum to stay above, because there is no estimate — the width is
+  // the drawn width.
+  var DURATIONS_LABEL_SEPARATION = 6;
+
+  // Room held at the last row's right edge for the remainder sentence. Measured
+  // from the widest sentence the renderer can compose, in the face actually in
+  // use, rather than modeled: composeDurationsRemainderText builds it and the
+  // caller measures it, so this is a shape rather than a number and carries no
+  // build provenance to go stale.
+  function composeDurationsRemainderText(hiddenCount, remainderTail) {
+    return "+" + hiddenCount + " more " + remainderTail;
+  }
+
+  function durationsLabelSpan(markX, textWidth, anchor, rowLeftEdge, rowRightEdge) {
+    var spanLeft = markX + DURATIONS_LABEL_GAP;
+    var spanRight = spanLeft + textWidth;
+    if (anchor === "end") {
+      spanRight = markX - DURATIONS_LABEL_GAP;
+      spanLeft = spanRight - textWidth;
+    }
+    return {
+      left: spanLeft,
+      right: spanRight,
+      fits: spanLeft >= rowLeftEdge && spanRight <= rowRightEdge
+    };
+  }
+
+  function durationsSpanIsBlocked(occupiedRow, spanLeft, spanRight) {
+    for (var placedIndex = 0; placedIndex < occupiedRow.length; placedIndex += 1) {
+      var placed = occupiedRow[placedIndex];
+      if (spanLeft < placed.right + DURATIONS_LABEL_SEPARATION &&
+        placed.left < spanRight + DURATIONS_LABEL_SEPARATION) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // One greedy pass over a single band, in the order given. Every candidate the
+  // order names is offered a row, so the pass stops only when the rows are full:
+  // a span the geometry rejects costs the band nothing but its own label.
+  function placeDurationsLabelBand(candidates, reserveUnits) {
+    var occupied = [];
+    for (var rowIndex = 0; rowIndex < DURATIONS_LABEL_ROW_COUNT; rowIndex += 1) {
+      occupied.push([]);
+    }
+    var rowLeftEdge = DURATIONS_MARGIN_LEFT;
+    var plotRightEdge = DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT;
+    var placements = [];
+    var hiddenCount = 0;
+
+    candidates.forEach(function (candidate) {
+      var placedRow = -1;
+      var placedAnchor = "";
+      for (var rowIndex = 0; rowIndex < DURATIONS_LABEL_ROW_COUNT; rowIndex += 1) {
+        var rowRightEdge = plotRightEdge;
+        if (reserveUnits > 0 && rowIndex === DURATIONS_LABEL_ROW_COUNT - 1) {
+          rowRightEdge -= reserveUnits;
+        }
+        var span = durationsLabelSpan(candidate.markX, candidate.textWidth, "end", rowLeftEdge, rowRightEdge);
+        var anchor = "end";
+        if (!span.fits || durationsSpanIsBlocked(occupied[rowIndex], span.left, span.right)) {
+          span = durationsLabelSpan(candidate.markX, candidate.textWidth, "start", rowLeftEdge, rowRightEdge);
+          anchor = "start";
+        }
+        if (!span.fits || durationsSpanIsBlocked(occupied[rowIndex], span.left, span.right)) {
+          continue;
+        }
+        placedRow = rowIndex;
+        placedAnchor = anchor;
+        occupied[rowIndex].push({ left: span.left, right: span.right });
+        break;
+      }
+      if (placedRow < 0) {
+        hiddenCount += 1;
+      }
+      placements.push({ candidate: candidate, labelRow: placedRow, labelAnchor: placedAnchor });
+    });
+
+    return { placements: placements, hiddenCount: hiddenCount };
+  }
+
+  // The two-pass reserve. Pass one runs with the full width; only if it dropped
+  // something is it redone with the remainder sentence's room held back, because
+  // only then is there a sentence to hold room for.
+  function packDurationsLabelBand(candidates, measureRemainderWidth, remainderTail) {
+    var band = placeDurationsLabelBand(candidates, 0);
+    if (band.hiddenCount === 0) {
+      return band;
+    }
+    var reserveUnits = measureRemainderWidth(
+      composeDurationsRemainderText(band.hiddenCount, remainderTail)
+    );
+    return placeDurationsLabelBand(candidates, reserveUnits);
   }
 
   // The remainder sentence goes on the band's LAST text row. The marks sit level
@@ -404,47 +544,107 @@
     });
 
     // Direct labels only where a mark carries a value its y cannot: the overflow
-    // lane, where every mark sits at one y, and the reversed band. Which marks
-    // get one is the payload's answer — `labelRow` is the text row inside that
-    // mark's band and -1 when the collision rule could not place a label, and
-    // `labelAnchor` is the side it was placed on. Both bands are packed
-    // independently there; nothing here recomputes either.
+    // lane, where every mark sits at one y, and the reversed band.
+    //
+    // MEASURE BEFORE PAINT (REQ-292). Every label's <text> node is created and
+    // measured with getComputedTextLength() before any of them is positioned, and
+    // the whole pass is synchronous inside this one render call — the browser
+    // does not paint until the task yields, so the reader never sees an
+    // intermediate layout and the chart never visibly reflows. That is why this
+    // needs neither an offscreen clone nor a hidden pass: "before paint" here is
+    // a property of the task, not of a visibility trick.
+    //
+    // The svg is already in the document (chartHost.appendChild above), which is
+    // what makes the measurement real rather than zero.
+    var labelCandidatesByBand = { overflow: [], reversed: [] };
     markIndex.forEach(function (mark) {
-      var baselineY = durationsLabelBaselineY(mark.sample);
-      if (baselineY === null) {
+      var bandName = durationsLabelBandOf(mark.sample);
+      if (bandName === "") {
         return;
       }
-      // A leader tick ties the label back to its mark across the band gap. It
-      // ends at the text band's top edge — never inside a row — so it cannot
-      // cross a first-row label on its way to a second-row one.
-      var bandRowY =
-        mark.sample.wallMinutes < 0 ? DURATIONS_REVERSED_LABEL_ROW_Y : DURATIONS_LANE_LABEL_ROW_Y;
-      makeDurationsSvgNode(svg, "line", {
-        x1: mark.x.toFixed(1),
-        y1: (mark.y + DURATIONS_BAND_MARK_RADIUS + 1).toFixed(1),
-        x2: mark.x.toFixed(1),
-        y2: (bandRowY - DURATIONS_LABEL_TEXT_ASCENT).toFixed(1),
-        class: "durations-label-leader"
-      });
-      var anchorsBeforeMark = mark.sample.labelAnchor === "end";
-      makeDurationsSvgNode(
+      var textNode = makeDurationsSvgNode(
         svg,
         "text",
-        {
-          x: (mark.x + (anchorsBeforeMark ? -DURATIONS_LABEL_GAP : DURATIONS_LABEL_GAP)).toFixed(1),
-          y: baselineY.toFixed(1),
-          class: "durations-mark-label",
-          "text-anchor": anchorsBeforeMark ? "end" : "start"
-        },
+        { class: "durations-mark-label" },
         mark.sample.id + " " + formatDurationMinutes(mark.sample.wallMinutes)
       );
+      labelCandidatesByBand[bandName].push({
+        mark: mark,
+        markX: mark.x,
+        textNode: textNode,
+        textWidth: textNode.getComputedTextLength()
+      });
     });
 
-    // Whatever carries no label is stated, never dropped in silence: the count
-    // is what stops a reader taking the visible labels for all of them. There is
-    // one cause again (REQ-237 removed top-N selection) — placement could not
-    // fit it.
-    var durationLabelCounts = durations.labels || {};
+    // Longest span first, stable over completion order so equal spans keep their
+    // left-to-right precedence. markIndex is built in sample order, so a stable
+    // sort by descending magnitude is exactly durationLabelMagnitudeOrder.
+    Object.keys(labelCandidatesByBand).forEach(function (bandName) {
+      labelCandidatesByBand[bandName].sort(function (first, second) {
+        return Math.abs(second.mark.sample.wallMinutes) - Math.abs(first.mark.sample.wallMinutes);
+      });
+    });
+
+    // The remainder sentence is measured in the face actually in use, using a
+    // throwaway node removed as soon as it has given up its width.
+    function measureDurationsRemainderWidth(remainderText) {
+      var probeNode = makeDurationsSvgNode(svg, "text", { class: "durations-tick" }, remainderText);
+      var measuredWidth = probeNode.getComputedTextLength();
+      svg.removeChild(probeNode);
+      return measuredWidth;
+    }
+
+    var overflowBand = packDurationsLabelBand(
+      labelCandidatesByBand.overflow,
+      measureDurationsRemainderWidth,
+      "over " + DURATIONS_CEILING_MINUTES + " min"
+    );
+    // The tail strings here MUST match the ones drawDurationsRemainder is called
+    // with below, or the reserve would hold room for a sentence other than the one
+    // drawn — which is the overprinting defect placement exists to prevent.
+    var reversedBand = packDurationsLabelBand(
+      labelCandidatesByBand.reversed,
+      measureDurationsRemainderWidth,
+      "reversed"
+    );
+
+    // Position what was placed; remove what was not. An unplaced label's node is
+    // deleted rather than hidden, so the DOM carries no text a reader cannot see
+    // and a probe cannot mistake an invisible node for a drawn one.
+    [overflowBand, reversedBand].forEach(function (band) {
+      band.placements.forEach(function (placement) {
+        var candidate = placement.candidate;
+        var mark = candidate.mark;
+        var baselineY = durationsLabelBaselineY(mark.sample, placement.labelRow);
+        if (baselineY === null) {
+          svg.removeChild(candidate.textNode);
+          return;
+        }
+        var anchorsBeforeMark = placement.labelAnchor === "end";
+        candidate.textNode.setAttribute(
+          "x",
+          (mark.x + (anchorsBeforeMark ? -DURATIONS_LABEL_GAP : DURATIONS_LABEL_GAP)).toFixed(1)
+        );
+        candidate.textNode.setAttribute("y", baselineY.toFixed(1));
+        candidate.textNode.setAttribute("text-anchor", anchorsBeforeMark ? "end" : "start");
+
+        // A leader tick ties the label back to its mark across the band gap. It
+        // ends at the text band's top edge — never inside a row — so it cannot
+        // cross a first-row label on its way to a second-row one.
+        makeDurationsSvgNode(svg, "line", {
+          x1: mark.x.toFixed(1),
+          y1: (mark.y + DURATIONS_BAND_MARK_RADIUS + 1).toFixed(1),
+          x2: mark.x.toFixed(1),
+          y2: (durationsBandRowY(mark.sample) - DURATIONS_LABEL_TEXT_ASCENT).toFixed(1),
+          class: "durations-label-leader"
+        });
+      });
+    });
+
+    // Whatever carries no label is stated, never dropped in silence: the count is
+    // what stops a reader taking the visible labels for all of them. The count is
+    // produced by WHATEVER PLACED THE LABELS (REQ-292) — a count computed
+    // anywhere else is a claim about a decision it did not make.
     function drawDurationsRemainder(hiddenCount, bandRowY, remainderTail) {
       if (!hiddenCount) {
         return;
@@ -458,16 +658,16 @@
           class: "durations-tick",
           "text-anchor": "end"
         },
-        "+" + hiddenCount + " more " + remainderTail
+        composeDurationsRemainderText(hiddenCount, remainderTail)
       );
     }
     drawDurationsRemainder(
-      durationLabelCounts.overflowHiddenCount,
+      overflowBand.hiddenCount,
       durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y),
       "over " + DURATIONS_CEILING_MINUTES + " min"
     );
     drawDurationsRemainder(
-      durationLabelCounts.reversedHiddenCount,
+      reversedBand.hiddenCount,
       durationsRemainderBaselineY(DURATIONS_REVERSED_LABEL_ROW_Y),
       "reversed"
     );

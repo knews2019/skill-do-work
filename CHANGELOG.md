@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.230.0 — Durations Labels Are Placed Where the Font Is (2026-08-21)
+
+Label placement used to run in Go before a browser existed, reserving 7.15 units per character. That number described one Linux container's answer to `--font-sans` while the stylesheet ends in the open `sans-serif` generic — so it described a face it never met, and on a wider one the labels drew straight past their slots. Placement now happens in the browser and measures the text it is actually placing.
+
+- Every label's width is the drawn width; the per-character model and every hand-transcribed measured-face constant are deleted, with a check that fails if one comes back
+- The remainder count is produced by the code that decides what fits, so it can't disagree with what you see
+- Measured, then positioned, in one pass — the chart never visibly reflows
+- Seven properties the old Go tests asserted are now browser probes that assert what a reader would see: no two drawn labels overlap, labels go to the longest spans, both rows fill when spans cluster, the rows clear their neighbours in the face actually in use
+- The packing rules themselves are unchanged — longest span first, first row that fits, nothing silently dropped
+
 ## 0.229.0 — Tests Can Measure Real Rendered Text (2026-08-21)
 
 Every font measurement in the Durations view got there by someone running a browser by hand and pasting the number into a comment. That is why those constants are stale. There is now a test lane that asks a real rendering engine instead.

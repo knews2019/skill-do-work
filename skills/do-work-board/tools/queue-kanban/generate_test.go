@@ -1831,12 +1831,18 @@ func TestUserRequestActivityToggleDocumentsWidenedRule(t *testing.T) {
 	}
 }
 
-// The renderer must DRAW the placement verdict, not re-derive it: a label
-// appears exactly where the payload says `labelRow >= 0`, on that sample's own
-// band, and a band whose remainder is zero prints nothing while a nonzero one
-// states the count. Both were the defect — the old pass labelled every overflow
-// sample from an index cycle and had no concept of a remainder at all.
-func TestJavaScriptBehaviorDurationsLabelsFollowTheShippedVerdict(t *testing.T) {
+// Band-and-row geometry, and the remainder sentence's all-or-nothing rule.
+//
+// Before REQ-292 this probe also pinned "draw the payload's verdict, do not
+// re-derive it" — the renderer is now the placer, so there is no payload verdict
+// left to obey and that half of the property is gone by construction rather than
+// by omission. What survives is still real and still worth pinning: a row index
+// maps to a baseline on the sample's OWN band, an out-of-range row is no label at
+// all rather than a label at a wrong y, and a band with nothing hidden prints no
+// remainder while a nonzero one states the count. The original defect this test
+// was written for — a pass that labelled every overflow sample from an index
+// cycle and had no concept of a remainder — is caught by the second half.
+func TestJavaScriptBehaviorDurationsLabelRowsAndRemainders(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 
 	constantPreamble := ""
@@ -1855,8 +1861,10 @@ func TestJavaScriptBehaviorDurationsLabelsFollowTheShippedVerdict(t *testing.T) 
 		"var svg = null;\n" +
 		"var drawnRemainders = [];\n" +
 		"function makeDurationsSvgNode(svg, name, attributes, textContent) { drawnRemainders.push(textContent); }\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function durationsBandRowY(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function durationsLabelBaselineY(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function durationsRemainderBaselineY(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function composeDurationsRemainderText(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function drawDurationsRemainder(") + `
 drawDurationsRemainder(0, durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y), "over 60 min");
 drawDurationsRemainder(23, durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y), "over 60 min");
@@ -1867,13 +1875,13 @@ process.stdout.write(JSON.stringify({
     durationsRemainderBaselineY(DURATIONS_REVERSED_LABEL_ROW_Y)
   ],
   baselines: [
-    durationsLabelBaselineY({ wallMinutes: 95, labelRow: 0 }),
-    durationsLabelBaselineY({ wallMinutes: 95, labelRow: 1 }),
-    durationsLabelBaselineY({ wallMinutes: 95, labelRow: -1 }),
-    durationsLabelBaselineY({ wallMinutes: -20, labelRow: 0 }),
-    durationsLabelBaselineY({ wallMinutes: -20, labelRow: 1 }),
-    durationsLabelBaselineY({ wallMinutes: -20, labelRow: -1 }),
-    durationsLabelBaselineY({ wallMinutes: 95 })
+    durationsLabelBaselineY({ wallMinutes: 95 }, 0),
+    durationsLabelBaselineY({ wallMinutes: 95 }, 1),
+    durationsLabelBaselineY({ wallMinutes: 95 }, -1),
+    durationsLabelBaselineY({ wallMinutes: -20 }, 0),
+    durationsLabelBaselineY({ wallMinutes: -20 }, 1),
+    durationsLabelBaselineY({ wallMinutes: -20 }, -1),
+    durationsLabelBaselineY({ wallMinutes: 95 }, undefined)
   ],
   remainders: drawnRemainders
 }));`
