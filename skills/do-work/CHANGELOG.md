@@ -2,6 +2,12 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.223.3 — ADR-021's Opportunistic Fold Ticks Its Line (2026-08-21)
+
+ADR-021 told a maintainer to delete a backlog line during an opportunistic fold, one bullet after establishing that a drain ticks and never deletes.
+
+- The **Opportunistic folding** bullet said fixing an item inside a REQ that already touches the file costs nothing "and deleting its line". Deleting it destroys the evidence `actions/verify-requests.md` grades a `prose-backlog` fold against, so a resolved fold would read there as a lost one — exactly the failure the preceding bullet exists to prevent. It now ticks the line, matching the shipped Fold-First contract.
+
 ## 0.223.2 — Stage the Prose Backlog Whenever a REQ Touches It (2026-08-21)
 
 Two gaps left over from 0.223.0's move to `do-work/prose-backlog.md`. A review that recorded a prose-only finding could lose it, and one instruction still sent findings to the mechanism that release retired.
