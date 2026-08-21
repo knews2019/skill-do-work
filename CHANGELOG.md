@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.223.2 — Stage the Prose Backlog Whenever a REQ Touches It (2026-08-21)
+
+Two gaps left over from 0.223.0's move to `do-work/prose-backlog.md`. A review that recorded a prose-only finding could lose it, and one instruction still sent findings to the mechanism that release retired.
+
+- The Commit Phase's staging list named the backlog only `when this REQ drained items from it`. A Step 8 review appends to that same file (`actions/review-work.md` Step 10), and an append is neither a drain, a follow-up REQ, nor a sweep edit — so the implementation commit omitted it and the newly recorded finding stayed a dirty-tree edit that the next checkout discards. The condition is now "when this REQ touched it", covering the append and the drain alike, across all four staging lists and the explicit `git add` procedure in `actions/work-reference.md`, which never named the file at all.
+- `actions/review-work.md`'s Restatement Sweep still routed an unmatched prose-only finding to "the standing prose-reconciliation sweep". That mechanism no longer exists, so an agent reaching that step during a contract-redefinition review would try to use it instead of the backlog. Its twin at `actions/work.md` Step 6 was updated in 0.223.0; this one is the restatement the sweep exists to catch, left stale by the sweep's own release.
+
 ## 0.223.1 — Drop the Selector's Unearned Flags (2026-08-21)
 
 The cheaper-model selector had two options nothing outside its own tests ever called, and one of them was hiding the warnings that catch a mistyped REQ field. Both are gone, and the test suite now pins the failure direction it was missing.
