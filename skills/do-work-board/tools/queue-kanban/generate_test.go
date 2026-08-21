@@ -3878,3 +3878,111 @@ process.stdout.write(JSON.stringify(calendarDayBreakdown(entries)));`
 		}
 	}
 }
+
+// REQ-284's second captured RED: the emitted payload must carry what verify sees,
+// minus the three categories the board already renders by other means. Forwarding
+// those would print the same prose a second or third time — anomalies reach the page
+// through their own column, a per-card badge, AND board.Warnings.
+func TestGeneratedBoardDataCarriesVerifyFindingsWithoutTheOnesTheBoardAlreadyShows(t *testing.T) {
+	claimedAt := time.Date(2026, 8, 19, 9, 0, 0, 0, time.UTC)
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		// A stale claim: must appear in verifyFindings.
+		{"do-work/working/REQ-820-stale-claim.md",
+			"---\nid: REQ-820\ntitle: fixture\nstatus: claimed\n" +
+				"claimed_at: 2026-08-19T09:00:00Z\n---\n"},
+		// A completion anomaly: must NOT appear — the board renders it three ways.
+		{"do-work/archive/REQ-821-anomaly.md",
+			"---\nid: REQ-821\ntitle: fixture\nstatus: completed\n" +
+				"claimed_at: 2026-08-19T10:00:00Z\ncompleted_at: 2026-08-19T09:00:00Z\n---\n"},
+	})
+	moment := claimedAt.Add(4 * time.Hour)
+
+	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	boardData, projectError := buildGeneratedBoardData(board)
+	if projectError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", projectError)
+	}
+	attachVerifyFindings(&boardData, board, moment)
+
+	sawStaleClaim := false
+	for _, finding := range boardData.VerifyFindings {
+		if boardRenderedVerifyCategories[finding.Category] {
+			t.Errorf("suppressed category %q reached verifyFindings: %s", finding.Category, finding.Detail)
+		}
+		if finding.Category == verifyCategoryClaimNeedsAttention {
+			sawStaleClaim = true
+			if finding.Remedy == "" {
+				t.Error("stale-claim finding reached the page without its remedy")
+			}
+		}
+	}
+	if !sawStaleClaim {
+		t.Errorf("verifyFindings carries no stale-claim finding: %+v", boardData.VerifyFindings)
+	}
+	// The anomaly must still exist as a finding — it is suppressed from the page,
+	// not from verify. Otherwise this test would pass on a probe that stopped working.
+	report := collectVerifyFindings(repoRoot, board, moment)
+	if anomalies := findingsMentioning(report, verifyCategoryCompletionAnomaly); len(anomalies) == 0 {
+		t.Error("the fixture produced no completion anomaly, so the suppression assertion proves nothing")
+	}
+}
+
+// The no-absolute-paths capture decision, kept honest by assertion. The worktree
+// probe's detail is absolute at its source (`git worktree list --porcelain`), so
+// this fails the moment someone forwards a finding unreduced. A shared snapshot
+// must not describe the filesystem of the machine that produced it.
+func TestGeneratedVerifyPayloadCarriesNoAbsolutePaths(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/working/REQ-830-stale-claim.md",
+			"---\nid: REQ-830\ntitle: fixture\nstatus: claimed\n" +
+				"claimed_at: 2026-08-19T09:00:00Z\n---\n"},
+	})
+	moment := time.Date(2026, 8, 19, 13, 0, 0, 0, time.UTC)
+
+	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	boardData, projectError := buildGeneratedBoardData(board)
+	if projectError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", projectError)
+	}
+	// Seed a finding whose detail is absolute at the source, the way the worktree
+	// probe's is, so the reduction is under test rather than merely unexercised.
+	boardData.VerifyFindings = nil
+	syntheticReport := VerifyReport{Findings: []VerifyFinding{{
+		Category: verifyCategoryUnmergedWorktreeLeftover,
+		Detail:   "worktree " + filepath.Join(repoRoot, "..", "repo-worktrees", "worktree-agent-REQ-999") + " is unmerged",
+		Remedy:   "inspect " + filepath.Join(repoRoot, "do-work", "queue") + " first",
+	}}}
+	for _, finding := range syntheticReport.Findings {
+		boardData.VerifyFindings = append(boardData.VerifyFindings, generatedVerifyFinding{
+			Category: finding.Category,
+			Detail:   reduceAbsolutePaths(finding.Detail, board.RepoRoot),
+			Remedy:   reduceAbsolutePaths(finding.Remedy, board.RepoRoot),
+		})
+	}
+	attachVerifyFindings(&boardData, board, moment)
+
+	encoded, encodeError := encodeBoardDataForJsAssignment(boardData)
+	if encodeError != nil {
+		t.Fatalf("encodeBoardDataForJsAssignment: %v", encodeError)
+	}
+	if strings.Contains(encoded, repoRoot) {
+		t.Errorf("emitted payload contains the repo root %q", repoRoot)
+	}
+	for _, finding := range boardData.VerifyFindings {
+		for _, text := range []string{finding.Detail, finding.Remedy} {
+			if remainingAbsolutePath.MatchString(text) {
+				t.Errorf("verify payload still carries an absolute path: %q", text)
+			}
+		}
+	}
+}

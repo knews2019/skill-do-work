@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -76,8 +77,16 @@ type generatedBoardData struct {
 	Calendar         []generatedCalendarEntry        `json:"calendar"`
 	Durations        generatedDurations              `json:"durations"`
 	Timeline         generatedTimeline               `json:"timeline"`
-	Notes            []generatedNote                 `json:"notes,omitempty"`    // do-work/notes.md lines — rendered as a strip above the queue
-	Warnings         []string                        `json:"warnings,omitempty"` // data-shape warnings (e.g. duplicate ids, unrecognized statuses, future-dated stamps) — rendered as a banner
+	Notes            []generatedNote                 `json:"notes,omitempty"` // do-work/notes.md lines — rendered as a strip above the queue
+
+	// Verify findings carried into the page so a human looking at the board sees
+	// what `queue-kanban verify` sees (REQ-284). Three categories are suppressed
+	// before they get here — see attachVerifyFindings. VerifySkipped is never
+	// dropped: a skipped probe rendering as nothing reads as "checked and clean".
+	VerifyFindings []generatedVerifyFinding `json:"verifyFindings,omitempty"`
+	VerifySkipped  []string                 `json:"verifySkipped,omitempty"`
+
+	Warnings []string `json:"warnings,omitempty"` // data-shape warnings (e.g. duplicate ids, unrecognized statuses, future-dated stamps) — rendered as a banner
 
 	TestingProfiles []string `json:"testingProfiles,omitempty"` // do-work/testers.md profiles for the testing view's tester picker
 	// True only when served by the live server (serve.go sets it): the testing
@@ -386,6 +395,10 @@ func generateStaticSiteWithPublisher(outputDirectory string, board *Board, publi
 	if buildError != nil {
 		return buildError
 	}
+	// The snapshot carries what verify sees at generate time. buildGeneratedBoardData
+	// keeps its board-only signature — a dozen tests call it — so the findings are
+	// folded in here, at the two real callers, rather than threaded through it.
+	attachVerifyFindings(&boardData, board, time.Now())
 	boardMarkdownData := buildGeneratedBoardMarkdownData(board)
 
 	boardDataJs, encodeError := encodeBoardDataForJsAssignment(boardData)
@@ -510,6 +523,77 @@ func restoreStaticSiteTargets(publishedTargets []string, backups []staticSiteBac
 	}
 	return fmt.Errorf("queue-kanban: static-site rollback failed: %w", errors.Join(restoreErrors...))
 }
+
+// generatedVerifyFinding is one verify finding as the page consumes it. `fixable`
+// keeps verify's exact meaning — `do-work cleanup` can mechanically resolve it —
+// because an inflated count sends the reader to a command that will not help.
+type generatedVerifyFinding struct {
+	Category string `json:"category"`
+	Detail   string `json:"detail"`
+	Remedy   string `json:"remedy,omitempty"`
+	Fixable  bool   `json:"fixable,omitempty"`
+}
+
+// boardRenderedVerifyCategories are the findings the board already shows by other
+// means, so forwarding them would print the same prose a second or third time:
+// duplicate ids and stray files arrive through board.Warnings, and completion
+// anomalies additionally through their own column and a per-card badge.
+//
+// Suppression happens here, in the producer, so the client can render the list
+// blindly and no second copy of this judgment lives in JavaScript.
+var boardRenderedVerifyCategories = map[string]bool{
+	verifyCategoryCompletionAnomaly:  true,
+	verifyCategoryDuplicateRequestId: true,
+	verifyCategoryStrayRequestFile:   true,
+}
+
+// attachVerifyFindings runs the probe set against an already-built board and folds
+// the result into the payload. Both callers use it — generate for the static
+// snapshot and serve per request — so the suppression list and the path reduction
+// below have exactly one home.
+func attachVerifyFindings(data *generatedBoardData, board *Board, now time.Time) {
+	report := collectVerifyFindings(board.RepoRoot, board, now)
+	for _, finding := range report.Findings {
+		if boardRenderedVerifyCategories[finding.Category] {
+			continue
+		}
+		data.VerifyFindings = append(data.VerifyFindings, generatedVerifyFinding{
+			Category: finding.Category,
+			Detail:   reduceAbsolutePaths(finding.Detail, board.RepoRoot),
+			Remedy:   reduceAbsolutePaths(finding.Remedy, board.RepoRoot),
+			Fixable:  finding.Fixable,
+		})
+	}
+	for _, skipped := range report.SkippedProbes {
+		data.VerifySkipped = append(data.VerifySkipped, reduceAbsolutePaths(skipped, board.RepoRoot))
+	}
+}
+
+// reduceAbsolutePaths strips this machine's filesystem layout out of text bound for
+// the page. A static snapshot is shareable, and a path that means something here
+// means something else — or nothing — on the machine that opens it. The worktree
+// probe is the one that makes this necessary: its detail carries `git worktree list
+// --porcelain` output, which is absolute at the source.
+//
+// The repo root becomes a repo-relative path; any other absolute path is replaced
+// wholesale, because a path outside the repo says even more about this machine than
+// one inside it. The CLI report keeps its absolute paths — they are useful next to a
+// shell on the machine that produced them.
+func reduceAbsolutePaths(text string, repoRoot string) string {
+	if text == "" {
+		return text
+	}
+	reduced := text
+	if repoRoot != "" {
+		reduced = strings.ReplaceAll(reduced, repoRoot+string(os.PathSeparator), "")
+		reduced = strings.ReplaceAll(reduced, repoRoot+"/", "")
+		reduced = strings.ReplaceAll(reduced, repoRoot, ".")
+	}
+	return remainingAbsolutePath.ReplaceAllString(reduced, "<path outside this repository>")
+}
+
+// Any surviving absolute path: a POSIX root-anchored run, or a Windows drive letter.
+var remainingAbsolutePath = regexp.MustCompile(`(?:[A-Za-z]:\\|/)[^\s"'` + "`" + `]*`)
 
 // buildGeneratedBoardData projects the parsed Board into the JSON data island,
 // pre-rendering every REQ and UR body to HTML along the way.

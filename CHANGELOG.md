@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.226.0 — Verify Findings Reach the Board's Data (2026-08-21)
+
+`queue-kanban verify` finds sixteen categories of queue and process breakage; the board rendered three. The board's producer now carries every finding into the page data, so the surface a human actually looks at can show what the command nobody runs already knew.
+
+- Findings and skipped probes ride along in the board payload, from both the static snapshot and the live server
+- The three categories the board already shows another way are suppressed in Go, so the page can render the list blindly
+- Nothing that leaves this machine carries an absolute filesystem path
+- The server recomputes findings on every request on purpose: claim age and worktree state change while every file mtime stays identical, which is the blind spot that let claims sit stale for hours
+- `verify` itself is untouched — same report, same exit code, proved by diffing the output before and after
+
 ## 0.225.0 — Audit the Calibration Log Against Its Own Source (2026-08-21)
 
 `do-work/calibration-log.tsv` is the corpus every estimate is fit from, and nothing had ever checked it against the frontmatter it was derived from. `queue-kanban verify` now does. It found nine disagreeing rows on this repo the first time it ran, six of them off by twenty minutes or more.

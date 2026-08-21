@@ -1556,3 +1556,73 @@ func TestVerifySkipsCalibrationProbeWhenTheLogIsAbsent(t *testing.T) {
 		t.Errorf("absent log was not reported as a skipped probe:\n%s", renderVerifyReport(report))
 	}
 }
+
+// The captured RED from REQ-284's first half. collectVerifyFindings takes a board
+// the caller already built, and `now` stays a parameter — so the SAME board, with no
+// file mtime changing between calls, must start reporting a stale claim once enough
+// wall-clock time has passed. That is precisely the case an mtime-keyed cache cannot
+// see, and the reason serve calls this outside its cache.
+func TestCollectVerifyFindingsSeesAClaimGoStaleWithoutAnyFileChanging(t *testing.T) {
+	claimedAt := time.Date(2026, 8, 19, 9, 0, 0, 0, time.UTC)
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/working/REQ-810-in-flight.md",
+			"---\nid: REQ-810\ntitle: fixture\nstatus: claimed\n" +
+				"claimed_at: 2026-08-19T09:00:00Z\n---\n"},
+	})
+
+	// One board, built once, reused for both calls — no re-parse, no mtime change.
+	freshMoment := claimedAt.Add(1 * time.Minute)
+	board, buildError := buildBoard(repoRoot, freshMoment, defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+
+	fresh := collectVerifyFindings(repoRoot, board, freshMoment)
+	if claimFindings := findingsMentioning(fresh, verifyCategoryClaimNeedsAttention); len(claimFindings) != 0 {
+		t.Fatalf("a one-minute-old claim already needs attention: %s", renderVerifyReport(fresh))
+	}
+
+	stale := collectVerifyFindings(repoRoot, board, claimedAt.Add(4*time.Hour))
+	if claimFindings := findingsMentioning(stale, verifyCategoryClaimNeedsAttention); len(claimFindings) != 1 {
+		t.Fatalf("got %d claim findings after advancing now by 4h, want 1 — the same board must age:\n%s",
+			len(claimFindings), renderVerifyReport(stale))
+	}
+}
+
+// runVerifyProbes keeps its signature and its behavior: it is now the wrapper that
+// builds the board and delegates. The CLI contract (non-zero exit, same report)
+// depends on this staying true.
+func TestRunVerifyProbesStillReportsWhatCollectDoes(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-811-reversed.md",
+			"---\nid: REQ-811\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: 2026-08-18T09:00:00Z\n" +
+				"completed_at: 2026-08-19T14:00:00Z\n---\n"},
+	})
+	moment := time.Date(2026, 8, 19, 15, 0, 0, 0, time.UTC)
+
+	wrapped, verifyError := runVerifyProbes(repoRoot, moment)
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	direct := collectVerifyFindings(repoRoot, board, moment)
+
+	if len(wrapped.Findings) != len(direct.Findings) {
+		t.Fatalf("wrapper reported %d findings, direct call %d — they must not diverge",
+			len(wrapped.Findings), len(direct.Findings))
+	}
+	if wrapped.ExitCode() != 1 {
+		t.Errorf("runVerifyProbes exit code = %d, want 1 — the CLI contract", wrapped.ExitCode())
+	}
+	if wrapped.RepoRoot != repoRoot {
+		t.Errorf("wrapper RepoRoot = %q, want %q", wrapped.RepoRoot, repoRoot)
+	}
+}

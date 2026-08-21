@@ -119,12 +119,27 @@ func runVerifyProbes(repoRootOverride string, now time.Time) (VerifyReport, erro
 	if resolveError != nil {
 		return VerifyReport{}, resolveError
 	}
-	report := VerifyReport{RepoRoot: repoRoot}
 
 	board, buildError := buildBoard(repoRoot, now, defaultRecentWindow, lookupGitCommitDate)
 	if buildError != nil {
 		return VerifyReport{}, buildError
 	}
+
+	return collectVerifyFindings(repoRoot, board, now), nil
+}
+
+// collectVerifyFindings is runVerifyProbes' body over a board the caller already
+// built. The split exists so the board's own producer can emit these findings into
+// the page without building the board a second time per request (REQ-284) — the
+// board build is the expensive half, the probes are the cheap half.
+//
+// `now` is a parameter rather than read here for the same reason it always was:
+// claim-age findings must be deterministic in tests, and — since serve calls this
+// outside its mtime cache — a claim must be able to cross the staleness threshold
+// on a tree where no file has changed. Passing a stale `now` would silently restore
+// the blind spot the split was made to remove.
+func collectVerifyFindings(repoRoot string, board *Board, now time.Time) VerifyReport {
+	report := VerifyReport{RepoRoot: repoRoot}
 
 	appendReleaseFindings(&report, repoRoot)
 	appendDuplicateRequestIdFindings(&report, board)
@@ -139,7 +154,7 @@ func runVerifyProbes(repoRootOverride string, now time.Time) (VerifyReport, erro
 	appendArchivedUserRequestLiveMemberFindings(&report, board)
 	appendWorktreeFindings(&report, repoRoot)
 
-	return report, nil
+	return report
 }
 
 // appendStrayRequestFileFindings forwards the board walker's structured
