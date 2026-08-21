@@ -2,6 +2,22 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.6 — Same-Package Shipped Citations Are Verified (2026-08-21)
+
+The shipped-reference contract now verifies citations within a skill package as well as citations
+across packages. Leadless paths resolve from the owning package root, `../` paths resolve from the
+citing directory, and both source and installed targets must remain inside and map through the same
+manifest module.
+
+Consumer-project and deliberately absent examples now declare `<project-root>` explicitly instead
+of relying on a missing-file exemption. Exact filenames win before a narrowly bounded one-period
+sentence fallback, package-root changelogs retain their historical exemption, and mutation replay
+proves the three previously silent dangling-citation forms now fail with file-and-line diagnostics.
+
+The canonical repository gate also exposed and repaired a stale last30days contract assertion.
+Independent review passed at 96%; its prose-only prime restatement finding is recorded in the prose
+backlog.
+
 ## 0.236.5 — Template Citations Resolve Where Their Payload Lands (2026-08-21)
 
 Two toolbox templates were carrying core-action paths that were correct only relative to the source package, not where their text is consumed. Generated code-review REQs and validate-feedback handoffs now emit consumer-root `.claude/skills/do-work/actions/...` citations, so the pointers remain valid after a REQ moves through queue, working, and archive.

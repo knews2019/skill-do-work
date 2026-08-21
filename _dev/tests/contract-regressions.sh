@@ -3789,7 +3789,7 @@ assert_contains \
 
 assert_contains \
   "actions/install.md" \
-  'non-empty `SKILL.md` and `scripts/last30days.py`' \
+  'non-empty `SKILL.md` and `<project-root>/\.claude/skills/last30days/scripts/last30days\.py`' \
   'actions/install.md must define last30days health as a complete runnable payload.'
 assert_contains \
   "actions/install.md" \

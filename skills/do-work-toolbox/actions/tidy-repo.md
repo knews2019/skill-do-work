@@ -9,7 +9,7 @@ Map references → design target → present plan → *(user approves)* → `git
 **Use when:**
 - User says "tidy-repo", "tidy the repo", "reorganize the repo", "restructure the layout", "declutter the root", or "the repo is a hot mess"
 - The root is cluttered with docs, reports, scripts, or one-off files that belong in folders
-- Stray or single-file folders should be folded into canonical homes (`docs/`, a reports folder, a scripts folder)
+- Stray or single-file folders should be folded into canonical homes (`<project-root>/docs/`, a reports folder, a scripts folder)
 
 **Do NOT use when:**
 - The problem is junk — temp/backup files, committed build artifacts, should-be-gitignored files → use `actions/stray-check.md` (deletes pollution; this action relocates legitimate files)
@@ -18,9 +18,9 @@ Map references → design target → present plan → *(user approves)* → `git
 
 ## Input
 
-`$ARGUMENTS` — all optional, combinable (e.g., `do-work-toolbox tidy-repo docs/ plan`). The `do-work-toolbox reorg` alias routes here with the same arguments:
+`$ARGUMENTS` — all optional, combinable (e.g., `do-work-toolbox tidy-repo <project-root>/docs/ plan`). The `do-work-toolbox reorg` alias routes here with the same arguments:
 
-1. **Path scope** (e.g., `docs/`, `packages/api/`) — limit the tidy to a subtree. Default: whole repo.
+1. **Path scope** (e.g., `<project-root>/docs/`, `<project-root>/packages/api/`) — limit the tidy to a subtree. Default: whole repo.
 2. **Mode token:**
    - *(default, no token)* — full guarded flow: plan (Steps 1–5), stop for approval, then execute + verify (Steps 6–8).
    - `plan` / `--plan-only` — produce the tidy-repo plan (Steps 1–5) and stop with no intentional project-file writes.
@@ -43,8 +43,8 @@ Map references → design target → present plan → *(user approves)* → `git
    (The second command lists every untracked file individually and already drops correctly-ignored paths — do not substitute plain `git status --porcelain`, which collapses wholly-untracked directories into one row.)
 2. Classify every root file and stray folder into exactly one bucket:
    - **Tool-mandated config** (stays in root): package.json / lockfiles, justfile / Makefile, test configs, `.gitignore`, env example files, README, CLAUDE.md / AGENTS.md, licenses.
-   - **Executables / entry points** → the repo's existing executables folder (`cmd/`, `bin/`, `scripts/`). Respect what the repo already uses — don't invent a second convention.
-   - **Durable documentation** (architecture docs, primes, lessons, specs, runbooks, reusable prompts) → `docs/`, with subfolders per kind (`docs/lessons-learned/`, `docs/specs/`, `docs/handoffs/`).
+   - **Executables / entry points** → the repo's existing executables folder (`<project-root>/cmd/`, `<project-root>/bin/`, `<project-root>/scripts/`). Respect what the repo already uses — don't invent a second convention.
+   - **Durable documentation** (architecture docs, primes, lessons, specs, runbooks, reusable prompts) → `<project-root>/docs/`, with subfolders per kind (`<project-root>/docs/lessons-learned/`, `<project-root>/docs/specs/`, `<project-root>/docs/handoffs/`).
    - **Generated one-off reports** → the repo's report-output folder (e.g. `ai-reports/`). If a skill or tool auto-writes to a folder, that folder is a **fold-target** — merge strays into it, never move it. The `do-work/` tree itself is always a fixed point: never relocate or restructure it here.
    - **Historical records** (task-queue archives, old REQ/UR files, dated reports): relocate the folder **as a whole** if needed, but NEVER edit the contents — they are point-in-time records; stale paths inside them are correct history.
 3. Treat folder size as a signal, not a quota: aim for ≤ ~10 conceptual entries per folder and review folders around ~25. Fold a single-file folder only when that improves ownership or discovery. Do NOT churn big code folders (`lib/`, `src/`, `tests/`) just to hit a number — moving code rewrites imports repo-wide for little presentational gain; flag it in the plan as an optional follow-up instead.
@@ -61,8 +61,8 @@ For EVERY file/folder on the move list, find who references it. Be exhaustive �
    - `__dirname` / `import.meta.url` used to locate SIBLING resources (static roots, asset dirs) — after the move these must resolve to the repo root, e.g. `path.resolve(script_dir, "..")`;
    - cwd-relative fs paths (usually fine if the run recipe stays "run from repo root" — verify);
    - spawns of sibling scripts.
-4. **Doc links**: relative markdown links in moved docs (outbound) and links pointing AT moved docs (inbound). Depth changes differ per destination — a file moving to `docs/` needs one `../` added to root-relative links; a file moving to `docs/specs/` needs two. Links between files that move TOGETHER as siblings need NO change — a blanket "add `../` everywhere" pass breaks them.
-5. **Agent/skill configs** (`.claude/`, `.codex/`, hooks, settings): check for hardcoded paths. Version-locked or vendored skills must NOT be edited — instead verify they discover files by glob (e.g. `**/prime-*.md`) and stay compatible with the target layout; if they can't, drop that move from the plan.
+4. **Doc links**: relative markdown links in moved docs (outbound) and links pointing AT moved docs (inbound). Depth changes differ per destination — a file moving to `<project-root>/docs/` needs one `../` added to root-relative links; a file moving to `<project-root>/docs/specs/` needs two. Links between files that move TOGETHER as siblings need NO change — a blanket "add `../` everywhere" pass breaks them.
+5. **Agent/skill configs** (`<project-root>/.claude/`, `<project-root>/.codex/`, hooks, settings): check for hardcoded paths. Version-locked or vendored skills must NOT be edited — instead verify they discover files by glob (e.g. `**/prime-*.md`) and stay compatible with the target layout; if they can't, drop that move from the plan.
 6. **Generated files**: update the generator, template, or source configuration rather than hand-editing output; regenerate only when the repository's normal workflow requires it.
 7. Classify every hit as **live** (must update), **historical** (leave untouched), or **generated** (update its source). Flag dynamic construction, case-only renames, symlinks, and paths that escape the repo.
 
@@ -119,17 +119,17 @@ Emit the post-execution report (Output Format below). Do **not** commit. Suggest
 
 | # | From | To | Bucket | Live references |
 |---|------|----|--------|-----------------|
-| 1 | `WORKLOG.md` | `docs/worklog.md` | durable doc | 2 (README.md, justfile) |
+| 1 | `<project-root>/WORKLOG.md` | `<project-root>/docs/worklog.md` | durable doc | 2 (`<project-root>/README.md`, `<project-root>/justfile`) |
 
 ## Reference Rewrites
 
-- `README.md`: `WORKLOG.md` → `docs/worklog.md`
-- `justfile`: `cat WORKLOG.md` → `cat docs/worklog.md`
+- `<project-root>/README.md`: `<project-root>/WORKLOG.md` → `<project-root>/docs/worklog.md`
+- `<project-root>/justfile`: `cat <project-root>/WORKLOG.md` → `cat <project-root>/docs/worklog.md`
 
 ## Flagged, Not Moved
 
 - `lib/` (31 files) — over the folder ceiling, but splitting it rewrites imports repo-wide. Optional follow-up REQ.
-- `.claude/skills/<vendored>/` — hardcodes `reports/`; version-locked, so `reports/` stays put.
+- `<project-root>/.claude/skills/<vendored>/` — hardcodes `<project-root>/reports/`; version-locked, so `<project-root>/reports/` stays put.
 
 ## Risks
 

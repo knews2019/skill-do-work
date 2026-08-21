@@ -56,6 +56,20 @@ def read_manifest():
     return modules
 
 
+def present_module_content_directories(modules):
+    directory_names = set()
+    for source_root, _ in modules:
+        module_directory = repo_root / source_root
+        try:
+            directory_names.update(
+                child.name for child in module_directory.iterdir() if child.is_dir()
+            )
+        except OSError as error:
+            fail(f"cannot inspect module content directories under {source_root}: {error}")
+            raise SystemExit(1)
+    return directory_names
+
+
 def mask_text_range(character_list, range_start, range_end):
     for character_index in range(range_start, range_end):
         if character_list[character_index] != "\n":
@@ -211,8 +225,8 @@ def escaped_reference_definition_end(markdown_text, line_start, line_end):
 
 
 def mask_block_code(markdown_text, masked_line_ranges=None):
-    # Phase 1 of strip_markdown_code, shared with backticked_span_texts: mask fenced,
-    # list-fenced, and indented code line-by-line, returning the character list.
+    # Phase 1 of strip_markdown_code: mask fenced, list-fenced, and indented code
+    # line-by-line, returning the character list.
     # Callers that need to reach back inside a masked block — the fence split in
     # fenced_annotation_texts — pass a list for masked_line_ranges and receive the
     # (start, end) offsets of every line this masked, so the fence-tracking state
@@ -325,10 +339,10 @@ def mask_block_code(markdown_text, masked_line_ranges=None):
 
 
 def inline_code_regions(rendered_text):
-    # Phase 2 of strip_markdown_code, shared with backticked_span_texts: walk the
-    # block-masked text yielding HTML comments and inline code spans in document
-    # order, never overlapping. A span region runs from its opening backticks
-    # through its closing backticks; marker_length is that backtick-run length.
+    # Phase 2 of strip_markdown_code: walk the block-masked text yielding HTML
+    # comments and inline code spans in document order, never overlapping. A span
+    # region runs from its opening backticks through its closing backticks;
+    # marker_length is that backtick-run length.
     index = 0
     while index < len(rendered_text):
         if rendered_text.startswith("<!--", index):
@@ -366,32 +380,6 @@ def inline_code_regions(rendered_text):
         masked_end = closing_start + marker_length
         yield "span", index, masked_end, marker_length
         index = masked_end
-
-
-comment_backtick_span = re.compile(r"(?<!`)(`+)([^`]+?)\1(?!`)")
-
-
-def backticked_span_texts(markdown_text):
-    # Inline code spans outside fenced/indented code, as (content_offset, content)
-    # pairs. The offset indexes the raw text — block masking preserves length and
-    # newlines, so line numbers computed from it hold. HTML comments are included
-    # deliberately: a comment in shipped markdown is agent-facing plain text (the
-    # JIT_CONTEXT headers carry real cross-package citations), not rendered
-    # markdown, so its interior is scanned with a plain backtick-pairing match
-    # rather than the CommonMark walk.
-    rendered_text = "".join(mask_block_code(markdown_text))
-    for region_kind, region_start, region_end, marker_length in inline_code_regions(
-        rendered_text
-    ):
-        if region_kind == "comment":
-            for span_match in comment_backtick_span.finditer(
-                rendered_text, region_start, region_end
-            ):
-                yield span_match.start(2), span_match.group(2)
-            continue
-        content_start = region_start + marker_length
-        content_end = region_end - marker_length
-        yield content_start, rendered_text[content_start:content_end]
 
 
 def strip_markdown_code(markdown_text):
@@ -1253,32 +1241,110 @@ def citation_tokens_in(text, region_start, region_end):
         )
 
 
-def citation_messages(
-    span_text, source_directory, installed_directory, package_parent, modules, path_exists
+def path_is_within(candidate_path, root_path):
+    try:
+        candidate_path.relative_to(root_path)
+    except ValueError:
+        return False
+    return True
+
+
+def owning_manifest_module(source_directory, modules):
+    for source_root, destination_root in modules:
+        try:
+            source_directory.relative_to(source_root)
+        except ValueError:
+            continue
+        return source_root, destination_root
+    return None
+
+
+def citation_target_candidates(token):
+    exact_target = token.split("#")[0]
+    yield pathlib.PurePosixPath(exact_target)
+    if exact_target.endswith("."):
+        yield pathlib.PurePosixPath(exact_target[:-1])
+
+
+def cross_package_target_resolves(
+    relative_target, source_directory, installed_directory, modules, path_exists
 ):
-    # A cross-package citation (REQ-249, REQ-269; prime-action-files.md ->
-    # Cross-Referencing) must resolve as a real relative path from the citing file's
-    # own directory, in both topologies. Citation-shaped means exactly one thing: the
-    # first path segment, after any ../ lead, names a package directory. The lead is
-    # optional because a citation is one whether or not it is spelled with ../ — the
-    # spelling was never the rule, and requiring it is what let three bare citations
-    # sit in shipped text through eight consecutive REQs in this area.
-    #
-    # The skips are conditions, not markers. A templated token has no single on-disk
-    # meaning. A token whose first post-lead segment names no package is not a package
-    # citation. And one documented ambiguity survives, narrowed to the single package
-    # it actually affects: the core package's directory name equals the consumer queue
-    # root, so a BARE do-work/... token is the consuming project's own state rather
-    # than a citation, and is skipped. The other three package names have no
-    # consumer-state meaning at all, so a bare token leading with one of them is
-    # unambiguously a citation. A ../-led do-work/ tail naming no real package content
-    # reads as a consumer-state example path (the prime-lesson-link computation
-    # examples) and cannot be told apart from a citation to a deleted core file; those
-    # are skipped too, while every other package's tail stays unambiguous, so citing a
-    # deleted file there still fails.
-    #
-    # A tail or resolved target still carrying ../ segments after the lead strip is
-    # treated as unresolvable, never probed: no path leaves the repository root.
+    source_target = pathlib.PurePosixPath(
+        os.path.normpath((source_directory / relative_target).as_posix())
+    )
+    if ".." in source_target.parts or not path_exists(source_target):
+        source_resolves = False
+    else:
+        source_resolves = True
+
+    installed_target = pathlib.PurePosixPath(
+        os.path.normpath((installed_directory / relative_target).as_posix())
+    )
+    installed_source_target = resolve_installed_target(installed_target, modules)
+    installed_resolves = (
+        installed_source_target is not None and path_exists(installed_source_target)
+    )
+    return source_resolves, installed_resolves
+
+
+def should_check_same_package(markdown_path, source_root):
+    return markdown_path != source_root / "CHANGELOG.md"
+
+
+def same_package_target_resolves(
+    relative_target,
+    has_lead,
+    source_directory,
+    installed_directory,
+    owning_module,
+    path_exists,
+):
+    source_root, destination_root = owning_module
+    source_base = source_directory if has_lead else source_root
+    installed_base = installed_directory if has_lead else destination_root
+    source_target = pathlib.PurePosixPath(
+        os.path.normpath((source_base / relative_target).as_posix())
+    )
+    installed_target = pathlib.PurePosixPath(
+        os.path.normpath((installed_base / relative_target).as_posix())
+    )
+
+    source_contained = path_is_within(source_target, source_root)
+    installed_contained = path_is_within(installed_target, destination_root)
+    source_resolves = source_contained and path_exists(source_target)
+    installed_source_target = None
+    if installed_contained:
+        installed_relative = installed_target.relative_to(destination_root)
+        installed_source_target = source_root / installed_relative
+    installed_resolves = (
+        installed_source_target is not None and path_exists(installed_source_target)
+    )
+    return source_resolves, installed_resolves, source_contained, installed_contained
+
+
+def unresolved_topologies(resolution_pairs):
+    source_resolves = any(pair[0] for pair in resolution_pairs)
+    installed_resolves = any(pair[1] for pair in resolution_pairs)
+    return [
+        topology_name
+        for topology_name, resolves in (
+            ("source", source_resolves),
+            ("installed", installed_resolves),
+        )
+        if not resolves
+    ]
+
+
+def citation_messages(
+    span_text,
+    source_directory,
+    installed_directory,
+    package_parent,
+    modules,
+    same_package_content_directories,
+    path_exists,
+    same_package_check_enabled=True,
+):
     stripped_span = span_text.strip()
     if not stripped_span:
         return []
@@ -1291,55 +1357,87 @@ def citation_messages(
     if not tail_text:
         return []
     tail_path = pathlib.PurePosixPath(tail_text)
-    if tail_path.parts[0] not in {source_root.name for source_root, _ in modules}:
-        return []
-    if tail_path.parts[0] == consumer_queue_directory and (
-        not has_lead
-        or (".." not in tail_path.parts and not path_exists(package_parent / tail_path))
-    ):
-        return []
-    relative_target = pathlib.PurePosixPath(token.split("#")[0])
-    missing_locations = []
-    source_target = pathlib.PurePosixPath(
-        os.path.normpath((source_directory / relative_target).as_posix())
-    )
-    if ".." in source_target.parts or not path_exists(source_target):
-        missing_locations.append("source")
-    installed_target = pathlib.PurePosixPath(
-        os.path.normpath((installed_directory / relative_target).as_posix())
-    )
-    installed_source_target = resolve_installed_target(installed_target, modules)
-    if installed_source_target is None or not path_exists(installed_source_target):
-        missing_locations.append("installed")
-    if missing_locations:
+    package_directory_names = {source_root.name for source_root, _ in modules}
+
+    # Cross-package classification comes first and always terminates this arm. In
+    # particular, the core package's consumer-state ambiguity must not fall through
+    # and become a same-package ../ citation merely because its skip returns no error.
+    if tail_path.parts[0] in package_directory_names:
+        if tail_path.parts[0] == consumer_queue_directory and (
+            not has_lead
+            or (
+                ".." not in tail_path.parts
+                and not path_exists(package_parent / tail_path)
+            )
+        ):
+            return []
+        resolution_pairs = []
+        for relative_target in citation_target_candidates(token):
+            resolution_pair = cross_package_target_resolves(
+                relative_target,
+                source_directory,
+                installed_directory,
+                modules,
+                path_exists,
+            )
+            resolution_pairs.append(resolution_pair)
+            if resolution_pair[0] and resolution_pair[1]:
+                return []
+        missing_locations = unresolved_topologies(resolution_pairs[-1:])
         return [
             "cross-package citation does not resolve in "
             f"{' and '.join(missing_locations)} topology: {token}"
         ]
-    return []
 
+    if not same_package_check_enabled:
+        return []
+    # Same-package grammar comes from immediate content-directory names that are
+    # actually present in the manifest modules. Leadless citations resolve from the
+    # owning package root; ../-led citations resolve from the citing directory.
+    if tail_path.parts[0] not in same_package_content_directories:
+        return []
 
-def run_backticked_span_fixtures():
-    # Fenced and indented spans are template/example content, never citations from
-    # this file. Comment-wrapped spans DO surface — JIT_CONTEXT headers are the
-    # live case — and the prose span surfaces with them.
-    fixture_document = (
-        "Prose cites `../../do-work/actions/work.md` here.\n"
-        "```markdown\n"
-        "A template citing `../do-work/actions/work.md` stays exempt.\n"
-        "```\n"
-        "<!-- JIT_CONTEXT: comments cite `../../do-work/actions/capture.md` too -->\n"
-        "Indented code stays exempt:\n"
-        "\n"
-        "    `../do-work/actions/work.md`\n"
+    owning_module = owning_manifest_module(source_directory, modules)
+    if owning_module is None:
+        return [f"same-package citation has no owning manifest module: {token}"]
+
+    resolution_results = []
+    for relative_target in citation_target_candidates(token):
+        resolution_result = same_package_target_resolves(
+            relative_target,
+            has_lead,
+            source_directory,
+            installed_directory,
+            owning_module,
+            path_exists,
+        )
+        resolution_results.append(resolution_result)
+        if resolution_result[0] and resolution_result[1]:
+            return []
+
+    source_contained = any(result[2] for result in resolution_results)
+    installed_contained = any(result[3] for result in resolution_results)
+    if not source_contained or not installed_contained:
+        escaped_topologies = [
+            topology_name
+            for topology_name, contained in (
+                ("source", source_contained),
+                ("installed", installed_contained),
+            )
+            if not contained
+        ]
+        return [
+            "same-package citation escapes its owning package in "
+            f"{' and '.join(escaped_topologies)} topology: {token}"
+        ]
+
+    missing_locations = unresolved_topologies(
+        [(resolution_results[-1][0], resolution_results[-1][1])]
     )
-    surfaced_spans = [content for _, content in backticked_span_texts(fixture_document)]
-    if surfaced_spans != [
-        "../../do-work/actions/work.md",
-        "../../do-work/actions/capture.md",
-    ]:
-        fail(f"backticked span fixtures surfaced {surfaced_spans!r}")
-        raise SystemExit(1)
+    return [
+        "same-package citation does not resolve in "
+        f"{' and '.join(missing_locations)} topology: {token}"
+    ]
 
 
 def run_citation_surface_fixtures():
@@ -1349,6 +1447,7 @@ def run_citation_surface_fixtures():
         "Prose cites do-work-toolbox/actions/inspect.md bare.\n"
         "<!-- A comment cites do-work-knowledge/actions/bkb.md bare. -->\n"
         "A rooted path <skill-root>/../do-work/scripts/tool.sh is not from here.\n"
+        "A project path <project-root>/actions/missing.md is not from here.\n"
         "An installed path .claude/skills/do-work/SKILL.md is not from here either.\n"
         "```yaml\n"
         "field: value   # annotated with ../do-work-board/actions/board.md\n"
@@ -1369,6 +1468,7 @@ def run_citation_surface_fixtures():
     expected_absent = {
         # rooted at a placeholder, so the reader resolves it from there, not from here
         "../do-work/scripts/tool.sh",
+        "actions/missing.md",
         # the fenced payload itself lands in another file — this is the half of
         # REQ-249's exemption that survives, kept for its reason rather than its fence
         "../do-work/actions/work.md",
@@ -1399,7 +1499,13 @@ def run_citation_fixtures():
     fixture_files = {
         "skills/do-work/actions/work.md",
         "skills/do-work-board/actions/board.md",
+        "skills/do-work-board/actions/exact.md.",
+        "skills/do-work-board/actions/outside.md",
+        "skills/do-work-board/CHANGELOG.md",
+        "skills/do-work-board/docs/guide.md",
+        "skills/actions/outside.md",
     }
+    fixture_content_directories = {"actions", "docs"}
     fixture_cases = [
         ("wrong-depth citation must fail", "../do-work/actions/work.md", True),
         ("literal citation must pass", "../../do-work/actions/work.md", False),
@@ -1452,6 +1558,51 @@ def run_citation_fixtures():
             "../../do-work/../../../elsewhere.md",
             True,
         ),
+        (
+            "leadless same-package citation resolves from the package root",
+            "actions/board.md",
+            False,
+        ),
+        (
+            "missing leadless same-package citation must fail",
+            "actions/gone.md",
+            True,
+        ),
+        (
+            "led same-package citation resolves from the citing directory",
+            "../docs/guide.md",
+            False,
+        ),
+        (
+            "missing led same-package citation must fail",
+            "../docs/gone.md",
+            True,
+        ),
+        (
+            "led same-package citation cannot escape its owning package",
+            "../../actions/gone.md",
+            True,
+        ),
+        (
+            "an explicit project root is never a same-package citation",
+            "<project-root>/docs/missing.md",
+            False,
+        ),
+        (
+            "one sentence period is retried after the exact target is missing",
+            "actions/board.md.",
+            False,
+        ),
+        (
+            "an exact filename ending in a period wins before fallback",
+            "actions/exact.md.",
+            False,
+        ),
+        (
+            "only one terminal period is retried",
+            "actions/board.md..",
+            True,
+        ),
     ]
     for fixture_name, fixture_span, expect_failure in fixture_cases:
         fixture_messages = citation_messages(
@@ -1460,12 +1611,119 @@ def run_citation_fixtures():
             pathlib.PurePosixPath(".claude/skills/do-work-board/actions"),
             pathlib.PurePosixPath("skills"),
             fixture_modules,
+            fixture_content_directories,
             lambda candidate: candidate.as_posix() in fixture_files,
         )
         if bool(fixture_messages) != expect_failure:
             fail(
                 f"citation fixture {fixture_name!r} produced "
                 f"{fixture_messages!r}"
+            )
+            raise SystemExit(1)
+
+    period_probe_paths = []
+
+    def record_period_probe(candidate):
+        period_probe_paths.append(candidate.as_posix())
+        return candidate.as_posix() in fixture_files
+
+    exact_period_messages = citation_messages(
+        "actions/exact.md.",
+        pathlib.PurePosixPath("skills/do-work-board/actions"),
+        pathlib.PurePosixPath(".claude/skills/do-work-board/actions"),
+        pathlib.PurePosixPath("skills"),
+        fixture_modules,
+        fixture_content_directories,
+        record_period_probe,
+    )
+    if exact_period_messages or "skills/do-work-board/actions/exact.md" in period_probe_paths:
+        fail(
+            "citation fixture must accept an exact period-ending filename before "
+            f"probing fallback; probed {period_probe_paths!r}"
+        )
+        raise SystemExit(1)
+
+    package_changelog_messages = citation_messages(
+        "actions/gone.md",
+        pathlib.PurePosixPath("skills/do-work-board"),
+        pathlib.PurePosixPath(".claude/skills/do-work-board"),
+        pathlib.PurePosixPath("skills"),
+        fixture_modules,
+        fixture_content_directories,
+        lambda candidate: candidate.as_posix() in fixture_files,
+        same_package_check_enabled=should_check_same_package(
+            pathlib.PurePosixPath("skills/do-work-board/CHANGELOG.md"),
+            pathlib.PurePosixPath("skills/do-work-board"),
+        ),
+    )
+    nested_changelog_messages = citation_messages(
+        "actions/gone.md",
+        pathlib.PurePosixPath("skills/do-work-board/docs"),
+        pathlib.PurePosixPath(".claude/skills/do-work-board/docs"),
+        pathlib.PurePosixPath("skills"),
+        fixture_modules,
+        fixture_content_directories,
+        lambda candidate: candidate.as_posix() in fixture_files,
+        same_package_check_enabled=should_check_same_package(
+            pathlib.PurePosixPath("skills/do-work-board/docs/CHANGELOG.md"),
+            pathlib.PurePosixPath("skills/do-work-board"),
+        ),
+    )
+    if package_changelog_messages or not nested_changelog_messages:
+        fail(
+            "citation fixtures must exclude only a package-root CHANGELOG.md "
+            "from same-package checking"
+        )
+        raise SystemExit(1)
+
+    installed_resolution_messages = citation_messages(
+        "../docs/guide.md",
+        pathlib.PurePosixPath("skills/do-work-board/actions"),
+        pathlib.PurePosixPath(".claude/skills/do-work-board/wrong/actions"),
+        pathlib.PurePosixPath("skills"),
+        fixture_modules,
+        fixture_content_directories,
+        lambda candidate: candidate.as_posix() in fixture_files,
+    )
+    if not installed_resolution_messages or "installed topology" not in installed_resolution_messages[0]:
+        fail(
+            "citation fixture for installed same-package resolution produced "
+            f"{installed_resolution_messages!r}"
+        )
+        raise SystemExit(1)
+
+    containment_cases = [
+        (
+            "source",
+            pathlib.PurePosixPath("skills/do-work-board/actions"),
+            pathlib.PurePosixPath(
+                ".claude/skills/do-work-board/nested/actions"
+            ),
+        ),
+        (
+            "installed",
+            pathlib.PurePosixPath("skills/do-work-board/nested/actions"),
+            pathlib.PurePosixPath(".claude/skills/do-work-board/actions"),
+        ),
+    ]
+    for escaped_topology, source_directory, installed_directory in containment_cases:
+        containment_messages = citation_messages(
+            "../../actions/outside.md",
+            source_directory,
+            installed_directory,
+            pathlib.PurePosixPath("skills"),
+            fixture_modules,
+            fixture_content_directories,
+            lambda candidate: candidate.as_posix() in fixture_files,
+        )
+        expected_fragment = (
+            "same-package citation escapes its owning package in "
+            f"{escaped_topology} topology"
+        )
+        if not containment_messages or expected_fragment not in containment_messages[0]:
+            fail(
+                f"citation fixture for {escaped_topology} containment produced "
+                f"{containment_messages!r}"
             )
             raise SystemExit(1)
 
@@ -1511,10 +1769,10 @@ def validate_first_party_url(target, tracked_paths):
 run_parser_fixtures()
 run_anchor_slug_fixtures()
 run_anchor_topology_fixtures()
-run_backticked_span_fixtures()
 run_citation_surface_fixtures()
 run_citation_fixtures()
 modules = read_manifest()
+same_package_content_directories = present_module_content_directories(modules)
 tracked_paths = {
     os.fsdecode(path_bytes)
     for path_bytes in git_output("ls-files", "-z").split(b"\0")
@@ -1633,7 +1891,11 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
             installed_file.parent,
             source_root.parent,
             modules,
+            same_package_content_directories,
             lambda candidate: (repo_root / candidate).exists(),
+            same_package_check_enabled=should_check_same_package(
+                markdown_path, source_root
+            ),
         ):
             span_line_number = raw_markdown_text.count("\n", 0, span_offset) + 1
             fail(f"{markdown_path}:{span_line_number}: {citation_message}")

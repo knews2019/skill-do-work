@@ -59,7 +59,7 @@ Rate issues by severity — **high** (blocks task completion or causes errors), 
 
 ## Design Artifacts
 
-Not every ui-design request produces code. Wireframe specs, IA documents, visual design specs, and interaction specs are valid deliverables — place them as project files outside `do-work/` (e.g., `docs/design/REQ-NNN-wireframe.md`) so they appear in the Implementation Summary and satisfy the pipeline's file-change validation. List them in `Files changed`, mark `(new)`/`(modified)`, and commit them.
+Not every ui-design request produces code. Wireframe specs, IA documents, visual design specs, and interaction specs are valid deliverables — place them as project files outside `do-work/` (e.g., `<project-root>/docs/design/REQ-NNN-wireframe.md`) so they appear in the Implementation Summary and satisfy the pipeline's file-change validation. List them in `Files changed`, mark `(new)`/`(modified)`, and commit them.
 
 ## Implementation Patterns
 

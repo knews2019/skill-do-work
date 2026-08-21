@@ -245,7 +245,7 @@ git add do-work/archive/ do-work/user-requests/
 # If Pass 3a found misplaced directories, also stage those paths:
 # git add exp/g3-segment-anything/do-work/  (the deletion side of the move)
 # If the repoint step rewrote doc links, also stage each rewritten doc file:
-# git add docs/prime-foo.md docs/prime-bar.md  (so the repoint lands in the same commit as the moves it repairs)
+# git add <project-root>/docs/prime-foo.md <project-root>/docs/prime-bar.md  (so the repoint lands in the same commit as the moves it repairs)
 # If Pass 4 deleted a tracked consumed run, stage only that exact deletion prefix:
 # git add -u -- do-work/runs/code-review-2026-07-13-143012/
 # Repeat for each swept run. `-u` stages tracked modifications/deletions only,

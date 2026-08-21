@@ -223,7 +223,7 @@ The `last30days` target vendors the engagement-ranked social-research engine (ht
 
 #### Phase 1: Check if already installed
 
-Run the shipped full-guarantee check (complete runtime payload, ignore rule, Python 3.12+). The runtime payload requires, at minimum, non-empty `SKILL.md` and `scripts/last30days.py`; the installer and checker share that predicate so a sentinel-only or half-copied tree cannot masquerade as installed.
+Run the shipped full-guarantee check (complete runtime payload, ignore rule, Python 3.12+). The runtime payload requires, at minimum, non-empty `SKILL.md` and `<project-root>/.claude/skills/last30days/scripts/last30days.py`; the installer and checker share that predicate so a sentinel-only or half-copied tree cannot masquerade as installed.
 
 ```bash
 <skill-root>/scripts/install-last30days.sh check "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
@@ -336,7 +336,7 @@ do-work-toolbox install ideation-adhd  Parallel cognitive-frame ideation skill
 - (bowser) `playwright-cli --help` succeeds but `playwright-cli install` fails silently — browsers aren't actually installed; headless runs will error later.
 - (bowser) You installed `playwright-cli` into a project-local `node_modules` instead of globally — the CLI won't be on PATH for other sessions.
 - (last30days) `git check-ignore -q .claude/skills/last30days/SKILL.md` exits non-zero in a git repo — the exclude entry was skipped or mismatched; fix it before anything gets committed. (Don't eyeball `git status` for this: a wholly-untracked `.claude/` collapses to a single `?? .claude/` row that hides the path either way.)
-- (last30days) `SKILL.md` exists but `scripts/last30days.py` is absent or empty — the runtime payload is incomplete; re-run the transactional install instead of treating the sentinel as healthy.
+- (last30days) `SKILL.md` exists but `<project-root>/.claude/skills/last30days/scripts/last30days.py` is absent or empty — the runtime payload is incomplete; re-run the transactional install instead of treating the sentinel as healthy.
 - (last30days) A project file (e.g. `.claude/last30days.env`) contains anything that looks like a credential — remove it and move the key to the user-global `~/.config/last30days/.env`.
 - (last30days) Verify found no Python 3.12+ interpreter — the engine can't run; treat it as a failed install, not a soft warning.
 
@@ -346,5 +346,5 @@ do-work-toolbox install ideation-adhd  Parallel cognitive-frame ideation skill
 - [ ] Phase 1 detected an existing install and stopped, OR Phase 2+ ran the fetch/install commands.
 - [ ] After the verify phase, `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists and is non-empty (skill-file targets: `ui-design`, `bowser`, `last30days`, `ideation-adhd`).
 - [ ] (bowser only) `playwright-cli --help` runs without error and Chromium is installed.
-- [ ] (last30days only) `scripts/last30days.py` is non-empty, a Python 3.12+ interpreter is on PATH, `git check-ignore` covers `.claude/skills/last30days/`, and no project file gained an API key.
+- [ ] (last30days only) `<project-root>/.claude/skills/last30days/scripts/last30days.py` is non-empty, a Python 3.12+ interpreter is on PATH, `git check-ignore` covers `.claude/skills/last30days/`, and no project file gained an API key.
 - [ ] The report names the destination path so the user can verify location.

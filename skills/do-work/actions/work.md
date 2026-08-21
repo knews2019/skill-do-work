@@ -425,7 +425,7 @@ Append (or replace) in the request file:
 - Mark files as `(new)`, `(modified)`, or `(deleted)`.
 - The "What was done" summary should be factual, not aspirational — describe what you built, not what the REQ asked for.
 - This section is the primary auditability artifact. If `Files changed` only lists `do-work/` paths or is empty, the REQ was not implemented.
-- **Design-artifact exception:** For `domain: ui-design` requests that produce design deliverables rather than code (wireframes, IA specs, visual specs, interaction specs), the artifact files themselves count as project files. Place them in the project's design docs directory (e.g., `docs/design/`) — not inside `do-work/`. The Implementation Summary lists these files normally.
+- **Design-artifact exception:** For `domain: ui-design` requests that produce design deliverables rather than code (wireframes, IA specs, visual specs, interaction specs), the artifact files themselves count as project files. Place them in the project's design docs directory (e.g., `<project-root>/docs/design/`) — not inside `do-work/`. The Implementation Summary lists these files normally.
 
 ### Step 6.3: Qualify Implementation
 
@@ -745,7 +745,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 - Archiving a UR folder before all its REQs are complete
 - Forgetting Planning status note for Routes A/B ("Planning not required")
 - Committing without validating Implementation Summary file list against staged files
-- Implementation Summary that only lists `do-work/` paths (means the REQ wasn't actually implemented — exception: `domain: ui-design` design artifacts placed in project directories like `docs/design/`)
+- Implementation Summary that only lists `do-work/` paths (means the REQ wasn't actually implemented — exception: `domain: ui-design` design artifacts placed in project directories like `<project-root>/docs/design/`)
 - Creating follow-ups for every `- [~]` item instead of only UX-affecting decisions
 
 **This action does NOT:**
