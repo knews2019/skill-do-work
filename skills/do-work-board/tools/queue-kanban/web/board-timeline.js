@@ -394,25 +394,36 @@
     return { forecastNode: forecastNode, excludedNode: excludedNode };
   }
 
-  function renderTimelineForecast(projection, rows) {
+  // filtersActive, not the row list: the rows are filtered and the projection
+  // never is, so what this function needs is the one bit the caller can answer
+  // and it cannot. It took the filtered rows and ignored them, which is how the
+  // view came to say "3 REQs" above a forecast scheduling all 25.
+  //
+  // The label leads the paragraph rather than trailing it, because this sentence
+  // is the one people screenshot and quote, and it has to read correctly with no
+  // filter chips in the frame.
+  function renderTimelineForecast(projection, filtersActive) {
     var forecastNodes = clearTimelineForecast();
     var forecastNode = forecastNodes.forecastNode;
     var excludedNode = forecastNodes.excludedNode;
     if (!forecastNode || !excludedNode) {
       return;
     }
+    var wholeQueueNote = filtersActive
+      ? "Filters are on; this covers the whole queue, not the rows shown. "
+      : "";
 
     if (!projection.confident) {
-      forecastNode.textContent =
+      forecastNode.textContent = wholeQueueNote +
         "No end estimate: " + (projection.declinedReason || "not enough completed work to forecast from") + ".";
       forecastNode.classList.add("is-declined");
     } else {
       forecastNode.classList.remove("is-declined");
       var chainCount = (projection.rows || []).length;
       if (chainCount === 0) {
-        forecastNode.textContent = "Nothing left to schedule — every remaining REQ is listed below.";
+        forecastNode.textContent = wholeQueueNote + "Nothing left to schedule — every remaining REQ is listed below.";
       } else {
-        forecastNode.textContent =
+        forecastNode.textContent = wholeQueueNote +
           "Queue empties around " +
           timelineFormatStamp(Date.parse(projection.queueEnd)) +
           " — " +
@@ -450,7 +461,9 @@
     excludedHeading.textContent =
       excluded.length +
       " REQ" +
-      (excluded.length === 1 ? " is" : "s are") +
+      (excluded.length === 1 ? "" : "s") +
+      (filtersActive ? " from the whole queue" : "") +
+      (excluded.length === 1 ? " is" : " are") +
       " not in that estimate, because " +
       (excluded.length === 1 ? "it cannot" : "they cannot") +
       " be given an honest start time:";
@@ -556,7 +569,10 @@
       timelineFormatStamp(nowMs) +
       (anomalyCount ? ". " + anomalyCount + " with broken stamps, drawn as breaks." : ".");
 
-    renderTimelineForecast(projection, rows);
+    // The rows above are filtered; this projection is the whole queue's and is
+    // never re-derived client-side (see the filter note above). All the forecast
+    // needs is whether the two populations differ.
+    renderTimelineForecast(projection, rows.length < (timeline.rows || []).length);
 
     var axisSvg = makeTimelineSvgNode(axisHost, "svg", {
       class: "timeline-axis-svg",

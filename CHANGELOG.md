@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.233.3 — The Timeline Forecast Says Whose Queue It Is Forecasting (2026-08-21)
+
+Filter the Timeline to one domain and it would tell you it holds three REQs, directly above a forecast scheduling all twenty-five and a list of excluded IDs you could not see. The forecast now says up front that it covers the whole queue.
+
+- The label leads the paragraph, so it survives being screenshotted on its own.
+- With no filter on, the wording is exactly what it was.
+- The forecast itself is unchanged — it is still built once, server-side, and never re-derived per filter.
+
 ## 0.233.2 — A Backwards Wait No Longer Looks Like a Normal One (2026-08-21)
 
 On the Timeline, a REQ whose claim stamp landed before its capture stamp drew a perfectly ordinary waiting bar while the table beside it printed a negative number. The work segment already knew to draw a break marker in that case; the wait now does too.

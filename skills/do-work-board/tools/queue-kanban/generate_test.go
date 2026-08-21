@@ -2737,7 +2737,7 @@ var confidentProjection = {
   rows: [{ id: "REQ-401" }, { id: "REQ-402" }],
   excluded: [{ id: "REQ-404", reason: "waiting on an external condition" }]
 };
-renderTimelineForecast(confidentProjection, []);
+renderTimelineForecast(confidentProjection, false);
 var confidentText = collectText(stubNodes["timeline-forecast"]);
 var confidentExcludedText = collectText(stubNodes["timeline-excluded"]);
 
@@ -2747,8 +2747,27 @@ renderTimelineForecast({
   confident: false,
   declinedReason: "only 2 completed REQs inside the read-time rule; 5 are needed before a median means anything",
   rows: [], excluded: [], windowSamples: 2, minimumSamples: 5
-}, []);
+}, false);
 var declinedText = collectText(stubNodes["timeline-forecast"]);
+
+// The same projection with filters ON. The rows are a subset; the forecast is
+// not, and the copy has to say so.
+stubNodes["timeline-forecast"] = makeStubNode();
+stubNodes["timeline-excluded"] = makeStubNode();
+renderTimelineForecast(confidentProjection, true);
+var filteredText = collectText(stubNodes["timeline-forecast"]);
+var filteredExcludedText = collectText(stubNodes["timeline-excluded"]);
+
+// Declining with filters on carries the same label: the history it declined on
+// is the whole queue's, not the subset's.
+stubNodes["timeline-forecast"] = makeStubNode();
+stubNodes["timeline-excluded"] = makeStubNode();
+renderTimelineForecast({
+  confident: false,
+  declinedReason: "only 2 completed REQs inside the read-time rule; 5 are needed before a median means anything",
+  rows: [], excluded: [], windowSamples: 2, minimumSamples: 5
+}, true);
+var filteredDeclinedText = collectText(stubNodes["timeline-forecast"]);
 
 // The no-rows path clears both nodes without rendering anything: a forecast left
 // standing beside "no REQ matches" describes rows that are not on screen.
@@ -2760,6 +2779,9 @@ process.stdout.write(JSON.stringify({
   confidentText: confidentText,
   confidentExcludedText: confidentExcludedText,
   declinedText: declinedText,
+  filteredText: filteredText,
+  filteredExcludedText: filteredExcludedText,
+  filteredDeclinedText: filteredDeclinedText,
   clearedText: clearedText,
   clearedExcludedText: clearedExcludedText
 }));`
@@ -2769,6 +2791,9 @@ process.stdout.write(JSON.stringify({
 		ConfidentText         string `json:"confidentText"`
 		ConfidentExcludedText string `json:"confidentExcludedText"`
 		DeclinedText          string `json:"declinedText"`
+		FilteredText          string `json:"filteredText"`
+		FilteredExcludedText  string `json:"filteredExcludedText"`
+		FilteredDeclinedText  string `json:"filteredDeclinedText"`
 		ClearedText           string `json:"clearedText"`
 		ClearedExcludedText   string `json:"clearedExcludedText"`
 	}
@@ -2814,6 +2839,37 @@ process.stdout.write(JSON.stringify({
 	if !strings.Contains(forecastResult.DeclinedText, "No end estimate") ||
 		!strings.Contains(forecastResult.DeclinedText, "5 are needed") {
 		t.Fatalf("declining must say so and carry the reason; got %q", forecastResult.DeclinedText)
+	}
+
+	// REQ-305: rows are filtered, the projection never is. With a subset on
+	// screen the forecast schedules the whole queue and the excluded list names
+	// IDs no visible row carries, so the copy has to name its own population.
+	// The label has to read correctly alone, because this paragraph is the one
+	// people screenshot.
+	if !strings.Contains(forecastResult.FilteredText, "whole queue") {
+		t.Errorf("with filters on, the forecast must say it covers the whole queue rather than the rows shown; got %q",
+			forecastResult.FilteredText)
+	}
+	if !strings.Contains(forecastResult.FilteredExcludedText, "whole queue") {
+		t.Errorf("with filters on, the excluded list must say it lists the whole queue's exclusions — it names IDs no visible row carries; got %q",
+			forecastResult.FilteredExcludedText)
+	}
+	if !strings.Contains(forecastResult.FilteredDeclinedText, "whole queue") {
+		t.Errorf("a declined forecast declined on the whole queue's history, and must say so under a filter too; got %q",
+			forecastResult.FilteredDeclinedText)
+	}
+	// The label is added, never substituted: everything the unfiltered sentence
+	// promised is still in the filtered one.
+	if !strings.Contains(forecastResult.FilteredText, "Queue empties around") ||
+		!strings.Contains(forecastResult.FilteredText, "no parallel builders") {
+		t.Errorf("the filtered forecast must still carry the estimate and its assumptions; got %q",
+			forecastResult.FilteredText)
+	}
+	// And the unfiltered copy is untouched — the settled case stays settled.
+	if strings.Contains(forecastResult.ConfidentText, "whole queue") ||
+		strings.Contains(forecastResult.ConfidentExcludedText, "whole queue") {
+		t.Errorf("with no filter active there is nothing to disambiguate, so the label must not appear; got %q / %q",
+			forecastResult.ConfidentText, forecastResult.ConfidentExcludedText)
 	}
 }
 
@@ -4181,7 +4237,12 @@ var document = {
 var window = { addEventListener: function () {}, removeEventListener: function () {} };
 var requestsById = {};
 var generatedAtMs = Date.parse("2026-08-18T12:00:00Z");
-function requestMatchesFilters() { return true; }
+// Overwrite timelineStubVisibleIds to simulate an active filter; null means no
+// filter, which is what the real requestMatchesFilters reports with none set.
+var timelineStubVisibleIds = null;
+function requestMatchesFilters(requestId) {
+  return timelineStubVisibleIds === null || timelineStubVisibleIds.indexOf(requestId) !== -1;
+}
 function setActiveButton() {}
 `
 
@@ -4330,5 +4391,123 @@ func TestJavaScriptBehaviorReversedWaitDrawsAsABreak(t *testing.T) {
 	// width tracked the reversed magnitude would be the same lie in a new shape.
 	if brokenWidth := rowWidths["REQ-901"]["timeline-segment-broken"]; brokenWidth != 6 {
 		t.Errorf("the break marker must be the same fixed 6-unit mark the work branch draws, got %v", brokenWidth)
+	}
+}
+
+// TestJavaScriptBehaviorTimelineForecastLabelsAFilteredView drives the WHOLE
+// renderTimelineView, not renderTimelineForecast alone, because the defect lived
+// in the wiring: rows were filtered, projection never was, and the call site
+// handed the forecast a filtered row list it then ignored. A probe that calls
+// the forecast function directly cannot tell a correct call site from one that
+// always says "unfiltered" — this one can.
+func TestJavaScriptBehaviorTimelineForecastLabelsAFilteredView(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
+	if readError != nil {
+		t.Fatalf("read web/board-timeline.js: %v", readError)
+	}
+
+	timelinePayload := `{
+	  "now": "2026-08-18T12:00:00Z",
+	  "rangeStart": "2026-08-18T09:00:00Z",
+	  "rangeEnd": "2026-08-18T13:00:00Z",
+	  "rows": [
+	    {"id":"REQ-901","createdTime":"2026-08-18T10:00:00Z","claimedTime":"2026-08-18T10:30:00Z",
+	     "completedTime":"2026-08-18T11:00:00Z","waitMinutes":30,"workMinutes":30,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-902","createdTime":"2026-08-18T10:00:00Z","claimedTime":"2026-08-18T10:30:00Z",
+	     "completedTime":"2026-08-18T11:00:00Z","waitMinutes":30,"workMinutes":30,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-903","createdTime":"2026-08-18T11:00:00Z","claimedTime":null,
+	     "completedTime":null,"waitMinutes":60,"workMinutes":0,
+	     "waitOpen":true,"workOpen":false,"hasWork":false,"anomaly":false}
+	  ],
+	  "projection": {
+	    "confident": true,
+	    "chainStart": "2026-08-18T12:00:00Z",
+	    "queueEnd": "2026-08-18T14:30:00Z",
+	    "windowSamples": 60, "windowSize": 60, "minimumSamples": 5,
+	    "normalSamples": 55, "normalMinutes": 40,
+	    "trivialSamples": 5, "trivialMinutes": 10,
+	    "rows": [{"id":"REQ-903","startTime":"2026-08-18T12:00:00Z","endTime":"2026-08-18T12:40:00Z"}],
+	    "excluded": [{"id":"REQ-904","reason":"waiting on an external condition"}],
+	    "queueEndSource": "median"
+	  }
+	}`
+
+	// One render per filter state, each from a fresh stub, so nothing carries over.
+	probeDriver := `
+function renderWithFilter(visibleIds) {
+  [
+    "timeline-summary", "timeline-axis", "timeline-scroll", "timeline-readout",
+    "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state"
+  ].forEach(function (hostId) { timelineStubHosts[hostId] = makeStubNode("div"); });
+  timelineStubVisibleIds = visibleIds;
+  renderTimelineView();
+  return {
+    summary: timelineStubHosts["timeline-summary"].textContent || "",
+    forecast: collectStubText(timelineStubHosts["timeline-forecast"]),
+    excluded: collectStubText(timelineStubHosts["timeline-excluded"])
+  };
+}
+function collectStubText(node) {
+  var text = node.textContent || "";
+  (node.children || []).forEach(function (child) { text += " " + collectStubText(child); });
+  return text;
+}
+process.stdout.write(JSON.stringify({
+  unfiltered: renderWithFilter(null),
+  filtered: renderWithFilter(["REQ-901"])
+}));
+`
+
+	javascriptProbe := timelineRenderDomStubPreamble +
+		"var boardData = { timeline: " + timelinePayload + " };\n" +
+		string(rendererFragment) +
+		probeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline forecast filter label", javascriptProbe)
+
+	type renderedView struct {
+		Summary  string `json:"summary"`
+		Forecast string `json:"forecast"`
+		Excluded string `json:"excluded"`
+	}
+	var rendered struct {
+		Unfiltered renderedView `json:"unfiltered"`
+		Filtered   renderedView `json:"filtered"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &rendered); decodeError != nil {
+		t.Fatalf("decode rendered timeline views: %v (output starts %q)",
+			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+
+	// The fixture has to actually produce the disagreement, or the assertions
+	// below pass against a view that was never filtered.
+	if !strings.Contains(rendered.Unfiltered.Summary, "3 REQs") {
+		t.Fatalf("the unfiltered render must show all three fixture rows, got summary %q", rendered.Unfiltered.Summary)
+	}
+	if !strings.Contains(rendered.Filtered.Summary, "1 REQ ") {
+		t.Fatalf("the filtered render must show one row, got summary %q", rendered.Filtered.Summary)
+	}
+
+	if strings.Contains(rendered.Unfiltered.Forecast, "whole queue") {
+		t.Errorf("an unfiltered view has nothing to disambiguate, so the forecast must carry no label; got %q",
+			rendered.Unfiltered.Forecast)
+	}
+	if !strings.Contains(rendered.Filtered.Forecast, "whole queue") {
+		t.Errorf("a filtered view forecasts the whole queue and must say so — this is the wiring, not the copy; got %q",
+			rendered.Filtered.Forecast)
+	}
+	if !strings.Contains(rendered.Filtered.Excluded, "whole queue") {
+		t.Errorf("the excluded list names REQ-904, which no visible row carries, and must say whose queue it lists; got %q",
+			rendered.Filtered.Excluded)
+	}
+	// Both renders still carry the estimate: the label is added, not substituted.
+	for viewName, view := range map[string]renderedView{
+		"unfiltered": rendered.Unfiltered,
+		"filtered":   rendered.Filtered,
+	} {
+		if !strings.Contains(view.Forecast, "Queue empties around") {
+			t.Errorf("the %s forecast lost its estimate: %q", viewName, view.Forecast)
+		}
 	}
 }
