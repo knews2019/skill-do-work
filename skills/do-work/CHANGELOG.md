@@ -2,14 +2,30 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
-## 0.222.5 — Drop the Selector's Unearned Flags (2026-08-21)
+## 0.223.1 — Drop the Selector's Unearned Flags (2026-08-21)
 
 The cheaper-model selector had two options nothing outside its own tests ever called, and one of them was hiding the warnings that catch a mistyped REQ field. Both are gone, and the test suite now pins the failure direction it was missing.
 
 - `-h|--help` extracted the script's own comment header with a `sed` range keyed on the literal `set -uo` line. Rewriting that line as `set -euo pipefail` made the range run away, so `-h` printed all 428 lines of the script and exited 0. No other shell tool in the suite has a help flag.
 - `--ids-only` returned before the Schema Read Contract warning block, so it printed the selected REQ ids while suppressing every warning. Since a mistyped `impact` or `domain` normalizes to the permissive default rather than the veto, the ids it printed could include the REQ each veto existed to hold back. The report's `run_set:` line already carries the same data.
 - New T11 probe pins that promotion direction: a typo'd `impact-critical` or `security` is selected, so the warning is the only diagnosis. Verified by mutation — deleting a warn leg fails the probe.
-- Also repaired from the previous releases: a doubled line-continuation left an archive-assets fixture empty instead of holding intact prose, `do-work-board` routed one action from two table rows, and core help still listed the board modes without `verify`.
+
+## 0.223.0 — Prose Findings Move to a Plain Backlog File (2026-08-21)
+
+A prose-only finding — a stale count, a wrong cross-reference, a comment describing a superseded mechanism — now lands as one line in `do-work/prose-backlog.md` instead of on a never-closing queue REQ. Draining it is an ordinary REQ with no exceptions anywhere in the pipeline.
+
+- The `standing: true` marker is retired, and with it every special case it needed: the never-closing status, the rule that no default run may select it, `tools/select-simple-reqs.sh`'s veto, the terminal-resolved-set and UR-closure exclusions, `cleanup`'s membership skip, `work.md` Step 8's substep skipping, Step 9's staging substitution, the exit summary's standing-sweep section, and the board's `standing` chip, drawer row, parser field, and archived-UR carve-out.
+- A drain records its commit hash in `commit:` through `tools/checks/record-commit-hash.sh`, like every other REQ. The old path hand-edited a hash onto a body `## Drains` line — the single write in the pipeline that bypassed the guard written after free-form edits at that step truncated six archived REQs to 0 bytes.
+- Prose debt stays visible: the work scan's queue status summary appends `(prose backlog: K open items)`. It no longer appears on the Kanban board, which renders REQs.
+- Fixing a backlog item inside a REQ that already touches that file is still the cheapest path, and now there is nothing to reset afterwards — tick the line `- [x] ... (drained by REQ-NNN)` and move on. Ticking rather than deleting is what lets `verify-requests` tell a resolved prose fold from a lost one; the queue summary counts only unticked lines, so the open count stays exact.
+- Consolidation sweeps (`sweep: true` + `sweep_key:`) are unchanged. They are ordinary REQs that close, and nothing about them needed a carve-out.
+- **If your queue holds a `standing: true` REQ:** move its unticked `## Instances` lines into `do-work/prose-backlog.md` (creating the file from the template in the Fold-First Rule), then complete or abandon the REQ. Nothing reads the marker any more, so a REQ left carrying it becomes an ordinary selectable REQ.
+
+Reconciled against `0.222.4` in the same release, which also fixed three things the merge surfaced:
+
+- `_dev/tests/record-commit-hash-guards.sh:428` ended in `\\` where a line continuation was meant, so the archive-assets fixture was written as a 0-byte file and its probe proved "an empty file under `assets/` is excluded" rather than the intact-prose property its message claims. Mutation-tested after the fix: removing the `*/assets/*` exclusion from `blanked-req-scan.sh` fails the probe.
+- `do-work-board` exposed `verify` as a second Routing row to the same action file. `verify` is a board *mode* — its token list is owned by `actions/board.md`'s Input table — so the row folds into the existing board-mode row and one action file keeps exactly one route. `actions/help.md` now mirrors `board [serve|static|summary|cli|verify]`, and the staged-skills contract's copy of the pass-through sentence gained the `verify` token it was missing.
+- UR-063 closed. Both members are terminal now that REQ-307 is archived, so the UR and its REQs consolidated into `do-work/archive/UR-063/` and the two ADRs citing them were repointed in the same commit.
 
 ## 0.222.4 — Clarify Maintainability Audit Impact-Score Wording (2026-08-21)
 
