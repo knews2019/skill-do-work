@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.232.0 — The Truncation Guard Can No Longer Bless a Truncated File (2026-08-21)
+
+`record-commit-hash.sh` exists to stop an archived REQ being committed after something ate its body. It could be talked out of that by nothing more exotic than git failing to answer one question: the size query's `|| true` made "no blob in HEAD" and "git could not tell me" the same empty string, and the guard skipped for both. Reproduced against a 13,900-byte REQ truncated to 57 bytes — it reported all guards passed and told the operator to commit the remnant.
+
+- The guard asks whether the blob exists before asking how big it is, and refuses when an existing blob won't size. A new file is still a legitimate skip
+- The same treatment for its verify-mode twin, which failed safe but blamed a pre-commit hook that was never involved
+- Every shipped script swept: 15 sites discard an exit status and all 15 are correct, so the general rule is now stated in the shell prime rather than enforced by a check that would flag fifteen right answers to catch none
+- One check where the distinction is provable: a size query may not collapse into a number
+
 ## 0.231.0 — Lock-In Checks Hold the Rule, Not the Wording (2026-08-21)
 
 The checks guarding the impact/effort split all passed, and each caught exactly the sentence it was written against — and almost nothing else. One greps a single verb, one requires bold markup, one scans two directories out of eight, and two properties had no check at all.

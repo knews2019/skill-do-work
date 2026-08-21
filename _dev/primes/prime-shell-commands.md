@@ -27,6 +27,24 @@ When a review finds a bug in prescribed-command logic, **grep the same primitive
 
 The process-tree, complete-directory, current-invocation artifact, and opt-in authority boundaries are recorded together in [`../lessons/validated-runtime-boundaries.md`](../lessons/validated-runtime-boundaries.md). Read it when a shell helper launches descendants, publishes a directory or artifact, or gates a full-host backend.
 
+## Unchecked Exit Status Reads as Content
+
+A command or process substitution whose **exit status is discarded while only its content is judged** lets a tool that never ran read as a tool that found nothing. `foo="$(cmd 2>/dev/null || true)"` followed by `[ -n "$foo" ]` cannot tell *cmd said nothing* from *cmd could not run*, and the guard downstream takes the same branch for both.
+
+**The condition is the rule, not any spelling of it.** It applies to `|| true`, `|| echo 0`, `|| echo ""`, and to a pipeline under `pipefail` whose upstream failure the same fallback absorbs. Ask it of whatever you are about to write: *if this command were missing entirely, would the value it produces be distinguishable from a legitimate one?*
+
+**Discarding the status is CORRECT more often than not**, which is why this is a question to ask rather than a pattern to ban. Measured across every shipped script in this repo: fifteen sites take a collapsing fallback and every one is right — `ps -o pgid=` returning empty means the process is gone, `git rev-parse --show-toplevel` returning empty means this is not a repository, `grep -c` returning non-zero on no-match is its documented interface. In each, the emptiness **is** the information.
+
+The defect is the narrower case: **a value that a later guard makes a safety decision on, where the collapsed value silently satisfies the safe branch.** That is the shape that cost a 13,900-byte archived REQ its body — `git cat-file -s` failed, `|| true` made it empty, `[ -n "$head_blob_bytes" ]` skipped the truncation floor, and the script reported "all content guards passed" and told the operator to commit the 57-byte remnant.
+
+Three ways out, in order of preference:
+
+1. **Ask the question that has a real answer first.** `git cat-file -e` says whether the blob exists; then a size that will not read is a failure rather than an absence. This is the fix that removes the ambiguity instead of handling it.
+2. **Fall back to a value nothing can mistake for a real one.** A display-only byte count may fall back to `'?'`; it may not fall back to `0`, which reads as "the recoverable version is empty too" and talks a reader out of a restore that would have worked.
+3. **Say in place why the content alone is sufficient**, when it genuinely is. Silence is what makes the next reader assume it was never considered — and it is what let the primitive be copied from `record-commit-hash.sh` into two other scripts verbatim.
+
+`_dev/tests/contract-regressions.sh` mechanically pins the one query where the distinction is unambiguous (`git cat-file -s`, whose answer is only ever a size guard). The rest is this section's job, because the discriminator is semantic and a syntactic check on the broad shape would flag fifteen correct lines to catch none.
+
 ## Closed Enumerations Go Stale
 
 When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep a guide in sync), state the trigger _condition_ in the rule's canonical home and mark any caller/value list as illustrative, not exhaustive. Hand-enumerated lists silently go stale the moment the set grows — one review traced four independent defects to this pattern (capture's stale domain enum, prompt-injection's five-caller list, the docs-exemption list, security.md's loader claims). When extending a set, grep for every other enumeration of it and update or generalize each one.
@@ -71,3 +89,4 @@ When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep 
 - [REQ-276: a shell function used by an early-exiting branch must be defined above that branch — "beside the guard it belongs to" is not the same as "before the code that calls it"](../../do-work/archive/REQ-276-give-record-commit-hashs-readers-the-writers-fence-guard.md#lessons-learned)
 - [REQ-258: prove a bulk move preserved content with a line-multiset comparison, not an assertion](../../do-work/archive/REQ-258-split-the-shell-behavior-suite-per-script.md#lessons-learned) — its second half ("expect qualify to FAIL every relocation REQ, because it reads a moved line as an added one") was true when written and was **fixed by REQ-301**; see that entry above.
 - [REQ-274: the contract text stayed true while the stories told about it drifted — every false restatement was in a lesson link or a run artifact, and a narrative surface is what the next reader reaches first](../../do-work/archive/REQ-274-retire-the-hook-exits-nonzero-framing.md#lessons-learned)
+- [REQ-298: whenever a fallback value is in the same DOMAIN as a legitimate result, the failure has been laundered into data — `|| true` on a size query yields `""`, which is also what "no blob" yields, so the guard could not tell a missing file from a broken tool; build the broad check and COUNT before claiming it cannot be built](../../do-work/archive/REQ-298-sweep-unchecked-exit-status-across-the-shipped-scripts.md#lessons-learned)

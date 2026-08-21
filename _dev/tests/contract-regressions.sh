@@ -1674,6 +1674,40 @@ assert_file_missing \
   "actions/prime-req-reservation.md" \
   'the reservation prime doc must stay removed along with the reserve action.'
 
+# REQ-298 — a size query's failure must never arrive as a size.
+#
+# THE CONDITION, stated where shipped shell is governed
+# (`_dev/primes/prime-shell-commands.md` § Unchecked Exit Status): a command
+# substitution whose exit status is discarded while only its content is judged
+# lets a tool that never ran read as a tool that found nothing.
+#
+# WHY THIS CHECK IS NARROW, and it is a finding rather than a compromise. The
+# broad shape — any substitution with a `|| true` / `|| echo 0` fallback — was
+# measured across every shipped script: 15 sites, and every one of them is a
+# CORRECT use. `ps -o pgid=` returning empty means the process is gone; `git
+# rev-parse --show-toplevel` returning empty means this is not a repository;
+# `mktemp` returning empty is guarded and reported on the next line. In each the
+# emptiness IS the information, so a check on that shape would flag fifteen
+# correct lines to catch zero defects and would be muted within a week.
+#
+# What separates the defect from the correct use is semantic — does a guard then
+# make a safety decision on the value, where the collapsed value silently
+# satisfies the safe branch — and that is not greppable. So this pins the one
+# query where the distinction is unambiguous: `git cat-file -s` answers "how big
+# is this blob", the answer is only ever used in a size guard, and a failure
+# collapsed to empty or 0 is exactly the incident (a 13,900-byte archived REQ
+# truncated to 57 bytes passed the truncation floor and was written and staged).
+# A display-only caller may fall back to '?', which no reader can mistake for a
+# size. Anything numeric or empty may not.
+size_query_collapse_hits="$(grep -rnE "git cat-file -s[^|]*\|\|[[:space:]]*(true|echo[[:space:]]+0|echo[[:space:]]+\"\"|echo[[:space:]]+'')" \
+  --include="*.sh" "$repo_root/skills" 2>/dev/null | grep -v '_test' || true)"
+if [ -n "$size_query_collapse_hits" ]; then
+  printf 'FAIL: a `git cat-file -s` discards its exit status into a value indistinguishable from a real size (REQ-298) — check the blob exists first with `git cat-file -e` and refuse when an existing blob will not size, or fall back to a token no reader can mistake for a size:\n%s\n' \
+    "$size_query_collapse_hits" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+
 # Impact/effort separation (REQ-289). `effort_estimate` had two writers with two
 # different meanings: capture judged SIZE, while review MUST-stamped it from an
 # IMPACT gate. The split gave each axis its own field, and every value on both
