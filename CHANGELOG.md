@@ -2,6 +2,23 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.235.2 — Selector Flag Cleanup and Three Prose-Backlog Repairs (2026-08-21)
+
+The cheaper-model selector loses two options nothing outside its own tests called, and the prose-backlog move gets the three repairs it was missing. Reconciled from `0.223.1`–`0.223.3` on a branch that predated the `0.235.0` renumber; those numbers were never released.
+
+**Selector flags.** Two options on `tools/select-simple-reqs.sh` had no caller outside the script's own test suite, and one was hiding the warnings that catch a mistyped REQ field.
+
+- `-h|--help` extracted the script's own comment header with a `sed` range keyed on the literal `set -uo` line. Rewriting that line as `set -euo pipefail` made the range run away, so `-h` printed all 428 lines of the script and exited 0. No other shell tool in the suite has a help flag.
+- `--ids-only` returned before the Schema Read Contract warning block, so it printed the selected REQ ids while suppressing every warning. Since a mistyped `impact` or `domain` normalizes to the permissive default rather than the veto, the ids it printed could include the REQ each veto existed to hold back. The report's `run_set:` line already carries the same data.
+- New T11 probe pins that promotion direction: a typo'd `impact-critical` or `security` is selected, so the warning is the only diagnosis. Verified by mutation — deleting a warn leg fails the probe.
+- `_dev/primes/prime-shell-commands.md` gains the condition-keyed rule both shapes earned: before adding an option to a shipped script, name the caller that is not its own test suite.
+
+**Prose-backlog repairs.** Three things the move to `do-work/prose-backlog.md` left behind.
+
+- The Commit Phase's staging list named the backlog only `when this REQ drained items from it`. A Step 8 review appends to that same file (`actions/review-work.md` Step 10), and an append is neither a drain, a follow-up REQ, nor a sweep edit — so the implementation commit omitted it and the newly recorded finding stayed a dirty-tree edit the next checkout discards. The condition is now "when this REQ touched it", across all four staging lists and the explicit `git add` procedure in `actions/work-reference.md`, which never named the file at all.
+- `actions/review-work.md`'s Restatement Sweep still routed an unmatched prose-only finding to "the standing prose-reconciliation sweep", a mechanism that no longer exists. Its twin at `actions/work.md` Step 6 was updated with the move; this one is the restatement the sweep exists to catch, left stale by the sweep's own release.
+- ADR-021's **Opportunistic folding** bullet said fixing an item inside a REQ that already touches the file costs nothing "and deleting its line" — one bullet after establishing that a drain ticks and never deletes. Deleting destroys the evidence `actions/verify-requests.md` grades a `prose-backlog` fold against, so a resolved fold would read as a lost one. It now ticks.
+
 ## 0.235.1 — Two Board Fixes From an Automated Review (2026-08-21)
 
 Codex reviewed PR #156 and found two real defects in the board tool. Both reproduced, both fixed, both now pinned by a test that fails without the fix.
