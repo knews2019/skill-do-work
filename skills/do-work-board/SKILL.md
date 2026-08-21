@@ -13,8 +13,7 @@ This package owns the compiled queue-kanban application and its launcher. It rea
 | Trigger | Route |
 |---|---|
 | empty, `help` | `./actions/help.md` |
-| `board`, `kanban`, `queue board`, `show the board`, or a board mode | `./actions/board.md` |
-| `verify`, `check invariants`, `probes` | `./actions/board.md` |
+| `board`, `kanban`, `queue board`, `show the board`, `verify`, `check invariants`, `probes`, or a board mode | `./actions/board.md` |
 
 Pass `serve`, `static`, `summary`, `cli`, `verify`, `--port N`, and `--out DIR` through to the board action. An unknown command prints board help and stops.
 

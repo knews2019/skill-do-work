@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.222.5 — Drop the Selector's Unearned Flags (2026-08-21)
+
+The cheaper-model selector had two options nothing outside its own tests ever called, and one of them was hiding the warnings that catch a mistyped REQ field. Both are gone, and the test suite now pins the failure direction it was missing.
+
+- `-h|--help` extracted the script's own comment header with a `sed` range keyed on the literal `set -uo` line. Rewriting that line as `set -euo pipefail` made the range run away, so `-h` printed all 428 lines of the script and exited 0. No other shell tool in the suite has a help flag.
+- `--ids-only` returned before the Schema Read Contract warning block, so it printed the selected REQ ids while suppressing every warning. Since a mistyped `impact` or `domain` normalizes to the permissive default rather than the veto, the ids it printed could include the REQ each veto existed to hold back. The report's `run_set:` line already carries the same data.
+- New T11 probe pins that promotion direction: a typo'd `impact-critical` or `security` is selected, so the warning is the only diagnosis. Verified by mutation — deleting a warn leg fails the probe.
+- Also repaired from the previous releases: a doubled line-continuation left an archive-assets fixture empty instead of holding intact prose, `do-work-board` routed one action from two table rows, and core help still listed the board modes without `verify`.
+
 ## 0.222.4 — Clarify Maintainability Audit Impact-Score Wording (2026-08-21)
 
 The maintainability-audit action and reference now clearly distinguish the numeric `Impact` score used for severity and ranking from the lowercase `impact:` token used for follow-up routing.
