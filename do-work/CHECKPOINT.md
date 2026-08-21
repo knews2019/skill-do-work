@@ -10,6 +10,21 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## Completed This Session
 
 `do-work run` — stopped by the user after one REQ, at the commit boundary, for a fresh-session handoff.

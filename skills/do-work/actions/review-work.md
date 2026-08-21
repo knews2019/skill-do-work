@@ -115,7 +115,7 @@ Evaluate the implementation quality by reading the diff:
 - Any unnecessary refactoring, feature additions, or style changes?
 - Files touched that didn't need touching?
 - **If a `## Scope` section exists in the REQ** (Routes B/C): compare the Implementation Summary file list against the Scope declaration. Files touched that were not declared = scope drift. Declared files not touched = incomplete scope. Flag significant drift as an Important finding.
-- **If a `## Decisions` section exists in the REQ**: verify that significant implementation choices visible in the diff are documented. Undocumented decisions that changed behavior (e.g., choosing a different API shape than the pattern suggests, adding an unexpected dependency) are an Important finding — they break traceability.
+- **Find the `## Decisions` section before judging it.** The builder writes that section, so under worktree dispatch it lives in the hand-back rather than the REQ — locate it per `actions/work-reference.md` → **Reading a Builder-Authored Section (any step)**. Where it exists, verify that significant implementation choices visible in the diff are documented. Undocumented decisions that changed behavior (e.g., choosing a different API shape than the pattern suggests, adding an unexpected dependency) are an Important finding — they break traceability. Where it is in neither place, say which absence you found: an empty hand-back is a real "no decisions recorded" and scores clean; a hand-back that could not be read is an unknown and must be reported as one, never scored as clean traceability.
 
 **Risk Assessment (Critical / Low / None)**
 - Security concerns (injection, auth bypass, data exposure)

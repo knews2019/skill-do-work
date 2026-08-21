@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.233.0 — A Builder's Decisions Reach the End-of-Run Report (2026-08-21)
+
+Under parallel building, the numbered decisions a builder records went into its hand-back and nowhere else — the code review and the end-of-run brief both read the request file alone, found nothing, and reported clean. The rule for finding those sections now lives where every reader can cite it instead of inside one step.
+
+- `## Decisions` is routed to the hand-back the same way `## Discovered Tasks` already was, so a builder is no longer told to write a file it may not touch.
+- The review's traceability check and the Decision Brief now say which absence they found: an empty hand-back is "no decisions recorded", an unreadable one is an unknown and is reported as one.
+- Every `##` section the build step names now states who writes it, and a new check holds that set equal to the sections the hand-back contract carries.
+
 ## 0.232.0 — The Truncation Guard Can No Longer Bless a Truncated File (2026-08-21)
 
 `record-commit-hash.sh` exists to stop an archived REQ being committed after something ate its body. It could be talked out of that by nothing more exotic than git failing to answer one question: the size query's `|| true` made "no blob in HEAD" and "git could not tell me" the same empty string, and the guard skipped for both. Reproduced against a 13,900-byte REQ truncated to 57 bytes — it reported all guards passed and told the operator to commit the remnant.

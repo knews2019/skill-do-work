@@ -2415,6 +2415,146 @@ assert_block_not_contains \
   'the queue, `working/`, `CHECKPOINT.md` — exists in the main tree only' \
   'actions/work-reference.md must not restore State stays home three-item enumeration — a hand-maintained list of what lives under do-work/ goes stale the moment a directory is added (REQ-082).'
 
+# REQ-299 — every `##` section Step 6 names is classified, and the routed ones match the
+# hand-back contents exactly. REQ-270 fixed `## Discovered Tasks` and left `## Decisions`
+# unqualified: Step 6 told a worktree builder to write a file `State stays home` forbids it
+# to touch, and the two readers outside Step 8 (review-work's traceability check, the
+# Decision Brief's HANDLED block) could not inherit a rule scoped to Step 8's substeps. The
+# failure was silent both ways — review reported clean, the brief rendered empty.
+#
+# The check carries no list of sections, deliberately. It classifies whatever Step 6
+# mentions: routed to the hand-back, or explicitly `not yours to write`. A section added to
+# Step 6 later that says neither fails here rather than shipping the same defect again.
+if ! python3 - "$core_root/actions/work.md" "$core_root/actions/work-reference.md" <<'PY'
+import pathlib
+import re
+import sys
+
+work_text = pathlib.Path(sys.argv[1]).read_text()
+reference_text = pathlib.Path(sys.argv[2]).read_text()
+
+builder_instruction_block = re.search(
+    r"^All routes include these instructions to the agent.*?^\*\*Hand-back merge",
+    work_text,
+    flags=re.DOTALL | re.MULTILINE,
+)
+if builder_instruction_block is None:
+    raise SystemExit(
+        "actions/work.md Step 6 no longer has an 'All routes include these instructions to "
+        "the agent' block ending at the hand-back merge — the extraction anchor moved"
+    )
+
+# One bullet per top-level `- ` item; continuation lines belong to the bullet above them.
+bullets = []
+for line in builder_instruction_block.group(0).splitlines():
+    if line.startswith("- "):
+        bullets.append(line)
+    elif bullets:
+        bullets[-1] += " " + line.strip()
+
+section_token = re.compile(r"`(## [A-Z][A-Za-z -]*)`")
+routing_clause = re.compile(r"that section goes in your hand-back", re.IGNORECASE)
+disclaimer_clause = re.compile(r"not yours to write", re.IGNORECASE)
+
+# Classification is per section, not per mention: several bullets may name the same
+# section, and one clear statement of who writes it is enough for a reader. What must
+# never happen is a section Step 6 names that no bullet classifies at all.
+routed_sections = set()
+disclaimed_sections = set()
+mentioned_sections = set()
+for bullet in bullets:
+    mentioned = set(section_token.findall(bullet))
+    mentioned_sections |= mentioned
+    if routing_clause.search(bullet):
+        routed_sections |= mentioned
+    if disclaimer_clause.search(bullet):
+        disclaimed_sections |= mentioned
+
+unclassified = mentioned_sections - routed_sections - disclaimed_sections
+if unclassified:
+    raise SystemExit(
+        f"actions/work.md Step 6 names {', '.join(sorted(unclassified))} without saying "
+        "whether the builder authors it: every `##` section the block names must either be "
+        "routed to the hand-back for worktree dispatch mode or be marked 'not yours to "
+        "write', or a builder is told to write a file it may not touch"
+    )
+
+if not routed_sections:
+    raise SystemExit(
+        "actions/work.md Step 6 routes no `##` section to the builder's hand-back — the "
+        "check would pass vacuously, so the routing clause itself must have changed"
+    )
+
+handback_row = next(
+    (line for line in reference_text.splitlines() if line.startswith("| per-builder output |")),
+    None,
+)
+if handback_row is None:
+    raise SystemExit(
+        "actions/work-reference.md Fan-Out Dispatch has no per-builder output row — the "
+        "hand-back contents contract moved"
+    )
+named_sections = set(section_token.findall(handback_row))
+
+if routed_sections != named_sections:
+    raise SystemExit(
+        "the sections Step 6 tells the builder to author and the sections the hand-back "
+        "contract names disagree — routed by Step 6 but not carried by the hand-back: "
+        f"{sorted(routed_sections - named_sections)}; named by the hand-back but not routed "
+        f"by Step 6: {sorted(named_sections - routed_sections)}"
+    )
+PY
+then
+  printf 'FAIL: actions/work.md Step 6 and actions/work-reference.md disagree about which `##` sections a worktree builder hands back (REQ-299) — a section Step 6 tells the builder to author that the hand-back never carries is lost silently.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# REQ-299 — the rule's home. REQ-270 stated it in actions/work.md Step 8's preamble, opening
+# "Some substeps below", so review-work's traceability check and the Decision Brief — both
+# outside Step 8 — could not inherit it. The rule now lives in the reference every reader
+# already loads, keyed on the condition, with its reader list explicitly illustrative.
+builder_section_rule_block="$(sed -n '/^## Reading a Builder-Authored Section (any step)/,/^## Composed Exit Summary/p' "$core_root/actions/work-reference.md")"
+
+if [ -z "$builder_section_rule_block" ]; then
+  printf 'FAIL: actions/work-reference.md has no `## Reading a Builder-Authored Section (any step)` section (REQ-299) — the rule must live outside actions/work.md Step 8, where readers at other steps can inherit it.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+assert_block_contains \
+  "$builder_section_rule_block" \
+  'The condition carries the rule, not any list of readers' \
+  'actions/work-reference.md Reading a Builder-Authored Section must key on the condition and mark its reader list illustrative (REQ-299) — a closed list of readers is how the rule missed review-work and the Decision Brief the first time.'
+
+assert_block_contains \
+  "$builder_section_rule_block" \
+  'relative to the project root' \
+  'actions/work-reference.md Reading a Builder-Authored Section must say which root the hand-back path resolves against (REQ-299) — a reader resolving do-work/runs/ against the vendored .claude/skills/ directory of a consumer install finds nothing.'
+
+assert_block_contains \
+  "$builder_section_rule_block" \
+  'Absence is only silence when you know you looked' \
+  'actions/work-reference.md Reading a Builder-Authored Section must carry the absence-vs-silence rule (REQ-299) — without it a reader cannot distinguish an unread hand-back from an empty one.'
+
+assert_contains \
+  'actions/work.md' \
+  'Reading a Builder-Authored Section \(any step\)' \
+  'actions/work.md Step 8 must point at actions/work-reference.md → Reading a Builder-Authored Section rather than restating the rule (REQ-299) — a Step-8-local copy is what kept readers outside Step 8 from inheriting it.'
+
+# Both readers outside Step 8 must inherit the rule and must say which absence they found.
+assert_contains \
+  'actions/review-work.md' \
+  'Reading a Builder-Authored Section \(any step\)' \
+  "actions/review-work.md Step 4's traceability check must read the REQ's ## Decisions per the shared rule (REQ-299) — under fan-out the section is in the hand-back, and reading the REQ file alone scores a missing section as clean."
+
+# The unreadable case is the half whose loss collapses the two facts: an empty hand-back
+# already reads as "nothing recorded" everywhere, so only the unread one needs naming.
+for builder_section_reader_path in actions/review-work.md actions/work-reference.md; do
+  if ! grep -q 'could not be read\|hand-back unread' "$(resolve_runtime_file "$builder_section_reader_path")"; then
+    printf 'FAIL: %s must distinguish "no section anywhere" from "the builder recorded nothing" (REQ-299) — an unread hand-back and an empty one are different facts and must never render the same.\n' "$builder_section_reader_path" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+
 # The claim-time write (REQ-077) is the other half of REQ-071's gate. REQ-071 made recovery consume
 # the checkpoint's In Progress record, but Step 10 (session end) was its only write site — so a hard
 # crash left no record at all, every crashed REQ classified as a foreign claim, and the own-crash

@@ -396,7 +396,7 @@ What fan-out adds:
 | --- | --- |
 | run directory | `do-work/runs/work-<YYYY-MM-DD-HHMMSS>/`, created before any spawn |
 | per-builder input | `REQ-NNN-brief.md` — REQ body, worktree path, branch name, never-touch list, hand-back format |
-| per-builder output | `REQ-NNN-handback.md` — branch, file manifest, integration seams, and **every `##` section the builder would have written into the REQ file** (`## Discovered Tasks` today), under its own heading, because Step 8 reads them from here when the REQ lacks them (`actions/work.md` Step 8 → *Where a builder-authored section is read from*). The one main-tree path a builder may write (*Sole integrator*, above) |
+| per-builder output | `REQ-NNN-handback.md` — branch, file manifest, integration seams, and **every `##` section the builder would have written into the REQ file** — today `## Discovered Tasks` and `## Decisions`, each under its own heading — because every reader of a builder-authored section reads them from here when the REQ lacks them (**Reading a Builder-Authored Section (any step)**, below). This row and `actions/work.md` Step 6's routed sections are one set: a section Step 6 tells the builder to author and this row does not carry is lost silently. The one main-tree path a builder may write (*Sole integrator*, above) |
 | `manifest.md` | REQ id → builder, `<operative_name>`, handback file, landed status — **the orchestrator's**, never written by a builder |
 | bounded waves | builders per wave, sized to the harness concurrency limit |
 
@@ -405,6 +405,33 @@ Carry that file's own ceiling note verbatim in spirit: the pattern makes fan-out
 **The brief must reach the builder as prompt content or an absolute main-tree path — and so must the hand-back path it writes back to.** A repo-relative path resolves inside the worktree, against its own stale tracked copy of `do-work/` (*State stays home*, above) — so the builder silently reads a snapshot, or nothing, instead of its brief. The same resolution applies in the return direction, where it is worse: the write succeeds, lands in the builder's branch, and the orchestrator reads nothing.
 
 **Dispatch mechanism is deliberately unspecified.** The owner synthesizes from files on disk, never from conversation, so a spawned subagent and a human-opened session are indistinguishable to it. Do not document two routes.
+
+## Reading a Builder-Authored Section (any step)
+
+**Whenever you read a `##` section the builder authors, read the REQ file first and this
+REQ's hand-back second, and treat what you find in either as the section.** In worktree
+dispatch mode the builder cannot write the REQ file at all — the REQ lives in the main tree,
+which **Worktree Dispatch Mode (Step 1)** → *State stays home* forbids it to touch — so it
+routes those sections to its hand-back instead. Read
+`do-work/runs/work-<YYYY-MM-DD-HHMMSS>/REQ-NNN-handback.md` for a local builder, the merged
+branch content for a remote one. **That path is relative to the project root**, where
+`do-work/` lives whether the suite is vendored under `.claude/skills/` or checked out
+whole — never relative to the directory this action file sits in.
+
+**The condition carries the rule, not any list of readers.** `actions/work.md` Step 8's
+discovered-tasks substep, `actions/review-work.md` Step 4's traceability check, and the
+**Decision Brief (hand-back format)**'s HANDLED block are the readers that exist today;
+they are illustrative. A step, action, or report added later that reads a builder-authored
+section inherits this without being remembered here.
+
+**Absence is only silence when you know you looked.** In worktree dispatch mode, if the
+section is in neither place **and this REQ's hand-back is missing or unreadable**, say so
+rather than proceeding as though the builder recorded nothing: `⚠ REQ-NNN: no <section> in
+the REQ and no readable hand-back at <path> — anything the builder recorded there is lost.`
+A hand-back that exists and simply has no such section is a real "the builder recorded
+nothing" and reports nothing. Every reader states which of the two it found — an unread
+hand-back and an empty one are different facts and must never render the same. Serial mode
+reads the REQ file alone and this paragraph does not apply.
 
 ## Composed Exit Summary (Step 1)
 
@@ -1011,5 +1038,5 @@ HANDLED  (FYI — spot-check, don't ratify)
 
 - **WHAT'S BEING BUILT** renders each REQ's `## Orientation` block (work.md Step 7.5) at feature/subsystem altitude — not a file list. Anchor to the touched `prime_files`; flag `[MAP CHANGED]` only when the change alters the system's shape.
 - **DECISIONS FOR YOU** renders the **ESCALATE**-tier decisions — the `- [~]` / `D-NN` entries that became `pending-answers` follow-ups — each with the Value/Risk carried from the decision record. Source Value/Risk from the touched prime's `## Stakes` when present, else builder-derive.
-- **HANDLED** lists the **DECIDE & STATE** decisions (reversible `D-NN` entries) so the user can spot-check without being asked to ratify. Omit if empty.
+- **HANDLED** lists the **DECIDE & STATE** decisions (reversible `D-NN` entries) so the user can spot-check without being asked to ratify. Read each REQ's `## Decisions` per **Reading a Builder-Authored Section (any step)**, above — under fan-out the builder wrote it into its hand-back, and a brief that reads the REQ file alone renders every builder's decisions as an empty list. Omit the block when the sections were read and held no DECIDE & STATE entry; when a REQ's section was in neither place and its hand-back could not be read, render the block with `• REQ-NNN: decisions not recovered — hand-back unread` instead of omitting it, because nothing recorded and nothing readable are different facts.
 - **Scale context to reach.** A leaf REQ collapses to a single WHAT'S BEING BUILT line with no DECISIONS and a short HANDLED list; a map-changing REQ earns a short paragraph and a why-it-matters. Review scores never lead — they live under the decision (review-work Step 9) or in the per-REQ progress lines above.
