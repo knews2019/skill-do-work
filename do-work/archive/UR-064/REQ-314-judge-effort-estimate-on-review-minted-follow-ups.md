@@ -6,6 +6,7 @@ created_at: 2026-08-21T08:56:44Z
 status_changed_at: 2026-08-21T18:51:21Z
 claimed_at: 2026-08-21T18:20:11Z
 completed_at: 2026-08-21T18:51:21Z
+commit: 328767f
 kb_status: pending
 route: B
 user_request: UR-064
