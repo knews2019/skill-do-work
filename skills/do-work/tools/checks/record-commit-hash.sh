@@ -186,11 +186,33 @@ if [ "$verify_mode" -eq 1 ]; then
     echo "FAIL: $request_file is not tracked by git — the metadata commit did not land, so there is nothing to verify."
     exit 1
   fi
-  committed_bytes="$(git cat-file -s "HEAD:$committed_full_name" 2>/dev/null || echo 0)"
+  # Same condition as the truncation floor above (REQ-298): ask whether the blob
+  # exists before asking its size, so "git could not answer" cannot arrive as a
+  # plausible-looking 0. This one fails SAFE either way — a 0 mismatches the
+  # worktree size and stops the run — but it stops with "the committed content is
+  # not what was verified", which sends the reader hunting a pre-commit hook that
+  # was never involved. Refusing with the real reason is the difference.
+  if ! git cat-file -e "HEAD:$committed_full_name" 2>/dev/null; then
+    echo "FAIL: $request_file is tracked but has no blob in HEAD — the metadata commit did not land."
+    exit 1
+  fi
+  if ! committed_bytes="$(git cat-file -s "HEAD:$committed_full_name" 2>/dev/null)"; then
+    echo "FAIL: $request_file exists in HEAD but its size could not be read — git could not answer, so this verification cannot run."
+    echo "  Nothing is claimed either way. A size this script cannot read is not a size it may treat as zero."
+    exit 1
+  fi
   worktree_bytes="$(wc -c < "$request_file" | tr -d '[:space:]')"
   # `grep -c` reads to EOF, so it cannot SIGPIPE the upstream `git show` the way `grep -q`
   # would under pipefail; `|| true` absorbs grep's no-match exit status. Matching the whole
   # line (-x) is what keeps a `commit:` inside body prose from counting.
+  #
+  # JUDGED under REQ-298's condition: `|| true` here also absorbs a FAILING `git
+  # show`, which under pipefail would otherwise fail the pipeline. That is
+  # deliberate and sufficient on its own, because the blob is known to exist and
+  # be readable — the two guards immediately above establish exactly that before
+  # this line runs. If `git show` still could not produce it, the count is 0, the
+  # comparison below mismatches, and the run stops. Refusing to confirm is this
+  # mode'"'"'s correct answer, so the content alone is enough here.
   committed_hash_lines="$(git show "HEAD:$committed_full_name" 2>/dev/null | grep -c -x "commit: $commit_hash" || true)"
   if [ "$committed_bytes" -ne "$worktree_bytes" ] || [ "$committed_hash_lines" -ne 1 ]; then
     echo "FAIL: the committed content of $request_file is not what was verified."
@@ -463,7 +485,27 @@ fi
 pending_insertions=0
 pending_deletions=0
 if [ "$path_tracked" -eq 1 ] && [ "$head_exists" -eq 1 ]; then
-  head_blob_bytes="$(git cat-file -s "HEAD:$tracked_full_name" 2>/dev/null || true)"
+  # Ask whether the blob EXISTS before asking how big it is, because the two
+  # answers need opposite handling and `|| true` collapsed them into one empty
+  # string (REQ-298). No blob in HEAD is a legitimate skip: the file is new. A
+  # blob that exists but whose size will not read is git failing to answer, and
+  # the only safe reading of that is to stop — this is the incident guard, so a
+  # silent skip here is the guard failing OPEN.
+  #
+  # Reproduced before the fix: against a 13,900-byte archived REQ truncated to 57
+  # bytes, with everything real except a failing `git cat-file -s`, the script
+  # printed "all content guards passed", wrote the hash into the remnant, and
+  # told the operator to commit it. That is the exact failure this script exists
+  # to prevent.
+  if git cat-file -e "HEAD:$tracked_full_name" 2>/dev/null; then
+    if ! head_blob_bytes="$(git cat-file -s "HEAD:$tracked_full_name" 2>/dev/null)"; then
+      echo "FAIL: $request_file exists in HEAD but its size could not be read — git could not answer, so the truncation floor cannot run."
+      echo "  Nothing was written. Refusing rather than skipping the guard: a size this script cannot read is not a size it may ignore."
+      exit 1
+    fi
+  else
+    head_blob_bytes=""
+  fi
   # THE incident guard, expressed as a size floor: a metadata commit changes one line, so an
   # archived REQ can never approach half its committed size. This catches 26 KB -> 0 bytes
   # and every partial truncation, whatever caused it.
@@ -601,7 +643,16 @@ if [ "$existing_commit_value" != "$commit_hash" ]; then
   post_edit_bytes="$(wc -c < "$temp_file" | tr -d '[:space:]')"
   post_edit_lines="$(wc -l < "$temp_file" | tr -d '[:space:]')"
   # `grep -c` reads to EOF, so it cannot SIGPIPE the upstream diff the way `grep -q` would
-  # under pipefail; `|| true` absorbs grep's no-match exit status.
+  # under pipefail.
+  #
+  # JUDGED under REQ-298'"'"'s condition, and the original comment named the wrong
+  # command: `|| true` is absorbing `diff`'"'"'s exit status, not only grep'"'"'s. `diff`
+  # exits 1 whenever the files differ — which is the NORMAL case here, since this
+  # line exists to count how they differ — so under pipefail the `|| true` is
+  # load-bearing for the success path and cannot be removed. The content alone is
+  # sufficient: both files are this script'"'"'s own, both were just written and
+  # sized, and a diff that produced nothing yields 0, which the allowance
+  # comparison below rejects.
   changed_line_count="$(diff "$request_file" "$temp_file" | grep -c '^[<>]' || true)"
 
   if [ ! -s "$temp_file" ] \

@@ -68,6 +68,7 @@
   populateTestingProfileSelect();
   renderWarningsBanner();
   renderAnomaliesStrip();
+  renderVerifyFindingsStrip();
   renderNotesStrip();
   renderColumns();
   applyView();

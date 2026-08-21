@@ -546,6 +546,76 @@ body.is-resizing-detail {
   line-height: 1.4;
 }
 
+/* Verify findings reuse every .board-anomalies-* rule above rather than carrying a
+   parallel palette. These are the only differences, and each is deliberate:
+   the strip is visually subordinate to completion anomalies (broken bookkeeping
+   outranks process drift), and a finding is a text card rather than a REQ card,
+   because most categories name no single REQ. */
+.board-findings {
+  border-color: var(--border-soft, var(--surface-3));
+  background-color: var(--surface-2);
+}
+.board-findings .board-anomalies-title {
+  color: var(--ink-soft);
+}
+.board-finding {
+  padding: 10px 12px;
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius-card);
+  background-color: var(--surface-1);
+}
+.board-finding-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0 0 6px;
+}
+.board-finding-category {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background-color: var(--surface-3);
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.board-finding-fixable {
+  /* Never break "cleanup can fix" across lines — half a phrase under a category
+     badge reads as a truncated sentence rather than a label. */
+  white-space: nowrap;
+  color: var(--accent-done, var(--ink-soft));
+  font-size: 0.72rem;
+}
+.board-finding-detail {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.board-finding-remedy {
+  margin: 6px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.board-findings-skipped {
+  margin-top: 12px;
+  font-size: 0.78rem;
+}
+.board-findings-skipped-summary {
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.board-findings-skipped-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
 .view-panel {
   display: none;
 }

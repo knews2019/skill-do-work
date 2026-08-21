@@ -27,7 +27,7 @@ Discovered during REQ-048. `actions/forensics.md` Check 4 (Orphaned URs, ~lines 
 - [x] Fix forensics Check 4 to key on the `user_request:` scan (across `queue/`, `working/`, `archive/` root, `archive/UR-NNN/`, gating on `actions/work-reference.md`'s terminal-resolved set) instead of the `requests:` array? → Confirmed: yes — apply the same one-reader fix REQ-048 applied to cleanup Pass 1, removing the live false-positive warning against UR-007.
 
 ## Full Context
-Discovered task from REQ-048. See `do-work/archive/REQ-048-ur-closure-keying-consistency.md` → `## Discovered Tasks`.
+Discovered task from REQ-048. See `do-work/archive/UR-008/REQ-048-ur-closure-keying-consistency.md` → `## Discovered Tasks`.
 
 ## Triage
 

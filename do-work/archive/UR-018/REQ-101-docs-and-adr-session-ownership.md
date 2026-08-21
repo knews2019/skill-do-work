@@ -126,7 +126,7 @@ actions/work-reference.md:3
 actions/work.md:7
 ```
 
-The guide's conflict-shape claims (content conflict never a rename conflict; `CHECKPOINT.md` conflicts on every concurrent claim including disjoint ones; byte-identical claims leave the label as the only detector) are the observed results recorded in `do-work/archive/REQ-095-two-clone-acceptance-run.md`, not predictions — which is why the section can state them flatly.
+The guide's conflict-shape claims (content conflict never a rename conflict; `CHECKPOINT.md` conflicts on every concurrent claim including disjoint ones; byte-identical claims leave the label as the only detector) are the observed results recorded in `do-work/archive/UR-018/REQ-095-two-clone-acceptance-run.md`, not predictions — which is why the section can state them flatly.
 
 ### No maintainer-doc citation in a shipped file
 
@@ -149,8 +149,8 @@ OK  ../../tools/queue-kanban/verify.go
 OK  ../../do-work/archive/UR-012/REQ-069-exclusive-session-model-removes-concurrency-machinery.md
 OK  ../../do-work/user-requests/UR-018/input.md
 OK  ../../do-work/user-requests/UR-018/assets/approved-plan.md
-OK  ../../do-work/archive/REQ-095-two-clone-acceptance-run.md
-OK  ../../do-work/archive/REQ-100-live-wave-acceptance-run.md
+OK  ../../do-work/archive/UR-018/REQ-095-two-clone-acceptance-run.md
+OK  ../../do-work/archive/UR-018/REQ-100-live-wave-acceptance-run.md
 OK  ../topics/_index_workflow-orchestration.md
 ```
 

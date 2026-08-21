@@ -42,6 +42,11 @@ type liveBoardServer struct {
 	cachedFileMtimes    map[string]time.Time        // absPath → last-seen mtime
 	cachedBoardData     *generatedBoardData         // nil until the first request
 	cachedBoardMarkdown *generatedBoardMarkdownData // rebuilt with cachedBoardData, served lazily
+	// The parsed board behind cachedBoardData. Held so the per-request verify
+	// probes can run against it without a second build — the build is the
+	// expensive half and is correctly mtime-keyed, the probes are the cheap half
+	// and must NOT be (REQ-284).
+	cachedBoard *Board
 }
 
 // newLiveBoardServer creates a liveBoardServer for the given repoRoot and
@@ -144,6 +149,17 @@ func (liveServer *liveBoardServer) serveLiveBoardDataJs(responseWriter http.Resp
 	liveBoardData := *boardData
 	liveBoardData.LiveTestingApi = true
 	liveBoardData.LiveFileApi = true
+
+	// Findings are computed fresh on EVERY request, deliberately outside
+	// refreshBoardData's mtime cache and with no cache of their own. Two of the
+	// probe inputs are not files at all — wall-clock claim age, and `git worktree
+	// list` — so an mtime-keyed cache cannot see them change. A claim crossing the
+	// staleness threshold while no file changes is exactly the case the board was
+	// blind to, and caching these would restore it. Measured at ~40ms for the whole
+	// probe set on a 280-ticket tree, on a page that only reloads manually.
+	if currentBoard := liveServer.currentBoard(); currentBoard != nil {
+		attachVerifyFindings(&liveBoardData, currentBoard, time.Now())
+	}
 
 	jsText, encodeErr := encodeBoardDataForJsAssignment(liveBoardData)
 	if encodeErr != nil {
@@ -300,6 +316,15 @@ func isLoopbackRemoteAddr(remoteAddr string) bool {
 	return parsedRemoteIp != nil && parsedRemoteIp.IsLoopback()
 }
 
+// currentBoard returns the parsed board behind the cached payload, under the same
+// lock that guards it. The verify probes run outside the mtime cache but still read
+// this board, so the read has to be as guarded as the write.
+func (liveServer *liveBoardServer) currentBoard() *Board {
+	liveServer.cacheMu.Lock()
+	defer liveServer.cacheMu.Unlock()
+	return liveServer.cachedBoard
+}
+
 // refreshBoardData checks whether any file in the do-work tree has changed
 // since the last build (by comparing mtime fingerprints). Returns the cached
 // board data unchanged if the tree is clean; otherwise rebuilds via the shared
@@ -341,6 +366,7 @@ func (liveServer *liveBoardServer) refreshBoardData() (*generatedBoardData, erro
 
 	liveServer.cachedFileMtimes = currentFileMtimes
 	liveServer.cachedBoardData = &boardData
+	liveServer.cachedBoard = board
 	boardMarkdownData := buildGeneratedBoardMarkdownData(board)
 	liveServer.cachedBoardMarkdown = &boardMarkdownData
 	return liveServer.cachedBoardData, nil

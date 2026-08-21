@@ -210,7 +210,8 @@ type RequestTicket struct {
 	// effort_estimate — the triage bit separating small mechanical fixes from
 	// real work (effort-mechanical | effort-substantive). A judgment about SIZE,
 	// made by whoever writes the REQ and never derived from the impact verdict;
-	// capture MAY set it. Absent or unrecognized reads as the contract default
+	// capture judges it on every REQ it mints, by the same three-way standard it
+	// judges impact. Absent or unrecognized reads as the contract default
 	// effort-substantive, and the read-only `trivial`/`normal` aliases carry
 	// every REQ written before the rename. DISPLAY ONLY at any builder count —
 	// a card chip (rendered only when effort-mechanical) and a drawer row; the
