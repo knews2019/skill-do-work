@@ -1685,30 +1685,82 @@ assert_file_missing \
 # from an IMPACT verdict, which is what let work.md's mechanical-effort
 # short-circuit forecast a three-hour fix at five minutes.
 #
-# The pin is the derivation VERB applied to this field, not mere co-occurrence:
-# `stamp` is what the defect always said ("stamp it from the review gate's
-# recorded disposition"), and after the split only `impact:` is ever stamped from
-# a verdict — `effort_estimate` is judged as size by whoever writes it. The
-# proximity window keeps an unrelated `stamp calculated_at` in the same sentence
-# from false-positiving. `gate` is the retired routing field and is dead beside
-# `effort_estimate` in any spelling.
-if ! python3 - "$core_root/actions" "$toolbox_root/actions" <<'PY'
+# The pin is the derivation RELATION applied to this field, not one verb and not
+# mere co-occurrence. After the split only `impact:` is ever derived from a
+# verdict — `effort_estimate` is judged as size by whoever writes it.
+#
+# REQ-293 widened this on both axes, because the original pinned a spelling:
+#   * the VERB SET was the single literal `stamp*`, so "derive", "set from",
+#     "comes from" and "map to" all walked past. Measured at the time: 1 of 6
+#     realistic re-drifts caught. Worse, the mutation test that "confirmed" it
+#     used the word "stamping" — the one verb it greps — so the test was
+#     self-confirming.
+#   * the PROXIMITY WINDOW was `[^.]{0,80}`, which treats any period as a
+#     sentence end. A file path between the verb and the field breaks the window,
+#     and a cited path is this repo's dominant style — so the very sentences most
+#     likely to carry the defect were the ones it could not see.
+# The window is now "same line, either order", which is what the enclosing loop
+# already iterates by, and the verb set is a class.
+#
+# `gate` is the retired routing field and is dead beside `effort_estimate` in any
+# spelling.
+if ! python3 - "$core_root/actions" "$toolbox_root/actions" "$core_root/docs" "$core_root/crew-members" \
+  "$toolbox_root/actions" "$knowledge_root/actions" "$board_root/actions" \
+  "$core_root/SKILL.md" "$toolbox_root/SKILL.md" "$knowledge_root/SKILL.md" "$board_root/SKILL.md" <<'PY'
 import pathlib
 import re
 import sys
 
+# A derivation is any of these applied to effort_estimate, in either order on the
+# line. The set is the CLASS of "this field's value comes from that judgment",
+# deliberately not one verb — a re-drift is written by whoever writes it next, in
+# their own words.
+derivation_verbs = (
+    r"stamp\w*|deriv\w*|set\s+(?:it\s+)?from|comes?\s+from|taken\s+from|read\s+from"
+    r"|map(?:s|ped|ping)?\s+(?:it\s+)?(?:to|from)|infer\w*|follow\w*\s+from|based\s+on"
+    r"|translat\w*|copie[sd]?\s+from|mirror\w*"
+)
+# The window is `.{0,60}` — bounded, but NOT `[^.]`. Excluding the period was the
+# original bug: a cited file path between the verb and the field ended the window
+# early, and a cited path is this repo's dominant style. Sixty characters is
+# tight enough that a long schema line describing the separation correctly does
+# not trip it, and wide enough to span "derived from the review gate's recorded
+# disposition into effort_estimate".
 derivation_pattern = re.compile(
-    r"stamp\w*[^.]{0,80}effort_estimate"
-    r"|effort_estimate[^.]{0,80}stamp\w*"
+    r"(?:" + derivation_verbs + r").{0,60}effort_estimate"
+    r"|effort_estimate.{0,60}(?:" + derivation_verbs + r")"
     r"|\bgate\b",
     flags=re.IGNORECASE,
 )
+# An impact verdict named on the same line is what makes a derivation a
+# CROSS-AXIS one. Without it, "effort_estimate is set from your own judgment of
+# size" would fail, which is the correct behaviour being described.
+impact_axis_mention = re.compile(r"impact[-_ ]|verdict|gate", flags=re.IGNORECASE)
+negated_derivation = re.compile(
+    r"\b(?:never|not|no longer|rather than|instead of|cannot|must not|is a different axis)\b",
+    flags=re.IGNORECASE,
+)
 offending_lines = []
-for actions_directory in sys.argv[1:]:
-    for action_file in sorted(pathlib.Path(actions_directory).glob("*.md")):
+for scan_root in sys.argv[1:]:
+    root_path = pathlib.Path(scan_root)
+    scanned_files = [root_path] if root_path.is_file() else sorted(root_path.glob("*.md"))
+    for action_file in scanned_files:
+        if not action_file.is_file():
+            continue
         for line_number, line in enumerate(action_file.read_text().splitlines(), start=1):
-            if "effort_estimate" in line and derivation_pattern.search(line):
-                offending_lines.append(f"  {action_file}:{line_number}")
+            if "effort_estimate" not in line:
+                continue
+            if not derivation_pattern.search(line):
+                continue
+            if not impact_axis_mention.search(line):
+                continue
+            # A NEGATED derivation is the rule being stated, not broken: the
+            # action files say "effort_estimate is never derived from that token"
+            # in as many words, and that sentence is the contract. Skipping it is
+            # not a hole — a re-drift asserts the derivation, it does not deny it.
+            if negated_derivation.search(line):
+                continue
+            offending_lines.append(f"  {action_file}:{line_number}")
 if offending_lines:
     raise SystemExit("\n".join(offending_lines))
 PY
@@ -1831,6 +1883,35 @@ parser_tokens = {
     if item.strip()
 }
 
+# REQ-293 F4 — the DEFAULT, not only the token set. Check D compared the two
+# vocabularies and never read defaultValue, so nothing held the schema line's
+# "Absent or unrecognized reads as `impact-user-visible`" to anything.
+#
+# This is the highest-value pin in the REQ because REQ-290 depends on it: if the
+# default ever became `impact-negligible`, `do-work run --skip-impact-negligible`
+# would invert into "skip everything, including every REQ predating the field" —
+# and every check in this file would stay green. Absence must never be mistakable
+# for the user's stop signal.
+default_match = re.search(r'defaultValue:\s*(\w+|"[^"]+")', impact_entry.group(1))
+if default_match is None:
+    raise SystemExit('model.go "impact" entry declares no defaultValue')
+parser_default = constant_values.get(
+    default_match.group(1), default_match.group(1).strip('"')
+)
+if parser_default != "impact-user-visible":
+    raise SystemExit(
+        f'model.go\'s impact defaultValue is "{parser_default}", not "impact-user-visible" — '
+        "an absent or unrecognized impact must never read as the user's stop signal, "
+        "or --skip-impact-negligible inverts into skip-everything (REQ-290)"
+    )
+# ...and the schema line has to say the same thing, in the file a reader reads.
+if not re.search(r"[Aa]bsent or unrecognized reads as `impact-user-visible`", schema_line):
+    raise SystemExit(
+        "the impact schema line no longer states that absent or unrecognized reads as "
+        "`impact-user-visible` — the parser default and the documented default must agree, "
+        "and this is the half a reader acts on"
+    )
+
 if schema_tokens != parser_tokens:
     raise SystemExit(
         "impact vocabulary disagrees — only in the schema row: "
@@ -1847,13 +1928,20 @@ fi
 # the Discovered Tasks ladder had a third; both collapse onto the four impact-
 # tokens, so no shipped file may keep either alive. Narrowing this loop to make a
 # straggler pass is exactly how a retired vocabulary survives.
+# REQ-293 F3: the ladder tokens are matched by TOKEN, not by markup. The
+# original patterns required bold — `**[critical]**` — so `- [low] a style nit`
+# and the backticked `` `[critical]` `` both walked past clean, and the
+# backticked form is one the tree actually carried (review-work.md:201 before
+# REQ-289). The bracketed word IS the retired vocabulary; whatever emphasis
+# surrounds it is incidental. `[ ]`-style checkboxes are unaffected: the tokens
+# are words, not spaces.
 for retired_impact_token in \
   'gate: user-visible' \
   'gate: rule-change' \
   'gate: trivial' \
-  '\*\*\[critical\]\*\*' \
-  '\*\*\[normal\]\*\*' \
-  '\*\*\[low\]\*\*'; do
+  '\[critical\]' \
+  '\[normal\]' \
+  '\[low\]'; do
   retired_impact_hits="$(grep -rIlE -- "$retired_impact_token" \
     "$core_root/actions" "$core_root/docs" "$toolbox_root/actions" "$board_root/tools/queue-kanban" 2>/dev/null || true)"
   if [ -n "$retired_impact_hits" ]; then
@@ -1862,6 +1950,64 @@ for retired_impact_token in \
     fail_count=$((fail_count + 1))
   fi
 done
+
+# REQ-293 F6 — `--skip-impact-negligible` is declared in several places that must
+# agree, and nothing held them together. This is not hypothetical: REQ-290's own
+# review found THREE already-stale restatements of the ready-set conditions
+# inside these same two files, one of them thirteen lines from the condition it
+# contradicted.
+#
+# The pin is presence at each declaration site, in the file that owns it. A site
+# that loses the flag is a reader that will not know about it; a usage string
+# that loses it tells the user the flag does not exist.
+if ! skip_negligible_missing="$(python3 - "$core_root/actions/work.md" "$core_root/actions/work-reference.md" <<'SKIPSITES'
+import pathlib
+import sys
+
+work_text = pathlib.Path(sys.argv[1]).read_text()
+reference_text = pathlib.Path(sys.argv[2]).read_text()
+
+# Each entry is (where it lives, which file, a phrase unique to that site).
+required_sites = [
+    ("work.md `## Input` bullet", work_text, "**`--skip-impact-negligible`** (boolean flag)"),
+    ("work.md argument-strip list", work_text,
+     "After stripping `--wave N`, `--fan-out [N]`, and `--skip-impact-negligible`"),
+    ("work.md usage string, default branch", work_text,
+     "do-work run [REQ-NNN|UR-NNN ...] [--skip-impact-negligible]"),
+    ("work.md usage string, --wave branch", work_text,
+     "do-work run --wave N [--skip-impact-negligible]"),
+    ("work.md Step 1 skip paragraph", work_text,
+     "**`--skip-impact-negligible` skips negligible REQs and reports them, never silently.**"),
+    ("work.md Orchestrator Checklist Step 0", work_text,
+     "--skip-impact-negligible); reject unrecognized residue"),
+    ("work-reference.md auto-wave condition 5", reference_text,
+     "**Not dropped by `--skip-impact-negligible`**"),
+]
+missing = [where for where, text, phrase in required_sites if phrase not in text]
+if missing:
+    raise SystemExit("\n".join("  " + where for where in missing))
+SKIPSITES
+)"; then
+  printf 'FAIL: --skip-impact-negligible lost a declaration site (REQ-290, pinned by REQ-293 F6) — every site below must agree, or a reader acts on a flag one of them does not mention:\n%s\n' \
+    "$skip_negligible_missing" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# The same shape for the impact title tag's emitter set: every flow that mints a
+# REQ title must write the `[<impact token>] ` tag, or the board's title-matching
+# search box cannot find a non-default verdict — which is the whole reason the
+# tag exists beside the field.
+for title_tag_emitter in \
+  "$core_root/actions/capture-reference.md" \
+  "$core_root/actions/review-work.md" \
+  "$core_root/actions/work-reference.md"; do
+  if ! grep -qF -- '[<impact token>] ' "$title_tag_emitter"; then
+    printf 'FAIL: %s no longer names the `[<impact token>] ` title tag (REQ-290, pinned by REQ-293 F6) — a follow-up carrying the field but not the tag is invisible to the board title search.\n' \
+      "$title_tag_emitter" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+
 
 assert_contains \
   "actions/work-reference.md" \

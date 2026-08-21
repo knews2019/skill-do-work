@@ -4099,3 +4099,40 @@ func readPackageSourceForTest(t *testing.T, fileName string) string {
 	}
 	return string(sourceBytes)
 }
+
+// TestGenerateInlinesImpactAndEffortChipRenderPath guards the frontend half of
+// the impact/effort split (REQ-289), which had NO test coverage of any kind until
+// REQ-293 — neither `badge-impact` nor `badge-effort-estimate` appeared in any
+// test file. The Go side pins the vocabulary and the parser; nothing proved the
+// chips still get rendered, so a refactor that dropped either renderer from
+// web/board-cards.js would ship a silent regression. The chips only appear when
+// the live tree happens to carry a non-default value, so a queue-dependent
+// assertion would be no assertion at all.
+//
+// These are code tokens from the assembled client and board.css, so the check
+// holds regardless of what the queue currently contains — the same shape
+// TestGenerateInlinesWriteSetOverlapBadgeRenderPath established for the overlap
+// badge. REQ-289's own Discovered Task framed this as needing a JavaScript
+// behavior probe; the cheaper precedent was in this file already.
+func TestGenerateInlinesImpactAndEffortChipRenderPath(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	for _, renderToken := range []string{
+		// The makeBadge() calls that emit the two chips. The quoted forms occur
+		// only in board-cards.js — the bare class names would also match the CSS.
+		`"badge-impact"`,
+		`"badge-effort-estimate"`,
+		// The payload field the impact chip reads, together with the default it
+		// falls back to. That default is the property REQ-290's
+		// --skip-impact-negligible depends on: absence must read as
+		// impact-user-visible, never as the user's stop signal.
+		`request.impact || "impact-user-visible"`,
+		// Without the stylesheet rules the chips render unstyled and invisible.
+		".badge-impact",
+		".badge-effort-estimate",
+	} {
+		if !strings.Contains(indexHtml, renderToken) {
+			t.Fatalf("impact/effort chip render path is missing from the generated page: %q not found in the assembled client/board.css", renderToken)
+		}
+	}
+}

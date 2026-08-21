@@ -2,6 +2,18 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.231.0 — Lock-In Checks Hold the Rule, Not the Wording (2026-08-21)
+
+The checks guarding the impact/effort split all passed, and each caught exactly the sentence it was written against — and almost nothing else. One greps a single verb, one requires bold markup, one scans two directories out of eight, and two properties had no check at all.
+
+- The "don't derive effort from impact" check now recognises a class of derivation verbs anywhere in shipped prose, including docs and crew files it never used to read
+- The retired `[critical]`/`[normal]`/`[low]` ladder is caught in any markup, not only when bolded
+- The impact default is pinned in both the parser and the schema line. If it ever became `impact-negligible`, `--skip-impact-negligible` would silently invert into skip-everything
+- The impact and effort chips have test coverage for the first time
+- `--skip-impact-negligible`'s seven declaration sites, and the title tag's three emitters, are held together
+
+Every one was mutation-tested with a different verb and a different file than the check contained — because the previous round's mutation used the one verb its own check greps, and so could only ever pass.
+
 ## 0.230.2 — Restore the Name-Your-Build Check (2026-08-21)
 
 0.230.0 deleted the check that every measured face number names the browser build it came from, on the grounds that no such number survived. Four of them did. The check is back, living beside the constants it governs, and the comment that had gone on claiming it existed now points at the real one.
