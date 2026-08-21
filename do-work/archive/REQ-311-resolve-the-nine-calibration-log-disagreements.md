@@ -82,7 +82,7 @@ No case produced evidence for the log over the frontmatter. `do-work/calibration
 
 ## Discovered Tasks
 
-- [low] `do-work/calibration-log.tsv`'s write step (`actions/work.md` Step 8 substep 7.5) has now been shown wrong on 9 of 72 rows (REQ-274 was a 10th, already fixed) in this repo's own history, all from the same working day. Worth a REQ that reads the write step's source and confirms or rules out the REQ-274 stale-stamp bug as the shared cause, so it can be fixed once instead of caught row-by-row after the fact.
+- [low] `do-work/calibration-log.tsv`'s write step (`actions/work.md` Step 8 substep 7.5) has now been shown wrong on 9 of 72 rows (REQ-274 was a 10th, already fixed) in this repo's own history, all from the same working day. Worth a REQ that reads the write step's source and confirms or rules out the REQ-274 stale-stamp bug as the shared cause, so it can be fixed once instead of caught row-by-row after the fact. → **Queued as REQ-316** (2026-08-21, by direct user instruction, `status: pending`).
 
 ## Orientation
 
