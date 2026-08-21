@@ -1959,10 +1959,10 @@ process.stdout.write(JSON.stringify({
 // a fixed viewBox at width:100%, so user units are zoom- and window-independent.
 //
 // A measured face is PER-BROWSER, so each constant's own doc comment names the
-// Chromium build its number was taken on — durations_test.go's
-// TestDurationsMeasuredConstantsNameTheirChromiumBuild enforces that for every
-// durationsMeasured constant in the package, and its comment records the
-// collision that earned the rule. A re-measurement on another build may only
+// Chromium build its number was taken on — TestMeasuredFaceConstantsNameTheirBuild
+// (below) enforces that for every durationsMeasured constant in the package, and
+// its comment records both the collision that earned the rule and why the
+// enforcer lives here now. A re-measurement on another build may only
 // RAISE a constant, never lower it: a box that reaches further makes every
 // clearance test demand more room than the render needs, which is the safe
 // direction for every caller.
@@ -4037,4 +4037,65 @@ func TestReduceAbsolutePathsLeavesRelativePathsIntact(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Every measured-face constant names the build its number came from.
+//
+// A face is per-browser: the same .durations-mark-label ascent measured 10.1853
+// on one Chromium and 10.4278 on another, and REQ-241 and REQ-242 collided
+// because a number measured on one build was read as fact on another. The rule
+// that came out of that is enforced, not remembered.
+//
+// WHY THIS LIVES HERE NOW. The rule used to be enforced by
+// durations_test.go's TestDurationsMeasuredConstantsNameTheirChromiumBuild.
+// REQ-292 deleted that test along with the width model, on the reasoning that no
+// measured constant survived to name a build — which was true of durations.go and
+// board-durations.js, the files REQ-292 was clearing, and NOT true of this file,
+// where four such constants live and are read. REQ-277's sweep found the rule's
+// stated enforcer pointing at a deleted test, which is the exact defect class
+// that REQ asks about: a comment claiming an arrangement that is no longer real.
+//
+// The vacuity guard is the same one the deleted test carried and for the same
+// reason: a scan that finds zero constants must fail rather than pass, or this
+// becomes a green check over an empty set the day someone renames the prefix.
+func TestMeasuredFaceConstantsNameTheirBuild(t *testing.T) {
+	measuredConstantDeclaration := regexp.MustCompile(`(?m)^const (durationsMeasured[A-Za-z]+)\s*=`)
+	buildAnchor := regexp.MustCompile(`(?i)chromium|playwright|firefox|webkit|safari`)
+
+	sourceText := readPackageSourceForTest(t, "generate_test.go")
+	declarations := measuredConstantDeclaration.FindAllStringSubmatchIndex(sourceText, -1)
+	if len(declarations) == 0 {
+		t.Fatal("found no durationsMeasured* constants to check — this scan must never pass on an empty set")
+	}
+
+	sourceLines := strings.Split(sourceText, "\n")
+	for _, declaration := range declarations {
+		constantName := sourceText[declaration[2]:declaration[3]]
+		declarationLine := strings.Count(sourceText[:declaration[0]], "\n")
+		// The doc comment is the contiguous run of // lines immediately above.
+		commentLines := []string{}
+		for lineIndex := declarationLine - 1; lineIndex >= 0; lineIndex-- {
+			if !strings.HasPrefix(strings.TrimSpace(sourceLines[lineIndex]), "//") {
+				break
+			}
+			commentLines = append(commentLines, sourceLines[lineIndex])
+		}
+		if !buildAnchor.MatchString(strings.Join(commentLines, "\n")) {
+			t.Errorf("%s has no browser build named in its doc comment — a measured face is per-browser, "+
+				"so an unnamed build makes the number read as timeless fact (REQ-241/REQ-242 collided on exactly that)",
+				constantName)
+		}
+	}
+}
+
+// readPackageSourceForTest reads one of this package's own source files off disk.
+// The measured constants live in a _test.go file, which go:embed cannot reach, so
+// this is a plain read rather than an embedded asset.
+func readPackageSourceForTest(t *testing.T, fileName string) string {
+	t.Helper()
+	sourceBytes, readError := os.ReadFile(fileName)
+	if readError != nil {
+		t.Fatalf("read %s: %v", fileName, readError)
+	}
+	return string(sourceBytes)
 }

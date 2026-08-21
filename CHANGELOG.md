@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.230.2 — Restore the Name-Your-Build Check (2026-08-21)
+
+0.230.0 deleted the check that every measured face number names the browser build it came from, on the grounds that no such number survived. Four of them did. The check is back, living beside the constants it governs, and the comment that had gone on claiming it existed now points at the real one.
+
+- A measured face is per-browser: the same ascent measures 10.1853 on one Chromium and 10.4278 on another, which is how two REQs once collided
+- Swept every measured constant in the package against its actual readers; all are correctly scoped, and the report is in the REQ
+
 ## 0.230.1 — Measured Numbers in Comments Have to Say Where They Came From (2026-08-21)
 
 A face is per-browser, so a measurement written into a comment with no build beside it reads as timeless fact and quietly goes stale. The last such number in the Durations renderer is gone, and a check now fails the build if a new one appears undated.
