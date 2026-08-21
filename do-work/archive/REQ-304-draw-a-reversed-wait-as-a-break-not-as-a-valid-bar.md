@@ -7,7 +7,7 @@ status_changed_at: 2026-08-21T08:16:04Z
 claimed_at: 2026-08-21T08:16:04Z
 completed_at: 2026-08-21T08:26:15Z
 kb_status: pending
-commit:
+commit: 5e08a31
 user_request: UR-062
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
