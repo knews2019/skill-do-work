@@ -153,12 +153,19 @@ Judge each remaining value against the `status` row of the Schema Read Contract 
 
 This check is the mechanical sweep behind the board's invalid-status warning (`../../do-work-board/tools/queue-kanban/model.go` `bucketColumns`), which points users at `do-work forensics`.
 
-### 12. Future-Dated Timestamps
+### 12. Impossible Timestamps — Future-Dated and Out-of-Order
 
 Scan every REQ file — `do-work/queue/REQ-*.md`, `do-work/working/REQ-*.md`, and `find do-work/archive -name 'REQ-*.md'` — and parse every frontmatter timestamp (`created_at`, `claimed_at`, `completed_at`, `blocked_at`, `testing_updated_at`, and any other `*_at` field present). Compare each against the current UTC time (obtain it per the Timestamp rule, `actions/work-reference.md`), allowing ~2 minutes of clock skew.
 
 - **Warning** for each field that parses to later than now + skew: "REQ-NNN's `{field}` is `{value}` — {N} in the future. Likely local wall-clock time written with a `Z` suffix, or a fabricated value — guessed or extrapolated instead of read from the clock (the Timestamp rule in `actions/work-reference.md` requires the current UTC instant). For as long as the stamp stands, elapsed-time math built on it is wrong: the board's stopwatch shows a clock-skew marker, and queue-wait / implementation-time spans go negative."
-  **Suggested fix:** Rewrite the field with the instant the event actually happened if recoverable (e.g., from the REQ file's git history), otherwise with the current UTC instant.
+  **Suggested fix:** Do not do this by hand — the repair ships twice, and which one you want depends on where the file lives. For `do-work/queue/` and `do-work/working/`, `scripts/repair-req-timestamps.sh` runs from the SessionStart hook and corrects detectably wrong stamps on the next session, so there is usually nothing to do. For `do-work/archive/`, which that repairer deliberately never touches, run `<skill-root>/scripts/audit-archive-timestamps.sh` to report and `--fix` to repair from the stamp's own line in git history (`git blame --line-porcelain`); it shares the repairer's predicate by sourcing it. Only where neither can derive the instant — the shapes both refuse — write the current UTC instant by hand.
+
+**Ordering.** The stamps must also describe a sequence that could have happened: `created_at <= claimed_at <= completed_at`. Equal stamps are legal (Step 2's claim and Step 3.6's estimate can read the same instant), and an absent or unparseable stamp is Check 1's and this check's future-stamp half, not an ordering violation.
+
+- **Warning** for each violated pair: "REQ-NNN's `{earlier_field}` is `{earlier_value}`, later than `{later_field}` `{later_value}` — that sequence cannot have happened." Report `created_at > claimed_at` and `claimed_at > completed_at` as separate warnings when both are violated, because they are separate repairs. When `claimed_at` is absent or unparseable, compare `created_at` against `completed_at` directly — with nothing between them, an impossible ordering would otherwise pass every comparison.
+  **Suggested fix:** The same two tools as above, routed the same way by location.
+
+A future-dated stamp is only visible if it is still in the future; an ordering violation is visible forever. That is why the ordering condition matters most in the archive, where nothing auto-repairs: a `claimed_at` fabricated to some plausible past instant passes every comparison against *now*, and only its position relative to the other stamps gives it away.
 
 This check is the mechanical sweep behind the board's future-stamp badge and data warning (`../../do-work-board/tools/queue-kanban/model.go` `detectFutureTimestampFields`). The warning above says the same thing the board says, and both causes must stay named in both places — the board's copy is `futureStampCauseClause` in that file, mirrored by `futureStampCauseText` in `web/board-core.js`. Those two are held together by a test; this one is in a different skill package and nothing can reach it, so it is kept in step by hand.
 
@@ -199,6 +206,7 @@ Exit 0 means no findings. Exit 1 means findings were printed — **a finding, no
 | duplicate REQ numbers across queue / working / archive | `../../do-work-board/tools/queue-kanban/model.go`'s duplicate-id resolution |
 | `do-work/CHECKPOINT.md` naming a REQ that no longer exists — read an entry under another checkout's `writer:` label as expected rather than stale: it can name a REQ that was archived over there, and it is that checkout's to clear | — (nothing else checks it; it matters because the checkpoint is crash recovery's input, `actions/work-reference.md` → Crash Recovery (Step 1)) |
 | stale, unparseable, future-dated, or absent `claimed_at` on a claimed REQ | Check 1 and Check 12 above |
+| `created_at`/`claimed_at`/`completed_at` in an impossible order, across `queue/`, `working/` **and** `archive/` — one non-`[fixable]` finding per violated pair, naming both fields and both raw values, with a remedy routed by location (the SessionStart repairer for queue/working, `scripts/audit-archive-timestamps.sh` for the archive). Equal, absent and unparseable stamps are deliberately not violations | Check 12 above; the same predicate `scripts/repair-req-timestamps.sh` enforces as a repair |
 | finished REQs stranded in `queue/` or `working/` | Check 9 above |
 | every `REQ-*.md` found outside `queue/`, `working/`, and `archive/`, regardless of status — one non-fixable finding per structured `StrayRequestFiles` path; these files remain outside card and ordinary REQ probes | `../../do-work-board/tools/queue-kanban/model.go`'s existing stray detector and warning path |
 | `worktree-agent-*` leftovers, classified by merge state — only an already-merged one is marked `[fixable]`; unmerged (which may be a builder still in flight) and undetermined ones are reported and left to you | `actions/cleanup.md` Pass 5, whose mechanical half is exactly the merged case |

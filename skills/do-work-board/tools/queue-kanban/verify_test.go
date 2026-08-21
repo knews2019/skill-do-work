@@ -1279,3 +1279,175 @@ func TestHashOnlyAnomalySkippedWhenGitUnavailable(t *testing.T) {
 		t.Fatalf("SkippedProbes = %v, want the hash-only ticket REQ-9331 routed there", report.SkippedProbes)
 	}
 }
+
+// The captured RED from REQ-280: an archived REQ claimed before it was created,
+// with a forward claimed_at → completed_at span so detectCompletionAnomaly stays
+// silent. Before the ordering probe this fixture produced `OK: no findings` and
+// exit 0 — a fabricated claimed_at was invisible to every check the suite had
+// unless it happened to invert the one pair model.go already compared.
+func TestVerifyFlagsCreatedAfterClaimed(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-800-ordering-wedge.md",
+			"---\nid: REQ-800\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: 2026-08-18T09:00:00Z\n" +
+				"completed_at: 2026-08-19T14:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	orderingFindings := findingsMentioning(report, verifyCategoryTimestampOrdering)
+	if len(orderingFindings) != 1 {
+		t.Fatalf("got %d ordering findings, want 1:\n%s", len(orderingFindings), renderVerifyReport(report))
+	}
+	// Both field names and both raw values, so the reader can repair without reopening the file.
+	for _, required := range []string{"REQ-800", "created_at", "claimed_at",
+		"2026-08-19T12:00:00Z", "2026-08-18T09:00:00Z"} {
+		if !strings.Contains(orderingFindings[0].Detail, required) {
+			t.Errorf("ordering finding detail %q omits %q", orderingFindings[0].Detail, required)
+		}
+	}
+	// An archived file's remedy must name the archive repair, not hand git archaeology.
+	if !strings.Contains(orderingFindings[0].Remedy, "audit-archive-timestamps.sh") {
+		t.Errorf("archive remedy %q does not name audit-archive-timestamps.sh", orderingFindings[0].Remedy)
+	}
+	// `do-work cleanup` cannot rewrite stamps, so the fixable count must not claim it can.
+	if orderingFindings[0].Fixable {
+		t.Error("ordering finding is marked Fixable, but cleanup does not repair stamps")
+	}
+	if report.ExitCode() != 1 {
+		t.Errorf("ordering violation exit code = %d, want 1", report.ExitCode())
+	}
+}
+
+// A REQ can be wrong in both pairs. Each is its own finding, because collapsing
+// them would show the reader half the repair.
+func TestVerifyReportsEachViolatedTimestampPairSeparately(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-801-both-pairs.md",
+			"---\nid: REQ-801\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: 2026-08-18T09:00:00Z\n" +
+				"completed_at: 2026-08-17T08:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	orderingFindings := findingsMentioning(report, verifyCategoryTimestampOrdering)
+	if len(orderingFindings) != 2 {
+		t.Fatalf("got %d ordering findings, want 2 (one per violated pair):\n%s",
+			len(orderingFindings), renderVerifyReport(report))
+	}
+}
+
+// Queue and working files are repaired by the SessionStart hook, so their remedy
+// must say so rather than sending the reader to the archive-only tool.
+func TestVerifyRoutesQueueOrderingRemedyToTheSessionStartRepairer(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/queue/REQ-802-queue-ordering.md",
+			"---\nid: REQ-802\ntitle: fixture\nstatus: pending\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: 2026-08-18T09:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	orderingFindings := findingsMentioning(report, verifyCategoryTimestampOrdering)
+	if len(orderingFindings) != 1 {
+		t.Fatalf("got %d ordering findings, want 1:\n%s", len(orderingFindings), renderVerifyReport(report))
+	}
+	if !strings.Contains(orderingFindings[0].Remedy, "repair-req-timestamps.sh") {
+		t.Errorf("queue remedy %q does not name the SessionStart repairer", orderingFindings[0].Remedy)
+	}
+	if strings.Contains(orderingFindings[0].Remedy, "audit-archive-timestamps.sh") {
+		t.Errorf("queue remedy %q sends the reader to the archive-only tool", orderingFindings[0].Remedy)
+	}
+}
+
+// Equal stamps are legal and must not be reported: Step 2's claim and Step 3.6's
+// estimate legitimately read the same instant, and an absent or unparseable stamp
+// is other checks' territory — the same carve-out detectCompletionAnomaly holds.
+// Without this the probe would fire on a large share of a real queue.
+func TestVerifyAcceptsEqualAbsentAndUnparseableTimestamps(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-803-equal.md",
+			"---\nid: REQ-803\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: 2026-08-19T12:00:00Z\n" +
+				"completed_at: 2026-08-19T12:00:00Z\n---\n"},
+		{"do-work/archive/REQ-804-absent.md",
+			"---\nid: REQ-804\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\ncompleted_at: 2026-08-19T14:00:00Z\n---\n"},
+		{"do-work/archive/REQ-805-unparseable.md",
+			"---\nid: REQ-805\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: not-a-timestamp\n" +
+				"completed_at: 2026-08-19T14:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if orderingFindings := findingsMentioning(report, verifyCategoryTimestampOrdering); len(orderingFindings) != 0 {
+		t.Errorf("got %d ordering findings, want 0:\n%s", len(orderingFindings), renderVerifyReport(report))
+	}
+}
+
+// The outer pair: with claimed_at absent, nothing spans created_at and completed_at,
+// so an impossible ordering would pass every other comparison. Checked only in that
+// case, so a REQ with a parseable claimed_at never gets a third finding for a defect
+// the two inner pairs already report.
+func TestVerifyFlagsCreatedAfterCompletedWhenClaimedIsAbsent(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-806-outer-pair.md",
+			"---\nid: REQ-806\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\ncompleted_at: 2026-08-18T09:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	orderingFindings := findingsMentioning(report, verifyCategoryTimestampOrdering)
+	if len(orderingFindings) != 1 {
+		t.Fatalf("got %d ordering findings, want 1:\n%s", len(orderingFindings), renderVerifyReport(report))
+	}
+	if !strings.Contains(orderingFindings[0].Detail, "created_at") ||
+		!strings.Contains(orderingFindings[0].Detail, "completed_at") {
+		t.Errorf("outer-pair detail %q does not name both fields", orderingFindings[0].Detail)
+	}
+}
+
+// The guard: a fully-reversed REQ with a parseable claimed_at reports exactly the
+// two inner pairs, never a third for the outer one.
+func TestVerifyDoesNotDoubleReportTheOuterPair(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/REQ-807-fully-reversed.md",
+			"---\nid: REQ-807\ntitle: fixture\nstatus: completed\n" +
+				"created_at: 2026-08-19T12:00:00Z\nclaimed_at: 2026-08-18T09:00:00Z\n" +
+				"completed_at: 2026-08-17T08:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if orderingFindings := findingsMentioning(report, verifyCategoryTimestampOrdering); len(orderingFindings) != 2 {
+		t.Errorf("got %d ordering findings, want exactly 2:\n%s",
+			len(orderingFindings), renderVerifyReport(report))
+	}
+}

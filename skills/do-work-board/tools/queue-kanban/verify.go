@@ -30,6 +30,7 @@ const (
 	verifyCategoryAssignedElsewhereClaimedHere  = "assigned-elsewhere-claimed-here"
 	verifyCategoryArchivedUserRequestLiveMember = "ur-archived-with-live-member"
 	verifyCategoryCompletionAnomaly             = "completion-anomaly"
+	verifyCategoryTimestampOrdering             = "timestamp-ordering"
 )
 
 // staleClaimThreshold is how long a `claimed` REQ may sit before verify reports
@@ -125,6 +126,7 @@ func runVerifyProbes(repoRootOverride string, now time.Time) (VerifyReport, erro
 	appendReleaseFindings(&report, repoRoot)
 	appendDuplicateRequestIdFindings(&report, board)
 	appendCompletionAnomalyFindings(&report, repoRoot, board)
+	appendTimestampOrderingFindings(&report, board)
 	appendCheckpointGhostFindings(&report, repoRoot, board)
 	appendClaimFindings(&report, board, now)
 	appendStrandedFinishedFindings(&report, board)
@@ -305,6 +307,85 @@ func appendCompletionAnomalyFindings(report *VerifyReport, repoRoot string, boar
 				anomalousTicket.RequestId, anomalousTicket.Status, anomalousTicket.CompletionAnomalyReason),
 			Remedy: "repair the named frontmatter field(s) in the archived REQ — the reason states which stamp or hash is wrong and what to write instead",
 		})
+	}
+}
+
+// appendTimestampOrderingFindings reports a REQ whose stamps cannot describe a
+// real sequence of events: created_at after claimed_at, or claimed_at after
+// completed_at. detectCompletionAnomaly (model.go) already covers the single
+// completed_at < claimed_at case for terminal tickets, but only there — nothing
+// checked created_at at all, so a claimed_at fabricated to any instant before
+// completion passed every check the suite had. That is the class this probe
+// closes, and it deliberately covers queue, working AND archive: the archive is
+// where nothing auto-repairs, because the SessionStart repairer never touches it.
+//
+// The predicate is NOT a fourth spelling of the ordering rule. It is the same
+// created_at <= claimed_at <= completed_at that scripts/repair-req-timestamps.sh
+// enforces as a repair, restated in Go only because the read side cannot source
+// shell. Two boundary decisions are held identical to the shell side on purpose:
+// the comparison is strict (equal stamps are legal — Step 2's claim and Step 3.6's
+// estimate can read the same instant), and an absent or unparseable stamp is other
+// checks' territory rather than a violation here, matching detectCompletionAnomaly's
+// carve-out. If either spelling changes, change both.
+//
+// Each violated pair is its own finding: a REQ can be wrong in both pairs, and
+// collapsing them would hide half the repair. Not Fixable — `do-work cleanup` does
+// not rewrite stamps; the remedy names the tool that does, which differs by where
+// the file lives.
+func appendTimestampOrderingFindings(report *VerifyReport, board *Board) {
+	for _, ticket := range board.AllRequests {
+		createdInstant, createdParsed := parseTimestamp(ticket.CreatedAt)
+		claimedInstant, claimedParsed := parseTimestamp(ticket.ClaimedAt)
+		completedInstant, completedParsed := parseTimestamp(ticket.CompletedAt)
+
+		if createdParsed && claimedParsed && claimedInstant.Before(createdInstant) {
+			report.Findings = append(report.Findings, timestampOrderingFinding(
+				ticket, "created_at", ticket.CreatedAt, "claimed_at", ticket.ClaimedAt,
+				"claimed before it was created"))
+		}
+		if claimedParsed && completedParsed && completedInstant.Before(claimedInstant) {
+			report.Findings = append(report.Findings, timestampOrderingFinding(
+				ticket, "claimed_at", ticket.ClaimedAt, "completed_at", ticket.CompletedAt,
+				"completed before it was claimed"))
+		}
+		// The outer pair, checked ONLY when claimed_at cannot carry the comparison.
+		// created_at <= completed_at is implied transitively whenever claimed_at
+		// parses, so checking it there would report a third finding for the same
+		// defect; with claimed_at absent or unparseable the implication has nothing
+		// to travel through, and an impossible ordering would otherwise pass. That
+		// gap is the same shape as the one this whole probe closes — a real
+		// violation invisible because the checked pairs did not span it.
+		if !claimedParsed && createdParsed && completedParsed &&
+			completedInstant.Before(createdInstant) {
+			report.Findings = append(report.Findings, timestampOrderingFinding(
+				ticket, "created_at", ticket.CreatedAt, "completed_at", ticket.CompletedAt,
+				"completed before it was created, and no parseable claimed_at sits between them"))
+		}
+	}
+}
+
+// timestampOrderingFinding names both fields and both raw values, and routes the
+// remedy by where the file actually lives — a reader must never be sent to do by
+// hand what an installed script already does. The archive repair is deliberately a
+// conscious invocation and is never hook-wired (scripts/audit-archive-timestamps.sh
+// header), which is why the two halves of this remedy differ.
+func timestampOrderingFinding(
+	ticket *RequestTicket, earlierField string, earlierValue string,
+	laterField string, laterValue string, plainSummary string,
+) VerifyFinding {
+	remedy := "queue/ and working/ stamps are repaired mechanically by the SessionStart hook " +
+		"(skills/do-work/scripts/repair-req-timestamps.sh) on the next session — no hand edit needed"
+	if ticket.TreeSection == "archive" {
+		remedy = "run skills/do-work/scripts/audit-archive-timestamps.sh to report, and --fix to " +
+			"repair from the stamp's own git history — the SessionStart repairer deliberately never " +
+			"touches the archive, so this one is a conscious invocation"
+	}
+	return VerifyFinding{
+		Category: verifyCategoryTimestampOrdering,
+		Detail: fmt.Sprintf("%s (status %s): %s %q is later than %s %q — %s",
+			ticket.RequestId, ticket.Status, earlierField, earlierValue, laterField, laterValue, plainSummary),
+		Fixable: false,
+		Remedy:  remedy,
 	}
 }
 

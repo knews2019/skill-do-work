@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.224.0 — Catch Timestamps That Could Not Have Happened (2026-08-20)
+
+Nothing checked that a REQ's stamps described a possible sequence of events. A `claimed_at` fabricated to any plausible past instant sailed through every check unless it happened to land after `completed_at`. `queue-kanban verify` now catches the whole class, including in the archive where nothing auto-repairs.
+
+- One finding per violated pair, naming both fields and both raw values
+- The remedy points at whichever repair actually applies: the SessionStart hook for queue and working, `audit-archive-timestamps.sh` for the archive
+- Forensics Check 12 carries the ordering condition too, and stopped telling you to dig instants out of git by hand — both repairs already ship
+- Equal stamps stay legal, because a claim and its estimate can genuinely read the same instant
+- Zero findings against this repo's own 250+ REQs, which is the false-positive check that mattered
+
 ## 0.223.1 — Correct What a Repairer Failure Actually Does (2026-08-20)
 
 The shell prime told you a timestamp-repairer failure makes the SessionStart hook exit nonzero. It doesn't — the hook wraps the repairer in `|| true` on purpose, so the failure lines reach your session banner and the hook still exits 0. The consequence is just as bad and the decisions resting on it still stand; only the mechanism was wrong.
