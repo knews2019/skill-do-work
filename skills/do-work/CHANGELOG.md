@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.4 — Canonical Repository Gate Before Hand-Back (2026-08-21)
+
+The work loop now treats an explicitly project-declared repository-wide pass/fail gate as a required companion to focused tests. It runs from the project root on the final or merged tree, is judged by its direct exit status, and must return zero before successful archive, commit, or hand-back.
+
+Focused tests still identify regressions in the changed area. Their baseline exclusions cannot waive the repository gate: current-diff failures use remediation, while unrelated or pre-existing gate failures preserve the claim and checkpoint. A semantic contract plus eleven adversarial mutations pins the rule, and a replay of REQ-283 proves the whole-repo gate catches the duplicate route its four area checks missed.
+
+Independent review found one downstream generic Error Handling row that can oppose the new preservation path. That reconciliation is queued as REQ-317 with its own RED/GREEN contract.
+
 ## 0.236.3 — Calibration Log Corrected Against Its Own Frontmatter (2026-08-21)
 
 REQ-281 found nine `do-work/calibration-log.tsv` rows that disagreed with the REQ frontmatter they were computed from; REQ-311 queued the judgment call. Resolved: git history (claim commits, merge commits, and independent review-footer timestamps) confirms the frontmatter was right in all nine cases, so the log rows were corrected to match. The estimator's scoring table now fits a clean corpus instead of one with six rows off by 20+ minutes.

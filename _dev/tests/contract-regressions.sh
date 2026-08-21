@@ -2226,6 +2226,109 @@ assert_block_contains \
   'one worktree per builder regardless of overlap' \
   'actions/work.md Step 6 must preserve auto-waves stronger worktree-per-builder rule.'
 
+# REQ-309 — focused tests answer whether the changed area regressed; they do not prove
+# that a repository's declared whole-repo pass/fail contract is green. Pin the added
+# Step 6.5 lane by meaning, then mutate each behavior that made REQ-283's hand-back
+# possible so a broad vocabulary match cannot satisfy the check.
+if ! python3 - "$core_root/actions/work.md" <<'PY'
+import pathlib
+import re
+import sys
+
+work_text = pathlib.Path(sys.argv[1]).read_text()
+
+
+def extract_canonical_gate_lane(source):
+    testing_match = re.search(
+        r"^### Step 6\.5: Testing\n(?P<body>.*?)^### Step 7: Review$",
+        source,
+        flags=re.DOTALL | re.MULTILINE,
+    )
+    if testing_match is None:
+        return None
+    lane_match = re.search(
+        r"^\d+\. \*\*Run (?:the )?declared canonical repository gate\*\*.*?"
+        r"(?=^\d+\. \*\*|\Z)",
+        testing_match.group("body"),
+        flags=re.DOTALL | re.MULTILINE | re.IGNORECASE,
+    )
+    return None if lane_match is None else lane_match.group(0)
+
+
+def canonical_gate_defects(source):
+    lane = extract_canonical_gate_lane(source)
+    if lane is None:
+        return {"missing canonical-gate lane"}
+
+    normalized = " ".join(lane.lower().split())
+    predicates = {
+        "explicit project-guidance trigger":
+            r"if project guidance explicitly declares a canonical repository-wide pass/fail gate",
+        "additive to focused tests": r"in addition to (?:the )?focused tests",
+        "project-root execution": r"from (?:the )?project root",
+        "final or merged-state execution":
+            r"final implementation state.*(?:post-merge|merged) state",
+        "direct status verdict": r"direct exit status",
+        "zero required": r"(?:must|required? to|require) (?:be )?zero",
+        "no focused-test baseline exemption":
+            r"focused-test baseline (?:exclusions|exemptions).*do not apply",
+        "current-diff remediation":
+            r"failure (?:is )?caused by the current diff.*existing remediation loop",
+        "unrelated or pre-existing stop path":
+            r"(?:unrelated or pre-existing|pre-existing or unrelated) failure",
+        "claim and checkpoint preserved":
+            r"preserve the claimed req and (?:its )?checkpoint",
+        "stop before successful completion":
+            r"stop before successful archive, commit, or hand-back",
+    }
+    return {
+        defect_name
+        for defect_name, predicate in predicates.items()
+        if re.search(predicate, normalized) is None
+    }
+
+
+live_defects = canonical_gate_defects(work_text)
+if live_defects:
+    raise SystemExit(
+        "actions/work.md Step 6.5 canonical repository gate contract is incomplete: "
+        + ", ".join(sorted(live_defects))
+    )
+live_lane = extract_canonical_gate_lane(work_text)
+
+mutations = (
+    ("implicit declaration", "explicitly declares", "implicitly suggests", "explicit project-guidance trigger"),
+    ("focused tests replaced", "in addition to focused tests", "instead of focused tests", "additive to focused tests"),
+    ("wrong working directory", "from the project root", "from the changed area's directory", "project-root execution"),
+    ("pre-final state", "final implementation state", "pre-flight state", "final or merged-state execution"),
+    ("summary verdict", "direct exit status", "reported summary", "direct status verdict"),
+    ("nonzero accepted", "must be zero", "may be nonzero", "zero required"),
+    ("baseline exemption restored", "do not apply", "still apply", "no focused-test baseline exemption"),
+    ("current diff waived", "use the existing remediation loop", "waive it", "current-diff remediation"),
+    ("unrelated failure omitted", "unrelated or pre-existing failure", "environmental note", "unrelated or pre-existing stop path"),
+    ("claim discarded", "preserve the claimed REQ and its checkpoint", "discard the claimed REQ and its checkpoint", "claim and checkpoint preserved"),
+    ("hand-back allowed", "stop before successful archive, commit, or hand-back", "continue through successful archive, commit, and hand-back", "stop before successful completion"),
+)
+
+for mutation_name, old, new, expected_defect in mutations:
+    mutated_lane = live_lane.replace(old, new, 1)
+    if mutated_lane == live_lane:
+        raise SystemExit(
+            f"canonical repository gate mutation {mutation_name!r} changed nothing"
+        )
+    mutated_text = work_text.replace(live_lane, mutated_lane, 1)
+    mutation_defects = canonical_gate_defects(mutated_text)
+    if expected_defect not in mutation_defects:
+        raise SystemExit(
+            f"canonical repository gate mutation {mutation_name!r} escaped "
+            f"{expected_defect!r}; found {sorted(mutation_defects)!r}"
+        )
+PY
+then
+  printf 'FAIL: actions/work.md Step 6.5 must hard-gate hand-back on any explicitly declared canonical repository-wide gate, in addition to focused tests (REQ-309).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 three_attempt_count="$(grep -roh 'consecutive fix attempts' "$core_root/actions" | wc -l | tr -d ' ')"
 if [ "$three_attempt_count" != "1" ]; then
   printf 'FAIL: the three-attempt stop condition ("consecutive fix attempts ... in its current context only") must be stated exactly once across actions/ (found %s).\n' \
