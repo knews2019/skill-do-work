@@ -6,7 +6,7 @@ created_at: 2026-08-19T14:33:51Z
 claimed_at: 2026-08-21T00:34:42Z
 completed_at: 2026-08-21T00:57:58Z
 kb_status: pending
-commit:
+commit: c25ee71
 route: C
 user_request: UR-059
 domain: general
