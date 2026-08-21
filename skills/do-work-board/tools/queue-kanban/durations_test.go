@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -199,31 +202,148 @@ func mustParseDay(t *testing.T, dayKey string) time.Time {
 	return parsed.UTC()
 }
 
-// The live archive is the corpus the view actually renders. Past days are
-// immutable — no future REQ can complete on 2026-07-31 — so pinning two of them
-// catches a regression in the rule without going stale as new work lands.
-func TestLiveArchiveDurationsMatchTheCalibratedFigures(t *testing.T) {
-	board := liveBoard(t)
-	aggregate := buildDurationAggregate(board.AllRequests)
+// calibratedLiveArchiveFindings returns one line per pinned figure the aggregate
+// disagrees with, and nothing when every pin holds. The assertions live here
+// rather than inline in the test so a second test can prove they still BITE —
+// a pinned check that silently stopped biting reads exactly like a passing one.
+//
+// The pins themselves are the point: past days are immutable — no future REQ can
+// complete on 2026-07-31 — so they catch a regression in the duration rule
+// without going stale as new work lands.
+func calibratedLiveArchiveFindings(aggregate DurationAggregate) []string {
+	findings := []string{}
 
 	if len(aggregate.Samples) < 195 {
-		t.Fatalf("the archive carried 195 measurable samples at capture and only grows; got %d", len(aggregate.Samples))
+		findings = append(findings,
+			fmt.Sprintf("the archive carried 195 measurable samples at capture and only grows; got %d", len(aggregate.Samples)))
 	}
 
-	pausedDay := findDurationDay(t, aggregate, "2026-07-31")
-	if math.Abs(pausedDay.MedianMinutes-2.5) > 0.05 {
-		t.Fatalf("2026-07-31 must report the ruled median 2.5 min (REQ-064's 655 min excluded), got %.4f", pausedDay.MedianMinutes)
-	}
-	if pausedDay.CompletedCount != 2 || pausedDay.KeptCount != 1 {
-		t.Fatalf("2026-07-31 should be 2 completed with 1 inside the rule, got %d and %d", pausedDay.CompletedCount, pausedDay.KeptCount)
+	pausedDay, pausedDayFound := lookupDurationDay(aggregate, "2026-07-31")
+	switch {
+	case !pausedDayFound:
+		findings = append(findings, "no aggregated day for 2026-07-31")
+	default:
+		if math.Abs(pausedDay.MedianMinutes-2.5) > 0.05 {
+			findings = append(findings,
+				fmt.Sprintf("2026-07-31 must report the ruled median 2.5 min (REQ-064's 655 min excluded), got %.4f", pausedDay.MedianMinutes))
+		}
+		if pausedDay.CompletedCount != 2 || pausedDay.KeptCount != 1 {
+			findings = append(findings,
+				fmt.Sprintf("2026-07-31 should be 2 completed with 1 inside the rule, got %d and %d", pausedDay.CompletedCount, pausedDay.KeptCount))
+		}
 	}
 
-	busiestDay := findDurationDay(t, aggregate, "2026-08-15")
-	if busiestDay.CompletedCount != 25 {
-		t.Fatalf("2026-08-15 should carry 25 completed REQs, got %d", busiestDay.CompletedCount)
+	busiestDay, busiestDayFound := lookupDurationDay(aggregate, "2026-08-15")
+	switch {
+	case !busiestDayFound:
+		findings = append(findings, "no aggregated day for 2026-08-15")
+	default:
+		if busiestDay.CompletedCount != 25 {
+			findings = append(findings,
+				fmt.Sprintf("2026-08-15 should carry 25 completed REQs, got %d", busiestDay.CompletedCount))
+		}
+		if math.Abs(busiestDay.MedianMinutes-19.6) > 0.1 {
+			findings = append(findings,
+				fmt.Sprintf("2026-08-15 should report a median of 19.6 min, got %.4f", busiestDay.MedianMinutes))
+		}
 	}
-	if math.Abs(busiestDay.MedianMinutes-19.6) > 0.1 {
-		t.Fatalf("2026-08-15 should report a median of 19.6 min, got %.4f", busiestDay.MedianMinutes)
+
+	return findings
+}
+
+// lookupDurationDay is findDurationDay without a *testing.T — a missing day is a
+// finding for the caller to report, not a fatal here.
+func lookupDurationDay(aggregate DurationAggregate, dayKey string) (DurationDay, bool) {
+	for _, day := range aggregate.Days {
+		if day.DayKey == dayKey {
+			return day, true
+		}
+	}
+	return DurationDay{}, false
+}
+
+// The live archive is the corpus the view actually renders — which is why this
+// runs against it rather than a fixture, and why it applies only where that
+// corpus is ours (suiteCheckoutSkipReason, board_live_test.go).
+func TestLiveArchiveDurationsMatchTheCalibratedFigures(t *testing.T) {
+	repoRoot := liveRepoRoot(t)
+	if skipReason := suiteCheckoutSkipReason(repoRoot); skipReason != "" {
+		t.Skip(skipReason)
+	}
+	board := liveBoardAt(t, repoRoot)
+
+	for _, finding := range calibratedLiveArchiveFindings(buildDurationAggregate(board.AllRequests)) {
+		t.Error(finding)
+	}
+}
+
+// TestLiveArchiveCalibrationRunsInASuiteCheckoutAndSkipsElsewhere asserts BOTH
+// halves in one test, the way TestReleaseProbesRunInASuiteCheckoutAndAreNot​ApplicableElsewhere
+// does for the release probes: a skip path that also fired in a suite checkout
+// would silence the pinned figures permanently and read as clean. Splitting these
+// would let either half be satisfied by breaking the other.
+//
+// It is itself repo-independent — it asserts about the gate and the findings
+// function, never about this archive's contents — so it runs everywhere.
+func TestLiveArchiveCalibrationRunsInASuiteCheckoutAndSkipsElsewhere(t *testing.T) {
+	// --- Half one: a suite checkout runs the assertions, and they still bite. ---
+	suiteRoot := t.TempDir()
+	if mkdirError := os.MkdirAll(filepath.Join(suiteRoot, "skills", "do-work", "actions"), 0o755); mkdirError != nil {
+		t.Fatalf("mkdir suite actions: %v", mkdirError)
+	}
+	if writeError := os.WriteFile(filepath.Join(suiteRoot, "skills", "do-work", "actions", "version.md"),
+		[]byte("**Current version**: 1.4.0\n"), 0o644); writeError != nil {
+		t.Fatalf("write suite version.md: %v", writeError)
+	}
+	if skipReason := suiteCheckoutSkipReason(suiteRoot); skipReason != "" {
+		t.Fatalf("a suite checkout is exactly where these figures apply, got skip %q", skipReason)
+	}
+
+	// Biting is the half a silenced check cannot fake. An aggregate carrying the
+	// pinned days with the WRONG figures must produce a finding for each.
+	wrongFigures := DurationAggregate{
+		Samples: make([]DurationSample, 195),
+		Days: []DurationDay{
+			{DayKey: "2026-07-31", MedianMinutes: 9.0833, HasMedian: true, KeptCount: 12, CompletedCount: 12},
+			{DayKey: "2026-08-15", MedianMinutes: 41.2, HasMedian: true, KeptCount: 3, CompletedCount: 3},
+		},
+	}
+	wrongFindings := calibratedLiveArchiveFindings(wrongFigures)
+	if len(wrongFindings) != 4 {
+		t.Fatalf("both pinned days carry a wrong median AND a wrong count — want 4 findings, got %d: %v",
+			len(wrongFindings), wrongFindings)
+	}
+
+	// And an aggregate missing the pinned days entirely is a finding, never silence.
+	if len(calibratedLiveArchiveFindings(DurationAggregate{})) == 0 {
+		t.Fatal("an aggregate with none of the pinned days must report findings, not pass")
+	}
+
+	// --- Half two: a consumer root skips, with the condition named. ---
+	// do-work/ at the root, the suite vendored under .claude/skills/ — the layout
+	// where the resolved archive is the consumer's own.
+	consumerRoot := t.TempDir()
+	if mkdirError := os.MkdirAll(filepath.Join(consumerRoot, "do-work", "queue"), 0o755); mkdirError != nil {
+		t.Fatalf("mkdir consumer queue: %v", mkdirError)
+	}
+	if mkdirError := os.MkdirAll(filepath.Join(consumerRoot, ".claude", "skills", "do-work", "actions"), 0o755); mkdirError != nil {
+		t.Fatalf("mkdir vendored suite: %v", mkdirError)
+	}
+	if writeError := os.WriteFile(filepath.Join(consumerRoot, ".claude", "skills", "do-work", "actions", "version.md"),
+		[]byte("**Current version**: 1.4.0\n"), 0o644); writeError != nil {
+		t.Fatalf("write vendored version.md: %v", writeError)
+	}
+	consumerSkipReason := suiteCheckoutSkipReason(consumerRoot)
+	if consumerSkipReason == "" {
+		t.Fatal("a consumer root must skip the pinned figures — its archive is not the one they were calibrated against")
+	}
+	if !strings.Contains(consumerSkipReason, "suite checkout") {
+		t.Errorf("the skip reason must name the suite-checkout condition, got %q", consumerSkipReason)
+	}
+	// No path in the message: a path reads as "look here and fix it", and nothing
+	// is missing — the consumer's archive is simply theirs.
+	if strings.Contains(consumerSkipReason, consumerRoot) || strings.Contains(consumerSkipReason, "version.md") {
+		t.Errorf("the skip reason must not name a path — nothing is missing: %q", consumerSkipReason)
 	}
 }
 

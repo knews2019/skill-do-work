@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.233.1 — Board Tests Skip the Figures That Are Only Ours (2026-08-21)
+
+The board tool's tests ship with the suite, and one of them pinned exact medians from this repo's own archive. Run inside your project it loaded your queue and failed on numbers it was never calibrated against. It now says why it does not apply, instead.
+
+- The pinned figures are unchanged and still catch a regression here — proven by changing one and watching the test fail.
+- The skip names the condition ("not a do-work suite checkout"), never a path, because nothing is missing on your side.
+- The repo-independent live tests still run everywhere, unchanged.
+
 ## 0.233.0 — A Builder's Decisions Reach the End-of-Run Report (2026-08-21)
 
 Under parallel building, the numbered decisions a builder records went into its hand-back and nowhere else — the code review and the end-of-run brief both read the request file alone, found nothing, and reported clean. The rule for finding those sections now lives where every reader can cite it instead of inside one step.
