@@ -4085,6 +4085,19 @@ func TestReduceAbsolutePathsLeavesRelativePathsIntact(t *testing.T) {
 			"worktree /elsewhere/repo-worktrees/worktree-agent-REQ-999 is unmerged",
 			"worktree <path outside this repository> is unmerged",
 		},
+		{
+			"a Windows drive path with backslashes is replaced",
+			`worktree C:\Users\alice\proj\worktree-agent-REQ-999 is unmerged`,
+			"worktree <path outside this repository> is unmerged",
+		},
+		{
+			// Git on Windows emits this form too. A drive pattern that accepts only
+			// the backslash form let it through whole, and `C:` is not a boundary
+			// character so the POSIX branch could not catch the `/` after it either.
+			"a Windows drive path with forward slashes is replaced",
+			"worktree C:/Users/alice/proj/worktree-agent-REQ-999 is unmerged",
+			"worktree <path outside this repository> is unmerged",
+		},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -4509,5 +4522,96 @@ process.stdout.write(JSON.stringify({
 		if !strings.Contains(view.Forecast, "Queue empties around") {
 			t.Errorf("the %s forecast lost its estimate: %q", viewName, view.Forecast)
 		}
+	}
+}
+
+// TestJavaScriptBehaviorDurationsReserveMatchesTheSentenceDrawn pins the reserve to
+// a fixed point rather than to two passes.
+//
+// Holding the remainder sentence's room narrows the last label row, which can hide
+// labels the unreserved pass had placed. The count therefore rises between the pass
+// the reserve was measured from and the pass whose result is drawn — and across a
+// digit boundary the sentence gets wider too, so `+10 more …` is painted into room
+// reserved for `+8 more …`, over the last placed label. That is the exact collision
+// the planner exists to prevent, and it was reachable before this: at 26 candidates
+// of one width the two passes hid 8 then 10.
+//
+// The invariant is stated as a relationship, not a number: whatever the final count
+// is, the reserve the final pass held must have been measured from that same count.
+// It sweeps a range of densities rather than pinning one fixture, because the
+// boundary moves with the face and the plot width.
+func TestJavaScriptBehaviorDurationsReserveMatchesTheSentenceDrawn(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+
+	probeDriver := `
+var lastMeasuredSentence = null;
+function measureRemainderWidth(sentenceText) {
+  lastMeasuredSentence = sentenceText;
+  return sentenceText.length * 7;   // monotone in the digit count, like a real face
+}
+var mismatches = [], remainderCases = 0, multiPassCases = 0;
+for (var candidateCount = 12; candidateCount <= 60; candidateCount += 1) {
+  for (var markStep = 20; markStep <= 45; markStep += 5) {
+    lastMeasuredSentence = null;
+    var candidates = [];
+    for (var index = 0; index < candidateCount; index += 1) {
+      candidates.push({
+        markX: DURATIONS_MARGIN_LEFT + 20 + index * markStep,
+        textWidth: 80,
+        id: "REQ-" + index
+      });
+    }
+    var unreserved = placeDurationsLabelBand(candidates, 0);
+    var band = packDurationsLabelBand(candidates, measureRemainderWidth, "not labelled");
+    if (band.hiddenCount === 0) { continue; }
+    remainderCases += 1;
+    if (band.hiddenCount > unreserved.hiddenCount) { multiPassCases += 1; }
+    var sentenceDrawn = composeDurationsRemainderText(band.hiddenCount, "not labelled");
+    if (lastMeasuredSentence !== sentenceDrawn) {
+      mismatches.push({
+        candidateCount: candidateCount, markStep: markStep,
+        reservedFor: lastMeasuredSentence, drawn: sentenceDrawn
+      });
+    }
+  }
+}
+process.stdout.write(JSON.stringify({
+  mismatches: mismatches, remainderCases: remainderCases, multiPassCases: multiPassCases
+}));
+`
+
+	javascriptProbe := string(rendererFragment) + probeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "durations remainder reserve", javascriptProbe)
+
+	var swept struct {
+		Mismatches []struct {
+			CandidateCount int    `json:"candidateCount"`
+			MarkStep       int    `json:"markStep"`
+			ReservedFor    string `json:"reservedFor"`
+			Drawn          string `json:"drawn"`
+		} `json:"mismatches"`
+		RemainderCases int `json:"remainderCases"`
+		MultiPassCases int `json:"multiPassCases"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &swept); decodeError != nil {
+		t.Fatalf("decode durations reserve sweep: %v (output starts %q)",
+			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+
+	// Guard the sweep itself: a fixture range that never produces a remainder, or
+	// never needs more than one reserved pass, would satisfy the invariant vacuously.
+	if swept.RemainderCases == 0 {
+		t.Fatal("no swept density produced a remainder — the sweep proves nothing about the reserve")
+	}
+	if swept.MultiPassCases == 0 {
+		t.Fatal("no swept density hid more under the reserve than without it — the sweep never reaches the case this pins")
+	}
+
+	for _, mismatch := range swept.Mismatches {
+		t.Errorf("%d candidates at step %d reserved room for %q but will draw %q",
+			mismatch.CandidateCount, mismatch.MarkStep, mismatch.ReservedFor, mismatch.Drawn)
 	}
 }

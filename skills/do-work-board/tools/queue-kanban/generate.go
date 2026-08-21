@@ -579,14 +579,19 @@ func reduceAbsolutePaths(text string, repoRoot string) string {
 	return remainingAbsolutePath.ReplaceAllString(reduced, "${1}<path outside this repository>")
 }
 
-// Any surviving absolute path: a POSIX root-anchored run, or a Windows drive letter.
+// Any surviving absolute path: a POSIX root-anchored run, or a Windows drive letter
+// followed by EITHER slash. Git on Windows emits both — `C:\Users\...` from some
+// commands and `C:/Users/...` from others (rev-parse --show-toplevel among them) — and
+// a drive pattern that accepts only the backslash form lets the forward-slash one
+// through untouched: `C:` is not a boundary character, so the POSIX branch cannot
+// match the `/` after it either, and the whole path ships inside a static board.
 //
 // The leading group is load-bearing. RE2 has no lookbehind, so the boundary is
 // captured and put back rather than asserted — without it the pattern matches the
 // `/` INSIDE an already-relative path and turns `do-work/calibration-log.tsv` into
 // `do-work<path outside this repository>`, mangling exactly the relative paths the
 // repo-root reduction just produced.
-var remainingAbsolutePath = regexp.MustCompile(`(\A|[\s"'(\[])((?:[A-Za-z]:\\|/)[^\s"'` + "`" + `]*)`)
+var remainingAbsolutePath = regexp.MustCompile(`(\A|[\s"'(\[])((?:[A-Za-z]:[\\/]|/)[^\s"'` + "`" + `]*)`)
 
 // buildGeneratedBoardData projects the parsed Board into the JSON data island,
 // pre-rendering every REQ and UR body to HTML along the way.

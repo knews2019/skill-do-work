@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.235.1 — Two Board Fixes From an Automated Review (2026-08-21)
+
+Codex reviewed PR #156 and found two real defects in the board tool. Both reproduced, both fixed, both now pinned by a test that fails without the fix.
+
+- A static board could leak the generating machine's directory layout. Absolute paths were redacted for `C:\Users\...` but not `C:/Users/...`, which is the form several Git commands emit on Windows — and because `C:` is not a word boundary, the POSIX branch could not catch it either, so the whole path shipped inside a shareable snapshot.
+- The Durations view's "+N more" sentence could be painted over the last label it was supposed to clear. Room was reserved from the label count of the first placement pass, but holding that room narrows the last row and hides more labels, so the sentence finally drawn counts higher — and past nine, is wider. Measured at 26 candidates: reserved for `+8 more`, drew `+10 more`. Placement now repeats until the count and the reserve agree.
+
 ## 0.235.0 — Prose Findings Move to a Plain Backlog File (2026-08-21)
 
 A prose-only finding — a stale count, a wrong cross-reference, a comment describing a superseded mechanism — now lands as one line in `do-work/prose-backlog.md` instead of on a never-closing queue REQ. Draining it is an ordinary REQ with no exceptions anywhere in the pipeline.

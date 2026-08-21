@@ -305,18 +305,41 @@
     return { placements: placements, hiddenCount: hiddenCount };
   }
 
-  // The two-pass reserve. Pass one runs with the full width; only if it dropped
-  // something is it redone with the remainder sentence's room held back, because
-  // only then is there a sentence to hold room for.
+  // The reserve, run to a fixed point. Pass one uses the full width; only if it
+  // dropped something is there a sentence to hold room for at all, so a board with
+  // no remainder still pays nothing.
+  //
+  // It cannot stop at two passes. Holding the reserve narrows the last row, which
+  // can hide labels pass one placed — so the sentence finally DRAWN counts more
+  // than the sentence the reserve was measured from, and across a digit boundary
+  // it is also wider. Measured: 26 candidates at one width hid 8 on pass one and
+  // 10 on pass two, reserving room for "+8 more …" and drawing "+10 more …" over
+  // the last placed label. That is the collision this planner exists to prevent.
+  //
+  // The loop terminates: hiding is monotone in the reserve (a wider reserve only
+  // ever shrinks the last row), the sentence is monotone in the count, and the
+  // count is bounded by the candidates. The iteration cap is a backstop against a
+  // measure function that is not monotone, not an expected path — one extra pass
+  // is the normal cost, and the cap returns the widest reserve actually tried.
+  //
+  // The cap lives INSIDE the function on purpose. The browser probe assembles its
+  // page by slicing named functions out of the built client, so a module-level
+  // constant beside them is simply absent there and the page throws on first use.
   function packDurationsLabelBand(candidates, measureRemainderWidth, remainderTail) {
+    var reservePassLimit = 8;
     var band = placeDurationsLabelBand(candidates, 0);
-    if (band.hiddenCount === 0) {
-      return band;
+    var reservedForCount = 0;
+    for (var pass = 0; pass < reservePassLimit; pass += 1) {
+      if (band.hiddenCount === 0 || band.hiddenCount === reservedForCount) {
+        return band;
+      }
+      reservedForCount = band.hiddenCount;
+      band = placeDurationsLabelBand(
+        candidates,
+        measureRemainderWidth(composeDurationsRemainderText(reservedForCount, remainderTail))
+      );
     }
-    var reserveUnits = measureRemainderWidth(
-      composeDurationsRemainderText(band.hiddenCount, remainderTail)
-    );
-    return placeDurationsLabelBand(candidates, reserveUnits);
+    return band;
   }
 
   // The remainder sentence goes on the band's LAST text row. The marks sit level
