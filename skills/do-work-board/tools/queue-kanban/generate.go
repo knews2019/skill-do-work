@@ -589,11 +589,17 @@ func reduceAbsolutePaths(text string, repoRoot string) string {
 		reduced = strings.ReplaceAll(reduced, repoRoot+"/", "")
 		reduced = strings.ReplaceAll(reduced, repoRoot, ".")
 	}
-	return remainingAbsolutePath.ReplaceAllString(reduced, "<path outside this repository>")
+	return remainingAbsolutePath.ReplaceAllString(reduced, "${1}<path outside this repository>")
 }
 
 // Any surviving absolute path: a POSIX root-anchored run, or a Windows drive letter.
-var remainingAbsolutePath = regexp.MustCompile(`(?:[A-Za-z]:\\|/)[^\s"'` + "`" + `]*`)
+//
+// The leading group is load-bearing. RE2 has no lookbehind, so the boundary is
+// captured and put back rather than asserted — without it the pattern matches the
+// `/` INSIDE an already-relative path and turns `do-work/calibration-log.tsv` into
+// `do-work<path outside this repository>`, mangling exactly the relative paths the
+// repo-root reduction just produced.
+var remainingAbsolutePath = regexp.MustCompile(`(\A|[\s"'(\[])((?:[A-Za-z]:\\|/)[^\s"'` + "`" + `]*)`)
 
 // buildGeneratedBoardData projects the parsed Board into the JSON data island,
 // pre-rendering every REQ and UR body to HTML along the way.

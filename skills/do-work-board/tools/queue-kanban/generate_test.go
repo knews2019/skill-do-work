@@ -3986,3 +3986,40 @@ func TestGeneratedVerifyPayloadCarriesNoAbsolutePaths(t *testing.T) {
 		}
 	}
 }
+
+// The reduction must strip absolute paths WITHOUT touching relative ones. RE2 has
+// no lookbehind, so the boundary in remainingAbsolutePath is captured and restored;
+// the first version asserted nothing and matched the `/` inside an already-relative
+// path, turning "do-work/calibration-log.tsv" into "do-work<path…>" — mangling
+// precisely the paths the repo-root reduction had just produced.
+func TestReduceAbsolutePathsLeavesRelativePathsIntact(t *testing.T) {
+	repoRoot := filepath.Join("/tmp", "fixture-repo")
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			"repo-root path becomes relative and stays whole",
+			"calibration-log probe: " + filepath.Join(repoRoot, "do-work", "calibration-log.tsv") + " is absent",
+			"calibration-log probe: do-work/calibration-log.tsv is absent",
+		},
+		{
+			"an already-relative path is untouched",
+			"open do-work/queue/REQ-042-thing.md first",
+			"open do-work/queue/REQ-042-thing.md first",
+		},
+		{
+			"a path outside the repo is replaced wholesale",
+			"worktree /elsewhere/repo-worktrees/worktree-agent-REQ-999 is unmerged",
+			"worktree <path outside this repository> is unmerged",
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := reduceAbsolutePaths(testCase.input, repoRoot); got != testCase.want {
+				t.Errorf("reduceAbsolutePaths(%q)\n got %q\nwant %q", testCase.input, got, testCase.want)
+			}
+		})
+	}
+}

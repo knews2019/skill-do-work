@@ -512,6 +512,67 @@
     });
   }
 
+  // ---- verify findings strip (REQ-285) -----------------------------------
+  // `queue-kanban verify` detects sixteen categories of queue and process
+  // breakage; the board rendered three, so the rest reached nobody who did not
+  // run verify from a shell. This strip renders whatever the Go producer put in
+  // boardData.verifyFindings — blindly, on purpose: the suppression of the
+  // categories the board already shows another way happened in Go (REQ-284), and
+  // a second copy of that judgment here is how the two would drift apart.
+  //
+  // Same exemptions as the anomalies strip above, for the same reason: it lives
+  // outside the view panels, ignores the recently-done window, and ignores the
+  // shared filters, because a finding must not be hideable by a filter
+  // combination. Every string is set with textContent — a detail or remedy is
+  // producer text that can carry any punctuation and must never become markup.
+
+  function renderVerifyFindingsStrip() {
+    var findings = boardData.verifyFindings || [];
+    var skipped = boardData.verifySkipped || [];
+    var strip = document.getElementById("board-findings");
+    if (!strip) {
+      return; // an older template; the payload is still valid without this strip
+    }
+    if (findings.length === 0 && skipped.length === 0) {
+      strip.hidden = true;
+      return;
+    }
+    strip.hidden = false;
+    document.getElementById("board-findings-count").textContent = String(findings.length);
+
+    var cardsHost = document.getElementById("board-findings-cards");
+    cardsHost.textContent = "";
+    findings.forEach(function (finding) {
+      var card = createElement("div", "board-finding");
+      var head = createElement("div", "board-finding-head");
+      head.appendChild(createElement("span", "board-finding-category", finding.category || "finding"));
+      if (finding.fixable) {
+        // Exactly verify's meaning: `do-work cleanup` can resolve this one
+        // mechanically. Never inferred here — the producer sets the flag.
+        head.appendChild(createElement("span", "board-finding-fixable", "cleanup can fix"));
+      }
+      card.appendChild(head);
+      card.appendChild(createElement("p", "board-finding-detail", finding.detail || ""));
+      if (finding.remedy) {
+        card.appendChild(createElement("p", "board-finding-remedy", finding.remedy));
+      }
+      cardsHost.appendChild(card);
+    });
+
+    var skippedHost = document.getElementById("board-findings-skipped");
+    if (skipped.length === 0) {
+      skippedHost.hidden = true;
+      return;
+    }
+    skippedHost.hidden = false;
+    document.getElementById("board-findings-skipped-count").textContent = String(skipped.length);
+    var skippedList = document.getElementById("board-findings-skipped-list");
+    skippedList.textContent = "";
+    skipped.forEach(function (skippedProbe) {
+      skippedList.appendChild(createElement("li", "board-findings-skipped-item", skippedProbe));
+    });
+  }
+
   // ---- notes strip (do-work/notes.md) -------------------------------------
   // Notes are plain text, never Markdown: they are appended verbatim by
   // `do-work-toolbox note` and rendered with textContent, so a stray `<` or a pasted

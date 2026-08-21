@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.227.0 — Verify Findings Show Up on the Board (2026-08-21)
+
+Seeing the board should mean seeing the problems. A new strip lists every finding `queue-kanban verify` detects — what is wrong and what to do about it — so the thirteen categories that previously reached nobody without a shell are on the page you already look at.
+
+- One card per finding: category, detail, and the remedy underneath, plus a "cleanup can fix" marker only where that is actually true
+- Probes that could not run get a collapsed footer of their own, because a skipped probe shown as nothing reads as "checked and clean"
+- The strip sits outside the view panels: no view switch, no filter combination, and no recently-done window can hide a finding
+- Visually subordinate to completion anomalies — broken bookkeeping still outranks process drift
+- Fixed a path-reduction bug from 0.226.0 that mangled relative paths in the skipped list
+
 ## 0.226.0 — Verify Findings Reach the Board's Data (2026-08-21)
 
 `queue-kanban verify` finds sixteen categories of queue and process breakage; the board rendered three. The board's producer now carries every finding into the page data, so the surface a human actually looks at can show what the command nobody runs already knew.

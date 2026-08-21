@@ -146,6 +146,37 @@
         <div class="board-anomalies-cards" id="board-anomalies-cards"></div>
       </section>
 
+      <!-- Verify findings (REQ-285). `queue-kanban verify` finds sixteen categories
+           of queue and process breakage; before this strip the board rendered three,
+           so the rest were invisible to anyone who did not run verify from a shell.
+           Modelled on the anomalies strip above and deliberately subordinate to it:
+           anomalies are broken bookkeeping, findings are process drift. Same
+           placement rules — outside the view panels so it survives every view
+           switch, exempt from the recently-done window and the shared filters
+           (a finding must not be hideable by a filter combination), hidden only
+           when there is nothing at all to say. The client renders the producer's
+           list blindly; category suppression already happened in Go (REQ-284).
+           Filled by board-cards.js. -->
+      <section class="board-anomalies board-findings" id="board-findings" aria-label="Verify findings" hidden>
+        <header class="board-anomalies-head">
+          <strong class="board-anomalies-title">Verify findings</strong>
+          <span class="board-anomalies-count" id="board-findings-count">0</span>
+          <span class="board-anomalies-hint">
+            queue and process problems <code>queue-kanban verify</code> detects — each names what to do about it
+          </span>
+        </header>
+        <div class="board-anomalies-cards" id="board-findings-cards"></div>
+        <!-- A skipped probe rendered as nothing reads as "checked and clean", which
+             is the one thing it must never read as. Collapsed, but always present
+             when the producer reported any. -->
+        <details class="board-findings-skipped" id="board-findings-skipped" hidden>
+          <summary class="board-findings-skipped-summary">
+            <span id="board-findings-skipped-count">0</span> probe(s) could not run — unverified, not clean
+          </summary>
+          <ul class="board-findings-skipped-list" id="board-findings-skipped-list"></ul>
+        </details>
+      </section>
+
       <!-- Flat Kanban columns -->
       <section id="view-board" class="view-panel is-active" aria-label="Kanban board">
         <div class="kanban-columns" id="kanban-columns">
