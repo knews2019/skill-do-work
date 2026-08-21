@@ -1,7 +1,7 @@
 ---
 name: do-work-board
 description: Queue-kanban board, Testing workflow, queue activity calendar, summaries, and terminal digest for the modular do-work suite
-argument-hint: "board [serve|static|summary|cli] [--port N|--out DIR] | help"
+argument-hint: "board [serve|static|summary|cli|verify] [--port N|--out DIR] | help"
 ---
 
 # Do-Work Board Skill
@@ -14,8 +14,9 @@ This package owns the compiled queue-kanban application and its launcher. It rea
 |---|---|
 | empty, `help` | `./actions/help.md` |
 | `board`, `kanban`, `queue board`, `show the board`, or a board mode | `./actions/board.md` |
+| `verify`, `check invariants`, `probes` | `./actions/board.md` |
 
-Pass `serve`, `static`, `summary`, `cli`, `--port N`, and `--out DIR` through to the board action. An unknown command prints board help and stops.
+Pass `serve`, `static`, `summary`, `cli`, `verify`, `--port N`, and `--out DIR` through to the board action. An unknown command prints board help and stops.
 
 ## Ownership boundary
 

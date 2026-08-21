@@ -282,7 +282,7 @@ while IFS= read -r candidate_file; do
   printf 'BLANKED\t%s\t%s\t%s\n' "$candidate_file" "$recovery_sha" "$recorded_hash"
 done < <(
   {
-    find do-work/archive -type f \( -name 'REQ-*.md' -o -name 'UR-*.md' \) 2>/dev/null
+    find do-work/archive -type f -not -path '*/assets/*' \( -name 'REQ-*.md' -o -name 'UR-*.md' \) 2>/dev/null
     find do-work/queue do-work/working -type f \( -name 'REQ-*.md' -o -name 'UR-*.md' \) 2>/dev/null
   } | sort -u
 )

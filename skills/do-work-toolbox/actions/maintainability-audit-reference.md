@@ -11,7 +11,7 @@ Defaults only — every value is recalibrated at the calibration gate before it 
 - **WATCH** — abnormal enough to list in the metrics appendix; becomes a finding only if the file is also a hotspot.
 - **FLAG** — finding-eligible on its own.
 
-Bands decide *eligibility* only. Severity comes from impact (churn × complexity × blast radius): a 700-line file with zero churn and no importers is a WATCH curiosity; a 350-line file that changes weekly is a P1.
+Bands decide *eligibility* only. Severity comes from the 1-5 `Impact` score (churn × complexity × blast radius): a 700-line file with zero churn and no importers is a WATCH curiosity; a 350-line file that changes weekly is a P1.
 
 | metric | WATCH > | FLAG > | measured by |
 |---|---:|---:|---|
@@ -148,7 +148,7 @@ A **lock-in limit** is a single number or zero-hit assertion — never a band �
 
 A lock-in limit is added surface, so its proposal must carry the surface-cost evidence inline (see the template's Surface-cost field): incident = the finding class and its instances; replay = the Reproduce command; cost judgment = one CI line versus the class recurring; regression test = the red case itself.
 
-**Dimension-5 exception:** discoverability/context-coverage findings (missing or stale prime coverage) are judgment findings only — **no lock-in limit is ever proposed for this class**. REQ-touch counts serve as impact evidence, the remedy is consolidation, and `Surface-cost: N/A` (a prime is consolidated context, not guard apparatus).
+**Dimension-5 exception:** discoverability/context-coverage findings (missing or stale prime coverage) are judgment findings only — **no lock-in limit is ever proposed for this class**. REQ-touch counts serve as `Impact`-score evidence, the remedy is consolidation, and `Surface-cost: N/A` (a prime is consolidated context, not guard apparatus).
 
 ## Finding-Class Template
 
@@ -182,7 +182,7 @@ Field rules:
 - **Severity comes from the 1-5 `Impact` score alone**: 4-5 → P1, 3 → P2, 1-2 → P3. The lowercase `impact:` line is a different thing: it is the REQ frontmatter token any follow-up carries (`../../do-work/actions/work-reference.md` → Request File Schema, via `../../do-work/actions/review-work.md` Step 10's two questions), it routes how the fix lands, and it never doubles as a severity.
 - **Impact shows its three inputs** — the churn, complexity, and blast-radius numbers behind the 1-5 call, pasted, not narrated.
 - **`effort_estimate`** uses the canonical enum `effort-mechanical | effort-substantive` only, and means SIZE — never derive it from the `impact:` token.
-- **Ranking** (decided, not optional): order classes by impact **descending**; break ties by `effort_estimate` (`effort-mechanical` before `effort-substantive`). There is no Score field and no impact/effort division.
+- **Ranking** (decided, not optional): order classes by the 1-5 `Impact` score **descending**; break ties by `effort_estimate` (`effort-mechanical` before `effort-substantive`). There is no Score field and no `Impact`-score/effort division.
 - **Surface-cost**: `N/A` for deletions, simplifications, renames, and direct fixes. Any remedy that adds a guard, rule, or warning apparatus — and a lock-in limit is added surface — supplies all four elements inline: the concrete incident or replay case, **the surface that will remain**, the cost judgment (is the fix still cheaper than the surface it adds?), and the regression test that keeps it live.
 
 ## Report Template
@@ -204,7 +204,7 @@ Write `do-work/audits/audit-YYYY-MM-DD.md` (today's date; create `do-work/audits
  First run: state "no baseline" and skip deltas.]
 
 ## Findings — paste this section into: do-work-toolbox validate-feedback
-[The numbered finding-class blocks, ranked impact-descending, effort tie-break.
+[The numbered finding-class blocks, ranked by the 1-5 `Impact` score descending, `effort_estimate` tie-break.
  Fully self-contained — the validator may see this section alone.]
 
 ## Metrics Appendix
