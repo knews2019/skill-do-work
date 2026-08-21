@@ -2658,7 +2658,8 @@ for builder_section_reader_path in actions/review-work.md actions/work-reference
   fi
 done
 
-# REQ-308 — capture judges effort_estimate by the same standard it judges impact.
+# REQ-308 / REQ-314 — every REQ writer judges effort_estimate by the same
+# three-way contract it judges impact.
 # capture.md required a judged `impact:` in a rule written to close exactly this hole
 # ("an absent impact: must not be the common case") while the neighbouring field was
 # only ever MAY-set. That stopped being cosmetic when `do-work run-simple-reqs` began
@@ -2669,12 +2670,19 @@ done
 # The check pins the PROPERTY, not the wording (REQ-293's lesson): the two checklist
 # lines must be the same sentence apart from the field they name. A rule that drifts on
 # one field and not the other fails here, whatever either sentence happens to say.
-if ! python3 - "$core_root/actions/capture.md" <<'PY'
+if ! python3 - \
+  "$core_root/actions/capture.md" \
+  "$core_root/actions/review-work.md" \
+  "$core_root/actions/work-reference.md" \
+  "$board_root/tools/queue-kanban/model.go" <<'PY'
 import pathlib
 import re
 import sys
 
 capture_text = pathlib.Path(sys.argv[1]).read_text()
+review_text = pathlib.Path(sys.argv[2]).read_text()
+work_reference_text = pathlib.Path(sys.argv[3]).read_text()
+board_model_text = pathlib.Path(sys.argv[4]).read_text()
 
 checklist_block = re.search(
     r"^## Verification Checklist$(.*?)(?=^## |\Z)",
@@ -2734,9 +2742,113 @@ for required_alternative, description in (
             f"the judged-verdict checklist line no longer offers '{description}' — the "
             f"three-way contract is what stops a copied default: {judged_line}"
         )
+
+def markdown_section(document_text, heading_pattern, next_heading_pattern=r"^#{1,3} "):
+    section_match = re.search(
+        rf"^{heading_pattern}$(.*?)(?={next_heading_pattern}|\Z)",
+        document_text,
+        flags=re.DOTALL | re.MULTILINE,
+    )
+    if section_match is None:
+        raise SystemExit(f"missing contract section matching {heading_pattern!r}")
+    return section_match.group(1)
+
+review_followup_section = markdown_section(
+    review_text,
+    r"### Step 10: Create Follow-up REQs",
+    next_heading_pattern=r"^### ",
+)
+discovered_tasks_section = markdown_section(
+    work_reference_text,
+    r"## Discovered Tasks Classification \(Step 8\)",
+    next_heading_pattern=r"^## ",
+)
+
+def require_three_way_effort_judgment(section_name, section_text):
+    required_properties = (
+        (r"effort-mechanical", "emits the mechanical judgment"),
+        (r"effort-substantive", "emits the non-small judgment"),
+        (r"judg", "requires a size judgment"),
+        (r"(?:ask|put).{0,80}(?:user|question)|(?:user|question).{0,80}(?:ask|put)", "puts an unclear judgment to the user"),
+        (r"(?:omit|absent).{0,120}(?:neither|cannot|could not|not possible)|(?:neither|cannot|could not|not possible).{0,120}(?:omit|absent)", "permits omission only when neither judging nor asking is possible"),
+        (r"(?:never|not).{0,80}(?:copied|default)|(?:copied|default).{0,80}(?:never|not)", "forbids a copied default"),
+    )
+    # Template payload is checked separately at the emission seam. It must not
+    # satisfy the instruction contract when the surrounding writer rule is weak.
+    instruction_text = re.sub(r"^```.*?^```$", "", section_text, flags=re.DOTALL | re.MULTILINE)
+    effort_directives = [
+        paragraph
+        for paragraph in re.split(r"\n\s*\n", instruction_text)
+        if "`effort_estimate`" in paragraph and "effort-mechanical" in paragraph
+    ]
+    if len(effort_directives) != 1:
+        raise SystemExit(
+            f"{section_name} must carry exactly one effort_estimate writer directive; "
+            f"found {len(effort_directives)}"
+        )
+    # Anchor every semantic leg at the field's own directive. Even the impact/title
+    # prefix in the same paragraph has unrelated default/never language that must not
+    # make a weakened effort rule pass.
+    effort_directive = effort_directives[0]
+    effort_directive = effort_directive[effort_directive.index("`effort_estimate`"):]
+    flattened = " ".join(effort_directive.split())
+    for property_pattern, description in required_properties:
+        if re.search(property_pattern, flattened, flags=re.IGNORECASE) is None:
+            raise SystemExit(f"{section_name} no longer {description}")
+
+require_three_way_effort_judgment("actions/review-work.md Step 10", review_followup_section)
+require_three_way_effort_judgment(
+    "actions/work-reference.md Discovered Tasks Classification",
+    discovered_tasks_section,
+)
+
+# The emitted follow-up must carry the result. A prose judgment beside a template that
+# drops the field recreates the same absent-by-accident population at the write seam.
+review_template_match = re.search(
+    r"```markdown\n---\n(.*?)\n---",
+    review_followup_section,
+    flags=re.DOTALL,
+)
+if review_template_match is None:
+    raise SystemExit("actions/review-work.md Step 10 has no follow-up frontmatter template")
+if re.search(r"^effort_estimate:\s*\[", review_template_match.group(1), flags=re.MULTILINE) is None:
+    raise SystemExit("actions/review-work.md Step 10's follow-up template drops the judged effort_estimate")
+
+# Schema surfaces name all current writers. Keeping a capture-only gloss here teaches
+# the weaker contract even when the two writer steps themselves are correct.
+schema_effort_line = next(
+    (line for line in work_reference_text.splitlines() if line.startswith("effort_estimate:")),
+    None,
+)
+if schema_effort_line is None:
+    raise SystemExit("actions/work-reference.md has no effort_estimate schema line")
+for writer_name in ("capture", "review", "discovered"):
+    if writer_name not in schema_effort_line.lower():
+        raise SystemExit(f"actions/work-reference.md's effort_estimate schema line omits the {writer_name} writer")
+
+effort_read_contract_line = next(
+    (line for line in work_reference_text.splitlines() if line.startswith("| `effort_estimate`")),
+    None,
+)
+if effort_read_contract_line is None:
+    raise SystemExit("actions/work-reference.md has no effort_estimate Schema Read Contract row")
+for writer_name in ("capture", "review", "discovered"):
+    if writer_name not in effort_read_contract_line.lower():
+        raise SystemExit(f"actions/work-reference.md's effort_estimate read-contract row omits the {writer_name} writer")
+
+model_effort_comment = re.search(
+    r"// effort_estimate —.*?\n\s*EffortEstimate\s+string",
+    board_model_text,
+    flags=re.DOTALL,
+)
+if model_effort_comment is None:
+    raise SystemExit("queue-kanban/model.go has no effort_estimate schema-mirror comment")
+for writer_name in ("capture", "review", "discovered"):
+    if writer_name not in model_effort_comment.group(0).lower():
+        raise SystemExit(f"queue-kanban/model.go's effort_estimate schema mirror omits the {writer_name} writer")
 PY
 then
-  printf 'FAIL: actions/capture.md does not judge effort_estimate by the same standard as impact (REQ-308) — a field nobody judged reads as effort-substantive by default and is invisible to `do-work run-simple-reqs`.\n' >&2
+  printf 'FAIL: a REQ writer does not carry the three-way effort_estimate judgment contract (REQ-308 / REQ-314) — a field nobody judged reads as effort-substantive by default and is invisible to `do-work run-simple-reqs`.\n' >&2
   fail_count=$((fail_count + 1))
 fi
 

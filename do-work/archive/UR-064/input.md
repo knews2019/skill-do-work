@@ -2,7 +2,7 @@
 id: UR-064
 title: Make the mechanical-work selector see the whole queue
 created_at: 2026-08-20T22:00:52Z
-requests: [REQ-308]
+requests: [REQ-308, REQ-314]
 word_count: 118
 ---
 

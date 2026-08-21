@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.8 — Every REQ Writer Judges Effort (2026-08-21)
+
+Follow-up work no longer silently inherits “substantive” just because review or the work loop minted
+it. Every current REQ writer now judges effort explicitly, asks when size is genuinely unclear, and
+uses omission only as the documented last resort.
+
+The shared semantic contract checks each writer directive and the emitted review template at their
+own seams. Independent deletion mutations closed a masking gap found during review, and the final
+review passed at 99%; completing the addendum also consolidated UR-064 into the archive.
+
 ## 0.236.7 — Timeline Break Count Matches the Render (2026-08-21)
 
 The Timeline summary now counts unique filtered rows across all three preserved break causes:

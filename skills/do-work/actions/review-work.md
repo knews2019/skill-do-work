@@ -353,7 +353,7 @@ Record the answer on the finding's line — in the report and in the appended `#
 - **Only a genuinely non-trivial, thematically unrelated finding (`impact-user-visible`, standing alone) earns its own REQ** — and its body must state in one line what the fold-first scan found: no pending REQ, sweep or not, in any UR, shares the root cause.
 - At generation ≥ 2, appends stay allowed (the depth stop below is creation-only); a NEW sweep falls under the reroute like any other creation (`status: pending-answers`; critical pierces).
 
-For each finding that routes to its own REQ (and for each new sweep), create the follow-up carrying `impact:` set to the finding's recorded token, verbatim (schema: `actions/work-reference.md` → Request File Schema). The same token is mirrored into the REQ's title as a leading `[<impact token>] ` tag ahead of the `Review fix: ` prefix, per `actions/capture-reference.md` → **REQ Title Convention** — emitted only when the token is not the `impact-user-visible` default, and never in the filename slug. `effort_estimate` is a different axis and is never derived from that token: emit `effort_estimate: effort-mechanical` only when you have actually judged the fix small, and otherwise omit the field so it reads as `effort-substantive`. Its `created_at` is the current UTC instant (Timestamp rule, `actions/work-reference.md`):
+For each finding that routes to its own REQ (and for each new sweep), create the follow-up carrying `impact:` set to the finding's recorded token, verbatim (schema: `actions/work-reference.md` → Request File Schema). The same token is mirrored into the REQ's title as a leading `[<impact token>] ` tag ahead of the `Review fix: ` prefix, per `actions/capture-reference.md` → **REQ Title Convention** — emitted only when the token is not the `impact-user-visible` default, and never in the filename slug. `effort_estimate` is a different axis and is never derived from that token. Judge the fix's size and emit either `effort-mechanical` or `effort-substantive`; when the size is genuinely unclear, put that judgment to the user. Omit the field only when neither judging nor asking was possible, and never copy a default in either direction. Its `created_at` is the current UTC instant (Timestamp rule, `actions/work-reference.md`):
 
 ```markdown
 ---
@@ -366,6 +366,7 @@ user_request: [same UR as the reviewed REQ]
 addendum_to: [reviewed REQ id]
 review_generated: true
 impact: [the finding's recorded token, verbatim — never omitted]
+effort_estimate: [the separately judged effort-mechanical or effort-substantive token; omit only when neither judging nor asking was possible]
 ---
 
 # Review Fix: [Brief Description]
