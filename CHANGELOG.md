@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.233.2 — A Backwards Wait No Longer Looks Like a Normal One (2026-08-21)
+
+On the Timeline, a REQ whose claim stamp landed before its capture stamp drew a perfectly ordinary waiting bar while the table beside it printed a negative number. The work segment already knew to draw a break marker in that case; the wait now does too.
+
+- Only genuinely reversed waits change — an ordinary wait and an open one still draw their bars exactly as before.
+- The break is the same fixed mark the work segment uses, so the two read as one kind of thing.
+- First DOM probe for the Timeline renderer, so the next change there has somewhere to assert.
+
 ## 0.233.1 — Board Tests Skip the Figures That Are Only Ours (2026-08-21)
 
 The board tool's tests ship with the suite, and one of them pinned exact medians from this repo's own archive. Run inside your project it loaded your queue and failed on numbers it was never calibrated against. It now says why it does not apply, instead.

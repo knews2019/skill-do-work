@@ -644,8 +644,23 @@
 
         var createdMs = Date.parse(row.createdTime);
         var claimedMs = row.claimedTime ? Date.parse(row.claimedTime) : nowMs;
-        drawSegment(rowGroup, rowTopY, createdMs, claimedMs,
-          "timeline-segment timeline-segment-wait" + (row.waitOpen ? " is-open" : ""));
+        // Same reasoning as the work segment below: a reversed span has no width
+        // to draw honestly, so it becomes a break marker at the wait's own start
+        // instant rather than a bar drawn left-to-right by drawSegment's
+        // min/max sort. An open wait is measured to the now-line and is never
+        // reversed, so it keeps its bar.
+        if (row.waitMinutes < 0) {
+          makeTimelineSvgNode(rowGroup, "rect", {
+            x: (xOfEpoch(createdMs) - 3).toFixed(1),
+            y: rowTopY + 2,
+            width: 6,
+            height: TIMELINE_ROW_HEIGHT - 4,
+            class: "timeline-segment-broken"
+          });
+        } else {
+          drawSegment(rowGroup, rowTopY, createdMs, claimedMs,
+            "timeline-segment timeline-segment-wait" + (row.waitOpen ? " is-open" : ""));
+        }
 
         var projectedRow = projectedById[row.id];
         if (projectedRow) {

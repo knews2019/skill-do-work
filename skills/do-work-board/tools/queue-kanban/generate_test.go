@@ -4136,3 +4136,199 @@ func TestGenerateInlinesImpactAndEffortChipRenderPath(t *testing.T) {
 		}
 	}
 }
+
+// ---- timeline: a reversed span is drawn as a break, never as a bar ----------
+
+// timelineRenderDomStubPreamble is the smallest DOM renderTimelineView touches,
+// so the probe below runs the REAL renderer rather than a sliced fragment of it.
+// Every SVG node records its tag and attributes; nothing here re-implements
+// layout. Same shape as durationsRenderDomStubPreamble, with the extra surface
+// the timeline uses: a scroll host with measurable geometry (row virtualization
+// asks for it), classList on the forecast nodes, and the two globals the module
+// reads from its siblings in the assembled client.
+const timelineRenderDomStubPreamble = `
+function makeStubNode(nodeName) {
+  return {
+    stubName: nodeName,
+    attributes: {},
+    children: [],
+    textContent: "",
+    clientWidth: 900,
+    clientHeight: 400,
+    scrollTop: 0,
+    style: {},
+    classList: { add: function () {}, remove: function () {}, toggle: function () {} },
+    setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = String(attributeValue); },
+    appendChild: function (childNode) { this.children.push(childNode); return childNode; },
+    addEventListener: function () {},
+    removeEventListener: function () {},
+    getBoundingClientRect: function () { return { width: 900, height: 400, left: 0, top: 0 }; }
+  };
+}
+var timelineStubHosts = {};
+[
+  "timeline-summary", "timeline-axis", "timeline-scroll", "timeline-readout",
+  "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state"
+].forEach(function (hostId) { timelineStubHosts[hostId] = makeStubNode("div"); });
+var document = {
+  getElementById: function (nodeId) { return timelineStubHosts[nodeId] || null; },
+  createElementNS: function (namespaceUri, nodeName) { return makeStubNode(nodeName); },
+  createElement: function (nodeName) { return makeStubNode(nodeName); },
+  createTextNode: function (nodeText) { return { textContent: nodeText }; },
+  querySelectorAll: function () { return []; },
+  querySelector: function () { return null; }
+};
+var window = { addEventListener: function () {}, removeEventListener: function () {} };
+var requestsById = {};
+var generatedAtMs = Date.parse("2026-08-18T12:00:00Z");
+function requestMatchesFilters() { return true; }
+function setActiveButton() {}
+`
+
+// timelineRenderProbeDriver reports every drawn rect's class and width, in draw
+// order, grouped by the row group that carries them — the row id is the only
+// thing that ties a segment back to the fixture that produced it.
+const timelineRenderProbeDriver = `
+renderTimelineView();
+var drawnRows = [];
+function collectRowRects(node, sink) {
+  (node.children || []).forEach(function (childNode) {
+    var attributes = childNode.attributes || {};
+    if (childNode.stubName === "rect" && attributes["class"]) {
+      sink.push({ class: attributes["class"], width: Number(attributes.width) });
+    }
+    collectRowRects(childNode, sink);
+  });
+}
+function walkRowGroups(node) {
+  (node.children || []).forEach(function (childNode) {
+    var attributes = childNode.attributes || {};
+    if (childNode.stubName === "g" && attributes["data-detail-id"]) {
+      var rowRects = [];
+      collectRowRects(childNode, rowRects);
+      drawnRows.push({ id: attributes["data-detail-id"], rects: rowRects });
+      return;
+    }
+    walkRowGroups(childNode);
+  });
+}
+walkRowGroups(timelineStubHosts["timeline-scroll"]);
+process.stdout.write(JSON.stringify({ rows: drawnRows }));
+`
+
+// TestJavaScriptBehaviorReversedWaitDrawsAsABreak pins the wait segment to the
+// rule the work segment already followed: a span whose end precedes its start
+// has no width to draw honestly, so it is a break marker rather than a bar.
+//
+// drawSegment sorts its endpoints with Math.min/Math.max — correctly, for every
+// caller that should reach it — so a reversed wait handed to it painted as an
+// ordinary positive-width waiting bar while the table beside it printed the
+// signed value. A row whose numbers say "−60 min" and whose bar says "60 min of
+// waiting" is broken bookkeeping rendering as healthy.
+//
+// All three cases render in ONE pass over one payload, deliberately: the bug was
+// a missing branch, and a fix that turned every wait into a break would satisfy
+// a reversed-only test.
+func TestJavaScriptBehaviorReversedWaitDrawsAsABreak(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
+	if readError != nil {
+		t.Fatalf("read web/board-timeline.js: %v", readError)
+	}
+
+	// claimed_at precedes created_at on REQ-901 only. REQ-902 is an ordinary
+	// closed wait; REQ-903 is an unclaimed REQ whose wait runs to the now-line.
+	timelinePayload := `{
+	  "now": "2026-08-18T12:00:00Z",
+	  "rangeStart": "2026-08-18T09:00:00Z",
+	  "rangeEnd": "2026-08-18T13:00:00Z",
+	  "rows": [
+	    {"id":"REQ-901","createdTime":"2026-08-18T11:00:00Z","claimedTime":"2026-08-18T10:00:00Z",
+	     "completedTime":"2026-08-18T11:30:00Z","waitMinutes":-60,"workMinutes":90,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-902","createdTime":"2026-08-18T10:00:00Z","claimedTime":"2026-08-18T10:30:00Z",
+	     "completedTime":"2026-08-18T11:00:00Z","waitMinutes":30,"workMinutes":30,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-903","createdTime":"2026-08-18T11:00:00Z","claimedTime":null,
+	     "completedTime":null,"waitMinutes":60,"workMinutes":0,
+	     "waitOpen":true,"workOpen":false,"hasWork":false,"anomaly":false}
+	  ]
+	}`
+
+	javascriptProbe := timelineRenderDomStubPreamble +
+		"var boardData = { timeline: " + timelinePayload + " };\n" +
+		string(rendererFragment) +
+		timelineRenderProbeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline reversed wait", javascriptProbe)
+
+	var drawn struct {
+		Rows []struct {
+			Id    string `json:"id"`
+			Rects []struct {
+				Class string  `json:"class"`
+				Width float64 `json:"width"`
+			} `json:"rects"`
+		} `json:"rows"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &drawn); decodeError != nil {
+		t.Fatalf("decode drawn timeline rows: %v (output starts %q)",
+			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+	if len(drawn.Rows) != 3 {
+		t.Fatalf("want one drawn group per fixture row, got %d", len(drawn.Rows))
+	}
+
+	rowClasses := map[string][]string{}
+	rowWidths := map[string]map[string]float64{}
+	for _, drawnRow := range drawn.Rows {
+		rowWidths[drawnRow.Id] = map[string]float64{}
+		for _, rect := range drawnRow.Rects {
+			rowClasses[drawnRow.Id] = append(rowClasses[drawnRow.Id], rect.Class)
+			rowWidths[drawnRow.Id][rect.Class] = rect.Width
+		}
+	}
+
+	rowDrewClassContaining := func(rowId string, classFragment string) bool {
+		for _, drawnClass := range rowClasses[rowId] {
+			if strings.Contains(drawnClass, classFragment) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// (1) The reversed wait is a break, and there is no wait bar to misread.
+	if !rowDrewClassContaining("REQ-901", "timeline-segment-broken") {
+		t.Errorf("a wait whose claim precedes its capture must draw the break marker, got %v", rowClasses["REQ-901"])
+	}
+	if rowDrewClassContaining("REQ-901", "timeline-segment-wait") {
+		t.Errorf("a reversed wait must draw NO wait bar — the table prints the negative value beside it, got %v",
+			rowClasses["REQ-901"])
+	}
+	// Its work span is ordinary and must be untouched by the wait's branch.
+	if !rowDrewClassContaining("REQ-901", "timeline-segment-work") {
+		t.Errorf("a reversed wait must not suppress the row's ordinary work bar, got %v", rowClasses["REQ-901"])
+	}
+
+	// (2) An ordinary closed wait still draws its bar, with real width.
+	if !rowDrewClassContaining("REQ-902", "timeline-segment-wait") {
+		t.Errorf("an ordinary positive wait must still draw its bar, got %v", rowClasses["REQ-902"])
+	}
+	if rowDrewClassContaining("REQ-902", "timeline-segment-broken") {
+		t.Errorf("an ordinary positive wait must not draw a break marker, got %v", rowClasses["REQ-902"])
+	}
+
+	// (3) The open wait keeps its is-open bar: it is measured to the now-line and
+	// is never reversed, so the new branch must not reach it.
+	if !rowDrewClassContaining("REQ-903", "timeline-segment-wait is-open") {
+		t.Errorf("an unclaimed REQ must still draw its open wait bar, got %v", rowClasses["REQ-903"])
+	}
+	if rowDrewClassContaining("REQ-903", "timeline-segment-broken") {
+		t.Errorf("an open wait must not draw a break marker, got %v", rowClasses["REQ-903"])
+	}
+
+	// The break marker is a fixed-width mark, not a measured span — a break whose
+	// width tracked the reversed magnitude would be the same lie in a new shape.
+	if brokenWidth := rowWidths["REQ-901"]["timeline-segment-broken"]; brokenWidth != 6 {
+		t.Errorf("the break marker must be the same fixed 6-unit mark the work branch draws, got %v", brokenWidth)
+	}
+}
