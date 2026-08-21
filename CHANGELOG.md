@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.234.0 — Capture Judges How Big a Request Is, Instead of Skipping It (2026-08-21)
+
+Capture had to judge whether anyone would notice a request, but was only ever allowed to judge how big it was. Since `do-work run-simple-reqs` picks the queue's small work by that second field, a request nobody sized quietly read as "big" and dropped out — 8 of 22 pending requests were in that state, none of them because anyone decided so.
+
+- Capture now judges size on every request it mints, by the same judge-it / ask-me / leave-it-blank rule it already used for impact.
+- One question decides it: would a competent implementer finish this in one focused pass over a small, already-identified set of files?
+- Size and impact stay independent, in both directions — a negligible sweep can be substantial work, and a user-visible fix can be one line.
+- Nothing existing was rewritten and the two values are still the only two values.
+
 ## 0.233.3 — The Timeline Forecast Says Whose Queue It Is Forecasting (2026-08-21)
 
 Filter the Timeline to one domain and it would tell you it holds three REQs, directly above a forecast scheduling all twenty-five and a list of excluded IDs you could not see. The forecast now says up front that it covers the whole queue.

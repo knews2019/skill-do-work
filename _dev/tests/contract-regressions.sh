@@ -2555,6 +2555,96 @@ for builder_section_reader_path in actions/review-work.md actions/work-reference
   fi
 done
 
+# REQ-308 — capture judges effort_estimate by the same standard it judges impact.
+# capture.md required a judged `impact:` in a rule written to close exactly this hole
+# ("an absent impact: must not be the common case") while the neighbouring field was
+# only ever MAY-set. That stopped being cosmetic when `do-work run-simple-reqs` began
+# selecting work on effort_estimate: at capture time 14 of 22 pending REQs carried the
+# field, so 8 read as effort-substantive by default and were invisible to that verb —
+# not because anyone judged them substantive, but because nobody judged them.
+#
+# The check pins the PROPERTY, not the wording (REQ-293's lesson): the two checklist
+# lines must be the same sentence apart from the field they name. A rule that drifts on
+# one field and not the other fails here, whatever either sentence happens to say.
+if ! python3 - "$core_root/actions/capture.md" <<'PY'
+import pathlib
+import re
+import sys
+
+capture_text = pathlib.Path(sys.argv[1]).read_text()
+
+checklist_block = re.search(
+    r"^## Verification Checklist$(.*?)(?=^## |\Z)",
+    capture_text,
+    flags=re.DOTALL | re.MULTILINE,
+)
+if checklist_block is None:
+    raise SystemExit("actions/capture.md has no '## Verification Checklist' section — the anchor moved")
+
+judged_field_names = ("impact:", "effort_estimate:")
+lines_by_field = {field_name: [] for field_name in judged_field_names}
+for checklist_line in checklist_block.group(1).splitlines():
+    if not checklist_line.startswith("- [ ] "):
+        continue
+    for field_name in judged_field_names:
+        if f"`{field_name}`" in checklist_line:
+            lines_by_field[field_name].append(checklist_line)
+
+# The judged-verdict line is the one that states the three-way contract. A field can
+# carry other checklist lines (impact carries the title-mirror one), so the judged line
+# is identified by naming the field with no other field beside it.
+def judged_verdict_line(field_name):
+    candidates = [
+        checklist_line
+        for checklist_line in lines_by_field[field_name]
+        if checklist_line.count("`") == 2
+    ]
+    if len(candidates) != 1:
+        raise SystemExit(
+            f"actions/capture.md's checklist must carry exactly one line stating how "
+            f"`{field_name}` is decided; found {len(candidates)}: {candidates}"
+        )
+    return candidates[0]
+
+# Same sentence, different field. Strip the field token and compare what is left.
+skeletons = {
+    field_name: judged_verdict_line(field_name).replace(f"`{field_name}`", "<field>")
+    for field_name in judged_field_names
+}
+if skeletons["impact:"] != skeletons["effort_estimate:"]:
+    raise SystemExit(
+        "actions/capture.md judges impact: and effort_estimate: by different standards — "
+        "the two checklist lines must be one sentence apart from the field they name.\n"
+        f"  impact:          {skeletons['impact:']}\n"
+        f"  effort_estimate: {skeletons['effort_estimate:']}"
+    )
+
+# And the standard has to be the three-way one, or a matching pair of weak rules passes.
+judged_line = judged_verdict_line("impact:")
+for required_alternative, description in (
+    ("judged", "judge it yourself"),
+    ("put to the user", "ask the user"),
+    ("absent", "leave it absent"),
+):
+    if required_alternative not in judged_line:
+        raise SystemExit(
+            f"the judged-verdict checklist line no longer offers '{description}' — the "
+            f"three-way contract is what stops a copied default: {judged_line}"
+        )
+PY
+then
+  printf 'FAIL: actions/capture.md does not judge effort_estimate by the same standard as impact (REQ-308) — a field nobody judged reads as effort-substantive by default and is invisible to `do-work run-simple-reqs`.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# No shipped file may still say capture MAY set the field — the weaker rule survives
+# wherever it was restated, and a reader who lands on the restatement never sees the rule.
+capture_may_set_effort="$(cd "$repo_root" && grep -rIn 'apture MAY \(set\|emit\)' skills/ 2>/dev/null || true)"
+if [ -n "$capture_may_set_effort" ]; then
+  printf 'FAIL: a shipped file still says capture MAY set a field it must now judge (REQ-308):\n%s\n' "$capture_may_set_effort" >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # The claim-time write (REQ-077) is the other half of REQ-071's gate. REQ-071 made recovery consume
 # the checkpoint's In Progress record, but Step 10 (session end) was its only write site — so a hard
 # crash left no record at all, every crashed REQ classified as a foreign claim, and the own-crash
