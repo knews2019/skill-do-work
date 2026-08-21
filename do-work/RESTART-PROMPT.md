@@ -27,7 +27,7 @@ audits the remaining write sets.
 
 ### What this session finished
 
-**REQ-258 — Split the prescribed shell behavior suite per script.** Route B, review 94%, Acceptance Pass. Merged? Not applicable — serial mode, no worktree, no merge range. Committed at **`1cc1836`**, hash recorded at `35fb513` and confirmed with `record-commit-hash.sh --verify`. Archived at `do-work/archive/REQ-258-split-the-shell-behavior-suite-per-script.md`. Nothing remains on it.
+**REQ-258 — Split the prescribed shell behavior suite per script.** Route B, review 94%, Acceptance Pass. Merged? Not applicable — serial mode, no worktree, no merge range. Committed at **`1cc1836`**, hash recorded at `35fb513` and confirmed with `record-commit-hash.sh --verify`. Archived at `do-work/archive/UR-056/REQ-258-split-the-shell-behavior-suite-per-script.md`. Nothing remains on it.
 
 `_dev/tests/prescribed-shell-scripts-behavior.sh` keeps its path and exit-status contract but is now a 35-line runner. The 76 cases live one file per script in `_dev/tests/prescribed-shell-cases/`, over `_dev/tests/prescribed-shell-harness.sh`. **A REQ that adds a case now writes that script's case file, not the runner.**
 
