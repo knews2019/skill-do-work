@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.3 — Calibration Log Corrected Against Its Own Frontmatter (2026-08-21)
+
+REQ-281 found nine `do-work/calibration-log.tsv` rows that disagreed with the REQ frontmatter they were computed from; REQ-311 queued the judgment call. Resolved: git history (claim commits, merge commits, and independent review-footer timestamps) confirms the frontmatter was right in all nine cases, so the log rows were corrected to match. The estimator's scoring table now fits a clean corpus instead of one with six rows off by 20+ minutes.
+
 ## 0.236.2 — Three More Codex Findings Closed on the Stakeholder Workflow (2026-08-21)
 
 Codex's second pass over PR #159 found three more real gaps. All verified and closed.

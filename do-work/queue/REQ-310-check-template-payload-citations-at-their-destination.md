@@ -1,9 +1,9 @@
 ---
 id: REQ-310
 title: "[impact-rule-change] Check a template payload's citations against where the payload lands"
-status: pending-answers
+status: pending
 created_at: 2026-08-20T23:36:10Z
-status_changed_at: 2026-08-20T23:36:10Z
+status_changed_at: 2026-08-21T00:00:00Z
 user_request: UR-055
 addendum_to: REQ-269
 domain: general
@@ -42,9 +42,8 @@ Naming the shape honestly: this is the fourth marker. REQ-269 retired the backti
 
 ## Open Questions
 
-- [ ] I discovered this out-of-scope task while working on REQ-269: a fenced template's payload is exempt from citation checking because it lands in another file, and nothing verifies it resolves at that destination. Two live templates carry a citation that is wrong where it lands. Should I process this as a new task?
-  Recommended: Yes, add to queue (will flip to 'pending').
-  Also: No, discard it — fix the two templates by hand and accept that template payloads are reviewed rather than checked.
+- [x] I discovered this out-of-scope task while working on REQ-269: a fenced template's payload is exempt from citation checking because it lands in another file, and nothing verifies it resolves at that destination. Two live templates carry a citation that is wrong where it lands. Should I process this as a new task? → Confirmed: Yes, add to queue
+  *(2026-08-21)* User confirmed via `do-work clarify`: process as a new task. Nothing put out of scope — which of the three sizing options (hand-fix only, destination convention, installed-topology-only rule) to take is still open and belongs to whoever builds this REQ.
 
 **Worth knowing before you decide**, because it changes the size a lot:
 

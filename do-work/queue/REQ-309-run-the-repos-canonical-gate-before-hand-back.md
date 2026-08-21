@@ -1,9 +1,9 @@
 ---
 id: REQ-309
 title: "[impact-rule-change] Run the repo's canonical gate before hand-back, not only the changed area's tests"
-status: pending-answers
+status: pending
 created_at: 2026-08-20T23:18:07Z
-status_changed_at: 2026-08-20T23:18:07Z
+status_changed_at: 2026-08-21T00:00:00Z
 user_request: UR-055
 addendum_to: REQ-262
 domain: general
@@ -34,9 +34,8 @@ Worth noting what did *not* fail: REQ-283's review scored it and passed it. The 
 
 ## Open Questions
 
-- [ ] I discovered this out-of-scope task while working on REQ-262: the work pipeline's test resolution is area-scoped, so a change can pass Step 6.5 and Step 7 while leaving the repository's own canonical whole-repo gate red — which is what happened to `maintainer-verify.sh` at REQ-283 and stayed that way for three REQs. Should I process this as a new task?
-  Recommended: Yes, add to queue (will flip to 'pending').
-  Also: No, discard it — Step 5.75's pre-flight already surfaces a red baseline on the next run, so the gap is self-limiting to one REQ's blast radius plus however long until someone runs the queue again.
+- [x] I discovered this out-of-scope task while working on REQ-262: the work pipeline's test resolution is area-scoped, so a change can pass Step 6.5 and Step 7 while leaving the repository's own canonical whole-repo gate red — which is what happened to `maintainer-verify.sh` at REQ-283 and stayed that way for three REQs. Should I process this as a new task? → Confirmed: Yes, add to queue
+  *(2026-08-21)* User confirmed via `do-work clarify`: process as a new task. Nothing put out of scope — the two follow-on decisions (where the knowledge lives, gate-vs-report) are still open and belong to whoever builds this REQ.
 
 **Two things to decide if you say yes**, because they pull in different directions:
 
