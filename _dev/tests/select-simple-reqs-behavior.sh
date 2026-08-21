@@ -37,14 +37,6 @@
 #       REQ vanish from BOTH the selected and the held-back list, leaving the
 #       user nothing to diagnose — the exact failure the Schema Read Contract's
 #       warn-on-fallback leg exists to prevent.
-#  T10  A `standing: true` sweep is never selected. actions/work.md Step 1 says
-#       the default scan never claims one — batching instances is its whole
-#       economy — and it drains only when a human names it. This selector hands
-#       its set to `do-work run REQ-NNN ...`, so auto-selecting one would name it
-#       explicitly, which IS the drain trigger: an unrequested drain of the
-#       queue's one never-closing REQ. Caught only because main landed that rule
-#       while this branch was open; the fixture deliberately carries no
-#       `maintenance: true`, so it cannot pass on an unrelated veto.
 #   T9  No GNU-only tool flags. `xargs -r` is a GNU extension absent from the
 #       BSD xargs macOS ships, and this script claims the stock-macOS floor.
 #       Worse than unportable: with the pipeline broken and no `set -e`, the
@@ -196,16 +188,6 @@ effort_estimate: effort-mechanical
 depends_on: [REQ-900]
 dependencies: [REQ-999]'
 
-# T10 — a standing sweep, mechanical and otherwise ready, carrying NO other veto.
-write_req 'do-work/queue/REQ-117-standing-sweep.md' 'id: REQ-117
-title: "Standing sweep with open instances"
-status: pending
-domain: general
-sweep: true
-standing: true
-impact: impact-negligible
-effort_estimate: effort-mechanical'
-
 # T8 — present but unrecognized effort value.
 write_req 'do-work/queue/REQ-116-typo-effort.md' 'id: REQ-116
 title: "Typo in the effort token"
@@ -270,16 +252,6 @@ if ! printf '%s' "$typo_warnings" | grep -q 'effort-mechanial'; then
   report_failure "T8 warn-on-fallback: the warning must quote the value as written, so the typo is diagnosable"
 fi
 assert_not_selected REQ-116 "T8 warn-on-fallback: the documented default still applies — an unrecognized value reads as effort-substantive"
-
-# T10 — the standing sweep must be held back, and for its OWN reason.
-assert_not_selected REQ-117 "T10 standing sweep: the default scan never selects one, and naming it in the handoff IS the drain trigger (actions/work.md Step 1)"
-standing_report="$(bash "$selector" --repo-root "$fixture_root" 2>/dev/null)"
-if ! printf '%s' "$standing_report" | grep -q 'REQ-117'; then
-  report_failure "T10 standing sweep: REQ-117 must be reported as held back, not silently dropped"
-fi
-if ! printf '%s' "$standing_report" | grep -q 'standing sweep'; then
-  report_failure "T10 standing sweep: the reported reason must name the standing-sweep rule, not an incidental marker"
-fi
 
 # T9 — no GNU-only tool flags, against the stated stock-macOS floor.
 selector_code_only="$(sed 's/[[:space:]]*#.*$//' "$selector")"

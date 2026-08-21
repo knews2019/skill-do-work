@@ -780,7 +780,7 @@ for sibling_owner in do-work-board do-work-knowledge do-work-toolbox; do
 done
 
 router_behavior_contracts=(
-  'do-work-board|Pass `serve`, `static`, `summary`, `cli`, `--port N`, and `--out DIR` through to the board action.|An unknown command prints board help and stops.'
+  'do-work-board|Pass `serve`, `static`, `summary`, `cli`, `verify`, `--port N`, and `--out DIR` through to the board action.|An unknown command prints board help and stops.'
   'do-work-knowledge|Pass the complete remainder through.|An unknown command prints help and stops.'
   'do-work-toolbox|Pass all remaining arguments through.|Unknown single words print help;'
 )
