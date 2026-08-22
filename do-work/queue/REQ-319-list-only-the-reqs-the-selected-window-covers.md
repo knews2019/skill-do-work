@@ -77,11 +77,33 @@ same set, and the set now changes on every window move rather than once per rend
   scroll position needs to survive a window move without throwing the reader somewhere
   arbitrary.
 - Serial with the rest of the `timeline-ux-audit` batch.
+- Generate a board and step through Day, Week and Month before hand-back. Whether the rows
+  on screen match the window is a claim about pixels, and a green suite is not evidence
+  about it (`_dev/primes/prime-kanban-board.md`).
 
 ## Dependencies
 
 `depends_on: [REQ-318]` — that REQ rewrites the same row-derivation and the same subhead
 sentence. Ordering, not logic: run 318 first and this one has no merge to resolve.
+
+## Builder Guidance
+
+**Certainty: Firm** on the behaviour, **exploratory** on the wording. The requirement is the
+user's own words — "Reqs that are not in the period selected should not be listed." The
+intersect-not-contain membership rule is capture's reading of "not in the period" and is
+stated in the requirements above; build that reading, and if the code makes a different one
+obviously right, say so in the hand-back rather than building both. The empty-window
+sentence is yours to write. Scope cue: this windows what is *listed*; it does not touch the
+projection, the medians, or the forecast paragraph.
+
+## Open Questions
+
+- [x] Does the block under the forecast — the one naming REQs that cannot be given an honest
+  start time — shrink to the selected period too? → **No, it stays whole-queue.** The user
+  answered at verify (2026-08-22): that block answers "what is stuck", not "what happened
+  this week", and a REQ blocked since May is exactly the one that must not vanish because
+  the window is on a day in June. This preserves `REQ-305`'s rule that the forecast half of
+  this view describes the whole queue.
 
 ## Red-Green Proof
 

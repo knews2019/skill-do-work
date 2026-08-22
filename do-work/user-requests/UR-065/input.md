@@ -103,6 +103,16 @@ including the items deliberately **not** captured.
   granularity everywhere (would state a window that is not the one drawn once zoomed
   past a day).
 
+## Answered During Verify (2026-08-22)
+
+- **Does the excluded list follow the window?** No. `do-work verify-requests` raised item 2's
+  reach as ambiguous: REQ-319 windows the chart and the table, and the block under the
+  forecast naming REQs that cannot be given an honest start time was left whole-queue. The
+  user confirmed whole-queue — that block answers "what is stuck", and a REQ blocked since
+  May must not vanish because the window sits on a day in June. Recorded on REQ-319 as an
+  answered Open Question; preserves `REQ-305`'s rule that the forecast half of this view
+  describes the whole queue.
+
 ## Screenshot
 
 The user attached one screenshot of the Timeline view. It was not persisted as an asset —

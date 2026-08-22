@@ -88,6 +88,15 @@ days, with an exact-instant readout beside them. Date-and-time fields were rejec
 fiddly for the everyday case, and dropping time from the readout was rejected because it
 would state a window that is not the one drawn once zoomed past a day.
 
+## Builder Guidance
+
+**Certainty: Firm.** Both halves are the user's own words — "start - end date should be
+displayed, and should be selectable" — and the precision question was put to them at
+capture and answered. Latitude on placement and markup: the toolbar already wraps three
+groups, so where the readout and the two fields sit is a layout judgment, made against the
+rendered result rather than in the abstract. Scope cue: this adds a fourth way to move the
+window. It does not get its own clamp, its own floor, or its own idea of what a period is.
+
 ## Red-Green Proof
 
 **RED prompt/case:** Open the Timeline tab and try to answer "what date does the left edge

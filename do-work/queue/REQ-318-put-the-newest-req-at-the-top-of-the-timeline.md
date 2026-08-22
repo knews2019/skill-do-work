@@ -56,16 +56,32 @@ Two things read the row order and must still mean what they say afterwards:
 - Newest `created_at` first, oldest last.
 - The tiebreak for two REQs captured in the same instant stays deterministic — reverse it
   with the sort so a build never swaps two rows.
-- The subhead states the new order in plain words.
-- `timeline_test.go` currently pins oldest-first. That assertion is in scope and must be
-  rewritten to pin newest-first, not deleted. Name the change in the hand-back: a quietly
-  edited test looks identical in a diff.
+- **Two sentences go false together, not one.** The subhead
+  (`web/board-timeline.js:566`, "in capture order, oldest at the top") and the rows SVG
+  `aria-label` (`:588`, "One horizontal bar per REQ in capture order") both state the old
+  order. The second is the screen-reader description of the whole chart, so leaving it
+  behind would tell a non-sighted reader the opposite of what the chart does. Both are this
+  REQ's to rewrite.
+- `timeline_test.go` currently pins oldest-first
+  (`TestTimelineRowsAreChronologicalWithAStableTiebreak`). That assertion is in scope and
+  must be rewritten to pin newest-first, not deleted. Name the change in the hand-back: a
+  quietly edited test looks identical in a diff.
 
 ## Constraints
 
 - Serial with the rest of the `timeline-ux-audit` batch — all of them write
   `web/board-timeline.js`.
 - The Calendar view already reads newest-first; matching it is the point, not a coincidence.
+- Generate a board and look at it before hand-back. A green suite is not evidence about
+  what the first row is (`_dev/primes/prime-kanban-board.md`).
+
+## Builder Guidance
+
+**Certainty: Firm.** The direction is the user's own words — "most recent REQ's should be
+on top" — and is not open. Latitude on *where* the reversal lives: reversing the Go sort is
+the recommendation because it keeps one ordering decision in one place, not a constraint.
+Scope cue: this is a sort direction plus the sentences that describe it. Resist widening it
+into the row-label or scroll work that REQ-322 and REQ-319 own.
 
 ## Red-Green Proof
 
@@ -81,7 +97,8 @@ rows sharing an instant keep a stable, reversed id order across repeated builds;
 generated board opens with recent work on screen; the subhead no longer says "oldest at the
 top".
 
-**Validation:** User confirmed (stated as item 1 of the request).
+**Validation:** Inferred during capture. The requirement is the user's own words (item 1 of
+the request); the RED/GREEN pair above is capture's, and the user has not seen it.
 
 ## Assets
 

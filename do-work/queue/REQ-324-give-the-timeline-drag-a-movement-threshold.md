@@ -69,6 +69,18 @@ of times per frame during a drag.
   `REQ-233`/`REQ-239` already settled the focus and activation contract for it.
 - Serial with the rest of the `timeline-ux-audit` batch.
 
+## Builder Guidance
+
+**Certainty: Firm on the behaviour, latitude on the number.** A still-ish press must open
+the drawer and a deliberate drag must not — that part is not open. The threshold itself is
+yours: a few pixels, picked so an ordinary hand tremor stays under it and an intended drag
+clears it immediately.
+
+Scope cue: this is a bug fix, not a rework of the view's pointer model. The wheel, the
+keyboard and the row activation contract stay as they are. The render coalescing rides along
+because the same handler causes it; if it turns out to be more than a few lines, drop it and
+say so rather than growing the REQ.
+
 ## Red-Green Proof
 
 **RED prompt/case:** In a browser probe against a generated board: dispatch `pointerdown` on

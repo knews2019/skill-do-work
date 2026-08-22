@@ -74,6 +74,18 @@ recognize a title, not so much that the chart loses its span.
   the text must not measure per row per frame.
 - Serial with the rest of the `timeline-ux-audit` batch.
 
+## Builder Guidance
+
+**Certainty: Exploratory.** The user asked for a more useful view, not for a title column —
+this is capture's answer to "make it more useful UIUX", and the trade at its centre is a
+judgment call: every pixel the label column gains, the chart loses. Pick a width, render it
+at a full and a narrow viewport, and expect to move the number. Say what you picked and
+what the render showed.
+
+The tooltip and the title column are separable. If measured-face truncation turns out to
+cost more than it returns, a native SVG `<title>` on the row group alone is an acceptable
+smaller landing — say so rather than spending the REQ's budget on the harder half.
+
 ## Red-Green Proof
 
 **RED prompt/case:** Open the Timeline tab and, without moving the pointer or opening the

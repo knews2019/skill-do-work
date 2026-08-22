@@ -84,6 +84,16 @@ accent the Calendar gives it.
   Render it and look, per the prime's rule about pixels.
 - Serial with the rest of the `timeline-ux-audit` batch.
 
+## Builder Guidance
+
+**Certainty: Firm on the encoding, exploratory on the values.** The user asked for status
+colour "like on the calendar view" and picked the whole-bar encoding from three options at
+capture, so which channel carries what is settled. The two lightness values that separate
+wait from work are not: pick them, render a mixed-status board in both themes, and adjust
+what the render shows. Scope cue: reuse the palette that exists. A REQ must read as the
+same colour on its card, its calendar chip and its bar, and a second set of tokens for the
+same five statuses would be the thing that later drifts.
+
 ## Red-Green Proof
 
 **RED prompt/case:** Generate a board holding at least one REQ in each of pending, claimed,

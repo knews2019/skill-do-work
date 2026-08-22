@@ -79,6 +79,22 @@ bars' x scale. Anything added here follows the same rule.
   moves the reader's eye to a forecast instead of to the present.
 - Both themes.
 - Serial with the rest of the `timeline-ux-audit` batch.
+- **The screenshot is the test here more than anywhere else in this batch.** Every one of
+  these three changes is a claim about pixels — a gridline faint enough to sit behind the
+  bars, a rule that does not outshout the now-line, a bar wide enough to see. Generate a
+  board, look at it in both themes, and attach what you saw
+  (`_dev/primes/prime-kanban-board.md`); a green suite says nothing about any of them.
+
+## Builder Guidance
+
+**Certainty: Exploratory.** Three numbers have to be chosen — gridline weight, queue-end
+rule prominence, minimum bar width — and none of them can be argued to a value in the
+abstract. Pick each from the rendered result, state the number and where it came from, and
+expect to be asked to move one.
+
+Landing the three parts one at a time is fine; they share a reading problem, not an
+implementation. If one of them turns out to need its own REQ, say so instead of stretching
+this one.
 
 ## Red-Green Proof
 
