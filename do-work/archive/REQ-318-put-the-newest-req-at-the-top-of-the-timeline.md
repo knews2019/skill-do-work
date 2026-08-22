@@ -6,7 +6,7 @@ created_at: 2026-08-22T22:08:34Z
 claimed_at: 2026-08-22T22:51:04Z
 route: A
 completed_at: 2026-08-22T23:19:44Z
-commit:
+commit: 0aa0b03
 user_request: UR-065
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
