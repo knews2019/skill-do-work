@@ -286,9 +286,12 @@
   }
 
   // Jumping to now is two movements, not one. Recentring the time window leaves
-  // the reader looking at whichever rows were already scrolled into view — on a
-  // long board, the oldest archived ones — so this also says where the ROW list
-  // goes. The window carries the now-line and the forecast's queue-empty instant
+  // the reader looking at whichever rows were already scrolled into view — under
+  // newest-first order (REQ-318) that is the top of the list, but a reader who
+  // has scrolled back through history is somewhere else entirely — so this also
+  // says where the ROW list goes. It is a no-op in the common case and the whole
+  // answer in the case that needs one. The window carries the now-line and the
+  // forecast's queue-empty instant
   // together, because "what is left" is the span between them. Returns both so
   // the button is two assignments and the decision is testable without a browser.
   function timelineNowJump(nowMs, queueEndMs, rows, boundStartMs, boundEndMs) {
@@ -996,7 +999,8 @@
       timelineViewState.windowStartMs = nowJump.window.windowStartMs;
       timelineViewState.windowEndMs = nowJump.window.windowEndMs;
       // Moving the window alone left the reader on whichever rows were already
-      // scrolled into view, which on a long board is the oldest archived work.
+      // scrolled into view — wherever they had scrolled to, which under
+      // newest-first order (REQ-318) is usually already the top.
       if (nowJump.scrollTop !== null) {
         scrollHost.scrollTop = nowJump.scrollTop;
       }

@@ -24,6 +24,7 @@
 
 ## Lessons
 
+- [REQ-318: a reversed assertion needs its fixture reversed too — flipping wantOrder alone let the sort's own stability answer the tied case, so the test kept its name and lost its property; and when a change inverts a stated property, grep the property rather than the file](../../do-work/archive/REQ-318-put-the-newest-req-at-the-top-of-the-timeline.md#lessons-learned)
 - [REQ-289: when renaming an enum, grep the VALUE across the whole module, not the constant name — the tests held the bare literal too, so the rename would have compiled, passed, and silently mis-bucketed every REQ](../../do-work/archive/UR-060/REQ-289-separate-impact-from-effort-with-unique-tokens.md#lessons-learned)
 - [REQ-252: hold a documentation convention with a vacuity-guarded AST test, and capture Discovered Tasks in the REQ itself — hand-back prose is one slip from evaporating](../../do-work/archive/UR-051/REQ-252-record-the-browser-with-every-measured-face-number.md#lessons-learned)
 - [REQ-251: fixtures that need production wording should call the production helper, never hold a pasted copy — the third copy strands at the next message move exactly as the first two did](../../do-work/archive/UR-055/REQ-251-retire-the-stale-copies-of-the-future-stamp-message.md#lessons-learned)

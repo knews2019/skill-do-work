@@ -3459,7 +3459,11 @@ var nextMonth = timelinePeriodWindow(anchorOf(monthWindow), "month", 1, boundSta
 var freelyZoomed = timelineZoomedWindow(
   weekWindow.windowStartMs, weekWindow.windowEndMs, 1.6, 0.5, boundStart, boundEnd);
 
-// Three archived rows, then the still-open work — the 677-row board in miniature.
+// Closed rows above the still-open ones: the case the row-list jump exists for.
+// Under newest-first order (REQ-318) the newest open REQ is usually row 0 and the
+// jump is a no-op, so the fixture deliberately puts the open work lower — an old
+// REQ still running under newer finished ones is what makes the second movement
+// do anything.
 var rows = [
   { waitOpen: false, workOpen: false },
   { waitOpen: false, workOpen: false },

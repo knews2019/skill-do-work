@@ -115,10 +115,14 @@ func assertTimelineMinutes(t *testing.T, label string, got float64, want float64
 // fold under the oldest-first order this replaced.
 func TestTimelineRowsAreNewestFirstWithAStableTiebreak(t *testing.T) {
 	now := time.Date(2026, 6, 10, 12, 0, 0, 0, time.UTC)
+	// The tied pair is fed in ASCENDING id order on purpose. The sort is stable,
+	// so feeding it descending would let a comparator with the tiebreak branch
+	// deleted still emit the expected order — the fixture would pass by input
+	// order and the assertion would pin nothing.
 	aggregate := buildTimelineAggregate([]*RequestTicket{
 		timelineTicket("REQ-503", "pending", "2026-06-04T09:00:00Z", "", ""),
-		timelineTicket("REQ-501", "pending", "2026-06-02T09:00:00Z", "", ""),
 		timelineTicket("REQ-500", "pending", "2026-06-02T09:00:00Z", "", ""),
+		timelineTicket("REQ-501", "pending", "2026-06-02T09:00:00Z", "", ""),
 		timelineTicket("REQ-502", "pending", "2026-06-03T09:00:00Z", "", ""),
 	}, now)
 
