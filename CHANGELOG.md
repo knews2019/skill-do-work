@@ -2,6 +2,20 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.12 — The Timeline Lists Only the Window You Picked (2026-08-22)
+
+Press Day on the board's Timeline and you now get the REQs that were actually happening that
+day — not all 316 rows with four bars hidden somewhere among them. A REQ is listed when the
+bar it would draw overlaps the visible window, so work that started earlier and is still
+running stays on screen instead of disappearing because it did not begin inside your dates.
+
+- The row count, the scroll extent, the detail table and the forecast's whole-queue note all
+  follow the window; your place in the list is kept across the move.
+- A window with nothing in it says so, and says how to get back out, instead of drawing a
+  blank chart.
+- The forecast note no longer opens "Filters are on" when it was the window that narrowed
+  the view.
+
 ## 0.236.11 — Newest REQ First on the Timeline (2026-08-22)
 
 The board's Timeline view now opens on the work you are actually doing. Rows run newest first,

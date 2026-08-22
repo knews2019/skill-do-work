@@ -2680,6 +2680,126 @@ process.stdout.write(JSON.stringify({
 	}
 }
 
+// Window-scoped rows: a REQ is listed when the bar it would draw overlaps the
+// visible window, and is absent otherwise. Before REQ-319 every row was listed
+// at every zoom level and the ones outside the window drew nothing — 305 labels
+// above empty space on a 309-REQ board zoomed to one day.
+//
+// OVERLAP is the property under test, not containment. The four rows below are
+// the four ways a row can relate to a window, and a containment rule would
+// silently drop two of them: the REQ that started before the window and is still
+// running is exactly the one a reader asking "what was happening this week"
+// needs to see.
+func TestJavaScriptBehaviorTimelineRowsFollowTheWindow(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function timelineRowExtent(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineRowsInWindow(") + `
+var nowMs = Date.UTC(2026, 5, 20, 12, 0);
+var windowStartMs = Date.UTC(2026, 5, 10);
+var windowEndMs = Date.UTC(2026, 5, 17);
+
+var rows = [
+  // Wholly before the window.
+  { id: "REQ-001", createdTime: "2026-06-01T09:00:00Z", claimedTime: "2026-06-02T09:00:00Z",
+    completedTime: "2026-06-03T09:00:00Z", hasWork: true },
+  // Wholly inside it.
+  { id: "REQ-002", createdTime: "2026-06-12T09:00:00Z", claimedTime: "2026-06-13T09:00:00Z",
+    completedTime: "2026-06-14T09:00:00Z", hasWork: true },
+  // Started before, finished after: STRADDLES the window and never sits inside it.
+  { id: "REQ-003", createdTime: "2026-06-05T09:00:00Z", claimedTime: "2026-06-06T09:00:00Z",
+    completedTime: "2026-06-25T09:00:00Z", hasWork: true },
+  // Captured before the window and STILL RUNNING at the now-line beyond it.
+  { id: "REQ-004", createdTime: "2026-06-02T09:00:00Z", claimedTime: "2026-06-03T09:00:00Z",
+    hasWork: true, workOpen: true },
+  // Wholly after the window.
+  { id: "REQ-005", createdTime: "2026-06-18T09:00:00Z", claimedTime: "2026-06-19T09:00:00Z",
+    completedTime: "2026-06-19T18:00:00Z", hasWork: true }
+];
+// A reversed stamp: claimed BEFORE created. The extent has to be a real min/max
+// or this row's start reads later than its end and it vanishes from every window.
+var reversedRow = { id: "REQ-006", createdTime: "2026-06-14T09:00:00Z",
+  claimedTime: "2026-06-12T09:00:00Z", completedTime: "2026-06-15T09:00:00Z",
+  hasWork: true, anomaly: true };
+// A pending REQ whose only presence in a FUTURE window is its forecast bar. Its
+// measured extent is the open wait, which stops at the now-line; the window sits
+// entirely after that, so the row reaches it only if the extent follows the
+// projected segment the chart actually draws.
+var projectedRow = { id: "REQ-007", createdTime: "2026-06-01T09:00:00Z", waitOpen: true };
+var projection = { id: "REQ-007", startTime: "2026-06-21T00:00:00Z", endTime: "2026-06-21T06:00:00Z" };
+var futureWindowStartMs = Date.UTC(2026, 5, 20, 18, 0);
+var futureWindowEndMs = Date.UTC(2026, 5, 22);
+
+function idsInSpan(rowList, projectedById, spanStartMs, spanEndMs) {
+  var extents = rowList.map(function (row) {
+    return timelineRowExtent(row, nowMs, (projectedById || {})[row.id]);
+  });
+  return timelineRowsInWindow(rowList, extents, spanStartMs, spanEndMs)
+    .map(function (row) { return row.id; });
+}
+function idsInWindow(rowList, projectedById) {
+  return idsInSpan(rowList, projectedById, windowStartMs, windowEndMs);
+}
+
+var reversedExtent = timelineRowExtent(reversedRow, nowMs, undefined);
+process.stdout.write(JSON.stringify({
+  inWindow: idsInWindow(rows, {}),
+  reversedInWindow: idsInWindow([reversedRow], {}),
+  reversedExtentOrdered: reversedExtent.startMs <= reversedExtent.endMs,
+  reversedExtentStartIso: new Date(reversedExtent.startMs).toISOString(),
+  projectedOnlyInWindow:
+    idsInSpan([projectedRow], { "REQ-007": projection }, futureWindowStartMs, futureWindowEndMs),
+  projectedIgnoredWithoutForecast:
+    idsInSpan([projectedRow], {}, futureWindowStartMs, futureWindowEndMs),
+  everythingInAWideWindow: idsInSpan(rows, {}, Date.UTC(2026, 0, 1), Date.UTC(2027, 0, 1))
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline window rows", javascriptProbe)
+	var windowResult struct {
+		InWindow                        []string `json:"inWindow"`
+		ReversedInWindow                []string `json:"reversedInWindow"`
+		ReversedExtentOrdered           bool     `json:"reversedExtentOrdered"`
+		ReversedExtentStartIso          string   `json:"reversedExtentStartIso"`
+		ProjectedOnlyInWindow           []string `json:"projectedOnlyInWindow"`
+		ProjectedIgnoredWithoutForecast []string `json:"projectedIgnoredWithoutForecast"`
+		EverythingInAWideWindow         []string `json:"everythingInAWideWindow"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &windowResult); decodeError != nil {
+		t.Fatalf("decode timeline window rows behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	wantInWindow := "REQ-002,REQ-003,REQ-004"
+	if gotInWindow := strings.Join(windowResult.InWindow, ","); gotInWindow != wantInWindow {
+		t.Fatalf("rows in the window = %q, want %q — the straddling and still-running REQs "+
+			"overlap it and must be listed; the two outside it must not be",
+			gotInWindow, wantInWindow)
+	}
+	if !windowResult.ReversedExtentOrdered {
+		t.Fatalf("a reversed-stamp row produced an extent whose start (%s) is after its end; "+
+			"the extent must be a real min/max or broken rows vanish from every window",
+			windowResult.ReversedExtentStartIso)
+	}
+	if len(windowResult.ReversedInWindow) != 1 {
+		t.Fatalf("the reversed-stamp row is inside the window and was not listed (got %v)",
+			windowResult.ReversedInWindow)
+	}
+	if len(windowResult.ProjectedOnlyInWindow) != 1 {
+		t.Fatal("a pending REQ whose forecast bar is the only thing it draws in the window " +
+			"was not listed; the extent must reach the projected segment")
+	}
+	// The control for the assertion above: same row, same window, no forecast.
+	// Without it the extent stops at the now-line and the row is genuinely absent,
+	// which is what proves the projection — not the fixture — put it in the window.
+	if len(windowResult.ProjectedIgnoredWithoutForecast) != 0 {
+		t.Fatalf("the same pending REQ reached a window beyond the now-line with no forecast "+
+			"attached (got %v); its measured extent ends at the now-line",
+			windowResult.ProjectedIgnoredWithoutForecast)
+	}
+	if len(windowResult.EverythingInAWideWindow) != 5 {
+		t.Fatalf("a window spanning the whole year listed %d of 5 rows; widening the window "+
+			"must never drop a row", len(windowResult.EverythingInAWideWindow))
+	}
+}
+
 // timelineForecastDomStub is the smallest DOM renderTimelineForecast touches. It
 // is a stub rather than a headless browser because what is being pinned is the
 // SENTENCE — which figures reach the reader — not the layout.
@@ -3472,10 +3592,15 @@ var rows = [
   { waitOpen: false, workOpen: true }
 ];
 var scrollHostStub = { scrollTop: 0 };
-var nowJump = timelineNowJump(nowMs, queueEndMs, rows, boundStart, boundEnd);
-// The two assignments the Now button makes, run against a stub scroll host.
-if (nowJump.scrollTop !== null) {
-  scrollHostStub.scrollTop = nowJump.scrollTop;
+// The Now button's three steps, in the order the handler runs them: take the
+// window, let the rows follow it, then scroll among THOSE rows. The window and
+// the scroll decision are separate functions precisely because window-scoped
+// rows (REQ-319) put a row-set refresh between them.
+var nowWindow = timelineNowJump(nowMs, queueEndMs, boundStart, boundEnd);
+var nowJump = { window: nowWindow };
+var openRowIndex = timelineFirstOpenRowIndex(rows);
+if (openRowIndex >= 0) {
+  scrollHostStub.scrollTop = openRowIndex * TIMELINE_ROW_HEIGHT;
 }
 
 function utcParts(epochMs) {
