@@ -8,7 +8,7 @@ domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec:
-depends_on: []
+depends_on: [REQ-321]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
@@ -85,6 +85,20 @@ what the render showed.
 The tooltip and the title column are separable. If measured-face truncation turns out to
 cost more than it returns, a native SVG `<title>` on the row group alone is an acceptable
 smaller landing — say so rather than spending the REQ's budget on the harder half.
+
+## Dependencies
+
+`depends_on: [REQ-321]` — **ordering, not logic.** REQ-322 does not need anything REQ-321
+produces; it needs REQ-321 not to be editing `web/board-timeline.js` at the same time. Every
+REQ in the `timeline-ux-audit` batch writes that one file, and `write_set` is display-only —
+`actions/work.md` computes a `--fan-out` wave from `depends_on` alone and explicitly does not
+read `write_set`, `batch`, or the Constraints prose. Without this edge the batch's stated
+serial requirement was a sentence nothing enforced, and a `--fan-out` run would have
+dispatched four concurrent builders into one 1,100-line file.
+
+**The cost, stated rather than hidden:** a chain gates on terminal *success*, so a `failed`
+REQ upstream leaves the rest dependency-blocked until someone edits the chain or resolves the
+failure. That is the trade for making the metadata say what the prose says.
 
 ## Red-Green Proof
 

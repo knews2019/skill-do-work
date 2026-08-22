@@ -8,7 +8,7 @@ domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec: bug-fix
-depends_on: []
+depends_on: [REQ-323]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
@@ -80,6 +80,20 @@ Scope cue: this is a bug fix, not a rework of the view's pointer model. The whee
 keyboard and the row activation contract stay as they are. The render coalescing rides along
 because the same handler causes it; if it turns out to be more than a few lines, drop it and
 say so rather than growing the REQ.
+
+## Dependencies
+
+`depends_on: [REQ-323]` — **ordering, not logic.** REQ-324 does not need anything REQ-323
+produces; it needs REQ-323 not to be editing `web/board-timeline.js` at the same time. Every
+REQ in the `timeline-ux-audit` batch writes that one file, and `write_set` is display-only —
+`actions/work.md` computes a `--fan-out` wave from `depends_on` alone and explicitly does not
+read `write_set`, `batch`, or the Constraints prose. Without this edge the batch's stated
+serial requirement was a sentence nothing enforced, and a `--fan-out` run would have
+dispatched four concurrent builders into one 1,100-line file.
+
+**The cost, stated rather than hidden:** a chain gates on terminal *success*, so a `failed`
+REQ upstream leaves the rest dependency-blocked until someone edits the chain or resolves the
+failure. That is the trade for making the metadata say what the prose says.
 
 ## Red-Green Proof
 
