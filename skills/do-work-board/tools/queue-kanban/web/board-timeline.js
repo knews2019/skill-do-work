@@ -271,8 +271,11 @@
     return nearestLevelName;
   }
 
-  // The first row still waiting or still running — where "what is left" actually
-  // sits in a list whose first hundreds of rows are finished work.
+  // The first row still waiting or still running — where "what is left" sits.
+  // Under newest-first order (REQ-318) that is usually near the top rather than
+  // hundreds of rows down, so this scan normally returns early; it stays a scan
+  // because "newest" and "open" are different questions and a long-open old REQ
+  // can sit anywhere in the list.
   function timelineFirstOpenRowIndex(rows) {
     for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
       if (rows[rowIndex].waitOpen || rows[rowIndex].workOpen) {
@@ -563,7 +566,7 @@
       rows.length +
       " REQ" +
       (rows.length === 1 ? "" : "s") +
-      " in capture order, oldest at the top. " +
+      " in capture order, newest at the top. " +
       openCount +
       " still open, measured to the now-line at " +
       timelineFormatStamp(nowMs) +
@@ -585,7 +588,7 @@
       width: "100%",
       role: "img",
       "aria-label":
-        "One horizontal bar per REQ in capture order. The first segment is the wait from capture to claim, the second is the work from claim to completion. Every value is also listed in the table below."
+        "One horizontal bar per REQ in capture order, newest first. The first segment is the wait from capture to claim, the second is the work from claim to completion. Every value is also listed in the table below."
     });
 
     function plotWidth() {

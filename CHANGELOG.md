@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.11 — Newest REQ First on the Timeline (2026-08-22)
+
+The board's Timeline view now opens on the work you are actually doing. Rows run newest first,
+so a queue carrying hundreds of archived REQs no longer greets you with REQ-001 and puts today's
+row thousands of pixels below the fold.
+
+- Rows sort by newest `created_at`, and two REQs captured in the same second break by descending
+  id — numerically, so REQ-1000 stays above REQ-999.
+- The subhead and the chart's screen-reader description both say newest-first; neither was left
+  describing the old order.
+
 ## 0.236.10 — Canonical Gate Holds Survive Error Handling (2026-08-21)
 
 An unrelated whole-repository failure no longer risks being archived as if the current request

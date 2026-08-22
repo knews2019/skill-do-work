@@ -20,7 +20,7 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-None.
+- REQ-318: Put the newest REQ at the top of the timeline — claimed 2026-08-22T22:51:04Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued
 

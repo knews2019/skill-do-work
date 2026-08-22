@@ -54,7 +54,7 @@ type TimelineRow struct {
 	AnomalyReason string
 }
 
-// TimelineAggregate is the whole view's data: rows in creation order, the time
+// TimelineAggregate is the whole view's data: rows newest-created first, the time
 // range they span, and the single instant every open span was measured against.
 type TimelineAggregate struct {
 	Rows []TimelineRow
@@ -118,14 +118,23 @@ func buildTimelineAggregate(tickets []*RequestTicket, now time.Time) TimelineAgg
 		aggregate.Rows = append(aggregate.Rows, row)
 	}
 
-	// Chronological by created_at, oldest first, with the id as the tiebreak so
-	// two REQs captured in the same second cannot swap places between builds.
-	// The view states this ordering rather than leaving the reader to infer it.
+	// By created_at, NEWEST first, with the id as the tiebreak so two REQs
+	// captured in the same second cannot swap places between builds. The view
+	// states this ordering rather than leaving the reader to infer it.
+	//
+	// Newest-first because the reader is almost always asking about current
+	// work: on a queue carrying hundreds of archived REQs, oldest-first put
+	// today's row thousands of pixels below the fold and opened every visit on
+	// REQ-001. The tiebreak reverses WITH the instants rather than staying
+	// ascending — one instant's rows read the same direction as the list around
+	// them, and within a second the higher id was captured later. It stays
+	// NUMERIC through requestIdLess: past four digits a lexical compare puts
+	// REQ-999 above REQ-1000 and claims the older id came last.
 	sort.SliceStable(aggregate.Rows, func(earlier, later int) bool {
 		if aggregate.Rows[earlier].CreatedTime.Equal(aggregate.Rows[later].CreatedTime) {
-			return requestIdLess(aggregate.Rows[earlier].RequestId, aggregate.Rows[later].RequestId)
+			return requestIdLess(aggregate.Rows[later].RequestId, aggregate.Rows[earlier].RequestId)
 		}
-		return aggregate.Rows[earlier].CreatedTime.Before(aggregate.Rows[later].CreatedTime)
+		return aggregate.Rows[earlier].CreatedTime.After(aggregate.Rows[later].CreatedTime)
 	})
 	aggregate.RangeStart, aggregate.RangeEnd = timelineRange(aggregate.Rows, aggregate.Now)
 	return aggregate
