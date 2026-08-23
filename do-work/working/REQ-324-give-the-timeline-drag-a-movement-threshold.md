@@ -210,6 +210,26 @@ alternative was testing a copy of the page rather than the page (REQ-305's lesso
   pure and behavioural), grab cursor on press, grab cursor never applied, trip-point anchor,
   memo removed, memo never invalidated, coalescing removed, release dropping the frame.
 
+## Review Fixes
+
+Three, all accuracy rather than behaviour — the diff's logic survived the pass.
+
+**R-01 — The threshold constant's comment blamed the pan, not the render.** It said a still-ish
+press "used to pan on its first pixel, which re-rendered the rows and lost the click", which
+reads as though the window moving is what did it. The RED run showed otherwise: at *Fit all* the
+pan clamps to the same window and the click was lost anyway. The comment now names the render as
+the cause and says why the threshold gates the render rather than the shift — the same
+distinction that would have made a narrower fix pass a narrower test.
+
+**R-02 — "hundreds of layout reads" replaced with the measured number.** 171, on this repo's
+board, Chromium 1194 (`_dev/primes/prime-kanban-board.md`: record the browser build beside every
+measured number). The comment also now says why invalidating at the top of `renderAll` covers
+the resize case — the resize listener is `renderAll`.
+
+**R-03 — A pointless local rebinding** in the new probe runner (`probeDirectory := siteDirectory`).
+
+Gate re-run after the three fixes: `bash _dev/tests/maintainer-verify.sh` → **exit 0**.
+
 ## Discovered Tasks
 
 None. REQ-325 remains `pending-answers`.

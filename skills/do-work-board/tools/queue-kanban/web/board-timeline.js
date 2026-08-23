@@ -60,8 +60,14 @@
   // claiming a split the pixels cannot carry.
   var TIMELINE_MIN_SPLIT_WIDTH = 7;
   // How far a pointer must travel before a press becomes a pan. Under it the
-  // press is a click and the drawer opens on release; a still-ish press used to
-  // pan on its first pixel, which re-rendered the rows and lost the click.
+  // press is a click and the drawer opens on release.
+  //
+  // The first pointermove used to engage the pan and RE-RENDER, which is the
+  // whole defect: the click the engine then synthesized had no surviving
+  // [data-detail-kind] ancestor to find. The window did not have to move for
+  // that — at Fit all it clamps to the window it started in and the click was
+  // lost anyway — so the threshold gates the render, not the shift.
+  //
   // 4px: an ordinary hand tremor on a trackpad stays under it, an intended drag
   // clears it in the first frame.
   var TIMELINE_PAN_THRESHOLD_PX = 4;
@@ -1208,10 +1214,11 @@
     });
 
     // MEASURED ONCE PER RENDER. clientWidth forces a synchronous layout, and
-    // xOfEpoch calls this several times per row, so a 35-row render was making
-    // hundreds of layout reads — every frame of a drag. The memo is dropped by
-    // invalidatePlotWidth() at the top of every render and on resize, which are
-    // the only two moments the number can change.
+    // xOfEpoch calls this several times per row: one measured render of this
+    // repo's board made 171 of them (Chromium 1194), every frame of a drag. The
+    // memo is dropped by invalidatePlotWidth() at the top of renderAll, and the
+    // resize listener IS renderAll, so the two moments the width can change are
+    // both covered.
     var measuredPlotWidthPx = null;
     function plotWidth() {
       if (measuredPlotWidthPx === null) {

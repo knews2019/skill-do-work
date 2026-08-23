@@ -128,8 +128,7 @@ func runBrowserBehaviorProbeInDirectory(
 	t.Helper()
 	browserPath := lookupBrowserForBehaviorProbe(t)
 
-	probeDirectory := siteDirectory
-	pagePath := filepath.Join(probeDirectory, "probe.html")
+	pagePath := filepath.Join(siteDirectory, "probe.html")
 	if writeError := os.WriteFile(pagePath, []byte(pageHTML), 0o644); writeError != nil {
 		t.Fatalf("write %s probe page: %v", probeName, writeError)
 	}
