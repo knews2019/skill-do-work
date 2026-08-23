@@ -307,3 +307,27 @@ of its status — which is the point of the swatches reading the same custom pro
 - `TestTimelineStatusRowMarkupMatchesTheProbe` — the fixture's tie to the renderer.
 
 **Existing tests updated (cross-REQ impact):** none.
+
+## Discovered Tasks
+
+- **The canonical gate can hang indefinitely on `generate-report-image`'s interruption case,
+  and the same path would leave a backend spinning on a user's machine.** Found twice
+  independently: the REQ-320 review agent sat ~35 minutes in that lane and had to kill the
+  stub by hand, and this REQ's gate run stalled 9+ minutes on the identical process before I
+  killed it. Both times the live processes were the case script
+  (`_dev/tests/prescribed-shell-cases/generate-report-image.sh`), the shipped wrapper
+  (`skills/do-work-toolbox/scripts/generate-report-image.sh`), and the fixture's stub
+  `imagegen` spinning in `while :; do sleep 0.1; done`. The case TERMs the WRAPPER
+  (`kill -TERM "$interrupt_helper_pid"`, line 91) and then `wait`s on it; the wrapper carries
+  `trap 'exit 143' TERM` and a backend-signalling helper that kills the backend's process
+  group — so the machinery to forward the signal exists and did not fire. Nothing here is
+  this REQ's code: it is the interruption path of the report-image script and the probe that
+  exercises it.
+  **Why it matters beyond the gate:** the same wrapper ships to consumers. An interrupted
+  `do-work-toolbox ai-report` would leave the image backend running.
+  **Not investigated further on purpose** — characterising exactly which of the two sides
+  fails to deliver the signal is its own piece of work, in a subsystem this batch does not
+  touch, and stretching REQ-321 to cover it would be the scope creep the guardrails forbid.
+  Impact judged `impact-user-visible`: a developer running the repo's only accepted proof
+  loses tens of minutes per occurrence, and a consumer gets an orphaned process. Not
+  `impact-critical` — no security, data-loss, or production path is involved.
