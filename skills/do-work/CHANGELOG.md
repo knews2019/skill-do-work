@@ -2,6 +2,110 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.18 — Timeline Lists Only Rows It Actually Draws (2026-08-23)
+
+Two edge cases where the Timeline listed a REQ whose mark was nowhere on screen. Both are the
+same mistake: the membership test modelled a span the renderer does not draw.
+
+- A REQ whose span begins exactly at the window's end is no longer listed. Every window here
+  ends on the next period's first instant, so that REQ belongs to the next window and its bar
+  was being clipped at the right edge. The window's start stays inclusive — a span ending
+  there draws a visible mark.
+- A reversed stamp is drawn as a break marker at one instant, not as a bar across the
+  reversed interval, so it is now matched at that instant. A window inside the interval used
+  to list the row with nothing on it.
+
+## 0.236.17 — Clicking a Timeline Row Works Again (2026-08-23)
+
+The Timeline's hint said "Click a row for its full detail" and it only worked if your hand was
+perfectly still: one pixel of movement panned the chart, rebuilt the rows, and swallowed the
+click. A press now has to travel four pixels before it becomes a drag.
+
+- Below four pixels a press is a click and the detail drawer opens; above it the chart pans
+  and the release does not open the drawer. A drag that wanders back near the press point
+  stays a drag.
+- The grab cursor waits for the drag too, instead of appearing on the press.
+- A drag now renders at most once per animation frame rather than once per pointer event, and
+  the release flushes the last frame so the chart lands where the drag ended.
+- One render reads the plot width once instead of 171 times, each of which was a forced
+  layout.
+
+## 0.236.16 — Timeline Gridlines and a Marked Queue End (2026-08-23)
+
+A Timeline bar two hundred rows down had no vertical reference at all, and at Fit all every
+completed REQ was a pair of one-pixel slivers. The plot now carries the axis through it, and
+the queue-empty instant the forecast names is marked on the chart instead of only in prose.
+
+- Faint gridlines run the full height of the plot at each axis tick, drawn from the same tick
+  instants the axis labels, so the two cannot disagree.
+- A dashed rule marks the projected queue-empty instant when the forecast is confident and the
+  instant is in the window, labelled above the axis and quieter than the now-line.
+- A REQ too narrow to show a readable wait/work split now draws one marker for the row instead
+  of two adjacent slivers claiming a split the pixels cannot carry.
+- The chart key gained a Vertical rules group, so every mark the plot draws is named.
+
+## 0.236.15 — Timeline Rows Say What They Are (2026-08-23)
+
+A Timeline row used to read `REQ-012` and nothing else, so scanning three hundred of them told
+you nothing about any of them. Rows now carry their title beside the id, and hovering a bar
+shows the full detail right where the pointer is instead of in a line at the foot of the page.
+
+- Titles are truncated to a boundary measured from the font the browser actually rendered,
+  not from a guess about it.
+- The label column widened to make room; the chart keeps its span at narrow widths.
+- A REQ with no title still shows its id, and a font the measurement cannot describe falls
+  back to the id rather than cutting titles in the wrong place.
+
+## 0.236.14 — Timeline Bars Take Their Status Colour (2026-08-23)
+
+A blocked REQ, a pending one and a finished one used to draw identical bars on the Timeline —
+status was the one thing the rest of the board colours by and the one thing this view did not.
+Now every bar carries its REQ's status colour, the same colours the cards and calendar chips
+use, so a REQ is one colour wherever you see it.
+
+- Hue is the status; lightness within a bar still separates waiting from being worked on.
+- The legend states both encodings, and its swatches read the same colour the bars do.
+- An unrecognized status takes the unrecognized colour rather than quietly being counted as
+  real blocked work.
+
+## 0.236.13 — Type the Dates You Want on the Timeline (2026-08-23)
+
+The board's Timeline now says which two instants it is drawn between, to the minute, and gives
+you two date fields to set them. Before this you could only zoom and drag until the view was
+roughly right, and the only thing the toolbar said about the window was "custom span".
+
+- The readout and both fields track every way of moving the window — the wheel, a drag, the
+  keyboard, the Day/Week/Month chips, Now and Fit all.
+- Typed dates cover whole UTC days; the readout keeps showing the exact window, so zooming
+  finer than a day still tells you the truth.
+- A date outside the board's range clamps to it, and an end before a start becomes that one
+  day rather than an empty window.
+
+## 0.236.12 — The Timeline Lists Only the Window You Picked (2026-08-22)
+
+Press Day on the board's Timeline and you now get the REQs that were actually happening that
+day — not all 316 rows with four bars hidden somewhere among them. A REQ is listed when the
+bar it would draw overlaps the visible window, so work that started earlier and is still
+running stays on screen instead of disappearing because it did not begin inside your dates.
+
+- The row count, the scroll extent, the detail table and the forecast's whole-queue note all
+  follow the window; your place in the list is kept across the move.
+- A window with nothing in it says so, and says how to get back out, instead of drawing a
+  blank chart.
+- The forecast note no longer opens "Filters are on" when it was the window that narrowed
+  the view.
+
+## 0.236.11 — Newest REQ First on the Timeline (2026-08-22)
+
+The board's Timeline view now opens on the work you are actually doing. Rows run newest first,
+so a queue carrying hundreds of archived REQs no longer greets you with REQ-001 and puts today's
+row thousands of pixels below the fold.
+
+- Rows sort by newest `created_at`, and two REQs captured in the same second break by descending
+  id — numerically, so REQ-1000 stays above REQ-999.
+- The subhead and the chart's screen-reader description both say newest-first; neither was left
+  describing the old order.
+
 ## 0.236.10 — Canonical Gate Holds Survive Error Handling (2026-08-21)
 
 An unrelated whole-repository failure no longer risks being archived as if the current request

@@ -2680,6 +2680,630 @@ process.stdout.write(JSON.stringify({
 	}
 }
 
+// Window-scoped rows: a REQ is listed when the bar it would draw overlaps the
+// visible window, and is absent otherwise. Before REQ-319 every row was listed
+// at every zoom level and the ones outside the window drew nothing — 305 labels
+// above empty space on a 309-REQ board zoomed to one day.
+//
+// OVERLAP is the property under test, not containment. The four rows below are
+// the four ways a row can relate to a window, and a containment rule would
+// silently drop two of them: the REQ that started before the window and is still
+// running is exactly the one a reader asking "what was happening this week"
+// needs to see.
+func TestJavaScriptBehaviorTimelineRowsFollowTheWindow(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function timelineRowSegments(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineRowsInWindow(") + `
+var nowMs = Date.UTC(2026, 5, 20, 12, 0);
+var windowStartMs = Date.UTC(2026, 5, 10);
+var windowEndMs = Date.UTC(2026, 5, 17);
+
+var rows = [
+  // Wholly before the window.
+  { id: "REQ-001", createdTime: "2026-06-01T09:00:00Z", claimedTime: "2026-06-02T09:00:00Z",
+    completedTime: "2026-06-03T09:00:00Z", hasWork: true },
+  // Wholly inside it.
+  { id: "REQ-002", createdTime: "2026-06-12T09:00:00Z", claimedTime: "2026-06-13T09:00:00Z",
+    completedTime: "2026-06-14T09:00:00Z", hasWork: true },
+  // Started before, finished after: STRADDLES the window and never sits inside it.
+  { id: "REQ-003", createdTime: "2026-06-05T09:00:00Z", claimedTime: "2026-06-06T09:00:00Z",
+    completedTime: "2026-06-25T09:00:00Z", hasWork: true },
+  // Captured before the window and STILL RUNNING at the now-line beyond it.
+  { id: "REQ-004", createdTime: "2026-06-02T09:00:00Z", claimedTime: "2026-06-03T09:00:00Z",
+    hasWork: true, workOpen: true },
+  // Wholly after the window.
+  { id: "REQ-005", createdTime: "2026-06-18T09:00:00Z", claimedTime: "2026-06-19T09:00:00Z",
+    completedTime: "2026-06-19T18:00:00Z", hasWork: true }
+];
+// A reversed stamp: claimed BEFORE created. It carries waitMinutes because that
+// is the field BOTH the renderer and the segment list branch on — without it the
+// fixture is silently a forward row and tests nothing about reversal.
+//
+// No segment may come out with its start after its end, or the overlap test
+// inverts and the row vanishes from every window. A reversed wait satisfies that
+// as a point at the created instant, which is also where the break marker goes.
+var reversedRow = { id: "REQ-006", createdTime: "2026-06-14T09:00:00Z",
+  claimedTime: "2026-06-12T09:00:00Z", completedTime: "2026-06-15T09:00:00Z",
+  hasWork: true, anomaly: true, waitMinutes: -2880, workMinutes: 4320 };
+// A pending REQ whose only presence in a FUTURE window is its forecast bar. Its
+// measured extent is the open wait, which stops at the now-line; the window sits
+// entirely after that, so the row reaches it only if the extent follows the
+// projected segment the chart actually draws.
+var projectedRow = { id: "REQ-007", createdTime: "2026-06-01T09:00:00Z", waitOpen: true };
+var projection = { id: "REQ-007", startTime: "2026-06-21T00:00:00Z", endTime: "2026-06-21T06:00:00Z" };
+var futureWindowStartMs = Date.UTC(2026, 5, 20, 18, 0);
+var futureWindowEndMs = Date.UTC(2026, 5, 22);
+
+function idsInSpan(rowList, projectedById, spanStartMs, spanEndMs) {
+  var extents = rowList.map(function (row) {
+    return timelineRowSegments(row, nowMs, (projectedById || {})[row.id]);
+  });
+  return timelineRowsInWindow(rowList, extents, spanStartMs, spanEndMs)
+    .map(function (row) { return row.id; });
+}
+function idsInWindow(rowList, projectedById) {
+  return idsInSpan(rowList, projectedById, windowStartMs, windowEndMs);
+}
+
+var reversedSegments = timelineRowSegments(reversedRow, nowMs, undefined);
+
+// THE EXCLUSIVE END. Every window this view can build ends on the NEXT period's
+// first instant — timelinePeriodWindow returns [start, nextStart) and the end
+// date field renders windowEndMs - 1 to say so. A segment that begins exactly at
+// that instant belongs to the next window, and drawSegment puts its floored
+// rectangle at the right edge where it is clipped: listed, nothing drawn.
+var edgeWindowStartMs = Date.UTC(2026, 5, 10);
+var edgeWindowEndMs = Date.UTC(2026, 5, 17);
+var startsAtWindowEndRow = {
+  id: "REQ-008",
+  createdTime: new Date(edgeWindowEndMs).toISOString(),
+  claimedTime: new Date(edgeWindowEndMs + 3600000).toISOString(),
+  completedTime: new Date(edgeWindowEndMs + 7200000).toISOString(),
+  hasWork: true, waitMinutes: 60, workMinutes: 60
+};
+// The control, one millisecond earlier: genuinely inside, and must stay listed.
+var startsJustInsideRow = {
+  id: "REQ-009",
+  createdTime: new Date(edgeWindowEndMs - 1).toISOString(),
+  claimedTime: new Date(edgeWindowEndMs + 3600000).toISOString(),
+  completedTime: new Date(edgeWindowEndMs + 7200000).toISOString(),
+  hasWork: true, waitMinutes: 60, workMinutes: 60
+};
+// The symmetric case at the other end, which must NOT change: windowStartMs is
+// inclusive, and a span ending exactly there draws a floored mark at x=0 that
+// the reader can see.
+var endsAtWindowStartRow = {
+  id: "REQ-010",
+  createdTime: new Date(edgeWindowStartMs - 7200000).toISOString(),
+  claimedTime: new Date(edgeWindowStartMs).toISOString(),
+  hasWork: false, waitMinutes: 120
+};
+
+// A REVERSED WAIT drawn as what the renderer actually draws. renderVisibleRows
+// puts a 6px break marker at the CREATED instant for a reversed wait and at the
+// CLAIMED instant for reversed work — it does not draw a bar across the min/max
+// interval. Modelling the row as that interval is the forecast-gap defect again
+// in another costume: created 14 Jun, claimed 12 Jun, completed 12 Jun 06:00
+// puts the hull across 13 June while both drawn marks sit outside it.
+var reversedHullRow = {
+  id: "REQ-011",
+  createdTime: "2026-06-14T12:00:00Z",
+  claimedTime: "2026-06-12T00:00:00Z",
+  completedTime: "2026-06-12T06:00:00Z",
+  hasWork: true, waitMinutes: -3600, workMinutes: 360, anomaly: true
+};
+var reversedHullGapStartMs = Date.UTC(2026, 5, 13);
+var reversedHullGapEndMs = Date.UTC(2026, 5, 13, 23, 59);
+// The control: a window over the break marker itself must still list it.
+var reversedHullMarkerStartMs = Date.UTC(2026, 5, 14, 6, 0);
+var reversedHullMarkerEndMs = Date.UTC(2026, 5, 14, 18, 0);
+
+// THE GAP. A pending REQ draws two disjoint marks: the open wait ending at the
+// now-line, and the forecast bar starting after in-flight work finishes. A hull
+// over both spans the gap between them, so a window sitting in that gap listed
+// the row with nothing drawn on it. Segment-wise overlap is what makes the REQ's
+// GREEN — every listed row has something drawn on it — actually true.
+var gapWindowStartMs = Date.UTC(2026, 5, 20, 14, 0);   // after the now-line
+var gapWindowEndMs = Date.UTC(2026, 5, 20, 18, 0);     // before the forecast bar
+var gapProjection = { id: "REQ-007", startTime: "2026-06-21T00:00:00Z", endTime: "2026-06-21T06:00:00Z" };
+process.stdout.write(JSON.stringify({
+  inWindow: idsInWindow(rows, {}),
+  reversedInWindow: idsInWindow([reversedRow], {}),
+  reversedExtentOrdered: reversedSegments.every(function (s) { return s.startMs <= s.endMs; }),
+  reversedExtentStartIso: new Date(reversedSegments[0].startMs).toISOString(),
+  projectedOnlyInWindow:
+    idsInSpan([projectedRow], { "REQ-007": projection }, futureWindowStartMs, futureWindowEndMs),
+  projectedIgnoredWithoutForecast:
+    idsInSpan([projectedRow], {}, futureWindowStartMs, futureWindowEndMs),
+  everythingInAWideWindow: idsInSpan(rows, {}, Date.UTC(2026, 0, 1), Date.UTC(2027, 0, 1)),
+  inTheForecastGap:
+    idsInSpan([projectedRow], { "REQ-007": gapProjection }, gapWindowStartMs, gapWindowEndMs),
+  spanningTheForecastGap:
+    idsInSpan([projectedRow], { "REQ-007": gapProjection }, nowMs - 3600000, Date.UTC(2026, 5, 21, 3, 0)),
+
+  startsAtWindowEnd: idsInSpan([startsAtWindowEndRow], {}, edgeWindowStartMs, edgeWindowEndMs),
+  startsJustInside: idsInSpan([startsJustInsideRow], {}, edgeWindowStartMs, edgeWindowEndMs),
+  endsAtWindowStart: idsInSpan([endsAtWindowStartRow], {}, edgeWindowStartMs, edgeWindowEndMs),
+
+  reversedHullInTheGap:
+    idsInSpan([reversedHullRow], {}, reversedHullGapStartMs, reversedHullGapEndMs),
+  reversedHullAtItsMarker:
+    idsInSpan([reversedHullRow], {}, reversedHullMarkerStartMs, reversedHullMarkerEndMs)
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline window rows", javascriptProbe)
+	var windowResult struct {
+		InWindow                        []string `json:"inWindow"`
+		ReversedInWindow                []string `json:"reversedInWindow"`
+		ReversedExtentOrdered           bool     `json:"reversedExtentOrdered"`
+		ReversedExtentStartIso          string   `json:"reversedExtentStartIso"`
+		ProjectedOnlyInWindow           []string `json:"projectedOnlyInWindow"`
+		ProjectedIgnoredWithoutForecast []string `json:"projectedIgnoredWithoutForecast"`
+		EverythingInAWideWindow         []string `json:"everythingInAWideWindow"`
+		InTheForecastGap                []string `json:"inTheForecastGap"`
+		SpanningTheForecastGap          []string `json:"spanningTheForecastGap"`
+
+		StartsAtWindowEnd []string `json:"startsAtWindowEnd"`
+		StartsJustInside  []string `json:"startsJustInside"`
+		EndsAtWindowStart []string `json:"endsAtWindowStart"`
+
+		ReversedHullInTheGap    []string `json:"reversedHullInTheGap"`
+		ReversedHullAtItsMarker []string `json:"reversedHullAtItsMarker"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &windowResult); decodeError != nil {
+		t.Fatalf("decode timeline window rows behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	wantInWindow := "REQ-002,REQ-003,REQ-004"
+	if gotInWindow := strings.Join(windowResult.InWindow, ","); gotInWindow != wantInWindow {
+		t.Fatalf("rows in the window = %q, want %q — the straddling and still-running REQs "+
+			"overlap it and must be listed; the two outside it must not be",
+			gotInWindow, wantInWindow)
+	}
+	if !windowResult.ReversedExtentOrdered {
+		t.Fatalf("a reversed-stamp row produced a segment whose start (%s) is after its end; "+
+			"a reversed span is a point at the break marker's own instant, and an inverted "+
+			"segment makes the overlap test drop broken rows from every window",
+			windowResult.ReversedExtentStartIso)
+	}
+	if len(windowResult.ReversedInWindow) != 1 {
+		t.Fatalf("the reversed-stamp row is inside the window and was not listed (got %v)",
+			windowResult.ReversedInWindow)
+	}
+	if len(windowResult.ProjectedOnlyInWindow) != 1 {
+		t.Fatal("a pending REQ whose forecast bar is the only thing it draws in the window " +
+			"was not listed; the extent must reach the projected segment")
+	}
+	// The control for the assertion above: same row, same window, no forecast.
+	// Without it the extent stops at the now-line and the row is genuinely absent,
+	// which is what proves the projection — not the fixture — put it in the window.
+	if len(windowResult.ProjectedIgnoredWithoutForecast) != 0 {
+		t.Fatalf("the same pending REQ reached a window beyond the now-line with no forecast "+
+			"attached (got %v); its measured extent ends at the now-line",
+			windowResult.ProjectedIgnoredWithoutForecast)
+	}
+	if len(windowResult.EverythingInAWideWindow) != 5 {
+		t.Fatalf("a window spanning the whole year listed %d of 5 rows; widening the window "+
+			"must never drop a row", len(windowResult.EverythingInAWideWindow))
+	}
+	// The pair that forces segment-wise overlap rather than a hull. Both windows
+	// sit between the same two marks; only the second one touches either.
+	if len(windowResult.InTheForecastGap) != 0 {
+		t.Fatalf("a window in the gap between a REQ's open wait and its forecast bar listed "+
+			"%v; the row draws nothing there, and listing it is what window-scoping exists to "+
+			"stop — a hull over the two marks spans the gap between them",
+			windowResult.InTheForecastGap)
+	}
+	if len(windowResult.SpanningTheForecastGap) != 1 {
+		t.Fatal("a window reaching across both the open wait and the forecast bar did not list " +
+			"the row; the gap rule must not cost a row that genuinely draws inside the window")
+	}
+
+	// THE EXCLUSIVE END, and its two controls. windowEndMs is the next window's
+	// first instant everywhere else in this module — timelinePeriodWindow builds
+	// [start, nextStart) and the end field renders windowEndMs - 1 to say so — so
+	// admitting a segment that begins exactly there lists a row whose only mark is
+	// clipped at the right edge.
+	if len(windowResult.StartsAtWindowEnd) != 0 {
+		t.Errorf("a REQ whose span begins exactly at the window's exclusive end was listed "+
+			"(got %v); its floored rectangle lands at the clipped right edge, so the row shows "+
+			"nothing — and it belongs to the NEXT window", windowResult.StartsAtWindowEnd)
+	}
+	if len(windowResult.StartsJustInside) != 1 {
+		t.Errorf("the same REQ one millisecond earlier was not listed (got %v); the end is "+
+			"exclusive by one instant, not by a margin", windowResult.StartsJustInside)
+	}
+	// Deliberately asymmetric. The START instant IS in the window and a span
+	// ending on it draws a visible floored mark at x=0, so this stays inclusive.
+	if len(windowResult.EndsAtWindowStart) != 1 {
+		t.Errorf("a REQ whose span ends exactly at the window's start was dropped (got %v); "+
+			"the start is inclusive and that span draws a mark at the left edge",
+			windowResult.EndsAtWindowStart)
+	}
+
+	// A REVERSED SPAN IS A POINT, because that is what the renderer draws. The
+	// same defect as the forecast gap: a hull over an interval nothing is drawn
+	// across lists rows with nothing on them.
+	if len(windowResult.ReversedHullInTheGap) != 0 {
+		t.Errorf("a window inside a reversed span's min/max interval listed the row (got %v), "+
+			"but renderVisibleRows draws only a break marker at the created instant and the "+
+			"row's other bar sits elsewhere — nothing is drawn in that window",
+			windowResult.ReversedHullInTheGap)
+	}
+	if len(windowResult.ReversedHullAtItsMarker) != 1 {
+		t.Errorf("a window over the reversed span's own break marker did not list the row "+
+			"(got %v); the point has to sit where the renderer puts the marker, or a broken "+
+			"row becomes unfindable — which is what the min/max existed to prevent",
+			windowResult.ReversedHullAtItsMarker)
+	}
+}
+
+// Typed dates are the fourth way to move the window, and the one a reader can
+// aim: the other three (pointer, keyboard, period chips) are all relative. What
+// has to hold is that typing cannot reach a window the other three cannot —
+// same floor, same ceiling, same edge clamp — because a control with its own
+// clamp is how a view starts disagreeing with itself.
+func TestJavaScriptBehaviorTimelineTypedDatesMoveTheWindow(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS") +
+		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_PERIOD_LEVEL_NAMES") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineZoomedWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineDateFieldToEpoch(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineStartEpochToDateField(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineEndEpochToDateField(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodStart(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineSteppedPeriodStart(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodLevelOfWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineTypedWindow(") + `
+var boundStart = Date.UTC(2026, 3, 7);
+var boundEnd = Date.UTC(2026, 8, 2);
+var windowStart = Date.UTC(2026, 5, 1);
+var windowEnd = Date.UTC(2026, 5, 8);
+
+function typed(startText, endText) {
+  return timelineTypedWindow(startText, endText, windowStart, windowEnd, boundStart, boundEnd);
+}
+function iso(epochMs) { return new Date(epochMs).toISOString(); }
+
+var bothFields = typed("2026-06-01", "2026-06-15");
+var startOnly = typed("2026-06-03", "");
+var endOnly = typed("", "2026-06-20");
+var sameDay = typed("2026-07-04", "2026-07-04");
+var reversed = typed("2026-07-10", "2026-07-01");
+var beforeRange = typed("2020-01-01", "2020-01-31");
+// A start typed while the end field still holds the board's last day. The
+// implied span overruns the ceiling, and a span-preserving settle would pin the
+// end to the bound and drag this start backwards to keep the width.
+var startAgainstCeiling = timelineTypedWindow(
+  "2026-08-01", timelineEndEpochToDateField(boundEnd), windowStart, windowEnd, boundStart, boundEnd);
+var neither = typed("", "");
+var rubbish = typed("not-a-date", "2026-13-45");
+var rolled = timelineDateFieldToEpoch("2026-02-31");
+
+process.stdout.write(JSON.stringify({
+  bothStartIso: iso(bothFields.windowStartMs),
+  bothEndIso: iso(bothFields.windowEndMs),
+  startOnlyStartIso: iso(startOnly.windowStartMs),
+  startOnlyKeptEnd: startOnly.windowEndMs === windowEnd,
+  endOnlyKeptStart: endOnly.windowStartMs === windowStart,
+  endOnlyEndIso: iso(endOnly.windowEndMs),
+  sameDaySpanMs: sameDay.windowEndMs - sameDay.windowStartMs,
+  reversedOrdered: reversed.windowStartMs < reversed.windowEndMs,
+  reversedStartIso: iso(reversed.windowStartMs),
+  beforeRangeClampedToBound: beforeRange.windowStartMs >= boundStart,
+  beforeRangeStartIso: iso(beforeRange.windowStartMs),
+  startAgainstCeilingIso: iso(startAgainstCeiling.windowStartMs),
+  // THE ROUND TRIP. Render a real calendar window into the two fields, parse them
+  // straight back, and the same window has to come out — otherwise editing one
+  // field re-applies a mangled version of the other, and no typed pair can ever
+  // equal what a period chip produces.
+  periodRoundTrips: (function () {
+    return ["day", "week", "month"].map(function (levelName) {
+      var periodStartMs = timelinePeriodStart(Date.UTC(2026, 6, 15, 9, 30), levelName);
+      var periodEndMs = timelineSteppedPeriodStart(periodStartMs, levelName, 1);
+      var reparsed = timelineTypedWindow(
+        timelineStartEpochToDateField(periodStartMs),
+        timelineEndEpochToDateField(periodEndMs),
+        0, 0, boundStart, boundEnd);
+      return {
+        level: levelName,
+        fields: timelineStartEpochToDateField(periodStartMs) + ".." + timelineEndEpochToDateField(periodEndMs),
+        exact: reparsed.windowStartMs === periodStartMs && reparsed.windowEndMs === periodEndMs,
+        reparsedLevel: timelinePeriodLevelOfWindow(reparsed.windowStartMs, reparsed.windowEndMs)
+      };
+    });
+  })(),
+  neitherIsNull: neither === null,
+  rubbishIsNull: rubbish === null,
+  rolledIsNaN: isNaN(rolled),
+  roundTrip: timelineStartEpochToDateField(Date.UTC(2026, 5, 9, 13, 45))
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline typed dates", javascriptProbe)
+	var typedResult struct {
+		BothStartIso              string  `json:"bothStartIso"`
+		BothEndIso                string  `json:"bothEndIso"`
+		StartOnlyStartIso         string  `json:"startOnlyStartIso"`
+		StartOnlyKeptEnd          bool    `json:"startOnlyKeptEnd"`
+		EndOnlyKeptStart          bool    `json:"endOnlyKeptStart"`
+		EndOnlyEndIso             string  `json:"endOnlyEndIso"`
+		SameDaySpanMs             float64 `json:"sameDaySpanMs"`
+		ReversedOrdered           bool    `json:"reversedOrdered"`
+		ReversedStartIso          string  `json:"reversedStartIso"`
+		BeforeRangeClampedToBound bool    `json:"beforeRangeClampedToBound"`
+		BeforeRangeStartIso       string  `json:"beforeRangeStartIso"`
+		StartAgainstCeilingIso    string  `json:"startAgainstCeilingIso"`
+		PeriodRoundTrips          []struct {
+			Level         string `json:"level"`
+			Fields        string `json:"fields"`
+			Exact         bool   `json:"exact"`
+			ReparsedLevel string `json:"reparsedLevel"`
+		} `json:"periodRoundTrips"`
+		NeitherIsNull bool   `json:"neitherIsNull"`
+		RubbishIsNull bool   `json:"rubbishIsNull"`
+		RolledIsNaN   bool   `json:"rolledIsNaN"`
+		RoundTrip     string `json:"roundTrip"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &typedResult); decodeError != nil {
+		t.Fatalf("decode timeline typed dates behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if typedResult.BothStartIso != "2026-06-01T00:00:00.000Z" {
+		t.Fatalf("typed start = %s, want the UTC midnight opening that day", typedResult.BothStartIso)
+	}
+	// The end field names a day to INCLUDE and the window's end is EXCLUSIVE, so
+	// the day typed resolves to the FOLLOWING midnight. That is not cosmetic: it
+	// is what makes a typed pair produce byte-identical windows to the period
+	// chips, which is what the round-trip block below turns into a hard rule.
+	// (This assertion previously wanted 23:59:59.999 — the inclusive end that
+	// made render and parse non-inverses. Changed deliberately, not bent to fit.)
+	if typedResult.BothEndIso != "2026-06-16T00:00:00.000Z" {
+		t.Fatalf("typed end = %s, want the midnight following the day typed", typedResult.BothEndIso)
+	}
+	if !typedResult.StartOnlyKeptEnd || typedResult.StartOnlyStartIso != "2026-06-03T00:00:00.000Z" {
+		t.Fatalf("typing only a start moved the end too (start %s, kept end %v); each field must "+
+			"resolve against the window already on screen",
+			typedResult.StartOnlyStartIso, typedResult.StartOnlyKeptEnd)
+	}
+	if !typedResult.EndOnlyKeptStart || typedResult.EndOnlyEndIso != "2026-06-21T00:00:00.000Z" {
+		t.Fatalf("typing only an end moved the start too (end %s, kept start %v)",
+			typedResult.EndOnlyEndIso, typedResult.EndOnlyKeptStart)
+	}
+	// One date in both fields is the commonest thing a reader will do with a date
+	// picker, and it must mean that day rather than an empty window.
+	if typedResult.SameDaySpanMs != 86400000 {
+		t.Fatalf("the same date in both fields spanned %.0f ms, want exactly one day — the same "+
+			"window the Day chip produces, so the chip can light for it",
+			typedResult.SameDaySpanMs)
+	}
+	if !typedResult.ReversedOrdered || typedResult.ReversedStartIso != "2026-07-10T00:00:00.000Z" {
+		t.Fatalf("an end before the start produced %s and ordered=%v; it must clamp forward from "+
+			"the start the reader typed, never silently swap the two",
+			typedResult.ReversedStartIso, typedResult.ReversedOrdered)
+	}
+	// The clamp has to be the shared one. A control with its own bounds is how
+	// the reader reaches a window no other control can, and then cannot get back.
+	if !typedResult.BeforeRangeClampedToBound {
+		t.Fatalf("a date before the board's range escaped the bounds (start %s)",
+			typedResult.BeforeRangeStartIso)
+	}
+	// The defect a browser found and the unit fixture had missed: each endpoint is
+	// clamped on its own, because a typed date is a position and the shared settle
+	// preserves a span. Pinning the end to the ceiling must never move the start
+	// the reader typed.
+	if typedResult.StartAgainstCeilingIso != "2026-08-01T00:00:00.000Z" {
+		t.Fatalf("a start typed against the range ceiling came back as %s, want the date typed; "+
+			"the settle preserves a span and would drag the start back to keep the width",
+			typedResult.StartAgainstCeilingIso)
+	}
+	// One assertion covering the whole class: the fields must be a lossless view
+	// of a calendar window, and a typed pair must be able to name the same window
+	// a chip does. Rendering an exclusive end instant's own date failed both —
+	// every period window came back a day long, and no typed pair could ever
+	// light a chip.
+	if len(typedResult.PeriodRoundTrips) != 3 {
+		t.Fatalf("want a round trip for each of day, week and month; got %d",
+			len(typedResult.PeriodRoundTrips))
+	}
+	for _, roundTrip := range typedResult.PeriodRoundTrips {
+		if !roundTrip.Exact {
+			t.Errorf("a %s window rendered to fields %s and did not parse back to itself; "+
+				"render and parse must be inverses or editing one field mangles the other",
+				roundTrip.Level, roundTrip.Fields)
+		}
+		if roundTrip.ReparsedLevel != roundTrip.Level {
+			t.Errorf("a %s window typed back as fields %s reads as level %q; a typed pair must be "+
+				"able to name the same window a period chip produces",
+				roundTrip.Level, roundTrip.Fields, roundTrip.ReparsedLevel)
+		}
+	}
+	if !typedResult.NeitherIsNull {
+		t.Fatal("two empty fields must return null — a cleared field is not a request to move")
+	}
+	if !typedResult.RubbishIsNull {
+		t.Fatal("unparseable text in both fields must return null rather than moving the window")
+	}
+	if !typedResult.RolledIsNaN {
+		t.Fatal("2026-02-31 must be rejected; Date.UTC rolls it into March and a rolled date is " +
+			"not the one that was typed")
+	}
+	if typedResult.RoundTrip != "2026-06-09" {
+		t.Fatalf("an instant mid-day rendered into the date field as %q, want its UTC date",
+			typedResult.RoundTrip)
+	}
+}
+
+// The label's truncation arithmetic. The MEASUREMENT it depends on is a browser
+// question and lives in the browser lane; this pins what the module does with
+// the number once it has it.
+//
+// The id is the row's identity, so the rule under test is that it is never the
+// thing that gets cut: a budget too small for id-plus-a-useful-title drops the
+// title entirely rather than shipping a half-drawn id.
+func TestJavaScriptBehaviorTimelineRowLabelTruncation(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	// The column width is READ FROM THE RENDERER, not restated here. Restating it
+	// is how the first version of this test passed with the constant reverted to
+	// its old value: the budget floor below was measuring a column the board had
+	// stopped using (REQ-265 — grep the quantity, not the constant name).
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_LABEL_WIDTH") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineLabelCharacterBudget(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineLabelCellCount(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineLabelPrefixWithinCells(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineRowLabelText(") + `
+var longTitle = "Colour timeline bars by REQ status";
+// The shipped column, minus the label's own 6px x-offset and a 6px gap before
+// the first bar — the same expression the renderer uses.
+var shippedColumnCells = timelineLabelCharacterBudget(6.0219, TIMELINE_LABEL_WIDTH - 12);
+process.stdout.write(JSON.stringify({
+  shippedColumnCells: shippedColumnCells,
+  shippedLabelSample: timelineRowLabelText("REQ-042", longTitle, shippedColumnCells),
+  taggedLabelSample: timelineRowLabelText(
+    "REQ-306", "[impact-rule-change] Judge effort_estimate on review-minted follow-ups too",
+    shippedColumnCells),
+  cjkCells: timelineLabelCellCount("修复部署管道"),
+  asciiCells: timelineLabelCellCount("abcdef"),
+  astralCells: timelineLabelCellCount("🚀"),
+  cjkLabel: timelineRowLabelText("REQ-042", "修复部署管道的一个严重问题在这里", 28),
+  astralBoundary: timelineRowLabelText("REQ-042", "Fix the deploy 🚀 pipeline right now", 26),
+  budgetAt6px: timelineLabelCharacterBudget(6, 172),
+  budgetWithNoAdvance: timelineLabelCharacterBudget(0, 172),
+  budgetWithNegativeAdvance: timelineLabelCharacterBudget(-3, 172),
+
+  roomy: timelineRowLabelText("REQ-042", longTitle, 60),
+  cut: timelineRowLabelText("REQ-042", longTitle, 30),
+  cutLength: timelineRowLabelText("REQ-042", longTitle, 30).length,
+  tight: timelineRowLabelText("REQ-042", longTitle, 14),
+  noBudget: timelineRowLabelText("REQ-042", longTitle, 0),
+  noTitle: timelineRowLabelText("REQ-042", "", 60),
+  exactFit: timelineRowLabelText("REQ-042", "abcdef", 15),
+  oneOver: timelineRowLabelText("REQ-042", "abcdefghijkl", 20),
+  longId: timelineRowLabelText("REQ-100042", longTitle, 14)
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline row label", javascriptProbe)
+	var labelResult struct {
+		ShippedColumnCells        int    `json:"shippedColumnCells"`
+		ShippedLabelSample        string `json:"shippedLabelSample"`
+		TaggedLabelSample         string `json:"taggedLabelSample"`
+		CjkCells                  int    `json:"cjkCells"`
+		AsciiCells                int    `json:"asciiCells"`
+		AstralCells               int    `json:"astralCells"`
+		CjkLabel                  string `json:"cjkLabel"`
+		AstralBoundary            string `json:"astralBoundary"`
+		BudgetAt6px               int    `json:"budgetAt6px"`
+		BudgetWithNoAdvance       int    `json:"budgetWithNoAdvance"`
+		BudgetWithNegativeAdvance int    `json:"budgetWithNegativeAdvance"`
+		Roomy                     string `json:"roomy"`
+		Cut                       string `json:"cut"`
+		CutLength                 int    `json:"cutLength"`
+		Tight                     string `json:"tight"`
+		NoBudget                  string `json:"noBudget"`
+		NoTitle                   string `json:"noTitle"`
+		ExactFit                  string `json:"exactFit"`
+		OneOver                   string `json:"oneOver"`
+		LongId                    string `json:"longId"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &labelResult); decodeError != nil {
+		t.Fatalf("decode timeline row label behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// THE COLUMN WIDTH, pinned to the shipped constant. Reverting
+	// TIMELINE_LABEL_WIDTH to its pre-REQ 104 used to pass this whole file; now it
+	// fails here, which is what makes the width a decision the tests hold rather
+	// than a number in a comment.
+	if labelResult.ShippedColumnCells < 20 {
+		t.Errorf("the shipped label column fits %d cells; below about 20 the title is a stub and "+
+			"the column stops earning the plot width it costs (label sample %q)",
+			labelResult.ShippedColumnCells, labelResult.ShippedLabelSample)
+	}
+	// A classification tag is metadata for the board's search box, not title text.
+	// Unstripped it consumed the entire budget and every review-minted REQ read
+	// "[impact-user-visib…".
+	if strings.Contains(labelResult.TaggedLabelSample, "[impact-") {
+		t.Errorf("a tagged title rendered %q; the leading [impact-…] tag has to come off in the "+
+			"label or it is the whole budget", labelResult.TaggedLabelSample)
+	}
+	if !strings.Contains(labelResult.TaggedLabelSample, "Judge") {
+		t.Errorf("a tagged title rendered %q, want the actual title after the tag came off",
+			labelResult.TaggedLabelSample)
+	}
+
+	// Cells, not characters. The measured advance describes the face's Latin cell,
+	// and a face that draws 中 at 10px against a 6.02px cell overruns the column.
+	if labelResult.AsciiCells != 6 {
+		t.Errorf("six ASCII characters counted %d cells, want 6", labelResult.AsciiCells)
+	}
+	if labelResult.CjkCells != 12 {
+		t.Errorf("six CJK characters counted %d cells, want 12 — one cell each is what let a CJK "+
+			"title draw 36px into the plot", labelResult.CjkCells)
+	}
+	if labelResult.AstralCells != 2 {
+		t.Errorf("one astral character counted %d cells, want 2", labelResult.AstralCells)
+	}
+	// The cut lands on a code point boundary, so an astral character is never
+	// split into a lone surrogate that renders as a fallback box.
+	for _, character := range labelResult.AstralBoundary {
+		if character == '\uFFFD' {
+			t.Errorf("a title cut near an astral character produced %q, which contains a "+
+				"replacement character — the cut split a surrogate pair",
+				labelResult.AstralBoundary)
+		}
+	}
+	if labelResult.CjkLabel == "" || !strings.HasPrefix(labelResult.CjkLabel, "REQ-042") {
+		t.Errorf("a CJK title rendered %q, want a label led by its id", labelResult.CjkLabel)
+	}
+
+	if labelResult.BudgetAt6px != 28 {
+		t.Errorf("a 172px column at a 6px advance fits %d characters, want 28", labelResult.BudgetAt6px)
+	}
+	// An unmeasurable face must produce NO budget rather than a plausible one.
+	// A guessed advance is the REQ-292 defect: a number that looks like a
+	// measurement and does not move when the face does.
+	if labelResult.BudgetWithNoAdvance != 0 || labelResult.BudgetWithNegativeAdvance != 0 {
+		t.Errorf("an unmeasured face produced budgets %d and %d, want 0 for both",
+			labelResult.BudgetWithNoAdvance, labelResult.BudgetWithNegativeAdvance)
+	}
+
+	if labelResult.Roomy != "REQ-042  Colour timeline bars by REQ status" {
+		t.Errorf("a roomy budget rendered %q, want the id and the whole title", labelResult.Roomy)
+	}
+	if !strings.HasPrefix(labelResult.Cut, "REQ-042  ") || !strings.HasSuffix(labelResult.Cut, "…") {
+		t.Errorf("a cut label rendered %q, want the id then a truncated title ending in an ellipsis",
+			labelResult.Cut)
+	}
+	// The ellipsis is inside the budget, not on top of it — otherwise the label
+	// the arithmetic says fits is one character wider than the column.
+	if labelResult.CutLength > 30 {
+		t.Errorf("a 30-character budget produced a %d-character label %q; the ellipsis has to fit "+
+			"inside the budget", labelResult.CutLength, labelResult.Cut)
+	}
+	// Too tight for a useful title: the id survives whole, alone.
+	if labelResult.Tight != "REQ-042" {
+		t.Errorf("a tight budget rendered %q, want the id alone — a half-drawn id is worse than "+
+			"no title", labelResult.Tight)
+	}
+	if labelResult.NoBudget != "REQ-042" || labelResult.NoTitle != "REQ-042" {
+		t.Errorf("no budget rendered %q and no title rendered %q, want the id in both cases",
+			labelResult.NoBudget, labelResult.NoTitle)
+	}
+	if labelResult.ExactFit != "REQ-042  abcdef" {
+		t.Errorf("a title that exactly fills the budget rendered %q, want it whole and unmarked",
+			labelResult.ExactFit)
+	}
+	if !strings.HasSuffix(labelResult.OneOver, "…") || len([]rune(labelResult.OneOver)) > 20 {
+		t.Errorf("a title one character over the budget rendered %q (%d runes); it must be cut, "+
+			"marked, and still inside the budget",
+			labelResult.OneOver, len([]rune(labelResult.OneOver)))
+	}
+	// A longer id eats the same budget. The rule holds by id length, not by a
+	// hard-coded seven characters.
+	if labelResult.LongId != "REQ-100042" {
+		t.Errorf("a ten-character id at a 14-character budget rendered %q, want the id alone",
+			labelResult.LongId)
+	}
+}
+
 // timelineForecastDomStub is the smallest DOM renderTimelineForecast touches. It
 // is a stub rather than a headless browser because what is being pinned is the
 // SENTENCE — which figures reach the reader — not the layout.
@@ -2720,6 +3344,352 @@ function collectText(node) {
 // forecast that states a date without stating what it assumed is exactly the
 // artifact people screenshot and quote. These pin that the sentence carries its
 // own assumptions, and that thin history declines instead of guessing.
+// At Fit all over three months a completed REQ was two adjacent 1.5px marks of
+// different hues: a wait/work split drawn in pixels that cannot carry one. The
+// collapse is the honest alternative — one marker for the row — and what has to
+// hold is that it fires only where the split is genuinely unreadable, and never
+// on the rows whose visible breakage is the reason they are drawn at all.
+func TestJavaScriptBehaviorTimelineNarrowRowsDrawOneMarker(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	// The threshold is READ FROM THE RENDERER. Restating 7 here would let the
+	// shipped constant drift to 1 with this test still green — REQ-265's lesson,
+	// and REQ-322 shipped exactly that mistake in this file.
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPLIT_WIDTH", "TIMELINE_MIN_SEGMENT_WIDTH") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineRowSegments(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineCollapsedRowMark(") + `
+var nowMs = Date.UTC(2026, 7, 23, 12, 0);
+// Fit all over three months at the shipped plot width: 90 days across 1200px.
+var windowStartMs = Date.UTC(2026, 5, 1);
+var windowEndMs = Date.UTC(2026, 7, 30);
+var plotWidthPx = 1200;
+var windowSpanMs = windowEndMs - windowStartMs;
+var msPerPixel = windowSpanMs / plotWidthPx;
+
+function markFor(row, projectedRow, spanStartMs, spanEndMs, widthPx) {
+  return timelineCollapsedRowMark(
+    timelineRowSegments(row, nowMs, projectedRow),
+    spanStartMs === undefined ? windowStartMs : spanStartMs,
+    spanEndMs === undefined ? windowEndMs : spanEndMs,
+    widthPx === undefined ? plotWidthPx : widthPx);
+}
+
+// A REQ whose whole life is four pixels wide at this zoom: the wait and the work
+// each floor to TIMELINE_MIN_SEGMENT_WIDTH and together claim more room than the
+// REQ occupies.
+var fourPixelStartMs = Date.UTC(2026, 6, 1);
+var narrowRow = {
+  id: "REQ-001",
+  createdTime: new Date(fourPixelStartMs).toISOString(),
+  claimedTime: new Date(fourPixelStartMs + msPerPixel * 2).toISOString(),
+  completedTime: new Date(fourPixelStartMs + msPerPixel * 4).toISOString(),
+  hasWork: true, waitMinutes: 60, workMinutes: 60
+};
+// The same REQ at a zoom where four pixels became four hundred.
+var wideWindowStartMs = fourPixelStartMs - msPerPixel * 10;
+var wideWindowEndMs = fourPixelStartMs + msPerPixel * 14;
+
+// A row with reversed stamps. Its break markers are the point of drawing it, so
+// the caller excludes it — but the mark function must not be the thing that
+// silently rescues a caller that forgets.
+var reversedRow = {
+  id: "REQ-002",
+  createdTime: new Date(fourPixelStartMs).toISOString(),
+  claimedTime: new Date(fourPixelStartMs - msPerPixel * 2).toISOString(),
+  completedTime: new Date(fourPixelStartMs + msPerPixel).toISOString(),
+  hasWork: true, waitMinutes: -60, workMinutes: 30
+};
+
+// A REQ still waiting: ONE drawn segment, so there is no split to withdraw and
+// no marker to collapse to, however narrow it is.
+var singleSegmentRow = {
+  id: "REQ-003",
+  createdTime: new Date(nowMs - msPerPixel).toISOString(),
+  waitOpen: true, waitMinutes: 5
+};
+
+// The unparseable row. timelineRowSegments hands it the -Infinity → Infinity
+// sentinel so it is listed in every window; collapsing that to one marker would
+// draw a bar across the entire chart.
+var unparseableRow = { id: "REQ-004", createdTime: "not-a-date", waitMinutes: 0 };
+
+// A pending REQ whose forecast bar sits right beside its open wait, both inside
+// the same handful of pixels. Collapsing it would draw one SOLID marker over a
+// span that is mostly projection — work claimed as measured.
+var projectedNarrowRow = {
+  id: "REQ-005",
+  createdTime: new Date(nowMs - msPerPixel).toISOString(),
+  waitOpen: true, waitMinutes: 5
+};
+var narrowProjection = {
+  id: "REQ-005",
+  startTime: new Date(nowMs).toISOString(),
+  endTime: new Date(nowMs + msPerPixel * 2).toISOString()
+};
+
+var narrowMark = markFor(narrowRow);
+var wideMark = markFor(narrowRow, undefined, wideWindowStartMs, wideWindowEndMs);
+
+process.stdout.write(JSON.stringify({
+  splitWidth: TIMELINE_MIN_SPLIT_WIDTH,
+  segmentWidth: TIMELINE_MIN_SEGMENT_WIDTH,
+  narrowCollapsed: narrowMark !== null,
+  narrowMarkStartIso: narrowMark ? new Date(narrowMark.startMs).toISOString() : "",
+  narrowMarkEndIso: narrowMark ? new Date(narrowMark.endMs).toISOString() : "",
+  narrowRowCreatedIso: narrowRow.createdTime,
+  narrowRowCompletedIso: narrowRow.completedTime,
+  wideCollapsed: wideMark !== null,
+  reversedCollapsed: markFor(reversedRow) !== null,
+  singleSegmentCollapsed: markFor(singleSegmentRow) !== null,
+  unparseableCollapsed: markFor(unparseableRow) !== null,
+  // A row sitting entirely outside the window has no visible width at all, so it
+  // is at the collapsing end of the scale rather than the splitting end.
+  offscreenCollapsed: markFor(narrowRow, undefined, Date.UTC(2027, 0, 1), Date.UTC(2027, 1, 1)) !== null,
+  // Two segments, four pixels: collapsible by width alone. The caller is what
+  // has to spare it.
+  projectedNarrowCollapsibleByWidth: markFor(projectedNarrowRow, narrowProjection) !== null
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline narrow rows", javascriptProbe)
+	var markResult struct {
+		SplitWidth             float64 `json:"splitWidth"`
+		SegmentWidth           float64 `json:"segmentWidth"`
+		NarrowCollapsed        bool    `json:"narrowCollapsed"`
+		NarrowMarkStartIso     string  `json:"narrowMarkStartIso"`
+		NarrowMarkEndIso       string  `json:"narrowMarkEndIso"`
+		NarrowRowCreatedIso    string  `json:"narrowRowCreatedIso"`
+		NarrowRowCompletedIso  string  `json:"narrowRowCompletedIso"`
+		WideCollapsed          bool    `json:"wideCollapsed"`
+		ReversedCollapsed      bool    `json:"reversedCollapsed"`
+		SingleSegmentCollapsed bool    `json:"singleSegmentCollapsed"`
+		UnparseableCollapsed   bool    `json:"unparseableCollapsed"`
+		OffscreenCollapsed     bool    `json:"offscreenCollapsed"`
+
+		ProjectedNarrowCollapsibleByWidth bool `json:"projectedNarrowCollapsibleByWidth"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &markResult); decodeError != nil {
+		t.Fatalf("decode timeline narrow row behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// THE THRESHOLD, pinned to what a two-segment bar physically needs: two
+	// floored segments plus a pixel of boundary between them. Dropping
+	// TIMELINE_MIN_SPLIT_WIDTH below that would make the collapse fire only where
+	// the split was already invisible, which is the defect this REQ removed.
+	if wantFloor := 2*markResult.SegmentWidth + 1; markResult.SplitWidth < wantFloor {
+		t.Errorf("the split threshold is %g and a readable two-segment bar needs %g "+
+			"(2 x %g floored segments plus a boundary); below it the collapse never fires "+
+			"where the split is unreadable", markResult.SplitWidth, wantFloor, markResult.SegmentWidth)
+	}
+
+	// The pair that makes the rule about WIDTH and not about the row. Same REQ,
+	// same stamps, two zooms.
+	if !markResult.NarrowCollapsed {
+		t.Error("a REQ whose whole span is four pixels wide kept its wait/work split; " +
+			"two floored segments in four pixels is a split the pixels cannot carry")
+	}
+	if markResult.WideCollapsed {
+		t.Error("the same REQ collapsed to one marker at a zoom where its span is hundreds " +
+			"of pixels wide; the collapse must cost nothing once there is room to split")
+	}
+	// The marker has to cover the row's real extent, not a floored stub anchored
+	// at one end: the reader still reads its POSITION against the gridlines.
+	if markResult.NarrowMarkStartIso != markResult.NarrowRowCreatedIso ||
+		markResult.NarrowMarkEndIso != markResult.NarrowRowCompletedIso {
+		t.Errorf("the collapsed marker covers %s → %s, want the row's own extent %s → %s",
+			markResult.NarrowMarkStartIso, markResult.NarrowMarkEndIso,
+			markResult.NarrowRowCreatedIso, markResult.NarrowRowCompletedIso)
+	}
+
+	if markResult.SingleSegmentCollapsed {
+		t.Error("a REQ drawing one segment was reported as collapsible; there is no split " +
+			"to withdraw, and collapsing it would replace its open wait with a closed marker")
+	}
+	// Same guard as the case above, reached by a different route: the sentinel
+	// segment timelineRowSegments emits for an unreadable created_at arrives alone,
+	// so "one segment" is what spares it. Collapsing it would draw one marker
+	// across the whole chart.
+	if markResult.UnparseableCollapsed {
+		t.Error("a row with an unreadable created_at was reported as collapsible; its segment " +
+			"is the -Infinity sentinel, and collapsing it draws one bar across the whole chart")
+	}
+	if !markResult.OffscreenCollapsed {
+		t.Error("a row with no visible width in the window was reported as splittable; " +
+			"zero pixels cannot carry two segments")
+	}
+	// Not an assertion about the mark function's own judgement — it has no way to
+	// know — but a record of what the caller must keep doing. renderVisibleRows
+	// excludes broken rows before asking, and this pins the reason: asked
+	// directly, the function WOULD collapse one.
+	if !markResult.ReversedCollapsed {
+		t.Error("a reversed-stamp row stopped being collapsible by width alone; if that is " +
+			"now handled here, renderVisibleRows's own broken-stamp guard is dead code")
+	}
+	// The forecast is the second distinction the collapse would erase, and the
+	// same pair applies: collapsible by width alone, spared by the caller.
+	if !markResult.ProjectedNarrowCollapsibleByWidth {
+		t.Error("a narrow pending REQ with a forecast stopped being collapsible by width " +
+			"alone; if that is now handled in the mark function, the caller's projection " +
+			"guard is dead code")
+	}
+	// And the other half of that pair: the guard has to still be at the call site.
+	// This is a source check rather than a behavioral one because the collapse
+	// decision is the pure function above and the exclusion is the caller's — the
+	// failure it names is a broken row quietly drawn as one clean marker, with its
+	// break markers, the only reason it is on the chart, gone.
+	renderVisibleRowsBody := sliceBalancedBlockAfter(t, indexHtml, "function renderVisibleRows(")
+	if !strings.Contains(renderVisibleRowsBody, "rowHasBrokenStamps") {
+		t.Error("renderVisibleRows no longer excludes broken-stamp rows before asking whether " +
+			"to collapse; a narrow reversed row would draw one clean marker instead of the " +
+			"break markers that are the reason it is drawn at all")
+	}
+	if !strings.Contains(renderVisibleRowsBody, "rowHasBrokenStamps || projectedRow") {
+		t.Error("renderVisibleRows no longer excludes forecast-carrying rows before asking " +
+			"whether to collapse; a narrow pending REQ would draw one solid marker over a span " +
+			"that is mostly projection, claiming work that has not happened")
+	}
+}
+
+// The threshold decision, without a DOM. The browser probe next door proves the
+// behaviour end to end; this pins the boundary itself, which is the part a
+// pointer-event probe measures only at whatever offsets it happens to dispatch.
+func TestJavaScriptBehaviorTimelinePanThreshold(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	// The distance is READ FROM THE RENDERER, so a probe cannot keep passing
+	// against a threshold the board stopped using.
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_PAN_THRESHOLD_PX") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePanEngaged(") + `
+var pressX = 500;
+process.stdout.write(JSON.stringify({
+  threshold: TIMELINE_PAN_THRESHOLD_PX,
+  atRest: timelinePanEngaged(false, pressX, pressX),
+  justUnder: timelinePanEngaged(false, pressX, pressX + TIMELINE_PAN_THRESHOLD_PX - 0.01),
+  exactlyAt: timelinePanEngaged(false, pressX, pressX + TIMELINE_PAN_THRESHOLD_PX),
+  // Leftward drags are drags. An unsigned comparison would engage in one
+  // direction only, and the bug would look like "panning left is sticky".
+  justUnderLeftward: timelinePanEngaged(false, pressX, pressX - TIMELINE_PAN_THRESHOLD_PX + 0.01),
+  exactlyAtLeftward: timelinePanEngaged(false, pressX, pressX - TIMELINE_PAN_THRESHOLD_PX),
+  // Latched: once engaged, back at the press point is still engaged.
+  latchedAtRest: timelinePanEngaged(true, pressX, pressX)
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline pan threshold", javascriptProbe)
+	var thresholdResult struct {
+		Threshold         float64 `json:"threshold"`
+		AtRest            bool    `json:"atRest"`
+		JustUnder         bool    `json:"justUnder"`
+		ExactlyAt         bool    `json:"exactlyAt"`
+		JustUnderLeftward bool    `json:"justUnderLeftward"`
+		ExactlyAtLeftward bool    `json:"exactlyAtLeftward"`
+		LatchedAtRest     bool    `json:"latchedAtRest"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &thresholdResult); decodeError != nil {
+		t.Fatalf("decode timeline pan threshold behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// A range, not a value. Below about 2px a trackpad tremor still trips it and
+	// the click is lost again; much above 8px a deliberate short drag feels stuck.
+	if thresholdResult.Threshold < 2 || thresholdResult.Threshold > 8 {
+		t.Errorf("the pan threshold is %g px; under 2 a hand tremor trips it and the click is "+
+			"lost again, over 8 a short deliberate drag feels stuck", thresholdResult.Threshold)
+	}
+	if thresholdResult.AtRest {
+		t.Error("a press that has not moved at all engaged the pan")
+	}
+	if thresholdResult.JustUnder || thresholdResult.JustUnderLeftward {
+		t.Errorf("a press just under the %g px threshold engaged the pan (rightward %v, "+
+			"leftward %v)", thresholdResult.Threshold,
+			thresholdResult.JustUnder, thresholdResult.JustUnderLeftward)
+	}
+	if !thresholdResult.ExactlyAt || !thresholdResult.ExactlyAtLeftward {
+		t.Errorf("a press exactly at the %g px threshold did not engage the pan (rightward %v, "+
+			"leftward %v); the comparison has to be inclusive and unsigned in distance",
+			thresholdResult.Threshold,
+			thresholdResult.ExactlyAt, thresholdResult.ExactlyAtLeftward)
+	}
+	if !thresholdResult.LatchedAtRest {
+		t.Error("an already-engaged drag disengaged on returning to the press point; " +
+			"engagement latches, or a wandering drag flickers in and out of panning")
+	}
+}
+
+// The axis draws ticks and the plot draws gridlines at the same instants. Two
+// loops doing the same arithmetic is one edit away from a gridline that means a
+// slightly different time than the tick above it, so there is one source and
+// this is what keeps it one.
+func TestJavaScriptBehaviorTimelineGridlinesShareTheAxisTicks(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_AXIS_TICK_COUNT") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineAxisTickInstants(") + `
+var windowStartMs = Date.UTC(2026, 5, 1);
+var windowEndMs = Date.UTC(2026, 5, 8);
+var instants = timelineAxisTickInstants(windowStartMs, windowEndMs);
+process.stdout.write(JSON.stringify({
+  tickCount: TIMELINE_AXIS_TICK_COUNT,
+  instantCount: instants.length,
+  firstIso: new Date(instants[0]).toISOString(),
+  lastIso: new Date(instants[instants.length - 1]).toISOString(),
+  ascending: instants.every(function (instant, index) {
+    return index === 0 || instant > instants[index - 1];
+  }),
+  // A zero-width window is reachable: the fields accept one day in both boxes
+  // before the settle widens it. It must produce a tick list, not NaNs.
+  degenerateFinite: timelineAxisTickInstants(windowStartMs, windowStartMs)
+    .every(function (instant) { return isFinite(instant); })
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline axis ticks", javascriptProbe)
+	var tickResult struct {
+		TickCount        int    `json:"tickCount"`
+		InstantCount     int    `json:"instantCount"`
+		FirstIso         string `json:"firstIso"`
+		LastIso          string `json:"lastIso"`
+		Ascending        bool   `json:"ascending"`
+		DegenerateFinite bool   `json:"degenerateFinite"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &tickResult); decodeError != nil {
+		t.Fatalf("decode timeline axis tick behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if tickResult.InstantCount != tickResult.TickCount+1 {
+		t.Errorf("the tick source produced %d instants for %d ticks, want %d — both edges "+
+			"of the window carry one", tickResult.InstantCount, tickResult.TickCount,
+			tickResult.TickCount+1)
+	}
+	if tickResult.FirstIso != "2026-06-01T00:00:00.000Z" || tickResult.LastIso != "2026-06-08T00:00:00.000Z" {
+		t.Errorf("the tick list spans %s → %s, want the window's own edges "+
+			"2026-06-01 → 2026-06-08", tickResult.FirstIso, tickResult.LastIso)
+	}
+	if !tickResult.Ascending {
+		t.Error("the tick instants are not strictly ascending")
+	}
+	if !tickResult.DegenerateFinite {
+		t.Error("a zero-width window produced non-finite tick instants; the fields can reach " +
+			"one before the settle widens it, and NaN ticks draw nothing and log nothing")
+	}
+
+	// ONE source, and this is the half that bites. The probe above would pass just
+	// as well with renderAxis keeping a private copy of the loop, which is exactly
+	// the drift the extraction removed — so count the callers instead of trusting
+	// the function's existence. Inlining the arithmetic back into either caller
+	// puts a second `/ TIMELINE_AXIS_TICK_COUNT` in the page and fails here.
+	// The POSITION arithmetic specifically. timelineFormatAxisTick divides the
+	// span by the same count to pick a label format, which is a different
+	// question, so this counts the expression that places a tick rather than
+	// every mention of the constant.
+	tickPositionArithmetic := "tickIndex) / TIMELINE_AXIS_TICK_COUNT"
+	if placements := strings.Count(indexHtml, tickPositionArithmetic); placements != 1 {
+		t.Errorf("tick positions are computed in %d places, want exactly 1 "+
+			"(timelineAxisTickInstants); a second copy is how the gridlines start meaning a "+
+			"different instant than the ticks above them", placements)
+	}
+	for _, caller := range []string{"function renderAxis(", "function drawGridlines("} {
+		callerBody := sliceBalancedBlockAfter(t, indexHtml, caller)
+		if !strings.Contains(callerBody, "timelineAxisTickInstants(") {
+			t.Errorf("%s does not read timelineAxisTickInstants; the axis and the gridlines "+
+				"have to come from one list or they can disagree", caller)
+		}
+	}
+}
+
 func TestJavaScriptBehaviorTimelineForecastStatesItsAssumptions(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 	javascriptProbe := timelineForecastDomStub +
@@ -3459,7 +4429,11 @@ var nextMonth = timelinePeriodWindow(anchorOf(monthWindow), "month", 1, boundSta
 var freelyZoomed = timelineZoomedWindow(
   weekWindow.windowStartMs, weekWindow.windowEndMs, 1.6, 0.5, boundStart, boundEnd);
 
-// Three archived rows, then the still-open work — the 677-row board in miniature.
+// Closed rows above the still-open ones: the case the row-list jump exists for.
+// Under newest-first order (REQ-318) the newest open REQ is usually row 0 and the
+// jump is a no-op, so the fixture deliberately puts the open work lower — an old
+// REQ still running under newer finished ones is what makes the second movement
+// do anything.
 var rows = [
   { waitOpen: false, workOpen: false },
   { waitOpen: false, workOpen: false },
@@ -3468,10 +4442,28 @@ var rows = [
   { waitOpen: false, workOpen: true }
 ];
 var scrollHostStub = { scrollTop: 0 };
-var nowJump = timelineNowJump(nowMs, queueEndMs, rows, boundStart, boundEnd);
-// The two assignments the Now button makes, run against a stub scroll host.
-if (nowJump.scrollTop !== null) {
-  scrollHostStub.scrollTop = nowJump.scrollTop;
+// The Now button's three steps, in the order the handler runs them: take the
+// window, let the rows follow it, then scroll among THOSE rows.
+//
+// The two row sets below are what makes this an ORDERING assertion rather than a
+// restatement. The rows array is what was on screen before the jump;
+// rowsAfterJump is
+// what the window the jump chose admits — a narrower set whose first open row
+// sits at a different index. Deciding the scroll before the refresh, which is
+// what timelineNowJump used to do internally, yields 3; deciding it after yields
+// 1. Only the second is right, and only a fixture where the two disagree can
+// tell them apart.
+var rowsAfterJump = [
+  { waitOpen: false, workOpen: false },
+  { waitOpen: true, workOpen: false },
+  { waitOpen: false, workOpen: true }
+];
+var scrollTopIfDecidedBeforeRefresh = timelineFirstOpenRowIndex(rows) * TIMELINE_ROW_HEIGHT;
+var nowWindow = timelineNowJump(nowMs, queueEndMs, boundStart, boundEnd);
+var nowJump = { window: nowWindow };
+var openRowIndex = timelineFirstOpenRowIndex(rowsAfterJump);
+if (openRowIndex >= 0) {
+  scrollHostStub.scrollTop = openRowIndex * TIMELINE_ROW_HEIGHT;
 }
 
 function utcParts(epochMs) {
@@ -3519,7 +4511,8 @@ process.stdout.write(JSON.stringify({
   nowInsideWindow: nowMs >= nowJump.window.windowStartMs && nowMs <= nowJump.window.windowEndMs,
   queueEndInsideWindow: queueEndMs >= nowJump.window.windowStartMs && queueEndMs <= nowJump.window.windowEndMs,
   scrollTop: scrollHostStub.scrollTop,
-  wantScrollTop: 3 * TIMELINE_ROW_HEIGHT
+  wantScrollTop: 1 * TIMELINE_ROW_HEIGHT,
+  scrollTopIfDecidedBeforeRefresh: scrollTopIfDecidedBeforeRefresh
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "timeline period navigation", javascriptProbe)
@@ -3560,11 +4553,12 @@ process.stdout.write(JSON.stringify({
 		ExactMonthLevel *string `json:"exactMonthLevel"`
 		ZoomedLevel     *string `json:"zoomedLevel"`
 
-		NowWindowIso         string  `json:"nowWindowIso"`
-		NowInsideWindow      bool    `json:"nowInsideWindow"`
-		QueueEndInsideWindow bool    `json:"queueEndInsideWindow"`
-		ScrollTop            float64 `json:"scrollTop"`
-		WantScrollTop        float64 `json:"wantScrollTop"`
+		NowWindowIso                    string  `json:"nowWindowIso"`
+		NowInsideWindow                 bool    `json:"nowInsideWindow"`
+		QueueEndInsideWindow            bool    `json:"queueEndInsideWindow"`
+		ScrollTop                       float64 `json:"scrollTop"`
+		WantScrollTop                   float64 `json:"wantScrollTop"`
+		ScrollTopIfDecidedBeforeRefresh float64 `json:"scrollTopIfDecidedBeforeRefresh"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &periodResult); decodeError != nil {
 		t.Fatalf("decode timeline period behavior: %v (output %q)", decodeError, probeOutput)
@@ -3657,6 +4651,17 @@ process.stdout.write(JSON.stringify({
 	if periodResult.ScrollTop != periodResult.WantScrollTop {
 		t.Fatalf("Now left the row list at scrollTop %.0f, want %.0f — the first still-open row",
 			periodResult.ScrollTop, periodResult.WantScrollTop)
+	}
+	// The ordering half, and the reason the fixture carries two row sets. Deciding
+	// the scroll from the PRE-jump rows — which is what timelineNowJump did before
+	// REQ-319 split it — lands somewhere else entirely. If these two ever agree the
+	// fixture has stopped being able to tell the orders apart, and the assertion
+	// above has quietly become a restatement.
+	if periodResult.ScrollTopIfDecidedBeforeRefresh == periodResult.WantScrollTop {
+		t.Fatalf("the fixture's pre-jump and post-jump row sets both give scrollTop %.0f, so this "+
+			"test cannot tell a scroll decided before the row refresh from one decided after; "+
+			"give the two sets different first-open indices",
+			periodResult.WantScrollTop)
 	}
 }
 

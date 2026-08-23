@@ -1,6 +1,7 @@
   // ---- timeline -----------------------------------------------------------
   //
-  // A Gantt of the whole queue: one row per REQ, one bar, two segments. The
+  // A Gantt of the queue: one row per REQ the visible time window covers, one
+  // bar, two segments. The
   // first spans created_at→claimed_at (waiting), the second
   // claimed_at→completed_at (working). A REQ still running draws an open
   // segment to the now-line; a REQ nobody has claimed yet draws an open wait and
@@ -30,7 +31,14 @@
   // Ticks per axis, and therefore the gap between them: the label format is
   // keyed to that gap, so the two have to be read from one number.
   var TIMELINE_AXIS_TICK_COUNT = 6;
-  var TIMELINE_LABEL_WIDTH = 104;
+  // Wide enough for the id plus a title worth reading, and no wider: every pixel
+  // here comes out of the plot. At the 10px monospace label face measured on
+  // Chromium 1194 (6.0219 px/cell) that is 28 cells — "REQ-042" plus a two-space
+  // separator leaves 19 for the title, 18 plus an ellipsis once it is cut.
+  // Picked from the render at 1400px and 760px (REQ-322), and PINNED: the label
+  // probe reads this constant and fails below 20 cells, so it cannot drift back
+  // down without someone deciding to.
+  var TIMELINE_LABEL_WIDTH = 184;
   var TIMELINE_OVERSCAN_ROWS = 4;
   var TIMELINE_MIN_SPAN_MS = 3600000; // one hour in ms — as far in as zoom goes
   var TIMELINE_DAY_MS = 86400000;
@@ -42,6 +50,27 @@
   // tightest one it actually is.
   var TIMELINE_PERIOD_LEVEL_NAMES = ["day", "week", "month"];
   var TIMELINE_HATCH_PATTERN_ID = "timeline-projected-hatch";
+  // The narrowest a drawn segment may be. 1.5px was technically present and
+  // practically invisible: at Fit all over three months every completed REQ was
+  // a sliver in which the wait and the work occupied the same pixel. Picked from
+  // the render (REQ-323).
+  var TIMELINE_MIN_SEGMENT_WIDTH = 3;
+  // Below this total width a bar cannot show two segments honestly — 3px each
+  // plus a boundary — so the row draws ONE marker instead of two slivers
+  // claiming a split the pixels cannot carry.
+  var TIMELINE_MIN_SPLIT_WIDTH = 7;
+  // How far a pointer must travel before a press becomes a pan. Under it the
+  // press is a click and the drawer opens on release.
+  //
+  // The first pointermove used to engage the pan and RE-RENDER, which is the
+  // whole defect: the click the engine then synthesized had no surviving
+  // [data-detail-kind] ancestor to find. The window did not have to move for
+  // that — at Fit all it clamps to the window it started in and the click was
+  // lost anyway — so the threshold gates the render, not the shift.
+  //
+  // 4px: an ordinary hand tremor on a trackpad stays under it, an intended drag
+  // clears it in the first frame.
+  var TIMELINE_PAN_THRESHOLD_PX = 4;
   var TIMELINE_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   // The visible time window, held OUTSIDE renderedOnce so switching tabs and
@@ -68,6 +97,35 @@
       teardown();
     });
     timelineListenerTeardowns = [];
+  }
+
+  // A table rebuild scheduled by the PREVIOUS render holds that render's closure
+  // over its own `rows`, and the tbody is shared. It happens to come out right
+  // today because the new render schedules its own rebuild and frame callbacks
+  // run in order — but nothing enforces that ordering, and a stale frame writing
+  // the previous window's rows into the current table is not a bug worth leaving
+  // to luck. Cancelled at the same point the listeners are.
+  var timelineTableRebuildFrame = null;
+
+  function releaseTimelineTableFrame() {
+    if (timelineTableRebuildFrame !== null && window.cancelAnimationFrame) {
+      window.cancelAnimationFrame(timelineTableRebuildFrame);
+    }
+    timelineTableRebuildFrame = null;
+  }
+
+  // A pan frame scheduled by the PREVIOUS render holds that render's closure, so
+  // a filter change that re-enters this module would let it re-render the old
+  // rows one frame later. Same hazard as the table frame above, cancelled at the
+  // same point — which is why the handle lives out here rather than inside the
+  // render, where the listener that schedules it does.
+  var timelinePanRenderFrame = null;
+
+  function releaseTimelinePanFrame() {
+    if (timelinePanRenderFrame !== null && window.cancelAnimationFrame) {
+      window.cancelAnimationFrame(timelinePanRenderFrame);
+    }
+    timelinePanRenderFrame = null;
   }
 
   // Each unit is derived from the already-rounded value of the unit below it, so
@@ -235,6 +293,107 @@
     );
   }
 
+  // ---- typed dates ----------------------------------------------------------
+  //
+  // The FOURTH way to move the window, after the pointer, the keyboard and the
+  // period controls, and it obeys the same rule they do: build a candidate and
+  // hand it to timelineZoomedWindow to settle. Factor 1 at anchor 0 means "keep
+  // this window, apply the model's floor, ceiling and edge clamp", so a typed
+  // date cannot acquire a floor or a clamp of its own — the trap the period
+  // controls were written to avoid and this inherits for free.
+  //
+  // Whole UTC days, because the control is a date picker: a start means that
+  // day's midnight and an end means the last instant of that day, so typing the
+  // same date in both fields gives you that one day rather than an empty window.
+
+  // "YYYY-MM-DD" → the UTC midnight opening that day, or NaN. Deliberately not
+  // Date.parse: that accepts far more than a date field emits, and a partial
+  // match here would silently move the window somewhere the reader did not type.
+  function timelineDateFieldToEpoch(dateText) {
+    var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateText || "").trim());
+    if (!match) {
+      return NaN;
+    }
+    var year = Number(match[1]);
+    var month = Number(match[2]);
+    var day = Number(match[3]);
+    if (month < 1 || month > 12 || day < 1 || day > 31) {
+      return NaN;
+    }
+    var epochMs = Date.UTC(year, month - 1, day);
+    // Round-trip guard: Date.UTC rolls 31 February into March rather than
+    // rejecting it, and a rolled date is not the one that was typed.
+    var rolled = new Date(epochMs);
+    if (rolled.getUTCFullYear() !== year || rolled.getUTCMonth() !== month - 1 || rolled.getUTCDate() !== day) {
+      return NaN;
+    }
+    return epochMs;
+  }
+
+  // A window START, as its date field shows it.
+  function timelineStartEpochToDateField(epochMs) {
+    if (isNaN(epochMs)) {
+      return "";
+    }
+    return new Date(epochMs).toISOString().slice(0, 10);
+  }
+
+  // A window END, as its date field shows it — and the exact inverse of the
+  // parse above, which is the whole reason it is a separate function.
+  //
+  // The field names the last day the reader wants INCLUDED, while the window's
+  // end instant is EXCLUSIVE: a July window ends at 1 August 00:00 and the field
+  // must read 31 July. Rendering the end instant's own date instead put every
+  // period window a day out — press Month, nudge only the start field, and the
+  // end silently moved from 1 August to 2 August, pulling in a REQ the reader
+  // never touched and dropping the lit Month chip. Stepping back 1 ms lands
+  // inside the last included day whatever the window's shape.
+  function timelineEndEpochToDateField(epochMs) {
+    if (isNaN(epochMs)) {
+      return "";
+    }
+    return new Date(epochMs - 1).toISOString().slice(0, 10);
+  }
+
+  // One or both fields typed, resolved against the window already on screen so a
+  // reader can set one end and leave the other alone. Returns null when neither
+  // field parses — nothing to apply, and the caller leaves the window untouched
+  // rather than jumping somewhere arbitrary.
+  //
+  // A reversed pair is CLAMPED, not rejected: an end before a start is a partly
+  // typed range as often as a mistake, and swapping silently would move the
+  // window somewhere the reader did not ask for. The end is pushed to the start's
+  // day instead, and the readout then says what the window actually became.
+  function timelineTypedWindow(startText, endText, windowStartMs, windowEndMs, boundStartMs, boundEndMs) {
+    var typedStartMs = timelineDateFieldToEpoch(startText);
+    var typedEndDayMs = timelineDateFieldToEpoch(endText);
+    if (isNaN(typedStartMs) && isNaN(typedEndDayMs)) {
+      return null;
+    }
+    var nextStartMs = isNaN(typedStartMs) ? windowStartMs : typedStartMs;
+    // The FOLLOWING midnight, because the window's end is exclusive: a field
+    // reading 31 July means a window ending at 1 August 00:00, which is exactly
+    // what the Month chip produces. That equality is what makes the fields and
+    // the period controls describe the same windows rather than windows 1 ms
+    // apart — and it is what lets a typed pair light a chip at all.
+    var nextEndMs = isNaN(typedEndDayMs) ? windowEndMs : typedEndDayMs + TIMELINE_DAY_MS;
+    if (nextEndMs <= nextStartMs) {
+      nextEndMs = nextStartMs + TIMELINE_DAY_MS;
+    }
+    // CLAMP EACH ENDPOINT before settling, because timelineZoomedWindow preserves
+    // the span and slides. That is right for a zoom — the reader asked for a
+    // width, not a position — and wrong for a typed date, which is a position.
+    // Handing it an out-of-range pair made it pin the end to the bound and drag
+    // the START back to keep the width: typing 1 July while the end field still
+    // read the board's last day moved the start to 30 June, and the field then
+    // redrew itself with a date nobody typed. Clamping first means the pair
+    // handed over is already inside the range, so the settle below applies the
+    // shared floor and edge rules and changes nothing else.
+    nextStartMs = Math.min(Math.max(nextStartMs, boundStartMs), boundEndMs);
+    nextEndMs = Math.max(Math.min(nextEndMs, boundEndMs), boundStartMs);
+    return timelineZoomedWindow(nextStartMs, nextEndMs, 1, 0, boundStartMs, boundEndMs);
+  }
+
   // Which level the window is EXACTLY showing, or null when it is showing a span
   // of the reader's own. A free zoom, a drag, and a period cut short by the end of
   // the range all land here, and the control then states no level instead of
@@ -271,8 +430,11 @@
     return nearestLevelName;
   }
 
-  // The first row still waiting or still running — where "what is left" actually
-  // sits in a list whose first hundreds of rows are finished work.
+  // The first row still waiting or still running — where "what is left" sits.
+  // Under newest-first order (REQ-318) that is usually near the top rather than
+  // hundreds of rows down, so this scan normally returns early; it stays a scan
+  // because "newest" and "open" are different questions and a long-open old REQ
+  // can sit anywhere in the list.
   function timelineFirstOpenRowIndex(rows) {
     for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
       if (rows[rowIndex].waitOpen || rows[rowIndex].workOpen) {
@@ -282,13 +444,19 @@
     return -1;
   }
 
-  // Jumping to now is two movements, not one. Recentring the time window leaves
-  // the reader looking at whichever rows were already scrolled into view — on a
-  // long board, the oldest archived ones — so this also says where the ROW list
-  // goes. The window carries the now-line and the forecast's queue-empty instant
-  // together, because "what is left" is the span between them. Returns both so
-  // the button is two assignments and the decision is testable without a browser.
-  function timelineNowJump(nowMs, queueEndMs, rows, boundStartMs, boundEndMs) {
+  // Jumping to now is still two movements — recentre the time window, then say
+  // where the ROW list goes — but only the first is decided here.
+  //
+  // The window carries the now-line and the forecast's queue-empty instant
+  // together, because "what is left" is the span between them. The row-list
+  // movement USED to be decided here too, from the row set the caller was
+  // holding. Window-scoped rows (REQ-319) made that the wrong set: the jump
+  // changes the window, the window changes which rows exist, and a scrollTop
+  // computed before the change indexes into a list that is about to be replaced.
+  // So the caller now applies this window, refreshes its rows, and only then
+  // asks timelineFirstOpenRowIndex where to scroll — three steps in the one
+  // order that can be right.
+  function timelineNowJump(nowMs, queueEndMs, boundStartMs, boundEndMs) {
     var earliestMs = isNaN(queueEndMs) ? nowMs : Math.min(nowMs, queueEndMs);
     var latestMs = isNaN(queueEndMs) ? nowMs : Math.max(nowMs, queueEndMs);
     // Margin so both lines sit inside the window rather than on its frame.
@@ -296,18 +464,151 @@
       (latestMs - earliestMs) * TIMELINE_NOW_JUMP_MARGIN_FRACTION,
       TIMELINE_MIN_SPAN_MS / 2
     );
-    var openRowIndex = timelineFirstOpenRowIndex(rows);
-    return {
-      window: timelineZoomedWindow(
-        earliestMs - marginMs,
-        latestMs + marginMs,
-        1,
-        0,
-        boundStartMs,
-        boundEndMs
-      ),
-      scrollTop: openRowIndex < 0 ? null : openRowIndex * TIMELINE_ROW_HEIGHT
-    };
+    return timelineZoomedWindow(
+      earliestMs - marginMs,
+      latestMs + marginMs,
+      1,
+      0,
+      boundStartMs,
+      boundEndMs
+    );
+  }
+
+  // ---- window-scoped rows ---------------------------------------------------
+  //
+  // A row belongs on screen when the bar it would draw overlaps the visible time
+  // window. Before REQ-319 every row was listed at every zoom level and the ones
+  // outside the window simply drew nothing — on a 309-REQ board zoomed to one
+  // day that is 305 labels above empty space and four bars somewhere inside them.
+  //
+  // Overlap, not containment: a REQ captured last month and still running today
+  // is part of what was happening this week, and hiding it would answer a
+  // different question than the reader asked.
+
+  // The SEGMENTS a row draws, as [startMs, endMs] pairs — not one hull over them.
+  //
+  // The hull was the first shape of this and it was wrong for exactly one row
+  // type. A pending REQ draws two DISJOINT marks: an open wait ending at the
+  // now-line, and a forecast bar starting after whatever is in flight finishes.
+  // A window between the two overlaps their hull and contains no mark at all, so
+  // the row was listed with nothing on it — the very thing window-scoping exists
+  // to stop. Testing the segments separately is what makes the REQ's GREEN true:
+  // every listed row has something drawn on it.
+  //
+  // Every segment is where the renderer DRAWS something, at the size it draws it.
+  // A forward span is its own min/max interval. A reversed one — claimed_at
+  // before created_at — is a POINT, because a break marker is all the renderer
+  // puts on screen for it; taking the min/max there would claim a bar across an
+  // interval nothing is drawn across, and the row would be listed in windows
+  // showing none of it. The point sits exactly where the marker does, so a broken
+  // row stays findable in the window it actually appears in.
+  function timelineRowSegments(row, nowMs, projectedRow) {
+    var segments = [];
+    function addSegment(fromMs, toMs) {
+      if (isNaN(fromMs) || isNaN(toMs)) {
+        return;
+      }
+      segments.push({ startMs: Math.min(fromMs, toMs), endMs: Math.max(fromMs, toMs) });
+    }
+    var createdMs = Date.parse(row.createdTime);
+    var claimedMs = row.claimedTime ? Date.parse(row.claimedTime) : NaN;
+    var completedMs = row.completedTime ? Date.parse(row.completedTime) : NaN;
+
+    // The wait, drawn created → claimed, or created → now while nobody has
+    // claimed it.
+    //
+    // A REVERSED wait is not drawn as a bar at all: renderVisibleRows puts a 6px
+    // break marker at the CREATED instant and nothing between. Modelling it as
+    // the min/max interval is the forecast-gap defect in another costume — a
+    // window inside the interval overlaps a hull containing no mark. Keyed on
+    // row.waitMinutes, the same field the renderer branches on, so the two cannot
+    // drift into disagreeing about which rows are reversed.
+    if (row.waitMinutes < 0) {
+      addSegment(createdMs, createdMs);
+    } else {
+      addSegment(createdMs, isNaN(claimedMs) ? nowMs : claimedMs);
+    }
+    if (row.hasWork) {
+      if (row.workMinutes < 0) {
+        // Same again, at the instant renderVisibleRows puts this row's marker.
+        addSegment(claimedMs, claimedMs);
+      } else {
+        // The work, drawn claimed → completed, or claimed → now while it runs.
+        addSegment(claimedMs, isNaN(completedMs) ? nowMs : completedMs);
+      }
+    }
+    if (projectedRow) {
+      addSegment(Date.parse(projectedRow.startTime), Date.parse(projectedRow.endTime));
+    }
+    if (segments.length === 0) {
+      // Nothing parsed. The payload guarantees a readable created_at
+      // (timeline.go skips rows without one), so this is unreachable today — but
+      // the failure has to be "listed everywhere and visibly broken", never
+      // "silently deleted from every window including Fit all".
+      segments.push({ startMs: -Infinity, endMs: Infinity });
+    }
+    return segments;
+  }
+
+  // Whether a row is too narrow to draw a wait/work split, and if so the extent
+  // the single marker covers. Pure so a probe can drive it: the render passes
+  // the plot width it already measured rather than this reaching for the DOM.
+  //
+  // At Fit all over three months a completed REQ was two adjacent slivers of
+  // different hues occupying the same pixel — a split the pixels cannot carry.
+  // Below TIMELINE_MIN_SPLIT_WIDTH there is no room for two floored segments and
+  // a boundary between them, so the row draws one marker for the whole span.
+  function timelineCollapsedRowMark(segments, windowStartMs, windowEndMs, plotWidthPx) {
+    // Already one drawn segment: there is no split to withdraw. This is also what
+    // spares the unparseable row, whose -Infinity → Infinity sentinel segment
+    // timelineRowSegments only ever emits ALONE — collapsing that would draw one
+    // marker across the whole chart.
+    if (segments.length < 2) {
+      return null;
+    }
+    var earliestMs = Infinity;
+    var latestMs = -Infinity;
+    for (var segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
+      earliestMs = Math.min(earliestMs, segments[segmentIndex].startMs);
+      latestMs = Math.max(latestMs, segments[segmentIndex].endMs);
+    }
+    var windowSpanMs = windowEndMs - windowStartMs || 1;
+    var clampedStartMs = Math.max(earliestMs, windowStartMs);
+    var clampedEndMs = Math.min(latestMs, windowEndMs);
+    var spanWidthPx = ((clampedEndMs - clampedStartMs) / windowSpanMs) * plotWidthPx;
+    if (spanWidthPx >= TIMELINE_MIN_SPLIT_WIDTH) {
+      return null;
+    }
+    return { startMs: earliestMs, endMs: latestMs };
+  }
+
+  // The rows with at least one drawn segment overlapping the window, in the
+  // order they arrived.
+  //
+  // Segments are computed ONCE per render and passed in, not derived here: this
+  // runs on every window move, a drag moves the window once per frame, and
+  // re-parsing three ISO strings per row per frame is the difference between a
+  // pointer that keeps up and one that does not.
+  function timelineRowsInWindow(rows, rowSegments, windowStartMs, windowEndMs) {
+    var inWindow = [];
+    for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      var segments = rowSegments[rowIndex];
+      for (var segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
+        var segment = segments[segmentIndex];
+        // ASYMMETRIC ON PURPOSE. windowEndMs is the next window's first instant
+        // everywhere else here — timelinePeriodWindow builds [start, nextStart)
+        // and timelineEndEpochToDateField renders windowEndMs - 1 to say so — so
+        // a segment beginning exactly there belongs to the next window, and
+        // drawSegment would put its floored rectangle at the clipped right edge.
+        // windowStartMs IS in the window, and a span ending on it draws a mark at
+        // the left edge the reader can see, so that side stays inclusive.
+        if (segment.startMs < windowEndMs && segment.endMs >= windowStartMs) {
+          inWindow.push(rows[rowIndex]);
+          break;
+        }
+      }
+    }
+    return inWindow;
   }
 
   // Which rows have SVG nodes. Everything above and below the scrolled window is
@@ -317,6 +618,188 @@
     var firstRow = Math.max(0, Math.floor(scrollTop / TIMELINE_ROW_HEIGHT) - TIMELINE_OVERSCAN_ROWS);
     var visibleCount = Math.ceil(viewportHeight / TIMELINE_ROW_HEIGHT) + TIMELINE_OVERSCAN_ROWS * 2;
     return { firstRow: firstRow, lastRow: Math.min(rowCount, firstRow + visibleCount) };
+  }
+
+  // Whether a press has become a pan. Latching: once engaged a drag stays
+  // engaged however far back toward the press point it travels, or a slow
+  // wandering drag would flicker in and out of panning around the threshold.
+  //
+  // Engagement gates only the FIRST render — the shift itself is still measured
+  // from the press point, so the chart tracks the pointer one-for-one and never
+  // settles a threshold's worth behind it.
+  function timelinePanEngaged(alreadyEngaged, pressX, pointerX) {
+    return alreadyEngaged || Math.abs(pointerX - pressX) >= TIMELINE_PAN_THRESHOLD_PX;
+  }
+
+  // The instants the axis puts a tick at. Extracted so the GRIDLINES can be drawn
+  // from the same list rather than recomputing it: two loops with the same
+  // arithmetic is one edit away from an axis whose labels sit beside lines that
+  // mean something slightly different.
+  function timelineAxisTickInstants(windowStartMs, windowEndMs) {
+    var windowSpanMs = windowEndMs - windowStartMs || 1;
+    var instants = [];
+    for (var tickIndex = 0; tickIndex <= TIMELINE_AXIS_TICK_COUNT; tickIndex++) {
+      instants.push(windowStartMs + (windowSpanMs * tickIndex) / TIMELINE_AXIS_TICK_COUNT);
+    }
+    return instants;
+  }
+
+  // ---- row labels -----------------------------------------------------------
+  //
+  // The label column used to hold the id and nothing else, so three hundred rows
+  // told the reader nothing about what any of them were. Fitting a title into it
+  // needs a truncation boundary, and this module has been burned twice by where
+  // that number came from: REQ-292 shipped a width model that returned the same
+  // value for every face, so its slots never moved and a wider face drew past
+  // them, and REQ-241/REQ-242 measured one 12px face at 12.0372 and 11.2300 on
+  // two Chromium builds.
+  //
+  // So the boundary is MEASURED from the rendered face, and measured ONCE per
+  // render rather than per row: the label is a monospace face, so a single
+  // advance answers every row. That is a real property of the shipped CSS
+  // (.timeline-row-label uses --font-mono) and not an assumption this code is
+  // entitled to — timelineMeasureLabelAdvance verifies it and says so.
+
+  // The per-character advance of the label face, measured against the live DOM.
+  // Returns 0 when the face is NOT monospace, which is the honest answer rather
+  // than a number that would silently mis-cut every title: two strings of equal
+  // length that render at different widths mean one advance cannot describe the
+  // face, and the caller falls back to showing the id alone.
+  function timelineMeasureLabelAdvance(rowsSvg) {
+    // Not every host can measure text. The Node behavior lane drives this
+    // renderer against a DOM stub, and a stub that cannot lay text out has no
+    // advance to report — the same honest answer as a proportional face, and the
+    // same consequence: labels fall back to the id alone. Checked up front
+    // rather than caught, because a throw here would take the whole render with
+    // it for a label that was never going to be measurable.
+    if (!rowsSvg || typeof rowsSvg.appendChild !== "function" || typeof rowsSvg.removeChild !== "function") {
+      return 0;
+    }
+    var probeText = document.createElementNS(TIMELINE_SVG_NS, "text");
+    if (!probeText || typeof probeText.getComputedTextLength !== "function") {
+      return 0;
+    }
+    probeText.setAttribute("class", "timeline-row-label");
+    // Deliberately off-canvas rather than hidden: display:none and
+    // visibility:hidden both make getComputedTextLength return 0, which would
+    // read as "not monospace" and quietly disable the whole feature.
+    probeText.setAttribute("x", "-9999");
+    probeText.setAttribute("y", "-9999");
+    rowsSvg.appendChild(probeText);
+
+    function widthOf(sample) {
+      probeText.textContent = sample;
+      return probeText.getComputedTextLength ? probeText.getComputedTextLength() : 0;
+    }
+    // Two samples of equal length whose glyphs have very different proportional
+    // widths. In a monospace face they measure the same; in any proportional one
+    // they do not, which is exactly the check REQ-292's lesson asks for — assert
+    // the geometry responds to the face rather than trusting a model of it.
+    var narrowSample = widthOf("iiiiiiiiii");
+    var wideSample = widthOf("MMMMMMMMMM");
+    rowsSvg.removeChild(probeText);
+
+    if (!(narrowSample > 0) || Math.abs(narrowSample - wideSample) > 0.5) {
+      return 0;
+    }
+    return narrowSample / 10;
+  }
+
+  // How many characters of label fit, given the measured advance. Zero advance
+  // means the face could not be measured or is not monospace.
+  function timelineLabelCharacterBudget(advancePerCharacter, availableWidth) {
+    if (!(advancePerCharacter > 0)) {
+      return 0;
+    }
+    return Math.max(0, Math.floor(availableWidth / advancePerCharacter));
+  }
+
+  // How many monospace CELLS a string occupies, and the reason this is not just
+  // .length.
+  //
+  // The measured advance describes the face's Latin cell. A monospace face does
+  // not draw every script in one cell: on the shipped 10px face an ASCII glyph
+  // is 6.02px, but 中 is 10px and 🙂 is 12.48px. Counting those as one cell each
+  // let a CJK title overrun the column by 36px and draw into the plot. So
+  // non-ASCII counts as two cells — the East Asian Width convention every
+  // monospace terminal uses — which OVER-estimates slightly and therefore cuts
+  // early rather than overflowing. Approximate on purpose: the alternative is
+  // measuring every row's composed string every frame, which is the cost this
+  // whole approach exists to avoid.
+  //
+  // Iterating code points rather than UTF-16 units also fixes the other half:
+  // .slice() on a unit boundary can cut an astral character in two and leave a
+  // lone surrogate, which renders as a fallback box.
+  function timelineLabelCellCount(text) {
+    var cells = 0;
+    for (var index = 0; index < text.length; index++) {
+      var codePoint = text.codePointAt(index);
+      if (codePoint > 0xffff) {
+        index++;
+      }
+      cells += codePoint < 0x0100 ? 1 : 2;
+    }
+    return cells;
+  }
+
+  // The longest prefix of `text` that fits `cellBudget` cells, cut on a code
+  // point boundary.
+  function timelineLabelPrefixWithinCells(text, cellBudget) {
+    var cells = 0;
+    var prefix = "";
+    for (var index = 0; index < text.length; index++) {
+      var codePoint = text.codePointAt(index);
+      var character = String.fromCodePoint(codePoint);
+      var width = codePoint < 0x0100 ? 1 : 2;
+      if (cells + width > cellBudget) {
+        break;
+      }
+      cells += width;
+      prefix += character;
+      if (codePoint > 0xffff) {
+        index++;
+      }
+    }
+    return prefix;
+  }
+
+  // "REQ-042  Some title" cut to the budget, with an ellipsis when it was cut.
+  // The id is never truncated: it is the row's identity and a half-drawn id is
+  // worse than no title at all, so a budget too small for id-plus-title returns
+  // the id alone.
+  //
+  // The title is measured in CELLS, not characters, and a leading
+  // "[impact-token] " classification tag is dropped: the tag exists so a human
+  // searching the board's title box finds the REQ (actions/capture-reference.md
+  // → REQ Title Convention), and in a nineteen-cell column it is the entire
+  // budget — the sixteen newest REQs here all read "[impact-user-visib…" and
+  // named nothing. The full title, tag included, stays in the tooltip and the
+  // table.
+  function timelineRowLabelText(requestId, title, characterBudget) {
+    if (characterBudget <= 0 || !title) {
+      return requestId;
+    }
+    var labelTitle = title.replace(/^\[[a-z-]+\]\s*/, "");
+    if (labelTitle === "") {
+      return requestId;
+    }
+    var separator = "  ";
+    var roomForTitle = characterBudget - timelineLabelCellCount(requestId) - separator.length;
+    // A title that fits WHOLE always shows, however little room there is: a
+    // complete short title is useful at any length.
+    if (timelineLabelCellCount(labelTitle) <= roomForTitle) {
+      return requestId + separator + labelTitle;
+    }
+    // One that has to be cut has to be worth cutting. Four characters and an
+    // ellipsis names nothing and just makes the column look broken, so below
+    // this the id stands alone rather than being followed by a stub.
+    if (roomForTitle < 8) {
+      return requestId;
+    }
+    // The ellipsis lives INSIDE the budget, not on top of it, or the label the
+    // arithmetic says fits is one cell wider than the column.
+    return requestId + separator +
+      timelineLabelPrefixWithinCells(labelTitle, roomForTitle - 1).replace(/\s+$/, "") + "…";
   }
 
   // A projected bar must never read as a measured one, so it is hatched rather
@@ -394,23 +877,29 @@
     return { forecastNode: forecastNode, excludedNode: excludedNode };
   }
 
-  // filtersActive, not the row list: the rows are filtered and the projection
+  // showingSubset, not the row list: the rows are a subset and the projection
   // never is, so what this function needs is the one bit the caller can answer
   // and it cannot. It took the filtered rows and ignored them, which is how the
   // view came to say "3 REQs" above a forecast scheduling all 25.
   //
-  // The label leads the paragraph rather than trailing it, because this sentence
-  // is the one people screenshot and quote, and it has to read correctly with no
-  // filter chips in the frame.
-  function renderTimelineForecast(projection, filtersActive) {
+  // The note NAMES NO CAUSE. It used to open "Filters are on", which was true
+  // while a filter chip was the only thing that could shrink the row set. Since
+  // REQ-319 the visible time window shrinks it too — usually far harder — and
+  // both can be on at once, so a sentence naming one of them is wrong about the
+  // other and picking between them at render time buys nothing the reader needs.
+  // What they need is that the figures below describe more than what is drawn.
+  //
+  // The note leads the paragraph rather than trailing it, because this sentence
+  // is the one people screenshot and quote, and it has to read correctly alone.
+  function renderTimelineForecast(projection, showingSubset) {
     var forecastNodes = clearTimelineForecast();
     var forecastNode = forecastNodes.forecastNode;
     var excludedNode = forecastNodes.excludedNode;
     if (!forecastNode || !excludedNode) {
       return;
     }
-    var wholeQueueNote = filtersActive
-      ? "Filters are on; this covers the whole queue, not the rows shown. "
+    var wholeQueueNote = showingSubset
+      ? "This covers the whole queue, not the rows shown. "
       : "";
 
     if (!projection.confident) {
@@ -462,7 +951,7 @@
       excluded.length +
       " REQ" +
       (excluded.length === 1 ? "" : "s") +
-      (filtersActive ? " from the whole queue" : "") +
+      (showingSubset ? " from the whole queue" : "") +
       (excluded.length === 1 ? " is" : " are") +
       " not in that estimate, because " +
       (excluded.length === 1 ? "it cannot" : "they cannot") +
@@ -496,14 +985,25 @@
     }
 
     releaseTimelineListeners();
+    releaseTimelineTableFrame();
+    releaseTimelinePanFrame();
 
     var timeline = boardData.timeline || {};
     // Filters apply here, unlike Durations. A Gantt filtered to one domain is a
     // straightforward question to ask of a queue; a durations distribution
     // filtered to one domain is a different statistic wearing the same axes.
-    var rows = (timeline.rows || []).filter(function (row) {
+    //
+    // TWO row sets, and the difference is the whole of REQ-319. filterMatchedRows
+    // is what the shared filter chips leave, fixed for this render. `rows` is
+    // what the visible time window leaves of THAT, and it is re-derived by
+    // refreshWindowRows on every window move. Everything that describes what is
+    // on screen — the count, the scroll extent, the table, the readout's row
+    // index — reads `rows`; everything that describes the population reads
+    // filterMatchedRows or the payload.
+    var filterMatchedRows = (timeline.rows || []).filter(function (row) {
       return requestMatchesFilters(row.id);
     });
+    var rows = filterMatchedRows;
     var nowMs = Date.parse(timeline.now);
     if (isNaN(nowMs)) {
       nowMs = generatedAtMs;
@@ -522,7 +1022,11 @@
     scrollHost.textContent = "";
     tableBody.textContent = "";
 
-    if (rows.length === 0) {
+    // Nothing survives the filters: there is no chart to build and no window to
+    // move, so this stays an early return. An empty WINDOW is a different case
+    // entirely — the reader zoomed somewhere quiet and needs the axis and the
+    // controls to zoom back out — and it is handled inside renderAll, not here.
+    if (filterMatchedRows.length === 0) {
       // The forecast describes the rows; with none on screen it must go too.
       clearTimelineForecast();
       summaryNode.textContent = (timeline.rows || []).length
@@ -531,10 +1035,15 @@
       return;
     }
 
+    // Bounds come from the PAYLOAD's range, never from the windowed set: a
+    // window that narrowed the rows must not then narrow the bounds it is
+    // clamped against, or zooming in would drag the floor up behind it and the
+    // reader could never zoom back out. The fallback reads filterMatchedRows for
+    // the same reason.
     var boundStartMs = Date.parse(timeline.rangeStart);
     var boundEndMs = Date.parse(timeline.rangeEnd);
     if (isNaN(boundStartMs) || isNaN(boundEndMs) || boundEndMs <= boundStartMs) {
-      boundStartMs = Date.parse(rows[0].createdTime);
+      boundStartMs = Date.parse(filterMatchedRows[0].createdTime);
       boundEndMs = boundStartMs + TIMELINE_MIN_SPAN_MS;
     }
     var queueEndMs = Date.parse(projection.queueEnd);
@@ -553,26 +1062,168 @@
       timelineViewState.fitted = true;
     }
 
-    var openCount = rows.filter(function (row) {
-      return row.waitOpen || row.workOpen;
-    }).length;
-    var brokenRowCount = rows.filter(function (row) {
-      return row.anomaly || row.waitMinutes < 0 || (row.hasWork && row.workMinutes < 0);
-    }).length;
-    summaryNode.textContent =
-      rows.length +
-      " REQ" +
-      (rows.length === 1 ? "" : "s") +
-      " in capture order, oldest at the top. " +
-      openCount +
-      " still open, measured to the now-line at " +
-      timelineFormatStamp(nowMs) +
-      (brokenRowCount ? ". " + brokenRowCount + " with broken stamps, drawn as breaks." : ".");
+    // One segment list per filter-matched row, computed once. refreshWindowRows
+    // runs on every window move and compares numbers only.
+    var filterMatchedSegments = filterMatchedRows.map(function (row) {
+      return timelineRowSegments(row, nowMs, projectedById[row.id]);
+    });
+    // The same list keyed by id, so the row loop measures a row's drawn extent
+    // from the list that decided the row was in the window rather than from a
+    // second walk of the stamps.
+    var segmentsById = {};
+    filterMatchedRows.forEach(function (row, rowIndex) {
+      segmentsById[row.id] = filterMatchedSegments[rowIndex];
+    });
 
-    // The rows above are filtered; this projection is the whole queue's and is
-    // never re-derived client-side (see the filter note above). All the forecast
-    // needs is whether the two populations differ.
-    renderTimelineForecast(projection, rows.length < (timeline.rows || []).length);
+    // The reader's place in the list, preserved across a window move. Rows
+    // vanishing above the viewport would otherwise slide whatever they were
+    // reading off under the axis. Anchored on the id at the top of the viewport:
+    // if it survives the move it keeps its screen position, and if it does not,
+    // the scroll simply stays where it was and the browser clamps it.
+    function topVisibleRowId() {
+      if (rows.length === 0) {
+        return null;
+      }
+      var topIndex = Math.min(
+        rows.length - 1,
+        Math.max(0, Math.floor(scrollHost.scrollTop / TIMELINE_ROW_HEIGHT))
+      );
+      return rows[topIndex].id;
+    }
+
+    function refreshWindowRows() {
+      var anchorId = topVisibleRowId();
+      var anchorOffset = scrollHost.scrollTop % TIMELINE_ROW_HEIGHT;
+      rows = timelineRowsInWindow(
+        filterMatchedRows,
+        filterMatchedSegments,
+        timelineViewState.windowStartMs,
+        timelineViewState.windowEndMs
+      );
+      if (anchorId === null) {
+        return;
+      }
+      for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+        if (rows[rowIndex].id === anchorId) {
+          // GROW THE EXTENT FIRST. scrollTop is clamped to the scrollable height
+          // at the instant it is assigned, and on a widening move the rows SVG
+          // is still the narrow window's height here — renderVisibleRows only
+          // resizes it afterwards. Writing the anchor first therefore clamped it
+          // to the OLD maximum and dropped the reader at the bottom of the
+          // window they were leaving: from a month window at scrollTop 400 the
+          // Fit-all button landed on 465, the old extent's maximum, when the
+          // anchor needed 4900.
+          rowsSvg.setAttribute("height", rows.length * TIMELINE_ROW_HEIGHT);
+          scrollHost.scrollTop = rowIndex * TIMELINE_ROW_HEIGHT + anchorOffset;
+          return;
+        }
+      }
+    }
+
+    function renderSummary() {
+      var openCount = rows.filter(function (row) {
+        return row.waitOpen || row.workOpen;
+      }).length;
+      var brokenRowCount = rows.filter(function (row) {
+        return row.anomaly || row.waitMinutes < 0 || (row.hasWork && row.workMinutes < 0);
+      }).length;
+      // The empty window is a state the reader can zoom themselves into, so it
+      // says what to do about it rather than reading like a broken board. It
+      // must not borrow the "no REQ matches the current filters" wording: the
+      // fix for this one is a wider window, not a cleared filter.
+      if (rows.length === 0) {
+        summaryNode.textContent =
+          "Nothing was drawn between " +
+          timelineFormatStamp(timelineViewState.windowStartMs) +
+          " and " +
+          timelineFormatStamp(timelineViewState.windowEndMs) +
+          ". Widen the window, step to another period, or press Fit all — " +
+          filterMatchedRows.length +
+          " REQ" +
+          (filterMatchedRows.length === 1 ? " is" : "s are") +
+          " outside it.";
+        return;
+      }
+      summaryNode.textContent =
+        rows.length +
+        " REQ" +
+        (rows.length === 1 ? "" : "s") +
+        " in the window " +
+        timelineFormatStamp(timelineViewState.windowStartMs) +
+        " → " +
+        timelineFormatStamp(timelineViewState.windowEndMs) +
+        ", newest at the top. " +
+        openCount +
+        " still open, measured to the now-line at " +
+        timelineFormatStamp(nowMs) +
+        (brokenRowCount ? ". " + brokenRowCount + " with broken stamps, drawn as breaks." : ".") +
+        (rows.length < filterMatchedRows.length
+          ? " " + (filterMatchedRows.length - rows.length) + " outside the window, not listed."
+          : "");
+    }
+
+    // The projection is the whole queue's and is never re-derived client-side
+    // (see the filter note above); all the forecast needs to know is whether the
+    // rows on screen are a subset of it. Under windowing that answer changes as
+    // the reader zooms, so it is recomputed — but the forecast's DOM is only
+    // rebuilt when the answer actually flips, because rebuilding an exclusion
+    // list of N buttons once per drag frame is not free.
+    var lastForecastShowedSubset = null;
+    function renderForecastIfSubsetChanged() {
+      var showingSubset = rows.length < (timeline.rows || []).length;
+      if (showingSubset === lastForecastShowedSubset) {
+        return;
+      }
+      lastForecastShowedSubset = showingSubset;
+      renderTimelineForecast(projection, showingSubset);
+    }
+
+    // ---- table view ----
+    // Every value the chart shows is reachable without a pointer, and it lists
+    // the same window the chart draws.
+    //
+    // Built on demand rather than once per render: it is one <tr> per row with
+    // no virtualization, and renderAll now runs on every window move — once per
+    // frame during a drag. A closed disclosure is the common case and now costs
+    // nothing at all; an open one is rebuilt at most once per frame.
+    var tableDisclosure = document.querySelector("#view-timeline .timeline-table");
+
+    function renderTimelineTable() {
+      timelineTableRebuildFrame = null;
+      tableBody.textContent = "";
+      rows.forEach(function (row) {
+        var request = requestsById[row.id] || {};
+        var tableRow = document.createElement("tr");
+        [
+          row.id,
+          request.title || "",
+          request.status || "",
+          timelineFormatSpanMinutes(row.waitMinutes) + (row.waitOpen ? " (open)" : ""),
+          row.hasWork
+            ? timelineFormatSpanMinutes(row.workMinutes) + (row.workOpen ? " (open)" : "")
+            : "not started",
+          row.anomaly ? row.anomalyReason : ""
+        ].forEach(function (cellText) {
+          var cell = document.createElement("td");
+          cell.textContent = cellText;
+          tableRow.appendChild(cell);
+        });
+        tableBody.appendChild(tableRow);
+      });
+    }
+
+    function markTimelineTableStale() {
+      if (!tableDisclosure || !tableDisclosure.open) {
+        // Closed: the toggle handler rebuilds it from the current rows on open.
+        return;
+      }
+      if (timelineTableRebuildFrame !== null) {
+        return;
+      }
+      timelineTableRebuildFrame = window.requestAnimationFrame
+        ? window.requestAnimationFrame(renderTimelineTable)
+        : (renderTimelineTable(), null);
+    }
 
     var axisSvg = makeTimelineSvgNode(axisHost, "svg", {
       class: "timeline-axis-svg",
@@ -585,12 +1236,25 @@
       width: "100%",
       role: "img",
       "aria-label":
-        "One horizontal bar per REQ in capture order. The first segment is the wait from capture to claim, the second is the work from claim to completion. Every value is also listed in the table below."
+        "One horizontal bar per REQ drawing anything inside the visible time window, in capture order, newest first. The first segment is the wait from capture to claim, the second is the work from claim to completion; a REQ too narrow to show both draws a single marker instead. Faint vertical lines mark the axis ticks; a dashed violet rule marks the projected queue-empty instant when the forecast is confident and that instant is in view. Every value is also listed in the table below."
     });
 
+    // MEASURED ONCE PER RENDER. clientWidth forces a synchronous layout, and
+    // xOfEpoch calls this several times per row: one measured render of this
+    // repo's board made 171 of them (Chromium 1194), every frame of a drag. The
+    // memo is dropped by invalidatePlotWidth() at the top of renderAll, and the
+    // resize listener IS renderAll, so the two moments the width can change are
+    // both covered.
+    var measuredPlotWidthPx = null;
     function plotWidth() {
-      var hostWidth = scrollHost.clientWidth || scrollHost.getBoundingClientRect().width;
-      return Math.max(120, hostWidth - TIMELINE_LABEL_WIDTH - 12);
+      if (measuredPlotWidthPx === null) {
+        var hostWidth = scrollHost.clientWidth || scrollHost.getBoundingClientRect().width;
+        measuredPlotWidthPx = Math.max(120, hostWidth - TIMELINE_LABEL_WIDTH - 12);
+      }
+      return measuredPlotWidthPx;
+    }
+    function invalidatePlotWidth() {
+      measuredPlotWidthPx = null;
     }
 
     // 1 SVG unit = 1 CSS pixel here, so this is the whole pointer-to-data story.
@@ -620,30 +1284,74 @@
       makeTimelineSvgNode(rowGroup, "rect", {
         x: clampedLeft.toFixed(1),
         y: (rowTopY + (TIMELINE_ROW_HEIGHT - TIMELINE_BAR_HEIGHT) / 2).toFixed(1),
-        width: Math.max(1.5, clampedRight - clampedLeft).toFixed(1),
+        width: Math.max(TIMELINE_MIN_SEGMENT_WIDTH, clampedRight - clampedLeft).toFixed(1),
         height: TIMELINE_BAR_HEIGHT,
         rx: 2,
         class: segmentClass
       });
     }
 
+    // Measured once per RENDER and not once per row — which is the cost that
+    // mattered, since a render draws ~35 rows. It is not once per session:
+    // renderVisibleRows is the scroll listener and runs inside renderAll, which
+    // the pan handler calls, so this measures on each frame of a drag. Measured
+    // cost on Chromium 1194: 0.036–0.046ms alone, about 0.13ms of a 0.61ms
+    // 35-row render. It forces one synchronous layout per frame and leaves room
+    // for roughly 27 renders inside a 16.7ms frame, so it stays here rather than
+    // being hoisted — one place that measures beats two that can disagree.
+    var labelAdvance = 0;
+    var labelCharacterBudget = 0;
+
     function renderVisibleRows() {
       rowsSvg.textContent = "";
+      // The scroll extent follows the windowed set, not the filtered one — a
+      // window holding four rows must not leave 312 rows of empty scroll below
+      // them.
+      rowsSvg.setAttribute("height", rows.length * TIMELINE_ROW_HEIGHT);
       appendTimelineHatchPattern(rowsSvg);
+      // TIMELINE_LABEL_WIDTH is the column; the 6px is the text's own x offset
+      // and the trailing 6px keeps the longest label off the first bar.
+      labelAdvance = timelineMeasureLabelAdvance(rowsSvg);
+      labelCharacterBudget = timelineLabelCharacterBudget(labelAdvance, TIMELINE_LABEL_WIDTH - 12);
+      // Before the rows, so SVG paint order puts every gridline behind every bar
+      // without a z-index to maintain.
+      drawGridlines();
+      // Read once here and handed to the collapse decision, which runs per row.
+      // drawSegment still calls plotWidth() itself; hoisting THAT is REQ-324's
+      // job, and doing half of it here would leave two sources for one number.
+      var plotWidthPx = plotWidth();
       var visible = timelineVisibleRowRange(scrollHost.scrollTop, scrollHost.clientHeight, rows.length);
       for (var rowIndex = visible.firstRow; rowIndex < visible.lastRow; rowIndex++) {
         var row = rows[rowIndex];
         var request = requestsById[row.id] || {};
         var rowTopY = rowIndex * TIMELINE_ROW_HEIGHT;
+        // data-status carries the hue, exactly as the calendar chips do, and the
+        // unrecognized verdict is READ FROM THE PAYLOAD rather than re-derived:
+        // the board already decides what counts as a real status, and a second
+        // reader here would become a second definition (REQ-219's lesson, in
+        // this module's own prime). A typo like "blockd-dependency-cycle" is
+        // therefore coloured as unrecognized, never quietly as real blocked work.
         var rowGroup = makeTimelineSvgNode(rowsSvg, "g", {
-          class: "timeline-row" + (row.anomaly ? " is-broken" : "") + (request.status === "cancelled" ? " is-cancelled" : ""),
+          class:
+            "timeline-row" +
+            (row.anomaly ? " is-broken" : "") +
+            (request.status === "cancelled" ? " is-cancelled" : "") +
+            (request.statusUnrecognized ? " is-status-unrecognized" : ""),
           "data-detail-kind": "request",
           "data-detail-id": row.id,
           "data-row-index": String(rowIndex),
+          "data-status": request.status || "",
           tabindex: "0",
-          role: "button",
-          "aria-label": timelineRowDescription(row, request)
+          role: "button"
         });
+        // The accessible name comes from the <title> below and NOT from an
+        // aria-label. Carrying both put the same 150-character sentence in the
+        // name and the description of all three hundred rows, so a screen reader
+        // read it twice per row. One source, one announcement — and the <title>
+        // has to exist anyway, because it is the pointer tooltip.
+        //
+        // First child, per SVG's own guidance on <title> placement.
+        makeTimelineSvgNode(rowGroup, "title", {}, timelineRowDescription(row, request));
         makeTimelineSvgNode(rowGroup, "rect", {
           x: 0,
           y: rowTopY,
@@ -655,11 +1363,35 @@
           rowGroup,
           "text",
           { x: 6, y: rowTopY + TIMELINE_ROW_HEIGHT - 5, class: "timeline-row-label" },
-          row.id
+          timelineRowLabelText(row.id, request.title, labelCharacterBudget)
         );
+
 
         var createdMs = Date.parse(row.createdTime);
         var claimedMs = row.claimedTime ? Date.parse(row.claimedTime) : nowMs;
+        var projectedRow = projectedById[row.id];
+        // A row whose whole span is narrower than a readable two-segment bar
+        // draws ONE marker. Two kinds of row are excluded, for one reason: the
+        // collapse withdraws the wait/work split, and these carry a SECOND
+        // distinction it would withdraw with it. Broken stamps, because the break
+        // markers are the point of drawing the row at all. A forecast, because
+        // measured-versus-projected is the distinction a reader trusts hardest,
+        // and one solid marker over an open wait plus a hatched projection claims
+        // work that has not happened.
+        var rowHasBrokenStamps = row.waitMinutes < 0 || (row.hasWork && row.workMinutes < 0);
+        var collapsedMark = rowHasBrokenStamps || projectedRow
+          ? null
+          : timelineCollapsedRowMark(
+              segmentsById[row.id] || [],
+              timelineViewState.windowStartMs,
+              timelineViewState.windowEndMs,
+              plotWidthPx
+            );
+        if (collapsedMark) {
+          drawSegment(rowGroup, rowTopY, collapsedMark.startMs, collapsedMark.endMs,
+            "timeline-segment timeline-segment-whole-row");
+          continue;
+        }
         // Same reasoning as the work segment below: a reversed span has no width
         // to draw honestly, so it becomes a break marker at the wait's own start
         // instant rather than a bar drawn left-to-right by drawSegment's
@@ -678,7 +1410,6 @@
             "timeline-segment timeline-segment-wait" + (row.waitOpen ? " is-open" : ""));
         }
 
-        var projectedRow = projectedById[row.id];
         if (projectedRow) {
           drawProjectedSegment(rowGroup, rowTopY, projectedRow);
         }
@@ -702,7 +1433,60 @@
           }
         }
       }
+      drawQueueEndRule();
+      // Last, so the present paints over the forecast rather than under it.
       drawNowRule();
+    }
+
+    // Seven lines per render — one per axis tick — and never one per row, so the
+    // virtualization keeps its cost. Read from the same instants renderAxis
+    // labels, so a gridline cannot mean a slightly different time than the tick
+    // sitting above it.
+    function drawGridlines() {
+      var tickInstants = timelineAxisTickInstants(
+        timelineViewState.windowStartMs, timelineViewState.windowEndMs);
+      var rulesHeight = rows.length * TIMELINE_ROW_HEIGHT;
+      for (var tickIndex = 0; tickIndex < tickInstants.length; tickIndex++) {
+        var tickX = xOfEpoch(tickInstants[tickIndex]);
+        makeTimelineSvgNode(rowsSvg, "line", {
+          x1: tickX.toFixed(1),
+          y1: 0,
+          x2: tickX.toFixed(1),
+          y2: rulesHeight,
+          class: "timeline-gridline"
+        });
+      }
+    }
+
+    // The instant the forecast paragraph names, or null when there is nothing
+    // honest to draw: a declined projection has no instant, and an instant
+    // outside the window would have to be drawn at an edge it does not sit on.
+    function queueEndRuleInstant() {
+      if (!projection.confident || isNaN(queueEndMs)) {
+        return null;
+      }
+      if (
+        queueEndMs < timelineViewState.windowStartMs ||
+        queueEndMs > timelineViewState.windowEndMs
+      ) {
+        return null;
+      }
+      return queueEndMs;
+    }
+
+    function drawQueueEndRule() {
+      var instantMs = queueEndRuleInstant();
+      if (instantMs === null) {
+        return;
+      }
+      var ruleX = xOfEpoch(instantMs);
+      makeTimelineSvgNode(rowsSvg, "line", {
+        x1: ruleX.toFixed(1),
+        y1: 0,
+        x2: ruleX.toFixed(1),
+        y2: rows.length * TIMELINE_ROW_HEIGHT,
+        class: "timeline-queue-end-rule"
+      });
     }
 
     function drawProjectedSegment(rowGroup, rowTopY, projectedRow) {
@@ -736,9 +1520,11 @@
     function renderAxis() {
       axisSvg.textContent = "";
       var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs || 1;
+      var tickInstants = timelineAxisTickInstants(
+        timelineViewState.windowStartMs, timelineViewState.windowEndMs);
       var tickCount = TIMELINE_AXIS_TICK_COUNT;
       for (var tickIndex = 0; tickIndex <= tickCount; tickIndex++) {
-        var tickMs = timelineViewState.windowStartMs + (windowSpanMs * tickIndex) / tickCount;
+        var tickMs = tickInstants[tickIndex];
         var tickX = xOfEpoch(tickMs);
         makeTimelineSvgNode(axisSvg, "line", {
           x1: tickX.toFixed(1),
@@ -757,6 +1543,42 @@
             "text-anchor": tickIndex === 0 ? "start" : tickIndex === tickCount ? "end" : "middle"
           },
           timelineFormatAxisTick(tickMs, windowSpanMs)
+        );
+      }
+      // The queue-end rule's LABEL lives here rather than in the rows SVG: the
+      // rows SVG scrolls, and a caption that scrolls away from the rule it names
+      // is worse than none. The rule itself stays in the rows SVG, for the same
+      // reason drawNowRule does — that is what guarantees it uses the bars' own
+      // x scale.
+      var queueEndInstantMs = queueEndRuleInstant();
+      if (queueEndInstantMs !== null) {
+        var queueEndX = xOfEpoch(queueEndInstantMs);
+        makeTimelineSvgNode(axisSvg, "line", {
+          x1: queueEndX.toFixed(1),
+          y1: 0,
+          x2: queueEndX.toFixed(1),
+          y2: TIMELINE_AXIS_HEIGHT,
+          class: "timeline-queue-end-line"
+        });
+        // Anchored away from whichever edge it is near, so the caption stays on
+        // the canvas instead of being clipped by it.
+        var plotLeftX = TIMELINE_LABEL_WIDTH;
+        var plotSpanPx = plotWidth();
+        makeTimelineSvgNode(
+          axisSvg,
+          "text",
+          {
+            x: queueEndX.toFixed(1),
+            y: 8,
+            class: "timeline-queue-end-label",
+            "text-anchor":
+              queueEndX < plotLeftX + plotSpanPx * 0.15
+                ? "start"
+                : queueEndX > plotLeftX + plotSpanPx * 0.85
+                  ? "end"
+                  : "middle"
+          },
+          "queue empty"
         );
       }
       if (nowMs >= timelineViewState.windowStartMs && nowMs <= timelineViewState.windowEndMs) {
@@ -798,10 +1620,105 @@
       }
     }
 
+    // The window in text and in the two fields. Called from renderAll, so the
+    // pointer, the keyboard, the period chips, Now and Fit all all refresh it and
+    // none of them can leave a stale window on screen.
+    //
+    // The readout carries MINUTES while the fields carry days, and that gap is
+    // the point rather than an inconsistency: zoom reaches an hour, the fields
+    // cannot express that, and a reader who has zoomed past a day needs to see
+    // the window they are actually looking at rather than the nearest date pair.
+    var rangeStartField = document.getElementById("timeline-range-start");
+    var rangeEndField = document.getElementById("timeline-range-end");
+    var rangeReadoutNode = document.getElementById("timeline-range-readout");
+
+    // A field is written back whenever it still holds the value this code last
+    // put there — including while it has focus. Skipping every focused field was
+    // the obvious rule and the wrong one: a reader who clicks into a field and
+    // then zooms the chart leaves that field showing a window the chart is no
+    // longer drawn at, and committing it later silently undoes the zoom.
+    // Comparing against what we last wrote distinguishes "focused" from "being
+    // edited", and only the second is a reason to keep hands off.
+    function syncRangeField(field, text) {
+      if (!field) {
+        return;
+      }
+      var readerHasEdited =
+        document.activeElement === field && field.value !== field.getAttribute("data-synced-value");
+      if (readerHasEdited) {
+        return;
+      }
+      field.value = text;
+      field.setAttribute("data-synced-value", text);
+    }
+
+    function renderRangeControls() {
+      if (rangeReadoutNode) {
+        rangeReadoutNode.textContent =
+          timelineFormatStamp(timelineViewState.windowStartMs) +
+          " → " +
+          timelineFormatStamp(timelineViewState.windowEndMs);
+      }
+      syncRangeField(rangeStartField, timelineStartEpochToDateField(timelineViewState.windowStartMs));
+      syncRangeField(rangeEndField, timelineEndEpochToDateField(timelineViewState.windowEndMs));
+    }
+
+    // Only the field that changed is applied; the other endpoint keeps its exact
+    // instant. Re-reading BOTH fields on every commit meant editing one of them
+    // also re-applied the other's day-truncated value, so nudging a start could
+    // move an end the reader never touched — by a whole day on a period window,
+    // and off any sub-day zoom entirely.
+    function applyTypedRange(changedField) {
+      var startText = changedField === rangeStartField && rangeStartField ? rangeStartField.value : "";
+      var endText = changedField === rangeEndField && rangeEndField ? rangeEndField.value : "";
+      var typedWindow = timelineTypedWindow(
+        startText,
+        endText,
+        timelineViewState.windowStartMs,
+        timelineViewState.windowEndMs,
+        boundStartMs,
+        boundEndMs
+      );
+      if (!typedWindow) {
+        // Cleared or unparseable. A cleared field is not a request to move, so
+        // the window stands — but the field cannot be left blank, or it states a
+        // window that does not exist. Restore it unconditionally: the reader
+        // emptying it is exactly the case where "leave the focused field alone"
+        // would strand it.
+        if (changedField) {
+          changedField.removeAttribute("data-synced-value");
+        }
+        renderRangeControls();
+        return;
+      }
+      timelineViewState.windowStartMs = typedWindow.windowStartMs;
+      timelineViewState.windowEndMs = typedWindow.windowEndMs;
+      renderAll();
+    }
+
+    [rangeStartField, rangeEndField].forEach(function (field) {
+      if (field) {
+        addTimelineListener(field, "change", function () {
+          applyTypedRange(field);
+        });
+      }
+    });
+
+    // Every path that moves the window ends here, which is what makes the row
+    // set, the counts, the scroll extent and the table describe the same window.
+    // The order is load-bearing: rows first, because everything below reads them.
     function renderAll() {
+      // Before anything reads it: the container may have been resized, and every
+      // x in this render has to come from one measurement of one width.
+      invalidatePlotWidth();
+      refreshWindowRows();
+      renderSummary();
+      renderForecastIfSubsetChanged();
       renderAxis();
       renderVisibleRows();
       renderPeriodControls();
+      renderRangeControls();
+      markTimelineTableStale();
     }
 
     function timelineRowDescription(row, request) {
@@ -865,10 +1782,16 @@
       timelineViewState.windowEndMs = movedWindow.windowEndMs;
 
       // Rendering rebuilds every row node, so a row that had focus is gone by the
-      // time the next key arrives and focus would have fallen to the body —
-      // leaving one arrow press followed by dead keys. Moving the window never
-      // moves the vertical scroll, so the same row is still in the virtualized
-      // slice; put focus back on its replacement.
+      // time the next key arrives and focus would fall to the body — leaving one
+      // arrow press followed by dead keys.
+      //
+      // This used to assume the row was always still there ("moving the window
+      // never moves the vertical scroll, so the same row is still in the
+      // virtualized slice"). Window-scoped rows (REQ-319) falsified both halves:
+      // a zoom can drop the focused REQ out of the window entirely, and the
+      // anchor can move the scroll. So the fallback is the point — focus the
+      // chart container, which is what keeps the NEXT key working. Without it,
+      // zooming past the focused row killed the keyboard path outright.
       var focusedRow = document.activeElement && document.activeElement.closest
         ? document.activeElement.closest("[data-row-index]")
         : null;
@@ -878,6 +1801,8 @@
         var rebuiltRow = rowsSvg.querySelector('[data-detail-id="' + focusedRowId + '"]');
         if (rebuiltRow) {
           rebuiltRow.focus();
+        } else {
+          scrollHost.focus();
         }
       }
     });
@@ -929,19 +1854,52 @@
       { passive: false }
     );
 
+    // A drag issues at most ONE render per frame. Every pointermove used to run a
+    // full renderAll — axis plus every visible row — and a trackpad delivers
+    // moves faster than the compositor draws them, so most of that work was
+    // thrown away before it was seen.
+    function requestPanRender() {
+      if (timelinePanRenderFrame !== null) {
+        return;
+      }
+      if (!window.requestAnimationFrame) {
+        renderAll();
+        return;
+      }
+      timelinePanRenderFrame = window.requestAnimationFrame(function () {
+        timelinePanRenderFrame = null;
+        renderAll();
+      });
+    }
+
     var panState = null;
     addTimelineListener(scrollHost, "pointerdown", function (downEvent) {
       if (downEvent.button !== 0) {
         return;
       }
-      panState = { pointerX: downEvent.clientX, windowStartMs: timelineViewState.windowStartMs };
-      scrollHost.classList.add("is-panning");
+      // Armed, not engaged. Nothing moves and nothing re-renders until the
+      // pointer has travelled TIMELINE_PAN_THRESHOLD_PX — including the grab
+      // cursor, which used to change on the press and told the reader they were
+      // dragging when they were clicking.
+      panState = {
+        pointerX: downEvent.clientX,
+        windowStartMs: timelineViewState.windowStartMs,
+        engaged: false
+      };
     });
     addTimelineListener(scrollHost, "pointermove", function (moveEvent) {
       if (!panState) {
         return;
       }
+      panState.engaged = timelinePanEngaged(panState.engaged, panState.pointerX, moveEvent.clientX);
+      if (!panState.engaged) {
+        return;
+      }
+      scrollHost.classList.add("is-panning");
       var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs;
+      // Measured from the PRESS point, not from wherever the threshold tripped:
+      // anchoring at the trip point would leave the chart four pixels behind the
+      // pointer for the rest of the drag.
       var shiftMs = ((panState.pointerX - moveEvent.clientX) / plotWidth()) * windowSpanMs;
       var nextStartMs = Math.min(
         Math.max(panState.windowStartMs + shiftMs, boundStartMs),
@@ -949,10 +1907,16 @@
       );
       timelineViewState.windowStartMs = nextStartMs;
       timelineViewState.windowEndMs = nextStartMs + windowSpanMs;
-      renderAll();
+      requestPanRender();
     });
     ["pointerup", "pointercancel", "pointerleave"].forEach(function (eventName) {
       addTimelineListener(scrollHost, eventName, function () {
+        // A drag that ends between frames still has to land on the window it
+        // reached, so the pending frame runs rather than being dropped.
+        if (panState && panState.engaged && timelinePanRenderFrame !== null) {
+          releaseTimelinePanFrame();
+          renderAll();
+        }
         panState = null;
         scrollHost.classList.remove("is-panning");
       });
@@ -988,16 +1952,25 @@
     // Zooming anchors at the centre, so the forecast at the far right takes a
     // long drag to reach once you have zoomed in far enough to read it. A
     // forecast you have to hunt for does not answer "when does the queue empty".
-    wireToolbarButton("timeline-zoom-now", function () {
-      var nowJump = timelineNowJump(nowMs, Date.parse(projection.queueEnd), rows, boundStartMs, boundEndMs);
-      timelineViewState.windowStartMs = nowJump.window.windowStartMs;
-      timelineViewState.windowEndMs = nowJump.window.windowEndMs;
-      // Moving the window alone left the reader on whichever rows were already
-      // scrolled into view, which on a long board is the oldest archived work.
-      if (nowJump.scrollTop !== null) {
-        scrollHost.scrollTop = nowJump.scrollTop;
-      }
-    });
+    // Three steps in the one order that can be right: the window first, then the
+    // rows that window admits, and only then where to scroll among them.
+    // Deciding the scroll from the pre-jump rows would index into a list the
+    // jump is about to replace — see timelineNowJump's own note.
+    var nowButton = document.getElementById("timeline-zoom-now");
+    if (nowButton) {
+      nowButton.onclick = function () {
+        var nowWindow = timelineNowJump(
+          nowMs, Date.parse(projection.queueEnd), boundStartMs, boundEndMs);
+        timelineViewState.windowStartMs = nowWindow.windowStartMs;
+        timelineViewState.windowEndMs = nowWindow.windowEndMs;
+        renderAll();
+        var openRowIndex = timelineFirstOpenRowIndex(rows);
+        if (openRowIndex >= 0) {
+          scrollHost.scrollTop = openRowIndex * TIMELINE_ROW_HEIGHT;
+          renderVisibleRows();
+        }
+      };
+    }
 
     // The period controls: three levels and a step either way, all of them going
     // through timelinePeriodWindow and therefore through timelineZoomedWindow.
@@ -1029,27 +2002,21 @@
     });
 
     addTimelineListener(window, "resize", renderAll);
-    renderAll();
 
-    // ---- table view ----
-    // Every value the chart shows is reachable without a pointer.
-    rows.forEach(function (row) {
-      var request = requestsById[row.id] || {};
-      var tableRow = document.createElement("tr");
-      [
-        row.id,
-        request.title || "",
-        request.status || "",
-        timelineFormatSpanMinutes(row.waitMinutes) + (row.waitOpen ? " (open)" : ""),
-        row.hasWork
-          ? timelineFormatSpanMinutes(row.workMinutes) + (row.workOpen ? " (open)" : "")
-          : "not started",
-        row.anomaly ? row.anomalyReason : ""
-      ].forEach(function (cellText) {
-        var cell = document.createElement("td");
-        cell.textContent = cellText;
-        tableRow.appendChild(cell);
+    if (tableDisclosure) {
+      addTimelineListener(tableDisclosure, "toggle", function () {
+        if (tableDisclosure.open) {
+          renderTimelineTable();
+        }
       });
-      tableBody.appendChild(tableRow);
-    });
+    }
+    renderAll();
+    // renderAll's mark only SCHEDULES a rebuild, a frame away. A disclosure left
+    // open across a filter change would show the previous render's rows for that
+    // frame, so the first paint is taken synchronously here and the scheduled
+    // frame then finds nothing to do.
+    if (tableDisclosure && tableDisclosure.open) {
+      releaseTimelineTableFrame();
+      renderTimelineTable();
+    }
   }

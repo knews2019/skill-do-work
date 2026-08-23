@@ -98,28 +98,61 @@ func lookupBrowserForBehaviorProbe(t *testing.T) string {
 // page wrote into its result node, as raw JSON text for the caller to unmarshal.
 func runBrowserBehaviorProbe(t *testing.T, probeName string, pageHTML string) []byte {
 	t.Helper()
+	return runBrowserBehaviorProbeWithFlags(t, probeName, pageHTML)
+}
+
+// runBrowserBehaviorProbeWithFlags is the same probe with extra engine flags.
+//
+// It exists for one reason worth naming: without a colour-scheme flag Chromium
+// resolves `prefers-color-scheme` to light, so every probe in this lane measures
+// the light palette and NOTHING automated ever sees the dark one — which on this
+// board is the `:root` base that the light block overrides. A view whose meaning
+// is carried by colour needs both, and a one-time manual table is not a check
+// that survives the next edit.
+func runBrowserBehaviorProbeWithFlags(t *testing.T, probeName string, pageHTML string, extraFlags ...string) []byte {
+	t.Helper()
+	return runBrowserBehaviorProbeInDirectory(t, probeName, t.TempDir(), pageHTML, extraFlags...)
+}
+
+// runBrowserBehaviorProbeInDirectory writes the probe page into a directory the
+// caller chose rather than a fresh temp one.
+//
+// It exists for the probes that must drive the REAL generated board: index.html
+// loads board-data.js from beside itself, so a page copied into an empty temp
+// directory renders an empty board and every assertion measures nothing. Pass
+// the output of generateLiveSiteInDir and the probe runs against the page a user
+// would actually open.
+func runBrowserBehaviorProbeInDirectory(
+	t *testing.T, probeName string, siteDirectory string, pageHTML string, extraFlags ...string,
+) []byte {
+	t.Helper()
 	browserPath := lookupBrowserForBehaviorProbe(t)
 
-	probeDirectory := t.TempDir()
-	pagePath := filepath.Join(probeDirectory, "probe.html")
+	pagePath := filepath.Join(siteDirectory, "probe.html")
 	if writeError := os.WriteFile(pagePath, []byte(pageHTML), 0o644); writeError != nil {
 		t.Fatalf("write %s probe page: %v", probeName, writeError)
 	}
+	// The profile never goes in the site directory: it is megabytes of engine
+	// state, and a probe that leaves it beside index.html changes what the next
+	// probe against the same directory sees.
+	profileDirectory := t.TempDir()
 
 	// --no-sandbox because CI and container users are routinely root, where the
 	// sandbox refuses to start; --disable-gpu and --disable-dev-shm-usage because a
 	// headless container has neither. --user-data-dir keeps concurrent probes from
 	// fighting over one profile directory.
-	probeCommand := exec.Command(browserPath,
+	probeArguments := []string{
 		"--headless",
 		"--disable-gpu",
 		"--no-sandbox",
 		"--disable-dev-shm-usage",
-		"--user-data-dir="+filepath.Join(probeDirectory, "profile"),
+		"--user-data-dir=" + filepath.Join(profileDirectory, "profile"),
 		"--virtual-time-budget=5000",
 		"--dump-dom",
-		"file://"+pagePath,
-	)
+	}
+	probeArguments = append(probeArguments, extraFlags...)
+	probeArguments = append(probeArguments, "file://"+pagePath)
+	probeCommand := exec.Command(browserPath, probeArguments...)
 	browserBehaviorProbeCount.Add(1)
 	probeOutput, probeError := probeCommand.CombinedOutput()
 	if probeError != nil {

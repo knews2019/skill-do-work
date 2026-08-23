@@ -20,7 +20,7 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-None.
+- REQ-323: Let a timeline bar be read against a date — claimed 2026-08-23T03:58:20Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued
 

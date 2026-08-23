@@ -106,14 +106,23 @@ func assertTimelineMinutes(t *testing.T, label string, got float64, want float64
 }
 
 // Row order is a stated property of the view, so it is pinned rather than left
-// to sort stability: equal created_at instants break by id, which is what stops
-// two REQs captured in the same second swapping places between builds.
-func TestTimelineRowsAreChronologicalWithAStableTiebreak(t *testing.T) {
+// to sort stability: the newest created_at leads, and equal instants break by
+// id — descending, like the instants above them — which is what stops two REQs
+// captured in the same second swapping places between builds.
+//
+// Newest-first is the whole point of the ordering (REQ-318): on a queue with
+// hundreds of archived REQs the current work is thousands of pixels below the
+// fold under the oldest-first order this replaced.
+func TestTimelineRowsAreNewestFirstWithAStableTiebreak(t *testing.T) {
 	now := time.Date(2026, 6, 10, 12, 0, 0, 0, time.UTC)
+	// The tied pair is fed in ASCENDING id order on purpose. The sort is stable,
+	// so feeding it descending would let a comparator with the tiebreak branch
+	// deleted still emit the expected order — the fixture would pass by input
+	// order and the assertion would pin nothing.
 	aggregate := buildTimelineAggregate([]*RequestTicket{
 		timelineTicket("REQ-503", "pending", "2026-06-04T09:00:00Z", "", ""),
-		timelineTicket("REQ-501", "pending", "2026-06-02T09:00:00Z", "", ""),
 		timelineTicket("REQ-500", "pending", "2026-06-02T09:00:00Z", "", ""),
+		timelineTicket("REQ-501", "pending", "2026-06-02T09:00:00Z", "", ""),
 		timelineTicket("REQ-502", "pending", "2026-06-03T09:00:00Z", "", ""),
 	}, now)
 
@@ -121,10 +130,35 @@ func TestTimelineRowsAreChronologicalWithAStableTiebreak(t *testing.T) {
 	for _, row := range aggregate.Rows {
 		gotOrder = append(gotOrder, row.RequestId)
 	}
-	wantOrder := []string{"REQ-500", "REQ-501", "REQ-502", "REQ-503"}
+	wantOrder := []string{"REQ-503", "REQ-502", "REQ-501", "REQ-500"}
 	for orderIndex := range wantOrder {
 		if gotOrder[orderIndex] != wantOrder[orderIndex] {
 			t.Fatalf("row order = %v, want %v", gotOrder, wantOrder)
+		}
+	}
+}
+
+// The id tiebreak is numeric in both directions. Lexically REQ-1000 sorts
+// before REQ-999, so a descending lexical tiebreak would put REQ-999 above
+// REQ-1000 and quietly claim the older id was captured later. Pinned
+// separately from the order test above because a four-digit fixture is the
+// only shape that can fail it.
+func TestTimelineNewestFirstTiebreakIsNumeric(t *testing.T) {
+	now := time.Date(2026, 6, 10, 12, 0, 0, 0, time.UTC)
+	sameInstant := "2026-06-02T09:00:00Z"
+	aggregate := buildTimelineAggregate([]*RequestTicket{
+		timelineTicket("REQ-999", "pending", sameInstant, "", ""),
+		timelineTicket("REQ-1000", "pending", sameInstant, "", ""),
+	}, now)
+
+	gotOrder := make([]string, 0, len(aggregate.Rows))
+	for _, row := range aggregate.Rows {
+		gotOrder = append(gotOrder, row.RequestId)
+	}
+	wantOrder := []string{"REQ-1000", "REQ-999"}
+	for orderIndex := range wantOrder {
+		if gotOrder[orderIndex] != wantOrder[orderIndex] {
+			t.Fatalf("row order = %v, want %v (the tiebreak is numeric, not lexical)", gotOrder, wantOrder)
 		}
 	}
 }
