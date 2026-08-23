@@ -292,6 +292,19 @@
             <button type="button" class="control-button" id="timeline-period-next" title="Next period" aria-label="Next period">›</button>
             <span class="timeline-period-state" id="timeline-period-state" role="status" aria-live="polite"></span>
           </div>
+          <!-- The window in words and in fields. The readout is the exact pair of
+               instants the chart is drawn between, to the minute, because the axis
+               labels only imply them; the two date fields set the window to whole
+               UTC days, with finer spans left to the zoom controls. -->
+          <div class="control-group timeline-range" role="group" aria-label="Timeline window">
+            <label class="control-label" for="timeline-range-start">From</label>
+            <input type="date" class="filter-search timeline-range-field" id="timeline-range-start"
+                   aria-label="Window start date, UTC" />
+            <label class="control-label" for="timeline-range-end">to</label>
+            <input type="date" class="filter-search timeline-range-field" id="timeline-range-end"
+                   aria-label="Window end date, UTC" />
+            <span class="timeline-range-readout" id="timeline-range-readout" role="status" aria-live="polite"></span>
+          </div>
           <div class="control-group" role="group" aria-label="Timeline zoom">
             <button type="button" class="control-button" id="timeline-zoom-out" title="Zoom out">−</button>
             <button type="button" class="control-button" id="timeline-zoom-in" title="Zoom in">+</button>

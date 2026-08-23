@@ -2270,6 +2270,28 @@ body.is-resizing-detail .detail-resizer::before {
   white-space: nowrap;
 }
 
+/* The window controls: two date fields and the exact instants they resolve to.
+   The readout wraps to its own line on a narrow toolbar rather than squeezing the
+   fields, because the fields are the control and the readout is the confirmation. */
+.timeline-range {
+  flex-wrap: wrap;
+}
+
+.timeline-range-field {
+  font-size: 11px;
+  padding: 3px 6px;
+  min-width: 0;
+  width: auto;
+}
+
+.timeline-range-readout {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding-left: 4px;
+}
+
 .timeline-legend {
   display: flex;
   flex-wrap: wrap;

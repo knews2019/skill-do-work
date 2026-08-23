@@ -251,6 +251,90 @@
     );
   }
 
+  // ---- typed dates ----------------------------------------------------------
+  //
+  // The FOURTH way to move the window, after the pointer, the keyboard and the
+  // period controls, and it obeys the same rule they do: build a candidate and
+  // hand it to timelineZoomedWindow to settle. Factor 1 at anchor 0 means "keep
+  // this window, apply the model's floor, ceiling and edge clamp", so a typed
+  // date cannot acquire a floor or a clamp of its own — the trap the period
+  // controls were written to avoid and this inherits for free.
+  //
+  // Whole UTC days, because the control is a date picker: a start means that
+  // day's midnight and an end means the last instant of that day, so typing the
+  // same date in both fields gives you that one day rather than an empty window.
+
+  // "YYYY-MM-DD" → the UTC midnight opening that day, or NaN. Deliberately not
+  // Date.parse: that accepts far more than a date field emits, and a partial
+  // match here would silently move the window somewhere the reader did not type.
+  function timelineDateFieldToEpoch(dateText) {
+    var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateText || "").trim());
+    if (!match) {
+      return NaN;
+    }
+    var year = Number(match[1]);
+    var month = Number(match[2]);
+    var day = Number(match[3]);
+    if (month < 1 || month > 12 || day < 1 || day > 31) {
+      return NaN;
+    }
+    var epochMs = Date.UTC(year, month - 1, day);
+    // Round-trip guard: Date.UTC rolls 31 February into March rather than
+    // rejecting it, and a rolled date is not the one that was typed.
+    var rolled = new Date(epochMs);
+    if (rolled.getUTCFullYear() !== year || rolled.getUTCMonth() !== month - 1 || rolled.getUTCDate() !== day) {
+      return NaN;
+    }
+    return epochMs;
+  }
+
+  // The epoch instant a window endpoint should take, as the date field shows it.
+  // The end field names a day the reader wants INCLUDED, so it resolves to that
+  // day's end rather than its midnight.
+  function timelineEpochToDateField(epochMs) {
+    if (isNaN(epochMs)) {
+      return "";
+    }
+    return new Date(epochMs).toISOString().slice(0, 10);
+  }
+
+  // One or both fields typed, resolved against the window already on screen so a
+  // reader can set one end and leave the other alone. Returns null when neither
+  // field parses — nothing to apply, and the caller leaves the window untouched
+  // rather than jumping somewhere arbitrary.
+  //
+  // A reversed pair is CLAMPED, not rejected: an end before a start is a partly
+  // typed range as often as a mistake, and swapping silently would move the
+  // window somewhere the reader did not ask for. The end is pushed to the start's
+  // day instead, and the readout then says what the window actually became.
+  function timelineTypedWindow(startText, endText, windowStartMs, windowEndMs, boundStartMs, boundEndMs) {
+    var typedStartMs = timelineDateFieldToEpoch(startText);
+    var typedEndDayMs = timelineDateFieldToEpoch(endText);
+    if (isNaN(typedStartMs) && isNaN(typedEndDayMs)) {
+      return null;
+    }
+    var nextStartMs = isNaN(typedStartMs) ? windowStartMs : typedStartMs;
+    // TIMELINE_DAY_MS − 1 rather than the next midnight: the end field names a
+    // day to include, and ending at the following midnight would pull in the
+    // first instant of a day the reader did not name.
+    var nextEndMs = isNaN(typedEndDayMs) ? windowEndMs : typedEndDayMs + TIMELINE_DAY_MS - 1;
+    if (nextEndMs < nextStartMs) {
+      nextEndMs = nextStartMs + TIMELINE_DAY_MS - 1;
+    }
+    // CLAMP EACH ENDPOINT before settling, because timelineZoomedWindow preserves
+    // the span and slides. That is right for a zoom — the reader asked for a
+    // width, not a position — and wrong for a typed date, which is a position.
+    // Handing it an out-of-range pair made it pin the end to the bound and drag
+    // the START back to keep the width: typing 1 July while the end field still
+    // read the board's last day moved the start to 30 June, and the field then
+    // redrew itself with a date nobody typed. Clamping first means the pair
+    // handed over is already inside the range, so the settle below applies the
+    // shared floor and edge rules and changes nothing else.
+    nextStartMs = Math.min(Math.max(nextStartMs, boundStartMs), boundEndMs);
+    nextEndMs = Math.max(Math.min(nextEndMs, boundEndMs), boundStartMs);
+    return timelineZoomedWindow(nextStartMs, nextEndMs, 1, 0, boundStartMs, boundEndMs);
+  }
+
   // Which level the window is EXACTLY showing, or null when it is showing a span
   // of the reader's own. A free zoom, a drag, and a period cut short by the end of
   // the range all land here, and the control then states no level instead of
@@ -1062,6 +1146,63 @@
       }
     }
 
+    // The window in text and in the two fields. Called from renderAll, so the
+    // pointer, the keyboard, the period chips, Now and Fit all all refresh it and
+    // none of them can leave a stale window on screen.
+    //
+    // The readout carries MINUTES while the fields carry days, and that gap is
+    // the point rather than an inconsistency: zoom reaches an hour, the fields
+    // cannot express that, and a reader who has zoomed past a day needs to see
+    // the window they are actually looking at rather than the nearest date pair.
+    var rangeStartField = document.getElementById("timeline-range-start");
+    var rangeEndField = document.getElementById("timeline-range-end");
+    var rangeReadoutNode = document.getElementById("timeline-range-readout");
+
+    function renderRangeControls() {
+      if (rangeReadoutNode) {
+        rangeReadoutNode.textContent =
+          timelineFormatStamp(timelineViewState.windowStartMs) +
+          " → " +
+          timelineFormatStamp(timelineViewState.windowEndMs);
+      }
+      // Never while the reader is mid-edit: a date input fires `change` on a
+      // complete value, but overwriting the field they are typing into would
+      // fight them for the caret.
+      if (rangeStartField && document.activeElement !== rangeStartField) {
+        rangeStartField.value = timelineEpochToDateField(timelineViewState.windowStartMs);
+      }
+      if (rangeEndField && document.activeElement !== rangeEndField) {
+        rangeEndField.value = timelineEpochToDateField(timelineViewState.windowEndMs);
+      }
+    }
+
+    function applyTypedRange() {
+      var typedWindow = timelineTypedWindow(
+        rangeStartField ? rangeStartField.value : "",
+        rangeEndField ? rangeEndField.value : "",
+        timelineViewState.windowStartMs,
+        timelineViewState.windowEndMs,
+        boundStartMs,
+        boundEndMs
+      );
+      if (!typedWindow) {
+        // Neither field parsed — a cleared field is not a request to move.
+        // Put the current window back so the fields never sit on a value the
+        // chart is not drawn at.
+        renderRangeControls();
+        return;
+      }
+      timelineViewState.windowStartMs = typedWindow.windowStartMs;
+      timelineViewState.windowEndMs = typedWindow.windowEndMs;
+      renderAll();
+    }
+
+    [rangeStartField, rangeEndField].forEach(function (field) {
+      if (field) {
+        addTimelineListener(field, "change", applyTypedRange);
+      }
+    });
+
     // Every path that moves the window ends here, which is what makes the row
     // set, the counts, the scroll extent and the table describe the same window.
     // The order is load-bearing: rows first, because everything below reads them.
@@ -1072,6 +1213,7 @@
       renderAxis();
       renderVisibleRows();
       renderPeriodControls();
+      renderRangeControls();
       markTimelineTableStale();
     }
 

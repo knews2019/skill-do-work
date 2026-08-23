@@ -2827,6 +2827,145 @@ process.stdout.write(JSON.stringify({
 	}
 }
 
+// Typed dates are the fourth way to move the window, and the one a reader can
+// aim: the other three (pointer, keyboard, period chips) are all relative. What
+// has to hold is that typing cannot reach a window the other three cannot —
+// same floor, same ceiling, same edge clamp — because a control with its own
+// clamp is how a view starts disagreeing with itself.
+func TestJavaScriptBehaviorTimelineTypedDatesMoveTheWindow(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineZoomedWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineDateFieldToEpoch(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineEpochToDateField(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineTypedWindow(") + `
+var boundStart = Date.UTC(2026, 3, 7);
+var boundEnd = Date.UTC(2026, 8, 2);
+var windowStart = Date.UTC(2026, 5, 1);
+var windowEnd = Date.UTC(2026, 5, 8);
+
+function typed(startText, endText) {
+  return timelineTypedWindow(startText, endText, windowStart, windowEnd, boundStart, boundEnd);
+}
+function iso(epochMs) { return new Date(epochMs).toISOString(); }
+
+var bothFields = typed("2026-06-01", "2026-06-15");
+var startOnly = typed("2026-06-03", "");
+var endOnly = typed("", "2026-06-20");
+var sameDay = typed("2026-07-04", "2026-07-04");
+var reversed = typed("2026-07-10", "2026-07-01");
+var beforeRange = typed("2020-01-01", "2020-01-31");
+// A start typed while the end field still holds the board's last day. The
+// implied span overruns the ceiling, and a span-preserving settle would pin the
+// end to the bound and drag this start backwards to keep the width.
+var startAgainstCeiling = timelineTypedWindow(
+  "2026-08-01", timelineEpochToDateField(boundEnd), windowStart, windowEnd, boundStart, boundEnd);
+var neither = typed("", "");
+var rubbish = typed("not-a-date", "2026-13-45");
+var rolled = timelineDateFieldToEpoch("2026-02-31");
+
+process.stdout.write(JSON.stringify({
+  bothStartIso: iso(bothFields.windowStartMs),
+  bothEndIso: iso(bothFields.windowEndMs),
+  startOnlyStartIso: iso(startOnly.windowStartMs),
+  startOnlyKeptEnd: startOnly.windowEndMs === windowEnd,
+  endOnlyKeptStart: endOnly.windowStartMs === windowStart,
+  endOnlyEndIso: iso(endOnly.windowEndMs),
+  sameDaySpanMs: sameDay.windowEndMs - sameDay.windowStartMs,
+  reversedOrdered: reversed.windowStartMs < reversed.windowEndMs,
+  reversedStartIso: iso(reversed.windowStartMs),
+  beforeRangeClampedToBound: beforeRange.windowStartMs >= boundStart,
+  beforeRangeStartIso: iso(beforeRange.windowStartMs),
+  startAgainstCeilingIso: iso(startAgainstCeiling.windowStartMs),
+  neitherIsNull: neither === null,
+  rubbishIsNull: rubbish === null,
+  rolledIsNaN: isNaN(rolled),
+  roundTrip: timelineEpochToDateField(Date.UTC(2026, 5, 9, 13, 45))
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline typed dates", javascriptProbe)
+	var typedResult struct {
+		BothStartIso              string  `json:"bothStartIso"`
+		BothEndIso                string  `json:"bothEndIso"`
+		StartOnlyStartIso         string  `json:"startOnlyStartIso"`
+		StartOnlyKeptEnd          bool    `json:"startOnlyKeptEnd"`
+		EndOnlyKeptStart          bool    `json:"endOnlyKeptStart"`
+		EndOnlyEndIso             string  `json:"endOnlyEndIso"`
+		SameDaySpanMs             float64 `json:"sameDaySpanMs"`
+		ReversedOrdered           bool    `json:"reversedOrdered"`
+		ReversedStartIso          string  `json:"reversedStartIso"`
+		BeforeRangeClampedToBound bool    `json:"beforeRangeClampedToBound"`
+		BeforeRangeStartIso       string  `json:"beforeRangeStartIso"`
+		StartAgainstCeilingIso    string  `json:"startAgainstCeilingIso"`
+		NeitherIsNull             bool    `json:"neitherIsNull"`
+		RubbishIsNull             bool    `json:"rubbishIsNull"`
+		RolledIsNaN               bool    `json:"rolledIsNaN"`
+		RoundTrip                 string  `json:"roundTrip"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &typedResult); decodeError != nil {
+		t.Fatalf("decode timeline typed dates behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if typedResult.BothStartIso != "2026-06-01T00:00:00.000Z" {
+		t.Fatalf("typed start = %s, want the UTC midnight opening that day", typedResult.BothStartIso)
+	}
+	// The end field names a day to INCLUDE, so it resolves to that day's last
+	// instant. Ending at the following midnight would pull in the first instant
+	// of a day the reader did not type.
+	if typedResult.BothEndIso != "2026-06-15T23:59:59.999Z" {
+		t.Fatalf("typed end = %s, want the last instant of the day typed", typedResult.BothEndIso)
+	}
+	if !typedResult.StartOnlyKeptEnd || typedResult.StartOnlyStartIso != "2026-06-03T00:00:00.000Z" {
+		t.Fatalf("typing only a start moved the end too (start %s, kept end %v); each field must "+
+			"resolve against the window already on screen",
+			typedResult.StartOnlyStartIso, typedResult.StartOnlyKeptEnd)
+	}
+	if !typedResult.EndOnlyKeptStart || typedResult.EndOnlyEndIso != "2026-06-20T23:59:59.999Z" {
+		t.Fatalf("typing only an end moved the start too (end %s, kept start %v)",
+			typedResult.EndOnlyEndIso, typedResult.EndOnlyKeptStart)
+	}
+	// One date in both fields is the commonest thing a reader will do with a date
+	// picker, and it must mean that day rather than an empty window.
+	if typedResult.SameDaySpanMs != 86400000-1 {
+		t.Fatalf("the same date in both fields spanned %.0f ms, want one whole day",
+			typedResult.SameDaySpanMs)
+	}
+	if !typedResult.ReversedOrdered || typedResult.ReversedStartIso != "2026-07-10T00:00:00.000Z" {
+		t.Fatalf("an end before the start produced %s and ordered=%v; it must clamp forward from "+
+			"the start the reader typed, never silently swap the two",
+			typedResult.ReversedStartIso, typedResult.ReversedOrdered)
+	}
+	// The clamp has to be the shared one. A control with its own bounds is how
+	// the reader reaches a window no other control can, and then cannot get back.
+	if !typedResult.BeforeRangeClampedToBound {
+		t.Fatalf("a date before the board's range escaped the bounds (start %s)",
+			typedResult.BeforeRangeStartIso)
+	}
+	// The defect a browser found and the unit fixture had missed: each endpoint is
+	// clamped on its own, because a typed date is a position and the shared settle
+	// preserves a span. Pinning the end to the ceiling must never move the start
+	// the reader typed.
+	if typedResult.StartAgainstCeilingIso != "2026-08-01T00:00:00.000Z" {
+		t.Fatalf("a start typed against the range ceiling came back as %s, want the date typed; "+
+			"the settle preserves a span and would drag the start back to keep the width",
+			typedResult.StartAgainstCeilingIso)
+	}
+	if !typedResult.NeitherIsNull {
+		t.Fatal("two empty fields must return null — a cleared field is not a request to move")
+	}
+	if !typedResult.RubbishIsNull {
+		t.Fatal("unparseable text in both fields must return null rather than moving the window")
+	}
+	if !typedResult.RolledIsNaN {
+		t.Fatal("2026-02-31 must be rejected; Date.UTC rolls it into March and a rolled date is " +
+			"not the one that was typed")
+	}
+	if typedResult.RoundTrip != "2026-06-09" {
+		t.Fatalf("an instant mid-day rendered into the date field as %q, want its UTC date",
+			typedResult.RoundTrip)
+	}
+}
+
 // timelineForecastDomStub is the smallest DOM renderTimelineForecast touches. It
 // is a stub rather than a headless browser because what is being pinned is the
 // SENTENCE — which figures reach the reader — not the layout.

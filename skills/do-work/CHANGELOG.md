@@ -2,6 +2,19 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.13 — Type the Dates You Want on the Timeline (2026-08-23)
+
+The board's Timeline now says which two instants it is drawn between, to the minute, and gives
+you two date fields to set them. Before this you could only zoom and drag until the view was
+roughly right, and the only thing the toolbar said about the window was "custom span".
+
+- The readout and both fields track every way of moving the window — the wheel, a drag, the
+  keyboard, the Day/Week/Month chips, Now and Fit all.
+- Typed dates cover whole UTC days; the readout keeps showing the exact window, so zooming
+  finer than a day still tells you the truth.
+- A date outside the board's range clamps to it, and an end before a start becomes that one
+  day rather than an empty window.
+
 ## 0.236.12 — The Timeline Lists Only the Window You Picked (2026-08-22)
 
 Press Day on the board's Timeline and you now get the REQs that were actually happening that

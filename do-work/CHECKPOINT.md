@@ -20,6 +20,7 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
+- REQ-320: Show and set the timeline window's start and end — claimed 2026-08-23T00:44:25Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued
 
