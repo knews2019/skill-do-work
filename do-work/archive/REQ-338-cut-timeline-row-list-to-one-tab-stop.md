@@ -4,7 +4,7 @@ title: "Cut the Timeline row list to one Tab stop"
 status: completed
 claimed_at: 2026-08-23T20:32:41Z
 completed_at: 2026-08-23T20:47:14Z
-commit:
+commit: cac6718
 kb_status: pending
 created_at: 2026-08-23T18:30:26Z
 user_request: UR-067
