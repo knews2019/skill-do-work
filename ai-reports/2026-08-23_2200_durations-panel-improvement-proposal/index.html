@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Durations Panel — Improvement Proposal</title>
+<style>
+:root{
+  --bg:#faf8f4; --surface:#ffffff; --surface-2:#f4f0e8; --ink:#1f2d38; --muted:#66737d;
+  --line:#e3dccd; --accent:#2563eb; --accent-ink:#1d4ed8; --amber:#8a6a3b; --warn:#b45309;
+  --display:"Iowan Old Style",Palatino,"Palatino Linotype",Georgia,serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#101417; --surface:#171d21; --surface-2:#1d242a; --ink:#e9e6e0; --muted:#9ba6ae;
+        --line:#2c343a; --accent:#7ea6ff; --accent-ink:#9dbaff; --amber:#c9a273; --warn:#e0a34a;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.page{width:100%;padding:0 clamp(20px,2.6vw,60px) 96px}
+.measure{max-width:74ch}
+.row{display:flex;flex-wrap:wrap;gap:26px}
+h1,h2,h3{font-family:var(--display);font-weight:600;letter-spacing:-.01em;margin:0}
+h1{font-size:clamp(30px,3.4vw,44px);line-height:1.1}
+h2{font-size:clamp(23px,2vw,30px);margin-bottom:10px}
+h3{font-size:19px;margin-bottom:6px}
+p{margin:0 0 14px}
+a{color:var(--accent-ink)}
+.kicker{font:600 11.5px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+header.masthead{border-bottom:1px solid var(--line);padding:44px 0 26px;margin-bottom:40px}
+.dateline{font:12.5px/1.6 var(--mono);color:var(--muted);margin-top:14px}
+section{padding:38px 0;border-bottom:1px solid var(--line)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+.verdict{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:24px 26px}
+.verdict p:last-child{margin-bottom:0}
+.tiles{display:flex;flex-wrap:wrap;gap:14px;margin-top:24px}
+.tile{flex:1 1 168px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.tile .lab{font:11.5px/1.4 var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.09em}
+.tile .val{font:600 38px/1.15 var(--display);margin-top:6px}
+.tile .sub{font:12px/1.45 var(--mono);color:var(--muted);margin-top:4px}
+figure{margin:0}
+.shot{max-width:1864px;margin:0 auto;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.shot img{display:block;width:100%;height:auto}
+figcaption{font:14.5px/1.62 inherit;color:var(--muted);margin-top:12px;max-width:100ch}
+.badge{display:inline-block;font:600 10.5px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;
+  border:1px solid var(--line);border-radius:99px;padding:5px 9px;color:var(--muted);background:var(--surface-2)}
+.finding{flex:1 1 420px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px}
+.finding .code{font:600 12px/1 var(--mono);color:var(--accent-ink);letter-spacing:.08em}
+.finding h3{margin:8px 0 8px}
+.finding p{font-size:15px;margin-bottom:10px}
+.evi{font:12px/1.6 var(--mono);color:var(--muted);border-top:1px solid var(--line);padding-top:10px;margin:0}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11.5px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px;white-space:nowrap}
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+pre{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin:0;
+  font:13px/1.62 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.prompt{flex:1 1 520px;min-width:0}
+.prompt h3{display:flex;gap:10px;align-items:baseline}
+.prompt .why{font-size:14.5px;color:var(--muted);margin:6px 0 12px}
+.mockup{width:100%;height:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.mk-title{font:600 12px var(--mono);fill:var(--ink)}
+.mk-tick{font:11px var(--mono);fill:var(--muted)}
+.mk-grid{stroke:var(--line);stroke-width:1}
+.mk-axis{stroke:var(--muted);stroke-width:1}
+.mk-dot{fill:var(--accent);fill-opacity:.42}
+.mk-ribbon{fill:var(--accent);fill-opacity:.14}
+.mk-medline{fill:none;stroke:var(--accent-ink);stroke-width:1.8}
+.mk-ur{fill:var(--amber)}.mk-ur-a{fill-opacity:.34}.mk-ur-b{fill-opacity:.18}
+.mk-urlabel{font:10px var(--mono);fill:var(--ink)}
+.mk-stem{stroke:var(--muted);stroke-width:1.2}
+.mk-work{fill:var(--amber)}
+.mk-span{fill:var(--accent);fill-opacity:.8}
+ul{margin:0 0 14px;padding-left:20px}
+li{margin-bottom:7px}
+.lede{font-size:18px;line-height:1.6}
+.foot{padding:34px 0 0;font:12.5px/1.7 var(--mono);color:var(--muted)}
+.split{flex:1 1 460px;min-width:0}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="masthead">
+  <p class="kicker">Proposal · Kanban board · Durations view</p>
+  <h1>How to make the Durations panel worth opening</h1>
+  <p class="dateline">2026-08-23 · eight findings, eight <span style="font-weight:600">capture-request</span> prompts, one bundled request · written before any implementation</p>
+  <p class="dateline">This is a design proposal, not a completed-work report: nothing here has shipped, and every proposed rendering below is a mockup rather than a screenshot of the board.</p>
+</header>
+
+<section>
+  <p class="kicker">Verdict</p>
+  <div class="verdict measure">
+    <p>The panel does the job it was built for. It shows the distribution of REQ durations over real calendar time, and the idle gaps in that axis are a genuine finding about cadence.</p>
+    <p>It cannot answer a UR question, and that is a data-plumbing accident rather than a design choice: the Durations payload carries <code>id, route, completionTime, dayKey, wallMinutes</code> and nothing else, so the REQ&nbsp;→&nbsp;UR link every other view uses is simply absent from the dot cloud. The link is already in the browser — <code>boardData.requests[id].userRequestId</code> — so UR identity is a renderer change, not a new walk of the archive.</p>
+    <p>Two structural problems sit behind that. Two thirds of the axis is idle calendar, so the samples crowd into the right third; and more than half of them sit in the bottom quarter of panel A's linear 0–60 scale. Both waste the space that would make the dots readable.</p>
+    <p><strong>Recommended order: A1 (UR identity) and A2 (a UR-level panel) first, then A4 (scale and density) and A3 (an axis window). A5 removes more code than it adds.</strong></p>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="lab">Samples measured</div><div class="val">305</div><div class="sub">this repo · 2026-08-23</div></div>
+    <div class="tile"><div class="lab">Axis idle</div><div class="val">66%</div><div class="sub">29 active of 86 axis days</div></div>
+    <div class="tile"><div class="lab">Median REQ</div><div class="val">13.2<span style="font-size:20px"> min</span></div><div class="sub">p90 42.7 · max 10h 55m</div></div>
+    <div class="tile"><div class="lab">Under 15 min</div><div class="val">55%</div><div class="sub">bottom quarter of panel A</div></div>
+    <div class="tile"><div class="lab">URs in the data</div><div class="val">66</div><div class="sub">none of them visible</div></div>
+    <div class="tile"><div class="lab">Over-ceiling labels</div><div class="val">4<span style="font-size:20px"> of 13</span></div><div class="sub">5 of 60 on the bigger board</div></div>
+  </div>
+  <p class="dateline">Measured by building the tool at <code>skills/do-work-board/tools/queue-kanban</code> and reading the generated <code>board-data.js</code> for this repository. The consuming project's own board reports 692 samples across 47 active days.</p>
+</section>
+
+<section>
+  <h2>What the panel is today</h2>
+  <div class="row">
+    <div class="split measure">
+      <p>Three stacked panels share one linear real-time axis. <strong>A</strong> plots one mark per archived REQ that carries both a claim and a completion stamp, coloured by route, with a 60-minute ceiling and an overflow lane above a scale break. <strong>B</strong> plots the median minutes per active day, excluding spans over four hours (assumed pauses) and negative spans (broken stamps). <strong>C</strong> counts completions per day. A hover surface writes one line of text; a collapsed <code>&lt;details&gt;</code> holds every sample as a table.</p>
+      <p>The machinery is not naive. Label placement measures its own text in the browser, packs two rows per band, reserves room for the remainder sentence in a loop that runs to a fixed point, and counts whatever it could not place. Panels A and B disagree about which samples count on purpose, and the rule lives in one place.</p>
+      <p>What follows is not a complaint about that work. It is what the view still cannot answer at 300 samples, and what it stops answering at 700.</p>
+    </div>
+    <figure class="split">
+      <a href="screenshots/durations-do-work-repo-2026-08-23.png" target="_blank" rel="noopener">
+        <span class="shot"><img src="screenshots/durations-do-work-repo-2026-08-23.png" alt="The Durations view rendered for this repository: panel A's dots crowd into the right third of the axis, four labels sit in the overflow lane beside a remainder reading plus nine more over sixty minutes."></span>
+      </a>
+      <figcaption><span class="badge">Authentic capture</span> The current code, built from this working tree and rendered against this repository's own archive on 2026-08-23 (305 samples, 29 active days). Click for full resolution.</figcaption>
+    </figure>
+  </div>
+</section>
+<section>
+  <h2>Findings</h2>
+  <p class="measure">Ranked by how much they block a question a maintainer actually asks. Every figure is measured from this repository's generated board data or read from the consuming project's own screenshot; file references are to <code>skills/do-work-board/tools/queue-kanban/</code>.</p>
+  <div class="row" style="margin-top:22px">
+
+    <div class="finding">
+      <span class="code">F1</span>
+      <h3>A dot cannot say which UR it belongs to</h3>
+      <p>The Durations view is the only view that drops the REQ&nbsp;→&nbsp;UR link. Its payload sample is five fields wide and none of them is the UR, even though every parsed ticket carries <code>UserRequestId</code> and the board builds a UR node with its REQ list. 66 URs are in this repository's 305 samples; a median of 2 and a maximum of 10 are active on the same day, so the dots of three or four different requests are interleaved in every dense column with nothing to tell them apart.</p>
+      <p class="evi">generate.go:261–268 · durations.go:35–58 · model.go:273 · the client already holds the join at <code>boardData.requests[id].userRequestId</code></p>
+    </div>
+
+    <div class="finding">
+      <span class="code">F2</span>
+      <h3>A UR has no measured duration at all</h3>
+      <p>Only REQs are measured, so the unit the maintainer plans in is invisible. Computed from the same tickets: 65 URs have measurable spans, the median UR takes 0.6 hours end to end but the p90 takes 46.7, and the largest ones (UR-031 at 27 REQs, UR-042 at 22, UR-055 at 18) spend 11–14% of their elapsed span in measured REQ work. That gap between elapsed and worked is a real property of the pipeline and nothing on the board shows it.</p>
+      <p class="evi">Derived from <code>claimedAt</code>/<code>completedAt</code> per REQ grouped by <code>userRequestId</code>; no field the board does not already parse</p>
+    </div>
+
+    <div class="finding">
+      <span class="code">F3</span>
+      <h3>Two thirds of the axis is idle calendar</h3>
+      <p>The axis is linear real time on purpose — compressing idle gaps would destroy the cadence answer — but the panel pays the full price at every window width. Here the axis spans 86 days of which 29 are active, and 92% of the samples fall in the final 30 days. On the consuming project a single April outlier (REQ-407) holds the left half of the plot open on its own. There is no way to narrow the window.</p>
+      <p class="evi">web/board-durations.js:1–15 (the stated rationale) and its <code>timeStart</code>/<code>timeEnd</code> domain, fixed to the full sample range</p>
+    </div>
+
+    <div class="finding">
+      <span class="code">F4</span>
+      <h3>Panel A overplots into its bottom quarter</h3>
+      <p>Median 13.2 minutes, 55% under 15, 78% under 30, against a linear 0–60 scale: more than half the marks compete for the bottom quarter of the panel. Horizontally the plot gives a day 13 SVG units here and about 8 on the consuming project, so a busy day (38 REQs here, 55 there) is a single column of overlapping 4-unit dots. There is no opacity, no jitter, no density encoding, and no drawn trend — the shape of the distribution is only reachable by hovering one mark at a time.</p>
+      <p class="evi">web/board-durations.js <code>yOfMinutes</code> (linear to a 60-minute ceiling) · mark radius 4 · <code>DURATIONS_PLOT_WIDTH</code> 1128 units over the whole axis</p>
+    </div>
+
+    <div class="finding">
+      <span class="code">F5</span>
+      <h3>The overflow labels stopped paying for themselves</h3>
+      <p>On the consuming project's board the lane shows five labels and <em>+55 more over 60 min</em>; here it shows four and <em>+9 more</em>. Behind those four labels sit browser-measured text widths, a greedy two-row packer, a remainder reserve that runs to a fixed point, and geometry-agreement tests pinning the Go constants against the renderer's. The machinery is correct. It is buying a 7% labelling rate on the data it now has, and every sample it labels is also one row of the table below.</p>
+      <p class="evi">web/board-durations.js:196–345 (placement) · durations.go:180–244 (label text and width model) · REQ-226, REQ-231, REQ-237, REQ-241, REQ-292</p>
+    </div>
+
+    <div class="finding">
+      <span class="code">F6</span>
+      <h3>The topbar advertises three dead knobs</h3>
+      <p>The text filter, domain select and status select stay visible and live while Durations is on screen, and change nothing there. This is not an oversight in one place and a decision in another: <code>applyView</code> hides the lens and recent-window groups on other views with the comment that the topbar should never advertise dead knobs, and <code>onFiltersChanged</code> deliberately excludes Durations because a filtered distribution is a different statistic wearing the same axes. The conclusion was reached; the controls were left on screen.</p>
+      <p class="evi">web/board-controls.js:33–37 · web/board-filters.js:146–160</p>
+    </div>
+
+    <div class="finding">
+      <span class="code">F7</span>
+      <h3>The view will not state its own headline numbers</h3>
+      <p>The summary line gives counts and the exclusion rule, and that is all. The median, the p90, the completions-per-active-day rate — the numbers a reader opens a durations view for — appear nowhere; panel B annotates exactly one day (its slowest) and draws no trend, and panel C labels only its peak, with no zero tick and no gridline. Every one of those figures is derivable from the payload already shipped.</p>
+      <p class="evi">web/board-durations.js summary composition · <code>drawDurationsSlowestDayAnnotation</code> · panel C's single tick at <code>peakCount</code></p>
+    </div>
+
+    <div class="finding">
+      <span class="code">F8</span>
+      <h3>A mark is a dead end</h3>
+      <p>The nearest-mark hover writes one line into a status paragraph and nothing more happens: no click target, no route into the detail drawer the board and timeline views both open, and no keyboard path except the table inside a collapsed <code>&lt;details&gt;</code>. Having identified an outlier, the reader has to leave the view and search for its id by hand.</p>
+      <p class="evi">web/board-durations.js hover surface: <code>mousemove</code> and <code>mouseleave</code> only</p>
+    </div>
+
+  </div>
+
+  <figure style="margin-top:30px">
+    <a href="screenshots/durations-consuming-project-2026-08-18.png" target="_blank" rel="noopener">
+      <span class="shot"><img src="screenshots/durations-consuming-project-2026-08-18.png" alt="The consuming project's Durations view at 577 samples: the left half of the axis is empty, the right third is a dense mass of overlapping dots, and the overflow lane's first label row is crossed by its own marks."></span>
+    </a>
+    <figcaption><span class="badge">Authentic capture</span> The consuming project's board at 577 samples and 43 active days, captured 2026-08-18 and already on disk in this repository. Read it for F3 and F4 only — the mark-over-label collision visible in its overflow lane was fixed by REQ-231 and the 2026-08-23 board shows clean label rows. The axis waste and the dense right third did not change.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>Proposed rendering</h2>
+  <p class="measure">Both mockups below are drawn by a throwaway script from this repository's real 305-sample archive, in the same SVG idiom the view uses. They are not renders of the shipped board — no code has changed — but the data in them is real, so their density and label collisions are the ones an implementation would actually face.</p>
+
+  <div style="margin-top:26px">
+    <p class="kicker">P1 + P3 + P4 · one panel, three changes</p>
+    <span class="badge">Mockup · real data · not the shipped renderer</span>
+    <div style="margin-top:14px">
+<svg viewBox="0 0 1180 329" class="mockup" role="img" aria-label="Proposed panel A: square-root duration scale over a 30-day window, per-day interquartile ribbon and median line, and a UR grouping lane under the plot."><g><text x="52" y="14" class="mk-title">A · Duration per REQ · minutes · square-root scale · last 30 days</text><line x1="52" y1="250.0" x2="1164" y2="250.0" class="mk-axis"/><text x="44" y="254.0" class="mk-tick" text-anchor="end">0</text><line x1="52" y1="185.3" x2="1164" y2="185.3" class="mk-grid"/><text x="44" y="189.3" class="mk-tick" text-anchor="end">5</text><line x1="52" y1="138.0" x2="1164" y2="138.0" class="mk-grid"/><text x="44" y="142.0" class="mk-tick" text-anchor="end">15</text><line x1="52" y1="91.6" x2="1164" y2="91.6" class="mk-grid"/><text x="44" y="95.6" class="mk-tick" text-anchor="end">30</text><line x1="52" y1="56.0" x2="1164" y2="56.0" class="mk-grid"/><text x="44" y="60.0" class="mk-tick" text-anchor="end">45</text><line x1="52" y1="26.0" x2="1164" y2="26.0" class="mk-grid"/><text x="44" y="30.0" class="mk-tick" text-anchor="end">60+</text><path d="M144.7 101.1 L 181.7 63.2 L 218.8 139.1 L 255.9 128.1 L 292.9 204.1 L 330.0 250.0 L 404.1 155.4 L 441.2 163.2 L 478.3 178.9 L 515.3 178.7 L 552.4 164.3 L 589.5 64.7 L 626.5 101.4 L 663.6 106.5 L 700.7 118.5 L 811.9 92.4 L 848.9 88.6 L 923.1 155.1 L 960.1 34.7 L 997.2 82.7 L 1034.3 139.2 L 1071.3 110.5 L 1108.4 95.2 L 1145.5 63.3 L 1145.5 105.4 L 1108.4 95.2 L 1071.3 158.5 L 1034.3 182.4 L 997.2 123.5 L 960.1 135.2 L 923.1 198.9 L 848.9 144.0 L 811.9 191.2 L 700.7 179.9 L 663.6 130.9 L 626.5 148.6 L 589.5 132.4 L 552.4 191.3 L 515.3 194.4 L 478.3 206.8 L 441.2 181.4 L 404.1 183.2 L 330.0 250.0 L 292.9 204.1 L 255.9 128.1 L 218.8 177.3 L 181.7 78.5 L 144.7 107.3 Z" class="mk-ribbon"/><circle cx="136.2" cy="105.8" r="3" class="mk-dot"/><circle cx="138.7" cy="101.1" r="3" class="mk-dot"/><circle cx="141.1" cy="101.1" r="3" class="mk-dot"/><circle cx="143.5" cy="94.2" r="3" class="mk-dot"/><circle cx="134.5" cy="120.3" r="3" class="mk-dot"/><circle cx="136.9" cy="107.3" r="3" class="mk-dot"/><circle cx="139.3" cy="104.1" r="3" class="mk-dot"/><circle cx="143.1" cy="40.2" r="3" class="mk-dot"/><circle cx="194.7" cy="54.5" r="3" class="mk-dot"/><circle cx="198.2" cy="63.2" r="3" class="mk-dot"/><circle cx="201.6" cy="78.5" r="3" class="mk-dot"/><circle cx="210.0" cy="41.1" r="3" class="mk-dot"/><circle cx="212.8" cy="148.7" r="3" class="mk-dot"/><circle cx="216.2" cy="73.0" r="3" class="mk-dot"/><circle cx="218.7" cy="202.2" r="3" class="mk-dot"/><circle cx="209.2" cy="221.8" r="3" class="mk-dot"/><circle cx="211.8" cy="179.2" r="3" class="mk-dot"/><circle cx="219.7" cy="26.0" r="3" class="mk-dot"/><circle cx="222.5" cy="154.0" r="3" class="mk-dot"/><circle cx="225.3" cy="139.1" r="3" class="mk-dot"/><circle cx="215.9" cy="160.9" r="3" class="mk-dot"/><circle cx="218.5" cy="165.7" r="3" class="mk-dot"/><circle cx="221.2" cy="155.8" r="3" class="mk-dot"/><circle cx="223.9" cy="172.7" r="3" class="mk-dot"/><circle cx="226.5" cy="177.3" r="3" class="mk-dot"/><circle cx="224.4" cy="28.9" r="3" class="mk-dot"/><circle cx="230.2" cy="157.9" r="3" class="mk-dot"/><circle cx="269.5" cy="116.1" r="3" class="mk-dot"/><circle cx="272.1" cy="128.1" r="3" class="mk-dot"/><circle cx="286.6" cy="26.0" r="3" class="mk-dot"/><circle cx="289.2" cy="204.1" r="3" class="mk-dot"/><circle cx="329.3" cy="250.0" r="3" class="mk-dot"/><circle cx="332.0" cy="250.0" r="3" class="mk-dot"/><circle cx="335.3" cy="250.0" r="3" class="mk-dot"/><circle cx="337.8" cy="250.0" r="3" class="mk-dot"/><circle cx="406.1" cy="155.4" r="3" class="mk-dot"/><circle cx="409.0" cy="127.0" r="3" class="mk-dot"/><circle cx="411.7" cy="162.8" r="3" class="mk-dot"/><circle cx="415.0" cy="193.9" r="3" class="mk-dot"/><circle cx="405.7" cy="162.0" r="3" class="mk-dot"/><circle cx="408.3" cy="183.2" r="3" class="mk-dot"/><circle cx="419.2" cy="139.1" r="3" class="mk-dot"/><circle cx="421.8" cy="162.3" r="3" class="mk-dot"/><circle cx="424.5" cy="178.1" r="3" class="mk-dot"/><circle cx="415.0" cy="210.5" r="3" class="mk-dot"/><circle cx="417.5" cy="178.4" r="3" class="mk-dot"/><circle cx="420.0" cy="197.9" r="3" class="mk-dot"/><circle cx="424.9" cy="153.4" r="3" class="mk-dot"/><circle cx="420.3" cy="179.2" r="3" class="mk-dot"/><circle cx="422.9" cy="181.4" r="3" class="mk-dot"/><circle cx="425.4" cy="171.1" r="3" class="mk-dot"/><circle cx="427.8" cy="152.4" r="3" class="mk-dot"/><circle cx="418.5" cy="181.9" r="3" class="mk-dot"/><circle cx="420.9" cy="238.2" r="3" class="mk-dot"/><circle cx="423.4" cy="225.2" r="3" class="mk-dot"/><circle cx="432.0" cy="177.9" r="3" class="mk-dot"/><circle cx="441.6" cy="176.6" r="3" class="mk-dot"/><circle cx="449.0" cy="119.4" r="3" class="mk-dot"/><circle cx="451.6" cy="187.9" r="3" class="mk-dot"/><circle cx="455.4" cy="168.0" r="3" class="mk-dot"/><circle cx="458.0" cy="64.5" r="3" class="mk-dot"/><circle cx="460.4" cy="170.6" r="3" class="mk-dot"/><circle cx="451.1" cy="145.1" r="3" class="mk-dot"/><circle cx="453.5" cy="163.2" r="3" class="mk-dot"/><circle cx="456.0" cy="69.0" r="3" class="mk-dot"/><circle cx="458.4" cy="172.2" r="3" class="mk-dot"/><circle cx="473.8" cy="214.8" r="3" class="mk-dot"/><circle cx="476.2" cy="190.0" r="3" class="mk-dot"/><circle cx="478.6" cy="222.1" r="3" class="mk-dot"/><circle cx="482.5" cy="126.7" r="3" class="mk-dot"/><circle cx="473.1" cy="181.9" r="3" class="mk-dot"/><circle cx="475.8" cy="172.9" r="3" class="mk-dot"/><circle cx="483.7" cy="144.3" r="3" class="mk-dot"/><circle cx="492.0" cy="178.9" r="3" class="mk-dot"/><circle cx="494.5" cy="187.5" r="3" class="mk-dot"/><circle cx="485.3" cy="206.0" r="3" class="mk-dot"/><circle cx="488.3" cy="206.8" r="3" class="mk-dot"/><circle cx="511.5" cy="178.7" r="3" class="mk-dot"/><circle cx="514.0" cy="192.8" r="3" class="mk-dot"/><circle cx="516.5" cy="194.4" r="3" class="mk-dot"/><circle cx="519.4" cy="192.2" r="3" class="mk-dot"/><circle cx="510.0" cy="192.2" r="3" class="mk-dot"/><circle cx="515.4" cy="141.8" r="3" class="mk-dot"/><circle cx="521.3" cy="172.0" r="3" class="mk-dot"/><circle cx="524.8" cy="138.0" r="3" class="mk-dot"/><circle cx="527.4" cy="206.0" r="3" class="mk-dot"/><circle cx="517.8" cy="212.3" r="3" class="mk-dot"/><circle cx="543.0" cy="192.3" r="3" class="mk-dot"/><circle cx="547.0" cy="113.2" r="3" class="mk-dot"/><circle cx="553.2" cy="187.5" r="3" class="mk-dot"/><circle cx="555.7" cy="208.8" r="3" class="mk-dot"/><circle cx="546.2" cy="205.5" r="3" class="mk-dot"/><circle cx="548.7" cy="188.0" r="3" class="mk-dot"/><circle cx="556.9" cy="164.6" r="3" class="mk-dot"/><circle cx="568.0" cy="208.9" r="3" class="mk-dot"/><circle cx="570.6" cy="175.8" r="3" class="mk-dot"/><circle cx="561.6" cy="133.3" r="3" class="mk-dot"/><circle cx="564.4" cy="156.7" r="3" class="mk-dot"/><circle cx="567.1" cy="153.7" r="3" class="mk-dot"/><circle cx="569.7" cy="178.3" r="3" class="mk-dot"/><circle cx="572.3" cy="184.6" r="3" class="mk-dot"/><circle cx="563.0" cy="164.3" r="3" class="mk-dot"/><circle cx="565.8" cy="159.2" r="3" class="mk-dot"/><circle cx="568.8" cy="174.1" r="3" class="mk-dot"/><circle cx="571.5" cy="165.8" r="3" class="mk-dot"/><circle cx="574.1" cy="191.3" r="3" class="mk-dot"/><circle cx="592.7" cy="39.7" r="3" class="mk-dot"/><circle cx="598.4" cy="57.2" r="3" class="mk-dot"/><circle cx="602.0" cy="64.7" r="3" class="mk-dot"/><circle cx="604.9" cy="131.2" r="3" class="mk-dot"/><circle cx="595.9" cy="109.1" r="3" class="mk-dot"/><circle cx="598.7" cy="149.5" r="3" class="mk-dot"/><circle cx="601.7" cy="104.8" r="3" class="mk-dot"/><circle cx="604.6" cy="132.4" r="3" class="mk-dot"/><circle cx="634.4" cy="103.1" r="3" class="mk-dot"/><circle cx="637.2" cy="148.6" r="3" class="mk-dot"/><circle cx="640.3" cy="101.4" r="3" class="mk-dot"/><circle cx="644.7" cy="82.7" r="3" class="mk-dot"/><circle cx="657.8" cy="106.5" r="3" class="mk-dot"/><circle cx="660.9" cy="107.0" r="3" class="mk-dot"/><circle cx="664.0" cy="111.9" r="3" class="mk-dot"/><circle cx="667.7" cy="86.3" r="3" class="mk-dot"/><circle cx="658.8" cy="99.6" r="3" class="mk-dot"/><circle cx="662.3" cy="165.8" r="3" class="mk-dot"/><circle cx="679.0" cy="130.9" r="3" class="mk-dot"/><circle cx="698.8" cy="118.5" r="3" class="mk-dot"/><circle cx="701.4" cy="186.1" r="3" class="mk-dot"/><circle cx="704.2" cy="145.1" r="3" class="mk-dot"/><circle cx="706.9" cy="159.5" r="3" class="mk-dot"/><circle cx="697.5" cy="183.4" r="3" class="mk-dot"/><circle cx="706.2" cy="179.9" r="3" class="mk-dot"/><circle cx="708.9" cy="156.9" r="3" class="mk-dot"/><circle cx="716.0" cy="101.2" r="3" class="mk-dot"/><circle cx="719.2" cy="33.8" r="3" class="mk-dot"/><circle cx="710.2" cy="26.0" r="3" class="mk-dot"/><circle cx="806.1" cy="92.1" r="3" class="mk-dot"/><circle cx="809.3" cy="92.4" r="3" class="mk-dot"/><circle cx="811.8" cy="191.2" r="3" class="mk-dot"/><circle cx="814.5" cy="176.7" r="3" class="mk-dot"/><circle cx="842.5" cy="137.7" r="3" class="mk-dot"/><circle cx="845.3" cy="144.0" r="3" class="mk-dot"/><circle cx="848.0" cy="174.0" r="3" class="mk-dot"/><circle cx="851.0" cy="122.0" r="3" class="mk-dot"/><circle cx="841.7" cy="146.9" r="3" class="mk-dot"/><circle cx="844.8" cy="112.3" r="3" class="mk-dot"/><circle cx="848.0" cy="95.3" r="3" class="mk-dot"/><circle cx="850.7" cy="161.1" r="3" class="mk-dot"/><circle cx="854.0" cy="80.6" r="3" class="mk-dot"/><circle cx="845.0" cy="123.2" r="3" class="mk-dot"/><circle cx="848.3" cy="91.2" r="3" class="mk-dot"/><circle cx="851.6" cy="86.4" r="3" class="mk-dot"/><circle cx="855.1" cy="70.3" r="3" class="mk-dot"/><circle cx="857.9" cy="157.2" r="3" class="mk-dot"/><circle cx="851.2" cy="81.6" r="3" class="mk-dot"/><circle cx="854.5" cy="86.9" r="3" class="mk-dot"/><circle cx="857.8" cy="88.6" r="3" class="mk-dot"/><circle cx="860.6" cy="136.6" r="3" class="mk-dot"/><circle cx="864.2" cy="31.1" r="3" class="mk-dot"/><circle cx="855.5" cy="88.7" r="3" class="mk-dot"/><circle cx="858.4" cy="132.4" r="3" class="mk-dot"/><circle cx="861.3" cy="120.4" r="3" class="mk-dot"/><circle cx="864.1" cy="156.4" r="3" class="mk-dot"/><circle cx="866.7" cy="250.0" r="3" class="mk-dot"/><circle cx="857.9" cy="121.8" r="3" class="mk-dot"/><circle cx="902.6" cy="140.4" r="3" class="mk-dot"/><circle cx="905.2" cy="204.6" r="3" class="mk-dot"/><circle cx="907.8" cy="142.8" r="3" class="mk-dot"/><circle cx="922.0" cy="198.9" r="3" class="mk-dot"/><circle cx="912.5" cy="205.4" r="3" class="mk-dot"/><circle cx="915.1" cy="157.2" r="3" class="mk-dot"/><circle cx="917.6" cy="206.6" r="3" class="mk-dot"/><circle cx="920.1" cy="204.6" r="3" class="mk-dot"/><circle cx="937.8" cy="138.8" r="3" class="mk-dot"/><circle cx="928.5" cy="174.2" r="3" class="mk-dot"/><circle cx="931.1" cy="190.7" r="3" class="mk-dot"/><circle cx="933.7" cy="182.2" r="3" class="mk-dot"/><circle cx="936.4" cy="174.6" r="3" class="mk-dot"/><circle cx="939.0" cy="169.9" r="3" class="mk-dot"/><circle cx="929.6" cy="189.2" r="3" class="mk-dot"/><circle cx="932.4" cy="155.1" r="3" class="mk-dot"/><circle cx="936.8" cy="124.1" r="3" class="mk-dot"/><circle cx="939.9" cy="105.2" r="3" class="mk-dot"/><circle cx="939.7" cy="143.0" r="3" class="mk-dot"/><circle cx="943.0" cy="91.1" r="3" class="mk-dot"/><circle cx="946.0" cy="118.0" r="3" class="mk-dot"/><circle cx="948.9" cy="143.9" r="3" class="mk-dot"/><circle cx="939.5" cy="184.0" r="3" class="mk-dot"/><circle cx="942.1" cy="192.0" r="3" class="mk-dot"/><circle cx="958.4" cy="72.9" r="3" class="mk-dot"/><circle cx="961.0" cy="179.2" r="3" class="mk-dot"/><circle cx="963.6" cy="154.1" r="3" class="mk-dot"/><circle cx="954.1" cy="156.3" r="3" class="mk-dot"/><circle cx="956.7" cy="120.7" r="3" class="mk-dot"/><circle cx="959.5" cy="109.1" r="3" class="mk-dot"/><circle cx="962.6" cy="117.6" r="3" class="mk-dot"/><circle cx="965.2" cy="95.8" r="3" class="mk-dot"/><circle cx="955.9" cy="110.3" r="3" class="mk-dot"/><circle cx="958.4" cy="91.1" r="3" class="mk-dot"/><circle cx="963.0" cy="26.0" r="3" class="mk-dot"/><circle cx="965.4" cy="26.0" r="3" class="mk-dot"/><circle cx="967.8" cy="26.0" r="3" class="mk-dot"/><circle cx="958.4" cy="34.4" r="3" class="mk-dot"/><circle cx="960.9" cy="27.1" r="3" class="mk-dot"/><circle cx="969.1" cy="26.0" r="3" class="mk-dot"/><circle cx="972.0" cy="26.0" r="3" class="mk-dot"/><circle cx="974.8" cy="26.0" r="3" class="mk-dot"/><circle cx="965.7" cy="135.2" r="3" class="mk-dot"/><circle cx="968.5" cy="83.7" r="3" class="mk-dot"/><circle cx="971.3" cy="53.3" r="3" class="mk-dot"/><circle cx="974.1" cy="125.7" r="3" class="mk-dot"/><circle cx="977.1" cy="65.1" r="3" class="mk-dot"/><circle cx="967.9" cy="34.8" r="3" class="mk-dot"/><circle cx="970.6" cy="146.5" r="3" class="mk-dot"/><circle cx="974.1" cy="34.7" r="3" class="mk-dot"/><circle cx="977.6" cy="94.0" r="3" class="mk-dot"/><circle cx="981.3" cy="26.0" r="3" class="mk-dot"/><circle cx="972.3" cy="26.0" r="3" class="mk-dot"/><circle cx="975.1" cy="139.7" r="3" class="mk-dot"/><circle cx="978.2" cy="66.7" r="3" class="mk-dot"/><circle cx="980.9" cy="35.5" r="3" class="mk-dot"/><circle cx="1000.7" cy="26.0" r="3" class="mk-dot"/><circle cx="1004.3" cy="65.5" r="3" class="mk-dot"/><circle cx="1011.6" cy="82.7" r="3" class="mk-dot"/><circle cx="1014.6" cy="123.5" r="3" class="mk-dot"/><circle cx="1005.5" cy="123.2" r="3" class="mk-dot"/><circle cx="1008.3" cy="147.4" r="3" class="mk-dot"/><circle cx="1026.7" cy="115.8" r="3" class="mk-dot"/><circle cx="1034.0" cy="164.7" r="3" class="mk-dot"/><circle cx="1037.0" cy="139.2" r="3" class="mk-dot"/><circle cx="1039.7" cy="164.9" r="3" class="mk-dot"/><circle cx="1030.5" cy="158.5" r="3" class="mk-dot"/><circle cx="1033.3" cy="142.3" r="3" class="mk-dot"/><circle cx="1050.8" cy="191.4" r="3" class="mk-dot"/><circle cx="1053.3" cy="201.3" r="3" class="mk-dot"/><circle cx="1055.7" cy="202.8" r="3" class="mk-dot"/><circle cx="1046.9" cy="100.6" r="3" class="mk-dot"/><circle cx="1049.8" cy="138.6" r="3" class="mk-dot"/><circle cx="1052.4" cy="182.4" r="3" class="mk-dot"/><circle cx="1055.1" cy="160.9" r="3" class="mk-dot"/><circle cx="1050.6" cy="172.6" r="3" class="mk-dot"/><circle cx="1053.3" cy="165.8" r="3" class="mk-dot"/><circle cx="1056.0" cy="164.5" r="3" class="mk-dot"/><circle cx="1059.1" cy="110.5" r="3" class="mk-dot"/><circle cx="1049.9" cy="154.6" r="3" class="mk-dot"/><circle cx="1052.9" cy="113.6" r="3" class="mk-dot"/><circle cx="1055.6" cy="181.3" r="3" class="mk-dot"/><circle cx="1058.2" cy="180.5" r="3" class="mk-dot"/><circle cx="1061.4" cy="100.3" r="3" class="mk-dot"/><circle cx="1052.3" cy="127.9" r="3" class="mk-dot"/><circle cx="1055.6" cy="95.1" r="3" class="mk-dot"/><circle cx="1065.4" cy="158.5" r="3" class="mk-dot"/><circle cx="1068.2" cy="157.7" r="3" class="mk-dot"/><circle cx="1071.0" cy="158.0" r="3" class="mk-dot"/><circle cx="1061.8" cy="149.5" r="3" class="mk-dot"/><circle cx="1075.6" cy="71.5" r="3" class="mk-dot"/><circle cx="1078.8" cy="102.3" r="3" class="mk-dot"/><circle cx="1082.9" cy="26.4" r="3" class="mk-dot"/><circle cx="1085.8" cy="129.8" r="3" class="mk-dot"/><circle cx="1077.1" cy="88.6" r="3" class="mk-dot"/><circle cx="1080.0" cy="136.3" r="3" class="mk-dot"/><circle cx="1083.1" cy="119.3" r="3" class="mk-dot"/><circle cx="1123.5" cy="95.2" r="3" class="mk-dot"/><circle cx="1125.6" cy="26.0" r="3" class="mk-dot"/><circle cx="1128.9" cy="89.4" r="3" class="mk-dot"/><circle cx="1132.7" cy="61.0" r="3" class="mk-dot"/><circle cx="1137.3" cy="65.3" r="3" class="mk-dot"/><circle cx="1129.3" cy="63.3" r="3" class="mk-dot"/><circle cx="1132.6" cy="105.4" r="3" class="mk-dot"/><circle cx="1146.7" cy="127.3" r="3" class="mk-dot"/><circle cx="1150.4" cy="78.9" r="3" class="mk-dot"/><circle cx="1154.0" cy="67.1" r="3" class="mk-dot"/><circle cx="1145.8" cy="45.5" r="3" class="mk-dot"/><circle cx="1149.1" cy="91.6" r="3" class="mk-dot"/><circle cx="1152.5" cy="78.9" r="3" class="mk-dot"/><circle cx="1155.6" cy="120.7" r="3" class="mk-dot"/><circle cx="1159.4" cy="45.5" r="3" class="mk-dot"/><circle cx="1150.8" cy="78.9" r="3" class="mk-dot"/><circle cx="1154.5" cy="56.0" r="3" class="mk-dot"/><circle cx="1157.0" cy="84.7" r="3" class="mk-dot"/><circle cx="1160.5" cy="96.7" r="3" class="mk-dot"/><circle cx="1163.3" cy="158.2" r="3" class="mk-dot"/><circle cx="1154.2" cy="139.7" r="3" class="mk-dot"/><polyline points="144.7,104.1 181.7,63.2 218.8,157.9 255.9,128.1 292.9,204.1 330.0,250.0 404.1,162.8 441.2,172.2 478.3,187.5 515.3,192.2 552.4,175.8 589.5,109.1 626.5,103.1 663.6,107.0 700.7,156.9 811.9,176.7 848.9,121.8 923.1,174.6 960.1,91.1 997.2,123.2 1034.3,160.9 1071.3,136.3 1108.4,95.2 1145.5,78.9" class="mk-medline"/><text x="44" y="275" class="mk-tick" text-anchor="end">URs</text><rect x="138.6" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="140.7" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="197.1" y="266" width="17.1" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="219.7" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="232.6" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="271.9" y="266" width="17.3" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="331.7" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="332.9" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="408.5" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="410.7" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="419.2" y="266" width="17.6" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="419.9" y="279" width="3.5" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="423.3" y="292" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="453.8" y="266" width="24.5" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="476.2" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="483.7" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="489.6" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="490.1" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="513.9" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="514.6" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="517.8" y="292" width="27.7" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="521.3" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="522.4" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="547.0" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="550.8" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="556.9" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="565.6" y="266" width="99.1" height="11" rx="2" class="mk-ur mk-ur-a"/><text x="615.2" y="274" class="mk-urlabel" text-anchor="middle">UR-031</text><rect x="568.8" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="569.1" y="292" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="679.0" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="701.2" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="702.3" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="708.6" y="266" width="136.3" height="11" rx="2" class="mk-ur mk-ur-a"/><text x="776.8" y="274" class="mk-urlabel" text-anchor="middle">UR-039</text><rect x="714.4" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="808.5" y="279" width="36.8" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="845.6" y="292" width="7.5" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="850.7" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="852.7" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="858.2" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="861.9" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="905.0" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="917.2" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="934.0" y="266" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="934.8" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="943.0" y="266" width="112.8" height="11" rx="2" class="mk-ur mk-ur-a"/><text x="999.4" y="274" class="mk-urlabel" text-anchor="middle">UR-051</text><rect x="959.1" y="279" width="3.0" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="959.5" y="292" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="969.1" y="279" width="88.0" height="11" rx="2" class="mk-ur mk-ur-b"/><text x="1013.1" y="287" class="mk-urlabel" text-anchor="middle">UR-056</text><rect x="1003.1" y="292" width="53.5" height="11" rx="2" class="mk-ur mk-ur-a"/><text x="1029.8" y="300" class="mk-urlabel" text-anchor="middle">UR-060</text><rect x="1065.4" y="266" width="15.6" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="1066.6" y="279" width="15.3" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="1125.9" y="266" width="31.1" height="11" rx="2" class="mk-ur mk-ur-a"/><rect x="1146.7" y="279" width="10.2" height="11" rx="2" class="mk-ur mk-ur-b"/><rect x="1158.1" y="292" width="3.0" height="11" rx="2" class="mk-ur mk-ur-a"/><text x="52" y="321" class="mk-tick">2026-07-25</text><text x="1164" y="321" class="mk-tick" text-anchor="end">2026-08-23</text></g></svg>    </div>
+    <figcaption>Three changes at once, so their interaction is visible. <strong>The window</strong> is the last 30 days, which here holds 282 of 305 samples in the space the full axis gave a third of them (P3/A3). <strong>The y scale</strong> is square-root with ticks at 0/5/15/30/45/60, which lifts the median band off the baseline and lets the sub-15-minute mass separate (P4/A4); marks carry a deterministic within-day jitter bounded to the day's own slot, so no mark can drift into a neighbouring day, plus reduced opacity. The <strong>per-day median line and p25–p75 ribbon</strong> answer "is it getting slower" without a hover. The <strong>UR lane</strong> under the plot brackets each UR across its samples' completion times (P1/A1), packed into three rows; here it placed 54 of 61 URs and labelled 5 — a shipped version needs either more rows or an explicit remainder count, which is exactly the lesson the overflow lane already taught.</figcaption>
+  </div>
+
+  <div style="margin-top:38px">
+    <p class="kicker">P2 · a UR-level panel</p>
+    <span class="badge">Mockup · real data · not the shipped renderer</span>
+    <div style="margin-top:14px">
+<svg viewBox="0 0 1180 216" class="mockup" role="img" aria-label="Proposed panel D: one stem per user request, from summed REQ work hours up to elapsed calendar span, on a log hour scale, mark size by REQ count."><g><text x="52" y="14" class="mk-title">D · One mark per UR · elapsed span vs. summed REQ work · log hours</text><line x1="52" y1="177.4" x2="1164" y2="177.4" class="mk-grid"/><text x="44" y="181.4" class="mk-tick" text-anchor="end">0.1h</text><line x1="52" y1="135.3" x2="1164" y2="135.3" class="mk-grid"/><text x="44" y="139.3" class="mk-tick" text-anchor="end">1h</text><line x1="52" y1="93.3" x2="1164" y2="93.3" class="mk-grid"/><text x="44" y="97.3" class="mk-tick" text-anchor="end">10h</text><line x1="52" y1="51.3" x2="1164" y2="51.3" class="mk-grid"/><text x="44" y="55.3" class="mk-tick" text-anchor="end">100h</text><line x1="664.7" y1="59.4" x2="664.7" y2="95.0" class="mk-stem"/><circle cx="664.7" cy="95.0" r="2.6" class="mk-work"/><circle cx="664.7" cy="59.4" r="7.6" class="mk-span"/><text x="664.7" y="47.2" class="mk-urlabel" text-anchor="middle">UR-031 · 27 REQs</text><line x1="970.9" y1="56.6" x2="970.9" y2="97.1" class="mk-stem"/><circle cx="970.9" cy="97.1" r="2.6" class="mk-work"/><circle cx="970.9" cy="56.6" r="7.1" class="mk-span"/><text x="970.9" y="44.9" class="mk-urlabel" text-anchor="middle">UR-042 · 22 REQs</text><line x1="1083.1" y1="55.6" x2="1083.1" y2="92.6" class="mk-stem"/><circle cx="1083.1" cy="92.6" r="2.6" class="mk-work"/><circle cx="1083.1" cy="55.6" r="6.6" class="mk-span"/><text x="1083.1" y="44.4" class="mk-urlabel" text-anchor="middle">UR-055 · 18 REQs</text><line x1="1055.8" y1="56.9" x2="1055.8" y2="92.3" class="mk-stem"/><circle cx="1055.8" cy="92.3" r="2.6" class="mk-work"/><circle cx="1055.8" cy="56.9" r="6.4" class="mk-span"/><line x1="1057.1" y1="61.0" x2="1057.1" y2="97.1" class="mk-stem"/><circle cx="1057.1" cy="97.1" r="2.6" class="mk-work"/><circle cx="1057.1" cy="61.0" r="6.1" class="mk-span"/><line x1="478.2" y1="84.5" x2="478.2" y2="115.2" class="mk-stem"/><circle cx="478.2" cy="115.2" r="2.6" class="mk-work"/><circle cx="478.2" cy="84.5" r="5.9" class="mk-span"/><text x="478.2" y="74.1" class="mk-urlabel" text-anchor="middle">UR-018 · 12 REQs</text><line x1="1156.9" y1="100.0" x2="1156.9" y2="102.7" class="mk-stem"/><circle cx="1156.9" cy="102.7" r="2.6" class="mk-work"/><circle cx="1156.9" cy="100.0" r="5.6" class="mk-span"/><line x1="214.2" y1="90.3" x2="214.2" y2="110.5" class="mk-stem"/><circle cx="214.2" cy="110.5" r="2.6" class="mk-work"/><circle cx="214.2" cy="90.3" r="5.4" class="mk-span"/><line x1="853.1" y1="106.1" x2="853.1" y2="117.0" class="mk-stem"/><circle cx="853.1" cy="117.0" r="2.6" class="mk-work"/><circle cx="853.1" cy="106.1" r="5.4" class="mk-span"/><line x1="221.7" y1="111.2" x2="221.7" y2="111.9" class="mk-stem"/><circle cx="221.7" cy="111.9" r="2.6" class="mk-work"/><circle cx="221.7" cy="111.2" r="5.2" class="mk-span"/><line x1="436.8" y1="90.5" x2="436.8" y2="136.0" class="mk-stem"/><circle cx="436.8" cy="136.0" r="2.6" class="mk-work"/><circle cx="436.8" cy="90.5" r="5.2" class="mk-span"/><line x1="1157.0" y1="80.1" x2="1157.0" y2="104.8" class="mk-stem"/><circle cx="1157.0" cy="104.8" r="2.6" class="mk-work"/><circle cx="1157.0" cy="80.1" r="5.2" class="mk-span"/><line x1="139.3" y1="137.9" x2="139.3" y2="115.6" class="mk-stem"/><circle cx="139.3" cy="115.6" r="2.6" class="mk-work"/><circle cx="139.3" cy="137.9" r="5.0" class="mk-span"/><line x1="423.4" y1="119.8" x2="423.4" y2="143.3" class="mk-stem"/><circle cx="423.4" cy="143.3" r="2.6" class="mk-work"/><circle cx="423.4" cy="119.8" r="5.0" class="mk-span"/><line x1="1082.4" y1="65.2" x2="1082.4" y2="138.1" class="mk-stem"/><circle cx="1082.4" cy="138.1" r="2.6" class="mk-work"/><circle cx="1082.4" cy="65.2" r="4.8" class="mk-span"/><line x1="410.5" y1="127.9" x2="410.5" y2="138.3" class="mk-stem"/><circle cx="410.5" cy="138.3" r="2.6" class="mk-work"/><circle cx="410.5" cy="127.9" r="4.6" class="mk-span"/><line x1="845.3" y1="77.1" x2="845.3" y2="129.3" class="mk-stem"/><circle cx="845.3" cy="129.3" r="2.6" class="mk-work"/><circle cx="845.3" cy="77.1" r="4.6" class="mk-span"/><line x1="917.7" y1="151.4" x2="917.7" y2="154.9" class="mk-stem"/><circle cx="917.7" cy="154.9" r="2.6" class="mk-work"/><circle cx="917.7" cy="151.4" r="4.6" class="mk-span"/><line x1="289.2" y1="90.7" x2="289.2" y2="90.6" class="mk-stem"/><circle cx="289.2" cy="90.6" r="2.6" class="mk-work"/><circle cx="289.2" cy="90.7" r="4.4" class="mk-span"/><line x1="551.1" y1="157.7" x2="551.1" y2="162.3" class="mk-stem"/><circle cx="551.1" cy="162.3" r="2.6" class="mk-work"/><circle cx="551.1" cy="157.7" r="4.4" class="mk-span"/><line x1="702.1" y1="136.5" x2="702.1" y2="139.2" class="mk-stem"/><circle cx="702.1" cy="139.2" r="2.6" class="mk-work"/><circle cx="702.1" cy="136.5" r="4.4" class="mk-span"/><line x1="844.9" y1="53.6" x2="844.9" y2="136.0" class="mk-stem"/><circle cx="844.9" cy="136.0" r="2.6" class="mk-work"/><circle cx="844.9" cy="53.6" r="4.4" class="mk-span"/><line x1="1056.6" y1="70.1" x2="1056.6" y2="120.3" class="mk-stem"/><circle cx="1056.6" cy="120.3" r="2.6" class="mk-work"/><circle cx="1056.6" cy="70.1" r="4.4" class="mk-span"/><line x1="1081.0" y1="92.9" x2="1081.0" y2="139.6" class="mk-stem"/><circle cx="1081.0" cy="139.6" r="2.6" class="mk-work"/><circle cx="1081.0" cy="92.9" r="4.4" class="mk-span"/><line x1="333.0" y1="138.2" x2="333.0" y2="190.0" class="mk-stem"/><circle cx="333.0" cy="190.0" r="2.6" class="mk-work"/><circle cx="333.0" cy="138.2" r="4.1" class="mk-span"/><line x1="476.2" y1="179.4" x2="476.2" y2="175.3" class="mk-stem"/><circle cx="476.2" cy="175.3" r="2.6" class="mk-work"/><circle cx="476.2" cy="179.4" r="4.1" class="mk-span"/><line x1="490.7" y1="139.2" x2="490.7" y2="163.3" class="mk-stem"/><circle cx="490.7" cy="163.3" r="2.6" class="mk-work"/><circle cx="490.7" cy="139.2" r="4.1" class="mk-span"/><line x1="514.1" y1="158.3" x2="514.1" y2="162.3" class="mk-stem"/><circle cx="514.1" cy="162.3" r="2.6" class="mk-work"/><circle cx="514.1" cy="158.3" r="4.1" class="mk-span"/><line x1="522.6" y1="153.5" x2="522.6" y2="156.3" class="mk-stem"/><circle cx="522.6" cy="156.3" r="2.6" class="mk-work"/><circle cx="522.6" cy="153.5" r="4.1" class="mk-span"/><line x1="905.4" y1="148.2" x2="905.4" y2="147.6" class="mk-stem"/><circle cx="905.4" cy="147.6" r="2.6" class="mk-work"/><circle cx="905.4" cy="148.2" r="4.1" class="mk-span"/><line x1="934.4" y1="152.5" x2="934.4" y2="156.4" class="mk-stem"/><circle cx="934.4" cy="156.4" r="2.6" class="mk-work"/><circle cx="934.4" cy="152.5" r="4.1" class="mk-span"/><line x1="1159.0" y1="133.6" x2="1159.0" y2="137.7" class="mk-stem"/><circle cx="1159.0" cy="137.7" r="2.6" class="mk-work"/><circle cx="1159.0" cy="133.6" r="4.1" class="mk-span"/><line x1="545.4" y1="82.4" x2="545.4" y2="157.3" class="mk-stem"/><circle cx="545.4" cy="157.3" r="2.6" class="mk-work"/><circle cx="545.4" cy="82.4" r="3.8" class="mk-span"/><line x1="514.8" y1="168.0" x2="514.8" y2="172.1" class="mk-stem"/><circle cx="514.8" cy="172.1" r="2.6" class="mk-work"/><circle cx="514.8" cy="168.0" r="3.8" class="mk-span"/><line x1="715.0" y1="130.0" x2="715.0" y2="120.3" class="mk-stem"/><circle cx="715.0" cy="120.3" r="2.6" class="mk-work"/><circle cx="715.0" cy="130.0" r="3.8" class="mk-span"/><line x1="851.6" y1="133.8" x2="851.6" y2="134.7" class="mk-stem"/><circle cx="851.6" cy="134.7" r="2.6" class="mk-work"/><circle cx="851.6" cy="133.8" r="3.8" class="mk-span"/><line x1="960.2" y1="138.8" x2="960.2" y2="140.7" class="mk-stem"/><circle cx="960.2" cy="140.7" r="2.6" class="mk-work"/><circle cx="960.2" cy="138.8" r="3.8" class="mk-span"/><line x1="1053.6" y1="155.0" x2="1053.6" y2="158.1" class="mk-stem"/><circle cx="1053.6" cy="158.1" r="2.6" class="mk-work"/><circle cx="1053.6" cy="155.0" r="3.8" class="mk-span"/><line x1="1055.3" y1="144.2" x2="1055.3" y2="146.2" class="mk-stem"/><circle cx="1055.3" cy="146.2" r="2.6" class="mk-work"/><circle cx="1055.3" cy="144.2" r="3.8" class="mk-span"/><line x1="1081.9" y1="93.1" x2="1081.9" y2="141.3" class="mk-stem"/><circle cx="1081.9" cy="141.3" r="2.6" class="mk-work"/><circle cx="1081.9" cy="93.1" r="3.8" class="mk-span"/><line x1="140.7" y1="137.7" x2="140.7" y2="137.7" class="mk-stem"/><circle cx="140.7" cy="137.7" r="2.6" class="mk-work"/><circle cx="140.7" cy="137.7" r="3.4" class="mk-span"/><line x1="232.6" y1="167.8" x2="232.6" y2="167.8" class="mk-stem"/><circle cx="232.6" cy="167.8" r="2.6" class="mk-work"/><circle cx="232.6" cy="167.8" r="3.4" class="mk-span"/><line x1="332.9" y1="190.0" x2="332.9" y2="190.0" class="mk-stem"/><circle cx="332.9" cy="190.0" r="2.6" class="mk-work"/><circle cx="332.9" cy="190.0" r="3.4" class="mk-span"/><line x1="410.7" y1="179.5" x2="410.7" y2="179.5" class="mk-stem"/><circle cx="410.7" cy="179.5" r="2.6" class="mk-work"/><circle cx="410.7" cy="179.5" r="3.4" class="mk-span"/><line x1="423.3" y1="178.8" x2="423.3" y2="178.8" class="mk-stem"/><circle cx="423.3" cy="178.8" r="2.6" class="mk-work"/><circle cx="423.3" cy="178.8" r="3.4" class="mk-span"/><line x1="483.7" y1="162.8" x2="483.7" y2="162.8" class="mk-stem"/><circle cx="483.7" cy="162.8" r="2.6" class="mk-work"/><circle cx="483.7" cy="162.8" r="3.4" class="mk-span"/><line x1="490.1" y1="190.0" x2="490.1" y2="190.0" class="mk-stem"/><circle cx="490.1" cy="190.0" r="2.6" class="mk-work"/><circle cx="490.1" cy="190.0" r="3.4" class="mk-span"/><line x1="521.3" y1="173.9" x2="521.3" y2="173.9" class="mk-stem"/><circle cx="521.3" cy="173.9" r="2.6" class="mk-work"/><circle cx="521.3" cy="173.9" r="3.4" class="mk-span"/><line x1="547.0" y1="153.3" x2="547.0" y2="153.3" class="mk-stem"/><circle cx="547.0" cy="153.3" r="2.6" class="mk-work"/><circle cx="547.0" cy="153.3" r="3.4" class="mk-span"/><line x1="556.9" y1="170.5" x2="556.9" y2="170.5" class="mk-stem"/><circle cx="556.9" cy="170.5" r="2.6" class="mk-work"/><circle cx="556.9" cy="170.5" r="3.4" class="mk-span"/><line x1="568.8" y1="174.8" x2="568.8" y2="174.8" class="mk-stem"/><circle cx="568.8" cy="174.8" r="2.6" class="mk-work"/><circle cx="568.8" cy="174.8" r="3.4" class="mk-span"/><line x1="569.1" y1="171.0" x2="569.1" y2="171.0" class="mk-stem"/><circle cx="569.1" cy="171.0" r="2.6" class="mk-work"/><circle cx="569.1" cy="171.0" r="3.4" class="mk-span"/><line x1="569.3" y1="184.2" x2="569.3" y2="184.2" class="mk-stem"/><circle cx="569.3" cy="184.2" r="2.6" class="mk-work"/><circle cx="569.3" cy="184.2" r="3.4" class="mk-span"/><line x1="679.0" y1="158.4" x2="679.0" y2="158.4" class="mk-stem"/><circle cx="679.0" cy="158.4" r="2.6" class="mk-work"/><circle cx="679.0" cy="158.4" r="3.4" class="mk-span"/><line x1="702.3" y1="179.6" x2="702.3" y2="179.6" class="mk-stem"/><circle cx="702.3" cy="179.6" r="2.6" class="mk-work"/><circle cx="702.3" cy="179.6" r="3.4" class="mk-span"/><line x1="852.7" y1="143.4" x2="852.7" y2="143.4" class="mk-stem"/><circle cx="852.7" cy="143.4" r="2.6" class="mk-work"/><circle cx="852.7" cy="143.4" r="3.4" class="mk-span"/><line x1="858.2" y1="160.2" x2="858.2" y2="160.2" class="mk-stem"/><circle cx="858.2" cy="160.2" r="2.6" class="mk-work"/><circle cx="858.2" cy="160.2" r="3.4" class="mk-span"/><line x1="861.9" y1="190.0" x2="861.9" y2="190.0" class="mk-stem"/><circle cx="861.9" cy="190.0" r="2.6" class="mk-work"/><circle cx="861.9" cy="190.0" r="3.4" class="mk-span"/><line x1="934.8" y1="166.7" x2="934.8" y2="166.7" class="mk-stem"/><circle cx="934.8" cy="166.7" r="2.6" class="mk-work"/><circle cx="934.8" cy="166.7" r="3.4" class="mk-span"/><line x1="959.1" y1="155.4" x2="959.1" y2="155.4" class="mk-stem"/><circle cx="959.1" cy="155.4" r="2.6" class="mk-work"/><circle cx="959.1" cy="155.4" r="3.4" class="mk-span"/><line x1="1054.3" y1="152.6" x2="1054.3" y2="152.6" class="mk-stem"/><circle cx="1054.3" cy="152.6" r="2.6" class="mk-work"/><circle cx="1054.3" cy="152.6" r="3.4" class="mk-span"/><line x1="52" y1="190" x2="1164" y2="190" class="mk-axis"/><text x="52" y="208" class="mk-tick">2026-07-25</text><text x="1164" y="208" class="mk-tick" text-anchor="end">2026-08-23</text></g></svg>    </div>
+    <figcaption>One stem per UR on the shared axis, positioned at the UR's last REQ completion. The lower mark is the summed measured REQ work; the upper mark is the elapsed calendar span from first claim to last completion; the log hour scale carries both without a second y axis, and the upper mark's radius carries the UR's REQ count. The distance between the two marks is the finding: UR-031 at 27 REQs spans 64 hours of calendar around 9 hours of measured work. Sub-hour URs collapse to a single mark, which is the honest reading of a request that was claimed and finished in one sitting.</figcaption>
+  </div>
+
+  <div class="row" style="margin-top:38px">
+    <div class="split">
+      <p class="kicker">P5 · what replaces the in-lane labels</p>
+      <p>Every over-ceiling sample, longest first, with the UR and the title the label rows cannot fit. This is HTML beside the chart rather than text inside the SVG, so it needs no width measurement, no packing, and no remainder sentence — and it is complete, where the lane is at 7%.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>REQ</th><th>UR</th><th class="num">Span</th><th>Route</th><th>Title</th></tr></thead>
+          <tbody>
+            <tr><td class="num">REQ-064</td><td class="num">UR-010</td><td class="num">10h 55m</td><td class="num">B</td><td>Restore blanked archived REQs from git history</td></tr>
+            <tr><td class="num">REQ-043</td><td class="num">UR-008</td><td class="num">2h 29m</td><td class="num">C</td><td>Worktree evidence-range hardening</td></tr>
+            <tr><td class="num">REQ-248</td><td class="num">UR-051</td><td class="num">2h 15m</td><td class="num">B</td><td>Anchor the Durations day buckets to UTC midnight</td></tr>
+            <tr><td class="num">REQ-249</td><td class="num">UR-055</td><td class="num">1h 59m</td><td class="num">B</td><td>Decide the cross-package citation path form</td></tr>
+            <tr><td class="num">REQ-257</td><td class="num">UR-056</td><td class="num">1h 42m</td><td class="num">B</td><td>Decide whether the timestamp repairer learns offset</td></tr>
+            <tr><td class="num">REQ-246</td><td class="num">UR-056</td><td class="num">1h 40m</td><td class="num">C</td><td>Repair detectably wrong queue and working timestamps</td></tr>
+            <tr><td class="num">REQ-171</td><td class="num">UR-038</td><td class="num">1h 21m</td><td class="num">C</td><td>Promote prescribed shell primitives to shipped docs</td></tr>
+            <tr><td class="num">REQ-260</td><td class="num">UR-051</td><td class="num">1h 20m</td><td class="num">A</td><td>Run the Go formatter as part of the canonical verify</td></tr>
+            <tr><td class="num">REQ-319</td><td class="num">UR-065</td><td class="num">1h 17m</td><td class="num">B</td><td>List only the REQs the selected window covers</td></tr>
+            <tr><td class="num">REQ-245</td><td class="num">UR-055</td><td class="num">1h 9m</td><td class="num">A</td><td>Name fabricated stamps in future-stamp warnings</td></tr>
+            <tr><td class="num">REQ-243</td><td class="num">UR-042</td><td class="num">1h 9m</td><td class="num">B</td><td>Check that shipped markdown pointers resolve</td></tr>
+            <tr><td class="num">REQ-241</td><td class="num">UR-051</td><td class="num">1h 8m</td><td class="num">B</td><td>Reconcile the Durations label metrics with the face</td></tr>
+            <tr><td class="num">REQ-289</td><td class="num">UR-060</td><td class="num">1h 6m</td><td class="num">C</td><td>Separate impact from effort with unique tokens</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figcaption>Real values from this repository's archive, joined to their URs and titles through <code>boardData.requests</code>. Four of these thirteen carry a label on the board today; the other nine are the <em>+9 more</em>.</figcaption>
+    </div>
+    <div class="split">
+      <p class="kicker">What P5 deletes</p>
+      <p>A1 through A4 add code. A5 is the one proposal that removes more than it adds, and that is most of its value:</p>
+      <ul>
+        <li>the greedy row packer and its per-row occupancy intervals</li>
+        <li>the two-pass remainder reserve and its fixed-point loop, including the iteration cap that must live inside the function because the browser probe slices named functions out of the built client</li>
+        <li>the browser text measurement that exists only to size labels</li>
+        <li><code>durations.go</code>'s label-text and width model, including the documented hyphen-versus-minus divergence it carries</li>
+        <li>the geometry-agreement tests holding two files' label constants together</li>
+      </ul>
+      <p>What stays: the lane, the marks, their hover, the remainder count as a plain sentence. The overflow lane itself is not the problem — putting variable-width text inside it at this density is.</p>
+      <p>This is a deliberate reversal of a settled decision, so it is worth stating plainly: the 2026-08-18 proposal offered this shape as its fourth alternative and the separated-band fix was chosen instead. That fix worked. The argument for revisiting it is not that it failed but that the sample count has since made 55 of 60 labels unprintable.</p>
+    </div>
+  </div>
+</section>
+<section>
+  <h2>Capture-request prompts</h2>
+  <p class="measure">One prompt per change, ranked. Each is a complete <code>do-work capture-request:</code> invocation — paste it as it stands. They are independent: queueing A1 alone is a coherent change, and so is queueing A5 alone. A single bundled request covering all eight follows at the end.</p>
+
+  <div class="row" style="margin-top:26px">
+    <div class="prompt">
+      <h3><span class="code" style="font:600 12px/1 var(--mono);color:var(--accent-ink)">A1</span> Give the samples their UR</h3>
+      <p class="why">Closes F1. The join already exists in the browser, so this is a renderer change first and a payload change only if the join proves awkward.</p>
+      <pre>do-work capture-request: The Durations view is the only board view that drops the REQ-to-UR link, so panel A's dot cloud cannot say which user request a mark belongs to — 66 URs are in this repository's 305 samples and a median of 2, up to 10, are active on the same day. Give the Durations view UR identity. The client payload already carries the join at boardData.requests[id].userRequestId, so prefer a client-side join and add the field to generatedDurationSample in generate.go only if that proves awkward. Name the UR in the hover readout beside the REQ id, add a UR column to the "Every sample, as a table" table, and draw a UR grouping lane under panel A: one horizontal bracket per UR spanning its samples' completion times, packed into a small fixed number of rows, with every UR that finds no row counted in an explicit remainder rather than silently dropped. Leave route colour as it is.</pre>
+    </div>
+
+    <div class="prompt">
+      <h3><span class="code" style="font:600 12px/1 var(--mono);color:var(--accent-ink)">A2</span> Measure the UR itself</h3>
+      <p class="why">Closes F2. The one proposal that adds a new question rather than making an existing answer readable.</p>
+      <pre>do-work capture-request: Durations measures REQs only, so a UR's own duration is unmeasurable from the board. Add a panel D to the Durations view: one mark per UR on the shared calendar axis, positioned at the UR's last REQ completion, drawn as a stem from the summed measured REQ work at the bottom up to the elapsed calendar span from first REQ claim to last completion at the top, on a log hour scale, with the top mark's radius carrying the UR's REQ count. The gap between the two ends is the point: on this repository's archive the median UR spans 0.6 hours against a p90 of 46.7, and the largest URs (27, 22 and 18 REQs) spend 11 to 14 percent of their elapsed span in measured REQ work. Apply the same read-time exclusion rule the other panels use, keep one measure per scale, state in the panel subtitle what each end of a stem means, and say explicitly in the REQ how this differs from the Timeline view's REQ Gantt so the two views do not converge.</pre>
+    </div>
+
+    <div class="prompt">
+      <h3><span class="code" style="font:600 12px/1 var(--mono);color:var(--accent-ink)">A4</span> Fix panel A's scale and density</h3>
+      <p class="why">Closes F4. Biggest legibility gain per unit of work, and it does not touch the payload.</p>
+      <pre>do-work capture-request: Panel A of the Durations view wastes its vertical range and overplots. On this repository's archive the median REQ is 13.2 minutes with 55 percent under 15 and 78 percent under 30, so against a linear 0-to-60 scale more than half the marks compete for the bottom quarter of the panel, and at 8 to 13 SVG units per day a busy day (38 REQs here, 55 on the consuming project) is one column of overlapping 4-unit dots. Change panel A to a square-root y scale with ticks at 0, 5, 15, 30, 45 and 60; add a deterministic within-day x jitter bounded to the day's own slot so a mark can never cross a day boundary; lower mark opacity; and draw a per-day median line with a p25-to-p75 ribbon behind the marks so the trend is readable without hovering. Keep the 60-minute ceiling, the overflow lane and the read-time rule unchanged, and keep the jitter out of the hover's nearest-mark maths or state how it is compensated.</pre>
+    </div>
+
+    <div class="prompt">
+      <h3><span class="code" style="font:600 12px/1 var(--mono);color:var(--accent-ink)">A3</span> Let the reader narrow the window</h3>
+      <p class="why">Closes F3 without touching the linear axis the cadence finding depends on.</p>
+      <pre>do-work capture-request: The Durations axis spends most of its width on idle calendar: on this repository's archive 66 percent of the 86-day axis has no completions and 92 percent of the samples fall in the final 30 days, and on the consuming project a single April outlier holds the left half of the plot open by itself. Add a window control to the Durations view offering the last 30 days, the last 90 days and all history, and state the active window and the sample count it covers in the view's summary line. Keep the axis linear real time inside the window — the idle-gap cadence reading is why it is linear, so do not compress gaps — and reuse the topbar's existing recent-window control pattern rather than inventing a second one. Panels B and C follow the same window.</pre>
+    </div>
+
+    <div class="prompt">
+      <h3><span class="code" style="font:600 12px/1 var(--mono);color:var(--accent-ink)">A5</span> Retire the in-lane labels</h3>
+      <p class="why">Closes F5, and deletes more than it adds. Reverses a decision taken on 2026-08-18, so it needs an explicit yes.</p>
+      <pre>do-work capture-request: The Durations overflow lane's direct labels have stopped paying for themselves at scale — the consuming project's board shows 5 labels beside "+55 more over 60 min" and this repository's shows 4 beside "+9 more", a 7 percent labelling rate — while the machinery behind them (browser-measured text widths, a greedy two-row packer, a remainder reserve run to a fixed point, and the geometry-agreement tests pinning durations.go's constants against web/board-durations.js) is the largest single piece of the view. Replace the in-lane labels with a compact ranked longest-spans list beside the chart, carrying REQ id, UR id, duration, route and title, longest first, with every over-ceiling sample present. Keep the lane, its marks, their hover and a plain remainder count. Delete the label planner, the label-text and width model in durations.go, and the constants and tests that exist only to place text inside the SVG, and name in the hand-back exactly which tests were removed and why they no longer describe a shipped rule. This deliberately reverses the separated-text-band direction chosen on 2026-08-18; that fix worked, and the reason to revisit it is the sample count, not a defect.</pre>
+    </div>
+
+    <div class="prompt">
+      <h3><span class="code" style="font:600 12px/1 var(--mono);color:var(--accent-ink)">A7</span> Make the view state its own numbers</h3>
+      <p class="why">Closes F7. Every figure comes from the payload already shipped.</p>
+      <pre>do-work capture-request: The Durations view makes a reader hover to learn its own headline numbers. Add a small stat tile row above panel A carrying the median REQ duration, the p90, the active-day count against the axis span, and REQs per active day, each stated for the window actually plotted rather than for all history. Give panel B a rolling median line over its per-day bars so "is it getting slower" is answerable without reading 29 bars one at a time, and give panel C the zero and midpoint ticks it lacks — today only its peak is labelled. Derive every figure from the samples already in the payload, keep one measure per scale, and keep the existing summary sentence's exclusion-rule wording intact.</pre>
+    </div>
+
+    <div class="prompt">
+      <h3><span class="code" style="font:600 12px/1 var(--mono);color:var(--accent-ink)">A6</span> Stop advertising dead knobs</h3>
+      <p class="why">Closes F6. The smallest change in the set; it applies a rule the code already states.</p>
+      <pre>do-work capture-request: The topbar's text filter, domain select and status select stay visible and live while the Durations view is on screen and change nothing there. That is inconsistent with the board's own stated rule: applyView in web/board-controls.js hides the lens and recent-window groups on views where they do nothing, with the comment that the topbar should never advertise dead knobs, and onFiltersChanged in web/board-filters.js deliberately excludes Durations because a filtered distribution is a different statistic wearing the same axes. Hide the three filter controls while Durations is the active view, the same way the lens group is hidden, and restore them on view change. If a filtered durations distribution is wanted later, that is a separate request with its own caption rules, not a silent widening of this one.</pre>
+    </div>
+
+    <div class="prompt">
+      <h3><span class="code" style="font:600 12px/1 var(--mono);color:var(--accent-ink)">A8</span> Give a mark somewhere to go</h3>
+      <p class="why">Closes F8. Depends on nothing else in the set.</p>
+      <pre>do-work capture-request: A Durations mark is a dead end — the nearest-mark hover writes one line into a status paragraph and nothing opens. Make a click on panel A's hover surface open the detail drawer for the nearest REQ, the same drawer the board and timeline views open, and give the view a keyboard path to the same information: the sample table is the only keyboard route today and it sits inside a collapsed details element. Keep the hover readout exactly as it is, and keep the click's nearest-mark resolution consistent with the hover's so a reader never opens a REQ other than the one the readout names.</pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Cost, risk, and what each one forces</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Prompt</th><th>Files</th><th>Size</th><th>Risk</th><th>What it forces</th></tr></thead>
+      <tbody>
+        <tr><td class="num">A1</td><td>board-durations.js, template.html, board.css; generate.go only if the join is awkward</td><td>Moderate</td><td>Low</td><td>A lane-packing remainder count, and a decision on how many rows the lane gets</td></tr>
+        <tr><td class="num">A2</td><td>durations.go, generate.go, board-durations.js, template.html</td><td>Largest</td><td>Medium</td><td>A new aggregate, a log scale, and a written boundary against the Timeline view</td></tr>
+        <tr><td class="num">A4</td><td>board-durations.js (and the geometry tests that read its constants)</td><td>Moderate</td><td>Medium</td><td>Hover nearest-mark maths under jitter; browser probes for the new scale's tick positions</td></tr>
+        <tr><td class="num">A3</td><td>board-durations.js, template.html, board-controls.js</td><td>Moderate</td><td>Low</td><td>Window state shared with, or deliberately kept separate from, the board's own window control</td></tr>
+        <tr><td class="num">A5</td><td>board-durations.js, durations.go, durations_test.go, the browser probe lane, template.html</td><td>Net deletion</td><td>Medium</td><td>Naming every removed test and why it no longer describes a shipped rule</td></tr>
+        <tr><td class="num">A7</td><td>board-durations.js, template.html, board.css</td><td>Small</td><td>Low</td><td>Whether the tiles follow A3's window or all history</td></tr>
+        <tr><td class="num">A6</td><td>board-controls.js</td><td>Smallest</td><td>Low</td><td>Nothing; it applies an existing rule</td></tr>
+        <tr><td class="num">A8</td><td>board-durations.js, board-detail.js</td><td>Small</td><td>Low</td><td>Keeping click and hover resolution identical</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="dateline">Sizes are relative to each other, not estimates in hours. Every one of these touches a chart, so the repository's own standing rule applies: generate a board and look at it, because a passing suite is not evidence about two glyphs sharing a coordinate.</p>
+</section>
+
+<section>
+  <h2>Or queue the whole thing at once</h2>
+  <p class="measure">Capture splits a compound input into separate REQs, so this single invocation produces one UR with the eight changes under it. Use it instead of the eight above, not as well as them.</p>
+  <pre style="margin-top:18px">do-work capture-request: Improve the board's Durations view so it answers UR-level questions and stays legible at 700 or more archived REQs. It is the only view that drops the REQ-to-UR link, so give its samples their UR: name the UR in the hover readout, add a UR column to the sample table, and draw a packed UR grouping lane under panel A with an explicit remainder for any UR that finds no row — the client already holds the join at boardData.requests[id].userRequestId. Add a panel D measuring URs themselves: one stem per UR at its last REQ completion, from summed REQ work up to elapsed calendar span, log hours, radius by REQ count, and say in the REQ how it differs from the Timeline's REQ Gantt. Fix panel A's density: square-root y scale with ticks at 0, 5, 15, 30, 45 and 60, deterministic within-day jitter bounded to the day slot, lower mark opacity, and a per-day median line with a p25-to-p75 ribbon. Add a window control for the last 30 days, last 90 days and all history that keeps the axis linear real time inside the window and states the active window in the summary. Replace the overflow lane's in-lane labels with a ranked longest-spans list beside the chart carrying REQ, UR, duration, route and title, and delete the label planner, its width model and the tests that exist only to place text inside the SVG. Add a stat tile row for median, p90, active days against axis span and REQs per active day, a rolling median line on panel B, and the missing zero and midpoint ticks on panel C. Hide the text filter, domain select and status select while Durations is on screen, since they change nothing there and the board's own rule is that the topbar never advertises dead knobs. Make a click on a mark open the detail drawer for the nearest REQ and give the view a keyboard path that does not require opening the collapsed sample table.</pre>
+</section>
+
+<section>
+  <h2>Open questions</h2>
+  <div class="row">
+    <div class="split card">
+      <h3>Q1 · Does panel D belong here or on the Timeline?</h3>
+      <p>The Timeline already draws REQ bars against calendar time and projects the queue forward. Panel D is a distribution, not a schedule, and it is UR-grouped where the Timeline is REQ-rowed — but the two would sit one tab apart showing the same tickets against the same axis. The alternative is a UR row grouping on the Timeline and no panel D at all.</p>
+    </div>
+    <div class="split card">
+      <h3>Q2 · Should the window control be shared board state?</h3>
+      <p>A3 reuses the recent-window pattern. Whether it reuses the <em>value</em> is a different question: one window across board and durations is fewer knobs, but the board's window means "recently done" while durations' means "the axis domain", and conflating them would make the durations axis change when someone adjusts a board filter.</p>
+    </div>
+    <div class="split card">
+      <h3>Q3 · Is the UR lane enough, or does identity need colour?</h3>
+      <p>The lane answers "which dots are one UR" positionally, which scales past 60 URs where a colour channel does not. A colour-by toggle (route / UR / domain) would answer it inside the plot, at the cost of a second identity channel competing with route. The mockup takes the lane alone; it is the cheaper half and it is reversible.</p>
+    </div>
+    <div class="split card">
+      <h3>Q4 · How many lane rows, and what happens to the overflow?</h3>
+      <p>Three rows placed 54 of 61 URs on 30 days of this repository's data. The consuming project has more URs in the same window. Fixed rows plus a counted remainder is the pattern the view already uses; a scrollable lane is the other option and it is new machinery.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Verify it yourself</h2>
+  <p class="measure">Everything below was run from the repository root while writing this report. The numbers in the tiles and findings come from the last two commands.</p>
+  <pre>cd skills/do-work-board/tools/queue-kanban &amp;&amp; go build -o /tmp/queue-kanban .
+/tmp/queue-kanban generate --out /tmp/board --repo-root "$PWD"
+# → wrote static board (333 REQs, 67 URs); durations payload lives in /tmp/board/board-data.js
+
+# distribution, axis waste, UR spread — reads window.queueKanbanBoardData
+node -e 'global.window={};eval(require("fs").readFileSync("/tmp/board/board-data.js","utf8"));
+ const d=window.queueKanbanBoardData,s=d.durations.samples;
+ const m=s.map(x=>x.wallMinutes).sort((a,b)=>a-b),q=p=>m[Math.floor(p*(m.length-1))];
+ console.log("n",s.length,"median",q(.5).toFixed(1),"p90",q(.9).toFixed(1),
+   "under15",(m.filter(x=>x&lt;15).length/m.length*100).toFixed(0)+"%",
+   "over60",m.filter(x=>x&gt;60).length,"days",d.durations.days.length);'
+
+# the UR link the Durations payload does not carry, joined client-side
+node -e 'global.window={};eval(require("fs").readFileSync("/tmp/board/board-data.js","utf8"));
+ const d=window.queueKanbanBoardData,r=d.requests;
+ const urs=new Set(d.durations.samples.map(s=>r[s.id]&amp;&amp;r[s.id].userRequestId).filter(Boolean));
+ console.log("distinct URs among durations samples:",urs.size);'</pre>
+  <p class="dateline" style="margin-top:14px">Not run: <code>bash _dev/tests/maintainer-verify.sh</code>. No source file was changed for this report, so there is nothing in it for the suite to check.</p>
+</section>
+
+<p class="foot">
+  Bundle: <code>ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/</code> · two authentic captures in <code>screenshots/</code>, two inline mockups drawn from real archive data by a throwaway script, no generated raster images.<br>
+  Rendered and inspected at 1920px in both light and dark before hand-back.
+</p>
+
+</div>
+</body>
+</html>
