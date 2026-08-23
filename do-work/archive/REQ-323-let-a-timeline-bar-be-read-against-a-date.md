@@ -1,9 +1,11 @@
 ---
 id: REQ-323
 title: "Let a timeline bar be read against a date"
-status: claimed
+status: completed
 created_at: 2026-08-22T22:08:34Z
 claimed_at: 2026-08-23T03:58:20Z
+completed_at: 2026-08-23T04:40:00Z
+commit:
 route: B
 user_request: UR-065
 domain: frontend
