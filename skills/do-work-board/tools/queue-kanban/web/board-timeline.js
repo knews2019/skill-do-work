@@ -96,6 +96,16 @@
   var TIMELINE_ZOOM_STEP = 1.6;
   var TIMELINE_PAN_FRACTION = 0.15;
   var TIMELINE_NOW_JUMP_MARGIN_FRACTION = 0.1;
+  // The narrowest window the Now button may land on.
+  //
+  // The margin used to floor on TIMELINE_MIN_SPAN_MS / 2, which put Now on a
+  // one-hour window whenever the now-line and the forecast's queue-empty instant
+  // were close together — the ordinary case on a queue that is nearly drained, and
+  // on this repo's board the state Now landed in every time. One hour IS the zoom
+  // floor, so the obvious next move was dead: the + button, ctrl+wheel and the +
+  // key were all silent no-ops. Half a day gives the now-line a day's work either
+  // side of it to be read against, and leaves zoom somewhere to go.
+  var TIMELINE_NOW_JUMP_MINIMUM_SPAN_MS = 43200000; // twelve hours in ms
   // Shortest first, so a window that satisfies more than one level reports the
   // tightest one it actually is.
   var TIMELINE_PERIOD_LEVEL_NAMES = ["day", "week", "month"];
@@ -655,10 +665,12 @@
   function timelineNowJump(nowMs, queueEndMs, boundStartMs, boundEndMs) {
     var earliestMs = isNaN(queueEndMs) ? nowMs : Math.min(nowMs, queueEndMs);
     var latestMs = isNaN(queueEndMs) ? nowMs : Math.max(nowMs, queueEndMs);
-    // Margin so both lines sit inside the window rather than on its frame.
+    // Margin so both lines sit inside the window rather than on its frame, floored
+    // so the landing window is a window rather than the zoom floor. See
+    // TIMELINE_NOW_JUMP_MINIMUM_SPAN_MS.
     var marginMs = Math.max(
       (latestMs - earliestMs) * TIMELINE_NOW_JUMP_MARGIN_FRACTION,
-      TIMELINE_MIN_SPAN_MS / 2
+      TIMELINE_NOW_JUMP_MINIMUM_SPAN_MS / 2
     );
     return timelineZoomedWindow(
       earliestMs - marginMs,
@@ -2118,6 +2130,43 @@
       }
     }
 
+    // A control that cannot move the window SAYS SO. Silence is what made the Now
+    // landing state read as a broken board: pressing +, ctrl-scrolling and holding
+    // the + key all did nothing at all, with no disabled state and no message.
+    //
+    // Every verdict here is derived by asking the shared model what the press would
+    // produce and comparing it with the window already on screen — never by
+    // restating the model's floor, ceiling or clamp, which is how a second opinion
+    // about them would start.
+    function renderControlAvailability() {
+      function setAvailability(buttonId, wouldMove) {
+        var button = document.getElementById(buttonId);
+        if (button) {
+          button.disabled = !wouldMove;
+        }
+      }
+      function movesTheWindow(candidate) {
+        return candidate.windowStartMs !== timelineViewState.windowStartMs ||
+          candidate.windowEndMs !== timelineViewState.windowEndMs;
+      }
+      var zoomIn = timelineZoomedWindow(
+        timelineViewState.windowStartMs, timelineViewState.windowEndMs,
+        TIMELINE_ZOOM_STEP, 0.5, boundStartMs, boundEndMs);
+      var zoomOut = timelineZoomedWindow(
+        timelineViewState.windowStartMs, timelineViewState.windowEndMs,
+        1 / TIMELINE_ZOOM_STEP, 0.5, boundStartMs, boundEndMs);
+      setAvailability("timeline-zoom-in", movesTheWindow(zoomIn));
+      setAvailability("timeline-zoom-out", movesTheWindow(zoomOut));
+      setAvailability("timeline-zoom-fit", movesTheWindow(timelineFitWindow()));
+      [-1, 1].forEach(function (stepCount) {
+        var stepped = steppedWindowFor(stepCount);
+        setAvailability(
+          stepCount < 0 ? "timeline-period-prev" : "timeline-period-next",
+          movesTheWindow(stepped) && !stepLandsOffTheData(stepped)
+        );
+      });
+    }
+
     // The window in text and in the two fields. Called from renderAll, so the
     // pointer, the keyboard, the period chips, Now and Fit all all refresh it and
     // none of them can leave a stale window on screen.
@@ -2246,6 +2295,7 @@
       renderAxis();
       renderVisibleRows();
       renderPeriodControls();
+      renderControlAvailability();
       renderRangeControls();
       // The hover readout describes ONE row, and a window move can take that row
       // off the chart. Every other piece of prose this view owns is refreshed
@@ -2482,6 +2532,43 @@
       });
     });
 
+    // The extent of everything this render draws: every segment of every
+    // filter-matched row, plus the projection's own bars. Computed from the segment
+    // list the window-scoping already built, so it is the same set of marks the
+    // chart puts on screen rather than a second opinion about them.
+    var drawnExtent = (function () {
+      var earliestMs = Infinity;
+      var latestMs = -Infinity;
+      filterMatchedSegments.forEach(function (segments) {
+        segments.forEach(function (segment) {
+          if (!isFinite(segment.startMs) || !isFinite(segment.endMs)) {
+            return;
+          }
+          earliestMs = Math.min(earliestMs, segment.startMs);
+          latestMs = Math.max(latestMs, segment.endMs);
+        });
+      });
+      if (!isFinite(earliestMs) || !isFinite(latestMs)) {
+        return null;
+      }
+      return { earliestMs: earliestMs, latestMs: latestMs };
+    })();
+
+    // What Fit all lands on: the drawn extent with the same breathing room the
+    // payload bounds get, settled through the shared model so it cannot acquire a
+    // floor or a clamp of its own.
+    function timelineFitWindow() {
+      if (!drawnExtent) {
+        return { windowStartMs: boundStartMs, windowEndMs: boundEndMs };
+      }
+      var breathingRoomMs = Math.max(
+        (drawnExtent.latestMs - drawnExtent.earliestMs) * 0.02, 60 * 1000);
+      return timelineZoomedWindow(
+        drawnExtent.earliestMs - breathingRoomMs,
+        drawnExtent.latestMs + breathingRoomMs,
+        1, 0, boundStartMs, boundEndMs);
+    }
+
     function wireToolbarButton(buttonId, apply) {
       var button = document.getElementById(buttonId);
       if (button) {
@@ -2505,9 +2592,15 @@
       timelineViewState.windowStartMs = zoomed.windowStartMs;
       timelineViewState.windowEndMs = zoomed.windowEndMs;
     });
+    // Fit all fits WHAT IS ON SCREEN, which under a filter is the filtered set —
+    // not the payload's whole range. The clamp bounds stay the payload's, so the
+    // reader can still pan and zoom outside the filtered extent; it is the button
+    // that answers "show me everything I am looking at", and filtered to one domain
+    // it used to leave most of the plot blank.
     wireToolbarButton("timeline-zoom-fit", function () {
-      timelineViewState.windowStartMs = boundStartMs;
-      timelineViewState.windowEndMs = boundEndMs;
+      var fitWindow = timelineFitWindow();
+      timelineViewState.windowStartMs = fitWindow.windowStartMs;
+      timelineViewState.windowEndMs = fitWindow.windowEndMs;
     });
     // Zooming anchors at the centre, so the forecast at the far right takes a
     // long drag to reach once you have zoomed in far enough to read it. A
@@ -2548,8 +2641,29 @@
       timelineViewState.windowStartMs = periodWindow.windowStartMs;
       timelineViewState.windowEndMs = periodWindow.windowEndMs;
     }
-    function applyPeriodStep(stepCount) {
-      var steppedWindow = timelineSteppedWindow(
+    // Whether a step would land entirely PAST everything drawn — off the end of the
+    // data in one direction or the other.
+    //
+    // What this exists for is the cosmetic bound padding: that stretch is there so a
+    // bar at the range edge is not flush against the frame, and on a three-month
+    // board it is nearly two days wide, so one press of › from the current week
+    // landed on an empty chart with the Week chip lit and the arrow dead.
+    //
+    // It deliberately does NOT refuse a step into a GAP between drawn things. This
+    // repo's own queue has a seventeen-day hole in June; stepping through it is the
+    // reader exploring, and the empty-window message already tells them what they
+    // are looking at. Only a step off the END of everything is refused, which is why
+    // the test is against the extent rather than against occupancy.
+    function stepLandsOffTheData(steppedWindow) {
+      if (!drawnExtent) {
+        return false;
+      }
+      return steppedWindow.windowStartMs > drawnExtent.latestMs ||
+        steppedWindow.windowEndMs < drawnExtent.earliestMs;
+    }
+
+    function steppedWindowFor(stepCount) {
+      return timelineSteppedWindow(
         timelineViewState.windowStartMs,
         timelineViewState.windowEndMs,
         stepCount,
@@ -2557,6 +2671,14 @@
         boundEndMs,
         nowMs
       );
+    }
+
+    // No second guard here. renderControlAvailability below already disables the
+    // arrow whose step would land off the data, and a disabled button fires no
+    // click — so a check repeated at this call site would be unreachable, and a
+    // guard no mutation can break is dead code rather than safety.
+    function applyPeriodStep(stepCount) {
+      var steppedWindow = steppedWindowFor(stepCount);
       timelineViewState.windowStartMs = steppedWindow.windowStartMs;
       timelineViewState.windowEndMs = steppedWindow.windowEndMs;
     }

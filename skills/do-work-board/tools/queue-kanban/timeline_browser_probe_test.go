@@ -1713,3 +1713,203 @@ window.addEventListener("load", function () {
 			"the window is %q and the field has to name it", fieldResult.AfterAbandon.Readout)
 	}
 }
+
+// Where the Now and Fit all buttons LAND, and what the toolbar says about itself
+// once they have.
+//
+// Now sized its window from the span between the now-line and the forecast's
+// queue-empty instant, floored on half the ZOOM FLOOR. On a queue that is nearly
+// drained that span is minutes, so Now landed on a one-hour window — exactly the
+// floor — and the obvious next move was dead: the + button, ctrl+wheel and the +
+// key were all silent no-ops with no disabled state and no message. Fit all had
+// the mirror problem: it assigned the payload's whole range, so filtered to one
+// domain it left most of the plot blank.
+//
+// Driven in a real engine because three of the four properties are about the
+// toolbar's own rendered state, and the fourth (Fit all under a filter) needs the
+// shared filter machinery this view reads but does not own.
+func TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function settleUntil(predicate, thenDo) {
+  var attemptsLeft = 60;
+  (function attempt() {
+    if (predicate() || attemptsLeft-- <= 0) { setTimeout(thenDo, 50); return; }
+    setTimeout(attempt, 50);
+  })();
+}
+// The window, in milliseconds, read back off the readout the reader sees rather
+// than out of any internal state.
+function windowSpanMs() {
+  var text = document.getElementById("timeline-range-readout").textContent || "";
+  var match = text.match(/^(\S+ \S+) UTC → (\S+ \S+) UTC$/);
+  if (!match) { return null; }
+  return Date.parse(match[2].replace(" ", "T") + "Z") - Date.parse(match[1].replace(" ", "T") + "Z");
+}
+function toolbarState(label) {
+  var disabled = {};
+  ["timeline-zoom-in", "timeline-zoom-out", "timeline-zoom-fit",
+   "timeline-period-prev", "timeline-period-next"].forEach(function (buttonId) {
+    disabled[buttonId] = !!document.getElementById(buttonId).disabled;
+  });
+  var rowsHost = document.querySelector("#view-timeline .timeline-scroll");
+  return {
+    label: label,
+    href: location.href,
+    readout: document.getElementById("timeline-range-readout").textContent,
+    spanMs: windowSpanMs(),
+    nowRuleDrawn: !!rowsHost.querySelector(".timeline-now-rule"),
+    drawnSegments: rowsHost.querySelectorAll("rect.timeline-segment").length,
+    disabled: disabled
+  };
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      probe.fitted = toolbarState("fitted");
+      document.getElementById("timeline-zoom-now").click();
+      probe.afterNow = toolbarState("afterNow");
+      document.getElementById("timeline-zoom-in").click();
+      probe.afterNowThenZoomIn = toolbarState("afterNowThenZoomIn");
+      // The current week, then one step forward — which used to land in the
+      // cosmetic bound padding with nothing drawn in it.
+      document.querySelector('[data-timeline-period="week"]').click();
+      probe.currentWeek = toolbarState("currentWeek");
+      document.getElementById("timeline-period-next").click();
+      probe.afterStepPastTheData = toolbarState("afterStepPastTheData");
+      // Fit all with a filter on. The search box is the shared filter every view
+      // reads, so this needs no timeline-specific plumbing.
+      var search = document.getElementById("filter-search");
+      search.value = "REQ-164";
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+      settleUntil(function () {
+        var summary = document.getElementById("timeline-summary").textContent || "";
+        return summary.indexOf("1 REQ in the window") !== -1 ||
+          summary.indexOf("Nothing was drawn") !== -1 ||
+          summary.indexOf("No REQ matches") !== -1;
+      }, function () {
+        document.getElementById("timeline-zoom-fit").click();
+        settleUntil(function () { return true; }, function () {
+          probe.filteredFit = toolbarState("filteredFit");
+          probe.filteredSummary = document.getElementById("timeline-summary").textContent;
+          document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+          document.title = "READY";
+        });
+      });
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the probe script before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline now and fit all", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+
+	type toolbarState struct {
+		Label         string          `json:"label"`
+		Href          string          `json:"href"`
+		Readout       string          `json:"readout"`
+		SpanMs        *float64        `json:"spanMs"`
+		NowRuleDrawn  bool            `json:"nowRuleDrawn"`
+		DrawnSegments int             `json:"drawnSegments"`
+		Disabled      map[string]bool `json:"disabled"`
+	}
+	var landingResult struct {
+		Fitted               toolbarState `json:"fitted"`
+		AfterNow             toolbarState `json:"afterNow"`
+		AfterNowThenZoomIn   toolbarState `json:"afterNowThenZoomIn"`
+		CurrentWeek          toolbarState `json:"currentWeek"`
+		AfterStepPastTheData toolbarState `json:"afterStepPastTheData"`
+		FilteredFit          toolbarState `json:"filteredFit"`
+		FilteredSummary      string       `json:"filteredSummary"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &landingResult); decodeError != nil {
+		t.Fatalf("decode timeline landing behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	states := []toolbarState{
+		landingResult.Fitted, landingResult.AfterNow, landingResult.AfterNowThenZoomIn,
+		landingResult.CurrentWeek, landingResult.AfterStepPastTheData, landingResult.FilteredFit,
+	}
+	for _, state := range states {
+		if !strings.HasSuffix(state.Href, "/probe.html") {
+			t.Fatalf("the %s state was measured on %q, not the probe page", state.Label, state.Href)
+		}
+		if state.SpanMs == nil {
+			t.Fatalf("the %s state's readout %q did not parse as a window", state.Label, state.Readout)
+		}
+	}
+
+	const oneHourMs = 3600000.0
+
+	// (1) Now lands on a window, not on the zoom floor, and the now-line is in it.
+	if *landingResult.AfterNow.SpanMs <= oneHourMs {
+		t.Errorf("Now landed on a %.2f-hour window (%s); the zoom floor is one hour, so at or "+
+			"below it the reader has nowhere to zoom and no context around the now-line",
+			*landingResult.AfterNow.SpanMs/oneHourMs, landingResult.AfterNow.Readout)
+	}
+	if !landingResult.AfterNow.NowRuleDrawn {
+		t.Errorf("Now landed on %s with no now-rule drawn in it", landingResult.AfterNow.Readout)
+	}
+
+	// (2) And zoom-in is alive there, in both the state it reports and what it does.
+	if landingResult.AfterNow.Disabled["timeline-zoom-in"] {
+		t.Errorf("zoom-in reports itself disabled in the window Now lands on (%s)",
+			landingResult.AfterNow.Readout)
+	}
+	if !(*landingResult.AfterNowThenZoomIn.SpanMs < *landingResult.AfterNow.SpanMs) {
+		t.Errorf("one zoom-in press after Now left the window at %.2f hours, from %.2f; the press "+
+			"has to narrow it", *landingResult.AfterNowThenZoomIn.SpanMs/oneHourMs,
+			*landingResult.AfterNow.SpanMs/oneHourMs)
+	}
+
+	// (3) A step past everything drawn does not happen, and says so first.
+	if !landingResult.CurrentWeek.Disabled["timeline-period-next"] {
+		t.Errorf("the step-forward arrow is enabled on the current week (%s), whose next period "+
+			"exists only inside the cosmetic bound padding", landingResult.CurrentWeek.Readout)
+	}
+	if landingResult.AfterStepPastTheData.Readout != landingResult.CurrentWeek.Readout {
+		t.Errorf("pressing the step-forward arrow moved the window from %s to %s, past everything "+
+			"drawn", landingResult.CurrentWeek.Readout, landingResult.AfterStepPastTheData.Readout)
+	}
+
+	// (4) Fit all fits WHAT IS ON SCREEN. The fitted window under a one-row filter
+	// must be a small fraction of the unfiltered one, and must still draw that row.
+	if landingResult.FilteredFit.DrawnSegments == 0 {
+		t.Fatalf("Fit all under the filter drew no segments (summary %q), so the span comparison "+
+			"below is measuring an empty chart", landingResult.FilteredSummary)
+	}
+	if *landingResult.FilteredFit.SpanMs >= *landingResult.Fitted.SpanMs/2 {
+		t.Errorf("Fit all under a one-row filter produced a %.1f-day window against the unfiltered "+
+			"%.1f days; it has to fit the rows on screen, not the payload's whole range",
+			*landingResult.FilteredFit.SpanMs/(24*oneHourMs),
+			*landingResult.Fitted.SpanMs/(24*oneHourMs))
+	}
+	// And zoom-out still reaches past the filtered extent, so fitting the filter did
+	// not trap the reader inside it.
+	if landingResult.FilteredFit.Disabled["timeline-zoom-out"] {
+		t.Error("zoom-out is disabled after Fit all under a filter; the clamp bounds must stay the " +
+			"payload's so the reader can look outside the filtered extent")
+	}
+
+	// (5) And at the full-range window the controls that cannot act say so. Without
+	// this the disabled-state assertions above could all pass against code that
+	// simply never disables anything.
+	if !landingResult.Fitted.Disabled["timeline-zoom-out"] {
+		t.Error("zoom-out is enabled at the full-range window, where there is nothing to zoom out to")
+	}
+}

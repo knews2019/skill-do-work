@@ -4509,7 +4509,8 @@ func rendererBracketDeclaration(t *testing.T, assetPath string, constantName str
 // whichever archived rows happened to be scrolled into view.
 func TestJavaScriptBehaviorTimelinePeriodStepsOnCalendarBoundariesAndJumpsToNow(t *testing.T) {
 	indexHtml := generateLiveSite(t)
-	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS", "TIMELINE_ROW_HEIGHT", "TIMELINE_NOW_JUMP_MARGIN_FRACTION") +
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS", "TIMELINE_ROW_HEIGHT",
+		"TIMELINE_NOW_JUMP_MARGIN_FRACTION", "TIMELINE_NOW_JUMP_MINIMUM_SPAN_MS") +
 		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_PERIOD_LEVEL_NAMES") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineZoomedWindow(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodStart(") + "\n" +
@@ -4587,6 +4588,14 @@ var rowsAfterJump = [
 ];
 var scrollTopIfDecidedBeforeRefresh = timelineFirstOpenRowIndex(rows) * TIMELINE_ROW_HEIGHT;
 var nowWindow = timelineNowJump(nowMs, queueEndMs, boundStart, boundEnd);
+// THE DEGENERATE CASE, which is the ordinary one on a queue that is nearly
+// drained: the forecast's queue-empty instant is minutes from the now-line, or
+// there is no forecast at all, so the span the margin is a fraction OF is
+// effectively zero and only the floor decides the window. Flooring on half the
+// zoom floor put Now on a one-hour window — the floor itself — and the obvious
+// next move was dead.
+var nowWindowWithNothingScheduled = timelineNowJump(nowMs, nowMs, boundStart, boundEnd);
+var nowWindowWithNoForecast = timelineNowJump(nowMs, NaN, boundStart, boundEnd);
 var nowJump = { window: nowWindow };
 var openRowIndex = timelineFirstOpenRowIndex(rowsAfterJump);
 if (openRowIndex >= 0) {
@@ -4635,6 +4644,15 @@ process.stdout.write(JSON.stringify({
   zoomedLevel: timelinePeriodLevelOfWindow(freelyZoomed.windowStartMs, freelyZoomed.windowEndMs),
 
   nowWindowIso: new Date(nowJump.window.windowStartMs).toISOString() + " → " + new Date(nowJump.window.windowEndMs).toISOString(),
+  nothingScheduledSpanMs:
+    nowWindowWithNothingScheduled.windowEndMs - nowWindowWithNothingScheduled.windowStartMs,
+  nothingScheduledHoldsNow:
+    nowMs >= nowWindowWithNothingScheduled.windowStartMs &&
+    nowMs <= nowWindowWithNothingScheduled.windowEndMs,
+  noForecastSpanMs: nowWindowWithNoForecast.windowEndMs - nowWindowWithNoForecast.windowStartMs,
+  noForecastHoldsNow:
+    nowMs >= nowWindowWithNoForecast.windowStartMs && nowMs <= nowWindowWithNoForecast.windowEndMs,
+  minSpanMs: TIMELINE_MIN_SPAN_MS,
   nowInsideWindow: nowMs >= nowJump.window.windowStartMs && nowMs <= nowJump.window.windowEndMs,
   queueEndInsideWindow: queueEndMs >= nowJump.window.windowStartMs && queueEndMs <= nowJump.window.windowEndMs,
   scrollTop: scrollHostStub.scrollTop,
@@ -4681,6 +4699,11 @@ process.stdout.write(JSON.stringify({
 		ZoomedLevel     *string `json:"zoomedLevel"`
 
 		NowWindowIso                    string  `json:"nowWindowIso"`
+		NothingScheduledSpanMs          float64 `json:"nothingScheduledSpanMs"`
+		NothingScheduledHoldsNow        bool    `json:"nothingScheduledHoldsNow"`
+		NoForecastSpanMs                float64 `json:"noForecastSpanMs"`
+		NoForecastHoldsNow              bool    `json:"noForecastHoldsNow"`
+		MinSpanMs                       float64 `json:"minSpanMs"`
 		NowInsideWindow                 bool    `json:"nowInsideWindow"`
 		QueueEndInsideWindow            bool    `json:"queueEndInsideWindow"`
 		ScrollTop                       float64 `json:"scrollTop"`
@@ -4772,6 +4795,27 @@ process.stdout.write(JSON.stringify({
 	// Now is two movements. The window has to carry both the now-line and the
 	// forecast, and the ROW list has to land on the still-open work — the half
 	// that recentring the time window never did.
+	// Now on a drained queue: a window, not the zoom floor. This is the state the
+	// button lands in whenever the forecast has nothing left to schedule, which on a
+	// healthy queue is most of the time.
+	for _, degenerate := range []struct {
+		name     string
+		spanMs   float64
+		holdsNow bool
+	}{
+		{"the queue-empty instant equal to now", periodResult.NothingScheduledSpanMs, periodResult.NothingScheduledHoldsNow},
+		{"no forecast at all", periodResult.NoForecastSpanMs, periodResult.NoForecastHoldsNow},
+	} {
+		if degenerate.spanMs <= periodResult.MinSpanMs {
+			t.Errorf("with %s, Now lands on a %.0f ms window against a %.0f ms zoom floor; at or "+
+				"below the floor there is nowhere left to zoom and no context around the now-line",
+				degenerate.name, degenerate.spanMs, periodResult.MinSpanMs)
+		}
+		if !degenerate.holdsNow {
+			t.Errorf("with %s, the window Now lands on does not contain the now-line", degenerate.name)
+		}
+	}
+
 	if !periodResult.NowInsideWindow || !periodResult.QueueEndInsideWindow {
 		t.Fatalf("the Now window %s does not cover both the now-line and the projected queue end", periodResult.NowWindowIso)
 	}

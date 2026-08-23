@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.26 — Now and Fit All Land Somewhere You Can Read (2026-08-23)
+
+Pressing Now on a queue with nothing left to schedule dropped you onto a one-hour window — the tightest zoom
+there is — where the zoom-in button, ctrl-scroll and the plus key all silently did nothing. And Fit all fitted
+the whole archive even when a filter had left one REQ on screen.
+
+- Now lands on at least half a day, so there is work either side of the now-line and somewhere left to zoom
+- Fit all fits the rows actually on screen; you can still zoom back out past them
+- The step arrows no longer walk into the blank margin past the last REQ
+- Every zoom and step control now shows itself disabled when it cannot move the window, instead of doing nothing without saying so
+
 ## 0.236.25 — Timeline Fallback Window Covers the Whole Queue (2026-08-23)
 
 If the Timeline ever cannot read its own date range, its backup window used to collapse to one hour around
