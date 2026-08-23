@@ -267,7 +267,7 @@
            window: the wait from capture to claim, then the work from claim to
            completion. Rows are virtualized, so only the scrolled window carries
            SVG nodes. -->
-      <section id="view-timeline" class="view-panel" aria-label="Timeline. With the chart focused, arrow keys pan the time axis and the plus and minus keys zoom it. The toolbar steps the window one calendar day, week or month at a time." hidden>
+      <section id="view-timeline" class="view-panel" aria-label="Timeline. With the chart focused, arrow keys pan the time axis and the plus and minus keys zoom it. The toolbar steps the window one calendar day, week or month at a time, and the From and to date fields set it directly." hidden>
         <div class="timeline-intro">
           <h2 class="timeline-heading">How long each REQ waited, and how long it took</h2>
           <p class="timeline-subhead" id="timeline-summary"></p>
@@ -299,11 +299,15 @@
           <div class="control-group timeline-range" role="group" aria-label="Timeline window">
             <label class="control-label" for="timeline-range-start">From</label>
             <input type="date" class="filter-search timeline-range-field" id="timeline-range-start"
-                   aria-label="Window start date, UTC" />
+                   aria-label="Window start date, UTC — the first day included" />
             <label class="control-label" for="timeline-range-end">to</label>
             <input type="date" class="filter-search timeline-range-field" id="timeline-range-end"
-                   aria-label="Window end date, UTC" />
-            <span class="timeline-range-readout" id="timeline-range-readout" role="status" aria-live="polite"></span>
+                   aria-label="Window end date, UTC — the last day included" />
+            <!-- No aria-live: renderAll runs once per frame during a drag, so this text
+                 changes continuously and would flood a screen reader. The fields carry
+                 their own labels, and #timeline-summary announces the window on a
+                 settled change. -->
+            <span class="timeline-range-readout" id="timeline-range-readout"></span>
           </div>
           <div class="control-group" role="group" aria-label="Timeline zoom">
             <button type="button" class="control-button" id="timeline-zoom-out" title="Zoom out">−</button>
@@ -320,7 +324,7 @@
         </div>
         <p class="timeline-forecast" id="timeline-forecast"></p>
         <div class="timeline-excluded" id="timeline-excluded"></div>
-        <p class="timeline-hint">Rows run newest first, and only the REQs the visible window covers are listed; scroll down to go further back inside it. Hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Pick Day, Week or Month and use ‹ and › to step one calendar period at a time; Now jumps to the now-line, the forecast, and the first REQ still open. Click a row for its full detail. From the keyboard: Tab to the chart, then ← and → to pan and + and − to zoom.</p>
+        <p class="timeline-hint">Rows run newest first, and only the REQs the visible window covers are listed; scroll down to go further back inside it. Type dates in From and to for a window you can name, or hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Pick Day, Week or Month and use ‹ and › to step one calendar period at a time; Now jumps to the now-line, the forecast, and the first REQ still open. Click a row for its full detail. From the keyboard: Tab to the chart, then ← and → to pan and + and − to zoom.</p>
         <p class="timeline-readout" id="timeline-readout" role="status" aria-live="polite"></p>
         <details class="timeline-table">
           <summary>The REQs in this window, as a table</summary>

@@ -1,10 +1,12 @@
 ---
 id: REQ-320
 title: "Show and set the timeline window's start and end"
-status: claimed
+status: completed
 created_at: 2026-08-22T22:08:34Z
 claimed_at: 2026-08-23T00:44:25Z
 route: B
+completed_at: 2026-08-23T01:15:16Z
+commit:
 user_request: UR-065
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -286,3 +288,135 @@ wrapped group pushes the chart down rather than overlapping it.
   cases including the two the render found.
 
 **Existing tests updated (cross-REQ impact):** none.
+
+## Review
+
+**Acceptance: Partial — Overall 69% — Approve with follow-ups.** Independent review agent,
+orchestrated mode, driving a live 316-REQ board in headless Chromium.
+
+| Dimension | Score | Notes |
+|-----------|-------|-------|
+| Requirements | 83% | 4 of 6 delivered; "the fields show the current window" partial, the Day-chip converse unreachable |
+| Code Quality | 78% | Correctly routed through the shared settle; the render/parse asymmetry and the unguarded focus skip were real defects |
+| Test Adequacy | 65% | Honest RED and 13 cases, but no round-trip assertion and no coverage of the two functions holding the defects |
+| Scope | 90% | Exactly the four declared files; the assigned hint-paragraph fix was skipped |
+| Risk | Low | A stale field could silently undo a reader's zoom |
+| Acceptance | Partial | Core works end to end; four reachable defects in the two-way binding |
+
+**What it verified rather than accepted:** re-ran the canonical gate itself (exit 0, both
+strict lanes executing, named with their durations); measured the toolbar at six widths —
+field/field, field/readout and group/group intersections all false, no horizontal overflow,
+toolbar bottom meeting chart top exactly at every one — and found the layout holds wider than
+this REQ claimed; exercised both bounds, the exact bound dates, a sub-floor pair, and a rolled
+`2026-02-31`.
+
+**One root cause behind five findings: render and parse were not inverses.** The end field
+rendered the calendar date of an EXCLUSIVE end instant while parsing as an INCLUSIVE day, so
+the two were not inverses for any window ending at a midnight — which is every window a period
+chip produces.
+
+## Review Remediation (pre-archive)
+
+All five Important findings fixed here rather than queued as the recommended sweep: they are
+one root cause, the fix is one contract, and the sweep's own Done condition ("one stated
+inverse relationship between window and fields") is what this now is.
+
+- **The contract, stated once:** the fields name the first and last day INCLUDED; the window's
+  end instant is EXCLUSIVE. So `timelineEndEpochToDateField` renders the date of `end − 1 ms`,
+  and a typed end resolves to the FOLLOWING midnight. `timelineEpochToDateField` split into
+  `timelineStartEpochToDateField` and `timelineEndEpochToDateField`, because one name for two
+  non-interchangeable conversions is what let the asymmetry be written in the first place (the
+  review's M3, fixed with the rest).
+- **F1 — editing one field moved the other endpoint.** Two causes, both closed: the render/parse
+  asymmetry above, and `applyTypedRange` re-reading BOTH fields on every commit. It now applies
+  only the field that changed and leaves the other endpoint at its exact instant.
+  **Re-measured:** Month chip → fields `2026-07-01 .. 2026-07-31`; nudging only the start to
+  07-05 leaves the end at `2026-08-01 00:00` and the row count at 35. The review measured the
+  end moving to `08-01 23:59` and the count going 52 → 53.
+- **F4 — a typed pair could never light a period chip.** Falls out of the same contract.
+  **Re-measured:** typing `2026-07-04` in both fields gives `2026-07-04 00:00 → 2026-07-05
+  00:00` and the level reads **one day**.
+- **F2 — a focused field went stale and then applied itself.** Skipping every focused field was
+  the wrong rule. A field is now written back whenever it still holds the value this code last
+  put there, focused or not; only a value the reader has actually edited is left alone.
+  **Re-measured:** four zoom steps with the end field focused leave it reading `2026-07-18`
+  against a window ending `2026-07-18 04:23`. The review measured it stranded seven days past
+  the edge, ready to undo the zoom.
+- **F3 — clearing a field moved the window and left the field blank.** With per-field
+  application a cleared field yields no typed value at all, so the window stands, and the
+  restore now runs unconditionally rather than skipping the focused field that was just
+  emptied. **Re-measured:** window unchanged, field restored.
+- **F5 — the hint enumerated every way to move the window except the one this REQ added**, and
+  the section `aria-label` still described the toolbar as only stepping periods. Both now name
+  the date fields.
+- **F6 — the probe never tested the round trip.** Added: each of day, week and month is
+  rendered into the two fields, parsed straight back, and asserted identical — plus asserted to
+  read as the same level. **Mutation-verified:** restoring the old end renderer fails all three
+  with the day-off field pairs the review measured (`2026-07-01..2026-08-01` for a month).
+  Three existing assertions encoded the old inclusive-end semantics and were rewritten to the
+  new contract; that is a deliberate behaviour change, named here so it is not mistaken for a
+  test bent to fit code.
+- **M2 — a third live region, and the only one firing continuously.** `aria-live` removed from
+  the readout: `renderAll` runs once per frame during a drag, and the fields carry their own
+  labels.
+
+**Considered and not changed:**
+
+- **M1 — the readout duplicates the subhead.** True: REQ-319 put the window's instants into the
+  subhead, which made this REQ's own Why ("the window's own dates appear nowhere") stale before
+  it was built. Kept anyway — the readout sits beside the fields it confirms, which is where
+  the eye is while typing, and the subhead is a sentence about rows 78px away. One short
+  duplicated string is a fair price for the control having its own confirmation. Both field
+  `aria-label`s now say "the first/last day included", which is what removes the apparent
+  day-off between a field reading `07-31` and a readout ending `2026-08-01 00:00`.
+- **M4 — the reversed-pair clamp rewrites the end field silently.** D-02 stands; the readout
+  says what the window became.
+- **N1 — the recorded browser build.** Noted: this session records "Chromium 1194 (Playwright
+  build)" while the same binary's UA reports `HeadlessChrome/141.0.0.0`, and the prime's earlier
+  entries record Chromium versions. Recorded both here; making the prime's convention consistent
+  is not this REQ's to do.
+
+**Not done, carried:** the review's suggestions for real keystroke entry into date segments, a
+non-Chromium engine, and a screen-reader pass on the drag path. All three are outside what this
+environment can do, and none is a lock-in test this REQ could have written.
+
+## Lessons Learned
+
+**What worked:** Routing the new control through the settle every other mover uses, so it has
+no floor, ceiling or clamp of its own — the review confirmed that at both bounds and far
+outside them without finding a window the other controls cannot reach. And rendering the
+board before believing the code: the first render produced D-01, and the review's render
+produced the rest. Two of the three defect classes in this REQ were found by looking.
+
+**What didn't:**
+
+- **One function name for two conversions that are not inverses.** `timelineEpochToDateField`
+  read as a general converter and was correct only on a window start; using it on an exclusive
+  end put every period window a day out. The name is what hid it — a start and an end are
+  different types wearing the same one. Two names, and the asymmetry becomes visible at the
+  call site.
+- **Re-reading both fields on every commit.** Editing one field then re-applying the other's
+  day-truncated value is how a control silently moves something the reader did not touch.
+  Apply the field that changed; leave the other endpoint at its exact instant.
+- **"Skip the focused field" as the mid-edit rule.** Focus is not editing. A reader who clicks
+  into a field and then zooms leaves it stale, and committing it later undoes their zoom.
+  Compare against the value the code last wrote instead.
+- **Thirteen unit cases and none of them a round trip.** Every case built a window from typed
+  text; none rendered a window into the fields and parsed it back. That single assertion kills
+  two of the four defects on its own, and it is the assertion the shape of the feature was
+  asking for.
+
+**Worth knowing:** the window is a half-open interval and the date fields are inclusive days.
+Anything that converts between them belongs in the pair
+`timelineStartEpochToDateField` / `timelineEndEpochToDateField`, and the round-trip case in
+`TestJavaScriptBehaviorTimelineTypedDatesMoveTheWindow` is what keeps them inverses. The
+period chips depend on that exactness: `timelinePeriodLevelOfWindow` compares instants for
+equality, so a window 1 ms off a calendar period reads as `custom span`.
+
+## Orientation
+
+The Timeline's window is now something a reader can name rather than only approach: two UTC
+date fields set it, and a readout states the exact instants it is drawn between. Same view,
+same payload; a fourth control group beside the period and zoom groups. Leaf change in the
+board's frontend — no new module, no payload field — so no `[MAP CHANGED]`.
+`_dev/primes/prime-kanban-board.md` spot-checked: every path it references still exists.

@@ -24,6 +24,7 @@
 
 ## Lessons
 
+- [REQ-320: one function name for two conversions that are not inverses is how an off-by-a-day hides — a window's end is exclusive and a date field's end is inclusive, so name them apart and pin the round trip; and "skip the focused field" is not the mid-edit rule, because focus is not editing](../../do-work/archive/REQ-320-show-and-set-the-timeline-windows-start-and-end.md#lessons-learned)
 - [REQ-319: a hull is not a bar — modelling a row's presence as one min/max extent listed pending REQs in the gap between their open wait and their forecast bar; and writing scrollTop before growing the SVG extent clamps it silently to the old maximum](../../do-work/archive/REQ-319-list-only-the-reqs-the-selected-window-covers.md#lessons-learned)
 - [REQ-318: a reversed assertion needs its fixture reversed too — flipping wantOrder alone let the sort's own stability answer the tied case, so the test kept its name and lost its property; and when a change inverts a stated property, grep the property rather than the file](../../do-work/archive/REQ-318-put-the-newest-req-at-the-top-of-the-timeline.md#lessons-learned)
 - [REQ-289: when renaming an enum, grep the VALUE across the whole module, not the constant name — the tests held the bare literal too, so the rename would have compiled, passed, and silently mis-bucketed every REQ](../../do-work/archive/UR-060/REQ-289-separate-impact-from-effort-with-unique-tokens.md#lessons-learned)

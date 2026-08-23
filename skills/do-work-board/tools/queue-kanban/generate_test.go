@@ -2835,9 +2835,14 @@ process.stdout.write(JSON.stringify({
 func TestJavaScriptBehaviorTimelineTypedDatesMoveTheWindow(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS") +
+		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_PERIOD_LEVEL_NAMES") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineZoomedWindow(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineDateFieldToEpoch(") + "\n" +
-		sliceBalancedBlockAfter(t, indexHtml, "function timelineEpochToDateField(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineStartEpochToDateField(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineEndEpochToDateField(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodStart(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineSteppedPeriodStart(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodLevelOfWindow(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineTypedWindow(") + `
 var boundStart = Date.UTC(2026, 3, 7);
 var boundEnd = Date.UTC(2026, 8, 2);
@@ -2859,7 +2864,7 @@ var beforeRange = typed("2020-01-01", "2020-01-31");
 // implied span overruns the ceiling, and a span-preserving settle would pin the
 // end to the bound and drag this start backwards to keep the width.
 var startAgainstCeiling = timelineTypedWindow(
-  "2026-08-01", timelineEpochToDateField(boundEnd), windowStart, windowEnd, boundStart, boundEnd);
+  "2026-08-01", timelineEndEpochToDateField(boundEnd), windowStart, windowEnd, boundStart, boundEnd);
 var neither = typed("", "");
 var rubbish = typed("not-a-date", "2026-13-45");
 var rolled = timelineDateFieldToEpoch("2026-02-31");
@@ -2877,10 +2882,30 @@ process.stdout.write(JSON.stringify({
   beforeRangeClampedToBound: beforeRange.windowStartMs >= boundStart,
   beforeRangeStartIso: iso(beforeRange.windowStartMs),
   startAgainstCeilingIso: iso(startAgainstCeiling.windowStartMs),
+  // THE ROUND TRIP. Render a real calendar window into the two fields, parse them
+  // straight back, and the same window has to come out — otherwise editing one
+  // field re-applies a mangled version of the other, and no typed pair can ever
+  // equal what a period chip produces.
+  periodRoundTrips: (function () {
+    return ["day", "week", "month"].map(function (levelName) {
+      var periodStartMs = timelinePeriodStart(Date.UTC(2026, 6, 15, 9, 30), levelName);
+      var periodEndMs = timelineSteppedPeriodStart(periodStartMs, levelName, 1);
+      var reparsed = timelineTypedWindow(
+        timelineStartEpochToDateField(periodStartMs),
+        timelineEndEpochToDateField(periodEndMs),
+        0, 0, boundStart, boundEnd);
+      return {
+        level: levelName,
+        fields: timelineStartEpochToDateField(periodStartMs) + ".." + timelineEndEpochToDateField(periodEndMs),
+        exact: reparsed.windowStartMs === periodStartMs && reparsed.windowEndMs === periodEndMs,
+        reparsedLevel: timelinePeriodLevelOfWindow(reparsed.windowStartMs, reparsed.windowEndMs)
+      };
+    });
+  })(),
   neitherIsNull: neither === null,
   rubbishIsNull: rubbish === null,
   rolledIsNaN: isNaN(rolled),
-  roundTrip: timelineEpochToDateField(Date.UTC(2026, 5, 9, 13, 45))
+  roundTrip: timelineStartEpochToDateField(Date.UTC(2026, 5, 9, 13, 45))
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "timeline typed dates", javascriptProbe)
@@ -2897,10 +2922,16 @@ process.stdout.write(JSON.stringify({
 		BeforeRangeClampedToBound bool    `json:"beforeRangeClampedToBound"`
 		BeforeRangeStartIso       string  `json:"beforeRangeStartIso"`
 		StartAgainstCeilingIso    string  `json:"startAgainstCeilingIso"`
-		NeitherIsNull             bool    `json:"neitherIsNull"`
-		RubbishIsNull             bool    `json:"rubbishIsNull"`
-		RolledIsNaN               bool    `json:"rolledIsNaN"`
-		RoundTrip                 string  `json:"roundTrip"`
+		PeriodRoundTrips          []struct {
+			Level         string `json:"level"`
+			Fields        string `json:"fields"`
+			Exact         bool   `json:"exact"`
+			ReparsedLevel string `json:"reparsedLevel"`
+		} `json:"periodRoundTrips"`
+		NeitherIsNull bool   `json:"neitherIsNull"`
+		RubbishIsNull bool   `json:"rubbishIsNull"`
+		RolledIsNaN   bool   `json:"rolledIsNaN"`
+		RoundTrip     string `json:"roundTrip"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &typedResult); decodeError != nil {
 		t.Fatalf("decode timeline typed dates behavior: %v (output %q)", decodeError, probeOutput)
@@ -2909,25 +2940,29 @@ process.stdout.write(JSON.stringify({
 	if typedResult.BothStartIso != "2026-06-01T00:00:00.000Z" {
 		t.Fatalf("typed start = %s, want the UTC midnight opening that day", typedResult.BothStartIso)
 	}
-	// The end field names a day to INCLUDE, so it resolves to that day's last
-	// instant. Ending at the following midnight would pull in the first instant
-	// of a day the reader did not type.
-	if typedResult.BothEndIso != "2026-06-15T23:59:59.999Z" {
-		t.Fatalf("typed end = %s, want the last instant of the day typed", typedResult.BothEndIso)
+	// The end field names a day to INCLUDE and the window's end is EXCLUSIVE, so
+	// the day typed resolves to the FOLLOWING midnight. That is not cosmetic: it
+	// is what makes a typed pair produce byte-identical windows to the period
+	// chips, which is what the round-trip block below turns into a hard rule.
+	// (This assertion previously wanted 23:59:59.999 — the inclusive end that
+	// made render and parse non-inverses. Changed deliberately, not bent to fit.)
+	if typedResult.BothEndIso != "2026-06-16T00:00:00.000Z" {
+		t.Fatalf("typed end = %s, want the midnight following the day typed", typedResult.BothEndIso)
 	}
 	if !typedResult.StartOnlyKeptEnd || typedResult.StartOnlyStartIso != "2026-06-03T00:00:00.000Z" {
 		t.Fatalf("typing only a start moved the end too (start %s, kept end %v); each field must "+
 			"resolve against the window already on screen",
 			typedResult.StartOnlyStartIso, typedResult.StartOnlyKeptEnd)
 	}
-	if !typedResult.EndOnlyKeptStart || typedResult.EndOnlyEndIso != "2026-06-20T23:59:59.999Z" {
+	if !typedResult.EndOnlyKeptStart || typedResult.EndOnlyEndIso != "2026-06-21T00:00:00.000Z" {
 		t.Fatalf("typing only an end moved the start too (end %s, kept start %v)",
 			typedResult.EndOnlyEndIso, typedResult.EndOnlyKeptStart)
 	}
 	// One date in both fields is the commonest thing a reader will do with a date
 	// picker, and it must mean that day rather than an empty window.
-	if typedResult.SameDaySpanMs != 86400000-1 {
-		t.Fatalf("the same date in both fields spanned %.0f ms, want one whole day",
+	if typedResult.SameDaySpanMs != 86400000 {
+		t.Fatalf("the same date in both fields spanned %.0f ms, want exactly one day — the same "+
+			"window the Day chip produces, so the chip can light for it",
 			typedResult.SameDaySpanMs)
 	}
 	if !typedResult.ReversedOrdered || typedResult.ReversedStartIso != "2026-07-10T00:00:00.000Z" {
@@ -2949,6 +2984,27 @@ process.stdout.write(JSON.stringify({
 		t.Fatalf("a start typed against the range ceiling came back as %s, want the date typed; "+
 			"the settle preserves a span and would drag the start back to keep the width",
 			typedResult.StartAgainstCeilingIso)
+	}
+	// One assertion covering the whole class: the fields must be a lossless view
+	// of a calendar window, and a typed pair must be able to name the same window
+	// a chip does. Rendering an exclusive end instant's own date failed both —
+	// every period window came back a day long, and no typed pair could ever
+	// light a chip.
+	if len(typedResult.PeriodRoundTrips) != 3 {
+		t.Fatalf("want a round trip for each of day, week and month; got %d",
+			len(typedResult.PeriodRoundTrips))
+	}
+	for _, roundTrip := range typedResult.PeriodRoundTrips {
+		if !roundTrip.Exact {
+			t.Errorf("a %s window rendered to fields %s and did not parse back to itself; "+
+				"render and parse must be inverses or editing one field mangles the other",
+				roundTrip.Level, roundTrip.Fields)
+		}
+		if roundTrip.ReparsedLevel != roundTrip.Level {
+			t.Errorf("a %s window typed back as fields %s reads as level %q; a typed pair must be "+
+				"able to name the same window a period chip produces",
+				roundTrip.Level, roundTrip.Fields, roundTrip.ReparsedLevel)
+		}
 	}
 	if !typedResult.NeitherIsNull {
 		t.Fatal("two empty fields must return null — a cleared field is not a request to move")

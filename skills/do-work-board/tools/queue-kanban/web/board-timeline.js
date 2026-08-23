@@ -288,14 +288,29 @@
     return epochMs;
   }
 
-  // The epoch instant a window endpoint should take, as the date field shows it.
-  // The end field names a day the reader wants INCLUDED, so it resolves to that
-  // day's end rather than its midnight.
-  function timelineEpochToDateField(epochMs) {
+  // A window START, as its date field shows it.
+  function timelineStartEpochToDateField(epochMs) {
     if (isNaN(epochMs)) {
       return "";
     }
     return new Date(epochMs).toISOString().slice(0, 10);
+  }
+
+  // A window END, as its date field shows it — and the exact inverse of the
+  // parse above, which is the whole reason it is a separate function.
+  //
+  // The field names the last day the reader wants INCLUDED, while the window's
+  // end instant is EXCLUSIVE: a July window ends at 1 August 00:00 and the field
+  // must read 31 July. Rendering the end instant's own date instead put every
+  // period window a day out — press Month, nudge only the start field, and the
+  // end silently moved from 1 August to 2 August, pulling in a REQ the reader
+  // never touched and dropping the lit Month chip. Stepping back 1 ms lands
+  // inside the last included day whatever the window's shape.
+  function timelineEndEpochToDateField(epochMs) {
+    if (isNaN(epochMs)) {
+      return "";
+    }
+    return new Date(epochMs - 1).toISOString().slice(0, 10);
   }
 
   // One or both fields typed, resolved against the window already on screen so a
@@ -314,12 +329,14 @@
       return null;
     }
     var nextStartMs = isNaN(typedStartMs) ? windowStartMs : typedStartMs;
-    // TIMELINE_DAY_MS − 1 rather than the next midnight: the end field names a
-    // day to include, and ending at the following midnight would pull in the
-    // first instant of a day the reader did not name.
-    var nextEndMs = isNaN(typedEndDayMs) ? windowEndMs : typedEndDayMs + TIMELINE_DAY_MS - 1;
-    if (nextEndMs < nextStartMs) {
-      nextEndMs = nextStartMs + TIMELINE_DAY_MS - 1;
+    // The FOLLOWING midnight, because the window's end is exclusive: a field
+    // reading 31 July means a window ending at 1 August 00:00, which is exactly
+    // what the Month chip produces. That equality is what makes the fields and
+    // the period controls describe the same windows rather than windows 1 ms
+    // apart — and it is what lets a typed pair light a chip at all.
+    var nextEndMs = isNaN(typedEndDayMs) ? windowEndMs : typedEndDayMs + TIMELINE_DAY_MS;
+    if (nextEndMs <= nextStartMs) {
+      nextEndMs = nextStartMs + TIMELINE_DAY_MS;
     }
     // CLAMP EACH ENDPOINT before settling, because timelineZoomedWindow preserves
     // the span and slides. That is right for a zoom — the reader asked for a
@@ -1158,6 +1175,26 @@
     var rangeEndField = document.getElementById("timeline-range-end");
     var rangeReadoutNode = document.getElementById("timeline-range-readout");
 
+    // A field is written back whenever it still holds the value this code last
+    // put there — including while it has focus. Skipping every focused field was
+    // the obvious rule and the wrong one: a reader who clicks into a field and
+    // then zooms the chart leaves that field showing a window the chart is no
+    // longer drawn at, and committing it later silently undoes the zoom.
+    // Comparing against what we last wrote distinguishes "focused" from "being
+    // edited", and only the second is a reason to keep hands off.
+    function syncRangeField(field, text) {
+      if (!field) {
+        return;
+      }
+      var readerHasEdited =
+        document.activeElement === field && field.value !== field.getAttribute("data-synced-value");
+      if (readerHasEdited) {
+        return;
+      }
+      field.value = text;
+      field.setAttribute("data-synced-value", text);
+    }
+
     function renderRangeControls() {
       if (rangeReadoutNode) {
         rangeReadoutNode.textContent =
@@ -1165,30 +1202,35 @@
           " → " +
           timelineFormatStamp(timelineViewState.windowEndMs);
       }
-      // Never while the reader is mid-edit: a date input fires `change` on a
-      // complete value, but overwriting the field they are typing into would
-      // fight them for the caret.
-      if (rangeStartField && document.activeElement !== rangeStartField) {
-        rangeStartField.value = timelineEpochToDateField(timelineViewState.windowStartMs);
-      }
-      if (rangeEndField && document.activeElement !== rangeEndField) {
-        rangeEndField.value = timelineEpochToDateField(timelineViewState.windowEndMs);
-      }
+      syncRangeField(rangeStartField, timelineStartEpochToDateField(timelineViewState.windowStartMs));
+      syncRangeField(rangeEndField, timelineEndEpochToDateField(timelineViewState.windowEndMs));
     }
 
-    function applyTypedRange() {
+    // Only the field that changed is applied; the other endpoint keeps its exact
+    // instant. Re-reading BOTH fields on every commit meant editing one of them
+    // also re-applied the other's day-truncated value, so nudging a start could
+    // move an end the reader never touched — by a whole day on a period window,
+    // and off any sub-day zoom entirely.
+    function applyTypedRange(changedField) {
+      var startText = changedField === rangeStartField && rangeStartField ? rangeStartField.value : "";
+      var endText = changedField === rangeEndField && rangeEndField ? rangeEndField.value : "";
       var typedWindow = timelineTypedWindow(
-        rangeStartField ? rangeStartField.value : "",
-        rangeEndField ? rangeEndField.value : "",
+        startText,
+        endText,
         timelineViewState.windowStartMs,
         timelineViewState.windowEndMs,
         boundStartMs,
         boundEndMs
       );
       if (!typedWindow) {
-        // Neither field parsed — a cleared field is not a request to move.
-        // Put the current window back so the fields never sit on a value the
-        // chart is not drawn at.
+        // Cleared or unparseable. A cleared field is not a request to move, so
+        // the window stands — but the field cannot be left blank, or it states a
+        // window that does not exist. Restore it unconditionally: the reader
+        // emptying it is exactly the case where "leave the focused field alone"
+        // would strand it.
+        if (changedField) {
+          changedField.removeAttribute("data-synced-value");
+        }
         renderRangeControls();
         return;
       }
@@ -1199,7 +1241,9 @@
 
     [rangeStartField, rangeEndField].forEach(function (field) {
       if (field) {
-        addTimelineListener(field, "change", applyTypedRange);
+        addTimelineListener(field, "change", function () {
+          applyTypedRange(field);
+        });
       }
     });
 
