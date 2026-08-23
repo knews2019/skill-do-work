@@ -1193,6 +1193,34 @@
     return node;
   }
 
+  // The extent of a row set, from every instant its rows carry. Used only by the
+  // bounds FALLBACK below, so it costs the common path nothing.
+  //
+  // Returns null when not one row carries a parseable instant, because the honest
+  // answer there is "there is nothing to place on a timeline" rather than a
+  // fabricated window.
+  function timelineRowSetExtent(rows) {
+    var earliestMs = Infinity;
+    var latestMs = -Infinity;
+    rows.forEach(function (row) {
+      [row.createdTime, row.claimedTime, row.completedTime].forEach(function (stamp) {
+        if (!stamp) {
+          return;
+        }
+        var instantMs = Date.parse(stamp);
+        if (isNaN(instantMs)) {
+          return;
+        }
+        earliestMs = Math.min(earliestMs, instantMs);
+        latestMs = Math.max(latestMs, instantMs);
+      });
+    });
+    if (!isFinite(earliestMs) || !isFinite(latestMs)) {
+      return null;
+    }
+    return { earliestMs: earliestMs, latestMs: latestMs };
+  }
+
   // The queue-end line and its assumptions, side by side. A forecast that states
   // a date without stating what it assumed is the artifact people screenshot and
   // quote; the assumptions are not a footnote here, they are the other half of
@@ -1419,8 +1447,25 @@
     var boundStartMs = Date.parse(timeline.rangeStart);
     var boundEndMs = Date.parse(timeline.rangeEnd);
     if (isNaN(boundStartMs) || isNaN(boundEndMs) || boundEndMs <= boundStartMs) {
-      boundStartMs = Date.parse(filterMatchedRows[0].createdTime);
-      boundEndMs = boundStartMs + TIMELINE_MIN_SPAN_MS;
+      // THE FALLBACK SPANS THE WHOLE MATCHED SET, not one row of it. It used to
+      // read filterMatchedRows[0].createdTime plus an hour — and rows are
+      // newest-first (REQ-318), so [0] is the NEWEST capture. The bounds collapsed
+      // to a one-hour window around it, and because bounds are what every control
+      // clamps against, no control could leave: on this repo's board that would
+      // have stranded 287 of 317 REQs permanently out of reach. A degraded
+      // fallback may be coarse; it may not be a dead end.
+      var matchedExtent = timelineRowSetExtent(filterMatchedRows);
+      if (!matchedExtent) {
+        // Nothing parseable anywhere. Say so rather than invent a window; this is
+        // the same message the no-readable-created_at path uses.
+        clearTimelineForecast();
+        retireTimelineControls();
+        summaryNode.textContent =
+          "No REQ carries a readable created_at yet, so there is nothing to place on a timeline.";
+        return;
+      }
+      boundStartMs = matchedExtent.earliestMs;
+      boundEndMs = Math.max(matchedExtent.latestMs, boundStartMs + TIMELINE_MIN_SPAN_MS);
     }
     var queueEndMs = Date.parse(projection.queueEnd);
     if (!isNaN(queueEndMs) && queueEndMs > boundEndMs) {

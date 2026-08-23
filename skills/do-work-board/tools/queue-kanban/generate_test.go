@@ -6180,6 +6180,144 @@ func TestJavaScriptBehaviorReversedWaitDrawsAsABreak(t *testing.T) {
 	}
 }
 
+// TestJavaScriptBehaviorTimelineFallbackBoundsSpanTheWholeMatchedSet pins the
+// render's bounds fallback, the branch the Go producer cannot currently reach.
+//
+// It read filterMatchedRows[0].createdTime plus one hour. Rows are newest-first
+// (REQ-318), so [0] is the NEWEST capture — the bounds collapsed to a one-hour
+// window around it, and bounds are what every control clamps against, so no
+// control could leave. On this repo's board that is 287 of 317 REQs permanently
+// out of reach.
+//
+// The branch is UNREACHABLE from the producer today (timelineRange always returns
+// real instants for a non-empty row set), which is exactly why it is worth a test:
+// a fallback nobody exercises is a fallback nobody notices rotting, and this one
+// rotted into the worst possible failure mode.
+func TestJavaScriptBehaviorTimelineFallbackBoundsSpanTheWholeMatchedSet(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
+	if readError != nil {
+		t.Fatalf("read web/board-timeline.js: %v", readError)
+	}
+
+	// rangeStart is deliberately unparseable, which is what takes the fallback. The
+	// rows span four hours, and they are in the newest-first order the producer
+	// emits, so a fallback anchored on [0] lands at the NEWEST end.
+	// REQ-933's WORK RUNS EIGHT HOURS PAST the newest created_at on purpose. An
+	// extent taken from created_at alone would end the window at 12:00 and clip that
+	// bar off the right edge while still listing the row, so the assertions below
+	// would pass; naming the window in the summary is what makes the difference
+	// visible.
+	brokenRangePayload := `{
+	  "now": "2026-08-18T21:00:00Z",
+	  "rangeStart": "not-a-timestamp",
+	  "rangeEnd": "2026-08-18T21:00:00Z",
+	  "rows": [
+	    {"id":"REQ-933","createdTime":"2026-08-18T12:00:00Z","claimedTime":"2026-08-18T12:10:00Z",
+	     "completedTime":"2026-08-18T20:00:00Z","waitMinutes":10,"workMinutes":470,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-932","createdTime":"2026-08-18T10:00:00Z","claimedTime":"2026-08-18T10:10:00Z",
+	     "completedTime":"2026-08-18T10:30:00Z","waitMinutes":10,"workMinutes":20,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-931","createdTime":"2026-08-18T08:00:00Z","claimedTime":"2026-08-18T08:10:00Z",
+	     "completedTime":"2026-08-18T08:30:00Z","waitMinutes":10,"workMinutes":20,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false}
+	  ]
+	}`
+
+	// And a payload where no row carries a readable instant at all: the fallback
+	// must decline rather than invent a window. Doubly unreachable from the producer
+	// — timelineRange always returns real instants, and buildTimelineAggregate drops
+	// a ticket whose created_at does not parse — but a payload-integrity failure has
+	// to end in a legible message rather than a window built from NaNs, which is the
+	// same posture timelineRowSegments takes for its own unreachable case.
+	unreadablePayload := `{
+	  "now": "2026-08-18T13:00:00Z",
+	  "rangeStart": "not-a-timestamp",
+	  "rangeEnd": "also-not-a-timestamp",
+	  "rows": [
+	    {"id":"REQ-941","createdTime":"not-a-timestamp","claimedTime":null,
+	     "completedTime":null,"waitMinutes":0,"workMinutes":0,
+	     "waitOpen":true,"workOpen":false,"hasWork":false,"anomaly":false}
+	  ]
+	}`
+
+	probeDriver := `
+function drawnRowIds() {
+  var ids = [];
+  (function walk(node) {
+    (node.children || []).forEach(function (childNode) {
+      var attributes = childNode.attributes || {};
+      if (childNode.stubName === "g" && attributes["data-detail-id"]) { ids.push(attributes["data-detail-id"]); return; }
+      walk(childNode);
+    });
+  })(timelineStubHosts["timeline-scroll"]);
+  return ids;
+}
+renderTimelineView();
+process.stdout.write(JSON.stringify({
+  rowIds: drawnRowIds(),
+  summary: timelineStubHosts["timeline-summary"].textContent
+}));
+`
+
+	renderWith := func(payload string) (drawnIds []string, summary string) {
+		t.Helper()
+		javascriptProbe := timelineRenderDomStubPreamble +
+			"var boardData = { timeline: " + payload + " };\n" +
+			string(rendererFragment) +
+			probeDriver
+		probeOutput := runJavaScriptBehaviorProbe(t, "timeline fallback bounds", javascriptProbe)
+		var result struct {
+			RowIds  []string `json:"rowIds"`
+			Summary string   `json:"summary"`
+		}
+		if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+			t.Fatalf("decode timeline fallback bounds behavior: %v (output %q)", decodeError, probeOutput)
+		}
+		return result.RowIds, result.Summary
+	}
+
+	drawnIds, summary := renderWith(brokenRangePayload)
+
+	// SETUP, ASSERTED: if the payload did not take the fallback branch, everything
+	// below passes for the wrong reason.
+	if !strings.Contains(summary, "3 REQs in the window") {
+		t.Fatalf("the fallback render summarised %q; want all three rows, which is what says the "+
+			"bounds cover the whole matched set rather than one hour around the newest row", summary)
+	}
+	if len(drawnIds) != 3 {
+		t.Fatalf("the fallback render drew %v, want all three rows — the old fallback bounded the "+
+			"view to one hour around REQ-933, the newest, leaving the other two unreachable", drawnIds)
+	}
+	// The oldest row specifically. A fallback anchored on the newest capture leaves
+	// exactly this one off the chart.
+	oldestIsDrawn := false
+	for _, drawnId := range drawnIds {
+		if drawnId == "REQ-931" {
+			oldestIsDrawn = true
+		}
+	}
+	if !oldestIsDrawn {
+		t.Errorf("the oldest row REQ-931 is not on the chart (drawn: %v); the fallback bounds have "+
+			"to reach the earliest instant the matched set carries", drawnIds)
+	}
+	// EVERY instant the rows carry, not just created_at. REQ-933's work ends at
+	// 20:00, eight hours past the newest capture; an extent taken from created_at
+	// alone ends the window around 12:04 and clips that bar off the frame while
+	// still listing its row.
+	if !strings.Contains(summary, "→ 2026-08-18 20:") {
+		t.Errorf("the fallback window is %q; it has to reach REQ-933's completion at 20:00, so the "+
+			"extent must read claimed and completed instants and not created_at alone", summary)
+	}
+
+	// And with nothing readable, the view says so instead of fabricating a window.
+	_, unreadableSummary := renderWith(unreadablePayload)
+	if !strings.Contains(unreadableSummary, "nothing to place on a timeline") {
+		t.Errorf("with no readable range and no readable row instants the summary reads %q; want the "+
+			"existing decline rather than an invented window", unreadableSummary)
+	}
+}
+
 // TestJavaScriptBehaviorTimelineNoMatchStateRetiresTheToolbar pins the one render
 // path that draws nothing.
 //

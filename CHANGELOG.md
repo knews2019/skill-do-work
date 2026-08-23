@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.25 — Timeline Fallback Window Covers the Whole Queue (2026-08-23)
+
+If the Timeline ever cannot read its own date range, its backup window used to collapse to one hour around
+the newest REQ — and since that window is also what every control clamps against, there was no way out of it.
+
+- The fallback now spans every instant the matching REQs carry, so nothing is unreachable
+- With no readable dates anywhere it says so plainly instead of building a window out of nothing
+
 ## 0.236.24 — Timeline Controls Go Quiet When Nothing Matches (2026-08-23)
 
 Search for something that does not exist on the Timeline and the toolbar used to stay wired to the previous
