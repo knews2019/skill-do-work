@@ -2467,3 +2467,193 @@ func TestTimelinePointerCaptureWaitsForThePanEngage(t *testing.T) {
 			"path back to the host that armed it", capturingNames)
 	}
 }
+
+// TestBrowserBehaviorTimelineRowListIsOneTabStop pins REQ-338's keyboard contract: the row
+// list is a single Tab stop with arrow-key movement between rows (a roving tabindex),
+// rather than one Tab stop per row.
+//
+// "Tab escapes the list in one press" is asserted as the property that produces it —
+// exactly one row is tabbable and every other row is explicitly not — because Tab's
+// focus movement is a default action on a TRUSTED key event and this lane dispatches
+// synthetic ones. The movement half IS behavioural: the handler calls focus() itself, so a
+// synthetic ArrowDown really does move focus, and that is what the probe measures.
+//
+// It also pins the two contracts a roving index could quietly break: Left/Right must still
+// pan the window without moving row focus (REQ-333), and Enter on the focused row must
+// still open the detail drawer (REQ-333, restored by REQ-336).
+func TestBrowserBehaviorTimelineRowListIsOneTabStop(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function plotHost() { return document.querySelector("#view-timeline .timeline-scroll"); }
+function rowNodes() { return Array.prototype.slice.call(plotHost().querySelectorAll("[data-row-index]")); }
+function tabStopState() {
+  var rows = rowNodes();
+  var tabbable = rows.filter(function (row) { return row.getAttribute("tabindex") === "0"; });
+  var notTabbable = rows.filter(function (row) { return row.getAttribute("tabindex") === "-1"; });
+  var active = document.activeElement;
+  var drawer = document.getElementById("detail-drawer");
+  var shown = document.getElementById("detail-id");
+  return {
+    href: location.href,
+    rowCount: rows.length,
+    tabbableCount: tabbable.length,
+    notTabbableCount: notTabbable.length,
+    tabbableRowId: tabbable.length === 1 ? (tabbable[0].getAttribute("data-detail-id") || "") : "",
+    focusedRowId: active && active.getAttribute ? (active.getAttribute("data-detail-id") || "") : "",
+    readout: document.getElementById("timeline-range-readout").textContent,
+    drawerOpen: drawer ? drawer.hidden === false : false,
+    shownDetailId: shown ? shown.textContent.trim() : ""
+  };
+}
+function pressKey(keyName) {
+  var target = document.activeElement || plotHost();
+  target.dispatchEvent(new KeyboardEvent("keydown", {
+    key: keyName, bubbles: true, cancelable: true, composed: true
+  }));
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      // Off the bounds so ArrowRight has somewhere to pan to.
+      document.getElementById("timeline-zoom-in").click();
+      var rows = rowNodes();
+      probe.initial = tabStopState();
+      if (rows.length >= 2) {
+        probe.firstRowId = rows[0].getAttribute("data-detail-id") || "";
+        probe.secondRowId = rows[1].getAttribute("data-detail-id") || "";
+        rows[0].focus();
+        probe.afterFocusingFirstRow = tabStopState();
+        pressKey("ArrowDown");
+        probe.afterArrowDown = tabStopState();
+        pressKey("ArrowUp");
+        probe.afterArrowUp = tabStopState();
+        pressKey("ArrowRight");
+        probe.afterArrowRight = tabStopState();
+        pressKey("Enter");
+        probe.afterEnter = tabStopState();
+      }
+      document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+    }, 700);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the probe script before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline row tab stops", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+
+	type tabStopState struct {
+		Href             string `json:"href"`
+		RowCount         int    `json:"rowCount"`
+		TabbableCount    int    `json:"tabbableCount"`
+		NotTabbableCount int    `json:"notTabbableCount"`
+		TabbableRowId    string `json:"tabbableRowId"`
+		FocusedRowId     string `json:"focusedRowId"`
+		Readout          string `json:"readout"`
+		DrawerOpen       bool   `json:"drawerOpen"`
+		ShownDetailId    string `json:"shownDetailId"`
+	}
+	var rovingResult struct {
+		FirstRowId            string       `json:"firstRowId"`
+		SecondRowId           string       `json:"secondRowId"`
+		Initial               tabStopState `json:"initial"`
+		AfterFocusingFirstRow tabStopState `json:"afterFocusingFirstRow"`
+		AfterArrowDown        tabStopState `json:"afterArrowDown"`
+		AfterArrowUp          tabStopState `json:"afterArrowUp"`
+		AfterArrowRight       tabStopState `json:"afterArrowRight"`
+		AfterEnter            tabStopState `json:"afterEnter"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &rovingResult); decodeError != nil {
+		t.Fatalf("decode timeline row tab-stop behavior: %v (output %q)", decodeError, probeOutput)
+	}
+	if rovingResult.Initial.Href == "" || !strings.HasSuffix(rovingResult.Initial.Href, "probe.html") {
+		t.Fatalf("measured on %q, not the probe page", rovingResult.Initial.Href)
+	}
+	// Vacuity guard: one row cannot show a roving index, and zero rows cannot show
+	// anything. The generated board carries hundreds, so this is a "the probe never
+	// reached the chart" failure rather than a real board state.
+	if rovingResult.Initial.RowCount < 2 {
+		t.Fatalf("the probe rendered %d timeline rows, so nothing below measures a row list",
+			rovingResult.Initial.RowCount)
+	}
+	if rovingResult.FirstRowId == "" || rovingResult.SecondRowId == "" ||
+		rovingResult.FirstRowId == rovingResult.SecondRowId {
+		t.Fatalf("the probe could not name two distinct rows (%q and %q), so focus movement below "+
+			"cannot be told from focus standing still",
+			rovingResult.FirstRowId, rovingResult.SecondRowId)
+	}
+
+	// (a) ONE Tab stop. Tab's own movement is a trusted-input default action this lane
+	// cannot dispatch, so the assertion is the property that produces it: exactly one row
+	// is reachable by Tab and every other row is explicitly skipped.
+	if rovingResult.Initial.TabbableCount != 1 {
+		t.Errorf("the rendered row list has %d rows with tabindex=0 out of %d rows; a keyboard "+
+			"reader pays one Tab press per tabbable row to get past the chart",
+			rovingResult.Initial.TabbableCount, rovingResult.Initial.RowCount)
+	}
+	if rovingResult.Initial.NotTabbableCount != rovingResult.Initial.RowCount-1 {
+		t.Errorf("%d of %d rendered rows carry tabindex=-1; every row other than the roving one "+
+			"must be explicitly skipped, or the browser's own default takes over",
+			rovingResult.Initial.NotTabbableCount, rovingResult.Initial.RowCount)
+	}
+
+	// (b) The tabbable row FOLLOWS focus, which is what makes Tab return to where the
+	// reader left off rather than to the top of the list.
+	if rovingResult.AfterFocusingFirstRow.TabbableRowId != rovingResult.FirstRowId {
+		t.Errorf("after focusing the first row the tabbable row is %q, want %q",
+			rovingResult.AfterFocusingFirstRow.TabbableRowId, rovingResult.FirstRowId)
+	}
+
+	// (c) Down and Up MOVE focus between rows, and the roving index goes with it.
+	if rovingResult.AfterArrowDown.FocusedRowId != rovingResult.SecondRowId {
+		t.Errorf("ArrowDown left focus on %q; it should move to the next row %q",
+			rovingResult.AfterArrowDown.FocusedRowId, rovingResult.SecondRowId)
+	}
+	if rovingResult.AfterArrowDown.TabbableRowId != rovingResult.SecondRowId {
+		t.Errorf("after ArrowDown the tabbable row is %q, want the newly focused %q",
+			rovingResult.AfterArrowDown.TabbableRowId, rovingResult.SecondRowId)
+	}
+	if rovingResult.AfterArrowDown.TabbableCount != 1 {
+		t.Errorf("after ArrowDown %d rows are tabbable; moving the roving index must not leave two",
+			rovingResult.AfterArrowDown.TabbableCount)
+	}
+	if rovingResult.AfterArrowUp.FocusedRowId != rovingResult.FirstRowId {
+		t.Errorf("ArrowUp left focus on %q; it should move back to %q",
+			rovingResult.AfterArrowUp.FocusedRowId, rovingResult.FirstRowId)
+	}
+
+	// (d) REQ-333's contract: Left/Right still pan, and panning does not move row focus.
+	if rovingResult.AfterArrowRight.Readout == rovingResult.AfterArrowUp.Readout {
+		t.Errorf("ArrowRight left the window at %s; arrow panning is REQ-333's contract and the "+
+			"roving index must not take the horizontal keys",
+			rovingResult.AfterArrowRight.Readout)
+	}
+	if rovingResult.AfterArrowRight.FocusedRowId != rovingResult.FirstRowId {
+		t.Errorf("ArrowRight moved row focus to %q; the horizontal keys pan, they do not rove",
+			rovingResult.AfterArrowRight.FocusedRowId)
+	}
+
+	// (e) And Enter on the focused row still opens the drawer.
+	if !rovingResult.AfterEnter.DrawerOpen {
+		t.Error("Enter on the focused row did not open the detail drawer; rows advertise " +
+			"role=button, so they owe the activation")
+	}
+	if rovingResult.AfterEnter.ShownDetailId != rovingResult.FirstRowId {
+		t.Errorf("Enter opened the drawer on %q, want the focused row %q",
+			rovingResult.AfterEnter.ShownDetailId, rovingResult.FirstRowId)
+	}
+}

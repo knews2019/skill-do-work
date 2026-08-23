@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.33 — One Tab Press Past the Timeline Chart (2026-08-23)
+
+Tabbing past the Timeline used to cost one press per row — twenty-nine on the board that reported it,
+because every row was its own stop. The row list is one stop now, and the arrow keys walk the rows.
+
+- Up and Down move focus between rows; Left and Right still pan the window, and Enter or Space on the
+  focused row still opens its details
+- The single stop follows wherever focus actually went, so tabbing back into the chart returns you to
+  the row you left rather than the top
+- Measured with real keyboard input: one press to leave the list, against six-and-counting before
+
 ## 0.236.32 — The Timeline Probe Lane Can Catch a Stolen Click (2026-08-23)
 
 The check that was supposed to guard the Timeline's click path passed straight through the regression
