@@ -54,9 +54,10 @@ test that cannot catch the regression it pins is not doing its job.
 ## Builder Guidance
 
 Certainty: Firm on the goal, open on the mechanism (real input vs structural assertion — the
-user left the choice to the builder). Ordering was decided at capture: this REQ depends on
-REQ-336 so the committed suite never carries a red check; prove the RED side by mutation
-(reintroduce the broken capture placement locally), not by committing against broken HEAD.
+user left the choice to the builder). Ordering was decided at capture and user-confirmed at
+verify (2026-08-23): this REQ depends on REQ-336 so the committed suite never carries a red
+check; prove the RED side by mutation (reintroduce the broken capture placement locally and
+watch the check fail), not by committing against broken HEAD.
 `tdd: false` because the deliverable IS the check — the mutation evidence is its proof, and the
 work loop's test-first gate has no separate implementation to precede. Cautionary precedent from
 REQ-333's UNIFY notes: its structural assertion first matched the `typeof` guard beside the

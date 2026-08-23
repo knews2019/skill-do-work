@@ -4,6 +4,7 @@ title: "Cut the Timeline row list to one Tab stop"
 status: pending
 created_at: 2026-08-23T18:30:26Z
 user_request: UR-067
+addendum_to: REQ-333
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true

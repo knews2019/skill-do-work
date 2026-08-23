@@ -74,7 +74,8 @@ Certainty: Firm — cause, blast radius, and preferred fix are user-diagnosed an
 `tdd: false` because the existing probe lane cannot drive the real input this RED requires
 (REQ-333's UNIFY notes: a synthetic `pointerId` cannot be captured in this lane); the durable
 automated check is REQ-337's deliverable — do not duplicate it here. Prove RED/GREEN with real
-or CDP-trusted input against a generated board.
+browser input against a generated board; what counts as real input in the probe lane is
+REQ-337's call to make.
 
 ## Red-Green Proof
 
