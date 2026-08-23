@@ -1000,11 +1000,22 @@
         var row = rows[rowIndex];
         var request = requestsById[row.id] || {};
         var rowTopY = rowIndex * TIMELINE_ROW_HEIGHT;
+        // data-status carries the hue, exactly as the calendar chips do, and the
+        // unrecognized verdict is READ FROM THE PAYLOAD rather than re-derived:
+        // the board already decides what counts as a real status, and a second
+        // reader here would become a second definition (REQ-219's lesson, in
+        // this module's own prime). A typo like "blockd-dependency-cycle" is
+        // therefore coloured as unrecognized, never quietly as real blocked work.
         var rowGroup = makeTimelineSvgNode(rowsSvg, "g", {
-          class: "timeline-row" + (row.anomaly ? " is-broken" : "") + (request.status === "cancelled" ? " is-cancelled" : ""),
+          class:
+            "timeline-row" +
+            (row.anomaly ? " is-broken" : "") +
+            (request.status === "cancelled" ? " is-cancelled" : "") +
+            (request.statusUnrecognized ? " is-status-unrecognized" : ""),
           "data-detail-kind": "request",
           "data-detail-id": row.id,
           "data-row-index": String(rowIndex),
+          "data-status": request.status || "",
           tabindex: "0",
           role: "button",
           "aria-label": timelineRowDescription(row, request)

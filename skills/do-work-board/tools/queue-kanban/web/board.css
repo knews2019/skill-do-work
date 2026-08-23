@@ -95,7 +95,6 @@
   /* Timeline segments — the wait is the quieter hue on purpose: on a queue with
      real backlog it is usually the longer bar, and the eye should land on the
      work it brackets rather than on the waiting. */
-  --timeline-wait: #3a4655;
   --timeline-work: #4d8fe0;
   /* Projected work is a forecast, so it takes a hue of its own rather than a
      lighter shade of the measured one — a reader must not have to judge
@@ -155,7 +154,6 @@
     --route-none: #6c7480;
     --durations-bar: #a4522a;
     --durations-critical: #c0392b;
-    --timeline-wait: #c2ccd9;
     --timeline-work: #2f6fc0;
     --timeline-projected: #7d57b0;
 
@@ -2313,8 +2311,48 @@ body.is-resizing-detail .detail-resizer::before {
   display: inline-block;
 }
 
+/* A quiet lead-in for each half of the key, so "Status" and "Within a bar" read
+   as two groups rather than one long run of swatches. */
+.timeline-legend-group {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  align-self: center;
+}
+
+/* The status half of the key. Each swatch reads its colour through the same
+   custom property the bars do, so a swatch cannot show a colour no bar uses. */
+.timeline-swatch[data-status] {
+  background: var(--timeline-status-accent);
+}
+
+.timeline-swatch[data-status="pending"] {
+  --timeline-status-accent: var(--accent-pending);
+}
+
+.timeline-swatch[data-status="claimed"] {
+  --timeline-status-accent: var(--accent-claimed);
+}
+
+.timeline-swatch[data-status="completed"] {
+  --timeline-status-accent: var(--accent-done);
+}
+
+.timeline-swatch[data-status="blocked"] {
+  --timeline-status-accent: var(--accent-blocked);
+}
+
+.timeline-swatch[data-status="cancelled"] {
+  --timeline-status-accent: var(--ink-faint);
+}
+
+/* The phase half. These two show the LIGHTNESS difference rather than any one
+   status's hue, so they use the neutral work colour: a status hue here would
+   read as a sixth status. */
 .timeline-swatch[data-segment="wait"] {
-  background: var(--timeline-wait);
+  background: var(--timeline-work);
+  opacity: 0.4;
 }
 
 .timeline-swatch[data-segment="work"] {
@@ -2433,25 +2471,71 @@ body.is-resizing-detail .detail-resizer::before {
   fill: var(--ink-faint);
 }
 
+/* HUE IS STATUS, LIGHTNESS IS PHASE.
+   Both segments of a bar take the REQ's status accent — the same tokens the
+   cards and the calendar chips use, so one REQ is one colour wherever it is
+   drawn — and the wait is told from the work by opacity rather than by a second
+   hue. That is what let status onto a chart whose two hues were already spent
+   on the phase distinction.
+
+   The accents are read through one custom property per row, so the mapping below
+   is the only place a status meets a colour. Deliberately NOT a second set of
+   pale tokens: eight more variables for the same five statuses is exactly the
+   drift this indirection exists to prevent. */
+.timeline-row {
+  --timeline-status-accent: var(--timeline-work);
+}
+
+/* Every status spelled out, matching board-calendar.js's reasoning: an exact
+   match means a typo falls through to the unrecognized rule instead of being
+   coloured as real blocked work. Mirrors the .calendar-chip block above. */
+.timeline-row[data-status="completed"],
+.timeline-row[data-status="completed-with-issues"] {
+  --timeline-status-accent: var(--accent-done);
+}
+
+.timeline-row[data-status="claimed"] {
+  --timeline-status-accent: var(--accent-claimed);
+}
+
+.timeline-row[data-status="pending"] {
+  --timeline-status-accent: var(--accent-pending);
+}
+
+.timeline-row[data-status="pending-answers"],
+.timeline-row[data-status="blocked"],
+.timeline-row[data-status="blocked-archive-collision"],
+.timeline-row[data-status="blocked-dependency-cycle"],
+.timeline-row[data-status="failed"],
+.timeline-row.is-status-unrecognized {
+  --timeline-status-accent: var(--accent-blocked);
+}
+
+.timeline-row[data-status="cancelled"] {
+  --timeline-status-accent: var(--ink-faint);
+}
+
 .timeline-segment-wait {
-  fill: var(--timeline-wait);
+  fill: var(--timeline-status-accent);
+  /* The wait is the same colour, waiting: pale enough to read as the quieter
+     half of the bar at a 10px height, solid enough to still be a bar. */
+  fill-opacity: 0.4;
 }
 
 .timeline-segment-work {
-  fill: var(--timeline-work);
+  fill: var(--timeline-status-accent);
+  fill-opacity: 1;
 }
 
 /* An open segment is hollow: it has an end on screen but not in fact, and a
-   solid cap would claim otherwise. */
+   solid cap would claim otherwise. Ordered after the two rules above so its
+   fill-opacity wins for an open work segment; the dashed outline is what
+   carries "open" once both halves of a bar share one hue. */
 .timeline-segment.is-open {
   fill-opacity: 0.35;
-  stroke: var(--timeline-work);
+  stroke: var(--timeline-status-accent);
   stroke-width: 1;
   stroke-dasharray: 3 2;
-}
-
-.timeline-segment-wait.is-open {
-  stroke: var(--timeline-wait);
 }
 
 /* Hatched, not merely tinted: reduced opacity alone reads as a disabled

@@ -2,6 +2,18 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.14 — Timeline Bars Take Their Status Colour (2026-08-23)
+
+A blocked REQ, a pending one and a finished one used to draw identical bars on the Timeline —
+status was the one thing the rest of the board colours by and the one thing this view did not.
+Now every bar carries its REQ's status colour, the same colours the cards and calendar chips
+use, so a REQ is one colour wherever you see it.
+
+- Hue is the status; lightness within a bar still separates waiting from being worked on.
+- The legend states both encodings, and its swatches read the same colour the bars do.
+- An unrecognized status takes the unrecognized colour rather than quietly being counted as
+  real blocked work.
+
 ## 0.236.13 — Type the Dates You Want on the Timeline (2026-08-23)
 
 The board's Timeline now says which two instants it is drawn between, to the minute, and gives

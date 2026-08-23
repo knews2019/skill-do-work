@@ -273,7 +273,18 @@
           <p class="timeline-subhead" id="timeline-summary"></p>
         </div>
         <div class="timeline-toolbar">
-          <div class="timeline-legend" role="group" aria-label="Segment colour key">
+          <!-- Two encodings, so the key states both: hue is the REQ's status, the
+               same colours the cards and calendar chips use, and lightness within
+               one bar is the phase. Stating only one of them would leave a reader
+               guessing which half of what they can see means what. -->
+          <div class="timeline-legend" role="group" aria-label="Bar colour key">
+            <span class="timeline-legend-group">Status</span>
+            <span class="timeline-legend-item"><span class="timeline-swatch" data-status="pending"></span>Pending</span>
+            <span class="timeline-legend-item"><span class="timeline-swatch" data-status="claimed"></span>Claimed</span>
+            <span class="timeline-legend-item"><span class="timeline-swatch" data-status="completed"></span>Done</span>
+            <span class="timeline-legend-item"><span class="timeline-swatch" data-status="blocked"></span>Blocked, needs answers, or failed</span>
+            <span class="timeline-legend-item"><span class="timeline-swatch" data-status="cancelled"></span>Cancelled</span>
+            <span class="timeline-legend-group">Within a bar</span>
             <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="wait"></span>Waiting to be claimed</span>
             <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="work"></span>Being worked on</span>
             <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="open"></span>Still open, running to now</span>
