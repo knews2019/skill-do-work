@@ -2692,7 +2692,7 @@ process.stdout.write(JSON.stringify({
 // needs to see.
 func TestJavaScriptBehaviorTimelineRowsFollowTheWindow(t *testing.T) {
 	indexHtml := generateLiveSite(t)
-	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function timelineRowExtent(") + "\n" +
+	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function timelineRowSegments(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineRowsInWindow(") + `
 var nowMs = Date.UTC(2026, 5, 20, 12, 0);
 var windowStartMs = Date.UTC(2026, 5, 10);
@@ -2731,7 +2731,7 @@ var futureWindowEndMs = Date.UTC(2026, 5, 22);
 
 function idsInSpan(rowList, projectedById, spanStartMs, spanEndMs) {
   var extents = rowList.map(function (row) {
-    return timelineRowExtent(row, nowMs, (projectedById || {})[row.id]);
+    return timelineRowSegments(row, nowMs, (projectedById || {})[row.id]);
   });
   return timelineRowsInWindow(rowList, extents, spanStartMs, spanEndMs)
     .map(function (row) { return row.id; });
@@ -2740,17 +2740,30 @@ function idsInWindow(rowList, projectedById) {
   return idsInSpan(rowList, projectedById, windowStartMs, windowEndMs);
 }
 
-var reversedExtent = timelineRowExtent(reversedRow, nowMs, undefined);
+var reversedSegments = timelineRowSegments(reversedRow, nowMs, undefined);
+
+// THE GAP. A pending REQ draws two disjoint marks: the open wait ending at the
+// now-line, and the forecast bar starting after in-flight work finishes. A hull
+// over both spans the gap between them, so a window sitting in that gap listed
+// the row with nothing drawn on it. Segment-wise overlap is what makes the REQ's
+// GREEN — every listed row has something drawn on it — actually true.
+var gapWindowStartMs = Date.UTC(2026, 5, 20, 14, 0);   // after the now-line
+var gapWindowEndMs = Date.UTC(2026, 5, 20, 18, 0);     // before the forecast bar
+var gapProjection = { id: "REQ-007", startTime: "2026-06-21T00:00:00Z", endTime: "2026-06-21T06:00:00Z" };
 process.stdout.write(JSON.stringify({
   inWindow: idsInWindow(rows, {}),
   reversedInWindow: idsInWindow([reversedRow], {}),
-  reversedExtentOrdered: reversedExtent.startMs <= reversedExtent.endMs,
-  reversedExtentStartIso: new Date(reversedExtent.startMs).toISOString(),
+  reversedExtentOrdered: reversedSegments.every(function (s) { return s.startMs <= s.endMs; }),
+  reversedExtentStartIso: new Date(reversedSegments[0].startMs).toISOString(),
   projectedOnlyInWindow:
     idsInSpan([projectedRow], { "REQ-007": projection }, futureWindowStartMs, futureWindowEndMs),
   projectedIgnoredWithoutForecast:
     idsInSpan([projectedRow], {}, futureWindowStartMs, futureWindowEndMs),
-  everythingInAWideWindow: idsInSpan(rows, {}, Date.UTC(2026, 0, 1), Date.UTC(2027, 0, 1))
+  everythingInAWideWindow: idsInSpan(rows, {}, Date.UTC(2026, 0, 1), Date.UTC(2027, 0, 1)),
+  inTheForecastGap:
+    idsInSpan([projectedRow], { "REQ-007": gapProjection }, gapWindowStartMs, gapWindowEndMs),
+  spanningTheForecastGap:
+    idsInSpan([projectedRow], { "REQ-007": gapProjection }, nowMs - 3600000, Date.UTC(2026, 5, 21, 3, 0))
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "timeline window rows", javascriptProbe)
@@ -2762,6 +2775,8 @@ process.stdout.write(JSON.stringify({
 		ProjectedOnlyInWindow           []string `json:"projectedOnlyInWindow"`
 		ProjectedIgnoredWithoutForecast []string `json:"projectedIgnoredWithoutForecast"`
 		EverythingInAWideWindow         []string `json:"everythingInAWideWindow"`
+		InTheForecastGap                []string `json:"inTheForecastGap"`
+		SpanningTheForecastGap          []string `json:"spanningTheForecastGap"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &windowResult); decodeError != nil {
 		t.Fatalf("decode timeline window rows behavior: %v (output %q)", decodeError, probeOutput)
@@ -2797,6 +2812,18 @@ process.stdout.write(JSON.stringify({
 	if len(windowResult.EverythingInAWideWindow) != 5 {
 		t.Fatalf("a window spanning the whole year listed %d of 5 rows; widening the window "+
 			"must never drop a row", len(windowResult.EverythingInAWideWindow))
+	}
+	// The pair that forces segment-wise overlap rather than a hull. Both windows
+	// sit between the same two marks; only the second one touches either.
+	if len(windowResult.InTheForecastGap) != 0 {
+		t.Fatalf("a window in the gap between a REQ's open wait and its forecast bar listed "+
+			"%v; the row draws nothing there, and listing it is what window-scoping exists to "+
+			"stop — a hull over the two marks spans the gap between them",
+			windowResult.InTheForecastGap)
+	}
+	if len(windowResult.SpanningTheForecastGap) != 1 {
+		t.Fatal("a window reaching across both the open wait and the forecast bar did not list " +
+			"the row; the gap rule must not cost a row that genuinely draws inside the window")
 	}
 }
 
@@ -3593,12 +3620,25 @@ var rows = [
 ];
 var scrollHostStub = { scrollTop: 0 };
 // The Now button's three steps, in the order the handler runs them: take the
-// window, let the rows follow it, then scroll among THOSE rows. The window and
-// the scroll decision are separate functions precisely because window-scoped
-// rows (REQ-319) put a row-set refresh between them.
+// window, let the rows follow it, then scroll among THOSE rows.
+//
+// The two row sets below are what makes this an ORDERING assertion rather than a
+// restatement. The rows array is what was on screen before the jump;
+// rowsAfterJump is
+// what the window the jump chose admits — a narrower set whose first open row
+// sits at a different index. Deciding the scroll before the refresh, which is
+// what timelineNowJump used to do internally, yields 3; deciding it after yields
+// 1. Only the second is right, and only a fixture where the two disagree can
+// tell them apart.
+var rowsAfterJump = [
+  { waitOpen: false, workOpen: false },
+  { waitOpen: true, workOpen: false },
+  { waitOpen: false, workOpen: true }
+];
+var scrollTopIfDecidedBeforeRefresh = timelineFirstOpenRowIndex(rows) * TIMELINE_ROW_HEIGHT;
 var nowWindow = timelineNowJump(nowMs, queueEndMs, boundStart, boundEnd);
 var nowJump = { window: nowWindow };
-var openRowIndex = timelineFirstOpenRowIndex(rows);
+var openRowIndex = timelineFirstOpenRowIndex(rowsAfterJump);
 if (openRowIndex >= 0) {
   scrollHostStub.scrollTop = openRowIndex * TIMELINE_ROW_HEIGHT;
 }
@@ -3648,7 +3688,8 @@ process.stdout.write(JSON.stringify({
   nowInsideWindow: nowMs >= nowJump.window.windowStartMs && nowMs <= nowJump.window.windowEndMs,
   queueEndInsideWindow: queueEndMs >= nowJump.window.windowStartMs && queueEndMs <= nowJump.window.windowEndMs,
   scrollTop: scrollHostStub.scrollTop,
-  wantScrollTop: 3 * TIMELINE_ROW_HEIGHT
+  wantScrollTop: 1 * TIMELINE_ROW_HEIGHT,
+  scrollTopIfDecidedBeforeRefresh: scrollTopIfDecidedBeforeRefresh
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "timeline period navigation", javascriptProbe)
@@ -3689,11 +3730,12 @@ process.stdout.write(JSON.stringify({
 		ExactMonthLevel *string `json:"exactMonthLevel"`
 		ZoomedLevel     *string `json:"zoomedLevel"`
 
-		NowWindowIso         string  `json:"nowWindowIso"`
-		NowInsideWindow      bool    `json:"nowInsideWindow"`
-		QueueEndInsideWindow bool    `json:"queueEndInsideWindow"`
-		ScrollTop            float64 `json:"scrollTop"`
-		WantScrollTop        float64 `json:"wantScrollTop"`
+		NowWindowIso                    string  `json:"nowWindowIso"`
+		NowInsideWindow                 bool    `json:"nowInsideWindow"`
+		QueueEndInsideWindow            bool    `json:"queueEndInsideWindow"`
+		ScrollTop                       float64 `json:"scrollTop"`
+		WantScrollTop                   float64 `json:"wantScrollTop"`
+		ScrollTopIfDecidedBeforeRefresh float64 `json:"scrollTopIfDecidedBeforeRefresh"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &periodResult); decodeError != nil {
 		t.Fatalf("decode timeline period behavior: %v (output %q)", decodeError, probeOutput)
@@ -3786,6 +3828,17 @@ process.stdout.write(JSON.stringify({
 	if periodResult.ScrollTop != periodResult.WantScrollTop {
 		t.Fatalf("Now left the row list at scrollTop %.0f, want %.0f — the first still-open row",
 			periodResult.ScrollTop, periodResult.WantScrollTop)
+	}
+	// The ordering half, and the reason the fixture carries two row sets. Deciding
+	// the scroll from the PRE-jump rows — which is what timelineNowJump did before
+	// REQ-319 split it — lands somewhere else entirely. If these two ever agree the
+	// fixture has stopped being able to tell the orders apart, and the assertion
+	// above has quietly become a restatement.
+	if periodResult.ScrollTopIfDecidedBeforeRefresh == periodResult.WantScrollTop {
+		t.Fatalf("the fixture's pre-jump and post-jump row sets both give scrollTop %.0f, so this "+
+			"test cannot tell a scroll decided before the row refresh from one decided after; "+
+			"give the two sets different first-open indices",
+			periodResult.WantScrollTop)
 	}
 }
 

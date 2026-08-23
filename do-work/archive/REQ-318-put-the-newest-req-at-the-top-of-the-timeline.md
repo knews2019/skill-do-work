@@ -153,8 +153,8 @@ it, and the test that pins the old order is named. Nothing needs discovery.
 - `skills/do-work-board/tools/queue-kanban/timeline.go` (modified)
 - `skills/do-work-board/tools/queue-kanban/timeline_test.go` (modified)
 - `skills/do-work-board/tools/queue-kanban/web/board-timeline.js` (modified)
-- `skills/do-work-board/tools/queue-kanban/web/template.html` (modified — added post-review, D-01)
-- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified — added post-review, D-01)
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modified) — added post-review, D-01
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified) — added post-review, D-01
 
 **What was done:** `buildTimelineAggregate`'s comparator now sorts rows newest `created_at`
 first and breaks equal instants by descending numeric id through `requestIdLess`, so the

@@ -20,7 +20,6 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-- REQ-319: List only the REQs the selected window covers — claimed 2026-08-22T23:23:42Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued
 

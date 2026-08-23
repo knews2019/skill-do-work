@@ -1,10 +1,12 @@
 ---
 id: REQ-319
 title: "List only the REQs the selected window covers"
-status: claimed
+status: completed
 created_at: 2026-08-22T22:08:34Z
 claimed_at: 2026-08-22T23:23:42Z
 route: B
+completed_at: 2026-08-23T00:40:21Z
+commit:
 user_request: UR-065
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -30,6 +32,8 @@ estimate:
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-timeline.js
   - skills/do-work-board/tools/queue-kanban/generate_test.go
+  - skills/do-work-board/tools/queue-kanban/web/template.html
+  - skills/do-work-board/tools/queue-kanban/web/board.css
 ---
 
 # List Only the REQs the Selected Window Covers
@@ -210,10 +214,13 @@ Three things the exploration settled that the REQ did not:
   that can be right: apply the window, refresh the rows, then ask `timelineFirstOpenRowIndex`
   where to scroll among *those*. The existing probe in `generate_test.go` was updated in the
   same edit to drive the same three steps. Reversible; no behavior lost.
-- **D-02 — `web/template.html` was in the write set and ended up untouched.** The empty-window
-  message is generated text, not markup, and the hint paragraph had already been corrected by
-  REQ-318. Declaring a file and not needing it is the honest outcome; nothing was forced into
-  it to justify the declaration.
+- **D-02 — `web/template.html`: declared, dropped, and the drop was wrong.** The hand-back
+  narrowed the write set on the reasoning that the empty-window message is generated text and
+  the hint had already been fixed by REQ-318. The review's restatement sweep found what that
+  missed: `<summary>Every REQ, as a table</summary>` still claimed the whole queue, and the
+  hint's "scroll down to go back through the queue's history" now describes the window rather
+  than the queue. Both are in that file. It is back in the write set and both are fixed. The
+  lesson is in `## Lessons Learned`: run the sweep before narrowing a declaration, not after.
 - **D-03 — The forecast's whole-queue note names no cause.** It opened "Filters are on", which
   was true while a filter chip was the only thing that could shrink the row set. The window
   now shrinks it too — usually much harder — and both can be on at once, so the note said
@@ -226,6 +233,8 @@ Three things the exploration settled that the REQ did not:
 **Files changed:**
 - `skills/do-work-board/tools/queue-kanban/web/board-timeline.js` (modified)
 - `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modified) — post-review, F4/F8
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modified) — post-review, F8
 
 **What was done:** The Timeline's row list is now the subset of the filter-matched rows whose
 drawn span overlaps the visible time window, re-derived on every window move through
@@ -311,3 +320,119 @@ That check is what caught D-03 — the old wording said "Filters are on" with no
   (from REQ-235) — drives the Now button's three steps in the new order instead of reading a
   `scrollTop` that `timelineNowJump` no longer returns. **Deliberate, per D-01**; the
   assertion it makes about where the button scrolls is unchanged.
+
+## Review
+
+**Acceptance: Partial — Overall 75% — Approve with follow-ups.** Independent review agent,
+orchestrated mode. It drove a live 316-REQ board in headless Chromium and found three
+regressions the suite could not see.
+
+| Dimension | Score | Notes |
+|-----------|-------|-------|
+| Requirements | 92% | 10 of 11 delivered; the scroll-position constraint was partial |
+| Code Quality | 78% | Good structure; one ordering bug, two comments the change falsified, one redundant rebuild |
+| Test Adequacy | 72% | Strong probe with a real control and real RED; nothing covered scroll anchoring, focus restoration, or D-01's ordering claim |
+| Scope | 100% | Two files, both declared |
+| Risk | Low | UI only |
+| Acceptance | Partial | Every window mover consistent; three edge behaviours regressed |
+
+**What it verified rather than accepted:** re-ran the canonical gate itself (exit 0, both
+strict lanes); measured the scroll extent as laid-out pixels via `getBoundingClientRect()`
+rather than trusting the `height` attribute; exercised Day/Week/Month, ‹ ›, −, Fit all, Now,
+ctrl+wheel, drag, arrows, `+` and a window resize, checking row count, extent and subhead at
+every step; and swept the whole Fit-all list to confirm all 316 rows draw a mark.
+
+**Findings — all four Important ones fixed in this REQ before archive**, rather than queued,
+because each lives in the declared write set and the whole set is about twenty lines. See
+*Review Remediation* below.
+
+## Review Remediation (pre-archive)
+
+- **F1 — the anchor was clamped to the old extent, so every widening move dropped the reader
+  at the bottom of the window they were leaving.** `refreshWindowRows` wrote `scrollTop` while
+  the rows SVG still carried the narrow window's height; `renderVisibleRows` only grew it
+  afterwards, and the browser clamps at assignment. The review measured it: from a month
+  window at `scrollTop` 400, Fit all landed on 465 — exactly the old maximum — when the
+  anchor needed 4900. Fixed by growing the extent immediately before writing the anchor.
+  **Re-measured after the fix:** `REQ-044` holds the top through Fit all (400 → 4900) and
+  through the − button (→ 2056).
+- **F2 — a focused row leaving the window killed the keyboard path.** The restore block looked
+  the row up by id and, finding nothing, let focus fall to `body`; the review measured five
+  subsequent key presses doing nothing. Its comment still claimed "the same row is still in
+  the virtualized slice", which this REQ falsified in both halves. Fixed with a fallback to
+  the chart container, and the comment now says why the fallback is the point.
+  **Re-measured:** zooms that drop rows 35 → 10 keep responding.
+- **F3 — a window in the forecast gap listed rows with nothing drawn on them.** The membership
+  hull spanned the gap between a pending REQ's open wait (ending at the now-line) and its
+  forecast bar (starting later), so a window between the two overlapped the hull and contained
+  no mark — the exact thing window-scoping exists to stop, and a collision between this REQ's
+  own Detailed Requirements and its GREEN. `timelineRowExtent` became `timelineRowSegments`
+  and overlap is now tested per drawn segment. **Mutation-verified:** collapsing the segments
+  back to a hull fails the new case with the defect's own description.
+- **F4 — `<summary>Every REQ, as a table</summary>` still claimed the whole queue.** Fixed to
+  "The REQs in this window, as a table". This is the file D-02 dropped from the write set, so
+  D-02 was wrong; corrected below.
+
+**Minor and Nit, also fixed:** the table's pending animation frame is now cancelled with the
+listeners (F5), the trailing rebuild's comment states its real reason — a synchronous first
+paint — instead of a false one (F6), an all-unparseable row now fails open into every window
+instead of being silently deleted from all of them (F7), three more stale
+whole-queue restatements are corrected in `board-timeline.js`, `template.html` and
+`board.css` (F8), the chart `aria-label` says "drawing anything inside the visible time
+window" rather than "whose work overlaps" it (F9), and the empty-window sentence no longer
+uses "open" in a second sense next to the subhead's (Nit).
+
+**Two test-adequacy gaps the review named, both closed:**
+
+- Nothing pinned D-01's ordering claim — the probe drove the two functions against one static
+  row array, so reverting the argument order would still have passed. The fixture now carries
+  a pre-jump and a post-jump row set whose first-open indices differ, asserts the post-jump
+  answer, and **guards itself against going vacuous**: if the two sets ever agree, the test
+  fails saying it can no longer tell the orders apart.
+- Nothing covered the forecast gap. `inTheForecastGap` and `spanningTheForecastGap` are now a
+  pair — same two marks, one window between them and one across them — so the rule cannot be
+  satisfied by simply listing less.
+
+**Not fixed, recorded:** the review's suggestion to assert scroll anchoring and focus
+restoration in an automated browser probe. Both are now verified by hand in a real browser
+with the numbers recorded above, but neither has a lock-in test. That is a genuine gap and
+the honest place for it is REQ-324, which already has to build synthetic pointer-event
+probing for its own drag threshold and is the natural home for the harness.
+
+## Lessons Learned
+
+**What worked:** Two pure functions and a single re-derivation point. Every window mover
+already funnelled through `renderAll`, so making that function refresh the row set first meant
+the wheel, the drag, the keyboard, the period chips, Now and Fit all all became correct in one
+edit rather than six. The probe's *control* did more work than the probe: asserting that a
+pending REQ is listed with a forecast attached proves little on its own; asserting it is
+absent without one is what proves the projection put it there.
+
+**What didn't:**
+
+- **Narrowing the write set on reasoning instead of on a sweep.** D-02 dropped
+  `web/template.html` because the two things I remembered in it were handled. The review's
+  sweep found two more in the same file. Run the sweep, then narrow.
+- **A hull is not a bar.** Modelling a row's presence as one min/max extent was simpler and
+  wrong for the only row type that draws two disjoint marks. The failure was invisible in
+  every test and every window I looked at by hand, because it needs a window sitting in the
+  gap between the now-line and a forecast bar — a few hours wide, in the near future.
+- **Writing `scrollTop` before growing the extent.** The browser clamps at assignment, so the
+  anchor silently became "the bottom of the window you were leaving". Nothing threw; the
+  number just came back smaller.
+
+**Worth knowing:** the three defects the review found were all *edge* behaviours of correct
+central logic, and all three needed a real browser — layout clamping, focus falling to `body`,
+and a window nobody would think to zoom into. The suite was green for every one of them. When
+a change makes a list conditional, the questions that break it are "what if the thing you were
+looking at is no longer in the list" and "what if the list is now empty in a place it never
+was" — not "does the list contain the right things".
+
+## Orientation
+
+The board's Timeline now answers "what was happening between these two dates" instead of
+"here is every REQ, with a few bars somewhere in it". Same one view, same payload; the row
+list became a function of the visible window. Leaf change in the board's frontend — no new
+module, no payload field, no contract moved — so no `[MAP CHANGED]`.
+`_dev/primes/prime-kanban-board.md` spot-checked: every path it references still exists, and
+nothing this change touched makes it stale.

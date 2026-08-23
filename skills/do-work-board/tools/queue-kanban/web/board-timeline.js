@@ -1,6 +1,7 @@
   // ---- timeline -----------------------------------------------------------
   //
-  // A Gantt of the whole queue: one row per REQ, one bar, two segments. The
+  // A Gantt of the queue: one row per REQ the visible time window covers, one
+  // bar, two segments. The
   // first spans created_at→claimed_at (waiting), the second
   // claimed_at→completed_at (working). A REQ still running draws an open
   // segment to the now-line; a REQ nobody has claimed yet draws an open wait and
@@ -68,6 +69,21 @@
       teardown();
     });
     timelineListenerTeardowns = [];
+  }
+
+  // A table rebuild scheduled by the PREVIOUS render holds that render's closure
+  // over its own `rows`, and the tbody is shared. It happens to come out right
+  // today because the new render schedules its own rebuild and frame callbacks
+  // run in order — but nothing enforces that ordering, and a stale frame writing
+  // the previous window's rows into the current table is not a bug worth leaving
+  // to luck. Cancelled at the same point the listeners are.
+  var timelineTableRebuildFrame = null;
+
+  function releaseTimelineTableFrame() {
+    if (timelineTableRebuildFrame !== null && window.cancelAnimationFrame) {
+      window.cancelAnimationFrame(timelineTableRebuildFrame);
+    }
+    timelineTableRebuildFrame = null;
   }
 
   // Each unit is derived from the already-rounded value of the unit below it, so
@@ -326,49 +342,69 @@
   // is part of what was happening this week, and hiding it would answer a
   // different question than the reader asked.
 
-  // Every instant a row can draw at, as one [startMs, endMs] extent. Signed
-  // spans mean a reversed stamp can put claimed_at BEFORE created_at, so this
-  // takes a genuine min/max rather than assuming created_at leads — a broken row
-  // draws a break marker and still has to be findable in the window it sits in.
-  // An open span reaches the now-line; an attached forecast reaches its end.
-  function timelineRowExtent(row, nowMs, projectedRow) {
-    var instants = [Date.parse(row.createdTime)];
-    if (row.claimedTime) {
-      instants.push(Date.parse(row.claimedTime));
-    }
-    if (row.completedTime) {
-      instants.push(Date.parse(row.completedTime));
-    }
-    if (row.waitOpen || row.workOpen) {
-      instants.push(nowMs);
-    }
-    if (projectedRow) {
-      instants.push(Date.parse(projectedRow.startTime), Date.parse(projectedRow.endTime));
-    }
-    var startMs = Infinity;
-    var endMs = -Infinity;
-    instants.forEach(function (instant) {
-      if (isNaN(instant)) {
+  // The SEGMENTS a row draws, as [startMs, endMs] pairs — not one hull over them.
+  //
+  // The hull was the first shape of this and it was wrong for exactly one row
+  // type. A pending REQ draws two DISJOINT marks: an open wait ending at the
+  // now-line, and a forecast bar starting after whatever is in flight finishes.
+  // A window between the two overlaps their hull and contains no mark at all, so
+  // the row was listed with nothing on it — the very thing window-scoping exists
+  // to stop. Testing the segments separately is what makes the REQ's GREEN true:
+  // every listed row has something drawn on it.
+  //
+  // Each segment takes a genuine min/max of its own endpoints. Spans are signed,
+  // so a reversed stamp can put claimed_at before created_at; the board draws
+  // that as a break marker and it still has to be findable in the window it
+  // sits in.
+  function timelineRowSegments(row, nowMs, projectedRow) {
+    var segments = [];
+    function addSegment(fromMs, toMs) {
+      if (isNaN(fromMs) || isNaN(toMs)) {
         return;
       }
-      startMs = Math.min(startMs, instant);
-      endMs = Math.max(endMs, instant);
-    });
-    return { startMs: startMs, endMs: endMs };
+      segments.push({ startMs: Math.min(fromMs, toMs), endMs: Math.max(fromMs, toMs) });
+    }
+    var createdMs = Date.parse(row.createdTime);
+    var claimedMs = row.claimedTime ? Date.parse(row.claimedTime) : NaN;
+    var completedMs = row.completedTime ? Date.parse(row.completedTime) : NaN;
+
+    // The wait, drawn created → claimed, or created → now while nobody has
+    // claimed it.
+    addSegment(createdMs, isNaN(claimedMs) ? nowMs : claimedMs);
+    if (row.hasWork) {
+      // The work, drawn claimed → completed, or claimed → now while it runs.
+      addSegment(claimedMs, isNaN(completedMs) ? nowMs : completedMs);
+    }
+    if (projectedRow) {
+      addSegment(Date.parse(projectedRow.startTime), Date.parse(projectedRow.endTime));
+    }
+    if (segments.length === 0) {
+      // Nothing parsed. The payload guarantees a readable created_at
+      // (timeline.go skips rows without one), so this is unreachable today — but
+      // the failure has to be "listed everywhere and visibly broken", never
+      // "silently deleted from every window including Fit all".
+      segments.push({ startMs: -Infinity, endMs: Infinity });
+    }
+    return segments;
   }
 
-  // The rows whose extents overlap the window, in the order they arrived.
+  // The rows with at least one drawn segment overlapping the window, in the
+  // order they arrived.
   //
-  // Extents are computed ONCE per render and passed in, not derived here: this
+  // Segments are computed ONCE per render and passed in, not derived here: this
   // runs on every window move, a drag moves the window once per frame, and
   // re-parsing three ISO strings per row per frame is the difference between a
   // pointer that keeps up and one that does not.
-  function timelineRowsInWindow(rows, extents, windowStartMs, windowEndMs) {
+  function timelineRowsInWindow(rows, rowSegments, windowStartMs, windowEndMs) {
     var inWindow = [];
     for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
-      var extent = extents[rowIndex];
-      if (extent.startMs <= windowEndMs && extent.endMs >= windowStartMs) {
-        inWindow.push(rows[rowIndex]);
+      var segments = rowSegments[rowIndex];
+      for (var segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
+        var segment = segments[segmentIndex];
+        if (segment.startMs <= windowEndMs && segment.endMs >= windowStartMs) {
+          inWindow.push(rows[rowIndex]);
+          break;
+        }
       }
     }
     return inWindow;
@@ -566,6 +602,7 @@
     }
 
     releaseTimelineListeners();
+    releaseTimelineTableFrame();
 
     var timeline = boardData.timeline || {};
     // Filters apply here, unlike Durations. A Gantt filtered to one domain is a
@@ -641,10 +678,10 @@
       timelineViewState.fitted = true;
     }
 
-    // One extent per filter-matched row, computed once. refreshWindowRows runs on
-    // every window move and compares numbers only.
-    var filterMatchedExtents = filterMatchedRows.map(function (row) {
-      return timelineRowExtent(row, nowMs, projectedById[row.id]);
+    // One segment list per filter-matched row, computed once. refreshWindowRows
+    // runs on every window move and compares numbers only.
+    var filterMatchedSegments = filterMatchedRows.map(function (row) {
+      return timelineRowSegments(row, nowMs, projectedById[row.id]);
     });
 
     // The reader's place in the list, preserved across a window move. Rows
@@ -668,7 +705,7 @@
       var anchorOffset = scrollHost.scrollTop % TIMELINE_ROW_HEIGHT;
       rows = timelineRowsInWindow(
         filterMatchedRows,
-        filterMatchedExtents,
+        filterMatchedSegments,
         timelineViewState.windowStartMs,
         timelineViewState.windowEndMs
       );
@@ -677,6 +714,15 @@
       }
       for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
         if (rows[rowIndex].id === anchorId) {
+          // GROW THE EXTENT FIRST. scrollTop is clamped to the scrollable height
+          // at the instant it is assigned, and on a widening move the rows SVG
+          // is still the narrow window's height here — renderVisibleRows only
+          // resizes it afterwards. Writing the anchor first therefore clamped it
+          // to the OLD maximum and dropped the reader at the bottom of the
+          // window they were leaving: from a month window at scrollTop 400 the
+          // Fit-all button landed on 465, the old extent's maximum, when the
+          // anchor needed 4900.
+          rowsSvg.setAttribute("height", rows.length * TIMELINE_ROW_HEIGHT);
           scrollHost.scrollTop = rowIndex * TIMELINE_ROW_HEIGHT + anchorOffset;
           return;
         }
@@ -696,7 +742,7 @@
       // fix for this one is a wider window, not a cleared filter.
       if (rows.length === 0) {
         summaryNode.textContent =
-          "No REQ was open between " +
+          "Nothing was drawn between " +
           timelineFormatStamp(timelineViewState.windowStartMs) +
           " and " +
           timelineFormatStamp(timelineViewState.windowEndMs) +
@@ -750,10 +796,9 @@
     // frame during a drag. A closed disclosure is the common case and now costs
     // nothing at all; an open one is rebuilt at most once per frame.
     var tableDisclosure = document.querySelector("#view-timeline .timeline-table");
-    var tableRebuildFrame = null;
 
     function renderTimelineTable() {
-      tableRebuildFrame = null;
+      timelineTableRebuildFrame = null;
       tableBody.textContent = "";
       rows.forEach(function (row) {
         var request = requestsById[row.id] || {};
@@ -781,10 +826,10 @@
         // Closed: the toggle handler rebuilds it from the current rows on open.
         return;
       }
-      if (tableRebuildFrame !== null) {
+      if (timelineTableRebuildFrame !== null) {
         return;
       }
-      tableRebuildFrame = window.requestAnimationFrame
+      timelineTableRebuildFrame = window.requestAnimationFrame
         ? window.requestAnimationFrame(renderTimelineTable)
         : (renderTimelineTable(), null);
     }
@@ -800,7 +845,7 @@
       width: "100%",
       role: "img",
       "aria-label":
-        "One horizontal bar per REQ whose work overlaps the visible time window, in capture order, newest first. The first segment is the wait from capture to claim, the second is the work from claim to completion. Every value is also listed in the table below."
+        "One horizontal bar per REQ drawing anything inside the visible time window, in capture order, newest first. The first segment is the wait from capture to claim, the second is the work from claim to completion. Every value is also listed in the table below."
     });
 
     function plotWidth() {
@@ -1091,10 +1136,16 @@
       timelineViewState.windowEndMs = movedWindow.windowEndMs;
 
       // Rendering rebuilds every row node, so a row that had focus is gone by the
-      // time the next key arrives and focus would have fallen to the body —
-      // leaving one arrow press followed by dead keys. Moving the window never
-      // moves the vertical scroll, so the same row is still in the virtualized
-      // slice; put focus back on its replacement.
+      // time the next key arrives and focus would fall to the body — leaving one
+      // arrow press followed by dead keys.
+      //
+      // This used to assume the row was always still there ("moving the window
+      // never moves the vertical scroll, so the same row is still in the
+      // virtualized slice"). Window-scoped rows (REQ-319) falsified both halves:
+      // a zoom can drop the focused REQ out of the window entirely, and the
+      // anchor can move the scroll. So the fallback is the point — focus the
+      // chart container, which is what keeps the NEXT key working. Without it,
+      // zooming past the focused row killed the keyboard path outright.
       var focusedRow = document.activeElement && document.activeElement.closest
         ? document.activeElement.closest("[data-row-index]")
         : null;
@@ -1104,6 +1155,8 @@
         var rebuiltRow = rowsSvg.querySelector('[data-detail-id="' + focusedRowId + '"]');
         if (rebuiltRow) {
           rebuiltRow.focus();
+        } else {
+          scrollHost.focus();
         }
       }
     });
@@ -1273,10 +1326,12 @@
       });
     }
     renderAll();
-    // renderAll only marks the table stale, and marking does nothing while the
-    // disclosure is closed. One left OPEN across a filter change would otherwise
-    // still be showing the previous render's rows.
+    // renderAll's mark only SCHEDULES a rebuild, a frame away. A disclosure left
+    // open across a filter change would show the previous render's rows for that
+    // frame, so the first paint is taken synchronously here and the scheduled
+    // frame then finds nothing to do.
     if (tableDisclosure && tableDisclosure.open) {
+      releaseTimelineTableFrame();
       renderTimelineTable();
     }
   }

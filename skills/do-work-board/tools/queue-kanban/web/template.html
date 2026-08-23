@@ -263,9 +263,10 @@
         </details>
       </section>
 
-      <!-- Timeline — one bar per REQ across real time: the wait from capture to
-           claim, then the work from claim to completion. Rows are virtualized,
-           so only the scrolled window carries SVG nodes. -->
+      <!-- Timeline — one bar per REQ whose work falls inside the visible time
+           window: the wait from capture to claim, then the work from claim to
+           completion. Rows are virtualized, so only the scrolled window carries
+           SVG nodes. -->
       <section id="view-timeline" class="view-panel" aria-label="Timeline. With the chart focused, arrow keys pan the time axis and the plus and minus keys zoom it. The toolbar steps the window one calendar day, week or month at a time." hidden>
         <div class="timeline-intro">
           <h2 class="timeline-heading">How long each REQ waited, and how long it took</h2>
@@ -306,10 +307,10 @@
         </div>
         <p class="timeline-forecast" id="timeline-forecast"></p>
         <div class="timeline-excluded" id="timeline-excluded"></div>
-        <p class="timeline-hint">Rows run newest first; scroll down to go back through the queue's history. Hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Pick Day, Week or Month and use ‹ and › to step one calendar period at a time; Now jumps to the now-line, the forecast, and the first REQ still open. Click a row for its full detail. From the keyboard: Tab to the chart, then ← and → to pan and + and − to zoom.</p>
+        <p class="timeline-hint">Rows run newest first, and only the REQs the visible window covers are listed; scroll down to go further back inside it. Hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Pick Day, Week or Month and use ‹ and › to step one calendar period at a time; Now jumps to the now-line, the forecast, and the first REQ still open. Click a row for its full detail. From the keyboard: Tab to the chart, then ← and → to pan and + and − to zoom.</p>
         <p class="timeline-readout" id="timeline-readout" role="status" aria-live="polite"></p>
         <details class="timeline-table">
-          <summary>Every REQ, as a table</summary>
+          <summary>The REQs in this window, as a table</summary>
           <div class="timeline-table-scroll">
             <table>
               <thead>

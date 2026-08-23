@@ -2230,7 +2230,7 @@ body.is-resizing-detail .detail-resizer::before {
 }
 
 /* ---- timeline view ------------------------------------------------------
-   One bar per REQ across real time. Rows are virtualized, so .timeline-scroll
+   One bar per REQ the visible time window covers. Rows are virtualized, so .timeline-scroll
    is the scroll container and the SVG inside it is full height while only the
    visible rows carry nodes. Everything is drawn in CSS pixels with no viewBox,
    which is what keeps a pointer's x equal to a plot x at every zoom level. */
