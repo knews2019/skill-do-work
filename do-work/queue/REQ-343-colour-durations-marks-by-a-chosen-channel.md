@@ -69,9 +69,10 @@ without a second glance in the cases a palette can carry.
 ## Builder Guidance
 
 **Certainty: firm that all three channels are wanted, open on the palette and the overflow rule.**
-Route colour is the default so a reader who never touches the control sees today's board. If the
-domain channel turns out to carry almost no signal on real data (most REQs share a domain), say so in
-the hand-back rather than shipping a channel that renders one colour.
+Route colour is the default so a reader who never touches the control sees today's board. All three
+channels ship: if the domain channel turns out to carry almost no signal on real data (most REQs
+share a domain), that is an honest reading of the archive and worth noting in the hand-back, not a
+reason to omit the channel. Dropping one is a decision for the maintainer, not the builder.
 
 ## Red-Green Proof
 

@@ -22,7 +22,7 @@ estimate:
     - Route B
     - 4-file write set
     - 2 subsystems involved
-    - 6 acceptance criteria
+    - 7 acceptance criteria
     - browser evidence
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-durations.js
@@ -66,6 +66,13 @@ to tell them apart.
   is not the builder's call. The row count is: three rows placed 54 of 61 URs on 30 days of this
   repository's data, and the consuming project has more URs in the same window.
 - **Leave route colour as it is.** REQ-343 adds the colour-by channel; this REQ does not touch fill.
+- **A sample whose REQ carries no `user_request` gets an explicit unknown-UR treatment**, named on
+  screen rather than left blank. Twelve of this repository's 305 samples are in that state — REQ-001
+  through REQ-011 and REQ-060, all pre-dating the UR system, all with parseable claim and completion
+  stamps, and `buildDurationAggregate` includes every one of them. Decide the treatment (a single
+  "no UR" bucket in the lane, an explicit cell value in the table, or another rule you can defend),
+  apply the same rule in all three surfaces, and keep it distinct from the remainder count above:
+  a UR that found no lane row and a sample that has no UR at all are different facts.
 
 ## Constraints
 
@@ -97,8 +104,9 @@ says which marks belong to one request.
 **Why RED now:** The Durations payload carries no UR field and the renderer never consults
 `boardData.requests[id].userRequestId`.
 
-**GREEN when:** the hover readout names the UR beside the REQ id, the sample table has a UR column
-populated for every row, and a lane under panel A brackets each UR across its samples with a stated
+**GREEN when:** the hover readout names the UR beside the REQ id; the sample table has a UR column
+whose every row is either a UR id or the stated unknown-UR value — never blank, including for the
+twelve pre-UR samples; and a lane under panel A brackets each UR across its samples with a stated
 count of the URs that found no row.
 
 **Validation:** User confirmed (bundled invocation, capture answer Q4).

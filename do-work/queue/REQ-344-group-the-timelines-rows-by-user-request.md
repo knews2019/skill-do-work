@@ -22,7 +22,7 @@ estimate:
     - Route C
     - 3-file write set
     - 2 subsystems involved
-    - 8 acceptance criteria
+    - 7 acceptance criteria
     - browser evidence
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-timeline.js
@@ -58,8 +58,14 @@ showing the same tickets against the same axis. **No panel D is added to Duratio
 
 ## Detailed Requirements
 
-- **Rows group under their UR.** A UR header row spans from its first REQ's start to its last REQ's
-  end; its REQ rows sit under it.
+- **Rows group under their UR.** Its REQ rows sit under it.
+- **The elapsed span runs from first REQ *claim* to last completion**, which is what the captured
+  request asks for and what the figures quoted below were measured from. Not from `created_at`:
+  Timeline rows distinguish `CreatedTime` from `ClaimedTime` and draw their wait segment from
+  creation, so measuring the group from a row's visual left edge would fold queue wait into the
+  number and produce a different statistic from the one this REQ reports. If a UR's earliest REQ was
+  never claimed, state the fallback you chose on the view rather than silently substituting its
+  creation stamp.
 - **The elapsed-versus-worked gap is readable from the group**, because that is the finding being
   closed, not the grouping itself. The UR header carries both its elapsed calendar span and the
   summed measured work of its REQs — in the row label, the drawer, or the hover, whichever the
