@@ -14,6 +14,16 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-342, REQ-343, REQ-345, REQ-346, REQ-347, REQ-348, REQ-349, REQ-350]
 batch: durations-panel-improvement
+estimate:
+  p50_active_minutes: 40
+  confidence: medium
+  calculated_at: 2026-08-23T22:37:52Z
+  basis:
+    - Route C
+    - 3-file write set
+    - 2 subsystems involved
+    - 8 acceptance criteria
+    - browser evidence
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-timeline.js
   - skills/do-work-board/tools/queue-kanban/timeline.go
@@ -55,6 +65,15 @@ showing the same tickets against the same axis. **No panel D is added to Duratio
   summed measured work of its REQs — in the row label, the drawer, or the hover, whichever the
   view's existing idiom supports.
 - **The REQ count per UR is visible** on the header row.
+- **Say which figure is which.** Prompt A2 required the panel subtitle to state what each end of a
+  stem meant; the same obligation survives the move to the Timeline. Elapsed span and summed work are
+  two different measures on one row, and an unlabelled pair is a worse answer than no answer.
+- **Name the exclusion rule the summed work uses.** Prompt A2 required the same read-time exclusion
+  the Durations panels apply (spans over four hours assumed paused, negative spans dropped). The
+  Timeline has its own convention — it draws every span the payload measured, with the board's
+  reversed-stamp verdict attached — so the two rules can disagree about the same UR. Pick one, state
+  it on the view, and make sure a reader comparing this figure with the Durations panels is told they
+  are not the same statistic if they are not.
 - A REQ with no `user_request` still gets a row. Decide where ungrouped rows sit and state it.
 - **Grouping is compatible with what the view already does**, or it does not ship:
   - Rows are virtualized (only rows inside the scrolled window get SVG nodes) — a group header must

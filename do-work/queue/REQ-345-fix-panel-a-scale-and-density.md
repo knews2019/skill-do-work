@@ -14,8 +14,18 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-342, REQ-343, REQ-344, REQ-346, REQ-347, REQ-348, REQ-349, REQ-350]
 batch: durations-panel-improvement
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-08-23T22:37:52Z
+  basis:
+    - Route B
+    - 3-file write set
+    - 6 acceptance criteria
+    - browser evidence
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-durations.js
+  - skills/do-work-board/tools/queue-kanban/durations_test.go
   - skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go
 ---
 
@@ -60,6 +70,8 @@ by hovering one mark at a time.
 - The browser probe lane measures the rendered face and the geometry tests read this file's
   constants — a new scale means the probes that pin tick positions move with it, not around it.
 - Generate a board and look at it. Overplotting is exactly the class of defect a green suite hides.
+- **The target is legibility at 700 or more archived REQs**, not at this repository's 305. The
+  consuming project is already at 692 samples across 47 active days, at about 8 SVG units per day.
 
 ## Dependencies
 

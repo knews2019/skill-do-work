@@ -14,10 +14,21 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-343, REQ-344, REQ-345, REQ-346, REQ-347, REQ-348, REQ-349, REQ-350]
 batch: durations-panel-improvement
+estimate:
+  p50_active_minutes: 30
+  confidence: medium
+  calculated_at: 2026-08-23T22:37:52Z
+  basis:
+    - Route B
+    - 4-file write set
+    - 2 subsystems involved
+    - 6 acceptance criteria
+    - browser evidence
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-durations.js
   - skills/do-work-board/tools/queue-kanban/web/template.html
   - skills/do-work-board/tools/queue-kanban/web/board.css
+  - skills/do-work-board/tools/queue-kanban/generate.go
 ---
 
 # Name the UR on Every Durations Sample
@@ -62,6 +73,9 @@ to tell them apart.
 - Generate a board and look at it. The lane is a new text-bearing SVG structure at a density that
   already defeated the overflow lane's labels once — a passing suite is not evidence here.
 - Seven REQs in this batch write `web/board-durations.js`. Keep the diff to the identity surfaces.
+- **The target is legibility at 700 or more archived REQs**, not at this repository's 305. The
+  consuming project is already at 692 samples across 47 active days — check the lane against a board
+  that size, or say you could not.
 
 ## Dependencies
 

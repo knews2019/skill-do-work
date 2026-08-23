@@ -48,6 +48,14 @@ Decided by capture, from the report's own reasoning, without asking:
 - **Seven of the nine REQs write `web/board-durations.js`.** Declared in every affected `write_set`. Do not fan these out into parallel worktrees; they serialize on that file.
 - **Every REQ here changes a chart.** The repository's standing rule applies to each: generate a board and look at it. A passing suite is not evidence about two glyphs sharing a coordinate.
 - Keep one measure per scale, and keep the read-time exclusion rule (spans over four hours assumed paused, negative spans dropped) exactly as it is unless a REQ says otherwise. Panels A and B disagree about which samples count on purpose, and that rule lives in one place.
+- **The stated objective is legibility at 700 or more archived REQs**, not at this repository's 305.
+  The consuming project's own board is already at 692 samples across 47 active days with 60
+  over-ceiling samples; every density judgment in this batch is made against that number, not this
+  repository's.
+- **The proposal's recommended order** is REQ-342 (UR identity) and the UR-level view first, then
+  REQ-345 (scale and density), then REQ-346 (the axis window). REQ-347 removes more code than it
+  adds. That is sequencing advice from the report, not a dependency — the `depends_on` fields are the
+  only hard ordering.
 - The figures quoted throughout come from this repository's generated `board-data.js` on 2026-08-23 (305 samples, 29 active days, 66 URs, median 13.2 min, p90 42.7) and from the consuming project's board (692 samples, 47 active days). They are measurements, not targets — re-measure rather than hard-coding them.
 
 ## Full Verbatim Input

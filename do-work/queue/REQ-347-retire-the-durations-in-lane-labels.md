@@ -14,6 +14,18 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-342, REQ-343, REQ-344, REQ-345, REQ-346, REQ-348, REQ-349, REQ-350]
 batch: durations-panel-improvement
+estimate:
+  p50_active_minutes: 40
+  confidence: medium
+  calculated_at: 2026-08-23T22:37:52Z
+  basis:
+    - Route B
+    - 6-file write set
+    - 2 subsystems involved
+    - 5 acceptance criteria
+    - dependency depth 1
+    - browser evidence
+    - cross-route regression gates
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-durations.js
   - skills/do-work-board/tools/queue-kanban/durations.go
@@ -78,6 +90,9 @@ capture.
   lane, the marks, the hover or the remainder count stays.
 - Generate a board and look at it, on this repository's archive and on a board with more over-ceiling
   samples if one is reachable.
+- **The target is legibility at 700 or more archived REQs**, not at this repository's 305. The
+  consuming project is already at 692 samples with 60 over-ceiling — a list that only reads well at
+  13 rows has not solved the problem the lane had.
 
 ## Dependencies
 
