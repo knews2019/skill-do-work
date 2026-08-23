@@ -1,7 +1,8 @@
 ---
 id: REQ-325
 title: "Stop the report-image interruption path orphaning its backend"
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-23T11:42:00Z
 created_at: 2026-08-23T02:09:42Z
 user_request: UR-065
 addendum_to: REQ-321
@@ -95,12 +96,13 @@ either script.
 
 ## Open Questions
 
-- [ ] I discovered this out-of-scope task while working on REQ-321: the canonical gate can
+- [x] I discovered this out-of-scope task while working on REQ-321: the canonical gate can
   hang indefinitely on `generate-report-image`'s interruption case, and the same shipped path
   would orphan the image backend after an interrupted `ai-report`. Should I process this as a
-  new task?
-  Recommended: Yes, add to queue (will flip to 'pending').
-  Also: No, discard it.
+  new task? → Confirmed: Yes, add to queue
+  - [2026-08-23] User approved via clarify: the hang blocks the canonical gate (two
+    reproductions on 2026-08-22/23) and the shipped path leaves a stray process after an
+    interrupted `ai-report`, so the fix is wanted as its own REQ. Nothing put out of scope.
 
 ## Red-Green Proof
 
