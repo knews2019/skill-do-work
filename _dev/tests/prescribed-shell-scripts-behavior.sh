@@ -6,15 +6,20 @@
 set -uo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=_dev/tests/prescribed-shell-case-count.sh
+source "$repo_root/_dev/tests/prescribed-shell-case-count.sh"
 case_directory="$repo_root/_dev/tests/prescribed-shell-cases"
 case_file_count=0
 failed_case_file_count=0
+named_case_count=0
 
 # One process per case file, so a file's fixture root, background processes, and failure
 # tally are its own — and so one file can be run on its own while iterating on its script.
 for case_file in "$case_directory"/*.sh; do
   [ -f "$case_file" ] || continue
   case_file_count=$((case_file_count + 1))
+  case_header_count="$(count_named_case_headers "$case_file")"
+  named_case_count=$((named_case_count + case_header_count))
   bash "$case_file" || failed_case_file_count=$((failed_case_file_count + 1))
 done
 
@@ -27,10 +32,10 @@ if [ "$failed_case_file_count" -gt 0 ]; then
     "$failed_case_file_count" "$case_file_count" >&2
   exit 1
 fi
-# One case is one fixture block, and every block opens with a header comment of the shape
-# `<script-name>: <what it proves>` at column zero. That shape is the definition, and the
-# count below is that shape grepped out of the case files at run time — so the reported
-# number and the files cannot disagree, and nothing here is a remembered figure.
-named_case_count="$(grep -hE '^# [a-z0-9][a-z0-9-]*: ' "$case_directory"/*.sh | wc -l | tr -d ' ')"
+# One case is one fixture block, and every block opens with a header comment at column
+# zero naming the script under test. The aggregate accumulated in the loop above applies
+# prescribed-shell-case-count.sh's rule — the same rule each case file reports its own
+# line with — to every file in turn, so the reported number and the files cannot disagree,
+# and nothing here is a remembered figure.
 printf 'Prescribed shell script behavior probes passed (%s named script cases across %s per-script files).\n' \
   "$named_case_count" "$case_file_count"

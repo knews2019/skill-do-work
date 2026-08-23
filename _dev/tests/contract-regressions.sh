@@ -5042,6 +5042,44 @@ elif ! bash "$prescribed_shell_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
+# The prescribed-shell suite reports how many cases it holds, and that figure is only as
+# honest as the rule that produces it. Before REQ-339 the rule matched `^# <one-token>: `,
+# so `# generate-report-image caller contract:` and `# generate-report-image, interrupted
+# directly:` were real cases no figure ever mentioned — nothing failed, the number just
+# read low. This fixture carries three headers in three spellings plus three near-misses
+# that must stay uncounted, so a narrowed rule and an over-broad one both fail here.
+prescribed_shell_counter="$repo_root/_dev/tests/prescribed-shell-case-count.sh"
+if [ ! -f "$prescribed_shell_counter" ]; then
+  printf 'FAIL: _dev/tests/prescribed-shell-case-count.sh is missing — the reported case count has no definition to hold to.\n' >&2
+  fail_count=$((fail_count + 1))
+else
+  case_count_fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/prescribed-shell-case-count.XXXXXX")"
+  cat > "$case_count_fixture_root/probe-counter.sh" <<'PROBE_COUNTER_FIXTURE'
+# Fixture execution proofs for probe-counter.
+# probe-counter: a bare header counts.
+# probe-counter, interrupted: a comma-qualified header counts.
+# probe-counter caller contract: a space-qualified header counts.
+# The wrapped description below is prose, not a header: it only carries a colon.
+# reaching a colon mid-sentence: a continuation line must not count.
+# probe-counter.sh named inside a sentence (REQ-000: still not a header).
+PROBE_COUNTER_FIXTURE
+  # 'none' rather than 0 so a counter that could not run stays distinguishable from one
+  # that legitimately found nothing.
+  if ! observed_header_count="$(
+    # shellcheck source=_dev/tests/prescribed-shell-case-count.sh
+    source "$prescribed_shell_counter"
+    count_named_case_headers "$case_count_fixture_root/probe-counter.sh"
+  )"; then
+    observed_header_count='none'
+  fi
+  if [ "$observed_header_count" != '3' ]; then
+    printf 'FAIL: count_named_case_headers reported %s of the fixture 3 case headers — the suite'"'"'s reported case count no longer matches what the case files hold.\n' \
+      "$observed_header_count" >&2
+    fail_count=$((fail_count + 1))
+  fi
+  rm -rf "$case_count_fixture_root"
+fi
+
 # REQ-168 removed specific generic guidance and an arbitrary commit-size heuristic. Keep
 # those exact deletions without turning its historical audit into a living registry or
 # banning future incident-backed defensive sections.
