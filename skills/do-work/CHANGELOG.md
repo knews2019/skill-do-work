@@ -2,6 +2,19 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.31 — Timeline Clicks Open the Detail Drawer Again (2026-08-23)
+
+Clicking a bar in the Timeline stopped opening anything two versions ago — every mouse press inside the
+chart was swallowed, including the sub-pixel nudge that is supposed to still count as a click. Dragging
+to pan kept working, which is why it took a while to notice.
+
+- The Timeline takes its pointer capture when a drag actually engages, not on every press: capture also
+  retargets the click the browser synthesizes, so taking it early cost the click its target
+- A press that never travels four pixels is now an ordinary, untouched click again — and a drag released
+  outside the chart still ends cleanly, which is what the capture was added for
+- Verified with real browser input rather than synthetic events, because synthetic pointer ids cannot be
+  captured and so cannot reproduce the fault
+
 ## 0.236.30 — Interrupted Report Images Take Their Backend With Them (2026-08-23)
 
 Cancelling an `ai-report` could leave the image backend running, and the probe that was supposed to catch

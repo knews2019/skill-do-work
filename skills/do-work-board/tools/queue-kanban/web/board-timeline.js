@@ -122,11 +122,16 @@
   // How far a pointer must travel before a press becomes a pan. Under it the
   // press is a click and the drawer opens on release.
   //
-  // The first pointermove used to engage the pan and RE-RENDER, which is the
-  // whole defect: the click the engine then synthesized had no surviving
-  // [data-detail-kind] ancestor to find. The window did not have to move for
-  // that — at Fit all it clamps to the window it started in and the click was
-  // lost anyway — so the threshold gates the render, not the shift.
+  // The first pointermove used to engage the pan and RE-RENDER, and the click the
+  // engine then synthesized had no surviving [data-detail-kind] ancestor to find.
+  // The window did not have to move for that — at Fit all it clamps to the window
+  // it started in and the click was lost anyway — so the threshold gates the
+  // render, not the shift.
+  //
+  // That is ONE of two ways the chart has eaten a click. The other was pointer
+  // capture taken on pointerdown, which retargets the synthesized click whether or
+  // not anything re-renders; the threshold cannot protect against it, which is why
+  // the capture now waits for the engage too (see capturePanPointer below).
   //
   // 4px: an ordinary hand tremor on a trackpad stays under it, an intended drag
   // clears it in the first frame.
@@ -2566,32 +2571,49 @@
         windowStartMs: timelineViewState.windowStartMs,
         engaged: false
       };
-      // CAPTURE THE POINTER, so the release is guaranteed to arrive here.
-      //
-      // A drag released OUTSIDE the chart delivered its pointerup to whatever was
-      // under the cursor, and Chromium suppresses the boundary events while a button
-      // is held — so none of pointerup, pointercancel or pointerleave reached this
-      // host, the teardown never ran, and the grab cursor stayed on for the rest of
-      // the session. Capture makes the release a fact rather than a hope; the
-      // teardown below then also gets lostpointercapture, which fires even when the
-      // engine takes the capture away.
-      if (typeof scrollHost.setPointerCapture === "function" && downEvent.pointerId !== undefined) {
-        try {
-          scrollHost.setPointerCapture(downEvent.pointerId);
-        } catch (captureError) {
-          // A pointer the engine will not let us capture is not a reason to refuse
-          // the drag; the release events below are still the ordinary path.
-          panState.pointerId = undefined;
-        }
-      }
     });
+
+    // CAPTURE THE POINTER once the pan ENGAGES, so the release is guaranteed to arrive
+    // here — and not before, because capture also retargets the synthesized click.
+    //
+    // A drag released OUTSIDE the chart delivered its pointerup to whatever was under
+    // the cursor, and Chromium suppresses the boundary events while a button is held —
+    // so none of pointerup, pointercancel or pointerleave reached this host, the
+    // teardown never ran, and the grab cursor stayed on for the rest of the session.
+    // Capture makes the release a fact rather than a hope; the teardown below then also
+    // gets lostpointercapture, which fires even when the engine takes the capture away.
+    //
+    // Capturing on pointerdown instead cost every mouse click in the chart: capture
+    // retargets subsequent pointer events AND the synthesized click to the capturing
+    // element, so the delegated handler in board-controls.js found no
+    // [data-detail-kind] ancestor and the detail drawer never opened for any press,
+    // drag or not. Taking capture at the engage instead makes "a drag is not a click"
+    // a property of the capture rather than an accident, and leaves a press that never
+    // engages an ordinary, untouched click.
+    function capturePanPointer() {
+      if (typeof scrollHost.setPointerCapture !== "function" || panState.pointerId === undefined) {
+        return;
+      }
+      try {
+        scrollHost.setPointerCapture(panState.pointerId);
+      } catch (captureError) {
+        // A pointer the engine will not let us capture is not a reason to refuse the
+        // drag; the release events below are still the ordinary path, and the teardown
+        // asks hasPointerCapture rather than assuming this call succeeded.
+      }
+    }
+
     addTimelineListener(scrollHost, "pointermove", function (moveEvent) {
       if (!panState) {
         return;
       }
+      var wasEngaged = panState.engaged;
       panState.engaged = timelinePanEngaged(panState.engaged, panState.pointerX, moveEvent.clientX);
       if (!panState.engaged) {
         return;
+      }
+      if (!wasEngaged) {
+        capturePanPointer();
       }
       scrollHost.classList.add("is-panning");
       var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs;

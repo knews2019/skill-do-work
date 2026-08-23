@@ -2308,13 +2308,25 @@ window.addEventListener("load", function () {
 	// And the capture is actually requested, which is what makes the release above a
 	// fact rather than a hope. Structural, because a synthetic pointerId cannot be
 	// captured in this lane.
-	pointerDownBody := sliceBalancedBlockAfter(t, indexHTML, "addTimelineListener(scrollHost, \"pointerdown\"")
+	//
+	// REQ-336 moved the request off pointerdown and onto the pan's ENGAGE: capture also
+	// retargets the synthesized click, so taking it on every press cost every mouse
+	// click in the chart its [data-detail-kind] target. This asserts the same contract
+	// at its new instant, in two halves so deleting either one fails: the capture call
+	// lives in capturePanPointer, and the move handler calls it.
+	//
 	// The CALL, not the feature-detect guard beside it: a check for the bare name
 	// matched the `typeof scrollHost.setPointerCapture === "function"` line and passed
 	// with the call itself deleted.
-	if !strings.Contains(pointerDownBody, "scrollHost.setPointerCapture(") {
-		t.Error("the pointerdown handler does not capture the pointer, so a drag released outside " +
+	capturePanPointerBody := sliceBalancedBlockAfter(t, indexHTML, "function capturePanPointer(")
+	if !strings.Contains(capturePanPointerBody, "scrollHost.setPointerCapture(") {
+		t.Error("capturePanPointer does not capture the pointer, so a drag released outside " +
 			"the chart has no guaranteed path back to the host that armed it")
+	}
+	pointerMoveBody := sliceBalancedBlockAfter(t, indexHTML, "addTimelineListener(scrollHost, \"pointermove\"")
+	if !strings.Contains(pointerMoveBody, "capturePanPointer()") {
+		t.Error("the pointermove handler never calls capturePanPointer, so nothing takes the " +
+			"capture when the pan engages and the release is a hope again")
 	}
 
 	// (b) EVERY arrow press pans, not just the first. The second press was the dead
