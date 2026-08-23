@@ -2,6 +2,116 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.29 — Failed REQs Stop at Their Own Timestamp (2026-08-23)
+
+Two review findings on the Timeline work. A `failed` REQ was drawn as work still in flight even with its
+`completed_at` recorded, and a still-open REQ could have the live end of its bar sit outside every window
+the controls could reach.
+
+- A failure now ends where its `completed_at` says it did, the same stamp the calendar dates it from
+- "Still running" now means running: `failed` counts as stopped, while `blocked` and needs-input stay open, because that work is unfinished rather than over
+- The backup window used when the chart cannot read its own date range now reaches the now-line for rows that are still open
+
+## 0.236.28 — Timeline Arrow Keys and Drags Keep Working (2026-08-23)
+
+With a row focused, the first arrow key panned the chart and every one after it was dead. A drag released
+outside the chart left the grab cursor on for the rest of the session. And ctrl-scrolling over the axis strip
+— the place you would aim to zoom a time axis — did nothing.
+
+- Arrow keys keep panning press after press, with focus staying on the row you were on
+- A drag ends wherever you release it, and the grab cursor goes with it
+- Holding Ctrl and scrolling over the axis strip zooms, as the hint under the chart says it does
+
+## 0.236.27 — Timeline Prose Describes Only What Is on Screen (2026-08-23)
+
+The summary pointed at a now-line on windows that do not draw one, and on a filtered view the forecast said
+"not the rows shown" and "every remaining REQ is listed below" in the same breath.
+
+- On a window the now-line falls outside, the summary states the instant open spans were measured against without claiming a rule you can see
+- The forecast only says everything remaining is listed when the rows on screen really are the whole queue
+- The legend gained an entry for the axis-tick gridlines, the third kind of vertical line the plot draws
+
+## 0.236.26 — Now and Fit All Land Somewhere You Can Read (2026-08-23)
+
+Pressing Now on a queue with nothing left to schedule dropped you onto a one-hour window — the tightest zoom
+there is — where the zoom-in button, ctrl-scroll and the plus key all silently did nothing. And Fit all fitted
+the whole archive even when a filter had left one REQ on screen.
+
+- Now lands on at least half a day, so there is work either side of the now-line and somewhere left to zoom
+- Fit all fits the rows actually on screen; you can still zoom back out past them
+- The step arrows no longer walk into the blank margin past the last REQ
+- Every zoom and step control now shows itself disabled when it cannot move the window, instead of doing nothing without saying so
+
+## 0.236.25 — Timeline Fallback Window Covers the Whole Queue (2026-08-23)
+
+If the Timeline ever cannot read its own date range, its backup window used to collapse to one hour around
+the newest REQ — and since that window is also what every control clamps against, there was no way out of it.
+
+- The fallback now spans every instant the matching REQs carry, so nothing is unreachable
+- With no readable dates anywhere it says so plainly instead of building a window out of nothing
+
+## 0.236.24 — Timeline Controls Go Quiet When Nothing Matches (2026-08-23)
+
+Search for something that does not exist on the Timeline and the toolbar used to stay wired to the previous
+render: one press of Fit all refilled the summary and the details table with the REQs your filter had just
+excluded, over an empty chart.
+
+- Every timeline control is disabled while no REQ matches the filters, and restored the moment one does
+- Pressing one in that state can no longer describe rows that are not on screen
+
+## 0.236.23 — Timeline Date Fields Name the Window You Are Looking At (2026-08-23)
+
+Clearing the From or to box used to leave it permanently blank, and a date the chart clamped left the box
+showing the date it rejected. Both boxes now always name the window actually on screen.
+
+- Clearing a box no longer moves the window, and the box comes back with the window's own date
+- After a date is clamped, the box shows where the chart landed rather than what was typed
+- A date past either end of the range now lands on the nearest day the board has, instead of an empty one-hour sliver behind the frame
+- A box you start typing in and then click away from is restored instead of left half-edited
+
+## 0.236.22 — Timeline Axis Ticks Sit on Real Dates (2026-08-23)
+
+The axis cut every window into six equal parts and then printed a bare date on each tick — so a week read
+"1, 2, 3, 4, 5, 6, 8 Jun" with 7 June missing, and the tick labelled "4 Jun" was actually at 4 Jun 12:00.
+Ticks now land on calendar boundaries.
+
+- A week shows all eight of its midnights, a day shows four-hour marks, a month shows its Mondays, and a three-month view shows fortnights
+- A label with no time on it is now always a tick at midnight, which is what a bare date claims
+- A window that crosses New Year gets the year on its labels even when it is only nine days long
+- A tick near either edge is anchored inward so its label is not clipped
+
+## 0.236.21 — The Timeline Stops Drawing Finished REQs as Still Running (2026-08-23)
+
+The chart decided a span was "still open" by asking whether a timestamp string parsed, not by asking what
+state the REQ was in. On this repo's board that made 25 of 26 supposedly-open rows finished work, each drawn
+as a dashed bar running to the now-line.
+
+- "Still open" now means still running: a completed or cancelled REQ never draws an open span, and the count beside it dropped from 26 to the number actually in flight
+- The chart reads the completion instant the board had already resolved — from frontmatter or the commit hash's date — instead of re-parsing the raw stamp, so a REQ the calendar places on Friday no longer draws a bar to right now
+- A REQ that stopped with no resolvable end instant is drawn as a break, which is what the summary and the legend already promised
+- "N with broken stamps, drawn as breaks" now counts exactly what is drawn as a break
+- A fitted window on a board with no running work no longer stretches out to the present
+
+## 0.236.20 — Clicking a Timeline Row No Longer Blanks the Chart (2026-08-23)
+
+The detail drawer takes 630 pixels out of the plot, and nothing was re-measuring it — so following the
+chart's own "click a row for its full detail" hint made every bar vanish. The plot now watches its own box.
+
+- A ResizeObserver on the plot re-lays the bars whenever its box changes: the drawer opening or closing, the view being shown, any future layout change
+- A resize taken while another view is on screen no longer leaves the Timeline crushed into a 120-pixel strip with eight rows in it
+- Coming back to the Timeline repairs it on its own, with no window move needed
+- The hover readout is cleared when a window move takes its row off the chart, and no longer announces once per mouse movement
+
+## 0.236.19 — Timeline Period Chips Land on Now (2026-08-23)
+
+Pressing Day, Week or Month on the Timeline now shows the period around the present instead of the
+arithmetic middle of your archive, and the arrows step without losing the calendar grid.
+
+- A period chip anchors on the now-line whenever it is on screen, and on the window you panned to when it is not
+- An edge period is cut short at the range end rather than slid off its own boundary, so next-then-previous comes home
+- The arrows step one calendar period on a period window and one screenful on a span of your own, instead of resizing the chart to the nearest level
+- The lit chip now reports the calendar grid you are on, with the readout saying "part of one month" when the range cuts it short
+
 ## 0.236.18 — Timeline Lists Only Rows It Actually Draws (2026-08-23)
 
 Two edge cases where the Timeline listed a REQ whose mark was nowhere on screen. Both are the

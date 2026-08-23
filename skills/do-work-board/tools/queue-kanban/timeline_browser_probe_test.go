@@ -1290,3 +1290,1053 @@ func TestTimelineRowTooltipMarkupMatchesTheProbe(t *testing.T) {
 			"assertions in generate_test.go are testing a function nothing calls")
 	}
 }
+
+// plotEdgeText renders an optional measured edge for a failure message. A *int
+// formatted with %v prints its ADDRESS, which is how a real failure came out
+// reading "leftmost 0x1b8ca51929b0" — true, useless, and impossible to argue with.
+func plotEdgeText(edge *int) string {
+	if edge == nil {
+		return "none measured"
+	}
+	return strconv.Itoa(*edge)
+}
+
+// Opening the detail drawer narrows the plot, and before this probe nothing
+// re-measured it.
+//
+// WHY A BROWSER, AND WHY THE WHOLE BOARD. The defect is a layout interaction: the
+// drawer takes a 620px grid column, the scroll host loses 630px of width, and
+// every bar keeps the x it was given against the old plot. Nothing about the
+// renderer is wrong in isolation — a sliced function measures whatever width the
+// fixture hands it — so the only thing that can show this is a real engine laying
+// out the real page, measuring the real bars, and comparing what is inside the
+// host's box before and after a real click on a row.
+//
+// The measurement is getBoundingClientRect() intersection, not node count: the
+// bars were all still in the DOM when the chart looked blank. Fifty-five segments,
+// zero of them inside the host.
+func TestBrowserBehaviorTimelineBarsSurviveTheDetailDrawerOpening(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+// Waiting on a CONDITION, never on a duration. Fixed setTimeouts passed alone and
+// failed inside the full suite, where a dozen probes share the machine: the two
+// 300ms waits after a row click were enough for an idle run and not for a loaded
+// one, and the probe then measured a layout that had not settled and reported the
+// defect it exists to catch. Bounded by a deadline so a genuine failure still
+// fails rather than hanging.
+function settleUntil(predicate, thenDo) {
+  var attemptsLeft = 60;
+  (function attempt() {
+    if (predicate() || attemptsLeft-- <= 0) {
+      // One more tick after the predicate holds, so a render the change SCHEDULED
+      // has run before anything is measured. setTimeout rather than
+      // requestAnimationFrame throughout: headless --dump-dom has no compositor
+      // driving frames, so an rAF-based poll never resolves and the runner dumps
+      // an empty result node.
+      setTimeout(thenDo, 50);
+      return;
+    }
+    setTimeout(attempt, 50);
+  })();
+}
+function plotHost() {
+  return document.querySelector("#view-timeline .timeline-scroll");
+}
+// What the reader can actually see: segments whose box overlaps the host's box.
+// Counting nodes would have passed straight through the defect.
+function plotSnapshot(label) {
+  var host = plotHost();
+  var hostBox = host.getBoundingClientRect();
+  var segments = [].slice.call(host.querySelectorAll("rect.timeline-segment"));
+  var inside = 0;
+  var rightmost = -Infinity;
+  var leftmost = Infinity;
+  segments.forEach(function (segment) {
+    var box = segment.getBoundingClientRect();
+    if (box.right > hostBox.left && box.left < hostBox.right) {
+      inside++;
+    }
+    rightmost = Math.max(rightmost, box.right);
+    leftmost = Math.min(leftmost, box.left);
+  });
+  return {
+    label: label,
+    href: location.href,
+    hostWidth: Math.round(hostBox.width),
+    hostRight: Math.round(hostBox.right),
+    segments: segments.length,
+    inside: inside,
+    rightmost: isFinite(rightmost) ? Math.round(rightmost) : null,
+    leftmost: isFinite(leftmost) ? Math.round(leftmost) : null
+  };
+}
+function drawerIsOpen() {
+  var drawer = document.getElementById("detail-drawer");
+  return !!drawer && !drawer.hidden && !drawer.classList.contains("is-hidden");
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      probe.before = plotSnapshot("before");
+      probe.drawerOpenBefore = drawerIsOpen();
+      // A row, clicked the way a reader clicks one. The delegated handler reads
+      // [data-detail-kind] off the row group.
+      var firstRow = plotHost().querySelector('g[data-detail-kind="request"]');
+      probe.foundARow = !!firstRow;
+      if (firstRow) {
+        firstRow.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true }));
+      }
+      // Wait for the RE-LAYOUT, not for the width change and not for a duration.
+      //
+      // The width narrows synchronously with the click, but the render it triggers is
+      // scheduled through requestAnimationFrame — and headless --dump-dom has no
+      // compositor driving frames, so under full-suite load that callback lands well
+      // after the width has moved. Polling the width therefore measured a settled
+      // container around an unsettled plot, and the probe reported the very defect it
+      // exists to catch. Twice.
+      //
+      // Polling the OUTCOME is sound here because the wait is bounded: a genuine
+      // regression spins out the attempts and then fails the assertion below, which is
+      // exactly what removing the ResizeObserver does.
+      var widthBeforeClick = probe.before.hostWidth;
+      function someSegmentIsInsideThePlot(wantWidthChanged) {
+        var host = plotHost();
+        var hostBox = host.getBoundingClientRect();
+        var widthChanged = Math.round(hostBox.width) !== widthBeforeClick;
+        if (widthChanged !== wantWidthChanged) {
+          return false;
+        }
+        return [].slice.call(host.querySelectorAll("rect.timeline-segment")).some(function (segment) {
+          var box = segment.getBoundingClientRect();
+          return box.right > hostBox.left && box.left < hostBox.right;
+        });
+      }
+      settleUntil(function () {
+        return someSegmentIsInsideThePlot(true);
+      }, function () {
+        probe.drawerOpenAfter = drawerIsOpen();
+        probe.after = plotSnapshot("after");
+        var close = document.getElementById("detail-close");
+        if (close) { close.click(); }
+        settleUntil(function () {
+          return someSegmentIsInsideThePlot(false);
+        }, function () {
+          probe.closed = plotSnapshot("closed");
+          probe.drawerOpenAtEnd = drawerIsOpen();
+          document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+          document.title = "READY";
+        });
+      });
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the probe script before")
+	}
+	// A LONGER VIRTUAL-TIME BUDGET, because this probe waits on conditions rather
+	// than durations and every polled frame advances the virtual clock. The default
+	// 5000ms is spent before the poll resolves, and the runner then dumps a DOM
+	// whose result node is still empty. The flag repeats deliberately: Chromium
+	// takes the last occurrence, and the runner's own default comes first.
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline drawer plot width", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+
+	type plotSnapshot struct {
+		Label     string `json:"label"`
+		Href      string `json:"href"`
+		HostWidth int    `json:"hostWidth"`
+		HostRight int    `json:"hostRight"`
+		Segments  int    `json:"segments"`
+		Inside    int    `json:"inside"`
+		Rightmost *int   `json:"rightmost"`
+		Leftmost  *int   `json:"leftmost"`
+	}
+	var drawerResult struct {
+		Before           plotSnapshot `json:"before"`
+		After            plotSnapshot `json:"after"`
+		Closed           plotSnapshot `json:"closed"`
+		FoundARow        bool         `json:"foundARow"`
+		DrawerOpenBefore bool         `json:"drawerOpenBefore"`
+		DrawerOpenAfter  bool         `json:"drawerOpenAfter"`
+		DrawerOpenAtEnd  bool         `json:"drawerOpenAtEnd"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &drawerResult); decodeError != nil {
+		t.Fatalf("decode timeline drawer behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// Every measurement names the page it measured. A confident number about
+	// somebody else's board has shipped here before.
+	for _, snapshot := range []plotSnapshot{drawerResult.Before, drawerResult.After, drawerResult.Closed} {
+		if !strings.HasSuffix(snapshot.Href, "/probe.html") {
+			t.Fatalf("the %s snapshot was taken on %q, not the probe page", snapshot.Label, snapshot.Href)
+		}
+	}
+
+	// SETUP, ASSERTED. Each of these silently turns the test below into a
+	// measurement of nothing.
+	if !drawerResult.FoundARow {
+		t.Fatal("the probe found no [data-detail-kind] row in the plot, so it clicked nothing")
+	}
+	if drawerResult.DrawerOpenBefore {
+		t.Fatal("the detail drawer was already open before the row click")
+	}
+	if !drawerResult.DrawerOpenAfter {
+		t.Fatal("clicking a row did not open the detail drawer, so the plot was never narrowed " +
+			"and this probe cannot see the defect it exists for")
+	}
+	if drawerResult.Before.Segments == 0 {
+		t.Fatal("no timeline segments were drawn before the click; the probe measured an empty chart")
+	}
+	if drawerResult.After.HostWidth >= drawerResult.Before.HostWidth {
+		t.Fatalf("the plot host was %dpx before the drawer opened and %dpx after, so the drawer did "+
+			"not narrow it and there is nothing here to re-measure",
+			drawerResult.Before.HostWidth, drawerResult.After.HostWidth)
+	}
+
+	// THE DEFECT. Fifty-five segments, none of them on screen.
+	if drawerResult.After.Inside == 0 {
+		t.Fatalf("after the drawer opened, %d segments are in the DOM and NONE of them overlap the "+
+			"%dpx plot (leftmost %s, host right edge %d) — the chart is blank",
+			drawerResult.After.Segments, drawerResult.After.HostWidth,
+			plotEdgeText(drawerResult.After.Leftmost), drawerResult.After.HostRight)
+	}
+	// Not merely non-zero: the bars have to be laid out against the NEW plot, so
+	// none of them may sit past its right edge. A stale layout that happened to
+	// leave one bar clipped inside the box would satisfy the count alone.
+	if drawerResult.After.Rightmost == nil || *drawerResult.After.Rightmost > drawerResult.After.HostRight+2 {
+		t.Fatalf("after the drawer opened the rightmost segment ends at %s, past the plot's right "+
+			"edge at %d — the bars were not re-laid out against the narrowed plot",
+			plotEdgeText(drawerResult.After.Rightmost), drawerResult.After.HostRight)
+	}
+	// And closing it comes back, without the reader having to move the window.
+	if drawerResult.DrawerOpenAtEnd {
+		t.Fatal("the probe could not close the detail drawer, so the recovery half is untested")
+	}
+	if drawerResult.Closed.Inside == 0 {
+		t.Fatalf("after the drawer closed, none of the %d segments overlap the %dpx plot",
+			drawerResult.Closed.Segments, drawerResult.Closed.HostWidth)
+	}
+	if drawerResult.Closed.HostWidth != drawerResult.Before.HostWidth {
+		t.Fatalf("closing the drawer left the plot %dpx wide, want the %dpx it started at",
+			drawerResult.Closed.HostWidth, drawerResult.Before.HostWidth)
+	}
+	if drawerResult.Closed.Rightmost == nil || *drawerResult.Closed.Rightmost > drawerResult.Closed.HostRight+2 {
+		t.Fatalf("after the drawer closed the rightmost segment ends at %s, past the plot's right edge at %d",
+			plotEdgeText(drawerResult.Closed.Rightmost), drawerResult.Closed.HostRight)
+	}
+}
+
+// The From / to fields, driven through the real events a reader generates.
+//
+// WHY A BROWSER. The defect is entirely in the interaction between focus, the
+// engine's own `input` and `change` events on a date input, and the write-back a
+// render performs. A sliced probe can call syncRangeField with any arguments it
+// likes and learn nothing about which arguments the browser actually produces —
+// and the guard that shipped was wrong precisely about that: it decided "the
+// reader is mid-edit" by comparing values, and after a commit the field still
+// holds the reader's text.
+//
+// Two states, both reachable in two keystrokes:
+//
+//	CLEAR the field and commit — the window must stand and the field must come
+//	back, in a branch whose own comment says "Restore it unconditionally";
+//	type a date the clamp MOVES — the field must show where the chart actually
+//	landed, not the date that was rejected.
+func TestBrowserBehaviorTimelineRangeFieldsShowTheWindowTheChartIsDrawnAt(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+// Same condition-not-duration rule as the drawer probe above, and the same
+// setTimeout-not-rAF reason; see its note.
+function settleUntil(predicate, thenDo) {
+  var attemptsLeft = 60;
+  (function attempt() {
+    if (predicate() || attemptsLeft-- <= 0) {
+      setTimeout(thenDo, 50);
+      return;
+    }
+    setTimeout(attempt, 50);
+  })();
+}
+function fieldState() {
+  return {
+    href: location.href,
+    from: document.getElementById("timeline-range-start").value,
+    to: document.getElementById("timeline-range-end").value,
+    readout: document.getElementById("timeline-range-readout").textContent
+  };
+}
+// The events a date input really emits, in the order it emits them, against the
+// focused field — which is what makes the mid-edit guard observable at all.
+function typeInto(fieldId, text) {
+  var field = document.getElementById(fieldId);
+  field.focus();
+  field.value = text;
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+  field.dispatchEvent(new Event("change", { bubbles: true }));
+  return field;
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      // Start from a window that is not the bounds, so a clamp is observable.
+      document.querySelector('[data-timeline-period="month"]').click();
+      probe.beforeClear = fieldState();
+
+      // (a) CLEAR AND COMMIT. The field keeps focus throughout, which is the case
+      // the old guard stranded.
+      var cleared = typeInto("timeline-range-start", "");
+      probe.afterClear = fieldState();
+      probe.clearedStillFocused = document.activeElement === cleared;
+
+      // (b) A DATE THE CLAMP MOVES: far past the end of the board's range.
+      typeInto("timeline-range-start", "2099-12-31");
+      probe.afterOutOfRange = fieldState();
+
+      // (c) And an ordinary in-range date still applies exactly.
+      document.querySelector('[data-timeline-period="month"]').click();
+      var monthFrom = document.getElementById("timeline-range-start").value;
+      typeInto("timeline-range-start", monthFrom);
+      probe.afterReapply = fieldState();
+      probe.monthFrom = monthFrom;
+
+      // (d) A field left mid-edit and blurred without committing must be restored.
+      var abandoned = document.getElementById("timeline-range-end");
+      abandoned.focus();
+      abandoned.value = "";
+      abandoned.dispatchEvent(new Event("input", { bubbles: true }));
+      probe.duringAbandon = fieldState();
+      abandoned.dispatchEvent(new Event("blur", { bubbles: true }));
+      abandoned.blur();
+      // Wait for the restore, not for a duration.
+      settleUntil(function () {
+        return document.getElementById("timeline-range-end").value !== "";
+      }, function () {
+        probe.afterAbandon = fieldState();
+        document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+        document.title = "READY";
+      });
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the probe script before")
+	}
+	// Same longer budget as the drawer probe, and for the same reason: this one
+	// polls for the restore instead of sleeping through it.
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline range fields", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+
+	type fieldState struct {
+		Href    string `json:"href"`
+		From    string `json:"from"`
+		To      string `json:"to"`
+		Readout string `json:"readout"`
+	}
+	var fieldResult struct {
+		BeforeClear         fieldState `json:"beforeClear"`
+		AfterClear          fieldState `json:"afterClear"`
+		ClearedStillFocused bool       `json:"clearedStillFocused"`
+		AfterOutOfRange     fieldState `json:"afterOutOfRange"`
+		AfterReapply        fieldState `json:"afterReapply"`
+		MonthFrom           string     `json:"monthFrom"`
+		DuringAbandon       fieldState `json:"duringAbandon"`
+		AfterAbandon        fieldState `json:"afterAbandon"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &fieldResult); decodeError != nil {
+		t.Fatalf("decode timeline range-field behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	for label, state := range map[string]fieldState{
+		"before clear": fieldResult.BeforeClear, "after clear": fieldResult.AfterClear,
+		"after out of range": fieldResult.AfterOutOfRange, "after reapply": fieldResult.AfterReapply,
+		"after abandon": fieldResult.AfterAbandon,
+	} {
+		if !strings.HasSuffix(state.Href, "/probe.html") {
+			t.Fatalf("the %s snapshot was taken on %q, not the probe page", label, state.Href)
+		}
+	}
+
+	// SETUP, ASSERTED.
+	if fieldResult.BeforeClear.From == "" || fieldResult.BeforeClear.Readout == "" {
+		t.Fatalf("the fields started empty (%+v), so nothing below is measuring a restore",
+			fieldResult.BeforeClear)
+	}
+	if !fieldResult.ClearedStillFocused {
+		t.Fatal("the cleared field lost focus before the assertion, so this probe is not exercising " +
+			"the mid-edit guard at all")
+	}
+
+	// (a) A cleared field comes back, and the window stands.
+	if fieldResult.AfterClear.From == "" {
+		t.Errorf("clearing the From field left it empty; it must be restored to the window the "+
+			"chart is drawn at (readout %q)", fieldResult.AfterClear.Readout)
+	}
+	if fieldResult.AfterClear.Readout != fieldResult.BeforeClear.Readout {
+		t.Errorf("clearing a field moved the window from %q to %q; an empty field is not a request "+
+			"to move", fieldResult.BeforeClear.Readout, fieldResult.AfterClear.Readout)
+	}
+	if fieldResult.AfterClear.From != fieldResult.BeforeClear.From {
+		t.Errorf("clearing the From field restored it to %q, want the %q it held before",
+			fieldResult.AfterClear.From, fieldResult.BeforeClear.From)
+	}
+
+	// (b) A clamped commit shows where the chart landed, not what was typed.
+	if fieldResult.AfterOutOfRange.From == "2099-12-31" {
+		t.Errorf("after typing a date past the end of the range the From field still reads %q "+
+			"while the chart is drawn at %q; the field has to name the window that exists",
+			fieldResult.AfterOutOfRange.From, fieldResult.AfterOutOfRange.Readout)
+	}
+	if !strings.HasPrefix(fieldResult.AfterOutOfRange.Readout, fieldResult.AfterOutOfRange.From) {
+		t.Errorf("after the clamp the From field reads %q and the readout starts %q; the two must "+
+			"describe one window", fieldResult.AfterOutOfRange.From, fieldResult.AfterOutOfRange.Readout)
+	}
+
+	// (c) An in-range date still applies exactly, so the fix did not buy field
+	// honesty by ignoring the reader.
+	if fieldResult.AfterReapply.From != fieldResult.MonthFrom {
+		t.Errorf("re-typing the month window's own start gave From %q, want %q",
+			fieldResult.AfterReapply.From, fieldResult.MonthFrom)
+	}
+
+	// (d) Mid-edit is respected while it lasts, and released on blur.
+	if fieldResult.DuringAbandon.To != "" {
+		t.Errorf("a render overwrote the end field while the reader was part-way through typing "+
+			"into it (it reads %q); mid-edit means hands off", fieldResult.DuringAbandon.To)
+	}
+	if fieldResult.AfterAbandon.To == "" {
+		t.Errorf("the end field was left empty after the reader blurred without committing; "+
+			"the window is %q and the field has to name it", fieldResult.AfterAbandon.Readout)
+	}
+}
+
+// Where the Now and Fit all buttons LAND, and what the toolbar says about itself
+// once they have.
+//
+// Now sized its window from the span between the now-line and the forecast's
+// queue-empty instant, floored on half the ZOOM FLOOR. On a queue that is nearly
+// drained that span is minutes, so Now landed on a one-hour window — exactly the
+// floor — and the obvious next move was dead: the + button, ctrl+wheel and the +
+// key were all silent no-ops with no disabled state and no message. Fit all had
+// the mirror problem: it assigned the payload's whole range, so filtered to one
+// domain it left most of the plot blank.
+//
+// Driven in a real engine because three of the four properties are about the
+// toolbar's own rendered state, and the fourth (Fit all under a filter) needs the
+// shared filter machinery this view reads but does not own.
+func TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function settleUntil(predicate, thenDo) {
+  var attemptsLeft = 60;
+  (function attempt() {
+    if (predicate() || attemptsLeft-- <= 0) { setTimeout(thenDo, 50); return; }
+    setTimeout(attempt, 50);
+  })();
+}
+// The window, in milliseconds, read back off the readout the reader sees rather
+// than out of any internal state.
+function windowSpanMs() {
+  var text = document.getElementById("timeline-range-readout").textContent || "";
+  var match = text.match(/^(\S+ \S+) UTC → (\S+ \S+) UTC$/);
+  if (!match) { return null; }
+  return Date.parse(match[2].replace(" ", "T") + "Z") - Date.parse(match[1].replace(" ", "T") + "Z");
+}
+function toolbarState(label) {
+  var disabled = {};
+  ["timeline-zoom-in", "timeline-zoom-out", "timeline-zoom-fit",
+   "timeline-period-prev", "timeline-period-next"].forEach(function (buttonId) {
+    disabled[buttonId] = !!document.getElementById(buttonId).disabled;
+  });
+  var rowsHost = document.querySelector("#view-timeline .timeline-scroll");
+  return {
+    label: label,
+    href: location.href,
+    readout: document.getElementById("timeline-range-readout").textContent,
+    spanMs: windowSpanMs(),
+    nowRuleDrawn: !!rowsHost.querySelector(".timeline-now-rule"),
+    drawnSegments: rowsHost.querySelectorAll("rect.timeline-segment").length,
+    disabled: disabled
+  };
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      probe.fitted = toolbarState("fitted");
+      document.getElementById("timeline-zoom-now").click();
+      probe.afterNow = toolbarState("afterNow");
+      document.getElementById("timeline-zoom-in").click();
+      probe.afterNowThenZoomIn = toolbarState("afterNowThenZoomIn");
+      // The current week, then one step forward — which used to land in the
+      // cosmetic bound padding with nothing drawn in it.
+      document.querySelector('[data-timeline-period="week"]').click();
+      probe.currentWeek = toolbarState("currentWeek");
+      document.getElementById("timeline-period-next").click();
+      probe.afterStepPastTheData = toolbarState("afterStepPastTheData");
+      // Fit all with a filter on. The search box is the shared filter every view
+      // reads, so this needs no timeline-specific plumbing.
+      var search = document.getElementById("filter-search");
+      search.value = "REQ-164";
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+      settleUntil(function () {
+        var summary = document.getElementById("timeline-summary").textContent || "";
+        return summary.indexOf("1 REQ in the window") !== -1 ||
+          summary.indexOf("Nothing was drawn") !== -1 ||
+          summary.indexOf("No REQ matches") !== -1;
+      }, function () {
+        document.getElementById("timeline-zoom-fit").click();
+        settleUntil(function () { return true; }, function () {
+          probe.filteredFit = toolbarState("filteredFit");
+          probe.filteredSummary = document.getElementById("timeline-summary").textContent;
+          document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+          document.title = "READY";
+        });
+      });
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the probe script before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline now and fit all", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+
+	type toolbarState struct {
+		Label         string          `json:"label"`
+		Href          string          `json:"href"`
+		Readout       string          `json:"readout"`
+		SpanMs        *float64        `json:"spanMs"`
+		NowRuleDrawn  bool            `json:"nowRuleDrawn"`
+		DrawnSegments int             `json:"drawnSegments"`
+		Disabled      map[string]bool `json:"disabled"`
+	}
+	var landingResult struct {
+		Fitted               toolbarState `json:"fitted"`
+		AfterNow             toolbarState `json:"afterNow"`
+		AfterNowThenZoomIn   toolbarState `json:"afterNowThenZoomIn"`
+		CurrentWeek          toolbarState `json:"currentWeek"`
+		AfterStepPastTheData toolbarState `json:"afterStepPastTheData"`
+		FilteredFit          toolbarState `json:"filteredFit"`
+		FilteredSummary      string       `json:"filteredSummary"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &landingResult); decodeError != nil {
+		t.Fatalf("decode timeline landing behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	states := []toolbarState{
+		landingResult.Fitted, landingResult.AfterNow, landingResult.AfterNowThenZoomIn,
+		landingResult.CurrentWeek, landingResult.AfterStepPastTheData, landingResult.FilteredFit,
+	}
+	for _, state := range states {
+		if !strings.HasSuffix(state.Href, "/probe.html") {
+			t.Fatalf("the %s state was measured on %q, not the probe page", state.Label, state.Href)
+		}
+		if state.SpanMs == nil {
+			t.Fatalf("the %s state's readout %q did not parse as a window", state.Label, state.Readout)
+		}
+	}
+
+	const oneHourMs = 3600000.0
+
+	// (1) Now lands on a window, not on the zoom floor, and the now-line is in it.
+	if *landingResult.AfterNow.SpanMs <= oneHourMs {
+		t.Errorf("Now landed on a %.2f-hour window (%s); the zoom floor is one hour, so at or "+
+			"below it the reader has nowhere to zoom and no context around the now-line",
+			*landingResult.AfterNow.SpanMs/oneHourMs, landingResult.AfterNow.Readout)
+	}
+	if !landingResult.AfterNow.NowRuleDrawn {
+		t.Errorf("Now landed on %s with no now-rule drawn in it", landingResult.AfterNow.Readout)
+	}
+
+	// (2) And zoom-in is alive there, in both the state it reports and what it does.
+	if landingResult.AfterNow.Disabled["timeline-zoom-in"] {
+		t.Errorf("zoom-in reports itself disabled in the window Now lands on (%s)",
+			landingResult.AfterNow.Readout)
+	}
+	if !(*landingResult.AfterNowThenZoomIn.SpanMs < *landingResult.AfterNow.SpanMs) {
+		t.Errorf("one zoom-in press after Now left the window at %.2f hours, from %.2f; the press "+
+			"has to narrow it", *landingResult.AfterNowThenZoomIn.SpanMs/oneHourMs,
+			*landingResult.AfterNow.SpanMs/oneHourMs)
+	}
+
+	// (3) A step past everything drawn does not happen, and says so first.
+	if !landingResult.CurrentWeek.Disabled["timeline-period-next"] {
+		t.Errorf("the step-forward arrow is enabled on the current week (%s), whose next period "+
+			"exists only inside the cosmetic bound padding", landingResult.CurrentWeek.Readout)
+	}
+	if landingResult.AfterStepPastTheData.Readout != landingResult.CurrentWeek.Readout {
+		t.Errorf("pressing the step-forward arrow moved the window from %s to %s, past everything "+
+			"drawn", landingResult.CurrentWeek.Readout, landingResult.AfterStepPastTheData.Readout)
+	}
+
+	// (4) Fit all fits WHAT IS ON SCREEN. The fitted window under a one-row filter
+	// must be a small fraction of the unfiltered one, and must still draw that row.
+	if landingResult.FilteredFit.DrawnSegments == 0 {
+		t.Fatalf("Fit all under the filter drew no segments (summary %q), so the span comparison "+
+			"below is measuring an empty chart", landingResult.FilteredSummary)
+	}
+	if *landingResult.FilteredFit.SpanMs >= *landingResult.Fitted.SpanMs/2 {
+		t.Errorf("Fit all under a one-row filter produced a %.1f-day window against the unfiltered "+
+			"%.1f days; it has to fit the rows on screen, not the payload's whole range",
+			*landingResult.FilteredFit.SpanMs/(24*oneHourMs),
+			*landingResult.Fitted.SpanMs/(24*oneHourMs))
+	}
+	// And zoom-out still reaches past the filtered extent, so fitting the filter did
+	// not trap the reader inside it.
+	if landingResult.FilteredFit.Disabled["timeline-zoom-out"] {
+		t.Error("zoom-out is disabled after Fit all under a filter; the clamp bounds must stay the " +
+			"payload's so the reader can look outside the filtered extent")
+	}
+
+	// (5) And at the full-range window the controls that cannot act say so. Without
+	// this the disabled-state assertions above could all pass against code that
+	// simply never disables anything.
+	if !landingResult.Fitted.Disabled["timeline-zoom-out"] {
+		t.Error("zoom-out is enabled at the full-range window, where there is nothing to zoom out to")
+	}
+}
+
+// The two sentences this view emits that used to describe a chart nobody was
+// looking at, plus the legend entry the plot's third vertical line never had.
+//
+// The summary always appended "measured to the now-line at <t>". drawNowRule draws
+// nothing when now falls outside the window, so on any past week that pointed at a
+// rule the reader could not find, beside open bars clipped flush at the frame.
+//
+// And the forecast contradicted itself inside one sentence pair: "This covers the
+// whole queue, not the rows shown." followed by "Nothing left to schedule — every
+// remaining REQ is listed below.", above a single row, with the excluded paragraph
+// immediately underneath naming a REQ that was not listed anywhere.
+func TestBrowserBehaviorTimelineProseDescribesOnlyTheWindowOnScreen(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function settleUntil(predicate, thenDo) {
+  var attemptsLeft = 60;
+  (function attempt() {
+    if (predicate() || attemptsLeft-- <= 0) { setTimeout(thenDo, 50); return; }
+    setTimeout(attempt, 50);
+  })();
+}
+function proseState(label) {
+  var rowsHost = document.querySelector("#view-timeline .timeline-scroll");
+  return {
+    label: label,
+    href: location.href,
+    summary: document.getElementById("timeline-summary").textContent,
+    forecast: document.getElementById("timeline-forecast").textContent,
+    excluded: document.getElementById("timeline-excluded").textContent,
+    readout: document.getElementById("timeline-range-readout").textContent,
+    nowRuleDrawn: !!rowsHost.querySelector(".timeline-now-rule")
+  };
+}
+function typeWindow(fromText, toText) {
+  [["timeline-range-start", fromText], ["timeline-range-end", toText]].forEach(function (pair) {
+    var field = document.getElementById(pair[0]);
+    field.focus();
+    field.value = pair[1];
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    field.dispatchEvent(new Event("change", { bubbles: true }));
+    field.blur();
+  });
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      probe.withNow = proseState("withNow");
+      // A window well before the now-line that still HAS rows in it. Late July is
+      // the busiest stretch of this repo's own archive; an empty past week would
+      // take the "Nothing was drawn" branch instead, which is a different sentence
+      // and would leave the one under test unexercised.
+      typeWindow("2026-07-27", "2026-08-02");
+      settleUntil(function () {
+        return (document.getElementById("timeline-range-readout").textContent || "")
+          .indexOf("2026-07-27") !== -1;
+      }, function () {
+        probe.withoutNow = proseState("withoutNow");
+        // And the forecast under a filter that leaves a subset on screen.
+        var search = document.getElementById("filter-search");
+        search.value = "REQ-164";
+        search.dispatchEvent(new Event("input", { bubbles: true }));
+        settleUntil(function () {
+          return (document.getElementById("timeline-forecast").textContent || "").length > 0 ||
+            (document.getElementById("timeline-summary").textContent || "").indexOf("No REQ matches") !== -1;
+        }, function () {
+          document.getElementById("timeline-zoom-fit").click();
+          settleUntil(function () { return true; }, function () {
+            probe.filtered = proseState("filtered");
+            probe.legendRules = [].slice.call(
+              document.querySelectorAll("#view-timeline .timeline-legend .timeline-swatch[data-rule]")
+            ).map(function (swatch) { return swatch.getAttribute("data-rule"); });
+            document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+            document.title = "READY";
+          });
+        });
+      });
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the probe script before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline prose", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+
+	type proseState struct {
+		Label        string `json:"label"`
+		Href         string `json:"href"`
+		Summary      string `json:"summary"`
+		Forecast     string `json:"forecast"`
+		Excluded     string `json:"excluded"`
+		Readout      string `json:"readout"`
+		NowRuleDrawn bool   `json:"nowRuleDrawn"`
+	}
+	var proseResult struct {
+		WithNow     proseState `json:"withNow"`
+		WithoutNow  proseState `json:"withoutNow"`
+		Filtered    proseState `json:"filtered"`
+		LegendRules []string   `json:"legendRules"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &proseResult); decodeError != nil {
+		t.Fatalf("decode timeline prose behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	for _, state := range []proseState{proseResult.WithNow, proseResult.WithoutNow, proseResult.Filtered} {
+		if !strings.HasSuffix(state.Href, "/probe.html") {
+			t.Fatalf("the %s state was measured on %q, not the probe page", state.Label, state.Href)
+		}
+	}
+
+	// SETUP, ASSERTED: the two window states have to differ in whether the rule is
+	// drawn, or the wording assertions are comparing one state with itself.
+	if !proseResult.WithNow.NowRuleDrawn {
+		t.Fatalf("the fitted window drew no now-rule (readout %q), so the case where one IS drawn "+
+			"is untested", proseResult.WithNow.Readout)
+	}
+	if proseResult.WithoutNow.NowRuleDrawn {
+		t.Fatalf("the past window still draws a now-rule (readout %q); this probe needs a window "+
+			"the now-line falls outside of", proseResult.WithoutNow.Readout)
+	}
+	// And it has to have ROWS in it, or the render takes the empty-window branch and
+	// the sentence under test is never emitted.
+	if !strings.Contains(proseResult.WithoutNow.Summary, "still open") {
+		t.Fatalf("the past window produced %q rather than a summary of drawn rows; pick a window "+
+			"with REQs in it", proseResult.WithoutNow.Summary)
+	}
+
+	// (P1) The pointer appears only where the rule does.
+	if !strings.Contains(proseResult.WithNow.Summary, "measured to the now-line at") {
+		t.Errorf("with the now-rule drawn the summary reads %q; it should name the rule the reader "+
+			"can see", proseResult.WithNow.Summary)
+	}
+	if strings.Contains(proseResult.WithoutNow.Summary, "now-line") {
+		t.Errorf("with no now-rule drawn the summary still points at one: %q",
+			proseResult.WithoutNow.Summary)
+	}
+	// The instant itself still has to be stated: it is what the open spans were
+	// measured against, and dropping it would trade one defect for another.
+	if !strings.Contains(proseResult.WithoutNow.Summary, "measured against") ||
+		!strings.Contains(proseResult.WithoutNow.Summary, " UTC") {
+		t.Errorf("with no now-rule drawn the summary no longer states the instant open spans were "+
+			"measured against: %q", proseResult.WithoutNow.Summary)
+	}
+
+	// (P2) The forecast does not both deny and assert that the rows are everything.
+	if strings.Contains(proseResult.Filtered.Forecast, "not the rows shown") &&
+		strings.Contains(proseResult.Filtered.Forecast, "listed below") {
+		t.Errorf("the forecast says both \"not the rows shown\" and \"listed below\" in one "+
+			"paragraph: %q", proseResult.Filtered.Forecast)
+	}
+	if proseResult.Filtered.Excluded != "" && strings.Contains(proseResult.Filtered.Forecast, "listed below") {
+		t.Errorf("the forecast claims every remaining REQ is listed below while the excluded "+
+			"paragraph under it names one that is not: forecast %q, excluded %q",
+			proseResult.Filtered.Forecast, proseResult.Filtered.Excluded)
+	}
+
+	// (P4) Every kind of vertical line the plot draws has a key. The renderer draws
+	// three: the now rule, the queue-end rule, and one gridline per axis tick.
+	wantLegendRules := map[string]bool{"now": false, "queue-end": false, "gridline": false}
+	for _, rule := range proseResult.LegendRules {
+		if _, isKnown := wantLegendRules[rule]; !isKnown {
+			t.Errorf("the legend keys a vertical rule %q the plot does not draw", rule)
+			continue
+		}
+		wantLegendRules[rule] = true
+	}
+	for rule, isKeyed := range wantLegendRules {
+		if !isKeyed {
+			t.Errorf("the plot draws a %q vertical line with no legend entry, so a reader has "+
+				"nothing to look it up under", rule)
+		}
+	}
+}
+
+// The pointer and keyboard paths, driven with the events a reader really produces.
+//
+// WHY A BROWSER. Both defects are about what the ENGINE does around the handlers:
+// which release events reach a host when a drag ends outside it, and when a scroll
+// event is delivered relative to a synchronous focus call. Neither is visible to a
+// probe that calls the handlers directly.
+//
+// Reproduced before fixing, and the reproduction corrected the report on two counts:
+// the stuck drag leaves the GRAB CURSOR on but does not go on panning the window,
+// and Tab is not trapped in the rows at all — it walks the rendered rows and exits
+// after about thirty presses. Only what reproduced is pinned here.
+func TestBrowserBehaviorTimelinePointerAndKeyboardPathsStayAlive(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function plotHost() { return document.querySelector("#view-timeline .timeline-scroll"); }
+function chartState() {
+  var active = document.activeElement;
+  return {
+    href: location.href,
+    readout: document.getElementById("timeline-range-readout").textContent,
+    grabbing: plotHost().classList.contains("is-panning"),
+    focusedRowId: active && active.getAttribute ? (active.getAttribute("data-detail-id") || "") : "",
+    focusIsInsideTheChart: !!(active && plotHost().contains(active)) || active === plotHost()
+  };
+}
+function pointerAt(type, node, clientX, clientY, buttons) {
+  node.dispatchEvent(new PointerEvent(type, {
+    bubbles: true, cancelable: true, composed: true,
+    clientX: clientX, clientY: clientY, button: 0, buttons: buttons,
+    pointerId: 1, pointerType: "mouse"
+  }));
+}
+function nodeAt(x, y, fallbackNode) { return document.elementFromPoint(x, y) || fallbackNode; }
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      // Off the bounds, so a pan has room to move in both directions.
+      document.getElementById("timeline-zoom-in").click();
+      document.getElementById("timeline-zoom-in").click();
+      document.querySelector("#view-timeline .timeline-chart").scrollIntoView({ block: "start" });
+
+      // (a) A DRAG RELEASED OUTSIDE THE CHART. The release is dispatched at a point
+      // above the host, which is where the engine used to deliver it — leaving the
+      // grab cursor on for the rest of the session.
+      var host = plotHost();
+      var hostBox = host.getBoundingClientRect();
+      var pressY = Math.round(hostBox.top + 20);
+      var pressX = Math.round(hostBox.left + hostBox.width * 0.6);
+      pointerAt("pointerdown", host, pressX, pressY, 1);
+      pointerAt("pointermove", host, pressX - 60, pressY, 1);
+      pointerAt("pointermove", host, pressX - 120, pressY, 1);
+      probe.duringDrag = chartState();
+      // THE RELEASE THE ENGINE SENDS WHEN A CAPTURED POINTER GOES AWAY. A synthetic
+      // PointerEvent carries a pointerId the engine does not know, so
+      // setPointerCapture on it throws and this lane cannot reproduce a real captured
+      // drag end-to-end. What it CAN drive is the event the capture path relies on,
+      // and that is the half that was missing: with the release delivered outside the
+      // host and the boundary events suppressed while a button is held, nothing
+      // reached this host at all and the grab cursor stayed on for the session.
+      var outsideY = Math.round(hostBox.top - 200);
+      var outsideNode = nodeAt(pressX - 160, outsideY, document.body);
+      pointerAt("pointerup", outsideNode, pressX - 160, outsideY, 0);
+      probe.afterReleaseOutside = chartState();
+      host.dispatchEvent(new PointerEvent("lostpointercapture", {
+        bubbles: true, composed: true, pointerId: 1, pointerType: "mouse"
+      }));
+      probe.afterLostCapture = chartState();
+      // And un-buttoned motion back over the chart must not move anything.
+      pointerAt("pointermove", host, Math.round(hostBox.left + 40), pressY, 0);
+      probe.afterUnbuttonedReentry = chartState();
+
+      // (b) ARROW KEYS WITH A ROW FOCUSED. Three presses: the first worked before
+      // this fix and the second did not, so one press proves nothing.
+      document.getElementById("timeline-zoom-fit").click();
+      document.getElementById("timeline-zoom-in").click();
+      document.getElementById("timeline-zoom-in").click();
+      setTimeout(function () {
+        var firstRow = plotHost().querySelector('g[data-detail-kind="request"]');
+        probe.foundARow = !!firstRow;
+        if (firstRow) { firstRow.focus(); }
+        probe.beforeArrows = chartState();
+        var arrowStates = [];
+        for (var press = 0; press < 3; press++) {
+          plotHost().dispatchEvent(new KeyboardEvent("keydown", {
+            key: "ArrowRight", bubbles: true, cancelable: true, composed: true
+          }));
+          arrowStates.push(chartState());
+        }
+        probe.arrows = arrowStates;
+
+        // (c) CTRL+WHEEL OVER THE AXIS STRIP, which the hint promises zooms the
+        // time axis and which did nothing at all.
+        var axisHost = document.getElementById("timeline-axis");
+        var axisBox = axisHost.getBoundingClientRect();
+        probe.beforeAxisWheel = chartState();
+        axisHost.dispatchEvent(new WheelEvent("wheel", {
+          bubbles: true, cancelable: true, composed: true, ctrlKey: true, deltaY: -120,
+          clientX: Math.round(axisBox.left + axisBox.width * 0.6),
+          clientY: Math.round(axisBox.top + axisBox.height / 2)
+        }));
+        probe.afterAxisWheel = chartState();
+
+        document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+        document.title = "READY";
+      }, 300);
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the probe script before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline pointer and keyboard", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+
+	type chartState struct {
+		Href                  string `json:"href"`
+		Readout               string `json:"readout"`
+		Grabbing              bool   `json:"grabbing"`
+		FocusedRowId          string `json:"focusedRowId"`
+		FocusIsInsideTheChart bool   `json:"focusIsInsideTheChart"`
+	}
+	var pathResult struct {
+		DuringDrag             chartState   `json:"duringDrag"`
+		AfterReleaseOutside    chartState   `json:"afterReleaseOutside"`
+		AfterLostCapture       chartState   `json:"afterLostCapture"`
+		AfterUnbuttonedReentry chartState   `json:"afterUnbuttonedReentry"`
+		FoundARow              bool         `json:"foundARow"`
+		BeforeArrows           chartState   `json:"beforeArrows"`
+		Arrows                 []chartState `json:"arrows"`
+		BeforeAxisWheel        chartState   `json:"beforeAxisWheel"`
+		AfterAxisWheel         chartState   `json:"afterAxisWheel"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &pathResult); decodeError != nil {
+		t.Fatalf("decode timeline pointer/keyboard behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// SETUP, ASSERTED.
+	if !strings.HasSuffix(pathResult.DuringDrag.Href, "/probe.html") {
+		t.Fatalf("measured on %q, not the probe page", pathResult.DuringDrag.Href)
+	}
+	if !pathResult.DuringDrag.Grabbing {
+		t.Fatalf("the drag never engaged (readout %q), so the release below is not ending one",
+			pathResult.DuringDrag.Readout)
+	}
+	if !pathResult.FoundARow {
+		t.Fatal("the probe found no row to focus, so the keyboard half measures nothing")
+	}
+	if pathResult.BeforeArrows.FocusedRowId == "" {
+		t.Fatal("the row did not take focus, so the arrow presses below are not testing the " +
+			"focus-restore path at all")
+	}
+	if len(pathResult.Arrows) != 3 {
+		t.Fatalf("the probe recorded %d arrow presses, want 3", len(pathResult.Arrows))
+	}
+
+	// (a) A drag ENDS when the pointer goes away, however it goes away. The grab
+	// cursor was the visible half: it stayed on for the rest of the session.
+	if pathResult.AfterLostCapture.Grabbing {
+		t.Errorf("the drag survived losing its pointer capture and the grab cursor is still on; " +
+			"lostpointercapture is the one release event the engine sends whatever the pointer did")
+	}
+	if pathResult.AfterUnbuttonedReentry.Readout != pathResult.AfterLostCapture.Readout {
+		t.Errorf("moving the pointer back over the chart with no button held moved the window from "+
+			"%s to %s", pathResult.AfterLostCapture.Readout,
+			pathResult.AfterUnbuttonedReentry.Readout)
+	}
+	// And the capture is actually requested, which is what makes the release above a
+	// fact rather than a hope. Structural, because a synthetic pointerId cannot be
+	// captured in this lane.
+	pointerDownBody := sliceBalancedBlockAfter(t, indexHTML, "addTimelineListener(scrollHost, \"pointerdown\"")
+	// The CALL, not the feature-detect guard beside it: a check for the bare name
+	// matched the `typeof scrollHost.setPointerCapture === "function"` line and passed
+	// with the call itself deleted.
+	if !strings.Contains(pointerDownBody, "scrollHost.setPointerCapture(") {
+		t.Error("the pointerdown handler does not capture the pointer, so a drag released outside " +
+			"the chart has no guaranteed path back to the host that armed it")
+	}
+
+	// (b) EVERY arrow press pans, not just the first. The second press was the dead
+	// one, so a single-press test would have passed over this.
+	previousReadout := pathResult.BeforeArrows.Readout
+	for pressIndex, afterPress := range pathResult.Arrows {
+		if afterPress.Readout == previousReadout {
+			t.Errorf("arrow press %d did not move the window (still %s); focus was on %q and inside "+
+				"the chart: %v", pressIndex+1, afterPress.Readout, afterPress.FocusedRowId,
+				afterPress.FocusIsInsideTheChart)
+		}
+		if !afterPress.FocusIsInsideTheChart {
+			t.Errorf("after arrow press %d focus left the chart, so the next key cannot reach the "+
+				"handler", pressIndex+1)
+		}
+		previousReadout = afterPress.Readout
+	}
+
+	// (c) The axis strip zooms, which the hint under the chart promises.
+	if pathResult.AfterAxisWheel.Readout == pathResult.BeforeAxisWheel.Readout {
+		t.Errorf("ctrl+wheel over the axis strip left the window at %s; the hint says holding Ctrl "+
+			"and scrolling zooms the time axis, and the axis is where a reader aims",
+			pathResult.BeforeAxisWheel.Readout)
+	}
+}
