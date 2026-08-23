@@ -3031,10 +3031,30 @@ process.stdout.write(JSON.stringify({
 // title entirely rather than shipping a half-drawn id.
 func TestJavaScriptBehaviorTimelineRowLabelTruncation(t *testing.T) {
 	indexHtml := generateLiveSite(t)
-	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function timelineLabelCharacterBudget(") + "\n" +
+	// The column width is READ FROM THE RENDERER, not restated here. Restating it
+	// is how the first version of this test passed with the constant reverted to
+	// its old value: the budget floor below was measuring a column the board had
+	// stopped using (REQ-265 — grep the quantity, not the constant name).
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_LABEL_WIDTH") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineLabelCharacterBudget(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineLabelCellCount(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineLabelPrefixWithinCells(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineRowLabelText(") + `
 var longTitle = "Colour timeline bars by REQ status";
+// The shipped column, minus the label's own 6px x-offset and a 6px gap before
+// the first bar — the same expression the renderer uses.
+var shippedColumnCells = timelineLabelCharacterBudget(6.0219, TIMELINE_LABEL_WIDTH - 12);
 process.stdout.write(JSON.stringify({
+  shippedColumnCells: shippedColumnCells,
+  shippedLabelSample: timelineRowLabelText("REQ-042", longTitle, shippedColumnCells),
+  taggedLabelSample: timelineRowLabelText(
+    "REQ-306", "[impact-rule-change] Judge effort_estimate on review-minted follow-ups too",
+    shippedColumnCells),
+  cjkCells: timelineLabelCellCount("修复部署管道"),
+  asciiCells: timelineLabelCellCount("abcdef"),
+  astralCells: timelineLabelCellCount("🚀"),
+  cjkLabel: timelineRowLabelText("REQ-042", "修复部署管道的一个严重问题在这里", 28),
+  astralBoundary: timelineRowLabelText("REQ-042", "Fix the deploy 🚀 pipeline right now", 26),
   budgetAt6px: timelineLabelCharacterBudget(6, 172),
   budgetWithNoAdvance: timelineLabelCharacterBudget(0, 172),
   budgetWithNegativeAdvance: timelineLabelCharacterBudget(-3, 172),
@@ -3052,6 +3072,14 @@ process.stdout.write(JSON.stringify({
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "timeline row label", javascriptProbe)
 	var labelResult struct {
+		ShippedColumnCells        int    `json:"shippedColumnCells"`
+		ShippedLabelSample        string `json:"shippedLabelSample"`
+		TaggedLabelSample         string `json:"taggedLabelSample"`
+		CjkCells                  int    `json:"cjkCells"`
+		AsciiCells                int    `json:"asciiCells"`
+		AstralCells               int    `json:"astralCells"`
+		CjkLabel                  string `json:"cjkLabel"`
+		AstralBoundary            string `json:"astralBoundary"`
 		BudgetAt6px               int    `json:"budgetAt6px"`
 		BudgetWithNoAdvance       int    `json:"budgetWithNoAdvance"`
 		BudgetWithNegativeAdvance int    `json:"budgetWithNegativeAdvance"`
@@ -3067,6 +3095,52 @@ process.stdout.write(JSON.stringify({
 	}
 	if decodeError := json.Unmarshal(probeOutput, &labelResult); decodeError != nil {
 		t.Fatalf("decode timeline row label behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// THE COLUMN WIDTH, pinned to the shipped constant. Reverting
+	// TIMELINE_LABEL_WIDTH to its pre-REQ 104 used to pass this whole file; now it
+	// fails here, which is what makes the width a decision the tests hold rather
+	// than a number in a comment.
+	if labelResult.ShippedColumnCells < 20 {
+		t.Errorf("the shipped label column fits %d cells; below about 20 the title is a stub and "+
+			"the column stops earning the plot width it costs (label sample %q)",
+			labelResult.ShippedColumnCells, labelResult.ShippedLabelSample)
+	}
+	// A classification tag is metadata for the board's search box, not title text.
+	// Unstripped it consumed the entire budget and every review-minted REQ read
+	// "[impact-user-visib…".
+	if strings.Contains(labelResult.TaggedLabelSample, "[impact-") {
+		t.Errorf("a tagged title rendered %q; the leading [impact-…] tag has to come off in the "+
+			"label or it is the whole budget", labelResult.TaggedLabelSample)
+	}
+	if !strings.Contains(labelResult.TaggedLabelSample, "Judge") {
+		t.Errorf("a tagged title rendered %q, want the actual title after the tag came off",
+			labelResult.TaggedLabelSample)
+	}
+
+	// Cells, not characters. The measured advance describes the face's Latin cell,
+	// and a face that draws 中 at 10px against a 6.02px cell overruns the column.
+	if labelResult.AsciiCells != 6 {
+		t.Errorf("six ASCII characters counted %d cells, want 6", labelResult.AsciiCells)
+	}
+	if labelResult.CjkCells != 12 {
+		t.Errorf("six CJK characters counted %d cells, want 12 — one cell each is what let a CJK "+
+			"title draw 36px into the plot", labelResult.CjkCells)
+	}
+	if labelResult.AstralCells != 2 {
+		t.Errorf("one astral character counted %d cells, want 2", labelResult.AstralCells)
+	}
+	// The cut lands on a code point boundary, so an astral character is never
+	// split into a lone surrogate that renders as a fallback box.
+	for _, character := range labelResult.AstralBoundary {
+		if character == '\uFFFD' {
+			t.Errorf("a title cut near an astral character produced %q, which contains a "+
+				"replacement character — the cut split a surrogate pair",
+				labelResult.AstralBoundary)
+		}
+	}
+	if labelResult.CjkLabel == "" || !strings.HasPrefix(labelResult.CjkLabel, "REQ-042") {
+		t.Errorf("a CJK title rendered %q, want a label led by its id", labelResult.CjkLabel)
 	}
 
 	if labelResult.BudgetAt6px != 28 {

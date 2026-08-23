@@ -20,7 +20,6 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-- REQ-322: Name the REQ on its own timeline row — claimed 2026-08-23T02:56:30Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued
 

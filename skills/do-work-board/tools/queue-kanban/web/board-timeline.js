@@ -32,9 +32,12 @@
   // keyed to that gap, so the two have to be read from one number.
   var TIMELINE_AXIS_TICK_COUNT = 6;
   // Wide enough for the id plus a title worth reading, and no wider: every pixel
-  // here comes out of the plot. At the 10px monospace label face this is about
-  // 30 characters — "REQ-042" plus a separator plus ~21 of title. Picked from the
-  // render at 1400px and 760px (REQ-322), not from arithmetic.
+  // here comes out of the plot. At the 10px monospace label face measured on
+  // Chromium 1194 (6.0219 px/cell) that is 28 cells — "REQ-042" plus a two-space
+  // separator leaves 19 for the title, 18 plus an ellipsis once it is cut.
+  // Picked from the render at 1400px and 760px (REQ-322), and PINNED: the label
+  // probe reads this constant and fails below 20 cells, so it cannot drift back
+  // down without someone deciding to.
   var TIMELINE_LABEL_WIDTH = 184;
   var TIMELINE_OVERSCAN_ROWS = 4;
   var TIMELINE_MIN_SPAN_MS = 3600000; // one hour in ms — as far in as zoom goes
@@ -594,20 +597,81 @@
     return Math.max(0, Math.floor(availableWidth / advancePerCharacter));
   }
 
+  // How many monospace CELLS a string occupies, and the reason this is not just
+  // .length.
+  //
+  // The measured advance describes the face's Latin cell. A monospace face does
+  // not draw every script in one cell: on the shipped 10px face an ASCII glyph
+  // is 6.02px, but 中 is 10px and 🙂 is 12.48px. Counting those as one cell each
+  // let a CJK title overrun the column by 36px and draw into the plot. So
+  // non-ASCII counts as two cells — the East Asian Width convention every
+  // monospace terminal uses — which OVER-estimates slightly and therefore cuts
+  // early rather than overflowing. Approximate on purpose: the alternative is
+  // measuring every row's composed string every frame, which is the cost this
+  // whole approach exists to avoid.
+  //
+  // Iterating code points rather than UTF-16 units also fixes the other half:
+  // .slice() on a unit boundary can cut an astral character in two and leave a
+  // lone surrogate, which renders as a fallback box.
+  function timelineLabelCellCount(text) {
+    var cells = 0;
+    for (var index = 0; index < text.length; index++) {
+      var codePoint = text.codePointAt(index);
+      if (codePoint > 0xffff) {
+        index++;
+      }
+      cells += codePoint < 0x0100 ? 1 : 2;
+    }
+    return cells;
+  }
+
+  // The longest prefix of `text` that fits `cellBudget` cells, cut on a code
+  // point boundary.
+  function timelineLabelPrefixWithinCells(text, cellBudget) {
+    var cells = 0;
+    var prefix = "";
+    for (var index = 0; index < text.length; index++) {
+      var codePoint = text.codePointAt(index);
+      var character = String.fromCodePoint(codePoint);
+      var width = codePoint < 0x0100 ? 1 : 2;
+      if (cells + width > cellBudget) {
+        break;
+      }
+      cells += width;
+      prefix += character;
+      if (codePoint > 0xffff) {
+        index++;
+      }
+    }
+    return prefix;
+  }
+
   // "REQ-042  Some title" cut to the budget, with an ellipsis when it was cut.
   // The id is never truncated: it is the row's identity and a half-drawn id is
   // worse than no title at all, so a budget too small for id-plus-title returns
   // the id alone.
+  //
+  // The title is measured in CELLS, not characters, and a leading
+  // "[impact-token] " classification tag is dropped: the tag exists so a human
+  // searching the board's title box finds the REQ (actions/capture-reference.md
+  // → REQ Title Convention), and in a nineteen-cell column it is the entire
+  // budget — the sixteen newest REQs here all read "[impact-user-visib…" and
+  // named nothing. The full title, tag included, stays in the tooltip and the
+  // table.
   function timelineRowLabelText(requestId, title, characterBudget) {
     if (characterBudget <= 0 || !title) {
       return requestId;
     }
+    var labelTitle = title.replace(/^\[[a-z-]+\]\s*/, "");
+    if (labelTitle === "") {
+      return requestId;
+    }
     var separator = "  ";
-    var roomForTitle = characterBudget - requestId.length - separator.length;
+    var roomForTitle = characterBudget - timelineLabelCellCount(requestId) - separator.length;
     // A title that fits WHOLE always shows, however little room there is: a
     // complete short title is useful at any length.
-    if (title.length <= roomForTitle) {
-      return requestId + separator + title;
+    if (timelineLabelCellCount(labelTitle) <= roomForTitle) {
+      return requestId + separator + labelTitle;
     }
     // One that has to be cut has to be worth cutting. Four characters and an
     // ellipsis names nothing and just makes the column look broken, so below
@@ -616,8 +680,9 @@
       return requestId;
     }
     // The ellipsis lives INSIDE the budget, not on top of it, or the label the
-    // arithmetic says fits is one character wider than the column.
-    return requestId + separator + title.slice(0, roomForTitle - 1).trimEnd() + "…";
+    // arithmetic says fits is one cell wider than the column.
+    return requestId + separator +
+      timelineLabelPrefixWithinCells(labelTitle, roomForTitle - 1).replace(/\s+$/, "") + "…";
   }
 
   // A projected bar must never read as a measured one, so it is hatched rather
@@ -1088,9 +1153,14 @@
       });
     }
 
-    // Measured once per render — not per row, and not per frame. The label face
-    // cannot change between rows, so one advance answers all of them; a resize
-    // or a filter change re-enters renderTimelineView and measures again.
+    // Measured once per RENDER and not once per row — which is the cost that
+    // mattered, since a render draws ~35 rows. It is not once per session:
+    // renderVisibleRows is the scroll listener and runs inside renderAll, which
+    // the pan handler calls, so this measures on each frame of a drag. Measured
+    // cost on Chromium 1194: 0.036–0.046ms alone, about 0.13ms of a 0.61ms
+    // 35-row render. It forces one synchronous layout per frame and leaves room
+    // for roughly 27 renders inside a 16.7ms frame, so it stays here rather than
+    // being hoisted — one place that measures beats two that can disagree.
     var labelAdvance = 0;
     var labelCharacterBudget = 0;
 
@@ -1127,9 +1197,16 @@
           "data-row-index": String(rowIndex),
           "data-status": request.status || "",
           tabindex: "0",
-          role: "button",
-          "aria-label": timelineRowDescription(row, request)
+          role: "button"
         });
+        // The accessible name comes from the <title> below and NOT from an
+        // aria-label. Carrying both put the same 150-character sentence in the
+        // name and the description of all three hundred rows, so a screen reader
+        // read it twice per row. One source, one announcement — and the <title>
+        // has to exist anyway, because it is the pointer tooltip.
+        //
+        // First child, per SVG's own guidance on <title> placement.
+        makeTimelineSvgNode(rowGroup, "title", {}, timelineRowDescription(row, request));
         makeTimelineSvgNode(rowGroup, "rect", {
           x: 0,
           y: rowTopY,
@@ -1144,12 +1221,6 @@
           timelineRowLabelText(row.id, request.title, labelCharacterBudget)
         );
 
-        // The tooltip, at the pointer, for free. A native SVG <title> needs no
-        // positioning code and no listener, and it carries exactly what the foot
-        // readout carries — which until now was the only place a title appeared,
-        // some 700px below the row the pointer was on. The readout stays: it is
-        // the aria-live path, and this is not.
-        makeTimelineSvgNode(rowGroup, "title", {}, timelineRowDescription(row, request));
 
         var createdMs = Date.parse(row.createdTime);
         var claimedMs = row.claimedTime ? Date.parse(row.claimedTime) : nowMs;

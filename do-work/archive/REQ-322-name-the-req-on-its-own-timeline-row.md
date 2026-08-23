@@ -1,10 +1,12 @@
 ---
 id: REQ-322
 title: "Name the REQ on its own timeline row"
-status: claimed
+status: completed
 created_at: 2026-08-22T22:08:34Z
 claimed_at: 2026-08-23T02:56:30Z
 route: B
+completed_at: 2026-08-23T03:37:18Z
+commit:
 user_request: UR-065
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -297,3 +299,123 @@ render correct rather than merely cheap.
 
 **Existing tests updated (cross-REQ impact):** none. Three existing Node probes did fail
 against the first version of the measurement, and the fix was in the code (D-02), not in them.
+
+## Review
+
+**Acceptance: Partial — Overall 73% — Approve with follow-ups.** Independent review agent,
+orchestrated mode, driving a real board and reading the accessibility tree via CDP.
+
+| Dimension | Score | Notes |
+|-----------|-------|-------|
+| Requirements | 85% | 5 of 8 full; the measured-face claim partial for non-Latin, plot figures wrong, narrow case unexercised |
+| Code Quality | 78% | Honest guards and correct clamping; two comments stated more than the code did; a Unicode gap |
+| Test Adequacy | 70% | Real red-green and a real mutation on the measurement — but the whole suite passed with the widening reverted |
+| Scope | 100% | Exactly the three declared files; `write_set` narrowed on a grep |
+| Risk | Low | No security or data risk; an a11y regression and a narrow-width one |
+| Acceptance | Partial | Works at ordinary widths; two user-visible defects |
+
+**What it verified rather than accepted:** independently reproduced 6.0219 px/char on the same
+build; measured Georgia and Arial against the guard's 0.5px tolerance and confirmed both fail
+it by three orders of magnitude, so the tolerance is right in both directions; read the AX tree
+with CDP; and mutation-tested the widening itself, which is how F3 was found.
+
+## Review Remediation (pre-archive)
+
+- **F3 — the worst of the four, because I wrote a false claim into a decision record.** D-01
+  said "the browser test asserts that floor so the number cannot quietly drift under it." It
+  did not. Both test files computed the budget from a hardcoded `172` with no link to
+  `TIMELINE_LABEL_WIDTH`, so reverting the constant to 104 passed the entire suite — the
+  floor was measuring a column the board had stopped using. This is REQ-265's lesson (grep the
+  quantity, not the constant name) landing on me one batch after the prime records it. The
+  probe now reads the constant through `timelineProbePreamble` and asserts a 20-cell floor
+  against it. **Mutation-verified:** 184 → 104 now fails with `the shipped label column fits
+  15 cells`. D-01 is corrected above rather than quietly amended.
+- **F1 — every row announced its description twice.** The group carried an `aria-label` and,
+  after this REQ, a `<title>` with the same 150-character sentence; the review's AX tree showed
+  it as both the accessible name and the accessible description on all three hundred rows. The
+  `aria-label` is gone: the `<title>` is the single source, it is now the group's first child
+  per SVG's own guidance, and it has to exist regardless because it is the pointer tooltip.
+- **F2 + M1 — the budget described only the face it sampled.** The guard proves the face is
+  monospace *for Latin*, and the budget was then applied to arbitrary Unicode: on the same face
+  中 draws 10px and 🙂 12.48px against a 6.02px cell, so a CJK title drew 36px past the column
+  and into the plot. Fixed by counting **cells rather than characters** — non-ASCII counts as
+  two, the East Asian Width convention, which over-estimates slightly and therefore cuts early
+  instead of overflowing. Iterating code points rather than UTF-16 units fixes M1 in the same
+  function: a cut can no longer split a surrogate pair into a fallback box.
+  **Mutation-verified:** counting every code point as one cell fails with `counted 6 cells,
+  want 12`.
+- **F4 — the label named nothing for the sixteen newest REQs.** `[impact-rule-change] ` is 21
+  characters against a 19-cell title budget, so every review-minted REQ read
+  `REQ-306  [impact-rule-chang…` — and REQ-318 put exactly those at the top of the list, 11 of
+  the first 25 rows. The label now strips a leading classification tag. That tag exists so a
+  human searching the board's title box finds the REQ
+  (`actions/capture-reference.md` → REQ Title Convention); it is metadata, not the title's
+  substance, and the full title including the tag stays in the tooltip and the table.
+  **Mutation-verified:** not stripping it fails with `rendered "REQ-306  [impact-rule-chang…`.
+- **Minors fixed:** the constant's comment claimed "about 30 characters … ~21 of title" where
+  the measured budget is 28 cells and 19 of title (M4); the measurement comment claimed "not
+  per frame" while sitting in the pan path, and now states the measured per-frame cost and why
+  it stays there (M2); D-01's plot figures were host widths, 116px high at both ends (M3); the
+  `<title>` is the group's first child (N1).
+
+**Routed rather than fixed:**
+
+- **M6 — the narrow-width case degrades, and this REQ made it 80px worse.** Dragging the detail
+  drawer to its maximum pins the timeline host at 196px at any window width; bars now start at
+  x=184, so 12px of each bar is visible where 92px was. The `Math.max(120, …)` plot floor bound
+  before this REQ too — it is pre-existing — but what a 196px chart should do (collapse, hide,
+  or keep a floor) is a decision, not a fix. Recorded as a Discovered Task below.
+- **Not done:** a screen-reader pass, a non-Chromium engine, and a manual read of the first
+  screen. The first two are outside this environment; the third is in Suggested Testing because
+  the reviewer is right that pixel measurements are not legibility, and F4 is exactly what that
+  gap concealed.
+
+## Discovered Tasks
+
+- **impact-negligible** The Timeline chart degrades to a 12px-wide plot when the detail drawer
+  is dragged to its maximum, which pins the scroll host at 196px at any window width. The
+  `Math.max(120, …)` plot floor already bound there before REQ-322; widening the label column
+  to 184px took the visible bar width from 92px to 12px and pushes 62 rects past the SVG's
+  right edge. Pre-existing and worsened rather than caused. What a 196px chart should do —
+  collapse the label column, hide the chart, or keep a hard floor and clip — is a design
+  decision, which is why this is not folded into REQ-322 as a fix. Found by REQ-322's review.
+
+## Lessons Learned
+
+**What worked:** The monospace property. One measured advance for the whole render, and a
+guard that refuses a face it cannot describe — the review independently confirmed the 0.5px
+tolerance is right in both directions (Georgia and Arial miss it by three orders of
+magnitude). Building the refusal first meant the Unicode fix was a change of unit, not a
+redesign.
+
+**What didn't:**
+
+- **I wrote a false claim into a decision record.** D-01 said a test asserted the column-width
+  floor. No test did — both files restated `172` instead of reading `TIMELINE_LABEL_WIDTH`, so
+  the number the whole REQ was about was pinned by nothing and reverting it passed everything.
+  The prime records this exact class as REQ-265, one batch earlier. **A constant a decision
+  turns on has to be read by the test, never restated beside it** — and a claim that a test
+  exists is checkable in ten seconds, which is ten seconds I did not spend.
+- **A verified assumption is only verified for what it sampled.** The guard proves the face is
+  monospace using `i` and `M`, and I then applied its answer to arbitrary Unicode. 中 is 10px
+  on the same 6.02px face. The guard was not wrong; its *scope* was narrower than the use.
+- **Geometry is not legibility.** My render evidence measured widest-label pixels and overflow
+  counts, both zero-defect, and quoted three labels that all happened to be non-review REQs.
+  The sixteen newest REQs on this very board read `[impact-user-visib…` and named nothing —
+  the exact failure the REQ exists to remove, on the first screen, invisible to every number I
+  collected.
+
+**Worth knowing:** the label cell is the face's *Latin* advance. Anything that puts new text
+in that column — a different script, an emoji, a longer id — is measured in cells by
+`timelineLabelCellCount`, not characters, and non-ASCII deliberately over-counts so the error
+falls on the side of cutting early. And the `[impact-token] ` title convention and a
+nineteen-cell budget cannot both have the front of the string: the label strips the tag, the
+tooltip and table keep it.
+
+## Orientation
+
+A Timeline row now names itself: id, title, and a tooltip at the pointer carrying the full
+detail. Leaf change in the board's frontend — no new module, no payload field. The one thing
+worth knowing outside this view is that the label column is measured rather than assumed, and
+the measurement refuses faces it cannot describe. `_dev/primes/prime-kanban-board.md`
+spot-checked: every path it references still exists.
