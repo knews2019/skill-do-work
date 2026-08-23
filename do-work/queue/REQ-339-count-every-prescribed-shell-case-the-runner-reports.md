@@ -1,7 +1,8 @@
 ---
 id: REQ-339
 title: "[impact-rule-change] Addendum: count every prescribed-shell case the runner reports"
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-23T22:32:23Z
 created_at: 2026-08-23T19:30:00Z
 user_request: UR-065
 addendum_to: REQ-325
@@ -60,12 +61,17 @@ matters.
 
 ## Open Questions
 
-- [ ] I discovered this out-of-scope task while working on REQ-325: the prescribed-shell case count
+- [x] I discovered this out-of-scope task while working on REQ-325: the prescribed-shell case count
   skips any header with a space or comma before its colon, so `generate-report-image.sh` reports 7
   of its 9 cases and the runner's aggregate is low by the same amount. Should I process this as a
-  new task?
+  new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
+  - [2026-08-23] User approved via clarify: the reported case count must match what the file
+    holds — a figure that reads low forever is the same untruth REQ-234 removed when it
+    replaced the hand-maintained literal. Nothing put out of scope; renaming the two odd
+    headers instead of widening the rule stays on the table as the REQ's Constraints say,
+    provided the reason is stated.
 
 ## Red-Green Proof
 

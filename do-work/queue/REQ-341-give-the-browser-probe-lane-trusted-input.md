@@ -1,7 +1,8 @@
 ---
 id: REQ-341
 title: "[impact-rule-change] Addendum: give the browser probe lane trusted input"
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-23T22:32:23Z
 created_at: 2026-08-23T20:25:04Z
 user_request: UR-067
 addendum_to: REQ-337
@@ -86,11 +87,16 @@ survive into whatever lands:
 
 ## Open Questions
 
-- [ ] I discovered this out-of-scope task while working on REQ-337: the browser probe lane cannot
+- [x] I discovered this out-of-scope task while working on REQ-337: the browser probe lane cannot
   dispatch trusted input, which is why REQ-324's lock-in missed the click regression and why
-  REQ-333, REQ-336 and REQ-337 each had to work around it. Should I process this as a new task?
+  REQ-333, REQ-336 and REQ-337 each had to work around it. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
+  - [2026-08-23] User approved via clarify: the probe lane gains a real-input channel and
+    REQ-337's structural check becomes behavioural. The user was offered a keep-it-queued-for-
+    later option and did not take it, so this is wanted now rather than deferred. Nothing put
+    out of scope; whether REQ-324's and REQ-333's probes also convert remains the REQ's own
+    call.
 
 ## Red-Green Proof
 
