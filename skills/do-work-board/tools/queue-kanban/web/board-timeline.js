@@ -969,6 +969,13 @@
     }
     var step = timelineAxisTickStep(windowSpanMs);
     var instants = [];
+    // A tick AT windowEndMs is kept, deliberately. The window is half-open, so a
+    // week ending 13 July 00:00 draws a tick labelled "13 Jul" while the `to` field
+    // beside it calls 12 July the last day included — which reads like a
+    // contradiction and is not one. An axis tick names an INSTANT; the fields name
+    // DAYS OF COVERAGE. Hiding the boundary tick would make the week look as though
+    // it ended at 12 July 00:00, losing a day of the plot to avoid a distinction the
+    // readout already states exactly.
     var tickMs = timelineTickAtOrBefore(windowStartMs, step);
     if (tickMs < windowStartMs) {
       tickMs = timelineSteppedTick(tickMs, step);
@@ -1286,7 +1293,15 @@
       forecastNode.classList.remove("is-declined");
       var chainCount = (projection.rows || []).length;
       if (chainCount === 0) {
-        forecastNode.textContent = wholeQueueNote + "Nothing left to schedule — every remaining REQ is listed below.";
+        // "every remaining REQ is listed below" is only true when the rows on
+        // screen ARE the whole queue — which is exactly what the prefix above
+        // denies. Both appeared together under a filter: "This covers the whole
+        // queue, not the rows shown. Nothing left to schedule — every remaining REQ
+        // is listed below.", over one row, with the excluded paragraph naming a REQ
+        // that was not listed anywhere.
+        forecastNode.textContent = showingSubset
+          ? wholeQueueNote + "Nothing left to schedule."
+          : "Nothing left to schedule — every remaining REQ is listed below.";
       } else {
         forecastNode.textContent = wholeQueueNote +
           "Queue empties around " +
@@ -1593,7 +1608,14 @@
         timelineFormatStamp(timelineViewState.windowEndMs) +
         ", newest at the top. " +
         openCount +
-        " still open, measured to the now-line at " +
+        // NAMING THE NOW-LINE IS A CLAIM THAT IT IS ON SCREEN. drawNowRule draws
+        // nothing when now falls outside the window, so on any past week this
+        // sentence pointed at a rule the reader could not find, beside open bars
+        // clipped flush at the frame. The INSTANT still has to be stated — it is
+        // what every open span was measured against — so only the pointer goes.
+        (nowMs >= timelineViewState.windowStartMs && nowMs <= timelineViewState.windowEndMs
+          ? " still open, measured to the now-line at "
+          : " still open, measured against ") +
         timelineFormatStamp(nowMs) +
         (brokenRowCount ? ". " + brokenRowCount + " with broken stamps, drawn as breaks." : ".") +
         (rows.length < filterMatchedRows.length

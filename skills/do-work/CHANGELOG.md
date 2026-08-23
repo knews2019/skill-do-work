@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.27 — Timeline Prose Describes Only What Is on Screen (2026-08-23)
+
+The summary pointed at a now-line on windows that do not draw one, and on a filtered view the forecast said
+"not the rows shown" and "every remaining REQ is listed below" in the same breath.
+
+- On a window the now-line falls outside, the summary states the instant open spans were measured against without claiming a rule you can see
+- The forecast only says everything remaining is listed when the rows on screen really are the whole queue
+- The legend gained an entry for the axis-tick gridlines, the third kind of vertical line the plot draws
+
 ## 0.236.26 — Now and Fit All Land Somewhere You Can Read (2026-08-23)
 
 Pressing Now on a queue with nothing left to schedule dropped you onto a one-hour window — the tightest zoom

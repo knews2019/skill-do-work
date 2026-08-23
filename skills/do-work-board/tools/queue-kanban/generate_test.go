@@ -6703,9 +6703,19 @@ function collectStubText(node) {
   (node.children || []).forEach(function (child) { text += " " + collectStubText(child); });
   return text;
 }
+// A DRAINED queue, which is the only state that reaches the chainCount === 0
+// branch. The whole board's projection is replaced rather than a second fixture
+// added, because the contradiction is between two clauses of ONE paragraph and
+// both have to be produced by one render.
+function renderDrainedWithFilter(visibleIds) {
+  boardData.timeline.projection.rows = [];
+  return renderWithFilter(visibleIds);
+}
 process.stdout.write(JSON.stringify({
   unfiltered: renderWithFilter(null),
-  filtered: renderWithFilter(["REQ-901"])
+  filtered: renderWithFilter(["REQ-901"]),
+  drainedUnfiltered: renderDrainedWithFilter(null),
+  drainedFiltered: renderDrainedWithFilter(["REQ-901"])
 }));
 `
 
@@ -6721,8 +6731,10 @@ process.stdout.write(JSON.stringify({
 		Excluded string `json:"excluded"`
 	}
 	var rendered struct {
-		Unfiltered renderedView `json:"unfiltered"`
-		Filtered   renderedView `json:"filtered"`
+		Unfiltered        renderedView `json:"unfiltered"`
+		Filtered          renderedView `json:"filtered"`
+		DrainedUnfiltered renderedView `json:"drainedUnfiltered"`
+		DrainedFiltered   renderedView `json:"drainedFiltered"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &rendered); decodeError != nil {
 		t.Fatalf("decode rendered timeline views: %v (output starts %q)",
@@ -6758,6 +6770,35 @@ process.stdout.write(JSON.stringify({
 		if !strings.Contains(view.Forecast, "Queue empties around") {
 			t.Errorf("the %s forecast lost its estimate: %q", viewName, view.Forecast)
 		}
+	}
+
+	// A DRAINED QUEUE, where the paragraph used to contradict itself inside one
+	// sentence pair: "This covers the whole queue, not the rows shown." followed by
+	// "Nothing left to schedule — every remaining REQ is listed below.", above a
+	// single row, with the excluded paragraph under it naming a REQ that was not
+	// listed anywhere.
+	//
+	// SETUP, ASSERTED: without this the two assertions below pass against a forecast
+	// that never took the drained branch at all.
+	if !strings.Contains(rendered.DrainedFiltered.Forecast, "Nothing left to schedule") {
+		t.Fatalf("the drained fixture did not reach the nothing-left branch: %q",
+			rendered.DrainedFiltered.Forecast)
+	}
+	if strings.Contains(rendered.DrainedFiltered.Forecast, "listed below") {
+		t.Errorf("the forecast claims every remaining REQ is \"listed below\" while also saying it "+
+			"covers the whole queue and not the rows shown, above one row: %q",
+			rendered.DrainedFiltered.Forecast)
+	}
+	if !strings.Contains(rendered.DrainedFiltered.Forecast, "whole queue") {
+		t.Errorf("the drained filtered forecast dropped the whole-queue note, which is the half "+
+			"that is TRUE and is what the figures under it depend on: %q",
+			rendered.DrainedFiltered.Forecast)
+	}
+	// Unfiltered, the sentence is accurate and must be left alone: the rows on
+	// screen really are the whole queue there.
+	if !strings.Contains(rendered.DrainedUnfiltered.Forecast, "listed below") {
+		t.Errorf("with nothing filtered the rows ARE the whole queue, so the forecast should still "+
+			"say so: %q", rendered.DrainedUnfiltered.Forecast)
 	}
 }
 

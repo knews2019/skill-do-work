@@ -2422,6 +2422,14 @@ body.is-resizing-detail .detail-resizer::before {
   border-left-color: var(--timeline-projected);
 }
 
+/* The third kind of vertical line the plot draws, one per axis tick. It had no
+   key at all, so a reader had nothing to look it up under. Mirrors
+   .timeline-gridline below: the same token at the same opacity. */
+.timeline-swatch[data-rule="gridline"] {
+  border-left-color: var(--line-firm);
+  opacity: 0.6;
+}
+
 .timeline-chart {
   position: relative;
   padding: 8px 24px 0;

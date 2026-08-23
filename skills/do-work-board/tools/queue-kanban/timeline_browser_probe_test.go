@@ -1913,3 +1913,191 @@ window.addEventListener("load", function () {
 		t.Error("zoom-out is enabled at the full-range window, where there is nothing to zoom out to")
 	}
 }
+
+// The two sentences this view emits that used to describe a chart nobody was
+// looking at, plus the legend entry the plot's third vertical line never had.
+//
+// The summary always appended "measured to the now-line at <t>". drawNowRule draws
+// nothing when now falls outside the window, so on any past week that pointed at a
+// rule the reader could not find, beside open bars clipped flush at the frame.
+//
+// And the forecast contradicted itself inside one sentence pair: "This covers the
+// whole queue, not the rows shown." followed by "Nothing left to schedule — every
+// remaining REQ is listed below.", above a single row, with the excluded paragraph
+// immediately underneath naming a REQ that was not listed anywhere.
+func TestBrowserBehaviorTimelineProseDescribesOnlyTheWindowOnScreen(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function settleUntil(predicate, thenDo) {
+  var attemptsLeft = 60;
+  (function attempt() {
+    if (predicate() || attemptsLeft-- <= 0) { setTimeout(thenDo, 50); return; }
+    setTimeout(attempt, 50);
+  })();
+}
+function proseState(label) {
+  var rowsHost = document.querySelector("#view-timeline .timeline-scroll");
+  return {
+    label: label,
+    href: location.href,
+    summary: document.getElementById("timeline-summary").textContent,
+    forecast: document.getElementById("timeline-forecast").textContent,
+    excluded: document.getElementById("timeline-excluded").textContent,
+    readout: document.getElementById("timeline-range-readout").textContent,
+    nowRuleDrawn: !!rowsHost.querySelector(".timeline-now-rule")
+  };
+}
+function typeWindow(fromText, toText) {
+  [["timeline-range-start", fromText], ["timeline-range-end", toText]].forEach(function (pair) {
+    var field = document.getElementById(pair[0]);
+    field.focus();
+    field.value = pair[1];
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    field.dispatchEvent(new Event("change", { bubbles: true }));
+    field.blur();
+  });
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      probe.withNow = proseState("withNow");
+      // A window well before the now-line that still HAS rows in it. Late July is
+      // the busiest stretch of this repo's own archive; an empty past week would
+      // take the "Nothing was drawn" branch instead, which is a different sentence
+      // and would leave the one under test unexercised.
+      typeWindow("2026-07-27", "2026-08-02");
+      settleUntil(function () {
+        return (document.getElementById("timeline-range-readout").textContent || "")
+          .indexOf("2026-07-27") !== -1;
+      }, function () {
+        probe.withoutNow = proseState("withoutNow");
+        // And the forecast under a filter that leaves a subset on screen.
+        var search = document.getElementById("filter-search");
+        search.value = "REQ-164";
+        search.dispatchEvent(new Event("input", { bubbles: true }));
+        settleUntil(function () {
+          return (document.getElementById("timeline-forecast").textContent || "").length > 0 ||
+            (document.getElementById("timeline-summary").textContent || "").indexOf("No REQ matches") !== -1;
+        }, function () {
+          document.getElementById("timeline-zoom-fit").click();
+          settleUntil(function () { return true; }, function () {
+            probe.filtered = proseState("filtered");
+            probe.legendRules = [].slice.call(
+              document.querySelectorAll("#view-timeline .timeline-legend .timeline-swatch[data-rule]")
+            ).map(function (swatch) { return swatch.getAttribute("data-rule"); });
+            document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+            document.title = "READY";
+          });
+        });
+      });
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the probe script before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline prose", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+
+	type proseState struct {
+		Label        string `json:"label"`
+		Href         string `json:"href"`
+		Summary      string `json:"summary"`
+		Forecast     string `json:"forecast"`
+		Excluded     string `json:"excluded"`
+		Readout      string `json:"readout"`
+		NowRuleDrawn bool   `json:"nowRuleDrawn"`
+	}
+	var proseResult struct {
+		WithNow     proseState `json:"withNow"`
+		WithoutNow  proseState `json:"withoutNow"`
+		Filtered    proseState `json:"filtered"`
+		LegendRules []string   `json:"legendRules"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &proseResult); decodeError != nil {
+		t.Fatalf("decode timeline prose behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	for _, state := range []proseState{proseResult.WithNow, proseResult.WithoutNow, proseResult.Filtered} {
+		if !strings.HasSuffix(state.Href, "/probe.html") {
+			t.Fatalf("the %s state was measured on %q, not the probe page", state.Label, state.Href)
+		}
+	}
+
+	// SETUP, ASSERTED: the two window states have to differ in whether the rule is
+	// drawn, or the wording assertions are comparing one state with itself.
+	if !proseResult.WithNow.NowRuleDrawn {
+		t.Fatalf("the fitted window drew no now-rule (readout %q), so the case where one IS drawn "+
+			"is untested", proseResult.WithNow.Readout)
+	}
+	if proseResult.WithoutNow.NowRuleDrawn {
+		t.Fatalf("the past window still draws a now-rule (readout %q); this probe needs a window "+
+			"the now-line falls outside of", proseResult.WithoutNow.Readout)
+	}
+	// And it has to have ROWS in it, or the render takes the empty-window branch and
+	// the sentence under test is never emitted.
+	if !strings.Contains(proseResult.WithoutNow.Summary, "still open") {
+		t.Fatalf("the past window produced %q rather than a summary of drawn rows; pick a window "+
+			"with REQs in it", proseResult.WithoutNow.Summary)
+	}
+
+	// (P1) The pointer appears only where the rule does.
+	if !strings.Contains(proseResult.WithNow.Summary, "measured to the now-line at") {
+		t.Errorf("with the now-rule drawn the summary reads %q; it should name the rule the reader "+
+			"can see", proseResult.WithNow.Summary)
+	}
+	if strings.Contains(proseResult.WithoutNow.Summary, "now-line") {
+		t.Errorf("with no now-rule drawn the summary still points at one: %q",
+			proseResult.WithoutNow.Summary)
+	}
+	// The instant itself still has to be stated: it is what the open spans were
+	// measured against, and dropping it would trade one defect for another.
+	if !strings.Contains(proseResult.WithoutNow.Summary, "measured against") ||
+		!strings.Contains(proseResult.WithoutNow.Summary, " UTC") {
+		t.Errorf("with no now-rule drawn the summary no longer states the instant open spans were "+
+			"measured against: %q", proseResult.WithoutNow.Summary)
+	}
+
+	// (P2) The forecast does not both deny and assert that the rows are everything.
+	if strings.Contains(proseResult.Filtered.Forecast, "not the rows shown") &&
+		strings.Contains(proseResult.Filtered.Forecast, "listed below") {
+		t.Errorf("the forecast says both \"not the rows shown\" and \"listed below\" in one "+
+			"paragraph: %q", proseResult.Filtered.Forecast)
+	}
+	if proseResult.Filtered.Excluded != "" && strings.Contains(proseResult.Filtered.Forecast, "listed below") {
+		t.Errorf("the forecast claims every remaining REQ is listed below while the excluded "+
+			"paragraph under it names one that is not: forecast %q, excluded %q",
+			proseResult.Filtered.Forecast, proseResult.Filtered.Excluded)
+	}
+
+	// (P4) Every kind of vertical line the plot draws has a key. The renderer draws
+	// three: the now rule, the queue-end rule, and one gridline per axis tick.
+	wantLegendRules := map[string]bool{"now": false, "queue-end": false, "gridline": false}
+	for _, rule := range proseResult.LegendRules {
+		if _, isKnown := wantLegendRules[rule]; !isKnown {
+			t.Errorf("the legend keys a vertical rule %q the plot does not draw", rule)
+			continue
+		}
+		wantLegendRules[rule] = true
+	}
+	for rule, isKeyed := range wantLegendRules {
+		if !isKeyed {
+			t.Errorf("the plot draws a %q vertical line with no legend entry, so a reader has "+
+				"nothing to look it up under", rule)
+		}
+	}
+}
