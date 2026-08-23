@@ -2,6 +2,19 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.32 — The Timeline Probe Lane Can Catch a Stolen Click (2026-08-23)
+
+The check that was supposed to guard the Timeline's click path passed straight through the regression
+that broke every click in the chart, because a synthetic pointer id cannot be captured and so the
+failing path was never reached. There is now a check that bites.
+
+- New `TestTimelinePointerCaptureWaitsForThePanEngage`: the press handler requests no pointer capture
+  and calls nothing that does, while the drag-engage path still does
+- The set of capture-requesting functions is read out of the generated page rather than listed, so a
+  fresh wrapper called from the press handler fails the check too
+- Proved by mutation, four ways, including removing the capture altogether — the opposite defect,
+  which a plain absence check would have called clean
+
 ## 0.236.31 — Timeline Clicks Open the Detail Drawer Again (2026-08-23)
 
 Clicking a bar in the Timeline stopped opening anything two versions ago — every mouse press inside the

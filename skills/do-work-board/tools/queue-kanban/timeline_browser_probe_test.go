@@ -2352,3 +2352,118 @@ window.addEventListener("load", function () {
 			pathResult.BeforeAxisWheel.Readout)
 	}
 }
+
+// pointerCapturingFunctionNames lists every named function in the generated page whose
+// OWN body requests pointer capture. It is derived from the page rather than hand-listed
+// because the point of the check below is to survive a regression that routes the
+// request through a function nobody has written yet.
+//
+// The trailing paren in the match is load-bearing, and it is the trap REQ-333 fell into:
+// a search for the bare name also matches the `typeof scrollHost.setPointerCapture ===
+// "function"` feature detect, so it passes with the call itself deleted.
+func pointerCapturingFunctionNames(t *testing.T, pageSource string) []string {
+	t.Helper()
+	const declarationToken = "function "
+	var capturingNames []string
+	searchOffset := 0
+	for {
+		relativeIndex := strings.Index(pageSource[searchOffset:], declarationToken)
+		if relativeIndex == -1 {
+			break
+		}
+		declarationIndex := searchOffset + relativeIndex
+		searchOffset = declarationIndex + len(declarationToken)
+		nameEnd := strings.IndexByte(pageSource[searchOffset:], '(')
+		if nameEnd == -1 {
+			break
+		}
+		functionName := strings.TrimSpace(pageSource[searchOffset : searchOffset+nameEnd])
+		// Anonymous function expressions (`function (event) {`) have no name to call, so
+		// nothing can route a request through them from another handler.
+		if functionName == "" || strings.ContainsAny(functionName, " \t\n(){}") {
+			continue
+		}
+		functionBody := sliceBalancedBlockAfter(t, pageSource[declarationIndex:], declarationToken+functionName)
+		if strings.Contains(functionBody, "setPointerCapture(") {
+			capturingNames = append(capturingNames, functionName)
+		}
+	}
+	return capturingNames
+}
+
+// TestTimelinePointerCaptureWaitsForThePanEngage is the check REQ-337 exists to add, and
+// it pins the regression REQ-336 fixed: pointer capture taken on pointerdown.
+//
+// Why this is not covered by the probe above. Pointer capture retargets the pointer
+// events AND the click the engine synthesizes to the capturing element, so a capture
+// taken on every press leaves the delegated handler in board-controls.js with no
+// [data-detail-kind] ancestor to find and the detail drawer never opens for any click in
+// the chart. TestBrowserBehaviorTimelinePressBecomesAPanOnlyAfterMoving passed through
+// that entire regression, because it dispatches synthetic PointerEvents whose pointerId
+// the engine does not know: setPointerCapture throws on them, capture is never
+// established, and the failing path is invisible to the lane. This lane runs under
+// --dump-dom with no protocol channel, so it cannot dispatch trusted input at all; the
+// REQ therefore allows asserting the structural property instead, and this does.
+//
+// Three assertions, because "capture is not taken on pointerdown" is trivially satisfied
+// by taking it nowhere — which is the OTHER bug, the one REQ-333 fixed, where a drag
+// released outside the chart never told the host it had ended:
+//
+//	(a) the pointerdown handler requests no capture itself,
+//	(b) it calls nothing that requests capture, resolved from the page rather than from a
+//	    list, so a fresh wrapper called from pointerdown fails here too, and
+//	(c) the pointermove handler — the engage path — DOES reach a request.
+//
+// Known residual: this reads text, so a request routed through a variable, a method
+// lookup, or an eval would pass. The mutation this REQ pins (reintroducing capture on
+// pointerdown, by either spelling) does not.
+func TestTimelinePointerCaptureWaitsForThePanEngage(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	capturingNames := pointerCapturingFunctionNames(t, indexHTML)
+	// Vacuity guard: with no capturing function found, (b) below asserts nothing and (c)
+	// would be measuring the wrong thing. A page that requests capture nowhere is a
+	// failure, not a pass.
+	if len(capturingNames) == 0 {
+		t.Fatal("no named function in the generated page requests pointer capture, so this check " +
+			"cannot tell capture-at-the-engage from capture nowhere at all")
+	}
+
+	pointerDownBody := sliceBalancedBlockAfter(t, indexHTML,
+		"addTimelineListener(scrollHost, \"pointerdown\"")
+	pointerMoveBody := sliceBalancedBlockAfter(t, indexHTML,
+		"addTimelineListener(scrollHost, \"pointermove\"")
+
+	// (a) Nothing in the press handler requests capture directly.
+	if strings.Contains(pointerDownBody, "setPointerCapture(") {
+		t.Error("the Timeline pointerdown handler requests pointer capture; capture retargets the " +
+			"synthesized click to the capturing element, so every mouse click in the chart loses " +
+			"its [data-detail-kind] target and the detail drawer stops opening")
+	}
+	// (b) And it reaches no function that requests capture on its behalf.
+	for _, capturingName := range capturingNames {
+		if strings.Contains(pointerDownBody, capturingName+"(") {
+			t.Errorf("the Timeline pointerdown handler calls %s, which requests pointer capture; "+
+				"capture must wait for the pan to engage or every click in the chart is retargeted "+
+				"to the capturing element", capturingName)
+		}
+	}
+	// (c) The engage path still requests it, so (a) and (b) cannot be satisfied by
+	// removing capture altogether and reopening REQ-333's never-released drag.
+	engageReachesCapture := strings.Contains(pointerMoveBody, "setPointerCapture(")
+	for _, capturingName := range capturingNames {
+		if strings.Contains(pointerMoveBody, capturingName+"(") {
+			engageReachesCapture = true
+		}
+	}
+	if !engageReachesCapture {
+		t.Errorf("the Timeline pointermove handler reaches no pointer-capture request (capturing "+
+			"functions in the page: %v); a drag released outside the chart then has no guaranteed "+
+			"path back to the host that armed it", capturingNames)
+	}
+}
