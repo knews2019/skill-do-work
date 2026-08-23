@@ -3022,6 +3022,103 @@ process.stdout.write(JSON.stringify({
 	}
 }
 
+// The label's truncation arithmetic. The MEASUREMENT it depends on is a browser
+// question and lives in the browser lane; this pins what the module does with
+// the number once it has it.
+//
+// The id is the row's identity, so the rule under test is that it is never the
+// thing that gets cut: a budget too small for id-plus-a-useful-title drops the
+// title entirely rather than shipping a half-drawn id.
+func TestJavaScriptBehaviorTimelineRowLabelTruncation(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function timelineLabelCharacterBudget(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineRowLabelText(") + `
+var longTitle = "Colour timeline bars by REQ status";
+process.stdout.write(JSON.stringify({
+  budgetAt6px: timelineLabelCharacterBudget(6, 172),
+  budgetWithNoAdvance: timelineLabelCharacterBudget(0, 172),
+  budgetWithNegativeAdvance: timelineLabelCharacterBudget(-3, 172),
+
+  roomy: timelineRowLabelText("REQ-042", longTitle, 60),
+  cut: timelineRowLabelText("REQ-042", longTitle, 30),
+  cutLength: timelineRowLabelText("REQ-042", longTitle, 30).length,
+  tight: timelineRowLabelText("REQ-042", longTitle, 14),
+  noBudget: timelineRowLabelText("REQ-042", longTitle, 0),
+  noTitle: timelineRowLabelText("REQ-042", "", 60),
+  exactFit: timelineRowLabelText("REQ-042", "abcdef", 15),
+  oneOver: timelineRowLabelText("REQ-042", "abcdefghijkl", 20),
+  longId: timelineRowLabelText("REQ-100042", longTitle, 14)
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline row label", javascriptProbe)
+	var labelResult struct {
+		BudgetAt6px               int    `json:"budgetAt6px"`
+		BudgetWithNoAdvance       int    `json:"budgetWithNoAdvance"`
+		BudgetWithNegativeAdvance int    `json:"budgetWithNegativeAdvance"`
+		Roomy                     string `json:"roomy"`
+		Cut                       string `json:"cut"`
+		CutLength                 int    `json:"cutLength"`
+		Tight                     string `json:"tight"`
+		NoBudget                  string `json:"noBudget"`
+		NoTitle                   string `json:"noTitle"`
+		ExactFit                  string `json:"exactFit"`
+		OneOver                   string `json:"oneOver"`
+		LongId                    string `json:"longId"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &labelResult); decodeError != nil {
+		t.Fatalf("decode timeline row label behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if labelResult.BudgetAt6px != 28 {
+		t.Errorf("a 172px column at a 6px advance fits %d characters, want 28", labelResult.BudgetAt6px)
+	}
+	// An unmeasurable face must produce NO budget rather than a plausible one.
+	// A guessed advance is the REQ-292 defect: a number that looks like a
+	// measurement and does not move when the face does.
+	if labelResult.BudgetWithNoAdvance != 0 || labelResult.BudgetWithNegativeAdvance != 0 {
+		t.Errorf("an unmeasured face produced budgets %d and %d, want 0 for both",
+			labelResult.BudgetWithNoAdvance, labelResult.BudgetWithNegativeAdvance)
+	}
+
+	if labelResult.Roomy != "REQ-042  Colour timeline bars by REQ status" {
+		t.Errorf("a roomy budget rendered %q, want the id and the whole title", labelResult.Roomy)
+	}
+	if !strings.HasPrefix(labelResult.Cut, "REQ-042  ") || !strings.HasSuffix(labelResult.Cut, "…") {
+		t.Errorf("a cut label rendered %q, want the id then a truncated title ending in an ellipsis",
+			labelResult.Cut)
+	}
+	// The ellipsis is inside the budget, not on top of it — otherwise the label
+	// the arithmetic says fits is one character wider than the column.
+	if labelResult.CutLength > 30 {
+		t.Errorf("a 30-character budget produced a %d-character label %q; the ellipsis has to fit "+
+			"inside the budget", labelResult.CutLength, labelResult.Cut)
+	}
+	// Too tight for a useful title: the id survives whole, alone.
+	if labelResult.Tight != "REQ-042" {
+		t.Errorf("a tight budget rendered %q, want the id alone — a half-drawn id is worse than "+
+			"no title", labelResult.Tight)
+	}
+	if labelResult.NoBudget != "REQ-042" || labelResult.NoTitle != "REQ-042" {
+		t.Errorf("no budget rendered %q and no title rendered %q, want the id in both cases",
+			labelResult.NoBudget, labelResult.NoTitle)
+	}
+	if labelResult.ExactFit != "REQ-042  abcdef" {
+		t.Errorf("a title that exactly fills the budget rendered %q, want it whole and unmarked",
+			labelResult.ExactFit)
+	}
+	if !strings.HasSuffix(labelResult.OneOver, "…") || len([]rune(labelResult.OneOver)) > 20 {
+		t.Errorf("a title one character over the budget rendered %q (%d runes); it must be cut, "+
+			"marked, and still inside the budget",
+			labelResult.OneOver, len([]rune(labelResult.OneOver)))
+	}
+	// A longer id eats the same budget. The rule holds by id length, not by a
+	// hard-coded seven characters.
+	if labelResult.LongId != "REQ-100042" {
+		t.Errorf("a ten-character id at a 14-character budget rendered %q, want the id alone",
+			labelResult.LongId)
+	}
+}
+
 // timelineForecastDomStub is the smallest DOM renderTimelineForecast touches. It
 // is a stub rather than a headless browser because what is being pinned is the
 // SENTENCE — which figures reach the reader — not the layout.

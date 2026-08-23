@@ -504,3 +504,128 @@ func hexPairToFloat(pair string) float64 {
 	}
 	return float64(value)
 }
+
+// The label measurement, in an engine — and the assertion REQ-292's lesson asks
+// for: that the number RESPONDS to the rendered face rather than being a model
+// of one. A width model that returns the same value for every face is
+// undetectable by any test that only checks the value looks plausible, which is
+// how that defect shipped; so this measures the real face, then measures again
+// with a deliberately proportional one and requires the code to REFUSE.
+func TestBrowserBehaviorTimelineLabelAdvanceTracksTheFace(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	styleBlock := sliceGeneratedStyleBlock(t, indexHtml)
+	measureSource := sliceBalancedBlockAfter(t, indexHtml, "function timelineMeasureLabelAdvance(")
+	budgetSource := sliceBalancedBlockAfter(t, indexHtml, "function timelineLabelCharacterBudget(")
+
+	pageHTML := `<!doctype html><html><head><meta charset="utf-8"><style>` + styleBlock + `
+/* The proportional override. Applied to a second SVG only, so the first still
+   measures the shipped face. */
+.proportional-face .timeline-row-label { font-family: Georgia, "Times New Roman", serif; }
+</style></head><body>
+<svg id="shipped-face" class="timeline-rows-svg" width="400" height="60"></svg>
+<svg id="wide-face" class="timeline-rows-svg proportional-face" width="400" height="60"></svg>
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+var TIMELINE_SVG_NS = "http://www.w3.org/2000/svg";
+` + measureSource + `
+` + budgetSource + `
+(function () {
+  var shipped = timelineMeasureLabelAdvance(document.getElementById("shipped-face"));
+  var proportional = timelineMeasureLabelAdvance(document.getElementById("wide-face"));
+  // What the engine says the two faces actually are, so a failure below can be
+  // read without guessing whether the override applied at all.
+  function sampleWidth(svgId, sample) {
+    var svg = document.getElementById(svgId);
+    var node = document.createElementNS(TIMELINE_SVG_NS, "text");
+    node.setAttribute("class", "timeline-row-label");
+    node.textContent = sample;
+    svg.appendChild(node);
+    var width = node.getComputedTextLength();
+    svg.removeChild(node);
+    return width;
+  }
+  document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
+    shippedAdvance: shipped,
+    proportionalAdvance: proportional,
+    shippedNarrow: sampleWidth("shipped-face", "iiiiiiiiii"),
+    shippedWide: sampleWidth("shipped-face", "MMMMMMMMMM"),
+    proportionalNarrow: sampleWidth("wide-face", "iiiiiiiiii"),
+    proportionalWide: sampleWidth("wide-face", "MMMMMMMMMM"),
+    budgetFromShipped: timelineLabelCharacterBudget(shipped, 172)
+  });
+})();
+</script>
+</body></html>`
+
+	probeOutput := runBrowserBehaviorProbe(t, "timeline label advance", pageHTML)
+	var advanceResult struct {
+		ShippedAdvance      float64 `json:"shippedAdvance"`
+		ProportionalAdvance float64 `json:"proportionalAdvance"`
+		ShippedNarrow       float64 `json:"shippedNarrow"`
+		ShippedWide         float64 `json:"shippedWide"`
+		ProportionalNarrow  float64 `json:"proportionalNarrow"`
+		ProportionalWide    float64 `json:"proportionalWide"`
+		BudgetFromShipped   int     `json:"budgetFromShipped"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &advanceResult); decodeError != nil {
+		t.Fatalf("decode timeline label advance probe: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// The fixture has to be a real test of the thing. If the override did not
+	// take, both faces are the shipped one and the refusal below proves nothing.
+	if advanceResult.ProportionalNarrow == advanceResult.ProportionalWide {
+		t.Fatalf("the proportional override did not take — 'iiiiiiiiii' and 'MMMMMMMMMM' both "+
+			"measured %.4f, so this test cannot tell a measured advance from a modelled one",
+			advanceResult.ProportionalNarrow)
+	}
+	if advanceResult.ShippedNarrow != advanceResult.ShippedWide {
+		t.Fatalf("the shipped label face is not monospace: 'iiiiiiiiii' measured %.4f and "+
+			"'MMMMMMMMMM' %.4f. One advance cannot describe it, and the label budget is built on "+
+			"the assumption that it can",
+			advanceResult.ShippedNarrow, advanceResult.ShippedWide)
+	}
+	if !(advanceResult.ShippedAdvance > 0) {
+		t.Fatalf("the shipped face measured an advance of %.4f; a zero advance disables the title "+
+			"column entirely", advanceResult.ShippedAdvance)
+	}
+	// The refusal. A proportional face must produce no advance at all rather than
+	// an average that would mis-cut every title differently.
+	if advanceResult.ProportionalAdvance != 0 {
+		t.Errorf("a proportional face produced an advance of %.4f; it must refuse, because one "+
+			"number cannot describe a face whose glyphs differ in width",
+			advanceResult.ProportionalAdvance)
+	}
+	// And the measured number has to be in the range a 10px face can occupy —
+	// wide enough to be real, narrow enough that the column is not one word.
+	if advanceResult.ShippedAdvance < 4 || advanceResult.ShippedAdvance > 9 {
+		t.Errorf("the shipped 10px label face measured %.4f px per character, outside the 4–9 px "+
+			"a 10px monospace face can plausibly occupy — record the browser and build if this "+
+			"is a real face difference", advanceResult.ShippedAdvance)
+	}
+	if advanceResult.BudgetFromShipped < 20 {
+		t.Errorf("the shipped face fits only %d characters in a 172px column; the title column "+
+			"stops being worth its width below roughly 20", advanceResult.BudgetFromShipped)
+	}
+	t.Logf("shipped label face: %.4f px/char, %d characters in 172px (record the browser build "+
+		"beside this number if it is ever pinned)",
+		advanceResult.ShippedAdvance, advanceResult.BudgetFromShipped)
+}
+
+// The row's tooltip. A native <title> is the whole feature, so what needs pinning
+// is that the renderer still writes one and that it carries the description
+// rather than a bare id.
+func TestTimelineRowTooltipMarkupMatchesTheProbe(t *testing.T) {
+	rendererBytes, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
+	if readError != nil {
+		t.Fatalf("read web/board-timeline.js: %v", readError)
+	}
+	rendererSource := string(rendererBytes)
+	if !strings.Contains(rendererSource, `makeTimelineSvgNode(rowGroup, "title", {}, timelineRowDescription(row, request));`) {
+		t.Error("the row group no longer carries a native <title> built from timelineRowDescription; " +
+			"the tooltip at the pointer was the point, and the foot readout is 700px away")
+	}
+	if !strings.Contains(rendererSource, "timelineRowLabelText(row.id, request.title, labelCharacterBudget)") {
+		t.Error("the row label no longer runs through timelineRowLabelText, so the truncation " +
+			"assertions in generate_test.go are testing a function nothing calls")
+	}
+}

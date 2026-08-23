@@ -31,7 +31,11 @@
   // Ticks per axis, and therefore the gap between them: the label format is
   // keyed to that gap, so the two have to be read from one number.
   var TIMELINE_AXIS_TICK_COUNT = 6;
-  var TIMELINE_LABEL_WIDTH = 104;
+  // Wide enough for the id plus a title worth reading, and no wider: every pixel
+  // here comes out of the plot. At the 10px monospace label face this is about
+  // 30 characters — "REQ-042" plus a separator plus ~21 of title. Picked from the
+  // render at 1400px and 760px (REQ-322), not from arithmetic.
+  var TIMELINE_LABEL_WIDTH = 184;
   var TIMELINE_OVERSCAN_ROWS = 4;
   var TIMELINE_MIN_SPAN_MS = 3600000; // one hour in ms — as far in as zoom goes
   var TIMELINE_DAY_MS = 86400000;
@@ -520,6 +524,102 @@
     return { firstRow: firstRow, lastRow: Math.min(rowCount, firstRow + visibleCount) };
   }
 
+  // ---- row labels -----------------------------------------------------------
+  //
+  // The label column used to hold the id and nothing else, so three hundred rows
+  // told the reader nothing about what any of them were. Fitting a title into it
+  // needs a truncation boundary, and this module has been burned twice by where
+  // that number came from: REQ-292 shipped a width model that returned the same
+  // value for every face, so its slots never moved and a wider face drew past
+  // them, and REQ-241/REQ-242 measured one 12px face at 12.0372 and 11.2300 on
+  // two Chromium builds.
+  //
+  // So the boundary is MEASURED from the rendered face, and measured ONCE per
+  // render rather than per row: the label is a monospace face, so a single
+  // advance answers every row. That is a real property of the shipped CSS
+  // (.timeline-row-label uses --font-mono) and not an assumption this code is
+  // entitled to — timelineMeasureLabelAdvance verifies it and says so.
+
+  // The per-character advance of the label face, measured against the live DOM.
+  // Returns 0 when the face is NOT monospace, which is the honest answer rather
+  // than a number that would silently mis-cut every title: two strings of equal
+  // length that render at different widths mean one advance cannot describe the
+  // face, and the caller falls back to showing the id alone.
+  function timelineMeasureLabelAdvance(rowsSvg) {
+    // Not every host can measure text. The Node behavior lane drives this
+    // renderer against a DOM stub, and a stub that cannot lay text out has no
+    // advance to report — the same honest answer as a proportional face, and the
+    // same consequence: labels fall back to the id alone. Checked up front
+    // rather than caught, because a throw here would take the whole render with
+    // it for a label that was never going to be measurable.
+    if (!rowsSvg || typeof rowsSvg.appendChild !== "function" || typeof rowsSvg.removeChild !== "function") {
+      return 0;
+    }
+    var probeText = document.createElementNS(TIMELINE_SVG_NS, "text");
+    if (!probeText || typeof probeText.getComputedTextLength !== "function") {
+      return 0;
+    }
+    probeText.setAttribute("class", "timeline-row-label");
+    // Deliberately off-canvas rather than hidden: display:none and
+    // visibility:hidden both make getComputedTextLength return 0, which would
+    // read as "not monospace" and quietly disable the whole feature.
+    probeText.setAttribute("x", "-9999");
+    probeText.setAttribute("y", "-9999");
+    rowsSvg.appendChild(probeText);
+
+    function widthOf(sample) {
+      probeText.textContent = sample;
+      return probeText.getComputedTextLength ? probeText.getComputedTextLength() : 0;
+    }
+    // Two samples of equal length whose glyphs have very different proportional
+    // widths. In a monospace face they measure the same; in any proportional one
+    // they do not, which is exactly the check REQ-292's lesson asks for — assert
+    // the geometry responds to the face rather than trusting a model of it.
+    var narrowSample = widthOf("iiiiiiiiii");
+    var wideSample = widthOf("MMMMMMMMMM");
+    rowsSvg.removeChild(probeText);
+
+    if (!(narrowSample > 0) || Math.abs(narrowSample - wideSample) > 0.5) {
+      return 0;
+    }
+    return narrowSample / 10;
+  }
+
+  // How many characters of label fit, given the measured advance. Zero advance
+  // means the face could not be measured or is not monospace.
+  function timelineLabelCharacterBudget(advancePerCharacter, availableWidth) {
+    if (!(advancePerCharacter > 0)) {
+      return 0;
+    }
+    return Math.max(0, Math.floor(availableWidth / advancePerCharacter));
+  }
+
+  // "REQ-042  Some title" cut to the budget, with an ellipsis when it was cut.
+  // The id is never truncated: it is the row's identity and a half-drawn id is
+  // worse than no title at all, so a budget too small for id-plus-title returns
+  // the id alone.
+  function timelineRowLabelText(requestId, title, characterBudget) {
+    if (characterBudget <= 0 || !title) {
+      return requestId;
+    }
+    var separator = "  ";
+    var roomForTitle = characterBudget - requestId.length - separator.length;
+    // A title that fits WHOLE always shows, however little room there is: a
+    // complete short title is useful at any length.
+    if (title.length <= roomForTitle) {
+      return requestId + separator + title;
+    }
+    // One that has to be cut has to be worth cutting. Four characters and an
+    // ellipsis names nothing and just makes the column look broken, so below
+    // this the id stands alone rather than being followed by a stub.
+    if (roomForTitle < 8) {
+      return requestId;
+    }
+    // The ellipsis lives INSIDE the budget, not on top of it, or the label the
+    // arithmetic says fits is one character wider than the column.
+    return requestId + separator + title.slice(0, roomForTitle - 1).trimEnd() + "…";
+  }
+
   // A projected bar must never read as a measured one, so it is hatched rather
   // than merely tinted: opacity alone is what a disabled control looks like, and
   // the dashed outline is already spoken for by an OPEN measured bar. The hatch
@@ -988,6 +1088,12 @@
       });
     }
 
+    // Measured once per render — not per row, and not per frame. The label face
+    // cannot change between rows, so one advance answers all of them; a resize
+    // or a filter change re-enters renderTimelineView and measures again.
+    var labelAdvance = 0;
+    var labelCharacterBudget = 0;
+
     function renderVisibleRows() {
       rowsSvg.textContent = "";
       // The scroll extent follows the windowed set, not the filtered one — a
@@ -995,6 +1101,10 @@
       // them.
       rowsSvg.setAttribute("height", rows.length * TIMELINE_ROW_HEIGHT);
       appendTimelineHatchPattern(rowsSvg);
+      // TIMELINE_LABEL_WIDTH is the column; the 6px is the text's own x offset
+      // and the trailing 6px keeps the longest label off the first bar.
+      labelAdvance = timelineMeasureLabelAdvance(rowsSvg);
+      labelCharacterBudget = timelineLabelCharacterBudget(labelAdvance, TIMELINE_LABEL_WIDTH - 12);
       var visible = timelineVisibleRowRange(scrollHost.scrollTop, scrollHost.clientHeight, rows.length);
       for (var rowIndex = visible.firstRow; rowIndex < visible.lastRow; rowIndex++) {
         var row = rows[rowIndex];
@@ -1031,8 +1141,15 @@
           rowGroup,
           "text",
           { x: 6, y: rowTopY + TIMELINE_ROW_HEIGHT - 5, class: "timeline-row-label" },
-          row.id
+          timelineRowLabelText(row.id, request.title, labelCharacterBudget)
         );
+
+        // The tooltip, at the pointer, for free. A native SVG <title> needs no
+        // positioning code and no listener, and it carries exactly what the foot
+        // readout carries — which until now was the only place a title appeared,
+        // some 700px below the row the pointer was on. The readout stays: it is
+        // the aria-live path, and this is not.
+        makeTimelineSvgNode(rowGroup, "title", {}, timelineRowDescription(row, request));
 
         var createdMs = Date.parse(row.createdTime);
         var claimedMs = row.claimedTime ? Date.parse(row.claimedTime) : nowMs;

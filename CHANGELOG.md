@@ -2,6 +2,18 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.15 — Timeline Rows Say What They Are (2026-08-23)
+
+A Timeline row used to read `REQ-012` and nothing else, so scanning three hundred of them told
+you nothing about any of them. Rows now carry their title beside the id, and hovering a bar
+shows the full detail right where the pointer is instead of in a line at the foot of the page.
+
+- Titles are truncated to a boundary measured from the font the browser actually rendered,
+  not from a guess about it.
+- The label column widened to make room; the chart keeps its span at narrow widths.
+- A REQ with no title still shows its id, and a font the measurement cannot describe falls
+  back to the id rather than cutting titles in the wrong place.
+
 ## 0.236.14 — Timeline Bars Take Their Status Colour (2026-08-23)
 
 A blocked REQ, a pending one and a finished one used to draw identical bars on the Timeline —
