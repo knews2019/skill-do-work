@@ -1,7 +1,8 @@
 ---
 id: REQ-340
 title: "Addendum: finish the report-image interruption sweep"
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-23T22:32:23Z
 created_at: 2026-08-23T19:30:00Z
 user_request: UR-065
 addendum_to: REQ-325
@@ -81,12 +82,16 @@ staging is removed". Today that statement is true only for an interruption that 
 
 ## Open Questions
 
-- [ ] I discovered these out-of-scope tasks while working on REQ-325: the report-image *batch*
+- [x] I discovered these out-of-scope tasks while working on REQ-325: the report-image *batch*
   carries both interruption defects REQ-325 fixed in the per-image helper, and the helper's grace
   loop miscounts a zombie child so every interrupted run burns an extra second. Should I process
-  this as a new task?
+  this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
+  - [2026-08-23] User approved via clarify: all three instances are wanted, including the
+    helper's zombie-counting grace loop. The user was offered a consumer-visible-only subset
+    (the batch's leaked staging directory and stray processes) and did not take it, so the
+    third instance stays in scope.
 
 ## Red-Green Proof
 
