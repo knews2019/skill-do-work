@@ -55,6 +55,16 @@ class — unrecognized status included — is never lifted. `ExitCode` (`verify.
 records that "verify was blind to every anomaly class until then" (REQ-214), and it forwards the
 board's structured evidence instead of re-walking the tree or parsing warning prose.
 
+**Capture decision — the missing-`user_request` class was narrowed, and the user did not ask for
+that.** The request lists "a missing `user_request` pointer" as an anomaly the probe should fail on.
+Taken literally that fires on every stakeholder-questions REQ, which carries no `user_request` **by
+design** (`actions/work-reference.md` → Stakeholder REQ Template), and on every REQ in
+`archive/legacy/`, which predates the field. A probe that flags correct files is a probe someone
+turns off, so the requirement below carves those two out. **Value:** the probe stays trustworthy, so
+its findings keep meaning something. **Risk:** a genuinely damaged REQ that happens to look like a
+stakeholder REQ would slip through — narrow, because the carve-out keys on the documented shape and
+not on the field's mere absence. Reversible: delete the carve-out and the literal reading is back.
+
 ## Detailed Requirements
 
 - A structural-anomaly probe fails the mechanical check on a REQ file with any of: no leading
@@ -66,9 +76,10 @@ board's structured evidence instead of re-walking the tree or parsing warning pr
   the same rule `appendCompletionAnomalyFindings` states for itself.
 - Each finding names the broken field and its remedy, so the operator can act without opening the
   tool's source.
-- The probe distinguishes damage from legitimate absence. A stakeholder-questions REQ carries no
-  `user_request` **by design** (`actions/work-reference.md` → Stakeholder REQ Template), and legacy
-  REQs in `archive/legacy/` have none either — neither is a finding.
+- The probe distinguishes damage from legitimate absence: a stakeholder-questions REQ and a REQ in
+  `archive/legacy/` both legitimately carry no `user_request`, and neither is a finding. This narrows
+  the request's literal wording — see the capture decision in `## Context` for why, and overturn it
+  there if the narrowing is unwanted.
 
 ## Constraints
 

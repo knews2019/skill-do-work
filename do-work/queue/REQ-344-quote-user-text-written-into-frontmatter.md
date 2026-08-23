@@ -13,6 +13,17 @@ related: [REQ-342, REQ-343]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+estimate:
+  p50_active_minutes: 30
+  confidence: medium
+  calculated_at: 2026-08-23T22:53:15Z
+  basis:
+    - Route B
+    - 2-file write set
+    - 2 subsystems involved
+    - 5 acceptance criteria
+    - cross-route regression gates
+    - full-suite verification
 write_set:
   - skills/do-work/actions/work-reference.md
   - skills/do-work-board/tools/queue-kanban/frontmatter_test.go
@@ -47,8 +58,12 @@ title, so that is the common shape, not an exotic one.
 Verified against the source. `frontmatter.go:70-104` documents the permissive parse and its line-based
 extraction, and states "recovery is the contract here". `actions/capture-reference.md` § REQ Title
 Convention states the opposite emphasis — recovery "is a salvage path with a narrower contract than
-the parser proper". **Both readings are live, and this REQ is the place to reconcile them**, because a
-writing rule is only as good as the agreed status of the fallback beneath it.
+the parser proper".
+
+**The user settled this at capture: the fallback is a last resort, not a contract.** So the two texts
+do not get weighed against each other — `frontmatter.go`'s "recovery is the contract here" is the one
+that has to change, and the work is saying what a writer may therefore not rely on. This is stated
+here so the builder does not spend the decision again.
 
 The write sites are the three actions that mint or edit these fields: capture (`title`, `blocked_by`,
 `blocked_check`, `stakeholder`, `assigned_to`), work (the mid-run blocked flip writes `blocked_by`),
@@ -68,8 +83,9 @@ Schema Read Contract — is what stops it being restated three ways.
   illustrative.
 - A lock-in test that a `title` carrying a double quote, a colon and a hash round-trips through the
   board parser unchanged.
-- Say what the recovery parser's status now is. If it stays a documented contract, the two texts
-  above must agree; if it becomes a salvage path, say what a writer may not rely on.
+- Record the fallback as a last resort rather than a contract, and say what a writer may not rely on
+  because of it. `frontmatter.go:104`'s "recovery is the contract here" is the text that has to give;
+  correct it rather than leaving the two statements to disagree.
 
 ## Constraints
 
@@ -82,10 +98,9 @@ Schema Read Contract — is what stops it being restated three ways.
 
 ## Builder Guidance
 
-**Certainty: firm on the defect and the rule's shape — the user stated both quoting forms.** The open
-judgment is the recovery parser's declared status, and it is a prose reconciliation between two
-shipped files that currently disagree; decide it explicitly and say why, rather than editing one side
-to match the other silently.
+**Certainty: firm throughout — the user stated both quoting forms and settled the fallback's status.**
+Nothing here is left for the builder to decide. The prose reconciliation between the two shipped files
+is a task, not a judgment: `frontmatter.go`'s claim is the one that changes.
 
 Read `actions/capture-reference.md` § REQ Title Convention before writing: it already contains most of
 the reasoning, including the worked corruption example, and the new rule should cite it rather than
