@@ -6180,6 +6180,153 @@ func TestJavaScriptBehaviorReversedWaitDrawsAsABreak(t *testing.T) {
 	}
 }
 
+// TestJavaScriptBehaviorTimelineNoMatchStateRetiresTheToolbar pins the one render
+// path that draws nothing.
+//
+// renderTimelineView returns early when the filters match no REQ, after
+// releaseTimelineListeners but BEFORE the toolbar is wired. The toolbar is bound
+// with `button.onclick =`, which is outside the teardown registry, so every
+// handler from the previous render survived — holding that render's rows, its
+// detached rows SVG and its renderAll. One press of Fit all then refilled the
+// summary, the forecast and the details table with the REQs the filter had
+// excluded, over a chart that stayed empty.
+//
+// The property: after a no-match render, no control this view owns has a handler
+// or can be pressed; after a render that matches again, they all work.
+func TestJavaScriptBehaviorTimelineNoMatchStateRetiresTheToolbar(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
+	if readError != nil {
+		t.Fatalf("read web/board-timeline.js: %v", readError)
+	}
+
+	timelinePayload := `{
+	  "now": "2026-08-18T12:00:00Z",
+	  "rangeStart": "2026-08-18T09:00:00Z",
+	  "rangeEnd": "2026-08-18T13:00:00Z",
+	  "rows": [
+	    {"id":"REQ-921","createdTime":"2026-08-18T09:00:00Z","claimedTime":"2026-08-18T09:30:00Z",
+	     "completedTime":"2026-08-18T10:00:00Z","waitMinutes":30,"workMinutes":30,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-922","createdTime":"2026-08-18T10:00:00Z","claimedTime":"2026-08-18T10:30:00Z",
+	     "completedTime":"2026-08-18T11:00:00Z","waitMinutes":30,"workMinutes":30,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false}
+	  ]
+	}`
+
+	// The stub's querySelectorAll has to answer the control selectors, so the
+	// controls are real stub nodes the driver can inspect and press.
+	probeDriver := `
+var stubControls = ["period-prev", "period-day", "zoom-fit", "range-start"].map(function (name) {
+  var control = makeStubNode(name === "range-start" ? "input" : "button");
+  control.controlName = name;
+  control.disabled = false;
+  control.onclick = null;
+  return control;
+});
+document.querySelectorAll = function (selector) {
+  if (String(selector).indexOf(".timeline-periods button") !== -1) { return stubControls; }
+  if (String(selector).indexOf("[data-timeline-period]") !== -1) { return []; }
+  return [];
+};
+document.getElementById = function (nodeId) {
+  if (nodeId === "timeline-zoom-fit") { return stubControls[2]; }
+  return timelineStubHosts[nodeId] || null;
+};
+
+function controlState() {
+  return stubControls.map(function (control) {
+    return { name: control.controlName, wired: typeof control.onclick === "function", disabled: !!control.disabled };
+  });
+}
+
+timelineStubVisibleIds = null;
+renderTimelineView();
+var matched = { controls: controlState(), summary: timelineStubHosts["timeline-summary"].textContent };
+
+// Nothing matches. The early return fires.
+["timeline-summary", "timeline-axis", "timeline-scroll", "timeline-readout",
+ "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state"
+].forEach(function (hostId) { timelineStubHosts[hostId] = makeStubNode("div"); });
+timelineStubVisibleIds = [];
+renderTimelineView();
+var noMatch = { controls: controlState(), summary: timelineStubHosts["timeline-summary"].textContent };
+
+// And back: a filter that matches again must restore every control.
+["timeline-summary", "timeline-axis", "timeline-scroll", "timeline-readout",
+ "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state"
+].forEach(function (hostId) { timelineStubHosts[hostId] = makeStubNode("div"); });
+timelineStubVisibleIds = null;
+renderTimelineView();
+var matchedAgain = { controls: controlState(), summary: timelineStubHosts["timeline-summary"].textContent };
+
+process.stdout.write(JSON.stringify({ matched: matched, noMatch: noMatch, matchedAgain: matchedAgain }));
+`
+
+	javascriptProbe := timelineRenderDomStubPreamble +
+		"var boardData = { timeline: " + timelinePayload + " };\n" +
+		string(rendererFragment) +
+		probeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline no-match toolbar", javascriptProbe)
+
+	type controlState struct {
+		Name     string `json:"name"`
+		Wired    bool   `json:"wired"`
+		Disabled bool   `json:"disabled"`
+	}
+	type renderState struct {
+		Controls []controlState `json:"controls"`
+		Summary  string         `json:"summary"`
+	}
+	var toolbarResult struct {
+		Matched      renderState `json:"matched"`
+		NoMatch      renderState `json:"noMatch"`
+		MatchedAgain renderState `json:"matchedAgain"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &toolbarResult); decodeError != nil {
+		t.Fatalf("decode timeline no-match toolbar behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// SETUP, ASSERTED: without these the checks below are measuring nothing.
+	if len(toolbarResult.Matched.Controls) == 0 {
+		t.Fatal("the probe found no controls, so nothing below is measured")
+	}
+	if !strings.Contains(toolbarResult.NoMatch.Summary, "No REQ matches the current filters") {
+		t.Fatalf("the second render did not take the no-match path (summary %q)",
+			toolbarResult.NoMatch.Summary)
+	}
+	if !strings.Contains(toolbarResult.Matched.Summary, "REQs in the window") {
+		t.Fatalf("the first render did not draw a chart (summary %q)", toolbarResult.Matched.Summary)
+	}
+	// The "still carries a handler" check below is vacuous for any control this stub
+	// never wires, so at least one has to arrive wired or that half proves nothing.
+	wiredAfterAMatchingRender := 0
+	for _, control := range toolbarResult.Matched.Controls {
+		if control.Wired {
+			wiredAfterAMatchingRender++
+		}
+	}
+	if wiredAfterAMatchingRender == 0 {
+		t.Fatal("no control was wired by the matching render, so the handler half of this test " +
+			"cannot fail; give the stub's getElementById a control the renderer wires")
+	}
+
+	for _, control := range toolbarResult.NoMatch.Controls {
+		if control.Wired {
+			t.Errorf("after the no-match render the %s control still carries a handler; it belongs "+
+				"to the previous render, whose rows the filter excluded", control.Name)
+		}
+		if !control.Disabled {
+			t.Errorf("after the no-match render the %s control is still pressable; a control that "+
+				"cannot act must say so rather than doing nothing", control.Name)
+		}
+	}
+	for _, control := range toolbarResult.MatchedAgain.Controls {
+		if control.Disabled {
+			t.Errorf("the %s control is still disabled after the filter matched again", control.Name)
+		}
+	}
+}
+
 // TestJavaScriptBehaviorTimelineSummaryCountsRowsDrawnAsBreaks drives the whole
 // renderer because the contract spans two seams: the filtered row population
 // chosen by renderTimelineView and every reason its drawing pass represents as

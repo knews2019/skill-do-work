@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.24 — Timeline Controls Go Quiet When Nothing Matches (2026-08-23)
+
+Search for something that does not exist on the Timeline and the toolbar used to stay wired to the previous
+render: one press of Fit all refilled the summary and the details table with the REQs your filter had just
+excluded, over an empty chart.
+
+- Every timeline control is disabled while no REQ matches the filters, and restored the moment one does
+- Pressing one in that state can no longer describe rows that are not on screen
+
 ## 0.236.23 — Timeline Date Fields Name the Window You Are Looking At (2026-08-23)
 
 Clearing the From or to box used to leave it permanently blank, and a date the chart clamped left the box

@@ -1326,6 +1326,27 @@ func TestBrowserBehaviorTimelineBarsSurviveTheDetailDrawerOpening(t *testing.T) 
 	probeScript := `
 <pre id="` + browserProbeResultElementId + `"></pre>
 <script>
+// Waiting on a CONDITION, never on a duration. Fixed setTimeouts passed alone and
+// failed inside the full suite, where a dozen probes share the machine: the two
+// 300ms waits after a row click were enough for an idle run and not for a loaded
+// one, and the probe then measured a layout that had not settled and reported the
+// defect it exists to catch. Bounded by a deadline so a genuine failure still
+// fails rather than hanging.
+function settleUntil(predicate, thenDo) {
+  var attemptsLeft = 60;
+  (function attempt() {
+    if (predicate() || attemptsLeft-- <= 0) {
+      // One more tick after the predicate holds, so a render the change SCHEDULED
+      // has run before anything is measured. setTimeout rather than
+      // requestAnimationFrame throughout: headless --dump-dom has no compositor
+      // driving frames, so an rAF-based poll never resolves and the runner dumps
+      // an empty result node.
+      setTimeout(thenDo, 50);
+      return;
+    }
+    setTimeout(attempt, 50);
+  })();
+}
 function plotHost() {
   return document.querySelector("#view-timeline .timeline-scroll");
 }
@@ -1375,20 +1396,24 @@ window.addEventListener("load", function () {
       if (firstRow) {
         firstRow.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true }));
       }
-      // Two frames plus a tick: the ResizeObserver callback runs before paint and
-      // schedules the render on the next frame.
-      setTimeout(function () {
+      // The drawer narrows the host; wait for THAT, not for a duration.
+      var widthBeforeClick = probe.before.hostWidth;
+      settleUntil(function () {
+        return Math.round(plotHost().getBoundingClientRect().width) !== widthBeforeClick;
+      }, function () {
         probe.drawerOpenAfter = drawerIsOpen();
         probe.after = plotSnapshot("after");
         var close = document.getElementById("detail-close");
         if (close) { close.click(); }
-        setTimeout(function () {
+        settleUntil(function () {
+          return Math.round(plotHost().getBoundingClientRect().width) === widthBeforeClick;
+        }, function () {
           probe.closed = plotSnapshot("closed");
           probe.drawerOpenAtEnd = drawerIsOpen();
           document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
           document.title = "READY";
-        }, 300);
-      }, 300);
+        });
+      });
     }, 500);
   }, 200);
 });
@@ -1399,8 +1424,13 @@ window.addEventListener("load", function () {
 	if pageHTML == indexHTML {
 		t.Fatal("the generated page has no </body> to inject the probe script before")
 	}
+	// A LONGER VIRTUAL-TIME BUDGET, because this probe waits on conditions rather
+	// than durations and every polled frame advances the virtual clock. The default
+	// 5000ms is spent before the poll resolves, and the runner then dumps a DOM
+	// whose result node is still empty. The flag repeats deliberately: Chromium
+	// takes the last occurrence, and the runner's own default comes first.
 	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline drawer plot width", siteDirectory,
-		pageHTML, "--window-size=1600,900")
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
 
 	type plotSnapshot struct {
 		Label     string `json:"label"`
@@ -1514,6 +1544,18 @@ func TestBrowserBehaviorTimelineRangeFieldsShowTheWindowTheChartIsDrawnAt(t *tes
 	probeScript := `
 <pre id="` + browserProbeResultElementId + `"></pre>
 <script>
+// Same condition-not-duration rule as the drawer probe above, and the same
+// setTimeout-not-rAF reason; see its note.
+function settleUntil(predicate, thenDo) {
+  var attemptsLeft = 60;
+  (function attempt() {
+    if (predicate() || attemptsLeft-- <= 0) {
+      setTimeout(thenDo, 50);
+      return;
+    }
+    setTimeout(attempt, 50);
+  })();
+}
 function fieldState() {
   return {
     href: location.href,
@@ -1566,11 +1608,14 @@ window.addEventListener("load", function () {
       probe.duringAbandon = fieldState();
       abandoned.dispatchEvent(new Event("blur", { bubbles: true }));
       abandoned.blur();
-      setTimeout(function () {
+      // Wait for the restore, not for a duration.
+      settleUntil(function () {
+        return document.getElementById("timeline-range-end").value !== "";
+      }, function () {
         probe.afterAbandon = fieldState();
         document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
         document.title = "READY";
-      }, 200);
+      });
     }, 500);
   }, 200);
 });
@@ -1581,8 +1626,10 @@ window.addEventListener("load", function () {
 	if pageHTML == indexHTML {
 		t.Fatal("the generated page has no </body> to inject the probe script before")
 	}
+	// Same longer budget as the drawer probe, and for the same reason: this one
+	// polls for the restore instead of sleeping through it.
 	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline range fields", siteDirectory,
-		pageHTML, "--window-size=1600,900")
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
 
 	type fieldState struct {
 		Href    string `json:"href"`

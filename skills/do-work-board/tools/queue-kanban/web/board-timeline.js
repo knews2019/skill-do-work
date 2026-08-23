@@ -1310,6 +1310,43 @@
     excludedNode.appendChild(excludedList);
   }
 
+  // Every control this view wires up, so a render that leaves without re-wiring
+  // them can take them all out of service together.
+  //
+  // The condition is the rule: a control this view owns is either wired to the
+  // CURRENT render or visibly disabled — never silently wired to the LAST one.
+  // The toolbar is bound with `button.onclick =`, which is outside the listener
+  // teardown registry, so the no-match early return used to leave every handler
+  // alive holding the previous render's rows, its detached rows SVG and its
+  // renderAll. One press of Fit all in that state refilled the summary, the
+  // forecast and the details table with the REQs the filter had excluded, over a
+  // chart that stayed empty.
+  function timelineOwnedControls() {
+    return [].slice.call(
+      document.querySelectorAll(
+        "#view-timeline .timeline-periods button," +
+          "#view-timeline .timeline-zoom button," +
+          "#view-timeline .timeline-range input"
+      )
+    );
+  }
+
+  // Hand every control back with no handler and no way to be pressed. Called on
+  // the one path that renders nothing, so nothing the reader can press describes
+  // a chart that is not there.
+  function retireTimelineControls() {
+    timelineOwnedControls().forEach(function (control) {
+      control.onclick = null;
+      control.disabled = true;
+    });
+  }
+
+  function enableTimelineControls() {
+    timelineOwnedControls().forEach(function (control) {
+      control.disabled = false;
+    });
+  }
+
   function renderTimelineView() {
     var summaryNode = document.getElementById("timeline-summary");
     var axisHost = document.getElementById("timeline-axis");
@@ -1365,6 +1402,9 @@
     if (filterMatchedRows.length === 0) {
       // The forecast describes the rows; with none on screen it must go too.
       clearTimelineForecast();
+      // And so must every control: this path wires nothing, so anything still
+      // wired belongs to a render whose rows the filter has excluded.
+      retireTimelineControls();
       summaryNode.textContent = (timeline.rows || []).length
         ? "No REQ matches the current filters."
         : "No REQ carries a readable created_at yet, so there is nothing to place on a timeline.";
@@ -1566,6 +1606,10 @@
         ? window.requestAnimationFrame(renderTimelineTable)
         : (renderTimelineTable(), null);
     }
+
+    // Past the early return, so this render owns the controls and is about to wire
+    // them. Undoes a retirement left by a previous no-match render.
+    enableTimelineControls();
 
     var axisSvg = makeTimelineSvgNode(axisHost, "svg", {
       class: "timeline-axis-svg",
