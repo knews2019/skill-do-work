@@ -495,10 +495,13 @@
   // to stop. Testing the segments separately is what makes the REQ's GREEN true:
   // every listed row has something drawn on it.
   //
-  // Each segment takes a genuine min/max of its own endpoints. Spans are signed,
-  // so a reversed stamp can put claimed_at before created_at; the board draws
-  // that as a break marker and it still has to be findable in the window it
-  // sits in.
+  // Every segment is where the renderer DRAWS something, at the size it draws it.
+  // A forward span is its own min/max interval. A reversed one — claimed_at
+  // before created_at — is a POINT, because a break marker is all the renderer
+  // puts on screen for it; taking the min/max there would claim a bar across an
+  // interval nothing is drawn across, and the row would be listed in windows
+  // showing none of it. The point sits exactly where the marker does, so a broken
+  // row stays findable in the window it actually appears in.
   function timelineRowSegments(row, nowMs, projectedRow) {
     var segments = [];
     function addSegment(fromMs, toMs) {
@@ -513,10 +516,26 @@
 
     // The wait, drawn created → claimed, or created → now while nobody has
     // claimed it.
-    addSegment(createdMs, isNaN(claimedMs) ? nowMs : claimedMs);
+    //
+    // A REVERSED wait is not drawn as a bar at all: renderVisibleRows puts a 6px
+    // break marker at the CREATED instant and nothing between. Modelling it as
+    // the min/max interval is the forecast-gap defect in another costume — a
+    // window inside the interval overlaps a hull containing no mark. Keyed on
+    // row.waitMinutes, the same field the renderer branches on, so the two cannot
+    // drift into disagreeing about which rows are reversed.
+    if (row.waitMinutes < 0) {
+      addSegment(createdMs, createdMs);
+    } else {
+      addSegment(createdMs, isNaN(claimedMs) ? nowMs : claimedMs);
+    }
     if (row.hasWork) {
-      // The work, drawn claimed → completed, or claimed → now while it runs.
-      addSegment(claimedMs, isNaN(completedMs) ? nowMs : completedMs);
+      if (row.workMinutes < 0) {
+        // Same again, at the instant renderVisibleRows puts this row's marker.
+        addSegment(claimedMs, claimedMs);
+      } else {
+        // The work, drawn claimed → completed, or claimed → now while it runs.
+        addSegment(claimedMs, isNaN(completedMs) ? nowMs : completedMs);
+      }
     }
     if (projectedRow) {
       addSegment(Date.parse(projectedRow.startTime), Date.parse(projectedRow.endTime));
@@ -576,7 +595,14 @@
       var segments = rowSegments[rowIndex];
       for (var segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
         var segment = segments[segmentIndex];
-        if (segment.startMs <= windowEndMs && segment.endMs >= windowStartMs) {
+        // ASYMMETRIC ON PURPOSE. windowEndMs is the next window's first instant
+        // everywhere else here — timelinePeriodWindow builds [start, nextStart)
+        // and timelineEndEpochToDateField renders windowEndMs - 1 to say so — so
+        // a segment beginning exactly there belongs to the next window, and
+        // drawSegment would put its floored rectangle at the clipped right edge.
+        // windowStartMs IS in the window, and a span ending on it draws a mark at
+        // the left edge the reader can see, so that side stays inclusive.
+        if (segment.startMs < windowEndMs && segment.endMs >= windowStartMs) {
           inWindow.push(rows[rowIndex]);
           break;
         }

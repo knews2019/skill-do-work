@@ -2,6 +2,19 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.18 — Timeline Lists Only Rows It Actually Draws (2026-08-23)
+
+Two edge cases where the Timeline listed a REQ whose mark was nowhere on screen. Both are the
+same mistake: the membership test modelled a span the renderer does not draw.
+
+- A REQ whose span begins exactly at the window's end is no longer listed. Every window here
+  ends on the next period's first instant, so that REQ belongs to the next window and its bar
+  was being clipped at the right edge. The window's start stays inclusive — a span ending
+  there draws a visible mark.
+- A reversed stamp is drawn as a break marker at one instant, not as a bar across the
+  reversed interval, so it is now matched at that instant. A window inside the interval used
+  to list the row with nothing on it.
+
 ## 0.236.17 — Clicking a Timeline Row Works Again (2026-08-23)
 
 The Timeline's hint said "Click a row for its full detail" and it only worked if your hand was

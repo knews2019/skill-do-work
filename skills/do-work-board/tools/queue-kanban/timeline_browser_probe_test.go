@@ -688,6 +688,33 @@ window.addEventListener("load", function () {
     document.querySelector('[data-view-target="timeline"]').click();
     setTimeout(function () {
       var trials = {};
+      // The press point, PROVEN rather than assumed. Earlier this computed a row
+      // rect and pressed at its centre; because the trials open and close the
+      // detail drawer the document height changes between them, scrollIntoView
+      // landed the chart at a different offset each time, and by the fourth trial
+      // the point was over the axis strip. Two trials were then measuring a press
+      // that reached no handler and reporting it as a result — so the setup is
+      // now checked and reported, and the Go side fails on it.
+      function pressPointOverFirstRow() {
+        var host = document.querySelector("#view-timeline .timeline-scroll");
+        var hostBox = host.getBoundingClientRect();
+        var rows = document.querySelectorAll("#view-timeline .timeline-row");
+        for (var index = 0; index < rows.length; index++) {
+          var rowBox = rows[index].getBoundingClientRect();
+          var y = Math.round(rowBox.top + rowBox.height / 2);
+          // Inside the host's visible band, and far enough from the right edge
+          // that a 120px drag stays on the plot.
+          if (y <= hostBox.top + 2 || y >= hostBox.bottom - 2) {
+            continue;
+          }
+          var x = Math.round(Math.min(rowBox.left + rowBox.width / 2, hostBox.right - 200));
+          var landedOn = document.elementFromPoint(x, y);
+          if (landedOn && host.contains(landedOn)) {
+            return { node: rows[index], x: x, y: y, ok: true };
+          }
+        }
+        return { node: null, x: 0, y: 0, ok: false };
+      }
       function trial(name, moveOffsets) {
         closeDrawerIfOpen();
         // Every trial starts from the SAME window. At Fit all the window sits on
@@ -702,13 +729,13 @@ window.addEventListener("load", function () {
         // The chart sits under a warnings banner and an anomalies board.
         document.querySelector("#view-timeline .timeline-chart")
           .scrollIntoView({ block: "start" });
-        var row = document.querySelector("#view-timeline .timeline-row");
-        var box = row.getBoundingClientRect();
-        var startX = Math.round(box.left + box.width / 2);
-        var y = Math.round(box.top + box.height / 2);
+        var press = pressPointOverFirstRow();
         var before = windowReadout();
-        var during = pressDragRelease(row, startX, y, moveOffsets);
+        var during = press.ok
+          ? pressDragRelease(press.node, press.x, press.y, moveOffsets)
+          : { grabbingAfterPress: false, grabbingDuringDrag: false };
         trials[name] = {
+          pressLandedOnARow: press.ok,
           drawerOpen: drawerIsOpen(),
           windowMoved: windowReadout() !== before,
           windowAfter: windowReadout(),
@@ -746,6 +773,7 @@ window.addEventListener("load", function () {
 		pageHTML, "--window-size=1400,900")
 
 	type pressTrial struct {
+		PressLandedOnARow  bool   `json:"pressLandedOnARow"`
 		DrawerOpen         bool   `json:"drawerOpen"`
 		WindowMoved        bool   `json:"windowMoved"`
 		WindowAfter        string `json:"windowAfter"`
@@ -761,6 +789,28 @@ window.addEventListener("load", function () {
 	}
 	if decodeError := json.Unmarshal(probeOutput, &pressResult); decodeError != nil {
 		t.Fatalf("decode timeline pan threshold behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// THE SETUP, BEFORE ANY MEASUREMENT. A press that never reached the scroll
+	// host produces "no pan, no drawer" — which satisfies several assertions below
+	// while testing nothing at all. This caught exactly that: the trials open and
+	// close the drawer, the document height changes, and the later presses were
+	// landing on the axis strip above the rows.
+	for _, trial := range []struct {
+		name   string
+		result pressTrial
+	}{
+		{"stillPress", pressResult.StillPress},
+		{"belowThreshold", pressResult.BelowThreshold},
+		{"aboveThreshold", pressResult.AboveThreshold},
+		{"aboveThresholdInTwoMoves", pressResult.AboveThresholdInTwoMoves},
+		{"draggedOutAndBack", pressResult.DraggedOutAndBack},
+	} {
+		if !trial.result.PressLandedOnARow {
+			t.Fatalf("the %s trial could not find a press point inside the scroll host over a "+
+				"visible row, so it pressed nothing; every assertion below would then be "+
+				"measuring a press that reached no handler", trial.name)
+		}
 	}
 
 	// THE PAIR. A still press already worked before the threshold existed; the

@@ -2715,11 +2715,16 @@ var rows = [
   { id: "REQ-005", createdTime: "2026-06-18T09:00:00Z", claimedTime: "2026-06-19T09:00:00Z",
     completedTime: "2026-06-19T18:00:00Z", hasWork: true }
 ];
-// A reversed stamp: claimed BEFORE created. The extent has to be a real min/max
-// or this row's start reads later than its end and it vanishes from every window.
+// A reversed stamp: claimed BEFORE created. It carries waitMinutes because that
+// is the field BOTH the renderer and the segment list branch on — without it the
+// fixture is silently a forward row and tests nothing about reversal.
+//
+// No segment may come out with its start after its end, or the overlap test
+// inverts and the row vanishes from every window. A reversed wait satisfies that
+// as a point at the created instant, which is also where the break marker goes.
 var reversedRow = { id: "REQ-006", createdTime: "2026-06-14T09:00:00Z",
   claimedTime: "2026-06-12T09:00:00Z", completedTime: "2026-06-15T09:00:00Z",
-  hasWork: true, anomaly: true };
+  hasWork: true, anomaly: true, waitMinutes: -2880, workMinutes: 4320 };
 // A pending REQ whose only presence in a FUTURE window is its forecast bar. Its
 // measured extent is the open wait, which stops at the now-line; the window sits
 // entirely after that, so the row reaches it only if the extent follows the
@@ -2742,6 +2747,57 @@ function idsInWindow(rowList, projectedById) {
 
 var reversedSegments = timelineRowSegments(reversedRow, nowMs, undefined);
 
+// THE EXCLUSIVE END. Every window this view can build ends on the NEXT period's
+// first instant — timelinePeriodWindow returns [start, nextStart) and the end
+// date field renders windowEndMs - 1 to say so. A segment that begins exactly at
+// that instant belongs to the next window, and drawSegment puts its floored
+// rectangle at the right edge where it is clipped: listed, nothing drawn.
+var edgeWindowStartMs = Date.UTC(2026, 5, 10);
+var edgeWindowEndMs = Date.UTC(2026, 5, 17);
+var startsAtWindowEndRow = {
+  id: "REQ-008",
+  createdTime: new Date(edgeWindowEndMs).toISOString(),
+  claimedTime: new Date(edgeWindowEndMs + 3600000).toISOString(),
+  completedTime: new Date(edgeWindowEndMs + 7200000).toISOString(),
+  hasWork: true, waitMinutes: 60, workMinutes: 60
+};
+// The control, one millisecond earlier: genuinely inside, and must stay listed.
+var startsJustInsideRow = {
+  id: "REQ-009",
+  createdTime: new Date(edgeWindowEndMs - 1).toISOString(),
+  claimedTime: new Date(edgeWindowEndMs + 3600000).toISOString(),
+  completedTime: new Date(edgeWindowEndMs + 7200000).toISOString(),
+  hasWork: true, waitMinutes: 60, workMinutes: 60
+};
+// The symmetric case at the other end, which must NOT change: windowStartMs is
+// inclusive, and a span ending exactly there draws a floored mark at x=0 that
+// the reader can see.
+var endsAtWindowStartRow = {
+  id: "REQ-010",
+  createdTime: new Date(edgeWindowStartMs - 7200000).toISOString(),
+  claimedTime: new Date(edgeWindowStartMs).toISOString(),
+  hasWork: false, waitMinutes: 120
+};
+
+// A REVERSED WAIT drawn as what the renderer actually draws. renderVisibleRows
+// puts a 6px break marker at the CREATED instant for a reversed wait and at the
+// CLAIMED instant for reversed work — it does not draw a bar across the min/max
+// interval. Modelling the row as that interval is the forecast-gap defect again
+// in another costume: created 14 Jun, claimed 12 Jun, completed 12 Jun 06:00
+// puts the hull across 13 June while both drawn marks sit outside it.
+var reversedHullRow = {
+  id: "REQ-011",
+  createdTime: "2026-06-14T12:00:00Z",
+  claimedTime: "2026-06-12T00:00:00Z",
+  completedTime: "2026-06-12T06:00:00Z",
+  hasWork: true, waitMinutes: -3600, workMinutes: 360, anomaly: true
+};
+var reversedHullGapStartMs = Date.UTC(2026, 5, 13);
+var reversedHullGapEndMs = Date.UTC(2026, 5, 13, 23, 59);
+// The control: a window over the break marker itself must still list it.
+var reversedHullMarkerStartMs = Date.UTC(2026, 5, 14, 6, 0);
+var reversedHullMarkerEndMs = Date.UTC(2026, 5, 14, 18, 0);
+
 // THE GAP. A pending REQ draws two disjoint marks: the open wait ending at the
 // now-line, and the forecast bar starting after in-flight work finishes. A hull
 // over both spans the gap between them, so a window sitting in that gap listed
@@ -2763,7 +2819,16 @@ process.stdout.write(JSON.stringify({
   inTheForecastGap:
     idsInSpan([projectedRow], { "REQ-007": gapProjection }, gapWindowStartMs, gapWindowEndMs),
   spanningTheForecastGap:
-    idsInSpan([projectedRow], { "REQ-007": gapProjection }, nowMs - 3600000, Date.UTC(2026, 5, 21, 3, 0))
+    idsInSpan([projectedRow], { "REQ-007": gapProjection }, nowMs - 3600000, Date.UTC(2026, 5, 21, 3, 0)),
+
+  startsAtWindowEnd: idsInSpan([startsAtWindowEndRow], {}, edgeWindowStartMs, edgeWindowEndMs),
+  startsJustInside: idsInSpan([startsJustInsideRow], {}, edgeWindowStartMs, edgeWindowEndMs),
+  endsAtWindowStart: idsInSpan([endsAtWindowStartRow], {}, edgeWindowStartMs, edgeWindowEndMs),
+
+  reversedHullInTheGap:
+    idsInSpan([reversedHullRow], {}, reversedHullGapStartMs, reversedHullGapEndMs),
+  reversedHullAtItsMarker:
+    idsInSpan([reversedHullRow], {}, reversedHullMarkerStartMs, reversedHullMarkerEndMs)
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "timeline window rows", javascriptProbe)
@@ -2777,6 +2842,13 @@ process.stdout.write(JSON.stringify({
 		EverythingInAWideWindow         []string `json:"everythingInAWideWindow"`
 		InTheForecastGap                []string `json:"inTheForecastGap"`
 		SpanningTheForecastGap          []string `json:"spanningTheForecastGap"`
+
+		StartsAtWindowEnd []string `json:"startsAtWindowEnd"`
+		StartsJustInside  []string `json:"startsJustInside"`
+		EndsAtWindowStart []string `json:"endsAtWindowStart"`
+
+		ReversedHullInTheGap    []string `json:"reversedHullInTheGap"`
+		ReversedHullAtItsMarker []string `json:"reversedHullAtItsMarker"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &windowResult); decodeError != nil {
 		t.Fatalf("decode timeline window rows behavior: %v (output %q)", decodeError, probeOutput)
@@ -2789,8 +2861,9 @@ process.stdout.write(JSON.stringify({
 			gotInWindow, wantInWindow)
 	}
 	if !windowResult.ReversedExtentOrdered {
-		t.Fatalf("a reversed-stamp row produced an extent whose start (%s) is after its end; "+
-			"the extent must be a real min/max or broken rows vanish from every window",
+		t.Fatalf("a reversed-stamp row produced a segment whose start (%s) is after its end; "+
+			"a reversed span is a point at the break marker's own instant, and an inverted "+
+			"segment makes the overlap test drop broken rows from every window",
 			windowResult.ReversedExtentStartIso)
 	}
 	if len(windowResult.ReversedInWindow) != 1 {
@@ -2824,6 +2897,44 @@ process.stdout.write(JSON.stringify({
 	if len(windowResult.SpanningTheForecastGap) != 1 {
 		t.Fatal("a window reaching across both the open wait and the forecast bar did not list " +
 			"the row; the gap rule must not cost a row that genuinely draws inside the window")
+	}
+
+	// THE EXCLUSIVE END, and its two controls. windowEndMs is the next window's
+	// first instant everywhere else in this module — timelinePeriodWindow builds
+	// [start, nextStart) and the end field renders windowEndMs - 1 to say so — so
+	// admitting a segment that begins exactly there lists a row whose only mark is
+	// clipped at the right edge.
+	if len(windowResult.StartsAtWindowEnd) != 0 {
+		t.Errorf("a REQ whose span begins exactly at the window's exclusive end was listed "+
+			"(got %v); its floored rectangle lands at the clipped right edge, so the row shows "+
+			"nothing — and it belongs to the NEXT window", windowResult.StartsAtWindowEnd)
+	}
+	if len(windowResult.StartsJustInside) != 1 {
+		t.Errorf("the same REQ one millisecond earlier was not listed (got %v); the end is "+
+			"exclusive by one instant, not by a margin", windowResult.StartsJustInside)
+	}
+	// Deliberately asymmetric. The START instant IS in the window and a span
+	// ending on it draws a visible floored mark at x=0, so this stays inclusive.
+	if len(windowResult.EndsAtWindowStart) != 1 {
+		t.Errorf("a REQ whose span ends exactly at the window's start was dropped (got %v); "+
+			"the start is inclusive and that span draws a mark at the left edge",
+			windowResult.EndsAtWindowStart)
+	}
+
+	// A REVERSED SPAN IS A POINT, because that is what the renderer draws. The
+	// same defect as the forecast gap: a hull over an interval nothing is drawn
+	// across lists rows with nothing on them.
+	if len(windowResult.ReversedHullInTheGap) != 0 {
+		t.Errorf("a window inside a reversed span's min/max interval listed the row (got %v), "+
+			"but renderVisibleRows draws only a break marker at the created instant and the "+
+			"row's other bar sits elsewhere — nothing is drawn in that window",
+			windowResult.ReversedHullInTheGap)
+	}
+	if len(windowResult.ReversedHullAtItsMarker) != 1 {
+		t.Errorf("a window over the reversed span's own break marker did not list the row "+
+			"(got %v); the point has to sit where the renderer puts the marker, or a broken "+
+			"row becomes unfindable — which is what the min/max existed to prevent",
+			windowResult.ReversedHullAtItsMarker)
 	}
 }
 
