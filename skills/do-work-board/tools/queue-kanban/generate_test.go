@@ -3233,6 +3233,258 @@ function collectText(node) {
 // forecast that states a date without stating what it assumed is exactly the
 // artifact people screenshot and quote. These pin that the sentence carries its
 // own assumptions, and that thin history declines instead of guessing.
+// At Fit all over three months a completed REQ was two adjacent 1.5px marks of
+// different hues: a wait/work split drawn in pixels that cannot carry one. The
+// collapse is the honest alternative — one marker for the row — and what has to
+// hold is that it fires only where the split is genuinely unreadable, and never
+// on the rows whose visible breakage is the reason they are drawn at all.
+func TestJavaScriptBehaviorTimelineNarrowRowsDrawOneMarker(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	// The threshold is READ FROM THE RENDERER. Restating 7 here would let the
+	// shipped constant drift to 1 with this test still green — REQ-265's lesson,
+	// and REQ-322 shipped exactly that mistake in this file.
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPLIT_WIDTH", "TIMELINE_MIN_SEGMENT_WIDTH") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineRowSegments(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineCollapsedRowMark(") + `
+var nowMs = Date.UTC(2026, 7, 23, 12, 0);
+// Fit all over three months at the shipped plot width: 90 days across 1200px.
+var windowStartMs = Date.UTC(2026, 5, 1);
+var windowEndMs = Date.UTC(2026, 7, 30);
+var plotWidthPx = 1200;
+var windowSpanMs = windowEndMs - windowStartMs;
+var msPerPixel = windowSpanMs / plotWidthPx;
+
+function markFor(row, projectedRow, spanStartMs, spanEndMs, widthPx) {
+  return timelineCollapsedRowMark(
+    timelineRowSegments(row, nowMs, projectedRow),
+    spanStartMs === undefined ? windowStartMs : spanStartMs,
+    spanEndMs === undefined ? windowEndMs : spanEndMs,
+    widthPx === undefined ? plotWidthPx : widthPx);
+}
+
+// A REQ whose whole life is four pixels wide at this zoom: the wait and the work
+// each floor to TIMELINE_MIN_SEGMENT_WIDTH and together claim more room than the
+// REQ occupies.
+var fourPixelStartMs = Date.UTC(2026, 6, 1);
+var narrowRow = {
+  id: "REQ-001",
+  createdTime: new Date(fourPixelStartMs).toISOString(),
+  claimedTime: new Date(fourPixelStartMs + msPerPixel * 2).toISOString(),
+  completedTime: new Date(fourPixelStartMs + msPerPixel * 4).toISOString(),
+  hasWork: true, waitMinutes: 60, workMinutes: 60
+};
+// The same REQ at a zoom where four pixels became four hundred.
+var wideWindowStartMs = fourPixelStartMs - msPerPixel * 10;
+var wideWindowEndMs = fourPixelStartMs + msPerPixel * 14;
+
+// A row with reversed stamps. Its break markers are the point of drawing it, so
+// the caller excludes it — but the mark function must not be the thing that
+// silently rescues a caller that forgets.
+var reversedRow = {
+  id: "REQ-002",
+  createdTime: new Date(fourPixelStartMs).toISOString(),
+  claimedTime: new Date(fourPixelStartMs - msPerPixel * 2).toISOString(),
+  completedTime: new Date(fourPixelStartMs + msPerPixel).toISOString(),
+  hasWork: true, waitMinutes: -60, workMinutes: 30
+};
+
+// A REQ still waiting: ONE drawn segment, so there is no split to withdraw and
+// no marker to collapse to, however narrow it is.
+var singleSegmentRow = {
+  id: "REQ-003",
+  createdTime: new Date(nowMs - msPerPixel).toISOString(),
+  waitOpen: true, waitMinutes: 5
+};
+
+// The unparseable row. timelineRowSegments hands it the -Infinity → Infinity
+// sentinel so it is listed in every window; collapsing that to one marker would
+// draw a bar across the entire chart.
+var unparseableRow = { id: "REQ-004", createdTime: "not-a-date", waitMinutes: 0 };
+
+var narrowMark = markFor(narrowRow);
+var wideMark = markFor(narrowRow, undefined, wideWindowStartMs, wideWindowEndMs);
+
+process.stdout.write(JSON.stringify({
+  splitWidth: TIMELINE_MIN_SPLIT_WIDTH,
+  segmentWidth: TIMELINE_MIN_SEGMENT_WIDTH,
+  narrowCollapsed: narrowMark !== null,
+  narrowMarkStartIso: narrowMark ? new Date(narrowMark.startMs).toISOString() : "",
+  narrowMarkEndIso: narrowMark ? new Date(narrowMark.endMs).toISOString() : "",
+  narrowRowCreatedIso: narrowRow.createdTime,
+  narrowRowCompletedIso: narrowRow.completedTime,
+  wideCollapsed: wideMark !== null,
+  reversedCollapsed: markFor(reversedRow) !== null,
+  singleSegmentCollapsed: markFor(singleSegmentRow) !== null,
+  unparseableCollapsed: markFor(unparseableRow) !== null,
+  // A row sitting entirely outside the window has no visible width at all, so it
+  // is at the collapsing end of the scale rather than the splitting end.
+  offscreenCollapsed: markFor(narrowRow, undefined, Date.UTC(2027, 0, 1), Date.UTC(2027, 1, 1)) !== null
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline narrow rows", javascriptProbe)
+	var markResult struct {
+		SplitWidth             float64 `json:"splitWidth"`
+		SegmentWidth           float64 `json:"segmentWidth"`
+		NarrowCollapsed        bool    `json:"narrowCollapsed"`
+		NarrowMarkStartIso     string  `json:"narrowMarkStartIso"`
+		NarrowMarkEndIso       string  `json:"narrowMarkEndIso"`
+		NarrowRowCreatedIso    string  `json:"narrowRowCreatedIso"`
+		NarrowRowCompletedIso  string  `json:"narrowRowCompletedIso"`
+		WideCollapsed          bool    `json:"wideCollapsed"`
+		ReversedCollapsed      bool    `json:"reversedCollapsed"`
+		SingleSegmentCollapsed bool    `json:"singleSegmentCollapsed"`
+		UnparseableCollapsed   bool    `json:"unparseableCollapsed"`
+		OffscreenCollapsed     bool    `json:"offscreenCollapsed"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &markResult); decodeError != nil {
+		t.Fatalf("decode timeline narrow row behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// THE THRESHOLD, pinned to what a two-segment bar physically needs: two
+	// floored segments plus a pixel of boundary between them. Dropping
+	// TIMELINE_MIN_SPLIT_WIDTH below that would make the collapse fire only where
+	// the split was already invisible, which is the defect this REQ removed.
+	if wantFloor := 2*markResult.SegmentWidth + 1; markResult.SplitWidth < wantFloor {
+		t.Errorf("the split threshold is %g and a readable two-segment bar needs %g "+
+			"(2 x %g floored segments plus a boundary); below it the collapse never fires "+
+			"where the split is unreadable", markResult.SplitWidth, wantFloor, markResult.SegmentWidth)
+	}
+
+	// The pair that makes the rule about WIDTH and not about the row. Same REQ,
+	// same stamps, two zooms.
+	if !markResult.NarrowCollapsed {
+		t.Error("a REQ whose whole span is four pixels wide kept its wait/work split; " +
+			"two floored segments in four pixels is a split the pixels cannot carry")
+	}
+	if markResult.WideCollapsed {
+		t.Error("the same REQ collapsed to one marker at a zoom where its span is hundreds " +
+			"of pixels wide; the collapse must cost nothing once there is room to split")
+	}
+	// The marker has to cover the row's real extent, not a floored stub anchored
+	// at one end: the reader still reads its POSITION against the gridlines.
+	if markResult.NarrowMarkStartIso != markResult.NarrowRowCreatedIso ||
+		markResult.NarrowMarkEndIso != markResult.NarrowRowCompletedIso {
+		t.Errorf("the collapsed marker covers %s → %s, want the row's own extent %s → %s",
+			markResult.NarrowMarkStartIso, markResult.NarrowMarkEndIso,
+			markResult.NarrowRowCreatedIso, markResult.NarrowRowCompletedIso)
+	}
+
+	if markResult.SingleSegmentCollapsed {
+		t.Error("a REQ drawing one segment was reported as collapsible; there is no split " +
+			"to withdraw, and collapsing it would replace its open wait with a closed marker")
+	}
+	// Same guard as the case above, reached by a different route: the sentinel
+	// segment timelineRowSegments emits for an unreadable created_at arrives alone,
+	// so "one segment" is what spares it. Collapsing it would draw one marker
+	// across the whole chart.
+	if markResult.UnparseableCollapsed {
+		t.Error("a row with an unreadable created_at was reported as collapsible; its segment " +
+			"is the -Infinity sentinel, and collapsing it draws one bar across the whole chart")
+	}
+	if !markResult.OffscreenCollapsed {
+		t.Error("a row with no visible width in the window was reported as splittable; " +
+			"zero pixels cannot carry two segments")
+	}
+	// Not an assertion about the mark function's own judgement — it has no way to
+	// know — but a record of what the caller must keep doing. renderVisibleRows
+	// excludes broken rows before asking, and this pins the reason: asked
+	// directly, the function WOULD collapse one.
+	if !markResult.ReversedCollapsed {
+		t.Error("a reversed-stamp row stopped being collapsible by width alone; if that is " +
+			"now handled here, renderVisibleRows's own broken-stamp guard is dead code")
+	}
+	// And the other half of that pair: the guard has to still be at the call site.
+	// This is a source check rather than a behavioral one because the collapse
+	// decision is the pure function above and the exclusion is the caller's — the
+	// failure it names is a broken row quietly drawn as one clean marker, with its
+	// break markers, the only reason it is on the chart, gone.
+	renderVisibleRowsBody := sliceBalancedBlockAfter(t, indexHtml, "function renderVisibleRows(")
+	if !strings.Contains(renderVisibleRowsBody, "rowHasBrokenStamps") {
+		t.Error("renderVisibleRows no longer excludes broken-stamp rows before asking whether " +
+			"to collapse; a narrow reversed row would draw one clean marker instead of the " +
+			"break markers that are the reason it is drawn at all")
+	}
+}
+
+// The axis draws ticks and the plot draws gridlines at the same instants. Two
+// loops doing the same arithmetic is one edit away from a gridline that means a
+// slightly different time than the tick above it, so there is one source and
+// this is what keeps it one.
+func TestJavaScriptBehaviorTimelineGridlinesShareTheAxisTicks(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_AXIS_TICK_COUNT") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineAxisTickInstants(") + `
+var windowStartMs = Date.UTC(2026, 5, 1);
+var windowEndMs = Date.UTC(2026, 5, 8);
+var instants = timelineAxisTickInstants(windowStartMs, windowEndMs);
+process.stdout.write(JSON.stringify({
+  tickCount: TIMELINE_AXIS_TICK_COUNT,
+  instantCount: instants.length,
+  firstIso: new Date(instants[0]).toISOString(),
+  lastIso: new Date(instants[instants.length - 1]).toISOString(),
+  ascending: instants.every(function (instant, index) {
+    return index === 0 || instant > instants[index - 1];
+  }),
+  // A zero-width window is reachable: the fields accept one day in both boxes
+  // before the settle widens it. It must produce a tick list, not NaNs.
+  degenerateFinite: timelineAxisTickInstants(windowStartMs, windowStartMs)
+    .every(function (instant) { return isFinite(instant); })
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline axis ticks", javascriptProbe)
+	var tickResult struct {
+		TickCount        int    `json:"tickCount"`
+		InstantCount     int    `json:"instantCount"`
+		FirstIso         string `json:"firstIso"`
+		LastIso          string `json:"lastIso"`
+		Ascending        bool   `json:"ascending"`
+		DegenerateFinite bool   `json:"degenerateFinite"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &tickResult); decodeError != nil {
+		t.Fatalf("decode timeline axis tick behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if tickResult.InstantCount != tickResult.TickCount+1 {
+		t.Errorf("the tick source produced %d instants for %d ticks, want %d — both edges "+
+			"of the window carry one", tickResult.InstantCount, tickResult.TickCount,
+			tickResult.TickCount+1)
+	}
+	if tickResult.FirstIso != "2026-06-01T00:00:00.000Z" || tickResult.LastIso != "2026-06-08T00:00:00.000Z" {
+		t.Errorf("the tick list spans %s → %s, want the window's own edges "+
+			"2026-06-01 → 2026-06-08", tickResult.FirstIso, tickResult.LastIso)
+	}
+	if !tickResult.Ascending {
+		t.Error("the tick instants are not strictly ascending")
+	}
+	if !tickResult.DegenerateFinite {
+		t.Error("a zero-width window produced non-finite tick instants; the fields can reach " +
+			"one before the settle widens it, and NaN ticks draw nothing and log nothing")
+	}
+
+	// ONE source, and this is the half that bites. The probe above would pass just
+	// as well with renderAxis keeping a private copy of the loop, which is exactly
+	// the drift the extraction removed — so count the callers instead of trusting
+	// the function's existence. Inlining the arithmetic back into either caller
+	// puts a second `/ TIMELINE_AXIS_TICK_COUNT` in the page and fails here.
+	// The POSITION arithmetic specifically. timelineFormatAxisTick divides the
+	// span by the same count to pick a label format, which is a different
+	// question, so this counts the expression that places a tick rather than
+	// every mention of the constant.
+	tickPositionArithmetic := "tickIndex) / TIMELINE_AXIS_TICK_COUNT"
+	if placements := strings.Count(indexHtml, tickPositionArithmetic); placements != 1 {
+		t.Errorf("tick positions are computed in %d places, want exactly 1 "+
+			"(timelineAxisTickInstants); a second copy is how the gridlines start meaning a "+
+			"different instant than the ticks above them", placements)
+	}
+	for _, caller := range []string{"function renderAxis(", "function drawGridlines("} {
+		callerBody := sliceBalancedBlockAfter(t, indexHtml, caller)
+		if !strings.Contains(callerBody, "timelineAxisTickInstants(") {
+			t.Errorf("%s does not read timelineAxisTickInstants; the axis and the gridlines "+
+				"have to come from one list or they can disagree", caller)
+		}
+	}
+}
+
 func TestJavaScriptBehaviorTimelineForecastStatesItsAssumptions(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 	javascriptProbe := timelineForecastDomStub +

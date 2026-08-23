@@ -2,6 +2,20 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.16 — Timeline Gridlines and a Marked Queue End (2026-08-23)
+
+A Timeline bar two hundred rows down had no vertical reference at all, and at Fit all every
+completed REQ was a pair of one-pixel slivers. The plot now carries the axis through it, and
+the queue-empty instant the forecast names is marked on the chart instead of only in prose.
+
+- Faint gridlines run the full height of the plot at each axis tick, drawn from the same tick
+  instants the axis labels, so the two cannot disagree.
+- A dashed rule marks the projected queue-empty instant when the forecast is confident and the
+  instant is in the window, labelled above the axis and quieter than the now-line.
+- A REQ too narrow to show a readable wait/work split now draws one marker for the row instead
+  of two adjacent slivers claiming a split the pixels cannot carry.
+- The chart key gained a Vertical rules group, so every mark the plot draws is named.
+
 ## 0.236.15 — Timeline Rows Say What They Are (2026-08-23)
 
 A Timeline row used to read `REQ-012` and nothing else, so scanning three hundred of them told

@@ -276,8 +276,10 @@
           <!-- Two encodings, so the key states both: hue is the REQ's status, the
                same colours the cards and calendar chips use, and lightness within
                one bar is the phase. Stating only one of them would leave a reader
-               guessing which half of what they can see means what. -->
-          <div class="timeline-legend" role="group" aria-label="Bar colour key">
+               guessing which half of what they can see means what. The third
+               group names the vertical rules, which are not bar colours at all
+               and would otherwise be the one thing on the chart with no key. -->
+          <div class="timeline-legend" role="group" aria-label="Chart key: bar colours and vertical rules">
             <span class="timeline-legend-group">Status</span>
             <span class="timeline-legend-item"><span class="timeline-swatch" data-status="pending"></span>Pending</span>
             <span class="timeline-legend-item"><span class="timeline-swatch" data-status="claimed"></span>Claimed</span>
@@ -290,6 +292,10 @@
             <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="open"></span>Still open, running to now</span>
             <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="projected"></span>Projected, not measured</span>
             <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="broken"></span>Broken stamps</span>
+            <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="whole-row"></span>One marker: too narrow to split</span>
+            <span class="timeline-legend-group">Vertical rules</span>
+            <span class="timeline-legend-item"><span class="timeline-swatch" data-rule="now"></span>Now</span>
+            <span class="timeline-legend-item"><span class="timeline-swatch" data-rule="queue-end"></span>Projected queue empty</span>
           </div>
           <!-- Period navigation sits ALONGSIDE the zoom group, not in place of it:
                the levels set the window to one calendar day, week or month, and

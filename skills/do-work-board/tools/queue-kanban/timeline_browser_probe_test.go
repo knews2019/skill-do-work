@@ -614,6 +614,248 @@ var TIMELINE_SVG_NS = "http://www.w3.org/2000/svg";
 // The row's tooltip. A native <title> is the whole feature, so what needs pinning
 // is that the renderer still writes one and that it carries the description
 // rather than a bare id.
+// The chart draws four kinds of vertical mark and their ORDER OF PROMINENCE is
+// the whole design: the now-line is the present and has to win, the queue-end
+// rule is a forecast and must not outshout it, the gridlines are a backdrop and
+// must sit behind the bars they cross without disappearing. None of that can be
+// argued from a colour token — it is a rendered result, so it is measured.
+func TestBrowserBehaviorTimelineVerticalRulesRankByProminence(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	styleBlock := sliceGeneratedStyleBlock(t, indexHtml)
+
+	pageHTML := `<!doctype html><html><head><meta charset="utf-8"><style>` + styleBlock + `
+</style></head><body>
+<svg class="timeline-axis-svg" width="400" height="26">
+  <line class="timeline-axis-tick" x1="10" y1="20" x2="10" y2="26"></line>
+  <line class="timeline-now-line" x1="20" y1="0" x2="20" y2="26"></line>
+  <line class="timeline-queue-end-line" x1="30" y1="0" x2="30" y2="26"></line>
+</svg>
+<svg class="timeline-rows-svg" width="400" height="40">
+  <line class="timeline-gridline" x1="10" y1="0" x2="10" y2="40"></line>
+  <line class="timeline-queue-end-rule" x1="30" y1="0" x2="30" y2="40"></line>
+  <line class="timeline-now-rule" x1="20" y1="0" x2="20" y2="40"></line>
+</svg>
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+(function () {
+  function measureRule(selector) {
+    var style = getComputedStyle(document.querySelector(selector));
+    return {
+      stroke: style.stroke,
+      strokeWidth: parseFloat(style.strokeWidth) || 0,
+      // The node's own opacity multiplies whatever alpha the stroke colour
+      // already carries; reading one and not the other is how a rule that looks
+      // faint measures as full strength.
+      opacity: Number(style.opacity),
+      dashed: (style.strokeDasharray || "none") !== "none",
+      // How much of the line's length is actually inked. A dotted rule and a
+      // solid one of the same colour and width are not the same mark, and
+      // leaving this out of the measurement is leaving out the channel the
+      // design uses hardest.
+      dashCoverage: (function () {
+        var pattern = (style.strokeDasharray || "none").split(/[\s,]+/)
+          .map(parseFloat).filter(function (value) { return isFinite(value) && value >= 0; });
+        if (pattern.length === 0) {
+          return 1;
+        }
+        // An odd-length pattern repeats to twice its length, alternating roles.
+        if (pattern.length % 2 === 1) {
+          pattern = pattern.concat(pattern);
+        }
+        var inked = 0;
+        var total = 0;
+        for (var index = 0; index < pattern.length; index++) {
+          total += pattern[index];
+          if (index % 2 === 0) {
+            inked += pattern[index];
+          }
+        }
+        return total > 0 ? inked / total : 1;
+      })()
+    };
+  }
+  document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
+    gridline: measureRule(".timeline-gridline"),
+    axisTick: measureRule(".timeline-axis-tick"),
+    nowRule: measureRule(".timeline-now-rule"),
+    nowLine: measureRule(".timeline-now-line"),
+    queueEndRule: measureRule(".timeline-queue-end-rule"),
+    queueEndLine: measureRule(".timeline-queue-end-line"),
+    scheme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+    surface: getComputedStyle(document.body).backgroundColor
+  });
+})();
+</script>
+</body></html>`
+
+	for _, scheme := range []struct {
+		name string
+		flag string
+	}{
+		{name: "light", flag: "--blink-settings=preferredColorScheme=1"},
+		{name: "dark", flag: "--blink-settings=preferredColorScheme=0"},
+	} {
+		t.Run(scheme.name, func(t *testing.T) {
+			assertTimelineRulePromimence(t, pageHTML, scheme.name, scheme.flag)
+		})
+	}
+}
+
+// timelineRuleVisibilityFloor is the least a vertical mark may stand out from the
+// page and still be a mark. It is well under the 3:1 the two halves of a BAR owe
+// each other, and deliberately so: a gridline that reached 3:1 would be a second
+// chart competing with the first.
+const timelineRuleVisibilityFloor = 1.03
+
+// timelineForecastPresenceCeiling is how loud the queue-end mark may be relative
+// to the now mark beside it. 0.75 is a margin a palette tweak does not erase;
+// it is not a perceptual constant, it is a gap wide enough to be a decision.
+const timelineForecastPresenceCeiling = 0.75
+
+func assertTimelineRulePromimence(t *testing.T, pageHTML string, schemeName string, schemeFlag string) {
+	t.Helper()
+	probeOutput := runBrowserBehaviorProbeWithFlags(t,
+		"timeline vertical rules ("+schemeName+")", pageHTML, schemeFlag)
+
+	type measuredRule struct {
+		Stroke       string  `json:"stroke"`
+		StrokeWidth  float64 `json:"strokeWidth"`
+		Opacity      float64 `json:"opacity"`
+		Dashed       bool    `json:"dashed"`
+		DashCoverage float64 `json:"dashCoverage"`
+	}
+	var ruleResult struct {
+		Gridline     measuredRule `json:"gridline"`
+		AxisTick     measuredRule `json:"axisTick"`
+		NowRule      measuredRule `json:"nowRule"`
+		NowLine      measuredRule `json:"nowLine"`
+		QueueEndRule measuredRule `json:"queueEndRule"`
+		QueueEndLine measuredRule `json:"queueEndLine"`
+		Scheme       string       `json:"scheme"`
+		Surface      string       `json:"surface"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &ruleResult); decodeError != nil {
+		t.Fatalf("decode timeline vertical rule prominence: %v (output %q)", decodeError, probeOutput)
+	}
+	if ruleResult.Scheme != schemeName {
+		t.Fatalf("asked the engine for the %s palette and it resolved %s; the flag did not "+
+			"take, so one palette would be measured twice and reported as two",
+			schemeName, ruleResult.Scheme)
+	}
+
+	surfaceLuminance, surfaceReadable := relativeLuminanceOfCSSColour(ruleResult.Surface)
+	if !surfaceReadable {
+		t.Fatalf("could not read the page surface colour %q", ruleResult.Surface)
+	}
+
+	// Presence: how far the composited stroke lands from the page, weighted by how
+	// much of the page it actually inks. Three channels — contrast, width, dash
+	// duty — because a 1px dotted line at 0.08 alpha and a 1.5px solid one at full
+	// strength are not the same mark however close their hues are. Dropping any
+	// one of the three is how a rule that plainly looks quieter measures louder.
+	presenceOf := func(ruleName string, rule measuredRule) float64 {
+		t.Helper()
+		strokeLuminance, strokeReadable := relativeLuminanceOfCSSColour(rule.Stroke)
+		if !strokeReadable {
+			t.Fatalf("could not read the %s stroke colour %q", ruleName, rule.Stroke)
+		}
+		_, _, _, strokeAlpha, channelsReadable := parseCSSColourChannels(rule.Stroke)
+		if !channelsReadable {
+			t.Fatalf("could not read the %s stroke alpha from %q", ruleName, rule.Stroke)
+		}
+		composited := compositeLuminance(strokeLuminance, surfaceLuminance, strokeAlpha*rule.Opacity)
+		return (contrastRatio(composited, surfaceLuminance) - 1) * rule.StrokeWidth * rule.DashCoverage
+	}
+
+	gridlinePresence := presenceOf("gridline", ruleResult.Gridline)
+	axisTickPresence := presenceOf("axis tick", ruleResult.AxisTick)
+	nowRulePresence := presenceOf("now rule", ruleResult.NowRule)
+	nowLinePresence := presenceOf("now line", ruleResult.NowLine)
+	queueEndRulePresence := presenceOf("queue-end rule", ruleResult.QueueEndRule)
+	queueEndLinePresence := presenceOf("queue-end line", ruleResult.QueueEndLine)
+
+	gridlineContrast := gridlinePresence/(ruleResult.Gridline.StrokeWidth*ruleResult.Gridline.DashCoverage) + 1
+	if gridlineContrast < timelineRuleVisibilityFloor {
+		t.Errorf("[%s] the gridline sits %.4f:1 from the page, under the %.2f:1 floor; "+
+			"a reference the reader cannot see is a reference they do not have",
+			schemeName, gridlineContrast, timelineRuleVisibilityFloor)
+	}
+	// The axis strip is the measured edge and the plot is the backdrop. A gridline
+	// at or above the tick's own presence inverts that and the eye reads the plot
+	// as ruled paper with a chart faintly on top.
+	if gridlinePresence >= axisTickPresence {
+		t.Errorf("[%s] the gridline's presence is %.4f and the axis tick's is %.4f; the "+
+			"gridline has to stay behind the tick it descends from",
+			schemeName, gridlinePresence, axisTickPresence)
+	}
+
+	queueEndContrast := queueEndRulePresence/(ruleResult.QueueEndRule.StrokeWidth*ruleResult.QueueEndRule.DashCoverage) + 1
+	if queueEndContrast < timelineRuleVisibilityFloor {
+		t.Errorf("[%s] the queue-end rule sits %.4f:1 from the page, under the %.2f:1 floor; "+
+			"the forecast paragraph names an instant and this is the only mark for it",
+			schemeName, queueEndContrast, timelineRuleVisibilityFloor)
+	}
+	// THE ORDER THE REQ ASKED FOR. Both halves, because the rule and the label's
+	// line are separately styled and only one of them was ever going to be
+	// remembered on the next edit.
+	// A CLEAR margin, not a tie broken by the fourth decimal. "Quieter by 0.3%" is
+	// the same picture as "equally loud", and a bare `>=` would call it a pass.
+	if queueEndRulePresence > nowRulePresence*timelineForecastPresenceCeiling {
+		t.Errorf("[%s] the queue-end rule's presence is %.4f against the now-rule's %.4f, "+
+			"over the %.0f%% ceiling; a forecast that reads as loud as the present moves the "+
+			"reader's eye to the wrong mark",
+			schemeName, queueEndRulePresence, nowRulePresence,
+			timelineForecastPresenceCeiling*100)
+	}
+	if queueEndLinePresence > nowLinePresence*timelineForecastPresenceCeiling {
+		t.Errorf("[%s] in the axis strip the queue-end line's presence is %.4f against the "+
+			"now-line's %.4f, over the %.0f%% ceiling; same rule, other half of the chart",
+			schemeName, queueEndLinePresence, nowLinePresence,
+			timelineForecastPresenceCeiling*100)
+	}
+	// Presence alone can be matched by two marks of different meaning, so the
+	// forecast also carries a shape difference the now-line does not.
+	if !ruleResult.QueueEndRule.Dashed || !ruleResult.QueueEndLine.Dashed {
+		t.Errorf("[%s] the queue-end mark is not dashed; it is a projection and has to be "+
+			"legible as one at a glance, not only by being fainter", schemeName)
+	}
+	if ruleResult.NowLine.Dashed {
+		t.Errorf("[%s] the axis now-line became dashed; it and the queue-end line then differ "+
+			"by hue alone", schemeName)
+	}
+}
+
+// The probe above draws its own three-line SVGs. This is what keeps them the
+// lines the renderer actually emits — REQ-305's lesson: a probe that cannot hold
+// its call site tests a copy.
+func TestTimelineVerticalRuleMarkupMatchesTheProbe(t *testing.T) {
+	rendererBytes, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
+	if readError != nil {
+		t.Fatalf("read web/board-timeline.js: %v", readError)
+	}
+	rendererSource := string(rendererBytes)
+	for ruleClass, drawnBy := range map[string]string{
+		"timeline-gridline":       "drawGridlines",
+		"timeline-queue-end-rule": "drawQueueEndRule",
+		"timeline-queue-end-line": "renderAxis",
+		"timeline-now-rule":       "drawNowRule",
+		"timeline-now-line":       "renderAxis",
+	} {
+		if !strings.Contains(rendererSource, `class: "`+ruleClass+`"`) {
+			t.Errorf("the renderer emits no %q line any more (expected from %s); the "+
+				"prominence probe is measuring a class nothing draws", ruleClass, drawnBy)
+		}
+	}
+	if !strings.Contains(rendererSource, "drawGridlines();") {
+		t.Error("renderVisibleRows no longer calls drawGridlines, so the plot has no vertical " +
+			"reference and the prominence probe measures a rule that is never drawn")
+	}
+	if !strings.Contains(rendererSource, "drawQueueEndRule();") {
+		t.Error("renderVisibleRows no longer calls drawQueueEndRule, so the forecast's " +
+			"queue-empty instant is named in prose and marked nowhere")
+	}
+}
+
 func TestTimelineRowTooltipMarkupMatchesTheProbe(t *testing.T) {
 	rendererBytes, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
 	if readError != nil {

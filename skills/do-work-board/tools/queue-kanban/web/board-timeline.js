@@ -50,6 +50,15 @@
   // tightest one it actually is.
   var TIMELINE_PERIOD_LEVEL_NAMES = ["day", "week", "month"];
   var TIMELINE_HATCH_PATTERN_ID = "timeline-projected-hatch";
+  // The narrowest a drawn segment may be. 1.5px was technically present and
+  // practically invisible: at Fit all over three months every completed REQ was
+  // a sliver in which the wait and the work occupied the same pixel. Picked from
+  // the render (REQ-323).
+  var TIMELINE_MIN_SEGMENT_WIDTH = 3;
+  // Below this total width a bar cannot show two segments honestly — 3px each
+  // plus a boundary — so the row draws ONE marker instead of two slivers
+  // claiming a split the pixels cannot carry.
+  var TIMELINE_MIN_SPLIT_WIDTH = 7;
   var TIMELINE_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   // The visible time window, held OUTSIDE renderedOnce so switching tabs and
@@ -496,6 +505,38 @@
     return segments;
   }
 
+  // Whether a row is too narrow to draw a wait/work split, and if so the extent
+  // the single marker covers. Pure so a probe can drive it: the render passes
+  // the plot width it already measured rather than this reaching for the DOM.
+  //
+  // At Fit all over three months a completed REQ was two adjacent slivers of
+  // different hues occupying the same pixel — a split the pixels cannot carry.
+  // Below TIMELINE_MIN_SPLIT_WIDTH there is no room for two floored segments and
+  // a boundary between them, so the row draws one marker for the whole span.
+  function timelineCollapsedRowMark(segments, windowStartMs, windowEndMs, plotWidthPx) {
+    // Already one drawn segment: there is no split to withdraw. This is also what
+    // spares the unparseable row, whose -Infinity → Infinity sentinel segment
+    // timelineRowSegments only ever emits ALONE — collapsing that would draw one
+    // marker across the whole chart.
+    if (segments.length < 2) {
+      return null;
+    }
+    var earliestMs = Infinity;
+    var latestMs = -Infinity;
+    for (var segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
+      earliestMs = Math.min(earliestMs, segments[segmentIndex].startMs);
+      latestMs = Math.max(latestMs, segments[segmentIndex].endMs);
+    }
+    var windowSpanMs = windowEndMs - windowStartMs || 1;
+    var clampedStartMs = Math.max(earliestMs, windowStartMs);
+    var clampedEndMs = Math.min(latestMs, windowEndMs);
+    var spanWidthPx = ((clampedEndMs - clampedStartMs) / windowSpanMs) * plotWidthPx;
+    if (spanWidthPx >= TIMELINE_MIN_SPLIT_WIDTH) {
+      return null;
+    }
+    return { startMs: earliestMs, endMs: latestMs };
+  }
+
   // The rows with at least one drawn segment overlapping the window, in the
   // order they arrived.
   //
@@ -525,6 +566,19 @@
     var firstRow = Math.max(0, Math.floor(scrollTop / TIMELINE_ROW_HEIGHT) - TIMELINE_OVERSCAN_ROWS);
     var visibleCount = Math.ceil(viewportHeight / TIMELINE_ROW_HEIGHT) + TIMELINE_OVERSCAN_ROWS * 2;
     return { firstRow: firstRow, lastRow: Math.min(rowCount, firstRow + visibleCount) };
+  }
+
+  // The instants the axis puts a tick at. Extracted so the GRIDLINES can be drawn
+  // from the same list rather than recomputing it: two loops with the same
+  // arithmetic is one edit away from an axis whose labels sit beside lines that
+  // mean something slightly different.
+  function timelineAxisTickInstants(windowStartMs, windowEndMs) {
+    var windowSpanMs = windowEndMs - windowStartMs || 1;
+    var instants = [];
+    for (var tickIndex = 0; tickIndex <= TIMELINE_AXIS_TICK_COUNT; tickIndex++) {
+      instants.push(windowStartMs + (windowSpanMs * tickIndex) / TIMELINE_AXIS_TICK_COUNT);
+    }
+    return instants;
   }
 
   // ---- row labels -----------------------------------------------------------
@@ -949,6 +1003,13 @@
     var filterMatchedSegments = filterMatchedRows.map(function (row) {
       return timelineRowSegments(row, nowMs, projectedById[row.id]);
     });
+    // The same list keyed by id, so the row loop measures a row's drawn extent
+    // from the list that decided the row was in the window rather than from a
+    // second walk of the stamps.
+    var segmentsById = {};
+    filterMatchedRows.forEach(function (row, rowIndex) {
+      segmentsById[row.id] = filterMatchedSegments[rowIndex];
+    });
 
     // The reader's place in the list, preserved across a window move. Rows
     // vanishing above the viewport would otherwise slide whatever they were
@@ -1111,7 +1172,7 @@
       width: "100%",
       role: "img",
       "aria-label":
-        "One horizontal bar per REQ drawing anything inside the visible time window, in capture order, newest first. The first segment is the wait from capture to claim, the second is the work from claim to completion. Every value is also listed in the table below."
+        "One horizontal bar per REQ drawing anything inside the visible time window, in capture order, newest first. The first segment is the wait from capture to claim, the second is the work from claim to completion; a REQ too narrow to show both draws a single marker instead. Faint vertical lines mark the axis ticks, and the dashed violet rule marks the projected queue-empty instant. Every value is also listed in the table below."
     });
 
     function plotWidth() {
@@ -1146,7 +1207,7 @@
       makeTimelineSvgNode(rowGroup, "rect", {
         x: clampedLeft.toFixed(1),
         y: (rowTopY + (TIMELINE_ROW_HEIGHT - TIMELINE_BAR_HEIGHT) / 2).toFixed(1),
-        width: Math.max(1.5, clampedRight - clampedLeft).toFixed(1),
+        width: Math.max(TIMELINE_MIN_SEGMENT_WIDTH, clampedRight - clampedLeft).toFixed(1),
         height: TIMELINE_BAR_HEIGHT,
         rx: 2,
         class: segmentClass
@@ -1175,6 +1236,12 @@
       // and the trailing 6px keeps the longest label off the first bar.
       labelAdvance = timelineMeasureLabelAdvance(rowsSvg);
       labelCharacterBudget = timelineLabelCharacterBudget(labelAdvance, TIMELINE_LABEL_WIDTH - 12);
+      // Before the rows, so SVG paint order puts every gridline behind every bar
+      // without a z-index to maintain.
+      drawGridlines();
+      // Measured once per render and handed to every row: plotWidth() reads
+      // clientWidth, and asking it per row would force one layout per row.
+      var plotWidthPx = plotWidth();
       var visible = timelineVisibleRowRange(scrollHost.scrollTop, scrollHost.clientHeight, rows.length);
       for (var rowIndex = visible.firstRow; rowIndex < visible.lastRow; rowIndex++) {
         var row = rows[rowIndex];
@@ -1224,6 +1291,24 @@
 
         var createdMs = Date.parse(row.createdTime);
         var claimedMs = row.claimedTime ? Date.parse(row.claimedTime) : nowMs;
+        // A row whose whole span is narrower than a readable two-segment bar
+        // draws ONE marker. A row with broken stamps is excluded: its break
+        // markers are the point of drawing it at all, and a collapsed bar would
+        // hide the very thing that needs to be visible.
+        var rowHasBrokenStamps = row.waitMinutes < 0 || (row.hasWork && row.workMinutes < 0);
+        var collapsedMark = rowHasBrokenStamps
+          ? null
+          : timelineCollapsedRowMark(
+              segmentsById[row.id] || [],
+              timelineViewState.windowStartMs,
+              timelineViewState.windowEndMs,
+              plotWidthPx
+            );
+        if (collapsedMark) {
+          drawSegment(rowGroup, rowTopY, collapsedMark.startMs, collapsedMark.endMs,
+            "timeline-segment timeline-segment-whole-row");
+          continue;
+        }
         // Same reasoning as the work segment below: a reversed span has no width
         // to draw honestly, so it becomes a break marker at the wait's own start
         // instant rather than a bar drawn left-to-right by drawSegment's
@@ -1266,7 +1351,60 @@
           }
         }
       }
+      drawQueueEndRule();
+      // Last, so the present paints over the forecast rather than under it.
       drawNowRule();
+    }
+
+    // Seven lines per render — one per axis tick — and never one per row, so the
+    // virtualization keeps its cost. Read from the same instants renderAxis
+    // labels, so a gridline cannot mean a slightly different time than the tick
+    // sitting above it.
+    function drawGridlines() {
+      var tickInstants = timelineAxisTickInstants(
+        timelineViewState.windowStartMs, timelineViewState.windowEndMs);
+      var rulesHeight = rows.length * TIMELINE_ROW_HEIGHT;
+      for (var tickIndex = 0; tickIndex < tickInstants.length; tickIndex++) {
+        var tickX = xOfEpoch(tickInstants[tickIndex]);
+        makeTimelineSvgNode(rowsSvg, "line", {
+          x1: tickX.toFixed(1),
+          y1: 0,
+          x2: tickX.toFixed(1),
+          y2: rulesHeight,
+          class: "timeline-gridline"
+        });
+      }
+    }
+
+    // The instant the forecast paragraph names, or null when there is nothing
+    // honest to draw: a declined projection has no instant, and an instant
+    // outside the window would have to be drawn at an edge it does not sit on.
+    function queueEndRuleInstant() {
+      if (!projection.confident || isNaN(queueEndMs)) {
+        return null;
+      }
+      if (
+        queueEndMs < timelineViewState.windowStartMs ||
+        queueEndMs > timelineViewState.windowEndMs
+      ) {
+        return null;
+      }
+      return queueEndMs;
+    }
+
+    function drawQueueEndRule() {
+      var instantMs = queueEndRuleInstant();
+      if (instantMs === null) {
+        return;
+      }
+      var ruleX = xOfEpoch(instantMs);
+      makeTimelineSvgNode(rowsSvg, "line", {
+        x1: ruleX.toFixed(1),
+        y1: 0,
+        x2: ruleX.toFixed(1),
+        y2: rows.length * TIMELINE_ROW_HEIGHT,
+        class: "timeline-queue-end-rule"
+      });
     }
 
     function drawProjectedSegment(rowGroup, rowTopY, projectedRow) {
@@ -1300,9 +1438,11 @@
     function renderAxis() {
       axisSvg.textContent = "";
       var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs || 1;
+      var tickInstants = timelineAxisTickInstants(
+        timelineViewState.windowStartMs, timelineViewState.windowEndMs);
       var tickCount = TIMELINE_AXIS_TICK_COUNT;
       for (var tickIndex = 0; tickIndex <= tickCount; tickIndex++) {
-        var tickMs = timelineViewState.windowStartMs + (windowSpanMs * tickIndex) / tickCount;
+        var tickMs = tickInstants[tickIndex];
         var tickX = xOfEpoch(tickMs);
         makeTimelineSvgNode(axisSvg, "line", {
           x1: tickX.toFixed(1),
@@ -1321,6 +1461,42 @@
             "text-anchor": tickIndex === 0 ? "start" : tickIndex === tickCount ? "end" : "middle"
           },
           timelineFormatAxisTick(tickMs, windowSpanMs)
+        );
+      }
+      // The queue-end rule's LABEL lives here rather than in the rows SVG: the
+      // rows SVG scrolls, and a caption that scrolls away from the rule it names
+      // is worse than none. The rule itself stays in the rows SVG, for the same
+      // reason drawNowRule does — that is what guarantees it uses the bars' own
+      // x scale.
+      var queueEndInstantMs = queueEndRuleInstant();
+      if (queueEndInstantMs !== null) {
+        var queueEndX = xOfEpoch(queueEndInstantMs);
+        makeTimelineSvgNode(axisSvg, "line", {
+          x1: queueEndX.toFixed(1),
+          y1: 0,
+          x2: queueEndX.toFixed(1),
+          y2: TIMELINE_AXIS_HEIGHT,
+          class: "timeline-queue-end-line"
+        });
+        // Anchored away from whichever edge it is near, so the caption stays on
+        // the canvas instead of being clipped by it.
+        var plotLeftX = TIMELINE_LABEL_WIDTH;
+        var plotSpanPx = plotWidth();
+        makeTimelineSvgNode(
+          axisSvg,
+          "text",
+          {
+            x: queueEndX.toFixed(1),
+            y: 8,
+            class: "timeline-queue-end-label",
+            "text-anchor":
+              queueEndX < plotLeftX + plotSpanPx * 0.15
+                ? "start"
+                : queueEndX > plotLeftX + plotSpanPx * 0.85
+                  ? "end"
+                  : "middle"
+          },
+          "queue empty"
         );
       }
       if (nowMs >= timelineViewState.windowStartMs && nowMs <= timelineViewState.windowEndMs) {

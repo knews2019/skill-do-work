@@ -2319,8 +2319,8 @@ body.is-resizing-detail .detail-resizer::before {
   display: inline-block;
 }
 
-/* A quiet lead-in for each half of the key, so "Status" and "Within a bar" read
-   as two groups rather than one long run of swatches. */
+/* A quiet lead-in for each part of the key, so "Status", "Within a bar" and
+   "Vertical rules" read as groups rather than one long run of swatches. */
 .timeline-legend-group {
   font-size: 10px;
   text-transform: uppercase;
@@ -2396,6 +2396,32 @@ body.is-resizing-detail .detail-resizer::before {
   background: var(--durations-critical);
 }
 
+/* A row too narrow to split draws one marker at full status strength, so the key
+   shows the same: solid ink, no wait/work lightness difference to read. */
+.timeline-swatch[data-segment="whole-row"] {
+  background: var(--ink-soft);
+  width: 6px;
+}
+
+/* The two vertical rules the plot can draw. A 18x8 swatch showing a centred
+   stripe is the only honest miniature of a full-height line. */
+.timeline-swatch[data-rule] {
+  background: none;
+  border-left: 2px solid var(--ink-soft);
+  width: 2px;
+  height: 12px;
+  border-radius: 0;
+}
+
+.timeline-swatch[data-rule="now"] {
+  border-left-color: var(--durations-critical);
+}
+
+.timeline-swatch[data-rule="queue-end"] {
+  border-left-style: dashed;
+  border-left-color: var(--timeline-projected);
+}
+
 .timeline-chart {
   position: relative;
   padding: 8px 24px 0;
@@ -2431,6 +2457,40 @@ body.is-resizing-detail .detail-resizer::before {
   stroke-width: 1;
   stroke-dasharray: 3 3;
   opacity: 0.7;
+}
+
+/* One line per axis tick, drawn before the rows so it sits behind every bar.
+   --line-firm is the axis tick's own colour; the 0.6 takes it below the tick so
+   the strip above still reads as the measured edge and the plot reads as a
+   backdrop. Picked from the render at Fit all in both themes (REQ-323): at full
+   strength the lines competed with the 3px bars they cross. */
+.timeline-gridline {
+  stroke: var(--line-firm);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+
+/* The forecast's queue-empty instant. Deliberately quieter than the now-line:
+   solid red at 1.5px is the present, and this is a projection, so it borrows the
+   projected segments' violet and the same dash the projected hatch implies. */
+.timeline-queue-end-line,
+.timeline-queue-end-rule {
+  stroke: var(--timeline-projected);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+/* Quieter than the axis half of the same mark, and well under the now-rule it
+   runs beside. 0.75 cleared the ordering by 27% in light, which is a margin one
+   palette tweak erases; 0.6 clears it by a margin that survives one. */
+.timeline-queue-end-rule {
+  opacity: 0.6;
+}
+
+.timeline-queue-end-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  fill: var(--timeline-projected);
 }
 
 .timeline-scroll {
@@ -2555,6 +2615,15 @@ body.is-resizing-detail .detail-resizer::before {
 }
 
 .timeline-segment-work {
+  fill: var(--timeline-status-accent);
+  fill-opacity: 1;
+}
+
+/* The collapsed row: one marker at full status strength, no lightness split,
+   because the split is exactly the claim the pixels could not carry. It is the
+   status colour and nothing else, so a reader who cannot tell wait from work
+   here can still tell the REQ's state. */
+.timeline-segment-whole-row {
   fill: var(--timeline-status-accent);
   fill-opacity: 1;
 }
