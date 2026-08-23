@@ -2308,13 +2308,25 @@ window.addEventListener("load", function () {
 	// And the capture is actually requested, which is what makes the release above a
 	// fact rather than a hope. Structural, because a synthetic pointerId cannot be
 	// captured in this lane.
-	pointerDownBody := sliceBalancedBlockAfter(t, indexHTML, "addTimelineListener(scrollHost, \"pointerdown\"")
+	//
+	// REQ-336 moved the request off pointerdown and onto the pan's ENGAGE: capture also
+	// retargets the synthesized click, so taking it on every press cost every mouse
+	// click in the chart its [data-detail-kind] target. This asserts the same contract
+	// at its new instant, in two halves so deleting either one fails: the capture call
+	// lives in capturePanPointer, and the move handler calls it.
+	//
 	// The CALL, not the feature-detect guard beside it: a check for the bare name
 	// matched the `typeof scrollHost.setPointerCapture === "function"` line and passed
 	// with the call itself deleted.
-	if !strings.Contains(pointerDownBody, "scrollHost.setPointerCapture(") {
-		t.Error("the pointerdown handler does not capture the pointer, so a drag released outside " +
+	capturePanPointerBody := sliceBalancedBlockAfter(t, indexHTML, "function capturePanPointer(")
+	if !strings.Contains(capturePanPointerBody, "scrollHost.setPointerCapture(") {
+		t.Error("capturePanPointer does not capture the pointer, so a drag released outside " +
 			"the chart has no guaranteed path back to the host that armed it")
+	}
+	pointerMoveBody := sliceBalancedBlockAfter(t, indexHTML, "addTimelineListener(scrollHost, \"pointermove\"")
+	if !strings.Contains(pointerMoveBody, "capturePanPointer()") {
+		t.Error("the pointermove handler never calls capturePanPointer, so nothing takes the " +
+			"capture when the pan engages and the release is a hope again")
 	}
 
 	// (b) EVERY arrow press pans, not just the first. The second press was the dead
@@ -2338,5 +2350,310 @@ window.addEventListener("load", function () {
 		t.Errorf("ctrl+wheel over the axis strip left the window at %s; the hint says holding Ctrl "+
 			"and scrolling zooms the time axis, and the axis is where a reader aims",
 			pathResult.BeforeAxisWheel.Readout)
+	}
+}
+
+// pointerCapturingFunctionNames lists every named function in the generated page whose
+// OWN body requests pointer capture. It is derived from the page rather than hand-listed
+// because the point of the check below is to survive a regression that routes the
+// request through a function nobody has written yet.
+//
+// The trailing paren in the match is load-bearing, and it is the trap REQ-333 fell into:
+// a search for the bare name also matches the `typeof scrollHost.setPointerCapture ===
+// "function"` feature detect, so it passes with the call itself deleted.
+func pointerCapturingFunctionNames(t *testing.T, pageSource string) []string {
+	t.Helper()
+	const declarationToken = "function "
+	var capturingNames []string
+	searchOffset := 0
+	for {
+		relativeIndex := strings.Index(pageSource[searchOffset:], declarationToken)
+		if relativeIndex == -1 {
+			break
+		}
+		declarationIndex := searchOffset + relativeIndex
+		searchOffset = declarationIndex + len(declarationToken)
+		nameEnd := strings.IndexByte(pageSource[searchOffset:], '(')
+		if nameEnd == -1 {
+			break
+		}
+		functionName := strings.TrimSpace(pageSource[searchOffset : searchOffset+nameEnd])
+		// Anonymous function expressions (`function (event) {`) have no name to call, so
+		// nothing can route a request through them from another handler.
+		if functionName == "" || strings.ContainsAny(functionName, " \t\n(){}") {
+			continue
+		}
+		functionBody := sliceBalancedBlockAfter(t, pageSource[declarationIndex:], declarationToken+functionName)
+		if strings.Contains(functionBody, "setPointerCapture(") {
+			capturingNames = append(capturingNames, functionName)
+		}
+	}
+	return capturingNames
+}
+
+// TestTimelinePointerCaptureWaitsForThePanEngage is the check REQ-337 exists to add, and
+// it pins the regression REQ-336 fixed: pointer capture taken on pointerdown.
+//
+// Why this is not covered by the probe above. Pointer capture retargets the pointer
+// events AND the click the engine synthesizes to the capturing element, so a capture
+// taken on every press leaves the delegated handler in board-controls.js with no
+// [data-detail-kind] ancestor to find and the detail drawer never opens for any click in
+// the chart. TestBrowserBehaviorTimelinePressBecomesAPanOnlyAfterMoving passed through
+// that entire regression, because it dispatches synthetic PointerEvents whose pointerId
+// the engine does not know: setPointerCapture throws on them, capture is never
+// established, and the failing path is invisible to the lane. This lane runs under
+// --dump-dom with no protocol channel, so it cannot dispatch trusted input at all; the
+// REQ therefore allows asserting the structural property instead, and this does.
+//
+// Three assertions, because "capture is not taken on pointerdown" is trivially satisfied
+// by taking it nowhere — which is the OTHER bug, the one REQ-333 fixed, where a drag
+// released outside the chart never told the host it had ended:
+//
+//	(a) the pointerdown handler requests no capture itself,
+//	(b) it calls nothing that requests capture, resolved from the page rather than from a
+//	    list, so a fresh wrapper called from pointerdown fails here too, and
+//	(c) the pointermove handler — the engage path — DOES reach a request.
+//
+// Known residual: this reads text, so a request routed through a variable, a method
+// lookup, or an eval would pass. The mutation this REQ pins (reintroducing capture on
+// pointerdown, by either spelling) does not.
+func TestTimelinePointerCaptureWaitsForThePanEngage(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	capturingNames := pointerCapturingFunctionNames(t, indexHTML)
+	// Vacuity guard: with no capturing function found, (b) below asserts nothing and (c)
+	// would be measuring the wrong thing. A page that requests capture nowhere is a
+	// failure, not a pass.
+	if len(capturingNames) == 0 {
+		t.Fatal("no named function in the generated page requests pointer capture, so this check " +
+			"cannot tell capture-at-the-engage from capture nowhere at all")
+	}
+
+	pointerDownBody := sliceBalancedBlockAfter(t, indexHTML,
+		"addTimelineListener(scrollHost, \"pointerdown\"")
+	pointerMoveBody := sliceBalancedBlockAfter(t, indexHTML,
+		"addTimelineListener(scrollHost, \"pointermove\"")
+
+	// (a) Nothing in the press handler requests capture directly.
+	if strings.Contains(pointerDownBody, "setPointerCapture(") {
+		t.Error("the Timeline pointerdown handler requests pointer capture; capture retargets the " +
+			"synthesized click to the capturing element, so every mouse click in the chart loses " +
+			"its [data-detail-kind] target and the detail drawer stops opening")
+	}
+	// (b) And it reaches no function that requests capture on its behalf.
+	for _, capturingName := range capturingNames {
+		if strings.Contains(pointerDownBody, capturingName+"(") {
+			t.Errorf("the Timeline pointerdown handler calls %s, which requests pointer capture; "+
+				"capture must wait for the pan to engage or every click in the chart is retargeted "+
+				"to the capturing element", capturingName)
+		}
+	}
+	// (c) The engage path still requests it, so (a) and (b) cannot be satisfied by
+	// removing capture altogether and reopening REQ-333's never-released drag.
+	engageReachesCapture := strings.Contains(pointerMoveBody, "setPointerCapture(")
+	for _, capturingName := range capturingNames {
+		if strings.Contains(pointerMoveBody, capturingName+"(") {
+			engageReachesCapture = true
+		}
+	}
+	if !engageReachesCapture {
+		t.Errorf("the Timeline pointermove handler reaches no pointer-capture request (capturing "+
+			"functions in the page: %v); a drag released outside the chart then has no guaranteed "+
+			"path back to the host that armed it", capturingNames)
+	}
+}
+
+// TestBrowserBehaviorTimelineRowListIsOneTabStop pins REQ-338's keyboard contract: the row
+// list is a single Tab stop with arrow-key movement between rows (a roving tabindex),
+// rather than one Tab stop per row.
+//
+// "Tab escapes the list in one press" is asserted as the property that produces it —
+// exactly one row is tabbable and every other row is explicitly not — because Tab's
+// focus movement is a default action on a TRUSTED key event and this lane dispatches
+// synthetic ones. The movement half IS behavioural: the handler calls focus() itself, so a
+// synthetic ArrowDown really does move focus, and that is what the probe measures.
+//
+// It also pins the two contracts a roving index could quietly break: Left/Right must still
+// pan the window without moving row focus (REQ-333), and Enter on the focused row must
+// still open the detail drawer (REQ-333, restored by REQ-336).
+func TestBrowserBehaviorTimelineRowListIsOneTabStop(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function plotHost() { return document.querySelector("#view-timeline .timeline-scroll"); }
+function rowNodes() { return Array.prototype.slice.call(plotHost().querySelectorAll("[data-row-index]")); }
+function tabStopState() {
+  var rows = rowNodes();
+  var tabbable = rows.filter(function (row) { return row.getAttribute("tabindex") === "0"; });
+  var notTabbable = rows.filter(function (row) { return row.getAttribute("tabindex") === "-1"; });
+  var active = document.activeElement;
+  var drawer = document.getElementById("detail-drawer");
+  var shown = document.getElementById("detail-id");
+  return {
+    href: location.href,
+    rowCount: rows.length,
+    tabbableCount: tabbable.length,
+    notTabbableCount: notTabbable.length,
+    tabbableRowId: tabbable.length === 1 ? (tabbable[0].getAttribute("data-detail-id") || "") : "",
+    focusedRowId: active && active.getAttribute ? (active.getAttribute("data-detail-id") || "") : "",
+    readout: document.getElementById("timeline-range-readout").textContent,
+    drawerOpen: drawer ? drawer.hidden === false : false,
+    shownDetailId: shown ? shown.textContent.trim() : ""
+  };
+}
+function pressKey(keyName) {
+  var target = document.activeElement || plotHost();
+  target.dispatchEvent(new KeyboardEvent("keydown", {
+    key: keyName, bubbles: true, cancelable: true, composed: true
+  }));
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      // Off the bounds so ArrowRight has somewhere to pan to.
+      document.getElementById("timeline-zoom-in").click();
+      var rows = rowNodes();
+      probe.initial = tabStopState();
+      if (rows.length >= 2) {
+        probe.firstRowId = rows[0].getAttribute("data-detail-id") || "";
+        probe.secondRowId = rows[1].getAttribute("data-detail-id") || "";
+        rows[0].focus();
+        probe.afterFocusingFirstRow = tabStopState();
+        pressKey("ArrowDown");
+        probe.afterArrowDown = tabStopState();
+        pressKey("ArrowUp");
+        probe.afterArrowUp = tabStopState();
+        pressKey("ArrowRight");
+        probe.afterArrowRight = tabStopState();
+        pressKey("Enter");
+        probe.afterEnter = tabStopState();
+      }
+      document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+    }, 700);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the probe script before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline row tab stops", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+
+	type tabStopState struct {
+		Href             string `json:"href"`
+		RowCount         int    `json:"rowCount"`
+		TabbableCount    int    `json:"tabbableCount"`
+		NotTabbableCount int    `json:"notTabbableCount"`
+		TabbableRowId    string `json:"tabbableRowId"`
+		FocusedRowId     string `json:"focusedRowId"`
+		Readout          string `json:"readout"`
+		DrawerOpen       bool   `json:"drawerOpen"`
+		ShownDetailId    string `json:"shownDetailId"`
+	}
+	var rovingResult struct {
+		FirstRowId            string       `json:"firstRowId"`
+		SecondRowId           string       `json:"secondRowId"`
+		Initial               tabStopState `json:"initial"`
+		AfterFocusingFirstRow tabStopState `json:"afterFocusingFirstRow"`
+		AfterArrowDown        tabStopState `json:"afterArrowDown"`
+		AfterArrowUp          tabStopState `json:"afterArrowUp"`
+		AfterArrowRight       tabStopState `json:"afterArrowRight"`
+		AfterEnter            tabStopState `json:"afterEnter"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &rovingResult); decodeError != nil {
+		t.Fatalf("decode timeline row tab-stop behavior: %v (output %q)", decodeError, probeOutput)
+	}
+	if rovingResult.Initial.Href == "" || !strings.HasSuffix(rovingResult.Initial.Href, "probe.html") {
+		t.Fatalf("measured on %q, not the probe page", rovingResult.Initial.Href)
+	}
+	// Vacuity guard: one row cannot show a roving index, and zero rows cannot show
+	// anything. The generated board carries hundreds, so this is a "the probe never
+	// reached the chart" failure rather than a real board state.
+	if rovingResult.Initial.RowCount < 2 {
+		t.Fatalf("the probe rendered %d timeline rows, so nothing below measures a row list",
+			rovingResult.Initial.RowCount)
+	}
+	if rovingResult.FirstRowId == "" || rovingResult.SecondRowId == "" ||
+		rovingResult.FirstRowId == rovingResult.SecondRowId {
+		t.Fatalf("the probe could not name two distinct rows (%q and %q), so focus movement below "+
+			"cannot be told from focus standing still",
+			rovingResult.FirstRowId, rovingResult.SecondRowId)
+	}
+
+	// (a) ONE Tab stop. Tab's own movement is a trusted-input default action this lane
+	// cannot dispatch, so the assertion is the property that produces it: exactly one row
+	// is reachable by Tab and every other row is explicitly skipped.
+	if rovingResult.Initial.TabbableCount != 1 {
+		t.Errorf("the rendered row list has %d rows with tabindex=0 out of %d rows; a keyboard "+
+			"reader pays one Tab press per tabbable row to get past the chart",
+			rovingResult.Initial.TabbableCount, rovingResult.Initial.RowCount)
+	}
+	if rovingResult.Initial.NotTabbableCount != rovingResult.Initial.RowCount-1 {
+		t.Errorf("%d of %d rendered rows carry tabindex=-1; every row other than the roving one "+
+			"must be explicitly skipped, or the browser's own default takes over",
+			rovingResult.Initial.NotTabbableCount, rovingResult.Initial.RowCount)
+	}
+
+	// (b) The tabbable row FOLLOWS focus, which is what makes Tab return to where the
+	// reader left off rather than to the top of the list.
+	if rovingResult.AfterFocusingFirstRow.TabbableRowId != rovingResult.FirstRowId {
+		t.Errorf("after focusing the first row the tabbable row is %q, want %q",
+			rovingResult.AfterFocusingFirstRow.TabbableRowId, rovingResult.FirstRowId)
+	}
+
+	// (c) Down and Up MOVE focus between rows, and the roving index goes with it.
+	if rovingResult.AfterArrowDown.FocusedRowId != rovingResult.SecondRowId {
+		t.Errorf("ArrowDown left focus on %q; it should move to the next row %q",
+			rovingResult.AfterArrowDown.FocusedRowId, rovingResult.SecondRowId)
+	}
+	if rovingResult.AfterArrowDown.TabbableRowId != rovingResult.SecondRowId {
+		t.Errorf("after ArrowDown the tabbable row is %q, want the newly focused %q",
+			rovingResult.AfterArrowDown.TabbableRowId, rovingResult.SecondRowId)
+	}
+	if rovingResult.AfterArrowDown.TabbableCount != 1 {
+		t.Errorf("after ArrowDown %d rows are tabbable; moving the roving index must not leave two",
+			rovingResult.AfterArrowDown.TabbableCount)
+	}
+	if rovingResult.AfterArrowUp.FocusedRowId != rovingResult.FirstRowId {
+		t.Errorf("ArrowUp left focus on %q; it should move back to %q",
+			rovingResult.AfterArrowUp.FocusedRowId, rovingResult.FirstRowId)
+	}
+
+	// (d) REQ-333's contract: Left/Right still pan, and panning does not move row focus.
+	if rovingResult.AfterArrowRight.Readout == rovingResult.AfterArrowUp.Readout {
+		t.Errorf("ArrowRight left the window at %s; arrow panning is REQ-333's contract and the "+
+			"roving index must not take the horizontal keys",
+			rovingResult.AfterArrowRight.Readout)
+	}
+	if rovingResult.AfterArrowRight.FocusedRowId != rovingResult.FirstRowId {
+		t.Errorf("ArrowRight moved row focus to %q; the horizontal keys pan, they do not rove",
+			rovingResult.AfterArrowRight.FocusedRowId)
+	}
+
+	// (e) And Enter on the focused row still opens the drawer.
+	if !rovingResult.AfterEnter.DrawerOpen {
+		t.Error("Enter on the focused row did not open the detail drawer; rows advertise " +
+			"role=button, so they owe the activation")
+	}
+	if rovingResult.AfterEnter.ShownDetailId != rovingResult.FirstRowId {
+		t.Errorf("Enter opened the drawer on %q, want the focused row %q",
+			rovingResult.AfterEnter.ShownDetailId, rovingResult.FirstRowId)
 	}
 }

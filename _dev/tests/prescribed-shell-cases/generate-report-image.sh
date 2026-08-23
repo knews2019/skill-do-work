@@ -3,6 +3,46 @@
 # shellcheck source=_dev/tests/prescribed-shell-harness.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/prescribed-shell-harness.sh"
 
+# Bounded stand-in for `wait` on a backgrounded wrapper. `kill -TERM` followed by a bare
+# `wait` blocks forever against a wrapper that does not finish, which is how a stuck backend
+# wedges the whole gate — and the gate's exit status is the only thing anyone reads. Wait with
+# a deadline instead: on expiry, name the processes still alive, fail the case, and kill them.
+# Sets wrapper_wait_status. Arguments: wrapper PID, case label, deadline seconds, then any
+# further PIDs to name in the diagnostic.
+wait_for_wrapper_or_fail() {
+  local wrapper_pid="$1"
+  local case_label="$2"
+  local deadline_seconds="$3"
+  shift 3
+  local deadline_report="$fixture_root/.wrapper-deadline-$wrapper_pid"
+  local watchdog_pid
+  local survivor_pid
+  local surviving_pids
+  rm -f "$deadline_report"
+  (
+    sleep "$deadline_seconds"
+    surviving_pids=""
+    for survivor_pid in "$wrapper_pid" "$@"; do
+      kill -0 "$survivor_pid" 2>/dev/null && surviving_pids="$surviving_pids $survivor_pid"
+    done
+    printf '%s\n' "${surviving_pids# }" > "$deadline_report"
+    for survivor_pid in "$wrapper_pid" "$@"; do
+      kill -KILL "$survivor_pid" 2>/dev/null || true
+    done
+  ) &
+  watchdog_pid=$!
+  wait "$wrapper_pid" 2>/dev/null
+  wrapper_wait_status=$?
+  kill "$watchdog_pid" 2>/dev/null || true
+  wait "$watchdog_pid" 2>/dev/null || true
+  # The report file exists only when the deadline actually expired, so its presence — not the
+  # wait status, which a killed wrapper also makes nonzero — is what distinguishes a stuck
+  # wrapper from an interrupted one.
+  [ -e "$deadline_report" ] || return 0
+  fail_case "$case_label did not finish within ${deadline_seconds}s; still alive: $(cat "$deadline_report")"
+  return 1
+}
+
 # generate-report-image: a direct backend receives inert prompt text and publishes
 # from a private adjacent path only after success.
 image_bin="$fixture_root/image-bin"
@@ -89,8 +129,8 @@ if [ ! -e "$fixture_root/interrupted-ready" ]; then
   fail_case 'generate-report-image interruption case never reached the backend wait'
 else
   kill -TERM "$interrupt_helper_pid" 2>/dev/null || true
-  wait "$interrupt_helper_pid" 2>/dev/null
-  interrupt_status=$?
+  wait_for_wrapper_or_fail "$interrupt_helper_pid" 'generate-report-image interruption case' 10
+  interrupt_status="$wrapper_wait_status"
   [ "$interrupt_status" -ne 0 ] || fail_case 'generate-report-image interruption case returned success'
   interrupted_stage_path="$(cat "$fixture_root/interrupted-stage")"
   [ ! -e "$interrupted_stage_path" ] || fail_case 'generate-report-image interruption case leaked private staging'
@@ -171,8 +211,9 @@ else
   image_tree_descendant_pid="$(cat "$fixture_root/process-tree-descendant.pid")"
   background_process_ids="$background_process_ids $image_tree_backend_pid $image_tree_descendant_pid"
   kill -TERM "$image_tree_helper_pid" 2>/dev/null || true
-  wait "$image_tree_helper_pid" 2>/dev/null
-  image_tree_status=$?
+  wait_for_wrapper_or_fail "$image_tree_helper_pid" 'generate-report-image process-tree case' 10 \
+    "$image_tree_backend_pid" "$image_tree_descendant_pid"
+  image_tree_status="$wrapper_wait_status"
   [ "$image_tree_status" -eq 143 ] \
     || fail_case "generate-report-image process-tree case returned $image_tree_status instead of the TERM status 143"
   image_tree_survivor_ticks=0
@@ -216,5 +257,77 @@ PATH="$image_directory_bin:$PATH" DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=0 \
   || fail_case 'generate-report-image output-is-a-directory case left its staged image nested inside the occupying directory'
 find "$image_directory_parent" -name '.report.png.generating.*' -print -quit | grep -q . \
   && fail_case 'generate-report-image output-is-a-directory case leaked private staging'
+
+# generate-report-image: an interruption arriving as early as the invocation is observable —
+# at the moment the private staging file appears, which is before any backend is launched —
+# is still reported as an interruption and still cleans up. This pins the deferral the wrapper
+# uses to close its publish-the-PID window: a deferred status that is dropped instead of
+# re-raised turns the interruption into an ordinary backend failure (exit 1), and a backend
+# started after the deferral began must still be reaped.
+image_early_bin="$fixture_root/image-early-bin"
+mkdir -p "$image_early_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; *) shift ;; esac; done' \
+  'printf "%s\n" "$$" > "$IMAGE_EARLY_BACKEND_PID"' \
+  'printf partial > "$output_path"' \
+  'trap "exit 143" TERM INT HUP' \
+  'while :; do sleep 0.1; done' \
+  > "$image_early_bin/imagegen"
+chmod +x "$image_early_bin/imagegen"
+image_early_target="$fixture_root/early-interrupt.png"
+printf stable-early > "$image_early_target"
+PATH="$image_early_bin:$PATH" \
+  IMAGE_EARLY_BACKEND_PID="$fixture_root/early-backend.pid" \
+  "$toolbox_scripts/generate-report-image.sh" "$image_early_target" style early-interruption >/dev/null 2>&1 &
+image_early_helper_pid=$!
+background_process_ids="$background_process_ids $image_early_helper_pid"
+image_early_stage_ticks=0
+while [ "$image_early_stage_ticks" -lt 500 ]; do
+  find "$fixture_root" -name '.early-interrupt.png.generating.*' -print -quit | grep -q . && break
+  sleep 0.002
+  image_early_stage_ticks=$((image_early_stage_ticks + 1))
+done
+kill -TERM "$image_early_helper_pid" 2>/dev/null || true
+wait_for_wrapper_or_fail "$image_early_helper_pid" 'generate-report-image early-interruption case' 10
+[ "$wrapper_wait_status" -eq 143 ] \
+  || fail_case "generate-report-image early-interruption case returned $wrapper_wait_status instead of the TERM status 143"
+image_early_backend_pid="$(cat "$fixture_root/early-backend.pid" 2>/dev/null || printf '')"
+if [ -n "$image_early_backend_pid" ]; then
+  background_process_ids="$background_process_ids $image_early_backend_pid"
+  image_early_survivor_ticks=0
+  while [ "$image_early_survivor_ticks" -lt 40 ]; do
+    kill -0 "$image_early_backend_pid" 2>/dev/null || break
+    sleep 0.05
+    image_early_survivor_ticks=$((image_early_survivor_ticks + 1))
+  done
+  kill -0 "$image_early_backend_pid" 2>/dev/null \
+    && fail_case "generate-report-image early-interruption case left backend $image_early_backend_pid alive"
+fi
+find "$fixture_root" -name '.early-interrupt.png.generating.*' -print -quit | grep -q . \
+  && fail_case 'generate-report-image early-interruption case leaked private staging'
+[ "$(cat "$image_early_target")" = stable-early ] \
+  || fail_case 'generate-report-image early-interruption case changed the old target'
+
+# generate-report-image: every interruption case above waits with a deadline, so a wrapper
+# that will not finish fails the probe with a diagnostic naming what is still alive instead of
+# wedging the gate forever. Exercised against a deliberately TERM-deaf stand-in, inside a
+# command substitution so the deadline's intentional failure stays out of this file's tally.
+deadline_probe_report="$( {
+  deadline_probe_ready="$fixture_root/deadline-probe-ready"
+  ( trap '' TERM; : > "$deadline_probe_ready"; while :; do sleep 0.1; done ) >/dev/null 2>&1 &
+  deadline_probe_pid=$!
+  deadline_probe_ticks=0
+  while [ ! -e "$deadline_probe_ready" ] && [ "$deadline_probe_ticks" -lt 200 ]; do
+    sleep 0.01
+    deadline_probe_ticks=$((deadline_probe_ticks + 1))
+  done
+  kill -TERM "$deadline_probe_pid" 2>/dev/null || true
+  wait_for_wrapper_or_fail "$deadline_probe_pid" 'generate-report-image deadline probe' 1
+} 2>&1 )"
+case "$deadline_probe_report" in
+  *'deadline probe did not finish within 1s; still alive: '[0-9]*) ;;
+  *) fail_case "generate-report-image deadline case did not name the surviving process (got: $deadline_probe_report)" ;;
+esac
 
 prescribed_shell_finish

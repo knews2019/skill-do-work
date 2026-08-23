@@ -122,11 +122,16 @@
   // How far a pointer must travel before a press becomes a pan. Under it the
   // press is a click and the drawer opens on release.
   //
-  // The first pointermove used to engage the pan and RE-RENDER, which is the
-  // whole defect: the click the engine then synthesized had no surviving
-  // [data-detail-kind] ancestor to find. The window did not have to move for
-  // that — at Fit all it clamps to the window it started in and the click was
-  // lost anyway — so the threshold gates the render, not the shift.
+  // The first pointermove used to engage the pan and RE-RENDER, and the click the
+  // engine then synthesized had no surviving [data-detail-kind] ancestor to find.
+  // The window did not have to move for that — at Fit all it clamps to the window
+  // it started in and the click was lost anyway — so the threshold gates the
+  // render, not the shift.
+  //
+  // That is ONE of two ways the chart has eaten a click. The other was pointer
+  // capture taken on pointerdown, which retargets the synthesized click whether or
+  // not anything re-renders; the threshold cannot protect against it, which is why
+  // the capture now waits for the engage too (see capturePanPointer below).
   //
   // 4px: an ordinary hand tremor on a trackpad stays under it, an intended drag
   // clears it in the first frame.
@@ -135,7 +140,11 @@
 
   // The visible time window, held OUTSIDE renderedOnce so switching tabs and
   // coming back preserves the reader's zoom instead of snapping back to fit.
-  var timelineViewState = { windowStartMs: 0, windowEndMs: 0, fitted: false };
+  // rovingRowIndex is the row list's single Tab stop. Held here rather than derived
+  // because it is the one thing about the list that cannot be recomputed: which row the
+  // reader was last on. Every row used to carry tabindex="0", so escaping the chart cost
+  // one Tab press per row — 29 on the board that reported it.
+  var timelineViewState = { windowStartMs: 0, windowEndMs: 0, fitted: false, rovingRowIndex: 0 };
 
   // Durations can attach its listeners and forget them: it binds to nodes it
   // rebuilds every render, so the old handlers die with the old DOM. This view
@@ -291,12 +300,12 @@
     return { windowStartMs: nextStartMs, windowEndMs: nextStartMs + windowSpanMs };
   }
 
-  // The whole keyboard path, as one pure decision: which keys move the window,
-  // and where to. It routes zoom through timelineZoomedWindow — the function the
-  // wheel and the zoom buttons call — so the keyboard cannot acquire its own
-  // floor, ceiling or clamp. Returns null for every key the view does not own,
-  // which is what leaves Enter and Space to row activation and Up/Down to
-  // scrolling the queue.
+  // The whole WINDOW-MOVING keyboard path, as one pure decision: which keys move the
+  // window, and where to. It routes zoom through timelineZoomedWindow — the function the
+  // wheel and the zoom buttons call — so the keyboard cannot acquire its own floor,
+  // ceiling or clamp. Returns null for every key the window does not own, which is what
+  // leaves Enter and Space to row activation and Up/Down to the row list's roving stop
+  // (and, with focus on the chart rather than a row, to the browser's own scrolling).
   function timelineKeyboardWindow(keyName, windowStartMs, windowEndMs, boundStartMs, boundEndMs) {
     if (keyName === "ArrowLeft" || keyName === "ArrowRight") {
       return timelinePannedWindow(
@@ -881,6 +890,18 @@
     var firstRow = Math.max(0, Math.floor(scrollTop / TIMELINE_ROW_HEIGHT) - TIMELINE_OVERSCAN_ROWS);
     var visibleCount = Math.ceil(viewportHeight / TIMELINE_ROW_HEIGHT) + TIMELINE_OVERSCAN_ROWS * 2;
     return { firstRow: firstRow, lastRow: Math.min(rowCount, firstRow + visibleCount) };
+  }
+
+  // Which of the RENDERED rows carries the list's single tabindex="0".
+  //
+  // The rows are virtualized, so the roving row is often not among them — and a render
+  // that then marked nothing tabbable would take the whole list out of the Tab order,
+  // which is worse than the 29 stops it replaced. Clamping into the rendered range keeps
+  // exactly one stop and keeps it reachable, without touching the stored roving index:
+  // that still names the row the reader was on, and scrolling back brings it right back.
+  function timelineTabbableRowIndex(rovingRowIndex, firstRenderedRow, lastRenderedRow) {
+    var lastSelectable = Math.max(firstRenderedRow, lastRenderedRow - 1);
+    return Math.min(Math.max(rovingRowIndex, firstRenderedRow), lastSelectable);
   }
 
   // Whether a press has become a pan. Latching: once engaged a drag stays
@@ -1869,6 +1890,9 @@
       // job, and doing half of it here would leave two sources for one number.
       var plotWidthPx = plotWidth();
       var visible = timelineVisibleRowRange(scrollHost.scrollTop, scrollHost.clientHeight, rows.length);
+      var tabbableRowIndex = timelineTabbableRowIndex(
+        timelineViewState.rovingRowIndex, visible.firstRow, visible.lastRow
+      );
       for (var rowIndex = visible.firstRow; rowIndex < visible.lastRow; rowIndex++) {
         var row = rows[rowIndex];
         var request = requestsById[row.id] || {};
@@ -1889,7 +1913,10 @@
           "data-detail-id": row.id,
           "data-row-index": String(rowIndex),
           "data-status": request.status || "",
-          tabindex: "0",
+          // Roving: one stop for the whole list. Every other row is EXPLICITLY skipped
+          // rather than left without the attribute, because a focusable-by-default
+          // element with no tabindex is still a Tab stop.
+          tabindex: rowIndex === tabbableRowIndex ? "0" : "-1",
           role: "button"
         });
         // The accessible name comes from the <title> below and NOT from an
@@ -2442,11 +2469,89 @@
     // registry like every other listener this view binds to a node that outlives
     // a render. Activation is asked first so Enter and Space keep meaning "open
     // this row" even though the same listener now also moves the window.
+    // Bring a row inside the scroll viewport. The rows are virtualized, so a roving move
+    // to a row outside the rendered range has to scroll BEFORE the rebuild, or the render
+    // has no node to focus.
+    function scrollTimelineRowIntoView(rowIndex) {
+      var rowTopPx = rowIndex * TIMELINE_ROW_HEIGHT;
+      var rowBottomPx = rowTopPx + TIMELINE_ROW_HEIGHT;
+      if (rowTopPx < scrollHost.scrollTop) {
+        scrollHost.scrollTop = rowTopPx;
+      } else if (rowBottomPx > scrollHost.scrollTop + scrollHost.clientHeight) {
+        scrollHost.scrollTop = rowBottomPx - scrollHost.clientHeight;
+      }
+    }
+
+    // Move the roving stop, and the focus with it. The order matters: scroll, then
+    // rebuild SYNCHRONOUSLY, then focus. The scroll write also schedules an asynchronous
+    // scroll event whose handler is renderVisibleRows, and that rebuild restores whatever
+    // row holds focus when it runs — so focusing before it lands is what survives, and
+    // focusing before the synchronous rebuild would not.
+    function moveTimelineRowFocus(rowDelta) {
+      var nextRowIndex = Math.min(
+        Math.max(timelineViewState.rovingRowIndex + rowDelta, 0), rows.length - 1
+      );
+      if (nextRowIndex === timelineViewState.rovingRowIndex) {
+        return;
+      }
+      timelineViewState.rovingRowIndex = nextRowIndex;
+      scrollTimelineRowIntoView(nextRowIndex);
+      renderVisibleRows();
+      var nextRowGroup = rowsSvg.querySelector
+        ? rowsSvg.querySelector('[data-row-index="' + nextRowIndex + '"]')
+        : null;
+      if (nextRowGroup && typeof nextRowGroup.focus === "function") {
+        nextRowGroup.focus();
+      }
+    }
+
+    // The roving stop follows focus however focus arrived — a Tab into the list, a click,
+    // a rebuild's restore — so the next arrow press moves from where the reader actually
+    // is rather than from where the last arrow press left the index.
+    //
+    // Attributes only, no rebuild: focusin fires on every entry into the list, and a
+    // render per focus change would cost a full row sweep for two attribute writes.
+    addTimelineListener(scrollHost, "focusin", function (focusEvent) {
+      var focusedRowGroup = focusEvent.target && focusEvent.target.closest
+        ? focusEvent.target.closest("[data-row-index]")
+        : null;
+      if (!focusedRowGroup) {
+        return;
+      }
+      var focusedRowIndex = Number(focusedRowGroup.getAttribute("data-row-index"));
+      if (!isFinite(focusedRowIndex) || focusedRowIndex === timelineViewState.rovingRowIndex) {
+        return;
+      }
+      timelineViewState.rovingRowIndex = focusedRowIndex;
+      var previousStop = rowsSvg.querySelector
+        ? rowsSvg.querySelector('[data-row-index][tabindex="0"]')
+        : null;
+      if (previousStop && previousStop !== focusedRowGroup) {
+        previousStop.setAttribute("tabindex", "-1");
+      }
+      focusedRowGroup.setAttribute("tabindex", "0");
+    });
+
     addTimelineListener(scrollHost, "keydown", function (keyEvent) {
       var activation = timelineKeyboardActivationTarget(keyEvent);
       if (activation) {
         keyEvent.preventDefault();
         openDetail(activation.detailKind, activation.detailId);
+        return;
+      }
+
+      // Vertical keys rove the row list, but only from a row: with focus on the chart
+      // itself they stay the browser's own scroll, which is the only way to move through
+      // the queue without entering the list.
+      if (keyEvent.key === "ArrowDown" || keyEvent.key === "ArrowUp") {
+        var rovingFrom = keyEvent.target && keyEvent.target.closest
+          ? keyEvent.target.closest("[data-row-index]")
+          : null;
+        if (!rovingFrom) {
+          return;
+        }
+        keyEvent.preventDefault();
+        moveTimelineRowFocus(keyEvent.key === "ArrowDown" ? 1 : -1);
         return;
       }
 
@@ -2566,32 +2671,49 @@
         windowStartMs: timelineViewState.windowStartMs,
         engaged: false
       };
-      // CAPTURE THE POINTER, so the release is guaranteed to arrive here.
-      //
-      // A drag released OUTSIDE the chart delivered its pointerup to whatever was
-      // under the cursor, and Chromium suppresses the boundary events while a button
-      // is held — so none of pointerup, pointercancel or pointerleave reached this
-      // host, the teardown never ran, and the grab cursor stayed on for the rest of
-      // the session. Capture makes the release a fact rather than a hope; the
-      // teardown below then also gets lostpointercapture, which fires even when the
-      // engine takes the capture away.
-      if (typeof scrollHost.setPointerCapture === "function" && downEvent.pointerId !== undefined) {
-        try {
-          scrollHost.setPointerCapture(downEvent.pointerId);
-        } catch (captureError) {
-          // A pointer the engine will not let us capture is not a reason to refuse
-          // the drag; the release events below are still the ordinary path.
-          panState.pointerId = undefined;
-        }
-      }
     });
+
+    // CAPTURE THE POINTER once the pan ENGAGES, so the release is guaranteed to arrive
+    // here — and not before, because capture also retargets the synthesized click.
+    //
+    // A drag released OUTSIDE the chart delivered its pointerup to whatever was under
+    // the cursor, and Chromium suppresses the boundary events while a button is held —
+    // so none of pointerup, pointercancel or pointerleave reached this host, the
+    // teardown never ran, and the grab cursor stayed on for the rest of the session.
+    // Capture makes the release a fact rather than a hope; the teardown below then also
+    // gets lostpointercapture, which fires even when the engine takes the capture away.
+    //
+    // Capturing on pointerdown instead cost every mouse click in the chart: capture
+    // retargets subsequent pointer events AND the synthesized click to the capturing
+    // element, so the delegated handler in board-controls.js found no
+    // [data-detail-kind] ancestor and the detail drawer never opened for any press,
+    // drag or not. Taking capture at the engage instead makes "a drag is not a click"
+    // a property of the capture rather than an accident, and leaves a press that never
+    // engages an ordinary, untouched click.
+    function capturePanPointer() {
+      if (typeof scrollHost.setPointerCapture !== "function" || panState.pointerId === undefined) {
+        return;
+      }
+      try {
+        scrollHost.setPointerCapture(panState.pointerId);
+      } catch (captureError) {
+        // A pointer the engine will not let us capture is not a reason to refuse the
+        // drag; the release events below are still the ordinary path, and the teardown
+        // asks hasPointerCapture rather than assuming this call succeeded.
+      }
+    }
+
     addTimelineListener(scrollHost, "pointermove", function (moveEvent) {
       if (!panState) {
         return;
       }
+      var wasEngaged = panState.engaged;
       panState.engaged = timelinePanEngaged(panState.engaged, panState.pointerX, moveEvent.clientX);
       if (!panState.engaged) {
         return;
+      }
+      if (!wasEngaged) {
+        capturePanPointer();
       }
       scrollHost.classList.add("is-panning");
       var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs;

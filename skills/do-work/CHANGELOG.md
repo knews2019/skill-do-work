@@ -2,6 +2,58 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.33 — One Tab Press Past the Timeline Chart (2026-08-23)
+
+Tabbing past the Timeline used to cost one press per row — twenty-nine on the board that reported it,
+because every row was its own stop. The row list is one stop now, and the arrow keys walk the rows.
+
+- Up and Down move focus between rows; Left and Right still pan the window, and Enter or Space on the
+  focused row still opens its details
+- The single stop follows wherever focus actually went, so tabbing back into the chart returns you to
+  the row you left rather than the top
+- Measured with real keyboard input: one press to leave the list, against six-and-counting before
+
+## 0.236.32 — The Timeline Probe Lane Can Catch a Stolen Click (2026-08-23)
+
+The check that was supposed to guard the Timeline's click path passed straight through the regression
+that broke every click in the chart, because a synthetic pointer id cannot be captured and so the
+failing path was never reached. There is now a check that bites.
+
+- New `TestTimelinePointerCaptureWaitsForThePanEngage`: the press handler requests no pointer capture
+  and calls nothing that does, while the drag-engage path still does
+- The set of capture-requesting functions is read out of the generated page rather than listed, so a
+  fresh wrapper called from the press handler fails the check too
+- Proved by mutation, four ways, including removing the capture altogether — the opposite defect,
+  which a plain absence check would have called clean
+
+## 0.236.31 — Timeline Clicks Open the Detail Drawer Again (2026-08-23)
+
+Clicking a bar in the Timeline stopped opening anything two versions ago — every mouse press inside the
+chart was swallowed, including the sub-pixel nudge that is supposed to still count as a click. Dragging
+to pan kept working, which is why it took a while to notice.
+
+- The Timeline takes its pointer capture when a drag actually engages, not on every press: capture also
+  retargets the click the browser synthesizes, so taking it early cost the click its target
+- A press that never travels four pixels is now an ordinary, untouched click again — and a drag released
+  outside the chart still ends cleanly, which is what the capture was added for
+- Verified with real browser input rather than synthetic events, because synthetic pointer ids cannot be
+  captured and so cannot reproduce the fault
+
+## 0.236.30 — Interrupted Report Images Take Their Backend With Them (2026-08-23)
+
+Cancelling an `ai-report` could leave the image backend running, and the probe that was supposed to catch
+that could hang the repo's own verification gate instead of failing it. Both halves are closed: an
+interruption always reaches the backend now, and a backend that will not go makes the probe fail with a
+diagnostic naming what is still alive.
+
+- `generate-report-image.sh` defers HUP/INT/TERM across both backend launches and re-raises once the PID is
+  published, so an interruption can no longer land in the window where the cleanup has nothing to signal
+- Its invocation-private staging file is created after the interruption traps now, not eighty lines before
+  them — a signal in that gap used to leave the file behind
+- The interruption fixture cases wait with a ten-second deadline that names the surviving processes instead
+  of blocking forever, and two new cases cover an interruption fired the moment staging appears, plus the
+  deadline itself
+
 ## 0.236.29 — Failed REQs Stop at Their Own Timestamp (2026-08-23)
 
 Two review findings on the Timeline work. A `failed` REQ was drawn as work still in flight even with its

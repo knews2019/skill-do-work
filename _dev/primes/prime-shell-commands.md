@@ -58,6 +58,7 @@ Before adding an option to a script under `skills/*/tools/` or `skills/*/scripts
 
 ## Lessons
 
+- [REQ-325: a handle published one command after the launch is not a handle a trap can rely on — traps run *between* commands, so `cmd & pid=$!` has a window the cleanup sees empty; and a file created before its first HUP/INT/TERM trap is a file no trap owns, because a default-action signal never runs the EXIT handler](../../do-work/archive/REQ-325-stop-the-report-image-interruption-path-orphaning-its-backend.md#lessons-learned)
 - [REQ-301: a subtracting gate's failure mode is silence, so downgrade-and-name instead of dropping — and "the text already exists" cannot tell a move from a duplicate; occurrence count can](../../do-work/archive/UR-056/REQ-301-let-qualify-tell-a-moved-line-from-an-added-one.md#lessons-learned)
 - [REQ-264: "disarmed" and "passed" print identically unless something says otherwise — when a check keys on a marker's state, write the marker-absent case first](../../do-work/archive/UR-055/REQ-264-make-a-disarmed-p-a-u-audit-visible.md#lessons-learned)
 - [REQ-263: run every stated RED before writing anything — the residual I had documented was not the residual that existed, and only the fixture found that](../../do-work/archive/UR-055/REQ-263-tighten-qualifys-ownership-probe-and-warn-legibility.md#lessons-learned)
