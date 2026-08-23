@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.29 — Failed REQs Stop at Their Own Timestamp (2026-08-23)
+
+Two review findings on the Timeline work. A `failed` REQ was drawn as work still in flight even with its
+`completed_at` recorded, and a still-open REQ could have the live end of its bar sit outside every window
+the controls could reach.
+
+- A failure now ends where its `completed_at` says it did, the same stamp the calendar dates it from
+- "Still running" now means running: `failed` counts as stopped, while `blocked` and needs-input stay open, because that work is unfinished rather than over
+- The backup window used when the chart cannot read its own date range now reaches the now-line for rows that are still open
+
 ## 0.236.28 — Timeline Arrow Keys and Drags Keep Working (2026-08-23)
 
 With a row focused, the first arrow key panned the chart and every one after it was dead. A drag released

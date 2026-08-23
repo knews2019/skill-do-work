@@ -6268,6 +6268,22 @@ func TestJavaScriptBehaviorTimelineFallbackBoundsSpanTheWholeMatchedSet(t *testi
 	  ]
 	}`
 
+	// A payload whose range is unreadable AND whose only row is still OPEN, with no
+	// projection to push the bound past the now-line. timelineRowSegments draws that
+	// row's wait to `now`, so an extent built from stored stamps alone stops eight
+	// hours short of it and the live part of the bar is unreachable in every window.
+	// (Found by Codex on the pull request.)
+	openRowPayload := `{
+	  "now": "2026-08-18T20:00:00Z",
+	  "rangeStart": "not-a-timestamp",
+	  "rangeEnd": "not-a-timestamp",
+	  "rows": [
+	    {"id":"REQ-951","createdTime":"2026-08-18T12:00:00Z","claimedTime":null,
+	     "completedTime":null,"waitMinutes":480,"workMinutes":0,
+	     "waitOpen":true,"workOpen":false,"hasWork":false,"anomaly":false}
+	  ]
+	}`
+
 	// And a payload where no row carries a readable instant at all: the fallback
 	// must decline rather than invent a window. Doubly unreachable from the producer
 	// — timelineRange always returns real instants, and buildTimelineAggregate drops
@@ -6352,6 +6368,18 @@ process.stdout.write(JSON.stringify({
 	if !strings.Contains(summary, "→ 2026-08-18 20:") {
 		t.Errorf("the fallback window is %q; it has to reach REQ-933's completion at 20:00, so the "+
 			"extent must read claimed and completed instants and not created_at alone", summary)
+	}
+
+	// AN OPEN ROW'S NOW-LINE IS PART OF THE EXTENT. The window has to reach 20:00,
+	// where the bar is drawn to, not stop at the 12:00 the row has stored.
+	openRowIds, openRowSummary := renderWith(openRowPayload)
+	if len(openRowIds) != 1 {
+		t.Fatalf("the open-row fallback render drew %v, want the single fixture row", openRowIds)
+	}
+	if !strings.Contains(openRowSummary, "→ 2026-08-18 20:") {
+		t.Errorf("the fallback window for a still-open row is %q; it has to reach the now-line at "+
+			"20:00, which is where timelineRowSegments draws that row's wait to — bounds are what "+
+			"every control clamps against, so anything short of it is unreachable", openRowSummary)
 	}
 
 	// And with nothing readable, the view says so instead of fabricating a window.

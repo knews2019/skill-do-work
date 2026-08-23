@@ -994,6 +994,25 @@ func isTerminalResolvedStatus(normalizedStatus string) bool {
 	return isCompletedStatus(normalizedStatus) || isCancelledStatus(normalizedStatus)
 }
 
+// isStoppedStatus reports whether a REQ's work has ENDED, for any reason.
+//
+// Wider than isTerminalResolvedStatus by exactly one status: `failed`. A failure
+// stopped, but it did not COMPLETE — which is why buildBoard deliberately leaves
+// its CompletionTime unresolved and buildCalendar dates it from completed_at
+// itself.
+//
+// The two predicates answer two different questions and conflating them cost the
+// Timeline a regression: "does this REQ have a completion instant to show" is
+// isTerminalResolvedStatus, and "is this REQ still running" is this one. Reading
+// the first for the second made every failed REQ draw an open bar to the now-line
+// even though its completed_at was sitting right there.
+//
+// The blocked and needs-input statuses are deliberately NOT here. They are
+// unfinished work still in the queue, and their spans are genuinely open.
+func isStoppedStatus(normalizedStatus string) bool {
+	return isTerminalResolvedStatus(normalizedStatus) || normalizedStatus == "failed"
+}
+
 // isNeedsInputOrBlockedStatus reports whether a normalized status belongs in the
 // Needs-input / Blocked column.
 func isNeedsInputOrBlockedStatus(normalizedStatus string) bool {

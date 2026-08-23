@@ -1212,16 +1212,25 @@
     return node;
   }
 
-  // The extent of a row set, from every instant its rows carry. Used only by the
-  // bounds FALLBACK below, so it costs the common path nothing.
+  // The extent of a row set, from everything its rows are DRAWN across. Used only
+  // by the bounds FALLBACK below, so it costs the common path nothing.
+  //
+  // The now-line is part of that extent for an OPEN row, and leaving it out was a
+  // real gap: timelineRowSegments draws an open span to nowMs, so an extent built
+  // from stored stamps alone stopped at the row's last recorded instant. Since these
+  // bounds are what every control clamps against, the live part of the bar then sat
+  // outside every window the reader could reach — Fit all included. (Found by Codex
+  // on the pull request. It only bites when the projection is declined or absent,
+  // because a confident projection's queue-end already pushes the bound past now.)
   //
   // Returns null when not one row carries a parseable instant, because the honest
   // answer there is "there is nothing to place on a timeline" rather than a
   // fabricated window.
-  function timelineRowSetExtent(rows) {
+  function timelineRowSetExtent(rows, nowMs) {
     var earliestMs = Infinity;
     var latestMs = -Infinity;
     rows.forEach(function (row) {
+      var rowCarriesAnInstant = false;
       [row.createdTime, row.claimedTime, row.completedTime].forEach(function (stamp) {
         if (!stamp) {
           return;
@@ -1230,9 +1239,22 @@
         if (isNaN(instantMs)) {
           return;
         }
+        rowCarriesAnInstant = true;
         earliestMs = Math.min(earliestMs, instantMs);
         latestMs = Math.max(latestMs, instantMs);
       });
+      // An open span is drawn FROM one of the instants above TO the now-line, so
+      // the now-line only extends an extent the row is already in. A row with no
+      // readable instant of its own has no segment for it to extend, and counting
+      // the now-line there would turn "there is nothing to place on a timeline"
+      // into a fabricated hour around the present.
+      //
+      // Both ends, because timelineRowSegments sorts its own endpoints: a
+      // future-dated created_at makes the now-line the EARLIER of the two.
+      if (rowCarriesAnInstant && (row.waitOpen || row.workOpen) && !isNaN(nowMs)) {
+        earliestMs = Math.min(earliestMs, nowMs);
+        latestMs = Math.max(latestMs, nowMs);
+      }
     });
     if (!isFinite(earliestMs) || !isFinite(latestMs)) {
       return null;
@@ -1481,7 +1503,7 @@
       // clamps against, no control could leave: on this repo's board that would
       // have stranded 287 of 317 REQs permanently out of reach. A degraded
       // fallback may be coarse; it may not be a dead end.
-      var matchedExtent = timelineRowSetExtent(filterMatchedRows);
+      var matchedExtent = timelineRowSetExtent(filterMatchedRows, nowMs);
       if (!matchedExtent) {
         // Nothing parseable anywhere. Say so rather than invent a window; this is
         // the same message the no-readable-created_at path uses.

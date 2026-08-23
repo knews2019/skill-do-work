@@ -1396,17 +1396,40 @@ window.addEventListener("load", function () {
       if (firstRow) {
         firstRow.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true }));
       }
-      // The drawer narrows the host; wait for THAT, not for a duration.
+      // Wait for the RE-LAYOUT, not for the width change and not for a duration.
+      //
+      // The width narrows synchronously with the click, but the render it triggers is
+      // scheduled through requestAnimationFrame — and headless --dump-dom has no
+      // compositor driving frames, so under full-suite load that callback lands well
+      // after the width has moved. Polling the width therefore measured a settled
+      // container around an unsettled plot, and the probe reported the very defect it
+      // exists to catch. Twice.
+      //
+      // Polling the OUTCOME is sound here because the wait is bounded: a genuine
+      // regression spins out the attempts and then fails the assertion below, which is
+      // exactly what removing the ResizeObserver does.
       var widthBeforeClick = probe.before.hostWidth;
+      function someSegmentIsInsideThePlot(wantWidthChanged) {
+        var host = plotHost();
+        var hostBox = host.getBoundingClientRect();
+        var widthChanged = Math.round(hostBox.width) !== widthBeforeClick;
+        if (widthChanged !== wantWidthChanged) {
+          return false;
+        }
+        return [].slice.call(host.querySelectorAll("rect.timeline-segment")).some(function (segment) {
+          var box = segment.getBoundingClientRect();
+          return box.right > hostBox.left && box.left < hostBox.right;
+        });
+      }
       settleUntil(function () {
-        return Math.round(plotHost().getBoundingClientRect().width) !== widthBeforeClick;
+        return someSegmentIsInsideThePlot(true);
       }, function () {
         probe.drawerOpenAfter = drawerIsOpen();
         probe.after = plotSnapshot("after");
         var close = document.getElementById("detail-close");
         if (close) { close.click(); }
         settleUntil(function () {
-          return Math.round(plotHost().getBoundingClientRect().width) === widthBeforeClick;
+          return someSegmentIsInsideThePlot(false);
         }, function () {
           probe.closed = plotSnapshot("closed");
           probe.drawerOpenAtEnd = drawerIsOpen();

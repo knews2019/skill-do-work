@@ -111,14 +111,41 @@ func buildTimelineAggregate(tickets []*RequestTicket, now time.Time) TimelineAgg
 		// consumes the verdict rather than listing statuses of its own. It is the
 		// question every "open" flag below turns on: a span is open because the
 		// work is still running, never because a stamp failed to parse.
-		hasStopped := isTerminalResolvedStatus(ticket.Status)
-		// The END INSTANT the board already resolved — frontmatter first, then the
-		// commit hash's committer date (resolveCompletionTime, model.go). Reading
-		// ticket.CompletedAt again here ignored that work: REQ-311 and REQ-302 have
-		// a resolved instant the calendar places them on, and this view drew both as
-		// still waiting, running to the now-line.
-		endInstant := ticket.CompletionTime.UTC()
-		endResolved := hasStopped && !ticket.CompletionTime.IsZero()
+		//
+		// isStoppedStatus, NOT isTerminalResolvedStatus. The narrower one excludes
+		// `failed`, and reading it here made every failed REQ draw an open bar to the
+		// now-line with its completed_at sitting right there — a regression this file
+		// introduced and Codex caught on the pull request.
+		hasStopped := isStoppedStatus(ticket.Status)
+		// WHERE it stopped.
+		//
+		// CompletionTime is the instant buildBoard already worked out — from frontmatter
+		// or from the commit hash's committer date (resolveCompletionTime, model.go) —
+		// and reading it rather than re-parsing completed_at is what stopped REQ-311
+		// and REQ-302 being drawn as still waiting beside calendar entries dating them
+		// days earlier.
+		//
+		// completed_at is the fallback for the one status buildBoard declines to
+		// resolve: a `failed` REQ, whose own stamp is where buildCalendar dates it from
+		// too, so this mirrors that rather than inventing a second rule.
+		//
+		// The ORDER of the two is not observable, and saying so is worth more than a
+		// claim that it is: resolveCompletionTime derives CompletionTime FROM
+		// completed_at whenever that stamp parses, so a git-derived instant only exists
+		// where the stamp did not parse. They cannot disagree. CompletionTime is read
+		// first because it is the board's own verdict, not because the outcome depends
+		// on it — swapping the branches passes every test in this file, deliberately.
+		endInstant := time.Time{}
+		endResolved := false
+		if hasStopped {
+			if !ticket.CompletionTime.IsZero() {
+				endInstant = ticket.CompletionTime.UTC()
+				endResolved = true
+			} else if stoppedAt, stoppedParsed := parseTimestamp(ticket.CompletedAt); stoppedParsed {
+				endInstant = stoppedAt.UTC()
+				endResolved = true
+			}
+		}
 		claimedInstant, claimedParsed := parseTimestamp(ticket.ClaimedAt)
 		if !claimedParsed {
 			// Never claimed. Still in the queue, so the wait is genuinely running

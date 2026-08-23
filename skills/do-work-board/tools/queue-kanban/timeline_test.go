@@ -28,7 +28,14 @@ func timelineTicket(requestId string, status string, createdAt string, claimedAt
 		ClaimedAt:   claimedAt,
 		CompletedAt: completedAt,
 	}
-	if completionInstant, completionParsed := parseTimestamp(completedAt); completionParsed {
+	// MIRRORS buildBoard's own condition, which resolves a completion instant only
+	// for the terminal-RESOLVED statuses and deliberately leaves a `failed` ticket's
+	// unresolved (model.go, and buildCalendar dates a failure from completed_at
+	// itself). A fixture that filled CompletionTime for every status would describe
+	// a ticket buildBoard never produces — and would have hidden the regression that
+	// made a failed REQ draw an open bar to the now-line.
+	completionInstant, completionParsed := parseTimestamp(completedAt)
+	if completionParsed && isTerminalResolvedStatus(status) {
 		ticket.CompletionTime = completionInstant.UTC()
 		ticket.CompletionTimeSource = CompletionFromFrontmatter
 	} else {
@@ -253,6 +260,16 @@ func TestTimelineOpenSpansMeanStillRunningNotAMissingStamp(t *testing.T) {
 	// Completed, never claimed, no resolvable instant: nothing drawable at all.
 	unresolvedNeverClaimed := timelineUnresolvedTicket("REQ-805", "completed",
 		"2026-07-28T13:00:00Z", "")
+	// FAILED, with a completed_at. It stopped, and buildBoard deliberately leaves its
+	// CompletionTime unresolved — so the row's end has to come from the stamp, the
+	// same one buildCalendar dates a failure from. Reading the narrower
+	// terminal-RESOLVED predicate here drew this as work still in flight.
+	failedWithStamp := timelineTicket("REQ-809", "failed",
+		"2026-08-17T09:00:00Z", "2026-08-17T10:00:00Z", "2026-08-17T11:30:00Z")
+	// And a status that is NOT stopped, to keep the widening honest: a blocked REQ is
+	// unfinished work still in the queue, and its span is genuinely open.
+	blockedAfterClaim := timelineTicket("REQ-810", "blocked",
+		"2026-08-23T08:00:00Z", "2026-08-23T09:00:00Z", "")
 	// Completed with NO completed_at frontmatter, dated from its commit hash. This
 	// is the one fixture whose two possible sources DISAGREE, so it is the one that
 	// can tell reading the board's resolved instant from re-parsing the stamp.
@@ -266,13 +283,16 @@ func TestTimelineOpenSpansMeanStillRunningNotAMissingStamp(t *testing.T) {
 
 	aggregate := buildTimelineAggregate([]*RequestTicket{
 		completedNeverClaimed, cancelledNeverClaimed, completedAndClaimed,
-		unresolvedAfterClaim, unresolvedNeverClaimed, gitDated, inFlight, stillPending,
+		unresolvedAfterClaim, unresolvedNeverClaimed, failedWithStamp, blockedAfterClaim,
+		gitDated, inFlight, stillPending,
 	}, now)
 
 	// Nothing that has stopped may claim an open span, whatever its stamps look
 	// like. Stated as a sweep over the stopped rows so a new stopped shape cannot
 	// be added below without answering to it.
-	for _, stoppedId := range []string{"REQ-801", "REQ-802", "REQ-803", "REQ-804", "REQ-805", "REQ-808"} {
+	for _, stoppedId := range []string{
+		"REQ-801", "REQ-802", "REQ-803", "REQ-804", "REQ-805", "REQ-808", "REQ-809",
+	} {
 		stoppedRow := findTimelineRow(t, aggregate, stoppedId)
 		if stoppedRow.WaitOpen || stoppedRow.WorkOpen {
 			t.Errorf("%s has stopped, and reports WaitOpen=%v WorkOpen=%v; a span is open because "+
@@ -347,6 +367,33 @@ func TestTimelineOpenSpansMeanStillRunningNotAMissingStamp(t *testing.T) {
 			gitDatedRow.CompletedTime)
 	}
 
+	// REQ-809: a failure ends at its own completed_at, not at the now-line six days
+	// later. This is the shape whose CompletionTime buildBoard never resolves, so it
+	// is the one that separates "has it stopped" from "is there an instant to show".
+	failedRow := findTimelineRow(t, aggregate, "REQ-809")
+	assertTimelineMinutes(t, "REQ-809 wait", failedRow.WaitMinutes, 60)
+	assertTimelineMinutes(t, "REQ-809 work", failedRow.WorkMinutes, 90)
+	if !failedRow.CompletedTime.Equal(time.Date(2026, 8, 17, 11, 30, 0, 0, time.UTC)) {
+		t.Errorf("REQ-809 (failed) ends at %s, want its own completed_at 2026-08-17T11:30:00Z",
+			failedRow.CompletedTime)
+	}
+	// The fixture is spaced so a bar drawn to the now-line is a different number, or
+	// this assertion could not tell the two apart.
+	if math.Abs(failedRow.WorkMinutes-now.Sub(time.Date(2026, 8, 17, 10, 0, 0, 0, time.UTC)).Minutes()) < 1 {
+		t.Error("REQ-809's work span equals now − claimed_at, so this fixture cannot tell a failure " +
+			"measured to its own stamp from one measured to the now-line")
+	}
+
+	// REQ-810: blocked is NOT stopped. Widening the stopped set to cover failures
+	// must not sweep in the statuses that are merely waiting — a blocked REQ is
+	// unfinished work and its span is genuinely running.
+	blockedRow := findTimelineRow(t, aggregate, "REQ-810")
+	if !blockedRow.WorkOpen {
+		t.Error("REQ-810 is blocked, not stopped: it is unfinished work still in the queue and its " +
+			"work span is open")
+	}
+	assertTimelineMinutes(t, "REQ-810 open work", blockedRow.WorkMinutes, 3*60)
+
 	// REQ-806 and REQ-807: the two rows that ARE running, measured to the board's
 	// one now. Without these the sweep above would pass against code that simply
 	// never sets an open flag.
@@ -372,7 +419,7 @@ func TestTimelineOpenSpansMeanStillRunningNotAMissingStamp(t *testing.T) {
 	// and stretch every fitted window with them.
 	stoppedOnly := buildTimelineAggregate([]*RequestTicket{
 		completedNeverClaimed, cancelledNeverClaimed, completedAndClaimed,
-		unresolvedAfterClaim, unresolvedNeverClaimed, gitDated,
+		unresolvedAfterClaim, unresolvedNeverClaimed, failedWithStamp, gitDated,
 	}, now)
 	wantStoppedEnd := time.Date(2026, 8, 21, 15, 0, 0, 0, time.UTC)
 	if !stoppedOnly.RangeEnd.Equal(wantStoppedEnd) {
