@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.22 — Timeline Axis Ticks Sit on Real Dates (2026-08-23)
+
+The axis cut every window into six equal parts and then printed a bare date on each tick — so a week read
+"1, 2, 3, 4, 5, 6, 8 Jun" with 7 June missing, and the tick labelled "4 Jun" was actually at 4 Jun 12:00.
+Ticks now land on calendar boundaries.
+
+- A week shows all eight of its midnights, a day shows four-hour marks, a month shows its Mondays, and a three-month view shows fortnights
+- A label with no time on it is now always a tick at midnight, which is what a bare date claims
+- A window that crosses New Year gets the year on its labels even when it is only nine days long
+- A tick near either edge is anchored inward so its label is not clipped
+
 ## 0.236.21 — The Timeline Stops Drawing Finished REQs as Still Running (2026-08-23)
 
 The chart decided a span was "still open" by asking whether a timestamp string parsed, not by asking what

@@ -28,9 +28,60 @@
   var TIMELINE_ROW_HEIGHT = 18;
   var TIMELINE_BAR_HEIGHT = 10;
   var TIMELINE_AXIS_HEIGHT = 26;
-  // Ticks per axis, and therefore the gap between them: the label format is
-  // keyed to that gap, so the two have to be read from one number.
+  // The TARGET number of gaps between axis ticks, not an exact count.
+  //
+  // It used to be exact: the axis divided the window into this many equal parts.
+  // That put ticks at arbitrary instants on any window that is not a multiple of
+  // six of something — 28 hours apart across a week, 5.17 days across a month —
+  // and the label formatter then printed a bare DATE for each one, claiming
+  // midnights the ticks did not sit at and skipping a calendar day outright.
+  //
+  // Ticks now sit on calendar boundaries and this picks which boundary: the entry
+  // of TIMELINE_AXIS_TICK_STEPS whose gap divides the window into closest to this
+  // many parts. The real count therefore varies — 4 for a month of Mondays, 8 for
+  // a week of midnights — and that is the point.
   var TIMELINE_AXIS_TICK_COUNT = 6;
+
+  // The gaps an axis is allowed to put between ticks, shortest first, each with
+  // the boundary it aligns to. Sub-day and whole-day gaps divide a UTC day, so
+  // they align to midnight for free; week gaps align to Monday, the same week rule
+  // timelinePeriodStart uses; month gaps align to the 1st.
+  //
+  // The ladder is CLOSED and does not go stale, because it enumerates a
+  // mathematical range rather than a set of cases: it spans from the view's zoom
+  // floor (one hour) to any archive age, and the selection rule is "closest to
+  // TIMELINE_AXIS_TICK_COUNT gaps". A longer archive picks a longer rung; it never
+  // needs a new one.
+  // The epoch's first Monday, so a week-long gap lands on Mondays.
+  var TIMELINE_WEEK_ALIGNMENT_MS = Date.UTC(1970, 0, 5);
+  var TIMELINE_AXIS_TICK_STEPS = [
+    { ms: 5 * 60000 },
+    { ms: 10 * 60000 },
+    { ms: 15 * 60000 },
+    { ms: 30 * 60000 },
+    { ms: 3600000 },
+    { ms: 2 * 3600000 },
+    { ms: 3 * 3600000 },
+    { ms: 4 * 3600000 },
+    { ms: 6 * 3600000 },
+    { ms: 12 * 3600000 },
+    { ms: 86400000 },
+    { ms: 2 * 86400000 },
+    { ms: 7 * 86400000, alignMs: TIMELINE_WEEK_ALIGNMENT_MS },
+    { ms: 14 * 86400000, alignMs: TIMELINE_WEEK_ALIGNMENT_MS },
+    { months: 1 },
+    { months: 2 },
+    { months: 3 },
+    { months: 6 },
+    { months: 12 },
+    { months: 24 },
+    { months: 60 },
+    { months: 120 }
+  ];
+  // The most ticks an axis will draw, whatever the window. A backstop against a
+  // pathological window rather than a design limit: every rung of the ladder above
+  // yields between three and nine gaps for the spans it wins.
+  var TIMELINE_AXIS_TICK_LIMIT = 64;
   // Wide enough for the id plus a title worth reading, and no wider: every pixel
   // here comes out of the plot. At the 10px monospace label face measured on
   // Chromium 1194 (6.0219 px/cell) that is 28 cells — "REQ-042" plus a two-space
@@ -42,7 +93,6 @@
   var TIMELINE_OVERSCAN_ROWS = 4;
   var TIMELINE_MIN_SPAN_MS = 3600000; // one hour in ms — as far in as zoom goes
   var TIMELINE_DAY_MS = 86400000;
-  var TIMELINE_YEAR_MS = 365 * TIMELINE_DAY_MS;
   var TIMELINE_ZOOM_STEP = 1.6;
   var TIMELINE_PAN_FRACTION = 0.15;
   var TIMELINE_NOW_JUMP_MARGIN_FRACTION = 0.1;
@@ -154,14 +204,28 @@
   // used to be the literal ":00", which made every tick inside one hour read the
   // same — seven ticks, two labels, on the window the Now button lands in.
   //
-  // WHICH parts appear is keyed to the gap between ticks rather than to a span
-  // threshold of its own, so the label always carries whatever separates one
-  // tick from the next: the time once ticks sit less than a day apart, the year
-  // once the window is long enough for one day-and-month to come round twice.
-  function timelineFormatAxisTick(epochMs, spanMs) {
+  // WHICH parts appear is keyed to the GAP the axis actually chose, so the label
+  // always carries whatever separates one tick from the next.
+  //
+  // The gap used to be derived here as spanMs / TIMELINE_AXIS_TICK_COUNT, back
+  // when the axis divided the window into that many equal parts. It no longer
+  // does — the ticks sit on calendar boundaries — and a derived gap would be a
+  // second, disagreeing opinion about the spacing. So the gap is passed in, from
+  // the same step that positioned the ticks.
+  //
+  // A DATE-ONLY LABEL IS A CLAIM OF MIDNIGHT, and that is why this pairs with
+  // calendar-aligned ticks rather than merely reading nicer. Six equal parts
+  // across a week put ticks 28 hours apart and this branch printed a bare date
+  // for every one of them: the week of 6 July read "6, 7, 8, 9, 10, 11, 13 Jul"
+  // — 12 July missing, and the tick labelled "9 Jul" sitting at 9 Jul 12:00.
+  //
+  // The year is keyed on whether the window SPANS more than one calendar year,
+  // not on whether it is longer than 365 days. A window from December into
+  // January needs the year on both ends and is nine days long.
+  function timelineFormatAxisTick(epochMs, gapMs, windowStartMs, windowEndMs) {
     var instant = new Date(epochMs);
     var calendarDate = instant.getUTCDate() + " " + TIMELINE_MONTHS[instant.getUTCMonth()];
-    if (spanMs / TIMELINE_AXIS_TICK_COUNT < TIMELINE_DAY_MS) {
+    if (gapMs < TIMELINE_DAY_MS) {
       return (
         calendarDate +
         " " +
@@ -170,7 +234,7 @@
         String(instant.getUTCMinutes()).padStart(2, "0")
       );
     }
-    if (spanMs >= TIMELINE_YEAR_MS) {
+    if (new Date(windowStartMs).getUTCFullYear() !== new Date(windowEndMs).getUTCFullYear()) {
       return calendarDate + " " + instant.getUTCFullYear();
     }
     return calendarDate;
@@ -799,17 +863,102 @@
     return alreadyEngaged || Math.abs(pointerX - pressX) >= TIMELINE_PAN_THRESHOLD_PX;
   }
 
-  // The instants the axis puts a tick at. Extracted so the GRIDLINES can be drawn
-  // from the same list rather than recomputing it: two loops with the same
-  // arithmetic is one edit away from an axis whose labels sit beside lines that
-  // mean something slightly different.
-  function timelineAxisTickInstants(windowStartMs, windowEndMs) {
-    var windowSpanMs = windowEndMs - windowStartMs || 1;
-    var instants = [];
-    for (var tickIndex = 0; tickIndex <= TIMELINE_AXIS_TICK_COUNT; tickIndex++) {
-      instants.push(windowStartMs + (windowSpanMs * tickIndex) / TIMELINE_AXIS_TICK_COUNT);
+  // ---- axis ticks -----------------------------------------------------------
+  //
+  // Ticks sit on CALENDAR boundaries, chosen from TIMELINE_AXIS_TICK_STEPS. The
+  // axis used to divide the window into TIMELINE_AXIS_TICK_COUNT equal parts,
+  // which is honest only when the window happens to be a multiple of six of
+  // something — and the label formatter printed a bare date for any gap of a day
+  // or more, so on a week (28-hour gaps) and on a month (5.17-day gaps) the axis
+  // named midnights it was not drawn at and skipped a calendar day outright.
+
+  // How long one step is, as a span, so the ladder can be searched by span. A
+  // month is not a fixed length, so a month step reports the mean Gregorian month
+  // — good enough to CHOOSE with, and never used to position anything.
+  function timelineTickStepSpanMs(step) {
+    return step.months ? step.months * 30.436875 * TIMELINE_DAY_MS : step.ms;
+  }
+
+  // Which rung of the ladder this window gets: the one dividing it into closest to
+  // TIMELINE_AXIS_TICK_COUNT gaps. Ties go to the LONGER step, because the risk at
+  // equal distance is a crowded axis rather than a sparse one.
+  function timelineAxisTickStep(windowSpanMs) {
+    var chosenStep = TIMELINE_AXIS_TICK_STEPS[TIMELINE_AXIS_TICK_STEPS.length - 1];
+    var chosenDistance = Infinity;
+    for (var stepIndex = 0; stepIndex < TIMELINE_AXIS_TICK_STEPS.length; stepIndex++) {
+      var step = TIMELINE_AXIS_TICK_STEPS[stepIndex];
+      var distance = Math.abs(
+        windowSpanMs / timelineTickStepSpanMs(step) - TIMELINE_AXIS_TICK_COUNT);
+      if (distance <= chosenDistance) {
+        chosenStep = step;
+        chosenDistance = distance;
+      }
     }
-    return instants;
+    return chosenStep;
+  }
+
+  // The last boundary of this step at or before an instant.
+  function timelineTickAtOrBefore(epochMs, step) {
+    if (step.months) {
+      var instant = new Date(epochMs);
+      var monthIndex = instant.getUTCFullYear() * 12 + instant.getUTCMonth();
+      var alignedMonths = monthIndex - (((monthIndex % step.months) + step.months) % step.months);
+      // Counted in months from January 1970 rather than passed as a year, because
+      // Date.UTC reads a year under 100 as 19xx. Month indices well past 11 roll
+      // forward correctly, which is the whole reason this is one call.
+      return Date.UTC(1970, alignedMonths - 1970 * 12, 1);
+    }
+    var alignmentMs = step.alignMs || 0;
+    return Math.floor((epochMs - alignmentMs) / step.ms) * step.ms + alignmentMs;
+  }
+
+  // One step on from a boundary.
+  function timelineSteppedTick(epochMs, step) {
+    if (step.months) {
+      var instant = new Date(epochMs);
+      return Date.UTC(instant.getUTCFullYear(), instant.getUTCMonth() + step.months, 1);
+    }
+    return epochMs + step.ms;
+  }
+
+  // The instants the axis puts a tick at, and the gap it chose between them.
+  // Extracted so the GRIDLINES can be drawn from the same list rather than
+  // recomputing it: two loops with the same arithmetic is one edit away from an
+  // axis whose labels sit beside lines that mean something slightly different.
+  //
+  // Returns the gap alongside the instants because the LABEL FORMAT depends on it,
+  // and deriving it a second time from the instants is how the two came to
+  // disagree in the first place.
+  function timelineAxisTicks(windowStartMs, windowEndMs) {
+    var windowSpanMs = windowEndMs - windowStartMs;
+    if (!(windowSpanMs > 0)) {
+      // A degenerate window has no interior to space ticks across. One tick at the
+      // instant itself is finite and honest; six identical ones were neither.
+      return { instants: [windowStartMs], gapMs: TIMELINE_DAY_MS };
+    }
+    var step = timelineAxisTickStep(windowSpanMs);
+    var instants = [];
+    var tickMs = timelineTickAtOrBefore(windowStartMs, step);
+    if (tickMs < windowStartMs) {
+      tickMs = timelineSteppedTick(tickMs, step);
+    }
+    while (tickMs <= windowEndMs && instants.length < TIMELINE_AXIS_TICK_LIMIT) {
+      instants.push(tickMs);
+      tickMs = timelineSteppedTick(tickMs, step);
+    }
+    if (instants.length === 0) {
+      // A window narrower than the shortest rung, which the zoom floor makes
+      // unreachable today. It still may not produce an axis with nothing on it.
+      instants.push(windowStartMs);
+    }
+    return { instants: instants, gapMs: timelineTickStepSpanMs(step) };
+  }
+
+  // The instants alone, for the gridlines, which need no label and therefore no
+  // gap. One function so a gridline can never mean a different instant from the
+  // label above it.
+  function timelineAxisTickInstants(windowStartMs, windowEndMs) {
+    return timelineAxisTicks(windowStartMs, windowEndMs).instants;
   }
 
   // ---- row labels -----------------------------------------------------------
@@ -1739,11 +1888,12 @@
 
     function renderAxis() {
       axisSvg.textContent = "";
-      var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs || 1;
-      var tickInstants = timelineAxisTickInstants(
+      var axisTicks = timelineAxisTicks(
         timelineViewState.windowStartMs, timelineViewState.windowEndMs);
-      var tickCount = TIMELINE_AXIS_TICK_COUNT;
-      for (var tickIndex = 0; tickIndex <= tickCount; tickIndex++) {
+      var tickInstants = axisTicks.instants;
+      var plotLeftEdgeX = TIMELINE_LABEL_WIDTH;
+      var plotSpanPx = plotWidth();
+      for (var tickIndex = 0; tickIndex < tickInstants.length; tickIndex++) {
         var tickMs = tickInstants[tickIndex];
         var tickX = xOfEpoch(tickMs);
         makeTimelineSvgNode(axisSvg, "line", {
@@ -1760,9 +1910,23 @@
             x: tickX.toFixed(1),
             y: TIMELINE_AXIS_HEIGHT - 10,
             class: "timeline-axis-label",
-            "text-anchor": tickIndex === 0 ? "start" : tickIndex === tickCount ? "end" : "middle"
+            // Anchored by POSITION, not by index. The first and last ticks used to
+            // be the window's own edges, so anchoring them start/end was the same
+            // thing; a calendar tick can now fall anywhere, including one pixel
+            // from an edge, and an index-keyed anchor would clip it there.
+            "text-anchor":
+              tickX < plotLeftEdgeX + plotSpanPx * 0.06
+                ? "start"
+                : tickX > plotLeftEdgeX + plotSpanPx * 0.94
+                  ? "end"
+                  : "middle"
           },
-          timelineFormatAxisTick(tickMs, windowSpanMs)
+          timelineFormatAxisTick(
+            tickMs,
+            axisTicks.gapMs,
+            timelineViewState.windowStartMs,
+            timelineViewState.windowEndMs
+          )
         );
       }
       // The queue-end rule's LABEL lives here rather than in the rows SVG: the
@@ -1781,9 +1945,9 @@
           class: "timeline-queue-end-line"
         });
         // Anchored away from whichever edge it is near, so the caption stays on
-        // the canvas instead of being clipped by it.
-        var plotLeftX = TIMELINE_LABEL_WIDTH;
-        var plotSpanPx = plotWidth();
+        // the canvas instead of being clipped by it. Wider margins than the tick
+        // labels above use, because "queue empty" is eleven characters and a tick
+        // label is six.
         makeTimelineSvgNode(
           axisSvg,
           "text",
@@ -1792,9 +1956,9 @@
             y: 8,
             class: "timeline-queue-end-label",
             "text-anchor":
-              queueEndX < plotLeftX + plotSpanPx * 0.15
+              queueEndX < plotLeftEdgeX + plotSpanPx * 0.15
                 ? "start"
-                : queueEndX > plotLeftX + plotSpanPx * 0.85
+                : queueEndX > plotLeftEdgeX + plotSpanPx * 0.85
                   ? "end"
                   : "middle"
           },

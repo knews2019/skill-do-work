@@ -3621,7 +3621,14 @@ process.stdout.write(JSON.stringify({
 // this is what keeps it one.
 func TestJavaScriptBehaviorTimelineGridlinesShareTheAxisTicks(t *testing.T) {
 	indexHtml := generateLiveSite(t)
-	javascriptProbe := timelineProbePreamble(t, "TIMELINE_AXIS_TICK_COUNT") +
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_AXIS_TICK_COUNT", "TIMELINE_DAY_MS", "TIMELINE_AXIS_TICK_LIMIT") +
+		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_WEEK_ALIGNMENT_MS") + "\n" +
+		rendererBracketDeclaration(t, "web/board-timeline.js", "TIMELINE_AXIS_TICK_STEPS") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineTickStepSpanMs(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineAxisTickStep(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineTickAtOrBefore(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineSteppedTick(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineAxisTicks(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineAxisTickInstants(") + `
 var windowStartMs = Date.UTC(2026, 5, 1);
 var windowEndMs = Date.UTC(2026, 5, 8);
@@ -3637,7 +3644,8 @@ process.stdout.write(JSON.stringify({
   // A zero-width window is reachable: the fields accept one day in both boxes
   // before the settle widens it. It must produce a tick list, not NaNs.
   degenerateFinite: timelineAxisTickInstants(windowStartMs, windowStartMs)
-    .every(function (instant) { return isFinite(instant); })
+    .every(function (instant) { return isFinite(instant); }),
+  degenerateCount: timelineAxisTickInstants(windowStartMs, windowStartMs).length
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "timeline axis ticks", javascriptProbe)
@@ -3648,19 +3656,29 @@ process.stdout.write(JSON.stringify({
 		LastIso          string `json:"lastIso"`
 		Ascending        bool   `json:"ascending"`
 		DegenerateFinite bool   `json:"degenerateFinite"`
+		DegenerateCount  int    `json:"degenerateCount"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &tickResult); decodeError != nil {
 		t.Fatalf("decode timeline axis tick behavior: %v (output %q)", decodeError, probeOutput)
 	}
 
-	if tickResult.InstantCount != tickResult.TickCount+1 {
-		t.Errorf("the tick source produced %d instants for %d ticks, want %d — both edges "+
-			"of the window carry one", tickResult.InstantCount, tickResult.TickCount,
-			tickResult.TickCount+1)
+	// REQ-327 CHANGED WHAT THIS COUNTS. The axis no longer divides the window into
+	// TIMELINE_AXIS_TICK_COUNT equal parts, so the old "one instant per tick plus
+	// both window edges" arithmetic no longer describes it — that arithmetic is the
+	// defect: on a seven-day window it put ticks 28 hours apart and the formatter
+	// labelled each with a bare date. A June week now gets eight midnights, and the
+	// count varies with the rung of the ladder the span picks.
+	if tickResult.InstantCount != 8 {
+		t.Errorf("a seven-day window produced %d ticks, want the 8 midnights that span it "+
+			"(1 June through 8 June inclusive)", tickResult.InstantCount)
 	}
 	if tickResult.FirstIso != "2026-06-01T00:00:00.000Z" || tickResult.LastIso != "2026-06-08T00:00:00.000Z" {
-		t.Errorf("the tick list spans %s → %s, want the window's own edges "+
-			"2026-06-01 → 2026-06-08", tickResult.FirstIso, tickResult.LastIso)
+		t.Errorf("the tick list spans %s → %s, want 2026-06-01 → 2026-06-08",
+			tickResult.FirstIso, tickResult.LastIso)
+	}
+	if tickResult.DegenerateCount != 1 {
+		t.Errorf("a zero-width window produced %d ticks, want exactly 1 — six copies of one "+
+			"instant is what the old equal-parts loop emitted", tickResult.DegenerateCount)
 	}
 	if !tickResult.Ascending {
 		t.Error("the tick instants are not strictly ascending")
@@ -3671,26 +3689,53 @@ process.stdout.write(JSON.stringify({
 	}
 
 	// ONE source, and this is the half that bites. The probe above would pass just
-	// as well with renderAxis keeping a private copy of the loop, which is exactly
+	// as well with renderAxis keeping a private copy of the walk, which is exactly
 	// the drift the extraction removed — so count the callers instead of trusting
-	// the function's existence. Inlining the arithmetic back into either caller
-	// puts a second `/ TIMELINE_AXIS_TICK_COUNT` in the page and fails here.
-	// The POSITION arithmetic specifically. timelineFormatAxisTick divides the
-	// span by the same count to pick a label format, which is a different
-	// question, so this counts the expression that places a tick rather than
-	// every mention of the constant.
-	tickPositionArithmetic := "tickIndex) / TIMELINE_AXIS_TICK_COUNT"
-	if placements := strings.Count(indexHtml, tickPositionArithmetic); placements != 1 {
-		t.Errorf("tick positions are computed in %d places, want exactly 1 "+
-			"(timelineAxisTickInstants); a second copy is how the gridlines start meaning a "+
-			"different instant than the ticks above them", placements)
+	// the function's existence.
+	//
+	// The BOUNDARY WALK specifically: the loop that steps from one tick to the next
+	// is what places a tick, and timelineSteppedTick is the only thing entitled to
+	// do it. Inlining it back into either caller puts a second copy in the page and
+	// fails here. (This replaced a count of "tickIndex) / TIMELINE_AXIS_TICK_COUNT",
+	// the equal-parts expression REQ-327 deleted.)
+	// Counted as "calls from anywhere else", not as a raw string count: the walk
+	// legitimately calls timelineSteppedTick twice inside timelineAxisTicks (once to
+	// skip a boundary that precedes the window, once per step), so a bare count of 1
+	// would be wrong about the healthy shape and could only be satisfied by making
+	// the code worse.
+	axisTicksBody := sliceBalancedBlockAfter(t, indexHtml, "function timelineAxisTicks(")
+	steppedTickDefinition := sliceBalancedBlockAfter(t, indexHtml, "function timelineSteppedTick(")
+	callsEverywhere := strings.Count(indexHtml, "timelineSteppedTick(")
+	callsInTheWalk := strings.Count(axisTicksBody, "timelineSteppedTick(")
+	callsInItsOwnDefinition := strings.Count(steppedTickDefinition, "timelineSteppedTick(")
+	if callsElsewhere := callsEverywhere - callsInTheWalk - callsInItsOwnDefinition; callsElsewhere != 0 {
+		t.Errorf("timelineSteppedTick is called from %d place(s) outside timelineAxisTicks; the "+
+			"boundary walk lives in one function or the gridlines can start meaning a different "+
+			"instant than the ticks above them", callsElsewhere)
 	}
-	for _, caller := range []string{"function renderAxis(", "function drawGridlines("} {
+	if callsInTheWalk == 0 {
+		t.Error("timelineAxisTicks does not call timelineSteppedTick, so the check above is " +
+			"comparing two numbers that no longer describe the walk")
+	}
+	// renderAxis needs the GAP as well as the instants, so it calls timelineAxisTicks
+	// directly; drawGridlines needs only the instants. Both bottom out in one walk,
+	// and each is named here so neither can quietly grow its own.
+	for caller, wantCall := range map[string]string{
+		"function renderAxis(":    "timelineAxisTicks(",
+		"function drawGridlines(": "timelineAxisTickInstants(",
+	} {
 		callerBody := sliceBalancedBlockAfter(t, indexHtml, caller)
-		if !strings.Contains(callerBody, "timelineAxisTickInstants(") {
-			t.Errorf("%s does not read timelineAxisTickInstants; the axis and the gridlines "+
-				"have to come from one list or they can disagree", caller)
+		if !strings.Contains(callerBody, wantCall) {
+			t.Errorf("%s does not read %s; the axis and the gridlines have to come from one "+
+				"list or they can disagree", caller, wantCall)
 		}
+	}
+	// And the gap the labels are formatted against comes from the same call that
+	// positioned the ticks, rather than being derived a second time.
+	renderAxisBody := sliceBalancedBlockAfter(t, indexHtml, "function renderAxis(")
+	if !strings.Contains(renderAxisBody, "axisTicks.gapMs") {
+		t.Error("renderAxis does not pass the chosen gap to timelineFormatAxisTick; a gap " +
+			"derived a second time is how a date-only label came to sit on a 04:00 tick")
 	}
 }
 
@@ -4377,6 +4422,41 @@ func rendererDeclarationLine(t *testing.T, assetPath string, constantName string
 	return string(match[1])
 }
 
+// rendererBracketDeclaration slices a multi-line `var NAME = [ ... ];` out of a
+// shipped asset, balancing SQUARE brackets.
+//
+// sliceBalancedBlockAfter balances braces, so pointing it at an array of object
+// literals returns the first element and nothing else — the probe then fails to
+// parse, which is how this helper came to exist. rendererDeclarationLine is the
+// single-line case; this is the same contract for a block.
+func rendererBracketDeclaration(t *testing.T, assetPath string, constantName string) string {
+	t.Helper()
+	rendererBytes, readError := embeddedWebAssets.ReadFile(assetPath)
+	if readError != nil {
+		t.Fatalf("read %s: %v", assetPath, readError)
+	}
+	rendererText := string(rendererBytes)
+	anchor := "var " + constantName + " = ["
+	anchorIndex := strings.Index(rendererText, anchor)
+	if anchorIndex == -1 {
+		t.Fatalf("%s declares no bracketed constant %s", assetPath, constantName)
+	}
+	bracketDepth := 0
+	for scanOffset := anchorIndex; scanOffset < len(rendererText); scanOffset++ {
+		switch rendererText[scanOffset] {
+		case '[':
+			bracketDepth++
+		case ']':
+			bracketDepth--
+			if bracketDepth == 0 {
+				return rendererText[anchorIndex:scanOffset+1] + ";"
+			}
+		}
+	}
+	t.Fatalf("no bracket-balanced declaration found for %s in %s", constantName, assetPath)
+	return ""
+}
+
 // Period navigation is the THIRD way to move the timeline's window, after the
 // pointer and the keyboard, and what it can get wrong is a calendar that is only
 // nearly a calendar: a "week" starting at whatever instant sat in the middle of
@@ -5033,55 +5113,93 @@ process.stdout.write(JSON.stringify({
 }
 
 // The axis is the one part of this view whose defect is pure text. The ticks are
-// positioned correctly, so nothing about the drawing looks wrong while several
-// labels read the same instant. REQ-227 wrote the minute as the literal ":00",
-// and REQ-235's Now button made a sub-hour window the landing state of the
-// view's most-used control: seven ticks, two distinct labels, measured live.
+// drawn where the code says, so nothing about the drawing looks wrong while the
+// labels describe instants the ticks are not at. REQ-227 wrote the minute as the
+// literal ":00", and REQ-235's Now button made a sub-hour window the landing
+// state of the view's most-used control: seven ticks, two distinct labels.
 //
-// This drives the formatter over every window the view can be left in and
-// requires two things of each: no two ticks may render the same label, and every
-// number in a label must be one the tick's own instant carries.
+// REQ-327 ADDED THE ASSERTION THIS TEST WAS MISSING, and it is worth saying why
+// the old one passed over the defect. It required that every number in a label be
+// one the tick's own instant carries — and a bare "9 Jul" on a tick at
+// 9 Jul 12:00 satisfies that: the day IS 9 July. What it never required was that
+// a label OMITTING the time be at midnight. So the week of 6 July rendered
+// "6, 7, 8, 9, 10, 11, 13 Jul", every intermediate tick four hours off the date it
+// named, 12 July absent, and the whole suite green.
+//
+// It also DRIVES THE REAL TICK SOURCE now. It used to reimplement the equal-parts
+// spacing inline, so it could not have noticed the spacing changing under it
+// (REQ-305: a probe that reimplements the function under test cannot hold its call
+// site).
+//
+// Four properties, per window: no two ticks share a label; every number in a label
+// belongs to its tick; a label with no time is at UTC midnight; and the ticks
+// ascend and stay inside the window.
 func TestJavaScriptBehaviorTimelineAxisLabelsNameTheirOwnInstant(t *testing.T) {
 	indexHtml := generateLiveSite(t)
-	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS", "TIMELINE_AXIS_TICK_COUNT") +
-		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_YEAR_MS") + "\n" +
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS",
+		"TIMELINE_AXIS_TICK_COUNT", "TIMELINE_AXIS_TICK_LIMIT") +
+		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_WEEK_ALIGNMENT_MS") + "\n" +
 		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_MONTHS") + "\n" +
+		rendererBracketDeclaration(t, "web/board-timeline.js", "TIMELINE_AXIS_TICK_STEPS") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineTickStepSpanMs(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineAxisTickStep(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineTickAtOrBefore(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineSteppedTick(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineAxisTicks(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodStart(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineFormatAxisTick(") + `
-// The same evenly-spaced ticks renderAxis draws, formatted the same way.
-function axisTicks(name, startMs, spanMs) {
-  var ticks = [];
-  for (var tickIndex = 0; tickIndex <= TIMELINE_AXIS_TICK_COUNT; tickIndex++) {
-    var tickMs = startMs + (spanMs * tickIndex) / TIMELINE_AXIS_TICK_COUNT;
+// The REAL tick source and the REAL formatter, called the way renderAxis calls
+// them — including passing the gap that positioned the ticks rather than deriving
+// one here.
+function axisTicks(name, startMs, endMs) {
+  var chosen = timelineAxisTicks(startMs, endMs);
+  var ticks = chosen.instants.map(function (tickMs) {
     var instant = new Date(tickMs);
-    ticks.push({
-      label: timelineFormatAxisTick(tickMs, spanMs),
+    return {
+      epochMs: tickMs,
+      label: timelineFormatAxisTick(tickMs, chosen.gapMs, startMs, endMs),
       dayOfMonth: instant.getUTCDate(),
       hour: instant.getUTCHours(),
       minute: instant.getUTCMinutes(),
       year: instant.getUTCFullYear()
-    });
-  }
-  return { name: name, ticks: ticks };
+    };
+  });
+  return {
+    name: name, ticks: ticks, startMs: startMs, endMs: endMs, gapMs: chosen.gapMs,
+    // Whether every tick sits where timelinePeriodStart puts a week — the SHIPPED
+    // week rule, read rather than restated, so moving Monday moves both together
+    // or fails here (REQ-322).
+    everyTickOnAWeekBoundary: chosen.instants.every(function (tickMs) {
+      return timelinePeriodStart(tickMs, "week") === tickMs;
+    }),
+    tickWeekdays: chosen.instants.map(function (tickMs) { return new Date(tickMs).getUTCDay(); })
+  };
 }
 
 var mondayMs = Date.UTC(2026, 7, 17);      // 17 Aug 2026 is a Monday
 process.stdout.write(JSON.stringify({
   windows: [
-    // Where the Now button lands: the window covers the now-line and the
+    // Where the Now button lands: a window covering the now-line and the
     // forecast's queue-empty instant, which on a healthy queue is well under an
-    // hour, so the span settles on the view's floor and the start is wherever
+    // hour, so the span settles near the view's floor and the start is wherever
     // "now" fell — 11:26, not the top of an hour.
-    axisTicks("Now", Date.UTC(2026, 7, 18, 11, 26), TIMELINE_MIN_SPAN_MS),
-    axisTicks("Day", Date.UTC(2026, 7, 18), TIMELINE_DAY_MS),
-    // A free zoom between the period levels. Six ticks across four days sit 16h
-    // apart, so a date-only label repeats itself twice over.
-    axisTicks("free zoom, four days", Date.UTC(2026, 7, 15), 4 * TIMELINE_DAY_MS),
-    axisTicks("Week", mondayMs, 7 * TIMELINE_DAY_MS),
-    axisTicks("Month", Date.UTC(2026, 7, 1), Date.UTC(2026, 8, 1) - Date.UTC(2026, 7, 1)),
-    axisTicks("Fit all", Date.UTC(2026, 3, 7), Date.UTC(2026, 7, 18) - Date.UTC(2026, 3, 7)),
-    // Fit all is the whole capture history, and it only grows. Once it reaches
-    // back past a year, one day-and-month comes round twice.
-    axisTicks("Fit all across two years", Date.UTC(2025, 7, 18), 2 * TIMELINE_YEAR_MS)
+    axisTicks("Now", Date.UTC(2026, 7, 18, 11, 26), Date.UTC(2026, 7, 18, 11, 26) + TIMELINE_MIN_SPAN_MS),
+    axisTicks("Day", Date.UTC(2026, 7, 18), Date.UTC(2026, 7, 19)),
+    // A free zoom between the period levels: not a whole number of anything.
+    axisTicks("free zoom, four days", Date.UTC(2026, 7, 15), Date.UTC(2026, 7, 19)),
+    axisTicks("Week", mondayMs, mondayMs + 7 * TIMELINE_DAY_MS),
+    axisTicks("Month", Date.UTC(2026, 7, 1), Date.UTC(2026, 8, 1)),
+    axisTicks("Fit all", Date.UTC(2026, 3, 7), Date.UTC(2026, 7, 18)),
+    // Three months, which is what Fit all measures on this repo's own board. It
+    // picks the FORTNIGHT rung, and is the only fixture here that does — without
+    // it the week-boundary alignment of that rung is never checked.
+    axisTicks("Fit all, three months", Date.UTC(2026, 4, 27), Date.UTC(2026, 7, 25)),
+    // Fit all is the whole capture history, and it only grows. Once it crosses a
+    // calendar year one day-and-month comes round twice.
+    axisTicks("Fit all across two years", Date.UTC(2025, 7, 18), Date.UTC(2027, 7, 18)),
+    // Nine days, crossing New Year. Shorter than a year and still ambiguous
+    // without one — the case the old spanMs >= TIMELINE_YEAR_MS threshold missed.
+    axisTicks("across New Year", Date.UTC(2026, 11, 28), Date.UTC(2027, 0, 6))
   ]
 }));`
 
@@ -5090,12 +5208,18 @@ process.stdout.write(JSON.stringify({
 		Windows []struct {
 			Name  string `json:"name"`
 			Ticks []struct {
-				Label      string `json:"label"`
-				DayOfMonth int    `json:"dayOfMonth"`
-				Hour       int    `json:"hour"`
-				Minute     int    `json:"minute"`
-				Year       int    `json:"year"`
+				EpochMs    float64 `json:"epochMs"`
+				Label      string  `json:"label"`
+				DayOfMonth int     `json:"dayOfMonth"`
+				Hour       int     `json:"hour"`
+				Minute     int     `json:"minute"`
+				Year       int     `json:"year"`
 			} `json:"ticks"`
+			StartMs                  float64 `json:"startMs"`
+			EndMs                    float64 `json:"endMs"`
+			GapMs                    float64 `json:"gapMs"`
+			EveryTickOnAWeekBoundary bool    `json:"everyTickOnAWeekBoundary"`
+			TickWeekdays             []int   `json:"tickWeekdays"`
 		} `json:"windows"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &axisResult); decodeError != nil {
@@ -5111,18 +5235,23 @@ process.stdout.write(JSON.stringify({
 		axisLabelWithYear = "date and year"
 	)
 	wantAxisLabelShape := map[string]string{
-		"Now":                      axisLabelWithTime,
-		"Day":                      axisLabelWithTime,
-		"free zoom, four days":     axisLabelWithTime,
-		"Week":                     axisLabelDateOnly,
-		"Month":                    axisLabelDateOnly,
-		"Fit all":                  axisLabelDateOnly,
+		"Now":                   axisLabelWithTime,
+		"Day":                   axisLabelWithTime,
+		"free zoom, four days":  axisLabelDateOnly,
+		"Week":                  axisLabelDateOnly,
+		"Month":                 axisLabelDateOnly,
+		"Fit all":               axisLabelDateOnly,
+		"Fit all, three months": axisLabelDateOnly,
+		// Both of these cross a calendar year, which is what earns the year — not
+		// being longer than 365 days. "across New Year" is nine days long.
 		"Fit all across two years": axisLabelWithYear,
+		"across New Year":          axisLabelWithYear,
 	}
 	if len(axisResult.Windows) != len(wantAxisLabelShape) {
 		t.Fatalf("the probe drove %d windows, want the %d named", len(axisResult.Windows), len(wantAxisLabelShape))
 	}
 
+	weekGapsSeen := 0
 	for _, window := range axisResult.Windows {
 		labelShape, isNamed := wantAxisLabelShape[window.Name]
 		if !isNamed {
@@ -5139,6 +5268,47 @@ process.stdout.write(JSON.stringify({
 		if len(distinctLabels) != len(window.Ticks) {
 			t.Fatalf("the %s window draws %d ticks with only %d distinct labels: %q",
 				window.Name, len(window.Ticks), len(distinctLabels), renderedLabels)
+		}
+		// THE TICKS THEMSELVES. Ascending, inside the window, and there at all —
+		// without this the label assertions below would pass over an empty axis.
+		if len(window.Ticks) < 3 {
+			t.Fatalf("the %s window drew %d ticks; an axis with fewer than three is not one",
+				window.Name, len(window.Ticks))
+		}
+		for tickIndex, tick := range window.Ticks {
+			if tick.EpochMs < window.StartMs || tick.EpochMs > window.EndMs {
+				t.Fatalf("the %s window drew a tick at %s, outside the window it describes",
+					window.Name, tick.Label)
+			}
+			if tickIndex > 0 && tick.EpochMs <= window.Ticks[tickIndex-1].EpochMs {
+				t.Fatalf("the %s window's ticks are not strictly ascending at %q", window.Name, tick.Label)
+			}
+		}
+		// A WEEK-LONG GAP LANDS ON THE WEEK BOUNDARY THE REST OF THE VIEW USES.
+		// Aligning it to the epoch instead gives Thursdays — still midnights, still
+		// distinct, still inside the window, so every other assertion here passes
+		// and the axis silently disagrees with the Week chip beside it.
+		const oneWeekMs = 7 * 24 * 60 * 60 * 1000
+		if window.GapMs == oneWeekMs || window.GapMs == 2*oneWeekMs {
+			weekGapsSeen++
+			if !window.EveryTickOnAWeekBoundary {
+				t.Fatalf("the %s window uses a %.0f-day gap but its ticks fall on weekdays %v; a "+
+					"week-long gap has to land where timelinePeriodStart puts a week",
+					window.Name, window.GapMs/float64(24*60*60*1000), window.TickWeekdays)
+			}
+		}
+		// A LABEL WITH NO TIME IS A CLAIM OF MIDNIGHT. This is the assertion the old
+		// version of this test did not make, and the whole reason the week axis could
+		// print "9 Jul" for a tick at 9 Jul 12:00 with the suite green.
+		if labelShape != axisLabelWithTime {
+			for _, tick := range window.Ticks {
+				if tick.Hour != 0 || tick.Minute != 0 {
+					t.Fatalf("the %s window labels the tick at %02d:%02d on the %dth as %q, with no "+
+						"time in it — a date-only label claims midnight, so a tick that is not at "+
+						"midnight may not have one",
+						window.Name, tick.Hour, tick.Minute, tick.DayOfMonth, tick.Label)
+				}
+			}
 		}
 		// Every number in the label has to be one the instant carries. Matching
 		// the whole label also pins the shape, so a window cannot quietly gain
@@ -5159,6 +5329,18 @@ process.stdout.write(JSON.stringify({
 					tick.Label, labelShape, wantLabelPattern)
 			}
 		}
+	}
+	// The week-boundary assertion above is inside a conditional, so it is worth
+	// nothing if no fixture window ever picks a week-long gap. The Month window is
+	// the one that does; if the ladder is re-tuned so none of them do, this says so
+	// instead of quietly passing.
+	// Both rungs, counted separately: one fixture hitting the 7-day rung leaves the
+	// 14-day rung's alignment unchecked, which is exactly how a mutation of it
+	// passed the first time this ran.
+	if weekGapsSeen < 2 {
+		t.Errorf("only %d fixture window(s) chose a week-length gap; both the 7-day and the "+
+			"14-day rung need one, or the alignment of the unvisited rung is never checked",
+			weekGapsSeen)
 	}
 }
 
