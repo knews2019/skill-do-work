@@ -3437,6 +3437,69 @@ process.stdout.write(JSON.stringify({
 	}
 }
 
+// The threshold decision, without a DOM. The browser probe next door proves the
+// behaviour end to end; this pins the boundary itself, which is the part a
+// pointer-event probe measures only at whatever offsets it happens to dispatch.
+func TestJavaScriptBehaviorTimelinePanThreshold(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	// The distance is READ FROM THE RENDERER, so a probe cannot keep passing
+	// against a threshold the board stopped using.
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_PAN_THRESHOLD_PX") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePanEngaged(") + `
+var pressX = 500;
+process.stdout.write(JSON.stringify({
+  threshold: TIMELINE_PAN_THRESHOLD_PX,
+  atRest: timelinePanEngaged(false, pressX, pressX),
+  justUnder: timelinePanEngaged(false, pressX, pressX + TIMELINE_PAN_THRESHOLD_PX - 0.01),
+  exactlyAt: timelinePanEngaged(false, pressX, pressX + TIMELINE_PAN_THRESHOLD_PX),
+  // Leftward drags are drags. An unsigned comparison would engage in one
+  // direction only, and the bug would look like "panning left is sticky".
+  justUnderLeftward: timelinePanEngaged(false, pressX, pressX - TIMELINE_PAN_THRESHOLD_PX + 0.01),
+  exactlyAtLeftward: timelinePanEngaged(false, pressX, pressX - TIMELINE_PAN_THRESHOLD_PX),
+  // Latched: once engaged, back at the press point is still engaged.
+  latchedAtRest: timelinePanEngaged(true, pressX, pressX)
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline pan threshold", javascriptProbe)
+	var thresholdResult struct {
+		Threshold         float64 `json:"threshold"`
+		AtRest            bool    `json:"atRest"`
+		JustUnder         bool    `json:"justUnder"`
+		ExactlyAt         bool    `json:"exactlyAt"`
+		JustUnderLeftward bool    `json:"justUnderLeftward"`
+		ExactlyAtLeftward bool    `json:"exactlyAtLeftward"`
+		LatchedAtRest     bool    `json:"latchedAtRest"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &thresholdResult); decodeError != nil {
+		t.Fatalf("decode timeline pan threshold behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// A range, not a value. Below about 2px a trackpad tremor still trips it and
+	// the click is lost again; much above 8px a deliberate short drag feels stuck.
+	if thresholdResult.Threshold < 2 || thresholdResult.Threshold > 8 {
+		t.Errorf("the pan threshold is %g px; under 2 a hand tremor trips it and the click is "+
+			"lost again, over 8 a short deliberate drag feels stuck", thresholdResult.Threshold)
+	}
+	if thresholdResult.AtRest {
+		t.Error("a press that has not moved at all engaged the pan")
+	}
+	if thresholdResult.JustUnder || thresholdResult.JustUnderLeftward {
+		t.Errorf("a press just under the %g px threshold engaged the pan (rightward %v, "+
+			"leftward %v)", thresholdResult.Threshold,
+			thresholdResult.JustUnder, thresholdResult.JustUnderLeftward)
+	}
+	if !thresholdResult.ExactlyAt || !thresholdResult.ExactlyAtLeftward {
+		t.Errorf("a press exactly at the %g px threshold did not engage the pan (rightward %v, "+
+			"leftward %v); the comparison has to be inclusive and unsigned in distance",
+			thresholdResult.Threshold,
+			thresholdResult.ExactlyAt, thresholdResult.ExactlyAtLeftward)
+	}
+	if !thresholdResult.LatchedAtRest {
+		t.Error("an already-engaged drag disengaged on returning to the press point; " +
+			"engagement latches, or a wandering drag flickers in and out of panning")
+	}
+}
+
 // The axis draws ticks and the plot draws gridlines at the same instants. Two
 // loops doing the same arithmetic is one edit away from a gridline that means a
 // slightly different time than the tick above it, so there is one source and

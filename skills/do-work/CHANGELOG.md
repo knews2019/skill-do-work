@@ -2,6 +2,21 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.17 — Clicking a Timeline Row Works Again (2026-08-23)
+
+The Timeline's hint said "Click a row for its full detail" and it only worked if your hand was
+perfectly still: one pixel of movement panned the chart, rebuilt the rows, and swallowed the
+click. A press now has to travel four pixels before it becomes a drag.
+
+- Below four pixels a press is a click and the detail drawer opens; above it the chart pans
+  and the release does not open the drawer. A drag that wanders back near the press point
+  stays a drag.
+- The grab cursor waits for the drag too, instead of appearing on the press.
+- A drag now renders at most once per animation frame rather than once per pointer event, and
+  the release flushes the last frame so the chart lands where the drag ended.
+- One render reads the plot width once instead of 171 times, each of which was a forced
+  layout.
+
 ## 0.236.16 — Timeline Gridlines and a Marked Queue End (2026-08-23)
 
 A Timeline bar two hundred rows down had no vertical reference at all, and at Fit all every

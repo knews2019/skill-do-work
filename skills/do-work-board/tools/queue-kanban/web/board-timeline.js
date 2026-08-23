@@ -59,6 +59,12 @@
   // plus a boundary — so the row draws ONE marker instead of two slivers
   // claiming a split the pixels cannot carry.
   var TIMELINE_MIN_SPLIT_WIDTH = 7;
+  // How far a pointer must travel before a press becomes a pan. Under it the
+  // press is a click and the drawer opens on release; a still-ish press used to
+  // pan on its first pixel, which re-rendered the rows and lost the click.
+  // 4px: an ordinary hand tremor on a trackpad stays under it, an intended drag
+  // clears it in the first frame.
+  var TIMELINE_PAN_THRESHOLD_PX = 4;
   var TIMELINE_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   // The visible time window, held OUTSIDE renderedOnce so switching tabs and
@@ -100,6 +106,20 @@
       window.cancelAnimationFrame(timelineTableRebuildFrame);
     }
     timelineTableRebuildFrame = null;
+  }
+
+  // A pan frame scheduled by the PREVIOUS render holds that render's closure, so
+  // a filter change that re-enters this module would let it re-render the old
+  // rows one frame later. Same hazard as the table frame above, cancelled at the
+  // same point — which is why the handle lives out here rather than inside the
+  // render, where the listener that schedules it does.
+  var timelinePanRenderFrame = null;
+
+  function releaseTimelinePanFrame() {
+    if (timelinePanRenderFrame !== null && window.cancelAnimationFrame) {
+      window.cancelAnimationFrame(timelinePanRenderFrame);
+    }
+    timelinePanRenderFrame = null;
   }
 
   // Each unit is derived from the already-rounded value of the unit below it, so
@@ -568,6 +588,17 @@
     return { firstRow: firstRow, lastRow: Math.min(rowCount, firstRow + visibleCount) };
   }
 
+  // Whether a press has become a pan. Latching: once engaged a drag stays
+  // engaged however far back toward the press point it travels, or a slow
+  // wandering drag would flicker in and out of panning around the threshold.
+  //
+  // Engagement gates only the FIRST render — the shift itself is still measured
+  // from the press point, so the chart tracks the pointer one-for-one and never
+  // settles a threshold's worth behind it.
+  function timelinePanEngaged(alreadyEngaged, pressX, pointerX) {
+    return alreadyEngaged || Math.abs(pointerX - pressX) >= TIMELINE_PAN_THRESHOLD_PX;
+  }
+
   // The instants the axis puts a tick at. Extracted so the GRIDLINES can be drawn
   // from the same list rather than recomputing it: two loops with the same
   // arithmetic is one edit away from an axis whose labels sit beside lines that
@@ -923,6 +954,7 @@
 
     releaseTimelineListeners();
     releaseTimelineTableFrame();
+    releaseTimelinePanFrame();
 
     var timeline = boardData.timeline || {};
     // Filters apply here, unlike Durations. A Gantt filtered to one domain is a
@@ -1175,9 +1207,21 @@
         "One horizontal bar per REQ drawing anything inside the visible time window, in capture order, newest first. The first segment is the wait from capture to claim, the second is the work from claim to completion; a REQ too narrow to show both draws a single marker instead. Faint vertical lines mark the axis ticks; a dashed violet rule marks the projected queue-empty instant when the forecast is confident and that instant is in view. Every value is also listed in the table below."
     });
 
+    // MEASURED ONCE PER RENDER. clientWidth forces a synchronous layout, and
+    // xOfEpoch calls this several times per row, so a 35-row render was making
+    // hundreds of layout reads — every frame of a drag. The memo is dropped by
+    // invalidatePlotWidth() at the top of every render and on resize, which are
+    // the only two moments the number can change.
+    var measuredPlotWidthPx = null;
     function plotWidth() {
-      var hostWidth = scrollHost.clientWidth || scrollHost.getBoundingClientRect().width;
-      return Math.max(120, hostWidth - TIMELINE_LABEL_WIDTH - 12);
+      if (measuredPlotWidthPx === null) {
+        var hostWidth = scrollHost.clientWidth || scrollHost.getBoundingClientRect().width;
+        measuredPlotWidthPx = Math.max(120, hostWidth - TIMELINE_LABEL_WIDTH - 12);
+      }
+      return measuredPlotWidthPx;
+    }
+    function invalidatePlotWidth() {
+      measuredPlotWidthPx = null;
     }
 
     // 1 SVG unit = 1 CSS pixel here, so this is the whole pointer-to-data story.
@@ -1631,6 +1675,9 @@
     // set, the counts, the scroll extent and the table describe the same window.
     // The order is load-bearing: rows first, because everything below reads them.
     function renderAll() {
+      // Before anything reads it: the container may have been resized, and every
+      // x in this render has to come from one measurement of one width.
+      invalidatePlotWidth();
       refreshWindowRows();
       renderSummary();
       renderForecastIfSubsetChanged();
@@ -1774,19 +1821,52 @@
       { passive: false }
     );
 
+    // A drag issues at most ONE render per frame. Every pointermove used to run a
+    // full renderAll — axis plus every visible row — and a trackpad delivers
+    // moves faster than the compositor draws them, so most of that work was
+    // thrown away before it was seen.
+    function requestPanRender() {
+      if (timelinePanRenderFrame !== null) {
+        return;
+      }
+      if (!window.requestAnimationFrame) {
+        renderAll();
+        return;
+      }
+      timelinePanRenderFrame = window.requestAnimationFrame(function () {
+        timelinePanRenderFrame = null;
+        renderAll();
+      });
+    }
+
     var panState = null;
     addTimelineListener(scrollHost, "pointerdown", function (downEvent) {
       if (downEvent.button !== 0) {
         return;
       }
-      panState = { pointerX: downEvent.clientX, windowStartMs: timelineViewState.windowStartMs };
-      scrollHost.classList.add("is-panning");
+      // Armed, not engaged. Nothing moves and nothing re-renders until the
+      // pointer has travelled TIMELINE_PAN_THRESHOLD_PX — including the grab
+      // cursor, which used to change on the press and told the reader they were
+      // dragging when they were clicking.
+      panState = {
+        pointerX: downEvent.clientX,
+        windowStartMs: timelineViewState.windowStartMs,
+        engaged: false
+      };
     });
     addTimelineListener(scrollHost, "pointermove", function (moveEvent) {
       if (!panState) {
         return;
       }
+      panState.engaged = timelinePanEngaged(panState.engaged, panState.pointerX, moveEvent.clientX);
+      if (!panState.engaged) {
+        return;
+      }
+      scrollHost.classList.add("is-panning");
       var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs;
+      // Measured from the PRESS point, not from wherever the threshold tripped:
+      // anchoring at the trip point would leave the chart four pixels behind the
+      // pointer for the rest of the drag.
       var shiftMs = ((panState.pointerX - moveEvent.clientX) / plotWidth()) * windowSpanMs;
       var nextStartMs = Math.min(
         Math.max(panState.windowStartMs + shiftMs, boundStartMs),
@@ -1794,10 +1874,16 @@
       );
       timelineViewState.windowStartMs = nextStartMs;
       timelineViewState.windowEndMs = nextStartMs + windowSpanMs;
-      renderAll();
+      requestPanRender();
     });
     ["pointerup", "pointercancel", "pointerleave"].forEach(function (eventName) {
       addTimelineListener(scrollHost, eventName, function () {
+        // A drag that ends between frames still has to land on the window it
+        // reached, so the pending frame runs rather than being dropped.
+        if (panState && panState.engaged && timelinePanRenderFrame !== null) {
+          releaseTimelinePanFrame();
+          renderAll();
+        }
         panState = null;
         scrollHost.classList.remove("is-panning");
       });

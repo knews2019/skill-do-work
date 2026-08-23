@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"math"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -614,6 +616,373 @@ var TIMELINE_SVG_NS = "http://www.w3.org/2000/svg";
 // The row's tooltip. A native <title> is the whole feature, so what needs pinning
 // is that the renderer still writes one and that it carries the description
 // rather than a bare id.
+// The hint paragraph says "Click a row for its full detail." Before this it was
+// true only of a perfectly still press: the first pointermove armed the pan,
+// which re-rendered the rows, and the click the browser then synthesized had no
+// surviving [data-detail-kind] ancestor to find. This probe drives the REAL
+// board with real pointer events, because that failure lives entirely in the
+// interaction between the engine's click synthesis and a DOM the handler
+// rebuilt — no sliced function can show it.
+func TestBrowserBehaviorTimelinePressBecomesAPanOnlyAfterMoving(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function pointerAt(type, node, clientX, clientY) {
+  node.dispatchEvent(new PointerEvent(type, {
+    bubbles: true, cancelable: true, composed: true,
+    clientX: clientX, clientY: clientY, button: 0,
+    buttons: type === "pointerup" ? 0 : 1, pointerId: 1, pointerType: "mouse"
+  }));
+}
+function nodeAt(x, y, fallbackNode) {
+  return document.elementFromPoint(x, y) || fallbackNode;
+}
+function isGrabbing() {
+  return document.querySelector("#view-timeline .timeline-scroll")
+    .classList.contains("is-panning");
+}
+// The browser synthesizes a click at the nearest common inclusive ancestor of
+// the pointerdown and pointerup targets. Dispatching against elementFromPoint at
+// release is the closest a script comes to that, and it is what makes a rebuilt
+// row observable: the node under the pointer is no longer the node pressed.
+//
+// Returns what was true DURING the press, because the release clears it.
+function pressDragRelease(fallbackNode, startX, y, moveOffsets) {
+  var pressTarget = nodeAt(startX, y, fallbackNode);
+  pointerAt("pointerdown", pressTarget, startX, y);
+  var grabbingAfterPress = isGrabbing();
+  var lastX = startX;
+  moveOffsets.forEach(function (offset) {
+    lastX = startX + offset;
+    pointerAt("pointermove", nodeAt(lastX, y, fallbackNode), lastX, y);
+  });
+  var grabbingDuringDrag = isGrabbing();
+  var releaseTarget = nodeAt(lastX, y, fallbackNode);
+  pointerAt("pointerup", releaseTarget, lastX, y);
+  releaseTarget.dispatchEvent(new MouseEvent("click", {
+    bubbles: true, cancelable: true, composed: true, clientX: lastX, clientY: y
+  }));
+  return { grabbingAfterPress: grabbingAfterPress, grabbingDuringDrag: grabbingDuringDrag };
+}
+function drawerIsOpen() {
+  var drawer = document.getElementById("detail-drawer");
+  return !!drawer && !drawer.hidden && !drawer.classList.contains("is-hidden");
+}
+function closeDrawerIfOpen() {
+  var close = document.getElementById("detail-close");
+  if (close) { close.click(); }
+}
+function windowReadout() {
+  var node = document.getElementById("timeline-range-readout");
+  return node ? node.textContent : "";
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var trials = {};
+      function trial(name, moveOffsets) {
+        closeDrawerIfOpen();
+        // Every trial starts from the SAME window. At Fit all the window sits on
+        // both bounds and a pan clamps to the window it started in, so a drag
+        // that panned would be indistinguishable from one that did not; two zoom
+        // steps put it off the bounds. Resetting each time is what lets two
+        // trials' end windows be compared to each other.
+        document.getElementById("timeline-zoom-fit").click();
+        document.getElementById("timeline-zoom-in").click();
+        document.getElementById("timeline-zoom-in").click();
+        // elementFromPoint is viewport-relative and returns null below the fold.
+        // The chart sits under a warnings banner and an anomalies board.
+        document.querySelector("#view-timeline .timeline-chart")
+          .scrollIntoView({ block: "start" });
+        var row = document.querySelector("#view-timeline .timeline-row");
+        var box = row.getBoundingClientRect();
+        var startX = Math.round(box.left + box.width / 2);
+        var y = Math.round(box.top + box.height / 2);
+        var before = windowReadout();
+        var during = pressDragRelease(row, startX, y, moveOffsets);
+        trials[name] = {
+          drawerOpen: drawerIsOpen(),
+          windowMoved: windowReadout() !== before,
+          windowAfter: windowReadout(),
+          grabbingAfterPress: during.grabbingAfterPress,
+          grabbingDuringDrag: during.grabbingDuringDrag
+        };
+      }
+      trial("stillPress", []);
+      trial("belowThreshold", [2]);
+      trial("aboveThreshold", [120]);
+      // The same 120 pixels, delivered in two moves with the first one tripping
+      // the threshold. Anchoring the shift at the trip point instead of the press
+      // point leaves this one short by the threshold, forever.
+      trial("aboveThresholdInTwoMoves", [6, 120]);
+      // Out past the threshold and back to within it. The reader has visibly
+      // panned; releasing there must not be read as a click.
+      trial("draggedOutAndBack", [20, 1]);
+      closeDrawerIfOpen();
+      document.getElementById("` + browserProbeResultElementId + `").textContent =
+        JSON.stringify(trials);
+      document.title = "READY";
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the probe script before")
+	}
+	// A viewport wide enough for the chart. The default headless window is 800x600,
+	// where the plot is a few dozen pixels wide and a 120-pixel drag runs off it.
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline pan threshold", siteDirectory,
+		pageHTML, "--window-size=1400,900")
+
+	type pressTrial struct {
+		DrawerOpen         bool   `json:"drawerOpen"`
+		WindowMoved        bool   `json:"windowMoved"`
+		WindowAfter        string `json:"windowAfter"`
+		GrabbingAfterPress bool   `json:"grabbingAfterPress"`
+		GrabbingDuringDrag bool   `json:"grabbingDuringDrag"`
+	}
+	var pressResult struct {
+		StillPress               pressTrial `json:"stillPress"`
+		BelowThreshold           pressTrial `json:"belowThreshold"`
+		AboveThreshold           pressTrial `json:"aboveThreshold"`
+		AboveThresholdInTwoMoves pressTrial `json:"aboveThresholdInTwoMoves"`
+		DraggedOutAndBack        pressTrial `json:"draggedOutAndBack"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &pressResult); decodeError != nil {
+		t.Fatalf("decode timeline pan threshold behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// THE PAIR. A still press already worked before the threshold existed; the
+	// two-pixel one is the regression, and keeping both is what proves the fix is
+	// a threshold and not "clicks now always win".
+	if !pressResult.StillPress.DrawerOpen {
+		t.Error("a perfectly still press did not open the detail drawer; that worked before " +
+			"the threshold existed and the threshold must not have cost it")
+	}
+	if !pressResult.BelowThreshold.DrawerOpen {
+		t.Error("a two-pixel press did not open the detail drawer — the press panned and " +
+			"re-rendered the rows, so the click the engine synthesized found no surviving " +
+			"[data-detail-kind] to open. This is the defect the threshold exists to fix")
+	}
+	if pressResult.BelowThreshold.WindowMoved {
+		t.Error("a two-pixel press moved the time window; nobody asked a click to scroll the " +
+			"chart, and a hand tremor is not a pan")
+	}
+	// Read DURING the press, not after: the release clears the class, so an
+	// assertion taken afterwards passes whatever the cursor did.
+	if pressResult.BelowThreshold.GrabbingDuringDrag {
+		t.Error("a two-pixel press showed the grab cursor; the cursor is a claim about what " +
+			"the press is doing, and it was claiming a drag during a click")
+	}
+	if pressResult.StillPress.GrabbingAfterPress {
+		t.Error("the grab cursor appeared on pointerdown alone; a press that has not moved is " +
+			"not a drag yet, and saying so is how the reader learns the threshold exists")
+	}
+
+	// The other side. A deliberate drag has to pan, and must NOT then open the
+	// drawer on release — "clicks always win" would pass every assertion above.
+	if !pressResult.AboveThreshold.WindowMoved {
+		t.Error("a 120-pixel drag did not move the time window; the threshold is supposed to " +
+			"delay the pan, not prevent it")
+	}
+	if pressResult.AboveThreshold.DrawerOpen {
+		t.Error("a 120-pixel drag opened the detail drawer on release; a drag is not a click, " +
+			"and every pan across a row would pop the drawer")
+	}
+	if !pressResult.AboveThreshold.GrabbingDuringDrag {
+		t.Error("a 120-pixel drag never showed the grab cursor; the threshold delays the " +
+			"cursor change, it does not cancel it")
+	}
+
+	// LATCHING. A drag that wanders back inside the threshold is still a drag: the
+	// reader has already seen the chart move, and un-engaging would both flicker
+	// the cursor and turn the release into a click that opens a drawer they did
+	// not ask for.
+	if pressResult.DraggedOutAndBack.DrawerOpen {
+		t.Error("a drag that went 20px out and came back to 1px opened the detail drawer; " +
+			"engagement has to latch, or a wandering drag ends as a click")
+	}
+	if !pressResult.DraggedOutAndBack.GrabbingDuringDrag {
+		t.Error("a drag that went 20px out and came back to 1px dropped the grab cursor; " +
+			"engagement has to latch, or a slow drag flickers around the threshold")
+	}
+
+	// CONTINUITY FROM THE PRESS POINT. The same 120 pixels in one move and in two
+	// have to land on the same window. Re-anchoring at the moment the threshold
+	// trips leaves the two-move drag a threshold's worth short — a lag the reader
+	// carries for the rest of the drag, and the reason this is measured rather
+	// than asserted in a comment.
+	if pressResult.AboveThreshold.WindowAfter != pressResult.AboveThresholdInTwoMoves.WindowAfter {
+		t.Errorf("120 pixels in one move landed on %q and in two moves on %q; the shift has to "+
+			"be measured from the press point, or the chart settles a threshold behind the "+
+			"pointer",
+			pressResult.AboveThreshold.WindowAfter,
+			pressResult.AboveThresholdInTwoMoves.WindowAfter)
+	}
+}
+
+// The other half of the same handler. Every pointermove used to run a full
+// renderAll, and every renderAll read scrollHost.clientWidth once per xOfEpoch
+// call — several times per row, per frame of a drag, each one a forced
+// synchronous layout. Both are counted here rather than asserted, because
+// "should be faster" is not a check and a comment claiming a saving is how the
+// last one drifted.
+func TestBrowserBehaviorTimelineDragRendersOncePerFrame(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function pointerAt(type, node, clientX, clientY) {
+  node.dispatchEvent(new PointerEvent(type, {
+    bubbles: true, cancelable: true, composed: true,
+    clientX: clientX, clientY: clientY, button: 0,
+    buttons: type === "pointerup" ? 0 : 1, pointerId: 1, pointerType: "mouse"
+  }));
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var scrollHost = document.querySelector("#view-timeline .timeline-scroll");
+      var axisSvg = document.querySelector("#view-timeline .timeline-axis-svg");
+
+      // A render begins by clearing the axis SVG, so one childList record
+      // carrying removed nodes is one render. Counting the renderer's own
+      // observable side effect beats trusting a counter the renderer would have
+      // to be modified to keep.
+      var renderCount = 0;
+      var renderObserver = new MutationObserver(function (records) {
+        records.forEach(function (record) {
+          if (record.removedNodes.length > 0) { renderCount++; }
+        });
+      });
+      function countRendersNow() {
+        renderObserver.takeRecords().forEach(function (record) {
+          if (record.removedNodes.length > 0) { renderCount++; }
+        });
+        return renderCount;
+      }
+      renderObserver.observe(axisSvg, { childList: true });
+
+      // clientWidth is the forced-layout read. An own property shadowing the
+      // prototype getter counts every call and hands back the real value, so the
+      // render under measurement is the real one.
+      var widthReads = 0;
+      var clientWidthDescriptor =
+        Object.getOwnPropertyDescriptor(Element.prototype, "clientWidth");
+      Object.defineProperty(scrollHost, "clientWidth", {
+        configurable: true,
+        get: function () { widthReads++; return clientWidthDescriptor.get.call(this); }
+      });
+
+      // ONE render, provoked by a control rather than a drag, so the count is a
+      // per-render figure and not a per-frame one.
+      renderCount = 0;
+      widthReads = 0;
+      document.getElementById("timeline-zoom-in").click();
+      var widthReadsPerRender = widthReads;
+      var rendersPerControlClick = countRendersNow();
+
+      // Now the drag. Five moves dispatched back to back, all inside one task:
+      // with coalescing none of them has rendered yet when this line runs.
+      var box = scrollHost.getBoundingClientRect();
+      var startX = Math.round(box.left + box.width / 2);
+      var y = Math.round(box.top + 20);
+      renderCount = 0;
+      pointerAt("pointerdown", scrollHost, startX, y);
+      for (var step = 1; step <= 5; step++) {
+        pointerAt("pointermove", scrollHost, startX - step * 20, y);
+      }
+      var rendersDuringFiveMoves = countRendersNow();
+      // The release flushes whatever the frame still owed, so the drag lands on
+      // the window it reached rather than the one the last frame drew.
+      pointerAt("pointerup", scrollHost, startX - 100, y);
+      var rendersAfterRelease = countRendersNow();
+
+      document.getElementById("` + browserProbeResultElementId + `").textContent =
+        JSON.stringify({
+          widthReadsPerRender: widthReadsPerRender,
+          rendersPerControlClick: rendersPerControlClick,
+          rendersDuringFiveMoves: rendersDuringFiveMoves,
+          rendersAfterRelease: rendersAfterRelease
+        });
+      document.title = "READY";
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(string(indexBytes), "</body>", probeScript, 1)
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline drag render cost", siteDirectory,
+		pageHTML, "--window-size=1400,900")
+
+	var costResult struct {
+		WidthReadsPerRender    int `json:"widthReadsPerRender"`
+		RendersPerControlClick int `json:"rendersPerControlClick"`
+		RendersDuringFiveMoves int `json:"rendersDuringFiveMoves"`
+		RendersAfterRelease    int `json:"rendersAfterRelease"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &costResult); decodeError != nil {
+		t.Fatalf("decode timeline drag render cost: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// The control render has to have HAPPENED, or every count below is a count of
+	// nothing — REQ-291's lesson, in this module's own prime.
+	if costResult.RendersPerControlClick != 1 {
+		t.Fatalf("a zoom click produced %d renders, want exactly 1; the observer is watching "+
+			"the wrong node or the click did nothing, and the counts below mean nothing",
+			costResult.RendersPerControlClick)
+	}
+
+	// ONE forced layout read per render. Before the memo, xOfEpoch called
+	// plotWidth() several times per row and plotWidth() read clientWidth every
+	// time — a 35-row render made hundreds of them. The ceiling is 2 rather than 1
+	// so a second legitimate reader is not a failure; it is nowhere near the
+	// hundreds the defect produced.
+	if costResult.WidthReadsPerRender > 2 {
+		t.Errorf("one render read scrollHost.clientWidth %d times; each is a forced synchronous "+
+			"layout, and the plot width can only change between renders — measure it once",
+			costResult.WidthReadsPerRender)
+	}
+	if costResult.WidthReadsPerRender == 0 {
+		t.Error("one render read scrollHost.clientWidth zero times; the memo is never being " +
+			"invalidated, so a resized container would keep drawing at the old width")
+	}
+
+	// Coalescing. Five moves in one task must not be five renders; with the frame
+	// still pending they are none yet.
+	if costResult.RendersDuringFiveMoves != 0 {
+		t.Errorf("five pointermoves in one task produced %d renders before the frame ran, "+
+			"want 0; a drag delivers moves faster than the compositor draws them and every "+
+			"render but the last is thrown away unseen", costResult.RendersDuringFiveMoves)
+	}
+	// And the flush: the drag still has to land, or coalescing would be achieved
+	// by dropping the work rather than by deferring it.
+	if costResult.RendersAfterRelease != 1 {
+		t.Errorf("five pointermoves and a release produced %d renders in total, want exactly 1 "+
+			"— the deferred frame has to be flushed on release, or the chart settles on the "+
+			"window the last drawn frame reached instead of the one the drag ended at",
+			costResult.RendersAfterRelease)
+	}
+}
+
 // The chart draws four kinds of vertical mark and their ORDER OF PROMINENCE is
 // the whole design: the now-line is the present and has to win, the queue-end
 // rule is a forecast and must not outshout it, the gridlines are a backdrop and
