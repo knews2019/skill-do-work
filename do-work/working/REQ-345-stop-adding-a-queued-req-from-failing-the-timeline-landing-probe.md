@@ -1,13 +1,15 @@
 ---
 id: REQ-345
 title: "[impact-critical] Stop adding a queued REQ from failing the timeline landing probe"
-status: pending
+status: claimed
+claimed_at: 2026-08-23T23:05:00Z
 created_at: 2026-08-23T22:35:07Z
 user_request: UR-068
 domain: testing
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: false
 suggested_spec: bug-fix
+route: C
 depends_on: []
 maintenance: false
 impact: impact-critical

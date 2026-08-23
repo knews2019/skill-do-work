@@ -1,7 +1,8 @@
 ---
 id: REQ-340
 title: "Addendum: finish the report-image interruption sweep"
-status: pending
+status: claimed
+claimed_at: 2026-08-23T23:08:00Z
 status_changed_at: 2026-08-23T22:32:23Z
 created_at: 2026-08-23T19:30:00Z
 user_request: UR-065
@@ -10,6 +11,7 @@ domain: testing
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: true
 suggested_spec: bug-fix
+route: B
 depends_on: []
 maintenance: false
 sweep: true
