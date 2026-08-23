@@ -2692,7 +2692,9 @@ process.stdout.write(JSON.stringify({
 // needs to see.
 func TestJavaScriptBehaviorTimelineRowsFollowTheWindow(t *testing.T) {
 	indexHtml := generateLiveSite(t)
-	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function timelineRowSegments(") + "\n" +
+	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function timelineWaitEndMs(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineWorkEndMs(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineRowSegments(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineRowsInWindow(") + `
 var nowMs = Date.UTC(2026, 5, 20, 12, 0);
 var windowStartMs = Date.UTC(2026, 5, 10);
@@ -3355,6 +3357,8 @@ func TestJavaScriptBehaviorTimelineNarrowRowsDrawOneMarker(t *testing.T) {
 	// shipped constant drift to 1 with this test still green — REQ-265's lesson,
 	// and REQ-322 shipped exactly that mistake in this file.
 	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPLIT_WIDTH", "TIMELINE_MIN_SEGMENT_WIDTH") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineWaitEndMs(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineWorkEndMs(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineRowSegments(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineCollapsedRowMark(") + `
 var nowMs = Date.UTC(2026, 7, 23, 12, 0);
@@ -5958,10 +5962,27 @@ func TestJavaScriptBehaviorReversedWaitDrawsAsABreak(t *testing.T) {
 
 // TestJavaScriptBehaviorTimelineSummaryCountsRowsDrawnAsBreaks drives the whole
 // renderer because the contract spans two seams: the filtered row population
-// chosen by renderTimelineView and the three existing reasons its drawing pass
-// represents as broken. Counting causes would double-count REQ-914; counting
-// the unfiltered payload would make the filtered case report four instead of
-// one; counting row.anomaly alone would omit both reversed-span cases.
+// chosen by renderTimelineView and every reason its drawing pass represents as
+// broken. Counting causes would double-count REQ-914; counting the unfiltered
+// payload would make the filtered case report four instead of one.
+//
+// REQ-328 CHANGED WHAT THIS COUNTS, and the change is deliberate and stated here
+// because a quietly-edited expectation looks identical in a diff.
+//
+// The old rule was `row.anomaly || waitMinutes < 0 || workMinutes < 0`. row.anomaly
+// is the board's BROADER bookkeeping verdict and includes rows whose spans are
+// perfectly drawable, so the sentence announced breaks the chart never drew: nine
+// such rows on this repo's own board produced "9 with broken stamps, drawn as
+// breaks" over a chart with zero break markers on it. The clause now counts
+// exactly what the drawing pass turns into a break, through the one predicate both
+// read (timelineRowDrawsABreak).
+//
+// So REQ-911 — flagged anomalous, every span drawn — is now expected to count
+// ZERO. It stays in the fixture as the guard against `row.anomaly ||` returning.
+// REQ-916 is the shape that replaces it as a real cause: a REQ that STOPPED with
+// no resolvable end instant, which carries a zero completedTime and no open flag
+// and is drawn as a break. The unfiltered total is still 4, for a different set of
+// four rows: 912, 913, 914 and 916.
 func TestJavaScriptBehaviorTimelineSummaryCountsRowsDrawnAsBreaks(t *testing.T) {
 	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
 	if readError != nil {
@@ -5987,7 +6008,10 @@ func TestJavaScriptBehaviorTimelineSummaryCountsRowsDrawnAsBreaks(t *testing.T) 
 	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
 	    {"id":"REQ-915","createdTime":"2026-08-18T09:00:00Z","claimedTime":"2026-08-18T10:00:00Z",
 	     "completedTime":"2026-08-18T11:00:00Z","waitMinutes":60,"workMinutes":60,
-	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false}
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-916","createdTime":"2026-08-18T09:00:00Z","claimedTime":"2026-08-18T09:45:00Z",
+	     "waitMinutes":45,"workMinutes":0,
+	     "waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":true}
 	  ]
 	}`
 
@@ -6005,6 +6029,8 @@ process.stdout.write(JSON.stringify({
   unfiltered: timelineSummaryWithFilter(null),
   filtered: timelineSummaryWithFilter(["REQ-912", "REQ-915"]),
   anomalyOnly: timelineSummaryWithFilter(["REQ-911"]),
+  unresolvedOnly: timelineSummaryWithFilter(["REQ-916"]),
+  unresolvedAndAnomalyOnly: timelineSummaryWithFilter(["REQ-911", "REQ-916"]),
   reversedPair: timelineSummaryWithFilter(["REQ-912", "REQ-913"]),
   reversedWaitOnly: timelineSummaryWithFilter(["REQ-912"]),
   reversedWorkOnly: timelineSummaryWithFilter(["REQ-913"]),
@@ -6020,14 +6046,16 @@ process.stdout.write(JSON.stringify({
 	probeOutput := runJavaScriptBehaviorProbe(t, "timeline summary break count", javascriptProbe)
 
 	var summaries struct {
-		Unfiltered         string `json:"unfiltered"`
-		Filtered           string `json:"filtered"`
-		AnomalyOnly        string `json:"anomalyOnly"`
-		ReversedPair       string `json:"reversedPair"`
-		ReversedWaitOnly   string `json:"reversedWaitOnly"`
-		ReversedWorkOnly   string `json:"reversedWorkOnly"`
-		CombinedCausesOnly string `json:"combinedCausesOnly"`
-		HealthyOnly        string `json:"healthyOnly"`
+		Unfiltered               string `json:"unfiltered"`
+		Filtered                 string `json:"filtered"`
+		AnomalyOnly              string `json:"anomalyOnly"`
+		UnresolvedOnly           string `json:"unresolvedOnly"`
+		UnresolvedAndAnomalyOnly string `json:"unresolvedAndAnomalyOnly"`
+		ReversedPair             string `json:"reversedPair"`
+		ReversedWaitOnly         string `json:"reversedWaitOnly"`
+		ReversedWorkOnly         string `json:"reversedWorkOnly"`
+		CombinedCausesOnly       string `json:"combinedCausesOnly"`
+		HealthyOnly              string `json:"healthyOnly"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &summaries); decodeError != nil {
 		t.Fatalf("decode rendered timeline summaries: %v (output starts %q)",
@@ -6042,16 +6070,28 @@ process.stdout.write(JSON.stringify({
 		}
 	}
 
+	wantNoBreakClause := func(caseName string, summary string) {
+		t.Helper()
+		if strings.Contains(summary, "with broken stamps") {
+			t.Errorf("%s summary must omit the break clause, got %q", caseName, summary)
+		}
+	}
+
 	wantBreakClause("unfiltered", summaries.Unfiltered, 4)
 	wantBreakClause("filtered", summaries.Filtered, 1)
-	wantBreakClause("anomaly only", summaries.AnomalyOnly, 1)
 	wantBreakClause("reversed wait and work", summaries.ReversedPair, 2)
 	wantBreakClause("reversed wait only", summaries.ReversedWaitOnly, 1)
 	wantBreakClause("reversed work only", summaries.ReversedWorkOnly, 1)
 	wantBreakClause("combined causes", summaries.CombinedCausesOnly, 1)
-	if strings.Contains(summaries.HealthyOnly, "with broken stamps") {
-		t.Errorf("a healthy-only timeline must omit the break clause, got %q", summaries.HealthyOnly)
-	}
+	// A REQ that stopped with no resolvable end instant IS drawn as a break, so it
+	// is counted.
+	wantBreakClause("unresolved only", summaries.UnresolvedOnly, 1)
+	// And a row that is merely flagged anomalous, with every span drawn, is NOT —
+	// which is the whole of REQ-328's change to this clause. Both of these fail if
+	// `row.anomaly ||` comes back: the first would report 2, the second 1.
+	wantBreakClause("unresolved beside an anomalous-but-drawn row", summaries.UnresolvedAndAnomalyOnly, 1)
+	wantNoBreakClause("anomaly only", summaries.AnomalyOnly)
+	wantNoBreakClause("healthy only", summaries.HealthyOnly)
 }
 
 // TestJavaScriptBehaviorTimelineForecastLabelsAFilteredView drives the WHOLE

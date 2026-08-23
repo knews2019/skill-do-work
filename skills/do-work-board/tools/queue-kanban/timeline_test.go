@@ -7,8 +7,20 @@ import (
 	"time"
 )
 
+// timelineTicket builds one ticket the way buildBoard would hand it over —
+// including the RESOLVED completion instant.
+//
+// CompletionTime is not decoration here: buildTimelineAggregate reads it rather
+// than re-parsing CompletedAt, because the board resolves a completion instant
+// from the frontmatter stamp OR the commit hash's committer date in exactly one
+// place (resolveCompletionTime, model.go) and this view consumes that verdict. A
+// fixture that set only CompletedAt would describe a ticket buildBoard never
+// produces, and every assertion about a stopped row would be measuring it.
+//
+// timelineUnresolvedTicket below is the deliberate other case: a stopped REQ
+// whose end instant the board could NOT resolve.
 func timelineTicket(requestId string, status string, createdAt string, claimedAt string, completedAt string) *RequestTicket {
-	return &RequestTicket{
+	ticket := &RequestTicket{
 		RequestId:   requestId,
 		Title:       "fixture " + requestId,
 		Status:      status,
@@ -16,6 +28,48 @@ func timelineTicket(requestId string, status string, createdAt string, claimedAt
 		ClaimedAt:   claimedAt,
 		CompletedAt: completedAt,
 	}
+	if completionInstant, completionParsed := parseTimestamp(completedAt); completionParsed {
+		ticket.CompletionTime = completionInstant.UTC()
+		ticket.CompletionTimeSource = CompletionFromFrontmatter
+	} else {
+		ticket.CompletionTimeSource = CompletionUnresolved
+	}
+	return ticket
+}
+
+// timelineUnresolvedTicket is a STOPPED REQ with no resolvable end instant: the
+// shape REQ-051 through REQ-059 have on this repo's own board, where a commit
+// hash is recorded but git cannot date it. The board already flags these as
+// completion anomalies; the Timeline owes them a break marker rather than a bar
+// running to the now-line, and the row it produces says so by carrying a zero
+// CompletedTime with neither open flag set.
+func timelineUnresolvedTicket(requestId string, status string, createdAt string, claimedAt string) *RequestTicket {
+	ticket := timelineTicket(requestId, status, createdAt, claimedAt, "")
+	ticket.CommitHash = "deadbee"
+	ticket.CompletionTimeSource = CompletionUnresolved
+	ticket.CompletionAnomaly = true
+	ticket.CompletionAnomalyReason = "commit \"deadbee\" could not be dated"
+	return ticket
+}
+
+// timelineGitDatedTicket is a stopped REQ with NO completed_at frontmatter whose
+// completion instant the board resolved from its commit hash's committer date
+// (resolveCompletionTime's second rung, model.go).
+//
+// This is the shape that DISTINGUISHES reading ticket.CompletionTime from
+// re-parsing ticket.CompletedAt. Every other fixture here has both, set from the
+// same string, so a mutation swapping one for the other passes against all of
+// them — which it did, until this existed.
+func timelineGitDatedTicket(requestId string, status string, createdAt string, claimedAt string, gitDatedAt string) *RequestTicket {
+	ticket := timelineTicket(requestId, status, createdAt, claimedAt, "")
+	ticket.CommitHash = "abc1234"
+	gitInstant, gitParsed := parseTimestamp(gitDatedAt)
+	if !gitParsed {
+		panic("timelineGitDatedTicket: gitDatedAt must parse")
+	}
+	ticket.CompletionTime = gitInstant.UTC()
+	ticket.CompletionTimeSource = CompletionFromGitLog
+	return ticket
 }
 
 func findTimelineRow(t *testing.T, aggregate TimelineAggregate, requestId string) TimelineRow {
@@ -160,6 +214,171 @@ func TestTimelineNewestFirstTiebreakIsNumeric(t *testing.T) {
 		if gotOrder[orderIndex] != wantOrder[orderIndex] {
 			t.Fatalf("row order = %v, want %v (the tiebreak is numeric, not lexical)", gotOrder, wantOrder)
 		}
+	}
+}
+
+// A span is open because the work is STILL RUNNING, never because a stamp string
+// failed to parse.
+//
+// buildTimelineAggregate used to infer both open flags from a missing stamp and to
+// re-parse ticket.CompletedAt instead of reading the CompletionTime the board had
+// already resolved. On this repo's own board that made 25 of the 26 rows the chart
+// called "still open" `completed` or `cancelled`, each drawn as a dashed bar
+// running to the now-line — REQ-059, completed, drew 24.8 days of work in flight,
+// and REQ-311's wait ran to now beside a calendar entry placing it on 21 August.
+//
+// The four shapes below are the whole decision surface, and the fixture is built so
+// that each one FAILS DIFFERENTLY: a stopped REQ with a resolved instant, a stopped
+// REQ without one, a stopped REQ that was never claimed, and one that is genuinely
+// running. Every stopped fixture deliberately has a NIL claimed_at or completed_at
+// where the old code would have reached for now, so "measured to the wrong instant"
+// and "measured to no instant" cannot be confused.
+func TestTimelineOpenSpansMeanStillRunningNotAMissingStamp(t *testing.T) {
+	now := time.Date(2026, 8, 23, 12, 0, 0, 0, time.UTC)
+
+	// Completed, with a resolved completion instant, and NO claimed_at — the
+	// REQ-311 shape. The wait ends where the REQ ended, not at the now-line.
+	completedNeverClaimed := timelineTicket("REQ-801", "completed",
+		"2026-08-21T00:00:00Z", "", "2026-08-21T15:00:00Z")
+	// Cancelled, same shape — the REQ-302 shape. Nothing is waiting to claim a
+	// cancelled REQ.
+	cancelledNeverClaimed := timelineTicket("REQ-802", "cancelled",
+		"2026-08-20T08:00:00Z", "", "2026-08-20T11:00:00Z")
+	// Completed and claimed, with a resolved instant: the ordinary closed row.
+	completedAndClaimed := timelineTicket("REQ-803", "completed",
+		"2026-08-19T09:00:00Z", "2026-08-19T10:00:00Z", "2026-08-19T12:00:00Z")
+	// Completed and claimed, with NO resolvable instant — the REQ-059 shape.
+	unresolvedAfterClaim := timelineUnresolvedTicket("REQ-804", "completed",
+		"2026-07-29T13:00:00Z", "2026-07-29T15:00:00Z")
+	// Completed, never claimed, no resolvable instant: nothing drawable at all.
+	unresolvedNeverClaimed := timelineUnresolvedTicket("REQ-805", "completed",
+		"2026-07-28T13:00:00Z", "")
+	// Completed with NO completed_at frontmatter, dated from its commit hash. This
+	// is the one fixture whose two possible sources DISAGREE, so it is the one that
+	// can tell reading the board's resolved instant from re-parsing the stamp.
+	gitDated := timelineGitDatedTicket("REQ-808", "completed",
+		"2026-08-18T09:00:00Z", "2026-08-18T10:00:00Z", "2026-08-18T14:30:00Z")
+	// Genuinely in flight, and the ONLY row entitled to an open span.
+	inFlight := timelineTicket("REQ-806", "claimed",
+		"2026-08-23T09:00:00Z", "2026-08-23T10:00:00Z", "")
+	// Genuinely unclaimed and still in the queue: an open WAIT, correctly.
+	stillPending := timelineTicket("REQ-807", "pending", "2026-08-23T11:00:00Z", "", "")
+
+	aggregate := buildTimelineAggregate([]*RequestTicket{
+		completedNeverClaimed, cancelledNeverClaimed, completedAndClaimed,
+		unresolvedAfterClaim, unresolvedNeverClaimed, gitDated, inFlight, stillPending,
+	}, now)
+
+	// Nothing that has stopped may claim an open span, whatever its stamps look
+	// like. Stated as a sweep over the stopped rows so a new stopped shape cannot
+	// be added below without answering to it.
+	for _, stoppedId := range []string{"REQ-801", "REQ-802", "REQ-803", "REQ-804", "REQ-805", "REQ-808"} {
+		stoppedRow := findTimelineRow(t, aggregate, stoppedId)
+		if stoppedRow.WaitOpen || stoppedRow.WorkOpen {
+			t.Errorf("%s has stopped, and reports WaitOpen=%v WorkOpen=%v; a span is open because "+
+				"the work is still running, not because a stamp was missing",
+				stoppedId, stoppedRow.WaitOpen, stoppedRow.WorkOpen)
+		}
+	}
+
+	// REQ-801: the wait ends at the RESOLVED completion instant the board already
+	// worked out, 15 hours after capture — not at the now-line 36 hours later.
+	completedRow := findTimelineRow(t, aggregate, "REQ-801")
+	assertTimelineMinutes(t, "REQ-801 wait", completedRow.WaitMinutes, 15*60)
+	if !completedRow.CompletedTime.Equal(time.Date(2026, 8, 21, 15, 0, 0, 0, time.UTC)) {
+		t.Errorf("REQ-801 completed at %s, want the resolved instant 2026-08-21T15:00:00Z",
+			completedRow.CompletedTime)
+	}
+	if completedRow.HasWork {
+		t.Error("REQ-801 was never claimed, so it has no work segment and none may be invented")
+	}
+	// The measurement that proves this is not the now-line: 36 hours would be the
+	// old answer, and the fixture is spaced so the two cannot coincide.
+	if math.Abs(completedRow.WaitMinutes-now.Sub(time.Date(2026, 8, 21, 0, 0, 0, 0, time.UTC)).Minutes()) < 1 {
+		t.Error("REQ-801's wait equals now − created_at, so this fixture cannot tell a wait measured " +
+			"to the completion from one measured to the now-line")
+	}
+
+	// REQ-802: cancelled is stopped too. It is not the completed statuses alone.
+	cancelledRow := findTimelineRow(t, aggregate, "REQ-802")
+	assertTimelineMinutes(t, "REQ-802 wait", cancelledRow.WaitMinutes, 3*60)
+
+	// REQ-803: unchanged behaviour for the ordinary closed row.
+	closedRow := findTimelineRow(t, aggregate, "REQ-803")
+	assertTimelineMinutes(t, "REQ-803 wait", closedRow.WaitMinutes, 60)
+	assertTimelineMinutes(t, "REQ-803 work", closedRow.WorkMinutes, 120)
+
+	// REQ-804: stopped with no resolvable end. The wait it DOES have is measured;
+	// the work has no width, and nothing is invented for it.
+	unresolvedRow := findTimelineRow(t, aggregate, "REQ-804")
+	assertTimelineMinutes(t, "REQ-804 wait", unresolvedRow.WaitMinutes, 120)
+	if !unresolvedRow.HasWork {
+		t.Error("REQ-804 was claimed, so the row still reports that work was started")
+	}
+	assertTimelineMinutes(t, "REQ-804 work", unresolvedRow.WorkMinutes, 0)
+	if !unresolvedRow.CompletedTime.IsZero() {
+		t.Errorf("REQ-804 has no resolvable completion instant, yet the row carries %s; an instant "+
+			"must never be fabricated", unresolvedRow.CompletedTime)
+	}
+	if !unresolvedRow.Anomaly {
+		t.Error("REQ-804's broken bookkeeping is the board's verdict and must reach the row")
+	}
+
+	// REQ-805: nothing drawable at all. Still a row — a REQ that vanishes from
+	// every window including Fit all is worse than one that is visibly broken.
+	unresolvedUnclaimed := findTimelineRow(t, aggregate, "REQ-805")
+	assertTimelineMinutes(t, "REQ-805 wait", unresolvedUnclaimed.WaitMinutes, 0)
+	if unresolvedUnclaimed.HasWork {
+		t.Error("REQ-805 was never claimed, so it has no work segment")
+	}
+	if !unresolvedUnclaimed.CompletedTime.IsZero() {
+		t.Errorf("REQ-805 carries a completion instant %s it does not have", unresolvedUnclaimed.CompletedTime)
+	}
+
+	// REQ-808: the git-dated row. Its work ends at the committer date the board
+	// resolved, which no re-parse of its (empty) completed_at could reach: the old
+	// code would have called it unresolved and drawn a break for a REQ the board
+	// knows the completion instant of.
+	gitDatedRow := findTimelineRow(t, aggregate, "REQ-808")
+	assertTimelineMinutes(t, "REQ-808 wait", gitDatedRow.WaitMinutes, 60)
+	assertTimelineMinutes(t, "REQ-808 work", gitDatedRow.WorkMinutes, 4*60+30)
+	if !gitDatedRow.CompletedTime.Equal(time.Date(2026, 8, 18, 14, 30, 0, 0, time.UTC)) {
+		t.Errorf("REQ-808 completed at %s, want the git-resolved instant 2026-08-18T14:30:00Z",
+			gitDatedRow.CompletedTime)
+	}
+
+	// REQ-806 and REQ-807: the two rows that ARE running, measured to the board's
+	// one now. Without these the sweep above would pass against code that simply
+	// never sets an open flag.
+	runningRow := findTimelineRow(t, aggregate, "REQ-806")
+	if !runningRow.WorkOpen {
+		t.Error("REQ-806 is claimed and unfinished, so its work segment is open")
+	}
+	assertTimelineMinutes(t, "REQ-806 open work", runningRow.WorkMinutes, 120)
+	pendingRow := findTimelineRow(t, aggregate, "REQ-807")
+	if !pendingRow.WaitOpen {
+		t.Error("REQ-807 is unclaimed and still in the queue, so its wait is open")
+	}
+	assertTimelineMinutes(t, "REQ-807 open wait", pendingRow.WaitMinutes, 60)
+
+	// And the range follows: it reaches now because two rows are genuinely open,
+	// and it would have reached now for the wrong reason before.
+	if !aggregate.RangeEnd.Equal(now) {
+		t.Errorf("range end = %s with two genuinely open rows, want now (%s)", aggregate.RangeEnd, now)
+	}
+
+	// The same board with every open row removed must NOT reach now. This is the
+	// half that was broken: five stopped rows used to drag RangeEnd to the present
+	// and stretch every fitted window with them.
+	stoppedOnly := buildTimelineAggregate([]*RequestTicket{
+		completedNeverClaimed, cancelledNeverClaimed, completedAndClaimed,
+		unresolvedAfterClaim, unresolvedNeverClaimed, gitDated,
+	}, now)
+	wantStoppedEnd := time.Date(2026, 8, 21, 15, 0, 0, 0, time.UTC)
+	if !stoppedOnly.RangeEnd.Equal(wantStoppedEnd) {
+		t.Errorf("with every row stopped the range ends at %s, want the last real instant %s — a "+
+			"board nobody has touched since Friday must not draw the axis out to now",
+			stoppedOnly.RangeEnd, wantStoppedEnd)
 	}
 }
 

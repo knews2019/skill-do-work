@@ -598,6 +598,55 @@
   // is part of what was happening this week, and hiding it would answer a
   // different question than the reader asked.
 
+  // ---- where a row's two spans end -----------------------------------------
+  //
+  // ONE ANSWER, read by the segment model and by the renderer, because they have
+  // twice drifted into disagreeing about which rows are drawable and the summary
+  // then described a chart nobody was looking at. NaN means "there is no honest
+  // end", and every reader turns that into the break marker rather than a bar.
+  //
+  // A span runs to the now-line ONLY when the payload says it is open, and the
+  // payload says that only for a REQ that has not stopped (timeline.go). Falling
+  // back to now whenever a stamp was missing is what drew 25 finished REQs as
+  // work in flight, one of them 24.8 days long.
+
+  // Where the wait ends: at the claim, at the now-line while the REQ is still
+  // waiting, at the instant it stopped when it stopped without ever being
+  // claimed, and nowhere at all when it stopped and that instant is unknown.
+  function timelineWaitEndMs(row, nowMs, claimedMs, completedMs) {
+    if (!isNaN(claimedMs)) {
+      return claimedMs;
+    }
+    if (row.waitOpen) {
+      return nowMs;
+    }
+    return completedMs;
+  }
+
+  // Where the work ends: at the completion, at the now-line while it is running,
+  // and nowhere at all when it stopped and that instant is unknown.
+  function timelineWorkEndMs(row, nowMs, completedMs) {
+    if (!isNaN(completedMs)) {
+      return completedMs;
+    }
+    return row.workOpen ? nowMs : NaN;
+  }
+
+  // Whether this row draws a BREAK rather than a bar — the one verdict the segment
+  // model, the renderer and the summary all read. Two causes, one mark: a reversed
+  // span (an end before its start), and a REQ that stopped with no resolvable end
+  // instant. What the reader needs from either is "the bookkeeping for this row is
+  // broken", so they get the same marker and are counted together.
+  function timelineRowDrawsABreak(row, nowMs) {
+    var claimedMs = row.claimedTime ? Date.parse(row.claimedTime) : NaN;
+    var completedMs = row.completedTime ? Date.parse(row.completedTime) : NaN;
+    if (row.waitMinutes < 0 || isNaN(timelineWaitEndMs(row, nowMs, claimedMs, completedMs))) {
+      return true;
+    }
+    return !!row.hasWork &&
+      (row.workMinutes < 0 || isNaN(timelineWorkEndMs(row, nowMs, completedMs)));
+  }
+
   // The SEGMENTS a row draws, as [startMs, endMs] pairs — not one hull over them.
   //
   // The hull was the first shape of this and it was wrong for exactly one row
@@ -636,18 +685,24 @@
     // window inside the interval overlaps a hull containing no mark. Keyed on
     // row.waitMinutes, the same field the renderer branches on, so the two cannot
     // drift into disagreeing about which rows are reversed.
-    if (row.waitMinutes < 0) {
+    // A wait with no honest end is the same shape as a reversed one: a point at
+    // the created instant, where the renderer puts the break marker.
+    var waitEndMs = timelineWaitEndMs(row, nowMs, claimedMs, completedMs);
+    if (row.waitMinutes < 0 || isNaN(waitEndMs)) {
       addSegment(createdMs, createdMs);
     } else {
-      addSegment(createdMs, isNaN(claimedMs) ? nowMs : claimedMs);
+      addSegment(createdMs, waitEndMs);
     }
     if (row.hasWork) {
-      if (row.workMinutes < 0) {
+      var workEndMs = timelineWorkEndMs(row, nowMs, completedMs);
+      if (row.workMinutes < 0 || isNaN(workEndMs)) {
         // Same again, at the instant renderVisibleRows puts this row's marker.
+        // A REQ that stopped with no resolvable completion instant lands here:
+        // there is no width to claim, and the marker says so.
         addSegment(claimedMs, claimedMs);
       } else {
         // The work, drawn claimed → completed, or claimed → now while it runs.
-        addSegment(claimedMs, isNaN(completedMs) ? nowMs : completedMs);
+        addSegment(claimedMs, workEndMs);
       }
     }
     if (projectedRow) {
@@ -1237,8 +1292,14 @@
       var openCount = rows.filter(function (row) {
         return row.waitOpen || row.workOpen;
       }).length;
+      // The SAME predicate the renderer branches on, so the sentence below cannot
+      // announce breaks the chart does not draw. It counted row.anomaly too, which
+      // is the board's broader bookkeeping verdict and includes rows with a
+      // perfectly drawable span: nine such rows on this repo's board produced
+      // "9 with broken stamps, drawn as breaks" over a chart with zero break
+      // markers on it.
       var brokenRowCount = rows.filter(function (row) {
-        return row.anomaly || row.waitMinutes < 0 || (row.hasWork && row.workMinutes < 0);
+        return timelineRowDrawsABreak(row, nowMs);
       }).length;
       // The empty window is a state the reader can zoom themselves into, so it
       // says what to do about it rather than reading like a broken board. It
@@ -1518,7 +1579,14 @@
 
 
         var createdMs = Date.parse(row.createdTime);
-        var claimedMs = row.claimedTime ? Date.parse(row.claimedTime) : nowMs;
+        var claimedMs = row.claimedTime ? Date.parse(row.claimedTime) : NaN;
+        var completedMs = row.completedTime ? Date.parse(row.completedTime) : NaN;
+        // The SAME two answers timelineRowSegments used to decide this row belongs
+        // in the window. Reading them from one place is what keeps the row's marks
+        // where the segment model said they would be — the claimedMs default used
+        // to be nowMs here, which drew a bar to the now-line for a row the model
+        // had already decided was a point.
+        var waitEndMs = timelineWaitEndMs(row, nowMs, claimedMs, completedMs);
         var projectedRow = projectedById[row.id];
         // A row whose whole span is narrower than a readable two-segment bar
         // draws ONE marker. Two kinds of row are excluded, for one reason: the
@@ -1528,7 +1596,7 @@
         // measured-versus-projected is the distinction a reader trusts hardest,
         // and one solid marker over an open wait plus a hatched projection claims
         // work that has not happened.
-        var rowHasBrokenStamps = row.waitMinutes < 0 || (row.hasWork && row.workMinutes < 0);
+        var rowHasBrokenStamps = timelineRowDrawsABreak(row, nowMs);
         var collapsedMark = rowHasBrokenStamps || projectedRow
           ? null
           : timelineCollapsedRowMark(
@@ -1542,12 +1610,14 @@
             "timeline-segment timeline-segment-whole-row");
           continue;
         }
-        // Same reasoning as the work segment below: a reversed span has no width
-        // to draw honestly, so it becomes a break marker at the wait's own start
+        // Same reasoning as the work segment below: a span with no honest end has
+        // no width to draw, so it becomes a break marker at the wait's own start
         // instant rather than a bar drawn left-to-right by drawSegment's
-        // min/max sort. An open wait is measured to the now-line and is never
-        // reversed, so it keeps its bar.
-        if (row.waitMinutes < 0) {
+        // min/max sort. Two causes reach here — a reversed span, and a REQ that
+        // stopped with no resolvable end instant — and both draw the same mark,
+        // because in both cases what the reader needs to know is "the bookkeeping
+        // for this row is broken", not which way.
+        if (row.waitMinutes < 0 || isNaN(waitEndMs)) {
           makeTimelineSvgNode(rowGroup, "rect", {
             x: (xOfEpoch(createdMs) - 3).toFixed(1),
             y: rowTopY + 2,
@@ -1556,7 +1626,7 @@
             class: "timeline-segment-broken"
           });
         } else {
-          drawSegment(rowGroup, rowTopY, createdMs, claimedMs,
+          drawSegment(rowGroup, rowTopY, createdMs, waitEndMs,
             "timeline-segment timeline-segment-wait" + (row.waitOpen ? " is-open" : ""));
         }
 
@@ -1564,12 +1634,12 @@
           drawProjectedSegment(rowGroup, rowTopY, projectedRow);
         }
         if (row.hasWork) {
-          var workStartMs = Date.parse(row.claimedTime);
-          var workEndMs = row.completedTime ? Date.parse(row.completedTime) : nowMs;
-          // A reversed span has no width to draw honestly, so it is drawn as a
+          var workStartMs = claimedMs;
+          var workEndMs = timelineWorkEndMs(row, nowMs, completedMs);
+          // A span with no honest end has no width to draw, so it is drawn as a
           // break marker at the claim instant rather than as a bar running
           // backwards or clamped forwards to nothing.
-          if (row.workMinutes < 0) {
+          if (row.workMinutes < 0 || isNaN(workEndMs)) {
             makeTimelineSvgNode(rowGroup, "rect", {
               x: (xOfEpoch(workStartMs) - 3).toFixed(1),
               y: rowTopY + 2,

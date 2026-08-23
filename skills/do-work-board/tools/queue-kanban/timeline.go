@@ -33,8 +33,14 @@ type TimelineRow struct {
 	ClaimedTime   time.Time // zero when never claimed
 	CompletedTime time.Time // zero when not completed
 
-	// WaitMinutes is claimed_at − created_at, or now − created_at when the REQ
-	// was never claimed, in which case WaitOpen is true.
+	// WaitMinutes is claimed_at − created_at, or now − created_at when a REQ that
+	// is still in the queue has not been claimed, in which case WaitOpen is true.
+	//
+	// OPEN MEANS STILL RUNNING, and that is a question about the REQ's STATE, not
+	// about whether a stamp string happened to parse. Inferring it from a missing
+	// stamp made this board describe 25 of 26 rows as "still open" that were
+	// `completed` or `cancelled`, each drawn as a dashed bar running to the
+	// now-line — REQ-059, completed, drew 24.8 days of work in flight.
 	WaitMinutes float64
 	WaitOpen    bool
 
@@ -44,7 +50,8 @@ type TimelineRow struct {
 	HasWork bool
 
 	// WorkMinutes is completed_at − claimed_at, or now − claimed_at while the
-	// REQ is in flight, in which case WorkOpen is true.
+	// REQ is genuinely in flight, in which case WorkOpen is true. Same rule as
+	// WaitOpen above.
 	WorkMinutes float64
 	WorkOpen    bool
 
@@ -52,6 +59,14 @@ type TimelineRow struct {
 	// as broken bookkeeping in exactly one place.
 	Anomaly       bool
 	AnomalyReason string
+
+	// A REQ that has STOPPED and whose end instant the board could not resolve
+	// carries NO flag of its own, deliberately. It is already fully described:
+	// CompletedTime is zero and neither open flag is set, and no other row shape
+	// can say that — a running one sets an open flag, a resolved one carries the
+	// instant. The client reads that pair and draws the break marker the summary
+	// and the legend already promise. A third field would be a second way to say
+	// the same thing, and the first thing to drift.
 }
 
 // TimelineAggregate is the whole view's data: rows newest-created first, the time
@@ -92,12 +107,31 @@ func buildTimelineAggregate(tickets []*RequestTicket, now time.Time) TimelineAgg
 			AnomalyReason: ticket.CompletionAnomalyReason,
 		}
 
+		// Has this REQ stopped? The board decides that in one place, and this
+		// consumes the verdict rather than listing statuses of its own. It is the
+		// question every "open" flag below turns on: a span is open because the
+		// work is still running, never because a stamp failed to parse.
+		hasStopped := isTerminalResolvedStatus(ticket.Status)
+		// The END INSTANT the board already resolved — frontmatter first, then the
+		// commit hash's committer date (resolveCompletionTime, model.go). Reading
+		// ticket.CompletedAt again here ignored that work: REQ-311 and REQ-302 have
+		// a resolved instant the calendar places them on, and this view drew both as
+		// still waiting, running to the now-line.
+		endInstant := ticket.CompletionTime.UTC()
+		endResolved := hasStopped && !ticket.CompletionTime.IsZero()
 		claimedInstant, claimedParsed := parseTimestamp(ticket.ClaimedAt)
 		if !claimedParsed {
-			// Never claimed: the wait is still running against the board's now,
-			// and there is no work segment to draw.
-			row.WaitMinutes = aggregate.Now.Sub(row.CreatedTime).Minutes()
-			row.WaitOpen = true
+			// Never claimed. Still in the queue, so the wait is genuinely running
+			// against the board's now; stopped, so it ended when the REQ did.
+			// Either way there is no work segment to draw.
+			switch {
+			case !hasStopped:
+				row.WaitMinutes = aggregate.Now.Sub(row.CreatedTime).Minutes()
+				row.WaitOpen = true
+			case endResolved:
+				row.WaitMinutes = endInstant.Sub(row.CreatedTime).Minutes()
+				row.CompletedTime = endInstant
+			}
 			aggregate.Rows = append(aggregate.Rows, row)
 			continue
 		}
@@ -106,15 +140,21 @@ func buildTimelineAggregate(tickets []*RequestTicket, now time.Time) TimelineAgg
 		row.WaitMinutes = row.ClaimedTime.Sub(row.CreatedTime).Minutes()
 		row.HasWork = true
 
-		completedInstant, completedParsed := parseTimestamp(ticket.CompletedAt)
-		if !completedParsed {
+		switch {
+		case !hasStopped:
+			// In flight: measured to the board's now, and the only case that may
+			// say so.
 			row.WorkMinutes = aggregate.Now.Sub(row.ClaimedTime).Minutes()
 			row.WorkOpen = true
-			aggregate.Rows = append(aggregate.Rows, row)
-			continue
+		case endResolved:
+			row.CompletedTime = endInstant
+			row.WorkMinutes = endInstant.Sub(row.ClaimedTime).Minutes()
+		default:
+			// Stopped, no resolvable end: the work segment has no width to draw, so
+			// WorkMinutes stays 0 and CompletedTime stays zero. HasWork remains true
+			// — work WAS started — and a zero CompletedTime with no open flag is what
+			// tells the client to draw a break rather than a bar.
 		}
-		row.CompletedTime = completedInstant.UTC()
-		row.WorkMinutes = row.CompletedTime.Sub(row.ClaimedTime).Minutes()
 		aggregate.Rows = append(aggregate.Rows, row)
 	}
 

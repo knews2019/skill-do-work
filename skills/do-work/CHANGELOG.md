@@ -2,6 +2,18 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.21 — The Timeline Stops Drawing Finished REQs as Still Running (2026-08-23)
+
+The chart decided a span was "still open" by asking whether a timestamp string parsed, not by asking what
+state the REQ was in. On this repo's board that made 25 of 26 supposedly-open rows finished work, each drawn
+as a dashed bar running to the now-line.
+
+- "Still open" now means still running: a completed or cancelled REQ never draws an open span, and the count beside it dropped from 26 to the number actually in flight
+- The chart reads the completion instant the board had already resolved — from frontmatter or the commit hash's date — instead of re-parsing the raw stamp, so a REQ the calendar places on Friday no longer draws a bar to right now
+- A REQ that stopped with no resolvable end instant is drawn as a break, which is what the summary and the legend already promised
+- "N with broken stamps, drawn as breaks" now counts exactly what is drawn as a break
+- A fitted window on a board with no running work no longer stretches out to the present
+
 ## 0.236.20 — Clicking a Timeline Row No Longer Blanks the Chart (2026-08-23)
 
 The detail drawer takes 630 pixels out of the plot, and nothing was re-measuring it — so following the
