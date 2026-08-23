@@ -1,8 +1,12 @@
 ---
 id: REQ-328
 title: "[impact-critical] Stop the timeline drawing finished REQs as still running"
-status: pending
+status: completed
 created_at: 2026-08-23T12:08:00Z
+claimed_at: 2026-08-23T13:45:00Z
+completed_at: 2026-08-23T14:25:00Z
+commit: 616b16c
+route: B
 user_request: UR-066
 domain: backend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -29,9 +33,16 @@ repo's own board, **25 of the 26 rows the chart calls "still open" are finished*
 `cancelled`. Each is drawn as a dashed open bar running to the now-line.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-kanban-board.md`. Two causes, one place: key `WaitOpen`/`WorkOpen` on `isTerminalResolvedStatus` (consumed, not restated), and read `ticket.CompletionTime` instead of re-parsing `CompletedAt`. Planned one shared client predicate so the segment model, the renderer and the summary cannot disagree about which rows draw breaks.
+- [x] **[APPLY]:** `timeline.go`, `timeline_test.go`, `web/board-timeline.js` as planned, plus `generate.go` (the payload row) and `generate_test.go` (two probe slice lists and the break-count lock-in test whose expectation this REQ deliberately changes). **Requirement 3 was implemented WITHOUT a new payload field**: a zero `completedTime` with neither open flag set already identifies the shape uniquely, so an `unresolved` flag would have been a second way to say one thing. That deviation is recorded in `timeline.go` beside the struct.
+- [x] **[UNIFY]:** Verified:
+  - `timeline.go` — `gofmt`/`go vet` clean; no status list of its own, `isTerminalResolvedStatus` consumed; no instant fabricated on any branch.
+  - `web/board-timeline.js` — `node --check` clean; the three former copies of the break condition now read one predicate.
+  - `generate.go` — the payload gained no field; the client derives the shape.
+  - `generate_test.go` — the changed lock-in test states the old rule, why it was wrong, and what each retained fixture now guards.
+  - `bash _dev/tests/maintainer-verify.sh` exit 0.
+  - Mutations: neutering the terminal test, narrowing it to completed-only, and reinstating `row.anomaly ||` each fail with a distinct message. A fourth — re-parsing `CompletedAt` — PASSED at first, because every fixture set both sources from one string; `timelineGitDatedTicket` was added for exactly that gap, and the mutation now fails on REQ-808's work span.
+  - Live payload before/after: 26 open rows (18 completed, 7 cancelled, 1 pending) became 9, all pending; 0 break markers became 9; `rangeEnd` stopped being dragged to `now`.
 
 ## Why
 

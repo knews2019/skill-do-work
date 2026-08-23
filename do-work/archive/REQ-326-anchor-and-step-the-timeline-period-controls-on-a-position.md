@@ -1,8 +1,12 @@
 ---
 id: REQ-326
 title: "Anchor and step the timeline period controls on a position, not a width"
-status: pending
+status: completed
 created_at: 2026-08-23T12:05:00Z
+claimed_at: 2026-08-23T12:30:00Z
+completed_at: 2026-08-23T12:48:00Z
+commit: ae1d80d
+route: B
 user_request: UR-066
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -27,9 +31,14 @@ and wrong for a period: a period is a position. Four separate reader-visible fai
 one from the anchor the chips choose. Fix the family together — they share one cause and one code site.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-kanban-board.md`. Traced all five failures to two lines: the unclamped candidate handed to `timelineZoomedWindow` at `timelinePeriodWindow`, and the midpoint anchor in `applyPeriodWindow`. Planned three pure functions (`timelinePeriodAnchor`, `timelineSteppedWindow`, `timelinePeriodGridOfWindow`) so a probe can drive the decisions directly, plus a period-INDEX clamp so a step stops on the last period the range reaches.
+- [x] **[APPLY]:** `web/board-timeline.js` and `generate_test.go` as planned, plus `web/template.html` for the hint sentence the new stepping rule changed. `timelineNearestPeriodLevel` and `steppingLevelName` deleted.
+- [x] **[UNIFY]:** Verified:
+  - `web/board-timeline.js` — `node --check` clean; no stale reference to the two deleted functions; every new function commented with the defect it closes.
+  - `generate_test.go` — `gofmt` clean, `go vet` clean; the new probe slices the production functions rather than restating them; the older period probe now calls `timelinePeriodAnchor`.
+  - `web/template.html` — hint sentence matches the shipped stepping rule.
+  - `bash _dev/tests/maintainer-verify.sh` exit 0.
+  - Five mutations of the fix produce five distinct assertion failures (midpoint anchor, unclamped endpoints, no period-index clamp, exact-level stepping, nearest-level snapping); the restored code passes.
 
 ## Why
 

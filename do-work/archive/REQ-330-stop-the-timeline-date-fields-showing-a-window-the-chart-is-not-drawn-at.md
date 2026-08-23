@@ -1,8 +1,12 @@
 ---
 id: REQ-330
 title: "Stop the timeline date fields showing a window the chart is not drawn at"
-status: pending
+status: completed
 created_at: 2026-08-23T12:15:00Z
+claimed_at: 2026-08-23T15:25:00Z
+completed_at: 2026-08-23T15:55:00Z
+commit: 22dc197
+route: B
 user_request: UR-066
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -27,9 +31,13 @@ code wrote. Three reader-visible failures come out of that one guard, including 
 permanently blank in a branch whose own comment says "Restore it unconditionally".
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-kanban-board.md`. Worked the guard's truth table by hand first and confirmed F1 from it before touching code: with the attribute removed and the field focused, `"" !== null` is true, so the restore branch returns. Replaced the value comparison with the events that bound an edit; kept `timelineEndEpochToDateField` and `timelineDateFieldToEpoch` separate per REQ-320.
+- [x] **[APPLY]:** `web/board-timeline.js` and `generate_test.go` as planned, plus `timeline_browser_probe_test.go` for the lifecycle probe — the field states only exist under a real engine, so a Node probe could not have reached them.
+- [x] **[UNIFY]:** Verified:
+  - `web/board-timeline.js` — `node --check` clean; `data-synced-value` has no remaining reader or writer; the clamp reuses `timelinePeriodStart(_, "day")` rather than adding a day-start function.
+  - `generate_test.go` / `timeline_browser_probe_test.go` — `gofmt`/`go vet` clean. One trap hit and fixed: a backtick inside a JS comment terminated the Go raw string the probe lives in.
+  - `bash _dev/tests/maintainer-verify.sh` exit 0.
+  - Mutations: the old value-comparison guard, a change handler that does not end the edit, the removed day clamp, and a blur that does not release the edit — four distinct failures. The round-trip property (chip → fields → re-apply) still holds.
 
 ## Why
 

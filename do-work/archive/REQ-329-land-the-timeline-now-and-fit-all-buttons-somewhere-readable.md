@@ -1,8 +1,12 @@
 ---
 id: REQ-329
 title: "Land the timeline Now and Fit all buttons somewhere readable"
-status: pending
+status: completed
 created_at: 2026-08-23T12:14:00Z
+claimed_at: 2026-08-23T17:05:00Z
+completed_at: 2026-08-23T17:55:00Z
+commit: ff9336a
+route: B
 user_request: UR-066
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -29,9 +33,14 @@ has the mirror problem: it fits the payload's range rather than the rows on scre
 of the plot is blank.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-kanban-board.md`. For requirement 4 I considered capping the bound padding and rejected it: a cap small enough to exclude a day still lets the last day-period fall outside the data when the last instant is late in the day. Guarding the STEP against the drawn extent is the honest statement, and it draws the distinction a cap cannot — off the end of everything is refused, into a gap is not. Requirement 5's verdicts are derived by asking the shared model what a press would produce, never by restating its floor.
+- [x] **[APPLY]:** `web/board-timeline.js` and `generate_test.go` as planned, plus `timeline_browser_probe_test.go` for the toolbar-state probe. Requirement 2 (both lines inside the Now window) needed no change and is now asserted for the degenerate cases too.
+- [x] **[UNIFY]:** Verified:
+  - `web/board-timeline.js` — `node --check` clean; the new constant is a plain literal so `rendererNumericConstant` can read it; `timelineFitWindow` settles through `timelineZoomedWindow` rather than assigning a window directly, so it acquires no floor or clamp of its own.
+  - `generate_test.go` / `timeline_browser_probe_test.go` — `gofmt`/`go vet` clean.
+  - `bash _dev/tests/maintainer-verify.sh` exit 0.
+  - Mutations: Fit all reverting to the payload range, the availability check ignoring the data extent, and nothing ever being disabled — three distinct failures. Two more PASSED at first and were closed rather than accepted: Now's floor could only be reached in a pure probe (the live fixture board has pending work), and the guard duplicated in `applyPeriodStep` was unreachable behind the disabled button, so it was deleted.
+  - Live render: Now 1.00h → 13.45h with a working zoom-in; `›` from the current week is disabled and pressing it does not move the window; Fit all under a one-row filter fits that row.
 
 ## Why
 

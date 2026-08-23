@@ -1,8 +1,12 @@
 ---
 id: REQ-335
 title: "[impact-negligible] Give the timeline a usable window when the payload range is unreadable"
-status: pending
+status: completed
 created_at: 2026-08-23T12:28:00Z
+claimed_at: 2026-08-23T16:40:00Z
+completed_at: 2026-08-23T17:00:00Z
+commit: 965ea58
+route: A
 user_request: UR-066
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -28,9 +32,13 @@ control can leave that window — on this repo's board that would strand 287 of 
 reach.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-kanban-board.md`. Took the extent from a small dedicated pass over `filterMatchedRows` rather than reordering the render to reuse `filterMatchedSegments`: the fallback is a rare path, so the extra pass costs the common one nothing, and reordering the render to serve it would put risk where there is none today.
+- [x] **[APPLY]:** `web/board-timeline.js` and `generate_test.go`, as planned.
+- [x] **[UNIFY]:** Verified:
+  - `web/board-timeline.js` — `node --check` clean; the bounds still come from the payload on the normal path, so a window that narrows the rows cannot narrow what it is clamped against; the decline reuses the existing message rather than adding a second wording.
+  - `generate_test.go` — `gofmt`/`go vet` clean; the probe drives the whole renderer, and its setup assertion fails loudly if the payload stops taking the fallback branch.
+  - `bash _dev/tests/maintainer-verify.sh` exit 0.
+  - Mutations: the old newest-row fallback fails with the exact defect (1 of 3 rows, 2 outside the window); removing the decline branch throws rather than passing. A third — reading `created_at` alone — PASSED at first, so the fixture now carries a completion eight hours past the newest capture and the assertion reads the window the summary names.
 
 ## Why
 

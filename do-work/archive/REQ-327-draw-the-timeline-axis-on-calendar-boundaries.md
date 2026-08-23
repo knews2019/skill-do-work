@@ -1,8 +1,12 @@
 ---
 id: REQ-327
 title: "Draw the timeline axis on calendar boundaries"
-status: pending
+status: completed
 created_at: 2026-08-23T12:06:00Z
+claimed_at: 2026-08-23T14:30:00Z
+completed_at: 2026-08-23T15:20:00Z
+commit: b2384cf
+route: B
 user_request: UR-066
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -27,9 +31,14 @@ formatter then prints a **date alone** for a tick that is not at midnight. The a
 does not have, and a calendar day inside the window gets no tick at all.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-kanban-board.md`. Prototyped the ladder standalone before touching the renderer and checked every window the view can reach for "date-only implies midnight", label distinctness and 4–8 ticks. Returned the chosen gap alongside the instants so the formatter reads the same number that positioned the ticks.
+- [x] **[APPLY]:** `web/board-timeline.js` and `generate_test.go` as planned. Also added `rendererBracketDeclaration` to the test file: `sliceBalancedBlockAfter` balances braces, so pointing it at an array of object literals returns the first element only. `TIMELINE_YEAR_MS` deleted — the year threshold it existed for is gone.
+- [x] **[UNIFY]:** Verified:
+  - `web/board-timeline.js` — `node --check` clean; no reader left for `TIMELINE_YEAR_MS`; the tick walk lives in one function; the duplicate `plotSpanPx` local the queue-end caption had was folded into the one `renderAxis` already measures.
+  - `generate_test.go` — `gofmt`/`go vet` clean; both changed lock-in tests state what REQ-327 changed and why the old shape passed; the one-source check counts calls from OUTSIDE the walk rather than a raw string count, because the walk legitimately calls the stepper twice.
+  - `bash _dev/tests/maintainer-verify.sh` exit 0.
+  - Mutations: equal-parts spacing, epoch-aligned week gaps, epoch-aligned fortnight gaps, the span-based year threshold, and gridlines deriving their own instants — five distinct failures. Two passed on the first attempt because no fixture reached those rungs; a three-month window and a vacuity guard counting both week rungs were added for exactly that.
+  - Live render: the reported window now reads `1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 Jun`; month gives Mondays, day gives four-hour marks, Fit all gives fortnightly Mondays.
 
 ## Why
 

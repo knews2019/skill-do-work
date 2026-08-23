@@ -1,8 +1,12 @@
 ---
 id: REQ-331
 title: "[impact-critical] Remeasure the timeline plot whenever its width changes"
-status: pending
+status: completed
 created_at: 2026-08-23T12:20:00Z
+claimed_at: 2026-08-23T13:05:00Z
+completed_at: 2026-08-23T13:40:00Z
+commit: 406c64e
+route: B
 user_request: UR-066
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -29,9 +33,14 @@ outright: **opening the detail drawer blanks it**, and **a browser resize while 
 leaves it permanently crushed into a 120-pixel strip**.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-kanban-board.md`. Chose a ResizeObserver on the scroll host over enumerating callers, because the condition ("this box changed") is what the rule is about and an enumeration would need the next layout change added to it. Chose a render-level guard over a defensive branch in `plotWidth`, because the branch would be unreachable.
+- [x] **[APPLY]:** `web/board-timeline.js`, plus `generate_test.go` and `timeline_browser_probe_test.go` for the two probes. **`web/board-controls.js` was NOT touched** — the observer fires when the host gains a box on view activation, so the `renderedOnce.timeline` gate needed no change, and a file shared by five views stays untouched. `requestPanRender` renamed to `requestFrameRender` now that it serves two callers.
+- [x] **[UNIFY]:** Verified:
+  - `web/board-timeline.js` — `node --check` clean; no stale `requestPanRender` / `timelinePanRenderFrame` reference; the `ResizeObserver` construction is feature-guarded for hosts that lack it; the observer is disconnected through the existing teardown registry.
+  - `generate_test.go` / `timeline_browser_probe_test.go` — `gofmt` and `go vet` clean; `plotEdgeText` added after a real failure message printed a pointer address instead of a measurement.
+  - `bash _dev/tests/maintainer-verify.sh` exit 0.
+  - Mutations: removing the observer, and neutering `invalidatePlotWidth`, each fail the browser probe with "the chart is blank"; removing the render guard fails the Node probe with the exact eight-row truncation from the report. The zero-width branch in `plotWidth` survived every mutation, so it was deleted rather than shipped untestable.
+  - Live render before/after: 55 segments / 0 visible after a row click, now 52 segments / 52 visible re-laid out against the 866px host; the hidden-resize case 8 segments at x≈301, now 49 at x 1033–1066.
 
 ## Why
 

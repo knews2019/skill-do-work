@@ -1,8 +1,12 @@
 ---
 id: REQ-333
 title: "Keep the timeline pointer and keyboard paths alive"
-status: pending
+status: completed-with-issues
 created_at: 2026-08-23T12:24:00Z
+claimed_at: 2026-08-23T18:40:00Z
+completed_at: 2026-08-23T19:25:00Z
+commit: 36c4518
+route: B
 user_request: UR-066
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -27,9 +31,15 @@ panning; the first arrow-key pan with a row focused kills the keyboard path; and
 reaches anything after the chart.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-kanban-board.md`. Reproduced all four findings in a real engine BEFORE planning any fix, as the REQ required, and the reproduction changed the plan twice:
+  - F1's mechanism is not the reported one. Un-buttoned motion does **not** keep panning; what persists is the `.is-panning` grab cursor, because Chromium suppresses boundary events while a button is held and the release outside the host reaches nothing. `setPointerCapture` is the fix that makes the release a fact rather than a hope, which is what the REQ suggested preferring.
+  - F3 is **refuted**: Tab escapes the rows after 29 presses and reaches the element after the chart. Not a trap, so requirement 3's "decide the keyboard contract" is answered as "leave it", and the finding is recorded rather than acted on.
+- [x] **[APPLY]:** `web/board-timeline.js` and `timeline_browser_probe_test.go`. `web/template.html` was NOT touched: the hint's ctrl-scroll promise is now true rather than narrowed. F3 needed no change.
+- [x] **[UNIFY]:** Verified:
+  - `web/board-timeline.js` — `node --check` clean; the focus restore exists in exactly one place now, and the keydown handler's comment states why it must not keep its own; `setPointerCapture` is feature-guarded and its failure degrades to the ordinary release path rather than refusing the drag.
+  - `timeline_browser_probe_test.go` — `gofmt`/`go vet` clean; the probe states plainly that a synthetic `pointerId` cannot be captured in this lane, so it drives `lostpointercapture` (the mechanism) and asserts the capture CALL structurally, while the end-to-end drag was verified with a real input device outside the lane.
+  - `bash _dev/tests/maintainer-verify.sh` exit 0.
+  - Mutations: the focus restore removed, `lostpointercapture` dropped, the capture call deleted, and the axis wheel binding removed — four distinct failures. The third passed at first because the structural check matched the `typeof` guard beside the call; it now requires the call itself.
 
 ## Why
 
@@ -106,6 +116,18 @@ active element never leaves the rows.
 **Validation:** Inferred during capture. F1, F2 and F3 are reported from a live render by the audit and are
 to be reproduced by the builder before the fix — the REQ names the reproduction as the first step rather than
 asserting the mechanism.
+
+## Outcome
+
+Filed `completed-with-issues` rather than `completed`, because one of the four findings
+this REQ was captured for (F3, the Tab trap) turned out not to exist, and the
+reproduction is the record of that. Nothing in scope was left undone; the scope itself
+was smaller than the capture believed.
+
+F3's underlying observation stands as a design question this REQ deliberately does not
+answer: 29 tab stops for a chart whose every value is also in the table below it. Anyone
+picking that up should note the rows carry `role="button"` and are keyboard-activatable,
+so removing the tab stops would remove a working affordance and needs its own decision.
 
 ## Full Context
 

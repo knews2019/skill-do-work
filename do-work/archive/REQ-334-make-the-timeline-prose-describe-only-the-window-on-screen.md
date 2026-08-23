@@ -1,8 +1,12 @@
 ---
 id: REQ-334
 title: "Make the timeline prose describe only the window on screen"
-status: pending
+status: completed
 created_at: 2026-08-23T12:26:00Z
+claimed_at: 2026-08-23T18:00:00Z
+completed_at: 2026-08-23T18:35:00Z
+commit: 1d49e5a
+route: B
 user_request: UR-066
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -27,9 +31,14 @@ they are one REQ because they share one rule — a sentence about the chart may 
 window actually draws.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-kanban-board.md`. Judged P3 first, because REQ-327 had already changed the tick instants and the wording half depended on that outcome: the boundary tick STAYS, and the reasoning is now recorded beside the tick walk rather than left implicit. P1 keys on the same condition `drawNowRule` uses. P2 keys on `showingSubset`, the bit the caller already computes.
+- [x] **[APPLY]:** `web/board-timeline.js`, `web/template.html` and `generate_test.go` as planned, plus `web/board.css` for the new swatch and `timeline_browser_probe_test.go` for the two states only a real render reaches. **P3 was resolved as "no change"** with the reasoning committed, not silently dropped.
+- [x] **[UNIFY]:** Verified:
+  - `web/board-timeline.js` — `node --check` clean; P1 reads the same window test `drawNowRule` does, so the sentence and the rule cannot disagree.
+  - `web/template.html` / `web/board.css` — the new swatch mirrors `.timeline-gridline`'s own token and opacity rather than inventing a colour.
+  - `generate_test.go` / `timeline_browser_probe_test.go` — `gofmt`/`go vet` clean; both new probes carry setup assertions that fail loudly if the fixture stops reaching the state under test, and one of them caught exactly that (a past week inside the June data gap took the empty-window branch instead).
+  - `bash _dev/tests/maintainer-verify.sh` exit 0.
+  - Mutations: always naming the now-line, claiming everything is listed under a subset, dropping the whole-queue note, and removing the legend entry — four distinct failures. The forecast pair needed the projection emptied in a controlled payload, because the live board has pending work and never reaches that branch.
 
 ## Why
 

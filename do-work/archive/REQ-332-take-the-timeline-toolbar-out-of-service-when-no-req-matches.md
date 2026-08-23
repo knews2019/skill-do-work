@@ -1,8 +1,12 @@
 ---
 id: REQ-332
 title: "Take the timeline toolbar out of service when no REQ matches the filters"
-status: pending
+status: completed
 created_at: 2026-08-23T12:22:00Z
+claimed_at: 2026-08-23T16:00:00Z
+completed_at: 2026-08-23T16:35:00Z
+commit: ce0deb2
+route: B
 user_request: UR-066
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -29,9 +33,16 @@ previous render's handlers survive, holding the previous render's `rows`, `filte
 table with REQs the filter excludes, over a chart that stays empty.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-kanban-board.md`. Chose to keep `onclick` and clear it, rather than move the toolbar to `addEventListener` — two registrations for one button is the failure mode the teardown note in this file already warns about. One selector naming every owned control, so a future control inherits the rule instead of being added to a list.
+- [x] **[APPLY]:** `web/board-timeline.js` and `generate_test.go` as planned, plus a `timeline-zoom` class on the zoom group in `web/template.html` so the selector can name it, and `timeline_browser_probe_test.go` for the flake fix below.
+- [x] **[UNIFY]:** Verified:
+  - `web/board-timeline.js` — `node --check` clean; the retire/enable pair is symmetric and the enable sits past the early return, where the render owns the controls.
+  - `web/template.html` — the added class has no CSS rule, so it is a selector hook and changes nothing visually (checked `board.css`).
+  - `generate_test.go` — the new probe carries a vacuity guard: if the stub wires no control, the handler half of the test cannot fail, and it says so.
+  - `bash _dev/tests/maintainer-verify.sh` exit 0.
+  - Mutations: no retirement, handlers cleared but controls left pressable, and never re-enabled — three distinct failures.
+  - Live render: 11 controls disabled with nothing matching, summary unchanged after pressing Fit all, all 11 restored on clearing the filter.
+  - **A flake I introduced, found by the gate and fixed here, not quarantined:** the drawer probe passed alone and failed inside the full suite. Its fixed 300ms waits were adequate on an idle machine and not on a loaded one. Both new probes now poll for the condition; `setTimeout` rather than `requestAnimationFrame`, because headless `--dump-dom` has no compositor to drive frames and an rAF poll never resolves. The drawer mutation was re-run after the change to confirm the probe still bites.
 
 ## Why
 
