@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"math"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -42,13 +44,15 @@ var timelineStatusProbeStatuses = []string{
 }
 
 type timelineStatusProbeRow struct {
-	Status       string  `json:"status"`
-	WaitFill     string  `json:"waitFill"`
-	WorkFill     string  `json:"workFill"`
-	WaitOpacity  float64 `json:"waitOpacity"`
-	WorkOpacity  float64 `json:"workOpacity"`
-	ChipAccent   string  `json:"chipAccent"`
-	Unrecognized bool    `json:"unrecognized"`
+	Status          string  `json:"status"`
+	WaitFill        string  `json:"waitFill"`
+	WorkFill        string  `json:"workFill"`
+	WaitOpacity     float64 `json:"waitOpacity"`
+	WorkOpacity     float64 `json:"workOpacity"`
+	ChipAccent      string  `json:"chipAccent"`
+	Unrecognized    bool    `json:"unrecognized"`
+	WaitStroke      string  `json:"waitStroke"`
+	WaitStrokeWidth float64 `json:"waitStrokeWidth"`
 }
 
 func TestBrowserBehaviorTimelineBarsCarryTheirStatusColour(t *testing.T) {
@@ -92,28 +96,81 @@ func TestBrowserBehaviorTimelineBarsCarryTheirStatusColour(t *testing.T) {
       waitOpacity: Number(waitStyle.fillOpacity),
       workOpacity: Number(workStyle.fillOpacity),
       chipAccent: getComputedStyle(chips[index]).getPropertyValue("--chip-accent").trim(),
-      unrecognized: row.classList.contains("is-status-unrecognized")
+      unrecognized: row.classList.contains("is-status-unrecognized"),
+      waitStroke: waitStyle.stroke,
+      waitStrokeWidth: parseFloat(waitStyle.strokeWidth) || 0
     };
   });
   // Written LAST and only once every measurement exists, so a throw leaves the
   // node empty and the Go side reports a failure rather than reading a partial
   // object as a pass.
   document.getElementById("` + browserProbeResultElementId + `").textContent =
-    JSON.stringify({ rows: measured });
+    JSON.stringify({
+      rows: measured,
+      // The scheme the ENGINE resolved, not the one the flag asked for. A flag
+      // this build silently ignores would otherwise let one palette be measured
+      // twice and reported as two.
+      scheme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+      surface: getComputedStyle(document.body).backgroundColor
+    });
 })();
 </script>
 </body></html>`
 
-	probeOutput := runBrowserBehaviorProbe(t, "timeline status colours", pageHTML)
+	// BOTH schemes. This board is dark-first — :root is the dark palette and
+	// @media (prefers-color-scheme: light) overrides it — and Chromium resolves
+	// light with no flag, so a single run measures exactly one of the two
+	// palettes and the other is checked by nothing.
+	for _, scheme := range []struct {
+		name string
+		flag string
+	}{
+		{name: "light", flag: "--blink-settings=preferredColorScheme=1"},
+		{name: "dark", flag: "--blink-settings=preferredColorScheme=0"},
+	} {
+		t.Run(scheme.name, func(t *testing.T) {
+			assertTimelineStatusColours(t, pageHTML, scheme.name, scheme.flag)
+		})
+	}
+}
+
+// timelineContrastFloor is the board's own floor for a graphical object, stated
+// at web/board.css's route-ramp comment and applied there to adjacent ramp steps.
+// The two halves of a bar are the same kind of thing: two adjacent shapes a
+// reader has to tell apart.
+const timelineContrastFloor = 3.0
+
+// timelineSurfaceFloor is deliberately lower. The wait against the page is a
+// fill-versus-background question, not two marks side by side, and the wait
+// carries a full-strength outline that the fill ratio does not capture. Below
+// this it stops reading as a bar at all.
+const timelineSurfaceFloor = 1.3
+
+func assertTimelineStatusColours(t *testing.T, pageHTML string, schemeName string, schemeFlag string) {
+	t.Helper()
+	probeOutput := runBrowserBehaviorProbeWithFlags(
+		t, "timeline status colours ("+schemeName+")", pageHTML, schemeFlag)
 	// The lane's sentinel requires a JSON object at the result node, so the rows
 	// arrive wrapped.
 	var probeResult struct {
-		Rows []timelineStatusProbeRow `json:"rows"`
+		Rows    []timelineStatusProbeRow `json:"rows"`
+		Scheme  string                   `json:"scheme"`
+		Surface string                   `json:"surface"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &probeResult); decodeError != nil {
 		t.Fatalf("decode timeline status colour probe: %v (output %q)", decodeError, probeOutput)
 	}
 	measured := probeResult.Rows
+	if probeResult.Scheme != schemeName {
+		t.Fatalf("asked the engine for the %s palette and it resolved %s; this build ignores the "+
+			"colour-scheme flag, so one palette would be measured twice and reported as two",
+			schemeName, probeResult.Scheme)
+	}
+	surfaceLuminance, surfaceKnown := relativeLuminanceOfCSSColour(probeResult.Surface)
+	if !surfaceKnown {
+		t.Fatalf("could not read the page surface colour (%q); every contrast number below is "+
+			"measured against it", probeResult.Surface)
+	}
 	if len(measured) != len(timelineStatusProbeStatuses) {
 		t.Fatalf("probe measured %d rows, want %d", len(measured), len(timelineStatusProbeStatuses))
 	}
@@ -123,7 +180,7 @@ func TestBrowserBehaviorTimelineBarsCarryTheirStatusColour(t *testing.T) {
 		// A fill of "none", empty, or fully transparent means the custom property
 		// resolved to nothing — the failure mode where every assertion below would
 		// otherwise agree with every other on the same non-colour.
-		if row.WorkFill == "" || row.WorkFill == "none" || strings.Contains(row.WorkFill, ", 0)") {
+		if row.WorkFill == "" || row.WorkFill == "none" || fullyTransparentCSSColour(row.WorkFill) {
 			t.Fatalf("status %q painted its work segment %q — the status accent resolved to nothing",
 				row.Status, row.WorkFill)
 		}
@@ -143,9 +200,15 @@ func TestBrowserBehaviorTimelineBarsCarryTheirStatusColour(t *testing.T) {
 		}
 	}
 
-	// 2. Lightness is the phase: the wait is the same hue, quieter. Both halves
-	//    must share a fill and differ in opacity, which is what let status onto a
-	//    chart whose hues were already spent.
+	// 2. Lightness is the phase, and it is MEASURED rather than merely ordered.
+	//
+	//    The first version of this block asserted only waitOpacity < workOpacity
+	//    and waitOpacity >= 0.25. That passes at 0.98 and at 0.26 — it pins the
+	//    direction of a difference and says nothing about whether a reader can
+	//    see it, in a change whose entire risk was exactly that. It also passed
+	//    while the light theme sat at 2.47:1, under this board's own 3:1 floor.
+	//    So: real contrast, computed from the composited fills, against two
+	//    floors that mean different things.
 	for _, row := range measured {
 		if row.WaitFill != row.WorkFill {
 			t.Errorf("status %q paints wait %s and work %s; the phase difference must be lightness, "+
@@ -155,11 +218,57 @@ func TestBrowserBehaviorTimelineBarsCarryTheirStatusColour(t *testing.T) {
 			t.Errorf("status %q has wait opacity %.2f and work opacity %.2f; the wait must be the "+
 				"quieter half", row.Status, row.WaitOpacity, row.WorkOpacity)
 		}
-		// Quieter, but still a bar. Below roughly a quarter it reads as a disabled
-		// control rather than as the waiting half of a measured span.
-		if row.WaitOpacity < 0.25 {
-			t.Errorf("status %q draws its wait at opacity %.2f, too faint to read as a bar at the "+
-				"shipped 10px height", row.Status, row.WaitOpacity)
+
+		accentLuminance, accentKnown := relativeLuminanceOfCSSColour(row.WorkFill)
+		if !accentKnown {
+			t.Fatalf("status %q resolved an unreadable fill %q", row.Status, row.WorkFill)
+		}
+		// A fill at alpha composites over the page, so the visible wait colour is
+		// the blend — not the accent, and not the accent's own luminance.
+		waitLuminance := compositeLuminance(accentLuminance, surfaceLuminance, row.WaitOpacity)
+		workLuminance := compositeLuminance(accentLuminance, surfaceLuminance, row.WorkOpacity)
+
+		waitAgainstWork := contrastRatio(waitLuminance, workLuminance)
+		waitAgainstSurface := contrastRatio(waitLuminance, surfaceLuminance)
+
+		// Wait vs work is two adjacent marks a reader has to tell apart, and there
+		// are two ways to be separable: the fills are far enough apart on their
+		// own, OR the wait's outline is visible against the wait's own fill and
+		// draws the boundary. Either satisfies this; neither being true does not.
+		//
+		// The second clause is what stops the outline being a licence. An outline
+		// is only a channel while it can be SEEN, and it is drawn in the accent at
+		// full strength — so as the wait's fill rises towards full strength the
+		// outline disappears into it. At alpha 0.98 the fills are one colour and
+		// the outline is invisible against them: both clauses fail, which is the
+		// mutation the previous version of this test passed.
+		outlineAgainstWaitFill := contrastRatio(accentLuminance, waitLuminance)
+		fillsAreSeparable := waitAgainstWork >= timelineContrastFloor
+		outlineIsVisible := row.WaitStrokeWidth > 0 && outlineAgainstWaitFill >= timelineSurfaceFloor
+		if !fillsAreSeparable && !outlineIsVisible {
+			t.Errorf("status %q separates its wait from its work by %.2f:1 of fill (floor %.1f:1) "+
+				"and its outline reads %.2f:1 against its own fill (floor %.1f:1) at stroke-width "+
+				"%.2f; one of the two has to carry the difference",
+				row.Status, waitAgainstWork, timelineContrastFloor,
+				outlineAgainstWaitFill, timelineSurfaceFloor, row.WaitStrokeWidth)
+		}
+		if waitAgainstSurface < timelineSurfaceFloor {
+			t.Errorf("status %q draws its wait at %.2f:1 against the page; below %.1f:1 it stops "+
+				"reading as a bar at the shipped 10px height",
+				row.Status, waitAgainstSurface, timelineSurfaceFloor)
+		}
+		// The outline is the second channel the light palette needs, so it is a
+		// requirement rather than a decoration: without it, opacity alone has to
+		// clear the floor above and cannot, in this theme, at any single value.
+		if row.WaitStrokeWidth <= 0 {
+			t.Errorf("status %q draws its wait with no outline (stroke-width %.2f); opacity alone "+
+				"cannot separate wait from work and wait from the surface at the same time",
+				row.Status, row.WaitStrokeWidth)
+		}
+		if !sameCSSColour(row.WaitStroke, row.WorkFill) {
+			t.Errorf("status %q outlines its wait in %s but paints its work %s; the outline is the "+
+				"same accent at full strength or it is a second hue",
+				row.Status, row.WaitStroke, row.WorkFill)
 		}
 	}
 
@@ -311,4 +420,87 @@ func formatRGB(red int, green int, blue int) string {
 		out = append(out, digits[(channel>>4)&0x0f], digits[channel&0x0f])
 	}
 	return string(out)
+}
+
+// ---- colour maths ----------------------------------------------------------
+//
+// WCAG relative luminance and contrast, plus the alpha composite the fills
+// actually undergo. Written here rather than eyeballed because "can a reader
+// tell these two apart" is the question this REQ's encoding turns on, and the
+// previous version of this file answered it by asserting that one number was
+// smaller than another.
+
+func relativeLuminanceOfCSSColour(colour string) (float64, bool) {
+	red, green, blue, alpha, parsed := parseCSSColourChannels(colour)
+	if !parsed || alpha == 0 {
+		return 0, false
+	}
+	return 0.2126*srgbToLinear(red) + 0.7152*srgbToLinear(green) + 0.0722*srgbToLinear(blue), true
+}
+
+func srgbToLinear(channel float64) float64 {
+	normalized := channel / 255
+	if normalized <= 0.04045 {
+		return normalized / 12.92
+	}
+	return math.Pow((normalized+0.055)/1.055, 2.4)
+}
+
+// compositeLuminance is the luminance of a fill drawn at `alpha` over a
+// background. Compositing happens in sRGB space, so this blends the linearised
+// luminances rather than the channels — close enough for a floor check and
+// exact for the alpha=1 case.
+func compositeLuminance(fillLuminance float64, backgroundLuminance float64, alpha float64) float64 {
+	return fillLuminance*alpha + backgroundLuminance*(1-alpha)
+}
+
+func contrastRatio(leftLuminance float64, rightLuminance float64) float64 {
+	lighter := math.Max(leftLuminance, rightLuminance)
+	darker := math.Min(leftLuminance, rightLuminance)
+	return (lighter + 0.05) / (darker + 0.05)
+}
+
+func fullyTransparentCSSColour(colour string) bool {
+	_, _, _, alpha, parsed := parseCSSColourChannels(colour)
+	return parsed && alpha == 0
+}
+
+func parseCSSColourChannels(colour string) (float64, float64, float64, float64, bool) {
+	trimmed := strings.ToLower(strings.TrimSpace(colour))
+	if strings.HasPrefix(trimmed, "#") {
+		normalized := normalizeCSSColour(trimmed)
+		if len(normalized) != 6 {
+			return 0, 0, 0, 0, false
+		}
+		return hexPairToFloat(normalized[0:2]), hexPairToFloat(normalized[2:4]), hexPairToFloat(normalized[4:6]), 1, true
+	}
+	if !strings.HasPrefix(trimmed, "rgb") {
+		return 0, 0, 0, 0, false
+	}
+	open := strings.Index(trimmed, "(")
+	close := strings.LastIndex(trimmed, ")")
+	if open < 0 || close < open {
+		return 0, 0, 0, 0, false
+	}
+	parts := strings.Split(strings.ReplaceAll(trimmed[open+1:close], "/", ","), ",")
+	if len(parts) < 3 {
+		return 0, 0, 0, 0, false
+	}
+	channels := [4]float64{0, 0, 0, 1}
+	for index := 0; index < len(parts) && index < 4; index++ {
+		value, parseError := strconv.ParseFloat(strings.TrimSpace(parts[index]), 64)
+		if parseError != nil {
+			return 0, 0, 0, 0, false
+		}
+		channels[index] = value
+	}
+	return channels[0], channels[1], channels[2], channels[3], true
+}
+
+func hexPairToFloat(pair string) float64 {
+	value, parseError := strconv.ParseInt(pair, 16, 32)
+	if parseError != nil {
+		return 0
+	}
+	return float64(value)
 }

@@ -20,7 +20,6 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-- REQ-321: Colour timeline bars by REQ status — claimed 2026-08-23T01:29:48Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued
 

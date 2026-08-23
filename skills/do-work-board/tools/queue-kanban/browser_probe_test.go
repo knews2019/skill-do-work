@@ -98,6 +98,19 @@ func lookupBrowserForBehaviorProbe(t *testing.T) string {
 // page wrote into its result node, as raw JSON text for the caller to unmarshal.
 func runBrowserBehaviorProbe(t *testing.T, probeName string, pageHTML string) []byte {
 	t.Helper()
+	return runBrowserBehaviorProbeWithFlags(t, probeName, pageHTML)
+}
+
+// runBrowserBehaviorProbeWithFlags is the same probe with extra engine flags.
+//
+// It exists for one reason worth naming: without a colour-scheme flag Chromium
+// resolves `prefers-color-scheme` to light, so every probe in this lane measures
+// the light palette and NOTHING automated ever sees the dark one — which on this
+// board is the `:root` base that the light block overrides. A view whose meaning
+// is carried by colour needs both, and a one-time manual table is not a check
+// that survives the next edit.
+func runBrowserBehaviorProbeWithFlags(t *testing.T, probeName string, pageHTML string, extraFlags ...string) []byte {
+	t.Helper()
 	browserPath := lookupBrowserForBehaviorProbe(t)
 
 	probeDirectory := t.TempDir()
@@ -110,16 +123,18 @@ func runBrowserBehaviorProbe(t *testing.T, probeName string, pageHTML string) []
 	// sandbox refuses to start; --disable-gpu and --disable-dev-shm-usage because a
 	// headless container has neither. --user-data-dir keeps concurrent probes from
 	// fighting over one profile directory.
-	probeCommand := exec.Command(browserPath,
+	probeArguments := []string{
 		"--headless",
 		"--disable-gpu",
 		"--no-sandbox",
 		"--disable-dev-shm-usage",
-		"--user-data-dir="+filepath.Join(probeDirectory, "profile"),
+		"--user-data-dir=" + filepath.Join(probeDirectory, "profile"),
 		"--virtual-time-budget=5000",
 		"--dump-dom",
-		"file://"+pagePath,
-	)
+	}
+	probeArguments = append(probeArguments, extraFlags...)
+	probeArguments = append(probeArguments, "file://"+pagePath)
+	probeCommand := exec.Command(browserPath, probeArguments...)
 	browserBehaviorProbeCount.Add(1)
 	probeOutput, probeError := probeCommand.CombinedOutput()
 	if probeError != nil {

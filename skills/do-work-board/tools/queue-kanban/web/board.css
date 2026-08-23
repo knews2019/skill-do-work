@@ -92,10 +92,17 @@
   /* A reversed span is a broken stamp, not a fast REQ: it renders below the
      zero line in the critical colour rather than being clamped to zero. */
   --durations-critical: #e66767;
-  /* Timeline segments — the wait is the quieter hue on purpose: on a queue with
-     real backlog it is usually the longer bar, and the eye should land on the
-     work it brackets rather than on the waiting. */
+  /* Timeline: the neutral blue the LEGEND's open-span swatch demonstrates with.
+     Bars themselves take their REQ's status accent (REQ-321) — the wait/work
+     pair this token once coloured is now one accent at two opacities. */
   --timeline-work: #4d8fe0;
+  /* How pale the WAIT half of a bar is, per theme, and the two themes want
+     opposite things. These accents are bright on this dark surface, so a low
+     alpha pulls the wait away from the solid work while the dark page keeps it
+     visible; on the light surface the same accents are dark, so alpha there has
+     to stay high or the wait vanishes into the page. One number could not serve
+     both — measured, not guessed (REQ-321). */
+  --timeline-wait-alpha: 0.22;
   /* Projected work is a forecast, so it takes a hue of its own rather than a
      lighter shade of the measured one — a reader must not have to judge
      saturation to tell a measurement from a guess. */
@@ -155,6 +162,7 @@
     --durations-bar: #a4522a;
     --durations-critical: #c0392b;
     --timeline-work: #2f6fc0;
+    --timeline-wait-alpha: 0.45;
     --timeline-projected: #7d57b0;
 
     /* Tints behind badges/dots — accent hues, low alpha, visible on white. */
@@ -2322,8 +2330,11 @@ body.is-resizing-detail .detail-resizer::before {
 }
 
 /* The status half of the key. Each swatch reads its colour through the same
-   custom property the bars do, so a swatch cannot show a colour no bar uses. */
+   custom property the bars do, so a swatch cannot show a colour no bar uses.
+   The fallback is muted ink rather than nothing: an unmapped or renamed status
+   made the swatch fully transparent, so a key entry disappeared silently. */
 .timeline-swatch[data-status] {
+  --timeline-status-accent: var(--ink-soft);
   background: var(--timeline-status-accent);
 }
 
@@ -2347,16 +2358,20 @@ body.is-resizing-detail .detail-resizer::before {
   --timeline-status-accent: var(--ink-faint);
 }
 
-/* The phase half. These two show the LIGHTNESS difference rather than any one
-   status's hue, so they use the neutral work colour: a status hue here would
-   read as a sixth status. */
+/* The phase half shows the lightness difference rather than any one status's
+   hue, so it is painted in muted INK. It used to use --timeline-work, which is
+   the same blue as the Claimed accent (1.02:1 apart in light) — the key showed
+   one chip twice meaning two different things, and showed a colour no bar
+   paints. Ink cannot be mistaken for a sixth status. */
 .timeline-swatch[data-segment="wait"] {
-  background: var(--timeline-work);
-  opacity: 0.4;
+  background: var(--ink-soft);
+  opacity: var(--timeline-wait-alpha);
+  outline: 1px solid var(--ink-soft);
+  outline-offset: -1px;
 }
 
 .timeline-swatch[data-segment="work"] {
-  background: var(--timeline-work);
+  background: var(--ink-soft);
 }
 
 .timeline-swatch[data-segment="open"] {
@@ -2483,7 +2498,9 @@ body.is-resizing-detail .detail-resizer::before {
    pale tokens: eight more variables for the same five statuses is exactly the
    drift this indirection exists to prevent. */
 .timeline-row {
-  --timeline-status-accent: var(--timeline-work);
+  /* Muted ink, matching the calendar's own fallback. The claimed blue was the
+     first choice and it makes a status-less row read as claimed work. */
+  --timeline-status-accent: var(--ink-soft);
 }
 
 /* Every status spelled out, matching board-calendar.js's reasoning: an exact
@@ -2515,11 +2532,26 @@ body.is-resizing-detail .detail-resizer::before {
   --timeline-status-accent: var(--ink-faint);
 }
 
+/* TWO channels for the phase, not one, and the light palette is why.
+   A single fill-opacity has to buy two separations at once — wait from work,
+   and wait from the page — and on the light surface those pull in opposite
+   directions: reaching the board's 3:1 floor against the solid work needs alpha
+   at or below 0.25, which leaves the wait at 1.35:1 against the surface and
+   barely visible. The number is not the fix.
+
+   So the wait keeps the paler fill the reader was promised AND gains a
+   full-strength 1px outline. The outline costs nothing against the surface (it
+   improves it), and it puts a hard, hue-correct boundary between the two halves
+   that does not depend on the fills being far apart at all. Lightness still
+   reads as the primary difference; the outline is what makes it legible.
+   The fill value itself is per-theme (--timeline-wait-alpha): the dark palette
+   has surface headroom and wants a low alpha, the light palette has work headroom
+   and wants a high one. */
 .timeline-segment-wait {
   fill: var(--timeline-status-accent);
-  /* The wait is the same colour, waiting: pale enough to read as the quieter
-     half of the bar at a 10px height, solid enough to still be a bar. */
-  fill-opacity: 0.4;
+  fill-opacity: var(--timeline-wait-alpha);
+  stroke: var(--timeline-status-accent);
+  stroke-width: 1;
 }
 
 .timeline-segment-work {
@@ -2528,9 +2560,10 @@ body.is-resizing-detail .detail-resizer::before {
 }
 
 /* An open segment is hollow: it has an end on screen but not in fact, and a
-   solid cap would claim otherwise. Ordered after the two rules above so its
-   fill-opacity wins for an open work segment; the dashed outline is what
-   carries "open" once both halves of a bar share one hue. */
+   solid cap would claim otherwise. It wins over the two rules above on
+   SPECIFICITY — (0,2,0) against (0,1,0) — not on source order, so a closed
+   wait's solid outline becomes a dashed one here rather than the two coexisting.
+   Outline present means wait; dashed means open. */
 .timeline-segment.is-open {
   fill-opacity: 0.35;
   stroke: var(--timeline-status-accent);

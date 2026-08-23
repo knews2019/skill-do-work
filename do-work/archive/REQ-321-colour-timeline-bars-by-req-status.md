@@ -1,10 +1,12 @@
 ---
 id: REQ-321
 title: "Colour timeline bars by REQ status"
-status: claimed
+status: completed
 created_at: 2026-08-22T22:08:34Z
 claimed_at: 2026-08-23T01:29:48Z
 route: B
+completed_at: 2026-08-23T02:12:30Z
+commit:
 user_request: UR-065
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -31,6 +33,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board.css
   - skills/do-work-board/tools/queue-kanban/web/template.html
   - skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
+  - skills/do-work-board/tools/queue-kanban/browser_probe_test.go
 ---
 
 # Colour Timeline Bars by REQ Status
@@ -218,6 +221,7 @@ Three things decided the shape:
 - `skills/do-work-board/tools/queue-kanban/web/board-timeline.js` (modified)
 - `skills/do-work-board/tools/queue-kanban/web/template.html` (modified)
 - `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go` (new)
+- `skills/do-work-board/tools/queue-kanban/browser_probe_test.go` (modified) — post-review, F3
 
 **What was done:** Every timeline bar takes its REQ's status colour from the same
 `--accent-*` tokens the cards and calendar chips use, resolved through one
@@ -331,3 +335,139 @@ of its status — which is the point of the swatches reading the same custom pro
   Impact judged `impact-user-visible`: a developer running the repo's only accepted proof
   loses tens of minutes per occurrence, and a consumer gets an orphaned process. Not
   `impact-critical` — no security, data-loss, or production path is involved.
+  **Routed at Step 8** to `REQ-325` (`status: pending-answers`), per the non-critical
+  discovery flow: the user confirms or discards it through `do-work clarify` rather than it
+  auto-queueing on my judgment. The fold-first scan found no home — the queue holds only the
+  three remaining timeline REQs and no `sweep: true` file, and this is behaviour rather than
+  prose.
+
+## Review
+
+**Acceptance: Partial — Overall 72% — Approve with follow-ups.** Independent review agent,
+orchestrated mode, measuring contrast in a real engine in both palettes.
+
+| Dimension | Score | Notes |
+|-----------|-------|-------|
+| Requirements | 85% | 7 of 10 full; mapping shape, legend and the contrast constraint partial |
+| Code Quality | 78% | Clean CSS mirroring the calendar; two stale comments, one wrong mechanism claim, an invisible-swatch failure mode |
+| Test Adequacy | 65% | Strong on hue (3 of 5 mutations caught); blind to opacity magnitude, contrast, the dark theme, the fallback and the legend |
+| Scope | 100% | Exactly the four declared files; the extra test file recorded as D-02 |
+| Risk | Low | No security, performance or data surface |
+| Acceptance | Partial | Gate exit 0 and the hue works; two measured user-visible defects |
+
+**Its verdict in one line, and it is right:** the status hue is delivered and provable; the
+phase encoding it displaced got measurably weaker, and nothing in the suite could see that.
+
+**What it verified rather than accepted:** re-ran the gate itself; measured WCAG contrast for
+every status in both palettes; ran five mutations against a scratch tree and reported that
+three failed correctly and two passed when they should not; and independently confirmed the
+`--timeline-wait` deletion was clean, the cascade does not leak between rows, and the broken
+marker, cancelled dim, open dash and projected hatch all still read.
+
+## Review Remediation (pre-archive)
+
+- **F1 — light-theme wait/work fell under the board's own 3:1 floor (2.47:1, from a 3.11:1
+  baseline).** The diagnosis was the important part: opacity is one-dimensional and had to buy
+  two separations that pull in opposite directions. Both of the review's suggested channels
+  are now in:
+  - **A full-strength 1px outline on the wait.** It costs nothing against the surface and puts
+    a hue-correct boundary between the halves that does not depend on the fills being far
+    apart. `.timeline-segment.is-open` replaces it with the dashed variant on specificity, so
+    outline-present means wait and dashed means open.
+  - **A per-theme `--timeline-wait-alpha`** (0.22 dark, 0.45 light). The two palettes want
+    opposite values: these accents are bright on the dark surface, so a low alpha pulls the
+    wait off the work while the dark page keeps it visible; on the light surface the same
+    accents are dark, so alpha has to stay high or the wait vanishes into the page. One number
+    could not serve both, which is why the first attempt could not be fixed by choosing a
+    better one.
+
+  **Measured after, against the real body surfaces** (light `rgb(245,247,250)`, dark
+  `rgb(12,14,18)` — confirmed by walking up from a bar to the first ancestor that paints, which
+  is `<body>`):
+
+  | | wait vs work | wait vs surface | outline vs its own fill |
+  |---|---|---|---|
+  | light (α 0.45) | 2.68–3.30:1 | 1.51–1.57:1 | 2.68–3.30:1 |
+  | dark (α 0.22) | 2.43–3.20:1 | 1.68–2.64:1 | 2.43–3.20:1 |
+
+  Dark's wait-vs-work went from 1.71–1.94:1 at the single 0.45 value to 2.43–3.20:1. Where the
+  fills still fall short of 3:1 the outline carries the separation, and the outline reads
+  2.43:1 or better against the fill it borders in every status and both themes.
+
+- **F2 — the phase assertion pinned ordering, not readability: it passed at 0.98 and at 0.26.**
+  Replaced with real WCAG contrast computed from the composited fills, against two floors that
+  mean different things (3:1 for two adjacent marks, 1.3:1 for a fill against the page). **The
+  first rewrite re-created the vacuity** — it skipped the contrast check whenever a stroke was
+  present, which would have let 0.98 through again. The rule now is: the fills are separable
+  **or** the outline is visible *against the wait's own fill*, and since the outline is the
+  accent at full strength, a wait approaching full strength loses both clauses at once.
+  **Mutation-verified, all four failing:** 0.45→0.98 (`separates its wait from its work by
+  1.08:1 of fill`), 0.45→0.10 (`draws its wait at 1.09:1 against the page`), outline removed,
+  and the whole `[data-status]` block deleted.
+- **F3 — no automated check ever saw the dark palette.** `runBrowserBehaviorProbe` gained a
+  flag-accepting sibling, and the status probe now runs as two subtests under
+  `--blink-settings=preferredColorScheme=0/1`. It also **asserts the scheme the engine
+  actually resolved** rather than the one the flag asked for: a build that ignores the flag
+  would otherwise measure one palette twice and report it as two, which is how this would
+  quietly rot.
+- **F4 — the legend's phase half was painted in the claimed accent (1.02:1 apart in light),
+  so the view's only colour key showed one chip twice meaning two different things** — and
+  showed `--timeline-work`, a colour no bar paints, one line under a comment claiming that
+  could not happen. Repainted in muted ink, which cannot be read as a sixth status. The status
+  swatches also gained an ink fallback: an unmapped or renamed status rendered them fully
+  transparent, so a key entry disappeared silently.
+- **F5 — two comments still described the deleted two-hue scheme.** Both rewritten. Prose-only
+  by the Fold-First test, but they are in a file this REQ was already editing and UR-065's
+  batch constraint assigns prose a REQ falsifies to that REQ, so they are fixed here rather
+  than sent to the prose backlog.
+- **Minors fixed:** the row fallback is muted ink rather than the claimed blue (a status-less
+  row read as claimed work); the unresolved-property guard parses alpha instead of matching
+  the substring `", 0)"`, which also matched any opaque colour with a zero blue channel; and
+  the `is-open` comment now says specificity (0,2,0) rather than source order, which is what
+  actually decides it.
+
+**Carried, not done:** a second engine and a forced-colors pass, both outside what this
+environment offers; and extending `generate_test.go`'s table-driven `.req-card[data-status]`
+pin to cover all three copies of the status vocabulary, which is a cross-view concern rather
+than this REQ's.
+
+## Lessons Learned
+
+**What worked:** Consuming the payload's `statusUnrecognized` verdict instead of re-deriving
+the vocabulary. And routing every swatch through the same custom property the bars read —
+which is what made the legend's contradiction (F4) a one-line fix rather than an audit.
+
+**What didn't:**
+
+- **Opacity is one-dimensional, and it was asked to buy two separations at once.** Wait from
+  work, and wait from the page. In the light palette those pull in opposite directions, so no
+  single alpha exists that satisfies both — the first attempt was not a bad number, it was a
+  missing channel. Two channels (an outline, and a per-theme alpha) settled it.
+- **A test that asserts an ordering is not a test of a difference.** `waitOpacity <
+  workOpacity` passes at 0.98 and at 0.26. The REQ's stated risk was legibility and the probe
+  measured everything except legibility. Worse, the mutation I chose to "verify" it — restoring
+  the pre-REQ fills — was precisely the one thing assertion 1 already greps for, which is
+  REQ-293's lesson arriving one REQ later: **choose the mutation before looking at the
+  assertion, or you will choose the one it already catches.**
+- **And then the first fix re-created the hole.** Exempting the contrast check whenever a
+  stroke was present would have let 0.98 through again. An escape hatch in an assertion needs
+  its own condition to be measured — here, that the outline is visible *against the fill it
+  borders*.
+- **Manual evidence in both themes is not coverage of both themes.** The probe lane launches
+  Chromium with no colour-scheme flag, so every existing browser test measures light. The dark
+  palette is this board's `:root` base and nothing automated had ever looked at it.
+
+**Worth knowing:** the surface behind a timeline bar is `<body>` — nothing between them
+paints — so a contrast measurement must read `document.body`'s background, and the real values
+are `rgb(245,247,250)` light and `rgb(12,14,18)` dark, not the `--surface-*` tokens you would
+reach for. Computing against the wrong surface gave numbers that disagreed with the review's
+by a factor of two, which is how the discrepancy was found.
+
+## Orientation
+
+Status is now visible on the Timeline: every bar carries its REQ's status colour from the
+shared accents, with the wait/work phase distinction moved onto lightness plus an outline.
+Leaf change in the board's frontend — no new module, no payload field. The board's browser
+probe lane gained the ability to run a page under a chosen colour scheme, which is the one
+piece other views can reuse. `_dev/primes/prime-kanban-board.md` spot-checked: every path it
+references still exists.
