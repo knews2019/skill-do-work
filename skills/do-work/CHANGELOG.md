@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.20 — Clicking a Timeline Row No Longer Blanks the Chart (2026-08-23)
+
+The detail drawer takes 630 pixels out of the plot, and nothing was re-measuring it — so following the
+chart's own "click a row for its full detail" hint made every bar vanish. The plot now watches its own box.
+
+- A ResizeObserver on the plot re-lays the bars whenever its box changes: the drawer opening or closing, the view being shown, any future layout change
+- A resize taken while another view is on screen no longer leaves the Timeline crushed into a 120-pixel strip with eight rows in it
+- Coming back to the Timeline repairs it on its own, with no window move needed
+- The hover readout is cleared when a window move takes its row off the chart, and no longer announces once per mouse movement
+
 ## 0.236.19 — Timeline Period Chips Land on Now (2026-08-23)
 
 Pressing Day, Week or Month on the Timeline now shows the period around the present instead of the

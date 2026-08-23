@@ -1290,3 +1290,199 @@ func TestTimelineRowTooltipMarkupMatchesTheProbe(t *testing.T) {
 			"assertions in generate_test.go are testing a function nothing calls")
 	}
 }
+
+// plotEdgeText renders an optional measured edge for a failure message. A *int
+// formatted with %v prints its ADDRESS, which is how a real failure came out
+// reading "leftmost 0x1b8ca51929b0" — true, useless, and impossible to argue with.
+func plotEdgeText(edge *int) string {
+	if edge == nil {
+		return "none measured"
+	}
+	return strconv.Itoa(*edge)
+}
+
+// Opening the detail drawer narrows the plot, and before this probe nothing
+// re-measured it.
+//
+// WHY A BROWSER, AND WHY THE WHOLE BOARD. The defect is a layout interaction: the
+// drawer takes a 620px grid column, the scroll host loses 630px of width, and
+// every bar keeps the x it was given against the old plot. Nothing about the
+// renderer is wrong in isolation — a sliced function measures whatever width the
+// fixture hands it — so the only thing that can show this is a real engine laying
+// out the real page, measuring the real bars, and comparing what is inside the
+// host's box before and after a real click on a row.
+//
+// The measurement is getBoundingClientRect() intersection, not node count: the
+// bars were all still in the DOM when the chart looked blank. Fifty-five segments,
+// zero of them inside the host.
+func TestBrowserBehaviorTimelineBarsSurviveTheDetailDrawerOpening(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function plotHost() {
+  return document.querySelector("#view-timeline .timeline-scroll");
+}
+// What the reader can actually see: segments whose box overlaps the host's box.
+// Counting nodes would have passed straight through the defect.
+function plotSnapshot(label) {
+  var host = plotHost();
+  var hostBox = host.getBoundingClientRect();
+  var segments = [].slice.call(host.querySelectorAll("rect.timeline-segment"));
+  var inside = 0;
+  var rightmost = -Infinity;
+  var leftmost = Infinity;
+  segments.forEach(function (segment) {
+    var box = segment.getBoundingClientRect();
+    if (box.right > hostBox.left && box.left < hostBox.right) {
+      inside++;
+    }
+    rightmost = Math.max(rightmost, box.right);
+    leftmost = Math.min(leftmost, box.left);
+  });
+  return {
+    label: label,
+    href: location.href,
+    hostWidth: Math.round(hostBox.width),
+    hostRight: Math.round(hostBox.right),
+    segments: segments.length,
+    inside: inside,
+    rightmost: isFinite(rightmost) ? Math.round(rightmost) : null,
+    leftmost: isFinite(leftmost) ? Math.round(leftmost) : null
+  };
+}
+function drawerIsOpen() {
+  var drawer = document.getElementById("detail-drawer");
+  return !!drawer && !drawer.hidden && !drawer.classList.contains("is-hidden");
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      probe.before = plotSnapshot("before");
+      probe.drawerOpenBefore = drawerIsOpen();
+      // A row, clicked the way a reader clicks one. The delegated handler reads
+      // [data-detail-kind] off the row group.
+      var firstRow = plotHost().querySelector('g[data-detail-kind="request"]');
+      probe.foundARow = !!firstRow;
+      if (firstRow) {
+        firstRow.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true }));
+      }
+      // Two frames plus a tick: the ResizeObserver callback runs before paint and
+      // schedules the render on the next frame.
+      setTimeout(function () {
+        probe.drawerOpenAfter = drawerIsOpen();
+        probe.after = plotSnapshot("after");
+        var close = document.getElementById("detail-close");
+        if (close) { close.click(); }
+        setTimeout(function () {
+          probe.closed = plotSnapshot("closed");
+          probe.drawerOpenAtEnd = drawerIsOpen();
+          document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+          document.title = "READY";
+        }, 300);
+      }, 300);
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the probe script before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline drawer plot width", siteDirectory,
+		pageHTML, "--window-size=1600,900")
+
+	type plotSnapshot struct {
+		Label     string `json:"label"`
+		Href      string `json:"href"`
+		HostWidth int    `json:"hostWidth"`
+		HostRight int    `json:"hostRight"`
+		Segments  int    `json:"segments"`
+		Inside    int    `json:"inside"`
+		Rightmost *int   `json:"rightmost"`
+		Leftmost  *int   `json:"leftmost"`
+	}
+	var drawerResult struct {
+		Before           plotSnapshot `json:"before"`
+		After            plotSnapshot `json:"after"`
+		Closed           plotSnapshot `json:"closed"`
+		FoundARow        bool         `json:"foundARow"`
+		DrawerOpenBefore bool         `json:"drawerOpenBefore"`
+		DrawerOpenAfter  bool         `json:"drawerOpenAfter"`
+		DrawerOpenAtEnd  bool         `json:"drawerOpenAtEnd"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &drawerResult); decodeError != nil {
+		t.Fatalf("decode timeline drawer behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// Every measurement names the page it measured. A confident number about
+	// somebody else's board has shipped here before.
+	for _, snapshot := range []plotSnapshot{drawerResult.Before, drawerResult.After, drawerResult.Closed} {
+		if !strings.HasSuffix(snapshot.Href, "/probe.html") {
+			t.Fatalf("the %s snapshot was taken on %q, not the probe page", snapshot.Label, snapshot.Href)
+		}
+	}
+
+	// SETUP, ASSERTED. Each of these silently turns the test below into a
+	// measurement of nothing.
+	if !drawerResult.FoundARow {
+		t.Fatal("the probe found no [data-detail-kind] row in the plot, so it clicked nothing")
+	}
+	if drawerResult.DrawerOpenBefore {
+		t.Fatal("the detail drawer was already open before the row click")
+	}
+	if !drawerResult.DrawerOpenAfter {
+		t.Fatal("clicking a row did not open the detail drawer, so the plot was never narrowed " +
+			"and this probe cannot see the defect it exists for")
+	}
+	if drawerResult.Before.Segments == 0 {
+		t.Fatal("no timeline segments were drawn before the click; the probe measured an empty chart")
+	}
+	if drawerResult.After.HostWidth >= drawerResult.Before.HostWidth {
+		t.Fatalf("the plot host was %dpx before the drawer opened and %dpx after, so the drawer did "+
+			"not narrow it and there is nothing here to re-measure",
+			drawerResult.Before.HostWidth, drawerResult.After.HostWidth)
+	}
+
+	// THE DEFECT. Fifty-five segments, none of them on screen.
+	if drawerResult.After.Inside == 0 {
+		t.Fatalf("after the drawer opened, %d segments are in the DOM and NONE of them overlap the "+
+			"%dpx plot (leftmost %s, host right edge %d) — the chart is blank",
+			drawerResult.After.Segments, drawerResult.After.HostWidth,
+			plotEdgeText(drawerResult.After.Leftmost), drawerResult.After.HostRight)
+	}
+	// Not merely non-zero: the bars have to be laid out against the NEW plot, so
+	// none of them may sit past its right edge. A stale layout that happened to
+	// leave one bar clipped inside the box would satisfy the count alone.
+	if drawerResult.After.Rightmost == nil || *drawerResult.After.Rightmost > drawerResult.After.HostRight+2 {
+		t.Fatalf("after the drawer opened the rightmost segment ends at %s, past the plot's right "+
+			"edge at %d — the bars were not re-laid out against the narrowed plot",
+			plotEdgeText(drawerResult.After.Rightmost), drawerResult.After.HostRight)
+	}
+	// And closing it comes back, without the reader having to move the window.
+	if drawerResult.DrawerOpenAtEnd {
+		t.Fatal("the probe could not close the detail drawer, so the recovery half is untested")
+	}
+	if drawerResult.Closed.Inside == 0 {
+		t.Fatalf("after the drawer closed, none of the %d segments overlap the %dpx plot",
+			drawerResult.Closed.Segments, drawerResult.Closed.HostWidth)
+	}
+	if drawerResult.Closed.HostWidth != drawerResult.Before.HostWidth {
+		t.Fatalf("closing the drawer left the plot %dpx wide, want the %dpx it started at",
+			drawerResult.Closed.HostWidth, drawerResult.Before.HostWidth)
+	}
+	if drawerResult.Closed.Rightmost == nil || *drawerResult.Closed.Rightmost > drawerResult.Closed.HostRight+2 {
+		t.Fatalf("after the drawer closed the rightmost segment ends at %s, past the plot's right edge at %d",
+			plotEdgeText(drawerResult.Closed.Rightmost), drawerResult.Closed.HostRight)
+	}
+}

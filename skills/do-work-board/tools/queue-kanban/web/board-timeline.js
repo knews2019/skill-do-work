@@ -114,18 +114,23 @@
     timelineTableRebuildFrame = null;
   }
 
-  // A pan frame scheduled by the PREVIOUS render holds that render's closure, so
-  // a filter change that re-enters this module would let it re-render the old
-  // rows one frame later. Same hazard as the table frame above, cancelled at the
-  // same point — which is why the handle lives out here rather than inside the
-  // render, where the listener that schedules it does.
-  var timelinePanRenderFrame = null;
+  // At most one whole-view render per frame, for the two things that can ask for
+  // one faster than the compositor draws: a drag (a trackpad delivers pointermoves
+  // faster than frames) and the plot's ResizeObserver (a drawer animating open
+  // reports every intermediate width).
+  //
+  // A frame scheduled by the PREVIOUS render holds that render's closure, so a
+  // filter change that re-enters this module would let it re-render the old rows
+  // one frame later. Same hazard as the table frame above, cancelled at the same
+  // point — which is why the handle lives out here rather than inside the render,
+  // where the listeners that schedule it do.
+  var timelineFrameRender = null;
 
-  function releaseTimelinePanFrame() {
-    if (timelinePanRenderFrame !== null && window.cancelAnimationFrame) {
-      window.cancelAnimationFrame(timelinePanRenderFrame);
+  function releaseTimelineFrameRender() {
+    if (timelineFrameRender !== null && window.cancelAnimationFrame) {
+      window.cancelAnimationFrame(timelineFrameRender);
     }
-    timelinePanRenderFrame = null;
+    timelineFrameRender = null;
   }
 
   // Each unit is derived from the already-rounded value of the unit below it, so
@@ -1094,7 +1099,7 @@
 
     releaseTimelineListeners();
     releaseTimelineTableFrame();
-    releaseTimelinePanFrame();
+    releaseTimelineFrameRender();
 
     var timeline = boardData.timeline || {};
     // Filters apply here, unlike Durations. A Gantt filtered to one domain is a
@@ -1350,10 +1355,37 @@
     // MEASURED ONCE PER RENDER. clientWidth forces a synchronous layout, and
     // xOfEpoch calls this several times per row: one measured render of this
     // repo's board made 171 of them (Chromium 1194), every frame of a drag. The
-    // memo is dropped by invalidatePlotWidth() at the top of renderAll, and the
-    // resize listener IS renderAll, so the two moments the width can change are
-    // both covered.
+    // memo is dropped by invalidatePlotWidth() at the top of renderAll.
+    //
+    // WHAT RE-RENDERS IS NOT A LIST OF CALLERS. This used to say "the resize
+    // listener IS renderAll, so the two moments the width can change are both
+    // covered", and there were more than two moments. Opening the detail drawer
+    // gives it a 620px grid column of its own, narrowing this host by 630px:
+    // nothing re-measured, every bar kept the x it had been given against the old
+    // 1300px plot, and drawSegment's clamp dropped all fifty of them — clicking a
+    // row, which the hint under the chart explicitly invites, blanked the chart.
+    // So the trigger is now a ResizeObserver on this host: the condition is "the
+    // plot's box changed", and no future layout change has to remember to be added
+    // to a list.
+    //
+    // A ZERO-SIZE BOX IS NOT A WIDTH. A window resize fired while the view is
+    // hidden measured clientWidth 0, and the floor below turned that into
+    // Math.max(120, -196) = 120 — three months of archive crushed into a 120px
+    // strip with eight rows in it, and nothing re-rendered afterwards to repair it.
+    // renderAll now refuses to render at all against an unmeasurable host, and the
+    // ResizeObserver brings it back the moment the box exists, which is also what
+    // repairs the view on re-entry with no second gate in board-controls.js.
+    //
+    // That guard is the ONLY one. plotWidth deliberately keeps its floor and its
+    // memo unconditional: every caller runs inside a render the guard has already
+    // admitted, so a defensive branch here would be unreachable, and a guard no
+    // mutation can break is dead code rather than safety. Should a call ever slip
+    // through, invalidatePlotWidth at the top of the next renderAll drops the memo,
+    // so a bad measurement cannot outlive the render that took it.
     var measuredPlotWidthPx = null;
+    function plotIsMeasurable() {
+      return (scrollHost.clientWidth || scrollHost.getBoundingClientRect().width || 0) > 0;
+    }
     function plotWidth() {
       if (measuredPlotWidthPx === null) {
         var hostWidth = scrollHost.clientWidth || scrollHost.getBoundingClientRect().width;
@@ -1363,6 +1395,16 @@
     }
     function invalidatePlotWidth() {
       measuredPlotWidthPx = null;
+    }
+
+    // The row the hover readout last announced, so an unchanged row is not
+    // announced again and a window move can retract one that is gone.
+    var announcedHoverRowId = null;
+    function clearHoverReadout() {
+      announcedHoverRowId = null;
+      if (readoutNode) {
+        readoutNode.textContent = "";
+      }
     }
 
     // 1 SVG unit = 1 CSS pixel here, so this is the whole pointer-to-data story.
@@ -1820,11 +1862,19 @@
 
     // Every path that moves the window ends here, which is what makes the row
     // set, the counts, the scroll extent and the table describe the same window.
-    // The order is load-bearing: rows first, because everything below reads them.
+    // The order is decided rather than incidental: rows first, because everything
+    // below reads them.
     function renderAll() {
       // Before anything reads it: the container may have been resized, and every
       // x in this render has to come from one measurement of one width.
       invalidatePlotWidth();
+      // Nothing is visible and nothing is measurable, so a render here would only
+      // record wrong numbers — a 120px plot and an eight-row viewport — and leave
+      // them on screen when the view comes back. The observer below re-enters as
+      // soon as the host has a box.
+      if (!plotIsMeasurable()) {
+        return;
+      }
       refreshWindowRows();
       renderSummary();
       renderForecastIfSubsetChanged();
@@ -1832,7 +1882,30 @@
       renderVisibleRows();
       renderPeriodControls();
       renderRangeControls();
+      // The hover readout describes ONE row, and a window move can take that row
+      // off the chart. Every other piece of prose this view owns is refreshed
+      // above; this one used to be written only by the pointer, so it went on
+      // announcing a REQ that was no longer drawn anywhere.
+      clearHoverReadout();
       markTimelineTableStale();
+    }
+
+    // The plot's box can change without any window moving and without the browser
+    // resizing: the detail drawer takes a grid column, the view is shown or
+    // hidden, a container's padding changes. Observing the host states the
+    // condition — "this box changed" — instead of enumerating the causes.
+    //
+    // Guarded because the floor this project designs for includes hosts with no
+    // ResizeObserver: the window resize listener below still covers the ordinary
+    // case there, which is exactly what it covered before.
+    if (typeof ResizeObserver === "function") {
+      var plotResizeObserver = new ResizeObserver(function () {
+        requestFrameRender();
+      });
+      plotResizeObserver.observe(scrollHost);
+      timelineListenerTeardowns.push(function () {
+        plotResizeObserver.disconnect();
+      });
     }
 
     function timelineRowDescription(row, request) {
@@ -1921,23 +1994,31 @@
       }
     });
 
+    // The readout is role="status" aria-live="polite", so every write to it is an
+    // ANNOUNCEMENT. Writing on every mousemove queued one per event — a single
+    // sweep across the rows produced dozens for one gesture — so the last id
+    // announced is remembered and an unchanged row is not re-announced.
     addTimelineListener(scrollHost, "mousemove", function (moveEvent) {
       if (!readoutNode) {
         return;
       }
       var rowGroup = moveEvent.target.closest ? moveEvent.target.closest("[data-row-index]") : null;
       if (!rowGroup) {
-        readoutNode.textContent = "";
+        clearHoverReadout();
         return;
       }
       var row = rows[Number(rowGroup.getAttribute("data-row-index"))];
-      readoutNode.textContent = row ? timelineRowDescription(row, requestsById[row.id] || {}) : "";
-    });
-    addTimelineListener(scrollHost, "mouseleave", function () {
-      if (readoutNode) {
-        readoutNode.textContent = "";
+      if (!row) {
+        clearHoverReadout();
+        return;
       }
+      if (row.id === announcedHoverRowId) {
+        return;
+      }
+      announcedHoverRowId = row.id;
+      readoutNode.textContent = timelineRowDescription(row, requestsById[row.id] || {});
     });
+    addTimelineListener(scrollHost, "mouseleave", clearHoverReadout);
 
     // Zoom is modifier-gated so a plain wheel keeps scrolling the rows, which is
     // the motion a 560-row list needs most.
@@ -1972,16 +2053,16 @@
     // full renderAll — axis plus every visible row — and a trackpad delivers
     // moves faster than the compositor draws them, so most of that work was
     // thrown away before it was seen.
-    function requestPanRender() {
-      if (timelinePanRenderFrame !== null) {
+    function requestFrameRender() {
+      if (timelineFrameRender !== null) {
         return;
       }
       if (!window.requestAnimationFrame) {
         renderAll();
         return;
       }
-      timelinePanRenderFrame = window.requestAnimationFrame(function () {
-        timelinePanRenderFrame = null;
+      timelineFrameRender = window.requestAnimationFrame(function () {
+        timelineFrameRender = null;
         renderAll();
       });
     }
@@ -2021,14 +2102,14 @@
       );
       timelineViewState.windowStartMs = nextStartMs;
       timelineViewState.windowEndMs = nextStartMs + windowSpanMs;
-      requestPanRender();
+      requestFrameRender();
     });
     ["pointerup", "pointercancel", "pointerleave"].forEach(function (eventName) {
       addTimelineListener(scrollHost, eventName, function () {
         // A drag that ends between frames still has to land on the window it
         // reached, so the pending frame runs rather than being dropped.
-        if (panState && panState.engaged && timelinePanRenderFrame !== null) {
-          releaseTimelinePanFrame();
+        if (panState && panState.engaged && timelineFrameRender !== null) {
+          releaseTimelineFrameRender();
           renderAll();
         }
         panState = null;

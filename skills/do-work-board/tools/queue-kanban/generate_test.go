@@ -5658,6 +5658,187 @@ walkRowGroups(timelineStubHosts["timeline-scroll"]);
 process.stdout.write(JSON.stringify({ rows: drawnRows }));
 `
 
+// TestJavaScriptBehaviorTimelineRefusesToRenderAgainstAnUnmeasurableHost pins the
+// other half of the plot-width fix, the half no click can reach.
+//
+// `addTimelineListener(window, "resize", renderAll)` fires while #view-timeline is
+// `hidden`, where the scroll host's clientWidth is 0. plotWidth's floor turned
+// that into Math.max(120, 0 - 184 - 12) = 120 and MEMOISED it, and
+// timelineVisibleRowRange turned clientHeight 0 into eight rows — so a browser
+// resize taken on another view left the Timeline showing three months of archive
+// crushed into a 120-pixel strip with eight rows in it, and only a window move
+// repaired it.
+//
+// The property is that an unmeasurable host is "not yet", never 120: the render is
+// skipped rather than performed against numbers that describe nothing. The
+// recovery half is the ResizeObserver, which a DOM stub has none of — that is what
+// TestBrowserBehaviorTimelineBarsSurviveTheDetailDrawerOpening covers in a real
+// engine. Here the question is only whether the wrong numbers get written.
+func TestJavaScriptBehaviorTimelineRefusesToRenderAgainstAnUnmeasurableHost(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
+	if readError != nil {
+		t.Fatalf("read web/board-timeline.js: %v", readError)
+	}
+
+	// Twelve rows, so an eight-row viewport is visibly a truncation rather than a
+	// coincidence, spread over four hours so a 120px plot is visibly a crush.
+	timelinePayload := `{
+	  "now": "2026-08-18T13:00:00Z",
+	  "rangeStart": "2026-08-18T09:00:00Z",
+	  "rangeEnd": "2026-08-18T13:00:00Z",
+	  "rows": [
+	    {"id":"REQ-901","createdTime":"2026-08-18T09:00:00Z","claimedTime":"2026-08-18T09:10:00Z","completedTime":"2026-08-18T09:40:00Z","waitMinutes":10,"workMinutes":30,"waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-902","createdTime":"2026-08-18T09:20:00Z","claimedTime":"2026-08-18T09:30:00Z","completedTime":"2026-08-18T10:00:00Z","waitMinutes":10,"workMinutes":30,"waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-903","createdTime":"2026-08-18T09:40:00Z","claimedTime":"2026-08-18T09:50:00Z","completedTime":"2026-08-18T10:20:00Z","waitMinutes":10,"workMinutes":30,"waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-904","createdTime":"2026-08-18T10:00:00Z","claimedTime":"2026-08-18T10:10:00Z","completedTime":"2026-08-18T10:40:00Z","waitMinutes":10,"workMinutes":30,"waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-905","createdTime":"2026-08-18T10:20:00Z","claimedTime":"2026-08-18T10:30:00Z","completedTime":"2026-08-18T11:00:00Z","waitMinutes":10,"workMinutes":30,"waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-906","createdTime":"2026-08-18T10:40:00Z","claimedTime":"2026-08-18T10:50:00Z","completedTime":"2026-08-18T11:20:00Z","waitMinutes":10,"workMinutes":30,"waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-907","createdTime":"2026-08-18T11:00:00Z","claimedTime":"2026-08-18T11:10:00Z","completedTime":"2026-08-18T11:40:00Z","waitMinutes":10,"workMinutes":30,"waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-908","createdTime":"2026-08-18T11:20:00Z","claimedTime":"2026-08-18T11:30:00Z","completedTime":"2026-08-18T12:00:00Z","waitMinutes":10,"workMinutes":30,"waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-909","createdTime":"2026-08-18T11:40:00Z","claimedTime":"2026-08-18T11:50:00Z","completedTime":"2026-08-18T12:20:00Z","waitMinutes":10,"workMinutes":30,"waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-910","createdTime":"2026-08-18T12:00:00Z","claimedTime":"2026-08-18T12:10:00Z","completedTime":"2026-08-18T12:40:00Z","waitMinutes":10,"workMinutes":30,"waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-911","createdTime":"2026-08-18T12:10:00Z","claimedTime":"2026-08-18T12:20:00Z","completedTime":"2026-08-18T12:50:00Z","waitMinutes":10,"workMinutes":30,"waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false},
+	    {"id":"REQ-912","createdTime":"2026-08-18T12:20:00Z","claimedTime":"2026-08-18T12:30:00Z","completedTime":"2026-08-18T12:55:00Z","waitMinutes":10,"workMinutes":25,"waitOpen":false,"workOpen":false,"hasWork":true,"anomaly":false}
+	  ]
+	}`
+
+	// Render measurable, then unmeasurable, then measurable again — the three
+	// states a reader passes through when they resize the browser on another view
+	// and come back. Both renders after the first go through the same entry point
+	// the resize listener uses.
+	probeDriver := `
+function drawnRowIds() {
+  var ids = [];
+  (function walk(node) {
+    (node.children || []).forEach(function (childNode) {
+      var attributes = childNode.attributes || {};
+      if (childNode.stubName === "g" && attributes["data-detail-id"]) {
+        ids.push(attributes["data-detail-id"]);
+        return;
+      }
+      walk(childNode);
+    });
+  })(timelineStubHosts["timeline-scroll"]);
+  return ids;
+}
+function countDescendants(node, stubName) {
+  var found = 0;
+  (node.children || []).forEach(function (childNode) {
+    if (childNode.stubName === stubName) { found++; }
+    found += countDescendants(childNode, stubName);
+  });
+  return found;
+}
+function hostSize(widthPx, heightPx) {
+  var host = timelineStubHosts["timeline-scroll"];
+  host.clientWidth = widthPx;
+  host.clientHeight = heightPx;
+  host.getBoundingClientRect = function () {
+    return { width: widthPx, height: heightPx, left: 0, top: 0 };
+  };
+}
+// The stub's textContent is a plain property, so the renderer's own
+// "scrollHost.textContent = \"\"" does not drop its children — every other probe
+// in this lane renders once and never notices. Three renders do, so the fixture
+// clears what a real DOM would have cleared. This is stub bookkeeping, not a
+// production behaviour: getting it wrong made the second render's row list read
+// as the first render's.
+function clearRenderedHosts() {
+  ["timeline-scroll", "timeline-axis", "timeline-table-body"].forEach(function (hostId) {
+    timelineStubHosts[hostId].children = [];
+  });
+  timelineStubHosts["timeline-summary"].textContent = "";
+}
+function snapshot() {
+  return {
+    rowIds: drawnRowIds(),
+    summary: timelineStubHosts["timeline-summary"].textContent,
+    // The axis SVG SHELL is created by renderTimelineView before renderAll runs,
+    // so counting the host's children counts a container that is always there.
+    // What matters is whether any tick was drawn INTO it.
+    axisTicks: countDescendants(timelineStubHosts["timeline-axis"], "text")
+  };
+}
+hostSize(900, 400);
+renderTimelineView();
+var measured = snapshot();
+
+hostSize(0, 0);
+clearRenderedHosts();
+renderTimelineView();
+var unmeasurable = snapshot();
+
+hostSize(900, 400);
+clearRenderedHosts();
+renderTimelineView();
+var remeasured = snapshot();
+
+process.stdout.write(JSON.stringify({
+  measured: measured, unmeasurable: unmeasurable, remeasured: remeasured
+}));
+`
+
+	javascriptProbe := timelineRenderDomStubPreamble +
+		"var boardData = { timeline: " + timelinePayload + " };\n" +
+		string(rendererFragment) +
+		probeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline unmeasurable host", javascriptProbe)
+
+	type renderSnapshot struct {
+		RowIds    []string `json:"rowIds"`
+		Summary   string   `json:"summary"`
+		AxisTicks int      `json:"axisTicks"`
+	}
+	var hostResult struct {
+		Measured     renderSnapshot `json:"measured"`
+		Unmeasurable renderSnapshot `json:"unmeasurable"`
+		Remeasured   renderSnapshot `json:"remeasured"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &hostResult); decodeError != nil {
+		t.Fatalf("decode timeline unmeasurable-host behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// SETUP, ASSERTED: without a full first render there is nothing for the
+	// unmeasurable render to be compared against.
+	if hostResult.Measured.AxisTicks == 0 {
+		t.Fatal("the measurable render drew no axis tick labels, so the zero-tick assertion below " +
+			"would pass against any render at all")
+	}
+	if len(hostResult.Measured.RowIds) != 12 {
+		t.Fatalf("the measurable render drew %d rows, want all 12 fixture rows; the probe is not "+
+			"measuring a full chart", len(hostResult.Measured.RowIds))
+	}
+	if !strings.Contains(hostResult.Measured.Summary, "12 REQs in the window") {
+		t.Fatalf("the measurable render's summary is %q, want it to name all 12 rows", hostResult.Measured.Summary)
+	}
+
+	// THE DEFECT. Eight rows and a 120px plot are not a smaller truth, they are a
+	// measurement of a box that does not exist.
+	if len(hostResult.Unmeasurable.RowIds) != 0 {
+		t.Fatalf("rendering against a zero-width host drew %d rows (%v); an unmeasurable host is "+
+			"\"not yet\", not a 120px plot with an eight-row viewport",
+			len(hostResult.Unmeasurable.RowIds), hostResult.Unmeasurable.RowIds)
+	}
+	if hostResult.Unmeasurable.Summary != "" {
+		t.Fatalf("rendering against a zero-width host wrote the summary %q; it must not describe a "+
+			"window it could not lay out", hostResult.Unmeasurable.Summary)
+	}
+	if hostResult.Unmeasurable.AxisTicks != 0 {
+		t.Fatalf("rendering against a zero-width host drew %d axis tick labels", hostResult.Unmeasurable.AxisTicks)
+	}
+
+	// And the numbers come back whole once the host has a box again, which is what
+	// the ResizeObserver triggers in a real engine.
+	if len(hostResult.Remeasured.RowIds) != len(hostResult.Measured.RowIds) {
+		t.Fatalf("after the host regained its box the render drew %d rows, want the %d it drew before",
+			len(hostResult.Remeasured.RowIds), len(hostResult.Measured.RowIds))
+	}
+	if hostResult.Remeasured.Summary != hostResult.Measured.Summary {
+		t.Fatalf("after the host regained its box the summary reads %q, want the %q it read before",
+			hostResult.Remeasured.Summary, hostResult.Measured.Summary)
+	}
+}
+
 // TestJavaScriptBehaviorReversedWaitDrawsAsABreak pins the wait segment to the
 // rule the work segment already followed: a span whose end precedes its start
 // has no width to draw honestly, so it is a break marker rather than a bar.
