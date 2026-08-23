@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.19 — Timeline Period Chips Land on Now (2026-08-23)
+
+Pressing Day, Week or Month on the Timeline now shows the period around the present instead of the
+arithmetic middle of your archive, and the arrows step without losing the calendar grid.
+
+- A period chip anchors on the now-line whenever it is on screen, and on the window you panned to when it is not
+- An edge period is cut short at the range end rather than slid off its own boundary, so next-then-previous comes home
+- The arrows step one calendar period on a period window and one screenful on a span of your own, instead of resizing the chart to the nearest level
+- The lit chip now reports the calendar grid you are on, with the readout saying "part of one month" when the range cuts it short
+
 ## 0.236.18 — Timeline Lists Only Rows It Actually Draws (2026-08-23)
 
 Two edge cases where the Timeline listed a REQ whose mark was nowhere on screen. Both are the

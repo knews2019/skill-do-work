@@ -4393,6 +4393,7 @@ func TestJavaScriptBehaviorTimelinePeriodStepsOnCalendarBoundariesAndJumpsToNow(
 		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodStart(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineSteppedPeriodStart(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodAnchor(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodLevelOfWindow(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineFirstOpenRowIndex(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineNowJump(") + `
@@ -4404,25 +4405,29 @@ var nowMs = Date.UTC(2026, 7, 18, 10, 30);
 var queueEndMs = Date.UTC(2026, 7, 30, 6, 0); // the projection's queue-empty instant
 
 var fitted = { windowStartMs: boundStart, windowEndMs: boundEnd };
-function anchorOf(movedWindow) {
-  return (movedWindow.windowStartMs + movedWindow.windowEndMs) / 2;
+// The PRODUCTION anchor, not a local copy of it. A probe that reimplements the
+// decision under test cannot hold its call site (REQ-305), and the local midpoint
+// copy this replaced is exactly why the chips could land months from the now-line
+// with the whole suite green.
+function anchorOf(movedWindow, stepCount) {
+  return timelinePeriodAnchor(stepCount, movedWindow.windowStartMs, movedWindow.windowEndMs, nowMs);
 }
 
-var weekWindow = timelinePeriodWindow(anchorOf(fitted), "week", 0, boundStart, boundEnd);
-var nextWeek = timelinePeriodWindow(anchorOf(weekWindow), "week", 1, boundStart, boundEnd);
-var prevWeek = timelinePeriodWindow(anchorOf(nextWeek), "week", -1, boundStart, boundEnd);
+var weekWindow = timelinePeriodWindow(anchorOf(fitted, 0), "week", 0, boundStart, boundEnd);
+var nextWeek = timelinePeriodWindow(anchorOf(weekWindow, 1), "week", 1, boundStart, boundEnd);
+var prevWeek = timelinePeriodWindow(anchorOf(nextWeek, -1), "week", -1, boundStart, boundEnd);
 
 // Held down against the end of the range: stepping has to stop, keeping the
 // window on the data instead of running off it.
 var atRangeEnd = weekWindow;
 for (var step = 0; step < 60; step++) {
-  atRangeEnd = timelinePeriodWindow(anchorOf(atRangeEnd), "week", 1, boundStart, boundEnd);
+  atRangeEnd = timelinePeriodWindow(anchorOf(atRangeEnd, 1), "week", 1, boundStart, boundEnd);
 }
-var pastRangeEnd = timelinePeriodWindow(anchorOf(atRangeEnd), "week", 1, boundStart, boundEnd);
+var pastRangeEnd = timelinePeriodWindow(anchorOf(atRangeEnd, 1), "week", 1, boundStart, boundEnd);
 
-var dayWindow = timelinePeriodWindow(anchorOf(fitted), "day", 0, boundStart, boundEnd);
-var monthWindow = timelinePeriodWindow(anchorOf(fitted), "month", 0, boundStart, boundEnd);
-var nextMonth = timelinePeriodWindow(anchorOf(monthWindow), "month", 1, boundStart, boundEnd);
+var dayWindow = timelinePeriodWindow(anchorOf(fitted, 0), "day", 0, boundStart, boundEnd);
+var monthWindow = timelinePeriodWindow(anchorOf(fitted, 0), "month", 0, boundStart, boundEnd);
+var nextMonth = timelinePeriodWindow(anchorOf(monthWindow, 1), "month", 1, boundStart, boundEnd);
 
 // A free zoom through the pointer path's own transform: the level must stop
 // reading as an exact week rather than keep claiming one.
@@ -4662,6 +4667,364 @@ process.stdout.write(JSON.stringify({
 			"test cannot tell a scroll decided before the row refresh from one decided after; "+
 			"give the two sets different first-open indices",
 			periodResult.WantScrollTop)
+	}
+}
+
+// The period controls are the FIRST thing a reader reaches for and, before this
+// test, the first thing that took them somewhere useless. Three separate bugs
+// shared one cause: timelinePeriodWindow handed an out-of-range calendar period
+// to timelineZoomedWindow, which preserves a WIDTH and slides — so an edge step
+// kept a week's length and lost a week's alignment — and applyPeriodWindow then
+// anchored the next press on the slid window's MIDPOINT, which by then sat in the
+// neighbouring period.
+//
+// This drives the production functions rather than reimplementing their anchor
+// (REQ-305's lesson: a probe that reimplements the function under test cannot
+// hold its call site), and it pins the four properties the controls owe:
+//
+//	a chip lands on the period containing NOW while now is on screen;
+//	a chip lands near the READER when it is not;
+//	a step preserves calendar alignment, at a range edge included;
+//	next-then-previous is an identity, at a range edge included;
+//	a step on a window that is NOT a period MOVES it rather than resizing it.
+//
+// The fixture's range deliberately ENDS MID-WEEK (25 Aug 2026 04:23, a Tuesday),
+// because a range ending on a period boundary cannot tell a clamped period from
+// an aligned one — which is exactly why the old suite passed.
+func TestJavaScriptBehaviorTimelinePeriodChipsLandOnNowAndStepsStayAligned(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS", "TIMELINE_PAN_FRACTION") +
+		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_PERIOD_LEVEL_NAMES") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineZoomedWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePannedWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodStart(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineSteppedPeriodStart(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodAnchor(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodLevelOfWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodGridOfWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineSteppedWindow(") + `
+// A board shaped like this repo's own: months of archive, and a range END that
+// falls mid-week rather than on a boundary.
+var boundStart = Date.UTC(2026, 3, 7);            // 7 Apr 2026
+var boundEnd = Date.UTC(2026, 7, 25, 4, 23);      // 25 Aug 2026 04:23 UTC, a Tuesday
+var nowMs = Date.UTC(2026, 7, 23, 11, 13);        // 23 Aug 2026 11:13 UTC, a Sunday
+var fitted = { windowStartMs: boundStart, windowEndMs: boundEnd };
+
+// What the view actually does when a chip is pressed, spelled with the same two
+// production calls applyPeriodWindow makes.
+function chipWindow(window, levelName) {
+  return timelinePeriodWindow(
+    timelinePeriodAnchor(0, window.windowStartMs, window.windowEndMs, nowMs),
+    levelName, 0, boundStart, boundEnd);
+}
+// What the view actually does when an arrow is pressed.
+function stepWindow(window, stepCount) {
+  return timelineSteppedWindow(
+    window.windowStartMs, window.windowEndMs, stepCount, boundStart, boundEnd, nowMs);
+}
+function spanOf(window) {
+  return window.windowEndMs - window.windowStartMs;
+}
+function holds(window, instantMs) {
+  return instantMs >= window.windowStartMs && instantMs <= window.windowEndMs;
+}
+
+// 1. A chip from the view's OPENING window. Fit all always covers the now-line,
+//    so Week means the current week.
+var weekFromFitAll = chipWindow(fitted, "week");
+var dayFromFitAll = chipWindow(fitted, "day");
+var monthFromFitAll = chipWindow(fitted, "month");
+
+// 2. The same chip from a window the reader panned to, which does NOT hold now.
+var pannedAway = { windowStartMs: Date.UTC(2026, 5, 1), windowEndMs: Date.UTC(2026, 5, 15) };
+var weekFromPannedAway = chipWindow(pannedAway, "week");
+
+// 3. Pressing a chip twice never moves the window.
+var weekPressedTwice = chipWindow(weekFromFitAll, "week");
+
+// 4. Stepping at the RIGHT EDGE. The week containing now is the last full week
+//    the range reaches; one step forward lands on a week the range only partly
+//    covers, and the step back has to come home.
+var weekAtEdge = stepWindow(weekFromFitAll, 1);
+var backFromEdge = stepWindow(weekAtEdge, -1);
+var pastEdge = stepWindow(weekAtEdge, 1);
+
+// 5. Mid-range next-then-previous, for the ordinary case.
+var midWeek = chipWindow({ windowStartMs: Date.UTC(2026, 4, 11), windowEndMs: Date.UTC(2026, 4, 18) }, "week");
+var midNext = stepWindow(midWeek, 1);
+var midBack = stepWindow(midNext, -1);
+
+// 6. A step on a window that is NOT a period. Nineteen days is nearer a month
+//    (30d) than a week (7d), so the old nearest-level rule RESIZED it to a month;
+//    an arrow has to move the window it was given.
+var readersOwn = { windowStartMs: Date.UTC(2026, 5, 1), windowEndMs: Date.UTC(2026, 5, 20) };
+var readersOwnStepped = stepWindow(readersOwn, 1);
+
+// 7. Held down against the end of the range: it has to stop, on the data.
+var heldAtEnd = weekFromFitAll;
+for (var pressIndex = 0; pressIndex < 40; pressIndex++) {
+  heldAtEnd = stepWindow(heldAtEnd, 1);
+}
+var heldPastEnd = stepWindow(heldAtEnd, 1);
+
+function utcParts(epochMs) {
+  var instant = new Date(epochMs);
+  return {
+    iso: instant.toISOString(),
+    weekday: instant.getUTCDay(),
+    dayOfMonth: instant.getUTCDate(),
+    hour: instant.getUTCHours(),
+    minute: instant.getUTCMinutes()
+  };
+}
+
+process.stdout.write(JSON.stringify({
+  nowIso: new Date(nowMs).toISOString(),
+  boundEndIso: new Date(boundEnd).toISOString(),
+  boundEndWeekday: new Date(boundEnd).getUTCDay(),
+
+  weekFromFitAllStart: utcParts(weekFromFitAll.windowStartMs),
+  weekFromFitAllEnd: utcParts(weekFromFitAll.windowEndMs),
+  weekFromFitAllHoldsNow: holds(weekFromFitAll, nowMs),
+  weekFromFitAllLevel: timelinePeriodLevelOfWindow(weekFromFitAll.windowStartMs, weekFromFitAll.windowEndMs),
+  dayFromFitAllStart: utcParts(dayFromFitAll.windowStartMs),
+  dayFromFitAllHoldsNow: holds(dayFromFitAll, nowMs),
+  monthFromFitAllStart: utcParts(monthFromFitAll.windowStartMs),
+  monthFromFitAllHoldsNow: holds(monthFromFitAll, nowMs),
+
+  weekFromPannedAwayStart: utcParts(weekFromPannedAway.windowStartMs),
+  weekFromPannedAwayHoldsNow: holds(weekFromPannedAway, nowMs),
+  wantPannedAwayWeekStartMs: timelinePeriodStart(
+    (pannedAway.windowStartMs + pannedAway.windowEndMs) / 2, "week"),
+  pannedAwayWeekStartMs: weekFromPannedAway.windowStartMs,
+
+  weekPressedTwiceStartMs: weekPressedTwice.windowStartMs,
+  weekPressedTwiceEndMs: weekPressedTwice.windowEndMs,
+  weekFromFitAllStartMs: weekFromFitAll.windowStartMs,
+  weekFromFitAllEndMs: weekFromFitAll.windowEndMs,
+
+  weekAtEdgeStart: utcParts(weekAtEdge.windowStartMs),
+  weekAtEdgeEnd: utcParts(weekAtEdge.windowEndMs),
+  weekAtEdgeStartIsAligned:
+    weekAtEdge.windowStartMs === timelinePeriodStart(weekAtEdge.windowStartMs, "week"),
+  weekAtEdgeStartMs: weekAtEdge.windowStartMs,
+  weekAtEdgeEndMs: weekAtEdge.windowEndMs,
+  wantWeekAtEdgeStartMs: timelineSteppedPeriodStart(weekFromFitAll.windowStartMs, "week", 1),
+  backFromEdgeStartMs: backFromEdge.windowStartMs,
+  backFromEdgeEndMs: backFromEdge.windowEndMs,
+  pastEdgeStartMs: pastEdge.windowStartMs,
+  pastEdgeEndMs: pastEdge.windowEndMs,
+
+  midWeekStartMs: midWeek.windowStartMs,
+  midNextStepMs: midNext.windowStartMs - midWeek.windowStartMs,
+  midNextSpanMs: spanOf(midNext),
+  midWeekSpanMs: spanOf(midWeek),
+  midBackStartMs: midBack.windowStartMs,
+
+  readersOwnSpanMs: spanOf(readersOwn),
+  readersOwnSteppedSpanMs: spanOf(readersOwnStepped),
+  readersOwnSteppedStepMs: readersOwnStepped.windowStartMs - readersOwn.windowStartMs,
+
+  heldAtEndStartMs: heldAtEnd.windowStartMs,
+  heldAtEndEndMs: heldAtEnd.windowEndMs,
+  heldPastEndStartMs: heldPastEnd.windowStartMs,
+  heldPastEndEndMs: heldPastEnd.windowEndMs,
+  heldAtEndIso: new Date(heldAtEnd.windowStartMs).toISOString() + " → " + new Date(heldAtEnd.windowEndMs).toISOString(),
+  boundStartMs: boundStart,
+  boundEndMs: boundEnd,
+  dayMs: TIMELINE_DAY_MS
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline period chips and steps", javascriptProbe)
+	type utcParts struct {
+		Iso        string `json:"iso"`
+		Weekday    int    `json:"weekday"`
+		DayOfMonth int    `json:"dayOfMonth"`
+		Hour       int    `json:"hour"`
+		Minute     int    `json:"minute"`
+	}
+	var chipResult struct {
+		NowIso          string `json:"nowIso"`
+		BoundEndIso     string `json:"boundEndIso"`
+		BoundEndWeekday int    `json:"boundEndWeekday"`
+
+		WeekFromFitAllStart     utcParts `json:"weekFromFitAllStart"`
+		WeekFromFitAllEnd       utcParts `json:"weekFromFitAllEnd"`
+		WeekFromFitAllHoldsNow  bool     `json:"weekFromFitAllHoldsNow"`
+		WeekFromFitAllLevel     *string  `json:"weekFromFitAllLevel"`
+		DayFromFitAllStart      utcParts `json:"dayFromFitAllStart"`
+		DayFromFitAllHoldsNow   bool     `json:"dayFromFitAllHoldsNow"`
+		MonthFromFitAllStart    utcParts `json:"monthFromFitAllStart"`
+		MonthFromFitAllHoldsNow bool     `json:"monthFromFitAllHoldsNow"`
+
+		WeekFromPannedAwayStart    utcParts `json:"weekFromPannedAwayStart"`
+		WeekFromPannedAwayHoldsNow bool     `json:"weekFromPannedAwayHoldsNow"`
+		WantPannedAwayWeekStartMs  float64  `json:"wantPannedAwayWeekStartMs"`
+		PannedAwayWeekStartMs      float64  `json:"pannedAwayWeekStartMs"`
+
+		WeekPressedTwiceStartMs float64 `json:"weekPressedTwiceStartMs"`
+		WeekPressedTwiceEndMs   float64 `json:"weekPressedTwiceEndMs"`
+		WeekFromFitAllStartMs   float64 `json:"weekFromFitAllStartMs"`
+		WeekFromFitAllEndMs     float64 `json:"weekFromFitAllEndMs"`
+
+		WeekAtEdgeStart          utcParts `json:"weekAtEdgeStart"`
+		WeekAtEdgeEnd            utcParts `json:"weekAtEdgeEnd"`
+		WeekAtEdgeStartIsAligned bool     `json:"weekAtEdgeStartIsAligned"`
+		WeekAtEdgeStartMs        float64  `json:"weekAtEdgeStartMs"`
+		WeekAtEdgeEndMs          float64  `json:"weekAtEdgeEndMs"`
+		WantWeekAtEdgeStartMs    float64  `json:"wantWeekAtEdgeStartMs"`
+		BackFromEdgeStartMs      float64  `json:"backFromEdgeStartMs"`
+		BackFromEdgeEndMs        float64  `json:"backFromEdgeEndMs"`
+		PastEdgeStartMs          float64  `json:"pastEdgeStartMs"`
+		PastEdgeEndMs            float64  `json:"pastEdgeEndMs"`
+
+		MidWeekStartMs float64 `json:"midWeekStartMs"`
+		MidNextStepMs  float64 `json:"midNextStepMs"`
+		MidNextSpanMs  float64 `json:"midNextSpanMs"`
+		MidWeekSpanMs  float64 `json:"midWeekSpanMs"`
+		MidBackStartMs float64 `json:"midBackStartMs"`
+
+		ReadersOwnSpanMs        float64 `json:"readersOwnSpanMs"`
+		ReadersOwnSteppedSpanMs float64 `json:"readersOwnSteppedSpanMs"`
+		ReadersOwnSteppedStepMs float64 `json:"readersOwnSteppedStepMs"`
+
+		HeldAtEndStartMs   float64 `json:"heldAtEndStartMs"`
+		HeldAtEndEndMs     float64 `json:"heldAtEndEndMs"`
+		HeldPastEndStartMs float64 `json:"heldPastEndStartMs"`
+		HeldPastEndEndMs   float64 `json:"heldPastEndEndMs"`
+		HeldAtEndIso       string  `json:"heldAtEndIso"`
+		BoundStartMs       float64 `json:"boundStartMs"`
+		BoundEndMs         float64 `json:"boundEndMs"`
+		DayMs              float64 `json:"dayMs"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &chipResult); decodeError != nil {
+		t.Fatalf("decode timeline period chip behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// The fixture's whole discriminating power is that the range ends mid-week. If
+	// someone edits boundEnd onto a Monday this test silently stops being able to
+	// tell a clamped period from a slid one.
+	if chipResult.BoundEndWeekday == 1 {
+		t.Fatalf("the fixture's range ends on a Monday (%s), so a slid edge window and a "+
+			"cut-short one are indistinguishable; move boundEnd off the week boundary",
+			chipResult.BoundEndIso)
+	}
+
+	// 1. A chip while the now-line is on screen means the period containing now.
+	// This is the reported defect: from Fit all the midpoint anchor landed months
+	// back, on a week with nothing drawn in it.
+	if !chipResult.WeekFromFitAllHoldsNow {
+		t.Fatalf("Week from the Fit-all window landed on %s → %s, which does not contain the "+
+			"now-line at %s; a chip pressed while now is on screen must land on the period "+
+			"holding it", chipResult.WeekFromFitAllStart.Iso, chipResult.WeekFromFitAllEnd.Iso,
+			chipResult.NowIso)
+	}
+	if !chipResult.DayFromFitAllHoldsNow {
+		t.Fatalf("Day from the Fit-all window landed on %s, which does not contain the now-line at %s",
+			chipResult.DayFromFitAllStart.Iso, chipResult.NowIso)
+	}
+	if !chipResult.MonthFromFitAllHoldsNow {
+		t.Fatalf("Month from the Fit-all window landed on %s, which does not contain the now-line at %s",
+			chipResult.MonthFromFitAllStart.Iso, chipResult.NowIso)
+	}
+	// It must still be a real calendar week, not merely a seven-day span holding now.
+	if chipResult.WeekFromFitAllStart.Weekday != 1 || chipResult.WeekFromFitAllStart.Hour != 0 ||
+		chipResult.WeekFromFitAllStart.Minute != 0 {
+		t.Fatalf("Week landed on %s (weekday %d); want a Monday at 00:00 UTC",
+			chipResult.WeekFromFitAllStart.Iso, chipResult.WeekFromFitAllStart.Weekday)
+	}
+	if chipResult.WeekFromFitAllLevel == nil || *chipResult.WeekFromFitAllLevel != "week" {
+		t.Fatalf("the window Week produced reads back as level %v, so the chip would not light",
+			chipResult.WeekFromFitAllLevel)
+	}
+	if chipResult.MonthFromFitAllStart.DayOfMonth != 1 || chipResult.MonthFromFitAllStart.Hour != 0 {
+		t.Fatalf("Month landed on %s; want the 1st at 00:00 UTC", chipResult.MonthFromFitAllStart.Iso)
+	}
+
+	// 2. The same chip from a window the reader panned to must stay THERE. Keying
+	// the anchor on now unconditionally would drag them back to the present.
+	if chipResult.WeekFromPannedAwayHoldsNow {
+		t.Fatalf("Week from a window that does not contain the now-line jumped to %s, which does "+
+			"contain it; a chip must not drag the reader out of the span they panned to",
+			chipResult.WeekFromPannedAwayStart.Iso)
+	}
+	if chipResult.PannedAwayWeekStartMs != chipResult.WantPannedAwayWeekStartMs {
+		t.Fatalf("Week from a panned-away window landed on %s, want the week holding that window's "+
+			"own midpoint", chipResult.WeekFromPannedAwayStart.Iso)
+	}
+
+	// 3. Idempotence. A reader who presses Week twice has asked one question.
+	if chipResult.WeekPressedTwiceStartMs != chipResult.WeekFromFitAllStartMs ||
+		chipResult.WeekPressedTwiceEndMs != chipResult.WeekFromFitAllEndMs {
+		t.Fatalf("pressing Week twice moved the window from %s to %s; a chip press is idempotent",
+			chipResult.WeekFromFitAllStart.Iso,
+			time.UnixMilli(int64(chipResult.WeekPressedTwiceStartMs)).UTC().Format(time.RFC3339))
+	}
+
+	// 4. A step at a range edge keeps its calendar alignment. The reported failure
+	// was a window still seven days long that no longer started on a Monday.
+	if !chipResult.WeekAtEdgeStartIsAligned {
+		t.Fatalf("stepping into the last, partly-covered week started the window at %s, which is "+
+			"not a week boundary; an edge period is cut short, never slid",
+			chipResult.WeekAtEdgeStart.Iso)
+	}
+	if chipResult.WeekAtEdgeStartMs != chipResult.WantWeekAtEdgeStartMs {
+		t.Fatalf("one step forward from %s started the window at %s, want the next week boundary %s",
+			chipResult.WeekFromFitAllStart.Iso, chipResult.WeekAtEdgeStart.Iso,
+			time.UnixMilli(int64(chipResult.WantWeekAtEdgeStartMs)).UTC().Format(time.RFC3339))
+	}
+	if chipResult.WeekAtEdgeEnd.Iso != chipResult.BoundEndIso {
+		t.Fatalf("the last week's window ends at %s, want the range end %s — cut short, not slid",
+			chipResult.WeekAtEdgeEnd.Iso, chipResult.BoundEndIso)
+	}
+	// The identity, at the edge, which is where it broke: forward then back
+	// returned a whole week EARLIER than where the reader started.
+	if chipResult.BackFromEdgeStartMs != chipResult.WeekFromFitAllStartMs ||
+		chipResult.BackFromEdgeEndMs != chipResult.WeekFromFitAllEndMs {
+		t.Fatalf("next then previous at the range edge landed on %s → %s, want the window it "+
+			"started from %s → %s",
+			time.UnixMilli(int64(chipResult.BackFromEdgeStartMs)).UTC().Format(time.RFC3339),
+			time.UnixMilli(int64(chipResult.BackFromEdgeEndMs)).UTC().Format(time.RFC3339),
+			chipResult.WeekFromFitAllStart.Iso, chipResult.WeekFromFitAllEnd.Iso)
+	}
+	if chipResult.PastEdgeStartMs != chipResult.WeekAtEdgeStartMs ||
+		chipResult.PastEdgeEndMs != chipResult.WeekAtEdgeEndMs {
+		t.Fatalf("one more step past the last period moved the window; it must clamp on the period")
+	}
+
+	// 5. The ordinary mid-range case still steps exactly one period and returns.
+	if chipResult.MidNextStepMs != 7*chipResult.DayMs {
+		t.Fatalf("a mid-range next moved the window %.0f ms, want exactly seven days", chipResult.MidNextStepMs)
+	}
+	if chipResult.MidNextSpanMs != chipResult.MidWeekSpanMs {
+		t.Fatalf("a mid-range next resized the window from %.0f ms to %.0f ms; a step moves, it does not resize",
+			chipResult.MidWeekSpanMs, chipResult.MidNextSpanMs)
+	}
+	if chipResult.MidBackStartMs != chipResult.MidWeekStartMs {
+		t.Fatalf("mid-range next then previous did not return to the same week")
+	}
+
+	// 6. An arrow on a window of the reader's own MOVES it. Snapping to the
+	// nearest period level resized nineteen days into a calendar month.
+	if chipResult.ReadersOwnSteppedSpanMs != chipResult.ReadersOwnSpanMs {
+		t.Fatalf("stepping a %.0f-day window resized it to %.0f days; an arrow moves the window, "+
+			"a chip resizes it", chipResult.ReadersOwnSpanMs/chipResult.DayMs,
+			chipResult.ReadersOwnSteppedSpanMs/chipResult.DayMs)
+	}
+	if chipResult.ReadersOwnSteppedStepMs != chipResult.ReadersOwnSpanMs {
+		t.Fatalf("stepping a window of the reader's own moved it %.0f ms, want one screenful (%.0f ms)",
+			chipResult.ReadersOwnSteppedStepMs, chipResult.ReadersOwnSpanMs)
+	}
+
+	// 7. Held down, it stops on the data rather than walking off it.
+	if chipResult.HeldAtEndEndMs > chipResult.BoundEndMs || chipResult.HeldAtEndStartMs < chipResult.BoundStartMs {
+		t.Fatalf("holding next left the window at %s, outside the range", chipResult.HeldAtEndIso)
+	}
+	if chipResult.HeldPastEndStartMs != chipResult.HeldAtEndStartMs ||
+		chipResult.HeldPastEndEndMs != chipResult.HeldAtEndEndMs {
+		t.Fatalf("one more press after holding next moved the window from %s; it must clamp",
+			chipResult.HeldAtEndIso)
 	}
 }
 
