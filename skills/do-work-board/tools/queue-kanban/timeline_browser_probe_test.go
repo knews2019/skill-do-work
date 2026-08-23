@@ -2101,3 +2101,219 @@ window.addEventListener("load", function () {
 		}
 	}
 }
+
+// The pointer and keyboard paths, driven with the events a reader really produces.
+//
+// WHY A BROWSER. Both defects are about what the ENGINE does around the handlers:
+// which release events reach a host when a drag ends outside it, and when a scroll
+// event is delivered relative to a synchronous focus call. Neither is visible to a
+// probe that calls the handlers directly.
+//
+// Reproduced before fixing, and the reproduction corrected the report on two counts:
+// the stuck drag leaves the GRAB CURSOR on but does not go on panning the window,
+// and Tab is not trapped in the rows at all — it walks the rendered rows and exits
+// after about thirty presses. Only what reproduced is pinned here.
+func TestBrowserBehaviorTimelinePointerAndKeyboardPathsStayAlive(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function plotHost() { return document.querySelector("#view-timeline .timeline-scroll"); }
+function chartState() {
+  var active = document.activeElement;
+  return {
+    href: location.href,
+    readout: document.getElementById("timeline-range-readout").textContent,
+    grabbing: plotHost().classList.contains("is-panning"),
+    focusedRowId: active && active.getAttribute ? (active.getAttribute("data-detail-id") || "") : "",
+    focusIsInsideTheChart: !!(active && plotHost().contains(active)) || active === plotHost()
+  };
+}
+function pointerAt(type, node, clientX, clientY, buttons) {
+  node.dispatchEvent(new PointerEvent(type, {
+    bubbles: true, cancelable: true, composed: true,
+    clientX: clientX, clientY: clientY, button: 0, buttons: buttons,
+    pointerId: 1, pointerType: "mouse"
+  }));
+}
+function nodeAt(x, y, fallbackNode) { return document.elementFromPoint(x, y) || fallbackNode; }
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      // Off the bounds, so a pan has room to move in both directions.
+      document.getElementById("timeline-zoom-in").click();
+      document.getElementById("timeline-zoom-in").click();
+      document.querySelector("#view-timeline .timeline-chart").scrollIntoView({ block: "start" });
+
+      // (a) A DRAG RELEASED OUTSIDE THE CHART. The release is dispatched at a point
+      // above the host, which is where the engine used to deliver it — leaving the
+      // grab cursor on for the rest of the session.
+      var host = plotHost();
+      var hostBox = host.getBoundingClientRect();
+      var pressY = Math.round(hostBox.top + 20);
+      var pressX = Math.round(hostBox.left + hostBox.width * 0.6);
+      pointerAt("pointerdown", host, pressX, pressY, 1);
+      pointerAt("pointermove", host, pressX - 60, pressY, 1);
+      pointerAt("pointermove", host, pressX - 120, pressY, 1);
+      probe.duringDrag = chartState();
+      // THE RELEASE THE ENGINE SENDS WHEN A CAPTURED POINTER GOES AWAY. A synthetic
+      // PointerEvent carries a pointerId the engine does not know, so
+      // setPointerCapture on it throws and this lane cannot reproduce a real captured
+      // drag end-to-end. What it CAN drive is the event the capture path relies on,
+      // and that is the half that was missing: with the release delivered outside the
+      // host and the boundary events suppressed while a button is held, nothing
+      // reached this host at all and the grab cursor stayed on for the session.
+      var outsideY = Math.round(hostBox.top - 200);
+      var outsideNode = nodeAt(pressX - 160, outsideY, document.body);
+      pointerAt("pointerup", outsideNode, pressX - 160, outsideY, 0);
+      probe.afterReleaseOutside = chartState();
+      host.dispatchEvent(new PointerEvent("lostpointercapture", {
+        bubbles: true, composed: true, pointerId: 1, pointerType: "mouse"
+      }));
+      probe.afterLostCapture = chartState();
+      // And un-buttoned motion back over the chart must not move anything.
+      pointerAt("pointermove", host, Math.round(hostBox.left + 40), pressY, 0);
+      probe.afterUnbuttonedReentry = chartState();
+
+      // (b) ARROW KEYS WITH A ROW FOCUSED. Three presses: the first worked before
+      // this fix and the second did not, so one press proves nothing.
+      document.getElementById("timeline-zoom-fit").click();
+      document.getElementById("timeline-zoom-in").click();
+      document.getElementById("timeline-zoom-in").click();
+      setTimeout(function () {
+        var firstRow = plotHost().querySelector('g[data-detail-kind="request"]');
+        probe.foundARow = !!firstRow;
+        if (firstRow) { firstRow.focus(); }
+        probe.beforeArrows = chartState();
+        var arrowStates = [];
+        for (var press = 0; press < 3; press++) {
+          plotHost().dispatchEvent(new KeyboardEvent("keydown", {
+            key: "ArrowRight", bubbles: true, cancelable: true, composed: true
+          }));
+          arrowStates.push(chartState());
+        }
+        probe.arrows = arrowStates;
+
+        // (c) CTRL+WHEEL OVER THE AXIS STRIP, which the hint promises zooms the
+        // time axis and which did nothing at all.
+        var axisHost = document.getElementById("timeline-axis");
+        var axisBox = axisHost.getBoundingClientRect();
+        probe.beforeAxisWheel = chartState();
+        axisHost.dispatchEvent(new WheelEvent("wheel", {
+          bubbles: true, cancelable: true, composed: true, ctrlKey: true, deltaY: -120,
+          clientX: Math.round(axisBox.left + axisBox.width * 0.6),
+          clientY: Math.round(axisBox.top + axisBox.height / 2)
+        }));
+        probe.afterAxisWheel = chartState();
+
+        document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+        document.title = "READY";
+      }, 300);
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the probe script before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline pointer and keyboard", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+
+	type chartState struct {
+		Href                  string `json:"href"`
+		Readout               string `json:"readout"`
+		Grabbing              bool   `json:"grabbing"`
+		FocusedRowId          string `json:"focusedRowId"`
+		FocusIsInsideTheChart bool   `json:"focusIsInsideTheChart"`
+	}
+	var pathResult struct {
+		DuringDrag             chartState   `json:"duringDrag"`
+		AfterReleaseOutside    chartState   `json:"afterReleaseOutside"`
+		AfterLostCapture       chartState   `json:"afterLostCapture"`
+		AfterUnbuttonedReentry chartState   `json:"afterUnbuttonedReentry"`
+		FoundARow              bool         `json:"foundARow"`
+		BeforeArrows           chartState   `json:"beforeArrows"`
+		Arrows                 []chartState `json:"arrows"`
+		BeforeAxisWheel        chartState   `json:"beforeAxisWheel"`
+		AfterAxisWheel         chartState   `json:"afterAxisWheel"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &pathResult); decodeError != nil {
+		t.Fatalf("decode timeline pointer/keyboard behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// SETUP, ASSERTED.
+	if !strings.HasSuffix(pathResult.DuringDrag.Href, "/probe.html") {
+		t.Fatalf("measured on %q, not the probe page", pathResult.DuringDrag.Href)
+	}
+	if !pathResult.DuringDrag.Grabbing {
+		t.Fatalf("the drag never engaged (readout %q), so the release below is not ending one",
+			pathResult.DuringDrag.Readout)
+	}
+	if !pathResult.FoundARow {
+		t.Fatal("the probe found no row to focus, so the keyboard half measures nothing")
+	}
+	if pathResult.BeforeArrows.FocusedRowId == "" {
+		t.Fatal("the row did not take focus, so the arrow presses below are not testing the " +
+			"focus-restore path at all")
+	}
+	if len(pathResult.Arrows) != 3 {
+		t.Fatalf("the probe recorded %d arrow presses, want 3", len(pathResult.Arrows))
+	}
+
+	// (a) A drag ENDS when the pointer goes away, however it goes away. The grab
+	// cursor was the visible half: it stayed on for the rest of the session.
+	if pathResult.AfterLostCapture.Grabbing {
+		t.Errorf("the drag survived losing its pointer capture and the grab cursor is still on; " +
+			"lostpointercapture is the one release event the engine sends whatever the pointer did")
+	}
+	if pathResult.AfterUnbuttonedReentry.Readout != pathResult.AfterLostCapture.Readout {
+		t.Errorf("moving the pointer back over the chart with no button held moved the window from "+
+			"%s to %s", pathResult.AfterLostCapture.Readout,
+			pathResult.AfterUnbuttonedReentry.Readout)
+	}
+	// And the capture is actually requested, which is what makes the release above a
+	// fact rather than a hope. Structural, because a synthetic pointerId cannot be
+	// captured in this lane.
+	pointerDownBody := sliceBalancedBlockAfter(t, indexHTML, "addTimelineListener(scrollHost, \"pointerdown\"")
+	// The CALL, not the feature-detect guard beside it: a check for the bare name
+	// matched the `typeof scrollHost.setPointerCapture === "function"` line and passed
+	// with the call itself deleted.
+	if !strings.Contains(pointerDownBody, "scrollHost.setPointerCapture(") {
+		t.Error("the pointerdown handler does not capture the pointer, so a drag released outside " +
+			"the chart has no guaranteed path back to the host that armed it")
+	}
+
+	// (b) EVERY arrow press pans, not just the first. The second press was the dead
+	// one, so a single-press test would have passed over this.
+	previousReadout := pathResult.BeforeArrows.Readout
+	for pressIndex, afterPress := range pathResult.Arrows {
+		if afterPress.Readout == previousReadout {
+			t.Errorf("arrow press %d did not move the window (still %s); focus was on %q and inside "+
+				"the chart: %v", pressIndex+1, afterPress.Readout, afterPress.FocusedRowId,
+				afterPress.FocusIsInsideTheChart)
+		}
+		if !afterPress.FocusIsInsideTheChart {
+			t.Errorf("after arrow press %d focus left the chart, so the next key cannot reach the "+
+				"handler", pressIndex+1)
+		}
+		previousReadout = afterPress.Readout
+	}
+
+	// (c) The axis strip zooms, which the hint under the chart promises.
+	if pathResult.AfterAxisWheel.Readout == pathResult.BeforeAxisWheel.Readout {
+		t.Errorf("ctrl+wheel over the axis strip left the window at %s; the hint says holding Ctrl "+
+			"and scrolling zooms the time axis, and the axis is where a reader aims",
+			pathResult.BeforeAxisWheel.Readout)
+	}
+}

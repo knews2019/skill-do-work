@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.28 — Timeline Arrow Keys and Drags Keep Working (2026-08-23)
+
+With a row focused, the first arrow key panned the chart and every one after it was dead. A drag released
+outside the chart left the grab cursor on for the rest of the session. And ctrl-scrolling over the axis strip
+— the place you would aim to zoom a time axis — did nothing.
+
+- Arrow keys keep panning press after press, with focus staying on the row you were on
+- A drag ends wherever you release it, and the grab cursor goes with it
+- Holding Ctrl and scrolling over the axis strip zooms, as the hint under the chart says it does
+
 ## 0.236.27 — Timeline Prose Describes Only What Is on Screen (2026-08-23)
 
 The summary pointed at a now-line on windows that do not draw one, and on a filtered view the forecast said

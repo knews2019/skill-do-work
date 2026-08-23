@@ -1805,6 +1805,30 @@
     var labelCharacterBudget = 0;
 
     function renderVisibleRows() {
+      // WHICH ROW HELD FOCUS, captured before the rebuild destroys it.
+      //
+      // A scroll event is ASYNCHRONOUS. refreshWindowRows writes scrollHost.scrollTop
+      // to keep the reader's place, and the scroll listener is this function — so the
+      // keydown handler's own focus restore ran, and THEN this rebuild wiped the node
+      // it had just focused, and focus fell to <body>. One arrow press panned the
+      // window and every arrow press after it was dead, because the keydown listener
+      // is on the scroll host and <body> is not inside it.
+      //
+      // Restoring here covers every path that rebuilds rows — the keyboard, a scroll,
+      // a drag frame, a filter change — rather than only the one the keyboard takes,
+      // which is why the keydown handler no longer does it itself.
+      var focusedRowIdBeforeRebuild = null;
+      if (
+        typeof rowsSvg.contains === "function" &&
+        document.activeElement &&
+        rowsSvg.contains(document.activeElement) &&
+        document.activeElement.closest
+      ) {
+        var focusedRowBeforeRebuild = document.activeElement.closest("[data-detail-id]");
+        focusedRowIdBeforeRebuild = focusedRowBeforeRebuild
+          ? focusedRowBeforeRebuild.getAttribute("data-detail-id")
+          : null;
+      }
       rowsSvg.textContent = "";
       // The scroll extent follows the windowed set, not the filtered one — a
       // window holding four rows must not leave 312 rows of empty scroll below
@@ -1947,6 +1971,19 @@
       drawQueueEndRule();
       // Last, so the present paints over the forecast rather than under it.
       drawNowRule();
+
+      // And put focus back on the row it was on, or on the chart itself when the
+      // window no longer draws that row. Only when focus was INSIDE the rows before
+      // the rebuild: a reader who has tabbed away must not be dragged back.
+      if (focusedRowIdBeforeRebuild) {
+        var rebuiltRow = rowsSvg.querySelector
+          ? rowsSvg.querySelector('[data-detail-id="' + focusedRowIdBeforeRebuild + '"]')
+          : null;
+        var focusTarget = rebuiltRow || scrollHost;
+        if (focusTarget && typeof focusTarget.focus === "function") {
+          focusTarget.focus();
+        }
+      }
     }
 
     // Seven lines per render — one per axis tick — and never one per row, so the
@@ -2405,30 +2442,13 @@
       timelineViewState.windowStartMs = movedWindow.windowStartMs;
       timelineViewState.windowEndMs = movedWindow.windowEndMs;
 
-      // Rendering rebuilds every row node, so a row that had focus is gone by the
-      // time the next key arrives and focus would fall to the body — leaving one
-      // arrow press followed by dead keys.
-      //
-      // This used to assume the row was always still there ("moving the window
-      // never moves the vertical scroll, so the same row is still in the
-      // virtualized slice"). Window-scoped rows (REQ-319) falsified both halves:
-      // a zoom can drop the focused REQ out of the window entirely, and the
-      // anchor can move the scroll. So the fallback is the point — focus the
-      // chart container, which is what keeps the NEXT key working. Without it,
-      // zooming past the focused row killed the keyboard path outright.
-      var focusedRow = document.activeElement && document.activeElement.closest
-        ? document.activeElement.closest("[data-row-index]")
-        : null;
-      var focusedRowId = focusedRow ? focusedRow.getAttribute("data-detail-id") : null;
+      // No focus restore here. renderVisibleRows owns it, because it owns the
+      // rebuild — and it is reached by paths this handler cannot see. Restoring it
+      // here as well was worse than redundant: the scroll event that refreshWindowRows
+      // triggers is ASYNCHRONOUS, so this restore ran first and the rebuild it
+      // scheduled then wiped the node it had focused. One arrow press worked and
+      // every press after it was dead.
       renderAll();
-      if (focusedRowId) {
-        var rebuiltRow = rowsSvg.querySelector('[data-detail-id="' + focusedRowId + '"]');
-        if (rebuiltRow) {
-          rebuiltRow.focus();
-        } else {
-          scrollHost.focus();
-        }
-      }
     });
 
     // The readout is role="status" aria-live="polite", so every write to it is an
@@ -2459,32 +2479,37 @@
 
     // Zoom is modifier-gated so a plain wheel keeps scrolling the rows, which is
     // the motion a 560-row list needs most.
-    addTimelineListener(
-      scrollHost,
-      "wheel",
-      function (wheelEvent) {
-        if (!wheelEvent.ctrlKey && !wheelEvent.metaKey) {
-          return;
-        }
-        wheelEvent.preventDefault();
-        var bounds = scrollHost.getBoundingClientRect();
-        var anchorFraction =
-          (wheelEvent.clientX - bounds.left - TIMELINE_LABEL_WIDTH) / plotWidth();
-        anchorFraction = Math.min(Math.max(anchorFraction, 0), 1);
-        var zoomed = timelineZoomedWindow(
-          timelineViewState.windowStartMs,
-          timelineViewState.windowEndMs,
-          wheelEvent.deltaY < 0 ? TIMELINE_ZOOM_STEP : 1 / TIMELINE_ZOOM_STEP,
-          anchorFraction,
-          boundStartMs,
-          boundEndMs
-        );
-        timelineViewState.windowStartMs = zoomed.windowStartMs;
-        timelineViewState.windowEndMs = zoomed.windowEndMs;
-        renderAll();
-      },
-      { passive: false }
-    );
+    //
+    // Bound to the AXIS as well as the plot. The hint says holding Ctrl and
+    // scrolling zooms the time axis, and over the axis strip itself it did nothing —
+    // the one place a reader aiming at "the time axis" is most likely to point. The
+    // anchor is measured against the SCROLL HOST either way, because both draw
+    // against plotWidth() on that host and the two are horizontally aligned; taking
+    // the rect from whichever element the wheel landed on would silently introduce a
+    // second x scale.
+    function handleTimelineWheel(wheelEvent) {
+      if (!wheelEvent.ctrlKey && !wheelEvent.metaKey) {
+        return;
+      }
+      wheelEvent.preventDefault();
+      var bounds = scrollHost.getBoundingClientRect();
+      var anchorFraction =
+        (wheelEvent.clientX - bounds.left - TIMELINE_LABEL_WIDTH) / plotWidth();
+      anchorFraction = Math.min(Math.max(anchorFraction, 0), 1);
+      var zoomed = timelineZoomedWindow(
+        timelineViewState.windowStartMs,
+        timelineViewState.windowEndMs,
+        wheelEvent.deltaY < 0 ? TIMELINE_ZOOM_STEP : 1 / TIMELINE_ZOOM_STEP,
+        anchorFraction,
+        boundStartMs,
+        boundEndMs
+      );
+      timelineViewState.windowStartMs = zoomed.windowStartMs;
+      timelineViewState.windowEndMs = zoomed.windowEndMs;
+      renderAll();
+    }
+    addTimelineListener(scrollHost, "wheel", handleTimelineWheel, { passive: false });
+    addTimelineListener(axisHost, "wheel", handleTimelineWheel, { passive: false });
 
     // A drag issues at most ONE render per frame. Every pointermove used to run a
     // full renderAll — axis plus every visible row — and a trackpad delivers
@@ -2515,9 +2540,28 @@
       // dragging when they were clicking.
       panState = {
         pointerX: downEvent.clientX,
+        pointerId: downEvent.pointerId,
         windowStartMs: timelineViewState.windowStartMs,
         engaged: false
       };
+      // CAPTURE THE POINTER, so the release is guaranteed to arrive here.
+      //
+      // A drag released OUTSIDE the chart delivered its pointerup to whatever was
+      // under the cursor, and Chromium suppresses the boundary events while a button
+      // is held — so none of pointerup, pointercancel or pointerleave reached this
+      // host, the teardown never ran, and the grab cursor stayed on for the rest of
+      // the session. Capture makes the release a fact rather than a hope; the
+      // teardown below then also gets lostpointercapture, which fires even when the
+      // engine takes the capture away.
+      if (typeof scrollHost.setPointerCapture === "function" && downEvent.pointerId !== undefined) {
+        try {
+          scrollHost.setPointerCapture(downEvent.pointerId);
+        } catch (captureError) {
+          // A pointer the engine will not let us capture is not a reason to refuse
+          // the drag; the release events below are still the ordinary path.
+          panState.pointerId = undefined;
+        }
+      }
     });
     addTimelineListener(scrollHost, "pointermove", function (moveEvent) {
       if (!panState) {
@@ -2541,13 +2585,22 @@
       timelineViewState.windowEndMs = nextStartMs + windowSpanMs;
       requestFrameRender();
     });
-    ["pointerup", "pointercancel", "pointerleave"].forEach(function (eventName) {
+    ["pointerup", "pointercancel", "pointerleave", "lostpointercapture"].forEach(function (eventName) {
       addTimelineListener(scrollHost, eventName, function () {
         // A drag that ends between frames still has to land on the window it
         // reached, so the pending frame runs rather than being dropped.
         if (panState && panState.engaged && timelineFrameRender !== null) {
           releaseTimelineFrameRender();
           renderAll();
+        }
+        if (
+          panState &&
+          panState.pointerId !== undefined &&
+          typeof scrollHost.releasePointerCapture === "function" &&
+          typeof scrollHost.hasPointerCapture === "function" &&
+          scrollHost.hasPointerCapture(panState.pointerId)
+        ) {
+          scrollHost.releasePointerCapture(panState.pointerId);
         }
         panState = null;
         scrollHost.classList.remove("is-panning");
