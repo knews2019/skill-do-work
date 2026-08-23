@@ -4,7 +4,7 @@ title: "A check that can catch Timeline click retargeting"
 status: completed
 claimed_at: 2026-08-23T20:16:43Z
 completed_at: 2026-08-23T20:26:47Z
-commit:
+commit: 77ca13e
 kb_status: pending
 created_at: 2026-08-23T18:30:26Z
 user_request: UR-067
