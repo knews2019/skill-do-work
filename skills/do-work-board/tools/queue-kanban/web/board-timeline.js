@@ -1172,7 +1172,7 @@
       width: "100%",
       role: "img",
       "aria-label":
-        "One horizontal bar per REQ drawing anything inside the visible time window, in capture order, newest first. The first segment is the wait from capture to claim, the second is the work from claim to completion; a REQ too narrow to show both draws a single marker instead. Faint vertical lines mark the axis ticks, and the dashed violet rule marks the projected queue-empty instant. Every value is also listed in the table below."
+        "One horizontal bar per REQ drawing anything inside the visible time window, in capture order, newest first. The first segment is the wait from capture to claim, the second is the work from claim to completion; a REQ too narrow to show both draws a single marker instead. Faint vertical lines mark the axis ticks; a dashed violet rule marks the projected queue-empty instant when the forecast is confident and that instant is in view. Every value is also listed in the table below."
     });
 
     function plotWidth() {
@@ -1239,8 +1239,9 @@
       // Before the rows, so SVG paint order puts every gridline behind every bar
       // without a z-index to maintain.
       drawGridlines();
-      // Measured once per render and handed to every row: plotWidth() reads
-      // clientWidth, and asking it per row would force one layout per row.
+      // Read once here and handed to the collapse decision, which runs per row.
+      // drawSegment still calls plotWidth() itself; hoisting THAT is REQ-324's
+      // job, and doing half of it here would leave two sources for one number.
       var plotWidthPx = plotWidth();
       var visible = timelineVisibleRowRange(scrollHost.scrollTop, scrollHost.clientHeight, rows.length);
       for (var rowIndex = visible.firstRow; rowIndex < visible.lastRow; rowIndex++) {
@@ -1291,12 +1292,17 @@
 
         var createdMs = Date.parse(row.createdTime);
         var claimedMs = row.claimedTime ? Date.parse(row.claimedTime) : nowMs;
+        var projectedRow = projectedById[row.id];
         // A row whose whole span is narrower than a readable two-segment bar
-        // draws ONE marker. A row with broken stamps is excluded: its break
-        // markers are the point of drawing it at all, and a collapsed bar would
-        // hide the very thing that needs to be visible.
+        // draws ONE marker. Two kinds of row are excluded, for one reason: the
+        // collapse withdraws the wait/work split, and these carry a SECOND
+        // distinction it would withdraw with it. Broken stamps, because the break
+        // markers are the point of drawing the row at all. A forecast, because
+        // measured-versus-projected is the distinction a reader trusts hardest,
+        // and one solid marker over an open wait plus a hatched projection claims
+        // work that has not happened.
         var rowHasBrokenStamps = row.waitMinutes < 0 || (row.hasWork && row.workMinutes < 0);
-        var collapsedMark = rowHasBrokenStamps
+        var collapsedMark = rowHasBrokenStamps || projectedRow
           ? null
           : timelineCollapsedRowMark(
               segmentsById[row.id] || [],
@@ -1327,7 +1333,6 @@
             "timeline-segment timeline-segment-wait" + (row.waitOpen ? " is-open" : ""));
         }
 
-        var projectedRow = projectedById[row.id];
         if (projectedRow) {
           drawProjectedSegment(rowGroup, rowTopY, projectedRow);
         }

@@ -3301,6 +3301,20 @@ var singleSegmentRow = {
 // draw a bar across the entire chart.
 var unparseableRow = { id: "REQ-004", createdTime: "not-a-date", waitMinutes: 0 };
 
+// A pending REQ whose forecast bar sits right beside its open wait, both inside
+// the same handful of pixels. Collapsing it would draw one SOLID marker over a
+// span that is mostly projection — work claimed as measured.
+var projectedNarrowRow = {
+  id: "REQ-005",
+  createdTime: new Date(nowMs - msPerPixel).toISOString(),
+  waitOpen: true, waitMinutes: 5
+};
+var narrowProjection = {
+  id: "REQ-005",
+  startTime: new Date(nowMs).toISOString(),
+  endTime: new Date(nowMs + msPerPixel * 2).toISOString()
+};
+
 var narrowMark = markFor(narrowRow);
 var wideMark = markFor(narrowRow, undefined, wideWindowStartMs, wideWindowEndMs);
 
@@ -3318,7 +3332,10 @@ process.stdout.write(JSON.stringify({
   unparseableCollapsed: markFor(unparseableRow) !== null,
   // A row sitting entirely outside the window has no visible width at all, so it
   // is at the collapsing end of the scale rather than the splitting end.
-  offscreenCollapsed: markFor(narrowRow, undefined, Date.UTC(2027, 0, 1), Date.UTC(2027, 1, 1)) !== null
+  offscreenCollapsed: markFor(narrowRow, undefined, Date.UTC(2027, 0, 1), Date.UTC(2027, 1, 1)) !== null,
+  // Two segments, four pixels: collapsible by width alone. The caller is what
+  // has to spare it.
+  projectedNarrowCollapsibleByWidth: markFor(projectedNarrowRow, narrowProjection) !== null
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "timeline narrow rows", javascriptProbe)
@@ -3335,6 +3352,8 @@ process.stdout.write(JSON.stringify({
 		SingleSegmentCollapsed bool    `json:"singleSegmentCollapsed"`
 		UnparseableCollapsed   bool    `json:"unparseableCollapsed"`
 		OffscreenCollapsed     bool    `json:"offscreenCollapsed"`
+
+		ProjectedNarrowCollapsibleByWidth bool `json:"projectedNarrowCollapsibleByWidth"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &markResult); decodeError != nil {
 		t.Fatalf("decode timeline narrow row behavior: %v (output %q)", decodeError, probeOutput)
@@ -3393,6 +3412,13 @@ process.stdout.write(JSON.stringify({
 		t.Error("a reversed-stamp row stopped being collapsible by width alone; if that is " +
 			"now handled here, renderVisibleRows's own broken-stamp guard is dead code")
 	}
+	// The forecast is the second distinction the collapse would erase, and the
+	// same pair applies: collapsible by width alone, spared by the caller.
+	if !markResult.ProjectedNarrowCollapsibleByWidth {
+		t.Error("a narrow pending REQ with a forecast stopped being collapsible by width " +
+			"alone; if that is now handled in the mark function, the caller's projection " +
+			"guard is dead code")
+	}
 	// And the other half of that pair: the guard has to still be at the call site.
 	// This is a source check rather than a behavioral one because the collapse
 	// decision is the pure function above and the exclusion is the caller's — the
@@ -3403,6 +3429,11 @@ process.stdout.write(JSON.stringify({
 		t.Error("renderVisibleRows no longer excludes broken-stamp rows before asking whether " +
 			"to collapse; a narrow reversed row would draw one clean marker instead of the " +
 			"break markers that are the reason it is drawn at all")
+	}
+	if !strings.Contains(renderVisibleRowsBody, "rowHasBrokenStamps || projectedRow") {
+		t.Error("renderVisibleRows no longer excludes forecast-carrying rows before asking " +
+			"whether to collapse; a narrow pending REQ would draw one solid marker over a span " +
+			"that is mostly projection, claiming work that has not happened")
 	}
 }
 

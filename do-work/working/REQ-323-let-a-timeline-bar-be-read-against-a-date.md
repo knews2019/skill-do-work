@@ -237,6 +237,29 @@ it.
   gridline at 0.01, the queue-end rule made solid and full-strength, the now-line made dashed —
   each fails the intended assertion and only that one.
 
+## Review Fixes
+
+Three defects found reviewing my own diff after the first green gate.
+
+**R-01 — A collapsed row upgraded a forecast to a fact.** The collapse excluded broken-stamp
+rows and nothing else, so a narrow *pending* REQ — open wait plus hatched projection — drew one
+SOLID status-coloured marker. The wait/work split is the claim the collapse withdraws;
+measured-versus-projected is a different claim, and the one a reader trusts hardest. Rows
+carrying a projection are now excluded for the same reason broken rows are, and the exclusion
+is pinned by test in both halves: collapsible by width alone, spared by the caller.
+
+**R-02 — A comment claimed a saving the code does not make.** "Measured once per render and
+handed to every row … asking it per row would force one layout per row" was false:
+`drawSegment` still calls `plotWidth()` on every call. The hoisted read serves the collapse
+decision only, and hoisting `drawSegment`'s is REQ-324's stated scope. Comment corrected rather
+than the scope widened.
+
+**R-03 — The rows description promised a rule the chart draws only sometimes.** The accessible
+name said the dashed violet rule marks the queue-empty instant, full stop. It now says when.
+
+Gate re-run after the three fixes: `bash _dev/tests/maintainer-verify.sh` → **exit 0**. The new
+exclusion mutation-verified (removing it fails the call-site pin and nothing else).
+
 ## Discovered Tasks
 
 None new. The narrow-width chart degradation recorded on REQ-322 still stands, and REQ-325 is
