@@ -22,10 +22,11 @@ if [ ! -d "$output_directory" ] || [ -z "$output_filename" ]; then
   exit 2
 fi
 
-staged_output_path="$(mktemp "$output_directory/.${output_filename}.generating.XXXXXX")" || exit 2
+staged_output_path=""
 agent_directory=""
 backend_process_id=""
 backend_process_group_id=""
+deferred_interrupt_status=""
 # Callers hand this script a minimal PATH, so reach ps by absolute path and strip
 # whitespace with parameter expansion rather than `tr`. Without ps no group can be
 # proved, which the verification below already treats as bare-PID-only signalling.
@@ -105,6 +106,30 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+# Created only once the traps above can clean it up. Staged earlier — as it was until an
+# early-interruption probe caught it — an interruption arriving before the EXIT trap exists
+# takes the default action and leaves the invocation-private file behind.
+staged_output_path="$(mktemp "$output_directory/.${output_filename}.generating.XXXXXX")" || exit 2
+
+# A trapped signal runs between commands, so an interruption arriving between a backend
+# launch and the assignment that publishes its PID would reach the EXIT trap with no handle
+# to signal — the cleanup returns at its first line and the backend outlives the script.
+# Defer the interruption across that window instead: record the status, let the PID and
+# process group be recorded, then exit through the normal path with the backend reachable.
+defer_interrupts_across_backend_launch() {
+  deferred_interrupt_status=""
+  trap 'deferred_interrupt_status=129' HUP
+  trap 'deferred_interrupt_status=130' INT
+  trap 'deferred_interrupt_status=143' TERM
+}
+
+resume_interrupts_after_backend_launch() {
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  [ -z "$deferred_interrupt_status" ] || exit "$deferred_interrupt_status"
+}
+
 publish_report_image() {
   [ -s "$staged_output_path" ] || return 1
   mv "$staged_output_path" "$output_path" || return 1
@@ -124,11 +149,13 @@ publish_report_image() {
 
 image_prompt="$(printf '%s Content: %s' "$style_brief" "$visual_description")"
 if command -v imagegen >/dev/null 2>&1; then
+  defer_interrupts_across_backend_launch
   set -m   # job control gives the backend its own process group, so its descendants are reachable
   imagegen --output "$staged_output_path" --prompt "$image_prompt" >/dev/null 2>&1 &
   backend_process_id=$!
   set +m
   record_backend_process_group
+  resume_interrupts_after_backend_launch
   wait "$backend_process_id"
   direct_backend_status=$?
   backend_process_id=""
@@ -143,6 +170,7 @@ command -v codex >/dev/null 2>&1 || exit 1
 : > "$staged_output_path"
 agent_directory="$(mktemp -d "${TMPDIR:-/tmp}/do-work-ai-report-image.XXXXXX")" || exit 2
 chmod 700 "$agent_directory" || exit 2
+defer_interrupts_across_backend_launch
 set -m   # the recorded PID is the wrapping subshell, so only its group reaches codex itself
 (
   cd "$agent_directory" || exit 2
@@ -152,6 +180,7 @@ set -m   # the recorded PID is the wrapping subshell, so only its group reaches 
 backend_process_id=$!
 set +m
 record_backend_process_group
+resume_interrupts_after_backend_launch
 wait "$backend_process_id"
 agent_status=$?
 backend_process_id=""

@@ -2,6 +2,21 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.30 — Interrupted Report Images Take Their Backend With Them (2026-08-23)
+
+Cancelling an `ai-report` could leave the image backend running, and the probe that was supposed to catch
+that could hang the repo's own verification gate instead of failing it. Both halves are closed: an
+interruption always reaches the backend now, and a backend that will not go makes the probe fail with a
+diagnostic naming what is still alive.
+
+- `generate-report-image.sh` defers HUP/INT/TERM across both backend launches and re-raises once the PID is
+  published, so an interruption can no longer land in the window where the cleanup has nothing to signal
+- Its invocation-private staging file is created after the interruption traps now, not eighty lines before
+  them — a signal in that gap used to leave the file behind
+- The interruption fixture cases wait with a ten-second deadline that names the surviving processes instead
+  of blocking forever, and two new cases cover an interruption fired the moment staging appears, plus the
+  deadline itself
+
 ## 0.236.29 — Failed REQs Stop at Their Own Timestamp (2026-08-23)
 
 Two review findings on the Timeline work. A `failed` REQ was drawn as work still in flight even with its
