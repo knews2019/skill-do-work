@@ -531,6 +531,25 @@
     if (isNaN(typedStartMs) && isNaN(typedEndDayMs)) {
       return null;
     }
+    // A DATE OUTSIDE THE RANGE BECOMES THE NEAREST DAY THE BOARD HAS, clamped
+    // here at DAY granularity before any of the arithmetic below runs.
+    //
+    // Clamping only at the endpoint stage was not enough. Typing 2026-09-30 into
+    // From, on a board whose range ends 2026-08-25 04:23, put the typed start on
+    // boundEndMs; the end field was untouched so it stayed on boundEndMs too; the
+    // reversed-pair guard pushed the end a day out, the endpoint clamp pulled it
+    // straight back, and the settle then raised the zero span to the zoom floor
+    // and slid it — an empty one-hour window tucked behind the right edge, with
+    // the field still showing the rejected date. A date past the end means "the
+    // end", and the last day the board has is what that is.
+    var firstDayMs = timelinePeriodStart(boundStartMs, "day");
+    var lastDayMs = timelinePeriodStart(boundEndMs - 1, "day");
+    if (!isNaN(typedStartMs)) {
+      typedStartMs = Math.min(Math.max(typedStartMs, firstDayMs), lastDayMs);
+    }
+    if (!isNaN(typedEndDayMs)) {
+      typedEndDayMs = Math.min(Math.max(typedEndDayMs, firstDayMs), lastDayMs);
+    }
     var nextStartMs = isNaN(typedStartMs) ? windowStartMs : typedStartMs;
     // The FOLLOWING midnight, because the window's end is exclusive: a field
     // reading 31 July means a window ending at 1 August 00:00, which is exactly
@@ -2022,24 +2041,35 @@
     var rangeEndField = document.getElementById("timeline-range-end");
     var rangeReadoutNode = document.getElementById("timeline-range-readout");
 
-    // A field is written back whenever it still holds the value this code last
-    // put there — including while it has focus. Skipping every focused field was
-    // the obvious rule and the wrong one: a reader who clicks into a field and
-    // then zooms the chart leaves that field showing a window the chart is no
-    // longer drawn at, and committing it later silently undoes the zoom.
-    // Comparing against what we last wrote distinguishes "focused" from "being
-    // edited", and only the second is a reason to keep hands off.
+    // Which field, if any, the reader is PART-WAY THROUGH typing into. Set on
+    // `input`, cleared on the `change` that commits it and on blur.
+    //
+    // Skipping every FOCUSED field was the first rule and the wrong one: a reader
+    // who clicks into a field and then zooms the chart leaves it showing a window
+    // the chart is no longer drawn at, and committing it later silently undoes the
+    // zoom. Comparing the field's value against the last value this code wrote was
+    // the second, and it got both halves wrong:
+    //
+    //   after a COMMIT the field still holds the reader's own text, which differs
+    //   from what we last wrote, so the write-back was skipped and a clamped date
+    //   stayed on screen indefinitely — the chart drawn at one window, the field
+    //   naming another;
+    //
+    //   and when the reader CLEARED a field, applyTypedRange removed the attribute
+    //   to turn the guard OFF, which turned it on ("" !== null), leaving the field
+    //   permanently blank in the one branch whose comment says "Restore it
+    //   unconditionally".
+    //
+    // An event is the honest signal, because editing is a thing the reader does
+    // rather than a state of the value. Only one field can be focused, so one
+    // variable answers it.
+    var rangeFieldBeingEdited = null;
+
     function syncRangeField(field, text) {
-      if (!field) {
-        return;
-      }
-      var readerHasEdited =
-        document.activeElement === field && field.value !== field.getAttribute("data-synced-value");
-      if (readerHasEdited) {
+      if (!field || field === rangeFieldBeingEdited) {
         return;
       }
       field.value = text;
-      field.setAttribute("data-synced-value", text);
     }
 
     function renderRangeControls() {
@@ -2072,12 +2102,8 @@
       if (!typedWindow) {
         // Cleared or unparseable. A cleared field is not a request to move, so
         // the window stands — but the field cannot be left blank, or it states a
-        // window that does not exist. Restore it unconditionally: the reader
-        // emptying it is exactly the case where "leave the focused field alone"
-        // would strand it.
-        if (changedField) {
-          changedField.removeAttribute("data-synced-value");
-        }
+        // window that does not exist. The restore is unconditional because the
+        // change event that got us here has already cleared the editing flag.
         renderRangeControls();
         return;
       }
@@ -2087,11 +2113,27 @@
     }
 
     [rangeStartField, rangeEndField].forEach(function (field) {
-      if (field) {
-        addTimelineListener(field, "change", function () {
-          applyTypedRange(field);
-        });
+      if (!field) {
+        return;
       }
+      addTimelineListener(field, "input", function () {
+        rangeFieldBeingEdited = field;
+      });
+      addTimelineListener(field, "change", function () {
+        // Cleared FIRST: a commit ends the edit, and everything downstream —
+        // including the restore of a cleared field — depends on the write-back
+        // being allowed again.
+        rangeFieldBeingEdited = null;
+        applyTypedRange(field);
+      });
+      // A reader who starts typing and then clicks away without committing is no
+      // longer editing either, and the next render owes them the real window.
+      addTimelineListener(field, "blur", function () {
+        if (rangeFieldBeingEdited === field) {
+          rangeFieldBeingEdited = null;
+          renderRangeControls();
+        }
+      });
     });
 
     // Every path that moves the window ends here, which is what makes the row

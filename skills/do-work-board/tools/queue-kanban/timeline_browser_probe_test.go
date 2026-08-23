@@ -1486,3 +1486,183 @@ window.addEventListener("load", function () {
 			plotEdgeText(drawerResult.Closed.Rightmost), drawerResult.Closed.HostRight)
 	}
 }
+
+// The From / to fields, driven through the real events a reader generates.
+//
+// WHY A BROWSER. The defect is entirely in the interaction between focus, the
+// engine's own `input` and `change` events on a date input, and the write-back a
+// render performs. A sliced probe can call syncRangeField with any arguments it
+// likes and learn nothing about which arguments the browser actually produces —
+// and the guard that shipped was wrong precisely about that: it decided "the
+// reader is mid-edit" by comparing values, and after a commit the field still
+// holds the reader's text.
+//
+// Two states, both reachable in two keystrokes:
+//
+//	CLEAR the field and commit — the window must stand and the field must come
+//	back, in a branch whose own comment says "Restore it unconditionally";
+//	type a date the clamp MOVES — the field must show where the chart actually
+//	landed, not the date that was rejected.
+func TestBrowserBehaviorTimelineRangeFieldsShowTheWindowTheChartIsDrawnAt(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function fieldState() {
+  return {
+    href: location.href,
+    from: document.getElementById("timeline-range-start").value,
+    to: document.getElementById("timeline-range-end").value,
+    readout: document.getElementById("timeline-range-readout").textContent
+  };
+}
+// The events a date input really emits, in the order it emits them, against the
+// focused field — which is what makes the mid-edit guard observable at all.
+function typeInto(fieldId, text) {
+  var field = document.getElementById(fieldId);
+  field.focus();
+  field.value = text;
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+  field.dispatchEvent(new Event("change", { bubbles: true }));
+  return field;
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      // Start from a window that is not the bounds, so a clamp is observable.
+      document.querySelector('[data-timeline-period="month"]').click();
+      probe.beforeClear = fieldState();
+
+      // (a) CLEAR AND COMMIT. The field keeps focus throughout, which is the case
+      // the old guard stranded.
+      var cleared = typeInto("timeline-range-start", "");
+      probe.afterClear = fieldState();
+      probe.clearedStillFocused = document.activeElement === cleared;
+
+      // (b) A DATE THE CLAMP MOVES: far past the end of the board's range.
+      typeInto("timeline-range-start", "2099-12-31");
+      probe.afterOutOfRange = fieldState();
+
+      // (c) And an ordinary in-range date still applies exactly.
+      document.querySelector('[data-timeline-period="month"]').click();
+      var monthFrom = document.getElementById("timeline-range-start").value;
+      typeInto("timeline-range-start", monthFrom);
+      probe.afterReapply = fieldState();
+      probe.monthFrom = monthFrom;
+
+      // (d) A field left mid-edit and blurred without committing must be restored.
+      var abandoned = document.getElementById("timeline-range-end");
+      abandoned.focus();
+      abandoned.value = "";
+      abandoned.dispatchEvent(new Event("input", { bubbles: true }));
+      probe.duringAbandon = fieldState();
+      abandoned.dispatchEvent(new Event("blur", { bubbles: true }));
+      abandoned.blur();
+      setTimeout(function () {
+        probe.afterAbandon = fieldState();
+        document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+        document.title = "READY";
+      }, 200);
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the probe script before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline range fields", siteDirectory,
+		pageHTML, "--window-size=1600,900")
+
+	type fieldState struct {
+		Href    string `json:"href"`
+		From    string `json:"from"`
+		To      string `json:"to"`
+		Readout string `json:"readout"`
+	}
+	var fieldResult struct {
+		BeforeClear         fieldState `json:"beforeClear"`
+		AfterClear          fieldState `json:"afterClear"`
+		ClearedStillFocused bool       `json:"clearedStillFocused"`
+		AfterOutOfRange     fieldState `json:"afterOutOfRange"`
+		AfterReapply        fieldState `json:"afterReapply"`
+		MonthFrom           string     `json:"monthFrom"`
+		DuringAbandon       fieldState `json:"duringAbandon"`
+		AfterAbandon        fieldState `json:"afterAbandon"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &fieldResult); decodeError != nil {
+		t.Fatalf("decode timeline range-field behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	for label, state := range map[string]fieldState{
+		"before clear": fieldResult.BeforeClear, "after clear": fieldResult.AfterClear,
+		"after out of range": fieldResult.AfterOutOfRange, "after reapply": fieldResult.AfterReapply,
+		"after abandon": fieldResult.AfterAbandon,
+	} {
+		if !strings.HasSuffix(state.Href, "/probe.html") {
+			t.Fatalf("the %s snapshot was taken on %q, not the probe page", label, state.Href)
+		}
+	}
+
+	// SETUP, ASSERTED.
+	if fieldResult.BeforeClear.From == "" || fieldResult.BeforeClear.Readout == "" {
+		t.Fatalf("the fields started empty (%+v), so nothing below is measuring a restore",
+			fieldResult.BeforeClear)
+	}
+	if !fieldResult.ClearedStillFocused {
+		t.Fatal("the cleared field lost focus before the assertion, so this probe is not exercising " +
+			"the mid-edit guard at all")
+	}
+
+	// (a) A cleared field comes back, and the window stands.
+	if fieldResult.AfterClear.From == "" {
+		t.Errorf("clearing the From field left it empty; it must be restored to the window the "+
+			"chart is drawn at (readout %q)", fieldResult.AfterClear.Readout)
+	}
+	if fieldResult.AfterClear.Readout != fieldResult.BeforeClear.Readout {
+		t.Errorf("clearing a field moved the window from %q to %q; an empty field is not a request "+
+			"to move", fieldResult.BeforeClear.Readout, fieldResult.AfterClear.Readout)
+	}
+	if fieldResult.AfterClear.From != fieldResult.BeforeClear.From {
+		t.Errorf("clearing the From field restored it to %q, want the %q it held before",
+			fieldResult.AfterClear.From, fieldResult.BeforeClear.From)
+	}
+
+	// (b) A clamped commit shows where the chart landed, not what was typed.
+	if fieldResult.AfterOutOfRange.From == "2099-12-31" {
+		t.Errorf("after typing a date past the end of the range the From field still reads %q "+
+			"while the chart is drawn at %q; the field has to name the window that exists",
+			fieldResult.AfterOutOfRange.From, fieldResult.AfterOutOfRange.Readout)
+	}
+	if !strings.HasPrefix(fieldResult.AfterOutOfRange.Readout, fieldResult.AfterOutOfRange.From) {
+		t.Errorf("after the clamp the From field reads %q and the readout starts %q; the two must "+
+			"describe one window", fieldResult.AfterOutOfRange.From, fieldResult.AfterOutOfRange.Readout)
+	}
+
+	// (c) An in-range date still applies exactly, so the fix did not buy field
+	// honesty by ignoring the reader.
+	if fieldResult.AfterReapply.From != fieldResult.MonthFrom {
+		t.Errorf("re-typing the month window's own start gave From %q, want %q",
+			fieldResult.AfterReapply.From, fieldResult.MonthFrom)
+	}
+
+	// (d) Mid-edit is respected while it lasts, and released on blur.
+	if fieldResult.DuringAbandon.To != "" {
+		t.Errorf("a render overwrote the end field while the reader was part-way through typing "+
+			"into it (it reads %q); mid-edit means hands off", fieldResult.DuringAbandon.To)
+	}
+	if fieldResult.AfterAbandon.To == "" {
+		t.Errorf("the end field was left empty after the reader blurred without committing; "+
+			"the window is %q and the field has to name it", fieldResult.AfterAbandon.Readout)
+	}
+}

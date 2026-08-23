@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.23 — Timeline Date Fields Name the Window You Are Looking At (2026-08-23)
+
+Clearing the From or to box used to leave it permanently blank, and a date the chart clamped left the box
+showing the date it rejected. Both boxes now always name the window actually on screen.
+
+- Clearing a box no longer moves the window, and the box comes back with the window's own date
+- After a date is clamped, the box shows where the chart landed rather than what was typed
+- A date past either end of the range now lands on the nearest day the board has, instead of an empty one-hour sliver behind the frame
+- A box you start typing in and then click away from is restored instead of left half-edited
+
 ## 0.236.22 — Timeline Axis Ticks Sit on Real Dates (2026-08-23)
 
 The axis cut every window into six equal parts and then printed a bare date on each tick — so a week read

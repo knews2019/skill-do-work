@@ -2973,6 +2973,12 @@ var endOnly = typed("", "2026-06-20");
 var sameDay = typed("2026-07-04", "2026-07-04");
 var reversed = typed("2026-07-10", "2026-07-01");
 var beforeRange = typed("2020-01-01", "2020-01-31");
+// A date PAST THE END of the range, typed into From with the end field left
+// alone. It has to land on the last day the board HAS, not collapse both
+// endpoints onto the bound and leave an empty zoom-floor sliver behind the frame.
+var pastRangeStartOnly = typed("2026-09-30", "");
+// And the mirror, typed into the end field.
+var pastRangeEndOnly = typed("", "2026-09-30");
 // A start typed while the end field still holds the board's last day. The
 // implied span overruns the ceiling, and a span-preserving settle would pin the
 // end to the bound and drag this start backwards to keep the width.
@@ -2995,6 +3001,13 @@ process.stdout.write(JSON.stringify({
   beforeRangeClampedToBound: beforeRange.windowStartMs >= boundStart,
   beforeRangeStartIso: iso(beforeRange.windowStartMs),
   startAgainstCeilingIso: iso(startAgainstCeiling.windowStartMs),
+  pastRangeStartIso: iso(pastRangeStartOnly.windowStartMs),
+  pastRangeEndIso: iso(pastRangeStartOnly.windowEndMs),
+  pastRangeSpanMs: pastRangeStartOnly.windowEndMs - pastRangeStartOnly.windowStartMs,
+  pastRangeEndOnlyEndIso: iso(pastRangeEndOnly.windowEndMs),
+  lastDayStartMs: timelinePeriodStart(boundEnd - 1, "day"),
+  pastRangeStartMs: pastRangeStartOnly.windowStartMs,
+  minSpanMs: TIMELINE_MIN_SPAN_MS,
   // THE ROUND TRIP. Render a real calendar window into the two fields, parse them
   // straight back, and the same window has to come out — otherwise editing one
   // field re-applies a mangled version of the other, and no typed pair can ever
@@ -3035,6 +3048,13 @@ process.stdout.write(JSON.stringify({
 		BeforeRangeClampedToBound bool    `json:"beforeRangeClampedToBound"`
 		BeforeRangeStartIso       string  `json:"beforeRangeStartIso"`
 		StartAgainstCeilingIso    string  `json:"startAgainstCeilingIso"`
+		PastRangeStartIso         string  `json:"pastRangeStartIso"`
+		PastRangeEndIso           string  `json:"pastRangeEndIso"`
+		PastRangeSpanMs           float64 `json:"pastRangeSpanMs"`
+		PastRangeEndOnlyEndIso    string  `json:"pastRangeEndOnlyEndIso"`
+		LastDayStartMs            float64 `json:"lastDayStartMs"`
+		PastRangeStartMs          float64 `json:"pastRangeStartMs"`
+		MinSpanMs                 float64 `json:"minSpanMs"`
 		PeriodRoundTrips          []struct {
 			Level         string `json:"level"`
 			Fields        string `json:"fields"`
@@ -3129,6 +3149,24 @@ process.stdout.write(JSON.stringify({
 		t.Fatal("2026-02-31 must be rejected; Date.UTC rolls it into March and a rolled date is " +
 			"not the one that was typed")
 	}
+	// A DATE PAST THE END OF THE RANGE lands on the last day the board has. Before
+	// this, both endpoints collapsed onto the bound and the settle turned that into
+	// an empty one-hour window tucked behind the right edge, while the field went on
+	// showing the rejected date.
+	if typedResult.PastRangeStartMs != typedResult.LastDayStartMs {
+		t.Errorf("a From date past the end of the range put the window start at %s, want the last "+
+			"day the board has", typedResult.PastRangeStartIso)
+	}
+	if typedResult.PastRangeSpanMs <= typedResult.MinSpanMs {
+		t.Errorf("a From date past the end of the range produced a %.0f ms window (%s → %s); at the "+
+			"zoom floor or below it is the empty sliver this clamp exists to prevent",
+			typedResult.PastRangeSpanMs, typedResult.PastRangeStartIso, typedResult.PastRangeEndIso)
+	}
+	if typedResult.PastRangeEndOnlyEndIso != "2026-09-02T00:00:00.000Z" {
+		t.Errorf("a `to` date past the end of the range ended the window at %s, want the range's "+
+			"own end", typedResult.PastRangeEndOnlyEndIso)
+	}
+
 	if typedResult.RoundTrip != "2026-06-09" {
 		t.Fatalf("an instant mid-day rendered into the date field as %q, want its UTC date",
 			typedResult.RoundTrip)
