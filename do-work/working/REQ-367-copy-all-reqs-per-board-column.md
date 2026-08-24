@@ -1,7 +1,10 @@
 ---
 id: REQ-367
 title: 'Add a copy-all-REQs button to each Board column'
-status: pending
+status: claimed
+claimed_at: 2026-08-24T20:17:59Z
+status_changed_at: 2026-08-24T20:17:59Z
+route: B
 created_at: 2026-08-24T14:53:28Z
 user_request: UR-071
 domain: frontend
@@ -13,6 +16,12 @@ related: [REQ-368]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-24T20:17:59Z
+  basis:
+    - trivial short-circuit
 ---
 
 # Add a Copy-All-REQs Button to Each Board Column
@@ -53,3 +62,7 @@ Great for extracting all pending, claimed, blocked, or done REQs in one action i
 
 ---
 *Source: "in the kanban each REQ can be copied, now I want each row to have a copy all REQs button where each REQ will be added cumulatively (see bash like terminology: cat all reqs) to the clipboard, this is great for extracting all pending, claimed, blocked, done reqs (time filters apply for the done column)"*
+
+## Triage
+
+**Route: B** — The behavior is specified, but the absent capture-time write set must be discovered across the column header, filtered display model, raw-Markdown bundle, shared clipboard feedback, styling, and trusted browser coverage before implementation.

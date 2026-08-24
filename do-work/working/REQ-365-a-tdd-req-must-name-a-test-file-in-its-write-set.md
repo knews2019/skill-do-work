@@ -1,7 +1,10 @@
 ---
 id: REQ-365
 title: "[impact-rule-change] A tdd REQ must name a test file in its write set"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T20:17:59Z
+status_changed_at: 2026-08-24T20:17:59Z
+route: A
 created_at: 2026-08-24T12:50:00Z
 user_request: UR-069
 addendum_to: REQ-346
@@ -14,6 +17,12 @@ depends_on: []
 maintenance: true
 impact: impact-rule-change
 effort_estimate: effort-mechanical
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-24T20:17:59Z
+  basis:
+    - trivial short-circuit
 write_set:
   - skills/do-work/actions/capture.md
   - skills/do-work/actions/capture-reference.md
@@ -79,3 +88,7 @@ already-queued REQ.
 
 ---
 *Source: REQ-346 review finding F2 (UR-069) — the generalisable half.*
+
+## Triage
+
+**Route: A** — This is a small, fully specified maintenance edit to two named instruction files: place the invariant at the canonical `write_set` definition and have the caller cite it without introducing enforcement or runtime behavior.

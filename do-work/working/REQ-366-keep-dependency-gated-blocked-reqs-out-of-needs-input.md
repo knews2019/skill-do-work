@@ -1,7 +1,10 @@
 ---
 id: REQ-366
 title: 'Keep dependency-gated blocked REQs out of Needs Input · Blocked'
-status: pending
+status: claimed
+claimed_at: 2026-08-24T20:17:59Z
+status_changed_at: 2026-08-24T20:17:59Z
+route: B
 created_at: 2026-08-24T14:03:59Z
 user_request: UR-070
 domain: frontend
@@ -12,6 +15,17 @@ depends_on: []
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  calculated_at: 2026-08-24T20:17:59Z
+  basis:
+    - Route B
+    - 3-file write set
+    - 4 acceptance criteria
+    - browser evidence
+    - cross-route regression gates
+    - full-suite verification
 write_set: [skills/do-work-board/tools/queue-kanban/model.go, skills/do-work-board/tools/queue-kanban/model_test.go, skills/do-work-board/actions/board.md]
 ---
 
@@ -84,3 +98,7 @@ See `do-work/user-requests/UR-070/input.md` for complete verbatim input.
 
 ---
 *Source: "is it crazy that I don't want to see anything in that column that I can not act on? how can we make that happen?" plus the follow-up "Board wish" spec — verbatim in UR-070.*
+
+## Triage
+
+**Route: B** — The user-visible rule and three-file target are firm, but implementation must trace the existing dependency annotation into shared column bucketing, preserve status-specific exceptions, and prove inherited counters plus rendered badges with focused and browser evidence.

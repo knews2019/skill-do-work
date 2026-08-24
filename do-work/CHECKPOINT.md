@@ -23,6 +23,10 @@ Nine REQs archived, releases 0.236.34 through 0.236.38.
 
 ## In Progress (interrupted)
 
+- REQ-365: A tdd REQ must name a test file in its write set — claimed 2026-08-24T20:17:59Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- REQ-366: Keep dependency-gated blocked REQs out of Needs Input · Blocked — claimed 2026-08-24T20:17:59Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- REQ-367: Add a copy-all-REQs button to each Board column — claimed 2026-08-24T20:17:59Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
 Three collision-safe REQs are claimed for the next fan-out wave. Builders run in isolated worktrees;
 integration, verification, review, release, and archival remain serial.
 
