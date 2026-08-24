@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.47 — Durations Lists Every Long Span (2026-08-24)
+
+Durations replaces its sparse in-chart labels with a complete ranked list of every selected-window span over 60 minutes, including REQ, UR, duration, route, and title.
+
+- The lane, marks, hover behavior, headline statistics, rolling median, cadence ticks, and full sample table remain intact
+- The measured-width model, two-row SVG packer, leader lines, fixed-point remainder reservation, and label-only tests are retired
+
 ## 0.236.46 — Durations States Its Headline Numbers (2026-08-24)
 
 Durations now reports the selected window's median, p90, active-day coverage, and REQs per active day above the chart, with explicit population labels.

@@ -1,9 +1,11 @@
 ---
 id: REQ-351
 title: "Retire the Durations in-lane labels for a ranked longest-spans list"
-status: claimed
+status: completed
 claimed_at: 2026-08-24T16:43:37Z
-status_changed_at: 2026-08-24T16:43:37Z
+completed_at: 2026-08-24T17:36:50Z
+commit: f58e1ae97e79386677509932329be8cfcbecb923
+status_changed_at: 2026-08-24T17:36:50Z
 route: B
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
@@ -49,8 +51,8 @@ SVG. Keep the lane, its marks, their hover and a plain remainder count.
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Route B exploration mapped the complete seven-file planner/width-model deletion boundary and the lane/mark/hover behavior that must survive. Replace SVG labels with a complete, current-window, descending HTML list beside the chart and prove it on a 705+ sample board.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** Removed the direct SVG label planner/width model and added a complete, deterministic, current-window longest-spans list while preserving the lane, marks, hover, UR grouping, headline statistics, rolling median, cadence ticks, and table.
+- [x] **[UNIFY]:** Reviewed all seven scoped files and the REQ-352 integration seam; `gofmt`, `node --check`, focused Go/browser tests, canonical maintainer verification, and diff checks passed with no debug artifacts.
 
 ## Why
 
@@ -155,3 +157,73 @@ place text in the SVG are gone, each named in the hand-back.
 - `skills/do-work-board/tools/queue-kanban/generate_test.go`
 - `skills/do-work-board/tools/queue-kanban/web/template.html`
 - `skills/do-work-board/tools/queue-kanban/web/board.css`
+
+## Implementation Summary
+
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js` (modified): deletes direct SVG duration labels, leader/packing/reservation machinery, and measured-face sizing; renders every positive current-window span over 60 minutes into a deterministic descending semantic list with REQ, duration, UR, route, and title.
+- `skills/do-work-board/tools/queue-kanban/durations.go` (modified): removes the retired label text/width payload model while preserving the underlying samples and domain geometry.
+- `skills/do-work-board/tools/queue-kanban/durations_test.go` (modified): removes Go tests that specified only the retired label formatter/width model.
+- `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go` (modified): replaces label-placement-only probes with a 705-sample, 94-overflow responsive matrix that proves complete list content/order, absent SVG labels, preserved circles/hover, and bounded layout.
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified): removes renderer tests for the retired two-row planner and pins the complete adjacent list contract without disturbing REQ-352's headline/rolling/cadence lock-ins.
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modified): wraps the chart with an adjacent semantic longest-spans aside and complete-count sentence.
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modified): removes label-only SVG styling and adds a bounded 340px desktop aside that stacks below the chart under 1000px.
+
+## Decisions
+
+- **D-01 — Keep every qualifying row in semantic HTML.** An ordered list makes the complete set accessible and inspectable without recreating an SVG packing limit.
+- **D-02 — Interpret “over 60 minutes” strictly.** The list contains positive `wallMinutes > 60` samples; the exact count sentence says every one is listed.
+- **D-03 — Make equal durations deterministic.** REQ id and completion time break ties after descending wall minutes.
+- **D-04 — Preserve independent geometry helpers.** Day-bucket projection and Panel B annotation helpers remain even where their historical names mention labels, because current non-retired behavior and tests still consume them.
+- **D-05 — Reconcile the concurrent headline release at merge time.** The shared renderer retains REQ-352's quantile/stat/rolling/tick paths while removing only the direct-label planner and adding the complete list.
+
+## Discovered Tasks
+
+- A full browser-enabled run reproduced two pre-existing Timeline failures: `TestBrowserBehaviorTimelineBarsSurviveTheDetailDrawerOpening` and `TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage`. They reproduce outside this seven-file write set and require a separate Timeline investigation.
+
+## Testing
+
+- RED proved the generated page lacked the complete adjacent longest-spans list and its count contract.
+- Focused renderer tests passed for the complete list and preserved Panel A/day-bucket behavior; `node --check`, `gofmt`, `go vet`, diff checks, and canonical maintainer verification passed.
+- The merged combined browser matrix passed all six dense 320/768/1280 cases and all four REQ-352 headline cases. Every dense case asserted all 94 qualifying rows, absent SVG labels/leaders/remainder text, preserved circle/hover identity, deterministic content, and bounded responsive geometry.
+- The post-merge `GOTOOLCHAIN=go1.26.1 go test ./... -count=1 -timeout=10m` suite passed in 43.849s.
+- The orchestrator generated this repository's real queue: the current 30-day window listed all 23 over-ceiling spans in descending order, retained headline/rolling/cadence output, removed direct SVG REQ labels, and stacked the list below the chart at 320px. The only console item was the unrelated missing favicon.
+- Twelve deleted tests are accounted for in the builder hand-back: each specified only the retired direct-label formatter, measured-width model, two-row packer, fixed-point reservation, leader placement, or incomplete remainder sentence. Generic span formatting, lane, marks, hover, day-domain, Panel B annotation, and REQ-352 tests remain.
+
+## Qualification
+
+- Exact merge range `ae2368c..f58e1ae` passed mechanical qualification.
+- Scope drift passed: the seven-file Implementation Summary exactly matches the declared Scope.
+- Orchestrator judgment confirmed substantive implementation, requirement coverage, complete request-metadata flow, deliberate deletion boundaries, preserved REQ-352 integration seams, and no generated/debug artifacts in the merge.
+
+## Review
+
+**Overall: 98%** | 2026-08-24T17:35:53Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 96% |
+| Test Adequacy | 94% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings:** None.
+
+**Minor findings:** 2 (report only) — the dense probe's `--force-dark-mode` cases report the light body colour even though separately inspected Playwright screenshots prove dark rendering, and two renderer comments still describe retired label-planning rules.
+
+**Acceptance:** Pass — independent focused behavior and ten-case Chromium runs passed; all 94 dense rows, preserved lane/hover, exact seven-file scope, twelve deleted-test explanations, REQ-352 integration seams, and real/dense screenshots were verified.
+
+**Suggested testing:** 1 item — make the dense automated theme cases assert an actually emulated dark surface if that coverage is revised later.
+
+**Follow-ups created:** REQ-370 for the distinct pre-existing, non-falsifiable Timeline pointer-capture mutation; **sweeps appended to:** None.
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+Deleting a visual packing system safely means accounting for every retired test claim while proving the information, interaction, and neighboring releases survive. Completeness belongs in semantic HTML; dense SVG should keep only the marks and geometry it can state honestly.
+
+## Orientation
+
+Released in 0.236.47. Durations keeps its lane and hoverable marks but moves every current-window span over 60 minutes into one complete, deterministic, responsive longest-spans list beside the chart.
