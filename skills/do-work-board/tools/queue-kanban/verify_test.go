@@ -71,7 +71,10 @@ func TestVerifyPassesOnACleanTree(t *testing.T) {
 	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
 		{"actions/version.md", cleanVersionFile},
 		{"CHANGELOG.md", cleanChangelog},
-		{"do-work/queue/REQ-071-only-one.md", "---\nid: REQ-071\nstatus: pending\ntitle: fixture\n---\n"},
+		// A clean REQ carries its user_request upward pointer. Both clean-base
+		// fixtures omitted it until the structural probe landed, which made
+		// "clean" mean something no captured REQ actually looks like.
+		{"do-work/queue/REQ-071-only-one.md", "---\nid: REQ-071\nstatus: pending\ntitle: fixture\nuser_request: UR-071\n---\n"},
 	})
 
 	report, verifyError := runVerifyProbes(repoRoot, time.Now())
@@ -522,7 +525,10 @@ func newWorktreeFixtureRepo(t *testing.T) string {
 	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
 		{"actions/version.md", cleanVersionFile},
 		{"CHANGELOG.md", cleanChangelog},
-		{"do-work/queue/REQ-071-only-one.md", "---\nid: REQ-071\nstatus: pending\ntitle: fixture\n---\n"},
+		// A clean REQ carries its user_request upward pointer. Both clean-base
+		// fixtures omitted it until the structural probe landed, which made
+		// "clean" mean something no captured REQ actually looks like.
+		{"do-work/queue/REQ-071-only-one.md", "---\nid: REQ-071\nstatus: pending\ntitle: fixture\nuser_request: UR-071\n---\n"},
 	})
 	runGitInFixture(t, repoRoot, "init", "--quiet")
 	runGitInFixture(t, repoRoot, "config", "user.email", "fixture@example.test")
@@ -1590,5 +1596,285 @@ func TestRunVerifyProbesStillReportsWhatCollectDoes(t *testing.T) {
 	}
 	if wrapped.RepoRoot != repoRoot {
 		t.Errorf("wrapper RepoRoot = %q, want %q", wrapped.RepoRoot, repoRoot)
+	}
+}
+
+// structuralDamageFixture is the user's reported shape, verbatim in structure:
+// several REQ files in one queue carrying delimiter/field damage — including one
+// whose opening frontmatter fence is broken so its status, title and user_request
+// all parse empty — plus the three files that must stay silent (a healthy REQ, a
+// stakeholder REQ that omits user_request by design, and a legacy archived REQ
+// that predates the field).
+//
+// Before the structural probes, this exact tree printed `OK: no findings` and
+// exited 0.
+func structuralDamageFixture(t *testing.T) string {
+	t.Helper()
+	return writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		// Opening fence broken: `--` instead of `---`, so nothing below it is read.
+		{"do-work/queue/REQ-901-broken-opening-fence.md",
+			"--\nid: REQ-901\ntitle: \"Broken opening fence\"\nstatus: pending\nuser_request: UR-900\n---\n\n# Broken\n"},
+		{"do-work/queue/REQ-902-empty-status.md",
+			"---\nid: REQ-902\ntitle: \"Empty status\"\nstatus:\nuser_request: UR-900\n---\n\n# Empty status\n"},
+		{"do-work/queue/REQ-903-unrecognized-status.md",
+			"---\nid: REQ-903\ntitle: \"Typo status\"\nstatus: pnding\nuser_request: UR-900\n---\n\n# Typo\n"},
+		{"do-work/queue/REQ-904-empty-id.md",
+			"---\nid:\ntitle: \"Empty id\"\nstatus: pending\nuser_request: UR-900\n---\n\n# Empty id\n"},
+		{"do-work/queue/REQ-905-missing-user-request.md",
+			"---\nid: REQ-905\ntitle: \"No upward pointer\"\nstatus: pending\n---\n\n# No pointer\n"},
+		{"do-work/queue/REQ-906-healthy.md",
+			"---\nid: REQ-906\ntitle: \"Healthy\"\nstatus: pending\nuser_request: UR-900\n---\n\n# Healthy\n"},
+		// Legitimate absence 1 — actions/work-reference.md → Stakeholder REQ Template
+		// omits user_request deliberately, so UR membership cannot hold the source UR open.
+		{"do-work/queue/REQ-907-stakeholder-questions-priya.md",
+			"---\nid: REQ-907\ntitle: \"Stakeholder questions: Priya (design)\"\nstatus: blocked\n" +
+				"stakeholder: \"Priya (design)\"\nblocked_by: \"answers from Priya (design)\"\n---\n\n# Stakeholder Questions\n"},
+		// Legitimate absence 2 — every REQ under archive/legacy/ predates the field.
+		{"do-work/archive/legacy/REQ-001-legacy.md",
+			"---\nid: REQ-001\ntitle: \"Legacy archived work\"\nstatus: completed\ncompleted_at: 2026-05-01T10:00:00Z\n---\n\n# Legacy\n"},
+		{"do-work/user-requests/UR-900/input.md", "---\nid: UR-900\ntitle: \"Fixture UR\"\n---\n\n# Fixture UR\n"},
+	})
+}
+
+// findingsNaming returns every finding whose detail names a REQ id, across all
+// categories — the question a carve-out assertion actually asks ("did anything at
+// all fire on this file?"), which a per-category filter cannot answer.
+func findingsNaming(report VerifyReport, requestId string) []VerifyFinding {
+	var matched []VerifyFinding
+	for _, finding := range report.Findings {
+		if strings.Contains(finding.Detail, requestId) {
+			matched = append(matched, finding)
+		}
+	}
+	return matched
+}
+
+// The captured RED: verify exited 0 on a queue where structural damage had eaten
+// the fields the pipeline routes on. Each damage shape must now produce a finding
+// that names the broken field and carries a remedy, so the operator can act
+// without opening this file.
+func TestVerifyFlagsEachStructuralDamageShape(t *testing.T) {
+	report, verifyError := runVerifyProbes(structuralDamageFixture(t), time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if report.ExitCode() == 0 {
+		t.Fatalf("structurally damaged queue still exits 0:\n%s", renderVerifyReport(report))
+	}
+
+	for _, damageCase := range []struct {
+		requestId      string
+		category       string
+		detailFragment string
+		remedyFragment string
+	}{
+		{"REQ-901", verifyCategoryStructurallyDamagedRequest, "no leading frontmatter fence", "opening `---`"},
+		{"REQ-902", verifyCategoryUnrecognizedRequestStatus, "empty or absent status:", "Schema Read Contract"},
+		{"REQ-903", verifyCategoryUnrecognizedRequestStatus, `unrecognized status: value "pnding"`, "Schema Read Contract"},
+		{"REQ-904", verifyCategoryStructurallyDamagedRequest, "empty or absent id:", "id: REQ-904"},
+		{"REQ-905", verifyCategoryStructurallyDamagedRequest, "carries no user_request:", "user_request: UR-NNN"},
+	} {
+		matched := findingsNaming(report, damageCase.requestId)
+		if len(matched) != 1 {
+			t.Errorf("%s produced %d findings, want exactly 1:\n%s",
+				damageCase.requestId, len(matched), renderVerifyReport(report))
+			continue
+		}
+		finding := matched[0]
+		if finding.Category != damageCase.category {
+			t.Errorf("%s category = %q, want %q", damageCase.requestId, finding.Category, damageCase.category)
+		}
+		if !strings.Contains(finding.Detail, damageCase.detailFragment) {
+			t.Errorf("%s detail must name the broken field (%q), got: %s",
+				damageCase.requestId, damageCase.detailFragment, finding.Detail)
+		}
+		if !strings.Contains(finding.Remedy, damageCase.remedyFragment) {
+			t.Errorf("%s remedy must tell the operator what to write (%q), got: %s",
+				damageCase.requestId, damageCase.remedyFragment, finding.Remedy)
+		}
+		if finding.Fixable {
+			t.Errorf("%s must not advertise `do-work cleanup` as a mechanical fix: %+v",
+				damageCase.requestId, finding)
+		}
+	}
+}
+
+// The broken-fence file's id, status and user_request are all empty BECAUSE the
+// fence is gone, and the fence remedy repairs all three. Reporting each field
+// separately would be four findings for one defect — the double-report the
+// timestamp probe's outer-pair carve-out avoids. Pinned separately from the shape
+// table above because "exactly one finding" is the property, not an incidental count.
+func TestVerifyReportsABrokenFenceOnceNotOncePerEmptiedField(t *testing.T) {
+	report, verifyError := runVerifyProbes(structuralDamageFixture(t), time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	fenceFindings := findingsNaming(report, "REQ-901")
+	if len(fenceFindings) != 1 {
+		t.Fatalf("broken fence produced %d findings, want 1 — its emptied fields must not each report:\n%s",
+			len(fenceFindings), renderVerifyReport(report))
+	}
+	for _, unwantedFragment := range []string{"empty or absent id", "carries no user_request", "unrecognized status"} {
+		if strings.Contains(fenceFindings[0].Detail, unwantedFragment) {
+			t.Errorf("the fence finding restates a consequence (%q) instead of the cause: %s",
+				unwantedFragment, fenceFindings[0].Detail)
+		}
+	}
+}
+
+// The carve-out that keeps the probe trustworthy. A stakeholder REQ and a
+// do-work/archive/legacy/ REQ both legitimately carry no user_request; a probe
+// that flags correct files is a probe someone turns off. The healthy REQ is here
+// too, so the test fails if the probe simply flags everything.
+func TestVerifyStaysSilentOnLegitimateAbsenceOfUserRequest(t *testing.T) {
+	report, verifyError := runVerifyProbes(structuralDamageFixture(t), time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	for _, mustStaySilent := range []struct {
+		requestId string
+		why       string
+	}{
+		{"REQ-906", "a healthy REQ carries every field"},
+		{"REQ-907", "a stakeholder REQ omits user_request by design (Stakeholder REQ Template)"},
+		{"REQ-001", "every REQ under do-work/archive/legacy/ predates the user_request field"},
+	} {
+		if matched := findingsNaming(report, mustStaySilent.requestId); len(matched) != 0 {
+			t.Errorf("%s was flagged but must not be — %s; got: %+v",
+				mustStaySilent.requestId, mustStaySilent.why, matched)
+		}
+	}
+}
+
+// The carve-outs must key on their discriminator, not merely happen to pass.
+// Strip the stakeholder marker off the stakeholder REQ and move the legacy REQ up
+// one directory, and both must be flagged — otherwise the exemptions above could
+// be an accident (say, a probe that skips `blocked` REQs, or the whole archive)
+// and would silently exempt genuinely damaged files.
+func TestVerifyUserRequestCarveOutsKeyOnTheirDiscriminator(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		// Same file as the exempt stakeholder REQ, minus the stakeholder: marker.
+		{"do-work/queue/REQ-907-stakeholder-questions-priya.md",
+			"---\nid: REQ-907\ntitle: \"Stakeholder questions: Priya (design)\"\nstatus: blocked\n" +
+				"blocked_by: \"answers from Priya (design)\"\n---\n\n# Stakeholder Questions\n"},
+		// Same file as the exempt legacy REQ, one directory up — archive, not archive/legacy.
+		{"do-work/archive/REQ-001-legacy.md",
+			"---\nid: REQ-001\ntitle: \"Legacy archived work\"\nstatus: completed\ncompleted_at: 2026-05-01T10:00:00Z\n---\n\n# Legacy\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	for _, mustBeFlagged := range []string{"REQ-907", "REQ-001"} {
+		matched := findingsMentioning(report, verifyCategoryStructurallyDamagedRequest)
+		found := false
+		for _, finding := range matched {
+			if strings.Contains(finding.Detail, mustBeFlagged) && strings.Contains(finding.Detail, "user_request") {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s lost its exemption's discriminator and was still not flagged — the carve-out is not keyed on it:\n%s",
+				mustBeFlagged, renderVerifyReport(report))
+		}
+	}
+}
+
+// Detection must not cost the parser its leniency: the point is to REPORT the
+// damage, not to start rejecting files. Every one of the eight fixture REQs — the
+// broken-fence file included — must still parse and still reach the board.
+func TestStructuralDamageStillParsesAndStillReachesTheBoard(t *testing.T) {
+	repoRoot := structuralDamageFixture(t)
+	board, buildError := buildBoard(repoRoot, time.Now(), defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard on a damaged tree must not error: %v", buildError)
+	}
+	if len(board.AllRequests) != 8 {
+		t.Fatalf("damaged tree yielded %d tickets, want all 8 — a REQ with one bad line must still appear on the board", len(board.AllRequests))
+	}
+	for _, requiredId := range []string{"REQ-901", "REQ-902", "REQ-903", "REQ-904", "REQ-905", "REQ-906", "REQ-907", "REQ-001"} {
+		if _, present := board.RequestsById[requiredId]; !present {
+			t.Errorf("%s did not reach the board — the parser stopped being lenient", requiredId)
+		}
+	}
+}
+
+// Both probes must forward the board's structured evidence rather than re-walking
+// the tree or matching warning prose — the rule appendCompletionAnomalyFindings
+// states for itself, pinned the way the stray-file probe pins it: an in-memory
+// board whose repo root does not exist on disk, so a filesystem re-walk would have
+// nothing to find, and an empty Warnings slice, so prose matching would have
+// nothing to match.
+func TestStructuralProbesUseStructuredEvidenceNotWarningProse(t *testing.T) {
+	absentRepoRoot := filepath.Join(t.TempDir(), "missing-repo")
+	if _, statError := os.Stat(absentRepoRoot); !os.IsNotExist(statError) {
+		t.Fatalf("fixture repo root must remain absent so a re-walk has no evidence; stat error = %v", statError)
+	}
+	fencelessTicket := &RequestTicket{
+		RequestId:           "REQ-911",
+		FrontmatterMarkdown: "",
+		FilePath:            filepath.Join(absentRepoRoot, "do-work", "queue", "REQ-911-fenceless.md"),
+		TreeSection:         "queue",
+	}
+	typoStatusTicket := &RequestTicket{
+		RequestId:           "REQ-912",
+		FrontmatterMarkdown: "---\nid: REQ-912\nstatus: pnding\nuser_request: UR-900\n---\n",
+		OriginalStatus:      "pnding",
+		Status:              "pnding",
+		StatusUnrecognized:  true,
+		UserRequestId:       "UR-900",
+		FilePath:            filepath.Join(absentRepoRoot, "do-work", "queue", "REQ-912-typo.md"),
+		TreeSection:         "queue",
+	}
+	board := &Board{
+		RepoRoot:    absentRepoRoot,
+		AllRequests: []*RequestTicket{fencelessTicket, typoStatusTicket},
+		Warnings:    nil,
+	}
+
+	var report VerifyReport
+	appendStructuralDamageFindings(&report, board)
+	appendUnrecognizedStatusFindings(&report, board)
+
+	if len(findingsNaming(report, "REQ-911")) != 1 {
+		t.Errorf("the fenceless ticket produced %d findings from structured evidence alone, want 1: %+v",
+			len(findingsNaming(report, "REQ-911")), report.Findings)
+	}
+	statusFindings := findingsNaming(report, "REQ-912")
+	if len(statusFindings) != 1 {
+		t.Fatalf("the unrecognized-status ticket produced %d findings from structured evidence alone, want 1: %+v",
+			len(statusFindings), report.Findings)
+	}
+	if statusFindings[0].Category != verifyCategoryUnrecognizedRequestStatus {
+		t.Errorf("category = %q, want %q", statusFindings[0].Category, verifyCategoryUnrecognizedRequestStatus)
+	}
+}
+
+// The legacy exemption must not be satisfiable by a lookalike directory, and must
+// still hold under `verify --repo-root .`, where ticket paths arrive with no
+// leading separator at all — the CLI mode actions/forensics.md can invoke, and the
+// mode a leading-slash pattern silently fails in.
+func TestIsLegacyArchiveRequestPathRejectsLookalikeDirectories(t *testing.T) {
+	for _, pathCase := range []struct {
+		path string
+		want bool
+	}{
+		{"do-work/archive/legacy/REQ-001-thing.md", true},
+		{"/srv/repo/do-work/archive/legacy/REQ-001-thing.md", true},
+		{"./do-work/archive/legacy/REQ-001-thing.md", true},
+		{"do-work/archive/REQ-001-thing.md", false},
+		{"do-work/archive/UR-012/REQ-069-thing.md", false},
+		{"my-do-work/archive/legacy/REQ-001-thing.md", false},
+		{"do-work/queue/legacy/REQ-001-thing.md", false},
+		{"archive/legacy/REQ-001-thing.md", false},
+	} {
+		if got := isLegacyArchiveRequestPath(pathCase.path); got != pathCase.want {
+			t.Errorf("isLegacyArchiveRequestPath(%q) = %v, want %v", pathCase.path, got, pathCase.want)
+		}
 	}
 }
