@@ -5224,7 +5224,7 @@ fi
 # honest as the rule that produces it. Before REQ-339 the rule matched `^# <one-token>: `,
 # so `# generate-report-image caller contract:` and `# generate-report-image, interrupted
 # directly:` were real cases no figure ever mentioned — nothing failed, the number just
-# read low. This fixture carries three headers in three spellings plus three near-misses
+# read low. This fixture carries three headers in three spellings plus four near-misses
 # that must stay uncounted, so a narrowed rule and an over-broad one both fail here.
 prescribed_shell_counter="$repo_root/_dev/tests/prescribed-shell-case-count.sh"
 if [ ! -f "$prescribed_shell_counter" ]; then
@@ -5239,6 +5239,7 @@ else
 # probe-counter caller contract: a space-qualified header counts.
 # The wrapped description below is prose, not a header: it only carries a colon.
 # reaching a colon mid-sentence: a continuation line must not count.
+# qualifying a request: a word that only starts with the script name must not count.
 # probe-counter.sh named inside a sentence (REQ-000: still not a header).
 PROBE_COUNTER_FIXTURE
   # 'none' rather than 0 so a counter that could not run stays distinguishable from one
