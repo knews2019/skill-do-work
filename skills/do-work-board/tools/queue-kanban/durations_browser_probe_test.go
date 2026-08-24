@@ -538,7 +538,8 @@ var durationsProbeExtraStyle = ""
 
 type durationsDensePanelProbeResult struct {
 	LocationHref        string  `json:"locationHref"`
-	SampleCount         int     `json:"sampleCount"`
+	RenderedSampleCount int     `json:"renderedSampleCount"`
+	PayloadSampleCount  int     `json:"payloadSampleCount"`
 	ActiveDayCount      int     `json:"activeDayCount"`
 	DaySlotWidth        float64 `json:"daySlotWidth"`
 	BusyDaySpread       float64 `json:"busyDaySpread"`
@@ -605,8 +606,10 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
     });
   }
 
+  setDurationsWindow("all");
   renderDurationsView();
   var firstMarks = captureMarks();
+  setDurationsWindow("all");
   renderDurationsView();
   var secondMarks = captureMarks();
   var samples = boardData.durations.samples;
@@ -654,7 +657,8 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
 
   document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
     locationHref: location.href,
-    sampleCount: samples.length,
+    renderedSampleCount: secondMarks.length,
+    payloadSampleCount: samples.length,
     activeDayCount: boardData.durations.days.length,
     daySlotWidth: DURATIONS_PLOT_WIDTH * DURATIONS_DAY_MS / timeSpan,
     busyDaySpread: busyDaySpread,
@@ -697,9 +701,17 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
 			if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
 				t.Fatalf("decode dense durations probe: %v\n%s", decodeError, resultJSON)
 			}
-			if result.SampleCount < 700 || result.ActiveDayCount != activeDayCount {
+			if result.PayloadSampleCount != len(fixtureTickets) {
+				t.Errorf("payload carries %d samples, want the %d-sample fixture",
+					result.PayloadSampleCount, len(fixtureTickets))
+			}
+			if result.RenderedSampleCount != result.PayloadSampleCount {
+				t.Errorf("all-history render drew %d .durations-mark circles for %d payload samples",
+					result.RenderedSampleCount, result.PayloadSampleCount)
+			}
+			if result.RenderedSampleCount < 700 || result.ActiveDayCount != activeDayCount {
 				t.Errorf("rendered %d samples across %d active days, want at least 700 across %d",
-					result.SampleCount, result.ActiveDayCount, activeDayCount)
+					result.RenderedSampleCount, result.ActiveDayCount, activeDayCount)
 			}
 			if result.DaySlotWidth < 7.5 || result.DaySlotWidth > 8.5 {
 				t.Errorf("day slot width %.2f, want roughly 8 SVG units", result.DaySlotWidth)
