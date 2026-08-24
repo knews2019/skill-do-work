@@ -1,9 +1,11 @@
 ---
 id: REQ-371
 title: "[impact-critical] Review fix: keep Timeline bars inside the plot after the drawer opens"
-status: claimed
+status: completed
 claimed_at: 2026-08-24T20:34:04Z
-status_changed_at: 2026-08-24T20:34:04Z
+completed_at: 2026-08-24T21:20:16Z
+commit: 5fda05bc60bf401ea6d47db42d13990631a88e18
+status_changed_at: 2026-08-24T21:20:16Z
 route: C
 created_at: 2026-08-24T18:22:57Z
 user_request: UR-066
@@ -146,3 +148,22 @@ None. The remaining Timeline pointer-capture mutation failure is already REQ-370
 - Reversing the required width-change condition returned the exact 40-node/0-visible RED and was restored. Axis ticks and row gridlines now share equal nonempty x coordinates, and the nonempty range readout remains unchanged through open and close.
 - Go vet, Node syntax, uncached full queue-kanban tests, and the builder browserless canonical gate passed. Browser-focused and strict lanes leave only the independently queued REQ-370 pointer-capture mutation failure; one transient grouping probe passed isolation five times.
 - Initial independent review found no behavioral defect and scored the change 98/100, but conditionally accepted one Minor: comments in both changed files still described the superseded observer/rAF-only repair and removal mutation. Comment-only remediation will name the shared condition and both delivery paths.
+- Comment-only remediation aligned both files with the shared positive-width condition and its direct-observer plus timer delivery paths. The builder's exact-final canonical gate passed; on merged main the named Chromium probe passed again, while node syntax and cumulative diff checks stayed clean.
+
+## Qualification
+
+- Exact cumulative merge range `34528f1a459a155d0188e65401931d38f4a07552..5fda05bc60bf401ea6d47db42d13990631a88e18` passed mechanical qualification.
+- Scope drift passed: both changed files exactly match the declared Scope and Implementation Summary.
+- Orchestrator judgment confirmed substantive condition-based remeasurement, complete drawer-open/close requirement tracing, shared width data flow, non-vacuous retained-browser evidence, and no generated/debug artifacts.
+
+## Review
+
+Independent review first conditionally approved at 98/100 with one Minor stale-comment finding and no behavioral finding. Comment-only remediation closed it. Final re-review approved with no Important, Minor, or Nit findings: correctness 100, tests/mutation 99, comments/docs 100, overall 99/100, low risk, acceptance complete. REQ-370's pointer-capture RED reproduces identically on the base and remains external.
+
+## Lessons Learned
+
+In headless browser modes, a correct layout condition may outlive both observer and compositor delivery. Keep the invariant at the condition, permit multiple delivery mechanisms, and make comments and mutations target that shared condition rather than one mechanism.
+
+## Orientation
+
+Released in 0.236.57. Timeline bars now remeasure against the current plot width after drawer open and close even when retained headless Chromium parks observer/frame delivery.

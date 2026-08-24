@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.57 — Timeline Survives Drawer Resizes (2026-08-24)
+
+Opening or closing the detail drawer no longer leaves Timeline bars scaled for the old plot width and stranded off-screen.
+
+- One positive live-width condition drives direct observer recovery and a headless-safe fallback
+- Axis, row gridlines, and bars retain one shared current scale without changing the selected range
+- Repeated Chromium probes pin narrowed and restored containment while preserving drag cost and zero-size guards
+
 ## 0.236.56 — Board Columns Copy in One Click (2026-08-24)
 
 Each flat Board column can now copy every visible REQ's full payload in the order the cards are shown.
