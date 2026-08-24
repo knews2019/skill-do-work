@@ -9,14 +9,14 @@
 **Canonical home for the `title:` shape.** Every action that mints a REQ title follows this section — `actions/capture.md`, `actions/review-work.md` Step 10, `actions/work-reference.md`'s Builder-Decided Follow-up template and its **Discovered Tasks Classification (Step 8)** flow, and `../../do-work-toolbox/actions/code-review.md`. The condition is the rule — **any flow that mints a REQ carrying an `impact:` value follows this section** — so a new one inherits it without this list being re-counted.
 
 ```
-title: "[<impact token>] <Kind prefix>: <brief description>"
+title: '[<impact token>] <Kind prefix>: <brief description>'
 ```
 
 - **The impact tag is a bracketed classification tag, not a kind prefix.** It composes with the existing `<Kind prefix>: ` conventions (`Addendum: `, `Review fix: `, `Confirm: `, `Code review: `) instead of competing for the same slot — a review-fix REQ that is also negligible reads `"[impact-negligible] Review fix: guard misses hex shorthand"`, never a double-colon title. Both parts are optional and independent: a plain capture with no kind prefix is `"[impact-negligible] Retitle the export button"`.
 - **Emit the tag only when `impact:` is something other than the `impact-user-visible` default.** That mirrors the board's impact chip, which renders for every value except that default (`actions/work-reference.md` → Request File Schema), so the title and the card agree and the common case stays unadorned. An absent `impact:` reads as the default, so it gets no tag either.
 - **The tag goes in `title:` and nowhere else.** Not in the filename — `REQ-NNN-slug.md` is unchanged, because a filename-borne token would mean renaming a file mid-pipeline whenever the verdict is revised, breaking every path already pointing at it. Not in the body `# H1` either: the H1 is Title-Cased prose, and Title-Casing a token would break the exact string the tag exists to be searched for.
 - **Write the token in full, exactly as the `impact:` enum spells it** — `impact-critical`, `impact-user-visible`, `impact-rule-change`, `impact-negligible`. Never an abbreviated form: the full prefixed token is what makes one `grep` return one axis, and it is what the board's search box matches (`../../do-work-board/tools/queue-kanban/web/board-filters.js` matches a case-insensitive substring on the title).
-- **Double-quote the whole value, always.** A title carrying a colon or a leading `[` is not a plain YAML scalar, so an unquoted one makes strict YAML reject the whole block and the REQ is read only by the board parser's last-resort line-based recovery (`../../do-work-board/tools/queue-kanban/frontmatter.go`). That recovery is good — it exists so one bad line cannot cost a REQ its status, UR pointer, and dependencies, and it does hold — but it is a salvage path with a narrower contract than the parser proper, and it can corrupt the very titles this convention creates: recovery splits a value that opens with `[` and closes with `]` as a YAML flow list, so `title: [impact-negligible] Retitle export, again [v2]` is read back as `[impact-negligible] Retitle export again [v2]` — the comma silently eaten, no warning raised. Quoting costs two characters and takes the whole class off the table.
+- **Quote the whole value — a title is user text, so the form and the reason are the schema's** (`actions/work-reference.md` → **Frontmatter Quoting**). What this convention owns is the worked example that contract cites back to, because the shape is this convention's own: a title carrying a colon or a leading `[` is not a plain YAML scalar, so an unquoted one makes strict YAML reject the whole block and the REQ is read only by the board parser's last-resort line-based recovery (`../../do-work-board/tools/queue-kanban/frontmatter.go`) — which splits a value that opens with `[` and closes with `]` as a YAML flow list, so `title: [impact-negligible] Retitle export, again [v2]` is read back as `[impact-negligible] Retitle export again [v2]`, the comma silently eaten and no warning raised.
 - **`impact:` is the source of truth; the title is a mirror.** When the two disagree the field wins, and every reader that acts on impact — Step 1's `--skip-impact-negligible` filter included — reads the field, never the title. The title tag exists so a human searching the board finds the REQ.
 
 ## Fold-First Rule
@@ -61,7 +61,7 @@ This boundary governs what the minting flows *create*, never what already exists
 ```markdown
 ---
 id: REQ-001
-title: "Brief descriptive title"   # always double-quoted; prefix `[<impact token>] ` when impact: is anything other than impact-user-visible — REQ Title Convention above
+title: 'Brief descriptive title'   # quoted per Frontmatter Quoting (actions/work-reference.md); prefix `[<impact token>] ` when impact: is anything other than impact-user-visible — REQ Title Convention above
 status: pending
 created_at: 2025-01-26T10:00:00Z  # current UTC instant, never local time with a Z suffix (Timestamp rule, actions/work-reference.md)
 user_request: UR-001
@@ -73,12 +73,12 @@ depends_on: []  # optional — list of REQ IDs that must complete before this RE
 maintenance: false  # set true ONLY for a deliberate removal/narrowing of the skill's OWN operating instructions — see Step 1's maintenance assessment; loads crew-members/maintenance.md in actions/work.md Step 6
 # impact: impact-user-visible   # EXPECTED on every REQ, but JUDGED, never copied: impact-critical | impact-user-visible | impact-rule-change | impact-negligible — whether anyone would ever notice the work, judged by Step 1's impact assessment. Deliberately commented out: an uncommented value gets copied more often than judged, and absence already reads as impact-user-visible, never as the user's stop signal (actions/work-reference.md → Request File Schema)
 # effort_estimate: effort-mechanical   # OPTIONAL in the schema, expected on every new REQ (effort-mechanical | effort-substantive; absent reads as effort-substantive) — the SIZE of the fix, a separate axis from impact, judged as size and never read off the impact verdict. Capture judges it on every REQ it mints, by the same three-way standard as `impact:` (`actions/capture.md` Step 1's effort assessment): judge it, or put the judgment to the user, or leave it absent because neither was possible. Never invent `effort-mechanical` for work whose size you haven't judged — and never assert `effort-substantive` because it is the default, which is the same failure wearing the safe answer.
-# assigned_to: "cloud-alpha"   # OPTIONAL advisory earmark — emit ONLY when the user names a session to reserve this work for (Step 1's earmark assessment); verbatim and YAML-quoted, never invented. The default work scan skips-and-reports it; explicit targeting clears it on claim (actions/work-reference.md → Request File Schema)
+# assigned_to: 'cloud-alpha'   # OPTIONAL advisory earmark — emit ONLY when the user names a session to reserve this work for (Step 1's earmark assessment); verbatim, quoted per Frontmatter Quoting (actions/work-reference.md), never invented. The default work scan skips-and-reports it; explicit targeting clears it on claim (actions/work-reference.md → Request File Schema)
 # External-condition fields — set ONLY when the task waits on something outside the queue (see Step 1's external-condition assessment). Omit all three for normal REQs.
 # status: blocked            # use INSTEAD OF `status: pending` when the REQ cannot start until an external condition is met — distinct from depends_on (another REQ) and Open Questions (a question for the user)
-# blocked_by: "..."          # free text naming the condition (always YAML-quoted), e.g. "LM Studio running locally", "designer answered on mockups"
+# blocked_by: '...'          # free text naming the condition (quoted per Frontmatter Quoting, actions/work-reference.md), e.g. 'LM Studio running locally', 'designer answered on mockups'
 # blocked_at: 2026-01-26T10:00:00Z   # stamp the moment it was captured blocked — current UTC instant, same Timestamp rule as created_at
-# blocked_check: "..."       # OPTIONAL shell probe (YAML-quoted) — emit ONLY when the user supplies or explicitly confirms the command; never invent one
+# blocked_check: '...'       # OPTIONAL shell probe (quoted per Frontmatter Quoting, actions/work-reference.md) — emit ONLY when the user supplies or explicitly confirms the command; never invent one
 ---
 
 # [Brief Title]
@@ -227,12 +227,12 @@ Written for **Addendum for in-flight/completed requests** (`actions/capture.md` 
 ```markdown
 ---
 id: REQ-021
-title: "Addendum: dark mode sidebar support"   # a non-default impact prefixes the tag ahead of the kind prefix — "[impact-negligible] Addendum: …" (REQ Title Convention above)
+title: 'Addendum: dark mode sidebar support'   # a non-default impact prefixes the tag ahead of the kind prefix — "[impact-negligible] Addendum: …" (REQ Title Convention above)
 status: pending
 created_at: 2025-01-27T09:00:00Z  # current UTC instant (Timestamp rule, actions/work-reference.md)
 user_request: UR-006        ← new UR created for this addendum
 addendum_to: REQ-005        ← links back to the original request
-# assigned_to: "cloud-alpha"   # OPTIONAL advisory earmark — same contract as the Simple/Complex REQ template above: emit ONLY when the user names a session to reserve this work for (Step 1's earmark assessment), verbatim and YAML-quoted, never invented
+# assigned_to: 'cloud-alpha'   # OPTIONAL advisory earmark — same contract as the Simple/Complex REQ template above: emit ONLY when the user names a session to reserve this work for (Step 1's earmark assessment), verbatim and quoted per Frontmatter Quoting, never invented
 ---
 
 # Addendum: Dark Mode Sidebar Support

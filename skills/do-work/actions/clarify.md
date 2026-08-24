@@ -140,7 +140,7 @@ The threshold applies only to this automatic clarify trigger. An explicit `do-wo
 
 ### Step 5.5: Confirm blocked conditions
 
-**Stakeholder-questions REQs first (`stakeholder:` present) — routed, never yes/no-confirmed or ingested here.** Before printing a REQ's line, check its `blocked_by:` — when it says the report is pending regeneration, or names a bundle path that no longer exists, regenerate now: follow `../../do-work-toolbox/actions/stakeholder-report.md`, then update `blocked_by:` and append the `## Reports` history line in the same edit (the standing regeneration condition, `actions/stakeholder-answers.md` Step 5). Then print the routing summary, one line per REQ, so a question mis-routed to a stakeholder is visible and recoverable:
+**Stakeholder-questions REQs first (`stakeholder:` present) — routed, never yes/no-confirmed or ingested here.** Before printing a REQ's line, check its `blocked_by:` — when it says the report is pending regeneration, or names a bundle path that no longer exists, regenerate now: follow `../../do-work-toolbox/actions/stakeholder-report.md`, then update `blocked_by:` and append the `## Reports` history line in the same edit (the standing regeneration condition, `actions/stakeholder-answers.md` Step 5). `blocked_by:` carries the person's own name, so the rewrite follows the **Frontmatter Quoting** contract (`actions/work-reference.md` → Request File Schema) — the frontmatter sibling of Step 4's neutralization branch. Then print the routing summary, one line per REQ, so a question mis-routed to a stakeholder is visible and recoverable:
 
 ```
 Stakeholder questions open:
