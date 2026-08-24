@@ -367,7 +367,7 @@
       });
       return;
     }
-    container.appendChild(makePendingGroup("Ready", readyIds, "Nothing ready — every pending REQ is waiting"));
+    container.appendChild(makePendingGroup("Ready", readyIds, "Nothing ready — everything here is waiting"));
     container.appendChild(makePendingGroup("Waiting on dependencies", waitingIds, ""));
   }
 
