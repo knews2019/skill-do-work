@@ -36,8 +36,11 @@ Great for extracting all pending, claimed, blocked, or done REQs in one action i
 
 ## Detailed Requirements
 - One copy-all control per Board column, including a column with only one card; a column showing "Nothing here" has nothing to copy (disable or no-op with feedback — builder decides).
-- The copied set matches what the column currently lists. The user named only the done-column time window explicitly; matching the visibly filtered card set (search box, domain/status filters) is the natural reading for the rest.
+- The copied set matches what the column currently lists: search/domain/status filters and the done-column time window all apply (user confirmed at verify).
 - Reuse the existing clipboard write + copied/failed feedback pattern from `web/board-clipboard.js` rather than inventing a second mechanism.
+
+## Open Questions
+- [x] Should copy-all respect active filters (search box, domain, status) beyond the done-column time window? → Yes — copy exactly the cards the column currently shows (user confirmed, 2026-08-24 verify)
 
 ## Red-Green Proof
 **RED prompt/case:** Open the generated Board view with several pending REQs. There is no control on the Pending column header to copy them together — extracting them requires opening each card and clicking Copy N times. A browser-probe test (style of `browser_probe_test.go`) that looks for a column copy-all control and asserts the composed clipboard payload contains every listed pending REQ fails today because the control does not exist.
