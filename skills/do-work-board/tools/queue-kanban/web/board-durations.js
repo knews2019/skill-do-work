@@ -181,6 +181,7 @@
   // named URs are the usable palette; every later ID deliberately shares Other
   // URs rather than wrapping silently into an indistinguishable category.
   var durationsColourChannel = "route";
+  var durationsWindow = "30";
   var DURATIONS_USER_REQUEST_PALETTE_CAPACITY = 12;
   var DURATIONS_CATEGORICAL_FILLS = [
     "var(--durations-category-1)",
@@ -201,6 +202,22 @@
     if (colourChannel === "route" || colourChannel === "user-request" || colourChannel === "domain") {
       durationsColourChannel = colourChannel;
     }
+  }
+
+  function setDurationsWindow(windowName) {
+    if (windowName === "30" || windowName === "90" || windowName === "all") {
+      durationsWindow = windowName;
+    }
+  }
+
+  function durationsWindowName() {
+    if (durationsWindow === "90") {
+      return "Last 90 days";
+    }
+    if (durationsWindow === "all") {
+      return "All history";
+    }
+    return "Last 30 days";
   }
 
   function durationSampleRequest(sample) {
@@ -695,8 +712,8 @@
     }
 
     var durations = boardData.durations || {};
-    var samples = durations.samples || [];
-    var days = durations.days || [];
+    var allSamples = durations.samples || [];
+    var allDays = durations.days || [];
 
     chartHost.textContent = "";
     tableBody.textContent = "";
@@ -708,16 +725,45 @@
       colourLegendNode.setAttribute("aria-label", durationsColourLegendText());
     }
 
-    if (samples.length === 0) {
+    if (allSamples.length === 0) {
       summaryNode.textContent =
         "No archived REQ carries both a claim and a completion stamp yet, so there is nothing to measure.";
       return;
     }
 
+    var allSampleTimes = allSamples.map(function (sample) {
+      return Date.parse(sample.completionTime);
+    });
+    var firstCompletionMs = Math.min.apply(null, allSampleTimes);
+    var lastCompletionMs = Math.max.apply(null, allSampleTimes);
+    var timeEnd = Math.floor(lastCompletionMs / DURATIONS_DAY_MS) * DURATIONS_DAY_MS + DURATIONS_DAY_MS;
+    var timeStart = durationsWindow === "all"
+      ? Math.floor(firstCompletionMs / DURATIONS_DAY_MS) * DURATIONS_DAY_MS
+      : timeEnd - Number(durationsWindow) * DURATIONS_DAY_MS;
+    var timeSpan = timeEnd - timeStart;
+    var samples = allSamples.filter(function (sample) {
+      var completionMs = Date.parse(sample.completionTime);
+      return completionMs >= timeStart && completionMs < timeEnd;
+    });
+    var days = allDays.filter(function (day) {
+      var dayMs = Date.parse(day.dayTime);
+      return dayMs >= timeStart && dayMs < timeEnd;
+    });
+    var windowName = durationsWindowName();
+    var windowStartLabel = formatDurationDayLabel(timeStart);
+    var windowEndLabel = formatDurationDayLabel(timeEnd);
+
     var excludedSamples = samples.filter(function (sample) {
       return sample.excludedReason;
     });
     summaryNode.textContent =
+      windowName +
+      " · " +
+      windowStartLabel +
+      " to " +
+      windowEndLabel +
+      " UTC (end exclusive)" +
+      " · " +
       samples.length +
       " archived REQ" +
       (samples.length === 1 ? "" : "s") +
@@ -737,28 +783,23 @@
     svg.setAttribute("role", "img");
     chartHost.appendChild(svg);
 
-    var sampleTimes = samples.map(function (sample) {
-      return Date.parse(sample.completionTime);
-    });
-    var firstCompletionMs = Math.min.apply(null, sampleTimes);
-    var lastCompletionMs = Math.max.apply(null, sampleTimes);
-    // The axis domain is whole UTC days: the first completion floored to its
-    // UTC midnight, and the midnight AFTER the last (REQ-248). The day buckets
-    // (dayTime) sit at their days' midnights, so a domain that began at the
-    // first completion INSTANT put every bucket left of its samples — and
-    // pushed Panels B and C off canvas entirely at one or two active days.
-    // durations.go's durationLabelTimeRange anchors the Go-side label planner
-    // to this same domain; the day-buckets behavior test holds the two together.
-    var timeStart = Math.floor(firstCompletionMs / DURATIONS_DAY_MS) * DURATIONS_DAY_MS;
-    var timeEnd = Math.floor(lastCompletionMs / DURATIONS_DAY_MS) * DURATIONS_DAY_MS + DURATIONS_DAY_MS;
-    var timeSpan = timeEnd - timeStart;
-
+    // Every selected domain spans whole UTC days and ends at the midnight AFTER
+    // the global latest completion (REQ-248). Day buckets sit at their days'
+    // midnights, while Panels B and C draw them at noon inside those slots. The
+    // all-history behavior test explicitly selects `all` before comparing this
+    // renderer with durations.go's full-history label-planning domain.
     svg.setAttribute(
       "aria-label",
-      "Three stacked panels sharing a calendar axis from " +
-        formatDurationDayLabel(firstCompletionMs) +
+      windowName +
+        ", " +
+        samples.length +
+        " archived REQ" +
+        (samples.length === 1 ? "" : "s") +
+        ". Three stacked panels sharing a calendar axis from " +
+        windowStartLabel +
         " to " +
-        formatDurationDayLabel(lastCompletionMs) +
+        windowEndLabel +
+        " UTC, end exclusive" +
         ". Panel A plots each archived REQ's duration in minutes coloured by " +
         durationColourChannelName() +
         ", over a lane of brackets grouping its marks by user request. " +
@@ -1196,7 +1237,7 @@
       svg,
       "text",
       { x: DURATIONS_MARGIN_LEFT, y: DURATIONS_AXIS_LABEL_Y, class: "durations-tick" },
-      formatDurationDayLabel(timeStart)
+      windowStartLabel
     );
     makeDurationsSvgNode(
       svg,
@@ -1207,7 +1248,7 @@
         class: "durations-tick",
         "text-anchor": "end"
       },
-      formatDurationDayLabel(lastCompletionMs)
+      windowEndLabel
     );
     var firstMonth = new Date(timeStart);
     var monthCursor = Date.UTC(firstMonth.getUTCFullYear(), firstMonth.getUTCMonth() + 1, 1);
