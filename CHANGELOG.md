@@ -2,6 +2,18 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.35 — Interrupted Report Batches Clean Up After Themselves (2026-08-24)
+
+Interrupt an `ai-report` early and it used to leave a staging directory in your report folder, or an
+image backend still running. Both windows are now closed.
+
+- The batch created its staging directory before its interruption traps existed, so a signal in
+  between took the default action and the cleanup never ran
+- An interruption landing between a helper's launch and its bookkeeping orphaned that helper and its
+  backend; signals are now held across that window and re-raised once the handles are recorded
+- A third suspected leak was investigated and turned out to be a real defect after all, in a
+  different mechanism than reported — tracked separately
+
 ## 0.236.34 — Every Prescribed-Shell Case Now Counted (2026-08-24)
 
 The test runner was quietly reporting fewer cases than the files actually hold, because its counting
