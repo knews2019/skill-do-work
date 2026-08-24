@@ -96,3 +96,7 @@ the same counts as before (aggregate 101).
 ## Plan
 
 **Planning and exploration skipped** — Route A: implement the specified regex/comment/fixture correction directly and verify every real case-file count remains unchanged.
+
+## Decisions
+
+- **D-01 — Preserve the live 104-case corpus, not the captured 101 count.** Three legitimate `qualify.sh` cases landed after this review finding was written, so the claimed worktree begins at 104 cases across 17 files (`qualify.sh`: 21). RED is expected 3 versus observed 4 in the isolated near-miss fixture; GREEN must keep every live per-file count and the aggregate 104 unchanged.

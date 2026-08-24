@@ -31,16 +31,19 @@ estimate:
     - cross-route regression gates
     - full-suite verification
 write_set:
+  - _dev/tests/contract-regressions.sh
+  - skills/do-work-board/tools/queue-kanban/frontmatter_test.go
   - skills/do-work/actions/clarify.md
   - skills/do-work/actions/verify-requests.md
-  - skills/do-work/actions/work-reference.md
+  - skills/do-work/actions/capture.md
   - skills/do-work/actions/capture-reference.md
+  - skills/do-work/actions/stakeholder-answers.md
+  - skills/do-work/actions/abandon.md
+  - skills/do-work/actions/work-reference.md
   - skills/do-work/actions/review-work.md
   - skills/do-work/actions/sample-archived-req.md
-  - skills/do-work/actions/stakeholder-answers.md
   - skills/do-work/docs/capture-guide.md
   - skills/do-work/docs/work-guide.md
-  - _dev/tests/contract-regressions.sh
 ---
 
 # Close the Neutralization Contract's Reach
@@ -161,4 +164,52 @@ reproduced there.
 
 ## Triage
 
-**Route: C** — This five-instance security/rule sweep spans body neutralization, YAML frontmatter, writer reach, examples, and contract lock-ins across ten files. It needs an explicit plan and exploration before the shared contract is revised.
+**Route: C** — This five-instance security/rule sweep spans body neutralization, YAML frontmatter, writer reach, examples, and contract lock-ins across thirteen files. It needs an explicit plan and exploration before the shared contract is revised.
+
+## Plan
+
+1. Add RED semantic and mutation lock-ins for non-line-shaped text damage, each uncited body writer, every live forbidden frontmatter example, and byte-preserving multiline scalar cases.
+2. Broaden the single canonical body-neutralization condition so every do-work Markdown writer inherits delimiter containment plus an accepted-text precondition.
+3. Wire every behaviorally discovered body writer and correct all copyable UR/REQ/frontmatter examples without restating either canonical contract.
+4. Make the Frontmatter Quoting block-scalar branch byte-honest for indentation, terminal LF count, and invalid controls; pin strict parsing and nested frontmatter survival in Go.
+5. Run focused mutation/contract/parser tests and the canonical repository gate, then audit every sweep instance and the exactly-once canonical-condition count.
+
+**Plan validation:** All five sweep instances map to a closure and at least one falsifiable lock-in; no task is orphaned. Five tasks is the upper safe bound, but the shared contract/writer/test structure makes further splitting more likely to recreate reach drift than reduce it.
+
+## Exploration
+
+- The canonical answered-question format in `clarify.md` is the only body-neutralization entry point. Generalize its condition to externally supplied text written into do-work Markdown records while keeping the answer-line plus dated-reasoning record shape answer-specific.
+- `verify-requests.md` is the named missed writer. Behavior-shaped search also found queued-addendum/UR input writes in `capture.md`, a new-UR verbatim reply in `stakeholder-answers.md`, and a cancellation reason in `abandon.md`; each must actively cite the same condition.
+- Five live hand-authored frontmatter examples need single quotes and inheritance: the UR title in `capture-reference.md`, the guide title in `capture-guide.md`, the review follow-up title, `sample-archived-req.md`'s title, and `work-guide.md`'s `assigned_to`. Encoder-emitted board YAML remains the explicit exception.
+- `work-reference.md` must require accepted text to contain only LF/TAB among C0 controls, indent every physical block line, and select `|-`, `|`, or `|+` for zero, one, or multiple terminal LF bytes. Strict-parser fixtures belong in `frontmatter_test.go` so salvage cannot masquerade as success.
+- Contract regressions must isolate each writer block, mutation-test canonical wording and reach, inventory forbidden hand-authored forms, and keep one canonical-condition occurrence so callers inherit rather than restate.
+
+## Scope
+
+**Files I will touch:**
+
+- `_dev/tests/contract-regressions.sh`
+- `skills/do-work-board/tools/queue-kanban/frontmatter_test.go`
+- `skills/do-work/actions/clarify.md`
+- `skills/do-work/actions/verify-requests.md`
+- `skills/do-work/actions/capture.md`
+- `skills/do-work/actions/capture-reference.md`
+- `skills/do-work/actions/stakeholder-answers.md`
+- `skills/do-work/actions/abandon.md`
+- `skills/do-work/actions/work-reference.md`
+- `skills/do-work/actions/review-work.md`
+- `skills/do-work/actions/sample-archived-req.md`
+- `skills/do-work/docs/capture-guide.md`
+- `skills/do-work/docs/work-guide.md`
+
+**Acceptance criteria:**
+
+- The one canonical body-neutralization condition covers delimiter-shaped and non-line-shaped damage; invalid C0/DEL controls other than LF/TAB are refused and reported before any write.
+- Every behaviorally discovered action that records external text into a do-work body actively cites the canonical condition and preserves its existing state semantics.
+- Every live hand-authored frontmatter example uses the single-quoted form and cites Frontmatter Quoting; complete/verbatim input remains byte-identical apart from containment bytes.
+- Multiline frontmatter preserves leading indentation and exact terminal LF count through strict YAML, while invalid controls are rejected before hand composition and nested `estimate:` remains intact.
+- Semantic/mutation lock-ins fail on narrowing, passive/missing citations, forbidden examples, bad chomp/indentation, or duplicate/restated canonical conditions; the full gate stays green.
+
+## Decisions
+
+- **D-01 — Refuse invalid control bytes rather than normalize them.** To keep the existing COMPLETE/UNEDITED and byte-identical promises honest, externally supplied text containing C0/DEL controls other than LF/TAB is not written; the caller reports the offending code point. CR-to-LF normalization and a hand-authored escape table are rejected because both silently change the supplied bytes.
