@@ -29,6 +29,8 @@ estimate:
     - full-suite verification
 write_set:
   - skills/do-work/tools/checks/scope-drift.sh
+  - skills/do-work/tools/checks/associate-files.sh
+  - _dev/tests/contract-regressions.sh
 ---
 
 # Stop a Multi-Path Bullet Disabling the Scope-Drift Check
@@ -106,3 +108,29 @@ unparseable, and every existing single-path REQ produces the same output as befo
 ## Plan
 
 **Planning not required** — Route B: exploration-guided implementation.
+
+## Exploration
+
+- Both `scope-drift.sh` path-led bullet parsers truncate at the first backtick pair: the shared section extractor uses one `sed` capture and the Scope bullet branch strips at the first closing backtick. Inline Scope headers already iterate all pairs.
+- Use one POSIX-awk `emit_closed_backtick_fields(line)` helper over paired fields 2, 4, … for path-led bullets only. Keep root filenames valid, ignore prose bullets with later code spans, reject unmatched path lists, and preserve inline headers, `do-work/` exclusion, sorting, annotated-header failure, and Route A/missing-summary skips.
+- The same first-token primitive exists in `associate-files.sh`, whose comment promises parity with scope drift. Fixing one copy would leave the root cause and parity claim false, so the accepted pre-freeze scope includes that sibling and their existing shared contract fixture.
+- Add a REQ-344-shaped seven-drift fixture, symmetric later-token mismatches including root filenames, a matching multi-path case, and a prose-only code-span case. Mutations restore either truncation, require slashes, or drop the path-led anchor; each must fail.
+
+## Scope
+
+**Files I will touch:**
+
+- `skills/do-work/tools/checks/scope-drift.sh`
+- `skills/do-work/tools/checks/associate-files.sh`
+- `_dev/tests/contract-regressions.sh`
+
+**Acceptance criteria:**
+
+- Every closed backtick pair on a path-led Scope or Implementation Summary bullet is extracted by both scope-drift and associate-files; later paths cannot hide behind a matching first token.
+- Root filenames remain valid paths, unmatched path lists fail loudly, and prose-only bullets containing code spans remain ignored.
+- A REQ-344-shaped fixture reports all seven undeclared files while all existing single-path, annotated-header, and Route A behaviors remain unchanged.
+- Independent mutations of either parser, slash filtering, or the path-led anchor fail focused contract probes; the canonical gate passes.
+
+## Decisions
+
+- **D-01 — Accept the three-file pre-freeze scope.** The test file is required for mutation-sensitive closure, and `associate-files.sh` carries the identical primitive plus an explicit parity promise. Updating only `scope-drift.sh` would preserve the same silent truncation in a shipped sibling.
