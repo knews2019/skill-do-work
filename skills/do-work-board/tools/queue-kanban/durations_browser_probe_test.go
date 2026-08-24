@@ -86,6 +86,319 @@ type durationsHeadlineBrowserProbeResult struct {
 	ConsoleErrors         []string   `json:"consoleErrors"`
 }
 
+type durationsGeometryBox struct {
+	Label  string  `json:"label"`
+	Class  string  `json:"className"`
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+	Client struct {
+		X      float64 `json:"x"`
+		Y      float64 `json:"y"`
+		Width  float64 `json:"width"`
+		Height float64 `json:"height"`
+	} `json:"client"`
+}
+
+type durationsUserRequestLaneGeometryProbeResult struct {
+	LocationHref  string                 `json:"locationHref"`
+	PlotLeft      float64                `json:"plotLeft"`
+	PlotRight     float64                `json:"plotRight"`
+	LaneTop       float64                `json:"laneTop"`
+	RowCount      int                    `json:"rowCount"`
+	RowPitch      float64                `json:"rowPitch"`
+	BracketHeight float64                `json:"bracketHeight"`
+	MinimumWidth  float64                `json:"minimumWidth"`
+	Separation    float64                `json:"separation"`
+	UnknownRowTop float64                `json:"unknownRowTop"`
+	MedianTitleY  float64                `json:"medianTitleY"`
+	Brackets      []durationsGeometryBox `json:"brackets"`
+	Neighbours    []durationsGeometryBox `json:"neighbours"`
+	ConsoleErrors []string               `json:"consoleErrors"`
+}
+
+// This fixture makes each of the UR lane's geometry rules observable on one
+// generated board. The 501-day axis makes a one-day slot narrower than the
+// minimum bracket, adjacent two-day samples need the separation rule to choose
+// different rows, eight long overlapping URs overflow six rows, and the final
+// one-sample UR needs the right-edge clamp. The no-UR sample exercises the
+// reserved row and its gutter label independently of the packed rows.
+func durationsUserRequestLaneGeometryFixtureTickets() []*RequestTicket {
+	fixtureStart := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+	tickets := make([]*RequestTicket, 0, 24)
+	addTicket := func(requestID string, userRequestID string, completedAt time.Time) {
+		ticket := durationTicket(
+			requestID, "B",
+			completedAt.Add(-12*time.Minute).Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		)
+		ticket.UserRequestId = userRequestID
+		tickets = append(tickets, ticket)
+	}
+
+	for adjacentIndex := 0; adjacentIndex < 6; adjacentIndex++ {
+		addTicket(
+			fmt.Sprintf("REQ-%03d", 100+adjacentIndex),
+			fmt.Sprintf("UR-%03d", 100+adjacentIndex),
+			fixtureStart.AddDate(0, 0, adjacentIndex*2),
+		)
+	}
+	for wideIndex := 0; wideIndex < 8; wideIndex++ {
+		userRequestID := fmt.Sprintf("UR-%03d", 200+wideIndex)
+		addTicket(
+			fmt.Sprintf("REQ-%03d", 200+wideIndex), userRequestID,
+			fixtureStart.AddDate(0, 0, 50).Add(time.Duration(wideIndex)*time.Minute),
+		)
+		addTicket(
+			fmt.Sprintf("REQ-%03d", 300+wideIndex), userRequestID,
+			fixtureStart.AddDate(0, 0, 450).Add(time.Duration(wideIndex)*time.Minute),
+		)
+	}
+	addTicket("REQ-900", "", fixtureStart.AddDate(0, 0, 30))
+	addTicket("REQ-999", "UR-999", fixtureStart.AddDate(0, 0, 500))
+	return tickets
+}
+
+// REQ-364 pins the five production geometry seams REQ-346 left unobservable:
+// minimum width, right-edge clamping, row separation, row pitch, and the lane's
+// vertical placement between its own title and Panel B. The probe measures the
+// real generated DOM and reads the renderer's live constants in the same client
+// closure; no value that decides the verdict is copied into Go.
+func TestBrowserBehaviorDurationsUserRequestLaneGeometry(t *testing.T) {
+	fixtureTickets := durationsUserRequestLaneGeometryFixtureTickets()
+	fixtureBoard := &Board{
+		GeneratedAt: time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC),
+		ProjectName: "REQ-364 Durations UR lane geometry probe",
+		AllRequests: fixtureTickets,
+	}
+	siteDirectory := t.TempDir()
+	if generateError := generateStaticSite(siteDirectory, fixtureBoard); generateError != nil {
+		t.Fatalf("generate Durations UR lane geometry fixture: %v", generateError)
+	}
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read Durations UR lane geometry fixture: %v", readError)
+	}
+
+	probeScript := `
+  (function () {
+  var consoleErrors = [];
+  window.addEventListener("error", function (event) {
+    consoleErrors.push(event.message || "window error");
+  });
+  var originalConsoleError = console.error;
+  console.error = function () {
+    consoleErrors.push(Array.prototype.join.call(arguments, " "));
+    originalConsoleError.apply(console, arguments);
+  };
+  var resultNode = document.createElement("pre");
+  resultNode.id = "` + browserProbeResultElementId + `";
+  document.body.appendChild(resultNode);
+  var durationsPanel = document.getElementById("view-durations");
+  durationsPanel.hidden = false;
+  durationsPanel.style.display = "block";
+  setDurationsWindow("all");
+  renderDurationsView();
+  var svg = document.querySelector("#durations-chart svg");
+
+  function clientBox(node) {
+    var bounds = node.getBoundingClientRect();
+    return {x: bounds.left, y: bounds.top, width: bounds.width, height: bounds.height};
+  }
+  function svgBox(node, label) {
+    return {
+      label: label || "",
+      className: node.getAttribute("class") || "",
+      x: Number(node.getAttribute("x")),
+      y: Number(node.getAttribute("y")),
+      width: Number(node.getAttribute("width")),
+      height: Number(node.getAttribute("height")),
+      client: clientBox(node)
+    };
+  }
+  function textBy(predicate) {
+    return Array.from(svg.querySelectorAll("text")).find(function (textNode) {
+      return predicate(textNode.textContent || "");
+    }) || null;
+  }
+  function textBox(node, label) {
+    if (!node) { return null; }
+    var bounds = node.getBBox();
+    return {
+      label: label,
+      className: node.getAttribute("class") || "",
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      client: clientBox(node)
+    };
+  }
+
+  var brackets = Array.from(svg.querySelectorAll("rect.durations-ur-bracket")).map(function (bracket) {
+    return svgBox(bracket, bracket.classList.contains("durations-ur-bracket-unknown") ? "unknown" : "known");
+  });
+  var neighbours = [
+    textBox(textBy(function (text) { return text.indexOf("URs · one bracket") === 0; }), "lane title"),
+    textBox(textBy(function (text) { return /^\+[0-9]+ URs? with no free row$/.test(text); }), "remainder"),
+    textBox(textBy(function (text) { return text === "URs"; }), "known-row tick"),
+    textBox(textBy(function (text) { return text === "no UR"; }), "unknown-row tick"),
+    textBox(textBy(function (text) { return text.indexOf("B · Median minutes") === 0; }), "Panel B title")
+  ].filter(Boolean);
+
+  resultNode.textContent = JSON.stringify({
+    locationHref: location.href,
+    plotLeft: DURATIONS_MARGIN_LEFT,
+    plotRight: DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT,
+    laneTop: DURATIONS_UR_LANE_TOP,
+    rowCount: DURATIONS_UR_LANE_ROW_COUNT,
+    rowPitch: DURATIONS_UR_LANE_ROW_PITCH,
+    bracketHeight: DURATIONS_UR_BRACKET_HEIGHT,
+    minimumWidth: DURATIONS_UR_BRACKET_MIN_WIDTH,
+    separation: DURATIONS_UR_BRACKET_SEPARATION,
+    unknownRowTop: DURATIONS_UR_UNKNOWN_ROW_TOP,
+    medianTitleY: DURATIONS_MEDIAN_TITLE_Y,
+    brackets: brackets,
+    neighbours: neighbours,
+    consoleErrors: consoleErrors
+  });
+  console.error = originalConsoleError;
+  })();
+`
+	probePage := string(indexBytes)
+	clientClose := strings.LastIndex(probePage, "})();")
+	if clientClose < 0 {
+		t.Fatal("generated page has no client IIFE close for Durations UR lane geometry probe")
+	}
+	probePage = probePage[:clientClose] + probeScript + probePage[clientClose:]
+	resultJSON := runBrowserBehaviorProbeInDirectory(
+		t, "Durations UR lane geometry", siteDirectory, probePage,
+		"--window-size=1280,1000", "--force-light-mode", "--virtual-time-budget=30000",
+	)
+	var result durationsUserRequestLaneGeometryProbeResult
+	if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
+		t.Fatalf("decode Durations UR lane geometry probe: %v\n%s", decodeError, resultJSON)
+	}
+
+	if !strings.HasSuffix(result.LocationHref, "/"+browserProbePageFileName) {
+		t.Fatalf("Durations UR lane geometry measured %q, not its probe page", result.LocationHref)
+	}
+	if len(result.ConsoleErrors) != 0 {
+		t.Fatalf("Durations UR lane geometry browser errors: %q", result.ConsoleErrors)
+	}
+	if result.PlotRight <= result.PlotLeft || result.LaneTop <= 0 || result.RowCount < 2 ||
+		result.RowPitch <= result.BracketHeight || result.BracketHeight <= 0 ||
+		result.MinimumWidth <= 0 || result.Separation <= 0 ||
+		math.Abs(result.UnknownRowTop-(result.LaneTop+float64(result.RowCount)*result.RowPitch)) > 0.01 {
+		t.Fatalf("invalid live lane constants: %+v", result)
+	}
+	if len(result.Brackets) <= result.RowCount {
+		t.Fatalf("fixture drew %d brackets across %d rows; want more brackets than rows", len(result.Brackets), result.RowCount)
+	}
+	if len(result.Neighbours) != 5 {
+		t.Fatalf("fixture exposed %d neighbour texts, want title, remainder, two ticks, and Panel B title: %+v",
+			len(result.Neighbours), result.Neighbours)
+	}
+
+	const geometryTolerance = 0.11
+	knownBrackets := make([]durationsGeometryBox, 0, len(result.Brackets))
+	unknownCount := 0
+	minimumWidthWitness := 0
+	rightClampWitness := 0
+	occupiedRows := map[int]bool{}
+	for _, bracket := range result.Brackets {
+		values := []float64{bracket.X, bracket.Y, bracket.Width, bracket.Height,
+			bracket.Client.X, bracket.Client.Y, bracket.Client.Width, bracket.Client.Height}
+		for _, value := range values {
+			if math.IsNaN(value) || math.IsInf(value, 0) {
+				t.Fatalf("%s bracket has non-finite geometry: %+v", bracket.Label, bracket)
+			}
+		}
+		if bracket.Width < result.MinimumWidth-geometryTolerance || bracket.Height <= 0 ||
+			bracket.Client.Width <= 0 || bracket.Client.Height <= 0 {
+			t.Errorf("%s bracket has width/height %.2f/%.2f (client %.2f/%.2f), want width >= %.2f and positive render",
+				bracket.Label, bracket.Width, bracket.Height, bracket.Client.Width, bracket.Client.Height, result.MinimumWidth)
+		}
+		if bracket.X < result.PlotLeft-geometryTolerance ||
+			bracket.X+bracket.Width > result.PlotRight+geometryTolerance {
+			t.Errorf("%s bracket [%.2f, %.2f] escapes plot [%.2f, %.2f]",
+				bracket.Label, bracket.X, bracket.X+bracket.Width, result.PlotLeft, result.PlotRight)
+		}
+		if math.Abs(bracket.Width-result.MinimumWidth) <= geometryTolerance {
+			minimumWidthWitness++
+		}
+		if math.Abs(bracket.X+bracket.Width-result.PlotRight) <= geometryTolerance {
+			rightClampWitness++
+		}
+		if bracket.Label == "unknown" {
+			unknownCount++
+			if math.Abs(bracket.Y-result.UnknownRowTop) > geometryTolerance {
+				t.Errorf("unknown bracket y %.2f, want reserved row %.2f", bracket.Y, result.UnknownRowTop)
+			}
+			continue
+		}
+		rowPosition := (bracket.Y - result.LaneTop) / result.RowPitch
+		rowIndex := int(math.Round(rowPosition))
+		if rowIndex < 0 || rowIndex >= result.RowCount || math.Abs(rowPosition-float64(rowIndex)) > 0.01 {
+			t.Errorf("known bracket y %.2f is not laneTop %.2f + row*%.2f", bracket.Y, result.LaneTop, result.RowPitch)
+		} else {
+			occupiedRows[rowIndex] = true
+		}
+		knownBrackets = append(knownBrackets, bracket)
+	}
+	if unknownCount != 1 || len(occupiedRows) < 2 || minimumWidthWitness == 0 || rightClampWitness == 0 {
+		t.Fatalf("vacuity guards: unknown=%d occupiedRows=%v min-width=%d right-clamp=%d",
+			unknownCount, occupiedRows, minimumWidthWitness, rightClampWitness)
+	}
+
+	subSeparationCrossRowWitness := 0
+	for firstIndex := 0; firstIndex < len(knownBrackets); firstIndex++ {
+		for secondIndex := firstIndex + 1; secondIndex < len(knownBrackets); secondIndex++ {
+			first, second := knownBrackets[firstIndex], knownBrackets[secondIndex]
+			if second.X < first.X {
+				first, second = second, first
+			}
+			gap := second.X - (first.X + first.Width)
+			if math.Abs(first.Y-second.Y) <= geometryTolerance {
+				if gap < result.Separation-geometryTolerance {
+					t.Errorf("same-row brackets leave %.2f separation, want at least live value %.2f", gap, result.Separation)
+				}
+				continue
+			}
+			if gap >= -geometryTolerance && gap < result.Separation-geometryTolerance {
+				subSeparationCrossRowWitness++
+			}
+		}
+	}
+	if subSeparationCrossRowWitness == 0 {
+		t.Fatal("fixture has no cross-row pair whose horizontal gap is below the live separation; the separation branch is untested")
+	}
+
+	intersects := func(first, second durationsGeometryBox) bool {
+		return first.Client.X < second.Client.X+second.Client.Width-0.25 &&
+			second.Client.X < first.Client.X+first.Client.Width-0.25 &&
+			first.Client.Y < second.Client.Y+second.Client.Height-0.25 &&
+			second.Client.Y < first.Client.Y+first.Client.Height-0.25
+	}
+	for _, neighbour := range result.Neighbours {
+		if neighbour.Width <= 0 || neighbour.Height <= 0 || neighbour.Client.Width <= 0 || neighbour.Client.Height <= 0 {
+			t.Fatalf("%s did not render a positive text box: %+v", neighbour.Label, neighbour)
+		}
+		for _, bracket := range result.Brackets {
+			if intersects(bracket, neighbour) {
+				t.Errorf("%s bracket intersects %s: bracket=%+v neighbour=%+v", bracket.Label, neighbour.Label, bracket.Client, neighbour.Client)
+			}
+		}
+	}
+	if result.UnknownRowTop+result.BracketHeight >= result.MedianTitleY {
+		t.Errorf("lane bottom %.2f reaches Panel B title baseline %.2f", result.UnknownRowTop+result.BracketHeight, result.MedianTitleY)
+	}
+	t.Logf("%s: %d brackets, rows %v, %d min-width, %d right-clamped, %d sub-separation cross-row witnesses",
+		result.LocationHref, len(result.Brackets), occupiedRows, minimumWidthWitness,
+		rightClampWitness, subSeparationCrossRowWitness)
+}
+
 func durationsMarkActivationFixtureTickets() []*RequestTicket {
 	fixtureDay := time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC)
 	// Completion order and REQ-id order deliberately disagree. REQ-349's
