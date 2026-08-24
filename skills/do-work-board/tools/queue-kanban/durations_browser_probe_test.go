@@ -321,6 +321,52 @@ func TestBrowserBehaviorDurationsTrustedClickOpensJitteredMark(t *testing.T) {
 })()`)
 	session.waitForPageCondition(t, "the all-history Durations marks to render",
 		`document.querySelectorAll("#durations-chart circle.durations-mark").length >= 7`)
+	session.evaluateInPage(t, `(document.querySelector('[data-durations-window="all"]').focus(), true)`)
+	enteredChart := false
+	trustedTabCount := 0
+	for trustedTabCount = 1; trustedTabCount <= 20; trustedTabCount++ {
+		for _, eventType := range []string{"keyDown", "keyUp"} {
+			session.callDevToolsMethod(t, "Input.dispatchKeyEvent", map[string]any{
+				"type":                  eventType,
+				"key":                   "Tab",
+				"code":                  "Tab",
+				"windowsVirtualKeyCode": 9,
+				"nativeVirtualKeyCode":  9,
+			}, true)
+		}
+		session.decodeResult(t, "whether trusted Tab entered the Durations chart",
+			session.evaluateInPage(t,
+				`document.getElementById("durations-chart").contains(document.activeElement)`),
+			&enteredChart)
+		if enteredChart {
+			break
+		}
+	}
+	if !enteredChart {
+		t.Fatalf("twenty trusted Tab presses after the Durations window controls never entered the chart")
+	}
+	type tabEntry struct {
+		ActiveTagName     string `json:"activeTagName"`
+		ActiveClassName   string `json:"activeClassName"`
+		ActiveRequestID   string `json:"activeRequestId"`
+		ActiveIsRootSVG   bool   `json:"activeIsRootSvg"`
+		TabbableMarkCount int    `json:"tabbableMarkCount"`
+	}
+	var entry tabEntry
+	session.decodeResult(t, "Durations trusted Tab entry", session.evaluateInPage(t, `({
+  activeTagName: document.activeElement.tagName,
+  activeClassName: document.activeElement.getAttribute("class") || "",
+  activeRequestId: document.activeElement.getAttribute("data-detail-id") || "",
+  activeIsRootSvg: document.activeElement === document.querySelector("#durations-chart svg"),
+  tabbableMarkCount: document.querySelectorAll('#durations-chart circle.durations-mark[tabindex="0"]').length
+})`), &entry)
+	if entry.ActiveIsRootSVG || entry.ActiveTagName != "circle" ||
+		entry.ActiveClassName == "" || entry.ActiveRequestID == "" || entry.TabbableMarkCount != 1 {
+		t.Errorf("the first Durations chart stop after %d trusted Tabs from the window controls was <%s class=%q request=%q> (root SVG=%v) with %d roving stops; want the sole circle button, never an inert SVG stop",
+			trustedTabCount,
+			entry.ActiveTagName, entry.ActiveClassName, entry.ActiveRequestID,
+			entry.ActiveIsRootSVG, entry.TabbableMarkCount)
+	}
 
 	type clickAim struct {
 		RequestID    string  `json:"requestId"`
