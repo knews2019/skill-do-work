@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -3002,12 +3003,14 @@ function tabStopState() {
     shownDetailId: shown ? shown.textContent.trim() : ""
   };
 }
+
 function pressKey(keyName) {
   var target = document.activeElement || plotHost();
   target.dispatchEvent(new KeyboardEvent("keydown", {
     key: keyName, bubbles: true, cancelable: true, composed: true
   }));
 }
+
 window.addEventListener("load", function () {
   setTimeout(function () {
     document.querySelector('[data-view-target="timeline"]').click();
@@ -3144,5 +3147,290 @@ window.addEventListener("load", function () {
 	if rovingResult.AfterEnter.ShownDetailId != rovingResult.FirstRowId {
 		t.Errorf("Enter opened the drawer on %q, want the focused row %q",
 			rovingResult.AfterEnter.ShownDetailId, rovingResult.FirstRowId)
+	}
+}
+
+// Timeline grouping is rendered by the shipped board, not by a probe fixture.
+// The table exposes every window-listed group while the SVG stays virtualized,
+// so one run can prove both the complete grouping and bounded viewport nodes.
+func TestBrowserBehaviorTimelineListsRowsBeneathUserRequestHeaders(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function timelineGroupingSnapshot() {
+  var host = document.getElementById("timeline-scroll");
+  var tableBody = document.getElementById("timeline-table-body");
+  var payload = window.queueKanbanBoardData || {};
+  var requests = payload.requests || {};
+  var groups = [];
+  var currentGroup = null;
+  Array.prototype.forEach.call(tableBody.children, function (tableRow) {
+    var groupLabel = tableRow.getAttribute("data-timeline-table-group");
+    if (groupLabel) {
+      currentGroup = {
+        label: groupLabel,
+        statedCount: Number(tableRow.getAttribute("data-group-count")),
+        metricText: tableRow.textContent.trim(),
+        ids: [],
+        joinedUserRequestIds: []
+      };
+      groups.push(currentGroup);
+      return;
+    }
+    var requestId = tableRow.getAttribute("data-timeline-table-request");
+    if (currentGroup && requestId) {
+      currentGroup.ids.push(requestId);
+      currentGroup.joinedUserRequestIds.push((requests[requestId] || {}).userRequestId || "");
+    }
+  });
+  var headers = Array.prototype.slice.call(host.querySelectorAll("[data-timeline-group]"));
+  var rows = Array.prototype.slice.call(host.querySelectorAll("[data-row-index]"));
+  return {
+    href: location.href,
+    groups: groups,
+    visibleRowCount: rows.length,
+    visibleHeaderCount: headers.length,
+    headerTabStopCount: headers.filter(function (header) { return header.hasAttribute("tabindex"); }).length,
+    tabbableRowCount: rows.filter(function (row) { return row.getAttribute("tabindex") === "0"; }).length,
+    renderedNodeCount: headers.length + rows.length,
+    svgHeight: Number((host.querySelector("svg") || {}).getAttribute && host.querySelector("svg").getAttribute("height")) || 0,
+    viewportHeight: host.clientHeight
+  };
+}
+
+function afterTimelineFrames(callback) {
+  setTimeout(callback, 50);
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var table = document.querySelector("#view-timeline .timeline-table");
+      table.open = true;
+      table.dispatchEvent(new Event("toggle"));
+      document.getElementById("timeline-zoom-fit").click();
+      afterTimelineFrames(function () {
+        var fitAll = timelineGroupingSnapshot();
+        document.querySelector('[data-timeline-period="day"]').click();
+        afterTimelineFrames(function () {
+          document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
+            fitAll: fitAll,
+            day: timelineGroupingSnapshot()
+          });
+        });
+      });
+    }, 900);
+  }, 200);
+});
+</script>
+</body>`
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the grouping probe before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline user-request grouping", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+	type browserGroup struct {
+		Label                string   `json:"label"`
+		StatedCount          int      `json:"statedCount"`
+		MetricText           string   `json:"metricText"`
+		Ids                  []string `json:"ids"`
+		JoinedUserRequestIds []string `json:"joinedUserRequestIds"`
+	}
+	type groupingSnapshot struct {
+		Href               string         `json:"href"`
+		Groups             []browserGroup `json:"groups"`
+		VisibleRowCount    int            `json:"visibleRowCount"`
+		VisibleHeaderCount int            `json:"visibleHeaderCount"`
+		HeaderTabStopCount int            `json:"headerTabStopCount"`
+		TabbableRowCount   int            `json:"tabbableRowCount"`
+		RenderedNodeCount  int            `json:"renderedNodeCount"`
+		SvgHeight          float64        `json:"svgHeight"`
+		ViewportHeight     float64        `json:"viewportHeight"`
+	}
+	var groupingResult struct {
+		FitAll groupingSnapshot `json:"fitAll"`
+		Day    groupingSnapshot `json:"day"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &groupingResult); decodeError != nil {
+		t.Fatalf("decode timeline user-request grouping: %v (output %q)", decodeError, probeOutput)
+	}
+	if groupingResult.FitAll.Href == "" || !strings.HasSuffix(groupingResult.FitAll.Href, "probe.html") {
+		t.Fatalf("measured on %q, not the probe page", groupingResult.FitAll.Href)
+	}
+	if groupingResult.FitAll.VisibleRowCount == 0 {
+		t.Fatal("the generated board rendered no Timeline REQ rows, so the grouping assertion is vacuous")
+	}
+	if len(groupingResult.FitAll.Groups) < 2 || groupingResult.FitAll.VisibleHeaderCount == 0 {
+		t.Fatalf("the Timeline rendered %d table groups and %d visible headers; the fixture must exercise grouping",
+			len(groupingResult.FitAll.Groups), groupingResult.FitAll.VisibleHeaderCount)
+	}
+	for _, snapshot := range []groupingSnapshot{groupingResult.FitAll, groupingResult.Day} {
+		for groupIndex, group := range snapshot.Groups {
+			if len(group.Ids) != group.StatedCount {
+				t.Errorf("%s states %d listed REQs but the grouped table contains %d",
+					group.Label, group.StatedCount, len(group.Ids))
+			}
+			if !strings.Contains(group.MetricText, "Elapsed") ||
+				!strings.Contains(group.MetricText, "Accepted work") ||
+				!strings.Contains(group.MetricText, "listed REQ") {
+				t.Errorf("%s header omits an explicit metric: %q", group.Label, group.MetricText)
+			}
+			for memberIndex, joinedUserRequestId := range group.JoinedUserRequestIds {
+				wantLabel := joinedUserRequestId
+				if wantLabel == "" {
+					wantLabel = "No UR recorded"
+				}
+				if group.Label != wantLabel {
+					t.Errorf("group %q contains %s joined to %q; the client-side requests join put it under the wrong header",
+						group.Label, group.Ids[memberIndex], joinedUserRequestId)
+				}
+			}
+			if group.Label == "No UR recorded" && groupIndex != len(snapshot.Groups)-1 {
+				t.Errorf("No UR recorded is group %d of %d; it must be last", groupIndex+1, len(snapshot.Groups))
+			}
+		}
+		if snapshot.HeaderTabStopCount != 0 {
+			t.Errorf("%d group headers entered the Tab order; Up/Down must move between REQs only",
+				snapshot.HeaderTabStopCount)
+		}
+		if snapshot.TabbableRowCount != 1 {
+			t.Errorf("grouped Timeline has %d tabbable REQ rows, want exactly one", snapshot.TabbableRowCount)
+		}
+		if snapshot.RenderedNodeCount >= 100 {
+			t.Errorf("the grouped Timeline rendered %d header/member nodes in one viewport; virtualization is unbounded",
+				snapshot.RenderedNodeCount)
+		}
+	}
+	if groupingResult.FitAll.SvgHeight <= groupingResult.FitAll.ViewportHeight {
+		t.Errorf("Fit-all SVG height %.0f does not exceed the %.0fpx viewport, so the probe never exercised virtual scrolling",
+			groupingResult.FitAll.SvgHeight, groupingResult.FitAll.ViewportHeight)
+	}
+	fitAllIds := []string{}
+	for _, group := range groupingResult.FitAll.Groups {
+		fitAllIds = append(fitAllIds, group.Ids...)
+	}
+	dayIds := []string{}
+	for _, group := range groupingResult.Day.Groups {
+		dayIds = append(dayIds, group.Ids...)
+	}
+	if reflect.DeepEqual(fitAllIds, dayIds) {
+		t.Errorf("Fit all and Day listed the same %d REQs; the grouping was not rebuilt after the window changed",
+			len(fitAllIds))
+	}
+}
+
+func TestBrowserBehaviorTimelineGroupHeadersReadInBothThemes(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var header = document.querySelector(".timeline-group-header");
+      var headerRect = header && header.querySelector(".timeline-group-header-fill");
+      var label = header && header.querySelector(".timeline-group-label");
+      var metrics = header && header.querySelector(".timeline-group-metrics");
+      var rectBox = headerRect ? headerRect.getBBox() : {};
+      var labelBox = label ? label.getBBox() : {};
+      var metricBox = metrics ? metrics.getBBox() : {};
+      document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
+        href: location.href,
+        scheme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+        headerFill: headerRect ? getComputedStyle(headerRect).fill : "",
+        labelFill: label ? getComputedStyle(label).fill : "",
+        metricFill: metrics ? getComputedStyle(metrics).fill : "",
+        rectY: rectBox.y || 0,
+        rectHeight: rectBox.height || 0,
+        labelY: labelBox.y || 0,
+        labelHeight: labelBox.height || 0,
+        metricY: metricBox.y || 0,
+        metricHeight: metricBox.height || 0
+      });
+    }, 700);
+  }, 200);
+});
+</script>
+</body>`
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the header probe before")
+	}
+
+	for _, scheme := range []struct {
+		name string
+		flag string
+	}{
+		{name: "light", flag: "--blink-settings=preferredColorScheme=1"},
+		{name: "dark", flag: "--blink-settings=preferredColorScheme=0"},
+	} {
+		t.Run(scheme.name, func(t *testing.T) {
+			probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline group header "+scheme.name,
+				siteDirectory, pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000", scheme.flag)
+			var measurement struct {
+				Href         string  `json:"href"`
+				Scheme       string  `json:"scheme"`
+				HeaderFill   string  `json:"headerFill"`
+				LabelFill    string  `json:"labelFill"`
+				MetricFill   string  `json:"metricFill"`
+				RectY        float64 `json:"rectY"`
+				RectHeight   float64 `json:"rectHeight"`
+				LabelY       float64 `json:"labelY"`
+				LabelHeight  float64 `json:"labelHeight"`
+				MetricY      float64 `json:"metricY"`
+				MetricHeight float64 `json:"metricHeight"`
+			}
+			if decodeError := json.Unmarshal(probeOutput, &measurement); decodeError != nil {
+				t.Fatalf("decode %s group header: %v (output %q)", scheme.name, decodeError, probeOutput)
+			}
+			if measurement.Href == "" || !strings.HasSuffix(measurement.Href, "probe.html") {
+				t.Fatalf("measured on %q, not the probe page", measurement.Href)
+			}
+			if measurement.Scheme != scheme.name {
+				t.Fatalf("asked for %s and the browser resolved %s", scheme.name, measurement.Scheme)
+			}
+			headerLuminance, headerKnown := relativeLuminanceOfCSSColour(measurement.HeaderFill)
+			labelLuminance, labelKnown := relativeLuminanceOfCSSColour(measurement.LabelFill)
+			metricLuminance, metricKnown := relativeLuminanceOfCSSColour(measurement.MetricFill)
+			if !headerKnown || !labelKnown || !metricKnown {
+				t.Fatalf("%s header colours did not resolve: header %q, label %q, metrics %q",
+					scheme.name, measurement.HeaderFill, measurement.LabelFill, measurement.MetricFill)
+			}
+			if ratio := contrastRatio(labelLuminance, headerLuminance); ratio < 4.5 {
+				t.Errorf("%s group label contrast %.2f:1, want at least 4.5:1", scheme.name, ratio)
+			}
+			if ratio := contrastRatio(metricLuminance, headerLuminance); ratio < 4.5 {
+				t.Errorf("%s group metrics contrast %.2f:1, want at least 4.5:1", scheme.name, ratio)
+			}
+			if measurement.RectHeight != 34 || measurement.LabelHeight <= 0 || measurement.MetricHeight <= 0 {
+				t.Errorf("%s header geometry rect %.1fpx, label %.1fpx, metrics %.1fpx; expected a 34px fixed header with rendered text",
+					scheme.name, measurement.RectHeight, measurement.LabelHeight, measurement.MetricHeight)
+			}
+			if measurement.LabelY+measurement.LabelHeight > measurement.MetricY ||
+				measurement.MetricY+measurement.MetricHeight > measurement.RectY+measurement.RectHeight {
+				t.Errorf("%s header text overlaps or clips: rect y %.1f..%.1f, label %.1f..%.1f, metrics %.1f..%.1f",
+					scheme.name, measurement.RectY, measurement.RectY+measurement.RectHeight,
+					measurement.LabelY, measurement.LabelY+measurement.LabelHeight,
+					measurement.MetricY, measurement.MetricY+measurement.MetricHeight)
+			}
+			t.Logf("%s Timeline group header: label %.2f:1, metrics %.2f:1, 34px fixed height",
+				scheme.name,
+				contrastRatio(labelLuminance, headerLuminance),
+				contrastRatio(metricLuminance, headerLuminance))
+		})
 	}
 }
