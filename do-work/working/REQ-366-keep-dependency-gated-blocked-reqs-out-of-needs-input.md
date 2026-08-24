@@ -31,6 +31,8 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/model_test.go
   - skills/do-work-board/actions/board.md
   - skills/do-work-board/tools/queue-kanban/web/board-cards.js
+  - skills/do-work-board/docs/board-guide.md
+  - skills/do-work-board/tools/queue-kanban/prime-do-kanban.md
 ---
 
 # Keep Dependency-Gated Blocked REQs Out of Needs Input · Blocked
@@ -40,9 +42,9 @@ write_set:
 Change the board's column bucketing so a `status: blocked` ticket with at least one unmet `depends_on` renders in the PENDING column's waiting-on-dependencies group (keeping its blocked badge) instead of NEEDS INPUT · BLOCKED, and enters NEEDS INPUT · BLOCKED only once every dependency has completed. Presentation and counting only — no frontmatter, probe, or scheduling change.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Traced authoritative dependency annotation into the single column-bucketing seam and mapped every exact-status exception plus inherited counter/render consumer before editing.
+- [x] **[APPLY]:** Routed only bare blocked tickets with unmet dependencies into Pending/Waiting, added mutation-sensitive model coverage, documented the actionable-inbox invariant, and corrected one directly stale badge comment.
+- [x] **[UNIFY]:** Reviewed the exact four-file diff; focused tests, four mutations, full Go module, vet, live CLI/browser transition, canonical verification, formatting, and artifact checks passed.
 
 ## Why
 
@@ -107,6 +109,66 @@ See `do-work/user-requests/UR-070/input.md` for complete verbatim input.
 
 **Route: B** — The user-visible rule and three behavioral files are firm, but implementation must trace the existing dependency annotation into shared column bucketing, preserve status-specific exceptions, prove inherited counters plus rendered badges, and keep the directly affected frontend commentary honest.
 
+## Plan
+
+**Planning not required** — Route B: exploration-guided implementation at the shared bucketing seam with focused status/dependency contracts and rendered transition evidence.
+
+## Exploration
+
+- `annotateDependencyState` already owns the unmet set and terminal-success meaning; only completed and completed-with-issues satisfy a dependency, while cancelled and dangling ids remain unmet.
+- `bucketColumns` is the single presentation/counting seam. Summary, open-work, generated payloads, and Board columns all inherit its `BoardColumns` result without parallel rules.
+- Blocked badges and dependency chips read retained ticket status/metadata rather than column membership, while Timeline and Calendar coloring remain status-driven. No frontend behavior or scheduling/probe semantics need to change.
+- The exact-status exception matrix must keep pending-answers, blocked-archive-collision, blocked-dependency-cycle, failed, and unknown statuses in Needs Input even when dependency metadata exists.
+
+## Scope
+
+**Files I will touch:**
+
+- `skills/do-work-board/tools/queue-kanban/model.go`
+- `skills/do-work-board/tools/queue-kanban/model_test.go`
+- `skills/do-work-board/actions/board.md`
+- `skills/do-work-board/tools/queue-kanban/web/board-cards.js`
+- `skills/do-work-board/docs/board-guide.md`
+- `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md`
+
+**Acceptance criteria:**
+
+- A ticket with exact normalized status blocked and non-empty authoritative unmet dependencies appears in Pending/Waiting while retaining its blocked status and metadata.
+- The same ticket moves to Needs Input only after every dependency reaches terminal success; cancelled and dangling targets remain unmet.
+- Pending-answers, blocked-archive-collision, blocked-dependency-cycle, failed, unknown, blocked-with-no-deps, and blocked-with-satisfied-deps preserve their specified placements.
+- Summary, open-work, generated payloads, docs/comments, and the rendered badges/counts all inherit the same actionable-inbox invariant without changing scheduling, probes, Timeline, or Calendar semantics.
+- Every shipped bucketing guide and Pending empty-state message remains true for both pending-status and dependency-gated blocked waiting groups.
+
+## Decisions
+
+- **D-01 — Route at the existing `BoardColumns` seam.** One exact branch makes every current counter and renderer inherit the rule without duplicating dependency logic.
+- **D-02 — Key the detour on exact status `blocked`.** The broader Needs-input family remains operator-actionable and must not be swept into dependency waiting.
+- **D-03 — Reuse authoritative dependency annotation.** This REQ does not redefine terminal success or inspect raw dependency ids inside bucketing.
+- **D-04 — Keep the accepted shared-file extension comment-only.** `board-cards.js` behavior already follows status metadata across columns; only its stale column-specific comment changes.
+- **D-05 — Remediate directly caused wording drift before release.** Review found two shipped guides and the Ready empty-state still asserting the old status-only model; these are part of the contract changed here, not unrelated cleanup.
+
+## Implementation Summary
+
+- `skills/do-work-board/tools/queue-kanban/model.go` (modified): routes exact blocked-plus-unmet tickets into Pending/Waiting and keeps the column contract comments synchronized.
+- `skills/do-work-board/tools/queue-kanban/model_test.go` (modified): covers pending/cancelled/dangling/satisfied/no-dependency transitions, exact-status exceptions, retained metadata, and inherited summary/open-work/generated-payload counts with four mutation axes.
+- `skills/do-work-board/actions/board.md` (modified): defines Needs Input as the presently operator-actionable inbox and documents dependency-gated blocked placement.
+- `skills/do-work-board/tools/queue-kanban/web/board-cards.js` (modified): corrects the blocked-badge comment and keeps the Ready empty-state truthful when only dependency-gated blocked work is waiting; routing behavior is unchanged.
+- `skills/do-work-board/docs/board-guide.md` (modified): documents the blocked-plus-unmet Pending/Waiting exception to ordinary status placement.
+- `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md` (modified): qualifies normalized-status and bare-blocked placement guidance with the authoritative unmet-dependency rule.
+
+## Discovered Tasks
+
+None.
+
+## Testing
+
+- TDD RED placed all blocked fixtures in Needs Input and produced pending 1 / needs 6 instead of pending 4 / needs 3. GREEN passed the focused exact-routing and exception tests.
+- Four independent mutations—restored status-only routing, broadened family routing, wrong PendingReady placement, and missing Pending union membership—each failed the intended contract and were restored.
+- Full queue-kanban tests, Go vet, formatting, diff checks, and the builder canonical maintainer gate passed, including all 109 prescribed shell cases and strict JavaScript; its optional browser lane skipped because live evidence ran separately.
+- A generated fixture showed blocked REQ-101 in Pending/Waiting with blocked and needs badges while REQ-100 was pending, then moved it to Needs Input after REQ-100 completed. CLI summary/open-work changed in step and no application console errors appeared.
+- Initial independent review approved behavior at 96/100 with no Important findings and two Minor wording findings: adjacent guides still stated status-only placement, and the Ready empty-state could falsely refer only to pending REQs. Both were accepted for narrow remediation before release.
+
 ## Scope Extensions
 
 - **Pre-freeze comment extension:** `skills/do-work-board/tools/queue-kanban/web/board-cards.js` joins the scope only to correct its blocked-badge comment, which otherwise would falsely claim every blocked card shares the Needs Input column. REQ-367 edits the same file in line-disjoint column-rendering code, so integration must explicitly inspect the overlap.
+- **Review wording extension:** `skills/do-work-board/docs/board-guide.md` and `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md` join to remove direct status-only placement claims made false by this REQ. The already-scoped `board-cards.js` may also neutralize its Ready empty-state sentence so a waiting group containing only blocked cards is described truthfully.
