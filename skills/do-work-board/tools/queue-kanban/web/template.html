@@ -346,21 +346,21 @@
         </div>
         <p class="timeline-forecast" id="timeline-forecast"></p>
         <div class="timeline-excluded" id="timeline-excluded"></div>
-        <p class="timeline-hint">Only REQs covered by the visible window are listed, grouped by UR in first-seen order; members stay newest first and No UR recorded is last. Group elapsed starts at the first recorded member claim and ends at the latest resolved completion, or at this board's frozen now while the group is running. A group with no recorded claim reports elapsed unavailable. Accepted work sums only samples kept by Durations' read-time rule, with exclusions and missing samples stated on the header. Scroll down to go further back inside the window. Type dates in From and to for a window you can name, or hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Pick Day, Week or Month for the period around now, or around wherever you have panned to when the now-line is off screen; ‹ and › then step one calendar period at a time, and step by one screenful instead when the window is a span of your own. Click a REQ row for its full detail. From the keyboard: Tab to the chart, then ↑ and ↓ move between REQs without stopping on headers, ← and → pan, and + and − zoom.</p>
+        <p class="timeline-hint">Only REQs covered by the visible window are listed, grouped by UR in first-seen order; members stay newest first and No UR recorded is last. Group elapsed and accepted work are clipped to this visible window. Elapsed spans the first overlapping recorded member claim through the latest overlapping resolved completion; a claimed open member is bounded by this board's frozen now and the window end. Elapsed is unavailable when there is no recorded claim, no claimed interval overlaps the window, or a stopped claimed member has no completion endpoint. Accepted work uses only the in-window claim-to-completion overlap of samples kept by Durations' read-time rule, with exclusions and missing samples stated on the header. Scroll down to go further back inside the window. Type dates in From and to for a window you can name, or hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Pick Day, Week or Month for the period around now, or around wherever you have panned to when the now-line is off screen; ‹ and › then step one calendar period at a time, and step by one screenful instead when the window is a span of your own. Click a REQ row for its full detail. From the keyboard: Tab to the chart, then ↑ and ↓ move between REQs without stopping on headers, ← and → pan, and + and − zoom.</p>
         <p class="timeline-readout" id="timeline-readout" role="status" aria-live="polite"></p>
         <details class="timeline-table">
           <summary>The REQs in this window, as a table</summary>
           <div class="timeline-table-scroll">
             <table>
-              <caption>Only REQs listed in the visible Timeline window. Groups follow first appearance, with No UR recorded last. Elapsed uses the earliest recorded claim through the latest resolved completion, or the board's frozen now for a running group; it is unavailable when no listed member has a recorded claim. Accepted work uses Durations' existing read-time exclusions.</caption>
+              <caption>Only REQs listed in the visible Timeline window. Groups follow first appearance, with No UR recorded last. Elapsed and accepted work are clipped to this window. Elapsed spans overlapping claimed intervals, with a claimed open endpoint bounded by the board's frozen now and the window end; it is unavailable for no claim, no claimed overlap, or a stopped claimed member without a completion endpoint. Accepted work uses the in-window claim-to-completion overlap of samples accepted by Durations' existing read-time verdict.</caption>
               <thead>
                 <tr>
-                  <th scope="col">REQ</th>
-                  <th scope="col">Title</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Waited</th>
-                  <th scope="col">Worked</th>
-                  <th scope="col">Note</th>
+                  <th scope="col" id="timeline-table-column-req">REQ</th>
+                  <th scope="col" id="timeline-table-column-title">Title</th>
+                  <th scope="col" id="timeline-table-column-status">Status</th>
+                  <th scope="col" id="timeline-table-column-waited">Waited</th>
+                  <th scope="col" id="timeline-table-column-worked">Worked</th>
+                  <th scope="col" id="timeline-table-column-note">Note</th>
                 </tr>
               </thead>
               <tbody id="timeline-table-body"></tbody>

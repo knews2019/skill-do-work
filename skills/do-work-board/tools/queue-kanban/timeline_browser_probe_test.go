@@ -3171,15 +3171,22 @@ function timelineGroupingSnapshot() {
   var requests = payload.requests || {};
   var groups = [];
   var currentGroup = null;
+  var columnHeaderIds = Array.prototype.map.call(
+    document.querySelectorAll("#view-timeline .timeline-table thead th"),
+    function (header) { return header.id; });
   Array.prototype.forEach.call(tableBody.children, function (tableRow) {
     var groupLabel = tableRow.getAttribute("data-timeline-table-group");
     if (groupLabel) {
+      var groupHeading = tableRow.querySelector("th");
       currentGroup = {
         label: groupLabel,
+        headerId: groupHeading ? groupHeading.id : "",
         statedCount: Number(tableRow.getAttribute("data-group-count")),
         metricText: tableRow.textContent.trim(),
         ids: [],
-        joinedUserRequestIds: []
+        joinedUserRequestIds: [],
+        cellHeaders: [],
+        cellTags: []
       };
       groups.push(currentGroup);
       return;
@@ -3188,12 +3195,19 @@ function timelineGroupingSnapshot() {
     if (currentGroup && requestId) {
       currentGroup.ids.push(requestId);
       currentGroup.joinedUserRequestIds.push((requests[requestId] || {}).userRequestId || "");
+      currentGroup.cellHeaders.push(Array.prototype.map.call(tableRow.children, function (cell) {
+        return (cell.getAttribute("headers") || "").split(/\s+/).filter(Boolean);
+      }));
+      currentGroup.cellTags.push(Array.prototype.map.call(tableRow.children, function (cell) {
+        return cell.tagName;
+      }));
     }
   });
   var headers = Array.prototype.slice.call(host.querySelectorAll("[data-timeline-group]"));
   var rows = Array.prototype.slice.call(host.querySelectorAll("[data-row-index]"));
   return {
     href: location.href,
+    columnHeaderIds: columnHeaderIds,
     groups: groups,
     visibleRowCount: rows.length,
     visibleHeaderCount: headers.length,
@@ -3238,14 +3252,18 @@ window.addEventListener("load", function () {
 	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline user-request grouping", siteDirectory,
 		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
 	type browserGroup struct {
-		Label                string   `json:"label"`
-		StatedCount          int      `json:"statedCount"`
-		MetricText           string   `json:"metricText"`
-		Ids                  []string `json:"ids"`
-		JoinedUserRequestIds []string `json:"joinedUserRequestIds"`
+		Label                string       `json:"label"`
+		HeaderID             string       `json:"headerId"`
+		StatedCount          int          `json:"statedCount"`
+		MetricText           string       `json:"metricText"`
+		Ids                  []string     `json:"ids"`
+		JoinedUserRequestIds []string     `json:"joinedUserRequestIds"`
+		CellHeaders          [][][]string `json:"cellHeaders"`
+		CellTags             [][]string   `json:"cellTags"`
 	}
 	type groupingSnapshot struct {
 		Href               string         `json:"href"`
+		ColumnHeaderIDs    []string       `json:"columnHeaderIds"`
 		Groups             []browserGroup `json:"groups"`
 		VisibleRowCount    int            `json:"visibleRowCount"`
 		VisibleHeaderCount int            `json:"visibleHeaderCount"`
@@ -3273,7 +3291,15 @@ window.addEventListener("load", function () {
 			len(groupingResult.FitAll.Groups), groupingResult.FitAll.VisibleHeaderCount)
 	}
 	for _, snapshot := range []groupingSnapshot{groupingResult.FitAll, groupingResult.Day} {
+		if len(snapshot.ColumnHeaderIDs) != 6 {
+			t.Fatalf("grouped Timeline table has column header ids %v, want six explicit ids", snapshot.ColumnHeaderIDs)
+		}
+		seenGroupHeaderIDs := map[string]bool{}
 		for groupIndex, group := range snapshot.Groups {
+			if group.HeaderID == "" || seenGroupHeaderIDs[group.HeaderID] {
+				t.Errorf("group %q has missing or duplicate stable header id %q", group.Label, group.HeaderID)
+			}
+			seenGroupHeaderIDs[group.HeaderID] = true
 			if len(group.Ids) != group.StatedCount {
 				t.Errorf("%s states %d listed REQs but the grouped table contains %d",
 					group.Label, group.StatedCount, len(group.Ids))
@@ -3291,6 +3317,22 @@ window.addEventListener("load", function () {
 				if group.Label != wantLabel {
 					t.Errorf("group %q contains %s joined to %q; the client-side requests join put it under the wrong header",
 						group.Label, group.Ids[memberIndex], joinedUserRequestId)
+				}
+				if len(group.CellHeaders[memberIndex]) != len(snapshot.ColumnHeaderIDs) {
+					t.Errorf("%s in %s has %d table cells, want %d", group.Ids[memberIndex], group.Label,
+						len(group.CellHeaders[memberIndex]), len(snapshot.ColumnHeaderIDs))
+					continue
+				}
+				for cellIndex, headerTokens := range group.CellHeaders[memberIndex] {
+					wantHeaders := []string{group.HeaderID, snapshot.ColumnHeaderIDs[cellIndex]}
+					if !reflect.DeepEqual(headerTokens, wantHeaders) {
+						t.Errorf("%s cell %d headers = %v, want exactly its own group and column headers %v",
+							group.Ids[memberIndex], cellIndex, headerTokens, wantHeaders)
+					}
+				}
+				if len(group.CellTags[memberIndex]) != 6 || group.CellTags[memberIndex][0] != "TH" {
+					t.Errorf("%s member cells = %v, want its REQ cell to remain a row header", group.Ids[memberIndex],
+						group.CellTags[memberIndex])
 				}
 			}
 			if group.Label == "No UR recorded" && groupIndex != len(snapshot.Groups)-1 {
