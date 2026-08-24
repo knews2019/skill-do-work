@@ -74,6 +74,18 @@ visual inspection."
   Also: accept a runnable probe when it is committed and re-runnable by another agent (then say so in
   Step 6.5 and name the property, not the tool); or accept it only for Route A REQs.
 
+## Builder Guidance
+
+Certainty: **Firm** that the two texts disagree with observed practice; **the answer itself is the
+user's**, which is why this REQ is `pending-answers` rather than `pending`. Do not start the edit
+before the Open Question is answered.
+
+Scope cue: state what the gate accepts, in a property a builder can check before writing evidence.
+No new field, no new gate, no rewrite of Step 6.5's surrounding flow.
+
+Batch (UR-073): this REQ and REQ-372 both write `skills/do-work/actions/work.md`. Run them serially,
+or expect the board's overlaps badge to flag the pair.
+
 ## Constraints
 
 - `_dev/primes/prime-action-files.md` governs. Read it first.

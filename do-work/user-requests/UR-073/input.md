@@ -3,7 +3,7 @@ id: UR-073
 title: Reconcile the tdd-vs-write-set capture against what main shipped
 created_at: 2026-08-24T23:37:06Z
 requests: [REQ-372, REQ-373]
-word_count: 96
+word_count: 46
 ---
 
 # Reconcile the tdd-vs-write-set Capture Against What Main Shipped
@@ -35,6 +35,21 @@ pass" — so either the gate accepts more than it says, or that REQ should have 
 `tdd: false`. Either way the shape the invariant exists to prevent was resolved by lowering the
 evidence bar rather than by adding a test.
 → REQ-373.
+
+## Reconciliation Decisions
+
+Recorded during `do-work verify-requests`, because the input names them and no REQ carries them.
+
+- **Version and changelog: deliberately not bumped.** The input asked to "update change log version".
+  This branch changes nothing under `skills/` — the merge commit and this capture touch queue data
+  only — and `main`'s own capture commits (`9edc122`, `dff8fb3`, `1f889e3`) bump neither `VERSION`
+  nor `CHANGELOG.md`. User confirmed the no-bump reading on 2026-08-25. The shared version stays
+  `0.236.61`.
+- **UR/REQ renumbering: done in the merge commit.** `UR-070` and `REQ-366` belong to `main`; this
+  capture took `UR-073`, `REQ-372` and `REQ-373`.
+- **Merge fallout: verified, not assumed.** `bash _dev/tests/maintainer-verify.sh` exits 0 on the
+  merged tree ("Maintainer verification passed"), with Go 1.26.1, ShellCheck 0.11.0 and `just`
+  supplied to the container; the strict browser lane skips with no browser configured.
 
 ## Extracted Requests
 

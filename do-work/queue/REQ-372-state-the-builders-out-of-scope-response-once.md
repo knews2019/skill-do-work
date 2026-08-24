@@ -68,6 +68,17 @@ reference. A builder-behaviour rule that only capture reads is a rule with no re
 - Keep both files' existing guarantee intact: `write_set` stays display-only, and an honest absent
   set stays better than an invented one.
 
+## Builder Guidance
+
+Certainty: **Firm** on the problem, **open** on which behaviour wins. The contradiction is verified in
+both files; which of the two responses is correct is a judgment the builder makes and states.
+
+Scope cue: keep it small. One statement moves, one pointer replaces it. Do not reconcile the two by
+writing a third rule, and do not reword the invariant's capture-time half while you are in there.
+
+Batch (UR-073): this REQ and REQ-373 both write `skills/do-work/actions/work.md`. Run them serially,
+or expect the board's overlaps badge to flag the pair.
+
 ## Constraints
 
 - `_dev/primes/prime-action-files.md` governs. Read it first.
