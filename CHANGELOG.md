@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.46 — Durations States Its Headline Numbers (2026-08-24)
+
+Durations now reports the selected window's median, p90, active-day coverage, and REQs per active day above the chart, with explicit population labels.
+
+- Panel B gains a trailing seven-active-day median that skips idle and excluded-only days while retaining real calendar gaps
+- Panel C now labels zero, the exact midpoint, and the peak on one count scale
+
 ## 0.236.45 — Durations Hides Controls It Does Not Use (2026-08-24)
 
 Search, domain, and status filters now disappear while the intentionally unfiltered Durations view is active and restore unchanged when the reader switches away.
