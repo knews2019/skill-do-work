@@ -10,17 +10,12 @@
 #   # <script-name>: <what it proves>
 #   # <script-name><qualifier>: <what it proves>
 #
-# The qualifier is open-ended on purpose. Anchoring on the script name is what makes that
-# safe, and it is the shape the suite already documents: `generate-report-image caller
-# contract:` and `generate-report-image, interrupted directly:` are headers, and so is any
-# spelling a future author reaches for, because the rule is "names its script, then a
-# colon" rather than a list of the separators used so far. Stopping at the first period
-# keeps a wrapped prose line that merely mentions the script from posing as a header
-# (`# qualify.sh should be updated to match (REQ-250: ...`).
 count_named_case_headers() {
   local case_file_path="$1"
   local script_under_test="${case_file_path##*/}"
   script_under_test="${script_under_test%.sh}"
 
-  grep -cE "^# ${script_under_test}[^.:]*: " "$case_file_path"
+  # Keep the qualifier open-ended, but require a real boundary after the exact script
+  # name. Stopping at a period keeps wrapped prose such as `# qualify.sh ...` out too.
+  grep -cE "^# ${script_under_test}([^[:alnum:]_.:][^.:]*)?: " "$case_file_path"
 }
