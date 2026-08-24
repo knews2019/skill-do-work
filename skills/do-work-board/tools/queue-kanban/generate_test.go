@@ -3740,9 +3740,14 @@ func TestJavaScriptBehaviorTimelineUserRequestGroupsUseOnlyListedMembers(t *test
 	javascriptProbe := rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_ROW_HEIGHT") + "\n" +
 		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_GROUP_HEADER_HEIGHT") + "\n" +
 		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_UNKNOWN_USER_REQUEST_NAME") + "\n" +
+		sliceBalancedBlockAfter(t, indexHTML, "function timelineFormatSpanMinutes(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHTML, "function timelineGroupWindowRows(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHTML, "function timelineGroupDetailText(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHTML, "function timelineGroupMetricText(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHTML, "function timelineFlattenGroups(") + `
 var nowMs = Date.UTC(2026, 7, 24, 14, 0);
+var windowStartMs = Date.UTC(2026, 7, 24, 7, 0);
+var windowEndMs = Date.UTC(2026, 7, 24, 15, 0);
 var rows = [
   { id: "REQ-505", claimedTime: "2026-08-24T10:00:00Z", completedTime: "2026-08-24T12:00:00Z", hasWork: true },
   { id: "REQ-504", completedTime: "2026-08-24T12:30:00Z", hasWork: false },
@@ -3769,38 +3774,81 @@ function summarize(groups) {
       label: group.label,
       ids: group.members.map(function (member) { return member.row.id; }),
       elapsedMinutes: group.elapsedMinutes,
+      earliestClaimMs: group.earliestClaimMs,
+      latestCompletionMs: group.latestCompletionMs,
       running: group.running,
       acceptedWorkMinutes: group.acceptedWorkMinutes,
       acceptedWorkCount: group.acceptedWorkCount,
       excludedReasons: group.excludedReasons,
-      unavailableWorkCount: group.unavailableWorkCount
+      unavailableWorkCount: group.unavailableWorkCount,
+      unresolvedCompletionCount: group.unresolvedCompletionCount,
+      elapsedUnavailableReason: group.elapsedUnavailableReason,
+      metricText: timelineGroupMetricText(group)
     };
   });
 }
-var allGroups = timelineGroupWindowRows(rows, requestsById, samples, nowMs);
+var allGroups = timelineGroupWindowRows(
+  rows, requestsById, samples, nowMs, windowStartMs, windowEndMs);
+var narrowRows = [
+  { id: "REQ-601", claimedTime: "2026-08-24T09:00:00Z", completedTime: "2026-08-24T13:00:00Z", hasWork: true }
+];
+var narrowGroups = timelineGroupWindowRows(
+  narrowRows,
+  { "REQ-601": { userRequestId: "UR-NARROW" } },
+  [{ id: "REQ-601", wallMinutes: 240 }],
+  nowMs,
+  Date.UTC(2026, 7, 24, 10, 0),
+  Date.UTC(2026, 7, 24, 12, 0)
+);
+var unresolvedRows = [
+  { id: "REQ-701", claimedTime: "2026-08-24T10:00:00Z", hasWork: true }
+];
+var mixedRows = [
+  { id: "REQ-702", claimedTime: "2026-08-24T09:00:00Z", completedTime: "2026-08-24T11:00:00Z", hasWork: true },
+  unresolvedRows[0]
+];
+var unresolvedRequests = {
+  "REQ-701": { userRequestId: "UR-ENDPOINT" },
+  "REQ-702": { userRequestId: "UR-ENDPOINT" }
+};
 process.stdout.write(JSON.stringify({
   all: summarize(allGroups),
   flattenedRowIndexes: timelineFlattenGroups(allGroups).items
     .filter(function (item) { return item.kind === "request"; })
     .map(function (item) { return item.rowIndex; }),
-  windowSubset: summarize(timelineGroupWindowRows([rows[3], rows[4]], requestsById, samples, nowMs))
+  windowSubset: summarize(timelineGroupWindowRows(
+    [rows[3], rows[4]], requestsById, samples, nowMs, windowStartMs, windowEndMs)),
+  narrow: summarize(narrowGroups),
+  unresolved: summarize(timelineGroupWindowRows(
+    unresolvedRows, unresolvedRequests, [], nowMs, windowStartMs, windowEndMs)),
+  mixedUnresolved: summarize(timelineGroupWindowRows(
+    mixedRows, unresolvedRequests, [{ id: "REQ-702", wallMinutes: 120 }],
+    nowMs, windowStartMs, windowEndMs))
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "timeline user-request grouping", javascriptProbe)
 	type renderedGroup struct {
-		Label                string         `json:"label"`
-		Ids                  []string       `json:"ids"`
-		ElapsedMinutes       *float64       `json:"elapsedMinutes"`
-		Running              bool           `json:"running"`
-		AcceptedWorkMinutes  float64        `json:"acceptedWorkMinutes"`
-		AcceptedWorkCount    int            `json:"acceptedWorkCount"`
-		ExcludedReasons      map[string]int `json:"excludedReasons"`
-		UnavailableWorkCount int            `json:"unavailableWorkCount"`
+		Label                     string         `json:"label"`
+		Ids                       []string       `json:"ids"`
+		ElapsedMinutes            *float64       `json:"elapsedMinutes"`
+		EarliestClaimMS           float64        `json:"earliestClaimMs"`
+		LatestCompletionMS        float64        `json:"latestCompletionMs"`
+		Running                   bool           `json:"running"`
+		AcceptedWorkMinutes       float64        `json:"acceptedWorkMinutes"`
+		AcceptedWorkCount         int            `json:"acceptedWorkCount"`
+		ExcludedReasons           map[string]int `json:"excludedReasons"`
+		UnavailableWorkCount      int            `json:"unavailableWorkCount"`
+		UnresolvedCompletionCount int            `json:"unresolvedCompletionCount"`
+		ElapsedUnavailableReason  string         `json:"elapsedUnavailableReason"`
+		MetricText                string         `json:"metricText"`
 	}
 	var groupingResult struct {
 		All                 []renderedGroup `json:"all"`
 		FlattenedRowIndexes []int           `json:"flattenedRowIndexes"`
 		WindowSubset        []renderedGroup `json:"windowSubset"`
+		Narrow              []renderedGroup `json:"narrow"`
+		Unresolved          []renderedGroup `json:"unresolved"`
+		MixedUnresolved     []renderedGroup `json:"mixedUnresolved"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &groupingResult); decodeError != nil {
 		t.Fatalf("decode timeline user-request grouping: %v (output %q)", decodeError, probeOutput)
@@ -3835,14 +3883,34 @@ process.stdout.write(JSON.stringify({
 	if !groupingResult.All[2].Running {
 		t.Error("the no-claim group contains an open wait but is not visibly classified as running")
 	}
-	if groupingResult.All[2].AcceptedWorkMinutes != 20 || groupingResult.All[2].UnavailableWorkCount != 1 {
-		t.Errorf("no-UR work detail = %#v, want 20 accepted minutes and one unavailable sample",
+	if groupingResult.All[2].AcceptedWorkMinutes != 0 || groupingResult.All[2].UnavailableWorkCount != 2 {
+		t.Errorf("no-UR work detail = %#v, want no accepted claim-to-completion work and two unavailable samples",
 			groupingResult.All[2])
 	}
 	if len(groupingResult.WindowSubset) != 2 || len(groupingResult.WindowSubset[0].Ids) != 1 ||
 		len(groupingResult.WindowSubset[1].Ids) != 1 {
 		t.Errorf("window subset grouped %#v; headers must count only the rows passed after windowing",
 			groupingResult.WindowSubset)
+	}
+	if len(groupingResult.Narrow) != 1 || groupingResult.Narrow[0].ElapsedMinutes == nil ||
+		*groupingResult.Narrow[0].ElapsedMinutes != 120 ||
+		groupingResult.Narrow[0].AcceptedWorkMinutes != 120 ||
+		groupingResult.Narrow[0].EarliestClaimMS != float64(time.Date(2026, 8, 24, 10, 0, 0, 0, time.UTC).UnixMilli()) ||
+		groupingResult.Narrow[0].LatestCompletionMS != float64(time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC).UnixMilli()) {
+		t.Errorf("narrow-window group = %#v, want both the 240-minute claim span and work sample clipped to the window's 120 minutes",
+			groupingResult.Narrow)
+	}
+	for caseName, groups := range map[string][]renderedGroup{
+		"isolated": groupingResult.Unresolved,
+		"mixed":    groupingResult.MixedUnresolved,
+	} {
+		if len(groups) != 1 || groups[0].ElapsedMinutes != nil ||
+			groups[0].UnresolvedCompletionCount != 1 ||
+			groups[0].ElapsedUnavailableReason != "completion endpoint unavailable" ||
+			!strings.Contains(groups[0].MetricText, "completion endpoint unavailable") {
+			t.Errorf("%s unresolved-completion group = %#v, want no partial elapsed and an explicit endpoint-unavailable reason",
+				caseName, groups)
+		}
 	}
 }
 
