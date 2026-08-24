@@ -2,6 +2,20 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.36 — Pasted Text Can No Longer Forge a REQ's Structure (2026-08-24)
+
+Three fixes to how the queue survives its own inputs. Paste a code snippet as an answer to a clarify
+question and it stays a snippet, instead of inventing an open question that pins the REQ forever or
+swallowing every section below it.
+
+- Answers typed into `do-work clarify` are neutralized before they are written, keyed on whether a
+  line could read as one of the file's own delimiters rather than on a fixed list of characters
+- `queue-kanban verify` no longer exits 0 on a REQ whose frontmatter fence, `id`, `user_request` or
+  `status` is broken — each finding names the field and its remedy, and legitimate absence stays silent
+- Adding an ordinary REQ to the queue no longer red-lights the canonical gate: the timeline landing
+  probe asserted that the next period is always empty, which stopped being true once the queue's
+  forecast reached into it
+
 ## 0.236.35 — Interrupted Report Batches Clean Up After Themselves (2026-08-24)
 
 Interrupt an `ai-report` early and it used to leave a staging directory in your report folder, or an

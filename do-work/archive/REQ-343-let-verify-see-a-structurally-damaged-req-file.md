@@ -1,7 +1,8 @@
 ---
 id: REQ-343
 title: "Let verify see a structurally damaged REQ file"
-status: claimed
+status: completed
+completed_at: 2026-08-24T10:42:00Z
 claimed_at: 2026-08-24T08:55:00Z
 created_at: 2026-08-23T22:35:07Z
 user_request: UR-068
@@ -207,3 +208,44 @@ None. The fixture is the deliverable's own RED.
 
 - [~] Where should an empty `id:` be reported? → **D-07**: Builder flagged it as damage per the requirement, and said so in the detail text. Reasoning: `deriveRequestIdFromFilename` means the board never loses the REQ over it, so the real exposure is narrower than the other three classes — a file rename silently renumbers the REQ. Value: the rename hazard is named where an operator will see it. Risk: if it reads as noise in practice, deleting the `id` branch leaves the other three classes intact. Carried to REQ-357 for the maintainer to confirm or overturn.
 - [~] Should `archive/legacy/` be the carve-out's key rather than a `created_at` cutoff? → **D-08**: Builder used the directory, because that is what the REQ's `## Context` names and it needs no date arithmetic. Value: no clock dependency in a structural probe. Risk: a REQ written today and dropped into `archive/legacy/` would be exempt — narrow, and visible the moment anyone looks at the directory. Carried to REQ-357.
+
+## Review
+
+**Overall: 93%** | 2026-08-24T09:33:16Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 95% |
+| Code Quality | 88% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings:**
+- **A file with a broken CLOSING fence is reported as "has no leading frontmatter fence"**, naming a fence that is intact. `splitFrontmatter` returns `hasFrontmatter=false` for both shapes and the probe emits one detail text for both. Reproduced by the orchestrator on a file whose first line is verified `---` by `cat -A`. — `impact-user-visible` → **REQ-358**
+- **`unrecognized-req-status` meets `boardRenderedVerifyCategories`' own stated criterion and shipped unsuppressed**, so the class reaches the page three times (warnings banner, per-card badge, findings strip). The builder's escalation was correct — the map is in `generate.go`, outside its write set — but the recorded token understated it. — `impact-user-visible` → **REQ-359**, folding the builder's own Discovered Task and raising its impact
+
+**Minor findings:** 3 (report only) — the stakeholder carve-out keys on the marker's presence rather than the documented shape, so a hand-written `stakeholder:` on a plain REQ silently exempts it (damage cannot invent that key, and the real tree holds zero stakeholder REQs, so the carve-out has never been exercised against production data); `requestFrontmatterFields` discards an error `parseRequestTicket` acts on, which cannot drift today because no branch of `parseFrontmatterFields` returns non-nil; `forensics.md` Check 14's probe table has no rows for the two new probes → prose backlog.
+
+**Verified and explicitly not findings:** the discriminator test discriminates — mutating each carve-out independently is caught by name, and `findingsNaming` searches all categories rather than filtering to the expected one, which is what makes "did anything fire at all?" answerable. `requestFrontmatterFields` is genuine reuse: `parseFrontmatterFields` has no non-nil error path, and `splitFrontmatter` is idempotent on `FrontmatterMarkdown` because it is `rawFileText[:bodyStartOffset]`, so the probe's view and `buildBoard`'s are provably identical. `isLegacyArchiveRequestPath` is correct on every lookalike constructed — `archive/legacy-notes/`, nested `archive/UR-001/legacy/`, `my-do-work/archive/legacy/`, Windows separators. Leniency survives: nothing rejects, returns early, or errors.
+
+**Acceptance:** Pass — six mutations reproduced independently, real-tree verify output byte-identical before and after, gate exit 0. The carve-out is load-bearing rather than covering an empty set: removing the legacy `continue` produces 12 new findings on the real tree.
+
+**Correction to this REQ's own Testing section:** it says 11 `archive/legacy/` REQs lack `user_request`. It is 12.
+
+**Follow-ups created:** REQ-358, REQ-359
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Following `appendCompletionAnomalyFindings` rather than inventing a probe shape — forwarding the board's structured evidence made the "no second tree walk" requirement testable, and the test that pins it uses a repo root that does not exist on disk with a nil `Warnings` slice, so a re-walk would find nothing and prose matching would have nothing to match.
+
+**What didn't:** The fixture covered only one of the two fenceless shapes. A file with an intact opening fence and no closing one takes the same `hasFrontmatter=false` path and gets told its leading fence is missing — the diagnosis is wrong in the direction that wastes an operator's time most (REQ-358). The general lesson: when one predicate serves two damage shapes, the fixture needs both, or the finding text will describe whichever shape the author had in mind.
+
+**Worth knowing:** The stakeholder carve-out has never run against production data — the tree holds zero stakeholder REQs. It keys on the marker's presence, not the documented shape, and the marker is not parsed onto `RequestTicket` at all, so nothing shows an operator why a file was excused.
+
+## Orientation
+
+`queue-kanban verify` no longer exits 0 on a REQ file whose structure is broken — a missing frontmatter fence, an empty `id`, a missing `user_request`, or an unrecognized status now fail the mechanical check with a finding naming the field and its remedy. Lives in the board tool's verify probe set. Legitimate absence stays silent, so the check remains one an operator trusts rather than switches off.
