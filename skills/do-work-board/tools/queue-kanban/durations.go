@@ -1,9 +1,7 @@
 package main
 
 import (
-	"math"
 	"sort"
-	"strconv"
 	"time"
 )
 
@@ -80,9 +78,6 @@ type DurationDay struct {
 type DurationAggregate struct {
 	Samples []DurationSample
 	Days    []DurationDay
-
-	// One verdict per direct-label band. The placed labels carry their row on
-	// the sample; these carry what could not be placed.
 }
 
 // buildDurationAggregate derives the Durations view's data from tickets the
@@ -185,60 +180,7 @@ func medianOf(values []float64) (float64, bool) {
 	return (sorted[middle-1] + sorted[middle]) / 2, true
 }
 
-// ---- direct-label placement -------------------------------------------------
-//
-// Panel A draws a direct label beside a mark only where the mark carries a value
-// its y cannot: the overflow lane, where every mark sits at one y so the text is
-// the only carrier of magnitude, and the reversed band. WHICH of those marks get
-// a label is decided here rather than in the renderer, so the rule has one
-// reader — the lesson REQ-219 recorded about this very view.
-//
-// The geometry below is the SVG's own user-unit space, the space its viewBox
-// defines. The chart is width:100% over a fixed viewBox, so a label's share of
-// the plot is identical at every browser zoom and window width; user units are
-// the only frame in which the question has a stable answer.
-
-const (
-	// durationsPlotWidthUnits mirrors the renderer's DURATIONS_VIEW_WIDTH minus
-	// its two margins, and durationsOverflowCeilingMinutes its
-	// DURATIONS_CEILING_MINUTES. TestDurationLabelGeometryMatchesTheRenderer
-	// pins both against web/board-durations.js so they cannot drift apart.
-	durationsPlotWidthUnits         = 1128.0
-	durationsOverflowCeilingMinutes = 60.0
-)
-
-// / durationLabelText is the label the renderer draws for one sample. It exists
-// here because the placement rule has to size the text it is placing.
-func durationLabelText(sample DurationSample) string {
-	return sample.RequestId + " " + formatDurationLabelMinutes(sample.WallMinutes)
-}
-
-// formatDurationLabelMinutes mirrors the renderer's formatDurationMinutes. Only
-// the character count matters to placement, so this stays a width model rather
-// than becoming a second definition of the view's copy.
-//
-// One known divergence: the sign below is an ASCII hyphen where the renderer
-// draws U+2212 MINUS SIGN, and the two glyphs are far from the same width — on
-// Chromium 141.0.7390.37 (Playwright 1.56.1, REQ-252) the minus measures
-// 9.2015 units in the 11px face against the hyphen's 3.9642, and even that
-// delta is per-browser (an earlier build measured it at 1.73). Width-neutral
-// today, because both are one character and the model above counts characters —
-// but a per-glyph width model (attempted and abandoned by REQ-241) would
-// under-state every reversed label unless it models the minus the renderer
-// actually draws, not the hyphen this string carries.
-func formatDurationLabelMinutes(minutes float64) string {
-	sign := ""
-	if minutes < 0 {
-		sign = "-"
-	}
-	// Mirrors the renderer's rounding order, not just its branches: round to the
-	// displayed precision first, then split. Splitting first let the remainder
-	// round to 60 and print "1h 60m" for 119.5 — one character wider than the
-	// "2h 0m" the renderer should draw, so the width model was wrong too.
-	displayedMinutes := math.Round(math.Abs(minutes)*10) / 10
-	if displayedMinutes < 60 {
-		return sign + strconv.FormatFloat(displayedMinutes, 'f', 1, 64) + " min"
-	}
-	wholeMinutes := int(math.Round(displayedMinutes))
-	return sign + strconv.Itoa(wholeMinutes/60) + "h " + strconv.Itoa(wholeMinutes%60) + "m"
-}
+// durationsPlotWidthUnits mirrors the renderer's fixed viewBox plot width. It
+// remains as the independent side of the day-bucket projection test; no label
+// sizing or placement reads it.
+const durationsPlotWidthUnits = 1128.0

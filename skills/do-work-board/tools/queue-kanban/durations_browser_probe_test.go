@@ -6,242 +6,15 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 )
 
-// Direct-label placement, asserted against what a reader would actually see.
-//
-// REQ-292 moved placement out of Go and into the browser, because sizing a label
-// needs the width the engine draws rather than a character count times a
-// constant. These probes are where the properties the deleted Go tests asserted
-// are re-pinned. They run in the browser lane REQ-291 built, so on a machine with
-// no engine they skip and the maintainer-strict selection fails loudly.
-//
-// WHAT EACH DELETED TEST BECAME:
-//
-//	TestDenseOverflowLabelsStayBoundedAndNeverOverlap
-//	  → drawn labels never intersect (below), now measured rather than modeled.
-//	TestOverflowLabelsGoToTheLongestSpans
-//	  → labels went to the longest spans (below).
-//	TestClusteredOverflowLabelsFillBothLabelRows
-//	  → both rows fill when spans cluster (below).
-//	TestReversedLabelPlacementIsIndependentOfOverflowDensity
-//	  → the bands pack independently (below).
-//	TestDurationsLabelRowPitchClearsTheLabelTextBox
-//	  → the row pitch clears the MEASURED line box (below) — the same property,
-//	    but against the face in use instead of a recorded constant.
-//	TestDurationsLabelRowsClearTheMarkBands and
-//	TestDurationsLastLabelRowClearsPanelBTitle
-//	  → measured vertical clearance (below).
-//	TestDurationLabelGeometryMatchesTheRenderer
-//	  → DELIBERATELY DROPPED. It held Go's placement constants against the
-//	    renderer's. There is no second set of constants to hold against any more:
-//	    placement lives only in the renderer, which is the point of the REQ.
-//	TestDurationsLabelWidthEstimateCoversTheRenderedFace
-//	  → DELIBERATELY DROPPED. It pinned the width model on both sides. There is
-//	    no width model — the width is the drawn width — so the property it
-//	    asserted has no subject left.
-//	TestDurationsMeasuredConstantsNameTheirChromiumBuild
-//	  → DELIBERATELY DROPPED, and this is REQ-266's requirement met rather than
-//	    skipped: it required every hand-transcribed measured constant to name the
-//	    build it came from. This REQ deletes the last of those constants, so no
-//	    number survives to carry a build. TestDurationsCarriesNoMeasuredFaceConstants
-//	    below is what keeps that true — it fails if a new one appears.
-
-// durationsProbeLabel is one label the probe placed, as the Go side reads it back.
-type durationsProbeLabel struct {
-	RequestId string  `json:"id"`
-	Magnitude float64 `json:"magnitude"`
-	Row       int     `json:"row"`
-	Anchor    string  `json:"anchor"`
-	Left      float64 `json:"left"`
-	Right     float64 `json:"right"`
-	Drawn     bool    `json:"drawn"`
-}
-
-type durationsProbeResult struct {
-	Overflow struct {
-		Labels      []durationsProbeLabel `json:"labels"`
-		HiddenCount int                   `json:"hiddenCount"`
-	} `json:"overflow"`
-	Reversed struct {
-		Labels      []durationsProbeLabel `json:"labels"`
-		HiddenCount int                   `json:"hiddenCount"`
-	} `json:"reversed"`
-	MeasuredLabelBoxHeight float64 `json:"measuredLabelBoxHeight"`
-	RowHeight              float64 `json:"rowHeight"`
-	LaneRowY               float64 `json:"laneRowY"`
-	ReversedRowY           float64 `json:"reversedRowY"`
-	LabelTextAscent        float64 `json:"labelTextAscent"`
-	LaneMarkY              float64 `json:"laneMarkY"`
-	BandMarkRadius         float64 `json:"bandMarkRadius"`
-	MedianTitleY           float64 `json:"medianTitleY"`
-	RowCount               int     `json:"rowCount"`
-	PlotLeft               float64 `json:"plotLeft"`
-	PlotRight              float64 `json:"plotRight"`
-}
-
-// runDurationsPlacementProbe renders a synthetic band in a real engine, runs the
-// SHIPPED placement code against measured widths, and reports what was placed.
-//
-// The placement functions are sliced out of the generated page rather than
-// re-implemented, so these assertions cannot drift into testing a copy: if the
-// shipped code changes, this probe runs the changed code.
-func runDurationsPlacementProbe(t *testing.T, overflowSpec string, reversedSpec string) durationsProbeResult {
-	t.Helper()
-	indexHtml := generateLiveSite(t)
-
-	constantPreamble := ""
-	for _, constantName := range []string{
-		"DURATIONS_LABEL_ROW_COUNT",
-		"DURATIONS_LABEL_ROW_HEIGHT",
-		"DURATIONS_LABEL_GAP",
-		"DURATIONS_LABEL_TEXT_ASCENT",
-		"DURATIONS_LANE_LABEL_ROW_Y",
-		"DURATIONS_REVERSED_LABEL_ROW_Y",
-		"DURATIONS_LANE_MARK_Y",
-		"DURATIONS_BAND_MARK_RADIUS",
-		"DURATIONS_MEDIAN_TITLE_Y",
-		"DURATIONS_VIEW_WIDTH",
-		"DURATIONS_MARGIN_LEFT",
-		"DURATIONS_MARGIN_RIGHT",
-		"DURATIONS_CEILING_MINUTES",
-	} {
-		constantPreamble += fmt.Sprintf("      var %s = %v;\n", constantName, durationsRendererConstant(t, constantName))
-	}
-
-	// The real stylesheet, so the measured face is the board's own rather than the
-	// browser default. Without it every width here would be a different font's.
-	styleBlock := sliceGeneratedStyleBlock(t, indexHtml)
-
-	placementSource := ""
-	for _, functionName := range []string{
-		"function durationsLabelSpan(",
-		"function durationsSpanIsBlocked(",
-		"function placeDurationsLabelBand(",
-		"function composeDurationsRemainderText(",
-		"function packDurationsLabelBand(",
-	} {
-		placementSource += sliceBalancedBlockAfter(t, indexHtml, functionName) + "\n"
-	}
-
-	probePage := `<!doctype html>
-<html><head><meta charset="utf-8"><style>` + styleBlock + durationsProbeExtraStyle + `</style></head>
-<body>
-<svg id="probe-svg" width="1200" height="500" xmlns="http://www.w3.org/2000/svg"></svg>
-<pre id="` + browserProbeResultElementId + `"></pre>
-<script>
-(function () {
-` + constantPreamble + `
-  var DURATIONS_LABEL_SEPARATION = 6;
-` + placementSource + `
-  var svg = document.getElementById("probe-svg");
-  var SVG_NS = "http://www.w3.org/2000/svg";
-
-  function makeLabel(text) {
-    var node = document.createElementNS(SVG_NS, "text");
-    node.setAttribute("class", "durations-mark-label");
-    node.textContent = text;
-    svg.appendChild(node);
-    return node;
-  }
-
-  // Each spec entry is "id|minutes|xFraction". The x fraction places the mark in
-  // the plot exactly as the renderer's time scale would, without needing a clock.
-  function buildCandidates(spec) {
-    if (!spec) { return []; }
-    return spec.split(";").filter(function (entry) { return entry.length > 0; })
-      .map(function (entry) {
-        var parts = entry.split("|");
-        var minutes = parseFloat(parts[1]);
-        var markX = DURATIONS_MARGIN_LEFT +
-          parseFloat(parts[2]) * (DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_LEFT - DURATIONS_MARGIN_RIGHT);
-        var node = makeLabel(parts[0] + " " + minutes.toFixed(1) + " min");
-        return {
-          mark: { sample: { id: parts[0], wallMinutes: minutes } },
-          markX: markX,
-          textNode: node,
-          textWidth: node.getComputedTextLength()
-        };
-      })
-      .sort(function (first, second) {
-        return Math.abs(second.mark.sample.wallMinutes) - Math.abs(first.mark.sample.wallMinutes);
-      });
-  }
-
-  function measureRemainderWidth(remainderText) {
-    var probeNode = document.createElementNS(SVG_NS, "text");
-    probeNode.setAttribute("class", "durations-tick");
-    probeNode.textContent = remainderText;
-    svg.appendChild(probeNode);
-    var width = probeNode.getComputedTextLength();
-    svg.removeChild(probeNode);
-    return width;
-  }
-
-  function report(candidates, band) {
-    return {
-      labels: band.placements.map(function (placement) {
-        var span = placement.labelRow < 0 ? { left: 0, right: 0 } :
-          durationsLabelSpan(
-            placement.candidate.markX, placement.candidate.textWidth, placement.labelAnchor,
-            DURATIONS_MARGIN_LEFT, DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT);
-        return {
-          id: placement.candidate.mark.sample.id,
-          magnitude: Math.abs(placement.candidate.mark.sample.wallMinutes),
-          row: placement.labelRow,
-          anchor: placement.labelAnchor,
-          left: span.left,
-          right: span.right,
-          drawn: placement.labelRow >= 0
-        };
-      }),
-      hiddenCount: band.hiddenCount
-    };
-  }
-
-  var overflowCandidates = buildCandidates(` + "`" + overflowSpec + "`" + `);
-  var reversedCandidates = buildCandidates(` + "`" + reversedSpec + "`" + `);
-  var overflowBand = packDurationsLabelBand(overflowCandidates, measureRemainderWidth, "over 60 min");
-  var reversedBand = packDurationsLabelBand(reversedCandidates, measureRemainderWidth, "reversed");
-
-  // The measured line box of a mark label in the face actually in use. This is
-  // the number the deleted durationsMeasuredLabelBoxHeightUnits recorded by hand.
-  var boxProbe = makeLabel("REQ-000 12.3 min");
-  var measuredBox = boxProbe.getBBox().height;
-
-  document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
-    overflow: report(overflowCandidates, overflowBand),
-    reversed: report(reversedCandidates, reversedBand),
-    measuredLabelBoxHeight: measuredBox,
-    rowHeight: DURATIONS_LABEL_ROW_HEIGHT,
-    laneRowY: DURATIONS_LANE_LABEL_ROW_Y,
-    reversedRowY: DURATIONS_REVERSED_LABEL_ROW_Y,
-    labelTextAscent: DURATIONS_LABEL_TEXT_ASCENT,
-    laneMarkY: DURATIONS_LANE_MARK_Y,
-    bandMarkRadius: DURATIONS_BAND_MARK_RADIUS,
-    medianTitleY: DURATIONS_MEDIAN_TITLE_Y,
-    rowCount: DURATIONS_LABEL_ROW_COUNT,
-    plotLeft: DURATIONS_MARGIN_LEFT,
-    plotRight: DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT
-  });
-})();
-</script>
-</body></html>`
-
-	resultJSON := runBrowserBehaviorProbe(t, "durations placement", probePage)
-	var probeResult durationsProbeResult
-	if unmarshalError := json.Unmarshal(resultJSON, &probeResult); unmarshalError != nil {
-		t.Fatalf("parse durations placement result: %v\n%s", unmarshalError, resultJSON)
-	}
-	return probeResult
-}
-
-// sliceGeneratedStyleBlock lifts the page's inlined stylesheet so the probe
-// measures the board's own face rather than the browser default.
+// sliceGeneratedStyleBlock lifts the page's inlined stylesheet for focused
+// browser probes that need the shipped board styles without the full page.
 func sliceGeneratedStyleBlock(t *testing.T, indexHtml string) string {
 	t.Helper()
 	styleStart := strings.Index(indexHtml, "<style>")
@@ -252,306 +25,998 @@ func sliceGeneratedStyleBlock(t *testing.T, indexHtml string) string {
 	return indexHtml[styleStart+len("<style>") : styleEnd]
 }
 
-// densePlacementSpec builds a saturated band: many labels crowded into a narrow
-// slice of the plot, which is what forces the collision rule to do real work.
-func densePlacementSpec(sampleCount int, spreadFraction float64) string {
-	entries := make([]string, 0, sampleCount)
-	for sampleIndex := 0; sampleIndex < sampleCount; sampleIndex++ {
-		// Descending magnitudes so "longest first" has a gradient to follow.
-		minutes := 600.0 - float64(sampleIndex)*7.5
-		xFraction := 0.05 + (float64(sampleIndex)/float64(sampleCount))*spreadFraction
-		entries = append(entries, fmt.Sprintf("REQ-%03d|%.1f|%.4f", 100+sampleIndex, minutes, xFraction))
-	}
-	return strings.Join(entries, ";")
+type durationsDensePanelProbeResult struct {
+	LocationHref          string  `json:"locationHref"`
+	RenderedSampleCount   int     `json:"renderedSampleCount"`
+	PayloadSampleCount    int     `json:"payloadSampleCount"`
+	ActiveDayCount        int     `json:"activeDayCount"`
+	DaySlotWidth          float64 `json:"daySlotWidth"`
+	BusyDaySpread         float64 `json:"busyDaySpread"`
+	Deterministic         bool    `json:"deterministic"`
+	EveryMarkInOwnDay     bool    `json:"everyMarkInOwnDay"`
+	HoveredRequestId      string  `json:"hoveredRequestId"`
+	HoverReadout          string  `json:"hoverReadout"`
+	RibbonFiniteBounded   bool    `json:"ribbonFiniteBounded"`
+	MedianFiniteBounded   bool    `json:"medianFiniteBounded"`
+	RibbonOpacity         float64 `json:"ribbonOpacity"`
+	MarkOpacity           float64 `json:"markOpacity"`
+	BodyBackground        string  `json:"bodyBackground"`
+	LongestSpanCount      int     `json:"longestSpanCount"`
+	ExpectedSpanCount     int     `json:"expectedSpanCount"`
+	LongestSpanOrder      bool    `json:"longestSpanOrder"`
+	EveryListField        bool    `json:"everyListField"`
+	CountSentence         string  `json:"countSentence"`
+	ListOutsideSVG        bool    `json:"listOutsideSvg"`
+	SharedWrapper         bool    `json:"sharedWrapper"`
+	SVGRequestLabels      int     `json:"svgRequestLabels"`
+	SVGLeaderLines        int     `json:"svgLeaderLines"`
+	SVGMoreSentences      int     `json:"svgMoreSentences"`
+	OverflowHoverId       string  `json:"overflowHoverId"`
+	OverflowHoverDuration string  `json:"overflowHoverDuration"`
+	OverflowHoverReadout  string  `json:"overflowHoverReadout"`
+	ViewportWidth         float64 `json:"viewportWidth"`
+	DocumentWidth         float64 `json:"documentWidth"`
+	WrapperRight          float64 `json:"wrapperRight"`
+	AsideRight            float64 `json:"asideRight"`
+	WrapperColumns        string  `json:"wrapperColumns"`
+	AsideOverflowY        string  `json:"asideOverflowY"`
 }
 
-// Re-pins TestDenseOverflowLabelsStayBoundedAndNeverOverlap. Two drawn labels
-// must never intersect — the defect UR-051 was raised for, and the one the width
-// model could not actually prevent because it described a face it never met.
-func TestBrowserBehaviorDurationsDrawnLabelsNeverOverlap(t *testing.T) {
-	probeResult := runDurationsPlacementProbe(t, densePlacementSpec(40, 0.35), "")
+type durationsHeadlineBrowserProbeResult struct {
+	LocationHref          string     `json:"locationHref"`
+	ViewportWidth         float64    `json:"viewportWidth"`
+	WindowStats           [][]string `json:"windowStats"`
+	StatItemCount         int        `json:"statItemCount"`
+	DefinitionTermCount   int        `json:"definitionTermCount"`
+	DefinitionValueCount  int        `json:"definitionValueCount"`
+	DefinitionListTag     string     `json:"definitionListTag"`
+	DefinitionListTabStop bool       `json:"definitionListTabStop"`
+	NativeWindowButton    bool       `json:"nativeWindowButton"`
+	WindowButtonFocused   bool       `json:"windowButtonFocused"`
+	StatRowCount          int        `json:"statRowCount"`
+	StatsClearChart       bool       `json:"statsClearChart"`
+	StatTilesOverlap      bool       `json:"statTilesOverlap"`
+	RollingFinite         bool       `json:"rollingFinite"`
+	RollingMarkerCount    int        `json:"rollingMarkerCount"`
+	RollingLineContrast   float64    `json:"rollingLineContrast"`
+	RollingMarkContrast   float64    `json:"rollingMarkContrast"`
+	BodyBackground        string     `json:"bodyBackground"`
+	CountTicksSeparate    bool       `json:"countTicksSeparate"`
+	CountTickTexts        []string   `json:"countTickTexts"`
+	ConsoleErrors         []string   `json:"consoleErrors"`
+}
 
-	drawnByRow := map[int][]durationsProbeLabel{}
-	for _, label := range probeResult.Overflow.Labels {
-		if label.Drawn {
-			drawnByRow[label.Row] = append(drawnByRow[label.Row], label)
+type durationsGeometryBox struct {
+	Label  string  `json:"label"`
+	Class  string  `json:"className"`
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+	Client struct {
+		X      float64 `json:"x"`
+		Y      float64 `json:"y"`
+		Width  float64 `json:"width"`
+		Height float64 `json:"height"`
+	} `json:"client"`
+}
+
+type durationsUserRequestLaneGeometryProbeResult struct {
+	LocationHref  string                 `json:"locationHref"`
+	PlotLeft      float64                `json:"plotLeft"`
+	PlotRight     float64                `json:"plotRight"`
+	LaneTop       float64                `json:"laneTop"`
+	RowCount      int                    `json:"rowCount"`
+	RowPitch      float64                `json:"rowPitch"`
+	BracketHeight float64                `json:"bracketHeight"`
+	MinimumWidth  float64                `json:"minimumWidth"`
+	Separation    float64                `json:"separation"`
+	UnknownRowTop float64                `json:"unknownRowTop"`
+	MedianTitleY  float64                `json:"medianTitleY"`
+	Brackets      []durationsGeometryBox `json:"brackets"`
+	Neighbours    []durationsGeometryBox `json:"neighbours"`
+	ConsoleErrors []string               `json:"consoleErrors"`
+}
+
+// This fixture makes each of the UR lane's geometry rules observable on one
+// generated board. The 501-day axis makes a one-day slot narrower than the
+// minimum bracket, adjacent two-day samples need the separation rule to choose
+// different rows, eight long overlapping URs overflow six rows, and the final
+// one-sample UR needs the right-edge clamp. The no-UR sample exercises the
+// reserved row and its gutter label independently of the packed rows.
+func durationsUserRequestLaneGeometryFixtureTickets() []*RequestTicket {
+	fixtureStart := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+	tickets := make([]*RequestTicket, 0, 24)
+	addTicket := func(requestID string, userRequestID string, completedAt time.Time) {
+		ticket := durationTicket(
+			requestID, "B",
+			completedAt.Add(-12*time.Minute).Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		)
+		ticket.UserRequestId = userRequestID
+		tickets = append(tickets, ticket)
+	}
+
+	for adjacentIndex := 0; adjacentIndex < 6; adjacentIndex++ {
+		addTicket(
+			fmt.Sprintf("REQ-%03d", 100+adjacentIndex),
+			fmt.Sprintf("UR-%03d", 100+adjacentIndex),
+			fixtureStart.AddDate(0, 0, adjacentIndex*2),
+		)
+	}
+	for wideIndex := 0; wideIndex < 8; wideIndex++ {
+		userRequestID := fmt.Sprintf("UR-%03d", 200+wideIndex)
+		addTicket(
+			fmt.Sprintf("REQ-%03d", 200+wideIndex), userRequestID,
+			fixtureStart.AddDate(0, 0, 50).Add(time.Duration(wideIndex)*time.Minute),
+		)
+		addTicket(
+			fmt.Sprintf("REQ-%03d", 300+wideIndex), userRequestID,
+			fixtureStart.AddDate(0, 0, 450).Add(time.Duration(wideIndex)*time.Minute),
+		)
+	}
+	addTicket("REQ-900", "", fixtureStart.AddDate(0, 0, 30))
+	addTicket("REQ-999", "UR-999", fixtureStart.AddDate(0, 0, 500))
+	return tickets
+}
+
+// REQ-364 pins the five production geometry seams REQ-346 left unobservable:
+// minimum width, right-edge clamping, row separation, row pitch, and the lane's
+// vertical placement between its own title and Panel B. The probe measures the
+// real generated DOM and reads the renderer's live constants in the same client
+// closure; no value that decides the verdict is copied into Go.
+func TestBrowserBehaviorDurationsUserRequestLaneGeometry(t *testing.T) {
+	fixtureTickets := durationsUserRequestLaneGeometryFixtureTickets()
+	fixtureBoard := &Board{
+		GeneratedAt: time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC),
+		ProjectName: "REQ-364 Durations UR lane geometry probe",
+		AllRequests: fixtureTickets,
+	}
+	siteDirectory := t.TempDir()
+	if generateError := generateStaticSite(siteDirectory, fixtureBoard); generateError != nil {
+		t.Fatalf("generate Durations UR lane geometry fixture: %v", generateError)
+	}
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read Durations UR lane geometry fixture: %v", readError)
+	}
+
+	probeScript := `
+  (function () {
+  var consoleErrors = [];
+  window.addEventListener("error", function (event) {
+    consoleErrors.push(event.message || "window error");
+  });
+  var originalConsoleError = console.error;
+  console.error = function () {
+    consoleErrors.push(Array.prototype.join.call(arguments, " "));
+    originalConsoleError.apply(console, arguments);
+  };
+  var resultNode = document.createElement("pre");
+  resultNode.id = "` + browserProbeResultElementId + `";
+  document.body.appendChild(resultNode);
+  var durationsPanel = document.getElementById("view-durations");
+  durationsPanel.hidden = false;
+  durationsPanel.style.display = "block";
+  setDurationsWindow("all");
+  renderDurationsView();
+  var svg = document.querySelector("#durations-chart svg");
+
+  function clientBox(node) {
+    var bounds = node.getBoundingClientRect();
+    return {x: bounds.left, y: bounds.top, width: bounds.width, height: bounds.height};
+  }
+  function svgBox(node, label) {
+    return {
+      label: label || "",
+      className: node.getAttribute("class") || "",
+      x: Number(node.getAttribute("x")),
+      y: Number(node.getAttribute("y")),
+      width: Number(node.getAttribute("width")),
+      height: Number(node.getAttribute("height")),
+      client: clientBox(node)
+    };
+  }
+  function textBy(predicate) {
+    return Array.from(svg.querySelectorAll("text")).find(function (textNode) {
+      return predicate(textNode.textContent || "");
+    }) || null;
+  }
+  function textBox(node, label) {
+    if (!node) { return null; }
+    var bounds = node.getBBox();
+    return {
+      label: label,
+      className: node.getAttribute("class") || "",
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      client: clientBox(node)
+    };
+  }
+
+  var brackets = Array.from(svg.querySelectorAll("rect.durations-ur-bracket")).map(function (bracket) {
+    return svgBox(bracket, bracket.classList.contains("durations-ur-bracket-unknown") ? "unknown" : "known");
+  });
+  var neighbours = [
+    textBox(textBy(function (text) { return text.indexOf("URs · one bracket") === 0; }), "lane title"),
+    textBox(textBy(function (text) { return /^\+[0-9]+ URs? with no free row$/.test(text); }), "remainder"),
+    textBox(textBy(function (text) { return text === "URs"; }), "known-row tick"),
+    textBox(textBy(function (text) { return text === "no UR"; }), "unknown-row tick"),
+    textBox(textBy(function (text) { return text.indexOf("B · Median minutes") === 0; }), "Panel B title")
+  ].filter(Boolean);
+
+  resultNode.textContent = JSON.stringify({
+    locationHref: location.href,
+    plotLeft: DURATIONS_MARGIN_LEFT,
+    plotRight: DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT,
+    laneTop: DURATIONS_UR_LANE_TOP,
+    rowCount: DURATIONS_UR_LANE_ROW_COUNT,
+    rowPitch: DURATIONS_UR_LANE_ROW_PITCH,
+    bracketHeight: DURATIONS_UR_BRACKET_HEIGHT,
+    minimumWidth: DURATIONS_UR_BRACKET_MIN_WIDTH,
+    separation: DURATIONS_UR_BRACKET_SEPARATION,
+    unknownRowTop: DURATIONS_UR_UNKNOWN_ROW_TOP,
+    medianTitleY: DURATIONS_MEDIAN_TITLE_Y,
+    brackets: brackets,
+    neighbours: neighbours,
+    consoleErrors: consoleErrors
+  });
+  console.error = originalConsoleError;
+  })();
+`
+	probePage := string(indexBytes)
+	clientClose := strings.LastIndex(probePage, "})();")
+	if clientClose < 0 {
+		t.Fatal("generated page has no client IIFE close for Durations UR lane geometry probe")
+	}
+	probePage = probePage[:clientClose] + probeScript + probePage[clientClose:]
+	resultJSON := runBrowserBehaviorProbeInDirectory(
+		t, "Durations UR lane geometry", siteDirectory, probePage,
+		"--window-size=1280,1000", "--force-light-mode", "--virtual-time-budget=30000",
+	)
+	var result durationsUserRequestLaneGeometryProbeResult
+	if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
+		t.Fatalf("decode Durations UR lane geometry probe: %v\n%s", decodeError, resultJSON)
+	}
+
+	if !strings.HasSuffix(result.LocationHref, "/"+browserProbePageFileName) {
+		t.Fatalf("Durations UR lane geometry measured %q, not its probe page", result.LocationHref)
+	}
+	if len(result.ConsoleErrors) != 0 {
+		t.Fatalf("Durations UR lane geometry browser errors: %q", result.ConsoleErrors)
+	}
+	if result.PlotRight <= result.PlotLeft || result.LaneTop <= 0 || result.RowCount < 2 ||
+		result.RowPitch <= result.BracketHeight || result.BracketHeight <= 0 ||
+		result.MinimumWidth <= 0 || result.Separation <= 0 ||
+		math.Abs(result.UnknownRowTop-(result.LaneTop+float64(result.RowCount)*result.RowPitch)) > 0.01 {
+		t.Fatalf("invalid live lane constants: %+v", result)
+	}
+	if len(result.Brackets) <= result.RowCount {
+		t.Fatalf("fixture drew %d brackets across %d rows; want more brackets than rows", len(result.Brackets), result.RowCount)
+	}
+	if len(result.Neighbours) != 5 {
+		t.Fatalf("fixture exposed %d neighbour texts, want title, remainder, two ticks, and Panel B title: %+v",
+			len(result.Neighbours), result.Neighbours)
+	}
+
+	const geometryTolerance = 0.11
+	knownBrackets := make([]durationsGeometryBox, 0, len(result.Brackets))
+	unknownCount := 0
+	minimumWidthWitness := 0
+	rightClampWitness := 0
+	occupiedRows := map[int]bool{}
+	for _, bracket := range result.Brackets {
+		values := []float64{bracket.X, bracket.Y, bracket.Width, bracket.Height,
+			bracket.Client.X, bracket.Client.Y, bracket.Client.Width, bracket.Client.Height}
+		for _, value := range values {
+			if math.IsNaN(value) || math.IsInf(value, 0) {
+				t.Fatalf("%s bracket has non-finite geometry: %+v", bracket.Label, bracket)
+			}
 		}
+		if bracket.Width < result.MinimumWidth-geometryTolerance || bracket.Height <= 0 ||
+			bracket.Client.Width <= 0 || bracket.Client.Height <= 0 {
+			t.Errorf("%s bracket has width/height %.2f/%.2f (client %.2f/%.2f), want width >= %.2f and positive render",
+				bracket.Label, bracket.Width, bracket.Height, bracket.Client.Width, bracket.Client.Height, result.MinimumWidth)
+		}
+		if bracket.X < result.PlotLeft-geometryTolerance ||
+			bracket.X+bracket.Width > result.PlotRight+geometryTolerance {
+			t.Errorf("%s bracket [%.2f, %.2f] escapes plot [%.2f, %.2f]",
+				bracket.Label, bracket.X, bracket.X+bracket.Width, result.PlotLeft, result.PlotRight)
+		}
+		if math.Abs(bracket.Width-result.MinimumWidth) <= geometryTolerance {
+			minimumWidthWitness++
+		}
+		if math.Abs(bracket.X+bracket.Width-result.PlotRight) <= geometryTolerance {
+			rightClampWitness++
+		}
+		if bracket.Label == "unknown" {
+			unknownCount++
+			if math.Abs(bracket.Y-result.UnknownRowTop) > geometryTolerance {
+				t.Errorf("unknown bracket y %.2f, want reserved row %.2f", bracket.Y, result.UnknownRowTop)
+			}
+			continue
+		}
+		rowPosition := (bracket.Y - result.LaneTop) / result.RowPitch
+		rowIndex := int(math.Round(rowPosition))
+		if rowIndex < 0 || rowIndex >= result.RowCount || math.Abs(rowPosition-float64(rowIndex)) > 0.01 {
+			t.Errorf("known bracket y %.2f is not laneTop %.2f + row*%.2f", bracket.Y, result.LaneTop, result.RowPitch)
+		} else {
+			occupiedRows[rowIndex] = true
+		}
+		knownBrackets = append(knownBrackets, bracket)
 	}
-	if len(drawnByRow) == 0 {
-		t.Fatal("the dense fixture placed no labels at all, so this proves nothing")
+	if unknownCount != 1 || len(occupiedRows) < 2 || minimumWidthWitness == 0 || rightClampWitness == 0 {
+		t.Fatalf("vacuity guards: unknown=%d occupiedRows=%v min-width=%d right-clamp=%d",
+			unknownCount, occupiedRows, minimumWidthWitness, rightClampWitness)
 	}
-	for rowIndex, rowLabels := range drawnByRow {
-		for firstIndex := 0; firstIndex < len(rowLabels); firstIndex++ {
-			for secondIndex := firstIndex + 1; secondIndex < len(rowLabels); secondIndex++ {
-				first, second := rowLabels[firstIndex], rowLabels[secondIndex]
-				if first.Left < second.Right && second.Left < first.Right {
-					t.Errorf("row %d: %s [%.2f, %.2f] overlaps %s [%.2f, %.2f]",
-						rowIndex, first.RequestId, first.Left, first.Right,
-						second.RequestId, second.Left, second.Right)
+
+	subSeparationCrossRowWitness := 0
+	for firstIndex := 0; firstIndex < len(knownBrackets); firstIndex++ {
+		for secondIndex := firstIndex + 1; secondIndex < len(knownBrackets); secondIndex++ {
+			first, second := knownBrackets[firstIndex], knownBrackets[secondIndex]
+			if second.X < first.X {
+				first, second = second, first
+			}
+			gap := second.X - (first.X + first.Width)
+			if math.Abs(first.Y-second.Y) <= geometryTolerance {
+				if gap < result.Separation-geometryTolerance {
+					t.Errorf("same-row brackets leave %.2f separation, want at least live value %.2f", gap, result.Separation)
 				}
+				continue
+			}
+			if gap >= -geometryTolerance && gap < result.Separation-geometryTolerance {
+				subSeparationCrossRowWitness++
 			}
 		}
 	}
-	// Bounded: nothing may reach outside the plot.
-	for _, label := range probeResult.Overflow.Labels {
-		if !label.Drawn {
-			continue
+	if subSeparationCrossRowWitness == 0 {
+		t.Fatal("fixture has no cross-row pair whose horizontal gap is below the live separation; the separation branch is untested")
+	}
+
+	intersects := func(first, second durationsGeometryBox) bool {
+		return first.Client.X < second.Client.X+second.Client.Width-0.25 &&
+			second.Client.X < first.Client.X+first.Client.Width-0.25 &&
+			first.Client.Y < second.Client.Y+second.Client.Height-0.25 &&
+			second.Client.Y < first.Client.Y+first.Client.Height-0.25
+	}
+	for _, neighbour := range result.Neighbours {
+		if neighbour.Width <= 0 || neighbour.Height <= 0 || neighbour.Client.Width <= 0 || neighbour.Client.Height <= 0 {
+			t.Fatalf("%s did not render a positive text box: %+v", neighbour.Label, neighbour)
 		}
-		if label.Left < probeResult.PlotLeft-0.01 || label.Right > probeResult.PlotRight+0.01 {
-			t.Errorf("%s drawn at [%.2f, %.2f], outside the plot [%.0f, %.0f]",
-				label.RequestId, label.Left, label.Right, probeResult.PlotLeft, probeResult.PlotRight)
-		}
-	}
-}
-
-// Re-pins TestOverflowLabelsGoToTheLongestSpans. The lane's text answers "where
-// are the outliers", so a shorter span must never take a label a longer one was
-// denied — the whole of the labels-go-to-the-outliers rule.
-func TestBrowserBehaviorDurationsLabelsGoToTheLongestSpans(t *testing.T) {
-	probeResult := runDurationsPlacementProbe(t, densePlacementSpec(40, 0.35), "")
-
-	smallestDrawn := math.Inf(1)
-	largestHidden := 0.0
-	drawnCount := 0
-	for _, label := range probeResult.Overflow.Labels {
-		if label.Drawn {
-			drawnCount++
-			smallestDrawn = math.Min(smallestDrawn, label.Magnitude)
-			continue
-		}
-		largestHidden = math.Max(largestHidden, label.Magnitude)
-	}
-	if drawnCount == 0 || probeResult.Overflow.HiddenCount == 0 {
-		t.Fatalf("fixture drew %d and hid %d — this property needs both",
-			drawnCount, probeResult.Overflow.HiddenCount)
-	}
-	// A hidden span may exceed a drawn one only because geometry refused it, never
-	// because the order passed it over: the walk offers every span a row in
-	// magnitude order, so it is a real property that the pass keeps going.
-	if largestHidden > smallestDrawn {
-		t.Logf("largest hidden span %.1f exceeds smallest drawn %.1f — geometry, not order, refused it",
-			largestHidden, smallestDrawn)
-	}
-	// The strict statement: the single longest span in the band must be drawn.
-	longest := durationsProbeLabel{}
-	for _, label := range probeResult.Overflow.Labels {
-		if label.Magnitude > longest.Magnitude {
-			longest = label
-		}
-	}
-	if !longest.Drawn {
-		t.Errorf("the longest span %s (%.1f) carries no label", longest.RequestId, longest.Magnitude)
-	}
-}
-
-// Re-pins TestClusteredOverflowLabelsFillBothLabelRows. When spans cluster, the
-// second row must be used — a packer that only ever filled row 0 would pass every
-// overlap check while wasting half the space.
-func TestBrowserBehaviorDurationsClusteredLabelsFillBothRows(t *testing.T) {
-	probeResult := runDurationsPlacementProbe(t, densePlacementSpec(12, 0.06), "")
-
-	rowsUsed := map[int]int{}
-	for _, label := range probeResult.Overflow.Labels {
-		if label.Drawn {
-			rowsUsed[label.Row]++
-		}
-	}
-	for rowIndex := 0; rowIndex < probeResult.RowCount; rowIndex++ {
-		if rowsUsed[rowIndex] == 0 {
-			t.Errorf("clustered fixture left row %d empty (rows used: %v)", rowIndex, rowsUsed)
-		}
-	}
-}
-
-// Re-pins TestReversedLabelPlacementIsIndependentOfOverflowDensity. The two bands
-// sit at different heights with unrelated local densities, so saturating one must
-// not change the other's placement at all.
-func TestBrowserBehaviorDurationsBandsPackIndependently(t *testing.T) {
-	reversedSpec := "REQ-900|-42.0|0.20;REQ-901|-31.0|0.55;REQ-902|-12.0|0.80"
-
-	sparse := runDurationsPlacementProbe(t, "REQ-100|300.0|0.50", reversedSpec)
-	saturated := runDurationsPlacementProbe(t, densePlacementSpec(40, 0.35), reversedSpec)
-
-	if len(sparse.Reversed.Labels) != len(saturated.Reversed.Labels) {
-		t.Fatalf("reversed band label counts differ: %d vs %d",
-			len(sparse.Reversed.Labels), len(saturated.Reversed.Labels))
-	}
-	for labelIndex := range sparse.Reversed.Labels {
-		sparseLabel := sparse.Reversed.Labels[labelIndex]
-		saturatedLabel := saturated.Reversed.Labels[labelIndex]
-		if sparseLabel.RequestId != saturatedLabel.RequestId ||
-			sparseLabel.Row != saturatedLabel.Row ||
-			sparseLabel.Anchor != saturatedLabel.Anchor {
-			t.Errorf("overflow density changed the reversed band: %s row %d anchor %q became %s row %d anchor %q",
-				sparseLabel.RequestId, sparseLabel.Row, sparseLabel.Anchor,
-				saturatedLabel.RequestId, saturatedLabel.Row, saturatedLabel.Anchor)
-		}
-	}
-	if sparse.Reversed.HiddenCount != saturated.Reversed.HiddenCount {
-		t.Errorf("reversed hidden count moved with overflow density: %d vs %d",
-			sparse.Reversed.HiddenCount, saturated.Reversed.HiddenCount)
-	}
-}
-
-// The remainder count must equal the number actually not drawn. Go used to emit
-// this count; once Go stopped deciding what fits, a count computed there would be
-// a lie, so whatever places the labels produces it (REQ-292).
-func TestBrowserBehaviorDurationsRemainderCountsWhatWasNotDrawn(t *testing.T) {
-	probeResult := runDurationsPlacementProbe(t, densePlacementSpec(40, 0.35), "REQ-900|-42.0|0.20")
-
-	notDrawn := 0
-	for _, label := range probeResult.Overflow.Labels {
-		if !label.Drawn {
-			notDrawn++
-		}
-	}
-	if probeResult.Overflow.HiddenCount != notDrawn {
-		t.Errorf("overflow remainder says %d hidden, but %d labels were not drawn",
-			probeResult.Overflow.HiddenCount, notDrawn)
-	}
-	if probeResult.Overflow.HiddenCount == 0 {
-		t.Fatal("the dense fixture hid nothing, so the remainder property is untested")
-	}
-}
-
-// Re-pins TestDurationsLabelRowPitchClearsTheLabelTextBox, TestDurationsLabelRowsClearTheMarkBands
-// and TestDurationsLastLabelRowClearsPanelBTitle — all three against the MEASURED
-// face rather than a hand-recorded constant. This is the half of the defect the
-// old constants could not catch: the board's own stack measured 13.0000 against a
-// 13-unit pitch, which the recorded 12.97 maximum said was impossible.
-func TestBrowserBehaviorDurationsLabelRowsClearTheirNeighbours(t *testing.T) {
-	probeResult := runDurationsPlacementProbe(t, "REQ-100|300.0|0.50", "REQ-900|-42.0|0.20")
-
-	if probeResult.MeasuredLabelBoxHeight <= 0 {
-		t.Fatalf("measured label box height is %v — the face did not render", probeResult.MeasuredLabelBoxHeight)
-	}
-	// (1) Row pitch clears the line box the engine actually draws.
-	if probeResult.RowHeight < probeResult.MeasuredLabelBoxHeight {
-		t.Errorf("row pitch %.4f is under the measured label box %.4f — two rows would intersect",
-			probeResult.RowHeight, probeResult.MeasuredLabelBoxHeight)
-	}
-	// (2) The first label row clears the mark band above it.
-	markBandBottom := probeResult.LaneMarkY + probeResult.BandMarkRadius
-	firstRowTop := probeResult.LaneRowY - probeResult.LabelTextAscent
-	if firstRowTop < markBandBottom {
-		t.Errorf("first label row top %.2f sits inside the mark band (bottom %.2f)",
-			firstRowTop, markBandBottom)
-	}
-	// (3) The reversed band's last row clears Panel B's title.
-	lastRowBaseline := probeResult.ReversedRowY + float64(probeResult.RowCount-1)*probeResult.RowHeight
-	lastRowBottom := lastRowBaseline + (probeResult.MeasuredLabelBoxHeight - probeResult.LabelTextAscent)
-	titleTop := probeResult.MedianTitleY - probeResult.LabelTextAscent
-	if lastRowBottom > titleTop {
-		t.Errorf("last reversed label row bottom %.2f overlaps Panel B's title top %.2f",
-			lastRowBottom, titleTop)
-	}
-}
-
-// REQ-266's requirement, met by there being nothing left to meet it about: the
-// point of measuring at runtime is that no hand-transcribed face number survives.
-// This fails if one reappears, which is what keeps the requirement true rather
-// than merely satisfied on the day it shipped. It needs no browser.
-func TestDurationsCarriesNoMeasuredFaceConstants(t *testing.T) {
-	for _, sourcePath := range []string{"durations.go", "web/board-durations.js"} {
-		sourceBytes, readError := embeddedWebAssets.ReadFile(sourcePath)
-		sourceText := string(sourceBytes)
-		if readError != nil {
-			// durations.go is not an embedded web asset; read it off disk.
-			diskBytes, diskError := os.ReadFile(sourcePath)
-			if diskError != nil {
-				t.Fatalf("read %s: %v", sourcePath, diskError)
-			}
-			sourceText = string(diskBytes)
-		}
-		for _, retiredToken := range []string{
-			"durationsLabelCharacterWidthUnits",
-			"durationsMeasuredLabelWidthSupremumUnits",
-			"durationsMeasuredLabelBoxHeightUnits",
-			"DURATIONS_LABEL_CHARACTER_WIDTH",
-		} {
-			if strings.Contains(sourceText, retiredToken) {
-				t.Errorf("%s carries %s again — a measured-face constant is exactly what REQ-292 deleted, "+
-					"and a new one has to name the build it came from (REQ-266) or be measured at runtime instead",
-					sourcePath, retiredToken)
+		for _, bracket := range result.Brackets {
+			if intersects(bracket, neighbour) {
+				t.Errorf("%s bracket intersects %s: bracket=%+v neighbour=%+v", bracket.Label, neighbour.Label, bracket.Client, neighbour.Client)
 			}
 		}
 	}
+	if result.UnknownRowTop+result.BracketHeight >= result.MedianTitleY {
+		t.Errorf("lane bottom %.2f reaches Panel B title baseline %.2f", result.UnknownRowTop+result.BracketHeight, result.MedianTitleY)
+	}
+	t.Logf("%s: %d brackets, rows %v, %d min-width, %d right-clamped, %d sub-separation cross-row witnesses",
+		result.LocationHref, len(result.Brackets), occupiedRows, minimumWidthWitness,
+		rightClampWitness, subSeparationCrossRowWitness)
 }
 
-// REQ-292's captured RED, made into a standing assertion.
-//
-// RED was: "a board rendered where --font-sans resolves to a face wider than 7.15
-// units per character draws labels past the slots placement assigned them, and
-// nothing in the suite notices. Confirmed by measurement: Arial Black draws 7.34."
-//
-// The old width model could not express this. It multiplied a character count by
-// a constant, so a wider face produced the SAME number and the same slots — the
-// labels simply drew past them. Measured placement cannot have that bug by
-// construction, and this is how that is shown rather than asserted: run the same
-// fixture at the board's own size and at a deliberately wider one, and the
-// placement must respond. A packer still using a fixed width model produces
-// identical output for both and fails here.
-func TestBrowserBehaviorDurationsPlacementRespondsToTheRenderedFace(t *testing.T) {
-	const fixtureSpec = "REQ-100|600.0|0.10;REQ-101|540.0|0.17;REQ-102|480.0|0.24;" +
-		"REQ-103|420.0|0.31;REQ-104|360.0|0.38;REQ-105|300.0|0.45;REQ-106|240.0|0.52"
-
-	atBoardFace := runDurationsPlacementProbe(t, fixtureSpec, "")
-	atWiderFace := runDurationsPlacementProbeWithFaceOverride(t, fixtureSpec, "3px")
-
-	if atBoardFace.MeasuredLabelBoxHeight <= 0 || atWiderFace.MeasuredLabelBoxHeight <= 0 {
-		t.Fatal("a probe measured nothing, so this comparison proves nothing")
+func durationsMarkActivationFixtureTickets() []*RequestTicket {
+	fixtureDay := time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC)
+	// Completion order and REQ-id order deliberately disagree. REQ-349's
+	// within-day jitter ranks by id, while a pre-jitter projection ranks by the
+	// completion instant. A trusted click at REQ-500's rendered centre therefore
+	// distinguishes the two targeting models instead of merely showing that some
+	// mark opens some drawer.
+	busyDaySamples := []struct {
+		requestId      string
+		completionHour int
+	}{
+		{requestId: "REQ-500", completionHour: 8},
+		{requestId: "REQ-100", completionHour: 9},
+		{requestId: "REQ-400", completionHour: 10},
+		{requestId: "REQ-200", completionHour: 11},
+		{requestId: "REQ-300", completionHour: 12},
 	}
+	tickets := make([]*RequestTicket, 0, len(busyDaySamples)+2)
+	for _, sample := range busyDaySamples {
+		completedAt := fixtureDay.Add(time.Duration(sample.completionHour) * time.Hour)
+		tickets = append(tickets, durationTicket(
+			sample.requestId, "B",
+			completedAt.Add(-10*time.Minute).Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		))
+	}
+	for anchorIndex, dayOffset := range []int{-2, 2} {
+		completedAt := fixtureDay.AddDate(0, 0, dayOffset).Add(10 * time.Hour)
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-60%d", anchorIndex), "A",
+			completedAt.Add(-20*time.Minute).Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		))
+	}
+	return tickets
+}
 
-	// The wider face must move at least one label's geometry. Equality across a
-	// face change is the signature of a width model.
-	sameEverywhere := true
-	for labelIndex := range atBoardFace.Overflow.Labels {
-		atBoard := atBoardFace.Overflow.Labels[labelIndex]
-		atWider := atWiderFace.Overflow.Labels[labelIndex]
-		if atBoard.Drawn != atWider.Drawn || atBoard.Row != atWider.Row ||
-			math.Abs((atBoard.Right-atBoard.Left)-(atWider.Right-atWider.Left)) > 0.01 {
-			sameEverywhere = false
+func generateDurationsMarkActivationSite(t *testing.T) string {
+	t.Helper()
+	fixtureBoard := &Board{
+		GeneratedAt: time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC),
+		ProjectName: "REQ-354 Durations mark activation probe",
+		AllRequests: durationsMarkActivationFixtureTickets(),
+	}
+	siteDirectory := t.TempDir()
+	if generateError := generateStaticSite(siteDirectory, fixtureBoard); generateError != nil {
+		t.Fatalf("generate Durations mark activation fixture: %v", generateError)
+	}
+	return siteDirectory
+}
+
+// Every projected mark is one semantic control, but the chart costs only one Tab
+// press: Left/Right move the sole roving stop and Enter/Space activate the focused
+// REQ. The walk is exhaustive so a renderer that makes only the first few samples
+// keyboard-reachable cannot satisfy the contract by accident.
+func TestBrowserBehaviorDurationsMarksAreOneRovingTabStop(t *testing.T) {
+	siteDirectory := generateDurationsMarkActivationSite(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read Durations activation fixture: %v", readError)
+	}
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function durationMarks() {
+  return Array.prototype.slice.call(document.querySelectorAll("#durations-chart circle.durations-mark"));
+}
+function pressDurationKey(keyName) {
+  document.activeElement.dispatchEvent(new KeyboardEvent("keydown", {
+    key: keyName, bubbles: true, cancelable: true, composed: true
+  }));
+}
+function durationMarkState() {
+  var marks = durationMarks();
+  var active = document.activeElement;
+  return {
+    ids: marks.map(function (mark) { return mark.getAttribute("data-detail-id") || ""; }),
+    roles: marks.map(function (mark) { return mark.getAttribute("role") || ""; }),
+    labels: marks.map(function (mark) { return mark.getAttribute("aria-label") || ""; }),
+    tabbableCount: marks.filter(function (mark) { return mark.getAttribute("tabindex") === "0"; }).length,
+    skippedCount: marks.filter(function (mark) { return mark.getAttribute("tabindex") === "-1"; }).length,
+    focusedId: active && active.getAttribute ? (active.getAttribute("data-detail-id") || "") : ""
+  };
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="durations"]').click();
+    document.querySelector('[data-durations-window="all"]').click();
+    var marks = durationMarks();
+    var initial = durationMarkState();
+    var forwardIds = [];
+    var forwardTabCounts = [];
+    marks[0].focus();
+    forwardIds.push(durationMarkState().focusedId);
+    forwardTabCounts.push(durationMarkState().tabbableCount);
+    for (var markIndex = 1; markIndex < marks.length; markIndex += 1) {
+      pressDurationKey("ArrowRight");
+      forwardIds.push(durationMarkState().focusedId);
+      forwardTabCounts.push(durationMarkState().tabbableCount);
+    }
+    var lastId = durationMarkState().focusedId;
+    pressDurationKey("Enter");
+    var enterDrawerId = document.getElementById("detail-id").textContent.trim();
+    var enterOpened = document.getElementById("detail-drawer").hidden === false;
+    document.getElementById("detail-close").click();
+    pressDurationKey(" ");
+    var spaceDrawerId = document.getElementById("detail-id").textContent.trim();
+    var spaceOpened = document.getElementById("detail-drawer").hidden === false;
+    document.getElementById("detail-close").click();
+    var reverseIds = [durationMarkState().focusedId];
+    for (var reverseIndex = 1; reverseIndex < marks.length; reverseIndex += 1) {
+      pressDurationKey("ArrowLeft");
+      reverseIds.push(durationMarkState().focusedId);
+    }
+    document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
+      href: location.href,
+      initial: initial,
+      forwardIds: forwardIds,
+      forwardTabCounts: forwardTabCounts,
+      reverseIds: reverseIds,
+      lastId: lastId,
+      enterOpened: enterOpened,
+      enterDrawerId: enterDrawerId,
+      spaceOpened: spaceOpened,
+      spaceDrawerId: spaceDrawerId,
+      final: durationMarkState(),
+      hoverSurfaceTabIndex: document.querySelector(".durations-hover-surface").getAttribute("tabindex")
+    });
+  }, 100);
+});
+</script>
+</body>`
+	probePage := strings.Replace(string(indexBytes), "</body>", probeScript, 1)
+	if probePage == string(indexBytes) {
+		t.Fatal("generated Durations activation page has no </body> injection point")
+	}
+	resultJSON := runBrowserBehaviorProbeInDirectory(
+		t, "Durations roving mark controls", siteDirectory, probePage,
+		"--window-size=1280,1000", "--virtual-time-budget=30000",
+	)
+	type markState struct {
+		IDs           []string `json:"ids"`
+		Roles         []string `json:"roles"`
+		Labels        []string `json:"labels"`
+		TabbableCount int      `json:"tabbableCount"`
+		SkippedCount  int      `json:"skippedCount"`
+		FocusedID     string   `json:"focusedId"`
+	}
+	var result struct {
+		Href                 string    `json:"href"`
+		Initial              markState `json:"initial"`
+		ForwardIDs           []string  `json:"forwardIds"`
+		ForwardTabCounts     []int     `json:"forwardTabCounts"`
+		ReverseIDs           []string  `json:"reverseIds"`
+		LastID               string    `json:"lastId"`
+		EnterOpened          bool      `json:"enterOpened"`
+		EnterDrawerID        string    `json:"enterDrawerId"`
+		SpaceOpened          bool      `json:"spaceOpened"`
+		SpaceDrawerID        string    `json:"spaceDrawerId"`
+		Final                markState `json:"final"`
+		HoverSurfaceTabIndex *string   `json:"hoverSurfaceTabIndex"`
+	}
+	if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
+		t.Fatalf("decode Durations roving probe: %v\n%s", decodeError, resultJSON)
+	}
+	if !strings.HasSuffix(result.Href, "/"+browserProbePageFileName) {
+		t.Fatalf("Durations roving probe measured %q, not its probe page", result.Href)
+	}
+	markCount := len(result.Initial.IDs)
+	if markCount < 7 {
+		t.Fatalf("Durations roving fixture rendered %d marks, want at least seven", markCount)
+	}
+	if result.Initial.TabbableCount != 1 || result.Initial.SkippedCount != markCount-1 || result.HoverSurfaceTabIndex != nil {
+		t.Errorf("initial Tab stops: marks 0/-1=%d/%d of %d, hover tabindex=%v; want 1/%d and no overlay stop",
+			result.Initial.TabbableCount, result.Initial.SkippedCount, markCount,
+			result.HoverSurfaceTabIndex, markCount-1)
+	}
+	for markIndex := range result.Initial.IDs {
+		if result.Initial.IDs[markIndex] == "" || result.Initial.Roles[markIndex] != "button" ||
+			!strings.Contains(result.Initial.Labels[markIndex], result.Initial.IDs[markIndex]) {
+			t.Errorf("mark %d semantics id/role/label = %q/%q/%q", markIndex,
+				result.Initial.IDs[markIndex], result.Initial.Roles[markIndex], result.Initial.Labels[markIndex])
+		}
+	}
+	if !reflect.DeepEqual(result.ForwardIDs, result.Initial.IDs) {
+		t.Errorf("ArrowRight walk = %q, want every projected mark in DOM order %q", result.ForwardIDs, result.Initial.IDs)
+	}
+	wantReverseIDs := append([]string(nil), result.Initial.IDs...)
+	for leftIndex, rightIndex := 0, len(wantReverseIDs)-1; leftIndex < rightIndex; leftIndex, rightIndex = leftIndex+1, rightIndex-1 {
+		wantReverseIDs[leftIndex], wantReverseIDs[rightIndex] = wantReverseIDs[rightIndex], wantReverseIDs[leftIndex]
+	}
+	if !reflect.DeepEqual(result.ReverseIDs, wantReverseIDs) {
+		t.Errorf("ArrowLeft walk = %q, want reverse projected order %q", result.ReverseIDs, wantReverseIDs)
+	}
+	for stepIndex, tabStopCount := range result.ForwardTabCounts {
+		if tabStopCount != 1 {
+			t.Errorf("ArrowRight step %d left %d tabbable marks, want one", stepIndex, tabStopCount)
+		}
+	}
+	if !result.EnterOpened || result.EnterDrawerID != result.LastID ||
+		!result.SpaceOpened || result.SpaceDrawerID != result.LastID {
+		t.Errorf("activation at %q: Enter open/id=%v/%q, Space open/id=%v/%q",
+			result.LastID, result.EnterOpened, result.EnterDrawerID, result.SpaceOpened, result.SpaceDrawerID)
+	}
+	if result.Final.FocusedID != result.Initial.IDs[0] || result.Final.TabbableCount != 1 {
+		t.Errorf("reverse walk ended focused/tabbable=%q/%d, want first mark %q and one stop",
+			result.Final.FocusedID, result.Final.TabbableCount, result.Initial.IDs[0])
+	}
+}
+
+// The pointer trial uses Chromium's real input path. It aims through the transparent
+// overlay at a busy-day circle whose REQ-349 jitter position names a different REQ
+// than the old completion-time position would. That mutation guard keeps "the drawer
+// opened" from passing when click targeting quietly drifts away from rendered marks.
+func TestBrowserBehaviorDurationsTrustedClickOpensJitteredMark(t *testing.T) {
+	siteDirectory := generateDurationsMarkActivationSite(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read Durations trusted-click fixture: %v", readError)
+	}
+	session := startTrustedInputBrowserSession(
+		t, "Durations trusted jittered mark click", siteDirectory, string(indexBytes),
+		"--window-size=1280,1000",
+	)
+	session.evaluateInPage(t, `(function () {
+  document.querySelector('[data-view-target="durations"]').click();
+  document.querySelector('[data-durations-window="all"]').click();
+  window.__durationTrustedClickTarget = "";
+  document.addEventListener("click", function (event) {
+    window.__durationTrustedClickTarget = event.target.getAttribute("class") || event.target.tagName;
+  }, true);
+  return true;
+})()`)
+	session.waitForPageCondition(t, "the all-history Durations marks to render",
+		`document.querySelectorAll("#durations-chart circle.durations-mark").length >= 7`)
+	session.evaluateInPage(t, `(document.querySelector('[data-durations-window="all"]').focus(), true)`)
+	enteredChart := false
+	trustedTabCount := 0
+	for trustedTabCount = 1; trustedTabCount <= 20; trustedTabCount++ {
+		for _, eventType := range []string{"keyDown", "keyUp"} {
+			session.callDevToolsMethod(t, "Input.dispatchKeyEvent", map[string]any{
+				"type":                  eventType,
+				"key":                   "Tab",
+				"code":                  "Tab",
+				"windowsVirtualKeyCode": 9,
+				"nativeVirtualKeyCode":  9,
+			}, true)
+		}
+		session.decodeResult(t, "whether trusted Tab entered the Durations chart",
+			session.evaluateInPage(t,
+				`document.getElementById("durations-chart").contains(document.activeElement)`),
+			&enteredChart)
+		if enteredChart {
 			break
 		}
 	}
-	if sameEverywhere {
-		t.Error("placement produced identical geometry at two different letter-spacings — " +
-			"that is what a fixed width model does, and it is the defect REQ-292 removed")
+	if !enteredChart {
+		t.Fatalf("twenty trusted Tab presses after the Durations window controls never entered the chart")
+	}
+	type tabEntry struct {
+		ActiveTagName     string `json:"activeTagName"`
+		ActiveClassName   string `json:"activeClassName"`
+		ActiveRequestID   string `json:"activeRequestId"`
+		ActiveIsRootSVG   bool   `json:"activeIsRootSvg"`
+		TabbableMarkCount int    `json:"tabbableMarkCount"`
+	}
+	var entry tabEntry
+	session.decodeResult(t, "Durations trusted Tab entry", session.evaluateInPage(t, `({
+  activeTagName: document.activeElement.tagName,
+  activeClassName: document.activeElement.getAttribute("class") || "",
+  activeRequestId: document.activeElement.getAttribute("data-detail-id") || "",
+  activeIsRootSvg: document.activeElement === document.querySelector("#durations-chart svg"),
+  tabbableMarkCount: document.querySelectorAll('#durations-chart circle.durations-mark[tabindex="0"]').length
+})`), &entry)
+	if entry.ActiveIsRootSVG || entry.ActiveTagName != "circle" ||
+		entry.ActiveClassName == "" || entry.ActiveRequestID == "" || entry.TabbableMarkCount != 1 {
+		t.Errorf("the first Durations chart stop after %d trusted Tabs from the window controls was <%s class=%q request=%q> (root SVG=%v) with %d roving stops; want the sole circle button, never an inert SVG stop",
+			trustedTabCount,
+			entry.ActiveTagName, entry.ActiveClassName, entry.ActiveRequestID,
+			entry.ActiveIsRootSVG, entry.TabbableMarkCount)
+	}
+
+	type clickAim struct {
+		RequestID    string  `json:"requestId"`
+		RawNearestID string  `json:"rawNearestId"`
+		JitteredX    float64 `json:"jitteredX"`
+		RawX         float64 `json:"rawX"`
+		ViewportX    float64 `json:"viewportX"`
+		ViewportY    float64 `json:"viewportY"`
+	}
+	var aim clickAim
+	session.decodeResult(t, "Durations trusted-click aim", session.evaluateInPage(t, `(function () {
+  var samples = window.queueKanbanBoardData.durations.samples;
+  var targetIndex = samples.findIndex(function (sample) { return sample.id === "REQ-500"; });
+  var marks = Array.from(document.querySelectorAll("#durations-chart circle.durations-mark"));
+  var target = marks[targetIndex];
+  target.scrollIntoView({block: "center", inline: "center"});
+  var firstSampleMs = Date.parse(samples[0].completionTime);
+  var lastSampleMs = Date.parse(samples[samples.length - 1].completionTime);
+  var dayMs = 86400000;
+  var timeStart = Math.floor(firstSampleMs / dayMs) * dayMs;
+  var timeEnd = Math.floor(lastSampleMs / dayMs) * dayMs + dayMs;
+  var hoverSurface = document.querySelector("#durations-chart .durations-hover-surface");
+  var plotLeft = Number(hoverSurface.getAttribute("x"));
+  var plotWidth = Number(hoverSurface.getAttribute("width"));
+  var rawX = function (sample) {
+    return plotLeft + ((Date.parse(sample.completionTime) - timeStart) / (timeEnd - timeStart)) * plotWidth;
+  };
+  var targetX = Number(target.getAttribute("cx"));
+  var targetY = Number(target.getAttribute("cy"));
+  var rawNearest = samples.reduce(function (nearest, sample, sampleIndex) {
+    var markY = Number(marks[sampleIndex].getAttribute("cy"));
+    var distance = Math.abs(rawX(sample) - targetX) + Math.abs(markY - targetY) * 0.35;
+    return !nearest || distance < nearest.distance ? {id: sample.id, distance: distance} : nearest;
+  }, null);
+  var rect = target.getBoundingClientRect();
+  return {
+    requestId: samples[targetIndex].id,
+    rawNearestId: rawNearest.id,
+    jitteredX: targetX,
+    rawX: rawX(samples[targetIndex]),
+    viewportX: rect.left + rect.width / 2,
+    viewportY: rect.top + rect.height / 2
+  };
+})()`), &aim)
+	if aim.RequestID == "" || aim.RawNearestID == "" || aim.RawNearestID == aim.RequestID ||
+		math.Abs(aim.JitteredX-aim.RawX) < 1 {
+		t.Fatalf("trusted-click fixture is not mutation-sensitive: target=%q raw-nearest=%q jitter/raw x=%.2f/%.2f",
+			aim.RequestID, aim.RawNearestID, aim.JitteredX, aim.RawX)
+	}
+	session.dispatchTrustedMouseEvent(t, "mouseMoved", aim.ViewportX, aim.ViewportY, "none", 0)
+	hoverReadoutArrived := session.pageConditionHoldsWithin(t, "the jittered Durations hover readout",
+		`document.getElementById("durations-readout").textContent.indexOf("`+aim.RequestID+` ·") === 0`,
+		browserProbeGestureSettleDeadline)
+	var hoverReadout string
+	session.decodeResult(t, "Durations trusted-hover outcome", session.evaluateInPage(t,
+		`document.getElementById("durations-readout").textContent`), &hoverReadout)
+	session.pressTrustedMouseAt(t, aim.ViewportX, aim.ViewportY)
+	session.releaseTrustedMouseAt(t, aim.ViewportX, aim.ViewportY)
+	drawerOpened := session.pageConditionHoldsWithin(t, "the clicked Durations mark drawer to open",
+		`document.getElementById("detail-drawer").hidden === false`, browserProbeGestureSettleDeadline)
+	var outcome struct {
+		ClickTarget string `json:"clickTarget"`
+		DrawerID    string `json:"drawerId"`
+	}
+	session.decodeResult(t, "Durations trusted-click outcome", session.evaluateInPage(t, `({
+  clickTarget: window.__durationTrustedClickTarget,
+  drawerId: document.getElementById("detail-id").textContent.trim()
+})`), &outcome)
+	if !hoverReadoutArrived || !strings.HasPrefix(hoverReadout, aim.RequestID+" ·") {
+		t.Errorf("trusted hover at jittered %s read %q; raw targeting would choose %s",
+			aim.RequestID, hoverReadout, aim.RawNearestID)
+	}
+	if !drawerOpened {
+		t.Errorf("trusted click at jittered %s did not open the detail drawer (target %q, shown %q)",
+			aim.RequestID, outcome.ClickTarget, outcome.DrawerID)
+	}
+	if outcome.ClickTarget != "durations-hover-surface" {
+		t.Errorf("trusted click landed on %q, want the overlay that owns nearest-mark targeting", outcome.ClickTarget)
+	}
+	if outcome.DrawerID != aim.RequestID {
+		t.Errorf("trusted click at jittered %s opened %q; raw targeting would choose %s",
+			aim.RequestID, outcome.DrawerID, aim.RawNearestID)
 	}
 }
 
-// runDurationsPlacementProbeWithFaceOverride runs the same probe with extra CSS
-// appended, so a test can widen the drawn text without needing a second font
-// installed on the machine. letter-spacing is used rather than a font swap
-// because it changes the MEASURED width by a controlled amount on any engine.
-func runDurationsPlacementProbeWithFaceOverride(t *testing.T, overflowSpec string, letterSpacing string) durationsProbeResult {
-	t.Helper()
-	original := durationsProbeExtraStyle
-	durationsProbeExtraStyle = ".durations-mark-label { letter-spacing: " + letterSpacing + "; }"
-	defer func() { durationsProbeExtraStyle = original }()
-	return runDurationsPlacementProbe(t, overflowSpec, "")
+func durationsHeadlineBrowserFixtureTickets() []*RequestTicket {
+	eligibleDays := []struct {
+		completed time.Time
+		minutes   time.Duration
+	}{
+		{completed: time.Date(2026, 7, 1, 10, 0, 0, 0, time.UTC), minutes: 10 * time.Minute},
+		{completed: time.Date(2026, 7, 2, 10, 0, 0, 0, time.UTC), minutes: 70 * time.Minute},
+		{completed: time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC), minutes: 20 * time.Minute},
+		{completed: time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC), minutes: 60 * time.Minute},
+		{completed: time.Date(2026, 7, 11, 10, 0, 0, 0, time.UTC), minutes: 30 * time.Minute},
+		{completed: time.Date(2026, 8, 1, 10, 0, 0, 0, time.UTC), minutes: 50 * time.Minute},
+		{completed: time.Date(2026, 8, 10, 10, 0, 0, 0, time.UTC), minutes: 40 * time.Minute},
+		{completed: time.Date(2026, 9, 20, 10, 0, 0, 0, time.UTC), minutes: 80 * time.Minute},
+	}
+	tickets := make([]*RequestTicket, 0, len(eligibleDays)+9)
+	for dayIndex, eligibleDay := range eligibleDays {
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", 880+dayIndex), "B",
+			eligibleDay.completed.Add(-eligibleDay.minutes).Format(time.RFC3339),
+			eligibleDay.completed.Format(time.RFC3339),
+		))
+	}
+	for pausedIndex := 0; pausedIndex < 5; pausedIndex++ {
+		completed := time.Date(2026, 7, 7, 10+pausedIndex, 0, 0, 0, time.UTC)
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", 900+pausedIndex), "C",
+			completed.Add(-8*time.Hour).Format(time.RFC3339), completed.Format(time.RFC3339),
+		))
+	}
+	// Four all-history-only paused spans make every headline tile visibly change
+	// between 90 days and all history, including p90 and the rounded cadence.
+	for oldIndex, oldMinutes := range []time.Duration{10 * time.Hour, 11 * time.Hour, 12 * time.Hour, 15 * time.Hour} {
+		completed := time.Date(2026, time.Month(4+oldIndex/2), 1+oldIndex%2, 10, 0, 0, 0, time.UTC)
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", 920+oldIndex), "A",
+			completed.Add(-oldMinutes).Format(time.RFC3339), completed.Format(time.RFC3339),
+		))
+	}
+	return tickets
 }
 
-// durationsProbeExtraStyle is appended to the probe page's stylesheet. Empty for
-// every probe except the face-response one above.
-var durationsProbeExtraStyle = ""
+// The complete generated board proves the headline and rolling surfaces in the
+// browser. Every measurement returns location.href in the same result, measures
+// the rolling ink against the transparent SVG's real body background, and checks
+// the responsive stat grid at the three maintained viewport widths.
+func TestBrowserBehaviorDurationsHeadlineAndRollingSeries(t *testing.T) {
+	fixtureBoard := &Board{
+		GeneratedAt: time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC),
+		ProjectName: "REQ-352 Durations headline probe",
+		AllRequests: durationsHeadlineBrowserFixtureTickets(),
+	}
+	siteDirectory := t.TempDir()
+	if generateError := generateStaticSite(siteDirectory, fixtureBoard); generateError != nil {
+		t.Fatalf("generate headline fixture board: %v", generateError)
+	}
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read headline fixture index: %v", readError)
+	}
 
-type durationsDensePanelProbeResult struct {
-	LocationHref        string  `json:"locationHref"`
-	RenderedSampleCount int     `json:"renderedSampleCount"`
-	PayloadSampleCount  int     `json:"payloadSampleCount"`
-	ActiveDayCount      int     `json:"activeDayCount"`
-	DaySlotWidth        float64 `json:"daySlotWidth"`
-	BusyDaySpread       float64 `json:"busyDaySpread"`
-	Deterministic       bool    `json:"deterministic"`
-	EveryMarkInOwnDay   bool    `json:"everyMarkInOwnDay"`
-	HoveredRequestId    string  `json:"hoveredRequestId"`
-	HoverReadout        string  `json:"hoverReadout"`
-	RibbonFiniteBounded bool    `json:"ribbonFiniteBounded"`
-	MedianFiniteBounded bool    `json:"medianFiniteBounded"`
-	RibbonOpacity       float64 `json:"ribbonOpacity"`
-	MarkOpacity         float64 `json:"markOpacity"`
-	BodyBackground      string  `json:"bodyBackground"`
+	probePage := strings.Replace(string(indexBytes), "<head>", `<head><script>
+window.__durationsProbeErrors = [];
+window.addEventListener("error", function (event) { window.__durationsProbeErrors.push(String(event.message)); });
+(function () {
+  var originalConsoleError = console.error;
+  console.error = function () {
+    window.__durationsProbeErrors.push(Array.prototype.join.call(arguments, " "));
+    originalConsoleError.apply(console, arguments);
+  };
+})();
+</script>`, 1)
+	probeScript := `
+  (function () {
+  viewState.view = "durations";
+  applyView();
+
+  function statValues() {
+    return ["median", "p90", "active-days", "reqs-per-day"].map(function (statName) {
+      return document.getElementById("durations-stat-" + statName).textContent;
+    });
+  }
+  var windowStats = ["30", "90", "all"].map(function (windowName) {
+    applyDurationsWindowSelection(windowName);
+    return statValues();
+  });
+
+  var definitionList = document.getElementById("durations-stats");
+  var statTiles = Array.from(definitionList.children);
+  var statTileRects = statTiles.map(function (tile) { return tile.getBoundingClientRect(); });
+  var statRowCount = new Set(statTileRects.map(function (rect) { return rect.top.toFixed(2); })).size;
+  var statTilesOverlap = statTileRects.some(function (first, firstIndex) {
+    return statTileRects.some(function (second, secondIndex) {
+      return secondIndex > firstIndex && first.left < second.right && second.left < first.right &&
+        first.top < second.bottom && second.top < first.bottom;
+    });
+  });
+  var chartRect = document.getElementById("durations-chart").getBoundingClientRect();
+  var statsRect = definitionList.getBoundingClientRect();
+
+  var rollingPath = document.querySelector("#durations-chart .durations-rolling-line");
+  var rollingMarkers = Array.from(document.querySelectorAll("#durations-chart .durations-rolling-marker"));
+  var rollingBox = rollingPath ? rollingPath.getBBox() : { x: NaN, y: NaN, width: NaN, height: NaN };
+  var rollingFinite = !!rollingPath && !!rollingPath.getAttribute("d") &&
+    !/NaN|Infinity/.test(rollingPath.getAttribute("d")) &&
+    [rollingBox.x, rollingBox.y, rollingBox.width, rollingBox.height, rollingPath.getTotalLength()].every(Number.isFinite) &&
+    rollingPath.getTotalLength() > 0;
+
+  function rgbChannels(colour) {
+    return (colour.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+  }
+  function relativeLuminance(colour) {
+    return rgbChannels(colour).map(function (channel) {
+      var normalized = channel / 255;
+      return normalized <= 0.03928 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4);
+    }).reduce(function (sum, channel, index) {
+      return sum + channel * [0.2126, 0.7152, 0.0722][index];
+    }, 0);
+  }
+  function contrastRatio(first, second) {
+    var firstLuminance = relativeLuminance(first);
+    var secondLuminance = relativeLuminance(second);
+    return (Math.max(firstLuminance, secondLuminance) + 0.05) /
+      (Math.min(firstLuminance, secondLuminance) + 0.05);
+  }
+  var bodyBackground = getComputedStyle(document.body).backgroundColor;
+  var rollingStyle = rollingPath ? getComputedStyle(rollingPath) : { stroke: "rgb(0, 0, 0)" };
+  var markerStyle = rollingMarkers.length ? getComputedStyle(rollingMarkers[0]) : { fill: "rgb(0, 0, 0)" };
+
+  var countTicks = Array.from(document.querySelectorAll('[data-durations-count-tick="true"]'));
+  var countTickRects = countTicks.map(function (tick) { return tick.getBoundingClientRect(); });
+  var countTicksSeparate = countTickRects.every(function (first, firstIndex) {
+    return countTickRects.every(function (second, secondIndex) {
+      return secondIndex <= firstIndex || first.bottom <= second.top || second.bottom <= first.top;
+    });
+  });
+
+  var ninetyDayButton = document.querySelector('[data-durations-window="90"]');
+  ninetyDayButton.focus();
+  document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
+    locationHref: location.href,
+    viewportWidth: innerWidth,
+    windowStats: windowStats,
+    statItemCount: statTiles.length,
+    definitionTermCount: definitionList.querySelectorAll("dt").length,
+    definitionValueCount: definitionList.querySelectorAll("dd").length,
+    definitionListTag: definitionList.tagName,
+    definitionListTabStop: definitionList.tabIndex >= 0 || !!definitionList.querySelector("[tabindex]"),
+    nativeWindowButton: ninetyDayButton.tagName === "BUTTON",
+    windowButtonFocused: document.activeElement === ninetyDayButton,
+    statRowCount: statRowCount,
+    statsClearChart: statsRect.bottom <= chartRect.top,
+    statTilesOverlap: statTilesOverlap,
+    rollingFinite: rollingFinite,
+    rollingMarkerCount: rollingMarkers.length,
+    rollingLineContrast: contrastRatio(rollingStyle.stroke, bodyBackground),
+    rollingMarkContrast: contrastRatio(markerStyle.fill, bodyBackground),
+    bodyBackground: bodyBackground,
+    countTicksSeparate: countTicksSeparate,
+    countTickTexts: countTicks.map(function (tick) { return tick.textContent; }),
+    consoleErrors: window.__durationsProbeErrors
+  });
+  })();
+`
+	clientClose := strings.LastIndex(probePage, "})();")
+	if clientClose < 0 {
+		t.Fatal("generated page has no client IIFE close for headline probe")
+	}
+	clientScriptStart := strings.LastIndex(probePage[:clientClose], "<script>")
+	if clientScriptStart < 0 {
+		t.Fatal("generated page has no inline client script for headline probe")
+	}
+	resultNode := `<pre id="` + browserProbeResultElementId + `" hidden></pre>`
+	probePage = probePage[:clientScriptStart] + resultNode + probePage[clientScriptStart:]
+	clientClose += len(resultNode)
+	probePage = probePage[:clientClose] + probeScript + probePage[clientClose:]
+
+	probeCases := []struct {
+		name           string
+		width          int
+		colourFlag     string
+		wantStatRowsAt int
+	}{
+		{name: "320-light", width: 320, colourFlag: "--force-light-mode", wantStatRowsAt: 2},
+		{name: "768-light", width: 768, colourFlag: "--force-light-mode", wantStatRowsAt: 2},
+		{name: "1280-light", width: 1280, colourFlag: "--force-light-mode", wantStatRowsAt: 1},
+		{name: "1280-dark", width: 1280, colourFlag: "--blink-settings=preferredColorScheme=2", wantStatRowsAt: 1},
+	}
+	for _, probeCase := range probeCases {
+		probeCase := probeCase
+		t.Run(probeCase.name, func(t *testing.T) {
+			resultJSON := runBrowserBehaviorProbeInDirectory(
+				t, "REQ-352 headline "+probeCase.name, siteDirectory, probePage,
+				"--headless=new", fmt.Sprintf("--window-size=%d,1100", probeCase.width), probeCase.colourFlag,
+			)
+			var result durationsHeadlineBrowserProbeResult
+			if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
+				t.Fatalf("decode headline browser result: %v\n%s", decodeError, resultJSON)
+			}
+			if result.LocationHref == "" || !strings.Contains(result.LocationHref, browserProbePageFileName) {
+				t.Errorf("probe measured unnamed page %q", result.LocationHref)
+			}
+			if result.StatItemCount != 4 || result.DefinitionTermCount != 4 || result.DefinitionValueCount != 4 || result.DefinitionListTag != "DL" {
+				t.Errorf("semantic stats = tag %q, items/terms/values %d/%d/%d; want DL 4/4/4",
+					result.DefinitionListTag, result.StatItemCount, result.DefinitionTermCount, result.DefinitionValueCount)
+			}
+			if result.DefinitionListTabStop || !result.NativeWindowButton || !result.WindowButtonFocused {
+				t.Errorf("keyboard semantics = dl tab stop %v, native button %v, focus %v",
+					result.DefinitionListTabStop, result.NativeWindowButton, result.WindowButtonFocused)
+			}
+			if result.StatTilesOverlap || !result.StatsClearChart {
+				t.Errorf("stat layout overlaps: tiles=%v chart=%v", result.StatTilesOverlap, !result.StatsClearChart)
+			}
+			if probeCase.wantStatRowsAt == 1 && result.StatRowCount != 1 {
+				t.Errorf("%dpx viewport made %d stat rows, want one", probeCase.width, result.StatRowCount)
+			}
+			if probeCase.wantStatRowsAt > 1 && result.StatRowCount < probeCase.wantStatRowsAt {
+				t.Errorf("%dpx viewport made %d stat rows, want at least %d", probeCase.width, result.StatRowCount, probeCase.wantStatRowsAt)
+			}
+			if len(result.WindowStats) != 3 {
+				t.Fatalf("window update captured %d states, want 30/90/all", len(result.WindowStats))
+			}
+			for statIndex := 0; statIndex < 4; statIndex++ {
+				distinctValues := map[string]bool{}
+				for _, windowStats := range result.WindowStats {
+					if len(windowStats) != 4 {
+						t.Fatalf("window stats = %#v, want four values", result.WindowStats)
+					}
+					distinctValues[windowStats[statIndex]] = true
+				}
+				if len(distinctValues) != 3 {
+					t.Errorf("headline stat %d did not change across 30/90/all: %#v", statIndex, result.WindowStats)
+				}
+			}
+			if !result.RollingFinite || result.RollingMarkerCount != 2 {
+				t.Errorf("rolling geometry finite=%v markers=%d, want a finite line and two points",
+					result.RollingFinite, result.RollingMarkerCount)
+			}
+			if result.RollingLineContrast < 3 || result.RollingMarkContrast < 3 || result.BodyBackground == "" {
+				t.Errorf("rolling contrast line/marker %.2f/%.2f against body %q, want both >= 3:1",
+					result.RollingLineContrast, result.RollingMarkContrast, result.BodyBackground)
+			}
+			if !result.CountTicksSeparate || !reflect.DeepEqual(result.CountTickTexts, []string{"5", "2.5", "0"}) {
+				t.Errorf("Panel C ticks separate=%v texts=%q, want separated 5/2.5/0", result.CountTicksSeparate, result.CountTickTexts)
+			}
+			if len(result.ConsoleErrors) != 0 {
+				t.Errorf("browser console errors: %q", result.ConsoleErrors)
+			}
+			t.Logf("%s %.0fpx: stats rows %d, rolling contrast %.2f/%.2f against %s",
+				result.LocationHref, result.ViewportWidth, result.StatRowCount,
+				result.RollingLineContrast, result.RollingMarkContrast, result.BodyBackground)
+		})
+	}
 }
 
 // REQ-349's target board is materially denser than this repository. This probe
@@ -568,6 +1033,11 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
 		for sampleIndex := 0; sampleIndex < samplesPerDay; sampleIndex++ {
 			completedAt := dayStart.Add(time.Duration(8*60+sampleIndex*37) * time.Minute)
 			minutes := time.Duration(2+(sampleIndex*7)%57) * time.Minute
+			if sampleIndex < 2 {
+				// Ninety-four positive overflow samples force the complete list well
+				// past one viewport. Equal values also exercise its REQ-id tie-break.
+				minutes = time.Duration(90+(activeDayIndex%5)*15) * time.Minute
+			}
 			ticket := durationTicket(
 				fmt.Sprintf("REQ-%04d", activeDayIndex*samplesPerDay+sampleIndex+1),
 				[]string{"A", "B", "C"}[sampleIndex%3],
@@ -576,6 +1046,7 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
 			)
 			ticket.UserRequestId = fmt.Sprintf("UR-%03d", activeDayIndex+1)
 			ticket.Domain = []string{"frontend", "backend", "testing"}[sampleIndex%3]
+			ticket.Title = fmt.Sprintf("Dense sample %d with a wrapping title", activeDayIndex*samplesPerDay+sampleIndex+1)
 			fixtureTickets = append(fixtureTickets, ticket)
 		}
 	}
@@ -596,6 +1067,9 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
 
 	probeScript := `
   (function () {
+  var resultNode = document.createElement("pre");
+  resultNode.id = "` + browserProbeResultElementId + `";
+  document.body.appendChild(resultNode);
   var durationsPanel = document.getElementById("view-durations");
   durationsPanel.hidden = false;
   durationsPanel.style.display = "block";
@@ -654,6 +1128,50 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
     clientY: bounds.top + hoveredMark.y * bounds.height / DURATIONS_VIEW_HEIGHT
   }));
   var hoveredRequestId = samples[hoverMarkIndex].id;
+  var hoverReadout = document.getElementById("durations-readout").textContent;
+
+  var expectedLongestSpans = samples.filter(function (sample) {
+    return sample.wallMinutes > DURATIONS_CEILING_MINUTES;
+  }).sort(function (first, second) {
+    if (first.wallMinutes !== second.wallMinutes) { return second.wallMinutes - first.wallMinutes; }
+    if (first.id !== second.id) { return first.id < second.id ? -1 : 1; }
+    return first.completionTime < second.completionTime ? -1 : 1;
+  });
+  var longestSpanRows = Array.from(document.querySelectorAll("#durations-longest-list > li"));
+  var longestSpanOrder = longestSpanRows.every(function (row, rowIndex) {
+    return expectedLongestSpans[rowIndex] && row.getAttribute("data-request-id") === expectedLongestSpans[rowIndex].id &&
+      Number(row.getAttribute("data-wall-minutes")) === expectedLongestSpans[rowIndex].wallMinutes;
+  });
+  var everyListField = longestSpanRows.every(function (row, rowIndex) {
+    var sample = expectedLongestSpans[rowIndex];
+    var request = boardData.requests[sample.id];
+    return row.querySelector(".durations-longest-spans-request").textContent === sample.id &&
+      row.querySelector(".durations-longest-spans-user-request").textContent === request.userRequestId &&
+      row.querySelector(".durations-longest-spans-duration").textContent === formatDurationMinutes(sample.wallMinutes) &&
+      row.querySelector(".durations-longest-spans-route").textContent === durationRouteName(sample.route) &&
+      row.querySelector(".durations-longest-spans-title").textContent === request.title;
+  });
+  var overflowSample = expectedLongestSpans[0];
+  var overflowSampleIndex = samples.indexOf(overflowSample);
+  var overflowMark = secondMarks[overflowSampleIndex];
+  hoverSurface.dispatchEvent(new MouseEvent("mousemove", {
+    bubbles: true,
+    clientX: bounds.left + overflowMark.x * bounds.width / DURATIONS_VIEW_WIDTH,
+    clientY: bounds.top + overflowMark.y * bounds.height / DURATIONS_VIEW_HEIGHT
+  }));
+  var overflowHoverReadout = document.getElementById("durations-readout").textContent;
+  var chart = document.getElementById("durations-chart");
+  var list = document.getElementById("durations-longest-list");
+  var aside = list.closest(".durations-longest-spans");
+  var wrapper = chart.parentElement;
+  var svgRequestLabels = Array.from(svg.querySelectorAll("text")).filter(function (textNode) {
+    return /^REQ-[0-9]+(?:\s|$)/.test(textNode.textContent);
+  });
+  var svgMoreSentences = Array.from(svg.querySelectorAll("text")).filter(function (textNode) {
+    return /^\+[0-9]+ more\b/.test(textNode.textContent);
+  });
+  var wrapperBounds = wrapper.getBoundingClientRect();
+  var asideBounds = aside.getBoundingClientRect();
 
   document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
     locationHref: location.href,
@@ -665,37 +1183,62 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
     deterministic: deterministic,
     everyMarkInOwnDay: everyMarkInOwnDay,
     hoveredRequestId: hoveredRequestId,
-    hoverReadout: document.getElementById("durations-readout").textContent,
+    hoverReadout: hoverReadout,
     ribbonFiniteBounded: finiteBounded(ribbon),
     medianFiniteBounded: finiteBounded(median),
     ribbonOpacity: ribbon ? Number(getComputedStyle(ribbon).opacity) : 0,
     markOpacity: Number(getComputedStyle(document.querySelector("#durations-chart circle.durations-mark:not(.durations-mark-critical):not(.durations-mark-unknown)")).opacity),
-    bodyBackground: getComputedStyle(document.body).backgroundColor
+    bodyBackground: getComputedStyle(document.body).backgroundColor,
+    longestSpanCount: longestSpanRows.length,
+    expectedSpanCount: expectedLongestSpans.length,
+    longestSpanOrder: longestSpanOrder,
+    everyListField: everyListField,
+    countSentence: document.getElementById("durations-longest-count").textContent,
+    listOutsideSvg: !svg.contains(list),
+    sharedWrapper: wrapper === aside.parentElement,
+    svgRequestLabels: svgRequestLabels.length,
+    svgLeaderLines: svg.querySelectorAll(".durations-label-leader").length,
+    svgMoreSentences: svgMoreSentences.length,
+    overflowHoverId: overflowSample.id,
+    overflowHoverDuration: formatDurationMinutes(overflowSample.wallMinutes),
+    overflowHoverReadout: overflowHoverReadout,
+    viewportWidth: window.innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    wrapperRight: wrapperBounds.right,
+    asideRight: asideBounds.right,
+    wrapperColumns: getComputedStyle(wrapper).gridTemplateColumns,
+    asideOverflowY: getComputedStyle(aside).overflowY
   });
   })();
 `
 	// The generated client is one IIFE, so the probe has to run before its final
 	// close to exercise the private renderer and payload rather than a copied
 	// helper. The result node itself remains ordinary HTML outside the script.
-	probePage := strings.Replace(string(indexBytes), "</body>",
-		`<pre id="`+browserProbeResultElementId+`"></pre></body>`, 1)
+	probePage := string(indexBytes)
 	clientClose := strings.LastIndex(probePage, "})();")
 	if clientClose < 0 {
 		t.Fatal("generated page has no client IIFE close for dense durations probe")
 	}
 	probePage = probePage[:clientClose] + probeScript + probePage[clientClose:]
 
-	for _, colourScheme := range []struct {
-		name string
-		flag string
+	for _, viewport := range []struct {
+		name          string
+		colourFlag    string
+		width         int
+		stackedLayout bool
 	}{
-		{name: "light", flag: "--force-light-mode"},
-		{name: "dark", flag: "--force-dark-mode"},
+		{name: "light-320", colourFlag: "--force-light-mode", width: 320, stackedLayout: true},
+		{name: "dark-320", colourFlag: "--force-dark-mode", width: 320, stackedLayout: true},
+		{name: "light-768", colourFlag: "--force-light-mode", width: 768, stackedLayout: true},
+		{name: "dark-768", colourFlag: "--force-dark-mode", width: 768, stackedLayout: true},
+		{name: "light-1280", colourFlag: "--force-light-mode", width: 1280},
+		{name: "dark-1280", colourFlag: "--force-dark-mode", width: 1280},
 	} {
-		colourScheme := colourScheme
-		t.Run(colourScheme.name, func(t *testing.T) {
+		viewport := viewport
+		t.Run(viewport.name, func(t *testing.T) {
 			resultJSON := runBrowserBehaviorProbeInDirectory(
-				t, "REQ-349 dense durations "+colourScheme.name, siteDirectory, probePage, colourScheme.flag,
+				t, "dense durations "+viewport.name, siteDirectory, probePage,
+				fmt.Sprintf("--window-size=%d,1200", viewport.width), viewport.colourFlag,
 			)
 			var result durationsDensePanelProbeResult
 			if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
@@ -735,10 +1278,48 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
 				t.Errorf("probe measured unnamed page %q", result.LocationHref)
 			}
 			if result.BodyBackground == "" || result.BodyBackground == "rgba(0, 0, 0, 0)" {
-				t.Errorf("%s board has no resolved body background: %q", colourScheme.name, result.BodyBackground)
+				t.Errorf("%s board has no resolved body background: %q", viewport.name, result.BodyBackground)
 			}
-			t.Logf("%s %s: %.2f-unit day slots, %.2f-unit busy-day spread, body %s",
-				colourScheme.name, result.LocationHref, result.DaySlotWidth, result.BusyDaySpread, result.BodyBackground)
+			if result.ExpectedSpanCount < 60 || result.LongestSpanCount != result.ExpectedSpanCount {
+				t.Errorf("longest-spans list rendered %d of %d overflow samples; fixture must carry at least 60",
+					result.LongestSpanCount, result.ExpectedSpanCount)
+			}
+			if !result.LongestSpanOrder || !result.EveryListField {
+				t.Errorf("complete list order=%v fields=%v; want descending/tied order with all five fields",
+					result.LongestSpanOrder, result.EveryListField)
+			}
+			wantCountSentence := fmt.Sprintf("%d spans over 60 minutes in this window; all are listed.", result.ExpectedSpanCount)
+			if result.CountSentence != wantCountSentence {
+				t.Errorf("count sentence = %q, want %q", result.CountSentence, wantCountSentence)
+			}
+			if !result.ListOutsideSVG || !result.SharedWrapper {
+				t.Errorf("list outside SVG=%v shared wrapper=%v, want adjacent HTML", result.ListOutsideSVG, result.SharedWrapper)
+			}
+			if result.SVGRequestLabels != 0 || result.SVGLeaderLines != 0 || result.SVGMoreSentences != 0 {
+				t.Errorf("SVG still carries %d REQ labels, %d leaders, and %d +N-more sentences",
+					result.SVGRequestLabels, result.SVGLeaderLines, result.SVGMoreSentences)
+			}
+			if !strings.HasPrefix(result.OverflowHoverReadout, result.OverflowHoverId+" ·") ||
+				!strings.Contains(result.OverflowHoverReadout, " · "+result.OverflowHoverDuration+" ·") {
+				t.Errorf("overflow hover for %s read %q", result.OverflowHoverId, result.OverflowHoverReadout)
+			}
+			if result.AsideOverflowY != "auto" {
+				t.Errorf("longest-spans aside overflow-y = %q, want auto", result.AsideOverflowY)
+			}
+			if result.WrapperRight > result.ViewportWidth+1 || result.AsideRight > result.ViewportWidth+1 {
+				t.Errorf("horizontal clipping at viewport %.0f: document %.0f wrapper-right %.0f aside-right %.0f",
+					result.ViewportWidth, result.DocumentWidth, result.WrapperRight, result.AsideRight)
+			}
+			columnCount := len(strings.Fields(result.WrapperColumns))
+			if viewport.stackedLayout && columnCount != 1 {
+				t.Errorf("%dpx layout has grid columns %q, want one stacked column", viewport.width, result.WrapperColumns)
+			}
+			if !viewport.stackedLayout && columnCount != 2 {
+				t.Errorf("%dpx layout has grid columns %q, want chart plus aside", viewport.width, result.WrapperColumns)
+			}
+			t.Logf("%s %s: viewport %.0f, %d/%d longest spans, columns %s, body %s",
+				viewport.name, result.LocationHref, result.ViewportWidth, result.LongestSpanCount,
+				result.ExpectedSpanCount, result.WrapperColumns, result.BodyBackground)
 		})
 	}
 }

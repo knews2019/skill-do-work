@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 func TestSplitFrontmatter(t *testing.T) {
@@ -451,30 +453,96 @@ func TestFrontmatterQuotingOfUserText(t *testing.T) {
 	}
 }
 
-// TestFrontmatterQuotingBlockScalarCarriesANewline pins the contract's second
-// form. No quoted scalar on one line can carry a newline, and the recovery
-// parser does not recover block scalars at all — so this form exists only while
-// the strict parse succeeds, which is what the estimate assertion checks.
-func TestFrontmatterQuotingBlockScalarCarriesANewline(t *testing.T) {
-	userText := "line one: with a colon\nline two \" with a quote"
-	yamlText := strings.Join([]string{
-		`id: REQ-999`,
-		`status: pending`,
-		`blocked_by: |-`,
-		`  line one: with a colon`,
-		`  line two " with a quote`,
-		`estimate:`,
-		`  p50_active_minutes: 30`,
-	}, "\n")
+// TestFrontmatterQuotingBlockScalarPreservesTerminalNewlines pins all three
+// chomping forms in the Frontmatter Quoting contract. `|-` is correct only when
+// the value has no terminal LF; using it unconditionally silently strips bytes
+// from UR titles, blocked conditions, and any future multiline raw-text field.
+// The nested estimate assertion proves strict YAML parsed the whole record — the
+// salvage parser deliberately cannot recover either block scalars or nested maps.
+func TestFrontmatterQuotingBlockScalarPreservesTerminalNewlines(t *testing.T) {
+	testCases := []struct {
+		name     string
+		userText string
+		scalar   string
+	}{
+		{
+			name:     "no terminal LF uses strip",
+			userText: "line one: with a colon\n\tline two keeps its tab and indentation",
+			scalar:   "blocked_by: |-\n  line one: with a colon\n  \tline two keeps its tab and indentation",
+		},
+		{
+			name:     "one terminal LF uses clip",
+			userText: "line one\n  line two stays indented\n",
+			scalar:   "blocked_by: |\n  line one\n    line two stays indented",
+		},
+		{
+			name:     "multiple terminal LFs use keep",
+			userText: "line one\nline two\n\n",
+			scalar:   "blocked_by: |+\n  line one\n  line two\n  ",
+		},
+	}
 
-	fields, parseError := parseFrontmatterFields(yamlText)
-	if parseError != nil {
-		t.Fatalf("parse: %v", parseError)
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			yamlText := strings.Join([]string{
+				`id: REQ-999`,
+				`status: pending`,
+				testCase.scalar,
+				`estimate:`,
+				`  p50_active_minutes: 30`,
+			}, "\n")
+
+			fields, parseError := parseFrontmatterFields(yamlText)
+			if parseError != nil {
+				t.Fatalf("parse: %v", parseError)
+			}
+			got, isString := fields["blocked_by"].(string)
+			if !isString {
+				t.Fatalf("blocked_by type = %T, want string", fields["blocked_by"])
+			}
+			if got != testCase.userText {
+				t.Fatalf("blocked_by round-trip = %q, want %q\nYAML:\n%s", got, testCase.userText, yamlText)
+			}
+			if fields["estimate"] == nil {
+				t.Fatalf("nested estimate: map is gone — the block fell to the recovery parser, which cannot read block scalars")
+			}
+		})
 	}
-	if got := coerceScalarToString(fields["blocked_by"]); got != userText {
-		t.Fatalf("blocked_by round-trip = %q, want %q", got, userText)
+}
+
+// TestFrontmatterQuotingRejectsNonTextControlsBeforeComposition records why the
+// hand-authored scalar contract has a preflight instead of another escaping
+// table. CR is accepted by YAML as a line break but normalized, while NUL and
+// DEL are rejected by the strict parser. None can satisfy byte-identical raw
+// text, so an action must refuse and report them before composing frontmatter.
+func TestFrontmatterQuotingRejectsNonTextControlsBeforeComposition(t *testing.T) {
+	testCases := []struct {
+		name      string
+		userText  string
+		wantError bool
+	}{
+		{name: "CR is normalized", userText: "left\rright"},
+		{name: "NUL is invalid YAML text", userText: "left\x00right", wantError: true},
+		{name: "DEL is invalid YAML text", userText: "left\x7fright", wantError: true},
 	}
-	if fields["estimate"] == nil {
-		t.Fatalf("nested estimate: map is gone — the block fell to the recovery parser, which cannot read block scalars")
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			yamlText := "blocked_by: '" + testCase.userText + "'\n"
+			strictFields := map[string]any{}
+			parseError := yaml.Unmarshal([]byte(yamlText), &strictFields)
+			if testCase.wantError {
+				if parseError == nil {
+					t.Fatalf("strict YAML unexpectedly accepted %q byte-identically", testCase.userText)
+				}
+				return
+			}
+			if parseError != nil {
+				t.Fatalf("strict YAML parse: %v", parseError)
+			}
+			if got, _ := strictFields["blocked_by"].(string); got == testCase.userText {
+				t.Fatalf("strict YAML unexpectedly preserved forbidden control in %q", testCase.userText)
+			}
+		})
 	}
 }

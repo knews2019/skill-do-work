@@ -2,6 +2,128 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.61 — Calibration Log Matches REQ-361 (2026-08-25)
+
+The board no longer reports a false calibration warning for REQ-361.
+
+- Corrected its stale 165-minute log duration to the 45-minute span recorded in its immutable lifecycle stamps
+
+## 0.236.60 — Timeline Capture Probe Proves Its Dependency (2026-08-24)
+
+Timeline's trusted outside-release probe is falsifiable again under the retained Chromium engine.
+
+- The current host-targeted pointerleave teardown is measured and isolated equally in both paired trials
+- Capture-present release ends through a real captured pointerup, while suppressed capture strands the pan
+- Direct mechanism checks and three independent mutations prevent either side from passing vacuously
+
+## 0.236.59 — Timeline Table Waits for Publication (2026-08-24)
+
+Timeline's grouping probe now waits for the requested table rebuild instead of hoping a 50ms delay was enough.
+
+- A pre-action MutationObserver requires a different nonempty first row before assertions run
+- Fit-all and Day waits cannot pass on stale DOM, and deadline expiry is explicit failure only
+- Sixty builder runs plus twenty merged-main runs passed after reproducing the original race 2/20
+
+## 0.236.58 — UR Copy All Includes Every Grouped REQ (2026-08-24)
+
+UR details can now copy the UR's full source followed by every REQ currently grouped under it.
+
+- Membership comes from the displayed all-tree group across queue, working, and archive
+- Plain Copy remains UR-only, while REQ details keep the bulk control hidden
+- Missing UR or member source fails atomically instead of producing a partial clipboard bundle
+
+## 0.236.57 — Timeline Survives Drawer Resizes (2026-08-24)
+
+Opening or closing the detail drawer no longer leaves Timeline bars scaled for the old plot width and stranded off-screen.
+
+- One positive live-width condition drives direct observer recovery and a headless-safe fallback
+- Axis, row gridlines, and bars retain one shared current scale without changing the selected range
+- Repeated Chromium probes pin narrowed and restored containment while preserving drag cost and zero-size guards
+
+## 0.236.56 — Board Columns Copy in One Click (2026-08-24)
+
+Each flat Board column can now copy every visible REQ's full payload in the order the cards are shown.
+
+- Search, domain, status, and Recently Done windows define the copied set automatically
+- Pending preserves Ready-then-Waiting order, including dependency-gated blocked cards
+- Empty columns disable the control, while copied and failed states reuse the existing feedback path
+
+## 0.236.55 — Blocked Work Waits in Pending (2026-08-24)
+
+A blocked ticket whose prerequisite is unfinished now waits with dependency-gated work instead of occupying the operator's Needs Input inbox.
+
+- Exact blocked-plus-unmet tickets keep their blocked badge and dependency chips in Pending
+- Completing every prerequisite moves the ticket into Needs Input when its external condition becomes actionable
+- Summary, open-work, generated columns, empty states, and shipped guides share the same rule
+
+## 0.236.54 — Declared Write Sets Stay Complete (2026-08-24)
+
+Capture no longer mints a known-incomplete write set when a REQ's own completion proof requires another file class.
+
+- TDD requests name a test file or omit the advisory set honestly
+- The rule follows required file classes generally instead of freezing a test-only checklist
+- Builders flag, proceed through, and report contradictions already present in queued work
+
+## 0.236.53 — Durations UR Geometry Is Pinned (2026-08-24)
+
+The Durations user-request lane now proves its rendered brackets stay inside the plot and clear nearby text.
+
+- Live renderer constants drive plot, width, separation, row, pitch, and unknown-lane checks
+- A crowded fixture exercises all six rows, right-edge clamping, minimum widths, and cross-row packing
+- Five known geometry mutations fail the named Chromium probe without changing production JavaScript
+
+## 0.236.52 — Multi-Path Summaries Stay Visible (2026-08-24)
+
+Hand-formatted Implementation Summaries can no longer hide later files from scope, association, or qualification checks.
+
+- Every closed path pair on a path-led bullet reaches all three shipped validators, including root filenames
+- Malformed lists fail loudly while prose-only code spans remain ignored
+- REQ-344-shaped coverage reports all seven undeclared paths and prescribed qualification is 26/26
+
+## 0.236.51 — Containment Narrowing Becomes Executable (2026-08-24)
+
+Containment rules can no longer be weakened by adding a quiet exception while leaving their broad wording intact.
+
+- Exact captured scope, threshold, advisory, first-line, and checklist narrowings now fail for named reasons
+- Frontmatter fields are derived from schema and checked in discriminated REQ/UR examples across every shipped package
+- Legitimate equivalent universal wording remains editable and green
+
+## 0.236.50 — Outside Text Fails Closed (2026-08-24)
+
+User-supplied text now follows one containment contract across every do-work record writer, so control bytes and YAML edge cases cannot silently change how a record is read.
+
+- C0 and DEL controls other than LF and TAB are refused before any write
+- Literal YAML blocks preserve leading indentation and exact terminal-newline count
+- Five body writers and five hand-authored frontmatter examples actively inherit their canonical rules
+
+## 0.236.49 — Durations Marks Open Their REQs (2026-08-24)
+
+Outliers and ordinary samples are no longer dead ends: every Durations mark now opens the shared REQ drawer by pointer or keyboard.
+
+- Hover and trusted click share the same jitter-aware nearest-mark selection
+- One roving Tab stop reaches the complete sample set without an inert SVG detour
+
+## 0.236.48 — Shell Case Headers Stop at the Script Name (2026-08-24)
+
+The prescribed-shell case counter no longer treats words that merely begin with a script basename as real case headers.
+
+- A token boundary rejects word, digit, and underscore continuations without enumerating valid qualifier separators
+- All 104 existing named cases across 17 files retain their exact per-file counts
+
+## 0.236.47 — Durations Lists Every Long Span (2026-08-24)
+
+Durations replaces its sparse in-chart labels with a complete ranked list of every selected-window span over 60 minutes, including REQ, UR, duration, route, and title.
+
+- The lane, marks, hover behavior, headline statistics, rolling median, cadence ticks, and full sample table remain intact
+- The measured-width model, two-row SVG packer, leader lines, fixed-point remainder reservation, and label-only tests are retired
+
+## 0.236.46 — Durations States Its Headline Numbers (2026-08-24)
+
+Durations now reports the selected window's median, p90, active-day coverage, and REQs per active day above the chart, with explicit population labels.
+
+- Panel B gains a trailing seven-active-day median that skips idle and excluded-only days while retaining real calendar gaps
+- Panel C now labels zero, the exact midpoint, and the peak on one count scale
+
 ## 0.236.45 — Durations Hides Controls It Does Not Use (2026-08-24)
 
 Search, domain, and status filters now disappear while the intentionally unfiltered Durations view is active and restore unchanged when the reader switches away.

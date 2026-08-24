@@ -1,9 +1,11 @@
 ---
 id: REQ-352
 title: "State the Durations view's own headline numbers"
-status: claimed
+status: completed
 claimed_at: 2026-08-24T16:43:37Z
-status_changed_at: 2026-08-24T16:43:37Z
+completed_at: 2026-08-24T17:22:38Z
+commit: a522484997a7c07c1cc5d6875f7be943c7d72c26
+status_changed_at: 2026-08-24T17:22:38Z
 route: B
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
@@ -43,8 +45,8 @@ panel A, a rolling median line on panel B, and the ticks panel C is missing.
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Route B exploration traced the existing projected samples/days and R-7 quantile helper. Add four semantic tiles, a trailing seven-Panel-B-active-day median with a one-point marker case, and exact zero/midpoint Panel C ticks, then pin complete-renderer and live responsive/theme behavior.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** Added window-scoped headline statistics, a trailing seven-active-day median series, exact cadence ticks, semantic markup, responsive styling, and focused renderer/browser lock-ins in the declared five-file scope.
+- [x] **[UNIFY]:** Reviewed the complete five-file merge diff and integration seams; `node --check`, focused Go/browser tests, the full module suite, `go vet`, and canonical maintainer verification passed with no debug artifacts.
 
 ## Why
 
@@ -143,3 +145,49 @@ midpoint ticks; and the summary sentence's exclusion-rule wording is unchanged.
 - `skills/do-work-board/tools/queue-kanban/web/board.css`
 - `skills/do-work-board/tools/queue-kanban/generate_test.go`
 - `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go`
+
+## Implementation Summary
+
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js` (modified): computes window-scoped raw median, p90, active-day coverage, and REQs per active day; draws the trailing seven-eligible-active-day Panel B median; and adds Panel C zero, midpoint, and peak ticks.
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modified): adds the semantic four-item Durations definition list.
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modified): adds responsive stat tiles and rolling-series presentation.
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified): pins headline values, 6/7/8-day rolling boundaries, active-day gaps, draw order, and odd midpoint geometry.
+- `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go` (modified): proves complete generated-board semantics, responsive layout, theme contrast, finite geometry, window transitions, tick separation, and clean console state.
+
+## Decisions
+
+- **D-01 — Headline duration statistics describe every plotted Panel A span.** Median and p90 use signed raw `wallMinutes`, including paused and reversed spans, and the visible label says “all plotted spans.”
+- **D-02 — Cadence uses the projected UTC-day axis.** Active days include excluded-only completion days; the denominator is the complete plotted UTC-day span, and REQs per active day uses every projected sample.
+- **D-03 — Exactly seven eligible Panel B days draw one honest marker.** Six or fewer draw nothing; eight or more add the connecting path, while idle and excluded-only days never enter the window.
+- **D-04 — Share the existing quantile and y-scale rules.** The headline, daily distribution, and rolling series use one R-7 implementation, and high rolling values clip to Panel B's established 45-minute ceiling.
+- **D-05 — Contrast against the real surface.** Rolling ink uses `--ink-strong` because the SVG is transparent over the page body in both themes.
+
+## Discovered Tasks
+
+- The pre-existing dense Panel A browser probe placed its result node after the script that writes to it. The concurrent REQ-351 branch already repairs that harness seam, so no duplicate follow-up was created.
+
+## Testing
+
+- RED proved the semantic statistic row and all four values were absent and that seven/eight eligible-day fixtures drew neither the required rolling marker nor path.
+- Focused renderer tests passed for exact median/p90/cadence values, six/seven/eight-day rolling boundaries, active-day gaps, draw order, and odd midpoint ticks.
+- Builder browser proof passed at 320/768/1280 in light and dark with semantic focus behavior, responsive tile wrapping, finite chart geometry, distinct window values, separated cadence ticks, and no application console errors.
+- Builder full module tests and `go vet ./...` passed; canonical maintainer verification passed. The post-merge `GOTOOLCHAIN=go1.26.1 go test ./... -count=1 -timeout=10m` suite passed in 73.589s.
+- The orchestrator generated this repository's real queue and inspected desktop and 320px renders. The four tiles showed `15.0 min`, `55.5 min`, `25 / 30`, and `11.9`, remained readable without collision, and the only console item was the unrelated missing favicon.
+
+## Qualification
+
+- Exact merge range `0d933971..a522484` passed mechanical qualification.
+- Scope drift passed: the five-file Implementation Summary exactly matches the declared Scope.
+- Orchestrator judgment confirmed substantive implementation, requirement coverage, one shared quantile/data path, preserved exclusion wording, and no generated/debug artifacts in the merge.
+
+## Review
+
+Independent review approved with no Important, Minor, or Nit findings. Requirements 100%, Code Quality 98%, Test Adequacy 99%, Scope Discipline 100%, overall 99%, low risk, acceptance pass. The reviewer independently reran focused renderer tests and the four-case Chromium matrix and inspected both fixture and real-queue evidence.
+
+## Lessons Learned
+
+Headline statistics are trustworthy only when their visible labels name the population they summarize, and rolling trends remain honest only when their eligibility, minimum window, and real-calendar positioning share the bars' existing data rules.
+
+## Orientation
+
+Released in 0.236.46. Durations now states its window-scoped median, p90, active-day coverage, and cadence; Panel B shows a trailing seven-active-day median; and Panel C labels zero, midpoint, and peak.

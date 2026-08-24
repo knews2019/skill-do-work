@@ -53,6 +53,8 @@ fi
 candidate_paths_file="$(mktemp)"
 ownership_table_file="$(mktemp)"
 trap 'rm -f "$candidate_paths_file" "$ownership_table_file"' EXIT
+path_parse_error_marker='__DO_WORK_UNMATCHED_PATH_BACKTICK__'
+association_parse_failed=0
 
 # Blank lines dropped so a trailing newline on stdin does not become a candidate.
 grep -v '^[[:space:]]*$' > "$candidate_paths_file" || true
@@ -90,15 +92,26 @@ read_frontmatter_field() {
   ' "$1"
 }
 
-# Backticked paths from the "- `path` (verb)" bullets of one section, do-work/
-# metadata excluded by contract. Same parse tools/checks/scope-drift.sh uses,
-# so the two agree on what an Implementation Summary file list is.
+# Every closed backtick pair from path-led bullets of one section, with do-work/
+# metadata excluded by contract. Requiring the bullet to lead with a path keeps
+# code spans on prose-only bullets out while retaining valid root-level filenames.
+# This is the same parse tools/checks/scope-drift.sh uses, so both consumers agree
+# on what an Implementation Summary file list is.
 extract_implementation_summary_paths() {
-  awk '
+  awk -v parse_error="$path_parse_error_marker" '
+    function emit_backticked_paths(line, part_count, part_index, parts) {
+      part_count=split(line, parts, "`")
+      if (part_count % 2 == 0) {
+        print parse_error
+        return
+      }
+      for (part_index=2; part_index<part_count; part_index+=2)
+        if (parts[part_index] != "") print parts[part_index]
+    }
     /^## Implementation Summary$/ {inside_section=1; next}
     inside_section && /^## / {inside_section=0}
-    inside_section {print}
-  ' "$1" | sed -n 's/^[[:space:]]*- `\([^`]*\)`.*/\1/p' | grep -v '^do-work/'
+    inside_section && /^[[:space:]]*-[[:space:]]*`/ {emit_backticked_paths($0)}
+  ' "$1" | grep -v '^do-work/'
 }
 
 # Emit "path \t completed_at \t REQ-NNN" rows for one REQ file. The stamp is the
@@ -119,6 +132,11 @@ append_ownership_rows() {
 
   while IFS= read -r summary_path; do
     [ -n "$summary_path" ] || continue
+    if [ "$summary_path" = "$path_parse_error_marker" ]; then
+      echo "PARSE-FAILED: $request_file has an unmatched backtick in an Implementation Summary path list" >&2
+      association_parse_failed=1
+      continue
+    fi
     printf '%s\t%s\t%s\n' "$summary_path" "$completed_stamp" "$request_id" \
       >> "$ownership_table_file"
   done < <(extract_implementation_summary_paths "$request_file")
@@ -135,6 +153,10 @@ done < <(find do-work/archive -type f -name 'REQ-*.md' 2>/dev/null | sort)
 while IFS= read -r working_request_file; do
   append_ownership_rows "$working_request_file" no
 done < <(find do-work/working -type f -name 'REQ-*.md' 2>/dev/null | sort)
+
+if [ "$association_parse_failed" -ne 0 ]; then
+  exit 2
+fi
 
 awk -F'\t' '
   FILENAME == ARGV[1] {

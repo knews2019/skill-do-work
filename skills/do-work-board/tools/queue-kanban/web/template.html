@@ -200,6 +200,15 @@
             <header class="column-header">
               <h2 class="column-title">Pending</h2>
               <span class="column-count" data-count="pending">0</span>
+              <button
+                type="button"
+                class="column-copy"
+                data-copy-column="pending"
+                data-copy-default-label="Copy all"
+                data-copy-label="Pending"
+                aria-label="No Pending REQs to copy"
+                disabled
+              >Copy all</button>
             </header>
             <div class="column-cards" data-cards="pending"></div>
           </section>
@@ -208,6 +217,15 @@
             <header class="column-header">
               <h2 class="column-title">Claimed</h2>
               <span class="column-count" data-count="claimed">0</span>
+              <button
+                type="button"
+                class="column-copy"
+                data-copy-column="claimed"
+                data-copy-default-label="Copy all"
+                data-copy-label="Claimed"
+                aria-label="No Claimed REQs to copy"
+                disabled
+              >Copy all</button>
             </header>
             <div class="column-cards" data-cards="claimed"></div>
           </section>
@@ -216,6 +234,15 @@
             <header class="column-header">
               <h2 class="column-title">Needs input &middot; Blocked</h2>
               <span class="column-count" data-count="needsInputOrBlocked">0</span>
+              <button
+                type="button"
+                class="column-copy"
+                data-copy-column="needsInputOrBlocked"
+                data-copy-default-label="Copy all"
+                data-copy-label="Needs input or Blocked"
+                aria-label="No Needs input or Blocked REQs to copy"
+                disabled
+              >Copy all</button>
             </header>
             <div class="column-cards" data-cards="needsInputOrBlocked"></div>
           </section>
@@ -224,6 +251,15 @@
             <header class="column-header">
               <h2 class="column-title">Recently done</h2>
               <span class="column-count" data-count="recentlyDone">0</span>
+              <button
+                type="button"
+                class="column-copy"
+                data-copy-column="recentlyDone"
+                data-copy-default-label="Copy all"
+                data-copy-label="Recently done"
+                aria-label="No Recently done REQs to copy"
+                disabled
+              >Copy all</button>
             </header>
             <div class="column-cards" data-cards="recentlyDone"></div>
           </section>
@@ -251,8 +287,33 @@
           <h2 class="durations-heading">How long work takes, and how often it runs</h2>
           <p class="durations-subhead" id="durations-summary"></p>
         </div>
+        <dl class="durations-stats" id="durations-stats">
+          <div class="durations-stat">
+            <dt>Median · all plotted spans</dt>
+            <dd id="durations-stat-median">—</dd>
+          </div>
+          <div class="durations-stat">
+            <dt>P90 · all plotted spans</dt>
+            <dd id="durations-stat-p90">—</dd>
+          </div>
+          <div class="durations-stat">
+            <dt>Active completion days</dt>
+            <dd id="durations-stat-active-days">—</dd>
+          </div>
+          <div class="durations-stat">
+            <dt>Projected REQs per active day</dt>
+            <dd id="durations-stat-reqs-per-day">—</dd>
+          </div>
+        </dl>
         <p class="durations-colour-legend" id="durations-colour-legend" role="status" aria-live="polite"></p>
-        <div class="durations-chart" id="durations-chart"></div>
+        <div class="durations-chart-list">
+          <div class="durations-chart" id="durations-chart"></div>
+          <aside class="durations-longest-spans" aria-labelledby="durations-longest-heading">
+            <h3 id="durations-longest-heading">Longest spans</h3>
+            <p id="durations-longest-count"></p>
+            <ol id="durations-longest-list"></ol>
+          </aside>
+        </div>
         <p class="durations-readout" id="durations-readout" role="status" aria-live="polite"></p>
         <details class="durations-table">
           <summary>Every sample, as a table</summary>
@@ -471,6 +532,16 @@
         <div class="detail-head-actions">
           <button type="button" class="detail-copy" id="detail-copy" aria-label="Copy ticket Markdown to clipboard">
             Copy
+          </button>
+          <button
+            type="button"
+            class="detail-copy"
+            id="detail-copy-all"
+            data-copy-default-label="Copy all"
+            aria-label="Copy UR and all grouped REQ Markdown to clipboard"
+            hidden
+          >
+            Copy all
           </button>
           <button type="button" class="detail-close" id="detail-close" aria-label="Close detail panel">
             Close

@@ -185,10 +185,9 @@
     timelineTableRebuildFrame = null;
   }
 
-  // At most one whole-view render per frame, for the two things that can ask for
-  // one faster than the compositor draws: a drag (a trackpad delivers pointermoves
-  // faster than frames) and the plot's ResizeObserver (a drawer animating open
-  // reports every intermediate width).
+  // At most one whole-view render per frame during a drag: a trackpad delivers
+  // pointermoves faster than the compositor draws, and the intermediate windows
+  // cannot all be shown.
   //
   // A frame scheduled by the PREVIOUS render holds that render's closure, so a
   // filter change that re-enters this module would let it re-render the old rows
@@ -2075,17 +2074,21 @@
     // nothing re-measured, every bar kept the x it had been given against the old
     // 1300px plot, and drawSegment's clamp dropped all fifty of them — clicking a
     // row, which the hint under the chart explicitly invites, blanked the chart.
-    // So the trigger is now a ResizeObserver on this host: the condition is "the
-    // plot's box changed", and no future layout change has to remember to be added
-    // to a list.
+    // So the trigger is now one shared positive condition: the live host width is
+    // non-zero and differs from the width used by the last render. ResizeObserver
+    // delivers that check directly in ordinary browser layout; the teardown-owned
+    // 50ms fallback below delivers the same check if observer/compositor work is
+    // parked. Neither path names a layout caller, so no future cause has to be
+    // added to a list.
     //
     // A ZERO-SIZE BOX IS NOT A WIDTH. A window resize fired while the view is
     // hidden measured clientWidth 0, and the floor below turned that into
     // Math.max(120, -196) = 120 — three months of archive crushed into a 120px
     // strip with eight rows in it, and nothing re-rendered afterwards to repair it.
     // renderAll now refuses to render at all against an unmeasurable host, and the
-    // ResizeObserver brings it back the moment the box exists, which is also what
-    // repairs the view on re-entry with no second gate in board-controls.js.
+    // next delivery of the shared positive width-change condition brings it back
+    // when the box exists. That also repairs re-entry without a second gate in
+    // board-controls.js.
     //
     // That guard is the ONLY one. plotWidth deliberately keeps its floor and its
     // memo unconditional: every caller runs inside a render the guard has already
@@ -2094,12 +2097,17 @@
     // through, invalidatePlotWidth at the top of the next renderAll drops the memo,
     // so a bad measurement cannot outlive the render that took it.
     var measuredPlotWidthPx = null;
+    var renderedHostWidthPx = null;
+    function liveHostWidth() {
+      return scrollHost.clientWidth || scrollHost.getBoundingClientRect().width || 0;
+    }
     function plotIsMeasurable() {
-      return (scrollHost.clientWidth || scrollHost.getBoundingClientRect().width || 0) > 0;
+      return liveHostWidth() > 0;
     }
     function plotWidth() {
       if (measuredPlotWidthPx === null) {
-        var hostWidth = scrollHost.clientWidth || scrollHost.getBoundingClientRect().width;
+        var hostWidth = liveHostWidth();
+        renderedHostWidthPx = hostWidth;
         measuredPlotWidthPx = Math.max(120, hostWidth - TIMELINE_LABEL_WIDTH - 12);
       }
       return measuredPlotWidthPx;
@@ -2772,19 +2780,39 @@
 
     // The plot's box can change without any window moving and without the browser
     // resizing: the detail drawer takes a grid column, the view is shown or
-    // hidden, a container's padding changes. Observing the host states the
-    // condition — "this box changed" — instead of enumerating the causes.
+    // hidden, a container's padding changes. Both delivery paths below call this
+    // one positive live-width-change condition instead of enumerating the causes.
     //
     // Guarded because the floor this project designs for includes hosts with no
     // ResizeObserver: the window resize listener below still covers the ordinary
     // case there, which is exactly what it covered before.
+    function renderIfPlotWidthChanged() {
+      var hostWidth = liveHostWidth();
+      if (hostWidth > 0 && hostWidth !== renderedHostWidthPx) {
+        renderAll();
+      }
+    }
+
     if (typeof ResizeObserver === "function") {
       var plotResizeObserver = new ResizeObserver(function () {
-        requestFrameRender();
+        renderIfPlotWidthChanged();
       });
       plotResizeObserver.observe(scrollHost);
       timelineListenerTeardowns.push(function () {
         plotResizeObserver.disconnect();
+      });
+    }
+
+    // Chromium's DOM-dump lifecycle can settle layout while compositor callbacks
+    // remain parked: the host has its new width, but ResizeObserver is not delivered.
+    // This teardown-owned 50ms timer is a second delivery path for the SAME shared
+    // condition, not a second list of layout callers. Suppressing or inverting that
+    // condition returns the drawer probe to RED; removing only ResizeObserver does
+    // not, because this fallback intentionally retains the invariant.
+    if (typeof window.setInterval === "function") {
+      var plotWidthCheckTimer = window.setInterval(renderIfPlotWidthChanged, 50);
+      timelineListenerTeardowns.push(function () {
+        window.clearInterval(plotWidthCheckTimer);
       });
     }
 

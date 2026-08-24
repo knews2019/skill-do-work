@@ -61,6 +61,8 @@ For each confirmed REQ:
    - **`error`/`error_type`:** part of "every other field" — leave whatever is present verbatim; that retained pair is the surviving failure signal. **Never fabricate a value for a field that was absent** — in particular, do not fill a missing `error_type` with the Schema Read Contract's `code` default, which is a normalize-a-*present*-value rule, not a write-path fill-in; recording an unclassified failure as `code` invents a failure mode that never happened.
 2. Append to the body:
 
+   Apply `actions/clarify.md` Step 4's **Outside-text containment** to the user's reason before writing it. A safe one-line reason stays inline after `**Why:**`; any reason that needs the body-passage branch gets a one-line summary there and its byte-identical quoted/fenced text immediately beneath it. `no reason given` is pipeline-authored fallback text, not outside input.
+
    ```markdown
    ## Cancelled
 

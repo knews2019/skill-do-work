@@ -3829,13 +3829,43 @@ completed_at: 2026-08-07T12:00:00Z
 ## Implementation Summary
 
 **Files changed:**
-- `legacy-file.txt` (modified)
+- `legacy-file.txt`, `second-file.txt` (modified)
+- Notes mention `phantom-file.txt`, but this prose bullet claims no file.
 EOF
-if ! associate_complete_output="$(printf 'legacy-file.txt\n' | "$core_root/tools/checks/associate-files.sh" --repo-root "$associate_complete_probe_dir")" || ! printf '%s\n' "$associate_complete_output" | grep -qxF "$(printf 'REQ-501\tlegacy-file.txt')"; then
-  printf 'FAIL: tools/checks/associate-files.sh must associate a status: complete REQ after normalizing the documented terminal-success alias.\n' >&2
+if ! associate_complete_output="$(printf 'legacy-file.txt\nsecond-file.txt\nphantom-file.txt\n' | "$core_root/tools/checks/associate-files.sh" --repo-root "$associate_complete_probe_dir")" \
+    || ! printf '%s\n' "$associate_complete_output" | grep -qxF "$(printf 'REQ-501\tlegacy-file.txt')" \
+    || ! printf '%s\n' "$associate_complete_output" | grep -qxF "$(printf 'REQ-501\tsecond-file.txt')" \
+    || ! printf '%s\n' "$associate_complete_output" | grep -qxF -- "$(printf -- '-\tphantom-file.txt')"; then
+  printf 'FAIL: tools/checks/associate-files.sh must associate every path on a multi-path bullet, preserve root-level filenames, ignore prose-only backticks, and normalize the documented terminal-success alias.\n' >&2
   fail_count=$((fail_count + 1))
 fi
 rm -rf -- "$associate_complete_probe_dir"
+
+associate_unmatched_probe_dir="$(mktemp -d)"
+mkdir -p "$associate_unmatched_probe_dir/do-work/archive/UR-301"
+cat > "$associate_unmatched_probe_dir/do-work/archive/UR-301/REQ-502-unmatched-summary.md" <<'EOF'
+---
+id: REQ-502
+status: completed
+completed_at: 2026-08-07T12:00:00Z
+---
+
+## Implementation Summary
+
+**Files changed:**
+- `legacy-file.txt`, `unclosed-file.txt
+EOF
+if associate_unmatched_output="$(printf 'legacy-file.txt\n' | "$core_root/tools/checks/associate-files.sh" --repo-root "$associate_unmatched_probe_dir" 2>&1)"; then
+  associate_unmatched_exit=0
+else
+  associate_unmatched_exit=$?
+fi
+if [ "$associate_unmatched_exit" -ne 2 ] || ! grep -qF 'PARSE-FAILED:' <<<"$associate_unmatched_output"; then
+  printf 'FAIL: tools/checks/associate-files.sh must fail loudly with exit 2 when a path-led Implementation Summary bullet has an unmatched backtick; got exit %s: %s\n' \
+    "$associate_unmatched_exit" "$associate_unmatched_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+rm -rf -- "$associate_unmatched_probe_dir"
 
 # A git-status failure is not a clean tree. Process substitution used to hide
 # the producer's failure, making a bare repository return the clean-tree exit 1.
@@ -3989,6 +4019,191 @@ if [ "$scope_drift_absent_exit" -ne 2 ] || ! grep -qF 'SKIP:' <<<"$scope_drift_a
     "$scope_drift_absent_exit" "$scope_drift_absent_output" >&2
   fail_count=$((fail_count + 1))
 fi
+
+# REQ-344 touched nine files against two declarations. Its seven undeclared paths
+# were grouped behind two bullet-leading paths, so the old first-token parser
+# reported only two of seven. Pin the complete set, not just a nonzero exit.
+cat > "$scope_drift_probe_dir/req-344-multi-path.md" <<'EOF'
+---
+id: REQ-903
+status: working
+---
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work-board/tools/queue-kanban/frontmatter.go` (modify)
+- `skills/do-work-board/tools/queue-kanban/frontmatter_test.go` (modify)
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-toolbox/actions/code-review.md`, `skills/do-work/actions/capture-reference.md`, `skills/do-work/actions/capture.md`, `skills/do-work/actions/clarify.md`, `skills/do-work-board/tools/queue-kanban/frontmatter.go` (modified)
+- `skills/do-work/actions/work-reference.md`, `skills/do-work/actions/work.md`, `skills/do-work/docs/capture-guide.md`, `skills/do-work-board/tools/queue-kanban/frontmatter_test.go` (modified)
+EOF
+if scope_drift_req344_output="$("$core_root/tools/checks/scope-drift.sh" \
+    "$scope_drift_probe_dir/req-344-multi-path.md" 2>&1)"; then
+  scope_drift_req344_exit=0
+else
+  scope_drift_req344_exit=$?
+fi
+scope_drift_req344_expected_paths=(
+  'skills/do-work-toolbox/actions/code-review.md'
+  'skills/do-work/actions/capture-reference.md'
+  'skills/do-work/actions/capture.md'
+  'skills/do-work/actions/clarify.md'
+  'skills/do-work/actions/work-reference.md'
+  'skills/do-work/actions/work.md'
+  'skills/do-work/docs/capture-guide.md'
+)
+scope_drift_req344_missing=0
+for scope_drift_req344_path in "${scope_drift_req344_expected_paths[@]}"; do
+  if ! grep -qxF "  $scope_drift_req344_path" <<<"$scope_drift_req344_output"; then
+    scope_drift_req344_missing=1
+  fi
+done
+if [ "$scope_drift_req344_exit" -ne 1 ] \
+    || [ "$scope_drift_req344_missing" -ne 0 ] \
+    || ! grep -qF 'DRIFT: touched but never declared in ## Scope:' <<<"$scope_drift_req344_output" \
+    || grep -qF 'DRIFT: declared in ## Scope but never touched:' <<<"$scope_drift_req344_output"; then
+  printf 'FAIL: tools/checks/scope-drift.sh must report REQ-344\047s exact seven undeclared paths from multi-path bullets and no false unused declarations; got exit %s: %s\n' \
+    "$scope_drift_req344_exit" "$scope_drift_req344_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# Both sides must consume every closed backtick pair. Matching first tokens make
+# this fixture a false OK if either parser falls back to its first-token behavior;
+# root-level filenames prove that a slash heuristic cannot silently disarm it.
+cat > "$scope_drift_probe_dir/symmetric-multi-path.md" <<'EOF'
+---
+id: REQ-904
+status: working
+---
+
+## Scope
+
+**Files I will touch:**
+- `src/shared.sh`, `scope-only.txt`, `justfile` (modify)
+
+## Implementation Summary
+
+**Files changed:**
+- `src/shared.sh`, `summary-only.txt`, `README.md` (modified)
+EOF
+if scope_drift_symmetric_output="$("$core_root/tools/checks/scope-drift.sh" \
+    "$scope_drift_probe_dir/symmetric-multi-path.md" 2>&1)"; then
+  scope_drift_symmetric_exit=0
+else
+  scope_drift_symmetric_exit=$?
+fi
+scope_drift_symmetric_expected=(
+  '  README.md'
+  '  summary-only.txt'
+  '  justfile'
+  '  scope-only.txt'
+)
+scope_drift_symmetric_missing=0
+for scope_drift_symmetric_path in "${scope_drift_symmetric_expected[@]}"; do
+  if ! grep -qxF "$scope_drift_symmetric_path" <<<"$scope_drift_symmetric_output"; then
+    scope_drift_symmetric_missing=1
+  fi
+done
+if [ "$scope_drift_symmetric_exit" -ne 1 ] \
+    || [ "$scope_drift_symmetric_missing" -ne 0 ] \
+    || ! grep -qF 'DRIFT: touched but never declared in ## Scope:' <<<"$scope_drift_symmetric_output" \
+    || ! grep -qF 'DRIFT: declared in ## Scope but never touched:' <<<"$scope_drift_symmetric_output"; then
+  printf 'FAIL: tools/checks/scope-drift.sh must compare every later path on both multi-path bullets, including filename-only paths; got exit %s: %s\n' \
+    "$scope_drift_symmetric_exit" "$scope_drift_symmetric_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+cat > "$scope_drift_probe_dir/matching-multi-path.md" <<'EOF'
+---
+id: REQ-905
+status: working
+---
+
+## Scope
+
+**Files I will touch:**
+- `src/shared.sh`, `.gitignore`, `justfile` (modify)
+
+## Implementation Summary
+
+**Files changed:**
+- `src/shared.sh`, `.gitignore`, `justfile` (modified)
+EOF
+if scope_drift_matching_output="$("$core_root/tools/checks/scope-drift.sh" \
+    "$scope_drift_probe_dir/matching-multi-path.md" 2>&1)"; then
+  scope_drift_matching_exit=0
+else
+  scope_drift_matching_exit=$?
+fi
+if [ "$scope_drift_matching_exit" -ne 0 ] || ! grep -qF 'OK:' <<<"$scope_drift_matching_output"; then
+  printf 'FAIL: tools/checks/scope-drift.sh must accept identical multi-path lists containing root-level filenames; got exit %s: %s\n' \
+    "$scope_drift_matching_exit" "$scope_drift_matching_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+cat > "$scope_drift_probe_dir/prose-backticks.md" <<'EOF'
+---
+id: REQ-906
+status: working
+---
+
+## Scope
+
+**Files I will touch:**
+- `src/shared.sh` (modify)
+
+## Implementation Summary
+
+**Files changed:**
+- `src/shared.sh` (modified)
+- Notes mention `README.md` and `sort -u`, but this prose bullet claims no file.
+EOF
+if scope_drift_prose_output="$("$core_root/tools/checks/scope-drift.sh" \
+    "$scope_drift_probe_dir/prose-backticks.md" 2>&1)"; then
+  scope_drift_prose_exit=0
+else
+  scope_drift_prose_exit=$?
+fi
+if [ "$scope_drift_prose_exit" -ne 0 ] || ! grep -qF 'OK:' <<<"$scope_drift_prose_output"; then
+  printf 'FAIL: tools/checks/scope-drift.sh must ignore backticked spans on prose-only bullets; got exit %s: %s\n' \
+    "$scope_drift_prose_exit" "$scope_drift_prose_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+for scope_drift_unmatched_side in scope summary; do
+  cat > "$scope_drift_probe_dir/unmatched-$scope_drift_unmatched_side.md" <<EOF
+---
+id: REQ-907
+status: working
+---
+
+## Scope
+
+**Files I will touch:**
+$(if [ "$scope_drift_unmatched_side" = scope ]; then printf '%s\n' '- `src/shared.sh`, `unclosed.txt'; else printf '%s\n' '- `src/shared.sh` (modify)'; fi)
+
+## Implementation Summary
+
+**Files changed:**
+$(if [ "$scope_drift_unmatched_side" = summary ]; then printf '%s\n' '- `src/shared.sh`, `unclosed.txt'; else printf '%s\n' '- `src/shared.sh` (modified)'; fi)
+EOF
+  if scope_drift_unmatched_output="$("$core_root/tools/checks/scope-drift.sh" \
+      "$scope_drift_probe_dir/unmatched-$scope_drift_unmatched_side.md" 2>&1)"; then
+    scope_drift_unmatched_exit=0
+  else
+    scope_drift_unmatched_exit=$?
+  fi
+  if [ "$scope_drift_unmatched_exit" -ne 1 ] || ! grep -qF 'FAIL:' <<<"$scope_drift_unmatched_output" \
+      || ! grep -qF 'unmatched backtick' <<<"$scope_drift_unmatched_output"; then
+    printf 'FAIL: tools/checks/scope-drift.sh must fail loudly when the %s path list has an unmatched backtick; got exit %s: %s\n' \
+      "$scope_drift_unmatched_side" "$scope_drift_unmatched_exit" "$scope_drift_unmatched_output" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
 rm -rf -- "$scope_drift_probe_dir"
 
 # Review regressions: prescribed shell and roadmap classification are runtime
@@ -4828,11 +5043,11 @@ assert_block_not_contains \
 # status, title and user_request read empty and the REQ leaves its UR silently.
 #
 # The rule is prose, so a keyword match would pass a gutted version of it. This extracts
-# the named entry point's own blockquote — nothing else in the file can lend it vocabulary
-# — grades it by meaning, then replays a mutation per leg. Each mutation is a plausible
-# narrowing rather than a deletion: the closed-list rewrite is the one the REQ named
-# outright (prime-shell-commands.md § Closed Enumerations Go Stale), and the
-# stripped-characters rewrite destroys the answer trail the record exists for.
+# the named entry point's own blockquote, grades the two branch lines in isolation, and
+# pairs positive meaning with scoped contradiction checks. Replacement trials keep the
+# earlier deletion coverage; insertion trials preserve that vocabulary while adding the
+# captured narrowings, including the closed-list failure named by
+# prime-shell-commands.md § Closed Enumerations Go Stale.
 if ! python3 - "$core_root/actions/clarify.md" <<'PY'
 import pathlib
 import re
@@ -4867,11 +5082,41 @@ def neutralization_defects(source):
         return {"missing named entry point blockquote"}
 
     normalized = " ".join(block.lower().split())
+    branch_lines = [
+        " ".join(line.lower().split())
+        for line in block.splitlines()
+        if re.match(r"^>\s*-\s*", line)
+    ]
+    single_line_branch = next(
+        (line for line in branch_lines if "inline after the `→`" in line), ""
+    )
+    contained_passage_branch = next(
+        (line for line in branch_lines if "blockquote" in line), ""
+    )
+    delimiter_judgment_clause = next(
+        (
+            " ".join(line.lower().split())
+            for line in block.splitlines()
+            if "judge" in line.lower() and "condition" in line.lower()
+        ),
+        "",
+    )
     predicates = {
         # The rule exists at all, and at the named entry point rather than in
         # loose prose a caller citing the name would never reach.
         "neutralization stated at the named entry point":
             r"neutraliz\w+ before it is written",
+        # The contract protects every do-work Markdown record body that accepts
+        # outside text, not only the answer line that first exposed the class.
+        "do-work record-body reach":
+            r"any do-work markdown record body",
+        # Markdown delimiter containment cannot repair a file that has already
+        # become binary/non-text. The preflight is deliberately a condition,
+        # not another list of current writers.
+        "text-byte preflight":
+            r"c0.*?del.*?lf.*?tab.*?refuse.*?report",
+        "byte identity after containment":
+            r"byte-identical apart from containment bytes",
         # The whole point of the REQ: a condition, never a character list.
         "delimiter condition, not a character list":
             r"could this line be read as one of this file.s own delimiters",
@@ -4885,9 +5130,6 @@ def neutralization_defects(source):
         "unbalanced fence shape named": r"unbalanced code fence",
         # Neutralizing must not cost the answer trail the record exists for.
         "answer preserved intact": r"nothing is edited or dropped",
-        # Branch one: a single line cannot start a line, so position is the fix.
-        "single-line branch keyed on the line break":
-            r"the answer is one line\b.*?inline after the `→`",
         # Branch two, half one: the quote prefix is what a line-based scan sees,
         # and a fence alone does not stop one — the sibling incident in this
         # file's own history was a regex keying on the first line-leading `- [ ]`.
@@ -4900,11 +5142,74 @@ def neutralization_defects(source):
         "opening frontmatter fence never written above":
             r"never the file.s first line",
     }
-    return {
+    defects = {
         defect_name
         for defect_name, predicate in predicates.items()
         if re.search(predicate, normalized) is None
     }
+    scoped_predicates = {
+        # Isolate the two list branches before grading them, so vocabulary in
+        # the surrounding blockquote cannot lend a weakened branch its force.
+        "single-line branch binds both triggers": (
+            single_line_branch,
+            r"(?:the|an) answer (?:is one|has a single) line\b.*?cannot be a delimiter where it lands.*?inline after the `→`",
+        ),
+        # Accept equivalent universal grammar while keeping all three triggers
+        # and the action in one branch: own passage, line break, delimiter line.
+        "contained branch covers every passage and risky answer": (
+            contained_passage_branch,
+            r"(?:anything\b.*?|every\b.*?)body passage.*?(?:or|plus).*?(?:any|each) answer.*?line break.*?(?:or|plus).*?delimiter-shaped line.*?(?:put.*?inside|place.*?in) a blockquote",
+        ),
+        "delimiter judgment covers every line": (
+            delimiter_judgment_clause,
+            r"judge (?:every|all) line.*?(?:one|a single) condition",
+        ),
+    }
+    defects.update(
+        defect_name
+        for defect_name, (clause, predicate) in scoped_predicates.items()
+        if re.search(predicate, clause) is None
+    )
+
+    # Presence predicates above prove the broad rule still exists. These scoped
+    # contradictions prove it has not been narrowed by an inserted sentence
+    # that leaves every broad phrase untouched. Keep each pattern tied to the
+    # subject it restricts: this contract legitimately says ONLY containment
+    # bytes are added, so a file-wide ban on `only` would reject the live rule.
+    narrowing_patterns = {
+        "delimiter judgment narrowed to the first line":
+            r"judge (?:only )?(?:its|the) first line",
+        "delimiter condition narrowed by a closed list":
+            r"only (?:the )?(?:four|named|listed).*?shapes.*?count as delimiters",
+        "record-body reach narrowed to answers":
+            r"(?:sub-?contract|containment|rule).*?appl(?:y|ies) only to (?:req )?answer",
+        "record-body reach narrowed to pasted code":
+            r"(?:containment )?rule appl(?:y|ies) only to pasted code",
+        "record-body reach narrowed to clarify":
+            r"(?:containment )?rule appl(?:y|ies) only in clarify.*?orchestrator answers? (?:are )?exempt",
+        "illustrative shapes made exhaustive":
+            r"(?:treat|use|regard).*?shapes as (?:the )?(?:complete|exhaustive) (?:check)?list",
+        "blockquote prefix made optional":
+            r"`> ` prefix is optional.*?fence is (?:enough|sufficient)",
+        "inline branch narrowed by length":
+            r"(?:answer|one-line answers?).*?(?:short|length).*?(?:long|longer) one-line answer",
+        "contained branch narrowed by a line threshold":
+            r"(?:passage|contained) branch appl(?:y|ies) only to .*?(?:ten|10) lines? (?:or more|and above)",
+        "contained branch made advisory":
+            r"(?:use|apply).*?(?:passage|contained) branch only where practical",
+        "neutralization narrowed to risky-looking text":
+            r"(?:apply|use) neutralization only when .*?(?:look|seem)s? risky",
+        "dynamic fence narrowed to a fixed fence":
+            r"(?:triple-backtick|three-backtick|fixed) fence is (?:enough|sufficient)",
+        "first-line prohibition narrowed to answers":
+            r"(?:first-line prohibition|prohibition).*?appl(?:y|ies) only to (?:answered questions|answers)",
+    }
+    defects.update(
+        defect_name
+        for defect_name, pattern in narrowing_patterns.items()
+        if re.search(pattern, normalized) is not None
+    )
+    return defects
 
 
 live_defects = neutralization_defects(clarify_text)
@@ -4924,6 +5229,18 @@ mutations = (
      "could this line be read as one of this file's own delimiters",
      "does this line start with `- [ ]`, `- [x]`, `---`, `## ` or a backtick fence",
      "delimiter condition, not a character list"),
+    ("reach narrowed back to REQ answers",
+     "any do-work Markdown record body",
+     "a REQ answer line",
+     "do-work record-body reach"),
+    ("control-byte preflight removed",
+     "C0 control or DEL except LF and TAB",
+     "unusual character",
+     "text-byte preflight"),
+    ("byte identity weakened to normalization",
+     "byte-identical apart from containment bytes",
+     "readable after normalization",
+     "byte identity after containment"),
     ("examples hardened into a checklist",
      "illustrative, not a checklist",
      "the complete set to check",
@@ -4955,7 +5272,7 @@ mutations = (
     ("single-line branch loosened to a judgement call",
      "The answer is one line",
      "the answer is short",
-     "single-line branch keyed on the line break"),
+     "single-line branch binds both triggers"),
     ("container weakened to a fixed fence",
      "a code fence longer than the longest backtick run anywhere in the text",
      "a triple-backtick code fence",
@@ -4980,6 +5297,171 @@ for mutation_name, old, new, expected_defect in mutations:
             f"answer-neutralization mutation {mutation_name!r} escaped "
             f"{expected_defect!r}; found {sorted(mutation_defects)!r}"
         )
+
+# Semantic checks must accept ordinary prose maintenance, not freeze the live
+# sentences byte-for-byte. This trial keeps both branch conditions and actions
+# intact while changing their grammar and verb choice.
+legitimate_rewording_block = live_block
+for old, new in (
+    ("The answer is one line", "An answer has a single line"),
+    ("put the outside text inside a blockquote", "place the outside text in a blockquote"),
+):
+    reworded_block = legitimate_rewording_block.replace(old, new, 1)
+    if reworded_block == legitimate_rewording_block:
+        raise SystemExit(
+            f"answer-neutralization legitimate-rewording anchor {old!r} disappeared"
+        )
+    legitimate_rewording_block = reworded_block
+legitimate_rewording_defects = neutralization_defects(
+    clarify_text.replace(live_block, legitimate_rewording_block, 1)
+)
+if legitimate_rewording_defects:
+    raise SystemExit(
+        "answer-neutralization legitimate rewording was rejected: "
+        + repr(sorted(legitimate_rewording_defects))
+    )
+
+universal_trigger_rewording = live_block.replace(
+    "Anything written as its own body passage, or any answer with a line break or delimiter-shaped line",
+    "Every outside-text body passage, plus each answer containing a line break or delimiter-shaped line",
+    1,
+)
+if universal_trigger_rewording == live_block:
+    raise SystemExit("answer-neutralization universal-trigger rewording changed nothing")
+universal_trigger_rewording_defects = neutralization_defects(
+    clarify_text.replace(live_block, universal_trigger_rewording, 1)
+)
+if universal_trigger_rewording_defects:
+    raise SystemExit(
+        "answer-neutralization equivalent universal-trigger rewording was rejected: "
+        + repr(sorted(universal_trigger_rewording_defects))
+    )
+
+
+def insert_after(block, anchor, addition, mutation_name):
+    if anchor not in block:
+        raise SystemExit(
+            f"answer-neutralization insertion {mutation_name!r} changed nothing — "
+            "the anchor it follows is no longer in the named entry point block"
+        )
+    return block.replace(anchor, anchor + addition, 1)
+
+
+# Replacement mutations can prove that required words are load-bearing and still
+# miss the more dangerous edit: preserving every broad sentence while adding a
+# narrower instruction beside it. Each trial below keeps the current positive
+# vocabulary intact and inserts one plausible contradiction.
+insertion_mutations = (
+    (
+        "delimiter condition narrowed to the four examples",
+        "The shapes already proved are illustrative, not a checklist",
+        ". For this rule, only the four shapes named below count as delimiters",
+        "delimiter condition narrowed by a closed list",
+    ),
+    (
+        "record-body reach narrowed to answers",
+        "any do-work Markdown record body",
+        "; this sub-contract applies only to REQ answer lines",
+        "record-body reach narrowed to answers",
+    ),
+    (
+        "illustrative examples made exhaustive",
+        "The shapes already proved are illustrative, not a checklist",
+        "; treat those four shapes as the complete checklist",
+        "illustrative shapes made exhaustive",
+    ),
+    (
+        "blockquote prefix made optional",
+        "The `> ` prefix takes every line start away from a line-based scan",
+        ". For fenced text the `> ` prefix is optional because the fence is sufficient",
+        "blockquote prefix made optional",
+    ),
+    (
+        "inline branch narrowed to short answers",
+        "The answer is one line",
+        " and short; long one-line answers use the passage branch",
+        "inline branch narrowed by length",
+    ),
+    (
+        "dynamic fence narrowed to triple backticks",
+        "cannot be closed from inside",
+        ". A triple-backtick fence is sufficient regardless of the pasted text",
+        "dynamic fence narrowed to a fixed fence",
+    ),
+    (
+        "first-line prohibition narrowed to answers",
+        "It is never the file's first line",
+        "; this prohibition applies only to answered questions",
+        "first-line prohibition narrowed to answers",
+    ),
+)
+
+for mutation_name, anchor, addition, expected_defect in insertion_mutations:
+    mutated_block = insert_after(live_block, anchor, addition, mutation_name)
+    mutated_text = clarify_text.replace(live_block, mutated_block, 1)
+    mutation_defects = neutralization_defects(mutated_text)
+    if expected_defect not in mutation_defects:
+        raise SystemExit(
+            f"answer-neutralization insertion {mutation_name!r} escaped "
+            f"{expected_defect!r}; found {sorted(mutation_defects)!r}"
+        )
+
+# Replay the independently reproduced RED set that motivated REQ-361. These
+# qualifiers use deliberately different grammar from the useful insertion
+# trials above; the checker must pin the property, not memorize one mutation.
+captured_narrowing_mutations = (
+    (
+        "delimiter judgment narrowed to the first line",
+        "Then judge every line against one condition:",
+        "Then judge its first line against one condition:",
+        "delimiter judgment narrowed to the first line",
+    ),
+    (
+        "record-body reach narrowed to pasted code",
+        "Those sites are illustrative, not a writer checklist",
+        "Those sites are illustrative, not a writer checklist; this containment rule applies only to pasted code snippets",
+        "record-body reach narrowed to pasted code",
+    ),
+    (
+        "reach narrowed to clarify with orchestrator exemption",
+        "Those sites are illustrative, not a writer checklist",
+        "Those sites are illustrative, not a writer checklist; this rule applies only in clarify and mid-run orchestrator answers are exempt",
+        "record-body reach narrowed to clarify",
+    ),
+    (
+        "passage branch narrowed to ten lines",
+        "The destination decides which containment branch applies:",
+        "The destination decides which containment branch applies; the passage branch applies only to passages of ten lines or more:",
+        "contained branch narrowed by a line threshold",
+    ),
+    (
+        "passage branch made conditional on practicality",
+        "The destination decides which containment branch applies:",
+        "The destination decides which containment branch applies; use the passage branch only where practical:",
+        "contained branch made advisory",
+    ),
+    (
+        "whole rule narrowed to risky-looking answers",
+        "The destination decides which containment branch applies:",
+        "The destination decides which containment branch applies; apply neutralization only when the answer looks risky:",
+        "neutralization narrowed to risky-looking text",
+    ),
+)
+
+for mutation_name, old, new, expected_defect in captured_narrowing_mutations:
+    mutated_block = live_block.replace(old, new, 1)
+    if mutated_block == live_block:
+        raise SystemExit(
+            f"answer-neutralization captured RED {mutation_name!r} changed nothing"
+        )
+    mutation_defects = neutralization_defects(
+        clarify_text.replace(live_block, mutated_block, 1)
+    )
+    if expected_defect not in mutation_defects:
+        raise SystemExit(
+            f"answer-neutralization captured RED {mutation_name!r} escaped "
+            f"{expected_defect!r}; found {sorted(mutation_defects)!r}"
+        )
 PY
 then
   printf 'FAIL: the Canonical answered-question format (actions/clarify.md Step 4) must state how text obtained from outside the file is neutralized before it is written into a REQ body, keyed on the delimiter condition rather than a character list (REQ-342).\n' >&2
@@ -4993,6 +5475,556 @@ neutralization_condition_count="$({ grep -rhoF "could this line be read as one o
 if [ "$neutralization_condition_count" != "1" ]; then
   printf 'FAIL: the answer-neutralization condition must be stated exactly once across skills/ — callers cite the Canonical answered-question format by name rather than restating it (found %s).\n' \
     "$neutralization_condition_count" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# REQ-360 — every action that writes outside text into a do-work Markdown body
+# inherits the one canonical containment contract by name. Isolate each writer's
+# own step: nearby citations in another step must not lend it the rule. The same
+# lock-in closes every hand-authored frontmatter example that still taught a form
+# the Frontmatter Quoting contract forbids.
+if ! python3 - \
+  "$core_root/actions/verify-requests.md" \
+  "$core_root/actions/capture.md" \
+  "$core_root/actions/stakeholder-answers.md" \
+  "$core_root/actions/abandon.md" \
+  "$core_root/actions/work-reference.md" \
+  "$core_root/actions/capture-reference.md" \
+  "$core_root/actions/review-work.md" \
+  "$core_root/actions/sample-archived-req.md" \
+  "$core_root/docs/capture-guide.md" \
+  "$core_root/docs/work-guide.md" <<'PY'
+import pathlib
+import re
+import sys
+
+(
+    verify_path,
+    capture_path,
+    stakeholder_path,
+    abandon_path,
+    work_reference_path,
+    capture_reference_path,
+    review_path,
+    sample_path,
+    capture_guide_path,
+    work_guide_path,
+) = map(pathlib.Path, sys.argv[1:])
+
+
+def section(source, start, end):
+    match = re.search(start + r"(?P<body>.*?)" + end, source,
+                      flags=re.DOTALL | re.MULTILINE)
+    if match is None:
+        raise SystemExit(f"cannot isolate writer block {start!r} -> {end!r}")
+    return match.group("body")
+
+
+def outside_inheritance_defect(block):
+    normalized = " ".join(block.lower().split())
+    if "outside-text containment" not in normalized:
+        return "missing named Outside-text containment inheritance"
+    # Bind the action verb to this repository's two deliberate directive
+    # phrases. A generic "per" or "using" elsewhere in a whole Step block must
+    # not lend a passive citation authority it does not have.
+    active_pattern = (
+        r"(?:apply `actions/clarify\.md` step 4.s |"
+        r"contained per that format.s )\*\*outside-text containment\*\*"
+    )
+    if re.search(active_pattern, normalized) is None:
+        return "passive Outside-text containment citation"
+    return None
+
+
+def require_active_inheritance(label, block):
+    defect = outside_inheritance_defect(block)
+    if defect:
+        raise SystemExit(f"{label}: {defect}")
+
+
+verify = verify_path.read_text()
+capture = capture_path.read_text()
+stakeholder = stakeholder_path.read_text()
+abandon = abandon_path.read_text()
+
+outside_writer_blocks = (
+    ("verify-requests Step 7 resolved-answer writer",
+     section(verify, r"^### Step 7: Offer Fixes\n", r"^## Scoring Guidelines")),
+    ("capture queued-addendum writer",
+     section(capture, r"^### Step 2: ", r"^### Step 3: ")),
+    ("capture UR input writer",
+     section(capture, r"^### Step 5: Write Files\n", r"^### Step 6: ")),
+    ("stakeholder-answers new-UR writer",
+     section(stakeholder, r"^### Step 4: ", r"^### Step 5: ")),
+    ("abandon cancellation-reason writer",
+     section(abandon, r"^### Step 3: ", r"^### Step 4: ")),
+)
+
+for writer_label, writer_block in outside_writer_blocks:
+    require_active_inheritance(writer_label, writer_block)
+
+    missing_mutation = writer_block.replace(
+        "Outside-text containment", "local containment", 1
+    )
+    if missing_mutation == writer_block:
+        raise SystemExit(f"{writer_label}: missing-name mutation changed nothing")
+    if outside_inheritance_defect(missing_mutation) is None:
+        raise SystemExit(f"{writer_label}: missing-name mutation escaped")
+
+    if "Apply `actions/clarify.md` Step 4's" in writer_block:
+        passive_mutation = writer_block.replace(
+            "Apply `actions/clarify.md` Step 4's", "See `actions/clarify.md` Step 4's", 1
+        )
+    else:
+        passive_mutation = writer_block.replace(
+            "contained per that format's", "see that format's", 1
+        )
+    if passive_mutation == writer_block:
+        raise SystemExit(f"{writer_label}: passive-citation mutation changed nothing")
+    if outside_inheritance_defect(passive_mutation) != "passive Outside-text containment citation":
+        raise SystemExit(f"{writer_label}: passive-citation mutation escaped")
+
+
+def frontmatter_inheritance_defect(block):
+    normalized = " ".join(block.lower().split())
+    if "frontmatter quoting" not in normalized:
+        return "missing named Frontmatter Quoting inheritance"
+    if re.search(r"written per \*\*frontmatter quoting\*\*", normalized) is None:
+        return "passive Frontmatter Quoting citation"
+    return None
+
+
+stakeholder_step5 = section(stakeholder, r"^### Step 5: ", r"^### Step 6: ")
+stakeholder_step5_defect = frontmatter_inheritance_defect(stakeholder_step5)
+if stakeholder_step5_defect:
+    raise SystemExit(
+        "stakeholder-answers Step 5 blocked_by writer: " + stakeholder_step5_defect
+    )
+
+mutated_step5 = stakeholder_step5.replace("Frontmatter Quoting", "local quoting", 1)
+if mutated_step5 == stakeholder_step5:
+    raise SystemExit(
+        "stakeholder-answers Step 5 Frontmatter Quoting mutation changed nothing"
+    )
+if frontmatter_inheritance_defect(mutated_step5) is None:
+    raise SystemExit(
+        "stakeholder-answers Step 5 lost Frontmatter Quoting but the writer check stayed green"
+    )
+
+passive_step5 = stakeholder_step5.replace(
+    "written per **Frontmatter Quoting**", "see **Frontmatter Quoting**", 1
+)
+if passive_step5 == stakeholder_step5:
+    raise SystemExit(
+        "stakeholder-answers Step 5 passive-citation mutation changed nothing"
+    )
+if frontmatter_inheritance_defect(passive_step5) != "passive Frontmatter Quoting citation":
+    raise SystemExit(
+        "stakeholder-answers Step 5 passive Frontmatter Quoting citation escaped the writer check"
+    )
+
+def frontmatter_contract_defects(source):
+    block = section(
+        source,
+        r"^\*\*Named contract — Frontmatter Quoting\.\*\*",
+        r"^\*\*Do not wrap user text in a double-quoted scalar\.\*\*",
+    )
+    normalized = " ".join(block.lower().split())
+    predicates = {
+        "outside-authorship condition governs every field":
+            r"condition is the rule.*?whenever a frontmatter value carries text nobody in this pipeline composed",
+        "current field names stay illustrative":
+            r"fields.*?illustrative, never a list to check against",
+        "outside-text preflight inherited": r"outside-text containment.s accepted-text preflight",
+        "failed preflight refused and reported": r"refuses and reports.*?instead of normalizing",
+        "every physical line indented": r"every physical content line indented.*?blank lines included",
+        "zero-terminal-LF strip form": r"`key: \|-` for zero terminal lf bytes",
+        "one-terminal-LF clip form": r"`key: \|` for exactly one",
+        "multiple-terminal-LF keep form": r"`key: \|\+` for multiple",
+    }
+    defects = {name for name, pattern in predicates.items() if re.search(pattern, normalized) is None}
+    narrowing_patterns = {
+        "outside-authorship condition narrowed to named fields":
+            r"(?:condition|contract|rule).*?appl(?:y|ies) only to (?:the )?(?:fields?|names?).*?(?:named|listed|above|today)",
+    }
+    defects.update(
+        name for name, pattern in narrowing_patterns.items()
+        if re.search(pattern, normalized) is not None
+    )
+    return defects
+
+
+def markdown_fenced_blocks(source):
+    """Return Markdown fence bodies; inline code is deliberately invisible."""
+    lines = source.splitlines()
+    blocks = []
+    line_index = 0
+    while line_index < len(lines):
+        opening = re.match(r"^\s*(`{3,}|~{3,})([^`]*)$", lines[line_index])
+        if opening is None:
+            line_index += 1
+            continue
+        fence = opening.group(1)
+        fence_character = re.escape(fence[0])
+        closing = re.compile(r"^\s*" + fence_character + "{" + str(len(fence)) + r",}\s*$")
+        body_start = line_index + 1
+        line_index = body_start
+        while line_index < len(lines) and closing.match(lines[line_index]) is None:
+            line_index += 1
+        if line_index == len(lines):
+            raise SystemExit("unclosed Markdown fence while deriving Frontmatter Quoting examples")
+        blocks.append((opening.group(2).strip().lower(), "\n".join(lines[body_start:line_index])))
+        line_index += 1
+    return blocks
+
+
+def canonical_frontmatter_schema(source):
+    candidates = [
+        body for info, body in markdown_fenced_blocks(source)
+        if info in {"yaml", "yml"} and re.search(r"^id:\s*REQ-", body, flags=re.MULTILINE)
+    ]
+    if len(candidates) != 1:
+        raise SystemExit(
+            f"Frontmatter Quoting inventory found {len(candidates)} canonical YAML schema fences, want one"
+        )
+    return candidates[0]
+
+
+def frontmatter_schema_inventory(source):
+    schema = canonical_frontmatter_schema(source)
+    governed_fields = set()
+    encoder_owned_fields = set()
+    annotation_defects = set()
+    for schema_line in schema.splitlines():
+        field_match = re.match(r"^([a-z_][a-z0-9_]*):(?P<rest>.*)$", schema_line)
+        if field_match is None or "raw user text" not in field_match.group("rest").lower():
+            continue
+        field_name = field_match.group(1)
+        governed_fields.add(field_name)
+        annotation = field_match.group("rest").lower()
+        encoder_owned = "escaping encoder" in annotation
+        if encoder_owned:
+            encoder_owned_fields.add(field_name)
+        if "frontmatter quoting" not in annotation and not encoder_owned:
+            annotation_defects.add(
+                f"governed schema field {field_name} lacks Frontmatter Quoting or an encoder discriminator"
+            )
+    # Count, not a copied field list: the schema is the inventory. The floor is
+    # only a deletion guard for today's seven annotated fields; additions grow
+    # the set without editing this check.
+    if len(governed_fields) < 7:
+        annotation_defects.add(
+            f"governed schema inventory has {len(governed_fields)} fields, want at least seven"
+        )
+    return schema, governed_fields, encoder_owned_fields, annotation_defects
+
+
+def shipped_markdown_sources(repository_root):
+    """Read Markdown from every source package declared by the suite manifest."""
+    manifest_path = repository_root / "suite/modules.tsv"
+    module_roots = []
+    for manifest_line in manifest_path.read_text().splitlines()[1:]:
+        if not manifest_line.strip():
+            continue
+        source_path, _ = manifest_line.split("\t", 1)
+        module_root = repository_root / source_path
+        if not module_root.is_dir():
+            raise SystemExit(f"shipped module root is missing: {module_root}")
+        module_roots.append(module_root)
+    if not module_roots:
+        raise SystemExit("suite manifest yielded no shipped module roots")
+    return {
+        str(markdown_path): markdown_path.read_text()
+        for module_root in module_roots
+        for markdown_path in module_root.rglob("*.md")
+    }
+
+
+def is_do_work_record_schema(fenced_body):
+    """Distinguish do-work records from unrelated YAML in shipped packages."""
+    req_record = (
+        re.search(r"^\s*id:\s*REQ-", fenced_body, flags=re.MULTILINE) is not None
+        and re.search(r"^\s*status:\s*", fenced_body, flags=re.MULTILINE) is not None
+    )
+    ur_record = (
+        re.search(r"^\s*id:\s*UR-", fenced_body, flags=re.MULTILINE) is not None
+        and re.search(r"^\s*requests:\s*", fenced_body, flags=re.MULTILINE) is not None
+    )
+    return req_record or ur_record
+
+
+def frontmatter_fenced_example_defects(
+    markdown_sources,
+    governed_fields,
+    encoder_owned_fields,
+    inventory_source_name,
+    inventory_schema,
+):
+    defects = set()
+    independent_example_count = 0
+    fenced_texts = []
+    for source_name, source in markdown_sources.items():
+        for _, fenced_body in markdown_fenced_blocks(source):
+            fenced_texts.append(fenced_body)
+            if not is_do_work_record_schema(fenced_body):
+                continue
+            inventory_block = (
+                source_name == inventory_source_name and fenced_body == inventory_schema
+            )
+            for block_line in fenced_body.splitlines():
+                field_match = re.match(r"^\s*([a-z_][a-z0-9_]*):\s*(.*)$", block_line)
+                if field_match is None or field_match.group(1) not in governed_fields:
+                    continue
+                field_name, scalar = field_match.group(1), field_match.group(2).lstrip()
+                if not inventory_block:
+                    independent_example_count += 1
+                safe_hand_authored = scalar.startswith("'") or scalar.startswith("|")
+                safe_encoder_owned = field_name in encoder_owned_fields and scalar.startswith('"')
+                if not safe_hand_authored and not safe_encoder_owned:
+                    defects.add(
+                        f"{source_name}: fenced {field_name} example is not single-quoted, literal, or encoder-owned"
+                    )
+    if independent_example_count == 0:
+        defects.add("no governed field appears in an independent do-work record example")
+
+    inline_counterexample = 'title: "Fix: A " # B"'
+    work_reference_text = markdown_sources.get(str(work_reference_path), "")
+    if inline_counterexample not in work_reference_text:
+        defects.add("Frontmatter Quoting inline counterexample disappeared")
+    if any(inline_counterexample in fenced_text for fenced_text in fenced_texts):
+        defects.add("Frontmatter Quoting inline counterexample leaked into the fenced-example scan")
+    return defects
+
+
+work_reference = work_reference_path.read_text()
+live_frontmatter_defects = frontmatter_contract_defects(work_reference)
+if live_frontmatter_defects:
+    raise SystemExit(
+        "Frontmatter Quoting block-scalar contract defects: "
+        + ", ".join(sorted(live_frontmatter_defects))
+    )
+
+(
+    live_schema,
+    governed_frontmatter_fields,
+    encoder_owned_frontmatter_fields,
+    schema_annotation_defects,
+) = frontmatter_schema_inventory(work_reference)
+if schema_annotation_defects:
+    raise SystemExit(
+        "Frontmatter Quoting schema annotation defects: "
+        + ", ".join(sorted(schema_annotation_defects))
+    )
+
+repository_root = work_reference_path.parents[3]
+all_shipped_markdown_sources = shipped_markdown_sources(repository_root)
+live_fenced_example_defects = frontmatter_fenced_example_defects(
+    all_shipped_markdown_sources,
+    governed_frontmatter_fields,
+    encoder_owned_frontmatter_fields,
+    str(work_reference_path),
+    live_schema,
+)
+if live_fenced_example_defects:
+    raise SystemExit(
+        "Frontmatter Quoting fenced-example defects: "
+        + ", ".join(sorted(live_fenced_example_defects))
+    )
+
+schema_only_sources = {
+    str(work_reference_path): (
+        'The inline counterexample remains title: "Fix: A " # B"\n\n'
+        "```yaml\n" + live_schema + "\n```\n"
+    )
+}
+schema_only_defects = frontmatter_fenced_example_defects(
+    schema_only_sources,
+    governed_frontmatter_fields,
+    encoder_owned_frontmatter_fields,
+    str(work_reference_path),
+    live_schema,
+)
+if "no governed field appears in an independent do-work record example" not in schema_only_defects:
+    raise SystemExit(
+        "Frontmatter Quoting schema-only non-vacuity trial escaped; found "
+        + repr(sorted(schema_only_defects))
+    )
+
+frontmatter_mutations = (
+    ("universal field condition removed", "The condition is the rule: whenever a frontmatter value carries text nobody in this pipeline composed", "Use this rule for frontmatter values written by the current actions", "outside-authorship condition governs every field"),
+    ("preflight citation removed", "Outside-text containment's accepted-text preflight", "ordinary text", "outside-text preflight inherited"),
+    ("normalization allowed", "refuses and reports text that fails it instead of normalizing bytes", "normalizes text that fails it", "failed preflight refused and reported"),
+    ("blank-line indentation omitted", "(blank lines included)", "(non-blank lines only)", "every physical line indented"),
+    ("strip used for every multiline value", "`key: |-` for zero terminal LF bytes, `key: |` for exactly one, and `key: |+` for multiple", "`key: |-` for every multiline value", "one-terminal-LF clip form"),
+)
+for mutation_name, old, new, expected_defect in frontmatter_mutations:
+    mutated = work_reference.replace(old, new, 1)
+    if mutated == work_reference:
+        raise SystemExit(f"Frontmatter Quoting mutation {mutation_name!r} changed nothing")
+    defects = frontmatter_contract_defects(mutated)
+    if expected_defect not in defects:
+        raise SystemExit(
+            f"Frontmatter Quoting mutation {mutation_name!r} escaped {expected_defect!r}; "
+            f"found {sorted(defects)!r}"
+        )
+
+frontmatter_narrowed = work_reference.replace(
+    "they are illustrative, never a list to check against",
+    "they are illustrative, never a list to check against. Despite that condition, "
+    "this contract applies only to the fields named above",
+    1,
+)
+if frontmatter_narrowed == work_reference:
+    raise SystemExit("Frontmatter Quoting insertion narrowing changed nothing")
+narrowed_defects = frontmatter_contract_defects(frontmatter_narrowed)
+if "outside-authorship condition narrowed to named fields" not in narrowed_defects:
+    raise SystemExit(
+        "Frontmatter Quoting current-fields-only insertion escaped; found "
+        + repr(sorted(narrowed_defects))
+    )
+
+schema_without_title_inheritance = live_schema.replace(
+    "**Frontmatter Quoting** contract above", "local quoting rule", 1
+)
+if schema_without_title_inheritance == live_schema:
+    raise SystemExit("Frontmatter Quoting schema-annotation deletion changed nothing")
+work_reference_without_title_inheritance = work_reference.replace(
+    live_schema, schema_without_title_inheritance, 1
+)
+_, _, _, deleted_annotation_defects = frontmatter_schema_inventory(
+    work_reference_without_title_inheritance
+)
+if not any("governed schema field title lacks" in defect for defect in deleted_annotation_defects):
+    raise SystemExit(
+        "Frontmatter Quoting schema-annotation deletion escaped; found "
+        + repr(sorted(deleted_annotation_defects))
+    )
+
+unsafe_title_schema = live_schema.replace(
+    "title: 'Short descriptive title'", "title: Short descriptive title", 1
+)
+if unsafe_title_schema == live_schema:
+    raise SystemExit("Frontmatter Quoting unsafe-scalar mutation changed nothing")
+unsafe_title_reference = work_reference.replace(live_schema, unsafe_title_schema, 1)
+unsafe_title_sources = dict(all_shipped_markdown_sources)
+unsafe_title_sources[str(work_reference_path)] = unsafe_title_reference
+_, unsafe_fields, unsafe_encoder_fields, unsafe_annotation_defects = frontmatter_schema_inventory(
+    unsafe_title_reference
+)
+if unsafe_annotation_defects:
+    raise SystemExit(
+        "Frontmatter Quoting unsafe-scalar mutation damaged the inventory: "
+        + repr(sorted(unsafe_annotation_defects))
+    )
+unsafe_title_defects = frontmatter_fenced_example_defects(
+    unsafe_title_sources,
+    unsafe_fields,
+    unsafe_encoder_fields,
+    str(work_reference_path),
+    unsafe_title_schema,
+)
+if not any("fenced title example" in defect for defect in unsafe_title_defects):
+    raise SystemExit(
+        "Frontmatter Quoting unsafe-scalar mutation escaped; found "
+        + repr(sorted(unsafe_title_defects))
+    )
+
+toolbox_review_path = repository_root / "skills/do-work-toolbox/actions/code-review.md"
+toolbox_review_key = str(toolbox_review_path)
+toolbox_review = all_shipped_markdown_sources.get(toolbox_review_key)
+if toolbox_review is None:
+    raise SystemExit("Frontmatter Quoting shipped toolbox review source is missing")
+unsafe_toolbox_review = toolbox_review.replace(
+    "title: '[<impact token>] Code review: [brief description]'",
+    "title: [<impact token>] Code review: [brief description]",
+    1,
+)
+if unsafe_toolbox_review == toolbox_review:
+    raise SystemExit("Frontmatter Quoting toolbox unsafe-title mutation changed nothing")
+unsafe_toolbox_sources = dict(all_shipped_markdown_sources)
+unsafe_toolbox_sources[toolbox_review_key] = unsafe_toolbox_review
+unsafe_toolbox_defects = frontmatter_fenced_example_defects(
+    unsafe_toolbox_sources,
+    governed_frontmatter_fields,
+    encoder_owned_frontmatter_fields,
+    str(work_reference_path),
+    live_schema,
+)
+if not any(
+    toolbox_review_key in defect and "fenced title example" in defect
+    for defect in unsafe_toolbox_defects
+):
+    raise SystemExit(
+        "Frontmatter Quoting shipped toolbox unsafe-title mutation escaped; found "
+        + repr(sorted(unsafe_toolbox_defects))
+    )
+
+future_field_line = (
+    "future_user_text: 'safe future value'   # raw user text — "
+    "**Frontmatter Quoting** contract above\n"
+)
+future_schema = live_schema.replace(
+    "title: 'Short descriptive title'", future_field_line + "title: 'Short descriptive title'", 1
+)
+if future_schema == live_schema:
+    raise SystemExit("Frontmatter Quoting future-field mutation changed nothing")
+future_reference = work_reference.replace(live_schema, future_schema, 1)
+future_sources = dict(all_shipped_markdown_sources)
+future_sources[str(work_reference_path)] = future_reference
+future_toolbox_review = toolbox_review.replace(
+    "title: '[<impact token>] Code review: [brief description]'",
+    "title: '[<impact token>] Code review: [brief description]'\n"
+    "future_user_text: unsafe future value",
+    1,
+)
+if future_toolbox_review == toolbox_review:
+    raise SystemExit("Frontmatter Quoting future-field independent example changed nothing")
+future_sources[toolbox_review_key] = future_toolbox_review
+_, future_fields, future_encoder_fields, future_annotation_defects = frontmatter_schema_inventory(
+    future_reference
+)
+if "future_user_text" not in future_fields or future_annotation_defects:
+    raise SystemExit(
+        "Frontmatter Quoting future field did not join the derived inventory cleanly: "
+        + repr(sorted(future_fields)) + " / " + repr(sorted(future_annotation_defects))
+    )
+future_field_defects = frontmatter_fenced_example_defects(
+    future_sources,
+    future_fields,
+    future_encoder_fields,
+    str(work_reference_path),
+    future_schema,
+)
+if not any("fenced future_user_text example" in defect for defect in future_field_defects):
+    raise SystemExit(
+        "Frontmatter Quoting future unsafe field escaped; found "
+        + repr(sorted(future_field_defects))
+    )
+
+required_single_quoted_examples = (
+    (capture_reference_path, r"^title: 'Add keyboard shortcuts'(?:\s+#.*)?$", "UR input title"),
+    (review_path, r"^title: '\[<impact token>\] Review fix: \[brief description\]'", "review follow-up title"),
+    (sample_path, r"^title: 'Add user avatar component'(?:\s+#.*)?$", "sample archived title"),
+    (capture_guide_path, r"^title: 'Brief descriptive title'$", "capture-guide title"),
+    (work_guide_path, r"^assigned_to: 'cloud-alpha'$", "work-guide earmark"),
+)
+for path, pattern, label in required_single_quoted_examples:
+    example_text = path.read_text()
+    example_match = re.search(pattern, example_text, flags=re.MULTILINE)
+    if example_match is None:
+        raise SystemExit(f"{path}: {label} is not in the required single-quoted form")
+    citation_window = example_text[example_match.start():example_match.end() + 500]
+    if "Frontmatter Quoting" not in citation_window:
+        raise SystemExit(f"{path}: {label} does not cite Frontmatter Quoting at the example")
+
+ur_template = capture_reference_path.read_text()
+full_input = section(ur_template, r"^## Full Verbatim Input\n", r"^---\n\*Captured:")
+if re.search(r"^> `+", full_input, flags=re.MULTILINE) is None:
+    raise SystemExit("capture-reference UR Full Verbatim Input example is still live Markdown rather than quoted fenced text")
+
+PY
+then
+  printf 'FAIL: outside-text body writers and hand-authored frontmatter examples must inherit the canonical containment/quoting contracts at their own write sites (REQ-360).\n' >&2
   fail_count=$((fail_count + 1))
 fi
 
@@ -5224,7 +6256,7 @@ fi
 # honest as the rule that produces it. Before REQ-339 the rule matched `^# <one-token>: `,
 # so `# generate-report-image caller contract:` and `# generate-report-image, interrupted
 # directly:` were real cases no figure ever mentioned — nothing failed, the number just
-# read low. This fixture carries three headers in three spellings plus three near-misses
+# read low. This fixture carries three headers in three spellings plus four near-misses
 # that must stay uncounted, so a narrowed rule and an over-broad one both fail here.
 prescribed_shell_counter="$repo_root/_dev/tests/prescribed-shell-case-count.sh"
 if [ ! -f "$prescribed_shell_counter" ]; then
@@ -5239,6 +6271,7 @@ else
 # probe-counter caller contract: a space-qualified header counts.
 # The wrapped description below is prose, not a header: it only carries a colon.
 # reaching a colon mid-sentence: a continuation line must not count.
+# qualifying a request: a word that only starts with the script name must not count.
 # probe-counter.sh named inside a sentence (REQ-000: still not a header).
 PROBE_COUNTER_FIXTURE
   # 'none' rather than 0 so a counter that could not run stays distinguishable from one

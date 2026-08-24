@@ -190,11 +190,12 @@
   var drawerMeta = document.getElementById("detail-meta");
   var drawerBody = document.getElementById("detail-body");
   var drawerCopyButton = document.getElementById("detail-copy");
+  var drawerCopyAllButton = document.getElementById("detail-copy-all");
   var lastFocusedElement = null;
 
   // The initial board payload deliberately omits raw Markdown. Remember only
-  // the open record's identity; the Copy button loads board-markdown.js on its
-  // first use, then looks up the exact source by kind + id.
+  // the open record's identity; the Copy buttons load board-markdown.js on first
+  // use, then look up the exact sources by kind + id.
   var currentDetailKind = "";
   var currentDetailId = "";
 
@@ -457,9 +458,13 @@
     drawer.hidden = false;
     detailResizer.hidden = false;
     // A lingering "Copied ✓" from the previous ticket would misreport what is
-    // on the clipboard — reset the button on every open.
+    // on the clipboard — reset both controls on every open. Copy all belongs to
+    // UR details only; plain Copy remains the one-record action for both kinds.
     drawerCopyButton.textContent = "Copy";
     drawerCopyButton.classList.remove("is-copied", "is-copy-failed");
+    drawerCopyAllButton.textContent = "Copy all";
+    drawerCopyAllButton.classList.remove("is-copied", "is-copy-failed");
+    drawerCopyAllButton.hidden = currentDetailKind !== "ur";
     drawerBody.scrollTop = 0;
     drawer.scrollTop = 0;
     drawer.focus();

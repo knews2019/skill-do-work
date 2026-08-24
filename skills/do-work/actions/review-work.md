@@ -358,7 +358,7 @@ For each finding that routes to its own REQ (and for each new sweep), create the
 ```markdown
 ---
 id: REQ-NNN
-title: "[<impact token>] Review fix: [brief description]"   # omit the tag when the recorded token is impact-user-visible (actions/capture-reference.md → REQ Title Convention)
+title: '[<impact token>] Review fix: [brief description]'   # single-quoted per Frontmatter Quoting (actions/work-reference.md), apostrophes doubled; omit the tag when the recorded token is impact-user-visible (actions/capture-reference.md → REQ Title Convention)
 status: pending
 domain: [same domain as the reviewed REQ]
 created_at: <timestamp>

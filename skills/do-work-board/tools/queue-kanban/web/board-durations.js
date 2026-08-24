@@ -21,62 +21,24 @@
   var DURATIONS_PLOT_WIDTH = DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_LEFT - DURATIONS_MARGIN_RIGHT;
   var DURATIONS_DAY_MS = 86400000;
 
-  // Panel A — the overflow lane above a scale break exists so three long spans
-  // cannot squash the 90% of samples that live under 35 minutes. Marks keep the
-  // lane's top strip and both label rows sit below a divider (REQ-231), so a
-  // neighbouring dot can never overprint a label at any density —
-  // TestDurationsLabelRowsClearTheMarkBands holds the two apart.
+  // Panel A — the overflow lane above a scale break exists so long spans cannot
+  // squash the ordinary samples. Every mark stays in the lane; the complete
+  // ranked text record now lives in adjacent HTML rather than competing for SVG
+  // width inside the chart.
   var DURATIONS_LANE_TOP = 22;
   var DURATIONS_LANE_MARK_Y = 32;
-  // Band marks (overflow and reversed) are drawn a size up from ordinary marks;
-  // the geometry test reads this radius to prove the label rows clear the band.
   var DURATIONS_BAND_MARK_RADIUS = 5;
-  var DURATIONS_LANE_DIVIDER_Y = 44;
   var DURATIONS_BREAK_Y = 76;
   var DURATIONS_MAIN_TOP = 84;
   var DURATIONS_MAIN_BOTTOM = 286;
   var DURATIONS_CEILING_MINUTES = 60;
   var DURATIONS_ORDINARY_MARK_OPACITY = 0.62;
   var DURATIONS_BELOW_ZERO_Y = 298;
-  // Direct labels. WHICH marks get one is decided in durations.go and arrives in
-  // the payload as labelRow/labelAnchor; what lives here is only the geometry
-  // that turns a row index into a baseline. The gap and the row count are shared
-  // with that decision, so TestDurationLabelGeometryMatchesTheRenderer pins this
-  // file's constants against the Go ones.
-  var DURATIONS_LABEL_ROW_COUNT = 2;
-  var DURATIONS_LABEL_GAP = 9;
-  // Row pitch is the label text box, never less.
-  //
-  // This is no longer held against a hand-recorded box height. REQ-292 deleted
-  // those constants because they described a face they never met — the board's
-  // own stack measures a 13.0000-unit line box against this 13-unit pitch, past
-  // the 12.97 the recorded maximum claimed was the ceiling. The pitch is now
-  // checked against the box the ENGINE draws, by
-  // TestBrowserBehaviorDurationsLabelRowsClearTheirNeighbours, which fails on
-  // whatever face the machine running it actually has.
-  //
-  // It stood at 12 until REQ-241: two rows of line box then intersected by 0.83
-  // units, which was padding rather than ink — the render showed two clean rows
-  // — but it made row-against-row separation unassertable.
-  var DURATIONS_LABEL_ROW_HEIGHT = 13;
-  // A DECLARED number, not a measured one. It is deliberately at or above any
-  // ascent the 11px face draws, and the round-up is the safe direction for both
-  // readers: it ends the leader tick above the text rather than inside it, and it
-  // makes the mark-band clearance check demand more room than the ink needs.
-  //
-  // It used to cite a specific measured ascent as current fact with no build
-  // beside it (REQ-266). That number is gone rather than dated, because REQ-292
-  // made the ascent something the engine answers at test time:
-  // TestBrowserBehaviorDurationsLabelRowsClearTheirNeighbours measures the real
-  // line box on whatever machine runs it and fails there instead.
-  var DURATIONS_LABEL_TEXT_ASCENT = 11;
   // An axis tick's baseline sits this far below the y it labels, which is what
   // optically centres an 11px face on that line. A named number because a tick
   // row is a neighbour some other text has to clear, and a test cannot read a
   // literal buried in an attribute.
   var DURATIONS_TICK_BASELINE_DROP = 4;
-  var DURATIONS_LANE_LABEL_ROW_Y = 56;
-  var DURATIONS_REVERSED_LABEL_ROW_Y = 322;
   // The UR grouping lane (REQ-346) — one bracket per user request, spanning its
   // samples' completion times, under panel A and on panel A's axis.
   //
@@ -497,189 +459,79 @@
     return new Date(epochMs).toISOString().replace("T", " ").slice(0, 16) + " UTC";
   }
 
-  // Which band a sample carries a direct label in, or "" for no direct label.
-  // Ported from durations.go's durationLabelBandOf: the two bands sit at
-  // different heights with unrelated local densities, so they pack independently.
-  function durationsLabelBandOf(sample) {
-    if (sample.wallMinutes < 0) {
-      return "reversed";
+  // R-7 / linear interpolation: position (n-1)*p in the sorted samples and
+  // interpolate between its neighbours. The same named rule serves the raw
+  // headline distribution, Panel A's daily distribution, and Panel B's rolling
+  // median so three visible quantiles cannot quietly acquire three conventions.
+  function durationQuantile(sortedMinutes, probability) {
+    var position = (sortedMinutes.length - 1) * probability;
+    var lowerIndex = Math.floor(position);
+    var upperIndex = Math.ceil(position);
+    if (lowerIndex === upperIndex) {
+      return sortedMinutes[lowerIndex];
     }
-    if (sample.wallMinutes > DURATIONS_CEILING_MINUTES) {
-      return "overflow";
+    return sortedMinutes[lowerIndex] +
+      (sortedMinutes[upperIndex] - sortedMinutes[lowerIndex]) * (position - lowerIndex);
+  }
+
+  function renderDurationsLongestSpans(samples, listNode, countNode) {
+    if (!listNode || !countNode) {
+      return;
     }
-    return "";
-  }
-
-  function durationsBandRowY(sample) {
-    return sample.wallMinutes < 0 ? DURATIONS_REVERSED_LABEL_ROW_Y : DURATIONS_LANE_LABEL_ROW_Y;
-  }
-
-  // The baseline for a placed row index. `labelRow` is now decided HERE rather
-  // than arriving in the payload (REQ-292), because placement needs the width the
-  // engine actually draws and only the engine knows it.
-  function durationsLabelBaselineY(sample, labelRow) {
-    if (typeof labelRow !== "number" || labelRow < 0 || labelRow >= DURATIONS_LABEL_ROW_COUNT) {
-      return null;
-    }
-    return durationsBandRowY(sample) + labelRow * DURATIONS_LABEL_ROW_HEIGHT;
-  }
-
-  // ---- direct-label placement (REQ-292) -----------------------------------
-  // Placement used to run in Go at generate time, sizing each label as character
-  // count times a constant 7.15 units. That constant described one Linux
-  // container's answer to --font-sans, and board.css ends that stack in the open
-  // `sans-serif` generic — so it described a face it never met. Measured live,
-  // Arial Black draws 7.34 units per character, which overprints; the board's own
-  // stack draws a 13.0000-unit line box against the 13-unit row pitch, which is a
-  // false clearance claim. Both close by asking the engine instead of guessing.
-  //
-  // The RULES ARE PORTED, NOT REINVENTED. Each has a REQ behind it and each is
-  // kept deliberately:
-  //   * longest-span-first order, stable over completion order (REQ-237). The
-  //     lane's text answers "where are the outliers", so magnitude order is the
-  //     whole of the labels-go-to-the-outliers rule; stability keeps equal spans
-  //     in left-to-right precedence so an archive full of identical durations
-  //     still places deterministically.
-  //   * first row where the text touches nothing already placed, with a
-  //     separation gap — not a "reaches this far right" high-water mark, because
-  //     the walk is ordered by magnitude rather than by x, so every placed
-  //     interval on the row has to be consulted.
-  //   * anchor before the mark first, after the mark as the fallback that keeps
-  //     the leftmost sample labellable (REQ-231). Kept as a consistency rule: a
-  //     label sits on the same side of its mark unless the plot edge forbids it.
-  //   * a sample that fits nowhere is COUNTED, never silently dropped.
-  //   * the two-pass reserve: the remainder sentence needs room at the last row's
-  //     right edge, but whether there IS a remainder is only known once placement
-  //     has finished — so pass one uses the full width and only a pass that
-  //     actually dropped something is redone with the reservation held back. A
-  //     board with no remainder pays nothing for one.
-  //
-  // WHAT IS GONE ON PURPOSE: the width model. There is no per-character constant
-  // and no supremum to stay above, because there is no estimate — the width is
-  // the drawn width.
-  var DURATIONS_LABEL_SEPARATION = 6;
-
-  // Room held at the last row's right edge for the remainder sentence. Measured
-  // from the widest sentence the renderer can compose, in the face actually in
-  // use, rather than modeled: composeDurationsRemainderText builds it and the
-  // caller measures it, so this is a shape rather than a number and carries no
-  // build provenance to go stale.
-  function composeDurationsRemainderText(hiddenCount, remainderTail) {
-    return "+" + hiddenCount + " more " + remainderTail;
-  }
-
-  function durationsLabelSpan(markX, textWidth, anchor, rowLeftEdge, rowRightEdge) {
-    var spanLeft = markX + DURATIONS_LABEL_GAP;
-    var spanRight = spanLeft + textWidth;
-    if (anchor === "end") {
-      spanRight = markX - DURATIONS_LABEL_GAP;
-      spanLeft = spanRight - textWidth;
-    }
-    return {
-      left: spanLeft,
-      right: spanRight,
-      fits: spanLeft >= rowLeftEdge && spanRight <= rowRightEdge
-    };
-  }
-
-  function durationsSpanIsBlocked(occupiedRow, spanLeft, spanRight) {
-    for (var placedIndex = 0; placedIndex < occupiedRow.length; placedIndex += 1) {
-      var placed = occupiedRow[placedIndex];
-      if (spanLeft < placed.right + DURATIONS_LABEL_SEPARATION &&
-        placed.left < spanRight + DURATIONS_LABEL_SEPARATION) {
-        return true;
+    var longestSpans = samples.filter(function (sample) {
+      return sample.wallMinutes > DURATIONS_CEILING_MINUTES;
+    }).sort(function (first, second) {
+      if (first.wallMinutes !== second.wallMinutes) {
+        return second.wallMinutes - first.wallMinutes;
       }
-    }
-    return false;
-  }
-
-  // One greedy pass over a single band, in the order given. Every candidate the
-  // order names is offered a row, so the pass stops only when the rows are full:
-  // a span the geometry rejects costs the band nothing but its own label.
-  function placeDurationsLabelBand(candidates, reserveUnits) {
-    var occupied = [];
-    for (var rowIndex = 0; rowIndex < DURATIONS_LABEL_ROW_COUNT; rowIndex += 1) {
-      occupied.push([]);
-    }
-    var rowLeftEdge = DURATIONS_MARGIN_LEFT;
-    var plotRightEdge = DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT;
-    var placements = [];
-    var hiddenCount = 0;
-
-    candidates.forEach(function (candidate) {
-      var placedRow = -1;
-      var placedAnchor = "";
-      for (var rowIndex = 0; rowIndex < DURATIONS_LABEL_ROW_COUNT; rowIndex += 1) {
-        var rowRightEdge = plotRightEdge;
-        if (reserveUnits > 0 && rowIndex === DURATIONS_LABEL_ROW_COUNT - 1) {
-          rowRightEdge -= reserveUnits;
-        }
-        var span = durationsLabelSpan(candidate.markX, candidate.textWidth, "end", rowLeftEdge, rowRightEdge);
-        var anchor = "end";
-        if (!span.fits || durationsSpanIsBlocked(occupied[rowIndex], span.left, span.right)) {
-          span = durationsLabelSpan(candidate.markX, candidate.textWidth, "start", rowLeftEdge, rowRightEdge);
-          anchor = "start";
-        }
-        if (!span.fits || durationsSpanIsBlocked(occupied[rowIndex], span.left, span.right)) {
-          continue;
-        }
-        placedRow = rowIndex;
-        placedAnchor = anchor;
-        occupied[rowIndex].push({ left: span.left, right: span.right });
-        break;
+      if (first.id !== second.id) {
+        return first.id < second.id ? -1 : 1;
       }
-      if (placedRow < 0) {
-        hiddenCount += 1;
-      }
-      placements.push({ candidate: candidate, labelRow: placedRow, labelAnchor: placedAnchor });
+      return first.completionTime < second.completionTime ? -1 : 1;
     });
 
-    return { placements: placements, hiddenCount: hiddenCount };
-  }
+    listNode.textContent = "";
+    countNode.textContent = longestSpans.length + " span" +
+      (longestSpans.length === 1 ? "" : "s") + " over " + DURATIONS_CEILING_MINUTES +
+      " minutes in this window; all are listed.";
 
-  // The reserve, run to a fixed point. Pass one uses the full width; only if it
-  // dropped something is there a sentence to hold room for at all, so a board with
-  // no remainder still pays nothing.
-  //
-  // It cannot stop at two passes. Holding the reserve narrows the last row, which
-  // can hide labels pass one placed — so the sentence finally DRAWN counts more
-  // than the sentence the reserve was measured from, and across a digit boundary
-  // it is also wider. Measured: 26 candidates at one width hid 8 on pass one and
-  // 10 on pass two, reserving room for "+8 more …" and drawing "+10 more …" over
-  // the last placed label. That is the collision this planner exists to prevent.
-  //
-  // The loop terminates: hiding is monotone in the reserve (a wider reserve only
-  // ever shrinks the last row), the sentence is monotone in the count, and the
-  // count is bounded by the candidates. The iteration cap is a backstop against a
-  // measure function that is not monotone, not an expected path — one extra pass
-  // is the normal cost, and the cap returns the widest reserve actually tried.
-  //
-  // The cap lives INSIDE the function on purpose. The browser probe assembles its
-  // page by slicing named functions out of the built client, so a module-level
-  // constant beside them is simply absent there and the page throws on first use.
-  function packDurationsLabelBand(candidates, measureRemainderWidth, remainderTail) {
-    var reservePassLimit = 8;
-    var band = placeDurationsLabelBand(candidates, 0);
-    var reservedForCount = 0;
-    for (var pass = 0; pass < reservePassLimit; pass += 1) {
-      if (band.hiddenCount === 0 || band.hiddenCount === reservedForCount) {
-        return band;
-      }
-      reservedForCount = band.hiddenCount;
-      band = placeDurationsLabelBand(
-        candidates,
-        measureRemainderWidth(composeDurationsRemainderText(reservedForCount, remainderTail))
-      );
-    }
-    return band;
-  }
+    longestSpans.forEach(function (sample) {
+      var request = durationSampleRequest(sample) || {};
+      var item = document.createElement("li");
+      item.setAttribute("data-request-id", sample.id);
+      item.setAttribute("data-wall-minutes", String(sample.wallMinutes));
 
-  // The remainder sentence goes on the band's LAST text row. The marks sit level
-  // with the first row, so a sentence there is legible only while the band is
-  // sparse — which is exactly when there is no remainder to print. Placement
-  // reserves this row's right edge to match.
-  function durationsRemainderBaselineY(bandRowY) {
-    return bandRowY + (DURATIONS_LABEL_ROW_COUNT - 1) * DURATIONS_LABEL_ROW_HEIGHT;
+      var heading = document.createElement("div");
+      heading.className = "durations-longest-spans-item-heading";
+      var requestNode = document.createElement("span");
+      requestNode.className = "durations-longest-spans-request";
+      requestNode.textContent = sample.id;
+      var durationNode = document.createElement("span");
+      durationNode.className = "durations-longest-spans-duration";
+      durationNode.textContent = formatDurationMinutes(sample.wallMinutes);
+      heading.appendChild(requestNode);
+      heading.appendChild(durationNode);
+
+      var context = document.createElement("div");
+      context.className = "durations-longest-spans-item-context";
+      var userRequestNode = document.createElement("span");
+      userRequestNode.className = "durations-longest-spans-user-request";
+      userRequestNode.textContent = durationUserRequestName(durationSampleUserRequestId(sample));
+      var routeNode = document.createElement("span");
+      routeNode.className = "durations-longest-spans-route";
+      routeNode.textContent = durationRouteName(sample.route);
+      context.appendChild(userRequestNode);
+      context.appendChild(routeNode);
+
+      var titleNode = document.createElement("p");
+      titleNode.className = "durations-longest-spans-title";
+      titleNode.textContent = request.title || "Untitled REQ";
+
+      item.appendChild(heading);
+      item.appendChild(context);
+      item.appendChild(titleNode);
+      listNode.appendChild(item);
+    });
   }
 
   // Panel B's one annotation: the slowest day's median, stated in figures because
@@ -716,9 +568,15 @@
   function renderDurationsView() {
     var chartHost = document.getElementById("durations-chart");
     var summaryNode = document.getElementById("durations-summary");
+    var medianStatNode = document.getElementById("durations-stat-median");
+    var p90StatNode = document.getElementById("durations-stat-p90");
+    var activeDaysStatNode = document.getElementById("durations-stat-active-days");
+    var requestsPerDayStatNode = document.getElementById("durations-stat-reqs-per-day");
     var colourLegendNode = document.getElementById("durations-colour-legend");
     var readoutNode = document.getElementById("durations-readout");
     var tableBody = document.getElementById("durations-table-body");
+    var longestSpansList = document.getElementById("durations-longest-list");
+    var longestSpansCount = document.getElementById("durations-longest-count");
     if (!chartHost || !summaryNode || !tableBody) {
       return;
     }
@@ -738,6 +596,7 @@
     }
 
     if (allSamples.length === 0) {
+      renderDurationsLongestSpans([], longestSpansList, longestSpansCount);
       summaryNode.textContent =
         "No archived REQ carries both a claim and a completion stamp yet, so there is nothing to measure.";
       return;
@@ -764,6 +623,27 @@
     var windowName = durationsWindowName();
     var windowStartLabel = formatDurationDayLabel(timeStart);
     var windowEndLabel = formatDurationDayLabel(timeEnd);
+    renderDurationsLongestSpans(samples, longestSpansList, longestSpansCount);
+
+    // Headline figures describe the SAME projected window Panel A draws. Raw
+    // signed spans are deliberate here: a paused or reversed sample remains a
+    // plotted fact even though Panel B's read-time rule excludes it.
+    var sortedRawMinutes = samples.map(function (sample) {
+      return sample.wallMinutes;
+    }).sort(function (first, second) { return first - second; });
+    var axisDayCount = timeSpan / DURATIONS_DAY_MS;
+    if (medianStatNode) {
+      medianStatNode.textContent = formatDurationMinutes(durationQuantile(sortedRawMinutes, 0.5));
+    }
+    if (p90StatNode) {
+      p90StatNode.textContent = formatDurationMinutes(durationQuantile(sortedRawMinutes, 0.9));
+    }
+    if (activeDaysStatNode) {
+      activeDaysStatNode.textContent = days.length + " / " + axisDayCount;
+    }
+    if (requestsPerDayStatNode) {
+      requestsPerDayStatNode.textContent = (samples.length / days.length).toFixed(1);
+    }
 
     var excludedSamples = samples.filter(function (sample) {
       return sample.excludedReason;
@@ -814,9 +694,10 @@
         " UTC, end exclusive" +
         ". Panel A plots each archived REQ's duration in minutes coloured by " +
         durationColourChannelName() +
-        ", over a lane of brackets grouping its marks by user request. " +
+        ", over a lane of brackets grouping its marks by user request. The adjacent ranked list names every span over " +
+        DURATIONS_CEILING_MINUTES + " minutes. " +
         durationsColourLegendText() +
-        " Panel B plots the median minutes per active day. Panel C counts REQs completed per day. Every value is also listed in the table below."
+        " Panel B plots the median minutes per active day and its trailing 7-active-day median. Panel C counts REQs completed per day. Every value is also listed in the table below."
     );
 
     function xOfEpoch(epochMs) {
@@ -884,19 +765,6 @@
         DURATIONS_MAIN_BOTTOM -
         Math.sqrt(clamped / DURATIONS_CEILING_MINUTES) * (DURATIONS_MAIN_BOTTOM - DURATIONS_MAIN_TOP)
       );
-    }
-    // R-7 / linear interpolation: position (n-1)*p in the sorted samples and
-    // interpolate between its neighbours. Naming the rule makes small even
-    // days deterministic rather than leaving quartiles to library convention.
-    function durationQuantile(sortedMinutes, probability) {
-      var position = (sortedMinutes.length - 1) * probability;
-      var lowerIndex = Math.floor(position);
-      var upperIndex = Math.ceil(position);
-      if (lowerIndex === upperIndex) {
-        return sortedMinutes[lowerIndex];
-      }
-      return sortedMinutes[lowerIndex] +
-        (sortedMinutes[upperIndex] - sortedMinutes[lowerIndex]) * (position - lowerIndex);
     }
     function durationsDailyQuantiles() {
       var minutesByDay = {};
@@ -976,14 +844,6 @@
       },
       "60+"
     );
-    // The divider holds the lane's mark strip apart from the text band below it.
-    makeDurationsSvgNode(svg, "line", {
-      x1: DURATIONS_MARGIN_LEFT,
-      y1: DURATIONS_LANE_DIVIDER_Y,
-      x2: DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT,
-      y2: DURATIONS_LANE_DIVIDER_Y,
-      class: "durations-lane-divider"
-    });
     makeDurationsSvgNode(svg, "line", {
       x1: DURATIONS_MARGIN_LEFT,
       y1: DURATIONS_BREAK_Y,
@@ -1046,138 +906,60 @@
       if (!isReversed && !markColour.className) {
         markAttributes.opacity = DURATIONS_ORDINARY_MARK_OPACITY;
       }
-      makeDurationsSvgNode(svg, "circle", markAttributes);
-      markIndex.push({ x: markX, y: markY, sample: sample, epochMs: epochMs, colourLabel: isReversed ? "Reversed stamp" : markColour.label });
+      markAttributes.role = "button";
+      markAttributes.tabindex = sampleIndex === 0 ? "0" : "-1";
+      markAttributes["data-duration-mark-index"] = String(sampleIndex);
+      markAttributes["data-detail-kind"] = "req";
+      markAttributes["data-detail-id"] = sample.id;
+      var markNode = makeDurationsSvgNode(svg, "circle", markAttributes);
+      var indexedMark = {
+        x: markX,
+        y: markY,
+        node: markNode,
+        sample: sample,
+        epochMs: epochMs,
+        colourLabel: isReversed ? "Reversed stamp" : markColour.label
+      };
+      markNode.setAttribute("aria-label", describeDurationMark(indexedMark));
+      markIndex.push(indexedMark);
     });
 
-    // Direct labels only where a mark carries a value its y cannot: the overflow
-    // lane, where every mark sits at one y, and the reversed band.
-    //
-    // MEASURE BEFORE PAINT (REQ-292). Every label's <text> node is created and
-    // measured with getComputedTextLength() before any of them is positioned, and
-    // the whole pass is synchronous inside this one render call — the browser
-    // does not paint until the task yields, so the reader never sees an
-    // intermediate layout and the chart never visibly reflows. That is why this
-    // needs neither an offscreen clone nor a hidden pass: "before paint" here is
-    // a property of the task, not of a visibility trick.
-    //
-    // The svg is already in the document (chartHost.appendChild above), which is
-    // what makes the measurement real rather than zero.
-    var labelCandidatesByBand = { overflow: [], reversed: [] };
-    markIndex.forEach(function (mark) {
-      var bandName = durationsLabelBandOf(mark.sample);
-      if (bandName === "") {
-        return;
+    // Every projected sample is a semantic button, but Panel A is ONE Tab stop.
+    // Left/Right rove that stop through the complete sample set, following the same
+    // chronological payload order as the table. A render replaces the nodes, so this
+    // state and its listeners deliberately die with the SVG rather than needing a
+    // second lifecycle beside Durations' existing rebuild.
+    function setDurationsRovingMark(markIndexValue, moveFocus) {
+      var clampedIndex = Math.min(Math.max(markIndexValue, 0), markIndex.length - 1);
+      markIndex.forEach(function (mark, indexedMarkIndex) {
+        mark.node.setAttribute("tabindex", indexedMarkIndex === clampedIndex ? "0" : "-1");
+      });
+      if (moveFocus && markIndex[clampedIndex] && typeof markIndex[clampedIndex].node.focus === "function") {
+        markIndex[clampedIndex].node.focus();
       }
-      var textNode = makeDurationsSvgNode(
-        svg,
-        "text",
-        { class: "durations-mark-label" },
-        mark.sample.id + " " + formatDurationMinutes(mark.sample.wallMinutes)
-      );
-      labelCandidatesByBand[bandName].push({
-        mark: mark,
-        markX: mark.x,
-        textNode: textNode,
-        textWidth: textNode.getComputedTextLength()
-      });
-    });
-
-    // Longest span first, stable over completion order so equal spans keep their
-    // left-to-right precedence. markIndex is built in sample order, so a stable
-    // sort by descending magnitude is exactly durationLabelMagnitudeOrder.
-    Object.keys(labelCandidatesByBand).forEach(function (bandName) {
-      labelCandidatesByBand[bandName].sort(function (first, second) {
-        return Math.abs(second.mark.sample.wallMinutes) - Math.abs(first.mark.sample.wallMinutes);
-      });
-    });
-
-    // The remainder sentence is measured in the face actually in use, using a
-    // throwaway node removed as soon as it has given up its width.
-    function measureDurationsRemainderWidth(remainderText) {
-      var probeNode = makeDurationsSvgNode(svg, "text", { class: "durations-tick" }, remainderText);
-      var measuredWidth = probeNode.getComputedTextLength();
-      svg.removeChild(probeNode);
-      return measuredWidth;
+      return clampedIndex;
     }
 
-    var overflowBand = packDurationsLabelBand(
-      labelCandidatesByBand.overflow,
-      measureDurationsRemainderWidth,
-      "over " + DURATIONS_CEILING_MINUTES + " min"
-    );
-    // The tail strings here MUST match the ones drawDurationsRemainder is called
-    // with below, or the reserve would hold room for a sentence other than the one
-    // drawn — which is the overprinting defect placement exists to prevent.
-    var reversedBand = packDurationsLabelBand(
-      labelCandidatesByBand.reversed,
-      measureDurationsRemainderWidth,
-      "reversed"
-    );
-
-    // Position what was placed; remove what was not. An unplaced label's node is
-    // deleted rather than hidden, so the DOM carries no text a reader cannot see
-    // and a probe cannot mistake an invisible node for a drawn one.
-    [overflowBand, reversedBand].forEach(function (band) {
-      band.placements.forEach(function (placement) {
-        var candidate = placement.candidate;
-        var mark = candidate.mark;
-        var baselineY = durationsLabelBaselineY(mark.sample, placement.labelRow);
-        if (baselineY === null) {
-          svg.removeChild(candidate.textNode);
+    // Chromium makes an SVG root with keyboard/focus listeners a sequential focus
+    // stop of its own. Binding to each circle keeps the root inert, so the first Tab
+    // stop inside the chart is the roving mark rather than a nameless SVG detour.
+    // The handlers still share the marks' rebuild lifecycle and need no teardown.
+    markIndex.forEach(function (mark, indexedMarkIndex) {
+      mark.node.addEventListener("focus", function () {
+        setDurationsRovingMark(indexedMarkIndex, false);
+      });
+      mark.node.addEventListener("keydown", function (keyEvent) {
+        if (keyEvent.key === "ArrowLeft" || keyEvent.key === "ArrowRight") {
+          keyEvent.preventDefault();
+          setDurationsRovingMark(indexedMarkIndex + (keyEvent.key === "ArrowRight" ? 1 : -1), true);
           return;
         }
-        var anchorsBeforeMark = placement.labelAnchor === "end";
-        candidate.textNode.setAttribute(
-          "x",
-          (mark.x + (anchorsBeforeMark ? -DURATIONS_LABEL_GAP : DURATIONS_LABEL_GAP)).toFixed(1)
-        );
-        candidate.textNode.setAttribute("y", baselineY.toFixed(1));
-        candidate.textNode.setAttribute("text-anchor", anchorsBeforeMark ? "end" : "start");
-
-        // A leader tick ties the label back to its mark across the band gap. It
-        // ends at the text band's top edge — never inside a row — so it cannot
-        // cross a first-row label on its way to a second-row one.
-        makeDurationsSvgNode(svg, "line", {
-          x1: mark.x.toFixed(1),
-          y1: (mark.y + DURATIONS_BAND_MARK_RADIUS + 1).toFixed(1),
-          x2: mark.x.toFixed(1),
-          y2: (durationsBandRowY(mark.sample) - DURATIONS_LABEL_TEXT_ASCENT).toFixed(1),
-          class: "durations-label-leader"
-        });
+        if (keyEvent.key === "Enter" || keyEvent.key === " " || keyEvent.key === "Spacebar") {
+          keyEvent.preventDefault();
+          openDetail("req", mark.sample.id);
+        }
       });
     });
-
-    // Whatever carries no label is stated, never dropped in silence: the count is
-    // what stops a reader taking the visible labels for all of them. The count is
-    // produced by WHATEVER PLACED THE LABELS (REQ-292) — a count computed
-    // anywhere else is a claim about a decision it did not make.
-    function drawDurationsRemainder(hiddenCount, bandRowY, remainderTail) {
-      if (!hiddenCount) {
-        return;
-      }
-      makeDurationsSvgNode(
-        svg,
-        "text",
-        {
-          x: DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT,
-          y: bandRowY,
-          class: "durations-tick",
-          "text-anchor": "end"
-        },
-        composeDurationsRemainderText(hiddenCount, remainderTail)
-      );
-    }
-    drawDurationsRemainder(
-      overflowBand.hiddenCount,
-      durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y),
-      "over " + DURATIONS_CEILING_MINUTES + " min"
-    );
-    drawDurationsRemainder(
-      reversedBand.hiddenCount,
-      durationsRemainderBaselineY(DURATIONS_REVERSED_LABEL_ROW_Y),
-      "reversed"
-    );
 
     // ---- panel A's UR grouping lane ----
     // A bracket says "these marks above are one user request". No text goes
@@ -1269,7 +1051,7 @@
       svg,
       "text",
       { x: DURATIONS_MARGIN_LEFT, y: DURATIONS_MEDIAN_TITLE_Y, class: "durations-axis-title" },
-      "B · Median minutes per active day · paused and broken spans excluded"
+      "B · Median minutes per active day · trailing 7-active-day median · paused and broken spans excluded"
     );
     [0, 15, 30, 45].forEach(function (minutes) {
       gridRow(
@@ -1282,10 +1064,8 @@
     var dayWidth = (DURATIONS_PLOT_WIDTH * DURATIONS_DAY_MS) / timeSpan;
     var barWidth = Math.max(4, Math.min(24, dayWidth - 2));
     var slowestDay = null;
-    days.forEach(function (day) {
-      if (!day.hasMedian) {
-        return;
-      }
+    var medianDays = days.filter(function (day) { return day.hasMedian; });
+    medianDays.forEach(function (day) {
       var dayEpochMs = Date.parse(day.dayTime);
       var barLeftX = durationsBarLeftX(durationsDayCentreX(dayEpochMs), barWidth);
       var barTop = yOfDayMedian(day.medianMinutes);
@@ -1311,6 +1091,36 @@
         slowestDay = day;
       }
     });
+
+    // R-7 over drawn days, never calendar slots. Idle and excluded-only days do
+    // not enter the seven-value window and do not become invented zeroes.
+    var rollingMedianPoints = [];
+    for (var medianDayIndex = 6; medianDayIndex < medianDays.length; medianDayIndex += 1) {
+      var rollingMinutes = medianDays.slice(medianDayIndex - 6, medianDayIndex + 1).map(function (day) {
+        return day.medianMinutes;
+      }).sort(function (first, second) { return first - second; });
+      var rollingDay = medianDays[medianDayIndex];
+      rollingMedianPoints.push({
+        x: durationsDayCentreX(Date.parse(rollingDay.dayTime)),
+        y: yOfDayMedian(durationQuantile(rollingMinutes, 0.5))
+      });
+    }
+    if (rollingMedianPoints.length > 1) {
+      makeDurationsSvgNode(svg, "path", {
+        d: "M " + rollingMedianPoints.map(function (point) {
+          return point.x.toFixed(1) + " " + point.y.toFixed(1);
+        }).join(" L "),
+        class: "durations-rolling-line"
+      });
+    }
+    rollingMedianPoints.forEach(function (point) {
+      makeDurationsSvgNode(svg, "circle", {
+        cx: point.x.toFixed(1),
+        cy: point.y.toFixed(1),
+        r: 4,
+        class: "durations-rolling-marker"
+      });
+    });
     if (slowestDay) {
       drawDurationsSlowestDayAnnotation(svg, slowestDay, durationsDayCentreX(Date.parse(slowestDay.dayTime)));
     }
@@ -1325,12 +1135,22 @@
     var peakCount = days.reduce(function (highest, day) {
       return Math.max(highest, day.completedCount);
     }, 1);
+    var countMidpoint = peakCount / 2;
+    var countMidpointY = (DURATIONS_COUNT_TOP + DURATIONS_COUNT_BOTTOM) / 2;
     makeDurationsSvgNode(svg, "line", {
       x1: DURATIONS_MARGIN_LEFT,
       y1: DURATIONS_COUNT_BOTTOM,
       x2: DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT,
       y2: DURATIONS_COUNT_BOTTOM,
       class: "durations-axis-line"
+    });
+    makeDurationsSvgNode(svg, "line", {
+      x1: DURATIONS_MARGIN_LEFT,
+      y1: countMidpointY,
+      x2: DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT,
+      y2: countMidpointY,
+      class: "durations-grid-line",
+      "data-durations-count-grid": "midpoint"
     });
     makeDurationsSvgNode(
       svg,
@@ -1339,9 +1159,34 @@
         x: DURATIONS_MARGIN_LEFT - 8,
         y: DURATIONS_COUNT_TOP + DURATIONS_TICK_BASELINE_DROP,
         class: "durations-tick",
-        "text-anchor": "end"
+        "text-anchor": "end",
+        "data-durations-count-tick": "true"
       },
       String(peakCount)
+    );
+    makeDurationsSvgNode(
+      svg,
+      "text",
+      {
+        x: DURATIONS_MARGIN_LEFT - 8,
+        y: countMidpointY + DURATIONS_TICK_BASELINE_DROP,
+        class: "durations-tick",
+        "text-anchor": "end",
+        "data-durations-count-tick": "true"
+      },
+      peakCount % 2 === 0 ? String(countMidpoint) : countMidpoint.toFixed(1)
+    );
+    makeDurationsSvgNode(
+      svg,
+      "text",
+      {
+        x: DURATIONS_MARGIN_LEFT - 8,
+        y: DURATIONS_COUNT_BOTTOM + DURATIONS_TICK_BASELINE_DROP,
+        class: "durations-tick",
+        "text-anchor": "end",
+        "data-durations-count-tick": "true"
+      },
+      "0"
     );
     days.forEach(function (day) {
       var dayEpochMs = Date.parse(day.dayTime);
@@ -1415,6 +1260,57 @@
       dayByKey[day.dayKey] = day;
     });
 
+    function describeDurationMark(mark) {
+      var sample = mark.sample;
+      var note = sample.excludedReason
+        ? " · excluded from day medians (" +
+          (sample.excludedReason === "paused" ? "assumed paused session" : "reversed stamp") +
+          ")"
+        : "";
+      return (
+        sample.id +
+        " · " +
+        durationUserRequestName(durationSampleUserRequestId(sample)) +
+        " · " +
+        durationColourChannelName() +
+        " colour: " +
+        mark.colourLabel +
+        " · " +
+        formatDurationMinutes(sample.wallMinutes) +
+        " · " +
+        formatDurationStamp(mark.epochMs) +
+        note
+      );
+    }
+
+    // REQ-349 moved marks away from their completion instants to a stable rank
+    // inside each busy day. Pointer targeting therefore reads `markIndex.x`, the
+    // coordinate actually drawn, rather than projecting epochMs a second time.
+    // Hover and click share this helper so they cannot disagree about which mark
+    // occupies one point on the overlay.
+    function nearestDurationMark(pointerX, pointerY) {
+      var nearestMark = null;
+      var nearestDistance = Infinity;
+      markIndex.forEach(function (mark) {
+        var distance = Math.abs(mark.x - pointerX) + Math.abs(mark.y - pointerY) * 0.35;
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestMark = mark;
+        }
+      });
+      return nearestMark;
+    }
+
+    function durationMarkAtPointer(pointerX, pointerY) {
+      if (
+        pointerY > DURATIONS_MEDIAN_TITLE_Y - 12 ||
+        (pointerY >= DURATIONS_UR_LANE_TOP - 4 && pointerY <= DURATIONS_UR_LANE_BOTTOM + 4)
+      ) {
+        return null;
+      }
+      return nearestDurationMark(pointerX, pointerY);
+    }
+
     function describeAtPointer(pointerX, pointerY) {
       // The lane's own strip, checked before panel A's marks: a bracket carries
       // no text, so the readout is the only place its identity is written out.
@@ -1450,38 +1346,11 @@
       }
 
       if (pointerY <= DURATIONS_MEDIAN_TITLE_Y - 12) {
-        var nearestMark = null;
-        var nearestDistance = Infinity;
-        markIndex.forEach(function (mark) {
-          var distance = Math.abs(mark.x - pointerX) + Math.abs(mark.y - pointerY) * 0.35;
-          if (distance < nearestDistance) {
-            nearestDistance = distance;
-            nearestMark = mark;
-          }
-        });
+        var nearestMark = nearestDurationMark(pointerX, pointerY);
         if (!nearestMark) {
           return "";
         }
-        var sample = nearestMark.sample;
-        var note = sample.excludedReason
-          ? " · excluded from day medians (" +
-            (sample.excludedReason === "paused" ? "assumed paused session" : "reversed stamp") +
-            ")"
-          : "";
-        return (
-          sample.id +
-          " · " +
-          durationUserRequestName(durationSampleUserRequestId(sample)) +
-          " · " +
-          durationColourChannelName() +
-          " colour: " +
-          nearestMark.colourLabel +
-          " · " +
-          formatDurationMinutes(sample.wallMinutes) +
-          " · " +
-          formatDurationStamp(nearestMark.epochMs) +
-          note
-        );
+        return describeDurationMark(nearestMark);
       }
 
       var nearestDay = null;
@@ -1511,20 +1380,38 @@
       );
     }
 
+    function pointerPosition(event) {
+      var bounds = svg.getBoundingClientRect();
+      if (bounds.width === 0) {
+        return null;
+      }
+      var scale = DURATIONS_VIEW_WIDTH / bounds.width;
+      return {
+        x: (event.clientX - bounds.left) * scale,
+        y: (event.clientY - bounds.top) * scale
+      };
+    }
     function updateReadout(event) {
       if (!readoutNode) {
         return;
       }
-      var bounds = svg.getBoundingClientRect();
-      if (bounds.width === 0) {
-        return;
+      var pointer = pointerPosition(event);
+      if (pointer) {
+        readoutNode.textContent = describeAtPointer(pointer.x, pointer.y);
       }
-      var scale = DURATIONS_VIEW_WIDTH / bounds.width;
-      var pointerX = (event.clientX - bounds.left) * scale;
-      var pointerY = (event.clientY - bounds.top) * scale;
-      readoutNode.textContent = describeAtPointer(pointerX, pointerY);
     }
     hoverSurface.addEventListener("mousemove", updateReadout);
+    hoverSurface.addEventListener("click", function (clickEvent) {
+      var pointer = pointerPosition(clickEvent);
+      var clickedMark = pointer ? durationMarkAtPointer(pointer.x, pointer.y) : null;
+      if (!clickedMark) {
+        return;
+      }
+      if (readoutNode) {
+        readoutNode.textContent = describeDurationMark(clickedMark);
+      }
+      openDetail("req", clickedMark.sample.id);
+    });
     hoverSurface.addEventListener("mouseleave", function () {
       if (readoutNode) {
         readoutNode.textContent = "";

@@ -1,8 +1,8 @@
 ---
-session_ended: 2026-08-24T13:15:00Z
-last_completed: REQ-346
-queue_state: [15 pending, 1 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 3 in-progress]
-reqs_processed_this_session: 9
+session_ended: 2026-08-24T22:13:52Z
+last_completed: REQ-370
+queue_state: [0 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress]
+reqs_processed_this_session: 22
 session_depth: deep
 ---
 
@@ -10,81 +10,24 @@ session_depth: deep
 
 ## Completed This Session
 
-Nine REQs archived, releases 0.236.34 through 0.236.38.
+Twenty-two REQs archived and released in versions 0.236.39 through 0.236.60.
 
-- REQ-339: Count every prescribed-shell case the runner reports (Route B, 89%)
-- REQ-340: Finish the report-image interruption sweep (Route B, 75%, Partial)
-- REQ-342: Neutralize user text written into a REQ body (Route C, 86%)
-- REQ-343: Let verify see a structurally damaged REQ file (Route B, 93%)
-- REQ-344: Quote user text written into a frontmatter value (Route C, 78%)
-- REQ-345: Stop a queued REQ from failing the timeline landing probe (Route C, 95%)
-- REQ-341: Give the browser probe lane trusted input (Route C, 96%)
-- REQ-346: Name the UR on every Durations sample (Route B, 87%)
+- REQ-347, REQ-348, REQ-349, REQ-350, REQ-351, REQ-352, REQ-353, and REQ-354 completed the board visualization batch.
+- REQ-355, REQ-356, REQ-357, REQ-360, REQ-361, REQ-362, REQ-364, REQ-365, and REQ-366 completed the verification and contract-remediation batch.
+- REQ-367, REQ-368, REQ-369, REQ-370, and REQ-371 completed the copy controls and retained-browser review fixes.
+- REQ-357 absorbed REQ-358, REQ-359, and REQ-363 as sweep instances; their cancelled records remain archived with pointers.
 
-## In Progress (interrupted)
+## In Progress
 
-- REQ-351 — claimed 2026-08-24T16:43:37Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-- REQ-352 — claimed 2026-08-24T16:43:37Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-
-
-Three REQs are claimed for a bounded fan-out wave. Builders run in isolated worktrees. The user
-stopped the run before they handed back. **Their branches may hold uncommitted
-or committed work that was never merged** — check each worktree before
-re-dispatching, and prefer resuming the existing branch over starting fresh.
+None.
 
 ## Still Queued
 
-15 pending, 1 `pending-answers`. Thirteen of these did not exist when the run
-started — they are review findings, each verified against real code or a real
-render before capture.
-
-**Durations batch (UR-069), dependency-ordered:**
-- REQ-348 (Timeline UR row grouping), REQ-349 (panel A scale/density), REQ-350 (axis window control), REQ-351 (retire in-lane labels, depends REQ-346 ✓), REQ-352 (headline numbers, depends REQ-350), REQ-353 (hide dead knobs), REQ-354 (drawer from a mark)
-- **Seven of the nine write `web/board-durations.js`.** They serialize on it — do not fan them out.
-
-**Review follow-ups:**
-- REQ-355 (bound the case-header rule at the script name) — `impact-negligible`
-- REQ-357 (**`pending-answers`** — two judgment calls on the structural probe awaiting the maintainer)
-- REQ-359 (suppress the duplicated status finding from the board strip)
-- REQ-360 (**sweep**, `neutralization-contract-reach` — five instances across REQ-342's and REQ-344's sibling contracts)
-- REQ-361 (make the neutralization lock-in catch narrowing)
-- REQ-362 (stop a multi-path bullet disabling the scope-drift check)
-- REQ-363 (exempt supported UR-less REQ shapes from structural damage)
-- REQ-364 (pin the UR lane's geometry)
-- REQ-365 (a tdd REQ must name a test file in its write set)
+None. A fresh scan after releasing REQ-370 found zero REQ files in `do-work/queue/` and `do-work/working/`, and no active pending, claimed, blocked, or pending-answers status.
 
 ## Session Notes
 
-**Gate state: green**, with the strict browser lane actually run rather than
-skipped (`TestMaintainerStrictBrowserBehaviorLane` PASS, 27.69s). Note that a
-gate run without a browser on `PATH` SKIPs that lane — most of this session's
-earlier green reports were of the narrower kind. Supply
-`QUEUE_KANBAN_BROWSER=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
-
-**Environment:** the container needs `GOTOOLCHAIN=go1.26.1` (system Go is
-1.24.7, below the repo's floor), ShellCheck 0.11.0 and `just`, all installed
-this session.
-
-**Three corrections worth carrying forward, each a case of a check measuring
-less than it claimed:**
-
-1. REQ-340's instance 3 was refuted, and I confirmed the refutation — both of us
-   measured `kill -0 <pid>` when the code takes the group branch. The group
-   branch burns the full second. REQ-356 reopens it.
-2. REQ-342's lock-in was reported as catching narrowing. It catches deletion and
-   phrase substitution; six narrowings by added qualifier ship green, two of
-   which reintroduce the original defect. REQ-361 carries the fix.
-3. REQ-343's real-tree false-positive check passed because neither offending
-   shape exists in the tree today. It measured the corpus, not the writers.
-   REQ-363 carries the carve-outs.
-
-**One self-inflicted:** a blind string replace in my own bookkeeping matched both
-a real `## Scope Extensions` heading and a citation of it inside backticks,
-forging a heading in REQ-344's record — the exact damage class UR-068 exists to
-prevent. Repaired and recorded there.
-
-**Promoted to the prime rather than a REQ:** the surface behind this board's SVG
-is `<body>`, not any `--surface-*` token. REQ-321 found it under the timeline
-bars, REQ-346 under the durations lane; two builders paying for the same
-property is what `_dev/primes/prime-kanban-board.md` § Conventions exists to
-stop.
+- Current release: 0.236.60.
+- The final merged-main Timeline pointer-capture probe passed 5/5, and the complete strict retained-browser lane passed in 16.69 seconds.
+- The final canonical gate passed all contract suites, ordinary queue-kanban tests, strict JavaScript, and audit-metrics verification.
+- All isolated builder worktrees and branches were removed. Consumed untracked handbacks were preserved temporarily under `/tmp/do-work-consumed-runs.yj2Ohl`; tracked run bookkeeping is recoverable from Git.
