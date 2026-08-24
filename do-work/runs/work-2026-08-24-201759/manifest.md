@@ -9,6 +9,7 @@ Status: in-progress
 | REQ-367 | `/root/review_req360_premerge` | `worktree-agent-REQ-367-copy-all-reqs-per-board-column` | ready (`5dea6e5`) | yes (`66e8de5`) |
 | REQ-371 | `/root/build_req354` | `worktree-agent-REQ-371-keep-timeline-bars-inside-the-plot-after-the-drawer-opens` | ready (`d7cef79`) | yes (`5fda05b`) |
 | REQ-368 | `/root/build_req360` | `worktree-agent-REQ-368-ur-copy-all-includes-its-reqs` | pending | no |
+| REQ-369 | `/root/build_req354` | `worktree-agent-REQ-369-wait-for-the-timeline-table-rebuild-condition` | pending | no |
 
 Implementation runs concurrently in isolated worktrees. Integration, verification, review, release,
 and archival remain serial.

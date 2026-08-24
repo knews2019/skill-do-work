@@ -1,7 +1,10 @@
 ---
 id: REQ-369
 title: "Wait for the Timeline table rebuild condition"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T21:21:06Z
+status_changed_at: 2026-08-24T21:21:06Z
+route: B
 created_at: 2026-08-24T16:41:18Z
 user_request: UR-069
 addendum_to: REQ-348
@@ -14,6 +17,12 @@ depends_on: [REQ-348]
 maintenance: false
 impact: impact-negligible
 effort_estimate: effort-mechanical
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-24T21:21:06Z
+  basis:
+    - trivial short-circuit
 write_set:
   - skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
 ---
@@ -56,3 +65,7 @@ an arbitrary timeout.
 
 ---
 *Source: REQ-348 independent re-review Minor finding.*
+
+## Triage
+
+**Route: B** — The single test-only target and stale-table symptom are known, but exploration must identify an observable rebuild-completion condition that cannot self-satisfy on the previous window, preserve every existing assertion, and prove stability under repeated retained-browser runs.
