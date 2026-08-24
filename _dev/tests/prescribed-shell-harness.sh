@@ -14,6 +14,8 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 case_file_path="${BASH_SOURCE[1]}"
 # shellcheck source=_dev/tests/fixture-repo.sh
 source "$repo_root/_dev/tests/fixture-repo.sh"
+# shellcheck source=_dev/tests/prescribed-shell-case-count.sh
+source "$repo_root/_dev/tests/prescribed-shell-case-count.sh"
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/prescribed-shell-scripts.XXXXXX")" || exit 1
 background_process_ids=""
 cleanup_prescribed_shell_fixture() {
@@ -50,7 +52,9 @@ prescribed_shell_finish() {
   local failure_noun=failures
 
   case_file_name="${case_file_path##*/}"
-  named_case_count="$(grep -cE '^# [a-z0-9][a-z0-9-]*: ' "$case_file_path")"
+  # What counts as a case header — and therefore what this number means — is stated once,
+  # beside the grep that applies it, in prescribed-shell-case-count.sh.
+  named_case_count="$(count_named_case_headers "$case_file_path")"
   if [ "$named_case_count" -eq 1 ]; then
     case_noun=case
   fi

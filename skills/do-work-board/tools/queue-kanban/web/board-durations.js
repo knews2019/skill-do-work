@@ -76,10 +76,47 @@
   var DURATIONS_TICK_BASELINE_DROP = 4;
   var DURATIONS_LANE_LABEL_ROW_Y = 56;
   var DURATIONS_REVERSED_LABEL_ROW_Y = 322;
+  // The UR grouping lane (REQ-346) — one bracket per user request, spanning its
+  // samples' completion times, under panel A and on panel A's axis.
+  //
+  // It carries NO text inside the lane. The overflow lane's own history is why:
+  // variable-width text at this density is the thing that stopped paying for
+  // itself, and a bracket here is narrower than one there. Identity is
+  // positional plus the hover; the only words in this block sit in the y-axis
+  // gutter and on the title line, where nothing competes for the space.
+  var DURATIONS_UR_LANE_TITLE_Y = 352;
+  var DURATIONS_UR_LANE_TOP = 358;
+  // Six rows, and the row count was chosen against the DENSE board rather than
+  // this repository's. Unplaced URs by row count, measured on two generated
+  // boards: this repository (65 URs, 87-day axis) 3 rows 14, 4 rows 7, 6 rows 2;
+  // a synthetic board at the stated target of 692 samples over 47 active days
+  // (140 URs, 90-day axis) 3 rows 55, 4 rows 36, 6 rows 12, 8 rows 2. Four rows
+  // is comfortable here and leaves a quarter of the target board's URs in the
+  // remainder, which is the wrong board to be comfortable on.
+  //
+  // Six rows at this pitch costs 67 units of a 697-unit view — a third more lane
+  // for a third of the remainder. Eight would place nearly all of them and take
+  // 87 units, at which point the lane is nearly half the height of the plot it
+  // annotates and stops being a lane.
+  var DURATIONS_UR_LANE_ROW_COUNT = 6;
+  var DURATIONS_UR_LANE_ROW_PITCH = 10;
+  var DURATIONS_UR_BRACKET_HEIGHT = 7;
+  // A UR whose samples all completed inside one day is a bracket of nearly zero
+  // width on a linear real-time axis — 46 of this repository's 65 URs span under
+  // 3 units. The minimum is what keeps such a UR visible as a mark rather than
+  // vanishing, and the separation is what keeps two adjacent ones reading as two.
+  var DURATIONS_UR_BRACKET_MIN_WIDTH = 3;
+  var DURATIONS_UR_BRACKET_SEPARATION = 2;
+  // The samples whose REQ carries no `user_request` get one reserved row below
+  // the packed ones rather than competing for a row, because they are not a
+  // group: they are the absence of one. Keeping the row reserved is what makes
+  // "no UR at all" and "no row was free" two different facts on screen.
+  var DURATIONS_UR_UNKNOWN_ROW_TOP = DURATIONS_UR_LANE_TOP + DURATIONS_UR_LANE_ROW_COUNT * DURATIONS_UR_LANE_ROW_PITCH;
+  var DURATIONS_UR_LANE_BOTTOM = DURATIONS_UR_UNKNOWN_ROW_TOP + DURATIONS_UR_BRACKET_HEIGHT;
   // Panel B — median minutes per active day.
-  var DURATIONS_MEDIAN_TITLE_Y = 350;
-  var DURATIONS_MEDIAN_TOP = 368;
-  var DURATIONS_MEDIAN_BOTTOM = 448;
+  var DURATIONS_MEDIAN_TITLE_Y = 443;
+  var DURATIONS_MEDIAN_TOP = 461;
+  var DURATIONS_MEDIAN_BOTTOM = 541;
   var DURATIONS_MEDIAN_CEILING = 45;
   // A day over the ceiling is drawn as a full-height bar plus a detached sliver
   // above it, so the break reads as "continues above" rather than as a value.
@@ -114,13 +151,13 @@
   // All four facts are asserted, because the original defect was invisible here
   // for no better reason than where this repository's slowest day happens to
   // fall.
-  var DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y = 467;
+  var DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y = 560;
   // Panel C — REQs completed per day.
-  var DURATIONS_COUNT_TITLE_Y = 484;
-  var DURATIONS_COUNT_TOP = 502;
-  var DURATIONS_COUNT_BOTTOM = 572;
-  var DURATIONS_AXIS_LABEL_Y = 590;
-  var DURATIONS_VIEW_HEIGHT = 604;
+  var DURATIONS_COUNT_TITLE_Y = 577;
+  var DURATIONS_COUNT_TOP = 595;
+  var DURATIONS_COUNT_BOTTOM = 665;
+  var DURATIONS_AXIS_LABEL_Y = 683;
+  var DURATIONS_VIEW_HEIGHT = 697;
 
   var DURATIONS_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -136,6 +173,158 @@
       return "Route " + route;
     }
     return "No route recorded";
+  }
+
+  // ---- the REQ-to-UR join (REQ-346) ---------------------------------------
+  // The join is CLIENT-SIDE and stays that way. `boardData.requests[id]` already
+  // carries `userRequestId` for every parsed ticket, including the archived ones
+  // panel A plots, so putting a second copy in the durations payload would make
+  // one fact have two definitions that can disagree — the thing REQ-219 settled
+  // in the other direction only because the rule's VERDICT had no other home.
+  // This one does. The lookup is a plain map hit per sample, run once per render.
+  //
+  // A sample whose REQ carries no `user_request` is a real state, not a gap to
+  // paper over: REQ-001 through REQ-011 and REQ-060 pre-date the UR system and
+  // buildDurationAggregate measures every one of them. They are NAMED on all
+  // three surfaces with this one string, never left blank and never given some
+  // arbitrary default UR.
+  var DURATIONS_UNKNOWN_USER_REQUEST_NAME = "no UR recorded";
+
+  function durationSampleUserRequestId(sample) {
+    var requestsById = (typeof boardData === "object" && boardData && boardData.requests) || {};
+    var request = requestsById[sample.id];
+    return (request && request.userRequestId) || "";
+  }
+
+  function durationUserRequestName(userRequestId) {
+    return userRequestId || DURATIONS_UNKNOWN_USER_REQUEST_NAME;
+  }
+
+  // ---- UR lane packing -----------------------------------------------------
+  // Left-edge order, first free row, counted remainder. The order is the whole
+  // of the packing quality: greedy by left edge is the interval-graph colouring
+  // walk, and it beat both alternatives tried on this repository's data at every
+  // row count (65 URs, 4 rows: 7 unplaced by left edge, 9 by widest-first, 9 by
+  // most-samples-first). Ties break on the UR id so a board with two URs
+  // starting in the same minute still packs the same way twice.
+  //
+  // A bracket that finds no row is COUNTED, never dropped in silence — the same
+  // rule the overflow lane's labels follow, for the same reason: the rows a
+  // reader can see must not be mistaken for all of them.
+  function packDurationsUserRequestLane(brackets) {
+    var ordered = brackets.slice().sort(function (first, second) {
+      if (first.left !== second.left) {
+        return first.left - second.left;
+      }
+      return first.userRequestId < second.userRequestId ? -1 : 1;
+    });
+    var occupied = [];
+    for (var rowIndex = 0; rowIndex < DURATIONS_UR_LANE_ROW_COUNT; rowIndex += 1) {
+      occupied.push([]);
+    }
+    var placements = [];
+    var hiddenCount = 0;
+    ordered.forEach(function (bracket) {
+      for (var rowIndex = 0; rowIndex < DURATIONS_UR_LANE_ROW_COUNT; rowIndex += 1) {
+        if (durationsUserRequestRowIsBlocked(occupied[rowIndex], bracket)) {
+          continue;
+        }
+        occupied[rowIndex].push({ left: bracket.left, right: bracket.right });
+        placements.push({ bracket: bracket, laneRow: rowIndex });
+        return;
+      }
+      hiddenCount += 1;
+    });
+    return { placements: placements, hiddenCount: hiddenCount };
+  }
+
+  // Deliberately not durationsSpanIsBlocked: that one belongs to the label
+  // planner and carries the label separation, and widening it to take a gap
+  // argument would re-point every one of its calls to prove this one's point.
+  function durationsUserRequestRowIsBlocked(occupiedRow, bracket) {
+    for (var placedIndex = 0; placedIndex < occupiedRow.length; placedIndex += 1) {
+      var placed = occupiedRow[placedIndex];
+      if (bracket.left < placed.right + DURATIONS_UR_BRACKET_SEPARATION &&
+        placed.left < bracket.right + DURATIONS_UR_BRACKET_SEPARATION) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // One bracket per UR, from its first sample's completion to its last, plus the
+  // single bucket for samples whose REQ names no UR. The bucket is returned
+  // apart from the brackets because it never enters the packer: it holds a
+  // reserved row of its own (see DURATIONS_UR_UNKNOWN_ROW_TOP).
+  function buildDurationsUserRequestBrackets(samples, plotXOfEpoch) {
+    var samplesByUserRequest = {};
+    var unknownSampleTimes = [];
+    samples.forEach(function (sample) {
+      var completionMs = Date.parse(sample.completionTime);
+      var userRequestId = durationSampleUserRequestId(sample);
+      if (!userRequestId) {
+        unknownSampleTimes.push(completionMs);
+        return;
+      }
+      var group = samplesByUserRequest[userRequestId];
+      if (!group) {
+        samplesByUserRequest[userRequestId] = { firstMs: completionMs, lastMs: completionMs, sampleCount: 1 };
+        return;
+      }
+      group.firstMs = Math.min(group.firstMs, completionMs);
+      group.lastMs = Math.max(group.lastMs, completionMs);
+      group.sampleCount += 1;
+    });
+
+    // The minimum width can push a bracket past the plot's right edge — the axis
+    // domain ends at the midnight AFTER the last completion, so a UR completing
+    // late on the last day sits under 2 units from that edge and the widening
+    // carries it over. The render caught it on this repository at 65 URs. It is
+    // nudged back inside rather than clipped, which is what durationsBarLeftX
+    // already does for the outermost day bars.
+    var plotRightEdge = DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT;
+
+    function bracketOf(userRequestId, group) {
+      var left = plotXOfEpoch(group.firstMs);
+      var right = Math.max(plotXOfEpoch(group.lastMs), left + DURATIONS_UR_BRACKET_MIN_WIDTH);
+      if (right > plotRightEdge) {
+        left -= right - plotRightEdge;
+        right = plotRightEdge;
+      }
+      return {
+        userRequestId: userRequestId,
+        sampleCount: group.sampleCount,
+        firstMs: group.firstMs,
+        lastMs: group.lastMs,
+        left: left,
+        right: right
+      };
+    }
+
+    var brackets = Object.keys(samplesByUserRequest).map(function (userRequestId) {
+      return bracketOf(userRequestId, samplesByUserRequest[userRequestId]);
+    });
+    var unknownBracket = null;
+    if (unknownSampleTimes.length > 0) {
+      unknownBracket = bracketOf("", {
+        firstMs: Math.min.apply(null, unknownSampleTimes),
+        lastMs: Math.max.apply(null, unknownSampleTimes),
+        sampleCount: unknownSampleTimes.length
+      });
+    }
+    return { brackets: brackets, unknownBracket: unknownBracket };
+  }
+
+  function durationsUserRequestLaneRowTop(laneRow) {
+    return DURATIONS_UR_LANE_TOP + laneRow * DURATIONS_UR_LANE_ROW_PITCH;
+  }
+
+  // Stated on the lane's own title line, right-aligned, so the reader learns the
+  // count in the same glance as the rows it qualifies. Deliberately worded apart
+  // from DURATIONS_UNKNOWN_USER_REQUEST_NAME: a UR that found no row and a sample
+  // that has no UR at all are different facts and must not read as one.
+  function composeDurationsUserRequestRemainderText(hiddenCount) {
+    return "+" + hiddenCount + " UR" + (hiddenCount === 1 ? "" : "s") + " with no free row";
   }
 
   // Durations are read as magnitudes, so a negative span reads as "−30 min"
@@ -448,7 +637,7 @@
         formatDurationDayLabel(firstCompletionMs) +
         " to " +
         formatDurationDayLabel(lastCompletionMs) +
-        ". Panel A plots each archived REQ's duration in minutes coloured by route. Panel B plots the median minutes per active day. Panel C counts REQs completed per day. Every value is also listed in the table below."
+        ". Panel A plots each archived REQ's duration in minutes coloured by route, over a lane of brackets grouping its marks by user request. Panel B plots the median minutes per active day. Panel C counts REQs completed per day. Every value is also listed in the table below."
     );
 
     function xOfEpoch(epochMs) {
@@ -701,6 +890,85 @@
       "reversed"
     );
 
+    // ---- panel A's UR grouping lane ----
+    // A bracket says "these marks above are one user request". No text goes
+    // inside the lane; the two gutter ticks name the rows, the title line states
+    // the remainder, and the hover names the bracket under the pointer.
+    var userRequestLane = buildDurationsUserRequestBrackets(samples, xOfEpoch);
+    var packedUserRequestLane = packDurationsUserRequestLane(userRequestLane.brackets);
+    makeDurationsSvgNode(
+      svg,
+      "text",
+      { x: DURATIONS_MARGIN_LEFT, y: DURATIONS_UR_LANE_TITLE_Y, class: "durations-axis-title" },
+      "URs · one bracket per user request, spanning its samples above"
+    );
+    if (packedUserRequestLane.hiddenCount > 0) {
+      makeDurationsSvgNode(
+        svg,
+        "text",
+        {
+          x: DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT,
+          y: DURATIONS_UR_LANE_TITLE_Y,
+          class: "durations-tick",
+          "text-anchor": "end"
+        },
+        composeDurationsUserRequestRemainderText(packedUserRequestLane.hiddenCount)
+      );
+    }
+    function drawDurationsUserRequestBracket(bracket, rowTop, bracketClass) {
+      return makeDurationsSvgNode(svg, "rect", {
+        x: bracket.left.toFixed(1),
+        y: rowTop,
+        width: (bracket.right - bracket.left).toFixed(1),
+        height: DURATIONS_UR_BRACKET_HEIGHT,
+        rx: 2,
+        class: bracketClass
+      });
+    }
+    var laneHoverIndex = [];
+    packedUserRequestLane.placements.forEach(function (placement) {
+      var rowTop = durationsUserRequestLaneRowTop(placement.laneRow);
+      // One tone for every row. Alternating two of them was tried and measured
+      // first: --ink-faint against --ink-soft is 1.29:1 on the surface the lane
+      // actually sits on (Chromium 1194), which is a channel that reads as one
+      // colour. The 3-unit gap between rows is what separates them, and it does
+      // not need help.
+      drawDurationsUserRequestBracket(placement.bracket, rowTop, "durations-ur-bracket");
+      laneHoverIndex.push({ bracket: placement.bracket, rowTop: rowTop });
+    });
+    if (packedUserRequestLane.placements.length > 0) {
+      makeDurationsSvgNode(
+        svg,
+        "text",
+        {
+          x: DURATIONS_MARGIN_LEFT - 8,
+          y: durationsUserRequestLaneRowTop(0) + DURATIONS_UR_BRACKET_HEIGHT - 1,
+          class: "durations-tick",
+          "text-anchor": "end"
+        },
+        "URs"
+      );
+    }
+    if (userRequestLane.unknownBracket) {
+      drawDurationsUserRequestBracket(
+        userRequestLane.unknownBracket,
+        DURATIONS_UR_UNKNOWN_ROW_TOP,
+        "durations-ur-bracket durations-ur-bracket-unknown"
+      );
+      laneHoverIndex.push({ bracket: userRequestLane.unknownBracket, rowTop: DURATIONS_UR_UNKNOWN_ROW_TOP });
+      makeDurationsSvgNode(
+        svg,
+        "text",
+        {
+          x: DURATIONS_MARGIN_LEFT - 8,
+          y: DURATIONS_UR_UNKNOWN_ROW_TOP + DURATIONS_UR_BRACKET_HEIGHT - 1,
+          class: "durations-tick",
+          "text-anchor": "end"
+        },
+        "no UR"
+      );
+    }
+
     // ---- panel B: median minutes per active day ----
     makeDurationsSvgNode(
       svg,
@@ -853,6 +1121,39 @@
     });
 
     function describeAtPointer(pointerX, pointerY) {
+      // The lane's own strip, checked before panel A's marks: a bracket carries
+      // no text, so the readout is the only place its identity is written out.
+      if (pointerY >= DURATIONS_UR_LANE_TOP - 4 && pointerY <= DURATIONS_UR_LANE_BOTTOM + 4) {
+        var nearestBracket = null;
+        var nearestBracketDistance = Infinity;
+        laneHoverIndex.forEach(function (laneEntry) {
+          var horizontalGap = Math.max(
+            laneEntry.bracket.left - pointerX,
+            pointerX - laneEntry.bracket.right,
+            0
+          );
+          var distance = horizontalGap + Math.abs(laneEntry.rowTop + DURATIONS_UR_BRACKET_HEIGHT / 2 - pointerY);
+          if (distance < nearestBracketDistance) {
+            nearestBracketDistance = distance;
+            nearestBracket = laneEntry.bracket;
+          }
+        });
+        if (!nearestBracket) {
+          return "";
+        }
+        return (
+          durationUserRequestName(nearestBracket.userRequestId) +
+          " · " +
+          nearestBracket.sampleCount +
+          " sample" +
+          (nearestBracket.sampleCount === 1 ? "" : "s") +
+          " · " +
+          formatDurationDayLabel(nearestBracket.firstMs) +
+          " to " +
+          formatDurationDayLabel(nearestBracket.lastMs)
+        );
+      }
+
       if (pointerY <= DURATIONS_MEDIAN_TITLE_Y - 12) {
         var nearestMark = null;
         var nearestDistance = Infinity;
@@ -874,6 +1175,8 @@
           : "";
         return (
           sample.id +
+          " · " +
+          durationUserRequestName(durationSampleUserRequestId(sample)) +
           " · " +
           durationRouteName(sample.route) +
           " · " +
@@ -940,6 +1243,7 @@
         var row = document.createElement("tr");
         [
           sample.id,
+          durationUserRequestName(durationSampleUserRequestId(sample)),
           sample.route || "—",
           formatDurationStamp(Date.parse(sample.completionTime)),
           formatDurationMinutes(sample.wallMinutes),

@@ -42,9 +42,9 @@ impact: impact-critical | impact-user-visible | impact-rule-change | impact-negl
 ---
 ```
 
-Titles are always double-quoted, and a REQ whose impact verdict is anything other than the
+Titles are always quoted, and a REQ whose impact verdict is anything other than the
 `impact-user-visible` default carries that verdict as a leading tag —
-`title: "[impact-negligible] Retitle the export button"`. The tag never appears in the filename, so
+`title: '[impact-negligible] Retitle the export button'`. The tag never appears in the filename, so
 `REQ-NNN-slug.md` is unchanged. It is there so the board's search box (which matches titles) finds
 every negligible REQ at once; `do-work run --skip-impact-negligible` reads the `impact:` field
 itself, not the title.

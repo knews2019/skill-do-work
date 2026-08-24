@@ -33,7 +33,6 @@ generated_directory="$report_directory/generated"
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" || exit 1
 report_image_helper="$script_directory/generate-report-image.sh"
 
-image_generation_stage="$(umask 077; mktemp -d "$report_directory/.generated.staging.XXXXXX")" || exit 1
 cleanup_report_image_stage() {
   if [ -n "${image_generation_stage:-}" ]; then
     rm -rf -- "$image_generation_stage"
@@ -61,9 +60,39 @@ if [ -n "$process_status_command" ]; then
   caller_process_group_id="${caller_process_group_id//[[:space:]]/}"
 fi
 
+deferred_batch_interrupt_status=""
+# The traps below act on an interruption; this is what they do, named once so the deferral
+# can re-raise exactly the same thing.
+interrupt_report_image_batch() {
+  terminate_report_image_batch
+  exit "$1"
+}
+
+# A trapped signal runs between commands, so an interruption arriving between a helper launch
+# and the appends that publish its PID and process group would reach
+# terminate_report_image_batch with nothing in the arrays: the helper and its backend outlive
+# the batch, and the EXIT trap then deletes the staging directory they are writing into.
+# Defer the interruption across that window instead — record the status, let the handles be
+# recorded, then act on it with the whole batch reachable.
+defer_interrupts_across_helper_launch() {
+  deferred_batch_interrupt_status=""
+  trap 'deferred_batch_interrupt_status=129' HUP
+  trap 'deferred_batch_interrupt_status=130' INT
+  trap 'deferred_batch_interrupt_status=143' TERM
+}
+
+resume_interrupts_after_helper_launch() {
+  trap 'interrupt_report_image_batch 129' HUP
+  trap 'interrupt_report_image_batch 130' INT
+  trap 'interrupt_report_image_batch 143' TERM
+  [ -z "$deferred_batch_interrupt_status" ] \
+    || interrupt_report_image_batch "$deferred_batch_interrupt_status"
+}
+
 launch_report_image() {
   image_target="$1"
   image_description="$2"
+  defer_interrupts_across_helper_launch
   set -m   # job control gives each helper its own process group, so its descendants are reachable
   "$report_image_helper" "$image_target" "$style_brief" "$image_description" &
   image_helper_pid=$!
@@ -82,6 +111,7 @@ launch_report_image() {
   image_generation_pids[${#image_generation_pids[@]}]="$image_helper_pid"
   image_generation_groups[${#image_generation_groups[@]}]="$image_helper_group"
   image_generation_targets[${#image_generation_targets[@]}]="$image_target"
+  resume_interrupts_after_helper_launch
 }
 
 report_image_batch_is_alive() {
@@ -128,9 +158,15 @@ terminate_report_image_batch() {
 }
 # Reap the batch first, then let the EXIT trap remove staging: an interrupted batch
 # must not leave helpers writing into a directory it is about to delete.
-trap 'terminate_report_image_batch; exit 129' HUP
-trap 'terminate_report_image_batch; exit 130' INT
-trap 'terminate_report_image_batch; exit 143' TERM
+trap 'interrupt_report_image_batch 129' HUP
+trap 'interrupt_report_image_batch 130' INT
+trap 'interrupt_report_image_batch 143' TERM
+
+# Created only once the traps above can clean it up. Staged earlier — as it was until an
+# early-interruption probe caught it — an interruption arriving before those traps exist
+# takes its default action, so the EXIT trap never runs and .generated.staging.* is left
+# behind in the caller's report directory.
+image_generation_stage="$(umask 077; mktemp -d "$report_directory/.generated.staging.XXXXXX")" || exit 1
 
 for image_specification in "$@"; do
   launch_report_image \

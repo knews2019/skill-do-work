@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"os"
@@ -10,6 +12,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // The browser behavior lane, beside the Node behavior lane in generate_test.go and
@@ -32,6 +35,12 @@ import (
 // results cross the boundary as data this test can assert on rather than as an exit
 // code alone. If a future probe genuinely needs more than `--dump-dom` can express,
 // that is the moment to reach for a driver — and to say so here.
+//
+// THAT MOMENT ARRIVED (REQ-341), and the answer was a second transport rather than a
+// driver: `--remote-debugging-pipe` speaks the DevTools Protocol over a pair of file
+// descriptors, framed as NUL-terminated JSON, which the standard library already has
+// everything to do. See the trusted-input transport below for what it buys and what
+// it costs. `--dump-dom` stays the transport for every probe that only measures.
 //
 // NO WALL-CLOCK WAITS. Readiness is `--virtual-time-budget`, which advances the
 // page's clock as fast as the work allows and then dumps, plus the sentinel the page
@@ -128,7 +137,7 @@ func runBrowserBehaviorProbeInDirectory(
 	t.Helper()
 	browserPath := lookupBrowserForBehaviorProbe(t)
 
-	pagePath := filepath.Join(siteDirectory, "probe.html")
+	pagePath := filepath.Join(siteDirectory, browserProbePageFileName)
 	if writeError := os.WriteFile(pagePath, []byte(pageHTML), 0o644); writeError != nil {
 		t.Fatalf("write %s probe page: %v", probeName, writeError)
 	}
@@ -187,6 +196,503 @@ func extractBrowserProbeResult(dumpedDOM string) (string, string) {
 		return "", "the result node holds " + resultText + ", not the JSON the contract expects"
 	}
 	return resultText, ""
+}
+
+// ---- the trusted-input transport -------------------------------------------
+//
+// WHY A SECOND TRANSPORT EXISTS. Everything above crosses the boundary once and in
+// one direction: the engine renders, serializes the DOM, exits, and the Go side reads
+// one node out of the dump. That is enough to MEASURE and useless to INTERACT,
+// because a page driven only by its own script can dispatch only synthetic events —
+// and a synthetic event is not the same object the engine makes. Four REQs paid for
+// the difference. REQ-324's click/pan lock-in dispatched PointerEvents with
+// pointerId 1 and passed through the entire click regression, because capture is
+// never established on a pointer id the engine did not issue. REQ-333 could not drive
+// a captured drag end to end. REQ-336's RED had to be reproduced outside the suite.
+// REQ-337's check had to be structural and said so in its own doc comment.
+//
+// WHAT THIS IS. Chromium's `--remote-debugging-pipe` moves the DevTools Protocol off
+// the WebSocket endpoint and onto a pair of inherited file descriptors: the engine
+// reads commands on fd 3 and writes replies and events on fd 4, each message a JSON
+// object terminated by a NUL byte. `os/exec`'s ExtraFiles supplies the descriptors
+// and `encoding/json` frames the messages, so the lane gains real input with NO new
+// module dependency — which a WebSocket client would have cost.
+//
+// WHAT IT COSTS. The engine stays alive for the length of the probe, so this
+// transport cannot use `--virtual-time-budget`: virtual time races ahead of input
+// that has not been sent yet. Readiness is therefore a POLLED CONDITION with a
+// deadline (waitForPageCondition), never a fixed sleep — the same rule the header
+// states, kept by a different mechanism.
+//
+// FAILING LOUDLY. Every protocol exchange is bounded by a read deadline and every
+// failure is a t.Fatalf carrying the engine's stderr, because the failure mode this
+// lane must never have is a probe that measured nothing and reported green. The
+// engine-missing SKIP is unchanged: this transport resolves its browser through
+// lookupBrowserForBehaviorProbe like every other probe, and counts itself in
+// browserBehaviorProbeCount, so the strict lane's refusal to skip still covers it.
+const (
+	// browserProbeTrustedInputDeadline bounds one protocol exchange. A hung engine
+	// must fail the probe, not the whole `go test` timeout.
+	browserProbeTrustedInputDeadline = 30 * time.Second
+
+	// browserProbePageConditionDeadline bounds waitForPageCondition. Generous
+	// because the real board is a three-hundred-row render and this lane shares a
+	// machine with a dozen other probes; bounded because a condition that never
+	// comes true has to fail rather than hang.
+	browserProbePageConditionDeadline = 45 * time.Second
+
+	// browserProbePageConditionPollInterval is how often a pending condition is
+	// re-asked. It is a poll interval, not a wait on a duration: nothing is ever
+	// assumed to be ready because this much time passed.
+	browserProbePageConditionPollInterval = 25 * time.Millisecond
+
+	// browserProbeGestureSettleDeadline bounds a wait on something a gesture was
+	// supposed to PRODUCE, as opposed to something the engine guarantees. The engine
+	// synthesizes a click in the task after the release, so the honest budget is
+	// milliseconds and this is three orders of magnitude of headroom on it. Short on
+	// purpose: when the produced thing never comes, that IS the finding, and a probe
+	// that sits on it for the full condition deadline reports a timeout to a reader
+	// who needed the property.
+	browserProbeGestureSettleDeadline = 5 * time.Second
+
+	// browserProbePageFileName is the page both transports write into the site
+	// directory, and the suffix every measurement's location.href must carry.
+	browserProbePageFileName = "probe.html"
+)
+
+// trustedInputBrowserSession is one live engine with one attached page.
+type trustedInputBrowserSession struct {
+	probeName            string
+	browserCommand       *exec.Cmd
+	commandPipeWriter    *os.File
+	eventPipeReader      *os.File
+	eventPipeBuffer      *bufio.Reader
+	standardErrorPath    string
+	pageSessionId        string
+	nextCommandId        int
+	browserAlreadyClosed bool
+}
+
+// startTrustedInputBrowserSession renders pageHTML in a real engine and leaves it
+// running with a protocol channel attached, so the caller can drive it.
+//
+// siteDirectory is the caller's, not a fresh temp one, for the same reason
+// runBrowserBehaviorProbeInDirectory takes one: index.html loads board-data.js from
+// beside itself, and a page copied somewhere empty renders an empty board.
+func startTrustedInputBrowserSession(
+	t *testing.T, probeName string, siteDirectory string, pageHTML string, extraFlags ...string,
+) *trustedInputBrowserSession {
+	t.Helper()
+	browserPath := lookupBrowserForBehaviorProbe(t)
+
+	pagePath := filepath.Join(siteDirectory, browserProbePageFileName)
+	if writeError := os.WriteFile(pagePath, []byte(pageHTML), 0o644); writeError != nil {
+		t.Fatalf("write %s probe page: %v", probeName, writeError)
+	}
+	// The profile and the engine's stderr both stay out of the site directory: one
+	// is megabytes of engine state and the other is a file the board would then
+	// try to render.
+	scratchDirectory := t.TempDir()
+	standardErrorPath := filepath.Join(scratchDirectory, "browser-stderr.log")
+	standardErrorFile, standardErrorCreateError := os.Create(standardErrorPath)
+	if standardErrorCreateError != nil {
+		t.Fatalf("create %s browser stderr log: %v", probeName, standardErrorCreateError)
+	}
+	defer standardErrorFile.Close()
+
+	// fd 3 is where the engine READS commands and fd 4 is where it WRITES replies;
+	// ExtraFiles[0] lands on fd 3 in the child and ExtraFiles[1] on fd 4.
+	commandPipeReader, commandPipeWriter, commandPipeError := os.Pipe()
+	if commandPipeError != nil {
+		t.Fatalf("open %s command pipe: %v", probeName, commandPipeError)
+	}
+	eventPipeReader, eventPipeWriter, eventPipeError := os.Pipe()
+	if eventPipeError != nil {
+		t.Fatalf("open %s event pipe: %v", probeName, eventPipeError)
+	}
+
+	// The same container-safe flags the dump-dom transport uses, minus
+	// --virtual-time-budget and --dump-dom: this engine has to stay alive and
+	// answer, and its clock has to be the one the input events arrive on.
+	probeArguments := []string{
+		"--headless",
+		"--disable-gpu",
+		"--no-sandbox",
+		"--disable-dev-shm-usage",
+		"--user-data-dir=" + filepath.Join(scratchDirectory, "profile"),
+		"--remote-debugging-pipe",
+	}
+	probeArguments = append(probeArguments, extraFlags...)
+	probeArguments = append(probeArguments, "file://"+pagePath)
+	browserCommand := exec.Command(browserPath, probeArguments...)
+	browserCommand.ExtraFiles = []*os.File{commandPipeReader, eventPipeWriter}
+	browserCommand.Stderr = standardErrorFile
+
+	browserBehaviorProbeCount.Add(1)
+	startError := browserCommand.Start()
+	// Our copies of the child's ends are closed either way, so a failed start does
+	// not leak descriptors and a live child gets EOF when we close our writer.
+	commandPipeReader.Close()
+	eventPipeWriter.Close()
+	if startError != nil {
+		commandPipeWriter.Close()
+		eventPipeReader.Close()
+		t.Fatalf("start %s browser with a protocol channel: %v", probeName, startError)
+	}
+
+	session := &trustedInputBrowserSession{
+		probeName:         probeName,
+		browserCommand:    browserCommand,
+		commandPipeWriter: commandPipeWriter,
+		eventPipeReader:   eventPipeReader,
+		eventPipeBuffer:   bufio.NewReader(eventPipeReader),
+		standardErrorPath: standardErrorPath,
+	}
+	t.Cleanup(session.closeBrowserSession)
+	session.attachToProbePage(t)
+	return session
+}
+
+// attachToProbePage waits for the engine's page target to BE the probe page, attaches
+// a protocol session to it, and does not return until that page has finished loading.
+//
+// The target is matched on its URL rather than being taken as "the first page", because
+// the engine opens its first tab on about:blank and navigates a moment later.
+// about:blank reports readyState "complete" immediately, so a session attached to it
+// sails through the load wait and then answers every question about the wrong document.
+func (session *trustedInputBrowserSession) attachToProbePage(t *testing.T) {
+	t.Helper()
+	var pageTargetId string
+	var lastSeenTargetURL string
+	attachDeadline := time.Now().Add(browserProbePageConditionDeadline)
+	for pageTargetId == "" {
+		var discoveredTargets struct {
+			TargetInfos []struct {
+				TargetId string `json:"targetId"`
+				Type     string `json:"type"`
+				Url      string `json:"url"`
+			} `json:"targetInfos"`
+		}
+		session.decodeResult(t, "Target.getTargets",
+			session.callDevToolsMethod(t, "Target.getTargets", nil, false), &discoveredTargets)
+		for _, targetInfo := range discoveredTargets.TargetInfos {
+			if targetInfo.Type != "page" {
+				continue
+			}
+			lastSeenTargetURL = targetInfo.Url
+			if strings.HasSuffix(targetInfo.Url, "/"+browserProbePageFileName) {
+				pageTargetId = targetInfo.TargetId
+			}
+		}
+		if pageTargetId != "" {
+			break
+		}
+		if time.Now().After(attachDeadline) {
+			t.Fatalf("%s probe: the engine opened no page target on the probe page within %s "+
+				"(the last page target it had was on %q)\n%s",
+				session.probeName, browserProbePageConditionDeadline, lastSeenTargetURL,
+				session.browserStandardError())
+		}
+		time.Sleep(browserProbePageConditionPollInterval)
+	}
+
+	var attachment struct {
+		SessionId string `json:"sessionId"`
+	}
+	session.decodeResult(t, "Target.attachToTarget",
+		session.callDevToolsMethod(t, "Target.attachToTarget",
+			map[string]any{"targetId": pageTargetId, "flatten": true}, false), &attachment)
+	if attachment.SessionId == "" {
+		t.Fatalf("%s probe: attaching to the page target returned no session id\n%s",
+			session.probeName, session.browserStandardError())
+	}
+	session.pageSessionId = attachment.SessionId
+
+	// The target reports the probe page's URL as soon as the navigation commits in the
+	// browser process, which is BEFORE the renderer has swapped documents — so the
+	// first few evaluates still answer for about:blank. Every measurement after this
+	// point goes through evaluateInPage, which refuses a wrong href outright, so the
+	// settle is done once here on the raw channel rather than by softening that rule.
+	settleDeadline := time.Now().Add(browserProbePageConditionDeadline)
+	for {
+		documentStateText := session.evaluateStringInPage(t,
+			`JSON.stringify({href: location.href, readyState: document.readyState})`)
+		var documentState struct {
+			Href       string `json:"href"`
+			ReadyState string `json:"readyState"`
+		}
+		session.decodeResult(t, "document settle", json.RawMessage(documentStateText), &documentState)
+		if strings.HasSuffix(documentState.Href, "/"+browserProbePageFileName) &&
+			documentState.ReadyState == "complete" {
+			return
+		}
+		if time.Now().After(settleDeadline) {
+			t.Fatalf("%s probe: the attached page was still %q (readyState %q) after %s\n%s",
+				session.probeName, documentState.Href, documentState.ReadyState,
+				browserProbePageConditionDeadline, session.browserStandardError())
+		}
+		time.Sleep(browserProbePageConditionPollInterval)
+	}
+}
+
+// callDevToolsMethod sends one protocol command and returns its result.
+//
+// sessionScoped picks the addressee: browser-level commands (Target.*) carry no
+// session id, page-level ones (Runtime.*, Input.*) carry the attached page's. Replies
+// and events interleave on one pipe, so this reads until it sees its own id.
+func (session *trustedInputBrowserSession) callDevToolsMethod(
+	t *testing.T, method string, params map[string]any, sessionScoped bool,
+) json.RawMessage {
+	t.Helper()
+	session.nextCommandId++
+	commandId := session.nextCommandId
+	command := map[string]any{"id": commandId, "method": method}
+	if params != nil {
+		command["params"] = params
+	}
+	if sessionScoped {
+		command["sessionId"] = session.pageSessionId
+	}
+	commandBytes, marshalError := json.Marshal(command)
+	if marshalError != nil {
+		t.Fatalf("%s probe: encode %s: %v", session.probeName, method, marshalError)
+	}
+	if _, writeError := session.commandPipeWriter.Write(append(commandBytes, 0)); writeError != nil {
+		t.Fatalf("%s probe: send %s over the protocol pipe: %v\n%s",
+			session.probeName, method, writeError, session.browserStandardError())
+	}
+
+	replyDeadline := time.Now().Add(browserProbeTrustedInputDeadline)
+	for {
+		if deadlineError := session.eventPipeReader.SetReadDeadline(replyDeadline); deadlineError != nil {
+			t.Fatalf("%s probe: set a read deadline for %s: %v",
+				session.probeName, method, deadlineError)
+		}
+		messageBytes, readError := session.eventPipeBuffer.ReadBytes(0)
+		if readError != nil {
+			t.Fatalf("%s probe: no reply to %s within %s (%v) — the protocol channel is the "+
+				"transport, so this is a transport failure and not a measurement\n%s",
+				session.probeName, method, browserProbeTrustedInputDeadline, readError,
+				session.browserStandardError())
+		}
+		var reply struct {
+			Id     int             `json:"id"`
+			Result json.RawMessage `json:"result"`
+			Error  json.RawMessage `json:"error"`
+		}
+		if decodeError := json.Unmarshal(bytes.TrimRight(messageBytes, "\x00"), &reply); decodeError != nil {
+			t.Fatalf("%s probe: the engine sent something that is not a protocol message after %s: %v\n%s",
+				session.probeName, method, decodeError, messageBytes)
+		}
+		// Everything else on this pipe is a protocol EVENT or another command's
+		// reply; only our own id answers this call.
+		if reply.Id != commandId {
+			continue
+		}
+		if reply.Error != nil {
+			t.Fatalf("%s probe: %s failed: %s\n%s",
+				session.probeName, method, reply.Error, session.browserStandardError())
+		}
+		return reply.Result
+	}
+}
+
+func (session *trustedInputBrowserSession) decodeResult(
+	t *testing.T, method string, resultJSON json.RawMessage, destination any,
+) {
+	t.Helper()
+	if decodeError := json.Unmarshal(resultJSON, destination); decodeError != nil {
+		t.Fatalf("%s probe: decode the %s result %s: %v",
+			session.probeName, method, resultJSON, decodeError)
+	}
+}
+
+// evaluateInPage runs one JavaScript expression in the probe page and returns its
+// value as JSON for the caller to unmarshal.
+//
+// The expression is wrapped so every result carries the page it was measured on.
+// That is the prime's render-evidence rule made mechanical: a probe on this
+// transport cannot forget to report location.href, because the transport reports it
+// and checks it on every single call rather than once at the start.
+//
+// The wrapper resolves the expression as a PROMISE before reading location.href, which
+// buys two things. An expression may await the page's own scheduling — settling a
+// pending render before a gesture is dispatched needs exactly that — and the href is
+// then read at the instant the value was produced rather than at the instant the
+// expression started, which is the stronger version of the same evidence rule.
+func (session *trustedInputBrowserSession) evaluateInPage(
+	t *testing.T, expression string,
+) json.RawMessage {
+	t.Helper()
+	envelopeText := session.evaluateStringInPage(t,
+		"Promise.resolve(("+expression+")).then(function (probeValue) {"+
+			" return JSON.stringify({href: location.href, value: probeValue}); })")
+	var envelope struct {
+		Href  string          `json:"href"`
+		Value json.RawMessage `json:"value"`
+	}
+	if decodeError := json.Unmarshal([]byte(envelopeText), &envelope); decodeError != nil {
+		t.Fatalf("%s probe: decode the envelope %q from %s: %v",
+			session.probeName, envelopeText, expression, decodeError)
+	}
+	// Render evidence, on every measurement rather than once: a page that navigated
+	// out from under the probe answers confidently about somebody else's document.
+	if !strings.HasSuffix(envelope.Href, "/"+browserProbePageFileName) {
+		t.Fatalf("%s probe: measured on %q, not the probe page — every number from this call "+
+			"describes a document this test did not render", session.probeName, envelope.Href)
+	}
+	if envelope.Value == nil {
+		t.Fatalf("%s probe: evaluating %s produced undefined; a probe that measures nothing must "+
+			"not read as a probe that measured", session.probeName, expression)
+	}
+	return envelope.Value
+}
+
+// evaluateStringInPage is the raw half of evaluateInPage: it runs an expression that
+// must produce a string and returns it, with no envelope and no render-evidence check.
+//
+// Only two callers may use it — evaluateInPage itself, and the attach settle, which
+// cannot check the href because deciding whether the href is right yet is its whole
+// job. Everything a probe measures goes through evaluateInPage.
+func (session *trustedInputBrowserSession) evaluateStringInPage(
+	t *testing.T, expression string,
+) string {
+	t.Helper()
+	var evaluation struct {
+		Result struct {
+			Value json.RawMessage `json:"value"`
+		} `json:"result"`
+		ExceptionDetails json.RawMessage `json:"exceptionDetails"`
+	}
+	session.decodeResult(t, "Runtime.evaluate",
+		session.callDevToolsMethod(t, "Runtime.evaluate", map[string]any{
+			"expression":    expression,
+			"returnByValue": true,
+			"awaitPromise":  true,
+		}, true), &evaluation)
+	if evaluation.ExceptionDetails != nil {
+		t.Fatalf("%s probe: the page threw evaluating %s: %s",
+			session.probeName, expression, evaluation.ExceptionDetails)
+	}
+	var stringValue string
+	if decodeError := json.Unmarshal(evaluation.Result.Value, &stringValue); decodeError != nil {
+		t.Fatalf("%s probe: evaluating %s returned %s, not the string the transport expects",
+			session.probeName, expression, evaluation.Result.Value)
+	}
+	return stringValue
+}
+
+// waitForPageCondition re-asks a boolean expression until it holds. The wait is on
+// the CONDITION and the deadline only bounds it, so a probe never proceeds because
+// enough time passed — it proceeds because the page says it is ready.
+//
+// Use this for a condition the engine GUARANTEES will arrive: a load completing, a
+// dispatched event being delivered. For a condition that is itself the thing under
+// test, use pageConditionHoldsWithin and say what its absence means — a timeout
+// message names the wait, and the reader needs the property.
+func (session *trustedInputBrowserSession) waitForPageCondition(
+	t *testing.T, conditionDescription string, booleanExpression string,
+) {
+	t.Helper()
+	if !session.pageConditionHoldsWithin(
+		t, conditionDescription, booleanExpression, browserProbePageConditionDeadline) {
+		t.Fatalf("%s probe: waited %s for %s and it never became true (expression %s)",
+			session.probeName, browserProbePageConditionDeadline, conditionDescription,
+			booleanExpression)
+	}
+}
+
+// pageConditionHoldsWithin is waitForPageCondition without the verdict: it reports
+// whether the condition came true inside its own budget and leaves what that means to
+// the caller.
+func (session *trustedInputBrowserSession) pageConditionHoldsWithin(
+	t *testing.T, conditionDescription string, booleanExpression string, conditionBudget time.Duration,
+) bool {
+	t.Helper()
+	conditionDeadline := time.Now().Add(conditionBudget)
+	for {
+		var conditionHolds bool
+		session.decodeResult(t, "condition "+conditionDescription,
+			session.evaluateInPage(t, "!!("+booleanExpression+")"), &conditionHolds)
+		if conditionHolds {
+			return true
+		}
+		if time.Now().After(conditionDeadline) {
+			return false
+		}
+		time.Sleep(browserProbePageConditionPollInterval)
+	}
+}
+
+// The three gestures. What arrives in the page is a TRUSTED event: isTrusted is
+// true, the ENGINE issues the pointerId, and setPointerCapture on that id
+// establishes a real capture that really retargets the synthesized click. That last
+// sentence is the entire reason this transport exists.
+//
+// Coordinates are viewport CSS pixels, the same frame getBoundingClientRect reports
+// in — which is why a caller must scroll its target on screen before aiming at it.
+func (session *trustedInputBrowserSession) pressTrustedMouseAt(t *testing.T, viewportX, viewportY float64) {
+	t.Helper()
+	session.dispatchTrustedMouseEvent(t, "mousePressed", viewportX, viewportY, "left", 1)
+}
+
+func (session *trustedInputBrowserSession) dragTrustedMouseTo(t *testing.T, viewportX, viewportY float64) {
+	t.Helper()
+	session.dispatchTrustedMouseEvent(t, "mouseMoved", viewportX, viewportY, "left", 1)
+}
+
+func (session *trustedInputBrowserSession) releaseTrustedMouseAt(t *testing.T, viewportX, viewportY float64) {
+	t.Helper()
+	session.dispatchTrustedMouseEvent(t, "mouseReleased", viewportX, viewportY, "left", 0)
+}
+
+func (session *trustedInputBrowserSession) dispatchTrustedMouseEvent(
+	t *testing.T, eventType string, viewportX, viewportY float64, mouseButton string, heldButtons int,
+) {
+	t.Helper()
+	session.callDevToolsMethod(t, "Input.dispatchMouseEvent", map[string]any{
+		"type":       eventType,
+		"x":          viewportX,
+		"y":          viewportY,
+		"button":     mouseButton,
+		"buttons":    heldButtons,
+		"clickCount": 1,
+	}, true)
+}
+
+// browserStandardError returns what the engine wrote to stderr, tail-first for the
+// failure messages above. It is read from a file rather than an in-process buffer so
+// that reading it while the child is still writing is not a data race.
+func (session *trustedInputBrowserSession) browserStandardError() string {
+	standardErrorBytes, readError := os.ReadFile(session.standardErrorPath)
+	if readError != nil {
+		return "browser stderr unavailable: " + readError.Error()
+	}
+	const standardErrorTailBytes = 4000
+	if len(standardErrorBytes) > standardErrorTailBytes {
+		standardErrorBytes = standardErrorBytes[len(standardErrorBytes)-standardErrorTailBytes:]
+	}
+	return "browser stderr:\n" + string(standardErrorBytes)
+}
+
+// closeBrowserSession shuts the engine down. Closing the command pipe is the
+// protocol's own goodbye — the engine exits when its reader hits EOF — and the kill
+// is there so a wedged engine cannot hold the test binary open.
+func (session *trustedInputBrowserSession) closeBrowserSession() {
+	if session.browserAlreadyClosed {
+		return
+	}
+	session.browserAlreadyClosed = true
+	session.commandPipeWriter.Close()
+	browserExited := make(chan error, 1)
+	go func() { browserExited <- session.browserCommand.Wait() }()
+	select {
+	case <-browserExited:
+	case <-time.After(browserProbeTrustedInputDeadline):
+		_ = session.browserCommand.Process.Kill()
+		<-browserExited
+	}
+	session.eventPipeReader.Close()
 }
 
 // markLabelTextExtent is what the page measures and the Go side asserts on.

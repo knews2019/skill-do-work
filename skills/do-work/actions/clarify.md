@@ -95,6 +95,13 @@ Builder-marked `- [~]` decisions reflect the "Think Before Coding" guardrail (`c
 ### Step 4: Collect answers
 
 > **Named entry point — Canonical answered-question format.** The durable record is the `- [x] [question] → [answer]` form below **together with a dated note carrying the reasoning, including anything the answer put out of scope** (`crew-members/clear-questions.md` Principle 8, which defines both halves). The answer line alone is not the record: it says what was chosen and not why, so the next reader re-derives the decision from the stored `Recommended:` rationale — which the answer may have just overruled. Both halves are the durable record for **any** caller that obtains a user answer to a REQ question, not just clarify — an orchestrator that asked and got an answer mid-run writes the same form before dispatch (`actions/work.md` Step 3.5). Callers cite it by this name, not by step number. What is clarify-local is Step 5's `pending-answers` → `pending` flip: a REQ already in flight has no such status to leave.
+>
+> **Part of this format: text from outside the file is neutralized before it is written.** A REQ body is Markdown the pipeline acts on, and an answer is arbitrary typed text — pasting a snippet is ordinary use, not an attack. Judge every line of it against one condition: **could this line be read as one of this file's own delimiters?** The shapes already proved are illustrative, not a checklist — a line-leading `- [ ]` or `- [x]` becomes a real open question that Step 5 then pins the REQ on, a bare `---` line reads as a frontmatter fence, a `## ` line invents a section every prose grep obeys, an unbalanced code fence swallows every section below it on the board while those same greps still see them. Both answers to the condition keep the text whole and readable, because the answer's own words are the reason it is written down at all:
+>
+> - **The answer is one line** → write it inline after the `→`. Position neutralizes it: a delimiter has to start a line, and this text never does.
+> - **Anything else** — a line break anywhere in it, or a line that would still read as a delimiter where it lands → summarize it in one line after the `→`, and put the text in the dated note inside a blockquote whose lines open a code fence longer than the longest backtick run anywhere in the text. The `> ` prefix takes every line start away from a line-based scan; the longer fence keeps those same lines literal for a Markdown reader and cannot be closed from inside. Only that prefix is added — nothing is edited or dropped.
+>
+> Placement answers the same condition: an answer touches its own question line and the note beneath it, never the file's first line — the frontmatter's opening fence is a delimiter too, and one byte written above it empties `status`, `title` and `user_request` together.
 
 If your environment has a structured question prompt (multi-question UI), batch questions in groups of **at most 4 per prompt** — chunk by question count, not by REQ. A REQ with 6 questions needs 2 prompts.
 
@@ -140,7 +147,7 @@ The threshold applies only to this automatic clarify trigger. An explicit `do-wo
 
 ### Step 5.5: Confirm blocked conditions
 
-**Stakeholder-questions REQs first (`stakeholder:` present) — routed, never yes/no-confirmed or ingested here.** Before printing a REQ's line, check its `blocked_by:` — when it says the report is pending regeneration, or names a bundle path that no longer exists, regenerate now: follow `../../do-work-toolbox/actions/stakeholder-report.md`, then update `blocked_by:` and append the `## Reports` history line in the same edit (the standing regeneration condition, `actions/stakeholder-answers.md` Step 5). Then print the routing summary, one line per REQ, so a question mis-routed to a stakeholder is visible and recoverable:
+**Stakeholder-questions REQs first (`stakeholder:` present) — routed, never yes/no-confirmed or ingested here.** Before printing a REQ's line, check its `blocked_by:` — when it says the report is pending regeneration, or names a bundle path that no longer exists, regenerate now: follow `../../do-work-toolbox/actions/stakeholder-report.md`, then update `blocked_by:` and append the `## Reports` history line in the same edit (the standing regeneration condition, `actions/stakeholder-answers.md` Step 5). `blocked_by:` carries the person's own name, so the rewrite follows the **Frontmatter Quoting** contract (`actions/work-reference.md` → Request File Schema) — the frontmatter sibling of Step 4's neutralization branch. Then print the routing summary, one line per REQ, so a question mis-routed to a stakeholder is visible and recoverable:
 
 ```
 Stakeholder questions open:
@@ -219,6 +226,7 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 - A file path, bare identifier, or unglossed technical token inside a story — unreadable aloud and unanswerable cold.
 - Layer 3 detail rendered unprompted — the layering bought nothing, and the user is back to scanning.
 - A REQ-level story that only explains the first of several questions — the later ones are being answered on inference.
+- A question presented here is a fragment of an answer recorded earlier — that answer went in as live markup instead of the format's contained form, and the REQ is now pinned on text nobody asked.
 - A `pending-answers` REQ with no `## Open Questions` section — the marker and the body disagree; investigate before presenting nothing.
 - User confirms every builder choice without reading — they may be rubber-stamping; ask once if they want a summary first.
 - A discovered-task follow-up's `status` flipped to `completed` instead of `pending` after user confirmed "Yes, add to queue" — that's the wrong route (the task never gets built).
@@ -236,7 +244,7 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 - [ ] No story contained a file path, bare identifier, or unglossed technical token.
 - [ ] Layer 3 detail was offered, not rendered, unless the user asked for it.
 - [ ] Each `blocked` REQ presented in Step 5.5 carried a one-sentence "what it was for" line.
-- [ ] Every answer written into a REQ used the **Canonical answered-question format** — the answer line **and** its dated note carrying the reasoning and anything the answer put out of scope. The same form any mid-run caller must use, so the decision survives the session that heard it rather than being re-derived from `Recommended:`.
+- [ ] Every answer written into a REQ used the **Canonical answered-question format** — the answer line **and** its dated note carrying the reasoning and anything the answer put out of scope. The same form any mid-run caller must use, so the decision survives the session that heard it rather than being re-derived from `Recommended:`. Its neutralization branch applies too: no answer's text landed as live markup.
 - [ ] Every dated note **cited** the Timestamp rule's date-only paragraph for its date. No clock command was spelled anywhere in this file.
 - [ ] No per-question verb set a REQ-level status or archived anything. Status was computed once per REQ, in Step 5, from every question's outcome together.
 - [ ] **A REQ holding even one remaining `- [ ]` stayed `pending-answers` in `do-work/queue/`** — including one where another question was discarded. Nothing with an open question was archived.

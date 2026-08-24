@@ -4818,6 +4818,184 @@ assert_block_not_contains \
   'whose question is "Should I process this as a new task\?"' \
   'K4: clarify must not route on the literal discriminator phrase any more — that is the defense review-work.md predicted would fail.'
 
+# REQ-342 — the Canonical answered-question format writes text obtained from outside the
+# file straight into a REQ body, and until this rule landed nothing said the text was
+# neutralized first. Three consequences, all reproduced on fixtures: a line-leading
+# `- [ ]` inside an answer becomes a real open question that Step 5's "any remaining
+# unchecked item wins" then pins the REQ on forever; one unbalanced fence renders every
+# section below it inside <pre><code> on the board while the prose greps still see those
+# sections; and text landing above the file's first line drops the whole frontmatter, so
+# status, title and user_request read empty and the REQ leaves its UR silently.
+#
+# The rule is prose, so a keyword match would pass a gutted version of it. This extracts
+# the named entry point's own blockquote — nothing else in the file can lend it vocabulary
+# — grades it by meaning, then replays a mutation per leg. Each mutation is a plausible
+# narrowing rather than a deletion: the closed-list rewrite is the one the REQ named
+# outright (prime-shell-commands.md § Closed Enumerations Go Stale), and the
+# stripped-characters rewrite destroys the answer trail the record exists for.
+if ! python3 - "$core_root/actions/clarify.md" <<'PY'
+import pathlib
+import re
+import sys
+
+clarify_text = pathlib.Path(sys.argv[1]).read_text()
+
+
+def extract_named_entry_point_block(source):
+    """The contiguous blockquote that opens Step 4 — the named entry point itself."""
+    step_match = re.search(
+        r"^### Step 4: Collect answers\n(?P<body>.*?)^### Step 5: ",
+        source,
+        flags=re.DOTALL | re.MULTILINE,
+    )
+    if step_match is None:
+        return None
+    quoted_lines = []
+    started = False
+    for line in step_match.group("body").splitlines():
+        if line.startswith(">"):
+            started = True
+            quoted_lines.append(line)
+        elif started:
+            break
+    return "\n".join(quoted_lines) if quoted_lines else None
+
+
+def neutralization_defects(source):
+    block = extract_named_entry_point_block(source)
+    if block is None:
+        return {"missing named entry point blockquote"}
+
+    normalized = " ".join(block.lower().split())
+    predicates = {
+        # The rule exists at all, and at the named entry point rather than in
+        # loose prose a caller citing the name would never reach.
+        "neutralization stated at the named entry point":
+            r"neutraliz\w+ before it is written",
+        # The whole point of the REQ: a condition, never a character list.
+        "delimiter condition, not a character list":
+            r"could this line be read as one of this file.s own delimiters",
+        "shapes marked illustrative":
+            r"illustrative, not a checklist",
+        # The four shapes the fixture proved. Present as examples of the
+        # condition — their absence means the condition lost its worked cases.
+        "checkbox shape named": r"line-leading `- \[ \]` or `- \[x\]`",
+        "bare thematic-break shape named": r"bare `---` line",
+        "heading shape named": r"`## ` line",
+        "unbalanced fence shape named": r"unbalanced code fence",
+        # Neutralizing must not cost the answer trail the record exists for.
+        "answer preserved intact": r"nothing is edited or dropped",
+        # Branch one: a single line cannot start a line, so position is the fix.
+        "single-line branch keyed on the line break":
+            r"the answer is one line\b.*?inline after the `→`",
+        # Branch two, half one: the quote prefix is what a line-based scan sees,
+        # and a fence alone does not stop one — the sibling incident in this
+        # file's own history was a regex keying on the first line-leading `- [ ]`.
+        "line-based scan defended":
+            r"prefix takes every line start away from a line-based scan",
+        # Branch two, half two: containment the pasted text provably cannot close.
+        "container cannot be closed from inside":
+            r"code fence longer than the longest backtick run anywhere in the text",
+        # The file's first line is a delimiter too, and no fence can guard it.
+        "opening frontmatter fence never written above":
+            r"never the file.s first line",
+    }
+    return {
+        defect_name
+        for defect_name, predicate in predicates.items()
+        if re.search(predicate, normalized) is None
+    }
+
+
+live_defects = neutralization_defects(clarify_text)
+if live_defects:
+    raise SystemExit(
+        "actions/clarify.md Step 4 Canonical answered-question format is missing its "
+        "neutralization contract: " + ", ".join(sorted(live_defects))
+    )
+live_block = extract_named_entry_point_block(clarify_text)
+
+mutations = (
+    ("rule removed entirely",
+     "neutralized before it is written",
+     "recorded as the user typed it",
+     "neutralization stated at the named entry point"),
+    ("condition replaced by a closed list",
+     "could this line be read as one of this file's own delimiters",
+     "does this line start with `- [ ]`, `- [x]`, `---`, `## ` or a backtick fence",
+     "delimiter condition, not a character list"),
+    ("examples hardened into a checklist",
+     "illustrative, not a checklist",
+     "the complete set to check",
+     "shapes marked illustrative"),
+    ("checkbox shape dropped",
+     "a line-leading `- [ ]` or `- [x]`",
+     "a stray marker",
+     "checkbox shape named"),
+    ("thematic-break shape dropped",
+     "a bare `---` line",
+     "a separator",
+     "bare thematic-break shape named"),
+    ("heading shape dropped",
+     "a `## ` line",
+     "a title line",
+     "heading shape named"),
+    ("fence shape dropped",
+     "an unbalanced code fence",
+     "a stray backtick",
+     "unbalanced fence shape named"),
+    ("characters silently stripped",
+     "nothing is edited or dropped",
+     "the delimiter characters are removed",
+     "answer preserved intact"),
+    ("quote prefix dropped, leaving line-based scans exposed",
+     "The `> ` prefix takes every line start away from a line-based scan",
+     "The fence is enough on its own",
+     "line-based scan defended"),
+    ("single-line branch loosened to a judgement call",
+     "The answer is one line",
+     "the answer is short",
+     "single-line branch keyed on the line break"),
+    ("container weakened to a fixed fence",
+     "a code fence longer than the longest backtick run anywhere in the text",
+     "a triple-backtick code fence",
+     "container cannot be closed from inside"),
+    ("frontmatter placement rule dropped",
+     "never the file's first line",
+     "wherever the answer reads best",
+     "opening frontmatter fence never written above"),
+)
+
+for mutation_name, old, new, expected_defect in mutations:
+    mutated_block = live_block.replace(old, new, 1)
+    if mutated_block == live_block:
+        raise SystemExit(
+            f"answer-neutralization mutation {mutation_name!r} changed nothing — "
+            "the anchor it rewrites is no longer in the named entry point block"
+        )
+    mutated_text = clarify_text.replace(live_block, mutated_block, 1)
+    mutation_defects = neutralization_defects(mutated_text)
+    if expected_defect not in mutation_defects:
+        raise SystemExit(
+            f"answer-neutralization mutation {mutation_name!r} escaped "
+            f"{expected_defect!r}; found {sorted(mutation_defects)!r}"
+        )
+PY
+then
+  printf 'FAIL: the Canonical answered-question format (actions/clarify.md Step 4) must state how text obtained from outside the file is neutralized before it is written into a REQ body, keyed on the delimiter condition rather than a character list (REQ-342).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# Stated once, inherited by name. Every caller cites the format instead of restating it,
+# so the condition sentence must exist in exactly one shipped file — a second copy is the
+# drift that leaves one caller neutralizing and another not.
+neutralization_condition_count="$({ grep -rhoF "could this line be read as one of this file's own delimiters" "$repo_root/skills" || true; } | wc -l | tr -d ' ')"
+if [ "$neutralization_condition_count" != "1" ]; then
+  printf 'FAIL: the answer-neutralization condition must be stated exactly once across skills/ — callers cite the Canonical answered-question format by name rather than restating it (found %s).\n' \
+    "$neutralization_condition_count" >&2
+  fail_count=$((fail_count + 1))
+fi
+
 assert_block_contains \
   "$verify_input_block" \
   'Repeating `--against` batches several reversals into one queue scan' \
@@ -5040,6 +5218,44 @@ if [ ! -x "$prescribed_shell_probe" ]; then
 elif ! bash "$prescribed_shell_probe"; then
   printf 'FAIL: prescribed shell primitive canonicalization failed (see the attributed FAIL lines above).\n' >&2
   fail_count=$((fail_count + 1))
+fi
+
+# The prescribed-shell suite reports how many cases it holds, and that figure is only as
+# honest as the rule that produces it. Before REQ-339 the rule matched `^# <one-token>: `,
+# so `# generate-report-image caller contract:` and `# generate-report-image, interrupted
+# directly:` were real cases no figure ever mentioned — nothing failed, the number just
+# read low. This fixture carries three headers in three spellings plus three near-misses
+# that must stay uncounted, so a narrowed rule and an over-broad one both fail here.
+prescribed_shell_counter="$repo_root/_dev/tests/prescribed-shell-case-count.sh"
+if [ ! -f "$prescribed_shell_counter" ]; then
+  printf 'FAIL: _dev/tests/prescribed-shell-case-count.sh is missing — the reported case count has no definition to hold to.\n' >&2
+  fail_count=$((fail_count + 1))
+else
+  case_count_fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/prescribed-shell-case-count.XXXXXX")"
+  cat > "$case_count_fixture_root/probe-counter.sh" <<'PROBE_COUNTER_FIXTURE'
+# Fixture execution proofs for probe-counter.
+# probe-counter: a bare header counts.
+# probe-counter, interrupted: a comma-qualified header counts.
+# probe-counter caller contract: a space-qualified header counts.
+# The wrapped description below is prose, not a header: it only carries a colon.
+# reaching a colon mid-sentence: a continuation line must not count.
+# probe-counter.sh named inside a sentence (REQ-000: still not a header).
+PROBE_COUNTER_FIXTURE
+  # 'none' rather than 0 so a counter that could not run stays distinguishable from one
+  # that legitimately found nothing.
+  if ! observed_header_count="$(
+    # shellcheck source=_dev/tests/prescribed-shell-case-count.sh
+    source "$prescribed_shell_counter"
+    count_named_case_headers "$case_count_fixture_root/probe-counter.sh"
+  )"; then
+    observed_header_count='none'
+  fi
+  if [ "$observed_header_count" != '3' ]; then
+    printf 'FAIL: count_named_case_headers reported %s of the fixture 3 case headers — the suite'"'"'s reported case count no longer matches what the case files hold.\n' \
+      "$observed_header_count" >&2
+    fail_count=$((fail_count + 1))
+  fi
+  rm -rf "$case_count_fixture_root"
 fi
 
 # REQ-168 removed specific generic guidance and an arbitrary commit-size heuristic. Keep

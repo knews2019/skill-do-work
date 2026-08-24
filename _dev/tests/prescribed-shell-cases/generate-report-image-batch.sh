@@ -140,8 +140,17 @@ for interrupt_pid_file in first.pid second.pid first.child.pid second.child.pid;
   background_process_ids="$background_process_ids $(cat "$interrupt_batch_root/$interrupt_pid_file" 2>/dev/null || true)"
 done
 kill -TERM "$interrupt_batch_pid" 2>/dev/null || true
+# A batch that will not finish must fail this case, never hang the gate — the gate's exit
+# status is the only thing anyone reads, and two stalls were traced to an interruption probe
+# that waited forever (REQ-325). The batch swaps its interruption traps around each helper
+# launch, so a regression there is exactly what would leave this wait blocked; the watchdog
+# turns that into a KILL, which the status assertion below reads as a failure.
+( sleep 10; kill -KILL "$interrupt_batch_pid" 2>/dev/null || true ) &
+interrupt_batch_watchdog_pid=$!
 interrupt_batch_status=0
 wait "$interrupt_batch_pid" || interrupt_batch_status=$?
+kill "$interrupt_batch_watchdog_pid" 2>/dev/null || true
+wait "$interrupt_batch_watchdog_pid" 2>/dev/null || true
 [ "$interrupt_batch_status" -eq 143 ] \
   || fail_case "ai-report interrupted batch replay exited $interrupt_batch_status instead of the TERM status 143"
 interrupt_survivor_ticks=0
@@ -193,5 +202,87 @@ publish_collision_generated="$fixture_root/image-publish-collision/ai-reports/<r
   || fail_case 'ai-report publish-collision replay left its staged batch nested inside the colliding destination'
 find "$fixture_root/image-publish-collision/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit | grep -q . \
   && fail_case 'ai-report publish-collision replay leaked invocation-private staging'
+
+# generate-report-image-batch: a staging directory created before the interruption traps
+# exist is a directory no trap owns — the signal takes its default action, the EXIT trap
+# never runs, and .generated.staging.* is left in the user's report directory. The mktemp
+# shim below holds the batch inside exactly that window, so the interruption is an event
+# rather than a race; the stub backend exits at once so a dropped interruption ends the
+# batch instead of hanging this case.
+image_early_batch_bin="$fixture_root/image-early-batch-bin"
+mkdir -p "$image_early_batch_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; *) shift ;; esac; done' \
+  'printf "%s\n" "$$" >> "$EARLY_BATCH_HELPER_RAN"' \
+  'printf partial > "$output_path"' \
+  'exit 9' \
+  > "$image_early_batch_bin/imagegen"
+chmod +x "$image_early_batch_bin/imagegen"
+# The batch resolves mktemp through PATH, so this shim can create the staging directory the
+# batch asked for, announce that it exists, and return only once the case has fired its
+# interruption. Every other mktemp call — the per-image helper's own staging — is handed to
+# the real one untouched, so the shim cannot change what the rest of the run does.
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'case "$*" in' \
+  '  *.generated.staging.*) ;;' \
+  '  *) exec "$EARLY_BATCH_REAL_MKTEMP" "$@" ;;' \
+  'esac' \
+  'printf "%s\n" "$$" > "$EARLY_BATCH_SHIM_PID"' \
+  'early_batch_staging="$("$EARLY_BATCH_REAL_MKTEMP" "$@")" || exit 1' \
+  'printf "%s\n" "$early_batch_staging" > "$EARLY_BATCH_STAGE_LOG"' \
+  'early_batch_shim_ticks=0' \
+  'while [ ! -e "$EARLY_BATCH_GO" ] && [ "$early_batch_shim_ticks" -lt 400 ]; do' \
+  '  sleep 0.05' \
+  '  early_batch_shim_ticks=$((early_batch_shim_ticks + 1))' \
+  'done' \
+  'printf "%s\n" "$early_batch_staging"' \
+  > "$image_early_batch_bin/mktemp"
+chmod +x "$image_early_batch_bin/mktemp"
+
+early_batch_root="$fixture_root/image-early-batch"
+mkdir -p "$early_batch_root/ai-reports/<report-slug>"
+(
+  cd "$early_batch_root" \
+    && exec env PATH="$image_early_batch_bin:$PATH" \
+      EARLY_BATCH_REAL_MKTEMP="$(command -v mktemp)" \
+      EARLY_BATCH_STAGE_LOG="$early_batch_root/staging.path" \
+      EARLY_BATCH_SHIM_PID="$early_batch_root/shim.pid" \
+      EARLY_BATCH_GO="$early_batch_root/go" \
+      EARLY_BATCH_HELPER_RAN="$early_batch_root/helper.ran" \
+      "$toolbox_scripts/generate-report-image-batch.sh" \
+        'ai-reports/<report-slug>' \
+        'replay style' \
+        '01-architecture.png:<prompt 1>'
+) >/dev/null 2>&1 &
+early_batch_pid=$!
+background_process_ids="$background_process_ids $early_batch_pid"
+early_batch_ready_ticks=0
+while [ ! -s "$early_batch_root/staging.path" ] && [ "$early_batch_ready_ticks" -lt 500 ]; do
+  sleep 0.01
+  early_batch_ready_ticks=$((early_batch_ready_ticks + 1))
+done
+if [ ! -s "$early_batch_root/staging.path" ]; then
+  fail_case 'ai-report early-interrupted batch replay never reached its staging window'
+  : > "$early_batch_root/go"
+  wait "$early_batch_pid" 2>/dev/null || true
+else
+  background_process_ids="$background_process_ids $(cat "$early_batch_root/shim.pid" 2>/dev/null || true)"
+  kill -TERM "$early_batch_pid" 2>/dev/null || true
+  # Released only after the signal is on its way: a batch that stages under its traps defers
+  # the interruption until this mktemp returns, so the shim has to be able to return.
+  : > "$early_batch_root/go"
+  early_batch_status=0
+  wait "$early_batch_pid" || early_batch_status=$?
+  [ "$early_batch_status" -eq 143 ] \
+    || fail_case "ai-report early-interrupted batch replay exited $early_batch_status instead of the TERM status 143"
+  find "$early_batch_root/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit | grep -q . \
+    && fail_case 'ai-report early-interrupted batch replay leaked invocation-private staging'
+  [ ! -e "$early_batch_root/ai-reports/<report-slug>/generated" ] \
+    || fail_case 'ai-report early-interrupted batch replay published generated/'
+  [ ! -e "$early_batch_root/helper.ran" ] \
+    || fail_case 'ai-report early-interrupted batch replay launched a helper after the interruption'
+fi
 
 prescribed_shell_finish

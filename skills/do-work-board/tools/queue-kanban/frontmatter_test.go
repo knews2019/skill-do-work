@@ -323,3 +323,158 @@ func TestCoerceToStringList(t *testing.T) {
 		})
 	}
 }
+
+// userTextFrontmatterFixture wraps one value line in a frontmatter block that
+// also carries a NESTED map (estimate:). The nesting is the point: the lenient
+// recovery in frontmatter.go is flat and top-level only, so a block that falls
+// to it comes back without estimate at all. Asserting estimate survived is how
+// these tests tell "the strict parser read this" from "the salvage path did".
+func userTextFrontmatterFixture(valueLine string) string {
+	return strings.Join([]string{
+		`id: REQ-999`,
+		`status: pending`,
+		valueLine,
+		`user_request: UR-068`,
+		`estimate:`,
+		`  p50_active_minutes: 30`,
+		`  confidence: medium`,
+	}, "\n")
+}
+
+// TestFrontmatterQuotingOfUserText pins the property the schema's Frontmatter
+// Quoting contract exists for (skills/do-work/actions/work-reference.md ->
+// Request File Schema): a frontmatter value carrying user-typed text comes back
+// BYTE-IDENTICAL, through the strict parser, without the rest of the block
+// being handed to the last-resort recovery.
+//
+// The failure it locks out was silent in both directions. A title written the
+// way the schema used to prescribe — a bare double-quoted scalar — loses a
+// typed double quote: `title: "Fix: A " # B"` is VALID YAML that reads back as
+// `Fix: A`, the remainder taken as a comment, with no error to notice. Where it
+// fails the strict parse instead, the WHOLE block drops to recovery and the
+// nested estimate: map goes with it.
+func TestFrontmatterQuotingOfUserText(t *testing.T) {
+	// Each case is text a user typed. wantLine is that text written the way the
+	// contract requires; the parse must return userText unchanged.
+	requiredForm := []struct {
+		name     string
+		userText string
+		wantLine string
+	}{
+		{
+			// The REQ-344 case: a double quote, a colon and a hash in one title.
+			name:     "double quote, colon and hash",
+			userText: `Fix: A " # B`,
+			wantLine: `title: 'Fix: A " # B'`,
+		},
+		{
+			// The common shape — every REQ minted here carries a bracketed
+			// impact tag, and the comma is what recovery eats.
+			name:     "bracketed impact tag with a comma",
+			userText: `[impact-negligible] Retitle export, again [v2]`,
+			wantLine: `title: '[impact-negligible] Retitle export, again [v2]'`,
+		},
+		{
+			// The one escape the single-quoted form has: an apostrophe doubles.
+			name:     "apostrophe doubled inside the scalar",
+			userText: `Don't ship "it": #1 blocker`,
+			wantLine: `title: 'Don''t ship "it": #1 blocker'`,
+		},
+		{
+			// blocked_check is a shell command the user supplied verbatim.
+			name:     "a supplied shell probe with a hash and quotes",
+			userText: `sh -c 'echo "#1" | grep -q 1'`,
+			wantLine: `blocked_check: 'sh -c ''echo "#1" | grep -q 1'''`,
+		},
+	}
+
+	for _, testCase := range requiredForm {
+		t.Run("required form/"+testCase.name, func(t *testing.T) {
+			fieldKey, _, _ := strings.Cut(testCase.wantLine, ":")
+			fields, parseError := parseFrontmatterFields(userTextFrontmatterFixture(testCase.wantLine))
+			if parseError != nil {
+				t.Fatalf("parse: %v", parseError)
+			}
+			if got := coerceScalarToString(fields[fieldKey]); got != testCase.userText {
+				t.Fatalf("%s round-trip = %q, want %q", fieldKey, got, testCase.userText)
+			}
+			if fields["estimate"] == nil {
+				t.Fatalf("%s: nested estimate: map is gone — the block fell to the last-resort recovery instead of parsing strictly", fieldKey)
+			}
+		})
+	}
+
+	// The forms the contract forbids, kept as the reason it exists. The
+	// predicate is that the RECORD does not come back whole — the text is
+	// altered, or the block falls to recovery and its nested estimate: map is
+	// dropped, or both. Which half breaks varies by shape and is not asserted,
+	// and no particular corrupted value is asserted either, so widening the
+	// recovery parser (which REQ-344 explicitly does not do) could not turn any
+	// of these into a false failure.
+	forbiddenForm := []struct {
+		name     string
+		userText string
+		line     string
+		why      string
+	}{
+		{
+			name:     "double-quoted scalar, typed quote then hash",
+			userText: `Fix: A " # B`,
+			line:     `title: "Fix: A " # B"`,
+			why:      "valid YAML that silently truncates the title at the typed quote",
+		},
+		{
+			name:     "double-quoted scalar, typed quote mid-value",
+			userText: `[impact-negligible] Fix "quoted" key: strip # now`,
+			line:     `title: "[impact-negligible] Fix "quoted" key: strip # now"`,
+			why:      "strict parse rejects the whole block, so recovery answers and the nested estimate: map is dropped",
+		},
+		{
+			name:     "unquoted scalar with a bracketed tag",
+			userText: `[impact-negligible] Retitle export, again [v2]`,
+			line:     `title: [impact-negligible] Retitle export, again [v2]`,
+			why:      "recovery re-reads it as a flow list and eats the comma",
+		},
+	}
+
+	for _, testCase := range forbiddenForm {
+		t.Run("forbidden form/"+testCase.name, func(t *testing.T) {
+			fields, parseError := parseFrontmatterFields(userTextFrontmatterFixture(testCase.line))
+			if parseError != nil {
+				t.Fatalf("parse: %v", parseError)
+			}
+			titleSurvived := coerceScalarToString(fields["title"]) == testCase.userText
+			if titleSurvived && fields["estimate"] != nil {
+				t.Fatalf("the whole record survived %s (%s) — the Frontmatter Quoting contract's premise no longer holds; re-derive the rule before relaxing it", testCase.line, testCase.why)
+			}
+		})
+	}
+}
+
+// TestFrontmatterQuotingBlockScalarCarriesANewline pins the contract's second
+// form. No quoted scalar on one line can carry a newline, and the recovery
+// parser does not recover block scalars at all — so this form exists only while
+// the strict parse succeeds, which is what the estimate assertion checks.
+func TestFrontmatterQuotingBlockScalarCarriesANewline(t *testing.T) {
+	userText := "line one: with a colon\nline two \" with a quote"
+	yamlText := strings.Join([]string{
+		`id: REQ-999`,
+		`status: pending`,
+		`blocked_by: |-`,
+		`  line one: with a colon`,
+		`  line two " with a quote`,
+		`estimate:`,
+		`  p50_active_minutes: 30`,
+	}, "\n")
+
+	fields, parseError := parseFrontmatterFields(yamlText)
+	if parseError != nil {
+		t.Fatalf("parse: %v", parseError)
+	}
+	if got := coerceScalarToString(fields["blocked_by"]); got != userText {
+		t.Fatalf("blocked_by round-trip = %q, want %q", got, userText)
+	}
+	if fields["estimate"] == nil {
+		t.Fatalf("nested estimate: map is gone — the block fell to the recovery parser, which cannot read block scalars")
+	}
+}

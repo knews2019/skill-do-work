@@ -2,6 +2,71 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.38 — Real Clicks in the Test Lane, and a UR on Every Duration (2026-08-24)
+
+The board's test lane can now drive genuine browser input instead of synthesizing events, which
+caught a click regression that four earlier tests had to work around. And the Durations view finally
+says which user request each mark belongs to.
+
+- Trusted press, drag and release over the DevTools Protocol, with no new dependency — a structural
+  check that could be fooled by routing a call through a variable is now a behavioural one that
+  cannot
+- The Durations hover, sample table and a new bracket lane all name the UR; samples predating the UR
+  system get a named bucket rather than a blank
+- A test that waited 45 seconds for a click the browser never created now fails in six and says why:
+  the chart was rebuilding its rows mid-gesture, and a detached press target has no common ancestor
+  for a click to land on
+
+## 0.236.37 — Typed Text Keeps Its Shape in Frontmatter (2026-08-24)
+
+A REQ title carrying a quote, a colon or a hash used to come back truncated with no error at all —
+YAML read the rest as a comment. Frontmatter values that carry text a person typed now have a stated
+quoting rule, and the write sites cite it instead of each inventing one.
+
+- `title: "Fix: A " # B"` parsed cleanly and yielded `Fix: A ` — valid YAML, wrong value, no warning
+- The rule is keyed on whether a value carries text nobody in the pipeline composed, so a new such
+  field inherits it without an edit
+- The parser's line-based recovery is now recorded as a salvage path rather than a contract, naming
+  the three things it silently narrows
+
+## 0.236.36 — Pasted Text Can No Longer Forge a REQ's Structure (2026-08-24)
+
+Three fixes to how the queue survives its own inputs. Paste a code snippet as an answer to a clarify
+question and it stays a snippet, instead of inventing an open question that pins the REQ forever or
+swallowing every section below it.
+
+- Answers typed into `do-work clarify` are neutralized before they are written, keyed on whether a
+  line could read as one of the file's own delimiters rather than on a fixed list of characters
+- `queue-kanban verify` no longer exits 0 on a REQ whose frontmatter fence, `id`, `user_request` or
+  `status` is broken — each finding names the field and its remedy, and legitimate absence stays silent
+- Adding an ordinary REQ to the queue no longer red-lights the canonical gate: the timeline landing
+  probe asserted that the next period is always empty, which stopped being true once the queue's
+  forecast reached into it
+
+## 0.236.35 — Interrupted Report Batches Clean Up After Themselves (2026-08-24)
+
+Interrupt an `ai-report` early and it used to leave a staging directory in your report folder, or an
+image backend still running. Both windows are now closed.
+
+- The batch created its staging directory before its interruption traps existed, so a signal in
+  between took the default action and the cleanup never ran
+- An interruption landing between a helper's launch and its bookkeeping orphaned that helper and its
+  backend; signals are now held across that window and re-raised once the handles are recorded
+- A third suspected leak was investigated and turned out to be a real defect after all, in a
+  different mechanism than reported — tracked separately
+
+## 0.236.34 — Every Prescribed-Shell Case Now Counted (2026-08-24)
+
+The test runner was quietly reporting fewer cases than the files actually hold, because its counting
+regex skipped any header with a space or comma before the colon. It now counts them all, and the rule
+lives in one place instead of two.
+
+- `generate-report-image` reported 7 of its 9 cases and `generate-report-image-batch` 2 of its 4; the
+  aggregate read 96 instead of 100
+- The counting rule moved out of two hand-synchronized regexes into one sourced definition, so the
+  per-file lines and the aggregate can no longer disagree with each other or with the files
+- Pinned by a lock-in that fails against both a narrowed and a broadened rule
+
 ## 0.236.33 — One Tab Press Past the Timeline Chart (2026-08-23)
 
 Tabbing past the Timeline used to cost one press per row — twenty-nine on the board that reported it,

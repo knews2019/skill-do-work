@@ -1,65 +1,90 @@
 ---
-session_ended: 2026-08-23T20:52:00Z
-last_completed: REQ-338
-queue_state: [0 pending, 3 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress]
-reqs_processed_this_session: 4
-session_depth: moderate
+session_ended: 2026-08-24T13:15:00Z
+last_completed: REQ-346
+queue_state: [15 pending, 1 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 3 in-progress]
+reqs_processed_this_session: 9
+session_depth: deep
 ---
 
 # Session Checkpoint
 
 ## Completed This Session
 
-- REQ-325: Stop the report-image interruption path orphaning its backend (Route B, 96%)
-- REQ-336: Timeline clicks open the detail drawer again (Route B, 97%)
-- REQ-337: A check that can catch Timeline click retargeting (Route B, 96%)
-- REQ-338: Cut the Timeline row list to one Tab stop (Route B, 96%)
+Nine REQs archived, releases 0.236.34 through 0.236.38.
+
+- REQ-339: Count every prescribed-shell case the runner reports (Route B, 89%)
+- REQ-340: Finish the report-image interruption sweep (Route B, 75%, Partial)
+- REQ-342: Neutralize user text written into a REQ body (Route C, 86%)
+- REQ-343: Let verify see a structurally damaged REQ file (Route B, 93%)
+- REQ-344: Quote user text written into a frontmatter value (Route C, 78%)
+- REQ-345: Stop a queued REQ from failing the timeline landing probe (Route C, 95%)
+- REQ-341: Give the browser probe lane trusted input (Route C, 96%)
+- REQ-346: Name the UR on every Durations sample (Route B, 87%)
 
 ## In Progress (interrupted)
 
+Three REQs are claimed with builders dispatched to isolated worktrees. The user
+stopped the run before they handed back. **Their branches may hold uncommitted
+or committed work that was never merged** — check each worktree before
+re-dispatching, and prefer resuming the existing branch over starting fresh.
+
+- REQ-347 — claimed 2026-08-24T13:05:00Z — writer: `vm:/home/user/skill-do-work` — branch `worktree-agent-ad1ad7db01a4bfcef`
+- REQ-356 — claimed 2026-08-24T13:05:00Z — writer: `vm:/home/user/skill-do-work` — branch `worktree-agent-a0294a3d33c47eb05`
+- REQ-358 — claimed 2026-08-24T13:05:00Z — writer: `vm:/home/user/skill-do-work` — branch `worktree-agent-a1d7dc3a2f59e5a71`
+
 ## Still Queued
 
-- REQ-339 (pending-answers): count every prescribed-shell case the runner reports — `impact-rule-change`
-- REQ-340 (pending-answers, sweep): finish the report-image interruption sweep
-- REQ-341 (pending-answers): give the browser probe lane trusted input — `impact-rule-change`
+15 pending, 1 `pending-answers`. Thirteen of these did not exist when the run
+started — they are review findings, each verified against real code or a real
+render before capture.
 
-All three need `do-work clarify` before they can be worked. Nothing is `pending`.
+**Durations batch (UR-069), dependency-ordered:**
+- REQ-348 (Timeline UR row grouping), REQ-349 (panel A scale/density), REQ-350 (axis window control), REQ-351 (retire in-lane labels, depends REQ-346 ✓), REQ-352 (headline numbers, depends REQ-350), REQ-353 (hide dead knobs), REQ-354 (drawer from a mark)
+- **Seven of the nine write `web/board-durations.js`.** They serialize on it — do not fan them out.
+
+**Review follow-ups:**
+- REQ-355 (bound the case-header rule at the script name) — `impact-negligible`
+- REQ-357 (**`pending-answers`** — two judgment calls on the structural probe awaiting the maintainer)
+- REQ-359 (suppress the duplicated status finding from the board strip)
+- REQ-360 (**sweep**, `neutralization-contract-reach` — five instances across REQ-342's and REQ-344's sibling contracts)
+- REQ-361 (make the neutralization lock-in catch narrowing)
+- REQ-362 (stop a multi-path bullet disabling the scope-drift check)
+- REQ-363 (exempt supported UR-less REQ shapes from structural damage)
+- REQ-364 (pin the UR lane's geometry)
+- REQ-365 (a tdd REQ must name a test file in its write set)
 
 ## Session Notes
 
-- Releases 0.236.30 through 0.236.33, one per REQ, each with its own metadata commit recording the
-  implementation hash. The canonical gate exited 0 before every commit.
-- **The gate needed three tools this container did not have.** Go ≥ 1.26.1 (installed via
-  `go env -w GOTOOLCHAIN=go1.26.1`, which resolves the toolchain as a module through
-  `proxy.golang.org` — `go.dev` is blocked by network policy), ShellCheck ≥ 0.11.0, and `just`.
-  Without them the gate stops at its first version check, which reads like a repo failure and is not.
-- **The strict browser lane SKIPs unless `QUEUE_KANBAN_BROWSER` names an engine.** This container has
-  Chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. Three of this session's four REQs
-  were browser work, so every gate run after the first set it — a skipped lane on Timeline work is a
-  green run that proved nothing.
-- **The probe lane cannot dispatch trusted input** (`--dump-dom`, no protocol channel), which shaped
-  three REQs: REQ-336's RED had to be driven over CDP from a scratchpad harness, REQ-337's check is
-  structural because of it, and REQ-338's Tab count needed real keys. REQ-341 captures the fix.
-- Cleanup closed UR-066 (10/10 resolved) and consolidated its ten loose archive REQs into
-  `archive/UR-066/`; no durable doc linked to any of them, so nothing needed repointing. UR-065 and
-  UR-067 stay open on their `pending-answers` members. Eight run directories under `do-work/runs/`
-  carry no manifest and were left untouched, as the safety-net pass requires. No orphaned worktrees,
-  no blanked REQs.
+**Gate state: green**, with the strict browser lane actually run rather than
+skipped (`TestMaintainerStrictBrowserBehaviorLane` PASS, 27.69s). Note that a
+gate run without a browser on `PATH` SKIPs that lane — most of this session's
+earlier green reports were of the narrower kind. Supply
+`QUEUE_KANBAN_BROWSER=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
 
-## Context Summary
+**Environment:** the container needs `GOTOOLCHAIN=go1.26.1` (system Go is
+1.24.7, below the repo's floor), ShellCheck 0.11.0 and `just`, all installed
+this session.
 
-- **Pointer capture retargets the synthesized click, not just pointer events.** Capturing on
-  `pointerdown` inside a container with delegated click handling breaks every click in it. The
-  Timeline now captures at the pan's engage; REQ-337's check enforces that no path from `pointerdown`
-  reaches a capture request, resolving the capturing-function set out of the generated page so a new
-  wrapper cannot slip past.
-- **A trapped signal runs between commands.** `cmd & pid=$!` has a window where a cleanup keyed on
-  `pid` sees nothing, and a file created before the first HUP/INT/TERM trap is a file no trap owns.
-  Both are closed in `generate-report-image.sh`; the same two windows remain open in its batch
-  (REQ-340).
-- **A roving tabindex over a virtualized list needs a clamp, not a match** — an exact match marks
-  nothing tabbable when the roving row is unrendered, which is worse than the defect. Every other row
-  needs an explicit `-1`.
-- Two review premises did not reproduce and are recorded rather than repaired: the 35-minute gate
-  stall REQ-325 was captured for, and REQ-333's claim that Chromium suppresses boundary events while
-  a button is held (the prose-backlog entry).
+**Three corrections worth carrying forward, each a case of a check measuring
+less than it claimed:**
+
+1. REQ-340's instance 3 was refuted, and I confirmed the refutation — both of us
+   measured `kill -0 <pid>` when the code takes the group branch. The group
+   branch burns the full second. REQ-356 reopens it.
+2. REQ-342's lock-in was reported as catching narrowing. It catches deletion and
+   phrase substitution; six narrowings by added qualifier ship green, two of
+   which reintroduce the original defect. REQ-361 carries the fix.
+3. REQ-343's real-tree false-positive check passed because neither offending
+   shape exists in the tree today. It measured the corpus, not the writers.
+   REQ-363 carries the carve-outs.
+
+**One self-inflicted:** a blind string replace in my own bookkeeping matched both
+a real `## Scope Extensions` heading and a citation of it inside backticks,
+forging a heading in REQ-344's record — the exact damage class UR-068 exists to
+prevent. Repaired and recorded there.
+
+**Promoted to the prime rather than a REQ:** the surface behind this board's SVG
+is `<body>`, not any `--surface-*` token. REQ-321 found it under the timeline
+bars, REQ-346 under the durations lane; two builders paying for the same
+property is what `_dev/primes/prime-kanban-board.md` § Conventions exists to
+stop.
