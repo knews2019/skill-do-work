@@ -1,7 +1,8 @@
 ---
 id: REQ-339
 title: "[impact-rule-change] Addendum: count every prescribed-shell case the runner reports"
-status: claimed
+status: completed
+completed_at: 2026-08-24T09:22:00Z
 claimed_at: 2026-08-23T23:08:00Z
 status_changed_at: 2026-08-23T22:32:23Z
 created_at: 2026-08-23T19:30:00Z
@@ -153,3 +154,77 @@ Three files beyond the declared write set of `_dev/tests/prescribed-shell-harnes
 
 - `_dev/tests/prescribed-shell-cases/qualify.sh` lines 127-130 and 400-404 are wrapped prose continuations opening with `qualify`. They are excluded today only because the qualifier stops at the first period. A future continuation line that opens with the script name and reaches a colon with no period in between would be counted as a case. A stronger discriminator (requiring the header to open a comment block — its preceding line not being a comment) would close that, at the cost of moving the counter from grep to awk. Not worth it for the current corpus; worth revisiting if a false positive appears.
 - Nothing validates that a case file's basename matches the script it actually covers, so a case file containing headers for a different script would be counted under its own name. No instance exists — all 17 files use their own basename exclusively.
+
+## Testing
+
+**Tests run:** `bash _dev/tests/prescribed-shell-scripts-behavior.sh`, `bash _dev/tests/contract-regressions.sh`, `GOTOOLCHAIN=go1.26.1 bash _dev/tests/maintainer-verify.sh`
+**Result:** ✓ All passing — gate exit 0 (verified twice: after this REQ merged, and again after REQ-340 merged on top)
+
+**Red-green validation:**
+- `contract-regressions.sh` case-count lock-in: ✗ before implementation (reports 1 of the fixture's 3 headers) → ✓ after
+- The REQ's own stated RED — `generate-report-image.sh` reporting 7 while holding 9 — resolved: the file now reports 9
+
+**Mutation evidence (orchestrator, not the builder):** reverting `count_named_case_headers` to the old
+regex makes the lock-in report 1 of 3 and FAIL with exit 1. The test is load-bearing, not decorative.
+
+**New tests added:**
+- `_dev/tests/contract-regressions.sh` — one lock-in block asserting exactly 3 against a fixture carrying three header spellings plus three near-misses
+
+**Cross-REQ evidence:** REQ-340 merged after this and added a fifth case to
+`generate-report-image-batch.sh`. The per-file line and the aggregate moved from 4/100 to 5/101 with
+no edit to either counter — the derivation this REQ installs, demonstrated live rather than argued.
+
+*Verified by work action*
+
+## Review
+
+**Overall: 89%** | 2026-08-24T09:12:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 95% |
+| Code Quality | 85% |
+| Test Adequacy | 85% |
+| Scope | 90% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings:**
+- The stated rule and the implemented rule differ at the script-name boundary: the comment says a header "opens with the name of the script", while `^# ${script_under_test}[^.:]*: ` accepts any token *beginning* with that name, so a line like `# qualifying the untracked scan below is prose: it must not count.` counts as a case (reproduced: 2 against a 1-case fixture). No corpus line exercises it today and the lock-in carries no near-miss of this shape. — `impact-negligible` → **REQ-355** created.
+
+**Minor findings:** 4 (report only) — the prose omits the space the regex requires after the colon; the basename is interpolated into an ERE with no stated regex-safe assumption (a case file named `a+b.sh` would silently count 0); `write_set` frontmatter still lists one file while four were delivered, so the board's overlap badge understated the surface during the fan-out wave (no collision occurred — siblings verified disjoint); `rm -rf` at one fixture cleanup omits the `--` its eight neighbours use.
+
+**Acceptance:** Pass — runner exit 0 with per-file lines summing exactly to the printed aggregate; `contract-regressions.sh` exit 0; `shellcheck --severity=warning` exit 0 on all three shell files.
+
+**Restatement sweep:** done, nothing stale. Every live restatement of the old rule moved with the diff; remaining hits are dated history (CHANGELOG figures, archived hand-backs) that record what the number was at the time.
+
+**Counting audit:** the reviewer sourced the shipped rule, listed all 100 matched lines and read every one — each a genuine case header opening a fixture block — then listed the 19 column-zero comments it rejects, all plainly wrapped prose. No over-count and no undercount in the current corpus.
+
+**Follow-ups created:** REQ-355
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Landing the refactor first with the OLD expression, proving it changed nothing, then
+swapping the expression — the two-step made it impossible to confuse a refactor regression with a
+rule change. Anchoring the widened rule on the case file's own basename is what let the qualifier
+stay open-ended without over-counting the 23 wrapped prose lines that carry a colon.
+
+**What didn't:** The obvious widening `^# [a-z0-9][a-z0-9-]*[^:]*: ` over-counts badly — 12 wrapped
+continuation lines start with a lowercase word and would all have read as cases. Enumerating the two
+header spellings that exist today was the cheaper fix and was explicitly on the table; it was
+rejected because it leaves the next author free to write a header the count skips, which is the
+defect this REQ removes.
+
+**Worth knowing:** The rule as landed is still one boundary short — it accepts a token *starting*
+with the script name, which is the over-count mirror of the bug fixed here (REQ-355). Also: a case
+file whose basename carries regex metacharacters would silently count 0, because the basename is
+interpolated straight into an ERE. Neither is reachable with the current 17 files.
+
+## Orientation
+
+The prescribed-shell test suite now derives its reported case count from one rule in one file rather
+than two hand-synchronized regexes. Lives in `_dev/tests/`, the repo's own gate tooling — no shipped
+skill code changed. A reader who trusts the runner's "N named script cases across 17 per-script
+files" line is now trusting a measured figure rather than an approximation of one.

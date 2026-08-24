@@ -2,6 +2,18 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.34 — Every Prescribed-Shell Case Now Counted (2026-08-24)
+
+The test runner was quietly reporting fewer cases than the files actually hold, because its counting
+regex skipped any header with a space or comma before the colon. It now counts them all, and the rule
+lives in one place instead of two.
+
+- `generate-report-image` reported 7 of its 9 cases and `generate-report-image-batch` 2 of its 4; the
+  aggregate read 96 instead of 100
+- The counting rule moved out of two hand-synchronized regexes into one sourced definition, so the
+  per-file lines and the aggregate can no longer disagree with each other or with the files
+- Pinned by a lock-in that fails against both a narrowed and a broadened rule
+
 ## 0.236.33 — One Tab Press Past the Timeline Chart (2026-08-23)
 
 Tabbing past the Timeline used to cost one press per row — twenty-nine on the board that reported it,

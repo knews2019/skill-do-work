@@ -18,7 +18,6 @@ session_depth: moderate
 ## In Progress (interrupted)
 
 - REQ-345 — claimed 2026-08-23T23:05:00Z — writer: `vm:/home/user/skill-do-work`
-- REQ-339 — claimed 2026-08-23T23:08:00Z — writer: `vm:/home/user/skill-do-work`
 - REQ-340 — claimed 2026-08-23T23:08:00Z — writer: `vm:/home/user/skill-do-work`
 - REQ-342 — claimed 2026-08-24T08:55:00Z — writer: `vm:/home/user/skill-do-work`
 - REQ-343 — claimed 2026-08-24T08:55:00Z — writer: `vm:/home/user/skill-do-work`
