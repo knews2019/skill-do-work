@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.58 — UR Copy All Includes Every Grouped REQ (2026-08-24)
+
+UR details can now copy the UR's full source followed by every REQ currently grouped under it.
+
+- Membership comes from the displayed all-tree group across queue, working, and archive
+- Plain Copy remains UR-only, while REQ details keep the bulk control hidden
+- Missing UR or member source fails atomically instead of producing a partial clipboard bundle
+
 ## 0.236.57 — Timeline Survives Drawer Resizes (2026-08-24)
 
 Opening or closing the detail drawer no longer leaves Timeline bars scaled for the old plot width and stranded off-screen.

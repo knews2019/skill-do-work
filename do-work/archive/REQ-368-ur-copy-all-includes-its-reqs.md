@@ -1,9 +1,11 @@
 ---
 id: REQ-368
 title: 'Add a UR copy-all that copies the UR plus all its REQs'
-status: claimed
+status: completed
 claimed_at: 2026-08-24T21:05:47Z
-status_changed_at: 2026-08-24T21:05:47Z
+completed_at: 2026-08-24T21:41:02Z
+commit: 61dddb24ef1e412111fc14e442c8474940d4416b
+status_changed_at: 2026-08-24T21:41:02Z
 route: B
 created_at: 2026-08-24T14:53:28Z
 user_request: UR-072
@@ -40,9 +42,9 @@ The UR detail view gets a copy-all control: one click puts the UR's own payload 
 - Copy-all is a control alongside the existing Copy, not a replacement: plain Copy keeps copying just the UR.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Traced the UR drawer's all-tree grouped-id authority and merged clipboard path, then froze a four-file boundary with no CSS change and explicit plain-Copy separation.
+- [x] **[APPLY]:** Added a UR-only Copy all control, current-detail identity reset/visibility, exact UR-plus-grouped-REQ composition, fail-closed semantics, shared feedback, and a generated-site Chromium probe.
+- [x] **[UNIFY]:** Reviewed all four files and headed render geometry; RED/GREEN, five mutations, REQ-367 compatibility browser lane, full module, canonical, syntax, formatting, diff, and artifact checks passed.
 
 ## Detailed Requirements
 - The payload is the UR first, then each grouped REQ's full payload (the same content that REQ's own Copy yields), in the order the UR detail lists them.
@@ -95,3 +97,42 @@ The UR detail view gets a copy-all control: one click puts the UR's own payload 
 - **D-01 — Reuse the drawer's all-tree grouped-id authority.** This keeps copied membership and ordering identical to the REQ ids the user sees and avoids the incomplete capture-time array.
 - **D-02 — Snapshot detail identity at click time.** The async Markdown load operates on the UR and members the drawer showed when the user invoked the action.
 - **D-03 — Reuse native detail styling.** The existing detail-copy styles already cover focus and feedback; adding CSS would duplicate a solved surface.
+- **D-04 — Fail synthesized or incomplete UR bundles closed.** A UR with no real raw payload or any missing member must produce visible failure and no partial write; a real zero-member UR remains a valid UR-only bundle.
+- **D-05 — Keep asynchronous feedback bound to the same open UR.** Success or failure updates the control only if the drawer still shows the UR whose ids were snapshotted.
+
+## Implementation Summary
+
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modified): adds a hidden-by-default native Copy all control beside the existing drawer Copy action.
+- `skills/do-work-board/tools/queue-kanban/web/board-detail.js` (modified): resets both controls on drawer open and exposes Copy all only for UR details while preserving plain Copy and REQ behavior.
+- `skills/do-work-board/tools/queue-kanban/web/board-clipboard.js` (modified): snapshots the current UR and grouped ids, composes exact UR-first bytes through the shared fail-closed raw Markdown path, and applies feedback only while the same UR remains open.
+- `skills/do-work-board/tools/queue-kanban/user_request_clipboard_browser_probe_test.go` (new): proves cross-state all-tree membership beyond the capture array, displayed order, exact plain/all payloads, zero-member success, synthesized/missing-member failure, REQ hiding, feedback, URL/console guards, and five mutation seams.
+
+## Discovered Tasks
+
+None.
+
+## Testing
+
+- TDD RED failed because no Copy all control existed. GREEN Chromium proved controls exactly Copy/Copy all/Close and grouped queue, working, and archive REQs in displayed numeric order despite a stale one-member capture array.
+- Exact plain-Copy UR bytes, exact UR-plus-three-REQ cat bytes, zero-member UR-only success, missing-member and synthesized-UR failure without partial writes, REQ-detail hiding, three successful feedback states, URL provenance, and zero application errors passed.
+- Five mutations—empty grouped snapshot, REQ-first composition, newline separator, silent missing-member omission, and all-detail visibility—each made the focused probe RED and were restored.
+- REQ-367 plus REQ-368 focused Chromium compatibility, full queue-kanban module, canonical verification, Node syntax, formatting, diff checks, and artifact checks passed. Headed Chrome QA confirmed UR-065's 12 members and non-overlapping Copy/Copy all/Close geometry at 1440×1000.
+- On merged main, the combined REQ-367/368 Chromium compatibility lane, full queue-kanban module, and final canonical maintainer gate passed again; the canonical browser lane made its standard no-browser skip after the focused Chromium run.
+
+## Qualification
+
+- Exact merge range `a806fc3d0a78465294bfe655068e59db256ce864..61dddb24ef1e412111fc14e442c8474940d4416b` passed mechanical qualification; the new Go file is a test entry point under the static-reference exception.
+- Scope drift passed: all four changed files exactly match the frozen Scope and Implementation Summary.
+- Orchestrator judgment confirmed substantive all-tree grouping flow, complete plain/all/failure requirement tracing, exact raw-byte composition, non-vacuous browser evidence, and no generated/debug artifacts.
+
+## Review
+
+Independent review approved with no Important, Minor, or Nit findings. Correctness scored 100, tests/mutations 99, accessibility/layout 99, overall 99/100, low risk. It independently passed the combined Chromium lane three times, replayed all five RED mutations, measured minimum-drawer geometry, and confirmed exact bytes/order, failure atomicity, plain-Copy preservation, and REQ-367 compatibility.
+
+## Lessons Learned
+
+Grouped UI membership should come from the same derived all-tree relation the user sees, not an older capture-time list. Snapshot that authority before async work, then fail the entire bundle if any displayed member cannot be represented exactly.
+
+## Orientation
+
+Released in 0.236.58. UR details now offer Copy all for the UR's exact source followed by every currently grouped REQ across queue, working, and archive.
