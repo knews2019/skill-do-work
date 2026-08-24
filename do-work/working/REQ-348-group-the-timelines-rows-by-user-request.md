@@ -1,8 +1,10 @@
 ---
 id: REQ-348
 title: "Group the Timeline's rows by user request"
-status: pending
-status_changed_at: 2026-08-24T13:33:27Z
+status: claimed
+claimed_at: 2026-08-24T15:00:04Z
+status_changed_at: 2026-08-24T15:00:04Z
+route: C
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
 domain: frontend
@@ -27,8 +29,10 @@ estimate:
     - browser evidence
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-timeline.js
-  - skills/do-work-board/tools/queue-kanban/timeline.go
   - skills/do-work-board/tools/queue-kanban/web/board.css
+  - skills/do-work-board/tools/queue-kanban/web/template.html
+  - skills/do-work-board/tools/queue-kanban/generate_test.go
+  - skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
 ---
 
 # Group the Timeline's Rows by User Request
@@ -40,7 +44,7 @@ rows them one per REQ, so the unit the maintainer actually plans in is invisible
 Timeline's rows by UR, and make each UR's own span readable against the work inside it.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Model UR groups client-side after window filtering; flatten fixed-height group headers and REQ rows for virtualization while preserving a REQ-only roving focus index. Reuse Durations samples for canonical summed-work exclusions, render honest open/no-claim metrics, and cover the model plus live browser behavior before implementation.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -144,3 +148,29 @@ list is still one Tab stop.
 
 ---
 *Source: capture answer to the report's open question Q1, replacing prompt A2 (finding F2), `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html`.*
+
+## Triage
+
+**Route: C** — Timeline grouping changes the row model, virtualization, keyboard behavior, aggregation semantics, and rendered presentation. Planning and browser-backed exploration are required.
+
+## Plan
+
+1. Join each window-listed Timeline row to its request's `userRequestId` and completed work to the existing Durations sample verdict. Group only after window membership is decided, preserve row and first-seen group order, and place `No UR recorded` last.
+2. Compute window-scoped group count, earliest recorded claim, honest finished/open endpoint, elapsed availability, accepted-work sum, and exclusion count. Flatten headers plus members for virtual scrolling without admitting headers to the roving Tab sequence.
+3. Render clipped group spans and explicitly labelled elapsed/worked/count copy, update the accessible table and explanatory text, and add theme-aware styling.
+4. Add model and browser probes for ordering, endpoints, exclusions, virtualization, window changes, and keyboard behavior; generate and inspect light and dark boards.
+
+## Exploration
+
+- The existing request payload supplies UR identity, so `timeline.go` does not need a schema change.
+- `boardData.durations.samples` already owns the read-time exclusion verdict; consuming `excludedReason` avoids duplicating the four-hour/negative-span policy.
+- Window-listed REQs remain authoritative for summaries, table rows, projections, and group membership. Only the virtualized display list gains headers.
+- A group without a recorded claim reports elapsed as unavailable; open groups end at the payload's frozen `now`; finished groups use their latest resolved completion.
+
+## Scope
+
+- `skills/do-work-board/tools/queue-kanban/web/board-timeline.js`
+- `skills/do-work-board/tools/queue-kanban/web/board.css`
+- `skills/do-work-board/tools/queue-kanban/web/template.html`
+- `skills/do-work-board/tools/queue-kanban/generate_test.go`
+- `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go`

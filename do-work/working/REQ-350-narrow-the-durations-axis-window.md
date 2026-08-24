@@ -1,7 +1,10 @@
 ---
 id: REQ-350
 title: "Narrow the Durations axis to a chosen window"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T15:21:20Z
+status_changed_at: 2026-08-24T15:21:20Z
+route: B
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
 domain: frontend
@@ -14,6 +17,15 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-346, REQ-347, REQ-348, REQ-349, REQ-351, REQ-352, REQ-353, REQ-354]
 batch: durations-panel-improvement
+estimate:
+  p50_active_minutes: 30
+  confidence: medium
+  calculated_at: 2026-08-24T15:21:20Z
+  basis:
+    - Route B
+    - 3-file seeded write set
+    - 5 acceptance criteria
+    - browser evidence across three settings
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-durations.js
   - skills/do-work-board/tools/queue-kanban/web/board-controls.js
@@ -84,3 +96,11 @@ the active window and its sample count.
 
 ---
 *Source: prompt A3, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F3).*
+
+## Triage
+
+**Route: B** — The three states, reusable control pattern, affected renderer, and rendered outcome are explicit. Focused exploration is required to trace the independent state, filtering/domain boundaries, and browser-probe conventions before implementation.
+
+## Plan
+
+**Planning not required** — Route B: exploration-guided implementation.

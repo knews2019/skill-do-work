@@ -1,7 +1,10 @@
 ---
 id: REQ-349
 title: "Fix panel A's scale and density"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T15:00:04Z
+status_changed_at: 2026-08-24T15:00:04Z
+route: B
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
 domain: frontend
@@ -27,6 +30,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-durations.js
   - skills/do-work-board/tools/queue-kanban/durations_test.go
   - skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go
+  - skills/do-work-board/tools/queue-kanban/generate_test.go
 ---
 
 # Fix Panel A's Scale and Density
@@ -38,7 +42,7 @@ inside their own day slot, lower their opacity, and draw a per-day median line w
 ribbon behind them.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Route B exploration located the single renderer path, its hover index, and the existing geometry lock-in. Implement a named square-root scale and deterministic within-day jitter, aggregate accepted samples into daily quartiles, draw the overlay behind marks, and update both structural and live-browser geometry evidence.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -100,3 +104,26 @@ ceiling and overflow lane are unchanged, and the hover still names the mark the 
 
 ---
 *Source: prompt A4, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F4).*
+
+## Triage
+
+**Route: B** — The visual outcome and files are explicit; exploration is needed to locate the existing scale, hover geometry, and browser-probe conventions before implementation.
+
+## Plan
+
+**Planning not required** — Route B: exploration-guided implementation.
+
+## Exploration
+
+- `renderDurationsView` owns the complete Panel A path. `yOfMinutes` is linear today; the mark loop uses raw completion x coordinates, and `describeAtPointer` resolves against the same `markIndex` geometry.
+- Hover stays truthful when the jittered x is used for both the circle and `markIndex.x`. Overflow/reversed y placement and the Go-produced `excludedReason` verdict remain unchanged.
+- No existing quantile or jitter helper exists. Daily p25/median/p75 can be computed client-side from sorted, non-excluded samples using the payload's canonical verdict, centred on each UTC day slot.
+- `generate_test.go::TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot` pins Panel A circles to unjittered completion x values. It must move with the intended behavior, so `generate_test.go` is added to the declared scope.
+- Dense browser evidence needs at least 700 samples across roughly 47 days, with actual circle coordinates, day bounds, repeat-render determinism, hover-at-circle identity, and ribbon/line bounds measured from the rendered page.
+
+## Scope
+
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js`
+- `skills/do-work-board/tools/queue-kanban/durations_test.go`
+- `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go`
+- `skills/do-work-board/tools/queue-kanban/generate_test.go`
