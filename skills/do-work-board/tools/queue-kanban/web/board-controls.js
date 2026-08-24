@@ -36,6 +36,7 @@
     document.getElementById("lens-group").hidden = viewState.view !== "board";
     document.getElementById("recent-window-group").hidden = viewState.view !== "board";
     document.getElementById("durations-colour-group").hidden = viewState.view !== "durations";
+    document.getElementById("durations-window-group").hidden = viewState.view !== "durations";
     document.getElementById("filter-done-window").hidden = viewState.view !== "testing";
     document.getElementById("filter-clear").hidden = !hasActiveVisibleFilters();
 
@@ -137,6 +138,12 @@
       });
     });
 
+    document.querySelectorAll("[data-durations-window]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        applyDurationsWindowSelection(button.getAttribute("data-durations-window"));
+      });
+    });
+
     document.querySelectorAll("[data-window-hours]").forEach(function (button) {
       button.addEventListener("click", function () {
         applyRecentWindowSelection(parseInt(button.getAttribute("data-window-hours"), 10));
@@ -190,6 +197,16 @@
         }
       });
     });
+  }
+
+  function applyDurationsWindowSelection(windowName) {
+    setDurationsWindow(windowName);
+    setActiveButton("#durations-window-group", "data-durations-window", windowName);
+    renderedOnce.durations = false;
+    if (viewState.view === "durations") {
+      renderDurationsView();
+      renderedOnce.durations = true;
+    }
   }
 
   // Event delegation: any element carrying data-detail-kind opens the drawer.
