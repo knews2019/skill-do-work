@@ -422,112 +422,11 @@ func durationsRendererConstant(t *testing.T, constantName string) float64 {
 	return rendererNumericConstant(t, "web/board-durations.js", constantName)
 }
 
-// Descent below the baseline for the renderer's 11px label face — the number
-// REQ-226 used to describe a label's text box. The ascent is the renderer's own
-// DURATIONS_LABEL_TEXT_ASCENT constant, read below; the descent exists only in
-// this test's geometric question, so it lives here.
+// Descent below the baseline for Panel B's 11px slowest-day annotation. It
+// exists only in that test's clearance question, so it lives here.
 const durationsLabelTextDescentUnits = 2.0
 
-// ---- the rendered face, measured ------------------------------------------
-//
-// Every number below comes from the browser, because the face is the browser's
-// answer and no amount of arithmetic over the constants under test can produce
-// it — computing a guarantee from the constant it is meant to judge is circular.
-// They are recorded here so a Go test can hold the model to the face without a
-// browser in the loop, and each is rounded AWAY from the model (up), so a
-// passing assertion can never be an artefact of the rounding.
-//
-// Procedure, reproducible from any board directory `queue-kanban generate` wrote:
-// load index.html, activate the Durations view, append an SVG <text> carrying
-// class "durations-mark-label" to the chart's own <svg>, and read
-// getComputedTextLength() and getBBox() off it, at the class's declared 11px
-// over the board's --font-sans stack; the SVG is a fixed viewBox at width:100%,
-// so user units are zoom- and window-independent.
-//
-// A measured face is PER-BROWSER — the same probe returns different numbers on
-// different Chromium builds, because the face resolves through the build and
-// the machine's font stack. So each constant's own doc comment names the build
-// its number was taken on (TestDurationsMeasuredConstantsNameTheirChromiumBuild
-// enforces this for every durationsMeasured constant in the package), a
-// re-measurement on another build may only RAISE a constant, never lower it,
-// and any new browser measurement takes the durationsMeasured prefix so the
-// same test covers it.
-
-// The SUPREMUM of units per character over the whole label space — not the worst
-// case of a sweep. The distinction is the entire point, and getting it wrong is
-// what this constant's own history records: 6.2 was fitted to a plausible string,
-// and 6.71 came from a sweep that varied REQ-id digits but held the hour count at
-// two, which bounded nothing.
-//
-// The space is infinite in two independent directions (id digit count, hour
-// count) and per-character width rises with length in both, because the narrow
-// fixed characters are a fixed cost diluted by every added digit. So the sweep
-// has to be closed by an argument, not by more sampling. The argument:
-//
-//  1. A label is "REQ-" + id + " " + duration, and only DIGITS can repeat without
-//     limit — every wide fixed character (R, E, Q, m, h, −) appears at most twice.
-//  2. So as a label grows, the fixed characters amortize away and per-character
-//     width converges to that of a pure digit run, from below.
-//  3. A pure run of the widest digit ("4") measures 7.1441 units per character.
-//
-// Both ends were then measured rather than assumed. Exhaustively over the bounded
-// region — every digit, id lengths 1-40, hour counts 1-40, both duration forms,
-// both signs, mixed-digit ids, 280 800 labels — the maximum is 7.0643. Pushing
-// both unbounded parameters to the limit gives 7.1384 at 2 010 characters, 7.1411
-// at 10 010 and 7.1417 at 40 010: rising, and still under 7.1441. A randomized
-// search over 4 000 mixed-digit labels confirms a uniform "4" run is the worst
-// case, so the exhaustive region's shape is right.
-//
-// Build: measured for REQ-241 on the Chromium bundled by its Playwright 1.59,
-// recorded only as browser build chromium-1228 — no version number survives.
-// On Chromium 141.0.7390.37 (Playwright 1.56.1, REQ-252) the same "4" run
-// measures 6.9865 and the worst minus-bearing short label 6.8952 per character:
-// smaller, so the larger recorded supremum stands.
-func variedOverflowTickets(sampleCount int) []*RequestTicket {
-	tickets := make([]*RequestTicket, 0, sampleCount)
-	for sampleIndex := 0; sampleIndex < sampleCount; sampleIndex++ {
-		completedAt := durationsWindowStart.Add(time.Duration(sampleIndex) * durationsWindowLength / time.Duration(sampleCount-1))
-		claimedAt := completedAt.Add(-time.Duration(65+7*sampleIndex) * time.Minute)
-		tickets = append(tickets, durationTicket(
-			fmt.Sprintf("REQ-%03d", 500+sampleIndex),
-			"B",
-			claimedAt.Format(time.RFC3339),
-			completedAt.Format(time.RFC3339),
-		))
-	}
-	return tickets
-}
-
-// A span whose remainder rounds up must carry into the next unit. Splitting the
-// magnitude into units before rounding printed "1h 60m" for 119.5 minutes — a
-// unit field holding a value the unit cannot hold. 1h59m30s is an ordinary REQ
-// duration, so this reached real labels; the width model was wrong by a
-// character on the same values, which is why the fix lands in both.
-func TestDurationLabelMinutesCarriesRoundedRemaindersIntoTheNextUnit(t *testing.T) {
-	for _, roundingCase := range []struct {
-		minutes float64
-		want    string
-		name    string
-	}{
-		{119.5, "2h 0m", "the remainder rounds to a full hour"},
-		{-119.5, "-2h 0m", "the same carry on a reversed span"},
-		{59.96, "1h 0m", "the sub-hour branch rounds up to the hour boundary"},
-		{119.4, "1h 59m", "just under the carry still splits normally"},
-		{60, "1h 0m", "exactly on the hour"},
-		{7.5, "7.5 min", "sub-hour keeps its decimal"},
-		{1439.5, "24h 0m", "a day boundary carries the same way"},
-	} {
-		if got := formatDurationLabelMinutes(roundingCase.minutes); got != roundingCase.want {
-			t.Errorf("%s: %.2f min formatted as %q, want %q",
-				roundingCase.name, roundingCase.minutes, got, roundingCase.want)
-		}
-	}
-}
-
-// The x-axis domain, kept HERE rather than in durations.go after REQ-292 moved
-// label placement into the browser. Nothing in production Go needs it any more —
-// placement was its only caller — but the property it pins is still real and is
-// REQ-248's: the domain is anchored to whole UTC days, the first completion
+// The x-axis domain is anchored to whole UTC days, the first completion
 // floored to its UTC midnight and the midnight AFTER the last, because the
 // renderer's day buckets sit at their days' midnights and a domain that began at
 // the first completion INSTANT put every bucket left of its samples and pushed

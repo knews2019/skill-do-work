@@ -1,7 +1,8 @@
 ---
 id: REQ-363
 title: "[impact-user-visible] Exempt supported UR-less REQ shapes from structural damage"
-status: pending
+status: cancelled
+completed_at: 2026-08-24T13:42:26Z
 created_at: 2026-08-24T11:35:00Z
 user_request: UR-068
 addendum_to: REQ-343
@@ -105,3 +106,9 @@ against the shipped template and `actions/work.md`'s archive table before captur
 
 ---
 *Source: PR #166 review finding (UR-068) — a false-positive class in REQ-343's structural probe.*
+
+## Cancelled
+
+- **When:** 2026-08-24T13:42:26Z
+- **Why:** folded into REQ-357 (sweep `req-343-structural-probe-remediation`) at the maintainer's instruction — both supported-shape exemptions survive as an instance there, reconciled with the maintainer's clarify reversal of D-08 (recognition by schema discriminator, never by path; backfill wherever a real UR exists). Also the decision-revalidation scan's one candidate for that reversal; the reconciliation resolves it
+- **Decided by:** user, via `do-work clarify` fold confirmation

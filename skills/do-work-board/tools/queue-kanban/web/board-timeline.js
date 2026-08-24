@@ -26,6 +26,7 @@
 
   var TIMELINE_SVG_NS = "http://www.w3.org/2000/svg";
   var TIMELINE_ROW_HEIGHT = 18;
+  var TIMELINE_GROUP_HEADER_HEIGHT = 34;
   var TIMELINE_BAR_HEIGHT = 10;
   var TIMELINE_AXIS_HEIGHT = 26;
   // The TARGET number of gaps between axis ticks, not an exact count.
@@ -91,6 +92,7 @@
   // down without someone deciding to.
   var TIMELINE_LABEL_WIDTH = 184;
   var TIMELINE_OVERSCAN_ROWS = 4;
+  var TIMELINE_UNKNOWN_USER_REQUEST_NAME = "No UR recorded";
   var TIMELINE_MIN_SPAN_MS = 3600000; // one hour in ms — as far in as zoom goes
   var TIMELINE_DAY_MS = 86400000;
   var TIMELINE_ZOOM_STEP = 1.6;
@@ -183,10 +185,9 @@
     timelineTableRebuildFrame = null;
   }
 
-  // At most one whole-view render per frame, for the two things that can ask for
-  // one faster than the compositor draws: a drag (a trackpad delivers pointermoves
-  // faster than frames) and the plot's ResizeObserver (a drawer animating open
-  // reports every intermediate width).
+  // At most one whole-view render per frame during a drag: a trackpad delivers
+  // pointermoves faster than the compositor draws, and the intermediate windows
+  // cannot all be shown.
   //
   // A frame scheduled by the PREVIOUS render holds that render's closure, so a
   // filter change that re-enters this module would let it re-render the old rows
@@ -883,6 +884,275 @@
     return inWindow;
   }
 
+  // Group AFTER window membership is settled. A header therefore describes
+  // exactly the REQs listed beneath it, not hidden members elsewhere in the
+  // archive. The row order within each group and the first-seen group order are
+  // inherited from the newest-first input. The no-UR bucket is the one
+  // exception: it is explicit and always last.
+  function timelineGroupWindowRows(
+    windowRows,
+    requestsById,
+    durationSamples,
+    nowMs,
+    windowStartMs,
+    windowEndMs
+  ) {
+    var durationSampleById = {};
+    (durationSamples || []).forEach(function (sample) {
+      durationSampleById[sample.id] = sample;
+    });
+    var groupsById = {};
+    var orderedGroups = [];
+    var unknownGroup = null;
+
+    windowRows.forEach(function (row, rowIndex) {
+      var request = requestsById[row.id] || {};
+      var userRequestId = request.userRequestId || "";
+      var groupKey = userRequestId || TIMELINE_UNKNOWN_USER_REQUEST_NAME;
+      var group = groupsById[groupKey];
+      if (!group) {
+        group = {
+          userRequestId: userRequestId,
+          label: userRequestId || TIMELINE_UNKNOWN_USER_REQUEST_NAME,
+          members: [],
+          acceptedWorkMinutes: 0,
+          acceptedWorkCount: 0,
+          excludedReasons: {},
+          unavailableWorkCount: 0,
+          earliestClaimMs: Infinity,
+          latestCompletionMs: -Infinity,
+          recordedClaimCount: 0,
+          overlappingElapsedCount: 0,
+          unresolvedCompletionCount: 0,
+          running: false,
+          elapsedMinutes: null,
+          elapsedUnavailableReason: ""
+        };
+        groupsById[groupKey] = group;
+        if (userRequestId) {
+          orderedGroups.push(group);
+        } else {
+          unknownGroup = group;
+        }
+      }
+
+      group.members.push({ row: row, rowIndex: rowIndex });
+      var claimMs = row.claimedTime ? Date.parse(row.claimedTime) : NaN;
+      if (!isNaN(claimMs)) {
+        group.recordedClaimCount++;
+      }
+      var completionMs = row.completedTime ? Date.parse(row.completedTime) : NaN;
+      var rowRunning = !!(row.waitOpen || row.workOpen);
+      if (!isNaN(claimMs) && isNaN(completionMs) && !rowRunning) {
+        group.unresolvedCompletionCount++;
+      }
+      if (rowRunning) {
+        group.running = true;
+      }
+
+      // A group's elapsed hull is made from each member's CLAIMED interval
+      // intersected with this window. A row listed because its WAIT overlaps the
+      // window but whose claim is later contributes no claimed interval here.
+      // This is deliberately not a clamp of the final group hull: intersecting
+      // each member first prevents an off-window member endpoint from expanding
+      // the metric beyond what the header says it covers.
+      var elapsedEndMs = rowRunning ? Math.min(nowMs, windowEndMs) : completionMs;
+      var clippedClaimMs = Math.max(claimMs, windowStartMs);
+      var clippedCompletionMs = Math.min(elapsedEndMs, windowEndMs);
+      if (
+        !isNaN(claimMs) &&
+        isFinite(elapsedEndMs) &&
+        clippedClaimMs < windowEndMs &&
+        clippedCompletionMs >= windowStartMs &&
+        clippedCompletionMs >= clippedClaimMs
+      ) {
+        group.earliestClaimMs = Math.min(group.earliestClaimMs, clippedClaimMs);
+        group.latestCompletionMs = Math.max(group.latestCompletionMs, clippedCompletionMs);
+        group.overlappingElapsedCount++;
+      }
+
+      var sample = durationSampleById[row.id];
+      if (!sample) {
+        group.unavailableWorkCount++;
+      } else if (sample.excludedReason) {
+        group.excludedReasons[sample.excludedReason] =
+          (group.excludedReasons[sample.excludedReason] || 0) + 1;
+      } else if (isFinite(sample.wallMinutes) && !isNaN(claimMs) && !isNaN(completionMs)) {
+        // `excludedReason` remains the eligibility verdict. Once accepted, this
+        // view contributes only the claim→completion interval that lies inside
+        // its own visible window; the sample's full wallMinutes would otherwise
+        // make a two-hour window announce four hours of work.
+        var clippedWorkStartMs = Math.max(claimMs, windowStartMs);
+        var clippedWorkEndMs = Math.min(completionMs, windowEndMs);
+        group.acceptedWorkMinutes += Math.max(clippedWorkEndMs - clippedWorkStartMs, 0) / 60000;
+        group.acceptedWorkCount++;
+      } else {
+        group.unavailableWorkCount++;
+      }
+    });
+
+    if (unknownGroup) {
+      orderedGroups.push(unknownGroup);
+    }
+    orderedGroups.forEach(function (group) {
+      // One stopped claimed member without a completion can be the group's true
+      // last endpoint. Publishing the latest completion from only its resolved
+      // siblings would be a plausible-looking partial span, so uncertainty wins
+      // over every computable member.
+      if (group.unresolvedCompletionCount) {
+        group.elapsedUnavailableReason = "completion endpoint unavailable";
+        return;
+      }
+      if (!group.recordedClaimCount) {
+        group.elapsedUnavailableReason = "no recorded claim";
+        return;
+      }
+      if (!group.overlappingElapsedCount) {
+        group.elapsedUnavailableReason = "no claimed interval overlaps this window";
+        return;
+      }
+      group.elapsedMinutes = (group.latestCompletionMs - group.earliestClaimMs) / 60000;
+    });
+    return orderedGroups;
+  }
+
+  function timelineGroupDetailText(group) {
+    var details = [];
+    Object.keys(group.excludedReasons).sort().forEach(function (reason) {
+      var count = group.excludedReasons[reason];
+      details.push(count + " " + reason + " excluded");
+    });
+    if (group.unavailableWorkCount) {
+      details.push(group.unavailableWorkCount + " without an accepted Durations sample");
+    }
+    if (group.unresolvedCompletionCount) {
+      details.push(group.unresolvedCompletionCount + " unresolved completion");
+    }
+    return details.length ? details.join("; ") : "all listed work samples accepted";
+  }
+
+  function timelineGroupMetricText(group) {
+    var elapsedText = group.elapsedMinutes === null
+      ? "Elapsed in window unavailable (" + (group.elapsedUnavailableReason || "unknown endpoint") +
+        (group.running ? "; running" : "") + ")"
+      : "Elapsed in window " + timelineFormatSpanMinutes(group.elapsedMinutes) +
+        (group.running ? " (running)" : "");
+    var acceptedWorkText = group.acceptedWorkCount
+      ? timelineFormatSpanMinutes(group.acceptedWorkMinutes)
+      : "0 min";
+    return elapsedText + " · Accepted work in window " + acceptedWorkText + " · " +
+      group.members.length + " listed REQ" + (group.members.length === 1 ? "" : "s") +
+      " · " + timelineGroupDetailText(group);
+  }
+
+  function timelineGroupHeaderMetricText(group) {
+    var elapsedText = group.elapsedMinutes === null
+      ? "Elapsed in window unavailable: " + (group.elapsedUnavailableReason || "unknown endpoint") +
+        (group.running ? "; running" : "")
+      : "Elapsed in window " + timelineFormatSpanMinutes(group.elapsedMinutes) +
+        (group.running ? " running" : "");
+    var acceptedWorkText = group.acceptedWorkCount
+      ? timelineFormatSpanMinutes(group.acceptedWorkMinutes)
+      : "0 min";
+    var detailParts = [];
+    Object.keys(group.excludedReasons).sort().forEach(function (reason) {
+      detailParts.push(reason + " excluded×" + group.excludedReasons[reason]);
+    });
+    if (group.unavailableWorkCount) {
+      detailParts.push("no sample×" + group.unavailableWorkCount);
+    }
+    if (group.unresolvedCompletionCount) {
+      detailParts.push("unresolved completion×" + group.unresolvedCompletionCount);
+    }
+    return elapsedText + " · Accepted work in window " + acceptedWorkText + " · " +
+      (detailParts.length ? detailParts.join("; ") : "no exclusions");
+  }
+
+  // Headers and members have fixed heights, but not the same height. Flattening
+  // them gives virtualization and focus one display index while rowIndex remains
+  // the REQ-only roving index used by the keyboard contract.
+  function timelineFlattenGroups(groups) {
+    var displayItems = [];
+    var topPx = 0;
+    groups.forEach(function (group) {
+      displayItems.push({ kind: "group", group: group, topPx: topPx, height: TIMELINE_GROUP_HEADER_HEIGHT });
+      topPx += TIMELINE_GROUP_HEADER_HEIGHT;
+      group.members.forEach(function (member) {
+        displayItems.push({
+          kind: "request",
+          row: member.row,
+          rowIndex: member.rowIndex,
+          group: group,
+          topPx: topPx,
+          height: TIMELINE_ROW_HEIGHT
+        });
+        topPx += TIMELINE_ROW_HEIGHT;
+      });
+    });
+    return { items: displayItems, height: topPx };
+  }
+
+  // A deterministic, collision-free encoding of the UTF-16 label gives the
+  // table's explicit `headers` relationships an id that survives rebuilds and
+  // cannot be confused with a sibling group. The known/unknown prefix keeps a
+  // literal UR named like the fallback label distinct from the fallback itself.
+  function timelineTableGroupHeaderId(group) {
+    var source = group.userRequestId
+      ? "ur:" + group.userRequestId
+      : "unknown:" + TIMELINE_UNKNOWN_USER_REQUEST_NAME;
+    var encoded = [];
+    for (var characterIndex = 0; characterIndex < source.length; characterIndex++) {
+      encoded.push(source.charCodeAt(characterIndex).toString(16));
+    }
+    return "timeline-table-group-" + encoded.join("-");
+  }
+
+  function timelineVisibleDisplayRange(displayItems, scrollTop, viewportHeight) {
+    var overscanPx = TIMELINE_OVERSCAN_ROWS * TIMELINE_ROW_HEIGHT;
+    var rangeStartPx = Math.max(0, scrollTop - overscanPx);
+    var rangeEndPx = scrollTop + viewportHeight + overscanPx;
+    var firstDisplay = 0;
+    while (
+      firstDisplay < displayItems.length &&
+      displayItems[firstDisplay].topPx + displayItems[firstDisplay].height <= rangeStartPx
+    ) {
+      firstDisplay++;
+    }
+    var lastDisplay = firstDisplay;
+    while (lastDisplay < displayItems.length && displayItems[lastDisplay].topPx < rangeEndPx) {
+      lastDisplay++;
+    }
+    return { firstDisplay: firstDisplay, lastDisplay: lastDisplay };
+  }
+
+  function timelineTabbableRequestIndex(rovingRowIndex, displayItems, firstDisplay, lastDisplay) {
+    var renderedRequests = [];
+    var rovingDisplayIndex = -1;
+    for (var itemIndex = 0; itemIndex < displayItems.length; itemIndex++) {
+      if (displayItems[itemIndex].kind === "request" && displayItems[itemIndex].rowIndex === rovingRowIndex) {
+        rovingDisplayIndex = itemIndex;
+        break;
+      }
+    }
+    for (var displayIndex = firstDisplay; displayIndex < lastDisplay; displayIndex++) {
+      if (displayItems[displayIndex].kind === "request") {
+        renderedRequests.push({ rowIndex: displayItems[displayIndex].rowIndex, displayIndex: displayIndex });
+      }
+    }
+    if (renderedRequests.length === 0) {
+      return -1;
+    }
+    for (var renderedIndex = 0; renderedIndex < renderedRequests.length; renderedIndex++) {
+      if (renderedRequests[renderedIndex].rowIndex === rovingRowIndex) {
+        return rovingRowIndex;
+      }
+    }
+    if (rovingDisplayIndex >= 0 && rovingDisplayIndex > renderedRequests[renderedRequests.length - 1].displayIndex) {
+      return renderedRequests[renderedRequests.length - 1].rowIndex;
+    }
+    return renderedRequests[0].rowIndex;
+  }
+
   // Which rows have SVG nodes. Everything above and below the scrolled window is
   // absent from the DOM, which is what keeps 560 rows and 5600 rows the same
   // cost. The overscan is what stops a fast scroll showing blank strips.
@@ -1479,6 +1749,11 @@
     if (isNaN(nowMs)) {
       nowMs = generatedAtMs;
     }
+    // The first real display list is built by refreshWindowRows after the view
+    // window is fitted. Building metrics here would either need an invented
+    // window or briefly measure the full archive before the first render.
+    var timelineGroups = [];
+    var timelineDisplay = timelineFlattenGroups(timelineGroups);
 
     // The forward half. Keyed by id onto the rows above: a pending REQ already
     // has a row carrying its open wait, and its projected work attaches there
@@ -1571,31 +1846,45 @@
     // reading off under the axis. Anchored on the id at the top of the viewport:
     // if it survives the move it keeps its screen position, and if it does not,
     // the scroll simply stays where it was and the browser clamps it.
-    function topVisibleRowId() {
-      if (rows.length === 0) {
+    function topVisibleRowAnchor() {
+      if (timelineDisplay.items.length === 0) {
         return null;
       }
-      var topIndex = Math.min(
-        rows.length - 1,
-        Math.max(0, Math.floor(scrollHost.scrollTop / TIMELINE_ROW_HEIGHT))
-      );
-      return rows[topIndex].id;
+      for (var displayIndex = 0; displayIndex < timelineDisplay.items.length; displayIndex++) {
+        var displayItem = timelineDisplay.items[displayIndex];
+        if (
+          displayItem.kind === "request" &&
+          displayItem.topPx + displayItem.height > scrollHost.scrollTop
+        ) {
+          return { id: displayItem.row.id, offsetPx: scrollHost.scrollTop - displayItem.topPx };
+        }
+      }
+      return null;
     }
 
     function refreshWindowRows() {
-      var anchorId = topVisibleRowId();
-      var anchorOffset = scrollHost.scrollTop % TIMELINE_ROW_HEIGHT;
+      var anchor = topVisibleRowAnchor();
       rows = timelineRowsInWindow(
         filterMatchedRows,
         filterMatchedSegments,
         timelineViewState.windowStartMs,
         timelineViewState.windowEndMs
       );
-      if (anchorId === null) {
+      timelineGroups = timelineGroupWindowRows(
+        rows,
+        requestsById,
+        ((boardData.durations || {}).samples || []),
+        nowMs,
+        timelineViewState.windowStartMs,
+        timelineViewState.windowEndMs
+      );
+      timelineDisplay = timelineFlattenGroups(timelineGroups);
+      if (anchor === null) {
         return;
       }
-      for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
-        if (rows[rowIndex].id === anchorId) {
+      for (var displayIndex = 0; displayIndex < timelineDisplay.items.length; displayIndex++) {
+        var displayItem = timelineDisplay.items[displayIndex];
+        if (displayItem.kind === "request" && displayItem.row.id === anchor.id) {
           // GROW THE EXTENT FIRST. scrollTop is clamped to the scrollable height
           // at the instant it is assigned, and on a widening move the rows SVG
           // is still the narrow window's height here — renderVisibleRows only
@@ -1604,8 +1893,8 @@
           // window they were leaving: from a month window at scrollTop 400 the
           // Fit-all button landed on 465, the old extent's maximum, when the
           // anchor needed 4900.
-          rowsSvg.setAttribute("height", rows.length * TIMELINE_ROW_HEIGHT);
-          scrollHost.scrollTop = rowIndex * TIMELINE_ROW_HEIGHT + anchorOffset;
+          rowsSvg.setAttribute("height", timelineDisplay.height);
+          scrollHost.scrollTop = displayItem.topPx + anchor.offsetPx;
           return;
         }
       }
@@ -1695,24 +1984,50 @@
     function renderTimelineTable() {
       timelineTableRebuildFrame = null;
       tableBody.textContent = "";
-      rows.forEach(function (row) {
-        var request = requestsById[row.id] || {};
-        var tableRow = document.createElement("tr");
-        [
-          row.id,
-          request.title || "",
-          request.status || "",
-          timelineFormatSpanMinutes(row.waitMinutes) + (row.waitOpen ? " (open)" : ""),
-          row.hasWork
-            ? timelineFormatSpanMinutes(row.workMinutes) + (row.workOpen ? " (open)" : "")
-            : "not started",
-          row.anomaly ? row.anomalyReason : ""
-        ].forEach(function (cellText) {
-          var cell = document.createElement("td");
-          cell.textContent = cellText;
-          tableRow.appendChild(cell);
+      timelineGroups.forEach(function (group) {
+        var groupRow = document.createElement("tr");
+        groupRow.className = "timeline-table-group";
+        groupRow.setAttribute("data-timeline-table-group", group.label);
+        groupRow.setAttribute("data-group-count", String(group.members.length));
+        var groupHeading = document.createElement("th");
+        var groupHeadingId = timelineTableGroupHeaderId(group);
+        groupHeading.id = groupHeadingId;
+        groupHeading.colSpan = 6;
+        groupHeading.textContent = group.label + " · " + timelineGroupMetricText(group);
+        groupRow.appendChild(groupHeading);
+        tableBody.appendChild(groupRow);
+
+        group.members.forEach(function (member) {
+          var row = member.row;
+          var request = requestsById[row.id] || {};
+          var tableRow = document.createElement("tr");
+          tableRow.setAttribute("data-timeline-table-request", row.id);
+          [
+            { text: row.id, columnHeaderId: "timeline-table-column-req", rowHeader: true },
+            { text: request.title || "", columnHeaderId: "timeline-table-column-title" },
+            { text: request.status || "", columnHeaderId: "timeline-table-column-status" },
+            {
+              text: timelineFormatSpanMinutes(row.waitMinutes) + (row.waitOpen ? " (open)" : ""),
+              columnHeaderId: "timeline-table-column-waited"
+            },
+            {
+              text: row.hasWork
+                ? timelineFormatSpanMinutes(row.workMinutes) + (row.workOpen ? " (open)" : "")
+                : "not started",
+              columnHeaderId: "timeline-table-column-worked"
+            },
+            { text: row.anomaly ? row.anomalyReason : "", columnHeaderId: "timeline-table-column-note" }
+          ].forEach(function (cellDefinition) {
+            var cell = document.createElement(cellDefinition.rowHeader ? "th" : "td");
+            if (cellDefinition.rowHeader) {
+              cell.scope = "row";
+            }
+            cell.setAttribute("headers", groupHeadingId + " " + cellDefinition.columnHeaderId);
+            cell.textContent = cellDefinition.text;
+            tableRow.appendChild(cell);
+          });
+          tableBody.appendChild(tableRow);
         });
-        tableBody.appendChild(tableRow);
       });
     }
 
@@ -1740,11 +2055,11 @@
     });
     var rowsSvg = makeTimelineSvgNode(scrollHost, "svg", {
       class: "timeline-rows-svg",
-      height: rows.length * TIMELINE_ROW_HEIGHT,
+      height: timelineDisplay.height,
       width: "100%",
       role: "img",
       "aria-label":
-        "One horizontal bar per REQ drawing anything inside the visible time window, in capture order, newest first. The first segment is the wait from capture to claim, the second is the work from claim to completion; a REQ too narrow to show both draws a single marker instead. Faint vertical lines mark the axis ticks; a dashed violet rule marks the projected queue-empty instant when the forecast is confident and that instant is in view. Every value is also listed in the table below."
+        "Window-listed REQs grouped by user request, with the No UR recorded group last. Group elapsed and accepted work are clipped to this visible window. Elapsed spans the earliest overlapping recorded member claim through the latest overlapping resolved completion, or a claimed open member's endpoint bounded by this board's frozen now and the window end. It is unavailable when there is no recorded claim, no claimed interval overlaps the window, or a stopped claimed member has no completion endpoint. Accepted work uses only the in-window claim-to-completion overlap of Durations samples whose read-time verdict did not exclude them. REQ rows remain newest first within each group. The first bar segment is waiting and the second is work. Every value is also listed in the grouped table below."
     });
 
     // MEASURED ONCE PER RENDER. clientWidth forces a synchronous layout, and
@@ -1759,17 +2074,21 @@
     // nothing re-measured, every bar kept the x it had been given against the old
     // 1300px plot, and drawSegment's clamp dropped all fifty of them — clicking a
     // row, which the hint under the chart explicitly invites, blanked the chart.
-    // So the trigger is now a ResizeObserver on this host: the condition is "the
-    // plot's box changed", and no future layout change has to remember to be added
-    // to a list.
+    // So the trigger is now one shared positive condition: the live host width is
+    // non-zero and differs from the width used by the last render. ResizeObserver
+    // delivers that check directly in ordinary browser layout; the teardown-owned
+    // 50ms fallback below delivers the same check if observer/compositor work is
+    // parked. Neither path names a layout caller, so no future cause has to be
+    // added to a list.
     //
     // A ZERO-SIZE BOX IS NOT A WIDTH. A window resize fired while the view is
     // hidden measured clientWidth 0, and the floor below turned that into
     // Math.max(120, -196) = 120 — three months of archive crushed into a 120px
     // strip with eight rows in it, and nothing re-rendered afterwards to repair it.
     // renderAll now refuses to render at all against an unmeasurable host, and the
-    // ResizeObserver brings it back the moment the box exists, which is also what
-    // repairs the view on re-entry with no second gate in board-controls.js.
+    // next delivery of the shared positive width-change condition brings it back
+    // when the box exists. That also repairs re-entry without a second gate in
+    // board-controls.js.
     //
     // That guard is the ONLY one. plotWidth deliberately keeps its floor and its
     // memo unconditional: every caller runs inside a render the guard has already
@@ -1778,12 +2097,17 @@
     // through, invalidatePlotWidth at the top of the next renderAll drops the memo,
     // so a bad measurement cannot outlive the render that took it.
     var measuredPlotWidthPx = null;
+    var renderedHostWidthPx = null;
+    function liveHostWidth() {
+      return scrollHost.clientWidth || scrollHost.getBoundingClientRect().width || 0;
+    }
     function plotIsMeasurable() {
-      return (scrollHost.clientWidth || scrollHost.getBoundingClientRect().width || 0) > 0;
+      return liveHostWidth() > 0;
     }
     function plotWidth() {
       if (measuredPlotWidthPx === null) {
-        var hostWidth = scrollHost.clientWidth || scrollHost.getBoundingClientRect().width;
+        var hostWidth = liveHostWidth();
+        renderedHostWidthPx = hostWidth;
         measuredPlotWidthPx = Math.max(120, hostWidth - TIMELINE_LABEL_WIDTH - 12);
       }
       return measuredPlotWidthPx;
@@ -1876,7 +2200,7 @@
       // The scroll extent follows the windowed set, not the filtered one — a
       // window holding four rows must not leave 312 rows of empty scroll below
       // them.
-      rowsSvg.setAttribute("height", rows.length * TIMELINE_ROW_HEIGHT);
+      rowsSvg.setAttribute("height", timelineDisplay.height);
       appendTimelineHatchPattern(rowsSvg);
       // TIMELINE_LABEL_WIDTH is the column; the 6px is the text's own x offset
       // and the trailing 6px keeps the longest label off the first bar.
@@ -1889,14 +2213,55 @@
       // drawSegment still calls plotWidth() itself; hoisting THAT is REQ-324's
       // job, and doing half of it here would leave two sources for one number.
       var plotWidthPx = plotWidth();
-      var visible = timelineVisibleRowRange(scrollHost.scrollTop, scrollHost.clientHeight, rows.length);
-      var tabbableRowIndex = timelineTabbableRowIndex(
-        timelineViewState.rovingRowIndex, visible.firstRow, visible.lastRow
+      var visible = timelineVisibleDisplayRange(
+        timelineDisplay.items, scrollHost.scrollTop, scrollHost.clientHeight
       );
-      for (var rowIndex = visible.firstRow; rowIndex < visible.lastRow; rowIndex++) {
-        var row = rows[rowIndex];
+      var tabbableRowIndex = timelineTabbableRequestIndex(
+        timelineViewState.rovingRowIndex,
+        timelineDisplay.items,
+        visible.firstDisplay,
+        visible.lastDisplay
+      );
+      for (
+        var displayIndex = visible.firstDisplay;
+        displayIndex < visible.lastDisplay;
+        displayIndex++
+      ) {
+        var displayItem = timelineDisplay.items[displayIndex];
+        if (displayItem.kind === "group") {
+          var group = displayItem.group;
+          var groupHeader = makeTimelineSvgNode(rowsSvg, "g", {
+            class: "timeline-group-header",
+            "data-timeline-group": group.label,
+            "data-group-count": String(group.members.length),
+            "aria-hidden": "true"
+          });
+          makeTimelineSvgNode(groupHeader, "title", {},
+            group.label + " · " + timelineGroupMetricText(group));
+          makeTimelineSvgNode(groupHeader, "rect", {
+            x: 0,
+            y: displayItem.topPx,
+            width: "100%",
+            height: displayItem.height,
+            class: "timeline-group-header-fill"
+          });
+          makeTimelineSvgNode(groupHeader, "text", {
+            x: 8,
+            y: displayItem.topPx + 13,
+            class: "timeline-group-label"
+          }, group.label + " · " + group.members.length + " listed REQ" +
+            (group.members.length === 1 ? "" : "s"));
+          makeTimelineSvgNode(groupHeader, "text", {
+            x: 8,
+            y: displayItem.topPx + 27,
+            class: "timeline-group-metrics"
+          }, timelineGroupHeaderMetricText(group));
+          continue;
+        }
+        var rowIndex = displayItem.rowIndex;
+        var row = displayItem.row;
         var request = requestsById[row.id] || {};
-        var rowTopY = rowIndex * TIMELINE_ROW_HEIGHT;
+        var rowTopY = displayItem.topPx;
         // data-status carries the hue, exactly as the calendar chips do, and the
         // unrecognized verdict is READ FROM THE PAYLOAD rather than re-derived:
         // the board already decides what counts as a real status, and a second
@@ -2042,7 +2407,7 @@
     function drawGridlines() {
       var tickInstants = timelineAxisTickInstants(
         timelineViewState.windowStartMs, timelineViewState.windowEndMs);
-      var rulesHeight = rows.length * TIMELINE_ROW_HEIGHT;
+      var rulesHeight = timelineDisplay.height;
       for (var tickIndex = 0; tickIndex < tickInstants.length; tickIndex++) {
         var tickX = xOfEpoch(tickInstants[tickIndex]);
         makeTimelineSvgNode(rowsSvg, "line", {
@@ -2081,7 +2446,7 @@
         x1: ruleX.toFixed(1),
         y1: 0,
         x2: ruleX.toFixed(1),
-        y2: rows.length * TIMELINE_ROW_HEIGHT,
+        y2: timelineDisplay.height,
         class: "timeline-queue-end-rule"
       });
     }
@@ -2109,7 +2474,7 @@
         x1: nowX.toFixed(1),
         y1: 0,
         x2: nowX.toFixed(1),
-        y2: rows.length * TIMELINE_ROW_HEIGHT,
+        y2: timelineDisplay.height,
         class: "timeline-now-rule"
       });
     }
@@ -2415,19 +2780,39 @@
 
     // The plot's box can change without any window moving and without the browser
     // resizing: the detail drawer takes a grid column, the view is shown or
-    // hidden, a container's padding changes. Observing the host states the
-    // condition — "this box changed" — instead of enumerating the causes.
+    // hidden, a container's padding changes. Both delivery paths below call this
+    // one positive live-width-change condition instead of enumerating the causes.
     //
     // Guarded because the floor this project designs for includes hosts with no
     // ResizeObserver: the window resize listener below still covers the ordinary
     // case there, which is exactly what it covered before.
+    function renderIfPlotWidthChanged() {
+      var hostWidth = liveHostWidth();
+      if (hostWidth > 0 && hostWidth !== renderedHostWidthPx) {
+        renderAll();
+      }
+    }
+
     if (typeof ResizeObserver === "function") {
       var plotResizeObserver = new ResizeObserver(function () {
-        requestFrameRender();
+        renderIfPlotWidthChanged();
       });
       plotResizeObserver.observe(scrollHost);
       timelineListenerTeardowns.push(function () {
         plotResizeObserver.disconnect();
+      });
+    }
+
+    // Chromium's DOM-dump lifecycle can settle layout while compositor callbacks
+    // remain parked: the host has its new width, but ResizeObserver is not delivered.
+    // This teardown-owned 50ms timer is a second delivery path for the SAME shared
+    // condition, not a second list of layout callers. Suppressing or inverting that
+    // condition returns the drawer probe to RED; removing only ResizeObserver does
+    // not, because this fallback intentionally retains the invariant.
+    if (typeof window.setInterval === "function") {
+      var plotWidthCheckTimer = window.setInterval(renderIfPlotWidthChanged, 50);
+      timelineListenerTeardowns.push(function () {
+        window.clearInterval(plotWidthCheckTimer);
       });
     }
 
@@ -2472,9 +2857,23 @@
     // Bring a row inside the scroll viewport. The rows are virtualized, so a roving move
     // to a row outside the rendered range has to scroll BEFORE the rebuild, or the render
     // has no node to focus.
+    function displayItemForRowIndex(rowIndex) {
+      for (var displayIndex = 0; displayIndex < timelineDisplay.items.length; displayIndex++) {
+        var displayItem = timelineDisplay.items[displayIndex];
+        if (displayItem.kind === "request" && displayItem.rowIndex === rowIndex) {
+          return displayItem;
+        }
+      }
+      return null;
+    }
+
     function scrollTimelineRowIntoView(rowIndex) {
-      var rowTopPx = rowIndex * TIMELINE_ROW_HEIGHT;
-      var rowBottomPx = rowTopPx + TIMELINE_ROW_HEIGHT;
+      var displayItem = displayItemForRowIndex(rowIndex);
+      if (!displayItem) {
+        return;
+      }
+      var rowTopPx = displayItem.topPx;
+      var rowBottomPx = rowTopPx + displayItem.height;
       if (rowTopPx < scrollHost.scrollTop) {
         scrollHost.scrollTop = rowTopPx;
       } else if (rowBottomPx > scrollHost.scrollTop + scrollHost.clientHeight) {
@@ -2488,9 +2887,31 @@
     // row holds focus when it runs — so focusing before it lands is what survives, and
     // focusing before the synchronous rebuild would not.
     function moveTimelineRowFocus(rowDelta) {
-      var nextRowIndex = Math.min(
-        Math.max(timelineViewState.rovingRowIndex + rowDelta, 0), rows.length - 1
-      );
+      var currentDisplayIndex = -1;
+      for (var displayIndex = 0; displayIndex < timelineDisplay.items.length; displayIndex++) {
+        var displayItem = timelineDisplay.items[displayIndex];
+        if (
+          displayItem.kind === "request" &&
+          displayItem.rowIndex === timelineViewState.rovingRowIndex
+        ) {
+          currentDisplayIndex = displayIndex;
+          break;
+        }
+      }
+      if (currentDisplayIndex < 0) {
+        return;
+      }
+      var nextRowIndex = timelineViewState.rovingRowIndex;
+      for (
+        var nextDisplayIndex = currentDisplayIndex + rowDelta;
+        nextDisplayIndex >= 0 && nextDisplayIndex < timelineDisplay.items.length;
+        nextDisplayIndex += rowDelta
+      ) {
+        if (timelineDisplay.items[nextDisplayIndex].kind === "request") {
+          nextRowIndex = timelineDisplay.items[nextDisplayIndex].rowIndex;
+          break;
+        }
+      }
       if (nextRowIndex === timelineViewState.rovingRowIndex) {
         return;
       }
@@ -2838,7 +3259,8 @@
         renderAll();
         var openRowIndex = timelineFirstOpenRowIndex(rows);
         if (openRowIndex >= 0) {
-          scrollHost.scrollTop = openRowIndex * TIMELINE_ROW_HEIGHT;
+          var openDisplayItem = displayItemForRowIndex(openRowIndex);
+          scrollHost.scrollTop = openDisplayItem ? openDisplayItem.topPx : 0;
           renderVisibleRows();
         }
       };

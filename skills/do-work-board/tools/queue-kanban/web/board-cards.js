@@ -100,7 +100,7 @@
     if (request.status === "blocked" && request.blockedBy && request.blockedBy.length > 0) {
       // Waiting on an external condition (a service being up, a person answering)
       // — distinct from pending-answers (user questions) and depends_on (another
-      // REQ). Shares the Needs-input/Blocked column but names its condition.
+      // REQ). The badge follows blocked status across either active-work column.
       var blockedCondition = request.blockedBy.join(", ");
       var blockedBadge = makeBadge("badge-blocked", "blocked by", truncateBadgeText(blockedCondition));
       var blockedTitle = blockedCondition;
@@ -331,12 +331,38 @@
     return resolvedFiltersActive ? "No matches" : "Nothing here";
   }
 
+  // Copy availability is derived from the same filtered/windowed id slice that
+  // fills the column. The click path reads the rendered cards back in DOM order,
+  // so this count is only the accessible/disabled state — never a second copy of
+  // which REQs the button will write.
+  function updateColumnCopyButton(columnKey, shownCount) {
+    var copyButton = document.querySelector('[data-copy-column="' + columnKey + '"]');
+    if (!copyButton) {
+      return;
+    }
+    var columnLabel = copyButton.dataset.copyLabel || columnKey;
+    copyButton.disabled = shownCount === 0;
+    copyButton.dataset.visibleCount = String(shownCount);
+    copyButton.setAttribute(
+      "aria-label",
+      shownCount === 0
+        ? "No " + columnLabel + " REQs to copy"
+        : "Copy all " + shownCount + " " + columnLabel + " REQ" + (shownCount === 1 ? "" : "s")
+    );
+  }
+
   function fillColumn(columnKey, requestIds, options, totalCount) {
     var container = document.querySelector('[data-cards="' + columnKey + '"]');
     var countNode = document.querySelector('[data-count="' + columnKey + '"]');
     container.textContent = "";
     if (countNode) {
       countNode.textContent = formatFilteredCount(requestIds.length, totalCount != null ? totalCount : requestIds.length);
+    }
+    // Some focused behavior probes execute fillColumn in isolation. The real
+    // assembled client always carries the helper; the guard keeps that older
+    // function-level seam focused on its empty-copy decision.
+    if (typeof updateColumnCopyButton === "function") {
+      updateColumnCopyButton(columnKey, requestIds.length);
     }
     if (requestIds.length === 0) {
       container.appendChild(createElement("p", "column-empty", columnEmptyText()));
@@ -356,6 +382,7 @@
     var countNode = document.querySelector('[data-count="pending"]');
     container.textContent = "";
     countNode.textContent = formatFilteredCount(readyIds.length + waitingIds.length, totalCount);
+    updateColumnCopyButton("pending", readyIds.length + waitingIds.length);
 
     if (readyIds.length === 0 && waitingIds.length === 0) {
       container.appendChild(createElement("p", "column-empty", columnEmptyText()));
@@ -367,7 +394,7 @@
       });
       return;
     }
-    container.appendChild(makePendingGroup("Ready", readyIds, "Nothing ready — every pending REQ is waiting"));
+    container.appendChild(makePendingGroup("Ready", readyIds, "Nothing ready — everything here is waiting"));
     container.appendChild(makePendingGroup("Waiting on dependencies", waitingIds, ""));
   }
 

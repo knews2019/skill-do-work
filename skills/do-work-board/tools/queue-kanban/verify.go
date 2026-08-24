@@ -317,11 +317,18 @@ func appendDuplicateRequestIdFindings(report *VerifyReport, board *Board) {
 func appendStructuralDamageFindings(report *VerifyReport, board *Board) {
 	for _, ticket := range board.AllRequests {
 		if ticket.FrontmatterMarkdown == "" {
+			missingFenceDetail := fmt.Sprintf("%s has no leading frontmatter fence, so id, status, user_request and every other field parsed empty (the id named here was recovered from the filename)",
+				ticket.RequestId)
+			missingFenceRemedy := "restore the opening `---` as the file's very first line and the closing `---` after the last field, then re-check the fields it was hiding"
+			if bodyStartsWithOpeningFrontmatterFence(ticket.BodyMarkdown) {
+				missingFenceDetail = fmt.Sprintf("%s has an opening frontmatter fence but no closing fence, so id, status, user_request and every other field parsed empty (the id named here was recovered from the filename)",
+					ticket.RequestId)
+				missingFenceRemedy = "restore the closing `---` after the last frontmatter field, then re-check the fields it was hiding"
+			}
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryStructurallyDamagedRequest,
-				Detail: fmt.Sprintf("%s has no leading frontmatter fence, so id, status, user_request and every other field parsed empty (the id named here was recovered from the filename)",
-					ticket.RequestId),
-				Remedy: "restore the opening `---` as the file's very first line and the closing `---` after the last field, then re-check the fields it was hiding",
+				Detail:   missingFenceDetail,
+				Remedy:   missingFenceRemedy,
 			})
 			continue
 		}
@@ -330,7 +337,7 @@ func appendStructuralDamageFindings(report *VerifyReport, board *Board) {
 		if coerceScalarToString(frontmatterFields["id"]) == "" {
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryStructurallyDamagedRequest,
-				Detail: fmt.Sprintf("%s has an empty or absent id: field — the id everything else names it by was recovered from the filename, so a rename silently renumbers it",
+				Detail: fmt.Sprintf("%s has an empty or absent id: field — caution: its id was recovered from the filename, so renaming the file silently renumbers the REQ",
 					ticket.RequestId),
 				Remedy: fmt.Sprintf("write `id: %s` into the frontmatter", ticket.RequestId),
 			})
@@ -339,24 +346,29 @@ func appendStructuralDamageFindings(report *VerifyReport, board *Board) {
 		if ticket.UserRequestId != "" {
 			continue
 		}
-		// Two absences are correct by design and must not be reported, or the probe
-		// cries wolf on files nobody should touch and gets turned off. A stakeholder
-		// REQ deliberately omits user_request (actions/work-reference.md → Stakeholder
-		// REQ Template: UR membership would hold the source UR open), and every REQ
-		// under do-work/archive/legacy/ predates the field entirely.
-		if coerceScalarToString(frontmatterFields[stakeholderMarkerFieldName]) != "" {
-			continue
-		}
-		if isLegacyArchiveRequestPath(ticket.FilePath) {
+		if userRequestMayBeAbsent(frontmatterFields) {
 			continue
 		}
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryStructurallyDamagedRequest,
 			Detail: fmt.Sprintf("%s carries no user_request: pointer, so it belongs to no UR — nothing links it to the input that asked for it, and UR closure cannot see it",
 				ticket.RequestId),
-			Remedy: "write `user_request: UR-NNN` naming the UR this REQ was captured under (do-work/user-requests/); a stakeholder REQ omits it deliberately and is exempt",
+			Remedy: "write `user_request: UR-NNN` naming the UR this REQ was captured under (do-work/user-requests/); documented stakeholder, code-review, scoped review-generated, and context_ref shapes are exempt",
 		})
 	}
+}
+
+// bodyStartsWithOpeningFrontmatterFence recognizes the exact first physical line
+// that splitFrontmatter accepts as an opening fence, including BOM and CRLF forms.
+// When no closing fence exists splitFrontmatter leaves the whole raw file in
+// BodyMarkdown, so this can name the missing closing delimiter without a second
+// filesystem walk. A hand-built ticket with an empty body remains a missing-opening
+// case, preserving the structured-evidence test seam.
+func bodyStartsWithOpeningFrontmatterFence(bodyMarkdown string) bool {
+	if strings.HasPrefix(bodyMarkdown, "\ufeff") {
+		bodyMarkdown = strings.TrimPrefix(bodyMarkdown, "\ufeff")
+	}
+	return strings.HasPrefix(bodyMarkdown, "---\n") || strings.HasPrefix(bodyMarkdown, "---\r\n")
 }
 
 // stakeholderMarkerFieldName is the frontmatter key that marks a stakeholder REQ —
@@ -364,6 +376,24 @@ func appendStructuralDamageFindings(report *VerifyReport, board *Board) {
 // and the only positive evidence that a missing user_request is deliberate rather
 // than damage.
 const stakeholderMarkerFieldName = "stakeholder"
+
+// userRequestMayBeAbsent identifies the documented REQ schemas that deliberately
+// lack UR membership. Each exemption requires affirmative frontmatter evidence,
+// never a directory name: a damaged ordinary REQ cannot cheaply look like one of
+// these shapes by merely being archived.
+func userRequestMayBeAbsent(frontmatterFields map[string]any) bool {
+	if coerceScalarToString(frontmatterFields[stakeholderMarkerFieldName]) != "" {
+		return true
+	}
+	if coerceScalarToString(frontmatterFields["source"]) == "code-review" {
+		return true
+	}
+	if coerceScalarToString(frontmatterFields["review_generated"]) == "true" &&
+		coerceScalarToString(frontmatterFields["scope"]) != "" {
+		return true
+	}
+	return coerceScalarToString(frontmatterFields["context_ref"]) != ""
+}
 
 // requestFrontmatterFields re-reads one ticket's OWN retained frontmatter bytes
 // through the same two parsers buildBoard used. This is neither a second tree walk
@@ -387,21 +417,6 @@ func requestFrontmatterFields(ticket *RequestTicket) map[string]any {
 	}
 	frontmatterFields, _ := parseFrontmatterFields(yamlText)
 	return frontmatterFields
-}
-
-// isLegacyArchiveRequestPath reports whether a REQ file lives under
-// do-work/archive/legacy/, where every REQ predates the user_request field.
-//
-// Anchored on the trailing separator rather than a leading one, for the reason
-// isArchivedUserRequestPath states: `verify --repo-root .` yields ticket paths with
-// no leading slash at all, and a leading-slash pattern would recognize zero of them
-// in exactly the CLI mode actions/forensics.md can invoke. The explicit prefix case
-// keeps a directory like "my-do-work/archive/legacy/" from satisfying it.
-func isLegacyArchiveRequestPath(requestFilePath string) bool {
-	normalizedPath := filepath.ToSlash(requestFilePath)
-	const legacyArchiveSegment = "do-work/archive/legacy/"
-	return strings.HasPrefix(normalizedPath, legacyArchiveSegment) ||
-		strings.Contains(normalizedPath, "/"+legacyArchiveSegment)
 }
 
 // appendUnrecognizedStatusFindings lifts the parser's own unrecognized-status

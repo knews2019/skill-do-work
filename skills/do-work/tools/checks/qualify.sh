@@ -37,12 +37,30 @@ fi
 diff_range="${DO_WORK_DIFF_RANGE:-}"
 
 failure_count=0
+path_parse_error_marker='__DO_WORK_UNMATCHED_PATH_BACKTICK__'
 
-summary_bullets="$(awk '
+summary_bullets="$(awk -v parse_error="$path_parse_error_marker" '
+  function emit_summary_rows(line, part_count, part_index, parts, change_verb) {
+    part_count=split(line, parts, "`")
+    if (part_count % 2 == 0) {
+      print parse_error
+      return
+    }
+    change_verb=""
+    if (match(line, /\((new|modified|modify|deleted)\)/))
+      change_verb=substr(line, RSTART, RLENGTH)
+    for (part_index=2; part_index<part_count; part_index+=2)
+      if (parts[part_index] != "") print "- `" parts[part_index] "` " change_verb
+  }
   /^## Implementation Summary$/ {inside=1; next}
   inside && /^## / {inside=0}
-  inside && /^- `/ {print}
+  inside && /^[[:space:]]*-[[:space:]]*`/ {emit_summary_rows($0)}
 ' "$request_file")"
+
+if grep -Fx "$path_parse_error_marker" <<<"$summary_bullets" >/dev/null; then
+  echo "FAIL: the ## Implementation Summary path list has an unmatched backtick — close every backticked path"
+  exit 1
+fi
 
 if [ -z "$summary_bullets" ]; then
   echo "FAIL: no '## Implementation Summary' file list — run after Step 6.25"
@@ -139,7 +157,8 @@ fi
 
 # --- Check 1: every listed file matches its claimed state on disk / in diff ---
 while IFS= read -r summary_line; do
-  # Portable extraction (no GNU-only grep -P): first backtick-quoted token, then the verb.
+  # The portable awk above expands each path-led bullet to one row per closed
+  # backtick pair, retaining the bullet-level verb for every path on that row.
   file_path="$(printf '%s' "$summary_line" | sed -n 's/^[^`]*`\([^`]*\)`.*/\1/p')"
   change_verb="$(printf '%s' "$summary_line" | grep -oE '\((new|modified|modify|deleted)\)' | head -1 | tr -d '()')"
   [ -z "$file_path" ] && continue

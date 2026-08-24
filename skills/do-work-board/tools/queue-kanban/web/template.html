@@ -85,6 +85,22 @@
           </button>
         </div>
 
+        <!-- Durations only: a mark's fill changes meaning with this channel, so
+             its matching legend is in the view rather than hidden in the bar. -->
+        <div class="control-group" role="group" aria-label="Durations colour by" id="durations-colour-group" hidden>
+          <span class="control-label">Colour by</span>
+          <button type="button" class="control-button is-active" data-durations-colour="route" aria-pressed="true">Route</button>
+          <button type="button" class="control-button" data-durations-colour="user-request" aria-pressed="false">UR</button>
+          <button type="button" class="control-button" data-durations-colour="domain" aria-pressed="false">Domain</button>
+        </div>
+
+        <div class="control-group" role="group" aria-label="Durations window" id="durations-window-group" hidden>
+          <span class="control-label">Window</span>
+          <button type="button" class="control-button is-active" data-durations-window="30" aria-pressed="true">30 days</button>
+          <button type="button" class="control-button" data-durations-window="90" aria-pressed="false">90 days</button>
+          <button type="button" class="control-button" data-durations-window="all" aria-pressed="false">All</button>
+        </div>
+
         <div class="control-group" role="group" aria-label="Grouping lens" id="lens-group">
           <span class="control-label">Lens</span>
           <button type="button" class="control-button is-active" data-lens-target="flat" aria-pressed="true">
@@ -184,6 +200,15 @@
             <header class="column-header">
               <h2 class="column-title">Pending</h2>
               <span class="column-count" data-count="pending">0</span>
+              <button
+                type="button"
+                class="column-copy"
+                data-copy-column="pending"
+                data-copy-default-label="Copy all"
+                data-copy-label="Pending"
+                aria-label="No Pending REQs to copy"
+                disabled
+              >Copy all</button>
             </header>
             <div class="column-cards" data-cards="pending"></div>
           </section>
@@ -192,6 +217,15 @@
             <header class="column-header">
               <h2 class="column-title">Claimed</h2>
               <span class="column-count" data-count="claimed">0</span>
+              <button
+                type="button"
+                class="column-copy"
+                data-copy-column="claimed"
+                data-copy-default-label="Copy all"
+                data-copy-label="Claimed"
+                aria-label="No Claimed REQs to copy"
+                disabled
+              >Copy all</button>
             </header>
             <div class="column-cards" data-cards="claimed"></div>
           </section>
@@ -200,6 +234,15 @@
             <header class="column-header">
               <h2 class="column-title">Needs input &middot; Blocked</h2>
               <span class="column-count" data-count="needsInputOrBlocked">0</span>
+              <button
+                type="button"
+                class="column-copy"
+                data-copy-column="needsInputOrBlocked"
+                data-copy-default-label="Copy all"
+                data-copy-label="Needs input or Blocked"
+                aria-label="No Needs input or Blocked REQs to copy"
+                disabled
+              >Copy all</button>
             </header>
             <div class="column-cards" data-cards="needsInputOrBlocked"></div>
           </section>
@@ -208,6 +251,15 @@
             <header class="column-header">
               <h2 class="column-title">Recently done</h2>
               <span class="column-count" data-count="recentlyDone">0</span>
+              <button
+                type="button"
+                class="column-copy"
+                data-copy-column="recentlyDone"
+                data-copy-default-label="Copy all"
+                data-copy-label="Recently done"
+                aria-label="No Recently done REQs to copy"
+                disabled
+              >Copy all</button>
             </header>
             <div class="column-cards" data-cards="recentlyDone"></div>
           </section>
@@ -235,14 +287,33 @@
           <h2 class="durations-heading">How long work takes, and how often it runs</h2>
           <p class="durations-subhead" id="durations-summary"></p>
         </div>
-        <div class="durations-legend" role="group" aria-label="Route colour key">
-          <span class="durations-legend-item"><span class="durations-swatch" data-route="a"></span>Route A</span>
-          <span class="durations-legend-item"><span class="durations-swatch" data-route="b"></span>Route B</span>
-          <span class="durations-legend-item"><span class="durations-swatch" data-route="c"></span>Route C</span>
-          <span class="durations-legend-item"><span class="durations-swatch" data-route="none"></span>No route recorded</span>
-          <span class="durations-legend-item"><span class="durations-swatch" data-route="critical"></span>Reversed stamp</span>
+        <dl class="durations-stats" id="durations-stats">
+          <div class="durations-stat">
+            <dt>Median · all plotted spans</dt>
+            <dd id="durations-stat-median">—</dd>
+          </div>
+          <div class="durations-stat">
+            <dt>P90 · all plotted spans</dt>
+            <dd id="durations-stat-p90">—</dd>
+          </div>
+          <div class="durations-stat">
+            <dt>Active completion days</dt>
+            <dd id="durations-stat-active-days">—</dd>
+          </div>
+          <div class="durations-stat">
+            <dt>Projected REQs per active day</dt>
+            <dd id="durations-stat-reqs-per-day">—</dd>
+          </div>
+        </dl>
+        <p class="durations-colour-legend" id="durations-colour-legend" role="status" aria-live="polite"></p>
+        <div class="durations-chart-list">
+          <div class="durations-chart" id="durations-chart"></div>
+          <aside class="durations-longest-spans" aria-labelledby="durations-longest-heading">
+            <h3 id="durations-longest-heading">Longest spans</h3>
+            <p id="durations-longest-count"></p>
+            <ol id="durations-longest-list"></ol>
+          </aside>
         </div>
-        <div class="durations-chart" id="durations-chart"></div>
         <p class="durations-readout" id="durations-readout" role="status" aria-live="polite"></p>
         <details class="durations-table">
           <summary>Every sample, as a table</summary>
@@ -268,7 +339,7 @@
            window: the wait from capture to claim, then the work from claim to
            completion. Rows are virtualized, so only the scrolled window carries
            SVG nodes. -->
-      <section id="view-timeline" class="view-panel" aria-label="Timeline. With the chart focused, arrow keys pan the time axis and the plus and minus keys zoom it. The toolbar steps the window one calendar day, week or month at a time, and the From and to date fields set it directly." hidden>
+      <section id="view-timeline" class="view-panel" aria-label="Timeline grouped by user request. With the chart focused, arrow keys pan the time axis and the plus and minus keys zoom it. The toolbar steps the window one calendar day, week or month at a time, and the From and to date fields set it directly." hidden>
         <div class="timeline-intro">
           <h2 class="timeline-heading">How long each REQ waited, and how long it took</h2>
           <p class="timeline-subhead" id="timeline-summary"></p>
@@ -343,20 +414,21 @@
         </div>
         <p class="timeline-forecast" id="timeline-forecast"></p>
         <div class="timeline-excluded" id="timeline-excluded"></div>
-        <p class="timeline-hint">Rows run newest first, and only the REQs the visible window covers are listed; scroll down to go further back inside it. Type dates in From and to for a window you can name, or hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Pick Day, Week or Month for the period around now, or around wherever you have panned to when the now-line is off screen; ‹ and › then step one calendar period at a time, and step by one screenful instead when the window is a span of your own. Click a row for its full detail. From the keyboard: Tab to the chart, then ← and → to pan and + and − to zoom.</p>
+        <p class="timeline-hint">Only REQs covered by the visible window are listed, grouped by UR in first-seen order; members stay newest first and No UR recorded is last. Group elapsed and accepted work are clipped to this visible window. Elapsed spans the first overlapping recorded member claim through the latest overlapping resolved completion; a claimed open member is bounded by this board's frozen now and the window end. Elapsed is unavailable when there is no recorded claim, no claimed interval overlaps the window, or a stopped claimed member has no completion endpoint. Accepted work uses only the in-window claim-to-completion overlap of samples kept by Durations' read-time rule, with exclusions and missing samples stated on the header. Scroll down to go further back inside the window. Type dates in From and to for a window you can name, or hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Pick Day, Week or Month for the period around now, or around wherever you have panned to when the now-line is off screen; ‹ and › then step one calendar period at a time, and step by one screenful instead when the window is a span of your own. Click a REQ row for its full detail. From the keyboard: Tab to the chart, then ↑ and ↓ move between REQs without stopping on headers, ← and → pan, and + and − zoom.</p>
         <p class="timeline-readout" id="timeline-readout" role="status" aria-live="polite"></p>
         <details class="timeline-table">
           <summary>The REQs in this window, as a table</summary>
           <div class="timeline-table-scroll">
             <table>
+              <caption>Only REQs listed in the visible Timeline window. Groups follow first appearance, with No UR recorded last. Elapsed and accepted work are clipped to this window. Elapsed spans overlapping claimed intervals, with a claimed open endpoint bounded by the board's frozen now and the window end; it is unavailable for no claim, no claimed overlap, or a stopped claimed member without a completion endpoint. Accepted work uses the in-window claim-to-completion overlap of samples accepted by Durations' existing read-time verdict.</caption>
               <thead>
                 <tr>
-                  <th scope="col">REQ</th>
-                  <th scope="col">Title</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Waited</th>
-                  <th scope="col">Worked</th>
-                  <th scope="col">Note</th>
+                  <th scope="col" id="timeline-table-column-req">REQ</th>
+                  <th scope="col" id="timeline-table-column-title">Title</th>
+                  <th scope="col" id="timeline-table-column-status">Status</th>
+                  <th scope="col" id="timeline-table-column-waited">Waited</th>
+                  <th scope="col" id="timeline-table-column-worked">Worked</th>
+                  <th scope="col" id="timeline-table-column-note">Note</th>
                 </tr>
               </thead>
               <tbody id="timeline-table-body"></tbody>
@@ -460,6 +532,16 @@
         <div class="detail-head-actions">
           <button type="button" class="detail-copy" id="detail-copy" aria-label="Copy ticket Markdown to clipboard">
             Copy
+          </button>
+          <button
+            type="button"
+            class="detail-copy"
+            id="detail-copy-all"
+            data-copy-default-label="Copy all"
+            aria-label="Copy UR and all grouped REQ Markdown to clipboard"
+            hidden
+          >
+            Copy all
           </button>
           <button type="button" class="detail-close" id="detail-close" aria-label="Close detail panel">
             Close

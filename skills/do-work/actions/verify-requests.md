@@ -165,7 +165,7 @@ After presenting the report:
         Recommended: [best default based on context]
         Also: [alternative A], [alternative B]
         ```
-     2. If the user answers → add the resolved question to the REQ's `## Open Questions` section as `- [x] [question] → [user's answer]`
+     2. If the user answers → add the resolved question using the **Canonical answered-question format** in `actions/clarify.md`: `- [x] [question] → [user's answer]` plus its dated reasoning note, with the outside text contained per that format's **Outside-text containment** contract before it is written
      3. If the user defers ("let the builder decide") → add as `- [~] [question] → Builder decides`
      4. If the user can't answer now → add as unresolved `- [ ]` with choices. The builder will use best judgment when it picks up the REQ.
 3. Re-score after fixes to confirm improvement (Resolved Ambiguous items that resulted in new requirements being added DO affect the re-score. Items left as `- [ ]` or `- [~]` don't.)

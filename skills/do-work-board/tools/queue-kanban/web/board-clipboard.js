@@ -134,17 +134,36 @@
   }
 
   var copyFeedbackTimer = null;
+  var copyFeedbackButton = null;
 
-  function showCopyFeedback(labelText, stateClass) {
-    drawerCopyButton.textContent = labelText;
-    drawerCopyButton.classList.remove("is-copied", "is-copy-failed");
-    drawerCopyButton.classList.add(stateClass);
+  function resetCopyButton(copyButton) {
+    copyButton.textContent = copyButton.dataset.copyDefaultLabel || "Copy";
+    copyButton.classList.remove("is-copied", "is-copy-failed");
+  }
+
+  function beginCopyFeedback(copyButton) {
     if (copyFeedbackTimer) {
       clearTimeout(copyFeedbackTimer);
+      copyFeedbackTimer = null;
     }
+    if (copyFeedbackButton && copyFeedbackButton !== copyButton) {
+      resetCopyButton(copyFeedbackButton);
+    }
+    copyFeedbackButton = copyButton;
+    copyButton.textContent = "Copying…";
+    copyButton.classList.remove("is-copied", "is-copy-failed");
+  }
+
+  function showCopyFeedback(copyButton, labelText, stateClass) {
+    beginCopyFeedback(copyButton);
+    copyButton.textContent = labelText;
+    copyButton.classList.add(stateClass);
     copyFeedbackTimer = setTimeout(function () {
-      drawerCopyButton.textContent = "Copy";
-      drawerCopyButton.classList.remove("is-copied", "is-copy-failed");
+      resetCopyButton(copyButton);
+      if (copyFeedbackButton === copyButton) {
+        copyFeedbackButton = null;
+      }
+      copyFeedbackTimer = null;
     }, 1600);
   }
 
@@ -153,8 +172,7 @@
     var requestedId = currentDetailId;
     var renderedTextFallback = drawerBody.innerText || "";
 
-    drawerCopyButton.textContent = "Copying…";
-    drawerCopyButton.classList.remove("is-copied", "is-copy-failed");
+    beginCopyFeedback(drawerCopyButton);
 
     loadBoardMarkdownData()
       .then(
@@ -177,13 +195,106 @@
       .then(
         function () {
           if (!drawer.hidden && currentDetailKind === requestedKind && currentDetailId === requestedId) {
-            showCopyFeedback("Copied ✓", "is-copied");
+            showCopyFeedback(drawerCopyButton, "Copied ✓", "is-copied");
           }
         },
         function () {
           if (!drawer.hidden && currentDetailKind === requestedKind && currentDetailId === requestedId) {
-            showCopyFeedback("Copy failed", "is-copy-failed");
+            showCopyFeedback(drawerCopyButton, "Copy failed", "is-copy-failed");
           }
         }
       );
+  });
+
+  function visibleRequestIdsForColumn(copyButton) {
+    var columnNode = copyButton.closest(".kanban-column");
+    if (!columnNode) {
+      return [];
+    }
+    return Array.prototype.map.call(
+      columnNode.querySelectorAll('.req-card[data-detail-kind="req"][data-detail-id]'),
+      function (requestCard) {
+        return requestCard.dataset.detailId;
+      }
+    );
+  }
+
+  function rawMarkdownForRequests(markdownData, requestIds) {
+    return requestIds
+      .map(function (requestId) {
+        var rawMarkdown = rawMarkdownForDetail(markdownData, "req", requestId);
+        if (rawMarkdown === null) {
+          throw new Error("raw Markdown unavailable for " + requestId);
+        }
+        return rawMarkdown;
+      })
+      // Cat semantics: preserve each file's exact bytes and invent no separator.
+      .join("");
+  }
+
+  function rawMarkdownForUserRequestAndRequests(markdownData, userRequestId, requestIds) {
+    var rawUserRequest = rawMarkdownForDetail(markdownData, "ur", userRequestId);
+    if (rawUserRequest === null) {
+      throw new Error("raw Markdown unavailable for " + userRequestId);
+    }
+    // The grouped id list is the same all-tree set rendered in the UR drawer.
+    // rawMarkdownForRequests preserves its order and fails the whole operation
+    // rather than silently publishing an incomplete clipboard payload.
+    return rawUserRequest + rawMarkdownForRequests(markdownData, requestIds);
+  }
+
+  drawerCopyAllButton.addEventListener("click", function () {
+    if (currentDetailKind !== "ur") {
+      return; // Hidden on REQ details; retain a defensive no-op for scripted clicks.
+    }
+    var requestedUserRequestId = currentDetailId;
+    var requestedUserRequest = userRequestsById[requestedUserRequestId];
+    var requestedRequestIds = requestedUserRequest && requestedUserRequest.requestIds
+      ? requestedUserRequest.requestIds.slice()
+      : [];
+
+    beginCopyFeedback(drawerCopyAllButton);
+    loadBoardMarkdownData()
+      .then(function (markdownData) {
+        return rawMarkdownForUserRequestAndRequests(
+          markdownData, requestedUserRequestId, requestedRequestIds
+        );
+      })
+      .then(writeTextToClipboard)
+      .then(
+        function () {
+          if (!drawer.hidden && currentDetailKind === "ur" && currentDetailId === requestedUserRequestId) {
+            showCopyFeedback(drawerCopyAllButton, "Copied ✓", "is-copied");
+          }
+        },
+        function () {
+          if (!drawer.hidden && currentDetailKind === "ur" && currentDetailId === requestedUserRequestId) {
+            showCopyFeedback(drawerCopyAllButton, "Copy failed", "is-copy-failed");
+          }
+        }
+      );
+  });
+
+  document.querySelectorAll("[data-copy-column]").forEach(function (copyButton) {
+    copyButton.addEventListener("click", function () {
+      var requestIds = visibleRequestIdsForColumn(copyButton);
+      if (requestIds.length === 0) {
+        return; // Empty columns are disabled; retain a defensive no-op for scripted clicks.
+      }
+
+      beginCopyFeedback(copyButton);
+      loadBoardMarkdownData()
+        .then(function (markdownData) {
+          return rawMarkdownForRequests(markdownData, requestIds);
+        })
+        .then(writeTextToClipboard)
+        .then(
+          function () {
+            showCopyFeedback(copyButton, "Copied ✓", "is-copied");
+          },
+          function () {
+            showCopyFeedback(copyButton, "Copy failed", "is-copy-failed");
+          }
+        );
+    });
   });

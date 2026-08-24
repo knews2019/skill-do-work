@@ -1631,9 +1631,9 @@ func structuralDamageFixture(t *testing.T) string {
 		{"do-work/queue/REQ-907-stakeholder-questions-priya.md",
 			"---\nid: REQ-907\ntitle: \"Stakeholder questions: Priya (design)\"\nstatus: blocked\n" +
 				"stakeholder: \"Priya (design)\"\nblocked_by: \"answers from Priya (design)\"\n---\n\n# Stakeholder Questions\n"},
-		// Legitimate absence 2 — every REQ under archive/legacy/ predates the field.
+		// Legitimate absence 2 — source: code-review is a documented UR-less shape.
 		{"do-work/archive/legacy/REQ-001-legacy.md",
-			"---\nid: REQ-001\ntitle: \"Legacy archived work\"\nstatus: completed\ncompleted_at: 2026-05-01T10:00:00Z\n---\n\n# Legacy\n"},
+			"---\nid: REQ-001\ntitle: \"Legacy archived work\"\nstatus: completed\nsource: code-review\ncompleted_at: 2026-05-01T10:00:00Z\n---\n\n# Legacy\n"},
 		{"do-work/user-requests/UR-900/input.md", "---\nid: UR-900\ntitle: \"Fixture UR\"\n---\n\n# Fixture UR\n"},
 	})
 }
@@ -1673,7 +1673,7 @@ func TestVerifyFlagsEachStructuralDamageShape(t *testing.T) {
 		{"REQ-901", verifyCategoryStructurallyDamagedRequest, "no leading frontmatter fence", "opening `---`"},
 		{"REQ-902", verifyCategoryUnrecognizedRequestStatus, "empty or absent status:", "Schema Read Contract"},
 		{"REQ-903", verifyCategoryUnrecognizedRequestStatus, `unrecognized status: value "pnding"`, "Schema Read Contract"},
-		{"REQ-904", verifyCategoryStructurallyDamagedRequest, "empty or absent id:", "id: REQ-904"},
+		{"REQ-904", verifyCategoryStructurallyDamagedRequest, "caution: its id was recovered from the filename", "id: REQ-904"},
 		{"REQ-905", verifyCategoryStructurallyDamagedRequest, "carries no user_request:", "user_request: UR-NNN"},
 	} {
 		matched := findingsNaming(report, damageCase.requestId)
@@ -1724,10 +1724,9 @@ func TestVerifyReportsABrokenFenceOnceNotOncePerEmptiedField(t *testing.T) {
 	}
 }
 
-// The carve-out that keeps the probe trustworthy. A stakeholder REQ and a
-// do-work/archive/legacy/ REQ both legitimately carry no user_request; a probe
-// that flags correct files is a probe someone turns off. The healthy REQ is here
-// too, so the test fails if the probe simply flags everything.
+// The exemptions keep the probe trustworthy. Each is an affirmative documented
+// schema shape, rather than an archive location, so an ordinary missing field
+// stays visible regardless of where its file lives.
 func TestVerifyStaysSilentOnLegitimateAbsenceOfUserRequest(t *testing.T) {
 	report, verifyError := runVerifyProbes(structuralDamageFixture(t), time.Now())
 	if verifyError != nil {
@@ -1739,7 +1738,7 @@ func TestVerifyStaysSilentOnLegitimateAbsenceOfUserRequest(t *testing.T) {
 	}{
 		{"REQ-906", "a healthy REQ carries every field"},
 		{"REQ-907", "a stakeholder REQ omits user_request by design (Stakeholder REQ Template)"},
-		{"REQ-001", "every REQ under do-work/archive/legacy/ predates the user_request field"},
+		{"REQ-001", "source: code-review is a documented UR-less shape"},
 	} {
 		if matched := findingsNaming(report, mustStaySilent.requestId); len(matched) != 0 {
 			t.Errorf("%s was flagged but must not be — %s; got: %+v",
@@ -1748,12 +1747,33 @@ func TestVerifyStaysSilentOnLegitimateAbsenceOfUserRequest(t *testing.T) {
 	}
 }
 
-// The carve-outs must key on their discriminator, not merely happen to pass.
-// Strip the stakeholder marker off the stakeholder REQ and move the legacy REQ up
-// one directory, and both must be flagged — otherwise the exemptions above could
-// be an accident (say, a probe that skips `blocked` REQs, or the whole archive)
-// and would silently exempt genuinely damaged files.
-func TestVerifyUserRequestCarveOutsKeyOnTheirDiscriminator(t *testing.T) {
+func TestVerifyStaysSilentOnEveryDocumentedUserRequestlessSchema(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/queue/REQ-908-source-code-review.md",
+			"---\nid: REQ-908\ntitle: \"Code review\"\nstatus: pending\nsource: code-review\n---\n"},
+		{"do-work/queue/REQ-909-scoped-generated-review.md",
+			"---\nid: REQ-909\ntitle: \"Generated review\"\nstatus: pending\nreview_generated: true\nscope: queue-kanban\n---\n"},
+		{"do-work/archive/REQ-910-context-reference.md",
+			"---\nid: REQ-910\ntitle: \"Context reference\"\nstatus: completed\ncontext_ref: do-work/runs/review.md\ncompleted_at: 2026-05-01T10:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	for _, requestId := range []string{"REQ-908", "REQ-909", "REQ-910"} {
+		if matched := findingsNaming(report, requestId); len(matched) != 0 {
+			t.Errorf("%s was flagged despite its documented UR-less schema: %+v", requestId, matched)
+		}
+	}
+}
+
+// The exemptions must key on their declared schema discriminators, not merely
+// happen to pass because of status or location. Removing each discriminator must
+// restore the user_request finding; an ordinary legacy-path file has no exemption.
+func TestVerifyUserRequestExemptionsRequireTheirSchemaDiscriminator(t *testing.T) {
 	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
 		{"actions/version.md", cleanVersionFile},
 		{"CHANGELOG.md", cleanChangelog},
@@ -1761,16 +1781,26 @@ func TestVerifyUserRequestCarveOutsKeyOnTheirDiscriminator(t *testing.T) {
 		{"do-work/queue/REQ-907-stakeholder-questions-priya.md",
 			"---\nid: REQ-907\ntitle: \"Stakeholder questions: Priya (design)\"\nstatus: blocked\n" +
 				"blocked_by: \"answers from Priya (design)\"\n---\n\n# Stakeholder Questions\n"},
-		// Same file as the exempt legacy REQ, one directory up — archive, not archive/legacy.
-		{"do-work/archive/REQ-001-legacy.md",
-			"---\nid: REQ-001\ntitle: \"Legacy archived work\"\nstatus: completed\ncompleted_at: 2026-05-01T10:00:00Z\n---\n\n# Legacy\n"},
+		// Source discriminator removed.
+		{"do-work/archive/REQ-001-code-review.md",
+			"---\nid: REQ-001\ntitle: \"Code review\"\nstatus: completed\ncompleted_at: 2026-05-01T10:00:00Z\n---\n\n# Review\n"},
+		// review_generated needs its paired nonempty scope discriminator.
+		{"do-work/archive/REQ-002-generated-review.md",
+			"---\nid: REQ-002\ntitle: \"Generated review\"\nstatus: completed\nreview_generated: true\ncompleted_at: 2026-05-01T10:00:00Z\n---\n\n# Review\n"},
+		// context_ref is an affirmative legacy shape even at archive root; this
+		// mutation removes it.
+		{"do-work/archive/REQ-003-context-reference.md",
+			"---\nid: REQ-003\ntitle: \"Context reference\"\nstatus: completed\ncompleted_at: 2026-05-01T10:00:00Z\n---\n\n# Context\n"},
+		// Location alone must never exempt a missing pointer.
+		{"do-work/archive/legacy/REQ-004-path-only.md",
+			"---\nid: REQ-004\ntitle: \"Path-only legacy\"\nstatus: completed\ncompleted_at: 2026-05-01T10:00:00Z\n---\n\n# Legacy\n"},
 	})
 
 	report, verifyError := runVerifyProbes(repoRoot, time.Now())
 	if verifyError != nil {
 		t.Fatalf("runVerifyProbes: %v", verifyError)
 	}
-	for _, mustBeFlagged := range []string{"REQ-907", "REQ-001"} {
+	for _, mustBeFlagged := range []string{"REQ-907", "REQ-001", "REQ-002", "REQ-003", "REQ-004"} {
 		matched := findingsMentioning(report, verifyCategoryStructurallyDamagedRequest)
 		found := false
 		for _, finding := range matched {
@@ -1782,6 +1812,56 @@ func TestVerifyUserRequestCarveOutsKeyOnTheirDiscriminator(t *testing.T) {
 			t.Errorf("%s lost its exemption's discriminator and was still not flagged — the carve-out is not keyed on it:\n%s",
 				mustBeFlagged, renderVerifyReport(report))
 		}
+	}
+}
+
+// An intact opening fence with no closing fence reaches the parser as raw body
+// text. Verify must retain that leniency, inspect only those retained bytes, and
+// tell the operator which delimiter is actually missing.
+func TestVerifyDistinguishesMissingClosingFrontmatterFence(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/queue/REQ-908-missing-closing-fence.md",
+			"\ufeff---\r\nid: REQ-908\r\nstatus: pending\r\nuser_request: UR-900\r\n# still parsed as body\r\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	matched := findingsNaming(report, "REQ-908")
+	if len(matched) != 1 {
+		t.Fatalf("missing closing fence produced %d findings, want 1:\n%s", len(matched), renderVerifyReport(report))
+	}
+	if !strings.Contains(matched[0].Detail, "opening frontmatter fence but no closing fence") {
+		t.Errorf("missing-closing detail = %q, want the missing closing fence named", matched[0].Detail)
+	}
+	if strings.Contains(matched[0].Detail, "no leading frontmatter fence") {
+		t.Errorf("missing-closing detail describes the wrong delimiter: %q", matched[0].Detail)
+	}
+}
+
+// A bare EOF delimiter is not an opening frontmatter fence under
+// splitFrontmatter's contract: an opening fence must be its own newline-terminated
+// first line. Keep verifier wording aligned with that parser boundary.
+func TestVerifyDoesNotTreatABareEOFDelimiterAsAnOpeningFence(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/queue/REQ-909-bare-delimiter.md", "---"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	matched := findingsNaming(report, "REQ-909")
+	if len(matched) != 1 {
+		t.Fatalf("bare delimiter produced %d findings, want 1:\n%s", len(matched), renderVerifyReport(report))
+	}
+	if !strings.Contains(matched[0].Detail, "no leading frontmatter fence") {
+		t.Errorf("bare delimiter detail = %q, want no-leading-fence classification", matched[0].Detail)
 	}
 }
 
@@ -1852,29 +1932,5 @@ func TestStructuralProbesUseStructuredEvidenceNotWarningProse(t *testing.T) {
 	}
 	if statusFindings[0].Category != verifyCategoryUnrecognizedRequestStatus {
 		t.Errorf("category = %q, want %q", statusFindings[0].Category, verifyCategoryUnrecognizedRequestStatus)
-	}
-}
-
-// The legacy exemption must not be satisfiable by a lookalike directory, and must
-// still hold under `verify --repo-root .`, where ticket paths arrive with no
-// leading separator at all — the CLI mode actions/forensics.md can invoke, and the
-// mode a leading-slash pattern silently fails in.
-func TestIsLegacyArchiveRequestPathRejectsLookalikeDirectories(t *testing.T) {
-	for _, pathCase := range []struct {
-		path string
-		want bool
-	}{
-		{"do-work/archive/legacy/REQ-001-thing.md", true},
-		{"/srv/repo/do-work/archive/legacy/REQ-001-thing.md", true},
-		{"./do-work/archive/legacy/REQ-001-thing.md", true},
-		{"do-work/archive/REQ-001-thing.md", false},
-		{"do-work/archive/UR-012/REQ-069-thing.md", false},
-		{"my-do-work/archive/legacy/REQ-001-thing.md", false},
-		{"do-work/queue/legacy/REQ-001-thing.md", false},
-		{"archive/legacy/REQ-001-thing.md", false},
-	} {
-		if got := isLegacyArchiveRequestPath(pathCase.path); got != pathCase.want {
-			t.Errorf("isLegacyArchiveRequestPath(%q) = %v, want %v", pathCase.path, got, pathCase.want)
-		}
 	}
 }

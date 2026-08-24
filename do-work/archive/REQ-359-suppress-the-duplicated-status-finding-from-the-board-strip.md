@@ -1,7 +1,8 @@
 ---
 id: REQ-359
 title: "Review fix: suppress the duplicated status finding from the board strip"
-status: pending
+status: cancelled
+completed_at: 2026-08-24T13:42:26Z
 created_at: 2026-08-24T10:40:00Z
 user_request: UR-068
 addendum_to: REQ-343
@@ -81,3 +82,9 @@ the typo'd status.
 
 ---
 *Source: REQ-343 review finding I2 (UR-068), folding the builder's own Discovered Task and raising its impact token.*
+
+## Cancelled
+
+- **When:** 2026-08-24T13:42:26Z
+- **Why:** folded into REQ-357 (sweep `req-343-structural-probe-remediation`) at the maintainer's instruction — the board-strip suppression survives as an instance there; nothing was dropped
+- **Decided by:** user, via `do-work clarify` fold confirmation

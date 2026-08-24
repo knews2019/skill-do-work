@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -424,6 +425,112 @@ func TestBucketColumns(t *testing.T) {
 		if strings.Contains(warning, "REQ-13") {
 			t.Fatalf("blocked REQ-13 is a recognized status — it must NOT produce an unrecognized-status warning, got %v", statusWarnings)
 		}
+	}
+}
+
+// A bare blocked REQ whose dependency cannot complete yet belongs with the
+// Pending column's waiting group. The derived BoardColumns are the one source
+// read by the board payload, summary, and open-work counters, so this fixture
+// pins all of those consumers at the routing seam.
+func TestBlockedDependencyGateControlsColumnsAndInheritedCounts(t *testing.T) {
+	board := buildDependencyBoard(t, []dependencyFixture{
+		{RequestId: "REQ-1", Status: "pending"},
+		{RequestId: "REQ-2", Status: "blocked", DependsOnIds: []string{"REQ-1"}},
+		{RequestId: "REQ-3", Status: "completed"},
+		{RequestId: "REQ-4", Status: "blocked", DependsOnIds: []string{"REQ-3"}},
+		{RequestId: "REQ-5", Status: "completed-with-issues"},
+		{RequestId: "REQ-6", Status: "blocked", DependsOnIds: []string{"REQ-5"}},
+		{RequestId: "REQ-7", Status: "cancelled"},
+		{RequestId: "REQ-8", Status: "blocked", DependsOnIds: []string{"REQ-7"}},
+		{RequestId: "REQ-9", Status: "blocked", DependsOnIds: []string{"REQ-999"}},
+		{RequestId: "REQ-10", Status: "blocked"},
+	})
+
+	pendingIds := requestIdSet(board.Columns.Pending)
+	waitingIds := requestIdSet(board.Columns.PendingWaiting)
+	readyIds := requestIdSet(board.Columns.PendingReady)
+	needsInputIds := requestIdSet(board.Columns.NeedsInputOrBlocked)
+	for _, requestId := range []string{"REQ-2", "REQ-8", "REQ-9"} {
+		if !pendingIds[requestId] || !waitingIds[requestId] {
+			t.Errorf("%s has an unmet dependency and must be Pending/Waiting; pending=%v waiting=%v", requestId, pendingIds, waitingIds)
+		}
+		if readyIds[requestId] || needsInputIds[requestId] {
+			t.Errorf("%s must be waiting only, never Ready or Needs-input; ready=%v needs=%v", requestId, readyIds, needsInputIds)
+		}
+	}
+	for _, requestId := range []string{"REQ-4", "REQ-6", "REQ-10"} {
+		if !needsInputIds[requestId] {
+			t.Errorf("%s has no unmet dependency and must be actionable in Needs-input; needs=%v", requestId, needsInputIds)
+		}
+		if pendingIds[requestId] || waitingIds[requestId] {
+			t.Errorf("%s must leave Pending once every dependency is complete; pending=%v waiting=%v", requestId, pendingIds, waitingIds)
+		}
+	}
+	if !readyIds["REQ-1"] {
+		t.Fatalf("ordinary dependency-free pending REQ must stay Ready; ready=%v", readyIds)
+	}
+
+	openCounts := countOpenWork(board)
+	if openCounts.Pending != 4 || openCounts.PendingReady != 1 || openCounts.PendingWaiting != 3 || openCounts.NeedsInputOrBlocked != 3 {
+		t.Fatalf("inherited open-work counts = %+v, want pending 4 (1 ready, 3 waiting), needs-input 3", openCounts)
+	}
+	var summaryOutput bytes.Buffer
+	writeBoardSummary(&summaryOutput, board)
+	for _, expectedLine := range []string{
+		"  pending             : 4",
+		"    ready to work     : 1",
+		"    waiting on deps   : 3",
+		"  needs-input/blocked : 3",
+	} {
+		if !strings.Contains(summaryOutput.String(), expectedLine) {
+			t.Errorf("summary missing %q:\n%s", expectedLine, summaryOutput.String())
+		}
+	}
+
+	generatedData, generationError := buildGeneratedBoardData(board)
+	if generationError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", generationError)
+	}
+	if !stringSliceContains(generatedData.Columns.PendingWaiting, "REQ-2") ||
+		stringSliceContains(generatedData.Columns.NeedsInputOrBlocked, "REQ-2") {
+		t.Fatalf("generated columns must route REQ-2 to Pending/Waiting only: %+v", generatedData.Columns)
+	}
+	generatedBlockedRequest := generatedData.Requests["REQ-2"]
+	if generatedBlockedRequest.Status != "blocked" ||
+		!reflect.DeepEqual(generatedBlockedRequest.UnmetDependencies, []string{"REQ-1"}) {
+		t.Fatalf("generated REQ-2 must retain blocked status and unmet dependency for both card badges, got %+v", generatedBlockedRequest)
+	}
+}
+
+// The dependency detour is deliberately narrower than the recognized
+// Needs-input family. Questions, collision/cycle holds, failed REQs, and the
+// unrecognized-status catch-all remain operator-actionable/visible there even
+// when their records carry an unmet depends_on edge.
+func TestOnlyBareBlockedStatusUsesDependencyGate(t *testing.T) {
+	tickets := []*RequestTicket{
+		{RequestId: "REQ-20", Status: "blocked", UnmetDependencies: []string{"REQ-1"}},
+		{RequestId: "REQ-21", Status: "pending-answers", UnmetDependencies: []string{"REQ-1"}},
+		{RequestId: "REQ-22", Status: "blocked-archive-collision", UnmetDependencies: []string{"REQ-1"}},
+		{RequestId: "REQ-23", Status: "blocked-dependency-cycle", UnmetDependencies: []string{"REQ-1"}},
+		{RequestId: "REQ-24", Status: "failed", UnmetDependencies: []string{"REQ-1"}},
+		{RequestId: "REQ-25", Status: "future-status", OriginalStatus: "future-status", UnmetDependencies: []string{"REQ-1"}},
+	}
+	columns, warnings := bucketColumns(tickets, time.Now(), defaultRecentWindow)
+
+	if !requestIdSet(columns.PendingWaiting)["REQ-20"] || !requestIdSet(columns.Pending)["REQ-20"] {
+		t.Fatalf("bare blocked REQ must join both Pending and PendingWaiting: %+v", columns)
+	}
+	if requestIdSet(columns.PendingReady)["REQ-20"] || requestIdSet(columns.NeedsInputOrBlocked)["REQ-20"] {
+		t.Fatalf("dependency-gated blocked REQ must not appear Ready or Needs-input: %+v", columns)
+	}
+	needsInputIds := requestIdSet(columns.NeedsInputOrBlocked)
+	for _, requestId := range []string{"REQ-21", "REQ-22", "REQ-23", "REQ-24", "REQ-25"} {
+		if !needsInputIds[requestId] {
+			t.Errorf("%s is a named exception and must stay Needs-input; got %v", requestId, needsInputIds)
+		}
+	}
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "REQ-25") {
+		t.Fatalf("unrecognized-status catch-all must still warn and stay visible, got %v", warnings)
 	}
 }
 

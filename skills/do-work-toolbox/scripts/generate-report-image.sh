@@ -61,6 +61,22 @@ record_backend_process_group() {
 
 backend_process_is_alive() {
   if [ -n "$backend_process_group_id" ]; then
+    # A process group can retain exited, unreaped members. They still satisfy kill -0,
+    # but cannot receive a signal and must not consume the grace budget. If ps itself
+    # cannot answer, retain the conservative group probe so descendants are never killed
+    # early merely because status inspection is unavailable.
+    if process_group_states="$("$process_status_command" -eo pgid=,stat= 2>/dev/null)"; then
+      while read -r observed_group_id observed_process_state; do
+        [ "$observed_group_id" = "$backend_process_group_id" ] || continue
+        case "$observed_process_state" in
+          Z*) ;;
+          *) return 0 ;;
+        esac
+      done <<EOF
+$process_group_states
+EOF
+      return 1
+    fi
     kill -0 -- "-$backend_process_group_id" 2>/dev/null
   else
     kill -0 "$backend_process_id" 2>/dev/null

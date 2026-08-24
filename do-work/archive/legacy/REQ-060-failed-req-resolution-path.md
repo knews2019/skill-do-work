@@ -2,6 +2,7 @@
 id: REQ-060
 title: "No mechanism resolves a `failed` REQ, so a UR containing one can never close"
 status: completed
+user_request: UR-008
 created_at: 2026-07-29T15:19:48Z
 status_changed_at: 2026-07-29T15:34:19Z
 claimed_at: 2026-07-29T17:43:39Z

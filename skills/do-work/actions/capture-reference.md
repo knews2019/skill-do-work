@@ -166,6 +166,8 @@ See `do-work/user-requests/UR-NNN/input.md` for complete verbatim input.
 
 **Populating `write_set`.** Seed it only when the request already names the files, or when the slice is inherently per-file ("rewrite each adapter in `src/adapters/`"). Otherwise **omit it** — the field is display-only (it feeds the board's *overlaps* badge; nothing schedules on it at any builder count — `actions/work-reference.md` → Worktree Dispatch Mode → Fan-Out Dispatch), so an invented set is strictly worse than absence: absence simply gets no overlaps badge (it reads as unknown, not conflict), while a wrong set makes the board badge misleadingly. Capture's value is a hint, never a commitment: the work pipeline's Scope step (`actions/work-reference.md` → Scope Declaration Template) firms it up and overwrites it — for Routes **B and C** only. A **Route A** REQ never runs that step (`actions/work.md` Step 5.5), so it keeps the capture-seeded value for the whole run. The field is optional on every REQ.
 
+**Conditional completeness invariant.** Whenever a REQ's own requirements or completion proof require writing a file class, a declared `write_set` includes at least one repo-relative path or glob from that class; if capture cannot name one honestly, omit `write_set` entirely. The required class is the condition — current examples never become a checklist. Thus `tdd: true`, whose evidence gate requires a runnable failing test to be written before it passes, means a declared set names at least one test file; tests are today's instance of the invariant, not a special-case rule. If a builder meets this contradiction in an already-queued REQ, flag it before editing, proceed with the required file class despite the declared set, and report the contradiction plus the actual files in the handback. That response does not turn `write_set` into a gate: it remains display-only, and an honest unknown set remains better than an invented one.
+
 **Slicing convention.** When a single user request slices into multiple REQs with internal dependencies, the slicer should populate `depends_on` per the dependency graph it produced. actions/work.md then runs roots first, gates downstream REQs on their prerequisites, and supports `--wave N` for checkpointed execution one dependency depth at a time. A clean DAG in `depends_on` makes foundation-phase batches predictable; sloppy or missing `depends_on` returns to numeric-ID order and risks cascade misclassification. Prefer slice boundaries that also give each REQ its own files — split a surface per concern rather than leaving several REQs editing one shared block — because per-concern files keep each REQ's diff and review self-contained and its board *overlaps* badge quiet. That is a nudge, not a gate: when a file-clean boundary would distort the request, slice for intent and declare the unavoidable overlap in each REQ's `write_set` so the board's overlap badge can surface it.
 
 `depends_on` is semantically distinct from `addendum_to`: `addendum_to: REQ-N` says "this REQ amends REQ-N" (used for follow-ups and review-generated remediation); `depends_on: [REQ-N, REQ-M]` says "this REQ requires REQ-N and REQ-M to be completed first." A REQ can carry both.
@@ -191,7 +193,7 @@ Created for every invocation. For simple requests, it's minimal:
 ```markdown
 ---
 id: UR-005
-title: Add keyboard shortcuts
+title: 'Add keyboard shortcuts'  # raw user-derived text — single-quoted per Frontmatter Quoting (actions/work-reference.md), apostrophes doubled
 created_at: 2025-01-26T10:00:00Z  # current UTC instant, never local time with a Z suffix (Timestamp rule, actions/work-reference.md)
 requests: [REQ-020]
 word_count: 4
@@ -201,13 +203,15 @@ word_count: 4
 
 ## Full Verbatim Input
 
-add keyboard shortcuts
+> ````text
+> add keyboard shortcuts
+> ````
 
 ---
 *Captured: 2025-01-26T10:00:00Z*
 ```
 
-For complex requests, add a Summary, an Extracted Requests table, and a Batch Constraints section before the Full Verbatim Input. The verbatim section must contain the COMPLETE, UNEDITED input — never summarize or clean it up.
+For complex requests, add a Summary, an Extracted Requests table, and a Batch Constraints section before the Full Verbatim Input. The verbatim section must contain the COMPLETE, UNEDITED input — never summarize or clean it up. It uses `actions/clarify.md` Step 4's **Outside-text containment** body-passage form: prefix every physical line and use a fence longer than the longest backtick run in the input. The example's four-backtick fence is sized for its sample text, not a fixed fence to copy regardless of content.
 
 **`## Folded Requests` — written only when the fold-first scan resolved a request** (`actions/capture.md` Step 5), placed above the Full Verbatim Input so it never edits the verbatim body. One line per fold, naming the destination and the part of the input it absorbed. The destination is a REQ id for destinations 1 and 2, or the literal `prose-backlog` for destination 3, which lands on `do-work/prose-backlog.md` and mints no REQ at all:
 

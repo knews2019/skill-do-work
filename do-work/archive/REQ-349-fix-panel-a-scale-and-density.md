@@ -1,0 +1,176 @@
+---
+id: REQ-349
+title: "Fix panel A's scale and density"
+status: completed
+claimed_at: 2026-08-24T15:00:04Z
+completed_at: 2026-08-24T16:14:09Z
+commit: f0e837a
+status_changed_at: 2026-08-24T16:14:09Z
+route: B
+created_at: 2026-08-23T22:37:52Z
+user_request: UR-069
+domain: frontend
+prime_files: [_dev/primes/prime-kanban-board.md]
+tdd: true
+suggested_spec:
+depends_on: []
+maintenance: false
+impact: impact-user-visible
+effort_estimate: effort-substantive
+related: [REQ-346, REQ-347, REQ-348, REQ-350, REQ-351, REQ-352, REQ-353, REQ-354]
+batch: durations-panel-improvement
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-08-23T22:37:52Z
+  basis:
+    - Route B
+    - 3-file write set
+    - 6 acceptance criteria
+    - browser evidence
+write_set:
+  - skills/do-work-board/tools/queue-kanban/web/board-durations.js
+  - skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go
+  - skills/do-work-board/tools/queue-kanban/generate_test.go
+---
+
+# Fix Panel A's Scale and Density
+
+## What
+
+Panel A wastes its vertical range and overplots. Move it to a square-root y scale, jitter marks
+inside their own day slot, lower their opacity, and draw a per-day median line with a p25-to-p75
+ribbon behind them.
+
+## AI Execution State (P-A-U Loop)
+- [x] **[PLAN]:** Route B exploration located the single renderer path, its hover index, and the existing geometry lock-in. Implement a named square-root scale and deterministic within-day jitter, aggregate accepted samples into daily quartiles, draw the overlay behind marks, and update both structural and live-browser geometry evidence.
+- [x] **[APPLY]:** The isolated builder implemented the square-root scale, deterministic within-day rank jitter, jitter-aware hit/label geometry, reduced ordinary opacity, and daily R-7 quartile overlay in the three refined-scope files.
+- [x] **[UNIFY]:** Builder reviewed the complete diff and passed focused RED→GREEN, the full module suite, strict JavaScript, vet, diff checks, and 705-sample light/dark Playwright proof. The orchestrator reconciled REQ-350's exact-x window assertions with intentional own-day jitter and re-ran both REQs' focused behavior tests green.
+
+## Why
+
+On this repository's archive the median REQ is 13.2 minutes, 55 percent are under 15 and 78 percent
+under 30. Against a linear 0-to-60 scale more than half the marks compete for the bottom quarter of
+the panel. Horizontally a day gets about 13 SVG units here and about 8 on the consuming project, so a
+busy day (38 REQs here, 55 there) is a single column of overlapping 4-unit dots. There is no opacity,
+no jitter, no density encoding and no drawn trend, so the shape of the distribution is only reachable
+by hovering one mark at a time.
+
+## Detailed Requirements
+
+- **Square-root y scale** with ticks at 0, 5, 15, 30, 45 and 60.
+- **Deterministic within-day x jitter, bounded to the day's own slot** — a mark can never cross a day
+  boundary. Deterministic means the same board renders the same picture twice.
+- **Lower mark opacity.**
+- **A per-day median line with a p25-to-p75 ribbon** behind the marks, so "is it getting slower" is
+  readable without hovering.
+- **Keep unchanged:** the 60-minute ceiling, the overflow lane, and the read-time exclusion rule.
+- **The hover must still name the mark under the pointer.** Either keep the jitter out of the
+  nearest-mark maths, or compensate for it and state how. A reader who hovers a jittered mark and
+  gets its neighbour's id is a worse view than the one this REQ replaces.
+
+## Constraints
+
+- `_dev/primes/prime-kanban-board.md` governs this tool. Read it first.
+- The browser probe lane measures the rendered face and the geometry tests read this file's
+  constants — a new scale means the probes that pin tick positions move with it, not around it.
+- Generate a board and look at it. Overplotting is exactly the class of defect a green suite hides.
+- **The target is legibility at 700 or more archived REQs**, not at this repository's 305. The
+  consuming project is already at 692 samples across 47 active days, at about 8 SVG units per day.
+
+## Dependencies
+
+None. REQ-354 wires a click to the same nearest-mark resolution this REQ perturbs; whichever lands
+second reconciles the two.
+
+## Builder Guidance
+
+**Certainty: firm.** Every parameter is specified. The one judgment call is the jitter amplitude, and
+its bound is stated: the day's own slot at 8 SVG units per day on the consuming project, not 13.
+
+## Red-Green Proof
+
+**RED prompt/case:** Generate a board for this repository and open Durations. Marks below 15 minutes
+— 55 percent of them — are packed into the bottom quarter of panel A, a busy day is one column of
+overlapping dots, and no line states the per-day trend.
+
+**Why RED now:** `yOfMinutes` is linear to a 60-minute ceiling, marks are drawn at full opacity with
+no jitter and no aggregate overlay.
+
+**GREEN when:** panel A uses a square-root scale with ticks at 0/5/15/30/45/60, marks are jittered
+inside their day slot at reduced opacity, a per-day median line and p25-p75 ribbon are drawn, the
+ceiling and overflow lane are unchanged, and the hover still names the mark the reader is pointing at.
+
+**Validation:** User confirmed (bundled invocation).
+
+---
+*Source: prompt A4, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F4).*
+
+## Triage
+
+**Route: B** — The visual outcome and files are explicit; exploration is needed to locate the existing scale, hover geometry, and browser-probe conventions before implementation.
+
+## Plan
+
+**Planning not required** — Route B: exploration-guided implementation.
+
+## Exploration
+
+- `renderDurationsView` owns the complete Panel A path. `yOfMinutes` is linear today; the mark loop uses raw completion x coordinates, and `describeAtPointer` resolves against the same `markIndex` geometry.
+- Hover stays truthful when the jittered x is used for both the circle and `markIndex.x`. Overflow/reversed y placement and the Go-produced `excludedReason` verdict remain unchanged.
+- No existing quantile or jitter helper exists. Daily p25/median/p75 can be computed client-side from sorted, non-excluded samples using the payload's canonical verdict, centred on each UTC day slot.
+- `generate_test.go::TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot` pins Panel A circles to unjittered completion x values. It must move with the intended behavior, so `generate_test.go` is added to the declared scope.
+- Dense browser evidence needs at least 700 samples across roughly 47 days, with actual circle coordinates, day bounds, repeat-render determinism, hover-at-circle identity, and ribbon/line bounds measured from the rendered page.
+
+## Scope
+
+**Files I will touch:**
+
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js`
+- `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go`
+- `skills/do-work-board/tools/queue-kanban/generate_test.go`
+
+**Scope refinement:** `durations_test.go` was removed after exploration confirmed the Go aggregate and payload remain unchanged. The production-renderer model coverage belongs in `generate_test.go`; dense rendered behavior belongs in `durations_browser_probe_test.go`.
+
+## Implementation Summary
+
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js` (modified): adds square-root Panel A geometry, stable per-day rank jitter shared by marks/hovers/labels/UR extents, selective ordinary opacity, and accepted-sample R-7 quartile ribbon/median rendering.
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified): pins ticks/scale, deterministic own-day spread, overlay geometry/order, opacity and unchanged overflow/reversed behavior; integration also updates REQ-350's window proof to use non-jittered Panel B centres for affine-domain assertions.
+- `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go` (modified): adds a 705-sample, 47-active-day rendered probe for bounds, spread, deterministic rerender, exact hover identity, finite overlays, light/dark geometry, and measured-face evidence.
+
+## Decisions
+
+- **D-01 — Use stable per-day rank instead of hash displacement.** Rank guarantees useful spread on every busy day while remaining byte-for-byte deterministic for the same payload.
+- **D-02 — Bound mark centres to their day slot.** At the required roughly 8-unit day width, a radius-4 circle cannot both spread and keep its full painted diameter inside the slot; the stated requirement bounds the mark position.
+- **D-03 — Use R-7 quantiles.** Sorting accepted samples and interpolating at `(n-1)*p` yields deterministic p25/median/p75 values without changing the Go payload.
+- **D-04 — Preserve critical/unknown prominence.** Opacity 0.62 applies only to ordinary coloured marks; reversed critical red and outlined unknown marks remain undimmed.
+- **D-05 — Use SVG presentation attributes.** Ribbon, median, and opacity styling stay within the renderer scope without a CSS expansion.
+
+## Discovered Tasks
+
+- The direct macOS Chromium `--dump-dom` strict-browser harness hung with Chrome 151 and Comet 151, including on an unchanged existing probe. The equivalent generated-page assertions and renders passed through Playwright Chromium. Investigate the host harness compatibility separately; it is not an implementation dependency.
+
+## Testing
+
+- RED production-renderer coverage failed on the missing 5-minute tick and old linear geometry; focused GREEN passed in 0.770s after implementation.
+- Builder full module suite passed in 73.666s, strict JavaScript in 21.34s, and vet/diff checks passed. Post-merge focused REQ-349 plus REQ-350 integration tests passed; post-remediation full merged suite passed in 66.072s.
+- The dense 705-sample, 47-day Playwright board measured an 8.115-unit day slot, 6.1-unit busy-day spread, all centres inside their UTC day, exact jittered hover identity, finite bounded ribbon/median, 0.18 ribbon and 0.62 ordinary-mark opacity, and identical light/dark position hashes.
+- Initial review found the committed dense probe was still rendering the new 30-day default while comparing against all-history payload data. One remediation calls `setDurationsWindow("all")` before both renders, separately counts actual rendered marks and payload samples, and asserts 705 == rendered == payload.
+- The host's direct Chrome/Comet `--dump-dom` path hangs on an unchanged existing probe; browser subtests honestly skip without a PATH browser. Equivalent generated-page behavior and screenshots passed through Playwright Chromium.
+
+## Qualification
+
+- Cumulative merge range `bf14c98..f0e837a` passed mechanical qualification and exact scope drift.
+- Orchestrator judgment confirmed substantive production behavior, canonical exclusion flow, deterministic jitter/hit geometry, honest scope refinement, and semantic compatibility with REQ-350's shared projection.
+
+## Review
+
+First review scored 91% and required remediation of the invalid dense browser probe while finding no production defect. Re-review approved with no findings: Requirements 100%, Code Quality 95%, Test Adequacy 92%, Scope 100%, overall 97%, implementation risk none, acceptance pass.
+
+## Lessons Learned
+
+Rendered-density evidence must select the same domain it uses to interpret payload order and sample count. Count rendered nodes independently; never let a payload length masquerade as proof that the browser painted that many marks.
+
+## Orientation
+
+Released in 0.236.43. Panel A now uses square-root vertical spacing, deterministic within-day spread, reduced ordinary opacity, and a daily p25–p75 ribbon plus median line while preserving the 60-minute lanes and exact hover identity.

@@ -344,11 +344,11 @@ type QueueNote struct {
 // BoardColumns holds the active-work buckets. Completed REQs older than the
 // recent window are NOT represented here — they live in Board.Calendar.
 type BoardColumns struct {
-	Pending             []*RequestTicket // status pending (the union of PendingReady and PendingWaiting)
-	PendingReady        []*RequestTicket // pending with every depends_on target at terminal success — actionable now
-	PendingWaiting      []*RequestTicket // pending with at least one unmet dependency — not yet actionable
+	Pending             []*RequestTicket // status pending, plus blocked with an unmet dependency (the union of PendingReady and PendingWaiting)
+	PendingReady        []*RequestTicket // status pending with every depends_on target at terminal success — actionable now
+	PendingWaiting      []*RequestTicket // pending or blocked with at least one unmet dependency — not yet actionable
 	Claimed             []*RequestTicket // status claimed
-	NeedsInputOrBlocked []*RequestTicket // pending-answers / blocked / blocked-* / failed
+	NeedsInputOrBlocked []*RequestTicket // operator-actionable pending-answers / blocked-with-no-unmet-deps / blocked-* / failed
 	RecentlyDone        []*RequestTicket // completed*/cancelled whose completion instant is within the window
 
 	// Terminal-resolved tickets flagged CompletionAnomaly. Surfaced in EVERY
@@ -1571,11 +1571,11 @@ func parseTimestamp(text string) (time.Time, bool) {
 }
 
 // bucketColumns sorts every ticket into the active-work columns by normalized
-// status. Pending additionally splits on dependency readiness (annotated by
-// annotateDependencyState, which must have run first): a pending ticket with no
-// unmet dependency is what the work loop would actually claim next. The split is
-// a view, not a status change — the gating is dynamic, so a waiting ticket stays
-// `pending` on disk and becomes ready the moment its upstream completes.
+// status. Dependency readiness (annotated by annotateDependencyState, which must
+// have run first) additionally affects two display cases: pending splits into
+// ready/waiting, while a bare blocked ticket with an unmet dependency joins the
+// waiting group until its upstream completes. The split is a view, not a status
+// change — each ticket keeps its on-disk status throughout.
 // Terminally resolved tickets (completed*/cancelled) only enter
 // RecentlyDone when their completion instant falls inside the window; older
 // resolutions are left for the calendar. A status outside the known vocabulary
@@ -1591,9 +1591,9 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 	var statusWarnings []string
 	for _, ticket := range tickets {
 		switch {
-		case ticket.Status == "pending":
+		case ticket.Status == "pending" || (ticket.Status == "blocked" && len(ticket.UnmetDependencies) > 0):
 			columns.Pending = append(columns.Pending, ticket)
-			if len(ticket.UnmetDependencies) == 0 {
+			if ticket.Status == "pending" && len(ticket.UnmetDependencies) == 0 {
 				columns.PendingReady = append(columns.PendingReady, ticket)
 			} else {
 				columns.PendingWaiting = append(columns.PendingWaiting, ticket)

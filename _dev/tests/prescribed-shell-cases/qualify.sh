@@ -420,4 +420,81 @@ printf '%s' "$qualify_binary_scan_output" | grep -q 'thumbnail.bin' \
 rm -rf "$qualify_repo/assets" "$qualify_repo/src/new_helper.py"
 git -C "$qualify_repo" checkout -q -- . 2>/dev/null || true
 
+# qualify: every path on a multi-path Implementation Summary bullet reaches Check 1.
+# Matching first tokens made the old first-token parser pass this missing later path.
+qualify_summary_repo="$fixture_root/qualify-summary-repo"
+fixture_repo_init "$qualify_summary_repo"
+mkdir -p "$qualify_summary_repo/src" "$qualify_summary_repo/do-work"
+printf 'base\n' > "$qualify_summary_repo/src/first.txt"
+printf 'base\n' > "$qualify_summary_repo/root-file.txt"
+fixture_repo_commit_all "$qualify_summary_repo" base
+printf 'change\n' >> "$qualify_summary_repo/src/first.txt"
+printf '%s\n' '## Implementation Summary' \
+  '- `src/first.txt`, `src/missing-later.txt` (modified) — paired updates' \
+  '' '## AI Execution State (P-A-U Loop)' \
+  '- [x] **[PLAN]:** done' '- [x] **[APPLY]:** done' '- [x] **[UNIFY]:** done' \
+  > "$qualify_summary_repo/do-work/REQ-980-multi-path-mismatch.md"
+qualify_multi_path_mismatch_output="$(cd "$qualify_summary_repo" && "$core_checks/qualify.sh" do-work/REQ-980-multi-path-mismatch.md 2>&1)" \
+  && fail_case 'qualify multi-path mismatch case passed because only the first Implementation Summary path reached Check 1'
+printf '%s' "$qualify_multi_path_mismatch_output" | grep -q 'listed (modified) but not on disk: src/missing-later.txt' \
+  || fail_case 'qualify multi-path mismatch case did not name the missing later path'
+git -C "$qualify_summary_repo" checkout -q -- .
+
+# qualify: a matching multi-path list stays clean, and backticked spans on a prose-only
+# bullet never become phantom file claims.
+printf 'change\n' >> "$qualify_summary_repo/src/first.txt"
+printf 'change\n' >> "$qualify_summary_repo/root-file.txt"
+printf '%s\n' '## Implementation Summary' \
+  '- `src/first.txt`, `root-file.txt` (modified) — paired updates' \
+  '- Notes mention `phantom-file.txt` and `sort -u`, but claim no file.' \
+  '' '## AI Execution State (P-A-U Loop)' \
+  '- [x] **[PLAN]:** done' '- [x] **[APPLY]:** done' '- [x] **[UNIFY]:** done' \
+  > "$qualify_summary_repo/do-work/REQ-981-multi-path-match.md"
+qualify_multi_path_match_output="$(cd "$qualify_summary_repo" && "$core_checks/qualify.sh" do-work/REQ-981-multi-path-match.md 2>&1)" \
+  || fail_case 'qualify matching multi-path case rejected two real modified paths'
+printf '%s' "$qualify_multi_path_match_output" | grep -q 'phantom-file.txt' \
+  && fail_case 'qualify matching multi-path case treated a backticked prose span as a file claim'
+git -C "$qualify_summary_repo" checkout -q -- .
+
+# qualify: root-level filenames are paths even without a slash. A slash-only filter would
+# silently drop this missing second item and let the first path carry the check.
+printf 'change\n' >> "$qualify_summary_repo/src/first.txt"
+printf '%s\n' '## Implementation Summary' \
+  '- `src/first.txt`, `missing-root.txt` (modified) — paired updates' \
+  '' '## AI Execution State (P-A-U Loop)' \
+  '- [x] **[PLAN]:** done' '- [x] **[APPLY]:** done' '- [x] **[UNIFY]:** done' \
+  > "$qualify_summary_repo/do-work/REQ-982-root-path.md"
+qualify_root_path_output="$(cd "$qualify_summary_repo" && "$core_checks/qualify.sh" do-work/REQ-982-root-path.md 2>&1)" \
+  && fail_case 'qualify root-path case dropped a filename-only later path'
+printf '%s' "$qualify_root_path_output" | grep -q 'listed (modified) but not on disk: missing-root.txt' \
+  || fail_case 'qualify root-path case did not name the missing root-level filename'
+git -C "$qualify_summary_repo" checkout -q -- .
+
+# qualify: later (new) paths reach the wiring half as well as the existence check.
+printf 'export const first = 1;\n' > "$qualify_summary_repo/src/first_new.js"
+printf 'export const laterWidget = 1;\n' > "$qualify_summary_repo/src/later_widget.js"
+printf '%s\n' '## Implementation Summary' \
+  '- `src/first_new.js`, `src/later_widget.js` (new) — paired helpers' \
+  '' '## AI Execution State (P-A-U Loop)' \
+  '- [x] **[PLAN]:** done' '- [x] **[APPLY]:** done' '- [x] **[UNIFY]:** done' \
+  > "$qualify_summary_repo/do-work/REQ-983-later-wiring.md"
+qualify_later_wiring_output="$(cd "$qualify_summary_repo" && "$core_checks/qualify.sh" do-work/REQ-983-later-wiring.md 2>&1)" \
+  || fail_case 'qualify later-wiring case rejected two real new paths'
+printf '%s' "$qualify_later_wiring_output" | grep -q 'new) file has no static reference anywhere: src/later_widget.js' \
+  || fail_case 'qualify later-wiring case never sent the later path through Check 5'
+rm -f "$qualify_summary_repo/src/first_new.js" "$qualify_summary_repo/src/later_widget.js"
+
+# qualify: an unmatched backtick on a path-led Summary bullet is malformed input, not a
+# partial list whose already-valid first path may qualify the whole REQ.
+printf 'change\n' >> "$qualify_summary_repo/src/first.txt"
+printf '%s\n' '## Implementation Summary' \
+  '- `src/first.txt`, `unterminated.txt (modified) — malformed pair' \
+  '' '## AI Execution State (P-A-U Loop)' \
+  '- [x] **[PLAN]:** done' '- [x] **[APPLY]:** done' '- [x] **[UNIFY]:** done' \
+  > "$qualify_summary_repo/do-work/REQ-984-unmatched-summary.md"
+qualify_unmatched_summary_output="$(cd "$qualify_summary_repo" && "$core_checks/qualify.sh" do-work/REQ-984-unmatched-summary.md 2>&1)" \
+  && fail_case 'qualify unmatched-summary case accepted a partial Implementation Summary path list'
+printf '%s' "$qualify_unmatched_summary_output" | grep -q 'FAIL:.*unmatched backtick' \
+  || fail_case 'qualify unmatched-summary case did not fail loudly on the malformed path-led bullet'
+
 prescribed_shell_finish

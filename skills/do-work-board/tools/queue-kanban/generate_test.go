@@ -10,7 +10,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -1514,6 +1516,109 @@ process.stdout.write(JSON.stringify({
 	}
 }
 
+func TestGenerateOffersDurationsWindowControls(t *testing.T) {
+	indexHTML := generateLiveSite(t)
+	for _, requiredToken := range []string{
+		`id="durations-window-group" hidden`,
+		`data-durations-window="30" aria-pressed="true"`,
+		`data-durations-window="90" aria-pressed="false"`,
+		`data-durations-window="all" aria-pressed="false"`,
+		`document.getElementById("durations-window-group").hidden = viewState.view !== "durations"`,
+	} {
+		if !strings.Contains(indexHTML, requiredToken) {
+			t.Fatalf("generated board is missing Durations-window contract %q", requiredToken)
+		}
+	}
+	if strings.Count(indexHTML, `data-durations-window=`) != 3 {
+		t.Fatalf("generated board has %d Durations-window choices, want exactly 3", strings.Count(indexHTML, `data-durations-window=`))
+	}
+	if strings.Contains(indexHTML, `data-durations-window="30" data-window-hours=`) {
+		t.Fatal("Durations window control is coupled to the board's recently-done window attribute")
+	}
+}
+
+// Panel A's overflow lane keeps every mark, while the adjacent ranked list
+// carries the complete text record for spans whose y position is capped. The
+// list must be ordinary HTML rather than SVG text so density changes scrolling,
+// not which samples remain reachable.
+func TestGenerateCarriesAdjacentCompleteDurationsLongestSpansList(t *testing.T) {
+	indexHTML := generateLiveSite(t)
+
+	for _, requiredToken := range []string{
+		`class="durations-chart-list"`,
+		`id="durations-chart"`,
+		`class="durations-longest-spans"`,
+		`id="durations-longest-count"`,
+		`id="durations-longest-list"`,
+		`function renderDurationsLongestSpans(`,
+	} {
+		if !strings.Contains(indexHTML, requiredToken) {
+			t.Errorf("generated board is missing the complete longest-spans contract %q", requiredToken)
+		}
+	}
+	chartIndex := strings.Index(indexHTML, `id="durations-chart"`)
+	listIndex := strings.Index(indexHTML, `id="durations-longest-list"`)
+	if chartIndex < 0 || listIndex < 0 || listIndex < chartIndex {
+		t.Errorf("longest-spans list must follow the chart inside their shared wrapper (chart=%d list=%d)", chartIndex, listIndex)
+	}
+}
+
+func TestJavaScriptBehaviorDurationsWindowSelectionRefreshesOnlyDurations(t *testing.T) {
+	indexHTML := generateLiveSite(t)
+	transitionFunction := sliceBalancedBlockAfter(t, indexHTML, "function applyDurationsWindowSelection(")
+	javascriptProbe := `
+var viewState = { windowHours: 24, view: "durations" };
+var renderedOnce = { durations: true };
+var chosenWindows = [];
+var activeWindows = [];
+var renderCount = 0;
+function setDurationsWindow(windowName) { chosenWindows.push(windowName); }
+function setActiveButton(selector, attributeName, attributeValue) { activeWindows.push(attributeValue); }
+function renderDurationsView() { renderCount += 1; }
+` + transitionFunction + `
+["30", "90", "all"].forEach(function (windowName) { applyDurationsWindowSelection(windowName); });
+var visibleState = { renderCount: renderCount, rendered: renderedOnce.durations };
+viewState.view = "board";
+applyDurationsWindowSelection("30");
+process.stdout.write(JSON.stringify({
+  chosenWindows: chosenWindows,
+  activeWindows: activeWindows,
+  windowHours: viewState.windowHours,
+  visibleState: visibleState,
+  hiddenRenderCount: renderCount,
+  hiddenRendered: renderedOnce.durations
+}));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "Durations window transitions", javascriptProbe)
+	var result struct {
+		ChosenWindows []string `json:"chosenWindows"`
+		ActiveWindows []string `json:"activeWindows"`
+		WindowHours   int      `json:"windowHours"`
+		VisibleState  struct {
+			RenderCount int  `json:"renderCount"`
+			Rendered    bool `json:"rendered"`
+		} `json:"visibleState"`
+		HiddenRenderCount int  `json:"hiddenRenderCount"`
+		HiddenRendered    bool `json:"hiddenRendered"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode Durations-window transition: %v (output %q)", decodeError, probeOutput)
+	}
+	wantWindows := []string{"30", "90", "all", "30"}
+	if strings.Join(result.ChosenWindows, ",") != strings.Join(wantWindows, ",") ||
+		strings.Join(result.ActiveWindows, ",") != strings.Join(wantWindows, ",") {
+		t.Fatalf("Durations selections = chosen %#v active %#v, want %#v", result.ChosenWindows, result.ActiveWindows, wantWindows)
+	}
+	if result.WindowHours != 24 {
+		t.Fatalf("Durations selection changed viewState.windowHours to %d, want unchanged 24", result.WindowHours)
+	}
+	if result.VisibleState.RenderCount != 3 || !result.VisibleState.Rendered {
+		t.Fatalf("three visible selections produced %#v, want one render per selection and fresh state", result.VisibleState)
+	}
+	if result.HiddenRenderCount != 3 || result.HiddenRendered {
+		t.Fatalf("hidden selection produced renderCount=%d rendered=%v, want no render and stale cache", result.HiddenRenderCount, result.HiddenRendered)
+	}
+}
+
 // Execute the pure empty-state decision under Node so the regression is pinned
 // to state transitions rather than the presence of reassuring source strings.
 func TestJavaScriptBehaviorByUserRequestLensEmptyState(t *testing.T) {
@@ -1831,119 +1936,6 @@ func TestUserRequestActivityToggleDocumentsWidenedRule(t *testing.T) {
 	}
 }
 
-// Band-and-row geometry, and the remainder sentence's all-or-nothing rule.
-//
-// Before REQ-292 this probe also pinned "draw the payload's verdict, do not
-// re-derive it" — the renderer is now the placer, so there is no payload verdict
-// left to obey and that half of the property is gone by construction rather than
-// by omission. What survives is still real and still worth pinning: a row index
-// maps to a baseline on the sample's OWN band, an out-of-range row is no label at
-// all rather than a label at a wrong y, and a band with nothing hidden prints no
-// remainder while a nonzero one states the count. The original defect this test
-// was written for — a pass that labelled every overflow sample from an index
-// cycle and had no concept of a remainder — is caught by the second half.
-func TestJavaScriptBehaviorDurationsLabelRowsAndRemainders(t *testing.T) {
-	indexHtml := generateLiveSite(t)
-
-	constantPreamble := ""
-	for _, constantName := range []string{
-		"DURATIONS_LABEL_ROW_COUNT",
-		"DURATIONS_LABEL_ROW_HEIGHT",
-		"DURATIONS_LANE_LABEL_ROW_Y",
-		"DURATIONS_REVERSED_LABEL_ROW_Y",
-		"DURATIONS_VIEW_WIDTH",
-		"DURATIONS_MARGIN_RIGHT",
-	} {
-		constantPreamble += fmt.Sprintf("var %s = %v;\n", constantName, durationsRendererConstant(t, constantName))
-	}
-
-	javascriptProbe := constantPreamble +
-		"var svg = null;\n" +
-		"var drawnRemainders = [];\n" +
-		"function makeDurationsSvgNode(svg, name, attributes, textContent) { drawnRemainders.push(textContent); }\n" +
-		sliceBalancedBlockAfter(t, indexHtml, "function durationsBandRowY(") + "\n" +
-		sliceBalancedBlockAfter(t, indexHtml, "function durationsLabelBaselineY(") + "\n" +
-		sliceBalancedBlockAfter(t, indexHtml, "function durationsRemainderBaselineY(") + "\n" +
-		sliceBalancedBlockAfter(t, indexHtml, "function composeDurationsRemainderText(") + "\n" +
-		sliceBalancedBlockAfter(t, indexHtml, "function drawDurationsRemainder(") + `
-drawDurationsRemainder(0, durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y), "over 60 min");
-drawDurationsRemainder(23, durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y), "over 60 min");
-drawDurationsRemainder(2, durationsRemainderBaselineY(DURATIONS_REVERSED_LABEL_ROW_Y), "reversed");
-process.stdout.write(JSON.stringify({
-  remainderBaselines: [
-    durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y),
-    durationsRemainderBaselineY(DURATIONS_REVERSED_LABEL_ROW_Y)
-  ],
-  baselines: [
-    durationsLabelBaselineY({ wallMinutes: 95 }, 0),
-    durationsLabelBaselineY({ wallMinutes: 95 }, 1),
-    durationsLabelBaselineY({ wallMinutes: 95 }, -1),
-    durationsLabelBaselineY({ wallMinutes: -20 }, 0),
-    durationsLabelBaselineY({ wallMinutes: -20 }, 1),
-    durationsLabelBaselineY({ wallMinutes: -20 }, -1),
-    durationsLabelBaselineY({ wallMinutes: 95 }, undefined)
-  ],
-  remainders: drawnRemainders
-}));`
-
-	probeOutput := runJavaScriptBehaviorProbe(t, "durations label verdict", javascriptProbe)
-	var probeResult struct {
-		Baselines          []*float64 `json:"baselines"`
-		RemainderBaselines []float64  `json:"remainderBaselines"`
-		Remainders         []string   `json:"remainders"`
-	}
-	if decodeError := json.Unmarshal(probeOutput, &probeResult); decodeError != nil {
-		t.Fatalf("decode durations label behavior: %v (output %q)", decodeError, probeOutput)
-	}
-
-	laneRowY := durationsRendererConstant(t, "DURATIONS_LANE_LABEL_ROW_Y")
-	reversedRowY := durationsRendererConstant(t, "DURATIONS_REVERSED_LABEL_ROW_Y")
-	rowHeight := durationsRendererConstant(t, "DURATIONS_LABEL_ROW_HEIGHT")
-	wantBaselines := []*float64{
-		&laneRowY,
-		floatPointer(laneRowY + rowHeight),
-		nil,
-		&reversedRowY,
-		floatPointer(reversedRowY + rowHeight),
-		nil,
-		nil,
-	}
-	if len(probeResult.Baselines) != len(wantBaselines) {
-		t.Fatalf("baseline count = %d, want %d", len(probeResult.Baselines), len(wantBaselines))
-	}
-	for baselineIndex := range wantBaselines {
-		got := probeResult.Baselines[baselineIndex]
-		want := wantBaselines[baselineIndex]
-		if (got == nil) != (want == nil) || (got != nil && *got != *want) {
-			t.Fatalf("baseline[%d] = %v, want %v (nil means the sample carries no direct label)",
-				baselineIndex, formatOptionalFloat(got), formatOptionalFloat(want))
-		}
-	}
-
-	// The remainder must land on the band's LAST row. On the first row it sits at
-	// the marks' own height, and the dense render showed it overprinted by the
-	// very blob it was describing — the defect reproduced inside its own fix.
-	lastRowOffset := (durationsRendererConstant(t, "DURATIONS_LABEL_ROW_COUNT") - 1) *
-		durationsRendererConstant(t, "DURATIONS_LABEL_ROW_HEIGHT")
-	wantRemainderBaselines := []float64{laneRowY + lastRowOffset, reversedRowY + lastRowOffset}
-	if len(probeResult.RemainderBaselines) != len(wantRemainderBaselines) {
-		t.Fatalf("remainder baseline count = %d, want %d",
-			len(probeResult.RemainderBaselines), len(wantRemainderBaselines))
-	}
-	for baselineIndex, wantBaseline := range wantRemainderBaselines {
-		if probeResult.RemainderBaselines[baselineIndex] != wantBaseline {
-			t.Fatalf("remainder baseline[%d] = %v, want %v — the sentence must clear the mark row",
-				baselineIndex, probeResult.RemainderBaselines[baselineIndex], wantBaseline)
-		}
-	}
-
-	wantRemainders := []string{"+23 more over 60 min", "+2 more reversed"}
-	if strings.Join(probeResult.Remainders, "|") != strings.Join(wantRemainders, "|") {
-		t.Fatalf("drawn remainders = %q, want %q — a zero remainder must draw nothing and a nonzero one must state its count",
-			probeResult.Remainders, wantRemainders)
-	}
-}
-
 // ---- panel B's slowest-day annotation, and the faces around it ------------
 //
 // Both faces below are the browser's answer, because a face is the browser's
@@ -2126,9 +2118,8 @@ process.stdout.write(JSON.stringify(drawnNodes.map(function (node) {
 			len(drawnAnnotations), len(annotationCases))
 	}
 
-	// Every box below is the taller of the two models of its own face: the one
-	// the renderer declares and the one the browser draws.
-	annotationAscent := math.Max(durationsRendererConstant(t, "DURATIONS_LABEL_TEXT_ASCENT"), durationsMeasuredMarkLabelAscentUnits)
+	// The annotation's face is measured independently from the renderer geometry.
+	annotationAscent := durationsMeasuredMarkLabelAscentUnits
 	annotationDescent := math.Max(durationsLabelTextDescentUnits, durationsMeasuredMarkLabelDescentUnits)
 	medianBaseline := durationsRendererConstant(t, "DURATIONS_MEDIAN_BOTTOM")
 
@@ -2284,48 +2275,6 @@ func durationsSlowestDayAnnotationProbeCases(annotationCases []durationsAnnotati
 	return probeCases
 }
 
-// durationLabelWidthSampleMinutes spans the renderer's formatting branches: sub-hour
-// with a decimal, negative, exactly on the hour, and multi-hour. The last two are
-// the rounding-carry values: they are the only ones where a per-unit rounding
-// regression changes the character count ("1h 60m" against "2h 0m"), so they keep
-// this width lock-step sensitive to it.
-var durationLabelWidthSampleMinutes = []float64{7.5, -25, 60, 95.4, 655.2, 1440, 119.5, 59.96}
-
-// Placement sizes a label from the text the renderer will draw, so it carries its
-// own width model of that text. The renderer stays the definition of the copy —
-// this pins the model to it. Without this the two agree today and drift the first
-// time the renderer's formatting gains a character, and the only symptom would be
-// labels overlapping again at exactly the densities this REQ was about.
-func TestJavaScriptBehaviorDurationsLabelWidthModelMatchesTheRendererFormatter(t *testing.T) {
-	indexHtml := generateLiveSite(t)
-	probeValues, encodeError := json.Marshal(durationLabelWidthSampleMinutes)
-	if encodeError != nil {
-		t.Fatalf("encode probe values: %v", encodeError)
-	}
-	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function formatDurationMinutes(") + `
-process.stdout.write(JSON.stringify(` + string(probeValues) + `.map(formatDurationMinutes)));`
-
-	probeOutput := runJavaScriptBehaviorProbe(t, "durations label width model", javascriptProbe)
-	var rendererTexts []string
-	if decodeError := json.Unmarshal(probeOutput, &rendererTexts); decodeError != nil {
-		t.Fatalf("decode renderer formatting: %v (output %q)", decodeError, probeOutput)
-	}
-	if len(rendererTexts) != len(durationLabelWidthSampleMinutes) {
-		t.Fatalf("renderer produced %d strings, want %d", len(rendererTexts), len(durationLabelWidthSampleMinutes))
-	}
-	for valueIndex, minutes := range durationLabelWidthSampleMinutes {
-		// The renderer writes U+2212 for a negative sign; only the character
-		// COUNT reaches the width model, so compare lengths in runes.
-		rendererLength := len([]rune(rendererTexts[valueIndex]))
-		modelLength := len([]rune(formatDurationLabelMinutes(minutes)))
-		if rendererLength != modelLength {
-			t.Fatalf("%.1f min: renderer draws %q (%d chars) but the width model assumes %q (%d chars)",
-				minutes, rendererTexts[valueIndex], rendererLength,
-				formatDurationLabelMinutes(minutes), modelLength)
-		}
-	}
-}
-
 // ---- panel B/C day buckets and the shared axis domain ----------------------
 
 // durationsRenderDomStubPreamble is the smallest DOM renderDurationsView
@@ -2341,12 +2290,18 @@ function makeStubNode(nodeName) {
     textContent: "",
     setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = String(attributeValue); },
     appendChild: function (childNode) { this.children.push(childNode); return childNode; },
+    removeChild: function (childNode) { this.children = this.children.filter(function (candidateNode) { return candidateNode !== childNode; }); },
+    getComputedTextLength: function () { return 20; },
     addEventListener: function () {}
   };
 }
 var durationsStubHosts = {
   "durations-chart": makeStubNode("div"),
   "durations-summary": makeStubNode("p"),
+  "durations-stat-median": makeStubNode("dd"),
+  "durations-stat-p90": makeStubNode("dd"),
+  "durations-stat-active-days": makeStubNode("dd"),
+  "durations-stat-reqs-per-day": makeStubNode("dd"),
   "durations-readout": makeStubNode("p"),
   "durations-table-body": makeStubNode("tbody")
 };
@@ -2358,19 +2313,490 @@ var document = {
 };
 `
 
-// durationsRenderProbeDriver renders the fixture board and reports every drawn
-// bar's x-interval, the slowest-day annotation's anchor x (the only mid-anchored
-// text at the annotation baseline), and every Panel A mark centre in draw order.
+func TestGenerateDurationsHeadlineStatsUseASemanticDefinitionList(t *testing.T) {
+	indexHTML := generateLiveSite(t)
+
+	requiredFragments := []string{
+		`<dl class="durations-stats" id="durations-stats">`,
+		`<dt>Median · all plotted spans</dt>`,
+		`<dd id="durations-stat-median">`,
+		`<dt>P90 · all plotted spans</dt>`,
+		`<dd id="durations-stat-p90">`,
+		`<dt>Active completion days</dt>`,
+		`<dd id="durations-stat-active-days">`,
+		`<dt>Projected REQs per active day</dt>`,
+		`<dd id="durations-stat-reqs-per-day">`,
+		`grid-template-columns: repeat(auto-fit, minmax(`,
+	}
+	lastOffset := -1
+	for _, fragment := range requiredFragments {
+		offset := strings.Index(indexHTML, fragment)
+		if offset < 0 {
+			t.Errorf("generated Durations view is missing %q", fragment)
+			continue
+		}
+		if strings.HasPrefix(fragment, "<") && offset < lastOffset {
+			t.Errorf("generated Durations stat fragment %q is out of semantic reading order", fragment)
+		}
+		if strings.HasPrefix(fragment, "<") {
+			lastOffset = offset
+		}
+	}
+	if strings.Count(indexHTML, `<dl class="durations-stats"`) != 1 ||
+		strings.Count(indexHTML, `<dt>`) < 4 {
+		t.Errorf("generated page does not carry one four-item Durations definition list")
+	}
+}
+
+func durationHeadlineFixtureData(t *testing.T) generatedDurations {
+	t.Helper()
+	fixtureSpecs := []struct {
+		requestID string
+		completed time.Time
+		minutes   float64
+	}{
+		{requestID: "REQ-801", completed: time.Date(2026, 4, 26, 10, 0, 0, 0, time.UTC), minutes: 60},
+		{requestID: "REQ-802", completed: time.Date(2026, 5, 20, 10, 0, 0, 0, time.UTC), minutes: 70},
+		{requestID: "REQ-803", completed: time.Date(2026, 6, 10, 10, 0, 0, 0, time.UTC), minutes: 40},
+		{requestID: "REQ-804", completed: time.Date(2026, 7, 1, 10, 0, 0, 0, time.UTC), minutes: 50},
+		{requestID: "REQ-805", completed: time.Date(2026, 8, 20, 9, 0, 0, 0, time.UTC), minutes: -5},
+		{requestID: "REQ-806", completed: time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC), minutes: 10},
+		{requestID: "REQ-807", completed: time.Date(2026, 8, 20, 11, 0, 0, 0, time.UTC), minutes: 300},
+		{requestID: "REQ-808", completed: time.Date(2026, 8, 22, 10, 0, 0, 0, time.UTC), minutes: 20},
+		{requestID: "REQ-809", completed: time.Date(2026, 8, 22, 11, 0, 0, 0, time.UTC), minutes: 400},
+		{requestID: "REQ-810", completed: time.Date(2026, 8, 24, 10, 0, 0, 0, time.UTC), minutes: 30},
+	}
+	tickets := make([]*RequestTicket, 0, len(fixtureSpecs))
+	for _, fixture := range fixtureSpecs {
+		tickets = append(tickets, durationTicket(
+			fixture.requestID,
+			"B",
+			fixture.completed.Add(-time.Duration(fixture.minutes*float64(time.Minute))).Format(time.RFC3339),
+			fixture.completed.Format(time.RFC3339),
+		))
+	}
+	generatedData, buildError := buildGeneratedBoardData(&Board{AllRequests: tickets})
+	if buildError != nil {
+		t.Fatalf("build headline fixture data: %v", buildError)
+	}
+	return generatedData.Durations
+}
+
+func durationRollingFixtureData(t *testing.T, eligibleDayCount int) generatedDurations {
+	t.Helper()
+	eligibleDays := []struct {
+		completed time.Time
+		minutes   time.Duration
+	}{
+		{completed: time.Date(2026, 7, 1, 10, 0, 0, 0, time.UTC), minutes: 10 * time.Minute},
+		{completed: time.Date(2026, 7, 2, 10, 0, 0, 0, time.UTC), minutes: 70 * time.Minute},
+		{completed: time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC), minutes: 20 * time.Minute},
+		{completed: time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC), minutes: 60 * time.Minute},
+		{completed: time.Date(2026, 7, 11, 10, 0, 0, 0, time.UTC), minutes: 30 * time.Minute},
+		{completed: time.Date(2026, 8, 1, 10, 0, 0, 0, time.UTC), minutes: 50 * time.Minute},
+		{completed: time.Date(2026, 8, 10, 10, 0, 0, 0, time.UTC), minutes: 40 * time.Minute},
+		{completed: time.Date(2026, 9, 20, 10, 0, 0, 0, time.UTC), minutes: 80 * time.Minute},
+	}
+	if eligibleDayCount < 0 || eligibleDayCount > len(eligibleDays) {
+		t.Fatalf("eligible day count %d is outside fixture", eligibleDayCount)
+	}
+	tickets := make([]*RequestTicket, 0, eligibleDayCount+5)
+	for dayIndex, eligibleDay := range eligibleDays[:eligibleDayCount] {
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", 820+dayIndex),
+			"B",
+			eligibleDay.completed.Add(-eligibleDay.minutes).Format(time.RFC3339),
+			eligibleDay.completed.Format(time.RFC3339),
+		))
+	}
+	// Five paused spans make 7 July an excluded-only active day and Panel C's
+	// odd peak. It must not become a zero in the rolling median.
+	for pausedIndex := 0; pausedIndex < 5; pausedIndex++ {
+		completed := time.Date(2026, 7, 7, 10+pausedIndex, 0, 0, 0, time.UTC)
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", 850+pausedIndex),
+			"C",
+			completed.Add(-8*time.Hour).Format(time.RFC3339),
+			completed.Format(time.RFC3339),
+		))
+	}
+	generatedData, buildError := buildGeneratedBoardData(&Board{AllRequests: tickets})
+	if buildError != nil {
+		t.Fatalf("build rolling fixture data: %v", buildError)
+	}
+	return generatedData.Durations
+}
+
+func TestJavaScriptBehaviorDurationsHeadlineRollingMedianAndCadenceTicks(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+	headlineJSON, encodeError := json.Marshal(durationHeadlineFixtureData(t))
+	if encodeError != nil {
+		t.Fatalf("encode headline fixture: %v", encodeError)
+	}
+	rollingPayloads := map[string]generatedDurations{
+		"six":   durationRollingFixtureData(t, 6),
+		"seven": durationRollingFixtureData(t, 7),
+		"eight": durationRollingFixtureData(t, 8),
+	}
+	rollingJSON, encodeError := json.Marshal(rollingPayloads)
+	if encodeError != nil {
+		t.Fatalf("encode rolling fixtures: %v", encodeError)
+	}
+
+	probeDriver := `
+function resetDurationsHosts() {
+  ["durations-chart", "durations-summary", "durations-stat-median", "durations-stat-p90",
+   "durations-stat-active-days", "durations-stat-reqs-per-day", "durations-readout",
+   "durations-table-body"].forEach(function (nodeId) {
+    var nodeName = nodeId.indexOf("stat-") >= 0 ? "dd" : "div";
+    durationsStubHosts[nodeId] = makeStubNode(nodeName);
+  });
+}
+function nodeText(node) {
+  return (node.children || []).map(function (child) {
+    return child.textContent !== undefined ? child.textContent : nodeText(child);
+  }).join("");
+}
+function captureRender(payload, windowName) {
+  resetDurationsHosts();
+  boardData = { durations: payload };
+  setDurationsWindow(windowName);
+  renderDurationsView();
+  var svg = durationsStubHosts["durations-chart"].children[0];
+  var rollingPaths = [], rollingMarkers = [], panelBBars = [], countTicks = [], countGridlines = [];
+  (svg.children || []).forEach(function (child, childIndex) {
+    var attributes = child.attributes || {};
+    var className = String(attributes["class"] || "");
+    if (className === "durations-bar") { panelBBars.push({ childIndex: childIndex }); }
+    if (className === "durations-rolling-line") {
+      rollingPaths.push({ d: attributes.d || "", childIndex: childIndex });
+    }
+    if (className === "durations-rolling-marker") {
+      rollingMarkers.push({ cx: Number(attributes.cx), cy: Number(attributes.cy), childIndex: childIndex });
+    }
+    if (attributes["data-durations-count-tick"] === "true") {
+      countTicks.push({ text: nodeText(child), y: Number(attributes.y) });
+    }
+    if (attributes["data-durations-count-grid"] === "midpoint") {
+      countGridlines.push({ y: Number(attributes.y1), childIndex: childIndex });
+    }
+  });
+  return {
+    stats: [
+      durationsStubHosts["durations-stat-median"].textContent,
+      durationsStubHosts["durations-stat-p90"].textContent,
+      durationsStubHosts["durations-stat-active-days"].textContent,
+      durationsStubHosts["durations-stat-reqs-per-day"].textContent
+    ],
+    summary: durationsStubHosts["durations-summary"].textContent,
+    ariaLabel: svg.attributes["aria-label"],
+    visibleTitles: (svg.children || []).filter(function (child) {
+      return child.stubName === "text" && String(child.attributes["class"] || "").indexOf("durations-axis-title") >= 0;
+    }).map(nodeText),
+    rollingPaths: rollingPaths,
+    rollingMarkers: rollingMarkers,
+    panelBBars: panelBBars,
+    countTicks: countTicks,
+    countGridlines: countGridlines
+  };
+}
+process.stdout.write(JSON.stringify({
+  headline30: captureRender(` + string(headlineJSON) + `, "30"),
+  headline90: captureRender(` + string(headlineJSON) + `, "90"),
+  headlineAll: captureRender(` + string(headlineJSON) + `, "all"),
+  rollingSix: captureRender(` + string(rollingJSON) + `.six, "all"),
+  rollingSeven: captureRender(` + string(rollingJSON) + `.seven, "all"),
+  rollingEight: captureRender(` + string(rollingJSON) + `.eight, "all")
+}));
+`
+	probeOutput := runJavaScriptBehaviorProbe(t, "Durations headline, rolling median, and cadence ticks",
+		durationsRenderDomStubPreamble+string(rendererFragment)+probeDriver)
+
+	type capturedRender struct {
+		Stats         []string `json:"stats"`
+		Summary       string   `json:"summary"`
+		AriaLabel     string   `json:"ariaLabel"`
+		VisibleTitles []string `json:"visibleTitles"`
+		RollingPaths  []struct {
+			D          string `json:"d"`
+			ChildIndex int    `json:"childIndex"`
+		} `json:"rollingPaths"`
+		RollingMarkers []struct {
+			CX         float64 `json:"cx"`
+			CY         float64 `json:"cy"`
+			ChildIndex int     `json:"childIndex"`
+		} `json:"rollingMarkers"`
+		PanelBBars []struct {
+			ChildIndex int `json:"childIndex"`
+		} `json:"panelBBars"`
+		CountTicks []struct {
+			Text string  `json:"text"`
+			Y    float64 `json:"y"`
+		} `json:"countTicks"`
+		CountGridlines []struct {
+			Y          float64 `json:"y"`
+			ChildIndex int     `json:"childIndex"`
+		} `json:"countGridlines"`
+	}
+	var result struct {
+		Headline30   capturedRender `json:"headline30"`
+		Headline90   capturedRender `json:"headline90"`
+		HeadlineAll  capturedRender `json:"headlineAll"`
+		RollingSix   capturedRender `json:"rollingSix"`
+		RollingSeven capturedRender `json:"rollingSeven"`
+		RollingEight capturedRender `json:"rollingEight"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode Durations headline/rolling result: %v (output starts %q)",
+			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+
+	for _, windowCase := range []struct {
+		name      string
+		got       capturedRender
+		wantStats []string
+	}{
+		{name: "30", got: result.Headline30, wantStats: []string{"25.0 min", "5h 50m", "3 / 30", "2.0"}},
+		{name: "90", got: result.Headline90, wantStats: []string{"35.0 min", "5h 30m", "5 / 90", "1.6"}},
+		{name: "all", got: result.HeadlineAll, wantStats: []string{"45.0 min", "5h 10m", "7 / 121", "1.4"}},
+	} {
+		if !reflect.DeepEqual(windowCase.got.Stats, windowCase.wantStats) {
+			t.Errorf("%s-day headline stats = %#v, want %#v", windowCase.name, windowCase.got.Stats, windowCase.wantStats)
+		}
+	}
+	wantExclusionSentence := "Panel B excludes 3 spans from its medians (over four hours is an assumed pause, negative is a broken stamp); panel A still plots them."
+	if !strings.Contains(result.Headline30.Summary, wantExclusionSentence) {
+		t.Errorf("summary exclusion rule changed: %q", result.Headline30.Summary)
+	}
+
+	if len(result.RollingSix.RollingMarkers) != 0 || len(result.RollingSix.RollingPaths) != 0 {
+		t.Errorf("six eligible days drew %d markers and %d paths, want neither",
+			len(result.RollingSix.RollingMarkers), len(result.RollingSix.RollingPaths))
+	}
+	if len(result.RollingSeven.RollingMarkers) != 1 || len(result.RollingSeven.RollingPaths) != 0 {
+		t.Errorf("seven eligible days drew %d markers and %d paths, want one marker and no path",
+			len(result.RollingSeven.RollingMarkers), len(result.RollingSeven.RollingPaths))
+	}
+	if len(result.RollingEight.RollingMarkers) != 2 || len(result.RollingEight.RollingPaths) != 1 {
+		t.Fatalf("eight eligible days drew %d markers and %d paths, want two markers and one path",
+			len(result.RollingEight.RollingMarkers), len(result.RollingEight.RollingPaths))
+	}
+	if !strings.Contains(result.RollingEight.VisibleTitles[2], "trailing 7-active-day median") ||
+		!strings.Contains(result.RollingEight.AriaLabel, "trailing 7-active-day median") {
+		t.Errorf("Panel B title/accessibility copy does not name trailing 7-active-day median: titles=%q aria=%q",
+			result.RollingEight.VisibleTitles, result.RollingEight.AriaLabel)
+	}
+	medianTop := durationsRendererConstant(t, "DURATIONS_MEDIAN_TOP")
+	medianBottom := durationsRendererConstant(t, "DURATIONS_MEDIAN_BOTTOM")
+	wantRolling := []struct {
+		day    time.Time
+		median float64
+	}{
+		{day: time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC), median: 40},
+		{day: time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC), median: 50},
+	}
+	timeStart := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	timeEnd := time.Date(2026, 9, 21, 0, 0, 0, 0, time.UTC)
+	marginLeft := durationsRendererConstant(t, "DURATIONS_MARGIN_LEFT")
+	plotWidth := durationsRendererConstant(t, "DURATIONS_VIEW_WIDTH") - marginLeft - durationsRendererConstant(t, "DURATIONS_MARGIN_RIGHT")
+	for markerIndex, marker := range result.RollingEight.RollingMarkers {
+		wantX := marginLeft + (wantRolling[markerIndex].day.Add(12*time.Hour).Sub(timeStart).Seconds()/timeEnd.Sub(timeStart).Seconds())*plotWidth
+		wantY := medianBottom - (math.Min(wantRolling[markerIndex].median, 45)/45)*(medianBottom-medianTop)
+		if math.Abs(marker.CX-wantX) > 0.11 || math.Abs(marker.CY-wantY) > 0.11 {
+			t.Errorf("rolling marker %d = (%.2f, %.2f), want active-day trailing point (%.2f, %.2f)",
+				markerIndex, marker.CX, marker.CY, wantX, wantY)
+		}
+	}
+	lastBarIndex := result.RollingEight.PanelBBars[len(result.RollingEight.PanelBBars)-1].ChildIndex
+	if result.RollingEight.RollingPaths[0].ChildIndex <= lastBarIndex ||
+		result.RollingEight.RollingMarkers[0].ChildIndex <= result.RollingEight.RollingPaths[0].ChildIndex {
+		t.Errorf("rolling draw order paths=%+v markers=%+v last bar=%d; want bars, path, markers",
+			result.RollingEight.RollingPaths, result.RollingEight.RollingMarkers, lastBarIndex)
+	}
+
+	wantCountTicks := map[string]float64{
+		"0":   durationsRendererConstant(t, "DURATIONS_COUNT_BOTTOM") + durationsRendererConstant(t, "DURATIONS_TICK_BASELINE_DROP"),
+		"2.5": (durationsRendererConstant(t, "DURATIONS_COUNT_TOP")+durationsRendererConstant(t, "DURATIONS_COUNT_BOTTOM"))/2 + durationsRendererConstant(t, "DURATIONS_TICK_BASELINE_DROP"),
+		"5":   durationsRendererConstant(t, "DURATIONS_COUNT_TOP") + durationsRendererConstant(t, "DURATIONS_TICK_BASELINE_DROP"),
+	}
+	if len(result.RollingEight.CountTicks) != len(wantCountTicks) {
+		t.Fatalf("Panel C ticks = %+v, want zero, exact midpoint, and peak", result.RollingEight.CountTicks)
+	}
+	for _, tick := range result.RollingEight.CountTicks {
+		wantY, exists := wantCountTicks[tick.Text]
+		if !exists || math.Abs(tick.Y-wantY) > 0.01 {
+			t.Errorf("Panel C tick %q at %.2f, want exact tick map %v", tick.Text, tick.Y, wantCountTicks)
+		}
+	}
+	if len(result.RollingEight.CountGridlines) != 1 ||
+		math.Abs(result.RollingEight.CountGridlines[0].Y-(durationsRendererConstant(t, "DURATIONS_COUNT_TOP")+durationsRendererConstant(t, "DURATIONS_COUNT_BOTTOM"))/2) > 0.01 {
+		t.Errorf("Panel C midpoint gridlines = %+v, want one at exact half height", result.RollingEight.CountGridlines)
+	}
+}
+
+func TestJavaScriptBehaviorDurationsWindowsProjectOneSharedRealTimeDomain(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+
+	completionInstants := []time.Time{
+		time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 5, 27, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 7, 26, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 11, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC),
+	}
+	fixtureTickets := make([]*RequestTicket, 0, len(completionInstants))
+	for completionIndex, completedAt := range completionInstants {
+		fixtureTickets = append(fixtureTickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", completionIndex+1),
+			"B",
+			completedAt.Add(-10*time.Minute).Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		))
+	}
+	fixtureBoard := &Board{
+		GeneratedAt: time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC),
+		AllRequests: fixtureTickets,
+	}
+	generatedData, buildError := buildGeneratedBoardData(fixtureBoard)
+	if buildError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", buildError)
+	}
+	boardDataJSON, encodeError := json.Marshal(generatedData)
+	if encodeError != nil {
+		t.Fatalf("encode board payload: %v", encodeError)
+	}
+
+	probeDriver := `
+function renderedWindow(windowName) {
+  durationsStubHosts["durations-chart"] = makeStubNode("div");
+  durationsStubHosts["durations-summary"] = makeStubNode("p");
+  durationsStubHosts["durations-readout"] = makeStubNode("p");
+  durationsStubHosts["durations-table-body"] = makeStubNode("tbody");
+  setDurationsWindow(windowName);
+  renderDurationsView();
+  var markCentres = [], panelBBarCentres = [], panelCBars = 0;
+  function walkDrawnNodes(parentNode) {
+    (parentNode.children || []).forEach(function (childNode) {
+      var attributes = childNode.attributes || {};
+      var nodeClass = String(attributes["class"] || "");
+      if (childNode.stubName === "circle" && nodeClass.indexOf("durations-mark") !== -1) {
+        markCentres.push(Number(attributes.cx));
+      }
+      if (childNode.stubName === "rect" && nodeClass === "durations-bar") {
+        panelBBarCentres.push(Number(attributes.x) + Number(attributes.width) / 2);
+      }
+      if (childNode.stubName === "rect" && nodeClass.indexOf("durations-bar-count") !== -1) {
+        panelCBars += 1;
+      }
+      walkDrawnNodes(childNode);
+    });
+  }
+  var svg = durationsStubHosts["durations-chart"].children[0];
+  walkDrawnNodes(svg);
+  return {
+    summary: durationsStubHosts["durations-summary"].textContent,
+    ariaLabel: svg.attributes["aria-label"],
+    markCentres: markCentres,
+    panelBBarCentres: panelBBarCentres,
+    panelCBars: panelCBars,
+    tableRows: durationsStubHosts["durations-table-body"].children.length
+  };
+}
+process.stdout.write(JSON.stringify({
+  last30: renderedWindow("30"),
+  last90: renderedWindow("90"),
+  all: renderedWindow("all")
+}));
+`
+	javascriptProbe := durationsRenderDomStubPreamble +
+		"var boardData = " + string(boardDataJSON) + ";\n" +
+		string(rendererFragment) +
+		probeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "Durations projected windows", javascriptProbe)
+
+	type renderedWindow struct {
+		Summary          string    `json:"summary"`
+		AriaLabel        string    `json:"ariaLabel"`
+		MarkCentres      []float64 `json:"markCentres"`
+		PanelBBarCentres []float64 `json:"panelBBarCentres"`
+		PanelCBars       int       `json:"panelCBars"`
+		TableRows        int       `json:"tableRows"`
+	}
+	var result struct {
+		Last30 renderedWindow `json:"last30"`
+		Last90 renderedWindow `json:"last90"`
+		All    renderedWindow `json:"all"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode projected Durations windows: %v (output starts %q)",
+			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+
+	for _, windowCase := range []struct {
+		name          string
+		window        renderedWindow
+		wantCount     int
+		wantStartDate string
+		wantEndDate   string
+	}{
+		{name: "Last 30 days", window: result.Last30, wantCount: 5, wantStartDate: "26 Jul", wantEndDate: "25 Aug"},
+		{name: "Last 90 days", window: result.Last90, wantCount: 7, wantStartDate: "27 May", wantEndDate: "25 Aug"},
+		{name: "All history", window: result.All, wantCount: 8, wantStartDate: "1 Apr", wantEndDate: "25 Aug"},
+	} {
+		if len(windowCase.window.MarkCentres) != windowCase.wantCount ||
+			windowCase.window.TableRows != windowCase.wantCount ||
+			len(windowCase.window.PanelBBarCentres) != windowCase.wantCount ||
+			windowCase.window.PanelCBars != windowCase.wantCount {
+			t.Errorf("%s counts = marks %d, table %d, Panel B %d, Panel C %d; want %d projected samples/days on every surface",
+				windowCase.name, len(windowCase.window.MarkCentres), windowCase.window.TableRows,
+				len(windowCase.window.PanelBBarCentres), windowCase.window.PanelCBars, windowCase.wantCount)
+		}
+		for _, surfaceCopy := range []string{windowCase.window.Summary, windowCase.window.AriaLabel} {
+			for _, requiredText := range []string{windowCase.name, windowCase.wantStartDate, windowCase.wantEndDate, "end exclusive", fmt.Sprintf("%d archived REQ", windowCase.wantCount)} {
+				if !strings.Contains(surfaceCopy, requiredText) {
+					t.Errorf("%s accessibility copy %q is missing %q", windowCase.name, surfaceCopy, requiredText)
+				}
+			}
+		}
+	}
+
+	marginLeft := durationsRendererConstant(t, "DURATIONS_MARGIN_LEFT")
+	plotWidth := durationsRendererConstant(t, "DURATIONS_VIEW_WIDTH") - marginLeft - durationsRendererConstant(t, "DURATIONS_MARGIN_RIGHT")
+	firstDayRight := marginLeft + plotWidth/30
+	if result.Last30.MarkCentres[0] < marginLeft || result.Last30.MarkCentres[0] > firstDayRight {
+		t.Errorf("Last 30 days left-boundary sample x=%.2f, want inside first day slot [%.2f, %.2f]", result.Last30.MarkCentres[0], marginLeft, firstDayRight)
+	}
+	firstDayGap := result.Last30.PanelBBarCentres[2] - result.Last30.PanelBBarCentres[1]
+	secondDayGap := result.Last30.PanelBBarCentres[3] - result.Last30.PanelBBarCentres[2]
+	if math.Abs(firstDayGap-secondDayGap) > 0.11 || firstDayGap <= 0 {
+		t.Errorf("equal UTC-day gaps draw %.2f and %.2f units apart, want equal positive affine spacing", firstDayGap, secondDayGap)
+	}
+}
+
+// durationsRenderProbeDriver renders the fixture board twice and reports every
+// drawn bar's x-interval, the slowest-day annotation's anchor x (the only
+// mid-anchored text at the annotation baseline), and every Panel A mark centre
+// in draw order. Two renders make deterministic jitter a directly observed
+// property instead of an inference from one set of coordinates.
 const durationsRenderProbeDriver = `
-renderDurationsView();
-var drawnBars = [], drawnAnnotationXs = [], drawnMarkCxs = [];
-function walkDrawnNodes(parentNode) {
+function captureDurationsGeometry() {
+  var drawnBars = [], drawnAnnotationXs = [], drawnMarkCxs = [];
+  function walkDrawnNodes(parentNode) {
   (parentNode.children || []).forEach(function (childNode) {
     var attributes = childNode.attributes || {};
     if (childNode.stubName === "rect" && String(attributes["class"] || "").indexOf("durations-bar") !== -1) {
       drawnBars.push({ class: attributes["class"], x: Number(attributes.x), width: Number(attributes.width) });
     }
-    if (childNode.stubName === "circle") {
+    if (childNode.stubName === "circle" && String(attributes["class"] || "").indexOf("durations-mark") !== -1) {
       drawnMarkCxs.push(Number(attributes.cx));
     }
     if (childNode.stubName === "text" && attributes["text-anchor"] === "middle" &&
@@ -2379,9 +2805,22 @@ function walkDrawnNodes(parentNode) {
     }
     walkDrawnNodes(childNode);
   });
+  }
+  walkDrawnNodes(durationsStubHosts["durations-chart"]);
+  return { bars: drawnBars, annotationXs: drawnAnnotationXs, markCxs: drawnMarkCxs };
 }
-walkDrawnNodes(durationsStubHosts["durations-chart"]);
-process.stdout.write(JSON.stringify({ bars: drawnBars, annotationXs: drawnAnnotationXs, markCxs: drawnMarkCxs }));
+renderDurationsView();
+var firstGeometry = captureDurationsGeometry();
+durationsStubHosts["durations-chart"].children = [];
+durationsStubHosts["durations-table-body"].children = [];
+renderDurationsView();
+var secondGeometry = captureDurationsGeometry();
+process.stdout.write(JSON.stringify({
+  bars: secondGeometry.bars,
+  annotationXs: secondGeometry.annotationXs,
+  markCxs: secondGeometry.markCxs,
+  firstMarkCxs: firstGeometry.markCxs
+}));
 `
 
 // durationsDayCountFixtureTickets builds dayCount active days of archived REQs.
@@ -2420,10 +2859,10 @@ func durationsDayCountFixtureTickets(dayCount int) []*RequestTicket {
 // This drives the REAL renderDurationsView over a stub DOM at one, two,
 // fourteen and four hundred active days and asserts, from the drawn attributes:
 // every Panel B and C bar inside the plot area, exactly one slowest-day
-// annotation anchored inside it, and every Panel A mark at the x the Go-side
-// label planner assumed. That last assertion is the drift pin: the renderer's
-// axis domain and durations.go's durationLabelTimeRange must stay one
-// definition, and it fails in whichever direction either side moves alone.
+// annotation anchored inside it, and every Panel A mark inside its own UTC-day
+// slot. REQ-349 intentionally replaces exact completion-instant x with stable
+// within-day jitter, so the old exact-x assertion would pin the defect. The
+// bounds still hold the renderer's axis domain against the Go-side definition.
 func TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot(t *testing.T) {
 	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
 	if readError != nil {
@@ -2455,6 +2894,7 @@ func TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot(t *testing.T) {
 			javascriptProbe := durationsRenderDomStubPreamble +
 				"var boardData = { durations: " + string(durationsJson) + " };\n" +
 				string(rendererFragment) +
+				"setDurationsWindow(\"all\");\n" +
 				durationsRenderProbeDriver
 			probeOutput := runJavaScriptBehaviorProbe(t,
 				fmt.Sprintf("durations day buckets (%d active days)", dayCount), javascriptProbe)
@@ -2467,6 +2907,7 @@ func TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot(t *testing.T) {
 				} `json:"bars"`
 				AnnotationXs []float64 `json:"annotationXs"`
 				MarkCxs      []float64 `json:"markCxs"`
+				FirstMarkCxs []float64 `json:"firstMarkCxs"`
 			}
 			if decodeError := json.Unmarshal(probeOutput, &drawn); decodeError != nil {
 				t.Fatalf("decode drawn durations geometry: %v (output starts %q)",
@@ -2510,7 +2951,9 @@ func TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot(t *testing.T) {
 					annotationX, marginLeft, plotRight)
 			}
 
-			// (4) Every Panel A mark at the x the Go-side label planner assumed.
+			// (4) Every Panel A mark stays inside its own UTC day slot. This pins
+			// the shared whole-day axis domain while allowing the intentional
+			// deterministic jitter within that slot.
 			rangeStart, rangeEnd, hasRange := durationLabelTimeRange(aggregate.Samples)
 			if !hasRange {
 				t.Fatal("fixture produced no label time range")
@@ -2519,13 +2962,197 @@ func TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot(t *testing.T) {
 				t.Fatalf("drew %d marks for %d samples", len(drawn.MarkCxs), len(aggregate.Samples))
 			}
 			for sampleIndex, sample := range aggregate.Samples {
-				plannedMarkX := marginLeft + durationLabelPlotX(sample.CompletionTime, rangeStart, rangeEnd)
-				if math.Abs(drawn.MarkCxs[sampleIndex]-plannedMarkX) > 0.06 {
-					t.Errorf("%s mark drawn at x=%.2f but the label planner assumed %.2f — renderer and durations.go no longer share one axis domain",
-						sample.RequestId, drawn.MarkCxs[sampleIndex], plannedMarkX)
+				dayStart := sample.CompletionTime.UTC().Truncate(24 * time.Hour)
+				dayLeft := marginLeft + durationLabelPlotX(dayStart, rangeStart, rangeEnd)
+				dayRight := marginLeft + durationLabelPlotX(dayStart.Add(24*time.Hour), rangeStart, rangeEnd)
+				if drawn.MarkCxs[sampleIndex] < dayLeft-0.06 || drawn.MarkCxs[sampleIndex] > dayRight+0.06 {
+					t.Errorf("%s mark drawn at x=%.2f outside its UTC-day slot [%.2f, %.2f]",
+						sample.RequestId, drawn.MarkCxs[sampleIndex], dayLeft, dayRight)
 				}
 			}
+
+			// (5) The same payload renders to the same jittered coordinates, and
+			// a busy day uses more than one x instead of restacking every mark.
+			if len(drawn.FirstMarkCxs) != len(drawn.MarkCxs) {
+				t.Fatalf("first render drew %d marks and second drew %d", len(drawn.FirstMarkCxs), len(drawn.MarkCxs))
+			}
+			busyDaySpread := 0.0
+			for sampleIndex := range drawn.MarkCxs {
+				if math.Abs(drawn.FirstMarkCxs[sampleIndex]-drawn.MarkCxs[sampleIndex]) > 0.001 {
+					t.Errorf("mark %d moved from x=%.2f to x=%.2f across identical renders",
+						sampleIndex, drawn.FirstMarkCxs[sampleIndex], drawn.MarkCxs[sampleIndex])
+				}
+				if sampleIndex%2 == 1 {
+					busyDaySpread = math.Max(busyDaySpread, math.Abs(drawn.MarkCxs[sampleIndex]-drawn.MarkCxs[sampleIndex-1]))
+				}
+			}
+			if busyDaySpread < 0.1 {
+				t.Errorf("busy-day marks have only %.2f units of x spread; jitter is degenerate", busyDaySpread)
+			}
 		})
+	}
+}
+
+// REQ-349: Panel A needs enough vertical resolution for ordinary work, enough
+// horizontal resolution for a busy day, and a quiet daily distribution behind
+// the individual REQs. This drives the complete renderer so the assertions pin
+// SVG output and draw order rather than helpers that could be left unwired.
+func TestJavaScriptBehaviorDurationsPanelASpreadAndDailyDistribution(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+
+	dayStart := time.Date(2026, 8, 10, 9, 0, 0, 0, time.UTC)
+	fixtureMinutes := []float64{0, 5, 15, 30, 45, 60, 300, -20}
+	fixtureTickets := make([]*RequestTicket, 0, len(fixtureMinutes)+2)
+	for sampleIndex, minutes := range fixtureMinutes {
+		completedAt := dayStart.Add(time.Duration(sampleIndex) * time.Hour)
+		claimedAt := completedAt.Add(-time.Duration(minutes * float64(time.Minute)))
+		fixtureTickets = append(fixtureTickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", sampleIndex+1), "B",
+			claimedAt.Format(time.RFC3339), completedAt.Format(time.RFC3339),
+		))
+	}
+	// A missing-route sample proves that the lower ordinary opacity does not
+	// erase the outlined unknown category.
+	unknownCompletedAt := dayStart.Add(24*time.Hour + 2*time.Hour)
+	fixtureTickets = append(fixtureTickets, durationTicket(
+		"REQ-901", "", unknownCompletedAt.Add(-10*time.Minute).Format(time.RFC3339), unknownCompletedAt.Format(time.RFC3339),
+	))
+	thirdDayCompletedAt := dayStart.Add(48*time.Hour + 3*time.Hour)
+	fixtureTickets = append(fixtureTickets, durationTicket(
+		"REQ-902", "A", thirdDayCompletedAt.Add(-20*time.Minute).Format(time.RFC3339), thirdDayCompletedAt.Format(time.RFC3339),
+	))
+
+	aggregate := buildDurationAggregate(fixtureTickets)
+	generatedData, buildError := buildGeneratedBoardData(&Board{AllRequests: fixtureTickets})
+	if buildError != nil {
+		t.Fatalf("build generated board data: %v", buildError)
+	}
+	durationsJSON, encodeError := json.Marshal(generatedData.Durations)
+	if encodeError != nil {
+		t.Fatalf("encode durations payload: %v", encodeError)
+	}
+
+	probeDriver := `
+renderDurationsView();
+var svg = durationsStubHosts["durations-chart"].children[0];
+var ticks = [], circles = [], paths = [];
+(svg.children || []).forEach(function (childNode, childIndex) {
+  var attributes = childNode.attributes || {};
+  if (childNode.stubName === "text" && String(attributes["class"] || "").indexOf("durations-tick") !== -1) {
+    ticks.push({ text: ((childNode.children || [])[0] || {}).textContent || "", x: Number(attributes.x), y: Number(attributes.y) });
+  }
+  if (childNode.stubName === "circle" && String(attributes["class"] || "").indexOf("durations-mark") !== -1) {
+    circles.push({
+      cx: Number(attributes.cx), cy: Number(attributes.cy), opacity: attributes.opacity || "",
+      fill: attributes.fill || "", class: attributes["class"] || "", childIndex: childIndex
+    });
+  }
+  if (childNode.stubName === "path") {
+    paths.push({ class: attributes["class"] || "", d: attributes.d || "", childIndex: childIndex });
+  }
+});
+process.stdout.write(JSON.stringify({ ticks: ticks, circles: circles, paths: paths }));
+`
+	probeOutput := runJavaScriptBehaviorProbe(t, "durations panel A spread and distribution",
+		durationsRenderDomStubPreamble+
+			"var boardData = { durations: "+string(durationsJSON)+" };\n"+
+			string(rendererFragment)+probeDriver)
+
+	var drawn struct {
+		Ticks []struct {
+			Text string  `json:"text"`
+			X    float64 `json:"x"`
+			Y    float64 `json:"y"`
+		} `json:"ticks"`
+		Circles []struct {
+			CX         float64 `json:"cx"`
+			CY         float64 `json:"cy"`
+			Opacity    string  `json:"opacity"`
+			Fill       string  `json:"fill"`
+			Class      string  `json:"class"`
+			ChildIndex int     `json:"childIndex"`
+		} `json:"circles"`
+		Paths []struct {
+			Class      string `json:"class"`
+			D          string `json:"d"`
+			ChildIndex int    `json:"childIndex"`
+		} `json:"paths"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &drawn); decodeError != nil {
+		t.Fatalf("decode panel A geometry: %v (output starts %q)", decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+	if len(drawn.Circles) != len(aggregate.Samples) {
+		t.Fatalf("drew %d marks for %d samples", len(drawn.Circles), len(aggregate.Samples))
+	}
+
+	// The tick set is exact, including the new 5-minute foothold. Its y positions
+	// follow sqrt(minutes / 60), not the old linear scale.
+	panelATicks := map[string]float64{}
+	for _, tick := range drawn.Ticks {
+		if math.Abs(tick.X-(durationsRendererConstant(t, "DURATIONS_MARGIN_LEFT")-8)) < 0.01 &&
+			tick.Y <= durationsRendererConstant(t, "DURATIONS_MAIN_BOTTOM")+durationsRendererConstant(t, "DURATIONS_TICK_BASELINE_DROP")+0.01 {
+			panelATicks[tick.Text] = tick.Y - durationsRendererConstant(t, "DURATIONS_TICK_BASELINE_DROP")
+		}
+	}
+	wantTickMinutes := []float64{0, 5, 15, 30, 45, 60}
+	if len(panelATicks) != len(wantTickMinutes)+1 { // plus the separate 60+ overflow-lane tick
+		t.Fatalf("Panel A ticks = %v, want 60+ and exactly 0, 5, 15, 30, 45, 60", panelATicks)
+	}
+	mainTop := durationsRendererConstant(t, "DURATIONS_MAIN_TOP")
+	mainBottom := durationsRendererConstant(t, "DURATIONS_MAIN_BOTTOM")
+	for _, minutes := range wantTickMinutes {
+		label := strconv.FormatFloat(minutes, 'f', -1, 64)
+		gotY, exists := panelATicks[label]
+		if !exists {
+			t.Errorf("Panel A has no %s-minute tick", label)
+			continue
+		}
+		wantY := mainBottom - math.Sqrt(minutes/60)*(mainBottom-mainTop)
+		if math.Abs(gotY-wantY) > 0.01 {
+			t.Errorf("%s-minute tick y=%.3f, want sqrt-scale y=%.3f", label, gotY, wantY)
+		}
+	}
+
+	ordinaryMark := drawn.Circles[1]
+	if ordinaryMark.Opacity == "" || ordinaryMark.Opacity == "1" {
+		t.Errorf("ordinary mark opacity = %q, want a stated lower opacity", ordinaryMark.Opacity)
+	}
+	reversedMark := drawn.Circles[7]
+	if reversedMark.Fill != "var(--durations-critical)" || reversedMark.Opacity != "" {
+		t.Errorf("reversed mark fill/opacity = %q / %q, want undimmed critical red", reversedMark.Fill, reversedMark.Opacity)
+	}
+	unknownMark := drawn.Circles[8]
+	if !strings.Contains(unknownMark.Class, "durations-mark-unknown") || unknownMark.Opacity != "" {
+		t.Errorf("unknown mark class/opacity = %q / %q, want an undimmed outlined unknown", unknownMark.Class, unknownMark.Opacity)
+	}
+
+	if len(drawn.Paths) != 2 {
+		t.Fatalf("drew %d Panel A distribution paths, want one p25-p75 ribbon and one median line: %+v", len(drawn.Paths), drawn.Paths)
+	}
+	pathByClass := map[string]struct {
+		D          string
+		ChildIndex int
+	}{}
+	for _, path := range drawn.Paths {
+		pathByClass[path.Class] = struct {
+			D          string
+			ChildIndex int
+		}{path.D, path.ChildIndex}
+		if path.D == "" || strings.Contains(path.D, "NaN") || strings.Contains(path.D, "Infinity") {
+			t.Errorf("%q path has invalid geometry %q", path.Class, path.D)
+		}
+	}
+	ribbon, ribbonExists := pathByClass["durations-quantile-ribbon"]
+	median, medianExists := pathByClass["durations-quantile-median"]
+	if !ribbonExists || !medianExists {
+		t.Fatalf("distribution path classes = %v, want ribbon and median", pathByClass)
+	}
+	if ribbon.ChildIndex >= drawn.Circles[0].ChildIndex || median.ChildIndex >= drawn.Circles[0].ChildIndex {
+		t.Errorf("distribution paths at child indexes %d/%d are not behind first circle at %d",
+			ribbon.ChildIndex, median.ChildIndex, drawn.Circles[0].ChildIndex)
 	}
 }
 
@@ -2731,6 +3358,142 @@ process.stdout.write(JSON.stringify({
 	}
 }
 
+// REQ-347 changes Panel A's fill only. This drives the complete renderer across
+// each selectable channel, because a helper-only test could keep the selector
+// green while the circles still read sample.route. The fixture deliberately has
+// more URs than the categorical palette, absent UR/domain values, and a reversed
+// stamp: the overflow bucket and unknown state must be named while the critical
+// stamp treatment remains stronger than any chosen colour channel.
+func TestJavaScriptBehaviorDurationsColourChannelsNameAndRecolourPanelA(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+
+	fixtureTickets := make([]*RequestTicket, 0, 16)
+	fixtureStart := time.Date(2026, 8, 10, 9, 0, 0, 0, time.UTC)
+	for ticketIndex := 0; ticketIndex < 14; ticketIndex++ {
+		completedAt := fixtureStart.Add(time.Duration(ticketIndex) * time.Hour)
+		ticket := durationTicket(
+			fmt.Sprintf("REQ-%03d", ticketIndex+1),
+			"B",
+			completedAt.Add(-12*time.Minute).Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		)
+		ticket.UserRequestId = fmt.Sprintf("UR-%03d", ticketIndex+1)
+		ticket.Domain = []string{"frontend", "backend", "testing"}[ticketIndex%3]
+		fixtureTickets = append(fixtureTickets, ticket)
+	}
+	missingTicket := durationTicket("REQ-901", "", fixtureStart.Add(15*time.Hour).Format(time.RFC3339), fixtureStart.Add(15*time.Hour+12*time.Minute).Format(time.RFC3339))
+	fixtureTickets = append(fixtureTickets, missingTicket)
+	reversedTicket := durationTicket("REQ-902", "B", fixtureStart.Add(17*time.Hour).Format(time.RFC3339), fixtureStart.Add(16*time.Hour).Format(time.RFC3339))
+	reversedTicket.UserRequestId = "UR-015"
+	reversedTicket.Domain = "frontend"
+	fixtureTickets = append(fixtureTickets, reversedTicket)
+
+	fixtureBoard := &Board{
+		GeneratedAt: time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC),
+		AllRequests: fixtureTickets,
+	}
+	generatedData, buildError := buildGeneratedBoardData(fixtureBoard)
+	if buildError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", buildError)
+	}
+	boardDataJSON, encodeError := json.Marshal(generatedData)
+	if encodeError != nil {
+		t.Fatalf("encode board payload: %v", encodeError)
+	}
+
+	probeDriver := `
+function renderedChannel(colourChannel) {
+  durationsStubHosts["durations-chart"] = makeStubNode("div");
+  durationsStubHosts["durations-colour-legend"] = makeStubNode("p");
+  setDurationsColourChannel(colourChannel);
+  renderDurationsView();
+  var marks = [];
+  function walkDrawnNodes(parentNode) {
+    (parentNode.children || []).forEach(function (childNode) {
+      var attributes = childNode.attributes || {};
+      if (childNode.stubName === "circle" && String(attributes["class"] || "").indexOf("durations-mark") !== -1) {
+        marks.push({ fill: attributes.fill || "", class: attributes["class"] || "" });
+      }
+      walkDrawnNodes(childNode);
+    });
+  }
+  walkDrawnNodes(durationsStubHosts["durations-chart"]);
+  return {
+    marks: marks,
+    legend: durationsStubHosts["durations-colour-legend"].textContent,
+    ariaLabel: (durationsStubHosts["durations-chart"].children[0] || { attributes: {} }).attributes["aria-label"] || ""
+  };
+}
+process.stdout.write(JSON.stringify({
+  route: renderedChannel("route"),
+  userRequest: renderedChannel("user-request"),
+  domain: renderedChannel("domain")
+}));
+`
+
+	javascriptProbe := durationsRenderDomStubPreamble +
+		"var boardData = " + string(boardDataJSON) + ";\n" +
+		string(rendererFragment) +
+		probeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "durations colour channels", javascriptProbe)
+
+	type drawnMark struct {
+		Fill  string `json:"fill"`
+		Class string `json:"class"`
+	}
+	type renderedChannel struct {
+		Marks     []drawnMark `json:"marks"`
+		Legend    string      `json:"legend"`
+		AriaLabel string      `json:"ariaLabel"`
+	}
+	var rendered struct {
+		Route       renderedChannel `json:"route"`
+		UserRequest renderedChannel `json:"userRequest"`
+		Domain      renderedChannel `json:"domain"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &rendered); decodeError != nil {
+		t.Fatalf("decode rendered colour channels: %v (output starts %q)", decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+
+	if len(rendered.Route.Marks) != len(fixtureTickets) {
+		t.Fatalf("route render drew %d marks for %d fixture samples", len(rendered.Route.Marks), len(fixtureTickets))
+	}
+	if rendered.Route.Marks[0].Fill != "var(--route-b)" {
+		t.Errorf("route is not the default channel: first ordinary mark fill = %q, want route B", rendered.Route.Marks[0].Fill)
+	}
+	if rendered.UserRequest.Marks[0].Fill == rendered.UserRequest.Marks[1].Fill {
+		t.Errorf("two named URs share fill %q before the categorical palette is exhausted", rendered.UserRequest.Marks[0].Fill)
+	}
+	if rendered.UserRequest.Marks[12].Fill != rendered.UserRequest.Marks[13].Fill {
+		t.Errorf("the thirteenth and fourteenth named UR fills %q / %q differ — the stated Other URs bucket must be shared", rendered.UserRequest.Marks[12].Fill, rendered.UserRequest.Marks[13].Fill)
+	}
+	if !strings.Contains(rendered.UserRequest.Legend, "UR") || !strings.Contains(rendered.UserRequest.Legend, "Other URs") || !strings.Contains(rendered.UserRequest.Legend, "No UR recorded") {
+		t.Errorf("UR legend %q does not name its active channel, overflow, and missing-value rule", rendered.UserRequest.Legend)
+	}
+	if !strings.Contains(rendered.Domain.Legend, "Domain") || !strings.Contains(rendered.Domain.Legend, "No domain recorded") {
+		t.Errorf("domain legend %q does not name its active channel and missing-value rule", rendered.Domain.Legend)
+	}
+	if rendered.Domain.Marks[0].Fill == rendered.Domain.Marks[1].Fill {
+		t.Errorf("different named domains share fill %q before the palette is exhausted", rendered.Domain.Marks[0].Fill)
+	}
+	missingMarkIndex := len(fixtureTickets) - 2
+	if !strings.Contains(rendered.UserRequest.Marks[missingMarkIndex].Class, "unknown") || !strings.Contains(rendered.Domain.Marks[missingMarkIndex].Class, "unknown") {
+		t.Errorf("missing UR/domain sample classes = %q / %q, want the visually distinct unknown mark", rendered.UserRequest.Marks[missingMarkIndex].Class, rendered.Domain.Marks[missingMarkIndex].Class)
+	}
+	criticalMarkIndex := len(fixtureTickets) - 1
+	for channelName, channel := range map[string]renderedChannel{"route": rendered.Route, "user-request": rendered.UserRequest, "domain": rendered.Domain} {
+		if channel.Marks[criticalMarkIndex].Fill != "var(--durations-critical)" {
+			t.Errorf("%s colour channel changed reversed-stamp fill to %q", channelName, channel.Marks[criticalMarkIndex].Fill)
+		}
+		if !strings.Contains(channel.AriaLabel, "coloured by ") {
+			t.Errorf("%s chart aria label %q does not name the active colour channel", channelName, channel.AriaLabel)
+		}
+	}
+}
+
 func floatPointer(value float64) *float64 {
 	return &value
 }
@@ -2835,20 +3598,33 @@ process.stdout.write(JSON.stringify({
 // in a screenshot: a wrong slice shows blank strips only while scrolling fast.
 func TestJavaScriptBehaviorTimelineVirtualizesRowsAtScale(t *testing.T) {
 	indexHtml := generateLiveSite(t)
-	javascriptProbe := timelineProbePreamble(t, "TIMELINE_ROW_HEIGHT", "TIMELINE_OVERSCAN_ROWS") +
-		sliceBalancedBlockAfter(t, indexHtml, "function timelineVisibleRowRange(") + `
-var rowCount = 560;
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_ROW_HEIGHT", "TIMELINE_GROUP_HEADER_HEIGHT", "TIMELINE_OVERSCAN_ROWS") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineFlattenGroups(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineVisibleDisplayRange(") + `
+var groups = [];
+var requestIndex = 0;
+for (var groupIndex = 0; groupIndex < 80; groupIndex++) {
+  var members = [];
+  for (var memberIndex = 0; memberIndex < 7; memberIndex++) {
+    members.push({ row: { id: "REQ-" + requestIndex }, rowIndex: requestIndex });
+    requestIndex++;
+  }
+  groups.push({ label: "UR-" + groupIndex, members: members });
+}
+var layout = timelineFlattenGroups(groups);
+var displayCount = layout.items.length;
 var viewportHeight = 600;
-var atTop = timelineVisibleRowRange(0, viewportHeight, rowCount);
-var midway = timelineVisibleRowRange(rowCount * TIMELINE_ROW_HEIGHT / 2, viewportHeight, rowCount);
-var atBottom = timelineVisibleRowRange(rowCount * TIMELINE_ROW_HEIGHT, viewportHeight, rowCount);
+var atTop = timelineVisibleDisplayRange(layout.items, 0, viewportHeight);
+var midway = timelineVisibleDisplayRange(layout.items, layout.height / 2, viewportHeight);
+var atBottom = timelineVisibleDisplayRange(layout.items, layout.height, viewportHeight);
 process.stdout.write(JSON.stringify({
-  atTopCount: atTop.lastRow - atTop.firstRow,
-  midwayCount: midway.lastRow - midway.firstRow,
+  atTopCount: atTop.lastDisplay - atTop.firstDisplay,
+  midwayCount: midway.lastDisplay - midway.firstDisplay,
   midwayCoversScrollPosition:
-    midway.firstRow <= rowCount / 2 && midway.lastRow > rowCount / 2,
-  atBottomLastRow: atBottom.lastRow,
-  rowCount: rowCount
+    layout.items[midway.firstDisplay].topPx <= layout.height / 2 &&
+    layout.items[midway.lastDisplay - 1].topPx + layout.items[midway.lastDisplay - 1].height > layout.height / 2,
+  atBottomLastRow: atBottom.lastDisplay,
+  rowCount: displayCount
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "timeline virtualization", javascriptProbe)
@@ -2862,22 +3638,21 @@ process.stdout.write(JSON.stringify({
 	if decodeError := json.Unmarshal(probeOutput, &sliceResult); decodeError != nil {
 		t.Fatalf("decode timeline virtualization behavior: %v (output %q)", decodeError, probeOutput)
 	}
-	// A 600px viewport at the shipped row height holds well under 60 rows; the
-	// point of the assertion is that the slice is bounded by the VIEWPORT and
-	// never by the row count, which is what a non-virtualized render would do.
+	// A 600px viewport holds well under a quarter of the flattened headers and
+	// members; the slice is bounded by the VIEWPORT and never by archive size.
 	if sliceResult.AtTopCount >= sliceResult.RowCount/4 {
-		t.Fatalf("a 600px viewport rendered %d of %d rows; the slice must be viewport-bounded",
+		t.Fatalf("a 600px viewport rendered %d of %d group/member items; the slice must be viewport-bounded",
 			sliceResult.AtTopCount, sliceResult.RowCount)
 	}
-	if sliceResult.MidwayCount != sliceResult.AtTopCount {
-		t.Fatalf("slice size changed with scroll position (%d at top, %d midway); it must not",
-			sliceResult.AtTopCount, sliceResult.MidwayCount)
+	if sliceResult.MidwayCount >= sliceResult.RowCount/4 {
+		t.Fatalf("a midway 600px viewport rendered %d of %d group/member items; mixed fixed heights may vary the count, but the slice must stay viewport-bounded",
+			sliceResult.MidwayCount, sliceResult.RowCount)
 	}
 	if !sliceResult.MidwayCoversScrollPosition {
 		t.Fatal("the midway slice does not contain the row at the scroll position")
 	}
 	if sliceResult.AtBottomLastRow != sliceResult.RowCount {
-		t.Fatalf("scrolled past the end the slice reached row %d, want it clamped to %d",
+		t.Fatalf("scrolled past the end the slice reached display item %d, want it clamped to %d",
 			sliceResult.AtBottomLastRow, sliceResult.RowCount)
 	}
 }
@@ -2945,6 +3720,7 @@ function idsInSpan(rowList, projectedById, spanStartMs, spanEndMs) {
   return timelineRowsInWindow(rowList, extents, spanStartMs, spanEndMs)
     .map(function (row) { return row.id; });
 }
+
 function idsInWindow(rowList, projectedById) {
   return idsInSpan(rowList, projectedById, windowStartMs, windowEndMs);
 }
@@ -3147,6 +3923,195 @@ process.stdout.write(JSON.stringify({
 // has to hold is that typing cannot reach a window the other three cannot —
 // same floor, same ceiling, same edge clamp — because a control with its own
 // clamp is how a view starts disagreeing with itself.
+func TestTimelineRendererGroupsTheWindowedRowsByUserRequest(t *testing.T) {
+	rendererBytes, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
+	if readError != nil {
+		t.Fatalf("read web/board-timeline.js: %v", readError)
+	}
+	if !strings.Contains(string(rendererBytes), "function timelineGroupWindowRows(") {
+		t.Error("the Timeline has no window-scoped user-request grouping function")
+	}
+}
+
+func TestJavaScriptBehaviorTimelineUserRequestGroupsUseOnlyListedMembers(t *testing.T) {
+	indexHTML := generateLiveSite(t)
+	javascriptProbe := rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_ROW_HEIGHT") + "\n" +
+		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_GROUP_HEADER_HEIGHT") + "\n" +
+		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_UNKNOWN_USER_REQUEST_NAME") + "\n" +
+		sliceBalancedBlockAfter(t, indexHTML, "function timelineFormatSpanMinutes(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHTML, "function timelineGroupWindowRows(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHTML, "function timelineGroupDetailText(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHTML, "function timelineGroupMetricText(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHTML, "function timelineFlattenGroups(") + `
+var nowMs = Date.UTC(2026, 7, 24, 14, 0);
+var windowStartMs = Date.UTC(2026, 7, 24, 7, 0);
+var windowEndMs = Date.UTC(2026, 7, 24, 15, 0);
+var rows = [
+  { id: "REQ-505", claimedTime: "2026-08-24T10:00:00Z", completedTime: "2026-08-24T12:00:00Z", hasWork: true },
+  { id: "REQ-504", completedTime: "2026-08-24T12:30:00Z", hasWork: false },
+  { id: "REQ-503", claimedTime: "2026-08-24T08:00:00Z", hasWork: true, workOpen: true },
+  { id: "REQ-502", claimedTime: "2026-08-24T09:00:00Z", completedTime: "2026-08-24T13:00:00Z", hasWork: true },
+  { id: "REQ-501", waitOpen: true, hasWork: false }
+];
+var requestsById = {
+  "REQ-505": { userRequestId: "UR-202" },
+  "REQ-504": { userRequestId: "" },
+  "REQ-503": { userRequestId: "UR-101" },
+  "REQ-502": { userRequestId: "UR-202" },
+  "REQ-501": { userRequestId: "" }
+};
+var samples = [
+  { id: "REQ-505", wallMinutes: 120 },
+  { id: "REQ-504", wallMinutes: 20 },
+  { id: "REQ-503", wallMinutes: 360, excludedReason: "paused" },
+  { id: "REQ-502", wallMinutes: -10, excludedReason: "reversed" }
+];
+function summarize(groups) {
+  return groups.map(function (group) {
+    return {
+      label: group.label,
+      ids: group.members.map(function (member) { return member.row.id; }),
+      elapsedMinutes: group.elapsedMinutes,
+      earliestClaimMs: group.earliestClaimMs,
+      latestCompletionMs: group.latestCompletionMs,
+      running: group.running,
+      acceptedWorkMinutes: group.acceptedWorkMinutes,
+      acceptedWorkCount: group.acceptedWorkCount,
+      excludedReasons: group.excludedReasons,
+      unavailableWorkCount: group.unavailableWorkCount,
+      unresolvedCompletionCount: group.unresolvedCompletionCount,
+      elapsedUnavailableReason: group.elapsedUnavailableReason,
+      metricText: timelineGroupMetricText(group)
+    };
+  });
+}
+var allGroups = timelineGroupWindowRows(
+  rows, requestsById, samples, nowMs, windowStartMs, windowEndMs);
+var narrowRows = [
+  { id: "REQ-601", claimedTime: "2026-08-24T09:00:00Z", completedTime: "2026-08-24T13:00:00Z", hasWork: true }
+];
+var narrowGroups = timelineGroupWindowRows(
+  narrowRows,
+  { "REQ-601": { userRequestId: "UR-NARROW" } },
+  [{ id: "REQ-601", wallMinutes: 240 }],
+  nowMs,
+  Date.UTC(2026, 7, 24, 10, 0),
+  Date.UTC(2026, 7, 24, 12, 0)
+);
+var unresolvedRows = [
+  { id: "REQ-701", claimedTime: "2026-08-24T10:00:00Z", hasWork: true }
+];
+var mixedRows = [
+  { id: "REQ-702", claimedTime: "2026-08-24T09:00:00Z", completedTime: "2026-08-24T11:00:00Z", hasWork: true },
+  unresolvedRows[0]
+];
+var unresolvedRequests = {
+  "REQ-701": { userRequestId: "UR-ENDPOINT" },
+  "REQ-702": { userRequestId: "UR-ENDPOINT" }
+};
+process.stdout.write(JSON.stringify({
+  all: summarize(allGroups),
+  flattenedRowIndexes: timelineFlattenGroups(allGroups).items
+    .filter(function (item) { return item.kind === "request"; })
+    .map(function (item) { return item.rowIndex; }),
+  windowSubset: summarize(timelineGroupWindowRows(
+    [rows[3], rows[4]], requestsById, samples, nowMs, windowStartMs, windowEndMs)),
+  narrow: summarize(narrowGroups),
+  unresolved: summarize(timelineGroupWindowRows(
+    unresolvedRows, unresolvedRequests, [], nowMs, windowStartMs, windowEndMs)),
+  mixedUnresolved: summarize(timelineGroupWindowRows(
+    mixedRows, unresolvedRequests, [{ id: "REQ-702", wallMinutes: 120 }],
+    nowMs, windowStartMs, windowEndMs))
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline user-request grouping", javascriptProbe)
+	type renderedGroup struct {
+		Label                     string         `json:"label"`
+		Ids                       []string       `json:"ids"`
+		ElapsedMinutes            *float64       `json:"elapsedMinutes"`
+		EarliestClaimMS           float64        `json:"earliestClaimMs"`
+		LatestCompletionMS        float64        `json:"latestCompletionMs"`
+		Running                   bool           `json:"running"`
+		AcceptedWorkMinutes       float64        `json:"acceptedWorkMinutes"`
+		AcceptedWorkCount         int            `json:"acceptedWorkCount"`
+		ExcludedReasons           map[string]int `json:"excludedReasons"`
+		UnavailableWorkCount      int            `json:"unavailableWorkCount"`
+		UnresolvedCompletionCount int            `json:"unresolvedCompletionCount"`
+		ElapsedUnavailableReason  string         `json:"elapsedUnavailableReason"`
+		MetricText                string         `json:"metricText"`
+	}
+	var groupingResult struct {
+		All                 []renderedGroup `json:"all"`
+		FlattenedRowIndexes []int           `json:"flattenedRowIndexes"`
+		WindowSubset        []renderedGroup `json:"windowSubset"`
+		Narrow              []renderedGroup `json:"narrow"`
+		Unresolved          []renderedGroup `json:"unresolved"`
+		MixedUnresolved     []renderedGroup `json:"mixedUnresolved"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &groupingResult); decodeError != nil {
+		t.Fatalf("decode timeline user-request grouping: %v (output %q)", decodeError, probeOutput)
+	}
+	if got := []string{groupingResult.All[0].Label, groupingResult.All[1].Label, groupingResult.All[2].Label}; !reflect.DeepEqual(got, []string{"UR-202", "UR-101", "No UR recorded"}) {
+		t.Errorf("group order = %v, want first-seen URs with the no-UR group last", got)
+	}
+	if got := groupingResult.All[0].Ids; !reflect.DeepEqual(got, []string{"REQ-505", "REQ-502"}) {
+		t.Errorf("UR-202 members = %v, want newest-first input order", got)
+	}
+	if !reflect.DeepEqual(groupingResult.FlattenedRowIndexes, []int{0, 3, 2, 1, 4}) {
+		t.Errorf("flattened REQ indexes = %v, want grouped display order with headers omitted",
+			groupingResult.FlattenedRowIndexes)
+	}
+	if groupingResult.All[0].ElapsedMinutes == nil || *groupingResult.All[0].ElapsedMinutes != 240 {
+		t.Errorf("closed UR elapsed = %v, want 240 minutes from earliest claim to latest completion",
+			groupingResult.All[0].ElapsedMinutes)
+	}
+	if groupingResult.All[0].AcceptedWorkMinutes != 120 || groupingResult.All[0].AcceptedWorkCount != 1 ||
+		groupingResult.All[0].ExcludedReasons["reversed"] != 1 {
+		t.Errorf("closed UR work verdict = %#v, want one accepted 120-minute sample and one reversed exclusion",
+			groupingResult.All[0])
+	}
+	if !groupingResult.All[1].Running || groupingResult.All[1].ElapsedMinutes == nil ||
+		*groupingResult.All[1].ElapsedMinutes != 360 {
+		t.Errorf("open UR elapsed = %#v, want six hours to the frozen now and running", groupingResult.All[1])
+	}
+	if groupingResult.All[2].ElapsedMinutes != nil {
+		t.Errorf("no-claim group elapsed = %v, want unavailable rather than created_at fallback",
+			*groupingResult.All[2].ElapsedMinutes)
+	}
+	if !groupingResult.All[2].Running {
+		t.Error("the no-claim group contains an open wait but is not visibly classified as running")
+	}
+	if groupingResult.All[2].AcceptedWorkMinutes != 0 || groupingResult.All[2].UnavailableWorkCount != 2 {
+		t.Errorf("no-UR work detail = %#v, want no accepted claim-to-completion work and two unavailable samples",
+			groupingResult.All[2])
+	}
+	if len(groupingResult.WindowSubset) != 2 || len(groupingResult.WindowSubset[0].Ids) != 1 ||
+		len(groupingResult.WindowSubset[1].Ids) != 1 {
+		t.Errorf("window subset grouped %#v; headers must count only the rows passed after windowing",
+			groupingResult.WindowSubset)
+	}
+	if len(groupingResult.Narrow) != 1 || groupingResult.Narrow[0].ElapsedMinutes == nil ||
+		*groupingResult.Narrow[0].ElapsedMinutes != 120 ||
+		groupingResult.Narrow[0].AcceptedWorkMinutes != 120 ||
+		groupingResult.Narrow[0].EarliestClaimMS != float64(time.Date(2026, 8, 24, 10, 0, 0, 0, time.UTC).UnixMilli()) ||
+		groupingResult.Narrow[0].LatestCompletionMS != float64(time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC).UnixMilli()) {
+		t.Errorf("narrow-window group = %#v, want both the 240-minute claim span and work sample clipped to the window's 120 minutes",
+			groupingResult.Narrow)
+	}
+	for caseName, groups := range map[string][]renderedGroup{
+		"isolated": groupingResult.Unresolved,
+		"mixed":    groupingResult.MixedUnresolved,
+	} {
+		if len(groups) != 1 || groups[0].ElapsedMinutes != nil ||
+			groups[0].UnresolvedCompletionCount != 1 ||
+			groups[0].ElapsedUnavailableReason != "completion endpoint unavailable" ||
+			!strings.Contains(groups[0].MetricText, "completion endpoint unavailable") {
+			t.Errorf("%s unresolved-completion group = %#v, want no partial elapsed and an explicit endpoint-unavailable reason",
+				caseName, groups)
+		}
+	}
+}
+
 func TestJavaScriptBehaviorTimelineTypedDatesMoveTheWindow(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS") +
@@ -5805,6 +6770,14 @@ func TestGeneratedBoardDataCarriesVerifyFindingsWithoutTheOnesTheBoardAlreadySho
 		{"do-work/archive/REQ-821-anomaly.md",
 			"---\nid: REQ-821\ntitle: fixture\nstatus: completed\n" +
 				"claimed_at: 2026-08-19T10:00:00Z\ncompleted_at: 2026-08-19T09:00:00Z\n---\n"},
+		// An unrecognized status reaches the verifier but already appears in the
+		// board's Needs input / Blocked strip, so its prose is suppressed.
+		{"do-work/queue/REQ-822-unrecognized-status.md",
+			"---\nid: REQ-822\ntitle: fixture\nstatus: pnding\nuser_request: UR-900\n---\n"},
+		// Structural damage has no separate board strip and must keep reaching the
+		// payload even as unrecognized status is suppressed.
+		{"do-work/queue/REQ-823-missing-user-request.md",
+			"---\nid: REQ-823\ntitle: fixture\nstatus: pending\n---\n"},
 	})
 	moment := claimedAt.Add(4 * time.Hour)
 
@@ -5819,6 +6792,7 @@ func TestGeneratedBoardDataCarriesVerifyFindingsWithoutTheOnesTheBoardAlreadySho
 	attachVerifyFindings(&boardData, board, moment)
 
 	sawStaleClaim := false
+	sawStructuralDamage := false
 	for _, finding := range boardData.VerifyFindings {
 		if boardRenderedVerifyCategories[finding.Category] {
 			t.Errorf("suppressed category %q reached verifyFindings: %s", finding.Category, finding.Detail)
@@ -5829,15 +6803,24 @@ func TestGeneratedBoardDataCarriesVerifyFindingsWithoutTheOnesTheBoardAlreadySho
 				t.Error("stale-claim finding reached the page without its remedy")
 			}
 		}
+		if finding.Category == verifyCategoryStructurallyDamagedRequest {
+			sawStructuralDamage = true
+		}
 	}
 	if !sawStaleClaim {
 		t.Errorf("verifyFindings carries no stale-claim finding: %+v", boardData.VerifyFindings)
+	}
+	if !sawStructuralDamage {
+		t.Errorf("verifyFindings lost structural damage while suppressing board-rendered findings: %+v", boardData.VerifyFindings)
 	}
 	// The anomaly must still exist as a finding — it is suppressed from the page,
 	// not from verify. Otherwise this test would pass on a probe that stopped working.
 	report := collectVerifyFindings(repoRoot, board, moment)
 	if anomalies := findingsMentioning(report, verifyCategoryCompletionAnomaly); len(anomalies) == 0 {
 		t.Error("the fixture produced no completion anomaly, so the suppression assertion proves nothing")
+	}
+	if statuses := findingsMentioning(report, verifyCategoryUnrecognizedRequestStatus); len(statuses) == 0 {
+		t.Error("the fixture produced no unrecognized status, so its suppression assertion proves nothing")
 	}
 }
 
@@ -7029,96 +8012,5 @@ process.stdout.write(JSON.stringify({
 	if !strings.Contains(rendered.DrainedUnfiltered.Forecast, "listed below") {
 		t.Errorf("with nothing filtered the rows ARE the whole queue, so the forecast should still "+
 			"say so: %q", rendered.DrainedUnfiltered.Forecast)
-	}
-}
-
-// TestJavaScriptBehaviorDurationsReserveMatchesTheSentenceDrawn pins the reserve to
-// a fixed point rather than to two passes.
-//
-// Holding the remainder sentence's room narrows the last label row, which can hide
-// labels the unreserved pass had placed. The count therefore rises between the pass
-// the reserve was measured from and the pass whose result is drawn — and across a
-// digit boundary the sentence gets wider too, so `+10 more …` is painted into room
-// reserved for `+8 more …`, over the last placed label. That is the exact collision
-// the planner exists to prevent, and it was reachable before this: at 26 candidates
-// of one width the two passes hid 8 then 10.
-//
-// The invariant is stated as a relationship, not a number: whatever the final count
-// is, the reserve the final pass held must have been measured from that same count.
-// It sweeps a range of densities rather than pinning one fixture, because the
-// boundary moves with the face and the plot width.
-func TestJavaScriptBehaviorDurationsReserveMatchesTheSentenceDrawn(t *testing.T) {
-	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
-	if readError != nil {
-		t.Fatalf("read web/board-durations.js: %v", readError)
-	}
-
-	probeDriver := `
-var lastMeasuredSentence = null;
-function measureRemainderWidth(sentenceText) {
-  lastMeasuredSentence = sentenceText;
-  return sentenceText.length * 7;   // monotone in the digit count, like a real face
-}
-var mismatches = [], remainderCases = 0, multiPassCases = 0;
-for (var candidateCount = 12; candidateCount <= 60; candidateCount += 1) {
-  for (var markStep = 20; markStep <= 45; markStep += 5) {
-    lastMeasuredSentence = null;
-    var candidates = [];
-    for (var index = 0; index < candidateCount; index += 1) {
-      candidates.push({
-        markX: DURATIONS_MARGIN_LEFT + 20 + index * markStep,
-        textWidth: 80,
-        id: "REQ-" + index
-      });
-    }
-    var unreserved = placeDurationsLabelBand(candidates, 0);
-    var band = packDurationsLabelBand(candidates, measureRemainderWidth, "not labelled");
-    if (band.hiddenCount === 0) { continue; }
-    remainderCases += 1;
-    if (band.hiddenCount > unreserved.hiddenCount) { multiPassCases += 1; }
-    var sentenceDrawn = composeDurationsRemainderText(band.hiddenCount, "not labelled");
-    if (lastMeasuredSentence !== sentenceDrawn) {
-      mismatches.push({
-        candidateCount: candidateCount, markStep: markStep,
-        reservedFor: lastMeasuredSentence, drawn: sentenceDrawn
-      });
-    }
-  }
-}
-process.stdout.write(JSON.stringify({
-  mismatches: mismatches, remainderCases: remainderCases, multiPassCases: multiPassCases
-}));
-`
-
-	javascriptProbe := string(rendererFragment) + probeDriver
-	probeOutput := runJavaScriptBehaviorProbe(t, "durations remainder reserve", javascriptProbe)
-
-	var swept struct {
-		Mismatches []struct {
-			CandidateCount int    `json:"candidateCount"`
-			MarkStep       int    `json:"markStep"`
-			ReservedFor    string `json:"reservedFor"`
-			Drawn          string `json:"drawn"`
-		} `json:"mismatches"`
-		RemainderCases int `json:"remainderCases"`
-		MultiPassCases int `json:"multiPassCases"`
-	}
-	if decodeError := json.Unmarshal(probeOutput, &swept); decodeError != nil {
-		t.Fatalf("decode durations reserve sweep: %v (output starts %q)",
-			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
-	}
-
-	// Guard the sweep itself: a fixture range that never produces a remainder, or
-	// never needs more than one reserved pass, would satisfy the invariant vacuously.
-	if swept.RemainderCases == 0 {
-		t.Fatal("no swept density produced a remainder — the sweep proves nothing about the reserve")
-	}
-	if swept.MultiPassCases == 0 {
-		t.Fatal("no swept density hid more under the reserve than without it — the sweep never reaches the case this pins")
-	}
-
-	for _, mismatch := range swept.Mismatches {
-		t.Errorf("%d candidates at step %d reserved room for %q but will draw %q",
-			mismatch.CandidateCount, mismatch.MarkStep, mismatch.ReservedFor, mismatch.Drawn)
 	}
 }

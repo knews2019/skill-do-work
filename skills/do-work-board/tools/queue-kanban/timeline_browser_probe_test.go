@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -1355,6 +1356,13 @@ function plotHost() {
 function plotSnapshot(label) {
   var host = plotHost();
   var hostBox = host.getBoundingClientRect();
+  var rangeReadout = document.getElementById("timeline-range-readout");
+  var axisScale = [].slice.call(document.querySelectorAll("#view-timeline .timeline-axis-tick")).map(function (tick) {
+    return tick.getAttribute("x1");
+  }).join(",");
+  var rowsScale = [].slice.call(document.querySelectorAll("#view-timeline .timeline-gridline")).map(function (line) {
+    return line.getAttribute("x1");
+  }).join(",");
   var segments = [].slice.call(host.querySelectorAll("rect.timeline-segment"));
   var inside = 0;
   var rightmost = -Infinity;
@@ -1372,6 +1380,9 @@ function plotSnapshot(label) {
     href: location.href,
     hostWidth: Math.round(hostBox.width),
     hostRight: Math.round(hostBox.right),
+    axisScale: axisScale,
+    rowsScale: rowsScale,
+    rangeReadout: rangeReadout ? rangeReadout.textContent : "",
     segments: segments.length,
     inside: inside,
     rightmost: isFinite(rightmost) ? Math.round(rightmost) : null,
@@ -1398,16 +1409,17 @@ window.addEventListener("load", function () {
       }
       // Wait for the RE-LAYOUT, not for the width change and not for a duration.
       //
-      // The width narrows synchronously with the click, but the render it triggers is
-      // scheduled through requestAnimationFrame — and headless --dump-dom has no
-      // compositor driving frames, so under full-suite load that callback lands well
-      // after the width has moved. Polling the width therefore measured a settled
-      // container around an unsettled plot, and the probe reported the very defect it
-      // exists to catch. Twice.
+      // The width narrows synchronously with the click. Remeasurement is keyed to one
+      // shared positive condition: the live host width is non-zero and differs from
+      // the width used by the last render. ResizeObserver delivers that check directly
+      // in an ordinary browser; a teardown-owned 50ms timer delivers the same check
+      // when headless --dump-dom parks observer/compositor work after layout settles.
       //
       // Polling the OUTCOME is sound here because the wait is bounded: a genuine
       // regression spins out the attempts and then fails the assertion below, which is
-      // exactly what removing the ResizeObserver does.
+      // exactly what suppressing or inverting the shared width-change condition does.
+      // Removing only ResizeObserver is not that mutation: the timer intentionally
+      // remains a second delivery path for the same condition.
       var widthBeforeClick = probe.before.hostWidth;
       function someSegmentIsInsideThePlot(wantWidthChanged) {
         var host = plotHost();
@@ -1456,14 +1468,17 @@ window.addEventListener("load", function () {
 		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
 
 	type plotSnapshot struct {
-		Label     string `json:"label"`
-		Href      string `json:"href"`
-		HostWidth int    `json:"hostWidth"`
-		HostRight int    `json:"hostRight"`
-		Segments  int    `json:"segments"`
-		Inside    int    `json:"inside"`
-		Rightmost *int   `json:"rightmost"`
-		Leftmost  *int   `json:"leftmost"`
+		Label        string `json:"label"`
+		Href         string `json:"href"`
+		HostWidth    int    `json:"hostWidth"`
+		HostRight    int    `json:"hostRight"`
+		AxisScale    string `json:"axisScale"`
+		RowsScale    string `json:"rowsScale"`
+		RangeReadout string `json:"rangeReadout"`
+		Segments     int    `json:"segments"`
+		Inside       int    `json:"inside"`
+		Rightmost    *int   `json:"rightmost"`
+		Leftmost     *int   `json:"leftmost"`
 	}
 	var drawerResult struct {
 		Before           plotSnapshot `json:"before"`
@@ -1483,6 +1498,14 @@ window.addEventListener("load", function () {
 	for _, snapshot := range []plotSnapshot{drawerResult.Before, drawerResult.After, drawerResult.Closed} {
 		if !strings.HasSuffix(snapshot.Href, "/probe.html") {
 			t.Fatalf("the %s snapshot was taken on %q, not the probe page", snapshot.Label, snapshot.Href)
+		}
+		if snapshot.AxisScale == "" || snapshot.RowsScale == "" {
+			t.Fatalf("the %s snapshot did not measure both Timeline scales (axis %q, rows %q)",
+				snapshot.Label, snapshot.AxisScale, snapshot.RowsScale)
+		}
+		if snapshot.AxisScale != snapshot.RowsScale {
+			t.Fatalf("the %s snapshot drew axis ticks at %q and row gridlines at %q; they no longer share one width measurement",
+				snapshot.Label, snapshot.AxisScale, snapshot.RowsScale)
 		}
 	}
 
@@ -1505,6 +1528,14 @@ window.addEventListener("load", function () {
 		t.Fatalf("the plot host was %dpx before the drawer opened and %dpx after, so the drawer did "+
 			"not narrow it and there is nothing here to re-measure",
 			drawerResult.Before.HostWidth, drawerResult.After.HostWidth)
+	}
+	if drawerResult.Before.RangeReadout == "" {
+		t.Fatal("the Timeline range readout was empty before the click; the unchanged-window proof is vacuous")
+	}
+	if drawerResult.After.RangeReadout != drawerResult.Before.RangeReadout ||
+		drawerResult.Closed.RangeReadout != drawerResult.Before.RangeReadout {
+		t.Fatalf("opening or closing the drawer moved the Timeline window: before %q, open %q, closed %q",
+			drawerResult.Before.RangeReadout, drawerResult.After.RangeReadout, drawerResult.Closed.RangeReadout)
 	}
 
 	// THE DEFECT. Fifty-five segments, none of them on screen.
@@ -2441,7 +2472,9 @@ const timelinePointerCaptureProbeHelpers = `(function () {
   var probe = {
     clickCount: 0, clickDetailId: "", clickTag: "",
     pointerUpSeen: false, pointerUpTag: "",
-    captureEstablished: null, captureListener: null
+    captureEstablished: null, captureListener: null,
+    gotPointerCaptureCount: 0,
+    hostPointerLeaveSwallowed: 0, hostPointerLeaveListener: null
   };
   window.timelineProbe = probe;
   probe.plotHost = function () { return document.querySelector("#view-timeline .timeline-scroll"); };
@@ -2483,6 +2516,9 @@ const timelinePointerCaptureProbeHelpers = `(function () {
     probe.pointerUpSeen = true;
     probe.pointerUpTag = upEvent.target && upEvent.target.tagName ? upEvent.target.tagName : "";
   }, false);
+  probe.plotHost().addEventListener("gotpointercapture", function () {
+    probe.gotPointerCaptureCount++;
+  }, false);
   // THE CLICK-SYNTHESIS PRECONDITION, watched rather than assumed. Chromium creates a
   // click on the nearest common inclusive ancestor of the mousedown and mouseup
   // targets. A mousedown target that has been DETACHED in between has no ancestor in
@@ -2501,6 +2537,8 @@ const timelinePointerCaptureProbeHelpers = `(function () {
     probe.clickCount = 0; probe.clickDetailId = ""; probe.clickTag = "";
     probe.pointerUpSeen = false; probe.pointerUpTag = "";
     probe.captureEstablished = null;
+    probe.gotPointerCaptureCount = 0;
+    probe.hostPointerLeaveSwallowed = 0;
     probe.pressTarget = null; probe.pressTargetTag = ""; probe.pressTargetSurvived = null;
     return "armed";
   };
@@ -2526,6 +2564,8 @@ const timelinePointerCaptureProbeHelpers = `(function () {
       clickCount: probe.clickCount, clickDetailId: probe.clickDetailId, clickTag: probe.clickTag,
       drawerOpen: probe.drawerIsOpen(), shownDetailId: probe.shownDetailId(),
       panning: probe.isPanning(), captureEstablished: probe.captureEstablished,
+      gotPointerCaptureCount: probe.gotPointerCaptureCount,
+      hostPointerLeaveSwallowed: probe.hostPointerLeaveSwallowed,
       pressTargetTag: probe.pressTargetTag, pressTargetSurvived: probe.pressTargetSurvived
     };
   };
@@ -2605,6 +2645,30 @@ const timelinePointerCaptureProbeHelpers = `(function () {
     delete probe.plotHost().setPointerCapture;
     return "pointer capture restored";
   };
+  // Chromium 1228 delivers pointerleave to the host while a button is held. The
+  // product deliberately treats that as another release boundary, so it ends an
+  // uncaptured pan before the later outside pointerup can demonstrate capture's
+  // retargeting. Swallow exactly that host-targeted boundary in BOTH drag trials:
+  // with capture, pointerup still returns to the host; without capture, it does not.
+  probe.swallowHostPointerLeave = function () {
+    var host = probe.plotHost();
+    probe.hostPointerLeaveListener = function (leaveEvent) {
+      if (leaveEvent.target !== host) {
+        return;
+      }
+      probe.hostPointerLeaveSwallowed++;
+      leaveEvent.stopImmediatePropagation();
+    };
+    document.addEventListener("pointerleave", probe.hostPointerLeaveListener, true);
+    return "host pointerleave swallowed";
+  };
+  probe.restoreHostPointerLeave = function () {
+    if (probe.hostPointerLeaveListener) {
+      document.removeEventListener("pointerleave", probe.hostPointerLeaveListener, true);
+    }
+    probe.hostPointerLeaveListener = null;
+    return "host pointerleave restored";
+  };
   return "installed";
 })()`
 
@@ -2623,15 +2687,17 @@ type timelineRowAim struct {
 
 // timelineGestureOutcome is everything one gesture is allowed to be judged on.
 type timelineGestureOutcome struct {
-	ClickCount          int    `json:"clickCount"`
-	ClickDetailId       string `json:"clickDetailId"`
-	ClickTag            string `json:"clickTag"`
-	DrawerOpen          bool   `json:"drawerOpen"`
-	ShownDetailId       string `json:"shownDetailId"`
-	Panning             bool   `json:"panning"`
-	CaptureEstablished  *bool  `json:"captureEstablished"`
-	PressTargetTag      string `json:"pressTargetTag"`
-	PressTargetSurvived *bool  `json:"pressTargetSurvived"`
+	ClickCount                int    `json:"clickCount"`
+	ClickDetailId             string `json:"clickDetailId"`
+	ClickTag                  string `json:"clickTag"`
+	DrawerOpen                bool   `json:"drawerOpen"`
+	ShownDetailId             string `json:"shownDetailId"`
+	Panning                   bool   `json:"panning"`
+	CaptureEstablished        *bool  `json:"captureEstablished"`
+	GotPointerCaptureCount    int    `json:"gotPointerCaptureCount"`
+	HostPointerLeaveSwallowed int    `json:"hostPointerLeaveSwallowed"`
+	PressTargetTag            string `json:"pressTargetTag"`
+	PressTargetSurvived       *bool  `json:"pressTargetSurvived"`
 }
 
 // aimAtATimelineRow resets the window, scrolls the chart on screen and returns a press
@@ -2779,9 +2845,12 @@ func readTimelineClickOutcome(
 //	(2) with capture taken on pointerdown from outside the board's source, the same
 //	    gesture opens nothing — which is what proves (1) can fail, and proves it against
 //	    the exact regression rather than against a mutation chosen to be easy,
-//	(3) a trusted drag released OUTSIDE the chart ends the pan, and
-//	(4) with the host's setPointerCapture stubbed out, that release strands the pan —
-//	    which is what proves (3) can fail and keeps "no capture anywhere" from passing.
+//	(3) with the current engine's alternate host-pointerleave release boundary
+//	    narrowly isolated, a trusted drag released OUTSIDE the chart still ends the
+//	    pan through capture-retargeted pointerup, and
+//	(4) with the same isolation plus the host's setPointerCapture stubbed out, that
+//	    release strands the pan — which proves (3) depends on capture and keeps "no
+//	    capture anywhere" from passing.
 //
 // WHAT THE GESTURES ARE SENSITIVE TO, stated because it was measured rather than
 // assumed. A capture reaches the click whether it is requested directly, through a
@@ -2866,19 +2935,31 @@ func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T)
 	}
 
 	// (3) THE RELEASE OUTSIDE THE CHART. Capture at the engage is what guarantees the
-	// host hears the end of a drag: Chromium suppresses the boundary events while a
-	// button is held, so without it nothing reaches the host and the grab cursor stays
-	// on for the rest of the session (REQ-333).
+	// host hears the pointerup that ends a drag. Chromium 1228 now also delivers a
+	// host-targeted pointerleave while the button is held, and the product correctly
+	// treats that as another release boundary; without isolating it, capture and no
+	// capture both end cleanly and this pair proves nothing about capture (REQ-333).
 	//
 	// Measured from the PAN ENGAGING and from the is-panning state, never from the axis
 	// text: a drag that clamps at the window bound leaves every label identical.
+	// Isolate the alternate boundary for BOTH paired trials so the only difference
+	// between them is whether capture returns the outside pointerup to the host.
+	session.evaluateInPage(t, `window.timelineProbe.swallowHostPointerLeave()`)
+	t.Cleanup(func() {
+		session.evaluateInPage(t, `window.timelineProbe.restoreHostPointerLeave()`)
+	})
 	engagedDrag := aimAtATimelineRow(t, session, "release outside")
 	releaseY := engagedDrag.HostTop - 40
 	if releaseY < 1 {
 		t.Fatalf("the scroll host sits at y=%g, so there is no point above it inside the "+
 			"viewport to release at; this trial cannot be run from here", engagedDrag.HostTop)
 	}
-	panningAfterRelease := driveTimelineDragReleasedOutside(t, session, engagedDrag, releaseY)
+	panningAfterRelease, capturedDragOutcome := driveTimelineDragReleasedOutside(
+		t, session, engagedDrag, releaseY)
+	if capturedDragOutcome.GotPointerCaptureCount == 0 {
+		t.Fatal("the capture-present outside-release trial observed no gotpointercapture event; " +
+			"its clean release therefore proves nothing about capture retargeting")
+	}
 	if panningAfterRelease {
 		t.Error("a trusted drag released above the chart left it in the panning state; capture " +
 			"taken when the pan engages is what makes the release a fact rather than a hope, and " +
@@ -2890,10 +2971,22 @@ func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T)
 	// setPointerCapture leaves capturePanPointer's feature detect and call intact and
 	// removes only the capture — and the same drag must then strand the pan.
 	session.evaluateInPage(t, `window.timelineProbe.swallowPointerCapture()`)
+	t.Cleanup(func() {
+		session.evaluateInPage(t, `window.timelineProbe.restorePointerCapture()`)
+	})
 	uncapturedDrag := aimAtATimelineRow(t, session, "release outside without capture")
-	strandedPanning := driveTimelineDragReleasedOutside(t, session, uncapturedDrag,
+	strandedPanning, uncapturedDragOutcome := driveTimelineDragReleasedOutside(t, session, uncapturedDrag,
 		uncapturedDrag.HostTop-40)
 	session.evaluateInPage(t, `window.timelineProbe.restorePointerCapture()`)
+	session.evaluateInPage(t, `window.timelineProbe.restoreHostPointerLeave()`)
+	if uncapturedDragOutcome.GotPointerCaptureCount != 0 {
+		t.Fatalf("the capture-swallowed outside-release trial still observed %d gotpointercapture events; "+
+			"the mutation did not remove capture", uncapturedDragOutcome.GotPointerCaptureCount)
+	}
+	if uncapturedDragOutcome.HostPointerLeaveSwallowed == 0 {
+		t.Fatal("the capture-swallowed outside-release trial never crossed the host pointerleave " +
+			"boundary; the isolator was not exercised and the mutation pair is vacuous")
+	}
 	if !strandedPanning {
 		t.Error("with the scroll host's setPointerCapture swallowed, a drag released above the " +
 			"chart still ended cleanly; trial (3) is then passing for some other reason and does " +
@@ -2902,12 +2995,13 @@ func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T)
 
 	t.Logf("trusted click on %s: %d click(s), delivered to <%s>, trigger %q, drawer open %v "+
 		"showing %q. With capture on pointerdown: %d click(s), trigger %q, drawer open %v. "+
-		"Drag released above the host left the chart panning: %v with capture, %v with capture "+
-		"swallowed.",
+		"Drag released above the host left the chart panning: %v with %d capture event(s), %v "+
+		"with capture swallowed and %d host pointerleave event(s) isolated.",
 		cleanAim.DetailId, cleanClick.ClickCount, cleanClick.ClickTag, cleanClick.ClickDetailId,
 		cleanClick.DrawerOpen, cleanClick.ShownDetailId,
 		capturedClick.ClickCount, capturedClick.ClickDetailId, capturedClick.DrawerOpen,
-		panningAfterRelease, strandedPanning)
+		panningAfterRelease, capturedDragOutcome.GotPointerCaptureCount,
+		strandedPanning, uncapturedDragOutcome.HostPointerLeaveSwallowed)
 }
 
 // clickTrustedMouseOnRow presses and releases on a row with a real DWELL between the
@@ -2941,7 +3035,7 @@ func clickTrustedMouseOnRow(
 // tells nobody anything.
 func driveTimelineDragReleasedOutside(
 	t *testing.T, session *trustedInputBrowserSession, aim timelineRowAim, releaseY float64,
-) bool {
+) (bool, timelineGestureOutcome) {
 	t.Helper()
 	session.pressTrustedMouseAt(t, aim.X, aim.Y)
 	// Two moves: the first clears the 4px pan threshold, the second is the drag the
@@ -2949,12 +3043,16 @@ func driveTimelineDragReleasedOutside(
 	session.dragTrustedMouseTo(t, aim.X+6, aim.Y)
 	session.dragTrustedMouseTo(t, aim.X+140, aim.Y)
 	session.waitForPageCondition(t, "the drag engages the pan", `window.timelineProbe.isPanning()`)
+	// Exclude any boundary event caused while the trusted pointer moved INTO position;
+	// the non-vacuity check is specifically about crossing out for this release.
+	session.evaluateInPage(t,
+		`(window.timelineProbe.hostPointerLeaveSwallowed = 0, "outside boundary watch armed")`)
 
 	releaseX := aim.X + 140
 	session.dragTrustedMouseTo(t, releaseX, releaseY)
 	session.releaseTrustedMouseAt(t, releaseX, releaseY)
 	outcome := readTimelineGestureOutcome(t, session, "drag released outside")
-	return outcome.Panning
+	return outcome.Panning, outcome
 }
 
 // TestBrowserBehaviorTimelineRowListIsOneTabStop pins REQ-338's keyboard contract: the row
@@ -3002,12 +3100,14 @@ function tabStopState() {
     shownDetailId: shown ? shown.textContent.trim() : ""
   };
 }
+
 function pressKey(keyName) {
   var target = document.activeElement || plotHost();
   target.dispatchEvent(new KeyboardEvent("keydown", {
     key: keyName, bubbles: true, cancelable: true, composed: true
   }));
 }
+
 window.addEventListener("load", function () {
   setTimeout(function () {
     document.querySelector('[data-view-target="timeline"]').click();
@@ -3144,5 +3244,380 @@ window.addEventListener("load", function () {
 	if rovingResult.AfterEnter.ShownDetailId != rovingResult.FirstRowId {
 		t.Errorf("Enter opened the drawer on %q, want the focused row %q",
 			rovingResult.AfterEnter.ShownDetailId, rovingResult.FirstRowId)
+	}
+}
+
+// Timeline grouping is rendered by the shipped board, not by a probe fixture.
+// The table exposes every window-listed group while the SVG stays virtualized,
+// so one run can prove both the complete grouping and bounded viewport nodes.
+func TestBrowserBehaviorTimelineListsRowsBeneathUserRequestHeaders(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function timelineGroupingSnapshot() {
+  var host = document.getElementById("timeline-scroll");
+  var tableBody = document.getElementById("timeline-table-body");
+  var payload = window.queueKanbanBoardData || {};
+  var requests = payload.requests || {};
+  var groups = [];
+  var currentGroup = null;
+  var columnHeaderIds = Array.prototype.map.call(
+    document.querySelectorAll("#view-timeline .timeline-table thead th"),
+    function (header) { return header.id; });
+  Array.prototype.forEach.call(tableBody.children, function (tableRow) {
+    var groupLabel = tableRow.getAttribute("data-timeline-table-group");
+    if (groupLabel) {
+      var groupHeading = tableRow.querySelector("th");
+      currentGroup = {
+        label: groupLabel,
+        headerId: groupHeading ? groupHeading.id : "",
+        statedCount: Number(tableRow.getAttribute("data-group-count")),
+        metricText: tableRow.textContent.trim(),
+        ids: [],
+        joinedUserRequestIds: [],
+        cellHeaders: [],
+        cellTags: []
+      };
+      groups.push(currentGroup);
+      return;
+    }
+    var requestId = tableRow.getAttribute("data-timeline-table-request");
+    if (currentGroup && requestId) {
+      currentGroup.ids.push(requestId);
+      currentGroup.joinedUserRequestIds.push((requests[requestId] || {}).userRequestId || "");
+      currentGroup.cellHeaders.push(Array.prototype.map.call(tableRow.children, function (cell) {
+        return (cell.getAttribute("headers") || "").split(/\s+/).filter(Boolean);
+      }));
+      currentGroup.cellTags.push(Array.prototype.map.call(tableRow.children, function (cell) {
+        return cell.tagName;
+      }));
+    }
+  });
+  var headers = Array.prototype.slice.call(host.querySelectorAll("[data-timeline-group]"));
+  var rows = Array.prototype.slice.call(host.querySelectorAll("[data-row-index]"));
+  return {
+    href: location.href,
+    columnHeaderIds: columnHeaderIds,
+    groups: groups,
+    visibleRowCount: rows.length,
+    visibleHeaderCount: headers.length,
+    headerTabStopCount: headers.filter(function (header) { return header.hasAttribute("tabindex"); }).length,
+    tabbableRowCount: rows.filter(function (row) { return row.getAttribute("tabindex") === "0"; }).length,
+    renderedNodeCount: headers.length + rows.length,
+    svgHeight: Number((host.querySelector("svg") || {}).getAttribute && host.querySelector("svg").getAttribute("height")) || 0,
+    viewportHeight: host.clientHeight
+  };
+}
+
+// Wait on the table's own rebuild boundary, never on an elapsed duration. The
+// renderer replaces every row in one scheduled frame, so a new first row proves
+// that the requested window reached the complete table rather than merely the
+// controls. The deadline only lets a real missing rebuild report its state instead
+// of leaving an empty probe result forever.
+function afterTimelineTableRebuild(trigger, callback) {
+  var tableBody = document.getElementById("timeline-table-body");
+  var previousFirstRow = tableBody.firstElementChild;
+  var finished = false;
+  var observer = new MutationObserver(function () {
+    var currentFirstRow = tableBody.firstElementChild;
+    var rebuildObserved = !!currentFirstRow && currentFirstRow !== previousFirstRow;
+    if (!rebuildObserved || finished) {
+      return;
+    }
+    finished = true;
+    observer.disconnect();
+    clearTimeout(deadline);
+    callback({ hadPreviousRow: !!previousFirstRow, rebuildObserved: true });
+  });
+  observer.observe(tableBody, { childList: true });
+  var deadline = setTimeout(function () {
+    if (finished) {
+      return;
+    }
+    finished = true;
+    observer.disconnect();
+    callback({ hadPreviousRow: !!previousFirstRow, rebuildObserved: false });
+  }, 10000);
+  trigger();
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var table = document.querySelector("#view-timeline .timeline-table");
+      table.open = true;
+      table.dispatchEvent(new Event("toggle"));
+      afterTimelineTableRebuild(function () {
+        document.getElementById("timeline-zoom-fit").click();
+      }, function (fitAllRebuild) {
+        var fitAll = timelineGroupingSnapshot();
+        afterTimelineTableRebuild(function () {
+          document.querySelector('[data-timeline-period="day"]').click();
+        }, function (dayRebuild) {
+          document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
+            fitAll: fitAll,
+            day: timelineGroupingSnapshot(),
+            fitAllRebuild: fitAllRebuild,
+            dayRebuild: dayRebuild
+          });
+        });
+      });
+    }, 900);
+  }, 200);
+});
+</script>
+</body>`
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the grouping probe before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline user-request grouping", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+	type browserGroup struct {
+		Label                string       `json:"label"`
+		HeaderID             string       `json:"headerId"`
+		StatedCount          int          `json:"statedCount"`
+		MetricText           string       `json:"metricText"`
+		Ids                  []string     `json:"ids"`
+		JoinedUserRequestIds []string     `json:"joinedUserRequestIds"`
+		CellHeaders          [][][]string `json:"cellHeaders"`
+		CellTags             [][]string   `json:"cellTags"`
+	}
+	type groupingSnapshot struct {
+		Href               string         `json:"href"`
+		ColumnHeaderIDs    []string       `json:"columnHeaderIds"`
+		Groups             []browserGroup `json:"groups"`
+		VisibleRowCount    int            `json:"visibleRowCount"`
+		VisibleHeaderCount int            `json:"visibleHeaderCount"`
+		HeaderTabStopCount int            `json:"headerTabStopCount"`
+		TabbableRowCount   int            `json:"tabbableRowCount"`
+		RenderedNodeCount  int            `json:"renderedNodeCount"`
+		SvgHeight          float64        `json:"svgHeight"`
+		ViewportHeight     float64        `json:"viewportHeight"`
+	}
+	var groupingResult struct {
+		FitAll        groupingSnapshot `json:"fitAll"`
+		Day           groupingSnapshot `json:"day"`
+		FitAllRebuild struct {
+			HadPreviousRow  bool `json:"hadPreviousRow"`
+			RebuildObserved bool `json:"rebuildObserved"`
+		} `json:"fitAllRebuild"`
+		DayRebuild struct {
+			HadPreviousRow  bool `json:"hadPreviousRow"`
+			RebuildObserved bool `json:"rebuildObserved"`
+		} `json:"dayRebuild"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &groupingResult); decodeError != nil {
+		t.Fatalf("decode timeline user-request grouping: %v (output %q)", decodeError, probeOutput)
+	}
+	if groupingResult.FitAll.Href == "" || !strings.HasSuffix(groupingResult.FitAll.Href, "probe.html") {
+		t.Fatalf("measured on %q, not the probe page", groupingResult.FitAll.Href)
+	}
+	if !groupingResult.FitAllRebuild.HadPreviousRow || !groupingResult.DayRebuild.HadPreviousRow {
+		t.Fatalf("the table rebuild wait was armed without an existing row (Fit all %t, Day %t); the node-replacement condition is vacuous",
+			groupingResult.FitAllRebuild.HadPreviousRow, groupingResult.DayRebuild.HadPreviousRow)
+	}
+	if !groupingResult.FitAllRebuild.RebuildObserved || !groupingResult.DayRebuild.RebuildObserved {
+		t.Fatalf("the requested Timeline table rebuild was not observed (Fit all %t, Day %t)",
+			groupingResult.FitAllRebuild.RebuildObserved, groupingResult.DayRebuild.RebuildObserved)
+	}
+	if groupingResult.FitAll.VisibleRowCount == 0 {
+		t.Fatal("the generated board rendered no Timeline REQ rows, so the grouping assertion is vacuous")
+	}
+	if len(groupingResult.FitAll.Groups) < 2 || groupingResult.FitAll.VisibleHeaderCount == 0 {
+		t.Fatalf("the Timeline rendered %d table groups and %d visible headers; the fixture must exercise grouping",
+			len(groupingResult.FitAll.Groups), groupingResult.FitAll.VisibleHeaderCount)
+	}
+	for _, snapshot := range []groupingSnapshot{groupingResult.FitAll, groupingResult.Day} {
+		if len(snapshot.ColumnHeaderIDs) != 6 {
+			t.Fatalf("grouped Timeline table has column header ids %v, want six explicit ids", snapshot.ColumnHeaderIDs)
+		}
+		seenGroupHeaderIDs := map[string]bool{}
+		for groupIndex, group := range snapshot.Groups {
+			if group.HeaderID == "" || seenGroupHeaderIDs[group.HeaderID] {
+				t.Errorf("group %q has missing or duplicate stable header id %q", group.Label, group.HeaderID)
+			}
+			seenGroupHeaderIDs[group.HeaderID] = true
+			if len(group.Ids) != group.StatedCount {
+				t.Errorf("%s states %d listed REQs but the grouped table contains %d",
+					group.Label, group.StatedCount, len(group.Ids))
+			}
+			if !strings.Contains(group.MetricText, "Elapsed") ||
+				!strings.Contains(group.MetricText, "Accepted work") ||
+				!strings.Contains(group.MetricText, "listed REQ") {
+				t.Errorf("%s header omits an explicit metric: %q", group.Label, group.MetricText)
+			}
+			for memberIndex, joinedUserRequestId := range group.JoinedUserRequestIds {
+				wantLabel := joinedUserRequestId
+				if wantLabel == "" {
+					wantLabel = "No UR recorded"
+				}
+				if group.Label != wantLabel {
+					t.Errorf("group %q contains %s joined to %q; the client-side requests join put it under the wrong header",
+						group.Label, group.Ids[memberIndex], joinedUserRequestId)
+				}
+				if len(group.CellHeaders[memberIndex]) != len(snapshot.ColumnHeaderIDs) {
+					t.Errorf("%s in %s has %d table cells, want %d", group.Ids[memberIndex], group.Label,
+						len(group.CellHeaders[memberIndex]), len(snapshot.ColumnHeaderIDs))
+					continue
+				}
+				for cellIndex, headerTokens := range group.CellHeaders[memberIndex] {
+					wantHeaders := []string{group.HeaderID, snapshot.ColumnHeaderIDs[cellIndex]}
+					if !reflect.DeepEqual(headerTokens, wantHeaders) {
+						t.Errorf("%s cell %d headers = %v, want exactly its own group and column headers %v",
+							group.Ids[memberIndex], cellIndex, headerTokens, wantHeaders)
+					}
+				}
+				if len(group.CellTags[memberIndex]) != 6 || group.CellTags[memberIndex][0] != "TH" {
+					t.Errorf("%s member cells = %v, want its REQ cell to remain a row header", group.Ids[memberIndex],
+						group.CellTags[memberIndex])
+				}
+			}
+			if group.Label == "No UR recorded" && groupIndex != len(snapshot.Groups)-1 {
+				t.Errorf("No UR recorded is group %d of %d; it must be last", groupIndex+1, len(snapshot.Groups))
+			}
+		}
+		if snapshot.HeaderTabStopCount != 0 {
+			t.Errorf("%d group headers entered the Tab order; Up/Down must move between REQs only",
+				snapshot.HeaderTabStopCount)
+		}
+		if snapshot.TabbableRowCount != 1 {
+			t.Errorf("grouped Timeline has %d tabbable REQ rows, want exactly one", snapshot.TabbableRowCount)
+		}
+		if snapshot.RenderedNodeCount >= 100 {
+			t.Errorf("the grouped Timeline rendered %d header/member nodes in one viewport; virtualization is unbounded",
+				snapshot.RenderedNodeCount)
+		}
+	}
+	if groupingResult.FitAll.SvgHeight <= groupingResult.FitAll.ViewportHeight {
+		t.Errorf("Fit-all SVG height %.0f does not exceed the %.0fpx viewport, so the probe never exercised virtual scrolling",
+			groupingResult.FitAll.SvgHeight, groupingResult.FitAll.ViewportHeight)
+	}
+	fitAllIds := []string{}
+	for _, group := range groupingResult.FitAll.Groups {
+		fitAllIds = append(fitAllIds, group.Ids...)
+	}
+	dayIds := []string{}
+	for _, group := range groupingResult.Day.Groups {
+		dayIds = append(dayIds, group.Ids...)
+	}
+	if reflect.DeepEqual(fitAllIds, dayIds) {
+		t.Errorf("Fit all and Day listed the same %d REQs; the grouping was not rebuilt after the window changed",
+			len(fitAllIds))
+	}
+}
+
+func TestBrowserBehaviorTimelineGroupHeadersReadInBothThemes(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var header = document.querySelector(".timeline-group-header");
+      var headerRect = header && header.querySelector(".timeline-group-header-fill");
+      var label = header && header.querySelector(".timeline-group-label");
+      var metrics = header && header.querySelector(".timeline-group-metrics");
+      var rectBox = headerRect ? headerRect.getBBox() : {};
+      var labelBox = label ? label.getBBox() : {};
+      var metricBox = metrics ? metrics.getBBox() : {};
+      document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
+        href: location.href,
+        scheme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+        headerFill: headerRect ? getComputedStyle(headerRect).fill : "",
+        labelFill: label ? getComputedStyle(label).fill : "",
+        metricFill: metrics ? getComputedStyle(metrics).fill : "",
+        rectY: rectBox.y || 0,
+        rectHeight: rectBox.height || 0,
+        labelY: labelBox.y || 0,
+        labelHeight: labelBox.height || 0,
+        metricY: metricBox.y || 0,
+        metricHeight: metricBox.height || 0
+      });
+    }, 700);
+  }, 200);
+});
+</script>
+</body>`
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the header probe before")
+	}
+
+	for _, scheme := range []struct {
+		name string
+		flag string
+	}{
+		{name: "light", flag: "--blink-settings=preferredColorScheme=1"},
+		{name: "dark", flag: "--blink-settings=preferredColorScheme=0"},
+	} {
+		t.Run(scheme.name, func(t *testing.T) {
+			probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline group header "+scheme.name,
+				siteDirectory, pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000", scheme.flag)
+			var measurement struct {
+				Href         string  `json:"href"`
+				Scheme       string  `json:"scheme"`
+				HeaderFill   string  `json:"headerFill"`
+				LabelFill    string  `json:"labelFill"`
+				MetricFill   string  `json:"metricFill"`
+				RectY        float64 `json:"rectY"`
+				RectHeight   float64 `json:"rectHeight"`
+				LabelY       float64 `json:"labelY"`
+				LabelHeight  float64 `json:"labelHeight"`
+				MetricY      float64 `json:"metricY"`
+				MetricHeight float64 `json:"metricHeight"`
+			}
+			if decodeError := json.Unmarshal(probeOutput, &measurement); decodeError != nil {
+				t.Fatalf("decode %s group header: %v (output %q)", scheme.name, decodeError, probeOutput)
+			}
+			if measurement.Href == "" || !strings.HasSuffix(measurement.Href, "probe.html") {
+				t.Fatalf("measured on %q, not the probe page", measurement.Href)
+			}
+			if measurement.Scheme != scheme.name {
+				t.Fatalf("asked for %s and the browser resolved %s", scheme.name, measurement.Scheme)
+			}
+			headerLuminance, headerKnown := relativeLuminanceOfCSSColour(measurement.HeaderFill)
+			labelLuminance, labelKnown := relativeLuminanceOfCSSColour(measurement.LabelFill)
+			metricLuminance, metricKnown := relativeLuminanceOfCSSColour(measurement.MetricFill)
+			if !headerKnown || !labelKnown || !metricKnown {
+				t.Fatalf("%s header colours did not resolve: header %q, label %q, metrics %q",
+					scheme.name, measurement.HeaderFill, measurement.LabelFill, measurement.MetricFill)
+			}
+			if ratio := contrastRatio(labelLuminance, headerLuminance); ratio < 4.5 {
+				t.Errorf("%s group label contrast %.2f:1, want at least 4.5:1", scheme.name, ratio)
+			}
+			if ratio := contrastRatio(metricLuminance, headerLuminance); ratio < 4.5 {
+				t.Errorf("%s group metrics contrast %.2f:1, want at least 4.5:1", scheme.name, ratio)
+			}
+			if measurement.RectHeight != 34 || measurement.LabelHeight <= 0 || measurement.MetricHeight <= 0 {
+				t.Errorf("%s header geometry rect %.1fpx, label %.1fpx, metrics %.1fpx; expected a 34px fixed header with rendered text",
+					scheme.name, measurement.RectHeight, measurement.LabelHeight, measurement.MetricHeight)
+			}
+			if measurement.LabelY+measurement.LabelHeight > measurement.MetricY ||
+				measurement.MetricY+measurement.MetricHeight > measurement.RectY+measurement.RectHeight {
+				t.Errorf("%s header text overlaps or clips: rect y %.1f..%.1f, label %.1f..%.1f, metrics %.1f..%.1f",
+					scheme.name, measurement.RectY, measurement.RectY+measurement.RectHeight,
+					measurement.LabelY, measurement.LabelY+measurement.LabelHeight,
+					measurement.MetricY, measurement.MetricY+measurement.MetricHeight)
+			}
+			t.Logf("%s Timeline group header: label %.2f:1, metrics %.2f:1, 34px fixed height",
+				scheme.name,
+				contrastRatio(labelLuminance, headerLuminance),
+				contrastRatio(metricLuminance, headerLuminance))
+		})
 	}
 }
