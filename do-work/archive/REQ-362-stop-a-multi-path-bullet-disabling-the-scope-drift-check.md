@@ -1,9 +1,11 @@
 ---
 id: REQ-362
 title: "[impact-rule-change] Stop a multi-path bullet disabling the scope-drift check"
-status: claimed
+status: completed
 claimed_at: 2026-08-24T18:57:05Z
-status_changed_at: 2026-08-24T18:57:05Z
+completed_at: 2026-08-24T20:10:47Z
+commit: 21f3bba7fd856f25fb2add09f41453a112476fdb
+status_changed_at: 2026-08-24T20:10:47Z
 route: B
 created_at: 2026-08-24T11:15:00Z
 user_request: UR-068
@@ -45,8 +47,8 @@ disables the measurement that exists to make drift visible.
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Traced both first-token parsers and the associate-files sibling, then froze paired-backtick extraction, root-filename handling, prose boundaries, loud malformed-input behavior, fixtures, and mutations.
-- [x] **[APPLY]:** Added portable paired-field extraction to both shipped checks and mutation-sensitive REQ-344/symmetric/root/prose/malformed fixtures in the accepted three-file scope.
-- [x] **[UNIFY]:** Reviewed all three files; shell syntax, RED/GREEN fixtures, four independent mutation axes, contract regressions, canonical maintainer verification, diff checks, and artifact checks passed.
+- [x] **[APPLY]:** Added portable paired-field extraction to scope drift, association, and qualification plus mutation-sensitive REQ-344/symmetric/root/prose/malformed fixtures in the accepted five-file scope.
+- [x] **[UNIFY]:** Reviewed all five files; shell syntax, RED/GREEN fixtures, parser-specific mutations, 109 prescribed cases, contract regressions, canonical maintainer verification, diff checks, and artifact checks passed.
 
 ## Why
 
@@ -151,6 +153,8 @@ unparseable, and every existing single-path REQ produces the same output as befo
 - `skills/do-work/tools/checks/scope-drift.sh` (modified): extracts every closed backtick pair from path-led Scope and Implementation Summary bullets, preserves root filenames/prose boundaries, and fails loudly on malformed path lists.
 - `skills/do-work/tools/checks/associate-files.sh` (modified): uses the same multi-path Summary primitive, associates every listed path, and exits with PARSE-FAILED on unmatched backticks.
 - `_dev/tests/contract-regressions.sh` (modified): adds REQ-344 seven-drift fidelity, symmetric later-token mismatches, matching/root/prose/malformed compatibility, associate parity, and four mutation axes.
+- `skills/do-work/tools/checks/qualify.sh` (modified): expands every path-led Implementation Summary bullet into one row per closed pair so later paths reach existence, merge-range diff, and wiring checks; malformed pairs fail loudly.
+- `_dev/tests/prescribed-shell-cases/qualify.sh` (modified): adds later-path existence/wiring, root-filename, matching/prose compatibility, malformed-list, and four qualify mutation cases.
 
 ## Discovered Tasks
 
@@ -161,3 +165,24 @@ None.
 - TDD RED produced six intended fixture failures across multi-path association, REQ-344 seven-path fidelity, symmetric later-token mismatch, and unmatched Scope/Summary lists.
 - GREEN contract regressions passed after implementation. Independent mutations restoring Scope or Summary truncation, requiring slashes, or removing the path-led boundary each failed the intended fixtures.
 - Shell syntax, diff checks, builder canonical maintainer verification, and clean-worktree/artifact review passed.
+- Review remediation's prescribed qualify suite went RED with seven intended failures, then GREEN at 26/26. Four qualify mutations independently restored truncation, slash filtering, prose leakage, or malformed-list acceptance and were caught.
+- Post-remediation full contract regressions passed with 109 named prescribed cases, and the builder's exact-final canonical gate passed.
+- Final main-tree canonical maintainer verification passed with Go 1.26.1; the strict JavaScript lane and all 109 prescribed shell cases passed, with only the standard optional no-browser skip.
+
+## Qualification
+
+- Exact cumulative merge range `dedb9de235455d756c8dd55d4af825fc8e6ef161..21f3bba7fd856f25fb2add09f41453a112476fdb` passed mechanical qualification.
+- Scope drift passed: the five changed implementation files exactly match the accepted Scope and Implementation Summary.
+- Orchestrator judgment confirmed that every later path now reaches scope-drift, association, and qualification checks without weakening root-filename, prose, or malformed-input behavior.
+
+## Review
+
+Independent review initially required changes at 82% with one Important finding: `qualify.sh` still consumed only the first path, leaving the merge-range gate vulnerable to the same formatting defect. The accepted remediation extended the shared behavior and prescribed cases to qualification. Final review approved at 98% with no Critical, Important, Minor, or Nit findings, low residual risk, and acceptance pass.
+
+## Lessons Learned
+
+When several validators consume the same human-authored syntax, fixing only the first discovered parser leaves the defect alive at a later gate. Review should trace the value through every consumer, and regression cases should pin each consumer independently.
+
+## Orientation
+
+Released in 0.236.52. Path-led multi-file bullets now remain fully visible to scope-drift, association, and qualification checks.

@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.52 — Multi-Path Summaries Stay Visible (2026-08-24)
+
+Hand-formatted Implementation Summaries can no longer hide later files from scope, association, or qualification checks.
+
+- Every closed path pair on a path-led bullet reaches all three shipped validators, including root filenames
+- Malformed lists fail loudly while prose-only code spans remain ignored
+- REQ-344-shaped coverage reports all seven undeclared paths and prescribed qualification is 26/26
+
 ## 0.236.51 — Containment Narrowing Becomes Executable (2026-08-24)
 
 Containment rules can no longer be weakened by adding a quiet exception while leaving their broad wording intact.
