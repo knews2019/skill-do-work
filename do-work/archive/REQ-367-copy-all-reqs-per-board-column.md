@@ -1,9 +1,11 @@
 ---
 id: REQ-367
 title: 'Add a copy-all-REQs button to each Board column'
-status: claimed
+status: completed
 claimed_at: 2026-08-24T20:17:59Z
-status_changed_at: 2026-08-24T20:17:59Z
+completed_at: 2026-08-24T21:02:17Z
+commit: 66e8de545450ef8b07e810f7700c5265141aed1a
+status_changed_at: 2026-08-24T21:02:17Z
 route: B
 created_at: 2026-08-24T14:53:28Z
 user_request: UR-071
@@ -36,9 +38,9 @@ write_set:
 On the Board view, each column (Pending, Claimed, Needs Input · Blocked, Recently Done) gets a copy-all button that puts every REQ the column lists on the clipboard cumulatively — cat-style concatenation of the same per-REQ payload the existing detail-drawer Copy button produces.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Traced column rendering, active filters/windows, raw Markdown loading, clipboard feedback, and browser seams, then froze the exact five-file boundary and DOM-order authority.
+- [x] **[APPLY]:** Added four accessible controls, render-derived enable/count state, exact raw-payload concatenation through the shared writer, visible failure behavior, styling, and one generated-site Chromium probe.
+- [x] **[UNIFY]:** Reviewed all five files and rendered output; focused browser, five mutations, sliced JavaScript, full module, canonical verification, syntax, formatting, diff, and artifact checks passed.
 
 ## Why (if provided)
 Great for extracting all pending, claimed, blocked, or done REQs in one action instead of copying each card's ticket one at a time.
@@ -102,3 +104,42 @@ Great for extracting all pending, claimed, blocked, or done REQs in one action i
 - **D-01 — Treat the rendered column DOM as the membership/order authority.** It is already the exact filtered/windowed display contract the user asked to copy, avoiding a second selection model that can drift.
 - **D-02 — Fail closed on missing raw payloads.** Silently omitting one visible REQ would make a successful-looking bulk copy incomplete; the existing failed-feedback path makes the mismatch visible.
 - **D-03 — Keep UR bulk copy separate.** This REQ adds controls only to the four flat Board columns; REQ-368 owns UR-plus-grouped-REQ composition.
+- **D-04 — Disable empty columns.** Explicit disablement avoids a clipboard no-op or transient success-like feedback when the rendered set is empty.
+
+## Implementation Summary
+
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modified): adds one semantic Copy all control to each of the four flat Board column headers.
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modified): styles compact header actions and their disabled, focus, copied, and failed states without changing card geometry.
+- `skills/do-work-board/tools/queue-kanban/web/board-cards.js` (modified): derives each control's enabled/count label from the exact rendered filtered/windowed id slice while preserving Pending Ready-then-Waiting order and REQ-366 wording.
+- `skills/do-work-board/tools/queue-kanban/web/board-clipboard.js` (modified): generalizes shared feedback, reads visible card ids in DOM order, lazy-loads raw Markdown, concatenates exact bytes with no invented separator, and fails closed on a missing payload.
+- `skills/do-work-board/tools/queue-kanban/clipboard_browser_probe_test.go` (new): proves four controls, empty and single-card states, exact order/content, combined filters, Recently Done windows, success/failure feedback, URL/console guards, and five mutation seams in Chromium.
+
+## Discovered Tasks
+
+None.
+
+## Testing
+
+- The focused Chromium 1228 probe passed with exactly four controls, disabled empty Needs Input, Pending order REQ-102/101/103, one-card Claimed copy, combined filter narrowing, and 24h-to-48h Recently Done membership.
+- Five independent mutations—newline separator, first-only truncation, sorted ids, unfiltered enablement, and hard-coded 48h window—each made the focused probe RED and were restored.
+- Exact raw payloads, five successful writes, copied feedback, forced clipboard/fallback failure, probe URL, and zero console/window errors were asserted. Visual QA confirmed all controls fit a 1440×1000 generated board.
+- Sliced JavaScript, full queue-kanban module, Node syntax, formatting, diff checks, and the builder canonical gate passed. The strict browser aggregate's only RED was the unrelated Timeline pointer-capture baseline tracked by REQ-370.
+- On the combined REQ-366/367 main tree, the focused Chromium probe and full queue-kanban module passed again, preserving dependency-gated blocked cards in the copied Pending DOM order. The final canonical gate passed all contracts, Go tests, strict JavaScript, and audit metrics; its optional browser lane made the standard no-browser skip after the focused browser run.
+
+## Qualification
+
+- Exact merge range `4821b34..66e8de545450ef8b07e810f7700c5265141aed1a` passed mechanical qualification.
+- Scope drift passed: the five changed files exactly match the frozen Scope and Implementation Summary.
+- Orchestrator judgment confirmed substantive visible-DOM membership flow, complete filter/window/order tracing, exact raw-byte composition, fail-closed behavior, non-vacuous browser evidence, and no generated/debug artifacts.
+
+## Review
+
+Independent review approved at 10/10 with no blocking, major, or minor findings. It confirmed exact five-file scope, rendered-DOM membership/order authority, byte-exact concatenation, filter/window behavior, empty/failure feedback, accessibility, five mutation seams, and clean REQ-366 integration. Residual risk is limited to non-blocking test-depth gaps around exact aria-label wording and a missing-map mutation.
+
+## Lessons Learned
+
+For bulk actions over a filtered UI, the rendered DOM can be the safest membership and ordering contract when it already embodies every filter, subgroup, and time window. Recomputing the set elsewhere would create a second model that can silently drift.
+
+## Orientation
+
+Released in 0.236.56. Every flat Board column now copies the exact visible REQ payloads in display order with shared success/failure feedback.

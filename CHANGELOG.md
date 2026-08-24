@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.56 — Board Columns Copy in One Click (2026-08-24)
+
+Each flat Board column can now copy every visible REQ's full payload in the order the cards are shown.
+
+- Search, domain, status, and Recently Done windows define the copied set automatically
+- Pending preserves Ready-then-Waiting order, including dependency-gated blocked cards
+- Empty columns disable the control, while copied and failed states reuse the existing feedback path
+
 ## 0.236.55 — Blocked Work Waits in Pending (2026-08-24)
 
 A blocked ticket whose prerequisite is unfinished now waits with dependency-gated work instead of occupying the operator's Needs Input inbox.
