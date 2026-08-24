@@ -191,7 +191,7 @@ Created for every invocation. For simple requests, it's minimal:
 ```markdown
 ---
 id: UR-005
-title: Add keyboard shortcuts
+title: 'Add keyboard shortcuts'  # raw user-derived text — single-quoted per Frontmatter Quoting (actions/work-reference.md), apostrophes doubled
 created_at: 2025-01-26T10:00:00Z  # current UTC instant, never local time with a Z suffix (Timestamp rule, actions/work-reference.md)
 requests: [REQ-020]
 word_count: 4
@@ -201,13 +201,15 @@ word_count: 4
 
 ## Full Verbatim Input
 
-add keyboard shortcuts
+> ````text
+> add keyboard shortcuts
+> ````
 
 ---
 *Captured: 2025-01-26T10:00:00Z*
 ```
 
-For complex requests, add a Summary, an Extracted Requests table, and a Batch Constraints section before the Full Verbatim Input. The verbatim section must contain the COMPLETE, UNEDITED input — never summarize or clean it up.
+For complex requests, add a Summary, an Extracted Requests table, and a Batch Constraints section before the Full Verbatim Input. The verbatim section must contain the COMPLETE, UNEDITED input — never summarize or clean it up. It uses `actions/clarify.md` Step 4's **Outside-text containment** body-passage form: prefix every physical line and use a fence longer than the longest backtick run in the input. The example's four-backtick fence is sized for its sample text, not a fixed fence to copy regardless of content.
 
 **`## Folded Requests` — written only when the fold-first scan resolved a request** (`actions/capture.md` Step 5), placed above the Full Verbatim Input so it never edits the verbatim body. One line per fold, naming the destination and the part of the input it absorbed. The destination is a REQ id for destinations 1 and 2, or the literal `prose-backlog` for destination 3, which lands on `do-work/prose-backlog.md` and mints no REQ at all:
 
