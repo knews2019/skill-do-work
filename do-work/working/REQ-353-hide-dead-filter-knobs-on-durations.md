@@ -1,7 +1,10 @@
 ---
 id: REQ-353
 title: "Hide the dead filter knobs while Durations is on screen"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T16:43:37Z
+status_changed_at: 2026-08-24T16:43:37Z
+route: A
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
 domain: frontend
@@ -14,6 +17,15 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 related: [REQ-346, REQ-347, REQ-348, REQ-349, REQ-350, REQ-351, REQ-352, REQ-354]
 batch: durations-panel-improvement
+estimate:
+  p50_active_minutes: 10
+  confidence: high
+  calculated_at: 2026-08-24T16:43:37Z
+  basis:
+    - Route A
+    - 1-file write set
+    - existing visibility mechanism
+    - 4 acceptance criteria
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-controls.js
 ---
@@ -77,3 +89,11 @@ excludes Durations.
 
 ---
 *Source: prompt A6, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F6).*
+
+## Triage
+
+**Route: A** — This is one existing visibility rule applied to three existing controls in one file, with no state or data-flow change.
+
+## Plan
+
+**Planning and exploration skipped** — Route A: implement the existing `applyView` visibility pattern directly and verify the round trip.

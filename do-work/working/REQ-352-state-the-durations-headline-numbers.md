@@ -1,7 +1,10 @@
 ---
 id: REQ-352
 title: "State the Durations view's own headline numbers"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T16:43:37Z
+status_changed_at: 2026-08-24T16:43:37Z
+route: B
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
 domain: frontend
@@ -14,6 +17,15 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-346, REQ-347, REQ-348, REQ-349, REQ-350, REQ-351, REQ-353, REQ-354]
 batch: durations-panel-improvement
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  calculated_at: 2026-08-24T16:43:37Z
+  basis:
+    - Route B
+    - 3-file seeded write set
+    - 7 acceptance criteria
+    - browser evidence
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-durations.js
   - skills/do-work-board/tools/queue-kanban/web/template.html
@@ -102,3 +114,11 @@ midpoint ticks; and the summary sentence's exclusion-rule wording is unchanged.
 
 ---
 *Source: prompt A7, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F7).*
+
+## Triage
+
+**Route: B** — The tile measures, exact seven-active-day trailing rule, tick outcome, payload source, and three-file surface are specified. Exploration must locate existing quantile, day-bar, axis, and rendered-probe conventions.
+
+## Plan
+
+**Planning not required** — Route B: exploration-guided implementation.
