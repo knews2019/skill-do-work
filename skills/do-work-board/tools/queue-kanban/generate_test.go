@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -2360,13 +2361,15 @@ var document = {
 };
 `
 
-// durationsRenderProbeDriver renders the fixture board and reports every drawn
-// bar's x-interval, the slowest-day annotation's anchor x (the only mid-anchored
-// text at the annotation baseline), and every Panel A mark centre in draw order.
+// durationsRenderProbeDriver renders the fixture board twice and reports every
+// drawn bar's x-interval, the slowest-day annotation's anchor x (the only
+// mid-anchored text at the annotation baseline), and every Panel A mark centre
+// in draw order. Two renders make deterministic jitter a directly observed
+// property instead of an inference from one set of coordinates.
 const durationsRenderProbeDriver = `
-renderDurationsView();
-var drawnBars = [], drawnAnnotationXs = [], drawnMarkCxs = [];
-function walkDrawnNodes(parentNode) {
+function captureDurationsGeometry() {
+  var drawnBars = [], drawnAnnotationXs = [], drawnMarkCxs = [];
+  function walkDrawnNodes(parentNode) {
   (parentNode.children || []).forEach(function (childNode) {
     var attributes = childNode.attributes || {};
     if (childNode.stubName === "rect" && String(attributes["class"] || "").indexOf("durations-bar") !== -1) {
@@ -2381,9 +2384,22 @@ function walkDrawnNodes(parentNode) {
     }
     walkDrawnNodes(childNode);
   });
+  }
+  walkDrawnNodes(durationsStubHosts["durations-chart"]);
+  return { bars: drawnBars, annotationXs: drawnAnnotationXs, markCxs: drawnMarkCxs };
 }
-walkDrawnNodes(durationsStubHosts["durations-chart"]);
-process.stdout.write(JSON.stringify({ bars: drawnBars, annotationXs: drawnAnnotationXs, markCxs: drawnMarkCxs }));
+renderDurationsView();
+var firstGeometry = captureDurationsGeometry();
+durationsStubHosts["durations-chart"].children = [];
+durationsStubHosts["durations-table-body"].children = [];
+renderDurationsView();
+var secondGeometry = captureDurationsGeometry();
+process.stdout.write(JSON.stringify({
+  bars: secondGeometry.bars,
+  annotationXs: secondGeometry.annotationXs,
+  markCxs: secondGeometry.markCxs,
+  firstMarkCxs: firstGeometry.markCxs
+}));
 `
 
 // durationsDayCountFixtureTickets builds dayCount active days of archived REQs.
@@ -2422,10 +2438,10 @@ func durationsDayCountFixtureTickets(dayCount int) []*RequestTicket {
 // This drives the REAL renderDurationsView over a stub DOM at one, two,
 // fourteen and four hundred active days and asserts, from the drawn attributes:
 // every Panel B and C bar inside the plot area, exactly one slowest-day
-// annotation anchored inside it, and every Panel A mark at the x the Go-side
-// label planner assumed. That last assertion is the drift pin: the renderer's
-// axis domain and durations.go's durationLabelTimeRange must stay one
-// definition, and it fails in whichever direction either side moves alone.
+// annotation anchored inside it, and every Panel A mark inside its own UTC-day
+// slot. REQ-349 intentionally replaces exact completion-instant x with stable
+// within-day jitter, so the old exact-x assertion would pin the defect. The
+// bounds still hold the renderer's axis domain against the Go-side definition.
 func TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot(t *testing.T) {
 	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
 	if readError != nil {
@@ -2469,6 +2485,7 @@ func TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot(t *testing.T) {
 				} `json:"bars"`
 				AnnotationXs []float64 `json:"annotationXs"`
 				MarkCxs      []float64 `json:"markCxs"`
+				FirstMarkCxs []float64 `json:"firstMarkCxs"`
 			}
 			if decodeError := json.Unmarshal(probeOutput, &drawn); decodeError != nil {
 				t.Fatalf("decode drawn durations geometry: %v (output starts %q)",
@@ -2512,7 +2529,9 @@ func TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot(t *testing.T) {
 					annotationX, marginLeft, plotRight)
 			}
 
-			// (4) Every Panel A mark at the x the Go-side label planner assumed.
+			// (4) Every Panel A mark stays inside its own UTC day slot. This pins
+			// the shared whole-day axis domain while allowing the intentional
+			// deterministic jitter within that slot.
 			rangeStart, rangeEnd, hasRange := durationLabelTimeRange(aggregate.Samples)
 			if !hasRange {
 				t.Fatal("fixture produced no label time range")
@@ -2521,13 +2540,197 @@ func TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot(t *testing.T) {
 				t.Fatalf("drew %d marks for %d samples", len(drawn.MarkCxs), len(aggregate.Samples))
 			}
 			for sampleIndex, sample := range aggregate.Samples {
-				plannedMarkX := marginLeft + durationLabelPlotX(sample.CompletionTime, rangeStart, rangeEnd)
-				if math.Abs(drawn.MarkCxs[sampleIndex]-plannedMarkX) > 0.06 {
-					t.Errorf("%s mark drawn at x=%.2f but the label planner assumed %.2f — renderer and durations.go no longer share one axis domain",
-						sample.RequestId, drawn.MarkCxs[sampleIndex], plannedMarkX)
+				dayStart := sample.CompletionTime.UTC().Truncate(24 * time.Hour)
+				dayLeft := marginLeft + durationLabelPlotX(dayStart, rangeStart, rangeEnd)
+				dayRight := marginLeft + durationLabelPlotX(dayStart.Add(24*time.Hour), rangeStart, rangeEnd)
+				if drawn.MarkCxs[sampleIndex] < dayLeft-0.06 || drawn.MarkCxs[sampleIndex] > dayRight+0.06 {
+					t.Errorf("%s mark drawn at x=%.2f outside its UTC-day slot [%.2f, %.2f]",
+						sample.RequestId, drawn.MarkCxs[sampleIndex], dayLeft, dayRight)
 				}
 			}
+
+			// (5) The same payload renders to the same jittered coordinates, and
+			// a busy day uses more than one x instead of restacking every mark.
+			if len(drawn.FirstMarkCxs) != len(drawn.MarkCxs) {
+				t.Fatalf("first render drew %d marks and second drew %d", len(drawn.FirstMarkCxs), len(drawn.MarkCxs))
+			}
+			busyDaySpread := 0.0
+			for sampleIndex := range drawn.MarkCxs {
+				if math.Abs(drawn.FirstMarkCxs[sampleIndex]-drawn.MarkCxs[sampleIndex]) > 0.001 {
+					t.Errorf("mark %d moved from x=%.2f to x=%.2f across identical renders",
+						sampleIndex, drawn.FirstMarkCxs[sampleIndex], drawn.MarkCxs[sampleIndex])
+				}
+				if sampleIndex%2 == 1 {
+					busyDaySpread = math.Max(busyDaySpread, math.Abs(drawn.MarkCxs[sampleIndex]-drawn.MarkCxs[sampleIndex-1]))
+				}
+			}
+			if busyDaySpread < 0.1 {
+				t.Errorf("busy-day marks have only %.2f units of x spread; jitter is degenerate", busyDaySpread)
+			}
 		})
+	}
+}
+
+// REQ-349: Panel A needs enough vertical resolution for ordinary work, enough
+// horizontal resolution for a busy day, and a quiet daily distribution behind
+// the individual REQs. This drives the complete renderer so the assertions pin
+// SVG output and draw order rather than helpers that could be left unwired.
+func TestJavaScriptBehaviorDurationsPanelASpreadAndDailyDistribution(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+
+	dayStart := time.Date(2026, 8, 10, 9, 0, 0, 0, time.UTC)
+	fixtureMinutes := []float64{0, 5, 15, 30, 45, 60, 300, -20}
+	fixtureTickets := make([]*RequestTicket, 0, len(fixtureMinutes)+2)
+	for sampleIndex, minutes := range fixtureMinutes {
+		completedAt := dayStart.Add(time.Duration(sampleIndex) * time.Hour)
+		claimedAt := completedAt.Add(-time.Duration(minutes * float64(time.Minute)))
+		fixtureTickets = append(fixtureTickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", sampleIndex+1), "B",
+			claimedAt.Format(time.RFC3339), completedAt.Format(time.RFC3339),
+		))
+	}
+	// A missing-route sample proves that the lower ordinary opacity does not
+	// erase the outlined unknown category.
+	unknownCompletedAt := dayStart.Add(24*time.Hour + 2*time.Hour)
+	fixtureTickets = append(fixtureTickets, durationTicket(
+		"REQ-901", "", unknownCompletedAt.Add(-10*time.Minute).Format(time.RFC3339), unknownCompletedAt.Format(time.RFC3339),
+	))
+	thirdDayCompletedAt := dayStart.Add(48*time.Hour + 3*time.Hour)
+	fixtureTickets = append(fixtureTickets, durationTicket(
+		"REQ-902", "A", thirdDayCompletedAt.Add(-20*time.Minute).Format(time.RFC3339), thirdDayCompletedAt.Format(time.RFC3339),
+	))
+
+	aggregate := buildDurationAggregate(fixtureTickets)
+	generatedData, buildError := buildGeneratedBoardData(&Board{AllRequests: fixtureTickets})
+	if buildError != nil {
+		t.Fatalf("build generated board data: %v", buildError)
+	}
+	durationsJSON, encodeError := json.Marshal(generatedData.Durations)
+	if encodeError != nil {
+		t.Fatalf("encode durations payload: %v", encodeError)
+	}
+
+	probeDriver := `
+renderDurationsView();
+var svg = durationsStubHosts["durations-chart"].children[0];
+var ticks = [], circles = [], paths = [];
+(svg.children || []).forEach(function (childNode, childIndex) {
+  var attributes = childNode.attributes || {};
+  if (childNode.stubName === "text" && String(attributes["class"] || "").indexOf("durations-tick") !== -1) {
+    ticks.push({ text: ((childNode.children || [])[0] || {}).textContent || "", x: Number(attributes.x), y: Number(attributes.y) });
+  }
+  if (childNode.stubName === "circle") {
+    circles.push({
+      cx: Number(attributes.cx), cy: Number(attributes.cy), opacity: attributes.opacity || "",
+      fill: attributes.fill || "", class: attributes["class"] || "", childIndex: childIndex
+    });
+  }
+  if (childNode.stubName === "path") {
+    paths.push({ class: attributes["class"] || "", d: attributes.d || "", childIndex: childIndex });
+  }
+});
+process.stdout.write(JSON.stringify({ ticks: ticks, circles: circles, paths: paths }));
+`
+	probeOutput := runJavaScriptBehaviorProbe(t, "durations panel A spread and distribution",
+		durationsRenderDomStubPreamble+
+			"var boardData = { durations: "+string(durationsJSON)+" };\n"+
+			string(rendererFragment)+probeDriver)
+
+	var drawn struct {
+		Ticks []struct {
+			Text string  `json:"text"`
+			X    float64 `json:"x"`
+			Y    float64 `json:"y"`
+		} `json:"ticks"`
+		Circles []struct {
+			CX         float64 `json:"cx"`
+			CY         float64 `json:"cy"`
+			Opacity    string  `json:"opacity"`
+			Fill       string  `json:"fill"`
+			Class      string  `json:"class"`
+			ChildIndex int     `json:"childIndex"`
+		} `json:"circles"`
+		Paths []struct {
+			Class      string `json:"class"`
+			D          string `json:"d"`
+			ChildIndex int    `json:"childIndex"`
+		} `json:"paths"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &drawn); decodeError != nil {
+		t.Fatalf("decode panel A geometry: %v (output starts %q)", decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+	if len(drawn.Circles) != len(aggregate.Samples) {
+		t.Fatalf("drew %d marks for %d samples", len(drawn.Circles), len(aggregate.Samples))
+	}
+
+	// The tick set is exact, including the new 5-minute foothold. Its y positions
+	// follow sqrt(minutes / 60), not the old linear scale.
+	panelATicks := map[string]float64{}
+	for _, tick := range drawn.Ticks {
+		if math.Abs(tick.X-(durationsRendererConstant(t, "DURATIONS_MARGIN_LEFT")-8)) < 0.01 &&
+			tick.Y <= durationsRendererConstant(t, "DURATIONS_MAIN_BOTTOM")+durationsRendererConstant(t, "DURATIONS_TICK_BASELINE_DROP")+0.01 {
+			panelATicks[tick.Text] = tick.Y - durationsRendererConstant(t, "DURATIONS_TICK_BASELINE_DROP")
+		}
+	}
+	wantTickMinutes := []float64{0, 5, 15, 30, 45, 60}
+	if len(panelATicks) != len(wantTickMinutes)+1 { // plus the separate 60+ overflow-lane tick
+		t.Fatalf("Panel A ticks = %v, want 60+ and exactly 0, 5, 15, 30, 45, 60", panelATicks)
+	}
+	mainTop := durationsRendererConstant(t, "DURATIONS_MAIN_TOP")
+	mainBottom := durationsRendererConstant(t, "DURATIONS_MAIN_BOTTOM")
+	for _, minutes := range wantTickMinutes {
+		label := strconv.FormatFloat(minutes, 'f', -1, 64)
+		gotY, exists := panelATicks[label]
+		if !exists {
+			t.Errorf("Panel A has no %s-minute tick", label)
+			continue
+		}
+		wantY := mainBottom - math.Sqrt(minutes/60)*(mainBottom-mainTop)
+		if math.Abs(gotY-wantY) > 0.01 {
+			t.Errorf("%s-minute tick y=%.3f, want sqrt-scale y=%.3f", label, gotY, wantY)
+		}
+	}
+
+	ordinaryMark := drawn.Circles[1]
+	if ordinaryMark.Opacity == "" || ordinaryMark.Opacity == "1" {
+		t.Errorf("ordinary mark opacity = %q, want a stated lower opacity", ordinaryMark.Opacity)
+	}
+	reversedMark := drawn.Circles[7]
+	if reversedMark.Fill != "var(--durations-critical)" || reversedMark.Opacity != "" {
+		t.Errorf("reversed mark fill/opacity = %q / %q, want undimmed critical red", reversedMark.Fill, reversedMark.Opacity)
+	}
+	unknownMark := drawn.Circles[8]
+	if !strings.Contains(unknownMark.Class, "durations-mark-unknown") || unknownMark.Opacity != "" {
+		t.Errorf("unknown mark class/opacity = %q / %q, want an undimmed outlined unknown", unknownMark.Class, unknownMark.Opacity)
+	}
+
+	if len(drawn.Paths) != 2 {
+		t.Fatalf("drew %d Panel A distribution paths, want one p25-p75 ribbon and one median line: %+v", len(drawn.Paths), drawn.Paths)
+	}
+	pathByClass := map[string]struct {
+		D          string
+		ChildIndex int
+	}{}
+	for _, path := range drawn.Paths {
+		pathByClass[path.Class] = struct {
+			D          string
+			ChildIndex int
+		}{path.D, path.ChildIndex}
+		if path.D == "" || strings.Contains(path.D, "NaN") || strings.Contains(path.D, "Infinity") {
+			t.Errorf("%q path has invalid geometry %q", path.Class, path.D)
+		}
+	}
+	ribbon, ribbonExists := pathByClass["durations-quantile-ribbon"]
+	median, medianExists := pathByClass["durations-quantile-median"]
+	if !ribbonExists || !medianExists {
+		t.Fatalf("distribution path classes = %v, want ribbon and median", pathByClass)
+	}
+	if ribbon.ChildIndex >= drawn.Circles[0].ChildIndex || median.ChildIndex >= drawn.Circles[0].ChildIndex {
+		t.Errorf("distribution paths at child indexes %d/%d are not behind first circle at %d",
+			ribbon.ChildIndex, median.ChildIndex, drawn.Circles[0].ChildIndex)
 	}
 }
 
