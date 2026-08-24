@@ -1,7 +1,10 @@
 ---
 id: REQ-370
 title: "[impact-negligible] Review fix: restore a falsifiable Timeline pointer-capture mutation"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T21:49:13Z
+status_changed_at: 2026-08-24T21:49:13Z
+route: C
 created_at: 2026-08-24T17:35:53Z
 user_request: UR-067
 addendum_to: REQ-341
@@ -14,6 +17,18 @@ depends_on: [REQ-341]
 maintenance: false
 impact: impact-negligible
 effort_estimate: effort-substantive
+estimate:
+  p50_active_minutes: 45
+  confidence: medium
+  calculated_at: 2026-08-24T21:49:13Z
+  basis:
+    - Route C
+    - 1-file write set
+    - 4 acceptance criteria
+    - browser evidence
+    - async lifecycle behavior
+    - cross-route regression gates
+    - full-suite verification
 write_set:
   - skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
 ---
@@ -66,3 +81,7 @@ opposite outcomes are both observed, and targeted mutations prove either side ca
 
 ---
 *Source: REQ-351 independent review; pre-existing Timeline probe failure outside REQ-351's write set.*
+
+## Triage
+
+**Route: C** — This is a trusted-input, browser-version-sensitive pointer lifecycle ratchet. The one test file is known, but the retained engine's actual boundary event must be instrumented, a genuinely opposite capture-present/suppressed gesture designed, both dependency directions mutated, and the clean-click/early-capture product assertions preserved.

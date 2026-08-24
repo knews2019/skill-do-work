@@ -10,6 +10,7 @@ Status: in-progress
 | REQ-371 | `/root/build_req354` | `worktree-agent-REQ-371-keep-timeline-bars-inside-the-plot-after-the-drawer-opens` | ready (`d7cef79`) | yes (`5fda05b`) |
 | REQ-368 | `/root/build_req360` | `worktree-agent-REQ-368-ur-copy-all-includes-its-reqs` | ready (`cedaa14`) | yes (`61dddb2`) |
 | REQ-369 | `/root/build_req354` | `worktree-agent-REQ-369-wait-for-the-timeline-table-rebuild-condition` | ready (`3a114d7`) | yes (`ed15507`) |
+| REQ-370 | `/root/build_req354` | `worktree-agent-REQ-370-restore-a-falsifiable-timeline-pointer-capture-mutation` | pending | no |
 
 Implementation runs concurrently in isolated worktrees. Integration, verification, review, release,
 and archival remain serial.
