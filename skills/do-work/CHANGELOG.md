@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.49 — Durations Marks Open Their REQs (2026-08-24)
+
+Outliers and ordinary samples are no longer dead ends: every Durations mark now opens the shared REQ drawer by pointer or keyboard.
+
+- Hover and trusted click share the same jitter-aware nearest-mark selection
+- One roving Tab stop reaches the complete sample set without an inert SVG detour
+
 ## 0.236.48 — Shell Case Headers Stop at the Script Name (2026-08-24)
 
 The prescribed-shell case counter no longer treats words that merely begin with a script basename as real case headers.

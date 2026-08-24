@@ -1,9 +1,11 @@
 ---
 id: REQ-354
 title: "Open the detail drawer from a Durations mark"
-status: claimed
+status: completed
 claimed_at: 2026-08-24T17:42:55Z
-status_changed_at: 2026-08-24T17:42:55Z
+completed_at: 2026-08-24T18:45:30Z
+commit: 9f119476e404350d562fb3ab7555523a4172be6e
+status_changed_at: 2026-08-24T18:45:30Z
 route: B
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
@@ -43,9 +45,9 @@ nothing else happens. Make a click open the detail drawer for the nearest REQ, a
 keyboard path to the same information.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Route B exploration selected the shared jitter-aware nearest-mark helper, existing drawer entry point, complete one-tab-stop roving mark set, and trusted CDP acceptance path before implementation.
+- [x] **[APPLY]:** Added shared jitter-aware hover/click selection, one roving SVG-button Tab stop across every projected mark, and keyboard activation through the existing shared drawer entry point in the declared two-file scope.
+- [x] **[UNIFY]:** Reviewed both changed files; syntax/diff checks, focused trusted Chromium probes, mutation sensitivity, responsive Durations probes, and canonical maintainer verification passed with no debug artifacts.
 
 ## Why
 
@@ -143,3 +145,46 @@ and the hover readout is unchanged.
 - Exactly one SVG mark is in the Tab sequence; arrow navigation can reach every projected sample and Enter/Space opens the same shared drawer without expanding the table.
 - Existing hover copy, lane/mark rendering, REQ-351 longest-spans list, and REQ-352 statistics/rolling/cadence behavior remain unchanged.
 - A real CDP mouse click and live generated-board keyboard probe guard against the Timeline-style synthetic-input false positive.
+
+## Implementation Summary
+
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js` (modified): factors one nearest-mark helper over REQ-349's jittered `markIndex` for unchanged hover copy and overlay click; reuses `openDetail("req", id)`; and gives every projected circle semantic button metadata with one render-local roving Tab stop, arrow traversal, and Enter/Space activation.
+- `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go` (modified): adds vacuity-guarded full-set roving semantics/activation coverage and trusted CDP click proof at a busy-day mark whose jittered and raw x coordinates select different REQs.
+
+## Decisions
+
+- **D-01 — Reuse the existing global drawer entry point.** Board and Timeline already converge on `openDetail`; `board-detail.js` requires no parallel API or modification.
+- **D-02 — Keep interaction state render-local.** Durations rebuilds its SVG on window changes, so one roving index and its listeners live and die with the projected mark set rather than creating persistent state.
+- **D-03 — Make hover and click consume the same jittered coordinates.** Pointer readout and activation call one nearest-mark helper over `markIndex.x`; neither recomputes completion-time x.
+- **D-04 — Preserve native SVG focus indication.** The browser supplies the focus outline; behavior and sole-tab-stop semantics are proven without expanding to CSS.
+
+## Discovered Tasks
+
+- Browser-enabled whole-module runs on Chromium 1212 and 1228 reproduce two pre-existing Timeline probe failures outside this two-file scope. REQ-370 carries the non-falsifiable pointer-capture mutation; independent review confirmed the drawer-resize geometry failure is distinct and auto-queued it as impact-critical REQ-371.
+
+## Testing
+
+- Focused Chromium 1228 probes passed for exactly one roving Tab stop, exhaustive forward/reverse reach over every projected sample, Enter/Space drawer activation, and trusted overlay click at a busy-day jittered mark.
+- A raw-completion-x mutation made both hover and click select `REQ-300` instead of jittered `REQ-500`; restoring `markIndex.x` returned GREEN, proving the shared helper and CDP input are non-vacuous.
+- Existing responsive headline/list probes passed at 320/768/1280, all 94 dense outlier rows remained present, and all Durations probes passed on Chromium 1212.
+- Builder canonical maintainer verification passed with its no-browser lane skipped; post-merge focused Chromium 1228 probes passed, and the browser-unset full module suite passed in 50.067s.
+- Review remediation moved focus/key handlers off the root SVG and onto each circle. Chromium 1228 then passed the trusted Tab-entry probe, all Durations tests, and the canonical maintainer gate.
+- On the final main tree, a generated board replay through Playwright proved one Tab from the last window control lands directly on a labelled REQ circle; ArrowRight then Enter opened the next REQ's shared drawer. The final canonical maintainer gate passed. An attempted replay through installed desktop Chrome hung in that suite's `--dump-dom` harness and timed out before any product assertion; it was superseded by the retained-headless-shell and Playwright evidence.
+
+## Qualification
+
+- Exact merge range `a23eba6..537465b` passed mechanical qualification.
+- Scope drift passed: the two-file Implementation Summary exactly matches the declared Scope.
+- Orchestrator judgment confirmed substantive pointer/keyboard behavior, shared jitter-aware selection and drawer data flow, complete sample reach, preserved hover/REQ-351/352 behavior, and no generated/debug artifacts.
+
+## Review
+
+Independent review first found one Important accessibility defect: root-SVG event delegation made Chromium insert an unnamed inert Tab stop before the roving mark. Remediation moved the listeners to the circles and added a trusted Tab-entry assertion that explicitly rejects the SVG root. Final re-review approved with no Important, Minor, or Nit findings: Requirements 100%, Code Quality 98%, Test Adequacy 100%, Scope Discipline 100%, overall 99%, low risk, acceptance pass. The separate Timeline drawer geometry regression was captured as REQ-371.
+
+## Lessons Learned
+
+In Chromium, adding keyboard or focus listeners to an SVG root can make that root a sequential focus stop even without an explicit tabindex. Trusted Tab-order evidence must begin outside the chart; programmatic focus inside it cannot detect an inert entry stop.
+
+## Orientation
+
+Released in 0.236.49. Every Durations mark now opens the shared REQ drawer by trusted pointer or one-stop roving keyboard interaction, with hover and click sharing the same jitter-aware selection.
