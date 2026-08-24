@@ -1,7 +1,8 @@
 ---
 id: REQ-341
 title: "[impact-rule-change] Addendum: give the browser probe lane trusted input"
-status: claimed
+status: completed
+completed_at: 2026-08-24T11:20:00Z
 claimed_at: 2026-08-24T10:05:00Z
 status_changed_at: 2026-08-23T22:32:23Z
 created_at: 2026-08-23T20:25:04Z
@@ -31,9 +32,9 @@ no probe in the lane can dispatch trusted input — every one of them synthesize
 script. Give the lane a way to drive real input, and convert the probes that need it.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `prime-kanban-board.md` and REQ-336's prototype. Chose `--remote-debugging-pipe` with hand-rolled JSON framing over a WebSocket client or a driver, because the REQ forbids a new module dependency.
+- [x] **[APPLY]:** Two files, both inside the write set. `go.mod` and `go.sum` are untouched — verified by the orchestrator.
+- [x] **[UNIFY]:** Audited by the orchestrator against `b09e3e2..1a5b745`: confirmed no dependency was added, REQ-345's landing-probe clauses survived the merge, and the converted probe catches a variable-routed capture that the old structural grep cannot see.
 
 ## Why
 
@@ -114,3 +115,86 @@ request.
 
 ---
 *Source: Discovered Task, REQ-337 (UR-067).*
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** A new transport for the probe lane, with the mechanism open (the REQ named a prototype worth reading but left the choice), a hard no-new-dependency constraint, and existing probes that must keep working unchanged.
+
+**Planning:** Required.
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work-board/tools/queue-kanban/browser_probe_test.go` (modify) — the transport
+- `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go` (modify) — the converted probe
+
+**Acceptance criteria (restated from REQ):**
+- [x] The lane dispatches trusted input and a probe reads the result
+- [x] Existing `--dump-dom` probes keep working unchanged
+- [x] The SKIP path and the strict lane's refusal-to-skip both keep working; a transport failure fails loudly
+- [x] REQ-337's structural check converted to a behavioural one, with the change explained in its comment
+- [x] No new module dependency
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/browser_probe_test.go` (modified, ~470 new lines)
+- `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go` (modified)
+
+**What was done:** `--remote-debugging-pipe` carries the DevTools Protocol over a pair of inherited file descriptors as NUL-terminated JSON — `os/exec`'s `ExtraFiles` supplies fd 3 and fd 4, `encoding/json` frames the messages, and nothing is added to `go.mod`. `Input.dispatchMouseEvent` delivers trusted events, so the engine issues the `pointerId` and a `setPointerCapture` on it establishes a real capture that really retargets the synthesized click. `TestTimelinePointerCaptureWaitsForThePanEngage` became `TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage` — the rename puts it inside the strict lane, which it was not in before — with four trials, each pair proving the other can fail.
+
+## Testing
+
+**Tests run:** the converted probe, `-count=2 -run '^TestBrowserBehavior'`, the strict lane and its zero-probe guard, and the full gate
+**Result:** ✓ Gate exit 0, run twice. All 20 browser probes pass on both iterations of the doubled run.
+
+**A correction to this REQ's own stated RED.** The REQ predicted `setPointerCapture` on a synthetic `PointerEvent` throws `NotFoundError`. On Chromium 141.0.7390.37 it does not throw — it silently establishes nothing:
+
+```
+{"capture":"established, pointerId 1","hasCapture":false,"isTrusted":false}
+```
+
+Same consequence, different mechanism, and the quieter one: the retargeting path is unreachable and nothing says so. That is why the check had to be structural.
+
+**Mutation evidence, independently re-run by the orchestrator.** REQ-336's defect reintroduced *routed through a local variable* — the exact residual REQ-337's structural check recorded in its own doc comment as something it could not catch:
+
+```js
+var deferredCapture = capturePanPointer;
+deferredCapture();
+```
+
+The old structural grep over the pointerdown body returns **0** — it passes. The converted probe **fails, exit 1**. That is the REQ's whole purpose demonstrated rather than argued.
+
+**Two residuals the orchestrator found while re-running that mutation, neither of which the builder claimed otherwise:**
+- The failure surfaced on trial 3 (the drag/pan trial) rather than trial 1 (the click/drawer trial the builder documented), and it took 46s — a 45s wait expiring, so the message names a timeout rather than the assertion the trial exists for. A failing run of this probe is slow, and its first line is not the most informative one.
+- A **deferred** variant of the same mutation (`setTimeout(function(){ deferredCapture(); }, 0)`) **passed**. One run cannot distinguish "a deferred capture does not reproduce the defect" from "the probe misses that shape", and the orchestrator did not resolve it. Recorded as an open question for the reviewer rather than asserted either way.
+
+**Lane guards:** `TestMaintainerStrictBrowserBehaviorLane` PASS; `TestMaintainerStrictBrowserBehaviorLaneRejectsZeroProbes` PASS; the engine-missing SKIP path still skips with its message.
+
+*Verified by work action*
+
+## Decisions
+
+<!-- D-XX counter: last used D-06. Next decision: D-07. -->
+
+- **D-01 — `--remote-debugging-pipe` over a WebSocket client or a driver. DECIDE.** Value: real trusted input with zero additions to `go.mod`, which the REQ required. Risk: ~200 lines of hand-rolled protocol handshake, one more thing to keep working across Chromium versions. Reversible — the dump-dom transport is untouched beside it.
+- **D-02 — A second transport, not a replacement. DECIDE.** The 19 existing probes measure rather than interact; converting them would be a large diff with no property gained.
+- **D-03 — Enforce the render-evidence rule inside `evaluateInPage` rather than per probe. DECIDE.** Value: the next probe author cannot forget it, and it caught a real bug during development — the session was attaching to `about:blank`, which reports `readyState: complete` and answers every question confidently about the wrong document.
+- **D-04 — Convert REQ-333's release-outside half (trials 3+4) but leave REQ-333's own probe alone. DECIDE.** Risk: the same property is now checked twice, once structurally. Cheap to remove later.
+- **D-05 — Leave REQ-324's threshold probe on synthetic events. DECIDE.** It measures the pan threshold, latching and press-point continuity, none of which needs a real capture. Risk: it stays blind to a capture-shaped regression — which the new probe now covers.
+- **D-06 — Settle each gesture on its own condition. DECIDE.** The engine synthesizes the click in a task *after* the pointerup, so settling on the pointerup read a drawer that had not been asked to open yet. That flaked once under the full suite's load; neither condition presumes an outcome, so one helper serves the trial expecting a drawer and the trial expecting none.
+
+## Discovered Tasks
+
+- `TestBrowserBehaviorTimelinePointerAndKeyboardPathsStayAlive` still asserts structurally that `capturePanPointer` calls `scrollHost.setPointerCapture(`. Trials 3+4 now pin that behaviourally; the two structural assertions could be dropped, or that probe's drag half rebuilt on the trusted transport so its `lostpointercapture` is real.
+- `_dev/primes/prime-kanban-board.md` has no Lessons entry for this REQ, and the which-driver reasoning now lives only in `browser_probe_test.go`. Two lessons worth recording: a protocol target reports its new URL before the renderer has swapped documents, so attaching by "the first page target" measures `about:blank` confidently; and the engine synthesizes the click *after* the pointerup.
+- Nothing pins that a lane probe cannot silently skip the trusted transport specifically — the probe counter is shared between both transports. A per-transport count would catch a future edit that quietly moves every probe back to `--dump-dom`.
+- Five probes hardcode `"/probe.html"` in their href assertions instead of reading `browserProbePageFileName`. Same class as REQ-322's lesson about restating a constant beside the test.
+
+## Open Questions
+
+- [~] Does a **deferred** capture on pointerdown reproduce REQ-336's defect, and if so does the converted probe catch it? → **D-07**: Unresolved. The orchestrator's `setTimeout(…, 0)` variant of the variable-routed mutation passed, where the immediate variant failed. Either a deferred capture genuinely does not retarget the synthesized click — in which case it is not the defect and passing is correct — or the probe's settle condition misses it. One run cannot tell. Value: knowing which would either close a probe gap or document a real boundary of the defect. Risk: if it is a gap, a deferred-capture regression ships green. Left for the reviewer, who can measure it properly rather than infer it.
