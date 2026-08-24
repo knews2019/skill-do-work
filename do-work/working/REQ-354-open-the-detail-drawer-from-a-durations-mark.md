@@ -31,7 +31,7 @@ estimate:
     - full-suite verification
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-durations.js
-  - skills/do-work-board/tools/queue-kanban/web/board-detail.js
+  - skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go
 ---
 
 # Open the Detail Drawer From a Durations Mark
@@ -121,3 +121,25 @@ and the hover readout is unchanged.
 ## Plan
 
 **Planning not required** — Route B: exploration-guided implementation.
+
+## Exploration
+
+- Reuse global `openDetail("req", id)` from `board-detail.js`; Board delegates native detail targets and Timeline already calls the same entry point for non-native SVG keyboard activation, so the drawer module does not change.
+- Panel A's transparent hover surfaces and circles share `markIndex`, whose `x` already includes REQ-349's stable per-day jitter. Factor one nearest-mark helper and make hover and click consume it rather than recomputing completion-time x.
+- Give every projected circle `role="button"`, a stable accessible name and request id, with one explicit `tabindex="0"` and all peers `-1`. A render-local roving index lets Left/Right traverse every mark; Enter/Space opens the focused REQ, and focus-in preserves the reader's current stop.
+- The trusted CDP browser session can press/release at a circle centre through the overlay. A busy-day fixture must guard that jitter displacement is real and that raw versus jitter-aware targeting would choose different ids.
+- `durations_browser_probe_test.go` can prove sole-tab-stop semantics, exhaustive arrow reach, keyboard drawer activation, trusted overlay click identity, unchanged hover readout, and the real page URL. No payload, template, CSS, table, or `board-detail.js` edit is needed.
+
+## Scope
+
+**Files I will touch:**
+
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js`
+- `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go`
+
+**Acceptance criteria:**
+
+- Hover and trusted click share the same jitter-aware nearest-mark helper; clicking opens the shared REQ drawer for exactly the id the readout names.
+- Exactly one SVG mark is in the Tab sequence; arrow navigation can reach every projected sample and Enter/Space opens the same shared drawer without expanding the table.
+- Existing hover copy, lane/mark rendering, REQ-351 longest-spans list, and REQ-352 statistics/rolling/cadence behavior remain unchanged.
+- A real CDP mouse click and live generated-board keyboard probe guard against the Timeline-style synthetic-input false positive.

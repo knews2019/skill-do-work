@@ -1,18 +1,21 @@
-# REQ-354 exploration brief
+# REQ-354 builder brief
 
 Worktree: `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2-worktrees/worktree-agent-REQ-354-open-the-detail-drawer-from-a-durations-mark`
 
-Read `_dev/primes/prime-kanban-board.md` completely and inspect only repository files needed to answer
-the exploration questions below. Do not edit code yet. Do not read or write any `do-work/` path in
-the worktree; report findings to the orchestrator in conversation.
+Exploration is accepted. Implement test-first only in:
 
-Explore:
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js`
+- `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go`
 
-- the shared detail-drawer entry point used by Board and Timeline;
-- Panel A's current nearest-mark hover surface and REQ-349 jitter compensation;
-- a one-Tab-stop roving keyboard pattern that can reach every projected sample without expanding the table;
-- the trusted real-mouse/CDP browser probe conventions now available after REQ-341;
-- the exact production and test files required, including whether `board-detail.js` needs modification or only reuse.
+Reuse `openDetail("req", id)` without editing `board-detail.js`. Factor one jitter-aware nearest-mark
+selection over `markIndex` for hover and overlay click. Make every circle a semantic SVG button with
+one roving Tab stop across the complete projected set; Left/Right reach every mark and Enter/Space
+open the same drawer. Preserve hover text and all REQ-351/352 behavior.
 
-Return a concise proposed implementation, declared file list, acceptance-to-test mapping, risks, and
-any reason the captured two-file write set must expand. Wait for an explicit follow-up before coding.
+Add RED/GREEN browser coverage for sole-tab-stop semantics, exhaustive arrow reach, Enter/Space,
+and a trusted CDP click through the overlay at a busy-day jittered mark. The fixture must prove raw
+and jitter-aware targeting would differ, then assert the drawer/readout use the jittered mark.
+
+Run focused tests with the retained Chromium, the full module/canonical gates, and inspect responsive
+generated-board behavior. Commit on the worktree branch and write handback only to
+`/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-08-24-174255/REQ-354-handback.md`.
