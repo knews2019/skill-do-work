@@ -2472,7 +2472,9 @@ const timelinePointerCaptureProbeHelpers = `(function () {
   var probe = {
     clickCount: 0, clickDetailId: "", clickTag: "",
     pointerUpSeen: false, pointerUpTag: "",
-    captureEstablished: null, captureListener: null
+    captureEstablished: null, captureListener: null,
+    gotPointerCaptureCount: 0,
+    hostPointerLeaveSwallowed: 0, hostPointerLeaveListener: null
   };
   window.timelineProbe = probe;
   probe.plotHost = function () { return document.querySelector("#view-timeline .timeline-scroll"); };
@@ -2514,6 +2516,9 @@ const timelinePointerCaptureProbeHelpers = `(function () {
     probe.pointerUpSeen = true;
     probe.pointerUpTag = upEvent.target && upEvent.target.tagName ? upEvent.target.tagName : "";
   }, false);
+  probe.plotHost().addEventListener("gotpointercapture", function () {
+    probe.gotPointerCaptureCount++;
+  }, false);
   // THE CLICK-SYNTHESIS PRECONDITION, watched rather than assumed. Chromium creates a
   // click on the nearest common inclusive ancestor of the mousedown and mouseup
   // targets. A mousedown target that has been DETACHED in between has no ancestor in
@@ -2532,6 +2537,8 @@ const timelinePointerCaptureProbeHelpers = `(function () {
     probe.clickCount = 0; probe.clickDetailId = ""; probe.clickTag = "";
     probe.pointerUpSeen = false; probe.pointerUpTag = "";
     probe.captureEstablished = null;
+    probe.gotPointerCaptureCount = 0;
+    probe.hostPointerLeaveSwallowed = 0;
     probe.pressTarget = null; probe.pressTargetTag = ""; probe.pressTargetSurvived = null;
     return "armed";
   };
@@ -2557,6 +2564,8 @@ const timelinePointerCaptureProbeHelpers = `(function () {
       clickCount: probe.clickCount, clickDetailId: probe.clickDetailId, clickTag: probe.clickTag,
       drawerOpen: probe.drawerIsOpen(), shownDetailId: probe.shownDetailId(),
       panning: probe.isPanning(), captureEstablished: probe.captureEstablished,
+      gotPointerCaptureCount: probe.gotPointerCaptureCount,
+      hostPointerLeaveSwallowed: probe.hostPointerLeaveSwallowed,
       pressTargetTag: probe.pressTargetTag, pressTargetSurvived: probe.pressTargetSurvived
     };
   };
@@ -2636,6 +2645,30 @@ const timelinePointerCaptureProbeHelpers = `(function () {
     delete probe.plotHost().setPointerCapture;
     return "pointer capture restored";
   };
+  // Chromium 1228 delivers pointerleave to the host while a button is held. The
+  // product deliberately treats that as another release boundary, so it ends an
+  // uncaptured pan before the later outside pointerup can demonstrate capture's
+  // retargeting. Swallow exactly that host-targeted boundary in BOTH drag trials:
+  // with capture, pointerup still returns to the host; without capture, it does not.
+  probe.swallowHostPointerLeave = function () {
+    var host = probe.plotHost();
+    probe.hostPointerLeaveListener = function (leaveEvent) {
+      if (leaveEvent.target !== host) {
+        return;
+      }
+      probe.hostPointerLeaveSwallowed++;
+      leaveEvent.stopImmediatePropagation();
+    };
+    document.addEventListener("pointerleave", probe.hostPointerLeaveListener, true);
+    return "host pointerleave swallowed";
+  };
+  probe.restoreHostPointerLeave = function () {
+    if (probe.hostPointerLeaveListener) {
+      document.removeEventListener("pointerleave", probe.hostPointerLeaveListener, true);
+    }
+    probe.hostPointerLeaveListener = null;
+    return "host pointerleave restored";
+  };
   return "installed";
 })()`
 
@@ -2654,15 +2687,17 @@ type timelineRowAim struct {
 
 // timelineGestureOutcome is everything one gesture is allowed to be judged on.
 type timelineGestureOutcome struct {
-	ClickCount          int    `json:"clickCount"`
-	ClickDetailId       string `json:"clickDetailId"`
-	ClickTag            string `json:"clickTag"`
-	DrawerOpen          bool   `json:"drawerOpen"`
-	ShownDetailId       string `json:"shownDetailId"`
-	Panning             bool   `json:"panning"`
-	CaptureEstablished  *bool  `json:"captureEstablished"`
-	PressTargetTag      string `json:"pressTargetTag"`
-	PressTargetSurvived *bool  `json:"pressTargetSurvived"`
+	ClickCount                int    `json:"clickCount"`
+	ClickDetailId             string `json:"clickDetailId"`
+	ClickTag                  string `json:"clickTag"`
+	DrawerOpen                bool   `json:"drawerOpen"`
+	ShownDetailId             string `json:"shownDetailId"`
+	Panning                   bool   `json:"panning"`
+	CaptureEstablished        *bool  `json:"captureEstablished"`
+	GotPointerCaptureCount    int    `json:"gotPointerCaptureCount"`
+	HostPointerLeaveSwallowed int    `json:"hostPointerLeaveSwallowed"`
+	PressTargetTag            string `json:"pressTargetTag"`
+	PressTargetSurvived       *bool  `json:"pressTargetSurvived"`
 }
 
 // aimAtATimelineRow resets the window, scrolls the chart on screen and returns a press
@@ -2810,9 +2845,12 @@ func readTimelineClickOutcome(
 //	(2) with capture taken on pointerdown from outside the board's source, the same
 //	    gesture opens nothing — which is what proves (1) can fail, and proves it against
 //	    the exact regression rather than against a mutation chosen to be easy,
-//	(3) a trusted drag released OUTSIDE the chart ends the pan, and
-//	(4) with the host's setPointerCapture stubbed out, that release strands the pan —
-//	    which is what proves (3) can fail and keeps "no capture anywhere" from passing.
+//	(3) with the current engine's alternate host-pointerleave release boundary
+//	    narrowly isolated, a trusted drag released OUTSIDE the chart still ends the
+//	    pan through capture-retargeted pointerup, and
+//	(4) with the same isolation plus the host's setPointerCapture stubbed out, that
+//	    release strands the pan — which proves (3) depends on capture and keeps "no
+//	    capture anywhere" from passing.
 //
 // WHAT THE GESTURES ARE SENSITIVE TO, stated because it was measured rather than
 // assumed. A capture reaches the click whether it is requested directly, through a
@@ -2897,19 +2935,31 @@ func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T)
 	}
 
 	// (3) THE RELEASE OUTSIDE THE CHART. Capture at the engage is what guarantees the
-	// host hears the end of a drag: Chromium suppresses the boundary events while a
-	// button is held, so without it nothing reaches the host and the grab cursor stays
-	// on for the rest of the session (REQ-333).
+	// host hears the pointerup that ends a drag. Chromium 1228 now also delivers a
+	// host-targeted pointerleave while the button is held, and the product correctly
+	// treats that as another release boundary; without isolating it, capture and no
+	// capture both end cleanly and this pair proves nothing about capture (REQ-333).
 	//
 	// Measured from the PAN ENGAGING and from the is-panning state, never from the axis
 	// text: a drag that clamps at the window bound leaves every label identical.
+	// Isolate the alternate boundary for BOTH paired trials so the only difference
+	// between them is whether capture returns the outside pointerup to the host.
+	session.evaluateInPage(t, `window.timelineProbe.swallowHostPointerLeave()`)
+	t.Cleanup(func() {
+		session.evaluateInPage(t, `window.timelineProbe.restoreHostPointerLeave()`)
+	})
 	engagedDrag := aimAtATimelineRow(t, session, "release outside")
 	releaseY := engagedDrag.HostTop - 40
 	if releaseY < 1 {
 		t.Fatalf("the scroll host sits at y=%g, so there is no point above it inside the "+
 			"viewport to release at; this trial cannot be run from here", engagedDrag.HostTop)
 	}
-	panningAfterRelease := driveTimelineDragReleasedOutside(t, session, engagedDrag, releaseY)
+	panningAfterRelease, capturedDragOutcome := driveTimelineDragReleasedOutside(
+		t, session, engagedDrag, releaseY)
+	if capturedDragOutcome.GotPointerCaptureCount == 0 {
+		t.Fatal("the capture-present outside-release trial observed no gotpointercapture event; " +
+			"its clean release therefore proves nothing about capture retargeting")
+	}
 	if panningAfterRelease {
 		t.Error("a trusted drag released above the chart left it in the panning state; capture " +
 			"taken when the pan engages is what makes the release a fact rather than a hope, and " +
@@ -2921,10 +2971,22 @@ func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T)
 	// setPointerCapture leaves capturePanPointer's feature detect and call intact and
 	// removes only the capture — and the same drag must then strand the pan.
 	session.evaluateInPage(t, `window.timelineProbe.swallowPointerCapture()`)
+	t.Cleanup(func() {
+		session.evaluateInPage(t, `window.timelineProbe.restorePointerCapture()`)
+	})
 	uncapturedDrag := aimAtATimelineRow(t, session, "release outside without capture")
-	strandedPanning := driveTimelineDragReleasedOutside(t, session, uncapturedDrag,
+	strandedPanning, uncapturedDragOutcome := driveTimelineDragReleasedOutside(t, session, uncapturedDrag,
 		uncapturedDrag.HostTop-40)
 	session.evaluateInPage(t, `window.timelineProbe.restorePointerCapture()`)
+	session.evaluateInPage(t, `window.timelineProbe.restoreHostPointerLeave()`)
+	if uncapturedDragOutcome.GotPointerCaptureCount != 0 {
+		t.Fatalf("the capture-swallowed outside-release trial still observed %d gotpointercapture events; "+
+			"the mutation did not remove capture", uncapturedDragOutcome.GotPointerCaptureCount)
+	}
+	if uncapturedDragOutcome.HostPointerLeaveSwallowed == 0 {
+		t.Fatal("the capture-swallowed outside-release trial never crossed the host pointerleave " +
+			"boundary; the isolator was not exercised and the mutation pair is vacuous")
+	}
 	if !strandedPanning {
 		t.Error("with the scroll host's setPointerCapture swallowed, a drag released above the " +
 			"chart still ended cleanly; trial (3) is then passing for some other reason and does " +
@@ -2933,12 +2995,13 @@ func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T)
 
 	t.Logf("trusted click on %s: %d click(s), delivered to <%s>, trigger %q, drawer open %v "+
 		"showing %q. With capture on pointerdown: %d click(s), trigger %q, drawer open %v. "+
-		"Drag released above the host left the chart panning: %v with capture, %v with capture "+
-		"swallowed.",
+		"Drag released above the host left the chart panning: %v with %d capture event(s), %v "+
+		"with capture swallowed and %d host pointerleave event(s) isolated.",
 		cleanAim.DetailId, cleanClick.ClickCount, cleanClick.ClickTag, cleanClick.ClickDetailId,
 		cleanClick.DrawerOpen, cleanClick.ShownDetailId,
 		capturedClick.ClickCount, capturedClick.ClickDetailId, capturedClick.DrawerOpen,
-		panningAfterRelease, strandedPanning)
+		panningAfterRelease, capturedDragOutcome.GotPointerCaptureCount,
+		strandedPanning, uncapturedDragOutcome.HostPointerLeaveSwallowed)
 }
 
 // clickTrustedMouseOnRow presses and releases on a row with a real DWELL between the
@@ -2972,7 +3035,7 @@ func clickTrustedMouseOnRow(
 // tells nobody anything.
 func driveTimelineDragReleasedOutside(
 	t *testing.T, session *trustedInputBrowserSession, aim timelineRowAim, releaseY float64,
-) bool {
+) (bool, timelineGestureOutcome) {
 	t.Helper()
 	session.pressTrustedMouseAt(t, aim.X, aim.Y)
 	// Two moves: the first clears the 4px pan threshold, the second is the drag the
@@ -2980,12 +3043,16 @@ func driveTimelineDragReleasedOutside(
 	session.dragTrustedMouseTo(t, aim.X+6, aim.Y)
 	session.dragTrustedMouseTo(t, aim.X+140, aim.Y)
 	session.waitForPageCondition(t, "the drag engages the pan", `window.timelineProbe.isPanning()`)
+	// Exclude any boundary event caused while the trusted pointer moved INTO position;
+	// the non-vacuity check is specifically about crossing out for this release.
+	session.evaluateInPage(t,
+		`(window.timelineProbe.hostPointerLeaveSwallowed = 0, "outside boundary watch armed")`)
 
 	releaseX := aim.X + 140
 	session.dragTrustedMouseTo(t, releaseX, releaseY)
 	session.releaseTrustedMouseAt(t, releaseX, releaseY)
 	outcome := readTimelineGestureOutcome(t, session, "drag released outside")
-	return outcome.Panning
+	return outcome.Panning, outcome
 }
 
 // TestBrowserBehaviorTimelineRowListIsOneTabStop pins REQ-338's keyboard contract: the row
