@@ -270,7 +270,14 @@
           </div>
         </dl>
         <p class="durations-colour-legend" id="durations-colour-legend" role="status" aria-live="polite"></p>
-        <div class="durations-chart" id="durations-chart"></div>
+        <div class="durations-chart-list">
+          <div class="durations-chart" id="durations-chart"></div>
+          <aside class="durations-longest-spans" aria-labelledby="durations-longest-heading">
+            <h3 id="durations-longest-heading">Longest spans</h3>
+            <p id="durations-longest-count"></p>
+            <ol id="durations-longest-list"></ol>
+          </aside>
+        </div>
         <p class="durations-readout" id="durations-readout" role="status" aria-live="polite"></p>
         <details class="durations-table">
           <summary>Every sample, as a table</summary>

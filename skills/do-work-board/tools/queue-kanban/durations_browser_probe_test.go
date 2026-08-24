@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,236 +12,8 @@ import (
 	"time"
 )
 
-// Direct-label placement, asserted against what a reader would actually see.
-//
-// REQ-292 moved placement out of Go and into the browser, because sizing a label
-// needs the width the engine draws rather than a character count times a
-// constant. These probes are where the properties the deleted Go tests asserted
-// are re-pinned. They run in the browser lane REQ-291 built, so on a machine with
-// no engine they skip and the maintainer-strict selection fails loudly.
-//
-// WHAT EACH DELETED TEST BECAME:
-//
-//	TestDenseOverflowLabelsStayBoundedAndNeverOverlap
-//	  → drawn labels never intersect (below), now measured rather than modeled.
-//	TestOverflowLabelsGoToTheLongestSpans
-//	  → labels went to the longest spans (below).
-//	TestClusteredOverflowLabelsFillBothLabelRows
-//	  → both rows fill when spans cluster (below).
-//	TestReversedLabelPlacementIsIndependentOfOverflowDensity
-//	  → the bands pack independently (below).
-//	TestDurationsLabelRowPitchClearsTheLabelTextBox
-//	  → the row pitch clears the MEASURED line box (below) — the same property,
-//	    but against the face in use instead of a recorded constant.
-//	TestDurationsLabelRowsClearTheMarkBands and
-//	TestDurationsLastLabelRowClearsPanelBTitle
-//	  → measured vertical clearance (below).
-//	TestDurationLabelGeometryMatchesTheRenderer
-//	  → DELIBERATELY DROPPED. It held Go's placement constants against the
-//	    renderer's. There is no second set of constants to hold against any more:
-//	    placement lives only in the renderer, which is the point of the REQ.
-//	TestDurationsLabelWidthEstimateCoversTheRenderedFace
-//	  → DELIBERATELY DROPPED. It pinned the width model on both sides. There is
-//	    no width model — the width is the drawn width — so the property it
-//	    asserted has no subject left.
-//	TestDurationsMeasuredConstantsNameTheirChromiumBuild
-//	  → DELIBERATELY DROPPED, and this is REQ-266's requirement met rather than
-//	    skipped: it required every hand-transcribed measured constant to name the
-//	    build it came from. This REQ deletes the last of those constants, so no
-//	    number survives to carry a build. TestDurationsCarriesNoMeasuredFaceConstants
-//	    below is what keeps that true — it fails if a new one appears.
-
-// durationsProbeLabel is one label the probe placed, as the Go side reads it back.
-type durationsProbeLabel struct {
-	RequestId string  `json:"id"`
-	Magnitude float64 `json:"magnitude"`
-	Row       int     `json:"row"`
-	Anchor    string  `json:"anchor"`
-	Left      float64 `json:"left"`
-	Right     float64 `json:"right"`
-	Drawn     bool    `json:"drawn"`
-}
-
-type durationsProbeResult struct {
-	Overflow struct {
-		Labels      []durationsProbeLabel `json:"labels"`
-		HiddenCount int                   `json:"hiddenCount"`
-	} `json:"overflow"`
-	Reversed struct {
-		Labels      []durationsProbeLabel `json:"labels"`
-		HiddenCount int                   `json:"hiddenCount"`
-	} `json:"reversed"`
-	MeasuredLabelBoxHeight float64 `json:"measuredLabelBoxHeight"`
-	RowHeight              float64 `json:"rowHeight"`
-	LaneRowY               float64 `json:"laneRowY"`
-	ReversedRowY           float64 `json:"reversedRowY"`
-	LabelTextAscent        float64 `json:"labelTextAscent"`
-	LaneMarkY              float64 `json:"laneMarkY"`
-	BandMarkRadius         float64 `json:"bandMarkRadius"`
-	MedianTitleY           float64 `json:"medianTitleY"`
-	RowCount               int     `json:"rowCount"`
-	PlotLeft               float64 `json:"plotLeft"`
-	PlotRight              float64 `json:"plotRight"`
-}
-
-// runDurationsPlacementProbe renders a synthetic band in a real engine, runs the
-// SHIPPED placement code against measured widths, and reports what was placed.
-//
-// The placement functions are sliced out of the generated page rather than
-// re-implemented, so these assertions cannot drift into testing a copy: if the
-// shipped code changes, this probe runs the changed code.
-func runDurationsPlacementProbe(t *testing.T, overflowSpec string, reversedSpec string) durationsProbeResult {
-	t.Helper()
-	indexHtml := generateLiveSite(t)
-
-	constantPreamble := ""
-	for _, constantName := range []string{
-		"DURATIONS_LABEL_ROW_COUNT",
-		"DURATIONS_LABEL_ROW_HEIGHT",
-		"DURATIONS_LABEL_GAP",
-		"DURATIONS_LABEL_TEXT_ASCENT",
-		"DURATIONS_LANE_LABEL_ROW_Y",
-		"DURATIONS_REVERSED_LABEL_ROW_Y",
-		"DURATIONS_LANE_MARK_Y",
-		"DURATIONS_BAND_MARK_RADIUS",
-		"DURATIONS_MEDIAN_TITLE_Y",
-		"DURATIONS_VIEW_WIDTH",
-		"DURATIONS_MARGIN_LEFT",
-		"DURATIONS_MARGIN_RIGHT",
-		"DURATIONS_CEILING_MINUTES",
-	} {
-		constantPreamble += fmt.Sprintf("      var %s = %v;\n", constantName, durationsRendererConstant(t, constantName))
-	}
-
-	// The real stylesheet, so the measured face is the board's own rather than the
-	// browser default. Without it every width here would be a different font's.
-	styleBlock := sliceGeneratedStyleBlock(t, indexHtml)
-
-	placementSource := ""
-	for _, functionName := range []string{
-		"function durationsLabelSpan(",
-		"function durationsSpanIsBlocked(",
-		"function placeDurationsLabelBand(",
-		"function composeDurationsRemainderText(",
-		"function packDurationsLabelBand(",
-	} {
-		placementSource += sliceBalancedBlockAfter(t, indexHtml, functionName) + "\n"
-	}
-
-	probePage := `<!doctype html>
-<html><head><meta charset="utf-8"><style>` + styleBlock + durationsProbeExtraStyle + `</style></head>
-<body>
-<svg id="probe-svg" width="1200" height="500" xmlns="http://www.w3.org/2000/svg"></svg>
-<pre id="` + browserProbeResultElementId + `"></pre>
-<script>
-(function () {
-` + constantPreamble + `
-  var DURATIONS_LABEL_SEPARATION = 6;
-` + placementSource + `
-  var svg = document.getElementById("probe-svg");
-  var SVG_NS = "http://www.w3.org/2000/svg";
-
-  function makeLabel(text) {
-    var node = document.createElementNS(SVG_NS, "text");
-    node.setAttribute("class", "durations-mark-label");
-    node.textContent = text;
-    svg.appendChild(node);
-    return node;
-  }
-
-  // Each spec entry is "id|minutes|xFraction". The x fraction places the mark in
-  // the plot exactly as the renderer's time scale would, without needing a clock.
-  function buildCandidates(spec) {
-    if (!spec) { return []; }
-    return spec.split(";").filter(function (entry) { return entry.length > 0; })
-      .map(function (entry) {
-        var parts = entry.split("|");
-        var minutes = parseFloat(parts[1]);
-        var markX = DURATIONS_MARGIN_LEFT +
-          parseFloat(parts[2]) * (DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_LEFT - DURATIONS_MARGIN_RIGHT);
-        var node = makeLabel(parts[0] + " " + minutes.toFixed(1) + " min");
-        return {
-          mark: { sample: { id: parts[0], wallMinutes: minutes } },
-          markX: markX,
-          textNode: node,
-          textWidth: node.getComputedTextLength()
-        };
-      })
-      .sort(function (first, second) {
-        return Math.abs(second.mark.sample.wallMinutes) - Math.abs(first.mark.sample.wallMinutes);
-      });
-  }
-
-  function measureRemainderWidth(remainderText) {
-    var probeNode = document.createElementNS(SVG_NS, "text");
-    probeNode.setAttribute("class", "durations-tick");
-    probeNode.textContent = remainderText;
-    svg.appendChild(probeNode);
-    var width = probeNode.getComputedTextLength();
-    svg.removeChild(probeNode);
-    return width;
-  }
-
-  function report(candidates, band) {
-    return {
-      labels: band.placements.map(function (placement) {
-        var span = placement.labelRow < 0 ? { left: 0, right: 0 } :
-          durationsLabelSpan(
-            placement.candidate.markX, placement.candidate.textWidth, placement.labelAnchor,
-            DURATIONS_MARGIN_LEFT, DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT);
-        return {
-          id: placement.candidate.mark.sample.id,
-          magnitude: Math.abs(placement.candidate.mark.sample.wallMinutes),
-          row: placement.labelRow,
-          anchor: placement.labelAnchor,
-          left: span.left,
-          right: span.right,
-          drawn: placement.labelRow >= 0
-        };
-      }),
-      hiddenCount: band.hiddenCount
-    };
-  }
-
-  var overflowCandidates = buildCandidates(` + "`" + overflowSpec + "`" + `);
-  var reversedCandidates = buildCandidates(` + "`" + reversedSpec + "`" + `);
-  var overflowBand = packDurationsLabelBand(overflowCandidates, measureRemainderWidth, "over 60 min");
-  var reversedBand = packDurationsLabelBand(reversedCandidates, measureRemainderWidth, "reversed");
-
-  // The measured line box of a mark label in the face actually in use. This is
-  // the number the deleted durationsMeasuredLabelBoxHeightUnits recorded by hand.
-  var boxProbe = makeLabel("REQ-000 12.3 min");
-  var measuredBox = boxProbe.getBBox().height;
-
-  document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
-    overflow: report(overflowCandidates, overflowBand),
-    reversed: report(reversedCandidates, reversedBand),
-    measuredLabelBoxHeight: measuredBox,
-    rowHeight: DURATIONS_LABEL_ROW_HEIGHT,
-    laneRowY: DURATIONS_LANE_LABEL_ROW_Y,
-    reversedRowY: DURATIONS_REVERSED_LABEL_ROW_Y,
-    labelTextAscent: DURATIONS_LABEL_TEXT_ASCENT,
-    laneMarkY: DURATIONS_LANE_MARK_Y,
-    bandMarkRadius: DURATIONS_BAND_MARK_RADIUS,
-    medianTitleY: DURATIONS_MEDIAN_TITLE_Y,
-    rowCount: DURATIONS_LABEL_ROW_COUNT,
-    plotLeft: DURATIONS_MARGIN_LEFT,
-    plotRight: DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT
-  });
-})();
-</script>
-</body></html>`
-
-	resultJSON := runBrowserBehaviorProbe(t, "durations placement", probePage)
-	var probeResult durationsProbeResult
-	if unmarshalError := json.Unmarshal(resultJSON, &probeResult); unmarshalError != nil {
-		t.Fatalf("parse durations placement result: %v\n%s", unmarshalError, resultJSON)
-	}
-	return probeResult
-}
-
-// sliceGeneratedStyleBlock lifts the page's inlined stylesheet so the probe
-// measures the board's own face rather than the browser default.
+// sliceGeneratedStyleBlock lifts the page's inlined stylesheet for focused
+// browser probes that need the shipped board styles without the full page.
 func sliceGeneratedStyleBlock(t *testing.T, indexHtml string) string {
 	t.Helper()
 	styleStart := strings.Index(indexHtml, "<style>")
@@ -253,306 +24,41 @@ func sliceGeneratedStyleBlock(t *testing.T, indexHtml string) string {
 	return indexHtml[styleStart+len("<style>") : styleEnd]
 }
 
-// densePlacementSpec builds a saturated band: many labels crowded into a narrow
-// slice of the plot, which is what forces the collision rule to do real work.
-func densePlacementSpec(sampleCount int, spreadFraction float64) string {
-	entries := make([]string, 0, sampleCount)
-	for sampleIndex := 0; sampleIndex < sampleCount; sampleIndex++ {
-		// Descending magnitudes so "longest first" has a gradient to follow.
-		minutes := 600.0 - float64(sampleIndex)*7.5
-		xFraction := 0.05 + (float64(sampleIndex)/float64(sampleCount))*spreadFraction
-		entries = append(entries, fmt.Sprintf("REQ-%03d|%.1f|%.4f", 100+sampleIndex, minutes, xFraction))
-	}
-	return strings.Join(entries, ";")
-}
-
-// Re-pins TestDenseOverflowLabelsStayBoundedAndNeverOverlap. Two drawn labels
-// must never intersect — the defect UR-051 was raised for, and the one the width
-// model could not actually prevent because it described a face it never met.
-func TestBrowserBehaviorDurationsDrawnLabelsNeverOverlap(t *testing.T) {
-	probeResult := runDurationsPlacementProbe(t, densePlacementSpec(40, 0.35), "")
-
-	drawnByRow := map[int][]durationsProbeLabel{}
-	for _, label := range probeResult.Overflow.Labels {
-		if label.Drawn {
-			drawnByRow[label.Row] = append(drawnByRow[label.Row], label)
-		}
-	}
-	if len(drawnByRow) == 0 {
-		t.Fatal("the dense fixture placed no labels at all, so this proves nothing")
-	}
-	for rowIndex, rowLabels := range drawnByRow {
-		for firstIndex := 0; firstIndex < len(rowLabels); firstIndex++ {
-			for secondIndex := firstIndex + 1; secondIndex < len(rowLabels); secondIndex++ {
-				first, second := rowLabels[firstIndex], rowLabels[secondIndex]
-				if first.Left < second.Right && second.Left < first.Right {
-					t.Errorf("row %d: %s [%.2f, %.2f] overlaps %s [%.2f, %.2f]",
-						rowIndex, first.RequestId, first.Left, first.Right,
-						second.RequestId, second.Left, second.Right)
-				}
-			}
-		}
-	}
-	// Bounded: nothing may reach outside the plot.
-	for _, label := range probeResult.Overflow.Labels {
-		if !label.Drawn {
-			continue
-		}
-		if label.Left < probeResult.PlotLeft-0.01 || label.Right > probeResult.PlotRight+0.01 {
-			t.Errorf("%s drawn at [%.2f, %.2f], outside the plot [%.0f, %.0f]",
-				label.RequestId, label.Left, label.Right, probeResult.PlotLeft, probeResult.PlotRight)
-		}
-	}
-}
-
-// Re-pins TestOverflowLabelsGoToTheLongestSpans. The lane's text answers "where
-// are the outliers", so a shorter span must never take a label a longer one was
-// denied — the whole of the labels-go-to-the-outliers rule.
-func TestBrowserBehaviorDurationsLabelsGoToTheLongestSpans(t *testing.T) {
-	probeResult := runDurationsPlacementProbe(t, densePlacementSpec(40, 0.35), "")
-
-	smallestDrawn := math.Inf(1)
-	largestHidden := 0.0
-	drawnCount := 0
-	for _, label := range probeResult.Overflow.Labels {
-		if label.Drawn {
-			drawnCount++
-			smallestDrawn = math.Min(smallestDrawn, label.Magnitude)
-			continue
-		}
-		largestHidden = math.Max(largestHidden, label.Magnitude)
-	}
-	if drawnCount == 0 || probeResult.Overflow.HiddenCount == 0 {
-		t.Fatalf("fixture drew %d and hid %d — this property needs both",
-			drawnCount, probeResult.Overflow.HiddenCount)
-	}
-	// A hidden span may exceed a drawn one only because geometry refused it, never
-	// because the order passed it over: the walk offers every span a row in
-	// magnitude order, so it is a real property that the pass keeps going.
-	if largestHidden > smallestDrawn {
-		t.Logf("largest hidden span %.1f exceeds smallest drawn %.1f — geometry, not order, refused it",
-			largestHidden, smallestDrawn)
-	}
-	// The strict statement: the single longest span in the band must be drawn.
-	longest := durationsProbeLabel{}
-	for _, label := range probeResult.Overflow.Labels {
-		if label.Magnitude > longest.Magnitude {
-			longest = label
-		}
-	}
-	if !longest.Drawn {
-		t.Errorf("the longest span %s (%.1f) carries no label", longest.RequestId, longest.Magnitude)
-	}
-}
-
-// Re-pins TestClusteredOverflowLabelsFillBothLabelRows. When spans cluster, the
-// second row must be used — a packer that only ever filled row 0 would pass every
-// overlap check while wasting half the space.
-func TestBrowserBehaviorDurationsClusteredLabelsFillBothRows(t *testing.T) {
-	probeResult := runDurationsPlacementProbe(t, densePlacementSpec(12, 0.06), "")
-
-	rowsUsed := map[int]int{}
-	for _, label := range probeResult.Overflow.Labels {
-		if label.Drawn {
-			rowsUsed[label.Row]++
-		}
-	}
-	for rowIndex := 0; rowIndex < probeResult.RowCount; rowIndex++ {
-		if rowsUsed[rowIndex] == 0 {
-			t.Errorf("clustered fixture left row %d empty (rows used: %v)", rowIndex, rowsUsed)
-		}
-	}
-}
-
-// Re-pins TestReversedLabelPlacementIsIndependentOfOverflowDensity. The two bands
-// sit at different heights with unrelated local densities, so saturating one must
-// not change the other's placement at all.
-func TestBrowserBehaviorDurationsBandsPackIndependently(t *testing.T) {
-	reversedSpec := "REQ-900|-42.0|0.20;REQ-901|-31.0|0.55;REQ-902|-12.0|0.80"
-
-	sparse := runDurationsPlacementProbe(t, "REQ-100|300.0|0.50", reversedSpec)
-	saturated := runDurationsPlacementProbe(t, densePlacementSpec(40, 0.35), reversedSpec)
-
-	if len(sparse.Reversed.Labels) != len(saturated.Reversed.Labels) {
-		t.Fatalf("reversed band label counts differ: %d vs %d",
-			len(sparse.Reversed.Labels), len(saturated.Reversed.Labels))
-	}
-	for labelIndex := range sparse.Reversed.Labels {
-		sparseLabel := sparse.Reversed.Labels[labelIndex]
-		saturatedLabel := saturated.Reversed.Labels[labelIndex]
-		if sparseLabel.RequestId != saturatedLabel.RequestId ||
-			sparseLabel.Row != saturatedLabel.Row ||
-			sparseLabel.Anchor != saturatedLabel.Anchor {
-			t.Errorf("overflow density changed the reversed band: %s row %d anchor %q became %s row %d anchor %q",
-				sparseLabel.RequestId, sparseLabel.Row, sparseLabel.Anchor,
-				saturatedLabel.RequestId, saturatedLabel.Row, saturatedLabel.Anchor)
-		}
-	}
-	if sparse.Reversed.HiddenCount != saturated.Reversed.HiddenCount {
-		t.Errorf("reversed hidden count moved with overflow density: %d vs %d",
-			sparse.Reversed.HiddenCount, saturated.Reversed.HiddenCount)
-	}
-}
-
-// The remainder count must equal the number actually not drawn. Go used to emit
-// this count; once Go stopped deciding what fits, a count computed there would be
-// a lie, so whatever places the labels produces it (REQ-292).
-func TestBrowserBehaviorDurationsRemainderCountsWhatWasNotDrawn(t *testing.T) {
-	probeResult := runDurationsPlacementProbe(t, densePlacementSpec(40, 0.35), "REQ-900|-42.0|0.20")
-
-	notDrawn := 0
-	for _, label := range probeResult.Overflow.Labels {
-		if !label.Drawn {
-			notDrawn++
-		}
-	}
-	if probeResult.Overflow.HiddenCount != notDrawn {
-		t.Errorf("overflow remainder says %d hidden, but %d labels were not drawn",
-			probeResult.Overflow.HiddenCount, notDrawn)
-	}
-	if probeResult.Overflow.HiddenCount == 0 {
-		t.Fatal("the dense fixture hid nothing, so the remainder property is untested")
-	}
-}
-
-// Re-pins TestDurationsLabelRowPitchClearsTheLabelTextBox, TestDurationsLabelRowsClearTheMarkBands
-// and TestDurationsLastLabelRowClearsPanelBTitle — all three against the MEASURED
-// face rather than a hand-recorded constant. This is the half of the defect the
-// old constants could not catch: the board's own stack measured 13.0000 against a
-// 13-unit pitch, which the recorded 12.97 maximum said was impossible.
-func TestBrowserBehaviorDurationsLabelRowsClearTheirNeighbours(t *testing.T) {
-	probeResult := runDurationsPlacementProbe(t, "REQ-100|300.0|0.50", "REQ-900|-42.0|0.20")
-
-	if probeResult.MeasuredLabelBoxHeight <= 0 {
-		t.Fatalf("measured label box height is %v — the face did not render", probeResult.MeasuredLabelBoxHeight)
-	}
-	// (1) Row pitch clears the line box the engine actually draws.
-	if probeResult.RowHeight < probeResult.MeasuredLabelBoxHeight {
-		t.Errorf("row pitch %.4f is under the measured label box %.4f — two rows would intersect",
-			probeResult.RowHeight, probeResult.MeasuredLabelBoxHeight)
-	}
-	// (2) The first label row clears the mark band above it.
-	markBandBottom := probeResult.LaneMarkY + probeResult.BandMarkRadius
-	firstRowTop := probeResult.LaneRowY - probeResult.LabelTextAscent
-	if firstRowTop < markBandBottom {
-		t.Errorf("first label row top %.2f sits inside the mark band (bottom %.2f)",
-			firstRowTop, markBandBottom)
-	}
-	// (3) The reversed band's last row clears Panel B's title.
-	lastRowBaseline := probeResult.ReversedRowY + float64(probeResult.RowCount-1)*probeResult.RowHeight
-	lastRowBottom := lastRowBaseline + (probeResult.MeasuredLabelBoxHeight - probeResult.LabelTextAscent)
-	titleTop := probeResult.MedianTitleY - probeResult.LabelTextAscent
-	if lastRowBottom > titleTop {
-		t.Errorf("last reversed label row bottom %.2f overlaps Panel B's title top %.2f",
-			lastRowBottom, titleTop)
-	}
-}
-
-// REQ-266's requirement, met by there being nothing left to meet it about: the
-// point of measuring at runtime is that no hand-transcribed face number survives.
-// This fails if one reappears, which is what keeps the requirement true rather
-// than merely satisfied on the day it shipped. It needs no browser.
-func TestDurationsCarriesNoMeasuredFaceConstants(t *testing.T) {
-	for _, sourcePath := range []string{"durations.go", "web/board-durations.js"} {
-		sourceBytes, readError := embeddedWebAssets.ReadFile(sourcePath)
-		sourceText := string(sourceBytes)
-		if readError != nil {
-			// durations.go is not an embedded web asset; read it off disk.
-			diskBytes, diskError := os.ReadFile(sourcePath)
-			if diskError != nil {
-				t.Fatalf("read %s: %v", sourcePath, diskError)
-			}
-			sourceText = string(diskBytes)
-		}
-		for _, retiredToken := range []string{
-			"durationsLabelCharacterWidthUnits",
-			"durationsMeasuredLabelWidthSupremumUnits",
-			"durationsMeasuredLabelBoxHeightUnits",
-			"DURATIONS_LABEL_CHARACTER_WIDTH",
-		} {
-			if strings.Contains(sourceText, retiredToken) {
-				t.Errorf("%s carries %s again — a measured-face constant is exactly what REQ-292 deleted, "+
-					"and a new one has to name the build it came from (REQ-266) or be measured at runtime instead",
-					sourcePath, retiredToken)
-			}
-		}
-	}
-}
-
-// REQ-292's captured RED, made into a standing assertion.
-//
-// RED was: "a board rendered where --font-sans resolves to a face wider than 7.15
-// units per character draws labels past the slots placement assigned them, and
-// nothing in the suite notices. Confirmed by measurement: Arial Black draws 7.34."
-//
-// The old width model could not express this. It multiplied a character count by
-// a constant, so a wider face produced the SAME number and the same slots — the
-// labels simply drew past them. Measured placement cannot have that bug by
-// construction, and this is how that is shown rather than asserted: run the same
-// fixture at the board's own size and at a deliberately wider one, and the
-// placement must respond. A packer still using a fixed width model produces
-// identical output for both and fails here.
-func TestBrowserBehaviorDurationsPlacementRespondsToTheRenderedFace(t *testing.T) {
-	const fixtureSpec = "REQ-100|600.0|0.10;REQ-101|540.0|0.17;REQ-102|480.0|0.24;" +
-		"REQ-103|420.0|0.31;REQ-104|360.0|0.38;REQ-105|300.0|0.45;REQ-106|240.0|0.52"
-
-	atBoardFace := runDurationsPlacementProbe(t, fixtureSpec, "")
-	atWiderFace := runDurationsPlacementProbeWithFaceOverride(t, fixtureSpec, "3px")
-
-	if atBoardFace.MeasuredLabelBoxHeight <= 0 || atWiderFace.MeasuredLabelBoxHeight <= 0 {
-		t.Fatal("a probe measured nothing, so this comparison proves nothing")
-	}
-
-	// The wider face must move at least one label's geometry. Equality across a
-	// face change is the signature of a width model.
-	sameEverywhere := true
-	for labelIndex := range atBoardFace.Overflow.Labels {
-		atBoard := atBoardFace.Overflow.Labels[labelIndex]
-		atWider := atWiderFace.Overflow.Labels[labelIndex]
-		if atBoard.Drawn != atWider.Drawn || atBoard.Row != atWider.Row ||
-			math.Abs((atBoard.Right-atBoard.Left)-(atWider.Right-atWider.Left)) > 0.01 {
-			sameEverywhere = false
-			break
-		}
-	}
-	if sameEverywhere {
-		t.Error("placement produced identical geometry at two different letter-spacings — " +
-			"that is what a fixed width model does, and it is the defect REQ-292 removed")
-	}
-}
-
-// runDurationsPlacementProbeWithFaceOverride runs the same probe with extra CSS
-// appended, so a test can widen the drawn text without needing a second font
-// installed on the machine. letter-spacing is used rather than a font swap
-// because it changes the MEASURED width by a controlled amount on any engine.
-func runDurationsPlacementProbeWithFaceOverride(t *testing.T, overflowSpec string, letterSpacing string) durationsProbeResult {
-	t.Helper()
-	original := durationsProbeExtraStyle
-	durationsProbeExtraStyle = ".durations-mark-label { letter-spacing: " + letterSpacing + "; }"
-	defer func() { durationsProbeExtraStyle = original }()
-	return runDurationsPlacementProbe(t, overflowSpec, "")
-}
-
-// durationsProbeExtraStyle is appended to the probe page's stylesheet. Empty for
-// every probe except the face-response one above.
-var durationsProbeExtraStyle = ""
-
 type durationsDensePanelProbeResult struct {
-	LocationHref        string  `json:"locationHref"`
-	RenderedSampleCount int     `json:"renderedSampleCount"`
-	PayloadSampleCount  int     `json:"payloadSampleCount"`
-	ActiveDayCount      int     `json:"activeDayCount"`
-	DaySlotWidth        float64 `json:"daySlotWidth"`
-	BusyDaySpread       float64 `json:"busyDaySpread"`
-	Deterministic       bool    `json:"deterministic"`
-	EveryMarkInOwnDay   bool    `json:"everyMarkInOwnDay"`
-	HoveredRequestId    string  `json:"hoveredRequestId"`
-	HoverReadout        string  `json:"hoverReadout"`
-	RibbonFiniteBounded bool    `json:"ribbonFiniteBounded"`
-	MedianFiniteBounded bool    `json:"medianFiniteBounded"`
-	RibbonOpacity       float64 `json:"ribbonOpacity"`
-	MarkOpacity         float64 `json:"markOpacity"`
-	BodyBackground      string  `json:"bodyBackground"`
+	LocationHref          string  `json:"locationHref"`
+	RenderedSampleCount   int     `json:"renderedSampleCount"`
+	PayloadSampleCount    int     `json:"payloadSampleCount"`
+	ActiveDayCount        int     `json:"activeDayCount"`
+	DaySlotWidth          float64 `json:"daySlotWidth"`
+	BusyDaySpread         float64 `json:"busyDaySpread"`
+	Deterministic         bool    `json:"deterministic"`
+	EveryMarkInOwnDay     bool    `json:"everyMarkInOwnDay"`
+	HoveredRequestId      string  `json:"hoveredRequestId"`
+	HoverReadout          string  `json:"hoverReadout"`
+	RibbonFiniteBounded   bool    `json:"ribbonFiniteBounded"`
+	MedianFiniteBounded   bool    `json:"medianFiniteBounded"`
+	RibbonOpacity         float64 `json:"ribbonOpacity"`
+	MarkOpacity           float64 `json:"markOpacity"`
+	BodyBackground        string  `json:"bodyBackground"`
+	LongestSpanCount      int     `json:"longestSpanCount"`
+	ExpectedSpanCount     int     `json:"expectedSpanCount"`
+	LongestSpanOrder      bool    `json:"longestSpanOrder"`
+	EveryListField        bool    `json:"everyListField"`
+	CountSentence         string  `json:"countSentence"`
+	ListOutsideSVG        bool    `json:"listOutsideSvg"`
+	SharedWrapper         bool    `json:"sharedWrapper"`
+	SVGRequestLabels      int     `json:"svgRequestLabels"`
+	SVGLeaderLines        int     `json:"svgLeaderLines"`
+	SVGMoreSentences      int     `json:"svgMoreSentences"`
+	OverflowHoverId       string  `json:"overflowHoverId"`
+	OverflowHoverDuration string  `json:"overflowHoverDuration"`
+	OverflowHoverReadout  string  `json:"overflowHoverReadout"`
+	ViewportWidth         float64 `json:"viewportWidth"`
+	DocumentWidth         float64 `json:"documentWidth"`
+	WrapperRight          float64 `json:"wrapperRight"`
+	AsideRight            float64 `json:"asideRight"`
+	WrapperColumns        string  `json:"wrapperColumns"`
+	AsideOverflowY        string  `json:"asideOverflowY"`
 }
 
 type durationsHeadlineBrowserProbeResult struct {
@@ -847,6 +353,11 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
 		for sampleIndex := 0; sampleIndex < samplesPerDay; sampleIndex++ {
 			completedAt := dayStart.Add(time.Duration(8*60+sampleIndex*37) * time.Minute)
 			minutes := time.Duration(2+(sampleIndex*7)%57) * time.Minute
+			if sampleIndex < 2 {
+				// Ninety-four positive overflow samples force the complete list well
+				// past one viewport. Equal values also exercise its REQ-id tie-break.
+				minutes = time.Duration(90+(activeDayIndex%5)*15) * time.Minute
+			}
 			ticket := durationTicket(
 				fmt.Sprintf("REQ-%04d", activeDayIndex*samplesPerDay+sampleIndex+1),
 				[]string{"A", "B", "C"}[sampleIndex%3],
@@ -855,6 +366,7 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
 			)
 			ticket.UserRequestId = fmt.Sprintf("UR-%03d", activeDayIndex+1)
 			ticket.Domain = []string{"frontend", "backend", "testing"}[sampleIndex%3]
+			ticket.Title = fmt.Sprintf("Dense sample %d with a wrapping title", activeDayIndex*samplesPerDay+sampleIndex+1)
 			fixtureTickets = append(fixtureTickets, ticket)
 		}
 	}
@@ -875,6 +387,9 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
 
 	probeScript := `
   (function () {
+  var resultNode = document.createElement("pre");
+  resultNode.id = "` + browserProbeResultElementId + `";
+  document.body.appendChild(resultNode);
   var durationsPanel = document.getElementById("view-durations");
   durationsPanel.hidden = false;
   durationsPanel.style.display = "block";
@@ -933,6 +448,50 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
     clientY: bounds.top + hoveredMark.y * bounds.height / DURATIONS_VIEW_HEIGHT
   }));
   var hoveredRequestId = samples[hoverMarkIndex].id;
+  var hoverReadout = document.getElementById("durations-readout").textContent;
+
+  var expectedLongestSpans = samples.filter(function (sample) {
+    return sample.wallMinutes > DURATIONS_CEILING_MINUTES;
+  }).sort(function (first, second) {
+    if (first.wallMinutes !== second.wallMinutes) { return second.wallMinutes - first.wallMinutes; }
+    if (first.id !== second.id) { return first.id < second.id ? -1 : 1; }
+    return first.completionTime < second.completionTime ? -1 : 1;
+  });
+  var longestSpanRows = Array.from(document.querySelectorAll("#durations-longest-list > li"));
+  var longestSpanOrder = longestSpanRows.every(function (row, rowIndex) {
+    return expectedLongestSpans[rowIndex] && row.getAttribute("data-request-id") === expectedLongestSpans[rowIndex].id &&
+      Number(row.getAttribute("data-wall-minutes")) === expectedLongestSpans[rowIndex].wallMinutes;
+  });
+  var everyListField = longestSpanRows.every(function (row, rowIndex) {
+    var sample = expectedLongestSpans[rowIndex];
+    var request = boardData.requests[sample.id];
+    return row.querySelector(".durations-longest-spans-request").textContent === sample.id &&
+      row.querySelector(".durations-longest-spans-user-request").textContent === request.userRequestId &&
+      row.querySelector(".durations-longest-spans-duration").textContent === formatDurationMinutes(sample.wallMinutes) &&
+      row.querySelector(".durations-longest-spans-route").textContent === durationRouteName(sample.route) &&
+      row.querySelector(".durations-longest-spans-title").textContent === request.title;
+  });
+  var overflowSample = expectedLongestSpans[0];
+  var overflowSampleIndex = samples.indexOf(overflowSample);
+  var overflowMark = secondMarks[overflowSampleIndex];
+  hoverSurface.dispatchEvent(new MouseEvent("mousemove", {
+    bubbles: true,
+    clientX: bounds.left + overflowMark.x * bounds.width / DURATIONS_VIEW_WIDTH,
+    clientY: bounds.top + overflowMark.y * bounds.height / DURATIONS_VIEW_HEIGHT
+  }));
+  var overflowHoverReadout = document.getElementById("durations-readout").textContent;
+  var chart = document.getElementById("durations-chart");
+  var list = document.getElementById("durations-longest-list");
+  var aside = list.closest(".durations-longest-spans");
+  var wrapper = chart.parentElement;
+  var svgRequestLabels = Array.from(svg.querySelectorAll("text")).filter(function (textNode) {
+    return /^REQ-[0-9]+(?:\s|$)/.test(textNode.textContent);
+  });
+  var svgMoreSentences = Array.from(svg.querySelectorAll("text")).filter(function (textNode) {
+    return /^\+[0-9]+ more\b/.test(textNode.textContent);
+  });
+  var wrapperBounds = wrapper.getBoundingClientRect();
+  var asideBounds = aside.getBoundingClientRect();
 
   document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
     locationHref: location.href,
@@ -944,37 +503,62 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
     deterministic: deterministic,
     everyMarkInOwnDay: everyMarkInOwnDay,
     hoveredRequestId: hoveredRequestId,
-    hoverReadout: document.getElementById("durations-readout").textContent,
+    hoverReadout: hoverReadout,
     ribbonFiniteBounded: finiteBounded(ribbon),
     medianFiniteBounded: finiteBounded(median),
     ribbonOpacity: ribbon ? Number(getComputedStyle(ribbon).opacity) : 0,
     markOpacity: Number(getComputedStyle(document.querySelector("#durations-chart circle.durations-mark:not(.durations-mark-critical):not(.durations-mark-unknown)")).opacity),
-    bodyBackground: getComputedStyle(document.body).backgroundColor
+    bodyBackground: getComputedStyle(document.body).backgroundColor,
+    longestSpanCount: longestSpanRows.length,
+    expectedSpanCount: expectedLongestSpans.length,
+    longestSpanOrder: longestSpanOrder,
+    everyListField: everyListField,
+    countSentence: document.getElementById("durations-longest-count").textContent,
+    listOutsideSvg: !svg.contains(list),
+    sharedWrapper: wrapper === aside.parentElement,
+    svgRequestLabels: svgRequestLabels.length,
+    svgLeaderLines: svg.querySelectorAll(".durations-label-leader").length,
+    svgMoreSentences: svgMoreSentences.length,
+    overflowHoverId: overflowSample.id,
+    overflowHoverDuration: formatDurationMinutes(overflowSample.wallMinutes),
+    overflowHoverReadout: overflowHoverReadout,
+    viewportWidth: window.innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    wrapperRight: wrapperBounds.right,
+    asideRight: asideBounds.right,
+    wrapperColumns: getComputedStyle(wrapper).gridTemplateColumns,
+    asideOverflowY: getComputedStyle(aside).overflowY
   });
   })();
 `
 	// The generated client is one IIFE, so the probe has to run before its final
 	// close to exercise the private renderer and payload rather than a copied
 	// helper. The result node itself remains ordinary HTML outside the script.
-	probePage := strings.Replace(string(indexBytes), "</body>",
-		`<pre id="`+browserProbeResultElementId+`"></pre></body>`, 1)
+	probePage := string(indexBytes)
 	clientClose := strings.LastIndex(probePage, "})();")
 	if clientClose < 0 {
 		t.Fatal("generated page has no client IIFE close for dense durations probe")
 	}
 	probePage = probePage[:clientClose] + probeScript + probePage[clientClose:]
 
-	for _, colourScheme := range []struct {
-		name string
-		flag string
+	for _, viewport := range []struct {
+		name          string
+		colourFlag    string
+		width         int
+		stackedLayout bool
 	}{
-		{name: "light", flag: "--force-light-mode"},
-		{name: "dark", flag: "--force-dark-mode"},
+		{name: "light-320", colourFlag: "--force-light-mode", width: 320, stackedLayout: true},
+		{name: "dark-320", colourFlag: "--force-dark-mode", width: 320, stackedLayout: true},
+		{name: "light-768", colourFlag: "--force-light-mode", width: 768, stackedLayout: true},
+		{name: "dark-768", colourFlag: "--force-dark-mode", width: 768, stackedLayout: true},
+		{name: "light-1280", colourFlag: "--force-light-mode", width: 1280},
+		{name: "dark-1280", colourFlag: "--force-dark-mode", width: 1280},
 	} {
-		colourScheme := colourScheme
-		t.Run(colourScheme.name, func(t *testing.T) {
+		viewport := viewport
+		t.Run(viewport.name, func(t *testing.T) {
 			resultJSON := runBrowserBehaviorProbeInDirectory(
-				t, "REQ-349 dense durations "+colourScheme.name, siteDirectory, probePage, colourScheme.flag,
+				t, "dense durations "+viewport.name, siteDirectory, probePage,
+				fmt.Sprintf("--window-size=%d,1200", viewport.width), viewport.colourFlag,
 			)
 			var result durationsDensePanelProbeResult
 			if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
@@ -1014,10 +598,48 @@ func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *
 				t.Errorf("probe measured unnamed page %q", result.LocationHref)
 			}
 			if result.BodyBackground == "" || result.BodyBackground == "rgba(0, 0, 0, 0)" {
-				t.Errorf("%s board has no resolved body background: %q", colourScheme.name, result.BodyBackground)
+				t.Errorf("%s board has no resolved body background: %q", viewport.name, result.BodyBackground)
 			}
-			t.Logf("%s %s: %.2f-unit day slots, %.2f-unit busy-day spread, body %s",
-				colourScheme.name, result.LocationHref, result.DaySlotWidth, result.BusyDaySpread, result.BodyBackground)
+			if result.ExpectedSpanCount < 60 || result.LongestSpanCount != result.ExpectedSpanCount {
+				t.Errorf("longest-spans list rendered %d of %d overflow samples; fixture must carry at least 60",
+					result.LongestSpanCount, result.ExpectedSpanCount)
+			}
+			if !result.LongestSpanOrder || !result.EveryListField {
+				t.Errorf("complete list order=%v fields=%v; want descending/tied order with all five fields",
+					result.LongestSpanOrder, result.EveryListField)
+			}
+			wantCountSentence := fmt.Sprintf("%d spans over 60 minutes in this window; all are listed.", result.ExpectedSpanCount)
+			if result.CountSentence != wantCountSentence {
+				t.Errorf("count sentence = %q, want %q", result.CountSentence, wantCountSentence)
+			}
+			if !result.ListOutsideSVG || !result.SharedWrapper {
+				t.Errorf("list outside SVG=%v shared wrapper=%v, want adjacent HTML", result.ListOutsideSVG, result.SharedWrapper)
+			}
+			if result.SVGRequestLabels != 0 || result.SVGLeaderLines != 0 || result.SVGMoreSentences != 0 {
+				t.Errorf("SVG still carries %d REQ labels, %d leaders, and %d +N-more sentences",
+					result.SVGRequestLabels, result.SVGLeaderLines, result.SVGMoreSentences)
+			}
+			if !strings.HasPrefix(result.OverflowHoverReadout, result.OverflowHoverId+" ·") ||
+				!strings.Contains(result.OverflowHoverReadout, " · "+result.OverflowHoverDuration+" ·") {
+				t.Errorf("overflow hover for %s read %q", result.OverflowHoverId, result.OverflowHoverReadout)
+			}
+			if result.AsideOverflowY != "auto" {
+				t.Errorf("longest-spans aside overflow-y = %q, want auto", result.AsideOverflowY)
+			}
+			if result.WrapperRight > result.ViewportWidth+1 || result.AsideRight > result.ViewportWidth+1 {
+				t.Errorf("horizontal clipping at viewport %.0f: document %.0f wrapper-right %.0f aside-right %.0f",
+					result.ViewportWidth, result.DocumentWidth, result.WrapperRight, result.AsideRight)
+			}
+			columnCount := len(strings.Fields(result.WrapperColumns))
+			if viewport.stackedLayout && columnCount != 1 {
+				t.Errorf("%dpx layout has grid columns %q, want one stacked column", viewport.width, result.WrapperColumns)
+			}
+			if !viewport.stackedLayout && columnCount != 2 {
+				t.Errorf("%dpx layout has grid columns %q, want chart plus aside", viewport.width, result.WrapperColumns)
+			}
+			t.Logf("%s %s: viewport %.0f, %d/%d longest spans, columns %s, body %s",
+				viewport.name, result.LocationHref, result.ViewportWidth, result.LongestSpanCount,
+				result.ExpectedSpanCount, result.WrapperColumns, result.BodyBackground)
 		})
 	}
 }

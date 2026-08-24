@@ -1537,6 +1537,32 @@ func TestGenerateOffersDurationsWindowControls(t *testing.T) {
 	}
 }
 
+// Panel A's overflow lane keeps every mark, while the adjacent ranked list
+// carries the complete text record for spans whose y position is capped. The
+// list must be ordinary HTML rather than SVG text so density changes scrolling,
+// not which samples remain reachable.
+func TestGenerateCarriesAdjacentCompleteDurationsLongestSpansList(t *testing.T) {
+	indexHTML := generateLiveSite(t)
+
+	for _, requiredToken := range []string{
+		`class="durations-chart-list"`,
+		`id="durations-chart"`,
+		`class="durations-longest-spans"`,
+		`id="durations-longest-count"`,
+		`id="durations-longest-list"`,
+		`function renderDurationsLongestSpans(`,
+	} {
+		if !strings.Contains(indexHTML, requiredToken) {
+			t.Errorf("generated board is missing the complete longest-spans contract %q", requiredToken)
+		}
+	}
+	chartIndex := strings.Index(indexHTML, `id="durations-chart"`)
+	listIndex := strings.Index(indexHTML, `id="durations-longest-list"`)
+	if chartIndex < 0 || listIndex < 0 || listIndex < chartIndex {
+		t.Errorf("longest-spans list must follow the chart inside their shared wrapper (chart=%d list=%d)", chartIndex, listIndex)
+	}
+}
+
 func TestJavaScriptBehaviorDurationsWindowSelectionRefreshesOnlyDurations(t *testing.T) {
 	indexHTML := generateLiveSite(t)
 	transitionFunction := sliceBalancedBlockAfter(t, indexHTML, "function applyDurationsWindowSelection(")
@@ -1910,119 +1936,6 @@ func TestUserRequestActivityToggleDocumentsWidenedRule(t *testing.T) {
 	}
 }
 
-// Band-and-row geometry, and the remainder sentence's all-or-nothing rule.
-//
-// Before REQ-292 this probe also pinned "draw the payload's verdict, do not
-// re-derive it" — the renderer is now the placer, so there is no payload verdict
-// left to obey and that half of the property is gone by construction rather than
-// by omission. What survives is still real and still worth pinning: a row index
-// maps to a baseline on the sample's OWN band, an out-of-range row is no label at
-// all rather than a label at a wrong y, and a band with nothing hidden prints no
-// remainder while a nonzero one states the count. The original defect this test
-// was written for — a pass that labelled every overflow sample from an index
-// cycle and had no concept of a remainder — is caught by the second half.
-func TestJavaScriptBehaviorDurationsLabelRowsAndRemainders(t *testing.T) {
-	indexHtml := generateLiveSite(t)
-
-	constantPreamble := ""
-	for _, constantName := range []string{
-		"DURATIONS_LABEL_ROW_COUNT",
-		"DURATIONS_LABEL_ROW_HEIGHT",
-		"DURATIONS_LANE_LABEL_ROW_Y",
-		"DURATIONS_REVERSED_LABEL_ROW_Y",
-		"DURATIONS_VIEW_WIDTH",
-		"DURATIONS_MARGIN_RIGHT",
-	} {
-		constantPreamble += fmt.Sprintf("var %s = %v;\n", constantName, durationsRendererConstant(t, constantName))
-	}
-
-	javascriptProbe := constantPreamble +
-		"var svg = null;\n" +
-		"var drawnRemainders = [];\n" +
-		"function makeDurationsSvgNode(svg, name, attributes, textContent) { drawnRemainders.push(textContent); }\n" +
-		sliceBalancedBlockAfter(t, indexHtml, "function durationsBandRowY(") + "\n" +
-		sliceBalancedBlockAfter(t, indexHtml, "function durationsLabelBaselineY(") + "\n" +
-		sliceBalancedBlockAfter(t, indexHtml, "function durationsRemainderBaselineY(") + "\n" +
-		sliceBalancedBlockAfter(t, indexHtml, "function composeDurationsRemainderText(") + "\n" +
-		sliceBalancedBlockAfter(t, indexHtml, "function drawDurationsRemainder(") + `
-drawDurationsRemainder(0, durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y), "over 60 min");
-drawDurationsRemainder(23, durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y), "over 60 min");
-drawDurationsRemainder(2, durationsRemainderBaselineY(DURATIONS_REVERSED_LABEL_ROW_Y), "reversed");
-process.stdout.write(JSON.stringify({
-  remainderBaselines: [
-    durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y),
-    durationsRemainderBaselineY(DURATIONS_REVERSED_LABEL_ROW_Y)
-  ],
-  baselines: [
-    durationsLabelBaselineY({ wallMinutes: 95 }, 0),
-    durationsLabelBaselineY({ wallMinutes: 95 }, 1),
-    durationsLabelBaselineY({ wallMinutes: 95 }, -1),
-    durationsLabelBaselineY({ wallMinutes: -20 }, 0),
-    durationsLabelBaselineY({ wallMinutes: -20 }, 1),
-    durationsLabelBaselineY({ wallMinutes: -20 }, -1),
-    durationsLabelBaselineY({ wallMinutes: 95 }, undefined)
-  ],
-  remainders: drawnRemainders
-}));`
-
-	probeOutput := runJavaScriptBehaviorProbe(t, "durations label verdict", javascriptProbe)
-	var probeResult struct {
-		Baselines          []*float64 `json:"baselines"`
-		RemainderBaselines []float64  `json:"remainderBaselines"`
-		Remainders         []string   `json:"remainders"`
-	}
-	if decodeError := json.Unmarshal(probeOutput, &probeResult); decodeError != nil {
-		t.Fatalf("decode durations label behavior: %v (output %q)", decodeError, probeOutput)
-	}
-
-	laneRowY := durationsRendererConstant(t, "DURATIONS_LANE_LABEL_ROW_Y")
-	reversedRowY := durationsRendererConstant(t, "DURATIONS_REVERSED_LABEL_ROW_Y")
-	rowHeight := durationsRendererConstant(t, "DURATIONS_LABEL_ROW_HEIGHT")
-	wantBaselines := []*float64{
-		&laneRowY,
-		floatPointer(laneRowY + rowHeight),
-		nil,
-		&reversedRowY,
-		floatPointer(reversedRowY + rowHeight),
-		nil,
-		nil,
-	}
-	if len(probeResult.Baselines) != len(wantBaselines) {
-		t.Fatalf("baseline count = %d, want %d", len(probeResult.Baselines), len(wantBaselines))
-	}
-	for baselineIndex := range wantBaselines {
-		got := probeResult.Baselines[baselineIndex]
-		want := wantBaselines[baselineIndex]
-		if (got == nil) != (want == nil) || (got != nil && *got != *want) {
-			t.Fatalf("baseline[%d] = %v, want %v (nil means the sample carries no direct label)",
-				baselineIndex, formatOptionalFloat(got), formatOptionalFloat(want))
-		}
-	}
-
-	// The remainder must land on the band's LAST row. On the first row it sits at
-	// the marks' own height, and the dense render showed it overprinted by the
-	// very blob it was describing — the defect reproduced inside its own fix.
-	lastRowOffset := (durationsRendererConstant(t, "DURATIONS_LABEL_ROW_COUNT") - 1) *
-		durationsRendererConstant(t, "DURATIONS_LABEL_ROW_HEIGHT")
-	wantRemainderBaselines := []float64{laneRowY + lastRowOffset, reversedRowY + lastRowOffset}
-	if len(probeResult.RemainderBaselines) != len(wantRemainderBaselines) {
-		t.Fatalf("remainder baseline count = %d, want %d",
-			len(probeResult.RemainderBaselines), len(wantRemainderBaselines))
-	}
-	for baselineIndex, wantBaseline := range wantRemainderBaselines {
-		if probeResult.RemainderBaselines[baselineIndex] != wantBaseline {
-			t.Fatalf("remainder baseline[%d] = %v, want %v — the sentence must clear the mark row",
-				baselineIndex, probeResult.RemainderBaselines[baselineIndex], wantBaseline)
-		}
-	}
-
-	wantRemainders := []string{"+23 more over 60 min", "+2 more reversed"}
-	if strings.Join(probeResult.Remainders, "|") != strings.Join(wantRemainders, "|") {
-		t.Fatalf("drawn remainders = %q, want %q — a zero remainder must draw nothing and a nonzero one must state its count",
-			probeResult.Remainders, wantRemainders)
-	}
-}
-
 // ---- panel B's slowest-day annotation, and the faces around it ------------
 //
 // Both faces below are the browser's answer, because a face is the browser's
@@ -2205,9 +2118,8 @@ process.stdout.write(JSON.stringify(drawnNodes.map(function (node) {
 			len(drawnAnnotations), len(annotationCases))
 	}
 
-	// Every box below is the taller of the two models of its own face: the one
-	// the renderer declares and the one the browser draws.
-	annotationAscent := math.Max(durationsRendererConstant(t, "DURATIONS_LABEL_TEXT_ASCENT"), durationsMeasuredMarkLabelAscentUnits)
+	// The annotation's face is measured independently from the renderer geometry.
+	annotationAscent := durationsMeasuredMarkLabelAscentUnits
 	annotationDescent := math.Max(durationsLabelTextDescentUnits, durationsMeasuredMarkLabelDescentUnits)
 	medianBaseline := durationsRendererConstant(t, "DURATIONS_MEDIAN_BOTTOM")
 
@@ -2361,48 +2273,6 @@ func durationsSlowestDayAnnotationProbeCases(annotationCases []durationsAnnotati
 		})
 	}
 	return probeCases
-}
-
-// durationLabelWidthSampleMinutes spans the renderer's formatting branches: sub-hour
-// with a decimal, negative, exactly on the hour, and multi-hour. The last two are
-// the rounding-carry values: they are the only ones where a per-unit rounding
-// regression changes the character count ("1h 60m" against "2h 0m"), so they keep
-// this width lock-step sensitive to it.
-var durationLabelWidthSampleMinutes = []float64{7.5, -25, 60, 95.4, 655.2, 1440, 119.5, 59.96}
-
-// Placement sizes a label from the text the renderer will draw, so it carries its
-// own width model of that text. The renderer stays the definition of the copy —
-// this pins the model to it. Without this the two agree today and drift the first
-// time the renderer's formatting gains a character, and the only symptom would be
-// labels overlapping again at exactly the densities this REQ was about.
-func TestJavaScriptBehaviorDurationsLabelWidthModelMatchesTheRendererFormatter(t *testing.T) {
-	indexHtml := generateLiveSite(t)
-	probeValues, encodeError := json.Marshal(durationLabelWidthSampleMinutes)
-	if encodeError != nil {
-		t.Fatalf("encode probe values: %v", encodeError)
-	}
-	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function formatDurationMinutes(") + `
-process.stdout.write(JSON.stringify(` + string(probeValues) + `.map(formatDurationMinutes)));`
-
-	probeOutput := runJavaScriptBehaviorProbe(t, "durations label width model", javascriptProbe)
-	var rendererTexts []string
-	if decodeError := json.Unmarshal(probeOutput, &rendererTexts); decodeError != nil {
-		t.Fatalf("decode renderer formatting: %v (output %q)", decodeError, probeOutput)
-	}
-	if len(rendererTexts) != len(durationLabelWidthSampleMinutes) {
-		t.Fatalf("renderer produced %d strings, want %d", len(rendererTexts), len(durationLabelWidthSampleMinutes))
-	}
-	for valueIndex, minutes := range durationLabelWidthSampleMinutes {
-		// The renderer writes U+2212 for a negative sign; only the character
-		// COUNT reaches the width model, so compare lengths in runes.
-		rendererLength := len([]rune(rendererTexts[valueIndex]))
-		modelLength := len([]rune(formatDurationLabelMinutes(minutes)))
-		if rendererLength != modelLength {
-			t.Fatalf("%.1f min: renderer draws %q (%d chars) but the width model assumes %q (%d chars)",
-				minutes, rendererTexts[valueIndex], rendererLength,
-				formatDurationLabelMinutes(minutes), modelLength)
-		}
-	}
 }
 
 // ---- panel B/C day buckets and the shared axis domain ----------------------
@@ -8142,96 +8012,5 @@ process.stdout.write(JSON.stringify({
 	if !strings.Contains(rendered.DrainedUnfiltered.Forecast, "listed below") {
 		t.Errorf("with nothing filtered the rows ARE the whole queue, so the forecast should still "+
 			"say so: %q", rendered.DrainedUnfiltered.Forecast)
-	}
-}
-
-// TestJavaScriptBehaviorDurationsReserveMatchesTheSentenceDrawn pins the reserve to
-// a fixed point rather than to two passes.
-//
-// Holding the remainder sentence's room narrows the last label row, which can hide
-// labels the unreserved pass had placed. The count therefore rises between the pass
-// the reserve was measured from and the pass whose result is drawn — and across a
-// digit boundary the sentence gets wider too, so `+10 more …` is painted into room
-// reserved for `+8 more …`, over the last placed label. That is the exact collision
-// the planner exists to prevent, and it was reachable before this: at 26 candidates
-// of one width the two passes hid 8 then 10.
-//
-// The invariant is stated as a relationship, not a number: whatever the final count
-// is, the reserve the final pass held must have been measured from that same count.
-// It sweeps a range of densities rather than pinning one fixture, because the
-// boundary moves with the face and the plot width.
-func TestJavaScriptBehaviorDurationsReserveMatchesTheSentenceDrawn(t *testing.T) {
-	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
-	if readError != nil {
-		t.Fatalf("read web/board-durations.js: %v", readError)
-	}
-
-	probeDriver := `
-var lastMeasuredSentence = null;
-function measureRemainderWidth(sentenceText) {
-  lastMeasuredSentence = sentenceText;
-  return sentenceText.length * 7;   // monotone in the digit count, like a real face
-}
-var mismatches = [], remainderCases = 0, multiPassCases = 0;
-for (var candidateCount = 12; candidateCount <= 60; candidateCount += 1) {
-  for (var markStep = 20; markStep <= 45; markStep += 5) {
-    lastMeasuredSentence = null;
-    var candidates = [];
-    for (var index = 0; index < candidateCount; index += 1) {
-      candidates.push({
-        markX: DURATIONS_MARGIN_LEFT + 20 + index * markStep,
-        textWidth: 80,
-        id: "REQ-" + index
-      });
-    }
-    var unreserved = placeDurationsLabelBand(candidates, 0);
-    var band = packDurationsLabelBand(candidates, measureRemainderWidth, "not labelled");
-    if (band.hiddenCount === 0) { continue; }
-    remainderCases += 1;
-    if (band.hiddenCount > unreserved.hiddenCount) { multiPassCases += 1; }
-    var sentenceDrawn = composeDurationsRemainderText(band.hiddenCount, "not labelled");
-    if (lastMeasuredSentence !== sentenceDrawn) {
-      mismatches.push({
-        candidateCount: candidateCount, markStep: markStep,
-        reservedFor: lastMeasuredSentence, drawn: sentenceDrawn
-      });
-    }
-  }
-}
-process.stdout.write(JSON.stringify({
-  mismatches: mismatches, remainderCases: remainderCases, multiPassCases: multiPassCases
-}));
-`
-
-	javascriptProbe := string(rendererFragment) + probeDriver
-	probeOutput := runJavaScriptBehaviorProbe(t, "durations remainder reserve", javascriptProbe)
-
-	var swept struct {
-		Mismatches []struct {
-			CandidateCount int    `json:"candidateCount"`
-			MarkStep       int    `json:"markStep"`
-			ReservedFor    string `json:"reservedFor"`
-			Drawn          string `json:"drawn"`
-		} `json:"mismatches"`
-		RemainderCases int `json:"remainderCases"`
-		MultiPassCases int `json:"multiPassCases"`
-	}
-	if decodeError := json.Unmarshal(probeOutput, &swept); decodeError != nil {
-		t.Fatalf("decode durations reserve sweep: %v (output starts %q)",
-			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
-	}
-
-	// Guard the sweep itself: a fixture range that never produces a remainder, or
-	// never needs more than one reserved pass, would satisfy the invariant vacuously.
-	if swept.RemainderCases == 0 {
-		t.Fatal("no swept density produced a remainder — the sweep proves nothing about the reserve")
-	}
-	if swept.MultiPassCases == 0 {
-		t.Fatal("no swept density hid more under the reserve than without it — the sweep never reaches the case this pins")
-	}
-
-	for _, mismatch := range swept.Mismatches {
-		t.Errorf("%d candidates at step %d reserved room for %q but will draw %q",
-			mismatch.CandidateCount, mismatch.MarkStep, mismatch.ReservedFor, mismatch.Drawn)
 	}
 }

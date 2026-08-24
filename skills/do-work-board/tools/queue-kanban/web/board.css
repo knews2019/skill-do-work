@@ -2144,8 +2144,16 @@ body.is-resizing-detail .detail-resizer::before {
   color: var(--ink-soft);
 }
 
-.durations-chart {
+.durations-chart-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  align-items: start;
+  gap: 20px;
   padding: 8px 24px 0;
+}
+
+.durations-chart {
+  min-width: 0;
   overflow-x: auto;
 }
 
@@ -2194,15 +2202,98 @@ body.is-resizing-detail .detail-resizer::before {
   fill: var(--surface-2);
 }
 
-.durations-lane-divider {
-  stroke: var(--line-soft);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
+.durations-longest-spans {
+  min-width: 0;
+  max-height: min(697px, 75vh);
+  overflow-y: auto;
+  padding: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-card);
+  background: var(--surface-1);
 }
 
-.durations-label-leader {
-  stroke: var(--line-firm);
-  stroke-width: 1;
+.durations-longest-spans h3 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-strong);
+}
+
+.durations-longest-spans > p {
+  margin: 5px 0 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+.durations-longest-spans ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 24px;
+}
+
+.durations-longest-spans li {
+  min-width: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink-base);
+}
+
+.durations-longest-spans li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.durations-longest-spans-item-heading,
+.durations-longest-spans-item-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+}
+
+.durations-longest-spans-request {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.durations-longest-spans-duration {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-strong);
+}
+
+.durations-longest-spans-item-context {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.durations-longest-spans-title {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-base);
+}
+
+@media (max-width: 999px) {
+  .durations-chart-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .durations-longest-spans {
+    max-height: 360px;
+  }
+}
+
+@media (max-width: 480px) {
+  .durations-chart-list {
+    gap: 14px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
 }
 
 /* The UR grouping lane (REQ-346). A bracket is a graphical object rather than
