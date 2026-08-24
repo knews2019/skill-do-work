@@ -1,7 +1,10 @@
 ---
 id: REQ-351
 title: "Retire the Durations in-lane labels for a ranked longest-spans list"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T16:43:37Z
+status_changed_at: 2026-08-24T16:43:37Z
+route: B
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
 domain: frontend
@@ -123,3 +126,11 @@ place text in the SVG are gone, each named in the hand-back.
 
 ---
 *Source: prompt A5, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F5).*
+
+## Triage
+
+**Route: B** — The reversal, retained/deleted behavior, six-file seed scope, and rendered outcome are explicit. Exploration must trace the full label-planner/width-model/test deletion boundary before implementation.
+
+## Plan
+
+**Planning not required** — Route B: exploration-guided implementation.
