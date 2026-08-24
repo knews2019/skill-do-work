@@ -31,7 +31,7 @@ do-work/
 ```yaml
 ---
 id: REQ-001
-title: "Brief descriptive title"
+title: 'Brief descriptive title'
 status: pending
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001
@@ -42,7 +42,8 @@ impact: impact-critical | impact-user-visible | impact-rule-change | impact-negl
 ---
 ```
 
-Titles are always quoted, and a REQ whose impact verdict is anything other than the
+Titles use the single-quoted **Frontmatter Quoting** form from `../actions/work-reference.md`
+(apostrophes inside are doubled), and a REQ whose impact verdict is anything other than the
 `impact-user-visible` default carries that verdict as a leading tag —
 `title: '[impact-negligible] Retitle the export button'`. The tag never appears in the filename, so
 `REQ-NNN-slug.md` is unchanged. It is there so the board's search box (which matches titles) finds

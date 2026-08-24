@@ -133,10 +133,16 @@ For each parsed request, check for similar existing ones across both tiers. For 
 
 **Addendum to a queued request** — don't rewrite, append:
 
+The addendum carries outside text into an existing REQ body. Apply `actions/clarify.md` Step 4's **Outside-text containment** to that text before appending it; a one-line summary remains pipeline-authored framing, while the user's complete words use the contract's contained body-passage form.
+
 ```markdown
 ## Addendum (2025-01-27)
 
-User added: "dark mode should also affect the sidebar"
+User added:
+
+> ````text
+> dark mode should also affect the sidebar
+> ````
 
 - Sidebar must also respect dark mode theme
 ```
@@ -232,7 +238,7 @@ If the user provides one or more screenshots:
 Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (create if needed).
 
 **For all requests (simple and complex):**
-1. Create `do-work/user-requests/UR-NNN/input.md` with verbatim input (leave `requests` array empty initially), per the **UR input.md** template in `actions/capture-reference.md`.
+1. Create `do-work/user-requests/UR-NNN/input.md` with verbatim input (leave `requests` array empty initially), per the **UR input.md** template in `actions/capture-reference.md`. Apply `actions/clarify.md` Step 4's **Outside-text containment** to the Full Verbatim Input body: the outside bytes stay complete and byte-identical, with only the contract's quote/fence containment added.
 2. Create REQ-NNN-slug.md files using the **Simple REQ** or **Complex REQ (additional sections)** template in `actions/capture-reference.md` — **excluding any request Step 2's fold-first scan already resolved**: a folded finding landed on an existing queued REQ (or, when prose-only, on `do-work/prose-backlog.md`) and gets no new file here; record its destination in the UR's `input.md` under `## Folded Requests`, one line per fold, per that section in the **UR input.md** template in `actions/capture-reference.md`. That line is the fold's only record, so it carries both the destination and the part of the input that went there — enough for `actions/verify-requests.md` to grade the folded portion against whatever now holds it, without a duplicate REQ existing. For the rest, create the file, adding user_request: UR-NNN, the inferred domain, the prime_files array populated with any discovered paths, and `maintenance: true` when the Step 1 maintenance assessment flagged this as a removal/narrowing pass on the skill's own instructions (otherwise emit `maintenance: false`). If any field's value doesn't match the canonical enum, apply the **Schema Aliases** section's normalize-and-warn contract before writing.
 3. If the request is behavior-changing and has a meaningful RED/GREEN proof target, add a `## Red-Green Proof` section. If `tdd: true`, this section is required.
 4. Update the UR's `requests` array with all created REQ IDs — folded requests created no REQ, so they never enter the array; their `## Folded Requests` lines in `input.md` are the record, and the array plus that section is what makes the capture whole

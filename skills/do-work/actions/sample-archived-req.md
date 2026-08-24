@@ -1,6 +1,6 @@
 ---
 id: REQ-007
-title: Add user avatar component
+title: 'Add user avatar component'
 status: completed
 domain: frontend
 tdd: true

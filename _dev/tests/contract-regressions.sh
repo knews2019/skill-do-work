@@ -4872,6 +4872,17 @@ def neutralization_defects(source):
         # loose prose a caller citing the name would never reach.
         "neutralization stated at the named entry point":
             r"neutraliz\w+ before it is written",
+        # The contract protects every do-work Markdown record body that accepts
+        # outside text, not only the answer line that first exposed the class.
+        "do-work record-body reach":
+            r"any do-work markdown record body",
+        # Markdown delimiter containment cannot repair a file that has already
+        # become binary/non-text. The preflight is deliberately a condition,
+        # not another list of current writers.
+        "text-byte preflight":
+            r"c0.*?del.*?lf.*?tab.*?refuse.*?report",
+        "byte identity after containment":
+            r"byte-identical apart from containment bytes",
         # The whole point of the REQ: a condition, never a character list.
         "delimiter condition, not a character list":
             r"could this line be read as one of this file.s own delimiters",
@@ -4924,6 +4935,18 @@ mutations = (
      "could this line be read as one of this file's own delimiters",
      "does this line start with `- [ ]`, `- [x]`, `---`, `## ` or a backtick fence",
      "delimiter condition, not a character list"),
+    ("reach narrowed back to REQ answers",
+     "any do-work Markdown record body",
+     "a REQ answer line",
+     "do-work record-body reach"),
+    ("control-byte preflight removed",
+     "C0 control or DEL except LF and TAB",
+     "unusual character",
+     "text-byte preflight"),
+    ("byte identity weakened to normalization",
+     "byte-identical apart from containment bytes",
+     "readable after normalization",
+     "byte identity after containment"),
     ("examples hardened into a checklist",
      "illustrative, not a checklist",
      "the complete set to check",
@@ -4993,6 +5016,161 @@ neutralization_condition_count="$({ grep -rhoF "could this line be read as one o
 if [ "$neutralization_condition_count" != "1" ]; then
   printf 'FAIL: the answer-neutralization condition must be stated exactly once across skills/ — callers cite the Canonical answered-question format by name rather than restating it (found %s).\n' \
     "$neutralization_condition_count" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# REQ-360 — every action that writes outside text into a do-work Markdown body
+# inherits the one canonical containment contract by name. Isolate each writer's
+# own step: nearby citations in another step must not lend it the rule. The same
+# lock-in closes every hand-authored frontmatter example that still taught a form
+# the Frontmatter Quoting contract forbids.
+if ! python3 - \
+  "$core_root/actions/verify-requests.md" \
+  "$core_root/actions/capture.md" \
+  "$core_root/actions/stakeholder-answers.md" \
+  "$core_root/actions/abandon.md" \
+  "$core_root/actions/work-reference.md" \
+  "$core_root/actions/capture-reference.md" \
+  "$core_root/actions/review-work.md" \
+  "$core_root/actions/sample-archived-req.md" \
+  "$core_root/docs/capture-guide.md" \
+  "$core_root/docs/work-guide.md" <<'PY'
+import pathlib
+import re
+import sys
+
+(
+    verify_path,
+    capture_path,
+    stakeholder_path,
+    abandon_path,
+    work_reference_path,
+    capture_reference_path,
+    review_path,
+    sample_path,
+    capture_guide_path,
+    work_guide_path,
+) = map(pathlib.Path, sys.argv[1:])
+
+
+def section(source, start, end):
+    match = re.search(start + r"(?P<body>.*?)" + end, source,
+                      flags=re.DOTALL | re.MULTILINE)
+    if match is None:
+        raise SystemExit(f"cannot isolate writer block {start!r} -> {end!r}")
+    return match.group("body")
+
+
+def require_active_inheritance(label, block):
+    normalized = " ".join(block.lower().split())
+    if "outside-text containment" not in normalized:
+        raise SystemExit(f"{label} does not name Outside-text containment")
+    if re.search(r"(?:apply|follow|per|using|governed by|contained per).*outside-text containment", normalized) is None:
+        raise SystemExit(f"{label} names Outside-text containment passively instead of applying it")
+
+
+verify = verify_path.read_text()
+require_active_inheritance(
+    "verify-requests Step 7 resolved-answer writer",
+    section(verify, r"^### Step 7: Offer Fixes\n", r"^## Scoring Guidelines"),
+)
+
+capture = capture_path.read_text()
+require_active_inheritance(
+    "capture queued-addendum writer",
+    section(capture, r"^### Step 2: ", r"^### Step 3: "),
+)
+require_active_inheritance(
+    "capture UR input writer",
+    section(capture, r"^### Step 5: Write Files\n", r"^### Step 6: "),
+)
+
+stakeholder = stakeholder_path.read_text()
+require_active_inheritance(
+    "stakeholder-answers new-UR writer",
+    section(stakeholder, r"^### Step 4: ", r"^### Step 5: "),
+)
+
+abandon = abandon_path.read_text()
+require_active_inheritance(
+    "abandon cancellation-reason writer",
+    section(abandon, r"^### Step 3: ", r"^### Step 4: "),
+)
+
+
+def frontmatter_contract_defects(source):
+    block = section(
+        source,
+        r"^\*\*Named contract — Frontmatter Quoting\.\*\*",
+        r"^\*\*Do not wrap user text in a double-quoted scalar\.\*\*",
+    )
+    normalized = " ".join(block.lower().split())
+    predicates = {
+        "outside-text preflight inherited": r"outside-text containment.s accepted-text preflight",
+        "failed preflight refused and reported": r"refuses and reports.*?instead of normalizing",
+        "every physical line indented": r"every physical content line indented.*?blank lines included",
+        "zero-terminal-LF strip form": r"`key: \|-` for zero terminal lf bytes",
+        "one-terminal-LF clip form": r"`key: \|` for exactly one",
+        "multiple-terminal-LF keep form": r"`key: \|\+` for multiple",
+    }
+    return {name for name, pattern in predicates.items() if re.search(pattern, normalized) is None}
+
+
+work_reference = work_reference_path.read_text()
+live_frontmatter_defects = frontmatter_contract_defects(work_reference)
+if live_frontmatter_defects:
+    raise SystemExit(
+        "Frontmatter Quoting block-scalar contract defects: "
+        + ", ".join(sorted(live_frontmatter_defects))
+    )
+
+frontmatter_mutations = (
+    ("preflight citation removed", "Outside-text containment's accepted-text preflight", "ordinary text", "outside-text preflight inherited"),
+    ("normalization allowed", "refuses and reports text that fails it instead of normalizing bytes", "normalizes text that fails it", "failed preflight refused and reported"),
+    ("blank-line indentation omitted", "(blank lines included)", "(non-blank lines only)", "every physical line indented"),
+    ("strip used for every multiline value", "`key: |-` for zero terminal LF bytes, `key: |` for exactly one, and `key: |+` for multiple", "`key: |-` for every multiline value", "one-terminal-LF clip form"),
+)
+for mutation_name, old, new, expected_defect in frontmatter_mutations:
+    mutated = work_reference.replace(old, new, 1)
+    if mutated == work_reference:
+        raise SystemExit(f"Frontmatter Quoting mutation {mutation_name!r} changed nothing")
+    defects = frontmatter_contract_defects(mutated)
+    if expected_defect not in defects:
+        raise SystemExit(
+            f"Frontmatter Quoting mutation {mutation_name!r} escaped {expected_defect!r}; "
+            f"found {sorted(defects)!r}"
+        )
+
+required_single_quoted_examples = (
+    (capture_reference_path, r"^title: 'Add keyboard shortcuts'(?:\s+#.*)?$", "UR input title"),
+    (review_path, r"^title: '\[<impact token>\] Review fix: \[brief description\]'", "review follow-up title"),
+    (sample_path, r"^title: 'Add user avatar component'$", "sample archived title"),
+    (capture_guide_path, r"^title: 'Brief descriptive title'$", "capture-guide title"),
+    (work_guide_path, r"^assigned_to: 'cloud-alpha'$", "work-guide earmark"),
+)
+for path, pattern, label in required_single_quoted_examples:
+    if re.search(pattern, path.read_text(), flags=re.MULTILINE) is None:
+        raise SystemExit(f"{path}: {label} is not in the required single-quoted form")
+
+ur_template = capture_reference_path.read_text()
+full_input = section(ur_template, r"^## Full Verbatim Input\n", r"^---\n\*Captured:")
+if re.search(r"^> `+", full_input, flags=re.MULTILINE) is None:
+    raise SystemExit("capture-reference UR Full Verbatim Input example is still live Markdown rather than quoted fenced text")
+
+# The board's encoder-owned double-quoted writes are intentionally outside this
+# hand-authored inventory. Across core actions/docs, these five fixed examples
+# must leave no copyable raw-user field teaching the forbidden form.
+for path in (capture_reference_path, review_path, sample_path, capture_guide_path, work_guide_path):
+    forbidden = re.findall(
+        r"^\s*(?:title|blocked_by|blocked_check|stakeholder|assigned_to):\s*(?:\"|[^'\"|\s][^#\n]*)",
+        path.read_text(),
+        flags=re.MULTILINE,
+    )
+    if forbidden:
+        raise SystemExit(f"{path}: forbidden hand-authored frontmatter forms remain: {forbidden!r}")
+PY
+then
+  printf 'FAIL: outside-text body writers and hand-authored frontmatter examples must inherit the canonical containment/quoting contracts at their own write sites (REQ-360).\n' >&2
   fail_count=$((fail_count + 1))
 fi
 
