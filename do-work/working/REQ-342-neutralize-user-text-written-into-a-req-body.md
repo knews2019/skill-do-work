@@ -30,9 +30,9 @@ body's own delimiters. State the neutralization rule at the named entry point �
 Step 4 — so every caller that records a user answer obeys it, not just clarify.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `prime-action-files.md` and the prime's § Closed Enumerations Go Stale. Compared four mechanisms against the two reader classes the file's own history names — the board (goldmark) and line-based prose greps — and verified by experiment that fence-only defeats one but not the other.
+- [x] **[APPLY]:** Two files, both inside the write set. The rule is stated once inside the named entry point's blockquote; the two other touches in `clarify.md` are pointers, and the lock-in's exactly-once count check enforces that.
+- [x] **[UNIFY]:** Audited by the orchestrator against the merged range `ec24585..2407f27`: mutated the shipped rule by replacing "illustrative" with "the complete set to check" — the narrowing the REQ forbids — and confirmed the lock-in fails with exit 1 naming that exact property; restored byte-identical. Separately confirmed the mechanism defeats a line-based scan while the file's own headings survive.
 
 ## Why
 
@@ -128,3 +128,73 @@ None. Reproduced on the user's fixture; the three consequences are recorded in t
 
 ---
 *Source: UR-068 — see `do-work/user-requests/UR-068/input.md` for complete verbatim input.*
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** A rule stated in prose at a named entry point, inherited by six callers, whose lock-in has to detect narrowing rather than absence. The mechanism was explicitly the builder's to choose against two different reader classes, and the wrong choice defeats one of them silently.
+
+**Planning:** Required — the plan was the mechanism comparison, carried out by experiment rather than argued.
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/actions/clarify.md` (modify) — the neutralization rule inside the Step 4 blockquote, one Red Flag, one checklist clause
+- `_dev/tests/contract-regressions.sh` (modify) — the semantic lock-in and the exactly-once count check
+
+**Files I will NOT touch:** the six citing callers — they cite the format by name and inherit the rule; editing them would create the second copy the exactly-once check exists to prevent.
+
+**Acceptance criteria (restated from REQ):**
+- [x] The format states how user text is neutralized before it is written
+- [x] Covers the four proven shapes: `- [ ]`/`- [x]`, a bare `---`, a `## ` heading, an unbalanced fence
+- [x] Keyed on the condition, not a closed character list — shapes marked illustrative
+- [x] Stated once at the named entry point; every caller inherits rather than restates
+- [x] Neutralization preserves what the user actually said
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/actions/clarify.md` (modified)
+- `_dev/tests/contract-regressions.sh` (modified)
+
+**What was done:** The Canonical answered-question format now carries the neutralization rule, keyed on the condition "could this line be read as one of this file's own delimiters?" with the four proven shapes present as illustrative examples explicitly marked "not a checklist". A one-line answer stays inline after the arrow, because a delimiter must start a line and inline text never does. Anything longer is summarized on the answer line and placed in the dated note inside a blockquote whose lines open a code fence longer than the longest backtick run in the text: the `> ` prefix removes every line start from a line-based scan, the longer fence keeps those lines literal for a Markdown reader and cannot be closed from inside, and nothing but the prefix is added — so the answer's content survives verbatim. Placement is bound by the same condition: never the file's first line, which is the one delimiter no container can guard.
+
+## Testing
+
+**Tests run:** `bash _dev/tests/contract-regressions.sh`, `GOTOOLCHAIN=go1.26.1 bash _dev/tests/maintainer-verify.sh`
+**Result:** ✓ Gate exit 0
+
+**Red-green validation (all three consequences, board-rendered):**
+- Forged open question: RED board render `{"total":3,"unchecked":1}` → GREEN `{"total":1,"unchecked":0}` — the forged unchecked item that would pin the REQ in `pending-answers` is gone, the real `Q-01` remains
+- Unbalanced fence: RED `bodyHtml contains <h2 ...Plan>? false` → GREEN `true`; the user's unbalanced fence is preserved exactly and rendered inert
+- Paste above the frontmatter fence: RED `status=[... has no frontmatter block]` → GREEN `status=[pending] title=[...] user_request=[UR-999]`
+- Content preserved: the pasted `- [ ] retry once` and `- [x] then give up` are still legible in the archived REQ, quote-prefixed
+
+**Semantic lock-in (the REQ's hardest clause):** the test detects the rule being *narrowed*, not merely deleted. Independently re-run by the orchestrator — replacing "illustrative" with "the complete set to check" produces `FAIL: ... keyed on the delimiter condition rather than a character list (REQ-342)` and exit 1. The in-suite matrix replays 12 further narrowings, each required to trip its own predicate.
+
+**Caller sweep:** six live citations, none restating the rule — `actions/stakeholder-answers.md:41,102`, `actions/work.md:253`, `actions/work-reference.md:755`, `crew-members/clear-questions.md:41` in all three packages. Enforced mechanically by the exactly-once count check.
+
+*Verified by work action*
+
+## Decisions
+
+<!-- D-XX counter: last used D-05. Next decision: D-06. -->
+
+- **D-01 — Blockquote plus an over-long code fence, not fence-only, indent-only or blockquote-only. DECIDE.** Decided by experiment, not preference: with the answer fenced but unquoted, `grep '^[[:space:]]*- \[ \]'` still matched the pasted checkbox — fence-only defeats a Markdown reader and not a line-based scan. Blockquote-only defeats the scan but still renders a task checkbox and a heading inside the quote. The file's own history names both reader classes: the board is goldmark, and the sibling incident the REQ cites was a regex keying on the first line-leading `- [ ]`.
+- **D-02 — The answer line carries a one-line summary; the verbatim text lives in the dated note. DECIDE.** The checkbox line stays scannable and the exact words stay one line away, rather than a bare "see below".
+- **D-03 — Placement is part of the same condition, not a separate rule. DECIDE.** The opening frontmatter fence is a delimiter like the others, and no container can guard it, so placement *is* its neutralization. This deliberately does not lean on the parser's line-based recovery: `splitFrontmatter` returns `hasFrontmatter=false` outright when the fence is not the first line, so there is nothing there to lean on — which is what the REQ's Constraints required.
+- **D-04 — One Red Flag and one checklist clause rather than a new checklist entry. DECIDE.** Both are pointers to the named format, carrying neither the condition nor the mechanism; the exactly-once count check would fail on a restatement.
+- **D-05 — The lock-in is an extractor plus mutation matrix, not `assert_block_contains` calls. DECIDE.** `require(file, token)` tests vocabulary, and the requirement was to detect narrowing. Isolating the blockquote also stops nearby prose from lending vocabulary to a weakened property.
+
+## Discovered Tasks
+
+- `skills/do-work/actions/work.md:253` cites the format by name and also restates the `- [x] [question] → [the user's answer]` shape inline. Harmless today — the neutralization rule is inherited, not copied — but it is a second copy of the answer-line form that can drift from the entry point.
+- `_dev/tests/contract-regressions.sh` has an existing `grep … | wc -l` count under `set -euo pipefail` (`three_attempt_count`, near the Step 6.5 block) with no `|| true`. If that phrase ever reaches zero occurrences the whole suite aborts at that line and reports nothing about the checks below it. The builder hit exactly this while writing its own count check and guarded its own; the older one is unguarded.
+- `queue-kanban frontmatter get` prints its "has no frontmatter block" message to stdout in a way that reads like a value to a shell caller. Adjacent to REQ-344.
+
+## Open Questions
+
+- [~] Do the Red Flag line and the checklist clause count as restating the rule rather than citing it? → **D-06**: Builder judged them pointers — neither carries the condition or the mechanism, and the exactly-once check confirms the condition sentence exists in one file only. Orchestrator concurs: the check is mechanical and it passes. Value: the symptom is named where an operator meets it. Risk: if the maintainer reads them as restatement, both are one-line deletions. Reversible; not carried to a follow-up REQ, because the mechanical check already enforces the property the question is about.
