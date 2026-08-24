@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.59 — Timeline Table Waits for Publication (2026-08-24)
+
+Timeline's grouping probe now waits for the requested table rebuild instead of hoping a 50ms delay was enough.
+
+- A pre-action MutationObserver requires a different nonempty first row before assertions run
+- Fit-all and Day waits cannot pass on stale DOM, and deadline expiry is explicit failure only
+- Sixty builder runs plus twenty merged-main runs passed after reproducing the original race 2/20
+
 ## 0.236.58 — UR Copy All Includes Every Grouped REQ (2026-08-24)
 
 UR details can now copy the UR's full source followed by every REQ currently grouped under it.

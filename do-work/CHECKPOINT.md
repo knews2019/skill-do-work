@@ -23,7 +23,6 @@ Nine REQs archived, releases 0.236.34 through 0.236.38.
 
 ## In Progress (interrupted)
 
-- REQ-369: Wait for the Timeline table rebuild condition — claimed 2026-08-24T21:21:06Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 Three collision-safe REQs are claimed for the next fan-out wave. Builders run in isolated worktrees;
 integration, verification, review, release, and archival remain serial.
