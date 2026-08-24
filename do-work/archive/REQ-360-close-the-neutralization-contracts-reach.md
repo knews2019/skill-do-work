@@ -1,9 +1,11 @@
 ---
 id: REQ-360
 title: "[impact-rule-change] Close the neutralization contract's reach"
-status: claimed
+status: completed
 claimed_at: 2026-08-24T17:42:55Z
-status_changed_at: 2026-08-24T17:42:55Z
+completed_at: 2026-08-24T18:55:00Z
+commit: 572a9af61776c4aa7c2920c6701a244a9ca9f8f4
+status_changed_at: 2026-08-24T18:55:00Z
 route: C
 created_at: 2026-08-24T10:50:00Z
 user_request: UR-068
@@ -56,9 +58,9 @@ line-shaped escapes it; and one live caller writes a user's answer into a REQ bo
 format at all, so it inherits nothing.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read both primes, mapped every sweep instance to one contract/writer/example/parser closure, and defined mutation-sensitive evidence before changing the thirteen-file scope.
+- [x] **[APPLY]:** Broadened Outside-text containment, added fail-closed control preflight and byte-honest YAML block scalars, wired every behaviorally discovered writer, corrected every live example, and added semantic/mutation lock-ins.
+- [x] **[UNIFY]:** Reviewed all thirteen files; contract regressions, focused frontmatter tests, the full queue-kanban module, canonical maintainer verification, and diff checks passed with no debug artifacts.
 
 ## Why
 
@@ -67,7 +69,7 @@ neither every damaging shape, nor every writer.
 
 ## Instances
 
-- [ ] **The condition is line-scoped, so non-line-shaped damage escapes it.** The rule reads "Judge
+- [x] **The condition is line-scoped, so non-line-shaped damage escapes it.** The rule reads "Judge
   every line of it against one condition: could this line be read as one of this file's own
   delimiters?" A byte that changes how the **file** is read rather than how a **line** is read is
   outside it, and neither the `> ` prefix nor the over-long fence neutralizes it. Measured on an
@@ -87,7 +89,7 @@ neither every damaging shape, nor every writer.
   *Prescribed Shell Commands Must Surface What the Steps Consume* already records the trap.
   Judged `impact-rule-change`.
 
-- [ ] **`actions/verify-requests.md:168` writes a user answer and cites nothing.** Inside Step 7's
+- [x] **`actions/verify-requests.md:168` writes a user answer and cites nothing.** Inside Step 7's
   "the user is here right now — resolve them on the spot": `2. If the user answers → add the resolved
   question to the REQ's `## Open Questions` section as `- [x] [question] → [user's answer]``. It
   obtains typed text interactively and writes it into a REQ body in exactly the shape the format
@@ -98,13 +100,13 @@ neither every damaging shape, nor every writer.
   each inherits" — and a citation grep is structurally blind to a caller that never cites. The UR's
   wording is the stronger one: "so every caller that records an answer obeys it, not just clarify."
 
-- [ ] **The UR `input.md` template prescribes an unquoted title.** `actions/capture-reference.md:194`
+- [x] **The UR `input.md` template prescribes an unquoted title.** `actions/capture-reference.md:194`
   shows `title: Add keyboard shortcuts`. A UR title is the user's own phrasing, so the Frontmatter
   Quoting condition governs it. Measured through the shipped CLI: `title: Fix the #1 board complaint`
   reads back as `Fix the`, exit 0, no warning. Note the reach gap behind it — the contract's home is
   § **Request** File Schema while UR files run through the same parser. Judged `impact-user-visible`.
 
-- [ ] **The block-scalar branch has an unstated precondition.** Written exactly as prescribed
+- [x] **The block-scalar branch has an unstated precondition.** Written exactly as prescribed
   (`key: |-`, text indented beneath), a value whose **first line begins with a space** fails the
   strict parse, drops the whole block to salvage, and reads back as the literal `|-`:
 
@@ -121,7 +123,7 @@ neither every damaging shape, nor every writer.
   character (0x1b, NUL) fails under both. So the contract's opening claim — "no character in it can
   be read as YAML syntax" — over-promises on what the two forms deliver. Judged `impact-rule-change`.
 
-- [ ] **Four shipped files still demonstrate the forbidden form, and one write site was missed.**
+- [x] **Four shipped files still demonstrate the forbidden form, and one write site was missed.**
   `actions/review-work.md:361` (core's own follow-up minting template, the exact sibling of the
   `code-review.md` line REQ-344 corrected); `docs/capture-guide.md:34`, five lines above the sentence
   REQ-344 rewrote, so that file now contradicts itself; `docs/work-guide.md:123`, the snippet the
@@ -213,3 +215,52 @@ reproduced there.
 ## Decisions
 
 - **D-01 — Refuse invalid control bytes rather than normalize them.** To keep the existing COMPLETE/UNEDITED and byte-identical promises honest, externally supplied text containing C0/DEL controls other than LF/TAB is not written; the caller reports the offending code point. CR-to-LF normalization and a hand-authored escape table are rejected because both silently change the supplied bytes.
+- **D-02 — Name one body contract and make writers inherit it actively.** Outside-text containment owns delimiter defense and accepted-byte preflight; callers cite its directive rather than restating or passively mentioning it.
+- **D-03 — Target strict YAML, not salvage behavior.** Literal block composition selects chomp indicators from the exact terminal-LF count and indents every physical line; parser salvage remains recovery only.
+- **D-04 — Keep encoder-owned YAML outside the hand-authored example rule.** The board Testing view's serializer may retain its generated double-quoted form; every live copyable hand-authored example uses the canonical single-quoted form and cites Frontmatter Quoting.
+
+## Implementation Summary
+
+- `_dev/tests/contract-regressions.sh` (modified): adds exact semantic and missing/passive mutation lock-ins for the canonical condition, five body writers, control preflight, byte identity, block-scalar rules, and five cited frontmatter examples.
+- `skills/do-work-board/tools/queue-kanban/frontmatter_test.go` (modified): verifies strict-YAML preservation of leading indentation and exact terminal LF count while retaining nested frontmatter.
+- `skills/do-work/actions/clarify.md` (modified): promotes the answer defense into the canonical Outside-text containment contract with fail-closed C0/DEL preflight.
+- `skills/do-work/actions/verify-requests.md` (modified): actively inherits Outside-text containment at the resolved-answer writer.
+- `skills/do-work/actions/capture.md` (modified): actively inherits Outside-text containment for queued addenda and verbatim UR input.
+- `skills/do-work/actions/capture-reference.md` (modified): quotes and cites the UR title example.
+- `skills/do-work/actions/stakeholder-answers.md` (modified): actively inherits Outside-text containment for reply UR input and Frontmatter Quoting for the Step 5 `blocked_by:` rewrite.
+- `skills/do-work/actions/abandon.md` (modified): actively inherits Outside-text containment for cancellation reasons.
+- `skills/do-work/actions/work-reference.md` (modified): makes literal block composition byte-honest for indentation and terminal LF count and states the accepted control-byte precondition.
+- `skills/do-work/actions/review-work.md` (modified): quotes and cites the follow-up title example.
+- `skills/do-work/actions/sample-archived-req.md` (modified): quotes and cites the archived sample title.
+- `skills/do-work/docs/capture-guide.md` (modified): quotes and cites the capture title example.
+- `skills/do-work/docs/work-guide.md` (modified): quotes and cites the `assigned_to` example.
+
+## Discovered Tasks
+
+None.
+
+## Testing
+
+- RED contract probes identified the missing record-body reach, text-byte preflight, byte-identity condition, uncited verify writer, and forbidden examples; strict parsing demonstrated that CR normalizes and NUL/DEL reject, so none can satisfy byte identity.
+- Builder and post-remediation `contract-regressions.sh` passed, including exact missing/passive citation mutations for all five writers and citation-plus-form lock-ins for all five examples.
+- Focused `TestFrontmatterQuoting` tests and the full queue-kanban module passed; builder canonical maintainer verification passed with the standard no-browser skip.
+- Independent pre-review replayed the focused contract/frontmatter evidence and approved the cumulative builder tip with no remaining findings.
+- On the final merged tree, contract regressions passed all 104 prescribed-shell cases, focused strict-frontmatter tests passed, and canonical maintainer verification passed its uncached Go and strict JavaScript lanes with only the declared no-browser skip.
+
+## Qualification
+
+- Exact merge range `2437338..572a9af` passed mechanical qualification.
+- Scope drift passed: all thirteen changed files exactly match the declared Scope and Implementation Summary.
+- Orchestrator judgment confirmed substantive fail-closed control handling, active writer inheritance, strict-YAML byte preservation, all five closed sweep instances, and no generated/debug artifacts.
+
+## Review
+
+Independent pre-review found three Important coverage/reach gaps before integration: the named stakeholder Step 5 writer lacked Frontmatter Quoting inheritance, three writer lock-ins could pass on unrelated passive wording, and the archived sample lacked a nearby citation. Builder remediation closed all three with exact missing/passive mutations and citation-plus-form checks. Final review approved with no Important, Minor, or Nit findings: Requirements 100%, Code Quality 98%, Test Adequacy 100%, Scope Discipline 100%, overall 99%, low residual security risk, acceptance pass. The clean exact-scope merge and final-tree gates confirmed the provisional integration checks.
+
+## Lessons Learned
+
+A citation-reach check must bind the exact writer directive, not search an entire step for a nearby verb. Otherwise unrelated prose can keep a deliberately passive writer green.
+
+## Orientation
+
+Released in 0.236.50. Outside text now has one actively inherited containment contract, invalid controls fail closed before writes, literal YAML blocks preserve indentation and terminal newlines, and every live hand-authored frontmatter example demonstrates the quoted rule it cites.

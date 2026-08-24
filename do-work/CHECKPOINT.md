@@ -23,10 +23,7 @@ Nine REQs archived, releases 0.236.34 through 0.236.38.
 
 ## In Progress (interrupted)
 
-- REQ-360 — claimed 2026-08-24T17:42:55Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-
-Three REQs are claimed for the next bounded fan-out wave. Builders run in isolated worktrees;
-integration, verification, review, release, and archival remain serial.
+None.
 
 ## Still Queued
 

@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.50 — Outside Text Fails Closed (2026-08-24)
+
+User-supplied text now follows one containment contract across every do-work record writer, so control bytes and YAML edge cases cannot silently change how a record is read.
+
+- C0 and DEL controls other than LF and TAB are refused before any write
+- Literal YAML blocks preserve leading indentation and exact terminal-newline count
+- Five body writers and five hand-authored frontmatter examples actively inherit their canonical rules
+
 ## 0.236.49 — Durations Marks Open Their REQs (2026-08-24)
 
 Outliers and ordinary samples are no longer dead ends: every Durations mark now opens the shared REQ drawer by pointer or keyboard.
