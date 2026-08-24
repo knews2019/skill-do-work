@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.44 — Timeline Groups Show the UR-Level Gap (2026-08-24)
+
+Timeline rows now group beneath their user request and expose window-bounded elapsed, accepted work, and listed REQ counts without sacrificing virtualization or keyboard behavior.
+
+- Running and unresolved groups state honest endpoints; no-claim work never borrows creation time
+- Visual headers and the accessible table share explicit group membership, while REQ rows remain one roving Tab stop
+
 ## 0.236.43 — Panel A Makes Dense Durations Legible (2026-08-24)
 
 Panel A now gives short work more vertical room, spreads busy-day marks deterministically, and shows the daily distribution without changing its ceiling or exclusion semantics.

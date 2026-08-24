@@ -1,9 +1,11 @@
 ---
 id: REQ-348
 title: "Group the Timeline's rows by user request"
-status: claimed
+status: completed
 claimed_at: 2026-08-24T15:00:04Z
-status_changed_at: 2026-08-24T15:00:04Z
+completed_at: 2026-08-24T16:41:18Z
+commit: 205be83
+status_changed_at: 2026-08-24T16:41:18Z
 route: C
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
@@ -197,3 +199,28 @@ list is still one Tab stop.
 
 - Recalibrate `TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage` for Chromium headless shell 147: under a forced full-browser run, swallowing `setPointerCapture` no longer caused the expected dependency and the drag still completed.
 - `TestBrowserBehaviorTimelineBarsSurviveTheDetailDrawerOpening` failed once under forced full-suite load but passes alone; focused REQ-348 browser probes and canonical verification are green.
+
+## Testing
+
+- Initial RED proved no Timeline grouping function existed. Model GREEN pins stable first-seen groups, newest-first/unknown-last members, endpoints, accepted-work exclusions, post-window grouping, flattening, and mixed-height virtualization.
+- Builder canonical maintainer verification passed; focused forced Chromium proved header/member order, rebuilt windows, bounded nodes, one REQ Tab stop, keyboard behavior, explicit table associations, and light/dark readability. Measured header contrast was 17.26:1/6.11:1 in light and 15.83:1/6.88:1 in dark.
+- First review produced targeted RED: a 09:00–13:00 member in a 10:00–12:00 window reported 240 rather than 120 minutes; isolated/mixed unresolved completions invented or partially published elapsed; member cells lacked exact group/column associations.
+- Remediation GREEN proves exact clipped 10:00/12:00 endpoints and 120-minute elapsed/work, endpoint-unavailable suppression for isolated and mixed unresolved groups, and live per-cell own-group + column headers with REQ `th scope="row"`.
+- Remediation maintainer verify passed (queue-kanban 61.420s, strict JavaScript 17.11s, audit-metrics green); post-merge full suite passed in 67.833s. One combined focused Chromium run transiently read stale Fit-all contents, then passed alone and as the identical full focused group; re-review reproduced this only once under repeated-count load.
+
+## Qualification
+
+- Cumulative merge range `5e0d9e9..205be83` passed mechanical qualification and exact five-file scope drift.
+- Orchestrator judgment confirmed substantive behavior, canonical Durations exclusion data flow, window-bounded metrics, endpoint honesty, REQ-only focus mapping, and accessible header associations.
+
+## Review
+
+First review scored 86% and required remediation of three Important findings: unbounded metrics, unresolved endpoint copy, and invalid rowgroup semantics. Re-review approved with Requirements 100%, Code Quality 97%, Test Adequacy 92%, Scope 100%, overall 97%, low risk, acceptance pass. One non-blocking fixed-wait synchronization Minor was captured as REQ-369 without weakening this release.
+
+## Lessons Learned
+
+Window-scoped membership is not sufficient evidence for window-scoped metrics: intersect every contributing interval with the visible domain. Accessibility semantics likewise need explicit structural associations, not a visually plausible header row.
+
+## Orientation
+
+Released in 0.236.44. Timeline rows now group beneath their UR with window-clipped elapsed and accepted-work metrics, honest open/unresolved endpoints, bounded virtualization, REQ-only keyboard focus, and explicitly associated accessible table headers.
