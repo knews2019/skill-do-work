@@ -2353,119 +2353,378 @@ window.addEventListener("load", function () {
 	}
 }
 
-// pointerCapturingFunctionNames lists every named function in the generated page whose
-// OWN body requests pointer capture. It is derived from the page rather than hand-listed
-// because the point of the check below is to survive a regression that routes the
-// request through a function nobody has written yet.
-//
-// The trailing paren in the match is load-bearing, and it is the trap REQ-333 fell into:
-// a search for the bare name also matches the `typeof scrollHost.setPointerCapture ===
-// "function"` feature detect, so it passes with the call itself deleted.
-func pointerCapturingFunctionNames(t *testing.T, pageSource string) []string {
-	t.Helper()
-	const declarationToken = "function "
-	var capturingNames []string
-	searchOffset := 0
-	for {
-		relativeIndex := strings.Index(pageSource[searchOffset:], declarationToken)
-		if relativeIndex == -1 {
-			break
-		}
-		declarationIndex := searchOffset + relativeIndex
-		searchOffset = declarationIndex + len(declarationToken)
-		nameEnd := strings.IndexByte(pageSource[searchOffset:], '(')
-		if nameEnd == -1 {
-			break
-		}
-		functionName := strings.TrimSpace(pageSource[searchOffset : searchOffset+nameEnd])
-		// Anonymous function expressions (`function (event) {`) have no name to call, so
-		// nothing can route a request through them from another handler.
-		if functionName == "" || strings.ContainsAny(functionName, " \t\n(){}") {
-			continue
-		}
-		functionBody := sliceBalancedBlockAfter(t, pageSource[declarationIndex:], declarationToken+functionName)
-		if strings.Contains(functionBody, "setPointerCapture(") {
-			capturingNames = append(capturingNames, functionName)
-		}
-	}
-	return capturingNames
+// timelinePointerCaptureProbeHelpers is the page-side half of the probe below: the
+// state readers, the gesture arming, the aim, and the two mutations. It is installed
+// once into the real board and then driven from Go over the protocol channel, so
+// nothing here dispatches an event — every event in this probe comes from the engine.
+const timelinePointerCaptureProbeHelpers = `(function () {
+  var probe = {
+    clickCount: 0, clickDetailId: "", clickTag: "",
+    pointerUpSeen: false, pointerUpTag: "",
+    captureEstablished: null, captureListener: null
+  };
+  window.timelineProbe = probe;
+  probe.plotHost = function () { return document.querySelector("#view-timeline .timeline-scroll"); };
+  probe.isPanning = function () { return probe.plotHost().classList.contains("is-panning"); };
+  probe.drawerIsOpen = function () {
+    var drawer = document.getElementById("detail-drawer");
+    return !!drawer && !drawer.hidden && !drawer.classList.contains("is-hidden");
+  };
+  probe.shownDetailId = function () {
+    var shown = document.getElementById("detail-id");
+    return shown ? shown.textContent.trim() : "";
+  };
+  probe.closeDrawer = function () {
+    var closeButton = document.getElementById("detail-close");
+    if (closeButton) { closeButton.click(); }
+    return "closed";
+  };
+  // Every gesture starts from the SAME window, and one that is off both bounds: at
+  // Fit all a pan clamps to the window it started in, so a drag that panned would be
+  // indistinguishable from one that did not. REQ-324's lesson, met again.
+  probe.resetWindow = function () {
+    document.getElementById("timeline-zoom-fit").click();
+    document.getElementById("timeline-zoom-in").click();
+    document.getElementById("timeline-zoom-in").click();
+    return "reset";
+  };
+  // Both watches sit on DOCUMENT in the BUBBLE phase, so they run AFTER the board's
+  // own delegated click handler and after the scroll host's release teardown. A
+  // capture-phase listener would report the state from before the thing being
+  // measured happened.
+  document.addEventListener("click", function (clickEvent) {
+    probe.clickCount++;
+    var clickTarget = clickEvent.target;
+    probe.clickTag = clickTarget && clickTarget.tagName ? clickTarget.tagName : "";
+    var trigger = clickTarget && clickTarget.closest ? clickTarget.closest("[data-detail-kind]") : null;
+    probe.clickDetailId = trigger ? trigger.getAttribute("data-detail-id") : "";
+  }, false);
+  document.addEventListener("pointerup", function (upEvent) {
+    probe.pointerUpSeen = true;
+    probe.pointerUpTag = upEvent.target && upEvent.target.tagName ? upEvent.target.tagName : "";
+  }, false);
+  probe.armGesture = function () {
+    probe.clickCount = 0; probe.clickDetailId = ""; probe.clickTag = "";
+    probe.pointerUpSeen = false; probe.pointerUpTag = "";
+    probe.captureEstablished = null;
+    return "armed";
+  };
+  probe.gestureOutcome = function () {
+    return {
+      clickCount: probe.clickCount, clickDetailId: probe.clickDetailId, clickTag: probe.clickTag,
+      drawerOpen: probe.drawerIsOpen(), shownDetailId: probe.shownDetailId(),
+      panning: probe.isPanning(), captureEstablished: probe.captureEstablished
+    };
+  };
+  // THE VIEWPORT RULE, learned the hard way by REQ-336's out-of-suite harness: a
+  // bounding rect is not a clickable coordinate until the element is on screen. The
+  // first bar of a three-hundred-row board sits near y=1538 in a 900px viewport and a
+  // press aimed at its rect lands on HTML. So scroll the chart in, then PROVE the
+  // point by asking what is actually under it rather than assuming.
+  probe.aimAtARow = function () {
+    document.querySelector("#view-timeline .timeline-chart").scrollIntoView({ block: "start" });
+    var host = probe.plotHost();
+    var hostBox = host.getBoundingClientRect();
+    var rows = document.querySelectorAll("#view-timeline .timeline-row");
+    var aim = {
+      aimed: false, x: 0, y: 0, detailId: "", landedOnTag: "", rowCount: rows.length,
+      hostTop: hostBox.top, hostLeft: hostBox.left, hostRight: hostBox.right
+    };
+    for (var index = 0; index < rows.length; index++) {
+      var rowBox = rows[index].getBoundingClientRect();
+      var y = Math.round(rowBox.top + rowBox.height / 2);
+      if (y <= hostBox.top + 2 || y >= hostBox.bottom - 2) { continue; }
+      // Left of centre, so a rightward drag of 140px stays on the plot.
+      var x = Math.round(hostBox.left + hostBox.width * 0.35);
+      var landedOn = document.elementFromPoint(x, y);
+      var trigger = landedOn && landedOn.closest ? landedOn.closest("[data-detail-kind]") : null;
+      aim.landedOnTag = landedOn && landedOn.tagName ? landedOn.tagName : "";
+      if (trigger && trigger.getAttribute("data-detail-id") === rows[index].getAttribute("data-detail-id")) {
+        aim.aimed = true;
+        aim.x = x;
+        aim.y = y;
+        aim.detailId = trigger.getAttribute("data-detail-id");
+        return aim;
+      }
+    }
+    return aim;
+  };
+  // THE MUTATION REQ-336 FIXED, reintroduced from outside the board's own source so
+  // the probe can be shown to catch it. captureEstablished records whether the engine
+  // really granted the capture, so "the drawer stayed shut" can be told apart from
+  // "the mutation never took" — which is precisely what happens under synthetic
+  // events, and precisely why this check could not be behavioural before.
+  probe.captureOnPointerdown = function () {
+    var host = probe.plotHost();
+    probe.captureListener = function (downEvent) {
+      try {
+        host.setPointerCapture(downEvent.pointerId);
+        probe.captureEstablished = !!host.hasPointerCapture(downEvent.pointerId);
+      } catch (captureError) {
+        probe.captureEstablished = false;
+      }
+    };
+    host.addEventListener("pointerdown", probe.captureListener);
+    return "capture-on-pointerdown installed";
+  };
+  probe.removeCaptureOnPointerdown = function () {
+    probe.plotHost().removeEventListener("pointerdown", probe.captureListener);
+    probe.captureListener = null;
+    return "capture-on-pointerdown removed";
+  };
+  // The MIRROR mutation: the board asks for capture and gets nothing. It stubs the
+  // element's own method, so capturePanPointer's feature detect still passes and its
+  // call still runs; the only thing missing is the capture itself.
+  probe.swallowPointerCapture = function () {
+    probe.plotHost().setPointerCapture = function () { return undefined; };
+    return "pointer capture swallowed";
+  };
+  probe.restorePointerCapture = function () {
+    delete probe.plotHost().setPointerCapture;
+    return "pointer capture restored";
+  };
+  return "installed";
+})()`
+
+// timelineRowAim is the press point, PROVEN rather than assumed — see aimAtARow.
+type timelineRowAim struct {
+	Aimed       bool    `json:"aimed"`
+	X           float64 `json:"x"`
+	Y           float64 `json:"y"`
+	DetailId    string  `json:"detailId"`
+	LandedOnTag string  `json:"landedOnTag"`
+	RowCount    int     `json:"rowCount"`
+	HostTop     float64 `json:"hostTop"`
+	HostLeft    float64 `json:"hostLeft"`
+	HostRight   float64 `json:"hostRight"`
 }
 
-// TestTimelinePointerCaptureWaitsForThePanEngage is the check REQ-337 exists to add, and
-// it pins the regression REQ-336 fixed: pointer capture taken on pointerdown.
+// timelineGestureOutcome is everything one gesture is allowed to be judged on.
+type timelineGestureOutcome struct {
+	ClickCount         int    `json:"clickCount"`
+	ClickDetailId      string `json:"clickDetailId"`
+	ClickTag           string `json:"clickTag"`
+	DrawerOpen         bool   `json:"drawerOpen"`
+	ShownDetailId      string `json:"shownDetailId"`
+	Panning            bool   `json:"panning"`
+	CaptureEstablished *bool  `json:"captureEstablished"`
+}
+
+// aimAtATimelineRow resets the window, scrolls the chart on screen and returns a press
+// point that has been checked against elementFromPoint. A press that reaches no row
+// produces "no pan, no drawer", which satisfies half the assertions below while
+// measuring nothing, so a failed aim is fatal rather than a result.
+func aimAtATimelineRow(
+	t *testing.T, session *trustedInputBrowserSession, gestureName string,
+) timelineRowAim {
+	t.Helper()
+	session.evaluateInPage(t, `window.timelineProbe.closeDrawer()`)
+	session.evaluateInPage(t, `window.timelineProbe.resetWindow()`)
+	session.evaluateInPage(t, `window.timelineProbe.armGesture()`)
+	var aim timelineRowAim
+	session.decodeResult(t, "aimAtARow", session.evaluateInPage(t, `window.timelineProbe.aimAtARow()`), &aim)
+	if !aim.Aimed {
+		t.Fatalf("the %s gesture found no press point over a visible row (%d rows rendered, the "+
+			"last point tried landed on %s); every assertion after this would be measuring a "+
+			"press that reached no handler", gestureName, aim.RowCount, aim.LandedOnTag)
+	}
+	return aim
+}
+
+// readTimelineGestureOutcome waits for the gesture to have been DELIVERED — a real
+// condition, never a duration — and then reads what the page made of it.
 //
-// Why this is not covered by the probe above. Pointer capture retargets the pointer
-// events AND the click the engine synthesizes to the capturing element, so a capture
-// taken on every press leaves the delegated handler in board-controls.js with no
-// [data-detail-kind] ancestor to find and the detail drawer never opens for any click in
-// the chart. TestBrowserBehaviorTimelinePressBecomesAPanOnlyAfterMoving passed through
-// that entire regression, because it dispatches synthetic PointerEvents whose pointerId
-// the engine does not know: setPointerCapture throws on them, capture is never
-// established, and the failing path is invisible to the lane. This lane runs under
-// --dump-dom with no protocol channel, so it cannot dispatch trusted input at all; the
-// REQ therefore allows asserting the structural property instead, and this does.
+// settleExpression is the caller's, because the two kinds of gesture here finish at
+// different moments. The engine synthesizes the click in a task AFTER the pointerup, so
+// a click trial that settles on the pointerup reads a drawer that has not been asked to
+// open yet: under the full suite's load that is exactly what happened, and it read as
+// "the trusted press produced no click at all". A click trial settles on the click; a
+// drag settles on the release.
 //
-// Three assertions, because "capture is not taken on pointerdown" is trivially satisfied
-// by taking it nowhere — which is the OTHER bug, the one REQ-333 fixed, where a drag
-// released outside the chart never told the host it had ended:
+// Neither condition presumes an outcome, which is what lets the same helper serve the
+// trial that expects a drawer and the trial that expects none.
+func readTimelineGestureOutcome(
+	t *testing.T, session *trustedInputBrowserSession, gestureName string, settleExpression string,
+) timelineGestureOutcome {
+	t.Helper()
+	session.waitForPageCondition(t, "the "+gestureName+" gesture is delivered", settleExpression)
+	var outcome timelineGestureOutcome
+	session.decodeResult(t, "gestureOutcome",
+		session.evaluateInPage(t, `window.timelineProbe.gestureOutcome()`), &outcome)
+	return outcome
+}
+
+// TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage pins the regression
+// REQ-336 fixed — pointer capture taken on pointerdown — and the one REQ-333 fixed, a
+// drag released outside the chart that never tells the host it ended.
 //
-//	(a) the pointerdown handler requests no capture itself,
-//	(b) it calls nothing that requests capture, resolved from the page rather than from a
-//	    list, so a fresh wrapper called from pointerdown fails here too, and
-//	(c) the pointermove handler — the engage path — DOES reach a request.
+// WHAT REQ-341 CHANGED HERE, AND WHY. This check shipped for REQ-337 as a STRUCTURAL
+// one: it read the generated page's text and required that the pointerdown handler
+// contain no setPointerCapture( call, that it call no function whose body has one, and
+// that the pointermove handler reach one. It read text because the lane could not do
+// anything else. Every probe ran under --dump-dom, with no protocol channel, so the only
+// input a probe could produce was a synthetic PointerEvent — and a synthetic pointerId
+// establishes no capture at all (on Chromium 141.0.7390.37 setPointerCapture does not
+// even throw for it; hasPointerCapture simply stays false afterwards). The whole defect
+// is a consequence of a REAL capture retargeting the engine's synthesized click, so it
+// was unreachable from the lane, and the structural version carried the residual in its
+// own comment: a capture routed through a variable, a method lookup or an eval passed it.
 //
-// Known residual: this reads text, so a request routed through a variable, a method
-// lookup, or an eval would pass. The mutation this REQ pins (reintroducing capture on
-// pointerdown, by either spelling) does not.
-func TestTimelinePointerCaptureWaitsForThePanEngage(t *testing.T) {
+// REQ-341 gave the lane a trusted-input transport (browser_probe_test.go), so the
+// property is now asserted the way a reader meets it. The residual is closed: these
+// gestures do not care HOW a capture is requested, only whether one exists when the
+// click is synthesized.
+//
+// Four trials, in one engine on one page, because each pair is what stops the other
+// from being trivially satisfied:
+//
+//	(1) a trusted press and release on a bar opens the detail drawer on that bar,
+//	(2) with capture taken on pointerdown from outside the board's source, the same
+//	    gesture opens nothing — which is what proves (1) can fail, and proves it against
+//	    the exact regression rather than against a mutation chosen to be easy,
+//	(3) a trusted drag released OUTSIDE the chart ends the pan, and
+//	(4) with the host's setPointerCapture stubbed out, that release strands the pan —
+//	    which is what proves (3) can fail and keeps "no capture anywhere" from passing.
+func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T) {
 	siteDirectory := generateLiveSiteInDir(t)
 	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
 	if readError != nil {
 		t.Fatalf("read generated index.html: %v", readError)
 	}
-	indexHTML := string(indexBytes)
 
-	capturingNames := pointerCapturingFunctionNames(t, indexHTML)
-	// Vacuity guard: with no capturing function found, (b) below asserts nothing and (c)
-	// would be measuring the wrong thing. A page that requests capture nowhere is a
-	// failure, not a pass.
-	if len(capturingNames) == 0 {
-		t.Fatal("no named function in the generated page requests pointer capture, so this check " +
-			"cannot tell capture-at-the-engage from capture nowhere at all")
+	// The REAL page, unedited: this transport drives it from outside, so unlike the
+	// dump-dom probes it needs no script injected to carry a result back.
+	session := startTrustedInputBrowserSession(t, "timeline pointer capture", siteDirectory,
+		string(indexBytes), "--window-size=1600,900")
+	session.waitForPageCondition(t, "the board's view switcher renders",
+		`document.querySelector('[data-view-target="timeline"]')`)
+	session.evaluateInPage(t,
+		`(document.querySelector('[data-view-target="timeline"]').click(), "switched")`)
+	session.waitForPageCondition(t, "the Timeline draws its rows",
+		`document.querySelectorAll("#view-timeline .timeline-row").length > 0`)
+	session.evaluateInPage(t, timelinePointerCaptureProbeHelpers)
+
+	// (1) THE CLICK, WITH TRUSTED INPUT. The hint under the chart says "Click a row for
+	// its full detail"; this is that sentence, executed.
+	cleanAim := aimAtATimelineRow(t, session, "clean click")
+	session.pressTrustedMouseAt(t, cleanAim.X, cleanAim.Y)
+	session.releaseTrustedMouseAt(t, cleanAim.X, cleanAim.Y)
+	cleanClick := readTimelineGestureOutcome(t, session, "clean click",
+		`window.timelineProbe.clickCount > 0`)
+	if !cleanClick.DrawerOpen {
+		t.Errorf("a trusted click on row %s did not open the detail drawer; the click was "+
+			"delivered to %s and its nearest [data-detail-kind] was %q. Capture taken before the "+
+			"pan engages retargets the synthesized click to the capturing element, which is how "+
+			"every mouse click in the chart stopped opening anything",
+			cleanAim.DetailId, cleanClick.ClickTag, cleanClick.ClickDetailId)
+	}
+	if cleanClick.ShownDetailId != cleanAim.DetailId {
+		t.Errorf("a trusted click on row %s opened the drawer on %q; a click has to open the row "+
+			"it landed on", cleanAim.DetailId, cleanClick.ShownDetailId)
+	}
+	if cleanClick.Panning {
+		t.Errorf("a still trusted press on row %s left the chart in the panning state; a press "+
+			"that has not moved is not a drag", cleanAim.DetailId)
 	}
 
-	pointerDownBody := sliceBalancedBlockAfter(t, indexHTML,
-		"addTimelineListener(scrollHost, \"pointerdown\"")
-	pointerMoveBody := sliceBalancedBlockAfter(t, indexHTML,
-		"addTimelineListener(scrollHost, \"pointermove\"")
+	// (2) THE MUTATION. Capture on pointerdown, installed from here rather than by
+	// editing the board, and the SAME gesture must now open nothing. Without this the
+	// assertion above is only a claim that clicking works today.
+	session.evaluateInPage(t, `window.timelineProbe.captureOnPointerdown()`)
+	capturedAim := aimAtATimelineRow(t, session, "capture-on-pointerdown click")
+	session.pressTrustedMouseAt(t, capturedAim.X, capturedAim.Y)
+	session.releaseTrustedMouseAt(t, capturedAim.X, capturedAim.Y)
+	capturedClick := readTimelineGestureOutcome(t, session, "capture-on-pointerdown click",
+		`window.timelineProbe.clickCount > 0`)
+	session.evaluateInPage(t, `window.timelineProbe.removeCaptureOnPointerdown()`)
+	if capturedClick.CaptureEstablished == nil {
+		t.Fatal("the capture-on-pointerdown mutation never saw a pointerdown on the scroll host, " +
+			"so the trial below proves nothing about the probe's sensitivity")
+	}
+	if !*capturedClick.CaptureEstablished {
+		t.Fatal("the engine refused the capture-on-pointerdown mutation, so this trial is the " +
+			"synthetic-event dead end all over again: it cannot tell a probe that catches the " +
+			"regression from one that cannot see it")
+	}
+	if capturedClick.DrawerOpen {
+		t.Errorf("with pointer capture taken on pointerdown the drawer still opened on %q; the "+
+			"clean trial above therefore does not pin REQ-336's regression, because the probe "+
+			"cannot tell a retargeted click from an ordinary one", capturedClick.ShownDetailId)
+	}
+	if capturedClick.ClickDetailId != "" {
+		t.Errorf("with capture on pointerdown the synthesized click still found the trigger %q; "+
+			"capture is supposed to retarget it to the capturing element, and if it does not, "+
+			"this whole mutation is measuring something else", capturedClick.ClickDetailId)
+	}
 
-	// (a) Nothing in the press handler requests capture directly.
-	if strings.Contains(pointerDownBody, "setPointerCapture(") {
-		t.Error("the Timeline pointerdown handler requests pointer capture; capture retargets the " +
-			"synthesized click to the capturing element, so every mouse click in the chart loses " +
-			"its [data-detail-kind] target and the detail drawer stops opening")
+	// (3) THE RELEASE OUTSIDE THE CHART. Capture at the engage is what guarantees the
+	// host hears the end of a drag: Chromium suppresses the boundary events while a
+	// button is held, so without it nothing reaches the host and the grab cursor stays
+	// on for the rest of the session (REQ-333).
+	//
+	// Measured from the PAN ENGAGING and from the is-panning state, never from the axis
+	// text: a drag that clamps at the window bound leaves every label identical.
+	engagedDrag := aimAtATimelineRow(t, session, "release outside")
+	releaseY := engagedDrag.HostTop - 40
+	if releaseY < 1 {
+		t.Fatalf("the scroll host sits at y=%g, so there is no point above it inside the "+
+			"viewport to release at; this trial cannot be run from here", engagedDrag.HostTop)
 	}
-	// (b) And it reaches no function that requests capture on its behalf.
-	for _, capturingName := range capturingNames {
-		if strings.Contains(pointerDownBody, capturingName+"(") {
-			t.Errorf("the Timeline pointerdown handler calls %s, which requests pointer capture; "+
-				"capture must wait for the pan to engage or every click in the chart is retargeted "+
-				"to the capturing element", capturingName)
-		}
+	panningAfterRelease := driveTimelineDragReleasedOutside(t, session, engagedDrag, releaseY)
+	if panningAfterRelease {
+		t.Error("a trusted drag released above the chart left it in the panning state; capture " +
+			"taken when the pan engages is what makes the release a fact rather than a hope, and " +
+			"without it the grab cursor stays on for the rest of the session")
 	}
-	// (c) The engage path still requests it, so (a) and (b) cannot be satisfied by
-	// removing capture altogether and reopening REQ-333's never-released drag.
-	engageReachesCapture := strings.Contains(pointerMoveBody, "setPointerCapture(")
-	for _, capturingName := range capturingNames {
-		if strings.Contains(pointerMoveBody, capturingName+"(") {
-			engageReachesCapture = true
-		}
+
+	// (4) THE MIRROR MUTATION. (1) and (2) are both satisfied by a board that captures
+	// nowhere at all, which is REQ-333's bug. Swallowing the host's own
+	// setPointerCapture leaves capturePanPointer's feature detect and call intact and
+	// removes only the capture — and the same drag must then strand the pan.
+	session.evaluateInPage(t, `window.timelineProbe.swallowPointerCapture()`)
+	uncapturedDrag := aimAtATimelineRow(t, session, "release outside without capture")
+	strandedPanning := driveTimelineDragReleasedOutside(t, session, uncapturedDrag,
+		uncapturedDrag.HostTop-40)
+	session.evaluateInPage(t, `window.timelineProbe.restorePointerCapture()`)
+	if !strandedPanning {
+		t.Error("with the scroll host's setPointerCapture swallowed, a drag released above the " +
+			"chart still ended cleanly; trial (3) is then passing for some other reason and does " +
+			"not pin the capture at all")
 	}
-	if !engageReachesCapture {
-		t.Errorf("the Timeline pointermove handler reaches no pointer-capture request (capturing "+
-			"functions in the page: %v); a drag released outside the chart then has no guaranteed "+
-			"path back to the host that armed it", capturingNames)
-	}
+
+	t.Logf("trusted click on %s: %d click(s), delivered to <%s>, trigger %q, drawer open %v "+
+		"showing %q. With capture on pointerdown: %d click(s), trigger %q, drawer open %v. "+
+		"Drag released above the host left the chart panning: %v with capture, %v with capture "+
+		"swallowed.",
+		cleanAim.DetailId, cleanClick.ClickCount, cleanClick.ClickTag, cleanClick.ClickDetailId,
+		cleanClick.DrawerOpen, cleanClick.ShownDetailId,
+		capturedClick.ClickCount, capturedClick.ClickDetailId, capturedClick.DrawerOpen,
+		panningAfterRelease, strandedPanning)
+}
+
+// driveTimelineDragReleasedOutside presses on a row, drags far enough to engage the pan,
+// then releases at a point ABOVE the scroll host, and reports whether the chart is still
+// in the panning state afterwards.
+//
+// The engage is asserted, not assumed: a release that ends a pan which never started
+// tells nobody anything.
+func driveTimelineDragReleasedOutside(
+	t *testing.T, session *trustedInputBrowserSession, aim timelineRowAim, releaseY float64,
+) bool {
+	t.Helper()
+	session.pressTrustedMouseAt(t, aim.X, aim.Y)
+	// Two moves: the first clears the 4px pan threshold, the second is the drag the
+	// reader would see.
+	session.dragTrustedMouseTo(t, aim.X+6, aim.Y)
+	session.dragTrustedMouseTo(t, aim.X+140, aim.Y)
+	session.waitForPageCondition(t, "the drag engages the pan", `window.timelineProbe.isPanning()`)
+
+	releaseX := aim.X + 140
+	session.dragTrustedMouseTo(t, releaseX, releaseY)
+	session.releaseTrustedMouseAt(t, releaseX, releaseY)
+	outcome := readTimelineGestureOutcome(t, session, "drag released outside",
+		`window.timelineProbe.pointerUpSeen`)
+	return outcome.Panning
 }
 
 // TestBrowserBehaviorTimelineRowListIsOneTabStop pins REQ-338's keyboard contract: the row
