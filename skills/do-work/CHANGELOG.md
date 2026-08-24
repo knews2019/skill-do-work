@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.42 — Durations Can Focus on a Useful Time Window (2026-08-24)
+
+The Durations view now opens on the latest 30 whole UTC days and can switch to 90 days or all history without changing the board's recently-done filter.
+
+- Panels A, B, and C, the UR lane, hover readouts, summary, and table all consume one projected sample/day domain
+- Rolling windows anchor to the report's latest completion, preserving static reports, and keep idle calendar gaps linearly proportional
+
 ## 0.236.41 — Exited Process Groups Stop Spending Dead Grace (2026-08-24)
 
 Report-image interruption now distinguishes a live process-group member from an exited, unreaped one, so cleanup stops promptly once only zombies remain without weakening descendant signalling.

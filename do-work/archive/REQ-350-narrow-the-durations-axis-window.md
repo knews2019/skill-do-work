@@ -1,9 +1,11 @@
 ---
 id: REQ-350
 title: "Narrow the Durations axis to a chosen window"
-status: claimed
+status: completed
 claimed_at: 2026-08-24T15:21:20Z
-status_changed_at: 2026-08-24T15:21:20Z
+completed_at: 2026-08-24T15:52:05Z
+commit: 7b62e46
+status_changed_at: 2026-08-24T15:52:05Z
 route: B
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
@@ -43,8 +45,8 @@ panels, with the active window stated in the summary line.
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Route B exploration traced a Durations-only state/control, a latest-completion-anchored whole-day domain, and one projected samples/days slice feeding all panels, summaries, hover indexes, and the table. Add focused production-renderer behavior tests and inspect all three windows.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** The isolated builder implemented the Durations-only 30/90/all control, latest-completion-anchored whole-day projection, shared projected sample/day inputs, and independent rerender state in exactly the four scoped files.
+- [x] **[UNIFY]:** Builder and orchestrator reviewed the four-file merge range; Node syntax, focused RED→GREEN renderer tests, the full queue-kanban suite, `git diff --check`, Chromium measurements, keyboard traversal, responsive layout, and zero-console output passed. No debug artifacts or integration seams were handed back.
 
 ## Why
 
@@ -116,7 +118,53 @@ the active window and its sample count.
 
 ## Scope
 
+**Files I will touch:**
+
 - `skills/do-work-board/tools/queue-kanban/web/board-durations.js`
 - `skills/do-work-board/tools/queue-kanban/web/board-controls.js`
 - `skills/do-work-board/tools/queue-kanban/web/template.html`
 - `skills/do-work-board/tools/queue-kanban/generate_test.go`
+
+## Implementation Summary
+
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js` (modified): owns independent 30/90/all state, latest-completion-anchored UTC domains, one shared sample/day projection, and domain-aware summary/accessibility/axis copy.
+- `skills/do-work-board/tools/queue-kanban/web/board-controls.js` (modified): shows and wires the Durations-only button group without touching the board recent-window value.
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modified): adds the hidden, pressed-button Durations window group using existing control classes.
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified): pins template/default independence, state transitions, shared production-renderer projection, boundary inclusion, complete all-history output, and affine real-time geometry.
+
+## Decisions
+
+- **D-01 — Default to 30 days anchored to the data.** The demonstrated useful window retains most samples and fixes idle-width waste; anchoring to the latest completion's following UTC midnight prevents static generated boards from aging empty.
+- **D-02 — Describe the exclusive domain endpoint honestly.** The right axis label and accessibility copy name the actual exclusive midnight boundary rather than the date of the last sample.
+- **D-03 — Invalidate hidden Durations without rendering it.** A selection made off-view marks the cached panel stale; a visible selection performs exactly one rerender.
+- **D-04 — Reuse existing control styling.** Native button semantics and control-group wrapping satisfy the new control without a CSS scope expansion.
+
+## Discovered Tasks
+
+None.
+
+## Testing
+
+- RED proved the generated page lacked the Durations window group and transition helper and the production renderer had no window projection.
+- Focused production-renderer/control tests passed, including distinct 30/90/all counts, left-boundary inclusion, shared Panel A/B/C/table projection, all-history completeness, and equal x gaps for equal elapsed days.
+- `node --check` passed for both changed JavaScript files; `git diff --check` passed.
+- Builder full suite passed in 69.973s; the post-merge `GOTOOLCHAIN=go1.26.1 go test ./... -count=1 -timeout=10m` suite passed in 69.300s.
+- Chromium 151 measured all three states at `http://127.0.0.1:41750/` with exact active-button, summary, axis, marks/bars/table counts, affine spacing, responsive keyboard traversal at 320/768/1280 px, and zero console errors or warnings. Nine screenshots were retained in `/tmp/req350-browser-artifacts/screenshots/` for this run.
+
+## Qualification
+
+- Merge range `4c8f4cb..7b62e46` passed mechanical qualification.
+- Scope drift passed: the four-file Implementation Summary exactly matches the declared Scope.
+- Orchestrator judgment confirmed substantive implementation, end-to-end data flow through one projection, requirements trace, honest exclusive-endpoint copy, and no integration seams.
+
+## Review
+
+Independent review approved with no Important, Minor, or Nit findings. Requirements 100%, Code Quality 98%, Test Adequacy 98%, Scope Discipline 100%, overall 99%, low risk, acceptance pass. The reviewer independently reran focused tests, syntax checks, and range whitespace validation and inspected the supplied Chromium captures.
+
+## Lessons Learned
+
+A relative window in a static generated report must be anchored to the data, not the viewer's wall clock. Project the dataset once at the domain boundary, then make every visual and accessible consumer read that same projection.
+
+## Orientation
+
+Released in 0.236.42. Durations opens on the latest 30 whole UTC days, offers 90-day and all-history views, and keeps all three panels, hover/readout, summary, and table on one independent linear real-time domain.
