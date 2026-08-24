@@ -31,9 +31,9 @@ cases and contains 9: `# generate-report-image caller contract: …` and
 runner prints ("96 named script cases across 17 per-script files") inherits the same undercount.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `prime-shell-commands.md` (§ Closed Enumerations Go Stale decided the approach). Rejected renaming the two odd headers; chose to widen the rule and anchor it on the case file's own basename, with the rule stated in one sourced file so the harness and the aggregate cannot disagree.
+- [x] **[APPLY]:** Landed the refactor first with the OLD expression to prove it changed nothing, then swapped the expression. Three files beyond the declared write set, each declared as a scope extension with its reason (see `## Decisions`).
+- [x] **[UNIFY]:** Audited by the orchestrator against the merged range `47c61cf..97a5ca8`, not from the builder's report: read all four files' diffs, grepped the range for debug artifacts (one hit, a `mktemp` XXXXXX template — not an artifact), re-derived both changed counts independently (9 and 4) and confirmed the other fifteen files are unmoved.
 
 ## Why
 
@@ -87,3 +87,69 @@ header written in either previously-uncounted shape is counted.
 
 ---
 *Source: Discovered Task, REQ-325 (UR-065).*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The outcome is stated exactly (the reported count must match what the file holds) but the counting rule's shape was undecided, and the sweep across `_dev/tests/prescribed-shell-cases/` had to find where else the pattern is applied. Clear what, unknown where.
+
+**Planning:** Not required.
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Scope
+
+**Files I will touch:**
+- `_dev/tests/prescribed-shell-harness.sh` (modify) — replace the counting regex with a call to the shared rule
+- `_dev/tests/prescribed-shell-scripts-behavior.sh` (modify) — the aggregate greps the same pattern and moves in step
+- `_dev/tests/prescribed-shell-case-count.sh` (new) — one home for the counting rule
+- `_dev/tests/contract-regressions.sh` (modify) — lock-in for the undercount
+
+**Files I will NOT touch:** the 17 case files under `_dev/tests/prescribed-shell-cases/` — renaming their headers was the rejected alternative (D-01), so their content stays as written.
+
+**Acceptance criteria (restated from REQ):**
+- [x] The count matches the number of case blocks the file actually contains
+- [x] What a case header *is* is decided and stated in a comment beside the count
+- [x] Every file under `_dev/tests/prescribed-shell-cases/` swept for uncounted header shapes
+- [x] New count agrees with a hand count on at least the two files that change
+- [x] The aggregate in `prescribed-shell-scripts-behavior.sh` moves in step
+
+## Implementation Summary
+
+**Files changed:**
+- `_dev/tests/prescribed-shell-case-count.sh` (new)
+- `_dev/tests/prescribed-shell-harness.sh` (modified)
+- `_dev/tests/prescribed-shell-scripts-behavior.sh` (modified)
+- `_dev/tests/contract-regressions.sh` (modified)
+
+**What was done:** The counting rule moved out of two hand-synchronized literal regexes into one sourced function, `count_named_case_headers`, and widened from `^# [a-z0-9][a-z0-9-]*: ` to `^# ${script_under_test}[^.:]*: ` — a header is a column-zero comment opening with the case file's own basename and reaching a colon before any period. Two files' counts corrected (`generate-report-image` 7→9, `generate-report-image-batch` 2→4), aggregate 96→100, with a lock-in in `contract-regressions.sh` that asserts 3 against a fixture carrying all three header spellings plus three near-misses.
+
+## Decisions
+
+<!-- D-XX counter: last used D-05. Next decision: D-06. -->
+
+- **D-01 — Widen the rule rather than rename the two headers. DECIDE.** Renaming the two odd headers to fit the old regex is a two-line diff, but it fixes the two spellings that exist today and leaves the count silently skipping whatever the next author writes — the same shape REQ-234 removed. Both qualifiers also carry real information: `caller contract` distinguishes a multi-job contract case from the single-invocation cases around it. The REQ's Constraints put renaming on the table provided the reason was stated; this is the reason it was not taken.
+- **D-02 — Anchor on the script under test rather than a generic token. DECIDE.** The obvious widening `^# [a-z0-9][a-z0-9-]*[^:]*: ` over-counts badly: 23 lines across the suite are wrapped prose continuations carrying a colon, 12 of them starting with a lowercase word, and all would read as cases. Anchoring on the case file's own basename is what makes an open-ended qualifier safe — the rule becomes "names its script, then a colon" rather than an enumeration of the separators used so far, which is what `prime-shell-commands.md` § Closed Enumerations Go Stale asks for.
+- **D-03 — Stop the qualifier at the first period. DECIDE.** Without it, a wrapped continuation line (`# qualify.sh should be updated to match (REQ-250: ...`) poses as a header and pushes qualify.sh from 21 to 22. One character class, stating a real property: a header's qualifier is a phrase, not a sentence.
+- **D-04 — One shared definition in a new sourced file rather than the same expression in two places. DECIDE.** The harness and the runner previously carried identical literal regexes kept in step by hand. Under the new rule they are no longer the same code shape (single file vs loop), so duplicating would be worse than before — and the point of this REQ is that a reported number must not be able to disagree with the files. Rejected alternative: having the runner parse each case file's printed summary line, which deletes a copy of the rule but adds a parser coupled to a print format and forces stdout buffering that reorders output against the live `FAIL:` lines on stderr.
+- **D-05 — Lock-in placed inline in `contract-regressions.sh`. DECIDE.** This bug class is invisible without one: reverting the fix drops the aggregate to 96 and nothing else fails. The fixture deliberately carries three near-misses (capitalised prose, a lowercase continuation line, a sentence naming a script before a colon) so the test also fails against an over-broad widening, not only against a narrowing.
+
+## Scope Extensions
+
+Three files beyond the declared write set of `_dev/tests/prescribed-shell-harness.sh`, each with its reason:
+
+- `_dev/tests/prescribed-shell-scripts-behavior.sh` — pre-authorised by the REQ's own requirements; the aggregate greps the same pattern and had to move in step. Now 100.
+- `_dev/tests/prescribed-shell-case-count.sh` (new) — the consequence of D-04. One home for the rule is what makes the two counters unable to disagree.
+- `_dev/tests/contract-regressions.sh` — the consequence of D-05. A silent-undercount fix with no lock-in regresses silently by construction.
+
+## Discovered Tasks
+
+- `_dev/tests/prescribed-shell-cases/qualify.sh` lines 127-130 and 400-404 are wrapped prose continuations opening with `qualify`. They are excluded today only because the qualifier stops at the first period. A future continuation line that opens with the script name and reaches a colon with no period in between would be counted as a case. A stronger discriminator (requiring the header to open a comment block — its preceding line not being a comment) would close that, at the cost of moving the counter from grep to awk. Not worth it for the current corpus; worth revisiting if a false positive appears.
+- Nothing validates that a case file's basename matches the script it actually covers, so a case file containing headers for a different script would be counted under its own name. No instance exists — all 17 files use their own basename exclusively.
