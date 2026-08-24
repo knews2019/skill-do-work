@@ -2107,6 +2107,35 @@ body.is-resizing-detail .detail-resizer::before {
   max-width: 78ch;
 }
 
+.durations-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin: 12px 24px 4px;
+}
+
+.durations-stat {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-chip);
+  background: var(--surface-2);
+}
+
+.durations-stat dt {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+
+.durations-stat dd {
+  margin: 4px 0 0;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
 .durations-colour-legend {
   margin: 0;
   padding: 12px 24px 0;
@@ -2222,6 +2251,18 @@ body.is-resizing-detail .detail-resizer::before {
 
 .durations-bar-count {
   fill: var(--accent-done);
+}
+
+.durations-rolling-line {
+  fill: none;
+  stroke: var(--ink-strong);
+  stroke-width: 2;
+}
+
+.durations-rolling-marker {
+  fill: var(--ink-strong);
+  stroke: var(--surface-1);
+  stroke-width: 1.5;
 }
 
 .durations-hover-surface {
