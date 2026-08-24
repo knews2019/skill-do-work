@@ -23,14 +23,13 @@ Nine REQs archived, releases 0.236.34 through 0.236.38.
 
 ## In Progress (interrupted)
 
+- REQ-348 — claimed 2026-08-24T15:00:04Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- REQ-349 — claimed 2026-08-24T15:00:04Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
 Three REQs are claimed with builders dispatched to isolated worktrees. The user
 stopped the run before they handed back. **Their branches may hold uncommitted
 or committed work that was never merged** — check each worktree before
 re-dispatching, and prefer resuming the existing branch over starting fresh.
-
-- REQ-357 — claimed 2026-08-24T13:55:00Z — writer: `t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2`
-
-
 
 ## Still Queued
 
