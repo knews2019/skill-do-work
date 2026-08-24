@@ -19,6 +19,13 @@ effort_estimate: effort-substantive
 write_set:
   - skills/do-work/actions/clarify.md
   - skills/do-work/actions/verify-requests.md
+  - skills/do-work/actions/work-reference.md
+  - skills/do-work/actions/capture-reference.md
+  - skills/do-work/actions/review-work.md
+  - skills/do-work/actions/sample-archived-req.md
+  - skills/do-work/actions/stakeholder-answers.md
+  - skills/do-work/docs/capture-guide.md
+  - skills/do-work/docs/work-guide.md
   - _dev/tests/contract-regressions.sh
 ---
 
@@ -26,8 +33,8 @@ write_set:
 
 ## What
 
-REQ-342 landed the neutralization rule at the Canonical answered-question format. Two ways its reach
-falls short of the contract it states: the condition quantifies over **lines**, so damage that is not
+Two sibling contracts — REQ-342's body-side neutralization rule and REQ-344's Frontmatter Quoting —
+each landed at a named entry point without closing its reach. Five ways, sharing one root cause: the condition quantifies over **lines**, so damage that is not
 line-shaped escapes it; and one live caller writes a user's answer into a REQ body without citing the
 format at all, so it inherits nothing.
 
@@ -73,6 +80,38 @@ neither every damaging shape, nor every writer.
   REQ-342's builder did what its REQ asked — "grep every current citation of the format and confirm
   each inherits" — and a citation grep is structurally blind to a caller that never cites. The UR's
   wording is the stronger one: "so every caller that records an answer obeys it, not just clarify."
+
+- [ ] **The UR `input.md` template prescribes an unquoted title.** `actions/capture-reference.md:194`
+  shows `title: Add keyboard shortcuts`. A UR title is the user's own phrasing, so the Frontmatter
+  Quoting condition governs it. Measured through the shipped CLI: `title: Fix the #1 board complaint`
+  reads back as `Fix the`, exit 0, no warning. Note the reach gap behind it — the contract's home is
+  § **Request** File Schema while UR files run through the same parser. Judged `impact-user-visible`.
+
+- [ ] **The block-scalar branch has an unstated precondition.** Written exactly as prescribed
+  (`key: |-`, text indented beneath), a value whose **first line begins with a space** fails the
+  strict parse, drops the whole block to salvage, and reads back as the literal `|-`:
+
+  ```
+  blocked_by: |-
+     staging creds provisioned
+    by the platform team
+  → blocked_by = "|-"   exit=0   (estimate: dropped)
+  ```
+
+  YAML needs an explicit indentation indicator (`|-2`) there, and pasted text with an indented first
+  line is the ordinary case for a multi-line `blocked_check`. Also measured: a lone CR folds to a
+  space under the single-quoted form and fails the strict parse under the block form, and a control
+  character (0x1b, NUL) fails under both. So the contract's opening claim — "no character in it can
+  be read as YAML syntax" — over-promises on what the two forms deliver. Judged `impact-rule-change`.
+
+- [ ] **Four shipped files still demonstrate the forbidden form, and one write site was missed.**
+  `actions/review-work.md:361` (core's own follow-up minting template, the exact sibling of the
+  `code-review.md` line REQ-344 corrected); `docs/capture-guide.md:34`, five lines above the sentence
+  REQ-344 rewrote, so that file now contradicts itself; `docs/work-guide.md:123`, the snippet the
+  guide tells a user to copy; `actions/sample-archived-req.md:3`, unquoted. And
+  `actions/stakeholder-answers.md` Step 5 rewrites `blocked_by:` with a person's name and received no
+  citation, where `work.md` and `clarify.md` did for the identical rewrite. Judged
+  `impact-rule-change`.
 
 ## Detailed Requirements
 

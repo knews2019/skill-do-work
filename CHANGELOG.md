@@ -2,6 +2,18 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.37 — Typed Text Keeps Its Shape in Frontmatter (2026-08-24)
+
+A REQ title carrying a quote, a colon or a hash used to come back truncated with no error at all —
+YAML read the rest as a comment. Frontmatter values that carry text a person typed now have a stated
+quoting rule, and the write sites cite it instead of each inventing one.
+
+- `title: "Fix: A " # B"` parsed cleanly and yielded `Fix: A ` — valid YAML, wrong value, no warning
+- The rule is keyed on whether a value carries text nobody in the pipeline composed, so a new such
+  field inherits it without an edit
+- The parser's line-based recovery is now recorded as a salvage path rather than a contract, naming
+  the three things it silently narrows
+
 ## 0.236.36 — Pasted Text Can No Longer Forge a REQ's Structure (2026-08-24)
 
 Three fixes to how the queue survives its own inputs. Paste a code snippet as an answer to a clarify

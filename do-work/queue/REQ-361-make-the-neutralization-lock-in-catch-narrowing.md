@@ -94,3 +94,22 @@ independently re-run by the orchestrator.
 
 ---
 *Source: REQ-342 review finding F3 (UR-068).*
+
+## Addendum (2026-08-24) — the Frontmatter Quoting checker belongs here too
+
+REQ-344's review found the same gap on its sibling contract: `grep -rn "Frontmatter Quoting" _dev/
+skills/` returns zero hits in any check, so deleting the whole contract paragraph from
+`work-reference.md` breaks nothing that runs. REQ-344's own GREEN required a test that fails if the
+rule is removed or a write site reverts, and it is not delivered — its D-04 records that honestly and
+names the blocker: `contract-regressions.sh` was being rewritten by REQ-342 concurrently.
+
+**That blocker has cleared.** REQ-342 landed. Both contracts now need the same kind of check, so
+build them together rather than twice:
+
+- A write-site checker that fires when a shipped file emits a governed frontmatter field as a
+  double-quoted or unquoted scalar. It must **derive the governed field set from the schema block**
+  (the fields whose comment cites Frontmatter Quoting, minus those naming the escaping encoder)
+  rather than hardcoding names, and must scan **inside fenced blocks only** — the rule's own
+  counterexample `title: "Fix: A " # B"` sits in inline prose and would otherwise trip it.
+- The same insertion-mutation discipline this REQ establishes applies to it: a checker that only
+  catches the rule's deletion is the defect this REQ exists to remove, repeated on the sibling.

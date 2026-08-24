@@ -1,7 +1,8 @@
 ---
 id: REQ-344
 title: "Quote user text written into a frontmatter value"
-status: claimed
+status: completed
+completed_at: 2026-08-24T11:18:00Z
 claimed_at: 2026-08-24T10:05:00Z
 created_at: 2026-08-23T22:35:07Z
 user_request: UR-068
@@ -42,15 +43,7 @@ it once where the schema is defined, and pin it with a round-trip test.
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Read `prime-action-files.md` and the prime's § Closed Enumerations Go Stale. Did not re-litigate the recovery-parser question — the user settled it at capture, so `frontmatter.go`'s claim was the one to change.
-- [x] **[APPLY]:** Nine files against two declared. Five extensions were files that *prescribed* the forbidden form; each is recorded in `## Scope Drift — Recorded, Not Hidden
-
-`skills/do-work/tools/checks/scope-drift.sh` reports seven files touched but never declared. That is
-correct and the `## Scope` declaration above is deliberately left as the builder wrote it before
-coding, rather than back-filled to match what landed — back-filling would defeat the mechanism, which
-exists so drift becomes measurable rather than invisible. Each extension is justified below and the
-reviewer judges whether the justifications hold.
-
-## Scope Extensions` with its reason.
+- [x] **[APPLY]:** Nine files against two declared. Five extensions were files that *prescribed* the forbidden form; each is recorded in the Scope Extensions section below with its reason.
 - [x] **[UNIFY]:** Audited by the orchestrator against `382aca0..53bab9d`: independently re-ran the YAML round-trip against the real parser and reproduced all three cases, including the silent one — `title: "Fix: A " # B"` parses with NO error and yields `Fix: A `, because YAML reads `# B"` as a comment. Confirmed REQ-342's Step 4 rule survived the `clarify.md` merge intact, and that no probe scaffolding remained in the tree.
 
 ## Why
@@ -239,3 +232,66 @@ Seven files beyond the declared two. Five of them **prescribed the forbidden for
 ## Open Questions
 
 None. Where the REQ named three citing actions but the contradiction lived in five files, the builder extended and reported rather than asking (D-01).
+
+## Review
+
+**Overall: 78%** | 2026-08-24T11:02:44Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 85% |
+| Code Quality | 80% |
+| Test Adequacy | 75% |
+| Scope | 70% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**On the scope overrun — judged and upheld.** The reviewer read all seven extensions: each is one
+clause of citation or a quote swap, none restates the rule, all point at the single home. Five did
+prescribe the forbidden form. Keeping `code-review.md` was right. One correction to D-01's mitigation:
+"none touches a file another queued REQ declares" is false — REQ-360 declares `clarify.md`, which this
+diff edited. `write_set` is display-only by contract so nothing was breached, but the claim is not a
+collision guarantee.
+
+**Important findings:**
+- **The UR `input.md` template still prescribes an unquoted title** (`capture-reference.md:194`), and a UR title is the most directly user-derived value in the pipeline: `title: Fix the #1 board complaint` reads back as `Fix the` through the shipped CLI, exit 0. Inside ground this REQ touched. — `impact-user-visible` → **REQ-360**
+- **The block-scalar branch has an unstated precondition.** Written exactly as prescribed, a value whose first line begins with a space fails the strict parse, drops the block to salvage, and reads back as the literal `|-`. YAML needs `|-2` there. The contract's "no character in it can be read as YAML syntax" over-promises: a lone CR and any control character also degrade. — `impact-rule-change` → **REQ-360**
+- **Four shipped files still demonstrate the forbidden form and one write site was missed** — `review-work.md:361`, `capture-guide.md:34` (five lines above the sentence this REQ rewrote, so the file contradicts itself), `work-guide.md:123`, `sample-archived-req.md:3`, and `stakeholder-answers.md` Step 5's uncited `blocked_by:` rewrite. — `impact-rule-change` → **REQ-360**
+- **The GREEN clause "a test fails if the rule is removed or a write site reverts" is unmet.** Nothing in `_dev/tests/` or the Go suite cites Frontmatter Quoting; deleting the contract paragraph breaks nothing that runs. D-04 records this honestly and its stated blocker has since cleared. — `impact-rule-change` → **REQ-361** (folded, so both contracts get one checker rather than two)
+- **A multi-path Implementation Summary bullet disables `scope-drift.sh`.** It extracts only the first backticked path per bullet, so it reported two undeclared files where this REQ's own prose asserts seven. Step 9's `git diff --name-only` validation is defeated the same way. — `impact-rule-change` → **REQ-362**
+
+**Minor:** the orchestrator's own bookkeeping write forged a heading in this REQ's record — an unclosed inline code span swallowed a paragraph into the P-A-U box and left a live `## Scope Extensions` heading with trailing prose. Repaired 2026-08-24. It is the same delimiter-forging damage UR-068 was opened about, produced by a blind string replace that matched both the real heading and a citation of it inside backticks.
+
+**Verified and explicitly not findings:** the lock-in's oracle is genuinely sound — `lenientFrontmatterFields` skips any line starting with a space, tab, `-` or `#`, and a bare `estimate:` key collects only `- ` items, so a nested map is never recovered and `fields["estimate"] != nil` really does prove the strict parser answered. The escaping-encoder exemption is safe: `encodeYamlDoubleQuotedScalar` escapes `\`, `"`, `\n`, `\t`, drops CR and maps every other sub-0x20 byte to a space, so nothing it emits is invalid. The condition-keying is genuine. D-05 holds — forbidden-form assertions key on "the record did not come back whole", so widening the recovery parser later cannot make them fail spuriously.
+
+**Acceptance:** Pass — gate exit 0 unpiped, both new lock-ins green, and the forbidden-form corruption reproduced by hand through the shipped `queue-kanban frontmatter get`. The reviewer probed 24 single-quoted and 15 block-scalar edge inputs against the real parser.
+
+**Follow-ups created:** REQ-360 (3 folded), REQ-361 (1 folded), REQ-362
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Proving the strict parser answered by asserting a *nested* map survived, rather than
+checking the value alone. The recovery parser is flat and top-level only, so the nested `estimate:`
+map's presence is a genuine oracle — a widened recovery parser could fake a correct value but not
+that.
+
+**What didn't:** The contract was stated at one entry point and its reach was never swept. Four
+shipped files still demonstrate the forbidden form, including one five lines above the sentence this
+REQ rewrote, and one write site never got its citation. A citation grep finds files that cite; it
+cannot find files that should and don't. That is the same failure REQ-342 hit from the other side, and
+it is why both now fold into one sweep.
+
+**Worth knowing:** The two prescribed forms do not deliver what the contract's opening sentence
+promises. A block scalar whose first line is indented needs `|-2` or it reads back as the literal
+`|-`; a lone CR and any control character drop the whole block to salvage under both forms. The
+promise is broader than the mechanism.
+
+## Orientation
+
+Text a user types into a frontmatter value — a REQ title, a blocked-on condition, a supplied shell
+probe — can no longer make the block invalid or come back truncated. The rule lives at **Frontmatter
+Quoting** in `actions/work-reference.md` § Request File Schema, keyed on whether the value carries
+text nobody in the pipeline composed, and the actions that mint those fields cite it rather than
+restating it.
