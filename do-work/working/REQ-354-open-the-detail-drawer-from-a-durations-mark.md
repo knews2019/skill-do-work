@@ -1,7 +1,10 @@
 ---
 id: REQ-354
 title: "Open the detail drawer from a Durations mark"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T17:42:55Z
+status_changed_at: 2026-08-24T17:42:55Z
+route: B
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
 domain: frontend
@@ -14,6 +17,18 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-346, REQ-347, REQ-348, REQ-349, REQ-350, REQ-351, REQ-352, REQ-353]
 batch: durations-panel-improvement
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  calculated_at: 2026-08-24T17:42:55Z
+  basis:
+    - Route B
+    - 4-file anticipated write set
+    - 2 subsystems involved
+    - 4 acceptance criteria
+    - browser evidence
+    - cross-route regression gates
+    - full-suite verification
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-durations.js
   - skills/do-work-board/tools/queue-kanban/web/board-detail.js
@@ -98,3 +113,11 @@ and the hover readout is unchanged.
 
 ---
 *Source: prompt A8, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F8).*
+
+## Triage
+
+**Route: B** — The click outcome and completeness rule are explicit, but exploration must choose and trace the one-tab-stop keyboard path, the shared detail-drawer entry point, nearest-mark selection, and trusted browser-probe conventions.
+
+## Plan
+
+**Planning not required** — Route B: exploration-guided implementation.

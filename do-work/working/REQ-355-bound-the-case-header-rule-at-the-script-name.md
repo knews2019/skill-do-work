@@ -1,7 +1,10 @@
 ---
 id: REQ-355
 title: "[impact-negligible] Review fix: bound the case-header rule at the script name"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T17:42:55Z
+status_changed_at: 2026-08-24T17:42:55Z
+route: A
 created_at: 2026-08-24T09:20:00Z
 user_request: UR-065
 addendum_to: REQ-339
@@ -14,6 +17,12 @@ depends_on: []
 maintenance: false
 impact: impact-negligible
 effort_estimate: effort-mechanical
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-24T17:42:55Z
+  basis:
+    - trivial short-circuit
 write_set:
   - _dev/tests/prescribed-shell-case-count.sh
   - _dev/tests/contract-regressions.sh
@@ -79,3 +88,11 @@ the same counts as before (aggregate 101).
 
 ---
 *Source: REQ-339 review finding F1 (UR-065).*
+
+## Triage
+
+**Route: A** — The exact two files, failing fixture line, regex boundary, unchanged corpus count, and RED/GREEN command are specified; implement the bounded basename rule directly.
+
+## Plan
+
+**Planning and exploration skipped** — Route A: implement the specified regex/comment/fixture correction directly and verify every real case-file count remains unchanged.

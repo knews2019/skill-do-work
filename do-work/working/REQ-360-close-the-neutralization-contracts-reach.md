@@ -1,7 +1,10 @@
 ---
 id: REQ-360
 title: "[impact-rule-change] Close the neutralization contract's reach"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T17:42:55Z
+status_changed_at: 2026-08-24T17:42:55Z
+route: C
 created_at: 2026-08-24T10:50:00Z
 user_request: UR-068
 addendum_to: REQ-342
@@ -16,6 +19,17 @@ sweep: true
 sweep_key: neutralization-contract-reach
 impact: impact-rule-change
 effort_estimate: effort-substantive
+estimate:
+  p50_active_minutes: 50
+  confidence: low
+  calculated_at: 2026-08-24T17:42:55Z
+  basis:
+    - Route C
+    - 10-file seeded write set
+    - 3 subsystems involved
+    - 5 acceptance criteria
+    - cross-route regression gates
+    - full-suite verification
 write_set:
   - skills/do-work/actions/clarify.md
   - skills/do-work/actions/verify-requests.md
@@ -144,3 +158,7 @@ reproduced there.
 
 ---
 *Source: REQ-342 review findings F1 and F2 (UR-068), folded into one sweep on the shared root cause.*
+
+## Triage
+
+**Route: C** — This five-instance security/rule sweep spans body neutralization, YAML frontmatter, writer reach, examples, and contract lock-ins across ten files. It needs an explicit plan and exploration before the shared contract is revised.
