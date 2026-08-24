@@ -30,6 +30,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-durations.js
   - skills/do-work-board/tools/queue-kanban/web/board-controls.js
   - skills/do-work-board/tools/queue-kanban/web/template.html
+  - skills/do-work-board/tools/queue-kanban/generate_test.go
 ---
 
 # Narrow the Durations Axis to a Chosen Window
@@ -41,7 +42,7 @@ window control offering the last 30 days, the last 90 days and all history, appl
 panels, with the active window stated in the summary line.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Route B exploration traced a Durations-only state/control, a latest-completion-anchored whole-day domain, and one projected samples/days slice feeding all panels, summaries, hover indexes, and the table. Add focused production-renderer behavior tests and inspect all three windows.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -104,3 +105,18 @@ the active window and its sample count.
 ## Plan
 
 **Planning not required** — Route B: exploration-guided implementation.
+
+## Exploration
+
+- Reuse the existing `control-group`, `control-button`, active class, and `aria-pressed` pattern with a distinct `data-durations-window` attribute. Never reuse the board's `data-window-hours` state.
+- Keep a whitelisted Durations window state in `board-durations.js`, defaulted to the last 30 days. Anchor 30/90-day whole-UTC-day domains to the latest completion rather than wall-clock time so a static board does not age into an empty chart; `all` preserves the current full-history domain.
+- Project samples and precomputed days once through `[timeStart, timeEnd)`, then feed that projection to all three panels, UR lane, colour context, hover indexes, summary, and table. The epoch-to-x mapping remains affine, so idle gaps retain their real width.
+- Existing control CSS is sufficient. No payload, Go aggregation, `board.js`, or browser-probe change is required.
+- `generate_test.go` must be in scope: renderer behavior needs sample/day/table/count and linear-domain proof, and the existing 400-day all-history geometry fixture must explicitly choose `all` under the new 30-day default.
+
+## Scope
+
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js`
+- `skills/do-work-board/tools/queue-kanban/web/board-controls.js`
+- `skills/do-work-board/tools/queue-kanban/web/template.html`
+- `skills/do-work-board/tools/queue-kanban/generate_test.go`
