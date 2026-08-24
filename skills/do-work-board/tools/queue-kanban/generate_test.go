@@ -1514,6 +1514,83 @@ process.stdout.write(JSON.stringify({
 	}
 }
 
+func TestGenerateOffersDurationsWindowControls(t *testing.T) {
+	indexHTML := generateLiveSite(t)
+	for _, requiredToken := range []string{
+		`id="durations-window-group" hidden`,
+		`data-durations-window="30" aria-pressed="true"`,
+		`data-durations-window="90" aria-pressed="false"`,
+		`data-durations-window="all" aria-pressed="false"`,
+		`document.getElementById("durations-window-group").hidden = viewState.view !== "durations"`,
+	} {
+		if !strings.Contains(indexHTML, requiredToken) {
+			t.Fatalf("generated board is missing Durations-window contract %q", requiredToken)
+		}
+	}
+	if strings.Count(indexHTML, `data-durations-window=`) != 3 {
+		t.Fatalf("generated board has %d Durations-window choices, want exactly 3", strings.Count(indexHTML, `data-durations-window=`))
+	}
+	if strings.Contains(indexHTML, `data-durations-window="30" data-window-hours=`) {
+		t.Fatal("Durations window control is coupled to the board's recently-done window attribute")
+	}
+}
+
+func TestJavaScriptBehaviorDurationsWindowSelectionRefreshesOnlyDurations(t *testing.T) {
+	indexHTML := generateLiveSite(t)
+	transitionFunction := sliceBalancedBlockAfter(t, indexHTML, "function applyDurationsWindowSelection(")
+	javascriptProbe := `
+var viewState = { windowHours: 24, view: "durations" };
+var renderedOnce = { durations: true };
+var chosenWindows = [];
+var activeWindows = [];
+var renderCount = 0;
+function setDurationsWindow(windowName) { chosenWindows.push(windowName); }
+function setActiveButton(selector, attributeName, attributeValue) { activeWindows.push(attributeValue); }
+function renderDurationsView() { renderCount += 1; }
+` + transitionFunction + `
+["30", "90", "all"].forEach(function (windowName) { applyDurationsWindowSelection(windowName); });
+var visibleState = { renderCount: renderCount, rendered: renderedOnce.durations };
+viewState.view = "board";
+applyDurationsWindowSelection("30");
+process.stdout.write(JSON.stringify({
+  chosenWindows: chosenWindows,
+  activeWindows: activeWindows,
+  windowHours: viewState.windowHours,
+  visibleState: visibleState,
+  hiddenRenderCount: renderCount,
+  hiddenRendered: renderedOnce.durations
+}));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "Durations window transitions", javascriptProbe)
+	var result struct {
+		ChosenWindows []string `json:"chosenWindows"`
+		ActiveWindows []string `json:"activeWindows"`
+		WindowHours   int      `json:"windowHours"`
+		VisibleState  struct {
+			RenderCount int  `json:"renderCount"`
+			Rendered    bool `json:"rendered"`
+		} `json:"visibleState"`
+		HiddenRenderCount int  `json:"hiddenRenderCount"`
+		HiddenRendered    bool `json:"hiddenRendered"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode Durations-window transition: %v (output %q)", decodeError, probeOutput)
+	}
+	wantWindows := []string{"30", "90", "all", "30"}
+	if strings.Join(result.ChosenWindows, ",") != strings.Join(wantWindows, ",") ||
+		strings.Join(result.ActiveWindows, ",") != strings.Join(wantWindows, ",") {
+		t.Fatalf("Durations selections = chosen %#v active %#v, want %#v", result.ChosenWindows, result.ActiveWindows, wantWindows)
+	}
+	if result.WindowHours != 24 {
+		t.Fatalf("Durations selection changed viewState.windowHours to %d, want unchanged 24", result.WindowHours)
+	}
+	if result.VisibleState.RenderCount != 3 || !result.VisibleState.Rendered {
+		t.Fatalf("three visible selections produced %#v, want one render per selection and fresh state", result.VisibleState)
+	}
+	if result.HiddenRenderCount != 3 || result.HiddenRendered {
+		t.Fatalf("hidden selection produced renderCount=%d rendered=%v, want no render and stale cache", result.HiddenRenderCount, result.HiddenRendered)
+	}
+}
+
 // Execute the pure empty-state decision under Node so the regression is pinned
 // to state transitions rather than the presence of reassuring source strings.
 func TestJavaScriptBehaviorByUserRequestLensEmptyState(t *testing.T) {
@@ -2360,6 +2437,149 @@ var document = {
 };
 `
 
+func TestJavaScriptBehaviorDurationsWindowsProjectOneSharedRealTimeDomain(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+
+	completionInstants := []time.Time{
+		time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 5, 27, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 7, 26, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 11, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC),
+	}
+	fixtureTickets := make([]*RequestTicket, 0, len(completionInstants))
+	for completionIndex, completedAt := range completionInstants {
+		fixtureTickets = append(fixtureTickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", completionIndex+1),
+			"B",
+			completedAt.Add(-10*time.Minute).Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		))
+	}
+	fixtureBoard := &Board{
+		GeneratedAt: time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC),
+		AllRequests: fixtureTickets,
+	}
+	generatedData, buildError := buildGeneratedBoardData(fixtureBoard)
+	if buildError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", buildError)
+	}
+	boardDataJSON, encodeError := json.Marshal(generatedData)
+	if encodeError != nil {
+		t.Fatalf("encode board payload: %v", encodeError)
+	}
+
+	probeDriver := `
+function renderedWindow(windowName) {
+  durationsStubHosts["durations-chart"] = makeStubNode("div");
+  durationsStubHosts["durations-summary"] = makeStubNode("p");
+  durationsStubHosts["durations-readout"] = makeStubNode("p");
+  durationsStubHosts["durations-table-body"] = makeStubNode("tbody");
+  setDurationsWindow(windowName);
+  renderDurationsView();
+  var markCentres = [], panelBBars = 0, panelCBars = 0;
+  function walkDrawnNodes(parentNode) {
+    (parentNode.children || []).forEach(function (childNode) {
+      var attributes = childNode.attributes || {};
+      var nodeClass = String(attributes["class"] || "");
+      if (childNode.stubName === "circle" && nodeClass.indexOf("durations-mark") !== -1) {
+        markCentres.push(Number(attributes.cx));
+      }
+      if (childNode.stubName === "rect" && nodeClass === "durations-bar") {
+        panelBBars += 1;
+      }
+      if (childNode.stubName === "rect" && nodeClass.indexOf("durations-bar-count") !== -1) {
+        panelCBars += 1;
+      }
+      walkDrawnNodes(childNode);
+    });
+  }
+  var svg = durationsStubHosts["durations-chart"].children[0];
+  walkDrawnNodes(svg);
+  return {
+    summary: durationsStubHosts["durations-summary"].textContent,
+    ariaLabel: svg.attributes["aria-label"],
+    markCentres: markCentres,
+    panelBBars: panelBBars,
+    panelCBars: panelCBars,
+    tableRows: durationsStubHosts["durations-table-body"].children.length
+  };
+}
+process.stdout.write(JSON.stringify({
+  last30: renderedWindow("30"),
+  last90: renderedWindow("90"),
+  all: renderedWindow("all")
+}));
+`
+	javascriptProbe := durationsRenderDomStubPreamble +
+		"var boardData = " + string(boardDataJSON) + ";\n" +
+		string(rendererFragment) +
+		probeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "Durations projected windows", javascriptProbe)
+
+	type renderedWindow struct {
+		Summary     string    `json:"summary"`
+		AriaLabel   string    `json:"ariaLabel"`
+		MarkCentres []float64 `json:"markCentres"`
+		PanelBBars  int       `json:"panelBBars"`
+		PanelCBars  int       `json:"panelCBars"`
+		TableRows   int       `json:"tableRows"`
+	}
+	var result struct {
+		Last30 renderedWindow `json:"last30"`
+		Last90 renderedWindow `json:"last90"`
+		All    renderedWindow `json:"all"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode projected Durations windows: %v (output starts %q)",
+			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+
+	for _, windowCase := range []struct {
+		name          string
+		window        renderedWindow
+		wantCount     int
+		wantStartDate string
+		wantEndDate   string
+	}{
+		{name: "Last 30 days", window: result.Last30, wantCount: 5, wantStartDate: "26 Jul", wantEndDate: "25 Aug"},
+		{name: "Last 90 days", window: result.Last90, wantCount: 7, wantStartDate: "27 May", wantEndDate: "25 Aug"},
+		{name: "All history", window: result.All, wantCount: 8, wantStartDate: "1 Apr", wantEndDate: "25 Aug"},
+	} {
+		if len(windowCase.window.MarkCentres) != windowCase.wantCount ||
+			windowCase.window.TableRows != windowCase.wantCount ||
+			windowCase.window.PanelBBars != windowCase.wantCount ||
+			windowCase.window.PanelCBars != windowCase.wantCount {
+			t.Errorf("%s counts = marks %d, table %d, Panel B %d, Panel C %d; want %d projected samples/days on every surface",
+				windowCase.name, len(windowCase.window.MarkCentres), windowCase.window.TableRows,
+				windowCase.window.PanelBBars, windowCase.window.PanelCBars, windowCase.wantCount)
+		}
+		for _, surfaceCopy := range []string{windowCase.window.Summary, windowCase.window.AriaLabel} {
+			for _, requiredText := range []string{windowCase.name, windowCase.wantStartDate, windowCase.wantEndDate, "end exclusive", fmt.Sprintf("%d archived REQ", windowCase.wantCount)} {
+				if !strings.Contains(surfaceCopy, requiredText) {
+					t.Errorf("%s accessibility copy %q is missing %q", windowCase.name, surfaceCopy, requiredText)
+				}
+			}
+		}
+	}
+
+	marginLeft := durationsRendererConstant(t, "DURATIONS_MARGIN_LEFT")
+	if math.Abs(result.Last30.MarkCentres[0]-marginLeft) > 0.06 {
+		t.Errorf("Last 30 days left-boundary sample x=%.2f, want plot start %.2f", result.Last30.MarkCentres[0], marginLeft)
+	}
+	firstDayGap := result.Last30.MarkCentres[2] - result.Last30.MarkCentres[1]
+	secondDayGap := result.Last30.MarkCentres[3] - result.Last30.MarkCentres[2]
+	if math.Abs(firstDayGap-secondDayGap) > 0.11 || firstDayGap <= 0 {
+		t.Errorf("equal UTC-day gaps draw %.2f and %.2f units apart, want equal positive affine spacing", firstDayGap, secondDayGap)
+	}
+}
+
 // durationsRenderProbeDriver renders the fixture board and reports every drawn
 // bar's x-interval, the slowest-day annotation's anchor x (the only mid-anchored
 // text at the annotation baseline), and every Panel A mark centre in draw order.
@@ -2457,6 +2677,7 @@ func TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot(t *testing.T) {
 			javascriptProbe := durationsRenderDomStubPreamble +
 				"var boardData = { durations: " + string(durationsJson) + " };\n" +
 				string(rendererFragment) +
+				"setDurationsWindow(\"all\");\n" +
 				durationsRenderProbeDriver
 			probeOutput := runJavaScriptBehaviorProbe(t,
 				fmt.Sprintf("durations day buckets (%d active days)", dayCount), javascriptProbe)
