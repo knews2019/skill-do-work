@@ -43,7 +43,10 @@ path except the sample table inside a collapsed `<details>`.
 - **A click on panel A's hover surface opens the detail drawer** for the nearest REQ — the same
   drawer the board and timeline views open, not a second one.
 - **A keyboard path to the same information** that does not require opening the collapsed sample
-  table.
+  table, and that can reach **every plotted sample** — not only the over-ceiling ones. A route that
+  covers outliers alone leaves an ordinary under-ceiling REQ reachable only through the collapsed
+  305-row table, which is the exact limitation this REQ exists to remove, and it would leave keyboard
+  readers with strictly less reach than mouse readers.
 - **Keep the hover readout exactly as it is.**
 - **Click and hover resolve to the same mark, always.** A reader must never open a REQ other than the
   one the readout names. If REQ-349's jitter has landed, the click inherits whatever compensation the
@@ -65,9 +68,12 @@ None declared. REQ-349 perturbs the nearest-mark maths this REQ reuses; see the 
 
 ## Builder Guidance
 
-**Certainty: firm on the click, open on the keyboard path.** The keyboard route could be a roving
-list over the over-ceiling samples, over REQ-351's ranked list, or over the marks of the focused day
-— pick one, state why, and make sure it reaches the same drawer.
+**Certainty: firm on the click, open on the keyboard path.** The shape is yours, but completeness is
+not: whatever you choose must reach every plotted sample. A roving list over the over-ceiling samples
+alone does not qualify, and neither does REQ-351's ranked list on its own — both cover outliers only.
+A day-then-mark traversal (arrow between days, arrow between the marks within a day) does, and so
+does a roving list over the full sample set; pick one, state why, and make sure it reaches the same
+drawer the click opens.
 
 **`tdd: false` deliberately.** The browser probe lane cannot dispatch trusted input today — that is
 the whole subject of REQ-341, and it is why REQ-324's click lock-in missed the Timeline regression

@@ -51,6 +51,13 @@ without a second glance in the cases a palette can carry.
 - **UR colouring degrades honestly.** 66 URs exceed any usable categorical palette: decide and state
   the rule for what happens past the palette's capacity (a shared "other" bucket, colouring only the
   URs visible in the window, or another rule you can defend), and make the legend say it.
+- **Every channel has a rule for samples that lack its value, and the legend states it.** This is not
+  only the UR channel's problem: nine of this repository's 305 samples carry no domain at all
+  (REQ-001 through REQ-007 plus REQ-010 and REQ-011, all pre-dating the field), and the durations
+  aggregate includes every one of them. Give them an explicit unknown bucket that is named in the
+  legend and visually distinct from a real category — never an arbitrary default colour, and never
+  absent from the legend while still drawn in the plot. Apply the same treatment to a missing UR on
+  the UR channel, so one rule covers all three channels.
 - The control follows the same visibility discipline REQ-353 applies to the topbar: it appears on
   Durations and nowhere it does nothing.
 

@@ -59,8 +59,16 @@ showing the same tickets against the same axis. **No panel D is added to Duratio
 ## Detailed Requirements
 
 - **Rows group under their UR.** Its REQ rows sit under it.
-- **The elapsed span runs from first REQ *claim* to last completion**, which is what the captured
-  request asks for and what the figures quoted below were measured from. Not from `created_at`:
+- **An open UR needs a stated endpoint, not a missing one.** "Last completion" is only defined for a
+  UR whose work has finished. The current queue holds both open shapes: UR-068 and UR-069 have no
+  completion at all (4 and 9 REQs, every one still open), and UR-065 and UR-067 have work still open
+  *after* their last completion — where ending the group at that completion yields a stale span that
+  can read shorter than the summed work inside it. Define the open-UR endpoint (the aggregate's
+  frozen `now` is the obvious candidate, and is what the Timeline already measures open spans
+  against) and mark such a group as still running rather than drawing it as a closed span.
+- **The elapsed span runs from first REQ *claim* to last completion** for a finished UR, which is what
+  the captured request asks for and what the figures quoted below were measured from. Not from
+  `created_at`:
   Timeline rows distinguish `CreatedTime` from `ClaimedTime` and draw their wait segment from
   creation, so measuring the group from a row's visual left edge would fold queue wait into the
   number and produce a different statistic from the one this REQ reports. If a UR's earliest REQ was
