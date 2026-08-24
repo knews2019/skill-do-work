@@ -232,6 +232,49 @@
       .join("");
   }
 
+  function rawMarkdownForUserRequestAndRequests(markdownData, userRequestId, requestIds) {
+    var rawUserRequest = rawMarkdownForDetail(markdownData, "ur", userRequestId);
+    if (rawUserRequest === null) {
+      throw new Error("raw Markdown unavailable for " + userRequestId);
+    }
+    // The grouped id list is the same all-tree set rendered in the UR drawer.
+    // rawMarkdownForRequests preserves its order and fails the whole operation
+    // rather than silently publishing an incomplete clipboard payload.
+    return rawUserRequest + rawMarkdownForRequests(markdownData, requestIds);
+  }
+
+  drawerCopyAllButton.addEventListener("click", function () {
+    if (currentDetailKind !== "ur") {
+      return; // Hidden on REQ details; retain a defensive no-op for scripted clicks.
+    }
+    var requestedUserRequestId = currentDetailId;
+    var requestedUserRequest = userRequestsById[requestedUserRequestId];
+    var requestedRequestIds = requestedUserRequest && requestedUserRequest.requestIds
+      ? requestedUserRequest.requestIds.slice()
+      : [];
+
+    beginCopyFeedback(drawerCopyAllButton);
+    loadBoardMarkdownData()
+      .then(function (markdownData) {
+        return rawMarkdownForUserRequestAndRequests(
+          markdownData, requestedUserRequestId, requestedRequestIds
+        );
+      })
+      .then(writeTextToClipboard)
+      .then(
+        function () {
+          if (!drawer.hidden && currentDetailKind === "ur" && currentDetailId === requestedUserRequestId) {
+            showCopyFeedback(drawerCopyAllButton, "Copied ✓", "is-copied");
+          }
+        },
+        function () {
+          if (!drawer.hidden && currentDetailKind === "ur" && currentDetailId === requestedUserRequestId) {
+            showCopyFeedback(drawerCopyAllButton, "Copy failed", "is-copy-failed");
+          }
+        }
+      );
+  });
+
   document.querySelectorAll("[data-copy-column]").forEach(function (copyButton) {
     copyButton.addEventListener("click", function () {
       var requestIds = visibleRequestIdsForColumn(copyButton);
