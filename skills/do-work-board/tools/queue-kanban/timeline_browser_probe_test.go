@@ -1409,16 +1409,17 @@ window.addEventListener("load", function () {
       }
       // Wait for the RE-LAYOUT, not for the width change and not for a duration.
       //
-      // The width narrows synchronously with the click, but the render it triggers is
-      // scheduled through requestAnimationFrame — and headless --dump-dom has no
-      // compositor driving frames, so under full-suite load that callback lands well
-      // after the width has moved. Polling the width therefore measured a settled
-      // container around an unsettled plot, and the probe reported the very defect it
-      // exists to catch. Twice.
+      // The width narrows synchronously with the click. Remeasurement is keyed to one
+      // shared positive condition: the live host width is non-zero and differs from
+      // the width used by the last render. ResizeObserver delivers that check directly
+      // in an ordinary browser; a teardown-owned 50ms timer delivers the same check
+      // when headless --dump-dom parks observer/compositor work after layout settles.
       //
       // Polling the OUTCOME is sound here because the wait is bounded: a genuine
       // regression spins out the attempts and then fails the assertion below, which is
-      // exactly what removing the ResizeObserver does.
+      // exactly what suppressing or inverting the shared width-change condition does.
+      // Removing only ResizeObserver is not that mutation: the timer intentionally
+      // remains a second delivery path for the same condition.
       var widthBeforeClick = probe.before.hostWidth;
       function someSegmentIsInsideThePlot(wantWidthChanged) {
         var host = plotHost();
