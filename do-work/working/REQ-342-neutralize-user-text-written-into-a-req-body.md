@@ -1,7 +1,8 @@
 ---
 id: REQ-342
 title: "[impact-critical] Neutralize user text written into a REQ body"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T08:55:00Z
 created_at: 2026-08-23T22:35:07Z
 user_request: UR-068
 domain: security
@@ -11,6 +12,7 @@ suggested_spec: bug-fix
 depends_on: []
 related: [REQ-343, REQ-344]
 maintenance: false
+route: C
 impact: impact-critical
 effort_estimate: effort-substantive
 write_set:

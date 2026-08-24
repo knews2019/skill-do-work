@@ -1,7 +1,8 @@
 ---
 id: REQ-343
 title: "Let verify see a structurally damaged REQ file"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T08:55:00Z
 created_at: 2026-08-23T22:35:07Z
 user_request: UR-068
 domain: testing
@@ -11,6 +12,7 @@ suggested_spec: bug-fix
 depends_on: []
 related: [REQ-342, REQ-344]
 maintenance: false
+route: B
 impact: impact-user-visible
 effort_estimate: effort-substantive
 write_set:
