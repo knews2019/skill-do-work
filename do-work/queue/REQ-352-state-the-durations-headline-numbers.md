@@ -46,7 +46,21 @@ shipped.
   axis span, and REQs per active day.
 - **Each figure is stated for the window actually plotted**, not for all history.
 - **A rolling median line on panel B** over its per-day bars, so "is it getting slower" is answerable
-  without reading 29 bars one at a time.
+  without reading 29 bars one at a time. Specified so two implementations cannot draw materially
+  different lines and both claim to satisfy this:
+  - **Window: the trailing 7 active days** — the bars panel B actually draws, not 7 calendar days.
+    The axis is 66 percent idle here, so a calendar window collapses to one or two samples through
+    every quiet stretch and the line stops meaning anything exactly where the reader looks hardest.
+  - **Trailing, not centered.** The point at a given day summarizes that day and the six drawn days
+    before it, so the line never depends on days to its right — a centered window would make the
+    most recent points the least stable, which is the wrong end to be unstable.
+  - **Edge: draw nothing before the seventh active day.** No partial windows. A median of two days
+    plotted on the same line as a median of seven invites reading noise as trend, and the left edge
+    is where that misreads worst.
+  - **Gaps: idle calendar days are skipped, never zero-filled.** They carry no samples, and a zero
+    would be a measurement the archive does not contain. The line's x positions stay on the real
+    calendar axis, so a 7-active-day window may span far more than 7 days of chart width — that is
+    the honest shape and it must not be compressed.
 - **Panel C gets its zero and midpoint ticks.** Today only its peak is labelled.
 - **Derive every figure from the samples already in the payload.** No new aggregate in `durations.go`.
 - **Keep one measure per scale**, and keep the existing summary sentence's exclusion-rule wording
