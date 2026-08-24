@@ -34,6 +34,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/durations.go
   - skills/do-work-board/tools/queue-kanban/durations_test.go
   - skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go
+  - skills/do-work-board/tools/queue-kanban/generate_test.go
   - skills/do-work-board/tools/queue-kanban/web/template.html
   - skills/do-work-board/tools/queue-kanban/web/board.css
 ---
@@ -47,7 +48,7 @@ and delete the label planner, its width model and the tests that exist only to p
 SVG. Keep the lane, its marks, their hover and a plain remainder count.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Route B exploration mapped the complete seven-file planner/width-model deletion boundary and the lane/mark/hover behavior that must survive. Replace SVG labels with a complete, current-window, descending HTML list beside the chart and prove it on a 705+ sample board.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -134,3 +135,23 @@ place text in the SVG are gone, each named in the hand-back.
 ## Plan
 
 **Planning not required** — Route B: exploration-guided implementation.
+
+## Exploration
+
+- `generate_test.go` contains three live behavior tests solely for the SVG label planner, so it is added to scope. No payload/generator change is needed: `boardData.requests[sample.id]` supplies title, route, and UR while the Durations sample supplies id and wall time.
+- Remove the JavaScript label-row/leader/packer/remainder-reservation pipeline and browser text measurement, plus the Go label text/width model and tests whose only shipped claim is retired placement. Retain day-domain helpers, Panel B annotation formatting/styling, lane marks, overflow/reversed hover, UR lane, window projection, and the full sample table.
+- Replace the deleted longest-first/count claims with one behavior-first dense-board proof: every current-window over-ceiling sample appears in a deterministic descending HTML list outside the SVG, with REQ, UR, duration, route, and title; SVG label/leader nodes are absent while lane marks and exact hover identity remain.
+- Use a chart/list wrapper: desktop grid with a 280–360px scrollable aside aligned to the chart, stacked below about 1000px. Every item remains in the DOM; 320/768/1280 layouts must avoid new horizontal clipping.
+- A plain sentence states the complete over-ceiling count; it is not a `+N more` remainder because nothing is omitted.
+
+## Scope
+
+**Files I will touch:**
+
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js`
+- `skills/do-work-board/tools/queue-kanban/durations.go`
+- `skills/do-work-board/tools/queue-kanban/durations_test.go`
+- `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go`
+- `skills/do-work-board/tools/queue-kanban/generate_test.go`
+- `skills/do-work-board/tools/queue-kanban/web/template.html`
+- `skills/do-work-board/tools/queue-kanban/web/board.css`
