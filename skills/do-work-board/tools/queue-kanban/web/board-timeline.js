@@ -890,7 +890,14 @@
   // archive. The row order within each group and the first-seen group order are
   // inherited from the newest-first input. The no-UR bucket is the one
   // exception: it is explicit and always last.
-  function timelineGroupWindowRows(windowRows, requestsById, durationSamples, nowMs) {
+  function timelineGroupWindowRows(
+    windowRows,
+    requestsById,
+    durationSamples,
+    nowMs,
+    windowStartMs,
+    windowEndMs
+  ) {
     var durationSampleById = {};
     (durationSamples || []).forEach(function (sample) {
       durationSampleById[sample.id] = sample;
@@ -915,9 +922,12 @@
           unavailableWorkCount: 0,
           earliestClaimMs: Infinity,
           latestCompletionMs: -Infinity,
+          recordedClaimCount: 0,
+          overlappingElapsedCount: 0,
           unresolvedCompletionCount: 0,
           running: false,
-          elapsedMinutes: null
+          elapsedMinutes: null,
+          elapsedUnavailableReason: ""
         };
         groupsById[groupKey] = group;
         if (userRequestId) {
@@ -930,16 +940,36 @@
       group.members.push({ row: row, rowIndex: rowIndex });
       var claimMs = row.claimedTime ? Date.parse(row.claimedTime) : NaN;
       if (!isNaN(claimMs)) {
-        group.earliestClaimMs = Math.min(group.earliestClaimMs, claimMs);
+        group.recordedClaimCount++;
       }
       var completionMs = row.completedTime ? Date.parse(row.completedTime) : NaN;
-      if (!isNaN(completionMs)) {
-        group.latestCompletionMs = Math.max(group.latestCompletionMs, completionMs);
-      } else if (!row.waitOpen && !row.workOpen) {
+      var rowRunning = !!(row.waitOpen || row.workOpen);
+      if (!isNaN(claimMs) && isNaN(completionMs) && !rowRunning) {
         group.unresolvedCompletionCount++;
       }
-      if (row.waitOpen || row.workOpen) {
+      if (rowRunning) {
         group.running = true;
+      }
+
+      // A group's elapsed hull is made from each member's CLAIMED interval
+      // intersected with this window. A row listed because its WAIT overlaps the
+      // window but whose claim is later contributes no claimed interval here.
+      // This is deliberately not a clamp of the final group hull: intersecting
+      // each member first prevents an off-window member endpoint from expanding
+      // the metric beyond what the header says it covers.
+      var elapsedEndMs = rowRunning ? Math.min(nowMs, windowEndMs) : completionMs;
+      var clippedClaimMs = Math.max(claimMs, windowStartMs);
+      var clippedCompletionMs = Math.min(elapsedEndMs, windowEndMs);
+      if (
+        !isNaN(claimMs) &&
+        isFinite(elapsedEndMs) &&
+        clippedClaimMs < windowEndMs &&
+        clippedCompletionMs >= windowStartMs &&
+        clippedCompletionMs >= clippedClaimMs
+      ) {
+        group.earliestClaimMs = Math.min(group.earliestClaimMs, clippedClaimMs);
+        group.latestCompletionMs = Math.max(group.latestCompletionMs, clippedCompletionMs);
+        group.overlappingElapsedCount++;
       }
 
       var sample = durationSampleById[row.id];
@@ -948,8 +978,14 @@
       } else if (sample.excludedReason) {
         group.excludedReasons[sample.excludedReason] =
           (group.excludedReasons[sample.excludedReason] || 0) + 1;
-      } else if (isFinite(sample.wallMinutes)) {
-        group.acceptedWorkMinutes += sample.wallMinutes;
+      } else if (isFinite(sample.wallMinutes) && !isNaN(claimMs) && !isNaN(completionMs)) {
+        // `excludedReason` remains the eligibility verdict. Once accepted, this
+        // view contributes only the claim→completion interval that lies inside
+        // its own visible window; the sample's full wallMinutes would otherwise
+        // make a two-hour window announce four hours of work.
+        var clippedWorkStartMs = Math.max(claimMs, windowStartMs);
+        var clippedWorkEndMs = Math.min(completionMs, windowEndMs);
+        group.acceptedWorkMinutes += Math.max(clippedWorkEndMs - clippedWorkStartMs, 0) / 60000;
         group.acceptedWorkCount++;
       } else {
         group.unavailableWorkCount++;
@@ -960,13 +996,23 @@
       orderedGroups.push(unknownGroup);
     }
     orderedGroups.forEach(function (group) {
-      if (!isFinite(group.earliestClaimMs)) {
+      // One stopped claimed member without a completion can be the group's true
+      // last endpoint. Publishing the latest completion from only its resolved
+      // siblings would be a plausible-looking partial span, so uncertainty wins
+      // over every computable member.
+      if (group.unresolvedCompletionCount) {
+        group.elapsedUnavailableReason = "completion endpoint unavailable";
         return;
       }
-      var elapsedEndMs = group.running ? nowMs : group.latestCompletionMs;
-      if (isFinite(elapsedEndMs)) {
-        group.elapsedMinutes = (elapsedEndMs - group.earliestClaimMs) / 60000;
+      if (!group.recordedClaimCount) {
+        group.elapsedUnavailableReason = "no recorded claim";
+        return;
       }
+      if (!group.overlappingElapsedCount) {
+        group.elapsedUnavailableReason = "no claimed interval overlaps this window";
+        return;
+      }
+      group.elapsedMinutes = (group.latestCompletionMs - group.earliestClaimMs) / 60000;
     });
     return orderedGroups;
   }
@@ -988,20 +1034,24 @@
 
   function timelineGroupMetricText(group) {
     var elapsedText = group.elapsedMinutes === null
-      ? "Elapsed unavailable (no recorded claim" + (group.running ? "; running" : "") + ")"
-      : "Elapsed " + timelineFormatSpanMinutes(group.elapsedMinutes) + (group.running ? " (running)" : "");
+      ? "Elapsed in window unavailable (" + (group.elapsedUnavailableReason || "unknown endpoint") +
+        (group.running ? "; running" : "") + ")"
+      : "Elapsed in window " + timelineFormatSpanMinutes(group.elapsedMinutes) +
+        (group.running ? " (running)" : "");
     var acceptedWorkText = group.acceptedWorkCount
       ? timelineFormatSpanMinutes(group.acceptedWorkMinutes)
       : "0 min";
-    return elapsedText + " · Accepted work " + acceptedWorkText + " · " +
+    return elapsedText + " · Accepted work in window " + acceptedWorkText + " · " +
       group.members.length + " listed REQ" + (group.members.length === 1 ? "" : "s") +
       " · " + timelineGroupDetailText(group);
   }
 
   function timelineGroupHeaderMetricText(group) {
     var elapsedText = group.elapsedMinutes === null
-      ? "Elapsed unavailable" + (group.running ? " running" : "")
-      : "Elapsed " + timelineFormatSpanMinutes(group.elapsedMinutes) + (group.running ? " running" : "");
+      ? "Elapsed in window unavailable: " + (group.elapsedUnavailableReason || "unknown endpoint") +
+        (group.running ? "; running" : "")
+      : "Elapsed in window " + timelineFormatSpanMinutes(group.elapsedMinutes) +
+        (group.running ? " running" : "");
     var acceptedWorkText = group.acceptedWorkCount
       ? timelineFormatSpanMinutes(group.acceptedWorkMinutes)
       : "0 min";
@@ -1015,7 +1065,7 @@
     if (group.unresolvedCompletionCount) {
       detailParts.push("unresolved completion×" + group.unresolvedCompletionCount);
     }
-    return elapsedText + " · Accepted work " + acceptedWorkText + " · " +
+    return elapsedText + " · Accepted work in window " + acceptedWorkText + " · " +
       (detailParts.length ? detailParts.join("; ") : "no exclusions");
   }
 
@@ -1041,6 +1091,21 @@
       });
     });
     return { items: displayItems, height: topPx };
+  }
+
+  // A deterministic, collision-free encoding of the UTF-16 label gives the
+  // table's explicit `headers` relationships an id that survives rebuilds and
+  // cannot be confused with a sibling group. The known/unknown prefix keeps a
+  // literal UR named like the fallback label distinct from the fallback itself.
+  function timelineTableGroupHeaderId(group) {
+    var source = group.userRequestId
+      ? "ur:" + group.userRequestId
+      : "unknown:" + TIMELINE_UNKNOWN_USER_REQUEST_NAME;
+    var encoded = [];
+    for (var characterIndex = 0; characterIndex < source.length; characterIndex++) {
+      encoded.push(source.charCodeAt(characterIndex).toString(16));
+    }
+    return "timeline-table-group-" + encoded.join("-");
   }
 
   function timelineVisibleDisplayRange(displayItems, scrollTop, viewportHeight) {
@@ -1685,12 +1750,10 @@
     if (isNaN(nowMs)) {
       nowMs = generatedAtMs;
     }
-    var timelineGroups = timelineGroupWindowRows(
-      rows,
-      requestsById,
-      ((boardData.durations || {}).samples || []),
-      nowMs
-    );
+    // The first real display list is built by refreshWindowRows after the view
+    // window is fitted. Building metrics here would either need an invented
+    // window or briefly measure the full archive before the first render.
+    var timelineGroups = [];
     var timelineDisplay = timelineFlattenGroups(timelineGroups);
 
     // The forward half. Keyed by id onto the rows above: a pending REQ already
@@ -1812,7 +1875,9 @@
         rows,
         requestsById,
         ((boardData.durations || {}).samples || []),
-        nowMs
+        nowMs,
+        timelineViewState.windowStartMs,
+        timelineViewState.windowEndMs
       );
       timelineDisplay = timelineFlattenGroups(timelineGroups);
       if (anchor === null) {
@@ -1926,7 +1991,8 @@
         groupRow.setAttribute("data-timeline-table-group", group.label);
         groupRow.setAttribute("data-group-count", String(group.members.length));
         var groupHeading = document.createElement("th");
-        groupHeading.scope = "rowgroup";
+        var groupHeadingId = timelineTableGroupHeaderId(group);
+        groupHeading.id = groupHeadingId;
         groupHeading.colSpan = 6;
         groupHeading.textContent = group.label + " · " + timelineGroupMetricText(group);
         groupRow.appendChild(groupHeading);
@@ -1938,17 +2004,27 @@
           var tableRow = document.createElement("tr");
           tableRow.setAttribute("data-timeline-table-request", row.id);
           [
-            row.id,
-            request.title || "",
-            request.status || "",
-            timelineFormatSpanMinutes(row.waitMinutes) + (row.waitOpen ? " (open)" : ""),
-            row.hasWork
-              ? timelineFormatSpanMinutes(row.workMinutes) + (row.workOpen ? " (open)" : "")
-              : "not started",
-            row.anomaly ? row.anomalyReason : ""
-          ].forEach(function (cellText) {
-            var cell = document.createElement("td");
-            cell.textContent = cellText;
+            { text: row.id, columnHeaderId: "timeline-table-column-req", rowHeader: true },
+            { text: request.title || "", columnHeaderId: "timeline-table-column-title" },
+            { text: request.status || "", columnHeaderId: "timeline-table-column-status" },
+            {
+              text: timelineFormatSpanMinutes(row.waitMinutes) + (row.waitOpen ? " (open)" : ""),
+              columnHeaderId: "timeline-table-column-waited"
+            },
+            {
+              text: row.hasWork
+                ? timelineFormatSpanMinutes(row.workMinutes) + (row.workOpen ? " (open)" : "")
+                : "not started",
+              columnHeaderId: "timeline-table-column-worked"
+            },
+            { text: row.anomaly ? row.anomalyReason : "", columnHeaderId: "timeline-table-column-note" }
+          ].forEach(function (cellDefinition) {
+            var cell = document.createElement(cellDefinition.rowHeader ? "th" : "td");
+            if (cellDefinition.rowHeader) {
+              cell.scope = "row";
+            }
+            cell.setAttribute("headers", groupHeadingId + " " + cellDefinition.columnHeaderId);
+            cell.textContent = cellDefinition.text;
             tableRow.appendChild(cell);
           });
           tableBody.appendChild(tableRow);
@@ -1984,7 +2060,7 @@
       width: "100%",
       role: "img",
       "aria-label":
-        "Window-listed REQs grouped by user request, with the No UR recorded group last. Group elapsed time starts at the earliest recorded member claim and ends at the latest resolved completion, or at this board's frozen now while any member is running; a group with no recorded claim reports elapsed unavailable. Accepted work sums only Durations samples whose read-time verdict did not exclude them. REQ rows remain newest first within each group. The first bar segment is waiting and the second is work. Every value is also listed in the grouped table below."
+        "Window-listed REQs grouped by user request, with the No UR recorded group last. Group elapsed and accepted work are clipped to this visible window. Elapsed spans the earliest overlapping recorded member claim through the latest overlapping resolved completion, or a claimed open member's endpoint bounded by this board's frozen now and the window end. It is unavailable when there is no recorded claim, no claimed interval overlaps the window, or a stopped claimed member has no completion endpoint. Accepted work uses only the in-window claim-to-completion overlap of Durations samples whose read-time verdict did not exclude them. REQ rows remain newest first within each group. The first bar segment is waiting and the second is work. Every value is also listed in the grouped table below."
     });
 
     // MEASURED ONCE PER RENDER. clientWidth forces a synchronous layout, and
