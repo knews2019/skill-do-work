@@ -5061,42 +5061,108 @@ def section(source, start, end):
     return match.group("body")
 
 
-def require_active_inheritance(label, block):
+def outside_inheritance_defect(block):
     normalized = " ".join(block.lower().split())
     if "outside-text containment" not in normalized:
-        raise SystemExit(f"{label} does not name Outside-text containment")
-    if re.search(r"(?:apply|follow|per|using|governed by|contained per).*outside-text containment", normalized) is None:
-        raise SystemExit(f"{label} names Outside-text containment passively instead of applying it")
+        return "missing named Outside-text containment inheritance"
+    # Bind the action verb to this repository's two deliberate directive
+    # phrases. A generic "per" or "using" elsewhere in a whole Step block must
+    # not lend a passive citation authority it does not have.
+    active_pattern = (
+        r"(?:apply `actions/clarify\.md` step 4.s |"
+        r"contained per that format.s )\*\*outside-text containment\*\*"
+    )
+    if re.search(active_pattern, normalized) is None:
+        return "passive Outside-text containment citation"
+    return None
+
+
+def require_active_inheritance(label, block):
+    defect = outside_inheritance_defect(block)
+    if defect:
+        raise SystemExit(f"{label}: {defect}")
 
 
 verify = verify_path.read_text()
-require_active_inheritance(
-    "verify-requests Step 7 resolved-answer writer",
-    section(verify, r"^### Step 7: Offer Fixes\n", r"^## Scoring Guidelines"),
-)
-
 capture = capture_path.read_text()
-require_active_inheritance(
-    "capture queued-addendum writer",
-    section(capture, r"^### Step 2: ", r"^### Step 3: "),
-)
-require_active_inheritance(
-    "capture UR input writer",
-    section(capture, r"^### Step 5: Write Files\n", r"^### Step 6: "),
-)
-
 stakeholder = stakeholder_path.read_text()
-require_active_inheritance(
-    "stakeholder-answers new-UR writer",
-    section(stakeholder, r"^### Step 4: ", r"^### Step 5: "),
-)
-
 abandon = abandon_path.read_text()
-require_active_inheritance(
-    "abandon cancellation-reason writer",
-    section(abandon, r"^### Step 3: ", r"^### Step 4: "),
+
+outside_writer_blocks = (
+    ("verify-requests Step 7 resolved-answer writer",
+     section(verify, r"^### Step 7: Offer Fixes\n", r"^## Scoring Guidelines")),
+    ("capture queued-addendum writer",
+     section(capture, r"^### Step 2: ", r"^### Step 3: ")),
+    ("capture UR input writer",
+     section(capture, r"^### Step 5: Write Files\n", r"^### Step 6: ")),
+    ("stakeholder-answers new-UR writer",
+     section(stakeholder, r"^### Step 4: ", r"^### Step 5: ")),
+    ("abandon cancellation-reason writer",
+     section(abandon, r"^### Step 3: ", r"^### Step 4: ")),
 )
 
+for writer_label, writer_block in outside_writer_blocks:
+    require_active_inheritance(writer_label, writer_block)
+
+    missing_mutation = writer_block.replace(
+        "Outside-text containment", "local containment", 1
+    )
+    if missing_mutation == writer_block:
+        raise SystemExit(f"{writer_label}: missing-name mutation changed nothing")
+    if outside_inheritance_defect(missing_mutation) is None:
+        raise SystemExit(f"{writer_label}: missing-name mutation escaped")
+
+    if "Apply `actions/clarify.md` Step 4's" in writer_block:
+        passive_mutation = writer_block.replace(
+            "Apply `actions/clarify.md` Step 4's", "See `actions/clarify.md` Step 4's", 1
+        )
+    else:
+        passive_mutation = writer_block.replace(
+            "contained per that format's", "see that format's", 1
+        )
+    if passive_mutation == writer_block:
+        raise SystemExit(f"{writer_label}: passive-citation mutation changed nothing")
+    if outside_inheritance_defect(passive_mutation) != "passive Outside-text containment citation":
+        raise SystemExit(f"{writer_label}: passive-citation mutation escaped")
+
+
+def frontmatter_inheritance_defect(block):
+    normalized = " ".join(block.lower().split())
+    if "frontmatter quoting" not in normalized:
+        return "missing named Frontmatter Quoting inheritance"
+    if re.search(r"written per \*\*frontmatter quoting\*\*", normalized) is None:
+        return "passive Frontmatter Quoting citation"
+    return None
+
+
+stakeholder_step5 = section(stakeholder, r"^### Step 5: ", r"^### Step 6: ")
+stakeholder_step5_defect = frontmatter_inheritance_defect(stakeholder_step5)
+if stakeholder_step5_defect:
+    raise SystemExit(
+        "stakeholder-answers Step 5 blocked_by writer: " + stakeholder_step5_defect
+    )
+
+mutated_step5 = stakeholder_step5.replace("Frontmatter Quoting", "local quoting", 1)
+if mutated_step5 == stakeholder_step5:
+    raise SystemExit(
+        "stakeholder-answers Step 5 Frontmatter Quoting mutation changed nothing"
+    )
+if frontmatter_inheritance_defect(mutated_step5) is None:
+    raise SystemExit(
+        "stakeholder-answers Step 5 lost Frontmatter Quoting but the writer check stayed green"
+    )
+
+passive_step5 = stakeholder_step5.replace(
+    "written per **Frontmatter Quoting**", "see **Frontmatter Quoting**", 1
+)
+if passive_step5 == stakeholder_step5:
+    raise SystemExit(
+        "stakeholder-answers Step 5 passive-citation mutation changed nothing"
+    )
+if frontmatter_inheritance_defect(passive_step5) != "passive Frontmatter Quoting citation":
+    raise SystemExit(
+        "stakeholder-answers Step 5 passive Frontmatter Quoting citation escaped the writer check"
+    )
 
 def frontmatter_contract_defects(source):
     block = section(
@@ -5144,13 +5210,18 @@ for mutation_name, old, new, expected_defect in frontmatter_mutations:
 required_single_quoted_examples = (
     (capture_reference_path, r"^title: 'Add keyboard shortcuts'(?:\s+#.*)?$", "UR input title"),
     (review_path, r"^title: '\[<impact token>\] Review fix: \[brief description\]'", "review follow-up title"),
-    (sample_path, r"^title: 'Add user avatar component'$", "sample archived title"),
+    (sample_path, r"^title: 'Add user avatar component'(?:\s+#.*)?$", "sample archived title"),
     (capture_guide_path, r"^title: 'Brief descriptive title'$", "capture-guide title"),
     (work_guide_path, r"^assigned_to: 'cloud-alpha'$", "work-guide earmark"),
 )
 for path, pattern, label in required_single_quoted_examples:
-    if re.search(pattern, path.read_text(), flags=re.MULTILINE) is None:
+    example_text = path.read_text()
+    example_match = re.search(pattern, example_text, flags=re.MULTILINE)
+    if example_match is None:
         raise SystemExit(f"{path}: {label} is not in the required single-quoted form")
+    citation_window = example_text[example_match.start():example_match.end() + 500]
+    if "Frontmatter Quoting" not in citation_window:
+        raise SystemExit(f"{path}: {label} does not cite Frontmatter Quoting at the example")
 
 ur_template = capture_reference_path.read_text()
 full_input = section(ur_template, r"^## Full Verbatim Input\n", r"^---\n\*Captured:")

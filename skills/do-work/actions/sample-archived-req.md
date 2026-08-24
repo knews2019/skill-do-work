@@ -1,6 +1,6 @@
 ---
 id: REQ-007
-title: 'Add user avatar component'
+title: 'Add user avatar component'  # single-quoted per Frontmatter Quoting (actions/work-reference.md), apostrophes doubled
 status: completed
 domain: frontend
 tdd: true
