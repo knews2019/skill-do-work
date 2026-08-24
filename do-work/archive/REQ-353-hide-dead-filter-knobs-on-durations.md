@@ -1,9 +1,11 @@
 ---
 id: REQ-353
 title: "Hide the dead filter knobs while Durations is on screen"
-status: claimed
+status: completed
 claimed_at: 2026-08-24T16:43:37Z
-status_changed_at: 2026-08-24T16:43:37Z
+completed_at: 2026-08-24T16:58:09Z
+commit: 2dd9f3c
+status_changed_at: 2026-08-24T16:58:09Z
 route: A
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
@@ -39,9 +41,9 @@ view is on screen and change nothing there. Hide them on that view, the same way
 hidden, and restore them on view change.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Route A reused the existing `applyView` hidden-state mechanism; no separate state or data-flow path was needed.
+- [x] **[APPLY]:** The isolated builder changed only `web/board-controls.js` to hide all three shared filters on Durations and restore them on other views.
+- [x] **[UNIFY]:** Node syntax, focused assembled-client tests, the full module suite, diff checks, generated-page keyboard round trip, hidden/display states, and zero-console behavior passed. Worktree and merge range contain no artifact or scope drift.
 
 ## Why
 
@@ -97,3 +99,40 @@ excludes Durations.
 ## Plan
 
 **Planning and exploration skipped** — Route A: implement the existing `applyView` visibility pattern directly and verify the round trip.
+
+## Implementation Summary
+
+- `skills/do-work-board/tools/queue-kanban/web/board-controls.js` (modified): applies the existing `hidden` visibility mechanism to search, domain, and status filters while Durations is active and restores them on every other view without changing stored filter state.
+
+## Decisions
+
+- **D-01 — Reuse direct `hidden` assignments in `applyView`.** This matches the existing lens, recent-window, Durations, and testing control visibility path.
+- **D-02 — Preserve shared-filter values.** Durations only hides dead controls; switching away restores their existing state and does not create a filtered Durations statistic.
+- **D-03 — Keep the explicit one-file constraint.** No new test file was added; assembled-client tests, full module tests, and direct generated-page RED/GREEN evidence cover the change.
+
+## Discovered Tasks
+
+None.
+
+## Testing
+
+- Generated-page RED showed search, domain, and status controls visible, displayed, and keyboard reachable on Durations.
+- GREEN through Chromium 151 proved all three `hidden=true`/`display=none` on Durations, absent from sequential focus, restored on Board/Timeline, and hidden again on return; filter values and focus remained intact with zero board-script console errors.
+- Node syntax, focused assembled-client tests, diff checks, and builder full module suite (91.970s) passed. Post-merge suite passed in 49.715s; independent reviewer full suite passed in 50.355s.
+
+## Qualification
+
+- Exact merge range `907f106..2dd9f3c` passed mechanical qualification.
+- Orchestrator judgment confirmed substantive user-visible behavior, unchanged filter data flow, one-file scope, and no debug/generated artifacts.
+
+## Review
+
+Independent review approved with no findings: Requirements 100%, Code Quality 100%, Test Adequacy 96%, Scope 100%, overall 99%, low risk. Reviewer independently repeated the generated-board keyboard hide/restore acceptance.
+
+## Lessons Learned
+
+When a view deliberately ignores shared filters, the controls must disappear through the same view-state mechanism that already hides every other dead knob; preserving their stored values makes the round trip predictable.
+
+## Orientation
+
+Released in 0.236.45. Search, domain, and status controls now disappear while Durations is active and restore unchanged on other views; Durations remains intentionally unfiltered.

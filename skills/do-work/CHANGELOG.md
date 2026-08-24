@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.45 — Durations Hides Controls It Does Not Use (2026-08-24)
+
+Search, domain, and status filters now disappear while the intentionally unfiltered Durations view is active and restore unchanged when the reader switches away.
+
+- The existing view-visibility mechanism owns the round trip; no parallel state path was introduced
+- Hidden controls leave the keyboard sequence while Durations remains independent from shared filter changes
+
 ## 0.236.44 — Timeline Groups Show the UR-Level Gap (2026-08-24)
 
 Timeline rows now group beneath their user request and expose window-bounded elapsed, accepted work, and listed REQ counts without sacrificing virtualization or keyboard behavior.
