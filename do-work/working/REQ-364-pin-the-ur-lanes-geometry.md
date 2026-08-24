@@ -111,3 +111,24 @@ independently reproduced by the orchestrator.
 ## Plan
 
 **Planning not required** — Route B: exploration-guided implementation.
+
+## Exploration
+
+- Reuse the generated-site browser-probe shape and inject measurement access before the assembled Durations IIFE closes, so the probe reads the live production geometry constants instead of restating them.
+- Build one long-axis fixture with crowded one-sample URs, multiple occupied rows, a final-day minimum-width/right-clamp witness, and exactly one no-UR sample in its reserved row.
+- Measure every bracket and neighbouring text node from rendered SVG/client rectangles; return `location.href`, the live plot/lane/separation/pitch/height/min-width constants, compact bracket geometry, and console errors in one typed JSON result.
+- Assert plot containment, live minimum width, same-row live separation, integer row/pitch placement, non-overlap, exact unknown-row placement, and clearance from lane/gutter/Panel B text. Vacuity guards require the right-edge, minimum-width, multi-row, crowded-separation, and unknown-row witnesses.
+- Five mutations disable the right clamp, remove separation from both comparisons, use bracket height as row pitch, remove the minimum-width extension, and move the row-top expression into Panel B. Each must fail this one named probe.
+
+## Scope
+
+**Files I will touch:**
+
+- `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go`
+
+**Acceptance criteria:**
+
+- One generated-board browser probe measures rendered UR-lane geometry and returns same-measurement URL provenance with non-vacuous fixture witnesses.
+- Every bracket remains inside live plot bounds, respects live minimum width and same-row separation, and occupies non-overlapping rows derived from the live lane top/pitch.
+- The unknown row and every named bracket clear all rendered lane, gutter, and Panel B text neighbours.
+- Each of the five known production mutations fails the named probe; the ordinary no-browser lane skips cleanly while the strict browser lane retains its zero-probe guard.
