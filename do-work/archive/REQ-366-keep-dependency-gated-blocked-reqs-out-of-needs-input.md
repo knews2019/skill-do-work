@@ -1,9 +1,11 @@
 ---
 id: REQ-366
 title: 'Keep dependency-gated blocked REQs out of Needs Input · Blocked'
-status: claimed
+status: completed
 claimed_at: 2026-08-24T20:17:59Z
-status_changed_at: 2026-08-24T20:17:59Z
+completed_at: 2026-08-24T20:56:19Z
+commit: c18deb8d575988e614492dc73242b96f6b56cb1c
+status_changed_at: 2026-08-24T20:56:19Z
 route: B
 created_at: 2026-08-24T14:03:59Z
 user_request: UR-070
@@ -167,6 +169,25 @@ None.
 - Full queue-kanban tests, Go vet, formatting, diff checks, and the builder canonical maintainer gate passed, including all 109 prescribed shell cases and strict JavaScript; its optional browser lane skipped because live evidence ran separately.
 - A generated fixture showed blocked REQ-101 in Pending/Waiting with blocked and needs badges while REQ-100 was pending, then moved it to Needs Input after REQ-100 completed. CLI summary/open-work changed in step and no application console errors appeared.
 - Initial independent review approved behavior at 96/100 with no Important findings and two Minor wording findings: adjacent guides still stated status-only placement, and the Ready empty-state could falsely refer only to pending REQs. Both were accepted for narrow remediation before release.
+- Remediation updated both guides and neutralized the empty-state sentence without changing routing. Post-remediation focused routing/exception tests, strict JavaScript, the full queue-kanban module, and the final main-tree canonical gate passed; the canonical browser lane made its standard no-browser skip after separate live evidence.
+
+## Qualification
+
+- Exact cumulative merge range `11574d4..c18deb8d575988e614492dc73242b96f6b56cb1c` passed mechanical qualification.
+- Scope drift passed: all six implementation files exactly match the accepted Scope and Implementation Summary.
+- Orchestrator judgment confirmed substantive shared-seam routing, complete status/dependency requirement tracing, authoritative unmet-dependency data flow, inherited counts/rendering, and no generated/debug artifacts.
+
+## Review
+
+Independent review first approved behavior at 96/100 with two Minor wording findings and no Important findings. Narrow remediation closed the stale adjacent guides and false Ready empty-state. Final re-review approved with no Important, Minor, or Nit findings: behavior 100, tests/mutation 99, docs/UI 100, overall 99/100, low risk, acceptance complete.
+
+## Lessons Learned
+
+Moving one status shape between presentation buckets changes more than the routing branch: empty states and nearby conceptual guides can encode the old partition too. Review the negative space—the words shown when a subgroup is empty—as part of the state model.
+
+## Orientation
+
+Released in 0.236.55. Exact blocked tickets with unmet dependencies now wait in Pending until their prerequisites finish, keeping Needs Input limited to work the operator can act on now.
 
 ## Scope Extensions
 

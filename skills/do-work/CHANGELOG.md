@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.55 — Blocked Work Waits in Pending (2026-08-24)
+
+A blocked ticket whose prerequisite is unfinished now waits with dependency-gated work instead of occupying the operator's Needs Input inbox.
+
+- Exact blocked-plus-unmet tickets keep their blocked badge and dependency chips in Pending
+- Completing every prerequisite moves the ticket into Needs Input when its external condition becomes actionable
+- Summary, open-work, generated columns, empty states, and shipped guides share the same rule
+
 ## 0.236.54 — Declared Write Sets Stay Complete (2026-08-24)
 
 Capture no longer mints a known-incomplete write set when a REQ's own completion proof requires another file class.
