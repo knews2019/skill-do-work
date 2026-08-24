@@ -45,8 +45,8 @@ Timeline's rows by UR, and make each UR's own span readable against the work ins
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Model UR groups client-side after window filtering; flatten fixed-height group headers and REQ rows for virtualization while preserving a REQ-only roving focus index. Reuse Durations samples for canonical summed-work exclusions, render honest open/no-claim metrics, and cover the model plus live browser behavior before implementation.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** The isolated builder implemented client-side window-scoped UR groups, honest elapsed/worked/count metrics, mixed-height virtual display items, REQ-only focus mapping, accessible table grouping, explanatory copy, and theme-aware presentation in the five scoped files.
+- [x] **[UNIFY]:** Builder reviewed all five files and passed pure/browser grouping, virtualization, keyboard, accessibility, visual contrast, canonical maintainer verification, and diff checks. Orchestrator merged over the completed Durations wave and re-ran the combined focused Timeline behavior/browser probes green; no integration seams or debug artifacts were present.
 
 ## Why
 
@@ -176,3 +176,24 @@ list is still one Tab stop.
 - `skills/do-work-board/tools/queue-kanban/web/template.html`
 - `skills/do-work-board/tools/queue-kanban/generate_test.go`
 - `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go`
+
+## Implementation Summary
+
+- `skills/do-work-board/tools/queue-kanban/web/board-timeline.js` (modified): joins window-listed rows to URs and accepted Durations work, builds stable groups and flattened display items, renders honest group spans/metrics/table rows, and maps REQ focus through virtualized headers.
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modified): adds light/dark group-header, span, label, and metric styling against the actual body surface.
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modified): updates Timeline heading/hint copy with window membership, endpoint, exclusion, fallback, and ungrouped semantics.
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified): pins grouping order, unknown-last placement, metrics/endpoints/exclusions, post-window membership, flattening, and bounded mixed-height virtualization.
+- `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go` (modified): proves rendered header/member ordering and counts, rebuilt groups after window changes, bounded SVG nodes, REQ-only roving keyboard behavior, and light/dark readability.
+
+## Decisions
+
+- **D-01 — Group after window filtering.** Every header count, metric, and span covers exactly the REQs the chosen Timeline window lists.
+- **D-02 — Keep `TimelineRow` unchanged.** UR identity is joined client-side through `boardData.requests`, matching the Durations idiom and avoiding payload duplication.
+- **D-03 — Reuse the canonical Durations exclusion verdict.** Summed work consumes `excludedReason` instead of recreating duration validity policy.
+- **D-04 — Keep focus REQ-indexed.** Mapping REQ indices to flattened display indices allows non-focusable virtualized headers while retaining one Tab stop and existing Up/Down/Left/Right/Enter behavior.
+- **D-05 — Use frozen payload `now` for running groups.** Static reports remain deterministic and never present an open UR as closed at a stale last completion.
+
+## Discovered Tasks
+
+- Recalibrate `TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage` for Chromium headless shell 147: under a forced full-browser run, swallowing `setPointerCapture` no longer caused the expected dependency and the drag still completed.
+- `TestBrowserBehaviorTimelineBarsSurviveTheDetailDrawerOpening` failed once under forced full-suite load but passes alone; focused REQ-348 browser probes and canonical verification are green.
