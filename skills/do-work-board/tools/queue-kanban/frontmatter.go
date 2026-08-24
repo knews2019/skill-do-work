@@ -101,7 +101,16 @@ func parseFrontmatterFields(yamlText string) (map[string]any, error) {
 	// the whole block, which would silently drop the REQ's status, UR pointer, and
 	// dependencies. A line-based extraction recovers the remaining top-level fields
 	// so one bad line doesn't lose the record. unmarshalError is intentionally not
-	// returned — recovery is the contract here.
+	// returned: the caller has no better move than the salvaged fields, and losing
+	// the whole record is worse.
+	//
+	// This is a SALVAGE PATH, not a contract a writer may aim at. Its contract is
+	// narrower than the strict parser's in ways that are silent: it is flat and
+	// top-level only, so a nested map (estimate:) or a block scalar beside the bad
+	// line is dropped; and a value that opens "[" and closes "]" is re-read as a
+	// flow list, eating its commas. Writers of REQ frontmatter keep out of here by
+	// quoting user text per the Frontmatter Quoting contract
+	// (../../../do-work/actions/work-reference.md → Request File Schema).
 	_ = unmarshalError
 	return lenientFrontmatterFields(yamlText), nil
 }
