@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -83,6 +84,326 @@ type durationsHeadlineBrowserProbeResult struct {
 	CountTicksSeparate    bool       `json:"countTicksSeparate"`
 	CountTickTexts        []string   `json:"countTickTexts"`
 	ConsoleErrors         []string   `json:"consoleErrors"`
+}
+
+func durationsMarkActivationFixtureTickets() []*RequestTicket {
+	fixtureDay := time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC)
+	// Completion order and REQ-id order deliberately disagree. REQ-349's
+	// within-day jitter ranks by id, while a pre-jitter projection ranks by the
+	// completion instant. A trusted click at REQ-500's rendered centre therefore
+	// distinguishes the two targeting models instead of merely showing that some
+	// mark opens some drawer.
+	busyDaySamples := []struct {
+		requestId      string
+		completionHour int
+	}{
+		{requestId: "REQ-500", completionHour: 8},
+		{requestId: "REQ-100", completionHour: 9},
+		{requestId: "REQ-400", completionHour: 10},
+		{requestId: "REQ-200", completionHour: 11},
+		{requestId: "REQ-300", completionHour: 12},
+	}
+	tickets := make([]*RequestTicket, 0, len(busyDaySamples)+2)
+	for _, sample := range busyDaySamples {
+		completedAt := fixtureDay.Add(time.Duration(sample.completionHour) * time.Hour)
+		tickets = append(tickets, durationTicket(
+			sample.requestId, "B",
+			completedAt.Add(-10*time.Minute).Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		))
+	}
+	for anchorIndex, dayOffset := range []int{-2, 2} {
+		completedAt := fixtureDay.AddDate(0, 0, dayOffset).Add(10 * time.Hour)
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-60%d", anchorIndex), "A",
+			completedAt.Add(-20*time.Minute).Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		))
+	}
+	return tickets
+}
+
+func generateDurationsMarkActivationSite(t *testing.T) string {
+	t.Helper()
+	fixtureBoard := &Board{
+		GeneratedAt: time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC),
+		ProjectName: "REQ-354 Durations mark activation probe",
+		AllRequests: durationsMarkActivationFixtureTickets(),
+	}
+	siteDirectory := t.TempDir()
+	if generateError := generateStaticSite(siteDirectory, fixtureBoard); generateError != nil {
+		t.Fatalf("generate Durations mark activation fixture: %v", generateError)
+	}
+	return siteDirectory
+}
+
+// Every projected mark is one semantic control, but the chart costs only one Tab
+// press: Left/Right move the sole roving stop and Enter/Space activate the focused
+// REQ. The walk is exhaustive so a renderer that makes only the first few samples
+// keyboard-reachable cannot satisfy the contract by accident.
+func TestBrowserBehaviorDurationsMarksAreOneRovingTabStop(t *testing.T) {
+	siteDirectory := generateDurationsMarkActivationSite(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read Durations activation fixture: %v", readError)
+	}
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+function durationMarks() {
+  return Array.prototype.slice.call(document.querySelectorAll("#durations-chart circle.durations-mark"));
+}
+function pressDurationKey(keyName) {
+  document.activeElement.dispatchEvent(new KeyboardEvent("keydown", {
+    key: keyName, bubbles: true, cancelable: true, composed: true
+  }));
+}
+function durationMarkState() {
+  var marks = durationMarks();
+  var active = document.activeElement;
+  return {
+    ids: marks.map(function (mark) { return mark.getAttribute("data-detail-id") || ""; }),
+    roles: marks.map(function (mark) { return mark.getAttribute("role") || ""; }),
+    labels: marks.map(function (mark) { return mark.getAttribute("aria-label") || ""; }),
+    tabbableCount: marks.filter(function (mark) { return mark.getAttribute("tabindex") === "0"; }).length,
+    skippedCount: marks.filter(function (mark) { return mark.getAttribute("tabindex") === "-1"; }).length,
+    focusedId: active && active.getAttribute ? (active.getAttribute("data-detail-id") || "") : ""
+  };
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="durations"]').click();
+    document.querySelector('[data-durations-window="all"]').click();
+    var marks = durationMarks();
+    var initial = durationMarkState();
+    var forwardIds = [];
+    var forwardTabCounts = [];
+    marks[0].focus();
+    forwardIds.push(durationMarkState().focusedId);
+    forwardTabCounts.push(durationMarkState().tabbableCount);
+    for (var markIndex = 1; markIndex < marks.length; markIndex += 1) {
+      pressDurationKey("ArrowRight");
+      forwardIds.push(durationMarkState().focusedId);
+      forwardTabCounts.push(durationMarkState().tabbableCount);
+    }
+    var lastId = durationMarkState().focusedId;
+    pressDurationKey("Enter");
+    var enterDrawerId = document.getElementById("detail-id").textContent.trim();
+    var enterOpened = document.getElementById("detail-drawer").hidden === false;
+    document.getElementById("detail-close").click();
+    pressDurationKey(" ");
+    var spaceDrawerId = document.getElementById("detail-id").textContent.trim();
+    var spaceOpened = document.getElementById("detail-drawer").hidden === false;
+    document.getElementById("detail-close").click();
+    var reverseIds = [durationMarkState().focusedId];
+    for (var reverseIndex = 1; reverseIndex < marks.length; reverseIndex += 1) {
+      pressDurationKey("ArrowLeft");
+      reverseIds.push(durationMarkState().focusedId);
+    }
+    document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
+      href: location.href,
+      initial: initial,
+      forwardIds: forwardIds,
+      forwardTabCounts: forwardTabCounts,
+      reverseIds: reverseIds,
+      lastId: lastId,
+      enterOpened: enterOpened,
+      enterDrawerId: enterDrawerId,
+      spaceOpened: spaceOpened,
+      spaceDrawerId: spaceDrawerId,
+      final: durationMarkState(),
+      hoverSurfaceTabIndex: document.querySelector(".durations-hover-surface").getAttribute("tabindex")
+    });
+  }, 100);
+});
+</script>
+</body>`
+	probePage := strings.Replace(string(indexBytes), "</body>", probeScript, 1)
+	if probePage == string(indexBytes) {
+		t.Fatal("generated Durations activation page has no </body> injection point")
+	}
+	resultJSON := runBrowserBehaviorProbeInDirectory(
+		t, "Durations roving mark controls", siteDirectory, probePage,
+		"--window-size=1280,1000", "--virtual-time-budget=30000",
+	)
+	type markState struct {
+		IDs           []string `json:"ids"`
+		Roles         []string `json:"roles"`
+		Labels        []string `json:"labels"`
+		TabbableCount int      `json:"tabbableCount"`
+		SkippedCount  int      `json:"skippedCount"`
+		FocusedID     string   `json:"focusedId"`
+	}
+	var result struct {
+		Href                 string    `json:"href"`
+		Initial              markState `json:"initial"`
+		ForwardIDs           []string  `json:"forwardIds"`
+		ForwardTabCounts     []int     `json:"forwardTabCounts"`
+		ReverseIDs           []string  `json:"reverseIds"`
+		LastID               string    `json:"lastId"`
+		EnterOpened          bool      `json:"enterOpened"`
+		EnterDrawerID        string    `json:"enterDrawerId"`
+		SpaceOpened          bool      `json:"spaceOpened"`
+		SpaceDrawerID        string    `json:"spaceDrawerId"`
+		Final                markState `json:"final"`
+		HoverSurfaceTabIndex *string   `json:"hoverSurfaceTabIndex"`
+	}
+	if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
+		t.Fatalf("decode Durations roving probe: %v\n%s", decodeError, resultJSON)
+	}
+	if !strings.HasSuffix(result.Href, "/"+browserProbePageFileName) {
+		t.Fatalf("Durations roving probe measured %q, not its probe page", result.Href)
+	}
+	markCount := len(result.Initial.IDs)
+	if markCount < 7 {
+		t.Fatalf("Durations roving fixture rendered %d marks, want at least seven", markCount)
+	}
+	if result.Initial.TabbableCount != 1 || result.Initial.SkippedCount != markCount-1 || result.HoverSurfaceTabIndex != nil {
+		t.Errorf("initial Tab stops: marks 0/-1=%d/%d of %d, hover tabindex=%v; want 1/%d and no overlay stop",
+			result.Initial.TabbableCount, result.Initial.SkippedCount, markCount,
+			result.HoverSurfaceTabIndex, markCount-1)
+	}
+	for markIndex := range result.Initial.IDs {
+		if result.Initial.IDs[markIndex] == "" || result.Initial.Roles[markIndex] != "button" ||
+			!strings.Contains(result.Initial.Labels[markIndex], result.Initial.IDs[markIndex]) {
+			t.Errorf("mark %d semantics id/role/label = %q/%q/%q", markIndex,
+				result.Initial.IDs[markIndex], result.Initial.Roles[markIndex], result.Initial.Labels[markIndex])
+		}
+	}
+	if !reflect.DeepEqual(result.ForwardIDs, result.Initial.IDs) {
+		t.Errorf("ArrowRight walk = %q, want every projected mark in DOM order %q", result.ForwardIDs, result.Initial.IDs)
+	}
+	wantReverseIDs := append([]string(nil), result.Initial.IDs...)
+	for leftIndex, rightIndex := 0, len(wantReverseIDs)-1; leftIndex < rightIndex; leftIndex, rightIndex = leftIndex+1, rightIndex-1 {
+		wantReverseIDs[leftIndex], wantReverseIDs[rightIndex] = wantReverseIDs[rightIndex], wantReverseIDs[leftIndex]
+	}
+	if !reflect.DeepEqual(result.ReverseIDs, wantReverseIDs) {
+		t.Errorf("ArrowLeft walk = %q, want reverse projected order %q", result.ReverseIDs, wantReverseIDs)
+	}
+	for stepIndex, tabStopCount := range result.ForwardTabCounts {
+		if tabStopCount != 1 {
+			t.Errorf("ArrowRight step %d left %d tabbable marks, want one", stepIndex, tabStopCount)
+		}
+	}
+	if !result.EnterOpened || result.EnterDrawerID != result.LastID ||
+		!result.SpaceOpened || result.SpaceDrawerID != result.LastID {
+		t.Errorf("activation at %q: Enter open/id=%v/%q, Space open/id=%v/%q",
+			result.LastID, result.EnterOpened, result.EnterDrawerID, result.SpaceOpened, result.SpaceDrawerID)
+	}
+	if result.Final.FocusedID != result.Initial.IDs[0] || result.Final.TabbableCount != 1 {
+		t.Errorf("reverse walk ended focused/tabbable=%q/%d, want first mark %q and one stop",
+			result.Final.FocusedID, result.Final.TabbableCount, result.Initial.IDs[0])
+	}
+}
+
+// The pointer trial uses Chromium's real input path. It aims through the transparent
+// overlay at a busy-day circle whose REQ-349 jitter position names a different REQ
+// than the old completion-time position would. That mutation guard keeps "the drawer
+// opened" from passing when click targeting quietly drifts away from rendered marks.
+func TestBrowserBehaviorDurationsTrustedClickOpensJitteredMark(t *testing.T) {
+	siteDirectory := generateDurationsMarkActivationSite(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read Durations trusted-click fixture: %v", readError)
+	}
+	session := startTrustedInputBrowserSession(
+		t, "Durations trusted jittered mark click", siteDirectory, string(indexBytes),
+		"--window-size=1280,1000",
+	)
+	session.evaluateInPage(t, `(function () {
+  document.querySelector('[data-view-target="durations"]').click();
+  document.querySelector('[data-durations-window="all"]').click();
+  window.__durationTrustedClickTarget = "";
+  document.addEventListener("click", function (event) {
+    window.__durationTrustedClickTarget = event.target.getAttribute("class") || event.target.tagName;
+  }, true);
+  return true;
+})()`)
+	session.waitForPageCondition(t, "the all-history Durations marks to render",
+		`document.querySelectorAll("#durations-chart circle.durations-mark").length >= 7`)
+
+	type clickAim struct {
+		RequestID    string  `json:"requestId"`
+		RawNearestID string  `json:"rawNearestId"`
+		JitteredX    float64 `json:"jitteredX"`
+		RawX         float64 `json:"rawX"`
+		ViewportX    float64 `json:"viewportX"`
+		ViewportY    float64 `json:"viewportY"`
+	}
+	var aim clickAim
+	session.decodeResult(t, "Durations trusted-click aim", session.evaluateInPage(t, `(function () {
+  var samples = window.queueKanbanBoardData.durations.samples;
+  var targetIndex = samples.findIndex(function (sample) { return sample.id === "REQ-500"; });
+  var marks = Array.from(document.querySelectorAll("#durations-chart circle.durations-mark"));
+  var target = marks[targetIndex];
+  target.scrollIntoView({block: "center", inline: "center"});
+  var firstSampleMs = Date.parse(samples[0].completionTime);
+  var lastSampleMs = Date.parse(samples[samples.length - 1].completionTime);
+  var dayMs = 86400000;
+  var timeStart = Math.floor(firstSampleMs / dayMs) * dayMs;
+  var timeEnd = Math.floor(lastSampleMs / dayMs) * dayMs + dayMs;
+  var hoverSurface = document.querySelector("#durations-chart .durations-hover-surface");
+  var plotLeft = Number(hoverSurface.getAttribute("x"));
+  var plotWidth = Number(hoverSurface.getAttribute("width"));
+  var rawX = function (sample) {
+    return plotLeft + ((Date.parse(sample.completionTime) - timeStart) / (timeEnd - timeStart)) * plotWidth;
+  };
+  var targetX = Number(target.getAttribute("cx"));
+  var targetY = Number(target.getAttribute("cy"));
+  var rawNearest = samples.reduce(function (nearest, sample, sampleIndex) {
+    var markY = Number(marks[sampleIndex].getAttribute("cy"));
+    var distance = Math.abs(rawX(sample) - targetX) + Math.abs(markY - targetY) * 0.35;
+    return !nearest || distance < nearest.distance ? {id: sample.id, distance: distance} : nearest;
+  }, null);
+  var rect = target.getBoundingClientRect();
+  return {
+    requestId: samples[targetIndex].id,
+    rawNearestId: rawNearest.id,
+    jitteredX: targetX,
+    rawX: rawX(samples[targetIndex]),
+    viewportX: rect.left + rect.width / 2,
+    viewportY: rect.top + rect.height / 2
+  };
+})()`), &aim)
+	if aim.RequestID == "" || aim.RawNearestID == "" || aim.RawNearestID == aim.RequestID ||
+		math.Abs(aim.JitteredX-aim.RawX) < 1 {
+		t.Fatalf("trusted-click fixture is not mutation-sensitive: target=%q raw-nearest=%q jitter/raw x=%.2f/%.2f",
+			aim.RequestID, aim.RawNearestID, aim.JitteredX, aim.RawX)
+	}
+	session.dispatchTrustedMouseEvent(t, "mouseMoved", aim.ViewportX, aim.ViewportY, "none", 0)
+	hoverReadoutArrived := session.pageConditionHoldsWithin(t, "the jittered Durations hover readout",
+		`document.getElementById("durations-readout").textContent.indexOf("`+aim.RequestID+` ·") === 0`,
+		browserProbeGestureSettleDeadline)
+	var hoverReadout string
+	session.decodeResult(t, "Durations trusted-hover outcome", session.evaluateInPage(t,
+		`document.getElementById("durations-readout").textContent`), &hoverReadout)
+	session.pressTrustedMouseAt(t, aim.ViewportX, aim.ViewportY)
+	session.releaseTrustedMouseAt(t, aim.ViewportX, aim.ViewportY)
+	drawerOpened := session.pageConditionHoldsWithin(t, "the clicked Durations mark drawer to open",
+		`document.getElementById("detail-drawer").hidden === false`, browserProbeGestureSettleDeadline)
+	var outcome struct {
+		ClickTarget string `json:"clickTarget"`
+		DrawerID    string `json:"drawerId"`
+	}
+	session.decodeResult(t, "Durations trusted-click outcome", session.evaluateInPage(t, `({
+  clickTarget: window.__durationTrustedClickTarget,
+  drawerId: document.getElementById("detail-id").textContent.trim()
+})`), &outcome)
+	if !hoverReadoutArrived || !strings.HasPrefix(hoverReadout, aim.RequestID+" ·") {
+		t.Errorf("trusted hover at jittered %s read %q; raw targeting would choose %s",
+			aim.RequestID, hoverReadout, aim.RawNearestID)
+	}
+	if !drawerOpened {
+		t.Errorf("trusted click at jittered %s did not open the detail drawer (target %q, shown %q)",
+			aim.RequestID, outcome.ClickTarget, outcome.DrawerID)
+	}
+	if outcome.ClickTarget != "durations-hover-surface" {
+		t.Errorf("trusted click landed on %q, want the overlay that owns nearest-mark targeting", outcome.ClickTarget)
+	}
+	if outcome.DrawerID != aim.RequestID {
+		t.Errorf("trusted click at jittered %s opened %q; raw targeting would choose %s",
+			aim.RequestID, outcome.DrawerID, aim.RawNearestID)
+	}
 }
 
 func durationsHeadlineBrowserFixtureTickets() []*RequestTicket {
