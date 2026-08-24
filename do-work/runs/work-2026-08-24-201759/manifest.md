@@ -7,7 +7,7 @@ Status: in-progress
 | REQ-365 | `/root/build_req354` | `worktree-agent-REQ-365-a-tdd-req-must-name-a-test-file-in-its-write-set` | ready (`b7d2362`) | yes (`6265f1c`) |
 | REQ-366 | `/root/build_req360` | `worktree-agent-REQ-366-keep-dependency-gated-blocked-reqs-out-of-needs-input` | ready (`1961590`) | yes (`c18deb8`) |
 | REQ-367 | `/root/review_req360_premerge` | `worktree-agent-REQ-367-copy-all-reqs-per-board-column` | ready (`5dea6e5`) | yes (`66e8de5`) |
-| REQ-371 | `/root/build_req354` | `worktree-agent-REQ-371-keep-timeline-bars-inside-the-plot-after-the-drawer-opens` | ready (`47d19b6`) | no |
+| REQ-371 | `/root/build_req354` | `worktree-agent-REQ-371-keep-timeline-bars-inside-the-plot-after-the-drawer-opens` | ready (`d7cef79`) | no |
 | REQ-368 | `/root/build_req360` | `worktree-agent-REQ-368-ur-copy-all-includes-its-reqs` | pending | no |
 
 Implementation runs concurrently in isolated worktrees. Integration, verification, review, release,
