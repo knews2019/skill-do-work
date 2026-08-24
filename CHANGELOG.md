@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.40 — Structural Warnings Name the Actual Repair (2026-08-24)
+
+Queue verification now distinguishes a missing opening fence from a missing closing one, calls filename-recovered IDs a caution rather than damage, and recognizes documented UR-less request schemas without a directory exception.
+
+- Legacy records now conform through their data where the source UR is evidenced; code-review templates remain correctly UR-less by their frontmatter shape
+- A typo status stays visibly invalid on the board and its warning banner, without being repeated in the generic verification strip
+
 ## 0.236.39 — Durations Marks Can Show Their UR or Domain (2026-08-24)
 
 Dense Durations charts can now reveal a mark's identity without changing what the chart measures.

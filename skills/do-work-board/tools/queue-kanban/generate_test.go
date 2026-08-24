@@ -5943,6 +5943,14 @@ func TestGeneratedBoardDataCarriesVerifyFindingsWithoutTheOnesTheBoardAlreadySho
 		{"do-work/archive/REQ-821-anomaly.md",
 			"---\nid: REQ-821\ntitle: fixture\nstatus: completed\n" +
 				"claimed_at: 2026-08-19T10:00:00Z\ncompleted_at: 2026-08-19T09:00:00Z\n---\n"},
+		// An unrecognized status reaches the verifier but already appears in the
+		// board's Needs input / Blocked strip, so its prose is suppressed.
+		{"do-work/queue/REQ-822-unrecognized-status.md",
+			"---\nid: REQ-822\ntitle: fixture\nstatus: pnding\nuser_request: UR-900\n---\n"},
+		// Structural damage has no separate board strip and must keep reaching the
+		// payload even as unrecognized status is suppressed.
+		{"do-work/queue/REQ-823-missing-user-request.md",
+			"---\nid: REQ-823\ntitle: fixture\nstatus: pending\n---\n"},
 	})
 	moment := claimedAt.Add(4 * time.Hour)
 
@@ -5957,6 +5965,7 @@ func TestGeneratedBoardDataCarriesVerifyFindingsWithoutTheOnesTheBoardAlreadySho
 	attachVerifyFindings(&boardData, board, moment)
 
 	sawStaleClaim := false
+	sawStructuralDamage := false
 	for _, finding := range boardData.VerifyFindings {
 		if boardRenderedVerifyCategories[finding.Category] {
 			t.Errorf("suppressed category %q reached verifyFindings: %s", finding.Category, finding.Detail)
@@ -5967,15 +5976,24 @@ func TestGeneratedBoardDataCarriesVerifyFindingsWithoutTheOnesTheBoardAlreadySho
 				t.Error("stale-claim finding reached the page without its remedy")
 			}
 		}
+		if finding.Category == verifyCategoryStructurallyDamagedRequest {
+			sawStructuralDamage = true
+		}
 	}
 	if !sawStaleClaim {
 		t.Errorf("verifyFindings carries no stale-claim finding: %+v", boardData.VerifyFindings)
+	}
+	if !sawStructuralDamage {
+		t.Errorf("verifyFindings lost structural damage while suppressing board-rendered findings: %+v", boardData.VerifyFindings)
 	}
 	// The anomaly must still exist as a finding — it is suppressed from the page,
 	// not from verify. Otherwise this test would pass on a probe that stopped working.
 	report := collectVerifyFindings(repoRoot, board, moment)
 	if anomalies := findingsMentioning(report, verifyCategoryCompletionAnomaly); len(anomalies) == 0 {
 		t.Error("the fixture produced no completion anomaly, so the suppression assertion proves nothing")
+	}
+	if statuses := findingsMentioning(report, verifyCategoryUnrecognizedRequestStatus); len(statuses) == 0 {
+		t.Error("the fixture produced no unrecognized status, so its suppression assertion proves nothing")
 	}
 }
 

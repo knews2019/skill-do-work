@@ -523,15 +523,18 @@ type generatedVerifyFinding struct {
 
 // boardRenderedVerifyCategories are the findings the board already shows by other
 // means, so forwarding them would print the same prose a second or third time:
-// duplicate ids and stray files arrive through board.Warnings, and completion
-// anomalies additionally through their own column and a per-card badge.
+// duplicate ids and stray files arrive through board.Warnings, completion
+// anomalies additionally through their own column and a per-card badge. An
+// unrecognized status already reaches the warning banner, its parked Needs input
+// / Blocked column, and that card's invalid-status badge.
 //
 // Suppression happens here, in the producer, so the client can render the list
 // blindly and no second copy of this judgment lives in JavaScript.
 var boardRenderedVerifyCategories = map[string]bool{
-	verifyCategoryCompletionAnomaly:  true,
-	verifyCategoryDuplicateRequestId: true,
-	verifyCategoryStrayRequestFile:   true,
+	verifyCategoryCompletionAnomaly:         true,
+	verifyCategoryDuplicateRequestId:        true,
+	verifyCategoryStrayRequestFile:          true,
+	verifyCategoryUnrecognizedRequestStatus: true,
 }
 
 // attachVerifyFindings runs the probe set against an already-built board and folds
