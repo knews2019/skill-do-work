@@ -34,9 +34,9 @@ same primitive across every caller before calling the class closed, and the batc
 helper carries both of them. A third, smaller instance sits in the helper REQ-325 did fix.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `prime-shell-commands.md` and the archived REQ-325. Reused REQ-325's two fixes (trap-before-staging reorder; defer-and-re-raise across the publish window) and measured instance 3 before committing to it.
+- [x] **[APPLY]:** Two files changed, both inside the declared write set. `generate-report-image.sh` and its case file were declared but deliberately left untouched — instance 3 is refuted, so there was nothing to fix.
+- [x] **[UNIFY]:** Audited by the orchestrator against the merged range `dceac86..da5e605`: confirmed `mktemp -d` (line 169) now sits below the trap installations (161-163), the defer/resume pair brackets the launch (95, 114), and the zombie refutation reproduces independently (a bash background child stops answering `kill -0`; a genuine perl-forked zombie answers).
 
 ## Why
 
@@ -48,17 +48,17 @@ staging is removed". Today that statement is true only for an interruption that 
 
 ## Instances
 
-- [ ] **`generate-report-image-batch.sh` creates its staging directory before any interruption trap
+- [x] **CLOSED — `generate-report-image-batch.sh` creates its staging directory before any interruption trap
   exists.** `mktemp -d` at `:36`, HUP/INT/TERM traps at `:131-133`. A signal in between takes the
   default action, so the EXIT trap never runs and `.generated.staging.*` is left in the report
   directory. This is the batch's twin of REQ-325's D-03; the fix there was a two-line reorder.
   Judged `impact-user-visible`.
-- [ ] **`launch_report_image` has the publish-the-PID window REQ-325 closed, one array append
+- [x] **CLOSED — `launch_report_image` has the publish-the-PID window REQ-325 closed, one array append
   wider.** `"$report_image_helper" … &` (`:67`), then `image_helper_pid=$!`, then the
   `image_generation_pids+=()` append — and `terminate_report_image_batch` reads only the array, so an
   interruption inside that window reaps nothing. REQ-325's fix was to defer HUP/INT/TERM across the
   window and re-raise after publication. Judged `impact-user-visible`.
-- [ ] **`terminate_backend_process`'s grace loop counts an unreaped zombie as alive**
+- [~] **REFUTED — `terminate_backend_process`'s grace loop counts an unreaped zombie as alive**
   (`generate-report-image.sh:83-89`). `kill -0` on a child that has exited but has not been `wait`ed
   succeeds, so every interrupted invocation spins the full 10 × 0.1s budget and then sends a
   redundant KILL. Costs a second each time and makes the grace budget unreadable as a real timeout.
@@ -110,3 +110,51 @@ request.
 
 ---
 *Source: Discovered Tasks, REQ-325 (UR-065) — the same primitive, swept across its caller.*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** A sweep with three named instances at named line numbers, but each needed its own reproduction before a fix could be justified, and REQ-325's archived fixes had to be located and reused. Clear what, discovery needed on how each reproduces.
+
+**Planning:** Not required.
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work-toolbox/scripts/generate-report-image-batch.sh` (modify) — instances 1 and 2
+- `_dev/tests/prescribed-shell-cases/generate-report-image-batch.sh` (modify) — fixture case for instance 1, watchdog on the existing interrupted case
+
+**Files I will NOT touch:** `skills/do-work-toolbox/scripts/generate-report-image.sh` and its case file — declared in the capture-seeded write set for instance 3, which is refuted, so nothing there is broken.
+
+**Acceptance criteria (restated from REQ):**
+- [x] Each instance closed or explicitly refuted with evidence
+- [x] The batch's fixture gains cases for the instances that land there
+- [x] Existing batch assertions not weakened (parallel launch, retained per-image statuses, all-or-nothing publication)
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-toolbox/scripts/generate-report-image-batch.sh` (modified)
+- `_dev/tests/prescribed-shell-cases/generate-report-image-batch.sh` (modified)
+
+**What was done:** Moved the batch's `mktemp -d` staging creation below its HUP/INT/TERM trap installations, closing the window where a signal took the default action and left `.generated.staging.*` in the user's report directory. Added a defer/re-raise pair around `launch_report_image`'s fork so an interruption between the background launch and the third array append can no longer orphan a helper and its backend. The three trap installations now call one named `interrupt_report_image_batch <status>` so the deferral re-raises exactly what the traps do. Instance 3 was measured and refuted: no change made.
+
+## Verification of the Refutation
+
+The orchestrator re-derived instance 3 independently rather than accepting the builder's measurement:
+
+```
+bash child: kill -0 fails (builder right)
+genuine zombie 26710: kill -0 SUCCEEDS (premise's general claim holds)
+```
+
+The premise's general claim about zombies is true; its antecedent is not, because bash reaps a background child asynchronously in its SIGCHLD handler. The grace loop therefore exits on the first tick (~105ms measured end-to-end), not the tenth, and no interrupted invocation costs an extra second. Declining to ship a change here is the correct outcome.
