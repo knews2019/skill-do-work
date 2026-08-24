@@ -3249,8 +3249,36 @@ function timelineGroupingSnapshot() {
   };
 }
 
-function afterTimelineFrames(callback) {
-  setTimeout(callback, 50);
+// Wait on the table's own rebuild boundary, never on an elapsed duration. The
+// renderer replaces every row in one scheduled frame, so a new first row proves
+// that the requested window reached the complete table rather than merely the
+// controls. The deadline only lets a real missing rebuild report its state instead
+// of leaving an empty probe result forever.
+function afterTimelineTableRebuild(trigger, callback) {
+  var tableBody = document.getElementById("timeline-table-body");
+  var previousFirstRow = tableBody.firstElementChild;
+  var finished = false;
+  var observer = new MutationObserver(function () {
+    var currentFirstRow = tableBody.firstElementChild;
+    var rebuildObserved = !!currentFirstRow && currentFirstRow !== previousFirstRow;
+    if (!rebuildObserved || finished) {
+      return;
+    }
+    finished = true;
+    observer.disconnect();
+    clearTimeout(deadline);
+    callback({ hadPreviousRow: !!previousFirstRow, rebuildObserved: true });
+  });
+  observer.observe(tableBody, { childList: true });
+  var deadline = setTimeout(function () {
+    if (finished) {
+      return;
+    }
+    finished = true;
+    observer.disconnect();
+    callback({ hadPreviousRow: !!previousFirstRow, rebuildObserved: false });
+  }, 10000);
+  trigger();
 }
 window.addEventListener("load", function () {
   setTimeout(function () {
@@ -3259,14 +3287,18 @@ window.addEventListener("load", function () {
       var table = document.querySelector("#view-timeline .timeline-table");
       table.open = true;
       table.dispatchEvent(new Event("toggle"));
-      document.getElementById("timeline-zoom-fit").click();
-      afterTimelineFrames(function () {
+      afterTimelineTableRebuild(function () {
+        document.getElementById("timeline-zoom-fit").click();
+      }, function (fitAllRebuild) {
         var fitAll = timelineGroupingSnapshot();
-        document.querySelector('[data-timeline-period="day"]').click();
-        afterTimelineFrames(function () {
+        afterTimelineTableRebuild(function () {
+          document.querySelector('[data-timeline-period="day"]').click();
+        }, function (dayRebuild) {
           document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
             fitAll: fitAll,
-            day: timelineGroupingSnapshot()
+            day: timelineGroupingSnapshot(),
+            fitAllRebuild: fitAllRebuild,
+            dayRebuild: dayRebuild
           });
         });
       });
@@ -3304,14 +3336,30 @@ window.addEventListener("load", function () {
 		ViewportHeight     float64        `json:"viewportHeight"`
 	}
 	var groupingResult struct {
-		FitAll groupingSnapshot `json:"fitAll"`
-		Day    groupingSnapshot `json:"day"`
+		FitAll        groupingSnapshot `json:"fitAll"`
+		Day           groupingSnapshot `json:"day"`
+		FitAllRebuild struct {
+			HadPreviousRow  bool `json:"hadPreviousRow"`
+			RebuildObserved bool `json:"rebuildObserved"`
+		} `json:"fitAllRebuild"`
+		DayRebuild struct {
+			HadPreviousRow  bool `json:"hadPreviousRow"`
+			RebuildObserved bool `json:"rebuildObserved"`
+		} `json:"dayRebuild"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &groupingResult); decodeError != nil {
 		t.Fatalf("decode timeline user-request grouping: %v (output %q)", decodeError, probeOutput)
 	}
 	if groupingResult.FitAll.Href == "" || !strings.HasSuffix(groupingResult.FitAll.Href, "probe.html") {
 		t.Fatalf("measured on %q, not the probe page", groupingResult.FitAll.Href)
+	}
+	if !groupingResult.FitAllRebuild.HadPreviousRow || !groupingResult.DayRebuild.HadPreviousRow {
+		t.Fatalf("the table rebuild wait was armed without an existing row (Fit all %t, Day %t); the node-replacement condition is vacuous",
+			groupingResult.FitAllRebuild.HadPreviousRow, groupingResult.DayRebuild.HadPreviousRow)
+	}
+	if !groupingResult.FitAllRebuild.RebuildObserved || !groupingResult.DayRebuild.RebuildObserved {
+		t.Fatalf("the requested Timeline table rebuild was not observed (Fit all %t, Day %t)",
+			groupingResult.FitAllRebuild.RebuildObserved, groupingResult.DayRebuild.RebuildObserved)
 	}
 	if groupingResult.FitAll.VisibleRowCount == 0 {
 		t.Fatal("the generated board rendered no Timeline REQ rows, so the grouping assertion is vacuous")
