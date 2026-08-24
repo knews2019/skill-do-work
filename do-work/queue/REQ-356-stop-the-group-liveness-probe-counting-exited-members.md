@@ -1,8 +1,8 @@
 ---
 id: REQ-356
 title: "[impact-rule-change] Stop the group liveness probe counting exited members as alive"
-status: claimed
-claimed_at: 2026-08-24T13:05:00Z
+status: pending
+status_changed_at: 2026-08-24T13:33:27Z
 created_at: 2026-08-24T09:35:00Z
 user_request: UR-065
 addendum_to: REQ-340
@@ -13,7 +13,6 @@ tdd: true
 suggested_spec: bug-fix
 depends_on: []
 maintenance: false
-route: C
 sweep: true
 sweep_key: group-liveness-probe-counts-unreaped-members
 impact: impact-rule-change

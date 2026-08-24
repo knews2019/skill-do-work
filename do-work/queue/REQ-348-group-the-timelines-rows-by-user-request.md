@@ -2,6 +2,7 @@
 id: REQ-348
 title: "Group the Timeline's rows by user request"
 status: pending
+status_changed_at: 2026-08-24T13:33:27Z
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
 domain: frontend

@@ -1,8 +1,9 @@
 ---
 id: REQ-358
 title: "Review fix: tell a broken closing fence from a missing opening one"
-status: claimed
-claimed_at: 2026-08-24T13:05:00Z
+status: cancelled
+completed_at: 2026-08-24T13:42:26Z
+status_changed_at: 2026-08-24T13:33:27Z
 created_at: 2026-08-24T10:40:00Z
 user_request: UR-068
 addendum_to: REQ-343
@@ -13,7 +14,6 @@ tdd: true
 suggested_spec: bug-fix
 depends_on: []
 maintenance: false
-route: A
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 write_set:
@@ -86,3 +86,9 @@ missing its opening fence still reports the current wording; and both shapes are
 
 ---
 *Source: REQ-343 review finding I1 (UR-068).*
+
+## Cancelled
+
+- **When:** 2026-08-24T13:42:26Z
+- **Why:** folded into REQ-357 (sweep `req-343-structural-probe-remediation`) at the maintainer's instruction — the fence-wording fix survives as an instance there; nothing was dropped
+- **Decided by:** user, via `do-work clarify` fold confirmation
