@@ -23,7 +23,6 @@ Nine REQs archived, releases 0.236.34 through 0.236.38.
 
 ## In Progress (interrupted)
 
-- REQ-361 — claimed 2026-08-24T18:57:05Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 - REQ-362 — claimed 2026-08-24T18:57:05Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 - REQ-364 — claimed 2026-08-24T18:57:05Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 

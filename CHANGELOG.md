@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.51 — Containment Narrowing Becomes Executable (2026-08-24)
+
+Containment rules can no longer be weakened by adding a quiet exception while leaving their broad wording intact.
+
+- Exact captured scope, threshold, advisory, first-line, and checklist narrowings now fail for named reasons
+- Frontmatter fields are derived from schema and checked in discriminated REQ/UR examples across every shipped package
+- Legitimate equivalent universal wording remains editable and green
+
 ## 0.236.50 — Outside Text Fails Closed (2026-08-24)
 
 User-supplied text now follows one containment contract across every do-work record writer, so control bytes and YAML edge cases cannot silently change how a record is read.

@@ -1,9 +1,11 @@
 ---
 id: REQ-361
 title: "[impact-rule-change] Make the neutralization lock-in catch narrowing"
-status: claimed
+status: completed
 claimed_at: 2026-08-24T18:57:05Z
-status_changed_at: 2026-08-24T18:57:05Z
+completed_at: 2026-08-24T19:42:36Z
+commit: f5181f4eeab72e7395543ee6e0edf20a31227e0a
+status_changed_at: 2026-08-24T19:42:36Z
 route: C
 created_at: 2026-08-24T10:50:00Z
 user_request: UR-068
@@ -41,9 +43,9 @@ It does not catch narrowing by **added qualifier**: six plausible narrowings tha
 phrases byte-intact pass unchanged. Two of them reintroduce the original defect outright.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Mapped branch-level semantic clauses, scoped contradiction detectors, schema-derived governed fields, fenced examples, and every required insertion mutation before editing.
+- [x] **[APPLY]:** Replaced loose vocabulary checks with semantic/contradiction ratchets and added all seven body-contract plus sibling Frontmatter Quoting mutation trials in the declared one-file scope.
+- [x] **[UNIFY]:** Reviewed the exact one-file diff; shell syntax, focused contract regressions, canonical maintainer verification, legitimate-rewording controls, mutation vacuity, and artifact checks passed.
 
 ## Why
 
@@ -162,3 +164,43 @@ build them together rather than twice:
 - All seven insertion narrowings fail for named reasons while legitimate equivalent rewording and the existing replacement mutations retain their intended outcomes.
 - Frontmatter Quoting derives its governed inventory from the schema, scans fenced examples only, and fails on deletion, narrowing, unsafe examples, or a newly governed field without a second field list.
 - Focused contract regressions and canonical maintainer verification pass with non-vacuity guards intact.
+
+## Implementation Summary
+
+- `_dev/tests/contract-regressions.sh` (modified): replaces loose neutralization word-presence checks with branch-level semantic clauses and scoped contradiction detection; adds all seven insertion narrowings, legitimate equivalent-rewording controls, schema-derived Frontmatter Quoting inventory, fenced-example scanning, and deletion/narrowing/unsafe/future-field mutations.
+
+## Decisions
+
+- **D-01 — Derive governed fields, never maintain a second field list.** The schema's `raw user text` and `escaping encoder` annotations decide membership; the current seven-field count is only a vacuity floor, so a future annotated field joins automatically.
+- **D-02 — Detect scoped contradictions alongside positive meaning.** Positive clauses preserve editability and synonym/order variation; named restriction patterns make an inserted narrowing fail even when every broad phrase remains present.
+- **D-03 — Treat fenced blocks as copyable examples.** Inline code stays excluded so the contract's own unsafe counterexample cannot make the shipped-example scanner fail by design.
+
+## Discovered Tasks
+
+None.
+
+## Testing
+
+- TDD RED: the first inserted closed-list narrowing preserved every positive phrase and escaped the original matrix; the new detector reported that exact escape before implementation was complete.
+- GREEN: focused contract regressions caught all seven insertion classes, prior replacement mutations, schema inheritance deletion, current-field-only reach, unsafe fenced scalar form, and future governed-field growth while accepting legitimate branch rewording.
+- Shell syntax, diff checks, and the exact-commit canonical maintainer gate passed; the optional browser lane performed its standard no-browser skip because this REQ has no browser surface.
+- Initial independent review replayed the captured RED strings and found six still escaped, the shipped-example scan stopped at `skills/do-work`, equivalent universal prose remained overfit, and schema self-counting made example non-vacuity ineffective. One-file remediation added the exact original qualifier set, manifest-driven suite-wide REQ/UR scanning with a toolbox mutation, broader equivalent universal parsing, and independent example coverage.
+- Post-remediation focused contract regressions and the final main-tree canonical maintainer gate passed. Direct re-review probes confirmed every original harmful string returns a named defect, the equivalent universal rewrite remains clean, and schema-only/future-field/toolbox cases are non-vacuous.
+
+## Qualification
+
+- Exact cumulative merge range `0924cf9..f5181f4` passed mechanical qualification after remediation.
+- Scope drift passed: the one changed file exactly matches the declared Scope and Implementation Summary.
+- Orchestrator judgment confirmed substantive semantic/contradiction checks, schema-derived data flow, suite-wide discriminated example scanning, executable vacuity controls, and no generated/debug artifacts.
+
+## Review
+
+Independent review initially required changes with two Important and two Minor findings: the builder's alternate mutations missed the captured RED set, shipped examples outside core were invisible, equivalent prose was overfit, and schema lines satisfied their own occurrence check. Remediation closed all four. Final review approved with no Critical, Important, Minor, or Nit findings: correctness 95%, acceptance completeness 100%, regression safety 95%, maintainability/edit tolerance 90%, scope discipline 100%, overall 96%, low residual risk, acceptance pass.
+
+## Lessons Learned
+
+A mutation ratchet must replay the defect's captured strings, not only a newly invented set with similar intent. Positive semantic checks also need explicit contradiction trials and an independently sourced example corpus, or broad wording and schema discovery can satisfy themselves.
+
+## Orientation
+
+Released in 0.236.51. Neutralization and Frontmatter Quoting checks now catch inserted scope/advisory narrowings, derive governed fields from schema, and scan discriminated REQ/UR examples across every shipped suite package.
