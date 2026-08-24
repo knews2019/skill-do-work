@@ -3829,13 +3829,43 @@ completed_at: 2026-08-07T12:00:00Z
 ## Implementation Summary
 
 **Files changed:**
-- `legacy-file.txt` (modified)
+- `legacy-file.txt`, `second-file.txt` (modified)
+- Notes mention `phantom-file.txt`, but this prose bullet claims no file.
 EOF
-if ! associate_complete_output="$(printf 'legacy-file.txt\n' | "$core_root/tools/checks/associate-files.sh" --repo-root "$associate_complete_probe_dir")" || ! printf '%s\n' "$associate_complete_output" | grep -qxF "$(printf 'REQ-501\tlegacy-file.txt')"; then
-  printf 'FAIL: tools/checks/associate-files.sh must associate a status: complete REQ after normalizing the documented terminal-success alias.\n' >&2
+if ! associate_complete_output="$(printf 'legacy-file.txt\nsecond-file.txt\nphantom-file.txt\n' | "$core_root/tools/checks/associate-files.sh" --repo-root "$associate_complete_probe_dir")" \
+    || ! printf '%s\n' "$associate_complete_output" | grep -qxF "$(printf 'REQ-501\tlegacy-file.txt')" \
+    || ! printf '%s\n' "$associate_complete_output" | grep -qxF "$(printf 'REQ-501\tsecond-file.txt')" \
+    || ! printf '%s\n' "$associate_complete_output" | grep -qxF -- "$(printf -- '-\tphantom-file.txt')"; then
+  printf 'FAIL: tools/checks/associate-files.sh must associate every path on a multi-path bullet, preserve root-level filenames, ignore prose-only backticks, and normalize the documented terminal-success alias.\n' >&2
   fail_count=$((fail_count + 1))
 fi
 rm -rf -- "$associate_complete_probe_dir"
+
+associate_unmatched_probe_dir="$(mktemp -d)"
+mkdir -p "$associate_unmatched_probe_dir/do-work/archive/UR-301"
+cat > "$associate_unmatched_probe_dir/do-work/archive/UR-301/REQ-502-unmatched-summary.md" <<'EOF'
+---
+id: REQ-502
+status: completed
+completed_at: 2026-08-07T12:00:00Z
+---
+
+## Implementation Summary
+
+**Files changed:**
+- `legacy-file.txt`, `unclosed-file.txt
+EOF
+if associate_unmatched_output="$(printf 'legacy-file.txt\n' | "$core_root/tools/checks/associate-files.sh" --repo-root "$associate_unmatched_probe_dir" 2>&1)"; then
+  associate_unmatched_exit=0
+else
+  associate_unmatched_exit=$?
+fi
+if [ "$associate_unmatched_exit" -ne 2 ] || ! grep -qF 'PARSE-FAILED:' <<<"$associate_unmatched_output"; then
+  printf 'FAIL: tools/checks/associate-files.sh must fail loudly with exit 2 when a path-led Implementation Summary bullet has an unmatched backtick; got exit %s: %s\n' \
+    "$associate_unmatched_exit" "$associate_unmatched_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+rm -rf -- "$associate_unmatched_probe_dir"
 
 # A git-status failure is not a clean tree. Process substitution used to hide
 # the producer's failure, making a bare repository return the clean-tree exit 1.
@@ -3989,6 +4019,191 @@ if [ "$scope_drift_absent_exit" -ne 2 ] || ! grep -qF 'SKIP:' <<<"$scope_drift_a
     "$scope_drift_absent_exit" "$scope_drift_absent_output" >&2
   fail_count=$((fail_count + 1))
 fi
+
+# REQ-344 touched nine files against two declarations. Its seven undeclared paths
+# were grouped behind two bullet-leading paths, so the old first-token parser
+# reported only two of seven. Pin the complete set, not just a nonzero exit.
+cat > "$scope_drift_probe_dir/req-344-multi-path.md" <<'EOF'
+---
+id: REQ-903
+status: working
+---
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work-board/tools/queue-kanban/frontmatter.go` (modify)
+- `skills/do-work-board/tools/queue-kanban/frontmatter_test.go` (modify)
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-toolbox/actions/code-review.md`, `skills/do-work/actions/capture-reference.md`, `skills/do-work/actions/capture.md`, `skills/do-work/actions/clarify.md`, `skills/do-work-board/tools/queue-kanban/frontmatter.go` (modified)
+- `skills/do-work/actions/work-reference.md`, `skills/do-work/actions/work.md`, `skills/do-work/docs/capture-guide.md`, `skills/do-work-board/tools/queue-kanban/frontmatter_test.go` (modified)
+EOF
+if scope_drift_req344_output="$("$core_root/tools/checks/scope-drift.sh" \
+    "$scope_drift_probe_dir/req-344-multi-path.md" 2>&1)"; then
+  scope_drift_req344_exit=0
+else
+  scope_drift_req344_exit=$?
+fi
+scope_drift_req344_expected_paths=(
+  'skills/do-work-toolbox/actions/code-review.md'
+  'skills/do-work/actions/capture-reference.md'
+  'skills/do-work/actions/capture.md'
+  'skills/do-work/actions/clarify.md'
+  'skills/do-work/actions/work-reference.md'
+  'skills/do-work/actions/work.md'
+  'skills/do-work/docs/capture-guide.md'
+)
+scope_drift_req344_missing=0
+for scope_drift_req344_path in "${scope_drift_req344_expected_paths[@]}"; do
+  if ! grep -qxF "  $scope_drift_req344_path" <<<"$scope_drift_req344_output"; then
+    scope_drift_req344_missing=1
+  fi
+done
+if [ "$scope_drift_req344_exit" -ne 1 ] \
+    || [ "$scope_drift_req344_missing" -ne 0 ] \
+    || ! grep -qF 'DRIFT: touched but never declared in ## Scope:' <<<"$scope_drift_req344_output" \
+    || grep -qF 'DRIFT: declared in ## Scope but never touched:' <<<"$scope_drift_req344_output"; then
+  printf 'FAIL: tools/checks/scope-drift.sh must report REQ-344\047s exact seven undeclared paths from multi-path bullets and no false unused declarations; got exit %s: %s\n' \
+    "$scope_drift_req344_exit" "$scope_drift_req344_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# Both sides must consume every closed backtick pair. Matching first tokens make
+# this fixture a false OK if either parser falls back to its first-token behavior;
+# root-level filenames prove that a slash heuristic cannot silently disarm it.
+cat > "$scope_drift_probe_dir/symmetric-multi-path.md" <<'EOF'
+---
+id: REQ-904
+status: working
+---
+
+## Scope
+
+**Files I will touch:**
+- `src/shared.sh`, `scope-only.txt`, `justfile` (modify)
+
+## Implementation Summary
+
+**Files changed:**
+- `src/shared.sh`, `summary-only.txt`, `README.md` (modified)
+EOF
+if scope_drift_symmetric_output="$("$core_root/tools/checks/scope-drift.sh" \
+    "$scope_drift_probe_dir/symmetric-multi-path.md" 2>&1)"; then
+  scope_drift_symmetric_exit=0
+else
+  scope_drift_symmetric_exit=$?
+fi
+scope_drift_symmetric_expected=(
+  '  README.md'
+  '  summary-only.txt'
+  '  justfile'
+  '  scope-only.txt'
+)
+scope_drift_symmetric_missing=0
+for scope_drift_symmetric_path in "${scope_drift_symmetric_expected[@]}"; do
+  if ! grep -qxF "$scope_drift_symmetric_path" <<<"$scope_drift_symmetric_output"; then
+    scope_drift_symmetric_missing=1
+  fi
+done
+if [ "$scope_drift_symmetric_exit" -ne 1 ] \
+    || [ "$scope_drift_symmetric_missing" -ne 0 ] \
+    || ! grep -qF 'DRIFT: touched but never declared in ## Scope:' <<<"$scope_drift_symmetric_output" \
+    || ! grep -qF 'DRIFT: declared in ## Scope but never touched:' <<<"$scope_drift_symmetric_output"; then
+  printf 'FAIL: tools/checks/scope-drift.sh must compare every later path on both multi-path bullets, including filename-only paths; got exit %s: %s\n' \
+    "$scope_drift_symmetric_exit" "$scope_drift_symmetric_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+cat > "$scope_drift_probe_dir/matching-multi-path.md" <<'EOF'
+---
+id: REQ-905
+status: working
+---
+
+## Scope
+
+**Files I will touch:**
+- `src/shared.sh`, `.gitignore`, `justfile` (modify)
+
+## Implementation Summary
+
+**Files changed:**
+- `src/shared.sh`, `.gitignore`, `justfile` (modified)
+EOF
+if scope_drift_matching_output="$("$core_root/tools/checks/scope-drift.sh" \
+    "$scope_drift_probe_dir/matching-multi-path.md" 2>&1)"; then
+  scope_drift_matching_exit=0
+else
+  scope_drift_matching_exit=$?
+fi
+if [ "$scope_drift_matching_exit" -ne 0 ] || ! grep -qF 'OK:' <<<"$scope_drift_matching_output"; then
+  printf 'FAIL: tools/checks/scope-drift.sh must accept identical multi-path lists containing root-level filenames; got exit %s: %s\n' \
+    "$scope_drift_matching_exit" "$scope_drift_matching_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+cat > "$scope_drift_probe_dir/prose-backticks.md" <<'EOF'
+---
+id: REQ-906
+status: working
+---
+
+## Scope
+
+**Files I will touch:**
+- `src/shared.sh` (modify)
+
+## Implementation Summary
+
+**Files changed:**
+- `src/shared.sh` (modified)
+- Notes mention `README.md` and `sort -u`, but this prose bullet claims no file.
+EOF
+if scope_drift_prose_output="$("$core_root/tools/checks/scope-drift.sh" \
+    "$scope_drift_probe_dir/prose-backticks.md" 2>&1)"; then
+  scope_drift_prose_exit=0
+else
+  scope_drift_prose_exit=$?
+fi
+if [ "$scope_drift_prose_exit" -ne 0 ] || ! grep -qF 'OK:' <<<"$scope_drift_prose_output"; then
+  printf 'FAIL: tools/checks/scope-drift.sh must ignore backticked spans on prose-only bullets; got exit %s: %s\n' \
+    "$scope_drift_prose_exit" "$scope_drift_prose_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+for scope_drift_unmatched_side in scope summary; do
+  cat > "$scope_drift_probe_dir/unmatched-$scope_drift_unmatched_side.md" <<EOF
+---
+id: REQ-907
+status: working
+---
+
+## Scope
+
+**Files I will touch:**
+$(if [ "$scope_drift_unmatched_side" = scope ]; then printf '%s\n' '- `src/shared.sh`, `unclosed.txt'; else printf '%s\n' '- `src/shared.sh` (modify)'; fi)
+
+## Implementation Summary
+
+**Files changed:**
+$(if [ "$scope_drift_unmatched_side" = summary ]; then printf '%s\n' '- `src/shared.sh`, `unclosed.txt'; else printf '%s\n' '- `src/shared.sh` (modified)'; fi)
+EOF
+  if scope_drift_unmatched_output="$("$core_root/tools/checks/scope-drift.sh" \
+      "$scope_drift_probe_dir/unmatched-$scope_drift_unmatched_side.md" 2>&1)"; then
+    scope_drift_unmatched_exit=0
+  else
+    scope_drift_unmatched_exit=$?
+  fi
+  if [ "$scope_drift_unmatched_exit" -ne 1 ] || ! grep -qF 'FAIL:' <<<"$scope_drift_unmatched_output" \
+      || ! grep -qF 'unmatched backtick' <<<"$scope_drift_unmatched_output"; then
+    printf 'FAIL: tools/checks/scope-drift.sh must fail loudly when the %s path list has an unmatched backtick; got exit %s: %s\n' \
+      "$scope_drift_unmatched_side" "$scope_drift_unmatched_exit" "$scope_drift_unmatched_output" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
 rm -rf -- "$scope_drift_probe_dir"
 
 # Review regressions: prescribed shell and roadmap classification are runtime

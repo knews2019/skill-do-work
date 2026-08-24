@@ -19,15 +19,28 @@ if [ ! -f "$request_file" ]; then
   exit 2
 fi
 
+path_parse_error_marker='__DO_WORK_UNMATCHED_PATH_BACKTICK__'
+
 extract_section_paths() {
   local section_heading="$1"
-  # Lines of the section up to the next ## heading; backtick-quoted paths from
-  # "- `path` (verb)" bullets; do-work/ metadata excluded by contract.
-  awk -v section="^## ${section_heading}$" '
+  # Lines of the section up to the next ## heading; every closed backtick pair
+  # from path-led bullets is a path. Requiring the bullet to lead with a path
+  # keeps later code spans on prose-only bullets out without dropping valid
+  # root-level filenames such as README.md or justfile.
+  awk -v section="^## ${section_heading}$" -v parse_error="$path_parse_error_marker" '
+    function emit_backticked_paths(line, part_count, part_index, parts) {
+      part_count=split(line, parts, "`")
+      if (part_count % 2 == 0) {
+        print parse_error
+        return
+      }
+      for (part_index=2; part_index<part_count; part_index+=2)
+        if (parts[part_index] != "") print parts[part_index]
+    }
     $0 ~ section {inside=1; next}
     inside && /^## / {inside=0}
-    inside {print}
-  ' "$request_file" | sed -n 's/^[[:space:]]*- `\([^`]*\)`.*/\1/p' | grep -v '^do-work/' | sort -u
+    inside && /^[[:space:]]*-[[:space:]]*`/ {emit_backticked_paths($0)}
+  ' "$request_file" | grep -v '^do-work/' | sort -u
 }
 
 # Declared work is ONLY the "Files I will touch" list — the template's
@@ -47,25 +60,38 @@ declared_paths="$(awk '
     /^## Scope$/ {inside_scope=1; next}
     inside_scope && /^## / {inside_scope=0}
     inside_scope {print}
-  ' "$request_file" | awk '
+  ' "$request_file" | awk -v parse_error="$path_parse_error_marker" '
+    function emit_backticked_paths(line, part_count, part_index, parts) {
+      part_count=split(line, parts, "`")
+      if (part_count % 2 == 0) {
+        print parse_error
+        return
+      }
+      for (part_index=2; part_index<part_count; part_index+=2)
+        if (parts[part_index] != "") print parts[part_index]
+    }
     /\*\*Files I will touch[^:]*:/ {
       taking_list=1
       header_rest=$0
       sub(/.*\*\*Files I will touch[^:]*:/, "", header_rest)
-      part_count=split(header_rest, backtick_parts, "`")
-      for (part_index=2; part_index<=part_count; part_index+=2)
-        if (backtick_parts[part_index] != "") print backtick_parts[part_index]
+      emit_backticked_paths(header_rest)
       next
     }
     taking_list && /^\*\*/ {taking_list=0}
-    taking_list && /^[[:space:]]*- `/ {
-      bullet_path=$0
-      sub(/^[[:space:]]*- `/, "", bullet_path)
-      sub(/`.*/, "", bullet_path)
-      if (bullet_path != "") print bullet_path
+    taking_list && /^[[:space:]]*-[[:space:]]*`/ {
+      emit_backticked_paths($0)
     }
   ' | grep -v '^do-work/' | sort -u)"
 reported_paths="$(extract_section_paths 'Implementation Summary')"
+
+if grep -Fx "$path_parse_error_marker" <<<"$declared_paths" >/dev/null; then
+  echo "FAIL: the ## Scope path list has an unmatched backtick — close every backticked path"
+  exit 1
+fi
+if grep -Fx "$path_parse_error_marker" <<<"$reported_paths" >/dev/null; then
+  echo "FAIL: the ## Implementation Summary path list has an unmatched backtick — close every backticked path"
+  exit 1
+fi
 
 if [ -z "$declared_paths" ]; then
   # A touch-list header that exists but yields zero paths is a formatting
