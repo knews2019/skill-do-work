@@ -30,7 +30,9 @@ estimate:
 write_set:
   - skills/do-work/tools/checks/scope-drift.sh
   - skills/do-work/tools/checks/associate-files.sh
+  - skills/do-work/tools/checks/qualify.sh
   - _dev/tests/contract-regressions.sh
+  - _dev/tests/prescribed-shell-cases/qualify.sh
 ---
 
 # Stop a Multi-Path Bullet Disabling the Scope-Drift Check
@@ -42,9 +44,9 @@ bullet listing several files hides every path after the first. Hand-formatting a
 disables the measurement that exists to make drift visible.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Traced both first-token parsers and the associate-files sibling, then froze paired-backtick extraction, root-filename handling, prose boundaries, loud malformed-input behavior, fixtures, and mutations.
+- [x] **[APPLY]:** Added portable paired-field extraction to both shipped checks and mutation-sensitive REQ-344/symmetric/root/prose/malformed fixtures in the accepted three-file scope.
+- [x] **[UNIFY]:** Reviewed all three files; shell syntax, RED/GREEN fixtures, four independent mutation axes, contract regressions, canonical maintainer verification, diff checks, and artifact checks passed.
 
 ## Why
 
@@ -122,7 +124,9 @@ unparseable, and every existing single-path REQ produces the same output as befo
 
 - `skills/do-work/tools/checks/scope-drift.sh`
 - `skills/do-work/tools/checks/associate-files.sh`
+- `skills/do-work/tools/checks/qualify.sh`
 - `_dev/tests/contract-regressions.sh`
+- `_dev/tests/prescribed-shell-cases/qualify.sh`
 
 **Acceptance criteria:**
 
@@ -130,7 +134,30 @@ unparseable, and every existing single-path REQ produces the same output as befo
 - Root filenames remain valid paths, unmatched path lists fail loudly, and prose-only bullets containing code spans remain ignored.
 - A REQ-344-shaped fixture reports all seven undeclared files while all existing single-path, annotated-header, and Route A behaviors remain unchanged.
 - Independent mutations of either parser, slash filtering, or the path-led anchor fail focused contract probes; the canonical gate passes.
+- Every later path on a qualify Summary bullet reaches existence, merge-range diff, and wiring checks; root filenames remain valid and malformed path-led bullets fail loudly in prescribed qualify cases.
 
 ## Decisions
 
 - **D-01 — Accept the three-file pre-freeze scope.** The test file is required for mutation-sensitive closure, and `associate-files.sh` carries the identical primitive plus an explicit parity promise. Updating only `scope-drift.sh` would preserve the same silent truncation in a shipped sibling.
+- **D-02 — Path-led bullets are the syntax boundary.** Every closed backtick pair on a path-led bullet is a path, including root filenames; later code spans on prose-only bullets are not paths. Unmatched backticks fail instead of returning a partial set.
+- **D-03 — Extend after review to the remaining qualification consumer.** Independent review found `qualify.sh` retained the same first-token primitive in Step 6.3's per-file checks. Its script and prescribed case file join the scope so one fix closes the root cause across scope drift, association, and qualification.
+
+## Scope Extensions
+
+- **Review extension:** Added `skills/do-work/tools/checks/qualify.sh` and `_dev/tests/prescribed-shell-cases/qualify.sh` after the first review found the same first-token parser in the shipped merge-range qualification path. This is the same root cause and acceptance surface, not adjacent cleanup.
+
+## Implementation Summary
+
+- `skills/do-work/tools/checks/scope-drift.sh` (modified): extracts every closed backtick pair from path-led Scope and Implementation Summary bullets, preserves root filenames/prose boundaries, and fails loudly on malformed path lists.
+- `skills/do-work/tools/checks/associate-files.sh` (modified): uses the same multi-path Summary primitive, associates every listed path, and exits with PARSE-FAILED on unmatched backticks.
+- `_dev/tests/contract-regressions.sh` (modified): adds REQ-344 seven-drift fidelity, symmetric later-token mismatches, matching/root/prose/malformed compatibility, associate parity, and four mutation axes.
+
+## Discovered Tasks
+
+None.
+
+## Testing
+
+- TDD RED produced six intended fixture failures across multi-path association, REQ-344 seven-path fidelity, symmetric later-token mismatch, and unmatched Scope/Summary lists.
+- GREEN contract regressions passed after implementation. Independent mutations restoring Scope or Summary truncation, requiring slashes, or removing the path-led boundary each failed the intended fixtures.
+- Shell syntax, diff checks, builder canonical maintainer verification, and clean-worktree/artifact review passed.
