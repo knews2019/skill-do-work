@@ -1,7 +1,8 @@
 ---
 id: REQ-358
 title: "Review fix: tell a broken closing fence from a missing opening one"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T13:05:00Z
 created_at: 2026-08-24T10:40:00Z
 user_request: UR-068
 addendum_to: REQ-343
@@ -12,6 +13,7 @@ tdd: true
 suggested_spec: bug-fix
 depends_on: []
 maintenance: false
+route: A
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 write_set:

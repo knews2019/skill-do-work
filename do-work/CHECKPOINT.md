@@ -17,6 +17,10 @@ session_depth: moderate
 
 ## In Progress (interrupted)
 
+- REQ-347 — claimed 2026-08-24T13:05:00Z — writer: `vm:/home/user/skill-do-work`
+- REQ-356 — claimed 2026-08-24T13:05:00Z — writer: `vm:/home/user/skill-do-work`
+- REQ-358 — claimed 2026-08-24T13:05:00Z — writer: `vm:/home/user/skill-do-work`
+
 
 ## Still Queued
 
