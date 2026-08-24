@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.48 — Shell Case Headers Stop at the Script Name (2026-08-24)
+
+The prescribed-shell case counter no longer treats words that merely begin with a script basename as real case headers.
+
+- A token boundary rejects word, digit, and underscore continuations without enumerating valid qualifier separators
+- All 104 existing named cases across 17 files retain their exact per-file counts
+
 ## 0.236.47 — Durations Lists Every Long Span (2026-08-24)
 
 Durations replaces its sparse in-chart labels with a complete ranked list of every selected-window span over 60 minutes, including REQ, UR, duration, route, and title.

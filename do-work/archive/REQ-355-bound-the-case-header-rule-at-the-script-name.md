@@ -1,9 +1,11 @@
 ---
 id: REQ-355
 title: "[impact-negligible] Review fix: bound the case-header rule at the script name"
-status: claimed
+status: completed
 claimed_at: 2026-08-24T17:42:55Z
-status_changed_at: 2026-08-24T17:42:55Z
+completed_at: 2026-08-24T18:12:09Z
+commit: 059887b02050b8a5fa1130193aaeb3f71ba240b3
+status_changed_at: 2026-08-24T18:12:09Z
 route: A
 created_at: 2026-08-24T09:20:00Z
 user_request: UR-065
@@ -38,9 +40,9 @@ case header "opens with the name of the script the case file covers"; the regex
 token *beginning* with that name. Add the boundary, and move the comment in the same edit.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Route A applies the specified basename-boundary correction and fixture directly in the captured two-file surface.
+- [x] **[APPLY]:** Added the `qualifying ...` near-miss and tightened the shared matcher without enumerating qualifier separators.
+- [x] **[UNIFY]:** Reviewed both changed shell files; RED/GREEN fixture, all 17 live inventories, Bash syntax, ShellCheck, contract regressions, diff checks, and canonical maintainer verification passed.
 
 ## Why
 
@@ -100,3 +102,37 @@ the same counts as before (aggregate 101).
 ## Decisions
 
 - **D-01 — Preserve the live 104-case corpus, not the captured 101 count.** Three legitimate `qualify.sh` cases landed after this review finding was written, so the claimed worktree begins at 104 cases across 17 files (`qualify.sh`: 21). RED is expected 3 versus observed 4 in the isolated near-miss fixture; GREEN must keep every live per-file count and the aggregate 104 unchanged.
+- **D-02 — Bound the script token without closing the qualifier language.** `[[:alnum:]_]` is the continuation class; any other first qualifier character except `.` or `:` remains allowed, so future separator spellings stay open-ended.
+
+## Implementation Summary
+
+- `_dev/tests/prescribed-shell-case-count.sh` (modified): requires a non-word boundary after the interpolated script basename while leaving the following period-free qualifier open-ended, with the rationale adjacent to the matcher.
+- `_dev/tests/contract-regressions.sh` (modified): adds the `qualifying ...` word-prefix near-miss and updates the fixture inventory so removal of the boundary fails.
+
+## Discovered Tasks
+
+None.
+
+## Testing
+
+- RED fixture contained three valid `qualify.sh` headers plus `# qualifying a request: ...`; the original matcher returned 4 instead of 3.
+- GREEN returned 3, while a complete before/after inventory kept every one of 17 real case files unchanged at aggregate 104 (`qualify.sh`: 21).
+- Bash syntax, ShellCheck, focused contract regressions, diff checks, and builder canonical maintainer verification passed.
+- Post-merge contract regressions passed with 104 named cases and zero failures; the full canonical maintainer gate passed, including formatting, Go vet/tests, strict JavaScript, and audit-metrics tests. Its browser lane correctly skipped because this shell-only REQ has no browser requirement.
+
+## Qualification
+
+- Exact merge range `cd13533..059887b` passed mechanical qualification.
+- Orchestrator judgment confirmed a substantive bounded-token fix, exact two-file Route A scope, active matcher-to-fixture flow, open-ended qualifier semantics, and no generated/debug artifacts.
+
+## Review
+
+Independent review approved with no Important or Minor findings and one Nit: the fixture uses equivalent `qualifying ...` wording rather than the review's exact quoted sentence. Requirements 98%, Code Quality 98%, Test Adequacy 100%, Scope Discipline 100%, overall 99%, low risk, acceptance pass. Word/digit/underscore continuations fail while bare, space-, comma-, and hyphen-qualified headers remain accepted.
+
+## Lessons Learned
+
+When a matcher interpolates a token followed by an open-ended qualifier, define the token boundary independently from the qualifier language; that closes prefix over-counting without recreating a separator enumeration.
+
+## Orientation
+
+Released in 0.236.48. Named shell-case headers now require a real boundary after the script basename while preserving every live qualifier form and all 104 current cases.
