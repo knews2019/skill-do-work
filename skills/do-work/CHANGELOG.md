@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.53 — Durations UR Geometry Is Pinned (2026-08-24)
+
+The Durations user-request lane now proves its rendered brackets stay inside the plot and clear nearby text.
+
+- Live renderer constants drive plot, width, separation, row, pitch, and unknown-lane checks
+- A crowded fixture exercises all six rows, right-edge clamping, minimum widths, and cross-row packing
+- Five known geometry mutations fail the named Chromium probe without changing production JavaScript
+
 ## 0.236.52 — Multi-Path Summaries Stay Visible (2026-08-24)
 
 Hand-formatted Implementation Summaries can no longer hide later files from scope, association, or qualification checks.

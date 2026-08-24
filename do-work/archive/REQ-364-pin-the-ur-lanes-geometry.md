@@ -1,9 +1,11 @@
 ---
 id: REQ-364
 title: "[impact-rule-change] Pin the UR lane's geometry"
-status: claimed
+status: completed
 claimed_at: 2026-08-24T18:57:05Z
-status_changed_at: 2026-08-24T18:57:05Z
+completed_at: 2026-08-24T20:16:16Z
+commit: e6e3148939d2c31f0579898f972f980994dc5357
+status_changed_at: 2026-08-24T20:16:16Z
 route: B
 created_at: 2026-08-24T12:50:00Z
 user_request: UR-069
@@ -41,9 +43,9 @@ of its constants pass the entire suite, including one that puts seven brackets t
 title. Give the lane the neighbour-clearance probe the panel above it already has.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Reused the generated-site Chromium probe shape, designed a 501-day non-vacuous fixture, and mapped all five geometry mutations to rendered relationships driven by live production constants.
+- [x] **[APPLY]:** Added the one-file browser probe with plot, width, separation, row, unknown-lane, neighbour-clearance, URL, console, and witness assertions; production JavaScript remained unchanged.
+- [x] **[UNIFY]:** Reviewed the exact one-file diff; formatting, diff checks, named Chromium probe, all Durations tests, five mutations, strict-lane behavior, and canonical verification passed.
 
 ## Why
 
@@ -132,3 +134,44 @@ independently reproduced by the orchestrator.
 - Every bracket remains inside live plot bounds, respects live minimum width and same-row separation, and occupies non-overlapping rows derived from the live lane top/pitch.
 - The unknown row and every named bracket clear all rendered lane, gutter, and Panel B text neighbours.
 - Each of the five known production mutations fails the named probe; the ordinary no-browser lane skips cleanly while the strict browser lane retains its zero-probe guard.
+
+## Decisions
+
+- **D-01 — Read geometry from the production closure.** The generated page exposes the renderer's live plot, lane, row, pitch, bracket, separation, unknown-row, and Panel B constants to the measurement callback; the test does not duplicate decision-making numbers.
+- **D-02 — Require witnesses for every guarded branch.** The 501-day fixture forces all six rows, eight minimum-width brackets, a right-edge clamp, a missing-UR row, and cross-row sub-separation so a passing probe cannot be vacuous.
+- **D-03 — Keep the change test-only.** All rendered relationships pass on shipped code, so the accepted scope remains the single browser-probe file and production geometry is untouched.
+
+## Implementation Summary
+
+- `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go` (modified): adds a generated-site Chromium probe that reads live UR-lane geometry, measures 14 rendered brackets and their neighbours, requires branch witnesses, returns URL/error provenance, and fails each of the five captured production mutations.
+
+## Discovered Tasks
+
+None.
+
+## Testing
+
+- The named Chromium 1228 probe passed with 14 brackets, all six occupied rows, eight minimum-width witnesses, one right-clamp witness, and five cross-row sub-separation witnesses.
+- All Durations tests passed with Chromium 1228. `gofmt`, `git diff --check`, and `node --check web/board-durations.js` passed.
+- Each temporary production mutation went RED for its intended rendered relationship: escaped plot edge, lost separation, wrong row pitch, vanished minimum width, or Panel B title intersection. Production JavaScript was restored after every trial.
+- The builder's canonical maintainer gate passed; its optional browser lane performed the expected no-browser skip because the focused browser commands supplied Chromium separately.
+- On merged main, the named Chromium probe and all Durations tests passed again, as did the strict lane's zero-probe guard. The repository-wide strict browser lane exposed only the already-captured Timeline defects REQ-370 and REQ-371; neither touches this test or the Durations surface.
+- Final main-tree canonical maintainer verification passed with Go 1.26.1, including 109 prescribed shell cases, queue-kanban tests, the strict JavaScript lane, and audit metrics; only its standard optional no-browser lane skipped.
+
+## Qualification
+
+- Exact merge range `602aba4..e6e3148939d2c31f0579898f972f980994dc5357` passed mechanical qualification.
+- Scope drift passed: the single changed file exactly matches the declared Scope and Implementation Summary; production JavaScript is unchanged.
+- Orchestrator judgment confirmed substantive rendered-geometry checks, complete requirement tracing, live production data flow, strong branch witnesses, and no generated/debug artifacts.
+
+## Review
+
+Independent final review approved with no Critical, Important, Minor, or Nit findings. Correctness scored 9.8/10, acceptance completeness 10/10, mutation/non-vacuity quality 9.8/10, integration safety 10/10, maintainability 9.5/10, and overall 9.8/10. Acceptance is complete with low residual browser/font variance risk and no follow-up.
+
+## Lessons Learned
+
+Geometry tests are strongest when they read the constants the renderer actually used, measure the resulting client-space relationships, and require witnesses for every clamp, row, and collision branch. A green assertion without a positive witness can still be a silent no-op.
+
+## Orientation
+
+Released in 0.236.53. The Durations UR lane now has browser-backed geometric protection for plot bounds, minimum width, separation, row placement, and neighbouring text clearance.
