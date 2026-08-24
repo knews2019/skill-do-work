@@ -16,6 +16,7 @@ related: [REQ-372]
 write_set:
   - skills/do-work/actions/work.md
   - skills/do-work/actions/capture.md
+  - skills/do-work/actions/capture-reference.md
 ---
 
 # Decide What the TDD-Evidence Gate Accepts as Test-First Evidence
@@ -58,6 +59,13 @@ visual inspection."
     whether their planned evidence passes.
   - `actions/capture.md` Step 1 TDD assessment — only if the answer narrows what `tdd: true` should
     be captured for; leave it untouched otherwise.
+  - `actions/capture-reference.md` → **Populating `write_set`**, the conditional completeness
+    invariant — **conditional target.** It currently asserts that `tdd: true` "requires a runnable
+    failing test to be written before it passes", so a declared set names at least one test file. If
+    the answer accepts a committed re-runnable probe as evidence, that sentence contradicts the new
+    policy and must be brought into line in the same change; if the answer keeps the harness-test
+    bar, leave the invariant byte-untouched. Either way the invariant and Step 6.5 must state the
+    same thing when this REQ closes.
 - Whatever the answer, the accepted-evidence statement is keyed on a property of the evidence
   (runnable, fails before, passes after, re-runnable by another agent), never on a list of harness
   names.
@@ -83,8 +91,9 @@ before the Open Question is answered.
 Scope cue: state what the gate accepts, in a property a builder can check before writing evidence.
 No new field, no new gate, no rewrite of Step 6.5's surrounding flow.
 
-Batch (UR-073): this REQ and REQ-372 both write `skills/do-work/actions/work.md`. Run them serially,
-or expect the board's overlaps badge to flag the pair.
+Batch (UR-073): this REQ and REQ-372 overlap on `skills/do-work/actions/work.md` and, if the answer
+triggers the conditional target above, on `skills/do-work/actions/capture-reference.md` as well. Run
+them serially — REQ-372 first, since it moves a clause out of the same invariant paragraph.
 
 ## Constraints
 

@@ -52,6 +52,28 @@ note (`actions/capture-reference.md` → Fold-First Rule → the prose-only test
 The divergence is also in the wrong place: builders load `actions/work.md`, not the capture
 reference. A builder-behaviour rule that only capture reads is a rule with no reader.
 
+## Prior Implementation
+
+REQ-365 (`addendum_to`) is completed and archived: `do-work/archive/REQ-365-a-tdd-req-must-name-a-test-file-in-its-write-set.md`, Route A, `commit: 6265f1c406ccfe72f4cb12f1e0376c483eac9b65` (merge "Merge REQ-365 write-set completeness guidance"; the implementation itself is `b7d2362`, "docs: require complete declared write sets").
+
+**What shipped — two files, three lines:**
+
+- `skills/do-work/actions/capture-reference.md` gained the **Conditional completeness invariant**
+  paragraph immediately after **Populating `write_set`**: a declared set must name at least one path
+  from any file class the REQ's own requirements or completion proof require writing, or omit
+  `write_set` entirely; `tdd: true` is named as today's instance rather than a special case. Its last
+  two sentences are the builder-response clause this REQ relocates, plus a restatement that the field
+  stays display-only.
+- `skills/do-work/actions/capture.md` gained **one trailing sentence** on the Step 1 TDD-assessment
+  bullet, pointing at that invariant. It is a pointer, not a second copy of the rule.
+
+**Pattern to preserve:** the rule lives once at its canonical home and the decision site cites it.
+That is why this REQ moves a clause rather than adding a third statement, and why `capture.md` needs
+no edit here — its pointer already reaches whatever the invariant says.
+
+**Not shipped, deliberately:** no gate, no new frontmatter field, no lock-in test. Nothing under
+`_dev/tests/` asserts the wording of either paragraph, so this REQ's edit needs no test update.
+
 ## Detailed Requirements
 
 - Decide which behaviour is intended and state it **once**, in `actions/work.md` § "Write only inside
@@ -76,8 +98,9 @@ both files; which of the two responses is correct is a judgment the builder make
 Scope cue: keep it small. One statement moves, one pointer replaces it. Do not reconcile the two by
 writing a third rule, and do not reword the invariant's capture-time half while you are in there.
 
-Batch (UR-073): this REQ and REQ-373 both write `skills/do-work/actions/work.md`. Run them serially,
-or expect the board's overlaps badge to flag the pair.
+Batch (UR-073): this REQ and REQ-373 overlap on `skills/do-work/actions/work.md`, and REQ-373 may
+also need `skills/do-work/actions/capture-reference.md` depending on how its Open Question resolves.
+Run this one first — it edits the same invariant paragraph REQ-373 might have to amend.
 
 ## Constraints
 
