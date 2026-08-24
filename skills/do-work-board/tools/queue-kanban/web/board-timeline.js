@@ -185,10 +185,9 @@
     timelineTableRebuildFrame = null;
   }
 
-  // At most one whole-view render per frame, for the two things that can ask for
-  // one faster than the compositor draws: a drag (a trackpad delivers pointermoves
-  // faster than frames) and the plot's ResizeObserver (a drawer animating open
-  // reports every intermediate width).
+  // At most one whole-view render per frame during a drag: a trackpad delivers
+  // pointermoves faster than the compositor draws, and the intermediate windows
+  // cannot all be shown.
   //
   // A frame scheduled by the PREVIOUS render holds that render's closure, so a
   // filter change that re-enters this module would let it re-render the old rows
@@ -2094,12 +2093,17 @@
     // through, invalidatePlotWidth at the top of the next renderAll drops the memo,
     // so a bad measurement cannot outlive the render that took it.
     var measuredPlotWidthPx = null;
+    var renderedHostWidthPx = null;
+    function liveHostWidth() {
+      return scrollHost.clientWidth || scrollHost.getBoundingClientRect().width || 0;
+    }
     function plotIsMeasurable() {
-      return (scrollHost.clientWidth || scrollHost.getBoundingClientRect().width || 0) > 0;
+      return liveHostWidth() > 0;
     }
     function plotWidth() {
       if (measuredPlotWidthPx === null) {
-        var hostWidth = scrollHost.clientWidth || scrollHost.getBoundingClientRect().width;
+        var hostWidth = liveHostWidth();
+        renderedHostWidthPx = hostWidth;
         measuredPlotWidthPx = Math.max(120, hostWidth - TIMELINE_LABEL_WIDTH - 12);
       }
       return measuredPlotWidthPx;
@@ -2778,13 +2782,32 @@
     // Guarded because the floor this project designs for includes hosts with no
     // ResizeObserver: the window resize listener below still covers the ordinary
     // case there, which is exactly what it covered before.
+    function renderIfPlotWidthChanged() {
+      var hostWidth = liveHostWidth();
+      if (hostWidth > 0 && hostWidth !== renderedHostWidthPx) {
+        renderAll();
+      }
+    }
+
     if (typeof ResizeObserver === "function") {
       var plotResizeObserver = new ResizeObserver(function () {
-        requestFrameRender();
+        renderIfPlotWidthChanged();
       });
       plotResizeObserver.observe(scrollHost);
       timelineListenerTeardowns.push(function () {
         plotResizeObserver.disconnect();
+      });
+    }
+
+    // Chromium's DOM-dump lifecycle can settle layout while compositor callbacks
+    // remain parked: the host has its new width, but neither ResizeObserver nor a
+    // queued animation frame is delivered. The timer is a condition fallback,
+    // not a second list of layout callers; it performs a render only when the live
+    // host width differs from the width shared by the last axis/rows render.
+    if (typeof window.setInterval === "function") {
+      var plotWidthCheckTimer = window.setInterval(renderIfPlotWidthChanged, 50);
+      timelineListenerTeardowns.push(function () {
+        window.clearInterval(plotWidthCheckTimer);
       });
     }
 

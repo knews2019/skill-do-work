@@ -1356,6 +1356,13 @@ function plotHost() {
 function plotSnapshot(label) {
   var host = plotHost();
   var hostBox = host.getBoundingClientRect();
+  var rangeReadout = document.getElementById("timeline-range-readout");
+  var axisScale = [].slice.call(document.querySelectorAll("#view-timeline .timeline-axis-tick")).map(function (tick) {
+    return tick.getAttribute("x1");
+  }).join(",");
+  var rowsScale = [].slice.call(document.querySelectorAll("#view-timeline .timeline-gridline")).map(function (line) {
+    return line.getAttribute("x1");
+  }).join(",");
   var segments = [].slice.call(host.querySelectorAll("rect.timeline-segment"));
   var inside = 0;
   var rightmost = -Infinity;
@@ -1373,6 +1380,9 @@ function plotSnapshot(label) {
     href: location.href,
     hostWidth: Math.round(hostBox.width),
     hostRight: Math.round(hostBox.right),
+    axisScale: axisScale,
+    rowsScale: rowsScale,
+    rangeReadout: rangeReadout ? rangeReadout.textContent : "",
     segments: segments.length,
     inside: inside,
     rightmost: isFinite(rightmost) ? Math.round(rightmost) : null,
@@ -1457,14 +1467,17 @@ window.addEventListener("load", function () {
 		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
 
 	type plotSnapshot struct {
-		Label     string `json:"label"`
-		Href      string `json:"href"`
-		HostWidth int    `json:"hostWidth"`
-		HostRight int    `json:"hostRight"`
-		Segments  int    `json:"segments"`
-		Inside    int    `json:"inside"`
-		Rightmost *int   `json:"rightmost"`
-		Leftmost  *int   `json:"leftmost"`
+		Label        string `json:"label"`
+		Href         string `json:"href"`
+		HostWidth    int    `json:"hostWidth"`
+		HostRight    int    `json:"hostRight"`
+		AxisScale    string `json:"axisScale"`
+		RowsScale    string `json:"rowsScale"`
+		RangeReadout string `json:"rangeReadout"`
+		Segments     int    `json:"segments"`
+		Inside       int    `json:"inside"`
+		Rightmost    *int   `json:"rightmost"`
+		Leftmost     *int   `json:"leftmost"`
 	}
 	var drawerResult struct {
 		Before           plotSnapshot `json:"before"`
@@ -1484,6 +1497,14 @@ window.addEventListener("load", function () {
 	for _, snapshot := range []plotSnapshot{drawerResult.Before, drawerResult.After, drawerResult.Closed} {
 		if !strings.HasSuffix(snapshot.Href, "/probe.html") {
 			t.Fatalf("the %s snapshot was taken on %q, not the probe page", snapshot.Label, snapshot.Href)
+		}
+		if snapshot.AxisScale == "" || snapshot.RowsScale == "" {
+			t.Fatalf("the %s snapshot did not measure both Timeline scales (axis %q, rows %q)",
+				snapshot.Label, snapshot.AxisScale, snapshot.RowsScale)
+		}
+		if snapshot.AxisScale != snapshot.RowsScale {
+			t.Fatalf("the %s snapshot drew axis ticks at %q and row gridlines at %q; they no longer share one width measurement",
+				snapshot.Label, snapshot.AxisScale, snapshot.RowsScale)
 		}
 	}
 
@@ -1506,6 +1527,14 @@ window.addEventListener("load", function () {
 		t.Fatalf("the plot host was %dpx before the drawer opened and %dpx after, so the drawer did "+
 			"not narrow it and there is nothing here to re-measure",
 			drawerResult.Before.HostWidth, drawerResult.After.HostWidth)
+	}
+	if drawerResult.Before.RangeReadout == "" {
+		t.Fatal("the Timeline range readout was empty before the click; the unchanged-window proof is vacuous")
+	}
+	if drawerResult.After.RangeReadout != drawerResult.Before.RangeReadout ||
+		drawerResult.Closed.RangeReadout != drawerResult.Before.RangeReadout {
+		t.Fatalf("opening or closing the drawer moved the Timeline window: before %q, open %q, closed %q",
+			drawerResult.Before.RangeReadout, drawerResult.After.RangeReadout, drawerResult.Closed.RangeReadout)
 	}
 
 	// THE DEFECT. Fifty-five segments, none of them on screen.
