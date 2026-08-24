@@ -3,6 +3,7 @@ id: REQ-347
 title: "Colour Durations marks by a chosen channel"
 status: completed
 completed_at: 2026-08-24T13:53:03Z
+commit: 26f347f
 claimed_at: 2026-08-24T13:33:27Z
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
