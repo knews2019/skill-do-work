@@ -42,8 +42,8 @@ ribbon behind them.
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Route B exploration located the single renderer path, its hover index, and the existing geometry lock-in. Implement a named square-root scale and deterministic within-day jitter, aggregate accepted samples into daily quartiles, draw the overlay behind marks, and update both structural and live-browser geometry evidence.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** The isolated builder implemented the square-root scale, deterministic within-day rank jitter, jitter-aware hit/label geometry, reduced ordinary opacity, and daily R-7 quartile overlay in the three refined-scope files.
+- [x] **[UNIFY]:** Builder reviewed the complete diff and passed focused RED→GREEN, the full module suite, strict JavaScript, vet, diff checks, and 705-sample light/dark Playwright proof. The orchestrator reconciled REQ-350's exact-x window assertions with intentional own-day jitter and re-ran both REQs' focused behavior tests green.
 
 ## Why
 
@@ -129,3 +129,21 @@ ceiling and overflow lane are unchanged, and the hover still names the mark the 
 - `skills/do-work-board/tools/queue-kanban/generate_test.go`
 
 **Scope refinement:** `durations_test.go` was removed after exploration confirmed the Go aggregate and payload remain unchanged. The production-renderer model coverage belongs in `generate_test.go`; dense rendered behavior belongs in `durations_browser_probe_test.go`.
+
+## Implementation Summary
+
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js` (modified): adds square-root Panel A geometry, stable per-day rank jitter shared by marks/hovers/labels/UR extents, selective ordinary opacity, and accepted-sample R-7 quartile ribbon/median rendering.
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified): pins ticks/scale, deterministic own-day spread, overlay geometry/order, opacity and unchanged overflow/reversed behavior; integration also updates REQ-350's window proof to use non-jittered Panel B centres for affine-domain assertions.
+- `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go` (modified): adds a 705-sample, 47-active-day rendered probe for bounds, spread, deterministic rerender, exact hover identity, finite overlays, light/dark geometry, and measured-face evidence.
+
+## Decisions
+
+- **D-01 — Use stable per-day rank instead of hash displacement.** Rank guarantees useful spread on every busy day while remaining byte-for-byte deterministic for the same payload.
+- **D-02 — Bound mark centres to their day slot.** At the required roughly 8-unit day width, a radius-4 circle cannot both spread and keep its full painted diameter inside the slot; the stated requirement bounds the mark position.
+- **D-03 — Use R-7 quantiles.** Sorting accepted samples and interpolating at `(n-1)*p` yields deterministic p25/median/p75 values without changing the Go payload.
+- **D-04 — Preserve critical/unknown prominence.** Opacity 0.62 applies only to ordinary coloured marks; reversed critical red and outlined unknown marks remain undimmed.
+- **D-05 — Use SVG presentation attributes.** Ribbon, median, and opacity styling stay within the renderer scope without a CSS expansion.
+
+## Discovered Tasks
+
+- The direct macOS Chromium `--dump-dom` strict-browser harness hung with Chrome 151 and Comet 151, including on an unchanged existing probe. The equivalent generated-page assertions and renders passed through Playwright Chromium. Investigate the host harness compatibility separately; it is not an implementation dependency.
