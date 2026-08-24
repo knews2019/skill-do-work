@@ -34,6 +34,9 @@ The UR detail view gets a copy-all control: one click puts the UR's own payload 
 - The payload is the UR first, then each grouped REQ's full payload (the same content that REQ's own Copy yields), in the order the UR detail lists them.
 - Reuse the existing clipboard write + copied/failed feedback pattern from `web/board-clipboard.js`.
 
+## Open Questions
+- [x] Separate Copy-all button, or repurpose the existing Copy? → Separate button beside Copy; plain Copy keeps copying just the UR record (user confirmed, 2026-08-24 verify)
+
 ## Red-Green Proof
 **RED prompt/case:** Open UR-065's detail on the generated board. Its Copy button yields only the UR record; assembling the UR plus its 12 grouped REQs takes 13 separate copies. A browser-probe test (style of `browser_probe_test.go`) that clicks a UR copy-all control and asserts the payload contains the UR followed by every grouped REQ id fails today because the control does not exist.
 **Why RED now:** The UR drawer's only copy control copies the single UR record.
