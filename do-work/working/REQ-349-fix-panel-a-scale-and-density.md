@@ -28,7 +28,6 @@ estimate:
     - browser evidence
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-durations.js
-  - skills/do-work-board/tools/queue-kanban/durations_test.go
   - skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go
   - skills/do-work-board/tools/queue-kanban/generate_test.go
 ---
@@ -123,7 +122,10 @@ ceiling and overflow lane are unchanged, and the hover still names the mark the 
 
 ## Scope
 
+**Files I will touch:**
+
 - `skills/do-work-board/tools/queue-kanban/web/board-durations.js`
-- `skills/do-work-board/tools/queue-kanban/durations_test.go`
 - `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go`
 - `skills/do-work-board/tools/queue-kanban/generate_test.go`
+
+**Scope refinement:** `durations_test.go` was removed after exploration confirmed the Go aggregate and payload remain unchanged. The production-renderer model coverage belongs in `generate_test.go`; dense rendered behavior belongs in `durations_browser_probe_test.go`.
