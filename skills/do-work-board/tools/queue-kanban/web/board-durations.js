@@ -906,8 +906,67 @@
       if (!isReversed && !markColour.className) {
         markAttributes.opacity = DURATIONS_ORDINARY_MARK_OPACITY;
       }
-      makeDurationsSvgNode(svg, "circle", markAttributes);
-      markIndex.push({ x: markX, y: markY, sample: sample, epochMs: epochMs, colourLabel: isReversed ? "Reversed stamp" : markColour.label });
+      markAttributes.role = "button";
+      markAttributes.tabindex = sampleIndex === 0 ? "0" : "-1";
+      markAttributes["data-duration-mark-index"] = String(sampleIndex);
+      markAttributes["data-detail-kind"] = "req";
+      markAttributes["data-detail-id"] = sample.id;
+      var markNode = makeDurationsSvgNode(svg, "circle", markAttributes);
+      var indexedMark = {
+        x: markX,
+        y: markY,
+        node: markNode,
+        sample: sample,
+        epochMs: epochMs,
+        colourLabel: isReversed ? "Reversed stamp" : markColour.label
+      };
+      markNode.setAttribute("aria-label", describeDurationMark(indexedMark));
+      markIndex.push(indexedMark);
+    });
+
+    // Every projected sample is a semantic button, but Panel A is ONE Tab stop.
+    // Left/Right rove that stop through the complete sample set, following the same
+    // chronological payload order as the table. A render replaces the nodes, so this
+    // state and its listeners deliberately die with the SVG rather than needing a
+    // second lifecycle beside Durations' existing rebuild.
+    function setDurationsRovingMark(markIndexValue, moveFocus) {
+      var clampedIndex = Math.min(Math.max(markIndexValue, 0), markIndex.length - 1);
+      markIndex.forEach(function (mark, indexedMarkIndex) {
+        mark.node.setAttribute("tabindex", indexedMarkIndex === clampedIndex ? "0" : "-1");
+      });
+      if (moveFocus && markIndex[clampedIndex] && typeof markIndex[clampedIndex].node.focus === "function") {
+        markIndex[clampedIndex].node.focus();
+      }
+      return clampedIndex;
+    }
+
+    svg.addEventListener("focusin", function (focusEvent) {
+      var focusedMark = focusEvent.target && focusEvent.target.closest
+        ? focusEvent.target.closest("circle.durations-mark[data-duration-mark-index]")
+        : null;
+      if (!focusedMark) {
+        return;
+      }
+      setDurationsRovingMark(Number(focusedMark.getAttribute("data-duration-mark-index")), false);
+    });
+
+    svg.addEventListener("keydown", function (keyEvent) {
+      var focusedMark = keyEvent.target && keyEvent.target.closest
+        ? keyEvent.target.closest("circle.durations-mark[data-duration-mark-index]")
+        : null;
+      if (!focusedMark) {
+        return;
+      }
+      var focusedIndex = Number(focusedMark.getAttribute("data-duration-mark-index"));
+      if (keyEvent.key === "ArrowLeft" || keyEvent.key === "ArrowRight") {
+        keyEvent.preventDefault();
+        setDurationsRovingMark(focusedIndex + (keyEvent.key === "ArrowRight" ? 1 : -1), true);
+        return;
+      }
+      if (keyEvent.key === "Enter" || keyEvent.key === " " || keyEvent.key === "Spacebar") {
+        keyEvent.preventDefault();
+        openDetail("req", markIndex[focusedIndex].sample.id);
+      }
     });
 
     // ---- panel A's UR grouping lane ----
@@ -1209,6 +1268,57 @@
       dayByKey[day.dayKey] = day;
     });
 
+    function describeDurationMark(mark) {
+      var sample = mark.sample;
+      var note = sample.excludedReason
+        ? " · excluded from day medians (" +
+          (sample.excludedReason === "paused" ? "assumed paused session" : "reversed stamp") +
+          ")"
+        : "";
+      return (
+        sample.id +
+        " · " +
+        durationUserRequestName(durationSampleUserRequestId(sample)) +
+        " · " +
+        durationColourChannelName() +
+        " colour: " +
+        mark.colourLabel +
+        " · " +
+        formatDurationMinutes(sample.wallMinutes) +
+        " · " +
+        formatDurationStamp(mark.epochMs) +
+        note
+      );
+    }
+
+    // REQ-349 moved marks away from their completion instants to a stable rank
+    // inside each busy day. Pointer targeting therefore reads `markIndex.x`, the
+    // coordinate actually drawn, rather than projecting epochMs a second time.
+    // Hover and click share this helper so they cannot disagree about which mark
+    // occupies one point on the overlay.
+    function nearestDurationMark(pointerX, pointerY) {
+      var nearestMark = null;
+      var nearestDistance = Infinity;
+      markIndex.forEach(function (mark) {
+        var distance = Math.abs(mark.x - pointerX) + Math.abs(mark.y - pointerY) * 0.35;
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestMark = mark;
+        }
+      });
+      return nearestMark;
+    }
+
+    function durationMarkAtPointer(pointerX, pointerY) {
+      if (
+        pointerY > DURATIONS_MEDIAN_TITLE_Y - 12 ||
+        (pointerY >= DURATIONS_UR_LANE_TOP - 4 && pointerY <= DURATIONS_UR_LANE_BOTTOM + 4)
+      ) {
+        return null;
+      }
+      return nearestDurationMark(pointerX, pointerY);
+    }
+
     function describeAtPointer(pointerX, pointerY) {
       // The lane's own strip, checked before panel A's marks: a bracket carries
       // no text, so the readout is the only place its identity is written out.
@@ -1244,38 +1354,11 @@
       }
 
       if (pointerY <= DURATIONS_MEDIAN_TITLE_Y - 12) {
-        var nearestMark = null;
-        var nearestDistance = Infinity;
-        markIndex.forEach(function (mark) {
-          var distance = Math.abs(mark.x - pointerX) + Math.abs(mark.y - pointerY) * 0.35;
-          if (distance < nearestDistance) {
-            nearestDistance = distance;
-            nearestMark = mark;
-          }
-        });
+        var nearestMark = nearestDurationMark(pointerX, pointerY);
         if (!nearestMark) {
           return "";
         }
-        var sample = nearestMark.sample;
-        var note = sample.excludedReason
-          ? " · excluded from day medians (" +
-            (sample.excludedReason === "paused" ? "assumed paused session" : "reversed stamp") +
-            ")"
-          : "";
-        return (
-          sample.id +
-          " · " +
-          durationUserRequestName(durationSampleUserRequestId(sample)) +
-          " · " +
-          durationColourChannelName() +
-          " colour: " +
-          nearestMark.colourLabel +
-          " · " +
-          formatDurationMinutes(sample.wallMinutes) +
-          " · " +
-          formatDurationStamp(nearestMark.epochMs) +
-          note
-        );
+        return describeDurationMark(nearestMark);
       }
 
       var nearestDay = null;
@@ -1305,20 +1388,38 @@
       );
     }
 
+    function pointerPosition(event) {
+      var bounds = svg.getBoundingClientRect();
+      if (bounds.width === 0) {
+        return null;
+      }
+      var scale = DURATIONS_VIEW_WIDTH / bounds.width;
+      return {
+        x: (event.clientX - bounds.left) * scale,
+        y: (event.clientY - bounds.top) * scale
+      };
+    }
     function updateReadout(event) {
       if (!readoutNode) {
         return;
       }
-      var bounds = svg.getBoundingClientRect();
-      if (bounds.width === 0) {
-        return;
+      var pointer = pointerPosition(event);
+      if (pointer) {
+        readoutNode.textContent = describeAtPointer(pointer.x, pointer.y);
       }
-      var scale = DURATIONS_VIEW_WIDTH / bounds.width;
-      var pointerX = (event.clientX - bounds.left) * scale;
-      var pointerY = (event.clientY - bounds.top) * scale;
-      readoutNode.textContent = describeAtPointer(pointerX, pointerY);
     }
     hoverSurface.addEventListener("mousemove", updateReadout);
+    hoverSurface.addEventListener("click", function (clickEvent) {
+      var pointer = pointerPosition(clickEvent);
+      var clickedMark = pointer ? durationMarkAtPointer(pointer.x, pointer.y) : null;
+      if (!clickedMark) {
+        return;
+      }
+      if (readoutNode) {
+        readoutNode.textContent = describeDurationMark(clickedMark);
+      }
+      openDetail("req", clickedMark.sample.id);
+    });
     hoverSurface.addEventListener("mouseleave", function () {
       if (readoutNode) {
         readoutNode.textContent = "";
