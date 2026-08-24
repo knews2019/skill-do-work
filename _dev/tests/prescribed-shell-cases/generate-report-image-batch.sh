@@ -3,6 +3,14 @@
 # shellcheck source=_dev/tests/prescribed-shell-harness.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/prescribed-shell-harness.sh"
 
+[ -z "${DO_WORK_TEST_TOOLBOX_SCRIPTS:-}" ] || toolbox_scripts="$DO_WORK_TEST_TOOLBOX_SCRIPTS"
+
+process_id_is_live() {
+  process_state="$(/bin/ps -o stat= -p "$1" 2>/dev/null)" || return 1
+  process_state="${process_state//[[:space:]]/}"
+  case "$process_state" in ''|Z*) return 1 ;; *) return 0 ;; esac
+}
+
 # generate-report-image-batch: the batch joins each target name to its own private
 # staging directory, so a target carrying a path separator would write outside that
 # boundary, and a pair with no colon would silently make the prompt the filename. Both
@@ -171,6 +179,106 @@ find "$interrupt_batch_root/ai-reports/<report-slug>" -name '.generated.staging.
   && fail_case 'ai-report interrupted batch replay leaked invocation-private staging'
 [ ! -e "$interrupt_batch_root/ai-reports/<report-slug>/generated" ] \
   || fail_case 'ai-report interrupted batch replay published generated/'
+
+# generate-report-image-batch: a controlled ps seam keeps the batch group zombie-only
+# while preserving a real descendant-bearing backend. The helper's own backend group can
+# independently report live for the TERM-deaf KILL check below.
+image_batch_liveness_bin="$fixture_root/image-batch-liveness-bin"
+mkdir -p "$image_batch_liveness_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; --prompt) image_prompt="$2"; shift 2 ;; *) shift ;; esac; done' \
+  'printf partial > "$output_path"' \
+  'case "$image_prompt" in *term-deaf*) printf "%s\n" "$$" > "$IMAGE_BATCH_LIVENESS_BACKEND_PID"; ( trap "" TERM; while :; do sleep 1; done ) & trap "" TERM ;; *) ( while :; do sleep 1; done ) & trap "sleep 0.3; exit 143" TERM ;; esac' \
+  'printf "%s\n" "$!" > "$IMAGE_BATCH_LIVENESS_DESCENDANT_PID"' \
+  ': > "$IMAGE_BATCH_LIVENESS_READY"' \
+  'while :; do sleep 1; done' \
+  > "$image_batch_liveness_bin/imagegen"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'printf "%s\n" "$1" >> "$IMAGE_BATCH_LIVENESS_SLEEP_LOG"' \
+  'exec /bin/sleep "$@"' \
+  > "$image_batch_liveness_bin/sleep"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'case "$1" in' \
+  '  -o) printf "%s\n" "$4"; printf "%s\n" "$4" >> "$IMAGE_BATCH_LIVENESS_GROUP_IDS" ;;' \
+  '  -eo)' \
+  '    backend_group_id="$(cat "$IMAGE_BATCH_LIVENESS_BACKEND_PID" 2>/dev/null || printf "")"' \
+  '    while IFS= read -r group_id; do' \
+  '      process_state="$IMAGE_BATCH_LIVENESS_FAKE_STATE"' \
+  '      [ "$group_id" != "$backend_group_id" ] || process_state="$IMAGE_BATCH_LIVENESS_BACKEND_STATE"' \
+  '      printf "%s %s\n" "$group_id" "$process_state"' \
+  '    done < "$IMAGE_BATCH_LIVENESS_GROUP_IDS"' \
+  '    ;;' \
+  '  *) exit 2 ;;' \
+  'esac' \
+  > "$image_batch_liveness_bin/ps"
+chmod +x "$image_batch_liveness_bin/imagegen" "$image_batch_liveness_bin/sleep" "$image_batch_liveness_bin/ps"
+image_batch_liveness_runtime_tools="$fixture_root/image-batch-liveness-tools"
+mkdir -p "$image_batch_liveness_runtime_tools"
+for runtime_script in generate-report-image.sh generate-report-image-batch.sh; do
+  sed 's|process_status_command=/bin/ps|process_status_command="${DO_WORK_PROCESS_STATUS_COMMAND}"|' \
+    "$toolbox_scripts/$runtime_script" > "$image_batch_liveness_runtime_tools/$runtime_script"
+  chmod +x "$image_batch_liveness_runtime_tools/$runtime_script"
+done
+
+run_batch_liveness_replay() {
+  batch_liveness_name="$1"
+  batch_liveness_prompt="$2"
+  batch_liveness_fake_state="$3"
+  batch_liveness_backend_state="$4"
+  batch_liveness_root="$fixture_root/$batch_liveness_name"
+  mkdir -p "$batch_liveness_root/ai-reports/<report-slug>"
+  (
+    cd "$batch_liveness_root" \
+      && exec env PATH="$image_batch_liveness_bin:$PATH" \
+        IMAGE_BATCH_LIVENESS_READY="$batch_liveness_root/ready" \
+        IMAGE_BATCH_LIVENESS_DESCENDANT_PID="$batch_liveness_root/descendant.pid" \
+        IMAGE_BATCH_LIVENESS_SLEEP_LOG="$batch_liveness_root/sleeps" \
+        IMAGE_BATCH_LIVENESS_GROUP_IDS="$batch_liveness_root/groups" \
+        IMAGE_BATCH_LIVENESS_BACKEND_PID="$batch_liveness_root/backend.pid" \
+        IMAGE_BATCH_LIVENESS_FAKE_STATE="$batch_liveness_fake_state" \
+        IMAGE_BATCH_LIVENESS_BACKEND_STATE="$batch_liveness_backend_state" \
+        DO_WORK_PROCESS_STATUS_COMMAND="$image_batch_liveness_bin/ps" \
+        "$image_batch_liveness_runtime_tools/generate-report-image-batch.sh" \
+          'ai-reports/<report-slug>' style "01-image.png:$batch_liveness_prompt"
+  ) >/dev/null 2>&1 &
+  batch_liveness_pid=$!
+  background_process_ids="$background_process_ids $batch_liveness_pid"
+  batch_liveness_ready_ticks=0
+  while [ ! -e "$batch_liveness_root/ready" ] && [ "$batch_liveness_ready_ticks" -lt 200 ]; do
+    sleep 0.01
+    batch_liveness_ready_ticks=$((batch_liveness_ready_ticks + 1))
+  done
+  [ -e "$batch_liveness_root/ready" ] \
+    || { fail_case "generate-report-image-batch $batch_liveness_name case never reached the descendant-bearing backend"; return; }
+  batch_liveness_descendant_pid="$(cat "$batch_liveness_root/descendant.pid")"
+  background_process_ids="$background_process_ids $batch_liveness_descendant_pid"
+  kill -TERM "$batch_liveness_pid" 2>/dev/null || true
+  batch_liveness_status=0
+  wait "$batch_liveness_pid" || batch_liveness_status=$?
+  [ "$batch_liveness_status" -eq 143 ] \
+    || fail_case "generate-report-image-batch $batch_liveness_name case returned $batch_liveness_status instead of the TERM status 143"
+}
+
+run_batch_liveness_replay liveness-zombies liveness-zombies Z Z
+batch_liveness_grace_ticks="$(grep -cx '0.1' "$fixture_root/liveness-zombies/sleeps" 2>/dev/null || true)"
+[ "$batch_liveness_grace_ticks" -le 1 ] \
+  || fail_case "generate-report-image-batch exited-group case waited $batch_liveness_grace_ticks grace ticks instead of stopping promptly after the TERM-obedient helper and descendant exited"
+
+run_batch_liveness_replay liveness-term-deaf term-deaf Z S
+batch_liveness_grace_ticks="$(grep -cx '0.1' "$fixture_root/liveness-term-deaf/sleeps" 2>/dev/null || true)"
+[ "$batch_liveness_grace_ticks" -eq 10 ] \
+  || fail_case "generate-report-image-batch TERM-deaf case used $batch_liveness_grace_ticks grace ticks instead of the helper's full 10-tick budget before KILL"
+batch_liveness_survivor_ticks=0
+while process_id_is_live "$(cat "$fixture_root/liveness-term-deaf/descendant.pid")" \
+  && [ "$batch_liveness_survivor_ticks" -lt 40 ]; do
+  sleep 0.05
+  batch_liveness_survivor_ticks=$((batch_liveness_survivor_ticks + 1))
+done
+process_id_is_live "$(cat "$fixture_root/liveness-term-deaf/descendant.pid")" \
+  && fail_case 'generate-report-image-batch TERM-deaf case left the TERM-deaf descendant alive after KILL'
 
 # generate-report-image-batch, destination appears at the final boundary: `mv` treats an
 # existing directory as a container, so the check-then-rename window can nest the

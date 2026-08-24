@@ -3,6 +3,14 @@
 # shellcheck source=_dev/tests/prescribed-shell-harness.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/prescribed-shell-harness.sh"
 
+[ -z "${DO_WORK_TEST_TOOLBOX_SCRIPTS:-}" ] || toolbox_scripts="$DO_WORK_TEST_TOOLBOX_SCRIPTS"
+
+process_id_is_live() {
+  process_state="$(/bin/ps -o stat= -p "$1" 2>/dev/null)" || return 1
+  process_state="${process_state//[[:space:]]/}"
+  case "$process_state" in ''|Z*) return 1 ;; *) return 0 ;; esac
+}
+
 # Bounded stand-in for `wait` on a backgrounded wrapper. `kill -TERM` followed by a bare
 # `wait` blocks forever against a wrapper that does not finish, which is how a stuck backend
 # wedges the whole gate — and the gate's exit status is the only thing anyone reads. Wait with
@@ -232,6 +240,91 @@ else
   [ ! -e "$image_tree_stage_path" ] || fail_case 'generate-report-image process-tree case leaked private staging'
   [ "$(cat "$image_tree_target")" = stable-tree ] || fail_case 'generate-report-image process-tree case changed the old target'
 fi
+
+# generate-report-image: a controlled ps seam reports a zombie-only recorded group while
+# the real descendant-bearing backend finishes its TERM trap. This makes the old kill-only
+# branch deterministically consume grace ticks even on systems that reap zombies eagerly.
+image_liveness_bin="$fixture_root/image-liveness-bin"
+mkdir -p "$image_liveness_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; --prompt) image_prompt="$2"; shift 2 ;; *) shift ;; esac; done' \
+  'printf partial > "$output_path"' \
+  'case "$image_prompt" in *term-deaf*) ( trap "" TERM; while :; do sleep 1; done ) & trap "" TERM ;; *) ( while :; do sleep 1; done ) & trap "sleep 0.3; exit 143" TERM ;; esac' \
+  'printf "%s\n" "$!" > "$IMAGE_LIVENESS_DESCENDANT_PID"' \
+  ': > "$IMAGE_LIVENESS_READY"' \
+  'while :; do sleep 1; done' \
+  > "$image_liveness_bin/imagegen"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'printf "%s\n" "$1" >> "$IMAGE_LIVENESS_SLEEP_LOG"' \
+  'exec /bin/sleep "$@"' \
+  > "$image_liveness_bin/sleep"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'case "$1" in' \
+  '  -o) printf "%s\n" "$4"; printf "%s\n" "$4" >> "$IMAGE_LIVENESS_GROUP_IDS" ;;' \
+  '  -eo) while IFS= read -r group_id; do printf "%s %s\n" "$group_id" "$IMAGE_LIVENESS_FAKE_STATE"; done < "$IMAGE_LIVENESS_GROUP_IDS" ;;' \
+  '  *) exit 2 ;;' \
+  'esac' \
+  > "$image_liveness_bin/ps"
+chmod +x "$image_liveness_bin/imagegen" "$image_liveness_bin/sleep" "$image_liveness_bin/ps"
+image_liveness_runtime_helper="$fixture_root/generate-report-image-state-probe.sh"
+sed 's|process_status_command=/bin/ps|process_status_command="${DO_WORK_PROCESS_STATUS_COMMAND}"|' \
+  "$toolbox_scripts/generate-report-image.sh" > "$image_liveness_runtime_helper"
+chmod +x "$image_liveness_runtime_helper"
+
+run_image_liveness_replay() {
+  image_liveness_name="$1"
+  image_liveness_prompt="$2"
+  image_liveness_fake_state="$3"
+  image_liveness_root="$fixture_root/$image_liveness_name"
+  mkdir -p "$image_liveness_root"
+  PATH="$image_liveness_bin:$PATH" \
+    IMAGE_LIVENESS_READY="$image_liveness_root/ready" \
+    IMAGE_LIVENESS_DESCENDANT_PID="$image_liveness_root/descendant.pid" \
+    IMAGE_LIVENESS_SLEEP_LOG="$image_liveness_root/sleeps" \
+    IMAGE_LIVENESS_GROUP_IDS="$image_liveness_root/groups" \
+    IMAGE_LIVENESS_FAKE_STATE="$image_liveness_fake_state" \
+    DO_WORK_PROCESS_STATUS_COMMAND="$image_liveness_bin/ps" \
+    "$image_liveness_runtime_helper" "$image_liveness_root/report.png" style "$image_liveness_prompt" >/dev/null 2>&1 &
+  image_liveness_helper_pid=$!
+  background_process_ids="$background_process_ids $image_liveness_helper_pid"
+  image_liveness_ready_ticks=0
+  while [ ! -e "$image_liveness_root/ready" ] && [ "$image_liveness_ready_ticks" -lt 200 ]; do
+    sleep 0.01
+    image_liveness_ready_ticks=$((image_liveness_ready_ticks + 1))
+  done
+  [ -e "$image_liveness_root/ready" ] \
+    || { fail_case "generate-report-image $image_liveness_name case never reached the descendant-bearing backend"; return; }
+  image_liveness_descendant_pid="$(cat "$image_liveness_root/descendant.pid")"
+  background_process_ids="$background_process_ids $image_liveness_descendant_pid"
+  kill -TERM "$image_liveness_helper_pid" 2>/dev/null || true
+  wait_for_wrapper_or_fail "$image_liveness_helper_pid" "generate-report-image $image_liveness_name case" 10 \
+    "$image_liveness_descendant_pid"
+  [ "$wrapper_wait_status" -eq 143 ] \
+    || fail_case "generate-report-image $image_liveness_name case returned $wrapper_wait_status instead of the TERM status 143"
+}
+
+run_image_liveness_replay liveness-zombies liveness-zombies Z
+image_liveness_grace_ticks="$(grep -cx '0.1' "$fixture_root/liveness-zombies/sleeps" 2>/dev/null || true)"
+[ "$image_liveness_grace_ticks" -eq 0 ] \
+  || fail_case "generate-report-image exited-group case waited $image_liveness_grace_ticks grace ticks instead of stopping after the TERM-obedient backend and descendant exited"
+
+# generate-report-image: a TERM-deaf descendant remains a real live group member, so
+# the helper must retain all ten 0.1s grace ticks before KILL reaches that group.
+run_image_liveness_replay liveness-term-deaf term-deaf S
+image_liveness_grace_ticks="$(grep -cx '0.1' "$fixture_root/liveness-term-deaf/sleeps" 2>/dev/null || true)"
+[ "$image_liveness_grace_ticks" -eq 10 ] \
+  || fail_case "generate-report-image TERM-deaf case used $image_liveness_grace_ticks grace ticks instead of the full 10 before KILL"
+image_liveness_survivor_ticks=0
+while process_id_is_live "$(cat "$fixture_root/liveness-term-deaf/descendant.pid")" \
+  && [ "$image_liveness_survivor_ticks" -lt 40 ]; do
+  sleep 0.05
+  image_liveness_survivor_ticks=$((image_liveness_survivor_ticks + 1))
+done
+process_id_is_live "$(cat "$fixture_root/liveness-term-deaf/descendant.pid")" \
+  && fail_case 'generate-report-image TERM-deaf case left the TERM-deaf descendant alive after KILL'
 
 # generate-report-image: `mv` treats an existing destination directory as a container,
 # so an output path occupied by a directory nests the staged image inside it and still

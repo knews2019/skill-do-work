@@ -118,7 +118,24 @@ report_image_batch_is_alive() {
   batch_index=0
   while [ "$batch_index" -lt "${#image_generation_pids[@]}" ]; do
     if [ -n "${image_generation_groups[$batch_index]}" ]; then
-      kill -0 -- "-${image_generation_groups[$batch_index]}" 2>/dev/null && return 0
+      batch_group_id="${image_generation_groups[$batch_index]}"
+      # A process group can retain exited, unreaped members. They still satisfy kill -0,
+      # but cannot receive a signal and must not consume the grace budget. If ps itself
+      # cannot answer, retain the conservative group probe so descendants are never killed
+      # early merely because status inspection is unavailable.
+      if batch_group_states="$("$process_status_command" -eo pgid=,stat= 2>/dev/null)"; then
+        while read -r observed_group_id observed_process_state; do
+          [ "$observed_group_id" = "$batch_group_id" ] || continue
+          case "$observed_process_state" in
+            Z*) ;;
+            *) return 0 ;;
+          esac
+        done <<EOF
+$batch_group_states
+EOF
+      else
+        kill -0 -- "-$batch_group_id" 2>/dev/null && return 0
+      fi
     else
       kill -0 "${image_generation_pids[$batch_index]}" 2>/dev/null && return 0
     fi

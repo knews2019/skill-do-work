@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.41 — Exited Process Groups Stop Spending Dead Grace (2026-08-24)
+
+Report-image interruption now distinguishes a live process-group member from an exited, unreaped one, so cleanup stops promptly once only zombies remain without weakening descendant signalling.
+
+- Both the single-image helper and batch owner retain group-wide TERM/KILL delivery and conservatively fall back to the prior probe if process-state inspection fails
+- Deterministic descendant-bearing fixtures pin prompt zombie-only exit and the full ten-tick TERM-deaf timeout, including proof that KILL removes the descendant
+
 ## 0.236.40 — Structural Warnings Name the Actual Repair (2026-08-24)
 
 Queue verification now distinguishes a missing opening fence from a missing closing one, calls filename-recovered IDs a caution rather than damage, and recognizes documented UR-less request schemas without a directory exception.
