@@ -19,6 +19,8 @@ const (
 	verifyCategoryChangelogVersionNotAhead      = "changelog-version-not-ahead"
 	verifyCategoryReusedChangelogTitle          = "reused-changelog-title"
 	verifyCategoryDuplicateRequestId            = "duplicate-req-id"
+	verifyCategoryStructurallyDamagedRequest    = "structurally-damaged-req"
+	verifyCategoryUnrecognizedRequestStatus     = "unrecognized-req-status"
 	verifyCategoryMergedWorktreeLeftover        = "merged-worktree-leftover"
 	verifyCategoryUnmergedWorktreeLeftover      = "unmerged-worktree-leftover"
 	verifyCategoryUndeterminedWorktreeLeftover  = "worktree-merge-state-undetermined"
@@ -143,6 +145,8 @@ func collectVerifyFindings(repoRoot string, board *Board, now time.Time) VerifyR
 
 	appendReleaseFindings(&report, repoRoot)
 	appendDuplicateRequestIdFindings(&report, board)
+	appendStructuralDamageFindings(&report, board)
+	appendUnrecognizedStatusFindings(&report, board)
 	appendCompletionAnomalyFindings(&report, repoRoot, board)
 	appendTimestampOrderingFindings(&report, board)
 	appendCalibrationLogFindings(&report, repoRoot, board)
@@ -288,6 +292,143 @@ func appendDuplicateRequestIdFindings(report *VerifyReport, board *Board) {
 				Remedy:   "renumber one of the two files (its title is in the filename, so the pair is easy to tell apart)",
 			})
 		}
+	}
+}
+
+// appendStructuralDamageFindings reports a REQ file whose frontmatter no longer
+// holds the fields the whole pipeline reads off it. The parser recovers from
+// every shape below rather than erroring (splitFrontmatter and
+// parseFrontmatterFields both document recovery as their contract), so the damage
+// surfaces as EMPTY FIELDS on a card that still renders — which is why verify
+// printed `OK: no findings` on a queue where six of seven files were broken.
+// Detection here changes nothing about that leniency: a damaged REQ still parses
+// and still appears on the board, it just stops passing the mechanical check.
+//
+// Like appendCompletionAnomalyFindings and the stray-file probe, this forwards
+// what buildBoard already produced — the ticket's own parsed fields and its
+// retained frontmatter bytes. No warning prose is matched and the tree is not
+// walked a second time.
+//
+// A file with no leading fence reports ONE finding and stops. Its id, status and
+// user_request are all empty as a CONSEQUENCE of the missing fence, and the
+// remedy for the fence repairs all of them; reporting each separately would be
+// four findings for one defect, the same double-report that
+// appendTimestampOrderingFindings' outer-pair carve-out avoids.
+func appendStructuralDamageFindings(report *VerifyReport, board *Board) {
+	for _, ticket := range board.AllRequests {
+		if ticket.FrontmatterMarkdown == "" {
+			report.Findings = append(report.Findings, VerifyFinding{
+				Category: verifyCategoryStructurallyDamagedRequest,
+				Detail: fmt.Sprintf("%s has no leading frontmatter fence, so id, status, user_request and every other field parsed empty (the id named here was recovered from the filename)",
+					ticket.RequestId),
+				Remedy: "restore the opening `---` as the file's very first line and the closing `---` after the last field, then re-check the fields it was hiding",
+			})
+			continue
+		}
+
+		frontmatterFields := requestFrontmatterFields(ticket)
+		if coerceScalarToString(frontmatterFields["id"]) == "" {
+			report.Findings = append(report.Findings, VerifyFinding{
+				Category: verifyCategoryStructurallyDamagedRequest,
+				Detail: fmt.Sprintf("%s has an empty or absent id: field — the id everything else names it by was recovered from the filename, so a rename silently renumbers it",
+					ticket.RequestId),
+				Remedy: fmt.Sprintf("write `id: %s` into the frontmatter", ticket.RequestId),
+			})
+		}
+
+		if ticket.UserRequestId != "" {
+			continue
+		}
+		// Two absences are correct by design and must not be reported, or the probe
+		// cries wolf on files nobody should touch and gets turned off. A stakeholder
+		// REQ deliberately omits user_request (actions/work-reference.md → Stakeholder
+		// REQ Template: UR membership would hold the source UR open), and every REQ
+		// under do-work/archive/legacy/ predates the field entirely.
+		if coerceScalarToString(frontmatterFields[stakeholderMarkerFieldName]) != "" {
+			continue
+		}
+		if isLegacyArchiveRequestPath(ticket.FilePath) {
+			continue
+		}
+		report.Findings = append(report.Findings, VerifyFinding{
+			Category: verifyCategoryStructurallyDamagedRequest,
+			Detail: fmt.Sprintf("%s carries no user_request: pointer, so it belongs to no UR — nothing links it to the input that asked for it, and UR closure cannot see it",
+				ticket.RequestId),
+			Remedy: "write `user_request: UR-NNN` naming the UR this REQ was captured under (do-work/user-requests/); a stakeholder REQ omits it deliberately and is exempt",
+		})
+	}
+}
+
+// stakeholderMarkerFieldName is the frontmatter key that marks a stakeholder REQ —
+// the fold discriminator in actions/work-reference.md → Stakeholder REQ Template,
+// and the only positive evidence that a missing user_request is deliberate rather
+// than damage.
+const stakeholderMarkerFieldName = "stakeholder"
+
+// requestFrontmatterFields re-reads one ticket's OWN retained frontmatter bytes
+// through the same two parsers buildBoard used. This is neither a second tree walk
+// nor a second parser: RequestTicket.FrontmatterMarkdown is the original fence
+// bytes buildBoard already sliced off the file and kept on the ticket, and both
+// functions called here are the production ones.
+//
+// It exists because two of the fields this probe needs are the ones the ticket
+// cannot answer for. RequestTicket.RequestId falls back to the filename, so an
+// empty `id:` is indistinguishable from a present one by the time it reaches a
+// ticket; `stakeholder:` is not parsed onto the ticket at all. Promoting either to
+// a RequestTicket field is model.go's call.
+//
+// parseFrontmatterFields never returns an error (recovery is its contract), so a
+// block strict YAML rejects still yields whatever the lenient line scan recovered —
+// the leniency this REQ was told to keep.
+func requestFrontmatterFields(ticket *RequestTicket) map[string]any {
+	yamlText, _, _, hasFrontmatter := splitFrontmatter(ticket.FrontmatterMarkdown)
+	if !hasFrontmatter {
+		return nil
+	}
+	frontmatterFields, _ := parseFrontmatterFields(yamlText)
+	return frontmatterFields
+}
+
+// isLegacyArchiveRequestPath reports whether a REQ file lives under
+// do-work/archive/legacy/, where every REQ predates the user_request field.
+//
+// Anchored on the trailing separator rather than a leading one, for the reason
+// isArchivedUserRequestPath states: `verify --repo-root .` yields ticket paths with
+// no leading slash at all, and a leading-slash pattern would recognize zero of them
+// in exactly the CLI mode actions/forensics.md can invoke. The explicit prefix case
+// keeps a directory like "my-do-work/archive/legacy/" from satisfying it.
+func isLegacyArchiveRequestPath(requestFilePath string) bool {
+	normalizedPath := filepath.ToSlash(requestFilePath)
+	const legacyArchiveSegment = "do-work/archive/legacy/"
+	return strings.HasPrefix(normalizedPath, legacyArchiveSegment) ||
+		strings.Contains(normalizedPath, "/"+legacyArchiveSegment)
+}
+
+// appendUnrecognizedStatusFindings lifts the parser's own unrecognized-status
+// verdict into a finding, the way appendDuplicateRequestIdFindings lifts the
+// duplicate-id one — but off RequestTicket.StatusUnrecognized, the structured form
+// of that verdict, rather than off the warning sentence bucketColumns writes beside
+// it. Status is the field the entire pipeline routes on: a REQ whose status did not
+// survive parsing is parked in Needs input / Blocked, where it is indistinguishable
+// from a REQ that is genuinely blocked, and nothing will ever claim it.
+//
+// A file with no frontmatter fence at all is left to
+// appendStructuralDamageFindings: its status is empty because the fence is gone,
+// and the fence finding already carries the repair.
+func appendUnrecognizedStatusFindings(report *VerifyReport, board *Board) {
+	for _, ticket := range board.AllRequests {
+		if !ticket.StatusUnrecognized || ticket.FrontmatterMarkdown == "" {
+			continue
+		}
+		detail := fmt.Sprintf("%s has an unrecognized status: value %q", ticket.RequestId, ticket.OriginalStatus)
+		if strings.TrimSpace(ticket.OriginalStatus) == "" {
+			detail = fmt.Sprintf("%s has an empty or absent status: field", ticket.RequestId)
+		}
+		report.Findings = append(report.Findings, VerifyFinding{
+			Category: verifyCategoryUnrecognizedRequestStatus,
+			Detail:   detail + " — it is parked under Needs input / Blocked, indistinguishable from a genuinely blocked REQ, and no run will claim it",
+			Remedy:   "edit `status:` to a Schema Read Contract value (actions/work-reference.md), or run do-work forensics to route it",
+		})
 	}
 }
 
