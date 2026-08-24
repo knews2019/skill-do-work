@@ -169,6 +169,8 @@ list is still one Tab stop.
 
 ## Scope
 
+**Files I will touch:**
+
 - `skills/do-work-board/tools/queue-kanban/web/board-timeline.js`
 - `skills/do-work-board/tools/queue-kanban/web/board.css`
 - `skills/do-work-board/tools/queue-kanban/web/template.html`
