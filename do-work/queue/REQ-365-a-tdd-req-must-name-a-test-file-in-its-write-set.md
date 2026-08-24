@@ -15,7 +15,6 @@ maintenance: true
 impact: impact-rule-change
 effort_estimate: effort-mechanical
 write_set:
-  - skills/do-work/actions/capture.md
   - skills/do-work/actions/capture-reference.md
 ---
 
@@ -76,6 +75,32 @@ tests specifically, and names what a builder does when it meets the contradictio
 already-queued REQ.
 
 **Validation:** Inferred during REQ-346's review.
+
+## Addendum (2026-08-24)
+
+Scope narrowing from UR-070, which re-read this REQ before capturing its sibling. Two changes, both
+in the delete-before-you-add direction:
+
+- **One file, not two.** `write_set` drops `skills/do-work/actions/capture.md`. That file already
+  delegates to this rule's home by name — its Step 5 complex-mode bullet cites the
+  **Populating `write_set`** guidance in `actions/capture-reference.md` — so stating the rule in
+  `capture-reference.md` alone reaches every caller. Editing `capture.md` too would mint a second
+  copy of a rule with one home, which is what "state it once where `write_set` is defined" already
+  asked for.
+- **Cite the builder rule, do not restate it.** Detailed Requirements' fourth bullet asks this REQ
+  to say what a builder does when it meets the contradiction in an already-queued REQ. That
+  behaviour is already stated: `actions/work.md` § "Write only inside the declared scope" makes an
+  out-of-scope need a stop-and-report to the orchestrator, never a silent write, and puts the
+  extension of both the Scope list and `write_set` on the orchestrator — the path REQ-346's builder
+  actually followed. Satisfy the bullet with a pointer to that rule, not a second statement of it.
+
+  Resolved conflict: fourth bullet's "say what a builder should do" → cite `actions/work.md`'s
+  declared-scope bullet from the new text; add no new builder-side prose.
+
+**The already-queued instances are not this REQ's job.** Five queued REQs carry the shape today
+(REQ-348, REQ-350, REQ-352, REQ-353, REQ-362); REQ-347 carries it too but is claimed and immutable.
+Repairing them is **REQ-366** (UR-070). This REQ stops the shape being minted; REQ-366 clears what
+was already minted.
 
 ---
 *Source: REQ-346 review finding F2 (UR-069) — the generalisable half.*
