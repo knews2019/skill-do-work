@@ -36,6 +36,7 @@
   var DURATIONS_MAIN_TOP = 84;
   var DURATIONS_MAIN_BOTTOM = 286;
   var DURATIONS_CEILING_MINUTES = 60;
+  var DURATIONS_ORDINARY_MARK_OPACITY = 0.62;
   var DURATIONS_BELOW_ZERO_Y = 298;
   // Direct labels. WHICH marks get one is decided in durations.go and arrives in
   // the payload as labelRow/labelAnchor; what lives here is only the geometry
@@ -387,23 +388,32 @@
   // single bucket for samples whose REQ names no UR. The bucket is returned
   // apart from the brackets because it never enters the packer: it holds a
   // reserved row of its own (see DURATIONS_UR_UNKNOWN_ROW_TOP).
-  function buildDurationsUserRequestBrackets(samples, plotXOfEpoch) {
+  function buildDurationsUserRequestBrackets(samples, plotXOfSample) {
     var samplesByUserRequest = {};
-    var unknownSampleTimes = [];
+    var unknownSamples = [];
     samples.forEach(function (sample) {
       var completionMs = Date.parse(sample.completionTime);
+      var sampleX = plotXOfSample(sample);
       var userRequestId = durationSampleUserRequestId(sample);
       if (!userRequestId) {
-        unknownSampleTimes.push(completionMs);
+        unknownSamples.push({ completionMs: completionMs, sampleX: sampleX });
         return;
       }
       var group = samplesByUserRequest[userRequestId];
       if (!group) {
-        samplesByUserRequest[userRequestId] = { firstMs: completionMs, lastMs: completionMs, sampleCount: 1 };
+        samplesByUserRequest[userRequestId] = {
+          firstMs: completionMs,
+          lastMs: completionMs,
+          left: sampleX,
+          right: sampleX,
+          sampleCount: 1
+        };
         return;
       }
       group.firstMs = Math.min(group.firstMs, completionMs);
       group.lastMs = Math.max(group.lastMs, completionMs);
+      group.left = Math.min(group.left, sampleX);
+      group.right = Math.max(group.right, sampleX);
       group.sampleCount += 1;
     });
 
@@ -416,8 +426,8 @@
     var plotRightEdge = DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT;
 
     function bracketOf(userRequestId, group) {
-      var left = plotXOfEpoch(group.firstMs);
-      var right = Math.max(plotXOfEpoch(group.lastMs), left + DURATIONS_UR_BRACKET_MIN_WIDTH);
+      var left = group.left;
+      var right = Math.max(group.right, left + DURATIONS_UR_BRACKET_MIN_WIDTH);
       if (right > plotRightEdge) {
         left -= right - plotRightEdge;
         right = plotRightEdge;
@@ -436,11 +446,13 @@
       return bracketOf(userRequestId, samplesByUserRequest[userRequestId]);
     });
     var unknownBracket = null;
-    if (unknownSampleTimes.length > 0) {
+    if (unknownSamples.length > 0) {
       unknownBracket = bracketOf("", {
-        firstMs: Math.min.apply(null, unknownSampleTimes),
-        lastMs: Math.max.apply(null, unknownSampleTimes),
-        sampleCount: unknownSampleTimes.length
+        firstMs: Math.min.apply(null, unknownSamples.map(function (sample) { return sample.completionMs; })),
+        lastMs: Math.max.apply(null, unknownSamples.map(function (sample) { return sample.completionMs; })),
+        left: Math.min.apply(null, unknownSamples.map(function (sample) { return sample.sampleX; })),
+        right: Math.max.apply(null, unknownSamples.map(function (sample) { return sample.sampleX; })),
+        sampleCount: unknownSamples.length
       });
     }
     return { brackets: brackets, unknownBracket: unknownBracket };
@@ -826,12 +838,89 @@
       var rightmostLeft = DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT - barWidth;
       return Math.min(Math.max(barLeft, DURATIONS_MARGIN_LEFT), rightmostLeft);
     }
+    // Stable rank inside each UTC day replaces completion-time stacking without
+    // turning x into a second measure. The inset scales down with very narrow
+    // slots; every centre therefore remains in [day midnight, next midnight)
+    // even on long boards, while the stated dense target (about eight units per
+    // day) keeps useful spread. Identity is the primary order, completion time
+    // and original payload position are deterministic tie-breakers.
+    function durationsJitteredMarkXs() {
+      var samplesByDay = {};
+      var markXs = [];
+      samples.forEach(function (sample, sampleIndex) {
+        var completionMs = Date.parse(sample.completionTime);
+        var dayStartMs = Math.floor(completionMs / DURATIONS_DAY_MS) * DURATIONS_DAY_MS;
+        var dayKey = String(dayStartMs);
+        if (!samplesByDay[dayKey]) {
+          samplesByDay[dayKey] = [];
+        }
+        samplesByDay[dayKey].push({ sample: sample, sampleIndex: sampleIndex, dayStartMs: dayStartMs });
+      });
+      Object.keys(samplesByDay).forEach(function (dayKey) {
+        var rankedSamples = samplesByDay[dayKey].sort(function (first, second) {
+          if (first.sample.id !== second.sample.id) {
+            return first.sample.id < second.sample.id ? -1 : 1;
+          }
+          if (first.sample.completionTime !== second.sample.completionTime) {
+            return first.sample.completionTime < second.sample.completionTime ? -1 : 1;
+          }
+          return first.sampleIndex - second.sampleIndex;
+        });
+        var dayLeft = xOfEpoch(rankedSamples[0].dayStartMs);
+        var dayRight = xOfEpoch(rankedSamples[0].dayStartMs + DURATIONS_DAY_MS);
+        var dayWidth = dayRight - dayLeft;
+        var inset = Math.min(1, dayWidth / 4);
+        rankedSamples.forEach(function (rankedSample, rankIndex) {
+          markXs[rankedSample.sampleIndex] = rankedSamples.length === 1
+            ? dayLeft + dayWidth / 2
+            : dayLeft + inset + (rankIndex / (rankedSamples.length - 1)) * (dayWidth - 2 * inset);
+        });
+      });
+      return markXs;
+    }
     function yOfMinutes(minutes) {
       var clamped = Math.min(minutes, DURATIONS_CEILING_MINUTES);
       return (
         DURATIONS_MAIN_BOTTOM -
-        (clamped / DURATIONS_CEILING_MINUTES) * (DURATIONS_MAIN_BOTTOM - DURATIONS_MAIN_TOP)
+        Math.sqrt(clamped / DURATIONS_CEILING_MINUTES) * (DURATIONS_MAIN_BOTTOM - DURATIONS_MAIN_TOP)
       );
+    }
+    // R-7 / linear interpolation: position (n-1)*p in the sorted samples and
+    // interpolate between its neighbours. Naming the rule makes small even
+    // days deterministic rather than leaving quartiles to library convention.
+    function durationQuantile(sortedMinutes, probability) {
+      var position = (sortedMinutes.length - 1) * probability;
+      var lowerIndex = Math.floor(position);
+      var upperIndex = Math.ceil(position);
+      if (lowerIndex === upperIndex) {
+        return sortedMinutes[lowerIndex];
+      }
+      return sortedMinutes[lowerIndex] +
+        (sortedMinutes[upperIndex] - sortedMinutes[lowerIndex]) * (position - lowerIndex);
+    }
+    function durationsDailyQuantiles() {
+      var minutesByDay = {};
+      samples.forEach(function (sample) {
+        if (sample.excludedReason) {
+          return;
+        }
+        var completionMs = Date.parse(sample.completionTime);
+        var dayStartMs = Math.floor(completionMs / DURATIONS_DAY_MS) * DURATIONS_DAY_MS;
+        var dayKey = String(dayStartMs);
+        if (!minutesByDay[dayKey]) {
+          minutesByDay[dayKey] = [];
+        }
+        minutesByDay[dayKey].push(sample.wallMinutes);
+      });
+      return Object.keys(minutesByDay).map(function (dayKey) {
+        var sortedMinutes = minutesByDay[dayKey].sort(function (first, second) { return first - second; });
+        return {
+          dayStartMs: Number(dayKey),
+          p25: durationQuantile(sortedMinutes, 0.25),
+          median: durationQuantile(sortedMinutes, 0.5),
+          p75: durationQuantile(sortedMinutes, 0.75)
+        };
+      }).sort(function (first, second) { return first.dayStartMs - second.dayStartMs; });
     }
     function yOfDayMedian(minutes) {
       var clamped = Math.min(minutes, DURATIONS_MEDIAN_CEILING);
@@ -902,31 +991,62 @@
       y2: DURATIONS_BREAK_Y,
       class: "durations-grid-line"
     });
-    [0, 15, 30, 45, 60].forEach(function (minutes) {
+    [0, 5, 15, 30, 45, 60].forEach(function (minutes) {
       gridRow(yOfMinutes(minutes), minutes === 0, String(minutes));
     });
 
     var markIndex = [];
     var colourContext = durationColourContext(samples);
-    samples.forEach(function (sample) {
+    var jitteredMarkXs = durationsJitteredMarkXs();
+    var dailyQuantiles = durationsDailyQuantiles();
+    if (dailyQuantiles.length > 0) {
+      var upperRibbonPoints = dailyQuantiles.map(function (day) {
+        return durationsDayCentreX(day.dayStartMs).toFixed(1) + " " + yOfMinutes(day.p75).toFixed(1);
+      });
+      var lowerRibbonPoints = dailyQuantiles.slice().reverse().map(function (day) {
+        return durationsDayCentreX(day.dayStartMs).toFixed(1) + " " + yOfMinutes(day.p25).toFixed(1);
+      });
+      var medianPoints = dailyQuantiles.map(function (day) {
+        return durationsDayCentreX(day.dayStartMs).toFixed(1) + " " + yOfMinutes(day.median).toFixed(1);
+      });
+      makeDurationsSvgNode(svg, "path", {
+        d: "M " + upperRibbonPoints.join(" L ") + " L " + lowerRibbonPoints.join(" L ") + " Z",
+        fill: "var(--ink-faint)",
+        opacity: 0.18,
+        class: "durations-quantile-ribbon"
+      });
+      makeDurationsSvgNode(svg, "path", {
+        d: "M " + medianPoints.join(" L "),
+        fill: "none",
+        stroke: "var(--ink-soft)",
+        "stroke-width": 1.5,
+        opacity: 0.62,
+        class: "durations-quantile-median"
+      });
+    }
+    samples.forEach(function (sample, sampleIndex) {
       var epochMs = Date.parse(sample.completionTime);
       var minutes = sample.wallMinutes;
       var isOverflow = minutes > DURATIONS_CEILING_MINUTES;
       var isReversed = minutes < 0;
-      var markX = xOfEpoch(epochMs);
+      var markX = jitteredMarkXs[sampleIndex];
       var markY = isOverflow
         ? DURATIONS_LANE_MARK_Y
         : isReversed
         ? DURATIONS_BELOW_ZERO_Y
         : yOfMinutes(minutes);
       var markColour = durationMarkColour(sample, colourContext);
-      makeDurationsSvgNode(svg, "circle", {
+      var markAttributes = {
         cx: markX.toFixed(1),
         cy: markY.toFixed(1),
         r: isOverflow || isReversed ? DURATIONS_BAND_MARK_RADIUS : 4,
         fill: isReversed ? "var(--durations-critical)" : markColour.fill,
         class: "durations-mark" + (isReversed ? " durations-mark-critical" : markColour.className ? " " + markColour.className : "")
-      });
+      };
+      if (!isReversed && !markColour.className) {
+        markAttributes.opacity = DURATIONS_ORDINARY_MARK_OPACITY;
+      }
+      makeDurationsSvgNode(svg, "circle", markAttributes);
       markIndex.push({ x: markX, y: markY, sample: sample, epochMs: epochMs, colourLabel: isReversed ? "Reversed stamp" : markColour.label });
     });
 
@@ -1063,7 +1183,13 @@
     // A bracket says "these marks above are one user request". No text goes
     // inside the lane; the two gutter ticks name the rows, the title line states
     // the remainder, and the hover names the bracket under the pointer.
-    var userRequestLane = buildDurationsUserRequestBrackets(samples, xOfEpoch);
+    var jitteredMarkXById = {};
+    markIndex.forEach(function (mark) {
+      jitteredMarkXById[mark.sample.id] = mark.x;
+    });
+    var userRequestLane = buildDurationsUserRequestBrackets(samples, function (sample) {
+      return jitteredMarkXById[sample.id];
+    });
     var packedUserRequestLane = packDurationsUserRequestLane(userRequestLane.brackets);
     makeDurationsSvgNode(
       svg,

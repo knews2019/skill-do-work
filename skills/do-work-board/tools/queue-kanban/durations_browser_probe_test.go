@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Direct-label placement, asserted against what a reader would actually see.
@@ -533,6 +535,201 @@ func runDurationsPlacementProbeWithFaceOverride(t *testing.T, overflowSpec strin
 // durationsProbeExtraStyle is appended to the probe page's stylesheet. Empty for
 // every probe except the face-response one above.
 var durationsProbeExtraStyle = ""
+
+type durationsDensePanelProbeResult struct {
+	LocationHref        string  `json:"locationHref"`
+	SampleCount         int     `json:"sampleCount"`
+	ActiveDayCount      int     `json:"activeDayCount"`
+	DaySlotWidth        float64 `json:"daySlotWidth"`
+	BusyDaySpread       float64 `json:"busyDaySpread"`
+	Deterministic       bool    `json:"deterministic"`
+	EveryMarkInOwnDay   bool    `json:"everyMarkInOwnDay"`
+	HoveredRequestId    string  `json:"hoveredRequestId"`
+	HoverReadout        string  `json:"hoverReadout"`
+	RibbonFiniteBounded bool    `json:"ribbonFiniteBounded"`
+	MedianFiniteBounded bool    `json:"medianFiniteBounded"`
+	RibbonOpacity       float64 `json:"ribbonOpacity"`
+	MarkOpacity         float64 `json:"markOpacity"`
+	BodyBackground      string  `json:"bodyBackground"`
+}
+
+// REQ-349's target board is materially denser than this repository. This probe
+// renders 705 real samples on 47 active days spread across 139 UTC days, making
+// each day slot about eight SVG units wide. It measures the complete generated
+// page in both colour schemes, including the hover seam that consumes markIndex.
+func TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive(t *testing.T) {
+	const samplesPerDay = 15
+	const activeDayCount = 47
+	fixtureStart := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	fixtureTickets := make([]*RequestTicket, 0, samplesPerDay*activeDayCount)
+	for activeDayIndex := 0; activeDayIndex < activeDayCount; activeDayIndex++ {
+		dayStart := fixtureStart.AddDate(0, 0, activeDayIndex*3)
+		for sampleIndex := 0; sampleIndex < samplesPerDay; sampleIndex++ {
+			completedAt := dayStart.Add(time.Duration(8*60+sampleIndex*37) * time.Minute)
+			minutes := time.Duration(2+(sampleIndex*7)%57) * time.Minute
+			ticket := durationTicket(
+				fmt.Sprintf("REQ-%04d", activeDayIndex*samplesPerDay+sampleIndex+1),
+				[]string{"A", "B", "C"}[sampleIndex%3],
+				completedAt.Add(-minutes).Format(time.RFC3339),
+				completedAt.Format(time.RFC3339),
+			)
+			ticket.UserRequestId = fmt.Sprintf("UR-%03d", activeDayIndex+1)
+			ticket.Domain = []string{"frontend", "backend", "testing"}[sampleIndex%3]
+			fixtureTickets = append(fixtureTickets, ticket)
+		}
+	}
+
+	fixtureBoard := &Board{
+		GeneratedAt: time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC),
+		ProjectName: "REQ-349 dense durations probe",
+		AllRequests: fixtureTickets,
+	}
+	siteDirectory := t.TempDir()
+	if generateError := generateStaticSite(siteDirectory, fixtureBoard); generateError != nil {
+		t.Fatalf("generate dense fixture board: %v", generateError)
+	}
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read dense fixture index: %v", readError)
+	}
+
+	probeScript := `
+  (function () {
+  var durationsPanel = document.getElementById("view-durations");
+  durationsPanel.hidden = false;
+  durationsPanel.style.display = "block";
+
+  function captureMarks() {
+    return Array.from(document.querySelectorAll("#durations-chart circle.durations-mark")).map(function (circle) {
+      return { x: Number(circle.getAttribute("cx")), y: Number(circle.getAttribute("cy")) };
+    });
+  }
+
+  renderDurationsView();
+  var firstMarks = captureMarks();
+  renderDurationsView();
+  var secondMarks = captureMarks();
+  var samples = boardData.durations.samples;
+  var firstSampleMs = Date.parse(samples[0].completionTime);
+  var lastSampleMs = Date.parse(samples[samples.length - 1].completionTime);
+  var timeStart = Math.floor(firstSampleMs / DURATIONS_DAY_MS) * DURATIONS_DAY_MS;
+  var timeEnd = Math.floor(lastSampleMs / DURATIONS_DAY_MS) * DURATIONS_DAY_MS + DURATIONS_DAY_MS;
+  var timeSpan = timeEnd - timeStart;
+  var xOfEpoch = function (epochMs) {
+    return DURATIONS_MARGIN_LEFT + ((epochMs - timeStart) / timeSpan) * DURATIONS_PLOT_WIDTH;
+  };
+  var everyMarkInOwnDay = secondMarks.every(function (mark, sampleIndex) {
+    var sampleMs = Date.parse(samples[sampleIndex].completionTime);
+    var dayStartMs = Math.floor(sampleMs / DURATIONS_DAY_MS) * DURATIONS_DAY_MS;
+    return mark.x >= xOfEpoch(dayStartMs) - 0.05 && mark.x <= xOfEpoch(dayStartMs + DURATIONS_DAY_MS) + 0.05;
+  });
+  var firstDayMarks = secondMarks.slice(0, ` + fmt.Sprintf("%d", samplesPerDay) + `);
+  var busyDaySpread = Math.max.apply(null, firstDayMarks.map(function (mark) { return mark.x; })) -
+    Math.min.apply(null, firstDayMarks.map(function (mark) { return mark.x; }));
+  var deterministic = firstMarks.length === secondMarks.length && firstMarks.every(function (mark, markIndex) {
+    return mark.x === secondMarks[markIndex].x && mark.y === secondMarks[markIndex].y;
+  });
+
+  var ribbon = document.querySelector("#durations-chart .durations-quantile-ribbon");
+  var median = document.querySelector("#durations-chart .durations-quantile-median");
+  function finiteBounded(pathNode) {
+    if (!pathNode || !pathNode.getAttribute("d") || /NaN|Infinity/.test(pathNode.getAttribute("d"))) { return false; }
+    var box = pathNode.getBBox();
+    return [box.x, box.y, box.width, box.height, pathNode.getTotalLength()].every(Number.isFinite) &&
+      box.x >= DURATIONS_MARGIN_LEFT - 0.1 && box.x + box.width <= DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT + 0.1 &&
+      box.y >= DURATIONS_MAIN_TOP - 0.1 && box.y + box.height <= DURATIONS_MAIN_BOTTOM + 0.1;
+  }
+
+  var hoverMarkIndex = 7;
+  var hoveredMark = secondMarks[hoverMarkIndex];
+  var svg = document.querySelector("#durations-chart svg");
+  var hoverSurface = document.querySelector("#durations-chart .durations-hover-surface");
+  var bounds = svg.getBoundingClientRect();
+  hoverSurface.dispatchEvent(new MouseEvent("mousemove", {
+    bubbles: true,
+    clientX: bounds.left + hoveredMark.x * bounds.width / DURATIONS_VIEW_WIDTH,
+    clientY: bounds.top + hoveredMark.y * bounds.height / DURATIONS_VIEW_HEIGHT
+  }));
+  var hoveredRequestId = samples[hoverMarkIndex].id;
+
+  document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
+    locationHref: location.href,
+    sampleCount: samples.length,
+    activeDayCount: boardData.durations.days.length,
+    daySlotWidth: DURATIONS_PLOT_WIDTH * DURATIONS_DAY_MS / timeSpan,
+    busyDaySpread: busyDaySpread,
+    deterministic: deterministic,
+    everyMarkInOwnDay: everyMarkInOwnDay,
+    hoveredRequestId: hoveredRequestId,
+    hoverReadout: document.getElementById("durations-readout").textContent,
+    ribbonFiniteBounded: finiteBounded(ribbon),
+    medianFiniteBounded: finiteBounded(median),
+    ribbonOpacity: ribbon ? Number(getComputedStyle(ribbon).opacity) : 0,
+    markOpacity: Number(getComputedStyle(document.querySelector("#durations-chart circle.durations-mark:not(.durations-mark-critical):not(.durations-mark-unknown)")).opacity),
+    bodyBackground: getComputedStyle(document.body).backgroundColor
+  });
+  })();
+`
+	// The generated client is one IIFE, so the probe has to run before its final
+	// close to exercise the private renderer and payload rather than a copied
+	// helper. The result node itself remains ordinary HTML outside the script.
+	probePage := strings.Replace(string(indexBytes), "</body>",
+		`<pre id="`+browserProbeResultElementId+`"></pre></body>`, 1)
+	clientClose := strings.LastIndex(probePage, "})();")
+	if clientClose < 0 {
+		t.Fatal("generated page has no client IIFE close for dense durations probe")
+	}
+	probePage = probePage[:clientClose] + probeScript + probePage[clientClose:]
+
+	for _, colourScheme := range []struct {
+		name string
+		flag string
+	}{
+		{name: "light", flag: "--force-light-mode"},
+		{name: "dark", flag: "--force-dark-mode"},
+	} {
+		colourScheme := colourScheme
+		t.Run(colourScheme.name, func(t *testing.T) {
+			resultJSON := runBrowserBehaviorProbeInDirectory(
+				t, "REQ-349 dense durations "+colourScheme.name, siteDirectory, probePage, colourScheme.flag,
+			)
+			var result durationsDensePanelProbeResult
+			if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
+				t.Fatalf("decode dense durations probe: %v\n%s", decodeError, resultJSON)
+			}
+			if result.SampleCount < 700 || result.ActiveDayCount != activeDayCount {
+				t.Errorf("rendered %d samples across %d active days, want at least 700 across %d",
+					result.SampleCount, result.ActiveDayCount, activeDayCount)
+			}
+			if result.DaySlotWidth < 7.5 || result.DaySlotWidth > 8.5 {
+				t.Errorf("day slot width %.2f, want roughly 8 SVG units", result.DaySlotWidth)
+			}
+			if !result.EveryMarkInOwnDay || result.BusyDaySpread < 5 {
+				t.Errorf("own-day=%v, busy-day spread=%.2f; want bounded useful spread", result.EveryMarkInOwnDay, result.BusyDaySpread)
+			}
+			if !result.Deterministic {
+				t.Error("identical payload moved marks across consecutive renders")
+			}
+			if !strings.HasPrefix(result.HoverReadout, result.HoveredRequestId+" ·") {
+				t.Errorf("hover at %s's jittered centre read %q", result.HoveredRequestId, result.HoverReadout)
+			}
+			if !result.RibbonFiniteBounded || !result.MedianFiniteBounded {
+				t.Errorf("distribution geometry bounded: ribbon=%v median=%v", result.RibbonFiniteBounded, result.MedianFiniteBounded)
+			}
+			if result.RibbonOpacity <= 0 || result.RibbonOpacity >= result.MarkOpacity {
+				t.Errorf("ribbon opacity %.2f is not subordinate to mark opacity %.2f", result.RibbonOpacity, result.MarkOpacity)
+			}
+			if result.LocationHref == "" || !strings.Contains(result.LocationHref, browserProbePageFileName) {
+				t.Errorf("probe measured unnamed page %q", result.LocationHref)
+			}
+			if result.BodyBackground == "" || result.BodyBackground == "rgba(0, 0, 0, 0)" {
+				t.Errorf("%s board has no resolved body background: %q", colourScheme.name, result.BodyBackground)
+			}
+			t.Logf("%s %s: %.2f-unit day slots, %.2f-unit busy-day spread, body %s",
+				colourScheme.name, result.LocationHref, result.DaySlotWidth, result.BusyDaySpread, result.BodyBackground)
+		})
+	}
+}
 
 // REQ-266's mechanism, chosen as a check rather than a review convention.
 //
