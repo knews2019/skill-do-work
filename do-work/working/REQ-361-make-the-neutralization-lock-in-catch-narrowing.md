@@ -131,3 +131,34 @@ build them together rather than twice:
   counterexample `title: "Fix: A " # B"` sits in inline prose and would otherwise trip it.
 - The same insertion-mutation discipline this REQ establishes applies to it: a checker that only
   catches the rule's deletion is the defect this REQ exists to remove, repeated on the sibling.
+
+## Plan
+
+1. Parse the named neutralization block into branch-level semantic clauses and derive the Frontmatter Quoting field inventory from the canonical schema fence.
+2. Add positive semantic properties plus scoped contradiction detectors that catch inserted narrowings without banning legitimate words such as the contract's own `only containment bytes` promise.
+3. Scan copyable examples only inside Markdown fences, classifying encoder exceptions from schema annotations rather than a hard-coded field exemption.
+4. Replay the seven neutralization insertion mutations and sibling quoting deletion, narrowing, unsafe-example, and future-field mutations with named non-vacuity guards.
+5. Run contract regressions and the canonical maintainer gate, preserving all prior REQ-342/360 mutation failures.
+
+**Plan validation:** Every requirement maps to a semantic clause, derived inventory, or mutation trial. One file owns the lock-in logic, so the plan stays within the captured scope.
+
+## Exploration
+
+- REQ-342's matrix is a positive vocabulary bag over the isolated Step 4 block. Its replacements go RED because they remove the phrase being checked; inserted contradictions leave every positive phrase present and stay GREEN.
+- Bind the inline branch to both its one-line and delimiter-safety triggers, and bind the containment branch to all three alternatives: own passage, any line break, or any delimiter-shaped line. Preserve blockquote isolation and tolerate synonym/order variation through normalized clause checks.
+- Derive governed fields from raw-user annotations in `work-reference.md`'s canonical YAML schema fence. The live inventory is `title`, `assigned_to`, `blocked_by`, `blocked_check`, `stakeholder`, `tested_by`, and `testing_feedback`; the test must discover rather than store that list.
+- Fence-only example scanning excludes the contract's inline prose counterexample. Encoder-owned double-quoted examples are recognized by their schema discriminator/comment, never by field name or directory.
+- Seven insertion trials cover named-shape checklist narrowing, REQ-answer-only reach, illustrative-to-complete wording, optional `> ` containment, short-answer-only inline handling, fixed triple-backtick fencing, and first-line-only prohibition. Sibling trials cover universal reach, citation/annotation integrity, unsafe fenced examples, and a newly annotated future field.
+
+## Scope
+
+**Files I will touch:**
+
+- `_dev/tests/contract-regressions.sh`
+
+**Acceptance criteria:**
+
+- Semantic clause checks pin both branch triggers and universal containment without overfitting one canonical sentence.
+- All seven insertion narrowings fail for named reasons while legitimate equivalent rewording and the existing replacement mutations retain their intended outcomes.
+- Frontmatter Quoting derives its governed inventory from the schema, scans fenced examples only, and fails on deletion, narrowing, unsafe examples, or a newly governed field without a second field list.
+- Focused contract regressions and canonical maintainer verification pass with non-vacuity guards intact.
