@@ -22,6 +22,11 @@ estimate:
   calculated_at: 2026-08-24T21:05:47Z
   basis:
     - trivial short-circuit
+write_set:
+  - skills/do-work-board/tools/queue-kanban/web/template.html
+  - skills/do-work-board/tools/queue-kanban/web/board-detail.js
+  - skills/do-work-board/tools/queue-kanban/web/board-clipboard.js
+  - skills/do-work-board/tools/queue-kanban/user_request_clipboard_browser_probe_test.go
 ---
 
 # Add a UR Copy-All That Copies the UR Plus All Its REQs
@@ -61,3 +66,32 @@ The UR detail view gets a copy-all control: one click puts the UR's own payload 
 ## Triage
 
 **Route: B** — REQ-367 now supplies the shared exact-byte bulk clipboard path, but exploration must identify the UR drawer control and grouped-id ordering source, distinguish grouped membership from capture-time requests, and add trusted browser coverage before freezing scope.
+
+## Exploration
+
+- The drawer's REQ ids row and `userRequestsById[UR].requestIds` already share one sorted all-tree membership source derived from each REQ's `user_request`, spanning queue, working, and archive rather than the UR's capture-time `requests:` array.
+- Add a hidden-by-default native control beside plain Copy and expose it only for UR details. Existing detail-copy focus and feedback styling applies, so no CSS change is needed.
+- Snapshot the current UR id and grouped ids at click time, then compose exact raw UR bytes followed by `rawMarkdownForRequests` output with no separator. Missing UR or member raw data fails the whole operation visibly.
+- A generated-site Chromium probe will distinguish plain Copy from Copy all, include grouped members beyond the capture array and across states, prove displayed order and exact payload, cover a no-member UR, REQ-detail hiding, missing-member failure, URL/console guards, and mutations.
+
+## Scope
+
+**Files I will touch:**
+
+- `skills/do-work-board/tools/queue-kanban/web/template.html`
+- `skills/do-work-board/tools/queue-kanban/web/board-detail.js`
+- `skills/do-work-board/tools/queue-kanban/web/board-clipboard.js`
+- `skills/do-work-board/tools/queue-kanban/user_request_clipboard_browser_probe_test.go`
+
+**Acceptance criteria:**
+
+- A separate Copy all control appears beside plain Copy only for UR details; plain Copy and REQ detail behavior remain unchanged.
+- Copy all writes the UR's exact raw payload first, then every grouped REQ's exact raw payload in the same all-tree order displayed by the drawer, with no invented separator.
+- Missing UR/member raw data fails closed through shared feedback, while a UR with no grouped REQs copies its own payload successfully.
+- Trusted Chromium coverage proves cross-state/capture-array-independent membership, ordering/content, control visibility, no-member and failure states, URL provenance, console cleanliness, and mutation sensitivity.
+
+## Decisions
+
+- **D-01 — Reuse the drawer's all-tree grouped-id authority.** This keeps copied membership and ordering identical to the REQ ids the user sees and avoids the incomplete capture-time array.
+- **D-02 — Snapshot detail identity at click time.** The async Markdown load operates on the UR and members the drawer showed when the user invoked the action.
+- **D-03 — Reuse native detail styling.** The existing detail-copy styles already cover focus and feedback; adding CSS would duplicate a solved surface.
