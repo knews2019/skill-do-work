@@ -32,7 +32,12 @@
 
     // The grouping lens and the recently-done window only shape the board view;
     // hide their controls elsewhere so the topbar never advertises dead knobs.
-    // The date window is the testing view's knob for the same reason.
+    // Shared filters do not shape Durations, and the date window is only the
+    // testing view's knob, so hide those controls where they do nothing too.
+    var hideSharedFilters = viewState.view === "durations";
+    document.getElementById("filter-search").hidden = hideSharedFilters;
+    document.getElementById("filter-domain").hidden = hideSharedFilters;
+    document.getElementById("filter-status").hidden = hideSharedFilters;
     document.getElementById("lens-group").hidden = viewState.view !== "board";
     document.getElementById("recent-window-group").hidden = viewState.view !== "board";
     document.getElementById("durations-colour-group").hidden = viewState.view !== "durations";
