@@ -4828,11 +4828,11 @@ assert_block_not_contains \
 # status, title and user_request read empty and the REQ leaves its UR silently.
 #
 # The rule is prose, so a keyword match would pass a gutted version of it. This extracts
-# the named entry point's own blockquote — nothing else in the file can lend it vocabulary
-# — grades it by meaning, then replays a mutation per leg. Each mutation is a plausible
-# narrowing rather than a deletion: the closed-list rewrite is the one the REQ named
-# outright (prime-shell-commands.md § Closed Enumerations Go Stale), and the
-# stripped-characters rewrite destroys the answer trail the record exists for.
+# the named entry point's own blockquote, grades the two branch lines in isolation, and
+# pairs positive meaning with scoped contradiction checks. Replacement trials keep the
+# earlier deletion coverage; insertion trials preserve that vocabulary while adding the
+# captured narrowings, including the closed-list failure named by
+# prime-shell-commands.md § Closed Enumerations Go Stale.
 if ! python3 - "$core_root/actions/clarify.md" <<'PY'
 import pathlib
 import re
@@ -4867,6 +4867,25 @@ def neutralization_defects(source):
         return {"missing named entry point blockquote"}
 
     normalized = " ".join(block.lower().split())
+    branch_lines = [
+        " ".join(line.lower().split())
+        for line in block.splitlines()
+        if re.match(r"^>\s*-\s*", line)
+    ]
+    single_line_branch = next(
+        (line for line in branch_lines if "inline after the `→`" in line), ""
+    )
+    contained_passage_branch = next(
+        (line for line in branch_lines if "blockquote" in line), ""
+    )
+    delimiter_judgment_clause = next(
+        (
+            " ".join(line.lower().split())
+            for line in block.splitlines()
+            if "judge" in line.lower() and "condition" in line.lower()
+        ),
+        "",
+    )
     predicates = {
         # The rule exists at all, and at the named entry point rather than in
         # loose prose a caller citing the name would never reach.
@@ -4896,14 +4915,6 @@ def neutralization_defects(source):
         "unbalanced fence shape named": r"unbalanced code fence",
         # Neutralizing must not cost the answer trail the record exists for.
         "answer preserved intact": r"nothing is edited or dropped",
-        # Branch one: a single line cannot start a line, so position is the fix.
-        "single-line branch binds both triggers":
-            r"(?:the|an) answer (?:is one|has a single) line\b.*?cannot be a delimiter where it lands.*?inline after the `→`",
-        # Branch two is a universal over three triggers. Checking each word in
-        # the whole block let a narrowed bullet borrow `anything` from prose
-        # above it; bind the quantifiers, alternatives and action together.
-        "contained branch covers every passage and risky answer":
-            r"anything written as its own body passage, or any answer with a line break or delimiter-shaped line.*?(?:put.*?inside|place.*?in) a blockquote",
         # Branch two, half one: the quote prefix is what a line-based scan sees,
         # and a fence alone does not stop one — the sibling incident in this
         # file's own history was a regex keying on the first line-leading `- [ ]`.
@@ -4921,6 +4932,29 @@ def neutralization_defects(source):
         for defect_name, predicate in predicates.items()
         if re.search(predicate, normalized) is None
     }
+    scoped_predicates = {
+        # Isolate the two list branches before grading them, so vocabulary in
+        # the surrounding blockquote cannot lend a weakened branch its force.
+        "single-line branch binds both triggers": (
+            single_line_branch,
+            r"(?:the|an) answer (?:is one|has a single) line\b.*?cannot be a delimiter where it lands.*?inline after the `→`",
+        ),
+        # Accept equivalent universal grammar while keeping all three triggers
+        # and the action in one branch: own passage, line break, delimiter line.
+        "contained branch covers every passage and risky answer": (
+            contained_passage_branch,
+            r"(?:anything\b.*?|every\b.*?)body passage.*?(?:or|plus).*?(?:any|each) answer.*?line break.*?(?:or|plus).*?delimiter-shaped line.*?(?:put.*?inside|place.*?in) a blockquote",
+        ),
+        "delimiter judgment covers every line": (
+            delimiter_judgment_clause,
+            r"judge (?:every|all) line.*?(?:one|a single) condition",
+        ),
+    }
+    defects.update(
+        defect_name
+        for defect_name, (clause, predicate) in scoped_predicates.items()
+        if re.search(predicate, clause) is None
+    )
 
     # Presence predicates above prove the broad rule still exists. These scoped
     # contradictions prove it has not been narrowed by an inserted sentence
@@ -4928,16 +4962,28 @@ def neutralization_defects(source):
     # subject it restricts: this contract legitimately says ONLY containment
     # bytes are added, so a file-wide ban on `only` would reject the live rule.
     narrowing_patterns = {
+        "delimiter judgment narrowed to the first line":
+            r"judge (?:only )?(?:its|the) first line",
         "delimiter condition narrowed by a closed list":
             r"only (?:the )?(?:four|named|listed).*?shapes.*?count as delimiters",
         "record-body reach narrowed to answers":
             r"(?:sub-?contract|containment|rule).*?appl(?:y|ies) only to (?:req )?answer",
+        "record-body reach narrowed to pasted code":
+            r"(?:containment )?rule appl(?:y|ies) only to pasted code",
+        "record-body reach narrowed to clarify":
+            r"(?:containment )?rule appl(?:y|ies) only in clarify.*?orchestrator answers? (?:are )?exempt",
         "illustrative shapes made exhaustive":
             r"(?:treat|use|regard).*?shapes as (?:the )?(?:complete|exhaustive) (?:check)?list",
         "blockquote prefix made optional":
             r"`> ` prefix is optional.*?fence is (?:enough|sufficient)",
         "inline branch narrowed by length":
             r"(?:answer|one-line answers?).*?(?:short|length).*?(?:long|longer) one-line answer",
+        "contained branch narrowed by a line threshold":
+            r"(?:passage|contained) branch appl(?:y|ies) only to .*?(?:ten|10) lines? (?:or more|and above)",
+        "contained branch made advisory":
+            r"(?:use|apply).*?(?:passage|contained) branch only where practical",
+        "neutralization narrowed to risky-looking text":
+            r"(?:apply|use) neutralization only when .*?(?:look|seem)s? risky",
         "dynamic fence narrowed to a fixed fence":
             r"(?:triple-backtick|three-backtick|fixed) fence is (?:enough|sufficient)",
         "first-line prohibition narrowed to answers":
@@ -5060,6 +5106,22 @@ if legitimate_rewording_defects:
         + repr(sorted(legitimate_rewording_defects))
     )
 
+universal_trigger_rewording = live_block.replace(
+    "Anything written as its own body passage, or any answer with a line break or delimiter-shaped line",
+    "Every outside-text body passage, plus each answer containing a line break or delimiter-shaped line",
+    1,
+)
+if universal_trigger_rewording == live_block:
+    raise SystemExit("answer-neutralization universal-trigger rewording changed nothing")
+universal_trigger_rewording_defects = neutralization_defects(
+    clarify_text.replace(live_block, universal_trigger_rewording, 1)
+)
+if universal_trigger_rewording_defects:
+    raise SystemExit(
+        "answer-neutralization equivalent universal-trigger rewording was rejected: "
+        + repr(sorted(universal_trigger_rewording_defects))
+    )
+
 
 def insert_after(block, anchor, addition, mutation_name):
     if anchor not in block:
@@ -5126,6 +5188,63 @@ for mutation_name, anchor, addition, expected_defect in insertion_mutations:
     if expected_defect not in mutation_defects:
         raise SystemExit(
             f"answer-neutralization insertion {mutation_name!r} escaped "
+            f"{expected_defect!r}; found {sorted(mutation_defects)!r}"
+        )
+
+# Replay the independently reproduced RED set that motivated REQ-361. These
+# qualifiers use deliberately different grammar from the useful insertion
+# trials above; the checker must pin the property, not memorize one mutation.
+captured_narrowing_mutations = (
+    (
+        "delimiter judgment narrowed to the first line",
+        "Then judge every line against one condition:",
+        "Then judge its first line against one condition:",
+        "delimiter judgment narrowed to the first line",
+    ),
+    (
+        "record-body reach narrowed to pasted code",
+        "Those sites are illustrative, not a writer checklist",
+        "Those sites are illustrative, not a writer checklist; this containment rule applies only to pasted code snippets",
+        "record-body reach narrowed to pasted code",
+    ),
+    (
+        "reach narrowed to clarify with orchestrator exemption",
+        "Those sites are illustrative, not a writer checklist",
+        "Those sites are illustrative, not a writer checklist; this rule applies only in clarify and mid-run orchestrator answers are exempt",
+        "record-body reach narrowed to clarify",
+    ),
+    (
+        "passage branch narrowed to ten lines",
+        "The destination decides which containment branch applies:",
+        "The destination decides which containment branch applies; the passage branch applies only to passages of ten lines or more:",
+        "contained branch narrowed by a line threshold",
+    ),
+    (
+        "passage branch made conditional on practicality",
+        "The destination decides which containment branch applies:",
+        "The destination decides which containment branch applies; use the passage branch only where practical:",
+        "contained branch made advisory",
+    ),
+    (
+        "whole rule narrowed to risky-looking answers",
+        "The destination decides which containment branch applies:",
+        "The destination decides which containment branch applies; apply neutralization only when the answer looks risky:",
+        "neutralization narrowed to risky-looking text",
+    ),
+)
+
+for mutation_name, old, new, expected_defect in captured_narrowing_mutations:
+    mutated_block = live_block.replace(old, new, 1)
+    if mutated_block == live_block:
+        raise SystemExit(
+            f"answer-neutralization captured RED {mutation_name!r} changed nothing"
+        )
+    mutation_defects = neutralization_defects(
+        clarify_text.replace(live_block, mutated_block, 1)
+    )
+    if expected_defect not in mutation_defects:
+        raise SystemExit(
+            f"answer-neutralization captured RED {mutation_name!r} escaped "
             f"{expected_defect!r}; found {sorted(mutation_defects)!r}"
         )
 PY
@@ -5385,28 +5504,73 @@ def frontmatter_schema_inventory(source):
     return schema, governed_fields, encoder_owned_fields, annotation_defects
 
 
-def frontmatter_fenced_example_defects(markdown_sources, governed_fields, encoder_owned_fields):
+def shipped_markdown_sources(repository_root):
+    """Read Markdown from every source package declared by the suite manifest."""
+    manifest_path = repository_root / "suite/modules.tsv"
+    module_roots = []
+    for manifest_line in manifest_path.read_text().splitlines()[1:]:
+        if not manifest_line.strip():
+            continue
+        source_path, _ = manifest_line.split("\t", 1)
+        module_root = repository_root / source_path
+        if not module_root.is_dir():
+            raise SystemExit(f"shipped module root is missing: {module_root}")
+        module_roots.append(module_root)
+    if not module_roots:
+        raise SystemExit("suite manifest yielded no shipped module roots")
+    return {
+        str(markdown_path): markdown_path.read_text()
+        for module_root in module_roots
+        for markdown_path in module_root.rglob("*.md")
+    }
+
+
+def is_do_work_record_schema(fenced_body):
+    """Distinguish do-work records from unrelated YAML in shipped packages."""
+    req_record = (
+        re.search(r"^\s*id:\s*REQ-", fenced_body, flags=re.MULTILINE) is not None
+        and re.search(r"^\s*status:\s*", fenced_body, flags=re.MULTILINE) is not None
+    )
+    ur_record = (
+        re.search(r"^\s*id:\s*UR-", fenced_body, flags=re.MULTILINE) is not None
+        and re.search(r"^\s*requests:\s*", fenced_body, flags=re.MULTILINE) is not None
+    )
+    return req_record or ur_record
+
+
+def frontmatter_fenced_example_defects(
+    markdown_sources,
+    governed_fields,
+    encoder_owned_fields,
+    inventory_source_name,
+    inventory_schema,
+):
     defects = set()
-    occurrence_count = {field_name: 0 for field_name in governed_fields}
+    independent_example_count = 0
     fenced_texts = []
     for source_name, source in markdown_sources.items():
         for _, fenced_body in markdown_fenced_blocks(source):
             fenced_texts.append(fenced_body)
+            if not is_do_work_record_schema(fenced_body):
+                continue
+            inventory_block = (
+                source_name == inventory_source_name and fenced_body == inventory_schema
+            )
             for block_line in fenced_body.splitlines():
                 field_match = re.match(r"^\s*([a-z_][a-z0-9_]*):\s*(.*)$", block_line)
                 if field_match is None or field_match.group(1) not in governed_fields:
                     continue
                 field_name, scalar = field_match.group(1), field_match.group(2).lstrip()
-                occurrence_count[field_name] += 1
+                if not inventory_block:
+                    independent_example_count += 1
                 safe_hand_authored = scalar.startswith("'") or scalar.startswith("|")
                 safe_encoder_owned = field_name in encoder_owned_fields and scalar.startswith('"')
                 if not safe_hand_authored and not safe_encoder_owned:
                     defects.add(
                         f"{source_name}: fenced {field_name} example is not single-quoted, literal, or encoder-owned"
                     )
-    for field_name, count in occurrence_count.items():
-        if count == 0:
-            defects.add(f"governed field {field_name} appears in no fenced example")
+    if independent_example_count == 0:
+        defects.add("no governed field appears in an independent do-work record example")
 
     inline_counterexample = 'title: "Fix: A " # B"'
     work_reference_text = markdown_sources.get(str(work_reference_path), "")
@@ -5437,20 +5601,38 @@ if schema_annotation_defects:
         + ", ".join(sorted(schema_annotation_defects))
     )
 
-core_root = work_reference_path.parent.parent
-core_markdown_sources = {
-    str(markdown_path): markdown_path.read_text()
-    for markdown_path in core_root.rglob("*.md")
-}
+repository_root = work_reference_path.parents[3]
+all_shipped_markdown_sources = shipped_markdown_sources(repository_root)
 live_fenced_example_defects = frontmatter_fenced_example_defects(
-    core_markdown_sources,
+    all_shipped_markdown_sources,
     governed_frontmatter_fields,
     encoder_owned_frontmatter_fields,
+    str(work_reference_path),
+    live_schema,
 )
 if live_fenced_example_defects:
     raise SystemExit(
         "Frontmatter Quoting fenced-example defects: "
         + ", ".join(sorted(live_fenced_example_defects))
+    )
+
+schema_only_sources = {
+    str(work_reference_path): (
+        'The inline counterexample remains title: "Fix: A " # B"\n\n'
+        "```yaml\n" + live_schema + "\n```\n"
+    )
+}
+schema_only_defects = frontmatter_fenced_example_defects(
+    schema_only_sources,
+    governed_frontmatter_fields,
+    encoder_owned_frontmatter_fields,
+    str(work_reference_path),
+    live_schema,
+)
+if "no governed field appears in an independent do-work record example" not in schema_only_defects:
+    raise SystemExit(
+        "Frontmatter Quoting schema-only non-vacuity trial escaped; found "
+        + repr(sorted(schema_only_defects))
     )
 
 frontmatter_mutations = (
@@ -5509,7 +5691,7 @@ unsafe_title_schema = live_schema.replace(
 if unsafe_title_schema == live_schema:
     raise SystemExit("Frontmatter Quoting unsafe-scalar mutation changed nothing")
 unsafe_title_reference = work_reference.replace(live_schema, unsafe_title_schema, 1)
-unsafe_title_sources = dict(core_markdown_sources)
+unsafe_title_sources = dict(all_shipped_markdown_sources)
 unsafe_title_sources[str(work_reference_path)] = unsafe_title_reference
 _, unsafe_fields, unsafe_encoder_fields, unsafe_annotation_defects = frontmatter_schema_inventory(
     unsafe_title_reference
@@ -5520,7 +5702,11 @@ if unsafe_annotation_defects:
         + repr(sorted(unsafe_annotation_defects))
     )
 unsafe_title_defects = frontmatter_fenced_example_defects(
-    unsafe_title_sources, unsafe_fields, unsafe_encoder_fields
+    unsafe_title_sources,
+    unsafe_fields,
+    unsafe_encoder_fields,
+    str(work_reference_path),
+    unsafe_title_schema,
 )
 if not any("fenced title example" in defect for defect in unsafe_title_defects):
     raise SystemExit(
@@ -5528,8 +5714,38 @@ if not any("fenced title example" in defect for defect in unsafe_title_defects):
         + repr(sorted(unsafe_title_defects))
     )
 
+toolbox_review_path = repository_root / "skills/do-work-toolbox/actions/code-review.md"
+toolbox_review_key = str(toolbox_review_path)
+toolbox_review = all_shipped_markdown_sources.get(toolbox_review_key)
+if toolbox_review is None:
+    raise SystemExit("Frontmatter Quoting shipped toolbox review source is missing")
+unsafe_toolbox_review = toolbox_review.replace(
+    "title: '[<impact token>] Code review: [brief description]'",
+    "title: [<impact token>] Code review: [brief description]",
+    1,
+)
+if unsafe_toolbox_review == toolbox_review:
+    raise SystemExit("Frontmatter Quoting toolbox unsafe-title mutation changed nothing")
+unsafe_toolbox_sources = dict(all_shipped_markdown_sources)
+unsafe_toolbox_sources[toolbox_review_key] = unsafe_toolbox_review
+unsafe_toolbox_defects = frontmatter_fenced_example_defects(
+    unsafe_toolbox_sources,
+    governed_frontmatter_fields,
+    encoder_owned_frontmatter_fields,
+    str(work_reference_path),
+    live_schema,
+)
+if not any(
+    toolbox_review_key in defect and "fenced title example" in defect
+    for defect in unsafe_toolbox_defects
+):
+    raise SystemExit(
+        "Frontmatter Quoting shipped toolbox unsafe-title mutation escaped; found "
+        + repr(sorted(unsafe_toolbox_defects))
+    )
+
 future_field_line = (
-    "future_user_text: unsafe future value   # raw user text — "
+    "future_user_text: 'safe future value'   # raw user text — "
     "**Frontmatter Quoting** contract above\n"
 )
 future_schema = live_schema.replace(
@@ -5538,8 +5754,17 @@ future_schema = live_schema.replace(
 if future_schema == live_schema:
     raise SystemExit("Frontmatter Quoting future-field mutation changed nothing")
 future_reference = work_reference.replace(live_schema, future_schema, 1)
-future_sources = dict(core_markdown_sources)
+future_sources = dict(all_shipped_markdown_sources)
 future_sources[str(work_reference_path)] = future_reference
+future_toolbox_review = toolbox_review.replace(
+    "title: '[<impact token>] Code review: [brief description]'",
+    "title: '[<impact token>] Code review: [brief description]'\n"
+    "future_user_text: unsafe future value",
+    1,
+)
+if future_toolbox_review == toolbox_review:
+    raise SystemExit("Frontmatter Quoting future-field independent example changed nothing")
+future_sources[toolbox_review_key] = future_toolbox_review
 _, future_fields, future_encoder_fields, future_annotation_defects = frontmatter_schema_inventory(
     future_reference
 )
@@ -5549,7 +5774,11 @@ if "future_user_text" not in future_fields or future_annotation_defects:
         + repr(sorted(future_fields)) + " / " + repr(sorted(future_annotation_defects))
     )
 future_field_defects = frontmatter_fenced_example_defects(
-    future_sources, future_fields, future_encoder_fields
+    future_sources,
+    future_fields,
+    future_encoder_fields,
+    str(work_reference_path),
+    future_schema,
 )
 if not any("fenced future_user_text example" in defect for defect in future_field_defects):
     raise SystemExit(
