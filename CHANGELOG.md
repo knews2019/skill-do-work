@@ -2,6 +2,12 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.61 — Calibration Log Matches REQ-361 (2026-08-25)
+
+The board no longer reports a false calibration warning for REQ-361.
+
+- Corrected its stale 165-minute log duration to the 45-minute span recorded in its immutable lifecycle stamps
+
 ## 0.236.60 — Timeline Capture Probe Proves Its Dependency (2026-08-24)
 
 Timeline's trusted outside-release probe is falsifiable again under the retained Chromium engine.
