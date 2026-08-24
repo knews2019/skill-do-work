@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.43 — Panel A Makes Dense Durations Legible (2026-08-24)
+
+Panel A now gives short work more vertical room, spreads busy-day marks deterministically, and shows the daily distribution without changing its ceiling or exclusion semantics.
+
+- A square-root scale and within-day rank jitter retain exact hover identity while reducing overplotting
+- A daily p25–p75 ribbon and median line sit behind reduced-opacity ordinary marks; critical and unknown marks remain fully prominent
+
 ## 0.236.42 — Durations Can Focus on a Useful Time Window (2026-08-24)
 
 The Durations view now opens on the latest 30 whole UTC days and can switch to 90 days or all history without changing the board's recently-done filter.

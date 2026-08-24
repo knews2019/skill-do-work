@@ -1,9 +1,11 @@
 ---
 id: REQ-349
 title: "Fix panel A's scale and density"
-status: claimed
+status: completed
 claimed_at: 2026-08-24T15:00:04Z
-status_changed_at: 2026-08-24T15:00:04Z
+completed_at: 2026-08-24T16:14:09Z
+commit: f0e837a
+status_changed_at: 2026-08-24T16:14:09Z
 route: B
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
@@ -147,3 +149,28 @@ ceiling and overflow lane are unchanged, and the hover still names the mark the 
 ## Discovered Tasks
 
 - The direct macOS Chromium `--dump-dom` strict-browser harness hung with Chrome 151 and Comet 151, including on an unchanged existing probe. The equivalent generated-page assertions and renders passed through Playwright Chromium. Investigate the host harness compatibility separately; it is not an implementation dependency.
+
+## Testing
+
+- RED production-renderer coverage failed on the missing 5-minute tick and old linear geometry; focused GREEN passed in 0.770s after implementation.
+- Builder full module suite passed in 73.666s, strict JavaScript in 21.34s, and vet/diff checks passed. Post-merge focused REQ-349 plus REQ-350 integration tests passed; post-remediation full merged suite passed in 66.072s.
+- The dense 705-sample, 47-day Playwright board measured an 8.115-unit day slot, 6.1-unit busy-day spread, all centres inside their UTC day, exact jittered hover identity, finite bounded ribbon/median, 0.18 ribbon and 0.62 ordinary-mark opacity, and identical light/dark position hashes.
+- Initial review found the committed dense probe was still rendering the new 30-day default while comparing against all-history payload data. One remediation calls `setDurationsWindow("all")` before both renders, separately counts actual rendered marks and payload samples, and asserts 705 == rendered == payload.
+- The host's direct Chrome/Comet `--dump-dom` path hangs on an unchanged existing probe; browser subtests honestly skip without a PATH browser. Equivalent generated-page behavior and screenshots passed through Playwright Chromium.
+
+## Qualification
+
+- Cumulative merge range `bf14c98..f0e837a` passed mechanical qualification and exact scope drift.
+- Orchestrator judgment confirmed substantive production behavior, canonical exclusion flow, deterministic jitter/hit geometry, honest scope refinement, and semantic compatibility with REQ-350's shared projection.
+
+## Review
+
+First review scored 91% and required remediation of the invalid dense browser probe while finding no production defect. Re-review approved with no findings: Requirements 100%, Code Quality 95%, Test Adequacy 92%, Scope 100%, overall 97%, implementation risk none, acceptance pass.
+
+## Lessons Learned
+
+Rendered-density evidence must select the same domain it uses to interpret payload order and sample count. Count rendered nodes independently; never let a payload length masquerade as proof that the browser painted that many marks.
+
+## Orientation
+
+Released in 0.236.43. Panel A now uses square-root vertical spacing, deterministic within-day spread, reduced ordinary opacity, and a daily p25–p75 ribbon plus median line while preserving the 60-minute lanes and exact hover identity.
