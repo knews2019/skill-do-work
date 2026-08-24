@@ -1,7 +1,8 @@
 ---
 id: REQ-346
 title: "Name the UR on every Durations sample"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T10:05:00Z
 created_at: 2026-08-23T22:37:52Z
 user_request: UR-069
 domain: frontend
@@ -10,6 +11,7 @@ tdd: true
 suggested_spec:
 depends_on: []
 maintenance: false
+route: B
 impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-347, REQ-348, REQ-349, REQ-350, REQ-351, REQ-352, REQ-353, REQ-354]

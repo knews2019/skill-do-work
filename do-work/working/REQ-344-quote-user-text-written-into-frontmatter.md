@@ -1,7 +1,8 @@
 ---
 id: REQ-344
 title: "Quote user text written into a frontmatter value"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T10:05:00Z
 created_at: 2026-08-23T22:35:07Z
 user_request: UR-068
 domain: security
@@ -11,6 +12,7 @@ suggested_spec: bug-fix
 depends_on: []
 related: [REQ-342, REQ-343]
 maintenance: false
+route: C
 impact: impact-user-visible
 effort_estimate: effort-substantive
 estimate:

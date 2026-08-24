@@ -1,7 +1,8 @@
 ---
 id: REQ-341
 title: "[impact-rule-change] Addendum: give the browser probe lane trusted input"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T10:05:00Z
 status_changed_at: 2026-08-23T22:32:23Z
 created_at: 2026-08-23T20:25:04Z
 user_request: UR-067
@@ -12,6 +13,7 @@ tdd: false
 suggested_spec:
 depends_on: []
 maintenance: false
+route: C
 impact: impact-rule-change
 effort_estimate: effort-substantive
 write_set:
