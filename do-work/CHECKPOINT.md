@@ -28,9 +28,7 @@ stopped the run before they handed back. **Their branches may hold uncommitted
 or committed work that was never merged** — check each worktree before
 re-dispatching, and prefer resuming the existing branch over starting fresh.
 
-- REQ-347 — claimed 2026-08-24T13:05:00Z — writer: `vm:/home/user/skill-do-work` — branch `worktree-agent-ad1ad7db01a4bfcef`
-- REQ-356 — claimed 2026-08-24T13:05:00Z — writer: `vm:/home/user/skill-do-work` — branch `worktree-agent-a0294a3d33c47eb05`
-- REQ-358 — claimed 2026-08-24T13:05:00Z — writer: `vm:/home/user/skill-do-work` — branch `worktree-agent-a1d7dc3a2f59e5a71`
+
 
 ## Still Queued
 

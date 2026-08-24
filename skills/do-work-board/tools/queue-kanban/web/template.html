@@ -85,6 +85,15 @@
           </button>
         </div>
 
+        <!-- Durations only: a mark's fill changes meaning with this channel, so
+             its matching legend is in the view rather than hidden in the bar. -->
+        <div class="control-group" role="group" aria-label="Durations colour by" id="durations-colour-group" hidden>
+          <span class="control-label">Colour by</span>
+          <button type="button" class="control-button is-active" data-durations-colour="route" aria-pressed="true">Route</button>
+          <button type="button" class="control-button" data-durations-colour="user-request" aria-pressed="false">UR</button>
+          <button type="button" class="control-button" data-durations-colour="domain" aria-pressed="false">Domain</button>
+        </div>
+
         <div class="control-group" role="group" aria-label="Grouping lens" id="lens-group">
           <span class="control-label">Lens</span>
           <button type="button" class="control-button is-active" data-lens-target="flat" aria-pressed="true">
@@ -235,13 +244,7 @@
           <h2 class="durations-heading">How long work takes, and how often it runs</h2>
           <p class="durations-subhead" id="durations-summary"></p>
         </div>
-        <div class="durations-legend" role="group" aria-label="Route colour key">
-          <span class="durations-legend-item"><span class="durations-swatch" data-route="a"></span>Route A</span>
-          <span class="durations-legend-item"><span class="durations-swatch" data-route="b"></span>Route B</span>
-          <span class="durations-legend-item"><span class="durations-swatch" data-route="c"></span>Route C</span>
-          <span class="durations-legend-item"><span class="durations-swatch" data-route="none"></span>No route recorded</span>
-          <span class="durations-legend-item"><span class="durations-swatch" data-route="critical"></span>Reversed stamp</span>
-        </div>
+        <p class="durations-colour-legend" id="durations-colour-legend" role="status" aria-live="polite"></p>
         <div class="durations-chart" id="durations-chart"></div>
         <p class="durations-readout" id="durations-readout" role="status" aria-live="polite"></p>
         <details class="durations-table">

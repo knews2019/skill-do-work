@@ -2341,6 +2341,8 @@ function makeStubNode(nodeName) {
     textContent: "",
     setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = String(attributeValue); },
     appendChild: function (childNode) { this.children.push(childNode); return childNode; },
+    removeChild: function (childNode) { this.children = this.children.filter(function (candidateNode) { return candidateNode !== childNode; }); },
+    getComputedTextLength: function () { return 20; },
     addEventListener: function () {}
   };
 }
@@ -2728,6 +2730,142 @@ process.stdout.write(JSON.stringify({
 		t.Errorf("%d table cells carry the unknown-UR name for %d samples with no user_request — a sample "+
 			"with no UR must never be given one, and one with a UR must never lose it",
 			namedUnknownCells, fixtureNoUserRequestCount)
+	}
+}
+
+// REQ-347 changes Panel A's fill only. This drives the complete renderer across
+// each selectable channel, because a helper-only test could keep the selector
+// green while the circles still read sample.route. The fixture deliberately has
+// more URs than the categorical palette, absent UR/domain values, and a reversed
+// stamp: the overflow bucket and unknown state must be named while the critical
+// stamp treatment remains stronger than any chosen colour channel.
+func TestJavaScriptBehaviorDurationsColourChannelsNameAndRecolourPanelA(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+
+	fixtureTickets := make([]*RequestTicket, 0, 16)
+	fixtureStart := time.Date(2026, 8, 10, 9, 0, 0, 0, time.UTC)
+	for ticketIndex := 0; ticketIndex < 14; ticketIndex++ {
+		completedAt := fixtureStart.Add(time.Duration(ticketIndex) * time.Hour)
+		ticket := durationTicket(
+			fmt.Sprintf("REQ-%03d", ticketIndex+1),
+			"B",
+			completedAt.Add(-12*time.Minute).Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		)
+		ticket.UserRequestId = fmt.Sprintf("UR-%03d", ticketIndex+1)
+		ticket.Domain = []string{"frontend", "backend", "testing"}[ticketIndex%3]
+		fixtureTickets = append(fixtureTickets, ticket)
+	}
+	missingTicket := durationTicket("REQ-901", "", fixtureStart.Add(15*time.Hour).Format(time.RFC3339), fixtureStart.Add(15*time.Hour+12*time.Minute).Format(time.RFC3339))
+	fixtureTickets = append(fixtureTickets, missingTicket)
+	reversedTicket := durationTicket("REQ-902", "B", fixtureStart.Add(17*time.Hour).Format(time.RFC3339), fixtureStart.Add(16*time.Hour).Format(time.RFC3339))
+	reversedTicket.UserRequestId = "UR-015"
+	reversedTicket.Domain = "frontend"
+	fixtureTickets = append(fixtureTickets, reversedTicket)
+
+	fixtureBoard := &Board{
+		GeneratedAt: time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC),
+		AllRequests: fixtureTickets,
+	}
+	generatedData, buildError := buildGeneratedBoardData(fixtureBoard)
+	if buildError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", buildError)
+	}
+	boardDataJSON, encodeError := json.Marshal(generatedData)
+	if encodeError != nil {
+		t.Fatalf("encode board payload: %v", encodeError)
+	}
+
+	probeDriver := `
+function renderedChannel(colourChannel) {
+  durationsStubHosts["durations-chart"] = makeStubNode("div");
+  durationsStubHosts["durations-colour-legend"] = makeStubNode("p");
+  setDurationsColourChannel(colourChannel);
+  renderDurationsView();
+  var marks = [];
+  function walkDrawnNodes(parentNode) {
+    (parentNode.children || []).forEach(function (childNode) {
+      var attributes = childNode.attributes || {};
+      if (childNode.stubName === "circle" && String(attributes["class"] || "").indexOf("durations-mark") !== -1) {
+        marks.push({ fill: attributes.fill || "", class: attributes["class"] || "" });
+      }
+      walkDrawnNodes(childNode);
+    });
+  }
+  walkDrawnNodes(durationsStubHosts["durations-chart"]);
+  return {
+    marks: marks,
+    legend: durationsStubHosts["durations-colour-legend"].textContent,
+    ariaLabel: (durationsStubHosts["durations-chart"].children[0] || { attributes: {} }).attributes["aria-label"] || ""
+  };
+}
+process.stdout.write(JSON.stringify({
+  route: renderedChannel("route"),
+  userRequest: renderedChannel("user-request"),
+  domain: renderedChannel("domain")
+}));
+`
+
+	javascriptProbe := durationsRenderDomStubPreamble +
+		"var boardData = " + string(boardDataJSON) + ";\n" +
+		string(rendererFragment) +
+		probeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "durations colour channels", javascriptProbe)
+
+	type drawnMark struct {
+		Fill  string `json:"fill"`
+		Class string `json:"class"`
+	}
+	type renderedChannel struct {
+		Marks     []drawnMark `json:"marks"`
+		Legend    string      `json:"legend"`
+		AriaLabel string      `json:"ariaLabel"`
+	}
+	var rendered struct {
+		Route       renderedChannel `json:"route"`
+		UserRequest renderedChannel `json:"userRequest"`
+		Domain      renderedChannel `json:"domain"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &rendered); decodeError != nil {
+		t.Fatalf("decode rendered colour channels: %v (output starts %q)", decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+
+	if len(rendered.Route.Marks) != len(fixtureTickets) {
+		t.Fatalf("route render drew %d marks for %d fixture samples", len(rendered.Route.Marks), len(fixtureTickets))
+	}
+	if rendered.Route.Marks[0].Fill != "var(--route-b)" {
+		t.Errorf("route is not the default channel: first ordinary mark fill = %q, want route B", rendered.Route.Marks[0].Fill)
+	}
+	if rendered.UserRequest.Marks[0].Fill == rendered.UserRequest.Marks[1].Fill {
+		t.Errorf("two named URs share fill %q before the categorical palette is exhausted", rendered.UserRequest.Marks[0].Fill)
+	}
+	if rendered.UserRequest.Marks[12].Fill != rendered.UserRequest.Marks[13].Fill {
+		t.Errorf("the thirteenth and fourteenth named UR fills %q / %q differ — the stated Other URs bucket must be shared", rendered.UserRequest.Marks[12].Fill, rendered.UserRequest.Marks[13].Fill)
+	}
+	if !strings.Contains(rendered.UserRequest.Legend, "UR") || !strings.Contains(rendered.UserRequest.Legend, "Other URs") || !strings.Contains(rendered.UserRequest.Legend, "No UR recorded") {
+		t.Errorf("UR legend %q does not name its active channel, overflow, and missing-value rule", rendered.UserRequest.Legend)
+	}
+	if !strings.Contains(rendered.Domain.Legend, "Domain") || !strings.Contains(rendered.Domain.Legend, "No domain recorded") {
+		t.Errorf("domain legend %q does not name its active channel and missing-value rule", rendered.Domain.Legend)
+	}
+	if rendered.Domain.Marks[0].Fill == rendered.Domain.Marks[1].Fill {
+		t.Errorf("different named domains share fill %q before the palette is exhausted", rendered.Domain.Marks[0].Fill)
+	}
+	missingMarkIndex := len(fixtureTickets) - 2
+	if !strings.Contains(rendered.UserRequest.Marks[missingMarkIndex].Class, "unknown") || !strings.Contains(rendered.Domain.Marks[missingMarkIndex].Class, "unknown") {
+		t.Errorf("missing UR/domain sample classes = %q / %q, want the visually distinct unknown mark", rendered.UserRequest.Marks[missingMarkIndex].Class, rendered.Domain.Marks[missingMarkIndex].Class)
+	}
+	criticalMarkIndex := len(fixtureTickets) - 1
+	for channelName, channel := range map[string]renderedChannel{"route": rendered.Route, "user-request": rendered.UserRequest, "domain": rendered.Domain} {
+		if channel.Marks[criticalMarkIndex].Fill != "var(--durations-critical)" {
+			t.Errorf("%s colour channel changed reversed-stamp fill to %q", channelName, channel.Marks[criticalMarkIndex].Fill)
+		}
+		if !strings.Contains(channel.AriaLabel, "coloured by ") {
+			t.Errorf("%s chart aria label %q does not name the active colour channel", channelName, channel.AriaLabel)
+		}
 	}
 }
 

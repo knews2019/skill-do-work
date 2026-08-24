@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.39 — Durations Marks Can Show Their UR or Domain (2026-08-24)
+
+Dense Durations charts can now reveal a mark's identity without changing what the chart measures.
+
+- A Durations-only control switches Panel A between route, UR, and domain colour
+- The visible legend names the active channel, unknown values, and the deterministic `Other URs` overflow bucket
+- Reversed stamps stay critical red, while missing data uses a separate outlined marker in light and dark themes
+
 ## 0.236.38 — Real Clicks in the Test Lane, and a UR on Every Duration (2026-08-24)
 
 The board's test lane can now drive genuine browser input instead of synthesizing events, which

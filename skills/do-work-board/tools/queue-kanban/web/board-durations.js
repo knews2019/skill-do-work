@@ -175,6 +175,44 @@
     return "No route recorded";
   }
 
+  // Panel A's route fills predate the chooser and remain its default. UR and
+  // domain are categorical, so their names are sorted before colours are
+  // assigned: the same payload always gives a category the same colour. Twelve
+  // named URs are the usable palette; every later ID deliberately shares Other
+  // URs rather than wrapping silently into an indistinguishable category.
+  var durationsColourChannel = "route";
+  var DURATIONS_USER_REQUEST_PALETTE_CAPACITY = 12;
+  var DURATIONS_CATEGORICAL_FILLS = [
+    "var(--durations-category-1)",
+    "var(--durations-category-2)",
+    "var(--durations-category-3)",
+    "var(--durations-category-4)",
+    "var(--durations-category-5)",
+    "var(--durations-category-6)",
+    "var(--durations-category-7)",
+    "var(--durations-category-8)",
+    "var(--durations-category-9)",
+    "var(--durations-category-10)",
+    "var(--durations-category-11)",
+    "var(--durations-category-12)"
+  ];
+
+  function setDurationsColourChannel(colourChannel) {
+    if (colourChannel === "route" || colourChannel === "user-request" || colourChannel === "domain") {
+      durationsColourChannel = colourChannel;
+    }
+  }
+
+  function durationSampleRequest(sample) {
+    var requestsById = (typeof boardData === "object" && boardData && boardData.requests) || {};
+    return requestsById[sample.id] || null;
+  }
+
+  function durationSampleDomain(sample) {
+    var request = durationSampleRequest(sample);
+    return (request && request.domain) || "";
+  }
+
   // ---- the REQ-to-UR join (REQ-346) ---------------------------------------
   // The join is CLIENT-SIDE and stays that way. `boardData.requests[id]` already
   // carries `userRequestId` for every parsed ticket, including the archived ones
@@ -191,13 +229,89 @@
   var DURATIONS_UNKNOWN_USER_REQUEST_NAME = "no UR recorded";
 
   function durationSampleUserRequestId(sample) {
-    var requestsById = (typeof boardData === "object" && boardData && boardData.requests) || {};
-    var request = requestsById[sample.id];
+    var request = durationSampleRequest(sample);
     return (request && request.userRequestId) || "";
   }
 
   function durationUserRequestName(userRequestId) {
     return userRequestId || DURATIONS_UNKNOWN_USER_REQUEST_NAME;
+  }
+
+  function durationColourChannelName() {
+    if (durationsColourChannel === "user-request") {
+      return "UR";
+    }
+    if (durationsColourChannel === "domain") {
+      return "domain";
+    }
+    return "route";
+  }
+
+  function durationColourContext(samples) {
+    var userRequestIds = {};
+    var domains = {};
+    samples.forEach(function (sample) {
+      var userRequestId = durationSampleUserRequestId(sample);
+      var domain = durationSampleDomain(sample);
+      if (userRequestId) {
+        userRequestIds[userRequestId] = true;
+      }
+      if (domain) {
+        domains[domain] = true;
+      }
+    });
+    return {
+      userRequestIds: Object.keys(userRequestIds).sort(),
+      domains: Object.keys(domains).sort()
+    };
+  }
+
+  function durationCategoricalFill(categoryName, categoryNames, usesUserRequestOverflow) {
+    var categoryIndex = categoryNames.indexOf(categoryName);
+    if (usesUserRequestOverflow && categoryIndex >= DURATIONS_USER_REQUEST_PALETTE_CAPACITY) {
+      return "var(--durations-category-other)";
+    }
+    return DURATIONS_CATEGORICAL_FILLS[categoryIndex % DURATIONS_CATEGORICAL_FILLS.length];
+  }
+
+  function durationMarkColour(sample, colourContext) {
+    if (durationsColourChannel === "user-request") {
+      var userRequestId = durationSampleUserRequestId(sample);
+      if (!userRequestId) {
+        return { fill: "none", className: "durations-mark-unknown", label: DURATIONS_UNKNOWN_USER_REQUEST_NAME };
+      }
+      var isOtherUserRequest = colourContext.userRequestIds.indexOf(userRequestId) >= DURATIONS_USER_REQUEST_PALETTE_CAPACITY;
+      return {
+        fill: durationCategoricalFill(userRequestId, colourContext.userRequestIds, true),
+        className: "",
+        label: isOtherUserRequest ? "Other URs" : userRequestId
+      };
+    }
+    if (durationsColourChannel === "domain") {
+      var domain = durationSampleDomain(sample);
+      if (!domain) {
+        return { fill: "none", className: "durations-mark-unknown", label: "No domain recorded" };
+      }
+      return {
+        fill: durationCategoricalFill(domain, colourContext.domains, false),
+        className: "",
+        label: domain
+      };
+    }
+    if (!sample.route) {
+      return { fill: "none", className: "durations-mark-unknown", label: "No route recorded" };
+    }
+    return { fill: durationRouteFill(sample.route), className: "", label: durationRouteName(sample.route) };
+  }
+
+  function durationsColourLegendText() {
+    if (durationsColourChannel === "user-request") {
+      return "Colour by UR. The first 12 UR IDs by name use distinct colours; later URs share Other URs. No UR recorded is outlined. Reversed stamps stay critical red.";
+    }
+    if (durationsColourChannel === "domain") {
+      return "Colour by domain. Domains use colours by name. No domain recorded is outlined. Reversed stamps stay critical red.";
+    }
+    return "Colour by route. Route A, Route B, and Route C keep their route colours. No route recorded is outlined. Reversed stamps stay critical red.";
   }
 
   // ---- UR lane packing -----------------------------------------------------
@@ -573,6 +687,7 @@
   function renderDurationsView() {
     var chartHost = document.getElementById("durations-chart");
     var summaryNode = document.getElementById("durations-summary");
+    var colourLegendNode = document.getElementById("durations-colour-legend");
     var readoutNode = document.getElementById("durations-readout");
     var tableBody = document.getElementById("durations-table-body");
     if (!chartHost || !summaryNode || !tableBody) {
@@ -585,6 +700,13 @@
 
     chartHost.textContent = "";
     tableBody.textContent = "";
+    if (readoutNode) {
+      readoutNode.textContent = "";
+    }
+    if (colourLegendNode) {
+      colourLegendNode.textContent = durationsColourLegendText();
+      colourLegendNode.setAttribute("aria-label", durationsColourLegendText());
+    }
 
     if (samples.length === 0) {
       summaryNode.textContent =
@@ -637,7 +759,11 @@
         formatDurationDayLabel(firstCompletionMs) +
         " to " +
         formatDurationDayLabel(lastCompletionMs) +
-        ". Panel A plots each archived REQ's duration in minutes coloured by route, over a lane of brackets grouping its marks by user request. Panel B plots the median minutes per active day. Panel C counts REQs completed per day. Every value is also listed in the table below."
+        ". Panel A plots each archived REQ's duration in minutes coloured by " +
+        durationColourChannelName() +
+        ", over a lane of brackets grouping its marks by user request. " +
+        durationsColourLegendText() +
+        " Panel B plots the median minutes per active day. Panel C counts REQs completed per day. Every value is also listed in the table below."
     );
 
     function xOfEpoch(epochMs) {
@@ -740,6 +866,7 @@
     });
 
     var markIndex = [];
+    var colourContext = durationColourContext(samples);
     samples.forEach(function (sample) {
       var epochMs = Date.parse(sample.completionTime);
       var minutes = sample.wallMinutes;
@@ -751,14 +878,15 @@
         : isReversed
         ? DURATIONS_BELOW_ZERO_Y
         : yOfMinutes(minutes);
+      var markColour = durationMarkColour(sample, colourContext);
       makeDurationsSvgNode(svg, "circle", {
         cx: markX.toFixed(1),
         cy: markY.toFixed(1),
         r: isOverflow || isReversed ? DURATIONS_BAND_MARK_RADIUS : 4,
-        fill: isReversed ? "var(--durations-critical)" : durationRouteFill(sample.route),
-        class: "durations-mark"
+        fill: isReversed ? "var(--durations-critical)" : markColour.fill,
+        class: "durations-mark" + (isReversed ? " durations-mark-critical" : markColour.className ? " " + markColour.className : "")
       });
-      markIndex.push({ x: markX, y: markY, sample: sample, epochMs: epochMs });
+      markIndex.push({ x: markX, y: markY, sample: sample, epochMs: epochMs, colourLabel: isReversed ? "Reversed stamp" : markColour.label });
     });
 
     // Direct labels only where a mark carries a value its y cannot: the overflow
@@ -1178,7 +1306,9 @@
           " · " +
           durationUserRequestName(durationSampleUserRequestId(sample)) +
           " · " +
-          durationRouteName(sample.route) +
+          durationColourChannelName() +
+          " colour: " +
+          nearestMark.colourLabel +
           " · " +
           formatDurationMinutes(sample.wallMinutes) +
           " · " +

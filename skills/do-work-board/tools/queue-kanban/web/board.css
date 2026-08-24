@@ -87,6 +87,19 @@
   --route-b: #5598e7;
   --route-c: #cde2fb;
   --route-none: #8a929e;
+  --durations-category-1: #5fc1ff;
+  --durations-category-2: #f7aa4f;
+  --durations-category-3: #7edc92;
+  --durations-category-4: #e889b5;
+  --durations-category-5: #b99cff;
+  --durations-category-6: #69d2c6;
+  --durations-category-7: #e6ce68;
+  --durations-category-8: #f18170;
+  --durations-category-9: #92b5ff;
+  --durations-category-10: #d1a0e7;
+  --durations-category-11: #a4ce76;
+  --durations-category-12: #ffa5a5;
+  --durations-category-other: #b4bbc6;
   /* Day columns in panels B and C — one measure each, so a single accent. */
   --durations-bar: #e09462;
   /* A reversed span is a broken stamp, not a fast REQ: it renders below the
@@ -159,6 +172,19 @@
     --route-b: #1f5fb4;
     --route-c: #0d2f5e;
     --route-none: #6c7480;
+    --durations-category-1: #1479b8;
+    --durations-category-2: #a65b00;
+    --durations-category-3: #237a3c;
+    --durations-category-4: #aa3d73;
+    --durations-category-5: #6546ab;
+    --durations-category-6: #08766d;
+    --durations-category-7: #7c6200;
+    --durations-category-8: #b04432;
+    --durations-category-9: #3565b8;
+    --durations-category-10: #7b4b9e;
+    --durations-category-11: #4d7828;
+    --durations-category-12: #a23e4d;
+    --durations-category-other: #59636f;
     --durations-bar: #a4522a;
     --durations-critical: #c0392b;
     --timeline-work: #2f6fc0;
@@ -2081,32 +2107,13 @@ body.is-resizing-detail .detail-resizer::before {
   max-width: 78ch;
 }
 
-.durations-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+.durations-colour-legend {
+  margin: 0;
   padding: 12px 24px 0;
   font-size: 12.5px;
+  line-height: 1.5;
   color: var(--ink-soft);
 }
-
-.durations-legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.durations-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--route-none);
-}
-
-.durations-swatch[data-route="a"] { background: var(--route-a); }
-.durations-swatch[data-route="b"] { background: var(--route-b); }
-.durations-swatch[data-route="c"] { background: var(--route-c); }
-.durations-swatch[data-route="critical"] { background: var(--durations-critical); }
 
 .durations-chart {
   padding: 8px 24px 0;
@@ -2197,6 +2204,16 @@ body.is-resizing-detail .detail-resizer::before {
 
 .durations-mark {
   stroke: none;
+}
+
+/* Missing route, UR, or domain is a real category boundary, not a muted
+   category. The outline and dash stay distinct in both themes while the legend
+   names the missing field selected by the active colour channel. */
+.durations-mark-unknown {
+  fill: none;
+  stroke: var(--ink-base);
+  stroke-width: 2;
+  stroke-dasharray: 2 1;
 }
 
 .durations-bar {

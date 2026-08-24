@@ -35,6 +35,7 @@
     // The date window is the testing view's knob for the same reason.
     document.getElementById("lens-group").hidden = viewState.view !== "board";
     document.getElementById("recent-window-group").hidden = viewState.view !== "board";
+    document.getElementById("durations-colour-group").hidden = viewState.view !== "durations";
     document.getElementById("filter-done-window").hidden = viewState.view !== "testing";
     document.getElementById("filter-clear").hidden = !hasActiveVisibleFilters();
 
@@ -121,6 +122,18 @@
     document.querySelectorAll("[data-lens-target]").forEach(function (button) {
       button.addEventListener("click", function () {
         applyLensSelection(button.getAttribute("data-lens-target"), button.getAttribute("data-ur-cards"));
+      });
+    });
+
+    document.querySelectorAll("[data-durations-colour]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var colourChannel = button.getAttribute("data-durations-colour");
+        setDurationsColourChannel(colourChannel);
+        setActiveButton("#durations-colour-group", "data-durations-colour", colourChannel);
+        if (viewState.view === "durations") {
+          renderDurationsView();
+          renderedOnce.durations = true;
+        }
       });
     });
 
