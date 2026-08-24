@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.60 — Timeline Capture Probe Proves Its Dependency (2026-08-24)
+
+Timeline's trusted outside-release probe is falsifiable again under the retained Chromium engine.
+
+- The current host-targeted pointerleave teardown is measured and isolated equally in both paired trials
+- Capture-present release ends through a real captured pointerup, while suppressed capture strands the pan
+- Direct mechanism checks and three independent mutations prevent either side from passing vacuously
+
 ## 0.236.59 — Timeline Table Waits for Publication (2026-08-24)
 
 Timeline's grouping probe now waits for the requested table rebuild instead of hoping a 50ms delay was enough.
