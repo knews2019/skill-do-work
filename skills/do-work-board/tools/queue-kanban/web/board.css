@@ -2169,6 +2169,32 @@ body.is-resizing-detail .detail-resizer::before {
   stroke-width: 1;
 }
 
+/* The UR grouping lane (REQ-346). A bracket is a graphical object rather than
+   text, so it is held to the 3:1 floor: measured against the surface the lane
+   ACTUALLY sits on, which is <body> and not any --surface-* token (REQ-321 found
+   the same thing under the timeline's bars), the bracket fill --ink-faint reads
+   4.40:1 on the light lane and 4.08:1 on the dark one, and the unknown bucket's
+   --ink-soft stroke 5.69:1 and 7.41:1 (Chromium 1194).
+
+   One tone for every row, deliberately. Two alternating tones were tried and
+   measured at 1.29:1 against each other on that surface, which is not a channel;
+   the 3-unit gap between rows is what separates them.
+
+   The unknown bucket is drawn as an outline rather than a fill on purpose. It is
+   the one bracket that is NOT a user request — it is the samples that name none —
+   so it must not read as just another group, and the difference has to survive
+   next to a 3-unit-wide neighbour. */
+.durations-ur-bracket {
+  fill: var(--ink-faint);
+}
+
+.durations-ur-bracket-unknown {
+  fill: none;
+  stroke: var(--ink-soft);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+}
+
 .durations-mark {
   stroke: none;
 }
