@@ -2529,6 +2529,208 @@ func TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot(t *testing.T) {
 	}
 }
 
+// durationsUserRequestLaneFixtureTickets builds a board whose UR lane must
+// overflow: userRequestCount URs whose brackets are far wider than the gap
+// between their start instants, so they compete for the same rows, plus samples
+// carrying no `user_request` at all. Both conditions are asserted in the test
+// rather than assumed — a fixture that stopped overflowing would make the
+// remainder assertion pass while proving nothing.
+func durationsUserRequestLaneFixtureTickets(userRequestCount int, noUserRequestCount int) []*RequestTicket {
+	weekStart := time.Date(2026, 8, 10, 9, 0, 0, 0, time.UTC)
+	tickets := make([]*RequestTicket, 0, userRequestCount*2+noUserRequestCount)
+	for userRequestIndex := 0; userRequestIndex < userRequestCount; userRequestIndex++ {
+		// Each UR opens half an hour after the last and runs for twenty, so every
+		// bracket overlaps almost every other one.
+		firstCompletion := weekStart.Add(time.Duration(userRequestIndex) * 30 * time.Minute)
+		for sampleIndex, completedAt := range []time.Time{firstCompletion, firstCompletion.Add(20 * time.Hour)} {
+			ticket := durationTicket(
+				fmt.Sprintf("REQ-%03d", userRequestIndex*2+sampleIndex+1),
+				"B",
+				completedAt.Add(-12*time.Minute).Format(time.RFC3339),
+				completedAt.Format(time.RFC3339),
+			)
+			ticket.UserRequestId = fmt.Sprintf("UR-%03d", userRequestIndex+1)
+			tickets = append(tickets, ticket)
+		}
+	}
+	for noUserRequestIndex := 0; noUserRequestIndex < noUserRequestCount; noUserRequestIndex++ {
+		// The pre-UR era: parseable stamps, no `user_request`. Placed well left of
+		// the crowd so the bucket's bracket cannot be mistaken for a UR's.
+		completedAt := weekStart.Add(time.Duration(-72-noUserRequestIndex*6) * time.Hour)
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-9%02d", noUserRequestIndex+1),
+			"A",
+			completedAt.Add(-9*time.Minute).Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		))
+	}
+	return tickets
+}
+
+// REQ-346's two rules that were explicitly not the builder's call, pinned
+// against the real renderer rather than against the packer it calls.
+//
+// RULE ONE: every UR that finds no lane row is COUNTED. The lane packs into a
+// fixed number of rows, so on any board with more overlapping URs than rows some
+// bracket cannot be drawn — and a reader who takes the drawn brackets for all of
+// them reads the lane wrong. The invariant is a relationship, not a number:
+// brackets drawn plus the count the lane states must equal the URs the samples
+// carry, whatever the row count is later set to.
+//
+// RULE TWO: a sample whose REQ carries no `user_request` is NAMED, on every
+// surface, and named apart from rule one's remainder. Twelve of this
+// repository's own samples are in that state — REQ-001 through REQ-011 and
+// REQ-060 pre-date the UR system — and buildDurationAggregate measures every one
+// of them, so "blank" and "some default UR" are both wrong answers that a table
+// full of real URs would hide.
+//
+// It drives renderDurationsView itself over the DOM stub, because the join, the
+// packing, the remainder sentence and the table cell are four call sites of one
+// rule and a probe calling the packer directly would hold none of them (REQ-305).
+func TestJavaScriptBehaviorDurationsUserRequestLaneNamesEveryUserRequest(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+
+	const fixtureUserRequestCount = 40
+	const fixtureNoUserRequestCount = 5
+	fixtureTickets := durationsUserRequestLaneFixtureTickets(fixtureUserRequestCount, fixtureNoUserRequestCount)
+	fixtureBoard := &Board{
+		GeneratedAt: time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC),
+		AllRequests: fixtureTickets,
+	}
+	generatedData, buildError := buildGeneratedBoardData(fixtureBoard)
+	if buildError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", buildError)
+	}
+	// The WHOLE payload, not just the durations slice: the join reads
+	// boardData.requests, so a probe handed only the samples would take the
+	// unknown-UR path for every row and never exercise the join at all.
+	boardDataJson, encodeError := json.Marshal(generatedData)
+	if encodeError != nil {
+		t.Fatalf("encode board payload: %v", encodeError)
+	}
+
+	probeDriver := `
+renderDurationsView();
+var drawnBrackets = [], drawnTexts = [];
+function walkDrawnNodes(parentNode) {
+  (parentNode.children || []).forEach(function (childNode) {
+    var attributes = childNode.attributes || {};
+    var nodeClass = String(attributes["class"] || "");
+    if (childNode.stubName === "rect" && nodeClass.indexOf("durations-ur-bracket") !== -1) {
+      drawnBrackets.push({ class: nodeClass });
+    }
+    if (childNode.stubName === "text") {
+      drawnTexts.push((childNode.children[0] || {}).textContent || "");
+    }
+    walkDrawnNodes(childNode);
+  });
+}
+walkDrawnNodes(durationsStubHosts["durations-chart"]);
+var userRequestCells = durationsStubHosts["durations-table-body"].children.map(function (tableRow) {
+  return tableRow.children[1].textContent;
+});
+process.stdout.write(JSON.stringify({
+  bracketClasses: drawnBrackets.map(function (bracket) { return bracket.class; }),
+  drawnTexts: drawnTexts,
+  unknownName: DURATIONS_UNKNOWN_USER_REQUEST_NAME,
+  remainderSentenceForOne: composeDurationsUserRequestRemainderText(1),
+  userRequestCells: userRequestCells
+}));
+`
+
+	javascriptProbe := durationsRenderDomStubPreamble +
+		"var boardData = " + string(boardDataJson) + ";\n" +
+		string(rendererFragment) +
+		probeDriver
+	probeOutput := runJavaScriptBehaviorProbe(t, "durations UR lane", javascriptProbe)
+
+	var drawn struct {
+		BracketClasses          []string `json:"bracketClasses"`
+		DrawnTexts              []string `json:"drawnTexts"`
+		UnknownName             string   `json:"unknownName"`
+		RemainderSentenceForOne string   `json:"remainderSentenceForOne"`
+		UserRequestCells        []string `json:"userRequestCells"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &drawn); decodeError != nil {
+		t.Fatalf("decode drawn UR lane: %v (output starts %q)",
+			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+
+	// ---- the fixture does what it claims, checked before anything is read from it.
+	userRequestBrackets, unknownBrackets := 0, 0
+	for _, bracketClass := range drawn.BracketClasses {
+		if strings.Contains(bracketClass, "durations-ur-bracket-unknown") {
+			unknownBrackets++
+			continue
+		}
+		userRequestBrackets++
+	}
+	if userRequestBrackets == 0 {
+		t.Fatal("the lane drew no UR brackets at all, so nothing below is a test of the lane")
+	}
+	if userRequestBrackets >= fixtureUserRequestCount {
+		t.Fatalf("all %d fixture URs found a row, so the remainder path was never taken — this fixture no "+
+			"longer overflows the lane and the rule it exists to pin is untested", fixtureUserRequestCount)
+	}
+
+	// ---- rule one: drawn brackets plus the stated remainder account for every UR.
+	statedRemainder := -1
+	remainderPattern := regexp.MustCompile(`^\+([0-9]+) URs? with no free row$`)
+	for _, drawnText := range drawn.DrawnTexts {
+		if remainderPattern.MatchString(drawnText) {
+			if _, scanError := fmt.Sscanf(drawnText, "+%d", &statedRemainder); scanError != nil {
+				t.Fatalf("read the remainder count out of %q: %v", drawnText, scanError)
+			}
+		}
+	}
+	if statedRemainder < 0 {
+		t.Fatalf("%d of %d fixture URs found no row and the lane said nothing about it — a reader takes the "+
+			"brackets they can see for all of them",
+			fixtureUserRequestCount-userRequestBrackets, fixtureUserRequestCount)
+	}
+	if userRequestBrackets+statedRemainder != fixtureUserRequestCount {
+		t.Errorf("the lane drew %d brackets and stated %d more, accounting for %d of the fixture's %d URs — "+
+			"every UR is either on a row or in the remainder, and the two must add up at any row count",
+			userRequestBrackets, statedRemainder, userRequestBrackets+statedRemainder, fixtureUserRequestCount)
+	}
+
+	// ---- rule two: the samples with no UR are named, on every surface, and named apart.
+	if unknownBrackets != 1 {
+		t.Errorf("the lane drew %d unknown-UR brackets for %d samples carrying no user_request, want exactly 1 — "+
+			"the bucket holds one reserved row, it does not compete for one",
+			unknownBrackets, fixtureNoUserRequestCount)
+	}
+	if drawn.UnknownName == "" {
+		t.Fatal("the unknown-UR name is empty, so every surface below states nothing")
+	}
+	if strings.Contains(drawn.RemainderSentenceForOne, drawn.UnknownName) {
+		t.Errorf("the remainder sentence %q contains the unknown-UR name %q — a UR that found no row and a "+
+			"sample that has no UR at all are different facts and must not read as one",
+			drawn.RemainderSentenceForOne, drawn.UnknownName)
+	}
+	if len(drawn.UserRequestCells) != len(fixtureTickets) {
+		t.Fatalf("the table has %d UR cells for %d samples", len(drawn.UserRequestCells), len(fixtureTickets))
+	}
+	namedUnknownCells := 0
+	for cellIndex, cellText := range drawn.UserRequestCells {
+		if cellText == "" {
+			t.Fatalf("table row %d has a blank UR cell — a sample with no UR must SAY so, and a blank cell "+
+				"reads as a rendering fault rather than as a fact about the REQ", cellIndex)
+		}
+		if cellText == drawn.UnknownName {
+			namedUnknownCells++
+		}
+	}
+	if namedUnknownCells != fixtureNoUserRequestCount {
+		t.Errorf("%d table cells carry the unknown-UR name for %d samples with no user_request — a sample "+
+			"with no UR must never be given one, and one with a UR must never lose it",
+			namedUnknownCells, fixtureNoUserRequestCount)
+	}
+}
+
 func floatPointer(value float64) *float64 {
 	return &value
 }
