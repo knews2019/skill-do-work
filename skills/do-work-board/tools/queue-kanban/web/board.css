@@ -2597,6 +2597,29 @@ body.is-resizing-detail .detail-resizer::before {
   fill: var(--ink-faint);
 }
 
+.timeline-group-header-fill {
+  fill: var(--surface-1);
+  stroke: var(--line-soft);
+  stroke-width: 1;
+}
+
+.timeline-group-label,
+.timeline-group-metrics {
+  font-family: var(--font-mono);
+  pointer-events: none;
+}
+
+.timeline-group-label {
+  fill: var(--ink-strong);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.timeline-group-metrics {
+  fill: var(--ink-soft);
+  font-size: 9px;
+}
+
 /* HUE IS STATUS, LIGHTNESS IS PHASE.
    Both segments of a bar take the REQ's status accent — the same tokens the
    cards and the calendar chips use, so one REQ is one colour wherever it is
@@ -2743,6 +2766,25 @@ body.is-resizing-detail .detail-resizer::before {
   max-height: 360px;
   overflow: auto;
   margin-top: 8px;
+}
+
+.timeline-table caption {
+  padding: 8px 0;
+  color: var(--ink-faint);
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.timeline-table-group th {
+  position: sticky;
+  top: 0;
+  padding-top: 10px;
+  background: var(--surface-1);
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: left;
 }
 
 .timeline-table table {

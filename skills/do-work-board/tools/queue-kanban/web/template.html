@@ -278,7 +278,7 @@
            window: the wait from capture to claim, then the work from claim to
            completion. Rows are virtualized, so only the scrolled window carries
            SVG nodes. -->
-      <section id="view-timeline" class="view-panel" aria-label="Timeline. With the chart focused, arrow keys pan the time axis and the plus and minus keys zoom it. The toolbar steps the window one calendar day, week or month at a time, and the From and to date fields set it directly." hidden>
+      <section id="view-timeline" class="view-panel" aria-label="Timeline grouped by user request. With the chart focused, arrow keys pan the time axis and the plus and minus keys zoom it. The toolbar steps the window one calendar day, week or month at a time, and the From and to date fields set it directly." hidden>
         <div class="timeline-intro">
           <h2 class="timeline-heading">How long each REQ waited, and how long it took</h2>
           <p class="timeline-subhead" id="timeline-summary"></p>
@@ -353,12 +353,13 @@
         </div>
         <p class="timeline-forecast" id="timeline-forecast"></p>
         <div class="timeline-excluded" id="timeline-excluded"></div>
-        <p class="timeline-hint">Rows run newest first, and only the REQs the visible window covers are listed; scroll down to go further back inside it. Type dates in From and to for a window you can name, or hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Pick Day, Week or Month for the period around now, or around wherever you have panned to when the now-line is off screen; ‹ and › then step one calendar period at a time, and step by one screenful instead when the window is a span of your own. Click a row for its full detail. From the keyboard: Tab to the chart, then ← and → to pan and + and − to zoom.</p>
+        <p class="timeline-hint">Only REQs covered by the visible window are listed, grouped by UR in first-seen order; members stay newest first and No UR recorded is last. Group elapsed starts at the first recorded member claim and ends at the latest resolved completion, or at this board's frozen now while the group is running. A group with no recorded claim reports elapsed unavailable. Accepted work sums only samples kept by Durations' read-time rule, with exclusions and missing samples stated on the header. Scroll down to go further back inside the window. Type dates in From and to for a window you can name, or hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Pick Day, Week or Month for the period around now, or around wherever you have panned to when the now-line is off screen; ‹ and › then step one calendar period at a time, and step by one screenful instead when the window is a span of your own. Click a REQ row for its full detail. From the keyboard: Tab to the chart, then ↑ and ↓ move between REQs without stopping on headers, ← and → pan, and + and − zoom.</p>
         <p class="timeline-readout" id="timeline-readout" role="status" aria-live="polite"></p>
         <details class="timeline-table">
           <summary>The REQs in this window, as a table</summary>
           <div class="timeline-table-scroll">
             <table>
+              <caption>Only REQs listed in the visible Timeline window. Groups follow first appearance, with No UR recorded last. Elapsed uses the earliest recorded claim through the latest resolved completion, or the board's frozen now for a running group; it is unavailable when no listed member has a recorded claim. Accepted work uses Durations' existing read-time exclusions.</caption>
               <thead>
                 <tr>
                   <th scope="col">REQ</th>

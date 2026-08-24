@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -3399,20 +3400,33 @@ process.stdout.write(JSON.stringify({
 // in a screenshot: a wrong slice shows blank strips only while scrolling fast.
 func TestJavaScriptBehaviorTimelineVirtualizesRowsAtScale(t *testing.T) {
 	indexHtml := generateLiveSite(t)
-	javascriptProbe := timelineProbePreamble(t, "TIMELINE_ROW_HEIGHT", "TIMELINE_OVERSCAN_ROWS") +
-		sliceBalancedBlockAfter(t, indexHtml, "function timelineVisibleRowRange(") + `
-var rowCount = 560;
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_ROW_HEIGHT", "TIMELINE_GROUP_HEADER_HEIGHT", "TIMELINE_OVERSCAN_ROWS") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineFlattenGroups(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineVisibleDisplayRange(") + `
+var groups = [];
+var requestIndex = 0;
+for (var groupIndex = 0; groupIndex < 80; groupIndex++) {
+  var members = [];
+  for (var memberIndex = 0; memberIndex < 7; memberIndex++) {
+    members.push({ row: { id: "REQ-" + requestIndex }, rowIndex: requestIndex });
+    requestIndex++;
+  }
+  groups.push({ label: "UR-" + groupIndex, members: members });
+}
+var layout = timelineFlattenGroups(groups);
+var displayCount = layout.items.length;
 var viewportHeight = 600;
-var atTop = timelineVisibleRowRange(0, viewportHeight, rowCount);
-var midway = timelineVisibleRowRange(rowCount * TIMELINE_ROW_HEIGHT / 2, viewportHeight, rowCount);
-var atBottom = timelineVisibleRowRange(rowCount * TIMELINE_ROW_HEIGHT, viewportHeight, rowCount);
+var atTop = timelineVisibleDisplayRange(layout.items, 0, viewportHeight);
+var midway = timelineVisibleDisplayRange(layout.items, layout.height / 2, viewportHeight);
+var atBottom = timelineVisibleDisplayRange(layout.items, layout.height, viewportHeight);
 process.stdout.write(JSON.stringify({
-  atTopCount: atTop.lastRow - atTop.firstRow,
-  midwayCount: midway.lastRow - midway.firstRow,
+  atTopCount: atTop.lastDisplay - atTop.firstDisplay,
+  midwayCount: midway.lastDisplay - midway.firstDisplay,
   midwayCoversScrollPosition:
-    midway.firstRow <= rowCount / 2 && midway.lastRow > rowCount / 2,
-  atBottomLastRow: atBottom.lastRow,
-  rowCount: rowCount
+    layout.items[midway.firstDisplay].topPx <= layout.height / 2 &&
+    layout.items[midway.lastDisplay - 1].topPx + layout.items[midway.lastDisplay - 1].height > layout.height / 2,
+  atBottomLastRow: atBottom.lastDisplay,
+  rowCount: displayCount
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "timeline virtualization", javascriptProbe)
@@ -3426,22 +3440,21 @@ process.stdout.write(JSON.stringify({
 	if decodeError := json.Unmarshal(probeOutput, &sliceResult); decodeError != nil {
 		t.Fatalf("decode timeline virtualization behavior: %v (output %q)", decodeError, probeOutput)
 	}
-	// A 600px viewport at the shipped row height holds well under 60 rows; the
-	// point of the assertion is that the slice is bounded by the VIEWPORT and
-	// never by the row count, which is what a non-virtualized render would do.
+	// A 600px viewport holds well under a quarter of the flattened headers and
+	// members; the slice is bounded by the VIEWPORT and never by archive size.
 	if sliceResult.AtTopCount >= sliceResult.RowCount/4 {
-		t.Fatalf("a 600px viewport rendered %d of %d rows; the slice must be viewport-bounded",
+		t.Fatalf("a 600px viewport rendered %d of %d group/member items; the slice must be viewport-bounded",
 			sliceResult.AtTopCount, sliceResult.RowCount)
 	}
-	if sliceResult.MidwayCount != sliceResult.AtTopCount {
-		t.Fatalf("slice size changed with scroll position (%d at top, %d midway); it must not",
-			sliceResult.AtTopCount, sliceResult.MidwayCount)
+	if sliceResult.MidwayCount >= sliceResult.RowCount/4 {
+		t.Fatalf("a midway 600px viewport rendered %d of %d group/member items; mixed fixed heights may vary the count, but the slice must stay viewport-bounded",
+			sliceResult.MidwayCount, sliceResult.RowCount)
 	}
 	if !sliceResult.MidwayCoversScrollPosition {
 		t.Fatal("the midway slice does not contain the row at the scroll position")
 	}
 	if sliceResult.AtBottomLastRow != sliceResult.RowCount {
-		t.Fatalf("scrolled past the end the slice reached row %d, want it clamped to %d",
+		t.Fatalf("scrolled past the end the slice reached display item %d, want it clamped to %d",
 			sliceResult.AtBottomLastRow, sliceResult.RowCount)
 	}
 }
@@ -3509,6 +3522,7 @@ function idsInSpan(rowList, projectedById, spanStartMs, spanEndMs) {
   return timelineRowsInWindow(rowList, extents, spanStartMs, spanEndMs)
     .map(function (row) { return row.id; });
 }
+
 function idsInWindow(rowList, projectedById) {
   return idsInSpan(rowList, projectedById, windowStartMs, windowEndMs);
 }
@@ -3711,6 +3725,127 @@ process.stdout.write(JSON.stringify({
 // has to hold is that typing cannot reach a window the other three cannot —
 // same floor, same ceiling, same edge clamp — because a control with its own
 // clamp is how a view starts disagreeing with itself.
+func TestTimelineRendererGroupsTheWindowedRowsByUserRequest(t *testing.T) {
+	rendererBytes, readError := embeddedWebAssets.ReadFile("web/board-timeline.js")
+	if readError != nil {
+		t.Fatalf("read web/board-timeline.js: %v", readError)
+	}
+	if !strings.Contains(string(rendererBytes), "function timelineGroupWindowRows(") {
+		t.Error("the Timeline has no window-scoped user-request grouping function")
+	}
+}
+
+func TestJavaScriptBehaviorTimelineUserRequestGroupsUseOnlyListedMembers(t *testing.T) {
+	indexHTML := generateLiveSite(t)
+	javascriptProbe := rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_ROW_HEIGHT") + "\n" +
+		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_GROUP_HEADER_HEIGHT") + "\n" +
+		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_UNKNOWN_USER_REQUEST_NAME") + "\n" +
+		sliceBalancedBlockAfter(t, indexHTML, "function timelineGroupWindowRows(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHTML, "function timelineFlattenGroups(") + `
+var nowMs = Date.UTC(2026, 7, 24, 14, 0);
+var rows = [
+  { id: "REQ-505", claimedTime: "2026-08-24T10:00:00Z", completedTime: "2026-08-24T12:00:00Z", hasWork: true },
+  { id: "REQ-504", completedTime: "2026-08-24T12:30:00Z", hasWork: false },
+  { id: "REQ-503", claimedTime: "2026-08-24T08:00:00Z", hasWork: true, workOpen: true },
+  { id: "REQ-502", claimedTime: "2026-08-24T09:00:00Z", completedTime: "2026-08-24T13:00:00Z", hasWork: true },
+  { id: "REQ-501", waitOpen: true, hasWork: false }
+];
+var requestsById = {
+  "REQ-505": { userRequestId: "UR-202" },
+  "REQ-504": { userRequestId: "" },
+  "REQ-503": { userRequestId: "UR-101" },
+  "REQ-502": { userRequestId: "UR-202" },
+  "REQ-501": { userRequestId: "" }
+};
+var samples = [
+  { id: "REQ-505", wallMinutes: 120 },
+  { id: "REQ-504", wallMinutes: 20 },
+  { id: "REQ-503", wallMinutes: 360, excludedReason: "paused" },
+  { id: "REQ-502", wallMinutes: -10, excludedReason: "reversed" }
+];
+function summarize(groups) {
+  return groups.map(function (group) {
+    return {
+      label: group.label,
+      ids: group.members.map(function (member) { return member.row.id; }),
+      elapsedMinutes: group.elapsedMinutes,
+      running: group.running,
+      acceptedWorkMinutes: group.acceptedWorkMinutes,
+      acceptedWorkCount: group.acceptedWorkCount,
+      excludedReasons: group.excludedReasons,
+      unavailableWorkCount: group.unavailableWorkCount
+    };
+  });
+}
+var allGroups = timelineGroupWindowRows(rows, requestsById, samples, nowMs);
+process.stdout.write(JSON.stringify({
+  all: summarize(allGroups),
+  flattenedRowIndexes: timelineFlattenGroups(allGroups).items
+    .filter(function (item) { return item.kind === "request"; })
+    .map(function (item) { return item.rowIndex; }),
+  windowSubset: summarize(timelineGroupWindowRows([rows[3], rows[4]], requestsById, samples, nowMs))
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline user-request grouping", javascriptProbe)
+	type renderedGroup struct {
+		Label                string         `json:"label"`
+		Ids                  []string       `json:"ids"`
+		ElapsedMinutes       *float64       `json:"elapsedMinutes"`
+		Running              bool           `json:"running"`
+		AcceptedWorkMinutes  float64        `json:"acceptedWorkMinutes"`
+		AcceptedWorkCount    int            `json:"acceptedWorkCount"`
+		ExcludedReasons      map[string]int `json:"excludedReasons"`
+		UnavailableWorkCount int            `json:"unavailableWorkCount"`
+	}
+	var groupingResult struct {
+		All                 []renderedGroup `json:"all"`
+		FlattenedRowIndexes []int           `json:"flattenedRowIndexes"`
+		WindowSubset        []renderedGroup `json:"windowSubset"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &groupingResult); decodeError != nil {
+		t.Fatalf("decode timeline user-request grouping: %v (output %q)", decodeError, probeOutput)
+	}
+	if got := []string{groupingResult.All[0].Label, groupingResult.All[1].Label, groupingResult.All[2].Label}; !reflect.DeepEqual(got, []string{"UR-202", "UR-101", "No UR recorded"}) {
+		t.Errorf("group order = %v, want first-seen URs with the no-UR group last", got)
+	}
+	if got := groupingResult.All[0].Ids; !reflect.DeepEqual(got, []string{"REQ-505", "REQ-502"}) {
+		t.Errorf("UR-202 members = %v, want newest-first input order", got)
+	}
+	if !reflect.DeepEqual(groupingResult.FlattenedRowIndexes, []int{0, 3, 2, 1, 4}) {
+		t.Errorf("flattened REQ indexes = %v, want grouped display order with headers omitted",
+			groupingResult.FlattenedRowIndexes)
+	}
+	if groupingResult.All[0].ElapsedMinutes == nil || *groupingResult.All[0].ElapsedMinutes != 240 {
+		t.Errorf("closed UR elapsed = %v, want 240 minutes from earliest claim to latest completion",
+			groupingResult.All[0].ElapsedMinutes)
+	}
+	if groupingResult.All[0].AcceptedWorkMinutes != 120 || groupingResult.All[0].AcceptedWorkCount != 1 ||
+		groupingResult.All[0].ExcludedReasons["reversed"] != 1 {
+		t.Errorf("closed UR work verdict = %#v, want one accepted 120-minute sample and one reversed exclusion",
+			groupingResult.All[0])
+	}
+	if !groupingResult.All[1].Running || groupingResult.All[1].ElapsedMinutes == nil ||
+		*groupingResult.All[1].ElapsedMinutes != 360 {
+		t.Errorf("open UR elapsed = %#v, want six hours to the frozen now and running", groupingResult.All[1])
+	}
+	if groupingResult.All[2].ElapsedMinutes != nil {
+		t.Errorf("no-claim group elapsed = %v, want unavailable rather than created_at fallback",
+			*groupingResult.All[2].ElapsedMinutes)
+	}
+	if !groupingResult.All[2].Running {
+		t.Error("the no-claim group contains an open wait but is not visibly classified as running")
+	}
+	if groupingResult.All[2].AcceptedWorkMinutes != 20 || groupingResult.All[2].UnavailableWorkCount != 1 {
+		t.Errorf("no-UR work detail = %#v, want 20 accepted minutes and one unavailable sample",
+			groupingResult.All[2])
+	}
+	if len(groupingResult.WindowSubset) != 2 || len(groupingResult.WindowSubset[0].Ids) != 1 ||
+		len(groupingResult.WindowSubset[1].Ids) != 1 {
+		t.Errorf("window subset grouped %#v; headers must count only the rows passed after windowing",
+			groupingResult.WindowSubset)
+	}
+}
+
 func TestJavaScriptBehaviorTimelineTypedDatesMoveTheWindow(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS") +
