@@ -22,6 +22,12 @@ estimate:
   calculated_at: 2026-08-24T20:17:59Z
   basis:
     - trivial short-circuit
+write_set:
+  - skills/do-work-board/tools/queue-kanban/web/template.html
+  - skills/do-work-board/tools/queue-kanban/web/board.css
+  - skills/do-work-board/tools/queue-kanban/web/board-cards.js
+  - skills/do-work-board/tools/queue-kanban/web/board-clipboard.js
+  - skills/do-work-board/tools/queue-kanban/clipboard_browser_probe_test.go
 ---
 
 # Add a Copy-All-REQs Button to Each Board Column
@@ -66,3 +72,33 @@ Great for extracting all pending, claimed, blocked, or done REQs in one action i
 ## Triage
 
 **Route: B** — The behavior is specified, but the absent capture-time write set must be discovered across the column header, filtered display model, raw-Markdown bundle, shared clipboard feedback, styling, and trusted browser coverage before implementation.
+
+## Exploration
+
+- The exact displayed order already exists in each column's rendered `.req-card` DOM, including Pending's Ready-then-Waiting grouping and all active filters/windows. Read those ids at click time instead of reconstructing a parallel filter model.
+- Reuse the raw Markdown map and existing clipboard writer/fallback. Concatenate each visible card's existing payload byte-for-byte with `join("")`; fail visibly if any rendered id lacks raw content rather than copying an incomplete set.
+- Add one semantic control to each of the four flat Board headers only. Column rendering owns enabled/disabled state and an accessible count label; Testing, By UR, and REQ-368's UR detail remain out of scope.
+- A generated-site Chromium probe will stub the clipboard and cover all four controls, empty state, exact pending display order, a one-card column, filter narrowing, Recently Done 24h/48h membership, raw payload fidelity, URL/console guards, and mutation seams.
+
+## Scope
+
+**Files I will touch:**
+
+- `skills/do-work-board/tools/queue-kanban/web/template.html`
+- `skills/do-work-board/tools/queue-kanban/web/board.css`
+- `skills/do-work-board/tools/queue-kanban/web/board-cards.js`
+- `skills/do-work-board/tools/queue-kanban/web/board-clipboard.js`
+- `skills/do-work-board/tools/queue-kanban/clipboard_browser_probe_test.go`
+
+**Acceptance criteria:**
+
+- Each flat Board column has one accessible copy-all control whose enabled state and count match its currently rendered REQ cards.
+- Clicking copies every visible card's existing raw-Markdown payload, byte-for-byte and in display order, through the shared clipboard/fallback and feedback path.
+- Search/domain/status filters and the Recently Done time window change both the visible set and copied payload; empty columns cannot produce a misleading successful copy.
+- Trusted Chromium coverage proves exact content/order, filter/window behavior, empty and single-card states, URL provenance, console cleanliness, and non-vacuous mutation seams.
+
+## Decisions
+
+- **D-01 — Treat the rendered column DOM as the membership/order authority.** It is already the exact filtered/windowed display contract the user asked to copy, avoiding a second selection model that can drift.
+- **D-02 — Fail closed on missing raw payloads.** Silently omitting one visible REQ would make a successful-looking bulk copy incomplete; the existing failed-feedback path makes the mismatch visible.
+- **D-03 — Keep UR bulk copy separate.** This REQ adds controls only to the four flat Board columns; REQ-368 owns UR-plus-grouped-REQ composition.

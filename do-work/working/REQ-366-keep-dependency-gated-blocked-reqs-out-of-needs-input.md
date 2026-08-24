@@ -26,7 +26,11 @@ estimate:
     - browser evidence
     - cross-route regression gates
     - full-suite verification
-write_set: [skills/do-work-board/tools/queue-kanban/model.go, skills/do-work-board/tools/queue-kanban/model_test.go, skills/do-work-board/actions/board.md]
+write_set:
+  - skills/do-work-board/tools/queue-kanban/model.go
+  - skills/do-work-board/tools/queue-kanban/model_test.go
+  - skills/do-work-board/actions/board.md
+  - skills/do-work-board/tools/queue-kanban/web/board-cards.js
 ---
 
 # Keep Dependency-Gated Blocked REQs Out of Needs Input · Blocked
@@ -101,4 +105,8 @@ See `do-work/user-requests/UR-070/input.md` for complete verbatim input.
 
 ## Triage
 
-**Route: B** — The user-visible rule and three-file target are firm, but implementation must trace the existing dependency annotation into shared column bucketing, preserve status-specific exceptions, and prove inherited counters plus rendered badges with focused and browser evidence.
+**Route: B** — The user-visible rule and three behavioral files are firm, but implementation must trace the existing dependency annotation into shared column bucketing, preserve status-specific exceptions, prove inherited counters plus rendered badges, and keep the directly affected frontend commentary honest.
+
+## Scope Extensions
+
+- **Pre-freeze comment extension:** `skills/do-work-board/tools/queue-kanban/web/board-cards.js` joins the scope only to correct its blocked-badge comment, which otherwise would falsely claim every blocked card shares the Needs Input column. REQ-367 edits the same file in line-disjoint column-rendering code, so integration must explicitly inspect the overlap.
