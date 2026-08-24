@@ -1,7 +1,10 @@
 ---
 id: REQ-362
 title: "[impact-rule-change] Stop a multi-path bullet disabling the scope-drift check"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T18:57:05Z
+status_changed_at: 2026-08-24T18:57:05Z
+route: B
 created_at: 2026-08-24T11:15:00Z
 user_request: UR-068
 addendum_to: REQ-344
@@ -14,6 +17,16 @@ depends_on: []
 maintenance: false
 impact: impact-rule-change
 effort_estimate: effort-mechanical
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-08-24T18:57:05Z
+  basis:
+    - Route B
+    - 1-file write set
+    - 4 acceptance criteria
+    - cross-route regression gates
+    - full-suite verification
 write_set:
   - skills/do-work/tools/checks/scope-drift.sh
 ---
@@ -85,3 +98,11 @@ unparseable, and every existing single-path REQ produces the same output as befo
 
 ---
 *Source: REQ-344 review finding F5 (UR-068).*
+
+## Triage
+
+**Route: B** — The defect and one-file target are clear, but exploration must choose a multi-backtick extractor, define bare-filename resolution versus loud rejection, and preserve every existing single-path fixture before implementation.
+
+## Plan
+
+**Planning not required** — Route B: exploration-guided implementation.

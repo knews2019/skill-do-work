@@ -1,7 +1,10 @@
 ---
 id: REQ-361
 title: "[impact-rule-change] Make the neutralization lock-in catch narrowing"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T18:57:05Z
+status_changed_at: 2026-08-24T18:57:05Z
+route: C
 created_at: 2026-08-24T10:50:00Z
 user_request: UR-068
 addendum_to: REQ-342
@@ -14,6 +17,17 @@ depends_on: []
 maintenance: false
 impact: impact-rule-change
 effort_estimate: effort-substantive
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  calculated_at: 2026-08-24T18:57:05Z
+  basis:
+    - Route C
+    - 1-file write set
+    - 2 subsystems involved
+    - 4 acceptance criteria
+    - cross-route regression gates
+    - full-suite verification
 write_set:
   - _dev/tests/contract-regressions.sh
 ---
@@ -94,6 +108,10 @@ independently re-run by the orchestrator.
 
 ---
 *Source: REQ-342 review finding F3 (UR-068).*
+
+## Triage
+
+**Route: C** — The combined body-neutralization and Frontmatter Quoting mutation contract must derive governed fields, scan only fenced examples, distinguish insertion narrowing from legitimate rewording, and preserve the existing isolation matrix; this requires an explicit plan before the one-file test implementation.
 
 ## Addendum (2026-08-24) — the Frontmatter Quoting checker belongs here too
 

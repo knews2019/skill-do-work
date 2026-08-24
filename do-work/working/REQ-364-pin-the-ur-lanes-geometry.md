@@ -1,7 +1,10 @@
 ---
 id: REQ-364
 title: "[impact-rule-change] Pin the UR lane's geometry"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T18:57:05Z
+status_changed_at: 2026-08-24T18:57:05Z
+route: B
 created_at: 2026-08-24T12:50:00Z
 user_request: UR-069
 addendum_to: REQ-346
@@ -14,6 +17,17 @@ depends_on: []
 maintenance: false
 impact: impact-rule-change
 effort_estimate: effort-mechanical
+estimate:
+  p50_active_minutes: 30
+  confidence: medium
+  calculated_at: 2026-08-24T18:57:05Z
+  basis:
+    - Route B
+    - 1-file write set
+    - 4 acceptance criteria
+    - browser evidence
+    - cross-route regression gates
+    - full-suite verification
 write_set:
   - skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go
 ---
@@ -89,3 +103,11 @@ independently reproduced by the orchestrator.
 
 ---
 *Source: REQ-346 review finding F1 (UR-069).*
+
+## Triage
+
+**Route: B** — Production geometry is intentionally unchanged, but exploration must reuse the existing neighbour-clearance probe shape, identify runtime geometry constants without restating them, and design five mutation-sensitive browser relationships in the one declared test file.
+
+## Plan
+
+**Planning not required** — Route B: exploration-guided implementation.
