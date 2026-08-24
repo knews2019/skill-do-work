@@ -4897,8 +4897,13 @@ def neutralization_defects(source):
         # Neutralizing must not cost the answer trail the record exists for.
         "answer preserved intact": r"nothing is edited or dropped",
         # Branch one: a single line cannot start a line, so position is the fix.
-        "single-line branch keyed on the line break":
-            r"the answer is one line\b.*?inline after the `→`",
+        "single-line branch binds both triggers":
+            r"(?:the|an) answer (?:is one|has a single) line\b.*?cannot be a delimiter where it lands.*?inline after the `→`",
+        # Branch two is a universal over three triggers. Checking each word in
+        # the whole block let a narrowed bullet borrow `anything` from prose
+        # above it; bind the quantifiers, alternatives and action together.
+        "contained branch covers every passage and risky answer":
+            r"anything written as its own body passage, or any answer with a line break or delimiter-shaped line.*?(?:put.*?inside|place.*?in) a blockquote",
         # Branch two, half one: the quote prefix is what a line-based scan sees,
         # and a fence alone does not stop one — the sibling incident in this
         # file's own history was a regex keying on the first line-leading `- [ ]`.
@@ -4911,11 +4916,39 @@ def neutralization_defects(source):
         "opening frontmatter fence never written above":
             r"never the file.s first line",
     }
-    return {
+    defects = {
         defect_name
         for defect_name, predicate in predicates.items()
         if re.search(predicate, normalized) is None
     }
+
+    # Presence predicates above prove the broad rule still exists. These scoped
+    # contradictions prove it has not been narrowed by an inserted sentence
+    # that leaves every broad phrase untouched. Keep each pattern tied to the
+    # subject it restricts: this contract legitimately says ONLY containment
+    # bytes are added, so a file-wide ban on `only` would reject the live rule.
+    narrowing_patterns = {
+        "delimiter condition narrowed by a closed list":
+            r"only (?:the )?(?:four|named|listed).*?shapes.*?count as delimiters",
+        "record-body reach narrowed to answers":
+            r"(?:sub-?contract|containment|rule).*?appl(?:y|ies) only to (?:req )?answer",
+        "illustrative shapes made exhaustive":
+            r"(?:treat|use|regard).*?shapes as (?:the )?(?:complete|exhaustive) (?:check)?list",
+        "blockquote prefix made optional":
+            r"`> ` prefix is optional.*?fence is (?:enough|sufficient)",
+        "inline branch narrowed by length":
+            r"(?:answer|one-line answers?).*?(?:short|length).*?(?:long|longer) one-line answer",
+        "dynamic fence narrowed to a fixed fence":
+            r"(?:triple-backtick|three-backtick|fixed) fence is (?:enough|sufficient)",
+        "first-line prohibition narrowed to answers":
+            r"(?:first-line prohibition|prohibition).*?appl(?:y|ies) only to (?:answered questions|answers)",
+    }
+    defects.update(
+        defect_name
+        for defect_name, pattern in narrowing_patterns.items()
+        if re.search(pattern, normalized) is not None
+    )
+    return defects
 
 
 live_defects = neutralization_defects(clarify_text)
@@ -4978,7 +5011,7 @@ mutations = (
     ("single-line branch loosened to a judgement call",
      "The answer is one line",
      "the answer is short",
-     "single-line branch keyed on the line break"),
+     "single-line branch binds both triggers"),
     ("container weakened to a fixed fence",
      "a code fence longer than the longest backtick run anywhere in the text",
      "a triple-backtick code fence",
@@ -5001,6 +5034,98 @@ for mutation_name, old, new, expected_defect in mutations:
     if expected_defect not in mutation_defects:
         raise SystemExit(
             f"answer-neutralization mutation {mutation_name!r} escaped "
+            f"{expected_defect!r}; found {sorted(mutation_defects)!r}"
+        )
+
+# Semantic checks must accept ordinary prose maintenance, not freeze the live
+# sentences byte-for-byte. This trial keeps both branch conditions and actions
+# intact while changing their grammar and verb choice.
+legitimate_rewording_block = live_block
+for old, new in (
+    ("The answer is one line", "An answer has a single line"),
+    ("put the outside text inside a blockquote", "place the outside text in a blockquote"),
+):
+    reworded_block = legitimate_rewording_block.replace(old, new, 1)
+    if reworded_block == legitimate_rewording_block:
+        raise SystemExit(
+            f"answer-neutralization legitimate-rewording anchor {old!r} disappeared"
+        )
+    legitimate_rewording_block = reworded_block
+legitimate_rewording_defects = neutralization_defects(
+    clarify_text.replace(live_block, legitimate_rewording_block, 1)
+)
+if legitimate_rewording_defects:
+    raise SystemExit(
+        "answer-neutralization legitimate rewording was rejected: "
+        + repr(sorted(legitimate_rewording_defects))
+    )
+
+
+def insert_after(block, anchor, addition, mutation_name):
+    if anchor not in block:
+        raise SystemExit(
+            f"answer-neutralization insertion {mutation_name!r} changed nothing — "
+            "the anchor it follows is no longer in the named entry point block"
+        )
+    return block.replace(anchor, anchor + addition, 1)
+
+
+# Replacement mutations can prove that required words are load-bearing and still
+# miss the more dangerous edit: preserving every broad sentence while adding a
+# narrower instruction beside it. Each trial below keeps the current positive
+# vocabulary intact and inserts one plausible contradiction.
+insertion_mutations = (
+    (
+        "delimiter condition narrowed to the four examples",
+        "The shapes already proved are illustrative, not a checklist",
+        ". For this rule, only the four shapes named below count as delimiters",
+        "delimiter condition narrowed by a closed list",
+    ),
+    (
+        "record-body reach narrowed to answers",
+        "any do-work Markdown record body",
+        "; this sub-contract applies only to REQ answer lines",
+        "record-body reach narrowed to answers",
+    ),
+    (
+        "illustrative examples made exhaustive",
+        "The shapes already proved are illustrative, not a checklist",
+        "; treat those four shapes as the complete checklist",
+        "illustrative shapes made exhaustive",
+    ),
+    (
+        "blockquote prefix made optional",
+        "The `> ` prefix takes every line start away from a line-based scan",
+        ". For fenced text the `> ` prefix is optional because the fence is sufficient",
+        "blockquote prefix made optional",
+    ),
+    (
+        "inline branch narrowed to short answers",
+        "The answer is one line",
+        " and short; long one-line answers use the passage branch",
+        "inline branch narrowed by length",
+    ),
+    (
+        "dynamic fence narrowed to triple backticks",
+        "cannot be closed from inside",
+        ". A triple-backtick fence is sufficient regardless of the pasted text",
+        "dynamic fence narrowed to a fixed fence",
+    ),
+    (
+        "first-line prohibition narrowed to answers",
+        "It is never the file's first line",
+        "; this prohibition applies only to answered questions",
+        "first-line prohibition narrowed to answers",
+    ),
+)
+
+for mutation_name, anchor, addition, expected_defect in insertion_mutations:
+    mutated_block = insert_after(live_block, anchor, addition, mutation_name)
+    mutated_text = clarify_text.replace(live_block, mutated_block, 1)
+    mutation_defects = neutralization_defects(mutated_text)
+    if expected_defect not in mutation_defects:
+        raise SystemExit(
+            f"answer-neutralization insertion {mutation_name!r} escaped "
             f"{expected_defect!r}; found {sorted(mutation_defects)!r}"
         )
 PY
@@ -5172,6 +5297,10 @@ def frontmatter_contract_defects(source):
     )
     normalized = " ".join(block.lower().split())
     predicates = {
+        "outside-authorship condition governs every field":
+            r"condition is the rule.*?whenever a frontmatter value carries text nobody in this pipeline composed",
+        "current field names stay illustrative":
+            r"fields.*?illustrative, never a list to check against",
         "outside-text preflight inherited": r"outside-text containment.s accepted-text preflight",
         "failed preflight refused and reported": r"refuses and reports.*?instead of normalizing",
         "every physical line indented": r"every physical content line indented.*?blank lines included",
@@ -5179,7 +5308,113 @@ def frontmatter_contract_defects(source):
         "one-terminal-LF clip form": r"`key: \|` for exactly one",
         "multiple-terminal-LF keep form": r"`key: \|\+` for multiple",
     }
-    return {name for name, pattern in predicates.items() if re.search(pattern, normalized) is None}
+    defects = {name for name, pattern in predicates.items() if re.search(pattern, normalized) is None}
+    narrowing_patterns = {
+        "outside-authorship condition narrowed to named fields":
+            r"(?:condition|contract|rule).*?appl(?:y|ies) only to (?:the )?(?:fields?|names?).*?(?:named|listed|above|today)",
+    }
+    defects.update(
+        name for name, pattern in narrowing_patterns.items()
+        if re.search(pattern, normalized) is not None
+    )
+    return defects
+
+
+def markdown_fenced_blocks(source):
+    """Return Markdown fence bodies; inline code is deliberately invisible."""
+    lines = source.splitlines()
+    blocks = []
+    line_index = 0
+    while line_index < len(lines):
+        opening = re.match(r"^\s*(`{3,}|~{3,})([^`]*)$", lines[line_index])
+        if opening is None:
+            line_index += 1
+            continue
+        fence = opening.group(1)
+        fence_character = re.escape(fence[0])
+        closing = re.compile(r"^\s*" + fence_character + "{" + str(len(fence)) + r",}\s*$")
+        body_start = line_index + 1
+        line_index = body_start
+        while line_index < len(lines) and closing.match(lines[line_index]) is None:
+            line_index += 1
+        if line_index == len(lines):
+            raise SystemExit("unclosed Markdown fence while deriving Frontmatter Quoting examples")
+        blocks.append((opening.group(2).strip().lower(), "\n".join(lines[body_start:line_index])))
+        line_index += 1
+    return blocks
+
+
+def canonical_frontmatter_schema(source):
+    candidates = [
+        body for info, body in markdown_fenced_blocks(source)
+        if info in {"yaml", "yml"} and re.search(r"^id:\s*REQ-", body, flags=re.MULTILINE)
+    ]
+    if len(candidates) != 1:
+        raise SystemExit(
+            f"Frontmatter Quoting inventory found {len(candidates)} canonical YAML schema fences, want one"
+        )
+    return candidates[0]
+
+
+def frontmatter_schema_inventory(source):
+    schema = canonical_frontmatter_schema(source)
+    governed_fields = set()
+    encoder_owned_fields = set()
+    annotation_defects = set()
+    for schema_line in schema.splitlines():
+        field_match = re.match(r"^([a-z_][a-z0-9_]*):(?P<rest>.*)$", schema_line)
+        if field_match is None or "raw user text" not in field_match.group("rest").lower():
+            continue
+        field_name = field_match.group(1)
+        governed_fields.add(field_name)
+        annotation = field_match.group("rest").lower()
+        encoder_owned = "escaping encoder" in annotation
+        if encoder_owned:
+            encoder_owned_fields.add(field_name)
+        if "frontmatter quoting" not in annotation and not encoder_owned:
+            annotation_defects.add(
+                f"governed schema field {field_name} lacks Frontmatter Quoting or an encoder discriminator"
+            )
+    # Count, not a copied field list: the schema is the inventory. The floor is
+    # only a deletion guard for today's seven annotated fields; additions grow
+    # the set without editing this check.
+    if len(governed_fields) < 7:
+        annotation_defects.add(
+            f"governed schema inventory has {len(governed_fields)} fields, want at least seven"
+        )
+    return schema, governed_fields, encoder_owned_fields, annotation_defects
+
+
+def frontmatter_fenced_example_defects(markdown_sources, governed_fields, encoder_owned_fields):
+    defects = set()
+    occurrence_count = {field_name: 0 for field_name in governed_fields}
+    fenced_texts = []
+    for source_name, source in markdown_sources.items():
+        for _, fenced_body in markdown_fenced_blocks(source):
+            fenced_texts.append(fenced_body)
+            for block_line in fenced_body.splitlines():
+                field_match = re.match(r"^\s*([a-z_][a-z0-9_]*):\s*(.*)$", block_line)
+                if field_match is None or field_match.group(1) not in governed_fields:
+                    continue
+                field_name, scalar = field_match.group(1), field_match.group(2).lstrip()
+                occurrence_count[field_name] += 1
+                safe_hand_authored = scalar.startswith("'") or scalar.startswith("|")
+                safe_encoder_owned = field_name in encoder_owned_fields and scalar.startswith('"')
+                if not safe_hand_authored and not safe_encoder_owned:
+                    defects.add(
+                        f"{source_name}: fenced {field_name} example is not single-quoted, literal, or encoder-owned"
+                    )
+    for field_name, count in occurrence_count.items():
+        if count == 0:
+            defects.add(f"governed field {field_name} appears in no fenced example")
+
+    inline_counterexample = 'title: "Fix: A " # B"'
+    work_reference_text = markdown_sources.get(str(work_reference_path), "")
+    if inline_counterexample not in work_reference_text:
+        defects.add("Frontmatter Quoting inline counterexample disappeared")
+    if any(inline_counterexample in fenced_text for fenced_text in fenced_texts):
+        defects.add("Frontmatter Quoting inline counterexample leaked into the fenced-example scan")
+    return defects
 
 
 work_reference = work_reference_path.read_text()
@@ -5190,7 +5425,36 @@ if live_frontmatter_defects:
         + ", ".join(sorted(live_frontmatter_defects))
     )
 
+(
+    live_schema,
+    governed_frontmatter_fields,
+    encoder_owned_frontmatter_fields,
+    schema_annotation_defects,
+) = frontmatter_schema_inventory(work_reference)
+if schema_annotation_defects:
+    raise SystemExit(
+        "Frontmatter Quoting schema annotation defects: "
+        + ", ".join(sorted(schema_annotation_defects))
+    )
+
+core_root = work_reference_path.parent.parent
+core_markdown_sources = {
+    str(markdown_path): markdown_path.read_text()
+    for markdown_path in core_root.rglob("*.md")
+}
+live_fenced_example_defects = frontmatter_fenced_example_defects(
+    core_markdown_sources,
+    governed_frontmatter_fields,
+    encoder_owned_frontmatter_fields,
+)
+if live_fenced_example_defects:
+    raise SystemExit(
+        "Frontmatter Quoting fenced-example defects: "
+        + ", ".join(sorted(live_fenced_example_defects))
+    )
+
 frontmatter_mutations = (
+    ("universal field condition removed", "The condition is the rule: whenever a frontmatter value carries text nobody in this pipeline composed", "Use this rule for frontmatter values written by the current actions", "outside-authorship condition governs every field"),
     ("preflight citation removed", "Outside-text containment's accepted-text preflight", "ordinary text", "outside-text preflight inherited"),
     ("normalization allowed", "refuses and reports text that fails it instead of normalizing bytes", "normalizes text that fails it", "failed preflight refused and reported"),
     ("blank-line indentation omitted", "(blank lines included)", "(non-blank lines only)", "every physical line indented"),
@@ -5206,6 +5470,92 @@ for mutation_name, old, new, expected_defect in frontmatter_mutations:
             f"Frontmatter Quoting mutation {mutation_name!r} escaped {expected_defect!r}; "
             f"found {sorted(defects)!r}"
         )
+
+frontmatter_narrowed = work_reference.replace(
+    "they are illustrative, never a list to check against",
+    "they are illustrative, never a list to check against. Despite that condition, "
+    "this contract applies only to the fields named above",
+    1,
+)
+if frontmatter_narrowed == work_reference:
+    raise SystemExit("Frontmatter Quoting insertion narrowing changed nothing")
+narrowed_defects = frontmatter_contract_defects(frontmatter_narrowed)
+if "outside-authorship condition narrowed to named fields" not in narrowed_defects:
+    raise SystemExit(
+        "Frontmatter Quoting current-fields-only insertion escaped; found "
+        + repr(sorted(narrowed_defects))
+    )
+
+schema_without_title_inheritance = live_schema.replace(
+    "**Frontmatter Quoting** contract above", "local quoting rule", 1
+)
+if schema_without_title_inheritance == live_schema:
+    raise SystemExit("Frontmatter Quoting schema-annotation deletion changed nothing")
+work_reference_without_title_inheritance = work_reference.replace(
+    live_schema, schema_without_title_inheritance, 1
+)
+_, _, _, deleted_annotation_defects = frontmatter_schema_inventory(
+    work_reference_without_title_inheritance
+)
+if not any("governed schema field title lacks" in defect for defect in deleted_annotation_defects):
+    raise SystemExit(
+        "Frontmatter Quoting schema-annotation deletion escaped; found "
+        + repr(sorted(deleted_annotation_defects))
+    )
+
+unsafe_title_schema = live_schema.replace(
+    "title: 'Short descriptive title'", "title: Short descriptive title", 1
+)
+if unsafe_title_schema == live_schema:
+    raise SystemExit("Frontmatter Quoting unsafe-scalar mutation changed nothing")
+unsafe_title_reference = work_reference.replace(live_schema, unsafe_title_schema, 1)
+unsafe_title_sources = dict(core_markdown_sources)
+unsafe_title_sources[str(work_reference_path)] = unsafe_title_reference
+_, unsafe_fields, unsafe_encoder_fields, unsafe_annotation_defects = frontmatter_schema_inventory(
+    unsafe_title_reference
+)
+if unsafe_annotation_defects:
+    raise SystemExit(
+        "Frontmatter Quoting unsafe-scalar mutation damaged the inventory: "
+        + repr(sorted(unsafe_annotation_defects))
+    )
+unsafe_title_defects = frontmatter_fenced_example_defects(
+    unsafe_title_sources, unsafe_fields, unsafe_encoder_fields
+)
+if not any("fenced title example" in defect for defect in unsafe_title_defects):
+    raise SystemExit(
+        "Frontmatter Quoting unsafe-scalar mutation escaped; found "
+        + repr(sorted(unsafe_title_defects))
+    )
+
+future_field_line = (
+    "future_user_text: unsafe future value   # raw user text — "
+    "**Frontmatter Quoting** contract above\n"
+)
+future_schema = live_schema.replace(
+    "title: 'Short descriptive title'", future_field_line + "title: 'Short descriptive title'", 1
+)
+if future_schema == live_schema:
+    raise SystemExit("Frontmatter Quoting future-field mutation changed nothing")
+future_reference = work_reference.replace(live_schema, future_schema, 1)
+future_sources = dict(core_markdown_sources)
+future_sources[str(work_reference_path)] = future_reference
+_, future_fields, future_encoder_fields, future_annotation_defects = frontmatter_schema_inventory(
+    future_reference
+)
+if "future_user_text" not in future_fields or future_annotation_defects:
+    raise SystemExit(
+        "Frontmatter Quoting future field did not join the derived inventory cleanly: "
+        + repr(sorted(future_fields)) + " / " + repr(sorted(future_annotation_defects))
+    )
+future_field_defects = frontmatter_fenced_example_defects(
+    future_sources, future_fields, future_encoder_fields
+)
+if not any("fenced future_user_text example" in defect for defect in future_field_defects):
+    raise SystemExit(
+        "Frontmatter Quoting future unsafe field escaped; found "
+        + repr(sorted(future_field_defects))
+    )
 
 required_single_quoted_examples = (
     (capture_reference_path, r"^title: 'Add keyboard shortcuts'(?:\s+#.*)?$", "UR input title"),
@@ -5228,17 +5578,6 @@ full_input = section(ur_template, r"^## Full Verbatim Input\n", r"^---\n\*Captur
 if re.search(r"^> `+", full_input, flags=re.MULTILINE) is None:
     raise SystemExit("capture-reference UR Full Verbatim Input example is still live Markdown rather than quoted fenced text")
 
-# The board's encoder-owned double-quoted writes are intentionally outside this
-# hand-authored inventory. Across core actions/docs, these five fixed examples
-# must leave no copyable raw-user field teaching the forbidden form.
-for path in (capture_reference_path, review_path, sample_path, capture_guide_path, work_guide_path):
-    forbidden = re.findall(
-        r"^\s*(?:title|blocked_by|blocked_check|stakeholder|assigned_to):\s*(?:\"|[^'\"|\s][^#\n]*)",
-        path.read_text(),
-        flags=re.MULTILINE,
-    )
-    if forbidden:
-        raise SystemExit(f"{path}: forbidden hand-authored frontmatter forms remain: {forbidden!r}")
 PY
 then
   printf 'FAIL: outside-text body writers and hand-authored frontmatter examples must inherit the canonical containment/quoting contracts at their own write sites (REQ-360).\n' >&2
