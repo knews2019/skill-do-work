@@ -30,6 +30,8 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-durations.js
   - skills/do-work-board/tools/queue-kanban/web/template.html
   - skills/do-work-board/tools/queue-kanban/web/board.css
+  - skills/do-work-board/tools/queue-kanban/generate_test.go
+  - skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go
 ---
 
 # State the Durations View's Own Headline Numbers
@@ -40,7 +42,7 @@ The view makes a reader hover to learn the numbers it exists to report. Add a st
 panel A, a rolling median line on panel B, and the ticks panel C is missing.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Route B exploration traced the existing projected samples/days and R-7 quantile helper. Add four semantic tiles, a trailing seven-Panel-B-active-day median with a one-point marker case, and exact zero/midpoint Panel C ticks, then pin complete-renderer and live responsive/theme behavior.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -122,3 +124,22 @@ midpoint ticks; and the summary sentence's exclusion-rule wording is unchanged.
 ## Plan
 
 **Planning not required** — Route B: exploration-guided implementation.
+
+## Exploration
+
+- Median and p90 tiles use Panel A's rule: all plotted raw spans, including excluded paused/reversed samples, visibly labelled “all plotted spans.” Reuse `durationQuantile` and `formatDurationMinutes`.
+- Cadence tiles use Panel C's rule: active days are `days.length` against `timeSpan / DURATIONS_DAY_MS`; REQs per active day is `samples.length / days.length` to one decimal. Excluded-only completion days remain active.
+- Panel B's chronological input is exactly `days.filter(day.hasMedian)`. Starting at index six, take the trailing seven drawn-day medians, compute their R-7 median, and place it at the current day's real-calendar noon. Draw after bars, add point markers so exactly seven active days has a visible result, and draw nothing for six or fewer.
+- Idle and excluded-only days never enter the rolling window and are never zero-filled. The visible title and SVG copy state “trailing 7-active-day median.”
+- Panel C keeps its peak/baseline, adds zero and exact arithmetic `peakCount / 2` ticks/gridline, and formats an odd midpoint honestly with one decimal.
+- A semantic four-item `<dl>` above Panel A uses an auto-fitting grid. Live proof must cover window updates, light/dark line contrast against body, 320/768/1280 wrapping, finite/non-overlapping geometry, exact tick placement, and console state.
+
+## Scope
+
+**Files I will touch:**
+
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js`
+- `skills/do-work-board/tools/queue-kanban/web/template.html`
+- `skills/do-work-board/tools/queue-kanban/web/board.css`
+- `skills/do-work-board/tools/queue-kanban/generate_test.go`
+- `skills/do-work-board/tools/queue-kanban/durations_browser_probe_test.go`
