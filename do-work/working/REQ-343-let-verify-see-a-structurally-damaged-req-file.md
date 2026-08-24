@@ -29,9 +29,9 @@ Give it a structural-anomaly probe, and lift the unrecognized-status warnings th
 produces into findings the same way the duplicate-id probe does.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `prime-kanban-board.md`. Followed `appendCompletionAnomalyFindings`' pattern — forward the board's structured evidence, do not re-walk the tree or parse warning prose. Two probe categories rather than one, because the status class is a pre-existing warning class the REQ names separately.
+- [x] **[APPLY]:** Two files, both inside the write set. `model.go` would have been the cleaner home for the two fields the probe needs, but it is outside the write set — hence the `requestFrontmatterFields` helper, which re-reads bytes `buildBoard` already sliced onto the ticket, through the production parsers.
+- [x] **[UNIFY]:** Audited by the orchestrator against the merged range `2143f2c..793ab23`: built the binary and ran it against a purpose-built damaged fixture (broken opening fence, typo status, healthy control) — both damage shapes named, the healthy REQ silent — and against the real tree, where it adds zero findings despite 11 `archive/legacy/` REQs carrying no `user_request`.
 
 ## Why
 
@@ -128,3 +128,82 @@ None. The fixture is the deliverable's own RED.
 
 ---
 *Source: UR-068 — see `do-work/user-requests/UR-068/input.md` for complete verbatim input.*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The defect, the mechanism and the pattern to follow were all established in the REQ's `## Context` down to line numbers. What needed discovery was where the fields live — `RequestTicket` does not carry a declared `id` or the `stakeholder:` marker — and how to reach them without re-walking the tree.
+
+**Planning:** Not required.
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work-board/tools/queue-kanban/verify.go` (modify) — two probe categories and their helpers
+- `skills/do-work-board/tools/queue-kanban/verify_test.go` (modify) — fixture, damage-shape table, carve-out and discriminator tests
+
+**Files I will NOT touch:** `model.go` (the cleaner home for the two fields the probe needs, but outside the write set — see D-04) and `generate.go` (the board's findings-strip suppression map — see D-06).
+
+**Acceptance criteria (restated from REQ):**
+- [x] A structural probe fails the check on: no leading fence, empty/unrecognized status, empty id, missing user_request
+- [x] Unrecognized-status warnings lifted the way duplicate-id warnings are
+- [x] Board's structured evidence forwarded; no prose parsing, no second tree walk
+- [x] Each finding names the broken field and its remedy
+- [x] Stakeholder REQs and `archive/legacy/` REQs produce no finding
+- [x] Parser leniency preserved — a damaged REQ still parses and still reaches the board
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/verify.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/verify_test.go` (modified)
+
+**What was done:** Added `verifyCategoryStructurallyDamagedRequest` and `verifyCategoryUnrecognizedRequestStatus`, wired into `collectVerifyFindings` after the duplicate-id probe. The structural probe reports a missing leading fence, an empty `id:`, and a missing `user_request:`; a fenceless file reports once rather than once per emptied field, since the fence remedy repairs all of them. The status probe lifts `RequestTicket.StatusUnrecognized` — the structured form of the verdict `bucketColumns` already reaches — rather than matching warning prose. Legitimate absence is carved out by the documented shape: a `stakeholder:` marker, or an `archive/legacy/` path anchored on separators the same way `isArchivedUserRequestPath` is.
+
+## Testing
+
+**Tests run:** `GOTOOLCHAIN=go1.26.1 go test -count=1 ./...`, `GOTOOLCHAIN=go1.26.1 QUEUE_KANBAN_BROWSER=... bash _dev/tests/maintainer-verify.sh`
+**Result:** ✓ Module suite ok (122.9s); gate exit 0 with the strict browser lane actually run rather than skipped
+
+**Red-green validation:**
+- Baseline binary on the damage fixture: `OK: no findings`, exit 0 → after: five findings naming field and remedy, exit 1
+- Orchestrator's independent fixture (broken opening fence + typo status + healthy control): both damage shapes named, healthy REQ silent
+
+**Mutation evidence:** six mutations applied to `verify.go`, each caught — dropping either carve-out, letting a broken fence fall through to the per-field probes, unwiring the status probe, exempting every REQ from the `user_request` check, and ceasing to notice a missing fence.
+
+**False-positive check (REQ-280's rule):** verify against the real tree before and after is byte-identical — zero new findings, with 11 `archive/legacy/` REQs carrying no `user_request`. Independently reproduced by the orchestrator.
+
+**Leniency preserved:** `summary` still reports `total REQ tickets : 8` on the damaged fixture; all eight ids reach `board.RequestsById`.
+
+*Verified by work action*
+
+## Decisions
+
+<!-- D-XX counter: last used D-06. Next decision: D-07. -->
+
+- **D-01 — Two categories, not one. DECIDE.** `structurally-damaged-req` covers fence/`id`/`user_request`; `unrecognized-req-status` covers the status class, which the REQ names separately and which is a pre-existing warning class.
+- **D-02 — Lift `ticket.StatusUnrecognized`, not the warning sentence. DECIDE.** The REQ asks for both "the same way `appendDuplicateRequestIdFindings` lifts" and "do not parse warning prose". The flag is the structured form of the same verdict, so lifting it satisfies the pattern without the prose match.
+- **D-03 — A fenceless file reports once. DECIDE.** Its `id`, `status` and `user_request` are empty *because* the fence is gone, and the fence remedy repairs all of them — the same reasoning `appendTimestampOrderingFindings` records for its outer pair.
+- **D-04 — `requestFrontmatterFields` re-parses the ticket's retained bytes rather than extending `RequestTicket`. DECIDE.** Adding `IdDeclared`/`Stakeholder` to the ticket is the cleaner home, but `model.go` is outside the write set. This reads bytes `buildBoard` already sliced and kept, through the production parsers — not a second walk and not a second parser. It deletes if those fields are ever promoted.
+- **D-05 — Both clean-base fixtures gained `user_request: UR-071`. DECIDE.** Without it, "clean tree" meant a shape no captured REQ has. The assertion is unchanged; the fixture is more honest.
+- **D-06 — The board's findings strip will render both new categories. ESCALATE.** `attachVerifyFindings` forwards everything not in `boardRenderedVerifyCategories`, which lives in `generate.go`, outside the write set. **Value:** the strip stays the single honest view of what fails the mechanical check, and no `generate.go` change was needed to ship detection. **Risk:** the status class now appears three times on the page (data warning, per-card invalid badge, findings strip); reversible with one line in the suppression map. Filed as a discovered task rather than fixed inline.
+
+## Discovered Tasks
+
+- Suppress `unrecognized-req-status` from the board's findings strip (`generate.go` → `boardRenderedVerifyCategories`) — that class already reaches the page twice, so the strip is a third copy. One line, outside this write set. `impact-negligible`, `effort-mechanical`.
+- `do-work cleanup` has no pass for structural damage: every finding here is non-`Fixable`, so the remedies are hand edits. A pass that could restore a missing fence or backfill `user_request` from the containing `archive/UR-NNN/` directory would make the fixable count mean more. Needs its own capture — fence repair is not mechanically safe. `impact-user-visible`, `effort-substantive`.
+- The `stakeholder:` marker is not parsed onto `RequestTicket`. Verify now depends on it while the board ignores it entirely, so a stakeholder REQ is invisible as such on the board. `model.go` territory. `impact-rule-change`, `effort-mechanical`.
+
+## Open Questions
+
+- [~] Where should an empty `id:` be reported? → **D-07**: Builder flagged it as damage per the requirement, and said so in the detail text. Reasoning: `deriveRequestIdFromFilename` means the board never loses the REQ over it, so the real exposure is narrower than the other three classes — a file rename silently renumbers the REQ. Value: the rename hazard is named where an operator will see it. Risk: if it reads as noise in practice, deleting the `id` branch leaves the other three classes intact. Carried to REQ-357 for the maintainer to confirm or overturn.
+- [~] Should `archive/legacy/` be the carve-out's key rather than a `created_at` cutoff? → **D-08**: Builder used the directory, because that is what the REQ's `## Context` names and it needs no date arithmetic. Value: no clock dependency in a structural probe. Risk: a REQ written today and dropped into `archive/legacy/` would be exempt — narrow, and visible the moment anyone looks at the directory. Carried to REQ-357.
