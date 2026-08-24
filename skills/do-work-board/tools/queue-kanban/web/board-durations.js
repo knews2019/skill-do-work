@@ -940,33 +940,25 @@
       return clampedIndex;
     }
 
-    svg.addEventListener("focusin", function (focusEvent) {
-      var focusedMark = focusEvent.target && focusEvent.target.closest
-        ? focusEvent.target.closest("circle.durations-mark[data-duration-mark-index]")
-        : null;
-      if (!focusedMark) {
-        return;
-      }
-      setDurationsRovingMark(Number(focusedMark.getAttribute("data-duration-mark-index")), false);
-    });
-
-    svg.addEventListener("keydown", function (keyEvent) {
-      var focusedMark = keyEvent.target && keyEvent.target.closest
-        ? keyEvent.target.closest("circle.durations-mark[data-duration-mark-index]")
-        : null;
-      if (!focusedMark) {
-        return;
-      }
-      var focusedIndex = Number(focusedMark.getAttribute("data-duration-mark-index"));
-      if (keyEvent.key === "ArrowLeft" || keyEvent.key === "ArrowRight") {
-        keyEvent.preventDefault();
-        setDurationsRovingMark(focusedIndex + (keyEvent.key === "ArrowRight" ? 1 : -1), true);
-        return;
-      }
-      if (keyEvent.key === "Enter" || keyEvent.key === " " || keyEvent.key === "Spacebar") {
-        keyEvent.preventDefault();
-        openDetail("req", markIndex[focusedIndex].sample.id);
-      }
+    // Chromium makes an SVG root with keyboard/focus listeners a sequential focus
+    // stop of its own. Binding to each circle keeps the root inert, so the first Tab
+    // stop inside the chart is the roving mark rather than a nameless SVG detour.
+    // The handlers still share the marks' rebuild lifecycle and need no teardown.
+    markIndex.forEach(function (mark, indexedMarkIndex) {
+      mark.node.addEventListener("focus", function () {
+        setDurationsRovingMark(indexedMarkIndex, false);
+      });
+      mark.node.addEventListener("keydown", function (keyEvent) {
+        if (keyEvent.key === "ArrowLeft" || keyEvent.key === "ArrowRight") {
+          keyEvent.preventDefault();
+          setDurationsRovingMark(indexedMarkIndex + (keyEvent.key === "ArrowRight" ? 1 : -1), true);
+          return;
+        }
+        if (keyEvent.key === "Enter" || keyEvent.key === " " || keyEvent.key === "Spacebar") {
+          keyEvent.preventDefault();
+          openDetail("req", mark.sample.id);
+        }
+      });
     });
 
     // ---- panel A's UR grouping lane ----
