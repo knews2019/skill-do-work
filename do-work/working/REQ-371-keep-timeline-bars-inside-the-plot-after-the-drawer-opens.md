@@ -1,7 +1,10 @@
 ---
 id: REQ-371
 title: "[impact-critical] Review fix: keep Timeline bars inside the plot after the drawer opens"
-status: pending
+status: claimed
+claimed_at: 2026-08-24T20:34:04Z
+status_changed_at: 2026-08-24T20:34:04Z
+route: C
 created_at: 2026-08-24T18:22:57Z
 user_request: UR-066
 addendum_to: REQ-331
@@ -14,6 +17,18 @@ depends_on: [REQ-331]
 maintenance: false
 impact: impact-critical
 effort_estimate: effort-substantive
+estimate:
+  p50_active_minutes: 50
+  confidence: medium
+  calculated_at: 2026-08-24T20:34:04Z
+  basis:
+    - Route C
+    - 2-file write set
+    - 4 acceptance criteria
+    - browser evidence
+    - async lifecycle behavior
+    - cross-route regression gates
+    - full-suite verification
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-timeline.js
   - skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
@@ -68,3 +83,11 @@ returns the probe to RED.
 
 ---
 *Source: REQ-354 independent review; regression of REQ-331 (UR-066).*
+
+## Triage
+
+**Route: C** — This is an impact-critical regression in an asynchronous ResizeObserver/render invalidation path. The two-file target is known, but the retained-browser event boundary must be measured, the condition-based repair planned, both drawer directions proven, and the existing mutation ratchet preserved before release.
+
+## Prior Implementation
+
+REQ-331 introduced a `ResizeObserver` on the Timeline scroll host, one-width-per-render memoization, zero-size render refusal, and the existing drawer/open-close browser probe. Under Chromium 1228 the observer still schedules through `requestAnimationFrame`, while the probe runner's DOM-dump mode does not reliably drive compositor frames after the drawer layout change; 42 segments remain at wide-layout coordinates outside the narrowed host. Reproduce and measure the current boundary before choosing the repair.
