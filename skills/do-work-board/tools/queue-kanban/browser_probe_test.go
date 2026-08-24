@@ -246,6 +246,15 @@ const (
 	// assumed to be ready because this much time passed.
 	browserProbePageConditionPollInterval = 25 * time.Millisecond
 
+	// browserProbeGestureSettleDeadline bounds a wait on something a gesture was
+	// supposed to PRODUCE, as opposed to something the engine guarantees. The engine
+	// synthesizes a click in the task after the release, so the honest budget is
+	// milliseconds and this is three orders of magnitude of headroom on it. Short on
+	// purpose: when the produced thing never comes, that IS the finding, and a probe
+	// that sits on it for the full condition deadline reports a timeout to a reader
+	// who needed the property.
+	browserProbeGestureSettleDeadline = 5 * time.Second
+
 	// browserProbePageFileName is the page both transports write into the site
 	// directory, and the suffix every measurement's location.href must carry.
 	browserProbePageFileName = "probe.html"
@@ -505,12 +514,19 @@ func (session *trustedInputBrowserSession) decodeResult(
 // That is the prime's render-evidence rule made mechanical: a probe on this
 // transport cannot forget to report location.href, because the transport reports it
 // and checks it on every single call rather than once at the start.
+//
+// The wrapper resolves the expression as a PROMISE before reading location.href, which
+// buys two things. An expression may await the page's own scheduling — settling a
+// pending render before a gesture is dispatched needs exactly that — and the href is
+// then read at the instant the value was produced rather than at the instant the
+// expression started, which is the stronger version of the same evidence rule.
 func (session *trustedInputBrowserSession) evaluateInPage(
 	t *testing.T, expression string,
 ) json.RawMessage {
 	t.Helper()
 	envelopeText := session.evaluateStringInPage(t,
-		"JSON.stringify({href: location.href, value: ("+expression+")})")
+		"Promise.resolve(("+expression+")).then(function (probeValue) {"+
+			" return JSON.stringify({href: location.href, value: probeValue}); })")
 	var envelope struct {
 		Href  string          `json:"href"`
 		Value json.RawMessage `json:"value"`
@@ -569,22 +585,40 @@ func (session *trustedInputBrowserSession) evaluateStringInPage(
 // waitForPageCondition re-asks a boolean expression until it holds. The wait is on
 // the CONDITION and the deadline only bounds it, so a probe never proceeds because
 // enough time passed — it proceeds because the page says it is ready.
+//
+// Use this for a condition the engine GUARANTEES will arrive: a load completing, a
+// dispatched event being delivered. For a condition that is itself the thing under
+// test, use pageConditionHoldsWithin and say what its absence means — a timeout
+// message names the wait, and the reader needs the property.
 func (session *trustedInputBrowserSession) waitForPageCondition(
 	t *testing.T, conditionDescription string, booleanExpression string,
 ) {
 	t.Helper()
-	conditionDeadline := time.Now().Add(browserProbePageConditionDeadline)
+	if !session.pageConditionHoldsWithin(
+		t, conditionDescription, booleanExpression, browserProbePageConditionDeadline) {
+		t.Fatalf("%s probe: waited %s for %s and it never became true (expression %s)",
+			session.probeName, browserProbePageConditionDeadline, conditionDescription,
+			booleanExpression)
+	}
+}
+
+// pageConditionHoldsWithin is waitForPageCondition without the verdict: it reports
+// whether the condition came true inside its own budget and leaves what that means to
+// the caller.
+func (session *trustedInputBrowserSession) pageConditionHoldsWithin(
+	t *testing.T, conditionDescription string, booleanExpression string, conditionBudget time.Duration,
+) bool {
+	t.Helper()
+	conditionDeadline := time.Now().Add(conditionBudget)
 	for {
 		var conditionHolds bool
 		session.decodeResult(t, "condition "+conditionDescription,
 			session.evaluateInPage(t, "!!("+booleanExpression+")"), &conditionHolds)
 		if conditionHolds {
-			return
+			return true
 		}
 		if time.Now().After(conditionDeadline) {
-			t.Fatalf("%s probe: waited %s for %s and it never became true (expression %s)",
-				session.probeName, browserProbePageConditionDeadline, conditionDescription,
-				booleanExpression)
+			return false
 		}
 		time.Sleep(browserProbePageConditionPollInterval)
 	}

@@ -2388,7 +2388,7 @@ const timelinePointerCaptureProbeHelpers = `(function () {
     document.getElementById("timeline-zoom-in").click();
     return "reset";
   };
-  // Both watches sit on DOCUMENT in the BUBBLE phase, so they run AFTER the board's
+  // Every watch sits on DOCUMENT in the BUBBLE phase, so they run AFTER the board's
   // own delegated click handler and after the scroll host's release teardown. A
   // capture-phase listener would report the state from before the thing being
   // measured happened.
@@ -2403,17 +2403,50 @@ const timelinePointerCaptureProbeHelpers = `(function () {
     probe.pointerUpSeen = true;
     probe.pointerUpTag = upEvent.target && upEvent.target.tagName ? upEvent.target.tagName : "";
   }, false);
+  // THE CLICK-SYNTHESIS PRECONDITION, watched rather than assumed. Chromium creates a
+  // click on the nearest common inclusive ancestor of the mousedown and mouseup
+  // targets. A mousedown target that has been DETACHED in between has no ancestor in
+  // common with anything, so no click is created at all — not a click on the wrong
+  // element, none. That is measured, not theorised: forcing this view's own rebuild
+  // path between a press and a release produced clickCount 0 three times out of three.
+  // These two fields are what turns that from a hang into a sentence.
+  document.addEventListener("mousedown", function (downEvent) {
+    probe.pressTarget = downEvent.target;
+    probe.pressTargetTag = downEvent.target && downEvent.target.tagName ? downEvent.target.tagName : "";
+  }, false);
+  document.addEventListener("mouseup", function () {
+    probe.pressTargetSurvived = probe.pressTarget ? probe.pressTarget.isConnected : null;
+  }, false);
   probe.armGesture = function () {
     probe.clickCount = 0; probe.clickDetailId = ""; probe.clickTag = "";
     probe.pointerUpSeen = false; probe.pointerUpTag = "";
     probe.captureEstablished = null;
+    probe.pressTarget = null; probe.pressTargetTag = ""; probe.pressTargetSurvived = null;
     return "armed";
+  };
+  // WHY A GESTURE WAITS FOR TWO FRAMES FIRST. This view rebuilds its virtualized rows
+  // from a scroll event (renderVisibleRows) and from a requestAnimationFrame callback
+  // (requestFrameRender). Both are asynchronous, so aiming at a row leaves rebuild
+  // work in flight — the aim's own scrollIntoView schedules a scroll event, and a
+  // press that focuses a partly-clipped row schedules another. Land one of those
+  // between the press and the release and the pressed node is detached, no click is
+  // synthesized, and a probe waiting for one waits forever.
+  //
+  // Two frames rather than one, because the rebuild is scheduled from a callback that
+  // itself runs in the first.
+  probe.settleRendering = function () {
+    return new Promise(function (resolve) {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { resolve("settled"); });
+      });
+    });
   };
   probe.gestureOutcome = function () {
     return {
       clickCount: probe.clickCount, clickDetailId: probe.clickDetailId, clickTag: probe.clickTag,
       drawerOpen: probe.drawerIsOpen(), shownDetailId: probe.shownDetailId(),
-      panning: probe.isPanning(), captureEstablished: probe.captureEstablished
+      panning: probe.isPanning(), captureEstablished: probe.captureEstablished,
+      pressTargetTag: probe.pressTargetTag, pressTargetSurvived: probe.pressTargetSurvived
     };
   };
   // THE VIEWPORT RULE, learned the hard way by REQ-336's out-of-suite harness: a
@@ -2430,10 +2463,19 @@ const timelinePointerCaptureProbeHelpers = `(function () {
       aimed: false, x: 0, y: 0, detailId: "", landedOnTag: "", rowCount: rows.length,
       hostTop: hostBox.top, hostLeft: hostBox.left, hostRight: hostBox.right
     };
+    // FULLY inside the host's visible band, with a margin — not merely centred in it.
+    // A row clipped at either edge gets scrolled into view by the focus that a trusted
+    // press performs on a role=button row, and that scroll fires the host's scroll
+    // handler, which rebuilds every row out from under the gesture. Centre-only
+    // admitted a row three pixels over the top edge, which is one of the two ways this
+    // probe's press and release came apart.
+    var edgeMargin = 8;
     for (var index = 0; index < rows.length; index++) {
       var rowBox = rows[index].getBoundingClientRect();
       var y = Math.round(rowBox.top + rowBox.height / 2);
-      if (y <= hostBox.top + 2 || y >= hostBox.bottom - 2) { continue; }
+      if (rowBox.top < hostBox.top + edgeMargin || rowBox.bottom > hostBox.bottom - edgeMargin) {
+        continue;
+      }
       // Left of centre, so a rightward drag of 140px stays on the plot.
       var x = Math.round(hostBox.left + hostBox.width * 0.35);
       var landedOn = document.elementFromPoint(x, y);
@@ -2501,13 +2543,15 @@ type timelineRowAim struct {
 
 // timelineGestureOutcome is everything one gesture is allowed to be judged on.
 type timelineGestureOutcome struct {
-	ClickCount         int    `json:"clickCount"`
-	ClickDetailId      string `json:"clickDetailId"`
-	ClickTag           string `json:"clickTag"`
-	DrawerOpen         bool   `json:"drawerOpen"`
-	ShownDetailId      string `json:"shownDetailId"`
-	Panning            bool   `json:"panning"`
-	CaptureEstablished *bool  `json:"captureEstablished"`
+	ClickCount          int    `json:"clickCount"`
+	ClickDetailId       string `json:"clickDetailId"`
+	ClickTag            string `json:"clickTag"`
+	DrawerOpen          bool   `json:"drawerOpen"`
+	ShownDetailId       string `json:"shownDetailId"`
+	Panning             bool   `json:"panning"`
+	CaptureEstablished  *bool  `json:"captureEstablished"`
+	PressTargetTag      string `json:"pressTargetTag"`
+	PressTargetSurvived *bool  `json:"pressTargetSurvived"`
 }
 
 // aimAtATimelineRow resets the window, scrolls the chart on screen and returns a press
@@ -2520,34 +2564,107 @@ func aimAtATimelineRow(
 	t.Helper()
 	session.evaluateInPage(t, `window.timelineProbe.closeDrawer()`)
 	session.evaluateInPage(t, `window.timelineProbe.resetWindow()`)
+	// Closing the drawer returns its grid column and resetting the window re-renders,
+	// so let both land before measuring anything. Aiming into a page that is still
+	// rebuilding produces coordinates for rows that are about to be replaced.
+	session.evaluateInPage(t, `window.timelineProbe.settleRendering()`)
 	session.evaluateInPage(t, `window.timelineProbe.armGesture()`)
 	var aim timelineRowAim
 	session.decodeResult(t, "aimAtARow", session.evaluateInPage(t, `window.timelineProbe.aimAtARow()`), &aim)
 	if !aim.Aimed {
-		t.Fatalf("the %s gesture found no press point over a visible row (%d rows rendered, the "+
-			"last point tried landed on %s); every assertion after this would be measuring a "+
-			"press that reached no handler", gestureName, aim.RowCount, aim.LandedOnTag)
+		t.Fatalf("the %s gesture found no press point fully inside the scroll host over a "+
+			"visible row (%d rows rendered, the last point tried landed on %s); every assertion "+
+			"after this would be measuring a press that reached no handler",
+			gestureName, aim.RowCount, aim.LandedOnTag)
+	}
+	// The aim itself scrolled the chart into view, which schedules one more rebuild.
+	// Settle again and CONFIRM the point still resolves to the row it was measured on,
+	// so the gesture below is dispatched at a coordinate that is still true.
+	session.evaluateInPage(t, `window.timelineProbe.settleRendering()`)
+	var confirmedDetailId string
+	session.decodeResult(t, "confirm aim", session.evaluateInPage(t,
+		`(function () {
+                   var landedOn = document.elementFromPoint(`+
+			formatViewportCoordinate(aim.X)+`, `+formatViewportCoordinate(aim.Y)+`);
+                   var trigger = landedOn && landedOn.closest ? landedOn.closest("[data-detail-kind]") : null;
+                   return trigger ? (trigger.getAttribute("data-detail-id") || "") : "";
+                 })()`), &confirmedDetailId)
+	if confirmedDetailId != aim.DetailId {
+		t.Fatalf("the %s gesture aimed at row %s, but after the page settled that point resolves "+
+			"to %q; the chart moved between the aim and the gesture, so nothing dispatched there "+
+			"would be measuring the row this trial names",
+			gestureName, aim.DetailId, confirmedDetailId)
 	}
 	return aim
 }
 
-// readTimelineGestureOutcome waits for the gesture to have been DELIVERED — a real
-// condition, never a duration — and then reads what the page made of it.
+// formatViewportCoordinate renders a coordinate for embedding in a page expression.
+// The aim reports whole pixels, and this keeps them written that way rather than in the
+// exponent form a default float format can reach for.
+func formatViewportCoordinate(viewportCoordinate float64) string {
+	return strconv.FormatFloat(viewportCoordinate, 'f', -1, 64)
+}
+
+// readTimelineGestureOutcome waits for the gesture's RELEASE to have been delivered — a
+// real condition, never a duration — and then reads what the page made of it.
 //
-// settleExpression is the caller's, because the two kinds of gesture here finish at
-// different moments. The engine synthesizes the click in a task AFTER the pointerup, so
-// a click trial that settles on the pointerup reads a drawer that has not been asked to
-// open yet: under the full suite's load that is exactly what happened, and it read as
-// "the trusted press produced no click at all". A click trial settles on the click; a
-// drag settles on the release.
+// The release is the right settle for a drag, because what a drag trial asks about is
+// what the release did to the pan, and the pan teardown runs on the way to this watch.
+// It is the WRONG settle for a click: the engine synthesizes a click in a later task,
+// so a click trial reading here would read a drawer that has not been asked to open
+// yet. Click trials use readTimelineClickOutcome, which waits for the click itself.
 //
-// Neither condition presumes an outcome, which is what lets the same helper serve the
-// trial that expects a drawer and the trial that expects none.
+// The condition presumes no outcome, which is what lets it serve the drag that must end
+// the pan and the drag that must strand it.
 func readTimelineGestureOutcome(
-	t *testing.T, session *trustedInputBrowserSession, gestureName string, settleExpression string,
+	t *testing.T, session *trustedInputBrowserSession, gestureName string,
 ) timelineGestureOutcome {
 	t.Helper()
-	session.waitForPageCondition(t, "the "+gestureName+" gesture is delivered", settleExpression)
+	session.waitForPageCondition(t, "the "+gestureName+" release reaches the document",
+		`window.timelineProbe.pointerUpSeen`)
+	var outcome timelineGestureOutcome
+	session.decodeResult(t, "gestureOutcome",
+		session.evaluateInPage(t, `window.timelineProbe.gestureOutcome()`), &outcome)
+	return outcome
+}
+
+// readTimelineClickOutcome is the click trials' reader. It settles in two stages, and
+// the second stage is the point.
+//
+// Stage one waits for the RELEASE, which the engine always delivers. Stage two gives
+// the engine a short budget to synthesize the click from it — and if no click arrives,
+// says why rather than reporting a timeout. There is exactly one way for a press and a
+// release on one point to produce no click: the pressed node was detached in between,
+// leaving the two with no common ancestor to fire on. The probe watches for precisely
+// that, so the failure names the mechanism instead of the wait.
+//
+// This replaced a single wait on clickCount, which turned a rebuilt row into a 45s
+// timeout that read as "the capture-on-pointerdown click gesture is delivered never
+// became true" — a sentence about the harness, in a test about pointer capture.
+func readTimelineClickOutcome(
+	t *testing.T, session *trustedInputBrowserSession, gestureName string, aim timelineRowAim,
+) timelineGestureOutcome {
+	t.Helper()
+	session.waitForPageCondition(t, "the "+gestureName+" release reaches the document",
+		`window.timelineProbe.pointerUpSeen`)
+	if !session.pageConditionHoldsWithin(t, "the "+gestureName+" click is synthesized",
+		`window.timelineProbe.clickCount > 0`, browserProbeGestureSettleDeadline) {
+		var starvedOutcome timelineGestureOutcome
+		session.decodeResult(t, "gestureOutcome",
+			session.evaluateInPage(t, `window.timelineProbe.gestureOutcome()`), &starvedOutcome)
+		if starvedOutcome.PressTargetSurvived != nil && !*starvedOutcome.PressTargetSurvived {
+			t.Fatalf("the %s press on row %s landed on <%s>, and that node was REPLACED before "+
+				"the release: the chart rebuilt its rows mid-gesture, so the engine had no common "+
+				"ancestor to synthesize a click on and produced none. The gesture measured nothing "+
+				"— this is the probe's own setup failing, not the board",
+				gestureName, aim.DetailId, starvedOutcome.PressTargetTag)
+		}
+		t.Fatalf("the %s press and release on row %s produced no click within %s, and the pressed "+
+			"node <%s> was still in the document at the release; a press and a release on one "+
+			"point owe a click, so the engine did not synthesize one for a reason this probe "+
+			"cannot see", gestureName, aim.DetailId, browserProbeGestureSettleDeadline,
+			starvedOutcome.PressTargetTag)
+	}
 	var outcome timelineGestureOutcome
 	session.decodeResult(t, "gestureOutcome",
 		session.evaluateInPage(t, `window.timelineProbe.gestureOutcome()`), &outcome)
@@ -2585,6 +2702,21 @@ func readTimelineGestureOutcome(
 //	(3) a trusted drag released OUTSIDE the chart ends the pan, and
 //	(4) with the host's setPointerCapture stubbed out, that release strands the pan —
 //	    which is what proves (3) can fail and keeps "no capture anywhere" from passing.
+//
+// WHAT THE GESTURES ARE SENSITIVE TO, stated because it was measured rather than
+// assumed. A capture reaches the click whether it is requested directly, through a
+// variable, or from a timer or animation frame scheduled by the pointerdown handler:
+// all four spellings fail this test. The last two only fail it because the click
+// gesture holds the button down for two frames (clickTrustedMouseOnRow). Dispatched
+// back to back, a press and a release are one to two milliseconds apart and the
+// renderer delivers both before running any timer, so a deferred capture had not yet
+// executed and the trial passed a board that was broken. That was a gap in the probe,
+// not a boundary of the defect, and the dwell closes it.
+//
+// It is still a press-and-release on ONE point. A capture requested later than two
+// frames after the press — a network round trip, a long task — would be established
+// after this release and pass, and so would a capture taken on a gesture this test
+// does not perform.
 func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T) {
 	siteDirectory := generateLiveSiteInDir(t)
 	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
@@ -2607,10 +2739,8 @@ func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T)
 	// (1) THE CLICK, WITH TRUSTED INPUT. The hint under the chart says "Click a row for
 	// its full detail"; this is that sentence, executed.
 	cleanAim := aimAtATimelineRow(t, session, "clean click")
-	session.pressTrustedMouseAt(t, cleanAim.X, cleanAim.Y)
-	session.releaseTrustedMouseAt(t, cleanAim.X, cleanAim.Y)
-	cleanClick := readTimelineGestureOutcome(t, session, "clean click",
-		`window.timelineProbe.clickCount > 0`)
+	clickTrustedMouseOnRow(t, session, cleanAim)
+	cleanClick := readTimelineClickOutcome(t, session, "clean click", cleanAim)
 	if !cleanClick.DrawerOpen {
 		t.Errorf("a trusted click on row %s did not open the detail drawer; the click was "+
 			"delivered to %s and its nearest [data-detail-kind] was %q. Capture taken before the "+
@@ -2632,10 +2762,8 @@ func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T)
 	// assertion above is only a claim that clicking works today.
 	session.evaluateInPage(t, `window.timelineProbe.captureOnPointerdown()`)
 	capturedAim := aimAtATimelineRow(t, session, "capture-on-pointerdown click")
-	session.pressTrustedMouseAt(t, capturedAim.X, capturedAim.Y)
-	session.releaseTrustedMouseAt(t, capturedAim.X, capturedAim.Y)
-	capturedClick := readTimelineGestureOutcome(t, session, "capture-on-pointerdown click",
-		`window.timelineProbe.clickCount > 0`)
+	clickTrustedMouseOnRow(t, session, capturedAim)
+	capturedClick := readTimelineClickOutcome(t, session, "capture-on-pointerdown click", capturedAim)
 	session.evaluateInPage(t, `window.timelineProbe.removeCaptureOnPointerdown()`)
 	if capturedClick.CaptureEstablished == nil {
 		t.Fatal("the capture-on-pointerdown mutation never saw a pointerdown on the scroll host, " +
@@ -2702,6 +2830,29 @@ func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T)
 		panningAfterRelease, strandedPanning)
 }
 
+// clickTrustedMouseOnRow presses and releases on a row with a real DWELL between the
+// two, the way a hand does.
+//
+// The dwell is not politeness, it is coverage. Dispatched back to back the press and
+// the release are one to two milliseconds apart — measured — and the renderer delivers
+// both before it runs a single timer callback. A capture requested from the pointerdown
+// handler but DEFERRED (a setTimeout, an animation frame) therefore had not executed at
+// all when the click was synthesized, so the gesture sailed past a board that would
+// break for any human: with two frames of dwell the same deferred capture is granted
+// 16ms after the press, the release retargets to the scroll host, and the drawer stops
+// opening. That gap was found by measurement and is the reason this is not a bare pair.
+//
+// Two frames, not a sleep: it is the same wait on the page's own scheduling used before
+// the gesture, and no wall-clock duration is assumed to mean anything.
+func clickTrustedMouseOnRow(
+	t *testing.T, session *trustedInputBrowserSession, aim timelineRowAim,
+) {
+	t.Helper()
+	session.pressTrustedMouseAt(t, aim.X, aim.Y)
+	session.evaluateInPage(t, `window.timelineProbe.settleRendering()`)
+	session.releaseTrustedMouseAt(t, aim.X, aim.Y)
+}
+
 // driveTimelineDragReleasedOutside presses on a row, drags far enough to engage the pan,
 // then releases at a point ABOVE the scroll host, and reports whether the chart is still
 // in the panning state afterwards.
@@ -2722,8 +2873,7 @@ func driveTimelineDragReleasedOutside(
 	releaseX := aim.X + 140
 	session.dragTrustedMouseTo(t, releaseX, releaseY)
 	session.releaseTrustedMouseAt(t, releaseX, releaseY)
-	outcome := readTimelineGestureOutcome(t, session, "drag released outside",
-		`window.timelineProbe.pointerUpSeen`)
+	outcome := readTimelineGestureOutcome(t, session, "drag released outside")
 	return outcome.Panning
 }
 
