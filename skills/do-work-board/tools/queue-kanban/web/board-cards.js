@@ -100,7 +100,7 @@
     if (request.status === "blocked" && request.blockedBy && request.blockedBy.length > 0) {
       // Waiting on an external condition (a service being up, a person answering)
       // — distinct from pending-answers (user questions) and depends_on (another
-      // REQ). Shares the Needs-input/Blocked column but names its condition.
+      // REQ). The badge follows blocked status across either active-work column.
       var blockedCondition = request.blockedBy.join(", ");
       var blockedBadge = makeBadge("badge-blocked", "blocked by", truncateBadgeText(blockedCondition));
       var blockedTitle = blockedCondition;
