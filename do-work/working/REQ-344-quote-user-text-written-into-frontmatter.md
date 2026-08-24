@@ -41,9 +41,17 @@ block strictly invalid. State a quoting rule for writing user text into any fron
 it once where the schema is defined, and pin it with a round-trip test.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `prime-action-files.md` and the prime's § Closed Enumerations Go Stale. Did not re-litigate the recovery-parser question — the user settled it at capture, so `frontmatter.go`'s claim was the one to change.
+- [x] **[APPLY]:** Nine files against two declared. Five extensions were files that *prescribed* the forbidden form; each is recorded in `## Scope Drift — Recorded, Not Hidden
+
+`skills/do-work/tools/checks/scope-drift.sh` reports seven files touched but never declared. That is
+correct and the `## Scope` declaration above is deliberately left as the builder wrote it before
+coding, rather than back-filled to match what landed — back-filling would defeat the mechanism, which
+exists so drift becomes measurable rather than invisible. Each extension is justified below and the
+reviewer judges whether the justifications hold.
+
+## Scope Extensions` with its reason.
+- [x] **[UNIFY]:** Audited by the orchestrator against `382aca0..53bab9d`: independently re-ran the YAML round-trip against the real parser and reproduced all three cases, including the silent one — `title: "Fix: A " # B"` parses with NO error and yields `Fix: A `, because YAML reads `# B"` as a comment. Confirmed REQ-342's Step 4 rule survived the `clarify.md` merge intact, and that no probe scaffolding remained in the tree.
 
 ## Why
 
@@ -136,3 +144,98 @@ None.
 
 ---
 *Source: UR-068 — see `do-work/user-requests/UR-068/input.md` for complete verbatim input.*
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** A rule stated once at a schema definition and inherited by three named write sites, overturning a claim in a fourth file, with a decision already settled at capture that must not be respent. The contradiction turned out to live in five files rather than three.
+
+**Planning:** Required.
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/actions/work-reference.md` (modify) — the contract, stated once
+- `skills/do-work-board/tools/queue-kanban/frontmatter_test.go` (modify) — the round-trip lock-in
+
+**Files I will NOT touch:** the recovery parser's behaviour — the REQ's Constraints forbid narrowing it.
+
+**Acceptance criteria (restated from REQ):**
+- [x] A quoting rule: single-quoted scalar with internal quotes doubled, or a block scalar for a newline
+- [x] Stated once where the schema is defined; cited by capture, work and clarify rather than restated
+- [x] Keyed on the condition, not on today's four field names
+- [x] A lock-in that a `title` carrying a double quote, a colon and a hash round-trips unchanged
+- [x] The fallback recorded as a last resort, naming what a writer may not rely on
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/actions/work-reference.md` (modified) — **Frontmatter Quoting**, the contract
+- `skills/do-work-board/tools/queue-kanban/frontmatter_test.go` (modified) — two lock-in tests
+- `skills/do-work-board/tools/queue-kanban/frontmatter.go` (modified) — "recovery is the contract here" → salvage path, naming three silent narrowings
+- `skills/do-work/actions/capture-reference.md`, `capture.md`, `work.md`, `clarify.md`, `skills/do-work-toolbox/actions/code-review.md`, `skills/do-work/docs/capture-guide.md` (modified) — citations and quote-form corrections
+
+**What was done:** The rule is keyed on the condition — "whenever a frontmatter value carries text nobody in this pipeline composed" — with `title`, `blocked_by`, `blocked_check`, `stakeholder` and `assigned_to` named as today's such fields and marked illustrative. Inside single quotes `"`, `:`, `#`, `[`, `]` and `,` are ordinary characters, so a doubled apostrophe is the only escape needed. An *escaping encoder* is excluded by mechanism rather than by field name, which is why the board's Testing view (`encodeYamlDoubleQuotedScalar`) stays correct.
+
+## Testing
+
+**Tests run:** `GOTOOLCHAIN=go1.26.1 go test -count=1 ./...` (module suite ok, 75.5s); `GOTOOLCHAIN=go1.26.1 bash _dev/tests/maintainer-verify.sh` (exit 0)
+
+**Red-green validation — three cases, re-run independently by the orchestrator against the real parser:**
+
+| intended text | form | strict parse | value read | nested `estimate:` survives |
+|---|---|---|---|---|
+| `Fix: A " # B` | double-quoted | **no error** | `Fix: A ` — silently truncated | yes |
+| `Fix: A " # B` | single-quoted | no error | byte-identical | yes |
+| `[impact-negligible] Retitle export, again [v2]` | unquoted | `did not find expected key` | comma eaten by recovery | no |
+| same | single-quoted | no error | byte-identical | yes |
+
+The first row is the dangerous one: valid YAML, no error, wrong value, because `# B"` reads as a comment.
+
+**The tests distinguish a strict parse from a salvage** by asserting the fixture's nested `estimate:` map survived — the recovery parser is flat and top-level only, so its presence proves the strict parser answered. That is a genuinely better oracle than checking the value alone.
+
+**On the bracketed-tag corruption: this change PREVENTS it, it does not fix it.** The recovery parser still splits `[…]` as a flow list and still eats the comma; the REQ's Constraints forbid narrowing it. What changes is that no write site now produces a value that reaches that path. The corruption stays reachable for a hand-edited REQ that ignores the rule.
+
+*Verified by work action*
+
+## Scope Drift — Recorded, Not Hidden
+
+`skills/do-work/tools/checks/scope-drift.sh` reports seven files touched but never declared. That is
+correct and the `## Scope` declaration above is deliberately left as the builder wrote it before
+coding, rather than back-filled to match what landed — back-filling would defeat the mechanism, which
+exists so drift becomes measurable rather than invisible. Each extension is justified below and the
+reviewer judges whether the justifications hold.
+
+## Scope Extensions
+
+Seven files beyond the declared two. Five of them **prescribed the forbidden form**, so leaving them would have meant capture kept minting double-quoted titles and the REQ delivered nothing.
+
+- `frontmatter.go` — required by the REQ's own requirement 5; carries the claim the user overturned at capture.
+- `capture-reference.md` — § REQ Title Convention said "**Double-quote the whole value, always.**", the canonical home for the title shape and a direct contradiction. Cut to a pointer plus the worked corruption example this file owns.
+- `capture.md` — two write directives and a checklist item asserting a double-quoted `title:` that would have failed a correctly-written REQ.
+- `work.md` — the mid-run blocked flip wrote `blocked_by: "<condition>"`. Named by the REQ as a write site.
+- `clarify.md` — the stakeholder unblock path rewrites `blocked_by:`. Named by the REQ. One clause at Step 5.5, deliberately away from REQ-342's Step 4 edit.
+- `code-review.md` — **not** one of the three named write sites, kept deliberately: it mints REQ files with `title: "[<impact token>] Code review: …"` and said "always double-quoted", so by the contract's own condition it is a write site. Leaving it is the surviving-gloss failure `prime-action-files.md` records from REQ-290.
+- `capture-guide.md` — same reason, one user-facing sentence.
+
+## Decisions
+
+<!-- D-XX counter: last used D-05. Next decision: D-06. -->
+
+- **D-01 — Overrun the write set rather than ship a contradiction. DECIDE.** Value: the GREEN requires no write site prescribe an unescaped double-quoted scalar, and five did. Risk: a nine-file diff widens the collision surface for parallel builders — mitigated, since every extension is a single-clause citation or a quote swap, and none touches a file another queued REQ declares.
+- **D-02 — Single quotes, not "properly escaped double quotes". DECIDE.** The user stated both forms verbatim at capture; a third accepted form would weaken the rule to "escape correctly", which is the instruction agents demonstrably fail.
+- **D-03 — Exempt escaping encoders by condition, not by field name. DECIDE.** `tested_by` and `testing_feedback` are user text emitted by `encodeYamlDoubleQuotedScalar`, which escapes correctly. Keyed on the mechanism so the exemption cannot be read as "double quotes are fine".
+- **D-04 — Put the lock-in's weight on the round-trip, not a prose grep. DECIDE.** A write-site checker needs `contract-regressions.sh`, which REQ-342 was actively rewriting, and a naive grep for `title: "` fails on the rule's own counterexample (the REQ-293 lesson). Filed as a discovered task. Risk: a future write site can revert to double quotes and only review catches it.
+- **D-05 — Forbidden-form assertions key on "the record did not survive", not on the corrupted value. DECIDE.** The Constraints forbid narrowing the recovery parser but nothing forbids widening it later; asserting the exact corrupted value would then fail spuriously.
+
+## Discovered Tasks
+
+- A checker that fires when a shipped write site emits `title:`/`blocked_by:`/`blocked_check:`/`stakeholder:`/`assigned_to:` as a double-quoted scalar. Belongs in `contract-regressions.sh`, blocked on REQ-342 landing there first. Must derive the governed field set from the schema block rather than hardcoding five names, and must scan inside fenced blocks only — the rule's own counterexample sits in inline prose and would otherwise trip it. `impact-rule-change`, `effort-mechanical`.
+- `do-work/queue/` and `do-work/archive/` still hold REQ files with double-quoted titles minted under the old instruction. None currently carries a typed `"`, so nothing is corrupt today; a sweep would be pure hygiene. `impact-negligible`, `effort-mechanical`.
+
+## Open Questions
+
+None. Where the REQ named three citing actions but the contradiction lived in five files, the builder extended and reported rather than asking (D-01).
