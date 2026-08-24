@@ -179,7 +179,7 @@ The old structural grep over the pointerdown body returns **0** — it passes. T
 
 ## Decisions
 
-<!-- D-XX counter: last used D-06. Next decision: D-07. -->
+<!-- D-XX counter: last used D-07. Next decision: D-08. -->
 
 - **D-01 — `--remote-debugging-pipe` over a WebSocket client or a driver. DECIDE.** Value: real trusted input with zero additions to `go.mod`, which the REQ required. Risk: ~200 lines of hand-rolled protocol handshake, one more thing to keep working across Chromium versions. Reversible — the dump-dom transport is untouched beside it.
 - **D-02 — A second transport, not a replacement. DECIDE.** The 19 existing probes measure rather than interact; converting them would be a large diff with no property gained.
@@ -197,4 +197,61 @@ The old structural grep over the pointerdown body returns **0** — it passes. T
 
 ## Open Questions
 
-- [~] Does a **deferred** capture on pointerdown reproduce REQ-336's defect, and if so does the converted probe catch it? → **D-07**: Unresolved. The orchestrator's `setTimeout(…, 0)` variant of the variable-routed mutation passed, where the immediate variant failed. Either a deferred capture genuinely does not retarget the synthesized click — in which case it is not the defect and passing is correct — or the probe's settle condition misses it. One run cannot tell. Value: knowing which would either close a probe gap or document a real boundary of the defect. Risk: if it is a gap, a deferred-capture regression ships green. Left for the reviewer, who can measure it properly rather than infer it.
+- [x] Does a **deferred** capture on pointerdown reproduce REQ-336's defect, and if so does the
+  converted probe catch it? → **Answered by measurement in the remediation (`3148b1d`): yes to both.
+  The probe had a gap; it was not a boundary of the defect.** The orchestrator's `setTimeout(…, 0)`
+  variant passed because the press and release were dispatched 1ms apart and the timer callback had
+  not run — `captureAt` was absent entirely. Given two frames of dwell, the capture is granted 16ms
+  after the press, the pointerup retargets to the scroll host, and the drawer stays shut. **Any human
+  click dwells far longer than 16ms, so that board was broken for every real user while the probe
+  called it fine.** Closed by giving click gestures a real dwell (`clickTrustedMouseOnRow`). All four
+  capture spellings — immediate, variable-routed, `setTimeout 0`, `requestAnimationFrame` — are now
+  caught; the old structural grep saw three of them as zero hits. The reviewer swept further and
+  found the sensitivity cut is exactly at two frames: `raf3` (capture at +47.9ms, after the release)
+  is not caught. That boundary is stated in the test's comment. It is worth knowing the probe is less
+  sensitive than a person — a human press is ~100ms and would catch `raf3`.
+
+## Review
+
+**Overall: 96%** | 2026-08-24T12:37:51Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 90% |
+| Test Adequacy | 95% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings:** one, and it was a stale sentence in this REQ's own trail rather than anything in the code — D-07 recorded as unresolved after the remediation had answered it. Closed above.
+
+**The reviewer verified the remediation's diagnosis independently rather than accepting it.** Reproduced outside the suite with its own CDP driver on a minimal page: press on `#a`, replace the host's children, release → `clicks: []`, `pressTargetSurvived: false`, 3 of 3; control gives `clicks: ["a"]`. The `mouseup` target reports the *new* node with the same id, so "survived" is the only usable discriminator — which is what the probe watches.
+
+**The race is closed, not narrowed, and there was a third rebuild source.** `board-timeline.js:2424-2429` observes `scrollHost` with a `ResizeObserver` calling `requestFrameRender` → `renderAll`; the detail drawer taking or returning its grid column fires it, which is why trial 2 was the one that hung, and the first version had no settle after `closeDrawer()`/`resetWindow()` at all. Instrumented with a `MutationObserver` on the rows group: **0 rebuilds between press and release in 12 of 12 trials**. The other reachable sources (window `resize`, pointermove-while-engaged, `markTimelineTableStale`) are not triggered by these gestures. Under load: `-count=3` of the whole lane under 8 spinners, exit 0.
+
+**The dwell adds exposure but no new failure mode.** Press-to-release measured 32.0-32.8ms against 1-2ms back-to-back, so the window a rebuild could land in is ~16x wider — but nothing the press does schedules a rebuild once the 8px margin removes the focus-scroll, and a future change that did would fail in ~6s naming the mechanism rather than at 45s naming the wait.
+
+**The stated boundary is real and accurately stated.** Deferral sweep on the live board: `immediate` caught (capture at +0.0ms), `setTimeout 0` caught (+14.6), `raf1` caught (+14.4), `raf2` caught (+30.8), **`raf3` not caught** (capture refused at +47.9, after the release), `raf4` and `setTimeout 50` not caught. The cut is exactly at two frames, as the comment says. Worth knowing the probe is *less* sensitive than a person: a human press is ~100ms and would catch `raf3`.
+
+**`evaluateInPage`'s promise resolution cannot mask a navigation** — the href is read inside the `.then`, at or after value production, and a cross-document navigation destroys the context so `Runtime.evaluate` fails loudly. Strictly stronger than a start-of-call check. **No caller ignores a false verdict** from `pageConditionHoldsWithin`: two callers, both `t.Fatalf`.
+
+**Minor findings:** 4 (report only) — `waitForPageCondition` is used against its own contract at `:2951`, waiting on `window.timelineProbe.isPanning()`, a board property rather than an engine guarantee, so a regression that stops the pan engaging still burns the full 45s; the `NO WALL-CLOCK WAITS` header is now a half-truth since the new transport polls at 25ms; six `"/probe.html"` literals remain beside the constant; a failing *drag* trial is still slow, since only click trials got the 5s budget.
+
+**Acceptance:** Pass — gate exit 0; converted probe 6/6 green in isolation at ~1.8s each; full browser lane `-count=3` under 8 CPU spinners exit 0 at 196s.
+
+**Follow-ups created:** None.
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Falsifying the load hypothesis before acting on it. Six CPU spinners left the probe 12-for-12 green, and the failing capture showed the probe polling `Runtime.evaluate` every 25ms and getting answers throughout the 45s wait, with both mouse events delivered. That killed "starvation" and pointed at the one thing left: the click was never created.
+
+**What didn't:** The first version settled nothing after `closeDrawer()`, so the drawer's own grid relayout was still in flight when the next trial took aim — which is why trial 2 was always the one that hung. Raising the deadline would have hidden it for months. A 45-second wait that expires is not a slow test, it is a test that has stopped knowing what it is waiting for.
+
+**Worth knowing:** Chromium synthesizes a click on the nearest common inclusive ancestor of the mousedown and mouseup targets, so a mousedown target detached in between produces **no click at all** — not a click on the wrong element. Any probe that presses, lets the page work, and releases can hit this. And the probe is less sensitive than a human hand: it dwells two frames where a person dwells ~100ms, so a capture requested three frames after the press passes here and breaks for every real user.
+
+## Orientation
+
+The board's browser probe lane can drive real, trusted input — a press, a drag, a release the engine issues a `pointerId` for — over the DevTools Protocol on a pair of inherited file descriptors, with no new module dependency. Lives beside the existing `--dump-dom` transport, which is untouched. `[MAP CHANGED]` — this adds a second way for the test lane to talk to a rendered board, and probes that previously had to assert structure can now assert behaviour.

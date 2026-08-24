@@ -2,6 +2,21 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.38 — Real Clicks in the Test Lane, and a UR on Every Duration (2026-08-24)
+
+The board's test lane can now drive genuine browser input instead of synthesizing events, which
+caught a click regression that four earlier tests had to work around. And the Durations view finally
+says which user request each mark belongs to.
+
+- Trusted press, drag and release over the DevTools Protocol, with no new dependency — a structural
+  check that could be fooled by routing a call through a variable is now a behavioural one that
+  cannot
+- The Durations hover, sample table and a new bracket lane all name the UR; samples predating the UR
+  system get a named bucket rather than a blank
+- A test that waited 45 seconds for a click the browser never created now fails in six and says why:
+  the chart was rebuilding its rows mid-gesture, and a detached press target has no common ancestor
+  for a click to land on
+
 ## 0.236.37 — Typed Text Keeps Its Shape in Frontmatter (2026-08-24)
 
 A REQ title carrying a quote, a colon or a hash used to come back truncated with no error at all —
