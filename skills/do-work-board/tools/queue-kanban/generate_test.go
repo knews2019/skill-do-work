@@ -2428,6 +2428,10 @@ function makeStubNode(nodeName) {
 var durationsStubHosts = {
   "durations-chart": makeStubNode("div"),
   "durations-summary": makeStubNode("p"),
+  "durations-stat-median": makeStubNode("dd"),
+  "durations-stat-p90": makeStubNode("dd"),
+  "durations-stat-active-days": makeStubNode("dd"),
+  "durations-stat-reqs-per-day": makeStubNode("dd"),
   "durations-readout": makeStubNode("p"),
   "durations-table-body": makeStubNode("tbody")
 };
@@ -2438,6 +2442,330 @@ var document = {
   createTextNode: function (nodeText) { return { textContent: nodeText }; }
 };
 `
+
+func TestGenerateDurationsHeadlineStatsUseASemanticDefinitionList(t *testing.T) {
+	indexHTML := generateLiveSite(t)
+
+	requiredFragments := []string{
+		`<dl class="durations-stats" id="durations-stats">`,
+		`<dt>Median · all plotted spans</dt>`,
+		`<dd id="durations-stat-median">`,
+		`<dt>P90 · all plotted spans</dt>`,
+		`<dd id="durations-stat-p90">`,
+		`<dt>Active completion days</dt>`,
+		`<dd id="durations-stat-active-days">`,
+		`<dt>Projected REQs per active day</dt>`,
+		`<dd id="durations-stat-reqs-per-day">`,
+		`grid-template-columns: repeat(auto-fit, minmax(`,
+	}
+	lastOffset := -1
+	for _, fragment := range requiredFragments {
+		offset := strings.Index(indexHTML, fragment)
+		if offset < 0 {
+			t.Errorf("generated Durations view is missing %q", fragment)
+			continue
+		}
+		if strings.HasPrefix(fragment, "<") && offset < lastOffset {
+			t.Errorf("generated Durations stat fragment %q is out of semantic reading order", fragment)
+		}
+		if strings.HasPrefix(fragment, "<") {
+			lastOffset = offset
+		}
+	}
+	if strings.Count(indexHTML, `<dl class="durations-stats"`) != 1 ||
+		strings.Count(indexHTML, `<dt>`) < 4 {
+		t.Errorf("generated page does not carry one four-item Durations definition list")
+	}
+}
+
+func durationHeadlineFixtureData(t *testing.T) generatedDurations {
+	t.Helper()
+	fixtureSpecs := []struct {
+		requestID string
+		completed time.Time
+		minutes   float64
+	}{
+		{requestID: "REQ-801", completed: time.Date(2026, 4, 26, 10, 0, 0, 0, time.UTC), minutes: 60},
+		{requestID: "REQ-802", completed: time.Date(2026, 5, 20, 10, 0, 0, 0, time.UTC), minutes: 70},
+		{requestID: "REQ-803", completed: time.Date(2026, 6, 10, 10, 0, 0, 0, time.UTC), minutes: 40},
+		{requestID: "REQ-804", completed: time.Date(2026, 7, 1, 10, 0, 0, 0, time.UTC), minutes: 50},
+		{requestID: "REQ-805", completed: time.Date(2026, 8, 20, 9, 0, 0, 0, time.UTC), minutes: -5},
+		{requestID: "REQ-806", completed: time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC), minutes: 10},
+		{requestID: "REQ-807", completed: time.Date(2026, 8, 20, 11, 0, 0, 0, time.UTC), minutes: 300},
+		{requestID: "REQ-808", completed: time.Date(2026, 8, 22, 10, 0, 0, 0, time.UTC), minutes: 20},
+		{requestID: "REQ-809", completed: time.Date(2026, 8, 22, 11, 0, 0, 0, time.UTC), minutes: 400},
+		{requestID: "REQ-810", completed: time.Date(2026, 8, 24, 10, 0, 0, 0, time.UTC), minutes: 30},
+	}
+	tickets := make([]*RequestTicket, 0, len(fixtureSpecs))
+	for _, fixture := range fixtureSpecs {
+		tickets = append(tickets, durationTicket(
+			fixture.requestID,
+			"B",
+			fixture.completed.Add(-time.Duration(fixture.minutes*float64(time.Minute))).Format(time.RFC3339),
+			fixture.completed.Format(time.RFC3339),
+		))
+	}
+	generatedData, buildError := buildGeneratedBoardData(&Board{AllRequests: tickets})
+	if buildError != nil {
+		t.Fatalf("build headline fixture data: %v", buildError)
+	}
+	return generatedData.Durations
+}
+
+func durationRollingFixtureData(t *testing.T, eligibleDayCount int) generatedDurations {
+	t.Helper()
+	eligibleDays := []struct {
+		completed time.Time
+		minutes   time.Duration
+	}{
+		{completed: time.Date(2026, 7, 1, 10, 0, 0, 0, time.UTC), minutes: 10 * time.Minute},
+		{completed: time.Date(2026, 7, 2, 10, 0, 0, 0, time.UTC), minutes: 70 * time.Minute},
+		{completed: time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC), minutes: 20 * time.Minute},
+		{completed: time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC), minutes: 60 * time.Minute},
+		{completed: time.Date(2026, 7, 11, 10, 0, 0, 0, time.UTC), minutes: 30 * time.Minute},
+		{completed: time.Date(2026, 8, 1, 10, 0, 0, 0, time.UTC), minutes: 50 * time.Minute},
+		{completed: time.Date(2026, 8, 10, 10, 0, 0, 0, time.UTC), minutes: 40 * time.Minute},
+		{completed: time.Date(2026, 9, 20, 10, 0, 0, 0, time.UTC), minutes: 80 * time.Minute},
+	}
+	if eligibleDayCount < 0 || eligibleDayCount > len(eligibleDays) {
+		t.Fatalf("eligible day count %d is outside fixture", eligibleDayCount)
+	}
+	tickets := make([]*RequestTicket, 0, eligibleDayCount+5)
+	for dayIndex, eligibleDay := range eligibleDays[:eligibleDayCount] {
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", 820+dayIndex),
+			"B",
+			eligibleDay.completed.Add(-eligibleDay.minutes).Format(time.RFC3339),
+			eligibleDay.completed.Format(time.RFC3339),
+		))
+	}
+	// Five paused spans make 7 July an excluded-only active day and Panel C's
+	// odd peak. It must not become a zero in the rolling median.
+	for pausedIndex := 0; pausedIndex < 5; pausedIndex++ {
+		completed := time.Date(2026, 7, 7, 10+pausedIndex, 0, 0, 0, time.UTC)
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", 850+pausedIndex),
+			"C",
+			completed.Add(-8*time.Hour).Format(time.RFC3339),
+			completed.Format(time.RFC3339),
+		))
+	}
+	generatedData, buildError := buildGeneratedBoardData(&Board{AllRequests: tickets})
+	if buildError != nil {
+		t.Fatalf("build rolling fixture data: %v", buildError)
+	}
+	return generatedData.Durations
+}
+
+func TestJavaScriptBehaviorDurationsHeadlineRollingMedianAndCadenceTicks(t *testing.T) {
+	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	if readError != nil {
+		t.Fatalf("read web/board-durations.js: %v", readError)
+	}
+	headlineJSON, encodeError := json.Marshal(durationHeadlineFixtureData(t))
+	if encodeError != nil {
+		t.Fatalf("encode headline fixture: %v", encodeError)
+	}
+	rollingPayloads := map[string]generatedDurations{
+		"six":   durationRollingFixtureData(t, 6),
+		"seven": durationRollingFixtureData(t, 7),
+		"eight": durationRollingFixtureData(t, 8),
+	}
+	rollingJSON, encodeError := json.Marshal(rollingPayloads)
+	if encodeError != nil {
+		t.Fatalf("encode rolling fixtures: %v", encodeError)
+	}
+
+	probeDriver := `
+function resetDurationsHosts() {
+  ["durations-chart", "durations-summary", "durations-stat-median", "durations-stat-p90",
+   "durations-stat-active-days", "durations-stat-reqs-per-day", "durations-readout",
+   "durations-table-body"].forEach(function (nodeId) {
+    var nodeName = nodeId.indexOf("stat-") >= 0 ? "dd" : "div";
+    durationsStubHosts[nodeId] = makeStubNode(nodeName);
+  });
+}
+function nodeText(node) {
+  return (node.children || []).map(function (child) {
+    return child.textContent !== undefined ? child.textContent : nodeText(child);
+  }).join("");
+}
+function captureRender(payload, windowName) {
+  resetDurationsHosts();
+  boardData = { durations: payload };
+  setDurationsWindow(windowName);
+  renderDurationsView();
+  var svg = durationsStubHosts["durations-chart"].children[0];
+  var rollingPaths = [], rollingMarkers = [], panelBBars = [], countTicks = [], countGridlines = [];
+  (svg.children || []).forEach(function (child, childIndex) {
+    var attributes = child.attributes || {};
+    var className = String(attributes["class"] || "");
+    if (className === "durations-bar") { panelBBars.push({ childIndex: childIndex }); }
+    if (className === "durations-rolling-line") {
+      rollingPaths.push({ d: attributes.d || "", childIndex: childIndex });
+    }
+    if (className === "durations-rolling-marker") {
+      rollingMarkers.push({ cx: Number(attributes.cx), cy: Number(attributes.cy), childIndex: childIndex });
+    }
+    if (attributes["data-durations-count-tick"] === "true") {
+      countTicks.push({ text: nodeText(child), y: Number(attributes.y) });
+    }
+    if (attributes["data-durations-count-grid"] === "midpoint") {
+      countGridlines.push({ y: Number(attributes.y1), childIndex: childIndex });
+    }
+  });
+  return {
+    stats: [
+      durationsStubHosts["durations-stat-median"].textContent,
+      durationsStubHosts["durations-stat-p90"].textContent,
+      durationsStubHosts["durations-stat-active-days"].textContent,
+      durationsStubHosts["durations-stat-reqs-per-day"].textContent
+    ],
+    summary: durationsStubHosts["durations-summary"].textContent,
+    ariaLabel: svg.attributes["aria-label"],
+    visibleTitles: (svg.children || []).filter(function (child) {
+      return child.stubName === "text" && String(child.attributes["class"] || "").indexOf("durations-axis-title") >= 0;
+    }).map(nodeText),
+    rollingPaths: rollingPaths,
+    rollingMarkers: rollingMarkers,
+    panelBBars: panelBBars,
+    countTicks: countTicks,
+    countGridlines: countGridlines
+  };
+}
+process.stdout.write(JSON.stringify({
+  headline30: captureRender(` + string(headlineJSON) + `, "30"),
+  headline90: captureRender(` + string(headlineJSON) + `, "90"),
+  headlineAll: captureRender(` + string(headlineJSON) + `, "all"),
+  rollingSix: captureRender(` + string(rollingJSON) + `.six, "all"),
+  rollingSeven: captureRender(` + string(rollingJSON) + `.seven, "all"),
+  rollingEight: captureRender(` + string(rollingJSON) + `.eight, "all")
+}));
+`
+	probeOutput := runJavaScriptBehaviorProbe(t, "Durations headline, rolling median, and cadence ticks",
+		durationsRenderDomStubPreamble+string(rendererFragment)+probeDriver)
+
+	type capturedRender struct {
+		Stats         []string `json:"stats"`
+		Summary       string   `json:"summary"`
+		AriaLabel     string   `json:"ariaLabel"`
+		VisibleTitles []string `json:"visibleTitles"`
+		RollingPaths  []struct {
+			D          string `json:"d"`
+			ChildIndex int    `json:"childIndex"`
+		} `json:"rollingPaths"`
+		RollingMarkers []struct {
+			CX         float64 `json:"cx"`
+			CY         float64 `json:"cy"`
+			ChildIndex int     `json:"childIndex"`
+		} `json:"rollingMarkers"`
+		PanelBBars []struct {
+			ChildIndex int `json:"childIndex"`
+		} `json:"panelBBars"`
+		CountTicks []struct {
+			Text string  `json:"text"`
+			Y    float64 `json:"y"`
+		} `json:"countTicks"`
+		CountGridlines []struct {
+			Y          float64 `json:"y"`
+			ChildIndex int     `json:"childIndex"`
+		} `json:"countGridlines"`
+	}
+	var result struct {
+		Headline30   capturedRender `json:"headline30"`
+		Headline90   capturedRender `json:"headline90"`
+		HeadlineAll  capturedRender `json:"headlineAll"`
+		RollingSix   capturedRender `json:"rollingSix"`
+		RollingSeven capturedRender `json:"rollingSeven"`
+		RollingEight capturedRender `json:"rollingEight"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode Durations headline/rolling result: %v (output starts %q)",
+			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
+	}
+
+	for _, windowCase := range []struct {
+		name      string
+		got       capturedRender
+		wantStats []string
+	}{
+		{name: "30", got: result.Headline30, wantStats: []string{"25.0 min", "5h 50m", "3 / 30", "2.0"}},
+		{name: "90", got: result.Headline90, wantStats: []string{"35.0 min", "5h 30m", "5 / 90", "1.6"}},
+		{name: "all", got: result.HeadlineAll, wantStats: []string{"45.0 min", "5h 10m", "7 / 121", "1.4"}},
+	} {
+		if !reflect.DeepEqual(windowCase.got.Stats, windowCase.wantStats) {
+			t.Errorf("%s-day headline stats = %#v, want %#v", windowCase.name, windowCase.got.Stats, windowCase.wantStats)
+		}
+	}
+	wantExclusionSentence := "Panel B excludes 3 spans from its medians (over four hours is an assumed pause, negative is a broken stamp); panel A still plots them."
+	if !strings.Contains(result.Headline30.Summary, wantExclusionSentence) {
+		t.Errorf("summary exclusion rule changed: %q", result.Headline30.Summary)
+	}
+
+	if len(result.RollingSix.RollingMarkers) != 0 || len(result.RollingSix.RollingPaths) != 0 {
+		t.Errorf("six eligible days drew %d markers and %d paths, want neither",
+			len(result.RollingSix.RollingMarkers), len(result.RollingSix.RollingPaths))
+	}
+	if len(result.RollingSeven.RollingMarkers) != 1 || len(result.RollingSeven.RollingPaths) != 0 {
+		t.Errorf("seven eligible days drew %d markers and %d paths, want one marker and no path",
+			len(result.RollingSeven.RollingMarkers), len(result.RollingSeven.RollingPaths))
+	}
+	if len(result.RollingEight.RollingMarkers) != 2 || len(result.RollingEight.RollingPaths) != 1 {
+		t.Fatalf("eight eligible days drew %d markers and %d paths, want two markers and one path",
+			len(result.RollingEight.RollingMarkers), len(result.RollingEight.RollingPaths))
+	}
+	if !strings.Contains(result.RollingEight.VisibleTitles[2], "trailing 7-active-day median") ||
+		!strings.Contains(result.RollingEight.AriaLabel, "trailing 7-active-day median") {
+		t.Errorf("Panel B title/accessibility copy does not name trailing 7-active-day median: titles=%q aria=%q",
+			result.RollingEight.VisibleTitles, result.RollingEight.AriaLabel)
+	}
+	medianTop := durationsRendererConstant(t, "DURATIONS_MEDIAN_TOP")
+	medianBottom := durationsRendererConstant(t, "DURATIONS_MEDIAN_BOTTOM")
+	wantRolling := []struct {
+		day    time.Time
+		median float64
+	}{
+		{day: time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC), median: 40},
+		{day: time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC), median: 50},
+	}
+	timeStart := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	timeEnd := time.Date(2026, 9, 21, 0, 0, 0, 0, time.UTC)
+	marginLeft := durationsRendererConstant(t, "DURATIONS_MARGIN_LEFT")
+	plotWidth := durationsRendererConstant(t, "DURATIONS_VIEW_WIDTH") - marginLeft - durationsRendererConstant(t, "DURATIONS_MARGIN_RIGHT")
+	for markerIndex, marker := range result.RollingEight.RollingMarkers {
+		wantX := marginLeft + (wantRolling[markerIndex].day.Add(12*time.Hour).Sub(timeStart).Seconds()/timeEnd.Sub(timeStart).Seconds())*plotWidth
+		wantY := medianBottom - (math.Min(wantRolling[markerIndex].median, 45)/45)*(medianBottom-medianTop)
+		if math.Abs(marker.CX-wantX) > 0.11 || math.Abs(marker.CY-wantY) > 0.11 {
+			t.Errorf("rolling marker %d = (%.2f, %.2f), want active-day trailing point (%.2f, %.2f)",
+				markerIndex, marker.CX, marker.CY, wantX, wantY)
+		}
+	}
+	lastBarIndex := result.RollingEight.PanelBBars[len(result.RollingEight.PanelBBars)-1].ChildIndex
+	if result.RollingEight.RollingPaths[0].ChildIndex <= lastBarIndex ||
+		result.RollingEight.RollingMarkers[0].ChildIndex <= result.RollingEight.RollingPaths[0].ChildIndex {
+		t.Errorf("rolling draw order paths=%+v markers=%+v last bar=%d; want bars, path, markers",
+			result.RollingEight.RollingPaths, result.RollingEight.RollingMarkers, lastBarIndex)
+	}
+
+	wantCountTicks := map[string]float64{
+		"0":   durationsRendererConstant(t, "DURATIONS_COUNT_BOTTOM") + durationsRendererConstant(t, "DURATIONS_TICK_BASELINE_DROP"),
+		"2.5": (durationsRendererConstant(t, "DURATIONS_COUNT_TOP")+durationsRendererConstant(t, "DURATIONS_COUNT_BOTTOM"))/2 + durationsRendererConstant(t, "DURATIONS_TICK_BASELINE_DROP"),
+		"5":   durationsRendererConstant(t, "DURATIONS_COUNT_TOP") + durationsRendererConstant(t, "DURATIONS_TICK_BASELINE_DROP"),
+	}
+	if len(result.RollingEight.CountTicks) != len(wantCountTicks) {
+		t.Fatalf("Panel C ticks = %+v, want zero, exact midpoint, and peak", result.RollingEight.CountTicks)
+	}
+	for _, tick := range result.RollingEight.CountTicks {
+		wantY, exists := wantCountTicks[tick.Text]
+		if !exists || math.Abs(tick.Y-wantY) > 0.01 {
+			t.Errorf("Panel C tick %q at %.2f, want exact tick map %v", tick.Text, tick.Y, wantCountTicks)
+		}
+	}
+	if len(result.RollingEight.CountGridlines) != 1 ||
+		math.Abs(result.RollingEight.CountGridlines[0].Y-(durationsRendererConstant(t, "DURATIONS_COUNT_TOP")+durationsRendererConstant(t, "DURATIONS_COUNT_BOTTOM"))/2) > 0.01 {
+		t.Errorf("Panel C midpoint gridlines = %+v, want one at exact half height", result.RollingEight.CountGridlines)
+	}
+}
 
 func TestJavaScriptBehaviorDurationsWindowsProjectOneSharedRealTimeDomain(t *testing.T) {
 	rendererFragment, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
@@ -2598,7 +2926,7 @@ function captureDurationsGeometry() {
     if (childNode.stubName === "rect" && String(attributes["class"] || "").indexOf("durations-bar") !== -1) {
       drawnBars.push({ class: attributes["class"], x: Number(attributes.x), width: Number(attributes.width) });
     }
-    if (childNode.stubName === "circle") {
+    if (childNode.stubName === "circle" && String(attributes["class"] || "").indexOf("durations-mark") !== -1) {
       drawnMarkCxs.push(Number(attributes.cx));
     }
     if (childNode.stubName === "text" && attributes["text-anchor"] === "middle" &&
@@ -2846,7 +3174,7 @@ var ticks = [], circles = [], paths = [];
   if (childNode.stubName === "text" && String(attributes["class"] || "").indexOf("durations-tick") !== -1) {
     ticks.push({ text: ((childNode.children || [])[0] || {}).textContent || "", x: Number(attributes.x), y: Number(attributes.y) });
   }
-  if (childNode.stubName === "circle") {
+  if (childNode.stubName === "circle" && String(attributes["class"] || "").indexOf("durations-mark") !== -1) {
     circles.push({
       cx: Number(attributes.cx), cy: Number(attributes.cy), opacity: attributes.opacity || "",
       fill: attributes.fill || "", class: attributes["class"] || "", childIndex: childIndex

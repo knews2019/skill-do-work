@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -552,6 +553,284 @@ type durationsDensePanelProbeResult struct {
 	RibbonOpacity       float64 `json:"ribbonOpacity"`
 	MarkOpacity         float64 `json:"markOpacity"`
 	BodyBackground      string  `json:"bodyBackground"`
+}
+
+type durationsHeadlineBrowserProbeResult struct {
+	LocationHref          string     `json:"locationHref"`
+	ViewportWidth         float64    `json:"viewportWidth"`
+	WindowStats           [][]string `json:"windowStats"`
+	StatItemCount         int        `json:"statItemCount"`
+	DefinitionTermCount   int        `json:"definitionTermCount"`
+	DefinitionValueCount  int        `json:"definitionValueCount"`
+	DefinitionListTag     string     `json:"definitionListTag"`
+	DefinitionListTabStop bool       `json:"definitionListTabStop"`
+	NativeWindowButton    bool       `json:"nativeWindowButton"`
+	WindowButtonFocused   bool       `json:"windowButtonFocused"`
+	StatRowCount          int        `json:"statRowCount"`
+	StatsClearChart       bool       `json:"statsClearChart"`
+	StatTilesOverlap      bool       `json:"statTilesOverlap"`
+	RollingFinite         bool       `json:"rollingFinite"`
+	RollingMarkerCount    int        `json:"rollingMarkerCount"`
+	RollingLineContrast   float64    `json:"rollingLineContrast"`
+	RollingMarkContrast   float64    `json:"rollingMarkContrast"`
+	BodyBackground        string     `json:"bodyBackground"`
+	CountTicksSeparate    bool       `json:"countTicksSeparate"`
+	CountTickTexts        []string   `json:"countTickTexts"`
+	ConsoleErrors         []string   `json:"consoleErrors"`
+}
+
+func durationsHeadlineBrowserFixtureTickets() []*RequestTicket {
+	eligibleDays := []struct {
+		completed time.Time
+		minutes   time.Duration
+	}{
+		{completed: time.Date(2026, 7, 1, 10, 0, 0, 0, time.UTC), minutes: 10 * time.Minute},
+		{completed: time.Date(2026, 7, 2, 10, 0, 0, 0, time.UTC), minutes: 70 * time.Minute},
+		{completed: time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC), minutes: 20 * time.Minute},
+		{completed: time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC), minutes: 60 * time.Minute},
+		{completed: time.Date(2026, 7, 11, 10, 0, 0, 0, time.UTC), minutes: 30 * time.Minute},
+		{completed: time.Date(2026, 8, 1, 10, 0, 0, 0, time.UTC), minutes: 50 * time.Minute},
+		{completed: time.Date(2026, 8, 10, 10, 0, 0, 0, time.UTC), minutes: 40 * time.Minute},
+		{completed: time.Date(2026, 9, 20, 10, 0, 0, 0, time.UTC), minutes: 80 * time.Minute},
+	}
+	tickets := make([]*RequestTicket, 0, len(eligibleDays)+9)
+	for dayIndex, eligibleDay := range eligibleDays {
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", 880+dayIndex), "B",
+			eligibleDay.completed.Add(-eligibleDay.minutes).Format(time.RFC3339),
+			eligibleDay.completed.Format(time.RFC3339),
+		))
+	}
+	for pausedIndex := 0; pausedIndex < 5; pausedIndex++ {
+		completed := time.Date(2026, 7, 7, 10+pausedIndex, 0, 0, 0, time.UTC)
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", 900+pausedIndex), "C",
+			completed.Add(-8*time.Hour).Format(time.RFC3339), completed.Format(time.RFC3339),
+		))
+	}
+	// Four all-history-only paused spans make every headline tile visibly change
+	// between 90 days and all history, including p90 and the rounded cadence.
+	for oldIndex, oldMinutes := range []time.Duration{10 * time.Hour, 11 * time.Hour, 12 * time.Hour, 15 * time.Hour} {
+		completed := time.Date(2026, time.Month(4+oldIndex/2), 1+oldIndex%2, 10, 0, 0, 0, time.UTC)
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", 920+oldIndex), "A",
+			completed.Add(-oldMinutes).Format(time.RFC3339), completed.Format(time.RFC3339),
+		))
+	}
+	return tickets
+}
+
+// The complete generated board proves the headline and rolling surfaces in the
+// browser. Every measurement returns location.href in the same result, measures
+// the rolling ink against the transparent SVG's real body background, and checks
+// the responsive stat grid at the three maintained viewport widths.
+func TestBrowserBehaviorDurationsHeadlineAndRollingSeries(t *testing.T) {
+	fixtureBoard := &Board{
+		GeneratedAt: time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC),
+		ProjectName: "REQ-352 Durations headline probe",
+		AllRequests: durationsHeadlineBrowserFixtureTickets(),
+	}
+	siteDirectory := t.TempDir()
+	if generateError := generateStaticSite(siteDirectory, fixtureBoard); generateError != nil {
+		t.Fatalf("generate headline fixture board: %v", generateError)
+	}
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read headline fixture index: %v", readError)
+	}
+
+	probePage := strings.Replace(string(indexBytes), "<head>", `<head><script>
+window.__durationsProbeErrors = [];
+window.addEventListener("error", function (event) { window.__durationsProbeErrors.push(String(event.message)); });
+(function () {
+  var originalConsoleError = console.error;
+  console.error = function () {
+    window.__durationsProbeErrors.push(Array.prototype.join.call(arguments, " "));
+    originalConsoleError.apply(console, arguments);
+  };
+})();
+</script>`, 1)
+	probeScript := `
+  (function () {
+  viewState.view = "durations";
+  applyView();
+
+  function statValues() {
+    return ["median", "p90", "active-days", "reqs-per-day"].map(function (statName) {
+      return document.getElementById("durations-stat-" + statName).textContent;
+    });
+  }
+  var windowStats = ["30", "90", "all"].map(function (windowName) {
+    applyDurationsWindowSelection(windowName);
+    return statValues();
+  });
+
+  var definitionList = document.getElementById("durations-stats");
+  var statTiles = Array.from(definitionList.children);
+  var statTileRects = statTiles.map(function (tile) { return tile.getBoundingClientRect(); });
+  var statRowCount = new Set(statTileRects.map(function (rect) { return rect.top.toFixed(2); })).size;
+  var statTilesOverlap = statTileRects.some(function (first, firstIndex) {
+    return statTileRects.some(function (second, secondIndex) {
+      return secondIndex > firstIndex && first.left < second.right && second.left < first.right &&
+        first.top < second.bottom && second.top < first.bottom;
+    });
+  });
+  var chartRect = document.getElementById("durations-chart").getBoundingClientRect();
+  var statsRect = definitionList.getBoundingClientRect();
+
+  var rollingPath = document.querySelector("#durations-chart .durations-rolling-line");
+  var rollingMarkers = Array.from(document.querySelectorAll("#durations-chart .durations-rolling-marker"));
+  var rollingBox = rollingPath ? rollingPath.getBBox() : { x: NaN, y: NaN, width: NaN, height: NaN };
+  var rollingFinite = !!rollingPath && !!rollingPath.getAttribute("d") &&
+    !/NaN|Infinity/.test(rollingPath.getAttribute("d")) &&
+    [rollingBox.x, rollingBox.y, rollingBox.width, rollingBox.height, rollingPath.getTotalLength()].every(Number.isFinite) &&
+    rollingPath.getTotalLength() > 0;
+
+  function rgbChannels(colour) {
+    return (colour.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+  }
+  function relativeLuminance(colour) {
+    return rgbChannels(colour).map(function (channel) {
+      var normalized = channel / 255;
+      return normalized <= 0.03928 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4);
+    }).reduce(function (sum, channel, index) {
+      return sum + channel * [0.2126, 0.7152, 0.0722][index];
+    }, 0);
+  }
+  function contrastRatio(first, second) {
+    var firstLuminance = relativeLuminance(first);
+    var secondLuminance = relativeLuminance(second);
+    return (Math.max(firstLuminance, secondLuminance) + 0.05) /
+      (Math.min(firstLuminance, secondLuminance) + 0.05);
+  }
+  var bodyBackground = getComputedStyle(document.body).backgroundColor;
+  var rollingStyle = rollingPath ? getComputedStyle(rollingPath) : { stroke: "rgb(0, 0, 0)" };
+  var markerStyle = rollingMarkers.length ? getComputedStyle(rollingMarkers[0]) : { fill: "rgb(0, 0, 0)" };
+
+  var countTicks = Array.from(document.querySelectorAll('[data-durations-count-tick="true"]'));
+  var countTickRects = countTicks.map(function (tick) { return tick.getBoundingClientRect(); });
+  var countTicksSeparate = countTickRects.every(function (first, firstIndex) {
+    return countTickRects.every(function (second, secondIndex) {
+      return secondIndex <= firstIndex || first.bottom <= second.top || second.bottom <= first.top;
+    });
+  });
+
+  var ninetyDayButton = document.querySelector('[data-durations-window="90"]');
+  ninetyDayButton.focus();
+  document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
+    locationHref: location.href,
+    viewportWidth: innerWidth,
+    windowStats: windowStats,
+    statItemCount: statTiles.length,
+    definitionTermCount: definitionList.querySelectorAll("dt").length,
+    definitionValueCount: definitionList.querySelectorAll("dd").length,
+    definitionListTag: definitionList.tagName,
+    definitionListTabStop: definitionList.tabIndex >= 0 || !!definitionList.querySelector("[tabindex]"),
+    nativeWindowButton: ninetyDayButton.tagName === "BUTTON",
+    windowButtonFocused: document.activeElement === ninetyDayButton,
+    statRowCount: statRowCount,
+    statsClearChart: statsRect.bottom <= chartRect.top,
+    statTilesOverlap: statTilesOverlap,
+    rollingFinite: rollingFinite,
+    rollingMarkerCount: rollingMarkers.length,
+    rollingLineContrast: contrastRatio(rollingStyle.stroke, bodyBackground),
+    rollingMarkContrast: contrastRatio(markerStyle.fill, bodyBackground),
+    bodyBackground: bodyBackground,
+    countTicksSeparate: countTicksSeparate,
+    countTickTexts: countTicks.map(function (tick) { return tick.textContent; }),
+    consoleErrors: window.__durationsProbeErrors
+  });
+  })();
+`
+	clientClose := strings.LastIndex(probePage, "})();")
+	if clientClose < 0 {
+		t.Fatal("generated page has no client IIFE close for headline probe")
+	}
+	clientScriptStart := strings.LastIndex(probePage[:clientClose], "<script>")
+	if clientScriptStart < 0 {
+		t.Fatal("generated page has no inline client script for headline probe")
+	}
+	resultNode := `<pre id="` + browserProbeResultElementId + `" hidden></pre>`
+	probePage = probePage[:clientScriptStart] + resultNode + probePage[clientScriptStart:]
+	clientClose += len(resultNode)
+	probePage = probePage[:clientClose] + probeScript + probePage[clientClose:]
+
+	probeCases := []struct {
+		name           string
+		width          int
+		colourFlag     string
+		wantStatRowsAt int
+	}{
+		{name: "320-light", width: 320, colourFlag: "--force-light-mode", wantStatRowsAt: 2},
+		{name: "768-light", width: 768, colourFlag: "--force-light-mode", wantStatRowsAt: 2},
+		{name: "1280-light", width: 1280, colourFlag: "--force-light-mode", wantStatRowsAt: 1},
+		{name: "1280-dark", width: 1280, colourFlag: "--blink-settings=preferredColorScheme=2", wantStatRowsAt: 1},
+	}
+	for _, probeCase := range probeCases {
+		probeCase := probeCase
+		t.Run(probeCase.name, func(t *testing.T) {
+			resultJSON := runBrowserBehaviorProbeInDirectory(
+				t, "REQ-352 headline "+probeCase.name, siteDirectory, probePage,
+				"--headless=new", fmt.Sprintf("--window-size=%d,1100", probeCase.width), probeCase.colourFlag,
+			)
+			var result durationsHeadlineBrowserProbeResult
+			if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
+				t.Fatalf("decode headline browser result: %v\n%s", decodeError, resultJSON)
+			}
+			if result.LocationHref == "" || !strings.Contains(result.LocationHref, browserProbePageFileName) {
+				t.Errorf("probe measured unnamed page %q", result.LocationHref)
+			}
+			if result.StatItemCount != 4 || result.DefinitionTermCount != 4 || result.DefinitionValueCount != 4 || result.DefinitionListTag != "DL" {
+				t.Errorf("semantic stats = tag %q, items/terms/values %d/%d/%d; want DL 4/4/4",
+					result.DefinitionListTag, result.StatItemCount, result.DefinitionTermCount, result.DefinitionValueCount)
+			}
+			if result.DefinitionListTabStop || !result.NativeWindowButton || !result.WindowButtonFocused {
+				t.Errorf("keyboard semantics = dl tab stop %v, native button %v, focus %v",
+					result.DefinitionListTabStop, result.NativeWindowButton, result.WindowButtonFocused)
+			}
+			if result.StatTilesOverlap || !result.StatsClearChart {
+				t.Errorf("stat layout overlaps: tiles=%v chart=%v", result.StatTilesOverlap, !result.StatsClearChart)
+			}
+			if probeCase.wantStatRowsAt == 1 && result.StatRowCount != 1 {
+				t.Errorf("%dpx viewport made %d stat rows, want one", probeCase.width, result.StatRowCount)
+			}
+			if probeCase.wantStatRowsAt > 1 && result.StatRowCount < probeCase.wantStatRowsAt {
+				t.Errorf("%dpx viewport made %d stat rows, want at least %d", probeCase.width, result.StatRowCount, probeCase.wantStatRowsAt)
+			}
+			if len(result.WindowStats) != 3 {
+				t.Fatalf("window update captured %d states, want 30/90/all", len(result.WindowStats))
+			}
+			for statIndex := 0; statIndex < 4; statIndex++ {
+				distinctValues := map[string]bool{}
+				for _, windowStats := range result.WindowStats {
+					if len(windowStats) != 4 {
+						t.Fatalf("window stats = %#v, want four values", result.WindowStats)
+					}
+					distinctValues[windowStats[statIndex]] = true
+				}
+				if len(distinctValues) != 3 {
+					t.Errorf("headline stat %d did not change across 30/90/all: %#v", statIndex, result.WindowStats)
+				}
+			}
+			if !result.RollingFinite || result.RollingMarkerCount != 2 {
+				t.Errorf("rolling geometry finite=%v markers=%d, want a finite line and two points",
+					result.RollingFinite, result.RollingMarkerCount)
+			}
+			if result.RollingLineContrast < 3 || result.RollingMarkContrast < 3 || result.BodyBackground == "" {
+				t.Errorf("rolling contrast line/marker %.2f/%.2f against body %q, want both >= 3:1",
+					result.RollingLineContrast, result.RollingMarkContrast, result.BodyBackground)
+			}
+			if !result.CountTicksSeparate || !reflect.DeepEqual(result.CountTickTexts, []string{"5", "2.5", "0"}) {
+				t.Errorf("Panel C ticks separate=%v texts=%q, want separated 5/2.5/0", result.CountTicksSeparate, result.CountTickTexts)
+			}
+			if len(result.ConsoleErrors) != 0 {
+				t.Errorf("browser console errors: %q", result.ConsoleErrors)
+			}
+			t.Logf("%s %.0fpx: stats rows %d, rolling contrast %.2f/%.2f against %s",
+				result.LocationHref, result.ViewportWidth, result.StatRowCount,
+				result.RollingLineContrast, result.RollingMarkContrast, result.BodyBackground)
+		})
+	}
 }
 
 // REQ-349's target board is materially denser than this repository. This probe

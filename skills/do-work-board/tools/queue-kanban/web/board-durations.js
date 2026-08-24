@@ -497,6 +497,21 @@
     return new Date(epochMs).toISOString().replace("T", " ").slice(0, 16) + " UTC";
   }
 
+  // R-7 / linear interpolation: position (n-1)*p in the sorted samples and
+  // interpolate between its neighbours. The same named rule serves the raw
+  // headline distribution, Panel A's daily distribution, and Panel B's rolling
+  // median so three visible quantiles cannot quietly acquire three conventions.
+  function durationQuantile(sortedMinutes, probability) {
+    var position = (sortedMinutes.length - 1) * probability;
+    var lowerIndex = Math.floor(position);
+    var upperIndex = Math.ceil(position);
+    if (lowerIndex === upperIndex) {
+      return sortedMinutes[lowerIndex];
+    }
+    return sortedMinutes[lowerIndex] +
+      (sortedMinutes[upperIndex] - sortedMinutes[lowerIndex]) * (position - lowerIndex);
+  }
+
   // Which band a sample carries a direct label in, or "" for no direct label.
   // Ported from durations.go's durationLabelBandOf: the two bands sit at
   // different heights with unrelated local densities, so they pack independently.
@@ -716,6 +731,10 @@
   function renderDurationsView() {
     var chartHost = document.getElementById("durations-chart");
     var summaryNode = document.getElementById("durations-summary");
+    var medianStatNode = document.getElementById("durations-stat-median");
+    var p90StatNode = document.getElementById("durations-stat-p90");
+    var activeDaysStatNode = document.getElementById("durations-stat-active-days");
+    var requestsPerDayStatNode = document.getElementById("durations-stat-reqs-per-day");
     var colourLegendNode = document.getElementById("durations-colour-legend");
     var readoutNode = document.getElementById("durations-readout");
     var tableBody = document.getElementById("durations-table-body");
@@ -764,6 +783,26 @@
     var windowName = durationsWindowName();
     var windowStartLabel = formatDurationDayLabel(timeStart);
     var windowEndLabel = formatDurationDayLabel(timeEnd);
+
+    // Headline figures describe the SAME projected window Panel A draws. Raw
+    // signed spans are deliberate here: a paused or reversed sample remains a
+    // plotted fact even though Panel B's read-time rule excludes it.
+    var sortedRawMinutes = samples.map(function (sample) {
+      return sample.wallMinutes;
+    }).sort(function (first, second) { return first - second; });
+    var axisDayCount = timeSpan / DURATIONS_DAY_MS;
+    if (medianStatNode) {
+      medianStatNode.textContent = formatDurationMinutes(durationQuantile(sortedRawMinutes, 0.5));
+    }
+    if (p90StatNode) {
+      p90StatNode.textContent = formatDurationMinutes(durationQuantile(sortedRawMinutes, 0.9));
+    }
+    if (activeDaysStatNode) {
+      activeDaysStatNode.textContent = days.length + " / " + axisDayCount;
+    }
+    if (requestsPerDayStatNode) {
+      requestsPerDayStatNode.textContent = (samples.length / days.length).toFixed(1);
+    }
 
     var excludedSamples = samples.filter(function (sample) {
       return sample.excludedReason;
@@ -816,7 +855,7 @@
         durationColourChannelName() +
         ", over a lane of brackets grouping its marks by user request. " +
         durationsColourLegendText() +
-        " Panel B plots the median minutes per active day. Panel C counts REQs completed per day. Every value is also listed in the table below."
+        " Panel B plots the median minutes per active day and its trailing 7-active-day median. Panel C counts REQs completed per day. Every value is also listed in the table below."
     );
 
     function xOfEpoch(epochMs) {
@@ -884,19 +923,6 @@
         DURATIONS_MAIN_BOTTOM -
         Math.sqrt(clamped / DURATIONS_CEILING_MINUTES) * (DURATIONS_MAIN_BOTTOM - DURATIONS_MAIN_TOP)
       );
-    }
-    // R-7 / linear interpolation: position (n-1)*p in the sorted samples and
-    // interpolate between its neighbours. Naming the rule makes small even
-    // days deterministic rather than leaving quartiles to library convention.
-    function durationQuantile(sortedMinutes, probability) {
-      var position = (sortedMinutes.length - 1) * probability;
-      var lowerIndex = Math.floor(position);
-      var upperIndex = Math.ceil(position);
-      if (lowerIndex === upperIndex) {
-        return sortedMinutes[lowerIndex];
-      }
-      return sortedMinutes[lowerIndex] +
-        (sortedMinutes[upperIndex] - sortedMinutes[lowerIndex]) * (position - lowerIndex);
     }
     function durationsDailyQuantiles() {
       var minutesByDay = {};
@@ -1269,7 +1295,7 @@
       svg,
       "text",
       { x: DURATIONS_MARGIN_LEFT, y: DURATIONS_MEDIAN_TITLE_Y, class: "durations-axis-title" },
-      "B · Median minutes per active day · paused and broken spans excluded"
+      "B · Median minutes per active day · trailing 7-active-day median · paused and broken spans excluded"
     );
     [0, 15, 30, 45].forEach(function (minutes) {
       gridRow(
@@ -1282,10 +1308,8 @@
     var dayWidth = (DURATIONS_PLOT_WIDTH * DURATIONS_DAY_MS) / timeSpan;
     var barWidth = Math.max(4, Math.min(24, dayWidth - 2));
     var slowestDay = null;
-    days.forEach(function (day) {
-      if (!day.hasMedian) {
-        return;
-      }
+    var medianDays = days.filter(function (day) { return day.hasMedian; });
+    medianDays.forEach(function (day) {
       var dayEpochMs = Date.parse(day.dayTime);
       var barLeftX = durationsBarLeftX(durationsDayCentreX(dayEpochMs), barWidth);
       var barTop = yOfDayMedian(day.medianMinutes);
@@ -1311,6 +1335,36 @@
         slowestDay = day;
       }
     });
+
+    // R-7 over drawn days, never calendar slots. Idle and excluded-only days do
+    // not enter the seven-value window and do not become invented zeroes.
+    var rollingMedianPoints = [];
+    for (var medianDayIndex = 6; medianDayIndex < medianDays.length; medianDayIndex += 1) {
+      var rollingMinutes = medianDays.slice(medianDayIndex - 6, medianDayIndex + 1).map(function (day) {
+        return day.medianMinutes;
+      }).sort(function (first, second) { return first - second; });
+      var rollingDay = medianDays[medianDayIndex];
+      rollingMedianPoints.push({
+        x: durationsDayCentreX(Date.parse(rollingDay.dayTime)),
+        y: yOfDayMedian(durationQuantile(rollingMinutes, 0.5))
+      });
+    }
+    if (rollingMedianPoints.length > 1) {
+      makeDurationsSvgNode(svg, "path", {
+        d: "M " + rollingMedianPoints.map(function (point) {
+          return point.x.toFixed(1) + " " + point.y.toFixed(1);
+        }).join(" L "),
+        class: "durations-rolling-line"
+      });
+    }
+    rollingMedianPoints.forEach(function (point) {
+      makeDurationsSvgNode(svg, "circle", {
+        cx: point.x.toFixed(1),
+        cy: point.y.toFixed(1),
+        r: 4,
+        class: "durations-rolling-marker"
+      });
+    });
     if (slowestDay) {
       drawDurationsSlowestDayAnnotation(svg, slowestDay, durationsDayCentreX(Date.parse(slowestDay.dayTime)));
     }
@@ -1325,12 +1379,22 @@
     var peakCount = days.reduce(function (highest, day) {
       return Math.max(highest, day.completedCount);
     }, 1);
+    var countMidpoint = peakCount / 2;
+    var countMidpointY = (DURATIONS_COUNT_TOP + DURATIONS_COUNT_BOTTOM) / 2;
     makeDurationsSvgNode(svg, "line", {
       x1: DURATIONS_MARGIN_LEFT,
       y1: DURATIONS_COUNT_BOTTOM,
       x2: DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT,
       y2: DURATIONS_COUNT_BOTTOM,
       class: "durations-axis-line"
+    });
+    makeDurationsSvgNode(svg, "line", {
+      x1: DURATIONS_MARGIN_LEFT,
+      y1: countMidpointY,
+      x2: DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT,
+      y2: countMidpointY,
+      class: "durations-grid-line",
+      "data-durations-count-grid": "midpoint"
     });
     makeDurationsSvgNode(
       svg,
@@ -1339,9 +1403,34 @@
         x: DURATIONS_MARGIN_LEFT - 8,
         y: DURATIONS_COUNT_TOP + DURATIONS_TICK_BASELINE_DROP,
         class: "durations-tick",
-        "text-anchor": "end"
+        "text-anchor": "end",
+        "data-durations-count-tick": "true"
       },
       String(peakCount)
+    );
+    makeDurationsSvgNode(
+      svg,
+      "text",
+      {
+        x: DURATIONS_MARGIN_LEFT - 8,
+        y: countMidpointY + DURATIONS_TICK_BASELINE_DROP,
+        class: "durations-tick",
+        "text-anchor": "end",
+        "data-durations-count-tick": "true"
+      },
+      peakCount % 2 === 0 ? String(countMidpoint) : countMidpoint.toFixed(1)
+    );
+    makeDurationsSvgNode(
+      svg,
+      "text",
+      {
+        x: DURATIONS_MARGIN_LEFT - 8,
+        y: DURATIONS_COUNT_BOTTOM + DURATIONS_TICK_BASELINE_DROP,
+        class: "durations-tick",
+        "text-anchor": "end",
+        "data-durations-count-tick": "true"
+      },
+      "0"
     );
     days.forEach(function (day) {
       var dayEpochMs = Date.parse(day.dayTime);
