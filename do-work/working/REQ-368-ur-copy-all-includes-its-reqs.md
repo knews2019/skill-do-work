@@ -1,7 +1,10 @@
 ---
 id: REQ-368
 title: 'Add a UR copy-all that copies the UR plus all its REQs'
-status: pending
+status: claimed
+claimed_at: 2026-08-24T21:05:47Z
+status_changed_at: 2026-08-24T21:05:47Z
+route: B
 created_at: 2026-08-24T14:53:28Z
 user_request: UR-072
 domain: frontend
@@ -13,6 +16,12 @@ related: [REQ-367]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-24T21:05:47Z
+  basis:
+    - trivial short-circuit
 ---
 
 # Add a UR Copy-All That Copies the UR Plus All Its REQs
@@ -48,3 +57,7 @@ The UR detail view gets a copy-all control: one click puts the UR's own payload 
 
 ---
 *Source: "similar request for the UR where copy all, will copy not only the UR but also all it's reqs to the clipboard."*
+
+## Triage
+
+**Route: B** — REQ-367 now supplies the shared exact-byte bulk clipboard path, but exploration must identify the UR drawer control and grouped-id ordering source, distinguish grouped membership from capture-time requests, and add trusted browser coverage before freezing scope.
