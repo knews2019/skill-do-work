@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.54 — Declared Write Sets Stay Complete (2026-08-24)
+
+Capture no longer mints a known-incomplete write set when a REQ's own completion proof requires another file class.
+
+- TDD requests name a test file or omit the advisory set honestly
+- The rule follows required file classes generally instead of freezing a test-only checklist
+- Builders flag, proceed through, and report contradictions already present in queued work
+
 ## 0.236.53 — Durations UR Geometry Is Pinned (2026-08-24)
 
 The Durations user-request lane now proves its rendered brackets stay inside the plot and clear nearby text.
