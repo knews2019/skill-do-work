@@ -4,6 +4,7 @@ title: "[impact-rule-change] State the builder's out-of-scope response once"
 status: completed
 claimed_at: 2026-08-25T08:29:59Z
 completed_at: 2026-08-25T08:36:51Z
+commit: a2e28d3
 route: A
 created_at: 2026-08-24T23:37:06Z
 user_request: UR-073
