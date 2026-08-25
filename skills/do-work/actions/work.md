@@ -485,7 +485,7 @@ Omit `Red-green validation` if no request-specific tests were written or identif
 
 When the REQ includes `## Red-Green Proof`, the `Red-green validation` entries should trace back to that captured RED/GREEN pair. If the implemented test uses a nearby equivalent instead of the exact captured prompt/case, explain why.
 
-**TDD verification:** If the REQ has `tdd: true`, the `Red-green validation` section is mandatory — the builder must show test-first evidence that they used RED/GREEN TDD (test written before implementation, failed, then passed after). If this evidence is missing, treat it as a test failure: return to implementation (same path as step 4 above) with explicit instructions to provide red/green evidence — write the failing test first, confirm it fails, then make it pass.
+**TDD verification:** If the REQ has `tdd: true`, the `Red-green validation` section is mandatory — the builder must show test-first evidence that they used RED/GREEN TDD. Qualifying evidence is a runnable test in the project's existing automated test harness, written before implementation, observed failing before the change and passing after it, and re-runnable by another agent. A repeatable check outside that harness is regression proof, not `tdd: true` evidence. If qualifying evidence is missing, treat it as a test failure: return to implementation (same path as step 4 above) with explicit instructions to provide red/green evidence — write the failing test first, confirm it fails, then make it pass.
 
 ### Step 7: Review
 

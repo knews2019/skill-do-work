@@ -1,8 +1,11 @@
 ---
 id: REQ-373
 title: "[impact-rule-change] Decide what the TDD-evidence gate accepts as test-first evidence"
-status: pending
-status_changed_at: 2026-08-25T08:19:12Z
+status: completed
+status_changed_at: 2026-08-25T08:47:30Z
+claimed_at: 2026-08-25T08:38:00Z
+completed_at: 2026-08-25T08:47:30Z
+route: A
 created_at: 2026-08-24T23:37:06Z
 user_request: UR-073
 domain: general
@@ -13,6 +16,12 @@ depends_on: []
 maintenance: false
 impact: impact-rule-change
 effort_estimate: effort-mechanical
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-25T08:38:19Z
+  basis:
+    - trivial short-circuit
 related: [REQ-372]
 write_set:
   - skills/do-work/actions/work.md
@@ -29,9 +38,17 @@ through Chromium. Step 6.5's stated bar is a failing **test** written first. Eit
 more than it says, or that REQ should have been `tdd: false`. Say which, in the text.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Tighten `actions/work.md` so `tdd: true` accepts only a test in the project's
+  existing automated harness, then make `actions/capture.md` route repeatable probe-only work to
+  `tdd: false` plus strong Red-Green Proof. Keep `actions/capture-reference.md` byte-untouched because
+  the confirmed answer preserves its existing harness-test invariant.
+- [x] **[APPLY]:** Updated the work gate and capture assessment exactly as planned. The implementation
+  changed only `actions/work.md` and `actions/capture.md`; the conditional target
+  `actions/capture-reference.md` remained byte-untouched.
+- [x] **[UNIFY]:** Reviewed `git diff --stat`, `git diff --check`, and every changed file. Verified
+  `actions/work.md` states the accepted-evidence properties, `actions/capture.md` applies the same
+  boundary at capture time, the REQ/checkpoint changes contain only lifecycle records, and no debug
+  artifacts are present. `bash _dev/tests/maintainer-verify.sh` passed.
 
 ## Why
 
@@ -91,9 +108,9 @@ visual inspection."
 
 ## Builder Guidance
 
-Certainty: **Firm** that the two texts disagree with observed practice; **the answer itself is the
-user's**, which is why this REQ is `pending-answers` rather than `pending`. Do not start the edit
-before the Open Question is answered.
+Certainty: **Firm** that the two texts disagree with observed practice. **The answer itself was the
+user's and is now confirmed** in the answered Open Question above: require a project-harness test
+for `tdd: true` and route probe-only work to `tdd: false` plus strong repeatable proof.
 
 Scope cue: state what the gate accepts, in a property a builder can check before writing evidence.
 No new field, no new gate, no rewrite of Step 6.5's surrounding flow.
@@ -125,3 +142,92 @@ one unambiguous answer under both.
 
 ---
 *Source: UR-073 finding F2 — found while reconciling this branch's capture against main's archive.*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The user resolved the only policy choice, and the request names the two instruction
+sites that must change. The confirmed harness-test boundary makes `capture-reference.md` an explicit
+non-target.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+## Implementation Summary
+
+- `skills/do-work/actions/work.md` (modified) — clarified the accepted TDD-evidence properties.
+- `skills/do-work/actions/capture.md` (modified) — aligned capture-time TDD classification.
+
+The work gate now accepts a re-runnable test in the project's existing automated harness that fails
+before implementation and passes after it, and classifies out-of-harness checks as regression proof
+instead. Capture now sends repeatable probe-only work to `tdd: false` plus strong repeatable
+before-and-after proof.
+
+Verified `skills/do-work/actions/capture-reference.md` already carried the matching harness-test
+invariant and left this conditional target byte-untouched, as required by the confirmed answer.
+
+## Discovered Tasks
+
+None.
+
+## Testing
+
+- Before/after policy proof: the prior Step 6.5 text required test-first evidence but did not state
+  whether a repeatable out-of-harness check qualified; the revised text explicitly says it does not,
+  and capture now routes that work to `tdd: false` plus strong repeatable proof.
+- Conditional-target proof: `git diff --name-only -- skills/do-work/actions/capture-reference.md`
+  returned no output, confirming the existing invariant remained byte-untouched.
+- Canonical gate: `bash _dev/tests/maintainer-verify.sh` passed all contract, shell, Go, and strict
+  JavaScript lanes. The optional strict browser lane was skipped because no browser was configured.
+
+## Qualification
+
+- Mechanical qualification passed with both implementation files present in the diff and all P-A-U
+  phases completed.
+- The changes trace every detailed requirement: accepted evidence is stated by observable property,
+  capture uses the same boundary, no evidence gate was weakened, and the conditional reference
+  target remained unchanged.
+- Route A correctly has no `## Scope`; the implementation is limited to the two policy sites selected
+  by the confirmed answer and introduces no new API, interface, type, field, or gate.
+
+## Review
+
+**Overall: 100%** | 2026-08-25T08:47:02Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 100% |
+| Test Adequacy | 100% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings:** None
+
+**Minor findings:** 0
+**Acceptance:** Pass — the work gate and capture assessment now return the same unambiguous result
+for probe-only evidence, and the existing write-set invariant remains consistent.
+**Suggested testing:** 0 items
+**Follow-ups created:** None; **sweeps appended to:** None
+
+The restatement sweep checked live action, reference, crew, roadmap, and verification surfaces. No
+live instruction treats repeatable out-of-harness evidence as sufficient for `tdd: true`; historical
+changelog entries remain history.
+
+*Reviewed by review-work action*
+
+## Orientation
+
+`tdd: true` now has one explicit boundary throughout the workflow: a re-runnable test in the
+project's automated harness must go RED before implementation and GREEN afterward. Repeatable
+probe-only work remains valid regression proof under `tdd: false`, with strong before-and-after
+evidence.

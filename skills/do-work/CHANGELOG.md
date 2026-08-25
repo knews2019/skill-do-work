@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.63 — TDD Evidence Requires a Harness Test (2026-08-25)
+
+The TDD gate now names the evidence boundary that capture and builders must share.
+
+- `tdd: true` requires a re-runnable test in the project's existing automated harness
+- Repeatable out-of-harness probes remain regression proof under `tdd: false`
+- Probe-only requests carry strong repeatable before-and-after proof instead of claiming test-first work
+
 ## 0.236.62 — Canonical Out-of-Scope Builder Response (2026-08-25)
 
 Builders no longer receive two different instructions when a required file is missing from a
