@@ -1,7 +1,10 @@
 ---
 id: REQ-372
 title: "[impact-rule-change] State the builder's out-of-scope response once"
-status: pending
+status: completed
+claimed_at: 2026-08-25T08:29:59Z
+completed_at: 2026-08-25T08:36:51Z
+route: A
 created_at: 2026-08-24T23:37:06Z
 user_request: UR-073
 addendum_to: REQ-365
@@ -13,6 +16,12 @@ depends_on: []
 maintenance: true
 impact: impact-rule-change
 effort_estimate: effort-mechanical
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-25T08:30:49Z
+  basis:
+    - trivial short-circuit
 write_set:
   - skills/do-work/actions/capture-reference.md
   - skills/do-work/actions/work.md
@@ -28,9 +37,14 @@ orchestrator**. Both are shipped, both describe the same moment, and they prescr
 actions. State the response once, in the file the builder actually loads, and cite it from the other.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read the action-file prime, prior implementation, and crew rules. Keep the
+  conditional-completeness invariant at capture, move the complete builder response to `work.md`,
+  and distinguish a contradictory declaration from a genuinely new scope expansion.
+- [x] **[APPLY]:** Centralized the two-path builder response in `work.md` and replaced the
+  capture-side duplicate with a section pointer. No files outside the declared set were changed.
+- [x] **[UNIFY]:** Reviewed the two-file implementation diff and `git diff --check`; confirmed the
+  capture-side response was removed, the work-side two-path rule is canonical, and no debug
+  artifacts landed. The full maintainer verification gate passed.
 
 ## Why
 
@@ -132,3 +146,92 @@ case that made REQ-346's builder proceed.
 
 ---
 *Source: UR-073 finding F1 — reconciling this branch's capture against REQ-365 as shipped on main (`6265f1c`).*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The contradiction and both target files are already identified. The change is a
+focused instruction move plus a canonical pointer, with no exploration needed.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+## Decisions
+
+- **D-01 — Split the response by whether the REQ already requires the file class.** A required but
+  omitted class is contradictory metadata, so the builder may flag, proceed, and report it. A file
+  that the REQ did not already require is a real scope expansion and remains stop-and-report. This
+  preserves unattended builders without turning `write_set` into permission for unrelated edits.
+
+## Implementation Summary
+
+- `skills/do-work/actions/work.md` (modified): states the canonical two-path response for a file
+  outside declared scope, including the unattended/worktree handback case.
+- `skills/do-work/actions/capture-reference.md` (modified): replaces the duplicate response with a
+  pointer to the canonical work-action rule while retaining the capture-time invariant.
+
+**What was done:** Builder behavior now has one owner. A requirement-backed omission can proceed
+with a recorded contradiction; a genuinely new file remains a stop-and-report scope expansion.
+
+## Discovered Tasks
+
+None.
+
+## Testing
+
+- **Focused checks:** The captured RED grep no longer finds the proceed instruction in
+  `capture-reference.md`; semantic searches find the flag/proceed branch and stop/report branch in
+  `work.md`, plus the single canonical pointer at capture.
+- **Regression:** `git diff --check` passed.
+- **Canonical gate:** `bash _dev/tests/maintainer-verify.sh` passed all contract, Go, strict
+  JavaScript, and audit-metrics lanes. The optional strict browser lane skipped because no browser
+  is configured.
+
+## Qualification
+
+- Mechanical qualification passed with the two implementation files present in the diff and all
+  P-A-U phases completed.
+- The changes are substantive and trace every detailed requirement: one canonical response,
+  condition-based branching, an explicit unattended-builder path, and preserved display-only
+  `write_set` semantics.
+- Route A correctly has no `## Scope`; its two changed files match the capture-authored
+  `write_set`, and the implementation contains no hollow or unwired surface.
+
+## Review
+
+**Overall: 100%** | 2026-08-25T08:36:28Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 100% |
+| Test Adequacy | 100% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings:** None
+
+**Minor findings:** 0
+**Acceptance:** Pass — the two-path rule covers serial and unattended builders, the capture copy is
+gone, and the display-only contract is unchanged.
+**Suggested testing:** 0 items
+**Follow-ups created:** None; **sweeps appended to:** None
+
+The restatement sweep checked live action, reference, crew, guide, and schema surfaces. No live text
+still prescribes the retired unconditional response; historical changelog entries remain history.
+
+*Reviewed by review-work action*
+
+## Orientation
+
+Builders now have one canonical out-of-scope rule: requirement-backed declaration mistakes may
+proceed with an explicit report, while genuinely new scope still stops for orchestrator approval.

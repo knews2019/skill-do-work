@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.236.62 — Canonical Out-of-Scope Builder Response (2026-08-25)
+
+Builders no longer receive two different instructions when a required file is missing from a
+declared write set.
+
+- Requirement-backed omissions are flagged, built, and reported without turning the advisory set into a gate
+- Genuinely new scope remains a stop-and-report decision for the orchestrator
+- Capture points to the builder-facing rule instead of restating it
+
 ## 0.236.61 — Calibration Log Matches REQ-361 (2026-08-25)
 
 The board no longer reports a false calibration warning for REQ-361.
