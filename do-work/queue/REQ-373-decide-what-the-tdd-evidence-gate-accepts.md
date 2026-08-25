@@ -1,7 +1,8 @@
 ---
 id: REQ-373
 title: "[impact-rule-change] Decide what the TDD-evidence gate accepts as test-first evidence"
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-25T08:19:12Z
 created_at: 2026-08-24T23:37:06Z
 user_request: UR-073
 domain: general
@@ -74,13 +75,19 @@ visual inspection."
 
 ## Open Questions
 
-- [ ] Does a runnable, re-runnable browser/probe RED/GREEN satisfy `tdd: true`, or must the evidence
-  be a test in the project's harness?
+- [x] Does a runnable, re-runnable browser/probe RED/GREEN satisfy `tdd: true`, or must the evidence
+  be a test in the project's harness? → Confirmed: require a test in the project's harness
   Recommended: require a test in the harness, and route probe-only work to `tdd: false` plus a strong
   Red-Green Proof — that is what capture's own heuristic already says, and it keeps `tdd: true`
   meaning one thing.
   Also: accept a runnable probe when it is committed and re-runnable by another agent (then say so in
   Step 6.5 and name the property, not the tool); or accept it only for Route A REQs.
+
+  **Answered 2026-08-25** (UTC date per `actions/work-reference.md` → **Date-only stamps**):
+  User confirmed the builder's recommendation via `do-work clarify`: reserve `tdd: true` for work
+  that writes a failing test in the project's normal automated test suite before implementation.
+  Work supported only by a re-runnable browser or command-line probe stays `tdd: false` and must
+  carry strong repeatable before-and-after proof. No additional scope was requested.
 
 ## Builder Guidance
 
