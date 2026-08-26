@@ -329,6 +329,38 @@ User added, mid-run on REQ-378:
   touched by neither this REQ nor the main merge, and the error is identical before and after both.
   It is the one failure the canonical gate still reports here.
 
+## Remediation
+
+**Two P2 findings from the Codex reviewer on `3d36086`, both verified against CommonMark before
+acting.** Both are in `codeFenceRunFor`; the rest of the scanner is correct (tilde fences, three-space
+indents, four-space rejection and a backtick inside a *tilde* info string all behave).
+
+Verified by slicing the shipped function out and driving it under Node:
+
+| Input | Scanner | CommonMark |
+|---|---|---|
+| `> ````text` | prose | **fence** |
+| `` ```lang`invalid `` | fence | **prose** |
+
+- **F1 — a fence inside a blockquote is not recognised.** The scanner rejects the `>` container
+  prefix, so a blockquoted fence never opens. This is not hypothetical and it is not obscure: it is
+  the **outside-text containment format** (`actions/clarify.md` Step 4) that every UR's Full Verbatim
+  Input uses. `do-work/user-requests/UR-075/input.md` carries 21 ticket ids across a 346-line
+  `> ````text` block, and copying that UR annotates the user's own verbatim words. The containment
+  contract says the text stays "byte-identical apart from containment bytes"; annotating inside it
+  breaks that. This is the more serious of the two — it corrupts preserved input rather than merely
+  missing an expansion.
+- **F2 — an invalid backtick info string opens a fence that should not open.** CommonMark forbids a
+  backtick in a backtick-fence info string, and this repo's own renderer agrees — there is a test,
+  `TestRenderMarkdownInvalidBacktickInfoRemainsQuestionProse`. The scanner accepts any info text, so
+  a prose line like `` ```lang`invalid `` opens a fence that runs until the next closing fence or
+  EOF, silently leaving every genuine reference in between bare. Under-annotation, not corruption.
+
+Both fixes belong in `codeFenceRunFor` and are covered by the write set already declared. Held until
+the independent review returns rather than applied immediately, because that review was asked to
+re-run mutation claims and therefore edits this same file; two writers on one file is the collision
+this pipeline's worktree rules exist to prevent.
+
 ## Triage
 
 **Route: B** - Medium
