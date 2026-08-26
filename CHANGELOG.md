@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.237.0 — Repo-Wide Architecture Report (2026-08-26)
+
+New `do-work-toolbox architecture-report` writes a dated, immutable map of the whole repository — Mermaid diagrams, labelled claims, and a delta table that leads the file. Run it twice and diff the two reports to see exactly what moved in between.
+
+- New `architecture-report` action in do-work-toolbox: pre-flight against the previous report, ground in the native record, verify every prior claim, then publish `docs/architecture-report_yyyymmdd.md`.
+- Sections whose claims still verify are carried forward byte-identical, so a diff between two reports reads as the diff of the architecture rather than two independent authorings of the same facts.
+- Prior reports are never edited. A second run on the same day publishes `_2`, `_3`, and so on under the shared Collision-Safe Publication contract.
+- Findings stay where they belong: bugs, debt, and missing tests remain with `maintainability-audit` and `quick-wins`; the report links there instead of restating them.
+- New shipped `scripts/architecture-report-preflight.sh` owns the mechanical ends — locating the prior report, reading its watermark, and publishing without ever clobbering an existing file.
+
 ## 0.236.63 — TDD Evidence Requires a Harness Test (2026-08-25)
 
 The TDD gate now names the evidence boundary that capture and builders must share.

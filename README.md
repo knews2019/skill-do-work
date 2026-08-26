@@ -109,6 +109,8 @@ Run each sibling's `help` command for its menu. Core guides live in [`skills/do-
 
 For presentation, choose the artifact explicitly: `do-work-toolbox ai-report REQ-NNN` creates detailed stakeholder HTML for one completed item, `do-work-toolbox present-work all` refreshes the cross-project portfolio, and `do-work-toolbox present-video REQ-NNN` creates a source-only Remotion walkthrough. `showcase`, `visual report`, and `proof of work` are aliases for `ai-report`; `portfolio` and `work portfolio` are aliases for `present-work`; `remotion` and `video walkthrough` are aliases for `present-video`.
 
+For repository comprehension, `do-work-toolbox architecture-report` writes a new dated, immutable `docs/architecture-report_yyyymmdd.md` describing the whole repository with Mermaid diagrams, leading with what changed since the previous report. `architecture overview` and `map the repo` are aliases for it. It never edits a prior report, so two reports can be diffed to see what moved in between.
+
 Common extension calls also include `do-work-board board`, `do-work-knowledge bkb`, `do-work-knowledge memory`, `do-work-toolbox code-review`, and `do-work-toolbox inspect`.
 
 ### Queue board (`do-work-board board`)

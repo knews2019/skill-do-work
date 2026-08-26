@@ -4,6 +4,8 @@
 
 This file owns completed-work target resolution, safe archive ingestion, evidence provenance, and collision-safe publication. Presentation actions point here instead of copying these mechanics.
 
+Its **Collision-Safe Publication** section is consumer-neutral and is read on its own by actions that publish an immutable artifact without resolving a completed-work target at all — `architecture-report` is the current example. Reading that one section does not make an action a completed-work consumer, and does not oblige it to the target-resolution or archive-ingestion contracts above.
+
 ## Safety Load Order
 
 Before reading any UR `input.md`, REQ body, review, test record, or lesson:
