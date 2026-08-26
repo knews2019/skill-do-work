@@ -14,43 +14,50 @@
   // missing), absent → the Go scanner never saw it, leave it plain.
   var repoFileMentionExists = boardData.repoFileMentions || {};
 
-  // A body mention like "REQ-031" may name a compound card id ("UR-002-REQ-031").
-  // Index each card by its REQ segment so the short form still resolves; an
-  // ambiguous segment (two cards sharing it) stays unlinked rather than guessing.
-  var requestIdByReqSegment = {};
-  Object.keys(requestsById).forEach(function (fullRequestId) {
-    var segmentMatch = /REQ-\d+[a-z]?/i.exec(fullRequestId);
-    if (!segmentMatch || segmentMatch[0] === fullRequestId) {
-      return;
-    }
-    var segmentKey = segmentMatch[0].toUpperCase();
-    requestIdByReqSegment[segmentKey] = Object.prototype.hasOwnProperty.call(requestIdByReqSegment, segmentKey)
-      ? null // ambiguous — never guess
-      : fullRequestId;
-  });
-
-  function resolveTicketMention(mentionText) {
-    if (Object.prototype.hasOwnProperty.call(requestsById, mentionText)) {
-      return { kind: "req", id: mentionText };
-    }
-    if (Object.prototype.hasOwnProperty.call(userRequestsById, mentionText)) {
-      return { kind: "ur", id: mentionText };
-    }
-    var segmentTargetId = requestIdByReqSegment[mentionText.toUpperCase()];
-    if (segmentTargetId) {
-      return { kind: "req", id: segmentTargetId };
-    }
-    return null;
-  }
+  // resolveTicketMention, isAmbiguousTicketMention, ticketTitleFor and
+  // shortTicketTitle live in board-core.js — the clipboard surface resolves the
+  // same mentions, so there is one definition rather than two that drift.
 
   // In-board link to a REQ/UR drawer. The document-level [data-detail-kind]
   // delegation handles the click (and prevents the href="#" navigation).
-  function makeTicketLink(detailKind, detailId, linkText) {
-    var ticketLink = createElement("a", "ticket-link", linkText || detailId);
+  //
+  // expandTitle asks for the record's title beside the id, so a mention reads as
+  // more than a number. The tooltip rides with the expansion: an unexpanded link
+  // (a later mention, or one inside a code span) stays a bare mono id, because a
+  // code run must not be contaminated with prose in any form.
+  function makeTicketLink(detailKind, detailId, linkText, expandTitle) {
+    var ticketLink = createElement("a", "ticket-link");
     ticketLink.href = "#";
     ticketLink.dataset.detailKind = detailKind;
     ticketLink.dataset.detailId = detailId;
+    var described = describeTicketTitle(detailKind, detailId);
+    if (!expandTitle || !described.text) {
+      ticketLink.textContent = linkText || detailId;
+      return ticketLink;
+    }
+    ticketLink.title = described.text;
+    ticketLink.appendChild(createElement("span", "ticket-link-id", linkText || detailId));
+    ticketLink.appendChild(document.createTextNode(" "));
+    // is-fallback marks a substitute rather than the record's own words, so it is
+    // rendered in a quieter voice. Composed into the class name rather than added
+    // through classList because these two spans are the pieces the Node lane
+    // slices out and drives against a stub document.
+    ticketLink.appendChild(createElement(
+      "span",
+      described.isFallback ? "ticket-link-title is-fallback" : "ticket-link-title",
+      shortTicketTitle(described.text)
+    ));
     return ticketLink;
+  }
+
+  // An id the mention pattern matched but no board record answers to. A dead
+  // cross-reference is a typo or a pointer at never-captured work, and it is
+  // invisible today; this is the treatment .repo-file-missing already gives a
+  // file path the Go build could not find.
+  function makeMissingTicketMention(mentionText) {
+    var missingMention = createElement("span", "ticket-missing", mentionText);
+    missingMention.title = "Not found in this queue";
+    return missingMention;
   }
 
   function makeExternalUrlLink(urlText) {
@@ -89,7 +96,24 @@
   // File paths are only trusted inside code spans — REQ bodies conventionally
   // backtick real paths, and prose fractions like "TLS1.2/1.3" would otherwise
   // produce dead links.
-  function buildLinkifiedFragment(sourceText, insideCodeSpan) {
+  //
+  // mentionRenderState is one body's worth of memory, threaded in because this
+  // function only ever sees a single text node: expandedTicketKeys is why only
+  // the FIRST prose mention of an id carries its title, and glossaryEntries is
+  // the reference list the drawer appends underneath the body. A backticked
+  // mention earns its glossary line without spending the expansion — the
+  // glossary is precisely where a reader looks up an id that could not expand.
+  //
+  // Two code facts, not one, because the two suppressions they drive differ.
+  // insideCodeSpan covers any code context and suppresses the TITLE: a code run
+  // must not be contaminated with prose. insideFencedBlock is narrower and
+  // suppresses the BROKEN-REFERENCE FLAG, because a fenced block is where REQ
+  // bodies print templates and worked examples — `id: REQ-021` in a template is
+  // an illustration, not a reference, and flagging it asserts something false
+  // about a document that never pointed anywhere. An inline `REQ-005` in prose
+  // IS a reference and still flags. Collapsing these into one boolean is what
+  // made D-06 undecidable.
+  function buildLinkifiedFragment(sourceText, insideCodeSpan, insideFencedBlock, mentionRenderState) {
     var fragment = document.createDocumentFragment();
     var linkedAnything = false;
     var cursorIndex = 0;
@@ -118,7 +142,28 @@
       } else if (matchResult[3]) {
         var ticketTarget = resolveTicketMention(mentionText);
         if (ticketTarget) {
-          linkNode = makeTicketLink(ticketTarget.kind, ticketTarget.id, mentionText);
+          var ticketKey = ticketTarget.kind + ":" + ticketTarget.id;
+          var expandThisMention =
+            !insideCodeSpan && !Object.prototype.hasOwnProperty.call(mentionRenderState.expandedTicketKeys, ticketKey);
+          if (expandThisMention) {
+            mentionRenderState.expandedTicketKeys[ticketKey] = true;
+          }
+          if (!Object.prototype.hasOwnProperty.call(mentionRenderState.glossaryKeys, ticketKey)) {
+            mentionRenderState.glossaryKeys[ticketKey] = true;
+            mentionRenderState.glossaryEntries.push({
+              kind: ticketTarget.kind,
+              id: ticketTarget.id,
+              title: describeTicketTitle(ticketTarget.kind, ticketTarget.id),
+              // describeRequestStatus only knows requests; a UR has no pipeline
+              // status, so its line says what kind of record it is instead.
+              statusText: ticketTarget.kind === "ur" ? "user request" : describeRequestStatus(ticketTarget.id)
+            });
+          }
+          linkNode = makeTicketLink(ticketTarget.kind, ticketTarget.id, mentionText, expandThisMention);
+        } else if (!insideFencedBlock && !isAmbiguousTicketMention(mentionText)) {
+          // Ambiguous is not missing: the board holds records that match and
+          // refuses to pick one, so flagging it would be a false alarm.
+          linkNode = makeMissingTicketMention(mentionText);
         }
       }
       if (!linkNode) {
@@ -147,6 +192,11 @@
   // Post-processes a drawer body after its rendered-Markdown innerHTML lands:
   // retargets the renderer's own autolinks to a new tab (a body link must not
   // navigate the board away), then wraps every linkable mention in text nodes.
+  //
+  // Returns the glossary entries the body earned, in first-mention order, for
+  // renderDetailGlossary. This function owns the per-body memory because it is
+  // the only place that sees the whole body; it deliberately does not touch the
+  // glossary DOM, which keeps it callable against a body root alone.
   function linkifyDetailBody(bodyRootElement, recordTitle) {
     var firstBodyElement = bodyRootElement.firstElementChild;
     if (
@@ -163,6 +213,7 @@
         anchorElement.rel = "noopener";
       }
     });
+    var mentionRenderState = { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] };
     var textWalker = document.createTreeWalker(bodyRootElement, NodeFilter.SHOW_TEXT, null);
     var textNodes = [];
     while (textWalker.nextNode()) {
@@ -173,11 +224,17 @@
       if (!parentElement || parentElement.closest("a")) {
         return;
       }
-      var replacementFragment = buildLinkifiedFragment(textNode.nodeValue, Boolean(parentElement.closest("code")));
+      var replacementFragment = buildLinkifiedFragment(
+        textNode.nodeValue,
+        Boolean(parentElement.closest("code")),
+        Boolean(parentElement.closest("pre")),
+        mentionRenderState
+      );
       if (replacementFragment) {
         textNode.parentNode.replaceChild(replacementFragment, textNode);
       }
     });
+    return mentionRenderState.glossaryEntries;
   }
 
   // ---- detail panel (docked beside the board, non-modal) -------------------
@@ -189,6 +246,7 @@
   var drawerTitle = document.getElementById("detail-drawer-title");
   var drawerMeta = document.getElementById("detail-meta");
   var drawerBody = document.getElementById("detail-body");
+  var drawerGlossary = document.getElementById("detail-glossary");
   var drawerCopyButton = document.getElementById("detail-copy");
   var drawerCopyAllButton = document.getElementById("detail-copy-all");
   var lastFocusedElement = null;
@@ -211,6 +269,40 @@
     drawerMeta.appendChild(dd);
   }
 
+  // Emptied on every open beside drawerMeta, because nothing else clears the
+  // section: without this a UR opened after a REQ would wear the REQ's glossary.
+  function clearDetailGlossary() {
+    drawerGlossary.textContent = "";
+    drawerGlossary.hidden = true;
+  }
+
+  // The reference list under the body: every id the body resolved, once each,
+  // with the title untruncated and the status that says whether the work is
+  // still open. A body that cited nothing gets no section at all.
+  function renderDetailGlossary(glossaryEntries) {
+    if (glossaryEntries.length === 0) {
+      drawerGlossary.hidden = true;
+      return;
+    }
+    drawerGlossary.appendChild(createElement("h3", "detail-glossary-title", "Referenced tickets"));
+    var glossaryList = createElement("dl", "detail-glossary-list");
+    glossaryEntries.forEach(function (glossaryEntry) {
+      var termNode = createElement("dt", "detail-glossary-term");
+      termNode.appendChild(makeTicketLink(glossaryEntry.kind, glossaryEntry.id, glossaryEntry.id, false));
+      var definitionNode = createElement("dd", "detail-glossary-definition");
+      definitionNode.appendChild(createElement(
+        "span",
+        glossaryEntry.title.isFallback ? "detail-glossary-name is-fallback" : "detail-glossary-name",
+        glossaryEntry.title.text
+      ));
+      definitionNode.appendChild(createElement("span", "detail-glossary-status", glossaryEntry.statusText));
+      glossaryList.appendChild(termNode);
+      glossaryList.appendChild(definitionNode);
+    });
+    drawerGlossary.appendChild(glossaryList);
+    drawerGlossary.hidden = false;
+  }
+
   function schemaFieldDetailValue(originalValue, normalizedValue, isUnrecognized) {
     var displayedValue = originalValue || normalizedValue || "—";
     if (!isUnrecognized) {
@@ -224,6 +316,8 @@
 
   // Each dependency listed with the status that decides whether it is met, so
   // "why is this still waiting?" is answerable without opening the upstream REQ.
+  // Meta rows are reference lists rather than prose, so every id here carries
+  // its title regardless of what the body already expanded.
   function makeDependencyDetailList(request) {
     var unmetDependencyIds = request.unmetDependencies || [];
     var list = createElement("div", "detail-dep-list");
@@ -231,7 +325,7 @@
       var isUnmet = unmetDependencyIds.indexOf(dependencyId) !== -1;
       var row = createElement("span", isUnmet ? "detail-dep is-unmet" : "detail-dep is-met");
       var dependencyIdNode = requestsById[dependencyId]
-        ? makeTicketLink("req", dependencyId)
+        ? makeTicketLink("req", dependencyId, dependencyId, true)
         : createElement("span", null, dependencyId);
       dependencyIdNode.classList.add("detail-dep-id");
       row.appendChild(dependencyIdNode);
@@ -241,17 +335,26 @@
     return list;
   }
 
-  // Comma-separated REQ id list for a meta row, each known id a drawer link.
-  // Ids not on the board (free-text blocked_by entries, archived REQs) stay text.
+  // Stacked REQ id list for a meta row — one id per line, each known id a
+  // title-bearing drawer link. Ids not on the board (free-text blocked_by
+  // entries) stay text.
+  //
+  // Stacked rather than a comma run because titles made the run unreadable: the
+  // UR drawer's "REQ ids" row is one of this function's callers, and UR-031's
+  // 27 grouped REQs measured 156px as bare ids and 995px once each carried a
+  // title, pushing that UR's body 839px below the fold. One id per line is the
+  // shape makeDependencyDetailList already uses for "Depends on", and it reuses
+  // that row's flex-column styles rather than inventing a third layout.
   function makeTicketLinkList(ticketIds) {
-    var listContainer = createElement("span");
-    ticketIds.forEach(function (ticketId, ticketIndex) {
-      if (ticketIndex > 0) {
-        listContainer.appendChild(document.createTextNode(", "));
-      }
-      listContainer.appendChild(
-        requestsById[ticketId] ? makeTicketLink("req", ticketId) : document.createTextNode(ticketId)
-      );
+    var listContainer = createElement("div", "detail-dep-list");
+    ticketIds.forEach(function (ticketId) {
+      var row = createElement("span", "detail-dep");
+      var ticketNode = requestsById[ticketId]
+        ? makeTicketLink("req", ticketId, ticketId, true)
+        : createElement("span", null, ticketId);
+      ticketNode.classList.add("detail-dep-id");
+      row.appendChild(ticketNode);
+      listContainer.appendChild(row);
     });
     return listContainer;
   }
@@ -266,6 +369,7 @@
     drawerTitle.textContent = request.title || "untitled";
 
     drawerMeta.textContent = "";
+    clearDetailGlossary();
     if (request.statusUnrecognized) {
       var invalidStatus = createElement("span", "detail-status-invalid");
       invalidStatus.appendChild(document.createTextNode(request.originalStatus || request.status || "—"));
@@ -296,7 +400,10 @@
       );
     }
     if (request.userRequestId) {
-      appendMetaRow("User request", makeTicketLink("ur", request.userRequestId));
+      appendMetaRow(
+        "User request",
+        makeTicketLink("ur", request.userRequestId, request.userRequestId, true)
+      );
     }
     if (request.dependsOn && request.dependsOn.length > 0) {
       appendMetaRow("Depends on", makeDependencyDetailList(request));
@@ -416,7 +523,7 @@
     appendMetaRow("Tree", request.treeSection || "—");
 
     drawerBody.innerHTML = request.bodyHtml || "<p>(empty body)</p>";
-    linkifyDetailBody(drawerBody, request.title);
+    renderDetailGlossary(linkifyDetailBody(drawerBody, request.title));
     currentDetailKind = "req";
     currentDetailId = requestId;
     showDrawer();
@@ -432,6 +539,7 @@
     drawerTitle.textContent = userRequest.title || "(no input.md title)";
 
     drawerMeta.textContent = "";
+    clearDetailGlossary();
     var requestIds = userRequest.requestIds || [];
     appendMetaRow("Grouped REQs", String(requestIds.length));
     if (requestIds.length > 0) {
@@ -440,7 +548,7 @@
     appendMetaRow("input.md", userRequest.inputFilePresent ? "present" : "synthesized from REQ pointers");
 
     drawerBody.innerHTML = userRequest.bodyHtml || "<p>(no input.md body)</p>";
-    linkifyDetailBody(drawerBody, userRequest.title);
+    renderDetailGlossary(linkifyDetailBody(drawerBody, userRequest.title));
     currentDetailKind = "ur";
     currentDetailId = userRequestId;
     showDrawer();

@@ -1740,11 +1740,39 @@ body.is-resizing-detail .detail-resizer::before {
   text-decoration-color: var(--accent-claimed);
 }
 
-/* File-path mention the Go build could NOT find in the repo — rendered as
-   plain (non-link) text in the blocked accent so a dead reference is visible
-   at a glance. */
-.repo-file-missing {
+/* An expanded ticket link carries its title beside the id. The id keeps the
+   mono ticket look .ticket-link sets on the anchor; the title switches back to
+   prose and one ink step dimmer, so the id still leads the pair and the title
+   reads as the gloss it is. Stating the mono explicitly on the id means the
+   pairing survives a future change to .ticket-link's own family. */
+.ticket-link-id {
+  font-family: var(--font-mono);
+}
+/* A substitute for a title the record does not have — "no input.md" on a UR
+   synthesized from REQ pointers, "untitled" otherwise. Italic and one step
+   quieter so it reads as a description of the record rather than as its own
+   words, which is the whole reason it is distinguished at all. */
+.ticket-link-title.is-fallback,
+.detail-glossary-name.is-fallback {
+  font-style: italic;
+  color: var(--ink-faint);
+}
+.ticket-link-title {
+  font-family: var(--font-sans);
+  color: var(--ink-soft);
+}
+
+/* File-path mention the Go build could NOT find in the repo, and REQ/UR ids no
+   board record answers to — rendered as plain (non-link) text in the blocked
+   accent so a dead reference is visible at a glance. An AMBIGUOUS REQ segment
+   is not one of these: the board knows matching records and refuses to guess,
+   so it stays ordinary prose. */
+.repo-file-missing,
+.ticket-missing {
   color: var(--accent-blocked);
+}
+.ticket-missing {
+  font-family: var(--font-mono);
 }
 .detail-meta .meta-chip {
   font-family: var(--font-mono);
@@ -1774,6 +1802,46 @@ body.is-resizing-detail .detail-resizer::before {
 }
 .detail-dep.is-met .detail-dep-id {
   color: var(--ink-faint);
+}
+
+/* Drawer glossary — every REQ/UR id the body referenced, with its untruncated
+   title and status. It sits below the body as the drawer's last flex row, so a
+   body dense with ids can be read once and looked up afterwards instead of
+   opening each ticket in turn. */
+.detail-glossary {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+.detail-glossary-title {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+.detail-glossary-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 5px 14px;
+  margin: 0;
+  font-size: 13px;
+}
+.detail-glossary-term,
+.detail-glossary-definition {
+  margin: 0;
+  min-width: 0;
+}
+.detail-glossary-name {
+  color: var(--ink-base);
+  overflow-wrap: anywhere;
+}
+.detail-glossary-status {
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--ink-faint);
+  white-space: nowrap;
 }
 
 /* Rendered Markdown body */

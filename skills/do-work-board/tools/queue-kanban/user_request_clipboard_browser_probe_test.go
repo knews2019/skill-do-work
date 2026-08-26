@@ -44,6 +44,10 @@ func userRequestCopyFixture(
 func TestBrowserBehaviorUserRequestCopyAllIncludesGroupedRequests(t *testing.T) {
 	groupedUserRequest := userRequestCopyFixture("UR-700", "Grouped work", "[REQ-710]", "GROUPED-UR-BODY")
 	noMemberUserRequest := userRequestCopyFixture("UR-800", "No members", "[]", "NO-MEMBER-UR-BODY")
+	// REQ-379: the same body copied through two buttons with different payloads.
+	// REQ-710 is a grouped member, so Copy all excludes it while the plain Copy —
+	// whose payload is the UR file alone — still owes the reader its title.
+	groupedUserRequest.BodyMarkdown += "\nCovers REQ-710 and UR-800, plus REQ-9999.\n"
 
 	queueRequest := boardColumnCopyFixtureTicket("REQ-702", "Queue member", "pending", "frontend", "QUEUE-MEMBER-BODY")
 	queueRequest.UserRequestId = groupedUserRequest.UserRequestId
@@ -281,14 +285,27 @@ func TestBrowserBehaviorUserRequestCopyAllIncludesGroupedRequests(t *testing.T) 
 	if !reflect.DeepEqual(result.GroupedRequestIds, wantGroupedRequestIds) {
 		t.Fatalf("displayed grouped REQs = %v, want all-tree order %v", result.GroupedRequestIds, wantGroupedRequestIds)
 	}
-	groupedUserRequestRaw := groupedUserRequest.FrontmatterMarkdown + groupedUserRequest.BodyMarkdown
-	if result.PlainCopyPayload != groupedUserRequestRaw {
-		t.Fatalf("plain UR Copy changed payload:\n got %q\nwant %q", result.PlainCopyPayload, groupedUserRequestRaw)
+	// FrontmatterMarkdown is spliced in verbatim on purpose: it carries
+	// "requests: [REQ-710]", so a fence the annotator touched fails right here.
+	annotatedGroupedBody := "# Grouped work\n\nGROUPED-UR-BODY\n\n" +
+		"Covers REQ-710 (Working member) and UR-800 (No members), plus REQ-9999.\n"
+	wantPlainCopyPayload := groupedUserRequest.FrontmatterMarkdown + annotatedGroupedBody +
+		"\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
+		"- REQ-710 — Working member (claimed)\n" +
+		"- UR-800 — No members (user request)\n" +
+		"- REQ-9999 — not found in this queue\n"
+	if result.PlainCopyPayload != wantPlainCopyPayload {
+		t.Fatalf("plain UR Copy changed payload:\n got %q\nwant %q", result.PlainCopyPayload, wantPlainCopyPayload)
 	}
-	wantCopyAllPayload := groupedUserRequestRaw +
+	// Copy all carries REQ-710's own file, so its title is already in the paste
+	// and the appendix drops it — the same body, a different reference list.
+	wantCopyAllPayload := groupedUserRequest.FrontmatterMarkdown + annotatedGroupedBody +
 		queueRequest.FrontmatterMarkdown + queueRequest.BodyMarkdown +
 		workingRequest.FrontmatterMarkdown + workingRequest.BodyMarkdown +
-		archiveRequest.FrontmatterMarkdown + archiveRequest.BodyMarkdown
+		archiveRequest.FrontmatterMarkdown + archiveRequest.BodyMarkdown +
+		"\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
+		"- UR-800 — No members (user request)\n" +
+		"- REQ-9999 — not found in this queue\n"
 	if result.CopyAllPayload != wantCopyAllPayload {
 		t.Fatalf("UR Copy all changed membership/order/content:\n got %q\nwant %q", result.CopyAllPayload, wantCopyAllPayload)
 	}

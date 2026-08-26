@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync/atomic"
@@ -812,5 +813,445 @@ func TestMaintainerStrictBrowserBehaviorLane(t *testing.T) {
 	strictOutput, strictError := strictCommand.CombinedOutput()
 	if strictError != nil {
 		t.Fatalf("strict browser behavior lane failed: %v\n%s", strictError, strictOutput)
+	}
+}
+
+type ticketMentionLinkProbe struct {
+	DetailId      string `json:"detailId"`
+	DetailKind    string `json:"detailKind"`
+	TooltipTitle  string `json:"tooltipTitle"`
+	ExpandedTitle string `json:"expandedTitle"`
+	InsideCode    bool   `json:"insideCode"`
+	Text          string `json:"text"`
+}
+
+type ticketMissingMentionProbe struct {
+	TagName      string `json:"tagName"`
+	Text         string `json:"text"`
+	TooltipTitle string `json:"tooltipTitle"`
+	IsAnchor     bool   `json:"isAnchor"`
+}
+
+type ticketGlossaryBrowserRow struct {
+	Identifier string `json:"identifier"`
+	DetailKind string `json:"detailKind"`
+	Title      string `json:"title"`
+	Status     string `json:"status"`
+}
+
+type ticketDrawerProbeSnapshot struct {
+	DetailKind           string                      `json:"detailKind"`
+	DetailId             string                      `json:"detailId"`
+	BodyText             string                      `json:"bodyText"`
+	BodyLinks            []ticketMentionLinkProbe    `json:"bodyLinks"`
+	MissingMentions      []ticketMissingMentionProbe `json:"missingMentions"`
+	MetaLinks            []ticketMentionLinkProbe    `json:"metaLinks"`
+	GlossaryHidden       bool                        `json:"glossaryHidden"`
+	GlossaryRows         []ticketGlossaryBrowserRow  `json:"glossaryRows"`
+	HorizontalOverflow   float64                     `json:"horizontalOverflow"`
+	TitleSpanFontFamily  string                      `json:"titleSpanFontFamily"`
+	IdSpanFontFamily     string                      `json:"idSpanFontFamily"`
+	TitleSpanColour      string                      `json:"titleSpanColour"`
+	IdSpanColour         string                      `json:"idSpanColour"`
+	MissingMentionColour string                      `json:"missingMentionColour"`
+}
+
+type ticketDrawerProbeResult struct {
+	LocationHref string `json:"locationHref"`
+	// The scheme the ENGINE resolved, not the one the flag asked for: a flag this
+	// build silently ignores would let one palette be measured twice.
+	ResolvedScheme    string                    `json:"resolvedScheme"`
+	SurfaceColour     string                    `json:"surfaceColour"`
+	RequestDrawer     ticketDrawerProbeSnapshot `json:"requestDrawer"`
+	UserRequestDrawer ticketDrawerProbeSnapshot `json:"userRequestDrawer"`
+	NoReferenceDrawer ticketDrawerProbeSnapshot `json:"noReferenceDrawer"`
+	ConsoleErrors     []string                  `json:"consoleErrors"`
+}
+
+func ticketMentionFixtureTicket(requestID string, title string, status string, bodyMarkdown string) *RequestTicket {
+	return &RequestTicket{
+		RequestId:           requestID,
+		Title:               title,
+		Status:              status,
+		OriginalStatus:      status,
+		Domain:              "frontend",
+		OriginalDomain:      "frontend",
+		TreeSection:         "queue",
+		CreatedAt:           "2026-08-20T12:00:00Z",
+		FrontmatterMarkdown: "---\nid: " + requestID + "\ntitle: '" + title + "'\nstatus: " + status + "\n---\n",
+		BodyMarkdown:        bodyMarkdown,
+	}
+}
+
+// REQ-374 renders a body that cites one id twice, one inside a code span, a user
+// request, an id no record answers to, and an AMBIGUOUS segment two compound ids
+// share. Driving the real generated board is what makes the claim about pixels
+// checkable: the Node lane can prove the fragment shape, only an engine can say
+// the expansion did not push the drawer into horizontal overflow, and only a
+// real drawer reopen can prove the glossary does not survive into the next
+// ticket.
+func TestBrowserBehaviorDrawerTicketTitlesAndGlossary(t *testing.T) {
+	citedRequestTitle := "Keep the timeline forecast honest about ordering and timings"
+	citingRequest := ticketMentionFixtureTicket("REQ-500", "Cites other tickets", "claimed",
+		"## Notes\n\nRead REQ-1679 lessons, `REQ-1108` in code, UR-074 for context, "+
+			"plus REQ-9999 and REQ-042 stay honest.\n\nLater the REQ-1679 note matters again.\n")
+	citingRequest.UserRequestId = "UR-074"
+	citingRequest.DependsOn = []string{"REQ-1679"}
+	// BlockedBy and WriteSetOverlaps reach makeTicketLinkList, which serves three
+	// of the five meta rows the acceptance criterion names. Without them that
+	// function is never called in this fixture, and flipping its expandTitle
+	// argument to false passed the whole suite.
+	citingRequest.BlockedBy = []string{"REQ-1108"}
+	citingRequest.WriteSetOverlaps = []string{"REQ-600"}
+	citedRequest := ticketMentionFixtureTicket("REQ-1679", citedRequestTitle, "completed", "Cited body.\n")
+	citedRequest.TreeSection = "archive"
+	backtickedRequest := ticketMentionFixtureTicket("REQ-1108", "Short one", "pending", "Backticked body.\n")
+	firstAmbiguous := ticketMentionFixtureTicket("UR-001-REQ-042", "First half of an ambiguous pair", "pending", "A.\n")
+	secondAmbiguous := ticketMentionFixtureTicket("UR-002-REQ-042", "Second half of an ambiguous pair", "pending", "B.\n")
+	noReferenceRequest := ticketMentionFixtureTicket("REQ-600", "Cites nothing", "pending",
+		"Nothing to cross-reference here.\n")
+
+	citingUserRequest := &UserRequestTicket{
+		UserRequestId:       "UR-074",
+		Title:               "Ticket ids should carry their titles",
+		FrontmatterMarkdown: "---\nid: UR-074\ntitle: 'Ticket ids should carry their titles'\nrequests: [REQ-500]\n---\n",
+		BodyMarkdown:        "The ask, in full. See REQ-1108 for the shape.\n",
+		InputFilePresent:    true,
+	}
+
+	fixtureBoard := &Board{
+		GeneratedAt: time.Now().UTC(),
+		ProjectName: "REQ-374 ticket mention probe",
+		AllRequests: []*RequestTicket{
+			citingRequest, citedRequest, backtickedRequest, firstAmbiguous, secondAmbiguous, noReferenceRequest,
+		},
+		UserRequests:     []*UserRequestTicket{citingUserRequest},
+		UserRequestsById: map[string]*UserRequestTicket{citingUserRequest.UserRequestId: citingUserRequest},
+		Columns: BoardColumns{
+			Pending:      []*RequestTicket{backtickedRequest, firstAmbiguous, secondAmbiguous, noReferenceRequest},
+			PendingReady: []*RequestTicket{backtickedRequest, firstAmbiguous, secondAmbiguous, noReferenceRequest},
+			Claimed:      []*RequestTicket{citingRequest},
+		},
+	}
+	linkRequestsToUserRequests(fixtureBoard)
+
+	siteDirectory := t.TempDir()
+	if generateError := generateStaticSite(siteDirectory, fixtureBoard); generateError != nil {
+		t.Fatalf("generate ticket mention fixture: %v", generateError)
+	}
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read ticket mention fixture: %v", readError)
+	}
+
+	errorCaptureStub := `
+      window.__queueKanbanProbeErrors = [];
+      window.addEventListener("error", function (event) {
+        window.__queueKanbanProbeErrors.push(event.message || "window error");
+      });
+      var queueKanbanOriginalConsoleError = console.error;
+      console.error = function () {
+        window.__queueKanbanProbeErrors.push(Array.prototype.join.call(arguments, " "));
+        queueKanbanOriginalConsoleError.apply(console, arguments);
+      };
+`
+	probeScript := `
+      (function () {
+        var resultNode = document.createElement("pre");
+        resultNode.id = "` + browserProbeResultElementId + `";
+        document.body.appendChild(resultNode);
+
+        function waitFor(predicate, failureLabel) {
+          return new Promise(function (resolve, reject) {
+            var attempts = 0;
+            function poll() {
+              if (predicate()) {
+                resolve();
+                return;
+              }
+              attempts += 1;
+              if (attempts > 200) {
+                reject(new Error("timed out waiting for " + failureLabel));
+                return;
+              }
+              setTimeout(poll, 10);
+            }
+            poll();
+          });
+        }
+
+        function describeTicketLink(linkNode) {
+          var titleSpan = linkNode.querySelector(".ticket-link-title");
+          return {
+            detailId: linkNode.dataset.detailId,
+            detailKind: linkNode.dataset.detailKind,
+            tooltipTitle: linkNode.getAttribute("title") || "",
+            expandedTitle: titleSpan ? titleSpan.textContent : "",
+            insideCode: Boolean(linkNode.closest("code")),
+            text: linkNode.textContent
+          };
+        }
+
+        function describeDrawer() {
+          var drawerNode = document.getElementById("detail-drawer");
+          var bodyNode = document.getElementById("detail-body");
+          var glossaryNode = document.getElementById("detail-glossary");
+          var firstTitleSpan = bodyNode.querySelector(".ticket-link-title");
+          var firstIdSpan = bodyNode.querySelector(".ticket-link-id");
+          var firstMissingMention = bodyNode.querySelector(".ticket-missing");
+          return {
+            detailKind: document.getElementById("detail-kind").textContent,
+            detailId: document.getElementById("detail-id").textContent,
+            bodyText: bodyNode.textContent,
+            bodyLinks: Array.from(bodyNode.querySelectorAll("a.ticket-link")).map(describeTicketLink),
+            missingMentions: Array.from(bodyNode.querySelectorAll(".ticket-missing")).map(function (node) {
+              return {
+                tagName: node.tagName,
+                text: node.textContent,
+                tooltipTitle: node.getAttribute("title") || "",
+                isAnchor: node.tagName === "A"
+              };
+            }),
+            metaLinks: Array.from(document.getElementById("detail-meta").querySelectorAll("a.ticket-link"))
+              .map(describeTicketLink),
+            glossaryHidden: glossaryNode.hidden,
+            glossaryRows: Array.from(glossaryNode.querySelectorAll(".detail-glossary-term")).map(function (termNode) {
+              var definitionNode = termNode.nextElementSibling;
+              return {
+                identifier: termNode.textContent.trim(),
+                detailKind: termNode.querySelector("a.ticket-link").dataset.detailKind,
+                title: definitionNode.querySelector(".detail-glossary-name").textContent,
+                status: definitionNode.querySelector(".detail-glossary-status").textContent
+              };
+            }),
+            horizontalOverflow: drawerNode.scrollWidth - drawerNode.clientWidth,
+            titleSpanFontFamily: firstTitleSpan ? getComputedStyle(firstTitleSpan).fontFamily : "",
+            idSpanFontFamily: firstIdSpan ? getComputedStyle(firstIdSpan).fontFamily : "",
+            titleSpanColour: firstTitleSpan ? getComputedStyle(firstTitleSpan).color : "",
+            idSpanColour: firstIdSpan ? getComputedStyle(firstIdSpan).color : "",
+            missingMentionColour: firstMissingMention ? getComputedStyle(firstMissingMention).color : ""
+          };
+        }
+
+        function openCard(requestId) {
+          var card = document.querySelector('.req-card[data-detail-id="' + requestId + '"]');
+          if (!card) {
+            throw new Error("no card for " + requestId);
+          }
+          card.click();
+          return waitFor(function () {
+            return document.getElementById("detail-id").textContent === requestId;
+          }, requestId + " drawer");
+        }
+
+        async function runProbe() {
+          var result = {
+            locationHref: location.href,
+            resolvedScheme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+            surfaceColour: getComputedStyle(document.body).backgroundColor
+          };
+
+          await openCard("REQ-500");
+          result.requestDrawer = describeDrawer();
+
+          document.querySelector('#detail-body a[data-detail-kind="ur"][data-detail-id="UR-074"]').click();
+          await waitFor(function () {
+            return document.getElementById("detail-id").textContent === "UR-074";
+          }, "UR-074 drawer");
+          result.userRequestDrawer = describeDrawer();
+
+          await openCard("REQ-600");
+          result.noReferenceDrawer = describeDrawer();
+
+          result.consoleErrors = window.__queueKanbanProbeErrors.slice();
+          resultNode.textContent = JSON.stringify(result);
+        }
+
+        runProbe().catch(function (probeError) {
+          resultNode.textContent = JSON.stringify({
+            locationHref: location.href,
+            resolvedScheme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+            consoleErrors: window.__queueKanbanProbeErrors.concat([String((probeError && probeError.message) || probeError)])
+          });
+        });
+      })();
+`
+
+	probePage := string(indexBytes)
+	clientScriptOpen := "    <script>\n"
+	clientScriptOpenIndex := strings.LastIndex(probePage, clientScriptOpen)
+	if clientScriptOpenIndex < 0 {
+		t.Fatal("generated page has no client opening for the ticket mention stub")
+	}
+	errorStubIndex := clientScriptOpenIndex + len(clientScriptOpen)
+	probePage = probePage[:errorStubIndex] + errorCaptureStub + probePage[errorStubIndex:]
+	clientCloseIndex := strings.LastIndex(probePage, "})();")
+	if clientCloseIndex < 0 {
+		t.Fatal("generated page has no client close for the ticket mention probe")
+	}
+	clientCloseIndex += len("})();")
+	probePage = probePage[:clientCloseIndex] + "\n" + probeScript + probePage[clientCloseIndex:]
+
+	// BOTH palettes. This board is dark-first — :root is the dark palette and
+	// @media (prefers-color-scheme: light) overrides it — and Chromium resolves
+	// light with no flag, so a single run leaves the other palette checked by
+	// nothing. The expansion's ink hierarchy is a claim about both.
+	for _, colourScheme := range []struct {
+		name string
+		flag string
+	}{
+		{name: "light", flag: "--blink-settings=preferredColorScheme=1"},
+		{name: "dark", flag: "--blink-settings=preferredColorScheme=0"},
+	} {
+		t.Run(colourScheme.name, func(t *testing.T) {
+			assertDrawerTicketTitlesAndGlossary(
+				t, siteDirectory, probePage, colourScheme.name, colourScheme.flag, citedRequestTitle)
+		})
+	}
+}
+
+func assertDrawerTicketTitlesAndGlossary(
+	t *testing.T, siteDirectory string, probePage string,
+	schemeName string, schemeFlag string, citedRequestTitle string,
+) {
+	t.Helper()
+	resultJSON := runBrowserBehaviorProbeInDirectory(
+		t, "drawer ticket titles ("+schemeName+")", siteDirectory, probePage,
+		"--virtual-time-budget=30000", schemeFlag,
+	)
+	var result ticketDrawerProbeResult
+	if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
+		t.Fatalf("decode ticket mention probe: %v\n%s", decodeError, resultJSON)
+	}
+	if !strings.HasSuffix(result.LocationHref, "/"+browserProbePageFileName) {
+		t.Fatalf("ticket mention probe measured %q, not its probe page", result.LocationHref)
+	}
+	if result.ResolvedScheme != schemeName {
+		t.Fatalf("asked the engine for the %s palette and it resolved %s; this build ignores the "+
+			"colour-scheme flag, so one palette would be measured twice and reported as two",
+			schemeName, result.ResolvedScheme)
+	}
+	if len(result.ConsoleErrors) != 0 {
+		t.Fatalf("ticket mention browser errors: %q", result.ConsoleErrors)
+	}
+
+	requestDrawer := result.RequestDrawer
+	wantBodyLinks := []ticketMentionLinkProbe{
+		{
+			DetailId: "REQ-1679", DetailKind: "req", TooltipTitle: citedRequestTitle,
+			ExpandedTitle: citedRequestTitle, InsideCode: false,
+			Text: "REQ-1679 " + citedRequestTitle,
+		},
+		{DetailId: "REQ-1108", DetailKind: "req", InsideCode: true, Text: "REQ-1108"},
+		{
+			DetailId: "UR-074", DetailKind: "ur", TooltipTitle: "Ticket ids should carry their titles",
+			ExpandedTitle: "Ticket ids should carry their titles",
+			Text:          "UR-074 Ticket ids should carry their titles",
+		},
+		{DetailId: "REQ-1679", DetailKind: "req", Text: "REQ-1679"},
+	}
+	if !reflect.DeepEqual(requestDrawer.BodyLinks, wantBodyLinks) {
+		t.Errorf("REQ-500 body links = %#v,\nwant %#v", requestDrawer.BodyLinks, wantBodyLinks)
+	}
+	wantMissingMentions := []ticketMissingMentionProbe{
+		{TagName: "SPAN", Text: "REQ-9999", TooltipTitle: "Not found in this queue", IsAnchor: false},
+	}
+	if !reflect.DeepEqual(requestDrawer.MissingMentions, wantMissingMentions) {
+		t.Errorf("REQ-500 unresolved mentions = %#v, want %#v", requestDrawer.MissingMentions, wantMissingMentions)
+	}
+	if !strings.Contains(requestDrawer.BodyText, "REQ-042 stay honest") {
+		t.Errorf("REQ-500 body = %q, want the ambiguous segment left as plain prose", requestDrawer.BodyText)
+	}
+	for _, metaLink := range requestDrawer.MetaLinks {
+		if metaLink.ExpandedTitle == "" || metaLink.TooltipTitle == "" {
+			t.Errorf("meta row link %s carries no title: %#v", metaLink.DetailId, metaLink)
+		}
+	}
+	// Every meta row the criterion names, by the function that renders it:
+	// makeDependencyDetailList (Depends on), makeTicketLinkList (Blocked by,
+	// Overlapping write sets) and the direct User request call. Naming the ids
+	// rather than counting is what makes this bite — a count passes while a whole
+	// row silently loses its titles.
+	metaLinkTitles := map[string]string{}
+	for _, metaLink := range requestDrawer.MetaLinks {
+		metaLinkTitles[metaLink.DetailId] = metaLink.ExpandedTitle
+	}
+	for _, wantMetaRow := range []struct{ detailId, renderedBy string }{
+		{"REQ-1679", "makeDependencyDetailList (Depends on)"},
+		{"REQ-1108", "makeTicketLinkList (Blocked by)"},
+		{"REQ-600", "makeTicketLinkList (Overlapping write sets)"},
+		{"UR-074", "the direct User request call"},
+	} {
+		if metaLinkTitles[wantMetaRow.detailId] == "" {
+			t.Errorf("meta row link %s carries no expanded title — %s stopped expanding",
+				wantMetaRow.detailId, wantMetaRow.renderedBy)
+		}
+	}
+	wantRequestGlossary := []ticketGlossaryBrowserRow{
+		{Identifier: "REQ-1679", DetailKind: "req", Title: citedRequestTitle, Status: "completed"},
+		{Identifier: "REQ-1108", DetailKind: "req", Title: "Short one", Status: "pending"},
+		{Identifier: "UR-074", DetailKind: "ur", Title: "Ticket ids should carry their titles", Status: "user request"},
+	}
+	if requestDrawer.GlossaryHidden {
+		t.Error("REQ-500 cited five ids and its glossary stayed hidden")
+	}
+	if !reflect.DeepEqual(requestDrawer.GlossaryRows, wantRequestGlossary) {
+		t.Errorf("REQ-500 glossary = %#v,\nwant %#v", requestDrawer.GlossaryRows, wantRequestGlossary)
+	}
+	// The expansion's whole reason for truncating is that an over-long title must
+	// not widen the drawer at its default width.
+	if requestDrawer.HorizontalOverflow > 1 {
+		t.Errorf("expanded ticket titles pushed the drawer %vpx into horizontal overflow", requestDrawer.HorizontalOverflow)
+	}
+	if requestDrawer.TitleSpanFontFamily == requestDrawer.IdSpanFontFamily {
+		t.Errorf("title span kept the id's font (%q) — .ticket-link's mono was not reset",
+			requestDrawer.TitleSpanFontFamily)
+	}
+	if requestDrawer.TitleSpanColour == requestDrawer.IdSpanColour {
+		t.Errorf("title span and id span share colour %q — the title is not one step dimmer",
+			requestDrawer.TitleSpanColour)
+	}
+	// The dimmer step is only worth having if the title is still readable, and a
+	// broken reference only reads as broken if it is not the body's own ink.
+	surfaceLuminance, surfaceKnown := relativeLuminanceOfCSSColour(result.SurfaceColour)
+	titleLuminance, titleKnown := relativeLuminanceOfCSSColour(requestDrawer.TitleSpanColour)
+	if !surfaceKnown || !titleKnown {
+		t.Fatalf("could not read the %s palette colours: surface %q, title %q",
+			schemeName, result.SurfaceColour, requestDrawer.TitleSpanColour)
+	}
+	if titleContrast := contrastRatio(titleLuminance, surfaceLuminance); titleContrast < 4.5 {
+		t.Errorf("expanded title contrast against the page surface = %.2f:1 in the %s palette, want 4.5:1 for body text",
+			titleContrast, schemeName)
+	}
+	if requestDrawer.MissingMentionColour == "" {
+		t.Error("the unresolved mention rendered no colour to measure")
+	} else if requestDrawer.MissingMentionColour == requestDrawer.TitleSpanColour {
+		t.Errorf("a broken reference is drawn in the same ink as an ordinary title (%q) in the %s palette",
+			requestDrawer.MissingMentionColour, schemeName)
+	}
+
+	// The UR drawer linkifies its own body, and its glossary replaces — never
+	// inherits — the one the REQ drawer left behind.
+	userRequestDrawer := result.UserRequestDrawer
+	if userRequestDrawer.DetailKind != "UR" {
+		t.Fatalf("second drawer kind = %q, want UR", userRequestDrawer.DetailKind)
+	}
+	wantUserRequestGlossary := []ticketGlossaryBrowserRow{
+		{Identifier: "REQ-1108", DetailKind: "req", Title: "Short one", Status: "pending"},
+	}
+	if !reflect.DeepEqual(userRequestDrawer.GlossaryRows, wantUserRequestGlossary) {
+		t.Errorf("UR-074 glossary = %#v, want only its own citation %#v",
+			userRequestDrawer.GlossaryRows, wantUserRequestGlossary)
+	}
+	if len(userRequestDrawer.BodyLinks) != 1 || userRequestDrawer.BodyLinks[0].ExpandedTitle != "Short one" {
+		t.Errorf("UR-074 body links = %#v, want one expanded REQ-1108 link", userRequestDrawer.BodyLinks)
+	}
+
+	// A body that cited nothing gets no glossary at all — including right after a
+	// body that did.
+	noReferenceDrawer := result.NoReferenceDrawer
+	if !noReferenceDrawer.GlossaryHidden || len(noReferenceDrawer.GlossaryRows) != 0 {
+		t.Errorf("REQ-600 cited nothing but kept a glossary: hidden=%v rows=%#v",
+			noReferenceDrawer.GlossaryHidden, noReferenceDrawer.GlossaryRows)
 	}
 }
