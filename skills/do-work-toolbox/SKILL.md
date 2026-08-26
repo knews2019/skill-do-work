@@ -1,7 +1,7 @@
 ---
 name: do-work-toolbox
 description: Optional reviews, discovery, presentation, reporting, repository utilities, and companion installers for the modular do-work suite
-argument-hint: "validate-feedback | code-review | maintainability-audit | ui-review | ai-report | present-work | present-video | slop-check | quick-wins | scan-ideas | deep-explore | prime | inspect | note | stray-check | tidy-repo | tutorial | install | help"
+argument-hint: "validate-feedback | code-review | maintainability-audit | architecture-report | ui-review | ai-report | present-work | present-video | slop-check | quick-wins | scan-ideas | deep-explore | prime | inspect | note | stray-check | tidy-repo | tutorial | install | help"
 ---
 
 # Do-Work Toolbox Skill
@@ -16,6 +16,7 @@ This package holds useful but optional repository-facing capabilities outside th
 | `validate-feedback`, `triage feedback`, `review feedback` | `./actions/validate-feedback.md` |
 | `code-review`, `review codebase` | `./actions/code-review.md` |
 | `maintainability-audit`, `audit codebase`, `audit maintainability` | `./actions/maintainability-audit.md` |
+| `architecture-report`, `architecture overview`, `map the repo` | `./actions/architecture-report.md` |
 | `ui-review`, `review ui`, `design audit` | `./actions/ui-review.md` |
 | `ai-report`, `showcase`, `visual report`, `proof of work` | `./actions/ai-report.md` |
 | `present-work`, `portfolio`, `work portfolio` | `./actions/present-work.md` |

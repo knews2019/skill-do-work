@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.238.0 — Repo-Wide Architecture Report (2026-08-26)
+
+New `do-work-toolbox architecture-report` writes a dated, immutable map of the whole repository — Mermaid diagrams, labelled claims, and a delta table that leads the file. Run it twice and diff the two reports to see exactly what moved in between.
+
+- New `architecture-report` action in do-work-toolbox: pre-flight against the previous report, ground in the native record, verify every prior claim, then publish a dated bundle under `ai-reports/`.
+- Sections whose claims still verify are carried forward byte-identical, so a diff between two reports reads as the diff of the architecture rather than two independent authorings of the same facts.
+- Reports live beside the ones `ai-report` publishes, in the same `<date>_<time>_<name>/` bundle shape, so every dated report a project produces sits in one place.
+- Findings stay where they belong: bugs, debt, and missing tests remain with `maintainability-audit` and `quick-wins`; the report links there instead of restating them.
+- New shipped `scripts/architecture-report-preflight.sh` owns the mechanical ends — locating the prior report, reading its watermark, and publishing without ever clobbering an existing file.
+- Prior reports are never edited; a colliding run escalates to `-2`, `-3`, and so on under the shared Collision-Safe Publication contract.
+
 ## 0.237.0 — Done Cards Show How Long the Work Took (2026-08-26)
 
 The board's Recently Done cards said when work finished but never how long it took. Now they say both.
