@@ -18,6 +18,7 @@ related: [REQ-379, REQ-381]
 batch: ticket-id-autocomplete
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-detail.js
+  - skills/do-work-board/tools/queue-kanban/web/board-clipboard.js
   - skills/do-work-board/tools/queue-kanban/generate_test.go
 ---
 
@@ -81,6 +82,13 @@ never rendered in the drawer; only REQ and UR bodies reach `linkifyDetailBody`.
   reference to something; REQ-378's broken-reference flag is for ids that resolve to nothing in
   prose, and painting an author's own link in the blocked accent asserts more than is known.
 
+- **The clipboard half: a link reference definition must not be rewritten.** Folded in from REQ-379's
+  review (finding F6). `[REQ-100]: https://example.com/x` is a *definition*, and the clipboard's
+  annotator currently turns it into `[REQ-100 (Alpha ticket)]: https://example.com/x`, which orphans
+  every `[REQ-100]` reference in the pasted document — the paste silently loses links it had. Same
+  root cause this REQ already owns (a ticket id written in Markdown link syntax), so it is one fix
+  across both surfaces rather than two. Zero instances in `do-work/` today, as with the drawer half.
+
 ## Constraints
 
 - **Never wrap a mention twice.** The regression this guards against is a fragment nested inside a
@@ -131,8 +139,10 @@ is non-null, so the mention is never offered to `buildLinkifiedFragment` at all.
 **GREEN when:** That anchor shows `REQ-1108` plus its title, its `href` still points at
 `https://example.com/spec`, the glossary lists REQ-1108 once with its own title and status, a second
 `[REQ-1108](…)` in the same body stays bare, a renderer-produced autolink is still skipped, a dead id
-inside an anchor is not flagged, and running the linkifier twice over the same body produces
-identical DOM.
+inside an anchor is not flagged, running the linkifier twice over the same body produces identical
+DOM, and — the folded clipboard half — a copied body containing `[REQ-100]: https://example.com/x`
+keeps that definition line byte-identical, so every `[REQ-100]` reference in the paste still
+resolves.
 
 **Validation:** Inferred during capture, from a verified reviewer finding. The user chose to capture
 rather than build it.
