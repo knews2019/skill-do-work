@@ -41,6 +41,8 @@ Run the shipped helper from the repository root:
 <skill-root>/scripts/architecture-report-preflight.sh --scan docs
 ```
 
+`docs` is the reports directory — `<project-root>/docs/`, created on first publish. When the project reserves that path for something else, pass the directory it uses instead; both helper verbs take it as an argument. The only standing requirement is that every run in a given project passes the same one, because that is what lets a run find its own prior report.
+
 It emits `head_hash`, `report_date`, `report_candidate`, `prior_report`, `prior_hash`, and `prior_hash_resolves` as `key=value` lines. Read the project version from whatever the repository uses to declare one (a `VERSION` file, `package.json`, `Cargo.toml`, `pyproject.toml`); record `unversioned` when it declares none.
 
 When `prior_report` is non-empty, read that file completely — it is the baseline every later step compares against. Then scope what could have drifted:
@@ -127,7 +129,7 @@ Print at most eight lines, verdict first:
 
 ## Output Format
 
-One new file at `<project-root>/docs/architecture-report_<yyyymmdd>.md` (`_2`, `_3`, … on a same-day re-run). Nothing else is created and nothing existing is modified.
+One new file at `<project-root>/docs/architecture-report_<yyyymmdd>.md`, or the same name in the project's chosen reports directory (Step 1), with `_2`, `_3`, … on a same-day re-run. Nothing else is created and nothing existing is modified.
 
 ## Rules
 
