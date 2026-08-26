@@ -59,7 +59,7 @@
   //              state — a reassembled fence that looks verbatim is worse than a
   //              heading, because it pastes as a file whose values were guessed.
   //
-  // Both shapes then pass through annotateClipboardPayload, which is where this
+  // ONLY the raw shape passes through annotateClipboardPayload, which is where this
   // file's old "copied VERBATIM" rule now lives in a narrower form: the Go
   // payload is verbatim, the clipboard payload is those bytes plus marked
   // annotations, and the frontmatter fence is never touched. The round trip the
@@ -67,7 +67,10 @@
   // REQ or UR file — rests on the fence rule alone.
   //
   // copyHeadingForDetail and copyTextWithHeading therefore belong to the fallback
-  // path only.
+  // path only, and that path is deliberately NOT annotated. Its input is
+  // drawerBody.innerText, which the drawer has already expanded — annotating it
+  // again produced "REQ-1679 (Short one) Short one", duplicating every title.
+  // The titles are already there, so the fallback needs nothing added.
   function copyHeadingForDetail(detailKind, detailId) {
     var record = detailKind === "ur" ? userRequestsById[detailId] : requestsById[detailId];
     var recordTitle = record && record.title ? String(record.title).trim() : "";
@@ -168,6 +171,14 @@
       var blockquoteMatch = /^ {0,3}> ?/.exec(strippedText);
       if (blockquoteMatch) {
         strippedText = strippedText.slice(blockquoteMatch[0].length);
+        keepStripping = true;
+        continue;
+      }
+      // A fence can open directly as a list item — "- ```yaml". Bullet and
+      // ordered markers both, since a REQ body writes either.
+      var listMarkerMatch = /^ {0,3}(?:[-*+]|\d{1,9}[.)]) +/.exec(strippedText);
+      if (listMarkerMatch) {
+        strippedText = strippedText.slice(listMarkerMatch[0].length);
         keepStripping = true;
       }
     }
@@ -304,7 +315,26 @@
   // id keeps its exact bytes while still earning its appendix line. An unclosed
   // backtick run is ordinary prose, which is what a body writing "the ` glyph"
   // needs.
-  function annotateLineOutsideFence(lineText, annotationState) {
+  // A code span may cross a line break — CommonMark closes it on the matching
+  // run anywhere in the same paragraph, not the same line. Splitting the body
+  // into lines therefore has to carry the open run forward, or the opener reads
+  // as a stray backtick and every id until the close is expanded as prose. This
+  // is live: REQ-380's body opens a span on one line and closes it on the next
+  // around a backticked REQ-018 example.
+  function annotateLineOutsideFence(lineText, paragraphRemainder, annotationState) {
+    if (annotationState.openCodeSpanRunLength > 0) {
+      var continuedCloseOffset = findMatchingBacktickRun(lineText, 0, annotationState.openCodeSpanRunLength);
+      if (continuedCloseOffset < 0) {
+        // Still inside the span: the whole line is code.
+        return annotateMentionRun(lineText, false, true, annotationState);
+      }
+      var continuedEndOffset = continuedCloseOffset + annotationState.openCodeSpanRunLength;
+      annotationState.openCodeSpanRunLength = 0;
+      return (
+        annotateMentionRun(lineText.slice(0, continuedEndOffset), false, true, annotationState) +
+        annotateLineOutsideFence(lineText.slice(continuedEndOffset), paragraphRemainder, annotationState)
+      );
+    }
     if (lineText.indexOf("`") < 0) {
       return annotateMentionRun(lineText, true, true, annotationState);
     }
@@ -323,9 +353,20 @@
       annotatedLine += annotateMentionRun(lineText.slice(cursorOffset, runStartOffset), true, true, annotationState);
       var closingRunOffset = findMatchingBacktickRun(lineText, runEndOffset, openingRunLength);
       if (closingRunOffset < 0) {
+        // Unclosed on this line. A run only OPENS a span if a matching run
+        // appears later in the same paragraph; with none, CommonMark leaves the
+        // backticks as literal text. Deciding that needs the lookahead, or
+        // ```lang`invalid — a line that is prose precisely because its info
+        // string holds a backtick — would open a span that never closes and
+        // swallow the rest of the paragraph.
+        if (findMatchingBacktickRun(paragraphRemainder, 0, openingRunLength) < 0) {
+          annotatedLine += lineText.slice(runStartOffset, runEndOffset);
+          cursorOffset = runEndOffset;
+          continue;
+        }
+        annotationState.openCodeSpanRunLength = openingRunLength;
         annotatedLine += lineText.slice(runStartOffset, runEndOffset);
-        cursorOffset = runEndOffset;
-        continue;
+        return annotatedLine + annotateMentionRun(lineText.slice(runEndOffset), false, true, annotationState);
       }
       var codeSpanEndOffset = closingRunOffset + openingRunLength;
       annotatedLine += annotateMentionRun(lineText.slice(runStartOffset, codeSpanEndOffset), false, true, annotationState);
@@ -349,9 +390,24 @@
       } else if (fenceRun !== null) {
         openFenceRun = fenceRun;
       }
+      if (insideFencedBlock) {
+        // A fence boundary ends any span left open by prose above it.
+        annotationState.openCodeSpanRunLength = 0;
+      }
+      // The rest of the paragraph, which is how far a code span may reach: a
+      // blank line ends it, and so does a fence boundary.
+      var paragraphRemainder = "";
+      if (!insideFencedBlock) {
+        for (var aheadIndex = lineIndex + 1; aheadIndex < bodyLines.length; aheadIndex += 1) {
+          if (bodyLines[aheadIndex].trim() === "" || codeFenceRunFor(bodyLines[aheadIndex]) !== null) {
+            break;
+          }
+          paragraphRemainder += bodyLines[aheadIndex] + "\n";
+        }
+      }
       bodyLines[lineIndex] = insideFencedBlock
         ? annotateMentionRun(lineText, false, false, annotationState)
-        : annotateLineOutsideFence(lineText, annotationState);
+        : annotateLineOutsideFence(lineText, paragraphRemainder, annotationState);
     }
     return bodyLines.join("\n");
   }
@@ -362,7 +418,7 @@
   // pastes and reads on its own.
   function annotateTicketMentions(documentText) {
     var bodyStartOffset = frontmatterFenceEndOffset(documentText);
-    var annotationState = { expandedTicketIds: {}, referencedTicketIds: {}, referencedTickets: [] };
+    var annotationState = { expandedTicketIds: {}, referencedTicketIds: {}, referencedTickets: [], openCodeSpanRunLength: 0 };
     var annotatedBody = annotateMarkdownBody(documentText.slice(bodyStartOffset), annotationState);
     return {
       text: documentText.slice(0, bodyStartOffset) + annotatedBody,
@@ -509,9 +565,9 @@
       .then(
         function (markdownData) {
           var rawMarkdown = rawMarkdownForDetail(markdownData, requestedKind, requestedId);
-          // Primary path: the file's own bytes, copied untouched.
+          // Primary path: the file's own bytes, annotated in the body only.
           if (rawMarkdown !== null) {
-            return rawMarkdown;
+            return annotateClipboardPayload([rawMarkdown], [requestedId]);
           }
           return copyTextWithHeading(requestedKind, requestedId, renderedTextFallback);
         },
@@ -522,9 +578,6 @@
           return copyTextWithHeading(requestedKind, requestedId, renderedTextFallback);
         }
       )
-      .then(function (clipboardMarkdown) {
-        return annotateClipboardPayload([clipboardMarkdown], [requestedId]);
-      })
       .then(writeTextToClipboard)
       .then(
         function () {

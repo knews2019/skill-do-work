@@ -1524,6 +1524,8 @@ type clipboardAnnotationProbeResult struct {
 	NoReferencePayload    string   `json:"noReferencePayload"`
 	BlockquotedFence      string   `json:"blockquotedFencePayload"`
 	InvalidInfoString     string   `json:"invalidInfoStringPayload"`
+	ListItemFence         string   `json:"listItemFencePayload"`
+	MultiLineCodeSpan     string   `json:"multiLineCodeSpanPayload"`
 }
 
 // Execute the shipped clipboard annotator under Node. Each case below names a
@@ -1660,6 +1662,28 @@ func TestJavaScriptBehaviorClipboardAnnotatesBodiesAndAppendsOneGlossary(t *test
 		"```lang`invalid\n" +
 		"This line is prose and REQ-1679 in it is a real reference.\n"
 
+	// A fence can open directly as a list item. The prefix stripper's own comment
+	// promised list markers before the code handled them, so the promise and the
+	// behaviour disagreed — the comment was right and the code was not.
+	listItemFenceDocument := "---\nid: REQ-500\n---\n\n" +
+		"- ```yaml\n" +
+		"  depends_on: [REQ-1679]\n" +
+		"  ```\n\n" +
+		"Prose after the list cites REQ-1108.\n"
+
+	// A code span may cross a line break — CommonMark closes it on the matching
+	// run anywhere in the paragraph. Line-by-line scanning read the opener as a
+	// stray backtick and expanded the id inside. Live in REQ-380's body.
+	// The id sits on the CONTINUATION line on purpose. With it only on the
+	// opening line, dropping the cross-line carry changes nothing observable and
+	// the mutation passes — a vacuous assertion, which is the failure this suite
+	// has now shipped twice.
+	multiLineCodeSpanDocument := "---\nid: REQ-501\n---\n\n" +
+		"the example reads\n" +
+		"`- REQ-1679 a quoted worked example — the second\n" +
+		"finding for REQ-1108` matters.\n\n" +
+		"Trailing prose cites REQ-1108 again.\n"
+
 	javascriptProbe := `
 var requestsById = {
   "REQ-1679": { title: ` + mustMarshalJSONString(t, exactlySixtyTitle) + `, status: "completed" },
@@ -1696,7 +1720,9 @@ process.stdout.write(JSON.stringify({
   ambiguousPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, ambiguousDocument) + `], []),
   noReferencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, noReferenceDocument) + `], []),
   blockquotedFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, blockquotedFenceDocument) + `], ["REQ-500"]),
-  invalidInfoStringPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, invalidInfoStringDocument) + `], ["REQ-501"])
+  invalidInfoStringPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, invalidInfoStringDocument) + `], ["REQ-501"]),
+  listItemFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, listItemFenceDocument) + `], ["REQ-500"]),
+  multiLineCodeSpanPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, multiLineCodeSpanDocument) + `], ["REQ-501"])
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "clipboard ticket annotation", javascriptProbe)
@@ -1793,6 +1819,36 @@ process.stdout.write(JSON.stringify({
 		t.Errorf("prose before a blockquoted fence lost its expansion:\n%s", probeResult.BlockquotedFence)
 	}
 
+	// A fence opened as a list item is a fence. The prefix stripper's comment
+	// promised list markers before the code stripped them, so ids inside such a
+	// block were expanded as prose and its closer could be misread as a new
+	// opener, suppressing annotation of everything after it.
+	if strings.Contains(probeResult.ListItemFence, "depends_on: [REQ-1679 (") {
+		t.Errorf("an id inside a list-item fence was expanded:\n%s", probeResult.ListItemFence)
+	}
+	if !strings.Contains(probeResult.ListItemFence, "Prose after the list cites REQ-1108 (") {
+		t.Errorf("prose after a list-item fence lost its expansion — the closer was misread as an opener:\n%s",
+			probeResult.ListItemFence)
+	}
+
+	// A code span may cross a line break. Reading the opener as a stray backtick
+	// expanded the id inside a quoted worked example — live in REQ-380's body.
+	// Neither id inside the span may expand — the one on the opening line or the
+	// one on the continuation line. The continuation id is the discriminator:
+	// without the cross-line carry it is treated as prose and expands, and then
+	// the trailing prose mention becomes a repeat and stays bare, so both halves
+	// of this pair flip together.
+	if strings.Contains(probeResult.MultiLineCodeSpan, "REQ-1679 (") ||
+		strings.Contains(probeResult.MultiLineCodeSpan, "finding for REQ-1108 (") {
+		t.Errorf("an id inside a code span crossing a newline was expanded:\n%s", probeResult.MultiLineCodeSpan)
+	}
+	if !strings.Contains(probeResult.MultiLineCodeSpan, "finding for REQ-1108` matters.") {
+		t.Errorf("the code span's continuation line is not byte-identical:\n%s", probeResult.MultiLineCodeSpan)
+	}
+	if !strings.Contains(probeResult.MultiLineCodeSpan, "Trailing prose cites REQ-1108 (") {
+		t.Errorf("prose after a multi-line code span lost its expansion:\n%s", probeResult.MultiLineCodeSpan)
+	}
+
 	// CommonMark forbids a backtick in a backtick fence's info string, so the
 	// line is prose and what follows it is not fenced. Accepting it opened a
 	// block that never opens and left every later reference bare.
@@ -1814,7 +1870,10 @@ func TestClipboardAnnotationWiresEveryCopyHandler(t *testing.T) {
 		t.Errorf("annotateClipboardPayload call sites = %d, want one per Copy handler", callSiteCount)
 	}
 	for _, requiredCallSite := range []string{
-		"return annotateClipboardPayload([clipboardMarkdown], [requestedId]);",
+		// The drawer Copy annotates its RAW branch only. Its fallback input is
+		// drawerBody.innerText, which the drawer already expanded, so annotating
+		// that again duplicated every title ("REQ-1679 (Short one) Short one").
+		"return annotateClipboardPayload([rawMarkdown], [requestedId]);",
 		"[requestedUserRequestId].concat(requestedRequestIds)",
 		"return annotateClipboardPayload(rawMarkdownDocumentsForRequests(markdownData, requestIds), requestIds);",
 	} {
