@@ -897,6 +897,12 @@ func TestBrowserBehaviorDrawerTicketTitlesAndGlossary(t *testing.T) {
 			"plus REQ-9999 and REQ-042 stay honest.\n\nLater the REQ-1679 note matters again.\n")
 	citingRequest.UserRequestId = "UR-074"
 	citingRequest.DependsOn = []string{"REQ-1679"}
+	// BlockedBy and WriteSetOverlaps reach makeTicketLinkList, which serves three
+	// of the five meta rows the acceptance criterion names. Without them that
+	// function is never called in this fixture, and flipping its expandTitle
+	// argument to false passed the whole suite.
+	citingRequest.BlockedBy = []string{"REQ-1108"}
+	citingRequest.WriteSetOverlaps = []string{"REQ-600"}
 	citedRequest := ticketMentionFixtureTicket("REQ-1679", citedRequestTitle, "completed", "Cited body.\n")
 	citedRequest.TreeSection = "archive"
 	backtickedRequest := ticketMentionFixtureTicket("REQ-1108", "Short one", "pending", "Backticked body.\n")
@@ -1161,8 +1167,25 @@ func assertDrawerTicketTitlesAndGlossary(
 			t.Errorf("meta row link %s carries no title: %#v", metaLink.DetailId, metaLink)
 		}
 	}
-	if len(requestDrawer.MetaLinks) < 2 {
-		t.Errorf("REQ-500 meta rows = %#v, want at least the Depends on and User request links", requestDrawer.MetaLinks)
+	// Every meta row the criterion names, by the function that renders it:
+	// makeDependencyDetailList (Depends on), makeTicketLinkList (Blocked by,
+	// Overlapping write sets) and the direct User request call. Naming the ids
+	// rather than counting is what makes this bite — a count passes while a whole
+	// row silently loses its titles.
+	metaLinkTitles := map[string]string{}
+	for _, metaLink := range requestDrawer.MetaLinks {
+		metaLinkTitles[metaLink.DetailId] = metaLink.ExpandedTitle
+	}
+	for _, wantMetaRow := range []struct{ detailId, renderedBy string }{
+		{"REQ-1679", "makeDependencyDetailList (Depends on)"},
+		{"REQ-1108", "makeTicketLinkList (Blocked by)"},
+		{"REQ-600", "makeTicketLinkList (Overlapping write sets)"},
+		{"UR-074", "the direct User request call"},
+	} {
+		if metaLinkTitles[wantMetaRow.detailId] == "" {
+			t.Errorf("meta row link %s carries no expanded title — %s stopped expanding",
+				wantMetaRow.detailId, wantMetaRow.renderedBy)
+		}
 	}
 	wantRequestGlossary := []ticketGlossaryBrowserRow{
 		{Identifier: "REQ-1679", DetailKind: "req", Title: citedRequestTitle, Status: "completed"},

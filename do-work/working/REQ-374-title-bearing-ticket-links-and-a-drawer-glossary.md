@@ -45,9 +45,71 @@ body expands inline; later mentions stay bare. A glossary at the end of the body
 body referenced. Meta rows that are already reference lists always carry titles.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-kanban-board.md` plus general / coding-guardrails / communication-style / frontend / testing crew members.
+
+  **1. `web/board-core.js`** — new `// ---- ticket mention resolution ---` section after the dependency
+  helpers. Receives `requestIdByReqSegment` and `resolveTicketMention` from `board-detail.js`, with the
+  index build wrapped in a named `buildRequestIdByReqSegment()` so the ambiguity guard is slicable by
+  the Node harness (D-02). Adds `isAmbiguousTicketMention` (a segment the index maps to `null` — known
+  but unpickable, so never flagged broken), `ticketTitleFor(detailKind, detailId)`, the
+  `inlineTicketTitleMaxLength = 60` constant and `shortTicketTitle(fullTitle)` (word-boundary cut plus
+  ellipsis). No string literal in any of these carries a brace, so `sliceBalancedBlockAfter` stays safe.
+
+  **2. `web/board-detail.js`** — `makeTicketLink(detailKind, detailId, linkText, expandTitle)`: when
+  expanding, the anchor holds `.ticket-link-id`, a text-node space, and `.ticket-link-title`, and
+  `anchor.title` carries the untruncated title; the tooltip rides with the expansion, so a bare link
+  (later mention, code span) gains neither span nor tooltip (D-05). `buildLinkifiedFragment` takes a
+  third `mentionRenderState` argument holding `expandedTicketKeys`, `glossaryKeys` and
+  `glossaryEntries`; a resolved mention always enters the glossary, and expands inline only on its
+  first non-code occurrence. An unresolved, non-ambiguous id becomes a `span.ticket-missing` with the
+  `Not found in this queue` tooltip. `linkifyDetailBody` creates that state and RETURNS the glossary
+  entries — it does not touch the glossary DOM, which keeps
+  `TestJavaScriptBehaviorDrawerHeadingDeduplication`'s stub document valid. Both open functions clear
+  `#detail-glossary` beside `drawerMeta.textContent = ""` and call
+  `renderDetailGlossary(linkifyDetailBody(...))` at the bottom. The four meta-row call sites pass
+  `expandTitle = true`.
+
+  **3. `web/template.html`** — one empty `<section class="detail-glossary" id="detail-glossary" hidden>`
+  after `#detail-body`; heading and list are built in JS so clearing is one `textContent = ""`.
+
+  **4. `web/board.css`** — `.ticket-link-id` (mono), `.ticket-link-title` (`--font-sans` reset because
+  `.ticket-link` sets `--font-mono`, colour `--ink-soft`), `.ticket-missing` (mono + `--accent-blocked`,
+  mirroring `.repo-file-missing`), and the `.detail-glossary*` block. Existing `.ticket-link` rules are
+  extended, not replaced.
+
+  **5. `generate_test.go`** — new `sliceDeclarationAfter` helper (quote-aware scan to the terminating
+  semicolon) because `bodyMentionPattern`'s regex source carries `{0,7}` inside a string literal and
+  the brace counter reads that as a block end. `TestJavaScriptBehaviorTicketMentionTitlesAndGlossary`
+  runs the real sliced functions under Node against a stub `document`; a structural companion asserts
+  the resolver lives in `board-core.js` and no longer in `board-detail.js`.
+
+  **6. `browser_probe_test.go`** — `TestBrowserBehaviorDrawerTicketTitlesAndGlossary` drives the real
+  generated board: opens a REQ whose body cites one id twice, one in a code span, a UR, a dead id and
+  an ambiguous segment; then follows the body's UR link, then opens a mention-free REQ. Asserts
+  `location.href`, zero console errors, and the glossary's contents at each step.
+- [x] **[APPLY]:** Written as planned, with one addition the plan did not name: `makeMissingTicketMention`
+  in `board-detail.js`, factored out of the branch so the Node probe can slice it. Scope held to the
+  six files in `## Scope`; nothing outside the write set was touched.
+- [x] **[UNIFY]:** `git diff --stat` = 7 files, +1112/-45 (six from the write set plus this REQ file).
+  Reviewed each:
+  - `web/board-core.js` — additive only, one new section at the end; the file still ends in exactly one
+    LF, which `assembleBoardJavaScript` enforces and `TestJavaScriptBehaviorAssembledClientSyntax`
+    exercised. No string literal in the new functions carries a brace, so `sliceBalancedBlockAfter`
+    stays safe on them.
+  - `web/board-detail.js` — the moved block is gone (verified by
+    `TestTicketMentionResolverLivesOnlyInBoardCore`, which fails if either file holds the wrong copy);
+    every `makeTicketLink` call site updated (6 of them, grepped); no leftover two-argument call.
+  - `web/template.html` — one section added, `hidden` by default, covered by the global
+    `[hidden] { display: none !important }` guard.
+  - `web/board.css` — `.ticket-link` rules extended, not replaced; only tokens that exist in BOTH
+    palettes (`--ink-soft`, `--accent-blocked`, `--line-soft`, `--ink-faint`, `--ink-base`,
+    `--font-sans`, `--font-mono`) are used, so no rule is defined in one theme only.
+  - `generate_test.go` / `browser_probe_test.go` — new tests only; no existing test edited. The
+    heading-dedup probe still passes because `linkifyDetailBody` returns its entries instead of
+    touching the glossary DOM, so that probe's stub `document` remains sufficient.
+  - No debug artifacts: no `console.log`, no `debugger`, no commented-out code, no TODO in the diff.
+  Linters: `go vet ./...` clean, `gofmt -l .` empty, `node --check` on the assembled client green via
+  `TestJavaScriptBehaviorAssembledClientSyntax`.
 
 ## Why
 
@@ -173,6 +235,88 @@ every browser measurement.
   costs a manual hunt to notice. The board already owns this exact affordance for file paths, so the
   fix is one branch reusing an existing style, not a new concept.
 
+- **D-02 — Wrap the segment index build in `buildRequestIdByReqSegment()` (DECIDE & STATE):** the REQ
+  asked for the resolver to move "unchanged", and the bare `Object.keys(requestsById).forEach(...)`
+  statement moved verbatim would have been unreachable from the Node harness —
+  `sliceBalancedBlockAfter` brace-matches, so slicing that statement returns the callback and drops the
+  trailing `);`. The ambiguity guard is exactly the behaviour the REQ says must not regress, so leaving
+  it untestable was the wrong trade. Behaviour is byte-for-byte the same; only the wrapper is new.
+
+- **D-03 — A UR glossary line says "user request" where a REQ line says its status (DECIDE & STATE):**
+  the REQ specified "status from the existing `describeRequestStatus`", but that function looks a UR id
+  up in `requestsById` and returns the literal `"not in tree"` — a false statement printed next to a
+  record that is very much in the tree. The row is there to say what kind of thing you are looking at,
+  so a UR says so directly. Reversible in one line if the status column should stay REQ-only.
+
+- **D-04 — The title span sits INSIDE the anchor (DECIDE & STATE):** left open by Builder Guidance.
+  Inside means the whole "REQ-1679 <title>" pair is one click target and one tooltip, and a copied
+  selection carries both. A sibling span outside the anchor would have made the title unclickable next
+  to a clickable id, which reads as a bug. Confirmed by rendering: see the screenshots referenced below.
+
+- **D-05 — The tooltip rides with the expansion, not with every link (DECIDE & STATE):** the acceptance
+  criterion says a code-span id "gains no title", and the simplest rule that satisfies it literally is
+  one rule for both halves: expanded links carry the title span and `title=`; bare ones carry neither.
+  The cost is that a later prose mention has no hover text; the glossary at the foot of the body covers
+  that case, which is what it exists for.
+
+- **D-06 — A broken reference is flagged inside code spans too (DECIDE & STATE):** `insideCodeSpan`
+  suppresses title EXPANSION, not the missing-reference flag. The precedent settles it —
+  `.repo-file-missing` is applied only inside code spans, so flagging a dead thing inside a code run is
+  the board's existing habit, and the value is highest exactly there (REQ bodies backtick their
+  references). Verified by render: REQ-374's own `Read prime-cms.md, REQ-1679/REQ-1108 lessons` code
+  span shows both ids in the blocked accent, legibly, in both palettes.
+
+- **D-07 — A fenced block is exempt from the broken-reference flag; an inline code span is not
+  (DECIDE & STATE, user-directed):** D-06 above was reviewed and partly overturned. `closest("code")`
+  is true for a fenced `<pre><code>` exactly as for an inline `` `code` ``, so D-06 could not have
+  distinguished them — it asserted "not found in this queue" about every illustrative id in the
+  corpus. Measured on this tree: 43 flags on REQ-100, of which **30 were inside fenced blocks**; 27 on
+  REQ-095, of which 14. The decisive render is REQ-100's first fence, which holds **captured console
+  output from a test run** — the flag was mislabelling recorded evidence, not a reference. The
+  detection point now yields two facts: `insideCodeSpan` (any code context) still suppresses the
+  TITLE, and `insideFencedBlock` suppresses the FLAG. The user chose the narrower fenced-only
+  exemption over the reviewer's recommended any-code-span one, knowing it leaves REQ-374's own drawer
+  at 13 flags. Note what the precedent actually supports: `.repo-file-missing` fires only on a
+  positive Go-build verdict that a path is absent, so it has a third "unknown" state this branch does
+  not — which is why D-06's appeal to it did not hold.
+
+- **D-08 — `makeTicketLinkList` renders one id per line (DECIDE & STATE, user-directed):** titles
+  reached the UR drawer's `REQ ids` row, a caller the REQ never enumerated. The review reported that
+  row growing 156px → 995px wide; **that does not reproduce** — the row is width-constrained at 401px
+  and wraps, so what changes is height. Measured on UR-031: 98px bare, 527px as a comma run with
+  titles, 819px restacked. The restack is therefore 292px *taller* than what it was chosen to fix, and
+  pushes the body from 871px to 1164px. It stands on readability instead: the comma run gives no
+  boundary between entries and truncates titles mid-phrase. The row reuses `makeDependencyDetailList`'s
+  existing `.detail-dep-list` flex column rather than inventing a third layout. Open for reversal —
+  the corrected numbers were put to the user with the render.
+
+## Discovered Tasks
+
+- `board-clipboard.js:173` uses `drawerBody.innerText` as the Copy fallback for bundles that lack
+  `board-markdown.js`. That fallback text now carries the expanded inline titles. It is already a lossy
+  degraded path and REQ-375 owns the copy surface, so it is named here rather than changed.
+- `_dev/tests/maintainer-verify.sh` cannot run in this environment: it gates on ShellCheck 0.11.0 and
+  the machine has 0.9.0. Confirmed pre-existing — the same gate fails identically on a clean HEAD.
+- `_dev/tests/contract-regressions.sh` reports one failure, `entry-point parity: managed Just updater`,
+  because `just` is not installed here. Also pre-existing and unrelated to this REQ's files.
+- `TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage` fails on the Chromium build available
+  here (Playwright chromium-1194) with "the isolator was not exercised and the mutation pair is
+  vacuous". Confirmed pre-existing against a stashed tree.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/web/board-core.js` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/board-detail.js` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modified)
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/browser_probe_test.go` (modified)
+
+`git diff --stat`: 6 project files, +1070/−44. No Go source outside the two test files changed, matching the Scope declaration exactly.
+
+**What was done:** The ticket-mention resolver moved out of board-detail.js into board-core.js as its single definition and gained title lookup plus a 60-character word-boundary truncation. Drawer bodies now expand the first mention of each resolvable id inline and leave later mentions bare; meta rows always expand; an id inside a code span keeps its bare mono link and gains no title; an id matching no board record renders as a non-link span in the blocked accent with a not-found tooltip, while an ambiguous segment is left as plain prose. A glossary section listing every resolved id once, with its full title and status, is appended after the drawer body and explicitly cleared on both drawer-open paths. Six new tests cover it across the structural, Node-harness and browser lanes.
+
 ## Red-Green Proof
 
 **RED prompt/case:** Open the drawer on a REQ whose body cites a resolvable id twice — for example
@@ -277,12 +421,12 @@ closing `})();`, drive real UI and poll with a capped `waitFor`, assert
 ## Scope
 
 **Files I will touch:**
-- `skills/do-work-board/tools/queue-kanban/web/board-core.js` (modify) — receive `resolveTicketMention` and the REQ-segment index from `board-detail.js`; add `ticketTitleFor` and `shortTicketTitle`
-- `skills/do-work-board/tools/queue-kanban/web/board-detail.js` (modify) — title-bearing `makeTicketLink`, per-render first-mention set, broken-reference span, glossary build and its clearing in both open functions
-- `skills/do-work-board/tools/queue-kanban/web/template.html` (modify) — the empty `<section id="detail-glossary">` after `#detail-body`
-- `skills/do-work-board/tools/queue-kanban/web/board.css` (modify) — `.ticket-link-id`, `.ticket-link-title`, `.detail-glossary`, and reuse of the blocked accent for a broken ticket reference
-- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modify) — `TestJavaScriptBehavior…` probes for the pure functions plus a structural companion
-- `skills/do-work-board/tools/queue-kanban/browser_probe_test.go` (modify) — `TestBrowserBehavior…` probe for the rendered drawer
+- `skills/do-work-board/tools/queue-kanban/web/board-core.js` (modify) — sole home of the mention resolver, title lookup and truncation
+- `skills/do-work-board/tools/queue-kanban/web/board-detail.js` (modify) — title-bearing links, first-mention set, broken-reference span, glossary and its clearing
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modify) — the empty glossary section after the drawer body
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modify) — id span, title span, missing-reference and glossary styles
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modify) — structural and Node-harness probes plus the one-definition guard
+- `skills/do-work-board/tools/queue-kanban/browser_probe_test.go` (modify) — rendered-drawer probe in both themes
 
 **Files I will NOT touch:** any Go source outside the two test files (the payload already carries
 titles), `board-clipboard.js` (REQ-375 owns the copy surface), `board-filters.js` and any citation

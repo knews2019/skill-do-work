@@ -95,7 +95,17 @@
   // the reference list the drawer appends underneath the body. A backticked
   // mention earns its glossary line without spending the expansion — the
   // glossary is precisely where a reader looks up an id that could not expand.
-  function buildLinkifiedFragment(sourceText, insideCodeSpan, mentionRenderState) {
+  //
+  // Two code facts, not one, because the two suppressions they drive differ.
+  // insideCodeSpan covers any code context and suppresses the TITLE: a code run
+  // must not be contaminated with prose. insideFencedBlock is narrower and
+  // suppresses the BROKEN-REFERENCE FLAG, because a fenced block is where REQ
+  // bodies print templates and worked examples — `id: REQ-021` in a template is
+  // an illustration, not a reference, and flagging it asserts something false
+  // about a document that never pointed anywhere. An inline `REQ-005` in prose
+  // IS a reference and still flags. Collapsing these into one boolean is what
+  // made D-06 undecidable.
+  function buildLinkifiedFragment(sourceText, insideCodeSpan, insideFencedBlock, mentionRenderState) {
     var fragment = document.createDocumentFragment();
     var linkedAnything = false;
     var cursorIndex = 0;
@@ -142,7 +152,9 @@
             });
           }
           linkNode = makeTicketLink(ticketTarget.kind, ticketTarget.id, mentionText, expandThisMention);
-        } else if (!isAmbiguousTicketMention(mentionText)) {
+        } else if (!insideFencedBlock && !isAmbiguousTicketMention(mentionText)) {
+          // Ambiguous is not missing: the board holds records that match and
+          // refuses to pick one, so flagging it would be a false alarm.
           linkNode = makeMissingTicketMention(mentionText);
         }
       }
@@ -207,6 +219,7 @@
       var replacementFragment = buildLinkifiedFragment(
         textNode.nodeValue,
         Boolean(parentElement.closest("code")),
+        Boolean(parentElement.closest("pre")),
         mentionRenderState
       );
       if (replacementFragment) {
@@ -312,19 +325,26 @@
     return list;
   }
 
-  // Comma-separated REQ id list for a meta row, each known id a title-bearing
-  // drawer link. Ids not on the board (free-text blocked_by entries) stay text.
+  // Stacked REQ id list for a meta row — one id per line, each known id a
+  // title-bearing drawer link. Ids not on the board (free-text blocked_by
+  // entries) stay text.
+  //
+  // Stacked rather than a comma run because titles made the run unreadable: the
+  // UR drawer's "REQ ids" row is one of this function's callers, and UR-031's
+  // 27 grouped REQs measured 156px as bare ids and 995px once each carried a
+  // title, pushing that UR's body 839px below the fold. One id per line is the
+  // shape makeDependencyDetailList already uses for "Depends on", and it reuses
+  // that row's flex-column styles rather than inventing a third layout.
   function makeTicketLinkList(ticketIds) {
-    var listContainer = createElement("span");
-    ticketIds.forEach(function (ticketId, ticketIndex) {
-      if (ticketIndex > 0) {
-        listContainer.appendChild(document.createTextNode(", "));
-      }
-      listContainer.appendChild(
-        requestsById[ticketId]
-          ? makeTicketLink("req", ticketId, ticketId, true)
-          : document.createTextNode(ticketId)
-      );
+    var listContainer = createElement("div", "detail-dep-list");
+    ticketIds.forEach(function (ticketId) {
+      var row = createElement("span", "detail-dep");
+      var ticketNode = requestsById[ticketId]
+        ? makeTicketLink("req", ticketId, ticketId, true)
+        : createElement("span", null, ticketId);
+      ticketNode.classList.add("detail-dep-id");
+      row.appendChild(ticketNode);
+      listContainer.appendChild(row);
     });
     return listContainer;
   }

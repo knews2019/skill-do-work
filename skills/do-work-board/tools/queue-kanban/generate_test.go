@@ -1071,6 +1071,9 @@ type ticketGlossaryRowProbe struct {
 type ticketMentionProbeResult struct {
 	ShortTitles             []string                 `json:"shortTitles"`
 	CodeSpanFragment        []ticketMentionNodeProbe `json:"codeSpanFragment"`
+	InlineCodeMissing       []ticketMentionNodeProbe `json:"inlineCodeMissingFragment"`
+	FencedMissing           []ticketMentionNodeProbe `json:"fencedMissingFragment"`
+	ProseMissing            []ticketMentionNodeProbe `json:"proseMissingFragment"`
 	ProseFragment           []ticketMentionNodeProbe `json:"proseFragment"`
 	RepeatFragment          []ticketMentionNodeProbe `json:"repeatFragment"`
 	AmbiguousOnlyLinked     bool                     `json:"ambiguousOnlyLinked"`
@@ -1173,14 +1176,39 @@ function describeFragment(fragment) {
 var mentionRenderState = { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] };
 // A backticked id comes first on purpose: it must not consume the inline
 // expansion slot, and it must still earn its glossary line.
-var codeSpanFragment = buildLinkifiedFragment("REQ-1108", true, mentionRenderState);
+var codeSpanFragment = buildLinkifiedFragment("REQ-1108", true, false, mentionRenderState);
 var proseFragment = buildLinkifiedFragment(
   "Read REQ-1679 lessons, REQ-1108 again, UR-074 for context, plus REQ-9999 and REQ-042.",
   false,
+  false,
   mentionRenderState
 );
-var repeatFragment = buildLinkifiedFragment("the REQ-1679 note and REQ-1108 once more", false, mentionRenderState);
-var ambiguousOnlyFragment = buildLinkifiedFragment("see REQ-042 today", false, { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] });
+var repeatFragment = buildLinkifiedFragment("the REQ-1679 note and REQ-1108 once more", false, false, mentionRenderState);
+var ambiguousOnlyFragment = buildLinkifiedFragment("see REQ-042 today", false, false, { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] });
+
+// The two code contexts drive DIFFERENT suppressions, so each is probed alone
+// against the same missing id. An inline code span is still a reference and
+// flags; a fenced block prints templates and worked examples and must not.
+// REQ-042 rides along in both to prove the ambiguity guard is independent of
+// context — ambiguous is never flagged, fenced or not.
+var inlineCodeMissingFragment = buildLinkifiedFragment(
+  "depends_on: [REQ-9999, REQ-042]",
+  true,
+  false,
+  { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] }
+);
+var fencedMissingFragment = buildLinkifiedFragment(
+  "depends_on: [REQ-9999, REQ-042]",
+  true,
+  true,
+  { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] }
+);
+var proseMissingFragment = buildLinkifiedFragment(
+  "see REQ-9999 and REQ-042",
+  false,
+  false,
+  { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] }
+);
 
 renderDetailGlossary(mentionRenderState.glossaryEntries);
 var glossaryList = drawerGlossary.childNodes.filter(function (childNode) { return childNode.stubTag === "dl"; })[0];
@@ -1212,6 +1240,9 @@ process.stdout.write(JSON.stringify({
     shortTicketTitle("")
   ],
   codeSpanFragment: describeFragment(codeSpanFragment),
+  inlineCodeMissingFragment: describeFragment(inlineCodeMissingFragment),
+  fencedMissingFragment: describeFragment(fencedMissingFragment),
+  proseMissingFragment: describeFragment(proseMissingFragment),
   proseFragment: describeFragment(proseFragment),
   repeatFragment: describeFragment(repeatFragment),
   ambiguousOnlyLinked: ambiguousOnlyFragment !== null,
@@ -1304,6 +1335,52 @@ process.stdout.write(JSON.stringify({
 	}
 	if probeResult.AmbiguousOnlyLinked {
 		t.Error("a text run whose only mention is ambiguous was rewritten; it must be left untouched")
+	}
+
+	// Where the broken-reference flag fires, by context. The three cases share one
+	// missing id (REQ-9999) and one ambiguous id (REQ-042) so the only variable is
+	// the context, and each pins a distinct rule:
+	//
+	//   prose        → flagged. An id written in prose is a real reference.
+	//   inline code  → flagged. A backticked id in prose is still a reference;
+	//                  REQ bodies conventionally backtick the ids they cite.
+	//   fenced block → NOT flagged. A fence prints templates and worked examples
+	//                  ("id: REQ-021"), which point at nothing and must not be
+	//                  asserted missing. Without this, 115 of the 397 flags on
+	//                  this repo's own board are illustrations, not typos.
+	//
+	// REQ-042 must be absent from all three: ambiguous is not missing, in any
+	// context. Deleting the insideFencedBlock guard makes fencedMissingCount 1;
+	// widening it to any code context makes inlineCodeMissingCount 0. Both fail.
+	countMissingSpans := func(fragmentNodes []ticketMentionNodeProbe) (missingCount int, sawAmbiguous bool) {
+		for _, fragmentNode := range fragmentNodes {
+			if fragmentNode.ClassName == "ticket-missing" {
+				missingCount++
+				if fragmentNode.Text == "REQ-042" {
+					sawAmbiguous = true
+				}
+			}
+		}
+		return missingCount, sawAmbiguous
+	}
+	for _, flagCase := range []struct {
+		contextName      string
+		fragmentNodes    []ticketMentionNodeProbe
+		wantMissingCount int
+	}{
+		{"prose", probeResult.ProseMissing, 1},
+		{"inline code span", probeResult.InlineCodeMissing, 1},
+		{"fenced code block", probeResult.FencedMissing, 0},
+	} {
+		gotMissingCount, sawAmbiguous := countMissingSpans(flagCase.fragmentNodes)
+		if gotMissingCount != flagCase.wantMissingCount {
+			t.Errorf("REQ-9999 in a %s: %d ticket-missing spans, want %d",
+				flagCase.contextName, gotMissingCount, flagCase.wantMissingCount)
+		}
+		if sawAmbiguous {
+			t.Errorf("the ambiguous REQ-042 was flagged missing in a %s — ambiguous is not missing",
+				flagCase.contextName)
+		}
 	}
 
 	// A later mention of an already-expanded id stays bare, and so does its tooltip.
