@@ -10,6 +10,28 @@ The Copy button decided which ids to annotate by scanning for backticks by hand 
 - The 150 lines of hand-rolled Markdown scanning in the browser are gone. What the page still does is insert titles at positions the board computed for it.
 - An id inside a raw HTML block is no longer annotated, matching what the drawer shows — the drawer never rendered those words in the first place.
 
+## 0.240.3 — Churn Counts Living Code Only (2026-08-26)
+
+The audit-metrics stakes said every historical touch transfers to the surviving path, which reads as though a staged migration's delete-the-original commit counts too. It never has.
+
+- `prime-audit-metrics.md` now states that a `D` entry is not a touch, and names the test that pins it
+
+## 0.240.2 — Primes Stop Accumulating (2026-08-26)
+
+Prime files had quietly become archives: 54% of every prime was accumulated lessons, and the pipeline appended more on every finished REQ. Lessons now live in a satellite beside the prime, and `prime audit` can shrink a file instead of only growing one.
+
+- Each prime's lessons move to `lessons-<name>.md` beside it; the prime keeps a one-line pointer. Prime corpus drops from 13,164 words to 6,243 with nothing lost
+- `do-work-toolbox prime audit` gains a shrink pass that relocates overflow and reports `Shrink: N primes, M lines relocated` — the audit could previously only add
+- The prime budget is now the whole file (~60 lines), not one section: the old rule capped the routing index that never overflowed and exempted the sections that did
+- `do-work run` and `do-work-toolbox review-work` write lessons to the satellite instead of the prime, and the "inlined, not linked" marker branch is retired — link form now follows whether the archive path actually resolves
+
+## 0.240.1 — Prime Stakes Refresh (2026-08-26)
+
+A `do-work-toolbox prime audit` pass over the suite's own prime files. The audit-metrics tool now carries the value/risk context it was missing, and the updater's stakes say who actually shows you the diff.
+
+- `prime-audit-metrics.md` gains a `## Stakes` section covering churn attribution across renames and copies, and the strictly-greater band edge
+- `prime-do-work-update.md` stakes now credit the full-suite installer with the reviewed diff and the single confirmation, and name the Git-worktree-root and not-newer-version guards the updater itself enforces
+
 ## 0.240.0 — Copy Brings the Titles With It (2026-08-26)
 
 Copying a ticket used to paste a wall of bare numbers into whatever you pasted it into. Now the paste explains itself: the first mention of each id it cites carries that ticket's title, and a list at the end names every id the body referenced.
@@ -1496,6 +1518,7 @@ Every install now talks like a concise senior engineer. A new crew member carrie
 - The suite installer gains one managed surface: an HTML-comment-delimited section in the consumer project's `CLAUDE.md` linking the crew member — created, refreshed, diff-reviewed, backed up, and recovered like the Just section; bytes outside the markers are never touched.
 - `replace-text-section.sh` accepts `--begin-marker`/`--end-marker` so the atomic section replacer can own non-Justfile sections.
 - Fixed a Linux-only installer failure: the settings mode probe ran the BSD `stat -f` form first, which poisons the captured mode under GNU stat and broke every re-install/update with an existing `.claude/settings.json`.
+
 ## 0.204.0 — The AI-Report Image Batch Gets Its Own Shipped Script (2026-08-17)
 
 The parallel image-generation machinery for AI reports lived as ~110 lines of shell inside a Markdown reference file — so the test suite had to `awk` it back out of the prose just to run it. It now ships as a real script, and the reference file keeps what's actually per-report: the style brief and the prompts.
@@ -1587,6 +1610,7 @@ A timestamped portfolio snapshot and the canonical summary were the same file un
 - A canonical path occupied by a directory fails closed and leaves that directory untouched
 - Every reported path is confirmed to be a regular file before it is printed
 - Two new named replays, plus one older assertion corrected: it had been locking in the shared inode
+
 ## 0.199.4 — AI-Report Image Batch Owns Its Processes and Its Publication (2026-08-17)
 
 Interrupting a report run used to delete the staging directory and walk away while the image backends kept running against it. And because `mv` treats an existing directory as a container rather than a collision, a `generated/` folder that appeared at the last moment would silently swallow the finished batch while the run reported success. Both are closed, and both failure paths are now replayed in the test suite.
@@ -1983,7 +2007,6 @@ The root CLAUDE.md went from a 202-line everything-file to a short core in the m
 - Core gains a plain-words glossary, personal coding preferences (YAGNI, focused tests, match ceremony to the task), a Verify section (exit code zero is the only proof), and push-back-then-continue communication rules
 - The Kanban board three-write-surfaces sentence stays in CLAUDE.md (lock-in test unchanged); live pointers in `_dev/tests/contract-regressions.sh` and `.gitattributes` now cite the primes
 
-
 ## 0.186.34 — Prescribed Shell Becomes Executable (2026-08-11)
 
 Reusable shell mechanics now ship as executable, fixture-tested scripts instead of copied multi-line Markdown. Callers keep local intent and policy while semantic traps have attributable runtime tests.
@@ -1991,7 +2014,6 @@ Reusable shell mechanics now ship as executable, fixture-tested scripts instead 
 - Promotes 17 multi-line blocks into 11 scripts across core, knowledge, and toolbox while retaining 21 inline-residue and 2 Go-owned blocks
 - Adds 11 named behavior cases for atomic publication, merge display, screenshot races, portable timeouts, protected inventory, literal exact deletion, memory hooks/recall, and toolbox installs
 - Shrinks shipped Markdown by 303 nonblank shell-body lines and ratchets executable homes, package paths, defensive evidence, and the full 34-path scope
-
 
 ## 0.186.33 — Findings Close with Proof (2026-08-11)
 
@@ -2001,7 +2023,6 @@ Review and triage findings can no longer close on a bare patch or unrelated gree
 - Adds the one-paragraph earned-defense question to the always-loaded simplicity guardrail and keeps triage behavior citation-sized
 - Makes every shipped review-generated REQ template emit compatible Red-Green Proof and dynamically ratchets future producers
 
-
 ## 0.186.32 — Root Markdown Fence Info Validity (2026-08-11)
 
 The shipped reference classifier now agrees with the pinned Markdown renderer when a root backtick-fence candidate contains a forbidden backtick in its info string. Invalid openers remain visible prose instead of masking later links.
@@ -2009,7 +2030,6 @@ The shipped reference classifier now agrees with the pinned Markdown renderer wh
 - Shares one marker-aware info-string predicate across root, list, and paragraph-state classification
 - Preserves valid tilde-fence behavior while consolidating the former list-only exception
 - Adds Goldmark-differential root/list/tilde fixtures and keeps the full shipped-reference contract green
-
 
 ## 0.186.31 — BOM-Aware Just Collision Scans (2026-08-11)
 
@@ -2465,7 +2485,6 @@ The census's remaining candidates no longer imply that every extraction is still
 
 - Candidate B is recorded as the separately approved and shipped REQ-121 work
 - Candidates A and C remain explicit future decisions rather than accidental work from a queue run
-
 
 ## 0.183.2 — The Effort Chip Shows What Was Declared, Not Just What It Resolved To (2026-08-06)
 

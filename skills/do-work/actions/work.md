@@ -389,7 +389,7 @@ Spawn a **general-purpose agent** with the loaded rules, any files listed in the
 All routes include these instructions to the agent (pointers — the underlying rules live in the loaded crew-members files and in the REQ frontmatter the orchestrator already wrote):
 
 - **Crew rules govern behavior:** `crew-members/general.md` (always loaded) carries the Prime Files philosophy, Lessons-discipline, test-writing posture, cross-REQ test-break rules, and Discovered-Tasks contract. `crew-members/coding-guardrails.md` (always loaded) carries the implementation-time guardrails — that file is authoritative for which ones, and is deliberately not re-enumerated here. Domain/testing/caveman crews layer on top per Step 6's loading order. The builder reads these — do not re-state their contents inline.
-- **Prime files come first:** Read every path in `prime_files` before touching code. If the primary utility you are modifying has no prime, investigate and create one (`prime-[name].md`), then update REQ frontmatter. Lessons sections in those primes encode prior mistakes — heed them.
+- **Prime files come first:** Read every path in `prime_files` before touching code. If the primary utility you are modifying has no prime, investigate and create one (`prime-[name].md`), then update REQ frontmatter. Each prime's `lessons-[name].md` satellite encodes prior mistakes in that area — read it when your change touches code the prime's Read-first or Traps entries name (`crew-members/general.md` → Lessons Discipline).
 - **P-A-U phasing is mandatory:** Edit the REQ's "AI Execution State (P-A-U Loop)" checkboxes in real time. [PLAN] writes a brief technical approach. [APPLY] stays in declared scope. [UNIFY] runs `git diff --stat`, runs native linters, verifies no debug artifacts, and lists each file checked (the orchestrator audits this in Step 6.3).
 - **TDD mode when `tdd: true`:** Follow RED → GREEN → REFACTOR. Anchor RED on the REQ's `## Red-Green Proof` section if present — it arrived with the REQ and is not yours to write. Report the red-green evidence (test name, failure-before, pass-after) — Step 6.5 verifies it.
 - **Captured proof first:** If `## Red-Green Proof` is present, its RED prompt/case and GREEN outcome are the primary behavior tests must prove. Only adapt with documented reason.
@@ -542,9 +542,11 @@ Append to the request file:
 
 **Write the `## Orientation` block (the hand-back's "what's being built"):** After the Lessons Learned section, append a short `## Orientation` section reporting the change at feature/subsystem altitude — "Now you can X; lives in Y subsystem" — not a file list. Use the REQ's `prime_files` to name the subsystem; flag `[MAP CHANGED]` only when the change alters the system's shape (new module, data flow, contract, or a renamed concept). Run a narrowed staleness spot-check on each touched prime per `../../do-work-toolbox/actions/prime.md` Step 2 / Step 6 (do its referenced paths still exist?) and flag any prime the change made stale. **Scale to reach:** a leaf REQ is one line; a map-changing REQ gets a short paragraph and a why-it-matters. When `prime_files` is empty, derive a one-line feature-altitude summary from the What / Implementation Summary instead — never a file list. This block feeds the **WHAT'S BEING BUILT** section of the Decision Brief (`actions/work-reference.md` → **Decision Brief (hand-back format)**). Crash recovery strips `## Orientation` on re-queue (it's orchestrator-generated).
 
-**Update prime files (deferred to Step 8):** After writing the Lessons Learned section, check the REQ's `prime_files` frontmatter. For each listed prime file relevant to this lesson, **collect a pending prime-link write** — do NOT execute the write here. The REQ is still in `do-work/working/`, so any link pointing to its eventual archive location would either be broken or tempt a link to the transient working path.
+**Update prime lesson satellites (deferred to Step 8):** After writing the Lessons Learned section, check the REQ's `prime_files` frontmatter. For each listed prime file relevant to this lesson, **collect a pending lesson write** — do NOT execute the write here. The REQ is still in `do-work/working/`, so any link pointing to its eventual archive location would either be broken or tempt a link to the transient working path.
 
-Record each pending write as a tuple: `{ primeFilePath, relativeLinkText, lessonSummary }`. Hold them in memory (or a small scratch file under `do-work/working/`) until Step 8.
+The write target is the prime's **lesson satellite**, `lessons-<name>.md` beside `prime-<name>.md` — never the prime itself. A prime is read in full every time its area is touched; appending to it on every REQ is what turns a routing index into an archive (`crew-members/general.md` → PRIME Files Philosophy).
+
+Record each pending write as a tuple: `{ primeFilePath, satellitePath, relativeLinkText, lessonSummary }`. Hold them in memory (or a small scratch file under `do-work/working/`) until Step 8.
 
 Compute each deferred prime-link path relative to the prime file's location (not the repo root) per `actions/work-reference.md` → **Deferred Prime-Link Path Computation (Step 7.5)**; the existence-verify on the resolved path runs in Step 8 (post-move), which is why the write is deferred.
 
@@ -560,7 +562,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 **Where a builder-authored section is read from.** Some substeps below read a `##` section the **builder** wrote, and in worktree dispatch mode the builder routes those sections to its hand-back instead of the REQ file. Read both, and report an unreadable hand-back rather than treating it as silence, per `actions/work-reference.md` → **Reading a Builder-Authored Section (any step)** — the rule is stated there because readers outside this step obey it too.
 
-1. Update frontmatter: if the current status is already `completed-with-issues` (set by Step 7 after a failed remediation), preserve `completed-with-issues` and ensure `completed_at: <timestamp>` is present. Otherwise set `status: completed`, `completed_at: <timestamp>`. **`completed_at` (current UTC instant, per the Timestamp rule in `actions/work-reference.md`) is mandatory on every terminal flip — never skip the stamp.** It and the `commit:` hash (written back in the Commit Phase) are the only sources the board resolves a completion instant from; a terminal REQ with neither surfaces as a completion anomaly on `do-work-board board` (see `actions/work-reference.md`'s Full Frontmatter stamping rule).
+1. Update frontmatter: if the current status is already `completed-with-issues` (set by Step 7 after a failed remediation), preserve `completed-with-issues` and ensure `completed_at: <timestamp>` is present. Otherwise set `status: completed`, `completed_at: <timestamp>`. **`completed_at` (current UTC instant, per the Timestamp rule in `actions/work-reference.md`) is mandatory on every terminal flip — never skip the stamp.** It and the `commit:` hash (written back in the Commit Phase) are the only sources the board resolves a completion instant from (`../../do-work-board/tools/queue-kanban/model.go`, `resolveCompletionTime`); a terminal REQ with neither surfaces as a completion anomaly on `do-work-board board` (see `actions/work-reference.md`'s Full Frontmatter stamping rule).
 2. Verify `## Implementation Summary` is present (written in Step 6.25). If missing, append it now — this should not happen in normal flow, but crash recovery may skip it.
 3. **Route builder-decided questions by answerer:** Read the `Answerer:` clause on each `- [~]` Open-Questions item — and on each ESCALATE `## Decisions` entry carrying one (Step 6) — first; the clause is the audience fork.
 
@@ -588,18 +590,15 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 | `context_ref` (legacy) | Move REQ to `archive/`. If all related REQs are now archived, move the CONTEXT doc too. |
 | Neither (standalone legacy, or a stakeholder-questions REQ — it carries no `user_request:` by design, `actions/work-reference.md` → Stakeholder REQ Template) | Move directly to `archive/`. |
 
-7. **Execute deferred prime-link writes (from Step 7.5):** Now that the REQ is at its final archive path, walk the `pendingPrimeLinkWrites` collected during Step 7.5. For each pending entry:
-   - **Check for the inline-only marker first.** Look at the prime file's `## Lessons` section (if it already exists). If it opens with an HTML comment containing the phrase "inlined, not linked" (the pattern is `<!-- Lessons are inlined, not linked: ... -->` — see `../../do-work-board/tools/queue-kanban/prime-do-kanban.md`'s `## Lessons` header for the exact wording), the prime has declared itself inline-only: skip the link steps below and instead append a plain bullet with the lesson summary — `- REQ-NNN: 1-line summary of the lesson` (no link, matching the prime's existing inlined entries) — then continue to the next pending entry.
-   - Otherwise (no marker present), proceed as before:
-     - Compute the relative path from the prime file to the REQ's actual archived location (UR folder if the UR was just consolidated, or `archive/` root if the UR is incomplete).
-     - Verify the resolved path points to an existing file. If it doesn't, report the broken link and skip — do NOT silently write a broken link.
-     - Append the link to a `## Lessons` section in the prime file (create the section if it doesn't exist):
-       ```markdown
-       ## Lessons
-
-       - [REQ-NNN: 1-line summary of the lesson](<relative-path-to-archived-req>#lessons-learned)
-       ```
-   - Stage the prime file along with the implementation files in Step 9.
+7. **Execute deferred lesson writes (from Step 7.5):** Now that the REQ is at its final archive path, walk the `pendingPrimeLinkWrites` collected during Step 7.5. For each pending entry:
+   - Open the prime's satellite `lessons-<name>.md` (create it beside the prime, with an `# Lessons: <name>` heading and a one-line pointer back to the prime, if it does not exist yet). **Never append to the prime file** — the prime's only lesson-shaped content is a `## Traps` line, and that is a judgment call made when the lesson constrains any change to the utility, not an automatic append.
+   - Compute the relative path from the **satellite** to the REQ's actual archived location (UR folder if the UR was just consolidated, or `archive/` root if the UR is incomplete), then verify it resolves to an existing file.
+   - Append one bullet. The link form follows the resolved path, not a marker: **it resolves** → link it; **it does not resolve** (the satellite ships in a package whose consumers never receive `do-work/archive/`, as everything under `skills/` here does) → write the canonical repository URL instead, `https://github.com/<owner>/<repo>/blob/main/<repo-root-relative-path>#lessons-learned`. Never write a link you could not resolve and could not replace with a canonical URL — write the bullet unlinked and report it.
+     ```markdown
+     - [REQ-NNN: 1-line summary of the lesson](<relative-path-or-canonical-url>#lessons-learned)
+     ```
+   - If the lesson constrains **any** change to this utility — a cross-file lock-step, an invariant, two strings that must stay byte-identical — also add or amend one line in the prime's `## Traps`, in the `what you'd naturally do → what silently goes wrong` shape. This is the only write to the prime, and it replaces rather than accumulates: a trap that already says it needs no second copy.
+   - Stage the satellite (and the prime, if a trap changed) along with the implementation files in Step 9.
 
    This is the post-move execution that makes the existence-verify meaningful — Step 7.5 only collected; the writes happen here.
 

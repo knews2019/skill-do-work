@@ -314,20 +314,19 @@ After presenting the review report, perform a self-validation pass — no human 
 
    In **orchestrated mode**, skip lesson capture — actions/work.md's Lessons-Capture Phase handles it after the review returns.
 
-4. **Update prime files (Standalone mode only).** Check the REQ's `prime_files` frontmatter. For each listed prime file where the lesson is relevant:
+4. **Update prime lesson satellites (Standalone mode only).** Check the REQ's `prime_files` frontmatter. For each listed prime file where the lesson is relevant, write to the prime's satellite `lessons-<name>.md` (beside `prime-<name>.md`; create it with an `# Lessons: <name>` heading and a one-line pointer back to the prime if absent). **Never append to the prime itself** — a prime is read in full every time its area is touched (`crew-members/general.md` → PRIME Files Philosophy).
 
-   - **Check for the inline-only marker first.** Look at the prime file's `## Lessons` section (if it already exists). If it opens with an HTML comment containing the phrase "inlined, not linked" (the pattern is `<!-- Lessons are inlined, not linked: ... -->` — see `../../do-work-board/tools/queue-kanban/prime-do-kanban.md`'s `## Lessons` header for the exact wording), the prime has declared itself inline-only: append a plain bullet with the lesson summary instead — `- REQ-NNN: 1-line summary` (no link, matching the prime's existing inlined entries) — and skip the link steps below.
-   - Otherwise (no marker present), append a link under a `## Lessons` section (create it if it doesn't exist):
+   - Append one bullet:
 
      ```markdown
-     ## Lessons
-
-     - [REQ-NNN: 1-line summary](<relative-path-to-req>#lessons-learned)
+     - [REQ-NNN: 1-line summary](<relative-path-or-canonical-url>#lessons-learned)
      ```
 
-     **Path must be relative to the prime file's location**, not the repo root. Compute the correct relative path from the prime file's directory to the archived REQ file. For example, if the prime file is at `src/utils/prime-auth.md` and the REQ is at `do-work/archive/UR-005/REQ-042-auth-fix.md`, the link should use `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`.
+     **Path must be relative to the satellite's location**, not the repo root. Compute it from the satellite's directory to the archived REQ file — if the satellite is at `src/utils/lessons-auth.md` and the REQ is at `do-work/archive/UR-005/REQ-042-auth-fix.md`, the link is `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`. When that path does not resolve because the satellite ships in a package whose consumers never receive `do-work/archive/`, write the canonical repository URL instead (`https://github.com/<owner>/<repo>/blob/main/<repo-root-relative-path>#lessons-learned`). Never write an unresolvable link — leave the bullet unlinked and report it.
 
-   Only link lessons relevant to that prime file's scope. In **orchestrated mode**, actions/work.md's Lessons-Capture Phase handles prime file updates.
+   - If the lesson constrains **any** change to the utility, also add or amend one `## Traps` line in the prime, in the `what you'd naturally do → what silently goes wrong` shape. That is the only write to the prime, and it replaces rather than accumulates.
+
+   Only record lessons relevant to that prime file's scope. In **orchestrated mode**, actions/work.md's Lessons-Capture Phase handles these updates.
 
 5. **Offer knowledge-base handoff (Standalone mode only).** If the REQ now has a non-empty `## Lessons Learned` section, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. Update the REQ's `kb_status` and (if promoted) `kb_entry` frontmatter based on the outcome. The handoff asks before writing, degrades to `pending` if no `kb/` exists, and never blocks archival. In **orchestrated mode**, actions/work.md's Lessons-Capture Phase runs the handoff instead.
 
