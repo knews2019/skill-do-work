@@ -728,14 +728,14 @@ func TestGenerateSeparatesRawMarkdownForLazyCopy(t *testing.T) {
 		t.Fatalf("inlined board-clipboard.js has no lazy board-markdown.js loader")
 	}
 	// Since REQ-089 the lazy payload holds whole FILES (frontmatter fence + body),
-	// so the primary Copy path writes them verbatim — no synthesized heading, or the
+	// so the primary Copy path keeps the file's own bytes — no synthesized heading, or the
 	// paste stops round-tripping back into a valid REQ file. The identifying heading
 	// belongs to the rendered-text fallback alone, which has no frontmatter to carry.
 	if !strings.Contains(string(indexBytes), "copyTextWithHeading(requestedKind, requestedId, renderedTextFallback)") {
 		t.Fatalf("inlined board-clipboard.js does not prepend the id/title heading on the rendered-text fallback path")
 	}
 	if strings.Contains(string(indexBytes), "copyTextWithHeading(requestedKind, requestedId, bodyText)") {
-		t.Fatalf("inlined board-clipboard.js still routes the lazy payload through the heading builder — the primary path must copy the file verbatim")
+		t.Fatalf("inlined board-clipboard.js still routes the lazy payload through the heading builder — the primary path must start from the file's own bytes, annotating only the body")
 	}
 }
 
@@ -963,6 +963,939 @@ process.stdout.write(JSON.stringify([
 				resultIndex, removedResults[resultIndex], wantedResults[resultIndex], removedResults)
 		}
 	}
+}
+
+// sliceDeclarationAfter returns the source of the declaration that begins at
+// anchorToken and ends at the first semicolon outside a string literal.
+//
+// sliceBalancedBlockAfter cannot take bodyMentionPattern: its regex source
+// carries a "{0,7}" quantifier inside a string literal, and the brace counter
+// reads that closing brace as the end of the block. A probe that re-declared the
+// pattern beside the slice would stop testing the shipped one (REQ-322).
+func sliceDeclarationAfter(t *testing.T, sourceText string, anchorToken string) string {
+	t.Helper()
+	anchorIndex := strings.Index(sourceText, anchorToken)
+	if anchorIndex == -1 {
+		t.Fatalf("anchor %q not found in the generated page", anchorToken)
+	}
+	var openQuoteByte byte
+	for scanOffset := anchorIndex; scanOffset < len(sourceText); scanOffset++ {
+		currentByte := sourceText[scanOffset]
+		if openQuoteByte != 0 {
+			if currentByte == '\\' {
+				scanOffset++
+			} else if currentByte == openQuoteByte {
+				openQuoteByte = 0
+			}
+			continue
+		}
+		switch currentByte {
+		case '"', '\'':
+			openQuoteByte = currentByte
+		case ';':
+			return sourceText[anchorIndex : scanOffset+1]
+		}
+	}
+	t.Fatalf("no terminating semicolon found after anchor %q", anchorToken)
+	return ""
+}
+
+// One resolver, defined once. REQ-375 consumes the same helpers from the
+// clipboard fragment, and board-core.js is the fragment that runs first — a
+// second copy left behind in board-detail.js would drift the moment either side
+// learns about a new id shape.
+func TestTicketMentionResolverLivesOnlyInBoardCore(t *testing.T) {
+	coreBytes, coreReadError := embeddedWebAssets.ReadFile("web/board-core.js")
+	if coreReadError != nil {
+		t.Fatalf("read web/board-core.js: %v", coreReadError)
+	}
+	detailBytes, detailReadError := embeddedWebAssets.ReadFile("web/board-detail.js")
+	if detailReadError != nil {
+		t.Fatalf("read web/board-detail.js: %v", detailReadError)
+	}
+	for _, sharedDefinition := range []string{
+		"function buildRequestIdByReqSegment(",
+		"function resolveTicketMention(",
+		"function isAmbiguousTicketMention(",
+		"function ticketTitleFor(",
+		"function shortTicketTitle(",
+	} {
+		if !strings.Contains(string(coreBytes), sharedDefinition) {
+			t.Errorf("web/board-core.js does not define %q", sharedDefinition)
+		}
+		if strings.Contains(string(detailBytes), sharedDefinition) {
+			t.Errorf("web/board-detail.js still defines %q — one definition, or the two drift", sharedDefinition)
+		}
+	}
+}
+
+func TestDrawerTicketMentionsCarryTitlesAndAGlossary(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	for _, requiredToken := range []string{
+		`<section class="detail-glossary" id="detail-glossary"`,
+		"function makeTicketLink(detailKind, detailId, linkText, expandTitle)",
+		`createElement("span", "ticket-link-id"`,
+		`"ticket-link-title is-fallback" : "ticket-link-title"`,
+		`createElement("span", "ticket-missing"`,
+		`"Not found in this queue"`,
+		"function describeTicketTitle(detailKind, detailId)",
+		`"no input.md — synthesized from REQ pointers"`,
+		".ticket-link-title.is-fallback,",
+		"renderDetailGlossary(linkifyDetailBody(drawerBody, request.title))",
+		"renderDetailGlossary(linkifyDetailBody(drawerBody, userRequest.title))",
+		".ticket-link-title {",
+		".ticket-missing {",
+		".detail-glossary {",
+	} {
+		if !strings.Contains(indexHtml, requiredToken) {
+			t.Errorf("title-bearing ticket mentions are not wired into the generated page: %q missing", requiredToken)
+		}
+	}
+}
+
+type ticketMentionNodeProbe struct {
+	Tag             string   `json:"tag"`
+	ClassName       string   `json:"className"`
+	Text            string   `json:"text"`
+	Title           string   `json:"title"`
+	DetailKind      string   `json:"detailKind"`
+	DetailId        string   `json:"detailId"`
+	ChildClassNames []string `json:"childClassNames"`
+}
+
+type ticketGlossaryRowProbe struct {
+	TermTag    string `json:"termTag"`
+	Identifier string `json:"identifier"`
+	DetailKind string `json:"detailKind"`
+	Title      string `json:"title"`
+	Status     string `json:"status"`
+}
+
+type ticketFallbackTitleProbe struct {
+	Text       string `json:"text"`
+	IsFallback bool   `json:"isFallback"`
+}
+
+type ticketGlossaryFallbackProbe struct {
+	Id    string                   `json:"id"`
+	Title ticketFallbackTitleProbe `json:"title"`
+}
+
+type ticketMentionProbeResult struct {
+	ShortTitles             []string                      `json:"shortTitles"`
+	CodeSpanFragment        []ticketMentionNodeProbe      `json:"codeSpanFragment"`
+	InlineCodeMissing       []ticketMentionNodeProbe      `json:"inlineCodeMissingFragment"`
+	FencedMissing           []ticketMentionNodeProbe      `json:"fencedMissingFragment"`
+	ProseMissing            []ticketMentionNodeProbe      `json:"proseMissingFragment"`
+	ProseFragment           []ticketMentionNodeProbe      `json:"proseFragment"`
+	SynthesizedFragment     []ticketMentionNodeProbe      `json:"synthesizedFragment"`
+	SynthesizedGlossary     []ticketGlossaryFallbackProbe `json:"synthesizedGlossaryTitles"`
+	RepeatFragment          []ticketMentionNodeProbe      `json:"repeatFragment"`
+	AmbiguousOnlyLinked     bool                          `json:"ambiguousOnlyLinked"`
+	MetaRowLink             ticketMentionNodeProbe        `json:"metaRowLink"`
+	Glossary                []ticketGlossaryRowProbe      `json:"glossary"`
+	GlossaryHidden          bool                          `json:"glossaryHidden"`
+	EmptyGlossaryHidden     bool                          `json:"emptyGlossaryHidden"`
+	EmptyGlossaryChildCount int                           `json:"emptyGlossaryChildCount"`
+}
+
+// Execute the shipped mention pipeline under Node. The five behaviors this pins
+// are the ones a title-bearing link can silently get wrong: the first prose
+// mention expands and a later one does not, a code-span mention never gains
+// prose (but still earns its glossary line), a dead id is FLAGGED while an
+// ambiguous segment is LEFT ALONE, and the glossary lists each resolved id once
+// with its untruncated title.
+func TestJavaScriptBehaviorTicketMentionTitlesAndGlossary(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeRequestStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function buildRequestIdByReqSegment("),
+		sliceBalancedBlockAfter(t, indexHtml, "function resolveTicketMention("),
+		sliceBalancedBlockAfter(t, indexHtml, "function isAmbiguousTicketMention("),
+		sliceBalancedBlockAfter(t, indexHtml, "function ticketTitleFor("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function shortTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeTicketLink("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeMissingTicketMention("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeExternalUrlLink("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeRepoFileLink("),
+		sliceBalancedBlockAfter(t, indexHtml, "function buildLinkifiedFragment("),
+		sliceBalancedBlockAfter(t, indexHtml, "function renderDetailGlossary("),
+	}
+	declarationBlocks := []string{
+		sliceDeclarationAfter(t, indexHtml, "var inlineTicketTitleMaxLength ="),
+		sliceDeclarationAfter(t, indexHtml, "var bodyMentionPattern ="),
+		sliceDeclarationAfter(t, indexHtml, "var requestIdByReqSegment ="),
+	}
+
+	// The 60-character cut is the REQ's number, so the expectations below are
+	// written out rather than recomputed from the shipped constant: shrinking
+	// the constant must fail this test, not silently move the assertion with it.
+	longTitle := "Make every referenced request identifier in a drawer body carry its own title"
+	exactlySixtyTitle := "Keep the timeline forecast honest about ordering and timings"
+	unbrokenTitle := strings.Repeat("x", 70)
+
+	javascriptProbe := `
+function makeStubElement(tagName) {
+  return {
+    stubTag: tagName,
+    className: "",
+    dataset: {},
+    childNodes: [],
+    textContent: "",
+    hidden: false,
+    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; }
+  };
+}
+var document = {
+  createElement: function (tagName) { return makeStubElement(tagName); },
+  createTextNode: function (nodeText) { return { stubTag: "#text", textContent: nodeText, childNodes: [] }; },
+  createDocumentFragment: function () { return makeStubElement("#fragment"); }
+};
+var drawerGlossary = makeStubElement("section");
+var requestsById = {
+  "REQ-1679": { title: ` + mustMarshalJSONString(t, exactlySixtyTitle) + `, status: "completed" },
+  "REQ-1108": { title: "Short one", status: "pending" },
+  "REQ-1685": { title: ` + mustMarshalJSONString(t, longTitle) + `, status: "claimed" },
+  "UR-001-REQ-042": { title: "First half of an ambiguous pair", status: "pending" },
+  "UR-002-REQ-042": { title: "Second half of an ambiguous pair", status: "pending" }
+};
+var userRequestsById = {
+  "UR-074": { title: "Ticket ids should carry their titles" },
+  // Two titleless shapes the live tree does not currently hold, so they are
+  // fixtures rather than sampled data: a UR synthesized because its input.md was
+  // never found (linkRequestsToUserRequests leaves Title empty by design), and a
+  // UR whose input.md exists but names no title.
+  "UR-900": { inputFilePresent: false },
+  "UR-901": { title: "", inputFilePresent: true }
+};
+var repoFileMentionExists = {};
+var liveFileApiAvailable = false;
+` + strings.Join(functionBlocks, "\n") + "\n" + strings.Join(declarationBlocks, "\n") + `
+
+function collectNodeText(node) {
+  if (node.childNodes && node.childNodes.length > 0) {
+    return node.childNodes.map(collectNodeText).join("");
+  }
+  return node.textContent || "";
+}
+function describeNode(node) {
+  return {
+    tag: node.stubTag,
+    className: node.className || "",
+    text: collectNodeText(node),
+    title: node.title || "",
+    detailKind: (node.dataset && node.dataset.detailKind) || "",
+    detailId: (node.dataset && node.dataset.detailId) || "",
+    childClassNames: (node.childNodes || []).map(function (childNode) { return childNode.className || ""; })
+  };
+}
+function describeFragment(fragment) {
+  return fragment === null ? [] : fragment.childNodes.map(describeNode);
+}
+
+var mentionRenderState = { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] };
+// A backticked id comes first on purpose: it must not consume the inline
+// expansion slot, and it must still earn its glossary line.
+var codeSpanFragment = buildLinkifiedFragment("REQ-1108", true, false, mentionRenderState);
+var proseFragment = buildLinkifiedFragment(
+  "Read REQ-1679 lessons, REQ-1108 again, UR-074 for context, plus REQ-9999 and REQ-042.",
+  false,
+  false,
+  mentionRenderState
+);
+var repeatFragment = buildLinkifiedFragment("the REQ-1679 note and REQ-1108 once more", false, false, mentionRenderState);
+var ambiguousOnlyFragment = buildLinkifiedFragment("see REQ-042 today", false, false, { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] });
+
+// A UR whose input.md was never found is synthesized with no Title
+// (linkRequestsToUserRequests). It is a supported board state, so it must not
+// fall back to the bare id the whole feature exists to remove.
+var synthesizedState = { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] };
+var synthesizedFragment = buildLinkifiedFragment("see UR-900 and UR-901 for that", false, false, synthesizedState);
+var synthesizedGlossary = synthesizedState.glossaryEntries;
+
+// The two code contexts drive DIFFERENT suppressions, so each is probed alone
+// against the same missing id. An inline code span is still a reference and
+// flags; a fenced block prints templates and worked examples and must not.
+// REQ-042 rides along in both to prove the ambiguity guard is independent of
+// context — ambiguous is never flagged, fenced or not.
+var inlineCodeMissingFragment = buildLinkifiedFragment(
+  "depends_on: [REQ-9999, REQ-042]",
+  true,
+  false,
+  { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] }
+);
+var fencedMissingFragment = buildLinkifiedFragment(
+  "depends_on: [REQ-9999, REQ-042]",
+  true,
+  true,
+  { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] }
+);
+var proseMissingFragment = buildLinkifiedFragment(
+  "see REQ-9999 and REQ-042",
+  false,
+  false,
+  { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] }
+);
+
+renderDetailGlossary(mentionRenderState.glossaryEntries);
+var glossaryList = drawerGlossary.childNodes.filter(function (childNode) { return childNode.stubTag === "dl"; })[0];
+var glossaryRows = [];
+if (glossaryList) {
+  for (var rowIndex = 0; rowIndex + 1 < glossaryList.childNodes.length; rowIndex += 2) {
+    var termNode = glossaryList.childNodes[rowIndex];
+    var definitionNode = glossaryList.childNodes[rowIndex + 1];
+    glossaryRows.push({
+      termTag: termNode.stubTag,
+      identifier: collectNodeText(termNode),
+      detailKind: termNode.childNodes[0].dataset.detailKind,
+      title: collectNodeText(definitionNode.childNodes[0]),
+      status: collectNodeText(definitionNode.childNodes[1])
+    });
+  }
+}
+var glossaryHidden = drawerGlossary.hidden;
+
+drawerGlossary = makeStubElement("section");
+renderDetailGlossary([]);
+
+process.stdout.write(JSON.stringify({
+  shortTitles: [
+    shortTicketTitle(` + mustMarshalJSONString(t, longTitle) + `),
+    shortTicketTitle(` + mustMarshalJSONString(t, exactlySixtyTitle) + `),
+    shortTicketTitle(` + mustMarshalJSONString(t, exactlySixtyTitle) + ` + "X"),
+    shortTicketTitle(` + mustMarshalJSONString(t, unbrokenTitle) + `),
+    shortTicketTitle("")
+  ],
+  codeSpanFragment: describeFragment(codeSpanFragment),
+  inlineCodeMissingFragment: describeFragment(inlineCodeMissingFragment),
+  fencedMissingFragment: describeFragment(fencedMissingFragment),
+  proseMissingFragment: describeFragment(proseMissingFragment),
+  synthesizedFragment: describeFragment(synthesizedFragment),
+  synthesizedGlossaryTitles: synthesizedGlossary.map(function (entry) { return { id: entry.id, title: entry.title }; }),
+  proseFragment: describeFragment(proseFragment),
+  repeatFragment: describeFragment(repeatFragment),
+  ambiguousOnlyLinked: ambiguousOnlyFragment !== null,
+  metaRowLink: describeNode(makeTicketLink("req", "REQ-1685", null, true)),
+  glossary: glossaryRows,
+  glossaryHidden: glossaryHidden,
+  emptyGlossaryHidden: drawerGlossary.hidden,
+  emptyGlossaryChildCount: drawerGlossary.childNodes.length
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "ticket mention titles", javascriptProbe)
+	var probeResult ticketMentionProbeResult
+	if decodeError := json.Unmarshal(probeOutput, &probeResult); decodeError != nil {
+		t.Fatalf("decode ticket mention behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	wantShortTitles := []string{
+		"Make every referenced request identifier in a drawer body…",
+		exactlySixtyTitle,
+		"Keep the timeline forecast honest about ordering and…",
+		strings.Repeat("x", 60) + "…",
+		"",
+	}
+	if !reflect.DeepEqual(probeResult.ShortTitles, wantShortTitles) {
+		t.Errorf("shortTicketTitle results = %#v, want %#v", probeResult.ShortTitles, wantShortTitles)
+	}
+
+	// A backticked id keeps the bare mono link: no title span, no tooltip.
+	if len(probeResult.CodeSpanFragment) != 1 {
+		t.Fatalf("code-span fragment = %#v, want one node", probeResult.CodeSpanFragment)
+	}
+	codeSpanLink := probeResult.CodeSpanFragment[0]
+	if codeSpanLink.Tag != "a" || codeSpanLink.ClassName != "ticket-link" || codeSpanLink.Text != "REQ-1108" {
+		t.Errorf("code-span mention = %#v, want a bare ticket-link reading REQ-1108", codeSpanLink)
+	}
+	if codeSpanLink.Title != "" || len(codeSpanLink.ChildClassNames) != 0 {
+		t.Errorf("code-span mention gained prose: title=%q children=%#v", codeSpanLink.Title, codeSpanLink.ChildClassNames)
+	}
+
+	proseLinks := map[string]ticketMentionNodeProbe{}
+	for _, proseNode := range probeResult.ProseFragment {
+		if proseNode.DetailId != "" {
+			proseLinks[proseNode.DetailId] = proseNode
+		}
+	}
+	firstRequestMention, hasFirstRequestMention := proseLinks["REQ-1679"]
+	if !hasFirstRequestMention {
+		t.Fatalf("prose fragment has no REQ-1679 link: %#v", probeResult.ProseFragment)
+	}
+	if !reflect.DeepEqual(firstRequestMention.ChildClassNames, []string{"ticket-link-id", "", "ticket-link-title"}) {
+		t.Errorf("first REQ-1679 mention children = %#v, want id + separator + title", firstRequestMention.ChildClassNames)
+	}
+	if firstRequestMention.Text != "REQ-1679 "+exactlySixtyTitle {
+		t.Errorf("first REQ-1679 mention text = %q, want the id and its title", firstRequestMention.Text)
+	}
+	if firstRequestMention.Title != exactlySixtyTitle {
+		t.Errorf("first REQ-1679 mention tooltip = %q, want the untruncated title", firstRequestMention.Title)
+	}
+	// The code span already resolved REQ-1108; the first PROSE mention is still
+	// the one that expands.
+	firstCodeThenProseMention := proseLinks["REQ-1108"]
+	if !reflect.DeepEqual(firstCodeThenProseMention.ChildClassNames, []string{"ticket-link-id", "", "ticket-link-title"}) {
+		t.Errorf("REQ-1108 prose mention children = %#v, want the code span not to have spent the expansion",
+			firstCodeThenProseMention.ChildClassNames)
+	}
+	userRequestMention := proseLinks["UR-074"]
+	if userRequestMention.DetailKind != "ur" || userRequestMention.Text != "UR-074 Ticket ids should carry their titles" {
+		t.Errorf("UR-074 mention = %#v, want an expanded user-request link", userRequestMention)
+	}
+
+	var brokenNodes []ticketMentionNodeProbe
+	var proseText string
+	for _, proseNode := range probeResult.ProseFragment {
+		proseText += proseNode.Text
+		if proseNode.ClassName == "ticket-missing" {
+			brokenNodes = append(brokenNodes, proseNode)
+		}
+	}
+	if len(brokenNodes) != 1 || brokenNodes[0].Tag != "span" || brokenNodes[0].Text != "REQ-9999" {
+		t.Errorf("unresolved id nodes = %#v, want one non-link ticket-missing span for REQ-9999", brokenNodes)
+	} else if brokenNodes[0].Title != "Not found in this queue" {
+		t.Errorf("unresolved id tooltip = %q, want the not-found tooltip", brokenNodes[0].Title)
+	}
+	// Ambiguous is not missing: the board knows two records and refuses to pick.
+	if _, ambiguousWasLinked := proseLinks["UR-001-REQ-042"]; ambiguousWasLinked {
+		t.Error("an ambiguous REQ segment was linked — the never-guess rule broke")
+	}
+	if !strings.Contains(proseText, "REQ-042.") {
+		t.Errorf("prose text = %q, want the ambiguous segment left as plain prose", proseText)
+	}
+	if probeResult.AmbiguousOnlyLinked {
+		t.Error("a text run whose only mention is ambiguous was rewritten; it must be left untouched")
+	}
+
+	// A titleless record is not a missing one, and both shapes are supported:
+	// linkRequestsToUserRequests SYNTHESIZES a UserRequestTicket with no Title
+	// whenever a REQ names a UR whose input.md was not found, and a real UR can
+	// simply name no title. Before this case the empty title fell through
+	// makeTicketLink's !fullTitle branch to the bare id — reintroducing the exact
+	// cryptic number the feature exists to remove, on the one kind of record that
+	// cannot explain itself. Each now says WHY it has no title, marked a fallback
+	// so it renders as a description rather than as the record's own words.
+	//
+	// Both are fixtures, deliberately: this repo's tree ships zero synthesized URs
+	// and one titleless one, so sampling live data would leave the branch untested
+	// on the board that matters and silently vacuous on any other.
+	synthesizedLinks := map[string]ticketMentionNodeProbe{}
+	for _, fragmentNode := range probeResult.SynthesizedFragment {
+		if fragmentNode.DetailId != "" {
+			synthesizedLinks[fragmentNode.DetailId] = fragmentNode
+		}
+	}
+	for _, titlelessCase := range []struct{ detailId, wantPhrase, why string }{
+		{"UR-900", "no input.md", "a UR synthesized from REQ pointers"},
+		{"UR-901", "untitled", "a UR that exists but names no title"},
+	} {
+		titlelessLink, wasLinked := synthesizedLinks[titlelessCase.detailId]
+		if !wasLinked {
+			t.Errorf("%s (%s) produced no link at all", titlelessCase.detailId, titlelessCase.why)
+			continue
+		}
+		if !reflect.DeepEqual(titlelessLink.ChildClassNames, []string{"ticket-link-id", "", "ticket-link-title is-fallback"}) {
+			t.Errorf("%s (%s) children = %#v, want it expanded as a marked fallback rather than left a bare id",
+				titlelessCase.detailId, titlelessCase.why, titlelessLink.ChildClassNames)
+		}
+		if !strings.Contains(titlelessLink.Text, titlelessCase.wantPhrase) {
+			t.Errorf("%s (%s) link = %q, want it to say why it has no title (%q)",
+				titlelessCase.detailId, titlelessCase.why, titlelessLink.Text, titlelessCase.wantPhrase)
+		}
+	}
+	glossaryFallbacks := map[string]ticketFallbackTitleProbe{}
+	for _, glossaryRow := range probeResult.SynthesizedGlossary {
+		glossaryFallbacks[glossaryRow.Id] = glossaryRow.Title
+	}
+	for _, detailId := range []string{"UR-900", "UR-901"} {
+		fallbackTitle, wasGlossed := glossaryFallbacks[detailId]
+		if !wasGlossed {
+			t.Errorf("%s earned no glossary entry", detailId)
+			continue
+		}
+		if !fallbackTitle.IsFallback {
+			t.Errorf("%s's substitute title is not marked a fallback — it would render dressed as the record's own title", detailId)
+		}
+	}
+
+	// Where the broken-reference flag fires, by context. The three cases share one
+	// missing id (REQ-9999) and one ambiguous id (REQ-042) so the only variable is
+	// the context, and each pins a distinct rule:
+	//
+	//   prose        → flagged. An id written in prose is a real reference.
+	//   inline code  → flagged. A backticked id in prose is still a reference;
+	//                  REQ bodies conventionally backtick the ids they cite.
+	//   fenced block → NOT flagged. A fence prints templates and worked examples
+	//                  ("id: REQ-021"), which point at nothing and must not be
+	//                  asserted missing. Without this, 115 of the 397 flags on
+	//                  this repo's own board are illustrations, not typos.
+	//
+	// REQ-042 must be absent from all three: ambiguous is not missing, in any
+	// context. Deleting the insideFencedBlock guard makes fencedMissingCount 1;
+	// widening it to any code context makes inlineCodeMissingCount 0. Both fail.
+	countMissingSpans := func(fragmentNodes []ticketMentionNodeProbe) (missingCount int, sawAmbiguous bool) {
+		for _, fragmentNode := range fragmentNodes {
+			if fragmentNode.ClassName == "ticket-missing" {
+				missingCount++
+				if fragmentNode.Text == "REQ-042" {
+					sawAmbiguous = true
+				}
+			}
+		}
+		return missingCount, sawAmbiguous
+	}
+	for _, flagCase := range []struct {
+		contextName      string
+		fragmentNodes    []ticketMentionNodeProbe
+		wantMissingCount int
+	}{
+		{"prose", probeResult.ProseMissing, 1},
+		{"inline code span", probeResult.InlineCodeMissing, 1},
+		{"fenced code block", probeResult.FencedMissing, 0},
+	} {
+		gotMissingCount, sawAmbiguous := countMissingSpans(flagCase.fragmentNodes)
+		if gotMissingCount != flagCase.wantMissingCount {
+			t.Errorf("REQ-9999 in a %s: %d ticket-missing spans, want %d",
+				flagCase.contextName, gotMissingCount, flagCase.wantMissingCount)
+		}
+		if sawAmbiguous {
+			t.Errorf("the ambiguous REQ-042 was flagged missing in a %s — ambiguous is not missing",
+				flagCase.contextName)
+		}
+	}
+
+	// A later mention of an already-expanded id stays bare, and so does its tooltip.
+	for _, repeatNode := range probeResult.RepeatFragment {
+		if repeatNode.DetailId == "" {
+			continue
+		}
+		if len(repeatNode.ChildClassNames) != 0 || repeatNode.Title != "" {
+			t.Errorf("repeat mention of %s expanded again: %#v", repeatNode.DetailId, repeatNode)
+		}
+	}
+
+	// Meta rows are reference lists, not prose: they always carry the title,
+	// truncated inline with the full text in the tooltip.
+	if !reflect.DeepEqual(probeResult.MetaRowLink.ChildClassNames, []string{"ticket-link-id", "", "ticket-link-title"}) {
+		t.Errorf("meta-row link children = %#v, want an always-expanded link", probeResult.MetaRowLink.ChildClassNames)
+	}
+	if probeResult.MetaRowLink.Title != longTitle {
+		t.Errorf("meta-row link tooltip = %q, want the untruncated title", probeResult.MetaRowLink.Title)
+	}
+	if probeResult.MetaRowLink.Text != "REQ-1685 Make every referenced request identifier in a drawer body…" {
+		t.Errorf("meta-row link text = %q, want the id and the truncated title", probeResult.MetaRowLink.Text)
+	}
+
+	wantGlossary := []ticketGlossaryRowProbe{
+		{TermTag: "dt", Identifier: "REQ-1108", DetailKind: "req", Title: "Short one", Status: "pending"},
+		{TermTag: "dt", Identifier: "REQ-1679", DetailKind: "req", Title: exactlySixtyTitle, Status: "completed"},
+		{TermTag: "dt", Identifier: "UR-074", DetailKind: "ur", Title: "Ticket ids should carry their titles", Status: "user request"},
+	}
+	if !reflect.DeepEqual(probeResult.Glossary, wantGlossary) {
+		t.Errorf("glossary = %#v, want one line per resolved id in first-mention order %#v", probeResult.Glossary, wantGlossary)
+	}
+	if probeResult.GlossaryHidden {
+		t.Error("the glossary stayed hidden with entries to show")
+	}
+	if !probeResult.EmptyGlossaryHidden || probeResult.EmptyGlossaryChildCount != 0 {
+		t.Errorf("a body that cited nothing left a glossary: hidden=%v children=%d",
+			probeResult.EmptyGlossaryHidden, probeResult.EmptyGlossaryChildCount)
+	}
+}
+
+// referencedRequestsGlossaryHeading is the appendix heading REQ-379 specifies
+// for the clipboard payload. Pinned as a literal in the tests rather than read
+// back off the client: it is the sentence a paste's reader sees, so a reworded
+// heading is a behavior change and must fail, not follow the assertions along.
+const referencedRequestsGlossaryHeading = "## Referenced requests (added by the board — not part of the file)"
+
+type clipboardAnnotationProbeResult struct {
+	AnnotatedHostDocument string   `json:"annotatedHostDocument"`
+	HostReferencedIds     []string `json:"hostReferencedIds"`
+	JoinedPayload         string   `json:"joinedPayload"`
+	GlossaryHeadingCount  int      `json:"glossaryHeadingCount"`
+	ExcludedPayload       string   `json:"excludedPayload"`
+	UnclosedFencePayload  string   `json:"unclosedFencePayload"`
+	CarriageReturnPayload string   `json:"carriageReturnPayload"`
+	FencelessPayload      string   `json:"fencelessPayload"`
+	LoneFencePayload      string   `json:"loneFencePayload"`
+	AmbiguousPayload      string   `json:"ambiguousPayload"`
+	NoReferencePayload    string   `json:"noReferencePayload"`
+	BlockquotedFence      string   `json:"blockquotedFencePayload"`
+	InvalidInfoString     string   `json:"invalidInfoStringPayload"`
+	ListItemFence         string   `json:"listItemFencePayload"`
+	MultiLineCodeSpan     string   `json:"multiLineCodeSpanPayload"`
+}
+
+// Execute the shipped clipboard annotator under Node. Each case below names a
+// way a payload that passes a looser assertion still pastes as a broken file:
+// an annotated frontmatter fence stops parsing as YAML, a second document's
+// fence annotated after a join is the same failure one ticket later, an
+// unclosed fence read as "all fence" silently skips a whole document, a fenced
+// block flagged as a dead reference asserts something false about an
+// illustration, and a repeat mention expanded twice turns prose into noise.
+func TestJavaScriptBehaviorClipboardAnnotatesBodiesAndAppendsOneGlossary(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function describeRequestStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function buildRequestIdByReqSegment("),
+		sliceBalancedBlockAfter(t, indexHtml, "function resolveTicketMention("),
+		sliceBalancedBlockAfter(t, indexHtml, "function isAmbiguousTicketMention("),
+		sliceBalancedBlockAfter(t, indexHtml, "function ticketTitleFor("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function shortTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function frontmatterFenceEndOffset("),
+		sliceBalancedBlockAfter(t, indexHtml, "function stripContainerPrefix("),
+		sliceBalancedBlockAfter(t, indexHtml, "function codeFenceRunFor("),
+		sliceBalancedBlockAfter(t, indexHtml, "function codeFenceRunCloses("),
+		sliceBalancedBlockAfter(t, indexHtml, "function findMatchingBacktickRun("),
+		sliceBalancedBlockAfter(t, indexHtml, "function recordReferencedTicket("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateMentionRun("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateLineOutsideFence("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateMarkdownBody("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateTicketMentions("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeReferencedTicket("),
+		sliceBalancedBlockAfter(t, indexHtml, "function buildReferencedTicketsGlossary("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateClipboardPayload("),
+	}
+	declarationBlocks := []string{
+		sliceDeclarationAfter(t, indexHtml, "var inlineTicketTitleMaxLength ="),
+		sliceDeclarationAfter(t, indexHtml, "var bodyMentionPattern ="),
+		sliceDeclarationAfter(t, indexHtml, "var requestIdByReqSegment ="),
+		sliceDeclarationAfter(t, indexHtml, "var referencedTicketsGlossaryHeading ="),
+	}
+
+	longTitle := "Make every referenced request identifier in a drawer body carry its own title"
+	shortenedLongTitle := "Make every referenced request identifier in a drawer body…"
+	exactlySixtyTitle := "Keep the timeline forecast honest about ordering and timings"
+
+	// One document carrying every exclusion at once. REQ-1679 sits in the fence
+	// AND in the body, `REQ-1108` sits in a code span before its prose mention,
+	// REQ-1685 sits in a fenced block before its prose mention, REQ-8888/REQ-8887
+	// are dead ids inside fenced blocks, REQ-9999 is a dead id in prose, and
+	// REQ-378/UR-075 ride inside a repo-relative path.
+	hostDocument := "---\n" +
+		"id: REQ-500\n" +
+		"depends_on: [REQ-1679]\n" +
+		"user_request: UR-074\n" +
+		"---\n" +
+		"# Host document\n" +
+		"\n" +
+		"Read REQ-1679 lessons and REQ-1679 again, plus `REQ-1108` and REQ-1108, and UR-074.\n" +
+		"\n" +
+		"```yaml\n" +
+		"depends_on: [REQ-1685, REQ-8888]\n" +
+		"```\n" +
+		"\n" +
+		"~~~text\n" +
+		"REQ-8887 illustration\n" +
+		"~~~\n" +
+		"\n" +
+		"Trailing REQ-1685 mention and REQ-9999 too.\n" +
+		"See do-work/archive/UR-075/REQ-378-title.md for the path case.\n"
+
+	wantAnnotatedHostDocument := "---\n" +
+		"id: REQ-500\n" +
+		"depends_on: [REQ-1679]\n" +
+		"user_request: UR-074\n" +
+		"---\n" +
+		"# Host document\n" +
+		"\n" +
+		"Read REQ-1679 (" + exactlySixtyTitle + ") lessons and REQ-1679 again, plus `REQ-1108` and " +
+		"REQ-1108 (Short one), and UR-074 (Ticket ids should carry their titles).\n" +
+		"\n" +
+		"```yaml\n" +
+		"depends_on: [REQ-1685, REQ-8888]\n" +
+		"```\n" +
+		"\n" +
+		"~~~text\n" +
+		"REQ-8887 illustration\n" +
+		"~~~\n" +
+		"\n" +
+		"Trailing REQ-1685 (" + shortenedLongTitle + ") mention and REQ-9999 too.\n" +
+		"See do-work/archive/UR-075/REQ-378-title.md for the path case.\n"
+
+	// The second half of the concatenation trap: its fence must survive the join
+	// untouched, and its body's REQ-1679 must expand even though the first
+	// document already spent that id — first-mention memory is per document.
+	secondDocument := "---\n" +
+		"id: REQ-501\n" +
+		"depends_on: [REQ-1679, REQ-9998]\n" +
+		"---\n" +
+		"# Second host document\n" +
+		"\n" +
+		"Nothing but REQ-1679 here.\n"
+	wantAnnotatedSecondDocument := "---\n" +
+		"id: REQ-501\n" +
+		"depends_on: [REQ-1679, REQ-9998]\n" +
+		"---\n" +
+		"# Second host document\n" +
+		"\n" +
+		"Nothing but REQ-1679 (" + exactlySixtyTitle + ") here.\n"
+
+	unclosedFenceDocument := "---\nid: REQ-1685\nRead REQ-1108 here\n"
+	carriageReturnDocument := "---\r\nid: REQ-500\r\n---\r\nBody REQ-1108 here\r\n"
+	fencelessDocument := "# Notes\n\nSee REQ-1108 twice, REQ-1108.\n"
+	loneFenceDocument := "---\n"
+	ambiguousDocument := "Compare REQ-042 with REQ-042 again.\n"
+	noReferenceDocument := "# Plain\n\nNothing here.\n"
+
+	// The outside-text containment contract (actions/clarify.md Step 4) writes
+	// every UR's Full Verbatim Input as a BLOCKQUOTED fence, and the contract
+	// promises the text stays byte-identical apart from the containment bytes.
+	// Two URs in this repo hold ticket ids inside one — UR-075's carries 21 —
+	// so annotating inside it rewrites the user's own preserved words.
+	blockquotedFenceDocument := "---\nid: REQ-500\n---\n\n" +
+		"Prose cites REQ-1679 once.\n\n" +
+		"> ````text\n" +
+		"> The user pasted REQ-1108 and REQ-1685 here verbatim.\n" +
+		"> ````\n\n" +
+		"Trailing prose cites REQ-1108.\n"
+
+	// CommonMark forbids a backtick anywhere in a BACKTICK fence's info string,
+	// so this line is prose and the ids under it are real references. The Go
+	// renderer already agrees (TestRenderMarkdownInvalidBacktickInfoRemainsQuestionProse).
+	// Treating it as a fence opened a block that never opens and swallowed every
+	// reference until EOF.
+	invalidInfoStringDocument := "---\nid: REQ-501\n---\n\n" +
+		"```lang`invalid\n" +
+		"This line is prose and REQ-1679 in it is a real reference.\n"
+
+	// A fence can open directly as a list item. The prefix stripper's own comment
+	// promised list markers before the code handled them, so the promise and the
+	// behaviour disagreed — the comment was right and the code was not.
+	listItemFenceDocument := "---\nid: REQ-500\n---\n\n" +
+		"- ```yaml\n" +
+		"  depends_on: [REQ-1679]\n" +
+		"  ```\n\n" +
+		"Prose after the list cites REQ-1108.\n"
+
+	// A code span may cross a line break — CommonMark closes it on the matching
+	// run anywhere in the paragraph. Line-by-line scanning read the opener as a
+	// stray backtick and expanded the id inside. Live in REQ-380's body.
+	// The id sits on the CONTINUATION line on purpose. With it only on the
+	// opening line, dropping the cross-line carry changes nothing observable and
+	// the mutation passes — a vacuous assertion, which is the failure this suite
+	// has now shipped twice.
+	multiLineCodeSpanDocument := "---\nid: REQ-501\n---\n\n" +
+		"the example reads\n" +
+		"`- REQ-1679 a quoted worked example — the second\n" +
+		"finding for REQ-1108` matters.\n\n" +
+		"Trailing prose cites REQ-1108 again.\n"
+
+	javascriptProbe := `
+var requestsById = {
+  "REQ-1679": { title: ` + mustMarshalJSONString(t, exactlySixtyTitle) + `, status: "completed" },
+  "REQ-1108": { title: "Short one", status: "pending" },
+  "REQ-1685": { title: ` + mustMarshalJSONString(t, longTitle) + `, status: "claimed" },
+  "REQ-500": { title: "Host document", status: "claimed" },
+  "REQ-501": { title: "Second host document", status: "pending" },
+  "UR-001-REQ-042": { title: "First half of an ambiguous pair", status: "pending" },
+  "UR-002-REQ-042": { title: "Second half of an ambiguous pair", status: "pending" }
+};
+var userRequestsById = {
+  "UR-074": { title: "Ticket ids should carry their titles" }
+};
+` + strings.Join(functionBlocks, "\n") + "\n" + strings.Join(declarationBlocks, "\n") + `
+
+var hostDocument = ` + mustMarshalJSONString(t, hostDocument) + `;
+var secondDocument = ` + mustMarshalJSONString(t, secondDocument) + `;
+var annotatedHost = annotateTicketMentions(hostDocument);
+var joinedPayload = annotateClipboardPayload([hostDocument, secondDocument], ["REQ-500", "REQ-501"]);
+var glossaryHeadingCount = joinedPayload.split(referencedTicketsGlossaryHeading).length - 1;
+
+process.stdout.write(JSON.stringify({
+  annotatedHostDocument: annotatedHost.text,
+  hostReferencedIds: annotatedHost.referencedTickets.map(function (entry) { return entry.id; }),
+  joinedPayload: joinedPayload,
+  glossaryHeadingCount: glossaryHeadingCount,
+  excludedPayload: annotateClipboardPayload(
+    [hostDocument, secondDocument], ["REQ-500", "REQ-501", "REQ-1679", "REQ-1108"]
+  ),
+  unclosedFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, unclosedFenceDocument) + `], []),
+  carriageReturnPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, carriageReturnDocument) + `], ["REQ-500"]),
+  fencelessPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, fencelessDocument) + `], ["REQ-1108"]),
+  loneFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, loneFenceDocument) + `], []),
+  ambiguousPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, ambiguousDocument) + `], []),
+  noReferencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, noReferenceDocument) + `], []),
+  blockquotedFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, blockquotedFenceDocument) + `], ["REQ-500"]),
+  invalidInfoStringPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, invalidInfoStringDocument) + `], ["REQ-501"]),
+  listItemFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, listItemFenceDocument) + `], ["REQ-500"]),
+  multiLineCodeSpanPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, multiLineCodeSpanDocument) + `], ["REQ-501"])
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "clipboard ticket annotation", javascriptProbe)
+	var probeResult clipboardAnnotationProbeResult
+	if decodeError := json.Unmarshal(probeOutput, &probeResult); decodeError != nil {
+		t.Fatalf("decode clipboard annotation behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if probeResult.AnnotatedHostDocument != wantAnnotatedHostDocument {
+		t.Errorf("annotated host document:\n got %q\nwant %q", probeResult.AnnotatedHostDocument, wantAnnotatedHostDocument)
+	}
+	wantHostReferencedIds := []string{"REQ-1679", "REQ-1108", "UR-074", "REQ-1685", "REQ-9999"}
+	if !reflect.DeepEqual(probeResult.HostReferencedIds, wantHostReferencedIds) {
+		t.Errorf("host references = %v, want first-mention order %v (a fenced or path-borne id must not appear)",
+			probeResult.HostReferencedIds, wantHostReferencedIds)
+	}
+
+	wantGlossary := "\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
+		"- REQ-1679 — " + exactlySixtyTitle + " (completed)\n" +
+		"- REQ-1108 — Short one (pending)\n" +
+		"- UR-074 — Ticket ids should carry their titles (user request)\n" +
+		"- REQ-1685 — " + longTitle + " (claimed)\n" +
+		"- REQ-9999 — not found in this queue\n"
+	wantJoinedPayload := wantAnnotatedHostDocument + wantAnnotatedSecondDocument + wantGlossary
+	if probeResult.JoinedPayload != wantJoinedPayload {
+		t.Errorf("joined clipboard payload:\n got %q\nwant %q", probeResult.JoinedPayload, wantJoinedPayload)
+	}
+	if probeResult.GlossaryHeadingCount != 1 {
+		t.Errorf("glossary heading appeared %d times, want exactly one appendix at the end", probeResult.GlossaryHeadingCount)
+	}
+
+	wantExcludedGlossary := "\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
+		"- UR-074 — Ticket ids should carry their titles (user request)\n" +
+		"- REQ-1685 — " + longTitle + " (claimed)\n" +
+		"- REQ-9999 — not found in this queue\n"
+	wantExcludedPayload := wantAnnotatedHostDocument + wantAnnotatedSecondDocument + wantExcludedGlossary
+	if probeResult.ExcludedPayload != wantExcludedPayload {
+		t.Errorf("payload with excluded ids:\n got %q\nwant %q", probeResult.ExcludedPayload, wantExcludedPayload)
+	}
+
+	// No closing fence means everything is body, exactly as splitFrontmatter
+	// decides on the Go side. Reading it as an unterminated fence would skip the
+	// whole document and annotate nothing.
+	wantUnclosedFencePayload := "---\nid: REQ-1685 (" + shortenedLongTitle + ")\nRead REQ-1108 (Short one) here\n" +
+		"\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
+		"- REQ-1685 — " + longTitle + " (claimed)\n" +
+		"- REQ-1108 — Short one (pending)\n"
+	if probeResult.UnclosedFencePayload != wantUnclosedFencePayload {
+		t.Errorf("unclosed-fence payload:\n got %q\nwant %q", probeResult.UnclosedFencePayload, wantUnclosedFencePayload)
+	}
+
+	// CRLF endings survive byte-for-byte: the body is never normalized, only
+	// extended.
+	wantCarriageReturnPayload := "---\r\nid: REQ-500\r\n---\r\nBody REQ-1108 (Short one) here\r\n" +
+		"\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
+		"- REQ-1108 — Short one (pending)\n"
+	if probeResult.CarriageReturnPayload != wantCarriageReturnPayload {
+		t.Errorf("CRLF payload:\n got %q\nwant %q", probeResult.CarriageReturnPayload, wantCarriageReturnPayload)
+	}
+
+	// The drawer's rendered-text fallback has no fence at all, and a repeat
+	// mention there stays bare.
+	wantFencelessPayload := "# Notes\n\nSee REQ-1108 (Short one) twice, REQ-1108.\n"
+	if probeResult.FencelessPayload != wantFencelessPayload {
+		t.Errorf("fence-less payload:\n got %q\nwant %q", probeResult.FencelessPayload, wantFencelessPayload)
+	}
+	if probeResult.LoneFencePayload != loneFenceDocument {
+		t.Errorf("lone-fence payload = %q, want the document unchanged", probeResult.LoneFencePayload)
+	}
+	// Ambiguous is not missing: the board holds records that match and refuses to
+	// pick one, so it earns neither an expansion nor a not-found line.
+	if probeResult.AmbiguousPayload != ambiguousDocument {
+		t.Errorf("ambiguous payload = %q, want the document unchanged", probeResult.AmbiguousPayload)
+	}
+	if probeResult.NoReferencePayload != noReferenceDocument {
+		t.Errorf("payload citing nothing = %q, want no appendix at all", probeResult.NoReferencePayload)
+	}
+
+	// A fence inside a blockquote is a fence. The outside-text containment
+	// contract writes every UR's Full Verbatim Input this way and promises the
+	// text stays byte-identical apart from the containment bytes, so an id
+	// inside one is preserved words, not a reference. UR-075 holds 21 of them.
+	if strings.Contains(probeResult.BlockquotedFence, "REQ-1108 (Short one)\n> ") ||
+		strings.Contains(probeResult.BlockquotedFence, "> The user pasted REQ-1108 (") {
+		t.Errorf("a blockquoted fence was annotated — the containment contract's preserved text was rewritten:\n%s",
+			probeResult.BlockquotedFence)
+	}
+	if !strings.Contains(probeResult.BlockquotedFence, "> The user pasted REQ-1108 and REQ-1685 here verbatim.\n") {
+		t.Errorf("the blockquoted verbatim line is not byte-identical:\n%s", probeResult.BlockquotedFence)
+	}
+	// Prose on either side of that block still expands, or the fix would have
+	// been to stop annotating rather than to recognise the container.
+	if !strings.Contains(probeResult.BlockquotedFence, "Prose cites REQ-1679 (") {
+		t.Errorf("prose before a blockquoted fence lost its expansion:\n%s", probeResult.BlockquotedFence)
+	}
+
+	// A fence opened as a list item is a fence. The prefix stripper's comment
+	// promised list markers before the code stripped them, so ids inside such a
+	// block were expanded as prose and its closer could be misread as a new
+	// opener, suppressing annotation of everything after it.
+	if strings.Contains(probeResult.ListItemFence, "depends_on: [REQ-1679 (") {
+		t.Errorf("an id inside a list-item fence was expanded:\n%s", probeResult.ListItemFence)
+	}
+	if !strings.Contains(probeResult.ListItemFence, "Prose after the list cites REQ-1108 (") {
+		t.Errorf("prose after a list-item fence lost its expansion — the closer was misread as an opener:\n%s",
+			probeResult.ListItemFence)
+	}
+
+	// A code span may cross a line break. Reading the opener as a stray backtick
+	// expanded the id inside a quoted worked example — live in REQ-380's body.
+	// Neither id inside the span may expand — the one on the opening line or the
+	// one on the continuation line. The continuation id is the discriminator:
+	// without the cross-line carry it is treated as prose and expands, and then
+	// the trailing prose mention becomes a repeat and stays bare, so both halves
+	// of this pair flip together.
+	if strings.Contains(probeResult.MultiLineCodeSpan, "REQ-1679 (") ||
+		strings.Contains(probeResult.MultiLineCodeSpan, "finding for REQ-1108 (") {
+		t.Errorf("an id inside a code span crossing a newline was expanded:\n%s", probeResult.MultiLineCodeSpan)
+	}
+	if !strings.Contains(probeResult.MultiLineCodeSpan, "finding for REQ-1108` matters.") {
+		t.Errorf("the code span's continuation line is not byte-identical:\n%s", probeResult.MultiLineCodeSpan)
+	}
+	if !strings.Contains(probeResult.MultiLineCodeSpan, "Trailing prose cites REQ-1108 (") {
+		t.Errorf("prose after a multi-line code span lost its expansion:\n%s", probeResult.MultiLineCodeSpan)
+	}
+
+	// CommonMark forbids a backtick in a backtick fence's info string, so the
+	// line is prose and what follows it is not fenced. Accepting it opened a
+	// block that never opens and left every later reference bare.
+	if !strings.Contains(probeResult.InvalidInfoString, "REQ-1679 (") {
+		t.Errorf("an invalid backtick info string opened a fence that CommonMark calls prose, "+
+			"so the reference under it was left bare:\n%s", probeResult.InvalidInfoString)
+	}
+}
+
+// The three Copy handlers each hand their own payload and their own exclusion
+// set to one annotator. A handler wired to the wrong exclusion set glosses the
+// tickets it already contains, which no pure-function probe can see.
+func TestClipboardAnnotationWiresEveryCopyHandler(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	if !strings.Contains(indexHtml, "function annotateClipboardPayload(") {
+		t.Fatal("the generated page defines no annotateClipboardPayload — every assertion below is vacuous")
+	}
+	if callSiteCount := strings.Count(indexHtml, "return annotateClipboardPayload("); callSiteCount != 3 {
+		t.Errorf("annotateClipboardPayload call sites = %d, want one per Copy handler", callSiteCount)
+	}
+	for _, requiredCallSite := range []string{
+		// The drawer Copy annotates its RAW branch only. Its fallback input is
+		// drawerBody.innerText, which the drawer already expanded, so annotating
+		// that again duplicated every title ("REQ-1679 (Short one) Short one").
+		"return annotateClipboardPayload([rawMarkdown], [requestedId]);",
+		"[requestedUserRequestId].concat(requestedRequestIds)",
+		"return annotateClipboardPayload(rawMarkdownDocumentsForRequests(markdownData, requestIds), requestIds);",
+	} {
+		if !strings.Contains(indexHtml, requiredCallSite) {
+			t.Errorf("Copy handler wiring missing: %q", requiredCallSite)
+		}
+	}
+	if !strings.Contains(indexHtml, referencedRequestsGlossaryHeading) {
+		t.Errorf("the generated page does not carry the glossary heading %q", referencedRequestsGlossaryHeading)
+	}
+}
+
+// mustMarshalJSONString renders a Go string as a JavaScript string literal for
+// splicing into a probe, so a fixture title carrying quotes or a non-ASCII
+// character cannot break the probe's syntax.
+func mustMarshalJSONString(t *testing.T, plainText string) string {
+	t.Helper()
+	encoded, encodeError := json.Marshal(plainText)
+	if encodeError != nil {
+		t.Fatalf("encode probe string %q: %v", plainText, encodeError)
+	}
+	return string(encoded)
 }
 
 // The Copy payload must be the ticket file exactly as it exists on disk —

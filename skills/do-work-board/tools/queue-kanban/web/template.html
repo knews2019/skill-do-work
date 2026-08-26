@@ -551,6 +551,10 @@
       <h2 class="detail-title" id="detail-drawer-title"></h2>
       <dl class="detail-meta" id="detail-meta"></dl>
       <div class="detail-body markdown-body" id="detail-body"></div>
+      <!-- Every REQ/UR id the body referenced, with its full title and status.
+           board-detail.js clears it on each open and fills it after
+           linkification; a body that cited nothing leaves it hidden. -->
+      <section class="detail-glossary" id="detail-glossary" aria-label="Referenced tickets" hidden></section>
     </aside>
 
     <script src="board-data.js"></script>

@@ -2,6 +2,25 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.240.0 — Copy Brings the Titles With It (2026-08-26)
+
+Copying a ticket used to paste a wall of bare numbers into whatever you pasted it into. Now the paste explains itself: the first mention of each id it cites carries that ticket's title, and a list at the end names every id the body referenced.
+
+- **Copy** and both **Copy all** buttons annotate the body and append one **Referenced requests** list at the end, with each ticket's full title and current status — so a paste into a fresh session no longer needs the board open beside it.
+- An id the queue has no record of says `not found in this queue` in that list, rather than sitting there looking like a real reference.
+- The frontmatter fence is never touched, so a paste still saves straight back as a valid REQ or UR with its `depends_on` and `related` intact. A copy-all of several tickets keeps every one of their fences.
+- Quoted text keeps its exact words: code fences, code spans, and the blockquoted verbatim block every user request stores its original input in are all left alone.
+
+## 0.239.0 — Ticket Mentions Carry Their Titles (2026-08-26)
+
+A REQ body that said `Read REQ-1679/REQ-1108 lessons` told you nothing about what those requests were. Now every id the drawer shows carries its title, and a dead reference says so instead of hiding.
+
+- The first mention of a REQ or UR id in a drawer body expands to the id plus its title, cut on a word boundary at 60 characters with the full title in the tooltip; later mentions stay bare so dense prose does not turn into a wall of repeated titles.
+- A glossary under the body lists every id that body referenced, once each, with the untruncated title and current status — so a body dense with ids can be read once and looked up afterwards.
+- `Depends on`, `Blocked by`, `Unblocks`, `Overlapping write sets`, `User request` and the UR drawer's `REQ ids` row always carry titles, one id per line.
+- An id no record answers to renders in the blocked accent with a not-found tooltip, so a typo or a reference to never-captured work is visible instead of silent. A fenced code block is exempt: it prints templates, worked examples and captured transcripts, which point at nothing. An ambiguous id is left alone — the board knows matching records and refuses to guess, and ambiguous is not missing.
+- A record that exists but has no title says why instead of falling back to a bare id — a user request whose `input.md` was never found reads `no input.md — synthesized from REQ pointers`, and the substitute is set in a quieter voice so it reads as a description of the record rather than as its own words.
+
 ## 0.238.0 — Repo-Wide Architecture Report (2026-08-26)
 
 New `do-work-toolbox architecture-report` writes a dated, immutable map of the whole repository — Mermaid diagrams, labelled claims, and a delta table that leads the file. Run it twice and diff the two reports to see exactly what moved in between.

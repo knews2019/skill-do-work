@@ -61,6 +61,13 @@ func TestBrowserBehaviorBoardColumnCopyAll(t *testing.T) {
 	recent24 := boardColumnCopyFixtureTicket("REQ-401", "Done recently", "completed", "docs", "DONE-24-BODY")
 	recent48 := boardColumnCopyFixtureTicket("REQ-402", "Done yesterday", "completed", "frontend", "DONE-48-BODY")
 	tooOld := boardColumnCopyFixtureTicket("REQ-403", "Done too old", "completed", "docs", "DONE-OLD-BODY")
+	// REQ-379: bodies carry ticket mentions so the copied payload exercises the
+	// annotation end to end. REQ-101 sits INSIDE the Pending payload (expanded
+	// inline, dropped from the glossary), REQ-201 sits outside it, and REQ-9999
+	// answers to no record at all. Claimed and Recently Done keep mention-free
+	// bodies, which is what pins "no references, no appendix".
+	pendingBeta.BodyMarkdown += "\nSee REQ-101 and REQ-9999, then REQ-101 again.\n"
+	pendingAlpha.BodyMarkdown += "\nBlocked by REQ-201.\n"
 	recent24.CompletionTime = probeNow.Add(-2 * time.Hour)
 	recent48.CompletionTime = probeNow.Add(-36 * time.Hour)
 	tooOld.CompletionTime = probeNow.Add(-8 * 24 * time.Hour)
@@ -283,20 +290,36 @@ func TestBrowserBehaviorBoardColumnCopyAll(t *testing.T) {
 	if !reflect.DeepEqual(result.InitialPendingIds, wantPendingIds) {
 		t.Fatalf("initial Pending display order = %v, want Ready then Waiting order %v", result.InitialPendingIds, wantPendingIds)
 	}
+	// Written out rather than recomputed: every FrontmatterMarkdown below is the
+	// fixture's own bytes, so a fence that gained an expansion fails here, and the
+	// annotated bodies are literals so the expansion shape cannot drift silently.
+	annotatedPendingBetaBody := "# Pending beta\n\nBETA-BODY\n\nSee REQ-101 (Pending alpha) and REQ-9999, then REQ-101 again.\n"
+	annotatedPendingAlphaBody := "# Pending alpha\n\nALPHA-BODY\n\nBlocked by REQ-201 (Claimed only).\n"
 	wantPendingPayload :=
-		pendingBeta.FrontmatterMarkdown + pendingBeta.BodyMarkdown +
-			pendingAlpha.FrontmatterMarkdown + pendingAlpha.BodyMarkdown +
-			pendingWaiting.FrontmatterMarkdown + pendingWaiting.BodyMarkdown
+		pendingBeta.FrontmatterMarkdown + annotatedPendingBetaBody +
+			pendingAlpha.FrontmatterMarkdown + annotatedPendingAlphaBody +
+			pendingWaiting.FrontmatterMarkdown + pendingWaiting.BodyMarkdown +
+			"\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
+			"- REQ-9999 — not found in this queue\n" +
+			"- REQ-201 — Claimed only (claimed)\n"
 	if result.InitialPendingPayload != wantPendingPayload {
 		t.Fatalf("initial Pending clipboard payload changed order/content:\n got %q\nwant %q", result.InitialPendingPayload, wantPendingPayload)
 	}
+	// A mention-free column copies its files and gains no appendix at all.
 	if !reflect.DeepEqual(result.ClaimedIds, []string{"REQ-201"}) ||
 		result.ClaimedPayload != claimed.FrontmatterMarkdown+claimed.BodyMarkdown {
 		t.Fatalf("single-card Claimed copy = ids %v payload %q", result.ClaimedIds, result.ClaimedPayload)
 	}
+	// The same body, copied from a filtered column that no longer carries
+	// REQ-101: the exclusion tracks the payload, so REQ-101 now earns a line.
+	wantFilteredPendingPayload := pendingBeta.FrontmatterMarkdown + annotatedPendingBetaBody +
+		"\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
+		"- REQ-101 — Pending alpha (pending)\n" +
+		"- REQ-9999 — not found in this queue\n"
 	if !reflect.DeepEqual(result.FilteredPendingIds, []string{"REQ-102"}) ||
-		result.FilteredPendingPayload != pendingBeta.FrontmatterMarkdown+pendingBeta.BodyMarkdown {
-		t.Fatalf("filtered Pending copy = ids %v payload %q", result.FilteredPendingIds, result.FilteredPendingPayload)
+		result.FilteredPendingPayload != wantFilteredPendingPayload {
+		t.Fatalf("filtered Pending copy = ids %v payload %q, want %q",
+			result.FilteredPendingIds, result.FilteredPendingPayload, wantFilteredPendingPayload)
 	}
 	for _, hiddenColumnKey := range []string{"claimed", "needsInputOrBlocked", "recentlyDone"} {
 		if !result.FilteredDisabled[hiddenColumnKey] {
