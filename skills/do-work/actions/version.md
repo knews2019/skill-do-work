@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.238.0
+**Current version**: 0.239.0
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/skills/do-work/actions/version.md
 

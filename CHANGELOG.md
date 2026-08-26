@@ -2,7 +2,7 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
-## 0.238.0 — Ticket Mentions Carry Their Titles (2026-08-26)
+## 0.239.0 — Ticket Mentions Carry Their Titles (2026-08-26)
 
 A REQ body that said `Read REQ-1679/REQ-1108 lessons` told you nothing about what those requests were. Now every id the drawer shows carries its title, and a dead reference says so instead of hiding.
 
@@ -10,6 +10,18 @@ A REQ body that said `Read REQ-1679/REQ-1108 lessons` told you nothing about wha
 - A glossary under the body lists every id that body referenced, once each, with the untruncated title and current status — so a body dense with ids can be read once and looked up afterwards.
 - `Depends on`, `Blocked by`, `Unblocks`, `Overlapping write sets`, `User request` and the UR drawer's `REQ ids` row always carry titles, one id per line.
 - An id no record answers to renders in the blocked accent with a not-found tooltip, so a typo or a reference to never-captured work is visible instead of silent. A fenced code block is exempt: it prints templates, worked examples and captured transcripts, which point at nothing. An ambiguous id is left alone — the board knows matching records and refuses to guess, and ambiguous is not missing.
+- A record that exists but has no title says why instead of falling back to a bare id — a user request whose `input.md` was never found reads `no input.md — synthesized from REQ pointers`, and the substitute is set in a quieter voice so it reads as a description of the record rather than as its own words.
+
+## 0.238.0 — Repo-Wide Architecture Report (2026-08-26)
+
+New `do-work-toolbox architecture-report` writes a dated, immutable map of the whole repository — Mermaid diagrams, labelled claims, and a delta table that leads the file. Run it twice and diff the two reports to see exactly what moved in between.
+
+- New `architecture-report` action in do-work-toolbox: pre-flight against the previous report, ground in the native record, verify every prior claim, then publish a dated bundle under `ai-reports/`.
+- Sections whose claims still verify are carried forward byte-identical, so a diff between two reports reads as the diff of the architecture rather than two independent authorings of the same facts.
+- Reports live beside the ones `ai-report` publishes, in the same `<date>_<time>_<name>/` bundle shape, so every dated report a project produces sits in one place.
+- Findings stay where they belong: bugs, debt, and missing tests remain with `maintainability-audit` and `quick-wins`; the report links there instead of restating them.
+- New shipped `scripts/architecture-report-preflight.sh` owns the mechanical ends — locating the prior report, reading its watermark, and publishing without ever clobbering an existing file.
+- Prior reports are never edited; a colliding run escalates to `-2`, `-3`, and so on under the shared Collision-Safe Publication contract.
 
 ## 0.237.0 — Done Cards Show How Long the Work Took (2026-08-26)
 

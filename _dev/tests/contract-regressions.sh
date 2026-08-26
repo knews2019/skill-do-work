@@ -17,7 +17,7 @@ resolve_runtime_file() {
     actions/board.md|docs/board-guide.md) printf '%s/%s\n' "$board_root" "$relative_path" ;;
     actions/bkb*|actions/dream.md|actions/interview*|actions/memory*|actions/prompts.md|actions/setup-memory.md|docs/bkb-guide.md|docs/dream-guide.md|docs/interview-guide.md|docs/prompts-guide.md|prompts/*|interviews/*|hooks/memory-*)
       printf '%s/%s\n' "$knowledge_root" "$relative_path" ;;
-    actions/ai-report*|actions/code-review.md|actions/completed-work-presentation-reference.md|actions/deep-explore*|actions/inspect.md|actions/install.md|actions/note.md|actions/present-video.md|actions/present-work.md|actions/prime.md|actions/quick-wins.md|actions/scan-ideas.md|actions/slop-check.md|actions/stray-check.md|actions/tidy-repo.md|actions/tutorial.md|actions/ui-review.md|actions/validate-feedback.md|docs/ai-report-guide.md|docs/code-review-guide.md|docs/inspect-guide.md|docs/present-video-guide.md|docs/present-work-guide.md|docs/prime-guide.md|docs/quick-wins-guide.md|docs/slop-check-guide.md|docs/stray-check-guide.md|docs/ui-review-guide.md)
+    actions/ai-report*|actions/architecture-report.md|actions/code-review.md|actions/completed-work-presentation-reference.md|actions/deep-explore*|actions/inspect.md|actions/install.md|actions/note.md|actions/present-video.md|actions/present-work.md|actions/prime.md|actions/quick-wins.md|actions/scan-ideas.md|actions/slop-check.md|actions/stray-check.md|actions/tidy-repo.md|actions/tutorial.md|actions/ui-review.md|actions/validate-feedback.md|docs/ai-report-guide.md|docs/code-review-guide.md|docs/inspect-guide.md|docs/present-video-guide.md|docs/present-work-guide.md|docs/prime-guide.md|docs/quick-wins-guide.md|docs/slop-check-guide.md|docs/stray-check-guide.md|docs/ui-review-guide.md)
       printf '%s/%s\n' "$toolbox_root" "$relative_path" ;;
     actions/*|crew-members/*|docs/*|hooks/*|scripts/*|specs/*|tools/checks/*|tools/estimate-p50.sh|tools/do-work-update.sh|tools/prime-do-work-update.md)
       printf '%s/%s\n' "$core_root" "$relative_path" ;;
@@ -754,6 +754,160 @@ require_order(
     r"Build the reference's provenance ledger",
     "ai-report must load the shared completed-work reference before using archived evidence",
 )
+
+# architecture-report. Four properties keep a later cleanup from quietly turning
+# this action into something else: its repo-wide input contract (no UR/REQ target, so it
+# cannot be folded into ai-report), its dated-immutable publication (so it cannot become a
+# mutable canonical file), its carry-forward rule (so a rewrite-from-scratch cannot pass as
+# a report), and its delta-first section order (so the repeat reader's section stays first).
+architecture_report = "skills/do-work-toolbox/actions/architecture-report.md"
+
+# 1. Repo-wide input contract. The action takes no completed-work target, which is exactly
+# what makes it a sibling of ai-report rather than a mode of it.
+require(architecture_report, r"`\$ARGUMENTS` is ignored", "architecture-report must state that it ignores arguments")
+require(
+    architecture_report,
+    r"there is no UR, REQ, or path-scoped form",
+    "architecture-report must refuse a UR, REQ, or path-scoped target",
+)
+require(
+    architecture_report,
+    r"second, incompatible input contract",
+    "architecture-report must say why folding it into ai-report breaks ai-report's input contract",
+)
+for retired_target_predicate in (
+    r"Terminal-Success Target Resolution",
+    r"blank is the explicit `most recent` form",
+    r"do-work/archive/",
+):
+    reject(
+        architecture_report,
+        retired_target_predicate,
+        f"architecture-report must not acquire a completed-work target contract /{retired_target_predicate}/",
+    )
+
+# 2. Dated-immutable publication. A canonical, in-place `docs/architecture-report.md` is the
+# conversion this rejects: it would destroy the baseline every later delta is computed from.
+require(
+    architecture_report,
+    r"ai-reports/<yyyy-mm-dd>_<hhmm>_architecture-report/architecture-report\.md",
+    "architecture-report must publish the dated filename",
+)
+require(
+    architecture_report,
+    r"Never edit, delete, or regenerate a prior report",
+    "architecture-report must forbid touching a prior report",
+)
+for undated_canonical_predicate in (
+    r"ai-reports/architecture-report\.md",
+    r"docs/architecture-report\.md",
+):
+    reject(
+        architecture_report,
+        undated_canonical_predicate,
+        f"architecture-report must not name an undated canonical report path /{undated_canonical_predicate}/",
+    )
+require(
+    architecture_report,
+    r"shared with `actions/ai-report\.md`",
+    "architecture-report must publish into the same reports directory as ai-report",
+)
+require_order(
+    architecture_report,
+    r"### Step 6: Publish",
+    r"Collision-Safe Publication",
+    "architecture-report's publish step must delegate to the canonical no-clobber contract",
+)
+require(
+    completed_work_reference,
+    r"Collision-Safe Publication\*\* section is consumer-neutral",
+    "the shared publication contract must state that a non-completed-work consumer may read it alone",
+)
+
+# 3. Carry-forward. Re-authoring an unchanged section in different words is the defect: it
+# fills the next diff with noise that hides the one real change.
+for carry_forward_predicate in (
+    r"byte-identical",
+    r"Only drifted sections are rewritten",
+    r"Re-authoring a section that did not change",
+    r"Carry every still-true section forward byte-identical",
+):
+    require(
+        architecture_report,
+        carry_forward_predicate,
+        f"architecture-report carry-forward rule missing /{carry_forward_predicate}/",
+    )
+
+# 4. Delta first. The watermark, then the drift table, then everything else.
+for committed_tree_predicate in (
+    r"Verify against a committed tree, never the working tree",
+    r"Publish the report as a child commit of the one\s+it watermarks",
+    r"never let the report assert its own\s+presence",
+):
+    require(
+        architecture_report,
+        committed_tree_predicate,
+        f"architecture-report must bind the watermark to a committed tree /{committed_tree_predicate}/",
+    )
+
+require(
+    architecture_report,
+    r"the first section after the watermark",
+    "architecture-report must place the delta section immediately after the watermark",
+)
+require_order(
+    architecture_report,
+    r"\*\*Watermark\*\*",
+    r"\*\*§Δ Changed since last report\*\*",
+    "architecture-report's watermark must precede its delta section",
+)
+require_order(
+    architecture_report,
+    r"\*\*§Δ Changed since last report\*\*",
+    r"\*\*§0 Orientation\*\*",
+    "architecture-report's delta section must precede the orientation section",
+)
+
+# 5. Audit findings stay with the audit loop, which owns bands and ratchets.
+require(
+    architecture_report,
+    r"it never restates their findings",
+    "architecture-report must keep audit findings out of the report body",
+)
+require(
+    architecture_report,
+    r"maintainability-audit\.md.*quick-wins\.md|quick-wins\.md.*maintainability-audit\.md",
+    "architecture-report must redirect findings to the actions that own them",
+)
+
+# 6. Discovery surfaces. A routed action nobody can find is not shipped.
+if route_rows.get("./actions/architecture-report.md") != (
+    "architecture-report",
+    "architecture overview",
+    "map the repo",
+):
+    failures.append(
+        "skills/do-work-toolbox/SKILL.md: ./actions/architecture-report.md owns "
+        f"{route_rows.get('./actions/architecture-report.md')!r}, expected the three architecture triggers"
+    )
+if "architecture-report" not in hint_commands:
+    failures.append("skills/do-work-toolbox/SKILL.md: argument-hint omits architecture-report")
+require(
+    "skills/do-work-toolbox/actions/help.md",
+    r"architecture-report\s+.*dated.*immutable.*architecture",
+    "toolbox help must advertise architecture-report as a dated immutable architecture map",
+)
+require(
+    "skills/do-work/actions/help.md",
+    r"do-work-toolbox[\s\S]{0,350}architecture-report",
+    "core help must list architecture-report among the toolbox commands",
+)
+require(
+    "README.md",
+    r"do-work-toolbox architecture-report",
+    "README must name the architecture-report command",
+)
+
 
 present_work = "skills/do-work-toolbox/actions/present-work.md"
 for predicate in (

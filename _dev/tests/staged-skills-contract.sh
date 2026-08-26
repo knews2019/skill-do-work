@@ -128,6 +128,7 @@ toolbox_actions=(
   validate-feedback
   code-review
   maintainability-audit
+  architecture-report
   ui-review
   present-work
   ai-report
@@ -155,6 +156,7 @@ toolbox_files=(
   skills/do-work-toolbox/docs/present-work-guide.md
   skills/do-work-toolbox/docs/present-video-guide.md
   skills/do-work-toolbox/crew-members/ui-design.md
+  skills/do-work-toolbox/scripts/architecture-report-preflight.sh
   skills/do-work-toolbox/scripts/publish-portfolio-summary.sh
   skills/do-work-toolbox/scripts/generate-report-image-batch.sh
 )
@@ -190,7 +192,8 @@ for sibling_script_contract in \
   'skills/do-work-toolbox/actions/install.md|<skill-root>/../do-work/scripts/atomic-download.sh|skills/do-work/scripts/atomic-download.sh' \
   'skills/do-work-toolbox/actions/present-work.md|<skill-root>/scripts/publish-portfolio-summary.sh|skills/do-work-toolbox/scripts/publish-portfolio-summary.sh' \
   'skills/do-work-toolbox/actions/install.md|<skill-root>/scripts/install-last30days.sh|skills/do-work-toolbox/scripts/install-last30days.sh' \
-  'skills/do-work-toolbox/actions/ai-report-reference.md|<skill-root>/scripts/generate-report-image-batch.sh|skills/do-work-toolbox/scripts/generate-report-image-batch.sh'
+  'skills/do-work-toolbox/actions/ai-report-reference.md|<skill-root>/scripts/generate-report-image-batch.sh|skills/do-work-toolbox/scripts/generate-report-image-batch.sh' \
+  'skills/do-work-toolbox/actions/architecture-report.md|<skill-root>/scripts/architecture-report-preflight.sh|skills/do-work-toolbox/scripts/architecture-report-preflight.sh'
 do
   caller_path="${sibling_script_contract%%|*}"
   sibling_contract_rest="${sibling_script_contract#*|}"
