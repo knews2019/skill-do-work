@@ -1,17 +1,30 @@
 ---
 id: REQ-374
 title: 'Show how long each done card took'
-status: pending
+status: claimed
+claimed_at: 2026-08-26T13:17:00Z
 created_at: 2026-08-26T13:02:22Z
 user_request: UR-074
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec:
+route: B
 depends_on: []
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  calculated_at: 2026-08-26T13:22:00Z
+  basis:
+    - Route B
+    - 4-file write set
+    - 1 new files
+    - 2 subsystems involved
+    - 6 acceptance criteria
+    - browser evidence
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-cards.js
   - skills/do-work-board/tools/queue-kanban/web/board-core.js
@@ -83,3 +96,13 @@ See `do-work/user-requests/UR-074/input.md` for complete verbatim input.
 
 ---
 *Source: "So when we show the recently done cards, please also show the duration, how long it took since it was started until it is finished to implement that card to make it delivered. By making it delivered, I mean it was moved to the Done column, completed status."*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The outcome is fully specified and the target files are named, but the existing conventions still need discovery — where the four-hour ceiling is read from on the client side, which test file holds the board's card-rendering probes, and how the done line is styled.
+
+**Planning:** Not required
