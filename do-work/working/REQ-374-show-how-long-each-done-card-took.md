@@ -135,7 +135,9 @@ See `do-work/user-requests/UR-074/input.md` for complete verbatim input.
 - [DECIDE & STATE] **D-02**: The span's verdict (plain / over-ceiling / reversed) is computed in Go and shipped in the per-request payload; the client renders the verdict and never restates the four-hour ceiling. Reasoning: F3, and the board's own lesson that a rule's second reader must not become a second definition (REQ-219). This reuses the `excludedReason` convention rather than inventing one.
 - [DECIDE & STATE] **D-03**: The reversed case reuses the existing completion-anomaly verdict rather than adding a second broken-stamp signal. Reasoning: F2. The done line renders an inline `.status-invalid-flag` reading `reversed stamps` in place of a number, so the line is never silently blank while the card's `anomaly` badge carries the full explanation.
 
-<!-- D-XX counter: last used D-03. Next decision: D-04. -->
+- [DECIDE & STATE] **D-04**: The card draws its span with `formatElapsedDuration` (`board-core.js:128`), the card's own stopwatch vocabulary — `34m 00s`, `2h 40m`, `3d 04h` — not with the Durations view's `formatDurationMinutes`. Reasoning: raised by a PR reviewer against my own exploration note, and correct. `formatDurationMinutes` renders 34 minutes as `34.0 min`; a tenth of a minute is meaningful in the Durations table and is noise on a card footer. `formatElapsedDuration` is already what the state-timer line one row above draws in, so the two time lines on a card read alike, and it is a pure function of two instants, so passing `(claimed, completed)` needs no new formatter. Consequence: the `2h40m` / `34min` strings in `## Red-Green Proof` are illustrative of the reading, not of the spelling; the acceptance criteria below carry the drawn vocabulary. The formatter's clock-skew branch is unreachable here because the client branches on the Go verdict first (D-02/D-03).
+
+<!-- D-XX counter: last used D-04. Next decision: D-05. -->
 
 ## Scope
 
@@ -151,7 +153,7 @@ See `do-work/user-requests/UR-074/input.md` for complete verbatim input.
 **Acceptance criteria (restated from the REQ):**
 
 1. A Recently-Done card whose status is `completed` or `completed-with-issues`, with both stamps parseable, renders its implementation span on the done line.
-2. A span at or under four hours renders plainly, in the board's existing span vocabulary.
+2. A span at or under four hours renders plainly, in the card's stopwatch vocabulary (`formatElapsedDuration`: `34m 00s`, `2h 40m`) — the same vocabulary the state-timer line uses, and no new formatter.
 3. A span over four hours renders with a paused-session marker.
 4. A reversed span renders a broken-stamp flag instead of a number.
 5. A card with no parseable `claimed_at` renders the done line exactly as it does today.
