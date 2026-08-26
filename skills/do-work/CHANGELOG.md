@@ -2,7 +2,7 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
-## 0.237.0 — Repo-Wide Architecture Report (2026-08-26)
+## 0.238.0 — Repo-Wide Architecture Report (2026-08-26)
 
 New `do-work-toolbox architecture-report` writes a dated, immutable map of the whole repository — Mermaid diagrams, labelled claims, and a delta table that leads the file. Run it twice and diff the two reports to see exactly what moved in between.
 
@@ -11,6 +11,16 @@ New `do-work-toolbox architecture-report` writes a dated, immutable map of the w
 - Prior reports are never edited. A second run on the same day publishes `_2`, `_3`, and so on under the shared Collision-Safe Publication contract.
 - Findings stay where they belong: bugs, debt, and missing tests remain with `maintainability-audit` and `quick-wins`; the report links there instead of restating them.
 - New shipped `scripts/architecture-report-preflight.sh` owns the mechanical ends — locating the prior report, reading its watermark, and publishing without ever clobbering an existing file.
+- The reports directory is the project root's `docs/` by default; a project that reserves that path passes the directory it uses instead.
+
+## 0.237.0 — Done Cards Show How Long the Work Took (2026-08-26)
+
+The board's Recently Done cards said when work finished but never how long it took. Now they say both.
+
+- A done card reads `done Aug 25, 08:47 UTC · 1d ago · took 9m 30s` — the span from when the builder claimed the REQ to when it landed.
+- A span past the board's four-hour read-time ceiling is marked `likely paused`, so an overnight session is never read as four hours of work; a reversed pair of stamps says `reversed stamps` instead of a number.
+- The span is measured from the frontmatter stamps only, never the git-dated completion fallback, so a card can never state a duration the Durations view leaves out.
+- The span and its verdict are decided once in Go and shipped ready to draw, so the card and the Durations chart read one rule rather than two copies of it.
 
 ## 0.236.63 — TDD Evidence Requires a Harness Test (2026-08-25)
 

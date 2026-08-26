@@ -755,7 +755,7 @@ require_order(
     "ai-report must load the shared completed-work reference before using archived evidence",
 )
 
-# architecture-report (REQ-360). Four properties keep a later cleanup from quietly turning
+# architecture-report. Four properties keep a later cleanup from quietly turning
 # this action into something else: its repo-wide input contract (no UR/REQ target, so it
 # cannot be folded into ai-report), its dated-immutable publication (so it cannot become a
 # mutable canonical file), its carry-forward rule (so a rewrite-from-scratch cannot pass as

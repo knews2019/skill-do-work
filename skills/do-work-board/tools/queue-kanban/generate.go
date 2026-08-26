@@ -189,6 +189,23 @@ type generatedRequest struct {
 	CompletionTime       string `json:"completionTime"`
 	CompletionTimeSource string `json:"completionTimeSource"`
 
+	// The implementation span the Recently-Done card states: completed_at −
+	// claimed_at in minutes, with the read-time rule's verdict already applied
+	// Go-side (durations.go's measureImplementationSpan). Present only for a REQ
+	// that reached terminal SUCCESS and carries both parseable frontmatter
+	// stamps, so `hasImplementationSpan` false is a real "unmeasured" rather than
+	// a span of zero. `implementationSpanReason` is "paused" or "reversed", empty
+	// when the span reads plainly — the four-hour ceiling itself never crosses to
+	// the client, which would make the renderer a second definition of it.
+	HasImplementationSpan bool `json:"hasImplementationSpan,omitempty"`
+	// Deliberately NOT omitempty: a genuine zero-minute span is possible (identical
+	// stamps, or date-only stamps on both fields, which parseTimestamp accepts), and
+	// omitempty would drop that 0 while hasImplementationSpan still shipped true —
+	// leaving the client to multiply undefined and render "took NaNs". The flag above
+	// is what carries presence; this field carries the value, including zero.
+	ImplementationSpanMinutes float64 `json:"implementationSpanMinutes"`
+	ImplementationSpanReason  string  `json:"implementationSpanReason,omitempty"`
+
 	CompletionAnomaly       bool   `json:"completionAnomaly,omitempty"`
 	CompletionAnomalyReason string `json:"completionAnomalyReason,omitempty"`
 
@@ -623,6 +640,12 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			return generatedBoardData{}, fmt.Errorf("queue-kanban: rendering %s body: %w", ticket.RequestId, renderError)
 		}
 		data.RequestOrder = append(data.RequestOrder, ticket.RequestId)
+		// Terminal SUCCESS only: cancelled work shares the Recently-Done column
+		// but never took an implementation span worth stating.
+		implementationSpan := ImplementationSpan{}
+		if isCompletedStatus(ticket.Status) {
+			implementationSpan = measureImplementationSpan(ticket)
+		}
 		data.Requests[ticket.RequestId] = generatedRequest{
 			RequestId:                  ticket.RequestId,
 			Title:                      ticket.Title,
@@ -668,6 +691,10 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			FileModifiedAt:             formatTimestamp(ticket.FileModifiedAt),
 			CompletionTime:             formatTimestamp(ticket.CompletionTime),
 			CompletionTimeSource:       string(ticket.CompletionTimeSource),
+
+			HasImplementationSpan:     implementationSpan.StampsParsed,
+			ImplementationSpanMinutes: implementationSpan.WallMinutes,
+			ImplementationSpanReason:  implementationSpan.ExclusionReason,
 
 			CompletionAnomaly:       ticket.CompletionAnomaly,
 			CompletionAnomalyReason: ticket.CompletionAnomalyReason,
