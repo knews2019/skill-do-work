@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.241.0 — Copy Reads the Markdown With a Markdown Parser (2026-08-26)
+
+The Copy button decided which ids to annotate by scanning for backticks by hand in the browser, and it kept getting corner cases wrong. That job moved to the real Markdown parser the board already runs, so quoted text now stays quoted in every shape the format allows.
+
+- A fence inside a blockquote, a fence opened as a list item, a four-space indented block, a code span that wraps across a line, a link reference definition, and a fence whose info string holds a backtick are all read correctly now. The four-space indented block was previously invisible to Copy entirely.
+- The 150 lines of hand-rolled Markdown scanning in the browser are gone. What the page still does is insert titles at positions the board computed for it.
+- An id inside a raw HTML block is no longer annotated, matching what the drawer shows — the drawer never rendered those words in the first place.
+
 ## 0.240.0 — Copy Brings the Titles With It (2026-08-26)
 
 Copying a ticket used to paste a wall of bare numbers into whatever you pasted it into. Now the paste explains itself: the first mention of each id it cites carries that ticket's title, and a list at the end names every id the body referenced.

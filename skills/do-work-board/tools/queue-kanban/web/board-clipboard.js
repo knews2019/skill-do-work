@@ -47,6 +47,30 @@
     return null;
   }
 
+  // Where that document's ticket ids sit, computed by the Go walk in
+  // citations.go and shipped in the same payload as the text it indexes. An
+  // older generated bundle carries no index at all, so an absent entry yields
+  // an empty list and the document copies exactly as it is on disk — the one
+  // behaviour a missing index must never break.
+  function ticketMentionsForDetail(markdownData, detailKind, detailId) {
+    var mentionsById = detailKind === "ur" ? markdownData.userRequestMentions : markdownData.requestMentions;
+    if (mentionsById && Object.prototype.hasOwnProperty.call(mentionsById, detailId)) {
+      return mentionsById[detailId];
+    }
+    return [];
+  }
+
+  // Text and offsets travel together from here on. They are only meaningful as
+  // a pair — an offset measured on one document spliced into another lands
+  // mid-word — so no seam below takes the two separately.
+  function clipboardDocumentFor(markdownData, detailKind, detailId) {
+    var rawMarkdown = rawMarkdownForDetail(markdownData, detailKind, detailId);
+    if (rawMarkdown === null) {
+      return null;
+    }
+    return { text: rawMarkdown, ticketMentions: ticketMentionsForDetail(markdownData, detailKind, detailId) };
+  }
+
   // Two Copy shapes, one per path, and the difference is deliberate:
   //
   //   primary  — board-markdown.js is available, so the payload is the ticket FILE
@@ -117,141 +141,15 @@
   // fence is never touched, so a paste still saves back as a file whose
   // depends_on, related and user_request parse. That invariant is what this
   // whole section exists to hold; everything below is in service of it.
+  //
+  // WHICH mentions may be annotated is a Markdown question, and this file does
+  // not answer it. citations.go walks each body's goldmark AST at build time and
+  // ships the positions — see its header for the division. What is left here is
+  // splicing and the appendix, both of which need the board's titles rather than
+  // its Markdown. The scanner this file used to carry disagreed with CommonMark
+  // on six constructs; there is nothing left here that can.
 
   var referencedTicketsGlossaryHeading = "## Referenced requests (added by the board — not part of the file)";
-
-  // Mirrors splitFrontmatter in frontmatter.go and must stay in lock-step with
-  // it: a document is fenced only when it STARTS with "---" (one UTF-8 BOM may
-  // precede it), and the fence closes at the first later line equal to "---"
-  // after one optional carriage return. No opening fence, no closing fence, and
-  // a lone "---" line all mean everything is body — reading an unterminated
-  // fence as frontmatter would silently skip a whole document instead.
-  function frontmatterFenceEndOffset(documentText) {
-    var scanOffset = documentText.charCodeAt(0) === 0xfeff ? 1 : 0;
-    var afterByteOrderMark = documentText.slice(scanOffset);
-    if (afterByteOrderMark.indexOf("---\n") === 0) {
-      scanOffset += "---\n".length;
-    } else if (afterByteOrderMark.indexOf("---\r\n") === 0) {
-      scanOffset += "---\r\n".length;
-    } else {
-      return 0;
-    }
-    while (true) {
-      var newlineIndex = documentText.indexOf("\n", scanOffset);
-      var currentLine = newlineIndex < 0
-        ? documentText.slice(scanOffset)
-        : documentText.slice(scanOffset, newlineIndex);
-      if (currentLine.replace(/\r$/, "") === "---") {
-        return newlineIndex < 0 ? documentText.length : newlineIndex + 1;
-      }
-      if (newlineIndex < 0) {
-        return 0;
-      }
-      scanOffset = newlineIndex + 1;
-    }
-  }
-
-  // A fenced block opens on a line whose leading run — after at most three
-  // spaces — is three or more backticks or tildes. Returns null for any other
-  // line, so a caller can use it as both the open and the close test.
-  // Strips Markdown container prefixes — blockquote markers, and the list
-  // markers a fence can sit under — so a fence is recognised wherever it is
-  // nested. This is not an edge case: the outside-text containment contract
-  // (actions/clarify.md Step 4) writes every UR's Full Verbatim Input as a
-  // BLOCKQUOTED fence, so without this the preserved words of the user's own
-  // request get annotated. UR-075's verbatim block alone holds 21 ticket ids.
-  //
-  // Only the prefix is removed; the indent rules below then apply to what is
-  // left, which is what CommonMark does inside a container.
-  function stripContainerPrefix(lineText) {
-    var strippedText = lineText;
-    var keepStripping = true;
-    while (keepStripping) {
-      keepStripping = false;
-      var blockquoteMatch = /^ {0,3}> ?/.exec(strippedText);
-      if (blockquoteMatch) {
-        strippedText = strippedText.slice(blockquoteMatch[0].length);
-        keepStripping = true;
-        continue;
-      }
-      // A fence can open directly as a list item — "- ```yaml". Bullet and
-      // ordered markers both, since a REQ body writes either.
-      var listMarkerMatch = /^ {0,3}(?:[-*+]|\d{1,9}[.)]) +/.exec(strippedText);
-      if (listMarkerMatch) {
-        strippedText = strippedText.slice(listMarkerMatch[0].length);
-        keepStripping = true;
-      }
-    }
-    return strippedText;
-  }
-
-  function codeFenceRunFor(lineText) {
-    var containerText = stripContainerPrefix(lineText);
-    var scanOffset = 0;
-    while (scanOffset < 3 && containerText.charAt(scanOffset) === " ") {
-      scanOffset += 1;
-    }
-    var fenceCharacter = containerText.charAt(scanOffset);
-    if (fenceCharacter !== "`" && fenceCharacter !== "~") {
-      return null;
-    }
-    var runEndOffset = scanOffset;
-    while (containerText.charAt(runEndOffset) === fenceCharacter) {
-      runEndOffset += 1;
-    }
-    if (runEndOffset - scanOffset < 3) {
-      return null;
-    }
-    var infoText = containerText.slice(runEndOffset);
-    // CommonMark forbids a backtick anywhere in a BACKTICK fence's info string,
-    // so ```lang`invalid is prose, not a fence. This repo's own renderer already
-    // agrees — TestRenderMarkdownInvalidBacktickInfoRemainsQuestionProse pins it
-    // — and treating it as a fence here opened a block that never opens in the
-    // rendered body, silently leaving every reference until the next fence or
-    // EOF unannotated. A tilde fence has no such rule and may carry backticks.
-    if (fenceCharacter === "`" && infoText.indexOf("`") >= 0) {
-      return null;
-    }
-    return {
-      fenceCharacter: fenceCharacter,
-      runLength: runEndOffset - scanOffset,
-      infoText: infoText
-    };
-  }
-
-  // A closing fence uses the opener's character, is at least as long, and
-  // carries no info string. The length rule is what lets a ````-fenced block
-  // quote a ```-fenced one, which REQ bodies do whenever they show a template.
-  function codeFenceRunCloses(candidateRun, openFenceRun) {
-    return (
-      candidateRun !== null &&
-      candidateRun.fenceCharacter === openFenceRun.fenceCharacter &&
-      candidateRun.runLength >= openFenceRun.runLength &&
-      candidateRun.infoText.trim() === ""
-    );
-  }
-
-  // Finds the backtick run that closes an inline code span opened by a run of
-  // runLength backticks. Only an EQUAL-length run closes it, which is what lets
-  // a body write ``a ` b`` without the span ending at the inner backtick.
-  function findMatchingBacktickRun(lineText, fromOffset, runLength) {
-    var scanOffset = fromOffset;
-    while (scanOffset < lineText.length) {
-      var runStartOffset = lineText.indexOf("`", scanOffset);
-      if (runStartOffset < 0) {
-        return -1;
-      }
-      var runEndOffset = runStartOffset;
-      while (lineText.charAt(runEndOffset) === "`") {
-        runEndOffset += 1;
-      }
-      if (runEndOffset - runStartOffset === runLength) {
-        return runStartOffset;
-      }
-      scanOffset = runEndOffset;
-    }
-    return -1;
-  }
 
   function recordReferencedTicket(annotationState, referencedTicket) {
     if (Object.prototype.hasOwnProperty.call(annotationState.referencedTicketIds, referencedTicket.id)) {
@@ -261,169 +159,41 @@
     annotationState.referencedTickets.push(referencedTicket);
   }
 
-  // One pass over a text run. expandTitles is false in any code context — a code
-  // run must not be contaminated with prose — and flagMissingIds is false inside
-  // a fenced block, where REQ bodies print templates and worked examples, so an
-  // id that answers to nothing there is an illustration and not a dead
-  // reference. Both mirror board-detail.js's insideCodeSpan / insideFencedBlock
-  // split, so the drawer and the paste say the same thing about the same body.
-  function annotateMentionRun(runText, expandTitles, flagMissingIds, annotationState) {
-    var annotatedText = "";
-    var cursorOffset = 0;
-    var matchResult;
-    // bodyMentionPattern is a shared g-flagged RegExp; the drawer leaves its
-    // lastIndex wherever its own scan stopped.
-    bodyMentionPattern.lastIndex = 0;
-    while ((matchResult = bodyMentionPattern.exec(runText)) !== null) {
-      var mentionText = matchResult[0];
-      var mentionEndOffset = matchResult.index + mentionText.length;
-      bodyMentionPattern.lastIndex = mentionEndOffset;
-      if (matchResult[1] || matchResult[2]) {
-        // A URL or a repo-relative path is one opaque run. The drawer resumes
-        // INSIDE it so a nested id can still link; a clipboard payload must not,
-        // or an expansion lands mid-path and the paste carries a path that no
-        // longer names a file.
-        continue;
-      }
-      var ticketTarget = resolveTicketMention(mentionText);
-      if (!ticketTarget) {
-        // Plain text has no red, so the appendix is where a paste's reader
-        // learns a reference is dead. Ambiguous is not dead: the board holds
-        // records that match and refuses to pick one.
-        if (flagMissingIds && !isAmbiguousTicketMention(mentionText)) {
-          recordReferencedTicket(annotationState, { kind: "", id: mentionText });
-        }
-        continue;
-      }
-      recordReferencedTicket(annotationState, ticketTarget);
-      if (!expandTitles ||
-        Object.prototype.hasOwnProperty.call(annotationState.expandedTicketIds, ticketTarget.id)) {
-        continue;
+  // One document in; the same document with its BODY annotated out, plus the
+  // tickets it referenced in first-mention order. First-mention memory is per
+  // document because a payload is a concatenation of whole files, and each file
+  // pastes and reads on its own — which is why the Go side computes `expand`
+  // per document too.
+  //
+  // Splicing runs BACKWARDS. Each inserted title lengthens the text, so every
+  // offset after the insertion point would shift; taking them in descending
+  // order means each remaining offset still measures the same character.
+  function annotateTicketMentions(documentText, ticketMentions) {
+    var annotationState = { referencedTicketIds: {}, referencedTickets: [] };
+    var titleInsertions = [];
+    (ticketMentions || []).forEach(function (ticketMention) {
+      // A mention with no kind is a dead reference. Plain text has no red, so
+      // the appendix is where a paste's reader learns it points at nothing.
+      recordReferencedTicket(annotationState, { kind: ticketMention.kind || "", id: ticketMention.id });
+      if (!ticketMention.expand) {
+        return;
       }
       // describeTicketTitle never answers empty for a record that resolved — it
       // substitutes "untitled" or names the synthesized-UR case — so there is no
       // empty-title branch to take here.
-      var inlineTitle = shortTicketTitle(describeTicketTitle(ticketTarget.kind, ticketTarget.id).text);
-      annotationState.expandedTicketIds[ticketTarget.id] = true;
-      annotatedText += runText.slice(cursorOffset, mentionEndOffset) + " (" + inlineTitle + ")";
-      cursorOffset = mentionEndOffset;
-    }
-    return annotatedText + runText.slice(cursorOffset);
-  }
+      titleInsertions.push({
+        offset: ticketMention.offset + ticketMention.length,
+        text: " (" + shortTicketTitle(describeTicketTitle(ticketMention.kind, ticketMention.id).text) + ")"
+      });
+    });
 
-  // Splits one line into alternating prose and inline-code runs so a backticked
-  // id keeps its exact bytes while still earning its appendix line. An unclosed
-  // backtick run is ordinary prose, which is what a body writing "the ` glyph"
-  // needs.
-  // A code span may cross a line break — CommonMark closes it on the matching
-  // run anywhere in the same paragraph, not the same line. Splitting the body
-  // into lines therefore has to carry the open run forward, or the opener reads
-  // as a stray backtick and every id until the close is expanded as prose. This
-  // is live: REQ-380's body opens a span on one line and closes it on the next
-  // around a backticked REQ-018 example.
-  function annotateLineOutsideFence(lineText, paragraphRemainder, annotationState) {
-    if (annotationState.openCodeSpanRunLength > 0) {
-      var continuedCloseOffset = findMatchingBacktickRun(lineText, 0, annotationState.openCodeSpanRunLength);
-      if (continuedCloseOffset < 0) {
-        // Still inside the span: the whole line is code.
-        return annotateMentionRun(lineText, false, true, annotationState);
-      }
-      var continuedEndOffset = continuedCloseOffset + annotationState.openCodeSpanRunLength;
-      annotationState.openCodeSpanRunLength = 0;
-      return (
-        annotateMentionRun(lineText.slice(0, continuedEndOffset), false, true, annotationState) +
-        annotateLineOutsideFence(lineText.slice(continuedEndOffset), paragraphRemainder, annotationState)
-      );
+    var annotatedText = documentText;
+    for (var insertionIndex = titleInsertions.length - 1; insertionIndex >= 0; insertionIndex -= 1) {
+      var titleInsertion = titleInsertions[insertionIndex];
+      annotatedText =
+        annotatedText.slice(0, titleInsertion.offset) + titleInsertion.text + annotatedText.slice(titleInsertion.offset);
     }
-    if (lineText.indexOf("`") < 0) {
-      return annotateMentionRun(lineText, true, true, annotationState);
-    }
-    var annotatedLine = "";
-    var cursorOffset = 0;
-    while (cursorOffset < lineText.length) {
-      var runStartOffset = lineText.indexOf("`", cursorOffset);
-      if (runStartOffset < 0) {
-        break;
-      }
-      var runEndOffset = runStartOffset;
-      while (lineText.charAt(runEndOffset) === "`") {
-        runEndOffset += 1;
-      }
-      var openingRunLength = runEndOffset - runStartOffset;
-      annotatedLine += annotateMentionRun(lineText.slice(cursorOffset, runStartOffset), true, true, annotationState);
-      var closingRunOffset = findMatchingBacktickRun(lineText, runEndOffset, openingRunLength);
-      if (closingRunOffset < 0) {
-        // Unclosed on this line. A run only OPENS a span if a matching run
-        // appears later in the same paragraph; with none, CommonMark leaves the
-        // backticks as literal text. Deciding that needs the lookahead, or
-        // ```lang`invalid — a line that is prose precisely because its info
-        // string holds a backtick — would open a span that never closes and
-        // swallow the rest of the paragraph.
-        if (findMatchingBacktickRun(paragraphRemainder, 0, openingRunLength) < 0) {
-          annotatedLine += lineText.slice(runStartOffset, runEndOffset);
-          cursorOffset = runEndOffset;
-          continue;
-        }
-        annotationState.openCodeSpanRunLength = openingRunLength;
-        annotatedLine += lineText.slice(runStartOffset, runEndOffset);
-        return annotatedLine + annotateMentionRun(lineText.slice(runEndOffset), false, true, annotationState);
-      }
-      var codeSpanEndOffset = closingRunOffset + openingRunLength;
-      annotatedLine += annotateMentionRun(lineText.slice(runStartOffset, codeSpanEndOffset), false, true, annotationState);
-      cursorOffset = codeSpanEndOffset;
-    }
-    return annotatedLine + annotateMentionRun(lineText.slice(cursorOffset), true, true, annotationState);
-  }
-
-  // Walks a body line by line so a fenced block keeps its exact bytes. The fence
-  // lines themselves count as fenced content — an info string is not prose — so
-  // opener, contents and closer all take the one suppressed call below.
-  function annotateMarkdownBody(bodyText, annotationState) {
-    var bodyLines = bodyText.split("\n");
-    var openFenceRun = null;
-    for (var lineIndex = 0; lineIndex < bodyLines.length; lineIndex += 1) {
-      var lineText = bodyLines[lineIndex];
-      var fenceRun = codeFenceRunFor(lineText);
-      var insideFencedBlock = openFenceRun !== null || fenceRun !== null;
-      if (openFenceRun !== null) {
-        openFenceRun = codeFenceRunCloses(fenceRun, openFenceRun) ? null : openFenceRun;
-      } else if (fenceRun !== null) {
-        openFenceRun = fenceRun;
-      }
-      if (insideFencedBlock) {
-        // A fence boundary ends any span left open by prose above it.
-        annotationState.openCodeSpanRunLength = 0;
-      }
-      // The rest of the paragraph, which is how far a code span may reach: a
-      // blank line ends it, and so does a fence boundary.
-      var paragraphRemainder = "";
-      if (!insideFencedBlock) {
-        for (var aheadIndex = lineIndex + 1; aheadIndex < bodyLines.length; aheadIndex += 1) {
-          if (bodyLines[aheadIndex].trim() === "" || codeFenceRunFor(bodyLines[aheadIndex]) !== null) {
-            break;
-          }
-          paragraphRemainder += bodyLines[aheadIndex] + "\n";
-        }
-      }
-      bodyLines[lineIndex] = insideFencedBlock
-        ? annotateMentionRun(lineText, false, false, annotationState)
-        : annotateLineOutsideFence(lineText, paragraphRemainder, annotationState);
-    }
-    return bodyLines.join("\n");
-  }
-
-  // One document in; the same document with its BODY annotated out, plus the
-  // tickets it referenced in first-mention order. First-mention memory is per
-  // document because a payload is a concatenation of whole files, and each file
-  // pastes and reads on its own.
-  function annotateTicketMentions(documentText) {
-    var bodyStartOffset = frontmatterFenceEndOffset(documentText);
-    var annotationState = { expandedTicketIds: {}, referencedTicketIds: {}, referencedTickets: [], openCodeSpanRunLength: 0 };
-    var annotatedBody = annotateMarkdownBody(documentText.slice(bodyStartOffset), annotationState);
-    return {
-      text: documentText.slice(0, bodyStartOffset) + annotatedBody,
-      referencedTickets: annotationState.referencedTickets
-    };
+    return { text: annotatedText, referencedTickets: annotationState.referencedTickets };
   }
 
   function describeReferencedTicket(referencedTicket) {
@@ -464,14 +234,15 @@
   }
 
   // The one seam every Copy handler goes through. Each document is annotated
-  // BEFORE the join, because a joined payload carries N frontmatter fences and a
-  // split-off-the-first-fence annotator would rewrite every later ticket's
-  // depends_on — the exact corruption this feature must not cause. The join
-  // itself keeps cat semantics: exact bytes, no invented separator.
-  function annotateClipboardPayload(rawDocuments, excludedIds) {
+  // BEFORE the join, because a joined payload carries N frontmatter fences and
+  // offsets measured against one document mean nothing in the concatenation —
+  // splicing after the join would rewrite a later ticket's depends_on, the exact
+  // corruption this feature must not cause. The join itself keeps cat semantics:
+  // exact bytes, no invented separator.
+  function annotateClipboardPayload(clipboardDocuments, excludedIds) {
     var referencedTickets = [];
-    var annotatedDocuments = rawDocuments.map(function (rawDocument) {
-      var annotatedDocument = annotateTicketMentions(rawDocument);
+    var annotatedDocuments = clipboardDocuments.map(function (clipboardDocument) {
+      var annotatedDocument = annotateTicketMentions(clipboardDocument.text, clipboardDocument.ticketMentions);
       referencedTickets = referencedTickets.concat(annotatedDocument.referencedTickets);
       return annotatedDocument.text;
     });
@@ -564,10 +335,10 @@
     loadBoardMarkdownData()
       .then(
         function (markdownData) {
-          var rawMarkdown = rawMarkdownForDetail(markdownData, requestedKind, requestedId);
+          var clipboardDocument = clipboardDocumentFor(markdownData, requestedKind, requestedId);
           // Primary path: the file's own bytes, annotated in the body only.
-          if (rawMarkdown !== null) {
-            return annotateClipboardPayload([rawMarkdown], [requestedId]);
+          if (clipboardDocument !== null) {
+            return annotateClipboardPayload([clipboardDocument], [requestedId]);
           }
           return copyTextWithHeading(requestedKind, requestedId, renderedTextFallback);
         },
@@ -609,23 +380,23 @@
   // One entry per ticket, in display order, so annotateClipboardPayload can
   // annotate each file before they are concatenated. The throw fails the whole
   // operation rather than silently publishing an incomplete clipboard payload.
-  function rawMarkdownDocumentsForRequests(markdownData, requestIds) {
+  function clipboardDocumentsForRequests(markdownData, requestIds) {
     return requestIds.map(function (requestId) {
-      var rawMarkdown = rawMarkdownForDetail(markdownData, "req", requestId);
-      if (rawMarkdown === null) {
+      var clipboardDocument = clipboardDocumentFor(markdownData, "req", requestId);
+      if (clipboardDocument === null) {
         throw new Error("raw Markdown unavailable for " + requestId);
       }
-      return rawMarkdown;
+      return clipboardDocument;
     });
   }
 
-  function rawMarkdownDocumentsForUserRequestAndRequests(markdownData, userRequestId, requestIds) {
-    var rawUserRequest = rawMarkdownForDetail(markdownData, "ur", userRequestId);
-    if (rawUserRequest === null) {
+  function clipboardDocumentsForUserRequestAndRequests(markdownData, userRequestId, requestIds) {
+    var userRequestDocument = clipboardDocumentFor(markdownData, "ur", userRequestId);
+    if (userRequestDocument === null) {
       throw new Error("raw Markdown unavailable for " + userRequestId);
     }
     // The grouped id list is the same all-tree set rendered in the UR drawer.
-    return [rawUserRequest].concat(rawMarkdownDocumentsForRequests(markdownData, requestIds));
+    return [userRequestDocument].concat(clipboardDocumentsForRequests(markdownData, requestIds));
   }
 
   drawerCopyAllButton.addEventListener("click", function () {
@@ -644,7 +415,7 @@
         // The UR and its grouped REQs are all in the payload, so none of them
         // earns an appendix line — their titles ride in their own fences.
         return annotateClipboardPayload(
-          rawMarkdownDocumentsForUserRequestAndRequests(
+          clipboardDocumentsForUserRequestAndRequests(
             markdownData, requestedUserRequestId, requestedRequestIds
           ),
           [requestedUserRequestId].concat(requestedRequestIds)
@@ -675,7 +446,7 @@
       beginCopyFeedback(copyButton);
       loadBoardMarkdownData()
         .then(function (markdownData) {
-          return annotateClipboardPayload(rawMarkdownDocumentsForRequests(markdownData, requestIds), requestIds);
+          return annotateClipboardPayload(clipboardDocumentsForRequests(markdownData, requestIds), requestIds);
         })
         .then(writeTextToClipboard)
         .then(

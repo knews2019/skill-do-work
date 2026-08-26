@@ -35,9 +35,9 @@ safely be annotated — already resolved to board records. The client splices ti
 offsets and stops knowing anything about Markdown. The hand-rolled fence scanner is deleted.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** One goldmark walk in `citations.go` classifies every byte of a body as prose, code span, or code block, from the AST's own segments; mentions are matched against the shared pattern, resolved with REQ-378's semantics, and emitted as UTF-16 offsets into the whole clipboard document. `board-clipboard.js` keeps the titles and the appendix and loses the scanner.
+- [x] **[APPLY]:** `citations.go` and `citations_test.go` added; `generate.go`, `web/board-clipboard.js`, `generate_test.go` and the prime changed. No file outside the write set touched.
+- [x] **[UNIFY]:** Six files changed, each read back in full. `gofmt -l` clean, `go vet ./...` clean, `node --check` on the client fragment clean, no debug artifacts. 29 mutations applied one at a time, all killed, zero survivors. Whole-tree differential: 533 real Copy payloads compared old-vs-new, 2 differ, both from one cause and both fixes (see Decisions D3).
 
 ## Why
 
@@ -170,6 +170,40 @@ longer exist in the generated page.
 
 **Validation:** User confirmed — the design was put to the user with the probe output and they
 directed this rewrite.
+
+## Decisions
+
+**D1 — The emitted shape is positions, not a citation set.** This REQ emits one entry per
+annotatable OCCURRENCE — `{offset, length, kind, id, expand}` — because splicing needs a place, and
+first-mention order needs occurrences. REQ-381 needs the opposite projection: the SET of ids a body
+cites, including ids inside quoted text, with no positions at all. They are two projections of one
+walk, not one structure serving both. REQ-381 should add its own field beside this one and reuse
+`collectMentionSurfaces` and `ticketMentionResolver`; it must not widen these entries, because a
+citation set has to include the fenced and code-span mentions that carry `expand: false` here AND
+the ambiguous ones this index drops entirely.
+
+**D2 — Two resolvers, pinned rather than merged.** Moving resolution to Go for the clipboard leaves
+the drawer resolving in `board-core.js`, because the drawer works from a rendered DOM and has no
+build step. Put to the user, who chose to pin: `TestJavaScriptBehaviorTicketMentionPatternAndResolverAgreeWithGo`
+drives both the pattern and the resolver over one corpus in both directions, so whichever side
+drifts alone fails. This is REQ-248's shape. Collapsing to one authority stays available later.
+
+**D3 — Challenged and changed: the index ships INSIDE `board-markdown.js`, not beside it.** The
+Detailed Requirements above say "ship it beside the payload, never inside it", to keep the payload
+byte-exact. It is shipped as a sibling FIELD of the same `generatedBoardMarkdownData` struct
+instead, which leaves both document maps untouched — the two round-trip tests pass unmodified — and
+closes a skew window the split version opens: in serve mode `/board-markdown.js` re-walks the tree
+on the Copy click, while `board-data.js` is whatever the page loaded with. A tree edit in between
+would hand the client fresh text and stale offsets, and splice a title into the middle of a word.
+Offsets and the text they measure now cannot arrive from different builds. Cost: `board-markdown.js`
+grows 5% (6.50 MB → 6.84 MB on this repo's 375 REQs); the eager board payload is unchanged.
+
+**D4 — An id inside a raw HTML block is no longer annotated.** Positive coverage by the parser's own
+text nodes, rather than a list of quoted constructs, means a mention in an HTML block is skipped —
+goldmark keeps no prose text there. This changed exactly one document in the tree (REQ-235, an id
+inside an HTML comment) and it is a fix: the renderer emits `<!-- raw HTML omitted -->`, so the
+drawer never showed that mention at all, and the old scanner was expanding a title into text no
+reader sees.
 
 ## Full Context
 

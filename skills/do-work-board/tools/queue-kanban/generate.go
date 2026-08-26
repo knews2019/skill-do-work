@@ -239,6 +239,16 @@ type generatedUserRequest struct {
 type generatedBoardMarkdownData struct {
 	Requests     map[string]string `json:"requests"`
 	UserRequests map[string]string `json:"userRequests"`
+
+	// Where each document above may carry a ticket title, computed by the
+	// goldmark walk in citations.go. Same keys as the two maps beside them, and
+	// deliberately in the SAME payload: offsets are only meaningful against the
+	// exact document text they were measured on, and the live server rebuilds
+	// this payload on the Copy click while the eager board data is whatever the
+	// page loaded with. Split across the two files, a tree edit in between would
+	// splice stale offsets into fresh text.
+	RequestMentions     map[string][]generatedTicketMention `json:"requestMentions,omitempty"`
+	UserRequestMentions map[string][]generatedTicketMention `json:"userRequestMentions,omitempty"`
 }
 
 // generatedNote is one do-work/notes.md line. The text stays plain — notes are
@@ -826,15 +836,25 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 // paste can be saved straight back as a valid REQ or UR file.
 //
 // It is separated from buildGeneratedBoardData so the initial page does not
-// download source text that is only needed after a Copy click. The wire shape is
-// unchanged (map[string]string) — only the value grew by the fence.
+// download source text that is only needed after a Copy click. It also carries
+// the ticket-mention index for those same documents — see the struct — because
+// the Copy button is the only consumer of either.
 func buildGeneratedBoardMarkdownData(board *Board) generatedBoardMarkdownData {
 	markdownData := generatedBoardMarkdownData{
-		Requests:     map[string]string{},
-		UserRequests: map[string]string{},
+		Requests:            map[string]string{},
+		UserRequests:        map[string]string{},
+		RequestMentions:     map[string][]generatedTicketMention{},
+		UserRequestMentions: map[string][]generatedTicketMention{},
 	}
+	// Every record on the board can be named, including a synthesized UR that
+	// has no file of its own to copy — a mention of one still resolves.
+	mentionResolver := newTicketMentionResolver(boardRequestIds(board), boardUserRequestIds(board))
 	for _, ticket := range board.AllRequests {
-		markdownData.Requests[ticket.RequestId] = ticket.FrontmatterMarkdown + ticket.BodyMarkdown
+		requestDocument := ticket.FrontmatterMarkdown + ticket.BodyMarkdown
+		markdownData.Requests[ticket.RequestId] = requestDocument
+		if ticketMentions := collectDocumentTicketMentions(requestDocument, mentionResolver); len(ticketMentions) > 0 {
+			markdownData.RequestMentions[ticket.RequestId] = ticketMentions
+		}
 	}
 	for _, userRequest := range board.UserRequests {
 		// A synthesized UR (no input.md on disk) has no file text to offer. The
@@ -844,9 +864,32 @@ func buildGeneratedBoardMarkdownData(board *Board) generatedBoardMarkdownData {
 		if !userRequest.InputFilePresent {
 			continue
 		}
-		markdownData.UserRequests[userRequest.UserRequestId] = userRequest.FrontmatterMarkdown + userRequest.BodyMarkdown
+		userRequestDocument := userRequest.FrontmatterMarkdown + userRequest.BodyMarkdown
+		markdownData.UserRequests[userRequest.UserRequestId] = userRequestDocument
+		if ticketMentions := collectDocumentTicketMentions(userRequestDocument, mentionResolver); len(ticketMentions) > 0 {
+			markdownData.UserRequestMentions[userRequest.UserRequestId] = ticketMentions
+		}
 	}
 	return markdownData
+}
+
+// boardRequestIds and boardUserRequestIds list exactly the ids the CLIENT holds
+// in requestsById / userRequestsById, so a mention resolves to the same record
+// on both sides of the wire.
+func boardRequestIds(board *Board) []string {
+	requestIds := make([]string, 0, len(board.AllRequests))
+	for _, ticket := range board.AllRequests {
+		requestIds = append(requestIds, ticket.RequestId)
+	}
+	return requestIds
+}
+
+func boardUserRequestIds(board *Board) []string {
+	userRequestIds := make([]string, 0, len(board.UserRequests))
+	for _, userRequest := range board.UserRequests {
+		userRequestIds = append(userRequestIds, userRequest.UserRequestId)
+	}
+	return userRequestIds
 }
 
 // assembleBoardJavaScript replaces the private shell's single placeholder with
