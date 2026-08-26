@@ -197,8 +197,13 @@ type generatedRequest struct {
 	// a span of zero. `implementationSpanReason` is "paused" or "reversed", empty
 	// when the span reads plainly — the four-hour ceiling itself never crosses to
 	// the client, which would make the renderer a second definition of it.
-	HasImplementationSpan     bool    `json:"hasImplementationSpan,omitempty"`
-	ImplementationSpanMinutes float64 `json:"implementationSpanMinutes,omitempty"`
+	HasImplementationSpan bool `json:"hasImplementationSpan,omitempty"`
+	// Deliberately NOT omitempty: a genuine zero-minute span is possible (identical
+	// stamps, or date-only stamps on both fields, which parseTimestamp accepts), and
+	// omitempty would drop that 0 while hasImplementationSpan still shipped true —
+	// leaving the client to multiply undefined and render "took NaNs". The flag above
+	// is what carries presence; this field carries the value, including zero.
+	ImplementationSpanMinutes float64 `json:"implementationSpanMinutes"`
 	ImplementationSpanReason  string  `json:"implementationSpanReason,omitempty"`
 
 	CompletionAnomaly       bool   `json:"completionAnomaly,omitempty"`

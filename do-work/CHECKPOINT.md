@@ -17,7 +17,6 @@ session_depth: shallow
 
 ## In Progress (interrupted)
 
-- REQ-374: Show how long each done card took — claimed 2026-08-26T13:17:00Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued
 

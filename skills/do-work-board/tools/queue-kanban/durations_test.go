@@ -543,11 +543,23 @@ func TestImplementationSpanMarksReversedStampsAndRefusesUnparseableOnes(t *testi
 
 // One definition, two readers. A second ceiling — or a second subtraction order —
 // introduced on either side breaks this and nothing else in the suite would.
+//
+// The ceiling half of that claim needs the fixture to STRADDLE the ceiling, not
+// merely to span it widely: three samples at 40 min, 18 h and −3 h agree under any
+// second ceiling anywhere in (40 min, 18 h), which is most of the plausible ones.
+// The straddling pair below is derived FROM analysisOutlierCeiling, so a second
+// definition disagrees with the real one at the only place a threshold can be
+// caught — its own boundary — and moving the real ceiling moves the pair with it.
 func TestImplementationSpanAgreesWithTheDurationsAggregate(t *testing.T) {
+	ceilingClaim := time.Date(2026, 7, 5, 6, 0, 0, 0, time.UTC)
 	tickets := []*RequestTicket{
 		durationTicket("REQ-410", "A", "2026-07-05T09:00:00Z", "2026-07-05T09:40:00Z"),
 		durationTicket("REQ-411", "B", "2026-07-05T09:00:00Z", "2026-07-06T03:00:00Z"),
 		durationTicket("REQ-412", "C", "2026-07-05T12:00:00Z", "2026-07-05T09:00:00Z"),
+		durationTicket("REQ-413", "B", ceilingClaim.Format(time.RFC3339),
+			ceilingClaim.Add(analysisOutlierCeiling).Format(time.RFC3339)),
+		durationTicket("REQ-414", "B", ceilingClaim.Format(time.RFC3339),
+			ceilingClaim.Add(analysisOutlierCeiling+time.Minute).Format(time.RFC3339)),
 	}
 	aggregate := buildDurationAggregate(tickets)
 	if len(aggregate.Samples) != len(tickets) {
@@ -571,5 +583,14 @@ func TestImplementationSpanAgreesWithTheDurationsAggregate(t *testing.T) {
 		if !verdictsWitnessed[requiredVerdict] {
 			t.Fatalf("the fixture never produced the %q verdict, so this test cannot witness a disagreement about it", requiredVerdict)
 		}
+	}
+	// Second vacuity guard, for the ceiling half specifically: the straddling pair
+	// must actually land on opposite sides of the real ceiling, or a second ceiling
+	// could sit between them and agree with the first everywhere this test looks.
+	atCeiling := findDurationSample(t, aggregate, "REQ-413")
+	pastCeiling := findDurationSample(t, aggregate, "REQ-414")
+	if atCeiling.DayMedianExclusion != "" || pastCeiling.DayMedianExclusion != "paused" {
+		t.Fatalf("the straddling pair read %q / %q, want \"\" / \"paused\" — it no longer brackets the ceiling, so a second ceiling would pass unnoticed",
+			atCeiling.DayMedianExclusion, pastCeiling.DayMedianExclusion)
 	}
 }

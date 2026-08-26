@@ -8086,6 +8086,14 @@ func buildImplementationSpanFixturePayload(t *testing.T) map[string]generatedReq
 		{"do-work/archive/REQ-907-sub-hour-span.md", spanFixtureFrontmatter(
 			"REQ-907", "sub-hour span", "completed-with-issues",
 			claimInstant.Format(time.RFC3339), claimInstant.Add(34*time.Minute).Format(time.RFC3339))},
+		// The zero boundary. A REQ claimed and completed at the same instant has a
+		// real span of zero, which is NOT the same state as an unmeasured one — the
+		// distinction hasImplementationSpan exists to carry (D-06). It is the case an
+		// `omitempty` float silently drops, leaving the client to multiply undefined
+		// and draw "took NaNs".
+		{"do-work/archive/REQ-908-zero-span.md", spanFixtureFrontmatter(
+			"REQ-908", "claimed and completed at the same instant", "completed",
+			claimInstant.Format(time.RFC3339), claimInstant.Format(time.RFC3339))},
 	})
 	gitDateLookupStub := func(_ string, commitHash string) (time.Time, bool) {
 		if commitHash == implementationSpanFixtureCommitHash {
@@ -8125,6 +8133,7 @@ func TestGeneratedRequestCarriesTheDoneCardImplementationSpan(t *testing.T) {
 		{"REQ-905", false, 0, "", "cancelled is terminal but not completed — the request was scoped to completed work"},
 		{"REQ-906", false, 0, "", "a git-dated completion instant is not an implementation span (D-01)"},
 		{"REQ-907", true, 34, "", "completed-with-issues is terminal success and states its span"},
+		{"REQ-908", true, 0, "", "a zero-minute span is measured, not unmeasured — the flag says present, the value says zero"},
 	}
 	if len(requestsById) != len(spanExpectations) {
 		t.Fatalf("payload holds %d requests, want %d — a fixture that never parsed asserts nothing", len(requestsById), len(spanExpectations))
@@ -8158,6 +8167,19 @@ func TestGeneratedRequestCarriesTheDoneCardImplementationSpan(t *testing.T) {
 	}
 	if gitDatedPayload.CompletionTimeSource != string(CompletionFromGitLog) {
 		t.Fatalf("REQ-906 completionTimeSource = %q, want %q", gitDatedPayload.CompletionTimeSource, CompletionFromGitLog)
+	}
+
+	// The zero span has to survive MARSHALLING, not just the struct: an omitempty
+	// float drops a genuine 0 from the wire while hasImplementationSpan still ships
+	// true, and the client then multiplies undefined into NaN. Asserting the struct
+	// field alone would pass with that tag restored, so this reads the JSON.
+	zeroSpanJson, marshalError := json.Marshal(requestsById["REQ-908"])
+	if marshalError != nil {
+		t.Fatalf("marshal REQ-908: %v", marshalError)
+	}
+	if !strings.Contains(string(zeroSpanJson), `"implementationSpanMinutes":0`) {
+		t.Errorf("REQ-908 marshalled without its zero span: %s\n"+
+			"a present-but-zero span must reach the client as 0, or the card renders \"took NaNs\"", zeroSpanJson)
 	}
 }
 
@@ -8235,17 +8257,26 @@ Object.keys(requestsById).forEach(function (requestId) {
     doneLineCount: doneLines.length,
     doneLineText: doneLines.length === 1 ? nodeText(doneLines[0]) : "",
     spanNodeCount: spanNodes.length,
-    spanText: spanNodes.length === 1 ? nodeText(spanNodes[0]) : ""
+    spanText: spanNodes.length === 1 ? nodeText(spanNodes[0]) : "",
+    // A FINISHED span must never tick. refreshRelativeTimeNodes selects on
+    // [data-instant-ms], so carrying that key would have the 1s ticker rewrite
+    // every done card's span as elapsed-since-epoch. This is the single property
+    // that justified not reusing makeElapsedDurationNode, so it is asserted
+    // rather than left to a one-off browser observation.
+    spanTickerKeys: spanNodes.length === 1
+      ? Object.keys(spanNodes[0].dataset || {}).sort()
+      : []
   };
 });
 process.stdout.write(JSON.stringify(renderedCards));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "done-card implementation span", javascriptProbe)
 	var renderedCards map[string]struct {
-		DoneLineCount int    `json:"doneLineCount"`
-		DoneLineText  string `json:"doneLineText"`
-		SpanNodeCount int    `json:"spanNodeCount"`
-		SpanText      string `json:"spanText"`
+		DoneLineCount  int      `json:"doneLineCount"`
+		DoneLineText   string   `json:"doneLineText"`
+		SpanNodeCount  int      `json:"spanNodeCount"`
+		SpanText       string   `json:"spanText"`
+		SpanTickerKeys []string `json:"spanTickerKeys"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &renderedCards); decodeError != nil {
 		t.Fatalf("decode rendered done lines: %v (output %q)", decodeError, probeOutput)
@@ -8265,6 +8296,7 @@ process.stdout.write(JSON.stringify(renderedCards));`
 		{"REQ-905", "cancelled", "2026-08-24T12:45:00Z", "", "a cancelled card states no duration"},
 		{"REQ-906", "done", "2026-08-24T12:45:00Z", "", "a git-dated completion instant states no duration (D-01)"},
 		{"REQ-907", "done", "2026-08-24T10:39:00Z", "took 34m 00s", "a sub-hour span keeps seconds — the chart's \"34.0 min\" is a different vocabulary"},
+		{"REQ-908", "done", "2026-08-24T10:05:00Z", "took 0s", "a zero-minute span states zero, never NaN"},
 	}
 	if len(renderedCards) != len(renderExpectations) {
 		t.Fatalf("probe rendered %d cards, want %d", len(renderedCards), len(renderExpectations))
@@ -8289,6 +8321,11 @@ process.stdout.write(JSON.stringify(renderedCards));`
 		if rendered.DoneLineText != wantLineText {
 			t.Errorf("%s done line text = %q, want %q (%s)",
 				expectation.requestId, rendered.DoneLineText, wantLineText, expectation.requirement)
+		}
+		if len(rendered.SpanTickerKeys) != 0 {
+			t.Errorf("%s span node carries dataset keys %v; a finished span must carry none — "+
+				"refreshRelativeTimeNodes selects [data-instant-ms] and would rewrite it every second as elapsed-since-epoch",
+				expectation.requestId, rendered.SpanTickerKeys)
 		}
 		if strings.Contains(rendered.SpanText, "SKEW-BRANCH-REACHED") {
 			t.Errorf("%s reached formatElapsedDuration's clock-skew branch; the Go verdict must be branched on first", expectation.requestId)

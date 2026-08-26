@@ -1,7 +1,9 @@
 ---
 id: REQ-374
 title: 'Show how long each done card took'
-status: claimed
+status: completed
+completed_at: 2026-08-26T14:42:00Z
+commit:
 claimed_at: 2026-08-26T13:17:00Z
 created_at: 2026-08-26T13:02:22Z
 user_request: UR-074
@@ -220,3 +222,68 @@ These trace to the REQ's `## Red-Green Proof`: the probe drives the real payload
 **Pre-existing failure, not this REQ's:** `TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage` fails on Chromium 141.0.7390.37 with its own vacuity guard — *"the isolator was not exercised and the mutation pair is vacuous."* Verified by checking out HEAD into a separate worktree and running the probe there: byte-identical failure without this REQ's diff. Recorded as a discovered task.
 
 **Rendered evidence:** the builder generated a board from the real archive and read the live DOM at `file:///…/scratchpad/board/render-check.html` on Chromium 141.0.7390.37 — 106 done cards, 94 carrying a span (`REQ-373 … · took 9m 30s`), the paused marker rendering on real archived cards (`REQ-345 → · took 11h 37m likely paused`), and `tickerTouchesSpan: 0` confirming no span node carries `data-instant-ms`.
+
+## Review
+
+**Overall: 77% at review time; remediated to Pass before archive** | 2026-08-26T14:21:39Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 95% |
+| Code Quality | 82% |
+| Test Adequacy | 72% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial → Pass after remediation |
+
+**Important findings — all three fixed in this REQ rather than deferred, because each was a declared criterion this REQ had not actually met:**
+
+- **I1 — a zero-minute span rendered `took NaNs`** (`impact-user-visible`). `generate.go`'s `omitempty` on `ImplementationSpanMinutes float64` dropped a genuine `0` from the JSON while `hasImplementationSpan: true` still shipped, so `board-cards.js` computed `Math.round(undefined * 60000)` = `NaN` and `formatElapsedDuration` fell through every tier to `"NaNs"`. Reachable two ways: identical stamps, or date-only stamps on both fields. Directly contrary to D-06, which added the presence flag *because* a zero span is possible and then left the renderer unable to consume the value the flag preserved. **Fixed:** dropped `omitempty` from the float, with the reason recorded at the field. **Pinned by:** fixture `REQ-908` (claimed and completed at the same instant), asserted in the marshalled JSON rather than on the struct — a struct-field assertion would pass with the tag restored — plus the render expectation `took 0s`. **Mutation:** restoring `omitempty` reproduces `done line said "took NaNs" about its span, want "took 0s"`.
+- **I2 — `TestImplementationSpanAgreesWithTheDurationsAggregate` did not hold the property its comment claimed** (`impact-rule-change`). The review mutation-proved it: replacing the aggregate's verdict with a genuinely second definition using `6 * time.Hour` left the whole suite green, because all three fixture spans (40 min, 18 h, −3 h) sat far from `analysisOutlierCeiling` and any second ceiling in that gap agreed with the first everywhere the test looked. **Fixed:** added a straddling pair, `REQ-413` at exactly `analysisOutlierCeiling` and `REQ-414` one minute past it, both derived from the constant so moving the real ceiling moves the pair; plus a second vacuity guard asserting the pair still brackets it. **Mutation:** the review's own 6-hour second ceiling now fails with `REQ-414: card verdict = "paused", Durations verdict = ""`.
+- **I3 — "a finished span never ticks" was pinned by nothing** (`impact-rule-change`). Adding `dataset.instantMs` to the span node passed the entire suite, though that property is the single reason `makeElapsedDurationNode` was not reused; had it regressed, every done card's span would have been rewritten one second after load as elapsed-since-epoch (roughly `20696d 07h`). Its only evidence was a one-off browser reading. **Fixed:** the probe now reports the span node's `dataset` keys and asserts the set is empty. **Mutation:** adding `dataset.instantMs` fails with `span node carries dataset keys [instantMs]`.
+
+**Minor findings:** 3, report only — two Restatement Sweep hits routed to `do-work/prose-backlog.md` (`web/board-core.js:124-127`'s `formatElapsedDuration` contract still says "for a ticket sitting in a state" and justifies its second-resolution tier by "claim spans are short", now one of two callers; `skills/do-work-board/docs/board-guide.md:35` names the `anomaly` badge as the only reversed-span surface and documents none of the new vocabulary), plus the markers conveying their meaning only through `title`, which a screen reader does not reliably announce.
+
+**Nits:** 4, report only — `durations.go`'s file header still says "Duration aggregation for the board's Durations view"; `dayMedianExclusionReason` names one consumer where there are now two; the span reaches the By-UR lens and Testing view too (correct, since the gate is in the payload, but untested there); the implementation commit bundled the REQ living log.
+
+**Acceptance:** Pass after remediation. At review time: Partial, all six criteria demonstrated on the live archive (337/355 completed REQs spanned, 4 paused, 10 cancelled with none, 18 legitimately unmeasurable) and 13 of 14 adversarial mutations caught, with AC2 failing at its zero boundary. After remediation: the zero boundary renders `took 0s`, and the two unpinned properties are pinned — each fix mutation-verified by the orchestrator, not accepted on report.
+
+**Verification after remediation:** `go test -count=1 ./...` → `ok … 83.745s`, exit 0. `bash _dev/tests/maintainer-verify.sh` run unpiped → `Maintainer verification passed.`, exit 0.
+
+**Follow-ups created:** none. All three Important findings were remediated in this REQ.
+
+**Deferred to `do-work/prose-backlog.md`:** the two Restatement Sweep hits.
+
+*Reviewed by review-work action; remediated and re-verified by the orchestrator*
+
+## Lessons Learned
+
+**What worked:**
+- Extracting the span and its verdict into one Go helper before adding the second reader. The card and the Durations chart cannot disagree about the four-hour ceiling because there is nothing for them to disagree with — the ceiling has one definition and both are readers of it. Shipping the applied verdict rather than the threshold is the same move the board already made for `excludedReason`.
+- Checking what the card's completion instant actually *is* before measuring against it. `resolveCompletionTime` falls back to the commit's git date, so the obvious implementation — span from `claimed_at` to the instant already on the line — would have printed durations for exactly the REQs the Durations view excludes, and nobody would have noticed until the two numbers were compared.
+
+**What didn't:**
+- Pointing the builder at `formatDurationMinutes` because it was "the existing span formatter." It is the *chart's* formatter: `34.0 min`, where the card wants `34m 00s`. Two formatters existed and the vocabulary question — which surface is this? — was the one that decided it, not "is there already a function." A PR reviewer caught the mismatch against the REQ's own acceptance strings while the builder was still running.
+- `omitempty` on a `float64` that a presence flag already guards. D-06 added `hasImplementationSpan` precisely because a zero-minute span is real, then left `omitempty` on the value — so the flag said "present" and the value vanished, and the client multiplied `undefined` into `took NaNs`. A presence flag and `omitempty` on the same field are contradictory by construction: one exists to preserve the zero the other deletes.
+- Telling the builder "do not edit the REQ file" while the pipeline requires the builder to tick the P-A-U boxes in that file. Qualification failed on unticked boxes that could not have been ticked. The dispatch has to leave the builder the one write the pipeline demands of it, or the orchestrator has to own the audit — which is what happened, and is arguably better, but it should be chosen rather than discovered.
+
+**Worth knowing:**
+- **A test that spans a threshold widely does not test the threshold.** The agreement test used 40 min, 18 h and −3 h against a four-hour ceiling and looked thorough; a second ceiling of six hours passed it silently, because any threshold in the gap classifies all three samples identically. Only a pair straddling the real boundary — derived from the constant, so it moves with it — can catch a second definition. This is the sharper form of the prime's REQ-322 lesson: reading the constant is necessary but not sufficient, the fixture has to land where the constant decides something.
+- **A property argued at length in a comment is not a property under test.** Two of this REQ's three review findings were exactly that shape: the code explained why a finished span must not tick and why a zero span must survive, and nothing asserted either. The comment is where a reader looks for intent; it is also where an unpinned invariant hides most comfortably.
+- Go's `parseTimestamp` accepts `2006-01-02 15:04:05` and reads it as UTC; V8's `Date.parse` reads the same string as local time — a nine-hour divergence under `TZ=Asia/Tokyo`. Any board feature that re-parses a frontmatter stamp client-side inherits that bug. Format from Go-measured values instead.
+
+## Orientation
+
+Every finished card on the board now says how long it took, not just when it landed — `done Aug 25, 08:47 UTC · 1d ago · took 9m 30s` — with a `likely paused` marker where a span crossed the read-time ceiling and a `reversed stamps` flag where the bookkeeping is broken.
+
+The measurement itself lives in the board tool's durations subsystem (`_dev/primes/prime-kanban-board.md`), which already owned the claim-to-completion span for the Durations view; this REQ gave that span a name and a second reader instead of a second definition. `[MAP CHANGED]` is not warranted — no new module, data flow, or contract; the per-request payload gained three additive fields and `.elapsed-duration` now dresses two kinds of node.
+
+Prime staleness spot-check: `_dev/primes/prime-kanban-board.md`'s referenced paths all still resolve, and its write-surface count is untouched (this REQ adds no write surface). Two prose restatements elsewhere did go stale and are recorded in `do-work/prose-backlog.md` rather than fixed here.
+
+**Discovered-task dispositions (Step 8):**
+- The strict browser lane failure → REQ-375 (`pending-answers`, `impact-rule-change`). Its prose half — the stale "Chromium suppresses the boundary events" reason — was already on `do-work/prose-backlog.md` from REQ-336; this REQ is the failing test, which is not prose-only.
+- The done line's contrast → REQ-376 (`pending-answers`, `impact-user-visible`).
+- Preflight's unexcluded scratch files → REQ-377 (`pending-answers`, `impact-negligible`).
+- The maintainer gate's missing tooling was resolved in-session by installing ShellCheck 0.11.0, `just`, and the Go 1.26.1 toolchain in this container. No repository change is implied, so no REQ was minted.
+
+Fold-first scan before minting: `do-work/queue/` held no REQs at all and `grep -rl "^sweep: true" do-work/queue/` returned nothing, so no pending REQ, sweep or otherwise, shared a root cause with any of the three.
