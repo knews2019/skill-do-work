@@ -8,11 +8,11 @@ domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec:
-depends_on: [REQ-379]
+depends_on: [REQ-383]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
-related: [REQ-378, REQ-379]
+related: [REQ-378, REQ-379, REQ-383]
 batch: ticket-id-autocomplete
 write_set:
   - skills/do-work-board/tools/queue-kanban/citations.go
@@ -53,12 +53,21 @@ one, and ships a `repoFileMentions` map that `board-detail.js` consults to decid
 link, a missing-file flag, or plain text. A `citedTicketIds` array per request is the same move: the
 Go build knows every body, and the client should not re-scan them on every keystroke.
 
-**The pattern lock-step is the trap here.** `bodyMentionPattern` (`web/board-detail.js:80`) and
-`repoFileMentionPattern` (`filementions.go:17`) already carry a comment obliging them to stay
-aligned, because a drift silently downgrades mentions to plain text rather than failing. A Go-side
-ticket-id pattern is a **third** copy of that shape, and the same silent failure mode applies: an
-under-matching index makes the filter quietly miss cards. Whatever the builder chooses, the agreement
-must be pinned by a test that fails when either side alone changes, not by a comment.
+**REQ-383 now builds the walk this REQ consumes, which is why the dependency was re-pointed.** It
+adds `citations.go` and one goldmark AST pass per body, resolving ticket mentions against board
+records with REQ-378's exact semantics. This REQ takes the set of ids a body cites from that pass
+rather than adding a second scanner. Read REQ-383's `## Decisions` entry before starting: it records
+whether one emitted structure serves both needs or whether they are two projections of one walk, and
+that answer is the seam this REQ builds on. The two are close but not identical — REQ-383 needs the
+*positions of annotatable occurrences*, this REQ needs *every id a body cites*, including ids inside
+quoted text, since a reference in a fenced example is still a reference for search.
+
+**The pattern lock-step trap is dissolved rather than managed.** `bodyMentionPattern`
+(`web/board-detail.js`) and `repoFileMentionPattern` (`filementions.go`) each carry a comment
+obliging them to stay aligned, and that obligation has failed twice. Once REQ-383 lands, mention
+resolution lives in Go alone, so this REQ must **not** add a third pattern — take the ids from the
+shared walk. If the walk does not yet expose what this REQ needs, extend it there rather than
+re-scanning here.
 
 Note the resolver semantics REQ-378 establishes and this REQ must match: a short `REQ-031` may name a
 compound card id (`UR-002-REQ-031`), and an **ambiguous** segment shared by two cards resolves to
@@ -98,21 +107,19 @@ nothing and is never guessed.
 
 ## Dependencies
 
-`depends_on: [REQ-379]`, which itself depends on REQ-378 — so the three run in the order
-REQ-378 → REQ-379 → REQ-381.
+`depends_on: [REQ-383]`.
 
-**The edge exists to serialize a shared file, not because this REQ needs the other two's output.**
-Its own work is independent: this REQ touches `board-filters.js`, `generate.go` and a new Go source
-file, where they touch `board-core.js`, `board-detail.js`, `board-clipboard.js` and `board.css`. The
-one file all three write is `generate_test.go`. An earlier draft declared that overlap in `write_set`
-and stated the serial requirement in prose only — which enforces nothing: `write_set` is display-only
-and "never a safety guarantee" (root `CLAUDE.md` § Glossary), so under `do-work run --fan-out` this
-REQ and REQ-378 were both dependency roots and could have been dispatched concurrently into the same
-test file. `depends_on` is the only field the work loop actually gates on, so the ordering is
-declared there.
+**This edge is a real dependency, not a file-serialization gate.** REQ-383 builds `citations.go` and
+the goldmark AST pass that resolves ticket mentions against board records; this REQ consumes that
+pass for its citation index rather than adding a second scanner. Building this first would mean
+writing a mention scanner that REQ-383 then deletes.
 
-The alternative — dropping `generate_test.go` from this REQ's write set — was rejected: the filter
-predicate is a pure function and belongs in the Node-harness lane that lives in that file.
+That is a change from the earlier ordering, which had this REQ depending on REQ-379 purely because
+both wrote `generate_test.go`. That serialization still holds and still matters — `write_set` is
+display-only and "never a safety guarantee" (root `CLAUDE.md` § Glossary), so a shared file must be
+gated in `depends_on` or `--fan-out` will race it — but it is now the weaker of the two reasons.
+
+REQ-382 depends on this REQ in turn, so the chain is REQ-383 → REQ-381 → REQ-382.
 
 ## Builder Guidance
 

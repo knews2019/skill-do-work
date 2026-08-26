@@ -1,13 +1,10 @@
 ```
-do-work clarify
 do-work run --fan-out 2
 
 This command is sufficient; everything below it is context.
 
-Two REQs are ready and their write sets are disjoint, so a fan-out of two is safe.
-One REQ is held at pending-answers with a design question that clarify will surface;
-answer it before that REQ is built, because the answer decides whether it is written
-at all.
+Two REQs are ready with disjoint write sets, so a fan-out of two is safe.
+Nothing is held awaiting an answer.
 ```
 
 ---
@@ -16,9 +13,10 @@ at all.
 
 ### Where the work stands
 
-Branch `claude/request-id-autocomplete-xnhkow`, head `a90e19a`, pushed, clean tree, no worktrees,
-no builder branches, nothing claimed. PR [#169](https://github.com/knews2019/skill-do-work/pull/169)
-is open and mergeable with no CI configured on this repo.
+Branch `claude/request-id-autocomplete-xnhkow`, restarted from `main` after
+PR [#169](https://github.com/knews2019/skill-do-work/pull/169) **merged**. Clean tree, no worktrees,
+no builder branches, nothing claimed. Follow-up work rides on
+PR [#173](https://github.com/knews2019/skill-do-work/pull/173); no CI is configured on this repo.
 
 Two REQs shipped this session, both archived under `do-work/archive/UR-075/` with their commit
 hashes recorded:
@@ -36,35 +34,43 @@ version collision — main took 0.238.0 for its architecture-report feature, so 
 | REQ | Status | Gate | Note |
 |---|---|---|---|
 | REQ-380 | pending | none | Cross-Reference Convention in `capture-reference.md`. `tdd: false`, one file, closes UR-074. |
-| REQ-381 | pending | none | Citation index + filter — UR-076's "find tickets that cite REQ-1679". Route C. |
+| REQ-383 | pending | none | Resolve ticket mentions in Go; delete the client Markdown scanner. **The foundation — start here.** |
+| REQ-381 | pending | `depends_on: [REQ-383]` | Citation index + filter. Consumes REQ-383's AST walk. |
 | REQ-382 | pending | `depends_on: [REQ-381]` | Markdown-link ids, drawer and clipboard. F6 folded in. |
-| REQ-383 | **pending-answers** | `depends_on: [REQ-382]` | Held. See the design question below. |
 
-**REQ-380 and REQ-381 are safe to run concurrently.** REQ-380 writes only
-`skills/do-work/actions/capture-reference.md`; REQ-381 writes `citations.go`, `generate.go`,
-`web/board-filters.js`, `citations_test.go` and `generate_test.go`. No overlap.
+**REQ-380 and REQ-383 are safe to run concurrently.** REQ-380 writes only
+`skills/do-work/actions/capture-reference.md`; REQ-383 writes `citations.go`, `citations_test.go`,
+`generate.go`, `web/board-clipboard.js`, `generate_test.go` and the board prime. No overlap.
 
-**REQ-382 must not run beside REQ-381.** Both write `generate_test.go`. That is why it carries a
-`depends_on` edge and not a sentence — `write_set` is display-only and gates nothing. This branch
-learned that twice from the Codex reviewer, on REQ-381 and again on REQ-382 an hour later.
+**REQ-381 must not run beside REQ-383** — it consumes REQ-383's AST walk, and building first would
+mean writing a mention scanner that REQ-383 then deletes. **REQ-382 must not run beside REQ-381**;
+both write `generate_test.go`. Both edges are `depends_on` fields, not sentences — `write_set` gates
+nothing, a lesson this branch learned twice from the reviewer.
 
-**Critical path is REQ-381.** Start there, not on REQ-380, if only one thing runs.
+**Critical path is REQ-383 → REQ-381 → REQ-382.** Start at REQ-383, not on REQ-380, if only one
+thing runs.
 
-### The held question, and why it matters more than it looks
+### Why REQ-383 comes first, and what it replaces
 
-REQ-383 was captured to *harden* the hand-rolled Markdown fence scanner REQ-379 introduced. Before
-building it, read its `## Open Questions` — the recommendation is to **delete the scanner instead**.
+REQ-383 was originally captured to *harden* the hand-rolled Markdown fence scanner REQ-379 shipped.
+It has been rewritten to **delete** it, on the user's direction after the design was put to them with
+probe output.
 
-Every external finding on REQ-379 was the same shape: the hand-rolled scanner disagreeing with
-CommonMark. Blockquoted fences, backtick info strings, list-item fences, multi-line code spans,
-indented code blocks, link reference definitions — six symptoms, one cause. The Go side already runs
-goldmark and already ships a build-time index for exactly this class (`repoFileMentions`). Computing
-annotatable byte ranges there would delete `codeFenceRunFor`, `codeFenceRunCloses`,
-`findMatchingBacktickRun`, `stripContainerPrefix` and the paragraph lookahead outright.
+Every external finding against that scanner was one shape — the scanner disagreeing with CommonMark:
+blockquoted fences, backtick info strings, list-item fences, code spans crossing a newline, indented
+code blocks, link reference definitions. Six symptoms, one cause. The parser was always available and
+simply sat on the wrong side: `render.go:25` already builds a goldmark renderer and already parses
+every one of these bodies to make the drawer's HTML.
 
-**REQ-381 needs a Go-side body scan anyway** for its citation index, so if the answer is "delete it",
-fold that work into REQ-381 rather than running REQ-383 fourth. That changes the order, which is why
-the question is gated ahead of the build rather than left for the builder.
+The mechanism is probe-verified, not assumed. One AST walk returned exact byte ranges for every
+failing case, and `` ```lang`invalid `` produced no node at all because goldmark treats it as prose,
+exactly as CommonMark says. Two API constraints came out of that probe and are recorded in the REQ:
+`Lines()` **panics** on inline nodes, so a code span's extent comes from its child `Text` segments;
+and offsets are **body-relative**, so every one shifts by the `bodyStartOffset` `splitFrontmatter`
+already computes.
+
+The acceptance signal is unusual and worth knowing: **REQ-379's existing clipboard assertions must
+pass unmodified.** An assertion that needs rewriting means a behaviour changed that should not have.
 
 ### Heads-up list — things that will bite in the first ten minutes
 

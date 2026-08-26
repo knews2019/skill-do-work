@@ -1,7 +1,7 @@
 ---
 session_ended: 2026-08-26T19:20:00Z
 last_completed: REQ-379
-queue_state: [3 pending, 0 finished (awaiting archive), 1 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress]
+queue_state: [4 pending, 0 finished (awaiting archive), 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress]
 reqs_processed_this_session: 2
 session_depth: deep
 ---
@@ -23,10 +23,10 @@ None.
 
 ## Still Queued
 
-REQ-380 and REQ-381 are ready with disjoint write sets. REQ-382 is gated behind REQ-381 because both
-write `generate_test.go`. REQ-383 is at `pending-answers` — its Open Question asks whether to harden
-the hand-rolled fence scanner or delete it by moving block-context detection to the Go side, and the
-answer changes the order. See `do-work/RESTART-PROMPT.md`.
+REQ-380 and REQ-383 are ready with disjoint write sets. REQ-383 is the foundation — it resolves
+ticket mentions in Go and deletes the client-side Markdown scanner REQ-379 shipped, closing six
+external findings structurally rather than one at a time. REQ-381 consumes its AST walk; REQ-382
+follows REQ-381. Chain: REQ-383 → REQ-381 → REQ-382. See `do-work/RESTART-PROMPT.md`.
 
 ## Session Notes
 
