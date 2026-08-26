@@ -10,7 +10,7 @@ domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec:
-depends_on: []
+depends_on: [REQ-381]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
@@ -92,9 +92,16 @@ never rendered in the drawer; only REQ and UR bodies reach `linkifyDetailBody`.
 
 ## Dependencies
 
-None. REQ-378 (archived) established the rules this extends; REQ-379 and REQ-381 touch different
-files. The shared file with REQ-379 and REQ-381 is `generate_test.go`, so do not fan these out
-concurrently.
+`depends_on: [REQ-381]`, which depends on REQ-379 — so the chain is REQ-379 → REQ-381 → REQ-382.
+
+**The edge serializes a shared file; it is not a need for the others' output.** REQ-378 (archived)
+established the rules this extends, and REQ-379 and REQ-381 change different source files. What all
+three share is `generate_test.go`. Stating "do not fan these out" in prose enforces nothing —
+`write_set` is display-only and "never a safety guarantee" (root `CLAUDE.md` § Glossary), so under
+`do-work run --fan-out` a REQ with `depends_on: []` is a dependency root and gets dispatched
+concurrently regardless of what its prose says. `depends_on` is the only field the work loop gates
+on. This is the second time the same mistake was made in this batch; REQ-381 carries its edge for
+exactly the same reason.
 
 ## Builder Guidance
 
