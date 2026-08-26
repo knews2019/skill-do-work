@@ -1,6 +1,6 @@
 # Architecture Report Action
 
-> **Part of the do-work-toolbox skill.** Invoked when the user asks for an architecture report, an architecture overview, or a map of how this repository is put together. Writes one new dated, immutable markdown report — `<project-root>/docs/architecture-report_<yyyymmdd>.md` — with Mermaid diagrams and a first-class delta against the previous report. It belongs in toolbox because it completes the toolbox's repository-comprehension family: `actions/prime.md` indexes one directory for a builder, `actions/inspect.md` explains one uncommitted change, and neither describes the repository as a whole.
+> **Part of the do-work-toolbox skill.** Invoked when the user asks for an architecture report, an architecture overview, or a map of how this repository is put together. Writes one new dated, immutable markdown report — `ai-reports/<yyyy-mm-dd>_<hhmm>_architecture-report/architecture-report.md` — with Mermaid diagrams and a first-class delta against the previous report. It belongs in toolbox because it completes the toolbox's repository-comprehension family: `actions/prime.md` indexes one directory for a builder, `actions/inspect.md` explains one uncommitted change, and neither describes the repository as a whole.
 
 The report is repo-wide and describes the current architecture. It is not a review: bugs, tech debt, security findings, and missing tests belong to `actions/maintainability-audit.md` and `actions/quick-wins.md`, which own bands, ratchets, and sweep keys. An architecture doc that embeds point-in-time concerns goes stale the day they are fixed.
 
@@ -38,12 +38,12 @@ The report is repo-wide and describes the current architecture. It is not a revi
 Run the shipped helper from the repository root:
 
 ```bash
-<skill-root>/scripts/architecture-report-preflight.sh --scan docs
+<skill-root>/scripts/architecture-report-preflight.sh --scan ai-reports
 ```
 
-`docs` is the reports directory — `<project-root>/docs/`, created on first publish. When the project reserves that path for something else, pass the directory it uses instead; both helper verbs take it as an argument. The only standing requirement is that every run in a given project passes the same one, because that is what lets a run find its own prior report.
+`ai-reports` is the reports directory, shared with `actions/ai-report.md` so every dated report a project publishes sits in one place. Each run gets its own bundle there — `<yyyy-mm-dd>_<hhmm>_architecture-report/`, holding `architecture-report.md` — matching the bundle shape `ai-report` writes beside it. The directory is an argument to both helper verbs; a project that keeps its reports elsewhere passes that path instead, and the one standing requirement is that every run in a project passes the same one, because that is what lets a run find its own prior report.
 
-It emits `head_hash`, `report_date`, `report_candidate`, `prior_report`, `prior_hash`, and `prior_hash_resolves` as `key=value` lines. Read the project version from whatever the repository uses to declare one (a `VERSION` file, `package.json`, `Cargo.toml`, `pyproject.toml`); record `unversioned` when it declares none.
+It emits `head_hash`, `report_slug`, `report_candidate`, `prior_report`, `prior_hash`, and `prior_hash_resolves` as `key=value` lines. Read the project version from whatever the repository uses to declare one (a `VERSION` file, `package.json`, `Cargo.toml`, `pyproject.toml`); record `unversioned` when it declares none.
 
 When `prior_report` is non-empty, read that file completely — it is the baseline every later step compares against. Then scope what could have drifted:
 
@@ -105,7 +105,7 @@ Markdown with inline Mermaid only. No HTML, no image generation, no screenshots 
 
 ### Step 5: Anti-Slop Self-Check
 
-Run the current principles in `../../do-work/crew-members/anti-slop.md` over the draft before writing anything to `docs/`. Every claim evidence-backed, the delta first, no decorative diagram, no section that only restates a heading.
+Run the current principles in `../../do-work/crew-members/anti-slop.md` over the draft before publishing it. Every claim evidence-backed, the delta first, no decorative diagram, no section that only restates a heading.
 
 ### Step 6: Publish
 
@@ -113,7 +113,7 @@ Run the current principles in `../../do-work/crew-members/anti-slop.md` over the
 <skill-root>/scripts/architecture-report-preflight.sh --publish <draft-path> <report-candidate>
 ```
 
-The helper implements `actions/completed-work-presentation-reference.md` → **Collision-Safe Publication** for this action's output shape: it never touches an existing report, escalates to the first free `_2`, `_3`, … sibling on collision, and prints the one path it published. That `_n` separator continues the filename's existing date separator instead of introducing a second one; the contract delegates the path shape to each consumer and owns only the no-clobber rule. Use the printed path everywhere afterwards, and write the draft outside `docs/` so a failed run leaves no half-report where the next scan would read it as a baseline.
+The helper implements `actions/completed-work-presentation-reference.md` → **Collision-Safe Publication** for this action's output shape: it never touches an existing report, escalates to the first free `-2`, `-3`, … sibling directory on collision, and prints the one report path it published. Because the slug carries the minute, a collision means two runs in the same minute rather than the same day. Use the printed path everywhere afterwards, and write the draft outside the reports directory so a failed run leaves no half-report where the next scan would read it as a baseline.
 
 ### Step 7: Report the Result
 
@@ -129,7 +129,7 @@ Print at most eight lines, verdict first:
 
 ## Output Format
 
-One new file at `<project-root>/docs/architecture-report_<yyyymmdd>.md`, or the same name in the project's chosen reports directory (Step 1), with `_2`, `_3`, … on a same-day re-run. Nothing else is created and nothing existing is modified.
+One new bundle directory at `ai-reports/<yyyy-mm-dd>_<hhmm>_architecture-report/` holding `architecture-report.md`, with `-2`, `-3`, … on a same-minute re-run. Nothing else is created and nothing existing is modified.
 
 ## Rules
 
@@ -142,7 +142,7 @@ One new file at `<project-root>/docs/architecture-report_<yyyymmdd>.md`, or the 
 | If you're thinking... | STOP. Instead... | Because... |
 | --- | --- | --- |
 | "I understand this repository better now — I'll rewrite the whole report properly" | Carry every still-true section forward byte-identical; rewrite only what drifted | A fresh authoring makes `diff` between the two reports unreadable, which is the only thing the dated series is for |
-| "The prior report is out of date, so I'll update it in place" | Publish a new dated file and leave the prior one untouched | The prior report is the baseline the next run's §Δ is computed against; editing it destroys the comparison |
+| "The prior report is out of date, so I'll update it in place" | Publish a new dated bundle and leave the prior one untouched | The prior report is the baseline the next run's §Δ is computed against; editing it destroys the comparison |
 | "This belongs with the completed-work reports — I'll add an architecture mode to `ai-report`" | Keep it here; `ai-report` takes a UR or REQ and presents completed work | This action has no UR/REQ input and no archive evidence to resolve; folding it in would give `ai-report` a second, incompatible input contract |
 | "I found real problems while reading — the report should list them" | Note them in §5 as open questions or point at the audit action | Findings are fixed and the report is not; an architecture doc carrying them is wrong the day they land, and `maintainability-audit` already owns bands and ratchets |
 | "The prior watermark hash won't resolve, so nothing changed" | Re-verify every claim and say why in §5 | An unresolvable scope is a missing answer, not an empty one — reading it as "no drift" carries stale claims forward under a `VERIFIED` label |
@@ -153,7 +153,7 @@ One new file at `<project-root>/docs/architecture-report_<yyyymmdd>.md`, or the 
 - Two consecutive reports whose `diff` touches sections nothing in `git log` explains.
 - A §Δ table with rows whose `cause` column is empty across the board — drift nobody can trace usually means the section was re-authored, not re-verified.
 - A claim labeled `VERIFIED` with no anchor, or an anchor that no longer resolves.
-- A `<project-root>/docs/architecture-report_<yyyymmdd>.md` file that changed in `git status` — this action only ever adds one.
+- An existing `ai-reports/*_architecture-report/` bundle that changed in `git status` — this action only ever adds one.
 
 ## Verification Checklist
 
@@ -162,4 +162,4 @@ One new file at `<project-root>/docs/architecture-report_<yyyymmdd>.md`, or the 
 - [ ] Sections that did not drift are byte-identical to the prior report.
 - [ ] §1 and §2 each contain at least one fenced ```mermaid block, each within the node cap.
 - [ ] Every claim carries `VERIFIED` or `INFERRED`; §5's counts match the body.
-- [ ] The published path came from the helper, and no other file under `docs/` changed.
+- [ ] The published path came from the helper, and no other file under `ai-reports/` changed.

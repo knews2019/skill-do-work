@@ -5,68 +5,69 @@
 #
 #   --scan <reports-directory>
 #       Emit the run's ground facts as `key=value` lines: the current commit, the report
-#       date, the unsuffixed candidate path, and the newest prior report with the
+#       slug, the unsuffixed candidate directory, and the newest prior report with the
 #       watermark hash the drift scope is computed against.
 #
-#   --publish <draft-path> <candidate-path>
-#       Link a finished draft to the first free `_<n>` sibling of the candidate and print
-#       the path it landed on. Never touches an existing report.
+#   --publish <draft-path> <candidate-directory>
+#       Create the first free `-<n>` sibling of the candidate directory, put the finished
+#       draft inside it as the report file, and print the published path. Never touches an
+#       existing report.
 #
-# Dates are UTC (`date -u`), matching the suite's stamp convention, so the filename a run
+# A report is one directory named `<yyyy-mm-dd>_<hhmm>_architecture-report` holding
+# `architecture-report.md`, matching the bundle shape `ai-report` publishes beside it.
+# Times are UTC (`date -u`), matching the suite's stamp convention, so the slug a run
 # picks does not depend on the runner's timezone.
 #
 # Suffix escalation lives here and only here: `--scan` deliberately emits the unsuffixed
-# name so there is exactly one implementation of "first free path" to get right. The
-# separator is `_`, continuing the filename's existing date separator rather than
-# introducing a second one; the no-clobber rule it serves is
+# slug so there is exactly one implementation of "first free path" to get right. The
+# no-clobber rule it serves is
 # `actions/completed-work-presentation-reference.md` -> Collision-Safe Publication.
 #
-# `ln` treats an existing directory operand as a container rather than a collision, so a
-# successful link is verified after the fact instead of being taken on its exit status.
+# `mkdir` is the exclusive primitive: it fails when the path already exists, so the
+# directory a run creates is one no other run had, without a check-then-write window.
 set -u
 
 usage() {
   printf 'Usage: %s --scan <reports-directory>\n' "$0" >&2
-  printf '       %s --publish <draft-path> <candidate-path>\n' "$0" >&2
+  printf '       %s --publish <draft-path> <candidate-directory>\n' "$0" >&2
   exit 2
 }
 
-report_name_prefix='architecture-report_'
-report_name_suffix='.md'
+report_name_suffix='_architecture-report'
+report_file_name='architecture-report.md'
 
-# Prints "<date-digits> <sequence>" for a report basename, or nothing when the name is not
-# a report this action publishes. The sequence is what makes the ordering numeric:
-# `_10` sorts after `_2` here, where a lexical sort of the filenames puts it before.
+# Prints "<sortable-slug> <sequence>" for a report directory name, or nothing when the
+# name is not a report this action publishes. The sequence is what makes the ordering
+# numeric: `-10` sorts after `-2` here, where a lexical sort puts it before. The
+# `yyyy-mm-dd_hhmm` stem is fixed-width, so it sorts lexically as itself.
 parse_report_basename() {
   local basename_text="$1"
   local stem_text
+  local sequence_part
 
   case "$basename_text" in
-    "$report_name_prefix"*"$report_name_suffix") ;;
+    *"$report_name_suffix") stem_text="${basename_text%"$report_name_suffix"}"; sequence_part=1 ;;
+    *"$report_name_suffix"-*)
+      sequence_part="${basename_text##*"$report_name_suffix"-}"
+      stem_text="${basename_text%"$report_name_suffix"-"$sequence_part"}"
+      case "$sequence_part" in *[!0-9]* | '') return 1 ;; esac
+      ;;
     *) return 1 ;;
   esac
-  stem_text="${basename_text#"$report_name_prefix"}"
-  stem_text="${stem_text%"$report_name_suffix"}"
 
+  # `yyyy-mm-dd_hhmm` exactly: reject anything else so a hand-named directory beside the
+  # reports cannot become the baseline a run verifies against.
   case "$stem_text" in
-    *_*)
-      local date_part="${stem_text%%_*}"
-      local sequence_part="${stem_text#*_}"
-      case "$date_part" in *[!0-9]* | '') return 1 ;; esac
-      case "$sequence_part" in *[!0-9]* | '') return 1 ;; esac
-      printf '%s %s\n' "$date_part" "$sequence_part"
-      ;;
-    *)
-      case "$stem_text" in *[!0-9]* | '') return 1 ;; esac
-      printf '%s 1\n' "$stem_text"
-      ;;
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]_[0-9][0-9][0-9][0-9]) ;;
+    *) return 1 ;;
   esac
+  printf '%s %s\n' "$stem_text" "$sequence_part"
 }
 
 scan_reports() {
   local reports_directory="$1"
   local head_hash
-  local report_date
+  local report_slug
   local candidate_path
   local prior_report=''
   local prior_hash=''
@@ -75,6 +76,7 @@ scan_reports() {
   local report_path
   local report_key
   local watermark_line
+  local prior_report_file
 
   # Ask the question that has a real answer first: a repository without a resolvable HEAD
   # cannot be watermarked, and an empty hash must never reach the report as one.
@@ -82,35 +84,37 @@ scan_reports() {
     printf 'architecture-report-preflight: no resolvable HEAD commit to watermark against.\n' >&2
     return 2
   fi
-  if ! report_date="$(date -u +%Y%m%d)" || [ -z "$report_date" ]; then
-    printf 'architecture-report-preflight: the date command produced no UTC date.\n' >&2
+  if ! report_slug="$(date -u +%Y-%m-%d_%H%M)" || [ -z "$report_slug" ]; then
+    printf 'architecture-report-preflight: the date command produced no UTC timestamp.\n' >&2
     return 2
   fi
-  candidate_path="$reports_directory/$report_name_prefix$report_date$report_name_suffix"
+  candidate_path="$reports_directory/$report_slug$report_name_suffix"
 
   if [ -d "$reports_directory" ]; then
-    for report_path in "$reports_directory/$report_name_prefix"*"$report_name_suffix"; do
-      [ -f "$report_path" ] || continue
+    for report_path in "$reports_directory"/*"$report_name_suffix" "$reports_directory"/*"$report_name_suffix"-*; do
+      [ -d "$report_path" ] || continue
       report_key="$(parse_report_basename "${report_path##*/}")" || continue
-      # Zero-pad both fields to one comparable sort key: dates are already fixed-width,
-      # and the sequence is padded so `002` orders below `010`.
+      # Pad the sequence so `002` orders below `010`; the stem is already fixed-width.
       report_key="$(printf '%s %012d' "${report_key%% *}" "${report_key##* }")"
       if [ -z "$newest_key" ] || [ "$report_key" \> "$newest_key" ]; then
         newest_key="$report_key"
-        prior_report="$report_path"
+        prior_report="$report_path/$report_file_name"
       fi
     done
   fi
 
   if [ -n "$prior_report" ]; then
-    # `unreadable`, never empty: an unparseable watermark means every prior claim must be
-    # re-verified, which is the opposite decision from "there is no prior report".
+    # `unreadable`, never empty: an unparseable or missing watermark means every prior
+    # claim must be re-verified, which is the opposite decision from "no prior report".
     prior_hash='unreadable'
-    watermark_line="$(grep -m1 -E '^verified-at:[[:space:]]+[0-9a-f]{7,40}([[:space:]]|$)' "$prior_report")"
-    if [ -n "$watermark_line" ]; then
-      watermark_line="${watermark_line#verified-at:}"
-      watermark_line="${watermark_line#"${watermark_line%%[![:space:]]*}"}"
-      prior_hash="${watermark_line%%[![:alnum:]]*}"
+    prior_report_file="$prior_report"
+    if [ -f "$prior_report_file" ]; then
+      watermark_line="$(grep -m1 -E '^verified-at:[[:space:]]+[0-9a-f]{7,40}([[:space:]]|$)' "$prior_report_file")"
+      if [ -n "$watermark_line" ]; then
+        watermark_line="${watermark_line#verified-at:}"
+        watermark_line="${watermark_line#"${watermark_line%%[![:space:]]*}"}"
+        prior_hash="${watermark_line%%[![:alnum:]]*}"
+      fi
     fi
     if [ "$prior_hash" = 'unreadable' ]; then
       prior_hash_resolves='no'
@@ -122,7 +126,7 @@ scan_reports() {
   fi
 
   printf 'head_hash=%s\n' "$head_hash"
-  printf 'report_date=%s\n' "$report_date"
+  printf 'report_slug=%s\n' "$report_slug"
   printf 'report_candidate=%s\n' "$candidate_path"
   printf 'prior_report=%s\n' "$prior_report"
   printf 'prior_hash=%s\n' "$prior_hash"
@@ -132,63 +136,51 @@ scan_reports() {
 publish_report() {
   local draft_path="$1"
   local candidate_path="$2"
-  local candidate_directory
-  local candidate_stem
-  local candidate_extension
   local sequence_number=1
+  local published_directory
   local published_path
-  local nested_path
 
   if [ ! -f "$draft_path" ]; then
     printf 'architecture-report-preflight: draft is not a regular file: %s\n' "$draft_path" >&2
     return 2
   fi
-  candidate_directory="$(dirname "$candidate_path")"
-  case "${candidate_path##*/}" in
-    *.*)
-      candidate_stem="${candidate_path%.*}"
-      candidate_extension=".${candidate_path##*.}"
-      ;;
-    *)
-      candidate_stem="$candidate_path"
-      candidate_extension=''
-      ;;
-  esac
-  if ! mkdir -p "$candidate_directory"; then
+  if ! mkdir -p "$(dirname "$candidate_path")"; then
     printf 'architecture-report-preflight: reports directory could not be created: %s\n' \
-      "$candidate_directory" >&2
+      "$(dirname "$candidate_path")" >&2
     return 2
   fi
 
   while :; do
     if [ "$sequence_number" -eq 1 ]; then
-      published_path="$candidate_path"
+      published_directory="$candidate_path"
     else
-      published_path="${candidate_stem}_${sequence_number}${candidate_extension}"
+      published_directory="${candidate_path}-${sequence_number}"
     fi
 
-    if ln "$draft_path" "$published_path" 2>/dev/null; then
-      nested_path="$published_path/${draft_path##*/}"
-      if [ -e "$nested_path" ]; then
-        # The candidate is a directory, so `ln` linked into it rather than colliding.
-        rm -f "$nested_path"
-        sequence_number=$((sequence_number + 1))
-        continue
+    # Plain `mkdir`, never `mkdir -p`: -p succeeds on an existing directory, which would
+    # publish this run's report into the previous run's bundle.
+    if mkdir "$published_directory" 2>/dev/null; then
+      published_path="$published_directory/$report_file_name"
+      if ! cp "$draft_path" "$published_path"; then
+        printf 'architecture-report-preflight: report could not be written: %s\n' \
+          "$published_path" >&2
+        rmdir "$published_directory" 2>/dev/null
+        return 1
       fi
-      if [ ! -f "$published_path" ]; then
-        printf 'architecture-report-preflight: published report is not a regular file: %s\n' \
+      if ! cmp -s "$draft_path" "$published_path"; then
+        printf 'architecture-report-preflight: published report does not match the draft: %s\n' \
           "$published_path" >&2
         return 1
       fi
       printf '%s\n' "$published_path"
       return 0
     fi
-    if [ -e "$published_path" ] || [ -L "$published_path" ]; then
+    if [ -e "$published_directory" ] || [ -L "$published_directory" ]; then
       sequence_number=$((sequence_number + 1))
       continue
     fi
-    printf 'architecture-report-preflight: report could not be published exclusively: %s\n' \
-      "$published_path" >&2
+    printf 'architecture-report-preflight: report directory could not be created: %s\n' \
+      "$published_directory" >&2
     return 1
   done
 }

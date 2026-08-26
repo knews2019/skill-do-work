@@ -790,7 +790,7 @@ for retired_target_predicate in (
 # conversion this rejects: it would destroy the baseline every later delta is computed from.
 require(
     architecture_report,
-    r"<project-root>/docs/architecture-report_<yyyymmdd>\.md",
+    r"ai-reports/<yyyy-mm-dd>_<hhmm>_architecture-report/architecture-report\.md",
     "architecture-report must publish the dated filename",
 )
 require(
@@ -798,10 +798,19 @@ require(
     r"Never edit, delete, or regenerate a prior report",
     "architecture-report must forbid touching a prior report",
 )
-reject(
-    architecture_report,
+for undated_canonical_predicate in (
+    r"ai-reports/architecture-report\.md",
     r"docs/architecture-report\.md",
-    "architecture-report must not name an undated canonical report path",
+):
+    reject(
+        architecture_report,
+        undated_canonical_predicate,
+        f"architecture-report must not name an undated canonical report path /{undated_canonical_predicate}/",
+    )
+require(
+    architecture_report,
+    r"shared with `actions/ai-report\.md`",
+    "architecture-report must publish into the same reports directory as ai-report",
 )
 require_order(
     architecture_report,
