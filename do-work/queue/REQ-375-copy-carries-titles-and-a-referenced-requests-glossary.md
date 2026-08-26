@@ -96,7 +96,11 @@ survives, and what makes the trade acceptable:
   annotate the joined result; `rawMarkdownForRequests`'s cat semantics and its throw-on-missing
   behaviour are unchanged.
 - **Both id kinds**, matching REQ-374: UR ids are expanded and glossed exactly as REQ ids are.
-- **Unresolved ids stay bare** and stay out of the glossary.
+- **An unresolved id is named as not-found, not left silent.** It is not expanded (there is no
+  title), but it gets a glossary line reading `- REQ-9999 — not found in this queue`. Plain text
+  has no red, so the glossary line is the paste's equivalent of REQ-374's blocked-accent span:
+  the reader of the paste learns the reference is dead instead of hunting for it. An ambiguous
+  REQ segment is not a dead reference and gets no line.
 - **Rewrite the contract comment at `board-clipboard.js:50-65`** to state the new rule: the Go
   payload is verbatim, the clipboard payload is those bytes plus marked annotations, and the
   frontmatter fence is never touched. Record the same split in `_dev/primes/prime-kanban-board.md`
@@ -147,6 +151,7 @@ says so.
 **GREEN when:** The pasted text's frontmatter block is byte-identical to the source file (checked
 by diffing that region), the body's first `REQ-1679` carries its title and the later one does not,
 a backticked id is untouched, the glossary appears once at the end with full titles and statuses,
+an id with no board record appears there as `not found in this queue`,
 and a column `Copy all` glosses only ids that are not themselves in the payload.
 
 **Validation:** User confirmed — "Both: glossary + inline" was selected from three options with the
@@ -159,3 +164,18 @@ See `do-work/user-requests/UR-074/input.md` for complete verbatim input.
 
 ---
 *Source: user request in session, 2026-08-26, prompted by REQ-1685's body citing REQ-1679/REQ-1108.*
+
+## Addendum (2026-08-26)
+
+User added, mid-run on REQ-374:
+
+> ````text
+> address the **The "Silent Failure" Gap:** <- now show the placeholder as broken (red with tooltip)
+> The text explicitly notes that if a REQ ID is mentioned but doesn't actually exist in the system, it simply renders as ordinary prose. There is no warning or "broken link" indicator for dead references, meaning typos in IDs remain invisible until someone manually tries to find them.
+> ````
+
+- The directive names the *display* surface, which is REQ-374's. This REQ carries the copy-surface
+  equivalent, since a paste has no colour: an unresolved id earns a `not found in this queue`
+  glossary line instead of the silence the original requirement specified.
+- The reversed requirement is edited in place above rather than left contradicted; this section is
+  the record that it changed and why.
