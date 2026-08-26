@@ -17,19 +17,10 @@
 ## Stakes
 
 - `do-work-update.sh` — project-local overwrite boundary
-  Req: reject skill roots outside the invoking project, show the reviewed diff, require confirmation, and verify the installed version afterward.
+  Req: reject a skill root outside the invoking project, require `--project-root` to name the Git worktree root, refuse an upstream version that is not newer, delegate the reviewed diff and the single confirmation to the installed full-suite installer (honouring its cancel status as a no-change exit), and verify the installed version afterward.
   Value: users can update without an agent turn while retaining the protection against clobbering a shared install or local customization.
   Risk: weakening any guard can overwrite user work or runtime queue data. The updater requires the project Git root and validates the suite archive with its already-installed manifest validator before delegating that same archive to the installed full-suite installer. The installer reviews modules plus every owned configuration change, snapshots exact managed originals, and restores them on failure — a new managed surface earns a diff section, a backup, a recovery branch, and a post-write byte check in the same commit that adds it. Runtime, KB, application paths, unrelated settings, and any bytes outside a managed marker span must never enter that plan. Dirty module changes are named before the one confirmation; accepting discards them from both index and worktree before installation. `_dev/tests/update-script-behavior.sh` holds current-suite, hostile-manifest, dirty-consent, and forced-recovery behavior.
 
 ## Lessons
 
-- REQ-061: semantic-version comparison must execute on the platform’s `awk` implementation; avoid names such as `index`, which some implementations reserve as built-ins.
-- [REQ-136: the suite manifest is the sole module source/destination contract](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-136-define-four-skill-suite-contract.md#lessons-learned)
-- [REQ-137: the installed manifest validator must authorize every candidate archive](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-137-ship-suite-aware-bridge-updater.md#lessons-learned)
-- [REQ-138: managed recipe markers preserve exterior client bytes and reject malformed ownership](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-138-add-managed-text-section-replacement.md#lessons-learned)
-- [REQ-144: every install must use one verified four-skill recovery transaction](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-144-activate-four-skill-distribution.md#lessons-learned)
-- [REQ-146: modular updates retain one installed all-or-recover transaction](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-146-remove-modular-migration-shims.md#lessons-learned)
-- [REQ-162: multiline literal state must carry recipe-header state too](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-162-handle-ordinary-multiline-backtick-commands.md#lessons-learned)
-- [REQ-163: Markdown reference classification must honor syntax adjacency and container scope](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-163-complete-remaining-inline-link-and-list-fence-classification.md#lessons-learned)
-- [REQ-173: ignore a UTF-8 BOM only in the first-line Just classification view](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-039/REQ-173-handle-first-line-bom-in-just-collision-scan.md#lessons-learned)
-- [REQ-174: align Markdown fence marker, info-string, and paragraph state](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-039/REQ-174-validate-root-markdown-fence-info.md#lessons-learned)
+See [`lessons-do-work-update.md`](lessons-do-work-update.md) — read it before changing what **Read first** or **Traps** name above.

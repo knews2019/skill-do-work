@@ -7,15 +7,17 @@
 When asked to read or create a Prime file (`prime-*.md`), adhere strictly to these rules:
 
 - **Purpose:** Prime files are semantic indexes for a specific utility or folder. They prevent the AI from having to reinvestigate the entire architecture from scratch.
-- **Low Noise, High Value:** Keep them concise.
+- **Low Noise, High Value:** a prime is read in full every time its area is touched, so its whole cost is paid on every unrelated change. Keep the **file** — not one section of it — under roughly 60 lines. Anything that grows without bound (accumulated lessons, narrative history) belongs in a satellite the prime points at, not in the prime.
 - **Pointers, Not Copies:** Do not copy-paste large blocks of code into the prime file. Instead, point to the code (`See src/utils/parser.ts for the core regex loop`) which acts as the source of truth.
 - **No Volatile Metrics:** Do NOT include volatile data like test counts, exact line numbers, or pending invoice totals. These go stale immediately and create noise.
-- **Stakes are high value, not noise:** a capped `## Stakes` section — `Req:` / `Value:` / `Risk:` for the utility's *load-bearing* elements only — is decision-context the user needs to make high-impact calls confidently. It is the one place durable value/risk belongs (still no volatile metrics, still pointers not copies), it stays scoped to load-bearing elements, and it sits **outside** the routing-index line budget. See `../../do-work-toolbox/actions/prime.md` for how it's created and refreshed.
+- **Stakes are high value, not noise:** a capped `## Stakes` section — `Req:` / `Value:` / `Risk:` for the utility's *load-bearing* elements only — is decision-context the user needs to make high-impact calls confidently. It is the one place durable value/risk belongs (still no volatile metrics, still pointers not copies), and it counts against the file budget like everything else: load-bearing only, and if every element seems to qualify the utility is too big to have one prime. See `../../do-work-toolbox/actions/prime.md` for how it's created and refreshed.
 - **Multiple Aspects:** It is perfectly valid to have multiple prime files in the same folder if they describe different aspects (e.g., `prime-checkout-speed.md` and `prime-checkout-consolidation.md`).
 
 ## Lessons Discipline
 
-When you load a prime file, scan it for a `## Lessons` section and read every linked REQ lesson **before implementing**. These encode prior mistakes and discoveries from this exact area of the codebase. Pay particular attention to "What didn't work" entries — they prevent repeating failed approaches. If a lesson directly contradicts your planned approach, note the conflict in your `[PLAN]` phase and explain why you're proceeding differently (or adjust the plan).
+A prime's accumulated lessons live beside it in `lessons-<name>.md`, not inside the prime. Read that satellite **before implementing** whenever your change touches code the prime's `## Read first` or `## Traps` sections name, or whenever you are about to do something a trap warns against. These encode prior mistakes and discoveries from this exact area of the codebase. Pay particular attention to "What didn't work" entries — they prevent repeating failed approaches. If a lesson directly contradicts your planned approach, note the conflict in your `[PLAN]` phase and explain why you're proceeding differently (or adjust the plan).
+
+A lesson that constrains **any** change to the utility is not a lesson entry at all — it is a trap, and belongs in the prime's `## Traps` section as one line. The satellite holds what is scoped to one file, function, or subcommand.
 
 ## Test-Writing Posture
 

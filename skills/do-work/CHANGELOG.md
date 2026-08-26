@@ -2,6 +2,28 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.240.3 — Churn Counts Living Code Only (2026-08-26)
+
+The audit-metrics stakes said every historical touch transfers to the surviving path, which reads as though a staged migration's delete-the-original commit counts too. It never has.
+
+- `prime-audit-metrics.md` now states that a `D` entry is not a touch, and names the test that pins it
+
+## 0.240.2 — Primes Stop Accumulating (2026-08-26)
+
+Prime files had quietly become archives: 54% of every prime was accumulated lessons, and the pipeline appended more on every finished REQ. Lessons now live in a satellite beside the prime, and `prime audit` can shrink a file instead of only growing one.
+
+- Each prime's lessons move to `lessons-<name>.md` beside it; the prime keeps a one-line pointer. Prime corpus drops from 13,164 words to 6,243 with nothing lost
+- `do-work-toolbox prime audit` gains a shrink pass that relocates overflow and reports `Shrink: N primes, M lines relocated` — the audit could previously only add
+- The prime budget is now the whole file (~60 lines), not one section: the old rule capped the routing index that never overflowed and exempted the sections that did
+- `do-work run` and `do-work-toolbox review-work` write lessons to the satellite instead of the prime, and the "inlined, not linked" marker branch is retired — link form now follows whether the archive path actually resolves
+
+## 0.240.1 — Prime Stakes Refresh (2026-08-26)
+
+A `do-work-toolbox prime audit` pass over the suite's own prime files. The audit-metrics tool now carries the value/risk context it was missing, and the updater's stakes say who actually shows you the diff.
+
+- `prime-audit-metrics.md` gains a `## Stakes` section covering churn attribution across renames and copies, and the strictly-greater band edge
+- `prime-do-work-update.md` stakes now credit the full-suite installer with the reviewed diff and the single confirmation, and name the Git-worktree-root and not-newer-version guards the updater itself enforces
+
 ## 0.240.0 — Copy Brings the Titles With It (2026-08-26)
 
 Copying a ticket used to paste a wall of bare numbers into whatever you pasted it into. Now the paste explains itself: the first mention of each id it cites carries that ticket's title, and a list at the end names every id the body referenced.

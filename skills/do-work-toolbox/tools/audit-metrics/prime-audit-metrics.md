@@ -23,3 +23,14 @@ audit-metrics — standalone Go module (`tools/audit-metrics/`, own `go.mod`) th
 - **Shallow clones are reported, never silently truncated** — `rev-parse --is-shallow-repository` answers on stdout; a non-zero exit is an error, not "false".
 - **Git exit codes are three-valued** — 0 / 1 = "no" / other = git declining to answer; never fold a 128 into a default (see `git_support.go`'s file-top comment).
 - **Separate Go module** — build inside `tools/audit-metrics/`; a repo-root `go build ./...` never reaches it.
+
+## Stakes
+
+- `churn.go` — history attribution across renames and copies (`computeChurnReport`)
+  Req:   every historical touch of living code must land on the path that survives today — `R` entries resolve old→current on a newest→oldest walk, `-C --find-copies-harder` hands a dead copy-source's history to its surviving copy, and only paths with no survivor drop at the final `ls-files` filter. A `D` entry is not a touch and is never counted: a staged migration's delete-the-original commit must not inflate the survivor, which is why `TestChurnStagedCopyMigrationAttribution` expects four touches from five commits.
+  Value: `hotspots` (churn × current lines) names files that still exist, so the audit spends its judgment budget on live code instead of on the ghosts of a staged migration.
+  Risk:  attribution fails silently — the tool still prints a full, plausible table, so a reordered walk or a lost copy edge misdirects every finding scoped from it. Re-running after a fix is cheap; a report already written and diffed against past runs is not.
+- `distribution.go` — percentile summary + `bandLabelForValue`
+  Req:   nearest-rank percentiles over the measured values, and a strictly-greater band edge (value == threshold is not flagged); with no threshold flag, no band section is emitted at all.
+  Value: the caller's calibrated thresholds (`actions/maintainability-audit-reference.md`) decide what WATCH and FLAG mean, so banding stays a conversation the user owns rather than a constant this tool asserts.
+  Risk:  relaxing the edge to `>=` re-classifies files across every past run at once and breaks the persistent report's cross-run deltas. Hardcoding a default threshold does the same damage more quietly, by applying a calibration the caller never agreed to.

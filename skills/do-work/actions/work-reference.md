@@ -675,12 +675,12 @@ If **no section applies** (no REQs at all in `do-work/queue/`), report completio
 
 ## Deferred Prime-Link Path Computation (Step 7.5)
 
-**Path computation rule (for use in Step 8):** the link path must be relative to the prime file's location, not the repo root. Count how many directories deep the prime file sits (i.e., the number of path components before the filename). Prepend that many `../` steps to the REQ's repo-root-relative archive path. Examples:
-- Prime at `prime-auth.md` (0 dirs deep) → `do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
-- Prime at `src/utils/prime-auth.md` (2 dirs deep: `src/` and `utils/`) → `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
-- Prime at `web/src/auth/prime-auth.md` (3 dirs deep) → `../../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
+**Path computation rule (for use in Step 8):** the lesson bullet is written to the prime's satellite `lessons-<name>.md`, which sits in the prime's own directory, so the link path is relative to that directory — not the repo root. Count how many directories deep the satellite sits (i.e., the number of path components before the filename). Prepend that many `../` steps to the REQ's repo-root-relative archive path. Examples:
+- Satellite at `lessons-auth.md` (0 dirs deep) → `do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
+- Satellite at `src/utils/lessons-auth.md` (2 dirs deep: `src/` and `utils/`) → `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
+- Satellite at `web/src/auth/lessons-auth.md` (3 dirs deep) → `../../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
 
-The existence-verify check on the resolved path runs in Step 8 (post-move) — that's the whole reason for deferring.
+The existence-verify check on the resolved path runs in Step 8 (post-move) — that's the whole reason for deferring. A path that does not resolve because the satellite ships in a package whose consumers never receive `do-work/archive/` takes the canonical repository URL instead; anything else that fails to resolve is reported, never written.
 
 ## Builder-Decided Follow-up Template (Step 8)
 
