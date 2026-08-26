@@ -1,8 +1,9 @@
 ---
 id: REQ-383
 title: '[impact-negligible] Pin the clipboard fence scanner, and teach it to see indented code blocks'
-status: pending
+status: pending-answers
 created_at: 2026-08-26T19:10:32Z
+status_changed_at: 2026-08-26T19:29:10Z
 user_request: UR-075
 addendum_to: REQ-379
 review_generated: true
@@ -92,6 +93,33 @@ fence indented four or more spaces under a list item. Measured at capture: **zer
   CommonMark's rule, and the reason the existing three-space bound exists.
 - **The two cross-surface claims get agreement tests**, failing whichever side drifts alone, rather
   than two independent assertions that can pass while disagreeing.
+
+## Open Questions
+
+- [ ] Should this REQ harden the hand-rolled fence scanner, or delete it by moving block-context detection to the Go side?
+  Recommended: **delete it.** Every external finding on REQ-379 was one shape — the hand-rolled
+  scanner disagreeing with CommonMark. Blockquoted fences, backtick info strings, list-item fences,
+  multi-line code spans, indented code blocks, link reference definitions: six symptoms, one cause.
+  The Go side already runs goldmark and already ships a build-time index for exactly this class of
+  problem (`repoFileMentions` tells the client which file paths exist so the client need not
+  re-derive it). Computing the annotatable byte ranges there and shipping them would let
+  `codeFenceRunFor`, `codeFenceRunCloses`, `findMatchingBacktickRun`, `stripContainerPrefix` and the
+  paragraph lookahead all be deleted, and would make this REQ's whole finding class impossible
+  rather than fixed one at a time.
+  Also: **REQ-381 needs a Go-side body scan anyway** for its citation index, so the block-context
+  ranges come nearly free if the two are done together — which argues for folding this into REQ-381
+  rather than running it fourth.
+  Value: closes six findings at once, deletes ~150 lines of the most defect-dense code in the
+  change, and ends a review cycle that has cost more than the feature.
+  Risk: a larger single change than hardening, and it moves work into the Go payload, which REQ-379
+  deliberately kept byte-exact — the ranges would be a *new* field beside the payload, never a change
+  to it. If that distinction is not held, the round-trip guarantee is at risk.
+  Also: keep this REQ as written (pin the eight branches, add indented-code-block tracking in JS),
+  which is smaller per step but leaves the cause in place.
+  Answerer: the maintainer — this is a design call about where Markdown knowledge lives, not a
+  builder decision.
+
+<!-- D-XX counter: none used. Next decision: D-01. -->
 
 ## Constraints
 

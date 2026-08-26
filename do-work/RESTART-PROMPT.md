@@ -1,66 +1,101 @@
 ```
 do-work clarify
-do-work run
+do-work run --fan-out 2
 
 This command is sufficient; everything below it is context.
 
-Run `do-work clarify` first: two REQs sit at pending-answers and cannot be selected until you
-answer them. Then `do-work run` drains the queue in dependency order.
-
-Serial is the recommendation, not a limitation. 29 REQs are pending and only four have
-verified write-set relationships (encoded as depends_on gates). The other 25 have not been
-checked against each other, so `--fan-out` would be dispatching on unverified disjointness.
-If you want concurrency, `do-work run --fan-out 2` is the honest ceiling until someone
-audits the remaining write sets.
+Two REQs are ready and their write sets are disjoint, so a fan-out of two is safe.
+One REQ is held at pending-answers with a design question that clarify will surface;
+answer it before that REQ is built, because the answer decides whether it is written
+at all.
 ```
 
 ---
 
 ## Reference
 
-### Session state
+### Where the work stands
 
-- **Checkout:** `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2`, branch `main`, tree **clean**.
-- **Worktrees:** none. No `worktree-agent-*` branches exist, merged or unmerged. Nothing to remove.
-- **`do-work/working/`:** empty. No claim in flight, no foreign claim, `## In Progress (interrupted)` is empty.
-- **Version:** 0.216.2. `bash _dev/tests/maintainer-verify.sh` exits 0 at `2314327`.
+Branch `claude/request-id-autocomplete-xnhkow`, head `a90e19a`, pushed, clean tree, no worktrees,
+no builder branches, nothing claimed. PR [#169](https://github.com/knews2019/skill-do-work/pull/169)
+is open and mergeable with no CI configured on this repo.
 
-### What this session finished
+Two REQs shipped this session, both archived under `do-work/archive/UR-075/` with their commit
+hashes recorded:
 
-**REQ-258 — Split the prescribed shell behavior suite per script.** Route B, review 94%, Acceptance Pass. Merged? Not applicable — serial mode, no worktree, no merge range. Committed at **`1cc1836`**, hash recorded at `35fb513` and confirmed with `record-commit-hash.sh --verify`. Archived at `do-work/archive/UR-056/REQ-258-split-the-shell-behavior-suite-per-script.md`. Nothing remains on it.
+| REQ | What | Acceptance |
+|---|---|---|
+| REQ-378 | Ticket ids in the drawer carry their titles; dead ids flagged; drawer glossary | Pass |
+| REQ-379 | The clipboard payload carries titles and a referenced-requests glossary | Pass, 91% |
 
-`_dev/tests/prescribed-shell-scripts-behavior.sh` keeps its path and exit-status contract but is now a 35-line runner. The 76 cases live one file per script in `_dev/tests/prescribed-shell-cases/`, over `_dev/tests/prescribed-shell-harness.sh`. **A REQ that adds a case now writes that script's case file, not the runner.**
+Released as **0.239.0** and **0.240.0**. `main` was merged at `a290cd6`, which reconciled a second
+version collision — main took 0.238.0 for its architecture-report feature, so this branch renumbered.
+
+### The queue, and why it is ordered this way
+
+| REQ | Status | Gate | Note |
+|---|---|---|---|
+| REQ-380 | pending | none | Cross-Reference Convention in `capture-reference.md`. `tdd: false`, one file, closes UR-074. |
+| REQ-381 | pending | none | Citation index + filter — UR-076's "find tickets that cite REQ-1679". Route C. |
+| REQ-382 | pending | `depends_on: [REQ-381]` | Markdown-link ids, drawer and clipboard. F6 folded in. |
+| REQ-383 | **pending-answers** | `depends_on: [REQ-382]` | Held. See the design question below. |
+
+**REQ-380 and REQ-381 are safe to run concurrently.** REQ-380 writes only
+`skills/do-work/actions/capture-reference.md`; REQ-381 writes `citations.go`, `generate.go`,
+`web/board-filters.js`, `citations_test.go` and `generate_test.go`. No overlap.
+
+**REQ-382 must not run beside REQ-381.** Both write `generate_test.go`. That is why it carries a
+`depends_on` edge and not a sentence — `write_set` is display-only and gates nothing. This branch
+learned that twice from the Codex reviewer, on REQ-381 and again on REQ-382 an hour later.
+
+**Critical path is REQ-381.** Start there, not on REQ-380, if only one thing runs.
+
+### The held question, and why it matters more than it looks
+
+REQ-383 was captured to *harden* the hand-rolled Markdown fence scanner REQ-379 introduced. Before
+building it, read its `## Open Questions` — the recommendation is to **delete the scanner instead**.
+
+Every external finding on REQ-379 was the same shape: the hand-rolled scanner disagreeing with
+CommonMark. Blockquoted fences, backtick info strings, list-item fences, multi-line code spans,
+indented code blocks, link reference definitions — six symptoms, one cause. The Go side already runs
+goldmark and already ships a build-time index for exactly this class (`repoFileMentions`). Computing
+annotatable byte ranges there would delete `codeFenceRunFor`, `codeFenceRunCloses`,
+`findMatchingBacktickRun`, `stripContainerPrefix` and the paragraph lookahead outright.
+
+**REQ-381 needs a Go-side body scan anyway** for its citation index, so if the answer is "delete it",
+fold that work into REQ-381 rather than running REQ-383 fourth. That changes the order, which is why
+the question is gated ahead of the build rather than left for the builder.
 
 ### Heads-up list — things that will bite in the first ten minutes
 
-1. **A second session was writing this repo during this one, and may still be.** Four commits landed from outside this session: `031c546` (clarify), `1311300` (duration rounding, 0.216.0 → 0.216.1), and `2314327` (UR-062 capture: REQ-303, REQ-304, REQ-305, plus an addendum to REQ-263). None collided with REQ-258 — verified with `git show --stat` on each. **Whoever resumes should confirm no other session is mid-write before running,** because this checkout has no lock and none is coming.
-2. **`RESTART-PROMPT.md`'s previous version was wrong about the bottleneck, and REQ-300 exists to fix that class.** The old text said `prescribed-shell-scripts-behavior.sh` is written by five REQs at "at most one per wave." That file is no longer written by case-adding REQs. This file replaces that text; REQ-300 sweeps the rest.
-3. **`tools/checks/qualify.sh` will FAIL any REQ that relocates code.** It reads `git diff` with no `-M`/`-C`, so a moved line is an added line and every pre-existing `TODO`/`console.log` inside moved text trips the debug-artifact gate. REQ-258 hit it and overrode it with evidence (`git show HEAD:<file> | grep` proving the lines pre-exist). **Do not un-check `[UNIFY]` when this happens** — prove the lines pre-exist and record the override. REQ-301 is the fix, awaiting your approval.
-4. **Six reservation markers exist for REQ-300 through REQ-305** under `do-work/.req-reservations/`, all committed and all matched by real REQ files. Nothing to reap.
+- **`_dev/tests/maintainer-verify.sh` exits 1 before running any check** unless ShellCheck 0.11.0,
+  `just`, and Go 1.26.1 are on `PATH`. The container ships ShellCheck 0.9.0, no `just`, and Go
+  1.24.7. All three are fetchable; this session put them in its scratchpad. Prefix every invocation
+  with `GOTOOLCHAIN=go1.26.1`, or the Go gate alone fails first. **Whoever acts:** the next session,
+  before trusting any "the gate cannot run here" claim — that is a property of the container, not the
+  repository, and a builder already filed it as a Discovered Task once in error.
+- **`TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage` fails on this container's
+  Chromium** (Playwright chromium-1194) and is pre-existing — confirmed by stashing, in a file
+  neither this branch nor the main merge touches. **REQ-375, which arrived from main, already owns
+  it.** Do not attribute it to new work.
+- **A real browser is at `/opt/pw-browsers/chromium`.** Set `QUEUE_KANBAN_BROWSER` to it or the whole
+  browser lane silently skips, and REQ-381's acceptance depends on that lane.
+- **Three vacuous mutations shipped in this batch** — a mutation whose anchor lands on a line no
+  fixture exercises passes, and reports coverage that does not exist. Two were written by this
+  session. REQ-383's requirements name this explicitly. **Whoever acts:** any builder adding an
+  assertion — run the mutation *and* confirm the fixture reaches the mutated line.
+- **Codex reviews this PR on `@codex review`** and has found a real defect on every pass so far
+  (five across two REQs). Budget for a verify-fix-pin-push cycle per REQ rather than treating a green
+  suite as done.
 
-### Ordering, and where it is encoded
+### Calibration, for whoever plans the next block
 
-Every constraint below is a `depends_on` field, not prose. `do-work run` honors them with no reading.
+The estimator's p50 is *active agent minutes* and both completed REQs overran it: REQ-378 estimated
+35, took 222 wall (6.3×); REQ-379 estimated 35, took 119 (3.4×). The gap is review round-trips, not
+building. Remaining critical path reads as 75 estimator-minutes and realistically 4–6 hours at this
+session's observed rate.
 
-| REQ | `depends_on` | Why |
-|---|---|---|
-| REQ-263 | `[REQ-300]` | REQ-300 rewrites REQ-263's own frontmatter; a builder must not hold it while that happens |
-| REQ-271 | `[REQ-300]` | same |
-| REQ-264 | `[REQ-300, REQ-263]` | same, **plus** REQ-263 and REQ-264 both write `skills/do-work/tools/checks/qualify.sh` and both will write `_dev/tests/prescribed-shell-cases/qualify.sh` — they must not run concurrently |
-| REQ-301 | `[REQ-263, REQ-264]` | same two files again; the gate is pre-set so it holds whenever you approve it out of `pending-answers` |
+### Worktrees
 
-Pre-existing gates, unchanged: REQ-281 → REQ-280, REQ-285 → REQ-284, REQ-292 → REQ-291.
-
-**Not gated on purpose:** nothing forces REQ-300 to run before its own instance list goes stale. REQ-263/264/271's `write_set` values self-heal at Step 5.5, which overwrites the field from the fresh Scope declaration — so those three instances are cosmetic. REQ-300's durable value is this file and the eleven Coverage rows in `decisions/audits/2026-08-11-defensive-surface.md`.
-
-### Awaiting your answer (`do-work clarify`)
-
-- **REQ-301 — let qualify tell a moved line from an added one.** The heads-up above is the case for it. The risk if declined is habituation: a gate that cries wolf on a whole category of change trains builders to wave it away, and that gate is the one that catches real leftover instrumentation.
-- **REQ-302 — check whether capture under-sizes reorganization REQs.** `effort_estimate: trivial` produced a 5-minute P50 for REQ-258's 19-file restructure. One data point, so the REQ asks the question before proposing a fix. Cheap to decline.
-
-### Parallelism analysis
-
-- **Safe to run concurrently:** unknown for 25 of the 29 pending REQs. Their write sets have not been checked against each other, and `write_set` is display-only — it gates nothing and the merge, not the field, is what proves non-interference.
-- **Must not run concurrently:** REQ-263 with REQ-264 (and REQ-301 with either) — shared `qualify.sh` files. REQ-300 with REQ-263/264/271 — REQ-300 edits their files. All four encoded above.
-- **Critical path:** REQ-300 → REQ-263 → REQ-264 → REQ-301, four deep. Everything else is a leaf or a two-deep pair. Starting there is starting on the longest chain.
-- **Nothing held back.** No REQ is `blocked`, and no `blocked_check` probe exists in the queue.
+None. The survey found one checkout, `/home/user/skill-do-work`, clean, with no `worktree-agent-*`
+branches merged or unmerged. Nothing to remove and no foreign claim to preserve.
