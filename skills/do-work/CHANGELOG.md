@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.240.0 — Copy Brings the Titles With It (2026-08-26)
+
+Copying a ticket used to paste a wall of bare numbers into whatever you pasted it into. Now the paste explains itself: the first mention of each id it cites carries that ticket's title, and a list at the end names every id the body referenced.
+
+- **Copy** and both **Copy all** buttons annotate the body and append one **Referenced requests** list at the end, with each ticket's full title and current status — so a paste into a fresh session no longer needs the board open beside it.
+- An id the queue has no record of says `not found in this queue` in that list, rather than sitting there looking like a real reference.
+- The frontmatter fence is never touched, so a paste still saves straight back as a valid REQ or UR with its `depends_on` and `related` intact. A copy-all of several tickets keeps every one of their fences.
+- Quoted text keeps its exact words: code fences, code spans, and the blockquoted verbatim block every user request stores its original input in are all left alone.
+
 ## 0.239.0 — Ticket Mentions Carry Their Titles (2026-08-26)
 
 A REQ body that said `Read REQ-1679/REQ-1108 lessons` told you nothing about what those requests were. Now every id the drawer shows carries its title, and a dead reference says so instead of hiding.

@@ -1,9 +1,11 @@
 ---
 id: REQ-379
 title: 'Copy carries titles and a referenced-requests glossary'
-status: claimed
+status: completed
 created_at: 2026-08-26T13:02:24Z
 claimed_at: 2026-08-26T17:06:38Z
+completed_at: 2026-08-26T19:06:01Z
+commit:
 user_request: UR-075
 domain: frontend
 route: B
@@ -213,6 +215,57 @@ pastes as a broken file is the failure this REQ is most exposed to.
 `git diff --stat`: 5 project files, +647/-32. `generate_test.go` is +271/-0 — zero deleted lines, which is the mechanical proof that the two Go round-trip tests were not touched. Both were additionally hashed against HEAD and are byte-identical.
 
 **What was done:** The clipboard payload now carries ticket titles. Each document is annotated before the join, never the concatenated string, so a copy-all payload with several frontmatter fences has every body annotated and no fence touched. The fence scanner mirrors `frontmatter.go`: a document must start with `---` and close on a later bare `---`, and the no-fence, unclosed-fence and one-line-fence cases all fall back to treating the whole document as body. Fenced blocks and inline code spans are skipped, as is a ticket id inside a URL or repo path. The first mention of each resolved id expands with its truncated title; later mentions stay bare. One glossary is appended at the end of the whole payload, listing each referenced ticket once with its full untruncated title and status, excluding ids whose own file is already in the payload. The verbatim contract comment was rewritten to state the new split, and the same split is recorded in the board prime.
+
+## Testing
+
+**Tests run:** `GOTOOLCHAIN=go1.26.1 go test -count=1 ./...` with and without a browser; `QUEUE_KANBAN_BROWSER=/opt/pw-browsers/chromium go test -count=1 ./...`; `go vet ./...`; `gofmt -l .`; and the canonical gate, `bash _dev/tests/maintainer-verify.sh`.
+**Result:** ✓ Passing — gofmt clean, vet clean, canonical gate runs end to end and reaches the browser lane.
+
+**On the canonical gate:** it needs ShellCheck 0.11.0, `just` and Go 1.26.1, none of which the container ships. All three were fetched this session, and with them on `PATH` the gate completes. The builder's hand-back recorded it as unrunnable here; that was true of the container as found and is not a property of the repository, so the Discovered Task was corrected rather than filed.
+
+**Pre-existing failure, not this REQ's:** `TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage`, in `timeline_browser_probe_test.go` — a file neither this REQ nor the main merge touches. Confirmed by stashing. REQ-375, which arrived from main, already owns it.
+
+**Red-green validation.** The builder ran 21 mutations and reported 21 caught, including one that **survived its first attempt** — its anchor landed on a fence-opening line carrying no ticket ids, so the mutation was vacuous. That is the REQ-378 failure repeating, and it was fixed rather than papered over (D-04). The independent review then ran 24 of its own and re-verified four of the builder's as non-vacuous, confirming the mutated line was demonstrably reached in each. The orchestrator ran three more:
+
+- Mutating `frontmatterFenceEndOffset` to miss every fence makes the document's **own frontmatter id** appear in the reference list; caught by name.
+- Removing `stripContainerPrefix` fails with "a blockquoted fence was annotated — the containment contract's preserved text was rewritten".
+- Removing the backtick-info guard fails with "an invalid backtick info string opened a fence that CommonMark calls prose".
+
+**The proof that matters most is not an assertion.** A payload captured from a live board through a stubbed `navigator.clipboard`, written to disk and re-parsed: frontmatter **byte-identical at 1124 bytes**, body grown 1268 chars, re-reads as a valid REQ with no warnings. And after the blockquote fix, copying **UR-075** returns its 346-line verbatim block **byte-identical** — the case that was actually being corrupted.
+
+**New tests added:**
+- `TestJavaScriptBehaviorClipboardAnnotatesBodiesAndAppendsOneGlossary` — the behaviour lane: per-document annotation across a joined payload, the fence rule's three fallback cases, code fences and spans, CRLF preservation, exclusion sets, the ambiguous case, and both fence bugs found in review.
+- `TestClipboardAnnotationWiresEveryCopyHandler` — structural, that all three handlers route through the one seam.
+- Fixture bodies in both clipboard browser probes gained ticket mentions; before this REQ they carried none, so nothing exercised the path end to end.
+
+*Verified by work action*
+
+## Review
+
+**Overall: 91%** | independent review, plus two rounds of external findings
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 88% |
+| Test Adequacy | 78% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Acceptance: Pass.** Every criterion in `## Scope` delivered and independently verified. The frontmatter invariant held under attack: `generate_test.go` is +271/−0, and both Go round-trip tests hash byte-identical to HEAD, which is the mechanical proof the annotation stayed client-side.
+
+**External findings (Codex), both verified against CommonMark before acting, both fixed and pinned:**
+- A fence inside a blockquote was not recognised, so the outside-text containment format every UR's Full Verbatim Input uses was being annotated. Fixed by `stripContainerPrefix`.
+- A backtick in a backtick fence's info string opened a fence CommonMark calls prose, swallowing every reference to the next fence or EOF. Fixed, tilde fences unaffected.
+
+**Correction to the independent review.** It rated the blockquote gap `impact-negligible` on "12 blockquoted fences in `do-work/`, none currently holding a ticket id". Measured directly: there are 6, and **2 hold ticket ids** — UR-075's carries 21, UR-076's 1. Copying either corrupted preserved verbatim text, making it `impact-user-visible`. Both reviewers under-rated it; the measurement is what settled it.
+
+**Review findings fixed in this REQ:** the shipped user guide still told consumers Copy takes the file "exactly as it sits on disk" (user-visible, and `skills/do-work-board` ships whole), plus two stale `generate_test.go` comments. Scope extended for the guide under the requirements-require-this-file-class rule and recorded as D-06.
+
+**Follow-ups routed:** the fence scanner's unpinned branches and its structural gap on indented code blocks go to a new REQ; the Markdown link-reference rewrite folds into queued REQ-382; one prose restatement in `prime-do-kanban.md` goes to the prose backlog.
+
+*Reviewed by review-work action*
 
 ## Red-Green Proof
 
