@@ -44,9 +44,58 @@ REQ or UR id in the body is expanded with its title, and a glossary of every ref
 appended at the end. The frontmatter fence is never touched, so a paste still parses as a REQ file.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-kanban-board.md`, REQ-378's `## Decisions`, and the general /
+  coding-guardrails / communication-style / frontend / testing crew members.
+
+  **`web/board-clipboard.js`** gains one `// ---- ticket annotation for the clipboard payload ---`
+  section above the three handlers:
+
+  - `frontmatterFenceEndOffset(documentText)` — the byte offset where the body starts, mirroring
+    `frontmatter.go:28-68` line for line: opening `---\n` / `---\r\n` after an optional BOM, closing
+    fence is the next line equal to `---` after stripping one `\r`, and all three of no-open,
+    no-close and a lone `---\n` return 0 (everything is body). No line-ending normalization.
+  - `annotateTicketMentions(markdownText)` → `{ text, referencedTickets }`. Per-document: the fence
+    slice is passed through untouched, the body is walked line by line with a fenced-block tracker,
+    each non-fenced line is split into inline-code and prose runs, and each run is scanned with the
+    shared `bodyMentionPattern` (`lastIndex` reset first). Expansion is `REQ-1679 (short title)`,
+    first resolved id per document only.
+  - `buildReferencedTicketsGlossary(referencedTickets, excludedIds)` — one appendix, deduped by
+    resolved id, `excludedIds` dropped, empty string when nothing survives.
+  - `annotateClipboardPayload(rawDocuments, excludedIds)` — annotates each document **before** the
+    `.join("")`, collects entries across all of them, appends one glossary. This is the seam all
+    three handlers call, which is what keeps a second document's fence out of the annotator.
+  - `rawMarkdownForRequests` / `rawMarkdownForUserRequestAndRequests` become
+    `rawMarkdownDocumentsForRequests` / `rawMarkdownDocumentsForUserRequestAndRequests`, returning
+    the document array instead of the joined string. Same order, same throw-on-missing; the
+    `.join("")` moves into `annotateClipboardPayload` unchanged.
+  - Handler A gets a single `.then` between its three producer branches and `writeTextToClipboard`,
+    so `TestGenerateSeparatesRawMarkdownForLazyCopy`'s two literal call-site assertions stay green.
+  - The contract comment at `:50-65` is rewritten to state the Go-payload-verbatim /
+    clipboard-payload-annotated split.
+
+  **Verification:** a Node-lane probe drives the shipped functions directly (frontmatter safety,
+  concatenation, unclosed fence, fences and code spans, repeat mentions, ambiguity, excludedIds,
+  UR parity), a structural companion pins the three call sites, and both Chromium clipboard probes
+  gain body mentions so their exact-payload assertions cover the real end-to-end shape.
+- [x] **[APPLY]:** Code written as planned, inside the five `## Scope` files and nothing else. Two
+  departures from the plan, both narrowing: the fenced-line branch of `annotateMarkdownBody` collapsed
+  from two call sites to one (D-04), and the `String(...)` coercion plus the empty-inline-title guard
+  came out as unreachable (D-05).
+- [x] **[UNIFY]:** `git diff --stat` = 6 files, +681/−33. No debug artifacts (`git diff -U0 | grep`
+  for `console.log` / `debugger` / `TODO` / `fmt.Print` returns nothing).
+  - `web/board-clipboard.js` — read the whole diff. Verified the three handler call sites, that the
+    three pre-existing `return` branches in handler A are byte-identical, that the renamed document
+    producers keep their order and their throw, and that no function left behind is unreferenced
+    (`rawMarkdownForRequests` / `rawMarkdownForUserRequestAndRequests` were renamed, not orphaned).
+  - `generate_test.go` — the new probe slices only shipped blocks; no re-declared copy of the code
+    under test. Expected strings are literals, not recomputations of the shipped constants.
+  - `clipboard_browser_probe_test.go` / `user_request_clipboard_browser_probe_test.go` — fixture
+    bodies gained mentions; every `FrontmatterMarkdown` still splices in verbatim, which is what
+    makes an annotated fence fail these two files.
+  - `_dev/primes/prime-kanban-board.md` — one Conventions bullet, no volatile metrics, no line
+    numbers, points at `frontmatter.go` and `board-clipboard.js` rather than copying them.
+  - Linters: `go vet ./...` clean, `gofmt -l` clean over every tracked Go file, `node --check` on
+    the changed fragment clean.
 
 ## Why
 
@@ -152,6 +201,19 @@ confirmed end-to-end in the existing Chromium clipboard lane
 Actually paste the result into an editor and read it. A payload that passes every assertion and
 pastes as a broken file is the failure this REQ is most exposed to.
 
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/web/board-clipboard.js` (modified)
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/clipboard_browser_probe_test.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/user_request_clipboard_browser_probe_test.go` (modified)
+- `_dev/primes/prime-kanban-board.md` (modified)
+
+`git diff --stat`: 5 project files, +647/-32. `generate_test.go` is +271/-0 — zero deleted lines, which is the mechanical proof that the two Go round-trip tests were not touched. Both were additionally hashed against HEAD and are byte-identical.
+
+**What was done:** The clipboard payload now carries ticket titles. Each document is annotated before the join, never the concatenated string, so a copy-all payload with several frontmatter fences has every body annotated and no fence touched. The fence scanner mirrors `frontmatter.go`: a document must start with `---` and close on a later bare `---`, and the no-fence, unclosed-fence and one-line-fence cases all fall back to treating the whole document as body. Fenced blocks and inline code spans are skipped, as is a ticket id inside a URL or repo path. The first mention of each resolved id expands with its truncated title; later mentions stay bare. One glossary is appended at the end of the whole payload, listing each referenced ticket once with its full untruncated title and status, excluding ids whose own file is already in the payload. The verbatim contract comment was rewritten to state the new split, and the same split is recorded in the board prime.
+
 ## Red-Green Proof
 
 **RED prompt/case:** Open REQ-1685 on the board and press `Copy`, then paste. Today the clipboard
@@ -195,6 +257,77 @@ User added, mid-run on REQ-378:
   the record that it changed and why.
 
 ---
+
+## Decisions
+
+- **D-01 — A UR appendix line ends in `(user request)` (DECIDE & STATE):** the REQ's illustrative
+  block writes the UR line as `- UR-389 — <the user request's title>` with no trailing status, while
+  its prose asks for "full, untruncated title **and status**". Taken as schematic rather than
+  byte-exact, because the REQ-378 drawer glossary already prints `user request` in the status column
+  for a UR (its D-03), and the point of this REQ is that the two surfaces say the same thing about
+  the same body. Reversible by deleting one ternary.
+
+- **D-02 — A ticket id inside a URL or a repo-relative path is skipped entirely (DECIDE & STATE):**
+  `buildLinkifiedFragment` deliberately resumes scanning INSIDE a skipped path so a nested id can
+  still become a link, and copying that rule here would rewrite
+  `do-work/archive/UR-075/REQ-378-title.md` into a path that names no file. The drawer can afford it
+  because a title span next to a path is a display artifact; a clipboard payload cannot, because the
+  path is the thing the reader will paste into a command. So the clipboard advances past the whole
+  match. The cost is that a REQ referenced only through its archive path earns no appendix line;
+  that is not a prose reference, and the file path is right there.
+
+- **D-03 — `annotateTicketMentions` returns `{ text, referencedTickets }`, not a bare string
+  (DECIDE & STATE):** the REQ names it `annotateTicketMentions(markdownText)` and Builder Guidance
+  calls both new functions "pure string transforms". It still is pure — but
+  `buildReferencedTicketsGlossary` needs the ids the scan found, and the only alternatives were a
+  second scanner over the same text (two definitions of "what counts as a mention", drifting from
+  the first edit onward) or a mutable out-parameter. The object return keeps one scanner and one
+  signature.
+
+- **D-04 — The fenced opener, contents and closer take one suppressed call site, not two
+  (DECIDE & STATE):** the first draft had `annotateMarkdownBody` call
+  `annotateMentionRun(lineText, false, false, …)` from two branches. Mutation M7 — flipping
+  `flagMissingIds` to `true` for fenced content — **survived**, because the anchor it hit was the
+  fence-OPENING line, whose text is `` ```yaml `` and carries no ids at all. Rather than invent a
+  fence info string containing a ticket id to make a vacuous branch testable, the two branches were
+  collapsed into one ternary. M7 then failed as intended. Recorded because the surviving mutation
+  was a fact about the code's shape, not about the fixture.
+
+- **D-05 — Two defensive branches removed as unreachable (DECIDE & STATE):** `annotateTicketMentions`
+  had `String(markdownText === null || markdownText === undefined ? "" : markdownText)`, and
+  `annotateMentionRun` had an `if (!inlineTitle) continue;`. Every caller hands the first a string
+  (`rawMarkdownForDetail` null-checks, `copyTextWithHeading` always returns one), and
+  `describeTicketTitle` never answers empty for a record that resolved — it substitutes `untitled` or
+  names the synthesized-UR case. Both were guards no mutation could make bite.
+
+- **How the frontmatter was kept safe** (Builder Guidance asked for this in the REQ's own record):
+  `frontmatterFenceEndOffset` is a line-for-line mirror of `splitFrontmatter`
+  (`frontmatter.go`) — same BOM tolerance, same `---\n` / `---\r\n` opener, same
+  "first later line equal to `---` after stripping one `\r`" closer, and the same three fallbacks to
+  *everything is body*. The body is never line-ending-normalized; it is split on `\n`, annotated,
+  and rejoined, so a `\r` rides through untouched. Annotation runs per document **before** the
+  `.join("")`, so a `Copy all` payload's N fences are N fences and not one. The proof is not the
+  reasoning: mutation M1 (`bodyStartOffset = 0`) and M2 (annotate the joined string) are both caught
+  by the Node probe and by the Chromium column probe, and a real four-document `Copy all` payload
+  (UR-075 + REQ-379 + REQ-380 + REQ-381) was split back into four files on disk and re-read by
+  `queue-kanban summary`, which rebuilt every dependency edge.
+
+## Discovered Tasks
+
+- **Corrected by the orchestrator — not a discovered task.** The builder reported that
+  `_dev/tests/maintainer-verify.sh` cannot run here because the container ships ShellCheck 0.9.0
+  against its 0.11.0 gate, and that `contract-regressions.sh` fails on a missing `just`. Both were
+  true of the container as found, and neither is a defect in the repo: the gate is doing its job.
+  The tools are fetchable, and were fetched earlier this session. With ShellCheck 0.11.0, `just` and
+  Go 1.26.1 on `PATH`, the canonical gate runs end to end and reaches the browser lane. It was run
+  that way against this REQ's changes. Recorded here so the next reader does not inherit "the gate
+  cannot run" as a property of the repository.
+
+- `TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage` fails on this container's Chromium
+  (Playwright chromium-1194): "the isolator was not exercised and the mutation pair is vacuous".
+  Pre-existing and confirmed by stashing earlier in the session; `timeline_browser_probe_test.go` is
+  touched by neither this REQ nor the main merge, and the error is identical before and after both.
+  It is the one failure the canonical gate still reports here.
 
 ## Triage
 
@@ -285,13 +418,13 @@ surface), `web/board-filters.js` (REQ-381 owns search), and every REQ file on di
   primary and fallback shapes agree and `TestGenerateSeparatesRawMarkdownForLazyCopy` stays green.
 
 **Acceptance criteria (restated from REQ):**
-- [ ] The first mention of each resolvable id in a document body is expanded; later mentions stay bare
-- [ ] The frontmatter fence is never annotated — `depends_on: [REQ-1679]` and `user_request: UR-389` still parse as YAML after a paste
-- [ ] A document with no fence, or an unclosed fence, is treated as all-body rather than all-fence
-- [ ] Fenced code blocks and inline code spans are skipped
-- [ ] A concatenated payload annotates every document's body and no document's fence
-- [ ] One glossary is appended at the very end, listing each referenced ticket once with its full untruncated title and status
-- [ ] `excludedIds` drops ids whose own file is already in the payload — a `Copy all` never glosses its own tickets
-- [ ] An unresolved id gets a `not found in this queue` glossary line; an ambiguous segment gets none
-- [ ] UR ids behave exactly as REQ ids
-- [ ] The two Go round-trip tests pass **unmodified**
+- [x] The first mention of each resolvable id in a document body is expanded; later mentions stay bare
+- [x] The frontmatter fence is never annotated — `depends_on: [REQ-1679]` and `user_request: UR-389` still parse as YAML after a paste
+- [x] A document with no fence, or an unclosed fence, is treated as all-body rather than all-fence
+- [x] Fenced code blocks and inline code spans are skipped
+- [x] A concatenated payload annotates every document's body and no document's fence
+- [x] One glossary is appended at the very end, listing each referenced ticket once with its full untruncated title and status
+- [x] `excludedIds` drops ids whose own file is already in the payload — a `Copy all` never glosses its own tickets
+- [x] An unresolved id gets a `not found in this queue` glossary line; an ambiguous segment gets none
+- [x] UR ids behave exactly as REQ ids
+- [x] The two Go round-trip tests pass **unmodified**

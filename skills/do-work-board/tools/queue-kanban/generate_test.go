@@ -1504,6 +1504,277 @@ process.stdout.write(JSON.stringify({
 	}
 }
 
+// referencedRequestsGlossaryHeading is the appendix heading REQ-379 specifies
+// for the clipboard payload. Pinned as a literal in the tests rather than read
+// back off the client: it is the sentence a paste's reader sees, so a reworded
+// heading is a behavior change and must fail, not follow the assertions along.
+const referencedRequestsGlossaryHeading = "## Referenced requests (added by the board — not part of the file)"
+
+type clipboardAnnotationProbeResult struct {
+	AnnotatedHostDocument string   `json:"annotatedHostDocument"`
+	HostReferencedIds     []string `json:"hostReferencedIds"`
+	JoinedPayload         string   `json:"joinedPayload"`
+	GlossaryHeadingCount  int      `json:"glossaryHeadingCount"`
+	ExcludedPayload       string   `json:"excludedPayload"`
+	UnclosedFencePayload  string   `json:"unclosedFencePayload"`
+	CarriageReturnPayload string   `json:"carriageReturnPayload"`
+	FencelessPayload      string   `json:"fencelessPayload"`
+	LoneFencePayload      string   `json:"loneFencePayload"`
+	AmbiguousPayload      string   `json:"ambiguousPayload"`
+	NoReferencePayload    string   `json:"noReferencePayload"`
+}
+
+// Execute the shipped clipboard annotator under Node. Each case below names a
+// way a payload that passes a looser assertion still pastes as a broken file:
+// an annotated frontmatter fence stops parsing as YAML, a second document's
+// fence annotated after a join is the same failure one ticket later, an
+// unclosed fence read as "all fence" silently skips a whole document, a fenced
+// block flagged as a dead reference asserts something false about an
+// illustration, and a repeat mention expanded twice turns prose into noise.
+func TestJavaScriptBehaviorClipboardAnnotatesBodiesAndAppendsOneGlossary(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function describeRequestStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function buildRequestIdByReqSegment("),
+		sliceBalancedBlockAfter(t, indexHtml, "function resolveTicketMention("),
+		sliceBalancedBlockAfter(t, indexHtml, "function isAmbiguousTicketMention("),
+		sliceBalancedBlockAfter(t, indexHtml, "function ticketTitleFor("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function shortTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function frontmatterFenceEndOffset("),
+		sliceBalancedBlockAfter(t, indexHtml, "function codeFenceRunFor("),
+		sliceBalancedBlockAfter(t, indexHtml, "function codeFenceRunCloses("),
+		sliceBalancedBlockAfter(t, indexHtml, "function findMatchingBacktickRun("),
+		sliceBalancedBlockAfter(t, indexHtml, "function recordReferencedTicket("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateMentionRun("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateLineOutsideFence("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateMarkdownBody("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateTicketMentions("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeReferencedTicket("),
+		sliceBalancedBlockAfter(t, indexHtml, "function buildReferencedTicketsGlossary("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateClipboardPayload("),
+	}
+	declarationBlocks := []string{
+		sliceDeclarationAfter(t, indexHtml, "var inlineTicketTitleMaxLength ="),
+		sliceDeclarationAfter(t, indexHtml, "var bodyMentionPattern ="),
+		sliceDeclarationAfter(t, indexHtml, "var requestIdByReqSegment ="),
+		sliceDeclarationAfter(t, indexHtml, "var referencedTicketsGlossaryHeading ="),
+	}
+
+	longTitle := "Make every referenced request identifier in a drawer body carry its own title"
+	shortenedLongTitle := "Make every referenced request identifier in a drawer body…"
+	exactlySixtyTitle := "Keep the timeline forecast honest about ordering and timings"
+
+	// One document carrying every exclusion at once. REQ-1679 sits in the fence
+	// AND in the body, `REQ-1108` sits in a code span before its prose mention,
+	// REQ-1685 sits in a fenced block before its prose mention, REQ-8888/REQ-8887
+	// are dead ids inside fenced blocks, REQ-9999 is a dead id in prose, and
+	// REQ-378/UR-075 ride inside a repo-relative path.
+	hostDocument := "---\n" +
+		"id: REQ-500\n" +
+		"depends_on: [REQ-1679]\n" +
+		"user_request: UR-074\n" +
+		"---\n" +
+		"# Host document\n" +
+		"\n" +
+		"Read REQ-1679 lessons and REQ-1679 again, plus `REQ-1108` and REQ-1108, and UR-074.\n" +
+		"\n" +
+		"```yaml\n" +
+		"depends_on: [REQ-1685, REQ-8888]\n" +
+		"```\n" +
+		"\n" +
+		"~~~text\n" +
+		"REQ-8887 illustration\n" +
+		"~~~\n" +
+		"\n" +
+		"Trailing REQ-1685 mention and REQ-9999 too.\n" +
+		"See do-work/archive/UR-075/REQ-378-title.md for the path case.\n"
+
+	wantAnnotatedHostDocument := "---\n" +
+		"id: REQ-500\n" +
+		"depends_on: [REQ-1679]\n" +
+		"user_request: UR-074\n" +
+		"---\n" +
+		"# Host document\n" +
+		"\n" +
+		"Read REQ-1679 (" + exactlySixtyTitle + ") lessons and REQ-1679 again, plus `REQ-1108` and " +
+		"REQ-1108 (Short one), and UR-074 (Ticket ids should carry their titles).\n" +
+		"\n" +
+		"```yaml\n" +
+		"depends_on: [REQ-1685, REQ-8888]\n" +
+		"```\n" +
+		"\n" +
+		"~~~text\n" +
+		"REQ-8887 illustration\n" +
+		"~~~\n" +
+		"\n" +
+		"Trailing REQ-1685 (" + shortenedLongTitle + ") mention and REQ-9999 too.\n" +
+		"See do-work/archive/UR-075/REQ-378-title.md for the path case.\n"
+
+	// The second half of the concatenation trap: its fence must survive the join
+	// untouched, and its body's REQ-1679 must expand even though the first
+	// document already spent that id — first-mention memory is per document.
+	secondDocument := "---\n" +
+		"id: REQ-501\n" +
+		"depends_on: [REQ-1679, REQ-9998]\n" +
+		"---\n" +
+		"# Second host document\n" +
+		"\n" +
+		"Nothing but REQ-1679 here.\n"
+	wantAnnotatedSecondDocument := "---\n" +
+		"id: REQ-501\n" +
+		"depends_on: [REQ-1679, REQ-9998]\n" +
+		"---\n" +
+		"# Second host document\n" +
+		"\n" +
+		"Nothing but REQ-1679 (" + exactlySixtyTitle + ") here.\n"
+
+	unclosedFenceDocument := "---\nid: REQ-1685\nRead REQ-1108 here\n"
+	carriageReturnDocument := "---\r\nid: REQ-500\r\n---\r\nBody REQ-1108 here\r\n"
+	fencelessDocument := "# Notes\n\nSee REQ-1108 twice, REQ-1108.\n"
+	loneFenceDocument := "---\n"
+	ambiguousDocument := "Compare REQ-042 with REQ-042 again.\n"
+	noReferenceDocument := "# Plain\n\nNothing here.\n"
+
+	javascriptProbe := `
+var requestsById = {
+  "REQ-1679": { title: ` + mustMarshalJSONString(t, exactlySixtyTitle) + `, status: "completed" },
+  "REQ-1108": { title: "Short one", status: "pending" },
+  "REQ-1685": { title: ` + mustMarshalJSONString(t, longTitle) + `, status: "claimed" },
+  "REQ-500": { title: "Host document", status: "claimed" },
+  "REQ-501": { title: "Second host document", status: "pending" },
+  "UR-001-REQ-042": { title: "First half of an ambiguous pair", status: "pending" },
+  "UR-002-REQ-042": { title: "Second half of an ambiguous pair", status: "pending" }
+};
+var userRequestsById = {
+  "UR-074": { title: "Ticket ids should carry their titles" }
+};
+` + strings.Join(functionBlocks, "\n") + "\n" + strings.Join(declarationBlocks, "\n") + `
+
+var hostDocument = ` + mustMarshalJSONString(t, hostDocument) + `;
+var secondDocument = ` + mustMarshalJSONString(t, secondDocument) + `;
+var annotatedHost = annotateTicketMentions(hostDocument);
+var joinedPayload = annotateClipboardPayload([hostDocument, secondDocument], ["REQ-500", "REQ-501"]);
+var glossaryHeadingCount = joinedPayload.split(referencedTicketsGlossaryHeading).length - 1;
+
+process.stdout.write(JSON.stringify({
+  annotatedHostDocument: annotatedHost.text,
+  hostReferencedIds: annotatedHost.referencedTickets.map(function (entry) { return entry.id; }),
+  joinedPayload: joinedPayload,
+  glossaryHeadingCount: glossaryHeadingCount,
+  excludedPayload: annotateClipboardPayload(
+    [hostDocument, secondDocument], ["REQ-500", "REQ-501", "REQ-1679", "REQ-1108"]
+  ),
+  unclosedFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, unclosedFenceDocument) + `], []),
+  carriageReturnPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, carriageReturnDocument) + `], ["REQ-500"]),
+  fencelessPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, fencelessDocument) + `], ["REQ-1108"]),
+  loneFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, loneFenceDocument) + `], []),
+  ambiguousPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, ambiguousDocument) + `], []),
+  noReferencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, noReferenceDocument) + `], [])
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "clipboard ticket annotation", javascriptProbe)
+	var probeResult clipboardAnnotationProbeResult
+	if decodeError := json.Unmarshal(probeOutput, &probeResult); decodeError != nil {
+		t.Fatalf("decode clipboard annotation behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if probeResult.AnnotatedHostDocument != wantAnnotatedHostDocument {
+		t.Errorf("annotated host document:\n got %q\nwant %q", probeResult.AnnotatedHostDocument, wantAnnotatedHostDocument)
+	}
+	wantHostReferencedIds := []string{"REQ-1679", "REQ-1108", "UR-074", "REQ-1685", "REQ-9999"}
+	if !reflect.DeepEqual(probeResult.HostReferencedIds, wantHostReferencedIds) {
+		t.Errorf("host references = %v, want first-mention order %v (a fenced or path-borne id must not appear)",
+			probeResult.HostReferencedIds, wantHostReferencedIds)
+	}
+
+	wantGlossary := "\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
+		"- REQ-1679 — " + exactlySixtyTitle + " (completed)\n" +
+		"- REQ-1108 — Short one (pending)\n" +
+		"- UR-074 — Ticket ids should carry their titles (user request)\n" +
+		"- REQ-1685 — " + longTitle + " (claimed)\n" +
+		"- REQ-9999 — not found in this queue\n"
+	wantJoinedPayload := wantAnnotatedHostDocument + wantAnnotatedSecondDocument + wantGlossary
+	if probeResult.JoinedPayload != wantJoinedPayload {
+		t.Errorf("joined clipboard payload:\n got %q\nwant %q", probeResult.JoinedPayload, wantJoinedPayload)
+	}
+	if probeResult.GlossaryHeadingCount != 1 {
+		t.Errorf("glossary heading appeared %d times, want exactly one appendix at the end", probeResult.GlossaryHeadingCount)
+	}
+
+	wantExcludedGlossary := "\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
+		"- UR-074 — Ticket ids should carry their titles (user request)\n" +
+		"- REQ-1685 — " + longTitle + " (claimed)\n" +
+		"- REQ-9999 — not found in this queue\n"
+	wantExcludedPayload := wantAnnotatedHostDocument + wantAnnotatedSecondDocument + wantExcludedGlossary
+	if probeResult.ExcludedPayload != wantExcludedPayload {
+		t.Errorf("payload with excluded ids:\n got %q\nwant %q", probeResult.ExcludedPayload, wantExcludedPayload)
+	}
+
+	// No closing fence means everything is body, exactly as splitFrontmatter
+	// decides on the Go side. Reading it as an unterminated fence would skip the
+	// whole document and annotate nothing.
+	wantUnclosedFencePayload := "---\nid: REQ-1685 (" + shortenedLongTitle + ")\nRead REQ-1108 (Short one) here\n" +
+		"\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
+		"- REQ-1685 — " + longTitle + " (claimed)\n" +
+		"- REQ-1108 — Short one (pending)\n"
+	if probeResult.UnclosedFencePayload != wantUnclosedFencePayload {
+		t.Errorf("unclosed-fence payload:\n got %q\nwant %q", probeResult.UnclosedFencePayload, wantUnclosedFencePayload)
+	}
+
+	// CRLF endings survive byte-for-byte: the body is never normalized, only
+	// extended.
+	wantCarriageReturnPayload := "---\r\nid: REQ-500\r\n---\r\nBody REQ-1108 (Short one) here\r\n" +
+		"\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
+		"- REQ-1108 — Short one (pending)\n"
+	if probeResult.CarriageReturnPayload != wantCarriageReturnPayload {
+		t.Errorf("CRLF payload:\n got %q\nwant %q", probeResult.CarriageReturnPayload, wantCarriageReturnPayload)
+	}
+
+	// The drawer's rendered-text fallback has no fence at all, and a repeat
+	// mention there stays bare.
+	wantFencelessPayload := "# Notes\n\nSee REQ-1108 (Short one) twice, REQ-1108.\n"
+	if probeResult.FencelessPayload != wantFencelessPayload {
+		t.Errorf("fence-less payload:\n got %q\nwant %q", probeResult.FencelessPayload, wantFencelessPayload)
+	}
+	if probeResult.LoneFencePayload != loneFenceDocument {
+		t.Errorf("lone-fence payload = %q, want the document unchanged", probeResult.LoneFencePayload)
+	}
+	// Ambiguous is not missing: the board holds records that match and refuses to
+	// pick one, so it earns neither an expansion nor a not-found line.
+	if probeResult.AmbiguousPayload != ambiguousDocument {
+		t.Errorf("ambiguous payload = %q, want the document unchanged", probeResult.AmbiguousPayload)
+	}
+	if probeResult.NoReferencePayload != noReferenceDocument {
+		t.Errorf("payload citing nothing = %q, want no appendix at all", probeResult.NoReferencePayload)
+	}
+}
+
+// The three Copy handlers each hand their own payload and their own exclusion
+// set to one annotator. A handler wired to the wrong exclusion set glosses the
+// tickets it already contains, which no pure-function probe can see.
+func TestClipboardAnnotationWiresEveryCopyHandler(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	if !strings.Contains(indexHtml, "function annotateClipboardPayload(") {
+		t.Fatal("the generated page defines no annotateClipboardPayload — every assertion below is vacuous")
+	}
+	if callSiteCount := strings.Count(indexHtml, "return annotateClipboardPayload("); callSiteCount != 3 {
+		t.Errorf("annotateClipboardPayload call sites = %d, want one per Copy handler", callSiteCount)
+	}
+	for _, requiredCallSite := range []string{
+		"return annotateClipboardPayload([clipboardMarkdown], [requestedId]);",
+		"[requestedUserRequestId].concat(requestedRequestIds)",
+		"return annotateClipboardPayload(rawMarkdownDocumentsForRequests(markdownData, requestIds), requestIds);",
+	} {
+		if !strings.Contains(indexHtml, requiredCallSite) {
+			t.Errorf("Copy handler wiring missing: %q", requiredCallSite)
+		}
+	}
+	if !strings.Contains(indexHtml, referencedRequestsGlossaryHeading) {
+		t.Errorf("the generated page does not carry the glossary heading %q", referencedRequestsGlossaryHeading)
+	}
+}
+
 // mustMarshalJSONString renders a Go string as a JavaScript string literal for
 // splicing into a probe, so a fixture title carrying quotes or a non-ASCII
 // character cannot break the probe's syntax.
