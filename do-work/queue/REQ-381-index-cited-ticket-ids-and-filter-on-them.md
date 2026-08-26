@@ -1,18 +1,18 @@
 ---
-id: REQ-377
+id: REQ-381
 title: 'Index cited ticket ids and let the filter box match them'
 status: pending
 created_at: 2026-08-26T13:24:45Z
-user_request: UR-075
+user_request: UR-076
 domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec:
-depends_on: [REQ-375]
+depends_on: [REQ-379]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
-related: [REQ-374, REQ-375]
+related: [REQ-378, REQ-379]
 batch: ticket-id-autocomplete
 write_set:
   - skills/do-work-board/tools/queue-kanban/citations.go
@@ -37,7 +37,7 @@ shipped per request, so the filter reads an index rather than re-scanning bodies
 
 ## Why
 
-REQ-374 and REQ-375 make a cited id *readable*. They do not make it *findable*. "What else refers to
+REQ-378 and REQ-379 make a cited id *readable*. They do not make it *findable*. "What else refers to
 REQ-1679?" is the question a reader asks immediately after learning what REQ-1679 was, and today the
 only way to answer it is to open cards one at a time. In the user's words: "titles are being added to
 the display, they aren't being added to the index."
@@ -60,7 +60,7 @@ ticket-id pattern is a **third** copy of that shape, and the same silent failure
 under-matching index makes the filter quietly miss cards. Whatever the builder chooses, the agreement
 must be pinned by a test that fails when either side alone changes, not by a comment.
 
-Note the resolver semantics REQ-374 establishes and this REQ must match: a short `REQ-031` may name a
+Note the resolver semantics REQ-378 establishes and this REQ must match: a short `REQ-031` may name a
 compound card id (`UR-002-REQ-031`), and an **ambiguous** segment shared by two cards resolves to
 nothing and is never guessed.
 
@@ -71,7 +71,7 @@ nothing and is never guessed.
   irrelevant.
 - **Resolve exactly as the display does**: compound-id first, then the short-segment index, and an
   ambiguous segment resolves to nothing. An id resolving to no record is **not** a citation and does
-  not enter the index — that case is REQ-374's broken-reference flag, a different feature.
+  not enter the index — that case is REQ-378's broken-reference flag, a different feature.
 - **The filter box matches the citation index in addition to id and title.** Typing `REQ-1679`
   surfaces both the card whose id it is and every card citing it. Partial text keeps matching titles
   as it does today; the citation match is on a whole resolved id.
@@ -98,8 +98,8 @@ nothing and is never guessed.
 
 ## Dependencies
 
-`depends_on: [REQ-375]`, which itself depends on REQ-374 — so the three run in the order
-REQ-374 → REQ-375 → REQ-377.
+`depends_on: [REQ-379]`, which itself depends on REQ-378 — so the three run in the order
+REQ-378 → REQ-379 → REQ-381.
 
 **The edge exists to serialize a shared file, not because this REQ needs the other two's output.**
 Its own work is independent: this REQ touches `board-filters.js`, `generate.go` and a new Go source
@@ -107,7 +107,7 @@ file, where they touch `board-core.js`, `board-detail.js`, `board-clipboard.js` 
 one file all three write is `generate_test.go`. An earlier draft declared that overlap in `write_set`
 and stated the serial requirement in prose only — which enforces nothing: `write_set` is display-only
 and "never a safety guarantee" (root `CLAUDE.md` § Glossary), so under `do-work run --fan-out` this
-REQ and REQ-374 were both dependency roots and could have been dispatched concurrently into the same
+REQ and REQ-378 were both dependency roots and could have been dispatched concurrently into the same
 test file. `depends_on` is the only field the work loop actually gates on, so the ordering is
 declared there.
 
@@ -131,8 +131,8 @@ pinning shared geometry with a both-directions agreement assertion, and REQ-289 
 
 ## Red-Green Proof
 
-**RED prompt/case:** With a board generated from a tree where REQ-374's body cites `REQ-1679` and
-REQ-374's own title contains no such text, type `REQ-1679` into the filter box. Today the REQ-374
+**RED prompt/case:** With a board generated from a tree where REQ-378's body cites `REQ-1679` and
+REQ-378's own title contains no such text, type `REQ-1679` into the filter box. Today the REQ-378
 card disappears — the predicate matches `id` and `title` only, so a card that cites the id is
 filtered out exactly like one that never mentions it.
 
@@ -149,7 +149,7 @@ nothing; and partial-text title matching behaves exactly as it does today.
 
 ## Full Context
 
-See `do-work/user-requests/UR-075/input.md` for complete verbatim input.
+See `do-work/user-requests/UR-076/input.md` for complete verbatim input.
 
 ---
-*Source: user request in session, 2026-08-26, raised mid-run on REQ-374 from UR-074's adjacent-improvements list.*
+*Source: user request in session, 2026-08-26, raised mid-run on REQ-378 from UR-075's adjacent-improvements list.*

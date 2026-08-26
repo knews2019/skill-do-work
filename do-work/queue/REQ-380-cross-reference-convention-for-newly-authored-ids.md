@@ -1,9 +1,9 @@
 ---
-id: REQ-376
+id: REQ-380
 title: '[impact-rule-change] Cross-Reference Convention for newly authored REQ and UR ids'
 status: pending
 created_at: 2026-08-26T13:02:24Z
-user_request: UR-074
+user_request: UR-075
 domain: general
 prime_files: [_dev/primes/prime-action-files.md]
 tdd: false
@@ -12,7 +12,7 @@ depends_on: []
 maintenance: false
 impact: impact-rule-change
 effort_estimate: effort-mechanical
-related: [REQ-374, REQ-375]
+related: [REQ-378, REQ-379]
 batch: ticket-id-autocomplete
 write_set:
   - skills/do-work/actions/capture-reference.md
@@ -33,7 +33,7 @@ afterwards — while frontmatter fields keep bare ids.
 
 ## Why
 
-REQ-374 and REQ-375 patch the symptom at render and copy time. The cause is that the reference was
+REQ-378 and REQ-379 patch the symptom at render and copy time. The cause is that the reference was
 written as a bare number in the first place, which means it stays cryptic everywhere the board is
 not: in a plain editor, in `git grep` output, in a pasted diff, in a review thread. The user's
 framing is the general rule, not a board rule — "we shouldn't assume that people know what those
@@ -67,7 +67,7 @@ why it is one section and not a campaign.
   > `related`, `addendum_to`, `user_request`) stay bare ids: they are parsed, not read. Never
   > rewrite an existing file's references to add titles.
 
-- **First mention only**, matching REQ-374's display rule — the two must not disagree about what
+- **First mention only**, matching REQ-378's display rule — the two must not disagree about what
   the convention is.
 - **Frontmatter stays bare.** State it explicitly; it is the part someone will get wrong.
 - **No other action file is edited.** The flows that mint REQ prose already cite
@@ -88,7 +88,7 @@ why it is one section and not a campaign.
 
 ## Dependencies
 
-None. Independent of REQ-374 and REQ-375 — it changes an action file, they change the board client,
+None. Independent of REQ-378 and REQ-379 — it changes an action file, they change the board client,
 and no file is shared.
 
 ## Builder Guidance
@@ -122,7 +122,7 @@ options during planning, with the alternative being board-only.
 
 ## Full Context
 
-See `do-work/user-requests/UR-074/input.md` for complete verbatim input.
+See `do-work/user-requests/UR-075/input.md` for complete verbatim input.
 
 ---
 *Source: user request in session, 2026-08-26 — "we shouldn't assume that people know what those numbers mean."*

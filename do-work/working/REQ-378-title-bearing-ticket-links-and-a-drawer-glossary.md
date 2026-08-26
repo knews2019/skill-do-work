@@ -1,10 +1,10 @@
 ---
-id: REQ-374
+id: REQ-378
 title: 'Title-bearing ticket links and a drawer glossary'
 status: claimed
 created_at: 2026-08-26T13:02:24Z
 claimed_at: 2026-08-26T13:20:45Z
-user_request: UR-074
+user_request: UR-075
 domain: frontend
 route: B
 prime_files: [_dev/primes/prime-kanban-board.md]
@@ -25,7 +25,7 @@ estimate:
     - 5 acceptance criteria
     - browser evidence
     - full-suite verification
-related: [REQ-375, REQ-376]
+related: [REQ-379, REQ-380]
 batch: ticket-id-autocomplete
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-core.js
@@ -154,7 +154,7 @@ verified" shape.
 - **Move the resolver into `board-core.js`.** `requestIdByReqSegment` and `resolveTicketMention`
   move out of `board-detail.js:20-44` unchanged, including the ambiguous-segment `null` guard. Add
   `ticketTitleFor(detailKind, detailId)` returning the full title or `""`, and
-  `shortTicketTitle(fullTitle)` returning the inline form. One definition, because REQ-375 consumes
+  `shortTicketTitle(fullTitle)` returning the inline form. One definition, because REQ-379 consumes
   the same resolver and two copies would drift.
 - **`shortTicketTitle` cuts on a word boundary at 60 characters** with an ellipsis. REQ-1685's own
   title is 88 characters; expanded in full mid-sentence it swamps the prose it sits in. The
@@ -202,7 +202,7 @@ verified" shape.
 
 ## Dependencies
 
-None. REQ-375 depends on this one for the shared resolver.
+None. REQ-379 depends on this one for the shared resolver.
 
 ## Builder Guidance
 
@@ -263,7 +263,7 @@ every browser measurement.
   suppresses title EXPANSION, not the missing-reference flag. The precedent settles it —
   `.repo-file-missing` is applied only inside code spans, so flagging a dead thing inside a code run is
   the board's existing habit, and the value is highest exactly there (REQ bodies backtick their
-  references). Verified by render: REQ-374's own `Read prime-cms.md, REQ-1679/REQ-1108 lessons` code
+  references). Verified by render: REQ-378's own `Read prime-cms.md, REQ-1679/REQ-1108 lessons` code
   span shows both ids in the blocked accent, legibly, in both palettes.
 
 - **D-07 — A fenced block is exempt from the broken-reference flag; an inline code span is not
@@ -275,7 +275,7 @@ every browser measurement.
   output from a test run** — the flag was mislabelling recorded evidence, not a reference. The
   detection point now yields two facts: `insideCodeSpan` (any code context) still suppresses the
   TITLE, and `insideFencedBlock` suppresses the FLAG. The user chose the narrower fenced-only
-  exemption over the reviewer's recommended any-code-span one, knowing it leaves REQ-374's own drawer
+  exemption over the reviewer's recommended any-code-span one, knowing it leaves REQ-378's own drawer
   at 13 flags. Note what the precedent actually supports: `.repo-file-missing` fires only on a
   positive Go-build verdict that a path is absent, so it has a third "unknown" state this branch does
   not — which is why D-06's appeal to it did not hold.
@@ -294,7 +294,7 @@ every browser measurement.
 
 - `board-clipboard.js:173` uses `drawerBody.innerText` as the Copy fallback for bundles that lack
   `board-markdown.js`. That fallback text now carries the expanded inline titles. It is already a lossy
-  degraded path and REQ-375 owns the copy surface, so it is named here rather than changed.
+  degraded path and REQ-379 owns the copy surface, so it is named here rather than changed.
 - `_dev/tests/maintainer-verify.sh` cannot run in this environment: it gates on ShellCheck 0.11.0 and
   the machine has 0.9.0. Confirmed pre-existing — the same gate fails identically on a clean HEAD.
 - `_dev/tests/contract-regressions.sh` reports one failure, `entry-point parity: managed Just updater`,
@@ -340,7 +340,7 @@ and that the rule covers user requests as well as requests.
 
 ## Full Context
 
-See `do-work/user-requests/UR-074/input.md` for complete verbatim input.
+See `do-work/user-requests/UR-075/input.md` for complete verbatim input.
 
 ---
 *Source: user request in session, 2026-08-26, prompted by REQ-1685's body citing REQ-1679/REQ-1108.*
@@ -429,8 +429,8 @@ closing `})();`, drive real UI and poll with a capped `waitFor`, assert
 - `skills/do-work-board/tools/queue-kanban/browser_probe_test.go` (modify) — rendered-drawer probe in both themes
 
 **Files I will NOT touch:** any Go source outside the two test files (the payload already carries
-titles), `board-clipboard.js` (REQ-375 owns the copy surface), `board-filters.js` and any citation
-index (REQ-377 owns search), and every REQ file on disk.
+titles), `board-clipboard.js` (REQ-379 owns the copy surface), `board-filters.js` and any citation
+index (REQ-381 owns search), and every REQ file on disk.
 
 **Acceptance criteria (restated from REQ):**
 - [ ] The first mention of each resolvable id in a drawer body renders id + truncated title; later mentions render the bare id

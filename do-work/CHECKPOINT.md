@@ -17,7 +17,7 @@ session_depth: shallow
 
 ## In Progress (interrupted)
 
-- REQ-374 — claimed 2026-08-26T13:20:45Z — writer: vm:/home/user/skill-do-work
+- REQ-378 — claimed 2026-08-26T13:20:45Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued
 
