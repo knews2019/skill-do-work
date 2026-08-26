@@ -361,6 +361,35 @@ the independent review returns rather than applied immediately, because that rev
 re-run mutation claims and therefore edits this same file; two writers on one file is the collision
 this pipeline's worktree rules exist to prevent.
 
+**Both fixed in `codeFenceRunFor`, each pinned by a mutation that fails by name.**
+
+- **F1** — new `stripContainerPrefix` removes blockquote markers before the indent rules apply, so a
+  fence is recognised wherever it is nested. Mutating the strip away fails with "a blockquoted fence
+  was annotated — the containment contract's preserved text was rewritten". Verified end to end on
+  the real corrupting case: copying **UR-075** from a live board now returns its 346-line verbatim
+  block **byte-identical**.
+- **F2** — a backtick anywhere in a *backtick* fence's info string now returns `null`, matching
+  CommonMark and this repo's own renderer. A tilde fence is unaffected, since the rule is
+  backtick-specific. Mutating the guard away fails with "an invalid backtick info string opened a
+  fence that CommonMark calls prose".
+
+**One correction to the independent review.** It rated the blockquote gap `impact-negligible` on the
+measurement "12 blockquoted fences in `do-work/`, none currently holding a ticket id". That is wrong:
+there are 6, and **2 hold ticket ids** — UR-075's carries 21 and UR-076's carries 1. Copying either
+UR corrupted preserved verbatim text, which makes it `impact-user-visible`, not negligible. Measured
+directly rather than inherited.
+
+## Decisions (remediation)
+
+- **D-06 — Scope extended to `skills/do-work-board/docs/board-guide.md` (DECIDE & STATE):** the
+  shipped user guide said Copy "grabs the ticket file exactly as it sits on disk — frontmatter fence
+  and all". After this REQ that is false in the body half, and `skills/do-work-board` ships whole, so
+  the sentence reaches every installed consumer. The REQ's own requirements already demand rewriting
+  the contract comment; a shipped guide stating the retired rule is the same class, which is the
+  "requirements require this file class" branch of the out-of-scope rule rather than scope creep. The
+  same retired framing in two `generate_test.go` comments was corrected in the same pass — the
+  assertions were still valid, the sentence a future builder reads on failure was not.
+
 ## Triage
 
 **Route: B** - Medium

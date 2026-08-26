@@ -728,14 +728,14 @@ func TestGenerateSeparatesRawMarkdownForLazyCopy(t *testing.T) {
 		t.Fatalf("inlined board-clipboard.js has no lazy board-markdown.js loader")
 	}
 	// Since REQ-089 the lazy payload holds whole FILES (frontmatter fence + body),
-	// so the primary Copy path writes them verbatim — no synthesized heading, or the
+	// so the primary Copy path keeps the file's own bytes — no synthesized heading, or the
 	// paste stops round-tripping back into a valid REQ file. The identifying heading
 	// belongs to the rendered-text fallback alone, which has no frontmatter to carry.
 	if !strings.Contains(string(indexBytes), "copyTextWithHeading(requestedKind, requestedId, renderedTextFallback)") {
 		t.Fatalf("inlined board-clipboard.js does not prepend the id/title heading on the rendered-text fallback path")
 	}
 	if strings.Contains(string(indexBytes), "copyTextWithHeading(requestedKind, requestedId, bodyText)") {
-		t.Fatalf("inlined board-clipboard.js still routes the lazy payload through the heading builder — the primary path must copy the file verbatim")
+		t.Fatalf("inlined board-clipboard.js still routes the lazy payload through the heading builder — the primary path must start from the file's own bytes, annotating only the body")
 	}
 }
 
@@ -1522,6 +1522,8 @@ type clipboardAnnotationProbeResult struct {
 	LoneFencePayload      string   `json:"loneFencePayload"`
 	AmbiguousPayload      string   `json:"ambiguousPayload"`
 	NoReferencePayload    string   `json:"noReferencePayload"`
+	BlockquotedFence      string   `json:"blockquotedFencePayload"`
+	InvalidInfoString     string   `json:"invalidInfoStringPayload"`
 }
 
 // Execute the shipped clipboard annotator under Node. Each case below names a
@@ -1542,6 +1544,7 @@ func TestJavaScriptBehaviorClipboardAnnotatesBodiesAndAppendsOneGlossary(t *test
 		sliceBalancedBlockAfter(t, indexHtml, "function describeTicketTitle("),
 		sliceBalancedBlockAfter(t, indexHtml, "function shortTicketTitle("),
 		sliceBalancedBlockAfter(t, indexHtml, "function frontmatterFenceEndOffset("),
+		sliceBalancedBlockAfter(t, indexHtml, "function stripContainerPrefix("),
 		sliceBalancedBlockAfter(t, indexHtml, "function codeFenceRunFor("),
 		sliceBalancedBlockAfter(t, indexHtml, "function codeFenceRunCloses("),
 		sliceBalancedBlockAfter(t, indexHtml, "function findMatchingBacktickRun("),
@@ -1636,6 +1639,27 @@ func TestJavaScriptBehaviorClipboardAnnotatesBodiesAndAppendsOneGlossary(t *test
 	ambiguousDocument := "Compare REQ-042 with REQ-042 again.\n"
 	noReferenceDocument := "# Plain\n\nNothing here.\n"
 
+	// The outside-text containment contract (actions/clarify.md Step 4) writes
+	// every UR's Full Verbatim Input as a BLOCKQUOTED fence, and the contract
+	// promises the text stays byte-identical apart from the containment bytes.
+	// Two URs in this repo hold ticket ids inside one — UR-075's carries 21 —
+	// so annotating inside it rewrites the user's own preserved words.
+	blockquotedFenceDocument := "---\nid: REQ-500\n---\n\n" +
+		"Prose cites REQ-1679 once.\n\n" +
+		"> ````text\n" +
+		"> The user pasted REQ-1108 and REQ-1685 here verbatim.\n" +
+		"> ````\n\n" +
+		"Trailing prose cites REQ-1108.\n"
+
+	// CommonMark forbids a backtick anywhere in a BACKTICK fence's info string,
+	// so this line is prose and the ids under it are real references. The Go
+	// renderer already agrees (TestRenderMarkdownInvalidBacktickInfoRemainsQuestionProse).
+	// Treating it as a fence opened a block that never opens and swallowed every
+	// reference until EOF.
+	invalidInfoStringDocument := "---\nid: REQ-501\n---\n\n" +
+		"```lang`invalid\n" +
+		"This line is prose and REQ-1679 in it is a real reference.\n"
+
 	javascriptProbe := `
 var requestsById = {
   "REQ-1679": { title: ` + mustMarshalJSONString(t, exactlySixtyTitle) + `, status: "completed" },
@@ -1670,7 +1694,9 @@ process.stdout.write(JSON.stringify({
   fencelessPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, fencelessDocument) + `], ["REQ-1108"]),
   loneFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, loneFenceDocument) + `], []),
   ambiguousPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, ambiguousDocument) + `], []),
-  noReferencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, noReferenceDocument) + `], [])
+  noReferencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, noReferenceDocument) + `], []),
+  blockquotedFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, blockquotedFenceDocument) + `], ["REQ-500"]),
+  invalidInfoStringPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, invalidInfoStringDocument) + `], ["REQ-501"])
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "clipboard ticket annotation", javascriptProbe)
@@ -1747,6 +1773,32 @@ process.stdout.write(JSON.stringify({
 	}
 	if probeResult.NoReferencePayload != noReferenceDocument {
 		t.Errorf("payload citing nothing = %q, want no appendix at all", probeResult.NoReferencePayload)
+	}
+
+	// A fence inside a blockquote is a fence. The outside-text containment
+	// contract writes every UR's Full Verbatim Input this way and promises the
+	// text stays byte-identical apart from the containment bytes, so an id
+	// inside one is preserved words, not a reference. UR-075 holds 21 of them.
+	if strings.Contains(probeResult.BlockquotedFence, "REQ-1108 (Short one)\n> ") ||
+		strings.Contains(probeResult.BlockquotedFence, "> The user pasted REQ-1108 (") {
+		t.Errorf("a blockquoted fence was annotated — the containment contract's preserved text was rewritten:\n%s",
+			probeResult.BlockquotedFence)
+	}
+	if !strings.Contains(probeResult.BlockquotedFence, "> The user pasted REQ-1108 and REQ-1685 here verbatim.\n") {
+		t.Errorf("the blockquoted verbatim line is not byte-identical:\n%s", probeResult.BlockquotedFence)
+	}
+	// Prose on either side of that block still expands, or the fix would have
+	// been to stop annotating rather than to recognise the container.
+	if !strings.Contains(probeResult.BlockquotedFence, "Prose cites REQ-1679 (") {
+		t.Errorf("prose before a blockquoted fence lost its expansion:\n%s", probeResult.BlockquotedFence)
+	}
+
+	// CommonMark forbids a backtick in a backtick fence's info string, so the
+	// line is prose and what follows it is not fenced. Accepting it opened a
+	// block that never opens and left every later reference bare.
+	if !strings.Contains(probeResult.InvalidInfoString, "REQ-1679 (") {
+		t.Errorf("an invalid backtick info string opened a fence that CommonMark calls prose, "+
+			"so the reference under it was left bare:\n%s", probeResult.InvalidInfoString)
 	}
 }
 

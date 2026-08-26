@@ -151,26 +151,60 @@
   // A fenced block opens on a line whose leading run — after at most three
   // spaces — is three or more backticks or tildes. Returns null for any other
   // line, so a caller can use it as both the open and the close test.
+  // Strips Markdown container prefixes — blockquote markers, and the list
+  // markers a fence can sit under — so a fence is recognised wherever it is
+  // nested. This is not an edge case: the outside-text containment contract
+  // (actions/clarify.md Step 4) writes every UR's Full Verbatim Input as a
+  // BLOCKQUOTED fence, so without this the preserved words of the user's own
+  // request get annotated. UR-075's verbatim block alone holds 21 ticket ids.
+  //
+  // Only the prefix is removed; the indent rules below then apply to what is
+  // left, which is what CommonMark does inside a container.
+  function stripContainerPrefix(lineText) {
+    var strippedText = lineText;
+    var keepStripping = true;
+    while (keepStripping) {
+      keepStripping = false;
+      var blockquoteMatch = /^ {0,3}> ?/.exec(strippedText);
+      if (blockquoteMatch) {
+        strippedText = strippedText.slice(blockquoteMatch[0].length);
+        keepStripping = true;
+      }
+    }
+    return strippedText;
+  }
+
   function codeFenceRunFor(lineText) {
+    var containerText = stripContainerPrefix(lineText);
     var scanOffset = 0;
-    while (scanOffset < 3 && lineText.charAt(scanOffset) === " ") {
+    while (scanOffset < 3 && containerText.charAt(scanOffset) === " ") {
       scanOffset += 1;
     }
-    var fenceCharacter = lineText.charAt(scanOffset);
+    var fenceCharacter = containerText.charAt(scanOffset);
     if (fenceCharacter !== "`" && fenceCharacter !== "~") {
       return null;
     }
     var runEndOffset = scanOffset;
-    while (lineText.charAt(runEndOffset) === fenceCharacter) {
+    while (containerText.charAt(runEndOffset) === fenceCharacter) {
       runEndOffset += 1;
     }
     if (runEndOffset - scanOffset < 3) {
       return null;
     }
+    var infoText = containerText.slice(runEndOffset);
+    // CommonMark forbids a backtick anywhere in a BACKTICK fence's info string,
+    // so ```lang`invalid is prose, not a fence. This repo's own renderer already
+    // agrees — TestRenderMarkdownInvalidBacktickInfoRemainsQuestionProse pins it
+    // — and treating it as a fence here opened a block that never opens in the
+    // rendered body, silently leaving every reference until the next fence or
+    // EOF unannotated. A tilde fence has no such rule and may carry backticks.
+    if (fenceCharacter === "`" && infoText.indexOf("`") >= 0) {
+      return null;
+    }
     return {
       fenceCharacter: fenceCharacter,
       runLength: runEndOffset - scanOffset,
-      infoText: lineText.slice(runEndOffset)
+      infoText: infoText
     };
   }
 
