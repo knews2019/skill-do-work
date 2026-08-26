@@ -1,9 +1,11 @@
 ---
 id: REQ-378
 title: 'Title-bearing ticket links and a drawer glossary'
-status: claimed
+status: completed
 created_at: 2026-08-26T13:02:24Z
 claimed_at: 2026-08-26T13:20:45Z
+completed_at: 2026-08-26T17:02:56Z
+commit:
 user_request: UR-075
 domain: frontend
 route: B
@@ -287,8 +289,15 @@ every browser measurement.
   titles, 819px restacked. The restack is therefore 292px *taller* than what it was chosen to fix, and
   pushes the body from 871px to 1164px. It stands on readability instead: the comma run gives no
   boundary between entries and truncates titles mid-phrase. The row reuses `makeDependencyDetailList`'s
-  existing `.detail-dep-list` flex column rather than inventing a third layout. Open for reversal —
-  the corrected numbers were put to the user with the render.
+  existing `.detail-dep-list` flex column rather than inventing a third layout.
+
+  **Confirmed 2026-08-26, against the render, not the numbers.** Three full-drawer captures of UR-031
+  at 620px with the viewport fold marked — bare ids, comma run, restacked — were put to the user after
+  two earlier attempts (an ASCII sketch, then cropped rows plus pixel figures) failed to convey the
+  trade. The user reviewed the restacked capture and accepted it. Recorded because the first choice
+  was made against a review figure that turned out to be wrong, and this one was not: the cost is
+  visible in the capture, which is that on a 27-REQ user request this row fills the whole visible
+  drawer and puts the UR's own title and summary below the fold.
 
 ## Discovered Tasks
 
@@ -316,6 +325,60 @@ every browser measurement.
 `git diff --stat`: 6 project files, +1070/−44. No Go source outside the two test files changed, matching the Scope declaration exactly.
 
 **What was done:** The ticket-mention resolver moved out of board-detail.js into board-core.js as its single definition and gained title lookup plus a 60-character word-boundary truncation. Drawer bodies now expand the first mention of each resolvable id inline and leave later mentions bare; meta rows always expand; an id inside a code span keeps its bare mono link and gains no title; an id matching no board record renders as a non-link span in the blocked accent with a not-found tooltip, while an ambiguous segment is left as plain prose. A glossary section listing every resolved id once, with its full title and status, is appended after the drawer body and explicitly cleared on both drawer-open paths. Six new tests cover it across the structural, Node-harness and browser lanes.
+
+## Testing
+
+**Tests run:** `GOTOOLCHAIN=go1.26.1 go test -count=1 ./...` (full module, with and without a browser); `QUEUE_KANBAN_BROWSER=/opt/pw-browsers/chromium go test -count=1 -run '^TestBrowserBehavior' ./...`; `go test -run '^TestMaintainerStrictJavaScriptBehaviorLane$'`; `go vet ./...`; `gofmt -l .`
+**Result:** ✓ Passing — gofmt clean, vet clean, strict JavaScript lane passes, full suite green apart from one pre-existing failure.
+
+**Pre-existing failure, not this REQ's:** `TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage` fails on this environment's Chromium (Playwright chromium-1194) with "the isolator was not exercised and the mutation pair is vacuous". Confirmed by stashing the whole diff and re-running: it fails identically on a clean tree.
+
+**Red-green validation:** every assertion below was verified to bite by mutating the shipped code and watching the named test fail.
+- Word-boundary truncation: changing the 60 constant to 50 fails the Node lane.
+- Code-span suppression: removing `!insideCodeSpan` fails the Node lane.
+- Fenced-block exemption (both directions): deleting `!insideFencedBlock` fails with "REQ-9999 in a fenced code block: 1 ticket-missing spans, want 0"; widening it to `!insideCodeSpan` fails with "REQ-9999 in a inline code span: 0 ticket-missing spans, want 1".
+- Ambiguity guard: forcing `else if (true)` fails the Node lane — an ambiguous segment must never be flagged missing, in any context.
+- Meta-row expansion: flipping `makeTicketLinkList`'s `expandTitle` to `false` fails the browser lane by name in both themes ("makeTicketLinkList (Blocked by) stopped expanding"). This is the mutation that **passed silently** before the fixture gained `BlockedBy` and `WriteSetOverlaps`.
+- Titleless fallback: reverting `describeTicketTitle` to return an empty string fails with "want it expanded as a marked fallback rather than left a bare id".
+- Glossary clearing: removing the clear on the UR path fails the browser lane in both themes.
+
+**New tests added:**
+- `TestTicketMentionResolverLivesOnlyInBoardCore` — asserts both presence in `board-core.js` and absence from `board-detail.js`, so the one-definition rule cannot rot.
+- `TestDrawerTicketMentionsCarryTitlesAndAGlossary` — structural wiring check.
+- `TestJavaScriptBehaviorTicketMentionTitlesAndGlossary` — the behaviour lane: truncation, code-span rules, first-mention-only, the three flag contexts, the ambiguity guard, both titleless shapes, glossary contents and the empty case.
+- `TestBrowserBehaviorDrawerTicketTitlesAndGlossary` — real Chromium, light and dark, driving the actual drawer: `location.href` asserted on every measurement, zero console errors, zero horizontal overflow, glossary cleared across REQ→UR→REQ.
+
+**Render evidence:** three separately built binaries (pre-REQ-378 baseline, `c4f4bf9`, current tree) generated boards from this repo's live tree; full-drawer captures at 620px with the viewport fold marked settled the `REQ ids` row shape. Per `_dev/primes/prime-kanban-board.md`, a rendering change's correctness is partly a claim about pixels.
+
+*Verified by work action*
+
+## Review
+
+**Overall: 78%** | independent review, then three rounds of external findings
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 78% |
+| Test Adequacy | 72% → closed |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial → resolved |
+
+**Important findings, all closed:**
+- Titles reached `makeTicketLinkList`, a fifth caller the REQ never enumerated, including the UR drawer's `REQ ids` row — resolved as D-08 and confirmed against the render.
+- That expansion was pinned by nothing; the mutation passed all six new tests. Fixture extended, now fails by name.
+- The broken-reference flag had no "unknown" state, unlike the `.repo-file-missing` precedent it cited, which fires only on a positive build verdict. Resolved by the fenced-block exemption.
+- D-06 had zero coverage. Now pinned in both directions.
+
+**External findings (Codex), all verified before acting:**
+- `write_set` overlap could race under `--fan-out` — real; fixed by an ordering dependency, since `write_set` is display-only and never a scheduling gate.
+- A titleless-but-existing record fell back to a bare id — real; fixed by `describeTicketTitle`. Two corrections went with it: the route the finding named ships zero instances here, and my own earlier count of two synthesized URs was wrong (I matched ids inside a prose table and a pasted merge-conflict block).
+- An id inside an explicit Markdown link is skipped by the walker — real, zero occurrences across 373 REQs and 76 URs; captured rather than built, because the fix touches the guard that keeps autolinks from double-wrapping.
+
+**Acceptance:** Pass. Every acceptance criterion in `## Scope` is delivered and pinned by a mutation-verified test.
+
+*Reviewed by review-work action*
 
 ## Red-Green Proof
 

@@ -1,5 +1,0 @@
-{
-  "test_command": "cd skills/do-work-board/tools/queue-kanban && GOTOOLCHAIN=go1.26.1 go test -run 'TestJavaScriptBehavior|TestGenerate|TestDrawer' ./...",
-  "exit_status": 0,
-  "launched": true
-}
