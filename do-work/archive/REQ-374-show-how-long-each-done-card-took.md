@@ -3,7 +3,7 @@ id: REQ-374
 title: 'Show how long each done card took'
 status: completed
 completed_at: 2026-08-26T14:42:00Z
-commit:
+commit: 5ad1d3d
 claimed_at: 2026-08-26T13:17:00Z
 created_at: 2026-08-26T13:02:22Z
 user_request: UR-074
