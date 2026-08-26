@@ -23,6 +23,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/generate.go
   - skills/do-work-board/tools/queue-kanban/web/board-clipboard.js
   - skills/do-work-board/tools/queue-kanban/generate_test.go
+  - skills/do-work-board/tools/queue-kanban/prime-do-kanban.md
   - _dev/primes/prime-kanban-board.md
 ---
 

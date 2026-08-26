@@ -14,11 +14,10 @@ depends_on: [REQ-381]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
-related: [REQ-379, REQ-381]
+related: [REQ-379, REQ-381, REQ-383]
 batch: ticket-id-autocomplete
 write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-detail.js
-  - skills/do-work-board/tools/queue-kanban/web/board-clipboard.js
   - skills/do-work-board/tools/queue-kanban/generate_test.go
 ---
 
@@ -82,29 +81,31 @@ never rendered in the drawer; only REQ and UR bodies reach `linkifyDetailBody`.
   reference to something; REQ-378's broken-reference flag is for ids that resolve to nothing in
   prose, and painting an author's own link in the blocked accent asserts more than is known.
 
-- **The clipboard half: a link reference definition must not be rewritten.** Folded in from REQ-379's
-  review (finding F6). `[REQ-100]: https://example.com/x` is a *definition*, and the clipboard's
-  annotator currently turns it into `[REQ-100 (Alpha ticket)]: https://example.com/x`, which orphans
-  every `[REQ-100]` reference in the pasted document — the paste silently loses links it had. Same
-  root cause this REQ already owns (a ticket id written in Markdown link syntax), so it is one fix
-  across both surfaces rather than two. Zero instances in `do-work/` today, as with the drawer half.
+- **The clipboard half is already DONE — do not rebuild it.** This REQ was written carrying REQ-379's
+  finding F6 (`[REQ-100]: https://example.com/x` rewritten into `[REQ-100 (Alpha ticket)]: …`,
+  orphaning every `[REQ-100]` reference in the paste). REQ-383 delivered it: the clipboard no longer
+  decides anything about Markdown, and `collectDocumentTicketMentions` drops any mention goldmark
+  keeps no prose text for, link reference definitions included, pinned by
+  `TestCollectDocumentTicketMentionsClassifiesEveryQuotedConstruct`. **This REQ is the DRAWER only.**
 
 ## Constraints
 
 - **Never wrap a mention twice.** The regression this guards against is a fragment nested inside a
   fragment; a test must prove a body survives two passes unchanged.
-- **No change to the mention pattern.** `bodyMentionPattern` stays in lock-step with
-  `repoFileMentionPattern` in `filementions.go`; this REQ changes where the walker looks, not what
-  it matches.
+- **No change to the mention pattern.** `bodyMentionPattern` (`web/board-detail.js`) stays in
+  lock-step with `bodyTicketMentionPattern` in `citations.go`, which REQ-383 pinned with
+  `TestJavaScriptBehaviorTicketMentionPatternAndResolverAgreeWithGo`; it also still mirrors
+  `repoFileMentionPattern` in `filementions.go` on its file-path alternative. This REQ changes where
+  the walker looks, not what it matches — so neither pin should have to move.
 - **No new board write surface**, and no Go source change outside the test file.
 
 ## Dependencies
 
-`depends_on: [REQ-381]`, which depends on REQ-379 — so the chain is REQ-379 → REQ-381 → REQ-382.
+`depends_on: [REQ-381]`, which depends on REQ-383 — so the chain is REQ-383 → REQ-381 → REQ-382.
 
 **The edge serializes a shared file; it is not a need for the others' output.** REQ-378 (archived)
-established the rules this extends, and REQ-379 and REQ-381 change different source files. What all
-three share is `generate_test.go`. Stating "do not fan these out" in prose enforces nothing —
+established the rules this extends, and REQ-383 (landed) and REQ-381 change different source files.
+What all three share is `generate_test.go`. Stating "do not fan these out" in prose enforces nothing —
 `write_set` is display-only and "never a safety guarantee" (root `CLAUDE.md` § Glossary), so under
 `do-work run --fan-out` a REQ with `depends_on: []` is a dependency root and gets dispatched
 concurrently regardless of what its prose says. `depends_on` is the only field the work loop gates
@@ -139,10 +140,9 @@ is non-null, so the mention is never offered to `buildLinkifiedFragment` at all.
 **GREEN when:** That anchor shows `REQ-1108` plus its title, its `href` still points at
 `https://example.com/spec`, the glossary lists REQ-1108 once with its own title and status, a second
 `[REQ-1108](…)` in the same body stays bare, a renderer-produced autolink is still skipped, a dead id
-inside an anchor is not flagged, running the linkifier twice over the same body produces identical
-DOM, and — the folded clipboard half — a copied body containing `[REQ-100]: https://example.com/x`
-keeps that definition line byte-identical, so every `[REQ-100]` reference in the paste still
-resolves.
+inside an anchor is not flagged, and running the linkifier twice over the same body produces
+identical DOM. The clipboard clause that used to close this list was delivered by REQ-383 and its
+proof lives there.
 
 **Validation:** Inferred during capture, from a verified reviewer finding. The user chose to capture
 rather than build it.

@@ -62,11 +62,11 @@ that answer is the seam this REQ builds on. The two are close but not identical 
 *positions of annotatable occurrences*, this REQ needs *every id a body cites*, including ids inside
 quoted text, since a reference in a fenced example is still a reference for search.
 
-**The pattern lock-step trap is dissolved rather than managed.** `bodyMentionPattern`
-(`web/board-detail.js`) and `repoFileMentionPattern` (`filementions.go`) each carry a comment
-obliging them to stay aligned, and that obligation has failed twice. Once REQ-383 lands, mention
-resolution lives in Go alone, so this REQ must **not** add a third pattern — take the ids from the
-shared walk. If the walk does not yet expose what this REQ needs, extend it there rather than
+**The pattern lock-step trap is already handled — do not re-open it.** REQ-383 shipped
+`bodyTicketMentionPattern` (`citations.go`) as the Go-side authority and pinned it against the
+client's `bodyMentionPattern` with `TestJavaScriptBehaviorTicketMentionPatternAndResolverAgreeWithGo`,
+a both-directions test over one corpus. This REQ must **not** add a third pattern: take the ids from
+that walk. If the walk does not yet expose what this REQ needs, extend it there rather than
 re-scanning here.
 
 Note the resolver semantics REQ-378 establishes and this REQ must match: a short `REQ-031` may name a
@@ -77,7 +77,16 @@ nothing and is never guessed.
 
 - **Compute the citation set on the Go side**, once per build, from each REQ's and UR's body
   markdown. Ship it on the generated record — an array of resolved ticket ids, deduped, order
-  irrelevant.
+  irrelevant. That is the EAGER `board-data.js` record, not beside REQ-383's `RequestMentions`:
+  those ride in `board-markdown.js`, which is loaded only on a Copy click and which
+  `TestGenerateSeparatesRawMarkdownForLazyCopy` keeps out of the initial paint. The filter runs at
+  first keystroke, so its data has to be there already.
+- **Reuse REQ-383's walk rather than repeating it.** `collectMentionSurfaces` and
+  `ticketMentionResolver` (`skills/do-work-board/tools/queue-kanban/citations.go`) already classify
+  every byte of a body and resolve every id; this REQ is a second projection of that one walk, per
+  REQ-383's `## Decisions` D1. It must NOT widen REQ-383's per-occurrence entries — a citation set
+  includes the quoted mentions those entries carry as `expand: false` AND the ambiguous ones they
+  drop entirely.
 - **Resolve exactly as the display does**: compound-id first, then the short-segment index, and an
   ambiguous segment resolves to nothing. An id resolving to no record is **not** a citation and does
   not enter the index — that case is REQ-378's broken-reference flag, a different feature.
@@ -95,10 +104,10 @@ nothing and is never guessed.
 
 ## Constraints
 
-- **Do not add a third silently-drifting copy of the mention pattern.** Either share one definition
-  across the Go and JS sides, or pin their agreement with a both-directions test that fails whichever
-  side changes alone — the shape `_dev/primes/prime-kanban-board.md` records from REQ-248. A comment
-  saying "keep these in sync" is what already failed twice.
+- **Do not add a third copy of the mention pattern.** REQ-383's `## Decisions` D2 settled this:
+  `bodyTicketMentionPattern` in `citations.go` is the Go authority, the client's `bodyMentionPattern`
+  is the drawer's, and a both-directions agreement test pins the pair. Reuse the first; add neither a
+  third pattern nor a second agreement test.
 - **Never guess.** An ambiguous segment is not a citation.
 - **No new board write surface.** The index is generated output, not a file the tool writes into the
   queue; root `CLAUDE.md` § Kanban Board Write Surfaces stays untouched.
@@ -123,14 +132,13 @@ REQ-382 depends on this REQ in turn, so the chain is REQ-383 → REQ-381 → REQ
 
 ## Builder Guidance
 
-**Certainty level: Mixed.** The requirement is firm; two things are genuinely yours to decide.
+**Certainty level: Mixed.** The requirement is firm; one thing is genuinely yours to decide.
 
-First, **how the Go and JS mention patterns are kept in agreement** — one shared definition emitted
-into the client, or two definitions plus an agreement test. Prefer whichever makes a drift *fail*
-rather than degrade, and say why in a `## Decisions` entry.
-
-Second, **what marks a citation-only match** on the card. Keep it small; the temptation is a whole
+**What marks a citation-only match** on the card. Keep it small; the temptation is a whole
 "referenced by" panel and that is not what was asked for.
+
+The pattern-agreement question that used to sit here was answered by REQ-383 (`## Decisions` D2) and
+is no longer open.
 
 Read `_dev/primes/prime-kanban-board.md` first. Two of its lessons bear directly here: REQ-248 on
 pinning shared geometry with a both-directions agreement assertion, and REQ-289 on grepping the
