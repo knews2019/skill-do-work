@@ -2,6 +2,12 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.240.3 — Churn Counts Living Code Only (2026-08-26)
+
+The audit-metrics stakes said every historical touch transfers to the surviving path, which reads as though a staged migration's delete-the-original commit counts too. It never has.
+
+- `prime-audit-metrics.md` now states that a `D` entry is not a touch, and names the test that pins it
+
 ## 0.240.2 — Primes Stop Accumulating (2026-08-26)
 
 Prime files had quietly become archives: 54% of every prime was accumulated lessons, and the pipeline appended more on every finished REQ. Lessons now live in a satellite beside the prime, and `prime audit` can shrink a file instead of only growing one.

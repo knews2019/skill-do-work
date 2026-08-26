@@ -27,7 +27,7 @@ audit-metrics — standalone Go module (`tools/audit-metrics/`, own `go.mod`) th
 ## Stakes
 
 - `churn.go` — history attribution across renames and copies (`computeChurnReport`)
-  Req:   every historical touch must land on the path that survives today — `R` entries resolve old→current on a newest→oldest walk, `-C --find-copies-harder` hands a dead copy-source's history to its surviving copy, and only paths with no survivor drop at the final `ls-files` filter.
+  Req:   every historical touch of living code must land on the path that survives today — `R` entries resolve old→current on a newest→oldest walk, `-C --find-copies-harder` hands a dead copy-source's history to its surviving copy, and only paths with no survivor drop at the final `ls-files` filter. A `D` entry is not a touch and is never counted: a staged migration's delete-the-original commit must not inflate the survivor, which is why `TestChurnStagedCopyMigrationAttribution` expects four touches from five commits.
   Value: `hotspots` (churn × current lines) names files that still exist, so the audit spends its judgment budget on live code instead of on the ghosts of a staged migration.
   Risk:  attribution fails silently — the tool still prints a full, plausible table, so a reordered walk or a lost copy edge misdirects every finding scoped from it. Re-running after a fix is cheap; a report already written and diffed against past runs is not.
 - `distribution.go` — percentile summary + `bandLabelForValue`
