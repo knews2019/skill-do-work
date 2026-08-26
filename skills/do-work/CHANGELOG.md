@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.241.1 — Copy Leaves Links Alone (2026-08-26)
+
+Four fixes to the Copy annotator found by review, all in the same pass. The one you would have noticed is links.
+
+- A ticket id written as a Markdown link keeps its exact text. Titling `[REQ-1679]` broke the link when its address was defined further down the file, and the drawer never titled link text in the first place — so the two surfaces disagreed.
+- A ticket the board learned about after you opened the page no longer pastes as `REQ-384 ()`. The reference stays as written and the list at the end says to reload for its title.
+- Image captions are left alone too, and a backticked id inside a link stays untouched rather than earning a list entry the drawer would not give it.
+
 ## 0.241.0 — Copy Reads the Markdown With a Markdown Parser (2026-08-26)
 
 The Copy button decided which ids to annotate by scanning for backticks by hand in the browser, and it kept getting corner cases wrong. That job moved to the real Markdown parser the board already runs, so quoted text now stays quoted in every shape the format allows.

@@ -178,12 +178,21 @@
       if (!ticketMention.expand) {
         return;
       }
-      // describeTicketTitle never answers empty for a record that resolved — it
-      // substitutes "untitled" or names the synthesized-UR case — so there is no
-      // empty-title branch to take here.
+      // An empty title means the RESOLVER knew this record and this page does
+      // not. That is reachable in serve mode and only there: /board-markdown.js
+      // re-walks the tree on the Copy click, while board-data.js — where the
+      // titles live — is whatever the page loaded with. A REQ created since
+      // then resolves against the fresh tree and has no title in the stale
+      // snapshot, and splicing the empty string wrote a bare " ()" into the
+      // paste. Leave the mention as the author wrote it; the appendix says what
+      // happened.
+      var expandedTitle = shortTicketTitle(describeTicketTitle(ticketMention.kind, ticketMention.id).text);
+      if (!expandedTitle) {
+        return;
+      }
       titleInsertions.push({
         offset: ticketMention.offset + ticketMention.length,
-        text: " (" + shortTicketTitle(describeTicketTitle(ticketMention.kind, ticketMention.id).text) + ")"
+        text: " (" + expandedTitle + ")"
       });
     });
 
@@ -200,11 +209,19 @@
     if (!referencedTicket.kind) {
       return "not found in this queue";
     }
+    var describedTitle = describeTicketTitle(referencedTicket.kind, referencedTicket.id).text;
+    if (!describedTitle) {
+      // Resolved by the build, absent from this page's snapshot — see the
+      // serve-mode note in annotateTicketMentions. Saying "not found" would be
+      // false (the queue has it) and saying nothing would look like a bug, so
+      // the line says which of the two is stale.
+      return "added since this board was loaded — reload to see its title";
+    }
     // describeRequestStatus only knows requests; a UR has no pipeline status, so
     // its line says what kind of record it is instead — the same substitution
     // the drawer glossary makes.
     var statusText = referencedTicket.kind === "ur" ? "user request" : describeRequestStatus(referencedTicket.id);
-    return describeTicketTitle(referencedTicket.kind, referencedTicket.id).text + " (" + statusText + ")";
+    return describedTitle + " (" + statusText + ")";
   }
 
   // The appendix, with full untruncated titles — the inline cut exists to keep

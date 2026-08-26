@@ -90,10 +90,13 @@ CommonMark says.
   (`frontmatter.go:28-68`). That arithmetic is the one place this can silently corrupt a paste, so it
   gets its own test rather than riding along in another.
 
-**This also ends the lock-step problem.** `bodyMentionPattern` (`web/board-detail.js`) and
-`repoFileMentionPattern` (`filementions.go`) each carry a comment obliging them to stay identical, and
-that obligation has failed twice. Once Go resolves the mentions there is one pattern, in one
-language, with nothing to drift against.
+**This narrows the lock-step problem; it does not end it.** The Context above originally claimed
+that once Go resolves the mentions "there is one pattern, in one language, with nothing to drift
+against". That was wrong, and the implementation initially made it wronger — see `## Decisions` D5.
+`web/board-detail.js` keeps `bodyMentionPattern` because the drawer is explicitly out of scope, so
+the same syntax is still written on both sides of a wire a browser cannot import across. What this
+REQ can honestly do is (a) leave exactly ONE definition of it in Go, and (b) replace the two
+comment-only obligations with tests that fail on drift.
 
 ## Detailed Requirements
 
@@ -108,6 +111,10 @@ language, with nothing to drift against.
   and an **ambiguous** segment resolves to nothing and is never guessed.
 - **Ship it beside the payload, never inside it.** A new field on the generated data; `board-markdown.js`
   keeps returning the file's exact bytes.
+- **Leave one definition of the file-path syntax in Go, and pin what remains.** The mention pattern
+  must COMPOSE `repoFileMentionPattern` rather than restate it, and the surviving Go↔JS copy must be
+  held by a both-directions agreement test over a corpus that discriminates at every character class
+  — not by a comment.
 - **Rewrite `board-clipboard.js` to splice at the shipped offsets** — descending order, so earlier
   offsets stay valid as text grows — and **delete** `codeFenceRunFor`, `codeFenceRunCloses`,
   `findMatchingBacktickRun`, `stripContainerPrefix`, the paragraph lookahead and the cross-line span
@@ -198,6 +205,54 @@ on the Copy click, while `board-data.js` is whatever the page loaded with. A tre
 would hand the client fresh text and stale offsets, and splice a title into the middle of a word.
 Offsets and the text they measure now cannot arrive from different builds. Cost: `board-markdown.js`
 grows 5% (6.50 MB → 6.84 MB on this repo's 375 REQs); the eager board payload is unchanged.
+
+**D5 — Challenged by review, and the code changed: three patterns became one Go definition plus one
+pinned wire copy.** Codex (P2 on this file, reviewing the pre-implementation commit) called the
+"one pattern, nothing to drift against" claim above a false premise, and it was right — more so than
+it knew. The first implementation restated the repo-relative-path syntax a THIRD time, in
+`citations.go`, beside `repoFileMentionPattern` in `filementions.go` and `bodyMentionPattern` in
+`web/board-detail.js`. Fixed at the cause rather than in the prose:
+
+- `bodyTicketMentionPattern` now composes `repoFileMentionPattern.String()`. One definition in Go,
+  and editing it changes both scanners.
+- `TestBodyTicketMentionPatternComposesTheOneFilePathDefinition` pins the two Go scanners by VALUE
+  over a corpus, not by grepping for the composition expression (REQ-289) — a byte-identical
+  re-inline is harmless and passes; one differing by a character fails.
+- `TestJavaScriptBehaviorTicketMentionPatternAndResolverAgreeWithGo` holds the surviving wire copy.
+
+Both corpora had to be widened before either test bit: the first versions carried no "@" in a
+directory segment and no digit in an extension, so three mutations survived. That is the vacuous
+fixture this REQ's Constraints warn about, caught by running the mutations rather than by writing
+them.
+
+**D6 — Review found four more defects in the first implementation; all four are fixed here.** An
+independent adversarial pass over the shipped diff:
+
+- **A resolved id with no title spliced `" ()"`.** The client's comment claimed the case was
+  unreachable, and it was — while the CLIENT resolved. Go resolving against a freshly walked tree
+  while `board-data.js` holds the page-load snapshot makes it reachable in serve mode: a REQ created
+  since page load resolves and has no title. The client now leaves the mention alone and the
+  appendix says which side is stale, rather than claiming the queue has no such record.
+- **A ticket id inside a LINK was annotated.** Two failures, one cause. `[REQ-1679]` answered by a
+  `[REQ-1679]: …` definition elsewhere became `[REQ-1679 (Title)]`, orphaning the use from the
+  definition — REQ-379's F6 from the other side, since the definition was already protected. And an
+  inline link's label spent the document's single expansion while the drawer, which skips anchor
+  text outright, spent it on the prose mention instead. Both surfaces now leave link syntax alone,
+  which is REQ-382's subject anyway. Image alt text goes the same way.
+- **A link wins over a code span nested inside it.** The first fix took the innermost construct,
+  which reads as the more careful claim and is a DIFFERENT answer from the drawer's
+  `parentElement.closest("a")`. Same answer is the requirement.
+- **The offset cursor rewound on every mention**, doing two full prefix rescans per mention — the
+  quadratic its own comment said it existed to avoid. Go evaluates composite-literal fields left to
+  right, so `Offset: at(start), Length: at(stop) - at(start)` called `at(start)` again after
+  `at(stop)`. Two locals fix it; the cost is invisible in the output, so it is pinned on the source
+  text rather than on behaviour.
+
+Also: the test helper that "performs the client's operation" was a line-for-line mirror of
+`utf16LengthOf`, so every offset assertion checked the production algorithm against itself. It uses
+`unicode/utf16` now, and `TestUtf16LengthMatchesWhatTheClientReceives` measures against a real
+`encoding/json` round trip — invalid UTF-8, lone surrogates, a BOM, U+2028/U+2029 and a literal
+U+FFFD included.
 
 **D4 — An id inside a raw HTML block is no longer annotated.** Positive coverage by the parser's own
 text nodes, rather than a list of quoted constructs, means a mention in an HTML block is skipped —

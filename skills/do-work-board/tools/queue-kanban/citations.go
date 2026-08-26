@@ -35,14 +35,21 @@ import (
 // those runs: an id inside a URL or inside a path names neither, and expanding
 // one would rewrite a link or a path into something that no longer resolves.
 //
-// This MUST stay in lock-step with bodyMentionPattern in web/board-detail.js,
-// which scans the drawer's rendered text with the same three alternatives in
-// the same order. TestTicketMentionPatternAgreesBetweenGoAndTheClient drives
-// both over one shared corpus so a drift fails rather than silently changing
-// what a paste says.
+// The file-path alternative is COMPOSED from repoFileMentionPattern rather than
+// restated. Two Go regexps that must describe the same syntax are two things to
+// keep in step, and that obligation has failed twice in this file's history —
+// so there is one definition of a repo-relative path in Go, and the only reason
+// this one is wrapped is the capture group the alternation needs.
+//
+// What is left to keep in step is the WIRE: bodyMentionPattern in
+// web/board-detail.js scans the drawer's rendered text with the same three
+// alternatives in the same order, and a browser cannot import a Go variable.
+// TestJavaScriptBehaviorTicketMentionPatternAndResolverAgreeWithGo drives both
+// over one shared corpus in both directions, so a drift fails rather than
+// silently changing what a paste says.
 var bodyTicketMentionPattern = regexp.MustCompile(
 	`(https?://[^\s<>"')\]]+)` +
-		`|((?:[A-Za-z0-9_@-]+(?:\.[A-Za-z0-9_-]+)*/)+[A-Za-z0-9_@-][A-Za-z0-9_@.-]*\.[A-Za-z][A-Za-z0-9]{0,7})` +
+		`|(` + repoFileMentionPattern.String() + `)` +
 		`|(\b(?:UR-\d+-REQ-\d+[a-z]?|REQ-\d+[a-z]?|UR-\d+)\b)`)
 
 // requestIdSegmentPattern pulls the REQ segment out of a compound card id
@@ -60,16 +67,30 @@ var requestIdSegmentPattern = regexp.MustCompile(`(?i)REQ-\d+[a-z]?`)
 //	surfaceCodeBlock — fenced or indented. REQ bodies print templates and
 //	                   worked examples here, so an id that answers to nothing is
 //	                   an illustration: no title AND no dead-id report.
+//	surfaceLinkLabel — a link's own text or an image's alt text. Nothing at all:
+//	                   no title, no dead-id report, no appendix line.
 //
-// A mention covered by none of the three (a link reference definition, a raw
-// HTML block, a fence's own backticks) is not annotatable at all and is
-// dropped: goldmark keeps no prose text there, so there is nothing to expand.
+// surfaceLinkLabel exists for two reasons that happen to have one answer. A
+// title spliced into a SHORTCUT reference use — `[REQ-001]` answered by a
+// `[REQ-001]: …` definition elsewhere — orphans it from its definition, so the
+// paste silently loses a link it had; protecting the definition (which
+// goldmark keeps no text for) and not the use fixes half the bug. And the
+// drawer already skips anchor text outright (`parentElement.closest("a")` in
+// linkifyDetailBody), so annotating it here would make the paste and the
+// drawer say different things about the same body. Ticket ids written as
+// Markdown links are REQ-382's subject; until it lands, both surfaces leave
+// them alone.
+//
+// A mention covered by none of these (a link reference DEFINITION, a raw HTML
+// block, a fence's own backticks) is not annotatable either and is dropped:
+// goldmark keeps no prose text there, so there is nothing to expand.
 type mentionSurface int
 
 const (
 	surfaceProse mentionSurface = iota
 	surfaceCodeSpan
 	surfaceCodeBlock
+	surfaceLinkLabel
 )
 
 // surfaceRange is one half-open byte range of a body, classified. Ranges never
@@ -136,16 +157,29 @@ func collectMentionSurfaces(bodySource []byte, bodyRoot ast.Node) []surfaceRange
 	return surfaces
 }
 
-// textNodeSurface reports whether a prose text node is actually the contents of
-// a code span. Walking ancestors rather than checking the immediate parent
-// because an extension may wrap a span's contents.
+// textNodeSurface reports what a prose text node is really inside — a link
+// label, a code span, or open prose. Walking the whole ancestor chain rather
+// than checking the immediate parent, because an extension may wrap the
+// contents of either.
+//
+// A LINK ANYWHERE UP THE CHAIN WINS, even over a code span nested inside it.
+// The drawer's rule is `parentElement.closest("a")`, which returns early for
+// every text node under an anchor without looking at what else encloses it; a
+// code span inside a link label earns no drawer glossary line, so it must not
+// earn a clipboard one either. Taking the innermost construct instead read as
+// the narrower, more careful claim and was simply a different answer from the
+// drawer's — which is the one thing this pair may never be.
 func textNodeSurface(textNode ast.Node) mentionSurface {
+	enclosingSurface := surfaceProse
 	for ancestor := textNode.Parent(); ancestor != nil; ancestor = ancestor.Parent() {
-		if ancestor.Kind() == ast.KindCodeSpan {
-			return surfaceCodeSpan
+		switch ancestor.Kind() {
+		case ast.KindLink, ast.KindImage, ast.KindAutoLink:
+			return surfaceLinkLabel
+		case ast.KindCodeSpan:
+			enclosingSurface = surfaceCodeSpan
 		}
 	}
-	return surfaceProse
+	return enclosingSurface
 }
 
 // surfaceAt reports the surface of the byte range [start, stop), and whether
@@ -308,18 +342,29 @@ func collectDocumentTicketMentions(documentText string, resolver *ticketMentionR
 		}
 		mentionText := bodyMarkdown[mentionStart:mentionStop]
 		surface, covered := surfaceAt(surfaces, mentionStart, mentionStop)
-		if !covered {
-			continue // goldmark keeps no text here: a link reference definition, a raw HTML block, a fence's own characters.
+		if !covered || surface == surfaceLinkLabel {
+			// Either goldmark keeps no text here — a link reference definition, a
+			// raw HTML block, a fence's own characters — or it does and touching
+			// it would break something (see surfaceLinkLabel).
+			continue
 		}
 
 		kind, resolvedId := resolver.resolve(mentionText)
+		if kind == "" && (surface == surfaceCodeBlock || resolver.isAmbiguous(mentionText)) {
+			continue
+		}
+
+		// Read the cursor exactly twice, ascending. Building these inline in the
+		// composite literal below called at(start) again AFTER at(stop), which
+		// takes the rewind branch and rescans the whole prefix — the quadratic
+		// the cursor exists to avoid, paid twice per mention.
+		mentionOffset := documentOffsets.at(mentionStart)
+		mentionEndOffset := documentOffsets.at(mentionStop)
+
 		if kind == "" {
-			if surface == surfaceCodeBlock || resolver.isAmbiguous(mentionText) {
-				continue
-			}
 			mentions = append(mentions, generatedTicketMention{
-				Offset: documentOffsets.at(mentionStart),
-				Length: documentOffsets.at(mentionStop) - documentOffsets.at(mentionStart),
+				Offset: mentionOffset,
+				Length: mentionEndOffset - mentionOffset,
 				Id:     mentionText,
 			})
 			continue
@@ -330,8 +375,8 @@ func collectDocumentTicketMentions(documentText string, resolver *ticketMentionR
 			expandedIds[resolvedId] = true
 		}
 		mentions = append(mentions, generatedTicketMention{
-			Offset: documentOffsets.at(mentionStart),
-			Length: documentOffsets.at(mentionStop) - documentOffsets.at(mentionStart),
+			Offset: mentionOffset,
+			Length: mentionEndOffset - mentionOffset,
 			Kind:   kind,
 			Id:     resolvedId,
 			Expand: expand,

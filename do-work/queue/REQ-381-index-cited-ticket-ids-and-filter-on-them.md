@@ -62,12 +62,14 @@ that answer is the seam this REQ builds on. The two are close but not identical 
 *positions of annotatable occurrences*, this REQ needs *every id a body cites*, including ids inside
 quoted text, since a reference in a fenced example is still a reference for search.
 
-**The pattern lock-step trap is already handled — do not re-open it.** REQ-383 shipped
-`bodyTicketMentionPattern` (`citations.go`) as the Go-side authority and pinned it against the
-client's `bodyMentionPattern` with `TestJavaScriptBehaviorTicketMentionPatternAndResolverAgreeWithGo`,
-a both-directions test over one corpus. This REQ must **not** add a third pattern: take the ids from
-that walk. If the walk does not yet expose what this REQ needs, extend it there rather than
-re-scanning here.
+**The pattern lock-step trap is narrowed and pinned — reuse it, do not re-open it.** REQ-383 left
+exactly one definition of the syntax in Go: `bodyTicketMentionPattern` (`citations.go`) composes
+`repoFileMentionPattern` (`filementions.go`) rather than restating it, pinned by
+`TestBodyTicketMentionPatternComposesTheOneFilePathDefinition`. The drawer's `bodyMentionPattern`
+(`web/board-detail.js`) survives because a browser cannot import a Go variable, and it is held by
+`TestJavaScriptBehaviorTicketMentionPatternAndResolverAgreeWithGo`, a both-directions test over one
+corpus. Take this REQ's ids from that walk. If the walk does not yet expose what this REQ needs,
+extend it there rather than re-scanning here.
 
 Note the resolver semantics REQ-378 establishes and this REQ must match: a short `REQ-031` may name a
 compound card id (`UR-002-REQ-031`), and an **ambiguous** segment shared by two cards resolves to
@@ -104,10 +106,12 @@ nothing and is never guessed.
 
 ## Constraints
 
-- **Do not add a third copy of the mention pattern.** REQ-383's `## Decisions` D2 settled this:
-  `bodyTicketMentionPattern` in `citations.go` is the Go authority, the client's `bodyMentionPattern`
-  is the drawer's, and a both-directions agreement test pins the pair. Reuse the first; add neither a
-  third pattern nor a second agreement test.
+- **Do not add another copy of the mention pattern.** REQ-383's `## Decisions` D2 and D5 settled
+  where the definitions live and which tests hold them. Reuse `bodyTicketMentionPattern`; do not
+  write a new regexp for ticket ids or repo paths, and do not add a second test covering the pair
+  those two already cover. If this REQ introduces a NEW thing read by both languages — say, the
+  citation array the filter matches on — that one needs its own both-directions pin, per REQ-248;
+  the rule is one pin per shared thing, not one pin in total.
 - **Never guess.** An ambiguous segment is not a citation.
 - **No new board write surface.** The index is generated output, not a file the tool writes into the
   queue; root `CLAUDE.md` § Kanban Board Write Surfaces stays untouched.

@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
+	"unicode/utf16"
 )
 
 // citationFixtureRequestIds and citationFixtureUserRequestIds are the board every
@@ -48,19 +50,19 @@ func describeTicketMentions(documentText string, mentions []generatedTicketMenti
 }
 
 // utf16RunesOf re-expresses a Go string as the code-unit sequence a JavaScript
-// string is, so a test can index it the way the client will. Surrogate pairs are
-// split, which is exactly the point: a byte offset and a UTF-16 offset diverge
-// at the first non-ASCII character, and this is how a test can see it.
+// string is, so a test can index it the way the client will.
+//
+// It uses unicode/utf16 from the standard library ON PURPOSE. Hand-rolling the
+// same "> 0xFFFF costs two" loop that utf16LengthOf uses would check the
+// production algorithm against a copy of itself, and every offset assertion in
+// this file would pass for a shared misconception. The stdlib encoder is the
+// independent second opinion; utf8.RuneCountInString is not, because it counts
+// the wrong unit.
 func utf16RunesOf(sourceText string) []rune {
-	var codeUnits []rune
-	for _, currentRune := range sourceText {
-		if currentRune > 0xFFFF {
-			// Two units. Their individual values never matter here — only that
-			// the count matches what the client indexes.
-			codeUnits = append(codeUnits, 0xD800, 0xDC00)
-			continue
-		}
-		codeUnits = append(codeUnits, currentRune)
+	encodedUnits := utf16.Encode([]rune(sourceText))
+	codeUnits := make([]rune, 0, len(encodedUnits))
+	for _, encodedUnit := range encodedUnits {
+		codeUnits = append(codeUnits, rune(encodedUnit))
 	}
 	return codeUnits
 }
@@ -283,6 +285,10 @@ var ticketMentionAgreementCorpus = []string{
 	"No boundary in xREQ-1679 or REQ-1679x.",
 	"A URL https://example.com/REQ-1679 claims the whole run.",
 	"A path do-work/archive/UR-075/REQ-378-title.md claims the whole run.",
+	"Scoped node_modules/@scope/pkg/index.js and retina assets/@2x/sprite.png.",
+	"Digits in extensions: docs/media/recording.mp4 and data/report.h5.",
+	"Every punctuation at once: a_b-c.d/e@f/g_h-i.j.txt",
+	"Near misses: trailing/dot. and digit/start.9ext stay prose.",
 	"Punctuation (REQ-1679), REQ-1679. and [REQ-1679].",
 	"Not paths: and/or, TLS1.2/1.3, 2.0/5.75.",
 	"User requests UR-074 and UR-999.",
@@ -502,5 +508,314 @@ func TestBuildGeneratedBoardMarkdownDataNeverOffersToAnnotateAFence(t *testing.T
 	}
 	if checkedFenceCount < 100 {
 		t.Fatalf("only %d fenced REQ files were checked — the assertion above never ran on a real fence", checkedFenceCount)
+	}
+}
+
+// The file-path syntax has exactly ONE definition in Go. citations.go composes
+// repoFileMentionPattern instead of restating it, so a change to the file
+// scanner reaches the mention scanner automatically — the lock-step obligation
+// that failed twice in this file's history is gone rather than documented.
+//
+// The property under test is AGREEMENT ON VALUE, not the presence of a
+// composition expression (REQ-289: grep the value, not the constant name).
+// Re-inlining a literal that happens to be byte-identical is harmless and must
+// pass; re-inlining one that differs by a single character is the drift this
+// exists to catch, so the corpus below has to discriminate at every character
+// class the pattern uses. It did not on the first attempt: three mutations
+// survived because no fixture carried an "@" in a directory segment or a digit
+// in an extension.
+var filePathAgreementCorpus = []string{
+	"do-work/archive/UR-075/REQ-378-title.md",
+	"skills/do-work-board/tools/queue-kanban/citations.go",
+	"node_modules/@scope/pkg/index.js",   // "@" in a directory segment
+	"assets/@2x/sprite-sheet.png",        // "@" beside a digit
+	"docs/media/recording.mp4",           // a digit inside the extension
+	"data/exports/report.h5",             // a digit ENDING the extension
+	"do-work/queue/REQ-380-cross-ref.md", // a digit inside a path segment
+	"a_b-c.d/e@f/g_h-i.j.txt",            // every allowed punctuation at once
+	"and/or",                             // no extension — not a path
+	"TLS1.2/1.3",                         // a version ratio — not a path
+	"2.0/5.75",                           // a numeric ratio — not a path
+	"paths/<placeholder>/file.md",        // an angle-bracket placeholder
+	"trailing/dot.",                      // a dot with no extension after it
+	"digit/start.9ext",                   // an extension starting with a digit
+}
+
+func TestBodyTicketMentionPatternComposesTheOneFilePathDefinition(t *testing.T) {
+	// Submatch 2 is the composed pattern's file-path alternative. Both scanners
+	// answer about the same subject, and every answer must match.
+	filePathAlternativeMatch := func(subject string) string {
+		matchIndexes := bodyTicketMentionPattern.FindStringSubmatchIndex(subject)
+		if matchIndexes == nil || matchIndexes[4] < 0 {
+			return ""
+		}
+		return subject[matchIndexes[4]:matchIndexes[5]]
+	}
+
+	discriminatingCount := 0
+	for _, subject := range filePathAgreementCorpus {
+		fileScannerMatch := repoFileMentionPattern.FindString(subject)
+		if fileScannerMatch != "" {
+			discriminatingCount++
+		}
+		if mentionScannerMatch := filePathAlternativeMatch(subject); mentionScannerMatch != fileScannerMatch {
+			t.Errorf("on %q the mention scanner reads the path as %q and the file scanner as %q — the two Go definitions have drifted",
+				subject, mentionScannerMatch, fileScannerMatch)
+		}
+	}
+
+	// A corpus of nothing but non-paths would agree trivially, and every
+	// assertion above would pass without exercising the pattern at all.
+	if discriminatingCount < 8 {
+		t.Fatalf("only %d corpus lines matched as paths — the agreement above is nearly vacuous", discriminatingCount)
+	}
+
+	// Composition, not coincidence: the whole of repoFileMentionPattern appears
+	// in the alternation exactly once, as its own group.
+	composedPattern := bodyTicketMentionPattern.String()
+	if !strings.Contains(composedPattern, "|("+repoFileMentionPattern.String()+")|") {
+		t.Errorf("bodyTicketMentionPattern does not carry repoFileMentionPattern as its second alternative:\n got %s", composedPattern)
+	}
+}
+
+// A ticket id written as a link — or as a link's label answered by a definition
+// elsewhere — is left exactly as the author wrote it, on BOTH surfaces.
+//
+// Two failures, one cause. Splicing a title into `[REQ-1679]` when a
+// `[REQ-1679]: …` definition exists elsewhere orphans the use from the
+// definition, and the paste silently loses a link it had — REQ-379's F6 from
+// the other side, since the definition itself is already protected. And the
+// drawer skips anchor text outright (`parentElement.closest("a")`), so
+// annotating it here would make the paste and the drawer disagree about the
+// same body. Ticket ids in link syntax are REQ-382's subject; until then,
+// neither surface touches them.
+func TestCollectDocumentTicketMentionsLeavesLinkSyntaxAlone(t *testing.T) {
+	documentText := "---\nid: REQ-500\n---\n\n" +
+		"A shortcut use [REQ-1679], a collapsed use [REQ-1108][], an inline link\n" +
+		"[REQ-1685](https://example.test/x), and an image ![REQ-501 diagram](y.png).\n\n" +
+		"Prose afterwards cites REQ-1685 and REQ-1679 for real.\n\n" +
+		"[REQ-1679]: https://example.test/a\n" +
+		"[REQ-1108]: https://example.test/b\n"
+
+	mentions := collectDocumentTicketMentions(documentText, newCitationFixtureResolver())
+	gotMentions := describeTicketMentions(documentText, mentions)
+	wantMentions := []string{
+		// Only the two prose mentions survive, and each is the FIRST prose sighting
+		// of its id — a link label must not spend the one expansion an id gets.
+		`req REQ-1685 EXPAND "REQ-1685"`,
+		`req REQ-1679 EXPAND "REQ-1679"`,
+	}
+	if !reflect.DeepEqual(gotMentions, wantMentions) {
+		t.Errorf("emitted mentions:\n got  %s\n want %s",
+			strings.Join(gotMentions, "\n       "), strings.Join(wantMentions, "\n       "))
+	}
+
+	// The definition lines are what the uses point at; annotating either end
+	// breaks the pair, so neither may be offered.
+	for _, mention := range mentions {
+		definitionOffset := strings.Index(documentText, "[REQ-1679]: ")
+		if mention.Offset >= definitionOffset {
+			t.Errorf("a mention at %d falls in the link reference definitions starting at %d",
+				mention.Offset, definitionOffset)
+		}
+	}
+}
+
+// A link anywhere up the chain wins, even over a code span nested inside it.
+// The drawer's rule is `parentElement.closest("a")`, which returns early for
+// every text node under an anchor without looking at what else encloses it — so
+// a backticked id inside a link label earns no drawer glossary line and must
+// earn no clipboard appendix line. Taking the innermost construct instead reads
+// as the more careful claim and is simply a DIFFERENT answer from the drawer's,
+// which is the one thing these two may never give.
+func TestTextNodeSurfaceLetsALinkWinOverAnEnclosedCodeSpan(t *testing.T) {
+	documentText := "Prose cites REQ-1679 and a link [`REQ-1108` in code](https://example.test/x).\n"
+	mentions := collectDocumentTicketMentions(documentText, newCitationFixtureResolver())
+	gotMentions := describeTicketMentions(documentText, mentions)
+	wantMentions := []string{`req REQ-1679 EXPAND "REQ-1679"`}
+	if !reflect.DeepEqual(gotMentions, wantMentions) {
+		t.Errorf("emitted mentions:\n got  %s\n want %s",
+			strings.Join(gotMentions, "\n       "), strings.Join(wantMentions, "\n       "))
+	}
+}
+
+// utf16OffsetCursor answers a scripted sequence of offsets, forwards and — the
+// defensive path — backwards. A cursor that mis-restores its base on a rewind
+// returns confident wrong numbers rather than failing, so both directions are
+// driven against the independent stdlib measurement.
+func TestUtf16OffsetCursorAnswersBothDirections(t *testing.T) {
+	sourceText := "Emoji 😀 dash — REQ-1679 then 😀 again REQ-1108 end."
+	const baseUnitOffset = 7
+	expectedUnitOffsetAt := func(byteOffset int) int {
+		return baseUnitOffset + len(utf16.Encode([]rune(sourceText[:byteOffset])))
+	}
+
+	firstMentionStart := strings.Index(sourceText, "REQ-1679")
+	secondMentionStart := strings.Index(sourceText, "REQ-1108")
+	cursor := newUtf16OffsetCursor(sourceText, baseUnitOffset)
+	for _, byteOffset := range []int{
+		0, firstMentionStart, firstMentionStart + len("REQ-1679"),
+		secondMentionStart, secondMentionStart + len("REQ-1108"), len(sourceText),
+		// Backwards, twice, and then forwards again: the rewind must leave the
+		// cursor usable, not just answer once.
+		firstMentionStart, 0, secondMentionStart, len(sourceText),
+	} {
+		if gotUnitOffset := cursor.at(byteOffset); gotUnitOffset != expectedUnitOffsetAt(byteOffset) {
+			t.Errorf("cursor.at(%d) = %d, want %d", byteOffset, gotUnitOffset, expectedUnitOffsetAt(byteOffset))
+		}
+	}
+}
+
+// The mention walk reads the cursor exactly twice per mention, ascending.
+// Building the offsets inline in the composite literal called at(start) again
+// after at(stop), which takes the rewind branch and rescans the whole prefix —
+// the quadratic the cursor exists to avoid, paid twice per mention on the
+// longest bodies in the tree.
+//
+// Asserted on the source text because the cost is invisible in the OUTPUT: the
+// offsets are identical either way, so no behavioural assertion can see it and
+// a timing assertion would be flaky. This is the same greppable-value technique
+// TestClipboardCarriesNoMarkdownScanner uses on the client.
+func TestCollectDocumentTicketMentionsReadsTheOffsetCursorTwicePerMention(t *testing.T) {
+	citationsSource, readError := os.ReadFile("citations.go")
+	if readError != nil {
+		t.Fatalf("reading citations.go: %v", readError)
+	}
+	functionStart := strings.Index(string(citationsSource), "func collectDocumentTicketMentions(")
+	if functionStart < 0 {
+		t.Fatal("collectDocumentTicketMentions not found — the assertion below would be vacuous")
+	}
+	functionEnd := strings.Index(string(citationsSource)[functionStart:], "\n}\n")
+	if functionEnd < 0 {
+		t.Fatal("could not find the end of collectDocumentTicketMentions")
+	}
+	functionBody := string(citationsSource)[functionStart : functionStart+functionEnd]
+
+	if cursorReadCount := strings.Count(functionBody, "documentOffsets.at("); cursorReadCount != 2 {
+		t.Errorf("collectDocumentTicketMentions reads the offset cursor %d times, want 2 (one for the mention start, one for its end)",
+			cursorReadCount)
+	}
+}
+
+// The one skew the split leaves, and the client's guard for it.
+//
+// D3 co-located the offsets with the document text so those two can never come
+// from different builds. TITLES were not co-located and cannot be: they live in
+// board-data.js, which the page loaded once, while /board-markdown.js re-walks
+// the tree on the Copy click. So in serve mode a REQ created since page load
+// resolves against the fresh tree and has no title in the stale snapshot.
+//
+// The client used to splice the empty string, writing a bare " ()" into the
+// paste and an appendix line reading "- REQ-384 —  (not in tree)". Now it
+// leaves the mention as the author wrote it and the appendix says which side is
+// stale. Saying "not found in this queue" would be false — the queue has it.
+func TestJavaScriptBehaviorClipboardSurvivesATitleTheSnapshotDoesNotHaveYet(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	// Resolved by the build, absent from the page: exactly what a REQ created
+	// between page load and the Copy click looks like to the client.
+	documentText := "---\nid: REQ-500\n---\n\nBlocked on REQ-1679 until it lands.\n"
+	// The index is computed by the REAL walk against a resolver that knows
+	// REQ-1679; the page stub below does not. That IS the skew — a fresh
+	// board-markdown.js meeting a stale board-data.js — rather than a
+	// hand-written stand-in for it.
+	staleSnapshotMentions, encodeError := json.Marshal(
+		collectDocumentTicketMentions(documentText, newCitationFixtureResolver()))
+	if encodeError != nil {
+		t.Fatalf("encode probe ticket mentions: %v", encodeError)
+	}
+	if !strings.Contains(string(staleSnapshotMentions), `"id":"REQ-1679","expand":true`) {
+		t.Fatalf("the walk did not offer REQ-1679 for expansion, so the guard below is never reached: %s", staleSnapshotMentions)
+	}
+
+	javascriptProbe := `
+var requestsById = { "REQ-500": { title: "Host document", status: "claimed" } };
+var userRequestsById = {};
+` + strings.Join([]string{
+		sliceDeclarationAfter(t, indexHtml, "var inlineTicketTitleMaxLength ="),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeRequestStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function ticketTitleFor("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function shortTicketTitle("),
+		sliceDeclarationAfter(t, indexHtml, "var referencedTicketsGlossaryHeading ="),
+		sliceBalancedBlockAfter(t, indexHtml, "function recordReferencedTicket("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateTicketMentions("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeReferencedTicket("),
+		sliceBalancedBlockAfter(t, indexHtml, "function buildReferencedTicketsGlossary("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateClipboardPayload("),
+	}, "\n") + `
+process.stdout.write(JSON.stringify({ payload: annotateClipboardPayload(
+  [{ text: ` + mustMarshalJSONString(t, documentText) + `, ticketMentions: ` + string(staleSnapshotMentions) + ` }], ["REQ-500"]
+) }));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "stale-snapshot title", javascriptProbe)
+	var probeResult struct {
+		Payload string `json:"payload"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &probeResult); decodeError != nil {
+		t.Fatalf("decode stale-snapshot behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if strings.Contains(probeResult.Payload, "REQ-1679 ()") {
+		t.Errorf("an empty title was spliced as \"()\":\n%s", probeResult.Payload)
+	}
+	if !strings.Contains(probeResult.Payload, "Blocked on REQ-1679 until it lands.\n") {
+		t.Errorf("the body line was not left as the author wrote it:\n%s", probeResult.Payload)
+	}
+	// The appendix is where a reader learns why the title is missing, and it must
+	// not claim the id is unknown to the queue — the build just resolved it.
+	if !strings.Contains(probeResult.Payload, "- REQ-1679 — added since this board was loaded — reload to see its title\n") {
+		t.Errorf("the appendix does not say which side is stale:\n%s", probeResult.Payload)
+	}
+	if strings.Contains(probeResult.Payload, "not found in this queue") {
+		t.Errorf("the appendix claims the queue has no such record, but the build resolved it:\n%s", probeResult.Payload)
+	}
+}
+
+// utf16LengthOf is measured against what actually reaches the browser: the
+// string after encoding/json has written it and a JSON reader has read it back.
+// That round trip is not the identity — encoding/json replaces every invalid
+// UTF-8 byte and every lone surrogate with U+FFFD — so a length computed on the
+// Go-side bytes can differ from the length of the JavaScript string the client
+// indexes, and every offset after it would be wrong.
+//
+// The oracle is unicode/utf16 rather than a second copy of utf16LengthOf's own
+// loop: a helper that mirrors the implementation agrees with it about a shared
+// misconception, which is how a whole suite of offset assertions can pass while
+// every offset is wrong.
+func TestUtf16LengthMatchesWhatTheClientReceives(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		sourceText string
+	}{
+		{"ascii", "REQ-1679 plain"},
+		{"em dash", "REQ-1679 — the character every REQ body carries"},
+		{"astral emoji", "REQ-1679 😀 beyond the BMP"},
+		{"combining marks", "REQ-1679 été with combining acutes"},
+		{"line and paragraph separators", "REQ-1679 \u2028 and \u2029"},
+		{"byte order mark", "\ufeffREQ-1679 after a BOM"},
+		{"invalid utf-8", "REQ-1679 \xff\xfe raw bytes"},
+		// A GENUINE U+FFFD, three bytes wide, which invalid input decodes to as
+		// well. Without it a length that counted a replacement character by its
+		// byte width passed, because every invalid byte above is one byte wide.
+		{"literal replacement character", "REQ-1679 \ufffd pasted from somewhere"},
+		{"lone surrogate in wtf-8", "REQ-1679 \xed\xa0\x80 lone surrogate"},
+		{"nul and control bytes", "REQ-1679 \x00\x01\x1f controls"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			encoded, encodeError := json.Marshal(testCase.sourceText)
+			if encodeError != nil {
+				t.Fatalf("encode: %v", encodeError)
+			}
+			var receivedText string
+			if decodeError := json.Unmarshal(encoded, &receivedText); decodeError != nil {
+				t.Fatalf("decode: %v", decodeError)
+			}
+			wantUnitCount := len(utf16.Encode([]rune(receivedText)))
+			if gotUnitCount := utf16LengthOf(testCase.sourceText); gotUnitCount != wantUnitCount {
+				t.Errorf("utf16LengthOf(%q) = %d, but the client receives a %d-unit string",
+					testCase.sourceText, gotUnitCount, wantUnitCount)
+			}
+		})
 	}
 }
