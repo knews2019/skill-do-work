@@ -89,19 +89,17 @@ func buildDurationAggregate(tickets []*RequestTicket) DurationAggregate {
 		if ticket == nil || !isCompletedStatus(ticket.Status) {
 			continue
 		}
-		claimedInstant, claimedParsed := parseTimestamp(ticket.ClaimedAt)
-		completedInstant, completedParsed := parseTimestamp(ticket.CompletedAt)
-		if !claimedParsed || !completedParsed {
+		measuredSpan := measureImplementationSpan(ticket)
+		if !measuredSpan.StampsParsed {
 			continue
 		}
-		wallSpan := completedInstant.Sub(claimedInstant)
 		aggregate.Samples = append(aggregate.Samples, DurationSample{
 			RequestId:          ticket.RequestId,
 			Route:              ticket.Route,
-			CompletionTime:     completedInstant.UTC(),
-			DayKey:             completedInstant.UTC().Format("2006-01-02"),
-			WallMinutes:        wallSpan.Minutes(),
-			DayMedianExclusion: dayMedianExclusionReason(wallSpan),
+			CompletionTime:     measuredSpan.CompletionInstant,
+			DayKey:             measuredSpan.CompletionInstant.Format("2006-01-02"),
+			WallMinutes:        measuredSpan.WallMinutes,
+			DayMedianExclusion: measuredSpan.ExclusionReason,
 			EffortEstimate:     ticket.EffortEstimate,
 		})
 	}
@@ -111,6 +109,47 @@ func buildDurationAggregate(tickets []*RequestTicket) DurationAggregate {
 	})
 	aggregate.Days = buildDurationDays(aggregate.Samples)
 	return aggregate
+}
+
+// ImplementationSpan is one REQ's measured claim-to-completion span with the
+// read-time rule's verdict already applied. It is the single place that span and
+// that verdict are decided: the Durations view's samples and the Recently-Done
+// card's duration reading are both readers of it, so the ceiling above keeps
+// exactly one definition and a card can never disagree with the chart.
+//
+// StampsParsed false is a real state, not a span of zero — a zero would print as
+// instant work on the card instead of as unmeasured.
+type ImplementationSpan struct {
+	StampsParsed      bool
+	CompletionInstant time.Time // parsed completed_at, in UTC
+	WallMinutes       float64   // completed_at − claimed_at, raw and signed
+	ExclusionReason   string    // "paused" (over the ceiling), "reversed" (negative), "" when it reads plainly
+}
+
+// measureImplementationSpan reads both instants off the ticket's FRONTMATTER and
+// nowhere else. Deliberately not RequestTicket.CompletionTime: that field falls
+// back to the commit's git committer date (see model.go's resolveCompletionTime),
+// which measures when a commit landed rather than how long the work took, and
+// would make a card state a duration for exactly the REQs the Durations view
+// excludes. A REQ whose completion instant came from git therefore has no span.
+//
+// The caller decides WHICH tickets to ask about — this says nothing about status.
+func measureImplementationSpan(ticket *RequestTicket) ImplementationSpan {
+	if ticket == nil {
+		return ImplementationSpan{}
+	}
+	claimedInstant, claimedParsed := parseTimestamp(ticket.ClaimedAt)
+	completedInstant, completedParsed := parseTimestamp(ticket.CompletedAt)
+	if !claimedParsed || !completedParsed {
+		return ImplementationSpan{}
+	}
+	wallSpan := completedInstant.Sub(claimedInstant)
+	return ImplementationSpan{
+		StampsParsed:      true,
+		CompletionInstant: completedInstant.UTC(),
+		WallMinutes:       wallSpan.Minutes(),
+		ExclusionReason:   dayMedianExclusionReason(wallSpan),
+	}
 }
 
 // dayMedianExclusionReason applies the calibration's read-time rule to one span.

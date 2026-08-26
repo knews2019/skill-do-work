@@ -41,9 +41,9 @@ write_set:
 A card in the Kanban board's Recently Done column states when the work finished (`done Aug 26, 12:47 UTC · 9min ago`) but never states how long it took. Add the implementation span to that card: the time from when the builder started the REQ to when it landed in Done with a completed status.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-kanban-board.md` and the crew rules; approach recorded as D-01..D-04 in `## Decisions` and the file list in `## Scope`. Ticked by the orchestrator — the dispatch instructed the builder not to write this file, so it could not tick these itself.
+- [x] **[APPLY]:** Six files changed, all inside the `## Scope` list; `git diff --stat` shows no undeclared path.
+- [x] **[UNIFY]:** Audited by the orchestrator, not self-reported. `git diff --stat` = 6 files, +528/−10, all declared. `gofmt -l .` prints nothing; `go vet ./...` clean; `go test -count=1 ./...` green. Debug-artifact grep over the added lines (`console.log|debugger|fmt.Print|TODO|FIXME`) returns 0 hits. Per file: `durations.go` — helper extracted, aggregate rewired to it, ceiling still has one definition; `generate.go` — three payload fields, gated on `isCompletedStatus`; `board-cards.js` — new node builder carries no `data-instant-ms`; `board.css` — comment-only; `durations_test.go` / `generate_test.go` — new assertions only, no existing test weakened.
 
 ## Why
 
@@ -158,3 +158,65 @@ See `do-work/user-requests/UR-074/input.md` for complete verbatim input.
 4. A reversed span renders a broken-stamp flag instead of a number.
 5. A card with no parseable `claimed_at` renders the done line exactly as it does today.
 6. Cancelled cards render no duration.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/durations.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/generate.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/board-cards.js` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modified)
+- `skills/do-work-board/tools/queue-kanban/durations_test.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified)
+
+**What was done:** Factored the claim-to-completion span and the read-time rule's verdict out of `buildDurationAggregate` into `measureImplementationSpan`, so the Durations view and the new card reading share one definition of the four-hour ceiling; shipped the measured minutes plus the verdict as three per-request payload fields gated on terminal success; and rendered them on the done line as a plain non-ticking `span.elapsed-duration` reading `took 2h 40m`, with an inline flag for the paused and reversed verdicts.
+
+## Decisions (builder, renumbered from the report's D-04..D-10)
+
+- [DECIDE & STATE] **D-05**: The terminal-success gate lives in `generate.go`, not inside `measureImplementationSpan`. The helper answers what a ticket's span is; the caller decides which tickets to ask. `buildDurationAggregate` already had its own `isCompletedStatus` check, so pushing the gate down would have made one of the two redundant and coupled the helper to a status vocabulary it does not otherwise mention.
+- [DECIDE & STATE] **D-06**: Shipped a presence flag rather than inferring absence from a zero. `implementationSpanMinutes` carries `omitempty` and a genuine zero-minute span is possible, so without the flag the client could not tell "took no measurable time" from "unmeasured". Mirrors the existing `hasMedian` convention.
+- [DECIDE & STATE] **D-07**: The client formats from the Go-measured minutes (`formatElapsedDuration(0, spanMs)`), not from `Date.parse(claimedAt)` / `Date.parse(completedAt)`. Go's `parseTimestamp` accepts `2006-01-02 15:04:05` and reads it as UTC; V8's `Date.parse` reads that same space-separated form as local time. Re-parsing client-side would silently shift the span on any such REQ and make the card disagree with the Durations view.
+- [DECIDE & STATE] **D-08**: Added fixture `REQ-907` — a 34-minute span on a `completed-with-issues` REQ. It is the case that separates the card's vocabulary from the chart's (`34m 00s` vs `34.0 min`), so a revert to `formatDurationMinutes` fails loudly, and it covers `completed-with-issues`, which no other fixture did.
+- [DECIDE & STATE] **D-09**: Both markers reuse `.status-invalid-flag` rather than earning a new class and colour tokens — it is the established inline flag inside a value span, and neither marker introduces a new semantic colour. A `" "` text node precedes each flag so the line reads `took 18h 00m likely paused` rather than running together for a screen reader.
+- [DECIDE & STATE] **D-10**: No source-text lock-step guard between Go's `"paused"`/`"reversed"` strings and the client's branch, despite `TestFutureStampCauseClauseMatchesTheShippedClient` being the local precedent. The Node probe drives the real payload through the real `makeRequestCard`, so a rename on either side fails it end to end; a grep-style guard would be weaker and a second thing to maintain.
+- [DECIDE & STATE] **D-11**: Dropped a planned "the client must not contain the four-hour number" assertion. `strings.Contains` for an absent token is the guard the prime warns about (REQ-245: it passes when the whole string is replaced) and it risked false positives on any `240`. The real protection is that the client has no arithmetic to derive a ceiling from.
+
+<!-- D-XX counter: last used D-11. Next decision: D-12. -->
+
+## Discovered Tasks
+
+- `TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage` fails at HEAD on Chromium 141.0.7390.37 — its own vacuity guard fires ("the isolator was not exercised and the mutation pair is vacuous"). Reproduced on an unmodified `git archive HEAD` tree, so it predates this REQ.
+- `_dev/tests/maintainer-verify.sh` cannot run in this environment: it exits 1 at `required command is unavailable: shellcheck` before any test runs.
+- The done line's faint companions (`.relative-time`, `.elapsed-duration`) measure roughly 3.3:1 against `<body>` in both themes, under 4.5:1 for 11px text. Pre-existing for the whole line; the new reading inherits it rather than diverging mid-line.
+- `tools/checks/preflight.sh` writes `do-work/working/baseline.json` and `baseline-failures.txt`, which nothing in this repo gitignores, so every work run leaves an untracked file behind. The suite's changelog says these are meant to be locally excluded; this repo has no such exclusion because the installer never runs against it.
+
+## Testing
+
+**Tests run:**
+- `cd skills/do-work-board/tools/queue-kanban && go test -count=1 ./...` — `ok … 85.024s`, exit 0
+- `gofmt -l .` — no output; `go vet ./...` — clean
+- `bash _dev/tests/maintainer-verify.sh` (the canonical repository gate) — `Maintainer verification passed.`, exit 0
+- Strict browser behavior lane with `QUEUE_KANBAN_BROWSER` set — one failure, established as not this REQ's (below)
+
+**Result:** ✓ All passing. The canonical gate needed two tools installed in this container to run at all (ShellCheck 0.11.0 and `just`); neither is a repository change.
+
+**Red-green validation:**
+- `TestImplementationSpanVerdictBoundaryReadsTheOutlierCeiling`: ✗ `both stamps parse, yet the span measured nothing` → ✓
+- `TestImplementationSpanMarksReversedStampsAndRefusesUnparseableOnes`: ✗ `a reversed pair of parseable stamps measured nothing` → ✓
+- `TestImplementationSpanAgreesWithTheDurationsAggregate`: ✗ `REQ-411: card span = 0 min, Durations sample = 1080 min` → ✓
+- `TestGeneratedRequestCarriesTheDoneCardImplementationSpan`: ✗ `REQ-901 hasImplementationSpan = false, want true` → ✓
+- `TestJavaScriptBehaviorDoneCardStatesItsImplementationSpan`: ✗ `REQ-901 done line said "" about its span, want "took 2h 40m"` → ✓
+
+These trace to the REQ's `## Red-Green Proof`: the probe drives the real payload through the real `makeRequestCard` and reads the done line's text, which is the GREEN the proof names. The captured proof's `2h40m` / `34min` spellings are illustrative (D-04); the drawn strings are `2h 40m` and `34m 00s`.
+
+**Orchestrator-run mutations** — the builder supplied a table; these two I ran myself rather than accepting it:
+- `analysisOutlierCeiling` comparison `>` → `>=`: `TestImplementationSpanVerdictBoundaryReadsTheOutlierCeiling` fails with `a span exactly at the ceiling read "paused", want the plain verdict`. The test reads the constant rather than restating four hours, so moving the ceiling cannot leave it passing (the REQ-322 lesson).
+- Card formatter swapped to the Durations view's `formatDurationMinutes`: `TestJavaScriptBehaviorDoneCardStatesItsImplementationSpan` fails. Both mutations reverted; targeted re-run green.
+
+**New tests added:**
+- `durations_test.go`: `TestImplementationSpanVerdictBoundaryReadsTheOutlierCeiling`, `TestImplementationSpanMarksReversedStampsAndRefusesUnparseableOnes`, `TestImplementationSpanAgreesWithTheDurationsAggregate`
+- `generate_test.go`: `TestGeneratedRequestCarriesTheDoneCardImplementationSpan`, `TestJavaScriptBehaviorDoneCardStatesItsImplementationSpan`, plus the shared six-REQ fixture builder
+
+**Pre-existing failure, not this REQ's:** `TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage` fails on Chromium 141.0.7390.37 with its own vacuity guard — *"the isolator was not exercised and the mutation pair is vacuous."* Verified by checking out HEAD into a separate worktree and running the probe there: byte-identical failure without this REQ's diff. Recorded as a discovered task.
+
+**Rendered evidence:** the builder generated a board from the real archive and read the live DOM at `file:///…/scratchpad/board/render-check.html` on Chromium 141.0.7390.37 — 106 done cards, 94 carrying a span (`REQ-373 … · took 9m 30s`), the paused marker rendering on real archived cards (`REQ-345 → · took 11h 37m likely paused`), and `tickerTouchesSpan: 0` confirming no span node carries `data-instant-ms`.

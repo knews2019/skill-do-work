@@ -466,3 +466,110 @@ func durationLabelPlotX(completionTime time.Time, rangeStart time.Time, rangeEnd
 	}
 	return (completionTime.Sub(rangeStart).Seconds() / domainSeconds) * durationsPlotWidthUnits
 }
+
+// ---- the done card's implementation span -----------------------------------
+
+// The Recently-Done card's duration reading and the Durations view are two
+// READERS of one read-time rule, never two definitions of it. The boundary is
+// pinned against analysisOutlierCeiling itself: a restated "4 hours" here would
+// keep passing with the ceiling moved and would prove nothing about the rule.
+func TestImplementationSpanVerdictBoundaryReadsTheOutlierCeiling(t *testing.T) {
+	claimInstant := time.Date(2026, 7, 4, 9, 0, 0, 0, time.UTC)
+	spanEndingAfter := func(offset time.Duration) ImplementationSpan {
+		return measureImplementationSpan(durationTicket("REQ-401", "B",
+			claimInstant.Format(time.RFC3339),
+			claimInstant.Add(offset).Format(time.RFC3339)))
+	}
+
+	atCeiling := spanEndingAfter(analysisOutlierCeiling)
+	if !atCeiling.StampsParsed {
+		t.Fatalf("both stamps parse, yet the span measured nothing: %#v", atCeiling)
+	}
+	if atCeiling.WallMinutes != analysisOutlierCeiling.Minutes() {
+		t.Errorf("at-ceiling span = %v min, want %v", atCeiling.WallMinutes, analysisOutlierCeiling.Minutes())
+	}
+	if atCeiling.ExclusionReason != "" {
+		t.Errorf("a span exactly at the ceiling read %q, want the plain verdict — the rule excludes spans OVER the ceiling, not at it", atCeiling.ExclusionReason)
+	}
+
+	overCeiling := spanEndingAfter(analysisOutlierCeiling + time.Minute)
+	if overCeiling.ExclusionReason != "paused" {
+		t.Errorf("a span one minute over the ceiling read %q, want \"paused\"", overCeiling.ExclusionReason)
+	}
+
+	underCeiling := spanEndingAfter(analysisOutlierCeiling - time.Minute)
+	if underCeiling.ExclusionReason != "" {
+		t.Errorf("a span one minute under the ceiling read %q, want the plain verdict", underCeiling.ExclusionReason)
+	}
+}
+
+// A reversed span is data, not an error to swallow, and an unparseable stamp is
+// "unmeasured" rather than a span of zero — a zero would print "0.0 min" on the
+// card and read as instant work.
+func TestImplementationSpanMarksReversedStampsAndRefusesUnparseableOnes(t *testing.T) {
+	reversed := measureImplementationSpan(durationTicket("REQ-403", "B",
+		"2026-07-04T12:45:00Z", "2026-07-04T10:05:00Z"))
+	if !reversed.StampsParsed {
+		t.Fatalf("a reversed pair of parseable stamps measured nothing: %#v", reversed)
+	}
+	if reversed.ExclusionReason != "reversed" {
+		t.Errorf("reversed span read %q, want \"reversed\"", reversed.ExclusionReason)
+	}
+	if reversed.WallMinutes != -160 {
+		t.Errorf("reversed span = %v min, want the raw signed -160 (clamping to zero hides the broken stamp)", reversed.WallMinutes)
+	}
+
+	unmeasurableTickets := []struct {
+		caseName string
+		ticket   *RequestTicket
+	}{
+		{"no claim stamp", durationTicket("REQ-404", "B", "", "2026-07-04T10:05:00Z")},
+		{"unparseable claim stamp", durationTicket("REQ-405", "B", "yesterday", "2026-07-04T10:05:00Z")},
+		{"no completion stamp", durationTicket("REQ-406", "B", "2026-07-04T10:05:00Z", "")},
+		{"unparseable completion stamp", durationTicket("REQ-407", "B", "2026-07-04T10:05:00Z", "not-a-time")},
+		{"no ticket at all", nil},
+	}
+	for _, unmeasurable := range unmeasurableTickets {
+		span := measureImplementationSpan(unmeasurable.ticket)
+		if span.StampsParsed {
+			t.Errorf("%s measured a span (%v min); want no span at all", unmeasurable.caseName, span.WallMinutes)
+		}
+		if span.WallMinutes != 0 || span.ExclusionReason != "" {
+			t.Errorf("%s carried %v min / %q alongside an unmeasured span; want the zero value",
+				unmeasurable.caseName, span.WallMinutes, span.ExclusionReason)
+		}
+	}
+}
+
+// One definition, two readers. A second ceiling — or a second subtraction order —
+// introduced on either side breaks this and nothing else in the suite would.
+func TestImplementationSpanAgreesWithTheDurationsAggregate(t *testing.T) {
+	tickets := []*RequestTicket{
+		durationTicket("REQ-410", "A", "2026-07-05T09:00:00Z", "2026-07-05T09:40:00Z"),
+		durationTicket("REQ-411", "B", "2026-07-05T09:00:00Z", "2026-07-06T03:00:00Z"),
+		durationTicket("REQ-412", "C", "2026-07-05T12:00:00Z", "2026-07-05T09:00:00Z"),
+	}
+	aggregate := buildDurationAggregate(tickets)
+	if len(aggregate.Samples) != len(tickets) {
+		t.Fatalf("aggregate holds %d samples for %d tickets; the agreement has nothing to compare", len(aggregate.Samples), len(tickets))
+	}
+
+	verdictsWitnessed := map[string]bool{}
+	for _, ticket := range tickets {
+		sample := findDurationSample(t, aggregate, ticket.RequestId)
+		span := measureImplementationSpan(ticket)
+		if span.WallMinutes != sample.WallMinutes {
+			t.Errorf("%s: card span = %v min, Durations sample = %v min", ticket.RequestId, span.WallMinutes, sample.WallMinutes)
+		}
+		if span.ExclusionReason != sample.DayMedianExclusion {
+			t.Errorf("%s: card verdict = %q, Durations verdict = %q", ticket.RequestId, span.ExclusionReason, sample.DayMedianExclusion)
+		}
+		verdictsWitnessed[span.ExclusionReason] = true
+	}
+	// Vacuity guard: agreement over one verdict is not agreement about the rule.
+	for _, requiredVerdict := range []string{"", "paused", "reversed"} {
+		if !verdictsWitnessed[requiredVerdict] {
+			t.Fatalf("the fixture never produced the %q verdict, so this test cannot witness a disagreement about it", requiredVerdict)
+		}
+	}
+}

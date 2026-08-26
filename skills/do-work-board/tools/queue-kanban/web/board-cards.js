@@ -36,6 +36,62 @@
     return badge;
   }
 
+  // How long the REQ took: the span from its claim to its completion, stated on
+  // the done line beside the completion instant it already carries.
+  //
+  // Both the number and its verdict arrive decided from Go (durations.go's
+  // measureImplementationSpan), so the read-time ceiling separating "that much
+  // work" from "an overnight pause" keeps exactly one definition and this
+  // renderer never becomes a second one.
+  //
+  // The node is a PLAIN span.elapsed-duration: it reuses the state timer's
+  // vocabulary and styling so the card's two time lines read alike, but it
+  // carries no data-instant-ms / data-tickFormat, which is what the 1s ticker
+  // (board-core.js's refreshRelativeTimeNodes) selects on. A finished span must
+  // not be rewritten every second, so makeElapsedDurationNode is deliberately not
+  // used here.
+  //
+  // The verdict is branched on BEFORE the formatter runs. formatElapsedDuration
+  // returns the clock-skew marker for a reversed pair, and that branch must stay
+  // unreachable here: a reversed span prints the inline flag INSTEAD of a
+  // magnitude, because a negative duration cannot be true and the card's
+  // `anomaly` badge already carries the full diagnosis and the fix.
+  function makeImplementationSpanNode(request) {
+    if (!request.hasImplementationSpan) {
+      return null;
+    }
+    if (request.implementationSpanReason === "reversed") {
+      var reversedNode = createElement("span", "elapsed-duration");
+      var reversedFlag = createElement("span", "status-invalid-flag", "reversed stamps");
+      reversedFlag.title =
+        "completed_at is earlier than claimed_at, so this REQ's implementation span cannot be stated — " +
+        "see the card's anomaly badge for which stamp to rewrite.";
+      reversedNode.appendChild(reversedFlag);
+      return reversedNode;
+    }
+    // formatElapsedDuration measures nowMs − instantMs, so a zero origin with the
+    // Go-measured span as the "now" formats that span. The two frontmatter stamps
+    // are deliberately NOT re-parsed here: Go reads a space-separated stamp as
+    // UTC while Date.parse reads it as local time, which would silently shift the
+    // span the card states away from the one the Durations view plots.
+    var spanOriginMs = 0;
+    var spanEndMs = Math.round(request.implementationSpanMinutes * 60000);
+    var spanNode = createElement(
+      "span",
+      "elapsed-duration",
+      "took " + formatElapsedDuration(spanOriginMs, spanEndMs)
+    );
+    if (request.implementationSpanReason === "paused") {
+      spanNode.appendChild(document.createTextNode(" "));
+      var pausedFlag = createElement("span", "status-invalid-flag", "likely paused");
+      pausedFlag.title =
+        "Longer than the board's read-time ceiling for one session, so it is assumed to include a pause " +
+        "rather than that much continuous work. Same rule the Durations view applies, applied Go-side.";
+      spanNode.appendChild(pausedFlag);
+    }
+    return spanNode;
+  }
+
   function makeRequestCard(requestId, options) {
     var request = requestsById[requestId];
     var card = createElement("button", "req-card");
@@ -310,6 +366,10 @@
       var completionInstantNode = makeInstantWithRelativeNode(request.completionTime);
       if (completionInstantNode) {
         completionLine.appendChild(completionInstantNode);
+      }
+      var implementationSpanNode = makeImplementationSpanNode(request);
+      if (implementationSpanNode) {
+        completionLine.appendChild(implementationSpanNode);
       }
       card.appendChild(completionLine);
     }
