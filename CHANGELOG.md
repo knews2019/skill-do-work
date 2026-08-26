@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.237.0 — Done Cards Show How Long the Work Took (2026-08-26)
+
+The board's Recently Done cards said when work finished but never how long it took. Now they say both.
+
+- A done card reads `done Aug 25, 08:47 UTC · 1d ago · took 9m 30s` — the span from when the builder claimed the REQ to when it landed.
+- A span past the board's four-hour read-time ceiling is marked `likely paused`, so an overnight session is never read as four hours of work; a reversed pair of stamps says `reversed stamps` instead of a number.
+- The span is measured from the frontmatter stamps only, never the git-dated completion fallback, so a card can never state a duration the Durations view leaves out.
+- The span and its verdict are decided once in Go and shipped ready to draw, so the card and the Durations chart read one rule rather than two copies of it.
+
 ## 0.236.63 — TDD Evidence Requires a Harness Test (2026-08-25)
 
 The TDD gate now names the evidence boundary that capture and builders must share.
