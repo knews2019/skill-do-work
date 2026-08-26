@@ -1,8 +1,8 @@
 ---
-id: UR-075
+id: UR-077
 title: 'Beautifully rendered architecture report'
 created_at: 2026-08-26T17:56:52Z
-requests: [REQ-378]
+requests: [REQ-384]
 word_count: 30
 ---
 

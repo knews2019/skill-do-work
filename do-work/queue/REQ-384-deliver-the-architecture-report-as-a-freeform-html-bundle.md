@@ -1,9 +1,9 @@
 ---
-id: REQ-378
+id: REQ-384
 title: 'Deliver the architecture report as a freeform HTML bundle'
 status: pending
 created_at: 2026-08-26T17:56:52Z
-user_request: UR-075
+user_request: UR-077
 domain: general
 prime_files: ['_dev/primes/prime-action-files.md', '_dev/primes/prime-shell-commands.md']
 tdd: true
@@ -31,7 +31,7 @@ The user wants the architecture view "beautifully rendered so it's easy to under
 
 ## Context
 
-Captured after an interactive session that resolved the design decisions below; the full record is in UR-075. The action being changed is `skills/do-work-toolbox/actions/architecture-report.md`, whose current contract is markdown-only, carry-forward byte-identical, delta-first — and that contract is pinned by regression tests (`_dev/tests/contract-regressions.sh` pins repo-wide input, dated-immutable publication, carry-forward, and delta-first; `_dev/tests/prescribed-shell-cases/architecture-report-preflight.sh` proves the preflight helper), all of which must move with the action rather than be deleted around.
+Captured after an interactive session that resolved the design decisions below; the full record is in UR-077. The action being changed is `skills/do-work-toolbox/actions/architecture-report.md`, whose current contract is markdown-only, carry-forward byte-identical, delta-first — and that contract is pinned by regression tests (`_dev/tests/contract-regressions.sh` pins repo-wide input, dated-immutable publication, carry-forward, and delta-first; `_dev/tests/prescribed-shell-cases/architecture-report-preflight.sh` proves the preflight helper), all of which must move with the action rather than be deleted around.
 
 ## Detailed Requirements
 
@@ -66,7 +66,7 @@ Certainty: **Firm** on the deliverable (HTML-only, ai-report home, freeform, aut
 
 ## Full Context
 
-See `do-work/user-requests/UR-075/input.md` for complete verbatim input and the capture-time decisions.
+See `do-work/user-requests/UR-077/input.md` for complete verbatim input and the capture-time decisions.
 
 ---
-*Source: "basically I want it beautifully rendered so it's easy to understand and so it has all the bells and whistles" — see UR-075 for the full record.*
+*Source: "basically I want it beautifully rendered so it's easy to understand and so it has all the bells and whistles" — see UR-077 for the full record.*
