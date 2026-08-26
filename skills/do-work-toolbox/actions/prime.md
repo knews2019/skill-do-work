@@ -45,7 +45,7 @@ Generate a prime file for the utility at `<path>` — a routing index that helps
 
 ### Principles
 
-- **Target: 15-30 lines** for the routing index. Every line must save the AI more tokens than it costs to read. (A `## Stakes` section, if present, is decision-context for the user — it sits **outside** this budget; see Step 4.)
+- **Target: 15-30 lines for the routing index, ~60 lines for the whole file.** Every line must save the AI more tokens than it costs to read, and the prime is read in full every time its area is touched — so the budget that matters is the file's, not one section's. Nothing is exempt. Anything that grows per-REQ (accumulated lessons, narrative history) belongs in the satellite `lessons-<name>.md`, which the prime points at and never inlines.
 - The AI has `Read`, `Grep`, `Glob`. Don't reproduce what tool calls discover.
 - Only include what the AI CANNOT efficiently find: routing, traps, exclusions.
 - NO: line numbers, code descriptions, DOM anchors, request flow diagrams, URL params, environment tables, external service catalogs. The AI will discover these via tool calls.
@@ -107,7 +107,7 @@ Combine auto-detected facts with user answers. Apply these rules:
 - **Filter trap answers.** Drop any trap that an AI could discover from the code itself, and any universal truism — keep only repo-specific facts where the obvious reading misleads (the Q3 litmus test applies to the user's answers too)
 - If there's no build step, omit **Must build**
 - Every line must earn its place — "would an AI waste tokens without this?"
-- **Spelunk the Stakes.** For the utility's *load-bearing* elements only (the few whose contract, if changed wrong, has real blast radius), read the code and record `Req:` (what it must do / why it exists), `Value:` (what it enables), `Risk:` (what breaks if changed wrong; reversibility). This becomes the `## Stakes` section — its purpose is to let the user make high-impact decisions confidently without re-deriving the context, and it feeds the Value/Risk that `do-work clarify` surfaces. Load-bearing only; if every element seems to qualify, the utility is too big — split it. No volatile metrics, pointers not copies. Omit the section entirely for a utility with no high-stakes elements.
+- **Spelunk the Stakes.** For the utility's *load-bearing* elements only (the few whose contract, if changed wrong, has real blast radius), read the code and record `Req:` (what it must do / why it exists), `Value:` (what it enables), `Risk:` (what breaks if changed wrong; reversibility). This becomes the `## Stakes` section — its purpose is to let the user make high-impact decisions confidently without re-deriving the context, and it feeds the Value/Risk that `do-work clarify` surfaces. It counts against the file budget like every other section. Load-bearing only; if every element seems to qualify, the utility is too big — split it. No volatile metrics, pointers not copies. Omit the section entirely for a utility with no high-stakes elements.
 
 #### Step 5: Write
 
@@ -136,9 +136,12 @@ Write to `{path}/prime-{short-name}.md` using this template:
   Req:   {what it must do / why it exists}
   Value: {what it enables}
   Risk:  {what breaks if changed wrong; reversibility}
+
+## Lessons
+See [`lessons-{short-name}.md`](lessons-{short-name}.md) — read it before changing what **Read first** or **Traps** name above.
 ```
 
-(Include `## Stakes` only for load-bearing elements; omit for utilities with no high-stakes surface. It is the one section exempt from the 15-30 line budget.)
+(Include `## Stakes` only for load-bearing elements; omit for utilities with no high-stakes surface. Every section counts against the ~60-line file budget. The `## Lessons` pointer is one line and never grows: the satellite accumulates, the prime does not — see `../../do-work/crew-members/general.md` → Lessons Discipline.)
 
 #### Step 6: Post-creation checks
 
@@ -162,15 +165,15 @@ Sections: {list of included sections}
 
 ## Sub-Command: `audit`
 
-Audit the repo's prime file system, **then refresh each prime's `## Stakes`.** Two jobs: (1) a **read-only health check** of the routing index — staleness, missing coverage, broken references — and (2) a **write**: spelunk each flagged prime's load-bearing elements and refresh its `## Stakes` (Req / Value / Risk) so the decision context the user relies on stays current. The routing index is never rewritten; `## Stakes` is. **Updating Stakes is a core purpose of `audit`, not an afterthought** — don't run this as a pure read-only pass.
+Audit the repo's prime file system, **then refresh each prime's `## Stakes` and shrink any prime that outgrew its budget.** Three jobs: (1) a **read-only health check** of the routing index — staleness, missing coverage, broken references; (2) a **write**: spelunk each flagged prime's load-bearing elements and refresh its `## Stakes` (Req / Value / Risk); and (3) a **write in the other direction**: move overflow out of any prime over the ~60-line file budget into its `lessons-<name>.md` satellite.
 
-**What audit writes:** the routing sections (Read first / Do not edit / Must build / Traps) are **read-only** — audit reports issues there and lets the user decide what to fix. The `## Stakes` section **is written** — audit spelunks and refreshes it (Step 6.5), because keeping the value/risk current is half of why audit exists. So "audit is read-only" applies *only* to the routing index; **audit does update the prime's Stakes** — never tell the user the audit is read-only across the board.
+**What audit writes:** the routing sections (Read first / Do not edit / Must build / Traps) are **read-only as content** — audit reports issues there and lets the user decide what to fix. The `## Stakes` section is refreshed (Step 6.5). Overflow is relocated (Step 6.6). Two of audit's three jobs are writes, and one of them **removes** — an audit that can only add is a bloat pump, which is exactly how these files got long. Never tell the user the audit is read-only across the board.
 
 ### Conventions
 
 If CLAUDE.md has a section describing prime file conventions, read it to understand the project's specific rules. The general conventions are:
 - **Utility-specific primes:** `<utility-dir>/prime-<name>.md` — discovered by convention (recursive glob), NOT registered in CLAUDE.md
-- **Satellite docs:** `known-bugs-<name>.md`, `lessons-learned/<topic>.md` — live alongside the prime
+- **Satellite docs:** `lessons-<name>.md` (the prime's accumulated lessons — one per prime, written by the work pipeline, never inlined into the prime), `known-bugs-<name>.md` — live alongside the prime
 - **Cross-cutting primes:** Registered in CLAUDE.md's prime registry section (if one exists) — only for shared docs that don't live in a utility root
 - **Cross-linking:** Primes in the same area must cross-link to each other (not just operational dependencies)
 - **Area indexes:** Areas with 3+ primes need one prime that lists all related primes as the entry point
@@ -199,9 +202,11 @@ For each prime file, check:
 
 5. **No absolute paths** — grep for `file:///` URLs in the prime. All links must be relative from the prime's directory. Flag any absolute paths as portability violations.
 
-6. **Cross-links present** — primes in the same area (sharing a parent directory tree) should cross-link to each other, not just for operational dependencies. If two primes are siblings or cousins in the same area (e.g., multiple primes under the same utility root), flag missing cross-links.
+6. **Within the file budget** — count the prime's total lines. Over ~60, or with a `## Lessons` section holding more than the one-line satellite pointer, it is over budget: record it for Step 6.6, which moves the overflow rather than merely flagging it.
 
-7. **Area index exists** — if an area (parent directory tree) contains **3 or more primes**, one prime should serve as the **area index** that lists all related primes. An area index prime is identified by: (a) a filename matching `prime-*-index.md` (e.g., `prime-auth-index.md`), or (b) containing a `## Related Primes` or `## Index` section that lists other primes in the same area. Check if such an index prime exists and whether it lists all primes in that area. Flag areas with 3+ primes but no index prime.
+7. **Cross-links present** — primes in the same area (sharing a parent directory tree) should cross-link to each other, not just for operational dependencies. If two primes are siblings or cousins in the same area (e.g., multiple primes under the same utility root), flag missing cross-links.
+
+8. **Area index exists** — if an area (parent directory tree) contains **3 or more primes**, one prime should serve as the **area index** that lists all related primes. An area index prime is identified by: (a) a filename matching `prime-*-index.md` (e.g., `prime-auth-index.md`), or (b) containing a `## Related Primes` or `## Index` section that lists other primes in the same area. Check if such an index prime exists and whether it lists all primes in that area. Flag areas with 3+ primes but no index prime.
 
 ### Step 3: Find utilities without primes
 
@@ -223,11 +228,11 @@ Report these as "missing prime" candidates.
 ### Step 4: Audit satellite docs
 
 ```
+glob **/lessons-*.md
 glob **/known-bugs-*.md
-glob **/lessons-learned/**/*.md
 ```
 
-For each satellite doc, verify its parent directory also has a prime file. Flag orphaned satellites (satellite exists but no prime in the same utility).
+For each satellite doc, verify its parent directory also has a prime file. Flag orphaned satellites (satellite exists but no prime in the same utility). A `lessons-<name>.md` must pair with the `prime-<name>.md` of the same name — a mismatched pair means one of the two was renamed alone, and the prime's pointer link is dead.
 
 ### Step 5: Verify CLAUDE.md registry (if applicable)
 
@@ -259,6 +264,19 @@ Scope the write to the primes that need it (don't re-spelunk a prime whose Stake
 
 `## Stakes` is the only section audit writes — the routing sections stay read-only. **Report what you wrote** so the write is visible: end the audit with `Stakes: added M, refreshed N, current K`.
 
+### Step 6.6: Shrink — audit WRITES here too (this is the pass that removes)
+
+Measure each prime as a **whole file**. Over ~60 lines, or with a `## Lessons` section carrying more than a pointer, it has outgrown what a prime is for: it is read in full every time its area is touched, so every unrelated change pays for all of it.
+
+Relocate, don't delete:
+
+- **Move accumulated lessons out.** Everything under `## Lessons` beyond a single pointer line moves to `lessons-<name>.md` beside the prime (create it with an `# Lessons: <name>` heading and a one-line pointer back). The prime's `## Lessons` becomes exactly one line: `See [`lessons-<name>.md`](lessons-<name>.md) — read it before changing what **Read first** or **Traps** name above.`
+- **Promote, don't duplicate.** A lesson that constrains **any** change to the utility is a trap, not a lesson: compress it to one `## Traps` line in the `what you'd naturally do → what silently goes wrong` shape and do **not** also leave it in the satellite. A lesson scoped to one file, function, or subcommand goes to the satellite and is **not** echoed in Traps. Every lesson lands in exactly one place — two homes is how the two copies drift.
+- **Carry the links.** A relative link that resolved from the prime resolves from the satellite too (same directory). A link that never resolved because the file ships in a package whose consumers lack `do-work/archive/` becomes the canonical repository URL.
+- **Never invent.** Shrinking moves and compresses existing text; it does not rewrite a lesson's claim or drop one because it reads as old. If a lesson looks obsolete, flag it for the user — do not silently delete it.
+
+Report what you moved: end the audit with `Shrink: N primes, M lines relocated`.
+
 ### Output Format
 
 Report findings as a structured checklist:
@@ -272,6 +290,8 @@ Report findings as a structured checklist:
 - Issues found: N
 - Utilities missing primes: N
 - Stakes: added M, refreshed N, current K   ← the write audit performs
+- Shrink: N primes over budget, M lines relocated to satellites   ← the write that removes
+- Largest prime: `path/prime-foo.md` at N lines (budget ~60)
 
 ### Issues
 
@@ -282,6 +302,10 @@ Report findings as a structured checklist:
 #### Stale or missing Stakes
 - [ ] `path/prime-foo.md` Stakes for `src/x.ts` references a removed contract — refreshed
 - [ ] `path/prime-bar.md` documents a load-bearing utility but has no Stakes — added
+- [ ] ...
+
+#### Over the file budget
+- [ ] `path/prime-foo.md` is N lines (budget ~60); M lines of `## Lessons` relocated to `path/lessons-foo.md`
 - [ ] ...
 
 #### Missing primes
@@ -316,7 +340,9 @@ Be concise. Only flag actual issues. "Everything looks fine" for a prime is not 
 
 ## Red Flags
 
-- A newly created prime file's *routing index* (everything but `## Stakes`) is longer than 30 lines — it's drifting into documentation; tighten it or split the utility.
+- A newly created prime file's routing index is longer than 30 lines, or the whole file is over ~60 — it's drifting into documentation; tighten it, move accumulated content to the satellite, or split the utility.
+- A prime's `## Lessons` section holds more than the one-line satellite pointer — the work pipeline is appending to the wrong file (`../../do-work/actions/work.md` Step 8 substep 7 writes satellites), or a shrink pass was skipped.
+- `audit` reports Stakes counts but no shrink counts — Step 6.6 was skipped, and the audit only grew the files.
 - `audit` reports no issues across the whole repo, but several primes haven't been touched in months — they're likely stale; spot-check before trusting the clean result.
 - `create <path>` was run on a path that already has a prime — avoid silent overwrite; ask before replacing.
 - A prime file lists line numbers or reproduces code — violates the "pointers over copies" principle; rewrite.
@@ -325,7 +351,8 @@ Be concise. Only flag actual issues. "Everything looks fine" for a prime is not 
 
 ## Verification Checklist
 
-- [ ] Prime files' routing index is 15–30 lines (create mode); a `## Stakes` section, if present, is excluded from that budget and scoped to load-bearing elements.
+- [ ] Prime files' routing index is 15–30 lines and the whole file is under ~60 (create mode); no section is exempt, and `## Stakes`, if present, is scoped to load-bearing elements.
+- [ ] `audit` ran Step 6.6 and reported `Shrink: N primes, M lines relocated` — every prime over budget had its overflow moved to `lessons-<name>.md`, with each lesson landing in exactly one place (satellite or a `## Traps` line, never both).
 - [ ] `audit` actually wrote `## Stakes` where missing/stale (added or rewrote it, not just flagged it) and reported the `added/refreshed/current` counts — it did not describe itself as read-only across the board.
 - [ ] No line numbers, no reproduced code, no volatile metrics in the generated prime.
 - [ ] `audit` output names each issue by file path and type (stale ref / broken link / missing prime).
