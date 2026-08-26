@@ -8,7 +8,7 @@ domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec:
-depends_on: []
+depends_on: [REQ-375]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
@@ -98,10 +98,21 @@ nothing and is never guessed.
 
 ## Dependencies
 
-None in the queue. REQ-374 and REQ-375 are `related` — they share the resolution semantics restated
-above, but no file: this REQ touches `board-filters.js`, `generate.go` and a new Go source file,
-where they touch `board-core.js`, `board-detail.js`, `board-clipboard.js` and `board.css`. The shared
-file is `generate_test.go`, which is why all three carry it in their write sets; run them serially.
+`depends_on: [REQ-375]`, which itself depends on REQ-374 — so the three run in the order
+REQ-374 → REQ-375 → REQ-377.
+
+**The edge exists to serialize a shared file, not because this REQ needs the other two's output.**
+Its own work is independent: this REQ touches `board-filters.js`, `generate.go` and a new Go source
+file, where they touch `board-core.js`, `board-detail.js`, `board-clipboard.js` and `board.css`. The
+one file all three write is `generate_test.go`. An earlier draft declared that overlap in `write_set`
+and stated the serial requirement in prose only — which enforces nothing: `write_set` is display-only
+and "never a safety guarantee" (root `CLAUDE.md` § Glossary), so under `do-work run --fan-out` this
+REQ and REQ-374 were both dependency roots and could have been dispatched concurrently into the same
+test file. `depends_on` is the only field the work loop actually gates on, so the ordering is
+declared there.
+
+The alternative — dropping `generate_test.go` from this REQ's write set — was rejected: the filter
+predicate is a pure function and belongs in the Node-harness lane that lives in that file.
 
 ## Builder Guidance
 
