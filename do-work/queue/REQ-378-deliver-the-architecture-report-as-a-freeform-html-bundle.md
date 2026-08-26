@@ -6,7 +6,7 @@ created_at: 2026-08-26T17:56:52Z
 user_request: UR-075
 domain: general
 prime_files: ['_dev/primes/prime-action-files.md', '_dev/primes/prime-shell-commands.md']
-tdd: false
+tdd: true
 suggested_spec:
 depends_on: []
 maintenance: false
@@ -60,8 +60,9 @@ Certainty: **Firm** on the deliverable (HTML-only, ai-report home, freeform, aut
 
 **RED prompt/case:** Run `do-work-toolbox architecture-report` today. It publishes `ai-reports/<slug>/architecture-report.md` — raw markdown; diagrams are fenced code blocks, anchors are plain text, and the action file itself mandates "Markdown with inline Mermaid only. No HTML."
 **Why RED now:** The action's output contract forbids exactly the deliverable the user wants.
+**Runnable RED (test-first):** Rewrite the architecture-report pins in `_dev/tests/contract-regressions.sh` and the preflight fixture proofs in `_dev/tests/prescribed-shell-cases/architecture-report-preflight.sh` to assert the new contract (bundle holds `index.html`, no markdown file, no carry-forward requirement); confirm they fail against the current action and helper, then make them pass. The browser observations above remain the user-facing GREEN; this is the harness-runnable core the TDD gate checks.
 **GREEN when:** After this REQ lands, a run of the action publishes `ai-reports/<yyyy-mm-dd>_<hhmm>_architecture-report/index.html` and no markdown file; opening it in a browser shows the diagrams drawn, a clickable section navigation, each `VERIFIED` anchor linking to its file and line on GitHub, and — when a prior HTML report exists — an opening "changed since last report" section.
-**Validation:** User adjusted — confirmed the inferred pair, then added: no markdown file at all, and the HTML must stay freeform so future models keep improving the view.
+**Validation:** User adjusted — confirmed the inferred pair, then added: no markdown file at all, and the HTML must stay freeform so future models keep improving the view. `tdd:` was corrected to true after capture, from review on PR #171: the contract suite supplies the runnable RED above.
 
 ## Full Context
 
