@@ -1748,6 +1748,15 @@ body.is-resizing-detail .detail-resizer::before {
 .ticket-link-id {
   font-family: var(--font-mono);
 }
+/* A substitute for a title the record does not have — "no input.md" on a UR
+   synthesized from REQ pointers, "untitled" otherwise. Italic and one step
+   quieter so it reads as a description of the record rather than as its own
+   words, which is the whole reason it is distinguished at all. */
+.ticket-link-title.is-fallback,
+.detail-glossary-name.is-fallback {
+  font-style: italic;
+  color: var(--ink-faint);
+}
 .ticket-link-title {
   font-family: var(--font-sans);
   color: var(--ink-soft);

@@ -1035,9 +1035,12 @@ func TestDrawerTicketMentionsCarryTitlesAndAGlossary(t *testing.T) {
 		`<section class="detail-glossary" id="detail-glossary"`,
 		"function makeTicketLink(detailKind, detailId, linkText, expandTitle)",
 		`createElement("span", "ticket-link-id"`,
-		`createElement("span", "ticket-link-title"`,
+		`"ticket-link-title is-fallback" : "ticket-link-title"`,
 		`createElement("span", "ticket-missing"`,
 		`"Not found in this queue"`,
+		"function describeTicketTitle(detailKind, detailId)",
+		`"no input.md — synthesized from REQ pointers"`,
+		".ticket-link-title.is-fallback,",
 		"renderDetailGlossary(linkifyDetailBody(drawerBody, request.title))",
 		"renderDetailGlossary(linkifyDetailBody(drawerBody, userRequest.title))",
 		".ticket-link-title {",
@@ -1068,20 +1071,32 @@ type ticketGlossaryRowProbe struct {
 	Status     string `json:"status"`
 }
 
+type ticketFallbackTitleProbe struct {
+	Text       string `json:"text"`
+	IsFallback bool   `json:"isFallback"`
+}
+
+type ticketGlossaryFallbackProbe struct {
+	Id    string                   `json:"id"`
+	Title ticketFallbackTitleProbe `json:"title"`
+}
+
 type ticketMentionProbeResult struct {
-	ShortTitles             []string                 `json:"shortTitles"`
-	CodeSpanFragment        []ticketMentionNodeProbe `json:"codeSpanFragment"`
-	InlineCodeMissing       []ticketMentionNodeProbe `json:"inlineCodeMissingFragment"`
-	FencedMissing           []ticketMentionNodeProbe `json:"fencedMissingFragment"`
-	ProseMissing            []ticketMentionNodeProbe `json:"proseMissingFragment"`
-	ProseFragment           []ticketMentionNodeProbe `json:"proseFragment"`
-	RepeatFragment          []ticketMentionNodeProbe `json:"repeatFragment"`
-	AmbiguousOnlyLinked     bool                     `json:"ambiguousOnlyLinked"`
-	MetaRowLink             ticketMentionNodeProbe   `json:"metaRowLink"`
-	Glossary                []ticketGlossaryRowProbe `json:"glossary"`
-	GlossaryHidden          bool                     `json:"glossaryHidden"`
-	EmptyGlossaryHidden     bool                     `json:"emptyGlossaryHidden"`
-	EmptyGlossaryChildCount int                      `json:"emptyGlossaryChildCount"`
+	ShortTitles             []string                      `json:"shortTitles"`
+	CodeSpanFragment        []ticketMentionNodeProbe      `json:"codeSpanFragment"`
+	InlineCodeMissing       []ticketMentionNodeProbe      `json:"inlineCodeMissingFragment"`
+	FencedMissing           []ticketMentionNodeProbe      `json:"fencedMissingFragment"`
+	ProseMissing            []ticketMentionNodeProbe      `json:"proseMissingFragment"`
+	ProseFragment           []ticketMentionNodeProbe      `json:"proseFragment"`
+	SynthesizedFragment     []ticketMentionNodeProbe      `json:"synthesizedFragment"`
+	SynthesizedGlossary     []ticketGlossaryFallbackProbe `json:"synthesizedGlossaryTitles"`
+	RepeatFragment          []ticketMentionNodeProbe      `json:"repeatFragment"`
+	AmbiguousOnlyLinked     bool                          `json:"ambiguousOnlyLinked"`
+	MetaRowLink             ticketMentionNodeProbe        `json:"metaRowLink"`
+	Glossary                []ticketGlossaryRowProbe      `json:"glossary"`
+	GlossaryHidden          bool                          `json:"glossaryHidden"`
+	EmptyGlossaryHidden     bool                          `json:"emptyGlossaryHidden"`
+	EmptyGlossaryChildCount int                           `json:"emptyGlossaryChildCount"`
 }
 
 // Execute the shipped mention pipeline under Node. The five behaviors this pins
@@ -1099,6 +1114,7 @@ func TestJavaScriptBehaviorTicketMentionTitlesAndGlossary(t *testing.T) {
 		sliceBalancedBlockAfter(t, indexHtml, "function resolveTicketMention("),
 		sliceBalancedBlockAfter(t, indexHtml, "function isAmbiguousTicketMention("),
 		sliceBalancedBlockAfter(t, indexHtml, "function ticketTitleFor("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeTicketTitle("),
 		sliceBalancedBlockAfter(t, indexHtml, "function shortTicketTitle("),
 		sliceBalancedBlockAfter(t, indexHtml, "function makeTicketLink("),
 		sliceBalancedBlockAfter(t, indexHtml, "function makeMissingTicketMention("),
@@ -1146,7 +1162,13 @@ var requestsById = {
   "UR-002-REQ-042": { title: "Second half of an ambiguous pair", status: "pending" }
 };
 var userRequestsById = {
-  "UR-074": { title: "Ticket ids should carry their titles" }
+  "UR-074": { title: "Ticket ids should carry their titles" },
+  // Two titleless shapes the live tree does not currently hold, so they are
+  // fixtures rather than sampled data: a UR synthesized because its input.md was
+  // never found (linkRequestsToUserRequests leaves Title empty by design), and a
+  // UR whose input.md exists but names no title.
+  "UR-900": { inputFilePresent: false },
+  "UR-901": { title: "", inputFilePresent: true }
 };
 var repoFileMentionExists = {};
 var liveFileApiAvailable = false;
@@ -1185,6 +1207,13 @@ var proseFragment = buildLinkifiedFragment(
 );
 var repeatFragment = buildLinkifiedFragment("the REQ-1679 note and REQ-1108 once more", false, false, mentionRenderState);
 var ambiguousOnlyFragment = buildLinkifiedFragment("see REQ-042 today", false, false, { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] });
+
+// A UR whose input.md was never found is synthesized with no Title
+// (linkRequestsToUserRequests). It is a supported board state, so it must not
+// fall back to the bare id the whole feature exists to remove.
+var synthesizedState = { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] };
+var synthesizedFragment = buildLinkifiedFragment("see UR-900 and UR-901 for that", false, false, synthesizedState);
+var synthesizedGlossary = synthesizedState.glossaryEntries;
 
 // The two code contexts drive DIFFERENT suppressions, so each is probed alone
 // against the same missing id. An inline code span is still a reference and
@@ -1243,6 +1272,8 @@ process.stdout.write(JSON.stringify({
   inlineCodeMissingFragment: describeFragment(inlineCodeMissingFragment),
   fencedMissingFragment: describeFragment(fencedMissingFragment),
   proseMissingFragment: describeFragment(proseMissingFragment),
+  synthesizedFragment: describeFragment(synthesizedFragment),
+  synthesizedGlossaryTitles: synthesizedGlossary.map(function (entry) { return { id: entry.id, title: entry.title }; }),
   proseFragment: describeFragment(proseFragment),
   repeatFragment: describeFragment(repeatFragment),
   ambiguousOnlyLinked: ambiguousOnlyFragment !== null,
@@ -1335,6 +1366,57 @@ process.stdout.write(JSON.stringify({
 	}
 	if probeResult.AmbiguousOnlyLinked {
 		t.Error("a text run whose only mention is ambiguous was rewritten; it must be left untouched")
+	}
+
+	// A titleless record is not a missing one, and both shapes are supported:
+	// linkRequestsToUserRequests SYNTHESIZES a UserRequestTicket with no Title
+	// whenever a REQ names a UR whose input.md was not found, and a real UR can
+	// simply name no title. Before this case the empty title fell through
+	// makeTicketLink's !fullTitle branch to the bare id — reintroducing the exact
+	// cryptic number the feature exists to remove, on the one kind of record that
+	// cannot explain itself. Each now says WHY it has no title, marked a fallback
+	// so it renders as a description rather than as the record's own words.
+	//
+	// Both are fixtures, deliberately: this repo's tree ships zero synthesized URs
+	// and one titleless one, so sampling live data would leave the branch untested
+	// on the board that matters and silently vacuous on any other.
+	synthesizedLinks := map[string]ticketMentionNodeProbe{}
+	for _, fragmentNode := range probeResult.SynthesizedFragment {
+		if fragmentNode.DetailId != "" {
+			synthesizedLinks[fragmentNode.DetailId] = fragmentNode
+		}
+	}
+	for _, titlelessCase := range []struct{ detailId, wantPhrase, why string }{
+		{"UR-900", "no input.md", "a UR synthesized from REQ pointers"},
+		{"UR-901", "untitled", "a UR that exists but names no title"},
+	} {
+		titlelessLink, wasLinked := synthesizedLinks[titlelessCase.detailId]
+		if !wasLinked {
+			t.Errorf("%s (%s) produced no link at all", titlelessCase.detailId, titlelessCase.why)
+			continue
+		}
+		if !reflect.DeepEqual(titlelessLink.ChildClassNames, []string{"ticket-link-id", "", "ticket-link-title is-fallback"}) {
+			t.Errorf("%s (%s) children = %#v, want it expanded as a marked fallback rather than left a bare id",
+				titlelessCase.detailId, titlelessCase.why, titlelessLink.ChildClassNames)
+		}
+		if !strings.Contains(titlelessLink.Text, titlelessCase.wantPhrase) {
+			t.Errorf("%s (%s) link = %q, want it to say why it has no title (%q)",
+				titlelessCase.detailId, titlelessCase.why, titlelessLink.Text, titlelessCase.wantPhrase)
+		}
+	}
+	glossaryFallbacks := map[string]ticketFallbackTitleProbe{}
+	for _, glossaryRow := range probeResult.SynthesizedGlossary {
+		glossaryFallbacks[glossaryRow.Id] = glossaryRow.Title
+	}
+	for _, detailId := range []string{"UR-900", "UR-901"} {
+		fallbackTitle, wasGlossed := glossaryFallbacks[detailId]
+		if !wasGlossed {
+			t.Errorf("%s earned no glossary entry", detailId)
+			continue
+		}
+		if !fallbackTitle.IsFallback {
+			t.Errorf("%s's substitute title is not marked a fallback — it would render dressed as the record's own title", detailId)
+		}
 	}
 
 	// Where the broken-reference flag fires, by context. The three cases share one

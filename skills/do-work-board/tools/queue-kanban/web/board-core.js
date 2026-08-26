@@ -331,6 +331,31 @@
     return (ticketRecord && ticketRecord.title) || "";
   }
 
+  // A record can exist and still have no title, and the commonest case is not a
+  // defect: linkRequestsToUserRequests SYNTHESIZES a UserRequestTicket whenever a
+  // REQ names a UR whose input.md was not found, and a synthesized node carries
+  // no Title by design. Falling back to the bare id there would reintroduce the
+  // exact cryptic number this whole feature removes, on a supported board state.
+  // So say what is known instead: why there is no title, never nothing.
+  //
+  // isFallback lets the caller render the substitute in a quieter voice — it is
+  // a description of the record, not the record's own words.
+  function describeTicketTitle(detailKind, detailId) {
+    var fullTitle = ticketTitleFor(detailKind, detailId);
+    if (fullTitle) {
+      return { text: fullTitle, isFallback: false };
+    }
+    var ticketRecord = detailKind === "ur" ? userRequestsById[detailId] : requestsById[detailId];
+    if (!ticketRecord) {
+      return { text: "", isFallback: false }; // Not on the board at all — the missing-mention branch owns this.
+    }
+    if (detailKind === "ur" && ticketRecord.inputFilePresent === false) {
+      // Same fact the drawer's own "input.md" meta row states for this record.
+      return { text: "no input.md — synthesized from REQ pointers", isFallback: true };
+    }
+    return { text: "untitled", isFallback: true };
+  }
+
   // Inline titles are cut here because a long one expanded mid-sentence swamps
   // the prose it sits in. Nothing is lost: the untruncated title rides in the
   // link's tooltip and in the drawer glossary.

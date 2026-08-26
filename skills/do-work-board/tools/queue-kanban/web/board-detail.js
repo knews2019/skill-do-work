@@ -30,15 +30,23 @@
     ticketLink.href = "#";
     ticketLink.dataset.detailKind = detailKind;
     ticketLink.dataset.detailId = detailId;
-    var fullTitle = ticketTitleFor(detailKind, detailId);
-    if (!expandTitle || !fullTitle) {
+    var described = describeTicketTitle(detailKind, detailId);
+    if (!expandTitle || !described.text) {
       ticketLink.textContent = linkText || detailId;
       return ticketLink;
     }
-    ticketLink.title = fullTitle;
+    ticketLink.title = described.text;
     ticketLink.appendChild(createElement("span", "ticket-link-id", linkText || detailId));
     ticketLink.appendChild(document.createTextNode(" "));
-    ticketLink.appendChild(createElement("span", "ticket-link-title", shortTicketTitle(fullTitle)));
+    // is-fallback marks a substitute rather than the record's own words, so it is
+    // rendered in a quieter voice. Composed into the class name rather than added
+    // through classList because these two spans are the pieces the Node lane
+    // slices out and drives against a stub document.
+    ticketLink.appendChild(createElement(
+      "span",
+      described.isFallback ? "ticket-link-title is-fallback" : "ticket-link-title",
+      shortTicketTitle(described.text)
+    ));
     return ticketLink;
   }
 
@@ -145,7 +153,7 @@
             mentionRenderState.glossaryEntries.push({
               kind: ticketTarget.kind,
               id: ticketTarget.id,
-              title: ticketTitleFor(ticketTarget.kind, ticketTarget.id),
+              title: describeTicketTitle(ticketTarget.kind, ticketTarget.id),
               // describeRequestStatus only knows requests; a UR has no pipeline
               // status, so its line says what kind of record it is instead.
               statusText: ticketTarget.kind === "ur" ? "user request" : describeRequestStatus(ticketTarget.id)
@@ -282,9 +290,11 @@
       var termNode = createElement("dt", "detail-glossary-term");
       termNode.appendChild(makeTicketLink(glossaryEntry.kind, glossaryEntry.id, glossaryEntry.id, false));
       var definitionNode = createElement("dd", "detail-glossary-definition");
-      definitionNode.appendChild(
-        createElement("span", "detail-glossary-name", glossaryEntry.title || "(untitled)")
-      );
+      definitionNode.appendChild(createElement(
+        "span",
+        glossaryEntry.title.isFallback ? "detail-glossary-name is-fallback" : "detail-glossary-name",
+        glossaryEntry.title.text
+      ));
       definitionNode.appendChild(createElement("span", "detail-glossary-status", glossaryEntry.statusText));
       glossaryList.appendChild(termNode);
       glossaryList.appendChild(definitionNode);
