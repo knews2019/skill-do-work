@@ -1,10 +1,12 @@
 ---
 id: REQ-379
 title: 'Copy carries titles and a referenced-requests glossary'
-status: pending
+status: claimed
 created_at: 2026-08-26T13:02:24Z
+claimed_at: 2026-08-26T17:06:38Z
 user_request: UR-075
 domain: frontend
+route: B
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec:
@@ -12,6 +14,17 @@ depends_on: [REQ-378]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  calculated_at: 2026-08-26T17:07:16Z
+  basis:
+    - Route B
+    - 4-file write set
+    - 2 subsystems involved
+    - 5 acceptance criteria
+    - browser evidence
+    - full-suite verification
 related: [REQ-378, REQ-380]
 batch: ticket-id-autocomplete
 write_set:
@@ -179,3 +192,13 @@ User added, mid-run on REQ-378:
   glossary line instead of the silence the original requirement specified.
 - The reversed requirement is edited in place above rather than left contradicted; this section is
   the record that it changed and why.
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The outcome, the files and the constraints are all named in the REQ, and REQ-378 already built the resolver this consumes. What needs discovery is the exact frontmatter-fence and code-fence boundaries in the raw Markdown, and how the three copy handlers thread a shared glossary. No architectural decision is open — the shape was chosen by the user at capture.
+
+**Planning:** Not required

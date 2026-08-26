@@ -22,9 +22,9 @@ Earlier sessions, kept for the trail:
 - REQ-373 (Route A, review 100%) made project-harness membership the explicit boundary for
   `tdd: true` evidence and routed probe-only work to `tdd: false` plus repeatable proof.
 
-## In Progress
+## In Progress (interrupted)
 
-None.
+- REQ-379 — claimed 2026-08-26T17:06:38Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued
 
