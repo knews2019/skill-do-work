@@ -15,9 +15,9 @@ session_depth: shallow
 - REQ-373 (Route A, review 100%) made project-harness membership the explicit boundary for
   `tdd: true` evidence and routed probe-only work to `tdd: false` plus repeatable proof.
 
-## In Progress
+## In Progress (interrupted)
 
-None.
+- REQ-374 — claimed 2026-08-26T13:20:45Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued
 
