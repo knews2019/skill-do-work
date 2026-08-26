@@ -5,7 +5,7 @@ status: completed
 created_at: 2026-08-26T13:02:24Z
 claimed_at: 2026-08-26T13:20:45Z
 completed_at: 2026-08-26T17:02:56Z
-commit:
+commit: ebd7e5d
 user_request: UR-075
 domain: frontend
 route: B
