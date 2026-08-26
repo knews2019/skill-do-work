@@ -839,6 +839,17 @@ for carry_forward_predicate in (
     )
 
 # 4. Delta first. The watermark, then the drift table, then everything else.
+for committed_tree_predicate in (
+    r"Verify against a committed tree, never the working tree",
+    r"Publish the report as a child commit of the one\s+it watermarks",
+    r"never let the report assert its own\s+presence",
+):
+    require(
+        architecture_report,
+        committed_tree_predicate,
+        f"architecture-report must bind the watermark to a committed tree /{committed_tree_predicate}/",
+    )
+
 require(
     architecture_report,
     r"the first section after the watermark",

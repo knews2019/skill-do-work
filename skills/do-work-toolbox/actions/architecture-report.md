@@ -45,6 +45,8 @@ Run the shipped helper from the repository root:
 
 It emits `head_hash`, `report_slug`, `report_candidate`, `prior_report`, `prior_hash`, and `prior_hash_resolves` as `key=value` lines. Read the project version from whatever the repository uses to declare one (a `VERSION` file, `package.json`, `Cargo.toml`, `pyproject.toml`); record `unversioned` when it declares none.
 
+**Verify against a committed tree, never the working tree.** The watermark names the commit whose tree every claim in the report was checked against, so commit the work being described *before* running this action. A claim checked against an uncommitted edit is labelled `VERIFIED` at a commit where it is not yet true, and the anchor a reader follows lands on the old line. Publish the report as a child commit of the one it watermarks, carrying the report and nothing else.
+
 When `prior_report` is non-empty, read that file completely — it is the baseline every later step compares against. Then scope what could have drifted:
 
 - `prior_hash_resolves=yes` — run `git diff --stat <prior-hash>..HEAD` and treat the touched paths as the drift candidates.
@@ -136,6 +138,7 @@ One new bundle directory at `ai-reports/<yyyy-mm-dd>_<hhmm>_architecture-report/
 - Never edit, delete, or regenerate a prior report. Immutability is what makes the report-to-report diff mean anything.
 - Never narrow the report's scope on request. Repo-wide is the input contract.
 - Never carry a prior claim forward without re-checking it — carry-forward is a verification result, not a shortcut past verification.
+- Never watermark a commit whose tree the claims were not checked against, and never let the report assert its own presence: at the watermarked commit the report does not exist yet.
 
 ## Common Rationalizations
 
@@ -145,6 +148,7 @@ One new bundle directory at `ai-reports/<yyyy-mm-dd>_<hhmm>_architecture-report/
 | "The prior report is out of date, so I'll update it in place" | Publish a new dated bundle and leave the prior one untouched | The prior report is the baseline the next run's §Δ is computed against; editing it destroys the comparison |
 | "This belongs with the completed-work reports — I'll add an architecture mode to `ai-report`" | Keep it here; `ai-report` takes a UR or REQ and presents completed work | This action has no UR/REQ input and no archive evidence to resolve; folding it in would give `ai-report` a second, incompatible input contract |
 | "I found real problems while reading — the report should list them" | Note them in §5 as open questions or point at the audit action | Findings are fixed and the report is not; an architecture doc carrying them is wrong the day they land, and `maintainability-audit` already owns bands and ratchets |
+| "I'll write the report now and commit it with the code" | Commit the code first, then run this action against that commit | The watermark would name a commit whose tree the claims were never checked against, and the anchors would point at the pre-change lines |
 | "The prior watermark hash won't resolve, so nothing changed" | Re-verify every claim and say why in §5 | An unresolvable scope is a missing answer, not an empty one — reading it as "no drift" carries stale claims forward under a `VERIFIED` label |
 | "Ten nodes isn't enough for §1, I'll add a few more" | Raise the altitude until it fits | A twenty-node overview is a second §2, and a reader who wanted the flow detail has §2 already |
 
@@ -157,7 +161,7 @@ One new bundle directory at `ai-reports/<yyyy-mm-dd>_<hhmm>_architecture-report/
 
 ## Verification Checklist
 
-- [ ] Pre-flight helper ran; the watermark hash equals the current `HEAD` and the version line is real.
+- [ ] Pre-flight helper ran against a clean tree; the watermark hash equals the current `HEAD`, the version line is real, and no claim was checked against an uncommitted edit.
 - [ ] §Δ is the first section after the watermark, and every drift row names its anchor.
 - [ ] Sections that did not drift are byte-identical to the prior report.
 - [ ] §1 and §2 each contain at least one fenced ```mermaid block, each within the node cap.
