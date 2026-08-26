@@ -965,6 +965,398 @@ process.stdout.write(JSON.stringify([
 	}
 }
 
+// sliceDeclarationAfter returns the source of the declaration that begins at
+// anchorToken and ends at the first semicolon outside a string literal.
+//
+// sliceBalancedBlockAfter cannot take bodyMentionPattern: its regex source
+// carries a "{0,7}" quantifier inside a string literal, and the brace counter
+// reads that closing brace as the end of the block. A probe that re-declared the
+// pattern beside the slice would stop testing the shipped one (REQ-322).
+func sliceDeclarationAfter(t *testing.T, sourceText string, anchorToken string) string {
+	t.Helper()
+	anchorIndex := strings.Index(sourceText, anchorToken)
+	if anchorIndex == -1 {
+		t.Fatalf("anchor %q not found in the generated page", anchorToken)
+	}
+	var openQuoteByte byte
+	for scanOffset := anchorIndex; scanOffset < len(sourceText); scanOffset++ {
+		currentByte := sourceText[scanOffset]
+		if openQuoteByte != 0 {
+			if currentByte == '\\' {
+				scanOffset++
+			} else if currentByte == openQuoteByte {
+				openQuoteByte = 0
+			}
+			continue
+		}
+		switch currentByte {
+		case '"', '\'':
+			openQuoteByte = currentByte
+		case ';':
+			return sourceText[anchorIndex : scanOffset+1]
+		}
+	}
+	t.Fatalf("no terminating semicolon found after anchor %q", anchorToken)
+	return ""
+}
+
+// One resolver, defined once. REQ-375 consumes the same helpers from the
+// clipboard fragment, and board-core.js is the fragment that runs first — a
+// second copy left behind in board-detail.js would drift the moment either side
+// learns about a new id shape.
+func TestTicketMentionResolverLivesOnlyInBoardCore(t *testing.T) {
+	coreBytes, coreReadError := embeddedWebAssets.ReadFile("web/board-core.js")
+	if coreReadError != nil {
+		t.Fatalf("read web/board-core.js: %v", coreReadError)
+	}
+	detailBytes, detailReadError := embeddedWebAssets.ReadFile("web/board-detail.js")
+	if detailReadError != nil {
+		t.Fatalf("read web/board-detail.js: %v", detailReadError)
+	}
+	for _, sharedDefinition := range []string{
+		"function buildRequestIdByReqSegment(",
+		"function resolveTicketMention(",
+		"function isAmbiguousTicketMention(",
+		"function ticketTitleFor(",
+		"function shortTicketTitle(",
+	} {
+		if !strings.Contains(string(coreBytes), sharedDefinition) {
+			t.Errorf("web/board-core.js does not define %q", sharedDefinition)
+		}
+		if strings.Contains(string(detailBytes), sharedDefinition) {
+			t.Errorf("web/board-detail.js still defines %q — one definition, or the two drift", sharedDefinition)
+		}
+	}
+}
+
+func TestDrawerTicketMentionsCarryTitlesAndAGlossary(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	for _, requiredToken := range []string{
+		`<section class="detail-glossary" id="detail-glossary"`,
+		"function makeTicketLink(detailKind, detailId, linkText, expandTitle)",
+		`createElement("span", "ticket-link-id"`,
+		`createElement("span", "ticket-link-title"`,
+		`createElement("span", "ticket-missing"`,
+		`"Not found in this queue"`,
+		"renderDetailGlossary(linkifyDetailBody(drawerBody, request.title))",
+		"renderDetailGlossary(linkifyDetailBody(drawerBody, userRequest.title))",
+		".ticket-link-title {",
+		".ticket-missing {",
+		".detail-glossary {",
+	} {
+		if !strings.Contains(indexHtml, requiredToken) {
+			t.Errorf("title-bearing ticket mentions are not wired into the generated page: %q missing", requiredToken)
+		}
+	}
+}
+
+type ticketMentionNodeProbe struct {
+	Tag             string   `json:"tag"`
+	ClassName       string   `json:"className"`
+	Text            string   `json:"text"`
+	Title           string   `json:"title"`
+	DetailKind      string   `json:"detailKind"`
+	DetailId        string   `json:"detailId"`
+	ChildClassNames []string `json:"childClassNames"`
+}
+
+type ticketGlossaryRowProbe struct {
+	TermTag    string `json:"termTag"`
+	Identifier string `json:"identifier"`
+	DetailKind string `json:"detailKind"`
+	Title      string `json:"title"`
+	Status     string `json:"status"`
+}
+
+type ticketMentionProbeResult struct {
+	ShortTitles             []string                 `json:"shortTitles"`
+	CodeSpanFragment        []ticketMentionNodeProbe `json:"codeSpanFragment"`
+	ProseFragment           []ticketMentionNodeProbe `json:"proseFragment"`
+	RepeatFragment          []ticketMentionNodeProbe `json:"repeatFragment"`
+	AmbiguousOnlyLinked     bool                     `json:"ambiguousOnlyLinked"`
+	MetaRowLink             ticketMentionNodeProbe   `json:"metaRowLink"`
+	Glossary                []ticketGlossaryRowProbe `json:"glossary"`
+	GlossaryHidden          bool                     `json:"glossaryHidden"`
+	EmptyGlossaryHidden     bool                     `json:"emptyGlossaryHidden"`
+	EmptyGlossaryChildCount int                      `json:"emptyGlossaryChildCount"`
+}
+
+// Execute the shipped mention pipeline under Node. The five behaviors this pins
+// are the ones a title-bearing link can silently get wrong: the first prose
+// mention expands and a later one does not, a code-span mention never gains
+// prose (but still earns its glossary line), a dead id is FLAGGED while an
+// ambiguous segment is LEFT ALONE, and the glossary lists each resolved id once
+// with its untruncated title.
+func TestJavaScriptBehaviorTicketMentionTitlesAndGlossary(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeRequestStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function buildRequestIdByReqSegment("),
+		sliceBalancedBlockAfter(t, indexHtml, "function resolveTicketMention("),
+		sliceBalancedBlockAfter(t, indexHtml, "function isAmbiguousTicketMention("),
+		sliceBalancedBlockAfter(t, indexHtml, "function ticketTitleFor("),
+		sliceBalancedBlockAfter(t, indexHtml, "function shortTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeTicketLink("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeMissingTicketMention("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeExternalUrlLink("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeRepoFileLink("),
+		sliceBalancedBlockAfter(t, indexHtml, "function buildLinkifiedFragment("),
+		sliceBalancedBlockAfter(t, indexHtml, "function renderDetailGlossary("),
+	}
+	declarationBlocks := []string{
+		sliceDeclarationAfter(t, indexHtml, "var inlineTicketTitleMaxLength ="),
+		sliceDeclarationAfter(t, indexHtml, "var bodyMentionPattern ="),
+		sliceDeclarationAfter(t, indexHtml, "var requestIdByReqSegment ="),
+	}
+
+	// The 60-character cut is the REQ's number, so the expectations below are
+	// written out rather than recomputed from the shipped constant: shrinking
+	// the constant must fail this test, not silently move the assertion with it.
+	longTitle := "Make every referenced request identifier in a drawer body carry its own title"
+	exactlySixtyTitle := "Keep the timeline forecast honest about ordering and timings"
+	unbrokenTitle := strings.Repeat("x", 70)
+
+	javascriptProbe := `
+function makeStubElement(tagName) {
+  return {
+    stubTag: tagName,
+    className: "",
+    dataset: {},
+    childNodes: [],
+    textContent: "",
+    hidden: false,
+    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; }
+  };
+}
+var document = {
+  createElement: function (tagName) { return makeStubElement(tagName); },
+  createTextNode: function (nodeText) { return { stubTag: "#text", textContent: nodeText, childNodes: [] }; },
+  createDocumentFragment: function () { return makeStubElement("#fragment"); }
+};
+var drawerGlossary = makeStubElement("section");
+var requestsById = {
+  "REQ-1679": { title: ` + mustMarshalJSONString(t, exactlySixtyTitle) + `, status: "completed" },
+  "REQ-1108": { title: "Short one", status: "pending" },
+  "REQ-1685": { title: ` + mustMarshalJSONString(t, longTitle) + `, status: "claimed" },
+  "UR-001-REQ-042": { title: "First half of an ambiguous pair", status: "pending" },
+  "UR-002-REQ-042": { title: "Second half of an ambiguous pair", status: "pending" }
+};
+var userRequestsById = {
+  "UR-074": { title: "Ticket ids should carry their titles" }
+};
+var repoFileMentionExists = {};
+var liveFileApiAvailable = false;
+` + strings.Join(functionBlocks, "\n") + "\n" + strings.Join(declarationBlocks, "\n") + `
+
+function collectNodeText(node) {
+  if (node.childNodes && node.childNodes.length > 0) {
+    return node.childNodes.map(collectNodeText).join("");
+  }
+  return node.textContent || "";
+}
+function describeNode(node) {
+  return {
+    tag: node.stubTag,
+    className: node.className || "",
+    text: collectNodeText(node),
+    title: node.title || "",
+    detailKind: (node.dataset && node.dataset.detailKind) || "",
+    detailId: (node.dataset && node.dataset.detailId) || "",
+    childClassNames: (node.childNodes || []).map(function (childNode) { return childNode.className || ""; })
+  };
+}
+function describeFragment(fragment) {
+  return fragment === null ? [] : fragment.childNodes.map(describeNode);
+}
+
+var mentionRenderState = { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] };
+// A backticked id comes first on purpose: it must not consume the inline
+// expansion slot, and it must still earn its glossary line.
+var codeSpanFragment = buildLinkifiedFragment("REQ-1108", true, mentionRenderState);
+var proseFragment = buildLinkifiedFragment(
+  "Read REQ-1679 lessons, REQ-1108 again, UR-074 for context, plus REQ-9999 and REQ-042.",
+  false,
+  mentionRenderState
+);
+var repeatFragment = buildLinkifiedFragment("the REQ-1679 note and REQ-1108 once more", false, mentionRenderState);
+var ambiguousOnlyFragment = buildLinkifiedFragment("see REQ-042 today", false, { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] });
+
+renderDetailGlossary(mentionRenderState.glossaryEntries);
+var glossaryList = drawerGlossary.childNodes.filter(function (childNode) { return childNode.stubTag === "dl"; })[0];
+var glossaryRows = [];
+if (glossaryList) {
+  for (var rowIndex = 0; rowIndex + 1 < glossaryList.childNodes.length; rowIndex += 2) {
+    var termNode = glossaryList.childNodes[rowIndex];
+    var definitionNode = glossaryList.childNodes[rowIndex + 1];
+    glossaryRows.push({
+      termTag: termNode.stubTag,
+      identifier: collectNodeText(termNode),
+      detailKind: termNode.childNodes[0].dataset.detailKind,
+      title: collectNodeText(definitionNode.childNodes[0]),
+      status: collectNodeText(definitionNode.childNodes[1])
+    });
+  }
+}
+var glossaryHidden = drawerGlossary.hidden;
+
+drawerGlossary = makeStubElement("section");
+renderDetailGlossary([]);
+
+process.stdout.write(JSON.stringify({
+  shortTitles: [
+    shortTicketTitle(` + mustMarshalJSONString(t, longTitle) + `),
+    shortTicketTitle(` + mustMarshalJSONString(t, exactlySixtyTitle) + `),
+    shortTicketTitle(` + mustMarshalJSONString(t, exactlySixtyTitle) + ` + "X"),
+    shortTicketTitle(` + mustMarshalJSONString(t, unbrokenTitle) + `),
+    shortTicketTitle("")
+  ],
+  codeSpanFragment: describeFragment(codeSpanFragment),
+  proseFragment: describeFragment(proseFragment),
+  repeatFragment: describeFragment(repeatFragment),
+  ambiguousOnlyLinked: ambiguousOnlyFragment !== null,
+  metaRowLink: describeNode(makeTicketLink("req", "REQ-1685", null, true)),
+  glossary: glossaryRows,
+  glossaryHidden: glossaryHidden,
+  emptyGlossaryHidden: drawerGlossary.hidden,
+  emptyGlossaryChildCount: drawerGlossary.childNodes.length
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "ticket mention titles", javascriptProbe)
+	var probeResult ticketMentionProbeResult
+	if decodeError := json.Unmarshal(probeOutput, &probeResult); decodeError != nil {
+		t.Fatalf("decode ticket mention behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	wantShortTitles := []string{
+		"Make every referenced request identifier in a drawer body…",
+		exactlySixtyTitle,
+		"Keep the timeline forecast honest about ordering and…",
+		strings.Repeat("x", 60) + "…",
+		"",
+	}
+	if !reflect.DeepEqual(probeResult.ShortTitles, wantShortTitles) {
+		t.Errorf("shortTicketTitle results = %#v, want %#v", probeResult.ShortTitles, wantShortTitles)
+	}
+
+	// A backticked id keeps the bare mono link: no title span, no tooltip.
+	if len(probeResult.CodeSpanFragment) != 1 {
+		t.Fatalf("code-span fragment = %#v, want one node", probeResult.CodeSpanFragment)
+	}
+	codeSpanLink := probeResult.CodeSpanFragment[0]
+	if codeSpanLink.Tag != "a" || codeSpanLink.ClassName != "ticket-link" || codeSpanLink.Text != "REQ-1108" {
+		t.Errorf("code-span mention = %#v, want a bare ticket-link reading REQ-1108", codeSpanLink)
+	}
+	if codeSpanLink.Title != "" || len(codeSpanLink.ChildClassNames) != 0 {
+		t.Errorf("code-span mention gained prose: title=%q children=%#v", codeSpanLink.Title, codeSpanLink.ChildClassNames)
+	}
+
+	proseLinks := map[string]ticketMentionNodeProbe{}
+	for _, proseNode := range probeResult.ProseFragment {
+		if proseNode.DetailId != "" {
+			proseLinks[proseNode.DetailId] = proseNode
+		}
+	}
+	firstRequestMention, hasFirstRequestMention := proseLinks["REQ-1679"]
+	if !hasFirstRequestMention {
+		t.Fatalf("prose fragment has no REQ-1679 link: %#v", probeResult.ProseFragment)
+	}
+	if !reflect.DeepEqual(firstRequestMention.ChildClassNames, []string{"ticket-link-id", "", "ticket-link-title"}) {
+		t.Errorf("first REQ-1679 mention children = %#v, want id + separator + title", firstRequestMention.ChildClassNames)
+	}
+	if firstRequestMention.Text != "REQ-1679 "+exactlySixtyTitle {
+		t.Errorf("first REQ-1679 mention text = %q, want the id and its title", firstRequestMention.Text)
+	}
+	if firstRequestMention.Title != exactlySixtyTitle {
+		t.Errorf("first REQ-1679 mention tooltip = %q, want the untruncated title", firstRequestMention.Title)
+	}
+	// The code span already resolved REQ-1108; the first PROSE mention is still
+	// the one that expands.
+	firstCodeThenProseMention := proseLinks["REQ-1108"]
+	if !reflect.DeepEqual(firstCodeThenProseMention.ChildClassNames, []string{"ticket-link-id", "", "ticket-link-title"}) {
+		t.Errorf("REQ-1108 prose mention children = %#v, want the code span not to have spent the expansion",
+			firstCodeThenProseMention.ChildClassNames)
+	}
+	userRequestMention := proseLinks["UR-074"]
+	if userRequestMention.DetailKind != "ur" || userRequestMention.Text != "UR-074 Ticket ids should carry their titles" {
+		t.Errorf("UR-074 mention = %#v, want an expanded user-request link", userRequestMention)
+	}
+
+	var brokenNodes []ticketMentionNodeProbe
+	var proseText string
+	for _, proseNode := range probeResult.ProseFragment {
+		proseText += proseNode.Text
+		if proseNode.ClassName == "ticket-missing" {
+			brokenNodes = append(brokenNodes, proseNode)
+		}
+	}
+	if len(brokenNodes) != 1 || brokenNodes[0].Tag != "span" || brokenNodes[0].Text != "REQ-9999" {
+		t.Errorf("unresolved id nodes = %#v, want one non-link ticket-missing span for REQ-9999", brokenNodes)
+	} else if brokenNodes[0].Title != "Not found in this queue" {
+		t.Errorf("unresolved id tooltip = %q, want the not-found tooltip", brokenNodes[0].Title)
+	}
+	// Ambiguous is not missing: the board knows two records and refuses to pick.
+	if _, ambiguousWasLinked := proseLinks["UR-001-REQ-042"]; ambiguousWasLinked {
+		t.Error("an ambiguous REQ segment was linked — the never-guess rule broke")
+	}
+	if !strings.Contains(proseText, "REQ-042.") {
+		t.Errorf("prose text = %q, want the ambiguous segment left as plain prose", proseText)
+	}
+	if probeResult.AmbiguousOnlyLinked {
+		t.Error("a text run whose only mention is ambiguous was rewritten; it must be left untouched")
+	}
+
+	// A later mention of an already-expanded id stays bare, and so does its tooltip.
+	for _, repeatNode := range probeResult.RepeatFragment {
+		if repeatNode.DetailId == "" {
+			continue
+		}
+		if len(repeatNode.ChildClassNames) != 0 || repeatNode.Title != "" {
+			t.Errorf("repeat mention of %s expanded again: %#v", repeatNode.DetailId, repeatNode)
+		}
+	}
+
+	// Meta rows are reference lists, not prose: they always carry the title,
+	// truncated inline with the full text in the tooltip.
+	if !reflect.DeepEqual(probeResult.MetaRowLink.ChildClassNames, []string{"ticket-link-id", "", "ticket-link-title"}) {
+		t.Errorf("meta-row link children = %#v, want an always-expanded link", probeResult.MetaRowLink.ChildClassNames)
+	}
+	if probeResult.MetaRowLink.Title != longTitle {
+		t.Errorf("meta-row link tooltip = %q, want the untruncated title", probeResult.MetaRowLink.Title)
+	}
+	if probeResult.MetaRowLink.Text != "REQ-1685 Make every referenced request identifier in a drawer body…" {
+		t.Errorf("meta-row link text = %q, want the id and the truncated title", probeResult.MetaRowLink.Text)
+	}
+
+	wantGlossary := []ticketGlossaryRowProbe{
+		{TermTag: "dt", Identifier: "REQ-1108", DetailKind: "req", Title: "Short one", Status: "pending"},
+		{TermTag: "dt", Identifier: "REQ-1679", DetailKind: "req", Title: exactlySixtyTitle, Status: "completed"},
+		{TermTag: "dt", Identifier: "UR-074", DetailKind: "ur", Title: "Ticket ids should carry their titles", Status: "user request"},
+	}
+	if !reflect.DeepEqual(probeResult.Glossary, wantGlossary) {
+		t.Errorf("glossary = %#v, want one line per resolved id in first-mention order %#v", probeResult.Glossary, wantGlossary)
+	}
+	if probeResult.GlossaryHidden {
+		t.Error("the glossary stayed hidden with entries to show")
+	}
+	if !probeResult.EmptyGlossaryHidden || probeResult.EmptyGlossaryChildCount != 0 {
+		t.Errorf("a body that cited nothing left a glossary: hidden=%v children=%d",
+			probeResult.EmptyGlossaryHidden, probeResult.EmptyGlossaryChildCount)
+	}
+}
+
+// mustMarshalJSONString renders a Go string as a JavaScript string literal for
+// splicing into a probe, so a fixture title carrying quotes or a non-ASCII
+// character cannot break the probe's syntax.
+func mustMarshalJSONString(t *testing.T, plainText string) string {
+	t.Helper()
+	encoded, encodeError := json.Marshal(plainText)
+	if encodeError != nil {
+		t.Fatalf("encode probe string %q: %v", plainText, encodeError)
+	}
+	return string(encoded)
+}
+
 // The Copy payload must be the ticket file exactly as it exists on disk —
 // frontmatter fence included — so a paste can be saved straight back as a valid
 // REQ or UR file. Parsed from real files rather than hand-built structs, because

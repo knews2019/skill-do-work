@@ -275,3 +275,78 @@
     var request = requestsById[requestId];
     return request && request.status ? request.status : "not in tree";
   }
+
+  // ---- ticket mention resolution ------------------------------------------
+  // Turning a REQ/UR id written in prose into the board record it names, and
+  // describing that record. Shared rather than local to the drawer because the
+  // clipboard surface resolves the same mentions, and two copies would drift.
+
+  // A body mention like "REQ-031" may name a compound card id ("UR-002-REQ-031").
+  // Index each card by its REQ segment so the short form still resolves; an
+  // ambiguous segment (two cards sharing it) maps to null rather than guessing.
+  function buildRequestIdByReqSegment() {
+    var segmentIndex = {};
+    Object.keys(requestsById).forEach(function (fullRequestId) {
+      var segmentMatch = /REQ-\d+[a-z]?/i.exec(fullRequestId);
+      if (!segmentMatch || segmentMatch[0] === fullRequestId) {
+        return;
+      }
+      var segmentKey = segmentMatch[0].toUpperCase();
+      segmentIndex[segmentKey] = Object.prototype.hasOwnProperty.call(segmentIndex, segmentKey)
+        ? null // ambiguous — never guess
+        : fullRequestId;
+    });
+    return segmentIndex;
+  }
+
+  var requestIdByReqSegment = buildRequestIdByReqSegment();
+
+  function resolveTicketMention(mentionText) {
+    if (Object.prototype.hasOwnProperty.call(requestsById, mentionText)) {
+      return { kind: "req", id: mentionText };
+    }
+    if (Object.prototype.hasOwnProperty.call(userRequestsById, mentionText)) {
+      return { kind: "ur", id: mentionText };
+    }
+    var segmentTargetId = requestIdByReqSegment[mentionText.toUpperCase()];
+    if (segmentTargetId) {
+      return { kind: "req", id: segmentTargetId };
+    }
+    return null;
+  }
+
+  // An ambiguous segment is not a dead reference: the board holds records that
+  // match and refuses to pick one. Callers that flag unresolved ids as broken
+  // must leave these alone, or the never-guess rule turns into a false alarm.
+  function isAmbiguousTicketMention(mentionText) {
+    var segmentKey = mentionText.toUpperCase();
+    return (
+      Object.prototype.hasOwnProperty.call(requestIdByReqSegment, segmentKey) &&
+      requestIdByReqSegment[segmentKey] === null
+    );
+  }
+
+  function ticketTitleFor(detailKind, detailId) {
+    var ticketRecord = detailKind === "ur" ? userRequestsById[detailId] : requestsById[detailId];
+    return (ticketRecord && ticketRecord.title) || "";
+  }
+
+  // Inline titles are cut here because a long one expanded mid-sentence swamps
+  // the prose it sits in. Nothing is lost: the untruncated title rides in the
+  // link's tooltip and in the drawer glossary.
+  var inlineTicketTitleMaxLength = 60;
+
+  function shortTicketTitle(fullTitle) {
+    var trimmedTitle = (fullTitle || "").trim();
+    if (trimmedTitle.length <= inlineTicketTitleMaxLength) {
+      return trimmedTitle;
+    }
+    var cutTitle = trimmedTitle.slice(0, inlineTicketTitleMaxLength);
+    var lastSpaceIndex = cutTitle.lastIndexOf(" ");
+    if (lastSpaceIndex > 0) {
+      // Cut on a word boundary; a title with no space in its first 60
+      // characters is one long token, so the hard cut stands.
+      cutTitle = cutTitle.slice(0, lastSpaceIndex);
+    }
+    return cutTitle.replace(/[\s,;:.\-]+$/, "") + "…";
+  }
