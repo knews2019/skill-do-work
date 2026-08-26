@@ -790,7 +790,7 @@ for retired_target_predicate in (
 # conversion this rejects: it would destroy the baseline every later delta is computed from.
 require(
     architecture_report,
-    r"architecture-report_yyyymmdd\.md",
+    r"<project-root>/docs/architecture-report_<yyyymmdd>\.md",
     "architecture-report must publish the dated filename",
 )
 require(

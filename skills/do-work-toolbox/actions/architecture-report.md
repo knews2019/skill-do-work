@@ -1,6 +1,6 @@
 # Architecture Report Action
 
-> **Part of the do-work-toolbox skill.** Invoked when the user asks for an architecture report, an architecture overview, or a map of how this repository is put together. Writes one new dated, immutable markdown report — `docs/architecture-report_yyyymmdd.md` — with Mermaid diagrams and a first-class delta against the previous report. It belongs in toolbox because it completes the toolbox's repository-comprehension family: `actions/prime.md` indexes one directory for a builder, `actions/inspect.md` explains one uncommitted change, and neither describes the repository as a whole.
+> **Part of the do-work-toolbox skill.** Invoked when the user asks for an architecture report, an architecture overview, or a map of how this repository is put together. Writes one new dated, immutable markdown report — `<project-root>/docs/architecture-report_<yyyymmdd>.md` — with Mermaid diagrams and a first-class delta against the previous report. It belongs in toolbox because it completes the toolbox's repository-comprehension family: `actions/prime.md` indexes one directory for a builder, `actions/inspect.md` explains one uncommitted change, and neither describes the repository as a whole.
 
 The report is repo-wide and describes the current architecture. It is not a review: bugs, tech debt, security findings, and missing tests belong to `actions/maintainability-audit.md` and `actions/quick-wins.md`, which own bands, ratchets, and sweep keys. An architecture doc that embeds point-in-time concerns goes stale the day they are fixed.
 
@@ -127,7 +127,7 @@ Print at most eight lines, verdict first:
 
 ## Output Format
 
-One new file at `docs/architecture-report_yyyymmdd.md` (`_2`, `_3`, … on a same-day re-run). Nothing else is created and nothing existing is modified.
+One new file at `<project-root>/docs/architecture-report_<yyyymmdd>.md` (`_2`, `_3`, … on a same-day re-run). Nothing else is created and nothing existing is modified.
 
 ## Rules
 
@@ -151,7 +151,7 @@ One new file at `docs/architecture-report_yyyymmdd.md` (`_2`, `_3`, … on a sam
 - Two consecutive reports whose `diff` touches sections nothing in `git log` explains.
 - A §Δ table with rows whose `cause` column is empty across the board — drift nobody can trace usually means the section was re-authored, not re-verified.
 - A claim labeled `VERIFIED` with no anchor, or an anchor that no longer resolves.
-- A `docs/architecture-report_*.md` file that changed in `git status` — this action only ever adds one.
+- A `<project-root>/docs/architecture-report_<yyyymmdd>.md` file that changed in `git status` — this action only ever adds one.
 
 ## Verification Checklist
 

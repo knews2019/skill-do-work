@@ -1010,13 +1010,8 @@ for source in sorted(skill_root.rglob("*.md")):
             reference = match.group("path").rstrip(".,:;)")
             if reference in {"docs/prime-bar.md", "docs/prime-foo.md"}:
                 continue
-            # A bare `docs/...` token collides: every package has its own `docs/`, but an
-            # action that writes into the CONSUMING project names that project's `docs/`,
-            # which cannot resolve inside the package. These are the consumer-owned
-            # spellings — illustrative of that condition, not a closed set.
             if reference.startswith(
                 (
-                    "docs/architecture-report_",
                     "docs/design/",
                     "docs/handoffs/",
                     "docs/lessons-learned/",
