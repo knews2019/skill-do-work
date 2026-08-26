@@ -1164,8 +1164,11 @@ body.is-resizing-detail {
   content: "· ";
 }
 
-/* Ticking stopwatch ("4m 07s") on an actively claimed ticket — tabular digits
-   so the seconds tick in place instead of jittering the line width. */
+/* Elapsed-span reading ("4m 07s") — tabular digits so the digits sit in place
+   instead of jittering the line width. Two kinds of node wear this class: the
+   ticking stopwatch on an actively claimed ticket, and the FINISHED
+   claim-to-completion span on a done card, which carries no data-instant-ms and
+   is therefore never rewritten by the ticker. */
 .elapsed-duration {
   color: var(--ink-faint);
   opacity: 0.85;

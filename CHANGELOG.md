@@ -2,6 +2,24 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.238.0 — Ticket Mentions Carry Their Titles (2026-08-26)
+
+A REQ body that said `Read REQ-1679/REQ-1108 lessons` told you nothing about what those requests were. Now every id the drawer shows carries its title, and a dead reference says so instead of hiding.
+
+- The first mention of a REQ or UR id in a drawer body expands to the id plus its title, cut on a word boundary at 60 characters with the full title in the tooltip; later mentions stay bare so dense prose does not turn into a wall of repeated titles.
+- A glossary under the body lists every id that body referenced, once each, with the untruncated title and current status — so a body dense with ids can be read once and looked up afterwards.
+- `Depends on`, `Blocked by`, `Unblocks`, `Overlapping write sets`, `User request` and the UR drawer's `REQ ids` row always carry titles, one id per line.
+- An id no record answers to renders in the blocked accent with a not-found tooltip, so a typo or a reference to never-captured work is visible instead of silent. A fenced code block is exempt: it prints templates, worked examples and captured transcripts, which point at nothing. An ambiguous id is left alone — the board knows matching records and refuses to guess, and ambiguous is not missing.
+
+## 0.237.0 — Done Cards Show How Long the Work Took (2026-08-26)
+
+The board's Recently Done cards said when work finished but never how long it took. Now they say both.
+
+- A done card reads `done Aug 25, 08:47 UTC · 1d ago · took 9m 30s` — the span from when the builder claimed the REQ to when it landed.
+- A span past the board's four-hour read-time ceiling is marked `likely paused`, so an overnight session is never read as four hours of work; a reversed pair of stamps says `reversed stamps` instead of a number.
+- The span is measured from the frontmatter stamps only, never the git-dated completion fallback, so a card can never state a duration the Durations view leaves out.
+- The span and its verdict are decided once in Go and shipped ready to draw, so the card and the Durations chart read one rule rather than two copies of it.
+
 ## 0.236.63 — TDD Evidence Requires a Harness Test (2026-08-25)
 
 The TDD gate now names the evidence boundary that capture and builders must share.

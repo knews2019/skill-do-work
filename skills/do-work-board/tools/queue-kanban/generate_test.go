@@ -8483,3 +8483,327 @@ process.stdout.write(JSON.stringify({
 			"say so: %q", rendered.DrainedUnfiltered.Forecast)
 	}
 }
+
+// ---- the done card's implementation span -----------------------------------
+
+// implementationSpanPausedFixtureSpan is the over-ceiling case from the REQ's
+// Red-Green Proof (an overnight pause). The helper below asserts it still
+// exceeds the read-time ceiling, so moving the ceiling cannot quietly turn this
+// fixture into an ordinary span that witnesses nothing.
+const implementationSpanPausedFixtureSpan = 18 * time.Hour
+
+// implementationSpanFixtureCommitHash is a plausible hash for the git-dated
+// completion case. The stub lookup below is what dates it — no git runs.
+const implementationSpanFixtureCommitHash = "0f1e2d3c4b5a69788796a5b4c3d2e1f009182736"
+
+// spanFixtureFrontmatter writes one archived REQ. Stamps are omitted rather than
+// written empty when blank, because an empty frontmatter value and an absent key
+// are different inputs to the parser.
+func spanFixtureFrontmatter(requestId string, title string, status string, claimedAt string, completedAt string, extraLines ...string) string {
+	frontmatter := "---\nid: " + requestId + "\ntitle: " + title + "\nstatus: " + status + "\nuser_request: UR-900\n"
+	if claimedAt != "" {
+		frontmatter += "claimed_at: " + claimedAt + "\n"
+	}
+	if completedAt != "" {
+		frontmatter += "completed_at: " + completedAt + "\n"
+	}
+	for _, extraLine := range extraLines {
+		frontmatter += extraLine + "\n"
+	}
+	return frontmatter + "---\n\n# " + title + "\n"
+}
+
+// buildImplementationSpanFixturePayload projects the six done-card span cases the
+// REQ's Red-Green Proof names through the PRODUCTION pipeline — literal
+// frontmatter, buildBoard, buildGeneratedBoardData — and returns the per-request
+// payload. The payload assertions and the rendered-card probe both read this, so
+// neither holds a hand-written copy of the payload's field names.
+func buildImplementationSpanFixturePayload(t *testing.T) map[string]generatedRequest {
+	t.Helper()
+	if implementationSpanPausedFixtureSpan <= analysisOutlierCeiling {
+		t.Fatalf("the paused fixture spans %v, which the read-time ceiling (%v) no longer excludes — that case would witness nothing",
+			implementationSpanPausedFixtureSpan, analysisOutlierCeiling)
+	}
+	claimInstant := time.Date(2026, 8, 24, 10, 5, 0, 0, time.UTC)
+	ordinaryCompletion := time.Date(2026, 8, 24, 12, 45, 0, 0, time.UTC)
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"do-work/archive/REQ-901-ordinary-span.md", spanFixtureFrontmatter(
+			"REQ-901", "ordinary span", "completed",
+			claimInstant.Format(time.RFC3339), ordinaryCompletion.Format(time.RFC3339))},
+		{"do-work/archive/REQ-902-paused-span.md", spanFixtureFrontmatter(
+			"REQ-902", "overnight span", "completed",
+			claimInstant.Format(time.RFC3339), claimInstant.Add(implementationSpanPausedFixtureSpan).Format(time.RFC3339))},
+		{"do-work/archive/REQ-903-reversed-span.md", spanFixtureFrontmatter(
+			"REQ-903", "reversed span", "completed",
+			ordinaryCompletion.Format(time.RFC3339), claimInstant.Format(time.RFC3339))},
+		{"do-work/archive/REQ-904-no-claim-stamp.md", spanFixtureFrontmatter(
+			"REQ-904", "no claim stamp", "completed",
+			"", ordinaryCompletion.Format(time.RFC3339))},
+		{"do-work/archive/REQ-905-cancelled.md", spanFixtureFrontmatter(
+			"REQ-905", "cancelled with both stamps", "cancelled",
+			claimInstant.Format(time.RFC3339), ordinaryCompletion.Format(time.RFC3339))},
+		// D-01's lock-in: this card's rendered completion instant comes from the
+		// commit's git date, so the card HAS a done line but must state no span —
+		// a commit delta is not an implementation span.
+		{"do-work/archive/REQ-906-git-dated-completion.md", spanFixtureFrontmatter(
+			"REQ-906", "git-dated completion", "completed",
+			claimInstant.Format(time.RFC3339), "",
+			"commit: "+implementationSpanFixtureCommitHash)},
+		// The sub-hour case. It is the one that separates the card's stopwatch
+		// vocabulary from the Durations table's chart vocabulary: 34 minutes reads
+		// "34m 00s" here and "34.0 min" there.
+		{"do-work/archive/REQ-907-sub-hour-span.md", spanFixtureFrontmatter(
+			"REQ-907", "sub-hour span", "completed-with-issues",
+			claimInstant.Format(time.RFC3339), claimInstant.Add(34*time.Minute).Format(time.RFC3339))},
+		// The zero boundary. A REQ claimed and completed at the same instant has a
+		// real span of zero, which is NOT the same state as an unmeasured one — the
+		// distinction hasImplementationSpan exists to carry (D-06). It is the case an
+		// `omitempty` float silently drops, leaving the client to multiply undefined
+		// and draw "took NaNs".
+		{"do-work/archive/REQ-908-zero-span.md", spanFixtureFrontmatter(
+			"REQ-908", "claimed and completed at the same instant", "completed",
+			claimInstant.Format(time.RFC3339), claimInstant.Format(time.RFC3339))},
+	})
+	gitDateLookupStub := func(_ string, commitHash string) (time.Time, bool) {
+		if commitHash == implementationSpanFixtureCommitHash {
+			return ordinaryCompletion, true
+		}
+		return time.Time{}, false
+	}
+	moment := time.Date(2026, 8, 26, 9, 0, 0, 0, time.UTC)
+	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, gitDateLookupStub)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	boardData, projectError := buildGeneratedBoardData(board)
+	if projectError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", projectError)
+	}
+	return boardData.Requests
+}
+
+// The span and its verdict are decided in Go and shipped in the per-request
+// payload (D-02), so the client never restates the read-time ceiling. This pins
+// what reaches the client for each case the REQ names.
+func TestGeneratedRequestCarriesTheDoneCardImplementationSpan(t *testing.T) {
+	requestsById := buildImplementationSpanFixturePayload(t)
+
+	spanExpectations := []struct {
+		requestId   string
+		hasSpan     bool
+		wantMinutes float64
+		wantReason  string
+		requirement string
+	}{
+		{"REQ-901", true, 160, "", "both stamps parse and the span is inside the ceiling"},
+		{"REQ-902", true, implementationSpanPausedFixtureSpan.Minutes(), "paused", "an over-ceiling span ships the verdict, never the ceiling"},
+		{"REQ-903", true, -160, "reversed", "a reversed span ships raw and signed with the reversed verdict"},
+		{"REQ-904", false, 0, "", "no claimed_at means no measurable span"},
+		{"REQ-905", false, 0, "", "cancelled is terminal but not completed — the request was scoped to completed work"},
+		{"REQ-906", false, 0, "", "a git-dated completion instant is not an implementation span (D-01)"},
+		{"REQ-907", true, 34, "", "completed-with-issues is terminal success and states its span"},
+		{"REQ-908", true, 0, "", "a zero-minute span is measured, not unmeasured — the flag says present, the value says zero"},
+	}
+	if len(requestsById) != len(spanExpectations) {
+		t.Fatalf("payload holds %d requests, want %d — a fixture that never parsed asserts nothing", len(requestsById), len(spanExpectations))
+	}
+
+	for _, expectation := range spanExpectations {
+		payload, present := requestsById[expectation.requestId]
+		if !present {
+			t.Fatalf("%s never reached the payload", expectation.requestId)
+		}
+		if payload.HasImplementationSpan != expectation.hasSpan {
+			t.Errorf("%s hasImplementationSpan = %v, want %v (%s)",
+				expectation.requestId, payload.HasImplementationSpan, expectation.hasSpan, expectation.requirement)
+		}
+		if payload.ImplementationSpanMinutes != expectation.wantMinutes {
+			t.Errorf("%s implementationSpanMinutes = %v, want %v (%s)",
+				expectation.requestId, payload.ImplementationSpanMinutes, expectation.wantMinutes, expectation.requirement)
+		}
+		if payload.ImplementationSpanReason != expectation.wantReason {
+			t.Errorf("%s implementationSpanReason = %q, want %q (%s)",
+				expectation.requestId, payload.ImplementationSpanReason, expectation.wantReason, expectation.requirement)
+		}
+	}
+
+	// The D-01 case is only about the SPAN: the card still renders a completion
+	// instant, and it came from git. Without this the case would pass for a
+	// fixture that simply failed to produce a done line at all.
+	gitDatedPayload := requestsById["REQ-906"]
+	if gitDatedPayload.CompletionTime == "" {
+		t.Fatalf("REQ-906 resolved no completion instant, so it cannot witness the git-dated case")
+	}
+	if gitDatedPayload.CompletionTimeSource != string(CompletionFromGitLog) {
+		t.Fatalf("REQ-906 completionTimeSource = %q, want %q", gitDatedPayload.CompletionTimeSource, CompletionFromGitLog)
+	}
+
+	// The zero span has to survive MARSHALLING, not just the struct: an omitempty
+	// float drops a genuine 0 from the wire while hasImplementationSpan still ships
+	// true, and the client then multiplies undefined into NaN. Asserting the struct
+	// field alone would pass with that tag restored, so this reads the JSON.
+	zeroSpanJson, marshalError := json.Marshal(requestsById["REQ-908"])
+	if marshalError != nil {
+		t.Fatalf("marshal REQ-908: %v", marshalError)
+	}
+	if !strings.Contains(string(zeroSpanJson), `"implementationSpanMinutes":0`) {
+		t.Errorf("REQ-908 marshalled without its zero span: %s\n"+
+			"a present-but-zero span must reach the client as 0, or the card renders \"took NaNs\"", zeroSpanJson)
+	}
+}
+
+// The rendered done line, built by the REAL makeRequestCard out of the generated
+// page and fed the REAL payload. The point of the whole REQ is what the card
+// SAYS, so a stubbed card would assert nothing: the instant node is the one
+// stub, because its text has its own coverage and this probe is about the span
+// fragment and where it lands.
+func TestJavaScriptBehaviorDoneCardStatesItsImplementationSpan(t *testing.T) {
+	requestsById := buildImplementationSpanFixturePayload(t)
+	payloadJson, encodeError := json.Marshal(requestsById)
+	if encodeError != nil {
+		t.Fatalf("encode fixture payload: %v", encodeError)
+	}
+
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function truncateBadgeText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeBadge("),
+		sliceBalancedBlockAfter(t, indexHtml, "function futureStampTooltipText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeImplementationSpanNode("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeRequestCard("),
+		sliceBalancedBlockAfter(t, indexHtml, "function formatElapsedDuration("),
+	}
+	javascriptProbe := `
+var requestsById = ` + string(payloadJson) + `;
+function makeNode(tagName) {
+  var node = {
+    tagName: tagName,
+    className: "",
+    textContent: "",
+    title: "",
+    childNodes: [],
+    dataset: {},
+    setAttribute: function () {},
+    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; }
+  };
+  node.classList = { add: function (extraClass) { node.className += (node.className ? " " : "") + extraClass; } };
+  return node;
+}
+var document = {
+  createElement: function (tagName) { return makeNode(tagName); },
+  createTextNode: function (text) { return { nodeType: "text", text: text, className: "", childNodes: [] }; }
+};
+var futureStampCauseText = "";
+// formatElapsedDuration's clock-skew branch must stay UNREACHABLE from a done
+// card: the Go verdict is branched on before the formatter runs, so a reversed
+// span never reaches it. These two values make that a check rather than a claim.
+// The allowance is deliberately hostile — zero, the most permissive setting —
+// so any negative span that did reach the formatter would certainly take the
+// branch, and the sentinel below would surface in the rendered text.
+var futureInstantSkewAllowanceMs = 0;
+var clockSkewMarkerText = "SKEW-BRANCH-REACHED";
+function formatShortInstantWithRelative(isoText) { return isoText; }
+function activeDependentIds() { return []; }
+function isTerminalResolvedStatus() { return true; }
+function describeRequestStatus(requestId) { return requestId; }
+function stateTimerSpecFor() { return null; }
+function makeInstantWithStopwatchNode() { return null; }
+function makeInstantWithRelativeNode(isoText) { return document.createTextNode(isoText); }
+` + strings.Join(functionBlocks, "\n") + `
+function nodeText(node) {
+  if (node.nodeType === "text") { return node.text; }
+  return (node.textContent || "") + node.childNodes.map(nodeText).join("");
+}
+var renderedCards = {};
+Object.keys(requestsById).forEach(function (requestId) {
+  var card = makeRequestCard(requestId, { showCompleted: true });
+  var doneLines = card.childNodes.filter(function (childNode) { return childNode.className === "req-card-completed"; });
+  var spanNodes = doneLines.length === 1
+    ? doneLines[0].childNodes.filter(function (childNode) { return childNode.className === "elapsed-duration"; })
+    : [];
+  renderedCards[requestId] = {
+    doneLineCount: doneLines.length,
+    doneLineText: doneLines.length === 1 ? nodeText(doneLines[0]) : "",
+    spanNodeCount: spanNodes.length,
+    spanText: spanNodes.length === 1 ? nodeText(spanNodes[0]) : "",
+    // A FINISHED span must never tick. refreshRelativeTimeNodes selects on
+    // [data-instant-ms], so carrying that key would have the 1s ticker rewrite
+    // every done card's span as elapsed-since-epoch. This is the single property
+    // that justified not reusing makeElapsedDurationNode, so it is asserted
+    // rather than left to a one-off browser observation.
+    spanTickerKeys: spanNodes.length === 1
+      ? Object.keys(spanNodes[0].dataset || {}).sort()
+      : []
+  };
+});
+process.stdout.write(JSON.stringify(renderedCards));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "done-card implementation span", javascriptProbe)
+	var renderedCards map[string]struct {
+		DoneLineCount  int      `json:"doneLineCount"`
+		DoneLineText   string   `json:"doneLineText"`
+		SpanNodeCount  int      `json:"spanNodeCount"`
+		SpanText       string   `json:"spanText"`
+		SpanTickerKeys []string `json:"spanTickerKeys"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &renderedCards); decodeError != nil {
+		t.Fatalf("decode rendered done lines: %v (output %q)", decodeError, probeOutput)
+	}
+
+	renderExpectations := []struct {
+		requestId      string
+		wantVerb       string
+		wantInstantIso string
+		wantSpanText   string
+		requirement    string
+	}{
+		{"REQ-901", "done", "2026-08-24T12:45:00Z", "took 2h 40m", "an ordinary span reads in the card's own stopwatch vocabulary"},
+		{"REQ-902", "done", "2026-08-25T04:05:00Z", "took 18h 00m likely paused", "an over-ceiling span is marked so an overnight pause is not read as work"},
+		{"REQ-903", "done", "2026-08-24T10:05:00Z", "reversed stamps", "a reversed span refuses to state a number"},
+		{"REQ-904", "done", "2026-08-24T12:45:00Z", "", "no parseable claimed_at leaves the done line exactly as it was"},
+		{"REQ-905", "cancelled", "2026-08-24T12:45:00Z", "", "a cancelled card states no duration"},
+		{"REQ-906", "done", "2026-08-24T12:45:00Z", "", "a git-dated completion instant states no duration (D-01)"},
+		{"REQ-907", "done", "2026-08-24T10:39:00Z", "took 34m 00s", "a sub-hour span keeps seconds — the chart's \"34.0 min\" is a different vocabulary"},
+		{"REQ-908", "done", "2026-08-24T10:05:00Z", "took 0s", "a zero-minute span states zero, never NaN"},
+	}
+	if len(renderedCards) != len(renderExpectations) {
+		t.Fatalf("probe rendered %d cards, want %d", len(renderedCards), len(renderExpectations))
+	}
+
+	sawSpanReading := false
+	for _, expectation := range renderExpectations {
+		rendered := renderedCards[expectation.requestId]
+		if rendered.DoneLineCount != 1 {
+			t.Fatalf("%s rendered %d done lines; the card must carry exactly one for this probe to mean anything",
+				expectation.requestId, rendered.DoneLineCount)
+		}
+		if rendered.SpanNodeCount > 1 {
+			t.Errorf("%s rendered %d span nodes on one done line", expectation.requestId, rendered.SpanNodeCount)
+		}
+		if rendered.SpanText != expectation.wantSpanText {
+			t.Errorf("%s done line said %q about its span, want %q (%s)",
+				expectation.requestId, rendered.SpanText, expectation.wantSpanText, expectation.requirement)
+		}
+		// Placement: the span rides the done line, after the completion instant.
+		wantLineText := expectation.wantVerb + " " + expectation.wantInstantIso + expectation.wantSpanText
+		if rendered.DoneLineText != wantLineText {
+			t.Errorf("%s done line text = %q, want %q (%s)",
+				expectation.requestId, rendered.DoneLineText, wantLineText, expectation.requirement)
+		}
+		if len(rendered.SpanTickerKeys) != 0 {
+			t.Errorf("%s span node carries dataset keys %v; a finished span must carry none — "+
+				"refreshRelativeTimeNodes selects [data-instant-ms] and would rewrite it every second as elapsed-since-epoch",
+				expectation.requestId, rendered.SpanTickerKeys)
+		}
+		if strings.Contains(rendered.SpanText, "SKEW-BRANCH-REACHED") {
+			t.Errorf("%s reached formatElapsedDuration's clock-skew branch; the Go verdict must be branched on first", expectation.requestId)
+		}
+		if expectation.wantSpanText != "" {
+			sawSpanReading = true
+		}
+	}
+	if !sawSpanReading {
+		t.Fatalf("no fixture rendered any span reading, so this probe cannot fail on the span text")
+	}
+}
