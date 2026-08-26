@@ -17,7 +17,7 @@
 ## Stakes
 
 - `do-work-update.sh` — project-local overwrite boundary
-  Req: reject skill roots outside the invoking project, show the reviewed diff, require confirmation, and verify the installed version afterward.
+  Req: reject a skill root outside the invoking project, require `--project-root` to name the Git worktree root, refuse an upstream version that is not newer, delegate the reviewed diff and the single confirmation to the installed full-suite installer (honouring its cancel status as a no-change exit), and verify the installed version afterward.
   Value: users can update without an agent turn while retaining the protection against clobbering a shared install or local customization.
   Risk: weakening any guard can overwrite user work or runtime queue data. The updater requires the project Git root and validates the suite archive with its already-installed manifest validator before delegating that same archive to the installed full-suite installer. The installer reviews modules plus every owned configuration change, snapshots exact managed originals, and restores them on failure — a new managed surface earns a diff section, a backup, a recovery branch, and a post-write byte check in the same commit that adds it. Runtime, KB, application paths, unrelated settings, and any bytes outside a managed marker span must never enter that plan. Dirty module changes are named before the one confirmation; accepting discards them from both index and worktree before installation. `_dev/tests/update-script-behavior.sh` holds current-suite, hostile-manifest, dirty-consent, and forced-recovery behavior.
 

@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.238.1 — Prime Stakes Refresh (2026-08-26)
+
+A `do-work-toolbox prime audit` pass over the suite's own prime files. The audit-metrics tool now carries the value/risk context it was missing, and the updater's stakes say who actually shows you the diff.
+
+- `prime-audit-metrics.md` gains a `## Stakes` section covering churn attribution across renames and copies, and the strictly-greater band edge
+- `prime-do-work-update.md` stakes now credit the full-suite installer with the reviewed diff and the single confirmation, and name the Git-worktree-root and not-newer-version guards the updater itself enforces
+
 ## 0.238.0 — Repo-Wide Architecture Report (2026-08-26)
 
 New `do-work-toolbox architecture-report` writes a dated, immutable map of the whole repository — Mermaid diagrams, labelled claims, and a delta table that leads the file. Run it twice and diff the two reports to see exactly what moved in between.
