@@ -9,6 +9,10 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf16"
+
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/text"
 )
 
 // citationFixtureRequestIds and citationFixtureUserRequestIds are the board every
@@ -24,6 +28,147 @@ var citationFixtureUserRequestIds = []string{"UR-003", "UR-074", "UR-075"}
 
 func newCitationFixtureResolver() *ticketMentionResolver {
 	return newTicketMentionResolver(citationFixtureRequestIds, citationFixtureUserRequestIds)
+}
+
+// Search must see references even where Copy deliberately leaves authored text
+// alone. Unique targets per surface make a dropped surface fail independently.
+func citationSearchFixtureBoard() *Board {
+	board := &Board{}
+	for _, id := range citationFixtureRequestIds {
+		board.AllRequests = append(board.AllRequests, &RequestTicket{RequestId: id, Title: "Target", Status: "pending"})
+	}
+	board.AllRequests = append(board.AllRequests, &RequestTicket{
+		RequestId: "REQ-378", Title: "Find referenced work", Status: "pending", Domain: "frontend", UserRequestId: "UR-075",
+		FrontmatterMarkdown: "---\nid: REQ-378\ndepends_on: [REQ-500, REQ-500]\nrelated:\n  - UR-074\naddendum_to: UR-001-REQ-042\n---\n",
+		BodyMarkdown:        "Emoji 😀 cites REQ-1679 twice: REQ-1679.\n\n`REQ-1108`\n\n```\nREQ-1685\n```\n\n    REQ-501\n\n[REQ-077](https://example.test/)\n\nUnknown REQ-999 and ambiguous REQ-042.\n\nhttps://example.test/REQ-500 and do-work/REQ-500.md are paths.\n",
+	})
+	for _, id := range citationFixtureUserRequestIds {
+		board.UserRequests = append(board.UserRequests, &UserRequestTicket{UserRequestId: id, Title: "Parent", InputFilePresent: true})
+	}
+	board.UserRequests[2].BodyMarkdown = "[REQ-1679](https://example.test/) and REQ-077.\n"
+	board.UserRequests[2].FrontmatterMarkdown = "---\nid: UR-075\nrelated: REQ-501\n---\n"
+	return board
+}
+
+func TestGeneratedCitationIndexIncludesResolvedBodyAndFrontmatterReferences(t *testing.T) {
+	data, err := buildGeneratedBoardData(citationSearchFixtureBoard())
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wire struct {
+		Requests map[string]struct {
+			CitedTicketIds []string `json:"citedTicketIds"`
+		} `json:"requests"`
+		UserRequests map[string]struct {
+			CitedTicketIds []string `json:"citedTicketIds"`
+		} `json:"userRequests"`
+	}
+	if err := json.Unmarshal(payload, &wire); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"REQ-1108", "REQ-1679", "REQ-1685", "REQ-500", "REQ-501", "UR-001-REQ-042", "UR-003-REQ-077", "UR-074"}
+	if got := wire.Requests["REQ-378"].CitedTicketIds; !reflect.DeepEqual(got, want) {
+		t.Errorf("REQ citedTicketIds = %v, want %v", got, want)
+	}
+	if got := wire.UserRequests["UR-075"].CitedTicketIds; !reflect.DeepEqual(got, []string{"REQ-1679", "REQ-501", "UR-003-REQ-077"}) {
+		t.Errorf("UR citedTicketIds = %v", got)
+	}
+	if got := wire.Requests["REQ-1679"].CitedTicketIds; got == nil || len(got) != 0 {
+		t.Errorf("unciting records need an eager empty array, got %#v", got)
+	}
+	// Citation search follows the model's legacy dependency alias and precedence.
+	for _, frontmatter := range []string{
+		"dependencies: [REQ-500]\n",
+		"depends_on: REQ-500\ndependencies: [REQ-501]\n",
+	} {
+		analysis := analyzeDocumentTicketMentions("---\n"+frontmatter+"---\n", newCitationFixtureResolver())
+		if !reflect.DeepEqual(analysis.CitedTicketIds, []string{"REQ-500"}) {
+			t.Errorf("dependency citation semantics diverged for %q: %v", frontmatter, analysis.CitedTicketIds)
+		}
+	}
+}
+
+func TestJavaScriptBehaviorCitationIndexAgreesWithGo(t *testing.T) {
+	board := citationSearchFixtureBoard()
+	// An exact short record wins over a compound alias, even with a suffix and
+	// case-folded search input. The host cites only the compound, not the short.
+	board.AllRequests = append(board.AllRequests,
+		&RequestTicket{RequestId: "REQ-077b"}, &RequestTicket{RequestId: "UR-003-REQ-077b"})
+	for _, ticket := range board.AllRequests {
+		if ticket.RequestId == "REQ-378" {
+			ticket.BodyMarkdown += "\nUR-003-REQ-077b\n"
+		}
+	}
+	data, err := buildGeneratedBoardData(board)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	filterSource, err := embeddedWebAssets.ReadFile("web/board-filters.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	coreSource, err := embeddedWebAssets.ReadFile("web/board-core.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	probe := "var boardData = " + string(payload) + `;
+var requestsById = boardData.requests, userRequestsById = boardData.userRequests;
+var filterState = {searchText: "", domain: "", status: ""};
+` + sliceBalancedBlockAfter(t, string(coreSource), "function buildRequestIdByReqSegment(") + "\n" +
+		sliceBalancedBlockAfter(t, string(coreSource), "function resolveTicketMention(") + `
+var requestIdByReqSegment = buildRequestIdByReqSegment();
+` + string(filterSource) + `
+const assert = require("assert");
+const request = requestsById["REQ-378"];
+assert.strictEqual(searchMatchesRequest(request, "REQ-378", "req-1679"), true, "a body-only citation must match at first keystroke");
+// Assert the whole wire domain in both directions: every emitted citation is
+// searchable and every known-but-uncited id is rejected on either record kind.
+for (const [record, id, matches] of [[request, "REQ-378", searchMatchesRequest], [userRequestsById["UR-075"], "UR-075", searchMatchesUserRequest]]) {
+  for (const targetId of Object.keys(requestsById).concat(Object.keys(userRequestsById))) {
+    const expected = id === targetId || record.userRequestId === targetId || record.citedTicketIds.includes(targetId);
+    assert.strictEqual(matches(record, id, targetId.toLowerCase()), expected, id + " → " + targetId);
+  }
+  assert.strictEqual(matches(record, id, "req-077"), true, "unique short compound alias");
+  assert.strictEqual(matches(record, id, "req-042"), false, "ambiguous citation is never guessed");
+  assert.strictEqual(matches(record, id, "req-999"), false, "unknown id");
+  assert.strictEqual(matches(record, id, "req-16"), false, "partial citation is not a title search");
+}
+assert.strictEqual(searchMatchesRequest(request, "REQ-378", "referenced"), true);
+assert.strictEqual(searchMatchesRequest(request, "REQ-378", "ur-075"), true);
+assert.strictEqual(searchMatchesRequest(request, "REQ-378", "req-077b"), false, "exact suffix record wins over alias");
+assert.strictEqual(searchMatchesRequest(request, "REQ-378", "ur-003-req-077b"), true, "case-folded canonical suffix");
+assert.strictEqual(searchMatchesRequest(request, "REQ-378", "__proto__"), false, "arbitrary title query cannot inherit a canonical id");
+assert.strictEqual(searchMatchesRequest(request, "REQ-378", "constructor"), false);
+assert.strictEqual(searchMatchesRequest(requestsById["UR-001-REQ-042"], "UR-001-REQ-042", "req-042"), true, "preserve existing own-id substring hits even for ambiguous segments");
+filterState.searchText = "req-1679";
+assert.strictEqual(requestMatchesFilters("REQ-378"), true);
+filterState.domain = "backend";
+assert.strictEqual(requestMatchesFilters("REQ-378"), false);
+filterState.domain = ""; filterState.status = "completed";
+assert.strictEqual(requestMatchesFilters("REQ-378"), false);
+`
+	runJavaScriptBehaviorProbe(t, "citation index wire agreement", probe)
+}
+
+// The static/live caller tests use this parser decorator to count actual body
+// parses. Each body needs HTML rendering and one raw-source analysis, never a
+// third parse for the search projection.
+type citationCountingParser struct {
+	parser.Parser
+	BodyParses map[string]int
+}
+
+func (countingParser *citationCountingParser) Parse(reader text.Reader, options ...parser.ParseOption) ast.Node {
+	countingParser.BodyParses[string(reader.Source())]++
+	return countingParser.Parser.Parse(reader, options...)
 }
 
 // describeTicketMentions renders an emitted index one line per mention, with the
@@ -818,18 +963,18 @@ func TestCollectDocumentTicketMentionsReadsTheOffsetCursorTwicePerMention(t *tes
 	if readError != nil {
 		t.Fatalf("reading citations.go: %v", readError)
 	}
-	functionStart := strings.Index(string(citationsSource), "func collectDocumentTicketMentions(")
+	functionStart := strings.Index(string(citationsSource), "func analyzeDocumentTicketMentions(")
 	if functionStart < 0 {
-		t.Fatal("collectDocumentTicketMentions not found — the assertion below would be vacuous")
+		t.Fatal("analyzeDocumentTicketMentions not found — the assertion below would be vacuous")
 	}
 	functionEnd := strings.Index(string(citationsSource)[functionStart:], "\n}\n")
 	if functionEnd < 0 {
-		t.Fatal("could not find the end of collectDocumentTicketMentions")
+		t.Fatal("could not find the end of analyzeDocumentTicketMentions")
 	}
 	functionBody := string(citationsSource)[functionStart : functionStart+functionEnd]
 
 	if cursorReadCount := strings.Count(functionBody, "documentOffsets.at("); cursorReadCount != 2 {
-		t.Errorf("collectDocumentTicketMentions reads the offset cursor %d times, want 2 (one for the mention start, one for its end)",
+		t.Errorf("analyzeDocumentTicketMentions reads the offset cursor %d times, want 2 (one for the mention start, one for its end)",
 			cursorReadCount)
 	}
 }

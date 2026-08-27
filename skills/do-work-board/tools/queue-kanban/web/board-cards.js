@@ -130,6 +130,13 @@
     card.appendChild(createElement("h3", "req-card-title", request.title || "untitled"));
 
     var badges = createElement("div", "req-card-badges");
+    if (filterState.searchText && !searchMatchesRequest(request, requestId, filterState.searchText, true)) {
+      var citedTicketId = citationMatchedTicketId(request, filterState.searchText);
+      if (citedTicketId) {
+        badges.appendChild(makeBadge("citation-match", null, "cites " + citedTicketId));
+        card.setAttribute("aria-label", card.getAttribute("aria-label") + "; cites " + citedTicketId);
+      }
+    }
     if (request.domain) {
       var domainBadge = makeBadge("badge-domain", null, request.domain);
       if (request.domainUnrecognized) {
@@ -759,6 +766,12 @@
       }
       head.appendChild(createElement("span", "ur-id", userRequestId));
       head.appendChild(createElement("span", "ur-title", userRequest.title || "(no input.md title)"));
+      if (groupMatchesSearch && !searchMatchesUserRequest(userRequest, userRequestId, filterState.searchText, true)) {
+        var citationBadge = createElement("span", "badge citation-match", "cites");
+        citationBadge.title = "Cites " + citationMatchedTicketId(userRequest, filterState.searchText);
+        citationBadge.setAttribute("aria-label", citationBadge.title);
+        head.appendChild(citationBadge);
+      }
       if (!userRequest.inputFilePresent) {
         head.appendChild(createElement("span", "ur-synthetic", "no input.md"));
       }

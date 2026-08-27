@@ -1,6 +1,6 @@
   // ---- filtering ------------------------------------------------------------
   // Pure client-side: the data island already carries status, domain, UR id,
-  // and titles, so every view filters the same record set with the same rules.
+  // titles and resolved citation ids, so every view filters the same records.
 
   function hasActiveFilters() {
     return (
@@ -17,7 +17,28 @@
     return hasActiveFilters() || (viewState.view === "testing" && filterState.doneWindow !== "");
   }
 
-  function searchMatchesRequest(request, requestId, searchNeedle) {
+  // The producer resolves body/frontmatter mentions once. Here only a whole
+  // canonical id or a unique short compound alias matches that eager set.
+  var ticketIdBySearchText = Object.create(null);
+  Object.keys(requestsById).concat(Object.keys(userRequestsById)).forEach(function (ticketId) {
+    ticketIdBySearchText[ticketId.toLowerCase()] = ticketId;
+  });
+
+  function citationMatchedTicketId(record, searchNeedle) {
+    if (!searchNeedle || !record.citedTicketIds || record.citedTicketIds.length === 0) {
+      return "";
+    }
+    // Preserve exact-record precedence over segment aliases, including suffix
+    // letters, while the filter's input is case-insensitive.
+    var resolvedMention = resolveTicketMention(ticketIdBySearchText[searchNeedle.toLowerCase()] || searchNeedle);
+    var resolvedNeedle = resolvedMention ? resolvedMention.id.toLowerCase() : searchNeedle.toLowerCase();
+    return record.citedTicketIds.find(function (ticketId) {
+      return ticketId.toLowerCase() === resolvedNeedle;
+    }) || "";
+  }
+
+  // fieldsOnly is used by match markers: a title/id/parent hit needs no reason.
+  function searchMatchesRequest(request, requestId, searchNeedle, fieldsOnly) {
     if (requestId.toLowerCase().indexOf(searchNeedle) !== -1) {
       return true;
     }
@@ -27,14 +48,15 @@
     if (request.userRequestId && request.userRequestId.toLowerCase().indexOf(searchNeedle) !== -1) {
       return true;
     }
-    return false;
+    return !fieldsOnly && citationMatchedTicketId(request, searchNeedle) !== "";
   }
 
-  function searchMatchesUserRequest(userRequest, userRequestId, searchNeedle) {
+  function searchMatchesUserRequest(userRequest, userRequestId, searchNeedle, fieldsOnly) {
     if (userRequestId.toLowerCase().indexOf(searchNeedle) !== -1) {
       return true;
     }
-    return Boolean(userRequest.title && userRequest.title.toLowerCase().indexOf(searchNeedle) !== -1);
+    return Boolean(userRequest.title && userRequest.title.toLowerCase().indexOf(searchNeedle) !== -1) ||
+      (!fieldsOnly && citationMatchedTicketId(userRequest, searchNeedle) !== "");
   }
 
   // options.skipSearch: the by-UR lens sets it when the search already matched

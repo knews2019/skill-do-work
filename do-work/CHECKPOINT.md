@@ -1,8 +1,8 @@
 ---
-session_ended: 2026-08-26T19:20:00Z
-last_completed: REQ-379
-queue_state: [4 pending, 0 finished (awaiting archive), 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress]
-reqs_processed_this_session: 2
+session_updated: 2026-08-27T12:26:37Z
+last_completed: REQ-385
+queue_state: [5 pending, 1 pending-answers, 1 in-progress]
+reqs_processed_this_session: 4
 session_depth: deep
 ---
 
@@ -10,53 +10,19 @@ session_depth: deep
 
 ## Completed This Session
 
-- REQ-378 (Route B, review Pass) put titles on every REQ/UR id the board's drawer renders, flagged
-  dead references, and added a per-body glossary.
-- REQ-379 (Route B, review Pass 91%) carried the same into the clipboard: bodies annotated, one
-  referenced-requests appendix, frontmatter fence byte-exact.
-- Five external findings verified and fixed across the two, all mutation-pinned. Released 0.239.0
-  and 0.240.0; merged main at a290cd6, reconciling a second version collision.
+- REQ-380: first prose cross-reference convention; implementation 253b2943, bookkeeping eda1ffdd.
+- REQ-376: readable completion text; implementation 8dfdb24e, bookkeeping bfd559ad.
+- REQ-384: freeform HTML architecture-report bundles; implementation c32e1d53, bookkeeping cc636c2a.
+- REQ-385: underscore ticket boundaries and whole compound consumption; implementation 259b1479, bookkeeping 6887b518.
 
-## In Progress
+## Queue and Coordination
 
-None.
+Serial approved chain remaining: REQ-381 → REQ-386 → REQ-388 → REQ-382 → REQ-387 → REQ-389. Dependency fields remain authoritative.
 
-## Still Queued
+REQ-375 is pending-answers by explicit maintainer decision. Do not implement or reapprove before consent. Its report and clarification records were committed in eda1ffdd: ai-reports/2026-08-27_1428_req-341-timeline-drag-evidence/. REQ-377 was cancelled as already addressed; existing local exclusions remain and no baseline scratch was removed. Clarify task owns no further writes. REQ-376's approval rationale is preserved in its archive.
 
-REQ-378, REQ-379 and REQ-383 are archived: ticket mentions now resolve in Go and the client-side
-Markdown scanner is gone.
+The canonical gate is bash _dev/tests/maintainer-verify.sh. Completed REQs passed it with the default optional browser lane explicitly skipped on this Mac. Separate focused trusted-CDP probes use exact Chrome for Testing 141.0.7390.37 in ignored build/chrome-141/. System Chrome is151. No full optional browser suite pass is claimed: dump-dom attempts stalled; exact141 Timeline engage fails unchanged, focused151 passes. No Timeline implementation was edited.
 
-What is left of the ticket-id program is one chain,
-**REQ-385 → REQ-381 → REQ-386 → REQ-388 → REQ-382 → REQ-387**, and it is encoded in `depends_on`
-rather than described here — `do-work run` reads queue state and never reads this file. Six REQs
-share four files (`citations.go` most of all), so the chain is a serialization order, not a claim
-that each needs the one before it. REQ-380 writes only `capture-reference.md` and stays independent,
-so a fan-out of two remains safe.
-
-`queue-kanban verify` reports any pair that shares a `write_set` entry without an edge between them
-(`ungated-write-set-overlap`), so this ordering does not depend on anyone remembering it.
-
-## Session Notes
-
-- Current release: 0.237.0 on main; this branch bumps again when REQ-378 archives.
-- **A numbering collision was reconciled here.** Two branches worked in parallel and both reserved
-  from the same block: main's PR #168 took UR-074 and REQ-374, then REQ-375–377 for its follow-ups,
-  while this branch had already reserved the same numbers for the ticket-id autocomplete program.
-  This branch renumbered — UR-074→UR-075, UR-075→UR-076, REQ-374–377→REQ-378–381 — because main
-  merged first. Reservation markers moved with them. The lesson is not "renumber carefully": the
-  `.req-reservations` markers are per-checkout, so two checkouts that never fetch each other reserve
-  the same ids by construction, and nothing detects it until the merge.
-- UR-074 stays open in `do-work/user-requests/` — REQ-374 archived to `do-work/archive/` root
-  because its three follow-ups are not terminally resolved.
-- The canonical gate could not run in this container until three tools were installed:
-  ShellCheck 0.11.0 (apt ships 0.9.0, below the floor — fetched the static release),
-  `just`, and the Go 1.26.1 toolchain via `GOTOOLCHAIN`. Both sessions hit this independently, so a
-  future session in a fresh container will hit it again. It passes unpiped, exit 0.
-- The strict browser lane fails at HEAD for a reason that predates both sessions — that is REQ-375.
-  Confirmed again from this branch by stashing the diff and re-running: identical failure, so it is
-  not REQ-378's.
-- A Chromium **is** available in this container at `/opt/pw-browsers/chromium` (Playwright
-  chromium-1194). Passing it as `QUEUE_KANBAN_BROWSER` runs the browser lane for real instead of
-  skipping it — worth doing before believing any rendering claim.
+Unconsumed run evidence: do-work/runs/work-2026-08-27-112431/. Preserve until its evidence is recorded durably and the manifest is marked consumed. Parent owns lifecycle, release and all commits; no push requested.
 
 ## In Progress (interrupted)

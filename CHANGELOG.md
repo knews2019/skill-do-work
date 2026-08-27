@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.244.0 — Find Cards by Cited Ticket IDs (2026-08-27)
+
+The board filter now finds REQs and URs that cite a complete ticket ID in their body or dependency metadata. Small citation markers explain otherwise surprising matches, while one shared analysis supplies search and Copy without duplicate body scans.
+
 ## 0.243.1 — Underscore Ticket Boundaries Without Compound Splits (2026-08-27)
 
 Ticket references surrounded by underscores now resolve consistently in the drawer and copied Markdown. Invalid compound IDs stay untouched instead of being split into a shorter UR reference.

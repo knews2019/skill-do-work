@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -756,6 +757,184 @@ func TestBuildGeneratedBoardMarkdownDataKeepsExactSources(t *testing.T) {
 	if got := markdownData.UserRequests["UR-1"]; got != board.UserRequests[0].BodyMarkdown {
 		t.Fatalf("UR raw Markdown changed: got %q, want %q", got, board.UserRequests[0].BodyMarkdown)
 	}
+}
+
+func TestStaticAndLiveCitationDataShareOneAnalysisAndRefreshTogether(t *testing.T) {
+	requestText := "---\nid: REQ-378\ntitle: Find referenced work\nstatus: pending\nrelated: REQ-1679\n---\n\nEmoji 😀 cites REQ-1679.\n"
+	userRequestText := "---\nid: UR-076\ntitle: Reference search\nrequests: [REQ-378]\n---\n\n[REQ-1679](https://example.test/)\n"
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"do-work/queue/REQ-378-search.md", requestText},
+		{"do-work/queue/REQ-1679-target.md", "---\nid: REQ-1679\ntitle: Target work\nstatus: pending\n---\n\nTarget body.\n"},
+		{"do-work/user-requests/UR-076/input.md", userRequestText},
+	})
+	originalParser := markdownToHtmlRenderer.Parser()
+	countingParser := &citationCountingParser{Parser: originalParser, BodyParses: map[string]int{}}
+	markdownToHtmlRenderer.SetParser(countingParser)
+	t.Cleanup(func() { markdownToHtmlRenderer.SetParser(originalParser) })
+	board, err := buildBoard(repoRoot, time.Now(), defaultRecentWindow, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outputDirectory := t.TempDir()
+	if err := generateStaticSite(outputDirectory, board); err != nil {
+		t.Fatal(err)
+	}
+	assertSingleAnalysis := func() {
+		t.Helper()
+		for _, raw := range []string{requestText, userRequestText} {
+			_, body, _, _ := splitFrontmatter(raw)
+			if got := countingParser.BodyParses[body]; got != 2 {
+				t.Errorf("body parsed %d times, want exactly 2 (HTML + shared raw analysis): %q", got, body)
+			}
+		}
+	}
+	assertSingleAnalysis()
+	payload, err := os.ReadFile(filepath.Join(outputDirectory, boardDataJsFilename))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var staticData generatedBoardData
+	jsonText := strings.TrimSuffix(strings.TrimPrefix(strings.TrimSpace(string(payload)), "window.queueKanbanBoardData = "), ";")
+	if err := json.Unmarshal([]byte(jsonText), &staticData); err != nil {
+		t.Fatal(err)
+	}
+	for id, record := range staticData.Requests {
+		want := []string{}
+		if id == "REQ-378" {
+			want = []string{"REQ-1679"}
+		}
+		if !reflect.DeepEqual(record.CitedTicketIds, want) {
+			t.Errorf("static %s citations = %v, want %v", id, record.CitedTicketIds, want)
+		}
+	}
+	if !reflect.DeepEqual(staticData.UserRequests["UR-076"].CitedTicketIds, []string{"REQ-1679"}) {
+		t.Fatal("static UR lost authored-link citation")
+	}
+	countingParser.BodyParses = map[string]int{}
+	server := httptest.NewServer(newLiveBoardServer(repoRoot, defaultRecentWindow))
+	defer server.Close()
+	liveData := fetchServedBoardData(t, server.URL)
+	markdownData := fetchServedBoardMarkdownData(t, server.URL)
+	assertSingleAnalysis() // lazy fetch reused the same fresh model and analysis
+	if !reflect.DeepEqual(liveData.Requests, staticData.Requests) || !reflect.DeepEqual(liveData.UserRequests, staticData.UserRequests) {
+		t.Fatal("static/live citation records disagree")
+	}
+	if markdownData.Requests["REQ-378"] != requestText || markdownData.UserRequests["UR-076"] != userRequestText {
+		t.Fatal("search generation changed raw source bytes")
+	}
+	if got := describeTicketMentions(requestText, markdownData.RequestMentions["REQ-378"]); !reflect.DeepEqual(got, []string{`req REQ-1679 EXPAND "REQ-1679"`}) {
+		t.Fatalf("clipboard offsets/annotation shape changed: %v", got)
+	}
+	// The tree changes after initial paint. Lazy Copy and the refreshed eager
+	// index must come from the new text, not a long-lived analysis cache.
+	requestText = strings.ReplaceAll(requestText, "REQ-1679", "UR-076")
+	requestPath := filepath.Join(repoRoot, "do-work/queue/REQ-378-search.md")
+	if err := os.WriteFile(requestPath, []byte(requestText), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	modifiedAt := time.Now().Add(2 * time.Second)
+	if err := os.Chtimes(requestPath, modifiedAt, modifiedAt); err != nil {
+		t.Fatal(err)
+	}
+	countingParser.BodyParses = map[string]int{}
+	markdownData = fetchServedBoardMarkdownData(t, server.URL)
+	liveData = fetchServedBoardData(t, server.URL)
+	assertSingleAnalysis()
+	if !reflect.DeepEqual(liveData.Requests["REQ-378"].CitedTicketIds, []string{"UR-076"}) || markdownData.Requests["REQ-378"] != requestText {
+		t.Fatal("live citation index and raw source did not refresh together")
+	}
+}
+
+func TestBrowserBehaviorCitationSearchShowsReasonsAcrossViews(t *testing.T) {
+	lookupBrowserForBehaviorProbe(t)
+	board := citationSearchFixtureBoard()
+	board.GeneratedAt = time.Now().UTC()
+	board.ProjectName = "Citation search acceptance"
+	board.Columns.PendingReady = board.AllRequests
+	board.Columns.Pending = board.AllRequests
+	for _, parent := range board.UserRequests {
+		if parent.UserRequestId == "UR-075" {
+			parent.RequestIds = []string{"REQ-378"}
+		}
+	}
+	// Testing uses the same request card constructor and must retain its reason.
+	completed := ticketMentionFixtureTicket("REQ-379", "Completed citation", "completed", "REQ-1679\n")
+	completed.CompletedAt = board.GeneratedAt.Add(-time.Hour).Format(time.RFC3339)
+	completed.CompletionTime = board.GeneratedAt.Add(-time.Hour)
+	board.AllRequests = append(board.AllRequests, completed)
+	siteDirectory := t.TempDir()
+	if err := generateStaticSite(siteDirectory, board); err != nil {
+		t.Fatal(err)
+	}
+	indexBytes, err := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Capture mount errors as well as interaction errors, before any client code.
+	page := strings.Replace(string(indexBytes), "<head>", `<head><script>
+window.citationProbeErrors = [];
+addEventListener("error", function(event) { window.citationProbeErrors.push(event.message); });
+addEventListener("unhandledrejection", function(event) { window.citationProbeErrors.push(String(event.reason)); });
+console.warn = console.error = function() { window.citationProbeErrors.push(Array.from(arguments).join(" ")); };
+</script>`, 1)
+	session := startTrustedInputBrowserSession(t, "citation search", siteDirectory, page)
+	session.waitForPageCondition(t, "initial request cards", `document.querySelector('.req-card[data-detail-id="REQ-378"]') !== null`)
+	session.evaluateInPage(t, `(function(){document.getElementById("filter-search").focus();return true;})()`)
+	session.callDevToolsMethod(t, "Input.insertText", map[string]any{"text": "REQ-1679"}, true)
+	session.waitForPageCondition(t, "citation-only match", `document.querySelector('[data-cards="pending"] .req-card[data-detail-id="REQ-378"] .citation-match') !== null`)
+	for _, scheme := range []string{"light", "dark"} {
+		for _, width := range []int{320, 768, 1280} {
+			t.Run(fmt.Sprintf("%s-%d", scheme, width), func(t *testing.T) {
+				session.callDevToolsMethod(t, "Emulation.setEmulatedMedia", map[string]any{"features": []map[string]string{{"name": "prefers-color-scheme", "value": scheme}}}, true)
+				session.callDevToolsMethod(t, "Emulation.setDeviceMetricsOverride", map[string]any{"width": width, "height": 900, "deviceScaleFactor": 1, "mobile": false}, true)
+				for _, view := range []string{"columns", "user-request", "testing"} {
+					var result struct {
+						Href, Browser, Marker, AccessibleName string
+						Ids, Errors                           []string
+						MarkerWidth, MarkerHeight             float64
+						Contained, Focusable, LazyUnloaded    bool
+					}
+					probe := `(function(){
+var view = ` + mustMarshalJSONString(t, view) + `;
+document.querySelector('[data-view-target="' + (view === "testing" ? "testing" : "board") + '"]').click();
+if (view !== "testing") document.querySelector('[data-lens-target="' + (view === "columns" ? "flat" : "user-request") + '"]:not([data-ur-cards])').click();
+var root = document.querySelector(view === "columns" ? '[data-cards="pending"]' : view === "testing" ? '#view-testing' : '#user-request-lens');
+var button = root.querySelector(view === "user-request" ? '.ur-group-head[data-detail-id="UR-075"]' : '.req-card[data-detail-id="' + (view === "testing" ? 'REQ-379' : 'REQ-378') + '"]');
+var marker = button && button.querySelector('.citation-match');
+var bounds = marker && marker.getBoundingClientRect(), container = button && button.getBoundingClientRect();
+if (button) button.focus();
+return {href:location.href, browser:navigator.userAgent, marker:marker && marker.textContent,
+accessibleName:button && (button.getAttribute('aria-label') || button.textContent + ' ' + (marker && marker.getAttribute('aria-label'))),
+ids:Array.from(root.querySelectorAll('.req-card'), function(card){return card.dataset.detailId;}),
+markerWidth:bounds && bounds.width, markerHeight:bounds && bounds.height,
+contained:!!bounds && bounds.left >= container.left && bounds.right <= container.right && bounds.top >= container.top && bounds.bottom <= container.bottom,
+focusable:!!button && document.activeElement === button,
+lazyUnloaded:!window.queueKanbanBoardMarkdownData, errors:window.citationProbeErrors};
+})()`
+					session.decodeResult(t, "rendered citation reason", session.evaluateInPage(t, probe), &result)
+					t.Logf("%s/%s/%d: %+v", view, scheme, width, result)
+					if result.Marker == "" || result.MarkerWidth <= 0 || result.MarkerHeight <= 0 || !result.Contained || !result.Focusable || !result.LazyUnloaded || len(result.Errors) != 0 || !strings.Contains(strings.ToLower(result.AccessibleName), "cites req-1679") {
+						t.Fatalf("citation reason is missing, clipped, inaccessible, or dependent on lazy Copy: %+v", result)
+					}
+					if view == "columns" && !reflect.DeepEqual(result.Ids, []string{"REQ-1679", "REQ-378"}) {
+						t.Fatalf("citation search returned %v", result.Ids)
+					}
+					if view == "testing" && !reflect.DeepEqual(result.Ids, []string{"REQ-379"}) {
+						t.Fatalf("Testing citation search returned %v", result.Ids)
+					}
+				}
+			})
+		}
+	}
+	// A partial title remains a plain hit, and clearing removes stale reasons.
+	session.evaluateInPage(t, `(function(){
+document.querySelector('[data-view-target="board"]').click();
+document.querySelector('[data-lens-target="flat"]').click();
+var search=document.getElementById('filter-search');search.value='referenced';search.dispatchEvent(new Event('input',{bubbles:true}));return true;
+})()`)
+	session.waitForPageCondition(t, "ordinary partial title match without a citation reason", `document.querySelector('[data-cards="pending"] .req-card[data-detail-id="REQ-378"]') !== null && !document.querySelector('[data-cards="pending"] .citation-match')`)
+	session.evaluateInPage(t, `(function(){document.getElementById('filter-clear').click();return true;})()`)
+	session.waitForPageCondition(t, "cleared citation markers", `document.getElementById('filter-search').value === '' && !document.querySelector('[data-cards="pending"] .citation-match')`)
 }
 
 func TestBuildGeneratedBoardDataCarriesDomainAndRouteProvenance(t *testing.T) {
@@ -2646,6 +2825,7 @@ func TestJavaScriptBehaviorByUserRequestLensUsesRecentWindowAtCaller(t *testing.
 		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
 		sliceBalancedBlockAfter(t, indexHtml, "function isTerminalResolvedStatus("),
 		sliceBalancedBlockAfter(t, indexHtml, "function hasActiveFilters("),
+		sliceBalancedBlockAfter(t, indexHtml, "function citationMatchedTicketId("),
 		sliceBalancedBlockAfter(t, indexHtml, "function searchMatchesRequest("),
 		sliceBalancedBlockAfter(t, indexHtml, "function searchMatchesUserRequest("),
 		sliceBalancedBlockAfter(t, indexHtml, "function requestMatchesFilters("),
@@ -6379,6 +6559,7 @@ func TestJavaScriptBehaviorUserRequestsOnlyLensFoldsCardsUntilARowIsOpened(t *te
 		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
 		sliceBalancedBlockAfter(t, indexHtml, "function isTerminalResolvedStatus("),
 		sliceBalancedBlockAfter(t, indexHtml, "function hasActiveFilters("),
+		sliceBalancedBlockAfter(t, indexHtml, "function citationMatchedTicketId("),
 		sliceBalancedBlockAfter(t, indexHtml, "function searchMatchesRequest("),
 		sliceBalancedBlockAfter(t, indexHtml, "function searchMatchesUserRequest("),
 		sliceBalancedBlockAfter(t, indexHtml, "function requestMatchesFilters("),
@@ -9181,6 +9362,7 @@ func TestJavaScriptBehaviorDoneCardStatesItsImplementationSpan(t *testing.T) {
 		sliceBalancedBlockAfter(t, indexHtml, "function formatElapsedDuration("),
 	}
 	javascriptProbe := `
+var filterState = { searchText: "" };
 var requestsById = ` + string(payloadJson) + `;
 function makeNode(tagName) {
   var node = {

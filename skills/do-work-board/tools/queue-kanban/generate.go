@@ -127,6 +127,7 @@ type generatedColumns struct {
 type generatedRequest struct {
 	RequestId             string   `json:"id"`
 	Title                 string   `json:"title"`
+	CitedTicketIds        []string `json:"citedTicketIds"`
 	Status                string   `json:"status"`
 	OriginalStatus        string   `json:"originalStatus"`
 	StatusUnrecognized    bool     `json:"statusUnrecognized,omitempty"`
@@ -231,6 +232,7 @@ type generatedUserRequest struct {
 	InputFilePresent bool     `json:"inputFilePresent"`
 	RequestIds       []string `json:"requestIds"`
 	BodyHtml         string   `json:"bodyHtml"`
+	CitedTicketIds   []string `json:"citedTicketIds"`
 }
 
 // generatedBoardMarkdownData is the lazy raw-source payload used only by the
@@ -405,7 +407,8 @@ func generateStaticSiteWithPublisher(outputDirectory string, board *Board, publi
 		return fmt.Errorf("queue-kanban: generate requires a non-empty --out directory")
 	}
 
-	boardData, buildError := buildGeneratedBoardData(board)
+	mentionAnalysis := analyzeBoardTicketMentions(board)
+	boardData, buildError := buildGeneratedBoardDataWithMentions(board, mentionAnalysis)
 	if buildError != nil {
 		return buildError
 	}
@@ -413,7 +416,7 @@ func generateStaticSiteWithPublisher(outputDirectory string, board *Board, publi
 	// keeps its board-only signature — a dozen tests call it — so the findings are
 	// folded in here, at the two real callers, rather than threaded through it.
 	attachVerifyFindings(&boardData, board, time.Now())
-	boardMarkdownData := buildGeneratedBoardMarkdownData(board)
+	boardMarkdownData := mentionAnalysis.MarkdownData
 
 	boardDataJs, encodeError := encodeBoardDataForJsAssignment(boardData)
 	if encodeError != nil {
@@ -626,6 +629,10 @@ var remainingAbsolutePath = regexp.MustCompile(`(\A|[\s"'(\[])((?:[A-Za-z]:[\\/]
 // buildGeneratedBoardData projects the parsed Board into the JSON data island,
 // pre-rendering every REQ and UR body to HTML along the way.
 func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
+	return buildGeneratedBoardDataWithMentions(board, analyzeBoardTicketMentions(board))
+}
+
+func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTicketAnalysis) (generatedBoardData, error) {
 	data := generatedBoardData{
 		GeneratedAt:      formatTimestamp(board.GeneratedAt),
 		Warnings:         board.Warnings,
@@ -659,6 +666,7 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 		data.Requests[ticket.RequestId] = generatedRequest{
 			RequestId:                  ticket.RequestId,
 			Title:                      ticket.Title,
+			CitedTicketIds:             mentionAnalysis.RequestCitations[ticket.RequestId],
 			Status:                     ticket.Status,
 			OriginalStatus:             ticket.OriginalStatus,
 			StatusUnrecognized:         ticket.StatusUnrecognized,
@@ -734,6 +742,7 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			InputFilePresent: userRequest.InputFilePresent,
 			RequestIds:       userRequest.RequestIds,
 			BodyHtml:         bodyHtml,
+			CitedTicketIds:   mentionAnalysis.UserRequestCitations[userRequest.UserRequestId],
 		}
 	}
 
@@ -840,11 +849,29 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 // the ticket-mention index for those same documents — see the struct — because
 // the Copy button is the only consumer of either.
 func buildGeneratedBoardMarkdownData(board *Board) generatedBoardMarkdownData {
+	return analyzeBoardTicketMentions(board).MarkdownData
+}
+
+// Both static generation and live refresh share this short-lived result. Each
+// loaded document is analyzed once, producing the eager search set and the lazy
+// source/offset payload together without a second body scan or disk read.
+type boardTicketAnalysis struct {
+	MarkdownData         generatedBoardMarkdownData
+	RequestCitations     map[string][]string
+	UserRequestCitations map[string][]string
+}
+
+func analyzeBoardTicketMentions(board *Board) boardTicketAnalysis {
 	markdownData := generatedBoardMarkdownData{
 		Requests:            map[string]string{},
 		UserRequests:        map[string]string{},
 		RequestMentions:     map[string][]generatedTicketMention{},
 		UserRequestMentions: map[string][]generatedTicketMention{},
+	}
+	analysis := boardTicketAnalysis{
+		MarkdownData:         markdownData,
+		RequestCitations:     map[string][]string{},
+		UserRequestCitations: map[string][]string{},
 	}
 	// Every record on the board can be named, including a synthesized UR that
 	// has no file of its own to copy — a mention of one still resolves.
@@ -852,11 +879,14 @@ func buildGeneratedBoardMarkdownData(board *Board) generatedBoardMarkdownData {
 	for _, ticket := range board.AllRequests {
 		requestDocument := ticket.FrontmatterMarkdown + ticket.BodyMarkdown
 		markdownData.Requests[ticket.RequestId] = requestDocument
-		if ticketMentions := collectDocumentTicketMentions(requestDocument, mentionResolver); len(ticketMentions) > 0 {
+		documentAnalysis := analyzeDocumentTicketMentions(requestDocument, mentionResolver)
+		analysis.RequestCitations[ticket.RequestId] = documentAnalysis.CitedTicketIds
+		if ticketMentions := documentAnalysis.Mentions; len(ticketMentions) > 0 {
 			markdownData.RequestMentions[ticket.RequestId] = ticketMentions
 		}
 	}
 	for _, userRequest := range board.UserRequests {
+		analysis.UserRequestCitations[userRequest.UserRequestId] = []string{}
 		// A synthesized UR (no input.md on disk) has no file text to offer. The
 		// frontend treats key PRESENCE as "the real file is available" and copies
 		// the value verbatim, so an empty entry here would put an empty string on
@@ -866,11 +896,13 @@ func buildGeneratedBoardMarkdownData(board *Board) generatedBoardMarkdownData {
 		}
 		userRequestDocument := userRequest.FrontmatterMarkdown + userRequest.BodyMarkdown
 		markdownData.UserRequests[userRequest.UserRequestId] = userRequestDocument
-		if ticketMentions := collectDocumentTicketMentions(userRequestDocument, mentionResolver); len(ticketMentions) > 0 {
+		documentAnalysis := analyzeDocumentTicketMentions(userRequestDocument, mentionResolver)
+		analysis.UserRequestCitations[userRequest.UserRequestId] = documentAnalysis.CitedTicketIds
+		if ticketMentions := documentAnalysis.Mentions; len(ticketMentions) > 0 {
 			markdownData.UserRequestMentions[userRequest.UserRequestId] = ticketMentions
 		}
 	}
-	return markdownData
+	return analysis
 }
 
 // boardRequestIds and boardUserRequestIds list exactly the ids the CLIENT holds

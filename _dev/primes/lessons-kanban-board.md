@@ -55,3 +55,5 @@ The work pipeline appends here on archive (`../../skills/do-work/actions/work.md
 - [REQ-313: count unique filtered data rows, not causes or virtualized DOM nodes, when a summary describes what the Timeline draws](../../do-work/archive/UR-062/REQ-313-count-the-breaks-the-timeline-actually-draws.md#lessons-learned)
 
 - [REQ-376: a completion-looking CSS class also dresses nonterminal cards; scope by status and measure text on the actual opaque card as well as the page](../../do-work/archive/REQ-376-raise-the-done-lines-faint-text-to-readable-contrast.md#lessons-learned)
+
+- [REQ-381: Keep citation sets separate from annotation exclusions while sharing one raw analysis; preserve exact-ID precedence before case-folded alias lookup.](../../do-work/archive/UR-076/REQ-381-index-cited-ticket-ids-and-filter-on-them.md#lessons-learned)

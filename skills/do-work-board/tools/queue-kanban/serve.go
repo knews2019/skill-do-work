@@ -359,7 +359,8 @@ func (liveServer *liveBoardServer) refreshBoardData() (*generatedBoardData, erro
 		return nil, fmt.Errorf("building board model: %w", buildErr)
 	}
 
-	boardData, projectErr := buildGeneratedBoardData(board)
+	mentionAnalysis := analyzeBoardTicketMentions(board)
+	boardData, projectErr := buildGeneratedBoardDataWithMentions(board, mentionAnalysis)
 	if projectErr != nil {
 		return nil, fmt.Errorf("projecting board data: %w", projectErr)
 	}
@@ -367,7 +368,7 @@ func (liveServer *liveBoardServer) refreshBoardData() (*generatedBoardData, erro
 	liveServer.cachedFileMtimes = currentFileMtimes
 	liveServer.cachedBoardData = &boardData
 	liveServer.cachedBoard = board
-	boardMarkdownData := buildGeneratedBoardMarkdownData(board)
+	boardMarkdownData := mentionAnalysis.MarkdownData
 	liveServer.cachedBoardMarkdown = &boardMarkdownData
 	return liveServer.cachedBoardData, nil
 }

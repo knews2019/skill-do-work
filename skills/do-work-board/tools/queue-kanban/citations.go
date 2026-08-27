@@ -342,11 +342,19 @@ type generatedTicketMention struct {
 	Expand bool   `json:"expand,omitempty"`
 }
 
+// documentTicketAnalysis keeps search's resolved set separate from Copy's
+// occurrence positions. Search includes quoted and authored-link references;
+// changing which occurrences Copy may annotate must not change findability.
+type documentTicketAnalysis struct {
+	Mentions       []generatedTicketMention
+	CitedTicketIds []string
+}
+
 // collectDocumentTicketMentions locates every annotatable ticket mention in one
 // clipboard document — the WHOLE document the client holds, fence and all, so
 // the offsets it returns index the exact string the client will splice into.
 //
-// The fence itself is never scanned: it carries depends_on, related and
+// The fence itself is never annotated: it carries depends_on, related and
 // user_request, and annotating any of them would stop the paste parsing as
 // YAML. splitFrontmatter draws that line, and it is the same function the file
 // was parsed with, so the fence a paste round-trips through and the fence
@@ -357,9 +365,31 @@ type generatedTicketMention struct {
 // every offset after the first break it adds — so the two must not share a
 // parse, and this one takes the raw text.
 func collectDocumentTicketMentions(documentText string, resolver *ticketMentionResolver) []generatedTicketMention {
-	_, bodyMarkdown, bodyStartOffset, _ := splitFrontmatter(documentText)
+	return analyzeDocumentTicketMentions(documentText, resolver).Mentions
+}
+
+func analyzeDocumentTicketMentions(documentText string, resolver *ticketMentionResolver) documentTicketAnalysis {
+	yamlText, bodyMarkdown, bodyStartOffset, _ := splitFrontmatter(documentText)
+	analysis := documentTicketAnalysis{CitedTicketIds: []string{}}
+	citedIds := map[string]bool{}
+	addCitation := func(resolvedId string) {
+		if resolvedId != "" && !citedIds[resolvedId] {
+			citedIds[resolvedId] = true
+			analysis.CitedTicketIds = append(analysis.CitedTicketIds, resolvedId)
+		}
+	}
+	fields, _ := parseFrontmatterFields(yamlText)
+	references := resolveDependsOn(fields)
+	for _, fieldName := range []string{"related", "addendum_to"} {
+		references = append(references, coerceToStringList(fields[fieldName])...)
+	}
+	for _, reference := range references {
+		_, resolvedId := resolver.resolve(reference)
+		addCitation(resolvedId)
+	}
 	if bodyMarkdown == "" {
-		return nil
+		sort.Strings(analysis.CitedTicketIds)
+		return analysis
 	}
 	bodySource := []byte(bodyMarkdown)
 	bodyRoot := markdownToHtmlRenderer.Parser().Parse(text.NewReader(bodySource))
@@ -379,6 +409,10 @@ func collectDocumentTicketMentions(documentText string, resolver *ticketMentionR
 			continue
 		}
 		mentionText := bodyMarkdown[mentionStart:mentionStop]
+		kind, resolvedId := resolver.resolve(mentionText)
+		// Search counts every resolved body reference, including authored link
+		// labels and quoted text that Copy must leave byte-for-byte alone.
+		addCitation(resolvedId)
 		surface, covered := surfaceAt(surfaces, mentionStart, mentionStop)
 		if !covered || surface == surfaceLinkLabel {
 			// Either goldmark keeps no text here — a link reference definition, a
@@ -387,7 +421,6 @@ func collectDocumentTicketMentions(documentText string, resolver *ticketMentionR
 			continue
 		}
 
-		kind, resolvedId := resolver.resolve(mentionText)
 		if kind == "" && (surface == surfaceCodeBlock || resolver.isAmbiguous(mentionText)) {
 			continue
 		}
@@ -420,7 +453,9 @@ func collectDocumentTicketMentions(documentText string, resolver *ticketMentionR
 			Expand: expand,
 		})
 	}
-	return mentions
+	analysis.Mentions = mentions
+	sort.Strings(analysis.CitedTicketIds)
+	return analysis
 }
 
 // ---- byte offsets → JavaScript string offsets -----------------------------
