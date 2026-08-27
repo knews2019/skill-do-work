@@ -29,7 +29,7 @@ estimate:
   - trivial short-circuit
   calculated_at: '2026-08-27T13:20:59Z'
 completed_at: '2026-08-27T13:26:08Z'
-commit:
+commit: 4ed31496
 kb_status: pending
 ---
 
