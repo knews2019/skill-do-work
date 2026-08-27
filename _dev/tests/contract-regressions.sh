@@ -755,11 +755,8 @@ require_order(
     "ai-report must load the shared completed-work reference before using archived evidence",
 )
 
-# architecture-report. Four properties keep a later cleanup from quietly turning
-# this action into something else: its repo-wide input contract (no UR/REQ target, so it
-# cannot be folded into ai-report), its dated-immutable publication (so it cannot become a
-# mutable canonical file), its carry-forward rule (so a rewrite-from-scratch cannot pass as
-# a report), and its delta-first section order (so the repeat reader's section stays first).
+# architecture-report. REQ-384 replaces the Markdown/carry-forward contract with a
+# freeform HTML bundle and authored opening delta, keeping input, evidence, and immutability.
 architecture_report = "skills/do-work-toolbox/actions/architecture-report.md"
 
 # 1. Repo-wide input contract. The action takes no completed-work target, which is exactly
@@ -790,8 +787,8 @@ for retired_target_predicate in (
 # conversion this rejects: it would destroy the baseline every later delta is computed from.
 require(
     architecture_report,
-    r"ai-reports/<yyyy-mm-dd>_<hhmm>_architecture-report/architecture-report\.md",
-    "architecture-report must publish the dated filename",
+    r"ai-reports/<yyyy-mm-dd>_<hhmm>_architecture-report/index\.html",
+    "architecture-report must publish the dated HTML entry point",
 )
 require(
     architecture_report,
@@ -801,6 +798,8 @@ require(
 for undated_canonical_predicate in (
     r"ai-reports/architecture-report\.md",
     r"docs/architecture-report\.md",
+    r"ai-reports/index\.html",
+    r"docs/architecture-report\.html",
 ):
     reject(
         architecture_report,
@@ -824,49 +823,61 @@ require(
     "the shared publication contract must state that a non-completed-work consumer may read it alone",
 )
 
-# 3. Carry-forward. Re-authoring an unchanged section in different words is the defect: it
-# fills the next diff with noise that hides the one real change.
-for carry_forward_predicate in (
+# 3. Freeform authoring. Pin the operative composition step, not stray quality vocabulary.
+architecture_source = text(architecture_report)
+architecture_compose_match = re.search(
+    r"^### Step 4: Compose the Report\n(.*?)(?=^### Step 5:)",
+    architecture_source, re.MULTILINE | re.DOTALL,
+)
+architecture_compose = architecture_compose_match.group(1) if architecture_compose_match else ""
+for composition_predicate in (
+    r"^Write one self-contained HTML document",
+    r"^Redesign the report each run",
+    r"layout, sectioning, and visual design.*authoring model",
+    r"^Open with an authored.*changed since last report.*section",
+    r"reading the previous HTML report",
+    r"first report.*no prior HTML baseline",
+    r"rendered diagrams.*not fenced code",
+    r"clickable section navigation",
+    r"Embed all presentation assets",
+    r"no CDN or remote runtime dependencies",
+    r'<meta name="architecture-report-verified-at" content="<head-hash>">',
+    r"metadata.*does not prescribe.*layout",
+):
+    if not re.search(composition_predicate, architecture_compose, re.IGNORECASE | re.MULTILINE):
+        failures.append(f"{architecture_report}: composition contract missing /{composition_predicate}/")
+for retired_layout_predicate in (
     r"byte-identical",
     r"Only drifted sections are rewritten",
-    r"Re-authoring a section that did not change",
-    r"Carry every still-true section forward byte-identical",
+    r"Sections in this order",
+    r"§[0-9Δ]",
+    r"Markdown with inline Mermaid only",
+    r"No HTML",
+    r"two reports (?:can be )?diffed|diff.*between two reports",
 ):
-    require(
+    reject(
         architecture_report,
-        carry_forward_predicate,
-        f"architecture-report carry-forward rule missing /{carry_forward_predicate}/",
+        retired_layout_predicate,
+        f"architecture-report must retire its fixed Markdown/carry-forward layout /{retired_layout_predicate}/",
     )
+require(architecture_report, r"Never write.*`architecture-report\.md`", "architecture-report must prohibit Markdown output")
+require(architecture_report, r"Ignore.*Markdown.*prior.*baseline", "architecture-report must ignore Markdown baselines")
 
-# 4. Delta first. The watermark, then the drift table, then everything else.
+# 4. Verification labels and GitHub source links survive freeform composition.
 for committed_tree_predicate in (
     r"Verify against a committed tree, never the working tree",
     r"Publish the report as a child commit of the one\s+it watermarks",
     r"never let the report assert its own\s+presence",
+    r"VERIFIED.*GitHub.*file.*line",
+    r"INFERRED.*basis",
+    r"https://github\.com/<owner>/<repo>/blob/<head-hash>/<path>#L<line>",
+    r"Never stop to ask",
 ):
     require(
         architecture_report,
         committed_tree_predicate,
         f"architecture-report must bind the watermark to a committed tree /{committed_tree_predicate}/",
     )
-
-require(
-    architecture_report,
-    r"the first section after the watermark",
-    "architecture-report must place the delta section immediately after the watermark",
-)
-require_order(
-    architecture_report,
-    r"\*\*Watermark\*\*",
-    r"\*\*§Δ Changed since last report\*\*",
-    "architecture-report's watermark must precede its delta section",
-)
-require_order(
-    architecture_report,
-    r"\*\*§Δ Changed since last report\*\*",
-    r"\*\*§0 Orientation\*\*",
-    "architecture-report's delta section must precede the orientation section",
-)
 
 # 5. Audit findings stay with the audit loop, which owns bands and ratchets.
 require(
@@ -894,8 +905,8 @@ if "architecture-report" not in hint_commands:
     failures.append("skills/do-work-toolbox/SKILL.md: argument-hint omits architecture-report")
 require(
     "skills/do-work-toolbox/actions/help.md",
-    r"architecture-report\s+.*dated.*immutable.*architecture",
-    "toolbox help must advertise architecture-report as a dated immutable architecture map",
+    r"architecture-report\s+.*dated.*immutable.*HTML.*architecture",
+    "toolbox help must advertise architecture-report as a dated immutable HTML architecture map",
 )
 require(
     "skills/do-work/actions/help.md",
@@ -907,6 +918,8 @@ require(
     r"do-work-toolbox architecture-report",
     "README must name the architecture-report command",
 )
+require("README.md", r"architecture-report.*index\.html", "README must name the HTML entry point")
+reject("README.md", r"two reports can be diffed", "README must retire the report-to-report diff promise")
 
 
 present_work = "skills/do-work-toolbox/actions/present-work.md"

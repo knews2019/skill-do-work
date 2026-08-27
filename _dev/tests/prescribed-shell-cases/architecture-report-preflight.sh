@@ -25,8 +25,8 @@ seed_report_bundle() {
   local watermark_hash="$2"
 
   mkdir -p "$bundle_path"
-  printf 'verified-at: %s · 2026-01-01 · 0.1.0 · prior: none\n' "$watermark_hash" \
-    > "$bundle_path/architecture-report.md"
+  printf '<!doctype html>\n<html><head>\n<meta name="architecture-report-verified-at" content="%s">\n</head><body>Architecture</body></html>\n' "$watermark_hash" \
+    > "$bundle_path/index.html"
 }
 
 # architecture-report-preflight: a first run reports no prior baseline and the unsuffixed candidate.
@@ -58,21 +58,26 @@ fixture_repo_init "$publish_repo"
 printf 'seed\n' > "$publish_repo/README.md"
 fixture_repo_commit_all "$publish_repo" base
 mkdir -p "$publish_repo/drafts"
-printf 'first bytes\n' > "$publish_repo/drafts/first.md"
-printf 'second bytes\n' > "$publish_repo/drafts/second.md"
+printf '<!doctype html><title>First</title><p>first bytes</p>\n' > "$publish_repo/drafts/first.html"
+printf '<!doctype html><title>Second</title><p>second bytes</p>\n' > "$publish_repo/drafts/second.html"
 publish_candidate='ai-reports/2026-08-26_1530_architecture-report'
-first_published="$(cd "$publish_repo" && "$preflight_script" --publish drafts/first.md "$publish_candidate")" \
+first_published="$(cd "$publish_repo" && "$preflight_script" --publish drafts/first.html "$publish_candidate")" \
   || fail_case 'architecture-report-preflight first publication returned nonzero'
-[ "$first_published" = "$publish_candidate/architecture-report.md" ] \
+[ "$first_published" = "$publish_candidate/index.html" ] \
   || fail_case "architecture-report-preflight first publication landed on $first_published"
-second_published="$(cd "$publish_repo" && "$preflight_script" --publish drafts/second.md "$publish_candidate")" \
+second_published="$(cd "$publish_repo" && "$preflight_script" --publish drafts/second.html "$publish_candidate")" \
   || fail_case 'architecture-report-preflight second publication returned nonzero'
-[ "$second_published" = 'ai-reports/2026-08-26_1530_architecture-report-2/architecture-report.md' ] \
+[ "$second_published" = 'ai-reports/2026-08-26_1530_architecture-report-2/index.html' ] \
   || fail_case "architecture-report-preflight second publication landed on $second_published"
-[ "$(cat "$publish_repo/$first_published")" = 'first bytes' ] \
+cmp -s "$publish_repo/drafts/first.html" "$publish_repo/$first_published" \
   || fail_case 'architecture-report-preflight second publication overwrote the first report'
-[ "$(cat "$publish_repo/$second_published")" = 'second bytes' ] \
+cmp -s "$publish_repo/drafts/second.html" "$publish_repo/$second_published" \
   || fail_case 'architecture-report-preflight suffixed publication does not carry the second draft'
+
+[ ! -e "$publish_repo/$publish_candidate/architecture-report.md" ] \
+  || fail_case 'architecture-report-preflight published a Markdown companion'
+[ "$(find "$publish_repo/$publish_candidate" -type f | wc -l | tr -d ' ')" = 1 ] \
+  || fail_case 'architecture-report-preflight single-file bundle contains extra output'
 
 # architecture-report-preflight: an occupied candidate is stepped over, never published into.
 # `mkdir -p` would succeed here and nest this run's report inside the previous run's bundle.
@@ -81,13 +86,13 @@ fixture_repo_init "$occupied_repo"
 printf 'seed\n' > "$occupied_repo/README.md"
 fixture_repo_commit_all "$occupied_repo" base
 mkdir -p "$occupied_repo/drafts"
-printf 'draft bytes\n' > "$occupied_repo/drafts/report.md"
+printf 'draft bytes\n' > "$occupied_repo/drafts/report.html"
 seed_report_bundle "$occupied_repo/$publish_candidate" 'aaaaaaa'
-occupied_published="$(cd "$occupied_repo" && "$preflight_script" --publish drafts/report.md "$publish_candidate")" \
+occupied_published="$(cd "$occupied_repo" && "$preflight_script" --publish drafts/report.html "$publish_candidate")" \
   || fail_case 'architecture-report-preflight occupied-candidate publication returned nonzero'
-[ "$occupied_published" = 'ai-reports/2026-08-26_1530_architecture-report-2/architecture-report.md' ] \
+[ "$occupied_published" = 'ai-reports/2026-08-26_1530_architecture-report-2/index.html' ] \
   || fail_case "architecture-report-preflight occupied-candidate publication landed on $occupied_published"
-[ "$(head -c 12 "$occupied_repo/$publish_candidate/architecture-report.md")" = 'verified-at:' ] \
+grep -q 'content="aaaaaaa"' "$occupied_repo/$publish_candidate/index.html" \
   || fail_case 'architecture-report-preflight overwrote the occupied bundle report'
 
 # architecture-report-preflight: the newest prior report is chosen numerically, not lexically.
@@ -100,10 +105,10 @@ seed_report_bundle "$ordering_repo/ai-reports/2026-01-01_0900_architecture-repor
 seed_report_bundle "$ordering_repo/ai-reports/2026-01-01_0900_architecture-report-10" "$ordering_head"
 seed_report_bundle "$ordering_repo/ai-reports/2026-01-01_0800_architecture-report" 'bbbbbbb'
 mkdir -p "$ordering_repo/ai-reports/2026-08-26_1530_UR-042-something-else"
-mkdir -p "$ordering_repo/ai-reports/notadate_architecture-report"
+seed_report_bundle "$ordering_repo/ai-reports/notadate_architecture-report" 'ccccccc'
 ordering_record="$(cd "$ordering_repo" && "$preflight_script" --scan ai-reports)" \
   || fail_case 'architecture-report-preflight ordering scan returned nonzero'
-[ "$(scan_field "$ordering_record" prior_report)" = 'ai-reports/2026-01-01_0900_architecture-report-10/architecture-report.md' ] \
+[ "$(scan_field "$ordering_record" prior_report)" = 'ai-reports/2026-01-01_0900_architecture-report-10/index.html' ] \
   || fail_case 'architecture-report-preflight chose the prior report lexically instead of numerically'
 [ "$(scan_field "$ordering_record" prior_hash)" = "$ordering_head" ] \
   || fail_case 'architecture-report-preflight did not read the prior watermark hash'
@@ -116,13 +121,15 @@ fixture_repo_init "$unreadable_repo"
 printf 'seed\n' > "$unreadable_repo/README.md"
 fixture_repo_commit_all "$unreadable_repo" base
 mkdir -p "$unreadable_repo/ai-reports/2026-01-01_0900_architecture-report"
-printf '# Architecture Report\n\nNo watermark here.\n' \
-  > "$unreadable_repo/ai-reports/2026-01-01_0900_architecture-report/architecture-report.md"
+printf '<!doctype html><title>Architecture</title><p>No watermark here.</p>\n' \
+  > "$unreadable_repo/ai-reports/2026-01-01_0900_architecture-report/index.html"
 mkdir -p "$unreadable_repo/ai-reports/2026-01-02_0900_architecture-report"
 unreadable_record="$(cd "$unreadable_repo" && "$preflight_script" --scan ai-reports)" \
   || fail_case 'architecture-report-preflight unreadable-watermark scan returned nonzero'
+[ "$(scan_field "$unreadable_record" prior_report)" = 'ai-reports/2026-01-01_0900_architecture-report/index.html' ] \
+  || fail_case 'architecture-report-preflight selected a missing HTML file instead of the prior report'
 [ "$(scan_field "$unreadable_record" prior_hash)" = 'unreadable' ] \
-  || fail_case 'architecture-report-preflight collapsed a missing report file to an empty hash'
+  || fail_case 'architecture-report-preflight collapsed a missing watermark to an empty hash'
 [ "$(scan_field "$unreadable_record" prior_hash_resolves)" = 'no' ] \
   || fail_case 'architecture-report-preflight claimed an unreadable watermark resolves'
 
@@ -148,9 +155,50 @@ fixture_repo_commit_all "$usage_repo" base
 [ "$?" -eq 2 ] || fail_case 'architecture-report-preflight with no verb did not exit 2'
 (cd "$usage_repo" && "$preflight_script" --scan >/dev/null 2>&1)
 [ "$?" -eq 2 ] || fail_case 'architecture-report-preflight --scan without a directory did not exit 2'
-(cd "$usage_repo" && "$preflight_script" --publish drafts/absent.md "$publish_candidate" >/dev/null 2>&1)
+(cd "$usage_repo" && "$preflight_script" --publish drafts/absent.html "$publish_candidate" >/dev/null 2>&1)
 [ "$?" -eq 2 ] || fail_case 'architecture-report-preflight --publish with a missing draft did not exit 2'
 [ ! -e "$usage_repo/$publish_candidate" ] \
   || fail_case 'architecture-report-preflight created a bundle from a missing draft'
+
+# architecture-report-preflight: legacy Markdown and unfinished bundles never become HTML baselines.
+legacy_repo="$fixture_root/legacy"
+fixture_repo_init "$legacy_repo"
+printf 'seed\n' > "$legacy_repo/README.md"
+fixture_repo_commit_all "$legacy_repo" base
+legacy_bundle="$legacy_repo/ai-reports/2026-08-26_1709_architecture-report"
+mkdir -p "$legacy_bundle"
+printf 'verified-at: 0123456 · legacy Markdown\n' > "$legacy_bundle/architecture-report.md"
+legacy_record="$(cd "$legacy_repo" && "$preflight_script" --scan ai-reports)" \
+  || fail_case 'architecture-report-preflight legacy-only scan returned nonzero'
+[ -z "$(scan_field "$legacy_record" prior_report)" ] \
+  || fail_case 'architecture-report-preflight selected a Markdown-only prior report'
+seed_report_bundle "$legacy_repo/ai-reports/2026-01-01_0900_architecture-report" '0123456'
+mkdir -p "$legacy_repo/ai-reports/2026-08-27_0900_architecture-report"
+legacy_record="$(cd "$legacy_repo" && "$preflight_script" --scan ai-reports)" \
+  || fail_case 'architecture-report-preflight mixed-format scan returned nonzero'
+[ "$(scan_field "$legacy_record" prior_report)" = 'ai-reports/2026-01-01_0900_architecture-report/index.html' ] \
+  || fail_case 'architecture-report-preflight chose a newer Markdown or unfinished bundle over HTML'
+
+# architecture-report-preflight: a failed copy cannot expose partial HTML as a prior baseline.
+partial_repo="$fixture_root/partial"
+fixture_repo_init "$partial_repo"
+printf 'seed\n' > "$partial_repo/README.md"
+fixture_repo_commit_all "$partial_repo" base
+mkdir -p "$partial_repo/drafts" "$partial_repo/bin"
+printf '<!doctype html><title>Complete</title>\n' > "$partial_repo/drafts/report.html"
+cat > "$partial_repo/bin/cp" <<'SH'
+#!/usr/bin/env bash
+printf '<!doctype html><title>Partial' > "$2"
+exit 1
+SH
+chmod +x "$partial_repo/bin/cp"
+(cd "$partial_repo" && PATH="$partial_repo/bin:$PATH" "$preflight_script" --publish drafts/report.html "$publish_candidate" >/dev/null 2>&1)
+[ "$?" -ne 0 ] || fail_case 'architecture-report-preflight reported a failed copy as published'
+[ ! -e "$partial_repo/$publish_candidate/index.html" ] \
+  || fail_case 'architecture-report-preflight exposed partial HTML after a failed copy'
+partial_record="$(cd "$partial_repo" && "$preflight_script" --scan ai-reports)" \
+  || fail_case 'architecture-report-preflight partial-publication scan returned nonzero'
+[ -z "$(scan_field "$partial_record" prior_report)" ] \
+  || fail_case 'architecture-report-preflight selected a failed publication as a baseline'
 
 prescribed_shell_finish

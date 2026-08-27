@@ -8,7 +8,7 @@ do-work-toolbox — reviews, reports, discovery, and repository utilities
   validate-feedback [findings]   Validate external feedback before accepting it
   code-review [scope]            Standalone codebase review
   maintainability-audit [scope]  Measured maintainability audit with calibrated bands
-  architecture-report            Dated immutable repo architecture map with diagrams
+  architecture-report            Dated immutable HTML architecture map with rendered diagrams
   ui-review [scope]              Read-only UI quality review
   ai-report [REQ|UR]             Detailed stakeholder HTML for one completed item
   present-work all|portfolio     Refresh the cross-project portfolio

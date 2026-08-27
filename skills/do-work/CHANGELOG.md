@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.243.0 — Freeform HTML Architecture Reports (2026-08-27)
+
+Architecture reports now publish self-contained HTML with rendered diagrams, navigation, and an authored account of changes since the previous HTML report. Dated bundles remain immutable, with committed-source evidence and no Markdown companion.
+
 ## 0.242.3 — Readable Completion Text in Both Themes (2026-08-27)
 
 Completion-line relative times and elapsed durations now use readable contrast in both themes while staying quieter than card titles. A real-browser regression checks the rendered text against both page and card backgrounds.

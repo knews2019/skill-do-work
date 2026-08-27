@@ -14,7 +14,7 @@
 #       existing report.
 #
 # A report is one directory named `<yyyy-mm-dd>_<hhmm>_architecture-report` holding
-# `architecture-report.md`, matching the bundle shape `ai-report` publishes beside it.
+# `index.html`, matching the bundle shape `ai-report` publishes beside it.
 # Times are UTC (`date -u`), matching the suite's stamp convention, so the slug a run
 # picks does not depend on the runner's timezone.
 #
@@ -34,7 +34,7 @@ usage() {
 }
 
 report_name_suffix='_architecture-report'
-report_file_name='architecture-report.md'
+report_file_name='index.html'
 
 # Prints "<sortable-slug> <sequence>" for a report directory name, or nothing when the
 # name is not a report this action publishes. The sequence is what makes the ordering
@@ -76,7 +76,6 @@ scan_reports() {
   local report_path
   local report_key
   local watermark_line
-  local prior_report_file
 
   # Ask the question that has a real answer first: a repository without a resolvable HEAD
   # cannot be watermarked, and an empty hash must never reach the report as one.
@@ -93,6 +92,8 @@ scan_reports() {
   if [ -d "$reports_directory" ]; then
     for report_path in "$reports_directory"/*"$report_name_suffix" "$reports_directory"/*"$report_name_suffix"-*; do
       [ -d "$report_path" ] || continue
+      # Legacy Markdown and unfinished bundles are not HTML baselines.
+      [ -f "$report_path/$report_file_name" ] && [ -s "$report_path/$report_file_name" ] || continue
       report_key="$(parse_report_basename "${report_path##*/}")" || continue
       # Pad the sequence so `002` orders below `010`; the stem is already fixed-width.
       report_key="$(printf '%s %012d' "${report_key%% *}" "${report_key##* }")"
@@ -107,14 +108,11 @@ scan_reports() {
     # `unreadable`, never empty: an unparseable or missing watermark means every prior
     # claim must be re-verified, which is the opposite decision from "no prior report".
     prior_hash='unreadable'
-    prior_report_file="$prior_report"
-    if [ -f "$prior_report_file" ]; then
-      watermark_line="$(grep -m1 -E '^verified-at:[[:space:]]+[0-9a-f]{7,40}([[:space:]]|$)' "$prior_report_file")"
-      if [ -n "$watermark_line" ]; then
-        watermark_line="${watermark_line#verified-at:}"
-        watermark_line="${watermark_line#"${watermark_line%%[![:space:]]*}"}"
-        prior_hash="${watermark_line%%[![:alnum:]]*}"
-      fi
+    # A small metadata contract, independent of the report's visible layout.
+    watermark_line="$(grep -m1 -E '^[[:space:]]*<meta name="architecture-report-verified-at" content="[0-9a-f]{7,40}">[[:space:]]*$' "$prior_report")"
+    if [ -n "$watermark_line" ]; then
+      watermark_line="${watermark_line#*content=\"}"
+      prior_hash="${watermark_line%%\"*}"
     fi
     if [ "$prior_hash" = 'unreadable' ]; then
       prior_hash_resolves='no'
@@ -139,6 +137,7 @@ publish_report() {
   local sequence_number=1
   local published_directory
   local published_path
+  local staged_path
 
   if [ ! -f "$draft_path" ]; then
     printf 'architecture-report-preflight: draft is not a regular file: %s\n' "$draft_path" >&2
@@ -161,15 +160,17 @@ publish_report() {
     # publish this run's report into the previous run's bundle.
     if mkdir "$published_directory" 2>/dev/null; then
       published_path="$published_directory/$report_file_name"
-      if ! cp "$draft_path" "$published_path"; then
-        printf 'architecture-report-preflight: report could not be written: %s\n' \
-          "$published_path" >&2
-        rmdir "$published_directory" 2>/dev/null
+      staged_path="$published_directory/.$report_file_name.tmp"
+      # Keep failed or interrupted copies invisible to --scan. The exclusively claimed
+      # directory stays occupied on failure, as the shared publication contract requires.
+      if ! cp "$draft_path" "$staged_path" || ! cmp -s "$draft_path" "$staged_path"; then
+        printf 'architecture-report-preflight: report copy failed verification; partial bundle: %s\n' \
+          "$published_directory" >&2
         return 1
       fi
-      if ! cmp -s "$draft_path" "$published_path"; then
-        printf 'architecture-report-preflight: published report does not match the draft: %s\n' \
-          "$published_path" >&2
+      if ! mv "$staged_path" "$published_path" || ! cmp -s "$draft_path" "$published_path"; then
+        printf 'architecture-report-preflight: publication failed verification; partial bundle: %s\n' \
+          "$published_directory" >&2
         return 1
       fi
       printf '%s\n' "$published_path"
