@@ -223,7 +223,16 @@ title:title && title.textContent,linkPrefix:link && prefix.toString(),errors:win
 		// existing author parentheses. It must be inserted after the same first
 		// visible prose occurrence, not in the preserved heading above it.
 		wantProse := before[id].LinkPrefix + targets[id] + " (" + before[id].Title + ")"
-		if !strings.Contains(copiedBody, wantProse) {
+		// Clipboard titles escape Markdown punctuation; compare rendered text,
+		// while retaining the same first-prose-occurrence assertion.
+		copiedHTML, renderError := renderMarkdownBodyToHtml(copiedBody)
+		if renderError != nil {
+			t.Fatal(renderError)
+		}
+		var copiedVisibleText string
+		session.decodeResult(t, "rendered copied prose", session.evaluateInPage(t,
+			`(function(){var root=document.createElement('div');root.innerHTML=`+mustMarshalJSONString(t, copiedHTML)+`;return root.textContent;})()`), &copiedVisibleText)
+		if !strings.Contains(copiedVisibleText, wantProse) {
 			t.Fatalf("%s paste and drawer expanded different prose occurrences; missing %q", id, wantProse)
 		}
 		savedPath := filepath.Join(savedDirectory, id+".md")

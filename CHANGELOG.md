@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.244.4 — Keep Copied Titles from Breaking Markdown (2026-08-27)
+
+Clipboard title expansions keep pipes inside table cells and remove code delimiters that a short-title cut could leave open. Drawer titles and the full referenced-request appendix remain unchanged.
+
 ## 0.244.3 — Show Ticket Titles Inside Authored Links (2026-08-27)
 
 Ticket IDs inside authored Markdown links gain their first-mention title and glossary entry without changing the destination. Renderer autolinks remain untouched, and repeated processing does not decorate the same body twice.

@@ -1,11 +1,10 @@
 ---
-session_updated: '2026-08-27T13:09:12Z'
-last_completed: REQ-382
+session_updated: '2026-08-27T13:20:36Z'
+last_completed: REQ-387
 queue_state:
 - 2 pending
-- 1 pending-answers
 - 0 in-progress
-reqs_processed_this_session: 8
+reqs_processed_this_session: 9
 session_depth: deep
 ---
 
@@ -25,6 +24,8 @@ session_depth: deep
 - REQ-388: completed; implementation provenance is recorded in its archive.
 
 - REQ-382: completed; implementation provenance is recorded in its archive.
+
+- REQ-387: completed; implementation provenance is recorded in its archive.
 
 ## Queue and Coordination
 

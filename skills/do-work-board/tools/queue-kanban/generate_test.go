@@ -9643,3 +9643,87 @@ func clipboardProbeDocument(t *testing.T, documentText string, resolver *ticketM
 	}
 	return "{ text: " + mustMarshalJSONString(t, documentText) + ", ticketMentions: " + string(ticketMentions) + " }"
 }
+
+func TestJavaScriptBehaviorClipboardTitleSplicesPreserveMarkdownStructure(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceDeclarationAfter(t, indexHtml, "var inlineTicketTitleMaxLength ="),
+		sliceDeclarationAfter(t, indexHtml, "var referencedTicketsGlossaryHeading ="),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeRequestStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function ticketTitleFor("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function shortTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function recordReferencedTicket("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateTicketMentions("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeReferencedTicket("),
+		sliceBalancedBlockAfter(t, indexHtml, "function buildReferencedTicketsGlossary("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateClipboardPayload("),
+	}
+	cases := []struct{ name, title, wantShort string }{
+		{"pipe", "Split the row | keep the pipe", "Split the row | keep the pipe"},
+		{"backslash pipe", `Preserve \| and \\| and \\\| literally`, `Preserve \| and \\| and \\\| literally`},
+		{"single cut", "Keep " + strings.Repeat("word ", 8) + "`command with many additional arguments and its close`", "Keep " + strings.Repeat("word ", 8) + "command with…"},
+		{"double cut", "Keep " + strings.Repeat("word ", 8) + "``command with many additional arguments and its close``", "Keep " + strings.Repeat("word ", 8) + "command with…"},
+		{"balanced code pipe", "Keep `left | right` readable", "Keep left | right readable"},
+		{"code emphasis", "Keep `*important*` readable", "Keep *important* readable"},
+		{"unmatched emphasis", "Keep `*important` readable", "Keep *important readable"},
+		{"code link", "Keep `[label](target)` literal", "Keep [label](target) literal"},
+		{"code entity", "Keep `&copy;` literal", "Keep &amp;copy; literal"},
+	}
+	bodies := []string{
+		"| Reference | Unchanged | Last |\n| --- | --- | --- |\n| REQ-1108 | `author code` | final cell |\n",
+		"Read REQ-1108, then `author code` and ``double code`` and final prose closing*.\n",
+	}
+	// Compare actual renderer structure, not a count of source delimiters: GFM
+	// silently discards surplus cells, and an even backtick count can still be
+	// an unmatched double-backtick delimiter.
+	structurePattern := regexp.MustCompile(`</?[a-z][^>]*>`)
+	for _, testCase := range cases {
+		for bodyIndex, body := range bodies {
+			t.Run(fmt.Sprintf("%s/%d", testCase.name, bodyIndex), func(t *testing.T) {
+				mentions, encodeError := json.Marshal(collectDocumentTicketMentions(body, newCitationFixtureResolver()))
+				if encodeError != nil {
+					t.Fatal(encodeError)
+				}
+				probe := `var requestsById = {"REQ-1108": {title: ` + mustMarshalJSONString(t, testCase.title) + `, status: "pending"}}; var userRequestsById = {};` +
+					strings.Join(functionBlocks, "\n") + `
+process.stdout.write(JSON.stringify(annotateClipboardPayload([{text: ` + mustMarshalJSONString(t, body) + `, ticketMentions: ` + string(mentions) + `}], [])));`
+				var payload string
+				if decodeError := json.Unmarshal(runJavaScriptBehaviorProbe(t, "safe clipboard title", probe), &payload); decodeError != nil {
+					t.Fatal(decodeError)
+				}
+				appendix := "\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n- REQ-1108 — " + testCase.title + " (pending)\n"
+				if !strings.HasSuffix(payload, appendix) {
+					t.Fatalf("full original appendix title changed: %q", payload)
+				}
+				annotatedBody := strings.TrimSuffix(payload, appendix)
+				if !strings.Contains(annotatedBody, "REQ-1108 (") {
+					t.Fatalf("title expansion was suppressed: %q", annotatedBody)
+				}
+				originalHTML, renderError := renderMarkdownBodyToHtml(body)
+				if renderError != nil {
+					t.Fatal(renderError)
+				}
+				pastedHTML, renderError := renderMarkdownBodyToHtml(annotatedBody)
+				if renderError != nil {
+					t.Fatal(renderError)
+				}
+				if !strings.Contains(pastedHTML, "REQ-1108 ("+testCase.wantShort+")") {
+					t.Errorf("short title lost literal text: want %q in %s", testCase.wantShort, pastedHTML)
+				}
+				if !reflect.DeepEqual(structurePattern.FindAllString(originalHTML, -1), structurePattern.FindAllString(pastedHTML, -1)) {
+					t.Errorf("splice changed rendered block/inline structure:\noriginal %s\npasted %s", originalHTML, pastedHTML)
+				}
+				if !strings.Contains(pastedHTML, "<code>author code</code>") {
+					t.Errorf("title consumed author's code span: %s", pastedHTML)
+				}
+				if bodyIndex == 0 && !strings.Contains(pastedHTML, "<td>final cell</td>") {
+					t.Errorf("title displaced a table cell: %s", pastedHTML)
+				}
+				if bodyIndex == 1 && !strings.Contains(pastedHTML, " and final prose closing*.") {
+					t.Errorf("title consumed following prose: %s", pastedHTML)
+				}
+			})
+		}
+	}
+}

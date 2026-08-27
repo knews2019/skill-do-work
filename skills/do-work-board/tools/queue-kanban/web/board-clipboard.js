@@ -190,7 +190,12 @@
       // snapshot, and splicing the empty string wrote a bare " ()" into the
       // paste. Leave the mention as the author wrote it; the appendix says what
       // happened.
-      var expandedTitle = shortTicketTitle(describeTicketTitle(ticketMention.kind, ticketMention.id).text);
+      // A cut code delimiter must not consume later author code. Escape all
+      // ASCII punctuation after removing backticks: their former contents must
+      // stay literal, and a pipe (even after a backslash) must not split a cell.
+      var expandedTitle = shortTicketTitle(describeTicketTitle(ticketMention.kind, ticketMention.id).text)
+        .replace(/`/g, "")
+        .replace(/[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]/g, "\\$&");
       if (!expandedTitle) {
         return;
       }
