@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="architecture-report-verified-at" content="641231f5312803f24edcbf3c5b742c65eed7eca5">
+<title>Architecture Report — do-work suite · 641231f5</title>
+<style>
+  :root {
+    --paper: #faf9f6;
+    --panel: #f1efe9;
+    --ink: #21211d;
+    --muted: #6b6a62;
+    --line: #d9d6cc;
+    --accent: #0b5d8a;
+    --verified: #1d6b3c;
+    --verified-bg: #e4f0e7;
+    --inferred: #8a5a0b;
+    --inferred-bg: #f5ecd9;
+    --warn: #8a2b0b;
+    --warn-bg: #f5e2d9;
+    --code-bg: #edebe3;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  header.masthead {
+    border-bottom: 1px solid var(--line);
+    padding: 2.5rem 1.5rem 2rem;
+    background: var(--panel);
+  }
+  .masthead-inner { max-width: 76rem; margin: 0 auto; }
+  h1 { font-size: 1.9rem; line-height: 1.25; font-weight: 700; letter-spacing: -0.015em; }
+  .subtitle { color: var(--muted); margin-top: .4rem; font-size: 1.02rem; }
+  .meta-grid {
+    display: grid; gap: .5rem 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    margin-top: 1.4rem; font-size: .88rem;
+  }
+  .meta-grid div { border-left: 3px solid var(--line); padding-left: .7rem; }
+  .meta-grid dt { color: var(--muted); text-transform: uppercase; font-size: .7rem; letter-spacing: .06em; }
+  .meta-grid dd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .84rem; word-break: break-all; }
+  .layout { max-width: 76rem; margin: 0 auto; display: flex; gap: 3rem; padding: 0 1.5rem; }
+  nav.toc {
+    flex: 0 0 15rem; position: sticky; top: 0; align-self: flex-start;
+    max-height: 100vh; overflow-y: auto; padding: 2rem 0 2rem;
+    font-size: .86rem;
+  }
+  nav.toc ol { list-style: none; }
+  nav.toc li { margin: .35rem 0; }
+  nav.toc a { color: var(--muted); text-decoration: none; display: block; padding: .1rem .5rem; border-left: 2px solid transparent; }
+  nav.toc a:hover { color: var(--accent); border-left-color: var(--accent); }
+  main { flex: 1 1 auto; min-width: 0; padding: 2rem 0 5rem; max-width: 50rem; }
+  section { margin-bottom: 3.2rem; }
+  h2 {
+    font-size: 1.42rem; margin-bottom: .9rem; padding-top: 1rem;
+    letter-spacing: -0.01em; border-top: 2px solid var(--line);
+  }
+  h3 { font-size: 1.08rem; margin: 1.5rem 0 .5rem; }
+  p { margin: .7rem 0; }
+  ul, ol { margin: .7rem 0 .7rem 1.4rem; }
+  li { margin: .3rem 0; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .85em; background: var(--code-bg); padding: .1em .35em; border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg); padding: .8rem 1rem; border-radius: 6px;
+    overflow-x: auto; margin: .8rem 0; font-size: .82rem; line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; }
+  a { color: var(--accent); }
+  a.ev {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .72rem; text-decoration: none; white-space: nowrap;
+    background: var(--verified-bg); color: var(--verified);
+    border: 1px solid color-mix(in srgb, var(--verified) 30%, transparent);
+    border-radius: 4px; padding: .05em .4em; vertical-align: baseline;
+  }
+  a.ev:hover { text-decoration: underline; }
+  a.ev::before { content: "V "; font-weight: 700; }
+  span.inf {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .72rem; white-space: nowrap;
+    background: var(--inferred-bg); color: var(--inferred);
+    border: 1px solid color-mix(in srgb, var(--inferred) 30%, transparent);
+    border-radius: 4px; padding: .05em .4em;
+  }
+  span.inf::before { content: "I "; font-weight: 700; }
+  .callout {
+    border-left: 4px solid var(--accent); background: var(--panel);
+    padding: .8rem 1rem; border-radius: 0 6px 6px 0; margin: 1rem 0; font-size: .93rem;
+  }
+  .callout.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  figure { margin: 1.4rem 0; }
+  figure svg { max-width: 100%; height: auto; display: block; }
+  figcaption { font-size: .82rem; color: var(--muted); margin-top: .5rem; }
+  .tablewrap { overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; font-size: .88rem; min-width: 30rem; }
+  th, td { text-align: left; padding: .45rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .disagreement { border-left: 4px solid var(--warn); padding: .6rem 1rem; margin: .8rem 0; background: var(--warn-bg); border-radius: 0 6px 6px 0; font-size: .93rem; }
+  .disagreement b { color: var(--warn); }
+  footer { border-top: 1px solid var(--line); color: var(--muted); font-size: .82rem; padding: 1.5rem; text-align: center; }
+  @media (max-width: 900px) { nav.toc { display: none; } .layout { display: block; } }
+  /* SVG shared classes */
+  .box { fill: #ffffff; stroke: #8f8c80; stroke-width: 1.2; rx: 6; }
+  .box-accent { fill: #e3eef5; stroke: #0b5d8a; stroke-width: 1.4; }
+  .box-state { fill: #f5efdc; stroke: #8a5a0b; stroke-width: 1.2; }
+  .box-terminal { fill: #e4f0e7; stroke: #1d6b3c; stroke-width: 1.2; }
+  .box-warnfill { fill: #f5e2d9; stroke: #8a2b0b; stroke-width: 1.2; }
+  .lbl { font: 600 12.5px -apple-system, "Segoe UI", sans-serif; fill: #21211d; }
+  .lbl-small { font: 11px -apple-system, "Segoe UI", sans-serif; fill: #55544c; }
+  .lbl-mono { font: 11px ui-monospace, Menlo, monospace; fill: #21211d; }
+  .edge { stroke: #55544c; stroke-width: 1.3; fill: none; marker-end: url(#arrow); }
+  .edge-dash { stroke: #55544c; stroke-width: 1.2; fill: none; stroke-dasharray: 4 3; marker-end: url(#arrow); }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <h1>Architecture Report — do-work suite</h1>
+    <p class="subtitle">A four-skill task-queue suite for agentic coding tools, described repo-wide at one committed tree. Every claim is labeled <a class="ev" href="#method">how labels work</a> or <span class="inf">basis stated inline</span>.</p>
+    <dl class="meta-grid">
+      <div><dt>Verified at commit</dt><dd>641231f5312803f24edcbf3c5b742c65eed7eca5</dd></div>
+      <div><dt>Date / suite version</dt><dd>2026-08-27 (UTC) · 0.244.6</dd></div>
+      <div><dt>Prior HTML baseline</dt><dd>2026-08-27_1508 report, at 8b94348a — same shipped tree</dd></div>
+      <div><dt>Claim counts</dt><dd>70 verified · 3 inferred</dd></div>
+      <div><dt>Record–code disagreements</dt><dd>4 — <a href="#disagreements">§10</a></dd></div>
+      <div><dt>Evidence-link caveat</dt><dd>commit not yet on the fetched remote — <a href="#limitations">§11</a></dd></div>
+    </dl>
+  </div>
+</header>
+
+<div class="layout">
+<nav class="toc" aria-label="Sections">
+  <ol>
+    <li><a href="#changed">Δ Changed since last report</a></li>
+    <li><a href="#what">1 · What this repository is</a></li>
+    <li><a href="#consumer">2 · The suite in a consumer project</a></li>
+    <li><a href="#core">3 · Core: router and pipeline</a></li>
+    <li><a href="#parallel">4 · Parallel execution</a></li>
+    <li><a href="#board">5 · Board: the compiled component</a></li>
+    <li><a href="#knowledge">6 · Knowledge</a></li>
+    <li><a href="#toolbox">7 · Toolbox</a></li>
+    <li><a href="#distribution">8 · Distribution and versioning</a></li>
+    <li><a href="#governance">9 · Verification and governance</a></li>
+    <li><a href="#disagreements">10 · Record–code disagreements</a></li>
+    <li><a href="#limitations">11 · Open questions and limits</a></li>
+    <li><a href="#method">12 · Method and labeling</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="changed">
+  <h2>Δ Changed since last report</h2>
+  <p><strong>Nothing architectural changed since the prior HTML report — the two reports describe the same shipped tree, hours apart.</strong> The prior baseline is <a href="../2026-08-27_1508_architecture-report/index.html">the report published earlier today</a>, watermarked at commit <code>8b94348a</code>. This report watermarks that commit's child, <code>641231f5</code>, and the only difference between the two trees is the prior report bundle itself (<code>git diff --stat 8b94348a..641231f5</code> → one file, the prior bundle's <code>index.html</code>). Every shipped file is byte-identical between the two commits.</p>
+  <p>Two runs of this action raced today: the prior report was published while this one was mid-verification, which is also why its opening says "first HTML baseline" — true when its run scanned, superseded by its own publication. The collision-safe publication contract absorbed the race as designed: two separate dated, immutable bundles, no overwrite.</p>
+  <p>The prior report was read completely and walked claim by claim against this commit: all 29 of its <code>VERIFIED</code> and 3 <code>INFERRED</code> claims still hold, which follows structurally from the identical shipped tree and was spot-confirmed on its manifest, lifecycle, board write-surface, installer, and export-ignore claims. This report was verified independently and differs in coverage, not in facts: it adds drawn pipeline and status-lifecycle diagrams, the worktree/fan-out integration contract, the parser lock-step and durations/forecast mechanics, the governance layer (tests, primes, decisions), and four record–code disagreements the prior report did not carry (<a href="#disagreements">§10</a>). The prior report's observation that ADR-003 still says "karpathy guardrails" while the code loads <code>coding-guardrails.md</code> is classified here as frozen decision history rather than drift, consistent with how both reports treat superseded ADRs.</p>
+  <p>For a reader returning from the legacy Markdown report of 2026-08-26 (watermark <code>3c876ec</code>, v0.238.0 — context only, never a baseline): the movement since then was this action's own Markdown→HTML output change (0.243.0) <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/CHANGELOG.md#L37" class="ev">CHANGELOG.md:37</a> and the board's new citations subsystem plus the <em>ungated-write-set-overlap</em> verify check (0.242.0–0.244.5) <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/CHANGELOG.md#L56" class="ev">CHANGELOG.md:56</a>. Both additive; no pipeline contract changed.</p>
+</section>
+
+<section id="what">
+  <h2>1 · What this repository is</h2>
+  <p>This repository is the <em>source</em> of the do-work suite: "a four-skill task queue suite for agentic coding tools — capture requests fast, process them later" <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/README.md#L3" class="ev">README.md:3</a>. The core idea is separating <em>thinking of things</em> from <em>doing things</em>: requests are captured verbatim into a queue as they occur, and a separate work loop later triages and builds each one with a full decision trail <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/README.md#L53" class="ev">README.md:53</a>.</p>
+  <p>The tree at this commit holds 1,056 tracked files in four layers:</p>
+  <ul>
+    <li><strong>The shipped product</strong> — four sibling skill packages under <code>skills/</code>, the suite manifest <code>suite/modules.tsv</code>, and the root bootstrap tools under <code>tools/</code>.</li>
+    <li><strong>Maintainer-only governance</strong> — <code>_dev/</code> (tests, primes, lessons), <code>decisions/</code> (21 ADRs, topic indexes, audits), <code>CLAUDE.md</code>/<code>AGENTS.md</code>.</li>
+    <li><strong>Dogfooded live state</strong> — this repo runs the suite on itself: its own queue under <code>do-work/</code> and its own knowledge base under <code>kb/</code> are tracked, load-bearing data.</li>
+    <li><strong>Published deliverables</strong> — dated, immutable report bundles under <code>ai-reports/</code>, including this one.</li>
+  </ul>
+  <p>What separates layer one from the rest is eleven <code>export-ignore</code> lines in <code>.gitattributes</code> <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/.gitattributes#L43-L53" class="ev">.gitattributes:43-53</a>: both install routes fetch an archive that honors them, so consumers receive only the product (§8). The whole suite shares one version, 0.244.6, held in lock-step across three files (§8).</p>
+</section>
+
+<section id="consumer">
+  <h2>2 · The suite in a consumer project</h2>
+  <p>A consumer installs with one copy-paste bash block that downloads the main-branch tarball and runs the installer <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/README.md#L9-L22" class="ev">README.md:9-22</a>. Four packages land as siblings under <code>.claude/skills/</code>; durable queue state lives at the project root under <code>do-work/</code> and is never touched by install or update <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/README.md#L35" class="ev">README.md:35</a>.</p>
+
+  <figure>
+  <svg viewBox="0 0 860 470" role="img" aria-label="Diagram: the four installed packages and the state they read and write in a consumer project">
+    <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#55544c"/></marker></defs>
+    <rect x="8" y="8" width="844" height="454" fill="none" stroke="#8f8c80" stroke-width="1.4" stroke-dasharray="7 4" rx="10"/>
+    <text x="24" y="34" class="lbl">Consumer project repository</text>
+
+    <rect x="24" y="52" width="812" height="120" class="box" rx="8"/>
+    <text x="40" y="76" class="lbl-small">.claude/skills/ — four sibling packages, one shared version</text>
+    <rect x="40" y="88" width="180" height="66" class="box-accent" rx="6"/>
+    <text x="52" y="110" class="lbl">do-work</text>
+    <text x="52" y="127" class="lbl-small">capture · run · review ·</text>
+    <text x="52" y="141" class="lbl-small">archive · maintain</text>
+    <rect x="238" y="88" width="180" height="66" class="box" rx="6"/>
+    <text x="250" y="110" class="lbl">do-work-board</text>
+    <text x="250" y="127" class="lbl-small">queue-kanban Go tool</text>
+    <text x="250" y="141" class="lbl-small">board · testing · verify</text>
+    <rect x="436" y="88" width="180" height="66" class="box" rx="6"/>
+    <text x="448" y="110" class="lbl">do-work-knowledge</text>
+    <text x="448" y="127" class="lbl-small">BKB · memory · dream ·</text>
+    <text x="448" y="141" class="lbl-small">interviews · prompts</text>
+    <rect x="634" y="88" width="180" height="66" class="box" rx="6"/>
+    <text x="646" y="110" class="lbl">do-work-toolbox</text>
+    <text x="646" y="127" class="lbl-small">audits · reports ·</text>
+    <text x="646" y="141" class="lbl-small">presentation · utilities</text>
+
+    <rect x="40" y="240" width="300" height="130" class="box-state" rx="8"/>
+    <text x="56" y="264" class="lbl">do-work/ — queue state</text>
+    <text x="56" y="286" class="lbl-mono">queue/  working/  archive/</text>
+    <text x="56" y="304" class="lbl-mono">user-requests/UR-NNN/input.md</text>
+    <text x="56" y="322" class="lbl-mono">.req-reservations/  runs/</text>
+    <text x="56" y="344" class="lbl-small">plain Markdown + YAML frontmatter — the files ARE the database</text>
+
+    <rect x="380" y="240" width="200" height="130" class="box-state" rx="8"/>
+    <text x="396" y="264" class="lbl">kb/ — knowledge base</text>
+    <text x="396" y="286" class="lbl-mono">raw/inbox → processed</text>
+    <text x="396" y="304" class="lbl-mono">wiki/  agents/</text>
+    <text x="396" y="330" class="lbl-small">compiled interlinked wiki;</text>
+    <text x="396" y="346" class="lbl-small">raw sources never modified</text>
+
+    <rect x="620" y="240" width="216" height="130" class="box" rx="8"/>
+    <text x="636" y="264" class="lbl">Managed surfaces</text>
+    <text x="636" y="288" class="lbl-mono">justfile (sentinel section)</text>
+    <text x="636" y="306" class="lbl-mono">.claude/settings.json</text>
+    <text x="636" y="324" class="lbl-mono">CLAUDE.md (marked section)</text>
+    <text x="636" y="348" class="lbl-small">written only by install/update</text>
+
+    <path class="edge" d="M130 154 L150 240"/>
+    <text x="88" y="205" class="lbl-small">owns every</text>
+    <text x="88" y="219" class="lbl-small">queue write</text>
+    <path class="edge-dash" d="M328 154 L250 240"/>
+    <text x="278" y="200" class="lbl-small">reads all;</text>
+    <text x="278" y="214" class="lbl-small">3 narrow writes</text>
+    <path class="edge" d="M526 154 L480 240"/>
+    <text x="500" y="205" class="lbl-small">compiles</text>
+    <path class="edge-dash" d="M724 154 L724 240"/>
+    <text x="734" y="205" class="lbl-small">install/update only</text>
+
+    <rect x="40" y="400" width="796" height="46" class="box" rx="8"/>
+    <text x="56" y="420" class="lbl">One enabled hook: SessionStart</text>
+    <text x="56" y="437" class="lbl-small">prints version + pending count, reaps stale REQ-number reservations, repairs detectably wrong *_at stamps — memory capture stays off until setup-memory</text>
+    <path class="edge-dash" d="M180 370 L180 400"/>
+  </svg>
+  <figcaption>Figure 1 — The installed suite. Core owns the queue; the board reads everything and has exactly three write surfaces (§5); knowledge owns <code>kb/</code> and opt-in memory; toolbox is read-mostly and publishes reports. Package roles <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/SKILL.md#L11-L14" class="ev">SKILL.md:11-14</a>; hook behavior <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/README.md#L190" class="ev">README.md:190</a>.</figcaption>
+  </figure>
+
+  <p>The packages are deliberately loose-coupled: each has its own <code>SKILL.md</code> router, sibling references are literal relative paths resolved from the citing file's directory <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/SKILL.md#L16" class="ev">SKILL.md:16</a>, and only the board needs a toolchain (Go) — every other capability requires nothing beyond file access and a shell. Action files are written to work as standalone prompts in any agentic tool <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/README.md#L156" class="ev">README.md:156</a>.</p>
+</section>
+
+<section id="core">
+  <h2>3 · Core: router and the work pipeline</h2>
+
+  <h3>Routing</h3>
+  <p>The core <code>SKILL.md</code> is a first-match-wins trigger table: sixteen rows map user input to exactly one action file under <code>actions/</code>, which is then read completely with arguments passed through <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/SKILL.md#L22-L45" class="ev">SKILL.md:22-45</a>. Two fallbacks close the space: unmatched descriptive multi-word input becomes a capture, and an unknown single word triggers a question rather than a guess. Mechanics that would bloat an action file live in companion <code>*-reference.md</code> files loaded only at the step that cites them.</p>
+
+  <h3>Capture: intent becomes queue entries</h3>
+  <p>Every capture produces exactly two things, always paired: a UR folder <code>do-work/user-requests/UR-NNN/input.md</code> preserving the user's input verbatim, and one or more REQ files in <code>do-work/queue/</code> linked back by <code>user_request:</code> <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/capture.md#L11" class="ev">capture.md:11</a>. Compound inputs are split into separate REQs; capture asks clarifying questions but never builds. REQ numbering is race-safe when the board tool is available: <code>queue-kanban next-req</code> creates an exclusive marker file under <code>do-work/.req-reservations/</code> (§5), with a hand scan as the fallback <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/capture.md#L80" class="ev">capture.md:80</a>.</p>
+
+  <h3>The work loop</h3>
+  <p><code>do-work run</code> processes the queue one REQ at a time through a numbered pipeline. Triage picks one of three routes — A straight to implementation, B explore first, C plan then explore — and the step sequence adapts to the route <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work.md#L43-L79" class="ev">work.md:43-79</a>.</p>
+
+  <figure>
+  <svg viewBox="0 0 860 560" role="img" aria-label="Diagram: the work pipeline steps">
+    <rect x="20" y="16" width="250" height="52" class="box-accent" rx="8"/>
+    <text x="34" y="38" class="lbl">1 · Find next request</text>
+    <text x="34" y="56" class="lbl-small">frontmatter scan of do-work/queue/</text>
+    <rect x="20" y="92" width="250" height="52" class="box-accent" rx="8"/>
+    <text x="34" y="114" class="lbl">2 · Claim</text>
+    <text x="34" y="132" class="lbl-small">move to working/ · status: claimed</text>
+    <rect x="20" y="168" width="250" height="52" class="box-accent" rx="8"/>
+    <text x="34" y="190" class="lbl">3 · Triage → route A / B / C</text>
+    <text x="34" y="208" class="lbl-small">3.5 best-judgment · 3.6 estimate · 3.7 spec</text>
+    <rect x="20" y="244" width="250" height="52" class="box" rx="8"/>
+    <text x="34" y="266" class="lbl">4–5.75 · Plan / explore / scope</text>
+    <text x="34" y="284" class="lbl-small">## Scope declares files to touch · preflight</text>
+    <rect x="20" y="320" width="250" height="52" class="box-accent" rx="8"/>
+    <text x="34" y="342" class="lbl">6 · Implement</text>
+    <text x="34" y="360" class="lbl-small">crew rules loaded · optional worktree builder</text>
+    <rect x="20" y="396" width="250" height="52" class="box" rx="8"/>
+    <text x="34" y="418" class="lbl">6.3 · Qualify  ·  6.5 · Test</text>
+    <text x="34" y="436" class="lbl-small">tools/checks/qualify.sh, independent of builder</text>
+    <rect x="20" y="472" width="250" height="52" class="box-accent" rx="8"/>
+    <text x="34" y="494" class="lbl">7 · Review</text>
+    <text x="34" y="512" class="lbl-small">review-work.md · pass / partial / fail gates</text>
+
+    <rect x="560" y="16" width="270" height="52" class="box-accent" rx="8"/>
+    <text x="574" y="38" class="lbl">10 · Loop or exit</text>
+    <text x="574" y="56" class="lbl-small">context wipe between REQs, then Step 1</text>
+    <rect x="560" y="92" width="270" height="52" class="box-accent" rx="8"/>
+    <text x="574" y="114" class="lbl">9 · Commit</text>
+    <text x="574" y="132" class="lbl-small">one commit per REQ · hash recorded separately</text>
+    <rect x="560" y="168" width="270" height="52" class="box-accent" rx="8"/>
+    <text x="574" y="190" class="lbl">8 · Archive</text>
+    <text x="574" y="208" class="lbl-small">move out of working/ · terminal status stamped</text>
+    <rect x="560" y="244" width="270" height="52" class="box" rx="8"/>
+    <text x="574" y="266" class="lbl">7.5 · Lessons capture</text>
+    <text x="574" y="284" class="lbl-small">## Lessons Learned appended to the REQ</text>
+
+    <path class="edge" d="M145 68 L145 92"/>
+    <path class="edge" d="M145 144 L145 168"/>
+    <path class="edge" d="M145 220 L145 244"/>
+    <path class="edge" d="M145 296 L145 320"/>
+    <path class="edge" d="M145 372 L145 396"/>
+    <path class="edge" d="M145 448 L145 472"/>
+    <path class="edge" d="M270 498 C 420 498, 500 290, 574 296"/>
+    <path class="edge" d="M695 244 L695 220"/>
+    <path class="edge" d="M695 168 L695 144"/>
+    <path class="edge" d="M695 92 L695 68"/>
+    <path class="edge-dash" d="M560 42 C 420 42, 320 42, 270 42"/>
+    <text x="330" y="34" class="lbl-small">next REQ</text>
+
+    <rect x="330" y="130" width="210" height="130" class="box-state" rx="8"/>
+    <text x="346" y="154" class="lbl">Holding states</text>
+    <text x="346" y="176" class="lbl-mono">pending-answers</text>
+    <text x="346" y="194" class="lbl-mono">blocked (+ probe)</text>
+    <text x="346" y="212" class="lbl-mono">blocked-archive-collision</text>
+    <text x="346" y="230" class="lbl-mono">blocked-dependency-cycle</text>
+    <text x="346" y="250" class="lbl-small">scan walks past; only exit 0 of a blocked_check unblocks</text>
+    <path class="edge-dash" d="M270 190 L330 190"/>
+  </svg>
+  <figcaption>Figure 2 — The pipeline in <code>actions/work.md</code>. Step anchors: 1 <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work.md#L122" class="ev">work.md:122</a>, 2 <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work.md#L220" class="ev">work.md:220</a>, 6 <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work.md#L365" class="ev">work.md:365</a>, 6.3 <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work.md#L430" class="ev">work.md:430</a>, 8 <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work.md#L557" class="ev">work.md:557</a>, 9 <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work.md#L626" class="ev">work.md:626</a>, 10 <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work.md#L638" class="ev">work.md:638</a>.</figcaption>
+  </figure>
+
+  <p>Three properties matter more than the step list:</p>
+  <ul>
+    <li><strong>State is the files, phases are the sections.</strong> Only two status transitions are written on the happy path — claim (Step 2) and terminal flip (Step 8). Intermediate progress is tracked by which <code>##</code> sections exist in the REQ file, not by frontmatter churn <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work.md#L91" class="ev">work.md:91</a>.</li>
+    <li><strong>Verification is independent of the builder.</strong> Step 6.3's <code>qualify.sh</code> is the orchestrator's own check, and review (Step 7) gates archive outcomes: below 50% earns one remediation attempt, then <code>completed-with-issues</code> — never silent success <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work.md#L490" class="ev">work.md:490</a>.</li>
+    <li><strong>Blocked is fail-closed.</strong> A user-authored <code>blocked_check</code> probe is staged to a scratch file and run under a 30-second timeout by a shipped runner; exit 0 is the only unblock — non-zero, timeout, or unreadable all leave the REQ blocked <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work.md#L130-L136" class="ev">work.md:130-136</a>.</li>
+  </ul>
+
+  <h3>Status lifecycle</h3>
+  <figure>
+  <svg viewBox="0 0 860 300" role="img" aria-label="Diagram: REQ status lifecycle">
+    <rect x="20" y="110" width="130" height="44" class="box-state" rx="20"/>
+    <text x="48" y="137" class="lbl">pending</text>
+    <rect x="240" y="110" width="130" height="44" class="box-accent" rx="20"/>
+    <text x="268" y="137" class="lbl">claimed</text>
+    <rect x="490" y="30" width="200" height="40" class="box-terminal" rx="20"/>
+    <text x="516" y="55" class="lbl">completed</text>
+    <rect x="490" y="86" width="200" height="40" class="box-terminal" rx="20"/>
+    <text x="516" y="111" class="lbl">completed-with-issues</text>
+    <rect x="490" y="142" width="200" height="40" class="box-warnfill" rx="20"/>
+    <text x="516" y="167" class="lbl">failed</text>
+    <rect x="490" y="198" width="200" height="40" class="box-warnfill" rx="20"/>
+    <text x="516" y="223" class="lbl">cancelled</text>
+    <text x="700" y="223" class="lbl-small">via abandon only</text>
+    <rect x="20" y="210" width="400" height="72" class="box-state" rx="8"/>
+    <text x="36" y="234" class="lbl">Holding (scan walks past)</text>
+    <text x="36" y="254" class="lbl-mono">pending-answers · blocked</text>
+    <text x="36" y="272" class="lbl-mono">blocked-archive-collision · blocked-dependency-cycle</text>
+    <path class="edge" d="M150 132 L240 132"/>
+    <text x="164" y="124" class="lbl-small">Step 2</text>
+    <path class="edge" d="M370 122 C 430 90, 450 55, 490 50"/>
+    <path class="edge" d="M370 130 L490 108"/>
+    <path class="edge" d="M370 140 C 430 155, 450 160, 490 162"/>
+    <text x="398" y="98" class="lbl-small">Step 8</text>
+    <path class="edge-dash" d="M120 210 C 100 190, 85 170, 85 154"/>
+    <text x="96" y="188" class="lbl-small">unblock → pending</text>
+  </svg>
+  <figcaption>Figure 3 — Status vocabulary written by the pipeline <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work.md#L89-L97" class="ev">work.md:89-97</a>. Terminal-success is <code>completed</code> + <code>completed-with-issues</code>; adding <code>cancelled</code> gives terminal-resolved — both defined as conditions, with consumer lists marked illustrative <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work-reference.md#L264-L270" class="ev">work-reference.md:264-270</a>.</figcaption>
+  </figure>
+
+  <h3>Crew members: rules loaded just in time</h3>
+  <p>Behavioral rules live in <code>crew-members/</code>, one file per concern, each carrying a <code>JIT_CONTEXT</code> comment that is the canonical statement of when it loads. During implementation three always load — <code>general.md</code>, <code>coding-guardrails.md</code>, <code>communication-style.md</code> — and the rest are conditional on REQ fields (domain, <code>tdd</code>, <code>maintenance: true</code>, <code>caveman</code>) or on events (remediation loads <code>debugging.md</code>; ingestion of untrusted content loads <code>prompt-injection.md</code>; human-facing artifacts load <code>anti-slop.md</code>) <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work.md#L365-L377" class="ev">work.md:365-377</a>. A missing rules file never blocks the run.</p>
+
+  <h3>Prescribed shell</h3>
+  <p>Whenever action prose described an exact command sequence, the sequence was extracted into a shipped script and the prose became a pointer — 14 prescribed scripts across the packages, each with its own behavioral fixture case under <code>_dev/tests/prescribed-shell-cases/</code> <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/_dev/tests/prescribed-shell-canonicalization.sh#L9-L24" class="ev">prescribed-shell-canonicalization.sh:9-24</a>. Judgment stays in prose; mechanics live in tested code.</p>
+</section>
+
+<section id="parallel">
+  <h2>4 · Parallel execution: worktree dispatch and fan-out</h2>
+  <p>Parallelism is opt-in and orchestrator-shaped. In Worktree Dispatch Mode each builder gets a disposable git worktree and branch (<code>worktree-agent-REQ-NNN-*</code>); the orchestrator stays in the main tree and is the only writer of <code>do-work/</code> state <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work-reference.md#L331-L353" class="ev">work-reference.md:331-353</a>. The load-bearing rules:</p>
+  <ul>
+    <li><strong>Sole integrator.</strong> A builder never writes the main tree, with exactly one exception: its own hand-back file under <code>do-work/runs/</code>. Everything shared — queue transitions, REQ id allocation, the release version file, <code>CHANGELOG.md</code> — is serial-only and owned by the integrator at merge time <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work-reference.md#L355" class="ev">work-reference.md:355</a> <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work-reference.md#L407" class="ev">work-reference.md:407</a>.</li>
+    <li><strong>The merge is the proof.</strong> <code>write_set</code> is display-only at any builder count — never a scheduling input; "the non-interference proof is the merge, not the pick", and integration (merge → qualify → test → review → changelog → archive) is serial, one REQ at a time <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work-reference.md#L386-L389" class="ev">work-reference.md:386-389</a>. Since 0.242.0 the board's <code>verify</code> names queued pairs that declare the same file with no dependency edge, so the human sees the collision risk the scheduler deliberately ignores.</li>
+    <li><strong>Any checkout may capture and claim, but one releaser per queue.</strong> Two releasers is outside the contract <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work-reference.md#L55-L63" class="ev">work-reference.md:55-63</a>.</li>
+    <li><strong>A builder's report is a claim, not evidence.</strong> Post-merge, acceptance checks re-run against the merged tree; a red merged state means revert and re-dispatch, never archive-with-follow-up <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work-reference.md#L374" class="ev">work-reference.md:374</a>.</li>
+  </ul>
+  <p>Fan-out (<code>--fan-out [N]</code>) raises the builder count without adding coordination machinery, because every guarantee above is already per-REQ; the auto-wave picks only REQs that are pending, dependency-ready, unclaimed, and unassigned <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/work-reference.md#L391-L397" class="ev">work-reference.md:391-397</a>. Without worktree support the mode degrades silently to serial.</p>
+</section>
+
+<section id="board">
+  <h2>5 · Board: the one compiled component</h2>
+  <p><code>skills/do-work-board/tools/queue-kanban/</code> is a single flat Go <code>package main</code> (module <code>github.com/knews2019/skill-do-work/queue-kanban</code>, Go 1.26, three direct deps: goldmark, x/text, yaml.v3 <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-board/tools/queue-kanban/go.mod#L1-L8" class="ev">go.mod:1-8</a>). It is the suite's only toolchain dependency — the documented exception to "design for the floor" — and the board action degrades gracefully when <code>go</code> is absent <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-board/actions/board.md#L7" class="ev">board.md:7</a>.</p>
+  <p>Subcommands dispatch through a hand-rolled switch: <code>summary</code>, <code>open-work</code>, <code>generate</code>, <code>serve</code>, <code>next-req</code>, <code>next-version</code>, <code>verify</code>, <code>now</code>, <code>frontmatter</code> <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-board/tools/queue-kanban/main.go#L66-L87" class="ev">main.go:66-87</a>. <code>serve</code> binds loopback <code>127.0.0.1:8090</code> by default and refreshes by re-walking the tree with an mtime fingerprint per request — no websockets, no push <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-board/tools/queue-kanban/serve.go#L328-L343" class="ev">serve.go:328-343</a>. The web assets are embedded in the binary, so <code>generate</code> and <code>serve</code> render the identical page; active repo HTML is previewed on a separate ephemeral loopback origin so it never runs on the board's origin <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-board/tools/queue-kanban/html_preview.go#L19-L24" class="ev">html_preview.go:19-24</a>. Five client views: board, calendar, durations, timeline, testing.</p>
+
+  <h3>Exactly three write surfaces</h3>
+  <p>The tool's package comment is the in-code mirror of the maintainer contract: the Testing view writes the testing-track frontmatter fields plus <code>do-work/testers.md</code>; <code>next-version</code> rewrites the single <code>**Current version**:</code> line in one version file; <code>next-req</code> creates one durable reservation marker via <code>O_CREAT|O_EXCL</code>. Everything else is read-only, and no subcommand ever writes <code>CHANGELOG.md</code> <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-board/tools/queue-kanban/main.go#L49-L54" class="ev">main.go:49-54</a>. None of the three touches pipeline state: <code>status</code> and every other pipeline field belong to core. Adding a fourth surface requires amending the CLAUDE.md sentence in the same commit — the co-location rule applied to itself.</p>
+  <ul>
+    <li>Testing writes are serialized by a single mutex (each HTTP request is its own goroutine), containment-checked, and committed by atomic replace — "the file IS the database" <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-board/tools/queue-kanban/testing.go#L46" class="ev">testing.go:46</a>.</li>
+    <li><code>next-version</code> refuses to write unless exactly one <code>**Current version**:</code> line matched, writes atomically, and reads back to confirm <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-board/tools/queue-kanban/release.go#L191-L207" class="ev">release.go:191-207</a>.</li>
+    <li>Reservation markers are reaped only mechanically, by core's SessionStart cleanup script, once a committed REQ claims the number or after a two-day timeout <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/scripts/cleanup-req-reservations.sh#L30-L47" class="ev">cleanup-req-reservations.sh:30-47</a>.</li>
+  </ul>
+
+  <h3>Parser lock-step</h3>
+  <p>The board re-implements REQ frontmatter reading in Go, so the Go parser and the Markdown Schema Read Contract in <code>actions/work-reference.md</code> must move together — the obligation is stated in the code itself: "Keep this parser in lock-step with the Schema Read Contract" <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-board/tools/queue-kanban/model.go#L176-L177" class="ev">model.go:176-177</a>. There is no version handshake; the lock-step is a convention enforced by review and the maintainer prime. Parsing is three layers tolerant (strict yaml.v3 → duplicate-key retry → line-based salvage explicitly marked "not a contract a writer may aim at" <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-board/tools/queue-kanban/frontmatter.go#L107" class="ev">frontmatter.go:107</a>), and an unrecognized status parks the ticket visibly with a warning naming the fix — never silently dropped.</p>
+
+  <h3>Durations and the queue forecast</h3>
+  <p>Completed REQs with parseable <code>claimed_at</code>/<code>completed_at</code> stamps become duration samples; spans are kept raw and signed, with negative spans surfaced as anomalies rather than clamped <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-board/tools/queue-kanban/durations.go#L15-L18" class="ev">durations.go:15-18</a>. The Timeline's queue-end projection consumes the last 60 in-rule samples, requires at least five, splits medians by effort bucket, and declines with a stated reason below the minimum instead of guessing <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-board/tools/queue-kanban/timeline.go#L310-L328" class="ev">timeline.go:310-328</a>. The read-time exclusion rule (spans over four hours are assumed paused sessions) is defined once, in core's <code>estimate-reference.md</code> → Calibration; <code>durations.go</code> is documented as its second reader, not a second definition.</p>
+</section>
+
+<section id="knowledge">
+  <h2>6 · Knowledge</h2>
+  <p>The knowledge package owns retained knowledge across sessions, in two deliberately competing engines plus supporting flows <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-knowledge/SKILL.md#L9" class="ev">knowledge SKILL.md:9</a>:</p>
+  <ul>
+    <li><strong>BKB</strong> treats <code>raw/</code> as source code, the LLM as the compiler, and the wiki as the executable: documents move <code>inbox → capture → processed</code> while typed, interlinked wiki pages are produced as a side effect <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-knowledge/actions/bkb.md#L5" class="ev">bkb.md:5</a>. Thirteen subcommands each name an agent crew (eight role files under <code>kb/agents/</code>); raw originals are never modified.</li>
+    <li><strong>Memory</strong> optimizes capture where BKB optimizes synthesis: a standing file hard-capped at 2,500 characters, append-only daily logs, and layered lexical recall <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-knowledge/actions/memory.md#L5" class="ev">memory.md:5</a>. Both engines write usage ledgers so <code>memory audit</code> can render the ADR-017 head-to-head comparison.</li>
+    <li><strong>Hooks are strictly opt-in.</strong> Fresh installs leave memory capture disabled; only explicit <code>setup-memory</code> composes the SessionStart/Stop hook fragment, and the session-start injection includes only curated lines — raw captured transcript sections are reachable only through <code>recall</code>, which loads the prompt-injection guardrail first <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-knowledge/hooks/memory-session-start.sh#L44-L48" class="ev">memory-session-start.sh:44-48</a>.</li>
+    <li><strong>Dream</strong> is the destructive consolidation pass — four phases, read-only until a preview-and-consent gate, lock-bounded, never schedulable on a timer, with <code>sources/</code> untouchable "regardless of what any page claims" <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-knowledge/actions/dream.md#L3-L7" class="ev">dream.md:3-7</a>.</li>
+    <li><strong>Prompts</strong> is the most sensitive ingestion path in the suite — <code>run</code> adopts a file body as instructions — so resolution searches only the shipped library, and a project-local <code>prompts/</code> directory requires explicit user confirmation <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-knowledge/actions/prompts.md#L113-L119" class="ev">prompts.md:113-119</a>.</li>
+  </ul>
+</section>
+
+<section id="toolbox">
+  <h2>7 · Toolbox</h2>
+  <p>The toolbox holds optional repository-facing capabilities outside the request lifecycle — twenty routed actions plus five reference files <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-toolbox/SKILL.md#L15-L34" class="ev">toolbox SKILL.md:15-34</a>. They cluster into families with explicit non-overlap statements:</p>
+  <ul>
+    <li><strong>Comprehension:</strong> <code>prime</code> indexes one directory for a builder, <code>inspect</code> explains one uncommitted change, <code>architecture-report</code> (this document) describes the whole repository, <code>deep-explore</code> runs a divergent/convergent dialogue for ideation <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-toolbox/actions/architecture-report.md#L3" class="ev">architecture-report.md:3</a>.</li>
+    <li><strong>Presentation:</strong> <code>ai-report</code> (detailed stakeholder HTML for one completed item), <code>present-work</code> (cross-project portfolio), <code>present-video</code> (Remotion source only, never rendered media, strictly opt-in). All publish through one shared contract, <em>Collision-Safe Publication</em>: derive the final path, test existence first, take the first free <code>-2</code>/<code>-3</code> suffix on collision, and never reuse a failed run's path <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-toolbox/actions/completed-work-presentation-reference.md#L69-L75" class="ev">presentation-reference.md:69-75</a>. Presentation actions load the prompt-injection guardrail before any archived body and anti-slop before drafting, in that order.</li>
+    <li><strong>Quality:</strong> <code>maintainability-audit</code> owns measured code health — two-level bands (WATCH/FLAG) finalized at a calibration gate as <code>max(absolute floor, repo p95)</code>, proposed-not-installed ratchets pinned at the current worst observed value, and <code>sweep_key</code> root-cause provenance slugs with a user-maintained waiver list <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-toolbox/actions/maintainability-audit-reference.md#L31" class="ev">audit-reference.md:31</a>. Its deterministic numbers come from a second small Go tool, <code>audit-metrics</code>, which is strictly read-only and exists so the audit pastes tool output instead of prescribing fragile shell pipelines to an LLM <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work-toolbox/tools/audit-metrics/main.go#L10-L16" class="ev">audit-metrics/main.go:10-16</a>. <code>quick-wins</code> is the read-only refactor/test-gap scan; <code>validate-feedback</code> adversarially verifies external findings before they may enter the queue.</li>
+  </ul>
+</section>
+
+<section id="distribution">
+  <h2>8 · Distribution and versioning</h2>
+
+  <figure>
+  <svg viewBox="0 0 860 380" role="img" aria-label="Diagram: what ships and how it installs">
+    <rect x="16" y="16" width="360" height="330" class="box" rx="10"/>
+    <text x="32" y="42" class="lbl">This repository (source)</text>
+    <rect x="32" y="58" width="328" height="120" class="box-terminal" rx="8"/>
+    <text x="48" y="82" class="lbl">Ships in the archive</text>
+    <text x="48" y="104" class="lbl-mono">skills/ (4 packages)</text>
+    <text x="48" y="122" class="lbl-mono">suite/modules.tsv · tools/</text>
+    <text x="48" y="140" class="lbl-mono">README.md · CHANGELOG.md</text>
+    <text x="48" y="158" class="lbl-mono">VERSION · justfile</text>
+    <rect x="32" y="192" width="328" height="140" class="box-warnfill" rx="8"/>
+    <text x="48" y="216" class="lbl">export-ignore (never ships)</text>
+    <text x="48" y="238" class="lbl-mono">do-work/ · kb/ · ai-reports/</text>
+    <text x="48" y="256" class="lbl-mono">_dev/ · decisions/ · .vscode/</text>
+    <text x="48" y="274" class="lbl-mono">CLAUDE.md · AGENTS.md</text>
+    <text x="48" y="292" class="lbl-mono">CHANGELOG-20*.md (archives)</text>
+    <text x="48" y="310" class="lbl-mono">.gitignore · .gitattributes</text>
+
+    <rect x="436" y="60" width="180" height="96" class="box-accent" rx="8"/>
+    <text x="452" y="84" class="lbl">Archive fetch</text>
+    <text x="452" y="104" class="lbl-small">GitHub tarball, or</text>
+    <text x="452" y="120" class="lbl-small">git clone + git archive —</text>
+    <text x="452" y="136" class="lbl-small">both honor export-ignore</text>
+
+    <rect x="436" y="200" width="180" height="120" class="box-accent" rx="8"/>
+    <text x="452" y="224" class="lbl">Installer transaction</text>
+    <text x="452" y="244" class="lbl-small">validate manifest + 4 modules</text>
+    <text x="452" y="260" class="lbl-small">one confirmation</text>
+    <text x="452" y="276" class="lbl-small">backup → atomic writes</text>
+    <text x="452" y="292" class="lbl-small">byte-verify or restore all</text>
+
+    <rect x="672" y="110" width="172" height="160" class="box" rx="8"/>
+    <text x="688" y="134" class="lbl">Consumer repo</text>
+    <text x="688" y="158" class="lbl-mono">.claude/skills/…</text>
+    <text x="688" y="178" class="lbl-small">4 packages, 1 version</text>
+    <text x="688" y="200" class="lbl-mono">justfile section</text>
+    <text x="688" y="220" class="lbl-mono">settings.json hook</text>
+    <text x="688" y="240" class="lbl-mono">CLAUDE.md section</text>
+
+    <path class="edge" d="M376 108 L436 108"/>
+    <path class="edge" d="M526 156 L526 200"/>
+    <path class="edge" d="M616 250 C 650 250, 650 210, 672 200"/>
+    <path class="edge-dash" d="M616 90 C 700 70, 760 80, 760 110"/>
+    <text x="628" y="52" class="lbl-small">update: same engine,</text>
+    <text x="628" y="66" class="lbl-small">refuses downgrades</text>
+  </svg>
+  <figcaption>Figure 4 — The shipped boundary and the install path. Export-ignore list <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/.gitattributes#L43-L53" class="ev">.gitattributes:43-53</a>; transaction behavior <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/tools/install-do-work-suite.sh#L2-L6" class="ev">install-do-work-suite.sh:2-6</a>.</figcaption>
+  </figure>
+
+  <p><code>suite/modules.tsv</code> is the sole source→destination declaration: a two-column TSV whose validator pins the header byte-for-byte, requires exactly four rows, and pins each source to one hardcoded expected destination — a closed set, not a general mapping table <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/tools/validate-suite-manifest.sh#L82-L120" class="ev">validate-suite-manifest.sh:82-120</a>. The four root <code>tools/</code> scripts are byte-identical mirrors of their copies under <code>skills/do-work/tools/</code>: the root copies bootstrap a fresh install before any package exists; the installed copies serve updates. <span class="inf">byte-identity verified by diff during this run, not by a shipped check</span></p>
+  <p>The installer is one recoverable transaction: it validates the extracted tree before the first managed write, shows the full managed diff, asks exactly once, backs up every managed path plus the git index, writes modules and config atomically, then byte-verifies everything (per-module <code>diff -qr</code>, config <code>cmp</code>, a <code>just --list</code> re-parse, and version equality checks) — any failure restores all of it <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/tools/install-do-work-suite.sh#L588-L616" class="ev">install-do-work-suite.sh:588-616</a>. The updater is a thin wrapper that fetches, validates, refuses downgrades, and delegates the mutation to the same installed installer; the agent-facing <code>version</code> action is explicitly forbidden from adding a second download or confirmation path <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/skills/do-work/actions/version.md#L44-L48" class="ev">version.md:44-48</a>.</p>
+  <p><strong>Versioning.</strong> Three files must agree — root <code>VERSION</code>, <code>skills/do-work/VERSION</code>, and the <code>**Current version**:</code> line in <code>skills/do-work/actions/version.md</code> — and the manifest validator mechanically enforces the triple <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/tools/validate-suite-manifest.sh#L126-L151" class="ev">validate-suite-manifest.sh:126-151</a>. <code>CHANGELOG.md</code> is mirrored byte-identically into <code>skills/do-work/CHANGELOG.md</code> so installed consumers carry release notes; the mirror is a pre-commit requirement enforced by the shipped-reference contract test. The bump ritual belongs only to the integrating commit — worktree builders skip it because the version file and changelog are serial-only (§4).</p>
+</section>
+
+<section id="governance">
+  <h2>9 · Verification and governance</h2>
+  <p><strong><code>bash _dev/tests/maintainer-verify.sh</code> exiting zero is the canonical pass/fail evidence for any hand-back.</strong> The umbrella runs, in order: ShellCheck at warning severity over every tracked shell file, gofmt over every tracked Go file, the aggregate contract suite, then <code>go vet</code> + full tests for both Go tools, with conditional strict JavaScript and real-browser lanes that skip explicitly when Node or a browser engine is absent <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/_dev/tests/maintainer-verify.sh#L4-L11" class="ev">maintainer-verify.sh:4-11</a>. Toolchain requirements are floors, not pins.</p>
+  <p><code>contract-regressions.sh</code> — at ~355 KB the largest file in the repository — is the aggregate: grep-level ratchets that keep retired vocabulary, dangling references, and once-fixed bugs from returning, plus dispatch into a dozen focused behavioral suites (install, update, manifest, hooks, staged packages, prescribed shell, estimators). The prescribed-shell harness runs 18 case files, one per shipped script, each in its own process with an isolated fixture root; the definition of a "case" lives in exactly one sourced file so per-file and aggregate counts cannot disagree <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/_dev/tests/prescribed-shell-case-count.sh#L2-L9" class="ev">prescribed-shell-case-count.sh:2-9</a>.</p>
+  <p>Institutional memory is layered deliberately:</p>
+  <ul>
+    <li><strong>Primes</strong> (<code>_dev/primes/</code>) — three lazy-loaded context docs read before changing their domain: action files, shipped shell, the Kanban board. Each has a <code>lessons-*.md</code> companion that the work pipeline appends to on archive; the prime itself never accumulates <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/_dev/primes/lessons-kanban-board.md#L3-L6" class="ev">lessons-kanban-board.md:3-6</a>.</li>
+    <li><strong>Decisions</strong> (<code>decisions/</code>) — 21 ADRs under <code>records/</code> with four topic indexes, a timeline log, and dated audits. The master index refuses to carry a record count ("read the directory, not a number here") — a stance §10 shows was warranted. The ADR set reuses the knowledge skill's wiki frontmatter and typed relationships, making it a second instance of that schema. <span class="inf">schema reuse judged by matching frontmatter conventions in decisions/log.md and kb/CLAUDE.md, not by a shared validator</span></li>
+    <li><strong>Dogfooding</strong> — the repo's own tracked <code>do-work/</code> queue and <code>kb/</code> exercise every contract above continuously; two export-ignore lines are the only barrier between that live state and every consumer install, and the contract suite pins both lines individually <a href="https://github.com/knews2019/skill-do-work/blob/641231f5312803f24edcbf3c5b742c65eed7eca5/_dev/tests/contract-regressions.sh#L4712-L4719" class="ev">contract-regressions.sh:4712-4719</a>.</li>
+  </ul>
+</section>
+
+<section id="disagreements">
+  <h2>10 · Record–code disagreements</h2>
+  <p>Four places where the repository's prose and its code disagree at this commit. Per this action's contract the code wins, and the disagreement stays visible; none is restated as a finding — fixing them belongs to the maintainer's queue, not this report.</p>
+  <div class="disagreement"><b>D1 — stale vestigial version file.</b> <code>skills/do-work-board/tools/queue-kanban/VERSION</code> reads <code>0.236.20</code> while the suite is at 0.244.6. Nothing references it — not the Go sources, the validator, the installer, or the release ritual — and the maintainer prime says board versioning "is folded into the skill". The file is a leftover of the tool's pre-vendoring independent versioning (ADR-016). Reproduce: <code>cat skills/do-work-board/tools/queue-kanban/VERSION VERSION</code> and <code>grep -r "queue-kanban/VERSION" --include="*.go" --include="*.sh" --include="*.md" skills tools</code> (no consumers).</div>
+  <div class="disagreement"><b>D2 — drifted ADR counter.</b> <code>decisions/_progress.md</code> line 25 says "Next ADR number: <code>ADR-017</code>" while <code>decisions/records/</code> holds 21 ADRs. The hand-maintained pointer drifted exactly as the master index's "read the directory, not a number here" warning predicts. Reproduce: <code>ls decisions/records | wc -l</code>.</div>
+  <div class="disagreement"><b>D3 — overbroad ownership sentence.</b> <code>skills/do-work-toolbox/actions/architecture-report.md</code> line 5 says bands, ratchets, and sweep keys belong to <code>maintainability-audit.md</code> <em>and</em> <code>quick-wins.md</code>; <code>quick-wins.md</code> contains none of that vocabulary. The machinery is maintainability-audit's alone. Reproduce: <code>grep -icE 'band|ratchet|sweep' skills/do-work-toolbox/actions/quick-wins.md</code> → 0.</div>
+  <div class="disagreement"><b>D4 — stale floor comment.</b> A comment in <code>_dev/tests/contract-regressions.sh</code> describes the P50 estimator's "10-minute floor"; the implementation and its own lock-in suite agree the floor is 5 minutes (<code>floor_minutes=5</code>, <code>estimate-p50.sh:38</code>). Comment-level only; no behavior disagrees. Reproduce: <code>grep -n floor_minutes skills/do-work/tools/estimate-p50.sh</code>.</div>
+</section>
+
+<section id="limitations">
+  <h2>11 · Open questions and verification limits</h2>
+  <ul>
+    <li><strong>Q1 — crew-member duplication has no stated rationale.</strong> All three non-board packages ship their own <code>crew-members/</code> copies, and the copies are per-package variants, not byte-identical mirrors (e.g. three different <code>anti-slop.md</code> hashes). Toolbox actions reference a mix of package-local and sibling-core copies; knowledge references only its local copies. The natural reading — packages should degrade gracefully when installed alone — is <span class="inf">inferred from the standalone-prompt design goal; no file states it</span>. Whether the variants are intentional forks or drift was not determinable from the tree.</li>
+    <li><strong>Q2 — evidence links may not resolve yet.</strong> The watermarked commit exists locally but is <em>not</em> an ancestor of the last-fetched <code>origin/main</code>. Every GitHub link in this report is correctly formed against the configured remote (<code>github.com/knews2019/skill-do-work</code>) and was verified against the local committed tree; the links become clickable-live only after this history is pushed. Until then, verify any claim locally with <code>git show 641231f5:&lt;path&gt;</code>.</li>
+    <li><strong>Verification limits.</strong> Repository breadth was covered by four parallel read-only mapping passes whose anchors were then sample-verified directly (all sampled anchors matched exactly); claims outside the sample rest on those passes plus the consistency of the sampled set. Consumer-side behavior (an actual install into a foreign repo, hook execution in a consumer's settings) was not exercised — those claims describe what the scripts and tests say, at the cited lines. Visual rendering of this report was checked in a local browser; see the run summary for what was inspected.</li>
+  </ul>
+</section>
+
+<section id="method">
+  <h2>12 · Method and labeling</h2>
+  <p>Every claim in this report carries one of two labels. A green <a class="ev" href="#method">path:line</a> badge is a <strong>VERIFIED</strong> claim: the linked file and line were checked in the committed tree at <code>641231f5312803f24edcbf3c5b742c65eed7eca5</code>, and the link targets that exact commit on the configured GitHub remote. An amber <span class="inf">basis</span> badge is an <strong>INFERRED</strong> claim, with its basis stated inline. Counts: <strong>70 verified, 3 inferred</strong> — every verified claim's badge is an anchor into the GitHub tree at the watermarked commit, so the verified count is exactly the number of such links in this file. Reproduce: <code>grep -o 'href=&quot;https://github.com/knews2019/skill-do-work/blob/' index.html | wc -l</code> → 70. The inferred count is the three amber badges outside the two decorative examples (masthead and this paragraph).</p>
+  <p>Reading order followed the action's contract: the native record first (README, CLAUDE.md, primes, ADRs, changelog head), then code as the verdict. The four disagreements in §10 are the places the verdict went against the record. This report was published as a child commit of the commit it watermarks, so at the watermarked commit this file does not exist — it asserts nothing about its own presence.</p>
+  <p>Spot-check for the weakest claim class (mapper-reported line anchors): <code>sed -n '407p' skills/do-work/actions/work-reference.md</code> should print the serial-only files rule quoted in §4.</p>
+</section>
+
+</main>
+</div>
+
+<footer>
+  do-work suite · architecture report · verified at 641231f5 · 2026-08-27 · immutable — the next report is a new dated bundle
+</footer>
+
+</body>
+</html>
