@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.244.3 — Show Ticket Titles Inside Authored Links (2026-08-27)
+
+Ticket IDs inside authored Markdown links gain their first-mention title and glossary entry without changing the destination. Renderer autolinks remain untouched, and repeated processing does not decorate the same body twice.
+
 ## 0.244.2 — Align Drawer and Clipboard Reference Lists (2026-08-27)
 
 Fence info strings no longer add invisible clipboard references, and file paths stay intact instead of exposing nested ticket links in static boards. A shared comparison checks both reference lists and preserves later prose expansions.

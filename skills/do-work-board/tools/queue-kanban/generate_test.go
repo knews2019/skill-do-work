@@ -937,6 +937,140 @@ var search=document.getElementById('filter-search');search.value='referenced';se
 	session.waitForPageCondition(t, "cleared citation markers", `document.getElementById('filter-search').value === '' && !document.querySelector('[data-cards="pending"] .citation-match')`)
 }
 
+// The first pass must decorate author-owned anchors without replacing their
+// destinations; the second pass must neither nest links nor spend expansion again.
+func TestBrowserBehaviorAuthoredTicketLinksPreserveDestinationsAndTwoPassDOM(t *testing.T) {
+	lookupBrowserForBehaviorProbe(t)
+	longTitle := "Make REQ-7777 and every referenced request identifier in a drawer body carry its own title"
+	body := "See [REQ-1108](https://example.com/spec?x=1&y=%2F) for the shape. " +
+		"Again [REQ-1108](https://example.com/later), then REQ-1108.\n\n" +
+		"[`REQ-1679`](https://example.com/code) then [REQ-1679](https://example.com/prose).\n\n" +
+		"REQ-2000 before [REQ-2000](https://example.com/after).\n\n" +
+		"[REQ-3000](REQ-3000), [REQ-3000 and UR-075 and REQ-9999](../notes.md#part).\n\n" +
+		"[`REQ-4000`](https://example.com/only-code).\n\n" +
+		"https://example.com/REQ-5000 and www.example.com/REQ-5000 and REQ-5000@example.com and <mailto:REQ-5000@example.com>.\n\n" +
+		"<custom:REQ-5000/é> <mailto:REQ-5000@éxample.com> <custom:REQ-5000/%2F/é> " +
+		"<mailto:REQ-5000+%2F@éxample.com> <custom:REQ-5000/%zz/é> <mailto:REQ-5000+%@éxample.com> <custom:REQ-5000/%C3%A9>.\n"
+	board := &Board{GeneratedAt: time.Now().UTC(), ProjectName: "Authored ticket links"}
+	for _, entry := range []struct{ id, title, body string }{
+		{"REQ-382", "Authored references", body}, {"REQ-1108", longTitle, ""},
+		{"REQ-1679", "Code does not spend expansion", ""}, {"REQ-2000", "Plain before authored", ""},
+		{"REQ-3000", "Relative destination", ""}, {"REQ-4000", "Code only reference", ""},
+		{"REQ-5000", "Autolink is not a citation", ""}, {"REQ-7777", "Inserted title is not rescanned", ""},
+	} {
+		board.AllRequests = append(board.AllRequests, ticketMentionFixtureTicket(entry.id, entry.title, "pending", entry.body))
+	}
+	board.Columns.PendingReady = board.AllRequests
+	board.Columns.Pending = board.AllRequests
+	board.UserRequests = []*UserRequestTicket{{UserRequestId: "UR-075", Title: "Parent reference"}}
+	siteDirectory := t.TempDir()
+	if err := generateStaticSite(siteDirectory, board); err != nil {
+		t.Fatal(err)
+	}
+	indexBytes, err := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := strings.Replace(string(indexBytes), "<head>", `<head><script>
+window.authoredLinkErrors=[];
+addEventListener('error',function(event){window.authoredLinkErrors.push(event.message);});
+addEventListener('unhandledrejection',function(event){window.authoredLinkErrors.push(String(event.reason));});
+console.warn=console.error=function(){window.authoredLinkErrors.push(Array.from(arguments).join(' '));};
+</script>`, 1)
+	page = strings.Replace(page, "function linkifyDetailBody(", "window.authoredLinkProbe=linkifyDetailBody;\nfunction linkifyDetailBody(", 1)
+	session := startTrustedInputBrowserSession(t, "authored ticket links", siteDirectory, page)
+	session.waitForPageCondition(t, "request card", `document.querySelector('.req-card[data-detail-id="REQ-382"]') !== null`)
+	session.evaluateInPage(t, `(function(){document.querySelector('.req-card[data-detail-id="REQ-382"]').click();return true;})()`)
+	type anchorResult struct {
+		Href, Text, Title               string
+		Nested, Navigation, Decorations int
+	}
+	var result struct {
+		Href, Browser            string
+		Anchors                  []anchorResult
+		Glossary, SecondGlossary []string
+		GlossaryText             string
+		NavigationPreserved      bool
+		Identical                bool
+		Missing, Nested          int
+		Errors                   []string
+	}
+	session.decodeResult(t, "authored links and second pass", session.evaluateInPage(t, `(function(){
+var root=document.getElementById('detail-body');var first=root.innerHTML;
+var anchors=Array.from(root.querySelectorAll('a:not(.ticket-link)')).map(function(a){return {
+href:a.getAttribute('href'),text:a.textContent,title:(a.querySelector('[title]')||a).title,
+nested:a.querySelectorAll('a').length,decorations:a.querySelectorAll('.ticket-link').length,navigation:a.querySelectorAll('[data-detail-kind]').length+(a.hasAttribute('data-detail-kind')?1:0)};});
+var glossary=Array.from(document.querySelectorAll('#detail-glossary dt')).map(function(dt){return dt.textContent;});
+var navigationPreserved=true;
+function observeClick(event){navigationPreserved=navigationPreserved&&!event.defaultPrevented;event.preventDefault();}
+document.addEventListener('click',observeClick);
+root.querySelector('a').click();root.querySelector('a[href="REQ-3000"]').click();
+document.removeEventListener('click',observeClick);
+navigationPreserved=navigationPreserved&&document.getElementById('detail-id').textContent==='REQ-382';
+var second=window.authoredLinkProbe(root,'Authored references');
+return {href:location.href,browser:navigator.userAgent,anchors:anchors,glossary:glossary,secondGlossary:second.map(function(e){return e.id;}),
+glossaryText:document.getElementById('detail-glossary').textContent,navigationPreserved:navigationPreserved,identical:root.innerHTML===first,missing:root.querySelectorAll('a .ticket-missing').length,nested:root.querySelectorAll('a a').length,errors:window.authoredLinkErrors};
+})()`), &result)
+	t.Logf("rendered authored links: %+v", result)
+	if !result.NavigationPreserved || !result.Identical || result.Nested != 0 || result.Missing != 0 || len(result.Errors) != 0 {
+		t.Fatalf("second pass changed DOM, nested links, flagged author text, or failed: %+v", result)
+	}
+	wantTexts := []string{
+		"REQ-1108 Make REQ-7777 and every referenced request identifier in a…", "REQ-1108", "REQ-1679", "REQ-1679 Code does not spend expansion",
+		"REQ-2000", "REQ-3000 Relative destination", "REQ-3000 and UR-075 Parent reference and REQ-9999", "REQ-4000",
+		"https://example.com/REQ-5000", "www.example.com/REQ-5000", "REQ-5000@example.com", "mailto:REQ-5000@example.com",
+		"custom:REQ-5000/é", "mailto:REQ-5000@éxample.com", "custom:REQ-5000/%2F/é",
+		"mailto:REQ-5000+%2F@éxample.com", "custom:REQ-5000/%zz/é", "mailto:REQ-5000+%@éxample.com", "custom:REQ-5000/%C3%A9",
+	}
+	wantHrefs := []string{"https://example.com/spec?x=1&y=%2F", "https://example.com/later", "https://example.com/code", "https://example.com/prose", "https://example.com/after", "REQ-3000", "../notes.md#part", "https://example.com/only-code", "https://example.com/REQ-5000", "http://www.example.com/REQ-5000", "mailto:REQ-5000@example.com", "mailto:REQ-5000@example.com",
+		"custom:REQ-5000/%C3%A9", "mailto:REQ-5000@%C3%A9xample.com", "custom:REQ-5000/%2F/%C3%A9",
+		"mailto:REQ-5000+%2F@%C3%A9xample.com", "custom:REQ-5000/%25zz/%C3%A9", "mailto:REQ-5000+%25@%C3%A9xample.com", "custom:REQ-5000/%C3%A9",
+	}
+	if len(result.Anchors) != len(wantTexts) {
+		t.Fatalf("authored/autolink count=%d want %d", len(result.Anchors), len(wantTexts))
+	}
+	for i, anchor := range result.Anchors {
+		if anchor.Text != wantTexts[i] || anchor.Href != wantHrefs[i] || anchor.Nested != 0 || anchor.Navigation != 0 || (i >= 8 && anchor.Decorations != 0) {
+			t.Errorf("anchor %d=%+v want text=%q href=%q", i, anchor, wantTexts[i], wantHrefs[i])
+		}
+	}
+	if !strings.Contains(result.GlossaryText, longTitle) || !strings.Contains(result.GlossaryText, "pending") || !strings.Contains(result.GlossaryText, "user request") {
+		t.Errorf("glossary lost full title or record status: %q", result.GlossaryText)
+	}
+	if result.Anchors[0].Title != longTitle {
+		t.Errorf("first anchor tooltip=%q want full title=%q", result.Anchors[0].Title, longTitle)
+	}
+	wantGlossary := []string{"REQ-1108", "REQ-1679", "REQ-2000", "REQ-3000", "UR-075", "REQ-4000"}
+	if !reflect.DeepEqual(result.Glossary, wantGlossary) || !reflect.DeepEqual(result.SecondGlossary, wantGlossary) {
+		t.Errorf("glossary first=%v second=%v want %v", result.Glossary, result.SecondGlossary, wantGlossary)
+	}
+	// Replacing the same drawer root must not inherit a previous body's state.
+	renderedBody, err := renderMarkdownBodyToHtml(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var resetEqual bool
+	session.decodeResult(t, "drawer root reuse", session.evaluateInPage(t, `(function(){var root=document.getElementById('detail-body'),before=root.innerHTML;root.innerHTML=`+mustMarshalJSONString(t, renderedBody)+`;window.authoredLinkProbe(root,'Authored references');return root.innerHTML===before;})()`), &resetEqual)
+	if !resetEqual {
+		t.Error("replacing drawer body reused stale expansion state")
+	}
+	for _, scheme := range []string{"light", "dark"} {
+		for _, width := range []int{320, 768, 1280} {
+			session.callDevToolsMethod(t, "Emulation.setEmulatedMedia", map[string]any{"features": []map[string]string{{"name": "prefers-color-scheme", "value": scheme}}}, true)
+			session.callDevToolsMethod(t, "Emulation.setDeviceMetricsOverride", map[string]any{"width": width, "height": 900, "deviceScaleFactor": 1, "mobile": false}, true)
+			var visible struct {
+				Href, Browser string
+				Width, Height float64
+				Focusable     bool
+			}
+			session.decodeResult(t, "visible authored link", session.evaluateInPage(t, `(function(){var a=document.querySelector('#detail-body a'),r=a.getBoundingClientRect();a.focus();return {href:location.href,browser:navigator.userAgent,width:r.width,height:r.height,focusable:document.activeElement===a};})()`), &visible)
+			if visible.Width <= 0 || visible.Height <= 0 || !visible.Focusable {
+				t.Errorf("%s/%d link not visible/focusable: %+v", scheme, width, visible)
+			}
+		}
+	}
+}
+
 func TestBuildGeneratedBoardDataCarriesDomainAndRouteProvenance(t *testing.T) {
 	board := &Board{
 		AllRequests: []*RequestTicket{
@@ -1212,7 +1346,7 @@ func TestDrawerTicketMentionsCarryTitlesAndAGlossary(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 	for _, requiredToken := range []string{
 		`<section class="detail-glossary" id="detail-glossary"`,
-		"function makeTicketLink(detailKind, detailId, linkText, expandTitle)",
+		"function makeTicketLink(detailKind, detailId, linkText, expandTitle, insideAuthoredAnchor)",
 		`createElement("span", "ticket-link-id"`,
 		`"ticket-link-title is-fallback" : "ticket-link-title"`,
 		`createElement("span", "ticket-missing"`,

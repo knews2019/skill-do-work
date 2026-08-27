@@ -25,11 +25,17 @@
   // more than a number. The tooltip rides with the expansion: an unexpanded link
   // (a later mention, or one inside a code span) stays a bare mono id, because a
   // code run must not be contaminated with prose in any form.
-  function makeTicketLink(detailKind, detailId, linkText, expandTitle) {
-    var ticketLink = createElement("a", "ticket-link");
-    ticketLink.href = "#";
-    ticketLink.dataset.detailKind = detailKind;
-    ticketLink.dataset.detailId = detailId;
+  function makeTicketLink(detailKind, detailId, linkText, expandTitle, insideAuthoredAnchor) {
+    var ticketLink = createElement(insideAuthoredAnchor ? "span" : "a", "ticket-link");
+    if (insideAuthoredAnchor) {
+      // Decoration belongs to the author's link, never to drawer navigation.
+      ticketLink.dataset.ticketKind = detailKind;
+      ticketLink.dataset.ticketId = detailId;
+    } else {
+      ticketLink.href = "#";
+      ticketLink.dataset.detailKind = detailKind;
+      ticketLink.dataset.detailId = detailId;
+    }
     var described = describeTicketTitle(detailKind, detailId);
     if (!expandTitle || !described.text) {
       ticketLink.textContent = linkText || detailId;
@@ -113,7 +119,7 @@
   // about a document that never pointed anywhere. An inline `REQ-005` in prose
   // IS a reference and still flags. Collapsing these into one boolean is what
   // made D-06 undecidable.
-  function buildLinkifiedFragment(sourceText, insideCodeSpan, insideFencedBlock, mentionRenderState) {
+  function buildLinkifiedFragment(sourceText, insideCodeSpan, insideFencedBlock, mentionRenderState, insideAuthoredAnchor) {
     var fragment = document.createDocumentFragment();
     var linkedAnything = false;
     var cursorIndex = 0;
@@ -122,6 +128,9 @@
     while ((matchResult = bodyMentionPattern.exec(sourceText)) !== null) {
       var mentionText = matchResult[0];
       var linkNode = null;
+      if (insideAuthoredAnchor && !matchResult[3]) {
+        continue;
+      }
       if (matchResult[1]) {
         // Trailing sentence punctuation belongs to the prose, not the URL.
         var trimmedUrl = mentionText.replace(/[.,;:!?]+$/, "");
@@ -167,8 +176,8 @@
               statusText: ticketTarget.kind === "ur" ? "user request" : describeRequestStatus(ticketTarget.id)
             });
           }
-          linkNode = makeTicketLink(ticketTarget.kind, ticketTarget.id, mentionText, expandThisMention);
-        } else if (!insideFencedBlock && !isAmbiguousTicketMention(mentionText)) {
+          linkNode = makeTicketLink(ticketTarget.kind, ticketTarget.id, mentionText, expandThisMention, insideAuthoredAnchor);
+        } else if (!insideAuthoredAnchor && !insideFencedBlock && !isAmbiguousTicketMention(mentionText)) {
           // Ambiguous is not missing: the board holds records that match and
           // refuses to pick one, so flagging it would be a false alarm.
           linkNode = makeMissingTicketMention(mentionText);
@@ -226,16 +235,49 @@
     while (textWalker.nextNode()) {
       textNodes.push(textWalker.currentNode);
     }
+    var previousOwnedElement = null;
     textNodes.forEach(function (textNode) {
       var parentElement = textNode.parentElement;
-      if (!parentElement || parentElement.closest("a")) {
+      if (!parentElement) {
         return;
+      }
+      var ownedElement = parentElement.closest(".ticket-link, .ticket-missing, .repo-file-link, .repo-file-missing, .external-url-link");
+      if (ownedElement) {
+        // Replay only the original id, once per owned subtree. Never scan an
+        // inserted title, and retain first-mention/glossary order on a repeat
+        // pass without caching a drawer root whose innerHTML gets replaced.
+        if (ownedElement !== previousOwnedElement && ownedElement.classList.contains("ticket-link")) {
+          buildLinkifiedFragment(
+            ownedElement.dataset.ticketId || ownedElement.dataset.detailId,
+            !ownedElement.querySelector(".ticket-link-title"),
+            false,
+            mentionRenderState
+          );
+        }
+        previousOwnedElement = ownedElement;
+        return;
+      }
+      var authoredAnchor = parentElement.closest("a");
+      if (authoredAnchor) {
+        var anchorHref = authoredAnchor.getAttribute("href") || "";
+        var anchorLabel = authoredAnchor.textContent;
+        // Goldmark emits no provenance marker. A URL/email label matching its
+        // destination is an autolink; a relative ticket label/href is not.
+        // Compare the encoded label without double-encoding existing %xx
+        // escapes. Encoding (not decoding) also accepts malformed percent runs.
+        var encodedAnchorLabel = encodeURI(anchorLabel).replace(/%25([0-9a-f]{2})/gi, "%$1");
+        if ((/^[A-Za-z][A-Za-z0-9+.-]*:/.test(anchorLabel) && encodedAnchorLabel === anchorHref) ||
+            (/^www\./i.test(anchorLabel) && "http://" + encodedAnchorLabel === anchorHref) ||
+            (/^mailto:/i.test(anchorHref) && encodedAnchorLabel === anchorHref.slice(7))) {
+          return;
+        }
       }
       var replacementFragment = buildLinkifiedFragment(
         textNode.nodeValue,
         Boolean(parentElement.closest("code")),
         Boolean(parentElement.closest("pre")),
-        mentionRenderState
+        mentionRenderState,
+        Boolean(authoredAnchor)
       );
       if (replacementFragment) {
         textNode.parentNode.replaceChild(replacementFragment, textNode);

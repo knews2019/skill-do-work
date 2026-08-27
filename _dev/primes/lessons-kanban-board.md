@@ -59,3 +59,5 @@ The work pipeline appends here on archive (`../../skills/do-work/actions/work.md
 - [REQ-381: Keep citation sets separate from annotation exclusions while sharing one raw analysis; preserve exact-ID precedence before case-folded alias lookup.](../../do-work/archive/UR-076/REQ-381-index-cited-ticket-ids-and-filter-on-them.md#lessons-learned)
 
 - [REQ-386: Heading parity needs rendered text, full Unicode casing, and the renderer preprocessor context; preserve raw offsets even when a transformed heading fragment needs parsing.](../../do-work/archive/REQ-386-agree-on-the-restating-h1-between-drawer-and-paste.md#lessons-learned)
+
+- [REQ-382: Repeated DOM decoration must replay original mention identity without scanning inserted titles; compare encoded autolink destinations without rewriting hrefs.](../../do-work/archive/REQ-382-expand-ticket-ids-written-as-markdown-links.md#lessons-learned)
