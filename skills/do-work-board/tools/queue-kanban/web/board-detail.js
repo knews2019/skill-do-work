@@ -142,8 +142,8 @@
       } else if (matchResult[3]) {
         // Match Go's post-filter: underscore is a boundary, ASCII letters and
         // digits are not. Consume a rejected compound before continuing so
-        // neither regexp backtracking nor the skipped-mention retry below can
-        // turn it into a shorter UR prefix or an inner REQ segment.
+        // regexp backtracking cannot turn it into a shorter UR prefix or an
+        // inner REQ segment.
         if (/[A-Za-z0-9]/.test(sourceText.charAt(matchResult.index - 1)) ||
             /[A-Za-z0-9]/.test(sourceText.charAt(bodyMentionPattern.lastIndex))) {
           continue;
@@ -175,11 +175,8 @@
         }
       }
       if (!linkNode) {
-        // A suppressed ticket still claims its entire candidate. Only skipped
-        // non-ticket runs retry inside (a REQ id in a skipped file path).
-        if (!matchResult[3]) {
-          bodyMentionPattern.lastIndex = matchResult.index + 1;
-        }
+        // Every candidate claims its whole run. In particular, a skipped path
+        // stays opaque in both static and live boards, just as in Copy.
         continue;
       }
       if (matchResult.index > cursorIndex) {

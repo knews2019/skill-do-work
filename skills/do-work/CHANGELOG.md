@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.244.2 — Align Drawer and Clipboard Reference Lists (2026-08-27)
+
+Fence info strings no longer add invisible clipboard references, and file paths stay intact instead of exposing nested ticket links in static boards. A shared comparison checks both reference lists and preserves later prose expansions.
+
 ## 0.244.1 — Preserve Repeated Headings When Copying Tickets (2026-08-27)
 
 Copy leaves an opening heading unchanged when it repeats the ticket title, so saved pastes still hide the duplicate heading in the drawer. Heading comparisons share Unicode case and whitespace behavior, while citation search keeps every resolved reference.

@@ -3,11 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf16"
 
 	"github.com/yuin/goldmark/ast"
@@ -244,6 +247,136 @@ title:title && title.textContent,linkPrefix:link && prefix.toString(),errors:win
 			t.Fatalf("%s rebuilt drawer changed the first annotated occurrence: before=%+v after=%+v", id, before[id], after)
 		}
 		t.Logf("%s copy/save/rebuild: %+v", id, after)
+	}
+}
+
+// Compare the rendered drawer glossary with the actual Copy appendix from the
+// same source files. The live run uses the production HTTP handler, not a flag
+// substituted into a static page. Self references are omitted by Copy's existing
+// excludedIds policy, so compare the drawer's external references to that list.
+func TestBrowserBehaviorFenceInfoAndPathReferencesAgreeAcrossSurfaces(t *testing.T) {
+	lookupBrowserForBehaviorProbe(t)
+	board := liveBoard(t)
+	var fixtures []verifyFixtureFile
+	for _, ticket := range board.AllRequests {
+		relativePath, err := filepath.Rel(board.RepoRoot, ticket.FilePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fixtures = append(fixtures, verifyFixtureFile{relativePath, ticket.FrontmatterMarkdown + ticket.BodyMarkdown})
+	}
+	for _, ticket := range board.UserRequests {
+		if !ticket.InputFilePresent {
+			continue
+		}
+		relativePath, err := filepath.Rel(board.RepoRoot, ticket.FilePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fixtures = append(fixtures, verifyFixtureFile{relativePath, ticket.FrontmatterMarkdown + ticket.BodyMarkdown})
+	}
+	pathText := "do-work/queue/REQ-91679-target.md"
+	bodies := []string{
+		"```yaml REQ-91679-template\nvalue: unchanged\n```\n",
+		"`" + pathText + "`\n",
+		"Path " + pathText + " and https://example.test/REQ-91679.md stay opaque.\n",
+		"`" + pathText + "` then REQ-91679.\n",
+	}
+	ids := []string{}
+	for index, body := range bodies {
+		id := fmt.Sprintf("REQ-%d", 91880+index)
+		ids = append(ids, id)
+		fixtures = append(fixtures, verifyFixtureFile{"do-work/queue/" + id + "-parity.md",
+			"---\nid: " + id + "\ntitle: Surface parity\nstatus: pending\n---\n\n" + body})
+	}
+	fixtures = append(fixtures, verifyFixtureFile{pathText, "---\nid: REQ-91679\ntitle: Referenced title\nstatus: pending\n---\n\nTarget.\n"})
+	// Keep the complete current bodies of the two captured records when this
+	// test runs in the suite checkout. REQ-239's old path no longer appears in
+	// its body; the synthetic path-only cases above remain discriminating.
+	if suiteCheckoutSkipReason(board.RepoRoot) == "" {
+		ids = append(ids, "REQ-112", "REQ-239")
+	}
+	repoRoot := writeVerifyFixture(t, fixtures)
+	fixtureBoard, err := buildBoard(repoRoot, time.Now(), defaultRecentWindow, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	analysis := analyzeBoardTicketMentions(fixtureBoard)
+	if !reflect.DeepEqual(analysis.RequestCitations[ids[0]], []string{"REQ-91679"}) {
+		t.Fatal("fence info lost its independent citation-search entry")
+	}
+	siteDirectory := t.TempDir()
+	if err := generateStaticSite(siteDirectory, fixtureBoard); err != nil {
+		t.Fatal(err)
+	}
+	indexBytes, err := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	instrument := func(page string) string {
+		page = strings.Replace(page, "<head>", `<head><script>
+window.parityProbeErrors=[];
+addEventListener('error',function(event){window.parityProbeErrors.push(event.message);});
+addEventListener('unhandledrejection',function(event){window.parityProbeErrors.push(String(event.reason));});
+console.warn=console.error=function(){window.parityProbeErrors.push(Array.from(arguments).join(' '));};
+Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:function(text){window.parityProbeClipboard=text;return Promise.resolve();}}});
+</script>`, 1)
+		return strings.Replace(page, "function openDetail(", "window.parityProbeOpenDetail=openDetail;\nfunction openDetail(", 1)
+	}
+	liveHandler := newLiveBoardServer(repoRoot, defaultRecentWindow)
+	liveServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/"+browserProbePageFileName {
+			request.URL.Path = "/"
+			recorder := httptest.NewRecorder()
+			liveHandler.ServeHTTP(recorder, request)
+			writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+			fmt.Fprint(writer, instrument(recorder.Body.String()))
+			return
+		}
+		liveHandler.ServeHTTP(writer, request)
+	}))
+	defer liveServer.Close()
+	session := startTrustedInputBrowserSession(t, "drawer clipboard reference agreement", siteDirectory, instrument(string(indexBytes)))
+	for _, mode := range []string{"static", "live"} {
+		if mode == "live" {
+			session.callDevToolsMethod(t, "Page.navigate", map[string]any{"url": liveServer.URL + "/" + browserProbePageFileName}, true)
+			session.waitForPageCondition(t, "live board ready", `location.protocol==='http:' && typeof window.parityProbeOpenDetail==='function' && !!window.queueKanbanBoardData`)
+		}
+		for _, id := range ids {
+			session.evaluateInPage(t, `(function(){window.parityProbeClipboard=null;window.parityProbeOpenDetail('req',`+mustMarshalJSONString(t, id)+`);document.getElementById('detail-copy').click();return true;})()`)
+			session.waitForPageCondition(t, "copied body", `typeof window.parityProbeClipboard==='string'`)
+			var result struct {
+				Href, Browser, Copied, BodyText string
+				Glossary, Appendix, Errors      []string
+				PathLinks, Expanded             int
+			}
+			session.decodeResult(t, "drawer and clipboard references", session.evaluateInPage(t, `(function(){
+var id=`+mustMarshalJSONString(t, id)+`;
+var body=document.getElementById('detail-body');
+var copied=window.parityProbeClipboard;
+var appendix=copied.split('## Referenced requests (added by the board — not part of the file)')[1] || '';
+return {href:location.href,browser:navigator.userAgent,copied:copied,bodyText:body.textContent,
+glossary:Array.from(document.querySelectorAll('#detail-glossary a.ticket-link')).map(function(link){return link.dataset.detailId;}).filter(function(value){return value!==id;}),
+appendix:appendix.split('\n').filter(function(line){return line.startsWith('- ');}).map(function(line){return line.slice(2).split(' — ')[0];}),
+pathLinks:body.querySelectorAll('a.repo-file-link').length,expanded:body.querySelectorAll('.ticket-link-title').length,errors:window.parityProbeErrors};
+})()`), &result)
+			if !reflect.DeepEqual(result.Glossary, result.Appendix) {
+				t.Errorf("%s %s references differ: drawer=%v clipboard=%v", mode, id, result.Glossary, result.Appendix)
+			}
+			if len(result.Errors) != 0 {
+				t.Errorf("%s %s browser errors: %v", mode, id, result.Errors)
+			}
+			if id == ids[1] && (strings.TrimSpace(result.BodyText) != pathText || !strings.Contains(result.Copied, "`"+pathText+"`") || len(result.Appendix) != 0) {
+				t.Errorf("%s path no longer opaque: %+v", mode, result)
+			}
+			if id == ids[1] && ((mode == "live" && result.PathLinks != 1) || (mode == "static" && result.PathLinks != 0)) {
+				t.Errorf("%s file-link behavior changed: %+v", mode, result)
+			}
+			if id == ids[3] && (result.Expanded != 1 || !strings.Contains(result.Copied, "then REQ-91679 (Referenced title)")) {
+				t.Errorf("%s path consumed later expansion: %+v", mode, result)
+			}
+			t.Logf("%s %s: page=%s browser=%s references=%v", mode, id, result.Href, result.Browser, result.Appendix)
+		}
 	}
 }
 
@@ -485,7 +618,6 @@ func TestCollectDocumentTicketMentionsClassifiesEveryQuotedConstruct(t *testing.
 		`req REQ-1685 quoted "REQ-1685"`,      // blockquoted fence — the containment contract's preserved words
 		`req REQ-1685 quoted "REQ-1685"`,      // list-item fence
 		`req REQ-1108 quoted "REQ-1108"`,      // four-space indented block
-		`req REQ-1685 quoted "REQ-1685"`,      // a fence's INFO STRING is not prose either
 		`req REQ-500 quoted "REQ-500"`,        // that fence's contents
 		`req REQ-501 EXPAND "REQ-501"`,        // a backtick in the info string makes that line prose
 		`req REQ-500 quoted "REQ-500"`,        // code span, opening line

@@ -144,8 +144,8 @@ type surfaceRange struct {
 // child *ast.Text segments instead.
 //
 //   - Block nodes carry line segments. A fenced or indented code block's lines
-//     are the quoted text; a fenced block's Info is the only part of its opening
-//     fence line that can hold anything but fence characters.
+//     are the quoted text. Fence metadata is not rendered text, so its Info
+//     segment must not add clipboard references absent from the drawer.
 //   - Inline *ast.Text nodes are every byte goldmark keeps as prose, wherever it
 //     sits — a paragraph, a heading, a table cell, a list item, inside emphasis
 //     or a link. A Text node under a CodeSpan is the code-span surface.
@@ -178,9 +178,6 @@ func collectMentionSurfaces(bodySource []byte, bodyRoot ast.Node, recordTitle st
 		switch typedNode := node.(type) {
 		case *ast.FencedCodeBlock:
 			appendLines(typedNode, surfaceCodeBlock)
-			if typedNode.Info != nil {
-				appendSegment(typedNode.Info.Segment, surfaceCodeBlock)
-			}
 		case *ast.CodeBlock:
 			appendLines(typedNode, surfaceCodeBlock)
 		case *ast.Text:

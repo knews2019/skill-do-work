@@ -1,11 +1,11 @@
 ---
-session_updated: '2026-08-27T12:45:11Z'
-last_completed: REQ-386
+session_updated: '2026-08-27T12:54:41Z'
+last_completed: REQ-388
 queue_state:
-- 4 pending
+- 3 pending
 - 1 pending-answers
 - 0 in-progress
-reqs_processed_this_session: 6
+reqs_processed_this_session: 7
 session_depth: deep
 ---
 
@@ -21,6 +21,8 @@ session_depth: deep
 - REQ-381: eager cited-ticket search and match reasons; implementation961fbf84, bookkeeping09a8c313.
 
 - REQ-386: completed; implementation provenance is recorded in its archive.
+
+- REQ-388: completed; implementation provenance is recorded in its archive.
 
 ## Queue and Coordination
 
