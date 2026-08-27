@@ -222,7 +222,7 @@ title:title && title.textContent,linkPrefix:link && prefix.toString(),errors:win
 		// Read the title from the actual expanded drawer span, not from the
 		// existing author parentheses. It must be inserted after the same first
 		// visible prose occurrence, not in the preserved heading above it.
-		wantProse := before[id].LinkPrefix + targets[id] + " (" + before[id].Title + ")"
+		wantProse := before[id].LinkPrefix + targets[id] + " (-> " + before[id].Title + ")"
 		// Clipboard titles escape Markdown punctuation; compare rendered text,
 		// while retaining the same first-prose-occurrence assertion.
 		copiedHTML, renderError := renderMarkdownBodyToHtml(copiedBody)
@@ -381,7 +381,7 @@ pathLinks:body.querySelectorAll('a.repo-file-link').length,expanded:body.querySe
 			if id == ids[1] && ((mode == "live" && result.PathLinks != 1) || (mode == "static" && result.PathLinks != 0)) {
 				t.Errorf("%s file-link behavior changed: %+v", mode, result)
 			}
-			if id == ids[3] && (result.Expanded != 1 || !strings.Contains(result.Copied, "then REQ-91679 (Referenced title)")) {
+			if id == ids[3] && (result.Expanded != 1 || !strings.Contains(result.Copied, "then REQ-91679 (-> Referenced title)")) {
 				t.Errorf("%s path consumed later expansion: %+v", mode, result)
 			}
 			t.Logf("%s %s: page=%s browser=%s references=%v", mode, id, result.Href, result.Browser, result.Appendix)
@@ -961,17 +961,17 @@ func TestJavaScriptBehaviorTicketMentionUnderscoreBoundaries(t *testing.T) {
 		WantBody          string                   `json:"-"`
 		Mentions          []generatedTicketMention `json:"mentions"`
 	}{
-		{Source: "Fixed in _REQ-1679_ last week.", Want: []string{`req REQ-1679 EXPAND "REQ-1679"`}, WantBody: "Fixed in _REQ-1679 (Fix mentions)_ last week."},
-		{Source: "_tracked under UR-003-REQ-077_", Want: []string{`req UR-003-REQ-077 EXPAND "UR-003-REQ-077"`}, WantBody: "_tracked under UR-003-REQ-077 (Compound work)_"},
-		{Source: "😀 — REQ-1679_UR-003", Want: []string{`req REQ-1679 EXPAND "REQ-1679"`, `ur UR-003 EXPAND "UR-003"`}, WantBody: "😀 — REQ-1679 (Fix mentions)_UR-003 (Ship the widget)"},
-		{Source: "_UR-003_", Want: []string{`ur UR-003 EXPAND "UR-003"`}, WantBody: "_UR-003 (Ship the widget)_"},
+		{Source: "Fixed in _REQ-1679_ last week.", Want: []string{`req REQ-1679 EXPAND "REQ-1679"`}, WantBody: "Fixed in _REQ-1679 (-> Fix mentions)_ last week."},
+		{Source: "_tracked under UR-003-REQ-077_", Want: []string{`req UR-003-REQ-077 EXPAND "UR-003-REQ-077"`}, WantBody: "_tracked under UR-003-REQ-077 (-> Compound work)_"},
+		{Source: "😀 — REQ-1679_UR-003", Want: []string{`req REQ-1679 EXPAND "REQ-1679"`, `ur UR-003 EXPAND "UR-003"`}, WantBody: "😀 — REQ-1679 (-> Fix mentions)_UR-003 (-> Ship the widget)"},
+		{Source: "_UR-003_", Want: []string{`ur UR-003 EXPAND "UR-003"`}, WantBody: "_UR-003 (-> Ship the widget)_"},
 		{Source: "_REQ-1679a_ _UR-003-REQ-077a_", Want: []string{`missing REQ-1679a quoted "REQ-1679a"`, `missing UR-003-REQ-077a quoted "UR-003-REQ-077a"`}},
 		{Source: "UR-003-REQ-077ab UR-003-REQ-077A xUR-003-REQ-077 1UR-003-REQ-077", Want: []string{}},
 		{Source: "xREQ-1679 REQ-1679ab UR-003x", Want: []string{}},
 		// Suppressing a missing compound in a code block must not retry its
 		// resolvable inner REQ segment (REQ-077 names UR-003-REQ-077 here).
 		{Source: "_UR-999-REQ-077_", InsideFencedBlock: true, Want: []string{}},
-		{Source: "UR-003-REQ-077ab then REQ-1679.", Want: []string{`req REQ-1679 EXPAND "REQ-1679"`}, WantBody: "UR-003-REQ-077ab then REQ-1679 (Fix mentions)."},
+		{Source: "UR-003-REQ-077ab then REQ-1679.", Want: []string{`req REQ-1679 EXPAND "REQ-1679"`}, WantBody: "UR-003-REQ-077ab then REQ-1679 (-> Fix mentions)."},
 	}
 	for index := range testCases {
 		testCase := &testCases[index]

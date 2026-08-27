@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.244.5 — Mark Board-Added Clipboard Titles with an Arrow (2026-08-27)
+
+Copied body references now use the exact ASCII form `REQ-123 (-> Title)` so readers can recognize a title inserted by the board. Drawer labels and the full reference appendix do not change.
+
 ## 0.244.4 — Keep Copied Titles from Breaking Markdown (2026-08-27)
 
 Clipboard title expansions keep pipes inside table cells and remove code delimiters that a short-title cut could leave open. Drawer titles and the full referenced-request appendix remain unchanged.

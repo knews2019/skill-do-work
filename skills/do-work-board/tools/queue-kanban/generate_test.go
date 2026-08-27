@@ -1906,8 +1906,8 @@ func TestJavaScriptBehaviorClipboardAnnotatesBodiesAndAppendsOneGlossary(t *test
 		"---\n" +
 		"# Host document\n" +
 		"\n" +
-		"Read REQ-1679 (" + exactlySixtyTitle + ") lessons and REQ-1679 again, plus `REQ-1108` and " +
-		"REQ-1108 (Short one), and UR-074 (Ticket ids should carry their titles).\n" +
+		"Read REQ-1679 (-> " + exactlySixtyTitle + ") lessons and REQ-1679 again, plus `REQ-1108` and " +
+		"REQ-1108 (-> Short one), and UR-074 (-> Ticket ids should carry their titles).\n" +
 		"\n" +
 		"```yaml\n" +
 		"depends_on: [REQ-1685, REQ-8888]\n" +
@@ -1917,7 +1917,7 @@ func TestJavaScriptBehaviorClipboardAnnotatesBodiesAndAppendsOneGlossary(t *test
 		"REQ-8887 illustration\n" +
 		"~~~\n" +
 		"\n" +
-		"Trailing REQ-1685 (" + shortenedLongTitle + ") mention and REQ-9999 too.\n" +
+		"Trailing REQ-1685 (-> " + shortenedLongTitle + ") mention and REQ-9999 too.\n" +
 		"See do-work/archive/UR-075/REQ-378-title.md for the path case.\n"
 
 	// The second half of the concatenation trap: its fence must survive the join
@@ -1936,7 +1936,7 @@ func TestJavaScriptBehaviorClipboardAnnotatesBodiesAndAppendsOneGlossary(t *test
 		"---\n" +
 		"# Second host document\n" +
 		"\n" +
-		"Nothing but REQ-1679 (" + exactlySixtyTitle + ") here.\n"
+		"Nothing but REQ-1679 (-> " + exactlySixtyTitle + ") here.\n"
 
 	unclosedFenceDocument := "---\nid: REQ-1685\nRead REQ-1108 here\n"
 	carriageReturnDocument := "---\r\nid: REQ-500\r\n---\r\nBody REQ-1108 here\r\n"
@@ -2082,7 +2082,7 @@ process.stdout.write(JSON.stringify({
 	// No closing fence means everything is body, exactly as splitFrontmatter
 	// decides on the Go side. Reading it as an unterminated fence would skip the
 	// whole document and annotate nothing.
-	wantUnclosedFencePayload := "---\nid: REQ-1685 (" + shortenedLongTitle + ")\nRead REQ-1108 (Short one) here\n" +
+	wantUnclosedFencePayload := "---\nid: REQ-1685 (-> " + shortenedLongTitle + ")\nRead REQ-1108 (-> Short one) here\n" +
 		"\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
 		"- REQ-1685 — " + longTitle + " (claimed)\n" +
 		"- REQ-1108 — Short one (pending)\n"
@@ -2092,7 +2092,7 @@ process.stdout.write(JSON.stringify({
 
 	// CRLF endings survive byte-for-byte: the body is never normalized, only
 	// extended.
-	wantCarriageReturnPayload := "---\r\nid: REQ-500\r\n---\r\nBody REQ-1108 (Short one) here\r\n" +
+	wantCarriageReturnPayload := "---\r\nid: REQ-500\r\n---\r\nBody REQ-1108 (-> Short one) here\r\n" +
 		"\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
 		"- REQ-1108 — Short one (pending)\n"
 	if probeResult.CarriageReturnPayload != wantCarriageReturnPayload {
@@ -2101,7 +2101,7 @@ process.stdout.write(JSON.stringify({
 
 	// The drawer's rendered-text fallback has no fence at all, and a repeat
 	// mention there stays bare.
-	wantFencelessPayload := "# Notes\n\nSee REQ-1108 (Short one) twice, REQ-1108.\n"
+	wantFencelessPayload := "# Notes\n\nSee REQ-1108 (-> Short one) twice, REQ-1108.\n"
 	if probeResult.FencelessPayload != wantFencelessPayload {
 		t.Errorf("fence-less payload:\n got %q\nwant %q", probeResult.FencelessPayload, wantFencelessPayload)
 	}
@@ -2121,7 +2121,7 @@ process.stdout.write(JSON.stringify({
 	// contract writes every UR's Full Verbatim Input this way and promises the
 	// text stays byte-identical apart from the containment bytes, so an id
 	// inside one is preserved words, not a reference. UR-075 holds 21 of them.
-	if strings.Contains(probeResult.BlockquotedFence, "REQ-1108 (Short one)\n> ") ||
+	if strings.Contains(probeResult.BlockquotedFence, "REQ-1108 (-> Short one)\n> ") ||
 		strings.Contains(probeResult.BlockquotedFence, "> The user pasted REQ-1108 (") {
 		t.Errorf("a blockquoted fence was annotated — the containment contract's preserved text was rewritten:\n%s",
 			probeResult.BlockquotedFence)
@@ -2131,7 +2131,7 @@ process.stdout.write(JSON.stringify({
 	}
 	// Prose on either side of that block still expands, or the fix would have
 	// been to stop annotating rather than to recognise the container.
-	if !strings.Contains(probeResult.BlockquotedFence, "Prose cites REQ-1679 (") {
+	if !strings.Contains(probeResult.BlockquotedFence, "Prose cites REQ-1679 (-> ") {
 		t.Errorf("prose before a blockquoted fence lost its expansion:\n%s", probeResult.BlockquotedFence)
 	}
 
@@ -2142,7 +2142,7 @@ process.stdout.write(JSON.stringify({
 	if strings.Contains(probeResult.ListItemFence, "depends_on: [REQ-1679 (") {
 		t.Errorf("an id inside a list-item fence was expanded:\n%s", probeResult.ListItemFence)
 	}
-	if !strings.Contains(probeResult.ListItemFence, "Prose after the list cites REQ-1108 (") {
+	if !strings.Contains(probeResult.ListItemFence, "Prose after the list cites REQ-1108 (-> ") {
 		t.Errorf("prose after a list-item fence lost its expansion — the closer was misread as an opener:\n%s",
 			probeResult.ListItemFence)
 	}
@@ -2161,14 +2161,14 @@ process.stdout.write(JSON.stringify({
 	if !strings.Contains(probeResult.MultiLineCodeSpan, "finding for REQ-1108` matters.") {
 		t.Errorf("the code span's continuation line is not byte-identical:\n%s", probeResult.MultiLineCodeSpan)
 	}
-	if !strings.Contains(probeResult.MultiLineCodeSpan, "Trailing prose cites REQ-1108 (") {
+	if !strings.Contains(probeResult.MultiLineCodeSpan, "Trailing prose cites REQ-1108 (-> ") {
 		t.Errorf("prose after a multi-line code span lost its expansion:\n%s", probeResult.MultiLineCodeSpan)
 	}
 
 	// CommonMark forbids a backtick in a backtick fence's info string, so the
 	// line is prose and what follows it is not fenced. Accepting it opened a
 	// block that never opens and left every later reference bare.
-	if !strings.Contains(probeResult.InvalidInfoString, "REQ-1679 (") {
+	if !strings.Contains(probeResult.InvalidInfoString, "REQ-1679 (-> ") {
 		t.Errorf("an invalid backtick info string opened a fence that CommonMark calls prose, "+
 			"so the reference under it was left bare:\n%s", probeResult.InvalidInfoString)
 	}
@@ -9697,7 +9697,7 @@ process.stdout.write(JSON.stringify(annotateClipboardPayload([{text: ` + mustMar
 					t.Fatalf("full original appendix title changed: %q", payload)
 				}
 				annotatedBody := strings.TrimSuffix(payload, appendix)
-				if !strings.Contains(annotatedBody, "REQ-1108 (") {
+				if !strings.Contains(annotatedBody, "REQ-1108 (-> ") {
 					t.Fatalf("title expansion was suppressed: %q", annotatedBody)
 				}
 				originalHTML, renderError := renderMarkdownBodyToHtml(body)
@@ -9708,7 +9708,7 @@ process.stdout.write(JSON.stringify(annotateClipboardPayload([{text: ` + mustMar
 				if renderError != nil {
 					t.Fatal(renderError)
 				}
-				if !strings.Contains(pastedHTML, "REQ-1108 ("+testCase.wantShort+")") {
+				if !strings.Contains(pastedHTML, "REQ-1108 (-&gt; "+testCase.wantShort+")") {
 					t.Errorf("short title lost literal text: want %q in %s", testCase.wantShort, pastedHTML)
 				}
 				if !reflect.DeepEqual(structurePattern.FindAllString(originalHTML, -1), structurePattern.FindAllString(pastedHTML, -1)) {

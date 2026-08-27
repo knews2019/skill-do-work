@@ -201,7 +201,7 @@
       }
       titleInsertions.push({
         offset: ticketMention.offset + ticketMention.length,
-        text: " (" + expandedTitle + ")"
+        text: " (-> " + expandedTitle + ")"
       });
     });
 
