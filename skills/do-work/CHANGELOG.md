@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.241.2 — Copy Annotation Cleanup (2026-08-26)
+
+A second review pass over the Copy annotator. Nothing here changes what a paste looks like — it closes gaps in the tests and corrects comments that described code that no longer exists.
+
+- Two behaviours the tests only appeared to cover are now genuinely covered: a dead id inside a code span, and the same ticket cited by both its full and its short id.
+- The generated `board-markdown.js` is checked to actually carry its annotation index, so the check no longer depends on a browser being installed.
+- Removed a branch that could never run, and a comment pointing at a test that does not exist.
+
 ## 0.241.1 — Copy Leaves Links Alone (2026-08-26)
 
 Four fixes to the Copy annotator found by review, all in the same pass. The one you would have noticed is links.

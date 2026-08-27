@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -109,7 +110,11 @@ func TestCollectDocumentTicketMentionsClassifiesEveryQuotedConstruct(t *testing.
 		"\n" +
 		"[REQ-1685]: do-work/queue/REQ-1685-x.md\n" +
 		"\n" +
-		"Dead REQ-9999 in prose, ambiguous REQ-042, and short REQ-077.\n"
+		"Dead REQ-9999 in prose, ambiguous REQ-042, and short REQ-077.\n" +
+		"\n" +
+		"A dead id in a code span: `do-work run REQ-8886` still earns its line.\n" +
+		"\n" +
+		"Blocked on UR-003-REQ-077 written out, then REQ-077 again.\n"
 
 	wantMentions := []string{
 		`req REQ-1679 EXPAND "REQ-1679"`,      // prose, first mention
@@ -125,6 +130,18 @@ func TestCollectDocumentTicketMentionsClassifiesEveryQuotedConstruct(t *testing.
 		`req REQ-1108 quoted "REQ-1108"`,      // same span, continuation line
 		`missing REQ-9999 quoted "REQ-9999"`,  // dead id in prose earns an appendix line
 		`req UR-003-REQ-077 EXPAND "REQ-077"`, // short segment resolves to the one card carrying it
+		// A dead id in a CODE SPAN is still reported, and that is the only
+		// behaviour separating surfaceCodeSpan from surfaceCodeBlock — where a
+		// dead id is an illustration and reported by neither. Without this row,
+		// collapsing the two surfaces passes the whole suite.
+		`missing REQ-8886 quoted "REQ-8886"`,
+		// The compound form written out, then its short form. Both name the same
+		// record, so the SECOND must not expand — which pins that first-mention
+		// memory is keyed by the resolved id rather than by the written text.
+		// Every other repeat in this fixture repeats the same characters, so
+		// keying on mentionText passes without these two.
+		`req UR-003-REQ-077 quoted "UR-003-REQ-077"`,
+		`req UR-003-REQ-077 quoted "REQ-077"`,
 	}
 
 	mentions := collectDocumentTicketMentions(documentText, newCitationFixtureResolver())
@@ -591,8 +608,13 @@ func TestBodyTicketMentionPatternComposesTheOneFilePathDefinition(t *testing.T) 
 // neither surface touches them.
 func TestCollectDocumentTicketMentionsLeavesLinkSyntaxAlone(t *testing.T) {
 	documentText := "---\nid: REQ-500\n---\n\n" +
+		// The em dash is load-bearing: describeTicketMentions slices every
+		// reported offset back out of the document, so a body that is pure ASCII
+		// cannot tell a byte offset from a UTF-16 one. This fixture puts a
+		// multi-byte character BEFORE the mentions and before the definition
+		// block, which is the arrangement that makes the two diverge.
 		"A shortcut use [REQ-1679], a collapsed use [REQ-1108][], an inline link\n" +
-		"[REQ-1685](https://example.test/x), and an image ![REQ-501 diagram](y.png).\n\n" +
+		"[REQ-1685](https://example.test/x) — and an image ![REQ-501 diagram](y.png).\n\n" +
 		"Prose afterwards cites REQ-1685 and REQ-1679 for real.\n\n" +
 		"[REQ-1679]: https://example.test/a\n" +
 		"[REQ-1108]: https://example.test/b\n"
@@ -608,16 +630,6 @@ func TestCollectDocumentTicketMentionsLeavesLinkSyntaxAlone(t *testing.T) {
 	if !reflect.DeepEqual(gotMentions, wantMentions) {
 		t.Errorf("emitted mentions:\n got  %s\n want %s",
 			strings.Join(gotMentions, "\n       "), strings.Join(wantMentions, "\n       "))
-	}
-
-	// The definition lines are what the uses point at; annotating either end
-	// breaks the pair, so neither may be offered.
-	for _, mention := range mentions {
-		definitionOffset := strings.Index(documentText, "[REQ-1679]: ")
-		if mention.Offset >= definitionOffset {
-			t.Errorf("a mention at %d falls in the link reference definitions starting at %d",
-				mention.Offset, definitionOffset)
-		}
 	}
 }
 
@@ -817,5 +829,78 @@ func TestUtf16LengthMatchesWhatTheClientReceives(t *testing.T) {
 					testCase.sourceText, gotUnitCount, wantUnitCount)
 			}
 		})
+	}
+}
+
+// The index has to survive the trip to disk, not just the builder.
+//
+// The end-to-end pin already exists — TestBrowserBehaviorBoardColumnCopyAll
+// clicks a real Copy button on a real generated board and asserts a literal
+// annotated payload, spliced titles and glossary included. But that lane SKIPS
+// when no browser is available (browser_probe_test.go), so on a machine without
+// one the whole seam between buildGeneratedBoardMarkdownData and the client
+// goes unchecked: dropping the two maps after the build passes everything else.
+//
+// This is the cheap guard for that case. It reads the file the page actually
+// loads, so it fails if the index is built and then not shipped.
+func TestGeneratedBoardMarkdownFileShipsTheTicketMentionIndex(t *testing.T) {
+	outputDirectory := generateLiveSiteInDir(t)
+	markdownJs, readError := os.ReadFile(filepath.Join(outputDirectory, "board-markdown.js"))
+	if readError != nil {
+		t.Fatalf("reading generated board-markdown.js: %v", readError)
+	}
+
+	const assignmentPrefix = "window.queueKanbanBoardMarkdownData = "
+	jsonText, foundPrefix := strings.CutPrefix(string(markdownJs), assignmentPrefix)
+	if !foundPrefix {
+		t.Fatalf("board-markdown.js does not open with %q", assignmentPrefix)
+	}
+	var shippedPayload struct {
+		Requests        map[string]string                   `json:"requests"`
+		RequestMentions map[string][]generatedTicketMention `json:"requestMentions"`
+	}
+	if decodeError := json.Unmarshal([]byte(strings.TrimSuffix(strings.TrimSpace(jsonText), ";")), &shippedPayload); decodeError != nil {
+		t.Fatalf("decoding the shipped payload: %v", decodeError)
+	}
+
+	if len(shippedPayload.RequestMentions) == 0 {
+		t.Fatal("board-markdown.js ships no requestMentions at all — the client would paste every document unannotated")
+	}
+	// Not just present: pointing at the right characters in the document shipped
+	// beside it. A map that survived the build but lost its pairing is the
+	// failure that corrupts a paste rather than merely flattening it.
+	checkedDocumentCount := 0
+	for requestId, mentions := range shippedPayload.RequestMentions {
+		documentText, hasDocument := shippedPayload.Requests[requestId]
+		if !hasDocument {
+			t.Errorf("%s has mentions but no document in the same payload", requestId)
+			continue
+		}
+		documentRunes := utf16RunesOf(documentText)
+		previousOffset := -1
+		for _, mention := range mentions {
+			// Ascending order is what makes the client's descending splice safe,
+			// and it is a property of the SHIPPED list — a payload that lost the
+			// ordering somewhere between the builder and the file splices titles
+			// at offsets that have already moved.
+			if mention.Offset <= previousOffset {
+				t.Errorf("%s: shipped mention %s at %d is not after the previous one at %d",
+					requestId, mention.Id, mention.Offset, previousOffset)
+			}
+			previousOffset = mention.Offset
+			if mention.Offset+mention.Length > len(documentRunes) {
+				t.Errorf("%s: mention %s at %d+%d overruns its %d-unit document",
+					requestId, mention.Id, mention.Offset, mention.Length, len(documentRunes))
+				continue
+			}
+			sliced := string(documentRunes[mention.Offset : mention.Offset+mention.Length])
+			if bodyTicketMentionPattern.FindString(sliced) != sliced {
+				t.Errorf("%s: offset %d slices %q, which is not a whole ticket id", requestId, mention.Offset, sliced)
+			}
+			checkedDocumentCount++
+		}
+	}
+	if checkedDocumentCount < 500 {
+		t.Fatalf("only %d shipped mentions were checked — the live tree carries thousands", checkedDocumentCount)
 	}
 }

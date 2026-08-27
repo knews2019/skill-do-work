@@ -225,6 +225,28 @@ directory segment and no digit in an extension, so three mutations survived. Tha
 fixture this REQ's Constraints warn about, caught by running the mutations rather than by writing
 them.
 
+**D7 — A second adversarial pass found ten more defects, all in my own work here.** Five lenses over
+the finished diff. Fixed in this REQ: a comment citing a test that does not exist; a false universal
+("every REQ body carries an em dash" — 4 of 376 do not); a header claiming this file walks render.go's
+AST when it deliberately does not share that parse (92 bodies are preprocessed first); a stale
+client comment denying it reads the index it now reads; a dead `ast.KindAutoLink` arm that cannot
+fire; a test guard that could never be the assertion that caught anything AND compared bytes to
+UTF-16 units; two fixtures that did not reach the behaviour they claimed to pin (a dead id in a code
+span, and one id written in two forms); a hidden coupling where the ticket group was read by fixed
+index while the pattern had begun composing another file's; and a shipped-index guard that ran only
+when a browser was installed.
+
+One finding was rated high and was WRONG: "nothing asserts the shipped index reaches the client".
+`clipboard_browser_probe_test.go` clicks a real Copy button on a real generated board and asserts
+literal annotated payloads. The finder measured with a `-run` filter that excluded the browser lane
+and concluded from its own exclusion. What survived is narrower — that lane skips silently without a
+browser — and is now covered by a non-browser guard.
+
+Four findings were real and belong elsewhere; captured as REQ-385 (an underscore is not a ticket-id
+boundary), REQ-386 (the restating H1), REQ-387 (a spliced title changing how the paste parses) and
+REQ-388 (the last two drawer/clipboard divergences). All four touch `board-detail.js`, which this REQ
+put out of scope.
+
 **D6 — Review found four more defects in the first implementation; all four are fixed here.** An
 independent adversarial pass over the shipped diff:
 

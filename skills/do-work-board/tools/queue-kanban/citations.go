@@ -18,11 +18,18 @@ import (
 //
 // The browser client cannot answer that question — it has raw bytes and no
 // parser — and the hand-rolled scanner it used to carry disagreed with
-// CommonMark on six separate constructs. Go can answer it exactly: render.go
-// already parses every one of these bodies with goldmark to produce the
-// drawer's HTML, so this file walks the same AST once more and ships the
-// answer as positions. filementions.go is the same move for the same reason:
-// the client cannot stat the filesystem, so Go ships repoFileMentions.
+// CommonMark on six separate constructs. Go can answer it exactly, because the
+// parser is already here: render.go builds a goldmark renderer for the drawer's
+// HTML, and this file reuses THAT PARSER on the raw stored body.
+//
+// The same parser, deliberately not the same parse. renderMarkdownBodyToHtml
+// preprocesses its input first (insertQuestionOptionHardBreaks, which rewrites
+// 92 of this repo's 376 request bodies), and every byte it inserts shifts the
+// offsets after it — so sharing one AST would ship positions measured against
+// text the client never receives. See collectDocumentTicketMentions.
+//
+// filementions.go is the same move for the same reason: the client cannot stat
+// the filesystem, so Go ships repoFileMentions.
 //
 // The division that follows from that, and the one to keep: MARKDOWN KNOWLEDGE
 // LIVES IN GO, THE CLIENT SPLICES. Nothing downstream of this file re-derives
@@ -50,7 +57,15 @@ import (
 var bodyTicketMentionPattern = regexp.MustCompile(
 	`(https?://[^\s<>"')\]]+)` +
 		`|(` + repoFileMentionPattern.String() + `)` +
-		`|(\b(?:UR-\d+-REQ-\d+[a-z]?|REQ-\d+[a-z]?|UR-\d+)\b)`)
+		`|(?P<ticket>\b(?:UR-\d+-REQ-\d+[a-z]?|REQ-\d+[a-z]?|UR-\d+)\b)`)
+
+// ticketMentionGroupIndex locates the ticket-id alternative by NAME. Reading it
+// by fixed position was safe only while this pattern owned all three groups —
+// and it stopped owning them the moment it began composing repoFileMentionPattern
+// from filementions.go. One capturing group added there would silently shift
+// every later index, and the build would ship offsets spanning a directory
+// segment of a file path. A name cannot shift.
+var ticketMentionGroupIndex = bodyTicketMentionPattern.SubexpIndex("ticket")
 
 // requestIdSegmentPattern pulls the REQ segment out of a compound card id
 // ("UR-002-REQ-031" → "REQ-031"). Mirrors the literal in
@@ -173,7 +188,12 @@ func textNodeSurface(textNode ast.Node) mentionSurface {
 	enclosingSurface := surfaceProse
 	for ancestor := textNode.Parent(); ancestor != nil; ancestor = ancestor.Parent() {
 		switch ancestor.Kind() {
-		case ast.KindLink, ast.KindImage, ast.KindAutoLink:
+		// Link and Image only. An ast.AutoLink holds its text in a private
+		// `value *Text` field rather than as a child, so no walked *ast.Text can
+		// ever have one as an ancestor and an AutoLink arm here would be dead
+		// code. Autolinked ids are already excluded anyway: the URL alternative
+		// of the mention pattern claims the whole run.
+		case ast.KindLink, ast.KindImage:
 			return surfaceLinkLabel
 		case ast.KindCodeSpan:
 			enclosingSurface = surfaceCodeSpan
@@ -208,8 +228,8 @@ func surfaceAt(surfaces []surfaceRange, start int, stop int) (mentionSurface, bo
 // same mentions in the browser against the same board.
 //
 // The two copies are pinned, not merged:
-// TestTicketMentionResolutionAgreesBetweenGoAndTheClient drives both over one
-// shared corpus, so whichever side drifts alone fails.
+// TestJavaScriptBehaviorTicketMentionPatternAndResolverAgreeWithGo drives both
+// over one shared corpus, so whichever side drifts alone fails.
 type ticketMentionResolver struct {
 	requestIds     map[string]bool
 	userRequestIds map[string]bool
@@ -290,8 +310,11 @@ func upperAsciiId(ticketId string) string {
 // no resolver and no block reasoning of its own.
 //
 // Offset and Length are UTF-16 CODE UNITS, not bytes: the client indexes a
-// JavaScript string, where an em dash is one unit and a byte offset would land
-// mid-word in any body containing one. Every REQ body in this repo contains one.
+// JavaScript string, and the two measurements diverge at the first byte that is
+// not ASCII — after which a byte offset lands mid-word. An em dash costs three
+// bytes and one unit; an emoji costs four bytes and two. Nearly every body here
+// carries one (372 of this board's 376 requests hold an em dash), and the four
+// that do not are exactly the ones where a byte offset would have looked right.
 //
 // Kind is "req", "ur", or empty for a mention no board record answers to — the
 // dead reference a paste's reader learns about from the appendix, since plain
@@ -334,9 +357,10 @@ func collectDocumentTicketMentions(documentText string, resolver *ticketMentionR
 	var mentions []generatedTicketMention
 
 	for _, matchIndexes := range bodyTicketMentionPattern.FindAllStringSubmatchIndex(bodyMarkdown, -1) {
-		// Submatch 3 is the ticket-id alternative; a match on 1 (URL) or 2
-		// (repo-relative path) claimed the run and names no ticket.
-		mentionStart, mentionStop := matchIndexes[6], matchIndexes[7]
+		// A match on the URL or repo-path alternative claimed the run and names
+		// no ticket, so the named group is absent and its indexes are -1.
+		mentionStart := matchIndexes[2*ticketMentionGroupIndex]
+		mentionStop := matchIndexes[2*ticketMentionGroupIndex+1]
 		if mentionStart < 0 {
 			continue
 		}

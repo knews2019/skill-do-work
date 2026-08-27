@@ -133,14 +133,18 @@
   }
 
   // ---- ticket annotation for the clipboard payload -------------------------
-  // The Go payload stays byte-exact: buildGeneratedBoardMarkdownData ships each
-  // ticket's original bytes and this file never asks it for anything else. What
-  // the CLIPBOARD carries is those bytes plus two marked additions — the first
-  // mention of a REQ/UR id in a BODY gains the ticket's title, and one appendix
-  // at the very end names every ticket the payload referenced. The frontmatter
-  // fence is never touched, so a paste still saves back as a file whose
-  // depends_on, related and user_request parse. That invariant is what this
-  // whole section exists to hold; everything below is in service of it.
+  // The ticket TEXT in the Go payload stays byte-exact: buildGeneratedBoardMarkdownData
+  // ships each document's original bytes and this file never edits them, only
+  // splices into a copy. It does ask that same payload for one more thing —
+  // ticketMentionsForDetail reads the offset index shipped beside the text (D3
+  // put the two in one struct so they cannot arrive from different builds).
+  //
+  // What the CLIPBOARD carries is those bytes plus two marked additions — the
+  // first mention of a REQ/UR id in a BODY gains the ticket's title, and one
+  // appendix at the very end names every ticket the payload referenced. The
+  // frontmatter fence is never touched, so a paste still saves back as a file
+  // whose depends_on, related and user_request parse. That invariant is what
+  // this whole section exists to hold; everything below is in service of it.
   //
   // WHICH mentions may be annotated is a Markdown question, and this file does
   // not answer it. citations.go walks each body's goldmark AST at build time and
