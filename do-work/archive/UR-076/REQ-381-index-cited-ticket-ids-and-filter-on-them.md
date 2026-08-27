@@ -39,7 +39,7 @@ estimate:
   - full-suite verification
   calculated_at: '2026-08-27T12:11:18Z'
 completed_at: '2026-08-27T12:27:56Z'
-commit:
+commit: 961fbf84
 kb_status: pending
 ---
 
