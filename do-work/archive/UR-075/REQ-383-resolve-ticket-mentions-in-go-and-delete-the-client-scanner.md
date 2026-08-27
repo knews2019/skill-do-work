@@ -1,9 +1,11 @@
 ---
 id: REQ-383
 title: '[impact-rule-change] Resolve ticket mentions in Go, and delete the client-side Markdown scanner'
-status: pending
+status: completed
 created_at: 2026-08-26T19:10:32Z
-status_changed_at: 2026-08-26T19:41:12Z
+status_changed_at: 2026-08-27T09:00:04Z
+completed_at: 2026-08-27T09:00:04Z
+commit:
 user_request: UR-075
 addendum_to: REQ-379
 review_generated: true
