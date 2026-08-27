@@ -20,7 +20,7 @@ var citationFixtureRequestIds = []string{
 	"UR-001-REQ-042", "UR-002-REQ-042", "UR-003-REQ-077",
 }
 
-var citationFixtureUserRequestIds = []string{"UR-074", "UR-075"}
+var citationFixtureUserRequestIds = []string{"UR-003", "UR-074", "UR-075"}
 
 func newCitationFixtureResolver() *ticketMentionResolver {
 	return newTicketMentionResolver(citationFixtureRequestIds, citationFixtureUserRequestIds)
@@ -297,6 +297,11 @@ func mustMarshalProbeJSON(t *testing.T, value any) string {
 // boundary, an alternative claiming a run, a compound id, an ambiguous segment.
 var ticketMentionAgreementCorpus = []string{
 	"Read REQ-1679 lessons and REQ-1679 again.",
+	"Fixed in _REQ-1679_ last week.",
+	"_tracked under UR-003-REQ-077_",
+	"Adjacent REQ-1679_UR-003 and _UR-003_.",
+	"Suffixes _REQ-1679a_ and _UR-003-REQ-077a_.",
+	"Invalid UR-003-REQ-077ab, UR-003-REQ-077A, and xUR-003-REQ-077.",
 	"Compound UR-001-REQ-042 and its short form REQ-042.",
 	"A letter suffix REQ-1679a and a longer number REQ-16790.",
 	"No boundary in xREQ-1679 or REQ-1679x.",
@@ -436,6 +441,126 @@ process.stdout.write(JSON.stringify({ patternMatches: patternMatches, resolution
 		}
 		if goVerdict := describeGoResolution(resolver, mentionText); clientVerdict != goVerdict {
 			t.Errorf("resolver drift on %q: client %q, Go %q", mentionText, clientVerdict, goVerdict)
+		}
+	}
+}
+
+// REQ-385: prove both the emitted offsets and the drawer's real consumption
+// loop. A pattern-only probe misses the drawer retrying inside a rejected
+// compound and linking its REQ segment. The clipboard uses the real Go index.
+func TestJavaScriptBehaviorTicketMentionUnderscoreBoundaries(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	testCases := []struct {
+		Source            string                   `json:"source"`
+		DocumentText      string                   `json:"documentText"`
+		InsideFencedBlock bool                     `json:"insideFencedBlock"`
+		Want              []string                 `json:"-"`
+		WantBody          string                   `json:"-"`
+		Mentions          []generatedTicketMention `json:"mentions"`
+	}{
+		{Source: "Fixed in _REQ-1679_ last week.", Want: []string{`req REQ-1679 EXPAND "REQ-1679"`}, WantBody: "Fixed in _REQ-1679 (Fix mentions)_ last week."},
+		{Source: "_tracked under UR-003-REQ-077_", Want: []string{`req UR-003-REQ-077 EXPAND "UR-003-REQ-077"`}, WantBody: "_tracked under UR-003-REQ-077 (Compound work)_"},
+		{Source: "😀 — REQ-1679_UR-003", Want: []string{`req REQ-1679 EXPAND "REQ-1679"`, `ur UR-003 EXPAND "UR-003"`}, WantBody: "😀 — REQ-1679 (Fix mentions)_UR-003 (Ship the widget)"},
+		{Source: "_UR-003_", Want: []string{`ur UR-003 EXPAND "UR-003"`}, WantBody: "_UR-003 (Ship the widget)_"},
+		{Source: "_REQ-1679a_ _UR-003-REQ-077a_", Want: []string{`missing REQ-1679a quoted "REQ-1679a"`, `missing UR-003-REQ-077a quoted "UR-003-REQ-077a"`}},
+		{Source: "UR-003-REQ-077ab UR-003-REQ-077A xUR-003-REQ-077 1UR-003-REQ-077", Want: []string{}},
+		{Source: "xREQ-1679 REQ-1679ab UR-003x", Want: []string{}},
+		// Suppressing a missing compound in a code block must not retry its
+		// resolvable inner REQ segment (REQ-077 names UR-003-REQ-077 here).
+		{Source: "_UR-999-REQ-077_", InsideFencedBlock: true, Want: []string{}},
+		{Source: "UR-003-REQ-077ab then REQ-1679.", Want: []string{`req REQ-1679 EXPAND "REQ-1679"`}, WantBody: "UR-003-REQ-077ab then REQ-1679 (Fix mentions)."},
+	}
+	for index := range testCases {
+		testCase := &testCases[index]
+		testCase.DocumentText = testCase.Source
+		if testCase.InsideFencedBlock {
+			testCase.DocumentText = "```\n" + testCase.Source + "\n```\n"
+		}
+		testCase.Mentions = collectDocumentTicketMentions(testCase.DocumentText, newCitationFixtureResolver())
+		if got := describeTicketMentions(testCase.DocumentText, testCase.Mentions); !reflect.DeepEqual(got, testCase.Want) {
+			t.Errorf("Go mentions for %q:\n got %v\nwant %v", testCase.Source, got, testCase.Want)
+		}
+		if testCase.WantBody == "" {
+			testCase.WantBody = testCase.DocumentText
+		}
+	}
+
+	javascriptProbe := `
+var requestsById = {
+  "REQ-1679": { title: "Fix mentions", status: "completed" },
+  "UR-003-REQ-077": { title: "Compound work", status: "pending" }
+};
+var userRequestsById = { "UR-003": { title: "Ship the widget" } };
+var document = {
+  createDocumentFragment: function () { return { appendChild: function () {} }; },
+  createTextNode: function (text) { return text; }
+};
+var linkedMentions;
+function makeTicketLink(kind, id, text, expand) {
+  linkedMentions.push(kind + " " + id + (expand ? " EXPAND " : " quoted ") + JSON.stringify(text));
+  return {};
+}
+function makeMissingTicketMention(text) {
+  linkedMentions.push("missing " + text + " quoted " + JSON.stringify(text));
+  return {};
+}
+` + strings.Join([]string{
+		sliceDeclarationAfter(t, indexHtml, "var bodyMentionPattern ="),
+		sliceDeclarationAfter(t, indexHtml, "var inlineTicketTitleMaxLength ="),
+		sliceBalancedBlockAfter(t, indexHtml, "function buildRequestIdByReqSegment("),
+		sliceDeclarationAfter(t, indexHtml, "var requestIdByReqSegment ="),
+		sliceBalancedBlockAfter(t, indexHtml, "function resolveTicketMention("),
+		sliceBalancedBlockAfter(t, indexHtml, "function isAmbiguousTicketMention("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeRequestStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function ticketTitleFor("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function shortTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function buildLinkifiedFragment("),
+		sliceBalancedBlockAfter(t, indexHtml, "function recordReferencedTicket("),
+		sliceBalancedBlockAfter(t, indexHtml, "function annotateTicketMentions("),
+	}, "\n") + `
+var results = ` + mustMarshalProbeJSON(t, testCases) + `.map(function (testCase) {
+  linkedMentions = [];
+  var renderState = { expandedTicketKeys: {}, glossaryKeys: {}, glossaryEntries: [] };
+  buildLinkifiedFragment(testCase.source, testCase.insideFencedBlock, testCase.insideFencedBlock, renderState);
+  var annotation = annotateTicketMentions(testCase.documentText, testCase.mentions);
+  return { mentions: linkedMentions, body: annotation.text,
+    glossary: renderState.glossaryEntries.map(function (entry) { return entry.id; }),
+    appendix: annotation.referencedTickets.map(function (entry) { return entry.id; }) };
+});
+process.stdout.write(JSON.stringify(results));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "underscore ticket boundaries", javascriptProbe)
+	var results []struct {
+		Mentions []string `json:"mentions"`
+		Body     string   `json:"body"`
+		Glossary []string `json:"glossary"`
+		Appendix []string `json:"appendix"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
+		t.Fatalf("decode underscore ticket boundaries: %v (output %q)", decodeError, probeOutput)
+	}
+	if len(results) != len(testCases) {
+		t.Fatalf("client answered %d cases, want %d", len(results), len(testCases))
+	}
+	for index, result := range results {
+		testCase := testCases[index]
+		if !reflect.DeepEqual(result.Mentions, testCase.Want) {
+			t.Errorf("drawer mentions for %q:\n got %v\nwant %v", testCase.Source, result.Mentions, testCase.Want)
+		}
+		if result.Body != testCase.WantBody {
+			t.Errorf("clipboard body for %q:\n got %q\nwant %q", testCase.Source, result.Body, testCase.WantBody)
+		}
+		wantGlossary, wantAppendix := []string{}, []string{}
+		for _, described := range testCase.Want {
+			fields := strings.Fields(described)
+			wantAppendix = append(wantAppendix, fields[1])
+			if fields[0] != "missing" {
+				wantGlossary = append(wantGlossary, fields[1])
+			}
+		}
+		if !reflect.DeepEqual(result.Glossary, wantGlossary) || !reflect.DeepEqual(result.Appendix, wantAppendix) {
+			t.Errorf("references for %q: drawer %v want %v; clipboard %v want %v", testCase.Source,
+				result.Glossary, wantGlossary, result.Appendix, wantAppendix)
 		}
 	}
 }

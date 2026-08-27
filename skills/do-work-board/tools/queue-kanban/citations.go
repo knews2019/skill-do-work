@@ -57,7 +57,20 @@ import (
 var bodyTicketMentionPattern = regexp.MustCompile(
 	`(https?://[^\s<>"')\]]+)` +
 		`|(` + repoFileMentionPattern.String() + `)` +
-		`|(?P<ticket>\b(?:UR-\d+-REQ-\d+[a-z]?|REQ-\d+[a-z]?|UR-\d+)\b)`)
+		`|(?P<ticket>UR-\d+-REQ-\d+[a-z]?|REQ-\d+[a-z]?|UR-\d+)`)
+
+// Boundaries are checked AFTER consuming a candidate. Anchoring the regexp
+// lets a rejected compound backtrack to its UR prefix. Only ASCII letters and
+// digits continue an id; underscore is punctuation, including Markdown emphasis.
+func isTicketMentionBoundary(sourceText string, offset int) bool {
+	if offset < 0 || offset >= len(sourceText) {
+		return true
+	}
+	currentByte := sourceText[offset]
+	return !(currentByte >= 'A' && currentByte <= 'Z' ||
+		currentByte >= 'a' && currentByte <= 'z' ||
+		currentByte >= '0' && currentByte <= '9')
+}
 
 // ticketMentionGroupIndex locates the ticket-id alternative by NAME. Reading it
 // by fixed position was safe only while this pattern owned all three groups —
@@ -361,7 +374,8 @@ func collectDocumentTicketMentions(documentText string, resolver *ticketMentionR
 		// no ticket, so the named group is absent and its indexes are -1.
 		mentionStart := matchIndexes[2*ticketMentionGroupIndex]
 		mentionStop := matchIndexes[2*ticketMentionGroupIndex+1]
-		if mentionStart < 0 {
+		if mentionStart < 0 || !isTicketMentionBoundary(bodyMarkdown, mentionStart-1) ||
+			!isTicketMentionBoundary(bodyMarkdown, mentionStop) {
 			continue
 		}
 		mentionText := bodyMarkdown[mentionStart:mentionStop]

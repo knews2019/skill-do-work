@@ -87,7 +87,7 @@
   var bodyMentionPattern = new RegExp(
     "(https?://[^\\s<>\"')\\]]+)" +
       "|((?:[A-Za-z0-9_@-]+(?:\\.[A-Za-z0-9_-]+)*/)+[A-Za-z0-9_@-][A-Za-z0-9_@.-]*\\.[A-Za-z][A-Za-z0-9]{0,7})" +
-      "|(\\b(?:UR-\\d+-REQ-\\d+[a-z]?|REQ-\\d+[a-z]?|UR-\\d+)\\b)",
+      "|(UR-\\d+-REQ-\\d+[a-z]?|REQ-\\d+[a-z]?|UR-\\d+)",
     "g"
   );
 
@@ -140,6 +140,14 @@
           // the Go scanner: stays plain text.
         }
       } else if (matchResult[3]) {
+        // Match Go's post-filter: underscore is a boundary, ASCII letters and
+        // digits are not. Consume a rejected compound before continuing so
+        // neither regexp backtracking nor the skipped-mention retry below can
+        // turn it into a shorter UR prefix or an inner REQ segment.
+        if (/[A-Za-z0-9]/.test(sourceText.charAt(matchResult.index - 1)) ||
+            /[A-Za-z0-9]/.test(sourceText.charAt(bodyMentionPattern.lastIndex))) {
+          continue;
+        }
         var ticketTarget = resolveTicketMention(mentionText);
         if (ticketTarget) {
           var ticketKey = ticketTarget.kind + ":" + ticketTarget.id;
@@ -167,9 +175,11 @@
         }
       }
       if (!linkNode) {
-        // Skipped mention: resume just past its start so anything nested in it
-        // (a REQ id inside a skipped file path) can still match.
-        bodyMentionPattern.lastIndex = matchResult.index + 1;
+        // A suppressed ticket still claims its entire candidate. Only skipped
+        // non-ticket runs retry inside (a REQ id in a skipped file path).
+        if (!matchResult[3]) {
+          bodyMentionPattern.lastIndex = matchResult.index + 1;
+        }
         continue;
       }
       if (matchResult.index > cursorIndex) {
