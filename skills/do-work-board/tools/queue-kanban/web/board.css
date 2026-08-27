@@ -1180,6 +1180,14 @@ body.is-resizing-detail {
   content: "· ";
 }
 
+/* Completion companions keep the smaller, lighter type hierarchy without
+   fading below readable contrast on either theme's page or card background. */
+.req-card:is([data-status="completed"], [data-status="completed-with-issues"], [data-status="cancelled"])
+  .req-card-completed :is(.relative-time, .elapsed-duration) {
+  color: var(--ink-soft);
+  opacity: 1;
+}
+
 /* --------------------------------------------------------------------------
    By-UR lens
    -------------------------------------------------------------------------- */

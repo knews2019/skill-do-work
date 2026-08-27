@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.242.3 — Readable Completion Text in Both Themes (2026-08-27)
+
+Completion-line relative times and elapsed durations now use readable contrast in both themes while staying quieter than card titles. A real-browser regression checks the rendered text against both page and card backgrounds.
+
 ## 0.242.2 — Name Tickets on First Prose Mention (2026-08-27)
 
 Newly authored REQ and UR references now include the ticket title on first mention. The convention leaves parsed frontmatter and existing references unchanged.
