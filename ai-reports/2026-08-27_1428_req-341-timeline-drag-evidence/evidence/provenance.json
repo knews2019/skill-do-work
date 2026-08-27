@@ -1,0 +1,41 @@
+{
+  "report_target": "REQ-341 (completed): Give the browser probe lane trusted input",
+  "decision_target": "REQ-375 (pending-answers): compatibility of the existing pointer-capture test",
+  "date_utc": "2026-08-27",
+  "repository_head_at_measurement": "599672707fe1b34455be99df54fc948f1edc45fd",
+  "source_drift": "Concurrent unrelated queue/capture work exists. board-timeline.js and timeline_browser_probe_test.go were unchanged during these measurements.",
+  "historical_sources": [
+    {"path":"do-work/archive/UR-051/REQ-227-timeline-view-with-two-segment-req-bars.md", "commit":"17b9422c4574a18cf5d3dc9ba2bd30e82a4bdae5", "claim":"Introduced Timeline drag-to-pan on 2026-08-18; Git author Claude."},
+    {"path":"do-work/archive/UR-067/input.md", "claim":"Requested real-click regression protection and outside-release behavior; existing Board-card clicks were described as unaffected."},
+    {"path":"do-work/archive/UR-067/REQ-341-give-the-browser-probe-lane-trusted-input.md", "claim":"Completed real browser input transport and converted regression test; contains implementation, testing, review, and lessons. No commit field present; implementation commit independently located using git log -S."},
+    {"commit":"05d8309753a1c12a042c9ffad9b14ea939e5b641", "claim":"Introduced the current test name and trusted-input transport, Git author Claude, 2026-08-24; full diff included."},
+    {"commit":"dc754466c9b4f08871be171bd10b93a4f9adee6f", "claim":"Added the host pointerleave isolation and non-vacuity assertion. Git author t2, 2026-08-25 local time; full diff included. Author identity does not establish who operated the editor."}
+  ],
+  "current_code": [
+    {"path":"skills/do-work-board/tools/queue-kanban/web/board-timeline.js", "lines":"3082-3176", "claim":"Pointer handlers change only the visible time range and release capture; not card status."},
+    {"path":"skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go", "lines":"2648-2669,2820-3058", "claim":"Four paired trials, real browser mouse input, deliberately disabled capture and isolated pointerleave in the test page."},
+    {"path":"skills/do-work-board/tools/queue-kanban/web/template.html", "lines":"417", "claim":"Timeline hint explicitly says drag to pan."}
+  ],
+  "captures": {
+    "browser":"Codex in-app browser; exact engine version was not exposed by the supported browser interface",
+    "url":"http://127.0.0.1:8090/",
+    "board_columns_url":"http://127.0.0.1:8769/",
+    "server_change":"Port 8090 was replaced by another repository after the Timeline captures. That later page was excluded. The final Board-columns capture used a separate server explicitly rooted at skill-do-work2 on port 8769.",
+    "viewport":{"width":1280,"height":720},
+    "source":"Existing local queue-kanban server, repository label skill-do-work2; authentic current screenshots, not historical before/after builds",
+    "before_range":"2026-08-24 00:00 UTC → 2026-08-29 12:08 UTC",
+    "drag_path":[[650,472],[656,472],[680,472],[715,472],[750,472],[790,472],[790,425],[790,375],[790,335]],
+    "after_range":"2026-08-23 04:31 UTC → 2026-08-28 16:40 UTC",
+    "release_limitation":"The in-app drag call left is-panning true. A subsequent pointer move shifted the range again. Cause not established; this capture does not prove release correctness. The page was reloaded before the separate click capture.",
+    "click":{"row":"REQ-383","drawer_hidden":false,"drawer_width":620,"shown_id":"REQ-383"},
+    "image_edits":"None. Numbered SVG callouts are separate explanatory overlays in HTML."
+  },
+  "test_runs": [
+    {"browser":"Google Chrome for Testing 141.0.7390.37","scope":"focused pointer-capture test","count":1,"exit_code":1,"seconds":3.115,"log":"chrome-141-focused.txt","result":"Non-vacuity guard fails at timeline_browser_probe_test.go:2987."},
+    {"browser":"Google Chrome 151.0.7922.174","scope":"focused pointer-capture test","count":1,"exit_code":0,"seconds":2.745,"log":"chrome-151-focused.txt","result":"Click opens correct drawer; early capture prevents it; capture-present outside release ends pan; capture-disabled trial strands pan and observes one isolated pointerleave."},
+    {"browser":"Google Chrome for Testing 141.0.7390.37","scope":"strict browser lane","exit_code":1,"seconds":90.301,"log":"chrome-141-strict.txt","result":"Agent stopped stalled process after about 90 seconds; process inspection identified TestBrowserBehaviorMarkLabelTextExtent dump-dom child. Not a completed lane result or evidence of a Timeline failure."},
+    {"browser":"Google Chrome 151.0.7922.174","scope":"strict browser lane","exit_code":1,"seconds":89.133,"log":"chrome-151-strict.txt","result":"Agent stopped stalled process after about 90 seconds; process inspection identified TestBrowserBehaviorMarkLabelTextExtent dump-dom child. Not a completed lane result or evidence of a Timeline failure."}
+  ],
+  "canonical_baseline":{"command":"bash _dev/tests/maintainer-verify.sh","browser_override":false,"exit_code":0,"result":"Maintainer verification passed; optional strict browser lane explicitly skipped. Concurrent unrelated source work existed in the same checkout.","log":"maintainer-verify.txt"},
+  "missing_evidence":"No authentic screenshot of the historical broken build. No independent diagnosis of in-app drag-release behavior. No completed strict-lane run in this session."
+}

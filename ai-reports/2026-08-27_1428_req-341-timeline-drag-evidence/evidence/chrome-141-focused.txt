@@ -1,0 +1,6 @@
+=== RUN   TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage
+    timeline_browser_probe_test.go:2987: the capture-swallowed outside-release trial never crossed the host pointerleave boundary; the isolator was not exercised and the mutation pair is vacuous
+--- FAIL: TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage (2.76s)
+FAIL
+FAIL	github.com/knews2019/skill-do-work/queue-kanban	3.115s
+FAIL

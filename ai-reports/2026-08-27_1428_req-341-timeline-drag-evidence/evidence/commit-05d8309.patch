@@ -1,0 +1,1044 @@
+commit 05d8309753a1c12a042c9ffad9b14ea939e5b641
+Author: Claude <noreply@anthropic.com>
+Date:   Mon Aug 24 10:58:07 2026 +0000
+
+    [REQ-341] Give the browser probe lane trusted input
+    
+    The lane ran every probe under --headless --dump-dom and read one JSON node
+    out of the serialized DOM. That is one crossing, in one direction: enough to
+    measure, useless to interact. Four REQs paid for it — REQ-324's lock-in passed
+    through the entire click regression, REQ-333 could not drive a captured drag,
+    REQ-336's RED had to be reproduced outside the suite, and REQ-337's check had
+    to be structural.
+    
+    Adds a second transport beside the first rather than replacing it:
+    --remote-debugging-pipe carries the DevTools Protocol over a pair of inherited
+    file descriptors as NUL-terminated JSON, which os/exec and encoding/json
+    already cover. No new module dependency; a WebSocket client would have cost
+    one. Input.dispatchMouseEvent delivers TRUSTED events, so the engine issues
+    the pointerId and setPointerCapture on it establishes a real capture that
+    really retargets the synthesized click.
+    
+    Every measurement on the new transport is wrapped so it carries location.href
+    and is checked against the probe page, making the prime's render-evidence rule
+    mechanical rather than remembered. Readiness is a polled condition with a
+    deadline, never a fixed sleep. Every protocol exchange is bounded by a read
+    deadline and every failure is a t.Fatalf carrying the engine's stderr, so a
+    transport failure can never read as a probe that measured nothing.
+    
+    Converts REQ-337's structural check into
+    TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage. Four trials on
+    one page: a trusted click on a bar opens its drawer; the same click with
+    capture taken on pointerdown opens nothing; a trusted drag released above the
+    chart ends the pan; and with the host's setPointerCapture swallowed that same
+    drag strands it. Each pair proves the other can fail. The structural version's
+    recorded residual is closed — the gestures do not care how a capture is
+    requested, only whether one exists when the click is synthesized.
+    
+    The engine-missing SKIP path is unchanged (the new transport resolves its
+    browser through lookupBrowserForBehaviorProbe), and it counts itself in
+    browserBehaviorProbeCount, so the strict lane's refusal to skip still covers
+    it. The renamed test now runs inside the strict lane, which it did not before.
+    
+    Verified: maintainer-verify.sh exit 0 with a browser supplied; the probe fails
+    when REQ-336's defect is reintroduced in board-timeline.js, including when the
+    capture is routed through a local variable, which the structural check passed.
+    
+    Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+    Claude-Session: https://claude.ai/code/session_01VNcvoERjcWWvddqZRNTmKf
+
+diff --git a/skills/do-work-board/tools/queue-kanban/browser_probe_test.go b/skills/do-work-board/tools/queue-kanban/browser_probe_test.go
+index 45f948c..ab4d056 100644
+--- a/skills/do-work-board/tools/queue-kanban/browser_probe_test.go
++++ b/skills/do-work-board/tools/queue-kanban/browser_probe_test.go
+@@ -1,6 +1,8 @@
+ package main
+ 
+ import (
++	"bufio"
++	"bytes"
+ 	"encoding/json"
+ 	"flag"
+ 	"os"
+@@ -10,6 +12,7 @@ import (
+ 	"strings"
+ 	"sync/atomic"
+ 	"testing"
++	"time"
+ )
+ 
+ // The browser behavior lane, beside the Node behavior lane in generate_test.go and
+@@ -33,6 +36,12 @@ import (
+ // code alone. If a future probe genuinely needs more than `--dump-dom` can express,
+ // that is the moment to reach for a driver — and to say so here.
+ //
++// THAT MOMENT ARRIVED (REQ-341), and the answer was a second transport rather than a
++// driver: `--remote-debugging-pipe` speaks the DevTools Protocol over a pair of file
++// descriptors, framed as NUL-terminated JSON, which the standard library already has
++// everything to do. See the trusted-input transport below for what it buys and what
++// it costs. `--dump-dom` stays the transport for every probe that only measures.
++//
+ // NO WALL-CLOCK WAITS. Readiness is `--virtual-time-budget`, which advances the
+ // page's clock as fast as the work allows and then dumps, plus the sentinel the page
+ // writes into the result node. A `sleep` here is the flake this lane would be blamed
+@@ -128,7 +137,7 @@ func runBrowserBehaviorProbeInDirectory(
+ 	t.Helper()
+ 	browserPath := lookupBrowserForBehaviorProbe(t)
+ 
+-	pagePath := filepath.Join(siteDirectory, "probe.html")
++	pagePath := filepath.Join(siteDirectory, browserProbePageFileName)
+ 	if writeError := os.WriteFile(pagePath, []byte(pageHTML), 0o644); writeError != nil {
+ 		t.Fatalf("write %s probe page: %v", probeName, writeError)
+ 	}
+@@ -189,6 +198,469 @@ func extractBrowserProbeResult(dumpedDOM string) (string, string) {
+ 	return resultText, ""
+ }
+ 
++// ---- the trusted-input transport -------------------------------------------
++//
++// WHY A SECOND TRANSPORT EXISTS. Everything above crosses the boundary once and in
++// one direction: the engine renders, serializes the DOM, exits, and the Go side reads
++// one node out of the dump. That is enough to MEASURE and useless to INTERACT,
++// because a page driven only by its own script can dispatch only synthetic events —
++// and a synthetic event is not the same object the engine makes. Four REQs paid for
++// the difference. REQ-324's click/pan lock-in dispatched PointerEvents with
++// pointerId 1 and passed through the entire click regression, because capture is
++// never established on a pointer id the engine did not issue. REQ-333 could not drive
++// a captured drag end to end. REQ-336's RED had to be reproduced outside the suite.
++// REQ-337's check had to be structural and said so in its own doc comment.
++//
++// WHAT THIS IS. Chromium's `--remote-debugging-pipe` moves the DevTools Protocol off
++// the WebSocket endpoint and onto a pair of inherited file descriptors: the engine
++// reads commands on fd 3 and writes replies and events on fd 4, each message a JSON
++// object terminated by a NUL byte. `os/exec`'s ExtraFiles supplies the descriptors
++// and `encoding/json` frames the messages, so the lane gains real input with NO new
++// module dependency — which a WebSocket client would have cost.
++//
++// WHAT IT COSTS. The engine stays alive for the length of the probe, so this
++// transport cannot use `--virtual-time-budget`: virtual time races ahead of input
++// that has not been sent yet. Readiness is therefore a POLLED CONDITION with a
++// deadline (waitForPageCondition), never a fixed sleep — the same rule the header
++// states, kept by a different mechanism.
++//
++// FAILING LOUDLY. Every protocol exchange is bounded by a read deadline and every
++// failure is a t.Fatalf carrying the engine's stderr, because the failure mode this
++// lane must never have is a probe that measured nothing and reported green. The
++// engine-missing SKIP is unchanged: this transport resolves its browser through
++// lookupBrowserForBehaviorProbe like every other probe, and counts itself in
++// browserBehaviorProbeCount, so the strict lane's refusal to skip still covers it.
++const (
++	// browserProbeTrustedInputDeadline bounds one protocol exchange. A hung engine
++	// must fail the probe, not the whole `go test` timeout.
++	browserProbeTrustedInputDeadline = 30 * time.Second
++
++	// browserProbePageConditionDeadline bounds waitForPageCondition. Generous
++	// because the real board is a three-hundred-row render and this lane shares a
++	// machine with a dozen other probes; bounded because a condition that never
++	// comes true has to fail rather than hang.
++	browserProbePageConditionDeadline = 45 * time.Second
++
++	// browserProbePageConditionPollInterval is how often a pending condition is
++	// re-asked. It is a poll interval, not a wait on a duration: nothing is ever
++	// assumed to be ready because this much time passed.
++	browserProbePageConditionPollInterval = 25 * time.Millisecond
++
++	// browserProbePageFileName is the page both transports write into the site
++	// directory, and the suffix every measurement's location.href must carry.
++	browserProbePageFileName = "probe.html"
++)
++
++// trustedInputBrowserSession is one live engine with one attached page.
++type trustedInputBrowserSession struct {
++	probeName            string
++	browserCommand       *exec.Cmd
++	commandPipeWriter    *os.File
++	eventPipeReader      *os.File
++	eventPipeBuffer      *bufio.Reader
++	standardErrorPath    string
++	pageSessionId        string
++	nextCommandId        int
++	browserAlreadyClosed bool
++}
++
++// startTrustedInputBrowserSession renders pageHTML in a real engine and leaves it
++// running with a protocol channel attached, so the caller can drive it.
++//
++// siteDirectory is the caller's, not a fresh temp one, for the same reason
++// runBrowserBehaviorProbeInDirectory takes one: index.html loads board-data.js from
++// beside itself, and a page copied somewhere empty renders an empty board.
++func startTrustedInputBrowserSession(
++	t *testing.T, probeName string, siteDirectory string, pageHTML string, extraFlags ...string,
++) *trustedInputBrowserSession {
++	t.Helper()
++	browserPath := lookupBrowserForBehaviorProbe(t)
++
++	pagePath := filepath.Join(siteDirectory, browserProbePageFileName)
++	if writeError := os.WriteFile(pagePath, []byte(pageHTML), 0o644); writeError != nil {
++		t.Fatalf("write %s probe page: %v", probeName, writeError)
++	}
++	// The profile and the engine's stderr both stay out of the site directory: one
++	// is megabytes of engine state and the other is a file the board would then
++	// try to render.
++	scratchDirectory := t.TempDir()
++	standardErrorPath := filepath.Join(scratchDirectory, "browser-stderr.log")
++	standardErrorFile, standardErrorCreateError := os.Create(standardErrorPath)
++	if standardErrorCreateError != nil {
++		t.Fatalf("create %s browser stderr log: %v", probeName, standardErrorCreateError)
++	}
++	defer standardErrorFile.Close()
++
++	// fd 3 is where the engine READS commands and fd 4 is where it WRITES replies;
++	// ExtraFiles[0] lands on fd 3 in the child and ExtraFiles[1] on fd 4.
++	commandPipeReader, commandPipeWriter, commandPipeError := os.Pipe()
++	if commandPipeError != nil {
++		t.Fatalf("open %s command pipe: %v", probeName, commandPipeError)
++	}
++	eventPipeReader, eventPipeWriter, eventPipeError := os.Pipe()
++	if eventPipeError != nil {
++		t.Fatalf("open %s event pipe: %v", probeName, eventPipeError)
++	}
++
++	// The same container-safe flags the dump-dom transport uses, minus
++	// --virtual-time-budget and --dump-dom: this engine has to stay alive and
++	// answer, and its clock has to be the one the input events arrive on.
++	probeArguments := []string{
++		"--headless",
++		"--disable-gpu",
++		"--no-sandbox",
++		"--disable-dev-shm-usage",
++		"--user-data-dir=" + filepath.Join(scratchDirectory, "profile"),
++		"--remote-debugging-pipe",
++	}
++	probeArguments = append(probeArguments, extraFlags...)
++	probeArguments = append(probeArguments, "file://"+pagePath)
++	browserCommand := exec.Command(browserPath, probeArguments...)
++	browserCommand.ExtraFiles = []*os.File{commandPipeReader, eventPipeWriter}
++	browserCommand.Stderr = standardErrorFile
++
++	browserBehaviorProbeCount.Add(1)
++	startError := browserCommand.Start()
++	// Our copies of the child's ends are closed either way, so a failed start does
++	// not leak descriptors and a live child gets EOF when we close our writer.
++	commandPipeReader.Close()
++	eventPipeWriter.Close()
++	if startError != nil {
++		commandPipeWriter.Close()
++		eventPipeReader.Close()
++		t.Fatalf("start %s browser with a protocol channel: %v", probeName, startError)
++	}
++
++	session := &trustedInputBrowserSession{
++		probeName:         probeName,
++		browserCommand:    browserCommand,
++		commandPipeWriter: commandPipeWriter,
++		eventPipeReader:   eventPipeReader,
++		eventPipeBuffer:   bufio.NewReader(eventPipeReader),
++		standardErrorPath: standardErrorPath,
++	}
++	t.Cleanup(session.closeBrowserSession)
++	session.attachToProbePage(t)
++	return session
++}
++
++// attachToProbePage waits for the engine's page target to BE the probe page, attaches
++// a protocol session to it, and does not return until that page has finished loading.
++//
++// The target is matched on its URL rather than being taken as "the first page", because
++// the engine opens its first tab on about:blank and navigates a moment later.
++// about:blank reports readyState "complete" immediately, so a session attached to it
++// sails through the load wait and then answers every question about the wrong document.
++func (session *trustedInputBrowserSession) attachToProbePage(t *testing.T) {
++	t.Helper()
++	var pageTargetId string
++	var lastSeenTargetURL string
++	attachDeadline := time.Now().Add(browserProbePageConditionDeadline)
++	for pageTargetId == "" {
++		var discoveredTargets struct {
++			TargetInfos []struct {
++				TargetId string `json:"targetId"`
++				Type     string `json:"type"`
++				Url      string `json:"url"`
++			} `json:"targetInfos"`
++		}
++		session.decodeResult(t, "Target.getTargets",
++			session.callDevToolsMethod(t, "Target.getTargets", nil, false), &discoveredTargets)
++		for _, targetInfo := range discoveredTargets.TargetInfos {
++			if targetInfo.Type != "page" {
++				continue
++			}
++			lastSeenTargetURL = targetInfo.Url
++			if strings.HasSuffix(targetInfo.Url, "/"+browserProbePageFileName) {
++				pageTargetId = targetInfo.TargetId
++			}
++		}
++		if pageTargetId != "" {
++			break
++		}
++		if time.Now().After(attachDeadline) {
++			t.Fatalf("%s probe: the engine opened no page target on the probe page within %s "+
++				"(the last page target it had was on %q)\n%s",
++				session.probeName, browserProbePageConditionDeadline, lastSeenTargetURL,
++				session.browserStandardError())
++		}
++		time.Sleep(browserProbePageConditionPollInterval)
++	}
++
++	var attachment struct {
++		SessionId string `json:"sessionId"`
++	}
++	session.decodeResult(t, "Target.attachToTarget",
++		session.callDevToolsMethod(t, "Target.attachToTarget",
++			map[string]any{"targetId": pageTargetId, "flatten": true}, false), &attachment)
++	if attachment.SessionId == "" {
++		t.Fatalf("%s probe: attaching to the page target returned no session id\n%s",
++			session.probeName, session.browserStandardError())
++	}
++	session.pageSessionId = attachment.SessionId
++
++	// The target reports the probe page's URL as soon as the navigation commits in the
++	// browser process, which is BEFORE the renderer has swapped documents — so the
++	// first few evaluates still answer for about:blank. Every measurement after this
++	// point goes through evaluateInPage, which refuses a wrong href outright, so the
++	// settle is done once here on the raw channel rather than by softening that rule.
++	settleDeadline := time.Now().Add(browserProbePageConditionDeadline)
++	for {
++		documentStateText := session.evaluateStringInPage(t,
++			`JSON.stringify({href: location.href, readyState: document.readyState})`)
++		var documentState struct {
++			Href       string `json:"href"`
++			ReadyState string `json:"readyState"`
++		}
++		session.decodeResult(t, "document settle", json.RawMessage(documentStateText), &documentState)
++		if strings.HasSuffix(documentState.Href, "/"+browserProbePageFileName) &&
++			documentState.ReadyState == "complete" {
++			return
++		}
++		if time.Now().After(settleDeadline) {
++			t.Fatalf("%s probe: the attached page was still %q (readyState %q) after %s\n%s",
++				session.probeName, documentState.Href, documentState.ReadyState,
++				browserProbePageConditionDeadline, session.browserStandardError())
++		}
++		time.Sleep(browserProbePageConditionPollInterval)
++	}
++}
++
++// callDevToolsMethod sends one protocol command and returns its result.
++//
++// sessionScoped picks the addressee: browser-level commands (Target.*) carry no
++// session id, page-level ones (Runtime.*, Input.*) carry the attached page's. Replies
++// and events interleave on one pipe, so this reads until it sees its own id.
++func (session *trustedInputBrowserSession) callDevToolsMethod(
++	t *testing.T, method string, params map[string]any, sessionScoped bool,
++) json.RawMessage {
++	t.Helper()
++	session.nextCommandId++
++	commandId := session.nextCommandId
++	command := map[string]any{"id": commandId, "method": method}
++	if params != nil {
++		command["params"] = params
++	}
++	if sessionScoped {
++		command["sessionId"] = session.pageSessionId
++	}
++	commandBytes, marshalError := json.Marshal(command)
++	if marshalError != nil {
++		t.Fatalf("%s probe: encode %s: %v", session.probeName, method, marshalError)
++	}
++	if _, writeError := session.commandPipeWriter.Write(append(commandBytes, 0)); writeError != nil {
++		t.Fatalf("%s probe: send %s over the protocol pipe: %v\n%s",
++			session.probeName, method, writeError, session.browserStandardError())
++	}
++
++	replyDeadline := time.Now().Add(browserProbeTrustedInputDeadline)
++	for {
++		if deadlineError := session.eventPipeReader.SetReadDeadline(replyDeadline); deadlineError != nil {
++			t.Fatalf("%s probe: set a read deadline for %s: %v",
++				session.probeName, method, deadlineError)
++		}
++		messageBytes, readError := session.eventPipeBuffer.ReadBytes(0)
++		if readError != nil {
++			t.Fatalf("%s probe: no reply to %s within %s (%v) — the protocol channel is the "+
++				"transport, so this is a transport failure and not a measurement\n%s",
++				session.probeName, method, browserProbeTrustedInputDeadline, readError,
++				session.browserStandardError())
++		}
++		var reply struct {
++			Id     int             `json:"id"`
++			Result json.RawMessage `json:"result"`
++			Error  json.RawMessage `json:"error"`
++		}
++		if decodeError := json.Unmarshal(bytes.TrimRight(messageBytes, "\x00"), &reply); decodeError != nil {
++			t.Fatalf("%s probe: the engine sent something that is not a protocol message after %s: %v\n%s",
++				session.probeName, method, decodeError, messageBytes)
++		}
++		// Everything else on this pipe is a protocol EVENT or another command's
++		// reply; only our own id answers this call.
++		if reply.Id != commandId {
++			continue
++		}
++		if reply.Error != nil {
++			t.Fatalf("%s probe: %s failed: %s\n%s",
++				session.probeName, method, reply.Error, session.browserStandardError())
++		}
++		return reply.Result
++	}
++}
++
++func (session *trustedInputBrowserSession) decodeResult(
++	t *testing.T, method string, resultJSON json.RawMessage, destination any,
++) {
++	t.Helper()
++	if decodeError := json.Unmarshal(resultJSON, destination); decodeError != nil {
++		t.Fatalf("%s probe: decode the %s result %s: %v",
++			session.probeName, method, resultJSON, decodeError)
++	}
++}
++
++// evaluateInPage runs one JavaScript expression in the probe page and returns its
++// value as JSON for the caller to unmarshal.
++//
++// The expression is wrapped so every result carries the page it was measured on.
++// That is the prime's render-evidence rule made mechanical: a probe on this
++// transport cannot forget to report location.href, because the transport reports it
++// and checks it on every single call rather than once at the start.
++func (session *trustedInputBrowserSession) evaluateInPage(
++	t *testing.T, expression string,
++) json.RawMessage {
++	t.Helper()
++	envelopeText := session.evaluateStringInPage(t,
++		"JSON.stringify({href: location.href, value: ("+expression+")})")
++	var envelope struct {
++		Href  string          `json:"href"`
++		Value json.RawMessage `json:"value"`
++	}
++	if decodeError := json.Unmarshal([]byte(envelopeText), &envelope); decodeError != nil {
++		t.Fatalf("%s probe: decode the envelope %q from %s: %v",
++			session.probeName, envelopeText, expression, decodeError)
++	}
++	// Render evidence, on every measurement rather than once: a page that navigated
++	// out from under the probe answers confidently about somebody else's document.
++	if !strings.HasSuffix(envelope.Href, "/"+browserProbePageFileName) {
++		t.Fatalf("%s probe: measured on %q, not the probe page — every number from this call "+
++			"describes a document this test did not render", session.probeName, envelope.Href)
++	}
++	if envelope.Value == nil {
++		t.Fatalf("%s probe: evaluating %s produced undefined; a probe that measures nothing must "+
++			"not read as a probe that measured", session.probeName, expression)
++	}
++	return envelope.Value
++}
++
++// evaluateStringInPage is the raw half of evaluateInPage: it runs an expression that
++// must produce a string and returns it, with no envelope and no render-evidence check.
++//
++// Only two callers may use it — evaluateInPage itself, and the attach settle, which
++// cannot check the href because deciding whether the href is right yet is its whole
++// job. Everything a probe measures goes through evaluateInPage.
++func (session *trustedInputBrowserSession) evaluateStringInPage(
++	t *testing.T, expression string,
++) string {
++	t.Helper()
++	var evaluation struct {
++		Result struct {
++			Value json.RawMessage `json:"value"`
++		} `json:"result"`
++		ExceptionDetails json.RawMessage `json:"exceptionDetails"`
++	}
++	session.decodeResult(t, "Runtime.evaluate",
++		session.callDevToolsMethod(t, "Runtime.evaluate", map[string]any{
++			"expression":    expression,
++			"returnByValue": true,
++			"awaitPromise":  true,
++		}, true), &evaluation)
++	if evaluation.ExceptionDetails != nil {
++		t.Fatalf("%s probe: the page threw evaluating %s: %s",
++			session.probeName, expression, evaluation.ExceptionDetails)
++	}
++	var stringValue string
++	if decodeError := json.Unmarshal(evaluation.Result.Value, &stringValue); decodeError != nil {
++		t.Fatalf("%s probe: evaluating %s returned %s, not the string the transport expects",
++			session.probeName, expression, evaluation.Result.Value)
++	}
++	return stringValue
++}
++
++// waitForPageCondition re-asks a boolean expression until it holds. The wait is on
++// the CONDITION and the deadline only bounds it, so a probe never proceeds because
++// enough time passed — it proceeds because the page says it is ready.
++func (session *trustedInputBrowserSession) waitForPageCondition(
++	t *testing.T, conditionDescription string, booleanExpression string,
++) {
++	t.Helper()
++	conditionDeadline := time.Now().Add(browserProbePageConditionDeadline)
++	for {
++		var conditionHolds bool
++		session.decodeResult(t, "condition "+conditionDescription,
++			session.evaluateInPage(t, "!!("+booleanExpression+")"), &conditionHolds)
++		if conditionHolds {
++			return
++		}
++		if time.Now().After(conditionDeadline) {
++			t.Fatalf("%s probe: waited %s for %s and it never became true (expression %s)",
++				session.probeName, browserProbePageConditionDeadline, conditionDescription,
++				booleanExpression)
++		}
++		time.Sleep(browserProbePageConditionPollInterval)
++	}
++}
++
++// The three gestures. What arrives in the page is a TRUSTED event: isTrusted is
++// true, the ENGINE issues the pointerId, and setPointerCapture on that id
++// establishes a real capture that really retargets the synthesized click. That last
++// sentence is the entire reason this transport exists.
++//
++// Coordinates are viewport CSS pixels, the same frame getBoundingClientRect reports
++// in — which is why a caller must scroll its target on screen before aiming at it.
++func (session *trustedInputBrowserSession) pressTrustedMouseAt(t *testing.T, viewportX, viewportY float64) {
++	t.Helper()
++	session.dispatchTrustedMouseEvent(t, "mousePressed", viewportX, viewportY, "left", 1)
++}
++
++func (session *trustedInputBrowserSession) dragTrustedMouseTo(t *testing.T, viewportX, viewportY float64) {
++	t.Helper()
++	session.dispatchTrustedMouseEvent(t, "mouseMoved", viewportX, viewportY, "left", 1)
++}
++
++func (session *trustedInputBrowserSession) releaseTrustedMouseAt(t *testing.T, viewportX, viewportY float64) {
++	t.Helper()
++	session.dispatchTrustedMouseEvent(t, "mouseReleased", viewportX, viewportY, "left", 0)
++}
++
++func (session *trustedInputBrowserSession) dispatchTrustedMouseEvent(
++	t *testing.T, eventType string, viewportX, viewportY float64, mouseButton string, heldButtons int,
++) {
++	t.Helper()
++	session.callDevToolsMethod(t, "Input.dispatchMouseEvent", map[string]any{
++		"type":       eventType,
++		"x":          viewportX,
++		"y":          viewportY,
++		"button":     mouseButton,
++		"buttons":    heldButtons,
++		"clickCount": 1,
++	}, true)
++}
++
++// browserStandardError returns what the engine wrote to stderr, tail-first for the
++// failure messages above. It is read from a file rather than an in-process buffer so
++// that reading it while the child is still writing is not a data race.
++func (session *trustedInputBrowserSession) browserStandardError() string {
++	standardErrorBytes, readError := os.ReadFile(session.standardErrorPath)
++	if readError != nil {
++		return "browser stderr unavailable: " + readError.Error()
++	}
++	const standardErrorTailBytes = 4000
++	if len(standardErrorBytes) > standardErrorTailBytes {
++		standardErrorBytes = standardErrorBytes[len(standardErrorBytes)-standardErrorTailBytes:]
++	}
++	return "browser stderr:\n" + string(standardErrorBytes)
++}
++
++// closeBrowserSession shuts the engine down. Closing the command pipe is the
++// protocol's own goodbye — the engine exits when its reader hits EOF — and the kill
++// is there so a wedged engine cannot hold the test binary open.
++func (session *trustedInputBrowserSession) closeBrowserSession() {
++	if session.browserAlreadyClosed {
++		return
++	}
++	session.browserAlreadyClosed = true
++	session.commandPipeWriter.Close()
++	browserExited := make(chan error, 1)
++	go func() { browserExited <- session.browserCommand.Wait() }()
++	select {
++	case <-browserExited:
++	case <-time.After(browserProbeTrustedInputDeadline):
++		_ = session.browserCommand.Process.Kill()
++		<-browserExited
++	}
++	session.eventPipeReader.Close()
++}
++
+ // markLabelTextExtent is what the page measures and the Go side asserts on.
+ type markLabelTextExtent struct {
+ 	Width       float64 `json:"width"`
+diff --git a/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go b/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
+index f21fdb9..18678d9 100644
+--- a/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
++++ b/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
+@@ -2353,119 +2353,378 @@ window.addEventListener("load", function () {
+ 	}
+ }
+ 
+-// pointerCapturingFunctionNames lists every named function in the generated page whose
+-// OWN body requests pointer capture. It is derived from the page rather than hand-listed
+-// because the point of the check below is to survive a regression that routes the
+-// request through a function nobody has written yet.
++// timelinePointerCaptureProbeHelpers is the page-side half of the probe below: the
++// state readers, the gesture arming, the aim, and the two mutations. It is installed
++// once into the real board and then driven from Go over the protocol channel, so
++// nothing here dispatches an event — every event in this probe comes from the engine.
++const timelinePointerCaptureProbeHelpers = `(function () {
++  var probe = {
++    clickCount: 0, clickDetailId: "", clickTag: "",
++    pointerUpSeen: false, pointerUpTag: "",
++    captureEstablished: null, captureListener: null
++  };
++  window.timelineProbe = probe;
++  probe.plotHost = function () { return document.querySelector("#view-timeline .timeline-scroll"); };
++  probe.isPanning = function () { return probe.plotHost().classList.contains("is-panning"); };
++  probe.drawerIsOpen = function () {
++    var drawer = document.getElementById("detail-drawer");
++    return !!drawer && !drawer.hidden && !drawer.classList.contains("is-hidden");
++  };
++  probe.shownDetailId = function () {
++    var shown = document.getElementById("detail-id");
++    return shown ? shown.textContent.trim() : "";
++  };
++  probe.closeDrawer = function () {
++    var closeButton = document.getElementById("detail-close");
++    if (closeButton) { closeButton.click(); }
++    return "closed";
++  };
++  // Every gesture starts from the SAME window, and one that is off both bounds: at
++  // Fit all a pan clamps to the window it started in, so a drag that panned would be
++  // indistinguishable from one that did not. REQ-324's lesson, met again.
++  probe.resetWindow = function () {
++    document.getElementById("timeline-zoom-fit").click();
++    document.getElementById("timeline-zoom-in").click();
++    document.getElementById("timeline-zoom-in").click();
++    return "reset";
++  };
++  // Both watches sit on DOCUMENT in the BUBBLE phase, so they run AFTER the board's
++  // own delegated click handler and after the scroll host's release teardown. A
++  // capture-phase listener would report the state from before the thing being
++  // measured happened.
++  document.addEventListener("click", function (clickEvent) {
++    probe.clickCount++;
++    var clickTarget = clickEvent.target;
++    probe.clickTag = clickTarget && clickTarget.tagName ? clickTarget.tagName : "";
++    var trigger = clickTarget && clickTarget.closest ? clickTarget.closest("[data-detail-kind]") : null;
++    probe.clickDetailId = trigger ? trigger.getAttribute("data-detail-id") : "";
++  }, false);
++  document.addEventListener("pointerup", function (upEvent) {
++    probe.pointerUpSeen = true;
++    probe.pointerUpTag = upEvent.target && upEvent.target.tagName ? upEvent.target.tagName : "";
++  }, false);
++  probe.armGesture = function () {
++    probe.clickCount = 0; probe.clickDetailId = ""; probe.clickTag = "";
++    probe.pointerUpSeen = false; probe.pointerUpTag = "";
++    probe.captureEstablished = null;
++    return "armed";
++  };
++  probe.gestureOutcome = function () {
++    return {
++      clickCount: probe.clickCount, clickDetailId: probe.clickDetailId, clickTag: probe.clickTag,
++      drawerOpen: probe.drawerIsOpen(), shownDetailId: probe.shownDetailId(),
++      panning: probe.isPanning(), captureEstablished: probe.captureEstablished
++    };
++  };
++  // THE VIEWPORT RULE, learned the hard way by REQ-336's out-of-suite harness: a
++  // bounding rect is not a clickable coordinate until the element is on screen. The
++  // first bar of a three-hundred-row board sits near y=1538 in a 900px viewport and a
++  // press aimed at its rect lands on HTML. So scroll the chart in, then PROVE the
++  // point by asking what is actually under it rather than assuming.
++  probe.aimAtARow = function () {
++    document.querySelector("#view-timeline .timeline-chart").scrollIntoView({ block: "start" });
++    var host = probe.plotHost();
++    var hostBox = host.getBoundingClientRect();
++    var rows = document.querySelectorAll("#view-timeline .timeline-row");
++    var aim = {
++      aimed: false, x: 0, y: 0, detailId: "", landedOnTag: "", rowCount: rows.length,
++      hostTop: hostBox.top, hostLeft: hostBox.left, hostRight: hostBox.right
++    };
++    for (var index = 0; index < rows.length; index++) {
++      var rowBox = rows[index].getBoundingClientRect();
++      var y = Math.round(rowBox.top + rowBox.height / 2);
++      if (y <= hostBox.top + 2 || y >= hostBox.bottom - 2) { continue; }
++      // Left of centre, so a rightward drag of 140px stays on the plot.
++      var x = Math.round(hostBox.left + hostBox.width * 0.35);
++      var landedOn = document.elementFromPoint(x, y);
++      var trigger = landedOn && landedOn.closest ? landedOn.closest("[data-detail-kind]") : null;
++      aim.landedOnTag = landedOn && landedOn.tagName ? landedOn.tagName : "";
++      if (trigger && trigger.getAttribute("data-detail-id") === rows[index].getAttribute("data-detail-id")) {
++        aim.aimed = true;
++        aim.x = x;
++        aim.y = y;
++        aim.detailId = trigger.getAttribute("data-detail-id");
++        return aim;
++      }
++    }
++    return aim;
++  };
++  // THE MUTATION REQ-336 FIXED, reintroduced from outside the board's own source so
++  // the probe can be shown to catch it. captureEstablished records whether the engine
++  // really granted the capture, so "the drawer stayed shut" can be told apart from
++  // "the mutation never took" — which is precisely what happens under synthetic
++  // events, and precisely why this check could not be behavioural before.
++  probe.captureOnPointerdown = function () {
++    var host = probe.plotHost();
++    probe.captureListener = function (downEvent) {
++      try {
++        host.setPointerCapture(downEvent.pointerId);
++        probe.captureEstablished = !!host.hasPointerCapture(downEvent.pointerId);
++      } catch (captureError) {
++        probe.captureEstablished = false;
++      }
++    };
++    host.addEventListener("pointerdown", probe.captureListener);
++    return "capture-on-pointerdown installed";
++  };
++  probe.removeCaptureOnPointerdown = function () {
++    probe.plotHost().removeEventListener("pointerdown", probe.captureListener);
++    probe.captureListener = null;
++    return "capture-on-pointerdown removed";
++  };
++  // The MIRROR mutation: the board asks for capture and gets nothing. It stubs the
++  // element's own method, so capturePanPointer's feature detect still passes and its
++  // call still runs; the only thing missing is the capture itself.
++  probe.swallowPointerCapture = function () {
++    probe.plotHost().setPointerCapture = function () { return undefined; };
++    return "pointer capture swallowed";
++  };
++  probe.restorePointerCapture = function () {
++    delete probe.plotHost().setPointerCapture;
++    return "pointer capture restored";
++  };
++  return "installed";
++})()`
++
++// timelineRowAim is the press point, PROVEN rather than assumed — see aimAtARow.
++type timelineRowAim struct {
++	Aimed       bool    `json:"aimed"`
++	X           float64 `json:"x"`
++	Y           float64 `json:"y"`
++	DetailId    string  `json:"detailId"`
++	LandedOnTag string  `json:"landedOnTag"`
++	RowCount    int     `json:"rowCount"`
++	HostTop     float64 `json:"hostTop"`
++	HostLeft    float64 `json:"hostLeft"`
++	HostRight   float64 `json:"hostRight"`
++}
++
++// timelineGestureOutcome is everything one gesture is allowed to be judged on.
++type timelineGestureOutcome struct {
++	ClickCount         int    `json:"clickCount"`
++	ClickDetailId      string `json:"clickDetailId"`
++	ClickTag           string `json:"clickTag"`
++	DrawerOpen         bool   `json:"drawerOpen"`
++	ShownDetailId      string `json:"shownDetailId"`
++	Panning            bool   `json:"panning"`
++	CaptureEstablished *bool  `json:"captureEstablished"`
++}
++
++// aimAtATimelineRow resets the window, scrolls the chart on screen and returns a press
++// point that has been checked against elementFromPoint. A press that reaches no row
++// produces "no pan, no drawer", which satisfies half the assertions below while
++// measuring nothing, so a failed aim is fatal rather than a result.
++func aimAtATimelineRow(
++	t *testing.T, session *trustedInputBrowserSession, gestureName string,
++) timelineRowAim {
++	t.Helper()
++	session.evaluateInPage(t, `window.timelineProbe.closeDrawer()`)
++	session.evaluateInPage(t, `window.timelineProbe.resetWindow()`)
++	session.evaluateInPage(t, `window.timelineProbe.armGesture()`)
++	var aim timelineRowAim
++	session.decodeResult(t, "aimAtARow", session.evaluateInPage(t, `window.timelineProbe.aimAtARow()`), &aim)
++	if !aim.Aimed {
++		t.Fatalf("the %s gesture found no press point over a visible row (%d rows rendered, the "+
++			"last point tried landed on %s); every assertion after this would be measuring a "+
++			"press that reached no handler", gestureName, aim.RowCount, aim.LandedOnTag)
++	}
++	return aim
++}
++
++// readTimelineGestureOutcome waits for the gesture to have been DELIVERED — a real
++// condition, never a duration — and then reads what the page made of it.
++//
++// settleExpression is the caller's, because the two kinds of gesture here finish at
++// different moments. The engine synthesizes the click in a task AFTER the pointerup, so
++// a click trial that settles on the pointerup reads a drawer that has not been asked to
++// open yet: under the full suite's load that is exactly what happened, and it read as
++// "the trusted press produced no click at all". A click trial settles on the click; a
++// drag settles on the release.
+ //
+-// The trailing paren in the match is load-bearing, and it is the trap REQ-333 fell into:
+-// a search for the bare name also matches the `typeof scrollHost.setPointerCapture ===
+-// "function"` feature detect, so it passes with the call itself deleted.
+-func pointerCapturingFunctionNames(t *testing.T, pageSource string) []string {
++// Neither condition presumes an outcome, which is what lets the same helper serve the
++// trial that expects a drawer and the trial that expects none.
++func readTimelineGestureOutcome(
++	t *testing.T, session *trustedInputBrowserSession, gestureName string, settleExpression string,
++) timelineGestureOutcome {
+ 	t.Helper()
+-	const declarationToken = "function "
+-	var capturingNames []string
+-	searchOffset := 0
+-	for {
+-		relativeIndex := strings.Index(pageSource[searchOffset:], declarationToken)
+-		if relativeIndex == -1 {
+-			break
+-		}
+-		declarationIndex := searchOffset + relativeIndex
+-		searchOffset = declarationIndex + len(declarationToken)
+-		nameEnd := strings.IndexByte(pageSource[searchOffset:], '(')
+-		if nameEnd == -1 {
+-			break
+-		}
+-		functionName := strings.TrimSpace(pageSource[searchOffset : searchOffset+nameEnd])
+-		// Anonymous function expressions (`function (event) {`) have no name to call, so
+-		// nothing can route a request through them from another handler.
+-		if functionName == "" || strings.ContainsAny(functionName, " \t\n(){}") {
+-			continue
+-		}
+-		functionBody := sliceBalancedBlockAfter(t, pageSource[declarationIndex:], declarationToken+functionName)
+-		if strings.Contains(functionBody, "setPointerCapture(") {
+-			capturingNames = append(capturingNames, functionName)
+-		}
+-	}
+-	return capturingNames
++	session.waitForPageCondition(t, "the "+gestureName+" gesture is delivered", settleExpression)
++	var outcome timelineGestureOutcome
++	session.decodeResult(t, "gestureOutcome",
++		session.evaluateInPage(t, `window.timelineProbe.gestureOutcome()`), &outcome)
++	return outcome
+ }
+ 
+-// TestTimelinePointerCaptureWaitsForThePanEngage is the check REQ-337 exists to add, and
+-// it pins the regression REQ-336 fixed: pointer capture taken on pointerdown.
++// TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage pins the regression
++// REQ-336 fixed — pointer capture taken on pointerdown — and the one REQ-333 fixed, a
++// drag released outside the chart that never tells the host it ended.
+ //
+-// Why this is not covered by the probe above. Pointer capture retargets the pointer
+-// events AND the click the engine synthesizes to the capturing element, so a capture
+-// taken on every press leaves the delegated handler in board-controls.js with no
+-// [data-detail-kind] ancestor to find and the detail drawer never opens for any click in
+-// the chart. TestBrowserBehaviorTimelinePressBecomesAPanOnlyAfterMoving passed through
+-// that entire regression, because it dispatches synthetic PointerEvents whose pointerId
+-// the engine does not know: setPointerCapture throws on them, capture is never
+-// established, and the failing path is invisible to the lane. This lane runs under
+-// --dump-dom with no protocol channel, so it cannot dispatch trusted input at all; the
+-// REQ therefore allows asserting the structural property instead, and this does.
++// WHAT REQ-341 CHANGED HERE, AND WHY. This check shipped for REQ-337 as a STRUCTURAL
++// one: it read the generated page's text and required that the pointerdown handler
++// contain no setPointerCapture( call, that it call no function whose body has one, and
++// that the pointermove handler reach one. It read text because the lane could not do
++// anything else. Every probe ran under --dump-dom, with no protocol channel, so the only
++// input a probe could produce was a synthetic PointerEvent — and a synthetic pointerId
++// establishes no capture at all (on Chromium 141.0.7390.37 setPointerCapture does not
++// even throw for it; hasPointerCapture simply stays false afterwards). The whole defect
++// is a consequence of a REAL capture retargeting the engine's synthesized click, so it
++// was unreachable from the lane, and the structural version carried the residual in its
++// own comment: a capture routed through a variable, a method lookup or an eval passed it.
+ //
+-// Three assertions, because "capture is not taken on pointerdown" is trivially satisfied
+-// by taking it nowhere — which is the OTHER bug, the one REQ-333 fixed, where a drag
+-// released outside the chart never told the host it had ended:
++// REQ-341 gave the lane a trusted-input transport (browser_probe_test.go), so the
++// property is now asserted the way a reader meets it. The residual is closed: these
++// gestures do not care HOW a capture is requested, only whether one exists when the
++// click is synthesized.
+ //
+-//	(a) the pointerdown handler requests no capture itself,
+-//	(b) it calls nothing that requests capture, resolved from the page rather than from a
+-//	    list, so a fresh wrapper called from pointerdown fails here too, and
+-//	(c) the pointermove handler — the engage path — DOES reach a request.
++// Four trials, in one engine on one page, because each pair is what stops the other
++// from being trivially satisfied:
+ //
+-// Known residual: this reads text, so a request routed through a variable, a method
+-// lookup, or an eval would pass. The mutation this REQ pins (reintroducing capture on
+-// pointerdown, by either spelling) does not.
+-func TestTimelinePointerCaptureWaitsForThePanEngage(t *testing.T) {
++//	(1) a trusted press and release on a bar opens the detail drawer on that bar,
++//	(2) with capture taken on pointerdown from outside the board's source, the same
++//	    gesture opens nothing — which is what proves (1) can fail, and proves it against
++//	    the exact regression rather than against a mutation chosen to be easy,
++//	(3) a trusted drag released OUTSIDE the chart ends the pan, and
++//	(4) with the host's setPointerCapture stubbed out, that release strands the pan —
++//	    which is what proves (3) can fail and keeps "no capture anywhere" from passing.
++func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T) {
+ 	siteDirectory := generateLiveSiteInDir(t)
+ 	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+ 	if readError != nil {
+ 		t.Fatalf("read generated index.html: %v", readError)
+ 	}
+-	indexHTML := string(indexBytes)
+ 
+-	capturingNames := pointerCapturingFunctionNames(t, indexHTML)
+-	// Vacuity guard: with no capturing function found, (b) below asserts nothing and (c)
+-	// would be measuring the wrong thing. A page that requests capture nowhere is a
+-	// failure, not a pass.
+-	if len(capturingNames) == 0 {
+-		t.Fatal("no named function in the generated page requests pointer capture, so this check " +
+-			"cannot tell capture-at-the-engage from capture nowhere at all")
+-	}
+-
+-	pointerDownBody := sliceBalancedBlockAfter(t, indexHTML,
+-		"addTimelineListener(scrollHost, \"pointerdown\"")
+-	pointerMoveBody := sliceBalancedBlockAfter(t, indexHTML,
+-		"addTimelineListener(scrollHost, \"pointermove\"")
+-
+-	// (a) Nothing in the press handler requests capture directly.
+-	if strings.Contains(pointerDownBody, "setPointerCapture(") {
+-		t.Error("the Timeline pointerdown handler requests pointer capture; capture retargets the " +
+-			"synthesized click to the capturing element, so every mouse click in the chart loses " +
+-			"its [data-detail-kind] target and the detail drawer stops opening")
+-	}
+-	// (b) And it reaches no function that requests capture on its behalf.
+-	for _, capturingName := range capturingNames {
+-		if strings.Contains(pointerDownBody, capturingName+"(") {
+-			t.Errorf("the Timeline pointerdown handler calls %s, which requests pointer capture; "+
+-				"capture must wait for the pan to engage or every click in the chart is retargeted "+
+-				"to the capturing element", capturingName)
+-		}
+-	}
+-	// (c) The engage path still requests it, so (a) and (b) cannot be satisfied by
+-	// removing capture altogether and reopening REQ-333's never-released drag.
+-	engageReachesCapture := strings.Contains(pointerMoveBody, "setPointerCapture(")
+-	for _, capturingName := range capturingNames {
+-		if strings.Contains(pointerMoveBody, capturingName+"(") {
+-			engageReachesCapture = true
+-		}
+-	}
+-	if !engageReachesCapture {
+-		t.Errorf("the Timeline pointermove handler reaches no pointer-capture request (capturing "+
+-			"functions in the page: %v); a drag released outside the chart then has no guaranteed "+
+-			"path back to the host that armed it", capturingNames)
+-	}
++	// The REAL page, unedited: this transport drives it from outside, so unlike the
++	// dump-dom probes it needs no script injected to carry a result back.
++	session := startTrustedInputBrowserSession(t, "timeline pointer capture", siteDirectory,
++		string(indexBytes), "--window-size=1600,900")
++	session.waitForPageCondition(t, "the board's view switcher renders",
++		`document.querySelector('[data-view-target="timeline"]')`)
++	session.evaluateInPage(t,
++		`(document.querySelector('[data-view-target="timeline"]').click(), "switched")`)
++	session.waitForPageCondition(t, "the Timeline draws its rows",
++		`document.querySelectorAll("#view-timeline .timeline-row").length > 0`)
++	session.evaluateInPage(t, timelinePointerCaptureProbeHelpers)
++
++	// (1) THE CLICK, WITH TRUSTED INPUT. The hint under the chart says "Click a row for
++	// its full detail"; this is that sentence, executed.
++	cleanAim := aimAtATimelineRow(t, session, "clean click")
++	session.pressTrustedMouseAt(t, cleanAim.X, cleanAim.Y)
++	session.releaseTrustedMouseAt(t, cleanAim.X, cleanAim.Y)
++	cleanClick := readTimelineGestureOutcome(t, session, "clean click",
++		`window.timelineProbe.clickCount > 0`)
++	if !cleanClick.DrawerOpen {
++		t.Errorf("a trusted click on row %s did not open the detail drawer; the click was "+
++			"delivered to %s and its nearest [data-detail-kind] was %q. Capture taken before the "+
++			"pan engages retargets the synthesized click to the capturing element, which is how "+
++			"every mouse click in the chart stopped opening anything",
++			cleanAim.DetailId, cleanClick.ClickTag, cleanClick.ClickDetailId)
++	}
++	if cleanClick.ShownDetailId != cleanAim.DetailId {
++		t.Errorf("a trusted click on row %s opened the drawer on %q; a click has to open the row "+
++			"it landed on", cleanAim.DetailId, cleanClick.ShownDetailId)
++	}
++	if cleanClick.Panning {
++		t.Errorf("a still trusted press on row %s left the chart in the panning state; a press "+
++			"that has not moved is not a drag", cleanAim.DetailId)
++	}
++
++	// (2) THE MUTATION. Capture on pointerdown, installed from here rather than by
++	// editing the board, and the SAME gesture must now open nothing. Without this the
++	// assertion above is only a claim that clicking works today.
++	session.evaluateInPage(t, `window.timelineProbe.captureOnPointerdown()`)
++	capturedAim := aimAtATimelineRow(t, session, "capture-on-pointerdown click")
++	session.pressTrustedMouseAt(t, capturedAim.X, capturedAim.Y)
++	session.releaseTrustedMouseAt(t, capturedAim.X, capturedAim.Y)
++	capturedClick := readTimelineGestureOutcome(t, session, "capture-on-pointerdown click",
++		`window.timelineProbe.clickCount > 0`)
++	session.evaluateInPage(t, `window.timelineProbe.removeCaptureOnPointerdown()`)
++	if capturedClick.CaptureEstablished == nil {
++		t.Fatal("the capture-on-pointerdown mutation never saw a pointerdown on the scroll host, " +
++			"so the trial below proves nothing about the probe's sensitivity")
++	}
++	if !*capturedClick.CaptureEstablished {
++		t.Fatal("the engine refused the capture-on-pointerdown mutation, so this trial is the " +
++			"synthetic-event dead end all over again: it cannot tell a probe that catches the " +
++			"regression from one that cannot see it")
++	}
++	if capturedClick.DrawerOpen {
++		t.Errorf("with pointer capture taken on pointerdown the drawer still opened on %q; the "+
++			"clean trial above therefore does not pin REQ-336's regression, because the probe "+
++			"cannot tell a retargeted click from an ordinary one", capturedClick.ShownDetailId)
++	}
++	if capturedClick.ClickDetailId != "" {
++		t.Errorf("with capture on pointerdown the synthesized click still found the trigger %q; "+
++			"capture is supposed to retarget it to the capturing element, and if it does not, "+
++			"this whole mutation is measuring something else", capturedClick.ClickDetailId)
++	}
++
++	// (3) THE RELEASE OUTSIDE THE CHART. Capture at the engage is what guarantees the
++	// host hears the end of a drag: Chromium suppresses the boundary events while a
++	// button is held, so without it nothing reaches the host and the grab cursor stays
++	// on for the rest of the session (REQ-333).
++	//
++	// Measured from the PAN ENGAGING and from the is-panning state, never from the axis
++	// text: a drag that clamps at the window bound leaves every label identical.
++	engagedDrag := aimAtATimelineRow(t, session, "release outside")
++	releaseY := engagedDrag.HostTop - 40
++	if releaseY < 1 {
++		t.Fatalf("the scroll host sits at y=%g, so there is no point above it inside the "+
++			"viewport to release at; this trial cannot be run from here", engagedDrag.HostTop)
++	}
++	panningAfterRelease := driveTimelineDragReleasedOutside(t, session, engagedDrag, releaseY)
++	if panningAfterRelease {
++		t.Error("a trusted drag released above the chart left it in the panning state; capture " +
++			"taken when the pan engages is what makes the release a fact rather than a hope, and " +
++			"without it the grab cursor stays on for the rest of the session")
++	}
++
++	// (4) THE MIRROR MUTATION. (1) and (2) are both satisfied by a board that captures
++	// nowhere at all, which is REQ-333's bug. Swallowing the host's own
++	// setPointerCapture leaves capturePanPointer's feature detect and call intact and
++	// removes only the capture — and the same drag must then strand the pan.
++	session.evaluateInPage(t, `window.timelineProbe.swallowPointerCapture()`)
++	uncapturedDrag := aimAtATimelineRow(t, session, "release outside without capture")
++	strandedPanning := driveTimelineDragReleasedOutside(t, session, uncapturedDrag,
++		uncapturedDrag.HostTop-40)
++	session.evaluateInPage(t, `window.timelineProbe.restorePointerCapture()`)
++	if !strandedPanning {
++		t.Error("with the scroll host's setPointerCapture swallowed, a drag released above the " +
++			"chart still ended cleanly; trial (3) is then passing for some other reason and does " +
++			"not pin the capture at all")
++	}
++
++	t.Logf("trusted click on %s: %d click(s), delivered to <%s>, trigger %q, drawer open %v "+
++		"showing %q. With capture on pointerdown: %d click(s), trigger %q, drawer open %v. "+
++		"Drag released above the host left the chart panning: %v with capture, %v with capture "+
++		"swallowed.",
++		cleanAim.DetailId, cleanClick.ClickCount, cleanClick.ClickTag, cleanClick.ClickDetailId,
++		cleanClick.DrawerOpen, cleanClick.ShownDetailId,
++		capturedClick.ClickCount, capturedClick.ClickDetailId, capturedClick.DrawerOpen,
++		panningAfterRelease, strandedPanning)
++}
++
++// driveTimelineDragReleasedOutside presses on a row, drags far enough to engage the pan,
++// then releases at a point ABOVE the scroll host, and reports whether the chart is still
++// in the panning state afterwards.
++//
++// The engage is asserted, not assumed: a release that ends a pan which never started
++// tells nobody anything.
++func driveTimelineDragReleasedOutside(
++	t *testing.T, session *trustedInputBrowserSession, aim timelineRowAim, releaseY float64,
++) bool {
++	t.Helper()
++	session.pressTrustedMouseAt(t, aim.X, aim.Y)
++	// Two moves: the first clears the 4px pan threshold, the second is the drag the
++	// reader would see.
++	session.dragTrustedMouseTo(t, aim.X+6, aim.Y)
++	session.dragTrustedMouseTo(t, aim.X+140, aim.Y)
++	session.waitForPageCondition(t, "the drag engages the pan", `window.timelineProbe.isPanning()`)
++
++	releaseX := aim.X + 140
++	session.dragTrustedMouseTo(t, releaseX, releaseY)
++	session.releaseTrustedMouseAt(t, releaseX, releaseY)
++	outcome := readTimelineGestureOutcome(t, session, "drag released outside",
++		`window.timelineProbe.pointerUpSeen`)
++	return outcome.Panning
+ }
+ 
+ // TestBrowserBehaviorTimelineRowListIsOneTabStop pins REQ-338's keyboard contract: the row

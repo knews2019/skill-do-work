@@ -40,6 +40,17 @@ The prime's own note applies: a measured browser behaviour is per-browser, and t
 - [ ] I discovered this out-of-scope task while working on REQ-374: the strict browser behavior lane fails at HEAD on Chromium 141 because the timeline pointer-capture probe's vacuity guard fires. Should I process this as a new task?
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
+  - **Deferred 2026-08-27:** The maintainer requested an AI report showing the actual interaction, its origin, and why the test exists before deciding. The concern was that the Kanban board does not implement card dragging. Explain the distinction from Timeline panning with authentic UI evidence. Leave this question unchecked and this REQ `pending-answers`; neither investigation nor report generation authorizes a fix. Date obtained under the Timestamp rule's date-only paragraph in `skills/do-work/actions/work-reference.md`.
 
 ## Full Context
 See `do-work/user-requests/UR-074/input.md` and REQ-374's `## Discovered Tasks`.
+
+## Investigation Before Clarification
+
+2026-08-27: Work paused at the maintainer’s more specific instruction: remain undecided until the concurrent clarification task provides a visual report. No source files changed. The unchanged focused pointer-capture probe passed eleven runs on Chrome 151.0.7922.174. Exact Chrome for Testing 141.0.7390.37 was downloaded into ignored `build/chrome-141` for reproduction. Full investigation is preserved in the current run directory until the report task consumes it. No approval is inferred from these test results.
+
+The clarification session independently reproduced the focused probe's guard failure on Chrome for Testing 141.0.7390.37 (exit 1) and a passing run on Chrome 151.0.7922.174 (exit 0), without changing Timeline code. Both full strict-browser attempts stalled in the separate text-extent probe and were stopped after about 90 seconds; neither is a completed lane verdict. The default canonical maintainer check passed with its optional browser lane explicitly skipped. Authentic captures show Timeline panning, not moving Kanban cards between columns. The in-app capture tool left the pan marker active after its drag call, so the report distinguishes visual movement evidence from the independent Chrome 151 release proof. These findings refine the decision context without approving implementation.
+
+## Reports
+
+- [2026-08-27] [Timeline panning, not card dragging — AI report for the REQ-375 decision](../../ai-reports/2026-08-27_1428_req-341-timeline-drag-evidence/index.html). Presents completed REQ-341's test, its origin, current screenshots, raw browser-test results, and verification limits. REQ-375 remains `pending-answers` until the maintainer decides after reading it. Date obtained under the Timestamp rule's date-only paragraph in `skills/do-work/actions/work-reference.md`.

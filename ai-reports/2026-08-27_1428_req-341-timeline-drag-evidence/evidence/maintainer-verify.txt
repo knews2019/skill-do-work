@@ -1,0 +1,53 @@
+maintainer-verify: checking Go go1.26.1 or newer
+maintainer-verify: checking ShellCheck 0.11.0 or newer
+maintainer-verify: ShellCheck warning-level lint (76 tracked files)
+maintainer-verify: gofmt formatting check (63 tracked files)
+maintainer-verify: aggregate contract suite
+Timestamp rule citation contract: 57 instant write sites cited, 21 date-only sites recognized.
+Maintainer verification self-test passed.
+Suite manifest contract probes passed.
+shipped package reference contract: PASS
+Shell-block lint self-test passed.
+Shell-block lint passed: 77 fenced blocks and 36 shipped shell files; ShellCheck enabled.
+SessionStart hook behavior probes passed.
+Prescribed shell primitive canonicalization checks passed.
+Defensive-surface exact deletion regressions passed.
+record-commit-hash and blanked-req-scan guard probes passed.
+update-script behavior probes passed.
+add-local-git-exclude: 1 case, 0 failures.
+architecture-report-preflight: 7 cases, 0 failures.
+atomic-download: 4 cases, 0 failures.
+audit-archive-timestamps: 11 cases, 0 failures.
+capture-screenshot: 2 cases, 0 failures.
+cleanup-req-reservations: 6 cases, 0 failures.
+generate-report-image-batch: 6 cases, 0 failures.
+generate-report-image: 11 cases, 0 failures.
+install-last30days: 7 cases, 0 failures.
+install-memory-hooks: 1 case, 0 failures.
+lexical-memory-recall: 1 case, 0 failures.
+protected-inventory: 1 case, 0 failures.
+publish-portfolio-summary: 7 cases, 0 failures.
+qualify: 26 cases, 0 failures.
+repair-req-timestamps: 20 cases, 0 failures.
+run-blocked-check: 2 cases, 0 failures.
+show-commit-diff: 1 case, 0 failures.
+stage-exact-deletion: 2 cases, 0 failures.
+Prescribed shell script behavior probes passed (116 named script cases across 18 per-script files).
+staged skills contract: PASS
+suite installer behavior probes passed.
+p50 estimator suite: all probes passed.
+select-simple-reqs suite: all probes passed.
+Contract regression checks passed.
+maintainer-verify: queue-kanban go vet
+maintainer-verify: queue-kanban uncached ordinary tests
+ok  	github.com/knews2019/skill-do-work/queue-kanban	103.228s
+maintainer-verify: queue-kanban strict JavaScript behavior lane
+=== RUN   TestMaintainerStrictJavaScriptBehaviorLane
+--- PASS: TestMaintainerStrictJavaScriptBehaviorLane (29.16s)
+PASS
+ok  	github.com/knews2019/skill-do-work/queue-kanban	29.394s
+SKIP: no browser is available; strict browser behavior lane was not run. Set QUEUE_KANBAN_BROWSER to name one.
+maintainer-verify: audit-metrics go vet
+maintainer-verify: audit-metrics uncached tests
+ok  	github.com/knews2019/skill-do-work/audit-metrics	1.259s
+Maintainer verification passed.

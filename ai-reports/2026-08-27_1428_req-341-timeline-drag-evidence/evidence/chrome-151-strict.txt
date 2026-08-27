@@ -1,0 +1,6 @@
+=== RUN   TestMaintainerStrictBrowserBehaviorLane
+    browser_probe_test.go:815: strict browser behavior lane failed: signal: terminated
+--- FAIL: TestMaintainerStrictBrowserBehaviorLane (88.92s)
+FAIL
+FAIL	github.com/knews2019/skill-do-work/queue-kanban	89.133s
+FAIL

@@ -1,0 +1,5 @@
+=== RUN   TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage
+    timeline_browser_probe_test.go:2996: trusted click on REQ-066: 1 click(s), delivered to <rect>, trigger "REQ-066", drawer open true showing "REQ-066". With capture on pointerdown: 1 click(s), trigger "", drawer open false. Drag released above the host left the chart panning: false with 1 capture event(s), true with capture swallowed and 1 host pointerleave event(s) isolated.
+--- PASS: TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage (2.53s)
+PASS
+ok  	github.com/knews2019/skill-do-work/queue-kanban	2.745s
