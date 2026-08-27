@@ -26,7 +26,7 @@ write_set:
 - skills/do-work-board/tools/queue-kanban/web/board.css
 - skills/do-work-board/tools/queue-kanban/completion_contrast_browser_test.go
 completed_at: '2026-08-27T11:45:22Z'
-commit:
+commit: 8dfdb24
 kb_status: pending
 ---
 
