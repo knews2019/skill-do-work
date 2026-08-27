@@ -1545,15 +1545,7 @@ func TestJavaScriptBehaviorClipboardAnnotatesBodiesAndAppendsOneGlossary(t *test
 		sliceBalancedBlockAfter(t, indexHtml, "function ticketTitleFor("),
 		sliceBalancedBlockAfter(t, indexHtml, "function describeTicketTitle("),
 		sliceBalancedBlockAfter(t, indexHtml, "function shortTicketTitle("),
-		sliceBalancedBlockAfter(t, indexHtml, "function frontmatterFenceEndOffset("),
-		sliceBalancedBlockAfter(t, indexHtml, "function stripContainerPrefix("),
-		sliceBalancedBlockAfter(t, indexHtml, "function codeFenceRunFor("),
-		sliceBalancedBlockAfter(t, indexHtml, "function codeFenceRunCloses("),
-		sliceBalancedBlockAfter(t, indexHtml, "function findMatchingBacktickRun("),
 		sliceBalancedBlockAfter(t, indexHtml, "function recordReferencedTicket("),
-		sliceBalancedBlockAfter(t, indexHtml, "function annotateMentionRun("),
-		sliceBalancedBlockAfter(t, indexHtml, "function annotateLineOutsideFence("),
-		sliceBalancedBlockAfter(t, indexHtml, "function annotateMarkdownBody("),
 		sliceBalancedBlockAfter(t, indexHtml, "function annotateTicketMentions("),
 		sliceBalancedBlockAfter(t, indexHtml, "function describeReferencedTicket("),
 		sliceBalancedBlockAfter(t, indexHtml, "function buildReferencedTicketsGlossary("),
@@ -1561,7 +1553,6 @@ func TestJavaScriptBehaviorClipboardAnnotatesBodiesAndAppendsOneGlossary(t *test
 	}
 	declarationBlocks := []string{
 		sliceDeclarationAfter(t, indexHtml, "var inlineTicketTitleMaxLength ="),
-		sliceDeclarationAfter(t, indexHtml, "var bodyMentionPattern ="),
 		sliceDeclarationAfter(t, indexHtml, "var requestIdByReqSegment ="),
 		sliceDeclarationAfter(t, indexHtml, "var referencedTicketsGlossaryHeading ="),
 	}
@@ -1684,6 +1675,18 @@ func TestJavaScriptBehaviorClipboardAnnotatesBodiesAndAppendsOneGlossary(t *test
 		"finding for REQ-1108` matters.\n\n" +
 		"Trailing prose cites REQ-1108 again.\n"
 
+	// The stub board and the Go resolver are built from ONE list of ids, so the
+	// positions spliced in below were computed against exactly the records the
+	// client looks titles up in. Two lists would let the halves disagree
+	// silently, which is the failure this whole probe exists to catch.
+	clipboardProbeResolver := newTicketMentionResolver(
+		[]string{"REQ-1679", "REQ-1108", "REQ-1685", "REQ-500", "REQ-501", "UR-001-REQ-042", "UR-002-REQ-042"},
+		[]string{"UR-074"},
+	)
+	probeDocument := func(documentText string) string {
+		return clipboardProbeDocument(t, documentText, clipboardProbeResolver)
+	}
+
 	javascriptProbe := `
 var requestsById = {
   "REQ-1679": { title: ` + mustMarshalJSONString(t, exactlySixtyTitle) + `, status: "completed" },
@@ -1699,9 +1702,9 @@ var userRequestsById = {
 };
 ` + strings.Join(functionBlocks, "\n") + "\n" + strings.Join(declarationBlocks, "\n") + `
 
-var hostDocument = ` + mustMarshalJSONString(t, hostDocument) + `;
-var secondDocument = ` + mustMarshalJSONString(t, secondDocument) + `;
-var annotatedHost = annotateTicketMentions(hostDocument);
+var hostDocument = ` + probeDocument(hostDocument) + `;
+var secondDocument = ` + probeDocument(secondDocument) + `;
+var annotatedHost = annotateTicketMentions(hostDocument.text, hostDocument.ticketMentions);
 var joinedPayload = annotateClipboardPayload([hostDocument, secondDocument], ["REQ-500", "REQ-501"]);
 var glossaryHeadingCount = joinedPayload.split(referencedTicketsGlossaryHeading).length - 1;
 
@@ -1713,16 +1716,16 @@ process.stdout.write(JSON.stringify({
   excludedPayload: annotateClipboardPayload(
     [hostDocument, secondDocument], ["REQ-500", "REQ-501", "REQ-1679", "REQ-1108"]
   ),
-  unclosedFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, unclosedFenceDocument) + `], []),
-  carriageReturnPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, carriageReturnDocument) + `], ["REQ-500"]),
-  fencelessPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, fencelessDocument) + `], ["REQ-1108"]),
-  loneFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, loneFenceDocument) + `], []),
-  ambiguousPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, ambiguousDocument) + `], []),
-  noReferencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, noReferenceDocument) + `], []),
-  blockquotedFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, blockquotedFenceDocument) + `], ["REQ-500"]),
-  invalidInfoStringPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, invalidInfoStringDocument) + `], ["REQ-501"]),
-  listItemFencePayload: annotateClipboardPayload([` + mustMarshalJSONString(t, listItemFenceDocument) + `], ["REQ-500"]),
-  multiLineCodeSpanPayload: annotateClipboardPayload([` + mustMarshalJSONString(t, multiLineCodeSpanDocument) + `], ["REQ-501"])
+  unclosedFencePayload: annotateClipboardPayload([` + probeDocument(unclosedFenceDocument) + `], []),
+  carriageReturnPayload: annotateClipboardPayload([` + probeDocument(carriageReturnDocument) + `], ["REQ-500"]),
+  fencelessPayload: annotateClipboardPayload([` + probeDocument(fencelessDocument) + `], ["REQ-1108"]),
+  loneFencePayload: annotateClipboardPayload([` + probeDocument(loneFenceDocument) + `], []),
+  ambiguousPayload: annotateClipboardPayload([` + probeDocument(ambiguousDocument) + `], []),
+  noReferencePayload: annotateClipboardPayload([` + probeDocument(noReferenceDocument) + `], []),
+  blockquotedFencePayload: annotateClipboardPayload([` + probeDocument(blockquotedFenceDocument) + `], ["REQ-500"]),
+  invalidInfoStringPayload: annotateClipboardPayload([` + probeDocument(invalidInfoStringDocument) + `], ["REQ-501"]),
+  listItemFencePayload: annotateClipboardPayload([` + probeDocument(listItemFenceDocument) + `], ["REQ-500"]),
+  multiLineCodeSpanPayload: annotateClipboardPayload([` + probeDocument(multiLineCodeSpanDocument) + `], ["REQ-501"])
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "clipboard ticket annotation", javascriptProbe)
@@ -1873,9 +1876,9 @@ func TestClipboardAnnotationWiresEveryCopyHandler(t *testing.T) {
 		// The drawer Copy annotates its RAW branch only. Its fallback input is
 		// drawerBody.innerText, which the drawer already expanded, so annotating
 		// that again duplicated every title ("REQ-1679 (Short one) Short one").
-		"return annotateClipboardPayload([rawMarkdown], [requestedId]);",
+		"return annotateClipboardPayload([clipboardDocument], [requestedId]);",
 		"[requestedUserRequestId].concat(requestedRequestIds)",
-		"return annotateClipboardPayload(rawMarkdownDocumentsForRequests(markdownData, requestIds), requestIds);",
+		"return annotateClipboardPayload(clipboardDocumentsForRequests(markdownData, requestIds), requestIds);",
 	} {
 		if !strings.Contains(indexHtml, requiredCallSite) {
 			t.Errorf("Copy handler wiring missing: %q", requiredCallSite)
@@ -1883,6 +1886,45 @@ func TestClipboardAnnotationWiresEveryCopyHandler(t *testing.T) {
 	}
 	if !strings.Contains(indexHtml, referencedRequestsGlossaryHeading) {
 		t.Errorf("the generated page does not carry the glossary heading %q", referencedRequestsGlossaryHeading)
+	}
+}
+
+// The client carries no Markdown scanner any more. Each name below was a piece
+// of one, and each got a CommonMark rule wrong: fence recognition, the
+// closing-fence length rule, inline code-span matching, container prefixes, and
+// the frontmatter split. Asserting their absence is what makes the deletion a
+// fact rather than a claim — a rewrite that left one behind for "just this case"
+// is how a scanner grows back.
+//
+// The positive half is not decoration: without it every absence below would also
+// pass if the whole Copy feature were deleted.
+func TestClipboardCarriesNoMarkdownScanner(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	for _, scannerPiece := range []string{
+		"codeFenceRunFor",
+		"codeFenceRunCloses",
+		"findMatchingBacktickRun",
+		"stripContainerPrefix",
+		"frontmatterFenceEndOffset",
+		"annotateLineOutsideFence",
+		"annotateMarkdownBody",
+		"annotateMentionRun",
+	} {
+		if strings.Contains(indexHtml, scannerPiece) {
+			t.Errorf("the generated page still carries %s — Markdown structure is decided in citations.go now", scannerPiece)
+		}
+	}
+
+	for _, splicerPiece := range []string{
+		"function annotateTicketMentions(documentText, ticketMentions)",
+		"function ticketMentionsForDetail(",
+		"function clipboardDocumentFor(",
+		"markdownData.userRequestMentions : markdownData.requestMentions",
+	} {
+		if !strings.Contains(indexHtml, splicerPiece) {
+			t.Errorf("the generated page is missing %q — the absences above would pass on an empty page", splicerPiece)
+		}
 	}
 }
 
@@ -9270,4 +9312,18 @@ process.stdout.write(JSON.stringify(renderedCards));`
 	if !sawSpanReading {
 		t.Fatalf("no fixture rendered any span reading, so this probe cannot fail on the span text")
 	}
+}
+
+// clipboardProbeDocument renders one fixture as the { text, ticketMentions } pair
+// a Copy handler hands the client, with the index computed by the SAME Go walk
+// the build ships. That is what makes the probe an end-to-end check of the two
+// halves together rather than of the client alone: a walk that mislocates a
+// mention shows up here as a wrong payload, not as a passing client test.
+func clipboardProbeDocument(t *testing.T, documentText string, resolver *ticketMentionResolver) string {
+	t.Helper()
+	ticketMentions, encodeError := json.Marshal(collectDocumentTicketMentions(documentText, resolver))
+	if encodeError != nil {
+		t.Fatalf("encode probe ticket mentions: %v", encodeError)
+	}
+	return "{ text: " + mustMarshalJSONString(t, documentText) + ", ticketMentions: " + string(ticketMentions) + " }"
 }

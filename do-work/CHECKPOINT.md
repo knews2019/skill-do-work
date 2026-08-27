@@ -1,26 +1,21 @@
 ---
-session_ended: 2026-08-26T15:05:00Z
-last_completed: REQ-374
-queue_state: [3 pending, 0 finished (awaiting archive), 3 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 1 in-progress]
-reqs_processed_this_session: 1
-session_depth: light
+session_ended: 2026-08-26T19:20:00Z
+last_completed: REQ-379
+queue_state: [4 pending, 0 finished (awaiting archive), 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress]
+reqs_processed_this_session: 2
+session_depth: deep
 ---
 
 # Session Checkpoint
 
 ## Completed This Session
 
-- REQ-374 (Route B, review 77% → Pass after remediation) put the implementation span on every
-  Recently-Done card: `took 2h 40m`, `likely paused` past the four-hour read-time ceiling,
-  `reversed stamps` where the bookkeeping is broken. Measured once in Go and shipped ready to
-  draw, so the card and the Durations chart read one rule. Commit `5ad1d3d`.
-
-Earlier sessions, kept for the trail:
-
-- REQ-372 (Route A, review 100%) established one canonical two-path response when required files
-  fall outside a declared write set.
-- REQ-373 (Route A, review 100%) made project-harness membership the explicit boundary for
-  `tdd: true` evidence and routed probe-only work to `tdd: false` plus repeatable proof.
+- REQ-378 (Route B, review Pass) put titles on every REQ/UR id the board's drawer renders, flagged
+  dead references, and added a per-body glossary.
+- REQ-379 (Route B, review Pass 91%) carried the same into the clipboard: bodies annotated, one
+  referenced-requests appendix, frontmatter fence byte-exact.
+- Five external findings verified and fixed across the two, all mutation-pinned. Released 0.239.0
+  and 0.240.0; merged main at a290cd6, reconciling a second version collision.
 
 ## In Progress
 
@@ -28,18 +23,10 @@ None.
 
 ## Still Queued
 
-From REQ-374's Discovered Tasks — each needs a yes/no before it can run. Run `do-work clarify`;
-each flips to `pending` on a yes:
-
-- REQ-375 `pending-answers` — restore the strict browser lane on current Chromium (`impact-rule-change`)
-- REQ-376 `pending-answers` — raise the done line's faint text to readable contrast (`impact-user-visible`)
-- REQ-377 `pending-answers` — stop preflight scratch showing up as untracked (`impact-negligible`)
-
-From UR-075 and UR-076 — the ticket-id autocomplete program, dependency-ordered:
-
-- REQ-379 `pending` — copy carries titles and a referenced-requests glossary (`depends_on: REQ-378`)
-- REQ-380 `pending` — Cross-Reference Convention for newly authored ids (independent)
-- REQ-381 `pending` — index cited ticket ids and let the filter box match them (`depends_on: REQ-379`)
+REQ-380 and REQ-383 are ready with disjoint write sets. REQ-383 is the foundation — it resolves
+ticket mentions in Go and deletes the client-side Markdown scanner REQ-379 shipped, closing six
+external findings structurally rather than one at a time. REQ-381 consumes its AST walk; REQ-382
+follows REQ-381. Chain: REQ-383 → REQ-381 → REQ-382. See `do-work/RESTART-PROMPT.md`.
 
 ## Session Notes
 

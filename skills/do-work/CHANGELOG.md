@@ -2,6 +2,30 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.241.2 — Copy Annotation Cleanup (2026-08-26)
+
+A second review pass over the Copy annotator. Nothing here changes what a paste looks like — it closes gaps in the tests and corrects comments that described code that no longer exists.
+
+- Two behaviours the tests only appeared to cover are now genuinely covered: a dead id inside a code span, and the same ticket cited by both its full and its short id.
+- The generated `board-markdown.js` is checked to actually carry its annotation index, so the check no longer depends on a browser being installed.
+- Removed a branch that could never run, and a comment pointing at a test that does not exist.
+
+## 0.241.1 — Copy Leaves Links Alone (2026-08-26)
+
+Four fixes to the Copy annotator found by review, all in the same pass. The one you would have noticed is links.
+
+- A ticket id written as a Markdown link keeps its exact text. Titling `[REQ-1679]` broke the link when its address was defined further down the file, and the drawer never titled link text in the first place — so the two surfaces disagreed.
+- A ticket the board learned about after you opened the page no longer pastes as `REQ-384 ()`. The reference stays as written and the list at the end says to reload for its title.
+- Image captions are left alone too, and a backticked id inside a link stays untouched rather than earning a list entry the drawer would not give it.
+
+## 0.241.0 — Copy Reads the Markdown With a Markdown Parser (2026-08-26)
+
+The Copy button decided which ids to annotate by scanning for backticks by hand in the browser, and it kept getting corner cases wrong. That job moved to the real Markdown parser the board already runs, so quoted text now stays quoted in every shape the format allows.
+
+- A fence inside a blockquote, a fence opened as a list item, a four-space indented block, a code span that wraps across a line, a link reference definition, and a fence whose info string holds a backtick are all read correctly now. The four-space indented block was previously invisible to Copy entirely.
+- The 150 lines of hand-rolled Markdown scanning in the browser are gone. What the page still does is insert titles at positions the board computed for it.
+- An id inside a raw HTML block is no longer annotated, matching what the drawer shows — the drawer never rendered those words in the first place.
+
 ## 0.240.3 — Churn Counts Living Code Only (2026-08-26)
 
 The audit-metrics stakes said every historical touch transfers to the surviving path, which reads as though a staged migration's delete-the-original commit counts too. It never has.
@@ -1510,6 +1534,7 @@ Every install now talks like a concise senior engineer. A new crew member carrie
 - The suite installer gains one managed surface: an HTML-comment-delimited section in the consumer project's `CLAUDE.md` linking the crew member — created, refreshed, diff-reviewed, backed up, and recovered like the Just section; bytes outside the markers are never touched.
 - `replace-text-section.sh` accepts `--begin-marker`/`--end-marker` so the atomic section replacer can own non-Justfile sections.
 - Fixed a Linux-only installer failure: the settings mode probe ran the BSD `stat -f` form first, which poisons the captured mode under GNU stat and broke every re-install/update with an existing `.claude/settings.json`.
+
 ## 0.204.0 — The AI-Report Image Batch Gets Its Own Shipped Script (2026-08-17)
 
 The parallel image-generation machinery for AI reports lived as ~110 lines of shell inside a Markdown reference file — so the test suite had to `awk` it back out of the prose just to run it. It now ships as a real script, and the reference file keeps what's actually per-report: the style brief and the prompts.
@@ -1601,6 +1626,7 @@ A timestamped portfolio snapshot and the canonical summary were the same file un
 - A canonical path occupied by a directory fails closed and leaves that directory untouched
 - Every reported path is confirmed to be a regular file before it is printed
 - Two new named replays, plus one older assertion corrected: it had been locking in the shared inode
+
 ## 0.199.4 — AI-Report Image Batch Owns Its Processes and Its Publication (2026-08-17)
 
 Interrupting a report run used to delete the staging directory and walk away while the image backends kept running against it. And because `mv` treats an existing directory as a container rather than a collision, a `generated/` folder that appeared at the last moment would silently swallow the finished batch while the run reported success. Both are closed, and both failure paths are now replayed in the test suite.
@@ -1997,7 +2023,6 @@ The root CLAUDE.md went from a 202-line everything-file to a short core in the m
 - Core gains a plain-words glossary, personal coding preferences (YAGNI, focused tests, match ceremony to the task), a Verify section (exit code zero is the only proof), and push-back-then-continue communication rules
 - The Kanban board three-write-surfaces sentence stays in CLAUDE.md (lock-in test unchanged); live pointers in `_dev/tests/contract-regressions.sh` and `.gitattributes` now cite the primes
 
-
 ## 0.186.34 — Prescribed Shell Becomes Executable (2026-08-11)
 
 Reusable shell mechanics now ship as executable, fixture-tested scripts instead of copied multi-line Markdown. Callers keep local intent and policy while semantic traps have attributable runtime tests.
@@ -2005,7 +2030,6 @@ Reusable shell mechanics now ship as executable, fixture-tested scripts instead 
 - Promotes 17 multi-line blocks into 11 scripts across core, knowledge, and toolbox while retaining 21 inline-residue and 2 Go-owned blocks
 - Adds 11 named behavior cases for atomic publication, merge display, screenshot races, portable timeouts, protected inventory, literal exact deletion, memory hooks/recall, and toolbox installs
 - Shrinks shipped Markdown by 303 nonblank shell-body lines and ratchets executable homes, package paths, defensive evidence, and the full 34-path scope
-
 
 ## 0.186.33 — Findings Close with Proof (2026-08-11)
 
@@ -2015,7 +2039,6 @@ Review and triage findings can no longer close on a bare patch or unrelated gree
 - Adds the one-paragraph earned-defense question to the always-loaded simplicity guardrail and keeps triage behavior citation-sized
 - Makes every shipped review-generated REQ template emit compatible Red-Green Proof and dynamically ratchets future producers
 
-
 ## 0.186.32 — Root Markdown Fence Info Validity (2026-08-11)
 
 The shipped reference classifier now agrees with the pinned Markdown renderer when a root backtick-fence candidate contains a forbidden backtick in its info string. Invalid openers remain visible prose instead of masking later links.
@@ -2023,7 +2046,6 @@ The shipped reference classifier now agrees with the pinned Markdown renderer wh
 - Shares one marker-aware info-string predicate across root, list, and paragraph-state classification
 - Preserves valid tilde-fence behavior while consolidating the former list-only exception
 - Adds Goldmark-differential root/list/tilde fixtures and keeps the full shipped-reference contract green
-
 
 ## 0.186.31 — BOM-Aware Just Collision Scans (2026-08-11)
 
@@ -2479,7 +2501,6 @@ The census's remaining candidates no longer imply that every extraction is still
 
 - Candidate B is recorded as the separately approved and shipped REQ-121 work
 - Candidates A and C remain explicit future decisions rather than accidental work from a queue run
-
 
 ## 0.183.2 — The Effort Chip Shows What Was Declared, Not Just What It Resolved To (2026-08-06)
 

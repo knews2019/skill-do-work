@@ -10,6 +10,7 @@ queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that
 - `release.go` — the `**Current version**: X.Y.Z` line reader/bumper/writer and the `CHANGELOG.md` entry parser
 - `verify.go` — the read-only invariant probes and their report (wired into `../../../do-work/actions/forensics.md` Check 14)
 - `timestamp.go` — `now`: the Timestamp rule's UTC stamp (`../../../do-work/actions/work-reference.md`), the only subcommand that reads a clock instead of the tree and so takes no `--repo-root`
+- `citations.go` — the goldmark walk that decides WHERE a ticket id may be annotated, shipped with `board-markdown.js` as UTF-16 offsets. The client splices at them and parses no Markdown; keep it that way, and keep the resolver in step with `web/board-core.js` (`TestJavaScriptBehaviorTicketMentionPatternAndResolverAgreeWithGo`)
 - `walk.go` — repo-root resolution (walks up for `do-work/`) + tree enumeration
 - `model.go` — Board model; column bucketing driven by normalized REQ status and derived dependency readiness
 - `generate.go` — static self-contained site; embeds the complete authored `web/*.js` inventory and assembles only the explicit fragment manifest into one classic inline client
