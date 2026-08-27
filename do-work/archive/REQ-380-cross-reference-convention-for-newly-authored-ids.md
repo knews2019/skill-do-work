@@ -1,7 +1,7 @@
 ---
 id: REQ-380
 title: '[impact-rule-change] Cross-Reference Convention for newly authored REQ and UR ids'
-status: pending
+status: completed
 created_at: 2026-08-26T13:02:24Z
 user_request: UR-075
 domain: general
@@ -15,7 +15,19 @@ effort_estimate: effort-mechanical
 related: [REQ-378, REQ-379]
 batch: ticket-id-autocomplete
 write_set:
-  - skills/do-work/actions/capture-reference.md
+- skills/do-work/actions/capture-reference.md
+claimed_at: '2026-08-27T11:27:28Z'
+status_changed_at: '2026-08-27T11:27:28Z'
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: '2026-08-27T11:27:28Z'
+completed_at: '2026-08-27T11:33:05Z'
+commit:
+kb_status: pending
 ---
 
 # Cross-Reference Convention For Newly Authored REQ And UR Ids
@@ -27,9 +39,9 @@ a REQ or UR id into prose names it — `REQ-1679 (Admin can delete a card)` on f
 afterwards — while frontmatter fields keep bare ids.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Add one short condition-keyed convention beside the canonical title convention; no checker or changes to other actions.
+- [x] **[APPLY]:** Added the first-mention title form, bare frontmatter exception, and prohibition on retrofitting existing references.
+- [x] **[UNIFY]:** Reviewed capture-reference.md diff for all requirements and confirmed no other authoring action or checker changed. Canonical gate recorded below.
 
 ## Why
 
@@ -126,3 +138,37 @@ See `do-work/user-requests/UR-075/input.md` for complete verbatim input.
 
 ---
 *Source: user request in session, 2026-08-26 — "we shouldn't assume that people know what those numbers mean."*
+
+## Triage
+
+**Route: A** — One canonical authoring convention; no runtime change or new checker.
+
+## Plan
+
+Planning not required — focused implementation guided by the request and existing patterns.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/actions/capture-reference.md` (modified) — one canonical Cross-Reference Convention section.
+
+**What was done:** Newly authored prose names the referenced ticket on first mention; frontmatter and existing references remain unchanged.
+
+## Orientation
+
+REQ and UR references in newly authored prose now carry a title on first mention, so they remain understandable outside the board.
+
+## Qualification
+
+Passed: mechanical qualify.sh exit 0; the source diff is one substantive section satisfying all five required behaviors. No data flow changed. P-A-U confirmed.
+
+## Review
+
+Acceptance: Pass. Overall: 100%. Independent Route A review checked the original UR, complete REQ, actual source diff, and a narrow restatement sweep. No findings or follow-ups.
+
+## Testing
+
+- `bash _dev/tests/maintainer-verify.sh`: exit 0 on the final source/release state. Contract suite, Go vet/tests, and strict JavaScript lane passed. The default gate explicitly skipped its optional browser lane; this REQ changes prose only.
+- `git diff --check`: exit 0.
+- Independent source review confirmed the new section and all constraints. No new checker was added, as requested.
+- Optional Chrome 151 full-browser baseline was stopped after an unrelated drawer dump-dom test stalled; not counted as a passing browser run.

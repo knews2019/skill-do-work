@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.242.2 — Name Tickets on First Prose Mention (2026-08-27)
+
+Newly authored REQ and UR references now include the ticket title on first mention. The convention leaves parsed frontmatter and existing references unchanged.
+
 ## 0.242.1 — The Overlap Check Says Which Run It Means (2026-08-27)
 
 The new write-set check claimed more than it could. A dependency edge keeps two REQs out of an automatic wave, but naming both on the command line runs them anyway — so the finding now says which of the two it is talking about.

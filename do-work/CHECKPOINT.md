@@ -58,3 +58,5 @@ so a fan-out of two remains safe.
 - A Chromium **is** available in this container at `/opt/pw-browsers/chromium` (Playwright
   chromium-1194). Passing it as `QUEUE_KANBAN_BROWSER` runs the browser lane for real instead of
   skipping it — worth doing before believing any rendering claim.
+
+## In Progress (interrupted)
