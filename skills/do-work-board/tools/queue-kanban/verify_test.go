@@ -1934,3 +1934,189 @@ func TestStructuralProbesUseStructuredEvidenceNotWarningProse(t *testing.T) {
 		t.Errorf("category = %q, want %q", statusFindings[0].Category, verifyCategoryUnrecognizedRequestStatus)
 	}
 }
+
+// ungatedOverlapFixtureBoard builds a queue of pending REQs that all write one file,
+// wired with whatever depends_on edges the case supplies.
+func ungatedOverlapFixtureBoard(t *testing.T, dependsOnByRequestId map[string]string) *Board {
+	t.Helper()
+	fixtureFiles := []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+	}
+	for _, requestId := range []string{"REQ-901", "REQ-902", "REQ-903"} {
+		fixtureFiles = append(fixtureFiles, verifyFixtureFile{
+			"do-work/queue/" + requestId + "-fixture.md",
+			"---\nid: " + requestId + "\ntitle: fixture\nstatus: pending\n" +
+				"depends_on: " + dependsOnByRequestId[requestId] + "\n" +
+				"write_set:\n  - shared/contended.go\n---\n",
+		})
+	}
+	repoRoot := writeVerifyFixture(t, fixtureFiles)
+	board, buildError := buildBoard(repoRoot, time.Date(2026, 8, 27, 9, 0, 0, 0, time.UTC),
+		defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	return board
+}
+
+// Two REQs that declare the same file and can be dispatched together are
+// reported; the same two, once ordered, are not.
+//
+// The third case is the one that matters and the reason this probe walks the
+// graph instead of checking adjacency: REQ-901 → REQ-902 → REQ-903 leaves 901
+// and 903 perfectly serialized with no edge between them. A direct-edge test
+// reports that correctly-ordered chain on every single run, and a probe that
+// cries wolf on healthy state is a probe people learn to skip.
+func TestVerifyReportsOnlyWriteSetOverlapsThatCanRunTogether(t *testing.T) {
+	repoRoot := t.TempDir()
+	moment := time.Date(2026, 8, 27, 9, 0, 0, 0, time.UTC)
+
+	for _, testCase := range []struct {
+		name           string
+		dependsOn      map[string]string
+		wantPairCount  int
+		wantMentioning []string
+	}{
+		{
+			name:      "no edges at all",
+			dependsOn: map[string]string{"REQ-901": "[]", "REQ-902": "[]", "REQ-903": "[]"},
+			// Every pair of the three collides: 901/902, 901/903, 902/903.
+			wantPairCount:  3,
+			wantMentioning: []string{"REQ-901", "REQ-902", "REQ-903", "shared/contended.go"},
+		},
+		{
+			name:          "one direct edge orders one pair",
+			dependsOn:     map[string]string{"REQ-901": "[]", "REQ-902": "[REQ-901]", "REQ-903": "[]"},
+			wantPairCount: 2, // 901/903 and 902/903 remain
+		},
+		{
+			name:          "a chain orders every pair, including the transitive one",
+			dependsOn:     map[string]string{"REQ-901": "[]", "REQ-902": "[REQ-901]", "REQ-903": "[REQ-902]"},
+			wantPairCount: 0,
+		},
+		{
+			name:          "an edge pointing the other way orders the pair just as well",
+			dependsOn:     map[string]string{"REQ-901": "[REQ-903]", "REQ-902": "[REQ-901]", "REQ-903": "[]"},
+			wantPairCount: 0,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			board := ungatedOverlapFixtureBoard(t, testCase.dependsOn)
+			report := collectVerifyFindings(repoRoot, board, moment)
+			overlapFindings := findingsMentioning(report, verifyCategoryUngatedWriteSetOverlap)
+			if len(overlapFindings) != testCase.wantPairCount {
+				t.Errorf("reported %d ungated pairs, want %d:\n%s",
+					len(overlapFindings), testCase.wantPairCount, renderVerifyReport(report))
+			}
+			for _, wantText := range testCase.wantMentioning {
+				if !strings.Contains(renderVerifyReport(report), wantText) {
+					t.Errorf("the report never names %q — a reader cannot act on it:\n%s",
+						wantText, renderVerifyReport(report))
+				}
+			}
+		})
+	}
+}
+
+// A depends_on cycle must not hang verify. The graph is authored by hand, so a
+// cycle is a thing a person can write, and a reachability walk with no visited
+// set revisits the same ids forever.
+//
+// The FOURTH REQ is what makes this test work. With only the cycle, every query
+// is between two members and the target is always found before the walk can
+// loop — so dropping the visited set changes nothing and the test passes on a
+// hanging implementation. REQ-904 sits outside the cycle, so proving it
+// unreachable means walking the cycle to exhaustion, which is the only shape
+// that actually hangs.
+func TestVerifyWriteSetOverlapProbeTerminatesOnADependencyCycle(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/queue/REQ-901-cycle.md", cycleFixtureRequest("REQ-901", "[REQ-903]")},
+		{"do-work/queue/REQ-902-cycle.md", cycleFixtureRequest("REQ-902", "[REQ-901]")},
+		{"do-work/queue/REQ-903-cycle.md", cycleFixtureRequest("REQ-903", "[REQ-902]")},
+		{"do-work/queue/REQ-904-outside.md", cycleFixtureRequest("REQ-904", "[]")},
+	})
+	moment := time.Date(2026, 8, 27, 9, 0, 0, 0, time.UTC)
+	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+
+	// Returning at all is half the assertion; a hang fails by test timeout.
+	report := collectVerifyFindings(repoRoot, board, moment)
+	overlapFindings := findingsMentioning(report, verifyCategoryUngatedWriteSetOverlap)
+	// REQ-904 is ordered against nothing, so it collides with all three cycle
+	// members. The cycle members reach each other, so they are not reported.
+	if len(overlapFindings) != 3 {
+		t.Errorf("reported %d ungated pairs, want the three against REQ-904:\n%s",
+			len(overlapFindings), renderVerifyReport(report))
+	}
+}
+
+func cycleFixtureRequest(requestId string, dependsOn string) string {
+	return "---\nid: " + requestId + "\ntitle: fixture\nstatus: pending\n" +
+		"depends_on: " + dependsOn + "\nwrite_set:\n  - shared/contended.go\n---\n"
+}
+
+// A write_set entry is a PATTERN. Two REQs collide when their patterns
+// intersect, which does not require them to be equal — so the finding has to
+// name both sides, or it reports a collision and points at nothing.
+func TestVerifyWriteSetOverlapNamesBothSidesOfAGlobCollision(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/queue/REQ-911-glob.md",
+			"---\nid: REQ-911\ntitle: fixture\nstatus: pending\ndepends_on: []\n" +
+				"write_set:\n  - web/*.js\n---\n"},
+		{"do-work/queue/REQ-912-literal.md",
+			"---\nid: REQ-912\ntitle: fixture\nstatus: pending\ndepends_on: []\n" +
+				"write_set:\n  - web/board-detail.js\n---\n"},
+	})
+	moment := time.Date(2026, 8, 27, 9, 0, 0, 0, time.UTC)
+	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+
+	report := collectVerifyFindings(repoRoot, board, moment)
+	overlapFindings := findingsMentioning(report, verifyCategoryUngatedWriteSetOverlap)
+	if len(overlapFindings) != 1 {
+		t.Fatalf("reported %d ungated pairs, want the one glob collision:\n%s",
+			len(overlapFindings), renderVerifyReport(report))
+	}
+	for _, wantText := range []string{"web/*.js", "web/board-detail.js"} {
+		if !strings.Contains(overlapFindings[0].Detail, wantText) {
+			t.Errorf("the finding does not name %q, so it points at no file a reader can change: %s",
+				wantText, overlapFindings[0].Detail)
+		}
+	}
+}
+
+// The finding must name the path it actually covers.
+//
+// An auto-wave computes its ready set from depends_on, so an edge keeps two
+// REQs out of one wave. A TARGETED run does not — an explicitly-named REQ
+// enters the wave regardless of depends_on (actions/work-reference.md →
+// Auto-wave, condition 2) — so `do-work run --fan-out REQ-901 REQ-902` can
+// dispatch two REQs this probe calls ordered. An unqualified "--fan-out may
+// dispatch them concurrently" overclaims in one direction and an unqualified
+// silence overclaims in the other; naming the wave is what keeps the finding
+// true. Pinned because scope is the claim here, not phrasing.
+func TestVerifyWriteSetOverlapFindingNamesTheAutoWave(t *testing.T) {
+	board := ungatedOverlapFixtureBoard(t, map[string]string{
+		"REQ-901": "[]", "REQ-902": "[]", "REQ-903": "[REQ-902]",
+	})
+	report := collectVerifyFindings(t.TempDir(), board, time.Date(2026, 8, 27, 9, 0, 0, 0, time.UTC))
+	overlapFindings := findingsMentioning(report, verifyCategoryUngatedWriteSetOverlap)
+	if len(overlapFindings) == 0 {
+		t.Fatalf("no ungated pair reported, so the wording below is unchecked:\n%s", renderVerifyReport(report))
+	}
+	for _, finding := range overlapFindings {
+		if !strings.Contains(finding.Detail, "auto-wave") {
+			t.Errorf("the finding claims concurrency without naming the auto-wave, which is the only path depends_on gates: %s",
+				finding.Detail)
+		}
+	}
+}

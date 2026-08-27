@@ -96,7 +96,11 @@ it: the drawer was explicitly out of its scope.
 
 ## Dependencies
 
-None. REQ-383 is complete; this changes the pattern it left alone.
+None — this is the head of the chain. It shares `citations.go` and `citations_test.go` with REQ-381,
+REQ-386 and REQ-388, and `web/board-detail.js` with REQ-382 and REQ-388; every one of those waits on
+this REQ, directly or transitively.
+
+**This edge serializes a shared file; it is not a need for the other's output.** `write_set` gates nothing — root `CLAUDE.md` § Glossary calls it "never a safety guarantee" — so only `depends_on` keeps two writers of one file apart under `do-work run --fan-out`. The whole batch is one chain, **REQ-385 → REQ-381 → REQ-386 → REQ-388 → REQ-382 → REQ-387**, because `citations.go` alone is claimed by four of the six. That is ONE valid total order: reordering the queue means recomputing every edge, since a chain is only correct as a whole. `queue-kanban verify`'s `ungated-write-set-overlap` probe reports any pair this misses.
 
 ## Red-Green Proof
 

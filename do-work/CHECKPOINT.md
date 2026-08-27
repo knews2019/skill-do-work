@@ -23,10 +23,18 @@ None.
 
 ## Still Queued
 
-REQ-380 and REQ-383 are ready with disjoint write sets. REQ-383 is the foundation — it resolves
-ticket mentions in Go and deletes the client-side Markdown scanner REQ-379 shipped, closing six
-external findings structurally rather than one at a time. REQ-381 consumes its AST walk; REQ-382
-follows REQ-381. Chain: REQ-383 → REQ-381 → REQ-382. See `do-work/RESTART-PROMPT.md`.
+REQ-378, REQ-379 and REQ-383 are archived: ticket mentions now resolve in Go and the client-side
+Markdown scanner is gone.
+
+What is left of the ticket-id program is one chain,
+**REQ-385 → REQ-381 → REQ-386 → REQ-388 → REQ-382 → REQ-387**, and it is encoded in `depends_on`
+rather than described here — `do-work run` reads queue state and never reads this file. Six REQs
+share four files (`citations.go` most of all), so the chain is a serialization order, not a claim
+that each needs the one before it. REQ-380 writes only `capture-reference.md` and stays independent,
+so a fan-out of two remains safe.
+
+`queue-kanban verify` reports any pair that shares a `write_set` entry without an edge between them
+(`ungated-write-set-overlap`), so this ordering does not depend on anyone remembering it.
 
 ## Session Notes
 

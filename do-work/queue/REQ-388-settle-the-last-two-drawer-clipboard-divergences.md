@@ -83,7 +83,11 @@ sees it) or arguably a real reference (the author typed it deliberately).
 
 ## Dependencies
 
-`depends_on: [REQ-386]`, for the shared-file reason above. Independent of REQ-385 and REQ-387.
+`depends_on: [REQ-386]`, which shares `citations.go` and `citations_test.go` with this REQ.
+Transitively this also orders it after REQ-381 and REQ-385 — REQ-385 matters, because the two also
+share `web/board-detail.js`.
+
+**This edge serializes a shared file; it is not a need for the other's output.** `write_set` gates nothing — root `CLAUDE.md` § Glossary calls it "never a safety guarantee" — so only `depends_on` keeps two writers of one file apart under `do-work run --fan-out`. The whole batch is one chain, **REQ-385 → REQ-381 → REQ-386 → REQ-388 → REQ-382 → REQ-387**, because `citations.go` alone is claimed by four of the six. That is ONE valid total order: reordering the queue means recomputing every edge, since a chain is only correct as a whole. `queue-kanban verify`'s `ungated-write-set-overlap` probe reports any pair this misses.
 
 ## Red-Green Proof
 
