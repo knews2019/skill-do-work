@@ -33,7 +33,7 @@ write_set:
 - skills/do-work-toolbox/actions/help.md
 - README.md
 completed_at: '2026-08-27T11:57:36Z'
-commit:
+commit: c32e1d53
 kb_status: pending
 ---
 
