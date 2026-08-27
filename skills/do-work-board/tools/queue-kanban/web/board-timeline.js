@@ -3097,12 +3097,9 @@
     // CAPTURE THE POINTER once the pan ENGAGES, so the release is guaranteed to arrive
     // here — and not before, because capture also retargets the synthesized click.
     //
-    // A drag released OUTSIDE the chart delivered its pointerup to whatever was under
-    // the cursor, and Chromium suppresses the boundary events while a button is held —
-    // so none of pointerup, pointercancel or pointerleave reached this host, the
-    // teardown never ran, and the grab cursor stayed on for the rest of the session.
-    // Capture makes the release a fact rather than a hope; the teardown below then also
-    // gets lostpointercapture, which fires even when the engine takes the capture away.
+    // Capture routes an outside-host pointerup back to this host, so teardown
+    // does not depend on pointerleave being delivered at the boundary. The
+    // lostpointercapture handler also ends the pan if the engine revokes capture.
     //
     // Capturing on pointerdown instead cost every mouse click in the chart: capture
     // retargets subsequent pointer events AND the synthesized click to the capturing

@@ -1339,9 +1339,9 @@ function settleUntil(predicate, thenDo) {
     if (predicate() || attemptsLeft-- <= 0) {
       // One more tick after the predicate holds, so a render the change SCHEDULED
       // has run before anything is measured. setTimeout rather than
-      // requestAnimationFrame throughout: headless --dump-dom has no compositor
-      // driving frames, so an rAF-based poll never resolves and the runner dumps
-      // an empty result node.
+      // requestAnimationFrame throughout: these probes originally needed timers
+      // when the dump-DOM transport parked compositor frames. They now run over
+      // the protocol transport; the same bounded readiness check is retained.
       setTimeout(thenDo, 50);
       return;
     }
@@ -1413,7 +1413,7 @@ window.addEventListener("load", function () {
       // shared positive condition: the live host width is non-zero and differs from
       // the width used by the last render. ResizeObserver delivers that check directly
       // in an ordinary browser; a teardown-owned 50ms timer delivers the same check
-      // when headless --dump-dom parks observer/compositor work after layout settles.
+      // if observer delivery stalls. This also covered the former dump-DOM transport.
       //
       // Polling the OUTCOME is sound here because the wait is bounded: a genuine
       // regression spins out the attempts and then fails the assertion below, which is
@@ -2299,12 +2299,10 @@ window.addEventListener("load", function () {
       pointerAt("pointermove", host, pressX - 120, pressY, 1);
       probe.duringDrag = chartState();
       // THE RELEASE THE ENGINE SENDS WHEN A CAPTURED POINTER GOES AWAY. A synthetic
-      // PointerEvent carries a pointerId the engine does not know, so
-      // setPointerCapture on it throws and this lane cannot reproduce a real captured
-      // drag end-to-end. What it CAN drive is the event the capture path relies on,
-      // and that is the half that was missing: with the release delivered outside the
-      // host and the boundary events suppressed while a button is held, nothing
-      // reached this host at all and the grab cursor stayed on for the session.
+      // PointerEvent carries a pointerId the engine does not know, so this
+      // synthetic-input probe cannot establish real capture or reproduce a captured
+      // drag end-to-end. It can drive lostpointercapture, the teardown path used
+      // when the engine releases or revokes capture.
       var outsideY = Math.round(hostBox.top - 200);
       var outsideNode = nodeAt(pressX - 160, outsideY, document.body);
       pointerAt("pointerup", outsideNode, pressX - 160, outsideY, 0);
@@ -2873,8 +2871,8 @@ func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T)
 		t.Fatalf("read generated index.html: %v", readError)
 	}
 
-	// The REAL page, unedited: this transport drives it from outside, so unlike the
-	// dump-dom probes it needs no script injected to carry a result back.
+	// The REAL page, unedited: the protocol drives it from outside, so unlike the
+	// result-node probes it needs no script injected to carry a result back.
 	session := startTrustedInputBrowserSession(t, "timeline pointer capture", siteDirectory,
 		string(indexBytes), "--window-size=1600,900")
 	session.waitForPageCondition(t, "the board's view switcher renders",
@@ -2983,6 +2981,10 @@ func TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage(t *testing.T)
 		t.Fatalf("the capture-swallowed outside-release trial still observed %d gotpointercapture events; "+
 			"the mutation did not remove capture", uncapturedDragOutcome.GotPointerCaptureCount)
 	}
+	// This mutation pair must exercise its host-pointerleave isolator in the
+	// selected browser. Chrome 141.0.7390.37 failed this guard and is no longer
+	// a compatibility target (REQ-375); that trial alone does not establish
+	// that the engine never dispatches host boundary events.
 	if uncapturedDragOutcome.HostPointerLeaveSwallowed == 0 {
 		t.Fatal("the capture-swallowed outside-release trial never crossed the host pointerleave " +
 			"boundary; the isolator was not exercised and the mutation pair is vacuous")

@@ -293,8 +293,8 @@ func TestBrowserBehaviorBoardColumnCopyAll(t *testing.T) {
 	// Written out rather than recomputed: every FrontmatterMarkdown below is the
 	// fixture's own bytes, so a fence that gained an expansion fails here, and the
 	// annotated bodies are literals so the expansion shape cannot drift silently.
-	annotatedPendingBetaBody := "# Pending beta\n\nBETA-BODY\n\nSee REQ-101 (Pending alpha) and REQ-9999, then REQ-101 again.\n"
-	annotatedPendingAlphaBody := "# Pending alpha\n\nALPHA-BODY\n\nBlocked by REQ-201 (Claimed only).\n"
+	annotatedPendingBetaBody := "# Pending beta\n\nBETA-BODY\n\nSee REQ-101 (-> Pending alpha) and REQ-9999, then REQ-101 again.\n"
+	annotatedPendingAlphaBody := "# Pending alpha\n\nALPHA-BODY\n\nBlocked by REQ-201 (-> Claimed only).\n"
 	wantPendingPayload :=
 		pendingBeta.FrontmatterMarkdown + annotatedPendingBetaBody +
 			pendingAlpha.FrontmatterMarkdown + annotatedPendingAlphaBody +

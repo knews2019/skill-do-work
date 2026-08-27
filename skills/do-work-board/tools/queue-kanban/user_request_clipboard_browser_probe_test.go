@@ -288,7 +288,7 @@ func TestBrowserBehaviorUserRequestCopyAllIncludesGroupedRequests(t *testing.T) 
 	// FrontmatterMarkdown is spliced in verbatim on purpose: it carries
 	// "requests: [REQ-710]", so a fence the annotator touched fails right here.
 	annotatedGroupedBody := "# Grouped work\n\nGROUPED-UR-BODY\n\n" +
-		"Covers REQ-710 (Working member) and UR-800 (No members), plus REQ-9999.\n"
+		"Covers REQ-710 (-> Working member) and UR-800 (-> No members), plus REQ-9999.\n"
 	wantPlainCopyPayload := groupedUserRequest.FrontmatterMarkdown + annotatedGroupedBody +
 		"\n---\n\n" + referencedRequestsGlossaryHeading + "\n\n" +
 		"- REQ-710 — Working member (claimed)\n" +

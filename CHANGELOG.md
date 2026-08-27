@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.244.6 — Restore Browser Verification on Current Chromium (2026-08-27)
+
+The browser suite now reads completed results through its existing DevTools connection, avoiding a Chrome shutdown stall and preserving literal clipboard text. Chrome 141 is deprecated; Timeline capture checks and mutation guards remain unchanged.
+
 ## 0.244.5 — Mark Board-Added Clipboard Titles with an Arrow (2026-08-27)
 
 Copied body references now use the exact ASCII form `REQ-123 (-> Title)` so readers can recognize a title inserted by the board. Drawer labels and the full reference appendix do not change.

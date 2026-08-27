@@ -29,6 +29,8 @@
 
 - **A measured face is per-browser, and a constant that does not name its build cannot be argued with.** REQ-241 and REQ-242 each measured the same 12px axis-title face, on different Chromium builds, and got 12.0372 and 11.2300; both rounded up, both declared the same constant in different files of one package, and the merge failed to compile. Git could not see it — the edits never touched adjacent lines. Record the browser and build beside every measured number, take the larger where two disagree (a box that reaches further makes a clearance test demand more room than the render needs), and expect the same number to differ on someone else's machine: REQ-241's 1.364-unit Panel B budget measures 0.185 on Chromium 146.
 
+- **Browser support:** the strict browser lane targets current stable Chromium. Chrome 141 is deprecated and is not a compatibility target, as confirmed in REQ-375 (Restore the strict browser lane on current Chromium). Record the exact build with browser evidence; a failed trial does not establish behavior across other browser releases.
+
 ## Lessons
 
 See [`lessons-kanban-board.md`](lessons-kanban-board.md) — read it before changing what **Read first** or **Traps** name above.

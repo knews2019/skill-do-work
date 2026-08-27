@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -28,25 +27,13 @@ import (
 // not the one probe below; it is that the next person needing a rendered measurement
 // gets it from a test instead of from a browser session and a comment.
 //
-// WHICH DRIVER, AND WHY. A headless Chrome/Chromium invoked directly against a temp
-// file, using `--dump-dom` and `--virtual-time-budget`. Chosen over Playwright and
-// anything else needing npm because it requires only a binary most machines already
-// have: a silent package-manager dependency is a build input nobody agreed to. The
-// page writes its results into one DOM node and the Go side parses that node, so
-// results cross the boundary as data this test can assert on rather than as an exit
-// code alone. If a future probe genuinely needs more than `--dump-dom` can express,
-// that is the moment to reach for a driver — and to say so here.
-//
-// THAT MOMENT ARRIVED (REQ-341), and the answer was a second transport rather than a
-// driver: `--remote-debugging-pipe` speaks the DevTools Protocol over a pair of file
-// descriptors, framed as NUL-terminated JSON, which the standard library already has
-// everything to do. See the trusted-input transport below for what it buys and what
-// it costs. `--dump-dom` stays the transport for every probe that only measures.
-//
-// NO WALL-CLOCK WAITS. Readiness is `--virtual-time-budget`, which advances the
-// page's clock as fast as the work allows and then dumps, plus the sentinel the page
-// writes into the result node. A `sleep` here is the flake this lane would be blamed
-// for.
+// The existing DevTools pipe speaks directly to the browser binary; no package
+// manager or external driver is required. Measurement probes read their completed
+// result node over that same channel, and interaction probes can dispatch trusted
+// input. Chrome 151.0.7922.174 on this host printed --dump-dom output but did not exit, so
+// process termination cannot be the measurement-completion signal (REQ-375).
+// Readiness is a bounded wait for the result node, not a fixed sleep. Every probe
+// still asserts its own result and contributes to the strict lane's zero-probe guard.
 const (
 	strictBrowserBehaviorDiagnostic = "queue-kanban: strict browser behavior lane executed zero probes"
 	strictBrowserBehaviorMarker     = "QUEUE_KANBAN_STRICT_BROWSER_BEHAVIOR"
@@ -136,81 +123,34 @@ func runBrowserBehaviorProbeInDirectory(
 	t *testing.T, probeName string, siteDirectory string, pageHTML string, extraFlags ...string,
 ) []byte {
 	t.Helper()
-	browserPath := lookupBrowserForBehaviorProbe(t)
-
-	pagePath := filepath.Join(siteDirectory, browserProbePageFileName)
-	if writeError := os.WriteFile(pagePath, []byte(pageHTML), 0o644); writeError != nil {
-		t.Fatalf("write %s probe page: %v", probeName, writeError)
+	// Virtual-time budgets belonged to the dump-DOM command. The shared protocol
+	// transport waits for explicit completion on the real page clock instead.
+	browserFlags := make([]string, 0, len(extraFlags))
+	for _, browserFlag := range extraFlags {
+		if !strings.HasPrefix(browserFlag, "--virtual-time-budget=") {
+			browserFlags = append(browserFlags, browserFlag)
+		}
 	}
-	// The profile never goes in the site directory: it is megabytes of engine
-	// state, and a probe that leaves it beside index.html changes what the next
-	// probe against the same directory sees.
-	profileDirectory := t.TempDir()
-
-	// --no-sandbox because CI and container users are routinely root, where the
-	// sandbox refuses to start; --disable-gpu and --disable-dev-shm-usage because a
-	// headless container has neither. --user-data-dir keeps concurrent probes from
-	// fighting over one profile directory.
-	probeArguments := []string{
-		"--headless",
-		"--disable-gpu",
-		"--no-sandbox",
-		"--disable-dev-shm-usage",
-		"--user-data-dir=" + filepath.Join(profileDirectory, "profile"),
-		"--virtual-time-budget=5000",
-		"--dump-dom",
-	}
-	probeArguments = append(probeArguments, extraFlags...)
-	probeArguments = append(probeArguments, "file://"+pagePath)
-	probeCommand := exec.Command(browserPath, probeArguments...)
-	browserBehaviorProbeCount.Add(1)
-	probeOutput, probeError := probeCommand.CombinedOutput()
-	if probeError != nil {
-		t.Fatalf("execute %s browser behavior: %v\n%s", probeName, probeError, probeOutput)
-	}
-
-	resultText, extractError := extractBrowserProbeResult(string(probeOutput))
-	if extractError != "" {
-		t.Fatalf("read %s browser behavior result: %s\ndumped DOM:\n%s", probeName, extractError, probeOutput)
+	session := startTrustedInputBrowserSession(t, probeName, siteDirectory, pageHTML, browserFlags...)
+	defer session.closeBrowserSession()
+	session.waitForPageCondition(t, "completed browser result node",
+		`document.getElementById("`+browserProbeResultElementId+`") && document.getElementById("`+browserProbeResultElementId+`").textContent.trim() !== ""`)
+	var resultText string
+	session.decodeResult(t, "completed probe result", session.evaluateInPage(t,
+		`document.getElementById("`+browserProbeResultElementId+`").textContent`), &resultText)
+	resultText = strings.TrimSpace(resultText)
+	if !strings.HasPrefix(resultText, "{") {
+		t.Fatalf("%s result node holds %q, not the JSON object the contract expects", probeName, resultText)
 	}
 	return []byte(resultText)
 }
 
-// browserProbeResultPattern finds the result node in the dumped DOM. The dump is
-// serialized HTML, not a parse tree, so this reads the one node the contract defines
-// rather than trying to parse the document.
-var browserProbeResultPattern = regexp.MustCompile(
-	`(?s)<[a-zA-Z]+[^>]*\bid="` + regexp.QuoteMeta(browserProbeResultElementId) + `"[^>]*>(.*?)</[a-zA-Z]+>`)
-
-func extractBrowserProbeResult(dumpedDOM string) (string, string) {
-	resultMatch := browserProbeResultPattern.FindStringSubmatch(dumpedDOM)
-	if resultMatch == nil {
-		return "", "the page never wrote its result node — the probe script threw, or the engine dumped before it ran"
-	}
-	resultText := strings.TrimSpace(resultMatch[1])
-	if resultText == "" {
-		return "", "the result node is empty"
-	}
-	// The sentinel: the page sets the node only after measuring, so an empty or
-	// absent node means "did not finish", never "measured zero".
-	if !strings.HasPrefix(resultText, "{") {
-		return "", "the result node holds " + resultText + ", not the JSON the contract expects"
-	}
-	return resultText, ""
-}
-
 // ---- the trusted-input transport -------------------------------------------
 //
-// WHY A SECOND TRANSPORT EXISTS. Everything above crosses the boundary once and in
-// one direction: the engine renders, serializes the DOM, exits, and the Go side reads
-// one node out of the dump. That is enough to MEASURE and useless to INTERACT,
-// because a page driven only by its own script can dispatch only synthetic events —
-// and a synthetic event is not the same object the engine makes. Four REQs paid for
-// the difference. REQ-324's click/pan lock-in dispatched PointerEvents with
-// pointerId 1 and passed through the entire click regression, because capture is
-// never established on a pointer id the engine did not issue. REQ-333 could not drive
-// a captured drag end to end. REQ-336's RED had to be reproduced outside the suite.
-// REQ-337's check had to be structural and said so in its own doc comment.
+// This protocol session originally enabled trusted input (REQ-341); measurement
+// probes now share it. A page script alone can dispatch only synthetic events,
+// which cannot establish capture on a pointer id the engine did not issue.
+// Keeping the browser alive lets the tests drive the real click/capture path.
 //
 // WHAT THIS IS. Chromium's `--remote-debugging-pipe` moves the DevTools Protocol off
 // the WebSocket endpoint and onto a pair of inherited file descriptors: the engine
@@ -222,8 +162,7 @@ func extractBrowserProbeResult(dumpedDOM string) (string, string) {
 // WHAT IT COSTS. The engine stays alive for the length of the probe, so this
 // transport cannot use `--virtual-time-budget`: virtual time races ahead of input
 // that has not been sent yet. Readiness is therefore a POLLED CONDITION with a
-// deadline (waitForPageCondition), never a fixed sleep — the same rule the header
-// states, kept by a different mechanism.
+// deadline (waitForPageCondition), never a fixed sleep.
 //
 // FAILING LOUDLY. Every protocol exchange is bounded by a read deadline and every
 // failure is a t.Fatalf carrying the engine's stderr, because the failure mode this
@@ -256,7 +195,7 @@ const (
 	// who needed the property.
 	browserProbeGestureSettleDeadline = 5 * time.Second
 
-	// browserProbePageFileName is the page both transports write into the site
+	// browserProbePageFileName is the page all probes write into the site
 	// directory, and the suffix every measurement's location.href must carry.
 	browserProbePageFileName = "probe.html"
 )
@@ -312,9 +251,8 @@ func startTrustedInputBrowserSession(
 		t.Fatalf("open %s event pipe: %v", probeName, eventPipeError)
 	}
 
-	// The same container-safe flags the dump-dom transport uses, minus
-	// --virtual-time-budget and --dump-dom: this engine has to stay alive and
-	// answer, and its clock has to be the one the input events arrive on.
+	// Container-safe browser flags. Keep the engine alive for protocol replies,
+	// with the real clock used by both readiness and trusted input.
 	probeArguments := []string{
 		"--headless",
 		"--disable-gpu",
@@ -1253,5 +1191,23 @@ func assertDrawerTicketTitlesAndGlossary(
 	if !noReferenceDrawer.GlossaryHidden || len(noReferenceDrawer.GlossaryRows) != 0 {
 		t.Errorf("REQ-600 cited nothing but kept a glossary: hidden=%v rows=%#v",
 			noReferenceDrawer.GlossaryHidden, noReferenceDrawer.GlossaryRows)
+	}
+}
+
+// A result is JSON text, not serialized HTML. Clipboard arrows and entity-like
+// title text must cross the browser boundary without an extra encode/decode pass.
+func TestBrowserBehaviorProbeResultKeepsLiteralText(t *testing.T) {
+	const literalText = "<em>&amp;</em> -> & \"quoted\""
+	page := `<!doctype html><pre id="` + browserProbeResultElementId + `"></pre><script>
+ document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({text: ` + mustMarshalJSONString(t, literalText) + `});
+</script>`
+	var result struct {
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(runBrowserBehaviorProbe(t, "literal result text", page), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Text != literalText {
+		t.Fatalf("result text changed across browser transport: got %q, want %q", result.Text, literalText)
 	}
 }
