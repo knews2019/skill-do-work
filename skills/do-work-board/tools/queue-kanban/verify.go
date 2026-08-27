@@ -183,6 +183,24 @@ func collectVerifyFindings(repoRoot string, board *Board, now time.Time) VerifyR
 // A direct-edge test would report a correctly serialized chain on every run and
 // train the reader to ignore it.
 //
+// SCOPE: this probe is about the AUTO-WAVE, and the finding says so. An
+// auto-wave computes its ready set from depends_on, so an edge really does keep
+// two REQs out of one wave (actions/work-reference.md → Auto-wave, condition 2).
+// A TARGETED run does not: an explicitly-named REQ-NNN enters the wave
+// regardless of depends_on, because the user named it outright — so
+// `do-work run --fan-out REQ-385 REQ-381` dispatches both even though one
+// depends on the other.
+//
+// That case is deliberately not reported here, and the reason is not oversight.
+// The same reference calls the manual pick the path where write_set is
+// "advisory input to that pick" and points at the board's overlaps badge for
+// it: a human chose both ids and has the contention in front of them. Reporting
+// every ordered-but-overlapping pair on the chance that someone targets both
+// would flag this repo's entire correctly-serialized chain on every single run,
+// which is the cry-wolf failure the transitive walk above exists to avoid. The
+// unattended path is the one with nobody watching, and that is the one this
+// probe covers.
+//
 // The candidate set is board.AllRequests' WriteSetOverlaps, which
 // annotateWriteSetOverlap already computed over pending and claimed REQs — this
 // probe adds the dependency filter to it rather than recomputing the pairs.
@@ -196,7 +214,9 @@ func appendUngatedWriteSetOverlapFindings(report *VerifyReport, board *Board) {
 			}
 			if dependencyPathExists(board.DependencyGraph, ticket.RequestId, overlappingId) ||
 				dependencyPathExists(board.DependencyGraph, overlappingId, ticket.RequestId) {
-				continue // one waits for the other; they never run together
+				// One waits for the other, so an AUTO-WAVE never puts them in the
+				// same wave — see the scope note on this function.
+				continue
 			}
 			pairKey := ticket.RequestId + "|" + overlappingId
 			if ticket.RequestId > overlappingId {
@@ -208,7 +228,7 @@ func appendUngatedWriteSetOverlapFindings(report *VerifyReport, board *Board) {
 			reportedPairs[pairKey] = true
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryUngatedWriteSetOverlap,
-				Detail: fmt.Sprintf("%s and %s both declare %s in write_set and neither depends on the other, so --fan-out may dispatch them concurrently",
+				Detail: fmt.Sprintf("%s and %s both declare %s in write_set and neither depends on the other, so an auto-wave (do-work run --fan-out) may dispatch them concurrently",
 					pairKey[:strings.Index(pairKey, "|")], pairKey[strings.Index(pairKey, "|")+1:],
 					strings.Join(sharedWriteSetEntries(ticket.WriteSet, overlappingTicket.WriteSet), ", ")),
 				Remedy: "add a depends_on edge between them — the later one waits on the earlier. The edge serializes a shared file; it is not a claim that one needs the other's output",

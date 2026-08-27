@@ -2093,3 +2093,30 @@ func TestVerifyWriteSetOverlapNamesBothSidesOfAGlobCollision(t *testing.T) {
 		}
 	}
 }
+
+// The finding must name the path it actually covers.
+//
+// An auto-wave computes its ready set from depends_on, so an edge keeps two
+// REQs out of one wave. A TARGETED run does not — an explicitly-named REQ
+// enters the wave regardless of depends_on (actions/work-reference.md →
+// Auto-wave, condition 2) — so `do-work run --fan-out REQ-901 REQ-902` can
+// dispatch two REQs this probe calls ordered. An unqualified "--fan-out may
+// dispatch them concurrently" overclaims in one direction and an unqualified
+// silence overclaims in the other; naming the wave is what keeps the finding
+// true. Pinned because scope is the claim here, not phrasing.
+func TestVerifyWriteSetOverlapFindingNamesTheAutoWave(t *testing.T) {
+	board := ungatedOverlapFixtureBoard(t, map[string]string{
+		"REQ-901": "[]", "REQ-902": "[]", "REQ-903": "[REQ-902]",
+	})
+	report := collectVerifyFindings(t.TempDir(), board, time.Date(2026, 8, 27, 9, 0, 0, 0, time.UTC))
+	overlapFindings := findingsMentioning(report, verifyCategoryUngatedWriteSetOverlap)
+	if len(overlapFindings) == 0 {
+		t.Fatalf("no ungated pair reported, so the wording below is unchecked:\n%s", renderVerifyReport(report))
+	}
+	for _, finding := range overlapFindings {
+		if !strings.Contains(finding.Detail, "auto-wave") {
+			t.Errorf("the finding claims concurrency without naming the auto-wave, which is the only path depends_on gates: %s",
+				finding.Detail)
+		}
+	}
+}

@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.242.1 — The Overlap Check Says Which Run It Means (2026-08-27)
+
+The new write-set check claimed more than it could. A dependency edge keeps two REQs out of an automatic wave, but naming both on the command line runs them anyway — so the finding now says which of the two it is talking about.
+
+- The report reads "an auto-wave may dispatch them concurrently" rather than implying every `--fan-out` invocation.
+- A targeted run stays deliberately unreported: you picked both ids yourself, and the board already shows the overlap on the card.
+
 ## 0.242.0 — The Board Catches Two REQs Aiming at the Same File (2026-08-27)
 
 `write_set` was never a safety guarantee — only `depends_on` keeps two REQs from being handed the same file at the same time — and nothing checked the gap between them. Three REQs shipped with that mismatch before this.
