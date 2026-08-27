@@ -10,7 +10,7 @@ domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec:
-depends_on: [REQ-381]
+depends_on: [REQ-388]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
@@ -101,16 +101,14 @@ never rendered in the drawer; only REQ and UR bodies reach `linkifyDetailBody`.
 
 ## Dependencies
 
-`depends_on: [REQ-381]`, which depends on REQ-383 — so the chain is REQ-383 → REQ-381 → REQ-382.
+`depends_on: [REQ-388]`, which shares `web/board-detail.js` with this REQ. Transitively this also
+orders it after REQ-381 (`generate_test.go`, and the citation index this REQ's drawer work reads)
+and after REQ-385 (`web/board-detail.js` again).
 
-**The edge serializes a shared file; it is not a need for the others' output.** REQ-378 (archived)
-established the rules this extends, and REQ-383 (landed) and REQ-381 change different source files.
-What all three share is `generate_test.go`. Stating "do not fan these out" in prose enforces nothing —
-`write_set` is display-only and "never a safety guarantee" (root `CLAUDE.md` § Glossary), so under
-`do-work run --fan-out` a REQ with `depends_on: []` is a dependency root and gets dispatched
-concurrently regardless of what its prose says. `depends_on` is the only field the work loop gates
-on. This is the second time the same mistake was made in this batch; REQ-381 carries its edge for
-exactly the same reason.
+REQ-378 (archived) established the rules this extends, and REQ-383 (archived) delivered the clipboard
+half this REQ was originally carrying.
+
+**This edge serializes a shared file; it is not a need for the other's output.** `write_set` gates nothing — root `CLAUDE.md` § Glossary calls it "never a safety guarantee" — so only `depends_on` keeps two writers of one file apart under `do-work run --fan-out`. The whole batch is one chain, **REQ-385 → REQ-381 → REQ-386 → REQ-388 → REQ-382 → REQ-387**, because `citations.go` alone is claimed by four of the six. That is ONE valid total order: reordering the queue means recomputing every edge, since a chain is only correct as a whole. `queue-kanban verify`'s `ungated-write-set-overlap` probe reports any pair this misses.
 
 ## Builder Guidance
 

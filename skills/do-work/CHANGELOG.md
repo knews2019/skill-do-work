@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.242.0 — The Board Catches Two REQs Aiming at the Same File (2026-08-27)
+
+`write_set` was never a safety guarantee — only `depends_on` keeps two REQs from being handed the same file at the same time — and nothing checked the gap between them. Three REQs shipped with that mismatch before this.
+
+- `do-work-board verify` gains an **ungated-write-set-overlap** check: any two queued REQs that declare a common `write_set` entry and could still be dispatched together are named, along with the files they collide on.
+- It follows the dependency chain rather than looking one edge deep, so a correctly ordered run of REQs stays quiet instead of reporting itself every time.
+- The six queued ticket-id REQs are now ordered, and `do-work/RESTART-PROMPT.md` is gone — it mirrored queue state by hand and was wrong twice in a day. `do-work restart-with-parallel-handoff` writes a fresh one whenever a handoff is actually needed.
+
 ## 0.241.2 — Copy Annotation Cleanup (2026-08-26)
 
 A second review pass over the Copy annotator. Nothing here changes what a paste looks like — it closes gaps in the tests and corrects comments that described code that no longer exists.

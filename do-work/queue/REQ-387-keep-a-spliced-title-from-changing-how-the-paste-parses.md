@@ -11,7 +11,7 @@ domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec:
-depends_on: []
+depends_on: [REQ-382]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
@@ -79,7 +79,12 @@ though `shortTicketTitle` (`web/board-core.js`) is shared.
 
 ## Dependencies
 
-None. Disjoint write set from the other three follow-ups.
+`depends_on: [REQ-382]`, which shares `generate_test.go` with this REQ. Transitively this also orders
+it after REQ-381, the other `generate_test.go` writer. Its own two files —
+`web/board-clipboard.js` and `web/board-core.js` — are claimed by nothing else in the queue, so this
+REQ is last only because of the test file.
+
+**This edge serializes a shared file; it is not a need for the other's output.** `write_set` gates nothing — root `CLAUDE.md` § Glossary calls it "never a safety guarantee" — so only `depends_on` keeps two writers of one file apart under `do-work run --fan-out`. The whole batch is one chain, **REQ-385 → REQ-381 → REQ-386 → REQ-388 → REQ-382 → REQ-387**, because `citations.go` alone is claimed by four of the six. That is ONE valid total order: reordering the queue means recomputing every edge, since a chain is only correct as a whole. `queue-kanban verify`'s `ungated-write-set-overlap` probe reports any pair this misses.
 
 ## Red-Green Proof
 

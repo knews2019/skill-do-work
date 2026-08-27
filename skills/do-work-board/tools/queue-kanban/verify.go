@@ -36,6 +36,7 @@ const (
 	verifyCategoryTimestampOrdering             = "timestamp-ordering"
 	verifyCategoryCalibrationLogMismatch        = "calibration-log-mismatch"
 	verifyCategoryCalibrationRowUnreconcilable  = "calibration-row-unreconcilable"
+	verifyCategoryUngatedWriteSetOverlap        = "ungated-write-set-overlap"
 )
 
 // staleClaimThreshold is how long a `claimed` REQ may sit before verify reports
@@ -156,9 +157,117 @@ func collectVerifyFindings(repoRoot string, board *Board, now time.Time) VerifyR
 	appendStrayRequestFileFindings(&report, board)
 	appendAssignedElsewhereFindings(&report, board)
 	appendArchivedUserRequestLiveMemberFindings(&report, board)
+	appendUngatedWriteSetOverlapFindings(&report, board)
 	appendWorktreeFindings(&report, repoRoot)
 
 	return report
+}
+
+// appendUngatedWriteSetOverlapFindings reports two REQs that can be dispatched
+// AT THE SAME TIME and have declared they will write the same file.
+//
+// `write_set` gates nothing. It is display-only — root CLAUDE.md § Glossary says
+// so outright ("never a safety guarantee") — and `do-work run --fan-out` decides
+// what may run concurrently from `depends_on` alone. So a pair that shares a
+// file and carries no edge between them is dispatched in parallel into the same
+// path, and the second builder's worktree merge is where that is discovered.
+//
+// Prose has been tried. Three REQs in the ticket-id batch shipped this exact
+// mismatch — twice with a sentence in the REQ saying "do not fan these out",
+// and once with a Dependencies section asserting a disjoint write set that its
+// own frontmatter contradicted. A sentence cannot gate a dispatcher; this probe
+// is the mechanical form of that reminder.
+//
+// ORDERING IS TRANSITIVE. A → B → C leaves A and C ordered even though no edge
+// joins them, so the check is reachability in either direction, not adjacency.
+// A direct-edge test would report a correctly serialized chain on every run and
+// train the reader to ignore it.
+//
+// The candidate set is board.AllRequests' WriteSetOverlaps, which
+// annotateWriteSetOverlap already computed over pending and claimed REQs — this
+// probe adds the dependency filter to it rather than recomputing the pairs.
+func appendUngatedWriteSetOverlapFindings(report *VerifyReport, board *Board) {
+	reportedPairs := map[string]bool{}
+	for _, ticket := range board.AllRequests {
+		for _, overlappingId := range ticket.WriteSetOverlaps {
+			overlappingTicket, overlapFound := board.RequestsById[overlappingId]
+			if !overlapFound {
+				continue
+			}
+			if dependencyPathExists(board.DependencyGraph, ticket.RequestId, overlappingId) ||
+				dependencyPathExists(board.DependencyGraph, overlappingId, ticket.RequestId) {
+				continue // one waits for the other; they never run together
+			}
+			pairKey := ticket.RequestId + "|" + overlappingId
+			if ticket.RequestId > overlappingId {
+				pairKey = overlappingId + "|" + ticket.RequestId
+			}
+			if reportedPairs[pairKey] {
+				continue
+			}
+			reportedPairs[pairKey] = true
+			report.Findings = append(report.Findings, VerifyFinding{
+				Category: verifyCategoryUngatedWriteSetOverlap,
+				Detail: fmt.Sprintf("%s and %s both declare %s in write_set and neither depends on the other, so --fan-out may dispatch them concurrently",
+					pairKey[:strings.Index(pairKey, "|")], pairKey[strings.Index(pairKey, "|")+1:],
+					strings.Join(sharedWriteSetEntries(ticket.WriteSet, overlappingTicket.WriteSet), ", ")),
+				Remedy: "add a depends_on edge between them — the later one waits on the earlier. The edge serializes a shared file; it is not a claim that one needs the other's output",
+			})
+		}
+	}
+}
+
+// dependencyPathExists reports whether fromRequestId reaches toRequestId by
+// following depends_on forward. Iterative rather than recursive, and it visits
+// each id once, so a cycle in the graph terminates instead of hanging verify.
+func dependencyPathExists(graph DependencyGraph, fromRequestId string, toRequestId string) bool {
+	visitedIds := map[string]bool{fromRequestId: true}
+	pendingIds := append([]string(nil), graph.DependsOn[fromRequestId]...)
+	for len(pendingIds) > 0 {
+		currentId := pendingIds[len(pendingIds)-1]
+		pendingIds = pendingIds[:len(pendingIds)-1]
+		if currentId == toRequestId {
+			return true
+		}
+		if visitedIds[currentId] {
+			continue
+		}
+		visitedIds[currentId] = true
+		pendingIds = append(pendingIds, graph.DependsOn[currentId]...)
+	}
+	return false
+}
+
+// sharedWriteSetEntries names where two write sets collide, in the order the
+// left one declares them. Naming the files is the point: "these two overlap"
+// sends the reader back to both frontmatters to work out where.
+//
+// It matches with writeSetPatternsIntersect, the same predicate
+// annotateWriteSetOverlap used to pair these two in the first place — NOT string
+// equality. A write_set entry is a pattern, so `web/*.js` and
+// `web/board-detail.js` collide without being equal, and an equality test would
+// report the pair and then name no file at all. Where the two patterns differ,
+// both are shown, because neither alone tells the reader what to change.
+func sharedWriteSetEntries(leftWriteSet []string, rightWriteSet []string) []string {
+	var sharedEntries []string
+	seenEntries := map[string]bool{}
+	for _, leftPattern := range leftWriteSet {
+		for _, rightPattern := range rightWriteSet {
+			if !writeSetPatternsIntersect(leftPattern, rightPattern) {
+				continue
+			}
+			describedEntry := leftPattern
+			if leftPattern != rightPattern {
+				describedEntry = leftPattern + " ↔ " + rightPattern
+			}
+			if seenEntries[describedEntry] {
+				continue
+			}
+			seenEntries[describedEntry] = true
+			sharedEntries = append(sharedEntries, describedEntry)
+		}
+	}
+	return sharedEntries
 }
 
 // appendStrayRequestFileFindings forwards the board walker's structured

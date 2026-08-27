@@ -11,7 +11,7 @@ domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec:
-depends_on: []
+depends_on: [REQ-381]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
@@ -86,9 +86,14 @@ the behaviour.
 
 ## Dependencies
 
-None. Independent of the other REQ-383 follow-ups — disjoint write set from REQ-385 and REQ-387;
-shares `citations.go` and `citations_test.go` with REQ-388, so those two must not be fanned out
-together. Whichever is scheduled second takes a `depends_on` edge on the first.
+`depends_on: [REQ-381]`, which shares `citations.go`, `citations_test.go` and `generate.go` with this
+REQ. Transitively this also orders it after REQ-385.
+
+An earlier draft of this section claimed a "disjoint write set from REQ-385", which this REQ's own
+frontmatter contradicted on two files. That was the third write-set/`depends_on` mismatch in this
+batch, and it is why the `ungated-write-set-overlap` probe now exists.
+
+**This edge serializes a shared file; it is not a need for the other's output.** `write_set` gates nothing — root `CLAUDE.md` § Glossary calls it "never a safety guarantee" — so only `depends_on` keeps two writers of one file apart under `do-work run --fan-out`. The whole batch is one chain, **REQ-385 → REQ-381 → REQ-386 → REQ-388 → REQ-382 → REQ-387**, because `citations.go` alone is claimed by four of the six. That is ONE valid total order: reordering the queue means recomputing every edge, since a chain is only correct as a whole. `queue-kanban verify`'s `ungated-write-set-overlap` probe reports any pair this misses.
 
 ## Red-Green Proof
 

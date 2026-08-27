@@ -8,7 +8,7 @@ domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec:
-depends_on: [REQ-383]
+depends_on: [REQ-385]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
@@ -120,19 +120,13 @@ nothing and is never guessed.
 
 ## Dependencies
 
-`depends_on: [REQ-383]`.
+`depends_on: [REQ-385]`. REQ-383 is complete, so the edge that used to name it is gone; the edge now
+names REQ-385, which rewrites the mention pattern this REQ builds its citation index on — so this one
+is BOTH a shared-file edge (`citations.go`, `citations_test.go`) and a real content dependency.
+It also shares `generate.go` with REQ-386 and `generate_test.go` with REQ-382 and REQ-387; all three
+sit later in the chain.
 
-**This edge is a real dependency, not a file-serialization gate.** REQ-383 builds `citations.go` and
-the goldmark AST pass that resolves ticket mentions against board records; this REQ consumes that
-pass for its citation index rather than adding a second scanner. Building this first would mean
-writing a mention scanner that REQ-383 then deletes.
-
-That is a change from the earlier ordering, which had this REQ depending on REQ-379 purely because
-both wrote `generate_test.go`. That serialization still holds and still matters — `write_set` is
-display-only and "never a safety guarantee" (root `CLAUDE.md` § Glossary), so a shared file must be
-gated in `depends_on` or `--fan-out` will race it — but it is now the weaker of the two reasons.
-
-REQ-382 depends on this REQ in turn, so the chain is REQ-383 → REQ-381 → REQ-382.
+**This edge serializes a shared file; it is not a need for the other's output.** `write_set` gates nothing — root `CLAUDE.md` § Glossary calls it "never a safety guarantee" — so only `depends_on` keeps two writers of one file apart under `do-work run --fan-out`. The whole batch is one chain, **REQ-385 → REQ-381 → REQ-386 → REQ-388 → REQ-382 → REQ-387**, because `citations.go` alone is claimed by four of the six. That is ONE valid total order: reordering the queue means recomputing every edge, since a chain is only correct as a whole. `queue-kanban verify`'s `ungated-write-set-overlap` probe reports any pair this misses.
 
 ## Builder Guidance
 
