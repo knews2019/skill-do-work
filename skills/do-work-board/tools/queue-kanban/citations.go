@@ -1,11 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"html"
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // ---- where a ticket id may be annotated -----------------------------------
@@ -147,8 +153,9 @@ type surfaceRange struct {
 // Container nesting needs no handling at all: by the time the AST exists, the
 // parser has already resolved blockquote and list prefixes, so a fence inside a
 // blockquote is simply a fence.
-func collectMentionSurfaces(bodySource []byte, bodyRoot ast.Node) []surfaceRange {
+func collectMentionSurfaces(bodySource []byte, bodyRoot ast.Node, recordTitle string, bodyContext parser.Context) []surfaceRange {
 	var surfaces []surfaceRange
+	restatingHeading := openingRestatingHeading(bodySource, bodyRoot, recordTitle, bodyContext)
 	appendSegment := func(segment text.Segment, surface mentionSurface) {
 		if segment.Stop > segment.Start {
 			surfaces = append(surfaces, surfaceRange{start: segment.Start, stop: segment.Stop, surface: surface})
@@ -164,6 +171,9 @@ func collectMentionSurfaces(bodySource []byte, bodyRoot ast.Node) []surfaceRange
 	_ = ast.Walk(bodyRoot, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
+		}
+		if node == restatingHeading {
+			return ast.WalkSkipChildren, nil
 		}
 		switch typedNode := node.(type) {
 		case *ast.FencedCodeBlock:
@@ -183,6 +193,88 @@ func collectMentionSurfaces(bodySource []byte, bodyRoot ast.Node) []surfaceRange
 		return surfaces[leftIndex].start < surfaces[rightIndex].start
 	})
 	return surfaces
+}
+
+// These are renderer-owned tags, not arbitrary HTML: the configured renderer
+// omits raw HTML and escapes attribute/text values. Strip tags BEFORE decoding
+// entities so an authored literal "<em>" remains text, just as in textContent.
+var renderedHeadingTagPattern = regexp.MustCompile(`<[^>]*>`)
+
+// Match JavaScript's \s, including BOM but excluding Go's extra U+0085 space.
+var headingWhitespacePattern = regexp.MustCompile(`[\t\n\v\f\r \x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]+`)
+
+func normalizeHeadingText(headingText string) string {
+	// JavaScript toLowerCase uses full default Unicode casing, unlike Go's
+	// simple rune mapping (notably dotted I and contextual Greek final sigma).
+	// A fresh caser avoids sharing its mutable transform state across builds.
+	return cases.Lower(language.Und).String(strings.Trim(headingWhitespacePattern.ReplaceAllString(headingText, " "), " "))
+}
+
+// The drawer removes only its first element when that element is an H1 whose
+// rendered text restates the model title. Preserve that heading's source bytes
+// for save-back, but omit its clipboard entries so visible prose expands first.
+// Usually render the existing node. If question-option preprocessing changes
+// its prefix, parse only that transformed fragment to use the drawer's syntax.
+func openingRestatingHeading(bodySource []byte, bodyRoot ast.Node, recordTitle string, bodyContext parser.Context) ast.Node {
+	if recordTitle == "" {
+		return nil
+	}
+	heading := firstRenderedBodyHeading(bodyRoot)
+	if heading == nil {
+		return nil
+	}
+	renderHeading, renderSource := heading, bodySource
+	if heading.Lines().Len() > 0 {
+		// Include two lines after the heading text: a possible setext underline
+		// and the following option line. Earlier omitted HTML can affect the
+		// preprocessor's fence state, so retain the prefix, not just the H1.
+		prefixEnd := heading.Lines().At(heading.Lines().Len() - 1).Stop
+		for lineCount := 0; lineCount < 3; lineCount++ {
+			nextNewline := bytes.IndexByte(bodySource[prefixEnd:], '\n')
+			if nextNewline < 0 {
+				prefixEnd = len(bodySource)
+				break
+			}
+			prefixEnd += nextNewline + 1
+		}
+		rawPrefix := string(bodySource[:prefixEnd])
+		if renderedPrefix := insertQuestionOptionHardBreaks(rawPrefix); renderedPrefix != rawPrefix {
+			renderSource = []byte(renderedPrefix)
+			fragmentContext := parser.NewContext()
+			// A definition after the prefix can still give the H1 a link label.
+			for _, reference := range bodyContext.References() {
+				fragmentContext.AddReference(reference)
+			}
+			fragmentRoot := markdownToHtmlRenderer.Parser().Parse(text.NewReader(renderSource), parser.WithContext(fragmentContext))
+			renderHeading = firstRenderedBodyHeading(fragmentRoot)
+			if renderHeading == nil {
+				return nil
+			}
+		}
+	}
+	var renderedHeading bytes.Buffer
+	if err := markdownToHtmlRenderer.Renderer().Render(&renderedHeading, renderSource, renderHeading); err != nil {
+		return nil
+	}
+	headingText := html.UnescapeString(renderedHeadingTagPattern.ReplaceAllString(renderedHeading.String(), ""))
+	if normalizeHeadingText(headingText) == normalizeHeadingText(recordTitle) {
+		return heading
+	}
+	return nil
+}
+
+func firstRenderedBodyHeading(bodyRoot ast.Node) *ast.Heading {
+	firstElement := bodyRoot.FirstChild()
+	// Safe goldmark emits only an HTML comment for each raw HTML block, which
+	// the drawer's firstElementChild skips (including authored HTML comments).
+	for firstElement != nil && firstElement.Kind() == ast.KindHTMLBlock {
+		firstElement = firstElement.NextSibling()
+	}
+	heading, isHeading := firstElement.(*ast.Heading)
+	if !isHeading || heading.Level != 1 {
+		return nil
+	}
+	return heading
 }
 
 // textNodeSurface reports what a prose text node is really inside — a link
@@ -365,10 +457,10 @@ type documentTicketAnalysis struct {
 // every offset after the first break it adds — so the two must not share a
 // parse, and this one takes the raw text.
 func collectDocumentTicketMentions(documentText string, resolver *ticketMentionResolver) []generatedTicketMention {
-	return analyzeDocumentTicketMentions(documentText, resolver).Mentions
+	return analyzeDocumentTicketMentions(documentText, "", resolver).Mentions
 }
 
-func analyzeDocumentTicketMentions(documentText string, resolver *ticketMentionResolver) documentTicketAnalysis {
+func analyzeDocumentTicketMentions(documentText string, recordTitle string, resolver *ticketMentionResolver) documentTicketAnalysis {
 	yamlText, bodyMarkdown, bodyStartOffset, _ := splitFrontmatter(documentText)
 	analysis := documentTicketAnalysis{CitedTicketIds: []string{}}
 	citedIds := map[string]bool{}
@@ -392,8 +484,9 @@ func analyzeDocumentTicketMentions(documentText string, resolver *ticketMentionR
 		return analysis
 	}
 	bodySource := []byte(bodyMarkdown)
-	bodyRoot := markdownToHtmlRenderer.Parser().Parse(text.NewReader(bodySource))
-	surfaces := collectMentionSurfaces(bodySource, bodyRoot)
+	bodyContext := parser.NewContext()
+	bodyRoot := markdownToHtmlRenderer.Parser().Parse(text.NewReader(bodySource), parser.WithContext(bodyContext))
+	surfaces := collectMentionSurfaces(bodySource, bodyRoot, recordTitle, bodyContext)
 
 	documentOffsets := newUtf16OffsetCursor(bodyMarkdown, utf16LengthOf(documentText[:bodyStartOffset]))
 	expandedIds := map[string]bool{}

@@ -1,8 +1,11 @@
 ---
-session_updated: 2026-08-27T12:26:37Z
-last_completed: REQ-385
-queue_state: [5 pending, 1 pending-answers, 1 in-progress]
-reqs_processed_this_session: 4
+session_updated: '2026-08-27T12:45:11Z'
+last_completed: REQ-386
+queue_state:
+- 4 pending
+- 1 pending-answers
+- 0 in-progress
+reqs_processed_this_session: 6
 session_depth: deep
 ---
 
@@ -15,9 +18,13 @@ session_depth: deep
 - REQ-384: freeform HTML architecture-report bundles; implementation c32e1d53, bookkeeping cc636c2a.
 - REQ-385: underscore ticket boundaries and whole compound consumption; implementation 259b1479, bookkeeping 6887b518.
 
+- REQ-381: eager cited-ticket search and match reasons; implementation961fbf84, bookkeeping09a8c313.
+
+- REQ-386: completed; implementation provenance is recorded in its archive.
+
 ## Queue and Coordination
 
-Serial approved chain remaining: REQ-381 → REQ-386 → REQ-388 → REQ-382 → REQ-387 → REQ-389. Dependency fields remain authoritative.
+Serial approved chain remaining: REQ-386 → REQ-388 → REQ-382 → REQ-387 → REQ-389. Dependency fields remain authoritative.
 
 REQ-375 is pending-answers by explicit maintainer decision. Do not implement or reapprove before consent. Its report and clarification records were committed in eda1ffdd: ai-reports/2026-08-27_1428_req-341-timeline-drag-evidence/. REQ-377 was cancelled as already addressed; existing local exclusions remain and no baseline scratch was removed. Clarify task owns no further writes. REQ-376's approval rationale is preserved in its archive.
 

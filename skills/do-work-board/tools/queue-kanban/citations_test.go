@@ -30,6 +30,223 @@ func newCitationFixtureResolver() *ticketMentionResolver {
 	return newTicketMentionResolver(citationFixtureRequestIds, citationFixtureUserRequestIds)
 }
 
+// The primary Copy path must agree with the drawer's first-element H1 removal,
+// without editing the stored file or consuming the first visible prose mention.
+func TestGeneratedMentionsPreserveRestatingHeadingRoundTrip(t *testing.T) {
+	for _, testCase := range restatingHeadingCases() {
+		t.Run(testCase.Name, func(t *testing.T) {
+			board := &Board{AllRequests: []*RequestTicket{
+				{RequestId: "REQ-1679", Title: "Referenced title"},
+				{RequestId: "REQ-500", Title: testCase.Title, BodyMarkdown: testCase.Body},
+			}, UserRequests: []*UserRequestTicket{
+				{UserRequestId: "UR-003", Title: testCase.Title, BodyMarkdown: testCase.Body, InputFilePresent: true},
+			}}
+			analysis := analyzeBoardTicketMentions(board)
+			for _, mentions := range [][]generatedTicketMention{
+				analysis.MarkdownData.RequestMentions["REQ-500"],
+				analysis.MarkdownData.UserRequestMentions["UR-003"],
+			} {
+				wantOffset := strings.Index(testCase.Body, "REQ-1679")
+				if testCase.Strip {
+					wantOffset = strings.LastIndex(testCase.Body, "REQ-1679")
+				}
+				if len(mentions) == 0 || !mentions[0].Expand || mentions[0].Offset != utf16LengthOf(testCase.Body[:wantOffset]) {
+					t.Errorf("first annotated occurrence = %+v, want body offset %d (strip=%v)", mentions, wantOffset, testCase.Strip)
+				}
+			}
+			if analysis.MarkdownData.Requests["REQ-500"] != testCase.Body || analysis.MarkdownData.UserRequests["UR-003"] != testCase.Body {
+				t.Fatal("heading suppression changed the original document bytes")
+			}
+			if !reflect.DeepEqual(analysis.RequestCitations["REQ-500"], []string{"REQ-1679"}) {
+				t.Fatal("heading suppression changed citation search")
+			}
+		})
+	}
+	// A title-only citation must remain searchable even with no clipboard entry.
+	board := &Board{AllRequests: []*RequestTicket{
+		{RequestId: "REQ-1679"}, {RequestId: "REQ-500", Title: "REQ-1679", BodyMarkdown: "# REQ-1679\n"},
+	}}
+	analysis := analyzeBoardTicketMentions(board)
+	if len(analysis.MarkdownData.RequestMentions["REQ-500"]) != 0 || !reflect.DeepEqual(analysis.RequestCitations["REQ-500"], []string{"REQ-1679"}) {
+		t.Fatalf("title-only citation lost independence: %+v", analysis)
+	}
+}
+
+type restatingHeadingCase struct {
+	Name, Title, Body string
+	Strip             bool
+}
+
+func restatingHeadingCases() []restatingHeadingCase {
+	return []restatingHeadingCase{
+		{"option immediately after heading", "About REQ-1679", "# About REQ-1679\nRecommended: later REQ-1679.\n", false},
+		{"option after setext heading", "About REQ-1679", "About REQ-1679\n====\nRecommended: later REQ-1679.\n", false},
+		{"option after heading blank", "About REQ-1679", "# About REQ-1679\n\nRecommended: later REQ-1679.\n", true},
+		{"option after heading spaces", "About REQ-1679", "# About REQ-1679  \nRecommended: later REQ-1679.\n", true},
+		{"title matches processed heading", "About REQ-1679\\", "# About REQ-1679\nRecommended: later REQ-1679.\n", true},
+		{"processed heading keeps later reference", "About REQ-1679\\", "# [About][name] REQ-1679\nRecommended: later REQ-1679.\n\n[name]: https://example.test/\n", true},
+		{"omitted html keeps preprocessing state", "About REQ-1679", "<!--\n```\n-->\n\n# About REQ-1679\nRecommended: later REQ-1679.\n", true},
+		{"exact", "About REQ-1679", "# About REQ-1679\n\nLater REQ-1679.\n", true},
+		{"case and spacing", " ABOUT\tREQ-1679 ", "# About  REQ-1679\n\nLater REQ-1679.\n", true},
+		{"formatted and entity", "About & REQ-1679", "# *About* &amp; `REQ-1679`\n\nLater REQ-1679.\n", true},
+		{"escaped punctuation", "About * REQ-1679", "# About \\* REQ-1679\n\nLater REQ-1679.\n", true},
+		{"comment prefix", "About REQ-1679", "<!-- invisible -->\n\n# About REQ-1679\n\nLater REQ-1679.\n", true},
+		{"html prefix omitted", "About REQ-1679", "<div>ignored</div>\n\n# About REQ-1679\n\nLater REQ-1679.\n", true},
+		{"unicode spaces", "About\u00a0REQ-1679\ufeff", "# About\u2003REQ-1679\n\nLater REQ-1679.\n", true},
+		{"unicode dotted I", "i\u0307 REQ-1679", "# İ REQ-1679\n\nLater REQ-1679.\n", true},
+		{"unicode final sigma", "ος REQ-1679", "# ΟΣ REQ-1679\n\nLater REQ-1679.\n", true},
+		{"not JavaScript whitespace", "About REQ-1679", "# About\u0085REQ-1679\n\nLater REQ-1679.\n", false},
+		{"nonmatching", "Different title", "# About REQ-1679\n\nLater REQ-1679.\n", false},
+		{"not first element", "About REQ-1679", "Opening prose.\n\n# About REQ-1679\n\nLater REQ-1679.\n", false},
+		{"h2", "About REQ-1679", "## About REQ-1679\n\nLater REQ-1679.\n", false},
+		{"nested heading", "About REQ-1679", "> # About REQ-1679\n\nLater REQ-1679.\n", false},
+	}
+}
+
+func TestJavaScriptBehaviorHeadingNormalizationAgreesWithGo(t *testing.T) {
+	inputs := []string{" About\tREQ-1679 ", "ABOUT\nREQ-1679", "About\u00a0REQ-1679\ufeff", "About\u0085REQ-1679", "About\u2003REQ-1679", "ÉTAPE REQ-1679", "İ REQ-1679", "ΟΣ REQ-1679", "ΣΟΣ ΣΟΣΑ Σ AΣ\u0301 REQ-1679"}
+	indexHTML := generateLiveSite(t)
+	probe := sliceBalancedBlockAfter(t, indexHTML, "function normalizeHeadingText(") +
+		"\nprocess.stdout.write(JSON.stringify(" + mustMarshalProbeJSON(t, inputs) + ".map(normalizeHeadingText)));"
+	var results []string
+	if err := json.Unmarshal(runJavaScriptBehaviorProbe(t, "heading normalization", probe), &results); err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != len(inputs) {
+		t.Fatalf("normalization answered %d of %d cases", len(results), len(inputs))
+	}
+	for index, input := range inputs {
+		if got := normalizeHeadingText(input); got != results[index] {
+			t.Errorf("heading normalization for %q: Go=%q, JavaScript=%q", input, got, results[index])
+		}
+	}
+}
+
+// Exercise the real Copy handler, save its payload as a REQ file, and rebuild
+// the drawer. The three captured archive records are deliberately not abridged:
+// two already have authored parentheses, and the third changes heading case.
+func TestBrowserBehaviorRestatingHeadingsSurviveCopySaveRebuild(t *testing.T) {
+	lookupBrowserForBehaviorProbe(t)
+	if skipReason := suiteCheckoutSkipReason(liveRepoRoot(t)); skipReason != "" {
+		t.Skip(skipReason)
+	}
+	board := liveBoard(t)
+	targets := map[string]string{"REQ-041": "REQ-034", "REQ-042": "REQ-037", "REQ-085": "REQ-073"}
+	originals := map[string]*RequestTicket{}
+	for _, ticket := range board.AllRequests {
+		if targets[ticket.RequestId] != "" {
+			originals[ticket.RequestId] = ticket
+		}
+	}
+	if len(originals) != len(targets) {
+		t.Fatal("captured archive round-trip fixtures are missing")
+	}
+	startBoard := func(board *Board) *trustedInputBrowserSession {
+		siteDirectory := t.TempDir()
+		if err := generateStaticSite(siteDirectory, board); err != nil {
+			t.Fatal(err)
+		}
+		indexBytes, err := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		page := strings.Replace(string(indexBytes), "<head>", `<head><script>
+window.headingProbeErrors = [];
+addEventListener('error', function(event) { window.headingProbeErrors.push(event.message); });
+addEventListener('unhandledrejection', function(event) { window.headingProbeErrors.push(String(event.reason)); });
+console.warn = console.error = function() { window.headingProbeErrors.push(Array.from(arguments).join(' ')); };
+Object.defineProperty(navigator, 'clipboard', {configurable:true, value:{writeText:function(text){window.headingProbeClipboard=text;return Promise.resolve();}}});
+</script>`, 1)
+		page = strings.Replace(page, "function linkifyDetailBody(", "window.headingProbeLinkify = linkifyDetailBody;\nfunction linkifyDetailBody(", 1)
+		return startTrustedInputBrowserSession(t, "restating heading round trip", siteDirectory, page)
+	}
+	session := startBoard(board)
+	for _, testCase := range restatingHeadingCases() {
+		renderedBody, err := renderMarkdownBodyToHtml(testCase.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var stripped bool
+		session.decodeResult(t, "shared heading comparison", session.evaluateInPage(t, `(function(){
+var root = document.createElement('div');root.innerHTML = `+mustMarshalJSONString(t, renderedBody)+`;
+var first = root.firstElementChild;
+window.headingProbeLinkify(root, `+mustMarshalJSONString(t, testCase.Title)+`);
+return !!first && first.tagName === 'H1' && first.parentNode !== root;
+})()`), &stripped)
+		if stripped != testCase.Strip {
+			t.Fatalf("drawer and Go heading policy diverge for %s: drawer=%v Go=%v", testCase.Name, stripped, testCase.Strip)
+		}
+	}
+	type drawerResult struct {
+		Href, Browser, Title, FirstElement, LinkPrefix string
+		Errors                                         []string
+	}
+	readDrawer := func(session *trustedInputBrowserSession, id, target string) drawerResult {
+		session.evaluateInPage(t, `(function(){document.querySelector('[data-view-target="testing"]').click();return true;})()`)
+		selector := `.req-card[data-detail-id="` + id + `"]`
+		session.waitForPageCondition(t, "captured record card", `document.querySelector(`+mustMarshalJSONString(t, selector)+`) !== null`)
+		session.evaluateInPage(t, `(function(){document.querySelector(`+mustMarshalJSONString(t, selector)+`).click();return true;})()`)
+		session.waitForPageCondition(t, "captured record drawer", `document.getElementById('detail-id').textContent === `+mustMarshalJSONString(t, id))
+		var result drawerResult
+		session.decodeResult(t, "restating heading drawer", session.evaluateInPage(t, `(function(){
+var body = document.getElementById('detail-body');
+var link = body.querySelector('a.ticket-link[data-detail-id="`+target+`"]');
+var title = link && link.querySelector('.ticket-link-title');
+var prefix = document.createRange();
+if (link) { prefix.setStart(link.parentNode, 0); prefix.setEndBefore(link); }
+return {href:location.href,browser:navigator.userAgent,firstElement:body.firstElementChild && body.firstElementChild.tagName,
+title:title && title.textContent,linkPrefix:link && prefix.toString(),errors:window.headingProbeErrors};
+})()`), &result)
+		if result.FirstElement == "H1" || result.Title == "" || len(result.Errors) != 0 {
+			t.Fatalf("%s drawer did not strip the title and expand visible prose: %+v", id, result)
+		}
+		return result
+	}
+	savedDirectory := t.TempDir()
+	before := map[string]drawerResult{}
+	for _, id := range []string{"REQ-041", "REQ-042", "REQ-085"} {
+		before[id] = readDrawer(session, id, targets[id])
+		session.evaluateInPage(t, `(function(){window.headingProbeClipboard=null;document.getElementById('detail-copy').click();return true;})()`)
+		session.waitForPageCondition(t, "actual Copy payload", `typeof window.headingProbeClipboard === 'string'`)
+		var copied string
+		session.decodeResult(t, "copied record", session.evaluateInPage(t, `window.headingProbeClipboard`), &copied)
+		original := originals[id]
+		_, copiedBody, _, _ := splitFrontmatter(copied)
+		originalHeading := strings.SplitN(strings.TrimSpace(original.BodyMarkdown), "\n", 2)[0]
+		if !strings.HasPrefix(strings.TrimSpace(copiedBody), originalHeading+"\n") {
+			t.Fatalf("%s Copy changed the restating H1: %s", id, strings.SplitN(strings.TrimSpace(copiedBody), "\n", 2)[0])
+		}
+		// Read the title from the actual expanded drawer span, not from the
+		// existing author parentheses. It must be inserted after the same first
+		// visible prose occurrence, not in the preserved heading above it.
+		wantProse := before[id].LinkPrefix + targets[id] + " (" + before[id].Title + ")"
+		if !strings.Contains(copiedBody, wantProse) {
+			t.Fatalf("%s paste and drawer expanded different prose occurrences; missing %q", id, wantProse)
+		}
+		savedPath := filepath.Join(savedDirectory, id+".md")
+		if err := os.WriteFile(savedPath, []byte(copied), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		savedTicket, err := parseRequestTicket(savedPath, "archive")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if savedTicket.Title != original.Title || savedTicket.FrontmatterMarkdown != original.FrontmatterMarkdown {
+			t.Fatalf("%s Copy no longer round-trips its title/frontmatter", id)
+		}
+		*original = *savedTicket
+	}
+	session.closeBrowserSession()
+	rebuilt := startBoard(board)
+	for _, id := range []string{"REQ-041", "REQ-042", "REQ-085"} {
+		after := readDrawer(rebuilt, id, targets[id])
+		if after.Title != before[id].Title || after.LinkPrefix != before[id].LinkPrefix {
+			t.Fatalf("%s rebuilt drawer changed the first annotated occurrence: before=%+v after=%+v", id, before[id], after)
+		}
+		t.Logf("%s copy/save/rebuild: %+v", id, after)
+	}
+}
+
 // Search must see references even where Copy deliberately leaves authored text
 // alone. Unique targets per surface make a dropped surface fail independently.
 func citationSearchFixtureBoard() *Board {
@@ -85,7 +302,7 @@ func TestGeneratedCitationIndexIncludesResolvedBodyAndFrontmatterReferences(t *t
 		"dependencies: [REQ-500]\n",
 		"depends_on: REQ-500\ndependencies: [REQ-501]\n",
 	} {
-		analysis := analyzeDocumentTicketMentions("---\n"+frontmatter+"---\n", newCitationFixtureResolver())
+		analysis := analyzeDocumentTicketMentions("---\n"+frontmatter+"---\n", "", newCitationFixtureResolver())
 		if !reflect.DeepEqual(analysis.CitedTicketIds, []string{"REQ-500"}) {
 			t.Errorf("dependency citation semantics diverged for %q: %v", frontmatter, analysis.CitedTicketIds)
 		}

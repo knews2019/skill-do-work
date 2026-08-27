@@ -879,7 +879,7 @@ func analyzeBoardTicketMentions(board *Board) boardTicketAnalysis {
 	for _, ticket := range board.AllRequests {
 		requestDocument := ticket.FrontmatterMarkdown + ticket.BodyMarkdown
 		markdownData.Requests[ticket.RequestId] = requestDocument
-		documentAnalysis := analyzeDocumentTicketMentions(requestDocument, mentionResolver)
+		documentAnalysis := analyzeDocumentTicketMentions(requestDocument, ticket.Title, mentionResolver)
 		analysis.RequestCitations[ticket.RequestId] = documentAnalysis.CitedTicketIds
 		if ticketMentions := documentAnalysis.Mentions; len(ticketMentions) > 0 {
 			markdownData.RequestMentions[ticket.RequestId] = ticketMentions
@@ -896,7 +896,7 @@ func analyzeBoardTicketMentions(board *Board) boardTicketAnalysis {
 		}
 		userRequestDocument := userRequest.FrontmatterMarkdown + userRequest.BodyMarkdown
 		markdownData.UserRequests[userRequest.UserRequestId] = userRequestDocument
-		documentAnalysis := analyzeDocumentTicketMentions(userRequestDocument, mentionResolver)
+		documentAnalysis := analyzeDocumentTicketMentions(userRequestDocument, userRequest.Title, mentionResolver)
 		analysis.UserRequestCitations[userRequest.UserRequestId] = documentAnalysis.CitedTicketIds
 		if ticketMentions := documentAnalysis.Mentions; len(ticketMentions) > 0 {
 			markdownData.UserRequestMentions[userRequest.UserRequestId] = ticketMentions

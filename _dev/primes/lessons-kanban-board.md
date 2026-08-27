@@ -57,3 +57,5 @@ The work pipeline appends here on archive (`../../skills/do-work/actions/work.md
 - [REQ-376: a completion-looking CSS class also dresses nonterminal cards; scope by status and measure text on the actual opaque card as well as the page](../../do-work/archive/REQ-376-raise-the-done-lines-faint-text-to-readable-contrast.md#lessons-learned)
 
 - [REQ-381: Keep citation sets separate from annotation exclusions while sharing one raw analysis; preserve exact-ID precedence before case-folded alias lookup.](../../do-work/archive/UR-076/REQ-381-index-cited-ticket-ids-and-filter-on-them.md#lessons-learned)
+
+- [REQ-386: Heading parity needs rendered text, full Unicode casing, and the renderer preprocessor context; preserve raw offsets even when a transformed heading fragment needs parsing.](../../do-work/archive/REQ-386-agree-on-the-restating-h1-between-drawer-and-paste.md#lessons-learned)
