@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.244.7 — Allow Worktree Overlap Without Queue Warnings (2026-08-28)
+
+Shared files no longer make an otherwise healthy queue fail verification. Separate worktrees may overlap; the board's informational badge and serial integration checks remain unchanged.
+
+- Removed `ungated-write-set-overlap` and its advice to add dependencies just for shared files. Existing consumer dependencies are left untouched.
+- Capture now reconciles explicitly requested ordering with `depends_on` before reporting completion, including ordering copied into batch constraints or builder guidance. Failed or cancelled predecessors still block the chain, and direct REQ targeting still overrides dependencies.
+
 ## 0.244.6 — Restore Browser Verification on Current Chromium (2026-08-27)
 
 The browser suite now reads completed results through its existing DevTools connection, avoiding a Chrome shutdown stall and preserving literal clipboard text. Chrome 141 is deprecated; Timeline capture checks and mutation guards remain unchanged.

@@ -249,10 +249,11 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 **Complex mode additionally:**
 - Create `assets/` subfolder in the UR folder
 - Extract EVERY requirement into the appropriate REQ — do not summarize
-- Set `related` and `batch` fields across the batch; populate `depends_on` when the sliced REQs depend on each other, and `write_set` when a slice already names the files it writes — both per the **Complex REQ (additional sections)** template's Populating `depends_on` / Populating `write_set` / Slicing convention guidance in `actions/capture-reference.md`
+- Set `related` and `batch` fields across the batch; populate `depends_on` for prerequisites or explicitly requested serial ordering, and `write_set` when a slice already names the files it writes — both per the **Complex REQ (additional sections)** template's Populating `depends_on` / Populating `write_set` / Slicing convention guidance in `actions/capture-reference.md`
 - Add Batch Constraints to the UR (cross-cutting concerns, scope cues, sequencing)
 - Duplicate batch-level constraints into each relevant REQ's Constraints section
-- Re-read the original input to verify nothing was dropped — especially UX/interaction details and intent signals (certainty level, scope cues)
+
+**Final reread (all captures).** Re-read the original input to verify nothing was dropped — especially UX/interaction details and intent signals (certainty level, scope cues). For every REQ this invocation created or modified, reconcile stated sequencing with frontmatter per `actions/capture-reference.md` → **Populating `depends_on`**, including constraints copied into prose. Re-read existing fields before editing; change only capture-editable requests within this invocation, never claimed, archived, or unrelated queued REQs. Resolve an ambiguous or conflicting order through Step 3, or record the unresolved question and report the limitation at Step 6 instead of claiming the sequencing is enforced.
 
 ### Step 6: Report Back
 
