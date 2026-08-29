@@ -1,6 +1,7 @@
 package gittransaction
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -293,8 +294,16 @@ func targetIsDirty(ctx context.Context, repositoryRoot, path string) (bool, erro
 	return len(output) > 0, nil
 }
 
-func indexIsEmpty(ctx context.Context, repositoryRoot string) (bool, error) {
-	command := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "diff", "--cached", "--quiet", "--exit-code")
+// indexIsEmpty answers whether anything is staged. With no pathspecs it asks about the
+// whole index; with pathspecs it asks only about those paths, which is what a post-rollback
+// check needs — the user's unrelated staged work is dirt this transaction must leave alone,
+// not evidence that the rollback failed.
+func indexIsEmpty(ctx context.Context, repositoryRoot string, pathspecs ...string) (bool, error) {
+	commandArgs := append([]string{
+		"-C", repositoryRoot, "--literal-pathspecs",
+		"diff", "--cached", "--quiet", "--exit-code", "--",
+	}, pathspecs...)
+	command := exec.CommandContext(ctx, "git", commandArgs...)
 	err := command.Run()
 	if err == nil {
 		return true, nil
@@ -355,10 +364,14 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 			rollback.Actions = append(rollback.Actions, "removed created target "+path)
 		}
 	}
-	if empty, err := indexIsEmpty(ctx, repositoryRoot); err != nil {
+	rolledBackPaths := make([]string, 0, len(states))
+	for _, state := range states {
+		rolledBackPaths = append(rolledBackPaths, state.path)
+	}
+	if empty, err := indexIsEmpty(ctx, repositoryRoot, rolledBackPaths...); err != nil {
 		rollback.Errors = append(rollback.Errors, err.Error())
 	} else if !empty {
-		rollback.Errors = append(rollback.Errors, "Git index is not empty after rollback")
+		rollback.Errors = append(rollback.Errors, "the declared target paths are still staged after rollback")
 	}
 	result.Rollback = rollback
 	if len(rollback.Errors) > 0 {
@@ -390,14 +403,21 @@ func fail(result TransactionResult, exitCode int, kind FailureKind, reason strin
 	return result
 }
 
+// runGit returns only stdout as the command's answer. git writes warnings — a malformed
+// .gitattributes line, for one — to stderr while the porcelain answer stays on stdout, so
+// folding the two streams together makes a warning read as content and a clean target
+// read as dirty. stderr is kept for the error text and nothing else.
 func runGit(ctx context.Context, repositoryRoot string, args ...string) (string, error) {
 	commandArgs := append([]string{"-C", repositoryRoot, "--literal-pathspecs"}, args...)
 	command := exec.CommandContext(ctx, "git", commandArgs...)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(output)))
+	var standardOutput bytes.Buffer
+	var standardError bytes.Buffer
+	command.Stdout = &standardOutput
+	command.Stderr = &standardError
+	if err := command.Run(); err != nil {
+		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(standardError.String()))
 	}
-	return string(output), nil
+	return standardOutput.String(), nil
 }
 
 func splitNUL(value string) []string {

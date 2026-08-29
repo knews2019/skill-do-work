@@ -194,8 +194,70 @@ func TestCommitContainsOnlyChangedTargetsAndPostCommitFailureReportsRevert(t *te
 	}
 }
 
+// A malformed .gitattributes line makes every later git invocation print a warning on
+// stderr while stdout stays empty. Folding the two streams together made that warning
+// read as porcelain content, so a clean target was refused as dirty.
+func TestGitStderrWarningIsNotReadAsTargetDirt(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "target.txt", "initial\n")
+	writeFile(t, repositoryRoot, ".gitattributes", "*.txt [attr]bogus\n")
+	commitAll(t, repositoryRoot, "initial")
+	called := false
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot,
+		TargetPaths:    []string{"target.txt"},
+	}, func(recorder *MutationRecorder) error {
+		called = true
+		if err := recorder.RecordTouched("target.txt"); err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(repositoryRoot, "target.txt"), []byte("tool change\n"), 0o644)
+	})
+	if !called || result.ExitCode != 0 || result.Failure != nil {
+		t.Fatalf("git stderr warning was treated as target dirt: result = %#v, called = %v", result, called)
+	}
+	if got := readFile(t, repositoryRoot, "target.txt"); got != "tool change\n" {
+		t.Fatalf("target after mutation = %q", got)
+	}
+}
+
+// The user's own staged work is unrelated dirt, which the transaction contract allows.
+// Checking the whole index after a rollback turned a complete rollback into a
+// committed-state risk purely because someone else had a file staged.
+func TestUnrelatedStagedWorkDoesNotBreakRollback(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "tracked.txt", "initial\n")
+	commitAll(t, repositoryRoot, "initial")
+	writeFile(t, repositoryRoot, "unrelated.txt", "staged by the user\n")
+	runFixtureGit(t, repositoryRoot, "add", "unrelated.txt")
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot,
+		TargetPaths:    []string{"tracked.txt"},
+	}, func(recorder *MutationRecorder) error {
+		if err := recorder.RecordTouched("tracked.txt"); err != nil {
+			return err
+		}
+		writeFile(t, repositoryRoot, "tracked.txt", "mutated\n")
+		return errors.New("forced mutation failure")
+	})
+	if result.ExitCode != 3 || result.Rollback.Status != RollbackSucceeded {
+		t.Fatalf("unrelated staged work broke a complete rollback: result = %#v", result)
+	}
+	if got := readFile(t, repositoryRoot, "tracked.txt"); got != "initial\n" {
+		t.Fatalf("tracked file after rollback = %q", got)
+	}
+	if got := readFile(t, repositoryRoot, "unrelated.txt"); got != "staged by the user\n" {
+		t.Fatalf("unrelated staged file changed: %q", got)
+	}
+}
+
 func newRepository(t *testing.T) string {
 	t.Helper()
+	// Fixtures measure exactly what git writes to each stream, so an ambient global or
+	// system config must not be able to add or suppress a warning.
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+	t.Setenv("GIT_TERMINAL_PROMPT", "0")
 	repositoryRoot := t.TempDir()
 	runFixtureGit(t, repositoryRoot, "init", "-q")
 	runFixtureGit(t, repositoryRoot, "config", "user.name", "Do Work Test")
