@@ -1,8 +1,22 @@
 ---
 id: REQ-406
 title: 'Create the shared do-work-cli runtime and Git transaction foundation'
-status: pending
+status: claimed
 created_at: 2026-08-29T20:28:26Z
+route: C
+estimate:
+  p50_active_minutes: 70
+  confidence: low
+  calculated_at: 2026-08-29T21:37:00Z
+  basis:
+    - Route C
+    - 11-file write set
+    - 9 new files
+    - 3 subsystems involved
+    - 7 acceptance criteria
+    - cross-route regression gates
+    - full-suite verification
+claimed_at: 2026-08-29T21:35:39Z
 user_request: UR-081
 domain: general
 prime_files: [_dev/primes/prime-shell-commands.md]
@@ -80,3 +94,13 @@ See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
 
 ---
 *Source: UR-081 (Replace LLM bookkeeping and shipped utility logic with a Go command platform)*
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** A new suite-wide Go module with a typed result model, exit-code contract, on-demand build launcher, and a Git transaction layer — architectural work every later REQ in the batch consumes. A partial foundation is already preserved in commit `329c55a9` and must be inspected rather than recreated.
+
+**Planning:** Required

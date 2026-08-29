@@ -1,8 +1,21 @@
 ---
 id: REQ-390
 title: 'Replace the timeline''s Day/Week/Month periods with trailing windows: last day, last 7/30/90/all days'
-status: pending
+status: claimed
 created_at: 2026-08-27T14:15:08Z
+route: C
+estimate:
+  p50_active_minutes: 45
+  confidence: medium
+  calculated_at: 2026-08-29T21:37:00Z
+  basis:
+    - Route C
+    - 5-file write set
+    - 2 subsystems involved
+    - 4 acceptance criteria
+    - browser evidence
+    - cross-route regression gates
+claimed_at: 2026-08-29T21:35:39Z
 user_request: UR-079
 domain: frontend
 prime_files: ['_dev/primes/prime-kanban-board.md']
@@ -42,3 +55,13 @@ On the board's Timeline view, replace the period toolbar's calendar-period butto
 
 ---
 *Source: instead of day/week/month let's have last day, last 7/30/90/all days*
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** The control set change spans four surfaces — the toolbar markup and ARIA/hint prose in `template.html`, the window maths in `board-timeline.js`, the Go browser probes that click `data-timeline-period`, and the state-restore path — and the REQ hands the builder two open design calls (what the arrows step by, how panning interacts with now-anchored windows).
+
+**Planning:** Required

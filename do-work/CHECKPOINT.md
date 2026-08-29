@@ -29,7 +29,8 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-None.
+- REQ-390: Replace the timeline's Day/Week/Month periods with trailing windows — claimed 2026-08-29T21:35:39Z — writer: vm:/home/user/skill-do-work
+- REQ-406: Create the shared do-work-cli runtime and Git transaction foundation — claimed 2026-08-29T21:35:39Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued
 
