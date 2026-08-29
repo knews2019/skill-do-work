@@ -1,3 +1,11 @@
+# REQ-406 Builder Brief
+
+Worktree: `/home/user/skill-do-work-worktrees/worktree-agent-REQ-406-create-do-work-cli-foundation`
+Branch (operative name): `worktree-agent-REQ-406-create-do-work-cli-foundation`
+Hand-back file (absolute, main tree): `/home/user/skill-do-work/do-work/runs/work-2026-08-29-213539/REQ-406-handback.md`
+
+---
+
 ---
 id: REQ-406
 title: 'Create the shared do-work-cli runtime and Git transaction foundation'

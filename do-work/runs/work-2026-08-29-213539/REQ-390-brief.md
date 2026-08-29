@@ -1,3 +1,11 @@
+# REQ-390 Builder Brief
+
+Worktree: `/home/user/skill-do-work-worktrees/worktree-agent-REQ-390-timeline-trailing-window-periods`
+Branch (operative name): `worktree-agent-REQ-390-timeline-trailing-window-periods`
+Hand-back file (absolute, main tree): `/home/user/skill-do-work/do-work/runs/work-2026-08-29-213539/REQ-390-handback.md`
+
+---
+
 ---
 id: REQ-390
 title: 'Replace the timeline''s Day/Week/Month periods with trailing windows: last day, last 7/30/90/all days'
