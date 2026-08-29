@@ -1768,6 +1768,204 @@ window.addEventListener("load", function () {
 	}
 }
 
+// WHAT THE PERIOD TOOLBAR OFFERS, and where one of its chips lands.
+//
+// The controls used to be calendar periods — Day, Week, Month — each setting the
+// window to one calendar day, week or month around now or around wherever the
+// reader had panned to. There was no one-click way to see the trailing last 7, 30
+// or 90 days, or the whole recorded range, which is what a reader looking at a
+// queue actually asks for.
+//
+// Driven in a real engine because the control set is a claim about the shipped
+// markup and the window is a claim about what the READER sees: the assertion
+// below reads #timeline-range-readout, the same text on screen, rather than any
+// internal state.
+func TestBrowserBehaviorTimelineTrailingWindowsEndAtNow(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+// The same one parser the landing probe uses, for the same reason: a span and an
+// endpoint must never be read from two different places.
+function readoutWindow() {
+  var text = document.getElementById("timeline-range-readout").textContent || "";
+  var match = text.match(/^(\S+ \S+) UTC → (\S+ \S+) UTC$/);
+  if (!match) { return null; }
+  var startMs = Date.parse(match[1].replace(" ", "T") + "Z");
+  var endMs = Date.parse(match[2].replace(" ", "T") + "Z");
+  if (isNaN(startMs) || isNaN(endMs)) { return null; }
+  return { startMs: startMs, endMs: endMs };
+}
+// The control set as the DOM holds it, in DOM order — value, rendered label, and
+// whether it is currently lit.
+function chipInventory() {
+  return Array.prototype.map.call(
+    document.querySelectorAll("#view-timeline [data-timeline-period]"),
+    function (chip) {
+      return {
+        value: chip.getAttribute("data-timeline-period"),
+        label: (chip.textContent || "").trim(),
+        pressed: chip.getAttribute("aria-pressed") === "true"
+      };
+    });
+}
+function windowState(label) {
+  var readWindow = readoutWindow();
+  return {
+    label: label,
+    href: location.href,
+    readout: document.getElementById("timeline-range-readout").textContent,
+    startMs: readWindow ? readWindow.startMs : null,
+    endMs: readWindow ? readWindow.endMs : null,
+    chips: chipInventory()
+  };
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      probe.boardNowMs = Date.parse(((window.queueKanbanBoardData || {}).timeline || {}).now);
+      // The view opens on the payload's whole range, which is the premise the Go
+      // side checks the 30-day case against.
+      probe.opened = windowState("opened");
+      var thirtyChip = document.querySelector('#view-timeline [data-timeline-period="30"]');
+      if (thirtyChip) { thirtyChip.click(); }
+      probe.pressedThirty = !!thirtyChip;
+      probe.afterThirty = windowState("afterThirty");
+      document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+      document.title = "READY";
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the trailing-window probe before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline trailing windows", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+
+	type timelineChip struct {
+		Value   string `json:"value"`
+		Label   string `json:"label"`
+		Pressed bool   `json:"pressed"`
+	}
+	type windowState struct {
+		Label   string         `json:"label"`
+		Href    string         `json:"href"`
+		Readout string         `json:"readout"`
+		StartMs *float64       `json:"startMs"`
+		EndMs   *float64       `json:"endMs"`
+		Chips   []timelineChip `json:"chips"`
+	}
+	var trailingResult struct {
+		BoardNowMs    float64     `json:"boardNowMs"`
+		Opened        windowState `json:"opened"`
+		PressedThirty bool        `json:"pressedThirty"`
+		AfterThirty   windowState `json:"afterThirty"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &trailingResult); decodeError != nil {
+		t.Fatalf("decode timeline trailing-window behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	for _, state := range []windowState{trailingResult.Opened, trailingResult.AfterThirty} {
+		if !strings.HasSuffix(state.Href, "/probe.html") {
+			t.Fatalf("the %s state was measured on %q, not the probe page", state.Label, state.Href)
+		}
+		if state.StartMs == nil || state.EndMs == nil {
+			t.Fatalf("the %s state's readout %q did not parse as a window", state.Label, state.Readout)
+		}
+	}
+
+	// (1) THE CONTROL SET. Exactly five trailing windows, in this order, with these
+	// labels — the wording the filter dropdown already uses for the same idea.
+	wantChips := []timelineChip{
+		{Value: "1", Label: "Last day"},
+		{Value: "7", Label: "Last 7 days"},
+		{Value: "30", Label: "Last 30 days"},
+		{Value: "90", Label: "Last 90 days"},
+		{Value: "all", Label: "All days"},
+	}
+	if len(trailingResult.Opened.Chips) != len(wantChips) {
+		t.Fatalf("the period toolbar offers %d controls (%+v), want the five trailing windows %+v",
+			len(trailingResult.Opened.Chips), trailingResult.Opened.Chips, wantChips)
+	}
+	for chipIndex, wantChip := range wantChips {
+		gotChip := trailingResult.Opened.Chips[chipIndex]
+		if gotChip.Value != wantChip.Value || gotChip.Label != wantChip.Label {
+			t.Errorf("period control %d is %q labelled %q, want %q labelled %q",
+				chipIndex, gotChip.Value, gotChip.Label, wantChip.Value, wantChip.Label)
+		}
+	}
+	// And the calendar vocabulary is gone rather than merely outnumbered.
+	for _, gotChip := range trailingResult.Opened.Chips {
+		if gotChip.Value == "day" || gotChip.Value == "week" || gotChip.Value == "month" {
+			t.Errorf("the period toolbar still carries the calendar control %q labelled %q",
+				gotChip.Value, gotChip.Label)
+		}
+	}
+
+	// The readout is minute-truncated, so an instant it names can be up to a minute
+	// earlier than the one the chart is drawn at.
+	const readoutTruncationMs = 60000.0
+	const thirtyDaysMs = 30 * 24 * 3600000.0
+
+	// SETUP, ASSERTED. Every number below is about the 30-day chip, so the press has
+	// to have happened, the board's now has to be readable, and the board has to be
+	// old enough and open enough for a 30-day window ending at now to exist inside
+	// its range at all.
+	if !trailingResult.PressedThirty {
+		t.Fatal("the generated board has no [data-timeline-period=\"30\"] control to press")
+	}
+	if trailingResult.BoardNowMs <= 0 {
+		t.Fatalf("the payload's timeline.now did not parse (%v), so nothing below is measuring a "+
+			"window that ends at now", trailingResult.BoardNowMs)
+	}
+	if *trailingResult.Opened.EndMs+readoutTruncationMs < trailingResult.BoardNowMs {
+		t.Fatalf("the board's range ends at %s, before its own now; a trailing window cannot end at "+
+			"now on this board and this case proves nothing", trailingResult.Opened.Readout)
+	}
+	if *trailingResult.Opened.StartMs > trailingResult.BoardNowMs-thirtyDaysMs {
+		t.Fatalf("the board's range starts at %s, less than thirty days before its now; the 30-day "+
+			"window would be cut short and the span assertion below would prove nothing",
+			trailingResult.Opened.Readout)
+	}
+
+	// (2) The window the chip lands on ENDS AT NOW and spans the thirty days it names.
+	nowGapMs := trailingResult.BoardNowMs - *trailingResult.AfterThirty.EndMs
+	if nowGapMs < 0 || nowGapMs >= readoutTruncationMs {
+		t.Errorf("Last 30 days ended the window at %s, %.0f ms from the board's own now; a trailing "+
+			"window ends at now", trailingResult.AfterThirty.Readout, nowGapMs)
+	}
+	spanMs := *trailingResult.AfterThirty.EndMs - *trailingResult.AfterThirty.StartMs
+	if spanMs < thirtyDaysMs-readoutTruncationMs || spanMs > thirtyDaysMs+readoutTruncationMs {
+		t.Errorf("Last 30 days produced a %.2f-day window (%s), want thirty days",
+			spanMs/(24*3600000.0), trailingResult.AfterThirty.Readout)
+	}
+
+	// (3) And the chip that was pressed is the one that lights, which is what makes
+	// the toolbar describe the window the chart is actually drawn at.
+	litChips := []string{}
+	for _, gotChip := range trailingResult.AfterThirty.Chips {
+		if gotChip.Pressed {
+			litChips = append(litChips, gotChip.Value)
+		}
+	}
+	if !reflect.DeepEqual(litChips, []string{"30"}) {
+		t.Errorf("after pressing Last 30 days the lit controls are %v, want exactly the 30 chip "+
+			"(window %s)", litChips, trailingResult.AfterThirty.Readout)
+	}
+}
+
 // Where the Now and Fit all buttons LAND, and what the toolbar says about itself
 // once they have.
 //

@@ -6952,6 +6952,177 @@ func rendererBracketDeclaration(t *testing.T, assetPath string, constantName str
 	return ""
 }
 
+// The period toolbar's windows TRAIL NOW instead of naming a calendar period, and
+// what can be wrong about a trailing window is invisible in a screenshot: the bars
+// still look like bars while the window quietly no longer ends where it claims to.
+//
+// Four properties, each a defect this arithmetic can have:
+//
+//	a chip's window ends at NOW and spans exactly what it asked for;
+//	a chip wider than the archive is CUT SHORT at the range start and STILL ends
+//	  at now — the settle preserves a WIDTH and slides, so an unclamped candidate
+//	  gets pinned to the range start and dragged forward off now;
+//	All days is the recorded range exactly, so nothing on the chart is unreachable
+//	  from the button that claims to show all of it;
+//	the arrows move one screenful and are inverses of one another.
+//
+// It drives the shipped functions rather than reimplementing them (REQ-305), and
+// reads the renderer's own constants rather than restating them (REQ-322).
+func TestJavaScriptBehaviorTimelineTrailingWindowsEndAtNow(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineZoomedWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePannedWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineTrailingWindow(") + `
+// A board shaped like this repo's own: five months of archive with the now-line
+// well inside it, so a 7-day window is nowhere near either bound.
+var boundStart = Date.UTC(2026, 3, 7);           // 7 Apr 2026
+var boundEnd = Date.UTC(2026, 8, 2);             // 2 Sep 2026
+var nowMs = Date.UTC(2026, 7, 18, 10, 30);       // 18 Aug 2026 10:30 UTC
+
+// And a board a few days old — what anyone who has just installed do-work is
+// looking at, and the shape that catches a candidate handed over unclamped.
+var shortBoundStart = Date.UTC(2026, 7, 16);     // 16 Aug 2026
+var shortBoundEnd = Date.UTC(2026, 7, 19);       // 19 Aug 2026, past now: the forecast
+var shortNowMs = Date.UTC(2026, 7, 18, 10, 30);
+
+var lastSeven = timelineTrailingWindow("7", nowMs, boundStart, boundEnd);
+// Pressing the same chip again must not move the window it just produced.
+var lastSevenAgain = timelineTrailingWindow("7", nowMs, boundStart, boundEnd);
+var lastNinetyOnShortArchive = timelineTrailingWindow("90", shortNowMs, shortBoundStart, shortBoundEnd);
+var allDays = timelineTrailingWindow("all", nowMs, boundStart, boundEnd);
+
+// One screenful either way, from a window clear of both bounds so the pan is
+// free to be an inverse pair rather than clamping at an edge.
+var readersWindow = { windowStartMs: Date.UTC(2026, 5, 1), windowEndMs: Date.UTC(2026, 5, 8) };
+var steppedForward = timelinePannedWindow(
+  readersWindow.windowStartMs, readersWindow.windowEndMs, 1, boundStart, boundEnd);
+var steppedBack = timelinePannedWindow(
+  steppedForward.windowStartMs, steppedForward.windowEndMs, -1, boundStart, boundEnd);
+
+process.stdout.write(JSON.stringify({
+  nowMs: nowMs,
+  dayMs: TIMELINE_DAY_MS,
+  minSpanMs: TIMELINE_MIN_SPAN_MS,
+  boundStartMs: boundStart,
+  boundEndMs: boundEnd,
+
+  lastSevenStartMs: lastSeven.windowStartMs,
+  lastSevenEndMs: lastSeven.windowEndMs,
+  lastSevenSpanMs: lastSeven.windowEndMs - lastSeven.windowStartMs,
+  lastSevenIsIdempotent:
+    lastSevenAgain.windowStartMs === lastSeven.windowStartMs &&
+    lastSevenAgain.windowEndMs === lastSeven.windowEndMs,
+
+  shortNowMs: shortNowMs,
+  shortBoundStartMs: shortBoundStart,
+  shortNinetyStartMs: lastNinetyOnShortArchive.windowStartMs,
+  shortNinetyEndMs: lastNinetyOnShortArchive.windowEndMs,
+
+  allStartMs: allDays.windowStartMs,
+  allEndMs: allDays.windowEndMs,
+
+  readersStartMs: readersWindow.windowStartMs,
+  readersSpanMs: readersWindow.windowEndMs - readersWindow.windowStartMs,
+  steppedForwardStartMs: steppedForward.windowStartMs,
+  steppedForwardSpanMs: steppedForward.windowEndMs - steppedForward.windowStartMs,
+  steppedBackStartMs: steppedBack.windowStartMs,
+  steppedBackEndMs: steppedBack.windowEndMs
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline trailing windows", javascriptProbe)
+	var trailingResult struct {
+		NowMs        float64 `json:"nowMs"`
+		DayMs        float64 `json:"dayMs"`
+		MinSpanMs    float64 `json:"minSpanMs"`
+		BoundStartMs float64 `json:"boundStartMs"`
+		BoundEndMs   float64 `json:"boundEndMs"`
+
+		LastSevenStartMs      float64 `json:"lastSevenStartMs"`
+		LastSevenEndMs        float64 `json:"lastSevenEndMs"`
+		LastSevenSpanMs       float64 `json:"lastSevenSpanMs"`
+		LastSevenIsIdempotent bool    `json:"lastSevenIsIdempotent"`
+
+		ShortNowMs         float64 `json:"shortNowMs"`
+		ShortBoundStartMs  float64 `json:"shortBoundStartMs"`
+		ShortNinetyStartMs float64 `json:"shortNinetyStartMs"`
+		ShortNinetyEndMs   float64 `json:"shortNinetyEndMs"`
+
+		AllStartMs float64 `json:"allStartMs"`
+		AllEndMs   float64 `json:"allEndMs"`
+
+		ReadersStartMs        float64 `json:"readersStartMs"`
+		ReadersSpanMs         float64 `json:"readersSpanMs"`
+		SteppedForwardStartMs float64 `json:"steppedForwardStartMs"`
+		SteppedForwardSpanMs  float64 `json:"steppedForwardSpanMs"`
+		SteppedBackStartMs    float64 `json:"steppedBackStartMs"`
+		SteppedBackEndMs      float64 `json:"steppedBackEndMs"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &trailingResult); decodeError != nil {
+		t.Fatalf("decode timeline trailing-window behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	utcOf := func(epochMs float64) string {
+		return time.UnixMilli(int64(epochMs)).UTC().Format(time.RFC3339)
+	}
+
+	// (1) A chip ends the window at NOW and gives the span it names. "Seven days
+	// long" alone would pass for a window seven days in the wrong place.
+	if trailingResult.LastSevenEndMs != trailingResult.NowMs {
+		t.Fatalf("the Last 7 days window ends at %s, want the board's now %s",
+			utcOf(trailingResult.LastSevenEndMs), utcOf(trailingResult.NowMs))
+	}
+	if trailingResult.LastSevenSpanMs != 7*trailingResult.DayMs {
+		t.Fatalf("the Last 7 days window spans %.0f ms (%s → %s), want exactly seven days",
+			trailingResult.LastSevenSpanMs, utcOf(trailingResult.LastSevenStartMs),
+			utcOf(trailingResult.LastSevenEndMs))
+	}
+	if !trailingResult.LastSevenIsIdempotent {
+		t.Errorf("pressing the same chip twice moved the window away from %s → %s",
+			utcOf(trailingResult.LastSevenStartMs), utcOf(trailingResult.LastSevenEndMs))
+	}
+
+	// (2) THE SLIDE TRAP. A window wider than the archive is CUT SHORT at the range
+	// start; handing the candidate to the settle unclamped pins the start to the
+	// bound and drags the end forward to keep the width, so the window stops ending
+	// at now — the one thing every chip on this toolbar promises.
+	if trailingResult.ShortNinetyStartMs != trailingResult.ShortBoundStartMs {
+		t.Errorf("Last 90 days on a three-day archive starts at %s, want the range start %s",
+			utcOf(trailingResult.ShortNinetyStartMs), utcOf(trailingResult.ShortBoundStartMs))
+	}
+	if trailingResult.ShortNinetyEndMs != trailingResult.ShortNowMs {
+		t.Errorf("Last 90 days on a three-day archive ends at %s, want now %s; the settle preserves "+
+			"a width and slides, so the candidate has to be clamped into the bounds before it",
+			utcOf(trailingResult.ShortNinetyEndMs), utcOf(trailingResult.ShortNowMs))
+	}
+
+	// (3) All days is the whole recorded range, so nothing drawn is out of reach of
+	// the button that says it shows all of it.
+	if trailingResult.AllStartMs != trailingResult.BoundStartMs ||
+		trailingResult.AllEndMs != trailingResult.BoundEndMs {
+		t.Errorf("All days spans %s → %s, want the recorded range %s → %s",
+			utcOf(trailingResult.AllStartMs), utcOf(trailingResult.AllEndMs),
+			utcOf(trailingResult.BoundStartMs), utcOf(trailingResult.BoundEndMs))
+	}
+
+	// (4) The arrows move one screenful, and forward-then-back is the reader's undo.
+	if trailingResult.SteppedForwardStartMs-trailingResult.ReadersStartMs != trailingResult.ReadersSpanMs {
+		t.Errorf("one step forward moved the window %.0f ms, want its own %.0f ms span",
+			trailingResult.SteppedForwardStartMs-trailingResult.ReadersStartMs, trailingResult.ReadersSpanMs)
+	}
+	if trailingResult.SteppedForwardSpanMs != trailingResult.ReadersSpanMs {
+		t.Errorf("one step forward resized the window from %.0f ms to %.0f ms; a step moves the "+
+			"window, it does not resize it", trailingResult.ReadersSpanMs, trailingResult.SteppedForwardSpanMs)
+	}
+	if trailingResult.SteppedBackStartMs != trailingResult.ReadersStartMs ||
+		trailingResult.SteppedBackEndMs-trailingResult.SteppedBackStartMs != trailingResult.ReadersSpanMs {
+		t.Errorf("forward then back landed on %s spanning %.0f ms, want the %s it started from "+
+			"spanning %.0f ms", utcOf(trailingResult.SteppedBackStartMs),
+			trailingResult.SteppedBackEndMs-trailingResult.SteppedBackStartMs,
+			utcOf(trailingResult.ReadersStartMs), trailingResult.ReadersSpanMs)
+	}
+}
+
 // Period navigation is the THIRD way to move the timeline's window, after the
 // pointer and the keyboard, and what it can get wrong is a calendar that is only
 // nearly a calendar: a "week" starting at whatever instant sat in the middle of
