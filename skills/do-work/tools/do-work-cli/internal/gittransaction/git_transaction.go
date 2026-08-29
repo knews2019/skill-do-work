@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
 type FailureKind string
@@ -25,32 +27,22 @@ const (
 	FailureCommittedRisk  FailureKind = "committed_state_risk"
 )
 
-type RollbackStatus string
-
-const (
-	RollbackNotNeeded  RollbackStatus = "not_needed"
-	RollbackSucceeded  RollbackStatus = "succeeded"
-	RollbackIncomplete RollbackStatus = "incomplete"
-)
-
-type RollbackResult struct {
-	Status  RollbackStatus
-	Actions []string
-	Errors  []string
-}
-
 type TransactionFailure struct {
 	Kind   FailureKind
 	Reason string
+	Paths  []string
 }
 
+// TransactionResult reports an outcome, not a number. resultmodel.ExitCode is the only
+// place an outcome becomes a process status.
 type TransactionResult struct {
-	ExitCode       int
+	Outcome        resultmodel.CommandOutcome
 	RepositoryRoot string
 	ChangedPaths   []string
+	CreatedPaths   []string
 	CommitSHA      string
 	RevertArgv     []string
-	Rollback       RollbackResult
+	Rollback       resultmodel.RollbackResult
 	Failure        *TransactionFailure
 }
 
@@ -101,55 +93,60 @@ type targetState struct {
 }
 
 func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate func(*MutationRecorder) error) TransactionResult {
-	result := TransactionResult{Rollback: RollbackResult{Status: RollbackNotNeeded, Actions: []string{}, Errors: []string{}}}
+	// CommandOutcome's zero value is the empty string, which resultmodel.ExitCode reads as a
+	// failure. Every success path returns this construction unchanged, so it names success here.
+	result := TransactionResult{
+		Outcome:  resultmodel.OutcomeSuccess,
+		Rollback: resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded, Actions: []string{}, Errors: []string{}},
+	}
 	if options.DryRun && options.Commit {
-		return fail(result, 2, FailureInvalidOptions, "--dry-run and --commit cannot be combined")
+		return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, "--dry-run and --commit cannot be combined")
 	}
 	if len(options.TargetPaths) == 0 {
-		return fail(result, 2, FailureInvalidOptions, "at least one exact target path is required")
+		return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, "at least one exact target path is required")
 	}
 	repositoryRoot, err := resolveRepositoryRoot(ctx, options.RepositoryRoot)
 	if err != nil {
-		return fail(result, 2, FailureNotGit, err.Error())
+		return failTransaction(result, resultmodel.OutcomeFailure, FailureNotGit, err.Error())
 	}
 	result.RepositoryRoot = repositoryRoot
 	targetPaths, err := normalizeTargetPaths(options.TargetPaths)
 	if err != nil {
-		return fail(result, 2, FailureInvalidOptions, err.Error())
+		return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, err.Error())
 	}
 	states, err := inspectTargets(ctx, repositoryRoot, targetPaths)
 	if err != nil {
-		return fail(result, 2, FailureInvalidOptions, err.Error())
+		return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, err.Error(), targetPaths...)
 	}
 	for _, state := range states {
 		dirty, statusErr := targetIsDirty(ctx, repositoryRoot, state.path)
 		if statusErr != nil {
-			return fail(result, 2, FailureInvalidOptions, statusErr.Error())
+			return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, statusErr.Error(), state.path)
 		}
 		if dirty {
-			return fail(result, 1, FailureDirtyTarget, fmt.Sprintf("target path %q is already dirty", state.path))
+			return failTransaction(result, resultmodel.OutcomeRefused, FailureDirtyTarget, fmt.Sprintf("target path %q is already dirty", state.path), state.path)
 		}
 		if state.existed && !state.tracked {
-			return fail(result, 1, FailureDirtyTarget, fmt.Sprintf("target path %q exists but cannot be restored from Git", state.path))
+			return failTransaction(result, resultmodel.OutcomeRefused, FailureDirtyTarget, fmt.Sprintf("target path %q exists but cannot be restored from Git", state.path), state.path)
 		}
 	}
 	if options.Commit {
 		empty, indexErr := indexIsEmpty(ctx, repositoryRoot)
 		if indexErr != nil {
-			return fail(result, 2, FailureInvalidOptions, indexErr.Error())
+			return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, indexErr.Error())
 		}
 		if !empty {
-			return fail(result, 1, FailureDirtyIndex, "--commit requires an empty existing index")
+			return failTransaction(result, resultmodel.OutcomeRefused, FailureDirtyIndex, "--commit requires an empty existing index")
 		}
 		if strings.TrimSpace(options.CommitMessage) == "" {
-			return fail(result, 2, FailureInvalidOptions, "--commit requires a non-empty commit message")
+			return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, "--commit requires a non-empty commit message")
 		}
 	}
 	if options.DryRun {
 		return result
 	}
 	if mutate == nil {
-		return fail(result, 2, FailureInvalidOptions, "mutation callback is required")
+		return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, "mutation callback is required")
 	}
 	recorder := newMutationRecorder(states)
 	if mutationErr := mutate(recorder); mutationErr != nil {
@@ -160,6 +157,7 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation, err)
 	}
 	result.ChangedPaths = changedPaths
+	result.CreatedPaths = sortedKeys(recorder.createdPaths)
 	for _, path := range changedPaths {
 		if _, recorded := recorder.touchedPaths[path]; !recorded {
 			return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation,
@@ -330,7 +328,7 @@ func changedTargets(ctx context.Context, repositoryRoot string, paths []string) 
 }
 
 func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRoot string, states []targetState, recorder *MutationRecorder, failureKind FailureKind, operationError error) TransactionResult {
-	rollback := RollbackResult{Status: RollbackSucceeded, Actions: []string{}, Errors: []string{}}
+	rollback := resultmodel.RollbackResult{Status: resultmodel.RollbackSucceeded, Actions: []string{}, Errors: []string{}}
 	for _, state := range states {
 		if !state.tracked {
 			continue
@@ -375,10 +373,10 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 	}
 	result.Rollback = rollback
 	if len(rollback.Errors) > 0 {
-		result.Rollback.Status = RollbackIncomplete
-		return fail(result, 4, FailureRollback, operationError.Error())
+		result.Rollback.Status = resultmodel.RollbackIncomplete
+		return failTransaction(result, resultmodel.OutcomeRisk, FailureRollback, operationError.Error(), rolledBackPaths...)
 	}
-	return fail(result, 3, failureKind, operationError.Error())
+	return failTransaction(result, resultmodel.OutcomeRolledBack, failureKind, operationError.Error(), rolledBackPaths...)
 }
 
 func committedPaths(ctx context.Context, repositoryRoot, commitSHA string) ([]string, error) {
@@ -394,12 +392,12 @@ func committedPaths(ctx context.Context, repositoryRoot, commitSHA string) ([]st
 func committedRisk(result TransactionResult, reason, commitSHA string) TransactionResult {
 	result.CommitSHA = commitSHA
 	result.RevertArgv = []string{"git", "revert", commitSHA}
-	return fail(result, 4, FailureCommittedRisk, reason)
+	return failTransaction(result, resultmodel.OutcomeRisk, FailureCommittedRisk, reason)
 }
 
-func fail(result TransactionResult, exitCode int, kind FailureKind, reason string) TransactionResult {
-	result.ExitCode = exitCode
-	result.Failure = &TransactionFailure{Kind: kind, Reason: reason}
+func failTransaction(result TransactionResult, outcome resultmodel.CommandOutcome, kind FailureKind, reason string, paths ...string) TransactionResult {
+	result.Outcome = outcome
+	result.Failure = &TransactionFailure{Kind: kind, Reason: reason, Paths: paths}
 	return result
 }
 
@@ -436,6 +434,12 @@ func mapKeys(values map[string]struct{}) []string {
 	for key := range values {
 		keys = append(keys, key)
 	}
+	return keys
+}
+
+func sortedKeys(values map[string]struct{}) []string {
+	keys := mapKeys(values)
+	sort.Strings(keys)
 	return keys
 }
 

@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
 func TestMutationRequiresGit(t *testing.T) {
@@ -17,7 +19,7 @@ func TestMutationRequiresGit(t *testing.T) {
 		RepositoryRoot: t.TempDir(),
 		TargetPaths:    []string{"target.txt"},
 	}, func(*MutationRecorder) error { return nil })
-	if result.ExitCode != 2 || result.Failure == nil || result.Failure.Kind != FailureNotGit {
+	if resultmodel.ExitCode(result.Outcome) != 2 || result.Failure == nil || result.Failure.Kind != FailureNotGit {
 		t.Fatalf("result = %#v", result)
 	}
 }
@@ -33,7 +35,7 @@ func TestDirtyTargetIsRefusedButUnrelatedDirtIsAllowed(t *testing.T) {
 		RepositoryRoot: repositoryRoot,
 		TargetPaths:    []string{"target.txt"},
 	}, func(*MutationRecorder) error { called = true; return nil })
-	if called || result.ExitCode != 1 || result.Failure == nil || result.Failure.Kind != FailureDirtyTarget {
+	if called || resultmodel.ExitCode(result.Outcome) != 1 || result.Failure == nil || result.Failure.Kind != FailureDirtyTarget {
 		t.Fatalf("dirty target result = %#v, called = %v", result, called)
 	}
 
@@ -49,7 +51,7 @@ func TestDirtyTargetIsRefusedButUnrelatedDirtIsAllowed(t *testing.T) {
 		}
 		return os.WriteFile(filepath.Join(repositoryRoot, "target.txt"), []byte("tool change\n"), 0o644)
 	})
-	if result.ExitCode != 0 {
+	if resultmodel.ExitCode(result.Outcome) != 0 {
 		t.Fatalf("unrelated dirt result = %#v", result)
 	}
 	if got := readFile(t, repositoryRoot, "unrelated.txt"); got != "user change\n" {
@@ -65,7 +67,7 @@ func TestDryRunDoesNotMutateAndCannotCommit(t *testing.T) {
 		TargetPaths:    []string{"new.txt"},
 		DryRun:         true,
 	}, func(*MutationRecorder) error { called = true; return nil })
-	if result.ExitCode != 0 || called {
+	if resultmodel.ExitCode(result.Outcome) != 0 || called {
 		t.Fatalf("dry-run result = %#v, called = %v", result, called)
 	}
 
@@ -75,7 +77,7 @@ func TestDryRunDoesNotMutateAndCannotCommit(t *testing.T) {
 		DryRun:         true,
 		Commit:         true,
 	}, func(*MutationRecorder) error { return nil })
-	if result.ExitCode != 2 || result.Failure == nil || result.Failure.Kind != FailureInvalidOptions {
+	if resultmodel.ExitCode(result.Outcome) != 2 || result.Failure == nil || result.Failure.Kind != FailureInvalidOptions {
 		t.Fatalf("dry-run commit result = %#v", result)
 	}
 }
@@ -90,7 +92,7 @@ func TestCommitRequiresInitiallyEmptyIndex(t *testing.T) {
 		Commit:         true,
 		CommitMessage:  "target change",
 	}, func(*MutationRecorder) error { return nil })
-	if result.ExitCode != 1 || result.Failure == nil || result.Failure.Kind != FailureDirtyIndex {
+	if resultmodel.ExitCode(result.Outcome) != 1 || result.Failure == nil || result.Failure.Kind != FailureDirtyIndex {
 		t.Fatalf("result = %#v", result)
 	}
 }
@@ -115,7 +117,7 @@ func TestPreCommitFailureRestoresTrackedAndRemovesOnlyCreatedTargets(t *testing.
 		writeFile(t, repositoryRoot, "created.txt", "created\n")
 		return errors.New("forced mutation failure")
 	})
-	if result.ExitCode != 3 || result.Rollback.Status != RollbackSucceeded {
+	if resultmodel.ExitCode(result.Outcome) != 3 || result.Rollback.Status != resultmodel.RollbackSucceeded {
 		t.Fatalf("result = %#v", result)
 	}
 	if got := readFile(t, repositoryRoot, "tracked.txt"); got != "initial\n" {
@@ -144,7 +146,7 @@ func TestIncompleteRollbackReportsRiskWithoutRecursiveDeletion(t *testing.T) {
 		writeFile(t, repositoryRoot, "created/child.txt", "must remain\n")
 		return errors.New("forced mutation failure")
 	})
-	if result.ExitCode != 4 || result.Rollback.Status != RollbackIncomplete {
+	if resultmodel.ExitCode(result.Outcome) != 4 || result.Rollback.Status != resultmodel.RollbackIncomplete {
 		t.Fatalf("result = %#v", result)
 	}
 	if got := readFile(t, repositoryRoot, "created/child.txt"); got != "must remain\n" {
@@ -177,7 +179,7 @@ func TestCommitContainsOnlyChangedTargetsAndPostCommitFailureReportsRevert(t *te
 		writeFile(t, repositoryRoot, "created.txt", "committed\n")
 		return nil
 	})
-	if result.ExitCode != 4 || result.Failure == nil || result.Failure.Kind != FailureCommittedRisk {
+	if resultmodel.ExitCode(result.Outcome) != 4 || result.Failure == nil || result.Failure.Kind != FailureCommittedRisk {
 		t.Fatalf("result = %#v", result)
 	}
 	if result.CommitSHA == "" || !reflect.DeepEqual(result.RevertArgv, []string{"git", "revert", result.CommitSHA}) {
@@ -213,7 +215,7 @@ func TestGitStderrWarningIsNotReadAsTargetDirt(t *testing.T) {
 		}
 		return os.WriteFile(filepath.Join(repositoryRoot, "target.txt"), []byte("tool change\n"), 0o644)
 	})
-	if !called || result.ExitCode != 0 || result.Failure != nil {
+	if !called || resultmodel.ExitCode(result.Outcome) != 0 || result.Failure != nil {
 		t.Fatalf("git stderr warning was treated as target dirt: result = %#v, called = %v", result, called)
 	}
 	if got := readFile(t, repositoryRoot, "target.txt"); got != "tool change\n" {
@@ -240,7 +242,7 @@ func TestUnrelatedStagedWorkDoesNotBreakRollback(t *testing.T) {
 		writeFile(t, repositoryRoot, "tracked.txt", "mutated\n")
 		return errors.New("forced mutation failure")
 	})
-	if result.ExitCode != 3 || result.Rollback.Status != RollbackSucceeded {
+	if resultmodel.ExitCode(result.Outcome) != 3 || result.Rollback.Status != resultmodel.RollbackSucceeded {
 		t.Fatalf("unrelated staged work broke a complete rollback: result = %#v", result)
 	}
 	if got := readFile(t, repositoryRoot, "tracked.txt"); got != "initial\n" {

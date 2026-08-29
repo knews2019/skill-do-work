@@ -87,3 +87,37 @@ func TestRuntimeRejectsInvalidGlobalOptions(t *testing.T) {
 		}
 	}
 }
+
+// Every finding the CLI emits must carry a verification command, the runtime's own usage
+// findings included. Driving Run is the only seam a real caller goes through, so the
+// completeness contract is asserted there rather than against the finding constructor.
+func TestRuntimeFindingsCarryCompleteRemediation(t *testing.T) {
+	tests := [][]string{
+		{"--format=json", "unknown"},
+		{"--format=json", "--repo-root"},
+		{"--format=json", "--unknown", "value"},
+		{"--format=json"},
+	}
+	for _, args := range tests {
+		var stdout bytes.Buffer
+		NewRuntime(&stdout, nil).Run(args)
+		var rendered resultmodel.CommandResult
+		if err := json.Unmarshal(stdout.Bytes(), &rendered); err != nil {
+			t.Fatalf("Run(%q) did not emit JSON: %v\n%s", args, err, stdout.String())
+		}
+		if len(rendered.Findings) != 1 {
+			t.Fatalf("Run(%q) findings = %#v", args, rendered.Findings)
+		}
+		finding := rendered.Findings[0]
+		if finding.Code == "" || finding.Severity == "" || len(finding.Evidence) == 0 ||
+			finding.Fixability == "" || finding.AutomationStopReason == "" {
+			t.Errorf("Run(%q) finding is incomplete: %#v", args, finding)
+		}
+		if len(finding.NextArgv) == 0 && finding.NextJustRecipe == "" {
+			t.Errorf("Run(%q) finding names no next step: %#v", args, finding)
+		}
+		if len(finding.VerificationArgv) == 0 {
+			t.Errorf("Run(%q) finding names no verification command: %#v", args, finding)
+		}
+	}
+}

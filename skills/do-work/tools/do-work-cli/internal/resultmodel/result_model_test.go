@@ -23,6 +23,10 @@ func TestRenderersUseOneNormalizedResult(t *testing.T) {
 			NextJustRecipe:       "do-work-doctor",
 			VerificationArgv:     []string{"git", "status", "--short", "--", "tracked.txt"},
 		}},
+		Rollback: RollbackResult{
+			Status:  RollbackSucceeded,
+			Actions: []string{"restored tracked.txt from HEAD"},
+		},
 	}
 
 	jsonOutput, err := RenderResult(result, FormatJSON)
@@ -42,8 +46,13 @@ func TestRenderersUseOneNormalizedResult(t *testing.T) {
 		}
 	}
 	rollback, ok := decoded["rollback"].(map[string]any)
-	if !ok || rollback["actions"] == nil {
-		t.Fatalf("rollback must be a typed object with non-null actions: %#v", decoded["rollback"])
+	if !ok || rollback["actions"] == nil || rollback["errors"] == nil {
+		t.Fatalf("rollback must be a typed object with non-null collections: %#v", decoded["rollback"])
+	}
+	// RollbackStatus is a named type with one definition here; the wire form stays a plain
+	// string so a second copy of these constants cannot appear elsewhere and drift.
+	if rollback["status"] != string(RollbackSucceeded) {
+		t.Fatalf("rollback status = %#v, want %q", rollback["status"], RollbackSucceeded)
 	}
 
 	textOutput, err := RenderResult(result, FormatText)
@@ -54,6 +63,7 @@ func TestRenderersUseOneNormalizedResult(t *testing.T) {
 		"doctor: findings", "DIRTY-TARGET", "tracked.txt has worktree changes",
 		"git diff -- tracked.txt", "just do-work-doctor",
 		"git status --short -- tracked.txt",
+		"rollback: succeeded", "rollback action: restored tracked.txt from HEAD",
 	} {
 		if !strings.Contains(string(textOutput), required) {
 			t.Errorf("text output missing %q:\n%s", required, textOutput)
