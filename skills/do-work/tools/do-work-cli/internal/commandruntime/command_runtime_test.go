@@ -2,12 +2,17 @@ package commandruntime
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
@@ -119,5 +124,230 @@ func TestRuntimeFindingsCarryCompleteRemediation(t *testing.T) {
 		if len(finding.VerificationArgv) == 0 {
 			t.Errorf("Run(%q) finding names no verification command: %#v", args, finding)
 		}
+	}
+}
+
+// The documented 0-4 exit codes and the text/JSON parity claim are only worth anything at
+// the seam a real caller goes through: global options parsed by the runtime, a real Git
+// mutation underneath, and the one typed result driving both renderers.
+func TestExitCodeContractThroughRealGitTransactions(t *testing.T) {
+	tests := []struct {
+		name            string
+		wantExitCode    int
+		wantFindingCode string
+		setUp           func(t *testing.T, repositoryRoot string)
+		options         func(repositoryRoot string) gittransaction.TransactionOptions
+		mutate          func(t *testing.T, repositoryRoot string) func(*gittransaction.MutationRecorder) error
+	}{
+		{
+			name:         "clean mutation succeeds",
+			wantExitCode: 0,
+			setUp: func(t *testing.T, repositoryRoot string) {
+				writeFixtureFile(t, repositoryRoot, "target.txt", "initial\n")
+				commitFixture(t, repositoryRoot, "initial")
+			},
+			options: func(repositoryRoot string) gittransaction.TransactionOptions {
+				return gittransaction.TransactionOptions{RepositoryRoot: repositoryRoot, TargetPaths: []string{"target.txt"}}
+			},
+			mutate: func(t *testing.T, repositoryRoot string) func(*gittransaction.MutationRecorder) error {
+				return func(recorder *gittransaction.MutationRecorder) error {
+					if err := recorder.RecordTouched("target.txt"); err != nil {
+						return err
+					}
+					writeFixtureFile(t, repositoryRoot, "target.txt", "tool change\n")
+					return nil
+				}
+			},
+		},
+		{
+			name:            "dirty target is safely refused",
+			wantExitCode:    1,
+			wantFindingCode: "GIT-DIRTY-TARGET",
+			setUp: func(t *testing.T, repositoryRoot string) {
+				writeFixtureFile(t, repositoryRoot, "target.txt", "initial\n")
+				commitFixture(t, repositoryRoot, "initial")
+				writeFixtureFile(t, repositoryRoot, "target.txt", "the user's own edit\n")
+			},
+			options: func(repositoryRoot string) gittransaction.TransactionOptions {
+				return gittransaction.TransactionOptions{RepositoryRoot: repositoryRoot, TargetPaths: []string{"target.txt"}}
+			},
+			mutate: func(*testing.T, string) func(*gittransaction.MutationRecorder) error {
+				return func(*gittransaction.MutationRecorder) error { return nil }
+			},
+		},
+		{
+			name:            "mutation failure rolls back cleanly",
+			wantExitCode:    3,
+			wantFindingCode: "GIT-MUTATION-FAILED",
+			setUp: func(t *testing.T, repositoryRoot string) {
+				writeFixtureFile(t, repositoryRoot, "target.txt", "initial\n")
+				commitFixture(t, repositoryRoot, "initial")
+			},
+			options: func(repositoryRoot string) gittransaction.TransactionOptions {
+				return gittransaction.TransactionOptions{RepositoryRoot: repositoryRoot, TargetPaths: []string{"target.txt"}}
+			},
+			mutate: func(t *testing.T, repositoryRoot string) func(*gittransaction.MutationRecorder) error {
+				return func(recorder *gittransaction.MutationRecorder) error {
+					if err := recorder.RecordTouched("target.txt"); err != nil {
+						return err
+					}
+					writeFixtureFile(t, repositoryRoot, "target.txt", "half-written\n")
+					return errors.New("forced mutation failure")
+				}
+			},
+		},
+		{
+			name:            "post-commit verification failure reports committed-state risk",
+			wantExitCode:    4,
+			wantFindingCode: "GIT-COMMITTED-STATE-RISK",
+			setUp: func(t *testing.T, repositoryRoot string) {
+				writeFixtureFile(t, repositoryRoot, "target.txt", "initial\n")
+				commitFixture(t, repositoryRoot, "initial")
+			},
+			options: func(repositoryRoot string) gittransaction.TransactionOptions {
+				return gittransaction.TransactionOptions{
+					RepositoryRoot: repositoryRoot,
+					TargetPaths:    []string{"target.txt"},
+					Commit:         true,
+					CommitMessage:  "exact target change",
+					PostCommitVerify: func(context.Context, string) error {
+						return errors.New("forced post-commit verification failure")
+					},
+				}
+			},
+			mutate: func(t *testing.T, repositoryRoot string) func(*gittransaction.MutationRecorder) error {
+				return func(recorder *gittransaction.MutationRecorder) error {
+					if err := recorder.RecordTouched("target.txt"); err != nil {
+						return err
+					}
+					writeFixtureFile(t, repositoryRoot, "target.txt", "committed\n")
+					return nil
+				}
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			jsonRoot := newFixtureRepository(t)
+			test.setUp(t, jsonRoot)
+			jsonExit, jsonOutput := runFixtureCommand(t, jsonRoot, "json", test.options(jsonRoot), test.mutate(t, jsonRoot))
+			if jsonExit != test.wantExitCode {
+				t.Fatalf("JSON exit = %d, want %d\n%s", jsonExit, test.wantExitCode, jsonOutput)
+			}
+
+			var envelope map[string]any
+			if err := json.Unmarshal([]byte(jsonOutput), &envelope); err != nil {
+				t.Fatalf("decode JSON: %v\n%s", err, jsonOutput)
+			}
+			if envelope["schema_version"] != float64(resultmodel.SchemaVersion) {
+				t.Fatalf("schema_version = %#v", envelope["schema_version"])
+			}
+			for _, field := range []string{"findings", "changes", "skipped_work", "rollback", "outcome", "repository_root"} {
+				if envelope[field] == nil {
+					t.Fatalf("%s is null in %s", field, jsonOutput)
+				}
+			}
+			var decoded resultmodel.CommandResult
+			if err := json.Unmarshal([]byte(jsonOutput), &decoded); err != nil {
+				t.Fatalf("decode typed result: %v", err)
+			}
+			if resultmodel.ExitCode(decoded.Outcome) != test.wantExitCode {
+				t.Fatalf("outcome %q does not map to exit %d", decoded.Outcome, test.wantExitCode)
+			}
+
+			textRoot := newFixtureRepository(t)
+			test.setUp(t, textRoot)
+			textExit, textOutput := runFixtureCommand(t, textRoot, "text", test.options(textRoot), test.mutate(t, textRoot))
+			if textExit != test.wantExitCode {
+				t.Fatalf("text exit = %d, want %d\n%s", textExit, test.wantExitCode, textOutput)
+			}
+
+			if test.wantFindingCode == "" {
+				if len(decoded.Findings) != 0 {
+					t.Fatalf("clean run reported findings: %#v", decoded.Findings)
+				}
+				return
+			}
+			if len(decoded.Findings) != 1 || decoded.Findings[0].Code != test.wantFindingCode {
+				t.Fatalf("findings = %#v, want one %s", decoded.Findings, test.wantFindingCode)
+			}
+			// The two renderings come from one result, so the text form must name the same
+			// finding code and the same next step the JSON form does.
+			if !strings.Contains(textOutput, test.wantFindingCode) {
+				t.Fatalf("text output does not name %s:\n%s", test.wantFindingCode, textOutput)
+			}
+			// Build the expected "next" line with the production renderer rather than joining
+			// argv by hand, so this asserts parity instead of re-implementing the quoting.
+			nextLine := renderedNextLine(t, decoded.Findings[0])
+			if !strings.Contains(textOutput, nextLine) {
+				t.Fatalf("text output does not name the next step %q:\n%s", nextLine, textOutput)
+			}
+			if len(decoded.Findings[0].VerificationArgv) == 0 {
+				t.Fatalf("finding names no verification command: %#v", decoded.Findings[0])
+			}
+		})
+	}
+}
+
+func renderedNextLine(t *testing.T, finding resultmodel.CommandFinding) string {
+	t.Helper()
+	rendered, err := resultmodel.RenderResult(resultmodel.CommandResult{
+		Findings: []resultmodel.CommandFinding{finding},
+	}, resultmodel.FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(string(rendered), "\n") {
+		if strings.HasPrefix(line, "  next: ") {
+			return line
+		}
+	}
+	t.Fatalf("the renderer emitted no next step for %#v", finding)
+	return ""
+}
+
+func runFixtureCommand(t *testing.T, repositoryRoot, outputFormat string, options gittransaction.TransactionOptions, mutate func(*gittransaction.MutationRecorder) error) (int, string) {
+	t.Helper()
+	handlers := map[string]CommandHandler{
+		"apply": func(ExecutionContext, []string) resultmodel.CommandResult {
+			return gittransaction.BuildCommandResult(gittransaction.ExecuteTransaction(context.Background(), options, mutate))
+		},
+	}
+	var stdout bytes.Buffer
+	exitCode := NewRuntime(&stdout, handlers).Run([]string{"--repo-root", repositoryRoot, "--format", outputFormat, "apply"})
+	return exitCode, stdout.String()
+}
+
+func newFixtureRepository(t *testing.T) string {
+	t.Helper()
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+	t.Setenv("GIT_TERMINAL_PROMPT", "0")
+	repositoryRoot := t.TempDir()
+	runFixtureGit(t, repositoryRoot, "init", "-q")
+	runFixtureGit(t, repositoryRoot, "config", "user.name", "Do Work Test")
+	runFixtureGit(t, repositoryRoot, "config", "user.email", "do-work@example.invalid")
+	return repositoryRoot
+}
+
+func commitFixture(t *testing.T, repositoryRoot, message string) {
+	t.Helper()
+	runFixtureGit(t, repositoryRoot, "add", "-A")
+	runFixtureGit(t, repositoryRoot, "commit", "-q", "-m", message)
+}
+
+func runFixtureGit(t *testing.T, repositoryRoot string, args ...string) {
+	t.Helper()
+	command := exec.Command("git", append([]string{"-C", repositoryRoot}, args...)...)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
+	}
+}
+
+func writeFixtureFile(t *testing.T, repositoryRoot, relativePath, content string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(repositoryRoot, relativePath), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
