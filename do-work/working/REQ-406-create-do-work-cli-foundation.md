@@ -37,9 +37,9 @@ batch: go-no-llm-command-platform
 Create the suite-wide `do-work-cli` Go module and its shared execution contracts.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
+- [x] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
 ## Detailed Requirements
 - Put one `do-work-cli` module under the installed core package and require Go 1.26.1+.
@@ -269,3 +269,22 @@ All commands from the repo root /home/user/skill-do-work. RED first, per task. T
 - [ ] Git transaction fixtures prove exact-path refusal on dirty targets, refusal when the index is non-empty under `--commit`, pre-commit rollback, and post-commit `git revert <sha>` reporting that never rewrites history.
 - [ ] The launcher builds on demand when the binary is absent or older than its sources, and the gate lanes that run all of this are proven non-decorative.
 
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/transaction_findings.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/transaction_findings_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime_test.go` (modified)
+- `_dev/tests/contract-regressions.sh` (modified)
+- `_dev/tests/maintainer-verify.sh` (modified)
+
+**What was done:** Completed the preserved `do-work-cli` foundation rather than restarting it. Collapsed the module to a single exit-code authority by deleting `TransactionResult.ExitCode` and the duplicate `RollbackResult`/`RollbackStatus` pair, leaving `resultmodel.ExitCode` as the only outcome-to-number mapping. Added `BuildCommandResult`, which turns a Git transaction into the one typed `CommandResult` with finding codes derived from `FailureKind` and a loud `GIT-UNMAPPED-FAILURE` fallback rather than a hand-maintained switch. Fixed two real defects in the preserved Git layer: `runGit` used `CombinedOutput()`, so a git stderr warning read as porcelain content and refused a clean target; and `rollbackFailure` inspected the whole index, so an unrelated staged file turned a successful rollback into a reported risk. Registered the previously-uninvoked launcher probe in `contract-regressions.sh` and added `do-work-cli` vet and uncached-test lanes to `maintainer-verify.sh`, moving all four of its self-test enumerations in lock-step. No command is registered — `main.go` is untouched and still delegates to a nil handler map; REQ-407 onward register real commands.
+
+**Builder branch:** `worktree-agent-REQ-406-create-do-work-cli-foundation` — `571bb0d`, `737dd20`, `33ff757`, `84f77c4`.
+**Merge range:** `ad354e2..767f425`.
+**Hand-back:** `do-work/runs/work-2026-08-29-213539/REQ-406-handback.md` (builder-authored `## Decisions`, `## Discovered Tasks`, `## P-A-U` and `## Testing` are read from there).
