@@ -52,6 +52,29 @@ Certainty level: Firm. Establish narrow packages and behavioral contracts that l
 **GREEN when:** The same typed result drives stable text/JSON, documented exit codes are observed, and Git transaction fixtures prove exact-path refusal, rollback, and commit behavior.
 **Validation:** User confirmed via the supplied implementation plan.
 
+## Partial Work Present (2026-08-30)
+
+Work began before the user clarified that this stage is capture-only. Preserve the following uncommitted files for the future REQ-406 implementation:
+
+- `skills/do-work/tools/do-work-cli/go.mod`
+- `skills/do-work/tools/do-work-cli/.gitignore`
+- `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go`
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go`
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go`
+- `skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime.go`
+- `skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime_test.go`
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go`
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go`
+- `skills/do-work/tools/do-work-cli.sh`
+- `_dev/tests/do-work-cli-launcher-behavior.sh`
+- Ignored build output: `skills/do-work/tools/do-work-cli/do-work-cli`
+
+**Evidence already observed:** The launcher fixture first failed because the launcher was absent. Before the final signal-trap ordering adjustment, Go tests, `go vet`, the output-sensitive `gofmt -l` check, the launcher fixture, ShellCheck, and real launcher text/JSON smoke checks passed.
+
+**Not yet verified:** The final signal-trap ordering adjustment was restored after interruption and has not been re-tested.
+
+**State:** Partial, uncommitted, and not accepted. This REQ remains pending. Future implementation must inspect the present files and diff, rerun the focused RED/GREEN checks and all final gates, and continue from the recorded evidence rather than starting over.
+
 ## Full Context
 See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
 
