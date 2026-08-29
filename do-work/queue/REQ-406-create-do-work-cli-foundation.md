@@ -69,11 +69,11 @@ Work began before the user clarified that this stage is capture-only. Preserve t
 - `_dev/tests/do-work-cli-launcher-behavior.sh`
 - Ignored build output: `skills/do-work/tools/do-work-cli/do-work-cli`
 
-**Evidence already observed:** The launcher fixture first failed because the launcher was absent. Before the final signal-trap ordering adjustment, Go tests, `go vet`, the output-sensitive `gofmt -l` check, the launcher fixture, ShellCheck, and real launcher text/JSON smoke checks passed.
+**Evidence already observed:** The launcher fixture first failed because the launcher was absent. Go tests, `go vet`, the output-sensitive `gofmt -l` check, the launcher fixture, ShellCheck, and real launcher text/JSON smoke checks passed during the interrupted work.
 
-**Not yet verified:** The final signal-trap ordering adjustment was restored after interruption and has not been re-tested.
+**Verification before handoff:** After the final signal-trap ordering adjustment was restored, `go test -count=1 ./...`, `go vet ./...`, the output-sensitive `gofmt -l` check, the launcher fixture, and ShellCheck all passed. The full maintainer gate and REQ-406 acceptance suite have not run.
 
-**State:** Partial, uncommitted, and not accepted. This REQ remains pending. Future implementation must inspect the present files and diff, rerun the focused RED/GREEN checks and all final gates, and continue from the recorded evidence rather than starting over.
+**State:** Partial, preserved in commit `329c55a9`, and not accepted. This REQ remains pending. Future implementation must inspect the present files and commit, run the remaining RED/GREEN checks and all final gates, and continue from the recorded evidence rather than starting over.
 
 ## Full Context
 See `do-work/user-requests/UR-081/input.md` for complete verbatim input.

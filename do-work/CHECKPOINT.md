@@ -1,6 +1,6 @@
 ---
-session_updated: '2026-08-29T21:06:27Z'
-session_ended: '2026-08-29T21:06:27Z'
+session_updated: '2026-08-29T21:16:40Z'
+session_ended: '2026-08-29T21:16:40Z'
 last_completed: REQ-424
 queue_state: [16 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress]
 reqs_processed_this_session: 15
@@ -37,7 +37,7 @@ REQ-390 and REQ-406–420 remain pending.
 
 ## Session Notes
 
-REQ-421–424 completed as release **0.244.9**, with focused red-green evidence, the uncached queue-kanban suite, and `bash _dev/tests/maintainer-verify.sh` all passing. REQ-406 remains pending with partial uncommitted foundation files documented in its queued REQ and no active claim. REQ-377 remains cancelled as already addressed; baseline.json and baseline-failures.txt were not removed, and existing local exclusions remain.
+REQ-421–424 completed as release **0.244.9**, with focused red-green evidence, the uncached queue-kanban suite, and `bash _dev/tests/maintainer-verify.sh` all passing. REQ-406 remains pending with its partial foundation preserved in commit `329c55a9`, documented in its queued REQ, and no active claim. Four historical reservation markers were preserved in commit `21685bf5`. REQ-377 remains cancelled as already addressed; baseline.json and baseline-failures.txt were not removed, and existing local exclusions remain.
 
 The final implementation passed `bash _dev/tests/maintainer-verify.sh` with exit 0. Its default optional browser lane was explicitly skipped on this Mac. Separately, the complete `TestMaintainerStrictBrowserBehaviorLane` passed with exit 0 on Chrome 151.0.7922.174; the final repeat took 76.994s. This supersedes the earlier incomplete full-lane investigations. Chrome 141 is deprecated by explicit maintainer decision, with no compatibility repair claimed. Timeline runtime behavior, both mutation pairs and the vacuity guard remain unchanged.
 
