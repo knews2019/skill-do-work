@@ -67,10 +67,18 @@ type SkippedWork struct {
 	Reason string `json:"reason"`
 }
 
+type RollbackStatus string
+
+const (
+	RollbackNotNeeded  RollbackStatus = "not_needed"
+	RollbackSucceeded  RollbackStatus = "succeeded"
+	RollbackIncomplete RollbackStatus = "incomplete"
+)
+
 type RollbackResult struct {
-	Status  string   `json:"status"`
-	Actions []string `json:"actions"`
-	Errors  []string `json:"errors"`
+	Status  RollbackStatus `json:"status"`
+	Actions []string       `json:"actions"`
+	Errors  []string       `json:"errors"`
 }
 
 type CommandResult struct {
@@ -84,6 +92,8 @@ type CommandResult struct {
 	Rollback       RollbackResult   `json:"rollback"`
 }
 
+// ExitCode is the single authority for the 0-4 process status contract. Nothing else in
+// this module may map an outcome to a number; a second table is how the two drift apart.
 func ExitCode(outcome CommandOutcome) int {
 	switch outcome {
 	case OutcomeSuccess:

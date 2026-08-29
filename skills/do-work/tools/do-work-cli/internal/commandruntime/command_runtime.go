@@ -140,6 +140,7 @@ func usageFinding(code, evidence string) resultmodel.CommandFinding {
 		Fixability:           resultmodel.FixabilityManual,
 		AutomationStopReason: "the command line is not valid",
 		NextArgv:             []string{"do-work-cli", "--format", "text", "<command>"},
+		VerificationArgv:     []string{"do-work-cli", "--format", "json", "<command>"},
 	}
 }
 

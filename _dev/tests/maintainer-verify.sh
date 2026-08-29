@@ -107,6 +107,16 @@ case "$command_name" in
           exit 64
         fi
         ;;
+      */skills/do-work/tools/do-work-cli)
+        if [ "$#" -eq 2 ] && [ "$1" = 'vet' ] && [ "$2" = './...' ]; then
+          record_stage 'cli-vet'
+        elif [ "$#" -eq 3 ] && [ "$1" = 'test' ] && \
+          [ "$2" = '-count=1' ] && [ "$3" = './...' ]; then
+          record_stage 'cli-test'
+        else
+          exit 64
+        fi
+        ;;
       */skills/do-work-toolbox/tools/audit-metrics)
         if [ "$#" -eq 2 ] && [ "$1" = 'vet' ] && [ "$2" = './...' ]; then
           record_stage 'audit-vet'
@@ -202,15 +212,15 @@ assert_success_stages() {
   local expected_stage
   local actual_count
   local total_count=0
-  local expected_count=9
+  local expected_count=11
   local stage_line
 
   if [ "$expect_strict" = 'yes' ]; then
-    expected_count=10
+    expected_count=12
   fi
   for expected_stage in \
     go-version shellcheck-version shellcheck-lint gofmt-lint aggregate \
-    board-vet board-test audit-vet audit-test; do
+    board-vet board-test audit-vet audit-test cli-vet cli-test; do
     actual_count="$(count_stage_occurrences "$expected_stage" "$log_path")"
     if [ "$actual_count" -ne 1 ]; then
       fail_self_test "$expected_stage ran $actual_count times; want exactly once"
@@ -263,6 +273,7 @@ run_self_test() {
     "$fixture_root/_dev/tests" \
     "$fixture_root/skills/do-work-board/tools/queue-kanban" \
     "$fixture_root/skills/do-work-toolbox/tools/audit-metrics" \
+    "$fixture_root/skills/do-work/tools/do-work-cli" \
     "$fixture_go_root/bin" "$with_node_bin" "$without_node_bin"
   cp "$script_path" "$fixture_script"
   chmod +x "$fixture_script"
@@ -332,7 +343,8 @@ run_self_test() {
 
   for stage_name in \
     go-version shellcheck-version shellcheck-lint gofmt-lint gofmt-unformatted \
-    aggregate board-vet board-test board-strict audit-vet audit-test; do
+    aggregate board-vet board-test board-strict audit-vet audit-test \
+    cli-vet cli-test; do
     failure_log="$self_test_root/failure-$stage_name.log"
     failure_output="$self_test_root/failure-$stage_name.out"
     : > "$failure_log"
@@ -511,6 +523,17 @@ run_verification() {
   else
     printf 'SKIP: no browser is available; strict browser behavior lane was not run. Set QUEUE_KANBAN_BROWSER to name one.\n'
   fi
+
+  printf 'maintainer-verify: do-work-cli go vet\n'
+  (
+    cd "$repo_root/skills/do-work/tools/do-work-cli"
+    go vet ./...
+  )
+  printf 'maintainer-verify: do-work-cli uncached tests\n'
+  (
+    cd "$repo_root/skills/do-work/tools/do-work-cli"
+    go test -count=1 ./...
+  )
 
   printf 'maintainer-verify: audit-metrics go vet\n'
   (

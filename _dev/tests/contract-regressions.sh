@@ -6574,6 +6574,22 @@ elif ! bash "$update_script_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
+# Behavioral probes for skills/do-work/tools/do-work-cli.sh, the launcher that builds the
+# Go command on demand. Same no-auto-discovery caveat as the probes above: nothing walks
+# _dev/tests/*.sh, so an uninvoked probe file is dead weight that reads as coverage. It
+# covers build-on-demand when the binary is absent, argv passthrough including a spaced
+# argument, refusal to run stale output after a failed rebuild, the Go version floor, and
+# the absence of a leftover build temp — all runtime properties no grep can assert, proved
+# against a fake toolchain so the probe never depends on the installed Go.
+do_work_cli_launcher_probe="$repo_root/_dev/tests/do-work-cli-launcher-behavior.sh"
+if [ ! -x "$do_work_cli_launcher_probe" ]; then
+  printf 'FAIL: _dev/tests/do-work-cli-launcher-behavior.sh is missing or not executable — the do-work-cli launcher has no behavioral coverage.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$do_work_cli_launcher_probe"; then
+  printf 'FAIL: do-work-cli launcher behavior probes failed (see the FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # The live modular suite package boundaries need a contract independent from the active
 # root bootstrap tools. This checks the staged router, required core
 # runtime, hook targets, and the ban on leaking repository maintainer instructions.
