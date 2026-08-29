@@ -106,6 +106,81 @@ skill_dispatch_block="$(sed -n '/^## Routing/,/^## Dispatch/p' "$core_root/SKILL
 review_archived_input_block="$(sed -n '/^### Step 3: Read the Original Input/,/^### Step 4:/p' "$core_root/actions/review-work.md")"
 work_archive_success_block="$(sed -n '/^### Step 8: Archive/,/^\*\*On failure:/p' "$core_root/actions/work.md")"
 
+# Prime creation emits a linked two-file pair, and audit's otherwise read-only routing
+# boundary has one narrow exception for shrink-time lesson promotion. Validate the
+# operative heading blocks rather than letting nearby templates satisfy the directives.
+if ! python3 - "$toolbox_root/actions/prime.md" <<'PY'
+import pathlib
+import re
+import sys
+
+prime_action_text = pathlib.Path(sys.argv[1]).read_text()
+
+def heading_block(source, start, end):
+    return source.split(start, 1)[1].split(end, 1)[0]
+
+def without_fences(block):
+    return re.sub(r"```.*?```", "", block, flags=re.DOTALL)
+
+def validate(source):
+    try:
+        create = heading_block(source, "#### Step 5: Write", "#### Step 6: Post-creation checks")
+        report_block = heading_block(source, "#### Report", "## Sub-Command: `audit`")
+        audit_intro = heading_block(source, "## Sub-Command: `audit`", "### Conventions")
+        stakes = heading_block(source, "### Step 6.5: Refresh Stakes", "### Step 6.6: Shrink")
+        shrink = heading_block(source, "### Step 6.6: Shrink", "### Output Format")
+    except IndexError:
+        return ["prime create/audit heading boundary is missing"]
+
+    active_create = without_fences(create)
+    errors = []
+    if "Create both files in the same operation" not in active_create:
+        errors.append("prime create does not require the linked two-file pair")
+    for output_path in (
+        "{path}/prime-{short-name}.md",
+        "{path}/lessons-{short-name}.md",
+    ):
+        if output_path not in active_create:
+            errors.append(f"prime create has no active write directive for {output_path}")
+        if output_path not in report_block:
+            errors.append(f"prime create report omits {output_path}")
+    for token in ("# Lessons: {short-name}", "[`prime-{short-name}.md`](prime-{short-name}.md)"):
+        if token not in create:
+            errors.append(f"prime create satellite template omits {token}")
+
+    audit_contracts = (
+        (audit_intro, ("`Traps`", "Step 6.6", "sole routing-content exception")),
+        (stakes, ("`Traps`", "Step 6.6", "existing-lesson promotion exception")),
+        (shrink, ("`## Traps`", "existing utility-wide lesson", "sole routing-content write exception", "Promote, don't duplicate")),
+    )
+    for block, tokens in audit_contracts:
+        if not all(token in block for token in tokens):
+            errors.append("an operative audit block omits the shrink-only Traps exception")
+    if re.search(r"`## Stakes` is the only section audit writes", source):
+        errors.append("audit must not retain the unqualified Stakes-only write boundary")
+    return errors
+
+baseline_errors = validate(prime_action_text)
+if baseline_errors:
+    raise SystemExit("; ".join(baseline_errors))
+
+mutants = (
+    ("missing satellite-create directive", prime_action_text.replace("Create both files in the same operation", "Create the prime file", 1)),
+    ("unqualified Stakes-only boundary", prime_action_text.replace(
+        "Outside Step 6.6's shrink operation, `## Stakes` is the only prime section audit authors from current source.",
+        "`## Stakes` is the only section audit writes — the routing sections stay read-only.",
+        1,
+    )),
+)
+for mutant_name, mutant_text in mutants:
+    if mutant_text == prime_action_text or not validate(mutant_text):
+        raise SystemExit(f"prime workflow contract accepted {mutant_name}")
+PY
+then
+  printf 'FAIL: prime create/audit workflow boundaries regressed.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # Every phrase the version action documents must be reachable from the always-loaded
 # router. Derive the phrase set from the action instead of maintaining a second alias
 # inventory, then check the one precedence edge that matters: the exact update-check

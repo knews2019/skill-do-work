@@ -111,7 +111,9 @@ Combine auto-detected facts with user answers. Apply these rules:
 
 #### Step 5: Write
 
-Write to `{path}/prime-{short-name}.md` using this template:
+Create both files in the same operation so the prime's lesson pointer resolves immediately.
+
+Write `{path}/prime-{short-name}.md` using this template:
 
 ```md
 # Prime: {short-name}
@@ -143,9 +145,17 @@ See [`lessons-{short-name}.md`](lessons-{short-name}.md) — read it before chan
 
 (Include `## Stakes` only for load-bearing elements; omit for utilities with no high-stakes surface. Every section counts against the ~60-line file budget. The `## Lessons` pointer is one line and never grows: the satellite accumulates, the prime does not — see `../../do-work/crew-members/general.md` → Lessons Discipline.)
 
+Write `{path}/lessons-{short-name}.md` using this template:
+
+```md
+# Lessons: {short-name}
+
+Accumulated lessons for [`prime-{short-name}.md`](prime-{short-name}.md). Read this before changing what that prime's **Read first** or **Traps** sections name.
+```
+
 #### Step 6: Post-creation checks
 
-1. Show the user the generated file and ask if anything is missing.
+1. Show the user both generated files and ask if anything is missing.
 2. Check whether the prime should be registered in CLAUDE.md:
    - **Utility-specific primes** (live in a utility root): NOT registered — discovered by convention via glob
    - **Cross-cutting primes** (shared docs not in a utility root): SHOULD be registered in CLAUDE.md if it has a prime registry section
@@ -154,10 +164,11 @@ See [`lessons-{short-name}.md`](lessons-{short-name}.md) — read it before chan
 
 #### Report
 
-After writing the file, output:
+After writing both files, output:
 
 ```
 Prime created: {path}/prime-{short-name}.md ({line count} lines)
+Lessons satellite created: {path}/lessons-{short-name}.md ({line count} lines)
 Sections: {list of included sections}
 ```
 
@@ -167,7 +178,7 @@ Sections: {list of included sections}
 
 Audit the repo's prime file system, **then refresh each prime's `## Stakes` and shrink any prime that outgrew its budget.** Three jobs: (1) a **read-only health check** of the routing index — staleness, missing coverage, broken references; (2) a **write**: spelunk each flagged prime's load-bearing elements and refresh its `## Stakes` (Req / Value / Risk); and (3) a **write in the other direction**: move overflow out of any prime over the ~60-line file budget into its `lessons-<name>.md` satellite.
 
-**What audit writes:** the routing sections (Read first / Do not edit / Must build / Traps) are **read-only as content** — audit reports issues there and lets the user decide what to fix. The `## Stakes` section is refreshed (Step 6.5). Overflow is relocated (Step 6.6). Two of audit's three jobs are writes, and one of them **removes** — an audit that can only add is a bloat pump, which is exactly how these files got long. Never tell the user the audit is read-only across the board.
+**What audit writes:** `Read first`, `Do not edit`, and `Must build` are read-only as content. `Traps` is also read-only during health and freshness checks; Step 6.6 is the sole routing-content exception, and may promote an existing utility-wide lesson into one trap line while shrinking. Step 6.5 adds or refreshes `## Stakes`, and Step 6.6 may relocate overflow and write the lesson satellite. Two of audit's three jobs are writes, and one of them **removes** — an audit that can only add is a bloat pump, which is exactly how these files got long. Never tell the user the audit is read-only across the board.
 
 ### Conventions
 
@@ -262,11 +273,13 @@ Scope the write to the primes that need it (don't re-spelunk a prime whose Stake
 - **Leave current Stakes alone.** A prime whose Stakes still matches the code needs no write — note it as current.
 - **Load-bearing only; no volatile metrics; pointers not copies.** Keep `## Stakes` outside the 15-30 line routing-index budget. If every element seems to qualify, the utility is too big — split it.
 
-`## Stakes` is the only section audit writes — the routing sections stay read-only. **Report what you wrote** so the write is visible: end the audit with `Stakes: added M, refreshed N, current K`.
+Outside Step 6.6's shrink operation, `## Stakes` is the only prime section audit authors from current source. `Read first`, `Do not edit`, and `Must build` stay read-only; `Traps` has only the existing-lesson promotion exception defined in Step 6.6. **Report what you wrote** so the write is visible: end the audit with `Stakes: added M, refreshed N, current K`.
 
 ### Step 6.6: Shrink — audit WRITES here too (this is the pass that removes)
 
 Measure each prime as a **whole file**. Over ~60 lines, or with a `## Lessons` section carrying more than a pointer, it has outgrown what a prime is for: it is read in full every time its area is touched, so every unrelated change pays for all of it.
+
+This is audit's sole routing-content write exception: it may create or append one `## Traps` line only by promoting an existing utility-wide lesson as described below. It does not otherwise rewrite traps or author new routing guidance.
 
 Relocate, don't delete:
 

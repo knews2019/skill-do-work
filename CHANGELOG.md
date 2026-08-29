@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.244.8 — Create Complete Prime Pairs and Clarify Audit Writes (2026-08-29)
+
+New primes start with a usable lesson satellite instead of a broken pointer, and prime audits now state their narrow routing-content write exception consistently.
+
+- `do-work-toolbox prime create` writes and reports both `prime-<name>.md` and its linked `lessons-<name>.md` satellite
+- `prime audit` keeps routing content read-only except when Step 6.6 promotes an existing utility-wide lesson into one `## Traps` line during shrink
+- Focused semantic regressions replay both failures: dropping satellite creation and restoring the unqualified Stakes-only write boundary
+
 ## 0.244.7 — Allow Worktree Overlap Without Queue Warnings (2026-08-28)
 
 Shared files no longer make an otherwise healthy queue fail verification. Separate worktrees may overlap; the board's informational badge and serial integration checks remain unchanged.
