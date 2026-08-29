@@ -288,3 +288,36 @@ All commands from the repo root /home/user/skill-do-work. RED first, per task. T
 **Builder branch:** `worktree-agent-REQ-406-create-do-work-cli-foundation` — `571bb0d`, `737dd20`, `33ff757`, `84f77c4`.
 **Merge range:** `ad354e2..767f425`.
 **Hand-back:** `do-work/runs/work-2026-08-29-213539/REQ-406-handback.md` (builder-authored `## Decisions`, `## Discovered Tasks`, `## P-A-U` and `## Testing` are read from there).
+
+## Testing
+
+**Tests run:**
+- `cd skills/do-work/tools/do-work-cli && go test -count=1 ./...` — ✓ exit 0
+- `bash _dev/tests/do-work-cli-launcher-behavior.sh` — ✓ exit 0
+- `bash _dev/tests/maintainer-verify.sh` (canonical repository gate, optional browser lane in its default skipped state) — ✓ exit 0 on the **merged** tree, 7m32s, with `do-work-cli go vet`, `do-work-cli uncached tests` and `do-work-cli launcher behavior tests passed` all visibly running
+
+**Result:** ✓ All passing. Judged by direct exit status, never piped.
+
+**Red-green validation:** traced to the REQ's `## Red-Green Proof`, whose GREEN condition is that one typed result drives stable text and JSON, the documented exit codes are observed, and Git fixtures prove exact-path refusal, rollback and commit behaviour.
+
+- `TestGitStderrWarningIsNotReadAsTargetDirt`: ✗ before — assertion failure, exit 1 with `dirty_target` on a *clean* target because `runGit` used `CombinedOutput()` → ✓ after
+- `TestUnrelatedStagedWorkDoesNotBreakRollback`: ✗ before — assertion failure, exit 4 with a substantively-complete rollback reported `incomplete` because `rollbackFailure` inspected the whole index → ✓ after
+- `TestRuntimeFindingsCarryCompleteRemediation`: ✗ before — four assertion failures, each finding carrying an empty `VerificationArgv` against requirement 5 → ✓ after
+- `TestExitCodeContractThroughRealGitTransactions`: ✗ before (build failure — `BuildCommandResult` did not exist) → ✓ after, driving real Git fixtures through `Run` and observing exit 0 / 1 `GIT-DIRTY-TARGET` / 3 `GIT-MUTATION-FAILED` / 4 `GIT-COMMITTED-STATE-RISK` in both renderings
+
+The bridge tests' RED is a build failure rather than an assertion failure, because the function under test is what did not exist. The assertion-level RED for the same requirement is `TestRuntimeFindingsCarryCompleteRemediation` above, so the `tdd: true` evidence bar is met by a runnable harness test observed failing before the change and passing after.
+
+**Falsification — the gates and guards are not decorative:**
+- Deleting `Outcome: resultmodel.OutcomeSuccess` from result construction reddens two pre-existing tests, so the retargeted assertions really do guard the zero-value flip.
+- Deleting the `FailureDirtyIndex` template entry makes the coverage test name the kind that lost it, rather than passing on a plausible-looking finding.
+- Deleting the `cli-vet` lane reddens `maintainer-verify.sh --self-test` with `cli-vet ran 0 times`.
+- `chmod -x` on the launcher probe makes `contract-regressions.sh` fail naming the file.
+- Everything temporarily broken was restored and re-verified.
+
+**New tests added:**
+- `TestGitStderrWarningIsNotReadAsTargetDirt`, `TestUnrelatedStagedWorkDoesNotBreakRollback` (lock-ins for the two fixed defects)
+- `TestFindingCodeIsDerivedFromTheFailureKind`, `TestEveryDeclaredFailureKindProducesACompleteFinding`, `TestUnmappedFailureKindFailsLoudly`, `TestSuccessfulTransactionCarriesTruthfulChangeKinds`, `TestCompletedRollbackReportsNoSurvivingChanges`
+- `TestExitCodeContractThroughRealGitTransactions`, `TestRuntimeFindingsCarryCompleteRemediation`
+
+*Verified by work action*
+
