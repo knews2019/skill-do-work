@@ -4,7 +4,7 @@ title: 'Replace the timeline''s Day/Week/Month periods with trailing windows: la
 status: claimed
 created_at: 2026-08-27T14:15:08Z
 route: C
-write_set: [skills/do-work-board/tools/queue-kanban/web/template.html, skills/do-work-board/tools/queue-kanban/web/board-timeline.js, skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go, skills/do-work-board/tools/queue-kanban/generate_test.go]
+write_set: [skills/do-work-board/tools/queue-kanban/web/template.html, skills/do-work-board/tools/queue-kanban/web/board-timeline.js, skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go, skills/do-work-board/tools/queue-kanban/generate_test.go, skills/do-work-board/tools/queue-kanban/web/board.css]
 estimate:
   p50_active_minutes: 45
   confidence: medium
@@ -193,6 +193,7 @@ Measured baselines taken during this exploration, at HEAD, on Chromium 141.0.739
 - `skills/do-work-board/tools/queue-kanban/web/board-timeline.js` (modify) — trailing-window maths; delete the calendar-period machinery
 - `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go` (modify) — new trailing-window probe plus migration of three probes off day/week/month
 - `skills/do-work-board/tools/queue-kanban/generate_test.go` (modify) — new JS-behaviour test; delete the two calendar-period-only tests; re-point two borrowed oracles
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modify) — **extended after dispatch, see D-01 below** — one `flex-wrap` declaration the five long labels earn at narrow widths
 
 **Files I will NOT touch:**
 
@@ -207,4 +208,17 @@ Measured baselines taken during this exploration, at HEAD, on Chromium 141.0.739
 - [ ] Clicking a chip sets the window to that trailing span ending at the board's now; All days spans the full recorded range.
 - [ ] A browser probe asserting the new control set and a 30-day window ending at now fails before the change and passes after.
 - [ ] Shipped ARIA text, the toolbar comment and the `timeline-hint` paragraph describe trailing windows, not calendar periods.
+
+## Decisions
+
+**D-01 — Extended the Scope list to include `web/board.css`. ESCALATE, resolved by the orchestrator.**
+The builder flagged, rather than silently wrote, a file outside its declared write boundary — the correct path when a REQ's own completion proof requires a file class the declaration missed. The REQ's GREEN condition names five labels of a fixed length ("Last 30 days", "Last 90 days"); at 500px the resulting control group measured 465.63px inside a 453px toolbar on Chrome for Testing 151.0.7922.174 and clipped the `›` arrow and the state span, where HEAD's three short chips fit. Of the two fixes the plan's own risk list sanctioned, shortening the labels would contradict the REQ's GREEN condition, so the remaining one is a `.timeline-periods` rule. What landed is one declaration, `flex-wrap: wrap`, the exact mirror of `.timeline-range` three rules below it, carrying the measurement and browser build in its comment. The Scope list and `write_set` are extended here rather than the touch being recorded as drift, because the requirement contradicted the declaration and the declaration is what was wrong.
+*Value:* the REQ's own acceptance criteria render correctly at the widths the board already supports.
+*Risk:* low and reversible — a two-hunk revert; the cost of reversing is a narrow-width clip, not a failing test.
+
+**D-02 — Accepted the builder's split of `TestJavaScriptBehaviorTimelinePeriodStepsOnCalendarBoundariesAndJumpsToNow` instead of the plan's outright deletion. DECIDE & STATE.**
+Plan D8 said delete it. That test also carried the only Node-lane coverage of `timelineNowJump`'s two degenerate cases (REQ-235) and `timelineFirstOpenRowIndex`'s row-refresh ordering with its own anti-vacuity guard (REQ-319) — none of which this REQ touches, and none covered elsewhere in that lane. Deleting live coverage of untouched behaviour to satisfy the letter of a plan step is the wrong trade. D8's substance is met: no calendar-period assertion survives anywhere.
+
+**D-03 — Accepted keeping `timelineUtcDayStart` rather than deleting `timelinePeriodStart` outright. DECIDE & STATE.**
+The plan listed `timelinePeriodStart` for deletion, but `timelineTypedWindow` calls it twice at its surviving day-granularity clamp. Following the plan literally would have shipped a `ReferenceError` in the client's typed-date path. The day-only remainder is kept under a name that says what it does; the clamp's behaviour is unchanged.
 
