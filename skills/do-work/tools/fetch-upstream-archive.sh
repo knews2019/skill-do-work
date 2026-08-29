@@ -31,7 +31,10 @@ fetch_cleanup() {
     rm -rf "$clone_directory"
   fi
 }
-trap fetch_cleanup EXIT HUP INT TERM
+trap fetch_cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # This file is mirrored into two layouts with different relative depths, so the
@@ -50,6 +53,7 @@ done
 # GitHub's branch tarballs unpack to "<repo>-<branch>/", which both callers'
 # `tar --strip-components=1` already assumes, so the archive prefix matches it.
 archive_prefix='upstream-main/'
+upstream_branch=""
 case "$upstream_tarball_url" in
   */archive/refs/heads/*.tar.gz)
     upstream_branch="${upstream_tarball_url##*/archive/refs/heads/}"
@@ -87,7 +91,12 @@ else
     git_route_outcome='failed (could not allocate private working paths)'
   else
     rm -rf "$clone_directory"
-    if GIT_TERMINAL_PROMPT=0 git clone --depth 1 --quiet "$upstream_repo_url" "$clone_directory" 2>/dev/null \
+    if [ -n "$upstream_branch" ]; then
+      set -- --depth 1 --quiet --single-branch --branch "$upstream_branch"
+    else
+      set -- --depth 1 --quiet
+    fi
+    if GIT_TERMINAL_PROMPT=0 git clone "$@" "$upstream_repo_url" "$clone_directory" 2>/dev/null \
       && git -C "$clone_directory" archive --format=tar.gz --prefix="$archive_prefix" HEAD > "$archive_stage_path" 2>/dev/null \
       && [ -s "$archive_stage_path" ] \
       && tar tzf "$archive_stage_path" >/dev/null 2>&1 \

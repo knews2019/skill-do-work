@@ -184,6 +184,104 @@ func TestServeMtimeCacheInvalidatesOnStatusChange(t *testing.T) {
 	}
 }
 
+func TestServeMtimeCacheRefreshesTimelineAgainstCurrentTime(t *testing.T) {
+	repoRoot := createFixtureDoWorkTree(t)
+	initialInstant := time.Date(2026, 8, 29, 10, 0, 0, 0, time.UTC)
+	refreshedInstant := initialInstant.Add(30 * time.Minute)
+
+	pendingTicket := &RequestTicket{
+		RequestId: "REQ-9001",
+		Title:     "Pending fixture",
+		Status:    "pending",
+		CreatedAt: initialInstant.Add(-2 * time.Hour).Format(time.RFC3339),
+	}
+	claimedTicket := &RequestTicket{
+		RequestId: "REQ-9002",
+		Title:     "Claimed fixture",
+		Status:    "claimed",
+		CreatedAt: initialInstant.Add(-3 * time.Hour).Format(time.RFC3339),
+		ClaimedAt: initialInstant.Add(-2 * time.Hour).Format(time.RFC3339),
+	}
+	tickets := []*RequestTicket{pendingTicket, claimedTicket}
+	for sampleIndex := 0; sampleIndex < timelineProjectionMinimumSamples; sampleIndex++ {
+		claimedInstant := initialInstant.Add(-48*time.Hour + time.Duration(sampleIndex)*time.Hour)
+		completedInstant := claimedInstant.Add(10 * time.Minute)
+		tickets = append(tickets, &RequestTicket{
+			RequestId:      fmt.Sprintf("REQ-%04d", 9100+sampleIndex),
+			Title:          "Completed fixture",
+			Status:         "completed",
+			CreatedAt:      claimedInstant.Add(-time.Hour).Format(time.RFC3339),
+			ClaimedAt:      claimedInstant.Format(time.RFC3339),
+			CompletedAt:    completedInstant.Format(time.RFC3339),
+			CompletionTime: completedInstant,
+		})
+	}
+
+	cachedBoard := &Board{GeneratedAt: initialInstant, AllRequests: tickets}
+	cachedBoardData, projectionError := buildGeneratedBoardData(cachedBoard)
+	if projectionError != nil {
+		t.Fatalf("project initial cached board data: %v", projectionError)
+	}
+	discovered, enumerateError := enumerateDoWorkTree(repoRoot)
+	if enumerateError != nil {
+		t.Fatalf("enumerate unchanged fixture tree: %v", enumerateError)
+	}
+	liveServer := newLiveBoardServer(repoRoot, defaultRecentWindow)
+	liveServer.currentTime = func() time.Time { return refreshedInstant }
+	liveServer.cachedFileMtimes = buildTreeMtimeFingerprint(discovered)
+	liveServer.cachedBoard = cachedBoard
+	liveServer.cachedBoardData = &cachedBoardData
+
+	refreshedBoardData, refreshError := liveServer.refreshBoardData()
+	if refreshError != nil {
+		t.Fatalf("refresh unchanged cached board data: %v", refreshError)
+	}
+	if refreshedBoardData.GeneratedAt != formatTimestamp(refreshedInstant) {
+		t.Fatalf("generatedAt = %q, want refreshed instant %q",
+			refreshedBoardData.GeneratedAt, formatTimestamp(refreshedInstant))
+	}
+	if refreshedBoardData.Timeline.Now != formatTimestamp(refreshedInstant) {
+		t.Fatalf("timeline now = %q, want refreshed instant %q",
+			refreshedBoardData.Timeline.Now, formatTimestamp(refreshedInstant))
+	}
+
+	rowsById := map[string]generatedTimelineRow{}
+	for _, row := range refreshedBoardData.Timeline.Rows {
+		rowsById[row.RequestId] = row
+	}
+	if waitMinutes := rowsById[pendingTicket.RequestId].WaitMinutes; waitMinutes != 150 {
+		t.Errorf("open wait = %.1f minutes, want 150", waitMinutes)
+	}
+	if workMinutes := rowsById[claimedTicket.RequestId].WorkMinutes; workMinutes != 150 {
+		t.Errorf("open work = %.1f minutes, want 150", workMinutes)
+	}
+	if refreshedBoardData.Timeline.RangeEnd != formatTimestamp(refreshedInstant) {
+		t.Errorf("timeline range end = %q, want refreshed instant %q",
+			refreshedBoardData.Timeline.RangeEnd, formatTimestamp(refreshedInstant))
+	}
+
+	projection := refreshedBoardData.Timeline.Projection
+	if !projection.Confident || len(projection.Rows) != 1 {
+		t.Fatalf("projection = confident %v with %d rows, want one confident pending row",
+			projection.Confident, len(projection.Rows))
+	}
+	if projection.ChainStart != formatTimestamp(refreshedInstant) {
+		t.Errorf("projection chain start = %q, want %q",
+			projection.ChainStart, formatTimestamp(refreshedInstant))
+	}
+	wantProjectionEnd := refreshedInstant.Add(10 * time.Minute)
+	if projection.Rows[0].StartTime != formatTimestamp(refreshedInstant) ||
+		projection.Rows[0].EndTime != formatTimestamp(wantProjectionEnd) {
+		t.Errorf("projected row = %q to %q, want %q to %q",
+			projection.Rows[0].StartTime, projection.Rows[0].EndTime,
+			formatTimestamp(refreshedInstant), formatTimestamp(wantProjectionEnd))
+	}
+	if projection.QueueEnd != formatTimestamp(wantProjectionEnd) {
+		t.Errorf("projection queue end = %q, want %q",
+			projection.QueueEnd, formatTimestamp(wantProjectionEnd))
+	}
+}
+
 func TestServeLazyMarkdownEndpointReturnsExactSources(t *testing.T) {
 	repoRoot := createFixtureDoWorkTree(t)
 	liveServer := newLiveBoardServer(repoRoot, 7*24*time.Hour)

@@ -1,6 +1,6 @@
 ---
 id: UR-082
-title: 'Fix accepted review findings'
+title: 'Fix Accepted Review Findings'
 created_at: 2026-08-29T20:26:10Z
 requests: [REQ-421, REQ-422, REQ-423, REQ-424]
 word_count: 423

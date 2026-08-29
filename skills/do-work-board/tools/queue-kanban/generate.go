@@ -775,12 +775,29 @@ func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTick
 		})
 	}
 
-	// The board's generation instant is the view's one now: it measures every
-	// open span here and positions the client's now-line, so the two cannot
-	// disagree about where "still running" ends.
-	timelineAggregate := buildTimelineAggregate(board.AllRequests, board.GeneratedAt)
+	data.Timeline = buildGeneratedTimeline(board.AllRequests, durationAggregate, board.GeneratedAt)
+	for _, day := range durationAggregate.Days {
+		data.Durations.Days = append(data.Durations.Days, generatedDurationDay{
+			DayKey:         day.DayKey,
+			DayTime:        formatTimestamp(day.DayTime),
+			MedianMinutes:  day.MedianMinutes,
+			HasMedian:      day.HasMedian,
+			KeptCount:      day.KeptCount,
+			CompletedCount: day.CompletedCount,
+		})
+	}
+
+	return data, nil
+}
+
+// buildGeneratedTimeline projects every time-derived Timeline field against one
+// explicit instant. Static generation calls it once; live cache hits call it
+// again without reparsing the unchanged do-work tree.
+func buildGeneratedTimeline(tickets []*RequestTicket, durationHistory DurationAggregate, generationInstant time.Time) generatedTimeline {
+	generated := generatedTimeline{}
+	timelineAggregate := buildTimelineAggregate(tickets, generationInstant)
 	for _, row := range timelineAggregate.Rows {
-		data.Timeline.Rows = append(data.Timeline.Rows, generatedTimelineRow{
+		generated.Rows = append(generated.Rows, generatedTimelineRow{
 			RequestId:     row.RequestId,
 			CreatedTime:   formatTimestamp(row.CreatedTime),
 			ClaimedTime:   formatTimestamp(row.ClaimedTime),
@@ -794,13 +811,13 @@ func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTick
 			AnomalyReason: row.AnomalyReason,
 		})
 	}
-	data.Timeline.RangeStart = formatTimestamp(timelineAggregate.RangeStart)
-	data.Timeline.RangeEnd = formatTimestamp(timelineAggregate.RangeEnd)
-	data.Timeline.Now = formatTimestamp(timelineAggregate.Now)
+	generated.RangeStart = formatTimestamp(timelineAggregate.RangeStart)
+	generated.RangeEnd = formatTimestamp(timelineAggregate.RangeEnd)
+	generated.Now = formatTimestamp(timelineAggregate.Now)
 
-	timelineProjection := buildTimelineProjection(board.AllRequests, durationAggregate, board.GeneratedAt)
+	timelineProjection := buildTimelineProjection(tickets, durationHistory, generationInstant)
 	for _, row := range timelineProjection.Rows {
-		data.Timeline.Projection.Rows = append(data.Timeline.Projection.Rows, generatedTimelineProjectedRow{
+		generated.Projection.Rows = append(generated.Projection.Rows, generatedTimelineProjectedRow{
 			RequestId: row.RequestId,
 			StartTime: formatTimestamp(row.StartTime),
 			EndTime:   formatTimestamp(row.EndTime),
@@ -809,34 +826,23 @@ func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTick
 		})
 	}
 	for _, exclusion := range timelineProjection.Excluded {
-		data.Timeline.Projection.Excluded = append(data.Timeline.Projection.Excluded, generatedTimelineExclusion{
+		generated.Projection.Excluded = append(generated.Projection.Excluded, generatedTimelineExclusion{
 			RequestId: exclusion.RequestId,
 			Reason:    exclusion.Reason,
 		})
 	}
-	data.Timeline.Projection.QueueEnd = formatTimestamp(timelineProjection.QueueEnd)
-	data.Timeline.Projection.ChainStart = formatTimestamp(timelineProjection.ChainStart)
-	data.Timeline.Projection.WindowSize = timelineProjection.WindowSize
-	data.Timeline.Projection.WindowSamples = timelineProjection.WindowSampleCount
-	data.Timeline.Projection.TrivialSamples = timelineProjection.TrivialSampleCount
-	data.Timeline.Projection.NormalSamples = timelineProjection.NormalSampleCount
-	data.Timeline.Projection.TrivialMinutes = timelineProjection.TrivialMedianMinutes
-	data.Timeline.Projection.NormalMinutes = timelineProjection.NormalMedianMinutes
-	data.Timeline.Projection.MinimumSamples = timelineProjection.MinimumSamples
-	data.Timeline.Projection.Confident = timelineProjection.Confident
-	data.Timeline.Projection.DeclinedReason = timelineProjection.DeclinedReason
-	for _, day := range durationAggregate.Days {
-		data.Durations.Days = append(data.Durations.Days, generatedDurationDay{
-			DayKey:         day.DayKey,
-			DayTime:        formatTimestamp(day.DayTime),
-			MedianMinutes:  day.MedianMinutes,
-			HasMedian:      day.HasMedian,
-			KeptCount:      day.KeptCount,
-			CompletedCount: day.CompletedCount,
-		})
-	}
-
-	return data, nil
+	generated.Projection.QueueEnd = formatTimestamp(timelineProjection.QueueEnd)
+	generated.Projection.ChainStart = formatTimestamp(timelineProjection.ChainStart)
+	generated.Projection.WindowSize = timelineProjection.WindowSize
+	generated.Projection.WindowSamples = timelineProjection.WindowSampleCount
+	generated.Projection.TrivialSamples = timelineProjection.TrivialSampleCount
+	generated.Projection.NormalSamples = timelineProjection.NormalSampleCount
+	generated.Projection.TrivialMinutes = timelineProjection.TrivialMedianMinutes
+	generated.Projection.NormalMinutes = timelineProjection.NormalMedianMinutes
+	generated.Projection.MinimumSamples = timelineProjection.MinimumSamples
+	generated.Projection.Confident = timelineProjection.Confident
+	generated.Projection.DeclinedReason = timelineProjection.DeclinedReason
+	return generated
 }
 
 // buildGeneratedBoardMarkdownData projects each ticket's FILE TEXT — the original

@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.244.9 — Keep Consumer Tests, Timelines, and Fetches Current (2026-08-29)
+
+Consumer checkouts keep the board's semantic citation checks without inheriting suite-sized corpus floors. Live boards now advance every time-derived Timeline field on unchanged-tree cache hits, and interrupted or branch-specific archive fallbacks preserve the caller's intent.
+
+- Citation, fence, and shipped-payload tests still run against small consumer queues; only their suite-calibrated numeric floors are limited to suite checkouts
+- Live cache hits rebuild Timeline spans and forecasts from cached parsed tickets using one fresh instant, without reparsing files or Markdown
+- Archive fetching exits 129/130/143 on HUP/INT/TERM, and Git fallback selects a branch named by the existing canonical tarball URL grammar instead of silently using default HEAD
+
 ## 0.244.8 — Create Complete Prime Pairs and Clarify Audit Writes (2026-08-29)
 
 New primes start with a usable lesson satellite instead of a broken pointer, and prime audits now state their narrow routing-content write exception consistently.

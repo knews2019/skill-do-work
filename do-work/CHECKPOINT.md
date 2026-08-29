@@ -1,9 +1,9 @@
 ---
-session_updated: '2026-08-27T13:42:48Z'
-session_ended: '2026-08-27T13:42:48Z'
-last_completed: REQ-375
-queue_state: [0 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress]
-reqs_processed_this_session: 11
+session_updated: '2026-08-29T20:46:08Z'
+session_ended:
+last_completed: REQ-424
+queue_state: [15 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 1 in-progress]
+reqs_processed_this_session: 15
 session_depth: heavy
 ---
 
@@ -22,16 +22,22 @@ session_depth: heavy
 - [REQ-387](archive/UR-075/REQ-387-keep-a-spliced-title-from-changing-how-the-paste-parses.md): Safe Markdown title splicing; implementation `a0d0b350`.
 - [REQ-389](archive/UR-078/REQ-389-mark-spliced-paste-titles-with-a-leading-arrow.md): Leading arrow on spliced titles; implementation `4ed31496`.
 - [REQ-375](archive/UR-074/REQ-375-restore-the-strict-browser-lane-on-current-chromium.md): Current Chromium strict lane and Chrome 141 deprecation; implementation `54de194b`.
+- [REQ-421](archive/UR-082/REQ-421-consumer-safe-board-corpus-floors.md): Consumer-safe board corpus floors; implementation hash recorded in the archived REQ.
+- [REQ-422](archive/UR-082/REQ-422-refresh-live-timeline-cache-hits.md): Fresh time-derived Timeline cache hits; implementation hash recorded in the archived REQ.
+- [REQ-423](archive/UR-082/REQ-423-terminate-fetcher-on-signals.md): Terminating archive-fetch interruption traps; implementation hash recorded in the archived REQ.
+- [REQ-424](archive/UR-082/REQ-424-clone-requested-fallback-branch.md): Requested-branch Git fallback; implementation hash recorded in the archived REQ.
 
 ## In Progress (interrupted)
 
+- REQ-406: Create the shared do-work-cli runtime and Git transaction foundation — claimed 2026-08-29T20:32:28Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
 ## Still Queued
 
-None. No REQs remain in queue/ or working/, and no active UR folders remain in user-requests/.
+REQ-390 and REQ-407–420 remain pending. REQ-406 remains claimed by the concurrent session recorded above.
 
 ## Session Notes
 
-All implementation and guarded hash bookkeeping commits are complete. Shared release version: **0.244.6**. REQ-377 remains cancelled as already addressed; baseline.json and baseline-failures.txt were not removed, and existing local exclusions remain.
+REQ-421–424 completed as release **0.244.9**, with focused red-green evidence, the uncached queue-kanban suite, and `bash _dev/tests/maintainer-verify.sh` all passing. REQ-406 remains in progress under the separate claim above. REQ-377 remains cancelled as already addressed; baseline.json and baseline-failures.txt were not removed, and existing local exclusions remain.
 
 The final implementation passed `bash _dev/tests/maintainer-verify.sh` with exit 0. Its default optional browser lane was explicitly skipped on this Mac. Separately, the complete `TestMaintainerStrictBrowserBehaviorLane` passed with exit 0 on Chrome 151.0.7922.174; the final repeat took 76.994s. This supersedes the earlier incomplete full-lane investigations. Chrome 141 is deprecated by explicit maintainer decision, with no compatibility repair claimed. Timeline runtime behavior, both mutation pairs and the vacuity guard remain unchanged.
 

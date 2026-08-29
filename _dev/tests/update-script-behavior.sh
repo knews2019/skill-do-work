@@ -463,8 +463,14 @@ else
   mkdir -p "$upstream_fixture_repo/private-path"
   printf 'maintainer only\n' > "$upstream_fixture_repo/private-path/notes.md"
   printf 'shipped\n' > "$upstream_fixture_repo/VERSION"
+  printf 'default branch\n' > "$upstream_fixture_repo/default-branch-marker.txt"
   printf '/private-path export-ignore\n' > "$upstream_fixture_repo/.gitattributes"
   fixture_repo_commit_all "$upstream_fixture_repo" 'upstream fixture'
+  git -C "$upstream_fixture_repo" checkout -qb requested-branch
+  rm "$upstream_fixture_repo/default-branch-marker.txt"
+  printf 'requested branch\n' > "$upstream_fixture_repo/requested-branch-marker.txt"
+  fixture_repo_commit_all "$upstream_fixture_repo" 'requested branch fixture'
+  git -C "$upstream_fixture_repo" checkout -q main
 
   # Case 1: a host that answers 429 forever must not stop the fetch — the git route wins.
   rate_limited_bin="$fetch_root/rate-limited-bin"
@@ -503,6 +509,71 @@ else
     || tar tzf "$fallback_archive" 2>/dev/null | grep -qv "^$fallback_top_level/"; then
     record_failure 'upstream fetcher: the git route did not produce a single top-level directory'
   fi
+
+  # A canonical branch URL must select that exact ref. Default HEAD is retained only
+  # when the URL does not match the branch grammar, and a missing requested ref fails.
+  requested_branch_archive="$fetch_root/requested-branch.tar.gz"
+  probe_output="$(PATH="$rate_limited_bin:$PATH" \
+    bash "$archive_fetcher" "$requested_branch_archive" \
+    'https://example.invalid/archive/refs/heads/requested-branch.tar.gz' \
+    "$upstream_fixture_repo" 2>&1)"
+  probe_status=$?
+  assert_status 0 'upstream fetcher: requested branch exits 0'
+  if ! tar tzf "$requested_branch_archive" 2>/dev/null | grep -q 'requested-branch-marker\.txt'; then
+    record_failure 'upstream fetcher: requested branch archive omitted its marker'
+  fi
+  if tar tzf "$requested_branch_archive" 2>/dev/null | grep -q 'default-branch-marker\.txt'; then
+    record_failure 'upstream fetcher: requested branch archive substituted default HEAD'
+  fi
+
+  missing_branch_archive="$fetch_root/missing-branch.tar.gz"
+  probe_output="$(PATH="$rate_limited_bin:$PATH" \
+    bash "$archive_fetcher" "$missing_branch_archive" \
+    'https://example.invalid/archive/refs/heads/missing-branch.tar.gz' \
+    "$upstream_fixture_repo" 2>&1)"
+  probe_status=$?
+  assert_status_nonzero 'upstream fetcher: missing requested branch fails'
+  assert_path_absent "$missing_branch_archive" \
+    'upstream fetcher: missing requested branch publishes no archive'
+
+  default_branch_archive="$fetch_root/default-branch.tar.gz"
+  probe_output="$(PATH="$rate_limited_bin:$PATH" \
+    bash "$archive_fetcher" "$default_branch_archive" \
+    'https://example.invalid/unparseable.tar.gz' "$upstream_fixture_repo" 2>&1)"
+  probe_status=$?
+  assert_status 0 'upstream fetcher: unparseable URL uses default HEAD'
+  if ! tar tzf "$default_branch_archive" 2>/dev/null | grep -q 'default-branch-marker\.txt'; then
+    record_failure 'upstream fetcher: unparseable URL archive omitted the default marker'
+  fi
+  if tar tzf "$default_branch_archive" 2>/dev/null | grep -q 'requested-branch-marker\.txt'; then
+    record_failure 'upstream fetcher: unparseable URL selected a non-default branch'
+  fi
+
+  # A trapped interruption must terminate before the valid Git fallback can publish.
+  bash_path="$(command -v bash)"
+  for signal_case in HUP:129 INT:130 TERM:143; do
+    signal_name="${signal_case%%:*}"
+    expected_signal_status="${signal_case##*:}"
+    interrupted_archive="$fetch_root/interrupted-$signal_name.tar.gz"
+    probe_output="$(FETCH_SIGNAL="$signal_name" FETCHER_PATH="$archive_fetcher" \
+      ARCHIVE_PATH="$interrupted_archive" UPSTREAM_REPO="$upstream_fixture_repo" \
+      "$bash_path" -c '
+        bash() {
+          kill -s "$FETCH_SIGNAL" "$$"
+          return 1
+        }
+        export -f bash
+        exec "$1" "$FETCHER_PATH" "$ARCHIVE_PATH" \
+          "https://example.invalid/archive/refs/heads/main.tar.gz" "$UPSTREAM_REPO"
+      ' _ "$bash_path" 2>&1)"
+    probe_status=$?
+    assert_status "$expected_signal_status" \
+      "upstream fetcher: $signal_name exits with its conventional status"
+    assert_path_absent "$interrupted_archive" \
+      "upstream fetcher: $signal_name publishes no archive"
+    assert_output_lacks 'upstream archive fetched' \
+      "upstream fetcher: $signal_name reports no success"
+  done
 
   # Case 3: when every route fails, the pre-existing target survives untouched and no
   # private scratch is left behind.

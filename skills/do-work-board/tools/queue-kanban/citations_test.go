@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -1079,7 +1080,8 @@ process.stdout.write(JSON.stringify(results));`
 // sequence, slice, compare — because an offset that is self-consistent in Go and
 // wrong in JavaScript is exactly the failure this class of change makes.
 func TestBuildGeneratedBoardMarkdownDataLocatesEveryTicketMention(t *testing.T) {
-	markdownData := buildGeneratedBoardMarkdownData(liveBoard(t))
+	board := liveBoard(t)
+	markdownData := buildGeneratedBoardMarkdownData(board)
 
 	checkedMentionCount := map[string]int{}
 	checkDocument := func(documentKind string, documentId string, documentText string, mentions []generatedTicketMention) {
@@ -1121,10 +1123,12 @@ func TestBuildGeneratedBoardMarkdownDataLocatesEveryTicketMention(t *testing.T) 
 	// A map that never reached the payload would pass every assertion above
 	// without executing one of them — and the two maps are filled by separate
 	// loops, so one floor covering both would let either go missing.
-	for documentKind, floorCount := range map[string]int{"req": 500, "ur": 100} {
-		if checkedMentionCount[documentKind] < floorCount {
-			t.Fatalf("only %d %s mentions reached the payload — the live tree carries far more, so that map is not being shipped",
-				checkedMentionCount[documentKind], documentKind)
+	if suiteCheckoutSkipReason(board.RepoRoot) == "" {
+		for documentKind, floorCount := range map[string]int{"req": 500, "ur": 100} {
+			if checkedMentionCount[documentKind] < floorCount {
+				t.Fatalf("only %d %s mentions reached the payload — the live tree carries far more, so that map is not being shipped",
+					checkedMentionCount[documentKind], documentKind)
+			}
 		}
 	}
 }
@@ -1151,7 +1155,7 @@ func TestBuildGeneratedBoardMarkdownDataNeverOffersToAnnotateAFence(t *testing.T
 			}
 		}
 	}
-	if checkedFenceCount < 100 {
+	if suiteCheckoutSkipReason(board.RepoRoot) == "" && checkedFenceCount < 100 {
 		t.Fatalf("only %d fenced REQ files were checked — the assertion above never ran on a real fence", checkedFenceCount)
 	}
 }
@@ -1472,6 +1476,7 @@ func TestUtf16LengthMatchesWhatTheClientReceives(t *testing.T) {
 // This is the cheap guard for that case. It reads the file the page actually
 // loads, so it fails if the index is built and then not shipped.
 func TestGeneratedBoardMarkdownFileShipsTheTicketMentionIndex(t *testing.T) {
+	repoRoot := liveRepoRoot(t)
 	outputDirectory := generateLiveSiteInDir(t)
 	markdownJs, readError := os.ReadFile(filepath.Join(outputDirectory, "board-markdown.js"))
 	if readError != nil {
@@ -1528,7 +1533,44 @@ func TestGeneratedBoardMarkdownFileShipsTheTicketMentionIndex(t *testing.T) {
 			checkedDocumentCount++
 		}
 	}
-	if checkedDocumentCount < 500 {
+	if suiteCheckoutSkipReason(repoRoot) == "" && checkedDocumentCount < 500 {
 		t.Fatalf("only %d shipped mentions were checked — the live tree carries thousands", checkedDocumentCount)
+	}
+}
+
+// The three live-corpus tests above ship with the board tool, so consumers run
+// them against their own do-work tree. Exercise the actual test binary from a
+// vendored-tool working directory: each semantic invariant must still run and
+// pass, while only its suite-sized numeric floor is inapplicable.
+func TestConsumerCheckoutRunsCitationFenceAndShippedPayloadInvariants(t *testing.T) {
+	consumerRoot, toolDirectory := seedConsumerInstallLayout(t, true)
+	targetPath := filepath.Join(consumerRoot, "do-work", "queue", "REQ-9102-target.md")
+	if writeError := os.WriteFile(targetPath, []byte("---\nid: REQ-9102\ntitle: Consumer target\nstatus: pending\n---\n\nTarget.\n"), 0o644); writeError != nil {
+		t.Fatalf("write consumer target: %v", writeError)
+	}
+	sourcePath := filepath.Join(consumerRoot, "do-work", "queue", "REQ-9101-consumer.md")
+	if writeError := os.WriteFile(sourcePath, []byte("---\nid: REQ-9101\ntitle: Consumer source\nstatus: pending\n---\n\n```text\nREQ-9102\n```\n\nSee REQ-9102.\n"), 0o644); writeError != nil {
+		t.Fatalf("write consumer source: %v", writeError)
+	}
+
+	testNames := []string{
+		"TestBuildGeneratedBoardMarkdownDataLocatesEveryTicketMention",
+		"TestBuildGeneratedBoardMarkdownDataNeverOffersToAnnotateAFence",
+		"TestGeneratedBoardMarkdownFileShipsTheTicketMentionIndex",
+	}
+	consumerCommand := exec.Command(os.Args[0],
+		"-test.run=^("+strings.Join(testNames, "|")+")$",
+		"-test.count=1",
+		"-test.v",
+	)
+	consumerCommand.Dir = toolDirectory
+	consumerOutput, consumerError := consumerCommand.CombinedOutput()
+	if consumerError != nil {
+		t.Fatalf("consumer corpus checks failed: %v\n%s", consumerError, consumerOutput)
+	}
+	for _, testName := range testNames {
+		if !strings.Contains(string(consumerOutput), "--- PASS: "+testName) {
+			t.Errorf("consumer run did not execute %s to PASS:\n%s", testName, consumerOutput)
+		}
 	}
 }

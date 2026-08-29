@@ -37,6 +37,7 @@ type liveBoardServer struct {
 	repoRoot     string
 	recentWindow time.Duration
 	htmlPreviews *htmlFolderPreviewManager
+	currentTime  func() time.Time
 
 	cacheMu             sync.Mutex
 	cachedFileMtimes    map[string]time.Time        // absPath → last-seen mtime
@@ -57,6 +58,7 @@ func newLiveBoardServer(repoRoot string, recentWindow time.Duration) *liveBoardS
 		repoRoot:         repoRoot,
 		recentWindow:     recentWindow,
 		htmlPreviews:     newHtmlFolderPreviewManager(),
+		currentTime:      time.Now,
 		cachedFileMtimes: map[string]time.Time{},
 	}
 }
@@ -102,15 +104,15 @@ func (liveServer *liveBoardServer) ServeHTTP(responseWriter http.ResponseWriter,
 // serveBoardHtml serves the HTML shell assembled from the embedded template.
 // The board data is NOT inlined here — the template.html already carries a
 // <script src="board-data.js"> tag that the browser follows to /board-data.js.
-// Passing time.Now() to assembleStaticPage makes the "Generated …" timestamp
-// reflect when the page was requested, not when the binary started.
+// Reading the live-server clock here makes the "Generated …" timestamp reflect
+// when the page was requested, not when the binary started.
 func (liveServer *liveBoardServer) serveBoardHtml(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	if httpRequest.Method != http.MethodGet && httpRequest.Method != http.MethodHead {
 		http.Error(responseWriter, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	pageHtml, assembleErr := assembleStaticPage(time.Now(), deriveProjectName(liveServer.repoRoot))
+	pageHtml, assembleErr := assembleStaticPage(liveServer.currentTime(), deriveProjectName(liveServer.repoRoot))
 	if assembleErr != nil {
 		log.Printf("queue-kanban serve: assembling board HTML: %v", assembleErr)
 		http.Error(responseWriter, "Internal error assembling board HTML", http.StatusInternalServerError)
@@ -158,7 +160,7 @@ func (liveServer *liveBoardServer) serveLiveBoardDataJs(responseWriter http.Resp
 	// blind to, and caching these would restore it. Measured at ~40ms for the whole
 	// probe set on a 280-ticket tree, on a page that only reloads manually.
 	if currentBoard := liveServer.currentBoard(); currentBoard != nil {
-		attachVerifyFindings(&liveBoardData, currentBoard, time.Now())
+		attachVerifyFindings(&liveBoardData, currentBoard, liveServer.currentTime())
 	}
 
 	jsText, encodeErr := encodeBoardDataForJsAssignment(liveBoardData)
@@ -327,8 +329,8 @@ func (liveServer *liveBoardServer) currentBoard() *Board {
 
 // refreshBoardData checks whether any file in the do-work tree has changed
 // since the last build (by comparing mtime fingerprints). Returns the cached
-// board data unchanged if the tree is clean; otherwise rebuilds via the shared
-// buildBoard + buildGeneratedBoardData path that generate uses.
+// parsed board when the tree is clean while refreshing its time-derived payload;
+// otherwise rebuilds via the shared buildBoard + buildGeneratedBoardData path.
 func (liveServer *liveBoardServer) refreshBoardData() (*generatedBoardData, error) {
 	liveServer.cacheMu.Lock()
 	defer liveServer.cacheMu.Unlock()
@@ -341,20 +343,24 @@ func (liveServer *liveBoardServer) refreshBoardData() (*generatedBoardData, erro
 	currentFileMtimes := buildTreeMtimeFingerprint(discovered)
 
 	if liveServer.cachedBoardData != nil && treeMtimeFingerprintsEqual(liveServer.cachedFileMtimes, currentFileMtimes) {
-		// The tree is unchanged but time has moved on: serve a copy with a fresh
-		// GeneratedAt, because the client computes the Recently-done cutoff from
-		// generatedAt as "now" — returning the frozen build instant would stop
-		// completed items from ever aging out of the 24h/48h/7d window while the
-		// page header (stamped per request) claims the data is current.
+		// The parsed tree is unchanged but time has moved on. Rebuild the Timeline
+		// from that cached model so its open spans, now-line and forecast share the
+		// fresh GeneratedAt without paying to parse or render Markdown again.
+		generatedAt := liveServer.currentTime()
 		refreshedBoardData := *liveServer.cachedBoardData
-		refreshedBoardData.GeneratedAt = formatTimestamp(time.Now())
+		refreshedBoardData.GeneratedAt = formatTimestamp(generatedAt)
+		refreshedBoardData.Timeline = buildGeneratedTimeline(
+			liveServer.cachedBoard.AllRequests,
+			buildDurationAggregate(liveServer.cachedBoard.AllRequests),
+			generatedAt,
+		)
 		return &refreshedBoardData, nil
 	}
 
 	// Cache miss (or first request): rebuild using the same path as generate.
 	// The real git lookup is used (best-effort; a failed lookup leaves the
 	// completion undated), matching generate's behavior exactly.
-	board, buildErr := buildBoard(liveServer.repoRoot, time.Now(), liveServer.recentWindow, lookupGitCommitDate)
+	board, buildErr := buildBoard(liveServer.repoRoot, liveServer.currentTime(), liveServer.recentWindow, lookupGitCommitDate)
 	if buildErr != nil {
 		return nil, fmt.Errorf("building board model: %w", buildErr)
 	}
