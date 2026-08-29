@@ -4,6 +4,7 @@ title: 'Refresh time-derived timeline data on live cache hits'
 status: completed
 claimed_at: 2026-08-29T20:31:49Z
 completed_at: 2026-08-29T20:46:08Z
+commit: f532dcf2
 route: B
 created_at: 2026-08-29T20:26:10Z
 user_request: UR-082
