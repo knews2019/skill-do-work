@@ -11,7 +11,17 @@ suite_installer="$repo_root/tools/install-do-work-suite.sh"
 section_replacer="$repo_root/tools/replace-text-section.sh"
 upstream_fetcher_source="$repo_root/tools/fetch-upstream-archive.sh"
 atomic_download_source="$repo_root/skills/do-work/scripts/atomic-download.sh"
+do_work_cli_launcher="$repo_root/skills/do-work/tools/do-work-cli.sh"
+do_work_cli_module="$repo_root/skills/do-work/tools/do-work-cli"
 fail_count=0
+
+# The updater, installer, validator, replacer and fetcher are all launchers over do-work-cli
+# now, so the command is built once here and copied into every fixture below.
+if ! (cd "$do_work_cli_module" && go build -o do-work-cli ./cmd/do-work-cli); then
+  printf 'FAIL: could not pre-build do-work-cli for the update fixtures.\n' >&2
+  exit 1
+fi
+touch "$do_work_cli_module/do-work-cli"
 
 for required_command in bash git tar diff; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
@@ -41,8 +51,9 @@ export GIT_CONFIG_GLOBAL=/dev/null
 export GIT_CONFIG_SYSTEM=/dev/null
 export GIT_TERMINAL_PROMPT=0
 
-fixture_root="$(mktemp -d)"
+fixture_root="${DO_WORK_TEST_FIXTURE_ROOT:-$(mktemp -d)}"
 cleanup_fixture() {
+  [ -z "${DO_WORK_TEST_FIXTURE_ROOT:-}" ] || return 0
   chmod -R u+rwX "$fixture_root" 2>/dev/null || true
   rm -rf "$fixture_root"
 }
@@ -111,6 +122,20 @@ commit_project() {
   git -C "$project_path" commit -qm "$message_text"
 }
 
+# copy_do_work_cli_module places the Go command beside a fixture's launchers, with the binary
+# pre-built and its mtime pinned past every source. The launcher rebuilds whenever a source
+# is newer, and these fixtures must run without `go` deciding the outcome (REQ-407 C10).
+copy_do_work_cli_module() {
+  local tools_directory="$1"
+  cp "$do_work_cli_launcher" "$tools_directory/do-work-cli.sh"
+  chmod +x "$tools_directory/do-work-cli.sh"
+  mkdir -p "$tools_directory/do-work-cli"
+  cp -R "$do_work_cli_module/." "$tools_directory/do-work-cli/"
+  find "$tools_directory/do-work-cli" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \) \
+    -exec touch -t 200001010000 {} +
+  touch "$tools_directory/do-work-cli/do-work-cli"
+}
+
 build_suite_install() {
   local project_path="$1" module_name module_path
   mkdir -p "$project_path/do-work/queue" "$project_path/kb" "$project_path/.claude/skills"
@@ -133,6 +158,7 @@ build_suite_install() {
     "$project_path/.claude/skills/do-work/tools/replace-text-section.sh"
   cp "$upstream_fetcher_source" \
     "$project_path/.claude/skills/do-work/tools/fetch-upstream-archive.sh"
+  copy_do_work_cli_module "$project_path/.claude/skills/do-work/tools"
   mkdir -p "$project_path/.claude/skills/do-work/scripts"
   cp "$atomic_download_source" \
     "$project_path/.claude/skills/do-work/scripts/atomic-download.sh"
@@ -174,6 +200,7 @@ build_suite_tree() {
     "$tree_root/skills/do-work/tools/replace-text-section.sh"
   cp "$upstream_fetcher_source" \
     "$tree_root/skills/do-work/tools/fetch-upstream-archive.sh"
+  copy_do_work_cli_module "$tree_root/skills/do-work/tools"
   mkdir -p "$tree_root/skills/do-work/scripts"
   cp "$atomic_download_source" "$tree_root/skills/do-work/scripts/atomic-download.sh"
   chmod +x "$tree_root/skills/do-work/scripts/"*.sh
@@ -306,11 +333,33 @@ probe_output="$(cd "$just_entry_project" && printf 'y\n' \
   | FAKE_TARBALL="$suite_tarball" just run-do-work-update 2>&1)"
 probe_status=$?
 assert_status 0 'entry-point parity: managed Just updater exits 0'
-if ! diff -qr "$suite_project/.claude/skills" "$just_entry_project/.claude/skills" >/dev/null \
-  || ! cmp -s "$suite_project/Justfile" "$just_entry_project/Justfile" \
-  || ! cmp -s "$suite_project/.claude/settings.json" "$just_entry_project/.claude/settings.json"; then
-  record_failure 'entry-point parity: direct and managed Just updates produced different managed bytes'
+# The built do-work-cli binary is build output, not suite content: Go embeds the build
+# directory in it, so two projects that build it under different paths hold different bytes
+# for identical sources. It is filtered out of the diff's OUTPUT rather than with `diff -x`,
+# because -x matches the basenames of directories too and `do-work-cli` is also the module
+# directory's name — excluding by name would blind this check to the entire Go source tree.
+parity_diff_status=0
+parity_report="$(diff -qr "$suite_project/.claude/skills" "$just_entry_project/.claude/skills" 2>&1)" \
+  || parity_diff_status=$?
+if [ "$parity_diff_status" -gt 1 ]; then
+  record_failure "entry-point parity: managed skill trees could not be compared: $parity_report"
+else
+  parity_differences="$(printf '%s\n' "$parity_report" \
+    | grep -v 'tools/do-work-cli/do-work-cli ' | grep -v '^$' || true)"
+  if [ -n "$parity_differences" ]; then
+    record_failure "entry-point parity: direct and managed Just updates produced different managed bytes: $parity_differences"
+  fi
 fi
+if ! cmp -s "$suite_project/Justfile" "$just_entry_project/Justfile" \
+  || ! cmp -s "$suite_project/.claude/settings.json" "$just_entry_project/.claude/settings.json"; then
+  record_failure 'entry-point parity: direct and managed Just updates produced different managed configuration bytes'
+fi
+# Both entry points must have installed a runnable command, whoever built it.
+for parity_project in "$suite_project" "$just_entry_project"; do
+  if [ ! -x "$parity_project/.claude/skills/do-work/tools/do-work-cli/do-work-cli" ]; then
+    record_failure "entry-point parity: ${parity_project##*/} has no executable do-work-cli after the update"
+  fi
+done
 
 # The installed suite remains the trusted transaction engine. A valid archive cannot
 # replace that engine with an executable of its own before the reviewed write boundary.
@@ -326,6 +375,18 @@ printf '%s\n' '#!/usr/bin/env bash' \
   ': > "$ARCHIVE_INSTALLER_MARKER"' \
   'exit 92' > "$hostile_installer_tree/skills/do-work/tools/replace-text-section.sh"
 chmod +x "$hostile_installer_tree/skills/do-work/tools/replace-text-section.sh"
+# The trusted-engine guarantee now covers the Go command as well: a hostile archive that
+# plants its own do-work-cli.sh and its own Go source must have neither built nor run.
+printf '%s\n' '#!/usr/bin/env bash' \
+  ': > "$ARCHIVE_INSTALLER_MARKER"' \
+  'exit 93' > "$hostile_installer_tree/skills/do-work/tools/do-work-cli.sh"
+chmod +x "$hostile_installer_tree/skills/do-work/tools/do-work-cli.sh"
+mkdir -p "$hostile_installer_tree/skills/do-work/tools/do-work-cli/cmd/do-work-cli"
+printf '%s\n' \
+  'package main' \
+  'import "os"' \
+  'func main() { _ = os.WriteFile(os.Getenv("ARCHIVE_INSTALLER_MARKER"), nil, 0o644); os.Exit(94) }' \
+  > "$hostile_installer_tree/skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go"
 archive_suite_tree "$hostile_installer_tree" "$hostile_installer_tarball"
 trusted_engine_project="$fixture_root/trusted-engine-project"
 build_suite_install "$trusted_engine_project"
@@ -605,16 +666,33 @@ else
   esac
 fi
 
-# Both callers must route their no-archive fetch through the shared fetcher rather
-# than a bare curl, and honor the DO_WORK_UPSTREAM_URL override.
-for upstream_caller in \
+# The install and update transactions moved into Go, so the two callers that used to shell
+# out to the fetcher now call the archivefetch package. These assertions follow the behaviour
+# to the file that owns it rather than being retired: the point is still that neither caller
+# reaches for a bare curl, and that both honour the documented override.
+install_transaction_source="$repo_root/skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction.go"
+update_transaction_source="$repo_root/skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go"
+archive_fetch_source="$repo_root/skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch.go"
+for upstream_caller in "$install_transaction_source" "$update_transaction_source"; do
+  if ! grep -q 'archivefetch\.FetchArchive' "$upstream_caller"; then
+    record_failure "upstream fetcher: ${upstream_caller##*/} does not delegate its fetch to the shared fetch package"
+  fi
+  if grep -q '"curl"' "$upstream_caller"; then
+    record_failure "upstream fetcher: ${upstream_caller##*/} reaches for curl directly"
+  fi
+done
+if ! grep -q 'DO_WORK_UPSTREAM_URL' "$archive_fetch_source"; then
+  record_failure 'upstream fetcher: archive_fetch.go does not honor DO_WORK_UPSTREAM_URL'
+fi
+if ! grep -q 'atomic-download\.sh' "$archive_fetch_source"; then
+  record_failure 'upstream fetcher: archive_fetch.go does not route the HTTP fetch through the shipped atomic-download primitive'
+fi
+# The public shell entry points must still exist as launchers over the command.
+for suite_launcher in \
   "$repo_root/skills/do-work/tools/do-work-update.sh" \
   "$repo_root/tools/install-do-work-suite.sh"; do
-  if ! grep -q 'fetch-upstream-archive\.sh' "$upstream_caller"; then
-    record_failure "upstream fetcher: ${upstream_caller##*/} does not delegate its fetch to the shared fetcher"
-  fi
-  if ! grep -q 'DO_WORK_UPSTREAM_URL' "$upstream_caller"; then
-    record_failure "upstream fetcher: ${upstream_caller##*/} does not honor DO_WORK_UPSTREAM_URL"
+  if ! grep -q 'do-work-cli' "$suite_launcher"; then
+    record_failure "upstream fetcher: ${suite_launcher##*/} no longer delegates to do-work-cli"
   fi
 done
 
