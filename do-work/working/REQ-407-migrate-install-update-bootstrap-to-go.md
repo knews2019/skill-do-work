@@ -512,3 +512,73 @@ GO TEST CONVENTIONS (skills/do-work/tools/do-work-cli). Tests live in the packag
 **Builder branch:** `worktree-agent-REQ-407-migrate-install-update-bootstrap-to-go` — twelve commits, `1611116` → `bda2f2b`.
 **Merge range:** `0bc1480..acf6b73`.
 **Hand-back:** `do-work/runs/work-2026-08-29-213539/REQ-407-handback.md` — carries the full per-file manifest, the 23-site Python and jq elimination walk, `## Decisions`, `## Discovered Tasks` and `## Integration Seams`.
+
+## Testing
+
+**Tests run (merged tree, merge range `0bc1480..acf6b73`):**
+- `cd skills/do-work/tools/do-work-cli && go test -count=1 ./...` — ✓ all nine packages
+- `bash _dev/tests/install-suite-behavior.sh`, `update-script-behavior.sh`, `contract-regressions.sh` — ✓ exit 0 each; the installer suite run three consecutive times clean
+- `bash _dev/tests/maintainer-verify.sh` (canonical repository gate, browser lane in its default skipped state) — ✓ **exit 0** on the merged tree, 12 stages. Judged by direct exit status, never piped.
+
+**Red-green validation:** traced to the REQ's `## Red-Green Proof`, whose RED is the installer/update fixtures with `python3` and `jq` removed from PATH, including an existing managed Justfile and custom settings hooks.
+
+- Restricted-PATH installer, existing Justfile: ✗ before — `python3 is required to reconcile an existing Justfile safely` → ✓ after
+- Restricted-PATH installer, fresh project: ✗ before — falls through to `settings reconciler: manual` and never writes `settings.json` → ✓ after, with the core hook composed and the retired guard removed
+- GREEN was re-verified after the session resumed, with **`go` also absent from PATH**, proving the pre-built binary path rather than an implicit toolchain dependency.
+
+**Byte-preservation proofs (re-verified after resuming):**
+- A 28-case characterization of the old embedded Python replacer produces **byte-identical and mode-identical** targets through the Go port — including a lone-CR case no existing fixture covered.
+- The Go settings composer is **byte-identical** to the incumbent jq program on the reinstall fixture, key order included.
+
+**A real race, found by running rather than reviewing.** The install signal handler recovered from its own goroutine while the main goroutine was still copying, so an interrupted install intermittently reported its recovery incomplete. It passed standalone and failed under the aggregate — the shape of a race, not a flake. Fixed in `7685de4`: the handler now cancels a work context and waits for the single main-goroutine recovery.
+
+**New tests added:** 40 managed-section and Just-scanner cases (lone-CR splitting, CRLF, NUL, BOM asymmetry, malformed and reversed markers, symlink and dangling-symlink refusal, mode preservation, byte-idempotence, multiline-literal boundaries); settings-hook key-order, append-unique, guard-removal, custom-hook preservation and five malformed-input refusals; 16 manifest rejection cases; archive-fetch branch derivation across five URL shapes plus route fallthrough and preserved-target-on-total-failure; and the full install/update transaction matrix including cancellation, post-write-failure recovery, collision refusal before confirmation, and the stdout-result / stderr-narration split.
+
+**Existing tests updated (cross-REQ impact):** the three behavioural shell suites were retargeted at the Go implementation. `install-suite-behavior.sh` lost the Python-fallback and no-JSON-tool lanes (99 lines) and the flaky-jq post-write lane (37 lines) because the states they asserted no longer exist; `contract-regressions.sh` moved eleven grep assertions onto the Go sources that now own each behaviour. The hand-back records each with its reason.
+
+*Verified by work action*
+
+## Python and jq Elimination
+
+
+Walking the exploration's 23-site list. "Removed" means the branch no longer exists anywhere; "replaced by Go" means the behaviour survives in a named Go file.
+
+**Install/update path — python3 (sites 1-6):**
+
+1. `tools/replace-text-section.sh:5-8` + mirror — the `command -v python3` guard and its `python3 is required` message. **REMOVED.** The launcher has no interpreter guard; `do-work-cli.sh` enforces the Go floor instead.
+2. `tools/replace-text-section.sh:10` + mirror — `exec python3 - "$@" <<'PY'` and the entire 344-line implementation. **REPLACED BY GO**: `internal/managedsection/managed_section.go` and `just_definitions.go`.
+3. `tools/install-do-work-suite.sh:267` + mirror — `if command -v python3` gating whether the Justfile candidate goes through the replacer. **REMOVED**; the install transaction always calls `managedsection.ReplaceSection`.
+4. `tools/install-do-work-suite.sh:278-282` + mirror — the no-python3 Justfile branch, including `python3 is required to reconcile an existing Justfile safely`. **REMOVED.** This was half the REQ's RED.
+5. `tools/install-do-work-suite.sh:308` + mirror — `if command -v python3` gating CLAUDE.md reconciliation. **REMOVED.**
+6. `tools/install-do-work-suite.sh:316-320` + mirror — the no-python3 CLAUDE.md branch. **REMOVED.**
+
+**Install/update path — jq and the settings composer (sites 7-12):**
+
+7. `tools/install-do-work-suite.sh:329-333` + mirror — the `settings_tool` three-way `jq`/`python3`/`manual` selection. **REMOVED.**
+8. `tools/install-do-work-suite.sh:356-388` + mirror — the jq reconciliation program. **REPLACED BY GO**: `internal/settingshooks/settings_hooks.go`, verified byte-identical on the reinstall fixture.
+9. `tools/install-do-work-suite.sh:389-390` + mirror — `jq -e .` re-parse of the candidate. **REPLACED BY GO**: composition decodes and re-encodes, so an unparseable candidate cannot be produced; malformed input is refused before any write.
+10. `tools/install-do-work-suite.sh:392-448` + mirror — the embedded python3 settings composer. **REPLACED BY GO**, same file.
+11. `tools/install-do-work-suite.sh:449-450` + mirror — `python3 -m json.tool` re-parse. **REPLACED BY GO**, as site 9.
+12. `tools/install-do-work-suite.sh:600-604` + mirror — post-write validation of the INSTALLED settings (`jq -e .` / `python3 -m json.tool`). **REPLACED BY GO**: `verifyInstalledBytes` re-composes the installed file, which is a strictly stronger check than a re-parse. This was the flaky-jq lane's only injection point; see Decisions D-06.
+
+**Consequent dead surface (sites 13-14):**
+
+13. `tools/install-do-work-suite.sh:6` + mirror — `manual_settings_instruction`, the 380-character MANUAL STEP string, and its references at :494 and :620. **REMOVED.** Verified absent by grep across the whole repo.
+14. `tools/install-do-work-suite.sh:343`/`:458` and the branches at :493-503, :575-580, :597-605, :619-621 — the whole `settings_tool != manual` block. **REMOVED.** `settings_tool` appears nowhere in the repository.
+
+**Deliberately retained (sites 15-20):**
+
+15. `skills/do-work/tools/checks/preflight.sh:120-130` — the `python3` baseline.json writer with its printf fallback. **RETAINED**, untouched. REQ-414 territory; not on the install/update path.
+16. `skills/do-work/tools/checks/preflight.sh:143` — the virtualenv probe. **RETAINED**, untouched. This is the REQ's own "keep Python checks only when probing a Python target capability".
+17. `skills/do-work-knowledge/scripts/install-memory-hooks.sh:20,28,46,51` — the jq guard, validation, merge program and merge validation. **RETAINED** (4 occurrences confirmed present). REQ-417 territory.
+18. `skills/do-work-knowledge/hooks/memory-stop-capture.sh:49-50,98,112,163-175` — jq transcript extraction, capture program, documented no-jq fallback. **RETAINED** (9 occurrences confirmed present). REQ-415 territory.
+19. `skills/do-work-toolbox/scripts/install-last30days.sh:159-169` — the python3.13/3.12/3/python probe for a Python target. **RETAINED**, untouched.
+20. `skills/do-work-knowledge/actions/setup-memory.md:57,59,64` and `memory-reference.md:157,158` — prose describing the jq-or-manual contract for memory hooks. **RETAINED**, untouched.
+
+**Harness-side (sites 21-23):**
+
+21. Maintainer-test python3 in `contract-regressions.sh` (17 sites), `staged-skills-contract.sh` (6 sites) and `shipped-package-reference-contract.sh:6`. **RETAINED.** These run in the outer harness process, are not shipped, and are not what the REQ's "Python absent" constraint targets. Untouched.
+22. `install-suite-behavior.sh:338-354` and `:538-548` — the two python3 settings-structure assertions. The first is **REPLACED** by a whole-document byte comparison against an expected JSON file; the second went with the Python-fallback lane it belonged to. `install-suite-behavior.sh` now contains zero `python3` references.
+23. The three restricted-PATH command lists at `:380`, `:506` and `:554`. `:506` and `:554` went with their lanes. `:380` **SHRUNK** to `awk bash cat cp diff dirname find git grep gzip mkdir mktemp mv rm sed tar` — python3 removed, and `chmod cmp head stat tr wc` dropped as no longer needed. One list remains, and python3's absence from it is the standing proof for the constraint.
+
+All 23 sites reached. No gaps.
