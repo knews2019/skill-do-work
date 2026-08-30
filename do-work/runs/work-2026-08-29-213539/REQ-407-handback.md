@@ -332,3 +332,26 @@ Nothing reached the ESCALATE tier. The one judgment call that came closest is D-
 - **`skills/do-work/tools/checks/preflight.sh` still writes `baseline.json` through embedded Python** (REQ-414's territory, correctly out of scope here). Now that `settingshooks` exists, that writer has a natural Go home and the printf fallback beside it could go.
 - **The two Current-version parsers were unified, in the validator's favour.** `validate-suite-manifest.sh:142-145` required exactly one matching line and took the whole remainder; `do-work-update.sh:29` took only leading digits from the first match. `suitemanifest.ReadActionVersion` implements the validator's stricter form for both paths, and `readInstalledVersion` additionally requires a plain semver. C15 flagged this as easy to do accidentally; it was done deliberately, and the looser parse has no remaining caller. Flagging it here because it is a behaviour change on the update path that no test distinguishes: a malformed `version.md` that the old updater would have partially parsed now fails cleanly.
 - **`_dev/tests/maintainer-verify.sh --self-test` still asserts exactly 11 stages.** No lane was added, so it is untouched and passing — but the plan's "no lane needs adding" is now load-bearing for anyone adding a Go package with its own gate.
+
+## Remediation — BOM
+
+**Commit:** `8b4e1b1fd9ba2a47ad5ac54746f6a890843b2102` — "REQ-407: accept a BOM-prefixed settings.json again, as jq did", on branch `worktree-agent-REQ-407-migrate-install-update-bootstrap-to-go`. Two files, staged by explicit path: `skills/do-work/tools/do-work-cli/internal/settingshooks/settings_hooks.go` and its test. Not pushed, not merged.
+
+**The regression.** `decodeOrderedJSON` handed the consumer's bytes straight to `encoding/json`, which refuses a UTF-8 byte-order mark. The incumbent three-way branch preferred `jq` whenever it was installed, and `jq` accepts a BOM and drops it, so a `settings.json` written by a Windows editor or a PowerShell redirect installed before the port and hard-failed the entire install after it.
+
+**RED first.** `TestLeadingByteOrderMarkIsStrippedLikeJq` was added before the fix and failed with the exact production text:
+
+```
+--- FAIL: TestLeadingByteOrderMarkIsStrippedLikeJq (0.00s)
+    settings_hooks_test.go:182: ComposeSettings: settings are not valid JSON: invalid character 'ï' looking for beginning of value
+```
+
+**The fix.** One line in `decodeOrderedJSON`: `data = bytes.TrimPrefix(data, []byte(utf8ByteOrderMark))`, with `utf8ByteOrderMark` a `const` `"﻿"`. Trim, not general leniency — the decoder is otherwise untouched, so every other refusal in the package keeps its current message. Because the strip happens before decoding, the mark is never in the value tree and cannot be re-encoded; the test asserts the output contains no `﻿` anywhere and starts with `{\n`.
+
+**Bounds locked.** Two cases added to `TestMalformedSettingsAreRefusedWithoutProducingOutput`: a doubled BOM (`"﻿﻿{}"`) and a BOM at a non-zero offset (`"{﻿\"hooks\": {}}"`). Both must stay `settings are not valid JSON`. A byte-order mark is one mark at position zero; anything else is malformed input.
+
+**Package gates.** `go vet ./...` and `go test -count=1 ./...` in `skills/do-work/tools/do-work-cli` — exit 0. `gofmt -l` over both touched files — silent.
+
+**End-to-end.** Throwaway git fixture with a BOM-prefixed `.claude/settings.json` carrying one consumer `SessionStart` hook (`echo consumer-own-start`) and a `permissions.allow` block. `printf 'y\n' | bash tools/install-do-work-suite.sh --project-root <fixture>` — exit 0, `install-suite: success`, `.claude/settings.json [modified]: core hooks composed into existing settings`, `rollback: not_needed`. The written file starts `7b 0a` (`{\n`), contains no `EF BB BF` anywhere, parses under both `jq` and `python3 -m json.tool`, and holds two `SessionStart` wrappers: the consumer's own hook once, the core `session-start.sh` hook once, with `permissions.allow` intact.
+
+**Canonical gate.** `bash _dev/tests/maintainer-verify.sh` from the worktree root — **exit 0**, "Maintainer verification passed." Run directly, unpiped, with `QUEUE_KANBAN_BROWSER` unset (the strict browser lane self-skipped, as it does on this host). Run twice: once after the fix, and again after the `var` → `const` tidy-up, so the passing run covers the committed source exactly.

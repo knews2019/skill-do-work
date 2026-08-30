@@ -510,7 +510,7 @@ GO TEST CONVENTIONS (skills/do-work/tools/do-work-cli). Tests live in the packag
 **What was done:** Moved bootstrap, install, update, byte-safe managed-section replacement, settings reconciliation, suite validation and archive fetching into the `do-work-cli` Go module, and deleted the Python and jq branches they used to run through. Five new internal packages (`managedsection`, `settingshooks`, `suitemanifest`, `archivefetch`, `suiteinstall`) back five registered commands, and the five public shell entry points shrink to compatibility launchers — the installer from 621 lines to 96, the section replacer from 355 to 40, the manifest validator from 151 to 30. The external tools the scripts already invoked (`cp -Rp`, `tar`, `diff`, `git`, `just`, `atomic-download.sh`) stay as subprocesses, which preserves byte, mode and symlink semantics rather than reimplementing them. The `settings_tool` three-way branch and its manual-instruction path are gone: with Go always able to reconcile, "no JSON tool available" ceases to be a state. Also closes the five gaps folded in from REQ-406 — no finding emits a `<command>` placeholder any more, the transaction success path consults `state.existed`, and the `--commit`, `commit_failed`, empty-rollback-status and text-rendering cases gained tests.
 
 **Builder branch:** `worktree-agent-REQ-407-migrate-install-update-bootstrap-to-go` — twelve commits, `1611116` → `bda2f2b`.
-**Merge range:** `0bc1480..acf6b73`.
+**Merge range:** `0bc1480..f45cdca` (cumulative — includes the BOM remediation).
 **Hand-back:** `do-work/runs/work-2026-08-29-213539/REQ-407-handback.md` — carries the full per-file manifest, the 23-site Python and jq elimination walk, `## Decisions`, `## Discovered Tasks` and `## Integration Seams`.
 
 ## Testing
@@ -582,3 +582,43 @@ Walking the exploration's 23-site list. "Removed" means the branch no longer exi
 23. The three restricted-PATH command lists at `:380`, `:506` and `:554`. `:506` and `:554` went with their lanes. `:380` **SHRUNK** to `awk bash cat cp diff dirname find git grep gzip mkdir mktemp mv rm sed tar` — python3 removed, and `chmod cmp head stat tr wc` dropped as no longer needed. One list remains, and python3's absence from it is the standing proof for the constraint.
 
 All 23 sites reached. No gaps.
+
+## Remediation — BOM-prefixed settings.json
+
+**A regression this REQ introduced, found in review and fixed inside it.** A `.claude/settings.json`
+carrying a UTF-8 BOM installed fine before REQ-407 and afterwards hard-failed the whole install with
+`settings are not valid JSON: invalid character 'ï' looking for beginning of value` — the first BOM byte
+read as Latin-1, exit 2.
+
+The regression is against real incumbent behaviour, measured both ways:
+
+| Incumbent | BOM-prefixed input |
+|---|---|
+| `jq -e .` | **accepts and strips it**, exit 0 |
+| `python3 -m json.tool` | rejects it |
+
+The old installer's three-way branch preferred `jq` whenever it was present, so the common case worked
+and stopped working. Any project whose settings file came from a Windows editor or a PowerShell redirect
+was hard-blocked from installing.
+
+**Fixed in `8b4e1b1`:** `decodeOrderedJSON` strips one leading BOM before decoding, reproducing jq's
+behaviour including that the mark never re-enters the encoded output. Deliberately narrow — a doubled
+mark and a mark at a non-zero offset both stay refused, because those are malformed input rather than a
+byte-order mark, and all five pre-existing malformed-input refusals keep their original messages.
+
+**Evidence.** RED committed before the fix: `TestLeadingByteOrderMarkIsStrippedLikeJq` failing with the
+exact `invalid character 'ï'` text. Independently re-verified by the orchestrator on the merged tree
+against a throwaway fixture repo carrying a BOM-prefixed settings file:
+
+```
+install-suite: success
+change .claude/settings.json [modified]: core hooks composed into existing settings
+rollback: not_needed
+EXIT=0
+written file first bytes: 7b 0a 20 20   (no ef bb bf)
+```
+
+*(One earlier orchestrator run appeared to contradict this. It was an instrumentation error — a
+`${PIPESTATUS[0]}` reading past an intervening `&&`, against a fixture the installer never actually ran
+on. The re-run above separates the streams and chains nothing.)*
+
