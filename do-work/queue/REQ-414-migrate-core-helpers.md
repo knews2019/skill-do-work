@@ -53,3 +53,17 @@ See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
 
 ---
 *Source: UR-081 (Replace LLM bookkeeping and shipped utility logic with a Go command platform)*
+
+## Folded From REQ-390 (2026-08-30)
+
+- **`tools/checks/scope-drift.sh` reads every backticked token in a "Files I will
+  touch" bullet as a declared path.** `emit_backticked_paths` splits the whole line
+  on backticks and prints each odd-indexed part, so a bullet whose rationale contains
+  an ordinary code span — `` - `path/to/file` (modify) — adds one `flex-wrap`
+  declaration `` — declares a phantom second path and reports it as "declared in
+  ## Scope but never touched". Observed on REQ-390, where it produced a false DRIFT
+  line that had to be worked around by rewording the REQ rather than fixing the
+  check. The path is the first backticked token on the bullet; the rest is prose.
+  Worth closing when this REQ ports the checks to Go, where the extraction can be
+  written once and tested.
+

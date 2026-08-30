@@ -34,9 +34,9 @@ effort_estimate: effort-substantive
 On the board's Timeline view, replace the period toolbar's calendar-period buttons (Day, Week, Month) with trailing windows ending at now: Last day, Last 7 days, Last 30 days, Last 90 days, and All days (the full recorded data range).
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
+- [x] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
 ## Context
 - The current toolbar is the `timeline-periods` control group in `skills/do-work-board/tools/queue-kanban/web/template.html` (buttons with `data-timeline-period="day|week|month"`), wired by `applyPeriodWindow` / `applyPeriodStep` in `web/board-timeline.js`. Those set the window to one calendar day/week/month around now (or around the panned-to point) and ‹ / › step one calendar period.
@@ -193,7 +193,7 @@ Measured baselines taken during this exploration, at HEAD, on Chromium 141.0.739
 - `skills/do-work-board/tools/queue-kanban/web/board-timeline.js` (modify) — trailing-window maths; delete the calendar-period machinery
 - `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go` (modify) — new trailing-window probe plus migration of three probes off day/week/month
 - `skills/do-work-board/tools/queue-kanban/generate_test.go` (modify) — new JS-behaviour test; delete the two calendar-period-only tests; re-point two borrowed oracles
-- `skills/do-work-board/tools/queue-kanban/web/board.css` (modify) — **extended after dispatch, see D-01 below** — one `flex-wrap` declaration the five long labels earn at narrow widths
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modify) — **extended after dispatch, see D-01 below** — one wrap declaration the five long labels earn at narrow widths
 
 **Files I will NOT touch:**
 
@@ -221,4 +221,21 @@ Plan D8 said delete it. That test also carried the only Node-lane coverage of `t
 
 **D-03 — Accepted keeping `timelineUtcDayStart` rather than deleting `timelinePeriodStart` outright. DECIDE & STATE.**
 The plan listed `timelinePeriodStart` for deletion, but `timelineTypedWindow` calls it twice at its surviving day-granularity clamp. Following the plan literally would have shipped a `ReferenceError` in the client's typed-date path. The day-only remainder is kept under a name that says what it does; the clamp's behaviour is unchanged.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/board-timeline.js` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modified)
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go` (modified)
+
+**What was done:** Replaced the Timeline period toolbar's three calendar-period chips with five trailing windows — `data-timeline-period="1|7|30|90|all"`, labelled Last day / Last 7 days / Last 30 days / Last 90 days / All days. One new pure function, `timelineTrailingWindow`, computes `[now - N days, now]`, clamps each endpoint into the bounds *before* settling through `timelineZoomedWindow`, and returns the bounds for `all`. The pre-clamp is load-bearing: the settle preserves a width and slides, so an unclamped 90-day window on a short archive would be pushed forward off now instead of cut short at the range start. Roughly 200 lines of UTC calendar arithmetic were deleted rather than ported — `TIMELINE_PERIOD_LEVEL_NAMES`, `timelinePeriodStart`, `timelineSteppedPeriodStart`, `timelinePeriodWindow`, `timelinePeriodAnchor`, `timelinePeriodLevelOfWindow`, `timelinePeriodGridOfWindow`, `timelineSteppedWindow` — with `timelineUtcDayStart` kept as the day-only remainder that `timelineTypedWindow`'s surviving clamp still needs. The arrows collapse to a one-screenful pan. The lit chip and the state readout are derived by re-asking every `[data-timeline-period]` button in the DOM for its candidate window, so the control set is declared in `template.html` alone and no parallel list in JS can go stale. Shipped ARIA text, the toolbar comment and the `timeline-hint` paragraph now describe trailing windows. `board.css` gained one `flex-wrap` declaration the five longer labels earn at narrow widths (D-01).
+
+**Net:** 725 insertions, 1029 deletions — a net deletion of about 300 lines.
+
+**Builder branch:** `worktree-agent-REQ-390-timeline-trailing-window-periods` — `ebd62c2` (RED only), `10472cb`.
+**Merge range:** `b3ea43d..1deafa5`.
+**Hand-back:** `do-work/runs/work-2026-08-29-213539/REQ-390-handback.md` (builder-authored `## Decisions`, `## Discovered Tasks`, `## Cross-REQ Test Changes`, `## P-A-U` and `## Testing` are read from there).
 
