@@ -45,8 +45,8 @@
 
   // The gaps an axis is allowed to put between ticks, shortest first, each with
   // the boundary it aligns to. Sub-day and whole-day gaps divide a UTC day, so
-  // they align to midnight for free; week gaps align to Monday, the same week rule
-  // timelinePeriodStart uses; month gaps align to the 1st.
+  // they align to midnight for free; week gaps align to Monday through
+  // TIMELINE_WEEK_ALIGNMENT_MS below; month gaps align to the 1st.
   //
   // The ladder is CLOSED and does not go stale, because it enumerates a
   // mathematical range rather than a set of cases: it spans from the view's zoom
@@ -108,9 +108,6 @@
   // key were all silent no-ops. Half a day gives the now-line a day's work either
   // side of it to be read against, and leaves zoom somewhere to go.
   var TIMELINE_NOW_JUMP_MINIMUM_SPAN_MS = 43200000; // twelve hours in ms
-  // Shortest first, so a window that satisfies more than one level reports the
-  // tightest one it actually is.
-  var TIMELINE_PERIOD_LEVEL_NAMES = ["day", "week", "month"];
   var TIMELINE_HATCH_PATTERN_ID = "timeline-projected-hatch";
   // The narrowest a drawn segment may be. 1.5px was technically present and
   // practically invisible: at Fit all over three months every completed REQ was
@@ -301,6 +298,34 @@
     return { windowStartMs: nextStartMs, windowEndMs: nextStartMs + windowSpanMs };
   }
 
+  // The toolbar's ‹ and › are a DISCRETE step of one whole screenful, and a step
+  // that cannot be taken in full is not taken at all.
+  //
+  // timelinePannedWindow clamps at the bounds, which is right for a continuous
+  // pan and wrong for a step: with less than a screenful of room ahead, › moved a
+  // PARTIAL screenful while the ‹ that followed moved a full one, so the pair
+  // stopped being the reader's undo. Measured with a 7-day window on a 90-day
+  // range: 120 hours of drift a partial screenful from the right bound, a whole
+  // screenful flush against it, none mid-range. Refusing the partial step is what
+  // makes the two inverses, and renderControlAvailability already greys an arrow
+  // whose step would not move the window, so the refusal is visible before it is
+  // pressed rather than a dead button.
+  //
+  // Mirroring the clamp instead — a back step that moves only as far as the
+  // forward one did — cannot be written here: every window within a screenful of
+  // the bound steps to the SAME bound-flush window, so no pure function of that
+  // window knows which one to return to. The last partial screenful of range
+  // stays reachable by the drag, by the keyboard's fractional pan, and by Fit
+  // all, All days and the date fields.
+  function timelineSteppedScreenfulWindow(windowStartMs, windowEndMs, stepCount, boundStartMs, boundEndMs) {
+    var stepped = timelinePannedWindow(windowStartMs, windowEndMs, stepCount, boundStartMs, boundEndMs);
+    var wholeScreenfulStartMs = windowStartMs + (windowEndMs - windowStartMs) * stepCount;
+    if (stepped.windowStartMs !== wholeScreenfulStartMs) {
+      return { windowStartMs: windowStartMs, windowEndMs: windowEndMs };
+    }
+    return stepped;
+  }
+
   // The whole WINDOW-MOVING keyboard path, as one pure decision: which keys move the
   // window, and where to. It routes zoom through timelineZoomedWindow — the function the
   // wheel and the zoom buttons call — so the keyboard cannot acquire its own floor,
@@ -328,150 +353,70 @@
     return null;
   }
 
-  // Period navigation is the THIRD way to move the window, after the pointer and
+  // Window navigation is the THIRD way to move the window, after the pointer and
   // the keyboard, and it obeys the same rule they do: it computes a CANDIDATE
   // window and hands it to timelineZoomedWindow to settle. Factor 1 at anchor 0
   // means "keep this window, apply the model's floor, ceiling and edge clamp", so
-  // the period controls cannot acquire a floor or a clamp of their own.
-  //
-  // All of it is UTC calendar arithmetic and all of it is O(1) in the board's
-  // range: a step is one Date.UTC call, not a walk across the months in between,
-  // which is why stepping does not get slower as the archive grows.
+  // the toolbar cannot acquire a floor or a clamp of its own.
 
-  // The start of the calendar period containing an instant.
-  function timelinePeriodStart(epochMs, levelName) {
+  // The UTC midnight opening the day an instant falls in. All that survives of the
+  // calendar arithmetic the toolbar used to run on, because the date FIELDS are
+  // still whole UTC days even though the chips beside them no longer are.
+  function timelineUtcDayStart(epochMs) {
     var instant = new Date(epochMs);
-    if (levelName === "month") {
-      return Date.UTC(instant.getUTCFullYear(), instant.getUTCMonth(), 1);
-    }
-    var dayStartMs = Date.UTC(instant.getUTCFullYear(), instant.getUTCMonth(), instant.getUTCDate());
-    if (levelName === "week") {
-      // getUTCDay is 0 on Sunday; the week runs Monday to Sunday.
-      return dayStartMs - ((instant.getUTCDay() + 6) % 7) * TIMELINE_DAY_MS;
-    }
-    return dayStartMs;
+    return Date.UTC(instant.getUTCFullYear(), instant.getUTCMonth(), instant.getUTCDate());
   }
 
-  // The start of the period stepCount periods away. Months step as months rather
-  // than as 30 days, so February and March both land on the 1st.
-  function timelineSteppedPeriodStart(periodStartMs, levelName, stepCount) {
-    if (levelName === "month") {
-      var instant = new Date(periodStartMs);
-      return Date.UTC(instant.getUTCFullYear(), instant.getUTCMonth() + stepCount, 1);
+  // One trailing window, ending at the most recent instant the board can show and
+  // reaching back the span the chip names. "all" — and anything else that is not a
+  // positive number of days — means the whole recorded range, which is the window
+  // the view opens on.
+  //
+  // THAT INSTANT IS NOW ONLY WHILE NOW IS INSIDE THE BOUNDS, which is why the span
+  // hangs off an anchor rather than off nowMs directly. timelineRange (timeline.go)
+  // stretches the payload's range end to now only while some row still has an open
+  // wait or an open work segment; drain the queue and the range ends at the last
+  // completion instant with now days or months past it. Anchored on now there, a
+  // chip's whole span sits beyond the range end, clamps to zero width and settles
+  // onto the one-hour zoom floor — ten days idle put Last day and Last 7 days on
+  // the SAME dead window, so pressing one lit the other, and a hundred days did it
+  // to four of the five. Anchored on now CLAMPED INTO THE BOUNDS, each chip reads
+  // as the last N days OF THE RECORDED RANGE: distinct per chip, non-degenerate,
+  // and the only reading with any data in it.
+  //
+  // The clipped verdict ships WITH the window because it is the same arithmetic:
+  // the toolbar's "part of last 90 days" readout reads this flag rather than
+  // recomputing the clamp, so it cannot become a second opinion about it.
+  //
+  // CLAMP EACH ENDPOINT BEFORE SETTLING, because a trailing window is a POSITION
+  // and timelineZoomedWindow preserves a WIDTH. Handed an out-of-range candidate
+  // it pins the offending edge and drags the other one along to keep the span: on
+  // a three-day archive, Last 90 days would pin the start to the range start and
+  // then push the END ninety days forward, past the forecast and off the anchor —
+  // so the one thing every chip on this toolbar promises would be false on exactly
+  // the boards most likely to press it. Clamped first, an over-long window is CUT
+  // SHORT at the range start and still ends at the anchor; the state readout then
+  // says "part of" rather than claiming a span the board does not have. This is
+  // the same distinction timelineTypedWindow documents at its own clamp.
+  function timelineTrailingWindow(trailingWindowValue, nowMs, boundStartMs, boundEndMs) {
+    var trailingDayCount = Number(trailingWindowValue);
+    var anchorEndMs = Math.min(Math.max(nowMs, boundStartMs), boundEndMs);
+    var candidateStartMs = boundStartMs;
+    var candidateEndMs = boundEndMs;
+    var askedSpanMs = 0;
+    if (isFinite(trailingDayCount) && trailingDayCount > 0) {
+      askedSpanMs = trailingDayCount * TIMELINE_DAY_MS;
+      candidateStartMs = anchorEndMs - askedSpanMs;
+      candidateEndMs = anchorEndMs;
     }
-    return periodStartMs + stepCount * (levelName === "week" ? 7 : 1) * TIMELINE_DAY_MS;
-  }
-
-  // One calendar period, positioned by an anchor instant and stepped by
-  // stepCount. The step is clamped on the PERIOD rather than on milliseconds:
-  // prev and next stop at the first and last period the range reaches, so holding
-  // next cannot walk the window off the data and leave a screen with no bars.
-  //
-  // CLAMP EACH ENDPOINT BEFORE SETTLING, because a period is a POSITION and
-  // timelineZoomedWindow preserves a WIDTH. Handing it an out-of-range period
-  // made it pin the offending edge and drag the other one back to keep the span:
-  // from the week of 17–24 Aug against a range ending 25 Aug 04:23, one press of
-  // next moved the window forward by 1 day 4h23m instead of 7 days, landing on
-  // 18–25 Aug — still seven days long, no longer a week, so the chip went dark
-  // and the state read "custom span" for a press the reader had just made. The
-  // midpoint anchor then read that slid window's centre as the period to step
-  // from, so the next press was computed off the wrong period: forward-then-back
-  // landed a whole week EARLIER than where the reader started, and August was
-  // unreachable as a month. This is the same distinction timelineTypedWindow
-  // documents at its own clamp, inherited here for the same reason.
-  //
-  // An edge period is therefore CUT SHORT rather than slid. A cut-short window is
-  // not the period any more, and timelinePeriodLevelOfWindow says so — which is
-  // the honest report, and it keeps the ALIGNMENT that lets the next step be an
-  // inverse of the last one.
-  function timelinePeriodWindow(anchorMs, levelName, stepCount, boundStartMs, boundEndMs) {
-    var periodStartMs = timelineSteppedPeriodStart(
-      timelinePeriodStart(anchorMs, levelName),
-      levelName,
-      stepCount
-    );
-    // Clamped on the PERIOD INDEX, which is what "prev and next stop at the first
-    // and last period the range reaches" has always meant and never did: the
-    // first period is the one holding boundStartMs and the last is the one holding
-    // the range's final instant. boundEndMs is exclusive, so that instant is
-    // boundEndMs - 1. Without this a step past the end produced a period wholly
-    // outside the range, whose clamped endpoints collapsed onto boundEndMs and
-    // whose span the settle below then raised to the zoom floor — an off-calendar
-    // one-hour sliver at the extreme right, with nothing drawn in it.
-    periodStartMs = Math.min(
-      Math.max(periodStartMs, timelinePeriodStart(boundStartMs, levelName)),
-      timelinePeriodStart(boundEndMs - 1, levelName)
-    );
-    var periodEndMs = timelineSteppedPeriodStart(periodStartMs, levelName, 1);
-    return timelineZoomedWindow(
-      Math.min(Math.max(periodStartMs, boundStartMs), boundEndMs),
-      Math.max(Math.min(periodEndMs, boundEndMs), boundStartMs),
-      1,
-      0,
-      boundStartMs,
-      boundEndMs
-    );
-  }
-
-  // Which instant a period control anchors on, and the reason it is not always
-  // the window's midpoint.
-  //
-  // A CHIP press (stepCount 0) asks "show me one <level>". When the now-line is
-  // inside the window the reader is looking at the present, so the level they
-  // mean is the one containing NOW. The midpoint was the old answer and it made
-  // the chips useless from the view's own opening state: Fit all spans the whole
-  // capture history, so its midpoint is the arithmetic middle of the archive, and
-  // pressing Week there landed on a week months back — one REQ of 317 on this
-  // repo's board, and on the board this was reported from, a week with nothing
-  // drawn in it at all and 795 REQs outside it. When now is NOT in the window the
-  // reader has deliberately gone somewhere else, and the midpoint of where they
-  // are is the right answer.
-  //
-  // A STEP is deliberately NOT re-anchored on now, or every press would step from
-  // the same place and the arrows would stop being able to walk. It anchors on the
-  // window's own alignment, and the two directions anchor on opposite ENDS so that
-  // they are inverses: forward from the period holding the window's first instant,
-  // back from the period holding its last one. windowEndMs is EXCLUSIVE, so the
-  // last instant in the window is windowEndMs - 1 — the same off-by-one
-  // timelineEndEpochToDateField exists to get right.
-  function timelinePeriodAnchor(stepCount, windowStartMs, windowEndMs, nowMs) {
-    if (stepCount > 0) {
-      return windowStartMs;
-    }
-    if (stepCount < 0) {
-      return windowEndMs - 1;
-    }
-    if (nowMs >= windowStartMs && nowMs <= windowEndMs) {
-      return nowMs;
-    }
-    return (windowStartMs + windowEndMs) / 2;
-  }
-
-  // What the ‹ and › arrows do, which depends on what the window IS.
-  //
-  // A window sitting on a calendar grid steps by that grid's period. A window of
-  // the reader's own — a free zoom, a drag, a typed pair — is PANNED by its own
-  // width instead.
-  //
-  // Snapping a non-period window to the nearest period LEVEL was the old rule, and
-  // it made the arrows resize the chart rather than move it: the nearest level by
-  // span to the default Fit-all window is "month", so pressing › to go sideways
-  // instead zoomed three months down to one. An arrow moves; a chip resizes. That
-  // is also why timelineNearestPeriodLevel no longer exists — the level a step
-  // uses is the level the window HAS, and there is no second guess to make.
-  function timelineSteppedWindow(windowStartMs, windowEndMs, stepCount, boundStartMs, boundEndMs, nowMs) {
-    var gridLevelName = timelinePeriodGridOfWindow(
-      windowStartMs, windowEndMs, boundStartMs, boundEndMs);
-    if (!gridLevelName) {
-      return timelinePannedWindow(windowStartMs, windowEndMs, stepCount, boundStartMs, boundEndMs);
-    }
-    return timelinePeriodWindow(
-      timelinePeriodAnchor(stepCount, windowStartMs, windowEndMs, nowMs),
-      gridLevelName,
-      stepCount,
-      boundStartMs,
-      boundEndMs
-    );
+    candidateStartMs = Math.min(Math.max(candidateStartMs, boundStartMs), boundEndMs);
+    candidateEndMs = Math.max(Math.min(candidateEndMs, boundEndMs), boundStartMs);
+    var settled = timelineZoomedWindow(candidateStartMs, candidateEndMs, 1, 0, boundStartMs, boundEndMs);
+    return {
+      windowStartMs: settled.windowStartMs,
+      windowEndMs: settled.windowEndMs,
+      isClippedByBounds: askedSpanMs > 0 && settled.windowStartMs > anchorEndMs - askedSpanMs
+    };
   }
 
   // ---- typed dates ----------------------------------------------------------
@@ -525,10 +470,10 @@
   // The field names the last day the reader wants INCLUDED, while the window's
   // end instant is EXCLUSIVE: a July window ends at 1 August 00:00 and the field
   // must read 31 July. Rendering the end instant's own date instead put every
-  // period window a day out — press Month, nudge only the start field, and the
-  // end silently moved from 1 August to 2 August, pulling in a REQ the reader
-  // never touched and dropping the lit Month chip. Stepping back 1 ms lands
-  // inside the last included day whatever the window's shape.
+  // whole-day window a day out — set a window, nudge only the start field, and
+  // the end silently moved from 1 August to 2 August, pulling in a REQ the reader
+  // never touched. Stepping back 1 ms lands inside the last included day whatever
+  // the window's shape.
   function timelineEndEpochToDateField(epochMs) {
     if (isNaN(epochMs)) {
       return "";
@@ -562,8 +507,8 @@
     // and slid it — an empty one-hour window tucked behind the right edge, with
     // the field still showing the rejected date. A date past the end means "the
     // end", and the last day the board has is what that is.
-    var firstDayMs = timelinePeriodStart(boundStartMs, "day");
-    var lastDayMs = timelinePeriodStart(boundEndMs - 1, "day");
+    var firstDayMs = timelineUtcDayStart(boundStartMs);
+    var lastDayMs = timelineUtcDayStart(boundEndMs - 1);
     if (!isNaN(typedStartMs)) {
       typedStartMs = Math.min(Math.max(typedStartMs, firstDayMs), lastDayMs);
     }
@@ -572,10 +517,9 @@
     }
     var nextStartMs = isNaN(typedStartMs) ? windowStartMs : typedStartMs;
     // The FOLLOWING midnight, because the window's end is exclusive: a field
-    // reading 31 July means a window ending at 1 August 00:00, which is exactly
-    // what the Month chip produces. That equality is what makes the fields and
-    // the period controls describe the same windows rather than windows 1 ms
-    // apart — and it is what lets a typed pair light a chip at all.
+    // reading 31 July means a window ending at 1 August 00:00 rather than at
+    // 23:59:59.999. That is what makes rendering a window into the fields and
+    // parsing them back inverses, so editing one field cannot mangle the other.
     var nextEndMs = isNaN(typedEndDayMs) ? windowEndMs : typedEndDayMs + TIMELINE_DAY_MS;
     if (nextEndMs <= nextStartMs) {
       nextEndMs = nextStartMs + TIMELINE_DAY_MS;
@@ -592,58 +536,6 @@
     nextStartMs = Math.min(Math.max(nextStartMs, boundStartMs), boundEndMs);
     nextEndMs = Math.max(Math.min(nextEndMs, boundEndMs), boundStartMs);
     return timelineZoomedWindow(nextStartMs, nextEndMs, 1, 0, boundStartMs, boundEndMs);
-  }
-
-  // Which level the window is EXACTLY showing, or null when it is showing a span
-  // of the reader's own. A free zoom, a drag, and a period cut short by the end of
-  // the range all land here, and the control then states no level instead of
-  // claiming one the window no longer has.
-  function timelinePeriodLevelOfWindow(windowStartMs, windowEndMs) {
-    for (var levelIndex = 0; levelIndex < TIMELINE_PERIOD_LEVEL_NAMES.length; levelIndex++) {
-      var levelName = TIMELINE_PERIOD_LEVEL_NAMES[levelIndex];
-      if (
-        timelinePeriodStart(windowStartMs, levelName) === windowStartMs &&
-        timelineSteppedPeriodStart(windowStartMs, levelName, 1) === windowEndMs
-      ) {
-        return levelName;
-      }
-    }
-    return null;
-  }
-
-  // Which calendar GRID the window is sitting on, which is a different question
-  // from the one above and the reason both exist.
-  //
-  // timelinePeriodLevelOfWindow asks "is this window a whole period" — the right
-  // question for the readout, because a week clipped by the end of the range is
-  // not a whole week and must not be described as one. A STEP asks something
-  // weaker: "which grid is this window lined up with", and a clipped week is still
-  // lined up with the week grid.
-  //
-  // Answering the step's question with the exactness answer is what left ‹ unable
-  // to come home: › into the last, partly covered week produced a window that was
-  // no longer exactly a week, so ‹ took the pan branch and slid backwards by that
-  // window's own 1.18 days instead of stepping into the week before it.
-  //
-  // A window counts as on the grid when each end is either on a period boundary or
-  // at the bound that cut it off, and the whole window fits inside one period of
-  // that level. The containment test is what stops Fit all matching: its ends are
-  // both bounds, but it spans months rather than sitting inside one day.
-  function timelinePeriodGridOfWindow(windowStartMs, windowEndMs, boundStartMs, boundEndMs) {
-    for (var levelIndex = 0; levelIndex < TIMELINE_PERIOD_LEVEL_NAMES.length; levelIndex++) {
-      var levelName = TIMELINE_PERIOD_LEVEL_NAMES[levelIndex];
-      var periodStartMs = timelinePeriodStart(windowStartMs, levelName);
-      var periodEndMs = timelineSteppedPeriodStart(periodStartMs, levelName, 1);
-      if (
-        (windowStartMs === periodStartMs || windowStartMs === boundStartMs) &&
-        (windowEndMs === periodEndMs || windowEndMs === boundEndMs) &&
-        windowStartMs >= periodStartMs &&
-        windowEndMs <= periodEndMs
-      ) {
-        return levelName;
-      }
-    }
-    return null;
   }
 
   // The first row still waiting or still running — where "what is left" sits.
@@ -869,12 +761,12 @@
       for (var segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
         var segment = segments[segmentIndex];
         // ASYMMETRIC ON PURPOSE. windowEndMs is the next window's first instant
-        // everywhere else here — timelinePeriodWindow builds [start, nextStart)
-        // and timelineEndEpochToDateField renders windowEndMs - 1 to say so — so
-        // a segment beginning exactly there belongs to the next window, and
-        // drawSegment would put its floored rectangle at the clipped right edge.
-        // windowStartMs IS in the window, and a span ending on it draws a mark at
-        // the left edge the reader can see, so that side stays inclusive.
+        // everywhere else here — timelineEndEpochToDateField renders windowEndMs
+        // minus 1 to say so — so a segment beginning exactly there belongs to the
+        // next window, and drawSegment would put its floored rectangle at the
+        // clipped right edge. windowStartMs IS in the window, and a span ending on
+        // it draws a mark at the left edge the reader can see, so that side stays
+        // inclusive.
         if (segment.startMs < windowEndMs && segment.endMs >= windowStartMs) {
           inWindow.push(rows[rowIndex]);
           break;
@@ -2570,36 +2462,61 @@
       }
     }
 
-    // The period control has to say when it is no longer exact. After a free zoom
-    // or drag the window is a span of the reader's own choosing, and a level
-    // button left highlighted would be claiming otherwise. Called from renderAll,
-    // so every path that moves the window — buttons, keys, wheel, drag — refreshes
-    // it and none of them can leave a stale level on screen.
-    // The CHIP is lit from the grid and the TEXT from the exactness, because those
-    // are the two different things a reader needs to know. A press of Month at the
-    // end of the range gives August as far as the board goes; leaving the chip dark
-    // there told the reader their press had not worked, and lighting it without
-    // qualification would claim a whole month the board does not have. So the chip
-    // says "you are on the month grid" and the text says how much of it there is.
-    function renderPeriodControls() {
-      var exactLevelName = timelinePeriodLevelOfWindow(
-        timelineViewState.windowStartMs,
-        timelineViewState.windowEndMs
-      );
-      var gridLevelName = timelinePeriodGridOfWindow(
-        timelineViewState.windowStartMs,
-        timelineViewState.windowEndMs,
-        boundStartMs,
-        boundEndMs
-      );
-      setActiveButton("#view-timeline .timeline-periods", "data-timeline-period", gridLevelName || "");
-      var periodStateNode = document.getElementById("timeline-period-state");
-      if (periodStateNode) {
-        periodStateNode.textContent = exactLevelName
-          ? "one " + exactLevelName
-          : gridLevelName
-            ? "part of one " + gridLevelName
-            : "custom span";
+    // Which chip is lit, and what the state span beside it says. Called from
+    // renderAll, so every path that moves the window — chips, arrows, keys, wheel,
+    // drag, typed dates — refreshes it and none of them can leave a stale claim on
+    // screen.
+    //
+    // BOTH OUTPUTS ARE DERIVED BY RE-ASKING EACH BUTTON IN THE DOM what window it
+    // would produce, using the same function the click uses. The control set is
+    // then declared once, in template.html, and "press a chip and that chip lights"
+    // is true by construction rather than by a second list in here agreeing with
+    // the first one (REQ-235: derive state instead of storing it).
+    //
+    // The state text carries the one thing the lit chip cannot say. On a board
+    // younger than the span asked for — every board in its first three months —
+    // Last 90 days gives whatever there is, and lighting the chip unqualified
+    // would claim ninety days the board does not have. "part of" is the window's
+    // OWN verdict, read off isClippedByBounds rather than recomputed here: the
+    // clamp that cuts a chip short is the same clamp that decides whether it was
+    // cut, and asking twice is how the two answers start to disagree.
+    //
+    // An UNCLIPPED match wins over a clipped one when several chips land on the
+    // same window, which is the ordinary case on a young board: All days and Last
+    // 90 days are the same three days there, and "all days" is the honest name for
+    // them.
+    function renderTrailingWindowControls() {
+      var firstMatchingChip = null;
+      var firstUnclippedChip = null;
+      document.querySelectorAll("#view-timeline [data-timeline-period]").forEach(function (chip) {
+        var trailingWindowValue = chip.getAttribute("data-timeline-period");
+        var candidate = timelineTrailingWindow(trailingWindowValue, nowMs, boundStartMs, boundEndMs);
+        if (candidate.windowStartMs !== timelineViewState.windowStartMs ||
+          candidate.windowEndMs !== timelineViewState.windowEndMs) {
+          return;
+        }
+        var match = {
+          value: trailingWindowValue,
+          label: (chip.textContent || "").trim().toLowerCase(),
+          isClipped: candidate.isClippedByBounds
+        };
+        if (!firstMatchingChip) {
+          firstMatchingChip = match;
+        }
+        if (!match.isClipped && !firstUnclippedChip) {
+          firstUnclippedChip = match;
+        }
+      });
+      var matchedChip = firstUnclippedChip || firstMatchingChip;
+      setActiveButton("#view-timeline .timeline-periods", "data-timeline-period",
+        matchedChip ? matchedChip.value : "");
+      var trailingWindowStateNode = document.getElementById("timeline-period-state");
+      if (trailingWindowStateNode) {
+        trailingWindowStateNode.textContent = !matchedChip
+          ? "custom span"
+          : matchedChip.isClipped
+            ? "part of " + matchedChip.label
+            : matchedChip.label;
       }
     }
 
@@ -2767,7 +2684,7 @@
       renderForecastIfSubsetChanged();
       renderAxis();
       renderVisibleRows();
-      renderPeriodControls();
+      renderTrailingWindowControls();
       renderControlAvailability();
       renderRangeControls();
       // The hover readout describes ONE row, and a window move can take that row
@@ -3263,29 +3180,23 @@
       };
     }
 
-    // The period controls: three levels and a step either way. Both routes go
-    // through timelinePeriodWindow and therefore through timelineZoomedWindow, and
-    // both take their anchor from timelinePeriodAnchor rather than choosing one
-    // here — which is what keeps a chip's "show me the current period" and a
-    // step's "move off the one I am on" from becoming two different rules.
-    function applyPeriodWindow(levelName) {
-      var periodWindow = timelinePeriodWindow(
-        timelinePeriodAnchor(0, timelineViewState.windowStartMs, timelineViewState.windowEndMs, nowMs),
-        levelName,
-        0,
-        boundStartMs,
-        boundEndMs
-      );
-      timelineViewState.windowStartMs = periodWindow.windowStartMs;
-      timelineViewState.windowEndMs = periodWindow.windowEndMs;
+    // The window controls: five trailing windows and a step either way. A chip
+    // picks a WIDTH ending at now; the arrows then walk that width back and forth
+    // through the archive. Two rules where there used to be three, because a
+    // window anchored at now has no calendar grid for a step to follow.
+    function applyTrailingWindow(trailingWindowValue) {
+      var trailingWindow = timelineTrailingWindow(
+        trailingWindowValue, nowMs, boundStartMs, boundEndMs);
+      timelineViewState.windowStartMs = trailingWindow.windowStartMs;
+      timelineViewState.windowEndMs = trailingWindow.windowEndMs;
     }
     // Whether a step would land entirely PAST everything drawn — off the end of the
     // data in one direction or the other.
     //
     // What this exists for is the cosmetic bound padding: that stretch is there so a
     // bar at the range edge is not flush against the frame, and on a three-month
-    // board it is nearly two days wide, so one press of › from the current week
-    // landed on an empty chart with the Week chip lit and the arrow dead.
+    // board it is nearly two days wide, so one press of › from a window sitting at
+    // the right of the data landed on an empty chart with the arrow left alive.
     //
     // It deliberately does NOT refuse a step into a GAP between drawn things. This
     // repo's own queue has a seventeen-day hole in June; stepping through it is the
@@ -3300,14 +3211,18 @@
         steppedWindow.windowEndMs < drawnExtent.earliestMs;
     }
 
+    // One screenful, in the direction pressed. Whatever the window is — a chip's
+    // trailing span, a free zoom, a drag, a typed pair — the arrows move it by its
+    // own width, never resize it, and stand still rather than move part of one
+    // (see timelineSteppedScreenfulWindow for why a partial step cost the pair its
+    // inverse). renderControlAvailability greys the arrow that would stand still.
     function steppedWindowFor(stepCount) {
-      return timelineSteppedWindow(
+      return timelineSteppedScreenfulWindow(
         timelineViewState.windowStartMs,
         timelineViewState.windowEndMs,
         stepCount,
         boundStartMs,
-        boundEndMs,
-        nowMs
+        boundEndMs
       );
     }
 
@@ -3315,22 +3230,22 @@
     // arrow whose step would land off the data, and a disabled button fires no
     // click — so a check repeated at this call site would be unreachable, and a
     // guard no mutation can break is dead code rather than safety.
-    function applyPeriodStep(stepCount) {
+    function applyTrailingWindowStep(stepCount) {
       var steppedWindow = steppedWindowFor(stepCount);
       timelineViewState.windowStartMs = steppedWindow.windowStartMs;
       timelineViewState.windowEndMs = steppedWindow.windowEndMs;
     }
-    document.querySelectorAll("#view-timeline [data-timeline-period]").forEach(function (levelButton) {
-      levelButton.onclick = function () {
-        applyPeriodWindow(levelButton.getAttribute("data-timeline-period"));
+    document.querySelectorAll("#view-timeline [data-timeline-period]").forEach(function (chip) {
+      chip.onclick = function () {
+        applyTrailingWindow(chip.getAttribute("data-timeline-period"));
         renderAll();
       };
     });
     wireToolbarButton("timeline-period-prev", function () {
-      applyPeriodStep(-1);
+      applyTrailingWindowStep(-1);
     });
     wireToolbarButton("timeline-period-next", function () {
-      applyPeriodStep(1);
+      applyTrailingWindowStep(1);
     });
 
     addTimelineListener(window, "resize", renderAll);

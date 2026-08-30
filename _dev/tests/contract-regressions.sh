@@ -429,12 +429,20 @@ assert_block_not_contains \
 assert_file_not_contains \
   "tools/do-work-update.sh" \
   'suite-layout-v2|--capabilities|legacy_shipped_paths|legacy all-in-one skill' \
-  'The current updater must not retain bridge capability, monolith, or stale-copy branches.'
+  'The current updater launcher must not retain bridge capability, monolith, or stale-copy branches.'
+assert_file_not_contains \
+  "skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go" \
+  'suite-layout-v2|--capabilities|legacy_shipped_paths|legacy all-in-one skill' \
+  'The update transaction must not retain bridge capability, monolith, or stale-copy branches.'
 
 assert_file_not_contains \
   "tools/install-do-work-suite.sh" \
   '--migrate-legacy-do-work|\.claude/skills/do-work/hooks/memory-' \
-  'The suite installer must not retain exact recipe or old core memory-hook migrations.'
+  'The suite installer launcher must not retain exact recipe or old core memory-hook migrations.'
+assert_file_not_contains \
+  "skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction.go" \
+  '--migrate-legacy-do-work|\.claude/skills/do-work/hooks/memory-' \
+  'The install transaction must not retain exact recipe or old core memory-hook migrations.'
 
 assert_file_not_contains \
   "actions/setup-memory.md" \
@@ -4575,20 +4583,20 @@ assert_contains \
   "--project-root" \
   'tools/do-work-update.sh must derive and validate the consuming project root before updating.'
 assert_contains \
-  "tools/do-work-update.sh" \
-  'tar xzf "\$upstream_tarball" -C "\$fresh_upstream"' \
-  'tools/do-work-update.sh must extract only into staging; behavioral probes verify runtime do-work data is outside every managed destination.'
+  "skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go" \
+  '"tar", "xzf", upstreamTarball, "-C", freshUpstream' \
+  'The update transaction must extract only into staging; behavioral probes verify runtime do-work data is outside every managed destination.'
 assert_contains \
-  "tools/install-do-work-suite.sh" \
+  "skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction.go" \
   'Install this complete four-skill suite' \
   'The installed suite transaction must require confirmation after showing its reviewed diff.'
 assert_file_not_contains \
-  "tools/do-work-update.sh" \
-  'cp -R "\$skill_root"' \
-  'tools/do-work-update.sh must not reintroduce the pre-update rollback copy — git is the undo, and a duplicated tree on every run buys nothing git does not already hold. A mid-update failure reports the partial install instead; see _dev/tests/update-script-behavior.sh.'
+  "skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go" \
+  '"cp", "-R", .*skillRoot' \
+  'The update transaction must not reintroduce the pre-update rollback copy — git is the undo, and a duplicated tree on every run buys nothing git does not already hold. A mid-update failure reports the partial install instead; see _dev/tests/update-script-behavior.sh.'
 assert_contains \
-  "tools/install-do-work-suite.sh" \
-  'recover_install' \
+  "skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction.go" \
+  'runRecoveryIfNeeded' \
   'The installed suite transaction must automatically recover its validated managed paths after a destructive-region failure.'
 
 assert_file_not_contains \
@@ -4794,8 +4802,8 @@ assert_contains \
   '.gitattributes must export-ignore /kb — this repo tracks its own knowledge base, so without this line it ships to every consumer install.'
 
 assert_contains \
-  "tools/install-do-work-suite.sh" \
-  'module_relatives' \
+  "skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction.go" \
+  'moduleInstallPlan' \
   'The installed suite transaction must construct an explicit managed module plan; behavioral probes verify the project knowledge base is outside it.'
 
 # Shipped files must not cite the skill's own CLAUDE.md/AGENTS.md — those files are absent
@@ -6574,6 +6582,22 @@ elif ! bash "$update_script_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
+# Behavioral probes for skills/do-work/tools/do-work-cli.sh, the launcher that builds the
+# Go command on demand. Same no-auto-discovery caveat as the probes above: nothing walks
+# _dev/tests/*.sh, so an uninvoked probe file is dead weight that reads as coverage. It
+# covers build-on-demand when the binary is absent, argv passthrough including a spaced
+# argument, refusal to run stale output after a failed rebuild, the Go version floor, and
+# the absence of a leftover build temp — all runtime properties no grep can assert, proved
+# against a fake toolchain so the probe never depends on the installed Go.
+do_work_cli_launcher_probe="$repo_root/_dev/tests/do-work-cli-launcher-behavior.sh"
+if [ ! -x "$do_work_cli_launcher_probe" ]; then
+  printf 'FAIL: _dev/tests/do-work-cli-launcher-behavior.sh is missing or not executable — the do-work-cli launcher has no behavioral coverage.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$do_work_cli_launcher_probe"; then
+  printf 'FAIL: do-work-cli launcher behavior probes failed (see the FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # The live modular suite package boundaries need a contract independent from the active
 # root bootstrap tools. This checks the staged router, required core
 # runtime, hook targets, and the ban on leaking repository maintainer instructions.
@@ -6947,12 +6971,12 @@ else
   else
     cp "$ordinary_backtick_collision_target" "$ordinary_backtick_collision_target.before"
     ordinary_backtick_collision_output="$section_workdir/ordinary-backtick-nearby-collisions.out"
-    expected_ordinary_backtick_collision='replace-text-section: target defines reserved Just recipe or alias outside managed section: kanban-summary, run-do-work-update, run-kanban, run-kanban-cli'
+    expected_ordinary_backtick_collision='finding SECTION-RESERVED-RECIPE-COLLISION [error]: target defines reserved Just recipe or alias outside managed section: kanban-summary, run-do-work-update, run-kanban, run-kanban-cli'
     if "$replace_section_tool" --target "$ordinary_backtick_collision_target" --section-file "$reserved_section_file" \
       --reject-recipe-collisions >"$ordinary_backtick_collision_output" 2>&1; then
       printf 'FAIL: replace-text-section ignored real reserved definitions around an ordinary multiline-backtick command.\n' >&2
       fail_count=$((fail_count + 1))
-    elif [ "$(cat "$ordinary_backtick_collision_output")" != "$expected_ordinary_backtick_collision" ]; then
+    elif ! grep -Fxq -- "$expected_ordinary_backtick_collision" "$ordinary_backtick_collision_output"; then
       printf 'FAIL: replace-text-section did not report only exact sorted collisions around an ordinary multiline-backtick command.\n' >&2
       fail_count=$((fail_count + 1))
     elif ! cmp -s "$ordinary_backtick_collision_target" "$ordinary_backtick_collision_target.before"; then
@@ -6993,12 +7017,12 @@ else
   else
     cp "$ordinary_and_command_collision_target" "$ordinary_and_command_collision_target.before"
     ordinary_and_command_collision_output="$section_workdir/ordinary-and-command-nearby-collisions.out"
-    expected_ordinary_and_command_collision='replace-text-section: target defines reserved Just recipe or alias outside managed section: kanban-summary, run-do-work-update, run-kanban, run-kanban-cli'
+    expected_ordinary_and_command_collision='finding SECTION-RESERVED-RECIPE-COLLISION [error]: target defines reserved Just recipe or alias outside managed section: kanban-summary, run-do-work-update, run-kanban, run-kanban-cli'
     if "$replace_section_tool" --target "$ordinary_and_command_collision_target" --section-file "$reserved_section_file" \
       --reject-recipe-collisions >"$ordinary_and_command_collision_output" 2>&1; then
       printf 'FAIL: replace-text-section ignored real reserved definitions around ordinary-quote or triple-backtick literals.\n' >&2
       fail_count=$((fail_count + 1))
-    elif [ "$(cat "$ordinary_and_command_collision_output")" != "$expected_ordinary_and_command_collision" ]; then
+    elif ! grep -Fxq -- "$expected_ordinary_and_command_collision" "$ordinary_and_command_collision_output"; then
       printf 'FAIL: replace-text-section did not report only exact sorted collisions around ordinary-quote and triple-backtick literals.\n' >&2
       fail_count=$((fail_count + 1))
     elif ! cmp -s "$ordinary_and_command_collision_target" "$ordinary_and_command_collision_target.before"; then
@@ -7024,12 +7048,12 @@ else
   else
     cp "$inactive_literal_forms_target" "$inactive_literal_forms_target.before"
     inactive_literal_forms_output="$section_workdir/inactive-literal-forms-nearby-collision.out"
-    expected_inactive_literal_forms_collision='replace-text-section: target defines reserved Just recipe or alias outside managed section: kanban-static'
+    expected_inactive_literal_forms_collision='finding SECTION-RESERVED-RECIPE-COLLISION [error]: target defines reserved Just recipe or alias outside managed section: kanban-static'
     if "$replace_section_tool" --target "$inactive_literal_forms_target" --section-file "$reserved_section_file" \
       --reject-recipe-collisions >"$inactive_literal_forms_output" 2>&1; then
       printf 'FAIL: replace-text-section let an inactive comment, recipe body, or one-line backtick hide a real collision.\n' >&2
       fail_count=$((fail_count + 1))
-    elif [ "$(cat "$inactive_literal_forms_output")" != "$expected_inactive_literal_forms_collision" ]; then
+    elif ! grep -Fxq -- "$expected_inactive_literal_forms_collision" "$inactive_literal_forms_output"; then
       printf 'FAIL: replace-text-section did not report the exact collision after inactive multiline-literal opener forms.\n' >&2
       fail_count=$((fail_count + 1))
     elif ! cmp -s "$inactive_literal_forms_target" "$inactive_literal_forms_target.before"; then
@@ -7059,12 +7083,12 @@ else
   } > "$multiline_collision_target"
   cp "$multiline_collision_target" "$multiline_collision_target.before"
   multiline_collision_output="$section_workdir/multiline-nearby-collisions.out"
-  expected_multiline_collision='replace-text-section: target defines reserved Just recipe or alias outside managed section: kanban-summary, run-do-work-update'
+  expected_multiline_collision='finding SECTION-RESERVED-RECIPE-COLLISION [error]: target defines reserved Just recipe or alias outside managed section: kanban-summary, run-do-work-update'
   if "$replace_section_tool" --target "$multiline_collision_target" --section-file "$reserved_section_file" \
     --reject-recipe-collisions >"$multiline_collision_output" 2>&1; then
     printf 'FAIL: replace-text-section ignored real reserved definitions around a multiline string.\n' >&2
     fail_count=$((fail_count + 1))
-  elif [ "$(cat "$multiline_collision_output")" != "$expected_multiline_collision" ]; then
+  elif ! grep -Fxq -- "$expected_multiline_collision" "$multiline_collision_output"; then
     printf 'FAIL: replace-text-section did not report only exact sorted real collisions around a multiline string.\n' >&2
     fail_count=$((fail_count + 1))
   elif ! cmp -s "$multiline_collision_target" "$multiline_collision_target.before"; then
@@ -7197,8 +7221,8 @@ assert_contains \
   '^# <<< do-work:recipes <<<$' \
   'root justfile must close the exact managed do-work recipe section.'
 assert_contains \
-  "tools/install-do-work-suite.sh" \
-  'tools/replace-text-section\.sh|replace-text-section\.sh' \
+  "skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction.go" \
+  'managedsection\.ReplaceSection' \
   'suite installer must reconcile recipes through the managed-section utility.'
 assert_contains \
   "justfile" \
@@ -7209,13 +7233,17 @@ assert_contains \
   'skill_root="\$project_root/skills/do-work".*\$skill_root/tools/do-work-update\.sh' \
   'root Justfile fallback must invoke the canonical modular core updater.'
 assert_contains \
-  "tools/replace-text-section.sh" \
-  'suffix=.*dir=parent' \
-  'replace-text-section must create its temporary file in the target directory for atomic replacement.'
+  "skills/do-work/tools/do-work-cli/internal/managedsection/managed_section.go" \
+  'os\.CreateTemp\(parentDirectory' \
+  'the managed-section replacer must create its temporary file in the target directory for atomic replacement.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/internal/managedsection/managed_section.go" \
+  'os\.Rename\(temporaryPath, path\)' \
+  'the managed-section replacer must atomically rename the validated temporary over the target.'
 assert_contains \
   "tools/replace-text-section.sh" \
-  'os\.replace\(temporary_path, path\)' \
-  'replace-text-section must atomically rename the validated temporary over the target.'
+  'do-work-cli' \
+  'replace-text-section.sh must remain a launcher over the do-work-cli replace-section command.'
 
 if [ "$fail_count" -gt 0 ]; then
   exit 1

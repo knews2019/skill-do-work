@@ -2559,8 +2559,21 @@ body.is-resizing-detail .detail-resizer::before {
   padding: 12px 24px 0;
 }
 
-/* The period group's own readout: which level the window is exactly showing, or
-   "custom span" once a free zoom or drag has taken it off the calendar grid. */
+/* Five trailing-window chips plus two arrows and the state span is a much wider
+   group than the three short calendar chips it replaced, and it overflowed the
+   toolbar below about 520px — measured on Chrome for Testing 151.0.7922.174, where
+   the group came out 465.63px wide inside a 453px toolbar. Wrapping INSIDE the
+   group keeps every control reachable there instead of clipping the arrow and the
+   state span at the panel edge; it is the same rule .timeline-range below carries
+   for the same reason. */
+.timeline-periods {
+  flex-wrap: wrap;
+}
+
+/* The window group's own readout: which trailing window the chart is drawn at —
+   "last 30 days", or "part of last 90 days" when the board is younger than the
+   span asked for, or "custom span" once a free zoom or drag has left it on none
+   of them. */
 .timeline-period-state {
   font-size: 11px;
   color: var(--ink-faint);

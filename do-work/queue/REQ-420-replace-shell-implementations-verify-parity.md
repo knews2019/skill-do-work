@@ -55,3 +55,23 @@ See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
 
 ---
 *Source: UR-081 (Replace LLM bookkeeping and shipped utility logic with a Go command platform)*
+
+## Folded From REQ-406 (2026-08-30)
+
+- **This REQ's first clause is already done.** REQ-406 added the `do-work-cli go vet`
+  and `do-work-cli uncached tests` lanes to `_dev/tests/maintainer-verify.sh` and
+  registered `_dev/tests/do-work-cli-launcher-behavior.sh` in
+  `_dev/tests/contract-regressions.sh`, moving all four of maintainer-verify's
+  self-test enumerations in lock-step. The orchestrator accepted the overlap
+  deliberately: an unwired module is an unverified module, and leaving it unwired
+  would have meant fourteen REQs of unrun code. **What remains here is the
+  destructive half** — replacing the separate audit-metrics lane — which REQ-406
+  deliberately did not touch.
+- **`maintainer-verify.sh`'s self-test EXIT trap reads a function-local.**
+  `trap 'rm -rf -- "$self_test_root"' EXIT` is set inside `run_self_test`, where
+  `self_test_root` is declared `local`. On any self-test failure the function returns
+  before `trap - EXIT`, so the trap fires at process exit with the variable out of
+  scope and prints an `unbound variable` line after the real `FAIL:`, leaving the
+  fixture directory behind. Pre-existing and cosmetic — it does not mask the failure
+  or change the exit status — but this REQ is already editing that file.
+

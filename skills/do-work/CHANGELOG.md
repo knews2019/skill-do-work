@@ -2,6 +2,42 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.248.0 — Timeline Windows That Work on a Finished Board (2026-08-30)
+
+The Timeline's window buttons behaved badly once a queue was fully drained: after a few idle days "Last day" collapsed to an empty hour, and after a month or so four of the five buttons pointed at the same dead window. They now read as the last N days of what the board actually recorded.
+
+- Each window button stays distinct and useful however long ago the work finished.
+- The ‹ and › arrows either move a whole screenful or refuse, so pressing forward then back returns you exactly where you were — it used to land you days to the left.
+- The hint text no longer promises a window ending at now, which stopped being true on a finished board.
+
+## 0.247.0 — Go-Powered Install and Update (2026-08-30)
+
+Installing and updating do-work now runs on a single Go command instead of a mix of shell, embedded Python and jq. The public commands and the bootstrap snippet are unchanged, but installs no longer depend on which JSON tool happens to be on your machine — settings are always reconciled, and your existing settings.json keeps its exact key order.
+
+- Bootstrap, install, update, managed-section replacement, settings reconciliation, suite validation and archive fetching all run through `do-work-cli`; the installer script drops from 621 lines to 96.
+- The "no JSON tool available" state is gone, along with the manual-step instruction it used to print.
+- **Installing and updating now require Go 1.26.1 or newer.** Whether that floor is the right one is being confirmed — the module itself builds and tests clean much lower.
+- Fixed before release: a settings.json carrying a byte-order mark stopped installing partway through this work, and now installs again as it always did.
+
+## 0.246.0 — Timeline Trailing Windows (2026-08-30)
+
+The board's Timeline drops Day, Week and Month for the windows people actually ask for: last day, last 7 days, last 30 days, last 90 days, and all days. Same vocabulary the filter dropdown already used, and about 300 fewer lines of calendar arithmetic behind it.
+
+- Five trailing-window buttons replace the three calendar-period ones; each sets the window to that span ending at now, and All days spans the whole recorded range.
+- The arrows now step one screenful whatever the window is, instead of one calendar period.
+- The control set is declared in the template alone, so the lit button and the window readout can no longer drift apart from it.
+- Known at the edges and tracked as REQ-425: the buttons collapse on a board whose queue is fully drained, and the arrows do not round-trip at the right-hand end of the range.
+
+## 0.245.0 — Shared Go Command Runtime for the Suite (2026-08-30)
+
+The suite gets one Go command module underneath it: a typed result that renders identical text and JSON, a single exit-code authority, and a Git transaction layer that refuses to touch work you already have in flight.
+
+- One `do-work-cli` module under the core package, built on demand by its launcher when the binary is missing or older than its sources.
+- Every result carries a schema version, findings, changes, skipped work and a rollback result, in text or JSON from the same value, with exit codes 0-4 decided in exactly one place.
+- Git mutations refuse a dirty target path while leaving your unrelated changes alone, roll back cleanly when they fail, and report `git revert <sha>` instead of ever rewriting history.
+- Two fixed defects: a git warning on stderr no longer reads as a dirty target, and someone else's staged file no longer turns a successful rollback into a reported risk.
+- The canonical gate now runs the module's vet, tests, and launcher probe — the probe had been passing for nobody since it was written.
+
 ## 0.244.9 — Keep Consumer Tests, Timelines, and Fetches Current (2026-08-29)
 
 Consumer checkouts keep the board's semantic citation checks without inheriting suite-sized corpus floors. Live boards now advance every time-derived Timeline field on unchanged-tree cache hits, and interrupted or branch-specific archive fallbacks preserve the caller's intent.
