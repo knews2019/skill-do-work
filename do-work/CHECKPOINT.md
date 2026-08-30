@@ -29,7 +29,6 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-- REQ-425: Stop the Timeline's trailing-window controls assuming now and a full screenful are inside the bounds — claimed 2026-08-30T12:23:07Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued
 

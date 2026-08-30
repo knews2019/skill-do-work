@@ -1,7 +1,7 @@
 ---
 id: REQ-425
 title: 'Stop the Timeline''s trailing-window controls assuming now and a full screenful are inside the bounds'
-status: claimed
+status: completed
 created_at: 2026-08-30T11:40:00Z
 route: B
 estimate:
@@ -15,6 +15,8 @@ estimate:
     - browser evidence
     - cross-route regression gates
 claimed_at: 2026-08-30T12:23:07Z
+completed_at: 2026-08-30T17:45:58Z
+commit:
 user_request: UR-079
 domain: frontend
 prime_files: ['_dev/primes/prime-kanban-board.md']

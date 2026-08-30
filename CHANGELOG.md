@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.248.0 — Timeline Windows That Work on a Finished Board (2026-08-30)
+
+The Timeline's window buttons behaved badly once a queue was fully drained: after a few idle days "Last day" collapsed to an empty hour, and after a month or so four of the five buttons pointed at the same dead window. They now read as the last N days of what the board actually recorded.
+
+- Each window button stays distinct and useful however long ago the work finished.
+- The ‹ and › arrows either move a whole screenful or refuse, so pressing forward then back returns you exactly where you were — it used to land you days to the left.
+- The hint text no longer promises a window ending at now, which stopped being true on a finished board.
+
 ## 0.247.0 — Go-Powered Install and Update (2026-08-30)
 
 Installing and updating do-work now runs on a single Go command instead of a mix of shell, embedded Python and jq. The public commands and the bootstrap snippet are unchanged, but installs no longer depend on which JSON tool happens to be on your machine — settings are always reconciled, and your existing settings.json keeps its exact key order.
