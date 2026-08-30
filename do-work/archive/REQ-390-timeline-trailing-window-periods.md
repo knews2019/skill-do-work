@@ -18,7 +18,7 @@ estimate:
     - cross-route regression gates
 claimed_at: 2026-08-29T21:35:39Z
 completed_at: 2026-08-30T11:55:06Z
-commit:
+commit: 59105df
 user_request: UR-079
 domain: frontend
 prime_files: ['_dev/primes/prime-kanban-board.md']
