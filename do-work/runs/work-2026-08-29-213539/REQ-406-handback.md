@@ -305,3 +305,32 @@ The suite gets one Go command module underneath it: a typed result that renders 
 - **`resultmodel.RollbackResult.Status` has a fourth wire value, `""`.** A consumer switching on it must handle the empty string alongside the three constants. See D-04 for why normalizing it is not free.
 - **The `<command>` placeholder in usage and invalid-options findings is not a runnable argv.** `usageFinding` and the `invalid_options` template both emit `do-work-cli --format text <command>`, which tells a reader the shape but cannot be pasted. Once REQ-407 registers real commands, the runtime knows the command name and can thread it through.
 - **`resolveRepositoryRoot`'s stderr exposure is the same class as the fixed `targetIsDirty` bug but was never reproduced.** The exploration could not make `git rev-parse --show-toplevel` emit a warning. It is fixed incidentally by the `runGit` change; there is no lock-in test for it because there is no known way to trigger it. Recorded so nobody assumes it was proved.
+
+## Remediation
+
+**Commit:** `fcf1cb52a8e619e8069a8289bb5bc318aa5640db` — "[REQ-406] Render one transaction result twice instead of running it twice", on `worktree-agent-REQ-406-create-do-work-cli-foundation`. One file staged by explicit path: `skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime_test.go`. Not pushed, not merged.
+
+**Defect.** `TestExitCodeContractThroughRealGitTransactions` ran each subtest's scenario twice — once in a `jsonRoot` fixture repository for the JSON rendering, again in a fresh `textRoot` for the text rendering — then asserted the text run's output contained a next-step line built from the *JSON* run's finding. For the `post-commit verification failure reports committed-state risk` subtest that line embeds a commit SHA (`next: git revert <sha>`), and two independent repositories produce different SHAs whenever their commits land in different seconds. The test's own comment already claimed the correct behavior — "The two renderings come from one result" — while the code did not do that.
+
+**Change.** The transaction now executes once, against one fixture repository, and its `resultmodel.CommandResult` drives the runtime twice — once with `--format json`, once with `--format text`. The two renderings are now genuinely two views of one result, so no SHA can differ between them.
+
+Deleted: the second fixture repository per subtest (`textRoot := newFixtureRepository(t)`), its `test.setUp` call, and its duplicate `test.options`/`test.mutate` invocation. `runFixtureCommand` lost its `options`/`mutate` parameters and its transaction-executing closure; it now takes the already-computed result and its handler is a one-line stub. Net −6 lines including two lines of added comment.
+
+Nothing was normalized, masked, retried, slept on, or skipped. Every asserted property survives: the exit code for both formats, the finding code, that the text form names the finding code, that the text form names the same next-step line the JSON form carries, and that `VerificationArgv` is non-empty. All four subtests (exit 0, 1, 3, 4) still run.
+
+**Flake counts.** Same loop command both times, run from `skills/do-work/tools/do-work-cli`:
+
+```
+fails=0; for i in $(seq 1 N); do if ! go test -count=1 -run 'TestExitCodeContractThroughRealGitTransactions' ./internal/commandruntime/ >/dev/null 2>&1; then fails=$((fails+1)); fi; done; echo "$fails/N"
+```
+
+- Before: **4 failures in 40 runs** (10%), matching the reported rate. Captured failure: `command_runtime_test.go:284: text output does not name the next step "  next: git revert 7c45b1963e9ab0d73b21cfa0d9f7636305f04435"` against a text run in fixture `.../002` reporting `git revert 12837594900594503ad79ac6796e17e429fe26ed`.
+- After: **0 failures in 100 runs** (60 was the floor asked for; 100 run for margin — the pre-fix rate predicts ~10 failures over that many). Package wall time also dropped from ~0.30s to ~0.14s, since half the git fixture work is gone.
+
+**Other verification.**
+
+- `go vet ./... && go test -count=1 ./...` from the module root: exit 0.
+- `gofmt -l` over the touched file: no output.
+- `bash _dev/tests/maintainer-verify.sh` from the worktree root, judged by its direct exit status (not piped): **exit 0**, ending in `Maintainer verification passed.` The optional browser lane stayed in its default skipped state (`SKIP: no browser is available`); `QUEUE_KANBAN_BROWSER` was not set.
+
+**Teeth check.** Two temporary mutations, both reverted before committing, confirming the rewritten assertion is not vacuous and not weaker than before: blanking `result.Findings` for text output in `CommandRuntime.writeResult` fails three subtests with `text output does not name GIT-...`, so the text/JSON parity claim is still enforced end to end. A mutation to the shared `renderText` next-step line is *not* caught, because `renderedNextLine` builds the expected line with that same production renderer — that tautology is pre-existing and unchanged by this fix, and it is deliberate: the helper's comment says it asserts parity rather than re-implementing the quoting.
