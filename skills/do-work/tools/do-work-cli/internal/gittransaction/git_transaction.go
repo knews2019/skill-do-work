@@ -158,10 +158,22 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	}
 	result.ChangedPaths = changedPaths
 	result.CreatedPaths = sortedKeys(recorder.createdPaths)
+	// A changed path must have been recorded, and a path that did NOT exist beforehand must
+	// have been recorded as CREATED. Without the second half, a file the mutation brought
+	// into existence through RecordTouched alone reports success, and the transaction claims
+	// to describe a creation it never saw.
+	existedBefore := make(map[string]bool, len(states))
+	for _, state := range states {
+		existedBefore[state.path] = state.existed
+	}
 	for _, path := range changedPaths {
 		if _, recorded := recorder.touchedPaths[path]; !recorded {
 			return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation,
 				fmt.Errorf("changed path %q was not recorded by the mutation", path))
+		}
+		if _, created := recorder.createdPaths[path]; !created && !existedBefore[path] {
+			return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation,
+				fmt.Errorf("changed path %q was created but was not recorded as created", path))
 		}
 	}
 	if !options.Commit || len(changedPaths) == 0 {

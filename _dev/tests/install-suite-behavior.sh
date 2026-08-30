@@ -141,6 +141,17 @@ for retired_runtime_path in SKILL.md actions tools/do-work-update.sh tools/queue
   fi
 done
 
+# The installer delegates to do-work-cli, so build the binary once here. The restricted-PATH
+# lanes below deliberately omit `go`, and the launcher rebuilds whenever any source is newer
+# than the binary — `cp -R` copies in readdir order, so the mtimes are set explicitly rather
+# than left to copy order (REQ-407 C10).
+cli_module_root="$repo_root/skills/do-work/tools/do-work-cli"
+if ! (cd "$cli_module_root" && go build -o do-work-cli ./cmd/do-work-cli); then
+  printf 'FAIL: could not pre-build do-work-cli for the restricted-PATH lanes.\n' >&2
+  exit 1
+fi
+touch "$cli_module_root/do-work-cli"
+
 workdir="$(mktemp -d "${TMPDIR:-/tmp}/do-work-suite-install-test.XXXXXX")"
 trap 'rm -rf "$workdir"' EXIT
 
@@ -154,6 +165,7 @@ cp "$installer" "$archive_root/tools/install-do-work-suite.sh"
 cp "$repo_root/tools/validate-suite-manifest.sh" "$archive_root/tools/validate-suite-manifest.sh"
 cp "$repo_root/tools/replace-text-section.sh" "$archive_root/tools/replace-text-section.sh"
 chmod +x "$archive_root/tools/"*.sh
+touch "$archive_root/skills/do-work/tools/do-work-cli/do-work-cli"
 archive_file="$workdir/do-work-suite.tar.gz"
 tar czf "$archive_file" -C "$archive_parent" skill-do-work-main
 
@@ -335,23 +347,73 @@ assert_file_contains "$fresh_project/CLAUDE.md" 'crew-members/communication-styl
 if [ "$(grep -cF '<!-- >>> do-work:communication-style >>> -->' "$fresh_project/CLAUDE.md")" -ne 1 ]; then
   fail 'reinstall must leave exactly one managed agent-instructions section'
 fi
-python3 - "$fresh_project/.claude/settings.json" <<'PY' || fail 'reinstall did not preserve and compose current hook settings'
-import json, pathlib, sys
-data = json.loads(pathlib.Path(sys.argv[1]).read_text())
-assert data["custom"] == {"keep": [1, 2, 3]}
-serialized = json.dumps(data)
-assert serialized.count(".claude/skills/do-work-knowledge/hooks/memory-session-start.sh") == 1
-assert serialized.count(".claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh") == 1
-assert serialized.count("do-work/hooks/session-start.sh") == 1
-assert "do-work/hooks/pipeline-guard.sh" not in serialized
-assert serialized.count("echo custom-start") == 1
-assert serialized.count("echo custom-stop") == 1
-assert data["hooks"]["Stop"] == [
-    {"hooks": [{"type": "command", "command": "echo custom-stop"}]},
-    {"matcher": "preserve-empty", "hooks": []},
-    {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh\""}]},
-]
-PY
+# Composition is now a byte contract, not a structural one: an order-preserving encoder
+# replaced the jq and Python reconcilers, so the whole composed document is compared rather
+# than probed field by field. A reordered key is exactly the silent regression this catches.
+cat > "$workdir/expected-settings.json" <<'JSON'
+{
+  "custom": {
+    "keep": [
+      1,
+      2,
+      3
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo custom-start"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work-knowledge/hooks/memory-session-start.sh\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/session-start.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo custom-stop"
+          }
+        ]
+      },
+      {
+        "matcher": "preserve-empty",
+        "hooks": []
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}
+JSON
+if ! cmp -s "$workdir/expected-settings.json" "$fresh_project/.claude/settings.json"; then
+  fail "reinstall did not compose the exact expected settings bytes: $(diff -u "$workdir/expected-settings.json" "$fresh_project/.claude/settings.json" | head -n 20)"
+fi
 cp "$fresh_project/justfile" "$workdir/reinstall.just.snapshot"
 cp "$fresh_project/.claude/settings.json" "$workdir/reinstall.settings.snapshot"
 if ! run_installer "$fresh_project" "$archive_file" "$workdir/reinstall-idempotent.out"; then
@@ -377,7 +439,7 @@ fi
 # A BOM-prefixed reserved recipe is rejected without Just, before confirmation or client mutation.
 no_just_path="$workdir/no-just-path"
 mkdir -p "$no_just_path"
-for command_name in awk bash cat chmod cmp cp diff dirname find git grep gzip head mkdir mktemp mv python3 rm sed stat tar tr wc; do
+for command_name in awk bash cat cp diff dirname find git grep gzip mkdir mktemp mv rm sed tar; do
   command_path="$(command -v "$command_name" 2>/dev/null || true)"
   [ -z "$command_path" ] || ln -s "$command_path" "$no_just_path/$command_name"
 done
@@ -500,105 +562,6 @@ elif [ -e "$directory_skill_project/.claude/skills" ] \
   fail 'directory-shaped SKILL.md validation failure wrote client files'
 fi
 
-# Python is the JSON fallback when jq is absent.
-python_path="$workdir/python-path"
-mkdir -p "$python_path"
-for command_name in awk bash cat chmod cmp cp diff dirname find git grep gzip head mkdir mktemp mv python3 rm sed stat tar tr wc; do
-  command_path="$(command -v "$command_name" 2>/dev/null || true)"
-  [ -z "$command_path" ] || ln -s "$command_path" "$python_path/$command_name"
-done
-python_project="$workdir/python-fallback"
-new_git_project "$python_project"
-mkdir -p "$python_project/.claude"
-cat > "$python_project/.claude/settings.json" <<'JSON'
-{
-  "hooks": {
-    "Stop": [
-      {"hooks": [
-        {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""},
-        {"type": "command", "command": "echo python-custom-stop"}
-      ]},
-      {"hooks": [
-        {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""}
-      ]},
-      {"matcher": "preserve-empty", "hooks": []}
-    ]
-  }
-}
-JSON
-python_output="$workdir/python-fallback.out"
-python_status=0
-printf 'y\n' | PATH="$python_path" bash "$installer" --project-root "$python_project" --archive "$archive_file" >"$python_output" 2>&1 \
-  || python_status=$?
-if [ "$python_status" -ne 0 ]; then
-  fail "Python JSON fallback install failed: $(tail -n 5 "$python_output")"
-else
-  assert_output_contains "$(cat "$python_output")" 'settings reconciler: python3' 'installer did not report/use Python when jq was unavailable'
-  assert_file_contains "$python_project/.claude/settings.json" 'do-work/hooks/session-start\.sh' 'Python fallback did not compose core hooks'
-  python3 - "$python_project/.claude/settings.json" <<'PY' || fail 'Python fallback did not remove only the retired guard and preserve custom Stop hooks'
-import json, pathlib, sys
-data = json.loads(pathlib.Path(sys.argv[1]).read_text())
-serialized = json.dumps(data)
-assert "do-work/hooks/pipeline-guard.sh" not in serialized
-assert serialized.count("echo python-custom-stop") == 1
-assert data["hooks"]["Stop"] == [
-    {"hooks": [{"type": "command", "command": "echo python-custom-stop"}]},
-    {"matcher": "preserve-empty", "hooks": []},
-]
-PY
-fi
-
-# With neither jq nor Python, a fresh project still gets modules/Justfile while settings stay exact and a precise manual step is printed.
-no_json_path="$workdir/no-json-path"
-mkdir -p "$no_json_path"
-for command_name in awk bash cat chmod cmp cp diff dirname find git grep gzip head mkdir mktemp mv rm sed stat tar tr wc; do
-  command_path="$(command -v "$command_name" 2>/dev/null || true)"
-  [ -z "$command_path" ] || ln -s "$command_path" "$no_json_path/$command_name"
-done
-manual_project="$workdir/manual-settings"
-new_git_project "$manual_project"
-mkdir -p "$manual_project/.claude"
-cat > "$manual_project/.claude/settings.json" <<'JSON'
-{
-  "custom": {"keep": [1, 2, 3]},
-  "hooks": {
-    "SessionStart": [
-      {"hooks": [{"type": "command", "command": "echo manual-custom-start"}]}
-    ],
-    "Stop": [
-      {"hooks": [
-        {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""},
-        {"type": "command", "command": "echo manual-custom-stop-same-wrapper"}
-      ]},
-      {"hooks": [
-        {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""}
-      ]},
-      {"hooks": [{"type": "command", "command": "echo manual-custom-stop-neighbor"}]}
-    ]
-  }
-}
-JSON
-cp "$manual_project/.claude/settings.json" "$workdir/manual-settings.before"
-manual_output="$workdir/manual.out"
-manual_status=0
-printf 'y\n' | PATH="$no_json_path" bash "$installer" --project-root "$manual_project" --archive "$archive_file" >"$manual_output" 2>&1 \
-  || manual_status=$?
-if [ "$manual_status" -ne 0 ]; then
-  fail "no-JSON-tool install failed: $(tail -n 5 "$manual_output")"
-else
-  assert_four_modules "$manual_project"
-  cmp -s "$manual_project/.claude/settings.json" "$workdir/manual-settings.before" \
-    || fail 'no-JSON-tool path changed mixed custom and retired Stop hooks instead of leaving settings exact'
-  manual_instruction_pattern='^MANUAL STEP: in \.claude/settings\.json, remove only hooks\.Stop\[\*\]\.hooks\[\*\] objects whose string command contains \.claude/skills/do-work/hooks/pipeline-guard\.sh; remove an enclosing hooks\.Stop\[\*\] wrapper only when those removals leave its hooks array empty; preserve every other entry, including custom hooks in the same wrapper; then merge \.claude/skills/do-work/hooks/hooks\.json\.$'
-  assert_output_contains "$(cat "$manual_output")" "$manual_instruction_pattern" 'no-JSON-tool path did not print the exact nested-object removal, empty-wrapper cleanup, and same-wrapper preservation instruction'
-  if [ "$(grep -Ec -- "$manual_instruction_pattern" "$manual_output")" -ne 2 ]; then
-    fail 'no-JSON-tool path must print the exact manual settings instruction in both preview and success output'
-  fi
-  if grep -Fq 'preserve every existing entry' "$manual_output"; then
-    fail 'no-JSON-tool path still tells users to preserve the retired pipeline guard'
-  fi
-fi
-
 # A post-write Just validation failure restores exact module, Just, and settings originals.
 rollback_project="$workdir/rollback project"
 cp -R "$fresh_project" "$rollback_project"
@@ -655,43 +618,6 @@ elif ! diff -qr "$rollback_snapshot/.claude/skills" "$rollback_project/.claude/s
 fi
 assert_install_state_unchanged "$rollback_project" "$rollback_state_snapshot" \
   'post-write Just failure recovery'
-
-# A post-write settings validation failure restores the same exact originals.
-settings_rollback_project="$workdir/settings-rollback"
-cp -R "$fresh_project" "$settings_rollback_project"
-settings_rollback_snapshot="$workdir/settings-rollback-snapshot"
-mkdir -p "$settings_rollback_snapshot/.claude/skills" "$settings_rollback_snapshot/.claude"
-cp -R "$settings_rollback_project/.claude/skills/." "$settings_rollback_snapshot/.claude/skills/"
-cp "$settings_rollback_project/justfile" "$settings_rollback_snapshot/justfile"
-cp "$settings_rollback_project/.claude/settings.json" "$settings_rollback_snapshot/.claude/settings.json"
-settings_rollback_state_snapshot="$workdir/settings-rollback-state-before"
-snapshot_install_state "$settings_rollback_project" "$settings_rollback_state_snapshot"
-flaky_jq_bin="$workdir/flaky-jq-bin"
-mkdir -p "$flaky_jq_bin"
-cat > "$flaky_jq_bin/jq" <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
-count=0
-[ ! -f "$DO_WORK_TEST_JQ_COUNT" ] || count="$(cat "$DO_WORK_TEST_JQ_COUNT")"
-count=$((count + 1))
-printf '%s\n' "$count" > "$DO_WORK_TEST_JQ_COUNT"
-[ "$count" -lt 3 ] || exit 1
-exec /usr/bin/jq "$@"
-SH
-chmod +x "$flaky_jq_bin/jq"
-settings_rollback_status=0
-printf 'y\n' | DO_WORK_TEST_JQ_COUNT="$workdir/jq-count" PATH="$flaky_jq_bin:$PATH" \
-  bash "$installer" --project-root "$settings_rollback_project" --archive "$archive_file" >"$workdir/settings-rollback.out" 2>&1 \
-  || settings_rollback_status=$?
-if [ "$settings_rollback_status" -eq 0 ]; then
-  fail 'installer reported success after post-write settings validation failed'
-elif ! diff -qr "$settings_rollback_snapshot/.claude/skills" "$settings_rollback_project/.claude/skills" >/dev/null \
-  || ! cmp -s "$settings_rollback_snapshot/justfile" "$settings_rollback_project/justfile" \
-  || ! cmp -s "$settings_rollback_snapshot/.claude/settings.json" "$settings_rollback_project/.claude/settings.json"; then
-  fail 'post-write settings failure did not restore exact managed originals'
-fi
-assert_install_state_unchanged "$settings_rollback_project" \
-  "$settings_rollback_state_snapshot" 'post-write settings failure recovery'
 
 # TERM during the module write phase runs the same all-or-recover path.
 interrupt_project="$workdir/interruption-project"

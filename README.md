@@ -4,6 +4,8 @@ A four-skill task queue suite for agentic coding tools. Capture requests fast, p
 
 ## Installation
 
+**Prerequisite: Go 1.26.1 or newer.** Installing, updating and running the suite all go through the `do-work-cli` command, which is built from source on first use. `git`, `tar`, `diff` and `curl` are also needed; `just` is optional and only used to validate the managed recipe section when it is present.
+
 Run this exact command from the root of the Git repository where you want the suite installed:
 
 ```bash
@@ -32,7 +34,7 @@ The installer validates all four modules before the first managed write, asks on
 
 Claude Code can invoke the four skill names directly. In Codex or Gemini, point the agent at the appropriate sibling `SKILL.md` once per session, or add those pointers to the project's agent instructions. Commit all four `.claude/skills/do-work*` directories so each repository carries its suite.
 
-**Updating:** `do-work update` and `just run-do-work-update` call the same installed core engine. Both review one archive, reconcile all four module trees plus the managed Just/settings surfaces behind one confirmation, and either verify the complete resulting suite or recover every managed path. Never delete the repository-root `do-work/` queue or `kb/`; neither update entry point manages them.
+**Updating:** `do-work update` and `just run-do-work-update` call the same installed core engine, which needs the same Go 1.26.1 or newer prerequisite as the install. Both review one archive, reconcile all four module trees plus the managed Just/settings surfaces behind one confirmation, and either verify the complete resulting suite or recover every managed path. Never delete the repository-root `do-work/` queue or `kb/`; neither update entry point manages them.
 
 ### Upgrade an existing installation with an AI agent
 

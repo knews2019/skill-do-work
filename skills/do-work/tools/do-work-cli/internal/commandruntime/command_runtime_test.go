@@ -233,7 +233,7 @@ func TestExitCodeContractThroughRealGitTransactions(t *testing.T) {
 			test.setUp(t, repositoryRoot)
 			// One transaction, rendered twice. Running the scenario a second time in a second
 			// repository would give the two renderings different commit SHAs to talk about.
-			transactionResult := gittransaction.BuildCommandResult(gittransaction.ExecuteTransaction(
+			transactionResult := gittransaction.BuildCommandResult("apply", gittransaction.ExecuteTransaction(
 				context.Background(), test.options(repositoryRoot), test.mutate(t, repositoryRoot)))
 
 			jsonExit, jsonOutput := runFixtureCommand(t, repositoryRoot, "json", transactionResult)
@@ -350,5 +350,111 @@ func writeFixtureFile(t *testing.T, repositoryRoot, relativePath, content string
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(repositoryRoot, relativePath), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// A usage finding used to emit `do-work-cli --format text <command>`, which shows the shape
+// but cannot be pasted. Every usage error now names a command that actually runs — the one
+// the argv was reaching for when there is one, and a registered command otherwise.
+func TestUsageFindingsNameARunnableCommand(t *testing.T) {
+	registered := map[string]CommandHandler{
+		"install-suite": func(ExecutionContext, []string) resultmodel.CommandResult {
+			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess}
+		},
+		"validate-manifest": func(ExecutionContext, []string) resultmodel.CommandResult {
+			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess}
+		},
+	}
+	tests := []struct {
+		name                string
+		arguments           []string
+		expectedCode        string
+		expectedNextCommand string
+	}{
+		{
+			name:                "an unknown global option before a known command",
+			arguments:           []string{"--nonsense", "validate-manifest"},
+			expectedCode:        "UNKNOWN-GLOBAL-OPTION",
+			expectedNextCommand: "validate-manifest",
+		},
+		{
+			name:                "a global option missing its value",
+			arguments:           []string{"--repo-root"},
+			expectedCode:        "MISSING-OPTION-VALUE",
+			expectedNextCommand: "install-suite",
+		},
+		{
+			name:                "an invalid format before a known command",
+			arguments:           []string{"--format", "yaml", "install-suite"},
+			expectedCode:        "INVALID-OUTPUT-FORMAT",
+			expectedNextCommand: "install-suite",
+		},
+		{
+			name:                "no command at all",
+			arguments:           []string{"--format", "text"},
+			expectedCode:        "MISSING-COMMAND",
+			expectedNextCommand: "install-suite",
+		},
+		{
+			name:                "an unknown command names itself",
+			arguments:           []string{"not-a-command"},
+			expectedCode:        "UNKNOWN-COMMAND",
+			expectedNextCommand: "not-a-command",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			exitCode := NewRuntime(&stdout, registered).Run(append([]string{"--format", "json"}, test.arguments...))
+			if exitCode != resultmodel.ExitCode(resultmodel.OutcomeFailure) {
+				t.Fatalf("exit = %d, want %d\n%s", exitCode, resultmodel.ExitCode(resultmodel.OutcomeFailure), stdout.String())
+			}
+			var decoded resultmodel.CommandResult
+			if err := json.Unmarshal(stdout.Bytes(), &decoded); err != nil {
+				// A parse error before --format json took effect renders as text; read that instead.
+				if !strings.Contains(stdout.String(), test.expectedCode) {
+					t.Fatalf("output does not name %s:\n%s", test.expectedCode, stdout.String())
+				}
+				if !strings.Contains(stdout.String(), test.expectedNextCommand) {
+					t.Fatalf("output does not name the runnable command %q:\n%s", test.expectedNextCommand, stdout.String())
+				}
+				return
+			}
+			if len(decoded.Findings) != 1 || decoded.Findings[0].Code != test.expectedCode {
+				t.Fatalf("findings = %#v, want one %s", decoded.Findings, test.expectedCode)
+			}
+			finding := decoded.Findings[0]
+			for _, argv := range [][]string{finding.NextArgv, finding.VerificationArgv} {
+				if len(argv) == 0 {
+					t.Fatalf("finding names no argv: %#v", finding)
+				}
+				if argv[len(argv)-1] != test.expectedNextCommand {
+					t.Errorf("argv %v does not end in the runnable command %q", argv, test.expectedNextCommand)
+				}
+				for _, argument := range argv {
+					if strings.HasPrefix(argument, "<") && strings.HasSuffix(argument, ">") {
+						t.Errorf("argv %v still carries the placeholder %q", argv, argument)
+					}
+				}
+			}
+		})
+	}
+}
+
+// A finding for an unavailable command has to tell the reader what IS available, otherwise
+// the only next step is guessing.
+func TestUnknownAndMissingCommandFindingsListTheRegisteredCommands(t *testing.T) {
+	registered := map[string]CommandHandler{
+		"install-suite":     func(ExecutionContext, []string) resultmodel.CommandResult { return resultmodel.CommandResult{} },
+		"validate-manifest": func(ExecutionContext, []string) resultmodel.CommandResult { return resultmodel.CommandResult{} },
+	}
+	for _, arguments := range [][]string{{"not-a-command"}, {"--format", "text"}} {
+		var stdout bytes.Buffer
+		NewRuntime(&stdout, registered).Run(arguments)
+		for _, expectedCommand := range []string{"install-suite", "validate-manifest"} {
+			if !strings.Contains(stdout.String(), expectedCommand) {
+				t.Errorf("argv %v produced a finding that does not list %q:\n%s", arguments, expectedCommand, stdout.String())
+			}
+		}
 	}
 }
