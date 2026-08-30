@@ -1,3 +1,11 @@
+# REQ-407 Builder Brief
+
+Worktree: `/home/user/skill-do-work-worktrees/worktree-agent-REQ-407-migrate-install-update-bootstrap-to-go`
+Branch (operative name): `worktree-agent-REQ-407-migrate-install-update-bootstrap-to-go`
+Hand-back file (absolute, main tree): `/home/user/skill-do-work/do-work/runs/work-2026-08-29-213539/REQ-407-handback.md`
+
+---
+
 ---
 id: REQ-407
 title: 'Migrate bootstrap, install, update, reconciliation, validation, and fetching into Go'
