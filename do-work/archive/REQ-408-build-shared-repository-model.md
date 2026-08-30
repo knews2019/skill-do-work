@@ -4,7 +4,7 @@ title: 'Build shared request, schema, dependency, atomic-file, and repository pa
 status: completed
 claimed_at: 2026-08-30T18:12:30Z
 completed_at: 2026-08-30T19:22:59Z
-commit:
+commit: ac2e3acd
 created_at: 2026-08-29T20:28:26Z
 route: C
 write_set: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md, skills/do-work/tools/do-work-cli/internal/atomicfile/atomic_file.go, skills/do-work/tools/do-work-cli/internal/atomicfile/atomic_file_test.go, skills/do-work/tools/do-work-cli/internal/atomicfile/atomic_replace_unix.go, skills/do-work/tools/do-work-cli/internal/atomicfile/atomic_replace_windows.go, skills/do-work/tools/do-work-cli/internal/atomicfile/atomic_replace_unsupported.go, skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go, skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization_test.go, skills/do-work/tools/do-work-cli/internal/requestmodel/request_model.go, skills/do-work/tools/do-work-cli/internal/requestmodel/request_model_test.go, skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go, skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model_test.go, skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go, skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph_test.go]
