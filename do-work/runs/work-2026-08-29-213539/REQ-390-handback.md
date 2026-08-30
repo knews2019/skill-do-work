@@ -240,3 +240,74 @@ Every change below is intentional: this REQ removes a rule (calendar-period wind
 | **REQ-320** | `TestBrowserBehaviorTimelineRangeFieldsShowTheWindowTheChartIsDrawnAt` | Two `[data-timeline-period="month"]` clicks became `="30"`; `monthFrom`/`MonthFrom` renamed `trailingFrom`/`TrailingFrom`; one message reworded. | The probe only needs *a window that is not the bounds* so a clamp is observable, and a 30-day trailing window is one. All four of its properties (cleared field restored, clamped commit shown honestly, in-range date applied exactly, mid-edit respected then released) are unchanged. |
 | **REQ-235 / REQ-345** | `TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable` | Clause (3): `week` click → `7`, `currentWeek`/`afterStepFromCurrentWeek` renamed `trailingSevenDays`/`afterStepFromTrailingSevenDays`, comment rewritten for a now-anchored window. New `allDays` snapshot captured unfiltered. Clause (6): **rebuilt** — the two `filteredWeek` states replaced by one forward step from `filteredFit`, with a new room-to-the-right premise. | Clause (3)'s contract is unchanged: read the arrow's own verdict, check the press against it, never assert which regime the live queue is in — REQ-345's lesson, still honoured. Clause (6) had to be rebuilt because it was built on the `week` chip navigating to the filtered REQ's week, which trailing windows remove; the *property* it pins — the only deterministic arrow-refusal case in the suite — is preserved, with a premise the live queue cannot silently satisfy. See D-06. |
 | **REQ-313 / REQ-338** | `TestBrowserBehaviorTimelineListsRowsBeneathUserRequestHeaders` | `day` click → `1`; `day`/`dayRebuild` JSON keys and `Day`/`DayRebuild` Go fields renamed `lastDay`/`lastDayRebuild`; two messages reworded. | The probe needs a *narrower window than Fit all* that lists a different REQ set; trailing `1` supplies one. All of its grouping, header-id, cell-headers, tab-stop and virtualization assertions are unchanged. The `fitAllIds != lastDayIds` assertion is data-dependent and was checked live — see D-07. |
+
+## Remediation
+
+**Commit:** `403d78e16784f220583d19b66effa5ed02ec8b03` on `worktree-agent-REQ-390-timeline-trailing-window-periods`, one file, `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go` (+88/-35). Not pushed, not merged.
+
+### What the new premise is, and why the live queue cannot move it
+
+The old clause took the window Fit all chose under the `REQ-164` filter and then *measured* whether the board had a screenful of room to its right. Both halves of the premise came from that one window, and its **width** is live queue data.
+
+Root cause, exactly: the shared search filter matches by citation as well as by id and title (`web/board-filters.js` → `citationMatchedTicketId`). `do-work/working/REQ-390-timeline-trailing-window-periods.md` acquired `REQ-164` in its `citedTicketIds` when the queue owner recorded the merge notes, so the needle now matches **two** rows — REQ-164 (28 minutes long, 2026-08-10) and REQ-390 itself, still open, whose bar runs to the now-line. The filtered fit stretched from 20 days wide, against 1.91 days of bound padding. The test's own REQ file changed the fixture the test reads.
+
+The new premise is built, not found, and it separates the two facts a refusal needs:
+
+1. **Right edge past everything drawn** — still supplied by Fit all, which is an outer bound on the drawn extent by construction (`timelineFitWindow` fits `drawnExtent` plus breathing room, and `drawnExtent` is computed from `filterMatchedSegments`, so it does not move when the window does).
+2. **More than one of the window's own screenfuls of room to its right** — now supplied by making the window **one hour wide** rather than by hoping the filtered set is narrow. The probe zooms in with the anchor pinned to the window's right edge: `handleTimelineWheel` clamps `anchorFraction` into `[0, 1]`, so a `WheelEvent` with `ctrlKey` and `clientX: 1e6` anchors the zoom exactly on the window's end, and `timelineZoomedWindow` at anchor 1.0 leaves `windowEndMs` untouched. Repeated until a press stops narrowing, that lands on `TIMELINE_MIN_SPAN_MS` (one hour) with the edge unmoved.
+
+Two setup assertions pin the construction before the guard runs, so neither half can silently rot: the narrowed window's end must equal the fit window's end, and its span must be at most the one-hour floor.
+
+Why the guard can no longer fire on live data: the room past any filtered extent is at least the bound padding, which is a fixed 2% of the board's range (`boundPaddingMs` in `web/board-timeline.js`), less the fit's breathing room. Clause (4) — already a hard assertion in the same test — caps the filtered fit at half the unfiltered span, which caps that breathing room at half the padding. So the room is at least ~0.96% of the board's range against a fixed one-hour window. **Residual condition, stated rather than hidden:** that clears one hour on any board whose data spans more than about 4.4 days. It is no longer a fact about *where* the queue's data sits, only about the board being more than a few days wide.
+
+### RED evidence
+
+The worktree's own `do-work/` is at the branch tip and still passes, so the failure was reproduced on the merged data by copying the main tree's `do-work/` beside a copy of the package (`resolveRepoRoot` walks up for `do-work/`; no git needed). Pre-fix file, merged queue:
+
+```
+--- FAIL: TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable (6.86s)
+    timeline_browser_probe_test.go:2235: the board's whole range (2026-05-27 20:04 UTC → 2026-09-01 14:30 UTC)
+    leaves 1.91 days to the right of the window Fit all chose under the one-REQ filter
+    (2026-08-10 12:11 UTC → 2026-08-30 16:39 UTC), which is not more than that window's own 20.19-day span;
+    ... (summary "2 REQs in the window ... 1 still open, measured to the now-line at 2026-08-30 07:20 UTC.")
+FAIL   exit 1
+```
+
+### Pass counts
+
+| Where | Runs | Result |
+|---|---|---|
+| Worktree data (branch tip queue), fixed clause | 6 | 6 pass, 0 fail |
+| Merged data (main tree's `do-work/`), fixed clause | 5 | 5 pass, 0 fail |
+| Adversarial fixture (below), fixed clause | 3 | 3 pass, 0 fail |
+| Timeline family, `-run '^TestBrowserBehaviorTimeline\|^TestTimeline'` | 1 | exit 0, 57.5s |
+
+### Step 3 — proving it is not luck on today's data
+
+Two independent checks.
+
+**A fixture board built to trip the old premise.** A synthetic `do-work/` tree (scratch only, not committed) with the shape that broke the live board, made worse: 18 filler REQs spread over 12 days so the whole board spans 12.06 days and the bound padding is 5.79 hours rather than the live board's 1.9 days; `REQ-164` archived 5 days back; and `REQ-777`, still `claimed`, whose body cites REQ-164 — so the needle's drawn extent runs to the now-line exactly as REQ-390 made it. Pre-fix file on that fixture:
+
+```
+timeline_browser_probe_test.go:2235: the board's whole range (2026-08-18 01:45 UTC → 2026-08-30 14:46 UTC)
+leaves 0.20 days to the right of the window Fit all chose under the one-REQ filter
+(2026-08-25 05:08 UTC → 2026-08-30 09:57 UTC), which is not more than that window's own 5.20-day span
+FAIL   exit 1
+```
+
+Fixed file on the same fixture: 3 runs, all exit 0. Generator kept at `…/scratchpad/req390/make-fixture.py`.
+
+**Mutation, to show the guard was not made unreachable by weakening the clause.** With `stepLandsOffTheData` forced to `return false` in `web/board-timeline.js` (scratch copies only, restored after), the clause fails on both boards — the assertions, not the guard:
+
+```
+merged data:  the step-forward arrow is enabled on 2026-08-30 15:49 UTC → 2026-08-30 16:49 UTC ...
+              pressing the step-forward arrow moved the window ... and drew 0 segments there
+fixture:      the step-forward arrow is enabled on 2026-08-30 08:57 UTC → 2026-08-30 09:57 UTC ...
+              pressing the step-forward arrow moved the window ... and drew 0 segments there
+```
+
+Both readouts are exactly one hour wide and end on the fit's own right edge, which is the construction the two setup assertions pin.
+
+### Gate
+
+`bash _dev/tests/maintainer-verify.sh` from the worktree root, no `QUEUE_KANBAN_BROWSER` set: **exit 0**, direct status, unpiped. Its browser lane stayed in the default skipped state (`SKIP: no browser is available; strict browser behavior lane was not run.`).

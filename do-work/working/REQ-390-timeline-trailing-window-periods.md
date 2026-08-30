@@ -239,3 +239,36 @@ The plan listed `timelinePeriodStart` for deletion, but `timelineTypedWindow` ca
 **Merge range:** `b3ea43d..1deafa5`.
 **Hand-back:** `do-work/runs/work-2026-08-29-213539/REQ-390-handback.md` (builder-authored `## Decisions`, `## Discovered Tasks`, `## Cross-REQ Test Changes`, `## P-A-U` and `## Testing` are read from there).
 
+## Testing
+
+**Tests run (merged tree, merge range `b3ea43d..59105df`):**
+- Timeline JS behaviour tests and the strict Node lane — ✓ exit 0
+- `QUEUE_KANBAN_BROWSER=<Chrome 151> go test -count=1 -run '^TestBrowserBehaviorTimeline|^TestTimeline' .` — ✓ exit 0, 14 browser probes on Chrome for Testing 151.0.7922.174
+- `bash _dev/tests/maintainer-verify.sh` (canonical repository gate, optional browser lane in its default skipped state) — ✓ exit 0
+
+**Result:** ✓ All passing. Judged by direct exit status, never piped.
+
+**Red-green validation:** traced to the REQ's `## Red-Green Proof`, whose GREEN condition is that the toolbar offers the five trailing windows, clicking one sets the window to that trailing span ending at now, All days spans the full recorded range, the new probe passes, and no calendar-period button remains.
+
+- `TestBrowserBehaviorTimelineTrailingWindowsEndAtNow`: ✗ before — `the period toolbar offers 3 controls ([day Day] [week Week] [month Month]), want the five trailing windows` → ✓ after. Committed RED-only as `ebd62c2` before any source change.
+- `TestJavaScriptBehaviorTimelineTrailingWindowsEndAtNow`: ✗ before — `timelineTrailingWindow` absent from the shipped bundle → ✓ after, covering last-7 ending at now, last-90 clamped on a 3-day archive still ending at now, `all` equal to the bounds, and pan inverse pairs.
+
+**Browser lane note.** The canonical gate's optional strict browser lane stays in its default skipped state, per the session-level decision recorded on REQ-406: this container ships Chromium 141, the build REQ-375 deprecated, and `TestBrowserBehaviorCompletionCompanionsKeepReadableContrast` fails here at HEAD on both Chrome 141 and 151 with no source changes — a Linux-headless difference from the macOS run REQ-375 recorded. Rather than adopt a lane that fails for reasons unrelated to this REQ, the timeline probe family was run individually under Chrome 151, where all 14 pass.
+
+**Post-merge verification found a real defect, and it was remediated inside this REQ.** The builder's branch was green; the merged tree was red. Clause (6) of `TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable` — the arrow-refusal case the builder rebuilt — failed deterministically with its own anti-vacuity guard: `leaves 1.91 days to the right … not more than that window's own 20.18-day span … so this case proves nothing`.
+
+The cause is self-referential and worth recording. The clause read the **live repository queue** as its fixture, and `REQ-164` matches by *citation* rather than by id or title. Writing this REQ's own merge notes into `do-work/working/REQ-390-*.md` added `REQ-164` to that file's cited ids, so the one-REQ filter began matching two rows and the filtered fit stretched to 20.19 days against 1.91 days of bound padding. The test's own REQ file changed the fixture the test reads.
+
+Fixed in `403d78e`: the window is now **set by construction** rather than accepted from Fit all. The probe ctrl+wheel zooms with a far-right anchor, which `handleTimelineWheel` clamps to the window's own end, so `timelineZoomedWindow` leaves the right edge untouched while narrowing to the one-hour `TIMELINE_MIN_SPAN_MS` floor. Room past any filtered extent is then at least the fixed 2% bound padding less the fit's breathing room, which clause (4) already caps at half — about 0.96% of the range against a fixed one-hour window. The residual condition is stated rather than hidden: it clears one hour on any board spanning more than roughly 4.4 days.
+
+**Falsification — the property was not weakened into something unfalsifiable:**
+- Mutating `stepLandsOffTheData` to `return false` kills clause (6) on both the live board and an adversarial fixture, via the refusal assertions (arrow enabled, window moved, zero segments drawn).
+- An adversarial fixture repository — a 12.06-day board with only 5.79 hours of padding, where the pre-fix clause fails with `leaves 0.20 days … not more than that window's own 5.20-day span` — passes 3/3 with the fix.
+- Independently re-measured by the orchestrator on the merged tree: 0 failures in 5 consecutive runs, where the pre-fix clause failed 2/2.
+
+**New tests added:** `TestBrowserBehaviorTimelineTrailingWindowsEndAtNow`, `TestJavaScriptBehaviorTimelineTrailingWindowsEndAtNow`.
+
+**Existing tests updated (cross-REQ impact):** seven tests across REQ-235, REQ-240/327, REQ-313/338, REQ-320, REQ-326 and REQ-345 were migrated off the calendar-period controls. Each change, and why the behaviour change is intentional, is recorded in the hand-back's `## Cross-REQ Test Changes` table.
+
+*Verified by work action*
+
