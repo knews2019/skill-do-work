@@ -2,6 +2,8 @@
 
 Pipeline diagnostics — detects stuck work, hollow completions, orphaned URs, scope contamination, and other health issues. Read-only and safe to run anytime.
 
+The canonical deterministic implementation is `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> doctor`. It discovers the repository once and renders the same typed findings as text or JSON (`--format json` goes before `doctor`). A normal run is byte-for-byte read-only. `doctor --repair-timestamps` is the only mutation mode; add `--dry-run` to inspect its exact blame-derived plan or `--commit` for a guarded exact-path commit. Blanked records remain diagnosis-only until the exact `cleanup --restore-blanked <path>` consent command is run.
+
 > **Sister action:** `do-work roadmap` is the read-only survey for *intended* state — what's queued, in-progress, and feasible to pick up next. Forensics looks for *broken* state. If nothing is broken but you want to know "where are we and what's next," see `docs/roadmap-guide.md`.
 
 ## What it checks
@@ -19,6 +21,8 @@ Pipeline diagnostics — detects stuck work, hollow completions, orphaned URs, s
 | **Git divergence** | Files from completed REQs later modified or deleted without tracking |
 | **Stranded finished REQs** | Terminal-status REQs left in `do-work/queue/` or `working/` instead of archived |
 | **Recurring corrections** | The same lesson/correction theme surfacing across 2+ archived REQs (2 = watch, 3+ = strong signal) — a sign to fix the harness, not the next run |
+| **Timestamp integrity** | Effective top-level `*_at` fields beyond two-minute skew or violating `created_at <= claimed_at <= completed_at`; unsupported offsets/fractions are reported and refused byte-identically |
+| **ID collisions** | Every filename and frontmatter claim, including collisions visible only through filenames |
 | **Blanked or unparseable files** | REQ/UR files that are 0 bytes or have lost their frontmatter — the content is gone, not mislabeled. Reports where each one can be recovered from in git history, and points at `do-work cleanup` (Pass 6) to restore it |
 | **Release and queue invariants** | Runs the board tool's `verify`: version file vs. newest `CHANGELOG.md` entry, duplicate or reused entry versions/titles, duplicate REQ numbers, a checkpoint naming a REQ that no longer exists, untrustworthy `claimed_at` stamps, stranded finished REQs, and `worktree-agent-*` leftovers. Needs the Go toolchain — skipped and reported when it's absent, never a failure |
 
@@ -34,7 +38,8 @@ Each finding includes a suggested fix. Sections with no findings are omitted.
 
 ## Key rules
 
-- Read-only — reports findings, never auto-fixes
+- Read-only by default — reports findings without changing files
+- Timestamp repair requires explicit `--repair-timestamps`; dirty/untracked targets and unsupported shapes are refused
 - User decides what to act on
 
 ## Usage
@@ -44,4 +49,6 @@ do-work forensics
 do-work diagnose
 do-work health check
 do-work health
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> doctor
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> doctor --repair-timestamps --dry-run
 ```

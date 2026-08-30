@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.0 — Canonical Doctor and Forensics Command (2026-08-30)
+
+The do-work CLI now owns deterministic pipeline diagnosis through one `doctor` command: it reports stuck and hollow work, stale states, collisions, damaged records with full-history recovery evidence, scope/Git divergence, and timestamp defects from one typed repository snapshot. Text and JSON come from the same sorted findings, while the default command remains read-only.
+
+- Explicit `--repair-timestamps` mode uses exact-path Git guards, dry-run parity, atomic publication, optional commit, rollback evidence, and exact revert guidance for committed-state risk; blank restoration remains a separate consent-gated cleanup action.
+- The forensics action delegates mechanical checks to doctor while retaining recurring-correction judgment and board-owned release verification.
+- Known contract gaps remain queued as REQ-434 and REQ-435: unsupported timestamp shapes must not influence ordering repairs, and the delegated action still needs authoritative report counts, remedies, and stable references.
+
 ## 0.250.0 — Canonical Safe Cleanup Command (2026-08-30)
 
 The do-work CLI now owns cleanup Passes 0–4: it can archive stranded terminal requests, close resolved user requests, consolidate misplaced archive content, remove consumed run scratch, repoint documentation links, and inspect or explicitly repair blank records and worktrees. The natural-language cleanup action and guide delegate to the same text/JSON command instead of re-implementing filesystem policy.

@@ -33,6 +33,8 @@ type RequestFile struct {
 	FilenameID     string
 	TypedRecord    requestmodel.RequestRecord
 	ParsedDocument *requestmodel.RequestDocument
+	ContentBytes   []byte
+	ParseFailure   string
 }
 
 // UserRequestFile is one active or archived UR input document.
@@ -42,6 +44,19 @@ type UserRequestFile struct {
 	TreeSection    string
 	TypedRecord    requestmodel.RequestRecord
 	ParsedDocument *requestmodel.RequestDocument
+	ContentBytes   []byte
+	ParseFailure   string
+}
+
+// DamagedRecordFile is a contained REQ or UR record whose bytes cannot be
+// projected into frontmatter. The bytes and parse failure stay first-class so
+// diagnostics never have to recover them from a warning string.
+type DamagedRecordFile struct {
+	AbsolutePath string
+	RelativePath string
+	RecordKind   string
+	ContentBytes []byte
+	ParseFailure string
 }
 
 // RunManifestFile is one root run manifest. Cleanup consumes only manifests
@@ -76,6 +91,7 @@ type RepositorySnapshot struct {
 	RunManifestFiles  []RunManifestFile
 	ReservationFiles  []ReservationFile
 	CollisionEntries  []CollisionEvidence
+	DamagedRecords    []DamagedRecordFile
 	StrayRequestPaths []string
 	WarningMessages   []string
 }
@@ -194,6 +210,11 @@ func DiscoverRepository(repositoryRoot string) (*RepositorySnapshot, error) {
 			}
 			return nil
 		}
+		if strings.HasPrefix(strings.ToUpper(baseName), "UR-") && strings.HasSuffix(strings.ToLower(baseName), ".md") &&
+			(topSection == "queue" || topSection == "working" || topSection == "archive") {
+			loadStandaloneUserRequestRecord(snapshot, discoveryRoot, absolutePath, relativeSlashPath)
+			return nil
+		}
 		if baseName == "input.md" && (topSection == "user-requests" || topSection == "archive") {
 			userRequest := loadUserRequestFile(snapshot, discoveryRoot, absolutePath, relativeSlashPath, topSection)
 			snapshot.UserRequestFiles = append(snapshot.UserRequestFiles, userRequest)
@@ -269,6 +290,9 @@ func DiscoverRepository(repositoryRoot string) (*RepositorySnapshot, error) {
 		return snapshot.RunManifestFiles[leftIndex].RunDirectory < snapshot.RunManifestFiles[rightIndex].RunDirectory
 	})
 	sort.Strings(snapshot.StrayRequestPaths)
+	sort.Slice(snapshot.DamagedRecords, func(leftIndex, rightIndex int) bool {
+		return snapshot.DamagedRecords[leftIndex].RelativePath < snapshot.DamagedRecords[rightIndex].RelativePath
+	})
 	return snapshot, nil
 }
 
@@ -419,8 +443,14 @@ func loadRequestFile(snapshot *RepositorySnapshot, discoveryRoot *os.Root, absol
 		snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot read request %s: %v", absolutePath, readError))
 		return requestFile
 	}
+	requestFile.ContentBytes = append([]byte(nil), fileBytes...)
 	document, parseError := requestmodel.ParseDocument(fileBytes)
 	if parseError != nil {
+		requestFile.ParseFailure = parseError.Error()
+		snapshot.DamagedRecords = append(snapshot.DamagedRecords, DamagedRecordFile{
+			AbsolutePath: absolutePath, RelativePath: relativePath, RecordKind: "REQ",
+			ContentBytes: append([]byte(nil), fileBytes...), ParseFailure: parseError.Error(),
+		})
 		snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot parse request %s: %v", absolutePath, parseError))
 		return requestFile
 	}
@@ -442,14 +472,33 @@ func loadUserRequestFile(snapshot *RepositorySnapshot, discoveryRoot *os.Root, a
 		snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot read user request %s: %v", absolutePath, readError))
 		return userRequest
 	}
+	userRequest.ContentBytes = append([]byte(nil), fileBytes...)
 	document, parseError := requestmodel.ParseDocument(fileBytes)
 	if parseError != nil {
-		snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot parse user request %s: %v", absolutePath, parseError))
+		userRequest.ParseFailure = parseError.Error()
+		if section != "archive" {
+			snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot parse user request %s: %v", absolutePath, parseError))
+		}
 		return userRequest
 	}
 	userRequest.ParsedDocument = document
 	userRequest.TypedRecord = document.TypedRecord()
 	return userRequest
+}
+
+func loadStandaloneUserRequestRecord(snapshot *RepositorySnapshot, discoveryRoot *os.Root, absolutePath, relativePath string) {
+	fileBytes, readError := readContainedRegularFile(discoveryRoot, relativePath, absolutePath)
+	if readError != nil {
+		snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot read user request record %s: %v", absolutePath, readError))
+		return
+	}
+	if _, parseError := requestmodel.ParseDocument(fileBytes); parseError != nil {
+		snapshot.DamagedRecords = append(snapshot.DamagedRecords, DamagedRecordFile{
+			AbsolutePath: absolutePath, RelativePath: relativePath, RecordKind: "UR",
+			ContentBytes: append([]byte(nil), fileBytes...), ParseFailure: parseError.Error(),
+		})
+		snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot parse user request record %s: %v", absolutePath, parseError))
+	}
 }
 
 func readContainedRegularFile(discoveryRoot *os.Root, relativePath string, absolutePath string) ([]byte, error) {

@@ -169,16 +169,26 @@ func isBlankedDocument(contents []byte) bool {
 
 var recordedHashPattern = regexp.MustCompile(`record commit hash ([0-9a-f]{7,40})`)
 
-func recoverGitContent(ctx context.Context, repositoryRoot, relativePath string) ([]byte, string, string, error) {
+// RecoveryEvidence separates the blob supplying recoverable bytes from the
+// implementation provenance recorded by the later metadata commit.
+type RecoveryEvidence struct {
+	ContentBytes         []byte
+	SourceCommit         string
+	ImplementationCommit string
+}
+
+// RecoverGitContent resolves the newest parseable bytes from full path history.
+// It is read-only; cleanup remains the only caller authorized to publish them.
+func RecoverGitContent(ctx context.Context, repositoryRoot, relativePath string) (RecoveryEvidence, error) {
 	logOutput, err := cleanupGit(ctx, repositoryRoot, "log", "--full-history", "--format=%H", "--", relativePath)
 	if err != nil {
-		return nil, "", "", err
+		return RecoveryEvidence{}, err
 	}
 	recordedHash := ""
 	for _, commitSHA := range strings.Fields(logOutput) {
 		contents, showError := cleanupGitBytes(ctx, repositoryRoot, "show", commitSHA+":"+relativePath)
 		if showError == nil && !isBlankedDocument(contents) {
-			return contents, commitSHA, recordedHash, nil
+			return RecoveryEvidence{ContentBytes: contents, SourceCommit: commitSHA, ImplementationCommit: recordedHash}, nil
 		}
 		if recordedHash == "" {
 			subject, subjectError := cleanupGit(ctx, repositoryRoot, "log", "-1", "--format=%s", commitSHA)
@@ -189,7 +199,12 @@ func recoverGitContent(ctx context.Context, repositoryRoot, relativePath string)
 			}
 		}
 	}
-	return nil, "", "", fmt.Errorf("Git history has no recoverable nonblank content")
+	return RecoveryEvidence{}, fmt.Errorf("Git history has no recoverable nonblank content")
+}
+
+func recoverGitContent(ctx context.Context, repositoryRoot, relativePath string) ([]byte, string, string, error) {
+	evidence, err := RecoverGitContent(ctx, repositoryRoot, relativePath)
+	return evidence.ContentBytes, evidence.SourceCommit, evidence.ImplementationCommit, err
 }
 
 type WorktreeRepairOptions struct {

@@ -14,6 +14,7 @@ The standard-library Go module under this directory is the canonical implementat
 - `internal/repositorymodel/` owns one-pass do-work discovery, exact paths, collisions, and REQ allocation.
 - `internal/dependencygraph/` derives readiness, reverse edges, cycles, and depth from a repository snapshot.
 - `internal/cleanup/` plans safe Passes 0–4, consent-gated repairs, link repointing, and worktree evidence.
+- `internal/doctor/` owns read-only mechanical forensics and guarded blame-derived timestamp repair; recurring lesson judgment and board verification remain outside it.
 - `internal/atomicfile/` owns safe existing-file replacement and exclusive marker creation.
 - `internal/gittransaction/` owns dirty-target checks, rollback, staging, and commit guards.
 
@@ -30,6 +31,7 @@ The standard-library Go module under this directory is the canonical implementat
 - Keep command output derived from one typed result model and keep implementation dependencies in the Go standard library.
 - Cleanup operation groups preflight independently; a dirty group is reported without blocking unrelated safe groups.
 - Entirely untracked `Status: consumed` run scratch is the sole non-rollback deletion; revalidate its exact inventory immediately before removal.
+- Doctor diagnosis is byte-for-byte read-only. Only `--repair-timestamps` mutates, and blank recovery remains exact cleanup consent.
 
 ## Verify
 

@@ -22,6 +22,7 @@ var (
 // FieldEvidence retains the selected top-level field and its decoded shapes.
 type FieldEvidence struct {
 	FieldName      string
+	LineNumber     int
 	RawValue       string
 	ScalarValue    string
 	ListValues     []string
@@ -168,7 +169,7 @@ func ParseDocument(fileBytes []byte) (*RequestDocument, error) {
 		if rawValue == "" || isLiteralBlock {
 			blockEnd = continuationBlockEnd(fileBytes, line.end, nextKeyStart, isLiteralBlock)
 		}
-		evidence := FieldEvidence{FieldName: key.name, RawValue: rawValue}
+		evidence := FieldEvidence{FieldName: key.name, LineNumber: key.lineIndex + 2, RawValue: rawValue}
 		if rawValue != "" {
 			if strings.HasPrefix(trimmedRawValue, "|") {
 				evidence.ScalarValue = decodeLiteralBlock(trimmedRawValue, fileBytes[line.end:blockEnd])

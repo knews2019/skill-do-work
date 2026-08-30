@@ -108,6 +108,13 @@ func TestBlankedRecoveryUsesRecordedImplementationHashAcrossAllLiveLayouts(t *te
 	}
 	runCleanupGit(t, repositoryRoot, "add", relativePath)
 	runCleanupGit(t, repositoryRoot, "commit", "-q", "-m", "[REQ-206] record commit hash "+implementationSHA)
+	recoveryEvidence, recoveryError := RecoverGitContent(context.Background(), repositoryRoot, relativePath)
+	if recoveryError != nil {
+		t.Fatalf("RecoverGitContent: %v", recoveryError)
+	}
+	if recoveryEvidence.SourceCommit != recoverySourceSHA || recoveryEvidence.ImplementationCommit != implementationSHA || !strings.Contains(string(recoveryEvidence.ContentBytes), "Later parseable body") {
+		t.Fatalf("reusable recovery evidence = %#v", recoveryEvidence)
+	}
 	plan := CleanupPlan{RepositoryRoot: repositoryRoot}
 	AddBlankedRepairs(context.Background(), &plan, []string{relativePath})
 	if len(plan.Groups) != 1 {

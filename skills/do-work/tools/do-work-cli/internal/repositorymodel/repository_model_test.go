@@ -250,3 +250,74 @@ func TestDiscoverRepositoryRetainsRootRunManifestEvidence(t *testing.T) {
 		t.Fatalf("second run manifest = %#v", snapshot.RunManifestFiles[1])
 	}
 }
+
+func TestDiscoverRepositoryRetainsBlankAndMalformedRecordEvidence(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeRepositoryFixture(t, repositoryRoot, "do-work/queue/REQ-040-blank.md", "")
+	writeRepositoryFixture(t, repositoryRoot, "do-work/archive/UR-040.md", "header destroyed\n")
+	writeRepositoryFixture(t, repositoryRoot, "do-work/user-requests/UR-041/input.md", "---\nid: UR-041\n")
+	snapshot, err := DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.DamagedRecords) != 2 {
+		t.Fatalf("damaged records = %#v", snapshot.DamagedRecords)
+	}
+	for _, damaged := range snapshot.DamagedRecords {
+		if damaged.RelativePath == "" || damaged.ParseFailure == "" || damaged.RecordKind == "" {
+			t.Fatalf("incomplete damage evidence = %#v", damaged)
+		}
+	}
+}
+
+func TestDiscoverRepositoryDoesNotClassifyLegacyInputAsBlankedRecord(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	legacyInput := "# Legacy request\n\nThis predates frontmatter and remains valid source material.\n"
+	writeRepositoryFixture(t, repositoryRoot, "do-work/archive/UR-003/input.md", legacyInput)
+	writeRepositoryFixture(t, repositoryRoot, "do-work/archive/UR-004.md", "header destroyed\n")
+	writeRepositoryFixture(t, repositoryRoot, "do-work/queue/REQ-041-blank.md", "")
+
+	snapshot, err := DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.DamagedRecords) != 2 {
+		t.Fatalf("damaged records = %#v", snapshot.DamagedRecords)
+	}
+	for _, damaged := range snapshot.DamagedRecords {
+		if damaged.RelativePath == "archive/UR-003/input.md" {
+			t.Fatalf("legacy input was classified as damaged: %#v", damaged)
+		}
+	}
+	for _, warning := range snapshot.WarningMessages {
+		if strings.Contains(warning, "archive/UR-003/input.md") {
+			t.Fatalf("valid legacy input was classified as an inspection warning: %s", warning)
+		}
+	}
+	if len(snapshot.UserRequestFiles) != 1 || snapshot.UserRequestFiles[0].ParseFailure == "" {
+		t.Fatalf("legacy input inspection evidence was not retained: %#v", snapshot.UserRequestFiles)
+	}
+}
+
+func TestDiscoverRepositoryAcceptsProductionLegacyArchiveInputClass(t *testing.T) {
+	productionPath := filepath.Join("..", "..", "..", "..", "..", "..", "do-work", "archive", "UR-003", "input.md")
+	productionBytes, err := os.ReadFile(productionPath)
+	if os.IsNotExist(err) {
+		t.Skip("production do-work corpus is not present")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(productionBytes) != 5608 {
+		t.Fatalf("production legacy fixture changed size: got %d bytes", len(productionBytes))
+	}
+	repositoryRoot := t.TempDir()
+	writeRepositoryFixture(t, repositoryRoot, "do-work/archive/UR-003/input.md", string(productionBytes))
+	snapshot, err := DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.DamagedRecords) != 0 {
+		t.Fatalf("production legacy input class was damaged: %#v", snapshot.DamagedRecords)
+	}
+}

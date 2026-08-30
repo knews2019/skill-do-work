@@ -170,3 +170,14 @@ func TestTypedRecordCarriesEveryNormalizedSchemaFieldAndGenericEvidence(t *testi
 		t.Fatalf("generic unknown field evidence = %#v, found=%v", unknownField, found)
 	}
 }
+
+func TestEffectiveFieldEvidenceCarriesExactSourceLine(t *testing.T) {
+	document, err := ParseDocument([]byte("---\ncreated_at: 2026-08-01 # shadowed\n  calculated_at: 2099-01-01\ncreated_at: '2026-08-02' # effective\n---\nBody\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	field, found := document.FieldValue("created_at")
+	if !found || field.LineNumber != 4 || field.RawValue != "'2026-08-02'" || field.DuplicateCount != 2 {
+		t.Fatalf("effective source evidence = %#v, found=%v", field, found)
+	}
+}
