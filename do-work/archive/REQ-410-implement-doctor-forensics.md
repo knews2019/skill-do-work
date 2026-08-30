@@ -4,6 +4,7 @@ title: 'Implement doctor, deterministic forensics, and metadata repairs'
 status: completed-with-issues
 claimed_at: 2026-08-30T20:45:17Z
 completed_at: 2026-08-30T22:01:41Z
+commit: 210d1459
 created_at: 2026-08-29T20:28:26Z
 route: C
 estimate:
