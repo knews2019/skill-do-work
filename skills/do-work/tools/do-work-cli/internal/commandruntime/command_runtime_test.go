@@ -229,9 +229,14 @@ func TestExitCodeContractThroughRealGitTransactions(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			jsonRoot := newFixtureRepository(t)
-			test.setUp(t, jsonRoot)
-			jsonExit, jsonOutput := runFixtureCommand(t, jsonRoot, "json", test.options(jsonRoot), test.mutate(t, jsonRoot))
+			repositoryRoot := newFixtureRepository(t)
+			test.setUp(t, repositoryRoot)
+			// One transaction, rendered twice. Running the scenario a second time in a second
+			// repository would give the two renderings different commit SHAs to talk about.
+			transactionResult := gittransaction.BuildCommandResult(gittransaction.ExecuteTransaction(
+				context.Background(), test.options(repositoryRoot), test.mutate(t, repositoryRoot)))
+
+			jsonExit, jsonOutput := runFixtureCommand(t, repositoryRoot, "json", transactionResult)
 			if jsonExit != test.wantExitCode {
 				t.Fatalf("JSON exit = %d, want %d\n%s", jsonExit, test.wantExitCode, jsonOutput)
 			}
@@ -256,9 +261,7 @@ func TestExitCodeContractThroughRealGitTransactions(t *testing.T) {
 				t.Fatalf("outcome %q does not map to exit %d", decoded.Outcome, test.wantExitCode)
 			}
 
-			textRoot := newFixtureRepository(t)
-			test.setUp(t, textRoot)
-			textExit, textOutput := runFixtureCommand(t, textRoot, "text", test.options(textRoot), test.mutate(t, textRoot))
+			textExit, textOutput := runFixtureCommand(t, repositoryRoot, "text", transactionResult)
 			if textExit != test.wantExitCode {
 				t.Fatalf("text exit = %d, want %d\n%s", textExit, test.wantExitCode, textOutput)
 			}
@@ -307,12 +310,10 @@ func renderedNextLine(t *testing.T, finding resultmodel.CommandFinding) string {
 	return ""
 }
 
-func runFixtureCommand(t *testing.T, repositoryRoot, outputFormat string, options gittransaction.TransactionOptions, mutate func(*gittransaction.MutationRecorder) error) (int, string) {
+func runFixtureCommand(t *testing.T, repositoryRoot, outputFormat string, result resultmodel.CommandResult) (int, string) {
 	t.Helper()
 	handlers := map[string]CommandHandler{
-		"apply": func(ExecutionContext, []string) resultmodel.CommandResult {
-			return gittransaction.BuildCommandResult(gittransaction.ExecuteTransaction(context.Background(), options, mutate))
-		},
+		"apply": func(ExecutionContext, []string) resultmodel.CommandResult { return result },
 	}
 	var stdout bytes.Buffer
 	exitCode := NewRuntime(&stdout, handlers).Run([]string{"--repo-root", repositoryRoot, "--format", outputFormat, "apply"})
