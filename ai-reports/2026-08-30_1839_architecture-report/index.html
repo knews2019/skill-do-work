@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="architecture-report-verified-at" content="96b282690c7041a088fdc4cce5c81d5d4c7e34ed">
+<title>Architecture Report · do-work suite · 96b28269</title>
+<style>
+  :root {
+    --navy: #12243a;
+    --navy-2: #1d3652;
+    --paper: #f6f2e9;
+    --paper-2: #fffdf8;
+    --ink: #17212b;
+    --muted: #66717d;
+    --line: #d8d1c4;
+    --coral: #e96b4c;
+    --gold: #d9a441;
+    --blue: #2e78a6;
+    --green: #26765b;
+    --green-bg: #e4f1e9;
+    --amber: #8a5a13;
+    --amber-bg: #f7edd5;
+    --red: #9a3f32;
+    --red-bg: #f8e5df;
+    --code: #ece7dd;
+    --shadow: 0 14px 38px rgba(18, 36, 58, .10);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--paper);
+    font: 16px/1.62 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  a { color: #13678f; text-underline-offset: 3px; }
+  code {
+    padding: .08em .34em;
+    border-radius: 4px;
+    background: var(--code);
+    font: .86em/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .hero {
+    color: #fff;
+    background:
+      radial-gradient(circle at 82% 14%, rgba(233,107,76,.34), transparent 28rem),
+      linear-gradient(135deg, var(--navy), #0b1929 72%);
+    border-bottom: 5px solid var(--coral);
+  }
+  .hero-inner { max-width: 1180px; margin: 0 auto; padding: 4.5rem 2rem 3.2rem; }
+  .kicker { margin: 0 0 .7rem; color: #f6b7a7; text-transform: uppercase; letter-spacing: .15em; font-size: .76rem; font-weight: 800; }
+  h1 { max-width: 840px; margin: 0; font: 760 clamp(2.5rem, 6vw, 5rem)/.96 Georgia, "Times New Roman", serif; letter-spacing: -.045em; }
+  .deck { max-width: 800px; margin: 1.25rem 0 0; color: #d9e3ec; font-size: 1.12rem; }
+  .hero strong { color: #fff; }
+  .meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    margin-top: 2.25rem;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 10px;
+    background: rgba(255,255,255,.16);
+  }
+  .meta div { padding: .8rem 1rem; background: rgba(11,25,41,.72); }
+  .meta dt { margin: 0 0 .15rem; color: #9fb2c4; font-size: .68rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .meta dd { margin: 0; color: #fff; font: .82rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+  .shell { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 3rem; padding: 0 2rem; }
+  nav {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: 100vh;
+    overflow: auto;
+    padding: 2.1rem 0;
+  }
+  nav p { margin: 0 0 .5rem; color: var(--muted); font-size: .69rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  nav ol { margin: 0; padding: 0; list-style: none; }
+  nav li { margin: .1rem 0; }
+  nav a { display: block; padding: .32rem .6rem; border-left: 2px solid transparent; color: #66717d; text-decoration: none; font-size: .84rem; }
+  nav a:hover { color: var(--navy); border-color: var(--coral); }
+  main { min-width: 0; padding: 3rem 0 6rem; }
+  section { margin-bottom: 4rem; scroll-margin-top: 1rem; }
+  .section-kicker { margin: 0 0 .25rem; color: var(--coral); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  h2 { margin: 0 0 1.4rem; color: var(--navy); font: 720 clamp(1.85rem, 4vw, 2.85rem)/1.08 Georgia, "Times New Roman", serif; letter-spacing: -.025em; }
+  h3 { margin: 2rem 0 .6rem; color: var(--navy-2); font-size: 1.12rem; }
+  .lead { max-width: 780px; margin: -.65rem 0 1.5rem; color: var(--muted); font-size: 1.02rem; }
+  .claim {
+    position: relative;
+    margin: .85rem 0;
+    padding: 1rem 1.1rem 1rem 1.3rem;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--green);
+    border-radius: 8px;
+    background: var(--paper-2);
+  }
+  .claim.inferred { border-left-color: var(--amber); background: #fffbf2; }
+  .claim > :first-child { margin-top: 0; }
+  .claim > :last-child { margin-bottom: 0; }
+  .label {
+    display: inline-flex;
+    margin: 0 .5rem .15rem 0;
+    padding: .13rem .48rem;
+    border-radius: 999px;
+    background: var(--green-bg);
+    color: var(--green);
+    font: 800 .66rem/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .055em;
+    vertical-align: middle;
+  }
+  .inferred .label { color: var(--amber); background: var(--amber-bg); }
+  .evidence { white-space: nowrap; font: .76rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .change-grid, .package-grid, .question-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
+  .change-grid .claim, .package-grid .claim, .question-grid .claim { margin: 0; }
+  .claim strong:first-of-type { color: var(--navy); }
+  .delta {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 1.1rem;
+    align-items: start;
+  }
+  .delta-mark {
+    display: grid;
+    place-items: center;
+    min-height: 96px;
+    border-radius: 8px;
+    color: #fff;
+    background: var(--coral);
+    font: 800 1.65rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  figure { margin: 1.2rem 0; padding: 1.1rem; overflow: hidden; }
+  figure svg { display: block; width: 100%; height: auto; }
+  figcaption { margin-top: .75rem; color: var(--muted); font-size: .83rem; }
+  .diagram-title { font: 700 14px Inter, sans-serif; fill: var(--navy); }
+  .diagram-label { font: 650 12px Inter, sans-serif; fill: var(--ink); }
+  .diagram-small { font: 11px Inter, sans-serif; fill: #66717d; }
+  .diagram-mono { font: 10.5px ui-monospace, Menlo, monospace; fill: var(--ink); }
+  .diagram-box { fill: #fffdf8; stroke: #bfb7a9; stroke-width: 1.2; }
+  .diagram-core { fill: #e7eff5; stroke: #2e78a6; stroke-width: 1.5; }
+  .diagram-state { fill: #f8ecd4; stroke: #d9a441; stroke-width: 1.4; }
+  .diagram-go { fill: #e2f0e9; stroke: #26765b; stroke-width: 1.4; }
+  .diagram-warn { fill: #f8e5df; stroke: #e96b4c; stroke-width: 1.4; }
+  .diagram-edge { fill: none; stroke: #526273; stroke-width: 1.4; marker-end: url(#arrow); }
+  .diagram-dash { fill: none; stroke: #526273; stroke-width: 1.2; stroke-dasharray: 5 4; marker-end: url(#arrow); }
+  .mini-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .86rem; }
+  .mini-table th, .mini-table td { padding: .6rem .7rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  .mini-table th { color: var(--muted); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; }
+  .callout { margin: 1rem 0; padding: 1rem 1.1rem; border-radius: 8px; background: var(--navy); color: #e8eef4; }
+  .callout strong { color: #fff; }
+  .disagreement { border-left-color: var(--red); background: var(--red-bg); }
+  .disagreement .label { color: var(--red); background: #fff3ef; }
+  pre { overflow: auto; padding: .85rem 1rem; border-radius: 7px; background: var(--navy); color: #dbe7ef; font: .8rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .legend { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1rem 0 0; color: var(--muted); font-size: .8rem; }
+  footer { padding: 2rem; border-top: 1px solid var(--line); color: var(--muted); text-align: center; font-size: .8rem; }
+  @media (max-width: 850px) {
+    .meta { grid-template-columns: 1fr 1fr; }
+    .shell { display: block; }
+    nav { position: static; max-height: none; padding-bottom: 0; }
+    nav ol { display: flex; flex-wrap: wrap; gap: .2rem; }
+    nav a { border-left: 0; border-bottom: 2px solid transparent; }
+    .change-grid, .package-grid, .question-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    .hero-inner, .shell { padding-left: 1rem; padding-right: 1rem; }
+    .meta { grid-template-columns: 1fr; }
+    .delta { grid-template-columns: 1fr; }
+    .delta-mark { min-height: 58px; }
+  }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <p class="kicker">do-work suite · architecture report</p>
+    <h1>The instruction system grew an execution kernel.</h1>
+    <p class="deck">The four-skill product remains a file-backed workflow for coding agents. Since the last report, install and update moved behind one typed Go command, making the boundary between agent-authored instructions and deterministic execution explicit.</p>
+    <dl class="meta">
+      <div><dt>Verified commit</dt><dd>96b282690c7041a088fdc4cce5c81d5d4c7e34ed</dd></div>
+      <div><dt>Verification date</dt><dd>2026-08-30</dd></div>
+      <div><dt>Suite version</dt><dd>0.248.0</dd></div>
+      <div><dt>Prior HTML baseline</dt><dd>2026-08-27_1522 · 641231f5</dd></div>
+      <div><dt>Claim ledger</dt><dd>36 verified · 3 inferred</dd></div>
+      <div><dt>Record ↔ code disagreements</dt><dd>5 rechecked · one newly material</dd></div>
+    </dl>
+  </div>
+</header>
+
+<div class="shell">
+  <nav aria-label="Report sections">
+    <p>Read the system</p>
+    <ol>
+      <li><a href="#changed">Δ · Since the last report</a></li>
+      <li><a href="#shape">1 · Shape of the suite</a></li>
+      <li><a href="#state">2 · Durable state and work</a></li>
+      <li><a href="#kernel">3 · The Go execution kernel</a></li>
+      <li><a href="#board">4 · The board runtime</a></li>
+      <li><a href="#distribution">5 · Distribution boundary</a></li>
+      <li><a href="#governance">6 · Governance</a></li>
+      <li><a href="#disagreements">7 · Record–code disagreements</a></li>
+      <li><a href="#limits">8 · Open questions and limits</a></li>
+      <li><a href="#method">9 · Method</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="changed">
+      <p class="section-kicker">Return-reader briefing</p>
+      <h2>Changed since the last report</h2>
+      <div class="delta">
+        <div class="delta-mark">+ Go</div>
+        <div>
+          <article class="claim verified" data-claim="verified">
+            <p><span class="label">VERIFIED</span> <strong>The meaningful architectural change is a new shared command runtime.</strong> Version 0.245.0 introduced <code>do-work-cli</code>; 0.247.0 moved bootstrap, install, update, managed-section replacement, settings composition, manifest validation, and archive fetching onto it. Five shell entry points remain, but they are compatibility launchers over one Go engine. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/CHANGELOG.md#L13-L39">CHANGELOG.md:13-39</a></p>
+          </article>
+          <article class="claim verified" data-claim="verified">
+            <p><span class="label">VERIFIED</span> <strong>The other post-baseline movement is inside the board, not at a package boundary.</strong> Timeline calendar periods became trailing windows; finished boards then gained bound-aware windows and reversible stepping. Live cache hits also rebuild wall-clock-derived Timeline data without reparsing the tree. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/CHANGELOG.md#L5-L29">CHANGELOG.md:5-29</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/CHANGELOG.md#L41-L47">CHANGELOG.md:41-47</a></p>
+          </article>
+        </div>
+      </div>
+      <article class="claim verified" data-claim="verified">
+        <p><span class="label">VERIFIED</span> <strong>The prior report’s four-skill, file-backed workflow still holds.</strong> Its package boundaries, queue lifecycle, knowledge split, board write-surface contract, export boundary, and one-releaser concurrency model remain present. Two prior statements no longer hold: the board is no longer the only compiled component or only Go prerequisite, and queue verification no longer reports ungated write-set overlap. Those changes are reflected below rather than silently carrying the old prose forward. Baseline: <a href="../2026-08-27_1522_architecture-report/index.html">2026-08-27_1522 report</a>; current package contract: <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/SKILL.md#L7-L20">core SKILL.md:7-20</a> · overlap-check retirement: <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/CHANGELOG.md#L57-L62">CHANGELOG.md:57-62</a></p>
+      </article>
+    </section>
+
+    <section id="shape">
+      <p class="section-kicker">System thesis</p>
+      <h2>One product, four instruction packages, three Go modules</h2>
+      <article class="claim inferred" data-claim="inferred">
+        <p><span class="label">INFERRED</span> <strong>The cleanest current model is two interacting planes.</strong> The instruction plane is the routed Markdown that tells an agent how to reason and mutate state; the execution plane is deterministic Go for operations where one parser, transaction, or output contract is safer than repeated prose and shell. Basis: four package routers remain the public interface, while three Go modules now sit under package-owned tool directories.</p>
+      </article>
+
+      <figure class="claim verified" data-claim="verified">
+        <svg viewBox="0 0 900 430" role="img" aria-label="Four skill packages above durable project state and two compiled runtimes">
+          <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#526273"/></marker></defs>
+          <text x="22" y="28" class="diagram-title">INSTRUCTION PLANE · loaded selectively</text>
+          <rect x="20" y="45" width="200" height="88" rx="9" class="diagram-core"/>
+          <text x="36" y="72" class="diagram-label">do-work</text><text x="36" y="94" class="diagram-small">capture · run · review</text><text x="36" y="111" class="diagram-small">queue lifecycle owner</text>
+          <rect x="240" y="45" width="200" height="88" rx="9" class="diagram-box"/>
+          <text x="256" y="72" class="diagram-label">do-work-board</text><text x="256" y="94" class="diagram-small">Kanban · Testing · verify</text><text x="256" y="111" class="diagram-small">board-facing owner</text>
+          <rect x="460" y="45" width="200" height="88" rx="9" class="diagram-box"/>
+          <text x="476" y="72" class="diagram-label">do-work-knowledge</text><text x="476" y="94" class="diagram-small">BKB · memory · prompts</text><text x="476" y="111" class="diagram-small">retained knowledge owner</text>
+          <rect x="680" y="45" width="200" height="88" rx="9" class="diagram-box"/>
+          <text x="696" y="72" class="diagram-label">do-work-toolbox</text><text x="696" y="94" class="diagram-small">reports · audits · utilities</text><text x="696" y="111" class="diagram-small">repository-facing extras</text>
+
+          <text x="22" y="181" class="diagram-title">EXECUTION PLANE · deterministic mechanics</text>
+          <rect x="40" y="198" width="250" height="78" rx="9" class="diagram-go"/>
+          <text x="57" y="226" class="diagram-label">do-work-cli · Go module</text><text x="57" y="248" class="diagram-small">install/update transaction</text><text x="57" y="264" class="diagram-small">shared command result</text>
+          <rect x="325" y="198" width="250" height="78" rx="9" class="diagram-go"/>
+          <text x="342" y="226" class="diagram-label">queue-kanban · Go module</text><text x="342" y="248" class="diagram-small">queue projection</text><text x="342" y="264" class="diagram-small">embedded browser UI</text>
+          <rect x="610" y="198" width="250" height="78" rx="9" class="diagram-go"/>
+          <text x="627" y="226" class="diagram-label">audit-metrics · Go module</text><text x="627" y="248" class="diagram-small">read-only deterministic metrics</text><text x="627" y="264" class="diagram-small">for maintainability-audit</text>
+          <path d="M120 133 C120 168, 145 170, 165 198" class="diagram-edge"/>
+          <path d="M340 133 C340 168, 420 172, 445 198" class="diagram-edge"/>
+          <path d="M770 133 C770 168, 750 172, 735 198" class="diagram-dash"/>
+
+          <text x="22" y="323" class="diagram-title">PROJECT STATE · plain files remain the durable record</text>
+          <rect x="20" y="340" width="410" height="68" rx="9" class="diagram-state"/>
+          <text x="36" y="366" class="diagram-label">do-work/</text><text x="36" y="387" class="diagram-mono">queue/ · working/ · archive/ · user-requests/ · runs/</text>
+          <rect x="470" y="340" width="410" height="68" rx="9" class="diagram-state"/>
+          <text x="486" y="366" class="diagram-label">kb/ + optional memory/</text><text x="486" y="387" class="diagram-mono">raw/ · wiki/ · agents/ · working-memory.md</text>
+          <path d="M120 133 C90 210, 90 290, 145 340" class="diagram-edge"/>
+          <path d="M560 133 C560 215, 610 290, 640 340" class="diagram-edge"/>
+        </svg>
+        <figcaption><span class="label">VERIFIED</span> The four package roles are explicit in the core router; core, board, and toolbox each own a Go module for different deterministic mechanics. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/SKILL.md#L9-L16">core SKILL.md:9-16</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-cli/go.mod#L1-L3">CLI go.mod:1-3</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work-board/tools/queue-kanban/go.mod#L1-L8">board go.mod:1-8</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work-toolbox/tools/audit-metrics/go.mod#L1-L3">audit go.mod:1-3</a></figcaption>
+      </figure>
+
+      <div class="package-grid">
+        <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>Core owns the durable request lifecycle.</strong> Its first-match router selects one action, while the UR preserves intent and the REQ accumulates requirements, decisions, implementation, review, lessons, and orientation. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/SKILL.md#L18-L49">core SKILL.md:18-49</a></p></article>
+        <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>Board owns a compiled projection, not orchestration.</strong> It reads core’s records and routes board-shaped calls to one action; queue lifecycle changes stay with core. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work-board/SKILL.md#L7-L25">board SKILL.md:7-25</a></p></article>
+        <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>Knowledge owns two memory strategies and their trust boundary.</strong> BKB synthesis, lightweight memory, consolidation, interviews, and trusted prompts are routed together; transcript capture remains opt-in. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work-knowledge/SKILL.md#L7-L31">knowledge SKILL.md:7-31</a></p></article>
+        <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>Toolbox owns optional repository-facing work.</strong> Reports, audits, presentation, inspection, and utilities are outside the REQ lifecycle and read sibling artifacts through literal relative paths. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work-toolbox/SKILL.md#L7-L45">toolbox SKILL.md:7-45</a></p></article>
+      </div>
+    </section>
+
+    <section id="state">
+      <p class="section-kicker">The durable record</p>
+      <h2>The files are the workflow state</h2>
+      <figure class="claim verified" data-claim="verified">
+        <svg viewBox="0 0 900 280" role="img" aria-label="Request lifecycle from input to archive">
+          <defs><marker id="arrow-state" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#526273"/></marker></defs>
+          <rect x="20" y="92" width="145" height="62" rx="26" class="diagram-state"/><text x="49" y="118" class="diagram-label">UR input.md</text><text x="48" y="137" class="diagram-small">verbatim intent</text>
+          <rect x="215" y="92" width="145" height="62" rx="26" class="diagram-state"/><text x="251" y="118" class="diagram-label">pending</text><text x="246" y="137" class="diagram-small">queue/REQ</text>
+          <rect x="410" y="92" width="145" height="62" rx="26" class="diagram-core"/><text x="447" y="118" class="diagram-label">claimed</text><text x="435" y="137" class="diagram-small">working/REQ</text>
+          <rect x="640" y="28" width="220" height="48" rx="24" class="diagram-go"/><text x="675" y="58" class="diagram-label">completed / with issues</text>
+          <rect x="640" y="100" width="220" height="48" rx="24" class="diagram-warn"/><text x="718" y="130" class="diagram-label">failed</text>
+          <rect x="640" y="172" width="220" height="48" rx="24" class="diagram-warn"/><text x="708" y="202" class="diagram-label">cancelled</text>
+          <path d="M165 123 L215 123" stroke="#526273" stroke-width="1.4" marker-end="url(#arrow-state)"/>
+          <path d="M360 123 L410 123" stroke="#526273" stroke-width="1.4" marker-end="url(#arrow-state)"/>
+          <path d="M555 116 C590 80, 610 55, 640 52" fill="none" stroke="#526273" stroke-width="1.4" marker-end="url(#arrow-state)"/>
+          <path d="M555 123 L640 124" fill="none" stroke="#526273" stroke-width="1.4" marker-end="url(#arrow-state)"/>
+          <path d="M555 132 C590 165, 610 190, 640 196" fill="none" stroke="#526273" stroke-width="1.4" marker-end="url(#arrow-state)"/>
+          <text x="392" y="38" class="diagram-title">Holding states remain in queue/</text><text x="392" y="60" class="diagram-mono">pending-answers · blocked · blocked-archive-collision · blocked-dependency-cycle</text>
+          <text x="215" y="244" class="diagram-small">Intermediate phases are body sections, not extra status values.</text>
+        </svg>
+        <figcaption><span class="label">VERIFIED</span> Normal execution writes only pending→claimed→terminal status; planning through review are represented by sections appended to the REQ. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/actions/work.md#L89-L97">work.md:89-97</a></figcaption>
+      </figure>
+
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>Capture and execution stay separate.</strong> One capture creates a UR folder preserving exact input plus one or more linked REQs; it may clarify and decompose, but it does not start implementation unless the same invocation explicitly asks for both. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/README.md#L59-L71">README.md:59-71</a></p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>The work action is an orchestrator, not a fixed CI graph.</strong> It selects dependency-ready work, claims the REQ, chooses a triage route, implements, qualifies, tests, reviews, archives, and commits; holding states and explicit targeting alter selection without inventing another state store. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/actions/work.md#L118-L140">work.md:118-140</a></p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>Parallelism changes the build phase, not ownership.</strong> Auto-wave dispatch computes runnable REQs without using <code>write_set</code>; every builder gets a worktree, integration remains serial, and one releaser owns queue transitions, versioning, and the changelog. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/actions/work-reference.md#L380-L407">work-reference.md:380-407</a></p></article>
+    </section>
+
+    <section id="kernel">
+      <p class="section-kicker">New architectural center</p>
+      <h2>The Go execution kernel</h2>
+      <article class="claim inferred" data-claim="inferred"><p><span class="label">INFERRED</span> <strong><code>do-work-cli</code> is becoming the deterministic kernel beneath the suite.</strong> Its current commands cover distribution mechanics, while its internal runtime, result schema, and Git transaction package are explicitly shaped for later command families. Basis: the main program registers one handler map and the foundation archive describes the seam as the pattern future commands copy.</p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>The public binary is built on demand and atomically replaced.</strong> The launcher rebuilds when the binary is absent or older than Go sources, enforces Go 1.26.1, builds to a temporary file, then renames before <code>exec</code>. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-cli.sh#L23-L65">do-work-cli.sh:23-65</a></p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>One runtime owns global options, rendering, and exit codes.</strong> <code>main.go</code> merges registered handlers into <code>commandruntime</code>; each handler returns a typed <code>CommandResult</code>, whose outcome is mapped to exit status in one place and rendered as text or JSON from the same value. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go#L10-L19">main.go:10-19</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime.go#L41-L84">command_runtime.go:41-84</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go#L84-L108">result_model.go:84-108</a></p></article>
+
+      <figure class="claim verified" data-claim="verified">
+        <svg viewBox="0 0 900 510" role="img" aria-label="Layered internal architecture of do-work-cli">
+          <defs><marker id="arrow-kernel" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#526273"/></marker></defs>
+          <text x="30" y="28" class="diagram-title">PUBLIC COMPATIBILITY SURFACE</text>
+          <rect x="30" y="46" width="840" height="58" rx="9" class="diagram-box"/>
+          <text x="48" y="72" class="diagram-mono">install-do-work-suite.sh · do-work-update.sh · replace-text-section.sh · validate-suite-manifest.sh · fetch-upstream-archive.sh</text>
+          <text x="48" y="91" class="diagram-small">argv mapping, static bootstrap text, compatibility statuses</text>
+          <path d="M450 104 L450 140" stroke="#526273" stroke-width="1.4" marker-end="url(#arrow-kernel)"/>
+
+          <rect x="285" y="140" width="330" height="64" rx="9" class="diagram-go"/>
+          <text x="306" y="166" class="diagram-label">commandruntime + resultmodel</text><text x="306" y="187" class="diagram-small">repo root · format · handlers · findings · exit code</text>
+          <path d="M450 204 L450 244" stroke="#526273" stroke-width="1.4" marker-end="url(#arrow-kernel)"/>
+
+          <rect x="30" y="244" width="840" height="88" rx="9" class="diagram-core"/>
+          <text x="48" y="270" class="diagram-label">suiteinstall command family</text>
+          <text x="48" y="292" class="diagram-mono">install-suite · update-suite · replace-section · validate-manifest · fetch-archive</text>
+          <text x="48" y="313" class="diagram-small">one handler registration point; install/update share the same in-process transaction</text>
+
+          <path d="M150 332 L150 374" stroke="#526273" stroke-width="1.4" marker-end="url(#arrow-kernel)"/>
+          <path d="M350 332 L350 374" stroke="#526273" stroke-width="1.4" marker-end="url(#arrow-kernel)"/>
+          <path d="M550 332 L550 374" stroke="#526273" stroke-width="1.4" marker-end="url(#arrow-kernel)"/>
+          <path d="M750 332 L750 374" stroke="#526273" stroke-width="1.4" marker-end="url(#arrow-kernel)"/>
+          <rect x="30" y="374" width="170" height="86" rx="9" class="diagram-state"/><text x="47" y="402" class="diagram-label">suitemanifest</text><text x="47" y="423" class="diagram-small">four-module grammar</text><text x="47" y="440" class="diagram-small">version lock-step</text>
+          <rect x="230" y="374" width="170" height="86" rx="9" class="diagram-state"/><text x="247" y="402" class="diagram-label">managedsection</text><text x="247" y="423" class="diagram-small">marker spans</text><text x="247" y="440" class="diagram-small">Just collisions</text>
+          <rect x="430" y="374" width="170" height="86" rx="9" class="diagram-state"/><text x="447" y="402" class="diagram-label">settingshooks</text><text x="447" y="423" class="diagram-small">ordered JSON</text><text x="447" y="440" class="diagram-small">hook composition</text>
+          <rect x="630" y="374" width="240" height="86" rx="9" class="diagram-state"/><text x="647" y="402" class="diagram-label">archivefetch + gittransaction</text><text x="647" y="423" class="diagram-small">whole archive publication</text><text x="647" y="440" class="diagram-small">dirty-target refusal + rollback</text>
+        </svg>
+        <figcaption><span class="label">VERIFIED</span> Five registered commands are assembled in <code>suiteinstall.Handlers</code> and delegate into package-specific mechanics rather than shell implementations. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands.go#L20-L55">suite_commands.go:20-55</a></figcaption>
+      </figure>
+
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>Install is a staged, consent-gated, recoverable transaction.</strong> The engine resolves the project, obtains and validates the archive, constructs managed candidates, shows diffs, takes one confirmation, writes, verifies, and restores backups on failure or interruption. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction.go#L138-L189">install_transaction.go:138-189</a></p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>Update delegates to install inside the same process.</strong> It resolves the installed skill, fetches and validates upstream, refuses non-newer versions, then calls the shared install transaction and verifies the resulting installed version. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go#L51-L166">update_transaction.go:51-166</a></p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>Shell remains the stable public surface, not the source of transactional truth.</strong> The root installer maps its legacy arguments to <code>install-suite</code>; the installed updater maps its legacy entry point to <code>update-suite</code>. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/tools/install-do-work-suite.sh#L60-L82">installer launcher:60-82</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-update.sh#L23-L33">updater launcher:23-33</a></p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>The manifest remains a closed four-module contract.</strong> <code>suitemanifest</code> owns the required source→destination map and validates the suite version plus each package before installation. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-cli/internal/suitemanifest/suite_manifest.go#L18-L93">suite_manifest.go:18-93</a></p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>Managed text and settings now have typed owners.</strong> <code>managedsection</code> performs marker-bounded byte replacement and reserved-Just-name checks; <code>settingshooks</code> decodes JSON into an order-preserving object model and composes hooks without a jq/Python branch. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-cli/internal/managedsection/managed_section.go#L59-L137">managed_section.go:59-137</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-cli/internal/settingshooks/settings_hooks.go#L28-L56">settings_hooks.go:28-56</a></p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>Archive fetching preserves transport semantics.</strong> HTTP publication still uses the atomic download primitive, while Git fallback derives the requested branch and archive prefix from the canonical tarball URL rather than silently archiving default HEAD. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch.go#L75-L130">archive_fetch.go:75-130</a></p></article>
+    </section>
+
+    <section id="board">
+      <p class="section-kicker">Separate compiled application</p>
+      <h2>The board remains a projection over the file model</h2>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong><code>queue-kanban</code> is a separate Go program with an embedded browser frontend.</strong> Its hand-written dispatcher owns summary, generation, serving, allocation, version-line updates, verification, clock, and frontmatter commands. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work-board/tools/queue-kanban/main.go#L58-L88">queue-kanban main.go:58-88</a></p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>The live server caches parsed state, not time.</strong> An unchanged mtime fingerprint reuses the board model but refreshes generation time, open spans, the now-line, and forecasts from one captured instant; a changed tree goes through the full build path. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work-board/tools/queue-kanban/serve.go#L330-L367">serve.go:330-367</a></p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>The board still has exactly three narrow write surfaces.</strong> Testing mutates its own fields and testers file; <code>next-version</code> rewrites one version line; <code>next-req</code> creates one reservation marker. No board command writes pipeline status or the changelog. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work-board/tools/queue-kanban/main.go#L49-L54">queue-kanban main.go:49-54</a></p></article>
+    </section>
+
+    <section id="distribution">
+      <p class="section-kicker">What consumers receive</p>
+      <h2>One archive, one version, one recovery boundary</h2>
+      <figure class="claim verified" data-claim="verified">
+        <svg viewBox="0 0 900 360" role="img" aria-label="Distribution from source repository through archive and installer into a consumer project">
+          <defs><marker id="arrow-dist" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#526273"/></marker></defs>
+          <rect x="20" y="30" width="250" height="284" rx="10" class="diagram-box"/>
+          <text x="40" y="61" class="diagram-title">SOURCE REPOSITORY</text>
+          <rect x="40" y="82" width="210" height="92" rx="8" class="diagram-go"/><text x="57" y="108" class="diagram-label">Shipped</text><text x="57" y="130" class="diagram-mono">skills/ · suite/ · tools/</text><text x="57" y="149" class="diagram-mono">VERSION · README · changelog</text>
+          <rect x="40" y="194" width="210" height="96" rx="8" class="diagram-warn"/><text x="57" y="220" class="diagram-label">Export-ignored</text><text x="57" y="242" class="diagram-mono">do-work/ · kb/ · _dev/</text><text x="57" y="261" class="diagram-mono">decisions/ · ai-reports/</text><text x="57" y="280" class="diagram-mono">maintainer instructions</text>
+          <rect x="340" y="95" width="220" height="150" rx="10" class="diagram-core"/>
+          <text x="360" y="126" class="diagram-title">ARCHIVE + GO ENGINE</text><text x="360" y="153" class="diagram-small">validate four-module manifest</text><text x="360" y="176" class="diagram-small">build managed candidates</text><text x="360" y="199" class="diagram-small">show diff + confirm once</text><text x="360" y="222" class="diagram-small">write, byte-verify, recover</text>
+          <rect x="630" y="60" width="250" height="230" rx="10" class="diagram-state"/>
+          <text x="650" y="91" class="diagram-title">CONSUMER PROJECT</text><text x="650" y="122" class="diagram-mono">.claude/skills/do-work*</text><text x="650" y="148" class="diagram-mono">managed justfile span</text><text x="650" y="174" class="diagram-mono">managed CLAUDE.md span</text><text x="650" y="200" class="diagram-mono">settings hook entries</text><text x="650" y="234" class="diagram-small">outside the plan:</text><text x="650" y="254" class="diagram-mono">do-work/ · kb/ · app files</text>
+          <path d="M270 145 L340 145" stroke="#526273" stroke-width="1.4" marker-end="url(#arrow-dist)"/>
+          <path d="M560 170 L630 170" stroke="#526273" stroke-width="1.4" marker-end="url(#arrow-dist)"/>
+        </svg>
+        <figcaption><span class="label">VERIFIED</span> The installer manages the four skill trees plus marker- or hook-bounded configuration; queue data, knowledge data, and application files remain outside its plan. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/README.md#L26-L37">README.md:26-37</a></figcaption>
+      </figure>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>All four packages share version 0.248.0.</strong> The manifest is five TSV lines—header plus four fixed mappings—and validation checks the root version against core’s installed version surface. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/suite/modules.tsv#L1-L5">modules.tsv:1-5</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/VERSION#L1">VERSION:1</a></p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>The maintainer state and reports do not ship.</strong> Eleven root paths are marked <code>export-ignore</code>, including <code>do-work/</code>, <code>kb/</code>, <code>_dev/</code>, decisions, architecture reports, and maintainer instruction files. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/.gitattributes#L43-L53">.gitattributes:43-53</a></p></article>
+    </section>
+
+    <section id="governance">
+      <p class="section-kicker">How the design stays coherent</p>
+      <h2>Tests, primes, decisions, dogfooding</h2>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>The canonical gate now spans three Go modules.</strong> After ShellCheck, gofmt, and the aggregate contract suite, it vets and tests queue-kanban, do-work-cli, and audit-metrics; browser and JavaScript lanes run conditionally and disclose skips. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/_dev/tests/maintainer-verify.sh#L446-L549">maintainer-verify.sh:446-549</a></p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>Maintainer context is lazy and domain-owned.</strong> Three prime files cover action files, the board, and prescribed shell; each points to a separate lessons satellite so operational history can grow without bloating the prime. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/CLAUDE.md#L66-L72">CLAUDE.md:66-72</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/_dev/primes/prime-action-files.md#L1-L11">prime-action-files.md:1-11</a></p></article>
+      <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>The four-skill split is a recorded decision, not folder happenstance.</strong> ADR-019 assigns queue lifecycle, board, knowledge, and toolbox ownership, fixes the manifest grammar, and defines update as all-or-recover rather than claiming cross-directory filesystem atomicity. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/decisions/records/adr-019-four-skill-suite-contract.md#L33-L61">ADR-019:33-61</a></p></article>
+    </section>
+
+    <section id="disagreements">
+      <p class="section-kicker">Code is the verdict</p>
+      <h2>Record–code disagreements</h2>
+      <p class="lead">Four prior disagreements still reproduce. A fifth became material when the CLI made Go a suite-wide prerequisite. These are architecture-map discrepancies, not a maintainability review.</p>
+      <article class="claim verified disagreement" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>D1 · Vestigial board version.</strong> <code>queue-kanban/VERSION</code> remains 0.236.20 while the suite is 0.248.0, even though board versioning is folded into the suite. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work-board/tools/queue-kanban/VERSION#L1">board VERSION:1</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/_dev/primes/prime-kanban-board.md#L10-L16">board prime:10-16</a></p></article>
+      <article class="claim verified disagreement" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>D2 · Drifted ADR counter.</strong> <code>decisions/_progress.md</code> still says the next number is ADR-017, while records through ADR-021 exist. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/decisions/_progress.md#L25">decisions/_progress.md:25</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/decisions/records/adr-021-keep-prose-only-findings-out-of-the-pipeline.md#L1-L19">ADR-021:1-19</a></p></article>
+      <article class="claim verified disagreement" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>D3 · Overbroad report-action ownership sentence.</strong> The architecture action attributes bands, ratchets, and sweep keys to maintainability-audit and quick-wins together; quick-wins instead defines a read-only file-level refactor and test-gap scan. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work-toolbox/actions/architecture-report.md#L5">architecture-report.md:5</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work-toolbox/actions/quick-wins.md#L1-L15">quick-wins.md:1-15</a></p></article>
+      <article class="claim verified disagreement" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>D4 · Stale estimator comment.</strong> The contract suite still calls the P50 floor ten minutes; implementation uses five. Behavior and tests follow the implementation. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/_dev/tests/contract-regressions.sh#L6626">contract-regressions.sh:6626</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/estimate-p50.sh#L38">estimate-p50.sh:38</a></p></article>
+      <article class="claim verified disagreement" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>D5 · The Go boundary is internally inconsistent.</strong> README line 7 says installing, updating, and running the suite all go through <code>do-work-cli</code>, but the CLI currently registers only five distribution commands and core <code>run</code> still routes to the Markdown work action. README line 120 and the board prime also retain the older claim that the board is the sole Go/toolchain exception. The handler map and routers are the operative architecture. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/README.md#L5-L8">README.md:5-8</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/README.md#L118-L120">README.md:118-120</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands.go#L20-L55">suite_commands.go:20-55</a> · <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/skills/do-work/SKILL.md#L26-L43">core SKILL.md:26-43</a></p></article>
+    </section>
+
+    <section id="limits">
+      <p class="section-kicker">What this map cannot settle</p>
+      <h2>Open questions and verification limits</h2>
+      <div class="question-grid">
+        <article class="claim verified" data-claim="verified"><p><span class="label">VERIFIED</span> <strong>The Go floor is explicitly unsettled.</strong> Public docs require 1.26.1, while the 0.247.0 release note says the module builds lower and the floor is being confirmed. The current architecture must treat 1.26.1 as operative until that decision lands. <a class="evidence" href="https://github.com/knews2019/skill-do-work/blob/96b282690c7041a088fdc4cce5c81d5d4c7e34ed/CHANGELOG.md#L13-L20">CHANGELOG.md:13-20</a></p></article>
+        <article class="claim inferred" data-claim="inferred"><p><span class="label">INFERRED</span> <strong>Evidence links may not resolve on GitHub yet.</strong> Basis: the watermarked commit exists locally but is not an ancestor of the fetched <code>origin/main</code>. Until it is pushed, reproduce with <code>git show 96b28269:&lt;path&gt;</code>.</p></article>
+      </div>
+      <div class="callout"><strong>Verification boundary.</strong> Architecture claims were checked against the detached committed tree, not the dirty working tree. Consumer installation was not executed in a foreign repository during this report; install behavior is described from the committed transaction code and its canonical test gate. Visual browser inspection was unavailable because local-file navigation was blocked by browser security policy; HTML structure, navigation, SVG diagrams, embedded assets, and evidence links were checked statically instead.</div>
+    </section>
+
+    <section id="method">
+      <p class="section-kicker">Evidence discipline</p>
+      <h2>Method and claim ledger</h2>
+      <p>Green <span class="label">VERIFIED</span> cards carry one or more source anchors into the captured commit. Amber <span class="label" style="color:var(--amber);background:var(--amber-bg)">INFERRED</span> cards state their basis and make no source-level claim stronger than that basis supports.</p>
+      <p>The ledger contains <strong>36 verified</strong> and <strong>3 inferred</strong> claim cards. Reproduce locally:</p>
+      <pre><code>grep -Eo '&lt;(article|figure) class="claim verified[^&quot;]*" data-claim="verified"' index.html | wc -l
+grep -o '&lt;article class="claim inferred" data-claim="inferred"' index.html | wc -l
+grep -o 'href="https://github.com/knews2019/skill-do-work/blob/96b28269' index.html | wc -l</code></pre>
+      <p>Reading order followed the repository’s native record first: maintainer instructions, README, primes and lessons satellites, topic indexes and ADRs, recent archived lessons, changelog, then implementation. The previous HTML report was read completely and its architecture claims were rechecked against the current tree, with changed or invalidated claims named in the opening account.</p>
+      <p>Weakest-claim spot check: <code>git show 96b28269:skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands.go | sed -n '20,55p'</code> should show the five command registrations behind the kernel diagram.</p>
+    </section>
+  </main>
+</div>
+
+<footer>do-work suite · immutable architecture report · verified at 96b28269 · 2026-08-30</footer>
+</body>
+</html>
