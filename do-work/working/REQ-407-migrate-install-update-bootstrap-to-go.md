@@ -38,9 +38,9 @@ batch: go-no-llm-command-platform
 Move installation and update domain logic into `do-work-cli` and remove Python/jq implementation branches.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
+- [x] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
 ## Detailed Requirements
 - Migrate bootstrap/install/update, byte-safe managed-section replacement, settings reconciliation, suite validation, and archive fetching to Go.
@@ -463,3 +463,52 @@ GO TEST CONVENTIONS (skills/do-work/tools/do-work-cli). Tests live in the packag
 - [ ] The public scripts-and-Just installation shape still works, through compatibility launchers.
 - [ ] Installer and update tests pass with python3 and jq absent from PATH.
 
+## Implementation Summary
+
+**Files changed (39), taken from the merge range rather than from prose:**
+
+- `README.md` (modified)
+- `_dev/tests/contract-regressions.sh` (modified)
+- `_dev/tests/install-suite-behavior.sh` (modified)
+- `_dev/tests/update-script-behavior.sh` (modified)
+- `skills/do-work/docs/prescribed-shell-primitives.md` (modified)
+- `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/transaction_findings.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/transaction_findings_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/managedsection/just_definitions.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/managedsection/just_definitions_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/managedsection/managed_section.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/managedsection/managed_section_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/settingshooks/settings_hooks.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/settingshooks/settings_hooks_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/suitemanifest/suite_manifest.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/suitemanifest/suite_manifest_test.go` (new)
+- `skills/do-work/tools/do-work-update.sh` (modified)
+- `skills/do-work/tools/fetch-upstream-archive.sh` (modified)
+- `skills/do-work/tools/install-do-work-suite.sh` (modified)
+- `skills/do-work/tools/prime-do-work-update.md` (modified)
+- `skills/do-work/tools/replace-text-section.sh` (modified)
+- `skills/do-work/tools/validate-suite-manifest.sh` (modified)
+- `tools/fetch-upstream-archive.sh` (modified)
+- `tools/install-do-work-suite.sh` (modified)
+- `tools/replace-text-section.sh` (modified)
+- `tools/validate-suite-manifest.sh` (modified)
+
+**What was done:** Moved bootstrap, install, update, byte-safe managed-section replacement, settings reconciliation, suite validation and archive fetching into the `do-work-cli` Go module, and deleted the Python and jq branches they used to run through. Five new internal packages (`managedsection`, `settingshooks`, `suitemanifest`, `archivefetch`, `suiteinstall`) back five registered commands, and the five public shell entry points shrink to compatibility launchers — the installer from 621 lines to 96, the section replacer from 355 to 40, the manifest validator from 151 to 30. The external tools the scripts already invoked (`cp -Rp`, `tar`, `diff`, `git`, `just`, `atomic-download.sh`) stay as subprocesses, which preserves byte, mode and symlink semantics rather than reimplementing them. The `settings_tool` three-way branch and its manual-instruction path are gone: with Go always able to reconcile, "no JSON tool available" ceases to be a state. Also closes the five gaps folded in from REQ-406 — no finding emits a `<command>` placeholder any more, the transaction success path consults `state.existed`, and the `--commit`, `commit_failed`, empty-rollback-status and text-rendering cases gained tests.
+
+**Builder branch:** `worktree-agent-REQ-407-migrate-install-update-bootstrap-to-go` — twelve commits, `1611116` → `bda2f2b`.
+**Merge range:** `0bc1480..acf6b73`.
+**Hand-back:** `do-work/runs/work-2026-08-29-213539/REQ-407-handback.md` — carries the full per-file manifest, the 23-site Python and jq elimination walk, `## Decisions`, `## Discovered Tasks` and `## Integration Seams`.
