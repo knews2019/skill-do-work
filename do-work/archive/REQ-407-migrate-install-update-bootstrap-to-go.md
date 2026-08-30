@@ -20,7 +20,7 @@ estimate:
     - full-suite verification
 claimed_at: 2026-08-30T07:22:27Z
 completed_at: 2026-08-30T17:36:06Z
-commit:
+commit: f45cdca
 user_request: UR-081
 domain: general
 prime_files: [_dev/primes/prime-shell-commands.md, skills/do-work/tools/prime-do-work-update.md]
