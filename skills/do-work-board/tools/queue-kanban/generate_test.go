@@ -6956,7 +6956,10 @@ func rendererBracketDeclaration(t *testing.T, assetPath string, constantName str
 //	  gets pinned to the range start and dragged forward off now;
 //	All days is the recorded range exactly, so nothing on the chart is unreachable
 //	  from the button that claims to show all of it;
-//	the arrows move one screenful and are inverses of one another.
+//	timelinePannedWindow moves one screenful and is its own inverse. This is the
+//	  CONTINUOUS pan the keyboard and the drag rest on, mid-range where its clamp
+//	  cannot fire. What the toolbar's arrows do with it near a bound — where the
+//	  clamp does fire — is TestJavaScriptBehaviorTimelineWindowStepArrowsAreInversesAtTheBounds.
 //
 // It drives the shipped functions rather than reimplementing them (REQ-305), and
 // reads the renderer's own constants rather than restating them (REQ-322).
@@ -7097,7 +7100,8 @@ process.stdout.write(JSON.stringify({
 			utcOf(trailingResult.BoundStartMs), utcOf(trailingResult.BoundEndMs))
 	}
 
-	// (4) The arrows move one screenful, and forward-then-back is the reader's undo.
+	// (4) A pan moves one screenful, and forward-then-back is the reader's undo —
+	// checked here away from the bounds, where the pan's clamp cannot fire.
 	if trailingResult.SteppedForwardStartMs-trailingResult.ReadersStartMs != trailingResult.ReadersSpanMs {
 		t.Errorf("one step forward moved the window %.0f ms, want its own %.0f ms span",
 			trailingResult.SteppedForwardStartMs-trailingResult.ReadersStartMs, trailingResult.ReadersSpanMs)
