@@ -2066,15 +2066,44 @@ window.addEventListener("load", function () {
         settleUntil(function () { return true; }, function () {
           probe.filteredFit = toolbarState("filteredFit");
           probe.filteredSummary = document.getElementById("timeline-summary").textContent;
-          // Still filtered to that one archived REQ, and still on the window Fit
-          // all just chose for it: everything drawn under the filter is inside
-          // that window, so one screenful forward is a step past all of it. This
-          // is the refusal case a live queue always supplies no matter what its
-          // forecast is doing — the filtered set ends where that REQ ended, and
-          // years of later queue activity are irrelevant to it. The Go side reads
-          // the fitted extent above to confirm that before asserting anything.
+          // Clause (6)'s window is SET here, not accepted from Fit all.
+          //
+          // Fit all has put the window's right edge past everything drawn under
+          // the filter — it fits the drawn extent plus breathing room — but its
+          // WIDTH is whatever the filtered set happens to span, and a screenful
+          // that wide can be wider than the room left between that edge and the
+          // board's right bound. That is a fact about the queue, and the queue
+          // moves: one open REQ citing the filtered one stretches the fitted
+          // window to the now-line and the forward step becomes a clamped pan
+          // instead of a step past the data.
+          //
+          // A ctrl+wheel zoom PINNED TO THE RIGHT EDGE narrows the window without
+          // moving that edge: handleTimelineWheel clamps the anchor fraction into
+          // [0, 1], so a pointer x past the plot anchors the zoom on the window's
+          // end exactly. Repeated until a press stops narrowing, that lands on the
+          // zoom floor — a one-hour window still ending past everything drawn. The
+          // room the next screenful needs is then one hour rather than the
+          // filtered set's span, and the bound padding alone is more than that on
+          // any board wider than a few days.
+          function zoomInPinnedToTheRightEdge() {
+            document.querySelector("#view-timeline .timeline-scroll").dispatchEvent(
+              new WheelEvent("wheel", {
+                deltaY: -1, ctrlKey: true, clientX: 1e6, clientY: 0,
+                bubbles: true, cancelable: true
+              }));
+          }
+          for (var narrowStep = 0; narrowStep < 60; narrowStep++) {
+            var beforeZoom = readoutWindow();
+            zoomInPinnedToTheRightEdge();
+            var afterZoom = readoutWindow();
+            if (!beforeZoom || !afterZoom ||
+              afterZoom.endMs - afterZoom.startMs >= beforeZoom.endMs - beforeZoom.startMs) {
+              break;
+            }
+          }
+          probe.narrowedAtTheDrawnEdge = toolbarState("narrowedAtTheDrawnEdge");
           document.getElementById("timeline-period-next").click();
-          probe.filteredFitThenStep = toolbarState("filteredFitThenStep");
+          probe.narrowedThenStep = toolbarState("narrowedThenStep");
           document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
           document.title = "READY";
         });
@@ -2112,7 +2141,8 @@ window.addEventListener("load", function () {
 		AllDays                        toolbarState `json:"allDays"`
 		FilteredFit                    toolbarState `json:"filteredFit"`
 		FilteredSummary                string       `json:"filteredSummary"`
-		FilteredFitThenStep            toolbarState `json:"filteredFitThenStep"`
+		NarrowedAtTheDrawnEdge         toolbarState `json:"narrowedAtTheDrawnEdge"`
+		NarrowedThenStep               toolbarState `json:"narrowedThenStep"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &landingResult); decodeError != nil {
 		t.Fatalf("decode timeline landing behavior: %v (output %q)", decodeError, probeOutput)
@@ -2121,7 +2151,8 @@ window.addEventListener("load", function () {
 	states := []toolbarState{
 		landingResult.Fitted, landingResult.AfterNow, landingResult.AfterNowThenZoomIn,
 		landingResult.TrailingSevenDays, landingResult.AfterStepFromTrailingSevenDays,
-		landingResult.AllDays, landingResult.FilteredFit, landingResult.FilteredFitThenStep,
+		landingResult.AllDays, landingResult.FilteredFit,
+		landingResult.NarrowedAtTheDrawnEdge, landingResult.NarrowedThenStep,
 	}
 	for _, state := range states {
 		if !strings.HasSuffix(state.Href, "/probe.html") {
@@ -2213,42 +2244,64 @@ window.addEventListener("load", function () {
 		t.Error("zoom-out is enabled at the full-range window, where there is nothing to zoom out to")
 	}
 
-	// (6) The refusal itself, on a set the live queue cannot move: one archived
-	// REQ, and the window Fit all chose for it. Clause (4) has already fataled if
-	// that window draws nothing, so this case cannot be about an empty chart.
+	// (6) The refusal itself, on a window this test BUILT rather than one it found.
+	// Clause (4) has already fataled if the filtered fit draws nothing, so this
+	// case cannot be about an empty chart.
 	//
-	// THE PREMISE IS READ, NOT RESTATED. Fit all lands on the drawn extent plus
-	// breathing room, so the filtered fit window is an OUTER BOUND on everything
-	// drawn under that filter: one screenful forward starts where that window ends,
-	// past all of it, and the arrow owes the reader a refusal. The one thing that
-	// could make that untrue is a pan CLAMPED by the right-hand bound, which moves
-	// the window less than a full screenful — so the premise checked here is that
-	// the payload's whole range, which is what All days spans, has at least one
-	// more screenful of room to the right of the fitted window. Read it that way
-	// round rather than asserting a date, because a hardcoded premise about what
-	// the queue holds is exactly what clause (3) had to stop doing. The readout is
-	// minute-truncated, so the allowance keeps the comparison sound rather than
-	// merely true.
+	// The premise a refusal needs is two facts about the window under test: its
+	// right edge is past everything drawn, and the board has more than one of its
+	// own screenfuls of room to the right of that edge — without the second, a
+	// forward press would be a pan CLAMPED at the bound, which moves the window
+	// less than a screenful and proves nothing about refusing.
+	//
+	// READING BOTH OFF THE FILTERED FIT WAS THE BUG. Fit all's window is an outer
+	// bound on the drawn extent, so the first fact came free — but its WIDTH is
+	// whatever the filtered set spans, and that is live queue data. One open REQ
+	// citing the filtered one stretched that width to twenty days against a
+	// day and a half of bound padding, and the premise that had held stopped
+	// holding, mid-drain, with nothing about the view changed.
+	//
+	// So the probe narrows the window to the ZOOM FLOOR with the right edge pinned
+	// (see zoomInPinnedToTheRightEdge) and the two facts are asserted as setup
+	// below: the edge did not move, and the width is one hour. What the arithmetic
+	// then needs is an hour of room past the filtered extent, and the bound padding
+	// on its own is 2% of the board's range — so on any board wider than a few days
+	// the guard cannot fire, whatever the queue is holding. It stays here, checked
+	// rather than assumed, because it is what makes the two assertions after it
+	// mean anything. The readout is minute-truncated, so each comparison carries
+	// that allowance.
 	const readoutTruncationMs = 60000.0
-	roomToTheRightMs := *landingResult.AllDays.EndMs - *landingResult.FilteredFit.EndMs
-	if roomToTheRightMs <= *landingResult.FilteredFit.SpanMs+readoutTruncationMs {
-		t.Fatalf("the board's whole range (%s) leaves %.2f days to the right of the window Fit all "+
-			"chose under the one-REQ filter (%s), which is not more than that window's own %.2f-day "+
+	if *landingResult.NarrowedAtTheDrawnEdge.EndMs != *landingResult.FilteredFit.EndMs {
+		t.Fatalf("narrowing the filtered fit (%s) moved its right edge, landing on %s; the zoom has "+
+			"to pin the edge Fit all put past everything drawn or this is no longer a step past the "+
+			"data", landingResult.FilteredFit.Readout, landingResult.NarrowedAtTheDrawnEdge.Readout)
+	}
+	if *landingResult.NarrowedAtTheDrawnEdge.SpanMs > oneHourMs+readoutTruncationMs {
+		t.Fatalf("narrowing stopped on a %.2f-hour window (%s) rather than the one-hour zoom floor, "+
+			"so the screenful this case steps by is still the filtered set's own width",
+			*landingResult.NarrowedAtTheDrawnEdge.SpanMs/oneHourMs,
+			landingResult.NarrowedAtTheDrawnEdge.Readout)
+	}
+	roomToTheRightMs := *landingResult.AllDays.EndMs - *landingResult.NarrowedAtTheDrawnEdge.EndMs
+	if roomToTheRightMs <= *landingResult.NarrowedAtTheDrawnEdge.SpanMs+readoutTruncationMs {
+		t.Fatalf("the board's whole range (%s) leaves %.2f days to the right of the one-hour window "+
+			"pinned at the filtered extent (%s), which is not more than that window's own %.2f-day "+
 			"span; a forward step would clamp at the bound instead of landing past everything drawn, "+
 			"so this case proves nothing (summary %q)",
 			landingResult.AllDays.Readout, roomToTheRightMs/(24*oneHourMs),
-			landingResult.FilteredFit.Readout, *landingResult.FilteredFit.SpanMs/(24*oneHourMs),
+			landingResult.NarrowedAtTheDrawnEdge.Readout,
+			*landingResult.NarrowedAtTheDrawnEdge.SpanMs/(24*oneHourMs),
 			landingResult.FilteredSummary)
 	}
-	if !landingResult.FilteredFit.Disabled["timeline-period-next"] {
+	if !landingResult.NarrowedAtTheDrawnEdge.Disabled["timeline-period-next"] {
 		t.Errorf("the step-forward arrow is enabled on %s, whose next screenful is past everything "+
-			"drawn under the filter", landingResult.FilteredFit.Readout)
+			"drawn under the filter", landingResult.NarrowedAtTheDrawnEdge.Readout)
 	}
-	if landingResult.FilteredFitThenStep.Readout != landingResult.FilteredFit.Readout {
+	if landingResult.NarrowedThenStep.Readout != landingResult.NarrowedAtTheDrawnEdge.Readout {
 		t.Errorf("pressing the step-forward arrow moved the window from %s to %s, past everything "+
 			"drawn under the filter, and drew %d segments there",
-			landingResult.FilteredFit.Readout, landingResult.FilteredFitThenStep.Readout,
-			landingResult.FilteredFitThenStep.DrawnSegments)
+			landingResult.NarrowedAtTheDrawnEdge.Readout, landingResult.NarrowedThenStep.Readout,
+			landingResult.NarrowedThenStep.DrawnSegments)
 	}
 }
 
