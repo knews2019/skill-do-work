@@ -1,66 +1,43 @@
 ---
-session_updated: '2026-08-29T21:16:40Z'
-session_ended: '2026-08-29T21:16:40Z'
-last_completed: REQ-424
-queue_state: [16 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress]
-reqs_processed_this_session: 15
-session_depth: heavy
+session_updated: '2026-08-30T17:46:00Z'
+session_ended: '2026-08-30T17:46:00Z'
+last_completed: REQ-425
+queue_state: [14 pending, 1 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress]
+reqs_processed_this_session: 4
+session_depth: moderate
 ---
 
 # Session Checkpoint
 
 ## Completed This Session
 
-- [REQ-380](archive/UR-075/REQ-380-cross-reference-convention-for-newly-authored-ids.md): Prose cross-reference convention; implementation `253b2943`.
-- [REQ-376](archive/UR-074/REQ-376-raise-the-done-lines-faint-text-to-readable-contrast.md): Readable completion text; implementation `8dfdb24e`.
-- [REQ-384](archive/UR-077/REQ-384-deliver-the-architecture-report-as-a-freeform-html-bundle.md): Freeform HTML architecture-report bundles; implementation `c32e1d53`.
-- [REQ-385](archive/UR-075/REQ-385-treat-underscore-as-a-ticket-id-boundary.md): Underscore ticket boundaries and whole compound consumption; implementation `259b1479`.
-- [REQ-381](archive/UR-076/REQ-381-index-cited-ticket-ids-and-filter-on-them.md): Eager cited-ticket search and match reasons; implementation `961fbf84`.
-- [REQ-386](archive/UR-075/REQ-386-agree-on-the-restating-h1-between-drawer-and-paste.md): Repeated H1 parity between drawer and clipboard; implementation `59577def`.
-- [REQ-388](archive/UR-075/REQ-388-settle-the-last-two-drawer-clipboard-divergences.md): Fence-info and path-reference parity; implementation `3ed11c17`.
-- [REQ-382](archive/UR-075/REQ-382-expand-ticket-ids-written-as-markdown-links.md): Title expansion in authored Markdown links; implementation `59caf025`.
-- [REQ-387](archive/UR-075/REQ-387-keep-a-spliced-title-from-changing-how-the-paste-parses.md): Safe Markdown title splicing; implementation `a0d0b350`.
-- [REQ-389](archive/UR-078/REQ-389-mark-spliced-paste-titles-with-a-leading-arrow.md): Leading arrow on spliced titles; implementation `4ed31496`.
-- [REQ-375](archive/UR-074/REQ-375-restore-the-strict-browser-lane-on-current-chromium.md): Current Chromium strict lane and Chrome 141 deprecation; implementation `54de194b`.
-- [REQ-421](archive/UR-082/REQ-421-consumer-safe-board-corpus-floors.md): Consumer-safe board corpus floors; implementation hash recorded in the archived REQ.
-- [REQ-422](archive/UR-082/REQ-422-refresh-live-timeline-cache-hits.md): Fresh time-derived Timeline cache hits; implementation hash recorded in the archived REQ.
-- [REQ-423](archive/UR-082/REQ-423-terminate-fetcher-on-signals.md): Terminating archive-fetch interruption traps; implementation hash recorded in the archived REQ.
-- [REQ-424](archive/UR-082/REQ-424-clone-requested-fallback-branch.md): Requested-branch Git fallback; implementation hash recorded in the archived REQ.
+- [REQ-406](archive/REQ-406-create-do-work-cli-foundation.md): Shared `do-work-cli` runtime and Git transaction foundation; implementation `2ca25d7`; released 0.245.0.
+- [REQ-390](archive/REQ-390-timeline-trailing-window-periods.md): Timeline trailing windows replacing calendar periods; implementation `59105df`; released 0.246.0.
+- [REQ-407](archive/REQ-407-migrate-install-update-bootstrap-to-go.md): Bootstrap, install, update, reconciliation, validation and fetching migrated into Go; implementation `f45cdca`; released 0.247.0.
+- [REQ-425](archive/REQ-425-trailing-window-bound-assumptions.md): Trailing-window bound assumptions closed; implementation `04b8120`; released 0.248.0.
 
 ## In Progress (interrupted)
 
+None. `do-work/working/` holds only `baseline.json`; no worktrees and no `worktree-agent-*` branches remain.
 
 ## Still Queued
 
-REQ-390 and REQ-406–420 remain pending.
+REQ-408 through REQ-420 (the serial Go-platform chain, each gated on its predecessor), plus REQ-426 (mode-bit regression, ungated) and REQ-427 (`pending-answers` — the Go version floor).
 
 ## Session Notes
 
-REQ-421–424 completed as release **0.244.9**, with focused red-green evidence, the uncached queue-kanban suite, and `bash _dev/tests/maintainer-verify.sh` all passing. REQ-406 remains pending with its partial foundation preserved in commit `329c55a9`, documented in its queued REQ, and no active claim. Four historical reservation markers were preserved in commit `21685bf5`. REQ-377 remains cancelled as already addressed; baseline.json and baseline-failures.txt were not removed, and existing local exclusions remain.
+Every REQ ran the full pipeline with a worktree builder and an adversarial review: five dimensions, then three refutation lenses per finding. That review found real defects each time — a 10% flaky test already inside the canonical gate (REQ-406), two edge-of-range navigation defects (REQ-390), a goroutine race in the install signal handler and a BOM install-blocker (REQ-407) — while refuting the large majority of findings by measurement rather than argument.
 
-The final implementation passed `bash _dev/tests/maintainer-verify.sh` with exit 0. Its default optional browser lane was explicitly skipped on this Mac. Separately, the complete `TestMaintainerStrictBrowserBehaviorLane` passed with exit 0 on Chrome 151.0.7922.174; the final repeat took 76.994s. This supersedes the earlier incomplete full-lane investigations. Chrome 141 is deprecated by explicit maintainer decision, with no compatibility repair claimed. Timeline runtime behavior, both mutation pairs and the vacuity guard remain unchanged.
+Two process defects were fixed along the way. The review workflow counted an errored verifier as a refutation, which would have silently dismissed 24 unadjudicated findings; it now treats fewer than two live votes as unverified. And `tools/checks/scope-drift.sh` reads every backticked token in a "Files I will touch" bullet as a declared path, so a code span in the rationale produces phantom drift — folded onto REQ-414, which ports those checks to Go.
 
-The original [Timeline decision report](../ai-reports/2026-08-27_1428_req-341-timeline-drag-evidence/index.html) remains unchanged from commit eda1ffdd. It preserves the historical focused 141 failure, focused 151 pass and then-incomplete strict attempts. REQ-375's archive records the later whole-lane success. The concurrent clarification task has handed back ownership; no pending clarification writes remain. All commits were serialized here; no push was requested.
+Usage limits interrupted the session three times. The recovery that mattered: a builder died with eight modified files and five new packages uncommitted, and only the worktree saved it. Every builder brief since instructs committing each unit as its tests pass rather than batching to the end.
+
+## Environment
+
+This container did not ship the maintainer toolchain. Installed during the session, outside the repo: ShellCheck 0.11.0, `just` 1.43.0, and Go 1.26.1 via `go env -w GOTOOLCHAIN=go1.26.1+auto`. Chrome for Testing 151.0.7922.174 was fetched to the scratchpad because the container's own Chromium is 141 — the build REQ-375 explicitly deprecated, and it reproduces that REQ's recorded vacuity-guard failure verbatim.
+
+The canonical gate runs with its optional browser lane in the DEFAULT SKIPPED state. Do not set `QUEUE_KANBAN_BROWSER` for the gate: `TestBrowserBehaviorCompletionCompanionsKeepReadableContrast` fails in this Linux container at HEAD on both Chrome 141 and 151, with no source changes, where REQ-375 recorded a whole-lane pass on macOS. Timeline probes were run individually under Chrome 151 instead, where all 21 pass.
 
 ## Cleanup
 
-Evidence from this run was promoted to the 11 completed REQ archives and the immutable report. Marked `do-work/runs/work-2026-08-27-112431/` consumed, then swept that exact untracked directory.
-
-Preserved historical runs because consumption is not established:
-
-- `do-work/runs/work-2026-08-18-105500/`: missing manifest.
-- `do-work/runs/work-2026-08-18-124358/`: missing Status.
-- `do-work/runs/work-2026-08-18-162355/`: missing Status.
-- `do-work/runs/work-2026-08-18-182646/`: missing Status.
-- `do-work/runs/work-2026-08-18-191338/`: missing Status.
-- `do-work/runs/work-2026-08-18-200845/`: missing Status.
-- `do-work/runs/work-2026-08-18-211613/`: missing Status.
-- `do-work/runs/work-2026-08-18-230100/`: missing Status.
-
-Archive/link/provenance and release-mirror audits passed. No loose archived REQs, blanked/unparseable REQ or UR files, misplaced pipeline folders, or agent worktrees/branches were found.
-
-## Context Summary
-
-The board now shares eager citation analysis with search and lazy display annotations. Clipboard and drawer title handling preserve authored anchors, reference boundaries and repeated-H1 behavior; clipboard titles escape Markdown punctuation and carry the requested `->` marker without changing full appendices. Architecture reports now support freeform HTML bundles while retaining legacy Markdown reading.
-
-The Chrome 151 dump-DOM process could emit a result without exiting. Browser probes now reuse the existing bounded DevTools transport and read result-node textContent, preserving literal JSON content and existing assertions. Re-read `_dev/primes/prime-kanban-board.md` before further board work, and the matching action/shell primes before changing those areas. Durable per-REQ records remain authoritative for scope, decisions and testing.
+All four builder worktrees removed and their branches deleted with `git branch -d` from the integration branch, which is the assertion that each merge actually landed. `do-work/working/baseline.json` is the pre-flight record and is left in place.
