@@ -106,6 +106,10 @@ type installTransaction struct {
 	installVerified bool
 	recoveryFailed  bool
 	recoveryRan     bool
+
+	// recoveryFinished is closed once this transaction's cleanup has run. The signal handler
+	// waits on it so an interrupted install exits only after recovery has completed.
+	recoveryFinished chan struct{}
 }
 
 type moduleInstallPlan struct {
@@ -132,16 +136,25 @@ func failInstall(format string, arguments ...any) *installFailure {
 // confirmation, every write after it, and any failure past the first write recovers every
 // managed path plus the Git index.
 func RunInstall(ctx context.Context, options InstallOptions) InstallResult {
-	transaction := &installTransaction{options: options}
+	// Work runs under a cancellable context so an arriving signal STOPS the in-flight
+	// subprocess rather than racing it: recovery then runs once, on this goroutine, through
+	// the same path a failed write takes.
+	workContext, cancelWork := context.WithCancel(ctx)
+	defer cancelWork()
+	transaction := &installTransaction{options: options, recoveryFinished: make(chan struct{})}
+
+	// Deferred calls run last-in-first-out, so these three run as: cleanup (which recovers),
+	// then the signal handler's release, then the signal subscription teardown. Signals stay
+	// armed for the whole of cleanup, which is when recovery actually happens.
+	stopSignals := transaction.armSignalRecovery(cancelWork)
+	defer stopSignals()
+	defer close(transaction.recoveryFinished)
 	defer transaction.cleanup()
 
-	stopSignals := transaction.armSignalRecovery()
-	defer stopSignals()
-
-	if err := transaction.prepare(ctx); err != nil {
+	if err := transaction.prepare(workContext); err != nil {
 		return transaction.failureResult(err)
 	}
-	confirmed, err := transaction.reviewAndConfirm(ctx)
+	confirmed, err := transaction.reviewAndConfirm(workContext)
 	if err != nil {
 		return transaction.failureResult(err)
 	}
@@ -157,7 +170,7 @@ func RunInstall(ctx context.Context, options InstallOptions) InstallResult {
 			}},
 		}
 	}
-	if err := transaction.writeAndVerify(ctx); err != nil {
+	if err := transaction.writeAndVerify(workContext); err != nil {
 		return transaction.failureResult(err)
 	}
 	transaction.installVerified = true
@@ -178,23 +191,29 @@ func RunInstall(ctx context.Context, options InstallOptions) InstallResult {
 const interruptedInstallExitStatus = 130
 
 // armSignalRecovery makes an interruption take the same recovery path a failed write does. A
-// signal arriving mid-write must not leave a half-installed suite behind, which is why the
-// handler recovers before exiting.
-func (transaction *installTransaction) armSignalRecovery() func() {
+// signal arriving mid-write must not leave a half-installed suite behind.
+//
+// The handler never recovers itself. It cancels the work context — which kills the in-flight
+// cp, tar or git and turns it into an ordinary write failure — and then waits for the main
+// goroutine to finish that recovery before exiting. Recovering from the handler instead would
+// race the writes it is trying to undo, and the recovery would sometimes report itself
+// incomplete because the main goroutine was still copying into a directory it had removed.
+func (transaction *installTransaction) armSignalRecovery(cancelWork context.CancelFunc) func() {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
-	done := make(chan struct{})
+	released := make(chan struct{})
 	go func() {
 		select {
 		case <-signalChannel:
-			transaction.cleanup()
+			cancelWork()
+			<-transaction.recoveryFinished
 			os.Exit(interruptedInstallExitStatus)
-		case <-done:
+		case <-released:
 		}
 	}()
 	return func() {
 		signal.Stop(signalChannel)
-		close(done)
+		close(released)
 	}
 }
 
