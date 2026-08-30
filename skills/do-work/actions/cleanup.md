@@ -22,6 +22,14 @@ The archive should be a collection of self-contained UR folders, each containing
 
 ## Steps
 
+Resolve the project root once, then invoke the canonical deterministic command:
+
+```bash
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> cleanup
+```
+
+Pass `--dry-run` for an evidence-only plan, `--commit` for one exact-path cleanup commit, and repeat exact consent tokens as `--restore-blanked <repo-relative-path>` or `--discard-worktree <worktree-agent-* branch>`. `--commit` and `--discard-worktree` are intentionally separate runs: a Git commit cannot roll back a forceful worktree discard. Global `--format json` goes before `cleanup`. A missing launcher, build failure, nonzero exit, or malformed result stops the action with the command's actionable finding; do not fall back to free-form file or Git mutation. The command owns discovery, Passes 0–6, link repointing, target guards, mutation, rollback, and optional commit. The pass descriptions below remain the human policy contract the command implements.
+
 Seven passes, in order:
 
 ### Pass 0: Sweep Finished Queue Items
@@ -118,6 +126,8 @@ Fan-out actions (code-review, deep-explore, multi-REQ work — see `crew-members
 4. **If the manifest is missing, or `Status:` is anything other than `consumed`** (`in-progress`, `synthesized`, or the legacy `complete`) — **leave it untouched** and report its actual status. An in-progress run may need missing work; a synthesized/legacy-complete run may contain an assembled output the user never received. See `crew-members/background-agents.md` for the recovery branches; never infer consumption from synthesis.
 
 This is the only pass that deletes anything **under `do-work/`** rather than reorganizing it, and it is scoped strictly to **consumed run scratch** — a `Status: consumed` directory under `do-work/runs/` only. URs, REQs, and every other `do-work/` artifact are still only ever moved, never deleted. (Pass 5 also deletes, but its objects are git worktrees and branches outside `do-work/`, and it only discards unmerged work with the user's explicit consent.)
+
+Tracked run files use the normal Git transaction and rollback. An entirely untracked consumed run cannot be restored from Git, so the command revalidates the exact file inventory and `Status: consumed` immediately before deleting it and labels those changes `non-rollback spent-scratch deletion`. This narrow exception follows the spent-scratch invariant above and does not weaken the dirty-target rule for any durable or mixed tracked/untracked group.
 
 ### Pass 5: Orphaned Worktrees (consent-gated)
 

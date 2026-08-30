@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.250.0 — Canonical Safe Cleanup Command (2026-08-30)
+
+The do-work CLI now owns cleanup Passes 0–4: it can archive stranded terminal requests, close resolved user requests, consolidate misplaced archive content, remove consumed run scratch, repoint documentation links, and inspect or explicitly repair blank records and worktrees. The natural-language cleanup action and guide delegate to the same text/JSON command instead of re-implementing filesystem policy.
+
+- Exact rooted targets, no-overwrite publication, per-group Git preflight, rollback evidence, dry-run parity, and optional exact staging keep unrelated repository work outside cleanup's mutation boundary.
+- Blanked-record restoration uses full-history implementation provenance; worktree removal uses NUL-safe enumeration, cleanliness checks, detached-HEAD ancestry proof, and exact destructive consent.
+- Known interaction defects remain queued as REQ-430 through REQ-433: UR closure and link rewrites need stronger operation dependencies, consumed scratch must honor the commit guard, and misplaced UR merges need per-item conflict domains.
+
 ## 0.249.0 — Typed Repository Foundation for the do-work CLI (2026-08-30)
 
 Later do-work commands can now share one deterministic view of request state instead of rebuilding it through separate shell pipelines. The new Go package layer reads and edits REQ/UR documents without rewriting unrelated bytes, normalizes schema evidence, discovers contained repository layouts, reserves collision-free request IDs, and derives dependency readiness from one snapshot.

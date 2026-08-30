@@ -13,6 +13,7 @@ The standard-library Go module under this directory is the canonical implementat
 - `internal/schemanormalization/` owns schema aliases, defaults, warnings, and terminal predicates.
 - `internal/repositorymodel/` owns one-pass do-work discovery, exact paths, collisions, and REQ allocation.
 - `internal/dependencygraph/` derives readiness, reverse edges, cycles, and depth from a repository snapshot.
+- `internal/cleanup/` plans safe Passes 0–4, consent-gated repairs, link repointing, and worktree evidence.
 - `internal/atomicfile/` owns safe existing-file replacement and exclusive marker creation.
 - `internal/gittransaction/` owns dirty-target checks, rollback, staging, and commit guards.
 
@@ -27,6 +28,8 @@ The standard-library Go module under this directory is the canonical implementat
 - Reservation markers under `do-work/.req-reservations/` are durable coordination metadata and must be observed despite hidden-directory pruning.
 - Existing-file replacement refuses symlinks and special files, and detects identity or content changes observed during pre-publish validation. It guarantees complete atomic publication, not portable compare-and-swap against arbitrary non-cooperating writers after the final check.
 - Keep command output derived from one typed result model and keep implementation dependencies in the Go standard library.
+- Cleanup operation groups preflight independently; a dirty group is reported without blocking unrelated safe groups.
+- Entirely untracked `Status: consumed` run scratch is the sole non-rollback deletion; revalidate its exact inventory immediately before removal.
 
 ## Verify
 

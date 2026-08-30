@@ -230,3 +230,23 @@ func TestDiscoveryRejectsSymlinkedRequestAndUserRequestFiles(t *testing.T) {
 		t.Fatalf("symlink warnings = %q", warningText)
 	}
 }
+
+func TestDiscoverRepositoryRetainsRootRunManifestEvidence(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeRepositoryFixture(t, repositoryRoot, "do-work/runs/finished/manifest.md", "# Run\nStatus: consumed\n")
+	writeRepositoryFixture(t, repositoryRoot, "do-work/runs/live/manifest.md", "Status: in-progress\n")
+	writeRepositoryFixture(t, repositoryRoot, "do-work/runs/live/nested/manifest.md", "Status: consumed\n")
+	snapshot, err := DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.RunManifestFiles) != 2 {
+		t.Fatalf("run manifests = %#v", snapshot.RunManifestFiles)
+	}
+	if snapshot.RunManifestFiles[0].RunDirectory != "runs/finished" || snapshot.RunManifestFiles[0].Status != "consumed" {
+		t.Fatalf("first run manifest = %#v", snapshot.RunManifestFiles[0])
+	}
+	if snapshot.RunManifestFiles[1].RunDirectory != "runs/live" || snapshot.RunManifestFiles[1].Status != "in-progress" {
+		t.Fatalf("second run manifest = %#v", snapshot.RunManifestFiles[1])
+	}
+}

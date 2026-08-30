@@ -253,6 +253,55 @@ func TestUnrelatedStagedWorkDoesNotBreakRollback(t *testing.T) {
 	}
 }
 
+func TestPublicTargetPreflightReportsOnlyTheDirtyExactGroup(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "first.txt", "initial\n")
+	writeFile(t, repositoryRoot, "second.txt", "initial\n")
+	commitAll(t, repositoryRoot, "initial")
+	writeFile(t, repositoryRoot, "first.txt", "dirty\n")
+	dirty := PreflightTargets(context.Background(), repositoryRoot, []string{"first.txt"}, false)
+	clean := PreflightTargets(context.Background(), repositoryRoot, []string{"second.txt"}, false)
+	if dirty.Failure == nil || dirty.Failure.Kind != FailureDirtyTarget {
+		t.Fatalf("dirty preflight = %#v", dirty)
+	}
+	if clean.Failure != nil {
+		t.Fatalf("clean preflight = %#v", clean)
+	}
+}
+
+func TestRollbackRemovesOnlyRecordedCreatedDirectoriesDeepestFirst(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot:        repositoryRoot,
+		TargetPaths:           []string{"new/tree/file.txt"},
+		CreatedDirectoryPaths: []string{"new", "new/tree"},
+	}, func(recorder *MutationRecorder) error {
+		if err := os.Mkdir(filepath.Join(repositoryRoot, "new"), 0o755); err != nil {
+			return err
+		}
+		if err := recorder.RecordCreatedDirectory("new"); err != nil {
+			return err
+		}
+		if err := os.Mkdir(filepath.Join(repositoryRoot, "new", "tree"), 0o755); err != nil {
+			return err
+		}
+		if err := recorder.RecordCreatedDirectory("new/tree"); err != nil {
+			return err
+		}
+		if err := recorder.RecordCreated("new/tree/file.txt"); err != nil {
+			return err
+		}
+		writeFile(t, repositoryRoot, "new/tree/file.txt", "created\n")
+		return errors.New("forced failure")
+	})
+	if result.Outcome != resultmodel.OutcomeRolledBack || result.Rollback.Status != resultmodel.RollbackSucceeded {
+		t.Fatalf("result = %#v", result)
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, "new")); !os.IsNotExist(err) {
+		t.Fatalf("created directory remains: %v", err)
+	}
+}
+
 func newRepository(t *testing.T) string {
 	t.Helper()
 	// Fixtures measure exactly what git writes to each stream, so an ambient global or

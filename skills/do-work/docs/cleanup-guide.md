@@ -2,6 +2,8 @@
 
 Consolidates the archive — moves loose files into the right places, closes completed URs, organizes legacy items. Runs automatically at the end of every work loop, or manually on demand.
 
+The canonical implementation is `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> cleanup`. It plans and applies the same ordered policy without an LLM. Use `--dry-run` to inspect exact changes, `--format json` before the command for structured evidence, and `--commit` to create one guarded exact-path commit. Blanked restoration and unmerged worktree deletion remain report-only until an exact `--restore-blanked <path>` or `--discard-worktree <name>` consent token is supplied; `--commit` and `--discard-worktree` must be separate runs.
+
 ## What it does
 
 Seven passes, in order (matching `actions/cleanup.md`):
@@ -20,6 +22,8 @@ Detects `do-work/` directories accidentally created in subdirectories and reloca
 
 ### Pass 4: Sweep consumed run scratch
 Deletes only `do-work/runs/*/` directories whose root `manifest.md` says `Status: consumed`. In-progress runs remain resumable, while `synthesized` and legacy `complete` runs are preserved because their assembled output may not have reached the user yet. Tracked deletions are staged by their exact run path.
+
+An entirely untracked consumed run is spent scratch but has no Git rollback source. Cleanup therefore revalidates its exact regular-file inventory and consumed manifest immediately before deletion and labels the result as a non-rollback spent-scratch deletion. Mixed or durable dirty targets remain refused.
 
 ### Pass 5: Remove orphaned worktrees
 Clears the `worktree-agent-*` git worktrees and branches left behind when the work loop's worktree dispatch mode is interrupted. Already-merged leftovers are removed automatically. An unmerged one can be the only copy of a builder's work, so cleanup lists it and asks before deleting — and when it's running unattended (the automatic end-of-loop cleanup), it only reports. Your own worktrees are never touched; only the `worktree-agent-` naming convention is in scope.
@@ -59,4 +63,5 @@ do-work/
 do-work cleanup
 do-work tidy
 do-work consolidate
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> cleanup --dry-run
 ```

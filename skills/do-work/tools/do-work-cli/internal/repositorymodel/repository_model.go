@@ -44,6 +44,15 @@ type UserRequestFile struct {
 	ParsedDocument *requestmodel.RequestDocument
 }
 
+// RunManifestFile is one root run manifest. Cleanup consumes only manifests
+// whose exact status is "consumed"; every other run remains durable evidence.
+type RunManifestFile struct {
+	AbsolutePath string
+	RelativePath string
+	RunDirectory string
+	Status       string
+}
+
 // ReservationFile is one durable request-number marker.
 type ReservationFile struct {
 	RequestNumber int
@@ -64,6 +73,7 @@ type RepositorySnapshot struct {
 	RequestFiles      []*RequestFile
 	RequestsByID      map[string][]*RequestFile
 	UserRequestFiles  []*UserRequestFile
+	RunManifestFiles  []RunManifestFile
 	ReservationFiles  []ReservationFile
 	CollisionEntries  []CollisionEvidence
 	StrayRequestPaths []string
@@ -140,7 +150,7 @@ func DiscoverRepository(repositoryRoot string) (*RepositorySnapshot, error) {
 			if absolutePath == doWorkRoot {
 				return nil
 			}
-			if topSection == "deliverables" || topSection == "runs" || directoryEntry.Name() == "assets" {
+			if topSection == "deliverables" || directoryEntry.Name() == "assets" {
 				return fs.SkipDir
 			}
 			if strings.HasPrefix(directoryEntry.Name(), ".") && relativeSlashPath != ".req-reservations" {
@@ -159,6 +169,21 @@ func DiscoverRepository(repositoryRoot string) (*RepositorySnapshot, error) {
 		}
 
 		baseName := directoryEntry.Name()
+		if topSection == "runs" && len(pathParts) == 3 && baseName == "manifest.md" {
+			fileBytes, readError := readContainedRegularFile(discoveryRoot, relativeSlashPath, absolutePath)
+			if readError != nil {
+				snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot read run manifest %s: %v", absolutePath, readError))
+				return nil
+			}
+			snapshot.RunManifestFiles = append(snapshot.RunManifestFiles, RunManifestFile{
+				AbsolutePath: absolutePath, RelativePath: relativeSlashPath,
+				RunDirectory: filepath.ToSlash(filepath.Dir(relativeSlashPath)), Status: manifestStatus(fileBytes),
+			})
+			return nil
+		}
+		if topSection == "runs" {
+			return nil
+		}
 		if strings.HasPrefix(strings.ToUpper(baseName), "REQ-") && strings.HasSuffix(strings.ToLower(baseName), ".md") {
 			switch topSection {
 			case "queue", "working", "archive":
@@ -240,8 +265,21 @@ func DiscoverRepository(repositoryRoot string) (*RepositorySnapshot, error) {
 	sort.Slice(snapshot.ReservationFiles, func(leftIndex, rightIndex int) bool {
 		return snapshot.ReservationFiles[leftIndex].RequestNumber < snapshot.ReservationFiles[rightIndex].RequestNumber
 	})
+	sort.Slice(snapshot.RunManifestFiles, func(leftIndex, rightIndex int) bool {
+		return snapshot.RunManifestFiles[leftIndex].RunDirectory < snapshot.RunManifestFiles[rightIndex].RunDirectory
+	})
 	sort.Strings(snapshot.StrayRequestPaths)
 	return snapshot, nil
+}
+
+func manifestStatus(fileBytes []byte) string {
+	for _, line := range strings.Split(string(fileBytes), "\n") {
+		name, value, found := strings.Cut(strings.TrimSpace(line), ":")
+		if found && strings.EqualFold(strings.TrimSpace(name), "status") {
+			return strings.ToLower(strings.TrimSpace(value))
+		}
+	}
+	return ""
 }
 
 // ReserveNextRequestID exclusively creates and returns the next marker.

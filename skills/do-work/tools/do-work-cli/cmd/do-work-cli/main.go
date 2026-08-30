@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/cleanup"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/suiteinstall"
 )
@@ -13,6 +14,9 @@ func main() {
 	// entry, which is the shape every later command family copies.
 	handlers := map[string]commandruntime.CommandHandler{}
 	for name, handler := range suiteinstall.Handlers(os.Stderr, os.Stdin) {
+		handlers[name] = handler
+	}
+	for name, handler := range cleanup.Handlers() {
 		handlers[name] = handler
 	}
 	runtime := commandruntime.NewRuntime(os.Stdout, handlers)

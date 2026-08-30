@@ -36,30 +36,103 @@ type TransactionFailure struct {
 // TransactionResult reports an outcome, not a number. resultmodel.ExitCode is the only
 // place an outcome becomes a process status.
 type TransactionResult struct {
-	Outcome        resultmodel.CommandOutcome
-	RepositoryRoot string
-	ChangedPaths   []string
-	CreatedPaths   []string
-	CommitSHA      string
-	RevertArgv     []string
-	Rollback       resultmodel.RollbackResult
-	Failure        *TransactionFailure
+	Outcome            resultmodel.CommandOutcome
+	RepositoryRoot     string
+	ChangedPaths       []string
+	CreatedPaths       []string
+	CreatedDirectories []string
+	CommitSHA          string
+	RevertArgv         []string
+	Rollback           resultmodel.RollbackResult
+	Failure            *TransactionFailure
 }
 
 type TransactionOptions struct {
-	RepositoryRoot   string
-	TargetPaths      []string
-	DryRun           bool
-	Commit           bool
-	CommitMessage    string
-	PostCommitVerify func(context.Context, string) error
+	RepositoryRoot        string
+	TargetPaths           []string
+	CreatedDirectoryPaths []string
+	DryRun                bool
+	Commit                bool
+	CommitMessage         string
+	PostCommitVerify      func(context.Context, string) error
 }
 
 type MutationRecorder struct {
-	allowedPaths   map[string]struct{}
-	creatablePaths map[string]struct{}
-	touchedPaths   map[string]struct{}
-	createdPaths   map[string]struct{}
+	allowedPaths              map[string]struct{}
+	creatablePaths            map[string]struct{}
+	touchedPaths              map[string]struct{}
+	createdPaths              map[string]struct{}
+	allowedCreatedDirectories map[string]struct{}
+	createdDirectories        map[string]struct{}
+}
+
+// RecordCreatedDirectory records an exact directory created by this invocation.
+// Rollback removes it only if it is empty, deepest first.
+func (recorder *MutationRecorder) RecordCreatedDirectory(path string) error {
+	normalized, err := normalizeTargetPath(path)
+	if err != nil {
+		return err
+	}
+	if _, allowed := recorder.allowedCreatedDirectories[normalized]; !allowed {
+		return fmt.Errorf("directory %q is outside the declared transaction directories", path)
+	}
+	recorder.createdDirectories[normalized] = struct{}{}
+	return nil
+}
+
+// TargetPreflight is a read-only exact-path eligibility check used to keep one
+// dirty operation group from blocking unrelated cleanup repairs.
+type TargetPreflight struct {
+	RepositoryRoot string
+	TargetPaths    []string
+	Failure        *TransactionFailure
+}
+
+// PreflightTargets applies the transaction's Git and dirty-target guards without mutating.
+func PreflightTargets(ctx context.Context, repositoryRoot string, targetPaths []string, requireEmptyIndex bool) TargetPreflight {
+	result := TargetPreflight{}
+	resolvedRoot, err := resolveRepositoryRoot(ctx, repositoryRoot)
+	if err != nil {
+		result.Failure = &TransactionFailure{Kind: FailureNotGit, Reason: err.Error()}
+		return result
+	}
+	result.RepositoryRoot = resolvedRoot
+	normalizedPaths, err := normalizeTargetPaths(targetPaths)
+	if err != nil || len(normalizedPaths) == 0 {
+		if err == nil {
+			err = errors.New("at least one exact target path is required")
+		}
+		result.Failure = &TransactionFailure{Kind: FailureInvalidOptions, Reason: err.Error()}
+		return result
+	}
+	result.TargetPaths = normalizedPaths
+	states, err := inspectTargets(ctx, resolvedRoot, normalizedPaths)
+	if err != nil {
+		result.Failure = &TransactionFailure{Kind: FailureInvalidOptions, Reason: err.Error(), Paths: normalizedPaths}
+		return result
+	}
+	for _, state := range states {
+		dirty, statusError := targetIsDirty(ctx, resolvedRoot, state.path)
+		if statusError != nil {
+			result.Failure = &TransactionFailure{Kind: FailureInvalidOptions, Reason: statusError.Error(), Paths: []string{state.path}}
+			return result
+		}
+		if dirty || (state.existed && !state.tracked) {
+			result.Failure = &TransactionFailure{Kind: FailureDirtyTarget, Reason: fmt.Sprintf("target path %q is already dirty or not restorable from Git", state.path), Paths: []string{state.path}}
+			return result
+		}
+	}
+	if requireEmptyIndex {
+		empty, indexError := indexIsEmpty(ctx, resolvedRoot)
+		if indexError != nil || !empty {
+			reason := "--commit requires an empty existing index"
+			if indexError != nil {
+				reason = indexError.Error()
+			}
+			result.Failure = &TransactionFailure{Kind: FailureDirtyIndex, Reason: reason}
+		}
+	}
+	return result
 }
 
 func (recorder *MutationRecorder) RecordTouched(path string) error {
@@ -148,7 +221,11 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	if mutate == nil {
 		return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, "mutation callback is required")
 	}
-	recorder := newMutationRecorder(states)
+	createdDirectories, err := normalizeCreatedDirectories(options.CreatedDirectoryPaths, repositoryRoot)
+	if err != nil {
+		return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, err.Error())
+	}
+	recorder := newMutationRecorder(states, createdDirectories)
 	if mutationErr := mutate(recorder); mutationErr != nil {
 		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation, mutationErr)
 	}
@@ -158,6 +235,7 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	}
 	result.ChangedPaths = changedPaths
 	result.CreatedPaths = sortedKeys(recorder.createdPaths)
+	result.CreatedDirectories = sortedKeys(recorder.createdDirectories)
 	// A changed path must have been recorded, and a path that did NOT exist beforehand must
 	// have been recorded as CREATED. Without the second half, a file the mutation brought
 	// into existence through RecordTouched alone reports success, and the transaction claims
@@ -213,7 +291,7 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	return result
 }
 
-func newMutationRecorder(states []targetState) *MutationRecorder {
+func newMutationRecorder(states []targetState, createdDirectories []string) *MutationRecorder {
 	allowed := make(map[string]struct{}, len(states))
 	creatable := make(map[string]struct{}, len(states))
 	for _, state := range states {
@@ -223,11 +301,33 @@ func newMutationRecorder(states []targetState) *MutationRecorder {
 		}
 	}
 	return &MutationRecorder{
-		allowedPaths:   allowed,
-		creatablePaths: creatable,
-		touchedPaths:   map[string]struct{}{},
-		createdPaths:   map[string]struct{}{},
+		allowedPaths:              allowed,
+		creatablePaths:            creatable,
+		touchedPaths:              map[string]struct{}{},
+		createdPaths:              map[string]struct{}{},
+		allowedCreatedDirectories: stringSet(createdDirectories),
+		createdDirectories:        map[string]struct{}{},
 	}
+}
+
+func normalizeCreatedDirectories(paths []string, repositoryRoot string) ([]string, error) {
+	normalized, err := normalizeTargetPaths(paths)
+	if err != nil {
+		return nil, err
+	}
+	for _, path := range normalized {
+		info, statError := os.Lstat(filepath.Join(repositoryRoot, filepath.FromSlash(path)))
+		if statError == nil {
+			if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+				return nil, fmt.Errorf("created directory target %q is not a real directory", path)
+			}
+			return nil, fmt.Errorf("created directory target %q already exists", path)
+		}
+		if !os.IsNotExist(statError) {
+			return nil, fmt.Errorf("inspect created directory target %q: %w", path, statError)
+		}
+	}
+	return normalized, nil
 }
 
 func resolveRepositoryRoot(ctx context.Context, suppliedRoot string) (string, error) {
@@ -374,6 +474,18 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 			rollback.Actions = append(rollback.Actions, "removed created target "+path)
 		}
 	}
+	createdDirectories := mapKeys(recorder.createdDirectories)
+	sort.Slice(createdDirectories, func(first, second int) bool {
+		return strings.Count(createdDirectories[first], "/") > strings.Count(createdDirectories[second], "/")
+	})
+	for _, path := range createdDirectories {
+		absolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(path))
+		if err := os.Remove(absolutePath); err != nil && !os.IsNotExist(err) {
+			rollback.Errors = append(rollback.Errors, fmt.Sprintf("remove created directory %s: %v", path, err))
+		} else {
+			rollback.Actions = append(rollback.Actions, "removed created directory "+path)
+		}
+	}
 	rolledBackPaths := make([]string, 0, len(states))
 	for _, state := range states {
 		rolledBackPaths = append(rolledBackPaths, state.path)
@@ -465,4 +577,12 @@ func equalStrings(first, second []string) bool {
 		}
 	}
 	return true
+}
+
+func stringSet(values []string) map[string]struct{} {
+	result := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		result[value] = struct{}{}
+	}
+	return result
 }
