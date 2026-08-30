@@ -1,8 +1,23 @@
 ---
 id: REQ-407
 title: 'Migrate bootstrap, install, update, reconciliation, validation, and fetching into Go'
-status: pending
+status: claimed
 created_at: 2026-08-29T20:28:26Z
+route: C
+estimate:
+  p50_active_minutes: 75
+  confidence: low
+  calculated_at: 2026-08-30T07:23:00Z
+  basis:
+    - Route C
+    - 16-file write set
+    - 8 new files
+    - 3 subsystems involved
+    - 8 acceptance criteria
+    - dependency depth 1
+    - cross-route regression gates
+    - full-suite verification
+claimed_at: 2026-08-30T07:22:27Z
 user_request: UR-081
 domain: general
 prime_files: [_dev/primes/prime-shell-commands.md, skills/do-work/tools/prime-do-work-update.md]
@@ -80,4 +95,14 @@ per the Fold-First Rule rather than minted as separate REQs.
   no command is registered; worth closing when one is.
 - **Text rendering of changes, skipped work and rollback errors has no direct
   assertion.** The parity test covers findings; these three sections render unasserted.
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** Replaces the implementation language of the suite's installation path — bootstrap, install, update, byte-safe managed-section replacement, settings reconciliation, suite validation and archive fetching all move to Go, and the Python and jq branches are removed rather than left as fallbacks. The behaviour to preserve is byte-exact and filesystem-sensitive (CRLF, BOM, NUL, symlinks, modes, malformed markers), the rollback contract is inherited from REQ-406, and the public scripts-and-Just shape must keep working through compatibility launchers.
+
+**Planning:** Required
 
