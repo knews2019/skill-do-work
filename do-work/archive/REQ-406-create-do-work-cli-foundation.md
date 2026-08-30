@@ -19,7 +19,7 @@ estimate:
     - full-suite verification
 claimed_at: 2026-08-29T21:35:39Z
 completed_at: 2026-08-30T07:11:22Z
-commit:
+commit: 2ca25d7
 user_request: UR-081
 domain: general
 prime_files: [_dev/primes/prime-shell-commands.md]
