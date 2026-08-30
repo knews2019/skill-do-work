@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.246.0 — Timeline Trailing Windows (2026-08-30)
+
+The board's Timeline drops Day, Week and Month for the windows people actually ask for: last day, last 7 days, last 30 days, last 90 days, and all days. Same vocabulary the filter dropdown already used, and about 300 fewer lines of calendar arithmetic behind it.
+
+- Five trailing-window buttons replace the three calendar-period ones; each sets the window to that span ending at now, and All days spans the whole recorded range.
+- The arrows now step one screenful whatever the window is, instead of one calendar period.
+- The control set is declared in the template alone, so the lit button and the window readout can no longer drift apart from it.
+- Known at the edges and tracked as REQ-425: the buttons collapse on a board whose queue is fully drained, and the arrows do not round-trip at the right-hand end of the range.
+
 ## 0.245.0 — Shared Go Command Runtime for the Suite (2026-08-30)
 
 The suite gets one Go command module underneath it: a typed result that renders identical text and JSON, a single exit-code authority, and a Git transaction layer that refuses to touch work you already have in flight.

@@ -29,7 +29,6 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-- REQ-390: Replace the timeline's Day/Week/Month periods with trailing windows — claimed 2026-08-29T21:35:39Z — writer: vm:/home/user/skill-do-work
 - REQ-407: Migrate bootstrap, install, update, reconciliation, validation, and fetching into Go — claimed 2026-08-30T07:22:27Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued

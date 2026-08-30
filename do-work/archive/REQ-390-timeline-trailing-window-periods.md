@@ -1,7 +1,7 @@
 ---
 id: REQ-390
 title: 'Replace the timeline''s Day/Week/Month periods with trailing windows: last day, last 7/30/90/all days'
-status: claimed
+status: completed
 created_at: 2026-08-27T14:15:08Z
 route: C
 write_set: [skills/do-work-board/tools/queue-kanban/web/template.html, skills/do-work-board/tools/queue-kanban/web/board-timeline.js, skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go, skills/do-work-board/tools/queue-kanban/generate_test.go, skills/do-work-board/tools/queue-kanban/web/board.css]
@@ -17,6 +17,8 @@ estimate:
     - browser evidence
     - cross-route regression gates
 claimed_at: 2026-08-29T21:35:39Z
+completed_at: 2026-08-30T11:55:06Z
+commit:
 user_request: UR-079
 domain: frontend
 prime_files: ['_dev/primes/prime-kanban-board.md']
@@ -271,4 +273,51 @@ Fixed in `403d78e`: the window is now **set by construction** rather than accept
 **Existing tests updated (cross-REQ impact):** seven tests across REQ-235, REQ-240/327, REQ-313/338, REQ-320, REQ-326 and REQ-345 were migrated off the calendar-period controls. Each change, and why the behaviour change is intentional, is recorded in the hand-back's `## Cross-REQ Test Changes` table.
 
 *Verified by work action*
+
+## Review
+
+**Acceptance: Partial.** The REQ's GREEN condition is met on an ordinary live board: the toolbar offers the five trailing windows, clicking one sets that trailing span ending at the board's now, All days spans the full recorded range, no calendar-period control survives, and the shipped ARIA text, toolbar comment and hint prose all describe windows rather than periods. The canonical gate passes at exit 0 and all 14 timeline browser probes pass on Chrome 151. Two Important defects stand at the bounds, so this archives as `completed` with a follow-up rather than as a clean pass.
+
+**Method.** Five reviewers, one per dimension, including a render pass driving a real browser at 1400/900/500px. Every finding then went to three skeptics prompted to refute it. **The verification was cut short by a session usage limit that killed 49 of its 53 agents**, so the orchestrator adjudicated the five Important findings directly afterwards — two by its own measurement, three by a re-run that completed cleanly.
+
+**Dimension verdicts:** requirements pass; correctness, simplicity and render each partial. The tests dimension did not return — its reviewer was among the agents the limit killed.
+
+**Findings that stand — two, both measured, both routed to REQ-425.**
+
+- **Important — trailing chips collapse to the one-hour floor on a drained board.** `timelineTrailingWindow` clamps `[now - N days, now]` into the bounds, and `timelineRange` only stretches `rangeEnd` to `now` while a row has `WaitOpen` or `WorkOpen`. Once a queue is fully drained the bounds end at the last completion instant and `now` falls outside them, so any chip whose span begins after the padded bound end clamps to zero width. Measured directly: 3 days idle collapses "Last day"; 10 days puts "Last day" and "Last 7 days" on the *same* one-hour window; 40 days collapses three chips; 100 days collapses four of five. Because the lit chip is the first whose candidate matches, pressing "Last 7 days" on a 10-day-idle board lights "Last day". This repo's own board becomes a drained board the moment this queue finishes.
+- **Important — `‹` and `›` stopped being inverses near the right bound.** `timelinePannedWindow` clamps a forward step at the bound so it moves only a partial screenful, while the back step moves a full one. Measured drift on a round trip: **-120.00h** a partial screenful from the right bound, **-168.00h** flush against it, 0.00h mid-range. This is a regression: the deleted calendar-period test pinned the property, and the replacement covers only the mid-range case.
+
+**Findings refuted 3–0, by observation in a real browser:**
+
+- *A chip lights a different chip on any board younger than ~30 days.* Refuted — the marquee claim is measurably false. On a three-day board, pressing "Last 30 days" lights **"Last 7 days"** and reads "part of last 7 days"; All days is a genuinely distinct window there and lights only for its own chip. The mechanism the finding indicted never fires on that board class: with open rows, `rangeEnd` is pinned to `now`, so All days strictly outruns every trailing window.
+- *The state readout's unclipped tie-break is justified by a case that cannot happen, and is untested.* Refuted — an A/B against a copy with the tie-break removed shows the branch deciding what the reader sees on a real board, and the same-window case was reproduced on a board with open work where the drained-board defect plays no part.
+- *"Last day" is mislabelled "part of last day" when the bound end precedes now.* Refuted as a readout defect. The collapse is real and is carried by the first finding above; the wording is not the thing that is wrong.
+
+**Minor and Nit findings, recorded not actioned** — these create no follow-up REQs: the empty-window runtime message still says "step to another period"; the control group's `aria-label` is the one announced string still reading "Timeline period"; D-08's cost estimate for keeping `data-timeline-period` does not survive the final diff; clause (6)'s new setup assertion restates `3600000` instead of reading `TIMELINE_MIN_SPAN_MS`; the new Node-lane test ships a `minSpanMs` field it never asserts; both arrows go dead after "All days" with no visible sign; below 440px the wrapped group reads as a loose lozenge. Several of these are the same "period" wording surviving in announced text — worth one pass whenever the board's prose is next touched.
+
+**Follow-up created:** [REQ-425](../queue/REQ-425-trailing-window-bound-assumptions.md) — a sweep REQ (`sweep_key: trailing-window-bound-assumptions`) carrying both standing findings as `## Instances`. They are one root cause: the trailing-window controls assume `now` and a full screenful are inside the bounds. One REQ per root cause, not one per symptom.
+
+**Scope drift:** none. `tools/checks/scope-drift.sh` reports the Implementation Summary matches the Scope declaration, which was extended before integration to include `web/board.css` (D-01).
+
+*Reviewed by work action (five dimensions, three refutation lenses per finding, plus direct orchestrator measurement)*
+
+## Lessons Learned
+
+**What worked:** Deleting the calendar machinery instead of porting it — a net removal of about 300 lines, and the trailing-window path is one pure function plus a DOM walk. Deriving the lit chip and state readout by re-asking each `[data-timeline-period]` button, rather than keeping a list of window names in JS, means the control set is declared in `template.html` alone and cannot drift. Committing the failing tests as their own RED commit before any source change made the `tdd: true` evidence checkable by anyone afterwards.
+
+**What didn't:** Two things, both about premises rather than code.
+
+The rebuilt arrow-refusal probe read the **live repository queue** as its fixture, and its premise stopped holding when the queue changed underneath it. The trigger was self-referential and worth remembering: `REQ-164` matches by *citation*, and writing this REQ's own merge notes into its own queue file added that citation, so a one-REQ filter began matching two rows. **A probe that reads the live queue is a probe whose fixture the pipeline edits.** REQ-345's lesson already said never to assert which regime the live queue is in; the rebuild reintroduced it in a new shape. The fix was to *set* the window by construction rather than accept whatever Fit all chose.
+
+The trailing-window mapping assumed `now` is inside the bounds. It usually is — `timelineRange` stretches `rangeEnd` to `now` while any row is open — which is exactly why the assumption survived planning, exploration, implementation and a browser probe run. It fails on a drained board, and a queue-draining tool produces drained boards.
+
+**Worth knowing:** `timelineRange` in `timeline.go` pins `rangeEnd` to `now` only while a row has `WaitOpen` or `WorkOpen`. Every piece of Timeline maths that treats `now` as inside the bounds inherits that condition, so a drained board is the case to reach for when testing window arithmetic. `timelineZoomedWindow` preserves width and slides, which is why `timelineTrailingWindow` clamps each endpoint *before* settling — an unclamped 90-day window on a short archive would be pushed forward off now rather than cut short at the range start. The clamp is load-bearing, not defensive.
+
+## Orientation
+
+The board's Timeline now navigates by trailing windows instead of calendar periods. A reader picks Last day, Last 7 days, Last 30 days, Last 90 days or All days and gets that span ending at the board's now, matching the vocabulary the filter dropdown already used; the arrows step one screenful whatever the window is. It lives in the queue-kanban board's Timeline view — `web/template.html` declares the control set, `web/board-timeline.js` computes the windows.
+
+`[MAP CHANGED]` — the concept changed, not just the labels. Calendar-period arithmetic is gone from the board: eight functions and roughly 200 lines, including the grid-versus-exactness split that governed stepping. Anything that reasoned in day, week or month levels no longer has a level to read. `_dev/primes/prime-kanban-board.md` was spot-checked and its referenced paths still resolve; it documented neither the control set nor the calendar maths, so it stays accurate.
+
+Two edge behaviours are known and carried on REQ-425 rather than fixed here: chips collapse on a board whose queue is fully drained, and the step arrows do not round-trip at the right bound.
 
