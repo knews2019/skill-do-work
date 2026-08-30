@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.249.0 — Typed Repository Foundation for the do-work CLI (2026-08-30)
+
+Later do-work commands can now share one deterministic view of request state instead of rebuilding it through separate shell pipelines. The new Go package layer reads and edits REQ/UR documents without rewriting unrelated bytes, normalizes schema evidence, discovers contained repository layouts, reserves collision-free request IDs, and derives dependency readiness from one snapshot.
+
+- Atomic publication and reservation primitives reject unsafe targets, retain ordinary permissions, and use platform-specific replacement without adding dependencies.
+- Repository reads preserve exact paths and collision evidence, reject linked request content, and keep ambiguous dependencies blocked.
+- Focused adversarial, race, cross-platform compile, full-module, and repository-wide verification cover the new foundation before command families begin consuming it.
+
 ## 0.248.1 — Clearer Assumed-Pause Badge (2026-08-30)
 
 Long completed-ticket spans no longer look like paused workflow state. The board now marks them `over 4h · assumed pause`, stating both the measured threshold and that the pause is an interpretation of the duration rather than a change to the REQ's completed status.
