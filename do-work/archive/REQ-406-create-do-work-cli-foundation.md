@@ -1,7 +1,7 @@
 ---
 id: REQ-406
 title: 'Create the shared do-work-cli runtime and Git transaction foundation'
-status: claimed
+status: completed
 created_at: 2026-08-29T20:28:26Z
 route: C
 write_set: [skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go, skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go, skills/do-work/tools/do-work-cli/internal/gittransaction/transaction_findings.go, skills/do-work/tools/do-work-cli/internal/gittransaction/transaction_findings_test.go, skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go, skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go, skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime.go, skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime_test.go, _dev/tests/contract-regressions.sh, _dev/tests/maintainer-verify.sh]
@@ -18,6 +18,8 @@ estimate:
     - cross-route regression gates
     - full-suite verification
 claimed_at: 2026-08-29T21:35:39Z
+completed_at: 2026-08-30T07:11:22Z
+commit:
 user_request: UR-081
 domain: general
 prime_files: [_dev/primes/prime-shell-commands.md]
@@ -320,4 +322,48 @@ The bridge tests' RED is a build failure rather than an assertion failure, becau
 - `TestExitCodeContractThroughRealGitTransactions`, `TestRuntimeFindingsCarryCompleteRemediation`
 
 *Verified by work action*
+
+## Review
+
+**Acceptance: Pass.** The REQ's GREEN condition holds: one typed result drives stable text and JSON, the documented exit codes 0–4 are observed through real Git fixtures, and those fixtures prove exact-path refusal, rollback, and post-commit risk reporting. The canonical gate `bash _dev/tests/maintainer-verify.sh` exits 0 on the merged tree with the new module lanes running.
+
+**Method.** Five independent reviewers, one per dimension (requirements traceability, correctness, shipped shell and the gate, simplicity and maintainer fit, test quality and the TDD claim). Every finding was then put to three skeptics prompted to refute it, each with a distinct lens: does the code really do this, can the consequence actually occur, and is it already a deliberate decision or out of scope.
+
+**Dimension verdicts:** shell-and-gate pass; requirements, correctness, simplicity and tests each partial.
+
+**Findings that survived verification: one, and it was fixed inside this REQ.**
+
+- **Important — `TestExitCodeContractThroughRealGitTransactions` was flaky at 10%.** Raised independently by two dimensions with different framings, then confirmed empirically by the orchestrator: 4 failures in 40 runs. Each subtest ran its scenario twice in two different fixture repositories and asserted the text run's output against the JSON run's finding; for the commit case that line embeds a commit SHA, and two independent repositories produce different SHAs whenever their commits land in different seconds. The test had already entered the canonical gate, so it would have reddened every later REQ's gate one run in ten. **Remediated** in `fcf1cb5`: one transaction now drives both renderings, which is what the assertion's own comment always claimed. The second fixture is deleted rather than the SHA masked — net −6 lines. Re-measured independently on the merged tree at **0 failures in 100 runs**, where the old rate predicts about ten.
+
+**Findings refuted 3–0, by observation:**
+
+- *Rollback reports success while a created target survives on disk.* Refuted. `recorder.createdPaths` has exactly one writer, which refuses any path outside the declared targets or already present at preflight, and any failed removal forces `RollbackIncomplete` and exit 4. A nine-scenario probe confirmed every recorded creation is removed or named in an incomplete rollback. The described state needs a caller that writes a file and never records it — caller misuse of an enforcing API, and there is no such caller.
+- *An incomplete pre-commit rollback is labelled `committed_state_risk` when nothing was committed.* Refuted. The mechanism is real but the mapping is a written requirement of the source UR that this REQ was told to preserve.
+- *`repository_root` echoes the `--repo-root` argument rather than the resolved root.* Refuted on both fact and reachability.
+- *The failure-kind staleness guard misses the idiomatic Go constant form.* Refuted — the headline is backwards: the idiomatic form is exactly the one the regex catches, and both named alternatives are independently blocked.
+- *The requirement-5 completeness test injects the paths it asserts.* Refuted — false about the test it names, and the state it treats as a latent bug is correct by design.
+
+**A note on evidence completeness.** The first verification pass was cut short by a session usage limit that killed 72 of its 92 agents. The workflow then counted an errored verifier as a refutation, which would have reported 24 unadjudicated findings as knocked down. That post-processing bug was fixed, the five **Important** findings were re-verified to completion, and two more were settled directly by the orchestrator. Minor and Nit findings go in this report only and were deliberately not adjudicated — they create no follow-up REQs.
+
+**Minor and Nit findings, recorded not actioned:** the `<command>` placeholder in usage findings is not a runnable argv until a real command is registered; `RollbackResult.Status` has a fourth wire value `""` that no constant names; text rendering of changes, skipped work and rollback errors has no direct assertion; the bridge's RED was compile-error-only (the assertion-level RED for the same requirement is `TestRuntimeFindingsCarryCompleteRemediation`); no test observes a successful `--commit` transaction. Each is folded onto REQ-407, which registers the first real command and is where they become testable.
+
+**Scope drift:** none. `tools/checks/scope-drift.sh` reports the Implementation Summary matches the Scope declaration exactly — ten files, no undeclared touch, no unused declaration.
+
+*Reviewed by work action (five dimensions, three refutation lenses per finding)*
+
+## Lessons Learned
+
+**What worked:** Inspecting the preserved foundation rather than restarting it — the partial commit `329c55a9` was sound, and the diff stayed additive and corrective. Deriving finding codes from `FailureKind` with a loud unmapped fallback, instead of a hand-written switch, is the "state conditions, not lists" rule applied where it actually pays: a ninth failure kind cannot silently ship without a template. Proving each new gate lane falsifiable — deleting the lane and watching `--self-test` go red — caught that a gate you cannot make fail is not a gate.
+
+**What didn't:** The exit-code contract test's first shape ran each scenario twice in two fixture repositories to compare renderings. It looked like a parity assertion and was not one: comparing run-specific data across two runs made it fail whenever two commits landed in different seconds. Two reviewers found it and a 40-run loop settled it. The lesson is narrower than "beware flaky tests": **a parity assertion must render one value twice, never run one scenario twice.** The moment a test needs two executions to compare two representations, the thing it is comparing is no longer the representation.
+
+**Worth knowing:** `resultmodel.ExitCode` is now the only outcome-to-number mapping in the module — keep it that way; the second authority this REQ deleted had already drifted. `RollbackResult.Status` has a fourth wire value, the empty string, for results that never ran a Git transaction; a JSON consumer switching on it must handle `""` alongside the three constants. The success path at `git_transaction.go:161-166` detects an unrecorded change to a declared target but does not consult `state.existed`, so a file created without `RecordCreated` reports `succeeded` — harmless today because no command is registered, and a hardening note for whoever registers the first one.
+
+## Orientation
+
+The suite now has one Go command module underneath it. `do-work-cli` gives every future command a shared runtime: global `--repo-root` and `--format text|json`, one typed result that renders both forms from a single value, exit codes 0–4 decided in exactly one place, and a Git transaction layer that refuses to touch work already in flight, rolls back what it created, and reports `git revert <sha>` rather than ever rewriting history. It lives under the installed core package at `skills/do-work/tools/do-work-cli/`, reached by the on-demand build launcher beside it.
+
+No command is registered yet — that is REQ-407's job, and this REQ deliberately stops at the seam. What changed for a reader is the shape of the ground the next fourteen REQs stand on: shell utilities that each invented their own output format and exit conventions now have one contract to migrate onto.
+
+`[MAP CHANGED]` — this adds a module the suite did not have, and the canonical gate now runs it. `_dev/primes/prime-shell-commands.md` was spot-checked and its referenced paths still resolve; it stays accurate because it governs shipped shell, which this REQ did not change in character. A `prime-do-work-cli.md` will be earned once commands exist to route between — creating one now would index an empty room.
 

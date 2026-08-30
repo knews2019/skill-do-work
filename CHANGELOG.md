@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.245.0 — Shared Go Command Runtime for the Suite (2026-08-30)
+
+The suite gets one Go command module underneath it: a typed result that renders identical text and JSON, a single exit-code authority, and a Git transaction layer that refuses to touch work you already have in flight.
+
+- One `do-work-cli` module under the core package, built on demand by its launcher when the binary is missing or older than its sources.
+- Every result carries a schema version, findings, changes, skipped work and a rollback result, in text or JSON from the same value, with exit codes 0-4 decided in exactly one place.
+- Git mutations refuse a dirty target path while leaving your unrelated changes alone, roll back cleanly when they fail, and report `git revert <sha>` instead of ever rewriting history.
+- Two fixed defects: a git warning on stderr no longer reads as a dirty target, and someone else's staged file no longer turns a successful rollback into a reported risk.
+- The canonical gate now runs the module's vet, tests, and launcher probe — the probe had been passing for nobody since it was written.
+
 ## 0.244.9 — Keep Consumer Tests, Timelines, and Fetches Current (2026-08-29)
 
 Consumer checkouts keep the board's semantic citation checks without inheriting suite-sized corpus floors. Live boards now advance every time-derived Timeline field on unchanged-tree cache hits, and interrupted or branch-specific archive fallbacks preserve the caller's intent.

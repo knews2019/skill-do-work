@@ -54,3 +54,30 @@ See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
 
 ---
 *Source: UR-081 (Replace LLM bookkeeping and shipped utility logic with a Go command platform)*
+
+## Folded From REQ-406 (2026-08-30)
+
+REQ-406 built the foundation and stopped at the command seam, so these became
+testable only once a real command is registered — which is this REQ. Folded here
+per the Fold-First Rule rather than minted as separate REQs.
+
+- **The `<command>` placeholder is not a runnable argv.** `usageFinding` and the
+  `invalid_options` template both emit `do-work-cli --format text <command>`, which
+  shows the shape but cannot be pasted. Requirement 5 asks every finding for the
+  *exact* next argv. Once this REQ registers commands the runtime knows the name and
+  can thread it through.
+- **No test observes a successful `--commit` transaction, and `commit_failed` has no
+  behavioural test.** REQ-406's fixtures cover exit 0/1/3/4 but the committing success
+  path and the commit-failure kind are asserted only through their finding templates.
+- **`RollbackResult.Status` has a fourth wire value, the empty string,** for results
+  that never ran a Git transaction. A consumer switching on it must handle `""`
+  alongside the three constants. REQ-406's D-04 explains why normalising it to
+  `not_needed` is not free: every read-only command would print a rollback line
+  implying a mutation was possible.
+- **The success path does not consult `state.existed`.** At
+  `git_transaction.go:161-166` an unrecorded change to a declared target is detected,
+  but a file created without `RecordCreated` still reports `succeeded`. Harmless while
+  no command is registered; worth closing when one is.
+- **Text rendering of changes, skipped work and rollback errors has no direct
+  assertion.** The parity test covers findings; these three sections render unasserted.
+
