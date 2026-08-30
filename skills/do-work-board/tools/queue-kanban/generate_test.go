@@ -6956,7 +6956,10 @@ func rendererBracketDeclaration(t *testing.T, assetPath string, constantName str
 //	  gets pinned to the range start and dragged forward off now;
 //	All days is the recorded range exactly, so nothing on the chart is unreachable
 //	  from the button that claims to show all of it;
-//	the arrows move one screenful and are inverses of one another.
+//	timelinePannedWindow moves one screenful and is its own inverse. This is the
+//	  CONTINUOUS pan the keyboard and the drag rest on, mid-range where its clamp
+//	  cannot fire. What the toolbar's arrows do with it near a bound — where the
+//	  clamp does fire — is TestJavaScriptBehaviorTimelineWindowStepArrowsAreInversesAtTheBounds.
 //
 // It drives the shipped functions rather than reimplementing them (REQ-305), and
 // reads the renderer's own constants rather than restating them (REQ-322).
@@ -7097,7 +7100,8 @@ process.stdout.write(JSON.stringify({
 			utcOf(trailingResult.BoundStartMs), utcOf(trailingResult.BoundEndMs))
 	}
 
-	// (4) The arrows move one screenful, and forward-then-back is the reader's undo.
+	// (4) A pan moves one screenful, and forward-then-back is the reader's undo —
+	// checked here away from the bounds, where the pan's clamp cannot fire.
 	if trailingResult.SteppedForwardStartMs-trailingResult.ReadersStartMs != trailingResult.ReadersSpanMs {
 		t.Errorf("one step forward moved the window %.0f ms, want its own %.0f ms span",
 			trailingResult.SteppedForwardStartMs-trailingResult.ReadersStartMs, trailingResult.ReadersSpanMs)
@@ -7112,6 +7116,433 @@ process.stdout.write(JSON.stringify({
 			"spanning %.0f ms", utcOf(trailingResult.SteppedBackStartMs),
 			trailingResult.SteppedBackEndMs-trailingResult.SteppedBackStartMs,
 			utcOf(trailingResult.ReadersStartMs), trailingResult.ReadersSpanMs)
+	}
+}
+
+// The five trailing-window chips have to keep working after the queue DRAINS,
+// which is the state a queue-draining tool spends its life heading toward.
+//
+// timelineRange in timeline.go stretches the payload's range end to now only
+// while some row still has WaitOpen or WorkOpen. Finish everything and the bounds
+// end at the last completion instant, now falls OUTSIDE them, and a window
+// computed as [now - N days, now] lands entirely past the bound end, clamps to
+// zero width and settles onto the one-hour zoom floor. Measured on the merged
+// tree at 59105df: three days idle collapsed "Last day"; ten days idle put "Last
+// day" and "Last 7 days" on the SAME one-hour window, so pressing the second lit
+// the first; a hundred days idle collapsed four of the five.
+//
+// Four properties, and the sweep over board ages is what makes them properties
+// rather than four fixed cases — a board is idle for however long it is idle, and
+// a fix keyed on the ages that happened to get measured is not a fix:
+//
+//	no chip settles onto the zoom floor while the board has a range to show;
+//	the chips stay pairwise DISTINCT, which is what makes the chip the reader
+//	  pressed the one that lights — renderTrailingWindowControls lights the first
+//	  chip whose candidate window matches the window on screen;
+//	a chip's window is the last N days OF THE RECORDED RANGE: it ends at now while
+//	  now is inside the bounds and at the range end once now has left them;
+//	the window carries whether it got the whole span the chip asked for, so the
+//	  "part of" readout cannot become a second opinion about the clamp.
+//
+// The control set is read out of the SHIPPED PAGE rather than restated here, so a
+// chip added to template.html is swept with the rest (REQ-322: read the value the
+// decision turns on, never restate it beside the test).
+func TestJavaScriptBehaviorTimelineTrailingWindowsSurviveADrainedQueue(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	chipValuePattern := regexp.MustCompile(`data-timeline-period="([^"]*)"`)
+	var chipValues []string
+	for _, chipMatch := range chipValuePattern.FindAllStringSubmatch(indexHtml, -1) {
+		chipValues = append(chipValues, chipMatch[1])
+	}
+	if len(chipValues) < 2 {
+		t.Fatalf("the generated page declares %d trailing-window chips (%v); a sweep for distinct "+
+			"windows needs the shipped control set to have something to be distinct about",
+			len(chipValues), chipValues)
+	}
+	chipValuesJson, marshalError := json.Marshal(chipValues)
+	if marshalError != nil {
+		t.Fatalf("marshal the shipped chip values: %v", marshalError)
+	}
+
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineZoomedWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineTrailingWindow(") + "\n" +
+		"var chipValues = " + string(chipValuesJson) + ";" + `
+// A board whose RECORDED RANGE is a fixed 95 days while NOW walks away from it,
+// which is exactly what happens as a queue drains: timelineRange stops following
+// now the moment the last row closes, and nothing moves the range end after that.
+var boundStartMs = Date.UTC(2026, 3, 7);
+var boundEndMs = boundStartMs + 95 * TIMELINE_DAY_MS;
+
+var collapsedToFloor = [];
+var sharedWindows = [];
+var wrongWindow = [];
+var wrongClippedFlag = [];
+var clippedFlagTrueCount = 0;
+var clippedFlagFalseCount = 0;
+var sampleCount = 0;
+var measuredTable = [];
+var measuredAges = { "3": true, "10": true, "40": true, "100": true };
+
+function isoOf(epochMs) { return new Date(epochMs).toISOString().slice(0, 16) + "Z"; }
+function hoursOf(spanMs) { return (spanMs / 3600000).toFixed(2) + "h"; }
+function noteAtMost(list, entry) { if (list.length < 8) { list.push(entry); } }
+
+// Idle days: negative is a live board, where the payload's range end sits past
+// now because a forecast and the cosmetic padding are drawn to the right of it;
+// zero is the instant the queue drains; positive is a board nobody has touched
+// since. The whole span is swept because any of it is a board somebody has.
+for (var idleDays = -20; idleDays <= 120; idleDays++) {
+  var nowMs = boundEndMs + idleDays * TIMELINE_DAY_MS;
+  var anchorMs = Math.min(Math.max(nowMs, boundStartMs), boundEndMs);
+  var windowsThisSample = [];
+  sampleCount++;
+  for (var chipIndex = 0; chipIndex < chipValues.length; chipIndex++) {
+    var chipValue = chipValues[chipIndex];
+    var chipWindow = timelineTrailingWindow(chipValue, nowMs, boundStartMs, boundEndMs);
+    var chipSpanMs = chipWindow.windowEndMs - chipWindow.windowStartMs;
+    var askedDayCount = Number(chipValue);
+    var asksForATrailingSpan = isFinite(askedDayCount) && askedDayCount > 0;
+    var askedStartMs = anchorMs - askedDayCount * TIMELINE_DAY_MS;
+    var wantStartMs = asksForATrailingSpan ? Math.max(askedStartMs, boundStartMs) : boundStartMs;
+    var wantEndMs = asksForATrailingSpan ? anchorMs : boundEndMs;
+    var wantClipped = asksForATrailingSpan && askedStartMs < boundStartMs;
+    if (wantClipped) { clippedFlagTrueCount++; } else { clippedFlagFalseCount++; }
+
+    if (chipSpanMs <= TIMELINE_MIN_SPAN_MS) {
+      noteAtMost(collapsedToFloor, idleDays + "d idle: chip " + chipValue + " settled on a " +
+        hoursOf(chipSpanMs) + " window at " + isoOf(chipWindow.windowStartMs));
+    }
+    for (var seenIndex = 0; seenIndex < windowsThisSample.length; seenIndex++) {
+      var seenWindow = windowsThisSample[seenIndex];
+      if (seenWindow.startMs === chipWindow.windowStartMs &&
+        seenWindow.endMs === chipWindow.windowEndMs) {
+        noteAtMost(sharedWindows, idleDays + "d idle: chips " + seenWindow.value + " and " +
+          chipValue + " share " + isoOf(chipWindow.windowStartMs) + " -> " +
+          isoOf(chipWindow.windowEndMs));
+      }
+    }
+    if (chipWindow.windowStartMs !== wantStartMs || chipWindow.windowEndMs !== wantEndMs) {
+      noteAtMost(wrongWindow, idleDays + "d idle: chip " + chipValue + " gives " +
+        isoOf(chipWindow.windowStartMs) + " -> " + isoOf(chipWindow.windowEndMs) + ", want " +
+        isoOf(wantStartMs) + " -> " + isoOf(wantEndMs));
+    }
+    if (chipWindow.isClippedByBounds !== wantClipped) {
+      noteAtMost(wrongClippedFlag, idleDays + "d idle: chip " + chipValue +
+        " reports isClippedByBounds=" + chipWindow.isClippedByBounds + ", want " + wantClipped);
+    }
+    windowsThisSample.push({
+      value: chipValue,
+      startMs: chipWindow.windowStartMs,
+      endMs: chipWindow.windowEndMs
+    });
+    if (measuredAges[String(idleDays)]) {
+      measuredTable.push(idleDays + "d idle  chip " + chipValue + "  " + hoursOf(chipSpanMs) +
+        "  " + isoOf(chipWindow.windowStartMs) + " -> " + isoOf(chipWindow.windowEndMs));
+    }
+  }
+}
+
+process.stdout.write(JSON.stringify({
+  sampleCount: sampleCount,
+  chipCount: chipValues.length,
+  collapsedToFloor: collapsedToFloor,
+  sharedWindows: sharedWindows,
+  wrongWindow: wrongWindow,
+  wrongClippedFlag: wrongClippedFlag,
+  clippedFlagTrueCount: clippedFlagTrueCount,
+  clippedFlagFalseCount: clippedFlagFalseCount,
+  measuredTable: measuredTable
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline trailing windows on a drained queue", javascriptProbe)
+	var drainedResult struct {
+		SampleCount           int      `json:"sampleCount"`
+		ChipCount             int      `json:"chipCount"`
+		CollapsedToFloor      []string `json:"collapsedToFloor"`
+		SharedWindows         []string `json:"sharedWindows"`
+		WrongWindow           []string `json:"wrongWindow"`
+		WrongClippedFlag      []string `json:"wrongClippedFlag"`
+		ClippedFlagTrueCount  int      `json:"clippedFlagTrueCount"`
+		ClippedFlagFalseCount int      `json:"clippedFlagFalseCount"`
+		MeasuredTable         []string `json:"measuredTable"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &drainedResult); decodeError != nil {
+		t.Fatalf("decode the drained-queue trailing-window sweep: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// The sweep has to have swept. Without this the four assertions below all pass
+	// against an empty loop, which is the one mutation none of them can see.
+	const sweptBoardAgeCount = 141
+	if drainedResult.SampleCount != sweptBoardAgeCount || drainedResult.ChipCount != len(chipValues) {
+		t.Fatalf("the sweep visited %d board ages across %d chips, want %d ages across the %d chips "+
+			"the page declares", drainedResult.SampleCount, drainedResult.ChipCount,
+			sweptBoardAgeCount, len(chipValues))
+	}
+	// And both verdicts of the clipped flag have to occur in it, or asserting the
+	// flag is asserting one constant.
+	if drainedResult.ClippedFlagTrueCount == 0 || drainedResult.ClippedFlagFalseCount == 0 {
+		t.Fatalf("the sweep expects the clipped verdict to be true %d times and false %d times; "+
+			"a sweep that never reaches one of them cannot tell the flag from a constant",
+			drainedResult.ClippedFlagTrueCount, drainedResult.ClippedFlagFalseCount)
+	}
+
+	// (1) THE REPORTED SYMPTOM. A chip on the zoom floor is a dead window: the
+	// board has 95 days to show and the reader asked for a day of them.
+	if len(drainedResult.CollapsedToFloor) > 0 {
+		t.Errorf("trailing-window chips collapsed onto the one-hour zoom floor on a board with 95 "+
+			"days of range:\n\t%s", strings.Join(drainedResult.CollapsedToFloor, "\n\t"))
+	}
+
+	// (2) AND ITS CONSEQUENCE. Two chips on one window means the lit chip is
+	// whichever comes first in the DOM, not the one the reader pressed.
+	if len(drainedResult.SharedWindows) > 0 {
+		t.Errorf("two trailing-window chips produced the same window, so pressing the second lights "+
+			"the first:\n\t%s", strings.Join(drainedResult.SharedWindows, "\n\t"))
+	}
+
+	// (3) The window each chip is FOR: the last N days of the recorded range, cut
+	// short at the range start when the board is younger than the span asked for.
+	if len(drainedResult.WrongWindow) > 0 {
+		t.Errorf("trailing-window chips landed somewhere other than the last N days of the recorded "+
+			"range:\n\t%s", strings.Join(drainedResult.WrongWindow, "\n\t"))
+	}
+
+	// (4) And the window says whether it got what was asked for, so the toolbar's
+	// "part of" readout reads a verdict rather than recomputing the clamp.
+	if len(drainedResult.WrongClippedFlag) > 0 {
+		t.Errorf("the window's own clipped verdict disagrees with whether the bounds cut it "+
+			"short:\n\t%s", strings.Join(drainedResult.WrongClippedFlag, "\n\t"))
+	}
+
+	if t.Failed() {
+		t.Logf("the four board ages the review measured:\n\t%s",
+			strings.Join(drainedResult.MeasuredTable, "\n\t"))
+	}
+}
+
+// The toolbar's ‹ and › are the reader's undo for each other, and near the right
+// bound they stopped being it: timelinePannedWindow CLAMPS, so a forward step
+// with less than a screenful of room ahead moved a partial screenful while the
+// back step that followed moved a full one. Measured on the merged tree at
+// 59105df with a 7-day window on a 90-day range: -120.00h of drift a partial
+// screenful from the right bound, -168.00h flush against it, 0.00h mid-range.
+//
+// This is a REGRESSION with a history: the calendar-period test REQ-390 deleted
+// pinned the inverse property, and its replacement checks only the mid-range case
+// — the one case where the clamp cannot fire. So the sweep here walks the window
+// across the whole range, and the property is stated as the pair of rules that
+// makes a discrete step coherent rather than as one arithmetic identity:
+//
+//	a step MOVES A WHOLE SCREENFUL or it does not move at all, never a partial one;
+//	wherever it moves, the opposite step returns to exactly where it started;
+//	and it does move wherever there is a screenful of room, which is the half that
+//	  keeps "refuse the partial step" from being satisfied by refusing everything.
+//
+// It follows the ARROWS' OWN CALL SITE rather than naming a window function: the
+// probe reads which function steppedWindowFor hands the press to and drives that
+// one, so a step function swapped in without this property comes back red instead
+// of leaving the test measuring something the arrows no longer call (REQ-305).
+func TestJavaScriptBehaviorTimelineWindowStepArrowsAreInversesAtTheBounds(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	arrowStepCallSite := sliceBalancedBlockAfter(t, indexHtml, "function steppedWindowFor(")
+	arrowStepCallPattern := regexp.MustCompile(`return\s+(timeline[A-Za-z0-9]*)\(`)
+	arrowStepCallMatch := arrowStepCallPattern.FindStringSubmatch(arrowStepCallSite)
+	if arrowStepCallMatch == nil {
+		t.Fatalf("steppedWindowFor does not return a timeline* window function, so this probe has no "+
+			"call site to follow:\n%s", arrowStepCallSite)
+	}
+	arrowStepFunctionName := arrowStepCallMatch[1]
+
+	// timelinePannedWindow is the clamp every window-moving path shares, so it is
+	// in the probe whether or not the arrows call it directly.
+	shippedFunctions := sliceBalancedBlockAfter(t, indexHtml, "function timelinePannedWindow(")
+	if arrowStepFunctionName != "timelinePannedWindow" {
+		shippedFunctions += "\n" +
+			sliceBalancedBlockAfter(t, indexHtml, "function "+arrowStepFunctionName+"(")
+	}
+
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_DAY_MS") + shippedFunctions + "\n" +
+		"var arrowStep = " + arrowStepFunctionName + ";" + `
+// A 90-day board and the reader on a 7-day window: wide enough that a screenful
+// is nowhere near the whole range, narrow enough that thirteen of them fit.
+var boundStartMs = Date.UTC(2026, 3, 7);
+var boundEndMs = boundStartMs + 90 * TIMELINE_DAY_MS;
+var windowSpanMs = 7 * TIMELINE_DAY_MS;
+
+function hoursOf(spanMs) { return (spanMs / 3600000).toFixed(2) + "h"; }
+function noteAtMost(list, entry) { if (list.length < 8) { list.push(entry); } }
+
+// One press, then the opposite press from wherever it landed.
+function stepAndStepBack(windowStartMs, stepCount) {
+  var windowEndMs = windowStartMs + windowSpanMs;
+  var stepped = arrowStep(windowStartMs, windowEndMs, stepCount, boundStartMs, boundEndMs);
+  var back = arrowStep(stepped.windowStartMs, stepped.windowEndMs, -stepCount, boundStartMs, boundEndMs);
+  return {
+    movedMs: stepped.windowStartMs - windowStartMs,
+    steppedStartMs: stepped.windowStartMs,
+    steppedEndMs: stepped.windowEndMs,
+    steppedSpanMs: stepped.windowEndMs - stepped.windowStartMs,
+    driftMs: back.windowStartMs - windowStartMs,
+    backSpanMs: back.windowEndMs - back.windowStartMs
+  };
+}
+
+var partialSteps = [];
+var refusedWithRoom = [];
+var driftedRoundTrips = [];
+var resizedWindows = [];
+var escapedTheBounds = [];
+var wholeScreenfulStepCount = 0;
+var refusedStepCount = 0;
+
+function checkOnePress(label, windowStartMs, stepCount) {
+  var roomAheadMs = stepCount > 0
+    ? boundEndMs - (windowStartMs + windowSpanMs)
+    : windowStartMs - boundStartMs;
+  var press = stepAndStepBack(windowStartMs, stepCount);
+  var wholeScreenfulMs = windowSpanMs * stepCount;
+  var moved = press.movedMs !== 0;
+  if (moved && press.movedMs !== wholeScreenfulMs) {
+    noteAtMost(partialSteps, label + " (step " + stepCount + ", " + hoursOf(roomAheadMs) +
+      " of room): moved " + hoursOf(press.movedMs) + " of the window's own " +
+      hoursOf(windowSpanMs));
+  }
+  if (!moved && roomAheadMs >= windowSpanMs) {
+    noteAtMost(refusedWithRoom, label + " (step " + stepCount + "): did not move with " +
+      hoursOf(roomAheadMs) + " of room ahead for a " + hoursOf(windowSpanMs) + " window");
+  }
+  if (moved && press.driftMs !== 0) {
+    noteAtMost(driftedRoundTrips, label + " (step " + stepCount + "): press then unpress drifted " +
+      hoursOf(press.driftMs));
+  }
+  if (press.steppedSpanMs !== windowSpanMs || press.backSpanMs !== windowSpanMs) {
+    noteAtMost(resizedWindows, label + " (step " + stepCount + "): the window became " +
+      hoursOf(press.steppedSpanMs) + " and then " + hoursOf(press.backSpanMs) + ", from " +
+      hoursOf(windowSpanMs));
+  }
+  // The cheapest way to make a step its own inverse everywhere is to stop clamping
+  // it, which walks the reader off the end of the board. Refusing the step is the
+  // remedy; overshooting the bounds is not.
+  if (press.steppedStartMs < boundStartMs || press.steppedEndMs > boundEndMs) {
+    noteAtMost(escapedTheBounds, label + " (step " + stepCount + "): landed outside the board's " +
+      "own range, " + hoursOf(boundStartMs - press.steppedStartMs) + " before its start and " +
+      hoursOf(press.steppedEndMs - boundEndMs) + " past its end");
+  }
+  if (moved) { wholeScreenfulStepCount++; } else { refusedStepCount++; }
+  return press;
+}
+
+// The five positions the review measured, kept by name so a failure says which
+// one, plus their mirrors at the left bound.
+var namedPositions = [
+  { label: "mid-range", windowStartMs: boundStartMs + 40 * TIMELINE_DAY_MS },
+  { label: "one span from the right bound", windowStartMs: boundEndMs - 2 * windowSpanMs },
+  { label: "a partial screenful from the right bound", windowStartMs: boundEndMs - windowSpanMs - 2 * TIMELINE_DAY_MS },
+  { label: "flush against the right bound", windowStartMs: boundEndMs - windowSpanMs },
+  { label: "one span from the left bound", windowStartMs: boundStartMs + windowSpanMs },
+  { label: "a partial screenful from the left bound", windowStartMs: boundStartMs + 2 * TIMELINE_DAY_MS },
+  { label: "flush against the left bound", windowStartMs: boundStartMs }
+];
+var namedTable = [];
+namedPositions.forEach(function (position) {
+  [1, -1].forEach(function (stepCount) {
+    var press = checkOnePress(position.label, position.windowStartMs, stepCount);
+    namedTable.push(position.label + "  step " + (stepCount > 0 ? "+1" : "-1") +
+      "  moved=" + hoursOf(press.movedMs) + "  drift=" + hoursOf(press.driftMs));
+  });
+});
+
+// And every window position on the board, half a day apart, in both directions.
+var sweptPositionCount = 0;
+for (var offsetDays = 0; offsetDays <= 2 * (90 - 7); offsetDays++) {
+  var sweptStartMs = boundStartMs + offsetDays * TIMELINE_DAY_MS / 2;
+  sweptPositionCount++;
+  checkOnePress("window opening at day " + (offsetDays / 2), sweptStartMs, 1);
+  checkOnePress("window opening at day " + (offsetDays / 2), sweptStartMs, -1);
+}
+
+process.stdout.write(JSON.stringify({
+  arrowStepFunctionName: ` + "\"" + arrowStepFunctionName + "\"" + `,
+  sweptPositionCount: sweptPositionCount,
+  wholeScreenfulStepCount: wholeScreenfulStepCount,
+  refusedStepCount: refusedStepCount,
+  partialSteps: partialSteps,
+  refusedWithRoom: refusedWithRoom,
+  driftedRoundTrips: driftedRoundTrips,
+  resizedWindows: resizedWindows,
+  escapedTheBounds: escapedTheBounds,
+  namedTable: namedTable
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline window step arrows", javascriptProbe)
+	var stepResult struct {
+		ArrowStepFunctionName   string   `json:"arrowStepFunctionName"`
+		SweptPositionCount      int      `json:"sweptPositionCount"`
+		WholeScreenfulStepCount int      `json:"wholeScreenfulStepCount"`
+		RefusedStepCount        int      `json:"refusedStepCount"`
+		PartialSteps            []string `json:"partialSteps"`
+		RefusedWithRoom         []string `json:"refusedWithRoom"`
+		DriftedRoundTrips       []string `json:"driftedRoundTrips"`
+		ResizedWindows          []string `json:"resizedWindows"`
+		EscapedTheBounds        []string `json:"escapedTheBounds"`
+		NamedTable              []string `json:"namedTable"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &stepResult); decodeError != nil {
+		t.Fatalf("decode the window-step sweep: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// The sweep has to have swept, and both outcomes have to occur in it: a run
+	// where nothing ever moves satisfies "no partial steps" and "no drift" for free.
+	const sweptWindowPositionCount = 167
+	if stepResult.SweptPositionCount != sweptWindowPositionCount {
+		t.Fatalf("the sweep visited %d window positions, want %d", stepResult.SweptPositionCount,
+			sweptWindowPositionCount)
+	}
+	if stepResult.WholeScreenfulStepCount == 0 || stepResult.RefusedStepCount == 0 {
+		t.Fatalf("%s moved the window on %d presses and refused %d; a sweep where one of those is "+
+			"never reached cannot tell a step apart from a no-op", stepResult.ArrowStepFunctionName,
+			stepResult.WholeScreenfulStepCount, stepResult.RefusedStepCount)
+	}
+
+	// (1) A step is a WHOLE screenful. A partial one is the defect itself: it is
+	// what the back press then fails to undo.
+	if len(stepResult.PartialSteps) > 0 {
+		t.Errorf("%s moved the window by part of a screenful:\n\t%s", stepResult.ArrowStepFunctionName,
+			strings.Join(stepResult.PartialSteps, "\n\t"))
+	}
+
+	// (2) THE PROPERTY THE DELETED TEST HELD. Press and unpress is the reader's undo.
+	if len(stepResult.DriftedRoundTrips) > 0 {
+		t.Errorf("%s is not its own inverse:\n\t%s", stepResult.ArrowStepFunctionName,
+			strings.Join(stepResult.DriftedRoundTrips, "\n\t"))
+	}
+
+	// (3) The half that keeps (1) and (2) from being satisfied by refusing every
+	// press: wherever a screenful of room exists, the arrow uses it.
+	if len(stepResult.RefusedWithRoom) > 0 {
+		t.Errorf("%s refused a step that had a whole screenful of room:\n\t%s",
+			stepResult.ArrowStepFunctionName, strings.Join(stepResult.RefusedWithRoom, "\n\t"))
+	}
+
+	// (4) And a step moves the window rather than resizing it, either way.
+	if len(stepResult.ResizedWindows) > 0 {
+		t.Errorf("%s resized the window:\n\t%s", stepResult.ArrowStepFunctionName,
+			strings.Join(stepResult.ResizedWindows, "\n\t"))
+	}
+
+	// (5) And it stays on the board. Not clamping at all would make every step an
+	// inverse of itself and put the reader past the end of the data to do it.
+	if len(stepResult.EscapedTheBounds) > 0 {
+		t.Errorf("%s stepped outside the board's range:\n\t%s", stepResult.ArrowStepFunctionName,
+			strings.Join(stepResult.EscapedTheBounds, "\n\t"))
+	}
+
+	if t.Failed() {
+		t.Logf("the arrows are wired to %s; the seven named positions measured:\n\t%s",
+			stepResult.ArrowStepFunctionName, strings.Join(stepResult.NamedTable, "\n\t"))
 	}
 }
 

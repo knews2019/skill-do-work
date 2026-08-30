@@ -298,6 +298,34 @@
     return { windowStartMs: nextStartMs, windowEndMs: nextStartMs + windowSpanMs };
   }
 
+  // The toolbar's ‹ and › are a DISCRETE step of one whole screenful, and a step
+  // that cannot be taken in full is not taken at all.
+  //
+  // timelinePannedWindow clamps at the bounds, which is right for a continuous
+  // pan and wrong for a step: with less than a screenful of room ahead, › moved a
+  // PARTIAL screenful while the ‹ that followed moved a full one, so the pair
+  // stopped being the reader's undo. Measured with a 7-day window on a 90-day
+  // range: 120 hours of drift a partial screenful from the right bound, a whole
+  // screenful flush against it, none mid-range. Refusing the partial step is what
+  // makes the two inverses, and renderControlAvailability already greys an arrow
+  // whose step would not move the window, so the refusal is visible before it is
+  // pressed rather than a dead button.
+  //
+  // Mirroring the clamp instead — a back step that moves only as far as the
+  // forward one did — cannot be written here: every window within a screenful of
+  // the bound steps to the SAME bound-flush window, so no pure function of that
+  // window knows which one to return to. The last partial screenful of range
+  // stays reachable by the drag, by the keyboard's fractional pan, and by Fit
+  // all, All days and the date fields.
+  function timelineSteppedScreenfulWindow(windowStartMs, windowEndMs, stepCount, boundStartMs, boundEndMs) {
+    var stepped = timelinePannedWindow(windowStartMs, windowEndMs, stepCount, boundStartMs, boundEndMs);
+    var wholeScreenfulStartMs = windowStartMs + (windowEndMs - windowStartMs) * stepCount;
+    if (stepped.windowStartMs !== wholeScreenfulStartMs) {
+      return { windowStartMs: windowStartMs, windowEndMs: windowEndMs };
+    }
+    return stepped;
+  }
+
   // The whole WINDOW-MOVING keyboard path, as one pure decision: which keys move the
   // window, and where to. It routes zoom through timelineZoomedWindow — the function the
   // wheel and the zoom buttons call — so the keyboard cannot acquire its own floor,
@@ -339,31 +367,56 @@
     return Date.UTC(instant.getUTCFullYear(), instant.getUTCMonth(), instant.getUTCDate());
   }
 
-  // One trailing window, ending at NOW and reaching back the span the chip names.
-  // "all" — and anything else that is not a positive number of days — means the
-  // whole recorded range, which is the window the view opens on.
+  // One trailing window, ending at the most recent instant the board can show and
+  // reaching back the span the chip names. "all" — and anything else that is not a
+  // positive number of days — means the whole recorded range, which is the window
+  // the view opens on.
+  //
+  // THAT INSTANT IS NOW ONLY WHILE NOW IS INSIDE THE BOUNDS, which is why the span
+  // hangs off an anchor rather than off nowMs directly. timelineRange (timeline.go)
+  // stretches the payload's range end to now only while some row still has an open
+  // wait or an open work segment; drain the queue and the range ends at the last
+  // completion instant with now days or months past it. Anchored on now there, a
+  // chip's whole span sits beyond the range end, clamps to zero width and settles
+  // onto the one-hour zoom floor — ten days idle put Last day and Last 7 days on
+  // the SAME dead window, so pressing one lit the other, and a hundred days did it
+  // to four of the five. Anchored on now CLAMPED INTO THE BOUNDS, each chip reads
+  // as the last N days OF THE RECORDED RANGE: distinct per chip, non-degenerate,
+  // and the only reading with any data in it.
+  //
+  // The clipped verdict ships WITH the window because it is the same arithmetic:
+  // the toolbar's "part of last 90 days" readout reads this flag rather than
+  // recomputing the clamp, so it cannot become a second opinion about it.
   //
   // CLAMP EACH ENDPOINT BEFORE SETTLING, because a trailing window is a POSITION
   // and timelineZoomedWindow preserves a WIDTH. Handed an out-of-range candidate
   // it pins the offending edge and drags the other one along to keep the span: on
   // a three-day archive, Last 90 days would pin the start to the range start and
-  // then push the END ninety days forward, past the forecast and off now — so the
-  // one thing every chip on this toolbar promises would be false on exactly the
-  // boards most likely to press it. Clamped first, an over-long window is CUT
-  // SHORT at the range start and still ends at now; the state readout then says
-  // "part of" rather than claiming a span the board does not have. This is the
-  // same distinction timelineTypedWindow documents at its own clamp.
+  // then push the END ninety days forward, past the forecast and off the anchor —
+  // so the one thing every chip on this toolbar promises would be false on exactly
+  // the boards most likely to press it. Clamped first, an over-long window is CUT
+  // SHORT at the range start and still ends at the anchor; the state readout then
+  // says "part of" rather than claiming a span the board does not have. This is
+  // the same distinction timelineTypedWindow documents at its own clamp.
   function timelineTrailingWindow(trailingWindowValue, nowMs, boundStartMs, boundEndMs) {
     var trailingDayCount = Number(trailingWindowValue);
+    var anchorEndMs = Math.min(Math.max(nowMs, boundStartMs), boundEndMs);
     var candidateStartMs = boundStartMs;
     var candidateEndMs = boundEndMs;
+    var askedSpanMs = 0;
     if (isFinite(trailingDayCount) && trailingDayCount > 0) {
-      candidateStartMs = nowMs - trailingDayCount * TIMELINE_DAY_MS;
-      candidateEndMs = nowMs;
+      askedSpanMs = trailingDayCount * TIMELINE_DAY_MS;
+      candidateStartMs = anchorEndMs - askedSpanMs;
+      candidateEndMs = anchorEndMs;
     }
     candidateStartMs = Math.min(Math.max(candidateStartMs, boundStartMs), boundEndMs);
     candidateEndMs = Math.max(Math.min(candidateEndMs, boundEndMs), boundStartMs);
-    return timelineZoomedWindow(candidateStartMs, candidateEndMs, 1, 0, boundStartMs, boundEndMs);
+    var settled = timelineZoomedWindow(candidateStartMs, candidateEndMs, 1, 0, boundStartMs, boundEndMs);
+    return {
+      windowStartMs: settled.windowStartMs,
+      windowEndMs: settled.windowEndMs,
+      isClippedByBounds: askedSpanMs > 0 && settled.windowStartMs > anchorEndMs - askedSpanMs
+    };
   }
 
   // ---- typed dates ----------------------------------------------------------
@@ -2423,10 +2476,10 @@
     // The state text carries the one thing the lit chip cannot say. On a board
     // younger than the span asked for — every board in its first three months —
     // Last 90 days gives whatever there is, and lighting the chip unqualified
-    // would claim ninety days the board does not have. "part of" is decided by
-    // whether the settled window COVERS what the chip asked for, not by comparing
-    // spans: the settle applies a one-hour floor and a bound-span ceiling, so a
-    // span comparison misreports both a very young board and the whole range.
+    // would claim ninety days the board does not have. "part of" is the window's
+    // OWN verdict, read off isClippedByBounds rather than recomputed here: the
+    // clamp that cuts a chip short is the same clamp that decides whether it was
+    // cut, and asking twice is how the two answers start to disagree.
     //
     // An UNCLIPPED match wins over a clipped one when several chips land on the
     // same window, which is the ordinary case on a young board: All days and Last
@@ -2442,13 +2495,10 @@
           candidate.windowEndMs !== timelineViewState.windowEndMs) {
           return;
         }
-        var askedDayCount = Number(trailingWindowValue);
         var match = {
           value: trailingWindowValue,
           label: (chip.textContent || "").trim().toLowerCase(),
-          isClipped: isFinite(askedDayCount) && askedDayCount > 0 &&
-            (candidate.windowStartMs > nowMs - askedDayCount * TIMELINE_DAY_MS ||
-              candidate.windowEndMs < nowMs)
+          isClipped: candidate.isClippedByBounds
         };
         if (!firstMatchingChip) {
           firstMatchingChip = match;
@@ -3163,9 +3213,11 @@
 
     // One screenful, in the direction pressed. Whatever the window is — a chip's
     // trailing span, a free zoom, a drag, a typed pair — the arrows move it by its
-    // own width and never resize it.
+    // own width, never resize it, and stand still rather than move part of one
+    // (see timelineSteppedScreenfulWindow for why a partial step cost the pair its
+    // inverse). renderControlAvailability greys the arrow that would stand still.
     function steppedWindowFor(stepCount) {
-      return timelinePannedWindow(
+      return timelineSteppedScreenfulWindow(
         timelineViewState.windowStartMs,
         timelineViewState.windowEndMs,
         stepCount,
