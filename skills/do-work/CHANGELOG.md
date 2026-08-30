@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.247.0 — Go-Powered Install and Update (2026-08-30)
+
+Installing and updating do-work now runs on a single Go command instead of a mix of shell, embedded Python and jq. The public commands and the bootstrap snippet are unchanged, but installs no longer depend on which JSON tool happens to be on your machine — settings are always reconciled, and your existing settings.json keeps its exact key order.
+
+- Bootstrap, install, update, managed-section replacement, settings reconciliation, suite validation and archive fetching all run through `do-work-cli`; the installer script drops from 621 lines to 96.
+- The "no JSON tool available" state is gone, along with the manual-step instruction it used to print.
+- **Installing and updating now require Go 1.26.1 or newer.** Whether that floor is the right one is being confirmed — the module itself builds and tests clean much lower.
+- Fixed before release: a settings.json carrying a byte-order mark stopped installing partway through this work, and now installs again as it always did.
+
 ## 0.246.0 — Timeline Trailing Windows (2026-08-30)
 
 The board's Timeline drops Day, Week and Month for the windows people actually ask for: last day, last 7 days, last 30 days, last 90 days, and all days. Same vocabulary the filter dropdown already used, and about 300 fewer lines of calendar arithmetic behind it.

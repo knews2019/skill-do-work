@@ -1,7 +1,7 @@
 ---
 id: REQ-407
 title: 'Migrate bootstrap, install, update, reconciliation, validation, and fetching into Go'
-status: claimed
+status: completed
 created_at: 2026-08-29T20:28:26Z
 route: C
 write_set: [skills/do-work/tools/do-work-cli/internal/managedsection/managed_section.go, skills/do-work/tools/do-work-cli/internal/managedsection/managed_section_test.go, skills/do-work/tools/do-work-cli/internal/managedsection/just_definitions.go, skills/do-work/tools/do-work-cli/internal/managedsection/just_definitions_test.go, skills/do-work/tools/do-work-cli/internal/settingshooks/settings_hooks.go, skills/do-work/tools/do-work-cli/internal/settingshooks/settings_hooks_test.go, skills/do-work/tools/do-work-cli/internal/suitemanifest/suite_manifest.go, skills/do-work/tools/do-work-cli/internal/suitemanifest/suite_manifest_test.go, skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch.go, skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch_test.go, skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction.go, skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction_test.go, skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go, skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction_test.go, skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands.go, skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go, skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go, skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime.go, skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime_test.go, skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go, skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go, skills/do-work/tools/do-work-cli/internal/gittransaction/transaction_findings.go, skills/do-work/tools/do-work-cli/internal/gittransaction/transaction_findings_test.go, skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go, tools/install-do-work-suite.sh, skills/do-work/tools/install-do-work-suite.sh, tools/replace-text-section.sh, skills/do-work/tools/replace-text-section.sh, tools/validate-suite-manifest.sh, skills/do-work/tools/validate-suite-manifest.sh, tools/fetch-upstream-archive.sh, skills/do-work/tools/fetch-upstream-archive.sh, skills/do-work/tools/do-work-update.sh, _dev/tests/install-suite-behavior.sh, _dev/tests/update-script-behavior.sh, _dev/tests/contract-regressions.sh, README.md, skills/do-work/docs/prescribed-shell-primitives.md, skills/do-work/tools/prime-do-work-update.md]
@@ -19,6 +19,8 @@ estimate:
     - cross-route regression gates
     - full-suite verification
 claimed_at: 2026-08-30T07:22:27Z
+completed_at: 2026-08-30T17:36:06Z
+commit:
 user_request: UR-081
 domain: general
 prime_files: [_dev/primes/prime-shell-commands.md, skills/do-work/tools/prime-do-work-update.md]
@@ -621,4 +623,55 @@ written file first bytes: 7b 0a 20 20   (no ef bb bf)
 *(One earlier orchestrator run appeared to contradict this. It was an instrumentation error — a
 `${PIPESTATUS[0]}` reading past an intervening `&&`, against a fixture the installer never actually ran
 on. The re-run above separates the streams and chains nothing.)*
+
+## Review
+
+**Acceptance: Partial.** The REQ's GREEN condition holds: installer and update fixtures succeed with `python3` and `jq` absent from PATH, existing managed Justfiles and custom settings hooks are preserved, and the canonical gate exits 0 on the merged tree. One regression this REQ introduced was found and fixed inside it; one narrow regression remains and is carried by a follow-up.
+
+**Method.** Five reviewers, one per dimension: byte-and-filesystem fidelity (asked to recover the pre-REQ Python and jq from git history and re-derive the byte-identical claim against adversarial inputs of its own devising, not to trust the builder's 28 cases), install safety, the shell launchers and the public shape, elimination-and-scope, and consumer impact. Every finding then went to three skeptics prompted to refute it, each asked to state the severity its evidence actually supports.
+
+**The first verification pass was cut short by a session usage limit that killed 89 of its 98 agents.** The eleven Important findings were re-adjudicated to completion afterwards, and two were settled directly by the orchestrator. Minor and Nit findings go in this report only.
+
+**Dimension verdicts:** all five partial.
+
+**Findings that stand.**
+
+- **Important, and fixed inside this REQ — a BOM-prefixed `.claude/settings.json` no longer installed.** Full account in `## Remediation — BOM` above. Fixed in `8b4e1b1`.
+- **Minor — the three special mode bits are stripped from managed files.** `permissionsOf` and the settings-mode read use `info.Mode().Perm()` (mask `0o777`) where the Python they replaced used `stat.S_IMODE` (mask `0o7777`), so setuid, setgid and sticky are dropped from `Justfile`, `CLAUDE.md` and `.claude/settings.json` on every install. Reproduced three ways: unit level (`7644` → `644`, `6755` → `755` — execute bits survive, only the special bits are lost), A/B against the pre-REQ Python replacer, and end-to-end through both installers. Adjudicated 2–1; **both surviving verifiers judged it Minor rather than Important**, because git records only `100644`/`100755`, `umask` cannot set special bits, and a setgid *directory* propagates the group rather than the bit — so reaching it requires a consumer to have hand-run `chmod` on one of those three files. Carried by [REQ-426](../queue/REQ-426-preserve-special-mode-bits.md).
+
+**Findings refuted, nine of ten Important ones knocked down by measurement rather than argument.** The verifiers built real install fixtures, drove signals at them on a real pty, and compared against the pre-REQ implementations recovered from git history:
+
+- *HUP/INT/TERM at the confirmation prompt deadlocks the installer* — refuted 3–0. The mechanism is real; the deadlock is not, measured on a real pty.
+- *The launchers dropped their signal traps, so a signal returns while the Go install keeps writing* — refuted 3–0. The claimed consequence needs a signal reaching the launcher but not the CLI; bash runs the CLI in the same process group, measured.
+- *The fetch error is swallowed, losing the route report and the `DO_WORK_UPSTREAM_URL` escape hatch* — refuted 2–1. The one-line output difference is real; every consequence claimed from it is not.
+- *`--upstream-url` is dead surface* — refuted 3–0, and the proposed fix does not compile.
+- *The missing-Go message names no download source and drops its no-files-changed assurance* — refuted 3–0; four of its five factual claims are false, and the measured consequence is one stderr line on a path that writes nothing.
+- *Shipped board docs still say Go is needed by exactly one action* — refuted 3–0 on its factual premise.
+- *An installed suite carries no record of the Go prerequisite* — refuted 3–0.
+- *Every finding's next/verify argv names a binary not on a consumer's PATH* — refuted 3–0.
+- *The Go 1.26.1 floor is higher than the module needs* — refuted 3–0 **as a defect in this REQ**, and correctly so: `REQ-406` and `REQ-407` both take that floor verbatim from UR-081, so implementing it is not a bug. The measurement behind the finding is nonetheless real — the module builds and passes all six packages' tests at `go 1.23.0` — and because the floor now decides who can install at all, the question is put to the maintainer as [REQ-427](../queue/REQ-427-confirm-go-version-floor.md) (`pending-answers`) rather than dropped.
+
+**Scope drift:** none. 39 files declared, 39 touched. The first Implementation Summary listed only 32 because it was assembled by parsing the hand-back's prose; it was rebuilt from the merge range itself, which is the right source.
+
+*Reviewed by work action (five dimensions, three refutation lenses per finding, plus direct orchestrator measurement)*
+
+## Lessons Learned
+
+**What worked:** Keeping the external tools the scripts already invoked — `cp -Rp`, `tar`, `diff`, `git`, `just`, `atomic-download.sh` — as subprocesses instead of reimplementing them in Go. That is what made a 6600-line port preserve byte, mode and symlink semantics for free, and it kept the existing PATH-stub fixtures working verbatim. Deleting the `settings_tool` three-way branch outright was the right shape: with Go always able to reconcile, "no JSON tool available" stopped being a state rather than becoming a better-handled one. Committing each package as its tests passed saved the work when a usage limit killed the builder mid-run — the earlier attempt had eight modified files and five new packages uncommitted at the moment it died.
+
+**What didn't:** Two claims of parity that were narrower than they sounded.
+
+"Byte-identical" was asserted from 28 characterization cases whose fixtures used modes `750`, `640` and `600` — none with a special bit — so the mode regression sat inside a claim that specifically said "mode-identical". **A characterization suite proves parity over the inputs it contains, and its fixtures are where you look for what it silently excludes.** The same applies to the settings composer, which is byte-identical to jq except for `U+2028`, `U+2029` and `U+007F`.
+
+The BOM case is the sharper lesson: the port replaced *two* incumbents with different behaviour — jq accepted and stripped a BOM, `python3 -m json.tool` rejected it — and matching one of them silently regressed the path that preferred the other. **When a branch is being deleted, parity is against the branch that actually ran, not the one that is easiest to compare with.**
+
+**Worth knowing:** `permissionsOf` in `managed_section.go` and the settings-mode read in `install_transaction.go` are the two places file modes enter the write path; both mask to `0o777` today. `decodeOrderedJSON` is the single door every settings input goes through, which is why one `TrimPrefix` there covers both `ComposeSettings` inputs. The launcher only builds when the binary is missing or older than its sources, so a shipped prebuilt binary makes the Go prerequisite moot at runtime — that is why the GREEN evidence was re-run with `go` itself absent from PATH.
+
+## Orientation
+
+Installing and updating do-work now runs on one Go command instead of shell plus whichever of `jq` or `python3` happened to be present. `do-work-cli` gained five commands — install, update, managed-section replacement, manifest validation and archive fetching — and the five public shell entry points became thin launchers over them, the installer dropping from 621 lines to 96. What a consumer notices is that settings are always reconciled and their `settings.json` keeps its exact key order, where before the outcome depended on their toolchain and a "no JSON tool" path printed manual instructions instead of installing.
+
+`[MAP CHANGED]` — the installation path changed language and gained a prerequisite. Go 1.26.1+ is now required to install or update (see REQ-427, which asks whether that floor is the one you want). The `settings_tool` three-way branch and its manual-instruction path are gone from the map entirely. `skills/do-work/tools/prime-do-work-update.md` was updated by this REQ: its Read-first list now points at the Go packages and it gained a Traps section for the three hazards the migration introduced.
+
+This REQ also registered the first real `do-work-cli` commands, so the pattern the remaining batch copies is now fixed: stdout carries only the rendered `CommandResult`, narration goes to stderr, and exit codes come solely from `resultmodel.ExitCode`.
 
