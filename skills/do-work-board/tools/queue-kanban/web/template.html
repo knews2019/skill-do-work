@@ -339,7 +339,7 @@
            window: the wait from capture to claim, then the work from claim to
            completion. Rows are virtualized, so only the scrolled window carries
            SVG nodes. -->
-      <section id="view-timeline" class="view-panel" aria-label="Timeline grouped by user request. With the chart focused, arrow keys pan the time axis and the plus and minus keys zoom it. The toolbar steps the window one calendar day, week or month at a time, and the From and to date fields set it directly." hidden>
+      <section id="view-timeline" class="view-panel" aria-label="Timeline grouped by user request. With the chart focused, arrow keys pan the time axis and the plus and minus keys zoom it. The toolbar sets the window to the last day, the last 7, 30 or 90 days, or the whole recorded range, and the From and to date fields set it directly." hidden>
         <div class="timeline-intro">
           <h2 class="timeline-heading">How long each REQ waited, and how long it took</h2>
           <p class="timeline-subhead" id="timeline-summary"></p>
@@ -370,16 +370,22 @@
             <span class="timeline-legend-item"><span class="timeline-swatch" data-rule="queue-end"></span>Projected queue empty</span>
             <span class="timeline-legend-item"><span class="timeline-swatch" data-rule="gridline"></span>Axis tick</span>
           </div>
-          <!-- Period navigation sits ALONGSIDE the zoom group, not in place of it:
-               the levels set the window to one calendar day, week or month, and
-               ‹ / › step it one period at a time. The state span reads "custom
-               span" once a free zoom or drag has left the window off the grid. -->
+          <!-- Window navigation sits ALONGSIDE the zoom group, not in place of it:
+               each chip ends the window at NOW and reaches back the span it names,
+               All days is the whole recorded range, and ‹ / › then step one
+               screenful whatever the window is. The state span says "part of" when
+               the board is younger than the span asked for, and "custom span" once
+               a free zoom or drag has left the window on none of them. This group
+               is the ONLY declaration of the control set — board-timeline.js reads
+               it back out of the DOM rather than keeping a second list. -->
           <div class="control-group timeline-periods" role="group" aria-label="Timeline period">
-            <button type="button" class="control-button" id="timeline-period-prev" title="Previous period" aria-label="Previous period">‹</button>
-            <button type="button" class="control-button" data-timeline-period="day" aria-pressed="false">Day</button>
-            <button type="button" class="control-button" data-timeline-period="week" aria-pressed="false">Week</button>
-            <button type="button" class="control-button" data-timeline-period="month" aria-pressed="false">Month</button>
-            <button type="button" class="control-button" id="timeline-period-next" title="Next period" aria-label="Next period">›</button>
+            <button type="button" class="control-button" id="timeline-period-prev" title="Step back one window" aria-label="Step back one window">‹</button>
+            <button type="button" class="control-button" data-timeline-period="1" aria-pressed="false">Last day</button>
+            <button type="button" class="control-button" data-timeline-period="7" aria-pressed="false">Last 7 days</button>
+            <button type="button" class="control-button" data-timeline-period="30" aria-pressed="false">Last 30 days</button>
+            <button type="button" class="control-button" data-timeline-period="90" aria-pressed="false">Last 90 days</button>
+            <button type="button" class="control-button" data-timeline-period="all" aria-pressed="false">All days</button>
+            <button type="button" class="control-button" id="timeline-period-next" title="Step forward one window" aria-label="Step forward one window">›</button>
             <span class="timeline-period-state" id="timeline-period-state" role="status" aria-live="polite"></span>
           </div>
           <!-- The window in words and in fields. The readout is the exact pair of
@@ -414,7 +420,7 @@
         </div>
         <p class="timeline-forecast" id="timeline-forecast"></p>
         <div class="timeline-excluded" id="timeline-excluded"></div>
-        <p class="timeline-hint">Only REQs covered by the visible window are listed, grouped by UR in first-seen order; members stay newest first and No UR recorded is last. Group elapsed and accepted work are clipped to this visible window. Elapsed spans the first overlapping recorded member claim through the latest overlapping resolved completion; a claimed open member is bounded by this board's frozen now and the window end. Elapsed is unavailable when there is no recorded claim, no claimed interval overlaps the window, or a stopped claimed member has no completion endpoint. Accepted work uses only the in-window claim-to-completion overlap of samples kept by Durations' read-time rule, with exclusions and missing samples stated on the header. Scroll down to go further back inside the window. Type dates in From and to for a window you can name, or hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Pick Day, Week or Month for the period around now, or around wherever you have panned to when the now-line is off screen; ‹ and › then step one calendar period at a time, and step by one screenful instead when the window is a span of your own. Click a REQ row for its full detail. From the keyboard: Tab to the chart, then ↑ and ↓ move between REQs without stopping on headers, ← and → pan, and + and − zoom.</p>
+        <p class="timeline-hint">Only REQs covered by the visible window are listed, grouped by UR in first-seen order; members stay newest first and No UR recorded is last. Group elapsed and accepted work are clipped to this visible window. Elapsed spans the first overlapping recorded member claim through the latest overlapping resolved completion; a claimed open member is bounded by this board's frozen now and the window end. Elapsed is unavailable when there is no recorded claim, no claimed interval overlaps the window, or a stopped claimed member has no completion endpoint. Accepted work uses only the in-window claim-to-completion overlap of samples kept by Durations' read-time rule, with exclusions and missing samples stated on the header. Scroll down to go further back inside the window. Type dates in From and to for a window you can name, or hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Pick Last day, Last 7, 30 or 90 days for a window ending at now, or All days for the whole recorded range; ‹ and › then step one screenful at a time, whatever the window is. Click a REQ row for its full detail. From the keyboard: Tab to the chart, then ↑ and ↓ move between REQs without stopping on headers, ← and → pan, and + and − zoom.</p>
         <p class="timeline-readout" id="timeline-readout" role="status" aria-live="polite"></p>
         <details class="timeline-table">
           <summary>The REQs in this window, as a table</summary>

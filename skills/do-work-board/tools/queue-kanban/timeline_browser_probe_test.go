@@ -1634,7 +1634,7 @@ window.addEventListener("load", function () {
     setTimeout(function () {
       var probe = {};
       // Start from a window that is not the bounds, so a clamp is observable.
-      document.querySelector('[data-timeline-period="month"]').click();
+      document.querySelector('[data-timeline-period="30"]').click();
       probe.beforeClear = fieldState();
 
       // (a) CLEAR AND COMMIT. The field keeps focus throughout, which is the case
@@ -1648,11 +1648,11 @@ window.addEventListener("load", function () {
       probe.afterOutOfRange = fieldState();
 
       // (c) And an ordinary in-range date still applies exactly.
-      document.querySelector('[data-timeline-period="month"]').click();
-      var monthFrom = document.getElementById("timeline-range-start").value;
-      typeInto("timeline-range-start", monthFrom);
+      document.querySelector('[data-timeline-period="30"]').click();
+      var trailingFrom = document.getElementById("timeline-range-start").value;
+      typeInto("timeline-range-start", trailingFrom);
       probe.afterReapply = fieldState();
-      probe.monthFrom = monthFrom;
+      probe.trailingFrom = trailingFrom;
 
       // (d) A field left mid-edit and blurred without committing must be restored.
       var abandoned = document.getElementById("timeline-range-end");
@@ -1697,7 +1697,7 @@ window.addEventListener("load", function () {
 		ClearedStillFocused bool       `json:"clearedStillFocused"`
 		AfterOutOfRange     fieldState `json:"afterOutOfRange"`
 		AfterReapply        fieldState `json:"afterReapply"`
-		MonthFrom           string     `json:"monthFrom"`
+		TrailingFrom        string     `json:"trailingFrom"`
 		DuringAbandon       fieldState `json:"duringAbandon"`
 		AfterAbandon        fieldState `json:"afterAbandon"`
 	}
@@ -1752,9 +1752,9 @@ window.addEventListener("load", function () {
 
 	// (c) An in-range date still applies exactly, so the fix did not buy field
 	// honesty by ignoring the reader.
-	if fieldResult.AfterReapply.From != fieldResult.MonthFrom {
-		t.Errorf("re-typing the month window's own start gave From %q, want %q",
-			fieldResult.AfterReapply.From, fieldResult.MonthFrom)
+	if fieldResult.AfterReapply.From != fieldResult.TrailingFrom {
+		t.Errorf("re-typing the Last 30 days window's own start gave From %q, want %q",
+			fieldResult.AfterReapply.From, fieldResult.TrailingFrom)
 	}
 
 	// (d) Mid-edit is respected while it lasts, and released on blur.
@@ -1765,6 +1765,204 @@ window.addEventListener("load", function () {
 	if fieldResult.AfterAbandon.To == "" {
 		t.Errorf("the end field was left empty after the reader blurred without committing; "+
 			"the window is %q and the field has to name it", fieldResult.AfterAbandon.Readout)
+	}
+}
+
+// WHAT THE PERIOD TOOLBAR OFFERS, and where one of its chips lands.
+//
+// The controls used to be calendar periods — Day, Week, Month — each setting the
+// window to one calendar day, week or month around now or around wherever the
+// reader had panned to. There was no one-click way to see the trailing last 7, 30
+// or 90 days, or the whole recorded range, which is what a reader looking at a
+// queue actually asks for.
+//
+// Driven in a real engine because the control set is a claim about the shipped
+// markup and the window is a claim about what the READER sees: the assertion
+// below reads #timeline-range-readout, the same text on screen, rather than any
+// internal state.
+func TestBrowserBehaviorTimelineTrailingWindowsEndAtNow(t *testing.T) {
+	siteDirectory := generateLiveSiteInDir(t)
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read generated index.html: %v", readError)
+	}
+	indexHTML := string(indexBytes)
+
+	probeScript := `
+<pre id="` + browserProbeResultElementId + `"></pre>
+<script>
+// The same one parser the landing probe uses, for the same reason: a span and an
+// endpoint must never be read from two different places.
+function readoutWindow() {
+  var text = document.getElementById("timeline-range-readout").textContent || "";
+  var match = text.match(/^(\S+ \S+) UTC → (\S+ \S+) UTC$/);
+  if (!match) { return null; }
+  var startMs = Date.parse(match[1].replace(" ", "T") + "Z");
+  var endMs = Date.parse(match[2].replace(" ", "T") + "Z");
+  if (isNaN(startMs) || isNaN(endMs)) { return null; }
+  return { startMs: startMs, endMs: endMs };
+}
+// The control set as the DOM holds it, in DOM order — value, rendered label, and
+// whether it is currently lit.
+function chipInventory() {
+  return Array.prototype.map.call(
+    document.querySelectorAll("#view-timeline [data-timeline-period]"),
+    function (chip) {
+      return {
+        value: chip.getAttribute("data-timeline-period"),
+        label: (chip.textContent || "").trim(),
+        pressed: chip.getAttribute("aria-pressed") === "true"
+      };
+    });
+}
+function windowState(label) {
+  var readWindow = readoutWindow();
+  return {
+    label: label,
+    href: location.href,
+    readout: document.getElementById("timeline-range-readout").textContent,
+    startMs: readWindow ? readWindow.startMs : null,
+    endMs: readWindow ? readWindow.endMs : null,
+    chips: chipInventory()
+  };
+}
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    document.querySelector('[data-view-target="timeline"]').click();
+    setTimeout(function () {
+      var probe = {};
+      probe.boardNowMs = Date.parse(((window.queueKanbanBoardData || {}).timeline || {}).now);
+      // The view opens on the payload's whole range, which is the premise the Go
+      // side checks the 30-day case against.
+      probe.opened = windowState("opened");
+      var thirtyChip = document.querySelector('#view-timeline [data-timeline-period="30"]');
+      if (thirtyChip) { thirtyChip.click(); }
+      probe.pressedThirty = !!thirtyChip;
+      probe.afterThirty = windowState("afterThirty");
+      document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
+      document.title = "READY";
+    }, 500);
+  }, 200);
+});
+</script>
+</body>`
+
+	pageHTML := strings.Replace(indexHTML, "</body>", probeScript, 1)
+	if pageHTML == indexHTML {
+		t.Fatal("the generated page has no </body> to inject the trailing-window probe before")
+	}
+	probeOutput := runBrowserBehaviorProbeInDirectory(t, "timeline trailing windows", siteDirectory,
+		pageHTML, "--window-size=1600,900", "--virtual-time-budget=30000")
+
+	type timelineChip struct {
+		Value   string `json:"value"`
+		Label   string `json:"label"`
+		Pressed bool   `json:"pressed"`
+	}
+	type windowState struct {
+		Label   string         `json:"label"`
+		Href    string         `json:"href"`
+		Readout string         `json:"readout"`
+		StartMs *float64       `json:"startMs"`
+		EndMs   *float64       `json:"endMs"`
+		Chips   []timelineChip `json:"chips"`
+	}
+	var trailingResult struct {
+		BoardNowMs    float64     `json:"boardNowMs"`
+		Opened        windowState `json:"opened"`
+		PressedThirty bool        `json:"pressedThirty"`
+		AfterThirty   windowState `json:"afterThirty"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &trailingResult); decodeError != nil {
+		t.Fatalf("decode timeline trailing-window behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	for _, state := range []windowState{trailingResult.Opened, trailingResult.AfterThirty} {
+		if !strings.HasSuffix(state.Href, "/probe.html") {
+			t.Fatalf("the %s state was measured on %q, not the probe page", state.Label, state.Href)
+		}
+		if state.StartMs == nil || state.EndMs == nil {
+			t.Fatalf("the %s state's readout %q did not parse as a window", state.Label, state.Readout)
+		}
+	}
+
+	// (1) THE CONTROL SET. Exactly five trailing windows, in this order, with these
+	// labels — the wording the filter dropdown already uses for the same idea.
+	wantChips := []timelineChip{
+		{Value: "1", Label: "Last day"},
+		{Value: "7", Label: "Last 7 days"},
+		{Value: "30", Label: "Last 30 days"},
+		{Value: "90", Label: "Last 90 days"},
+		{Value: "all", Label: "All days"},
+	}
+	if len(trailingResult.Opened.Chips) != len(wantChips) {
+		t.Fatalf("the period toolbar offers %d controls (%+v), want the five trailing windows %+v",
+			len(trailingResult.Opened.Chips), trailingResult.Opened.Chips, wantChips)
+	}
+	for chipIndex, wantChip := range wantChips {
+		gotChip := trailingResult.Opened.Chips[chipIndex]
+		if gotChip.Value != wantChip.Value || gotChip.Label != wantChip.Label {
+			t.Errorf("period control %d is %q labelled %q, want %q labelled %q",
+				chipIndex, gotChip.Value, gotChip.Label, wantChip.Value, wantChip.Label)
+		}
+	}
+	// And the calendar vocabulary is gone rather than merely outnumbered.
+	for _, gotChip := range trailingResult.Opened.Chips {
+		if gotChip.Value == "day" || gotChip.Value == "week" || gotChip.Value == "month" {
+			t.Errorf("the period toolbar still carries the calendar control %q labelled %q",
+				gotChip.Value, gotChip.Label)
+		}
+	}
+
+	// The readout is minute-truncated, so an instant it names can be up to a minute
+	// earlier than the one the chart is drawn at.
+	const readoutTruncationMs = 60000.0
+	const thirtyDaysMs = 30 * 24 * 3600000.0
+
+	// SETUP, ASSERTED. Every number below is about the 30-day chip, so the press has
+	// to have happened, the board's now has to be readable, and the board has to be
+	// old enough and open enough for a 30-day window ending at now to exist inside
+	// its range at all.
+	if !trailingResult.PressedThirty {
+		t.Fatal("the generated board has no [data-timeline-period=\"30\"] control to press")
+	}
+	if trailingResult.BoardNowMs <= 0 {
+		t.Fatalf("the payload's timeline.now did not parse (%v), so nothing below is measuring a "+
+			"window that ends at now", trailingResult.BoardNowMs)
+	}
+	if *trailingResult.Opened.EndMs+readoutTruncationMs < trailingResult.BoardNowMs {
+		t.Fatalf("the board's range ends at %s, before its own now; a trailing window cannot end at "+
+			"now on this board and this case proves nothing", trailingResult.Opened.Readout)
+	}
+	if *trailingResult.Opened.StartMs > trailingResult.BoardNowMs-thirtyDaysMs {
+		t.Fatalf("the board's range starts at %s, less than thirty days before its now; the 30-day "+
+			"window would be cut short and the span assertion below would prove nothing",
+			trailingResult.Opened.Readout)
+	}
+
+	// (2) The window the chip lands on ENDS AT NOW and spans the thirty days it names.
+	nowGapMs := trailingResult.BoardNowMs - *trailingResult.AfterThirty.EndMs
+	if nowGapMs < 0 || nowGapMs >= readoutTruncationMs {
+		t.Errorf("Last 30 days ended the window at %s, %.0f ms from the board's own now; a trailing "+
+			"window ends at now", trailingResult.AfterThirty.Readout, nowGapMs)
+	}
+	spanMs := *trailingResult.AfterThirty.EndMs - *trailingResult.AfterThirty.StartMs
+	if spanMs < thirtyDaysMs-readoutTruncationMs || spanMs > thirtyDaysMs+readoutTruncationMs {
+		t.Errorf("Last 30 days produced a %.2f-day window (%s), want thirty days",
+			spanMs/(24*3600000.0), trailingResult.AfterThirty.Readout)
+	}
+
+	// (3) And the chip that was pressed is the one that lights, which is what makes
+	// the toolbar describe the window the chart is actually drawn at.
+	litChips := []string{}
+	for _, gotChip := range trailingResult.AfterThirty.Chips {
+		if gotChip.Pressed {
+			litChips = append(litChips, gotChip.Value)
+		}
+	}
+	if !reflect.DeepEqual(litChips, []string{"30"}) {
+		t.Errorf("after pressing Last 30 days the lit controls are %v, want exactly the 30 chip "+
+			"(window %s)", litChips, trailingResult.AfterThirty.Readout)
 	}
 }
 
@@ -1842,12 +2040,17 @@ window.addEventListener("load", function () {
       probe.afterNow = toolbarState("afterNow");
       document.getElementById("timeline-zoom-in").click();
       probe.afterNowThenZoomIn = toolbarState("afterNowThenZoomIn");
-      // The current week, then one step forward. Which regime that step is in
+      // A trailing seven days, then one step forward. Which regime that step is in
       // depends on the live queue — see the Go side's clause (3).
-      document.querySelector('[data-timeline-period="week"]').click();
-      probe.currentWeek = toolbarState("currentWeek");
+      document.querySelector('[data-timeline-period="7"]').click();
+      probe.trailingSevenDays = toolbarState("trailingSevenDays");
       document.getElementById("timeline-period-next").click();
-      probe.afterStepFromCurrentWeek = toolbarState("afterStepFromCurrentWeek");
+      probe.afterStepFromTrailingSevenDays = toolbarState("afterStepFromTrailingSevenDays");
+      // All days is the payload's whole range — the outer bound the Go side's
+      // clause (6) checks its premise against. Taken unfiltered because the bounds
+      // come from the payload's range and a filter does not move them.
+      document.querySelector('[data-timeline-period="all"]').click();
+      probe.allDays = toolbarState("allDays");
       // Fit all with a filter on. The search box is the shared filter every view
       // reads, so this needs no timeline-specific plumbing.
       var search = document.getElementById("filter-search");
@@ -1863,16 +2066,15 @@ window.addEventListener("load", function () {
         settleUntil(function () { return true; }, function () {
           probe.filteredFit = toolbarState("filteredFit");
           probe.filteredSummary = document.getElementById("timeline-summary").textContent;
-          // Still filtered to that one archived REQ: the week holding it, then a
-          // step forward out of it. This is the refusal case a live queue always
-          // supplies no matter what its forecast is doing — the filtered set ends
-          // where that REQ ended, years of queue activity later is irrelevant to
-          // it. The Go side reads the fitted extent above to confirm that before
-          // asserting anything about it.
-          document.querySelector('[data-timeline-period="week"]').click();
-          probe.filteredWeek = toolbarState("filteredWeek");
+          // Still filtered to that one archived REQ, and still on the window Fit
+          // all just chose for it: everything drawn under the filter is inside
+          // that window, so one screenful forward is a step past all of it. This
+          // is the refusal case a live queue always supplies no matter what its
+          // forecast is doing — the filtered set ends where that REQ ended, and
+          // years of later queue activity are irrelevant to it. The Go side reads
+          // the fitted extent above to confirm that before asserting anything.
           document.getElementById("timeline-period-next").click();
-          probe.filteredWeekThenStep = toolbarState("filteredWeekThenStep");
+          probe.filteredFitThenStep = toolbarState("filteredFitThenStep");
           document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify(probe);
           document.title = "READY";
         });
@@ -1902,15 +2104,15 @@ window.addEventListener("load", function () {
 		Disabled      map[string]bool `json:"disabled"`
 	}
 	var landingResult struct {
-		Fitted                   toolbarState `json:"fitted"`
-		AfterNow                 toolbarState `json:"afterNow"`
-		AfterNowThenZoomIn       toolbarState `json:"afterNowThenZoomIn"`
-		CurrentWeek              toolbarState `json:"currentWeek"`
-		AfterStepFromCurrentWeek toolbarState `json:"afterStepFromCurrentWeek"`
-		FilteredFit              toolbarState `json:"filteredFit"`
-		FilteredSummary          string       `json:"filteredSummary"`
-		FilteredWeek             toolbarState `json:"filteredWeek"`
-		FilteredWeekThenStep     toolbarState `json:"filteredWeekThenStep"`
+		Fitted                         toolbarState `json:"fitted"`
+		AfterNow                       toolbarState `json:"afterNow"`
+		AfterNowThenZoomIn             toolbarState `json:"afterNowThenZoomIn"`
+		TrailingSevenDays              toolbarState `json:"trailingSevenDays"`
+		AfterStepFromTrailingSevenDays toolbarState `json:"afterStepFromTrailingSevenDays"`
+		AllDays                        toolbarState `json:"allDays"`
+		FilteredFit                    toolbarState `json:"filteredFit"`
+		FilteredSummary                string       `json:"filteredSummary"`
+		FilteredFitThenStep            toolbarState `json:"filteredFitThenStep"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &landingResult); decodeError != nil {
 		t.Fatalf("decode timeline landing behavior: %v (output %q)", decodeError, probeOutput)
@@ -1918,8 +2120,8 @@ window.addEventListener("load", function () {
 
 	states := []toolbarState{
 		landingResult.Fitted, landingResult.AfterNow, landingResult.AfterNowThenZoomIn,
-		landingResult.CurrentWeek, landingResult.AfterStepFromCurrentWeek, landingResult.FilteredFit,
-		landingResult.FilteredWeek, landingResult.FilteredWeekThenStep,
+		landingResult.TrailingSevenDays, landingResult.AfterStepFromTrailingSevenDays,
+		landingResult.AllDays, landingResult.FilteredFit, landingResult.FilteredFitThenStep,
 	}
 	for _, state := range states {
 		if !strings.HasSuffix(state.Href, "/probe.html") {
@@ -1955,32 +2157,33 @@ window.addEventListener("load", function () {
 
 	// (3) A step past everything drawn does not happen, and says so first.
 	//
-	// WHICH REGIME THE CURRENT WEEK IS IN IS DATA, NOT A CONSTANT, and asserting
-	// one of them here is what made capturing three REQs fail this test. On a
-	// drained queue the week after this one exists only inside the cosmetic bound
-	// padding and the arrow must refuse; while the forecast reaches past this
-	// week's end — which one ordinary `capture-request` is enough to do — that
-	// next period holds real projected bars and the arrow is right to be enabled.
-	// So the arrow's own verdict is READ and the press is checked against it,
-	// which is the contract in both regimes: it never lands the reader on an empty
-	// chart, and whatever it is about to do it says first. The refusal branch is
-	// then exercised deterministically under a filter in (6) below, where the live
-	// queue cannot move the answer.
-	if landingResult.CurrentWeek.Disabled["timeline-period-next"] {
-		if landingResult.AfterStepFromCurrentWeek.Readout != landingResult.CurrentWeek.Readout {
-			t.Errorf("the step-forward arrow reported itself disabled on the current week (%s) and "+
-				"the press moved the window to %s anyway", landingResult.CurrentWeek.Readout,
-				landingResult.AfterStepFromCurrentWeek.Readout)
+	// WHICH REGIME THE LAST SEVEN DAYS ARE IN IS DATA, NOT A CONSTANT, and
+	// asserting one of them here is what made capturing three REQs fail this test.
+	// A trailing window ends at now, so the screenful after it is entirely in the
+	// future: on a drained queue that is only the cosmetic bound padding and the
+	// arrow must refuse, while a forecast reaching past it — which one ordinary
+	// `capture-request` is enough to produce — fills it with real projected bars
+	// and the arrow is right to be enabled. So the arrow's own verdict is READ and
+	// the press is checked against it, which is the contract in both regimes: it
+	// never lands the reader on an empty chart, and whatever it is about to do it
+	// says first. The refusal branch is then exercised deterministically under a
+	// filter in (6) below, where the live queue cannot move the answer.
+	if landingResult.TrailingSevenDays.Disabled["timeline-period-next"] {
+		if landingResult.AfterStepFromTrailingSevenDays.Readout != landingResult.TrailingSevenDays.Readout {
+			t.Errorf("the step-forward arrow reported itself disabled on the last seven days (%s) "+
+				"and the press moved the window to %s anyway", landingResult.TrailingSevenDays.Readout,
+				landingResult.AfterStepFromTrailingSevenDays.Readout)
 		}
 	} else {
-		if landingResult.AfterStepFromCurrentWeek.Readout == landingResult.CurrentWeek.Readout {
-			t.Errorf("the step-forward arrow reported itself enabled on the current week (%s) and "+
-				"the press did not move the window", landingResult.CurrentWeek.Readout)
+		if landingResult.AfterStepFromTrailingSevenDays.Readout == landingResult.TrailingSevenDays.Readout {
+			t.Errorf("the step-forward arrow reported itself enabled on the last seven days (%s) "+
+				"and the press did not move the window", landingResult.TrailingSevenDays.Readout)
 		}
-		if landingResult.AfterStepFromCurrentWeek.DrawnSegments == 0 {
-			t.Errorf("the step-forward arrow was enabled on the current week (%s) and the press "+
+		if landingResult.AfterStepFromTrailingSevenDays.DrawnSegments == 0 {
+			t.Errorf("the step-forward arrow was enabled on the last seven days (%s) and the press "+
 				"landed on %s with nothing drawn in it — a step past everything drawn",
-				landingResult.CurrentWeek.Readout, landingResult.AfterStepFromCurrentWeek.Readout)
+				landingResult.TrailingSevenDays.Readout,
+				landingResult.AfterStepFromTrailingSevenDays.Readout)
 		}
 	}
 
@@ -2011,40 +2214,41 @@ window.addEventListener("load", function () {
 	}
 
 	// (6) The refusal itself, on a set the live queue cannot move: one archived
-	// REQ, and the week that holds it.
+	// REQ, and the window Fit all chose for it. Clause (4) has already fataled if
+	// that window draws nothing, so this case cannot be about an empty chart.
 	//
 	// THE PREMISE IS READ, NOT RESTATED. Fit all lands on the drawn extent plus
-	// breathing room, so the filtered fit window is an outer bound on everything
-	// drawn under that filter; if it ends before this week does, the next period
-	// holds nothing at all and the arrow owes the reader a refusal. Read it that
-	// way round rather than asserting a week number, because a hardcoded premise
-	// about what the queue holds is exactly what clause (3) had to stop doing.
-	// The readout is minute-truncated, so the fitted end can be up to a minute
-	// later than it reads — the allowance keeps the comparison sound rather than
+	// breathing room, so the filtered fit window is an OUTER BOUND on everything
+	// drawn under that filter: one screenful forward starts where that window ends,
+	// past all of it, and the arrow owes the reader a refusal. The one thing that
+	// could make that untrue is a pan CLAMPED by the right-hand bound, which moves
+	// the window less than a full screenful — so the premise checked here is that
+	// the payload's whole range, which is what All days spans, has at least one
+	// more screenful of room to the right of the fitted window. Read it that way
+	// round rather than asserting a date, because a hardcoded premise about what
+	// the queue holds is exactly what clause (3) had to stop doing. The readout is
+	// minute-truncated, so the allowance keeps the comparison sound rather than
 	// merely true.
 	const readoutTruncationMs = 60000.0
-	if landingResult.FilteredWeek.DrawnSegments == 0 {
-		t.Fatalf("the week the chip landed on under the one-REQ filter (%s) draws nothing, so the "+
-			"refusal below would be about an empty chart rather than about a step off the end of "+
-			"the filtered REQ (summary %q)", landingResult.FilteredWeek.Readout,
+	roomToTheRightMs := *landingResult.AllDays.EndMs - *landingResult.FilteredFit.EndMs
+	if roomToTheRightMs <= *landingResult.FilteredFit.SpanMs+readoutTruncationMs {
+		t.Fatalf("the board's whole range (%s) leaves %.2f days to the right of the window Fit all "+
+			"chose under the one-REQ filter (%s), which is not more than that window's own %.2f-day "+
+			"span; a forward step would clamp at the bound instead of landing past everything drawn, "+
+			"so this case proves nothing (summary %q)",
+			landingResult.AllDays.Readout, roomToTheRightMs/(24*oneHourMs),
+			landingResult.FilteredFit.Readout, *landingResult.FilteredFit.SpanMs/(24*oneHourMs),
 			landingResult.FilteredSummary)
 	}
-	if *landingResult.FilteredFit.EndMs+readoutTruncationMs >= *landingResult.FilteredWeek.EndMs {
-		t.Fatalf("everything drawn under the one-REQ filter (fitted to %s) reaches to the end of "+
-			"the week the chip landed on (%s), so a step out of that week is not a step past "+
-			"everything drawn and this case proves nothing",
-			landingResult.FilteredFit.Readout, landingResult.FilteredWeek.Readout)
+	if !landingResult.FilteredFit.Disabled["timeline-period-next"] {
+		t.Errorf("the step-forward arrow is enabled on %s, whose next screenful is past everything "+
+			"drawn under the filter", landingResult.FilteredFit.Readout)
 	}
-	if !landingResult.FilteredWeek.Disabled["timeline-period-next"] {
-		t.Errorf("the step-forward arrow is enabled on %s, whose next period is past everything "+
-			"drawn under the filter (fitted to %s)", landingResult.FilteredWeek.Readout,
-			landingResult.FilteredFit.Readout)
-	}
-	if landingResult.FilteredWeekThenStep.Readout != landingResult.FilteredWeek.Readout {
+	if landingResult.FilteredFitThenStep.Readout != landingResult.FilteredFit.Readout {
 		t.Errorf("pressing the step-forward arrow moved the window from %s to %s, past everything "+
-			"drawn under the filter (fitted to %s), and drew %d segments there",
-			landingResult.FilteredWeek.Readout, landingResult.FilteredWeekThenStep.Readout,
-			landingResult.FilteredFit.Readout, landingResult.FilteredWeekThenStep.DrawnSegments)
+			"drawn under the filter, and drew %d segments there",
+			landingResult.FilteredFit.Readout, landingResult.FilteredFitThenStep.Readout,
+			landingResult.FilteredFitThenStep.DrawnSegments)
 	}
 }
 
@@ -3361,13 +3565,13 @@ window.addEventListener("load", function () {
       }, function (fitAllRebuild) {
         var fitAll = timelineGroupingSnapshot();
         afterTimelineTableRebuild(function () {
-          document.querySelector('[data-timeline-period="day"]').click();
-        }, function (dayRebuild) {
+          document.querySelector('[data-timeline-period="1"]').click();
+        }, function (lastDayRebuild) {
           document.getElementById("` + browserProbeResultElementId + `").textContent = JSON.stringify({
             fitAll: fitAll,
-            day: timelineGroupingSnapshot(),
+            lastDay: timelineGroupingSnapshot(),
             fitAllRebuild: fitAllRebuild,
-            dayRebuild: dayRebuild
+            lastDayRebuild: lastDayRebuild
           });
         });
       });
@@ -3406,15 +3610,15 @@ window.addEventListener("load", function () {
 	}
 	var groupingResult struct {
 		FitAll        groupingSnapshot `json:"fitAll"`
-		Day           groupingSnapshot `json:"day"`
+		LastDay       groupingSnapshot `json:"lastDay"`
 		FitAllRebuild struct {
 			HadPreviousRow  bool `json:"hadPreviousRow"`
 			RebuildObserved bool `json:"rebuildObserved"`
 		} `json:"fitAllRebuild"`
-		DayRebuild struct {
+		LastDayRebuild struct {
 			HadPreviousRow  bool `json:"hadPreviousRow"`
 			RebuildObserved bool `json:"rebuildObserved"`
-		} `json:"dayRebuild"`
+		} `json:"lastDayRebuild"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &groupingResult); decodeError != nil {
 		t.Fatalf("decode timeline user-request grouping: %v (output %q)", decodeError, probeOutput)
@@ -3422,13 +3626,13 @@ window.addEventListener("load", function () {
 	if groupingResult.FitAll.Href == "" || !strings.HasSuffix(groupingResult.FitAll.Href, "probe.html") {
 		t.Fatalf("measured on %q, not the probe page", groupingResult.FitAll.Href)
 	}
-	if !groupingResult.FitAllRebuild.HadPreviousRow || !groupingResult.DayRebuild.HadPreviousRow {
-		t.Fatalf("the table rebuild wait was armed without an existing row (Fit all %t, Day %t); the node-replacement condition is vacuous",
-			groupingResult.FitAllRebuild.HadPreviousRow, groupingResult.DayRebuild.HadPreviousRow)
+	if !groupingResult.FitAllRebuild.HadPreviousRow || !groupingResult.LastDayRebuild.HadPreviousRow {
+		t.Fatalf("the table rebuild wait was armed without an existing row (Fit all %t, Last day %t); the node-replacement condition is vacuous",
+			groupingResult.FitAllRebuild.HadPreviousRow, groupingResult.LastDayRebuild.HadPreviousRow)
 	}
-	if !groupingResult.FitAllRebuild.RebuildObserved || !groupingResult.DayRebuild.RebuildObserved {
-		t.Fatalf("the requested Timeline table rebuild was not observed (Fit all %t, Day %t)",
-			groupingResult.FitAllRebuild.RebuildObserved, groupingResult.DayRebuild.RebuildObserved)
+	if !groupingResult.FitAllRebuild.RebuildObserved || !groupingResult.LastDayRebuild.RebuildObserved {
+		t.Fatalf("the requested Timeline table rebuild was not observed (Fit all %t, Last day %t)",
+			groupingResult.FitAllRebuild.RebuildObserved, groupingResult.LastDayRebuild.RebuildObserved)
 	}
 	if groupingResult.FitAll.VisibleRowCount == 0 {
 		t.Fatal("the generated board rendered no Timeline REQ rows, so the grouping assertion is vacuous")
@@ -3437,7 +3641,7 @@ window.addEventListener("load", function () {
 		t.Fatalf("the Timeline rendered %d table groups and %d visible headers; the fixture must exercise grouping",
 			len(groupingResult.FitAll.Groups), groupingResult.FitAll.VisibleHeaderCount)
 	}
-	for _, snapshot := range []groupingSnapshot{groupingResult.FitAll, groupingResult.Day} {
+	for _, snapshot := range []groupingSnapshot{groupingResult.FitAll, groupingResult.LastDay} {
 		if len(snapshot.ColumnHeaderIDs) != 6 {
 			t.Fatalf("grouped Timeline table has column header ids %v, want six explicit ids", snapshot.ColumnHeaderIDs)
 		}
@@ -3506,12 +3710,12 @@ window.addEventListener("load", function () {
 	for _, group := range groupingResult.FitAll.Groups {
 		fitAllIds = append(fitAllIds, group.Ids...)
 	}
-	dayIds := []string{}
-	for _, group := range groupingResult.Day.Groups {
-		dayIds = append(dayIds, group.Ids...)
+	lastDayIds := []string{}
+	for _, group := range groupingResult.LastDay.Groups {
+		lastDayIds = append(lastDayIds, group.Ids...)
 	}
-	if reflect.DeepEqual(fitAllIds, dayIds) {
-		t.Errorf("Fit all and Day listed the same %d REQs; the grouping was not rebuilt after the window changed",
+	if reflect.DeepEqual(fitAllIds, lastDayIds) {
+		t.Errorf("Fit all and Last day listed the same %d REQs; the grouping was not rebuilt after the window changed",
 			len(fitAllIds))
 	}
 }
