@@ -45,7 +45,7 @@ None. All four builder worktrees were removed and their branches deleted with `g
 - **Commit each unit as its tests pass.** A usage limit killed a builder mid-run this session with eight modified files and five new packages uncommitted; only the worktree saved it. Every builder brief now says this and it is worth keeping.
 - **`tools/checks/scope-drift.sh` misreads prose.** It treats every backticked token in a "Files I will touch" bullet as a declared path, so a code span in the rationale produces a phantom "declared but never touched" line. Keep Scope bullets to one backticked path each until REQ-414 ports the checks to Go, where the fix is folded.
 - **Build the Implementation Summary's file list from the merge range, not from the hand-back's prose.** Parsing prose produced 32 of 39 files on REQ-407 and seven phantom drift lines with it.
-- **An hourly Routine is bound to this session** (`trig_0177wPg3F6c5yR848yvywtEx`, "do-work queue drain — keep going"). It fires into *this* session, not a new one. If the drain continues elsewhere, delete it or repoint it, or it will keep waking a session that is no longer driving.
+- **No Routine is armed.** An hourly self-check-in ran the drain through three usage-limit interruptions this session and was deleted at handoff, because it fired into *that* session rather than a new one. If you want the same safety net, create an hourly Routine bound to the new session with a prompt that (a) no-ops in one line while a limit is in force, (b) re-reads `do-work/CHECKPOINT.md` and the queue rather than trusting context, and (c) deletes itself once the queue holds no claimable pending REQs and the gate exits 0. Those three properties are what made it useful rather than noisy.
 
 ### Review posture that earned its cost
 
