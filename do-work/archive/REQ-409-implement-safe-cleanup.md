@@ -4,6 +4,7 @@ title: 'Implement safe cleanup passes and explicit destructive repairs'
 status: completed-with-issues
 claimed_at: 2026-08-30T19:30:57Z
 completed_at: 2026-08-30T20:35:44Z
+commit: a57bf51e
 created_at: 2026-08-29T20:28:26Z
 route: C
 estimate:
