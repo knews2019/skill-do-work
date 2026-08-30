@@ -68,16 +68,17 @@ const boardMarkdownJsFilename = "board-markdown.js"
 // the single source of truth the client-side script renders every view from, so
 // the board works with zero network once the file is open.
 type generatedBoardData struct {
-	GeneratedAt      string                          `json:"generatedAt"`
-	Columns          generatedColumns                `json:"columns"`
-	RequestOrder     []string                        `json:"requestOrder"`
-	Requests         map[string]generatedRequest     `json:"requests"`
-	UserRequestOrder []string                        `json:"userRequestOrder"`
-	UserRequests     map[string]generatedUserRequest `json:"userRequests"`
-	Calendar         []generatedCalendarEntry        `json:"calendar"`
-	Durations        generatedDurations              `json:"durations"`
-	Timeline         generatedTimeline               `json:"timeline"`
-	Notes            []generatedNote                 `json:"notes,omitempty"` // do-work/notes.md lines — rendered as a strip above the queue
+	GeneratedAt                       string                          `json:"generatedAt"`
+	ImplementationSpanPausedBadgeText string                          `json:"implementationSpanPausedBadgeText"`
+	Columns                           generatedColumns                `json:"columns"`
+	RequestOrder                      []string                        `json:"requestOrder"`
+	Requests                          map[string]generatedRequest     `json:"requests"`
+	UserRequestOrder                  []string                        `json:"userRequestOrder"`
+	UserRequests                      map[string]generatedUserRequest `json:"userRequests"`
+	Calendar                          []generatedCalendarEntry        `json:"calendar"`
+	Durations                         generatedDurations              `json:"durations"`
+	Timeline                          generatedTimeline               `json:"timeline"`
+	Notes                             []generatedNote                 `json:"notes,omitempty"` // do-work/notes.md lines — rendered as a strip above the queue
 
 	// Verify findings carried into the page so a human looking at the board sees
 	// what `queue-kanban verify` sees (REQ-284). Three categories are suppressed
@@ -196,8 +197,8 @@ type generatedRequest struct {
 	// that reached terminal SUCCESS and carries both parseable frontmatter
 	// stamps, so `hasImplementationSpan` false is a real "unmeasured" rather than
 	// a span of zero. `implementationSpanReason` is "paused" or "reversed", empty
-	// when the span reads plainly — the four-hour ceiling itself never crosses to
-	// the client, which would make the renderer a second definition of it.
+	// when the span reads plainly. The client receives only the completed paused
+	// badge text above, never a numeric ceiling it could use as a second rule.
 	HasImplementationSpan bool `json:"hasImplementationSpan,omitempty"`
 	// Deliberately NOT omitempty: a genuine zero-minute span is possible (identical
 	// stamps, or date-only stamps on both fields, which parseTimestamp accepts), and
@@ -634,12 +635,13 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 
 func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTicketAnalysis) (generatedBoardData, error) {
 	data := generatedBoardData{
-		GeneratedAt:      formatTimestamp(board.GeneratedAt),
-		Warnings:         board.Warnings,
-		TestingProfiles:  board.TestingProfiles,
-		RepoFileMentions: collectRepoFileMentions(board),
-		Requests:         map[string]generatedRequest{},
-		UserRequests:     map[string]generatedUserRequest{},
+		GeneratedAt:                       formatTimestamp(board.GeneratedAt),
+		ImplementationSpanPausedBadgeText: implementationSpanPausedBadgeText(analysisOutlierCeiling),
+		Warnings:                          board.Warnings,
+		TestingProfiles:                   board.TestingProfiles,
+		RepoFileMentions:                  collectRepoFileMentions(board),
+		Requests:                          map[string]generatedRequest{},
+		UserRequests:                      map[string]generatedUserRequest{},
 		Columns: generatedColumns{
 			Pending:             requestIdsOf(board.Columns.Pending),
 			PendingReady:        requestIdsOf(board.Columns.PendingReady),

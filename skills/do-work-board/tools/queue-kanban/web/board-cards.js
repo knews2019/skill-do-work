@@ -40,9 +40,10 @@
   // the done line beside the completion instant it already carries.
   //
   // Both the number and its verdict arrive decided from Go (durations.go's
-  // measureImplementationSpan), so the read-time ceiling separating "that much
-  // work" from "an overnight pause" keeps exactly one definition and this
-  // renderer never becomes a second one.
+  // measureImplementationSpan). Go also supplies the completed pause-badge text,
+  // so the read-time ceiling separating "that much work" from "an overnight
+  // pause" keeps exactly one definition and this renderer never becomes a
+  // second one.
   //
   // The node is a PLAIN span.elapsed-duration: it reuses the state timer's
   // vocabulary and styling so the card's two time lines read alike, but it
@@ -61,7 +62,7 @@
       return null;
     }
     if (request.implementationSpanReason === "reversed") {
-      var reversedNode = createElement("span", "elapsed-duration");
+      var reversedNode = createElement("span", "elapsed-duration implementation-span");
       var reversedFlag = createElement("span", "status-invalid-flag", "reversed stamps");
       reversedFlag.title =
         "completed_at is earlier than claimed_at, so this REQ's implementation span cannot be stated — " +
@@ -76,17 +77,25 @@
     // span the card states away from the one the Durations view plots.
     var spanOriginMs = 0;
     var spanEndMs = Math.round(request.implementationSpanMinutes * 60000);
-    var spanNode = createElement(
-      "span",
-      "elapsed-duration",
-      "took " + formatElapsedDuration(spanOriginMs, spanEndMs)
+    var spanNode = createElement("span", "elapsed-duration implementation-span");
+    spanNode.appendChild(
+      createElement(
+        "span",
+        "implementation-span-value",
+        "took " + formatElapsedDuration(spanOriginMs, spanEndMs)
+      )
     );
     if (request.implementationSpanReason === "paused") {
       spanNode.appendChild(document.createTextNode(" "));
-      var pausedFlag = createElement("span", "status-invalid-flag", "likely paused");
+      var pausedFlag = createElement(
+        "span",
+        "status-invalid-flag",
+        boardData.implementationSpanPausedBadgeText || "long span · assumed pause"
+      );
       pausedFlag.title =
-        "Longer than the board's read-time ceiling for one session, so it is assumed to include a pause " +
-        "rather than that much continuous work. Same rule the Durations view applies, applied Go-side.";
+        "Duration-quality marker only: this claim-to-completion span is longer than the board's " +
+        "single-session ceiling, so it is assumed to include a pause and excluded from duration medians. " +
+        "The REQ remains completed.";
       spanNode.appendChild(pausedFlag);
     }
     return spanNode;

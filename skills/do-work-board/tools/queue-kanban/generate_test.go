@@ -9375,12 +9375,12 @@ func spanFixtureFrontmatter(requestId string, title string, status string, claim
 	return frontmatter + "---\n\n# " + title + "\n"
 }
 
-// buildImplementationSpanFixturePayload projects the six done-card span cases the
+// buildImplementationSpanFixturePayload projects the done-card span cases the
 // REQ's Red-Green Proof names through the PRODUCTION pipeline — literal
-// frontmatter, buildBoard, buildGeneratedBoardData — and returns the per-request
-// payload. The payload assertions and the rendered-card probe both read this, so
-// neither holds a hand-written copy of the payload's field names.
-func buildImplementationSpanFixturePayload(t *testing.T) map[string]generatedRequest {
+// frontmatter, buildBoard, buildGeneratedBoardData — and returns the complete
+// board payload. The payload assertions and the rendered-card probe both read
+// this, so neither holds a hand-written copy of its field names or badge text.
+func buildImplementationSpanFixturePayload(t *testing.T) generatedBoardData {
 	t.Helper()
 	if implementationSpanPausedFixtureSpan <= analysisOutlierCeiling {
 		t.Fatalf("the paused fixture spans %v, which the read-time ceiling (%v) no longer excludes — that case would witness nothing",
@@ -9441,14 +9441,18 @@ func buildImplementationSpanFixturePayload(t *testing.T) map[string]generatedReq
 	if projectError != nil {
 		t.Fatalf("buildGeneratedBoardData: %v", projectError)
 	}
-	return boardData.Requests
+	return boardData
 }
 
 // The span and its verdict are decided in Go and shipped in the per-request
 // payload (D-02), so the client never restates the read-time ceiling. This pins
 // what reaches the client for each case the REQ names.
 func TestGeneratedRequestCarriesTheDoneCardImplementationSpan(t *testing.T) {
-	requestsById := buildImplementationSpanFixturePayload(t)
+	boardData := buildImplementationSpanFixturePayload(t)
+	requestsById := boardData.Requests
+	if boardData.ImplementationSpanPausedBadgeText != "over 4h · assumed pause" {
+		t.Fatalf("implementationSpanPausedBadgeText = %q, want the label derived from the current ceiling", boardData.ImplementationSpanPausedBadgeText)
+	}
 
 	spanExpectations := []struct {
 		requestId   string
@@ -9520,7 +9524,8 @@ func TestGeneratedRequestCarriesTheDoneCardImplementationSpan(t *testing.T) {
 // stub, because its text has its own coverage and this probe is about the span
 // fragment and where it lands.
 func TestJavaScriptBehaviorDoneCardStatesItsImplementationSpan(t *testing.T) {
-	requestsById := buildImplementationSpanFixturePayload(t)
+	boardData := buildImplementationSpanFixturePayload(t)
+	requestsById := boardData.Requests
 	payloadJson, encodeError := json.Marshal(requestsById)
 	if encodeError != nil {
 		t.Fatalf("encode fixture payload: %v", encodeError)
@@ -9538,6 +9543,7 @@ func TestJavaScriptBehaviorDoneCardStatesItsImplementationSpan(t *testing.T) {
 	}
 	javascriptProbe := `
 var filterState = { searchText: "" };
+var boardData = { implementationSpanPausedBadgeText: ` + mustMarshalJSONString(t, boardData.ImplementationSpanPausedBadgeText) + ` };
 var requestsById = ` + string(payloadJson) + `;
 function makeNode(tagName) {
   var node = {
@@ -9583,7 +9589,14 @@ Object.keys(requestsById).forEach(function (requestId) {
   var card = makeRequestCard(requestId, { showCompleted: true });
   var doneLines = card.childNodes.filter(function (childNode) { return childNode.className === "req-card-completed"; });
   var spanNodes = doneLines.length === 1
-    ? doneLines[0].childNodes.filter(function (childNode) { return childNode.className === "elapsed-duration"; })
+    ? doneLines[0].childNodes.filter(function (childNode) {
+        return (childNode.className || "").split(/\s+/).indexOf("elapsed-duration") !== -1;
+      })
+    : [];
+  var markerNodes = spanNodes.length === 1
+    ? spanNodes[0].childNodes.filter(function (childNode) {
+        return (childNode.className || "").split(/\s+/).indexOf("status-invalid-flag") !== -1;
+      })
     : [];
   renderedCards[requestId] = {
     doneLineCount: doneLines.length,
@@ -9597,7 +9610,8 @@ Object.keys(requestsById).forEach(function (requestId) {
     // rather than left to a one-off browser observation.
     spanTickerKeys: spanNodes.length === 1
       ? Object.keys(spanNodes[0].dataset || {}).sort()
-      : []
+      : [],
+    markerTitle: markerNodes.length === 1 ? markerNodes[0].title : ""
   };
 });
 process.stdout.write(JSON.stringify(renderedCards));`
@@ -9609,6 +9623,7 @@ process.stdout.write(JSON.stringify(renderedCards));`
 		SpanNodeCount  int      `json:"spanNodeCount"`
 		SpanText       string   `json:"spanText"`
 		SpanTickerKeys []string `json:"spanTickerKeys"`
+		MarkerTitle    string   `json:"markerTitle"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &renderedCards); decodeError != nil {
 		t.Fatalf("decode rendered done lines: %v (output %q)", decodeError, probeOutput)
@@ -9622,7 +9637,7 @@ process.stdout.write(JSON.stringify(renderedCards));`
 		requirement    string
 	}{
 		{"REQ-901", "done", "2026-08-24T12:45:00Z", "took 2h 40m", "an ordinary span reads in the card's own stopwatch vocabulary"},
-		{"REQ-902", "done", "2026-08-25T04:05:00Z", "took 18h 00m likely paused", "an over-ceiling span is marked so an overnight pause is not read as work"},
+		{"REQ-902", "done", "2026-08-25T04:05:00Z", "took 18h 00m over 4h · assumed pause", "an over-ceiling span is marked as a duration-quality assumption, not a workflow state"},
 		{"REQ-903", "done", "2026-08-24T10:05:00Z", "reversed stamps", "a reversed span refuses to state a number"},
 		{"REQ-904", "done", "2026-08-24T12:45:00Z", "", "no parseable claimed_at leaves the done line exactly as it was"},
 		{"REQ-905", "cancelled", "2026-08-24T12:45:00Z", "", "a cancelled card states no duration"},
@@ -9661,6 +9676,14 @@ process.stdout.write(JSON.stringify(renderedCards));`
 		}
 		if strings.Contains(rendered.SpanText, "SKEW-BRANCH-REACHED") {
 			t.Errorf("%s reached formatElapsedDuration's clock-skew branch; the Go verdict must be branched on first", expectation.requestId)
+		}
+		if expectation.requestId == "REQ-902" {
+			wantTitle := "Duration-quality marker only: this claim-to-completion span is longer than the board's " +
+				"single-session ceiling, so it is assumed to include a pause and excluded from duration medians. " +
+				"The REQ remains completed."
+			if rendered.MarkerTitle != wantTitle {
+				t.Errorf("%s marker title = %q, want %q", expectation.requestId, rendered.MarkerTitle, wantTitle)
+			}
 		}
 		if expectation.wantSpanText != "" {
 			sawSpanReading = true

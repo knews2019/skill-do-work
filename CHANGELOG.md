@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.248.1 — Clearer Assumed-Pause Badge (2026-08-30)
+
+Long completed-ticket spans no longer look like paused workflow state. The board now marks them `over 4h · assumed pause`, stating both the measured threshold and that the pause is an interpretation of the duration rather than a change to the REQ's completed status.
+
+- The badge text is derived from the Go-side duration ceiling, so the browser never carries a second four-hour rule.
+- Its tooltip and the shipped board guide explain that the marker is informational and that these spans are excluded from duration medians.
+- Narrow cards can wrap between the measured duration and the marker without splitting either reading.
+
 ## 0.248.0 — Timeline Windows That Work on a Finished Board (2026-08-30)
 
 The Timeline's window buttons behaved badly once a queue was fully drained: after a few idle days "Last day" collapsed to an empty hour, and after a month or so four of the five buttons pointed at the same dead window. They now read as the last N days of what the board actually recorded.

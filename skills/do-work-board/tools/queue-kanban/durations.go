@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sort"
 	"time"
 )
@@ -28,6 +29,25 @@ import (
 // analysisOutlierCeiling is the read-time rule's upper bound: a wall span longer
 // than this is assumed to include a pause rather than four solid hours of work.
 const analysisOutlierCeiling = 4 * time.Hour
+
+// implementationSpanPausedBadgeText turns the read-time ceiling into the
+// human-facing marker carried by done cards. The client receives the completed
+// label rather than a numeric ceiling, so Go remains the only place that decides
+// which spans cross the rule.
+func implementationSpanPausedBadgeText(ceiling time.Duration) string {
+	wholeHours := int(ceiling / time.Hour)
+	remainingMinutes := int((ceiling % time.Hour) / time.Minute)
+	thresholdText := ""
+	switch {
+	case wholeHours > 0 && remainingMinutes > 0:
+		thresholdText = fmt.Sprintf("%dh%dm", wholeHours, remainingMinutes)
+	case wholeHours > 0:
+		thresholdText = fmt.Sprintf("%dh", wholeHours)
+	default:
+		thresholdText = fmt.Sprintf("%dm", remainingMinutes)
+	}
+	return "over " + thresholdText + " · assumed pause"
+}
 
 // DurationSample is one archived REQ's measured wall span.
 type DurationSample struct {

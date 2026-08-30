@@ -503,6 +503,24 @@ func TestImplementationSpanVerdictBoundaryReadsTheOutlierCeiling(t *testing.T) {
 	}
 }
 
+func TestImplementationSpanPausedBadgeTextDerivesFromTheCeiling(t *testing.T) {
+	for _, testCase := range []struct {
+		name    string
+		ceiling time.Duration
+		want    string
+	}{
+		{"current ceiling", analysisOutlierCeiling, "over 4h · assumed pause"},
+		{"hours and minutes", 90 * time.Minute, "over 1h30m · assumed pause"},
+		{"minutes only", 45 * time.Minute, "over 45m · assumed pause"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := implementationSpanPausedBadgeText(testCase.ceiling); got != testCase.want {
+				t.Fatalf("implementationSpanPausedBadgeText(%v) = %q, want %q", testCase.ceiling, got, testCase.want)
+			}
+		})
+	}
+}
+
 // A reversed span is data, not an error to swallow, and an unparseable stamp is
 // "unmeasured" rather than a span of zero — a zero would print "0.0 min" on the
 // card and read as instant work.

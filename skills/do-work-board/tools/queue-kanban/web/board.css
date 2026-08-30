@@ -1180,6 +1180,20 @@ body.is-resizing-detail {
   content: "· ";
 }
 
+/* A finished implementation span can carry the longer assumed-pause marker.
+   Let the line wrap between the measured value and that marker on a narrow card,
+   while keeping each of those two readings intact. Active stopwatch nodes keep
+   the base elapsed-duration no-wrap rule above. */
+.implementation-span {
+  white-space: normal;
+}
+
+.implementation-span-value,
+.implementation-span > .status-invalid-flag {
+  display: inline-block;
+  white-space: nowrap;
+}
+
 /* Completion companions keep the smaller, lighter type hierarchy without
    fading below readable contrast on either theme's page or card background. */
 .req-card:is([data-status="completed"], [data-status="completed-with-issues"], [data-status="cancelled"])

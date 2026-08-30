@@ -33,6 +33,9 @@ The toolbar carries a text filter (id or title), domain and status selects, a **
 | `unblocks N` | how many other REQs this one releases when it lands |
 | `overlaps …` | declared write sets could collide — see below |
 | `anomaly`, `⚠ future stamp` | broken completion bookkeeping (unresolvable or reversed span), or a timestamp later than now |
+| `took …` | wall-clock span from `claimed_at` to `completed_at`; informational, not a workflow state |
+| `over 4h · assumed pause` | the span crossed the board's single-session ceiling, so it is assumed to include a pause and is excluded from duration medians; the REQ remains completed |
+| `reversed stamps` | `completed_at` is earlier than `claimed_at`, so the card refuses to state a duration; use the `anomaly` badge to find the stamp to repair |
 | `testing …` | the card carries a testing record |
 
 ### Reading the `overlaps` badge
