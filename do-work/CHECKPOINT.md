@@ -29,6 +29,7 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
+- REQ-425: Stop the Timeline's trailing-window controls assuming now and a full screenful are inside the bounds — claimed 2026-08-30T12:23:07Z — writer: vm:/home/user/skill-do-work
 - REQ-407: Migrate bootstrap, install, update, reconciliation, validation, and fetching into Go — claimed 2026-08-30T07:22:27Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued

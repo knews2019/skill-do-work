@@ -1,8 +1,20 @@
 ---
 id: REQ-425
 title: 'Stop the Timeline''s trailing-window controls assuming now and a full screenful are inside the bounds'
-status: pending
+status: claimed
 created_at: 2026-08-30T11:40:00Z
+route: B
+estimate:
+  p50_active_minutes: 30
+  confidence: medium
+  calculated_at: 2026-08-30T12:23:07Z
+  basis:
+    - Route B
+    - 2-file write set
+    - 4 acceptance criteria
+    - browser evidence
+    - cross-route regression gates
+claimed_at: 2026-08-30T12:23:07Z
 user_request: UR-079
 domain: frontend
 prime_files: ['_dev/primes/prime-kanban-board.md']
@@ -56,3 +68,13 @@ Certainty level: Firm on the defects, open on the remedy. The reviewer proposed 
 
 ---
 *Source: REQ-390 review (UR-079). Sweep REQ: one root cause, two instances.*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** Both defects are precisely located and independently measured, so nothing needs planning from scratch — but the arrow remedy is a real design call (refuse a step that cannot move a full screenful, versus mirror the clamped forward step), and the surrounding Timeline conventions need discovery before choosing. Exploration first, then build.
+
+**Planning:** Not required
