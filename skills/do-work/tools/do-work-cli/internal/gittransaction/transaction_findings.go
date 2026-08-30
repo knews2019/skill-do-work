@@ -24,7 +24,7 @@ type findingTemplate struct {
 	severity             resultmodel.FindingSeverity
 	fixability           resultmodel.FindingFixability
 	automationStopReason string
-	remediation          func(TransactionResult) (nextArgv []string, verificationArgv []string)
+	remediation          func(commandName string, result TransactionResult) (nextArgv []string, verificationArgv []string)
 }
 
 var failureTemplates = map[FailureKind]findingTemplate{
@@ -32,17 +32,17 @@ var failureTemplates = map[FailureKind]findingTemplate{
 		severity:             resultmodel.SeverityError,
 		fixability:           resultmodel.FixabilityManual,
 		automationStopReason: "the transaction options are not valid, so nothing was attempted",
-		remediation: func(TransactionResult) ([]string, []string) {
-			return []string{"do-work-cli", "--format", "text", "<command>"},
-				[]string{"do-work-cli", "--format", "json", "<command>"}
+		remediation: func(commandName string, _ TransactionResult) ([]string, []string) {
+			return []string{"do-work-cli", "--format", "text", commandName},
+				[]string{"do-work-cli", "--format", "json", commandName}
 		},
 	},
 	FailureNotGit: {
 		severity:             resultmodel.SeverityError,
 		fixability:           resultmodel.FixabilityManual,
 		automationStopReason: "mutating commands require a Git repository",
-		remediation: func(TransactionResult) ([]string, []string) {
-			return []string{"do-work-cli", "--repo-root", "<git-repository>", "<command>"},
+		remediation: func(commandName string, _ TransactionResult) ([]string, []string) {
+			return []string{"do-work-cli", "--repo-root", "<git-repository>", commandName},
 				[]string{"git", "rev-parse", "--show-toplevel"}
 		},
 	},
@@ -50,7 +50,7 @@ var failureTemplates = map[FailureKind]findingTemplate{
 		severity:             resultmodel.SeverityWarning,
 		fixability:           resultmodel.FixabilityRefused,
 		automationStopReason: "the target path already carries uncommitted work this transaction will not overwrite",
-		remediation: func(result TransactionResult) ([]string, []string) {
+		remediation: func(_ string, result TransactionResult) ([]string, []string) {
 			return gitPathArgv([]string{"git", "status", "--short"}, failurePaths(result)),
 				gitPathArgv([]string{"git", "diff", "--quiet", "--exit-code"}, failurePaths(result))
 		},
@@ -59,7 +59,7 @@ var failureTemplates = map[FailureKind]findingTemplate{
 		severity:             resultmodel.SeverityWarning,
 		fixability:           resultmodel.FixabilityRefused,
 		automationStopReason: "--commit needs an empty index so the commit can hold exactly the declared targets",
-		remediation: func(TransactionResult) ([]string, []string) {
+		remediation: func(string, TransactionResult) ([]string, []string) {
 			return []string{"git", "diff", "--cached", "--name-only"},
 				[]string{"git", "diff", "--cached", "--quiet", "--exit-code"}
 		},
@@ -68,8 +68,8 @@ var failureTemplates = map[FailureKind]findingTemplate{
 		severity:             resultmodel.SeverityError,
 		fixability:           resultmodel.FixabilityManual,
 		automationStopReason: "the mutation failed and every declared target was restored",
-		remediation: func(result TransactionResult) ([]string, []string) {
-			return []string{"do-work-cli", "--format", "json", "<command>"},
+		remediation: func(commandName string, result TransactionResult) ([]string, []string) {
+			return []string{"do-work-cli", "--format", "json", commandName},
 				gitPathArgv([]string{"git", "status", "--short"}, failurePaths(result))
 		},
 	},
@@ -77,8 +77,8 @@ var failureTemplates = map[FailureKind]findingTemplate{
 		severity:             resultmodel.SeverityError,
 		fixability:           resultmodel.FixabilityManual,
 		automationStopReason: "the commit failed and every declared target was restored",
-		remediation: func(result TransactionResult) ([]string, []string) {
-			return []string{"do-work-cli", "--format", "json", "<command>"},
+		remediation: func(commandName string, result TransactionResult) ([]string, []string) {
+			return []string{"do-work-cli", "--format", "json", commandName},
 				gitPathArgv([]string{"git", "status", "--short"}, failurePaths(result))
 		},
 	},
@@ -86,7 +86,7 @@ var failureTemplates = map[FailureKind]findingTemplate{
 		severity:             resultmodel.SeverityError,
 		fixability:           resultmodel.FixabilityManual,
 		automationStopReason: "the rollback did not complete, so the worktree needs a person before any retry",
-		remediation: func(result TransactionResult) ([]string, []string) {
+		remediation: func(_ string, result TransactionResult) ([]string, []string) {
 			return gitPathArgv([]string{"git", "status", "--short"}, failurePaths(result)),
 				[]string{"git", "status", "--porcelain=v1"}
 		},
@@ -95,7 +95,7 @@ var failureTemplates = map[FailureKind]findingTemplate{
 		severity:             resultmodel.SeverityError,
 		fixability:           resultmodel.FixabilityManual,
 		automationStopReason: "the commit landed but its contents could not be verified; history is never rewritten",
-		remediation: func(result TransactionResult) ([]string, []string) {
+		remediation: func(_ string, result TransactionResult) ([]string, []string) {
 			return result.RevertArgv, []string{"git", "show", "--stat", result.CommitSHA}
 		},
 	},
@@ -108,22 +108,27 @@ func FindingCode(kind FailureKind) string {
 }
 
 // BuildCommandResult turns a Git transaction into the one typed result the whole CLI
-// renders. This is the only place a FailureKind becomes a finding, so later commands
-// consume findings rather than re-deriving them from raw kinds.
-func BuildCommandResult(result TransactionResult) resultmodel.CommandResult {
+// renders. This is the only place a FailureKind becomes a finding, so later commands consume
+// findings rather than re-deriving them from raw kinds.
+//
+// commandName is what the caller was invoked as. Every remediation template that names the
+// CLI threads it through, so a finding's next_argv is a command line a reader can paste
+// rather than a shape they have to fill in.
+func BuildCommandResult(commandName string, result TransactionResult) resultmodel.CommandResult {
 	commandResult := resultmodel.CommandResult{
+		Command:        commandName,
 		Outcome:        result.Outcome,
 		RepositoryRoot: result.RepositoryRoot,
 		Changes:        survivingChanges(result),
 		Rollback:       result.Rollback,
 	}
 	if result.Failure != nil {
-		commandResult.Findings = []resultmodel.CommandFinding{buildFinding(result)}
+		commandResult.Findings = []resultmodel.CommandFinding{buildFinding(commandName, result)}
 	}
 	return commandResult
 }
 
-func buildFinding(result TransactionResult) resultmodel.CommandFinding {
+func buildFinding(commandName string, result TransactionResult) resultmodel.CommandFinding {
 	failure := result.Failure
 	template, mapped := failureTemplates[failure.Kind]
 	if !mapped {
@@ -139,7 +144,7 @@ func buildFinding(result TransactionResult) resultmodel.CommandFinding {
 			VerificationArgv:     []string{"git", "status", "--porcelain=v1"},
 		}
 	}
-	nextArgv, verificationArgv := template.remediation(result)
+	nextArgv, verificationArgv := template.remediation(commandName, result)
 	return resultmodel.CommandFinding{
 		Code:                 FindingCode(failure.Kind),
 		Severity:             template.severity,

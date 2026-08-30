@@ -50,7 +50,7 @@ func TestEveryDeclaredFailureKindProducesACompleteFinding(t *testing.T) {
 			RevertArgv:     []string{"git", "revert", "0123456789abcdef0123456789abcdef01234567"},
 			Failure:        &TransactionFailure{Kind: kind, Reason: "forced " + string(kind), Paths: []string{"target.txt"}},
 		}
-		commandResult := BuildCommandResult(result)
+		commandResult := BuildCommandResult("apply-fixture", result)
 		if len(commandResult.Findings) != 1 {
 			t.Fatalf("kind %q produced %d findings", kind, len(commandResult.Findings))
 		}
@@ -80,7 +80,7 @@ func TestUnmappedFailureKindFailsLoudly(t *testing.T) {
 		Outcome: resultmodel.OutcomeFailure,
 		Failure: &TransactionFailure{Kind: FailureKind("invented_after_this_test"), Reason: "synthetic"},
 	}
-	findings := BuildCommandResult(result).Findings
+	findings := BuildCommandResult("apply-fixture", result).Findings
 	if len(findings) != 1 || findings[0].Code != "GIT-UNMAPPED-FAILURE" {
 		t.Fatalf("unmapped kind findings = %#v", findings)
 	}
@@ -95,7 +95,7 @@ func TestSuccessfulTransactionCarriesTruthfulChangeKinds(t *testing.T) {
 		ChangedPaths: []string{"created.txt", "tracked.txt"},
 		CreatedPaths: []string{"created.txt"},
 	}
-	changes := BuildCommandResult(result).Changes
+	changes := BuildCommandResult("apply-fixture", result).Changes
 	if len(changes) != 2 || changes[0].Kind != "created" || changes[1].Kind != "modified" {
 		t.Fatalf("changes = %#v", changes)
 	}
@@ -112,7 +112,49 @@ func TestCompletedRollbackReportsNoSurvivingChanges(t *testing.T) {
 		Rollback:     resultmodel.RollbackResult{Status: resultmodel.RollbackSucceeded},
 		Failure:      &TransactionFailure{Kind: FailureMutation, Reason: "forced", Paths: []string{"tracked.txt"}},
 	}
-	if changes := BuildCommandResult(result).Changes; len(changes) != 0 {
+	if changes := BuildCommandResult("apply-fixture", result).Changes; len(changes) != 0 {
 		t.Fatalf("rolled-back result reported surviving changes: %#v", changes)
 	}
+}
+
+// Requirement 5 asks every finding for the exact next argv. A remediation template that
+// still emitted `<command>` printed a shape a reader has to fill in, which is what this
+// pins closed: whatever the caller was invoked as is what the finding names.
+func TestEveryRemediationNamesTheRunningCommandRatherThanAPlaceholder(t *testing.T) {
+	const commandName = "install-suite"
+	for _, kind := range declaredFailureKinds(t) {
+		result := TransactionResult{
+			Outcome:        resultmodel.OutcomeRefused,
+			RepositoryRoot: "/tmp/example",
+			CommitSHA:      "0123456789abcdef0123456789abcdef01234567",
+			RevertArgv:     []string{"git", "revert", "0123456789abcdef0123456789abcdef01234567"},
+			Failure:        &TransactionFailure{Kind: kind, Reason: "forced " + string(kind), Paths: []string{"target.txt"}},
+		}
+		commandResult := BuildCommandResult(commandName, result)
+		if commandResult.Command != commandName {
+			t.Errorf("kind %q result names command %q, want %q", kind, commandResult.Command, commandName)
+		}
+		finding := commandResult.Findings[0]
+		for _, argv := range [][]string{finding.NextArgv, finding.VerificationArgv} {
+			for _, argument := range argv {
+				if argument == "<command>" {
+					t.Errorf("kind %q still emits the <command> placeholder: %v", kind, argv)
+				}
+			}
+		}
+		if namesDoWorkCli(finding.NextArgv) && !containsArgument(finding.NextArgv, commandName) {
+			t.Errorf("kind %q next argv %v invokes the CLI without naming %q", kind, finding.NextArgv, commandName)
+		}
+	}
+}
+
+func namesDoWorkCli(argv []string) bool { return len(argv) > 0 && argv[0] == "do-work-cli" }
+
+func containsArgument(argv []string, wanted string) bool {
+	for _, argument := range argv {
+		if argument == wanted {
+			return true
+		}
+	}
+	return false
 }

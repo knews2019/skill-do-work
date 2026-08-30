@@ -315,3 +315,143 @@ func commitPaths(t *testing.T, repositoryRoot, commitSHA string) []string {
 	sort.Strings(paths)
 	return paths
 }
+
+// REQ-406 built the committing path but registered no command, so nothing observed a
+// SUCCESSFUL --commit end to end. This drives a real repository: the commit must land, hold
+// exactly the declared targets, leave an empty index, and report a revert command.
+func TestSuccessfulCommitLandsExactlyTheDeclaredTargets(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "tracked.txt", "original\n")
+	writeFile(t, repositoryRoot, "untouched.txt", "leave me\n")
+	commitAll(t, repositoryRoot, "seed")
+	headBeforeCommit := runFixtureGit(t, repositoryRoot, "rev-parse", "HEAD")
+
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot,
+		TargetPaths:    []string{"tracked.txt", "created.txt"},
+		Commit:         true,
+		CommitMessage:  "exact-path commit fixture",
+	}, func(recorder *MutationRecorder) error {
+		writeFile(t, repositoryRoot, "tracked.txt", "updated\n")
+		if err := recorder.RecordTouched("tracked.txt"); err != nil {
+			return err
+		}
+		writeFile(t, repositoryRoot, "created.txt", "brand new\n")
+		return recorder.RecordCreated("created.txt")
+	})
+
+	if result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("outcome = %q, failure = %#v", result.Outcome, result.Failure)
+	}
+	if result.CommitSHA == "" || result.CommitSHA == headBeforeCommit {
+		t.Fatalf("commit SHA = %q, want a new commit", result.CommitSHA)
+	}
+	if want := []string{"created.txt", "tracked.txt"}; !equalStrings(commitPaths(t, repositoryRoot, result.CommitSHA), want) {
+		t.Errorf("committed paths = %v, want %v", commitPaths(t, repositoryRoot, result.CommitSHA), want)
+	}
+	if len(result.RevertArgv) != 3 || result.RevertArgv[1] != "revert" || result.RevertArgv[2] != result.CommitSHA {
+		t.Errorf("revert argv = %v, want git revert %s", result.RevertArgv, result.CommitSHA)
+	}
+	if result.Rollback.Status != resultmodel.RollbackNotNeeded {
+		t.Errorf("rollback status = %q, want %q", result.Rollback.Status, resultmodel.RollbackNotNeeded)
+	}
+	if status := runFixtureGit(t, repositoryRoot, "status", "--porcelain"); status != "" {
+		t.Errorf("worktree is not clean after a successful commit: %q", status)
+	}
+	if readFile(t, repositoryRoot, "untouched.txt") != "leave me\n" {
+		t.Errorf("an undeclared path was changed by the commit")
+	}
+	commandResult := BuildCommandResult("apply", result)
+	if len(commandResult.Changes) != 2 {
+		t.Fatalf("changes = %#v, want both declared targets", commandResult.Changes)
+	}
+	for _, change := range commandResult.Changes {
+		if change.Detail != "committed in "+result.CommitSHA {
+			t.Errorf("change %q detail = %q, want it to name the commit", change.Path, change.Detail)
+		}
+	}
+}
+
+// commit_failed had a remediation template but no behavioural test. A commit hook that
+// refuses makes git commit fail for real, so the transaction must roll back every declared
+// target and report the kind rather than a generic mutation failure.
+func TestRefusedCommitRollsBackAndReportsCommitFailed(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "tracked.txt", "original\n")
+	commitAll(t, repositoryRoot, "seed")
+	hooksDirectory := runFixtureGit(t, repositoryRoot, "rev-parse", "--git-path", "hooks")
+	if !filepath.IsAbs(hooksDirectory) {
+		hooksDirectory = filepath.Join(repositoryRoot, hooksDirectory)
+	}
+	if err := os.MkdirAll(hooksDirectory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(hooksDirectory, "pre-commit"),
+		[]byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot,
+		TargetPaths:    []string{"tracked.txt", "created.txt"},
+		Commit:         true,
+		CommitMessage:  "this commit is refused by a hook",
+	}, func(recorder *MutationRecorder) error {
+		writeFile(t, repositoryRoot, "tracked.txt", "updated\n")
+		if err := recorder.RecordTouched("tracked.txt"); err != nil {
+			return err
+		}
+		writeFile(t, repositoryRoot, "created.txt", "brand new\n")
+		return recorder.RecordCreated("created.txt")
+	})
+
+	if result.Outcome != resultmodel.OutcomeRolledBack {
+		t.Fatalf("outcome = %q, want %q (failure %#v)", result.Outcome, resultmodel.OutcomeRolledBack, result.Failure)
+	}
+	if result.Failure == nil || result.Failure.Kind != FailureCommit {
+		t.Fatalf("failure = %#v, want kind %q", result.Failure, FailureCommit)
+	}
+	if result.Rollback.Status != resultmodel.RollbackSucceeded {
+		t.Fatalf("rollback status = %q, errors %v", result.Rollback.Status, result.Rollback.Errors)
+	}
+	if readFile(t, repositoryRoot, "tracked.txt") != "original\n" {
+		t.Errorf("a refused commit left the tracked target modified")
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, "created.txt")); !os.IsNotExist(err) {
+		t.Errorf("a refused commit left the created target behind")
+	}
+	if status := runFixtureGit(t, repositoryRoot, "status", "--porcelain"); status != "" {
+		t.Errorf("worktree is not clean after rollback: %q", status)
+	}
+	finding := BuildCommandResult("apply", result).Findings[0]
+	if finding.Code != FindingCode(FailureCommit) {
+		t.Errorf("finding code = %q, want %q", finding.Code, FindingCode(FailureCommit))
+	}
+}
+
+// A path the mutation created but recorded only as touched used to report success, so the
+// result described a creation the transaction never saw. The success path now consults
+// state.existed and treats it as an unrecorded mutation.
+func TestAnUnrecordedCreationIsRolledBackRatherThanReportedAsSuccess(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "tracked.txt", "original\n")
+	commitAll(t, repositoryRoot, "seed")
+
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot,
+		TargetPaths:    []string{"created.txt"},
+	}, func(recorder *MutationRecorder) error {
+		writeFile(t, repositoryRoot, "created.txt", "brand new\n")
+		return recorder.RecordTouched("created.txt")
+	})
+
+	if result.Outcome == resultmodel.OutcomeSuccess {
+		t.Fatalf("an unrecorded creation reported success: %#v", result)
+	}
+	if result.Failure == nil || result.Failure.Kind != FailureMutation {
+		t.Fatalf("failure = %#v, want kind %q", result.Failure, FailureMutation)
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, "created.txt")); err != nil {
+		t.Logf("the unrecorded creation was removed by rollback, which is acceptable")
+	}
+}
