@@ -267,7 +267,15 @@ func (object *orderedObject) delete(key string) {
 	}
 }
 
+// utf8ByteOrderMark is U+FEFF encoded as the three bytes EF BB BF. Windows editors and
+// PowerShell redirects write it at the head of a settings.json, and jq — the incumbent
+// reconciler this package replaces, preferred whenever it was installed — accepts and drops it.
+const utf8ByteOrderMark = "\uFEFF"
+
 func decodeOrderedJSON(data []byte) (any, error) {
+	// Exactly one mark, only at offset zero: that is what a byte-order mark is. A second one,
+	// or one further in, stays the malformed input it is rather than being parsed leniently.
+	data = bytes.TrimPrefix(data, []byte(utf8ByteOrderMark))
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
 	value, err := decodeOrderedValue(decoder)

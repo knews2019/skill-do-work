@@ -1,6 +1,7 @@
 package settingshooks
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 )
@@ -163,6 +164,38 @@ func TestNonAsciiValuesStayRawUtf8(t *testing.T) {
 	}
 }
 
+// jq — the branch this port preferred whenever it was installed — accepts a leading UTF-8
+// byte-order mark and drops it, so a settings.json written by a Windows editor or a
+// PowerShell redirect has always installed. Refusing it here would lock those consumers out
+// of the installer entirely.
+func TestLeadingByteOrderMarkIsStrippedLikeJq(t *testing.T) {
+	settings := "\uFEFF" + `{
+  "hooks": {
+    "SessionStart": [
+      {"hooks": [{"type": "command", "command": "echo custom-start"}]}
+    ]
+  }
+}
+`
+	composed, err := ComposeSettings([]byte(settings), []byte(coreHookFragment))
+	if err != nil {
+		t.Fatalf("ComposeSettings: %v", err)
+	}
+	if bytes.Contains(composed, []byte("\uFEFF")) {
+		t.Errorf("the byte-order mark came back in the re-encoded output:\n%q", composed)
+	}
+	if !bytes.HasPrefix(composed, []byte("{\n")) {
+		t.Errorf("composed settings must start with the object itself:\n%q", composed)
+	}
+	output := string(composed)
+	if strings.Count(output, "echo custom-start") != 1 {
+		t.Errorf("the consumer's own hook was dropped:\n%s", output)
+	}
+	if strings.Count(output, "do-work/hooks/session-start.sh") != 1 {
+		t.Errorf("the core SessionStart hook was not composed exactly once:\n%s", output)
+	}
+}
+
 // HTML-significant characters are common in hook commands; escaping them would rewrite bytes
 // the consumer never asked to change.
 func TestHtmlSignificantCharactersAreNotEscaped(t *testing.T) {
@@ -186,6 +219,10 @@ func TestMalformedSettingsAreRefusedWithoutProducingOutput(t *testing.T) {
 		{name: "hooks is not an object", settings: `{"hooks": []}`, expectedMessage: "settings hooks must be an object"},
 		{name: "Stop is not an array", settings: `{"hooks": {"Stop": {}}}`, expectedMessage: "settings Stop hook event must be an array"},
 		{name: "a hook event is not an array", settings: `{"hooks": {"SessionStart": {}}}`, expectedMessage: "settings hook event must be an array"},
+		// A byte-order mark is one mark at position zero. Two of them, or one anywhere else, is
+		// malformed input — stripping the leading one must not become lenient JSON parsing.
+		{name: "doubled byte-order mark", settings: "\uFEFF\uFEFF{}", expectedMessage: "settings are not valid JSON"},
+		{name: "byte-order mark at a non-zero offset", settings: "{\uFEFF\"hooks\": {}}", expectedMessage: "settings are not valid JSON"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
