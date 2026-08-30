@@ -8,7 +8,7 @@ domain: general
 prime_files: [_dev/primes/prime-action-files.md]
 tdd: true
 suggested_spec:
-depends_on: [REQ-411]
+depends_on: [REQ-411, REQ-433]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive

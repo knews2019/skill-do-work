@@ -1,8 +1,9 @@
 ---
 id: REQ-427
 title: 'Confirm the Go version floor for installing and updating do-work'
-status: pending-answers
+status: pending
 created_at: 2026-08-30T17:40:00Z
+status_changed_at: 2026-08-30T18:24:45Z
 user_request: UR-081
 domain: general
 prime_files: []
@@ -38,9 +39,15 @@ So no language or standard-library feature in `do-work-cli` requires 1.26.1. As 
 One thing that is genuinely 1.26: `skills/do-work-board/tools/queue-kanban/go.mod` declares `go 1.26`. The board tool is optional; the installer is not. Lowering the installer's floor would not lower the board's.
 
 ## Open Questions
-- [ ] Should the Go floor for installing and updating stay at 1.26.1, or drop to the lowest version the module actually builds and tests clean on? → **Recommended:** lower it to `1.23.0` in `skills/do-work/tools/do-work-cli/go.mod`, the launcher's `minimum_go_version`, `README.md` and `skills/do-work/actions/version.md`, so the prerequisite matches what the code needs. **Also:** keep 1.26.1 deliberately, if you want one toolchain across the whole suite and are content to exclude older installs; or pick an intermediate floor such as 1.24 to match the toolchain most CI images ship today.
+- [x] Should the Go floor for installing and updating stay at 1.26.1, or drop to the lowest version the module actually builds and tests clean on? → Confirmed: lower to `1.23.0`
+  **Recommended:** lower it to `1.23.0` in `skills/do-work/tools/do-work-cli/go.mod`, the launcher's `minimum_go_version`, `README.md` and `skills/do-work/actions/version.md`, so the prerequisite matches what the code needs. **Also:** keep 1.26.1 deliberately, if you want one toolchain across the whole suite and are content to exclude older installs; or pick an intermediate floor such as 1.24 to match the toolchain most CI images ship today.
   Value: a floor that matches the code stops excluding installs for no technical reason.
   Risk: low and reversible either way — it is four literals and a `go.mod` directive. Choosing to *keep* 1.26.1 costs nothing to implement, since that is what already ships.
+
+  **Answered 2026-08-30** (UTC date per `actions/work-reference.md` → **Date-only stamps**):
+  User confirmed the recommendation via `do-work clarify`: lower the installer and updater floor
+  to Go 1.23.0, the lowest version on which the module was built, vetted, and tested successfully.
+  The optional board tool's Go 1.26 requirement remains unchanged and is outside this REQ's scope.
 
 ## Notes
 If the answer is to lower it, the change is mechanical and belongs in one small REQ: the `go` directive, `minimum_go_version` in `skills/do-work/tools/do-work-cli.sh`, the README prerequisite line, and the version-action prerequisite line, plus a check that the launcher's refusal message quotes the new number.

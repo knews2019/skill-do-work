@@ -7,6 +7,7 @@ created_at: 2026-08-30T20:35:44Z
 user_request: UR-081
 addendum_to: REQ-409
 review_generated: true
+depends_on: [REQ-432]
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 tdd: true

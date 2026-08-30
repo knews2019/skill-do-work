@@ -3,12 +3,27 @@ id: REQ-411
 title: 'Implement dependency-aware queue selection and actionable summaries'
 status: pending
 created_at: 2026-08-29T20:28:26Z
+status_changed_at: 2026-08-30T22:14:34Z
+estimate:
+  p50_active_minutes: 100
+  confidence: low
+  calculated_at: 2026-08-30T22:10:19Z
+  basis:
+    - Route C
+    - 18-file write set
+    - 8 new files
+    - 7 subsystems involved
+    - 6 acceptance criteria
+    - dependency depth 5
+    - persistence changes
+    - cross-route regression gates
+    - full-suite verification
 user_request: UR-081
 domain: general
 prime_files: [_dev/primes/prime-action-files.md]
 tdd: true
 suggested_spec:
-depends_on: [REQ-410]
+depends_on: [REQ-410, REQ-428, REQ-429, REQ-435]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
