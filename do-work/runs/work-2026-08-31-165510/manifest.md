@@ -42,3 +42,5 @@ Status: in-progress
 | 1 | REQ-412 | `worktree-agent-REQ-412-implement-request-state-transactions` | `REQ-412-brief.md` | `REQ-412-handback.md` | done |
 | Reviewer | REQ-436 review | integration range `7207daef..f0715c41` | REQ plus REQ-426 | `REQ-436-review.md` | done |
 | Discovered | REQ-447 | queue-kanban complete-mode publication | queued follow-up | `do-work/queue/REQ-447-preserve-special-mode-bits-in-queue-kanban-publication.md` | done |
+| Reviewer | REQ-412 review | integration range `01d8ba12..a21c10ae` | REQ plus UR-081 | `REQ-412-review.md` | changes-requested |
+| Remediation | REQ-412 | `worktree-agent-REQ-412-implement-request-state-transactions` | sole-writer actions and cancellation/failure fidelity | `REQ-412-remediation-handback.md` | pending |
