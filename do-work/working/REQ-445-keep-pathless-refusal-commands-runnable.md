@@ -15,6 +15,17 @@ sweep: true
 sweep_key: pathless-refusal-recovery-argv
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 claimed_at: 2026-08-31T22:07:41Z
+route: B
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-08-31T22:08:35Z
+  basis:
+    - Route B
+    - 3-file write set
+    - 3 acceptance criteria
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Review Fix: Keep Pathless Refusal Commands Runnable
@@ -55,3 +66,17 @@ Found during review of REQ-430 (Couple UR closure to terminal member archival). 
   User confirmed the recommendation via `do-work clarify`: add the focused fix to the queue
   so every applicable pathless structural cleanup refusal emits runnable recovery commands
   with result-level regression coverage. Nothing from the captured scope was put out of scope.
+
+<!-- D-XX counter: none used. Next decision: D-01. -->
+
+## Triage
+
+**Route: B** — Moderate
+
+**Reasoning:** The fix is localized to cleanup finding construction and its tests, but it changes a shared actionable-command contract and must ratchet every applicable pathless structural refusal rather than patch one example.
+
+**Planning:** Not required — requirements and target behavior are sufficiently concrete for focused exploration.
+
+## Plan
+
+Planning not required (Route B).

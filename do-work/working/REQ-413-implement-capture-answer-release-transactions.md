@@ -15,6 +15,21 @@ effort_estimate: effort-substantive
 related: [REQ-406, REQ-407, REQ-408, REQ-409, REQ-410, REQ-411, REQ-412, REQ-414, REQ-415, REQ-416, REQ-417, REQ-418, REQ-419, REQ-420]
 batch: go-no-llm-command-platform
 claimed_at: 2026-08-31T22:07:13Z
+route: C
+estimate:
+  p50_active_minutes: 105
+  confidence: low
+  calculated_at: 2026-08-31T22:08:35Z
+  basis:
+    - Route C
+    - 24-file write set
+    - 12 new files
+    - 7 subsystems involved
+    - 4 acceptance criteria
+    - dependency depth 1
+    - persistence changes
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Implement Capture-File, Answer, Release, Version, and Changelog Transactions
@@ -53,3 +68,11 @@ See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
 
 ---
 *Source: UR-081 (Replace LLM bookkeeping and shipped utility logic with a Go command platform)*
+
+## Triage
+
+**Route: C** — Complex
+
+**Reasoning:** This request introduces three public mutation domains plus shared publication/release primitives, spans capture and answer actions, and must preserve atomic filesystem, Git, containment, version, changelog, and rollback contracts. The cross-action persistence surface requires explicit planning and exploration.
+
+**Planning:** Required
