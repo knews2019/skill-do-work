@@ -22,3 +22,4 @@ Status: in-progress
 | Reviewer | REQ-431 review | integration range `1e3dc78e..3d695fcb` | REQ plus UR | `REQ-431-review.md` | done |
 | 1 | REQ-432 | `worktree-agent-REQ-432-enforce-commit-guard-for-consumed-scratch` | `REQ-432-brief.md` | `REQ-432-handback.md` | done |
 | Explorer | REQ-435 exploration | read-only | REQ plus primes | `REQ-435-exploration.md` | pending |
+| Reviewer | REQ-432 review | integration range `4fcb006a..ad6c252e` | REQ plus UR | `REQ-432-review.md` | pending |
