@@ -26,3 +26,4 @@ Status: in-progress
 | 2 | REQ-435 | `worktree-agent-REQ-435-complete-doctor-forensics-delegation-contract` | `REQ-435-brief.md` | `REQ-435-handback.md` | done |
 | Reviewer | REQ-435 review | integration range `0acc9342..5b808919` | REQ plus UR | `REQ-435-review.md` | changes-requested |
 | Remediation | REQ-435 | `worktree-agent-REQ-435-complete-doctor-forensics-delegation-contract` | F1 board severity authority | `REQ-435-remediation-handback.md` | done |
+| Reviewer | REQ-435 re-review | integration range `0acc9342..c1536cbf` | REQ plus remediation | `REQ-435-rereview.md` | pending |
