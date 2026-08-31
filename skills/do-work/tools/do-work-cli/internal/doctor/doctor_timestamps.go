@@ -95,7 +95,7 @@ func BuildTimestampPlan(ctx context.Context, snapshot *repositorymodel.Repositor
 		var predecessor *timestampField
 		for _, anchor := range anchors {
 			field := fieldNamed(fields, anchor)
-			if field == nil || !field.comparable {
+			if field == nil || !field.comparable || !repairableTimestamp(field.evidence) {
 				continue
 			}
 			effective := field.parsedTime
@@ -110,10 +110,6 @@ func BuildTimestampPlan(ctx context.Context, snapshot *repositorymodel.Repositor
 				if effective.Before(predecessorTime) {
 					findings = append(findings, timestampFinding("TIMESTAMP-ORDER", requestFile, *field,
 						fmt.Sprintf("line %d %s=%q precedes %s=%q", field.evidence.LineNumber, field.name, field.evidence.ScalarValue, predecessor.name, predecessor.evidence.ScalarValue)))
-					if !repairableTimestamp(field.evidence) {
-						predecessor = field
-						continue
-					}
 					replacement, source, deriveError := blameTimestamp(ctx, snapshot.RepositoryRoot, requestRepositoryPath(requestFile), field.evidence.LineNumber)
 					if deriveError != nil {
 						findings = append(findings, timestampRefusal(requestFile, *field, deriveError.Error()))
