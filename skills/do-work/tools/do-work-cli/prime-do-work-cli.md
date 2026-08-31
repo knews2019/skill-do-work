@@ -13,6 +13,7 @@ The standard-library Go module under this directory is the canonical implementat
 - `internal/schemanormalization/` owns schema aliases, defaults, warnings, and terminal predicates.
 - `internal/repositorymodel/` owns one-pass do-work discovery, exact paths, collisions, and REQ allocation.
 - `internal/dependencygraph/` derives readiness, reverse edges, cycles, and depth from a repository snapshot.
+- `internal/nextselection/` owns read-only target expansion, queue readiness, blocked probes, wave/fan-out bounds, estimates, and typed selected/excluded records.
 - `internal/cleanup/` plans safe Passes 0–4, consent-gated repairs, link repointing, and worktree evidence.
 - `internal/doctor/` owns read-only mechanical forensics and guarded blame-derived timestamp repair; recurring lesson judgment and board verification remain outside it.
 - `internal/atomicfile/` owns safe existing-file replacement and exclusive marker creation.
@@ -32,6 +33,7 @@ The standard-library Go module under this directory is the canonical implementat
 - Cleanup operation groups preflight independently; a dirty group is reported without blocking unrelated safe groups.
 - Entirely untracked `Status: consumed` run scratch is the sole non-rollback deletion; revalidate its exact inventory immediately before removal.
 - Doctor diagnosis is byte-for-byte read-only. Only `--repair-timestamps` mutates, and blank recovery remains exact cleanup consent.
+- Queue selection is byte-for-byte read-only. It may execute a scoped `blocked_check` only through `scripts/run-blocked-check.sh`; successful probes affect that invocation's eligibility but never rewrite the REQ.
 
 ## Verify
 

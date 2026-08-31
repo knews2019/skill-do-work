@@ -6,6 +6,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/cleanup"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/doctor"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/nextselection"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/suiteinstall"
 )
 
@@ -21,6 +22,9 @@ func main() {
 		handlers[name] = handler
 	}
 	for name, handler := range doctor.Handlers() {
+		handlers[name] = handler
+	}
+	for name, handler := range nextselection.Handlers() {
 		handlers[name] = handler
 	}
 	runtime := commandruntime.NewRuntime(os.Stdout, handlers)
