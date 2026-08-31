@@ -23,4 +23,4 @@ Status: in-progress
 | 1 | REQ-432 | `worktree-agent-REQ-432-enforce-commit-guard-for-consumed-scratch` | `REQ-432-brief.md` | `REQ-432-handback.md` | done |
 | Explorer | REQ-435 exploration | read-only | REQ plus primes | `REQ-435-exploration.md` | done |
 | Reviewer | REQ-432 review | integration range `4fcb006a..ad6c252e` | REQ plus UR | `REQ-432-review.md` | done |
-| 2 | REQ-435 | `worktree-agent-REQ-435-complete-doctor-forensics-delegation-contract` | `REQ-435-brief.md` | `REQ-435-handback.md` | pending |
+| 2 | REQ-435 | `worktree-agent-REQ-435-complete-doctor-forensics-delegation-contract` | `REQ-435-brief.md` | `REQ-435-handback.md` | done |
