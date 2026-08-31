@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
 func TestDocumentationLinkRewritePreservesAnchorAndBareMention(t *testing.T) {
@@ -15,12 +17,100 @@ func TestDocumentationLinkRewritePreservesAnchorAndBareMention(t *testing.T) {
 	commitCleanupFixture(t, repositoryRoot)
 	plan := CleanupPlan{RepositoryRoot: repositoryRoot, Groups: []OperationGroup{{Code: "move", Operations: []CleanupOperation{{Kind: OperationMove, SourcePath: "do-work/queue/REQ-106-done.md", DestinationPath: "do-work/archive/REQ-106-done.md"}}}}}
 	EnrichDocumentationLinks(context.Background(), &plan)
-	if len(plan.Groups[0].Operations) != 2 {
+	if len(plan.Groups[0].Operations) != 2 || plan.Groups[0].Operations[1].Kind != OperationRewriteLinks {
 		t.Fatalf("link operation missing: %#v", plan.Groups[0].Operations)
 	}
-	updated := string(plan.Groups[0].Operations[1].Contents)
-	if !strings.Contains(updated, "../do-work/archive/REQ-106-done.md#lessons") || !strings.Contains(updated, "and REQ-106-done.md") {
+	result := ApplyPlan(context.Background(), plan, ApplyOptions{})
+	if result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("outcome = %s; findings = %#v", result.Outcome, result.Findings)
+	}
+	updated, readError := os.ReadFile(filepath.Join(repositoryRoot, "docs/prime.md"))
+	if readError != nil {
+		t.Fatal(readError)
+	}
+	if string(updated) != "[lesson](../do-work/archive/REQ-106-done.md#lessons) and REQ-106-done.md\n" {
 		t.Fatalf("rewritten doc = %q", updated)
+	}
+}
+
+func TestDocumentationRewritesComposeTwoMovesOnce(t *testing.T) {
+	testCases := []struct {
+		name            string
+		dirtySource     string
+		wantOutcome     resultmodel.CommandOutcome
+		wantDocument    string
+		wantFirstMoved  bool
+		wantSecondMoved bool
+	}{
+		{
+			name:            "first owner refused",
+			dirtySource:     "do-work/queue/REQ-207.md",
+			wantOutcome:     resultmodel.OutcomeFindings,
+			wantDocument:    "[one](../do-work/queue/REQ-207.md#anchor) [two](../do-work/archive/REQ-208.md) and REQ-208.md\n",
+			wantSecondMoved: true,
+		},
+		{
+			name:           "second owner refused",
+			dirtySource:    "do-work/queue/REQ-208.md",
+			wantOutcome:    resultmodel.OutcomeFindings,
+			wantDocument:   "[one](../do-work/archive/REQ-207.md#anchor) [two](../do-work/queue/REQ-208.md) and REQ-208.md\n",
+			wantFirstMoved: true,
+		},
+		{
+			name:            "all safe rewrites compose",
+			wantOutcome:     resultmodel.OutcomeSuccess,
+			wantDocument:    "[one](../do-work/archive/REQ-207.md#anchor) [two](../do-work/archive/REQ-208.md) and REQ-208.md\n",
+			wantFirstMoved:  true,
+			wantSecondMoved: true,
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			repositoryRoot := cleanupRepository(t)
+			writeCleanupFile(t, repositoryRoot, "docs/prime.md", "[one](../do-work/queue/REQ-207.md#anchor) [two](../do-work/queue/REQ-208.md) and REQ-208.md\n")
+			writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-207.md", cleanupRequest("REQ-207", "done", ""))
+			writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-208.md", cleanupRequest("REQ-208", "done", ""))
+			commitCleanupFixture(t, repositoryRoot)
+			plan := CleanupPlan{RepositoryRoot: repositoryRoot, Groups: []OperationGroup{
+				{Code: "one", Operations: []CleanupOperation{{Kind: OperationMove, SourcePath: "do-work/queue/REQ-207.md", DestinationPath: "do-work/archive/REQ-207.md"}}},
+				{Code: "two", Operations: []CleanupOperation{{Kind: OperationMove, SourcePath: "do-work/queue/REQ-208.md", DestinationPath: "do-work/archive/REQ-208.md"}}},
+			}}
+			EnrichDocumentationLinks(context.Background(), &plan)
+			if testCase.dirtySource != "" {
+				writeCleanupFile(t, repositoryRoot, testCase.dirtySource, cleanupRequest(filepath.Base(testCase.dirtySource)[:7], "done", "")+"user edit\n")
+			}
+
+			result := ApplyPlan(context.Background(), plan, ApplyOptions{})
+			if result.Outcome != testCase.wantOutcome {
+				t.Fatalf("outcome = %s, want %s; findings = %#v", result.Outcome, testCase.wantOutcome, result.Findings)
+			}
+			documentBytes, readError := os.ReadFile(filepath.Join(repositoryRoot, "docs/prime.md"))
+			if readError != nil {
+				t.Fatal(readError)
+			}
+			if string(documentBytes) != testCase.wantDocument {
+				t.Fatalf("document = %q, want %q", documentBytes, testCase.wantDocument)
+			}
+			assertCleanupMoveState(t, repositoryRoot, "REQ-207.md", testCase.wantFirstMoved)
+			assertCleanupMoveState(t, repositoryRoot, "REQ-208.md", testCase.wantSecondMoved)
+		})
+	}
+}
+
+func assertCleanupMoveState(t *testing.T, repositoryRoot, baseName string, wantMoved bool) {
+	t.Helper()
+	sourcePath := filepath.Join(repositoryRoot, "do-work", "queue", baseName)
+	destinationPath := filepath.Join(repositoryRoot, "do-work", "archive", baseName)
+	_, sourceError := os.Stat(sourcePath)
+	_, destinationError := os.Stat(destinationPath)
+	if wantMoved {
+		if !os.IsNotExist(sourceError) || destinationError != nil {
+			t.Fatalf("%s move state: source error=%v destination error=%v", baseName, sourceError, destinationError)
+		}
+		return
+	}
+	if sourceError != nil || !os.IsNotExist(destinationError) {
+		t.Fatalf("%s retained state: source error=%v destination error=%v", baseName, sourceError, destinationError)
 	}
 }
 
@@ -123,30 +213,6 @@ func TestBlankedRecoveryUsesRecordedImplementationHashAcrossAllLiveLayouts(t *te
 	recovered := string(plan.Groups[0].Operations[0].Contents)
 	if !strings.Contains(recovered, "Later parseable body") || !strings.Contains(recovered, "commit: "+implementationSHA[:7]) {
 		t.Fatalf("recovered content/provenance = %q", recovered)
-	}
-}
-
-func TestDocumentationRewritesComposeTwoMovesOnce(t *testing.T) {
-	repositoryRoot := cleanupRepository(t)
-	writeCleanupFile(t, repositoryRoot, "docs/prime.md", "[one](../do-work/queue/REQ-207.md#anchor) [two](../do-work/queue/REQ-208.md) and REQ-208.md\n")
-	writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-207.md", cleanupRequest("REQ-207", "done", ""))
-	writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-208.md", cleanupRequest("REQ-208", "done", ""))
-	commitCleanupFixture(t, repositoryRoot)
-	plan := CleanupPlan{RepositoryRoot: repositoryRoot, Groups: []OperationGroup{
-		{Code: "one", Operations: []CleanupOperation{{Kind: OperationMove, SourcePath: "do-work/queue/REQ-207.md", DestinationPath: "do-work/archive/REQ-207.md"}}},
-		{Code: "two", Operations: []CleanupOperation{{Kind: OperationMove, SourcePath: "do-work/queue/REQ-208.md", DestinationPath: "do-work/archive/REQ-208.md"}}},
-	}}
-	EnrichDocumentationLinks(context.Background(), &plan)
-	var replacements []string
-	for _, group := range plan.Groups {
-		for _, operation := range group.Operations {
-			if operation.Kind == OperationReplace {
-				replacements = append(replacements, string(operation.Contents))
-			}
-		}
-	}
-	if len(replacements) != 1 || !strings.Contains(replacements[0], "archive/REQ-207.md#anchor") || !strings.Contains(replacements[0], "archive/REQ-208.md") || !strings.Contains(replacements[0], "and REQ-208.md") {
-		t.Fatalf("composed replacements = %#v", replacements)
 	}
 }
 

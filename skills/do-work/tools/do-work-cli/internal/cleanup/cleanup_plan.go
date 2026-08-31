@@ -16,9 +16,10 @@ import (
 type OperationKind string
 
 const (
-	OperationMove    OperationKind = "move"
-	OperationReplace OperationKind = "replace"
-	OperationDelete  OperationKind = "delete"
+	OperationMove         OperationKind = "move"
+	OperationReplace      OperationKind = "replace"
+	OperationRewriteLinks OperationKind = "rewrite-links"
+	OperationDelete       OperationKind = "delete"
 )
 
 type CleanupOperation struct {
@@ -26,6 +27,7 @@ type CleanupOperation struct {
 	SourcePath      string
 	DestinationPath string
 	Contents        []byte
+	LinkMoveTargets map[string]string
 }
 
 type OperationGroup struct {

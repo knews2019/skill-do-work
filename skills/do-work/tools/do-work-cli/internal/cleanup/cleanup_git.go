@@ -27,30 +27,26 @@ func EnrichDocumentationLinks(ctx context.Context, plan *CleanupPlan) {
 	}
 	output := string(outputBytes)
 	trackedPaths := splitZero(output)
-	moveMap := map[string]string{}
-	attachmentGroup := -1
 	for groupIndex := range plan.Groups {
+		moveMap := map[string]string{}
 		for _, operation := range plan.Groups[groupIndex].Operations {
 			if operation.Kind == OperationMove {
 				moveMap[operation.SourcePath] = operation.DestinationPath
-				if attachmentGroup < 0 {
-					attachmentGroup = groupIndex
-				}
 			}
 		}
-	}
-	if len(moveMap) == 0 {
-		return
-	}
-	for _, documentPath := range trackedPaths {
-		absolutePath := filepath.Join(plan.RepositoryRoot, filepath.FromSlash(documentPath))
-		contents, readError := os.ReadFile(absolutePath)
-		if readError != nil {
+		if len(moveMap) == 0 {
 			continue
 		}
-		updated, replacements := rewriteMarkdownTargets(contents, documentPath, moveMap)
-		if replacements > 0 {
-			plan.Groups[attachmentGroup].Operations = append(plan.Groups[attachmentGroup].Operations, CleanupOperation{Kind: OperationReplace, SourcePath: documentPath, Contents: updated})
+		for _, documentPath := range trackedPaths {
+			absolutePath := filepath.Join(plan.RepositoryRoot, filepath.FromSlash(documentPath))
+			contents, readError := os.ReadFile(absolutePath)
+			if readError != nil {
+				continue
+			}
+			_, replacements := rewriteMarkdownTargets(contents, documentPath, moveMap)
+			if replacements > 0 {
+				plan.Groups[groupIndex].Operations = append(plan.Groups[groupIndex].Operations, CleanupOperation{Kind: OperationRewriteLinks, SourcePath: documentPath, LinkMoveTargets: moveMap})
+			}
 		}
 	}
 }

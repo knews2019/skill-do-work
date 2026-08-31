@@ -297,6 +297,16 @@ func applyOperation(repositoryRoot string, recorder *gittransaction.MutationReco
 			return err
 		}
 		return atomicfile.ReplaceExisting(sourcePath, operation.Contents)
+	case OperationRewriteLinks:
+		contents, err := os.ReadFile(sourcePath)
+		if err != nil {
+			return fmt.Errorf("read documentation for link rewrite: %w", err)
+		}
+		updated, _ := rewriteMarkdownTargets(contents, operation.SourcePath, operation.LinkMoveTargets)
+		if err := recorder.RecordTouched(operation.SourcePath); err != nil {
+			return err
+		}
+		return atomicfile.ReplaceExisting(sourcePath, updated)
 	case OperationDelete:
 		if err := recorder.RecordTouched(operation.SourcePath); err != nil {
 			return err
@@ -565,6 +575,8 @@ func changeForOperation(operation CleanupOperation, dryRun bool) resultmodel.Rec
 		return resultmodel.RecordedChange{Path: operation.DestinationPath, Kind: string(operation.Kind), Detail: detailPrefix + " move from " + operation.SourcePath}
 	case OperationReplace:
 		return resultmodel.RecordedChange{Path: operation.SourcePath, Kind: string(operation.Kind), Detail: detailPrefix + " atomic replacement"}
+	case OperationRewriteLinks:
+		return resultmodel.RecordedChange{Path: operation.SourcePath, Kind: string(operation.Kind), Detail: detailPrefix + " documentation link rewrite"}
 	default:
 		return resultmodel.RecordedChange{Path: operation.SourcePath, Kind: string(operation.Kind), Detail: detailPrefix + " consumed scratch deletion"}
 	}
