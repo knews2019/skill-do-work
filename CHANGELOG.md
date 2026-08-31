@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.5 — Dependency-Safe User-Request Closure (2026-08-31)
+
+Cleanup now archives a live user-request input only when every terminal member archive group is eligible in the same plan.
+
+- Closure groups carry sorted, explicit member prerequisites resolved generically before transaction admission.
+- Refused members keep both the member and user-request input active while unrelated safe cleanup continues.
+- Missing, transitive, duplicate, repeated, and cyclic prerequisites fail closed; a consent-gated follow-up records one invalid recovery-command edge for duplicate group identities.
+
 ## 0.251.4 — Complete Typed Schema Projection (2026-08-31)
 
 The shared request record now projects every field governed by the Schema Read Contract, including caveman, with normalized value and explicit evidence.

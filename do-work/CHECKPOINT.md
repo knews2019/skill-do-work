@@ -7,15 +7,17 @@
 - REQ-410 — canonical doctor/forensics implementation archived `completed-with-issues`; follow-ups REQ-434 and REQ-435 queued after failed remediation re-review.
 - REQ-426 — special mode bits preserved through managed replacement and real install; merge `73bd4a6f`, release `7e0112bc`, metadata `d090af93`.
 - REQ-429 — complete normalized schema-field projection merged as `67942dd9`; independent review approved at 100% with no findings.
+- REQ-430 — UR closure now depends on terminal member archival; merged as `5f3531d0`, review accepted the core behavior and routed one recovery-command edge to consent-gated REQ-445.
 
 ## In Progress (interrupted)
 
-- REQ-430: Review fix: Couple UR closure to terminal member archival — claimed 2026-08-31T14:50:42Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- None.
 
 ## Still Queued
 
 - REQ-411 through REQ-420 remain in the ordered UR-081 chain.
-- REQ-428 through REQ-435 are pending; REQ-427 and REQ-436 await user decisions.
+- REQ-431 through REQ-444 remain queued; REQ-436's default audit decision is recorded and pending.
+- REQ-445 awaits user consent through `do-work clarify` before it can enter the runnable queue.
 
 ## Session Notes
 
