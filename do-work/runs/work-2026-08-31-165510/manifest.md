@@ -48,4 +48,5 @@ Status: in-progress
 | Discovered | REQ-459 | command-owned calibration staging restatements | review follow-up | `do-work/queue/REQ-459-stage-command-owned-calibration-with-lifecycle-release.md` | done |
 | Folded | REQ-447 | complete-mode rollback instance | existing special-mode sweep | `do-work/queue/REQ-447-preserve-special-mode-bits-in-queue-kanban-publication.md` | done |
 | Planner | REQ-413 plan | read-only | REQ plus UR and primes | `REQ-413-plan.md` | pending |
-| Explorer | REQ-445 exploration | read-only | REQ plus prime and REQ-430 | `REQ-445-exploration.md` | pending |
+| Explorer | REQ-445 exploration | read-only | REQ plus prime and REQ-430 | `REQ-445-exploration.md` | done |
+| 2 | REQ-445 | `worktree-agent-REQ-445-keep-pathless-refusal-commands-runnable` | `REQ-445-brief.md` | `REQ-445-handback.md` | pending |
