@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.14 — Atomic Request Lifecycle Transactions (2026-08-31)
+
+Claim, unblock, complete, fail, and cancel now synchronize request state, checkpoints, archival, UR closure, calibration, and provenance through one typed transaction authority.
+
+- Natural-language actions retain confirmation and classification judgment while delegating deterministic mutations without free-form fallback or duplicate archive/calibration writes.
+- Exact target planning, byte-identical dry-run, rollback-safe existing-untracked support, and text/JSON parity cover the full lifecycle and optional exact-path commits.
+- Review remediation pins canonical failure classes, contained multiline cancellation reasons, and exact prior-failure audit history; residual mode and release-staging gaps are queued as REQ-447 and REQ-459.
+
 ## 0.251.13 — Complete Modes in Atomic CLI Publication (2026-08-31)
 
 Atomic replacement and cleanup moves now retain setuid, setgid, and sticky bits alongside ordinary permissions.

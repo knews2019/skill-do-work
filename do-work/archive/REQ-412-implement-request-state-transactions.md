@@ -1,7 +1,7 @@
 ---
 id: REQ-412
 title: 'Implement request-state, checkpoint, archival, and calibration transactions'
-status: claimed
+status: completed
 claimed_at: 2026-08-31T19:48:00Z
 route: C
 created_at: 2026-08-29T20:28:26Z
@@ -51,6 +51,8 @@ estimate:
     - persistence changes
     - cross-route regression gates
     - full-suite verification
+completed_at: 2026-08-31T21:57:28Z
+commit: 7fc958be
 ---
 
 # Implement Request-State, Checkpoint, Archival, and Calibration Transactions
