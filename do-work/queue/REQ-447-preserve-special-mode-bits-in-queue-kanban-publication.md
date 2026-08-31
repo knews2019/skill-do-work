@@ -1,6 +1,6 @@
 ---
 id: REQ-447
-title: '[impact-negligible] Preserve special mode bits in queue-kanban publication'
+title: '[impact-rule-change] Preserve special mode bits in queue-kanban publication'
 status: pending
 created_at: 2026-08-31T20:30:00Z
 status_changed_at: 2026-08-31T20:30:00Z
@@ -10,7 +10,7 @@ prime_files: [skills/do-work-board/tools/queue-kanban/prime-do-kanban.md]
 tdd: true
 depends_on: [REQ-436]
 maintenance: false
-impact: impact-negligible
+impact: impact-rule-change
 effort_estimate: effort-mechanical
 addendum_to: REQ-436
 sweep: true
@@ -33,6 +33,11 @@ Extend REQ-436's complete-mode publication contract to the separate queue-kanban
 - Preserve ordinary permissions plus setuid, setgid, and sticky through queue-kanban's existing-target atomic replacement.
 - Add RED/GREEN tests for each special bit using the real writer and full-mode assertions.
 - Retain existing symlink/special-file refusal, changed-target detection, atomic replacement, and sync/close behavior.
+
+## Instances
+
+- [ ] `skills/do-work-board/tools/queue-kanban/atomic_write.go`: existing-target publication narrows the original complete mode with `Mode().Perm()`. (found by REQ-436 / UR-081)
+- [ ] `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go`: existing-untracked rollback snapshots only `Mode().Perm()` and recreates with `os.WriteFile`, stripping setuid, setgid, and sticky bits. (found by REQ-412 / UR-081)
 
 ## Red-Green Proof
 
