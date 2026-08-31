@@ -5,15 +5,16 @@
 - REQ-408 — shared repository-model foundation committed as `ac2e3acd` (metadata `e6488553`); follow-ups REQ-428 and REQ-429 queued.
 - REQ-409 — canonical cleanup implementation archived `completed-with-issues`; follow-ups REQ-430 through REQ-433 queued after failed remediation re-review.
 - REQ-410 — canonical doctor/forensics implementation archived `completed-with-issues`; follow-ups REQ-434 and REQ-435 queued after failed remediation re-review.
+- REQ-426 — special mode bits preserved through managed replacement and real install; merge `73bd4a6f`, bookkeeping pending.
 
 ## In Progress (interrupted)
 
-- REQ-426: Preserve setuid, setgid and sticky bits on managed files instead of stripping them — claimed 2026-08-31T10:30:10Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+None.
 
 ## Still Queued
 
 - REQ-411 through REQ-420 remain in the ordered UR-081 chain.
-- REQ-426 and REQ-428 through REQ-435 are pending; REQ-427 is pending a corrected Go-floor decision after exact Go 1.23 verification failed.
+- REQ-428 through REQ-435 are pending; REQ-427 and REQ-436 await user decisions.
 
 ## Session Notes
 

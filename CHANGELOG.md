@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.1 — Special Unix Mode Preservation (2026-08-31)
+
+Managed install and update paths now retain setuid, setgid, and sticky bits instead of silently narrowing files to ordinary permissions.
+
+- Managed-section replacement preserves the complete Unix mode on existing targets.
+- Real installer regressions prove `Justfile`, `CLAUDE.md`, and `.claude/settings.json` retain their special bits across reconciliation.
+- The focused Go tests and canonical maintainer gate pass on the merged implementation.
+
 ## 0.251.0 — Canonical Doctor and Forensics Command (2026-08-30)
 
 The do-work CLI now owns deterministic pipeline diagnosis through one `doctor` command: it reports stuck and hollow work, stale states, collisions, damaged records with full-history recovery evidence, scope/Git divergence, and timestamp defects from one typed repository snapshot. Text and JSON come from the same sorted findings, while the default command remains read-only.
