@@ -29,10 +29,11 @@ type CleanupOperation struct {
 }
 
 type OperationGroup struct {
-	Code       string
-	PassNumber int
-	AffectedID string
-	Operations []CleanupOperation
+	Code               string
+	PassNumber         int
+	AffectedID         string
+	RequiredGroupCodes []string
+	Operations         []CleanupOperation
 }
 
 type CleanupPlan struct {
@@ -66,6 +67,7 @@ func BuildPlan(snapshot *repositorymodel.RepositorySnapshot) CleanupPlan {
 	}
 	resolvedUserRequests := map[string]bool{}
 	userRequestSections := map[string]string{}
+	memberGroupCodesByUserRequest := map[string]map[string]bool{}
 	for _, userRequest := range snapshot.UserRequestFiles {
 		if userRequest.TypedRecord.RequestID != "" {
 			userRequestSections[userRequest.TypedRecord.RequestID] = userRequest.TreeSection
@@ -139,7 +141,15 @@ func BuildPlan(snapshot *repositorymodel.RepositorySnapshot) CleanupPlan {
 				operations = append(operations, checkpointOperation)
 			}
 		}
-		plan.Groups = append(plan.Groups, OperationGroup{Code: "ARCHIVE-" + requestID, PassNumber: passNumber, AffectedID: requestID, Operations: operations})
+		groupCode := "ARCHIVE-" + requestID
+		plan.Groups = append(plan.Groups, OperationGroup{Code: groupCode, PassNumber: passNumber, AffectedID: requestID, Operations: operations})
+		userRequestID := requestFile.TypedRecord.UserRequestID
+		if userRequestID != "" && resolvedUserRequests[userRequestID] && userRequestSections[userRequestID] == "user-requests" {
+			if memberGroupCodesByUserRequest[userRequestID] == nil {
+				memberGroupCodesByUserRequest[userRequestID] = map[string]bool{}
+			}
+			memberGroupCodesByUserRequest[userRequestID][groupCode] = true
+		}
 	}
 
 	for _, userRequest := range snapshot.UserRequestFiles {
@@ -154,7 +164,12 @@ func BuildPlan(snapshot *repositorymodel.RepositorySnapshot) CleanupPlan {
 			continue
 		}
 		if len(operations) > 0 {
-			plan.Groups = append(plan.Groups, OperationGroup{Code: "CLOSE-" + userRequestID, PassNumber: 1, AffectedID: userRequestID, Operations: operations})
+			requiredGroupCodes := make([]string, 0, len(memberGroupCodesByUserRequest[userRequestID]))
+			for groupCode := range memberGroupCodesByUserRequest[userRequestID] {
+				requiredGroupCodes = append(requiredGroupCodes, groupCode)
+			}
+			sort.Strings(requiredGroupCodes)
+			plan.Groups = append(plan.Groups, OperationGroup{Code: "CLOSE-" + userRequestID, PassNumber: 1, AffectedID: userRequestID, RequiredGroupCodes: requiredGroupCodes, Operations: operations})
 		}
 	}
 

@@ -30,10 +30,22 @@ func ApplyPlan(ctx context.Context, plan CleanupPlan, options ApplyOptions) resu
 		result.Outcome = resultmodel.OutcomeFailure
 		return result
 	}
-	eligibleGroups := make([]OperationGroup, 0, len(plan.Groups))
-	scratchGroups := []OperationGroup{}
-	proposedChanges := []resultmodel.RecordedChange{}
-	for _, group := range plan.Groups {
+	groupCodeCounts := map[string]int{}
+	groupIndexByCode := map[string]int{}
+	for groupIndex, group := range plan.Groups {
+		if group.Code == "" {
+			continue
+		}
+		groupCodeCounts[group.Code]++
+		groupIndexByCode[group.Code] = groupIndex
+	}
+	directlyEligible := make([]bool, len(plan.Groups))
+	scratchCandidates := make([]bool, len(plan.Groups))
+	for groupIndex, group := range plan.Groups {
+		if group.Code != "" && groupCodeCounts[group.Code] > 1 {
+			result.Findings = append(result.Findings, refusedGroupFinding(group, "", "group code is duplicated in the cleanup plan"))
+			continue
+		}
 		targetPaths := groupTargetPaths(group)
 		if collisionPath := existingDestination(plan.RepositoryRoot, group); collisionPath != "" {
 			result.Findings = append(result.Findings, refusedGroupFinding(group, collisionPath, "destination already exists; cleanup never overwrites"))
@@ -42,10 +54,8 @@ func ApplyPlan(ctx context.Context, plan CleanupPlan, options ApplyOptions) resu
 		preflight := gittransaction.PreflightTargets(ctx, plan.RepositoryRoot, targetPaths, options.Commit)
 		if preflight.Failure != nil {
 			if isUntrackedConsumedScratch(ctx, plan.RepositoryRoot, group) {
-				scratchGroups = append(scratchGroups, group)
-				for _, operation := range group.Operations {
-					proposedChanges = append(proposedChanges, changeForOperation(operation, true))
-				}
+				directlyEligible[groupIndex] = true
+				scratchCandidates[groupIndex] = true
 				continue
 			}
 			path := ""
@@ -55,7 +65,34 @@ func ApplyPlan(ctx context.Context, plan CleanupPlan, options ApplyOptions) resu
 			result.Findings = append(result.Findings, refusedGroupFinding(group, path, preflight.Failure.Reason))
 			continue
 		}
-		eligibleGroups = append(eligibleGroups, group)
+		directlyEligible[groupIndex] = true
+	}
+
+	dependencyStates := make([]groupDependencyState, len(plan.Groups))
+	dependencyBlockers := make([]groupDependencyBlocker, len(plan.Groups))
+	for groupIndex := range plan.Groups {
+		if !directlyEligible[groupIndex] {
+			dependencyStates[groupIndex] = groupDependencyBlocked
+			dependencyBlockers[groupIndex] = groupDependencyBlocker{Code: plan.Groups[groupIndex].Code, Reason: "required group did not pass direct preflight"}
+		}
+	}
+	eligibleGroups := make([]OperationGroup, 0, len(plan.Groups))
+	scratchGroups := []OperationGroup{}
+	proposedChanges := []resultmodel.RecordedChange{}
+	for groupIndex, group := range plan.Groups {
+		if !directlyEligible[groupIndex] {
+			continue
+		}
+		eligible, blocker := resolveGroupDependencies(groupIndex, plan.Groups, directlyEligible, groupCodeCounts, groupIndexByCode, dependencyStates, dependencyBlockers)
+		if !eligible {
+			result.Findings = append(result.Findings, dependencyRefusedGroupFinding(group, blocker))
+			continue
+		}
+		if scratchCandidates[groupIndex] {
+			scratchGroups = append(scratchGroups, group)
+		} else {
+			eligibleGroups = append(eligibleGroups, group)
+		}
 		for _, operation := range group.Operations {
 			proposedChanges = append(proposedChanges, changeForOperation(operation, true))
 		}
@@ -149,6 +186,69 @@ func ApplyPlan(ctx context.Context, plan CleanupPlan, options ApplyOptions) resu
 		result.Outcome = resultmodel.OutcomeFindings
 	}
 	return result
+}
+
+type groupDependencyState uint8
+
+const (
+	groupDependencyUnresolved groupDependencyState = iota
+	groupDependencyResolving
+	groupDependencyEligible
+	groupDependencyBlocked
+)
+
+type groupDependencyBlocker struct {
+	Code   string
+	Reason string
+}
+
+func resolveGroupDependencies(groupIndex int, groups []OperationGroup, directlyEligible []bool, groupCodeCounts map[string]int, groupIndexByCode map[string]int, states []groupDependencyState, blockers []groupDependencyBlocker) (bool, groupDependencyBlocker) {
+	switch states[groupIndex] {
+	case groupDependencyEligible:
+		return true, groupDependencyBlocker{}
+	case groupDependencyBlocked:
+		return false, blockers[groupIndex]
+	case groupDependencyResolving:
+		return false, groupDependencyBlocker{Code: groups[groupIndex].Code, Reason: "prerequisite cycle includes " + groups[groupIndex].Code}
+	}
+	if !directlyEligible[groupIndex] {
+		return false, blockers[groupIndex]
+	}
+
+	states[groupIndex] = groupDependencyResolving
+	seenPrerequisites := map[string]bool{}
+	for _, requiredCode := range groups[groupIndex].RequiredGroupCodes {
+		if seenPrerequisites[requiredCode] {
+			states[groupIndex] = groupDependencyBlocked
+			blockers[groupIndex] = groupDependencyBlocker{Code: requiredCode, Reason: "required group code is duplicated"}
+			return false, blockers[groupIndex]
+		}
+		seenPrerequisites[requiredCode] = true
+		if requiredCode == "" || groupCodeCounts[requiredCode] == 0 {
+			states[groupIndex] = groupDependencyBlocked
+			blockers[groupIndex] = groupDependencyBlocker{Code: requiredCode, Reason: "required group is missing from the cleanup plan"}
+			return false, blockers[groupIndex]
+		}
+		if groupCodeCounts[requiredCode] > 1 {
+			states[groupIndex] = groupDependencyBlocked
+			blockers[groupIndex] = groupDependencyBlocker{Code: requiredCode, Reason: "required group code is duplicated in the cleanup plan"}
+			return false, blockers[groupIndex]
+		}
+		requiredIndex := groupIndexByCode[requiredCode]
+		if !directlyEligible[requiredIndex] {
+			states[groupIndex] = groupDependencyBlocked
+			blockers[groupIndex] = groupDependencyBlocker{Code: requiredCode, Reason: "required group did not pass direct preflight"}
+			return false, blockers[groupIndex]
+		}
+		eligible, blocker := resolveGroupDependencies(requiredIndex, groups, directlyEligible, groupCodeCounts, groupIndexByCode, states, blockers)
+		if !eligible {
+			states[groupIndex] = groupDependencyBlocked
+			blockers[groupIndex] = blocker
+			return false, blocker
+		}
+	}
+	states[groupIndex] = groupDependencyEligible
+	return true, groupDependencyBlocker{}
 }
 
 func markConsumedScratchChanges(changes []resultmodel.RecordedChange, groups []OperationGroup, dryRun bool) {
@@ -482,4 +582,19 @@ func refusedGroupFinding(group OperationGroup, path, reason string) resultmodel.
 	return resultmodel.CommandFinding{Code: "CLEANUP-GROUP-REFUSED", Severity: resultmodel.SeverityWarning, AffectedIDs: ids, AffectedPaths: paths,
 		Evidence: []string{group.Code + ": " + reason}, Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "this operation group did not pass exact-target guards",
 		NextArgv: []string{"git", "status", "--short", "--", path}, VerificationArgv: []string{"do-work-cli", "cleanup", "--dry-run"}}
+}
+
+func dependencyRefusedGroupFinding(group OperationGroup, blocker groupDependencyBlocker) resultmodel.CommandFinding {
+	ids := []string{}
+	if group.AffectedID != "" {
+		ids = append(ids, group.AffectedID)
+	}
+	blockingCode := blocker.Code
+	if blockingCode == "" {
+		blockingCode = "<empty>"
+	}
+	return resultmodel.CommandFinding{Code: "CLEANUP-GROUP-REFUSED", Severity: resultmodel.SeverityWarning, AffectedIDs: ids,
+		Evidence: []string{group.Code + ": prerequisite " + blockingCode + " blocked cleanup: " + blocker.Reason}, Fixability: resultmodel.FixabilityRefused,
+		AutomationStopReason: "this operation group has a prerequisite that is not eligible",
+		NextArgv:             []string{"do-work-cli", "cleanup", "--dry-run"}, VerificationArgv: []string{"do-work-cli", "cleanup", "--dry-run"}}
 }
