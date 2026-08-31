@@ -72,11 +72,10 @@ const futureTimestampSkewAllowance = 2 * time.Minute
 // behavior probes are the guard. That copy is why this REQ existed: the Go half
 // gained a cause and the JS half did not.
 //
-// One more copy lives outside this module and cannot be reached from here:
-// skills/do-work/actions/forensics.md check 12 prescribes the same diagnosis for
-// an agent to emit. It is a different skill package with no build-time link to
-// this constant, so no test can hold it in step — nothing but this sentence will
-// point the next editor at it. Change it in the same commit as this one.
+// Doctor's TIMESTAMP-FUTURE finding owns command-side timestamp diagnosis and
+// consumes typed timestamp evidence independently. It does not copy this board
+// explanation into an action file, so the two renderer constants above are the
+// only wording pair that must remain byte-identical.
 const futureStampCauseClause = "local wall-clock time written with a Z suffix, " +
 	"or a fabricated value (guessed or extrapolated instead of read from the clock)"
 

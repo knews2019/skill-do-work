@@ -3,8 +3,8 @@
 # do-work/queue/ and do-work/working/. No agent judgment anywhere in this path.
 #
 # WHY THIS EXISTS. Detection of a wrong timestamp was already everywhere on the
-# READ side — the board's future-stamp badge and data warning, `do-work forensics`
-# Check 11, the work action's takeover prompt — but repair depended on the same
+# READ side — the board's future-stamp badge and data warning, doctor's
+# `TIMESTAMP-FUTURE` finding, the work action's takeover prompt — but repair depended on the same
 # agent that wrote the bad stamp. A fabricated or timezone-shifted stamp therefore
 # survived for as long as that agent stayed unaware of it, and every elapsed-time
 # reading built on it (queue wait, claim stopwatch, implementation span) stayed
@@ -19,7 +19,7 @@
 #   1. FUTURE — any top-level frontmatter field whose name ends in `_at` whose
 #      value parses to later than now + 2 minutes. The 2-minute allowance absorbs
 #      ordinary clock skew and is the same one the board's
-#      futureTimestampSkewAllowance and `do-work forensics` Check 11 use. The rule
+#      futureTimestampSkewAllowance and doctor's `TIMESTAMP-FUTURE` finding use. The rule
 #      is the `_at` SUFFIX, not a list of field names: a schema that grows a new
 #      stamp field is covered the day it is added, with nothing to remember.
 #   2. IMPOSSIBLE ORDERING — `claimed_at` earlier than `created_at`, or
@@ -133,7 +133,8 @@ set -uo pipefail
 # prose. Only ASCII patterns are ever matched.
 export LC_ALL=C
 
-# Matches the board's futureTimestampSkewAllowance and forensics Check 11.
+# Matches the board's futureTimestampSkewAllowance and doctor's
+# `TIMESTAMP-FUTURE` finding.
 future_stamp_skew_seconds=120
 
 # ---------------------------------------------------------------------------
