@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.11 — Typed Dependency-Aware Queue Selection (2026-08-31)
+
+Queue selection now has one read-only typed authority for default, targeted, UR-expanded, wave, fan-out, and readiness decisions.
+
+- Selected and excluded records carry stable reasons, estimates, exact commands, request paths, original states, and per-record probe transition evidence.
+- Successful blocked probes retain exact unblock targets even when fan-out excludes them from the current dispatch wave.
+- The work and simple selectors delegate deterministic selection to the same authority while the action retains state-mutation ownership and queue-kanban remains separate.
+
 ## 0.251.10 — Independent Misplaced-Archive Conflicts (2026-08-31)
 
 Cleanup now lets safe files leave a misplaced archived UR even when one sibling destination is occupied.

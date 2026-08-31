@@ -1,7 +1,7 @@
 ---
 id: REQ-411
 title: 'Implement dependency-aware queue selection and actionable summaries'
-status: claimed
+status: completed
 claimed_at: 2026-08-31T17:49:48Z
 route: C
 created_at: 2026-08-29T20:28:26Z
@@ -50,6 +50,8 @@ write_set:
   - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
   - _dev/tests/contract-regressions.sh
 batch: go-no-llm-command-platform
+completed_at: 2026-08-31T19:38:00Z
+commit: 6209227b
 ---
 
 # Implement Dependency-Aware Queue Selection and Actionable Summaries
@@ -142,16 +144,16 @@ The exact 18-file boundary is eight new `internal/nextselection` files plus comm
 **Files I will NOT touch:** repository/request/dependencygraph production schemas, cleanup/doctor implementations, queue-kanban, claim/archive/release state-transition code, queue state from the builder, version files, or changelogs.
 
 **Acceptance criteria (restated from REQ):**
-- [ ] One typed read-only command resolves default, explicit REQ, and UR targets with exact provenance-sensitive override semantics.
-- [ ] Canonical dependency readiness, cycles, wave depth, fan-out bounds, assignment/claim filters, negligible filtering, blocked probes, and estimates produce stable selected or excluded records.
-- [ ] Every skipped/refused item has an actionable reason and exact next argv/Just/verification command in text and JSON.
-- [ ] Work delegates deterministic Step 1 selection without moving claim/state/release ownership into this REQ.
-- [ ] The cheap-work selector consumes canonical readiness while preserving all specialized vetoes and diagnostics.
-- [ ] Mixed RED/GREEN fixtures and contract regressions prove text/JSON parity, deterministic ordering, timeout reuse, and no repository mutation.
+- [x] One typed read-only command resolves default, explicit REQ, and UR targets with exact provenance-sensitive override semantics.
+- [x] Canonical dependency readiness, cycles, wave depth, fan-out bounds, assignment/claim filters, negligible filtering, blocked probes, and estimates produce stable selected or excluded records.
+- [x] Every skipped/refused item has an actionable reason and exact next argv/Just/verification command in text and JSON.
+- [x] Work delegates deterministic Step 1 selection without moving claim/state/release ownership into this REQ.
+- [x] The cheap-work selector consumes canonical readiness while preserving all specialized vetoes and diagnostics.
+- [x] Mixed RED/GREEN fixtures and contract regressions prove text/JSON parity, deterministic ordering, timeout reuse, and no repository mutation.
 
 ## Implementation Summary
 
-**What was done:** Added a read-only typed `next` command that selects default, targeted, UR-expanded, wave, fan-out, and cheap-work candidates from one repository snapshot and the canonical dependency graph. It reports stable selected/excluded records, estimates, summaries, and exact commands in text/JSON, delegates blocked probes to the shipped bounded runner, and turns the shell selector plus work actions into callers rather than independent queue parsers.
+**What was done:** Added a read-only typed `next` command that selects default, targeted, UR-expanded, wave, fan-out, and cheap-work candidates from one repository snapshot and the canonical dependency graph. It reports stable selected/excluded records, estimates, summaries, exact commands, exact request paths, original states, and per-record probe outcomes in text/JSON; delegates blocked probes to the shipped bounded runner; and gives the action sufficient exact-target evidence for its existing unblock transaction without another queue scan.
 
 **Files changed:**
 - `skills/do-work/tools/do-work-cli/internal/nextselection/next_types.go` (new) — selection options, provenance, candidate, probe, and identifier helpers.
@@ -163,8 +165,8 @@ The exact 18-file boundary is eight new `internal/nextselection` files plus comm
 - `skills/do-work/tools/do-work-cli/internal/nextselection/next_commands.go` (new) — command parsing, discovery, shipped-runner resolution, and private probe execution.
 - `skills/do-work/tools/do-work-cli/internal/nextselection/next_commands_test.go` (new) — real-binary RED/GREEN and command behavior coverage.
 - `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go` (modified) — registers the next-command handlers.
-- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified) — adds normalized typed selected/excluded/summary fields and matching text rendering.
-- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified) — pins non-null JSON and text/JSON selection parity.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified) — adds normalized typed selected/excluded/summary fields, per-record probe states, exact request targets, and matching text rendering.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified) — pins non-null JSON, probe outcome rendering, and text/JSON selection parity.
 - `skills/do-work/tools/select-simple-reqs.sh` (modified) — replaces shell-side queue parsing with a compatibility invocation of the simple selector mode.
 - `_dev/tests/select-simple-reqs-behavior.sh` (modified) — keeps legacy run-set and diagnostic behavior pinned through delegation.
 - `skills/do-work/actions/run-simple-reqs.md` (modified) — delegates directly to the canonical typed selector command.
@@ -173,7 +175,7 @@ The exact 18-file boundary is eight new `internal/nextselection` files plus comm
 - `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — maps the new package and selection ownership.
 - `_dev/tests/contract-regressions.sh` (modified) — pins sole-authority delegation and retained blocked-runner safety.
 
-**Integration range:** `dd221ea8..737e115c`
+**Integration range:** `dd221ea8..6209227b`
 
 *Generated by work action from the builder hand-back*
 
@@ -199,7 +201,7 @@ The exact 18-file boundary is eight new `internal/nextselection` files plus comm
 
 ## Qualification
 
-Passed — all 18 declared files are substantive and present in `dd221ea8..737e115c`. The new package is registered through the CLI entry point, the result envelope carries typed selection data, and both work callers delegate to the same command. The eight static-reference warnings are expected Go package files compiled by package/import membership; P-A-U, requirement tracing, exact scope, and debug-artifact checks passed.
+Passed — all 18 declared files are substantive and present in `dd221ea8..6209227b`. The new package is registered through the CLI entry point, the result envelope carries typed selection and transition data, and both work callers delegate to the same command. The eight static-reference warnings are expected Go package files compiled by package/import membership; P-A-U, requirement tracing, exact scope, and debug-artifact checks passed.
 
 ## Testing
 
@@ -211,7 +213,7 @@ Passed — all 18 declared files are substantive and present in `dd221ea8..737e1
 - `bash _dev/tests/select-simple-reqs-behavior.sh` — PASS.
 - `bash _dev/tests/contract-regressions.sh` — PASS, including blocked-probe process-tree behavior.
 - `bash _dev/tests/do-work-cli-go125-compatibility.sh` — PASS (exact Go 1.25.0).
-- Qualification, scope-drift, shell syntax, and diff hygiene over `dd221ea8..737e115c` — PASS.
+- Qualification, scope-drift, shell syntax, and diff hygiene over `dd221ea8..6209227b` — PASS.
 
 ## Initial Review
 
@@ -235,3 +237,40 @@ Passed — all 18 declared files are substantive and present in `dd221ea8..737e1
 **Follow-ups created:** None pending remediation; **sweeps appended to:** None.
 
 *Reviewed by review-work action*
+
+## Remediation
+
+**Initial review:** Acceptance failed at 50% because successful blocked-probe identity was collapsed into an aggregate count, leaving the action without a deterministic exact target for its owned unblock/history mutation.
+
+**One allowed attempt:** Added exact repository-relative request paths, original statuses, typed per-record probe states, attempted/exit evidence, and an explicit unblock requirement to selected and excluded records. A mixed fixture with two ordinary and two successfully probed blocked REQs failed before the production change, then passed with exact targets preserved even across fan-out exclusion. Missing, failed, timed-out, launch-failed, and successful probes remain distinct. Work now validates and exact-reads only returned targets, never rescans or re-probes the queue.
+
+**Remediation merge:** `6209227b` (branch commit `75aa3a24`), changing eight files inside the frozen 18-file scope.
+
+## Review
+
+**Overall: 98%** | 2026-08-31T19:34:16Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 98% |
+| Test Adequacy | 95% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings:** None. The initial blocked-probe handoff finding is closed.
+**Minor findings:** None.
+**Acceptance:** Pass — exact request paths, original states, and per-record probe/unblock evidence now survive every selection outcome, including fan-out exclusion, so the action can perform its owned transition without rescanning or re-probing.
+**Suggested testing:** An optional direct `launch_failed` fixture could supplement the inspected production branches; it is not a release blocker.
+**Follow-ups created:** None; **sweeps appended to:** `_dev/primes/lessons-action-files.md`.
+
+*Re-reviewed by review-work action after the one allowed remediation attempt*
+
+## Lessons Learned
+
+A read-only decision command must preserve every identity-to-outcome association needed by the action that owns the later mutation. Aggregate counts are useful presentation evidence, but they cannot authorize an exact state transition; the typed result must retain the contained request path, original state, and outcome through all record-shape conversions.
+
+## Orientation
+
+Queue selection now has one typed, read-only authority in `do-work-cli next`. Future selection policy belongs in `internal/nextselection` with matching text/JSON and action-contract coverage. State mutations remain in the work action, which must consume exact returned targets and reject stale evidence rather than rescan the queue.
