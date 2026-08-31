@@ -1,7 +1,9 @@
 ---
 id: REQ-412
 title: 'Implement request-state, checkpoint, archival, and calibration transactions'
-status: pending
+status: claimed
+claimed_at: 2026-08-31T19:48:00Z
+route: C
 created_at: 2026-08-29T20:28:26Z
 user_request: UR-081
 domain: general
@@ -14,6 +16,20 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-406, REQ-407, REQ-408, REQ-409, REQ-410, REQ-411, REQ-413, REQ-414, REQ-415, REQ-416, REQ-417, REQ-418, REQ-419, REQ-420]
 batch: go-no-llm-command-platform
+estimate:
+  p50_active_minutes: 95
+  confidence: low
+  calculated_at: 2026-08-31T19:48:00Z
+  basis:
+    - Route C
+    - 18-file write set
+    - 10 new files
+    - 7 subsystems involved
+    - 4 acceptance criteria
+    - dependency depth 1
+    - persistence changes
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Implement Request-State, Checkpoint, Archival, and Calibration Transactions
@@ -52,3 +68,13 @@ See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
 
 ---
 *Source: UR-081 (Replace LLM bookkeeping and shipped utility logic with a Go command platform)*
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** This request creates a shared lifecycle transaction engine spanning request moves, timestamps, checkpoints, UR closure, archival, calibration, optional Git commits, rollback, and text/JSON results. The persistence and cross-route regression surface requires explicit planning and exploration.
+
+**Planning:** Required

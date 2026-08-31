@@ -17,7 +17,8 @@
 
 ## In Progress
 
-- None at this release boundary.
+- REQ-412: Implement request-state, checkpoint, archival, and calibration transactions — claimed 2026-08-31T19:48:00Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- REQ-436: Audit special-mode preservation in remaining file publication — claimed 2026-08-31T19:48:00Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 

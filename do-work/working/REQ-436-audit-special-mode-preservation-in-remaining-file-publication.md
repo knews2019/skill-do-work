@@ -1,7 +1,9 @@
 ---
 id: REQ-436
 title: '[impact-negligible] Audit special-mode preservation in remaining file publication'
-status: pending
+status: claimed
+claimed_at: 2026-08-31T19:48:00Z
+route: B
 created_at: 2026-08-31T10:56:05Z
 status_changed_at: 2026-08-31T13:52:30Z
 user_request: UR-081
@@ -15,6 +17,12 @@ effort_estimate: effort-mechanical
 addendum_to: REQ-426
 sweep: true
 sweep_key: preserve-special-mode-bits-in-file-publication
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-31T19:48:00Z
+  basis:
+    - trivial short-circuit
 ---
 
 # Audit Special-Mode Preservation in Remaining File Publication
@@ -55,3 +63,19 @@ REQ-426 fixed two managed install paths that silently narrowed Unix modes to the
 
 ---
 *Source: discovered while implementing REQ-426 (UR-081).*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The change is mechanically small but crosses two publication subsystems and needs focused RED/GREEN mode-bit fixtures plus a class audit. Exploration should freeze the exact production and test files before implementation.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*

@@ -35,3 +35,5 @@ Status: in-progress
 | Reviewer | REQ-411 review | integration range `dd221ea8..737e115c` | REQ plus UR | `REQ-411-review.md` | changes-requested |
 | Remediation | REQ-411 | `worktree-agent-REQ-411-implement-queue-selection` | per-record successful-probe transition evidence | `REQ-411-remediation-handback.md` | done |
 | Reviewer | REQ-411 re-review | integration range `dd221ea8..6209227b` | REQ plus remediation | `REQ-411-rereview.md` | done |
+| Planner | REQ-412 plan | read-only | REQ plus UR and prime | `REQ-412-plan.md` | pending |
+| Explorer | REQ-436 exploration | read-only | REQ plus prime and REQ-426 | `REQ-436-exploration.md` | pending |
