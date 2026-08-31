@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.2 — Go 1.25 Core Compatibility Floor (2026-08-31)
+
+Installing and updating no longer excludes Go 1.25 users when the core command already supports that toolchain. The compatibility claim is now backed by an exact-version test instead of a module-directive-only check.
+
+- The core module, launcher, current prerequisite docs, and root/shipped compatibility comments now agree on Go 1.25.0.
+- A dedicated lane selects exactly Go 1.25.0 and runs all core package suites.
+- Launcher regressions accept 1.25.0, reject 1.24.99, and keep the optional board and maintainer floors unchanged.
+
 ## 0.251.1 — Special Unix Mode Preservation (2026-08-31)
 
 Managed install and update paths now retain setuid, setgid, and sticky bits instead of silently narrowing files to ordinary permissions.
