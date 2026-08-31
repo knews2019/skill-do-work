@@ -24,4 +24,5 @@ Status: in-progress
 | Explorer | REQ-435 exploration | read-only | REQ plus primes | `REQ-435-exploration.md` | done |
 | Reviewer | REQ-432 review | integration range `4fcb006a..ad6c252e` | REQ plus UR | `REQ-432-review.md` | done |
 | 2 | REQ-435 | `worktree-agent-REQ-435-complete-doctor-forensics-delegation-contract` | `REQ-435-brief.md` | `REQ-435-handback.md` | done |
-| Reviewer | REQ-435 review | integration range `0acc9342..5b808919` | REQ plus UR | `REQ-435-review.md` | pending |
+| Reviewer | REQ-435 review | integration range `0acc9342..5b808919` | REQ plus UR | `REQ-435-review.md` | changes-requested |
+| Remediation | REQ-435 | `worktree-agent-REQ-435-complete-doctor-forensics-delegation-contract` | F1 board severity authority | `REQ-435-remediation-handback.md` | pending |
