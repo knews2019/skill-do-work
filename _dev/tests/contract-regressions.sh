@@ -1449,25 +1449,27 @@ assert_block_contains \
   'narrow exception.*post-work Review metadata.*archived REQ.*remains unchanged' \
   'review-work.md Step 3 must preserve the narrow archived-REQ review-metadata exception.'
 
-assert_block_contains \
-  "$work_archive_success_block" \
-  'When and only when the completed REQ carries `review_generated: true` and `do-work/archive/UR-NNN/` already exists for its `user_request`' \
-  'actions/work.md Archive success override must require the complete review_generated-and-existing-archived-UR predicate for the same user_request.'
+requeststate_archive_semantics="$(sed -n '/^\*\*Archived review-follow-up semantics (declarative)\./,/^\*\*Calibration evidence semantics/p' "$core_root/actions/work-reference.md")"
 
 assert_block_contains \
-  "$work_archive_success_block" \
-  'move the completed REQ into that existing folder in place' \
-  'actions/work.md Archive success override must return the completed review follow-up to its existing archived UR folder in place.'
+  "$requeststate_archive_semantics" \
+  'When and only when a completed REQ carries `review_generated: true` and an archived `UR-NNN` folder already exists for the same `user_request`' \
+  'the declarative request-state contract must require the complete review_generated-and-existing-archived-UR predicate for the same user_request.'
 
 assert_block_contains \
-  "$work_archive_success_block" \
-  'Never move, reopen, or re-consolidate the archived UR folder' \
-  'actions/work.md Archive success override must keep the archived UR folder closed and stationary.'
+  "$requeststate_archive_semantics" \
+  'plans the REQ into that existing folder in place' \
+  'the declarative request-state contract must return the completed review follow-up to its existing archived UR folder in place.'
 
 assert_block_contains \
-  "$work_archive_success_block" \
-  'Skip the normal active-UR closure branch' \
-  'actions/work.md Archive success override must bypass the normal active-UR closure branch.'
+  "$requeststate_archive_semantics" \
+  'archived UR folder is never moved, reopened, or re-consolidated' \
+  'the declarative request-state contract must keep the archived UR folder closed and stationary.'
+
+assert_block_contains \
+  "$requeststate_archive_semantics" \
+  'bypasses the normal active-UR closure branch' \
+  'the declarative request-state contract must bypass the normal active-UR closure branch.'
 
 assert_block_contains \
   "$work_archive_success_block" \
@@ -1758,7 +1760,7 @@ fi
 # run. This is deliberately clause-local: generic timestamp prose elsewhere cannot
 # satisfy the source-selection boundary at the cross-file write. The in-memory
 # mutations replay the REQ-274 stale-stamp class and prove every semantic leg bites.
-if ! python3 - "$core_root/actions/work.md" <<'PY'
+if ! python3 - "$core_root/actions/work-reference.md" <<'PY'
 import pathlib
 import re
 import sys
@@ -1769,7 +1771,7 @@ work_text = work_path.read_text()
 
 def calibration_source_defects(source):
     section_match = re.search(
-        r"^7\.5\. \*\*Append the calibration-log line\.\*\*(.*?)(?=^8\. \*\*Worktree cleanup)",
+        r"^\*\*Calibration evidence semantics \(declarative\)\.\*\*(.*?)(?=^`do-work/CHECKPOINT\.md`)",
         source,
         flags=re.DOTALL | re.MULTILINE,
     )
@@ -1822,7 +1824,7 @@ if live_defects:
     )
 
 section_match = re.search(
-    r"^7\.5\. \*\*Append the calibration-log line\.\*\*(.*?)(?=^8\. \*\*Worktree cleanup)",
+    r"^\*\*Calibration evidence semantics \(declarative\)\.\*\*(.*?)(?=^`do-work/CHECKPOINT\.md`)",
     work_text,
     flags=re.DOTALL | re.MULTILINE,
 )
@@ -1915,7 +1917,7 @@ for mutation_name, mutated_source, expected_defect in mutations:
         )
 PY
 then
-  printf 'FAIL: actions/work.md Step 8 substep 7.5 must read claimed_at and completed_at from the just-archived REQ frontmatter at calculation time and forbid carried context values (REQ-316).\n' >&2
+  printf 'FAIL: declarative request-state calibration semantics must read claimed_at and completed_at from the just-archived REQ frontmatter at calculation time and forbid carried context values (REQ-316).\n' >&2
   fail_count=$((fail_count + 1))
 fi
 
@@ -7317,6 +7319,48 @@ assert_contains \
   "skills/do-work/actions/work-reference.md" \
   'there is no hand-edit or helper fallback' \
   'lifecycle metadata writes must fail closed without free-form fallback.'
+
+work_complete_archive_block="$(sed -n '/^6\. \*\*Archive through the canonical transaction/,/^7\. \*\*Execute deferred lesson writes/p' "$core_root/actions/work.md")"
+assert_block_not_contains \
+  "$work_complete_archive_block" \
+  'move the completed REQ|move them into|move entire UR|Check if ALL REQs|Archive behavior|Collision guard' \
+  'work must not retain executable archive, collision, or UR mutations after canonical complete.'
+
+work_complete_tail="$(sed -n '/^6\. \*\*Archive through the canonical transaction/,/^8\. \*\*Worktree cleanup/p' "$core_root/actions/work.md")"
+assert_block_not_contains \
+  "$work_complete_tail" \
+  'Append the calibration-log line|append one line to `do-work/calibration-log\.tsv`|creating the file with the header' \
+  'work must not append calibration after canonical complete already owns it.'
+
+abandon_cancel_block="$(sed -n '/^### Step 5: Archive/,/^### Step 6: Report/p' "$core_root/actions/abandon.md")"
+assert_block_not_contains \
+  "$abandon_cancel_block" \
+  'move each cancelled REQ|Collision guard|Already-archived target|move the file|move it there' \
+  'abandon must not retain executable archive/collision/UR mechanics after canonical cancel.'
+assert_block_contains \
+  "$abandon_cancel_block" \
+  'reason-summary' \
+  'abandon must pass a safe summary for multiline cancellation reasons.'
+assert_block_contains \
+  "$abandon_cancel_block" \
+  'command applies Outside-text containment' \
+  'abandon must delegate multiline reason containment to cancel.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/internal/requeststate/state_plan.go" \
+  'case "intent", "spec", "code", "environment"' \
+  'fail must accept exactly the four canonical error_type tokens.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/internal/requeststate/state_commands.go" \
+  '"--reason-summary"' \
+  'cancel must accept the action-owned safe summary for multiline outside text.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go" \
+  'classification = fmt\.Sprintf\(" \(`error_type: %s`\)"' \
+  'failed cancellation history must preserve an optional error_type classification.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go" \
+  'prior := "failure instant unrecorded"' \
+  'failed cancellation history must name an unrecorded failure instant without inventing one.'
 
 if [ "$fail_count" -gt 0 ]; then
   exit 1

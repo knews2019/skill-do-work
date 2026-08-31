@@ -93,22 +93,16 @@ Never cascade silently.
 Invoke the canonical transaction once per confirmed target, passing the action-owned reason and dependent decision explicitly:
 
 ```bash
-<skill-root>/tools/do-work-cli.sh --repo-root <project-root> cancel REQ-NNN --request-path <exact-path> --confirmed --reason <reason> --dependent-disposition <leave|repoint|cascade> --writer '<writer>'
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> cancel REQ-NNN --request-path <exact-path> --confirmed --reason <reason> [--reason-summary <one-line-summary>] --dependent-disposition <leave|repoint|cascade> --writer '<writer>'
 ```
 
-The command owns the canonical `cancelled` stamp/body trail, failure-record preservation, exact in-place archived-failure behavior or archive move, checkpoint removal, collision refusal, and projected active-UR closure. Confirmation, reason collection, and every dependent disposition remain this action's judgment. A missing or failed command stops that target with its finding; never fall back to the compatibility mechanics below.
+For a multiline reason, pass the accepted bytes unchanged as `--reason` and the action-authored safe one-line text after `**Why:**` as `--reason-summary`; the command applies Outside-text containment. Do not put either value in frontmatter. For a safe one-line reason, omit `--reason-summary`.
 
-**Already-archived target (the archived-`failed` path from Step 1, including an explicitly named legacy nested failure):** the cancellation was written *in place* — do **not** move the file, and **skip the collision guard below** (the only `do-work/archive/**/REQ-NNN*.md` it would match is the file itself, so the guard would fire against its own target and its "leave it in `do-work/queue/`" remedy is incoherent for a file that was never in the queue). Never relocate it into, out of, or between `do-work/archive/UR-NNN/` folders: consolidating a now-resolved root REQ into its UR is `actions/cleanup.md` Pass 2's job, and a UR folder already sitting in `archive/` is closed. Report the exact in-place path and continue.
-
-Otherwise (the target came from `do-work/queue/` or `do-work/working/`), move each cancelled REQ file out of the queue:
-
-- If `do-work/archive/UR-NNN/` exists for its `user_request` → move it there.
-- Otherwise → move it to `do-work/archive/` root (cleanup's Pass 2 consolidates later).
-- **Collision guard:** if any `do-work/archive/**/REQ-NNN*.md` already exists, do NOT overwrite — leave the cancelled file in `do-work/queue/`, report the collision with both paths, and let the user resolve it (mirrors `actions/cleanup.md`'s duplicate handling).
+The command owns the canonical `cancelled` stamp/body trail, failure-record preservation, exact in-place archived-failure behavior or archive move, checkpoint removal, collision refusal, and projected active-UR closure. Confirmation, reason/summary collection, and every dependent disposition remain this action's judgment. A missing or failed command stops that target with its finding; there is no manual archive, collision, or UR fallback. Consume its exact path/change/skipped-work evidence for Step 6 reporting.
 
 ### Step 6: Report
 
-Summarize per REQ, note dependents and how each was dispositioned, and check the owning UR: if every sibling REQ is now terminally resolved (`completed`, `completed-with-issues`, or `cancelled`) and its UR is still live, say that `do-work cleanup` will close the UR. For a legacy nested failure, report that the UR folder was already closed and remained in place.
+Summarize the canonical result per REQ, including its exact final or in-place path, dependents and their action-owned disposition, and whether the transaction closed the active UR or left it open. For a legacy nested failure, report the returned in-place path and that the closed UR folder remained in place.
 
 ## Output Format
 

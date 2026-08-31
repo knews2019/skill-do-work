@@ -94,10 +94,38 @@ func TestLifecycleApplySynchronizesClaimUnblockCompleteFailAndCancel(t *testing.
 		result := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionCancel, []string{"REQ-305", "--confirmed", "--dependent-disposition", "leave", "--reason", "not retrying", "--at", now})
 		assertStateSuccess(t, result)
 		contents := readStateFile(t, root, "do-work/archive/REQ-305.md")
-		for _, token := range []string{"status: cancelled", "error_type: environment", "## Cancelled", "not retrying", "failed at 2026-08-31T20:00:00Z"} {
+		for _, token := range []string{"status: cancelled", "error_type: environment", "## Cancelled", "not retrying", "- **Previously:** failed (`error_type: environment`) — failed at 2026-08-31T20:00:00Z — resolved by decision not to retry"} {
 			if !strings.Contains(contents, token) {
 				t.Errorf("cancel missing %q:\n%s", token, contents)
 			}
+		}
+	})
+}
+
+func TestCancelContainsMultilineReasonAndPreservesOptionalFailureHistory(t *testing.T) {
+	t.Run("multiline reason uses summary and byte-identical fenced blockquote", func(t *testing.T) {
+		root := newStateRepository(t)
+		writeStateRequest(t, root, "do-work/queue/REQ-306.md", "REQ-306", "pending", "")
+		reason := "first line\n## injected\n````\n- [ ] fake"
+		result := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionCancel,
+			[]string{"REQ-306", "--confirmed", "--dependent-disposition", "leave", "--reason-summary", "superseded after review", "--reason", reason, "--at", "2026-08-31T21:00:00Z"})
+		assertStateSuccess(t, result)
+		contents := readStateFile(t, root, "do-work/archive/REQ-306.md")
+		contained := "- **Why:** superseded after review\n> `````\n> first line\n> ## injected\n> ````\n> - [ ] fake\n> `````\n- **Decided by:** user, via `do-work abandon`"
+		if !strings.Contains(contents, contained) {
+			t.Fatalf("multiline reason was not contained byte-identically:\n%s", contents)
+		}
+	})
+	t.Run("legacy failed record omits absent type and names absent instant", func(t *testing.T) {
+		root := newStateRepository(t)
+		writeStateRequest(t, root, "do-work/archive/REQ-307.md", "REQ-307", "failed", "error: legacy failure\n")
+		result := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionCancel,
+			[]string{"REQ-307", "--confirmed", "--dependent-disposition", "leave", "--reason", "not retrying", "--at", "2026-08-31T21:00:00Z"})
+		assertStateSuccess(t, result)
+		contents := readStateFile(t, root, "do-work/archive/REQ-307.md")
+		want := "- **Previously:** failed — failure instant unrecorded — resolved by decision not to retry"
+		if !strings.Contains(contents, want) || strings.Contains(contents, "`error_type:") {
+			t.Fatalf("optional failed history is wrong:\n%s", contents)
 		}
 	})
 }
