@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.10 — Independent Misplaced-Archive Conflicts (2026-08-31)
+
+Cleanup now lets safe files leave a misplaced archived UR even when one sibling destination is occupied.
+
+- The full source directory is still validated for symlinks and unsafe members before any move is planned.
+- Each validated file receives its own deterministic preflight and conflict domain.
+- Existing destinations remain byte-identical, with exact refusal evidence limited to the conflicting item.
+
 ## 0.251.9 — Authoritative Forensics Report Contract (2026-08-31)
 
 Forensics now projects every deterministic report field from declared authorities without unsupported repository-state rescans.

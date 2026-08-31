@@ -12,16 +12,16 @@
 - REQ-431 — documentation rewrites now follow their owning moves and compose from current bytes; merged as `3d695fcb`, independently approved at 100% with no findings.
 - REQ-432 — consumed scratch can no longer bypass the commit-mode empty-index guard; merged as `ad6c252e`, with adjacent doctor remediation routed to consent-gated REQ-446.
 - REQ-435 — doctor-forensics delegation now has complete typed report projection, stable recovery references, and deterministic board-warning mapping; merged as `c1536cbf`, independently approved at 98%.
+- REQ-433 — misplaced archived UR items now have independent conflict domains; merged as `f14803a8`, independently approved at 98%.
 
 ## In Progress (interrupted)
 
 - REQ-411: Implement dependency-aware queue selection and actionable summaries — claimed 2026-08-31T17:49:48Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-- REQ-433: Review fix: Split misplaced UR partial-merge conflicts by item — claimed 2026-08-31T17:49:48Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 
 - REQ-411 through REQ-420 remain in the ordered UR-081 chain.
-- REQ-433 and REQ-436 through REQ-444 remain queued; REQ-436's default audit decision is recorded and pending.
+- REQ-436 through REQ-444 remain queued; REQ-436's default audit decision is recorded and pending.
 - REQ-445 awaits user consent through `do-work clarify` before it can enter the runnable queue.
 - REQ-446 awaits user consent through `do-work clarify` before it can enter the runnable queue.
 

@@ -30,4 +30,5 @@ Status: in-progress
 | Planner | REQ-411 plan | read-only | REQ plus UR and prime | `REQ-411-plan.md` | done |
 | Explorer | REQ-411 exploration | read-only | REQ plus accepted plan and prime | `REQ-411-exploration.md` | done |
 | 1 | REQ-411 | `worktree-agent-REQ-411-implement-queue-selection` | `REQ-411-brief.md` | `REQ-411-handback.md` | pending |
-| 2 | REQ-433 | `worktree-agent-REQ-433-split-misplaced-ur-partial-merge-conflicts` | `REQ-433-brief.md` | `REQ-433-handback.md` | pending |
+| 2 | REQ-433 | `worktree-agent-REQ-433-split-misplaced-ur-partial-merge-conflicts` | `REQ-433-brief.md` | `REQ-433-handback.md` | done |
+| Reviewer | REQ-433 review | integration range `c87797ad..f14803a8` | REQ plus UR | `REQ-433-review.md` | done |
