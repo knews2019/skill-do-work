@@ -11,5 +11,5 @@ Status: in-progress
 | Reviewer | REQ-427 review | integration range `afbac3c0..098936e8` | REQ plus UR | `REQ-427-review.md` | done |
 | Reviewer | REQ-428 review | integration range `eb94342f..25762881` | REQ plus UR | `REQ-428-review.md` | done |
 | 1 | REQ-429 | `worktree-agent-REQ-429-complete-normalized-schema-field-projection` | `REQ-429-brief.md` | `REQ-429-handback.md` | pending |
-| Explorer | REQ-430 exploration | read-only | REQ plus prime | `REQ-430-exploration.md` | pending |
+| Explorer | REQ-430 exploration | read-only | REQ plus prime | `REQ-430-exploration.md` | done |
 | 2 | REQ-430 | `worktree-agent-REQ-430-couple-ur-closure-to-terminal-member-archival` | `REQ-430-brief.md` | `REQ-430-handback.md` | pending |
