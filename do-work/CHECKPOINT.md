@@ -6,10 +6,10 @@
 - REQ-409 — canonical cleanup implementation archived `completed-with-issues`; follow-ups REQ-430 through REQ-433 queued after failed remediation re-review.
 - REQ-410 — canonical doctor/forensics implementation archived `completed-with-issues`; follow-ups REQ-434 and REQ-435 queued after failed remediation re-review.
 - REQ-426 — special mode bits preserved through managed replacement and real install; merge `73bd4a6f`, release `7e0112bc`, metadata `d090af93`.
+- REQ-429 — complete normalized schema-field projection merged as `67942dd9`; independent review approved at 100% with no findings.
 
 ## In Progress (interrupted)
 
-- REQ-429: [impact-rule-change] Review fix: Complete normalized schema-field projection — claimed 2026-08-31T14:50:42Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 - REQ-430: Review fix: Couple UR closure to terminal member archival — claimed 2026-08-31T14:50:42Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued

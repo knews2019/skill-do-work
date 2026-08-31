@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.4 — Complete Typed Schema Projection (2026-08-31)
+
+The shared request record now projects every field governed by the Schema Read Contract, including caveman, with normalized value and explicit evidence.
+
+- A sorted defensive contract inventory drives a table-based completeness ratchet.
+- Every contracted field retains both typed normalization evidence and generic parser evidence.
+- A reconstructed RED proves the prior caveman omission, while focused, full-module, vet, and exact-Go-1.25 checks pass.
+
 ## 0.251.3 — Filename Collision Evidence in Dependency Graphs (2026-08-31)
 
 Dependency checks now keep the strongest repository evidence when filenames collide, so an ambiguous target is never downgraded to a generic missing dependency.
