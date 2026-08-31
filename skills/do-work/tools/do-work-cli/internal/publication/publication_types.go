@@ -66,12 +66,27 @@ type QuestionAnswer struct {
 	RawAnswer      *PayloadFile `json:"raw_answer,omitempty"`
 }
 
+type StakeholderReportEvidence struct {
+	BlockedBy      string      `json:"blocked_by"`
+	ReportsHistory PayloadFile `json:"reports_history"`
+}
+
+type StakeholderTerminalEvidence struct {
+	BlockedHistory PayloadFile `json:"blocked_history"`
+	Implementation PayloadFile `json:"implementation"`
+}
+
 type AnswerManifest struct {
-	RequestPath      string            `json:"request_path"`
-	ExpectedStatus   string            `json:"expected_status"`
-	Mode             string            `json:"mode"`
-	Answers          []QuestionAnswer  `json:"answers"`
-	Report           *PublishedFile    `json:"report,omitempty"`
+	RequestPath         string                       `json:"request_path"`
+	ExpectedStatus      string                       `json:"expected_status"`
+	Mode                string                       `json:"mode"`
+	Answers             []QuestionAnswer             `json:"answers"`
+	Report              *PublishedFile               `json:"report,omitempty"`
+	StakeholderReport   *StakeholderReportEvidence   `json:"stakeholder_report,omitempty"`
+	StakeholderTerminal *StakeholderTerminalEvidence `json:"stakeholder_terminal,omitempty"`
+	OverrideCapture     *CaptureManifest             `json:"override_capture,omitempty"`
+	// OverrideCreates and OverrideFolds are decoded only to produce a stable
+	// refusal for obsolete unstructured manifests. New callers use OverrideCapture.
 	OverrideCreates  []PublishedFile   `json:"override_creates,omitempty"`
 	OverrideFolds    []ReplacementFile `json:"override_folds,omitempty"`
 	CloseUserRequest bool              `json:"close_user_request,omitempty"`
@@ -135,6 +150,8 @@ type Refusal struct {
 type PublicationPlan struct {
 	Operation                    OperationName
 	RepositoryRoot               string
+	ManifestPath                 string
+	AnswerAt                     string
 	CommitMessage                string
 	Mutations                    []PlannedMutation
 	TargetPaths                  []string

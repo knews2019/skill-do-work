@@ -61,6 +61,9 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 			return refusedPlan(plan, "RELEASE-MIRROR-UNDECLARED", "every discovered version mirror must be declared as a target", nil, requiredMirror)
 		}
 	}
+	var changelogMirrorBytes []byte
+	var changelogMirrorExpected []byte
+	var changelogMirrorCreate *bool
 	for _, changelog := range release.Changelogs {
 		path, pathError := containedPath(changelog.Path)
 		if pathError != nil {
@@ -72,6 +75,11 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 		newBytes, _, newError := readPayload(repositoryRoot, changelog.NewPayload)
 		if newError != nil {
 			return refusedPlan(plan, "RELEASE-PAYLOAD-INVALID", newError.Error(), nil, path)
+		}
+		if changelogMirrorBytes == nil {
+			changelogMirrorBytes = append([]byte(nil), newBytes...)
+		} else if !bytes.Equal(changelogMirrorBytes, newBytes) {
+			return refusedPlan(plan, "RELEASE-CHANGELOG-MIRROR-DIVERGED", "every declared changelog mirror must publish byte-identical caller-authored bytes", nil, path)
 		}
 		var expectedBytes []byte
 		if changelog.Create {
@@ -94,6 +102,13 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 			if changelog.InsertionAnchor == "" || bytes.Count(expectedBytes, []byte(changelog.InsertionAnchor)) != 1 {
 				return refusedPlan(plan, "RELEASE-CHANGELOG-ANCHOR", "changelog insertion anchor must occur exactly once in the expected preimage", nil, path)
 			}
+		}
+		if changelogMirrorCreate == nil {
+			create := changelog.Create
+			changelogMirrorCreate = &create
+			changelogMirrorExpected = append([]byte(nil), expectedBytes...)
+		} else if *changelogMirrorCreate != changelog.Create || !bytes.Equal(changelogMirrorExpected, expectedBytes) {
+			return refusedPlan(plan, "RELEASE-CHANGELOG-MIRROR-DIVERGED", "every declared changelog mirror must have byte-identical expected and new bytes", nil, path)
 		}
 		if strings.TrimSpace(changelog.EntryKey) == "" || strings.TrimSpace(changelog.EntryTitle) == "" || bytes.Contains(expectedBytes, []byte(changelog.EntryKey)) || bytes.Contains(expectedBytes, []byte(changelog.EntryTitle)) || bytes.Count(newBytes, []byte(changelog.EntryKey)) != 1 || bytes.Count(newBytes, []byte(changelog.EntryTitle)) != 1 {
 			return refusedPlan(plan, "RELEASE-CHANGELOG-ENTRY-DUPLICATE", "new changelog key and title must be absent from old bytes and unique in new bytes", nil, path)
@@ -154,5 +169,21 @@ func parseSemver(value string) ([3]int, bool) {
 
 func installedReleasePath(path string) bool {
 	lower := strings.ToLower(filepath.ToSlash(path))
-	return strings.Contains(lower, "/vendor/") || strings.HasPrefix(lower, "vendor/") || strings.Contains(lower, "node_modules/") || strings.HasPrefix(lower, "skills/do-work/")
+	parts := strings.Split(strings.Trim(lower, "/"), "/")
+	for index, part := range parts {
+		if part == "vendor" || part == "vendored" || part == "node_modules" {
+			return true
+		}
+		if (part == ".codex" || part == ".claude") && index+1 < len(parts) && parts[index+1] == "skills" {
+			return true
+		}
+		if (part == "generated" || part == ".generated") && index+1 < len(parts) {
+			for _, descendant := range parts[index+1:] {
+				if descendant == "skills" || descendant == "do-work" {
+					return true
+				}
+			}
+		}
+	}
+	return strings.HasPrefix(lower, "skills/do-work/")
 }

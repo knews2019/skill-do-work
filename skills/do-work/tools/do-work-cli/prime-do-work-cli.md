@@ -15,7 +15,7 @@ The standard-library Go module under this directory is the canonical implementat
 - `internal/dependencygraph/` derives readiness, reverse edges, cycles, and depth from a repository snapshot.
 - `internal/nextselection/` owns read-only target expansion, queue readiness, blocked probes, wave/fan-out bounds, estimates, and typed selected/excluded records.
 - `internal/requeststate/` owns deterministic `claim`, `unblock`, `complete`, `fail`, and `cancel` plans and their coupled checkpoint, archive, UR, calibration, and provenance mutations.
-- `internal/publication/` is the sole deterministic owner of typed `capture-files`, `answer`, and `release` manifests, planning, containment, and atomic publication. Actions retain content and semantic/release judgment; once supplied, these durable mutations have no prose fallback.
+- `internal/publication/` is the sole deterministic owner of typed `capture-files`, `answer`, and `release` manifests, planning, containment, repository-root-confined parent handles, and atomic publication. Stakeholder history and overrides are typed, file-backed evidence; actions retain content and semantic/release judgment, and once supplied these durable mutations have no prose fallback.
 - `internal/cleanup/` plans safe Passes 0–4, consent-gated repairs, link repointing, and worktree evidence.
 - `internal/doctor/` owns read-only mechanical forensics and guarded blame-derived timestamp repair; recurring lesson judgment and board verification remain outside it.
 - `internal/atomicfile/` owns safe existing-file replacement and exclusive marker creation.

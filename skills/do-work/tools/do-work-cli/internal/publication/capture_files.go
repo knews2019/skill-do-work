@@ -30,8 +30,9 @@ func BuildCapturePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 	if err != nil {
 		return refusedPlan(plan, "CAPTURE-PATH-UNSAFE", err.Error(), []string{capture.UserRequestID}, capture.UserRequest.Path)
 	}
-	if !strings.Contains(filepath.Base(urPath), "input.md") || !strings.Contains(urPath, "/"+capture.UserRequestID+"/") {
-		return refusedPlan(plan, "CAPTURE-UR-PATH-MISMATCH", "UR input path must name its UR directory and input.md", []string{capture.UserRequestID}, urPath)
+	wantedURPath := "do-work/user-requests/" + capture.UserRequestID + "/input.md"
+	if urPath != wantedURPath {
+		return refusedPlan(plan, "CAPTURE-UR-PATH-MISMATCH", "UR input path must exactly match the canonical active UR input path", []string{capture.UserRequestID}, urPath)
 	}
 	urBytes, urMode, err := readPayload(repositoryRoot, capture.UserRequest.Payload)
 	if err != nil {
@@ -74,8 +75,9 @@ func BuildCapturePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 		}
 		seenIDs[request.ID] = true
 		requestPath, pathError := containedPath(request.File.Path)
-		if pathError != nil || !strings.HasPrefix(filepath.Base(requestPath), request.ID+"-") {
-			return refusedPlan(plan, "CAPTURE-REQ-PATH-MISMATCH", "REQ filename must begin with its exact id", []string{request.ID}, request.File.Path)
+		requestBase := filepath.Base(requestPath)
+		if pathError != nil || filepath.ToSlash(filepath.Dir(requestPath)) != "do-work/queue" || !strings.HasPrefix(requestBase, request.ID+"-") || !strings.HasSuffix(requestBase, ".md") || requestBase == request.ID+"-.md" {
+			return refusedPlan(plan, "CAPTURE-REQ-PATH-MISMATCH", "REQ path must exactly name a slugged Markdown file in do-work/queue", []string{request.ID}, request.File.Path)
 		}
 		if !requestMembership[request.ID] {
 			return refusedPlan(plan, "CAPTURE-UR-MEMBERSHIP-MISSING", "UR requests field does not contain REQ id", []string{request.ID, capture.UserRequestID}, urPath)

@@ -67,13 +67,17 @@ For the differing set:
 
 Giving up on the answers instead is `do-work abandon REQ-NNN`, unchanged.
 
-After the semantic delta and report decisions are complete, invoke the canonical command once with the expected blocked record, all Q-ID answers, fresh report payload, optional override capture/folds, and terminal archive evidence:
+After the semantic delta and report decisions are complete, invoke the canonical command once with the expected blocked record, all Q-ID answers, fresh report payload, optional structured override capture, and terminal archive evidence:
+
+- With open questions, provide `report` plus typed `stakeholder_report` evidence: the exact new `blocked_by` path and a file-backed `## Reports` history block naming that same immutable bundle.
+- With every question resolved, provide typed `stakeholder_terminal` evidence: file-backed resolved `## Blocked` history and the `## Implementation` no-code marker. The command refuses to infer either durable history block.
+- When an answer overturns an assumption, provide one nested `override_capture` body with the full capture manifest semantics: canonical UR/REQ IDs and paths, membership, reservations, raw reply, assets, topology, and folds. Generic create/fold lists are refused; the nested capture remains part of the answer transaction.
 
 ```bash
 <skill-root>/tools/do-work-cli.sh --repo-root "<project-root>" --format json answer --manifest "<manifest-path>" --at "<answer-timestamp>" --commit
 ```
 
-The command owns question/note bytes, whole-record status, report/override publication, and the archive move as one transaction. Missing/refused tooling stops ingestion and leaves every target byte-identical. There is no hand-edit, capture helper, or manual Git fallback.
+The command owns question/note bytes, whole-record status, typed report/history or terminal evidence, structured override publication, and the archive move as one transaction. Missing/refused tooling stops ingestion and leaves every target byte-identical. There is no hand-edit, capture helper, generic-create, or manual Git fallback.
 
 ### Step 6: Report
 

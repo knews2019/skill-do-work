@@ -7400,7 +7400,7 @@ assert_contains \
 release_reference_block="$(sed -n '/^## Changelog Entry Procedure (Step 9)/,/^## Commit & Metadata-Commit Procedure/p' "$core_root/actions/work-reference.md")"
 assert_block_not_contains \
   "$release_reference_block" \
-  'Edit the mirrored value by hand|write the bumped value into the file' \
+  'Edit the mirrored value by hand|write the bumped value into the file|constraints on the hand edit|hand-edit(ed|ing)? (the )?(version|lockfile|mirror)' \
   'release judgment may not retain executable hand edits after canonical delegation.'
 for publication_action in capture.md clarify.md stakeholder-answers.md work.md; do
   assert_contains \
@@ -7416,6 +7416,24 @@ assert_contains \
   "skills/do-work/tools/do-work-cli/prime-do-work-cli.md" \
   'internal/publication/.*sole deterministic' \
   'the CLI prime must name publication ownership and the action judgment boundary.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/prime-do-work-cli.md" \
+  'repository-root-confined parent handles' \
+  'the CLI prime must retain the rooted publication boundary.'
+for stakeholder_manifest_field in stakeholder_report stakeholder_terminal override_capture; do
+  assert_contains \
+    "skills/do-work/actions/stakeholder-answers.md" \
+    "$stakeholder_manifest_field" \
+    "stakeholder answer publication must retain typed $stakeholder_manifest_field evidence."
+done
+assert_contains \
+  "skills/do-work/actions/stakeholder-answers.md" \
+  'Generic create/fold lists are refused' \
+  'stakeholder override publication must not regress to arbitrary generic creates.'
+assert_file_not_contains \
+  "skills/do-work/actions/work-reference.md" \
+  'constraints on the hand edit' \
+  'the active release reference must not restate lockfile hand editing.'
 
 if [ "$fail_count" -gt 0 ]; then
   exit 1
