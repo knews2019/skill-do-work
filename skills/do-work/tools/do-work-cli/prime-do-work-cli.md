@@ -38,6 +38,7 @@ The standard-library Go module under this directory is the canonical implementat
 - Focused package: `go test ./internal/<package>`
 - Static analysis: `go vet ./...`
 - Module regression: `go test -count=1 ./...`
+- Exact Go 1.25 compatibility: `bash _dev/tests/do-work-cli-go125-compatibility.sh` from the repository root
 - Windows atomic compile: `GOOS=windows GOARCH=amd64 go test -c ./internal/atomicfile -o <temporary-path>`
 - Repository baseline: run the unpiped `_dev/tests/maintainer-verify.sh` from the repository root when the integrating workflow calls for it.
 

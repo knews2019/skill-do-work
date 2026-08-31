@@ -4,7 +4,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 module_dir="$script_dir/do-work-cli"
 binary_path="$module_dir/do-work-cli"
-minimum_go_version="1.26.1"
+minimum_go_version="1.25.0"
 
 version_at_least() {
   awk -v minimum="$minimum_go_version" -v actual="$1" 'BEGIN {

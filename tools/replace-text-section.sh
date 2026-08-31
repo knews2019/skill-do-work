@@ -2,7 +2,7 @@
 # Atomically create, append, or replace do-work's managed text section.
 #
 # The implementation lives in the do-work-cli `replace-section` command; this file is the
-# compatibility launcher that keeps the public argv working. Requires Go 1.26.1 or newer,
+# compatibility launcher that keeps the public argv working. Requires Go 1.25.0 or newer,
 # which the do-work-cli launcher enforces.
 set -euo pipefail
 

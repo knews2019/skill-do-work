@@ -3,7 +3,7 @@
 #
 # The transaction lives in the do-work-cli `install-suite` command; this file is the
 # compatibility launcher that keeps the public argv working and answers
-# --print-bootstrap-command from its own literal heredoc. Installing requires Go 1.26.1 or
+# --print-bootstrap-command from its own literal heredoc. Installing requires Go 1.25.0 or
 # newer, which the do-work-cli launcher enforces.
 set -euo pipefail
 

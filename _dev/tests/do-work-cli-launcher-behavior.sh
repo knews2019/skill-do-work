@@ -14,13 +14,13 @@ trap 'rm -rf "$fixture_root"' EXIT
 mkdir -p "$fixture_root/tools/do-work-cli/cmd/do-work-cli" "$fixture_root/fake-bin"
 cp "$source_launcher" "$fixture_root/tools/do-work-cli.sh"
 printf 'package main\n' > "$fixture_root/tools/do-work-cli/cmd/do-work-cli/main.go"
-printf 'module example.invalid/do-work-cli\n\ngo 1.26.1\n' > "$fixture_root/tools/do-work-cli/go.mod"
+printf 'module example.invalid/do-work-cli\n\ngo 1.25.0\n' > "$fixture_root/tools/do-work-cli/go.mod"
 
 cat > "$fixture_root/fake-bin/go" <<'FAKE_GO'
 #!/usr/bin/env bash
 set -euo pipefail
 if [ "${1:-}" = version ]; then
-  printf 'go version %s darwin/arm64\n' "${FAKE_GO_VERSION:-go1.26.1}"
+  printf 'go version %s darwin/arm64\n' "${FAKE_GO_VERSION:-go1.25.0}"
   exit 0
 fi
 if [ "${1:-}" = build ]; then
@@ -95,10 +95,10 @@ fi
 
 rm -f "$fixture_root/tools/do-work-cli/do-work-cli"
 set +e
-old_output="$(PATH="$fixture_root/fake-bin:$PATH" FAKE_GO_BUILD_LOG="$build_log" FAKE_GO_VERSION=go1.26.0 "$fixture_root/tools/do-work-cli.sh" inspect 2>&1)"
+old_output="$(PATH="$fixture_root/fake-bin:$PATH" FAKE_GO_BUILD_LOG="$build_log" FAKE_GO_VERSION=go1.24.99 "$fixture_root/tools/do-work-cli.sh" inspect 2>&1)"
 old_status=$?
 set -e
-if [ "$old_status" -eq 0 ] || [[ "$old_output" != *'Go 1.26.1 or newer'* ]]; then
+if [ "$old_status" -eq 0 ] || [[ "$old_output" != *'Go 1.25.0 or newer'* ]]; then
   echo "FAIL: old Go refusal was not actionable (status $old_status): $old_output" >&2
   exit 1
 fi
