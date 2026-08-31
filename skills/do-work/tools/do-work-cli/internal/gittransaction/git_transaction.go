@@ -48,13 +48,18 @@ type TransactionResult struct {
 }
 
 type TransactionOptions struct {
-	RepositoryRoot        string
-	TargetPaths           []string
-	CreatedDirectoryPaths []string
-	DryRun                bool
-	Commit                bool
-	CommitMessage         string
-	PostCommitVerify      func(context.Context, string) error
+	RepositoryRoot string
+	TargetPaths    []string
+	// ExistingUntrackedTargetPaths is a narrow opt-in for exact durable state
+	// that is intentionally untracked in some consumer repositories. Each path
+	// must also be a target. Its bytes and mode are snapshotted for rollback;
+	// every existing untracked target not named here retains the default refusal.
+	ExistingUntrackedTargetPaths []string
+	CreatedDirectoryPaths        []string
+	DryRun                       bool
+	Commit                       bool
+	CommitMessage                string
+	PostCommitVerify             func(context.Context, string) error
 }
 
 type MutationRecorder struct {
@@ -161,9 +166,12 @@ func (recorder *MutationRecorder) RecordCreated(path string) error {
 }
 
 type targetState struct {
-	path    string
-	tracked bool
-	existed bool
+	path                     string
+	tracked                  bool
+	existed                  bool
+	existingUntrackedAllowed bool
+	originalBytes            []byte
+	originalMode             os.FileMode
 }
 
 func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate func(*MutationRecorder) error) TransactionResult {
@@ -192,15 +200,49 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	if err != nil {
 		return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, err.Error(), targetPaths...)
 	}
+	allowedExistingUntracked, err := normalizeTargetPaths(options.ExistingUntrackedTargetPaths)
+	if err != nil {
+		return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, err.Error())
+	}
+	targetSet := stringSet(targetPaths)
+	allowedSet := stringSet(allowedExistingUntracked)
+	for _, path := range allowedExistingUntracked {
+		if _, targeted := targetSet[path]; !targeted {
+			return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions,
+				fmt.Sprintf("existing untracked opt-in path %q is not a declared target", path), path)
+		}
+	}
+	for stateIndex := range states {
+		state := &states[stateIndex]
+		if _, allowed := allowedSet[state.path]; allowed {
+			if !state.existed || state.tracked {
+				return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions,
+					fmt.Sprintf("existing untracked opt-in path %q must exist and be untracked", state.path), state.path)
+			}
+			absolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(state.path))
+			fileInfo, statError := os.Lstat(absolutePath)
+			if statError != nil || !fileInfo.Mode().IsRegular() {
+				return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions,
+					fmt.Sprintf("existing untracked opt-in path %q is not a regular file", state.path), state.path)
+			}
+			originalBytes, readError := os.ReadFile(absolutePath)
+			if readError != nil {
+				return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, readError.Error(), state.path)
+			}
+			state.existingUntrackedAllowed = true
+			state.originalBytes = originalBytes
+			state.originalMode = fileInfo.Mode().Perm()
+		}
+	}
 	for _, state := range states {
 		dirty, statusErr := targetIsDirty(ctx, repositoryRoot, state.path)
 		if statusErr != nil {
 			return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, statusErr.Error(), state.path)
 		}
-		if dirty {
+		if dirty && !state.existingUntrackedAllowed {
 			return failTransaction(result, resultmodel.OutcomeRefused, FailureDirtyTarget, fmt.Sprintf("target path %q is already dirty", state.path), state.path)
 		}
-		if state.existed && !state.tracked {
+		if state.existed && !state.tracked && !state.existingUntrackedAllowed {
 			return failTransaction(result, resultmodel.OutcomeRefused, FailureDirtyTarget, fmt.Sprintf("target path %q exists but cannot be restored from Git", state.path), state.path)
 		}
 	}
@@ -230,7 +272,7 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	if mutationErr := mutate(recorder); mutationErr != nil {
 		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation, mutationErr)
 	}
-	changedPaths, err := changedTargets(ctx, repositoryRoot, targetPaths)
+	changedPaths, err := changedTargets(ctx, repositoryRoot, states)
 	if err != nil {
 		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation, err)
 	}
@@ -258,7 +300,14 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	if !options.Commit || len(changedPaths) == 0 {
 		return result
 	}
-	if _, err := runGit(ctx, repositoryRoot, append([]string{"add", "-A", "--"}, changedPaths...)...); err != nil {
+	commitPaths, err := committableChangedPaths(repositoryRoot, states, changedPaths)
+	if err != nil {
+		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureCommit, err)
+	}
+	if len(commitPaths) == 0 {
+		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureCommit, errors.New("the transaction changed no paths Git can commit"))
+	}
+	if _, err := runGit(ctx, repositoryRoot, append([]string{"add", "-A", "--"}, commitPaths...)...); err != nil {
 		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureCommit, err)
 	}
 	if _, err := runGit(ctx, repositoryRoot, "commit", "-m", options.CommitMessage); err != nil {
@@ -280,9 +329,9 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	if verifyErr != nil {
 		return committedRisk(result, verifyErr.Error(), commitSHA)
 	}
-	if !equalStrings(committedPaths, changedPaths) {
+	if !equalStrings(committedPaths, commitPaths) {
 		return committedRisk(result,
-			fmt.Sprintf("committed paths %q do not match exact touched paths %q", committedPaths, changedPaths), commitSHA)
+			fmt.Sprintf("committed paths %q do not match exact committable paths %q", committedPaths, commitPaths), commitSHA)
 	}
 	if options.PostCommitVerify != nil {
 		if verifyErr := options.PostCommitVerify(ctx, commitSHA); verifyErr != nil {
@@ -290,6 +339,30 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 		}
 	}
 	return result
+}
+
+func committableChangedPaths(repositoryRoot string, states []targetState, changedPaths []string) ([]string, error) {
+	stateByPath := make(map[string]targetState, len(states))
+	for _, state := range states {
+		stateByPath[state.path] = state
+	}
+	paths := make([]string, 0, len(changedPaths))
+	for _, path := range changedPaths {
+		state := stateByPath[path]
+		if state.existingUntrackedAllowed {
+			_, statError := os.Lstat(filepath.Join(repositoryRoot, filepath.FromSlash(path)))
+			if os.IsNotExist(statError) {
+				// This path never existed in the index, so its disappearance has no Git
+				// deletion to stage. A moved destination remains a separate exact target.
+				continue
+			}
+			if statError != nil {
+				return nil, statError
+			}
+		}
+		paths = append(paths, path)
+	}
+	return paths, nil
 }
 
 func newMutationRecorder(states []targetState, createdDirectories []string) *MutationRecorder {
@@ -426,15 +499,26 @@ func indexIsEmpty(ctx context.Context, repositoryRoot string, pathspecs ...strin
 	return false, fmt.Errorf("inspect Git index: %w", err)
 }
 
-func changedTargets(ctx context.Context, repositoryRoot string, paths []string) ([]string, error) {
-	changed := make([]string, 0, len(paths))
-	for _, path := range paths {
-		dirty, err := targetIsDirty(ctx, repositoryRoot, path)
+func changedTargets(ctx context.Context, repositoryRoot string, states []targetState) ([]string, error) {
+	changed := make([]string, 0, len(states))
+	for _, state := range states {
+		if state.existingUntrackedAllowed {
+			currentBytes, readError := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(state.path)))
+			if os.IsNotExist(readError) || readError == nil && !bytes.Equal(currentBytes, state.originalBytes) {
+				changed = append(changed, state.path)
+				continue
+			}
+			if readError != nil {
+				return nil, readError
+			}
+			continue
+		}
+		dirty, err := targetIsDirty(ctx, repositoryRoot, state.path)
 		if err != nil {
 			return nil, err
 		}
 		if dirty {
-			changed = append(changed, path)
+			changed = append(changed, state.path)
 		}
 	}
 	return changed, nil
@@ -443,6 +527,26 @@ func changedTargets(ctx context.Context, repositoryRoot string, paths []string) 
 func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRoot string, states []targetState, recorder *MutationRecorder, failureKind FailureKind, operationError error) TransactionResult {
 	rollback := resultmodel.RollbackResult{Status: resultmodel.RollbackSucceeded, Actions: []string{}, Errors: []string{}}
 	for _, state := range states {
+		if state.existingUntrackedAllowed {
+			if _, err := runGit(ctx, repositoryRoot, "rm", "--cached", "--ignore-unmatch", "--", state.path); err != nil {
+				rollback.Errors = append(rollback.Errors, fmt.Sprintf("unstage existing untracked target %s: %v", state.path, err))
+			}
+			absolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(state.path))
+			if removeError := os.Remove(absolutePath); removeError != nil && !os.IsNotExist(removeError) {
+				rollback.Errors = append(rollback.Errors, fmt.Sprintf("remove changed existing untracked target %s: %v", state.path, removeError))
+				continue
+			}
+			if makeError := os.MkdirAll(filepath.Dir(absolutePath), 0o755); makeError != nil {
+				rollback.Errors = append(rollback.Errors, fmt.Sprintf("recreate parent for existing untracked target %s: %v", state.path, makeError))
+				continue
+			}
+			if writeError := os.WriteFile(absolutePath, state.originalBytes, state.originalMode); writeError != nil {
+				rollback.Errors = append(rollback.Errors, fmt.Sprintf("restore existing untracked target %s: %v", state.path, writeError))
+			} else {
+				rollback.Actions = append(rollback.Actions, "restored existing untracked target "+state.path)
+			}
+			continue
+		}
 		if !state.tracked {
 			continue
 		}

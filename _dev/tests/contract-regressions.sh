@@ -3627,7 +3627,6 @@ hardened_check_scripts=(
   "tools/checks/preflight.sh|actions/work.md"
   "tools/checks/scope-drift.sh|actions/work.md"
   "tools/checks/qualify.sh|actions/work.md"
-  "tools/checks/record-commit-hash.sh|actions/work.md"
   "tools/checks/blanked-req-scan.sh|actions/forensics.md"
   "tools/checks/blanked-req-scan.sh|actions/cleanup.md"
   "scripts/protected-inventory.sh|actions/commit.md"
@@ -7274,16 +7273,50 @@ assert_contains \
   'selection records must retain the successful-probe unblock obligation per REQ.'
 assert_contains \
   "skills/do-work/actions/work.md" \
-  'Read only that returned path; do not glob, list, or re-run `next`' \
-  'work must exact-read the typed successful-probe target instead of rescanning the queue.'
+  'do not read or scan the queue again' \
+  'work must pass the typed successful-probe target instead of rescanning the queue.'
 assert_contains \
   "skills/do-work/actions/work.md" \
   'unblock_required: true.*original_status: blocked.*probe_status: succeeded' \
   'work must require complete per-record evidence before applying the action-owned unblock transition.'
 assert_contains \
   "skills/do-work/actions/work.md" \
-  'remove `blocked_by` and `blocked_at`.*append one history line to a `## Blocked`' \
+  'preserves the condition in history.*canonical pending transition' \
   'the typed handoff must still drive the complete unblock and history transaction.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go" \
+  'requeststate\.Handlers' \
+  'the shipped binary must register all canonical request-state commands.'
+for lifecycle_command in Claim Unblock Complete Fail Cancel; do
+  assert_contains \
+    "skills/do-work/tools/do-work-cli/internal/requeststate/state_commands.go" \
+    "Transition$lifecycle_command" \
+    "request-state must register the $lifecycle_command command."
+done
+assert_contains \
+  "skills/do-work/actions/work.md" \
+  'claim REQ-NNN --request-path <request_path> --provenance' \
+  'work Step 2 must delegate exact-path claim mechanics.'
+assert_contains \
+  "skills/do-work/actions/work.md" \
+  'complete REQ-NNN --request-path <exact-working-path> --terminal-status' \
+  'work success must delegate terminal/archive/checkpoint/UR/calibration mechanics.'
+assert_contains \
+  "skills/do-work/actions/work.md" \
+  'fail REQ-NNN --request-path <exact-working-path> --error' \
+  'work failure must delegate classified failure mechanics.'
+assert_contains \
+  "skills/do-work/actions/abandon.md" \
+  'cancel REQ-NNN --request-path <exact-path> --confirmed --reason' \
+  'abandon must retain confirmation and delegate deterministic cancellation.'
+assert_contains \
+  "skills/do-work/actions/clarify.md" \
+  'unblock REQ-NNN --request-path <exact-path> --original-status blocked --source user-via-clarify --confirmed' \
+  'clarify must retain human confirmation and delegate deterministic unblock.'
+assert_contains \
+  "skills/do-work/actions/work-reference.md" \
+  'there is no hand-edit or helper fallback' \
+  'lifecycle metadata writes must fail closed without free-form fallback.'
 
 if [ "$fail_count" -gt 0 ]; then
   exit 1
