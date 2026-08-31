@@ -15,7 +15,8 @@
 
 ## In Progress (interrupted)
 
-- None.
+- REQ-411: Implement dependency-aware queue selection and actionable summaries — claimed 2026-08-31T17:49:48Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- REQ-433: Review fix: Split misplaced UR partial-merge conflicts by item — claimed 2026-08-31T17:49:48Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 

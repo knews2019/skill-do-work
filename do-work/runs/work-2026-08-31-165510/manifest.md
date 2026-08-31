@@ -27,3 +27,7 @@ Status: in-progress
 | Reviewer | REQ-435 review | integration range `0acc9342..5b808919` | REQ plus UR | `REQ-435-review.md` | changes-requested |
 | Remediation | REQ-435 | `worktree-agent-REQ-435-complete-doctor-forensics-delegation-contract` | F1 board severity authority | `REQ-435-remediation-handback.md` | done |
 | Reviewer | REQ-435 re-review | integration range `0acc9342..c1536cbf` | REQ plus remediation | `REQ-435-rereview.md` | done |
+| Planner | REQ-411 plan | read-only | REQ plus UR and prime | `REQ-411-plan.md` | done |
+| Explorer | REQ-411 exploration | read-only | REQ plus accepted plan and prime | `REQ-411-exploration.md` | done |
+| 1 | REQ-411 | `worktree-agent-REQ-411-implement-queue-selection` | `REQ-411-brief.md` | `REQ-411-handback.md` | pending |
+| 2 | REQ-433 | `worktree-agent-REQ-433-split-misplaced-ur-partial-merge-conflicts` | `REQ-433-brief.md` | `REQ-433-handback.md` | pending |

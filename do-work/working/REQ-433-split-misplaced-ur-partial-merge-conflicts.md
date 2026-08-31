@@ -1,7 +1,9 @@
 ---
 id: REQ-433
 title: 'Review fix: Split misplaced UR partial-merge conflicts by item'
-status: pending
+status: claimed
+claimed_at: 2026-08-31T17:49:48Z
+route: A
 domain: general
 created_at: 2026-08-30T20:35:44Z
 user_request: UR-081
@@ -10,6 +12,12 @@ review_generated: true
 depends_on: [REQ-432]
 impact: impact-user-visible
 effort_estimate: effort-mechanical
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-31T17:49:48Z
+  basis:
+    - trivial short-circuit
 tdd: true
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 ---
@@ -37,3 +45,33 @@ Found during re-review of REQ-409. Pass 3b currently bundles an entire misplaced
 **Why RED now:** Pass 3b assigns all files in the folder to one conflict domain.
 **GREEN when:** The named fixture performs the safe partial merge and reports exact evidence for the remaining conflict.
 **Validation:** Review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The failure is isolated to one cleanup grouping boundary, with a concrete two-item regression and explicit non-overwrite behavior.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_plan.go` (modify) — split a misplaced archived UR directory into independently preflighted per-file operation groups.
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_plan_test.go` (modify) — add the exact conflicting-`input.md`/safe-sibling RED-GREEN regression and pin deterministic grouping.
+
+**Files I will NOT touch:** cleanup application/transaction mechanics, repository-model schemas, action prose, queue state from the builder, release metadata, changelogs, or version files.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] Each file under `do-work/archive/user-requests/UR-NNN/` is planned in its own conflict domain against its canonical destination.
+- [ ] A conflicting `input.md` remains at the source while a nonconflicting sibling REQ moves to `do-work/archive/UR-NNN/`.
+- [ ] Destination conflicts never overwrite existing content and report exact refusal evidence.
+- [ ] Per-item groups and operations retain deterministic ordering.
