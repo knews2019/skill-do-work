@@ -14,3 +14,4 @@ Status: in-progress
 | Explorer | REQ-430 exploration | read-only | REQ plus prime | `REQ-430-exploration.md` | done |
 | 2 | REQ-430 | `worktree-agent-REQ-430-couple-ur-closure-to-terminal-member-archival` | `REQ-430-brief.md` | `REQ-430-handback.md` | done |
 | Reviewer | REQ-429 review | integration range `e89b223f..67942dd9` | REQ plus UR | `REQ-429-review.md` | done |
+| Reviewer | REQ-430 review | integration range `bbc96e88..5f3531d0` | REQ plus UR | `REQ-430-review.md` | pending |
