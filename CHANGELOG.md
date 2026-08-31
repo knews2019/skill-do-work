@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.3 — Filename Collision Evidence in Dependency Graphs (2026-08-31)
+
+Dependency checks now keep the strongest repository evidence when filenames collide, so an ambiguous target is never downgraded to a generic missing dependency.
+
+- Collision evidence is consulted before the absent-node fallback.
+- Filename-only collisions remain unmet, not ready, and at unresolved dependency depth.
+- A seam-level RED/GREEN fixture pins deterministic ambiguity evidence and warning text.
+
 ## 0.251.2 — Go 1.25 Core Compatibility Floor (2026-08-31)
 
 Installing and updating no longer excludes Go 1.25 users when the core command already supports that toolchain. The compatibility claim is now backed by an exact-version test instead of a module-directive-only check.
