@@ -7264,6 +7264,26 @@ assert_contains \
   "skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go" \
   'nextselection\.Handlers' \
   'the shipped binary must register the canonical next command family.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go" \
+  'RequestPath.*json:"request_path"' \
+  'each selection record must identify the exact repository-relative request mutation target.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go" \
+  'UnblockRequired.*json:"unblock_required"' \
+  'selection records must retain the successful-probe unblock obligation per REQ.'
+assert_contains \
+  "skills/do-work/actions/work.md" \
+  'Read only that returned path; do not glob, list, or re-run `next`' \
+  'work must exact-read the typed successful-probe target instead of rescanning the queue.'
+assert_contains \
+  "skills/do-work/actions/work.md" \
+  'unblock_required: true.*original_status: blocked.*probe_status: succeeded' \
+  'work must require complete per-record evidence before applying the action-owned unblock transition.'
+assert_contains \
+  "skills/do-work/actions/work.md" \
+  'remove `blocked_by` and `blocked_at`.*append one history line to a `## Blocked`' \
+  'the typed handoff must still drive the complete unblock and history transaction.'
 
 if [ "$fail_count" -gt 0 ]; then
   exit 1

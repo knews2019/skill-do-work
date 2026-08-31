@@ -67,33 +67,56 @@ type SkippedWork struct {
 	Reason string `json:"reason"`
 }
 
+type SelectionProbeStatus string
+
+const (
+	ProbeNotApplicable SelectionProbeStatus = "not_applicable"
+	ProbeMissing       SelectionProbeStatus = "missing"
+	ProbeSucceeded     SelectionProbeStatus = "succeeded"
+	ProbeFailed        SelectionProbeStatus = "failed"
+	ProbeTimedOut      SelectionProbeStatus = "timed_out"
+	ProbeLaunchFailed  SelectionProbeStatus = "launch_failed"
+)
+
 // SelectionRecord is one request the caller may process in this invocation.
 // Commands are carried as argv rather than display strings so every renderer
 // preserves the same pasteable next action.
 type SelectionRecord struct {
-	RequestID        string   `json:"request_id"`
-	Title            string   `json:"title"`
-	Provenance       string   `json:"provenance"`
-	DependencyDepth  int      `json:"dependency_depth"`
-	Dependencies     []string `json:"dependencies"`
-	EstimateMinutes  int      `json:"estimate_minutes"`
-	EstimateKnown    bool     `json:"estimate_known"`
-	NextArgv         []string `json:"next_argv"`
-	NextJustRecipe   string   `json:"next_just_recipe"`
-	VerificationArgv []string `json:"verification_argv"`
+	RequestID        string               `json:"request_id"`
+	RequestPath      string               `json:"request_path"`
+	Title            string               `json:"title"`
+	Provenance       string               `json:"provenance"`
+	OriginalStatus   string               `json:"original_status"`
+	ProbeStatus      SelectionProbeStatus `json:"probe_status"`
+	ProbeAttempted   bool                 `json:"probe_attempted"`
+	ProbeExitCode    int                  `json:"probe_exit_code"`
+	UnblockRequired  bool                 `json:"unblock_required"`
+	DependencyDepth  int                  `json:"dependency_depth"`
+	Dependencies     []string             `json:"dependencies"`
+	EstimateMinutes  int                  `json:"estimate_minutes"`
+	EstimateKnown    bool                 `json:"estimate_known"`
+	NextArgv         []string             `json:"next_argv"`
+	NextJustRecipe   string               `json:"next_just_recipe"`
+	VerificationArgv []string             `json:"verification_argv"`
 }
 
 // SelectionExclusion is one considered request that cannot be selected. Code
 // is stable for machines; Reason is actionable for people.
 type SelectionExclusion struct {
-	RequestID        string   `json:"request_id"`
-	Title            string   `json:"title"`
-	Provenance       string   `json:"provenance"`
-	Code             string   `json:"code"`
-	Reason           string   `json:"reason"`
-	NextArgv         []string `json:"next_argv"`
-	NextJustRecipe   string   `json:"next_just_recipe"`
-	VerificationArgv []string `json:"verification_argv"`
+	RequestID        string               `json:"request_id"`
+	RequestPath      string               `json:"request_path"`
+	Title            string               `json:"title"`
+	Provenance       string               `json:"provenance"`
+	OriginalStatus   string               `json:"original_status"`
+	ProbeStatus      SelectionProbeStatus `json:"probe_status"`
+	ProbeAttempted   bool                 `json:"probe_attempted"`
+	ProbeExitCode    int                  `json:"probe_exit_code"`
+	UnblockRequired  bool                 `json:"unblock_required"`
+	Code             string               `json:"code"`
+	Reason           string               `json:"reason"`
+	NextArgv         []string             `json:"next_argv"`
+	NextJustRecipe   string               `json:"next_just_recipe"`
+	VerificationArgv []string             `json:"verification_argv"`
 }
 
 // SelectionSummary is the queue projection rendered beside selected and
@@ -178,6 +201,12 @@ func NormalizeResult(result CommandResult) CommandResult {
 	}
 	for index := range result.Selected {
 		selection := &result.Selected[index]
+		if selection.ProbeStatus == "" {
+			selection.ProbeStatus = ProbeNotApplicable
+		}
+		if !selection.ProbeAttempted {
+			selection.ProbeExitCode = -1
+		}
 		if selection.Dependencies == nil {
 			selection.Dependencies = []string{}
 		}
@@ -190,6 +219,12 @@ func NormalizeResult(result CommandResult) CommandResult {
 	}
 	for index := range result.Excluded {
 		exclusion := &result.Excluded[index]
+		if exclusion.ProbeStatus == "" {
+			exclusion.ProbeStatus = ProbeNotApplicable
+		}
+		if !exclusion.ProbeAttempted {
+			exclusion.ProbeExitCode = -1
+		}
 		if exclusion.NextArgv == nil {
 			exclusion.NextArgv = []string{}
 		}
@@ -285,6 +320,12 @@ func renderText(result CommandResult) []byte {
 			estimate = fmt.Sprintf("%d min", selection.EstimateMinutes)
 		}
 		fmt.Fprintf(&output, "selected %s [%s, depth %d, %s]: %s\n", selection.RequestID, selection.Provenance, selection.DependencyDepth, estimate, selection.Title)
+		fmt.Fprintf(&output, "  request: %s (original status: %s)\n", selection.RequestPath, selection.OriginalStatus)
+		fmt.Fprintf(&output, "  probe %s (attempted: %t, exit: %d)", selection.ProbeStatus, selection.ProbeAttempted, selection.ProbeExitCode)
+		if selection.UnblockRequired {
+			fmt.Fprint(&output, "; unblock required")
+		}
+		fmt.Fprintln(&output)
 		fmt.Fprintf(&output, "  next: %s\n", joinArgv(selection.NextArgv))
 		if selection.NextJustRecipe != "" {
 			fmt.Fprintf(&output, "  just: just %s\n", selection.NextJustRecipe)
@@ -294,6 +335,12 @@ func renderText(result CommandResult) []byte {
 	}
 	for _, exclusion := range result.Excluded {
 		fmt.Fprintf(&output, "excluded %s [%s] %s: %s\n", exclusion.RequestID, exclusion.Provenance, exclusion.Code, exclusion.Reason)
+		fmt.Fprintf(&output, "  request: %s (original status: %s)\n", exclusion.RequestPath, exclusion.OriginalStatus)
+		fmt.Fprintf(&output, "  probe %s (attempted: %t, exit: %d)", exclusion.ProbeStatus, exclusion.ProbeAttempted, exclusion.ProbeExitCode)
+		if exclusion.UnblockRequired {
+			fmt.Fprint(&output, "; unblock required")
+		}
+		fmt.Fprintln(&output)
 		if len(exclusion.NextArgv) > 0 {
 			fmt.Fprintf(&output, "  next: %s\n", joinArgv(exclusion.NextArgv))
 		}
