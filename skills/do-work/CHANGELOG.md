@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.7 — Move-Owned Documentation Rewrites (2026-08-31)
+
+Cleanup link rewrites now follow the exact move group that makes each destination valid instead of riding on the first planned move.
+
+- Refusing either owner leaves only that owner's link and destination unchanged while the other safe rewrite proceeds.
+- Multiple eligible groups compose against current document bytes without last-writer loss.
+- Anchors, filename-only mentions, exact-target preflight, atomic replacement, and rollback behavior remain intact.
+
 ## 0.251.6 — Supported-Shape Timestamp Ordering (2026-08-31)
 
 Doctor repair no longer lets unsupported but parseable timestamp shapes influence chronological repairs to supported fields.
