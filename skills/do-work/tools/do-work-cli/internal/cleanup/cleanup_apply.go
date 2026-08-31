@@ -53,7 +53,7 @@ func ApplyPlan(ctx context.Context, plan CleanupPlan, options ApplyOptions) resu
 		}
 		preflight := gittransaction.PreflightTargets(ctx, plan.RepositoryRoot, targetPaths, options.Commit)
 		if preflight.Failure != nil {
-			if isUntrackedConsumedScratch(ctx, plan.RepositoryRoot, group) {
+			if preflight.Failure.Kind == gittransaction.FailureDirtyTarget && isUntrackedConsumedScratch(ctx, plan.RepositoryRoot, group) {
 				directlyEligible[groupIndex] = true
 				scratchCandidates[groupIndex] = true
 				continue
@@ -62,7 +62,12 @@ func ApplyPlan(ctx context.Context, plan CleanupPlan, options ApplyOptions) resu
 			if len(preflight.Failure.Paths) > 0 {
 				path = preflight.Failure.Paths[0]
 			}
-			result.Findings = append(result.Findings, refusedGroupFinding(group, path, preflight.Failure.Reason))
+			finding := refusedGroupFinding(group, path, preflight.Failure.Reason)
+			if preflight.Failure.Kind == gittransaction.FailureDirtyIndex {
+				finding.NextArgv = []string{"git", "diff", "--cached", "--name-only"}
+				finding.VerificationArgv = []string{"git", "diff", "--cached", "--quiet", "--exit-code"}
+			}
+			result.Findings = append(result.Findings, finding)
 			continue
 		}
 		directlyEligible[groupIndex] = true

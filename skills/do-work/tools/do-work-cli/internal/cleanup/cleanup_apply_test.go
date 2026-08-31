@@ -291,6 +291,65 @@ func TestConsumedUntrackedRunIsDeletedWithTruthfulNonRollbackEvidence(t *testing
 	}
 }
 
+func TestConsumedUntrackedRunCommitRefusesDirtyIndexBeforeDeletion(t *testing.T) {
+	repositoryRoot := cleanupRepository(t)
+	writeCleanupFile(t, repositoryRoot, "unrelated.txt", "initial\n")
+	commitCleanupFixture(t, repositoryRoot)
+
+	scratchContents := map[string][]byte{
+		"do-work/runs/spent/manifest.md": []byte("Status: consumed\n"),
+		"do-work/runs/spent/output.txt":  []byte("spent\n"),
+	}
+	for relativePath, contents := range scratchContents {
+		writeCleanupFile(t, repositoryRoot, relativePath, string(contents))
+	}
+	writeCleanupFile(t, repositoryRoot, "unrelated.txt", "staged user work\n")
+	runCleanupGit(t, repositoryRoot, "add", "unrelated.txt")
+
+	snapshot, discoveryErr := repositorymodel.DiscoverRepository(repositoryRoot)
+	if discoveryErr != nil {
+		t.Fatal(discoveryErr)
+	}
+	plan := BuildPlan(snapshot)
+	result := ApplyPlan(context.Background(), plan, ApplyOptions{Commit: true, CommitMessage: "cleanup spent scratch"})
+	if result.Outcome != resultmodel.OutcomeFindings {
+		t.Errorf("commit result = %#v", result)
+	}
+	foundCommitGuard := false
+	for _, finding := range result.Findings {
+		if finding.Code == "CLEANUP-GROUP-REFUSED" && strings.Contains(strings.Join(finding.Evidence, " "), "--commit requires an empty existing index") {
+			foundCommitGuard = true
+			if !reflect.DeepEqual(finding.NextArgv, []string{"git", "diff", "--cached", "--name-only"}) ||
+				!reflect.DeepEqual(finding.VerificationArgv, []string{"git", "diff", "--cached", "--quiet", "--exit-code"}) {
+				t.Errorf("commit guard remediation = next %#v verify %#v", finding.NextArgv, finding.VerificationArgv)
+			}
+		}
+	}
+	if !foundCommitGuard {
+		t.Errorf("commit guard refusal missing: %#v", result.Findings)
+	}
+	scratchRetained := true
+	for relativePath, wantContents := range scratchContents {
+		contents, readErr := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(relativePath)))
+		if readErr != nil || !reflect.DeepEqual(contents, wantContents) {
+			t.Errorf("scratch %s = %q, %v; want byte-for-byte %q", relativePath, contents, readErr, wantContents)
+			scratchRetained = false
+		}
+	}
+	if !scratchRetained {
+		return
+	}
+
+	runCleanupGit(t, repositoryRoot, "restore", "--staged", "--", "unrelated.txt")
+	result = ApplyPlan(context.Background(), plan, ApplyOptions{})
+	if result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("non-commit cleanup result = %#v", result)
+	}
+	if _, statErr := os.Stat(filepath.Join(repositoryRoot, "do-work/runs/spent")); !os.IsNotExist(statErr) {
+		t.Fatalf("spent scratch remained eligible without --commit: %v", statErr)
+	}
+}
+
 func TestCommittedRiskPreservesExactRevertArgvAndDoesNotClaimApplied(t *testing.T) {
 	repositoryRoot := cleanupRepository(t)
 	writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-211-done.md", cleanupRequest("REQ-211", "completed", ""))

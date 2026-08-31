@@ -106,6 +106,17 @@ func PreflightTargets(ctx context.Context, repositoryRoot string, targetPaths []
 		return result
 	}
 	result.TargetPaths = normalizedPaths
+	if requireEmptyIndex {
+		empty, indexError := indexIsEmpty(ctx, resolvedRoot)
+		if indexError != nil || !empty {
+			reason := "--commit requires an empty existing index"
+			if indexError != nil {
+				reason = indexError.Error()
+			}
+			result.Failure = &TransactionFailure{Kind: FailureDirtyIndex, Reason: reason}
+			return result
+		}
+	}
 	states, err := inspectTargets(ctx, resolvedRoot, normalizedPaths)
 	if err != nil {
 		result.Failure = &TransactionFailure{Kind: FailureInvalidOptions, Reason: err.Error(), Paths: normalizedPaths}
@@ -120,16 +131,6 @@ func PreflightTargets(ctx context.Context, repositoryRoot string, targetPaths []
 		if dirty || (state.existed && !state.tracked) {
 			result.Failure = &TransactionFailure{Kind: FailureDirtyTarget, Reason: fmt.Sprintf("target path %q is already dirty or not restorable from Git", state.path), Paths: []string{state.path}}
 			return result
-		}
-	}
-	if requireEmptyIndex {
-		empty, indexError := indexIsEmpty(ctx, resolvedRoot)
-		if indexError != nil || !empty {
-			reason := "--commit requires an empty existing index"
-			if indexError != nil {
-				reason = indexError.Error()
-			}
-			result.Failure = &TransactionFailure{Kind: FailureDirtyIndex, Reason: reason}
 		}
 	}
 	return result
