@@ -32,3 +32,5 @@ Status: in-progress
 | 1 | REQ-411 | `worktree-agent-REQ-411-implement-queue-selection` | `REQ-411-brief.md` | `REQ-411-handback.md` | pending |
 | 2 | REQ-433 | `worktree-agent-REQ-433-split-misplaced-ur-partial-merge-conflicts` | `REQ-433-brief.md` | `REQ-433-handback.md` | done |
 | Reviewer | REQ-433 review | integration range `c87797ad..f14803a8` | REQ plus UR | `REQ-433-review.md` | done |
+| Reviewer | REQ-411 review | integration range `dd221ea8..737e115c` | REQ plus UR | `REQ-411-review.md` | changes-requested |
+| Remediation | REQ-411 | `worktree-agent-REQ-411-implement-queue-selection` | per-record successful-probe transition evidence | `REQ-411-remediation-handback.md` | pending |

@@ -58,9 +58,9 @@ batch: go-no-llm-command-platform
 Move deterministic queue selection and readiness decisions into canonical Go commands.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Freeze a read-only typed selector around the existing repository snapshot, dependency graph, result envelope, and process-group-safe blocked-probe boundary.
+- [x] **[APPLY]:** Added the mixed real-binary RED first, then implemented typed selection, command registration, compatibility delegation, and contract coverage inside the frozen 18-file scope.
+- [x] **[UNIFY]:** Reviewed all 18 files and passed focused/full CLI tests, vet, selector behavior, blocked-process-tree contracts, exact Go 1.25, shell syntax, and diff/scope audit; no debug artifacts remain.
 
 ## Detailed Requirements
 - Implement `do-work-next` and shared selection for explicit REQ/UR targeting, dependency readiness, cycle detection, waves, assignments, negligible-impact filtering, blocked probes, and estimates.
@@ -148,3 +148,90 @@ The exact 18-file boundary is eight new `internal/nextselection` files plus comm
 - [ ] Work delegates deterministic Step 1 selection without moving claim/state/release ownership into this REQ.
 - [ ] The cheap-work selector consumes canonical readiness while preserving all specialized vetoes and diagnostics.
 - [ ] Mixed RED/GREEN fixtures and contract regressions prove text/JSON parity, deterministic ordering, timeout reuse, and no repository mutation.
+
+## Implementation Summary
+
+**What was done:** Added a read-only typed `next` command that selects default, targeted, UR-expanded, wave, fan-out, and cheap-work candidates from one repository snapshot and the canonical dependency graph. It reports stable selected/excluded records, estimates, summaries, and exact commands in text/JSON, delegates blocked probes to the shipped bounded runner, and turns the shell selector plus work actions into callers rather than independent queue parsers.
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_types.go` (new) — selection options, provenance, candidate, probe, and identifier helpers.
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_types_test.go` (new) — identifier and canonicalization coverage.
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_targets.go` (new) — default, REQ, and UR target resolution with stable provenance/order.
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_targets_test.go` (new) — explicit-over-UR provenance and expansion coverage.
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go` (new) — canonical eligibility, dependency, probe, estimate, wave/fan-out, summary, and simple-policy projection.
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go` (new) — mutation-sensitive mixed selection fixtures.
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_commands.go` (new) — command parsing, discovery, shipped-runner resolution, and private probe execution.
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_commands_test.go` (new) — real-binary RED/GREEN and command behavior coverage.
+- `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go` (modified) — registers the next-command handlers.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified) — adds normalized typed selected/excluded/summary fields and matching text rendering.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified) — pins non-null JSON and text/JSON selection parity.
+- `skills/do-work/tools/select-simple-reqs.sh` (modified) — replaces shell-side queue parsing with a compatibility invocation of the simple selector mode.
+- `_dev/tests/select-simple-reqs-behavior.sh` (modified) — keeps legacy run-set and diagnostic behavior pinned through delegation.
+- `skills/do-work/actions/run-simple-reqs.md` (modified) — delegates directly to the canonical typed selector command.
+- `skills/do-work/actions/work.md` (modified) — makes typed selector output Step 1's sole deterministic queue read while retaining action-owned mutations.
+- `skills/do-work/actions/work-reference.md` (modified) — ties auto-wave computation and fan-out exclusions to typed selector records.
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — maps the new package and selection ownership.
+- `_dev/tests/contract-regressions.sh` (modified) — pins sole-authority delegation and retained blocked-runner safety.
+
+**Integration range:** `dd221ea8..737e115c`
+
+*Generated by work action from the builder hand-back*
+
+## Decisions
+
+### D-01: Keep the shared result schema version additive
+
+**Decision:** DECIDE & STATE — retain schema version 1 and add normalized selected, excluded, and selection-summary fields.
+
+**Reasoning:** Existing consumers remain compatible while new consumers receive typed queue evidence. Value: one renderer contract without a breaking migration. Risk: future removals or semantic changes still require an explicit schema-version decision.
+
+### D-02: Preserve the cheap selector as a compatibility renderer
+
+**Decision:** DECIDE & STATE — keep the shell path as a thin caller of `next --simple`, retaining its run-set and stderr warning surfaces.
+
+**Reasoning:** Queue parsing and readiness move to Go without breaking existing callers. Value: immediate authority consolidation. Risk: the compatibility output must stay pinned until all callers consume typed JSON directly.
+
+### D-03: Reproduce selection inputs in every verification command
+
+**Decision:** DECIDE & STATE — attach one command-level verification argv carrying target provenance and all selection flags to every selected and excluded record.
+
+**Reasoning:** Verification must replay the same mode rather than accidentally turn an exclusion into an explicit-target override. Value: pasteable, faithful diagnostics. Risk: every future selection flag must join this reconstruction in the same change.
+
+## Qualification
+
+Passed — all 18 declared files are substantive and present in `dd221ea8..737e115c`. The new package is registered through the CLI entry point, the result envelope carries typed selection data, and both work callers delegate to the same command. The eight static-reference warnings are expected Go package files compiled by package/import membership; P-A-U, requirement tracing, exact scope, and debug-artifact checks passed.
+
+## Testing
+
+**Red-green validation:** The mixed real-binary fixture failed before production changes with exit 2 and `UNKNOWN-COMMAND` for `next`. The same fixture and mutation-sensitive unit cases pass after implementation, covering target provenance, dependencies/cycles, wave/fan-out separation, assignment/negligible filters, blocked probes, estimates, deterministic ordering, typed text/JSON output, and read-only bytes.
+
+**Merged-state checks:**
+- `go test -count=1 ./internal/nextselection ./internal/resultmodel` — PASS.
+- `go test -count=1 ./...` and `go vet ./...` — PASS (full CLI module).
+- `bash _dev/tests/select-simple-reqs-behavior.sh` — PASS.
+- `bash _dev/tests/contract-regressions.sh` — PASS, including blocked-probe process-tree behavior.
+- `bash _dev/tests/do-work-cli-go125-compatibility.sh` — PASS (exact Go 1.25.0).
+- Qualification, scope-drift, shell syntax, and diff hygiene over `dd221ea8..737e115c` — PASS.
+
+## Initial Review
+
+**Overall: 50%** | 2026-08-31T19:04:56Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 75% |
+| Code Quality | 80% |
+| Test Adequacy | 75% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Fail |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- Successful blocked-probe identity is collapsed into an aggregate count; selected records expose neither a per-record probe outcome/original state nor an exact queue mutation target, so the action cannot perform its required unblock transaction from the sole typed queue read — impact-user-visible → returned for the one allowed remediation attempt.
+
+**Minor findings:** None.
+**Acceptance:** Fail — deterministic selection is broad and correct, but its typed action handoff loses required per-record transition evidence.
+**Suggested testing:** Mixed ordinary and successfully probed records; exact mutation targets; distinct successful/failed/timed-out/missing probe evidence; action contract forbidding a second queue scan.
+**Follow-ups created:** None pending remediation; **sweeps appended to:** None.
+
+*Reviewed by review-work action*
