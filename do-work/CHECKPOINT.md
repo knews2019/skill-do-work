@@ -11,7 +11,8 @@
 
 ## In Progress (interrupted)
 
-- None.
+- REQ-431: Review fix: Couple documentation rewrites to their owning moves — claimed 2026-08-31T15:44:18Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- REQ-434: Review fix: Refuse unsupported timestamp ordering anchors — claimed 2026-08-31T15:44:18Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 

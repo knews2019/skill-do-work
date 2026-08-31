@@ -1,9 +1,17 @@
 ---
 id: REQ-434
 title: 'Review fix: Refuse unsupported timestamp ordering anchors'
-status: pending
+status: claimed
 domain: general
 created_at: 2026-08-30T22:01:41Z
+claimed_at: 2026-08-31T15:44:18Z
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-31T15:44:18Z
+  basis:
+    - trivial short-circuit
 user_request: UR-081
 addendum_to: REQ-410
 review_generated: true
@@ -37,3 +45,19 @@ Found during terminal re-review of REQ-410 after its single remediation. An offs
 **Why RED now:** Comparable parse success is currently enough to make the unsupported field an ordering anchor.
 **GREEN when:** Mixed unsupported/supported fixtures report the unsupported field, leave both bytes unchanged unless an independently valid repair exists, and all supported-shape ordering fixtures continue to pass.
 **Validation:** Terminal review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The unsupported-anchor predicate, exact mixed-shape fixtures, and expected byte-preserving outcome are explicit. This is a focused doctor timestamp-plan correction.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

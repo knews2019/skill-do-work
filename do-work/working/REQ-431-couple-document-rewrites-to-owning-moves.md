@@ -1,9 +1,19 @@
 ---
 id: REQ-431
 title: 'Review fix: Couple documentation rewrites to their owning moves'
-status: pending
+status: claimed
 domain: general
 created_at: 2026-08-30T20:35:44Z
+claimed_at: 2026-08-31T15:44:18Z
+route: B
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-08-31T15:44:18Z
+  basis:
+    - Route B
+    - 3 acceptance criteria
+    - full-suite verification
 user_request: UR-081
 addendum_to: REQ-409
 review_generated: true
@@ -37,3 +47,19 @@ Found during re-review of REQ-409. All composed rewrites for one document are at
 **Why RED now:** The composed document edit is owned solely by the first move group.
 **GREEN when:** Both refusal directions preserve valid links, avoid nonexistent destinations, and retain the other safe rewrite.
 **Validation:** Review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The conditional-rewrite defect and acceptance behavior are clear, but the cleanup planner's rewrite composition and operation ownership seams must be explored before freezing the write set.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
