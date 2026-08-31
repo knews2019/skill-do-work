@@ -1,9 +1,20 @@
 ---
 id: REQ-430
 title: 'Review fix: Couple UR closure to terminal member archival'
-status: pending
+status: claimed
 domain: general
 created_at: 2026-08-30T20:35:44Z
+claimed_at: 2026-08-31T14:50:42Z
+route: B
+estimate:
+  p50_active_minutes: 20
+  confidence: medium
+  calculated_at: 2026-08-31T14:50:42Z
+  basis:
+    - Route B
+    - 3-file write set
+    - 3 acceptance criteria
+    - full-suite verification
 user_request: UR-081
 addendum_to: REQ-409
 review_generated: true
@@ -36,3 +47,19 @@ Found during re-review of REQ-409. A dirty terminal REQ group was refused while 
 **Why RED now:** The planner emits the UR-close group independently from the member archival group.
 **GREEN when:** The named fixture keeps both inputs active, reports the blocking member evidence, and still applies unrelated safe groups.
 **Validation:** Review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The required cleanup dependency behavior is clear, but the planner's existing operation-group structure and tests must be explored before declaring the exact files and acceptance boundary.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*

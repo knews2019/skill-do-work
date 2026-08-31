@@ -9,6 +9,8 @@
 
 ## In Progress (interrupted)
 
+- REQ-429: [impact-rule-change] Review fix: Complete normalized schema-field projection — claimed 2026-08-31T14:50:42Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- REQ-430: Review fix: Couple UR closure to terminal member archival — claimed 2026-08-31T14:50:42Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 

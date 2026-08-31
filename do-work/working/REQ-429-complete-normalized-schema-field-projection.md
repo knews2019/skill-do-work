@@ -1,9 +1,17 @@
 ---
 id: REQ-429
 title: '[impact-rule-change] Review fix: Complete normalized schema-field projection'
-status: pending
+status: claimed
 domain: backend
 created_at: 2026-08-30T19:21:33Z
+claimed_at: 2026-08-31T14:50:42Z
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-31T14:50:42Z
+  basis:
+    - trivial short-circuit
 user_request: UR-081
 addendum_to: REQ-408
 review_generated: true
@@ -42,3 +50,19 @@ Found during review of REQ-408. The remediation projected the specifically liste
 **Why RED now:** `TypedRecord` never normalizes or projects `caveman`, and the existing test omits it.
 **GREEN when:** Every contracted schema field has typed normalized evidence and the completeness ratchet prevents future omissions.
 **Validation:** Review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The omitted normalized field, record types, completeness test, and RED/GREEN outcome are explicit. This is a focused schema-projection repair.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
