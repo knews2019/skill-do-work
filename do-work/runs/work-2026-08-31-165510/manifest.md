@@ -39,6 +39,6 @@ Status: in-progress
 | Explorer | REQ-436 exploration | read-only | REQ plus prime and REQ-426 | `REQ-436-exploration.md` | done |
 | Explorer | REQ-412 exploration | read-only | REQ plus accepted plan and primes | `REQ-412-exploration.md` | done |
 | 2 | REQ-436 | `worktree-agent-REQ-436-audit-special-mode-preservation-in-remaining-file-publication` | `REQ-436-brief.md` | `REQ-436-handback.md` | done |
-| 1 | REQ-412 | `worktree-agent-REQ-412-implement-request-state-transactions` | `REQ-412-brief.md` | `REQ-412-handback.md` | pending |
+| 1 | REQ-412 | `worktree-agent-REQ-412-implement-request-state-transactions` | `REQ-412-brief.md` | `REQ-412-handback.md` | done |
 | Reviewer | REQ-436 review | integration range `7207daef..f0715c41` | REQ plus REQ-426 | `REQ-436-review.md` | done |
 | Discovered | REQ-447 | queue-kanban complete-mode publication | queued follow-up | `do-work/queue/REQ-447-preserve-special-mode-bits-in-queue-kanban-publication.md` | done |
