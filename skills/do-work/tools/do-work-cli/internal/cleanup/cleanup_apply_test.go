@@ -61,6 +61,139 @@ func TestDirtyGroupIsRefusedWithoutBlockingIndependentSafeGroup(t *testing.T) {
 	}
 }
 
+func TestURClosureWaitsForRequiredMemberArchival(t *testing.T) {
+	repositoryRoot := cleanupRepository(t)
+	writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-430-zulu.md", cleanupRequest("REQ-430", "completed", "UR-430"))
+	writeCleanupFile(t, repositoryRoot, "do-work/working/REQ-429-alpha.md", cleanupRequest("REQ-429", "completed", "UR-430"))
+	writeCleanupFile(t, repositoryRoot, "do-work/user-requests/UR-430/input.md", "---\nid: UR-430\n---\nInput\n")
+	writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-431-unrelated.md", cleanupRequest("REQ-431", "completed", ""))
+	commitCleanupFixture(t, repositoryRoot)
+
+	snapshot, discoveryErr := repositorymodel.DiscoverRepository(repositoryRoot)
+	if discoveryErr != nil {
+		t.Fatal(discoveryErr)
+	}
+	plan := BuildPlan(snapshot)
+	var closureGroup OperationGroup
+	for _, group := range plan.Groups {
+		if group.Code == "CLOSE-UR-430" {
+			closureGroup = group
+			break
+		}
+	}
+	wantPrerequisites := []string{"ARCHIVE-REQ-429", "ARCHIVE-REQ-430"}
+	if !reflect.DeepEqual(closureGroup.RequiredGroupCodes, wantPrerequisites) {
+		t.Fatalf("CLOSE-UR-430 prerequisites = %#v, want %#v", closureGroup.RequiredGroupCodes, wantPrerequisites)
+	}
+
+	writeCleanupFile(t, repositoryRoot, "do-work/working/REQ-429-alpha.md", cleanupRequest("REQ-429", "completed", "UR-430")+"user edit\n")
+	result := ApplyPlan(context.Background(), plan, ApplyOptions{})
+	if result.Outcome != resultmodel.OutcomeFindings {
+		t.Fatalf("outcome = %s", result.Outcome)
+	}
+	for _, retainedPath := range []string{"do-work/working/REQ-429-alpha.md", "do-work/user-requests/UR-430/input.md"} {
+		if _, err := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(retainedPath))); err != nil {
+			t.Fatalf("required input %s did not remain: %v", retainedPath, err)
+		}
+	}
+	for _, refusedDestination := range []string{"do-work/archive/UR-430/REQ-429-alpha.md", "do-work/archive/UR-430/input.md"} {
+		if _, err := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(refusedDestination))); !os.IsNotExist(err) {
+			t.Fatalf("refused destination %s exists: %v", refusedDestination, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, "do-work/archive/REQ-431-unrelated.md")); err != nil {
+		t.Fatalf("unrelated safe group did not apply: %v", err)
+	}
+	foundClosureBlocker := false
+	for _, finding := range result.Findings {
+		if finding.Code == "CLEANUP-GROUP-REFUSED" && strings.Contains(strings.Join(finding.Evidence, " "), "CLOSE-UR-430") && strings.Contains(strings.Join(finding.Evidence, " "), "ARCHIVE-REQ-429") {
+			foundClosureBlocker = true
+		}
+	}
+	if !foundClosureBlocker {
+		t.Fatalf("closure refusal did not name its blocking member: %#v", result.Findings)
+	}
+}
+
+func TestURClosureAppliesAfterAllRequiredMemberArchival(t *testing.T) {
+	repositoryRoot := cleanupRepository(t)
+	writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-432-one.md", cleanupRequest("REQ-432", "completed", "UR-432"))
+	writeCleanupFile(t, repositoryRoot, "do-work/working/REQ-433-two.md", cleanupRequest("REQ-433", "completed", "UR-432"))
+	writeCleanupFile(t, repositoryRoot, "do-work/user-requests/UR-432/input.md", "---\nid: UR-432\n---\nInput\n")
+	commitCleanupFixture(t, repositoryRoot)
+
+	snapshot, discoveryErr := repositorymodel.DiscoverRepository(repositoryRoot)
+	if discoveryErr != nil {
+		t.Fatal(discoveryErr)
+	}
+	result := ApplyPlan(context.Background(), BuildPlan(snapshot), ApplyOptions{})
+	if result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("apply result = %#v", result)
+	}
+	for _, archivedPath := range []string{
+		"do-work/archive/UR-432/REQ-432-one.md",
+		"do-work/archive/UR-432/REQ-433-two.md",
+		"do-work/archive/UR-432/input.md",
+	} {
+		if _, err := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(archivedPath))); err != nil {
+			t.Fatalf("required archive output %s missing: %v", archivedPath, err)
+		}
+	}
+}
+
+func TestOperationGroupPrerequisitesFailClosed(t *testing.T) {
+	repositoryRoot := cleanupRepository(t)
+	writeCleanupFile(t, repositoryRoot, "direct.txt", "original\n")
+	writeCleanupFile(t, repositoryRoot, "safe.txt", "safe\n")
+	for _, path := range []string{"middle.txt", "transitive.txt", "missing.txt", "duplicate-one.txt", "duplicate-two.txt", "duplicate-dependent.txt", "cycle-a.txt", "cycle-b.txt", "repeated.txt"} {
+		writeCleanupFile(t, repositoryRoot, path, "clean\n")
+	}
+	commitCleanupFixture(t, repositoryRoot)
+	writeCleanupFile(t, repositoryRoot, "direct.txt", "user edit\n")
+
+	plan := CleanupPlan{RepositoryRoot: repositoryRoot, Groups: []OperationGroup{
+		{Code: "DIRECT", Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "direct.txt", Contents: []byte("replacement\n")}}},
+		{Code: "MIDDLE", RequiredGroupCodes: []string{"DIRECT"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "middle.txt", Contents: []byte("clean\n")}}},
+		{Code: "TRANSITIVE", RequiredGroupCodes: []string{"MIDDLE"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "transitive.txt", Contents: []byte("clean\n")}}},
+		{Code: "MISSING", RequiredGroupCodes: []string{"ABSENT"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "missing.txt", Contents: []byte("clean\n")}}},
+		{Code: "DUPLICATE", Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "duplicate-one.txt", Contents: []byte("clean\n")}}},
+		{Code: "DUPLICATE", Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "duplicate-two.txt", Contents: []byte("clean\n")}}},
+		{Code: "DUPLICATE-DEPENDENT", RequiredGroupCodes: []string{"DUPLICATE"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "duplicate-dependent.txt", Contents: []byte("clean\n")}}},
+		{Code: "CYCLE-A", RequiredGroupCodes: []string{"CYCLE-B"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "cycle-a.txt", Contents: []byte("clean\n")}}},
+		{Code: "CYCLE-B", RequiredGroupCodes: []string{"CYCLE-A"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "cycle-b.txt", Contents: []byte("clean\n")}}},
+		{Code: "REPEATED", RequiredGroupCodes: []string{"SAFE", "SAFE"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "repeated.txt", Contents: []byte("clean\n")}}},
+		{Code: "SAFE", Operations: []CleanupOperation{{Kind: OperationMove, SourcePath: "safe.txt", DestinationPath: "archive/safe.txt"}}},
+	}}
+	result := ApplyPlan(context.Background(), plan, ApplyOptions{})
+	if result.Outcome != resultmodel.OutcomeFindings {
+		t.Fatalf("outcome = %s", result.Outcome)
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, "archive/safe.txt")); err != nil {
+		t.Fatalf("independent safe group did not apply: %v", err)
+	}
+	for dependentCode, blockerCode := range map[string]string{
+		"MIDDLE":              "DIRECT",
+		"TRANSITIVE":          "DIRECT",
+		"MISSING":             "ABSENT",
+		"DUPLICATE-DEPENDENT": "DUPLICATE",
+		"CYCLE-A":             "CYCLE-A",
+		"CYCLE-B":             "CYCLE-A",
+		"REPEATED":            "SAFE",
+	} {
+		foundRefusal := false
+		for _, finding := range result.Findings {
+			evidence := strings.Join(finding.Evidence, " ")
+			if finding.Code == "CLEANUP-GROUP-REFUSED" && strings.Contains(evidence, dependentCode+": prerequisite ") && strings.Contains(evidence, blockerCode) {
+				foundRefusal = true
+				break
+			}
+		}
+		if !foundRefusal {
+			t.Errorf("%s refusal did not name blocker %s: %#v", dependentCode, blockerCode, result.Findings)
+		}
+	}
+}
+
 func TestCleanupCommitContainsOnlyExactTouchedPaths(t *testing.T) {
 	repositoryRoot := cleanupRepository(t)
 	writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-110-done.md", cleanupRequest("REQ-110", "completed", ""))
