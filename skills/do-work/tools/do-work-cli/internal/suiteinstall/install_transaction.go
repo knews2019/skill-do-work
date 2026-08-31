@@ -648,7 +648,7 @@ func (transaction *installTransaction) buildSettingsCandidate() error {
 			return failInstall("Claude settings must be a regular file: %s", transaction.settingsTarget)
 		}
 		transaction.settingsExisted = true
-		settingsMode = info.Mode().Perm()
+		settingsMode = info.Mode().Perm() | (info.Mode() & (os.ModeSetuid | os.ModeSetgid | os.ModeSticky))
 		settingsData, err = os.ReadFile(transaction.settingsTarget)
 		if err != nil {
 			return failInstall("Claude settings could not be read: %s", transaction.settingsTarget)
