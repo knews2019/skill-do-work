@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.8 — Commit Guard Before Scratch Cleanup (2026-08-31)
+
+Cleanup commit mode now enforces an empty index before every mutation, including the narrow consumed-scratch deletion path.
+
+- Shared target preflight reports the repository-wide commit blocker before untracked target dirt.
+- Consumed scratch bypasses only its intentional dirty-target refusal, never dirty-index or other failures.
+- A caller-seam regression proves byte-identical retention and later non-commit eligibility; consent-gated REQ-446 records one adjacent doctor-remediation mismatch.
+
 ## 0.251.7 — Move-Owned Documentation Rewrites (2026-08-31)
 
 Cleanup link rewrites now follow the exact move group that makes each destination valid instead of riding on the first planned move.

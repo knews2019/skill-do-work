@@ -10,10 +10,10 @@
 - REQ-430 — UR closure now depends on terminal member archival; merged as `5f3531d0`, review accepted the core behavior and routed one recovery-command edge to consent-gated REQ-445.
 - REQ-434 — unsupported timestamp shapes no longer anchor doctor ordering repairs; merged as `509cbee4`, independently approved at 98% with no Important findings.
 - REQ-431 — documentation rewrites now follow their owning moves and compose from current bytes; merged as `3d695fcb`, independently approved at 100% with no findings.
+- REQ-432 — consumed scratch can no longer bypass the commit-mode empty-index guard; merged as `ad6c252e`, with adjacent doctor remediation routed to consent-gated REQ-446.
 
 ## In Progress (interrupted)
 
-- REQ-432: Review fix: Enforce the commit guard for consumed scratch cleanup — claimed 2026-08-31T16:23:46Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 - REQ-435: Review fix: Complete the doctor-forensics delegation contract — claimed 2026-08-31T16:23:46Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
@@ -21,6 +21,7 @@
 - REQ-411 through REQ-420 remain in the ordered UR-081 chain.
 - REQ-432 through REQ-433 and REQ-435 through REQ-444 remain queued; REQ-436's default audit decision is recorded and pending.
 - REQ-445 awaits user consent through `do-work clarify` before it can enter the runnable queue.
+- REQ-446 awaits user consent through `do-work clarify` before it can enter the runnable queue.
 
 ## Session Notes
 
