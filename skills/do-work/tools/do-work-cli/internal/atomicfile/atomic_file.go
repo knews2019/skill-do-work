@@ -52,7 +52,7 @@ func ReplaceExisting(filePath string, fileContents []byte) error {
 		temporaryFile.Close()
 		return fmt.Errorf("writing temporary file for %s: %w", filePath, writeError)
 	}
-	if chmodError := temporaryFile.Chmod(originalInfo.Mode().Perm()); chmodError != nil {
+	if chmodError := temporaryFile.Chmod(completeFileMode(originalInfo.Mode())); chmodError != nil {
 		temporaryFile.Close()
 		return fmt.Errorf("preserving permissions for %s: %w", filePath, chmodError)
 	}
@@ -101,7 +101,10 @@ func CreateExclusiveAt(directoryRoot *os.Root, fileName string, fileContents []b
 	if directoryRoot == nil {
 		return fmt.Errorf("rooted directory is required")
 	}
-	createdFile, createError := directoryRoot.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, fileMode.Perm())
+	publicationMode := completeFileMode(fileMode)
+	// OpenFile accepts creation permissions only. Apply the complete mode after
+	// writing so the content change cannot clear setuid or setgid.
+	createdFile, createError := directoryRoot.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, publicationMode.Perm())
 	if createError != nil {
 		return fmt.Errorf("creating exclusive file %s: %w", fileName, createError)
 	}
@@ -115,6 +118,10 @@ func CreateExclusiveAt(directoryRoot *os.Root, fileName string, fileContents []b
 		createdFile.Close()
 		return fmt.Errorf("writing exclusive file %s: %w", fileName, writeError)
 	}
+	if chmodError := createdFile.Chmod(publicationMode); chmodError != nil {
+		createdFile.Close()
+		return fmt.Errorf("preserving permissions for exclusive file %s: %w", fileName, chmodError)
+	}
 	if syncError := createdFile.Sync(); syncError != nil {
 		createdFile.Close()
 		return fmt.Errorf("syncing exclusive file %s: %w", fileName, syncError)
@@ -124,6 +131,10 @@ func CreateExclusiveAt(directoryRoot *os.Root, fileName string, fileContents []b
 	}
 	keepFile = true
 	return nil
+}
+
+func completeFileMode(fileMode fs.FileMode) fs.FileMode {
+	return fileMode.Perm() | (fileMode & (os.ModeSetuid | os.ModeSetgid | os.ModeSticky))
 }
 
 func regularFileDigest(filePath string, expectedInfo fs.FileInfo) ([sha256.Size]byte, error) {

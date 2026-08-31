@@ -234,6 +234,76 @@ func TestMovePublicationNeverOverwritesAnExistingDestination(t *testing.T) {
 	}
 }
 
+func TestMovePublicationPreservesCompleteSourceMode(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		mode os.FileMode
+	}{
+		{name: "setuid", mode: 0o4640},
+		{name: "setgid", mode: 0o2640},
+		{name: "sticky", mode: 0o1640},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			repositoryRoot := t.TempDir()
+			writeCleanupFile(t, repositoryRoot, "source.txt", "source\n")
+			if err := os.Chmod(filepath.Join(repositoryRoot, "source.txt"), cleanupGoModeFromUnix(test.mode)); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Mkdir(filepath.Join(repositoryRoot, "archive"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := moveWithoutOverwrite(repositoryRoot, "source.txt", "archive/destination.txt"); err != nil {
+				t.Fatalf("moveWithoutOverwrite: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(repositoryRoot, "source.txt")); !os.IsNotExist(err) {
+				t.Fatalf("source remains after move: %v", err)
+			}
+			destinationPath := filepath.Join(repositoryRoot, "archive", "destination.txt")
+			contents, err := os.ReadFile(destinationPath)
+			if err != nil || string(contents) != "source\n" {
+				t.Fatalf("destination = %q, %v", contents, err)
+			}
+			if mode := cleanupUnixModeOf(t, destinationPath); mode != test.mode {
+				t.Fatalf("mode = %04o, want %04o", mode, test.mode)
+			}
+		})
+	}
+}
+
+func cleanupGoModeFromUnix(mode os.FileMode) os.FileMode {
+	goMode := mode.Perm()
+	if mode&0o4000 != 0 {
+		goMode |= os.ModeSetuid
+	}
+	if mode&0o2000 != 0 {
+		goMode |= os.ModeSetgid
+	}
+	if mode&0o1000 != 0 {
+		goMode |= os.ModeSticky
+	}
+	return goMode
+}
+
+func cleanupUnixModeOf(t *testing.T, path string) os.FileMode {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mode := info.Mode().Perm()
+	if info.Mode()&os.ModeSetuid != 0 {
+		mode |= 0o4000
+	}
+	if info.Mode()&os.ModeSetgid != 0 {
+		mode |= 0o2000
+	}
+	if info.Mode()&os.ModeSticky != 0 {
+		mode |= 0o1000
+	}
+	return mode
+}
+
 func TestRollbackDoesNotClaimAppliedChangesAndPreservesCanonicalRoots(t *testing.T) {
 	repositoryRoot := cleanupRepository(t)
 	writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-205-done.md", cleanupRequest("REQ-205", "completed", ""))
