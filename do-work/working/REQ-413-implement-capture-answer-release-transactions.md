@@ -157,10 +157,10 @@ No shared-foundation expansion is justified before code. If a focused RED proves
 **Files I will NOT touch:** `gittransaction`, `repositorymodel`, `atomicfile`, `resultmodel`, `requeststate`, shell/helper shims, allocation/board code, Just/help surfaces, release metadata, or later migration requests. Any expansion requires a focused failing fixture and an owner-approved scope revision before implementation.
 
 **Acceptance criteria (restated from REQ):**
-- [x] `capture-files` atomically publishes linked UR/REQ/assets/folds/reservations, supports a safe first capture with no `do-work/`, preserves raw bytes and modes, refuses collisions/stale input, and rolls back every pre-commit failure.
-- [x] `answer` uniquely updates plain or Q-ID questions, contains unsafe-shaped outside text losslessly, derives disposition from the whole record, and couples status/archive/exact-UR-subtree closure plus optional override capture in one transaction.
-- [x] `release` validates caller-selected monotonic versions and parameterized changelog replacements across all declared mirrors, preserves custom formats, and applies or rolls back the complete target set atomically.
-- [x] All three commands have deterministic dry-run/applied text and JSON results, optional exact-path commits, actionable refusal/risk output, and no manual mutation fallback in active action contracts.
+- [ ] `capture-files` atomically publishes linked UR/REQ/assets/folds/reservations, supports a safe first capture with no `do-work/`, preserves raw bytes and modes, refuses collisions/stale input, and rolls back every pre-commit failure.
+- [ ] `answer` uniquely updates plain or Q-ID questions, contains unsafe-shaped outside text losslessly, derives disposition from the whole record, and couples status/archive/exact-UR-subtree closure plus optional override capture in one transaction.
+- [ ] `release` validates caller-selected monotonic versions and parameterized changelog replacements across all declared mirrors, preserves custom formats, and applies or rolls back the complete target set atomically.
+- [ ] All three commands have deterministic dry-run/applied text and JSON results, optional exact-path commits, actionable refusal/risk output, and no manual mutation fallback in active action contracts.
 
 ## Implementation Summary
 
@@ -249,3 +249,35 @@ The request model now exposes one bounds-checked lossless body-span replacement.
 Passed — all 24 frozen files are substantive in `4404fd97..d5adf29e`, the explicit Implementation Summary matches Scope exactly, and the capture, answer, release, request-body, registration, action-delegation, and contract flows trace to the four acceptance criteria. Mechanical static-reference warnings are expected for Go package files consumed by symbol rather than filename and for test entry files.
 
 **Merged-state checks:** focused publication/requestmodel tests, uncached full do-work-cli tests, `go vet ./...`, exact Go 1.25 compatibility, contract regressions, mechanical qualification, scope drift, diff hygiene, and `bash _dev/tests/maintainer-verify.sh` all pass. The optional browser lane skipped because no browser was available.
+
+## Review — Initial
+
+**Overall: 50%** | 2026-08-31
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 50% |
+| Code Quality | 45% |
+| Test Adequacy | 30% |
+| Scope | 100% |
+| Risk | Critical |
+| Acceptance | Fail |
+
+**Important findings (each with its recorded impact token):**
+- Destination-parent swaps can be followed outside the repository while publication reports success — impact-critical → remediation F1.
+- Capture accepts noncanonical UR and REQ destinations outside the owned topology — impact-critical → remediation F2.
+- Terminal clarify follow-ups are refused when their UR is already archived — impact-user-visible → remediation F3.
+- Stakeholder partial and terminal dispositions cannot publish the required report/history/Implementation state — impact-user-visible → remediation F4.
+- Delimiter-shaped one-line summaries bypass file-backed outside-text containment — impact-user-visible → remediation F5.
+- Generic override creates/folds bypass structured capture linkage, reservation, topology, and containment validation — impact-user-visible → remediation F6.
+- Consumer installed/generated exclusions miss `.codex`/`.claude`, and maintainer changelog mirrors may diverge — impact-critical → remediation F7.
+- Findings return placeholder manifest argv and no Just recipe instead of exact actionable recovery — impact-user-visible → remediation F8.
+- The claimed high-risk RED/GREEN matrix is materially absent; eight adversarial fixtures fail while nominal suites pass — impact-rule-change → remediation F9.
+- `work-reference.md` retains an active instruction to hand-edit a lockfile — impact-rule-change → remediation F10.
+
+**Minor findings:** Lexicographic capture mutation ordering can expose a temporary REQ-before-UR orphan to concurrent readers; remediation should restore marker/UR/assets/REQ/fold order.
+**Acceptance:** Fail — a reproduced parent-swap fixture writes outside the repository, and the other nine Important findings leave required capture, answer, release, result, test, and sole-writer behavior incomplete.
+**Suggested testing:** Turn every review fixture and the accepted exploration matrix into named RED/GREEN coverage, including replacement/move/override rollback, exact commit paths, post-commit risk, and text/JSON parity.
+**Follow-ups created:** None; all findings are facets of the original accepted scope and enter the single remediation pass.
+
+*Reviewed by review-work action; remediation required before re-review.*
