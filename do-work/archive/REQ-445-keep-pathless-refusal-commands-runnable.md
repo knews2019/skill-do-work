@@ -1,7 +1,7 @@
 ---
 id: REQ-445
 title: 'Review fix: Keep pathless refusal commands runnable'
-status: claimed
+status: completed
 domain: general
 created_at: 2026-08-31T15:34:58Z
 status_changed_at: 2026-08-31T19:24:17Z
@@ -29,6 +29,8 @@ estimate:
     - 3 acceptance criteria
     - cross-route regression gates
     - full-suite verification
+completed_at: 2026-08-31T22:38:01Z
+commit: 6d14a046
 ---
 
 # Review Fix: Keep Pathless Refusal Commands Runnable

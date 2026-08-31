@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.15 — Runnable Pathless Cleanup Refusals (2026-08-31)
+
+Structural cleanup refusals now emit recovery commands that remain runnable when no concrete filesystem target exists.
+
+- Duplicate operation-group identities use repository-wide `git status --short` diagnostics instead of an empty pathspec.
+- Dirty and collision refusals with real targets retain exact path-scoped Git evidence.
+- A result-level RED/GREEN matrix covers duplicate identities and every current prerequisite refusal shape while rejecting empty command arguments.
+
 ## 0.251.14 — Atomic Request Lifecycle Transactions (2026-08-31)
 
 Claim, unblock, complete, fail, and cancel now synchronize request state, checkpoints, archival, UR closure, calibration, and provenance through one typed transaction authority.
