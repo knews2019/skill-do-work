@@ -9,27 +9,98 @@ import (
 )
 
 func TestReplaceExistingPublishesWholeContentsAndPreservesMode(t *testing.T) {
-	targetPath := filepath.Join(t.TempDir(), "request.md")
-	if err := os.WriteFile(targetPath, []byte("old"), 0o640); err != nil {
-		t.Fatal(err)
+	for _, test := range []struct {
+		name string
+		mode os.FileMode
+	}{
+		{name: "setuid", mode: 0o4640},
+		{name: "setgid", mode: 0o2640},
+		{name: "sticky", mode: 0o1640},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			targetPath := filepath.Join(t.TempDir(), "request.md")
+			if err := os.WriteFile(targetPath, []byte("old"), test.mode.Perm()); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chmod(targetPath, goModeFromUnix(test.mode)); err != nil {
+				t.Fatal(err)
+			}
+			if err := ReplaceExisting(targetPath, []byte("new document")); err != nil {
+				t.Fatalf("ReplaceExisting: %v", err)
+			}
+			contents, err := os.ReadFile(targetPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(contents) != "new document" {
+				t.Fatalf("contents = %q, want complete replacement", contents)
+			}
+			if mode := unixModeOf(t, targetPath); mode != test.mode {
+				t.Fatalf("mode = %04o, want %04o", mode, test.mode)
+			}
+		})
 	}
-	if err := ReplaceExisting(targetPath, []byte("new document")); err != nil {
-		t.Fatalf("ReplaceExisting: %v", err)
+}
+
+func TestCreateExclusivePreservesCompleteRequestedMode(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		mode os.FileMode
+	}{
+		{name: "setuid", mode: 0o4640},
+		{name: "setgid", mode: 0o2640},
+		{name: "sticky", mode: 0o1640},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			targetPath := filepath.Join(t.TempDir(), "reservation")
+			if err := CreateExclusive(targetPath, []byte("reserved\n"), goModeFromUnix(test.mode)); err != nil {
+				t.Fatalf("CreateExclusive: %v", err)
+			}
+			contents, err := os.ReadFile(targetPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(contents) != "reserved\n" {
+				t.Fatalf("contents = %q, want complete publication", contents)
+			}
+			if mode := unixModeOf(t, targetPath); mode != test.mode {
+				t.Fatalf("mode = %04o, want %04o", mode, test.mode)
+			}
+		})
 	}
-	contents, err := os.ReadFile(targetPath)
+}
+
+func goModeFromUnix(mode os.FileMode) os.FileMode {
+	goMode := mode.Perm()
+	if mode&0o4000 != 0 {
+		goMode |= os.ModeSetuid
+	}
+	if mode&0o2000 != 0 {
+		goMode |= os.ModeSetgid
+	}
+	if mode&0o1000 != 0 {
+		goMode |= os.ModeSticky
+	}
+	return goMode
+}
+
+func unixModeOf(t *testing.T, path string) os.FileMode {
+	t.Helper()
+	info, err := os.Stat(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(contents) != "new document" {
-		t.Fatalf("contents = %q, want complete replacement", contents)
+	mode := info.Mode().Perm()
+	if info.Mode()&os.ModeSetuid != 0 {
+		mode |= 0o4000
 	}
-	info, err := os.Stat(targetPath)
-	if err != nil {
-		t.Fatal(err)
+	if info.Mode()&os.ModeSetgid != 0 {
+		mode |= 0o2000
 	}
-	if info.Mode().Perm() != 0o640 {
-		t.Fatalf("mode = %o, want 640", info.Mode().Perm())
+	if info.Mode()&os.ModeSticky != 0 {
+		mode |= 0o1000
 	}
+	return mode
 }
 
 func TestReplaceExistingRefusesUnsafeAndChangedTargets(t *testing.T) {

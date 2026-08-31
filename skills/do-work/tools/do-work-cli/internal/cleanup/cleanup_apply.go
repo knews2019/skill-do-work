@@ -357,7 +357,7 @@ func moveWithoutOverwrite(repositoryRoot, sourceRelativePath, destinationRelativ
 		return fmt.Errorf("move destination directory %s changed while opening", destinationDirectory)
 	}
 	destinationName := filepath.Base(destinationRelativePath)
-	if createError := atomicfile.CreateExclusiveAt(destinationHandle, destinationName, sourceContents, sourceInfo.Mode().Perm()); createError != nil {
+	if createError := atomicfile.CreateExclusiveAt(destinationHandle, destinationName, sourceContents, sourceInfo.Mode()); createError != nil {
 		return fmt.Errorf("publish move destination %s without overwrite: %w", destinationPath, createError)
 	}
 	currentDirectoryInfo, currentDirectoryError := repositoryHandle.Lstat(filepath.FromSlash(destinationDirectory))
