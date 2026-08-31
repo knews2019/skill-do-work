@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/schemanormalization"
 )
 
 func TestParseDocumentRetainsBytesAndRecoversLiveShapes(t *testing.T) {
@@ -132,16 +134,18 @@ func TestTimestampCompatibilityAndCanonicalWriting(t *testing.T) {
 func TestTypedRecordCarriesEveryNormalizedSchemaFieldAndGenericEvidence(t *testing.T) {
 	fixture := []byte("---\n" +
 		"id: REQ-42\n" +
-		"domain: back_end\n" +
-		"route: b\n" +
-		"impact: surprising\n" +
-		"effort_estimate: trivial\n" +
-		"maintenance: yes\n" +
-		"tdd: test_first\n" +
-		"error_type: spec\n" +
-		"kb_status: skip\n" +
-		"testing_status: returned with feedback\n" +
+		"status: done\n" +
 		"builder_decided: true\n" +
+		"caveman: light\n" +
+		"domain: back_end\n" +
+		"effort_estimate: trivial\n" +
+		"error_type: spec\n" +
+		"impact: surprising\n" +
+		"kb_status: skip\n" +
+		"maintenance: yes\n" +
+		"route: b\n" +
+		"tdd: test_first\n" +
+		"testing_status: returned with feedback\n" +
 		"unknown_field: keep-me\n" +
 		"---\nBody\n")
 	document, err := ParseDocument(fixture)
@@ -149,21 +153,62 @@ func TestTypedRecordCarriesEveryNormalizedSchemaFieldAndGenericEvidence(t *testi
 		t.Fatal(err)
 	}
 	record := document.TypedRecord()
-	resolvedValues := []string{
-		record.DomainValue, record.RouteValue, record.ImpactValue,
-		record.EffortEstimateValue, record.MaintenanceValue, record.TDDValue,
-		record.ErrorTypeValue, record.KBStatusValue, record.TestingStatusValue,
-		record.BuilderDecidedValue,
+	projections := []struct {
+		schemaField   string
+		valueField    string
+		evidenceField string
+		rawValue      string
+		resolvedValue string
+		recognized    bool
+	}{
+		{"builder_decided", "BuilderDecidedValue", "BuilderDecidedEvidence", "true", "true", true},
+		{"caveman", "CavemanValue", "CavemanEvidence", "light", "lite", true},
+		{"domain", "DomainValue", "DomainEvidence", "back_end", "backend", true},
+		{"effort_estimate", "EffortEstimateValue", "EffortEstimateEvidence", "trivial", "effort-mechanical", true},
+		{"error_type", "ErrorTypeValue", "ErrorTypeEvidence", "spec", "spec", true},
+		{"impact", "ImpactValue", "ImpactEvidence", "surprising", "impact-user-visible", false},
+		{"kb_status", "KBStatusValue", "KBStatusEvidence", "skip", "skipped", true},
+		{"maintenance", "MaintenanceValue", "MaintenanceEvidence", "yes", "true", true},
+		{"route", "RouteValue", "RouteEvidence", "b", "B", true},
+		{"status", "RequestStatus", "StatusEvidence", "done", "completed", true},
+		{"tdd", "TDDValue", "TDDEvidence", "test_first", "true", true},
+		{"testing_status", "TestingStatusValue", "TestingStatusEvidence", "returned with feedback", "returned", true},
 	}
-	wantValues := []string{"backend", "B", "impact-user-visible", "effort-mechanical", "true", "true", "spec", "skipped", "returned", "true"}
-	if !reflect.DeepEqual(resolvedValues, wantValues) {
-		t.Fatalf("normalized values = %v, want %v", resolvedValues, wantValues)
+	projectedFieldNames := make([]string, 0, len(projections))
+	recordValue := reflect.ValueOf(record)
+	for _, projection := range projections {
+		projectedFieldNames = append(projectedFieldNames, projection.schemaField)
+		valueField := recordValue.FieldByName(projection.valueField)
+		if !valueField.IsValid() {
+			t.Errorf("%s value field %s is missing", projection.schemaField, projection.valueField)
+			continue
+		}
+		if valueField.String() != projection.resolvedValue {
+			t.Errorf("%s normalized value = %q, want %q", projection.schemaField, valueField.String(), projection.resolvedValue)
+		}
+		evidenceField := recordValue.FieldByName(projection.evidenceField)
+		if !evidenceField.IsValid() {
+			t.Errorf("%s evidence field %s is missing", projection.schemaField, projection.evidenceField)
+			continue
+		}
+		evidence, ok := evidenceField.Interface().(schemanormalization.FieldResult)
+		if !ok {
+			t.Errorf("%s evidence field %s has type %s, want schemanormalization.FieldResult", projection.schemaField, projection.evidenceField, evidenceField.Type())
+			continue
+		}
+		if evidence.FieldName != projection.schemaField || evidence.OriginalValue != projection.rawValue || evidence.ResolvedValue != projection.resolvedValue || evidence.IsRecognized != projection.recognized {
+			t.Errorf("%s evidence = %#v", projection.schemaField, evidence)
+		}
+		genericEvidence, found := record.FieldEvidenceByName[projection.schemaField]
+		if !found || genericEvidence.ScalarValue != projection.rawValue {
+			t.Errorf("%s generic evidence = %#v, found=%v", projection.schemaField, genericEvidence, found)
+		}
 	}
-	if record.ImpactEvidence.IsRecognized || record.ImpactEvidence.OriginalValue != "surprising" || record.ImpactEvidence.WarningMessage == "" {
+	if !reflect.DeepEqual(projectedFieldNames, schemanormalization.SchemaFieldNames()) {
+		t.Fatalf("projected schema fields = %v, want every contracted field %v", projectedFieldNames, schemanormalization.SchemaFieldNames())
+	}
+	if record.ImpactEvidence.WarningMessage == "" {
 		t.Fatalf("impact evidence = %#v", record.ImpactEvidence)
-	}
-	if !record.DomainEvidence.IsRecognized || !record.RouteEvidence.IsRecognized || !record.MaintenanceEvidence.IsRecognized || !record.TDDEvidence.IsRecognized || !record.ErrorTypeEvidence.IsRecognized || !record.KBStatusEvidence.IsRecognized || !record.TestingStatusEvidence.IsRecognized || !record.BuilderDecidedEvidence.IsRecognized {
-		t.Fatalf("recognized field evidence missing: %#v", record)
 	}
 	unknownField, found := record.FieldEvidenceByName["unknown_field"]
 	if !found || unknownField.ScalarValue != "keep-me" {

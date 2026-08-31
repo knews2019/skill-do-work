@@ -4,6 +4,7 @@ package schemanormalization
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -94,6 +95,16 @@ type FieldResult struct {
 	IsRecognized   bool
 	IsDefaulted    bool
 	WarningMessage string
+}
+
+// SchemaFieldNames returns every field governed by the Schema Read Contract.
+func SchemaFieldNames() []string {
+	fieldNames := make([]string, 0, len(fieldContracts))
+	for fieldName := range fieldContracts {
+		fieldNames = append(fieldNames, fieldName)
+	}
+	sort.Strings(fieldNames)
+	return fieldNames
 }
 
 // NormalizeField resolves one value under the Schema Read Contract.
