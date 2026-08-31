@@ -59,6 +59,70 @@ func TestDirtyTargetIsRefusedButUnrelatedDirtIsAllowed(t *testing.T) {
 	}
 }
 
+func TestExecuteTransactionExistingUntrackedTargetsRequireOptInAndRestoreBytes(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "do-work/queue/REQ-001.md", "original untracked bytes\n")
+	requestPath := "do-work/queue/REQ-001.md"
+
+	called := false
+	refused := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot,
+		TargetPaths:    []string{requestPath},
+	}, func(*MutationRecorder) error { called = true; return nil })
+	if called || refused.Failure == nil || refused.Failure.Kind != FailureDirtyTarget {
+		t.Fatalf("default existing-untracked guard weakened: %#v, called=%v", refused, called)
+	}
+
+	rolledBack := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot:               repositoryRoot,
+		TargetPaths:                  []string{requestPath},
+		ExistingUntrackedTargetPaths: []string{requestPath},
+	}, func(recorder *MutationRecorder) error {
+		called = true
+		if err := recorder.RecordTouched(requestPath); err != nil {
+			return err
+		}
+		writeFile(t, repositoryRoot, requestPath, "mutated\n")
+		return errors.New("force rollback")
+	})
+	if !called || rolledBack.Outcome != resultmodel.OutcomeRolledBack || rolledBack.Rollback.Status != resultmodel.RollbackSucceeded {
+		t.Fatalf("opt-in rollback result = %#v, called=%v", rolledBack, called)
+	}
+	if got := readFile(t, repositoryRoot, requestPath); got != "original untracked bytes\n" {
+		t.Fatalf("existing untracked target not restored byte-for-byte: %q", got)
+	}
+	status := runFixtureGit(t, repositoryRoot, "status", "--short", "--", requestPath)
+	if !strings.HasPrefix(status, "?? ") {
+		t.Fatalf("restored target changed tracking state: %q", status)
+	}
+}
+
+func TestExistingUntrackedMoveCommitStagesOnlyTheDestination(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "do-work/queue/REQ-001.md", "original untracked bytes\n")
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot, TargetPaths: []string{"do-work/queue/REQ-001.md", "do-work/working/REQ-001.md"},
+		ExistingUntrackedTargetPaths: []string{"do-work/queue/REQ-001.md"}, Commit: true, CommitMessage: "move request",
+	}, func(recorder *MutationRecorder) error {
+		if err := recorder.RecordTouched("do-work/queue/REQ-001.md"); err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Join(repositoryRoot, "do-work/working"), 0o755); err != nil {
+			return err
+		}
+		if err := os.Rename(filepath.Join(repositoryRoot, "do-work/queue/REQ-001.md"), filepath.Join(repositoryRoot, "do-work/working/REQ-001.md")); err != nil {
+			return err
+		}
+		return recorder.RecordCreated("do-work/working/REQ-001.md")
+	})
+	if result.Outcome != resultmodel.OutcomeSuccess || result.CommitSHA == "" {
+		t.Fatalf("untracked move commit = %#v", result)
+	}
+	if paths := runFixtureGit(t, repositoryRoot, "show", "--pretty=", "--name-only", result.CommitSHA); strings.TrimSpace(paths) != "do-work/working/REQ-001.md" {
+		t.Fatalf("committed paths = %q", paths)
+	}
+}
+
 func TestDryRunDoesNotMutateAndCannotCommit(t *testing.T) {
 	repositoryRoot := newRepository(t)
 	called := false

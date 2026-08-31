@@ -4,7 +4,7 @@
 
 Unlike the commit steps embedded in other actions (capture Step 7, work.md's Commit Phase, review-work standalone, cleanup), this action handles files that accumulated outside the normal pipeline — manual edits, ad-hoc fixes, or work done between do-work runs.
 
-**Commit pathway deconfliction:** Three actions can commit archived REQs: (1) actions/work.md's Commit Phase commits the REQ + implementation after completion, (2) review-work standalone commits the REQ after appending a Review section, (3) this action commits leftover files traced to archived REQs. This action only discovers files via `git status` — if work or review-work already committed a file, it won't appear here. No double-commit risk exists as long as the prior actions committed cleanly. If a prior commit was interrupted, this action may pick up the leftovers — that's the intended behavior.
+**Commit pathway deconfliction:** Three actions can commit archived REQs: (1) actions/work.md's Commit Phase delegates lifecycle/archive/hash mechanics to the canonical request-state command and commits its exact planned paths, including the separate serial metadata commit, (2) review-work standalone commits the REQ after appending a Review section, (3) this action commits leftover files traced to archived REQs. This action does not replace or retry request-state transitions; it only discovers files via `git status`. If work or review-work already committed a file, it will not appear here. If a prior ordinary commit was interrupted, this action may pick up unrelated leftovers as intended.
 
 ## When to Use
 

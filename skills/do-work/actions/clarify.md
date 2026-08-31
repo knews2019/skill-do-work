@@ -175,7 +175,7 @@ Is this condition now satisfied?
 
 Note for the user which blocked REQs carry a `blocked_check` probe — those unblock automatically on the next `do-work run`, so confirming them by hand here is optional. Present only the human-confirmable ones prominently.
 
-- **Yes → unblock:** set `status: pending`, stamp `status_changed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`; blocked_at is removed on this flip, so this is the only trace of when it happened), **remove `blocked_by` and `blocked_at`** (keep any `blocked_check`), and append a history line to a `## Blocked` body section — `- [<date>] blocked on "<condition>" — cleared by user via clarify`. The REQ re-enters the queue for the next `do-work run`.
+- **Yes → unblock:** invoke `unblock REQ-NNN --request-path <exact-path> --original-status blocked --source user-via-clarify --confirmed`. The canonical transaction validates the stale preimage, stamps `pending`/`status_changed_at`, removes `blocked_by`/`blocked_at`, retains `blocked_check`, and appends the user-cleared history. A refusal leaves bytes unchanged; do not reproduce the mutation free-form. The REQ re-enters the queue for the next `do-work run`.
 - **Not yet:** leave it `blocked`, unchanged.
 - **Abandon:** hand off to `do-work abandon REQ-NNN` (marks `cancelled`, archives) — same as discarding a question.
 

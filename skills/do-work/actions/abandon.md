@@ -52,7 +52,9 @@ Show the user what's about to be cancelled — ID, title, current status, and ow
 
 ### Step 3: Write the Cancellation
 
-For each confirmed REQ:
+For each confirmed REQ, retain the exact confirmed target path, prior status, reason, and confirmation evidence for Step 5. Do not mutate lifecycle fields here: the canonical `cancel` transaction owns the deterministic bytes after Step 4's dependent choices are known.
+
+The transaction preserves this existing cancellation contract:
 
 1. Frontmatter: set `status: cancelled` and stamp `completed_at: <now>` (current UTC instant — Timestamp rule, `actions/work-reference.md`) — that timestamp is what places the card in the board's recently-done window. Leave `claimed_at`/`route` and every other field untouched; they're history.
 
@@ -87,6 +89,14 @@ Grep `do-work/queue/` and `do-work/working/` for REQs whose `depends_on` (or leg
 Never cascade silently.
 
 ### Step 5: Archive
+
+Invoke the canonical transaction once per confirmed target, passing the action-owned reason and dependent decision explicitly:
+
+```bash
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> cancel REQ-NNN --request-path <exact-path> --confirmed --reason <reason> --dependent-disposition <leave|repoint|cascade> --writer '<writer>'
+```
+
+The command owns the canonical `cancelled` stamp/body trail, failure-record preservation, exact in-place archived-failure behavior or archive move, checkpoint removal, collision refusal, and projected active-UR closure. Confirmation, reason collection, and every dependent disposition remain this action's judgment. A missing or failed command stops that target with its finding; never fall back to the compatibility mechanics below.
 
 **Already-archived target (the archived-`failed` path from Step 1, including an explicitly named legacy nested failure):** the cancellation was written *in place* — do **not** move the file, and **skip the collision guard below** (the only `do-work/archive/**/REQ-NNN*.md` it would match is the file itself, so the guard would fire against its own target and its "leave it in `do-work/queue/`" remedy is incoherent for a file that was never in the queue). Never relocate it into, out of, or between `do-work/archive/UR-NNN/` folders: consolidating a now-resolved root REQ into its UR is `actions/cleanup.md` Pass 2's job, and a UR folder already sitting in `archive/` is closed. Report the exact in-place path and continue.
 

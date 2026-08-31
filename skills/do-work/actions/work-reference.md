@@ -545,6 +545,8 @@ If **no section applies** (no REQs at all in `do-work/queue/`), report completio
 
 ## In-Progress Record (Step 2)
 
+**Canonical lifecycle transaction boundary.** `do-work-cli claim`, `unblock`, `complete`, `fail`, and `cancel` are the sole writers for deterministic request-state transitions. They consume one repository snapshot plus an exact caller-supplied request path, plan every request/checkpoint/archive/UR/calibration target, and apply once through the shared Git transaction. The action supplies provenance and human judgment: confirmation/reason/dependent disposition for cancel, successful-probe or confirmed-human evidence for unblock, terminal status and known implementation hash for complete, and classified error/error type for fail. A command refusal is byte-identical and actionable; a missing or failed command stops the lifecycle operation. The descriptive field/archive rules in this reference define semantics and compatibility, not a free-form fallback implementation.
+
 `do-work/CHECKPOINT.md`'s `## In Progress (interrupted)` section is **Crash Recovery's classification input** (**Crash Recovery (Step 1)**, above): a `working/` REQ named there **under this checkout's own writer label** is this session's own interrupted work and recovers; **any other entry is left byte-identical, however it fails to match that label.** The own-label condition is the whole test, and the ways an entry can miss it are enumerated once — in Crash Recovery — not restated here. So the record has to exist at the moment a crash happens. Step 10 writes the checkpoint at *session end*, which a hard crash never reaches — leaving that as the only write site made the own-crash branch unreachable by the very event it handles, and every crashed REQ stranded in `working/` (the 0.164.0 regression this procedure closes). **The record is therefore written at claim time**, by `actions/work.md` Step 2, as part of the claim.
 
 **It is a classification input, and nothing else.** It grants no exclusivity and coordinates nothing — the skill keeps no lock, heartbeat, or liveness check (**Execution Model — Claim Anywhere, One Releaser**, above), and this record must never grow into one. Nothing acquires it and nothing waits on it; another checkout reads it only to classify its entries as foreign and leave them alone. Its whole job is to let the *next* run tell this session's leftovers from someone else's. One small file write per claim, one removal per departure; if it ever acquires a **refresh interval**, a **staleness check**, or a **liveness probe**, it has become the machinery this model exists without. **The static `writer:` label below is none of those** — it is written once at claim time from two values that never change for this checkout, is never refreshed, and is never read as evidence that anything is still running; it records *who wrote the entry*, which is the one question classification actually asks.
@@ -984,36 +986,9 @@ One commit per request. Stage all files created, modified, moved, or deleted dur
 
 **Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, `CHANGELOG.md`, and/or the version file it bumped together with any lockfile mirroring that version (the changelog entry and the version bump describe the implementation, they aren't the implementation — and a lockfile carrying only the mirrored version is part of the bump, not a deliverable), flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected. **In worktree dispatch mode** the implementation files live in the merge commit, not this commit's stage, so validate the `## Implementation Summary` file list against `git diff --name-only <pre>..<merge_hash>` (the merge range, excluding `do-work/` paths) instead of the staged set — a stage of only the changelog/version/`do-work/` metadata is correct here, not a mismatch.
 
-**Write commit hash back to the archived REQ.** After the commit succeeds, resolve the implementation hash — **serially** it is the commit you just made, so read it with `git rev-parse --short HEAD`; **in worktree dispatch mode do NOT rev-parse `HEAD` here**, because HEAD is the changelog commit and the implementation lives in Step 6's `--no-ff` merge — use the `<merge_hash>` literal held since Step 6 (the latest merge, if remediation re-merged). Hand that hash to the shipped guard script, which makes the one-line edit and verifies it, then create a **separate metadata commit** (never amend — amending changes the hash and invalidates what was just written):
+**Write commit hash back to the archived REQ.** After the commit succeeds, resolve the implementation hash — **serially** it is the commit you just made, so read it with `git rev-parse --short HEAD`; **in worktree dispatch mode do NOT rev-parse `HEAD` here**, because HEAD is the changelog commit and the implementation lives in Step 6's `--no-ff` merge — use the `<merge_hash>` literal held since Step 6 (the latest merge, if remediation re-merged). Pass the hash and exact archived path to `complete --record-commit-hash --implementation-hash <hash> --request-path <path> --commit`. This metadata-only lifecycle mode validates the archived terminal-success preimage, edits only `commit:`, creates a **separate metadata commit**, and verifies the committed bytes. Never amend/reset, and never substitute a free-form edit or legacy helper. `OK`, `NOOP`, refusal, rollback, and committed-risk are returned through the same typed result contract as every other lifecycle transition, including exact verification or revert argv.
 
-```bash
-# Serial mode — the hash is resolved and consumed inside the SAME command block, so nothing
-# has to survive between blocks and nothing is re-typed.
-<skill-root>/tools/checks/record-commit-hash.sh do-work/archive/UR-NNN/REQ-NNN-slug.md "$(git rev-parse --short HEAD)"
-
-# Worktree dispatch mode — pass the <merge_hash> literal held since Step 6, NOT
-# `git rev-parse --short HEAD`, which here names the changelog commit you just made.
-<skill-root>/tools/checks/record-commit-hash.sh do-work/archive/UR-NNN/REQ-NNN-slug.md <merge_hash>
-
-# Then stage and commit ONLY that file — the script prints these two lines back to you.
-git add -- do-work/archive/UR-NNN/REQ-NNN-slug.md
-git commit -m "[REQ-NNN] record commit hash <hash>" -- do-work/archive/UR-NNN/REQ-NNN-slug.md
-
-# Finally, confirm the commit landed what was verified. This is the only check that catches a
-# content-mutating pre-commit hook rewriting the file after every pre-commit guard passed.
-<skill-root>/tools/checks/record-commit-hash.sh --verify do-work/archive/UR-NNN/REQ-NNN-slug.md <hash>
-```
-
-The script edits only the `commit:` line **inside the frontmatter block** (adding it after `completed_at:` when absent), and refuses to write at all unless the rewrite changed exactly that one line. **Read its output before staging anything:**
-
-- `OK: …` — the field records the hash; stage and commit as printed.
-- `NOOP: …` — the field already records this hash **and** that is already committed. Make **no** metadata commit.
-- `FAIL: …` (exit 1) — **stop.** The REQ file is left as it was found. Do not retry the command, do not hand-edit around it, and do not commit anyway; the message names the specific defect and the recovery command.
-- Exit 2 is a usage error — a bad hash shape (including passing the literal `<hash>`), a missing file, or a file that is not a usable REQ.
-
-**Why a script and not prose:** this write-back was free-form until a consumer repo's metadata commits truncated six archived REQ files to 0 bytes — 9 KB to 26 KB of decision trail each — with commit messages that claimed success. The guards run **before** `git add`, so a mass-deletion diff can never become a commit. A hand edit here has already destroyed archived REQ content; the script is the sanctioned path.
-
-**If the script is missing** (a consumer on an older tarball), do the edit by hand and run its two cheapest guards before committing, in this order: `git diff --numstat HEAD -- <req-file>` must read `1	1` (or `1	0` when the field was added) — a deletion count above that means content was destroyed, so **stop and recover instead of committing** — and `test -s <req-file>` must pass. Then stage and commit as above, re-typing the hash as a literal: shell state does not survive between command blocks.
+**If the canonical request-state command is missing, stop.** A consumer on an older tarball must upgrade before performing lifecycle metadata writes; there is no hand-edit or helper fallback.
 
 This ensures the `commit:` field in the archived REQ contains the real implementation commit hash — the commit just made serially, the `--no-ff` merge commit in worktree dispatch mode — which review-work and completed-work presentation actions depend on for traceability. The metadata commit is a lightweight bookkeeping entry — it does not contain implementation changes.
 
