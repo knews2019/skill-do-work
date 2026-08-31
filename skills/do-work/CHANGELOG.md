@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.6 — Supported-Shape Timestamp Ordering (2026-08-31)
+
+Doctor repair no longer lets unsupported but parseable timestamp shapes influence chronological repairs to supported fields.
+
+- Offset and fractional timestamps remain explicitly refused and byte-identical.
+- Only fields accepted by the canonical repairable-shape predicate can act as ordering predecessors.
+- Caller-seam RED/GREEN fixtures prove unsupported future anchors cannot clamp supported successors.
+
 ## 0.251.5 — Dependency-Safe User-Request Closure (2026-08-31)
 
 Cleanup now archives a live user-request input only when every terminal member archive group is eligible in the same plan.

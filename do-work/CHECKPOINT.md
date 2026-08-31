@@ -8,11 +8,11 @@
 - REQ-426 — special mode bits preserved through managed replacement and real install; merge `73bd4a6f`, release `7e0112bc`, metadata `d090af93`.
 - REQ-429 — complete normalized schema-field projection merged as `67942dd9`; independent review approved at 100% with no findings.
 - REQ-430 — UR closure now depends on terminal member archival; merged as `5f3531d0`, review accepted the core behavior and routed one recovery-command edge to consent-gated REQ-445.
+- REQ-434 — unsupported timestamp shapes no longer anchor doctor ordering repairs; merged as `509cbee4`, independently approved at 98% with no Important findings.
 
 ## In Progress (interrupted)
 
 - REQ-431: Review fix: Couple documentation rewrites to their owning moves — claimed 2026-08-31T15:44:18Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-- REQ-434: Review fix: Refuse unsupported timestamp ordering anchors — claimed 2026-08-31T15:44:18Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 
