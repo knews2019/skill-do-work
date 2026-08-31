@@ -13,7 +13,8 @@
 
 ## In Progress (interrupted)
 
-- None.
+- REQ-432: Review fix: Enforce the commit guard for consumed scratch cleanup — claimed 2026-08-31T16:23:46Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- REQ-435: Review fix: Complete the doctor-forensics delegation contract — claimed 2026-08-31T16:23:46Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 

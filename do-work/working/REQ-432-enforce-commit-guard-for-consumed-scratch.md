@@ -1,9 +1,17 @@
 ---
 id: REQ-432
 title: 'Review fix: Enforce the commit guard for consumed scratch cleanup'
-status: pending
+status: claimed
 domain: general
 created_at: 2026-08-30T20:35:44Z
+claimed_at: 2026-08-31T16:23:46Z
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-31T16:23:46Z
+  basis:
+    - trivial short-circuit
 user_request: UR-081
 addendum_to: REQ-409
 review_generated: true
@@ -37,3 +45,19 @@ Found during re-review of REQ-409. With an unrelated staged file, `cleanup --com
 **Why RED now:** The spent-scratch exception currently bypasses any group preflight failure, including the commit guard.
 **GREEN when:** The named fixture refuses before mutation while the same scratch remains eligible in a non-commit cleanup run.
 **Validation:** Review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The bypassing exception, exact commit-mode fixture, and required early refusal are explicit. This is a focused cleanup preflight correction.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

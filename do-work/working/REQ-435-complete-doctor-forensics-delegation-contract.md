@@ -1,9 +1,11 @@
 ---
 id: REQ-435
 title: 'Review fix: Complete the doctor-forensics delegation contract'
-status: pending
+status: claimed
 domain: general
 created_at: 2026-08-30T22:01:41Z
+claimed_at: 2026-08-31T16:23:46Z
+route: B
 user_request: UR-081
 addendum_to: REQ-410
 review_generated: true
@@ -51,3 +53,19 @@ Found during terminal re-review of REQ-410 after its single remediation. The act
 **Why RED now:** Doctor's current result omits the required state counts and manual-reset procedure, while remaining documentation still references deleted numbered checks.
 **GREEN when:** The action produces the documented report without independent mechanical scans, all remedies advance the user, and a reference contract finds no stale Check-number consumers.
 **Validation:** Terminal review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The default constraint narrows the ownership choice, but the action, reference consumers, doctor result, and contract tests must be explored before freezing the exact four-file cross-subsystem scope.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
