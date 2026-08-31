@@ -5,7 +5,7 @@ status: completed
 created_at: 2026-08-30T17:40:00Z
 claimed_at: 2026-08-31T10:30:10Z
 completed_at: 2026-08-31T10:56:05Z
-commit:
+commit: 73bd4a6f
 route: A
 estimate:
   p50_active_minutes: 5
