@@ -269,6 +269,20 @@ func TestPublicTargetPreflightReportsOnlyTheDirtyExactGroup(t *testing.T) {
 	}
 }
 
+func TestPublicTargetPreflightPrioritizesCommitGuardOverUntrackedTarget(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "tracked.txt", "initial\n")
+	commitAll(t, repositoryRoot, "initial")
+	writeFile(t, repositoryRoot, "scratch.txt", "untracked\n")
+	writeFile(t, repositoryRoot, "tracked.txt", "staged\n")
+	runFixtureGit(t, repositoryRoot, "add", "tracked.txt")
+
+	preflight := PreflightTargets(context.Background(), repositoryRoot, []string{"scratch.txt"}, true)
+	if preflight.Failure == nil || preflight.Failure.Kind != FailureDirtyIndex {
+		t.Fatalf("commit preflight = %#v", preflight)
+	}
+}
+
 func TestRollbackRemovesOnlyRecordedCreatedDirectoriesDeepestFirst(t *testing.T) {
 	repositoryRoot := newRepository(t)
 	result := ExecuteTransaction(context.Background(), TransactionOptions{
