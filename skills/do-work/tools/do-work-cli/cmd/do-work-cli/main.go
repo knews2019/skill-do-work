@@ -7,6 +7,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/doctor"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/nextselection"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/publication"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/suiteinstall"
 )
@@ -29,6 +30,9 @@ func main() {
 		handlers[name] = handler
 	}
 	for name, handler := range requeststate.Handlers() {
+		handlers[name] = handler
+	}
+	for name, handler := range publication.Handlers() {
 		handlers[name] = handler
 	}
 	runtime := commandruntime.NewRuntime(os.Stdout, handlers)

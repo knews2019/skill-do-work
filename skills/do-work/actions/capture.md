@@ -73,19 +73,11 @@ Files in `working/` and `archive/` are **immutable**. If someone wants to add to
 - **REQ files:** `REQ-[number]-[slug].md` in `do-work/queue/`
 - **UR folders:** `do-work/user-requests/UR-[number]/` containing `input.md` and optional `assets/`
 - **Assets:** `do-work/user-requests/UR-NNN/assets/REQ-[num]-[descriptive-name].png`
-- **REQ reservations:** `do-work/.req-reservations/REQ-NNNNNN` — durable empty markers written by `queue-kanban next-req`; stage the marker with the capture. Retention afterwards is mechanical, not an agent job: `scripts/cleanup-req-reservations.sh` (run by the SessionStart hook) removes a marker once its REQ file is committed, or after a two-day timeout.
+- **REQ reservations:** `do-work/.req-reservations/REQ-NNNNNN` — durable markers written exclusively by Step 5's `capture-files` transaction beside their REQ payloads. Retention afterwards is mechanical: `scripts/cleanup-req-reservations.sh` removes a marker once its REQ file is committed, or after a two-day timeout.
 
 To get the next REQ number, check existing `REQ-*.md` files across `do-work/queue/`, `do-work/working/`, and `do-work/archive/` (including inside `do-work/archive/UR-*/`) plus reservation marker names under `do-work/.req-reservations/`, then increment from the highest number in either set. For the next UR number, check `do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`. REQ and UR use separate numbering sequences. If no existing records or markers are found anywhere, start at 1.
 
-**Preferred reservation path for the REQ number** — the shipped board tool runs that scan and atomically reserves the answer, so concurrent captures receive different ids:
-
-```bash
-# Optional accelerator. Needs the Go toolchain; the build is cached after the first run.
-(cd <suite-root>/do-work-board/tools/queue-kanban && go build -o queue-kanban .) 2>/dev/null \
-  && <suite-root>/do-work-board/tools/queue-kanban/queue-kanban next-req --repo-root <project-root>
-```
-
-It prints one number after creating `do-work/.req-reservations/REQ-NNNNNN` with exclusive-create semantics. A concurrent caller that loses that marker race advances until it reserves a different number. Call it once for each REQ being captured; the markers are durable queue metadata, so an interrupted capture leaves a harmless gap instead of releasing an id another capture may already have observed. **If `go` is absent or the build fails, do the scan above by hand** — this is an accelerator, never a dependency (`../../do-work-board/actions/board.md` Step 2 is the same toolchain exception, except there the tool *is* the capability, so it stops; here you fall back). The fallback cannot reserve, so immediately before each write re-scan and refuse if that id now exists. The tool covers REQ numbers only; UR numbering stays a manual scan.
+The scan proposes IDs but writes nothing. Put each proposed ID and exact marker path in the `capture-files` manifest. The transaction creates every marker with exclusive-create semantics before publishing its paired REQ; a concurrent winner makes the whole capture refuse and roll back instead of silently reissuing one ID halfway through the batch. Re-scan and rebuild the complete manifest after that refusal. The board allocator is not a capture fallback because it would create the marker outside this transaction.
 
 ### Backward Compatibility
 
@@ -221,28 +213,31 @@ If the user provides one or more screenshots:
 
 1. Resolve each source image. A subagent-dispatched capture receives exact staged paths from the dispatcher under its exclusive `do-work/user-requests/.pending-assets/capture.XXXXXX/` directory; never reconstruct or guess that directory from an ordinal. An inline capture may instead use the platform's attachment mechanism or cache. Never delete an attachment/cache source outside `.pending-assets/`.
 2. Assign each image a distinct permanent path: `do-work/user-requests/UR-NNN/assets/REQ-[num]-screenshot-{n}-[slug].png`. The stable screenshot ordinal is required even when the description is unique.
-3. For each staged source, invoke the shipped screenshot helper with the already-resolved exact source and destination under the canonical [Atomic publication](../docs/prescribed-shell-primitives.md#atomic-download-publication) mechanics. It allocates a unique adjacent private temporary file per dispatch, byte-verifies that exact copy, installs it with a no-clobber hard link, and preserves the staged loser or existing destination on collision:
-
-   ```bash
-   <skill-root>/scripts/capture-screenshot.sh --staged "<exact staged screenshot path supplied by the dispatcher>" "do-work/user-requests/UR-NNN/assets/REQ-[num]-screenshot-{n}-[slug].png"
-   ```
-
-   Allocation, copy, verification, or no-clobber install failure returns nonzero, cleans only that dispatch's private temporary copy, leaves the staged source in place, and must be reported. Best-effort post-publication staged-source/directory cleanup does not invalidate a verified permanent asset. For an inline attachment/cache source invoke the helper with `--keep-source`.
-4. Reference every verified permanent path in its REQ's Assets section.
+3. Keep the resolved source as an exact regular-file payload for Step 5's `assets` manifest entry. Do not publish it yet; `capture-files` verifies its bytes and mode and publishes it in the same transaction as the UR, REQs, folds, and reservation markers.
+   `<skill-root>/scripts/capture-screenshot.sh --staged` is the retired invocation prefix retained for compatibility discovery only; capture must not invoke it now that the transaction owns asset publication.
+4. Reference every planned permanent path in its REQ's Assets section.
 5. Write a thorough text description (what it shows, visible text, layout, problems visible) — this is the primary record for searchability.
 
 ### Step 5: Write Files
 
-**Open `actions/capture-reference.md` before writing anything** — this step names the template for every file it creates, and none of them are restated here.
+**Open `actions/capture-reference.md` before preparing content** — this step names the template for every durable file, and none of them are restated here.
 
-Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (create if needed).
+Prepare the final UR/REQ bytes, raw verbatim-input bytes, assets, expected/new fold bytes, and one strict `capture-files` JSON manifest as regular payload files in a private temporary directory. The manifest carries every destination, exact ID/linkage, requested `do-work/.req-reservations/REQ-NNNNNN` marker, payload path and mode, and optional commit message. These are inputs, not durable queue writes.
+
+The wrapper invocation below follows the canonical [Prescribed shell primitives](../docs/prescribed-shell-primitives.md); do not restate its shared shell safety mechanics here.
 
 **For all requests (simple and complex):**
-1. Create `do-work/user-requests/UR-NNN/input.md` with verbatim input (leave `requests` array empty initially), per the **UR input.md** template in `actions/capture-reference.md`. Apply `actions/clarify.md` Step 4's **Outside-text containment** to the Full Verbatim Input body: the outside bytes stay complete and byte-identical, with only the contract's quote/fence containment added.
-2. Create REQ-NNN-slug.md files using the **Simple REQ** or **Complex REQ (additional sections)** template in `actions/capture-reference.md` — **excluding any request Step 2's fold-first scan already resolved**: a folded finding landed on an existing queued REQ (or, when prose-only, on `do-work/prose-backlog.md`) and gets no new file here; record its destination in the UR's `input.md` under `## Folded Requests`, one line per fold, per that section in the **UR input.md** template in `actions/capture-reference.md`. That line is the fold's only record, so it carries both the destination and the part of the input that went there — enough for `actions/verify-requests.md` to grade the folded portion against whatever now holds it, without a duplicate REQ existing. For the rest, create the file, adding user_request: UR-NNN, the inferred domain, the prime_files array populated with any discovered paths, and `maintenance: true` when the Step 1 maintenance assessment flagged this as a removal/narrowing pass on the skill's own instructions (otherwise emit `maintenance: false`). If any field's value doesn't match the canonical enum, apply the **Schema Aliases** section's normalize-and-warn contract before writing.
+1. Author the final `do-work/user-requests/UR-NNN/input.md` payload per the **UR input.md** template in `actions/capture-reference.md`, with its complete final `requests` array. Apply `actions/clarify.md` Step 4's **Outside-text containment** to the Full Verbatim Input body; also supply the raw input payload so the command proves containment from the source bytes.
+2. Author final REQ payloads using the **Simple REQ** or **Complex REQ (additional sections)** template in `actions/capture-reference.md` — **excluding any request Step 2's fold-first scan already resolved**. Put fold expected/new payloads in the same manifest instead of editing their destinations directly.
 3. If the request is behavior-changing and has a meaningful RED/GREEN proof target, add a `## Red-Green Proof` section. If `tdd: true`, this section is required.
-4. Update the UR's `requests` array with all created REQ IDs — folded requests created no REQ, so they never enter the array; their `## Folded Requests` lines in `input.md` are the record, and the array plus that section is what makes the capture whole
-5. When `next-req` supplied an id, keep its `do-work/.req-reservations/REQ-NNNNNN` marker; it is the durable record that prevents a later allocator from reissuing the number while this capture is still landing. Do not clean markers up yourself: once a commit holds the REQ file (in queue, working, or archive) the file itself holds the number, and `scripts/cleanup-req-reservations.sh` — run mechanically by the SessionStart hook — deletes the redundant marker, plus any marker older than two days whose capture never landed. Committed is the trigger, not present-on-disk, so a concurrent session's cleanup can never delete the marker this capture is about to stage.
+4. Include all created REQ IDs in the final UR payload. Folded requests created no REQ, so they never enter the array.
+5. Invoke the canonical command exactly once for the complete capture:
+
+   ```bash
+   <skill-root>/tools/do-work-cli.sh --repo-root "<project-root>" --format json capture-files --manifest "<manifest-path>" --commit
+   ```
+
+   Omit `--commit` only when a surrounding owner deliberately owns the later exact-path commit. The command validates linkage and raw containment, safely bootstraps an absent `do-work/`, publishes markers/UR/REQ/assets/folds atomically, and stages only its declared paths when committing. A missing or refused command stops capture. There is no hand-edit, compatibility-helper, allocator, manual staging, or manual commit fallback.
 
 **The `requests:` array is the capture-time record only — never the UR's closure predicate.** It names the REQs *this capture* created, and nothing appends to it afterward: review-spawned follow-ups (`actions/work.md` Step 8), addendum REQs, and clarify-derived REQs all carry `user_request: UR-NNN` without ever landing in the array. So "is this UR finished?" is always answered by scanning `user_request:` frontmatter across `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` — the condition `actions/work.md` Step 8 and `actions/cleanup.md` Pass 1 both evaluate. The array's legitimate readers are the ones asking *what the user originally asked for* (e.g. `actions/verify-requests.md`, which grades capture coverage against the original input); any reader deciding whether a UR may close must use the scan instead.
 
@@ -265,36 +260,11 @@ End with next-step suggestions per `next-steps.md` (post-capture flow).
 
 ### Step 7: Commit (Git repos only)
 
-Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip this step.
-
-Stage only the files created during this capture — the UR folder and all new REQ files:
-
-```bash
-# Stage the UR input and any assets
-git add do-work/user-requests/UR-NNN/input.md
-git add do-work/user-requests/UR-NNN/assets/  # only if assets were created
-
-# Stage each created REQ file
-git add do-work/queue/REQ-NNN-slug.md
-
-# Stage each reservation created by queue-kanban next-req (skip for manual fallback)
-git add do-work/.req-reservations/REQ-NNNNNN
-
-git commit -m "$(cat <<'EOF'
-[UR-NNN] captured {title} ({N} REQs)
-
-- REQ-NNN: {title}
-- REQ-NNN: {title}
-
-EOF
-)"
-```
+Step 5's single `capture-files --commit` invocation owns staging and the commit. Verify its JSON result names exactly the UR input, assets, REQs, folds, and reservation markers this capture planned. If the invocation omitted `--commit` under an explicit surrounding owner, that owner stages those exact result paths; this action does not duplicate the mutation or invent a fallback.
 
 **Format:** `[UR-NNN] captured {title} ({N} REQs)` — where `{title}` is the UR title and `{N}` is the count of REQ files created. List each REQ with its ID and title in the body.
 
-**For addenda and folds** (when appending to or converting an existing queued REQ instead of creating new files — an addendum section, a fold-first instance append, a sweep conversion or impact escalation, or a prose-backlog line), the commit message changes to: `[UR-NNN] addendum to REQ-NNN: {description}` (or `[UR-NNN] folded into REQ-NNN: {description}`). **A fold whose destination is the prose backlog names no REQ**, so its subject is `[UR-NNN] folded into prose-backlog: {description}` — the same `prose-backlog` destination token the `## Folded Requests` line carries. Never invent a REQ id to fit the other formats. **Stage every queue file this capture modified or created through that path** — plus `do-work/prose-backlog.md` when a prose-only fold appended to it — along with the new UR folder. A fold target left unstaged leaves the captured finding as an unrelated dirty-tree edit, which is not durable.
-
-Stage only the specific files created by this capture — never `git add -A`/`.` or bypass a commit hook (see `actions/commit.md` § Rules for the full guard).
+**For addenda and folds**, the manifest's commit message changes to `[UR-NNN] addendum to REQ-NNN: {description}` or `[UR-NNN] folded into REQ-NNN: {description}`. A prose-backlog destination uses `[UR-NNN] folded into prose-backlog: {description}`. Every changed fold target belongs in the same manifest transaction; no destination is staged separately.
 
 ## Edge Cases
 

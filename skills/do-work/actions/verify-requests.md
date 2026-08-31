@@ -165,7 +165,7 @@ After presenting the report:
         Recommended: [best default based on context]
         Also: [alternative A], [alternative B]
         ```
-     2. If the user answers → add the resolved question using the **Canonical answered-question format** in `actions/clarify.md`: `- [x] [question] → [user's answer]` plus its dated reasoning note, with the outside text contained per that format's **Outside-text containment** contract before it is written
+     2. If the user answers → prepare the resolved question and raw answer for the **Canonical answered-question format** in `actions/clarify.md`, contained per that format's **Outside-text containment** contract, then invoke `<skill-root>/tools/do-work-cli.sh --repo-root "<project-root>" --format json answer --manifest "<manifest-path>" --at "<answer-timestamp>"` in `verify-repair` mode. The manifest may request insertion of the exact open question line before resolving it; the command writes the `- [x] [question] → [user's answer]` line and dated contained note atomically. Missing/refused tooling stops this repair; there is no hand-edit/helper fallback. Important/Minor prose repairs and estimate judgment remain action-owned.
      3. If the user defers ("let the builder decide") → add as `- [~] [question] → Builder decides`
      4. If the user can't answer now → add as unresolved `- [ ]` with choices. The builder will use best judgment when it picks up the REQ.
 3. Re-score after fixes to confirm improvement (Resolved Ambiguous items that resulted in new requirements being added DO affect the re-score. Items left as `- [ ]` or `- [~]` don't.)

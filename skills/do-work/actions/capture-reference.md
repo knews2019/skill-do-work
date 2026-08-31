@@ -4,6 +4,10 @@
 
 ---
 
+## Publication Manifest Handoff
+
+Every template in this reference defines payload bytes only. `actions/capture.md` Step 5 supplies those payloads, raw verbatim input, assets, folds, and reservation paths to one canonical `capture-files` manifest; the Go command is the sole durable writer. A missing/refused command stops capture, with no hand-edit, screenshot-helper, allocator, or manual Git fallback.
+
 ## REQ Title Convention
 
 **Canonical home for the `title:` shape.** Every action that mints a REQ title follows this section — `actions/capture.md`, `actions/review-work.md` Step 10, `actions/work-reference.md`'s Builder-Decided Follow-up template and its **Discovered Tasks Classification (Step 8)** flow, and `../../do-work-toolbox/actions/code-review.md`. The condition is the rule — **any flow that mints a REQ carrying an `impact:` value follows this section** — so a new one inherits it without this list being re-counted.

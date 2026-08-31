@@ -213,6 +213,18 @@ func (document *RequestDocument) BodyBytes() []byte {
 	return append([]byte(nil), document.dataBytes[document.bodyStartOffset:]...)
 }
 
+// ReplaceBodySpan replaces one half-open span relative to BodyBytes. It reparses
+// the document so later frontmatter edits retain correct absolute offsets.
+func (document *RequestDocument) ReplaceBodySpan(startOffset, endOffset int, replacementBytes []byte) error {
+	bodyLength := len(document.dataBytes) - document.bodyStartOffset
+	if startOffset < 0 || endOffset < startOffset || endOffset > bodyLength {
+		return fmt.Errorf("body span [%d,%d) is outside [0,%d)", startOffset, endOffset, bodyLength)
+	}
+	absoluteStart := document.bodyStartOffset + startOffset
+	absoluteEnd := document.bodyStartOffset + endOffset
+	return document.reparse(replaceByteSpan(document.dataBytes, absoluteStart, absoluteEnd, replacementBytes))
+}
+
 // ParseWarnings returns non-fatal recovery evidence such as duplicate keys.
 func (document *RequestDocument) ParseWarnings() []string {
 	return append([]string(nil), document.warnings...)

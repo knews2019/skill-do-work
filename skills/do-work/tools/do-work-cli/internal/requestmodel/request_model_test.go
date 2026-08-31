@@ -131,6 +131,42 @@ func TestTimestampCompatibilityAndCanonicalWriting(t *testing.T) {
 	}
 }
 
+func TestReplaceBodySpanPreservesEveryOutsideByte(t *testing.T) {
+	original := []byte("\xef\xbb\xbf---\r\nid: REQ-9\r\n---\r\nhead \xff\r\nquestion\r\ntail\r\n")
+	document, err := ParseDocument(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := document.BodyBytes()
+	start := bytes.Index(body, []byte("question"))
+	if err := document.ReplaceBodySpan(start, start+len("question"), []byte("answer")); err != nil {
+		t.Fatal(err)
+	}
+	want := bytes.Replace(original, []byte("question"), []byte("answer"), 1)
+	if !bytes.Equal(document.DocumentBytes(), want) {
+		t.Fatalf("edited bytes = %q, want %q", document.DocumentBytes(), want)
+	}
+	if err := document.ReplaceBodySpan(len(document.BodyBytes()), len(document.BodyBytes()), []byte("appended")); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasSuffix(document.DocumentBytes(), []byte("appended")) {
+		t.Fatal("append-at-end was not applied")
+	}
+	before := document.DocumentBytes()
+	if err := document.ReplaceBodySpan(-1, 0, nil); err == nil {
+		t.Fatal("negative span accepted")
+	}
+	if err := document.ReplaceBodySpan(2, 1, nil); err == nil {
+		t.Fatal("reversed span accepted")
+	}
+	if err := document.ReplaceBodySpan(0, len(document.BodyBytes())+1, nil); err == nil {
+		t.Fatal("out-of-range span accepted")
+	}
+	if !bytes.Equal(document.DocumentBytes(), before) {
+		t.Fatal("refused span changed bytes")
+	}
+}
+
 func TestTypedRecordCarriesEveryNormalizedSchemaFieldAndGenericEvidence(t *testing.T) {
 	fixture := []byte("---\n" +
 		"id: REQ-42\n" +
