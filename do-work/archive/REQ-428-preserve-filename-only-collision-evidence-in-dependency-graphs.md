@@ -6,6 +6,7 @@ domain: backend
 created_at: 2026-08-30T19:21:33Z
 claimed_at: 2026-08-31T13:55:10Z
 completed_at: 2026-08-31T14:39:40Z
+commit: 25762881
 route: A
 user_request: UR-081
 addendum_to: REQ-408
