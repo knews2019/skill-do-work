@@ -54,3 +54,50 @@ func TestClaimPreservesExplicitDependencyBypassButGatesURExpansion(t *testing.T)
 		t.Fatalf("UR-expanded dependency gate = %#v", expanded.Refusal)
 	}
 }
+
+func TestFailAcceptsOnlyCanonicalErrorTypes(t *testing.T) {
+	for _, errorType := range []string{"intent", "spec", "code", "environment"} {
+		t.Run("accepts "+errorType, func(t *testing.T) {
+			repositoryRoot := t.TempDir()
+			writeStateRequest(t, repositoryRoot, "do-work/working/REQ-220.md", "REQ-220", "claimed", "")
+			snapshot, _ := repositorymodel.DiscoverRepository(repositoryRoot)
+			plan := BuildPlan(snapshot, dependencygraph.BuildGraph(snapshot), StateOptions{Transition: TransitionFail, RequestID: "REQ-220", FailureError: "failed", FailureType: errorType})
+			if !plan.Runnable() {
+				t.Fatalf("canonical error_type refused: %#v", plan.Refusal)
+			}
+		})
+	}
+	for _, errorType := range []string{"", "CODE", "security", "code "} {
+		t.Run("refuses "+errorType, func(t *testing.T) {
+			repositoryRoot := t.TempDir()
+			writeStateRequest(t, repositoryRoot, "do-work/working/REQ-221.md", "REQ-221", "claimed", "")
+			snapshot, _ := repositorymodel.DiscoverRepository(repositoryRoot)
+			plan := BuildPlan(snapshot, dependencygraph.BuildGraph(snapshot), StateOptions{Transition: TransitionFail, RequestID: "REQ-221", FailureError: "failed", FailureType: errorType})
+			if plan.Refusal == nil || plan.Refusal.Code != "FAIL-CLASSIFICATION-INVALID" {
+				t.Fatalf("noncanonical error_type plan = %#v", plan)
+			}
+		})
+	}
+}
+
+func TestCancelReasonPreflightRejectsUnsafeControlBytes(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeStateRequest(t, repositoryRoot, "do-work/queue/REQ-222.md", "REQ-222", "pending", "")
+	snapshot, _ := repositorymodel.DiscoverRepository(repositoryRoot)
+	plan := BuildPlan(snapshot, dependencygraph.BuildGraph(snapshot), StateOptions{Transition: TransitionCancel, RequestID: "REQ-222", CancellationConfirmed: true, DependentDisposition: "leave", CancellationReason: "unsafe\x01text"})
+	if plan.Refusal == nil || plan.Refusal.Code != "CANCEL-REASON-UNSAFE" {
+		t.Fatalf("unsafe reason plan = %#v", plan)
+	}
+}
+
+func TestCancelMultilineReasonRequiresSafeSummary(t *testing.T) {
+	for _, summary := range []string{"", "unsafe\nsummary", "unsafe\x7fsummary"} {
+		repositoryRoot := t.TempDir()
+		writeStateRequest(t, repositoryRoot, "do-work/queue/REQ-223.md", "REQ-223", "pending", "")
+		snapshot, _ := repositorymodel.DiscoverRepository(repositoryRoot)
+		plan := BuildPlan(snapshot, dependencygraph.BuildGraph(snapshot), StateOptions{Transition: TransitionCancel, RequestID: "REQ-223", CancellationConfirmed: true, DependentDisposition: "leave", CancellationReason: "line one\nline two", CancellationSummary: summary})
+		if plan.Refusal == nil || (plan.Refusal.Code != "CANCEL-REASON-SUMMARY-MISSING" && plan.Refusal.Code != "CANCEL-REASON-UNSAFE") {
+			t.Fatalf("unsafe/missing summary %q plan = %#v", summary, plan)
+		}
+	}
+}

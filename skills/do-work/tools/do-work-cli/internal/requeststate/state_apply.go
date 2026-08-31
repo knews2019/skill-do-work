@@ -228,13 +228,17 @@ func lifecycleRequestBytes(plan StatePlan) ([]byte, error) {
 		if err := document.SetScalar("completed_at", timestamp); err != nil {
 			return nil, err
 		}
-		entry := fmt.Sprintf("- **When:** %s\n- **Why:** %s\n- **Decided by:** user, via `do-work abandon`", timestamp, cancellationReason(plan.Options.CancellationReason))
+		entry := fmt.Sprintf("- **When:** %s\n%s\n- **Decided by:** user, via `do-work abandon`", timestamp, cancellationReasonBlock(plan.Options.CancellationReason, plan.Options.CancellationSummary))
 		if priorStatus == "failed" {
 			prior := "failure instant unrecorded"
 			if priorCompleted != "" {
 				prior = "failed at " + priorCompleted
 			}
-			entry += "\n- **Previously:** failed — " + prior + " — resolved by decision not to retry"
+			classification := ""
+			if errorType, found := plan.Target.TypedRecord.FieldEvidenceByName["error_type"]; found {
+				classification = fmt.Sprintf(" (`error_type: %s`)", errorType.ScalarValue)
+			}
+			entry += "\n- **Previously:** failed" + classification + " — " + prior + " — resolved by decision not to retry"
 		}
 		return appendSectionEntry(document.DocumentBytes(), "Cancelled", entry), nil
 	}
@@ -439,11 +443,40 @@ func appendSectionEntry(contents []byte, section, entry string) []byte {
 	return []byte(strings.TrimRight(text[:insertAt], "\n") + "\n\n" + entry + "\n" + text[insertAt:] + "\n")
 }
 
-func cancellationReason(reason string) string {
+func cancellationReasonBlock(reason, summary string) string {
 	if strings.TrimSpace(reason) == "" {
-		return "no reason given"
+		return "- **Why:** no reason given"
 	}
-	return reason
+	if !strings.Contains(reason, "\n") {
+		return "- **Why:** " + reason
+	}
+	return "- **Why:** " + summary + "\n" + containedOutsideText(reason)
+}
+
+func containedOutsideText(value string) string {
+	longestRun, currentRun := 0, 0
+	for _, character := range value {
+		if character == '`' {
+			currentRun++
+			if currentRun > longestRun {
+				longestRun = currentRun
+			}
+		} else {
+			currentRun = 0
+		}
+	}
+	fenceLength := longestRun + 1
+	if fenceLength < 3 {
+		fenceLength = 3
+	}
+	fence := strings.Repeat("`", fenceLength)
+	var contained strings.Builder
+	contained.WriteString("> " + fence + "\n")
+	for _, line := range strings.Split(value, "\n") {
+		contained.WriteString("> " + line + "\n")
+	}
+	contained.WriteString("> " + fence)
+	return contained.String()
 }
 
 func appliedChanges(changes []resultmodel.RecordedChange, commitSHA string) []resultmodel.RecordedChange {

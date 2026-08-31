@@ -46,6 +46,7 @@ type StateOptions struct {
 	FailureError          string
 	FailureType           string
 	CancellationReason    string
+	CancellationSummary   string
 	CancellationConfirmed bool
 	DependentDisposition  string
 	WriterLabel           string

@@ -56,7 +56,7 @@ func parseStateOptions(transition Transition, arguments []string) (StateOptions,
 			options.UnblockRequired = true
 		case "--confirmed":
 			options.CancellationConfirmed = true
-		case "--request-path", "--provenance", "--original-status", "--probe-status", "--source", "--terminal-status", "--implementation-hash", "--error", "--error-type", "--reason", "--dependent-disposition", "--writer", "--at":
+		case "--request-path", "--provenance", "--original-status", "--probe-status", "--source", "--terminal-status", "--implementation-hash", "--error", "--error-type", "--reason", "--reason-summary", "--dependent-disposition", "--writer", "--at":
 			index++
 			if index >= len(arguments) {
 				return options, fmt.Errorf("%s requires a value", argument)
@@ -83,6 +83,8 @@ func parseStateOptions(transition Transition, arguments []string) (StateOptions,
 				options.FailureType = value
 			case "--reason":
 				options.CancellationReason = value
+			case "--reason-summary":
+				options.CancellationSummary = value
 			case "--dependent-disposition":
 				options.DependentDisposition = value
 			case "--writer":

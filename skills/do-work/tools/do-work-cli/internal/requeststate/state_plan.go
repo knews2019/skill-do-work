@@ -155,8 +155,11 @@ func validateTransition(target *repositorymodel.RequestFile, graph *dependencygr
 		if target.TreeSection != "working" || status != "claimed" {
 			return refuse("FAIL-STATUS", "fail requires a claimed working REQ", sourcePath)
 		}
-		if strings.TrimSpace(options.FailureError) == "" || strings.TrimSpace(options.FailureType) == "" {
-			return refuse("FAIL-CLASSIFICATION-MISSING", "fail requires action-classified error and error_type", sourcePath)
+		if strings.TrimSpace(options.FailureError) == "" {
+			return refuse("FAIL-CLASSIFICATION-MISSING", "fail requires an action-classified error", sourcePath)
+		}
+		if !canonicalFailureType(options.FailureType) {
+			return refuse("FAIL-CLASSIFICATION-INVALID", "error_type must be exactly intent, spec, code, or environment", sourcePath)
 		}
 	case TransitionCancel:
 		if !options.CancellationConfirmed || strings.TrimSpace(options.DependentDisposition) == "" {
@@ -171,11 +174,37 @@ func validateTransition(target *repositorymodel.RequestFile, graph *dependencygr
 		if options.DependentDisposition != "leave" && options.DependentDisposition != "repoint" && options.DependentDisposition != "cascade" {
 			return refuse("CANCEL-DISPOSITION-INVALID", "dependent disposition must be leave, repoint, or cascade", sourcePath)
 		}
-		if strings.ContainsAny(options.CancellationReason, "\r\n") {
-			return refuse("CANCEL-REASON-INVALID", "cancellation reason must be one contained line", sourcePath)
+		if reasonError := validateOutsideText(options.CancellationReason); reasonError != nil {
+			return refuse("CANCEL-REASON-UNSAFE", reasonError.Error(), sourcePath)
+		}
+		if strings.Contains(options.CancellationReason, "\n") {
+			if strings.TrimSpace(options.CancellationSummary) == "" || strings.ContainsAny(options.CancellationSummary, "\r\n") {
+				return refuse("CANCEL-REASON-SUMMARY-MISSING", "multiline cancellation reason requires one safe summary line", sourcePath)
+			}
+			if summaryError := validateOutsideText(options.CancellationSummary); summaryError != nil {
+				return refuse("CANCEL-REASON-UNSAFE", summaryError.Error(), sourcePath)
+			}
 		}
 	default:
 		return refuse("STATE-USAGE", "unknown lifecycle transition", sourcePath)
+	}
+	return nil
+}
+
+func canonicalFailureType(value string) bool {
+	switch value {
+	case "intent", "spec", "code", "environment":
+		return true
+	default:
+		return false
+	}
+}
+
+func validateOutsideText(value string) error {
+	for _, character := range []byte(value) {
+		if (character < 0x20 && character != '\n' && character != '\t') || character == 0x7f {
+			return fmt.Errorf("outside text contains unsupported control byte 0x%02x", character)
+		}
 	}
 	return nil
 }
