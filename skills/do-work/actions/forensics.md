@@ -36,11 +36,11 @@ When the user explicitly requests the provably safe metadata repair, invoke `doc
 
 ### Step 2: Judge recurring corrections
 
-Run only Check 10 below. This phase reads untrusted lesson prose and requires judgment, so it deliberately remains here instead of entering the deterministic command.
+Run only **Recurring Corrections (judgment-owned)** below. This phase reads untrusted lesson prose and requires judgment, so it deliberately remains here instead of entering the deterministic command.
 
 ### Step 3: Verify release and queue invariants
 
-Run only Check 14 below. `queue-kanban verify` remains the separate authority for board/release invariants; never parse or duplicate it inside doctor.
+Run only **Release and Queue Invariants (board-owned)** below. `queue-kanban verify` remains the separate authority for board/release invariants; never parse or duplicate it inside doctor.
 
 ## Canonical Mechanical Coverage
 
@@ -50,6 +50,8 @@ The doctor result from Step 1 is the sole executable authority for former Checks
 - unrecognized statuses, future/out-of-order timestamps, damaged REQ/UR records, full-history recovery evidence, collisions, and incomplete inspection warnings.
 
 Do not run shell scanners, glob/find reimplementations, timestamp auditors, or ad hoc frontmatter parsing for those checks. Report the doctor's typed evidence, exact affected paths, remediation argv, and verification argv as emitted.
+
+Map each typed `CommandFinding` directly into the report: `severity` selects `error` -> Critical Findings, `warning` -> Warnings, or `info` -> Info; `code` names the finding; `affected_ids` and `affected_paths` identify it; `observed_evidence` supplies its evidence; `fixability` and `automation_stop_reason` state the automation boundary; `next_argv` supplies the actionable remedy or next inspection command; and `verification_argv` supplies the verification command. Report `skipped_work` as skipped or unverified coverage rather than filling it with another scan. If the finding code is `STUCK-WORK`, preserve those emitted fields, then point takeover judgment and any reset to `actions/work-reference.md` -> **Crash Recovery (Step 1)**. Forensics never performs or restates that reset procedure. Derive the final severity totals from the findings reported by the three authorities; do not add repository-state totals.
 
 `tools/checks/blanked-req-scan.sh` remains a shipped compatibility surface for cleanup and older callers; forensics must not execute it because doctor now owns damaged-record detection and recovery evidence. A failed REQ already inside `archive/UR-NNN/` can be explicitly targeted with `do-work abandon REQ-NNN` to cancel it in place.
 
@@ -83,14 +85,11 @@ The report's `<timestamp>` is the current UTC instant (Timestamp rule, `actions/
 # Forensics Report
 
 **Scan date:** <timestamp>
-**Queue:** [N pending, N completed/done (awaiting archive), N pending-answers]
-**Archive:** [N completed, N completed-with-issues, N failed, N cancelled]
-**Working:** [N in-progress]
 
 ## Critical Findings
 
-- **[Stuck Work]** REQ-042 has been in `working/` for 3 days (claimed 2026-03-27T10:00:00Z). Last phase: Implementation Summary exists, no Testing section. Likely crashed during test execution.
-  **Suggested fix:** Move back to `do-work/` root with `status: pending` and strip incomplete sections, or investigate and complete manually.
+- **[STUCK-WORK]** REQ-042 at `do-work/working/REQ-042-example.md`: claimed age=72h; title=Example; route=B; last_phase=Implementation Summary. Fixability: manual. Automation stopped: claimed work needs an ownership decision before reset. Next: [doctor-emitted command]. Verify: [doctor-emitted command].
+  **Suggested fix:** Run `do-work run`; follow `actions/work-reference.md` -> **Crash Recovery (Step 1)** to judge takeover and perform any reset.
 
 - **[Hollow Completion]** REQ-015 is `status: completed` but has no Implementation Summary. No files were changed.
   **Suggested fix:** Review the archived REQ — was this a legitimate no-op, or was it incorrectly marked complete?
@@ -112,6 +111,10 @@ The report's `<timestamp>` is the current UTC instant (Timestamp rule, `actions/
 - **[Git Divergence]** `src/components/Header.tsx` (from REQ-020) was modified by 2 later commits.
 - **[Recurring Correction]** "author one canonical source, point all callers at it" recurs across REQ-009 and REQ-011 (2 REQs, watch). This correction has recurred — consider a harness fix, not another per-run patch.
 
+## Skipped or Unverified Coverage
+
+- **[<code>]** [doctor-emitted skipped reason, or board-owned unverified coverage]
+
 ## Summary
 
 [N] critical, [N] warnings, [N] info items found.
@@ -124,9 +127,10 @@ Omit sections with no findings. If everything is clean, report — same `<timest
 # Forensics Report
 
 **Scan date:** <timestamp>
-**Queue:** [N pending, N completed/done (awaiting archive), N pending-answers]
-**Archive:** [N completed, N failed]
 
+## Summary
+
+0 critical, 0 warnings, 0 info items found.
 All clear — no issues detected.
 ```
 
@@ -150,5 +154,5 @@ All clear — no issues detected.
 
 - [ ] Report grouped findings under `## Critical Findings`, `## Warnings`, `## Info`, `## Summary`.
 - [ ] Each finding names a specific file path or REQ/UR id.
-- [ ] Stuck-work detection used a reasonable threshold (not flagging actively-processing work).
+- [ ] Every `STUCK-WORK` finding came from doctor, and any takeover/reset points to **Crash Recovery (Step 1)**.
 - [ ] If no issues were found, output says "All clear" and the summary lists what was checked.

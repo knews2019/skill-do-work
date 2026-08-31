@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -85,6 +86,32 @@ func TestCommittedRepairRediscoveryFailureReturnsRiskAndExactRevert(t *testing.T
 }
 
 func TestForensicsActionDelegatesMechanicalChecksOnlyToDoctor(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeDoctorFixture(t, repositoryRoot, "do-work/working/REQ-060-stuck.md", doctorRequest("REQ-060", "in-progress", "created_at: 2026-08-20T00:00:00Z\nclaimed_at: 2026-08-20T01:00:00Z\n", "## Plan\nInterrupted"))
+	writeDoctorFixture(t, repositoryRoot, "do-work/queue/REQ-061-queued.md", doctorRequest("REQ-061", "pending", "created_at: 2026-08-29T00:00:00Z\n", "Body"))
+	writeDoctorFixture(t, repositoryRoot, "do-work/archive/REQ-062-terminal.md", doctorRequest("REQ-062", "completed", "created_at: 2026-08-19T00:00:00Z\ncompleted_at: 2026-08-21T00:00:00Z\n", "## Implementation Summary\n**Files changed:** none (no code changes needed)\n\n## Qualification\nVerified"))
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := ScanRepository(t.Context(), snapshot, ScanOptions{Now: time.Date(2026, 8, 30, 20, 0, 0, 0, time.UTC)})
+	var stuckWork *resultmodel.CommandFinding
+	for index := range result.Findings {
+		if result.Findings[index].Code == "STUCK-WORK" {
+			stuckWork = &result.Findings[index]
+			break
+		}
+	}
+	if stuckWork == nil {
+		t.Fatalf("mixed-state doctor result omitted STUCK-WORK: %#v", result.Findings)
+	}
+	if strings.Join(stuckWork.AffectedIDs, "\n") != "REQ-060" || strings.Join(stuckWork.AffectedPaths, "\n") != "do-work/working/REQ-060-stuck.md" {
+		t.Fatalf("STUCK-WORK lost exact identity: %#v", stuckWork)
+	}
+	if len(stuckWork.Evidence) == 0 || stuckWork.Fixability != resultmodel.FixabilityManual || len(stuckWork.NextArgv) == 0 || len(stuckWork.VerificationArgv) == 0 {
+		t.Fatalf("STUCK-WORK is not report-ready: %#v", stuckWork)
+	}
+
 	actionPath := filepath.Join("..", "..", "..", "..", "actions", "forensics.md")
 	actionBytes, err := os.ReadFile(actionPath)
 	if err != nil {
@@ -101,6 +128,50 @@ func TestForensicsActionDelegatesMechanicalChecksOnlyToDoctor(t *testing.T) {
 	}
 	if strings.Count(action, "blanked-req-scan.sh") != 1 || !strings.Contains(action, "forensics must not execute it") {
 		t.Fatal("blank scanner compatibility pointer must remain explicitly non-executable")
+	}
+	for _, fieldName := range []string{"code", "severity", "affected_ids", "affected_paths", "observed_evidence", "fixability", "automation_stop_reason", "next_argv", "verification_argv"} {
+		if !strings.Contains(action, "`"+fieldName+"`") {
+			t.Errorf("forensics report contract does not map typed field %q", fieldName)
+		}
+	}
+	if !strings.Contains(action, "Crash Recovery (Step 1)") {
+		t.Error("forensics action does not delegate stuck-work takeover judgment to Crash Recovery")
+	}
+	for _, retainedAuthority := range []string{"Recurring Corrections (judgment-owned)", "Release and Queue Invariants (board-owned)", "queue-kanban verify", "`skipped_work`", "## Skipped or Unverified Coverage", "0 critical, 0 warnings, 0 info items found."} {
+		if !strings.Contains(action, retainedAuthority) {
+			t.Errorf("forensics action omitted retained authority %q", retainedAuthority)
+		}
+	}
+	for _, unsupportedTotal := range []string{"**Queue:**", "**Archive:**", "**Working:**"} {
+		if strings.Contains(action, unsupportedTotal) {
+			t.Errorf("forensics report still requires unsupported total %q", unsupportedTotal)
+		}
+	}
+
+	deletedCheckReference := regexp.MustCompile(`(?i)\bchecks?\s+(?:[1-9]|1[123])\b`)
+	consumerPaths := []string{
+		filepath.Join("..", "..", "..", "..", "actions", "work-reference.md"),
+		filepath.Join("..", "..", "..", "..", "actions", "abandon.md"),
+		filepath.Join("..", "..", "..", "..", "scripts", "repair-req-timestamps.sh"),
+		filepath.Join("..", "..", "..", "..", "..", "do-work-board", "tools", "queue-kanban", "verify.go"),
+		filepath.Join("..", "..", "..", "..", "..", "do-work-board", "tools", "queue-kanban", "model.go"),
+		filepath.Join("..", "..", "..", "..", "..", "do-work-board", "tools", "queue-kanban", "lessons-do-kanban.md"),
+	}
+	for _, consumerPath := range consumerPaths {
+		contents, readError := os.ReadFile(consumerPath)
+		if readError != nil {
+			t.Fatal(readError)
+		}
+		if staleReference := deletedCheckReference.Find(contents); staleReference != nil {
+			t.Errorf("%s retains deleted mechanical reference %q", consumerPath, staleReference)
+		}
+	}
+	workReferenceBytes, err := os.ReadFile(consumerPaths[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(workReferenceBytes), "## Crash Recovery (Step 1)") {
+		t.Fatal("forensics stuck-work authority does not resolve to the Crash Recovery heading")
 	}
 }
 

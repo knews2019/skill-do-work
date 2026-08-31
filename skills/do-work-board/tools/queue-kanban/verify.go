@@ -626,7 +626,7 @@ func appendClaimFindings(report *VerifyReport, board *Board, now time.Time) {
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryClaimNeedsAttention,
 				Detail:   fmt.Sprintf("%s is claimed but carries no claimed_at — its age cannot be known", claimedTicket.RequestId),
-				Remedy:   "see actions/forensics.md Check 1 for the manual reset",
+				Remedy:   "run `do-work run`; actions/work-reference.md -> Crash Recovery (Step 1) owns the human reset decision",
 			})
 			continue
 		}
@@ -635,7 +635,7 @@ func appendClaimFindings(report *VerifyReport, board *Board, now time.Time) {
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryClaimNeedsAttention,
 				Detail:   fmt.Sprintf("%s has an unparseable claimed_at (%q)", claimedTicket.RequestId, rawClaimStamp),
-				Remedy:   "fix the stamp to a UTC ISO-8601 instant, or reset the REQ (actions/forensics.md Check 1)",
+				Remedy:   "fix the stamp to a UTC ISO-8601 instant, or run `do-work run` and use actions/work-reference.md -> Crash Recovery (Step 1) for the reset decision",
 			})
 			continue
 		}
@@ -659,14 +659,14 @@ func appendClaimFindings(report *VerifyReport, board *Board, now time.Time) {
 				Category: verifyCategoryClaimNeedsAttention,
 				Detail: fmt.Sprintf("%s has been claimed for %s (threshold %s) — reported, not judged dead",
 					claimedTicket.RequestId, formatApproximateDuration(claimAge), formatApproximateDuration(staleClaimThreshold)),
-				Remedy: "a long build can legitimately exceed this; take it over only if you know the run is gone (actions/forensics.md Check 1)",
+				Remedy: "a long build can legitimately exceed this; run `do-work run` and use actions/work-reference.md -> Crash Recovery (Step 1) to decide whether to take it over",
 			})
 		}
 	}
 }
 
 // appendStrandedFinishedFindings reports a REQ with a terminal status still
-// sitting in queue/ or working/ — actions/forensics.md Check 9's definition, and
+// sitting in queue/ or working/ — doctor's STRANDED-TERMINAL-REQUEST definition, and
 // the one finding class besides orphan worktrees that cleanup resolves
 // mechanically (Pass 0 sweeps it into the archive).
 func appendStrandedFinishedFindings(report *VerifyReport, board *Board) {
