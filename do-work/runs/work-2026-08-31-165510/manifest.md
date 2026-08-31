@@ -18,3 +18,4 @@ Status: in-progress
 | Explorer | REQ-431 exploration | read-only | REQ plus prime | `REQ-431-exploration.md` | done |
 | 2 | REQ-434 | `worktree-agent-REQ-434-refuse-unsupported-timestamp-ordering-anchors` | `REQ-434-brief.md` | `REQ-434-handback.md` | done |
 | 1 | REQ-431 | `worktree-agent-REQ-431-couple-document-rewrites-to-owning-moves` | `REQ-431-brief.md` | `REQ-431-handback.md` | pending |
+| Reviewer | REQ-434 review | integration range `607487d6..509cbee4` | REQ plus UR | `REQ-434-review.md` | pending |
