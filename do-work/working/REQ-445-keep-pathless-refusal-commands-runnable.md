@@ -1,7 +1,7 @@
 ---
 id: REQ-445
 title: 'Review fix: Keep pathless refusal commands runnable'
-status: pending
+status: claimed
 domain: general
 created_at: 2026-08-31T15:34:58Z
 status_changed_at: 2026-08-31T19:24:17Z
@@ -14,6 +14,7 @@ tdd: true
 sweep: true
 sweep_key: pathless-refusal-recovery-argv
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
+claimed_at: 2026-08-31T22:07:41Z
 ---
 
 # Review Fix: Keep Pathless Refusal Commands Runnable

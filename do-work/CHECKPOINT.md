@@ -38,3 +38,5 @@
 ## In Progress (interrupted)
 
 - REQ-413: Implement capture-file, answer, release, version, and changelog transactions — claimed 2026-08-31T22:07:13Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-445: Review fix: Keep pathless refusal commands runnable — claimed 2026-08-31T22:07:41Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
