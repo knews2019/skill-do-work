@@ -38,6 +38,8 @@ The Q-ID is the only routing key. Read the reply for `Q-NN`-shaped references (`
 
 ### Step 3: Apply Answers to the Stakeholder REQ
 
+Prepare one strict `answer` manifest for the target REQ; the formats below describe its judged outcomes, not direct file edits. Supply each raw stakeholder answer through a regular payload file.
+
 Rewrite each answered question line in the **Canonical answered-question format** (`actions/clarify.md` Step 4):
 
 - Answer differs from the assumption → `- [x] **Q-NN** — [question] → [stakeholder's answer]`
@@ -65,13 +67,21 @@ For the differing set:
 
 Giving up on the answers instead is `do-work abandon REQ-NNN`, unchanged.
 
+After the semantic delta and report decisions are complete, invoke the canonical command once with the expected blocked record, all Q-ID answers, fresh report payload, optional override capture/folds, and terminal archive evidence:
+
+```bash
+<skill-root>/tools/do-work-cli.sh --repo-root "<project-root>" --format json answer --manifest "<manifest-path>" --at "<answer-timestamp>" --commit
+```
+
+The command owns question/note bytes, whole-record status, report/override publication, and the archive move as one transaction. Missing/refused tooling stops ingestion and leaves every target byte-identical. There is no hand-edit, capture helper, or manual Git fallback.
+
 ### Step 6: Report
 
 Answered / confirmed / overridden counts; change REQs minted (id plus one line each); questions still open; any red flags from Step 0 — irreversible overrides lead. End with next-step suggestions per `next-steps.md`.
 
 ### Step 7: Commit (Git repos only)
 
-Check for git with `git rev-parse --git-dir 2>/dev/null`; skip if absent. Stage explicit paths only — the new UR folder, each change REQ, the stakeholder REQ file (or its archive-move result), the fresh report bundle, and any fold targets — never `git add -A` (`actions/commit.md` § Rules). Message: `[UR-NNN] stakeholder answers for REQ-NNN: N answered, M overrides`.
+Step 5's `answer --commit` invocation stages only its declared paths and commits with the manifest message `[UR-NNN] stakeholder answers for REQ-NNN: N answered, M overrides`. Verify the JSON target list; do not stage or commit a second time.
 
 ## Rules
 

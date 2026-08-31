@@ -3533,23 +3533,19 @@ assert_contains \
   'func rejectLeftoverArguments' \
   'tools/queue-kanban/main.go must keep the shared leftover-argument rejection — an unconsumed token is an error for ANY subcommand, not silence, which is how next-version writing the wrong tree stayed invisible (REQ-081).'
 
-for release_subcommand_call_site in \
-  'actions/capture.md:queue-kanban next-req' \
-  'actions/forensics.md:queue-kanban verify'; do
-  call_site_file="${release_subcommand_call_site%%:*}"
-  call_site_pattern="${release_subcommand_call_site#*:}"
-  assert_contains \
-    "$call_site_file" \
-    "$call_site_pattern" \
-    "$call_site_file must call \`$call_site_pattern\` — REQ-072 wired the allocator/verifier into the three existing actions instead of adding a new action or a SKILL.md routing row."
-  # Every call site must name what to do when the toolchain is missing. The board
-  # action reports and stops because there the compiler IS the capability; these
-  # three must fall back to the procedure they accelerate.
-  assert_contains \
-    "$call_site_file" \
-    'If .go. is absent|when .go. is absent|absent or the build fails' \
-    "$call_site_file must state the fallback for a missing Go toolchain next to its queue-kanban call — the compiler is an accelerator here, never a dependency of the pipeline."
-done
+assert_contains \
+  "actions/forensics.md" \
+  'queue-kanban verify' \
+  'actions/forensics.md must call `queue-kanban verify` — REQ-072 wired the verifier into the existing action instead of adding a new action or a SKILL.md routing row.'
+assert_contains \
+  "actions/forensics.md" \
+  'If .go. is absent|when .go. is absent|absent or the build fails' \
+  'actions/forensics.md must state the fallback for a missing Go toolchain next to its queue-kanban call — the compiler is an accelerator here, never a dependency of the pipeline.'
+
+assert_file_not_contains \
+  "actions/capture.md" \
+  'queue-kanban next-req' \
+  'capture must not create a reservation outside the canonical capture-files transaction.'
 
 assert_contains \
   "CLAUDE.md" \
@@ -3558,8 +3554,8 @@ assert_contains \
 
 assert_contains \
   "actions/capture.md" \
-  '\.req-reservations/REQ-NNNNNN' \
-  'actions/capture.md must stage next-req reservation markers with the UR/REQ capture — an uncommitted marker would reserve only one checkout and pollute git status.'
+  'capture-files.*\.req-reservations/REQ-NNNNNN|\.req-reservations/REQ-NNNNNN.*capture-files' \
+  'actions/capture.md must publish reservation markers in the same canonical transaction as the UR/REQ capture.'
 
 assert_contains \
   "docs/forensics-guide.md" \
@@ -7361,6 +7357,65 @@ assert_contains \
   "skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go" \
   'prior := "failure instant unrecorded"' \
   'failed cancellation history must name an unrecorded failure instant without inventing one.'
+
+assert_contains \
+  "skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go" \
+  'publication\.Handlers' \
+  'the shipped binary must register capture-files, answer, and release.'
+for publication_command in capture-files answer release; do
+  assert_contains \
+    "skills/do-work/tools/do-work-cli/internal/publication/publication_types.go" \
+    "= \"$publication_command\"" \
+    "publication must retain the typed $publication_command operation."
+done
+assert_contains \
+  "skills/do-work/actions/capture.md" \
+  'capture-files --manifest.*--commit' \
+  'capture Step 5 must publish UR, REQs, assets, folds, and reservations through one command.'
+capture_publication_block="$(sed -n '/^### Step 4: Handle Screenshots/,/^### Step 6: Report Back/p' "$core_root/actions/capture.md")"
+assert_block_not_contains \
+  "$capture_publication_block" \
+  '^[[:space:]]*git add |queue-kanban next-req.*fallback' \
+  'capture publication must not retain screenshot-helper, manual staging, or allocator fallback.'
+assert_block_contains \
+  "$capture_publication_block" \
+  'capture must not invoke it' \
+  'capture must retain a negative compatibility-helper boundary without executing it.'
+assert_contains \
+  "skills/do-work/actions/clarify.md" \
+  'answer --manifest.*--at.*--commit' \
+  'clarify must delegate whole-record answer disposition and archive mechanics.'
+assert_contains \
+  "skills/do-work/actions/stakeholder-answers.md" \
+  'answer --manifest.*--at.*--commit' \
+  'stakeholder ingestion must delegate answer, override publication, report, and archive mechanics.'
+assert_contains \
+  "skills/do-work/actions/verify-requests.md" \
+  'answer --manifest.*verify-repair' \
+  'verify repair must delegate resolved ambiguous question bytes to answer.'
+assert_contains \
+  "skills/do-work/actions/work.md" \
+  'release --manifest' \
+  'the successful release tail must delegate version and changelog publication.'
+release_reference_block="$(sed -n '/^## Changelog Entry Procedure (Step 9)/,/^## Commit & Metadata-Commit Procedure/p' "$core_root/actions/work-reference.md")"
+assert_block_not_contains \
+  "$release_reference_block" \
+  'Edit the mirrored value by hand|write the bumped value into the file' \
+  'release judgment may not retain executable hand edits after canonical delegation.'
+for publication_action in capture.md clarify.md stakeholder-answers.md work.md; do
+  assert_contains \
+    "skills/do-work/actions/$publication_action" \
+    'missing or refused|Missing/refused' \
+    "$publication_action must stop when canonical publication tooling is unavailable."
+  assert_contains \
+    "skills/do-work/actions/$publication_action" \
+    'no hand-edit|There is no hand-edit' \
+    "$publication_action must forbid a free-form mutation fallback."
+done
+assert_contains \
+  "skills/do-work/tools/do-work-cli/prime-do-work-cli.md" \
+  'internal/publication/.*sole deterministic' \
+  'the CLI prime must name publication ownership and the action judgment boundary.'
 
 if [ "$fail_count" -gt 0 ]; then
   exit 1

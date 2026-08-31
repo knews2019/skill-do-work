@@ -94,6 +94,8 @@ Builder-marked `- [~]` decisions reflect the "Think Before Coding" guardrail (`c
 
 ### Step 4: Collect answers
 
+Collect the user's semantic choices first, then build one strict `answer` manifest per REQ. The outcome bullets below describe manifest content; do not edit the question line, note, frontmatter, or location directly. Supply raw answer text through a regular payload file so the command derives containment from the source bytes.
+
 > **Named entry point — Canonical answered-question format.** The durable record is the `- [x] [question] → [answer]` form below **together with a dated note carrying the reasoning, including anything the answer put out of scope** (`crew-members/clear-questions.md` Principle 8, which defines both halves). The answer line alone is not the record: it says what was chosen and not why, so the next reader re-derives the decision from the stored `Recommended:` rationale — which the answer may have just overruled. Both halves are the durable record for **any** caller that obtains a user answer to a REQ question, not just clarify — an orchestrator that asked and got an answer mid-run writes the same form before dispatch (`actions/work.md` Step 3.5). Callers cite it by this name, not by step number. What is clarify-local is Step 5's `pending-answers` → `pending` flip: a REQ already in flight has no such status to leave.
 >
 > **Named sub-contract — Outside-text containment.** Part of this format is a wider write rule: text from outside the file is neutralized before it is written into **any do-work Markdown record body**, whether that record is a REQ answer, a UR's Full Verbatim Input, an addendum, or a cancellation note. Those sites are illustrative, not a writer checklist; the condition is what gives a future body writer the rule. First require text the record can carry byte-identically: if it contains any **C0 control or DEL except LF and TAB**, refuse the write and report the offending character — do not normalize it, drop it, or invent a hand-authored escape table. Once that preflight passes, the text stays **byte-identical apart from containment bytes** added around it.
@@ -134,6 +136,14 @@ Otherwise every question is `[x]` or `[~]`, and the REQ's disposition follows fr
 - **Everything else** → flip `status` from `pending-answers` to `pending` so the work loop picks it up — an approved discovered task, an answered review follow-up, a partially-discarded REQ with real answers left in it. See "Approved Discovered Task" below.
 
 On any flip, stamp `status_changed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`; the board's state timer reads it, so the card shows time since the answers landed rather than time since capture). REQs flipped to `pending` enter the queue for the next `do-work run`.
+
+Pass the whole question set, expected status/path, canonical timestamp, and any terminal archive/UR-closure evidence to one invocation:
+
+```bash
+<skill-root>/tools/do-work-cli.sh --repo-root "<project-root>" --format json answer --manifest "<manifest-path>" --at "<answer-timestamp>" --commit
+```
+
+The command uniquely matches each plain or Q-ID question, writes every answer and dated note, derives the disposition from the whole record, and couples any archive/UR move atomically. A missing or refused command leaves the REQ byte-identical and stops this REQ. There is no hand-edit, helper, or manual Git fallback.
 
 ### Step 5.25: Revalidate queued work after reversals
 
