@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.9 — Authoritative Forensics Report Contract (2026-08-31)
+
+Forensics now projects every deterministic report field from declared authorities without unsupported repository-state rescans.
+
+- Typed doctor findings supply severity, evidence, remediation, fixability, and verification while unused queue/archive/working totals are gone.
+- Every queue-kanban finding maps to one Warning and contributes one warning; skipped and not-applicable probes remain coverage-only.
+- Crash Recovery and stable finding codes replace deleted numbered-check references across every live consumer.
+
 ## 0.251.8 — Commit Guard Before Scratch Cleanup (2026-08-31)
 
 Cleanup commit mode now enforces an empty index before every mutation, including the narrow consumed-scratch deletion path.
