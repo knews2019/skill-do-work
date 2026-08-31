@@ -75,13 +75,15 @@ func TestSelectionTextAndJSONCarryTheSameTypedCommands(t *testing.T) {
 	result := CommandResult{
 		Command: "next", Outcome: OutcomeSuccess, RepositoryRoot: "/tmp/example",
 		Selected: []SelectionRecord{{
-			RequestID: "REQ-007", Title: "Ready work", Provenance: "explicit-req", DependencyDepth: 0,
+			RequestID: "REQ-007", RequestPath: "do-work/queue/REQ-007-ready.md", Title: "Ready work", Provenance: "explicit-req", OriginalStatus: "blocked",
+			ProbeStatus: ProbeSucceeded, ProbeAttempted: true, ProbeExitCode: 0, UnblockRequired: true, DependencyDepth: 0,
 			EstimateMinutes: 10, EstimateKnown: true,
 			NextArgv: []string{"do-work", "run", "REQ-007"}, NextJustRecipe: "do-work-run REQ-007",
 			VerificationArgv: []string{"do-work-cli", "--format", "json", "next", "REQ-007"},
 		}},
 		Excluded: []SelectionExclusion{{
-			RequestID: "REQ-008", Title: "Waiting work", Provenance: "ur-expanded",
+			RequestID: "REQ-008", RequestPath: "do-work/queue/REQ-008-waiting.md", Title: "Waiting work", Provenance: "ur-expanded", OriginalStatus: "pending",
+			ProbeStatus: ProbeNotApplicable, ProbeExitCode: -1,
 			Code: "DEPENDENCIES-UNMET", Reason: "waits on REQ-007",
 			NextArgv: []string{"do-work", "run", "REQ-007"}, NextJustRecipe: "do-work-run REQ-007",
 			VerificationArgv: []string{"do-work-cli", "--format", "json", "next", "REQ-008"},
@@ -94,7 +96,11 @@ func TestSelectionTextAndJSONCarryTheSameTypedCommands(t *testing.T) {
 	}
 	for _, required := range []string{
 		"selected REQ-007 [explicit-req, depth 0, 10 min]",
+		"request: do-work/queue/REQ-007-ready.md (original status: blocked)",
+		"probe succeeded (attempted: true, exit: 0); unblock required",
 		"excluded REQ-008 [ur-expanded] DEPENDENCIES-UNMET: waits on REQ-007",
+		"request: do-work/queue/REQ-008-waiting.md (original status: pending)",
+		"probe not_applicable (attempted: false, exit: -1)",
 		"next: do-work run REQ-007", "just: just do-work-run REQ-007",
 		"verify: do-work-cli --format json next REQ-008", "run_set: REQ-007",
 	} {
@@ -110,7 +116,7 @@ func TestSelectionTextAndJSONCarryTheSameTypedCommands(t *testing.T) {
 	if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if len(decoded.Selected) != 1 || len(decoded.Excluded) != 1 || decoded.Selected[0].NextArgv[2] != "REQ-007" || decoded.Excluded[0].Code != "DEPENDENCIES-UNMET" {
+	if len(decoded.Selected) != 1 || len(decoded.Excluded) != 1 || decoded.Selected[0].NextArgv[2] != "REQ-007" || decoded.Excluded[0].Code != "DEPENDENCIES-UNMET" || decoded.Selected[0].RequestPath != "do-work/queue/REQ-007-ready.md" || !decoded.Selected[0].UnblockRequired || decoded.Selected[0].ProbeStatus != ProbeSucceeded {
 		t.Fatalf("selection JSON lost typed records: %#v", decoded)
 	}
 }

@@ -33,7 +33,7 @@ The standard-library Go module under this directory is the canonical implementat
 - Cleanup operation groups preflight independently; a dirty group is reported without blocking unrelated safe groups.
 - Entirely untracked `Status: consumed` run scratch is the sole non-rollback deletion; revalidate its exact inventory immediately before removal.
 - Doctor diagnosis is byte-for-byte read-only. Only `--repair-timestamps` mutates, and blank recovery remains exact cleanup consent.
-- Queue selection is byte-for-byte read-only. It may execute a scoped `blocked_check` only through `scripts/run-blocked-check.sh`; successful probes affect that invocation's eligibility but never rewrite the REQ.
+- Queue selection is byte-for-byte read-only. It may execute a scoped `blocked_check` only through `scripts/run-blocked-check.sh`; every record retains exact request-path and probe/unblock evidence, while successful probes affect that invocation's eligibility but never rewrite the REQ.
 
 ## Verify
 
