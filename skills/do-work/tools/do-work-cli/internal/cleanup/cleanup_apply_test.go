@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -145,7 +146,7 @@ func TestOperationGroupPrerequisitesFailClosed(t *testing.T) {
 	repositoryRoot := cleanupRepository(t)
 	writeCleanupFile(t, repositoryRoot, "direct.txt", "original\n")
 	writeCleanupFile(t, repositoryRoot, "safe.txt", "safe\n")
-	for _, path := range []string{"middle.txt", "transitive.txt", "missing.txt", "duplicate-one.txt", "duplicate-two.txt", "duplicate-dependent.txt", "cycle-a.txt", "cycle-b.txt", "repeated.txt"} {
+	for _, path := range []string{"middle.txt", "transitive.txt", "missing.txt", "empty-required.txt", "duplicate-one.txt", "duplicate-two.txt", "duplicate-dependent.txt", "cycle-a.txt", "cycle-b.txt", "repeated.txt", "collision-source.txt", "archive/collision.txt"} {
 		writeCleanupFile(t, repositoryRoot, path, "clean\n")
 	}
 	commitCleanupFixture(t, repositoryRoot)
@@ -156,12 +157,14 @@ func TestOperationGroupPrerequisitesFailClosed(t *testing.T) {
 		{Code: "MIDDLE", RequiredGroupCodes: []string{"DIRECT"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "middle.txt", Contents: []byte("clean\n")}}},
 		{Code: "TRANSITIVE", RequiredGroupCodes: []string{"MIDDLE"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "transitive.txt", Contents: []byte("clean\n")}}},
 		{Code: "MISSING", RequiredGroupCodes: []string{"ABSENT"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "missing.txt", Contents: []byte("clean\n")}}},
+		{Code: "EMPTY-REQUIRED", RequiredGroupCodes: []string{""}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "empty-required.txt", Contents: []byte("clean\n")}}},
 		{Code: "DUPLICATE", Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "duplicate-one.txt", Contents: []byte("clean\n")}}},
 		{Code: "DUPLICATE", Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "duplicate-two.txt", Contents: []byte("clean\n")}}},
 		{Code: "DUPLICATE-DEPENDENT", RequiredGroupCodes: []string{"DUPLICATE"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "duplicate-dependent.txt", Contents: []byte("clean\n")}}},
 		{Code: "CYCLE-A", RequiredGroupCodes: []string{"CYCLE-B"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "cycle-a.txt", Contents: []byte("clean\n")}}},
 		{Code: "CYCLE-B", RequiredGroupCodes: []string{"CYCLE-A"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "cycle-b.txt", Contents: []byte("clean\n")}}},
 		{Code: "REPEATED", RequiredGroupCodes: []string{"SAFE", "SAFE"}, Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "repeated.txt", Contents: []byte("clean\n")}}},
+		{Code: "COLLISION", Operations: []CleanupOperation{{Kind: OperationMove, SourcePath: "collision-source.txt", DestinationPath: "archive/collision.txt"}}},
 		{Code: "SAFE", Operations: []CleanupOperation{{Kind: OperationMove, SourcePath: "safe.txt", DestinationPath: "archive/safe.txt"}}},
 	}}
 	result := ApplyPlan(context.Background(), plan, ApplyOptions{})
@@ -175,6 +178,7 @@ func TestOperationGroupPrerequisitesFailClosed(t *testing.T) {
 		"MIDDLE":              "DIRECT",
 		"TRANSITIVE":          "DIRECT",
 		"MISSING":             "ABSENT",
+		"EMPTY-REQUIRED":      "<empty>",
 		"DUPLICATE-DEPENDENT": "DUPLICATE",
 		"CYCLE-A":             "CYCLE-A",
 		"CYCLE-B":             "CYCLE-A",
@@ -190,6 +194,74 @@ func TestOperationGroupPrerequisitesFailClosed(t *testing.T) {
 		}
 		if !foundRefusal {
 			t.Errorf("%s refusal did not name blocker %s: %#v", dependentCode, blockerCode, result.Findings)
+		}
+	}
+
+	structuralRefusalCount := 0
+	duplicateRefusalCount := 0
+	for _, finding := range result.Findings {
+		if finding.Code != "CLEANUP-GROUP-REFUSED" {
+			continue
+		}
+		evidence := strings.Join(finding.Evidence, " ")
+		isDuplicateIdentity := strings.Contains(evidence, "DUPLICATE: group code is duplicated")
+		isPrerequisiteRefusal := strings.Contains(evidence, ": prerequisite ")
+		if !isDuplicateIdentity && !isPrerequisiteRefusal {
+			continue
+		}
+		structuralRefusalCount++
+		for commandName, commandArgv := range map[string][]string{"next": finding.NextArgv, "verification": finding.VerificationArgv} {
+			if len(commandArgv) == 0 {
+				t.Errorf("%s structural refusal has empty %s argv: %#v", evidence, commandName, finding)
+				continue
+			}
+			for argumentIndex, argument := range commandArgv {
+				if argument == "" {
+					t.Errorf("%s structural refusal %s argv[%d] is empty: %#v", evidence, commandName, argumentIndex, commandArgv)
+				}
+			}
+		}
+		if isDuplicateIdentity {
+			duplicateRefusalCount++
+			if !reflect.DeepEqual(finding.NextArgv, []string{"git", "status", "--short"}) {
+				t.Errorf("duplicate identity next argv = %#v", finding.NextArgv)
+				continue
+			}
+			if !reflect.DeepEqual(finding.VerificationArgv, []string{"do-work-cli", "cleanup", "--dry-run"}) {
+				t.Errorf("duplicate identity verification argv = %#v", finding.VerificationArgv)
+			}
+			command := exec.Command(finding.NextArgv[0], finding.NextArgv[1:]...)
+			command.Dir = repositoryRoot
+			if output, err := command.CombinedOutput(); err != nil {
+				t.Errorf("duplicate identity diagnostic failed: %v\n%s", err, output)
+			}
+		} else {
+			wantArgv := []string{"do-work-cli", "cleanup", "--dry-run"}
+			if !reflect.DeepEqual(finding.NextArgv, wantArgv) || !reflect.DeepEqual(finding.VerificationArgv, wantArgv) {
+				t.Errorf("prerequisite refusal argv = next %#v verify %#v, want %#v", finding.NextArgv, finding.VerificationArgv, wantArgv)
+			}
+		}
+	}
+	if structuralRefusalCount != 10 || duplicateRefusalCount != 2 {
+		t.Errorf("structural refusal counts = %d total, %d duplicate; want 10 total, 2 duplicate: %#v", structuralRefusalCount, duplicateRefusalCount, result.Findings)
+	}
+
+	for groupCode, wantNextArgv := range map[string][]string{
+		"DIRECT":    {"git", "status", "--short", "--", "direct.txt"},
+		"COLLISION": {"git", "status", "--short", "--", "archive/collision.txt"},
+	} {
+		foundExactPath := false
+		for _, finding := range result.Findings {
+			evidence := strings.Join(finding.Evidence, " ")
+			if finding.Code == "CLEANUP-GROUP-REFUSED" && strings.HasPrefix(evidence, groupCode+": ") {
+				foundExactPath = true
+				if !reflect.DeepEqual(finding.AffectedPaths, wantNextArgv[4:]) || !reflect.DeepEqual(finding.NextArgv, wantNextArgv) || !reflect.DeepEqual(finding.VerificationArgv, []string{"do-work-cli", "cleanup", "--dry-run"}) {
+					t.Errorf("%s path-bearing refusal = paths %#v next %#v verify %#v", groupCode, finding.AffectedPaths, finding.NextArgv, finding.VerificationArgv)
+				}
+			}
+		}
+		if !foundExactPath {
+			t.Errorf("%s path-bearing refusal missing: %#v", groupCode, result.Findings)
 		}
 	}
 }

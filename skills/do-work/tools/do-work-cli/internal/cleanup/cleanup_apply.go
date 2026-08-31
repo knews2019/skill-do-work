@@ -589,8 +589,10 @@ func changeForOperation(operation CleanupOperation, dryRun bool) resultmodel.Rec
 
 func refusedGroupFinding(group OperationGroup, path, reason string) resultmodel.CommandFinding {
 	paths := []string{}
+	nextArgv := []string{"git", "status", "--short"}
 	if path != "" {
 		paths = append(paths, path)
+		nextArgv = append(nextArgv, "--", path)
 	}
 	ids := []string{}
 	if group.AffectedID != "" {
@@ -598,7 +600,7 @@ func refusedGroupFinding(group OperationGroup, path, reason string) resultmodel.
 	}
 	return resultmodel.CommandFinding{Code: "CLEANUP-GROUP-REFUSED", Severity: resultmodel.SeverityWarning, AffectedIDs: ids, AffectedPaths: paths,
 		Evidence: []string{group.Code + ": " + reason}, Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "this operation group did not pass exact-target guards",
-		NextArgv: []string{"git", "status", "--short", "--", path}, VerificationArgv: []string{"do-work-cli", "cleanup", "--dry-run"}}
+		NextArgv: nextArgv, VerificationArgv: []string{"do-work-cli", "cleanup", "--dry-run"}}
 }
 
 func dependencyRefusedGroupFinding(group OperationGroup, blocker groupDependencyBlocker) resultmodel.CommandFinding {
