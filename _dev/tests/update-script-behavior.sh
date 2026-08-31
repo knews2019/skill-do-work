@@ -522,8 +522,10 @@ else
   upstream_fixture_repo="$fetch_root/upstream-repo"
   fixture_repo_init "$upstream_fixture_repo"
   mkdir -p "$upstream_fixture_repo/private-path"
+  mkdir -p "$upstream_fixture_repo/suite"
   printf 'maintainer only\n' > "$upstream_fixture_repo/private-path/notes.md"
   printf 'shipped\n' > "$upstream_fixture_repo/VERSION"
+  printf 'core\tskills/do-work\t.claude/skills/do-work\n' > "$upstream_fixture_repo/suite/modules.tsv"
   printf 'default branch\n' > "$upstream_fixture_repo/default-branch-marker.txt"
   printf '/private-path export-ignore\n' > "$upstream_fixture_repo/.gitattributes"
   fixture_repo_commit_all "$upstream_fixture_repo" 'upstream fixture'
@@ -531,6 +533,10 @@ else
   rm "$upstream_fixture_repo/default-branch-marker.txt"
   printf 'requested branch\n' > "$upstream_fixture_repo/requested-branch-marker.txt"
   fixture_repo_commit_all "$upstream_fixture_repo" 'requested branch fixture'
+  git -C "$upstream_fixture_repo" checkout -q main
+  git -C "$upstream_fixture_repo" checkout -qb feature/fix
+  printf 'slashed branch\n' > "$upstream_fixture_repo/slashed-branch-marker.txt"
+  fixture_repo_commit_all "$upstream_fixture_repo" 'slashed branch fixture'
   git -C "$upstream_fixture_repo" checkout -q main
 
   # Case 1: a host that answers 429 forever must not stop the fetch — the git route wins.
@@ -586,6 +592,34 @@ else
   if tar tzf "$requested_branch_archive" 2>/dev/null | grep -q 'default-branch-marker\.txt'; then
     record_failure 'upstream fetcher: requested branch archive substituted default HEAD'
   fi
+  requested_branch_extract="$fetch_root/requested-branch-extract"
+  mkdir -p "$requested_branch_extract"
+  tar xzf "$requested_branch_archive" -C "$requested_branch_extract" --strip-components=1
+  assert_file_contains "$requested_branch_extract/VERSION" 'shipped' \
+    'upstream fetcher: ordinary branch survives one-component extraction at the root'
+  assert_file_contains "$requested_branch_extract/suite/modules.tsv" 'skills/do-work' \
+    'upstream fetcher: ordinary branch manifest survives one-component extraction at the root'
+  assert_file_contains "$requested_branch_extract/requested-branch-marker.txt" 'requested branch' \
+    'upstream fetcher: ordinary branch content survives one-component extraction at the root'
+
+  slashed_branch_archive="$fetch_root/slashed-branch.tar.gz"
+  probe_output="$(PATH="$rate_limited_bin:$PATH" \
+    bash "$archive_fetcher" "$slashed_branch_archive" \
+    'https://example.invalid/archive/refs/heads/feature/fix.tar.gz' \
+    "$upstream_fixture_repo" 2>&1)"
+  probe_status=$?
+  assert_status 0 'upstream fetcher: slashed branch exits 0'
+  slashed_branch_extract="$fetch_root/slashed-branch-extract"
+  mkdir -p "$slashed_branch_extract"
+  tar xzf "$slashed_branch_archive" -C "$slashed_branch_extract" --strip-components=1
+  assert_file_contains "$slashed_branch_extract/VERSION" 'shipped' \
+    'upstream fetcher: slashed branch VERSION survives one-component extraction at the root'
+  assert_file_contains "$slashed_branch_extract/suite/modules.tsv" 'skills/do-work' \
+    'upstream fetcher: slashed branch manifest survives one-component extraction at the root'
+  assert_file_contains "$slashed_branch_extract/slashed-branch-marker.txt" 'slashed branch' \
+    'upstream fetcher: slashed branch content survives one-component extraction at the root'
+  assert_path_absent "$slashed_branch_extract/fix" \
+    'upstream fetcher: slashed branch does not leave a branch-name directory after stripping'
 
   missing_branch_archive="$fetch_root/missing-branch.tar.gz"
   probe_output="$(PATH="$rate_limited_bin:$PATH" \

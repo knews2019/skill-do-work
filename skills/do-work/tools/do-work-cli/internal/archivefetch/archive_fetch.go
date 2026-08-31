@@ -25,9 +25,9 @@ import (
 // overrides it to route around a blocked host.
 const DefaultUpstreamURL = "https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz"
 
-// defaultArchivePrefix is what a tarball URL of an unrecognised shape unpacks under. Both
-// callers strip one leading component, so the prefix only has to be a single directory.
-const defaultArchivePrefix = "upstream-main/"
+// gitArchivePrefix stays independent of the selected branch. Both callers strip exactly
+// one leading component, so the Git route must always emit exactly one directory here.
+const gitArchivePrefix = "upstream/"
 
 const branchArchiveMarker = "/archive/refs/heads/"
 
@@ -73,7 +73,7 @@ func LocateAtomicDownloadScript(scriptDirectory string) string {
 // untouched when both fail. On failure the error names both route outcomes and the escape
 // hatch, matching the two stderr lines the shell fetcher printed.
 func FetchArchive(ctx context.Context, request Request) (Result, error) {
-	archivePrefix, upstreamBranch, repositoryURL := deriveGitRoute(request.UpstreamTarballURL, request.UpstreamRepositoryURL)
+	upstreamBranch, repositoryURL := deriveGitRoute(request.UpstreamTarballURL, request.UpstreamRepositoryURL)
 
 	httpRouteOutcome := "not attempted"
 	if request.AtomicDownloadScript == "" {
@@ -84,7 +84,7 @@ func FetchArchive(ctx context.Context, request Request) (Result, error) {
 		httpRouteOutcome = "failed (host unreachable, rate limited, or archive unreadable)"
 	}
 
-	gitRouteOutcome := fetchThroughGitRoute(ctx, request, repositoryURL, upstreamBranch, archivePrefix)
+	gitRouteOutcome := fetchThroughGitRoute(ctx, request, repositoryURL, upstreamBranch)
 	if gitRouteOutcome == "" {
 		return Result{RouteDescription: fmt.Sprintf("upstream archive fetched with git (HTTP route %s)", httpRouteOutcome)}, nil
 	}
@@ -94,24 +94,20 @@ func FetchArchive(ctx context.Context, request Request) (Result, error) {
 		httpRouteOutcome, gitRouteOutcome)
 }
 
-// deriveGitRoute reads the git route out of a GitHub branch-tarball URL. GitHub's branch
-// tarballs unpack to "<repo>-<branch>/", which both callers' one-component strip already
-// assumes, so the archive prefix has to match it. Any other URL shape derives no repository
-// URL at all rather than guessing one.
-func deriveGitRoute(tarballURL, suppliedRepositoryURL string) (archivePrefix, upstreamBranch, repositoryURL string) {
-	archivePrefix = defaultArchivePrefix
+// deriveGitRoute reads the requested branch and repository out of a GitHub branch-tarball
+// URL. Any other URL shape derives no repository URL at all rather than guessing one.
+func deriveGitRoute(tarballURL, suppliedRepositoryURL string) (upstreamBranch, repositoryURL string) {
 	repositoryURL = suppliedRepositoryURL
 	markerIndex := strings.LastIndex(tarballURL, branchArchiveMarker)
 	if markerIndex < 0 || !strings.HasSuffix(tarballURL, ".tar.gz") {
-		return archivePrefix, "", repositoryURL
+		return "", repositoryURL
 	}
 	upstreamBranch = strings.TrimSuffix(tarballURL[markerIndex+len(branchArchiveMarker):], ".tar.gz")
 	repositoryBase := tarballURL[:markerIndex]
-	archivePrefix = repositoryBase[strings.LastIndex(repositoryBase, "/")+1:] + "-" + upstreamBranch + "/"
 	if repositoryURL == "" {
 		repositoryURL = repositoryBase + ".git"
 	}
-	return archivePrefix, upstreamBranch, repositoryURL
+	return upstreamBranch, repositoryURL
 }
 
 func downloadThroughAtomicPrimitive(ctx context.Context, request Request) bool {
@@ -127,7 +123,7 @@ func downloadThroughAtomicPrimitive(ctx context.Context, request Request) bool {
 // fetchThroughGitRoute returns "" on success, or the outcome phrase describing why it did
 // not run or did not complete. It stages into a temporary beside the target and only renames
 // after the staged archive reads back, so a pre-existing target survives a total failure.
-func fetchThroughGitRoute(ctx context.Context, request Request, repositoryURL, upstreamBranch, archivePrefix string) string {
+func fetchThroughGitRoute(ctx context.Context, request Request, repositoryURL, upstreamBranch string) string {
 	if repositoryURL == "" {
 		return "unavailable (no repository URL supplied and none derivable from the tarball URL)"
 	}
@@ -175,7 +171,7 @@ func fetchThroughGitRoute(ctx context.Context, request Request, repositoryURL, u
 		return "failed (clone, repack, or publication did not complete)"
 	}
 	archiveCommand := exec.CommandContext(ctx, "git", "-C", cloneDirectory,
-		"archive", "--format=tar.gz", "--prefix="+archivePrefix, "HEAD")
+		"archive", "--format=tar.gz", "--prefix="+gitArchivePrefix, "HEAD")
 	archiveCommand.Stdout = stageHandle
 	archiveErr := archiveCommand.Run()
 	closeErr := stageHandle.Close()

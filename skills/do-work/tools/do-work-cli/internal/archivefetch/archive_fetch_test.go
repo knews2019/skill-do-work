@@ -17,21 +17,18 @@ func TestGitRouteDerivationOnlyReadsBranchTarballUrls(t *testing.T) {
 		name               string
 		tarballURL         string
 		suppliedRepository string
-		expectedPrefix     string
 		expectedBranch     string
 		expectedRepository string
 	}{
 		{
 			name:               "a GitHub branch tarball",
 			tarballURL:         "https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz",
-			expectedPrefix:     "skill-do-work-main/",
 			expectedBranch:     "main",
 			expectedRepository: "https://github.com/knews2019/skill-do-work.git",
 		},
 		{
 			name:               "a branch name carrying a slash",
 			tarballURL:         "https://github.com/owner/repo/archive/refs/heads/release/2.x.tar.gz",
-			expectedPrefix:     "repo-release/2.x/",
 			expectedBranch:     "release/2.x",
 			expectedRepository: "https://github.com/owner/repo.git",
 		},
@@ -39,31 +36,25 @@ func TestGitRouteDerivationOnlyReadsBranchTarballUrls(t *testing.T) {
 			name:               "an explicit repository URL is not overridden",
 			tarballURL:         "https://github.com/owner/repo/archive/refs/heads/main.tar.gz",
 			suppliedRepository: "git@example.com:owner/repo.git",
-			expectedPrefix:     "repo-main/",
 			expectedBranch:     "main",
 			expectedRepository: "git@example.com:owner/repo.git",
 		},
 		{
 			name:               "an unrecognised URL shape derives nothing",
 			tarballURL:         "https://example.com/downloads/suite.tar.gz",
-			expectedPrefix:     defaultArchivePrefix,
 			expectedBranch:     "",
 			expectedRepository: "",
 		},
 		{
 			name:               "a branch path without the tarball suffix derives nothing",
 			tarballURL:         "https://github.com/owner/repo/archive/refs/heads/main.zip",
-			expectedPrefix:     defaultArchivePrefix,
 			expectedBranch:     "",
 			expectedRepository: "",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			prefix, branch, repository := deriveGitRoute(test.tarballURL, test.suppliedRepository)
-			if prefix != test.expectedPrefix {
-				t.Errorf("archive prefix = %q, want %q", prefix, test.expectedPrefix)
-			}
+			branch, repository := deriveGitRoute(test.tarballURL, test.suppliedRepository)
 			if branch != test.expectedBranch {
 				t.Errorf("branch = %q, want %q", branch, test.expectedBranch)
 			}
@@ -120,8 +111,8 @@ func TestAnUnreadableHttpDownloadFallsThroughToTheGitRoute(t *testing.T) {
 	if !archiveIsReadable(context.Background(), targetPath) {
 		t.Errorf("the published archive is not a readable tarball")
 	}
-	if names := archiveEntryNames(t, targetPath); !strings.Contains(names, defaultArchivePrefix+"tracked.txt") {
-		t.Errorf("archive entries = %q, want the tracked file under the default prefix", names)
+	if names := archiveEntryNames(t, targetPath); !strings.Contains(names, gitArchivePrefix+"tracked.txt") {
+		t.Errorf("archive entries = %q, want the tracked file under the Git prefix", names)
 	}
 }
 

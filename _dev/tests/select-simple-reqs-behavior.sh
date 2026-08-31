@@ -50,6 +50,9 @@
 #       alone. The warning is the only signal either case produces.
 #  T12  The compatibility path must delegate selection to `do-work-cli next
 #       --simple`; retaining a second parser would let readiness drift again.
+#  T13  Duplicate dependency statuses must aggregate conservatively. A
+#       last-row-wins index lets filesystem traversal order decide whether an
+#       explicitly handed-off dependent bypasses its unresolved prerequisite.
 #
 # Exit 0: every probe passed. Exit 1: at least one FAIL line above.
 set -uo pipefail
@@ -219,6 +222,45 @@ status: pending
 domain: securty
 effort_estimate: effort-mechanical'
 
+# T13 — conflicting duplicate statuses in both traversal orders, all-success
+# duplicates, and a unique pending control. The existing REQ-900/REQ-104 pair
+# is the unique completed control.
+write_req 'do-work/archive/UR-001/REQ-901-a-pending.md' 'id: REQ-901
+title: "Duplicate pending first"
+status: pending'
+write_req 'do-work/archive/UR-001/REQ-901-z-completed.md' 'id: REQ-901
+title: "Duplicate completed second"
+status: completed'
+write_req 'do-work/archive/UR-001/REQ-902-a-completed.md' 'id: REQ-902
+title: "Duplicate completed first"
+status: completed'
+write_req 'do-work/archive/UR-001/REQ-902-z-pending.md' 'id: REQ-902
+title: "Duplicate pending second"
+status: pending'
+write_req 'do-work/archive/UR-001/REQ-903-a-completed.md' 'id: REQ-903
+title: "Duplicate success one"
+status: completed'
+write_req 'do-work/archive/UR-001/REQ-903-z-completed-with-issues.md' 'id: REQ-903
+title: "Duplicate success two"
+status: completed-with-issues'
+write_req 'do-work/archive/UR-001/REQ-904-pending.md' 'id: REQ-904
+title: "Unique pending dependency"
+status: pending'
+for dependency_case in \
+  'REQ-120 REQ-901' \
+  'REQ-121 REQ-902' \
+  'REQ-122 REQ-903' \
+  'REQ-123 REQ-904'; do
+  dependent_id="${dependency_case%% *}"
+  dependency_id="${dependency_case#* }"
+  write_req "do-work/queue/$dependent_id-duplicate-status-dependent.md" "id: $dependent_id
+title: \"Duplicate status dependent\"
+status: pending
+domain: general
+effort_estimate: effort-mechanical
+depends_on: [$dependency_id]"
+done
+
 # The report's final `run_set:` line IS the selector's machine-readable
 # contract (actions/run-simple-reqs.md reads exactly this line), so the probes
 # below read it rather than a second output mode: an ids-only path that exits
@@ -315,6 +357,13 @@ fi
 if printf '%s' "$selector_code_only" | grep -qE 'find .*REQ-|function normalize_|known_status\['; then
   report_failure "T12 canonical delegation: the compatibility script must not retain its own queue parser or readiness index"
 fi
+
+# T13 — conflicting rows stay held in either order, while every-success and
+# unique completed dependencies are ready. A unique pending dependency stays held.
+assert_not_selected REQ-120 "T13 duplicate status order: pending then completed must remain unresolved"
+assert_not_selected REQ-121 "T13 duplicate status order: completed then pending must remain unresolved"
+assert_selected REQ-122 "T13 duplicate status aggregation: every successful copy satisfies the dependency"
+assert_not_selected REQ-123 "T13 unique pending dependency remains unresolved"
 
 # Controls
 assert_not_selected REQ-110 "control: effort-substantive must never be selected"

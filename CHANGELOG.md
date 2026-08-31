@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.12 — Stable Fallback Archives and Duplicate Readiness (2026-08-31)
+
+Git fallback archives now extract consistently for every branch name, and duplicate dependency records can no longer make readiness depend on traversal order.
+
+- Git still clones the exact requested branch but always archives under the single-component `upstream/` prefix expected by installers and updaters.
+- Duplicate dependency statuses are satisfied only when every exact copy is terminal-successful; any unresolved copy keeps dependents held.
+- Public-entry regressions cover slashed and ordinary branch extraction plus conflicting, successful, and unique dependency controls.
+
 ## 0.251.11 — Typed Dependency-Aware Queue Selection (2026-08-31)
 
 Queue selection now has one read-only typed authority for default, targeted, UR-expanded, wave, fan-out, and readiness decisions.

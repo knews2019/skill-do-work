@@ -120,8 +120,9 @@ func BuildGraph(snapshot *repositorymodel.RepositorySnapshot) *DependencyGraph {
 		node := graph.NodesByID[requestID]
 		for _, dependencyID := range node.DependencyIDs {
 			dependencyNode := graph.NodesByID[dependencyID]
+			duplicateSatisfied := duplicateStatusesSatisfied(snapshot, dependencyID)
 			switch {
-			case ambiguousIDs[dependencyID]:
+			case ambiguousIDs[dependencyID] && !duplicateSatisfied:
 				node.AmbiguousTargets = append(node.AmbiguousTargets, dependencyID)
 				node.UnmetDependencies = append(node.UnmetDependencies, dependencyID)
 				graph.WarningMessages = append(graph.WarningMessages, fmt.Sprintf("%s depends on ambiguous target %s", requestID, dependencyID))
@@ -129,7 +130,7 @@ func BuildGraph(snapshot *repositorymodel.RepositorySnapshot) *DependencyGraph {
 				node.MissingTargets = append(node.MissingTargets, dependencyID)
 				node.UnmetDependencies = append(node.UnmetDependencies, dependencyID)
 				graph.WarningMessages = append(graph.WarningMessages, fmt.Sprintf("%s depends on missing target %s", requestID, dependencyID))
-			case !schemanormalization.DependencySatisfied(dependencyNode.RequestStatus):
+			case !duplicateSatisfied && !schemanormalization.DependencySatisfied(dependencyNode.RequestStatus):
 				node.UnmetDependencies = append(node.UnmetDependencies, dependencyID)
 			}
 		}
@@ -142,6 +143,27 @@ func BuildGraph(snapshot *repositorymodel.RepositorySnapshot) *DependencyGraph {
 		graph.NodesByID[requestID].DependencyDepth = dependencyDepth(graph, ambiguousIDs, requestID, depthMemo, map[string]bool{})
 	}
 	return graph
+}
+
+// duplicateStatusesSatisfied resolves only exact duplicate records. Filename/frontmatter
+// collisions remain ambiguous, while duplicate copies satisfy dependents only when every
+// discovered status is terminal-successful.
+func duplicateStatusesSatisfied(snapshot *repositorymodel.RepositorySnapshot, requestID string) bool {
+	requestFiles := snapshot.RequestsByID[requestID]
+	if len(requestFiles) < 2 {
+		return false
+	}
+	for _, collision := range snapshot.CollisionEntries {
+		if collision.RequestID == requestID && len(collision.ClaimPaths) != len(requestFiles) {
+			return false
+		}
+	}
+	for _, requestFile := range requestFiles {
+		if !schemanormalization.DependencySatisfied(requestFile.TypedRecord.RequestStatus) {
+			return false
+		}
+	}
+	return true
 }
 
 func firstRequestFile(snapshot *repositorymodel.RepositorySnapshot, requestID string) *repositorymodel.RequestFile {
