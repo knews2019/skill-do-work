@@ -1,9 +1,10 @@
 ---
 id: REQ-427
 title: 'Confirm the Go version floor for installing and updating do-work'
-status: pending-answers
+status: claimed
 created_at: 2026-08-30T17:40:00Z
-status_changed_at: 2026-08-31T10:46:01Z
+status_changed_at: 2026-08-31T13:52:30Z
+claimed_at: 2026-08-31T13:55:10Z
 estimate:
   p50_active_minutes: 5
   confidence: high
@@ -55,13 +56,18 @@ One thing that is genuinely 1.26: `skills/do-work-board/tools/queue-kanban/go.mo
   to Go 1.23.0, the lowest version on which the module was built, vetted, and tested successfully.
   The optional board tool's Go 1.26 requirement remains unchanged and is outside this REQ's scope.
 
-- [ ] Exact Go 1.23 verification disproved that earlier measurement. Which truthful compatibility target should replace it?
+- [x] Exact Go 1.23 verification disproved that earlier measurement. Which truthful compatibility target should replace it? → Confirmed: lower the core installer and updater floor to `1.25.0`
   **Recommended:** lower the core installer/updater floor to `1.25.0`, add an exact-Go-1.25 test lane, and update every current core prerequisite restatement. The complete core suite passes on the exact Go 1.25 toolchain.
   **Also:** keep `1.26.1` unchanged; or require `1.23.0` through a separate substantive backport that replaces Go 1.24+'s traversal-resistant `os.Root` filesystem boundary without weakening its protections.
   Value: `1.25.0` removes an unnecessary restriction while keeping the existing filesystem-safety design intact.
   Risk: the `1.25.0` change is small and reversible. Go 1.23 support is materially larger because it must replace rooted open/read/write/stat/walk/remove behavior across three packages and prove equivalent symlink-race containment.
 
   **Reopened 2026-08-31:** the earlier test changed only the `go.mod` directive while still compiling with a newer Go toolchain. Exact-toolchain tests fail on Go 1.23 (`os.OpenRoot` and `os.Root` unavailable) and Go 1.24 (`Root.ReadFile` unavailable), while Go 1.25 passes all 16 package suites. This is a user-owned compatibility-versus-backport choice; silently publishing 1.23 would make installation fail.
+
+  **Answered 2026-08-31** (UTC date per `actions/work-reference.md` → **Date-only stamps**):
+  User confirmed the recommended Go 1.25.0 floor via `do-work clarify` because exact-toolchain
+  verification proves it is the lowest version that supports the current filesystem-safety design.
+  Keeping Go 1.26.1 and undertaking the substantive Go 1.23 filesystem backport are out of scope.
 
 ## Notes
 If the answer is to lower it, the change is mechanical and belongs in one small REQ: the `go` directive, `minimum_go_version` in `skills/do-work/tools/do-work-cli.sh`, the README prerequisite line, and the version-action prerequisite line, plus a check that the launcher's refusal message quotes the new number.

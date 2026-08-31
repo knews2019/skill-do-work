@@ -9,7 +9,8 @@
 
 ## In Progress (interrupted)
 
-None.
+- REQ-427: Confirm the Go version floor for installing and updating do-work — claimed 2026-08-31T13:55:10Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- REQ-428: Review fix: Preserve filename-only collision evidence in dependency graphs — claimed 2026-08-31T13:55:10Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 

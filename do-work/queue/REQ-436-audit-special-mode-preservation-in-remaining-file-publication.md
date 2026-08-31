@@ -1,8 +1,9 @@
 ---
 id: REQ-436
 title: '[impact-negligible] Audit special-mode preservation in remaining file publication'
-status: pending-answers
+status: pending
 created_at: 2026-08-31T10:56:05Z
+status_changed_at: 2026-08-31T13:52:30Z
 user_request: UR-081
 domain: backend
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
@@ -41,11 +42,16 @@ REQ-426 fixed two managed install paths that silently narrowed Unix modes to the
 
 ## Open Questions
 
-- [ ] I found two remaining file-publication paths with the same special-mode-bit narrowing pattern fixed by REQ-426. Should I process this low-reach audit as a new task?
+- [x] I found two remaining file-publication paths with the same special-mode-bit narrowing pattern fixed by REQ-426. Should I process this low-reach audit as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to `pending`) so every mode-preservation promise uses the same complete-mode contract.
   Also: No, discard it; these bits are rarely set on the affected files and REQ-426 already closes the reported installer paths.
   Value: prevents the same silent metadata loss in atomic replacement and cleanup moves.
   Risk: low and reversible; the work is a focused two-path audit with regression tests, but it adds queue work for an uncommon filesystem edge case.
+
+  **Answered 2026-08-31** (UTC date per `actions/work-reference.md` → **Date-only stamps**):
+  User confirmed the recommendation via `do-work clarify`: add the focused audit to the queue
+  so the two remaining publication paths preserve complete special mode bits and carry regression
+  proof. Discarding the uncommon edge case is out of scope.
 
 ---
 *Source: discovered while implementing REQ-426 (UR-081).*

@@ -1,9 +1,11 @@
 ---
 id: REQ-428
 title: 'Review fix: Preserve filename-only collision evidence in dependency graphs'
-status: pending
+status: claimed
 domain: backend
 created_at: 2026-08-30T19:21:33Z
+claimed_at: 2026-08-31T13:55:10Z
+route: A
 user_request: UR-081
 addendum_to: REQ-408
 review_generated: true
@@ -38,3 +40,19 @@ Fold-first scan found no pending REQ or sweep in any UR that shares this depende
 **Why RED now:** The node lookup returns nil before the graph consults `CollisionEntries`.
 **GREEN when:** The named fixture is blocked with exact ambiguous-collision evidence and is never labeled merely missing.
 **Validation:** Review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The failure mode, production decision point, fixture shape, and expected evidence are all named. The change is a focused regression fix in the existing dependency graph.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
