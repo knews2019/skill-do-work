@@ -79,3 +79,49 @@ func TestTimestampRepairAcceptsQuotedASCIIInnerPaddingOnly(t *testing.T) {
 		}
 	}
 }
+
+func TestTimestampRepairRefusesUnsupportedOrderingAnchors(t *testing.T) {
+	for _, testCase := range []struct {
+		name      string
+		createdAt string
+	}{
+		{name: "numeric offset", createdAt: "2099-01-01T00:00:00+01:00"},
+		{name: "fractional seconds", createdAt: "2099-01-01T00:00:00.500Z"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			repositoryRoot := t.TempDir()
+			initDoctorGit(t, repositoryRoot)
+			relativePath := "do-work/archive/REQ-028-mixed.md"
+			contents := doctorRequest("REQ-028", "completed", "created_at: "+testCase.createdAt+"\nclaimed_at: 2026-08-30T19:30:00Z\n", "Body")
+			writeDoctorFixture(t, repositoryRoot, relativePath, contents)
+			commitDoctorFixture(t, repositoryRoot, "fixture")
+
+			snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			plans, findings := BuildTimestampPlan(context.Background(), snapshot, time.Date(2026, 8, 30, 20, 0, 0, 0, time.UTC))
+			if len(plans) != 0 {
+				t.Fatalf("unsupported created_at anchored a supported successor repair: %#v", plans)
+			}
+			foundRefusal := false
+			for _, finding := range findings {
+				if finding.Code == "TIMESTAMP-REPAIR-REFUSED" && strings.Contains(strings.Join(finding.Evidence, " "), "created_at") {
+					foundRefusal = true
+				}
+			}
+			if !foundRefusal {
+				t.Fatalf("unsupported created_at was not explicitly refused: %#v", findings)
+			}
+
+			result := ApplyTimestampPlan(context.Background(), snapshot, plans, RepairOptions{})
+			if len(result.Changes) != 0 {
+				t.Fatalf("unsupported timestamp anchor changed the request: %#v", result)
+			}
+			got, err := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(relativePath)))
+			if err != nil || string(got) != contents {
+				t.Fatalf("mixed timestamp bytes changed: err=%v bytes=%q", err, got)
+			}
+		})
+	}
+}
