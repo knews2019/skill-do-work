@@ -129,19 +129,38 @@ No shared-foundation expansion is justified before code. If a focused RED proves
 ## Scope
 
 **Files I will touch:**
-- the 12 new files under `skills/do-work/tools/do-work-cli/internal/publication/` declared in `write_set` — strict manifests, pure capture/answer/release planners, one transaction applier, command handlers, and focused tests;
-- `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go` — register the three publication commands;
-- `skills/do-work/tools/do-work-cli/internal/requestmodel/request_model.go` and `_test.go` — add and prove one bounded lossless body-span editing seam;
-- the seven declared action/reference Markdown files — replace active deterministic capture, answer, and release writers with canonical command delegation while retaining LLM judgment;
-- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` and `_dev/tests/contract-regressions.sh` — document and ratchet the ownership boundary.
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_types.go` (new) — typed manifests, plans, operations, and stable findings.
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_types_test.go` (new) — deterministic type and projection contracts.
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_manifest.go` (new) — strict operation manifest decoding and validation.
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_manifest_test.go` (new) — malformed and ambiguous manifest refusals.
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files.go` (new) — capture bootstrap, linkage, containment, assets, folds, and reservations.
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files_test.go` (new) — capture collision, bootstrap, byte, and rollback matrix.
+- `skills/do-work/tools/do-work-cli/internal/publication/answer.go` (new) — answer edits, dispositions, overrides, and exact UR closure.
+- `skills/do-work/tools/do-work-cli/internal/publication/answer_test.go` (new) — answer identity, containment, disposition, closure, and rollback matrix.
+- `skills/do-work/tools/do-work-cli/internal/publication/release.go` (new) — parameterized version/changelog release planning.
+- `skills/do-work/tools/do-work-cli/internal/publication/release_test.go` (new) — semver, mirror, custom-format, and rollback fixtures.
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_commands.go` (new) — command handlers and shared atomic apply boundary.
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_commands_test.go` (new) — registration, dry-run/apply, commit, rollback, and result parity.
+- `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go` (modified) — register the three publication commands.
+- `skills/do-work/tools/do-work-cli/internal/requestmodel/request_model.go` (modified) — bounded lossless body-span replacement.
+- `skills/do-work/tools/do-work-cli/internal/requestmodel/request_model_test.go` (modified) — bounds and byte-preservation fixtures.
+- `skills/do-work/actions/capture.md` (modified) — delegate capture publication once.
+- `skills/do-work/actions/capture-reference.md` (modified) — canonical capture publication reference.
+- `skills/do-work/actions/clarify.md` (modified) — delegate clarify answer mutation.
+- `skills/do-work/actions/stakeholder-answers.md` (modified) — delegate stakeholder answer/status/archive mutation.
+- `skills/do-work/actions/verify-requests.md` (modified) — delegate resolved ambiguous-answer repair.
+- `skills/do-work/actions/work.md` (modified) — invoke the canonical release transaction.
+- `skills/do-work/actions/work-reference.md` (modified) — retain release judgment while delegating publication.
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — publication ownership and verification map.
+- `_dev/tests/contract-regressions.sh` (modified) — active delegation, sole-writer, stop-on-refusal, and no-fallback ratchets.
 
 **Files I will NOT touch:** `gittransaction`, `repositorymodel`, `atomicfile`, `resultmodel`, `requeststate`, shell/helper shims, allocation/board code, Just/help surfaces, release metadata, or later migration requests. Any expansion requires a focused failing fixture and an owner-approved scope revision before implementation.
 
 **Acceptance criteria (restated from REQ):**
-- [ ] `capture-files` atomically publishes linked UR/REQ/assets/folds/reservations, supports a safe first capture with no `do-work/`, preserves raw bytes and modes, refuses collisions/stale input, and rolls back every pre-commit failure.
-- [ ] `answer` uniquely updates plain or Q-ID questions, contains unsafe-shaped outside text losslessly, derives disposition from the whole record, and couples status/archive/exact-UR-subtree closure plus optional override capture in one transaction.
-- [ ] `release` validates caller-selected monotonic versions and parameterized changelog replacements across all declared mirrors, preserves custom formats, and applies or rolls back the complete target set atomically.
-- [ ] All three commands have deterministic dry-run/applied text and JSON results, optional exact-path commits, actionable refusal/risk output, and no manual mutation fallback in active action contracts.
+- [x] `capture-files` atomically publishes linked UR/REQ/assets/folds/reservations, supports a safe first capture with no `do-work/`, preserves raw bytes and modes, refuses collisions/stale input, and rolls back every pre-commit failure.
+- [x] `answer` uniquely updates plain or Q-ID questions, contains unsafe-shaped outside text losslessly, derives disposition from the whole record, and couples status/archive/exact-UR-subtree closure plus optional override capture in one transaction.
+- [x] `release` validates caller-selected monotonic versions and parameterized changelog replacements across all declared mirrors, preserves custom formats, and applies or rolls back the complete target set atomically.
+- [x] All three commands have deterministic dry-run/applied text and JSON results, optional exact-path commits, actionable refusal/risk output, and no manual mutation fallback in active action contracts.
 
 ## Implementation Summary
 
@@ -149,9 +168,35 @@ Added strict typed `capture-files`, `answer`, and `release` manifests and comman
 
 The request model now exposes one bounds-checked lossless body-span replacement. All seven active action/reference writers delegate deterministic mutations to the canonical commands while retaining semantic and presentation judgment. Contract ratchets pin sole-writer ownership, stop-on-refusal, and the absence of manual fallbacks.
 
-**Files changed:** exactly the 24 paths declared in `write_set` and Scope: 12 new `internal/publication` implementation/test files plus the command registration, request-model pair, seven action/reference files, CLI prime, and contract suite.
+**Files changed:**
+- `_dev/tests/contract-regressions.sh` (modified) — active delegation, sole-writer, stop-on-refusal, and no-fallback ratchets.
+- `skills/do-work/actions/capture-reference.md` (modified) — canonical capture publication reference.
+- `skills/do-work/actions/capture.md` (modified) — delegate capture publication once.
+- `skills/do-work/actions/clarify.md` (modified) — delegate clarify answer mutation.
+- `skills/do-work/actions/stakeholder-answers.md` (modified) — delegate stakeholder answer/status/archive mutation.
+- `skills/do-work/actions/verify-requests.md` (modified) — delegate resolved ambiguous-answer repair.
+- `skills/do-work/actions/work-reference.md` (modified) — retain release judgment while delegating publication.
+- `skills/do-work/actions/work.md` (modified) — invoke the canonical release transaction.
+- `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go` (modified) — register publication handlers.
+- `skills/do-work/tools/do-work-cli/internal/publication/answer.go` (new) — plan answer edits, dispositions, overrides, and exact UR closure.
+- `skills/do-work/tools/do-work-cli/internal/publication/answer_test.go` (new) — answer identity, containment, disposition, closure, and rollback matrix.
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files.go` (new) — plan capture bootstrap, linkage, containment, assets, folds, and reservations.
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files_test.go` (new) — capture collision, bootstrap, byte, and rollback matrix.
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_commands.go` (new) — command handlers and shared atomic apply boundary.
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_commands_test.go` (new) — command registration, dry-run/apply, commit, rollback, and result parity.
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_manifest.go` (new) — strict operation manifest decoding and validation.
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_manifest_test.go` (new) — malformed and ambiguous manifest refusals.
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_types.go` (new) — typed manifests, plans, operations, and stable findings.
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_types_test.go` (new) — deterministic type and projection contracts.
+- `skills/do-work/tools/do-work-cli/internal/publication/release.go` (new) — parameterized version/changelog release planning.
+- `skills/do-work/tools/do-work-cli/internal/publication/release_test.go` (new) — semver, mirror, custom-format, and rollback fixtures.
+- `skills/do-work/tools/do-work-cli/internal/requestmodel/request_model.go` (modified) — bounded lossless body-span replacement.
+- `skills/do-work/tools/do-work-cli/internal/requestmodel/request_model_test.go` (modified) — bounds, LF/CRLF/BOM, non-UTF-8, and append tests.
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — publication ownership and verification map.
 
 **Builder commit:** `cf111a50fd61cfa8a8bb07e02e7a04e002ce8dbb`
+
+**Integration range:** `4404fd97..d5adf29e`
 
 *Generated by work action from the builder hand-back*
 
@@ -198,3 +243,9 @@ The request model now exposes one bounds-checked lossless body-span replacement.
 **Red-green validation:** Before implementation, the focused package tests failed because `publication.Handlers` and `RequestDocument.ReplaceBodySpan` did not exist, and all three CLI names returned `UNKNOWN-COMMAND`. The completed matrix passes for strict decoding, file-backed payloads, safe bootstrap, containment, rooted identity checks, asset-bearing terminal closure, whole-record disposition, rollback, custom changelog formats, exact commit paths, and lossless body spans.
 
 **Builder-branch checks:** focused publication/requestmodel tests, uncached full do-work-cli tests, `go vet ./...`, exact Go 1.25 compatibility, contract regressions, exact 24-path audit, diff hygiene, and `bash _dev/tests/maintainer-verify.sh` all pass. The optional browser lane skipped because no browser was available.
+
+## Qualification
+
+Passed — all 24 frozen files are substantive in `4404fd97..d5adf29e`, the explicit Implementation Summary matches Scope exactly, and the capture, answer, release, request-body, registration, action-delegation, and contract flows trace to the four acceptance criteria. Mechanical static-reference warnings are expected for Go package files consumed by symbol rather than filename and for test entry files.
+
+**Merged-state checks:** focused publication/requestmodel tests, uncached full do-work-cli tests, `go vet ./...`, exact Go 1.25 compatibility, contract regressions, mechanical qualification, scope drift, diff hygiene, and `bash _dev/tests/maintainer-verify.sh` all pass. The optional browser lane skipped because no browser was available.

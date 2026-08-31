@@ -53,3 +53,4 @@ Status: in-progress
 | Explorer | REQ-413 exploration | read-only | REQ plus accepted plan and primes | `REQ-413-exploration.md` | done |
 | 1 | REQ-413 | `worktree-agent-REQ-413-implement-capture-answer-release-transactions` | `REQ-413-brief.md` | `REQ-413-handback.md` | done |
 | Reviewer | REQ-445 review | integration range `a6724bee..6d14a046` | REQ plus REQ-430 | `REQ-445-review.md` | done |
+| Reviewer | REQ-413 review | integration range `4404fd97..d5adf29e` | REQ plus UR-081 | `REQ-413-review.md` | pending |
