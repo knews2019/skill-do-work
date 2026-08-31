@@ -139,3 +139,48 @@ func TestFilenameFrontmatterCollisionMakesDependencyAmbiguous(t *testing.T) {
 		t.Fatalf("REQ-021 target = %#v, want ambiguous", target)
 	}
 }
+
+func TestFilenameOnlyCollisionMakesAbsentDependencyAmbiguous(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	fixtures := map[string]string{
+		"do-work/queue/REQ-021-first.md":     "---\nid: REQ-030\nstatus: completed\n---\nBody\n",
+		"do-work/archive/REQ-021-second.md":  "---\nid: REQ-031\nstatus: completed\n---\nBody\n",
+		"do-work/queue/REQ-040-dependent.md": "---\nid: REQ-040\nstatus: pending\ndepends_on: [REQ-021]\n---\nBody\n",
+	}
+	for relativePath, contents := range fixtures {
+		absolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(relativePath))
+		if err := os.MkdirAll(filepath.Dir(absolutePath), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(absolutePath, []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.CollisionEntries) != 1 || snapshot.CollisionEntries[0].RequestID != "REQ-021" {
+		t.Fatalf("fixture collision evidence = %#v", snapshot.CollisionEntries)
+	}
+
+	graph := BuildGraph(snapshot)
+	dependent := graph.NodesByID["REQ-040"]
+	if dependent == nil {
+		t.Fatal("REQ-040 node is missing")
+	}
+	if dependent.IsReady || dependent.DependenciesSatisfied {
+		t.Fatalf("REQ-040 was ready through a collided dependency: %#v", dependent)
+	}
+	if !reflect.DeepEqual(dependent.AmbiguousTargets, []string{"REQ-021"}) ||
+		!reflect.DeepEqual(dependent.UnmetDependencies, []string{"REQ-021"}) ||
+		len(dependent.MissingTargets) != 0 {
+		t.Fatalf("REQ-040 collision evidence = %#v", dependent)
+	}
+	if dependent.DependencyDepth != -1 {
+		t.Fatalf("REQ-040 dependency depth = %d, want unresolved -1", dependent.DependencyDepth)
+	}
+	if !reflect.DeepEqual(graph.WarningMessages, []string{"REQ-040 depends on ambiguous target REQ-021"}) {
+		t.Fatalf("warnings = %#v", graph.WarningMessages)
+	}
+}
