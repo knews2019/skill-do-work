@@ -6,6 +6,7 @@ created_at: 2026-08-30T17:40:00Z
 status_changed_at: 2026-08-31T13:52:30Z
 claimed_at: 2026-08-31T13:55:10Z
 completed_at: 2026-08-31T14:22:00Z
+commit: 098936e8
 estimate:
   p50_active_minutes: 5
   confidence: high
