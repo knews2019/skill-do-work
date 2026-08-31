@@ -17,6 +17,20 @@ import (
 )
 
 var openQuestionPattern = regexp.MustCompile(`(?m)^- \[ \] `)
+var orderedListDelimiterPattern = regexp.MustCompile(`^[0-9]+[.)][ \t]`)
+
+func summaryRequiresContainment(summary string) bool {
+	trimmed := strings.TrimLeft(summary, " \t")
+	if trimmed == "" {
+		return false
+	}
+	for _, prefix := range []string{"#", ">", "`", "~", "- ", "* ", "+ ", "[", "<", "---"} {
+		if strings.HasPrefix(trimmed, prefix) {
+			return true
+		}
+	}
+	return orderedListDelimiterPattern.MatchString(trimmed)
+}
 
 func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.Time) PublicationPlan {
 	plan := PublicationPlan{Operation: OperationAnswer, RepositoryRoot: repositoryRoot, CommitMessage: manifest.CommitMessage}
@@ -89,6 +103,24 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 		if controlError := validateOutsideBytes([]byte(question.Summary)); controlError != nil {
 			return refusedPlan(plan, "ANSWER-TEXT-UNSAFE", controlError.Error(), []string{record.RequestID}, requestPath)
 		}
+		var rawAnswerBytes []byte
+		if question.RawAnswer != nil {
+			rawBytes, _, rawError := readPayload(repositoryRoot, *question.RawAnswer)
+			if rawError != nil {
+				return refusedPlan(plan, "ANSWER-RAW-PAYLOAD-INVALID", rawError.Error(), []string{record.RequestID}, question.RawAnswer.SourcePath)
+			}
+			if controlError := validateOutsideBytes(rawBytes); controlError != nil {
+				return refusedPlan(plan, "ANSWER-TEXT-UNSAFE", controlError.Error(), []string{record.RequestID}, question.RawAnswer.SourcePath)
+			}
+			rawAnswerBytes = rawBytes
+		}
+		containedSummary := summaryRequiresContainment(question.Summary)
+		if containedSummary && question.RawAnswer == nil {
+			return refusedPlan(plan, "ANSWER-RAW-PAYLOAD-REQUIRED", "delimiter-shaped answers require an exact file-backed raw payload", []string{record.RequestID}, requestPath)
+		}
+		if containedSummary && !bytes.Equal(rawAnswerBytes, []byte(question.Summary)) {
+			return refusedPlan(plan, "ANSWER-RAW-PAYLOAD-MISMATCH", "delimiter-shaped summary must byte-match its raw payload", []string{record.RequestID}, question.RawAnswer.SourcePath)
+		}
 		body := document.BodyBytes()
 		lineStart, lineEnd, identityError := findQuestionLine(body, question)
 		if identityError != nil && question.InsertQuestion && question.ExpectedLine != "" {
@@ -115,27 +147,23 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 			return refusedPlan(plan, "ANSWER-QUESTION-ALREADY-RESOLVED", "matched question is not open", []string{record.RequestID, question.QuestionID}, requestPath)
 		}
 		answerLabel := question.Summary
+		if containedSummary {
+			answerLabel = "See contained answer note"
+		}
 		if question.Outcome == "confirmed" {
-			answerLabel = "Confirmed: " + question.Summary
+			answerLabel = "Confirmed: " + answerLabel
 		}
 		if question.Outcome == "discarded" {
-			answerLabel = "Discarded: " + question.Summary
+			answerLabel = "Discarded: " + answerLabel
 		}
 		resolvedLine := append([]byte("- [x] "), originalLine[len("- [ ] "):]...)
 		resolvedLine = append(resolvedLine, []byte(" → "+answerLabel)...)
 		if replaceError := document.ReplaceBodySpan(lineStart, lineEnd, resolvedLine); replaceError != nil {
 			return refusedPlan(plan, "ANSWER-EDIT-FAILED", replaceError.Error(), []string{record.RequestID}, requestPath)
 		}
-		answerNotes = append(answerNotes, []byte("- "+date+" "+identity+": "+question.Summary+lineEnding)...)
+		answerNotes = append(answerNotes, []byte("- "+date+" "+identity+": "+answerLabel+lineEnding)...)
 		if question.RawAnswer != nil {
-			rawBytes, _, rawError := readPayload(repositoryRoot, *question.RawAnswer)
-			if rawError != nil {
-				return refusedPlan(plan, "ANSWER-RAW-PAYLOAD-INVALID", rawError.Error(), []string{record.RequestID}, question.RawAnswer.SourcePath)
-			}
-			if controlError := validateOutsideBytes(rawBytes); controlError != nil {
-				return refusedPlan(plan, "ANSWER-TEXT-UNSAFE", controlError.Error(), []string{record.RequestID}, question.RawAnswer.SourcePath)
-			}
-			answerNotes = append(answerNotes, containedOutsideBytes(rawBytes, lineEnding)...)
+			answerNotes = append(answerNotes, containedOutsideBytes(rawAnswerBytes, lineEnding)...)
 			answerNotes = append(answerNotes, []byte(lineEnding)...)
 		}
 	}
@@ -183,11 +211,50 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 		}
 		resultStatus = status
 		if status == "completed" {
+			if answer.StakeholderTerminal == nil {
+				return refusedPlan(plan, "ANSWER-STAKEHOLDER-TERMINAL-EVIDENCE-MISSING", "terminal stakeholder disposition requires Blocked history and Implementation evidence payloads", []string{record.RequestID}, requestPath)
+			}
+			blockedHistory, _, blockedError := readPayload(repositoryRoot, answer.StakeholderTerminal.BlockedHistory)
+			implementation, _, implementationError := readPayload(repositoryRoot, answer.StakeholderTerminal.Implementation)
+			if blockedError != nil || implementationError != nil {
+				return refusedPlan(plan, "ANSWER-STAKEHOLDER-EVIDENCE-INVALID", firstError(blockedError, implementationError).Error(), []string{record.RequestID}, requestPath)
+			}
+			if !bytes.Contains(bytes.ToLower(blockedHistory), []byte("resolved")) || !bytes.Contains(bytes.ToLower(implementation), []byte("no code")) {
+				return refusedPlan(plan, "ANSWER-STAKEHOLDER-EVIDENCE-INVALID", "terminal evidence must carry resolved Blocked history and an Implementation no-code marker", []string{record.RequestID}, requestPath)
+			}
+			if appendError := appendSectionEvidence(document, "## Blocked", blockedHistory, lineEnding); appendError != nil {
+				return refusedPlan(plan, "ANSWER-EDIT-FAILED", appendError.Error(), []string{record.RequestID}, requestPath)
+			}
+			if appendError := appendSectionEvidence(document, "## Implementation", implementation, lineEnding); appendError != nil {
+				return refusedPlan(plan, "ANSWER-EDIT-FAILED", appendError.Error(), []string{record.RequestID}, requestPath)
+			}
 			if timestampError := document.SetScalar("completed_at", canonicalTimestamp); timestampError != nil {
 				return refusedPlan(plan, "ANSWER-EDIT-FAILED", timestampError.Error(), []string{record.RequestID}, requestPath)
 			}
 			_ = document.DeleteField("blocked_by")
 			_ = document.DeleteField("blocked_at")
+		} else {
+			if answer.Report == nil || answer.StakeholderReport == nil {
+				return refusedPlan(plan, "ANSWER-STAKEHOLDER-REPORT-EVIDENCE-MISSING", "partial stakeholder disposition requires the fresh report and its linkage/history evidence", []string{record.RequestID}, requestPath)
+			}
+			reportPath, reportPathError := containedPath(answer.Report.Path)
+			if reportPathError != nil || answer.StakeholderReport.BlockedBy != reportPath {
+				return refusedPlan(plan, "ANSWER-STAKEHOLDER-REPORT-LINKAGE-INVALID", "blocked_by must exactly match the fresh report path", []string{record.RequestID}, answer.StakeholderReport.BlockedBy)
+			}
+			reportsHistory, _, reportsError := readPayload(repositoryRoot, answer.StakeholderReport.ReportsHistory)
+			if reportsError != nil || !bytes.Contains(reportsHistory, []byte(reportPath)) {
+				reason := "Reports history must name the fresh report path"
+				if reportsError != nil {
+					reason = reportsError.Error()
+				}
+				return refusedPlan(plan, "ANSWER-STAKEHOLDER-REPORT-EVIDENCE-INVALID", reason, []string{record.RequestID}, reportPath)
+			}
+			if setError := document.SetScalar("blocked_by", reportPath); setError != nil {
+				return refusedPlan(plan, "ANSWER-EDIT-FAILED", setError.Error(), []string{record.RequestID}, requestPath)
+			}
+			if appendError := appendSectionEvidence(document, "## Reports", reportsHistory, lineEnding); appendError != nil {
+				return refusedPlan(plan, "ANSWER-EDIT-FAILED", appendError.Error(), []string{record.RequestID}, requestPath)
+			}
 		}
 	case "verify-repair":
 		// Verify owns prose judgment; the command owns only the exact question edit.
@@ -196,6 +263,7 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 	}
 	terminal := resultStatus == "completed" || resultStatus == "cancelled"
 	projectedURClosure := false
+	archivedURFallback := false
 	if terminal && record.UserRequestID != "" {
 		projectedURClosure = true
 		for _, requestFile := range snapshot.RequestFiles {
@@ -229,6 +297,13 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 				return refusedPlan(plan, "ANSWER-UR-CLOSURE-PATH-INVALID", "declared UR closure paths do not match the command-derived UR", []string{record.RequestID, record.UserRequestID})
 			}
 			answer.UserRequestPath, answer.ArchiveDirectory = derivedUserRequestPath, derivedArchiveDirectory
+			activeInfo, activeError := os.Lstat(filepath.Join(repositoryRoot, filepath.FromSlash(derivedUserRequestPath)))
+			archiveInfo, archiveError := os.Lstat(filepath.Join(repositoryRoot, filepath.FromSlash(derivedArchiveDirectory)))
+			if os.IsNotExist(activeError) && archiveError == nil && archiveInfo.IsDir() && archiveInfo.Mode()&os.ModeSymlink == 0 {
+				archivedURFallback = true
+			} else if activeError != nil || !activeInfo.IsDir() || activeInfo.Mode()&os.ModeSymlink != 0 {
+				return refusedPlan(plan, "ANSWER-UR-CLOSURE-SOURCE-INVALID", "UR closure needs either the exact active UR or an already archived real UR directory", []string{record.RequestID, record.UserRequestID}, derivedUserRequestPath, derivedArchiveDirectory)
+			}
 		}
 	}
 	updatedBytes := document.DocumentBytes()
@@ -245,17 +320,17 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 			return *refusal
 		}
 	}
-	for _, create := range answer.OverrideCreates {
-		if refusal := appendCreate(repositoryRoot, &plan, create, "ANSWER-OVERRIDE"); refusal != nil {
-			return *refusal
-		}
+	if len(answer.OverrideCreates) > 0 || len(answer.OverrideFolds) > 0 {
+		return refusedPlan(plan, "ANSWER-OVERRIDE-UNSTRUCTURED", "override publication must use override_capture with full capture identity, linkage, membership, reservation, raw, asset, topology, and fold validation", []string{record.RequestID})
 	}
-	for _, fold := range answer.OverrideFolds {
-		if refusal := appendReplacement(repositoryRoot, &plan, fold, "ANSWER-OVERRIDE"); refusal != nil {
-			return *refusal
+	if answer.OverrideCapture != nil {
+		overridePlan := BuildCapturePlan(repositoryRoot, Manifest{Operation: OperationCaptureFiles, Capture: answer.OverrideCapture})
+		if overridePlan.Refusal != nil {
+			return refusedPlan(plan, "ANSWER-OVERRIDE-CAPTURE-"+overridePlan.Refusal.Code, overridePlan.Refusal.Reason, overridePlan.Refusal.IDs, overridePlan.Refusal.Paths...)
 		}
+		plan.Mutations = append(plan.Mutations, overridePlan.Mutations...)
 	}
-	if answer.CloseUserRequest {
+	if answer.CloseUserRequest && !archivedURFallback {
 		closurePlan := appendUserRequestClosure(repositoryRoot, plan, *answer)
 		if closurePlan.Refusal != nil {
 			return closurePlan
@@ -344,6 +419,43 @@ func appendAnswerNotes(document *requestmodel.RequestDocument, notes []byte, lin
 	return document.ReplaceBodySpan(sectionEnd, sectionEnd, insertion)
 }
 
+func appendSectionEvidence(document *requestmodel.RequestDocument, heading string, evidence []byte, lineEnding string) error {
+	body := document.BodyBytes()
+	evidence = bytes.TrimPrefix(evidence, []byte(heading))
+	evidence = bytes.TrimLeft(evidence, "\r\n")
+	if len(evidence) == 0 {
+		return fmt.Errorf("%s evidence is empty", heading)
+	}
+	headingBytes := []byte(heading)
+	headingStart := bytes.Index(body, headingBytes)
+	if headingStart < 0 {
+		block := []byte{}
+		if len(body) > 0 && !bytes.HasSuffix(body, []byte("\n")) {
+			block = append(block, []byte(lineEnding)...)
+		}
+		block = append(block, []byte(lineEnding+heading+lineEnding+lineEnding)...)
+		block = append(block, evidence...)
+		if !bytes.HasSuffix(block, []byte("\n")) {
+			block = append(block, []byte(lineEnding)...)
+		}
+		return document.ReplaceBodySpan(len(body), len(body), block)
+	}
+	sectionEnd := len(body)
+	afterHeading := headingStart + len(headingBytes)
+	if nextHeading := bytes.Index(body[afterHeading:], []byte("\n## ")); nextHeading >= 0 {
+		sectionEnd = afterHeading + nextHeading
+	}
+	insertion := []byte{}
+	if sectionEnd > 0 && body[sectionEnd-1] != '\n' {
+		insertion = append(insertion, []byte(lineEnding)...)
+	}
+	insertion = append(insertion, evidence...)
+	if !bytes.HasSuffix(insertion, []byte("\n")) {
+		insertion = append(insertion, []byte(lineEnding)...)
+	}
+	return document.ReplaceBodySpan(sectionEnd, sectionEnd, insertion)
+}
+
 func appendCreate(repositoryRoot string, plan *PublicationPlan, published PublishedFile, code string) *PublicationPlan {
 	path, pathError := containedPath(published.Path)
 	if pathError != nil {
@@ -360,27 +472,6 @@ func appendCreate(repositoryRoot string, plan *PublicationPlan, published Publis
 		return &refused
 	}
 	plan.Mutations = append(plan.Mutations, PlannedMutation{Kind: MutationCreate, Path: path, Contents: contents, Mode: selectedMode(published.Mode, mode)})
-	return nil
-}
-
-func appendReplacement(repositoryRoot string, plan *PublicationPlan, replacement ReplacementFile, code string) *PublicationPlan {
-	path, pathError := containedPath(replacement.Path)
-	if pathError != nil {
-		refused := refusedPlan(*plan, code+"-PATH-UNSAFE", pathError.Error(), nil, replacement.Path)
-		return &refused
-	}
-	expected, _, expectedError := readPayload(repositoryRoot, replacement.ExpectedPayload)
-	updated, _, updatedError := readPayload(repositoryRoot, replacement.NewPayload)
-	if expectedError != nil || updatedError != nil {
-		refused := refusedPlan(*plan, code+"-PAYLOAD-INVALID", firstError(expectedError, updatedError).Error(), nil, path)
-		return &refused
-	}
-	current, readError := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(path)))
-	if readError != nil || !bytes.Equal(current, expected) {
-		refused := refusedPlan(*plan, code+"-STALE", "target does not match expected bytes", nil, path)
-		return &refused
-	}
-	plan.Mutations = append(plan.Mutations, PlannedMutation{Kind: MutationReplace, Path: path, ExpectedBytes: expected, Contents: updated, AllowUntracked: replacement.AllowUntracked})
 	return nil
 }
 

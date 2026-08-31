@@ -139,6 +139,13 @@ func containedOutsideBytes(contents []byte, lineEnding string) []byte {
 
 func finalizePlan(plan PublicationPlan) PublicationPlan {
 	sort.SliceStable(plan.Mutations, func(first, second int) bool {
+		if plan.Operation == OperationCaptureFiles {
+			firstRank := captureMutationRank(plan.Mutations[first])
+			secondRank := captureMutationRank(plan.Mutations[second])
+			if firstRank != secondRank {
+				return firstRank < secondRank
+			}
+		}
 		firstPath, secondPath := plan.Mutations[first].Path, plan.Mutations[second].Path
 		if plan.Mutations[first].Kind == MutationMove {
 			firstPath = plan.Mutations[first].DestinationPath
@@ -185,6 +192,22 @@ func finalizePlan(plan PublicationPlan) PublicationPlan {
 	}
 	sort.Slice(plan.Changes, func(i, j int) bool { return plan.Changes[i].Path < plan.Changes[j].Path })
 	return plan
+}
+
+func captureMutationRank(mutation PlannedMutation) int {
+	path := mutation.Path
+	switch {
+	case strings.HasPrefix(path, "do-work/.req-reservations/"):
+		return 0
+	case strings.HasSuffix(path, "/input.md") && strings.HasPrefix(path, "do-work/user-requests/UR-"):
+		return 1
+	case strings.Contains(path, "/assets/") && strings.HasPrefix(path, "do-work/user-requests/UR-"):
+		return 2
+	case strings.HasPrefix(path, "do-work/queue/REQ-"):
+		return 3
+	default:
+		return 4
+	}
 }
 
 func refusedPlan(plan PublicationPlan, code, reason string, ids []string, paths ...string) PublicationPlan {
