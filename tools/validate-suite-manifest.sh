@@ -2,7 +2,7 @@
 # Validates the complete do-work suite in an extracted archive or staging tree.
 #
 # The implementation lives in the do-work-cli `validate-manifest` command; this file is the
-# compatibility launcher that keeps the public argv working. Requires Go 1.26.1 or newer,
+# compatibility launcher that keeps the public argv working. Requires Go 1.25.0 or newer,
 # which the do-work-cli launcher enforces.
 set -euo pipefail
 

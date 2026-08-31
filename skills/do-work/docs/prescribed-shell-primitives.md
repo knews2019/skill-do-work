@@ -20,7 +20,7 @@ This is the canonical shipped rationale and executable-home contract for shell u
 | `../../do-work-toolbox/scripts/publish-portfolio-summary.sh` | Verified single-source canonical refresh and snapshot-first exclusive publication |
 | `../../do-work-toolbox/scripts/install-last30days.sh` | Complete-payload validation and verified exact transactional project-local publication/repair |
 
-`tools/install-do-work-suite.sh` is a compatibility launcher over the `do-work-cli` `install-suite` command, which owns the install transaction. It stays self-contained in one respect only: `--print-bootstrap-command` prints a literal heredoc and needs no Go toolchain, because that snippet has to run before anything is installed. Everything else the installer does requires Go 1.26.1 or newer. Atomic REQ reservation remains owned only by the board package's Go tool; it has no shell twin.
+`tools/install-do-work-suite.sh` is a compatibility launcher over the `do-work-cli` `install-suite` command, which owns the install transaction. It stays self-contained in one respect only: `--print-bootstrap-command` prints a literal heredoc and needs no Go toolchain, because that snippet has to run before anything is installed. Everything else the installer does requires Go 1.25.0 or newer. Atomic REQ reservation remains owned only by the board package's Go tool; it has no shell twin.
 
 ## Per-file untracked inventory
 

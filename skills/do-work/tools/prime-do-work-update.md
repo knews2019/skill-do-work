@@ -2,7 +2,7 @@
 
 `tools/do-work-update.sh` is the terminal-facing implementation behind `just run-do-work-update`. It updates only a four-skill do-work suite installed inside the invoking project; the already-installed full-suite installer owns module/configuration reconciliation, and `actions/version.md` remains the canonical agent-driven update contract.
 
-The five public shell entry points are compatibility launchers over the `do-work-cli` command, which owns the logic. **Updating requires Go 1.26.1 or newer**, which the `do-work-cli.sh` launcher enforces before it builds or runs anything.
+The five public shell entry points are compatibility launchers over the `do-work-cli` command, which owns the logic. **Updating requires Go 1.25.0 or newer**, which the `do-work-cli.sh` launcher enforces before it builds or runs anything.
 
 ## Read first
 

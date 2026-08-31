@@ -4,7 +4,7 @@
 
 **Current version**: 0.251.1
 
-**Prerequisite:** Go 1.26.1 or newer. The update engine is the `do-work-cli` command, built from source on first use; `tools/do-work-cli.sh` refuses with an actionable message when the toolchain is missing or too old.
+**Prerequisite:** Go 1.25.0 or newer. The update engine is the `do-work-cli` command, built from source on first use; `tools/do-work-cli.sh` refuses with an actionable message when the toolchain is missing or too old.
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/skills/do-work/actions/version.md
 
