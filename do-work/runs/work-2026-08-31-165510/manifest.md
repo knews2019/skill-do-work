@@ -13,3 +13,4 @@ Status: in-progress
 | 1 | REQ-429 | `worktree-agent-REQ-429-complete-normalized-schema-field-projection` | `REQ-429-brief.md` | `REQ-429-handback.md` | done |
 | Explorer | REQ-430 exploration | read-only | REQ plus prime | `REQ-430-exploration.md` | done |
 | 2 | REQ-430 | `worktree-agent-REQ-430-couple-ur-closure-to-terminal-member-archival` | `REQ-430-brief.md` | `REQ-430-handback.md` | done |
+| Reviewer | REQ-429 review | integration range `e89b223f..67942dd9` | REQ plus UR | `REQ-429-review.md` | pending |
