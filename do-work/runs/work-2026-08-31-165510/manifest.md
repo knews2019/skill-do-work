@@ -51,3 +51,4 @@ Status: in-progress
 | Explorer | REQ-445 exploration | read-only | REQ plus prime and REQ-430 | `REQ-445-exploration.md` | done |
 | 2 | REQ-445 | `worktree-agent-REQ-445-keep-pathless-refusal-commands-runnable` | `REQ-445-brief.md` | `REQ-445-handback.md` | done |
 | Explorer | REQ-413 exploration | read-only | REQ plus accepted plan and primes | `REQ-413-exploration.md` | pending |
+| Reviewer | REQ-445 review | integration range `a6724bee..6d14a046` | REQ plus REQ-430 | `REQ-445-review.md` | pending |
