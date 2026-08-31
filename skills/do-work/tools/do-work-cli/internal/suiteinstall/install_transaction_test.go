@@ -148,21 +148,25 @@ func TestFreshInstallWritesFourModulesAndEveryManagedConfiguration(t *testing.T)
 func TestReinstallPreservesCustomBytesAndModesAndIsByteIdempotent(t *testing.T) {
 	projectRoot := newProjectRepository(t)
 	sourceRoot := newSuiteSourceTree(t, fixtureSuiteVersion)
+	justfilePath := filepath.Join(projectRoot, "Justfile")
+	settingsPath := filepath.Join(projectRoot, ".claude", "settings.json")
+	instructionsPath := filepath.Join(projectRoot, "CLAUDE.md")
 
-	writeTestFile(t, filepath.Join(projectRoot, "justfile"),
+	writeTestFile(t, justfilePath,
 		"custom-before:\n    echo before\n\n# >>> do-work:recipes >>>\nold-managed:\n    echo old\n# <<< do-work:recipes <<<\n\ncustom-after:\n    echo after\n")
-	chmodTestFile(t, filepath.Join(projectRoot, "justfile"), 0o640)
-	writeTestFile(t, filepath.Join(projectRoot, ".claude", "settings.json"),
+	chmodTestFile(t, justfilePath, 0o2644)
+	writeTestFile(t, settingsPath,
 		`{"custom":{"keep":[1,2,3]},"hooks":{"Stop":[{"hooks":[{"type":"command","command":"bash \".claude/skills/do-work/hooks/pipeline-guard.sh\""},{"type":"command","command":"echo custom-stop"}]}]}}`+"\n")
-	chmodTestFile(t, filepath.Join(projectRoot, ".claude", "settings.json"), 0o600)
-	writeTestFile(t, filepath.Join(projectRoot, "CLAUDE.md"),
+	chmodTestFile(t, settingsPath, 0o1644)
+	writeTestFile(t, instructionsPath,
 		"# Consumer\n\nBefore.\n\n<!-- >>> do-work:communication-style >>> -->\nstale\n<!-- <<< do-work:communication-style <<< -->\n\nAfter.\n")
+	chmodTestFile(t, instructionsPath, 0o4644)
 
 	result, narration := runInstallFixture(t, projectRoot, sourceRoot, "y\n")
 	if result.Outcome != resultmodel.OutcomeSuccess {
 		t.Fatalf("outcome = %q, reason = %q\n%s", result.Outcome, result.FailureReason, narration)
 	}
-	justfile := readTestFile(t, filepath.Join(projectRoot, "justfile"))
+	justfile := readTestFile(t, justfilePath)
 	for _, preserved := range []string{"custom-before:", "custom-after:"} {
 		if !strings.Contains(justfile, preserved) {
 			t.Errorf("reinstall dropped %q from the justfile:\n%s", preserved, justfile)
@@ -171,25 +175,28 @@ func TestReinstallPreservesCustomBytesAndModesAndIsByteIdempotent(t *testing.T) 
 	if strings.Contains(justfile, "old-managed:") {
 		t.Errorf("reinstall kept stale content inside the managed section:\n%s", justfile)
 	}
-	if mode := modeOf(t, filepath.Join(projectRoot, "justfile")); mode != 0o640 {
-		t.Errorf("justfile mode = %o, want 640", mode)
+	if mode := modeOf(t, justfilePath); mode != 0o2644 {
+		t.Errorf("Justfile mode = %o, want 2644", mode)
 	}
-	settings := readTestFile(t, filepath.Join(projectRoot, ".claude", "settings.json"))
+	settings := readTestFile(t, settingsPath)
 	if strings.Contains(settings, "pipeline-guard.sh") {
 		t.Errorf("reinstall kept the retired pipeline guard:\n%s", settings)
 	}
 	if !strings.Contains(settings, "echo custom-stop") || !strings.Contains(settings, `"keep"`) {
 		t.Errorf("reinstall dropped consumer settings state:\n%s", settings)
 	}
-	if mode := modeOf(t, filepath.Join(projectRoot, ".claude", "settings.json")); mode != 0o600 {
-		t.Errorf("settings mode = %o, want 600", mode)
+	if mode := modeOf(t, settingsPath); mode != 0o1644 {
+		t.Errorf("settings mode = %o, want 1644", mode)
 	}
-	instructions := readTestFile(t, filepath.Join(projectRoot, "CLAUDE.md"))
+	instructions := readTestFile(t, instructionsPath)
 	if !strings.Contains(instructions, "Before.") || !strings.Contains(instructions, "After.") {
 		t.Errorf("reinstall changed CLAUDE.md outside the managed section:\n%s", instructions)
 	}
 	if strings.Contains(instructions, "stale") {
 		t.Errorf("reinstall kept stale managed instructions:\n%s", instructions)
+	}
+	if mode := modeOf(t, instructionsPath); mode != 0o4644 {
+		t.Errorf("CLAUDE.md mode = %o, want 4644", mode)
 	}
 
 	justfileSnapshot := justfile
@@ -197,10 +204,10 @@ func TestReinstallPreservesCustomBytesAndModesAndIsByteIdempotent(t *testing.T) 
 	if secondResult, secondNarration := runInstallFixture(t, projectRoot, sourceRoot, "y\n"); secondResult.Outcome != resultmodel.OutcomeSuccess {
 		t.Fatalf("idempotent reinstall failed: %q\n%s", secondResult.FailureReason, secondNarration)
 	}
-	if readTestFile(t, filepath.Join(projectRoot, "justfile")) != justfileSnapshot {
+	if readTestFile(t, justfilePath) != justfileSnapshot {
 		t.Errorf("reinstall is not byte-idempotent for the justfile")
 	}
-	if readTestFile(t, filepath.Join(projectRoot, ".claude", "settings.json")) != settingsSnapshot {
+	if readTestFile(t, settingsPath) != settingsSnapshot {
 		t.Errorf("reinstall is not byte-idempotent for settings.json")
 	}
 }
@@ -389,9 +396,23 @@ func writeTestFile(t *testing.T, path, contents string) {
 
 func chmodTestFile(t *testing.T, path string, mode os.FileMode) {
 	t.Helper()
-	if err := os.Chmod(path, mode); err != nil {
+	if err := os.Chmod(path, goModeFromUnix(mode)); err != nil {
 		t.Fatalf("chmod %s: %v", path, err)
 	}
+}
+
+func goModeFromUnix(mode os.FileMode) os.FileMode {
+	goMode := mode.Perm()
+	if mode&0o4000 != 0 {
+		goMode |= os.ModeSetuid
+	}
+	if mode&0o2000 != 0 {
+		goMode |= os.ModeSetgid
+	}
+	if mode&0o1000 != 0 {
+		goMode |= os.ModeSticky
+	}
+	return goMode
 }
 
 func readTestFile(t *testing.T, path string) string {
@@ -409,7 +430,17 @@ func modeOf(t *testing.T, path string) os.FileMode {
 	if err != nil {
 		t.Fatalf("stat %s: %v", path, err)
 	}
-	return info.Mode().Perm()
+	mode := info.Mode().Perm()
+	if info.Mode()&os.ModeSetuid != 0 {
+		mode |= 0o4000
+	}
+	if info.Mode()&os.ModeSetgid != 0 {
+		mode |= 0o2000
+	}
+	if info.Mode()&os.ModeSticky != 0 {
+		mode |= 0o1000
+	}
+	return mode
 }
 
 func runTestGit(t *testing.T, workingDirectory string, arguments ...string) {

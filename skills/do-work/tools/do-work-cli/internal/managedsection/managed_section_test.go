@@ -14,10 +14,24 @@ func writeManagedFixture(t *testing.T, path string, contents []byte, mode os.Fil
 	if err := os.WriteFile(path, contents, mode); err != nil {
 		t.Fatalf("write fixture %s: %v", path, err)
 	}
-	if err := os.Chmod(path, mode); err != nil {
+	if err := os.Chmod(path, goModeFromUnix(mode)); err != nil {
 		t.Fatalf("chmod fixture %s: %v", path, err)
 	}
 	return path
+}
+
+func goModeFromUnix(mode os.FileMode) os.FileMode {
+	goMode := mode.Perm()
+	if mode&0o4000 != 0 {
+		goMode |= os.ModeSetuid
+	}
+	if mode&0o2000 != 0 {
+		goMode |= os.ModeSetgid
+	}
+	if mode&0o1000 != 0 {
+		goMode |= os.ModeSticky
+	}
+	return goMode
 }
 
 func newSectionFile(t *testing.T, directory string) string {
@@ -31,7 +45,17 @@ func fileMode(t *testing.T, path string) os.FileMode {
 	if err != nil {
 		t.Fatalf("stat %s: %v", path, err)
 	}
-	return info.Mode().Perm()
+	mode := info.Mode().Perm()
+	if info.Mode()&os.ModeSetuid != 0 {
+		mode |= 0o4000
+	}
+	if info.Mode()&os.ModeSetgid != 0 {
+		mode |= 0o2000
+	}
+	if info.Mode()&os.ModeSticky != 0 {
+		mode |= 0o1000
+	}
+	return mode
 }
 
 // Python's bytes.splitlines ends a line on a bare CR, and only on CR, LF and CRLF. A Go port
@@ -116,9 +140,9 @@ func TestReplaceSectionPreservesSurroundingBytesAndTargetMode(t *testing.T) {
 			expectedBytes: "prefix\x00byte\n" + sectionFileBytes,
 		},
 		{
-			name:          "target mode is preserved on replace",
+			name:          "target 02644 mode is preserved on replace",
 			targetBytes:   "before\n# >>> do-work:recipes >>>\nOLD\n# <<< do-work:recipes <<<\nafter\n",
-			targetMode:    0o640,
+			targetMode:    0o2644,
 			expectedBytes: "before\n" + sectionFileBytes + "after\n",
 		},
 	}

@@ -339,7 +339,7 @@ func permissionsOf(path, label string) (os.FileMode, error) {
 	if err != nil {
 		return 0, invalidInput("cannot stat %s %s: %v", label, path, err)
 	}
-	return info.Mode().Perm(), nil
+	return info.Mode().Perm() | (info.Mode() & (os.ModeSetuid | os.ModeSetgid | os.ModeSticky)), nil
 }
 
 func isSymlink(path string) bool {
