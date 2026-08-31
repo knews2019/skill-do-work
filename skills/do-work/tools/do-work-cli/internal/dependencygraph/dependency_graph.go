@@ -121,14 +121,14 @@ func BuildGraph(snapshot *repositorymodel.RepositorySnapshot) *DependencyGraph {
 		for _, dependencyID := range node.DependencyIDs {
 			dependencyNode := graph.NodesByID[dependencyID]
 			switch {
-			case dependencyNode == nil:
-				node.MissingTargets = append(node.MissingTargets, dependencyID)
-				node.UnmetDependencies = append(node.UnmetDependencies, dependencyID)
-				graph.WarningMessages = append(graph.WarningMessages, fmt.Sprintf("%s depends on missing target %s", requestID, dependencyID))
 			case ambiguousIDs[dependencyID]:
 				node.AmbiguousTargets = append(node.AmbiguousTargets, dependencyID)
 				node.UnmetDependencies = append(node.UnmetDependencies, dependencyID)
 				graph.WarningMessages = append(graph.WarningMessages, fmt.Sprintf("%s depends on ambiguous target %s", requestID, dependencyID))
+			case dependencyNode == nil:
+				node.MissingTargets = append(node.MissingTargets, dependencyID)
+				node.UnmetDependencies = append(node.UnmetDependencies, dependencyID)
+				graph.WarningMessages = append(graph.WarningMessages, fmt.Sprintf("%s depends on missing target %s", requestID, dependencyID))
 			case !schemanormalization.DependencySatisfied(dependencyNode.RequestStatus):
 				node.UnmetDependencies = append(node.UnmetDependencies, dependencyID)
 			}
