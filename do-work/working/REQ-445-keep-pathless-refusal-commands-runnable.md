@@ -36,7 +36,7 @@ estimate:
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Exploration localized the defect to `refusedGroupFinding`: emit repository-wide Git status only for blank structural targets, preserve exact-path diagnostics otherwise, and ratchet the complete prerequisite-refusal result matrix.
 - [x] **[APPLY]:** Added the complete result-level RED matrix first, reproduced both empty duplicate pathspecs, then changed only the shared refusal constructor.
-- [x] **[UNIFY]:** Reviewed both scoped files; focused/full Go, vet, exact Go 1.25, scope, and diff checks pass on the builder branch. Merged-state qualification and the canonical gate run before review.
+- [x] **[UNIFY]:** Reviewed both scoped files; merged-state focused/full Go, vet, exact Go 1.25, contracts, qualification, scope, diff hygiene, and the canonical maintainer gate pass.
 
 ## What
 Make every structural cleanup refusal that has no concrete target path emit a runnable recovery command. Done means the class cannot recur: result-level coverage must reject empty or otherwise invalid path arguments for every applicable pathless refusal.
@@ -52,7 +52,7 @@ Found during review of REQ-430 (Couple UR closure to terminal member archival). 
 - Add a result-level ratchet that covers every applicable structural dependency refusal and fails on empty invalid path arguments.
 
 ## Instances
-- [ ] `internal/cleanup/cleanup_apply.go`: duplicate group-code refusal calls the path-bearing finding helper with an empty path, producing `git status --short -- ''`. (found by REQ-430 / UR-081)
+- [x] `internal/cleanup/cleanup_apply.go`: duplicate group-code refusal calls the path-bearing finding helper with an empty path, producing `git status --short -- ''`. (found by REQ-430 / UR-081)
 
 ## Red-Green Proof
 **RED prompt/case:** Exercise a cleanup plan with duplicate operation-group codes and execute or validate every emitted next command; require each command to be non-empty and runnable without an empty pathspec.
@@ -101,9 +101,9 @@ No `resultmodel` change is justified: it only carries the package-authored argv.
 **Files I will NOT touch:** resultmodel, Git transaction primitives, other cleanup planners/commands, action prose, or release metadata.
 
 **Acceptance criteria (restated from REQ):**
-- [ ] Every duplicate-identity and prerequisite structural refusal returns nonempty, runnable recovery/verification argv with no empty argument.
-- [ ] Duplicate-group identity uses the valid repository-wide Git diagnostic while named/empty missing, duplicate, repeated, transitive, and cyclic prerequisites retain runnable cleanup dry-run evidence.
-- [ ] Path-bearing dirty/collision refusals preserve exact repository-relative Git diagnostics.
+- [x] Every duplicate-identity and prerequisite structural refusal returns nonempty, runnable recovery/verification argv with no empty argument.
+- [x] Duplicate-group identity uses the valid repository-wide Git diagnostic while named/empty missing, duplicate, repeated, transitive, and cyclic prerequisites retain runnable cleanup dry-run evidence.
+- [x] Path-bearing dirty/collision refusals preserve exact repository-relative Git diagnostics.
 
 ## Implementation Summary
 
@@ -140,3 +140,40 @@ No `resultmodel` change is justified: it only carries the package-authored argv.
 - `go vet ./...` — PASS.
 - Exact Go 1.25 compatibility — PASS.
 - Builder scope and diff hygiene — PASS; exactly the two frozen files changed.
+
+## Qualification
+
+Passed — the exact two-file integration range `a6724bee..6d14a046` matches the frozen Scope, both changed files are substantive, the complete structural-refusal matrix traces directly to all acceptance criteria, and no tracked `do-work/` file appears in the implementation range.
+
+**Merged-state checks:** focused and full cleanup tests, full do-work-cli tests, `go vet ./...`, exact Go 1.25 compatibility, contract regressions, mechanical qualification, scope drift, diff hygiene, and `bash _dev/tests/maintainer-verify.sh` all pass. The optional browser lane skipped because no browser was available.
+
+## Review
+
+**Overall: 99%** | 2026-08-31T22:32:38Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 98% |
+| Test Adequacy | 98% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings:** None.
+**Minor findings:** None.
+**Acceptance:** Pass — the inherited REQ-430 empty-pathspec defect reproduced against the pre-fix constructor and the merged result-level matrix passes with runnable pathless diagnostics and preserved exact-path evidence.
+**Suggested testing:** None.
+**Follow-ups created:** None; **sweeps appended to:** None.
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** A result-level matrix over every structural prerequisite refusal closed the class rather than only the duplicate-group example, while executing the emitted Git diagnostic proved it was actually runnable.
+**What didn't:** Reusing a path-bearing recovery helper for a structural finding without a path produced an argv value that looked populated but failed at execution.
+**Worth knowing:** Shared recovery-command constructors must make the presence of a concrete target explicit; blank structural targets need repository-wide diagnostics, while real targets retain exact pathspec evidence.
+
+## Orientation
+
+Cleanup structural refusals now emit runnable recovery commands whether or not they carry a filesystem target. The behavior and its regression matrix remain localized to `internal/cleanup`; no result-model or action-contract change was required.
