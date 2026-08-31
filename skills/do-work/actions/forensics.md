@@ -77,6 +77,14 @@ Run the shipped board tool's read-only `verify` subcommand:
 
 If `go` is absent or the build fails, skip this check and report the release/queue invariant coverage as unverified. Exit 0 means no board-owned findings. Exit 1 means findings were printed; report them as findings, not as a tool crash. Preserve each emitted `[fixable]`, skipped, and not-applicable classification exactly. The board tool is the authority for this probe set; do not reproduce its checks in doctor or prose.
 
+Use this canonical board-output mapping. It is keyed on the output class, not a hand-maintained category list, so a new verify category inherits it immediately. A `[fixable]` marker changes the remedy metadata, never the severity.
+
+| Board output | Report destination | Severity-total contribution |
+|---|---|---|
+| Each finding emitted by `queue-kanban verify` | `## Warnings` | +1 warning |
+| Each `skipped` probe | `## Skipped or Unverified Coverage` | none |
+| Each `not applicable` probe | `## Skipped or Unverified Coverage`, retaining the `not applicable` label | none |
+
 ## Output Format
 
 The report's `<timestamp>` is the current UTC instant (Timestamp rule, `actions/work-reference.md`).
@@ -104,6 +112,9 @@ The report's `<timestamp>` is the current UTC instant (Timestamp rule, `actions/
 
 - **[Stale Pending-Answers]** REQ-025 has been pending-answers for 12 days. Questions may no longer be relevant.
   **Suggested fix:** Run `do-work clarify` to review, or discard if the questions are stale.
+
+- **[version-changelog-mismatch]** [board-emitted detail]. Preserve the emitted `[fixable]` marker when present.
+  **Suggested fix:** [board-emitted remedy]
 
 ## Info
 

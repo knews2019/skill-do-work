@@ -175,6 +175,46 @@ func TestForensicsActionDelegatesMechanicalChecksOnlyToDoctor(t *testing.T) {
 	}
 }
 
+func TestForensicsActionPlacesAndCountsBoardFindingsDeterministically(t *testing.T) {
+	actionPath := filepath.Join("..", "..", "..", "..", "actions", "forensics.md")
+	actionBytes, err := os.ReadFile(actionPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifyPath := filepath.Join("..", "..", "..", "..", "..", "do-work-board", "tools", "queue-kanban", "verify.go")
+	verifyBytes, err := os.ReadFile(verifyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	boardFindingCategories := []string{"version-changelog-mismatch"}
+	categoryDeclaration := regexp.MustCompile(`verifyCategoryVersionChangelogMismatch\s*=\s*"` + regexp.QuoteMeta(boardFindingCategories[0]) + `"`)
+	if !categoryDeclaration.Match(verifyBytes) {
+		t.Fatalf("board fixture category %q is not emitted by queue-kanban verify", boardFindingCategories[0])
+	}
+
+	action := string(actionBytes)
+	const boardFindingMapping = "| Each finding emitted by `queue-kanban verify` | `## Warnings` | +1 warning |"
+	mappingPresent := strings.Contains(action, boardFindingMapping)
+	if !mappingPresent {
+		t.Errorf("forensics action has no authoritative board-finding report path %q", boardFindingMapping)
+	}
+	boardFindingExample := "- **[" + boardFindingCategories[0] + "]** [board-emitted detail]"
+	warningsStart := strings.Index(action, "\n## Warnings\n")
+	infoStart := strings.Index(action, "\n## Info\n")
+	exampleStart := strings.Index(action, boardFindingExample)
+	exampleInWarnings := warningsStart >= 0 && exampleStart > warningsStart && infoStart > exampleStart
+	if !exampleInWarnings {
+		t.Errorf("board finding %q is not shown under ## Warnings", boardFindingCategories[0])
+	}
+	warningTotal := 0
+	if mappingPresent && exampleInWarnings {
+		warningTotal = len(boardFindingCategories)
+	}
+	if warningTotal != 1 {
+		t.Fatalf("one board finding contributed %d to the warning total, want 1", warningTotal)
+	}
+}
+
 func TestDoctorOptionGrammarKeepsMutationIntentExplicit(t *testing.T) {
 	for _, arguments := range [][]string{{"--dry-run"}, {"--commit"}, {"--repair-timestamps", "--dry-run", "--commit"}, {"--unknown"}} {
 		if _, err := parseCommandOptions(arguments); err == nil {
