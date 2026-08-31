@@ -574,7 +574,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 **Where a builder-authored section is read from.** Some substeps below read a `##` section the **builder** wrote, and in worktree dispatch mode the builder routes those sections to its hand-back instead of the REQ file. Read both, and report an unreadable hand-back rather than treating it as silence, per `actions/work-reference.md` → **Reading a Builder-Authored Section (any step)** — the rule is stated there because readers outside this step obey it too.
 
-1. Choose the terminal value: preserve an existing action-selected `completed-with-issues`; otherwise choose `completed`. Hold that explicit input for substep 6. The request-state command stamps the canonical UTC `completed_at`; do not write it here.
+1. Choose the terminal value: preserve an existing action-selected `completed-with-issues`; otherwise choose `completed`. Hold that explicit input for substep 6. The request-state command stamps the canonical UTC `completed_at`; do not write it here. The sibling board only consumes this lifecycle evidence: `../../do-work-board/tools/queue-kanban/model.go` resolves the completion instant from `completed_at` and the implementation `commit` hash.
 2. Verify `## Implementation Summary` is present (written in Step 6.25). If missing, append it now — this should not happen in normal flow, but crash recovery may skip it.
 3. **Route builder-decided questions by answerer:** Read the `Answerer:` clause on each `- [~]` Open-Questions item — and on each ESCALATE `## Decisions` entry carrying one (Step 6) — first; the clause is the audience fork.
 
