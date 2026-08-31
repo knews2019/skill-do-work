@@ -14,16 +14,17 @@
 - REQ-435 — doctor-forensics delegation now has complete typed report projection, stable recovery references, and deterministic board-warning mapping; merged as `c1536cbf`, independently approved at 98%.
 - REQ-433 — misplaced archived UR items now have independent conflict domains; merged as `f14803a8`, independently approved at 98%.
 - REQ-411 — dependency-aware queue selection and actionable summaries merged as `6209227b`, independently approved at 98% after one remediation.
+- REQ-436 — atomic replacement and cleanup moves now preserve complete special modes; merged as `f0715c41`, independently approved at 98%.
 
 ## In Progress
 
 - REQ-412: Implement request-state, checkpoint, archival, and calibration transactions — claimed 2026-08-31T19:48:00Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-- REQ-436: Audit special-mode preservation in remaining file publication — claimed 2026-08-31T19:48:00Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 
 - REQ-412 through REQ-420 remain in the ordered UR-081 chain.
-- REQ-436 through REQ-444 remain queued; REQ-436's default audit decision is recorded and pending.
+- REQ-437 through REQ-444 remain queued.
+- REQ-447 extends the complete-mode publication audit to the separate queue-kanban module.
 - REQ-445 awaits user consent through `do-work clarify` before it can enter the runnable queue.
 - REQ-446 awaits user consent through `do-work clarify` before it can enter the runnable queue.
 

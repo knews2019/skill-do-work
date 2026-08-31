@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.251.13 — Complete Modes in Atomic CLI Publication (2026-08-31)
+
+Atomic replacement and cleanup moves now retain setuid, setgid, and sticky bits alongside ordinary permissions.
+
+- Replacement and exclusive publication share one sanitized complete-mode projection.
+- Exclusive creation writes first and applies the final mode before sync, avoiding both rooted-create flag rejection and content-write bit clearing.
+- RED/GREEN fixtures cover all three special bits through replacement, exclusive creation, and the real cleanup move.
+
 ## 0.251.12 — Stable Fallback Archives and Duplicate Readiness (2026-08-31)
 
 Git fallback archives now extract consistently for every branch name, and duplicate dependency records can no longer make readiness depend on traversal order.
