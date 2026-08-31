@@ -1,8 +1,16 @@
 ---
 id: REQ-426
 title: 'Preserve setuid, setgid and sticky bits on managed files instead of stripping them'
-status: pending
+status: claimed
 created_at: 2026-08-30T17:40:00Z
+claimed_at: 2026-08-31T10:30:10Z
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-31T10:30:10Z
+  basis:
+    - trivial short-circuit
 user_request: UR-081
 domain: general
 prime_files: [_dev/primes/prime-shell-commands.md]
@@ -49,3 +57,19 @@ Adjudicated 2-1 and judged **Minor** rather than Important by its own verifiers,
 
 ---
 *Source: REQ-407 review (UR-081).*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The root cause, two production read sites, exact mask, and required regression cases are all specified. This is a focused mode-preservation fix in four named Go files.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

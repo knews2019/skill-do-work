@@ -1,9 +1,17 @@
 ---
 id: REQ-427
 title: 'Confirm the Go version floor for installing and updating do-work'
-status: pending
+status: claimed
 created_at: 2026-08-30T17:40:00Z
 status_changed_at: 2026-08-30T18:24:45Z
+claimed_at: 2026-08-31T10:30:10Z
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-31T10:30:10Z
+  basis:
+    - trivial short-circuit
 user_request: UR-081
 domain: general
 prime_files: []
@@ -54,3 +62,19 @@ If the answer is to lower it, the change is mechanical and belongs in one small 
 
 ---
 *Source: REQ-407 review (UR-081). Answer with `do-work clarify`.*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The user has confirmed one exact compatibility-floor value and the REQ names the four literals that must change plus the launcher refusal check. No design work remains.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
