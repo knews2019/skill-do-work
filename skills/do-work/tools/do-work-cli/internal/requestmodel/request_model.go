@@ -48,6 +48,8 @@ type RequestRecord struct {
 	CreatedAt              string
 	ClaimedAt              string
 	CompletedAt            string
+	CavemanValue           string
+	CavemanEvidence        schemanormalization.FieldResult
 	DomainValue            string
 	DomainEvidence         schemanormalization.FieldResult
 	RouteValue             string
@@ -234,6 +236,7 @@ func (document *RequestDocument) FieldValue(fieldName string) (FieldEvidence, bo
 func (document *RequestDocument) TypedRecord() RequestRecord {
 	status := document.scalarValue("status")
 	statusEvidence := schemanormalization.NormalizeField("status", status)
+	cavemanEvidence := schemanormalization.NormalizeField("caveman", document.scalarValue("caveman"))
 	domainEvidence := schemanormalization.NormalizeField("domain", document.scalarValue("domain"))
 	routeEvidence := schemanormalization.NormalizeField("route", document.scalarValue("route"))
 	impactEvidence := schemanormalization.NormalizeField("impact", document.scalarValue("impact"))
@@ -265,7 +268,8 @@ func (document *RequestDocument) TypedRecord() RequestRecord {
 		RelatedIDs: document.listValue("related"), WritePaths: document.listValue("write_set"),
 		AssignedTo: strings.TrimSpace(document.scalarValue("assigned_to")),
 		CreatedAt:  document.scalarValue("created_at"), ClaimedAt: document.scalarValue("claimed_at"),
-		CompletedAt: document.scalarValue("completed_at"),
+		CompletedAt:  document.scalarValue("completed_at"),
+		CavemanValue: cavemanEvidence.ResolvedValue, CavemanEvidence: cavemanEvidence,
 		DomainValue: domainEvidence.ResolvedValue, DomainEvidence: domainEvidence,
 		RouteValue: routeEvidence.ResolvedValue, RouteEvidence: routeEvidence,
 		ImpactValue: impactEvidence.ResolvedValue, ImpactEvidence: impactEvidence,
