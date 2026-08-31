@@ -307,8 +307,13 @@ func planMisplacedTrees(snapshot *repositorymodel.RepositorySnapshot, plan *Clea
 			operations, finding := planDirectoryMove(snapshot.RepositoryRoot, sourceDirectory, filepath.Join(snapshot.DoWorkRoot, "archive", entry.Name()))
 			if finding != nil {
 				plan.Findings = append(plan.Findings, *finding)
-			} else if len(operations) > 0 {
-				plan.Groups = append(plan.Groups, OperationGroup{Code: "FIX-ARCHIVE-" + entry.Name(), PassNumber: 3, AffectedID: entry.Name(), Operations: operations})
+			} else {
+				sourcePrefix := repoRelative(snapshot.RepositoryRoot, sourceDirectory) + "/"
+				for _, operation := range operations {
+					relativeItemPath := strings.TrimPrefix(operation.SourcePath, sourcePrefix)
+					itemCode := strings.NewReplacer("%", "%25", "/", "%2F").Replace(relativeItemPath)
+					plan.Groups = append(plan.Groups, OperationGroup{Code: "FIX-ARCHIVE-" + entry.Name() + "-" + itemCode, PassNumber: 3, AffectedID: entry.Name(), Operations: []CleanupOperation{operation}})
+				}
 			}
 		}
 	}

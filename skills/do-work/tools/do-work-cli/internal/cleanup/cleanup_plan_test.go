@@ -141,6 +141,59 @@ func TestLegacyContextIsConsolidatedAndMisplacedItemsAreIndependent(t *testing.T
 	}
 }
 
+func TestMisplacedArchivedURMovesNonconflictingSiblingAndRefusesOnlyConflict(t *testing.T) {
+	repositoryRoot := cleanupRepository(t)
+	writeCleanupFile(t, repositoryRoot, "do-work/archive/user-requests/UR-301/input.md", "misplaced input\n")
+	writeCleanupFile(t, repositoryRoot, "do-work/archive/user-requests/UR-301/REQ-301-done.md", cleanupRequest("REQ-301", "completed", "UR-301"))
+	writeCleanupFile(t, repositoryRoot, "do-work/archive/UR-301/input.md", "canonical input\n")
+	commitCleanupFixture(t, repositoryRoot)
+
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := BuildPlan(snapshot)
+	var groupCodes []string
+	for _, group := range plan.Groups {
+		if strings.HasPrefix(group.Code, "FIX-ARCHIVE-UR-301-") {
+			groupCodes = append(groupCodes, group.Code)
+			if len(group.Operations) != 1 {
+				t.Fatalf("group %q has %d operations, want one per conflict domain", group.Code, len(group.Operations))
+			}
+		}
+	}
+	if len(groupCodes) != 2 || groupCodes[0] != "FIX-ARCHIVE-UR-301-REQ-301-done.md" || groupCodes[1] != "FIX-ARCHIVE-UR-301-input.md" {
+		t.Fatalf("misplaced archived UR group codes = %#v", groupCodes)
+	}
+
+	result := ApplyPlan(context.Background(), plan, ApplyOptions{})
+	if result.Outcome != resultmodel.OutcomeFindings {
+		t.Fatalf("partial-merge outcome = %q, want %q", result.Outcome, resultmodel.OutcomeFindings)
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, "do-work", "archive", "UR-301", "REQ-301-done.md")); err != nil {
+		t.Fatalf("nonconflicting sibling did not move: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, "do-work", "archive", "user-requests", "UR-301", "REQ-301-done.md")); !os.IsNotExist(err) {
+		t.Fatalf("nonconflicting sibling source still exists: %v", err)
+	}
+	if contents, err := os.ReadFile(filepath.Join(repositoryRoot, "do-work", "archive", "UR-301", "input.md")); err != nil || string(contents) != "canonical input\n" {
+		t.Fatalf("canonical input changed: contents=%q err=%v", contents, err)
+	}
+	if contents, err := os.ReadFile(filepath.Join(repositoryRoot, "do-work", "archive", "user-requests", "UR-301", "input.md")); err != nil || string(contents) != "misplaced input\n" {
+		t.Fatalf("conflicting input source changed: contents=%q err=%v", contents, err)
+	}
+
+	var conflictEvidence []string
+	for _, finding := range result.Findings {
+		if finding.Code == "CLEANUP-GROUP-REFUSED" && len(finding.AffectedPaths) == 1 && finding.AffectedPaths[0] == "do-work/archive/UR-301/input.md" {
+			conflictEvidence = finding.Evidence
+		}
+	}
+	if len(conflictEvidence) != 1 || !strings.Contains(conflictEvidence[0], "destination already exists; cleanup never overwrites") {
+		t.Fatalf("conflict evidence = %#v, findings=%#v", conflictEvidence, result.Findings)
+	}
+}
+
 func planHasOperation(plan CleanupPlan, kind OperationKind, source, destination string) bool {
 	for _, group := range plan.Groups {
 		for _, operation := range group.Operations {
