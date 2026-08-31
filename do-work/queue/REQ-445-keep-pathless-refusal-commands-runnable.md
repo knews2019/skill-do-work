@@ -1,9 +1,10 @@
 ---
 id: REQ-445
 title: 'Review fix: Keep pathless refusal commands runnable'
-status: pending-answers
+status: pending
 domain: general
 created_at: 2026-08-31T15:34:58Z
+status_changed_at: 2026-08-31T19:24:17Z
 user_request: UR-081
 addendum_to: REQ-430
 review_generated: true
@@ -45,6 +46,11 @@ Found during review of REQ-430 (Couple UR closure to terminal member archival). 
 **Validation:** Review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
 
 ## Open Questions
-- [ ] Should I process this as a new task? The cleanup safety behavior already works, but users who hit a duplicate internal group identity receive a recovery command that immediately fails.
+- [x] Should I process this as a new task? The cleanup safety behavior already works, but users who hit a duplicate internal group identity receive a recovery command that immediately fails. → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to `pending` and repair the command contract with a regression test).
   Also: No, discard it (the safe refusal remains, but its recovery command stays unusable for this edge case).
+
+  **Answered 2026-08-31** (UTC date per `actions/work-reference.md` → **Date-only stamps**):
+  User confirmed the recommendation via `do-work clarify`: add the focused fix to the queue
+  so every applicable pathless structural cleanup refusal emits runnable recovery commands
+  with result-level regression coverage. Nothing from the captured scope was put out of scope.

@@ -1,9 +1,10 @@
 ---
 id: REQ-446
 title: 'Review fix: Match remediation to preflight failure kind'
-status: pending-answers
+status: pending
 domain: general
 created_at: 2026-08-31T16:40:15Z
+status_changed_at: 2026-08-31T19:24:17Z
 user_request: UR-081
 addendum_to: REQ-432
 review_generated: true
@@ -46,6 +47,12 @@ Found during review of REQ-432 (Enforce the commit guard for consumed scratch cl
 **Validation:** Review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
 
 ## Open Questions
-- [ ] Should I process this as a new task? Cleanup is now safe, but doctor can tell users to inspect or verify the wrong state when both staged changes and target dirt exist.
+- [x] Should I process this as a new task? Cleanup is now safe, but doctor can tell users to inspect or verify the wrong state when both staged changes and target dirt exist. → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to `pending` and align doctor remediation with the selected blocker under regression coverage).
   Also: No, discard it (doctor remains fail-closed, but its recovery guidance stays misleading in the simultaneous-state edge case).
+
+  **Answered 2026-08-31** (UTC date per `actions/work-reference.md` → **Date-only stamps**):
+  User confirmed the recommendation via `do-work clarify`: add the focused correction to the queue
+  so recovery and verification commands match the actual preflight failure kind, including
+  simultaneous dirty-index and dirty-target regression coverage. Nothing from the captured scope
+  was put out of scope.
