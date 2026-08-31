@@ -40,7 +40,7 @@ func TestRenderersUseOneNormalizedResult(t *testing.T) {
 	if decoded["schema_version"] != float64(SchemaVersion) {
 		t.Fatalf("schema_version = %#v, want %d", decoded["schema_version"], SchemaVersion)
 	}
-	for _, field := range []string{"findings", "changes", "skipped_work"} {
+	for _, field := range []string{"findings", "changes", "skipped_work", "selected", "excluded"} {
 		if decoded[field] == nil {
 			t.Fatalf("%s must be a non-null collection", field)
 		}
@@ -68,6 +68,50 @@ func TestRenderersUseOneNormalizedResult(t *testing.T) {
 		if !strings.Contains(string(textOutput), required) {
 			t.Errorf("text output missing %q:\n%s", required, textOutput)
 		}
+	}
+}
+
+func TestSelectionTextAndJSONCarryTheSameTypedCommands(t *testing.T) {
+	result := CommandResult{
+		Command: "next", Outcome: OutcomeSuccess, RepositoryRoot: "/tmp/example",
+		Selected: []SelectionRecord{{
+			RequestID: "REQ-007", Title: "Ready work", Provenance: "explicit-req", DependencyDepth: 0,
+			EstimateMinutes: 10, EstimateKnown: true,
+			NextArgv: []string{"do-work", "run", "REQ-007"}, NextJustRecipe: "do-work-run REQ-007",
+			VerificationArgv: []string{"do-work-cli", "--format", "json", "next", "REQ-007"},
+		}},
+		Excluded: []SelectionExclusion{{
+			RequestID: "REQ-008", Title: "Waiting work", Provenance: "ur-expanded",
+			Code: "DEPENDENCIES-UNMET", Reason: "waits on REQ-007",
+			NextArgv: []string{"do-work", "run", "REQ-007"}, NextJustRecipe: "do-work-run REQ-007",
+			VerificationArgv: []string{"do-work-cli", "--format", "json", "next", "REQ-008"},
+		}},
+		SelectionSummary: SelectionSummary{Pending: 2, TotalEstimatedMinutes: 10},
+	}
+	textOutput, err := RenderResult(result, FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		"selected REQ-007 [explicit-req, depth 0, 10 min]",
+		"excluded REQ-008 [ur-expanded] DEPENDENCIES-UNMET: waits on REQ-007",
+		"next: do-work run REQ-007", "just: just do-work-run REQ-007",
+		"verify: do-work-cli --format json next REQ-008", "run_set: REQ-007",
+	} {
+		if !strings.Contains(string(textOutput), required) {
+			t.Errorf("selection text missing %q:\n%s", required, textOutput)
+		}
+	}
+	jsonOutput, err := RenderResult(result, FormatJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded CommandResult
+	if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if len(decoded.Selected) != 1 || len(decoded.Excluded) != 1 || decoded.Selected[0].NextArgv[2] != "REQ-007" || decoded.Excluded[0].Code != "DEPENDENCIES-UNMET" {
+		t.Fatalf("selection JSON lost typed records: %#v", decoded)
 	}
 }
 

@@ -7244,6 +7244,26 @@ assert_contains \
   "tools/replace-text-section.sh" \
   'do-work-cli' \
   'replace-text-section.sh must remain a launcher over the do-work-cli replace-section command.'
+assert_contains \
+  "skills/do-work/actions/work.md" \
+  'tools/do-work-cli\.sh --repo-root <project-root> --format json next' \
+  'work Step 1 must delegate deterministic selection to the canonical typed next command.'
+assert_contains \
+  "skills/do-work/actions/run-simple-reqs.md" \
+  'tools/do-work-cli\.sh --repo-root <project-root> next --simple' \
+  'run-simple-reqs must delegate its specialized policy to the shared canonical selector.'
+assert_contains \
+  "skills/do-work/tools/select-simple-reqs.sh" \
+  'do-work-cli\.sh.*next --simple' \
+  'the retained simple-selector path must remain a compatibility launcher over next --simple.'
+assert_file_not_contains \
+  "skills/do-work/tools/select-simple-reqs.sh" \
+  'find .*REQ-|function normalize_|known_status\[' \
+  'the simple-selector launcher must not grow a second queue parser or readiness implementation.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go" \
+  'nextselection\.Handlers' \
+  'the shipped binary must register the canonical next command family.'
 
 if [ "$fail_count" -gt 0 ]; then
   exit 1

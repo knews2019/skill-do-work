@@ -48,6 +48,8 @@
 #       cheaper model then builds — the opposite of T8's silent omission and the
 #       reason those two warn legs are not narrowable to `effort_estimate`
 #       alone. The warning is the only signal either case produces.
+#  T12  The compatibility path must delegate selection to `do-work-cli next
+#       --simple`; retaining a second parser would let readiness drift again.
 #
 # Exit 0: every probe passed. Exit 1: at least one FAIL line above.
 set -uo pipefail
@@ -304,6 +306,14 @@ done
 selector_code_only="$(sed 's/[[:space:]]*#.*$//' "$selector")"
 if printf '%s' "$selector_code_only" | grep -qE 'xargs.*(-r\b|--no-run-if-empty)'; then
   report_failure "T9 portability: xargs -r is a GNU extension absent from the BSD xargs macOS ships; with the pipeline broken and no set -e the scan would report an empty selection and exit 0"
+fi
+
+# T12 — one canonical selector, no shell-side request parser.
+if ! printf '%s' "$selector_code_only" | grep -q 'do-work-cli.sh.*next --simple'; then
+  report_failure "T12 canonical delegation: the compatibility script must invoke do-work-cli next --simple"
+fi
+if printf '%s' "$selector_code_only" | grep -qE 'find .*REQ-|function normalize_|known_status\['; then
+  report_failure "T12 canonical delegation: the compatibility script must not retain its own queue parser or readiness index"
 fi
 
 # Controls

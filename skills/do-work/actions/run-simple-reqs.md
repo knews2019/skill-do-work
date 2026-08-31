@@ -34,17 +34,17 @@ Any other unrecognized argument is rejected rather than ignored, exactly as `act
 
 ### Step 1: Select and estimate
 
-Run the shipped selector from the project root:
+Run the canonical typed selector from the project root:
 
 ```bash
-<skill-root>/tools/select-simple-reqs.sh [--skip-impact-negligible]
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> next --simple [--skip-impact-negligible]
 ```
 
 Pass `--skip-impact-negligible` through when the user gave it — that is the only place it can take effect.
 
-It prints one row per selected REQ with that REQ's p50 estimate, the batch totals, every mechanical REQ it held back with the reason for each, and a final `run_set: <ids>` line. That last line is the set Step 4 runs; read it rather than re-deriving the ids from the table.
+It prints one typed `selected` row per qualifying REQ with that REQ's p50 estimate, every excluded REQ with a stable code and actionable reason, exact next and verification commands, and a final `run_set: <ids>` line. The same records are available with global `--format json`; that last line is the text contract Step 4 runs, so read it rather than re-deriving ids from the table.
 
-The script owns the predicate — do not restate or re-judge it here. If it is missing, select by hand: a `pending` REQ, dependency-ready, unclaimed, not `assigned_to` another session, whose `effort_estimate` normalizes to `effort-mechanical` (the Schema Read Contract's `trivial` alias counts — REQs written before the rename still carry it), minus any REQ where nothing objectively gates the result or the cost of a miss is unbounded (`maintenance: true`, `domain: security`, `impact-critical` are the current such markers, illustrative and not closed). Then estimate with `<skill-root>/tools/estimate-p50.sh --trivial` per REQ and total with its `critical-path` mode (`actions/estimate-reference.md`).
+The command owns the predicate and consumes the same typed snapshot and dependency graph as ordinary work selection. Do not restate, re-scan, or re-judge it here. If the canonical command is missing or fails, stop with its actionable output; never fall back to a hand-built selection. `tools/select-simple-reqs.sh` remains only a compatibility entry point to this command.
 
 ### Step 2: Show the list
 

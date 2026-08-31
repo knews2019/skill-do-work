@@ -67,6 +67,51 @@ type SkippedWork struct {
 	Reason string `json:"reason"`
 }
 
+// SelectionRecord is one request the caller may process in this invocation.
+// Commands are carried as argv rather than display strings so every renderer
+// preserves the same pasteable next action.
+type SelectionRecord struct {
+	RequestID        string   `json:"request_id"`
+	Title            string   `json:"title"`
+	Provenance       string   `json:"provenance"`
+	DependencyDepth  int      `json:"dependency_depth"`
+	Dependencies     []string `json:"dependencies"`
+	EstimateMinutes  int      `json:"estimate_minutes"`
+	EstimateKnown    bool     `json:"estimate_known"`
+	NextArgv         []string `json:"next_argv"`
+	NextJustRecipe   string   `json:"next_just_recipe"`
+	VerificationArgv []string `json:"verification_argv"`
+}
+
+// SelectionExclusion is one considered request that cannot be selected. Code
+// is stable for machines; Reason is actionable for people.
+type SelectionExclusion struct {
+	RequestID        string   `json:"request_id"`
+	Title            string   `json:"title"`
+	Provenance       string   `json:"provenance"`
+	Code             string   `json:"code"`
+	Reason           string   `json:"reason"`
+	NextArgv         []string `json:"next_argv"`
+	NextJustRecipe   string   `json:"next_just_recipe"`
+	VerificationArgv []string `json:"verification_argv"`
+}
+
+// SelectionSummary is the queue projection rendered beside selected and
+// excluded records. It is computed from the same snapshot as the records.
+type SelectionSummary struct {
+	Pending                 int `json:"pending"`
+	FinishedAwaitingArchive int `json:"finished_awaiting_archive"`
+	PendingAnswers          int `json:"pending_answers"`
+	Blocked                 int `json:"blocked"`
+	BlockedArchiveCollision int `json:"blocked_archive_collision"`
+	BlockedDependencyCycle  int `json:"blocked_dependency_cycle"`
+	Probed                  int `json:"probed"`
+	ProbeSucceeded          int `json:"probe_succeeded"`
+	SkippedImpactNegligible int `json:"skipped_impact_negligible"`
+	TotalEstimatedMinutes   int `json:"total_estimated_minutes"`
+	UnknownEstimateCount    int `json:"unknown_estimate_count"`
+}
+
 type RollbackStatus string
 
 const (
@@ -82,14 +127,17 @@ type RollbackResult struct {
 }
 
 type CommandResult struct {
-	SchemaVersion  int              `json:"schema_version"`
-	Command        string           `json:"command"`
-	Outcome        CommandOutcome   `json:"outcome"`
-	RepositoryRoot string           `json:"repository_root"`
-	Findings       []CommandFinding `json:"findings"`
-	Changes        []RecordedChange `json:"changes"`
-	SkippedWork    []SkippedWork    `json:"skipped_work"`
-	Rollback       RollbackResult   `json:"rollback"`
+	SchemaVersion    int                  `json:"schema_version"`
+	Command          string               `json:"command"`
+	Outcome          CommandOutcome       `json:"outcome"`
+	RepositoryRoot   string               `json:"repository_root"`
+	Findings         []CommandFinding     `json:"findings"`
+	Changes          []RecordedChange     `json:"changes"`
+	SkippedWork      []SkippedWork        `json:"skipped_work"`
+	Selected         []SelectionRecord    `json:"selected"`
+	Excluded         []SelectionExclusion `json:"excluded"`
+	SelectionSummary SelectionSummary     `json:"selection_summary"`
+	Rollback         RollbackResult       `json:"rollback"`
 }
 
 // ExitCode is the single authority for the 0-4 process status contract. Nothing else in
@@ -121,6 +169,33 @@ func NormalizeResult(result CommandResult) CommandResult {
 	}
 	if result.SkippedWork == nil {
 		result.SkippedWork = []SkippedWork{}
+	}
+	if result.Selected == nil {
+		result.Selected = []SelectionRecord{}
+	}
+	if result.Excluded == nil {
+		result.Excluded = []SelectionExclusion{}
+	}
+	for index := range result.Selected {
+		selection := &result.Selected[index]
+		if selection.Dependencies == nil {
+			selection.Dependencies = []string{}
+		}
+		if selection.NextArgv == nil {
+			selection.NextArgv = []string{}
+		}
+		if selection.VerificationArgv == nil {
+			selection.VerificationArgv = []string{}
+		}
+	}
+	for index := range result.Excluded {
+		exclusion := &result.Excluded[index]
+		if exclusion.NextArgv == nil {
+			exclusion.NextArgv = []string{}
+		}
+		if exclusion.VerificationArgv == nil {
+			exclusion.VerificationArgv = []string{}
+		}
 	}
 	if result.Rollback.Actions == nil {
 		result.Rollback.Actions = []string{}
@@ -196,6 +271,41 @@ func renderText(result CommandResult) []byte {
 	}
 	for _, skipped := range result.SkippedWork {
 		fmt.Fprintf(&output, "skipped %s: %s\n", skipped.Code, skipped.Reason)
+	}
+	if result.Command == "next" || len(result.Selected) > 0 || len(result.Excluded) > 0 || result.SelectionSummary.Pending > 0 || result.SelectionSummary.Blocked > 0 {
+		fmt.Fprintf(&output, "queue: %d pending | %d finished (awaiting archive) | %d pending-answers | %d blocked | %d blocked-archive-collision | %d blocked-dependency-cycle\n",
+			result.SelectionSummary.Pending, result.SelectionSummary.FinishedAwaitingArchive,
+			result.SelectionSummary.PendingAnswers, result.SelectionSummary.Blocked,
+			result.SelectionSummary.BlockedArchiveCollision, result.SelectionSummary.BlockedDependencyCycle)
+	}
+	selectedIDs := make([]string, 0, len(result.Selected))
+	for _, selection := range result.Selected {
+		estimate := "not yet estimated"
+		if selection.EstimateKnown {
+			estimate = fmt.Sprintf("%d min", selection.EstimateMinutes)
+		}
+		fmt.Fprintf(&output, "selected %s [%s, depth %d, %s]: %s\n", selection.RequestID, selection.Provenance, selection.DependencyDepth, estimate, selection.Title)
+		fmt.Fprintf(&output, "  next: %s\n", joinArgv(selection.NextArgv))
+		if selection.NextJustRecipe != "" {
+			fmt.Fprintf(&output, "  just: just %s\n", selection.NextJustRecipe)
+		}
+		fmt.Fprintf(&output, "  verify: %s\n", joinArgv(selection.VerificationArgv))
+		selectedIDs = append(selectedIDs, selection.RequestID)
+	}
+	for _, exclusion := range result.Excluded {
+		fmt.Fprintf(&output, "excluded %s [%s] %s: %s\n", exclusion.RequestID, exclusion.Provenance, exclusion.Code, exclusion.Reason)
+		if len(exclusion.NextArgv) > 0 {
+			fmt.Fprintf(&output, "  next: %s\n", joinArgv(exclusion.NextArgv))
+		}
+		if exclusion.NextJustRecipe != "" {
+			fmt.Fprintf(&output, "  just: just %s\n", exclusion.NextJustRecipe)
+		}
+		if len(exclusion.VerificationArgv) > 0 {
+			fmt.Fprintf(&output, "  verify: %s\n", joinArgv(exclusion.VerificationArgv))
+		}
+	}
+	if result.Command == "next" || len(result.Selected) > 0 || len(result.Excluded) > 0 {
+		fmt.Fprintf(&output, "run_set: %s\n", strings.Join(selectedIDs, " "))
 	}
 	if result.Rollback.Status != "" {
 		fmt.Fprintf(&output, "rollback: %s\n", result.Rollback.Status)
