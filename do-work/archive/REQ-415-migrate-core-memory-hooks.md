@@ -1,7 +1,7 @@
 ---
 id: REQ-415
 title: 'Migrate the core SessionStart and memory hooks into Go subcommands'
-status: claimed
+status: completed-with-issues
 created_at: 2026-08-29T20:28:26Z
 user_request: UR-081
 domain: general
@@ -31,6 +31,8 @@ estimate:
     - asynchronous hook lifecycle behavior
     - cross-route regression gates
     - full-suite verification
+completed_at: 2026-09-01T04:02:33Z
+commit: 168dc293
 ---
 
 # Migrate the Core SessionStart and Memory Hooks into Go Subcommands
