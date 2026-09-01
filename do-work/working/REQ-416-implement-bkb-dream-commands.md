@@ -15,6 +15,19 @@ effort_estimate: effort-substantive
 related: [REQ-406, REQ-407, REQ-408, REQ-409, REQ-410, REQ-411, REQ-412, REQ-413, REQ-414, REQ-415, REQ-417, REQ-418, REQ-419, REQ-420]
 batch: go-no-llm-command-platform
 claimed_at: 2026-09-01T04:10:12Z
+route: C
+estimate:
+  p50_active_minutes: 95
+  confidence: low
+  calculated_at: 2026-09-01T04:18:00Z
+  basis:
+    - Route C
+    - 16-file write set
+    - 7 new files
+    - 4 subsystems involved
+    - dependency depth 11
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Implement Deterministic BKB and Dream Commands
@@ -23,7 +36,7 @@ claimed_at: 2026-09-01T04:10:12Z
 Move deterministic knowledge-base and Dream scans into `do-work-cli` while retaining LLM-only judgment phases in actions.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Accepted a three-task plan for one typed knowledge-command family, safe BKB scaffolding/structural scans, exactly seven read-only Dream scans, narrow recipes, and action consumption with semantic judgment retained.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -47,6 +60,58 @@ Certainty level: Firm for deterministic scans; explicitly retain action ownershi
 **Why RED now:** Deterministic phases are specified in action prose rather than exposed as one stable no-LLM interface.
 **GREEN when:** Every scan is directly runnable, text/JSON agree, findings are actionable, and semantic resolution remains delegated to the LLM action.
 **Validation:** User confirmed via the supplied implementation plan.
+
+## Triage
+
+**Route: C** — Complex
+
+**Reasoning:** Four public commands span a mutating scaffold transaction, two read-only scan families, action delegation, recipes, typed result projection, and an explicit deterministic-versus-semantic ownership boundary.
+
+**Estimate:** p50 95 active minutes, low confidence, based on a 16-file write set with seven new files, four subsystems, cross-route contracts, and full-suite verification.
+
+## Plan
+
+1. Add and register a standard-library `internal/knowledgecommands` family with RED fixtures for command availability, option grammar, target confinement, read-only scans, actionable text/JSON parity, and deterministic ordering.
+2. Implement safe BKB init/status/structural-lint behavior and make the BKB action consume canonical results while retaining semantic checks and report judgment.
+3. Implement exactly seven Dream scans, make Dream consume one canonical worklist while retaining lock/consent/consolidation ownership, add the four required recipes, reconcile the CLI prime/contracts, and run focused/race/full/compatibility/install/update/canonical gates.
+
+## Decisions
+
+- `bkb-lint-structure` and `dream-scan` are read-only; action-owned semantic judgment, reports, consent, locks, consolidation, and repairs remain outside the command family.
+- The Dream bonus newer-source probe is not one of the seven required scans.
+- `bkb-init` preserves the current exact scaffold/fill-gaps behavior, supports dry-run and meaningful commit, never overwrites, and owns rollback only for invocation-created paths.
+- Only the four REQ-416 recipes land now; REQ-419 retains the broad interface/help/hostile-quoting migration.
+- Files/findings/pairs are normalized, sorted, and deduplicated for stable text/JSON output.
+- REQ-416 must not edit `internal/gittransaction`; REQ-447 exclusively owns that shared seam in this wave.
+
+## Scope
+
+**Files I will touch:**
+- `_dev/tests/contract-regressions.sh`
+- `justfile`
+- `skills/do-work-board/justfile.template`
+- `skills/do-work-knowledge/actions/bkb.md`
+- `skills/do-work-knowledge/actions/bkb-reference.md`
+- `skills/do-work-knowledge/actions/dream.md`
+- `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go`
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md`
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/commands.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_init.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_scan.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/dream_scan.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/commands_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_init_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_scan_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/dream_scan_test.go` (new)
+
+**Files I will NOT touch:** `internal/gittransaction`, queue-kanban atomic publication, broad help/guides/SKILL interface migration, retained shell utilities, audit-metrics, release metadata, or REQ-417–420 surfaces beyond the four narrowly required recipes.
+
+**Acceptance criteria:**
+- [ ] All four commands are registered, direct, typed, actionable, and deterministic in text/JSON.
+- [ ] BKB scaffold/status/structural fixtures preserve exact formats/effects while semantic lint remains action-owned.
+- [ ] Dream exposes exactly seven read-only scans and its action consumes the canonical worklist without fallback or lock leakage.
+- [ ] Four flat recipes work in source and installed topology with collision/delegation contracts.
+- [ ] Exact 16-file scope and focused/race/full/compatibility/install/update/canonical gates pass.
 
 ## Full Context
 See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
