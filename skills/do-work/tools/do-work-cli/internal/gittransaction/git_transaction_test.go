@@ -24,6 +24,57 @@ func TestMutationRequiresGit(t *testing.T) {
 	}
 }
 
+func TestTransactionRootsMustMatchGitWorktreePhysicalIdentity(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "target.txt", "initial\n")
+	commitAll(t, repositoryRoot, "initial")
+	nestedRoot := filepath.Join(repositoryRoot, "nested")
+	if err := os.MkdirAll(nestedRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	preflight := PreflightTargets(context.Background(), nestedRoot, []string{"target.txt"}, false)
+	if preflight.Failure == nil || preflight.Failure.Kind != FailureInvalidOptions || !strings.Contains(preflight.Failure.Reason, nestedRoot) || !strings.Contains(preflight.Failure.Reason, repositoryRoot) {
+		t.Fatalf("nested-root preflight = %#v", preflight)
+	}
+	mutationCalled := false
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: nestedRoot,
+		TargetPaths:    []string{"target.txt"},
+	}, func(*MutationRecorder) error {
+		mutationCalled = true
+		return nil
+	})
+	if mutationCalled || result.Failure == nil || result.Failure.Kind != FailureInvalidOptions || !strings.Contains(result.Failure.Reason, nestedRoot) || !strings.Contains(result.Failure.Reason, repositoryRoot) {
+		t.Fatalf("nested-root transaction = %#v, mutation_called=%v", result, mutationCalled)
+	}
+	if status := runFixtureGit(t, repositoryRoot, "status", "--short"); status != "" {
+		t.Fatalf("nested-root refusal changed repository state: %q", status)
+	}
+
+	aliasRoot := filepath.Join(t.TempDir(), "repository-alias")
+	if err := os.Symlink(repositoryRoot, aliasRoot); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	for _, suppliedRoot := range []string{repositoryRoot, aliasRoot} {
+		preflight = PreflightTargets(context.Background(), suppliedRoot, []string{"target.txt"}, false)
+		if preflight.Failure != nil {
+			t.Fatalf("matching root %q preflight = %#v", suppliedRoot, preflight)
+		}
+		mutationCalled = false
+		result = ExecuteTransaction(context.Background(), TransactionOptions{
+			RepositoryRoot: suppliedRoot,
+			TargetPaths:    []string{"target.txt"},
+		}, func(*MutationRecorder) error {
+			mutationCalled = true
+			return nil
+		})
+		if result.Outcome != resultmodel.OutcomeSuccess || result.Failure != nil || !mutationCalled {
+			t.Fatalf("matching root %q transaction = %#v, mutation_called=%v", suppliedRoot, result, mutationCalled)
+		}
+	}
+}
+
 func TestDirtyTargetIsRefusedButUnrelatedDirtIsAllowed(t *testing.T) {
 	repositoryRoot := newRepository(t)
 	writeFile(t, repositoryRoot, "target.txt", "initial\n")

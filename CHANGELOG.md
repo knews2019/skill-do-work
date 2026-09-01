@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.7 — Refuse Mismatched Git Transaction Roots (2026-09-02)
+
+A nested repository root could let cleanup mutate one directory while Git guarded another, producing false success with no commit. Mutating commands now stop at the transaction boundary unless both paths identify the same worktree.
+
+- Transaction preflight and execution share one physical-root identity check with actionable mismatch evidence.
+- Regressions prove nested roots leave bytes, index, and HEAD unchanged while exact roots and symlink aliases remain valid.
+
 ## 0.260.6 — Stop False Stuck-Work Findings (2026-09-02)
 
 Doctor no longer labels live or terminal work as abandoned solely because it was claimed long ago. Its findings now distinguish an actually inactive claim from a recent edit or a terminal record waiting to be moved.

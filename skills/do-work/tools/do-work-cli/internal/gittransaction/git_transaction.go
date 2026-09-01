@@ -23,6 +23,8 @@ import (
 
 type FailureKind string
 
+var errRepositoryRootMismatch = errors.New("supplied repository root does not identify the Git worktree root")
+
 const (
 	FailureInvalidOptions FailureKind = "invalid_options"
 	FailureNotGit         FailureKind = "not_git_repository"
@@ -144,7 +146,7 @@ func PreflightTargets(ctx context.Context, repositoryRoot string, targetPaths []
 	result := TargetPreflight{}
 	resolvedRoot, err := resolveRepositoryRoot(ctx, repositoryRoot)
 	if err != nil {
-		result.Failure = &TransactionFailure{Kind: FailureNotGit, Reason: err.Error()}
+		result.Failure = &TransactionFailure{Kind: repositoryRootFailureKind(err), Reason: err.Error()}
 		return result
 	}
 	result.RepositoryRoot = resolvedRoot
@@ -286,7 +288,7 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	}
 	repositoryRoot, err := resolveRepositoryRoot(ctx, options.RepositoryRoot)
 	if err != nil {
-		return failTransaction(result, resultmodel.OutcomeFailure, FailureNotGit, err.Error())
+		return failTransaction(result, resultmodel.OutcomeFailure, repositoryRootFailureKind(err), err.Error())
 	}
 	result.RepositoryRoot = repositoryRoot
 	targetPaths, err := normalizeTargetPaths(options.TargetPaths)
@@ -609,7 +611,23 @@ func resolveRepositoryRoot(ctx context.Context, suppliedRoot string) (string, er
 	if err != nil {
 		return "", errors.New("mutating commands require a Git repository")
 	}
-	return filepath.Clean(strings.TrimSpace(output)), nil
+	gitRoot := filepath.Clean(strings.TrimSpace(output))
+	suppliedInfo, suppliedError := os.Stat(absoluteRoot)
+	gitInfo, gitError := os.Stat(gitRoot)
+	if suppliedError != nil || gitError != nil || !suppliedInfo.IsDir() || !gitInfo.IsDir() {
+		return "", fmt.Errorf("inspect supplied repository root %q and Git worktree root %q", absoluteRoot, gitRoot)
+	}
+	if !os.SameFile(suppliedInfo, gitInfo) {
+		return "", fmt.Errorf("%w: supplied=%q git=%q", errRepositoryRootMismatch, absoluteRoot, gitRoot)
+	}
+	return gitRoot, nil
+}
+
+func repositoryRootFailureKind(err error) FailureKind {
+	if errors.Is(err, errRepositoryRootMismatch) {
+		return FailureInvalidOptions
+	}
+	return FailureNotGit
 }
 
 func normalizeTargetPaths(paths []string) ([]string, error) {

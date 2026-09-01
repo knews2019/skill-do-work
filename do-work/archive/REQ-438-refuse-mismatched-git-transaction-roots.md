@@ -1,7 +1,7 @@
 ---
 id: REQ-438
 title: '[impact-critical] Refuse mismatched Git transaction roots'
-status: claimed
+status: completed
 route: A
 created_at: 2026-08-31T14:19:37Z
 user_request: UR-083
@@ -22,6 +22,7 @@ estimate:
 related: [REQ-437, REQ-439, REQ-440, REQ-441, REQ-442, REQ-443, REQ-444]
 batch: accepted-feedback-regressions
 claimed_at: 2026-09-01T21:35:07Z
+completed_at: 2026-09-01T21:46:48Z
 ---
 
 # Refuse Mismatched Git Transaction Roots

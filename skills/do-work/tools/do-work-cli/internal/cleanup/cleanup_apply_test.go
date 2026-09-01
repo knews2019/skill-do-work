@@ -160,6 +160,49 @@ func TestCleanupPreflightRemediationMatchesEveryReachableFailureKind(t *testing.
 	}
 }
 
+func TestApplyPlanRefusesNestedRepositoryRootBeforeMutation(t *testing.T) {
+	repositoryRoot := cleanupRepository(t)
+	sourcePath := "do-work/queue/REQ-438-done.md"
+	destinationPath := "do-work/archive/REQ-438-done.md"
+	writeCleanupFile(t, repositoryRoot, sourcePath, cleanupRequest("REQ-438", "done", ""))
+	commitCleanupFixture(t, repositoryRoot)
+	nestedRoot := filepath.Join(repositoryRoot, "nested")
+	if err := os.MkdirAll(nestedRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	headBefore := runCleanupGit(t, repositoryRoot, "rev-parse", "HEAD")
+
+	plan := CleanupPlan{RepositoryRoot: nestedRoot, Groups: []OperationGroup{{
+		Code:       "ARCHIVE-REQ-438",
+		AffectedID: "REQ-438",
+		Operations: []CleanupOperation{{
+			Kind:            OperationMove,
+			SourcePath:      sourcePath,
+			DestinationPath: destinationPath,
+		}},
+	}}}
+	result := ApplyPlan(context.Background(), plan, ApplyOptions{Commit: true, CommitMessage: "nested cleanup"})
+	if result.Outcome != resultmodel.OutcomeFindings || len(result.Findings) != 1 || len(result.Changes) != 0 {
+		t.Fatalf("nested-root cleanup = %#v", result)
+	}
+	evidence := strings.Join(result.Findings[0].Evidence, " ")
+	if !strings.Contains(evidence, "GIT-INVALID-OPTIONS") || !strings.Contains(evidence, nestedRoot) || !strings.Contains(evidence, repositoryRoot) {
+		t.Fatalf("nested-root cleanup evidence = %#v", result.Findings[0])
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(sourcePath))); err != nil {
+		t.Fatalf("nested-root refusal changed source: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(destinationPath))); !os.IsNotExist(err) {
+		t.Fatalf("nested-root refusal created destination: %v", err)
+	}
+	if headAfter := runCleanupGit(t, repositoryRoot, "rev-parse", "HEAD"); headAfter != headBefore {
+		t.Fatalf("nested-root refusal changed HEAD: before %s after %s", headBefore, headAfter)
+	}
+	if status := runCleanupGit(t, repositoryRoot, "status", "--short"); status != "" {
+		t.Fatalf("nested-root refusal changed repository state: %q", status)
+	}
+}
+
 func TestURClosureWaitsForRequiredMemberArchival(t *testing.T) {
 	repositoryRoot := cleanupRepository(t)
 	writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-430-zulu.md", cleanupRequest("REQ-430", "completed", "UR-430"))
