@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.254.1 — Complete Modes Across Atomic Rollback (2026-09-01)
+
+Queue-kanban replacement and existing-untracked Git rollback now preserve setuid, setgid, and sticky bits alongside ordinary permissions.
+
+- Both real seams apply the sanitized complete regular-file mode after writing content, preventing writes or umask from silently clearing special bits.
+- Six RED/GREEN rows cover `04640`, `02640`, and `01640`, with exact bytes, rollback outcome, and untracked-state assertions.
+- Existing target refusal, identity revalidation, sync/close, atomic replacement, transaction guards, and unrelated-dirt behavior remain unchanged.
+
 ## 0.254.0 — Typed SessionStart and Memory Hooks (2026-09-01)
 
 Core SessionStart plus memory injection and Stop capture now run through registered Go commands while the three shipped hook paths remain installed-layout launchers.

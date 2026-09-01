@@ -1,7 +1,7 @@
 ---
 id: REQ-447
 title: '[impact-rule-change] Preserve special mode bits in queue-kanban publication'
-status: claimed
+status: completed
 created_at: 2026-08-31T20:30:00Z
 status_changed_at: 2026-08-31T20:30:00Z
 user_request: UR-081
@@ -28,6 +28,8 @@ estimate:
     - 2 modules involved
     - filesystem metadata and rollback behavior
     - cross-platform compile and canonical gates
+completed_at: 2026-09-01T04:48:26Z
+commit: 96de7f69
 ---
 
 # Preserve Special Mode Bits in Queue-Kanban Publication

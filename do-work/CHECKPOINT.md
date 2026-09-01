@@ -39,4 +39,3 @@
 
 - REQ-416: Implement deterministic BKB and Dream commands — claimed 2026-09-01T04:10:12Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-447: [impact-rule-change] Preserve special mode bits in queue-kanban publication — claimed 2026-09-01T04:10:28Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
