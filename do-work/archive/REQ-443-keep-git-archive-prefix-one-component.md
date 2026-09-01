@@ -1,7 +1,7 @@
 ---
 id: REQ-443
 title: '[impact-critical] Keep Git fallback archive prefixes to one component'
-status: claimed
+status: completed
 route: A
 created_at: 2026-08-31T14:19:37Z
 user_request: UR-083
@@ -22,6 +22,7 @@ estimate:
 related: [REQ-437, REQ-438, REQ-439, REQ-440, REQ-441, REQ-442, REQ-444]
 batch: accepted-feedback-regressions
 claimed_at: 2026-09-01T22:14:46Z
+completed_at: 2026-09-01T22:41:36Z
 ---
 
 # Keep Git Fallback Archive Prefixes to One Component

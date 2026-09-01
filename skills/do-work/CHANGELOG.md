@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.11 — Lock Git Fallback Extraction Depth (2026-09-02)
+
+Slash-containing branch names can no longer alter the path depth of a Git fallback archive. An end-to-end regression now proves exact branch selection and one-component extraction through the production fetch path.
+
+- Git fallback archives retain the branch-independent `upstream/` prefix while clone selection preserves names such as `release/2.x` exactly.
+- A failed-HTTP fixture fetches the slash branch, extracts with `--strip-components=1`, and finds its branch-specific `VERSION` at the root.
+
 ## 0.260.10 — Repair Knowledge-Base Backlog Integrity (2026-09-02)
 
 The backlog ingest now preserves every factual lesson, exposes malformed YAML and one-way relationships mechanically, and carries a verified reciprocal evidence graph without changing REQ source identities.

@@ -302,6 +302,48 @@ func TestAnUnreadableHttpDownloadFallsThroughToTheGitRoute(t *testing.T) {
 	}
 }
 
+func TestGitFallbackSlashBranchExtractsAtRootAfterOneComponentStrip(t *testing.T) {
+	directory := t.TempDir()
+	repositoryPath := newFixtureRepository(t, directory)
+	runFixtureGit(t, repositoryPath, "switch", "-q", "-c", "release/2.x")
+	writeRepositoryFile(t, repositoryPath, "VERSION", "release-2.x\n")
+	runFixtureGit(t, repositoryPath, "add", "VERSION")
+	runFixtureGit(t, repositoryPath, "commit", "-qm", "slash branch fixture")
+
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		_, _ = response.Write([]byte("rate limited\n"))
+	}))
+	defer server.Close()
+	targetPath := filepath.Join(directory, "upstream.tar.gz")
+	result, err := FetchArchive(context.Background(), Request{
+		ArchiveTargetPath:     targetPath,
+		UpstreamTarballURL:    server.URL + "/owner/repo/archive/refs/heads/release/2.x.tar.gz",
+		UpstreamRepositoryURL: repositoryPath,
+	})
+	if err != nil {
+		t.Fatalf("FetchArchive: %v", err)
+	}
+	if !strings.HasPrefix(result.RouteDescription, "upstream archive fetched with git (HTTP route failed") {
+		t.Fatalf("route = %q, want Git after failed HTTP", result.RouteDescription)
+	}
+
+	extractionRoot := filepath.Join(directory, "extracted")
+	if err := os.Mkdir(extractionRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	extract := exec.Command("tar", "xzf", targetPath, "--strip-components=1", "-C", extractionRoot)
+	if output, err := extract.CombinedOutput(); err != nil {
+		t.Fatalf("extract Git fallback archive: %v: %s", err, output)
+	}
+	version, err := os.ReadFile(filepath.Join(extractionRoot, "VERSION"))
+	if err != nil {
+		t.Fatalf("read root VERSION after one-component extraction: %v", err)
+	}
+	if string(version) != "release-2.x\n" {
+		t.Fatalf("root VERSION = %q, want exact slash branch content", version)
+	}
+}
+
 // git archive honours export-ignore; a worktree copy does not. That is why the git route
 // repacks rather than tars the clone.
 func TestGitRouteHonoursExportIgnore(t *testing.T) {
