@@ -63,7 +63,11 @@ func (runtime *CommandRuntime) Run(arguments []string) int {
 	result := handler(context, commandArgs)
 	result.Command = command
 	result.RepositoryRoot = context.RepositoryRoot
-	return runtime.writeResult(context.Format, result)
+	exitCode := runtime.writeResult(context.Format, result)
+	if result.ExitCodeOverride == 129 || result.ExitCodeOverride == 130 || result.ExitCodeOverride == 143 {
+		return result.ExitCodeOverride
+	}
+	return exitCode
 }
 
 func (runtime *CommandRuntime) writeResult(outputFormat resultmodel.OutputFormat, result resultmodel.CommandResult) int {

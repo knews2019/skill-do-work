@@ -265,3 +265,18 @@ func containsExactLine(rendered, wanted string) bool {
 	}
 	return false
 }
+
+func TestExactTextAndAuditJSONShareOneResult(t *testing.T) {
+	text := "## Inventory\n"
+	result := CommandResult{Outcome: OutcomeSuccess, ExactTextOutput: &text, AuditMetrics: &AuditMetricsResult{Kind: "inventory"}}
+	renderedText, err := RenderResult(result, FormatText)
+	if err != nil || string(renderedText) != text {
+		t.Fatalf("text=%q err=%v", renderedText, err)
+	}
+	renderedJSON, err := RenderResult(result, FormatJSON)
+	var decoded CommandResult
+	decodeErr := json.Unmarshal(renderedJSON, &decoded)
+	if err != nil || decodeErr != nil || decoded.AuditMetrics == nil || decoded.AuditMetrics.Kind != "inventory" || strings.Contains(string(renderedJSON), "exact_text") {
+		t.Fatalf("json=%s err=%v", renderedJSON, err)
+	}
+}
