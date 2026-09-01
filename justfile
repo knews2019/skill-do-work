@@ -23,6 +23,22 @@ kanban-summary:
 # Update the project-local do-work suite without an agent (one reviewed archive, one confirmation, managed-path recovery)
 run-do-work-update:
     project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-update.sh" --project-root "$project_root"
+
+# Initialize or fill gaps in a BKB scaffold through the canonical Go command
+bkb-init kb="kb" *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" bkb-init --kb {{quote(kb)}} {{args}}
+
+# Read a deterministic BKB status snapshot
+bkb-status kb="kb":
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" bkb-status --kb {{quote(kb)}}
+
+# Run deterministic BKB structural lint without semantic edits
+bkb-lint-structure kb="kb":
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" bkb-lint-structure --kb {{quote(kb)}}
+
+# Run Dream's seven read-only deterministic scans
+dream-scan path="memory":
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" dream-scan --path {{quote(path)}}
 # <<< do-work:recipes <<<
 
 # Repository-only verification; the script owns the command inventory.

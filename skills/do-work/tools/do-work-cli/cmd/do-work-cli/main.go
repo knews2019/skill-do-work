@@ -8,6 +8,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/corehelpers"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/doctor"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/hookcommands"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/knowledgecommands"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/nextselection"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/publication"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
@@ -41,6 +42,9 @@ func main() {
 		handlers[name] = handler
 	}
 	for name, handler := range hookcommands.Handlers(os.Stdin) {
+		handlers[name] = handler
+	}
+	for name, handler := range knowledgecommands.Handlers() {
 		handlers[name] = handler
 	}
 	runtime := commandruntime.NewRuntime(os.Stdout, handlers)

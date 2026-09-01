@@ -65,89 +65,14 @@ A usage ledger (`usage-ledger.jsonl`) rides at the KB root next to `raw/` and `w
 
 Create the full KB directory structure at the specified path (default: `./kb`).
 
-### Pre-flight Check
+### Steps
 
-Before creating anything, check if the target path already contains a KB (has both `raw/` and `wiki/` subdirectories):
+1. Resolve `<path>` from the argument, defaulting to `kb`.
+2. Invoke the installed core launcher with `--repo-root <project-root> bkb-init --kb <path>`. Forward `--fill-gaps`, `--dry-run`, and `--commit` when supplied.
+3. Render the canonical result. Its typed changes and skipped work are the complete scaffold report.
+4. If the launcher is missing or the command fails, stop with its actionable finding. Do not recreate the scaffold from prose or mutate any KB path as a fallback.
 
-- **If KB exists**: Stop and report: "Knowledge base already exists at `<path>/` (N articles, M topic clusters). To repair a broken structure, run `do-work-knowledge bkb init <path> --fill-gaps`."
-- **If `--fill-gaps` flag is present**: Only create directories and seed files that don't already exist. Never overwrite existing files. Report what was created vs. what was skipped. This is the migration path for legacy KBs — e.g., a KB created before v0.46.0 will gain the `agents/` directory and all 8 built-in agent files without disturbing existing content.
-- **If no KB exists**: Proceed with full initialization.
-
-### Step 1: Create the Raw Pipeline
-
-```
-<path>/
-├── raw/
-│   ├── inbox/                      # Zero-friction drop zone
-│   ├── capture/                    # Type-sorted staging
-│   │   ├── web/
-│   │   ├── papers/
-│   │   ├── repos/
-│   │   ├── images/
-│   │   ├── notes/
-│   │   ├── audio/
-│   │   └── video/
-│   ├── processed/                  # Ingested sources, organized by date (YYYY-MM-DD/)
-│   └── _inbox_queue.md             # LLM work list
-```
-
-### Step 2: Create the Wiki Structure
-
-```
-<path>/
-├── wiki/
-│   ├── _master_index.md            # Top-level nav (~80 lines max)
-│   ├── topics/                     # Second-level indexes
-│   ├── concepts/                   # Concept articles
-│   ├── entities/                   # Person/org/product articles
-│   ├── sources/                    # Source summaries
-│   ├── comparisons/                # Filed query outputs
-│   ├── daily/                      # Daily changelog
-│   ├── monthly/                    # Monthly rollup + trends
-│   ├── log.md                      # Append-only timeline
-│   ├── overview.md                 # High-level synthesis
-│   └── agent.md                    # Retrieval agent — learns query patterns
-├── agents/                         # Crew — role definitions for each KB operation
-│   ├── architect.md                #   Structure, schema, init
-│   ├── sorter.md                   #   Inbox triage → capture
-│   ├── compiler.md                 #   Ingest sources → wiki pages
-│   ├── seeker.md                   #   Query, retrieval, synthesis
-│   ├── connector.md                #   Cross-references, typed relationships
-│   ├── librarian.md                #   Lint, resolve, rollup, maintenance
-│   ├── reviewer.md                 #   QA — confidence, source verification
-│   └── editor.md                   #   Wiki readability, navigation quality
-```
-
-### Step 3: Create Seed Files
-
-Create the seed files listed in the "Seed File Templates" section of actions/bkb-reference.md. These are the initial empty-state files for the inbox queue, processing manifest, master index, activity log, overview, and retrieval agent.
-
-### Step 4: Create the Agent Crew
-
-Create the 8 agent files listed in the "Agent Crew Templates" section of actions/bkb-reference.md. Place them in `<path>/agents/`. Each defines a role the LLM adopts when performing that operation.
-
-### Step 5: Create the Schema File
-
-Create `<path>/CLAUDE.md` with the KB schema (conventions, frontmatter format, workflow triggers). Use the schema content from the "Schema File Content" section of actions/bkb-reference.md.
-
-### Step 6: Initialize Git
-
-If the KB path is not already inside a git repository, run `git init` in the KB root.
-
-### Step 7: Report
-
-```
-Knowledge base initialized at <path>/
-
-  raw/       Source pipeline (inbox → capture → processed)
-  wiki/      LLM-maintained wiki (master index → topic indexes → articles)
-  agents/    Crew of 8 — role definitions for each KB operation
-
-Next steps:
-  Drop files into <path>/raw/inbox/
-  do-work-knowledge bkb triage         Sort inbox items
-  do-work-knowledge bkb ingest         Compile sources into wiki
-```
+`actions/bkb-reference.md` remains the human-readable format reference. The Go command is the executable authority for scaffold bytes, no-overwrite behavior, Git guards, and rollback.
 
 ---
 
@@ -400,22 +325,9 @@ Health check the wiki for consistency and accuracy.
 
 ### Checks
 
-1. **Contradictions** — pages that make conflicting claims about the same thing.
-2. **Orphan pages** — wiki pages with no inbound `[[wiki-links]]`.
-3. **Missing pages** — concepts mentioned 3+ times across pages without their own page.
-4. **Stale claims** — content superseded by newer sources (check `updated` dates).
-5. **Index integrity**:
-   - Every wiki article appears in exactly one topic index.
-   - Every topic index appears in `_master_index.md`.
-   - Article counts in indexes match actual file counts.
-   - No topic index exceeds the split threshold (40 articles).
-6. **Broken links** — `[[wiki-links]]` pointing to non-existent pages.
-7. **Daily log coverage** — daily logs exist for every day that had ingestion activity.
-8. **Frontmatter completeness** — all required fields present in every wiki page.
-9. **Relationship density** — pages with more than 8 `related:` entries (cap exceeded).
-10. **Relationship validity** — every `rel:` value is one of the six allowed types; every `page:` target exists.
-11. **Agent staleness** — `wiki/agent.md` Query Log has entries but Hot Topics haven't been regenerated in 10+ queries.
-12. **Confidence audit** — pages where confidence level doesn't match their source evidence: a page with 2+ corroborating sources still at `medium` (should be `high`), or a page at `high` with only one secondary source (should be `medium`).
+1. Invoke the installed core launcher with `--repo-root <project-root> --format json bkb-lint-structure --kb <kb>` exactly once. Treat its typed findings as canonical for orphans, index integrity, broken links, ingestion-day coverage, required frontmatter and enum shape, relationship density/targets/enums, and mechanical agent-query staleness. Project each finding into the combined report without rescanning those categories.
+2. If the launcher is missing or the command fails, stop with its actionable finding. Do not fall back to free-form structural scanning and do not write the lint report or log entry.
+3. Apply the active Librarian, Reviewer, Connector, and Editor judgment to the retained semantic checks only: contradictions, missing-concept design, superseded or stale claims, confidence/source-quality fit, editorial thinness/navigation, reciprocity and garden work, and the repair choice for every structural finding.
 
 ### Report
 
@@ -503,25 +415,9 @@ Quick snapshot of the KB state.
 
 ### Steps
 
-1. **Read** `wiki/_master_index.md` for article counts and topic clusters.
-2. **Count** files in `raw/inbox/` (pending triage) and items marked "ready" in `raw/_inbox_queue.md` (pending ingestion).
-3. **Read** the most recent `wiki/daily/` entry for last activity date.
-4. **Scan** `wiki/log.md` for the most recent `lint |`, `defrag |`, and `garden |` entries to get their last-run dates.
-5. **Count** custom agents: `.md` files in `<kb>/agents/` that contain `## Custom Agent`.
-6. **Report**:
-   ```
-   Knowledge Base Status:
-     Location: <path>
-     Total articles: N across M topic clusters
-     Inbox: N items pending triage
-     Queue: N items ready for ingestion
-     Last activity: YYYY-MM-DD
-     Last lint: YYYY-MM-DD (or "never")
-     Last defrag: YYYY-MM-DD (or "never")
-     Last garden: YYYY-MM-DD (or "never")
-     Agents: 8 built-in + N custom
-   ```
-7. **Staleness warnings**: If defrag hasn't run in 14+ days (or never), append a warning: `⚠ Defrag is overdue — last run was N days ago (recommend weekly).` Same for garden at 14+ days.
+1. Invoke the installed core launcher with `--repo-root <project-root> bkb-status --kb <kb>`.
+2. Render its canonical location, counts, activity dates, agent count, and maintenance warnings.
+3. If the launcher is missing or the command fails, stop with its actionable finding. Do not reconstruct a status snapshot from a second scan.
 
 ---
 

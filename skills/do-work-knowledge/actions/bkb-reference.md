@@ -1,12 +1,12 @@
 # Build Knowledge Base — Reference
 
-> Companion file to `bkb.md`. Contains seed file templates, agent crew definitions, and the KB schema file content. Extracted to keep the main action file focused on procedural steps.
+> Companion file to `bkb.md`. Contains the human-readable seed, crew, and schema formats. The installed core `bkb-init` command is the executable authority for exact scaffold bytes; this file is not a second mutation procedure.
 
 ---
 
 ## Seed File Templates
 
-Used by `init` Step 3. Create these files with the content shown.
+Reference forms for the six seed files created by canonical `bkb-init`.
 
 **`raw/_inbox_queue.md`:**
 
@@ -85,7 +85,7 @@ Learned patterns from past queries. Read this file FIRST during `bkb query` to p
 
 ## Agent Crew Templates
 
-Used by `init` Step 4. Create these 8 files in `<path>/agents/`. Each defines a role the LLM adopts when performing that operation. Read the relevant agent file before executing each sub-command.
+Reference forms for the eight built-in agent files created by canonical `bkb-init`. Each defines a role the LLM adopts when performing that operation.
 
 **`agents/architect.md`:**
 
@@ -301,7 +301,7 @@ You are the Editor. You ensure the wiki is clear, navigable, and well-structured
 
 ## Schema File Content
 
-Used by `init` Step 5. When creating `<path>/CLAUDE.md`, use this content:
+Reference form for the `<path>/CLAUDE.md` schema created by canonical `bkb-init`:
 
 ```markdown
 # LLM Knowledge Base Schema

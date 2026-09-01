@@ -16,6 +16,7 @@ The standard-library Go module under this directory is the canonical implementat
 - `internal/nextselection/` owns read-only target expansion, queue readiness, process-tree-owned blocked probes, wave/fan-out bounds, estimates, and typed selected/excluded records.
 - `internal/corehelpers/` owns the remaining utility handlers and leaf check, inventory, Git, publication, reservation, and survey mechanics; shared download, timestamp, probe, and provenance primitives remain with their domain owners.
 - `internal/hookcommands/` owns core and memory SessionStart plus memory Stop protocols; retained hook scripts only launch these commands.
+- `internal/knowledgecommands/` owns BKB scaffold/status/structural scans and Dream's seven deterministic scans; actions retain semantic judgment, reports, locks, consent, consolidation, and repair choice.
 - `internal/archivefetch/` owns in-process HTTP download/retry/redaction and archive transport fallback.
 - `internal/requeststate/` owns deterministic `claim`, `unblock`, `complete`, `fail`, and `cancel` plans and their coupled checkpoint, archive, UR, calibration, and provenance mutations.
 - `internal/publication/` is the sole deterministic owner of typed `capture-files`, `answer`, and `release` manifests, planning, containment, repository-root-confined parent handles, and atomic publication. Stakeholder history and overrides are typed, file-backed evidence; actions retain content and semantic/release judgment, and once supplied these durable mutations have no prose fallback.
@@ -43,6 +44,7 @@ The standard-library Go module under this directory is the canonical implementat
 - Standalone `DownloadAtomic` stays rooted and no-overwrite. `FetchArchive` may refresh an initially regular target only after final validation proves its identity and content are unchanged.
 - Hook protocol bytes are an optional typed result projection; JSON keeps the same output beside every typed finding and filesystem change. Reservation cleanup preserves every marker unless Git establishes committed request authority, including when Git itself is unavailable. New memory logs and ledgers use ordinary create permissions so the caller's umask retains the legacy filesystem effect. SessionStart launcher failures propagate actionably; memory Stop domain and launcher failures never block session end.
 - Request-state commands validate selector-provided exact paths instead of selecting again. Actions retain confirmation, failure classification, terminal/review/release judgment, follow-up authoring, and dependent disposition; once supplied, deterministic lifecycle bytes have no free-form fallback.
+- Knowledge scans are read-only, normalized, sorted typed evidence. `bkb-init` never overwrites; Dream's optional newer-source probe is action-owned and is not an eighth scan.
 
 ## Verify
 
@@ -51,6 +53,7 @@ The standard-library Go module under this directory is the canonical implementat
 - Module regression: `go test -count=1 ./...`
 - Exact Go 1.25 compatibility: `bash _dev/tests/do-work-cli-go125-compatibility.sh` from the repository root
 - Hook consumers: `bash _dev/tests/session-start-hook-behavior.sh && bash _dev/tests/memory-hook-behavior.sh`
+- Knowledge commands: `go test -race ./internal/knowledgecommands` plus action/recipe contracts in `_dev/tests/contract-regressions.sh`
 - Windows atomic compile: `GOOS=windows GOARCH=amd64 go test -c ./internal/atomicfile -o <temporary-path>`
 - Windows blocked-probe compile: `GOOS=windows GOARCH=amd64 go test -c ./internal/nextselection -o <temporary-path>`
 - Repository baseline: run the unpiped `_dev/tests/maintainer-verify.sh` from the repository root when the integrating workflow calls for it.
