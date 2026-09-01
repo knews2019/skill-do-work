@@ -151,6 +151,26 @@ The coordinated `prime-do-work-cli.md` restatement remains owned by the in-fligh
 - Builder full Go, vet, exact Go 1.25, update behavior, contract regressions, canonical maintainer gate, and diff hygiene — passed per the durable handback.
 - REQ-415 merge `a18bf17a` landed the coordinated `prime-do-work-cli.md` restatement before independent review.
 
+## Review — Initial
+
+**Overall: 84%** | 2026-09-01
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 94% |
+| Code Quality | 92% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial |
+
+**Important finding:**
+- F1 — impact-user-visible — a target-parent open failure returns a bare error instead of the required truthful HTTP/Git not-attempted evidence envelope and actionable escape-hatch shape.
+
+The rooted publication, regular refresh, preservation, unsafe-target, race, mode, and standalone no-overwrite contracts passed. F1 enters the single remediation pass.
+
+*Reviewed independently; full evidence is in `do-work/runs/work-2026-08-31-165510/REQ-441-review.md`.*
+
 ## Full Context
 
 See `do-work/user-requests/UR-083/input.md` for the complete capture provenance.
