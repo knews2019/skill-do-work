@@ -40,8 +40,8 @@ Replace hook domain logic with canonical `do-work-cli` hook subcommands.
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Accepted a three-part plan for exact hook protocol projection, typed Go event owners, thin retained launchers, and differential consumer fixtures.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** Added the three Go hook commands, exact protocol projection, thin retained launchers, memory protocol owners, and committed-fresh reservation cleanup in the frozen scope.
+- [x] **[UNIFY]:** Reviewed all 21 changed files; focused/full Go, vet, exact Go 1.25, both consumer hook suites, contract/staged/install/update, shell syntax, diff, and canonical maintainer gates pass on the builder branch.
 
 ## Detailed Requirements
 - Migrate the core SessionStart hook plus memory SessionStart and Stop-capture hooks into Go subcommands.
@@ -130,11 +130,58 @@ Certainty level: Firm. Freeze byte-level hook protocols before moving any logic.
 **Files I will NOT touch:** hook JSON fragments, `install-memory-hooks.sh`, setup/memory action entry points, `commandruntime`, Git/publication primitives, Justfiles, non-hook shims, release metadata, or REQ-416/417 surfaces. Expansion requires a focused RED and owner approval.
 
 **Acceptance criteria:**
-- [ ] All three hook domains are registered Go commands, and retained paths are thin installed-layout launchers.
-- [ ] Captured fixtures preserve exact stdin/stdout/stderr/status and filesystem/ledger/request effects.
-- [ ] Memory capture preserves redaction, valid UTF-8 budgeting, sentinel isolation, hash deduplication, and one-write append behavior.
-- [ ] Core SessionStart preserves timestamp/reservation housekeeping while closing REQ-463's committed-fresh-authority defect.
-- [ ] Focused, full, compatibility, consumer, contract, install/update, and canonical gates pass with exact 21-file scope.
+- [x] All three hook domains are registered Go commands, and retained paths are thin installed-layout launchers.
+- [x] Captured fixtures preserve exact stdin/stdout/stderr/status and filesystem/ledger/request effects.
+- [x] Memory capture preserves redaction, valid UTF-8 budgeting, sentinel isolation, hash deduplication, and one-write append behavior.
+- [x] Core SessionStart preserves timestamp/reservation housekeeping while closing REQ-463's committed-fresh-authority defect.
+- [x] Focused, full, compatibility, consumer, contract, install/update, and canonical gates pass with exact 21-file scope.
+
+## Implementation Summary
+
+Added registered `session-start`, `memory-session-start`, and `memory-stop-capture` commands under a new `internal/hookcommands` owner. A nullable typed `protocol_output` lets text mode emit byte-consumed hook output exactly while JSON retains the same payload and typed evidence. Core banner, queue count, reservation cleanup, active timestamp repair, curated memory injection, transcript selection, redaction, UTF-8 budgeting, hash deduplication, one-write capture append, and best-effort ledgers now run in Go.
+
+The three retained hook paths are installed-layout sibling-CLI launchers. SessionStart launcher failures propagate; Stop reports a canonical-tool diagnostic but remains nonblocking. Reservation cleanup now refuses uncommitted unborn-Git evidence and revalidates identity plus eligibility immediately before deletion, closing REQ-463's captured critical cases. The CLI prime also carries REQ-441's coordinated validated archive-refresh restatement.
+
+**Files changed:**
+- `_dev/tests/contract-regressions.sh` (modified)
+- `_dev/tests/memory-hook-behavior.sh` (new)
+- `_dev/tests/session-start-hook-behavior.sh` (modified)
+- `skills/do-work-knowledge/actions/memory-reference.md` (modified)
+- `skills/do-work-knowledge/hooks/memory-session-start.sh` (modified)
+- `skills/do-work-knowledge/hooks/memory-stop-capture.sh` (modified)
+- `skills/do-work/hooks/session-start.sh` (modified)
+- `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/reservations.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/reservations_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/hookcommands/commands.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/hookcommands/commands_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/hookcommands/memory_capture.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/hookcommands/memory_capture_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/hookcommands/memory_start.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/hookcommands/memory_start_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/hookcommands/session_start.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/hookcommands/session_start_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified)
+
+**Builder commit:** `0664f27182e95aaf897792a9d16fdfe904d50549`
+
+**Integration range:** `ff9ed994..a18bf17a`
+
+*Generated by work action from `do-work/runs/work-2026-08-31-165510/REQ-415-handback.md`.*
+
+## Qualification
+
+- `DO_WORK_DIFF_RANGE=ff9ed994..a18bf17a ... qualify.sh` — passed; warnings were limited to Go test files covered by the qualification exception category.
+- `DO_WORK_DIFF_RANGE=ff9ed994..a18bf17a ... scope-drift.sh` — passed with the exact 21-file match.
+
+## Testing
+
+- Merged focused hookcommands, corehelpers, and resultmodel tests — passed.
+- Merged SessionStart and memory hook consumer behavior suites — passed.
+- Builder full Go, vet, exact Go 1.25, contract/staged/install/update, shell syntax, diff hygiene, and canonical maintainer gate — passed per the durable handback.
+- REQ-463's unborn-Git and final eligibility-revalidation fixtures pass in the merged corehelpers package.
 
 ## Red-Green Proof
 **RED prompt/case:** Replay captured valid, malformed, redacted, duplicate, and repair hook events against missing Go hook subcommands.

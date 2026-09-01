@@ -119,7 +119,7 @@ Certainty level: Firm on staging and target preservation. Reuse existing publica
 - [x] Invalid HTTP followed by valid Git applies the same validated replacement contract and reports the winning route truthfully.
 - [x] Total failure preserves pre-existing bytes/mode; absent targets remain exclusive and unsafe/changed targets refuse unchanged.
 - [x] Parent swaps and competing creations/replacements cannot redirect or clobber publication.
-- [ ] Focused/full Go, compatibility, update/contract, scope/diff, and canonical gates pass within exactly two builder files, with the coordinated prime restatement present before review.
+- [x] Focused/full Go, compatibility, update/contract, scope/diff, and canonical gates pass within exactly two builder files, with the coordinated prime restatement present before review.
 
 ## Implementation Summary
 
@@ -149,7 +149,7 @@ The coordinated `prime-do-work-cli.md` restatement remains owned by the in-fligh
 - Merged `go test -race -count=1 ./internal/archivefetch` and focused vet — passed after the final correction.
 - Merged focused archivefetch, suiteinstall, and corehelpers tests — passed.
 - Builder full Go, vet, exact Go 1.25, update behavior, contract regressions, canonical maintainer gate, and diff hygiene — passed per the durable handback.
-- Independent review is intentionally held until REQ-415 lands the coordinated prime restatement.
+- REQ-415 merge `a18bf17a` landed the coordinated `prime-do-work-cli.md` restatement before independent review.
 
 ## Full Context
 

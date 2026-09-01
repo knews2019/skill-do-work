@@ -76,5 +76,7 @@ Status: in-progress
 | Reviewer | REQ-446 re-review | integration range `73bae0ae..6f173a12` | REQ plus initial findings | `REQ-446-rereview.md` | done |
 | Planner/Explorer | REQ-415 hook migration | read-only | REQ plus UR-081, primes, hooks, tests | `REQ-415-plan.md`, `REQ-415-exploration.md` | done |
 | Planner/Explorer | REQ-441 archive refresh | read-only | REQ plus UR-083, REQ-414, archivefetch | `REQ-441-plan.md`, `REQ-441-exploration.md` | done |
-| 1 | REQ-415 | `worktree-agent-REQ-415-migrate-core-memory-hooks` | `REQ-415-brief.md` | `REQ-415-handback.md` | pending |
+| 1 | REQ-415 | `worktree-agent-REQ-415-migrate-core-memory-hooks` | `REQ-415-brief.md` | `REQ-415-handback.md` | done |
 | 2 | REQ-441 | `worktree-agent-REQ-441-validate-http-archives-before-publication` | `REQ-441-brief.md` | `REQ-441-handback.md` | done |
+| Reviewer | REQ-415 review | integration range `ff9ed994..a18bf17a` | REQ plus UR-081 and REQ-463 | `REQ-415-review.md` | pending |
+| Reviewer | REQ-441 review | builder range `eec9ea36..bab4bbae` plus coordinated prime | REQ plus UR-083 and REQ-414 | `REQ-441-review.md` | pending |
