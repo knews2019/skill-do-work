@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.256.1 — Deletion-First Git Inventory (2026-09-01)
+
+Uncommitted inventory now classifies Git porcelain XY rows from the path's usable state, so a deletion in either column always wins over addition or modification.
+
+- `AD` and every other deletion-bearing state report `INVENTORY-D`; additions come only from index `A` or `??`.
+- A 45-state differential locks parity for ordinary, secret, rename/copy, unmerged, ambiguity, mutation, and protected-association cases.
+- Ordered typed facts, quarantine behavior, text/JSON projection, and downstream association semantics remain unchanged.
+
 ## 0.256.0 — Deterministic Interview and Memory Commands (2026-09-01)
 
 Six Interview and six Memory operations now run as direct typed commands with matching source and installed Just recipes.

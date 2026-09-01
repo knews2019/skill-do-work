@@ -1,7 +1,7 @@
 ---
 id: REQ-462
 title: 'Review fix: Preserve deletion precedence across Git XY inventory states'
-status: claimed
+status: completed
 created_at: 2026-09-01T02:23:45Z
 user_request: UR-081
 domain: backend
@@ -28,6 +28,8 @@ estimate:
     - Route B
     - 2-file write set
     - 45-state retained differential matrix
+completed_at: 2026-09-01T09:17:47Z
+commit: 24abcf96408d33440498f67dcb6a59ef4240c03a
 ---
 
 # Preserve Deletion Precedence Across Git XY Inventory States
