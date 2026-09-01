@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Queue Analysis — Where the Time Goes, and What to Drop</title>
+<style>
+:root {
+  --bg: #faf7f2;
+  --surface: #ffffff;
+  --surface-2: #f3eee6;
+  --text: #2b2620;
+  --muted: #6f675c;
+  --accent: #1d4ed8;
+  --accent-soft: #b8c6e8;
+  --rule: #e2dbcf;
+  --good: #166534;
+  --warn: #92400e;
+  --drop: #9f1239;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #201d18;
+    --surface: #2a261f;
+    --surface-2: #322d25;
+    --text: #ece7de;
+    --muted: #a89f91;
+    --accent: #7c9aef;
+    --accent-soft: #45536f;
+    --rule: #3d372d;
+    --good: #4ade80;
+    --warn: #fbbf24;
+    --drop: #fb7185;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+.page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }
+.kicker {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted); margin: 48px 0 10px;
+}
+h1 {
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: clamp(30px, 3.4vw, 40px); line-height: 1.15; margin: 0 0 8px; font-weight: 600;
+}
+h2 {
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: 26px; margin: 0 0 16px; font-weight: 600;
+}
+h3 { font-size: 17px; margin: 0 0 8px; }
+.dateline { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+.measure { max-width: 74ch; }
+section { padding: 40px 0 8px; border-top: 1px solid var(--rule); margin-top: 32px; }
+.verdict {
+  border-top: none; margin-top: 24px; padding-top: 0;
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: 20px; line-height: 1.55;
+}
+.verdict strong { color: var(--accent); }
+.row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+.card {
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
+  padding: 22px 24px; flex: 1 1 300px;
+}
+.card .kicker { margin: 0 0 8px; }
+.card p { margin: 8px 0 0; font-size: 15px; }
+.chart-card { flex: 2 1 560px; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th {
+  text-align: left; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule);
+}
+td { padding: 9px 14px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td.num { font-variant-numeric: tabular-nums; }
+.tag {
+  display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.tag.keep { color: var(--good); border-color: var(--good); }
+.tag.fold { color: var(--warn); border-color: var(--warn); }
+.tag.drop { color: var(--drop); border-color: var(--drop); }
+code, pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px;
+}
+pre {
+  background: var(--surface-2); border: 1px solid var(--rule); border-radius: 8px;
+  padding: 14px 16px; overflow-x: auto; margin: 10px 0;
+}
+.cmd-label { font-size: 12.5px; color: var(--muted); margin: 14px 0 0; }
+.shot { max-width: 1280px; margin: 12px 0 0; }
+.shot img { width: 100%; height: auto; display: block; border: 1px solid var(--rule); border-radius: 8px; }
+.caption { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.legend { font-size: 13px; color: var(--muted); }
+.legend .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin: 0 5px 0 14px; }
+footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 13px; }
+svg text { fill: var(--text); }
+svg .axis-label { fill: var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+
+<p class="kicker">do-work · queue analysis · skill-do-work2</p>
+<h1>Where the Time Goes, and What to Drop</h1>
+<p class="dateline">2026-09-01 · queue state as of 04:29 UTC (board capture) · disposition committed 593c5145</p>
+
+<section class="verdict">
+<p class="measure">Throughput is healthy — <strong>20 REQs completed in the preceding 24 hours</strong> — but each Route C REQ costs 1.5–2 hours of wall clock in an eight-phase pipeline, and reviews were refilling the queue about as fast as it drained. Of the 33 pending REQs, 28 are sound and stay. Four were cancelled today — REQ-464 and REQ-465 folded into REQ-420 as acceptance criteria, REQ-454 and REQ-455 dropped as consumer-less reporting polish — and REQ-460 was deferred behind REQ-420. Verified by <code>maintainer-verify.sh</code> exit 0 after the edits.</p>
+</section>
+
+<section>
+<h2>Why the work takes so long</h2>
+<div class="row" style="margin-bottom: 28px">
+  <div class="card chart-card">
+    <p class="kicker">Estimate vs. actual · UR-081 Route C REQs · minutes</p>
+    <svg viewBox="0 0 840 480" role="img" aria-label="Paired bar chart of estimated versus actual minutes for eleven Route C REQs">
+      <!-- legend -->
+      <rect x="110" y="6" width="12" height="12" rx="3" fill="var(--accent-soft)"/>
+      <text x="128" y="17" font-size="12" class="axis-label">estimated</text>
+      <rect x="210" y="6" width="12" height="12" rx="3" fill="var(--accent)"/>
+      <text x="228" y="17" font-size="12" class="axis-label">actual</text>
+      <!-- rows: label x=100 end-anchored; bars from x=110; scale 0.72 px/min -->
+      <g font-size="12.5">
+        <text x="100" y="49" text-anchor="end">REQ-390</text>
+        <rect x="110" y="38" width="32.4" height="8" rx="2" fill="var(--accent-soft)"/>
+        <rect x="110" y="49" width="618.5" height="8" rx="2" fill="var(--accent)"/>
+        <text x="734" y="57" font-size="11.5" font-family="ui-monospace, Menlo, monospace">45 → 859</text>
+
+        <text x="100" y="87" text-anchor="end">REQ-406</text>
+        <rect x="110" y="76" width="50.4" height="8" rx="2" fill="var(--accent-soft)"/>
+        <rect x="110" y="87" width="414" height="8" rx="2" fill="var(--accent)"/>
+        <text x="530" y="95" font-size="11.5" font-family="ui-monospace, Menlo, monospace">70 → 575</text>
+
+        <text x="100" y="125" text-anchor="end">REQ-407</text>
+        <rect x="110" y="114" width="54" height="8" rx="2" fill="var(--accent-soft)"/>
+        <rect x="110" y="125" width="441.4" height="8" rx="2" fill="var(--accent)"/>
+        <text x="557" y="133" font-size="11.5" font-family="ui-monospace, Menlo, monospace">75 → 613</text>
+
+        <text x="100" y="163" text-anchor="end">REQ-408</text>
+        <rect x="110" y="152" width="72" height="8" rx="2" fill="var(--accent-soft)"/>
+        <rect x="110" y="163" width="50.4" height="8" rx="2" fill="var(--accent)"/>
+        <text x="188" y="171" font-size="11.5" font-family="ui-monospace, Menlo, monospace">100 → 70</text>
+
+        <text x="100" y="201" text-anchor="end">REQ-409</text>
+        <rect x="110" y="190" width="64.8" height="8" rx="2" fill="var(--accent-soft)"/>
+        <rect x="110" y="201" width="46.1" height="8" rx="2" fill="var(--accent)"/>
+        <text x="181" y="209" font-size="11.5" font-family="ui-monospace, Menlo, monospace">90 → 64</text>
+
+        <text x="100" y="239" text-anchor="end">REQ-410</text>
+        <rect x="110" y="228" width="72" height="8" rx="2" fill="var(--accent-soft)"/>
+        <rect x="110" y="239" width="54.7" height="8" rx="2" fill="var(--accent)"/>
+        <text x="188" y="247" font-size="11.5" font-family="ui-monospace, Menlo, monospace">100 → 76</text>
+
+        <text x="100" y="277" text-anchor="end">REQ-411</text>
+        <rect x="110" y="266" width="72" height="8" rx="2" fill="var(--accent-soft)"/>
+        <rect x="110" y="277" width="77.8" height="8" rx="2" fill="var(--accent)"/>
+        <text x="194" y="285" font-size="11.5" font-family="ui-monospace, Menlo, monospace">100 → 108</text>
+
+        <text x="100" y="315" text-anchor="end">REQ-412</text>
+        <rect x="110" y="304" width="68.4" height="8" rx="2" fill="var(--accent-soft)"/>
+        <rect x="110" y="315" width="92.9" height="8" rx="2" fill="var(--accent)"/>
+        <text x="209" y="323" font-size="11.5" font-family="ui-monospace, Menlo, monospace">95 → 129</text>
+
+        <text x="100" y="353" text-anchor="end">REQ-413</text>
+        <rect x="110" y="342" width="75.6" height="8" rx="2" fill="var(--accent-soft)"/>
+        <rect x="110" y="353" width="93.6" height="8" rx="2" fill="var(--accent)"/>
+        <text x="210" y="361" font-size="11.5" font-family="ui-monospace, Menlo, monospace">105 → 130</text>
+
+        <text x="100" y="391" text-anchor="end">REQ-414</text>
+        <rect x="110" y="380" width="97.2" height="8" rx="2" fill="var(--accent-soft)"/>
+        <rect x="110" y="391" width="87.1" height="8" rx="2" fill="var(--accent)"/>
+        <text x="214" y="399" font-size="11.5" font-family="ui-monospace, Menlo, monospace">135 → 121</text>
+
+        <text x="100" y="429" text-anchor="end">REQ-415</text>
+        <rect x="110" y="418" width="75.6" height="8" rx="2" fill="var(--accent-soft)"/>
+        <rect x="110" y="429" width="62.6" height="8" rx="2" fill="var(--accent)"/>
+        <text x="192" y="437" font-size="11.5" font-family="ui-monospace, Menlo, monospace">105 → 87</text>
+      </g>
+      <text x="110" y="466" font-size="11.5" class="axis-label">Source: do-work/calibration-log.tsv · chronological · Go-platform foundation first, later REQs converge</text>
+    </svg>
+  </div>
+  <div class="card" style="flex: 1 1 320px">
+    <p class="kicker">F2 · foundation mispricing</p>
+    <h3>Early REQs ran 8–14× over estimate</h3>
+    <p>The Go platform foundation (REQ-390, 406, 407) cost roughly three full days that were priced at half a day. The chart shows the recovery: from REQ-408 on, actuals track estimates, and REQ-414/415 came in under. Estimation is now healthy; the overrun was concentrated, not systemic.</p>
+  </div>
+</div>
+<div class="row">
+  <div class="card">
+    <p class="kicker">F1 · the pipeline itself</p>
+    <h3>Eight phases per Route C REQ</h3>
+    <p>Exploration, plan, brief, builder worktree, handback, review, remediation, re-review — then release with version bump, changelog, mirror sync, and the full test suite. Every one of REQ-411 through 415 needed a remediation round (7–9 artifacts each in <code>do-work/runs/work-2026-08-31-165510/</code>). A 100-minute estimate becomes ~2 hours of wall clock; REQ-448 (per-phase timestamps) exists to make this split visible.</p>
+  </div>
+  <div class="card">
+    <p class="kicker">F3 · the queue refills itself</p>
+    <h3>~20 of 33 pending REQs came from reviews</h3>
+    <p>Reviews and <code>validate-feedback</code> runs spawned most of the pending work. UR-081 was scoped at 15 REQs and accreted 9+ review-fix children; UR-083, UR-085, and UR-086 are entirely feedback captures. Over the analyzed 24 hours, 20 REQs completed and the pending count still sat at 30 — the drain works, the tap was open.</p>
+  </div>
+</div>
+</section>
+
+<section>
+<h2>Disposition of the pending queue</h2>
+<div class="row">
+  <div class="card" style="flex: 1 1 340px">
+    <p class="kicker">What stays · 28 REQs</p>
+    <p><span class="tag keep">keep</span> <strong>UR-081 spine (416–420):</strong> finishes the Go migration; REQ-420 is the shim swap and whole-suite parity proof.</p>
+    <p><span class="tag keep">keep</span> <strong>Adjudicated bug fixes (UR-083, UR-085, UR-086):</strong> each carries an Accept verdict with evidence; several are impact-critical (438, 440, 443, 457) and most are effort-mechanical.</p>
+    <p><span class="tag keep">keep</span> <strong>UR-084 (448, 449):</strong> phase timestamps give the F1 visibility; the plan-validation check is cheap.</p>
+    <p><span class="tag keep">keep</span> <strong>UR-087 (468–472):</strong> non-blocking orchestration — the maintainer's own recent design decision, aimed directly at throughput.</p>
+  </div>
+  <div class="card" style="flex: 1.4 1 420px">
+    <p class="kicker">What changed today · commit 593c5145</p>
+    <table>
+      <tr><th>REQ</th><th>Action</th><th>Reason</th></tr>
+      <tr><td><code>REQ-465</code></td><td class="num"><span class="tag fold">folded</span></td><td>Differential parity for all 17 core helper commands is REQ-420's acceptance goal; existed separately only because REQ-420 was dependency-gated at capture time. Criteria appended to REQ-420, cancelled via the canonical <code>cancel</code> transaction.</td></tr>
+      <tr><td><code>REQ-464</code></td><td class="num"><span class="tag fold">folded</span></td><td>Actionable structured helper findings — same fold, same destination, same mechanism.</td></tr>
+      <tr><td><code>REQ-454</code></td><td class="num"><span class="tag drop">cancelled</span></td><td>UR source tokens in selection records serve a multi-UR caller that does not exist. Recapture if a consumer appears.</td></tr>
+      <tr><td><code>REQ-455</code></td><td class="num"><span class="tag drop">cancelled</span></td><td>Run-set estimate totals — same missing consumer, same disposition.</td></tr>
+      <tr><td><code>REQ-460</code></td><td class="num"><span class="tag fold">deferred</span></td><td>Substantive-effort edge-case hardening (condition-complete Markdown delimiter classifier). Gated mechanically with <code>depends_on: [REQ-420]</code>; remove the gate to un-defer.</td></tr>
+    </table>
+  </div>
+</div>
+</section>
+
+<section>
+<h2>Evidence</h2>
+<div class="shot">
+  <a href="screenshots/board-2026-09-01-0429utc.png" target="_blank" rel="noopener"><img src="screenshots/board-2026-09-01-0429utc.png" alt="Kanban board at 2026-09-01 04:29 UTC: 30 pending, 2 claimed, 0 blocked, 20 recently done"></a>
+  <p class="caption">User-supplied capture of the Kanban board at 2026-09-01 04:29 UTC — the queue state this analysis ran against (30 pending, 2 claimed, 20 recently done in 24h). Pre-disposition; the pending column is smaller now. Click for full resolution.</p>
+</div>
+<p class="measure" style="margin-top: 24px">The disposition itself is queue-metadata work; UI captures were not expected for this work. Its receipts: the four cancellations ran through the canonical <code>do-work-cli cancel</code> transaction (each reported <code>STATE-APPLIED</code>, archived at <code>do-work/archive/</code> root with a <code>## Cancelled</code> trail), the fold criteria live in REQ-420's <code>## Folded From REQ-464 and REQ-465</code> section, and everything landed in one bookkeeping commit with the full maintainer gate green.</p>
+</section>
+
+<section>
+<h2>Verify it yourself</h2>
+<div class="row">
+  <div style="flex: 1 1 380px">
+    <p class="cmd-label">The disposition commit (run — 6 files, 4 renames into archive):</p>
+    <pre>git show --stat 593c5145</pre>
+    <p class="cmd-label">Estimate vs. actual source rows (run — matches the chart):</p>
+    <pre>tail -12 do-work/calibration-log.tsv</pre>
+  </div>
+  <div style="flex: 1 1 380px">
+    <p class="cmd-label">Baseline gate after the edits (run — exit 0, ~6 min):</p>
+    <pre>bash _dev/tests/maintainer-verify.sh</pre>
+    <p class="cmd-label">Cancellation trails and fold section (unrun — inspection):</p>
+    <pre>grep -A4 '## Cancelled' do-work/archive/REQ-45[45]-* do-work/archive/REQ-46[45]-*
+grep -n 'Folded From REQ-464' do-work/queue/REQ-420-*.md</pre>
+  </div>
+</div>
+</section>
+
+<footer>
+<p>Generated by the do-work ai-report action (adapted: target is a queue analysis and its disposition commit, not a single completed UR/REQ). The board image is an authentic user-supplied capture; the bar chart is hand-authored SVG from <code>do-work/calibration-log.tsv</code> rows — no synthetic screenshots. Claims sourced from queue frontmatter, UR input files, run artifacts under <code>do-work/runs/work-2026-08-31-165510/</code>, and commit 593c5145.</p>
+</footer>
+
+</div>
+</body>
+</html>
