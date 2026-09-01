@@ -96,6 +96,12 @@ Certainty level: Firm. Freeze byte-level hook protocols before moving any logic.
 
 **Decision:** DECIDE & STATE — retain raw loop-guard detection, legacy capture suppression to EOF, exact ledger source strings, current empty-side handling, redaction-before-truncation, hash-before-quoting, and observable newline/version parsing behavior.
 
+### D-06: Own the shared CLI prime for this fan-out wave
+
+**Decision:** DECIDE & STATE — REQ-415 alone edits `prime-do-work-cli.md` and records both its hook-command ownership and REQ-441's validated archive-refresh policy from the accepted sibling plan.
+
+**Reasoning:** Both selected REQs originally declared the same living authority. One explicit owner keeps the fan-out write sets disjoint without dropping either required restatement.
+
 ## Scope
 
 **Files I will touch:**
@@ -119,7 +125,7 @@ Certainty level: Firm. Freeze byte-level hook protocols before moving any logic.
 - `_dev/tests/session-start-hook-behavior.sh` (modified)
 - `_dev/tests/contract-regressions.sh` (modified)
 - `skills/do-work-knowledge/actions/memory-reference.md` (modified)
-- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified)
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — hook authority plus the coordinated REQ-441 archive-refresh restatement.
 
 **Files I will NOT touch:** hook JSON fragments, `install-memory-hooks.sh`, setup/memory action entry points, `commandruntime`, Git/publication primitives, Justfiles, non-hook shims, release metadata, or REQ-416/417 surfaces. Expansion requires a focused RED and owner approval.
 

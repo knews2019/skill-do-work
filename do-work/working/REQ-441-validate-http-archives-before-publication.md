@@ -22,7 +22,7 @@ estimate:
   calculated_at: 2026-09-01T02:42:22Z
   basis:
     - Route B
-    - 3-file write set
+    - 2-file builder write set
     - 5 acceptance criteria
     - dependency depth 1
     - asynchronous publication behavior
@@ -86,7 +86,7 @@ Certainty level: Firm on staging and target preservation. Reuse existing publica
 
 1. Replace the occupied-target refusal lock-in with RED fixtures for valid HTTP refresh and invalid-HTTP/valid-Git refresh of a seeded regular target, plus preservation, unsafe-shape, concurrent-change, parent-swap, absent-target, and final-mode cases.
 2. Open the target parent once, snapshot absence or regular identity/content, let HTTP and Git prepare validated private candidates under that root, and publish through one shared helper: exclusive link for initial absence or rooted atomic rename after final identity/digest revalidation for an initially regular target.
-3. Keep standalone `DownloadAtomic` no-overwrite, update the CLI prime to distinguish the two policies, and run focused/full Go, vet, exact Go 1.25, update/contract, scope/diff, and canonical gates.
+3. Keep standalone `DownloadAtomic` no-overwrite and hand the exact prime restatement to the REQ-415 builder, which exclusively owns the shared document in this fan-out wave. Run focused/full Go, vet, exact Go 1.25, update/contract, scope/diff, and canonical gates.
 
 ## Decisions
 
@@ -100,21 +100,26 @@ Certainty level: Firm on staging and target preservation. Reuse existing publica
 
 **Decision:** DECIDE & STATE — public `DownloadAtomic` remains no-overwrite; only `FetchArchive` owns validated refresh. A successful archive replacement publishes the private candidate's 0600 mode.
 
+### D-03: Transfer the shared prime edit to REQ-415
+
+**Decision:** DECIDE & STATE — this builder does not edit `prime-do-work-cli.md`; its brief supplies the accepted archive-refresh wording to the REQ-415 builder, the sole owner of that shared file in this wave.
+
+**Reasoning:** Explicit single ownership removes the only fan-out collision while keeping the living authority synchronized before either REQ is reviewed.
+
 ## Scope
 
 **Files I will touch:**
 - `skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch.go` (modified) — shared rooted target snapshot, candidate preparation, and publication.
 - `skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch_test.go` (modified) — cross-route replacement, preservation, unsafe-target, and race fixtures.
-- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — distinguish generic no-overwrite from validated archive refresh.
 
-**Files I will NOT touch:** retained fetch/download shell paths, `corehelpers`, `atomicfile`, suiteinstall callers, update fixtures, actions, hooks, recipes, release metadata, or REQ-414 residual packages. Expansion requires a focused RED and owner approval.
+**Files I will NOT touch:** `prime-do-work-cli.md` (owned by REQ-415 for this wave), retained fetch/download shell paths, `corehelpers`, `atomicfile`, suiteinstall callers, update fixtures, actions, hooks, recipes, release metadata, or REQ-414 residual packages. Expansion requires a focused RED and owner approval.
 
 **Acceptance criteria:**
 - [ ] Valid HTTP can replace an unchanged regular archive only after validation, with final mode 0600 and no scratch.
 - [ ] Invalid HTTP followed by valid Git applies the same validated replacement contract and reports the winning route truthfully.
 - [ ] Total failure preserves pre-existing bytes/mode; absent targets remain exclusive and unsafe/changed targets refuse unchanged.
 - [ ] Parent swaps and competing creations/replacements cannot redirect or clobber publication.
-- [ ] Focused/full Go, compatibility, update/contract, scope/diff, and canonical gates pass within exactly three files.
+- [ ] Focused/full Go, compatibility, update/contract, scope/diff, and canonical gates pass within exactly two builder files, with the coordinated prime restatement present before review.
 
 ## Full Context
 
