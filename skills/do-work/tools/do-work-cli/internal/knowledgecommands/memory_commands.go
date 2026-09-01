@@ -9,12 +9,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -55,6 +55,14 @@ type memoryMatch struct {
 func parseMemoryOptions(arguments []string, mutable bool) (memoryOptions, error) {
 	options := memoryOptions{memoryRoot: "memory", engine: "both", kb: "kb"}
 	payload := []string{}
+	seen := map[string]bool{}
+	singleton := func(name string) error {
+		if seen[name] {
+			return fmt.Errorf("%s may be specified only once", name)
+		}
+		seen[name] = true
+		return nil
+	}
 	for index := 0; index < len(arguments); index++ {
 		argument := arguments[index]
 		value := func(name string) (string, error) {
@@ -67,13 +75,25 @@ func parseMemoryOptions(arguments []string, mutable bool) (memoryOptions, error)
 		var err error
 		switch {
 		case argument == "--memory-root" || argument == "--path":
-			options.memoryRoot, err = value(argument)
+			err = singleton("--memory-root")
+			if err == nil {
+				options.memoryRoot, err = value(argument)
+			}
 		case strings.HasPrefix(argument, "--memory-root="):
-			options.memoryRoot = strings.TrimPrefix(argument, "--memory-root=")
+			err = singleton("--memory-root")
+			if err == nil {
+				options.memoryRoot = strings.TrimPrefix(argument, "--memory-root=")
+			}
 		case argument == "--section":
-			options.section, err = value(argument)
+			err = singleton("--section")
+			if err == nil {
+				options.section, err = value(argument)
+			}
 		case strings.HasPrefix(argument, "--section="):
-			options.section = strings.TrimPrefix(argument, "--section=")
+			err = singleton("--section")
+			if err == nil {
+				options.section = strings.TrimPrefix(argument, "--section=")
+			}
 		case argument == "--match":
 			var item string
 			item, err = value(argument)
@@ -81,7 +101,10 @@ func parseMemoryOptions(arguments []string, mutable bool) (memoryOptions, error)
 		case strings.HasPrefix(argument, "--match="):
 			options.matches = append(options.matches, strings.TrimPrefix(argument, "--match="))
 		case argument == "--replace" || argument == "--replace-id":
-			options.replaceID, err = value(argument)
+			err = singleton("--replace")
+			if err == nil {
+				options.replaceID, err = value(argument)
+			}
 		case argument == "--demote":
 			var item string
 			item, err = value(argument)
@@ -89,27 +112,51 @@ func parseMemoryOptions(arguments []string, mutable bool) (memoryOptions, error)
 		case strings.HasPrefix(argument, "--demote="):
 			options.demoteIDs = append(options.demoteIDs, strings.TrimPrefix(argument, "--demote="))
 		case argument == "--manifest":
-			options.manifest, err = value(argument)
+			err = singleton("--manifest")
+			if err == nil {
+				options.manifest, err = value(argument)
+			}
 		case strings.HasPrefix(argument, "--manifest="):
-			options.manifest = strings.TrimPrefix(argument, "--manifest=")
+			err = singleton("--manifest")
+			if err == nil {
+				options.manifest = strings.TrimPrefix(argument, "--manifest=")
+			}
 		case argument == "--engine":
-			options.engine, err = value(argument)
+			err = singleton("--engine")
+			if err == nil {
+				options.engine, err = value(argument)
+			}
 		case strings.HasPrefix(argument, "--engine="):
-			options.engine = strings.TrimPrefix(argument, "--engine=")
+			err = singleton("--engine")
+			if err == nil {
+				options.engine = strings.TrimPrefix(argument, "--engine=")
+			}
 		case argument == "--kb":
-			options.kb, err = value(argument)
+			err = singleton("--kb")
+			if err == nil {
+				options.kb, err = value(argument)
+			}
 		case strings.HasPrefix(argument, "--kb="):
-			options.kb = strings.TrimPrefix(argument, "--kb=")
+			err = singleton("--kb")
+			if err == nil {
+				options.kb = strings.TrimPrefix(argument, "--kb=")
+			}
 		case (argument == "--text" || argument == "--query"):
-			var item string
-			item, err = value(argument)
-			payload = append(payload, item)
+			err = singleton("--text")
+			if err == nil {
+				var item string
+				item, err = value(argument)
+				payload = append(payload, item)
+			}
 		case argument == "--dry-run" && mutable:
-			options.dryRun = true
+			err = singleton("--dry-run")
+			options.dryRun = err == nil
 		case argument == "--commit" && mutable:
-			options.commit = true
+			err = singleton("--commit")
+			options.commit = err == nil
 		case argument == "--confirm" && mutable:
-			options.confirm = true
+			err = singleton("--confirm")
+			options.confirm = err == nil
 		case strings.HasPrefix(argument, "-"):
 			return options, fmt.Errorf("unknown option %q", argument)
 		default:
@@ -262,7 +309,7 @@ func handleMemoryRemember(executionContext commandruntime.ExecutionContext, argu
 		result.Changes = memoryPlannedChanges(targets)
 	}
 	if !options.dryRun && result.Outcome == resultmodel.OutcomeSuccess {
-		appendMemoryLedger(memoryAbsolute, "write", normalizedPayload, 1, "remember")
+		appendMemoryLedger(memoryAbsolute, "write", "", 1, "remember")
 	}
 	return result
 }
@@ -384,7 +431,7 @@ func handleMemoryForget(executionContext commandruntime.ExecutionContext, argume
 		result.Changes = memoryPlannedChanges(targets)
 	}
 	if !options.dryRun && result.Outcome == resultmodel.OutcomeSuccess {
-		appendMemoryLedger(memoryAbsolute, "write", sanitizeMemoryQuery(options.payload), len(selected), "forget")
+		appendMemoryLedger(memoryAbsolute, "write", "", len(selected), "forget")
 	}
 	return result
 }
@@ -451,7 +498,7 @@ func handleMemoryStatus(executionContext commandruntime.ExecutionContext, argume
 			}
 		}
 	}
-	ledgerSummary := memoryLedgerTail(filepath.Join(memoryAbsolute, "usage-ledger.jsonl"), 5)
+	ledgerSummary := memoryLedgerSummary(memoryAbsolute, 5)
 	evidence := fmt.Sprintf("bytes=%d cap=%d updated=%s mtime=%s log_days=%d newest=%s last_capture=%s ledger_tail=%s", len(data), memoryCharacterLimit, front["updated"], info.ModTime().UTC().Format(time.RFC3339), len(logs), newest, lastCapture, ledgerSummary)
 	outcome := resultmodel.OutcomeSuccess
 	findings := []resultmodel.CommandFinding{memoryFinding(CommandMemoryStatus, "MEMORY-STATUS", resultmodel.SeverityInfo, memoryRelative, evidence, resultmodel.FixabilityManual, "")}
@@ -489,8 +536,19 @@ func handleMemoryBootstrap(executionContext commandruntime.ExecutionContext, arg
 		return memoryFailure(CommandMemoryBootstrap, "MEMORY-ROOT-INVALID", options.memoryRoot, resolveError)
 	}
 	sentinelRelative := filepath.ToSlash(filepath.Join(memoryRelative, ".bootstrap-imported"))
-	if data, statError := os.ReadFile(filepath.Join(memoryAbsolute, ".bootstrap-imported")); statError == nil {
-		return memoryFindingResult(CommandMemoryBootstrap, "MEMORY-BOOTSTRAP-ALREADY-RUN", resultmodel.SeverityWarning, sentinelRelative, "bootstrap already ran: "+strings.TrimSpace(string(data)), resultmodel.OutcomeRefused)
+	memoryHandle, openError := os.OpenRoot(memoryAbsolute)
+	if openError != nil {
+		return memoryFailure(CommandMemoryBootstrap, "MEMORY-ROOT-INVALID", options.memoryRoot, openError)
+	}
+	defer memoryHandle.Close()
+	if data, exists, sentinelError := readOptionalRootedMemoryFile(memoryHandle, ".bootstrap-imported"); sentinelError != nil {
+		return memoryFailure(CommandMemoryBootstrap, "MEMORY-BOOTSTRAP-SENTINEL-INVALID", sentinelRelative, sentinelError)
+	} else if exists {
+		stamp := strings.TrimSpace(string(data))
+		if _, parseError := time.Parse("2006-01-02", stamp); parseError != nil {
+			stamp = "present (invalid date)"
+		}
+		return memoryFindingResult(CommandMemoryBootstrap, "MEMORY-BOOTSTRAP-ALREADY-RUN", resultmodel.SeverityWarning, sentinelRelative, "bootstrap already ran: "+stamp, resultmodel.OutcomeRefused)
 	}
 	manifestBytes, readError := os.ReadFile(options.manifest)
 	if readError != nil {
@@ -520,8 +578,8 @@ func handleMemoryBootstrap(executionContext commandruntime.ExecutionContext, arg
 		}
 		path := filepath.ToSlash(filepath.Join(memoryRelative, "logs", entry.Date+".md"))
 		if _, exists := writes[path]; !exists {
-			data, err := os.ReadFile(filepath.Join(executionContext.RepositoryRoot, filepath.FromSlash(path)))
-			if err != nil && !os.IsNotExist(err) {
+			data, _, err := readOptionalRootedMemoryFile(memoryHandle, filepath.ToSlash(filepath.Join("logs", entry.Date+".md")))
+			if err != nil {
 				return memoryFailure(CommandMemoryBootstrap, "MEMORY-LOG-READ-FAILED", path, err)
 			}
 			writes[path] = data
@@ -571,7 +629,7 @@ func handleMemoryAudit(executionContext commandruntime.ExecutionContext, argumen
 		if resolveError != nil {
 			findings = append(findings, memoryFinding(CommandMemoryAudit, "MEMORY-AUDIT-ENGINE", resultmodel.SeverityWarning, options.memoryRoot, "memory classification=Absent", resultmodel.FixabilityManual, "the user decides whether setup is warranted"))
 		} else {
-			classification, evidence := auditMemoryEngine(memoryAbsolute)
+			classification, evidence := auditMemoryEngine(executionContext.RepositoryRoot, memoryAbsolute)
 			findings = append(findings, memoryFinding(CommandMemoryAudit, "MEMORY-AUDIT-ENGINE", resultmodel.SeverityInfo, memoryRelative, "memory classification="+classification+" "+evidence, resultmodel.FixabilityManual, "the action owns the comparative recommendation"))
 		}
 	}
@@ -725,22 +783,36 @@ func findMemoryMatches(memoryAbsolute, memoryRelative, query string) ([]memoryMa
 	if len(tokens) == 0 {
 		return nil, nil
 	}
-	sources := []struct {
-		absolute, relative string
-		working            bool
-	}{{filepath.Join(memoryAbsolute, "working-memory.md"), filepath.ToSlash(filepath.Join(memoryRelative, "working-memory.md")), true}}
-	logs, _ := filepath.Glob(filepath.Join(memoryAbsolute, "logs", "*.md"))
-	sort.Strings(logs)
-	for _, path := range logs {
-		sources = append(sources, struct {
-			absolute, relative string
-			working            bool
-		}{path, filepath.ToSlash(filepath.Join(memoryRelative, "logs", filepath.Base(path))), false})
+	root, err := os.OpenRoot(memoryAbsolute)
+	if err != nil {
+		return nil, err
 	}
+	defer root.Close()
+	sources := []struct {
+		rooted, relative string
+		working          bool
+	}{{"working-memory.md", filepath.ToSlash(filepath.Join(memoryRelative, "working-memory.md")), true}}
+	logEntries, readDirectoryError := readRootedMemoryDirectory(root, "logs")
+	if readDirectoryError != nil && !os.IsNotExist(readDirectoryError) {
+		return nil, fmt.Errorf("read memory logs: %w", readDirectoryError)
+	}
+	for _, entry := range logEntries {
+		if !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		if entry.Type()&os.ModeSymlink != 0 || !entry.Type().IsRegular() {
+			return nil, fmt.Errorf("memory log %q is not a regular file", entry.Name())
+		}
+		sources = append(sources, struct {
+			rooted, relative string
+			working          bool
+		}{filepath.ToSlash(filepath.Join("logs", entry.Name())), filepath.ToSlash(filepath.Join(memoryRelative, "logs", entry.Name())), false})
+	}
+	sort.Slice(sources[1:], func(i, j int) bool { return sources[i+1].rooted < sources[j+1].rooted })
 	matches := []memoryMatch{}
 	for _, source := range sources {
-		data, err := os.ReadFile(source.absolute)
-		if os.IsNotExist(err) {
+		data, exists, err := readOptionalRootedMemoryFile(root, source.rooted)
+		if !exists && err == nil {
 			continue
 		}
 		if err != nil {
@@ -768,6 +840,58 @@ func findMemoryMatches(memoryAbsolute, memoryRelative, query string) ([]memoryMa
 		}
 	}
 	return matches, nil
+}
+
+func readRootedMemoryDirectory(root *os.Root, path string) ([]os.DirEntry, error) {
+	lstatInfo, err := root.Lstat(filepath.FromSlash(path))
+	if err != nil {
+		return nil, err
+	}
+	if !lstatInfo.IsDir() || lstatInfo.Mode()&os.ModeSymlink != 0 {
+		return nil, fmt.Errorf("%s is not a real directory", path)
+	}
+	directory, err := root.Open(filepath.FromSlash(path))
+	if err != nil {
+		return nil, err
+	}
+	defer directory.Close()
+	openedInfo, err := directory.Stat()
+	if err != nil || !openedInfo.IsDir() || !os.SameFile(lstatInfo, openedInfo) {
+		return nil, fmt.Errorf("%s changed while it was opened", path)
+	}
+	return directory.ReadDir(-1)
+}
+
+func readOptionalRootedMemoryFile(root *os.Root, path string) ([]byte, bool, error) {
+	rootPath := filepath.FromSlash(path)
+	lstatInfo, err := root.Lstat(rootPath)
+	if os.IsNotExist(err) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	if !lstatInfo.Mode().IsRegular() {
+		return nil, true, fmt.Errorf("%s is not a regular file", path)
+	}
+	file, err := root.Open(rootPath)
+	if err != nil {
+		return nil, true, err
+	}
+	defer file.Close()
+	openedInfo, err := file.Stat()
+	if err != nil || !openedInfo.Mode().IsRegular() || !os.SameFile(lstatInfo, openedInfo) {
+		return nil, true, fmt.Errorf("%s changed while it was opened", path)
+	}
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return nil, true, err
+	}
+	finalInfo, err := file.Stat()
+	if err != nil || !os.SameFile(openedInfo, finalInfo) || openedInfo.Size() != finalInfo.Size() || !openedInfo.ModTime().Equal(finalInfo.ModTime()) || int64(len(data)) != finalInfo.Size() {
+		return nil, true, fmt.Errorf("%s changed while it was read", path)
+	}
+	return data, true, nil
 }
 func memoryLineID(path string, line int, content string) string {
 	digest := sha256.Sum256([]byte(fmt.Sprintf("%s\x00%d\x00%s", path, line, content)))
@@ -849,81 +973,127 @@ func appendMemoryLedger(memoryAbsolute, event, query string, hits int, note stri
 	defer file.Close()
 	_, _ = file.Write(append(data, '\n'))
 }
-func memoryLedgerTail(path string, limit int) string {
-	data, err := os.ReadFile(path)
+func memoryLedgerSummary(memoryRoot string, limit int) string {
+	root, err := os.OpenRoot(memoryRoot)
 	if err != nil {
+		return "none"
+	}
+	defer root.Close()
+	data, exists, err := readOptionalRootedMemoryFile(root, "usage-ledger.jsonl")
+	if err != nil || !exists {
 		return "none"
 	}
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 	if len(lines) > limit {
 		lines = lines[len(lines)-limit:]
 	}
-	return strings.Join(lines, " | ")
-}
-func auditMemoryEngine(root string) (string, string) {
-	events, newest, hitCited := 0, time.Time{}, 0
-	data, _ := os.ReadFile(filepath.Join(root, "usage-ledger.jsonl"))
-	scanner := bufio.NewScanner(strings.NewReader(string(data)))
-	for scanner.Scan() {
+	summaries := make([]string, 0, len(lines))
+	for _, line := range lines {
 		var entry map[string]any
-		if json.Unmarshal(scanner.Bytes(), &entry) != nil {
+		if json.Unmarshal([]byte(line), &entry) != nil {
+			summaries = append(summaries, "malformed")
 			continue
 		}
-		event := stringValue(entry["event"])
-		stamp, _ := time.Parse(time.RFC3339, stringValue(entry["ts"]))
-		if stamp.After(newest) {
-			newest = stamp
-		}
-		if event != "inject" && event != "capture" {
-			if !stamp.Before(nowUTC().AddDate(0, 0, -14)) {
-				events++
-			}
-			if event == "hit_cited" {
-				hitCited++
-			}
-		}
+		summaries = append(summaries, fmt.Sprintf("%s@%s hits=%d", stringValue(entry["event"]), stringValue(entry["ts"]), intValue(entry["hits"])))
 	}
-	if workingBytes, err := os.ReadFile(filepath.Join(root, "working-memory.md")); err == nil {
-		if fields, _, parseErr := parseFrontmatter(string(workingBytes)); parseErr == nil {
-			if date, dateErr := time.Parse("2006-01-02", fields["updated"]); dateErr == nil && date.After(newest) {
-				newest = date
+	return strings.Join(summaries, " | ")
+}
+
+type ledgerAuditStats struct {
+	events14, hitCited14, retrievals28, hitCited28, malformed int
+	first, newest                                             time.Time
+	weeks                                                     [4]map[string]int
+}
+
+func auditMemoryEngine(repositoryRoot, root string) (string, string) {
+	now := nowUTC()
+	workingPath := filepath.Join(root, "working-memory.md")
+	workingBytes, workingError := os.ReadFile(workingPath)
+	workingPresent := workingError == nil
+	updated := "missing"
+	sectionFill := map[string]int{"active": 0, "notes": 0, "pending": 0}
+	activityNewest := time.Time{}
+	if workingPresent {
+		if fields, _, parseError := parseFrontmatter(string(workingBytes)); parseError == nil {
+			updated = fields["updated"]
+			if date, dateError := time.Parse("2006-01-02", updated); dateError == nil {
+				activityNewest = date
+			}
+		}
+		current := ""
+		for _, line := range strings.Split(string(workingBytes), "\n") {
+			switch strings.TrimSpace(line) {
+			case "## Active Threads":
+				current = "active"
+			case "## Notes":
+				current = "notes"
+			case "## Pending Decisions":
+				current = "pending"
+			default:
+				if current != "" && strings.HasPrefix(strings.TrimSpace(line), "-") {
+					sectionFill[current]++
+				}
 			}
 		}
 	}
 	logs, _ := filepath.Glob(filepath.Join(root, "logs", "*.md"))
+	sort.Strings(logs)
+	newestLog := "none"
+	captures, notes := 0, 0
 	for _, path := range logs {
-		if date, err := time.Parse("2006-01-02", strings.TrimSuffix(filepath.Base(path), ".md")); err == nil && date.After(newest) {
-			newest = date
+		dateText := strings.TrimSuffix(filepath.Base(path), ".md")
+		if date, err := time.Parse("2006-01-02", dateText); err == nil {
+			newestLog = dateText
+			if date.After(activityNewest) {
+				activityNewest = date
+			}
+		}
+		data, _ := os.ReadFile(path)
+		for _, line := range strings.Split(string(data), "\n") {
+			if strings.HasPrefix(line, "## ") && strings.Contains(line, " UTC session capture ") {
+				captures++
+			} else if strings.HasPrefix(line, "## ") && (strings.Contains(line, " UTC note") || strings.Contains(line, " UTC bootstrap import")) {
+				notes++
+			}
 		}
 	}
-	classification := "Idle"
-	if newest.IsZero() || newest.Before(nowUTC().AddDate(0, 0, -30)) {
-		classification = "Stale"
-	} else if events >= 3 && hitCited >= 1 {
-		classification = "Active"
+	settings, _ := os.ReadFile(filepath.Join(repositoryRoot, ".claude", "settings.json"))
+	hookStart := strings.Contains(string(settings), "memory-session-start.sh")
+	hookStop := strings.Contains(string(settings), "memory-stop-capture.sh")
+	ledgerPath := filepath.Join(root, "usage-ledger.jsonl")
+	ledger := collectLedgerAudit(ledgerPath, "recall", now)
+	if ledger.newest.After(activityNewest) {
+		activityNewest = ledger.newest
 	}
-	return classification, fmt.Sprintf("non_automatic_14d=%d hit_cited=%d ledger_newest=%s machine_local=true", events, hitCited, displayAuditTime(newest))
+	ledgerMtime := "none"
+	if info, err := os.Stat(ledgerPath); err == nil {
+		ledgerMtime = info.ModTime().UTC().Format(time.RFC3339)
+	}
+	classification := classifyAudit(activityNewest, ledger.events14, ledger.hitCited14, now, false)
+	rate := 0.0
+	if ledger.retrievals28 > 0 {
+		rate = float64(ledger.hitCited28) / float64(ledger.retrievals28)
+	}
+	evidence := fmt.Sprintf("working_present=%t bytes=%d cap=%d updated=%s section_fill=active:%d,notes:%d,pending:%d hook_start=%t hook_stop=%t log_days=%d newest_log=%s captures=%d notes=%d weeks=%s retrievals_28d=%d hit_cited_28d=%d hit_cited_rate=%.2f non_automatic_14d=%d hit_cited_14d=%d ledger_first=%s ledger_newest=%s ledger_mtime=%s malformed_ledger=%d machine_local=true",
+		workingPresent, len(workingBytes), memoryCharacterLimit, updated, sectionFill["active"], sectionFill["notes"], sectionFill["pending"], hookStart, hookStop, len(logs), newestLog, captures, notes, formatLedgerWeeks(ledger.weeks), ledger.retrievals28, ledger.hitCited28, rate, ledger.events14, ledger.hitCited14, displayAuditTime(ledger.first), displayAuditTime(ledger.newest), ledgerMtime, ledger.malformed)
+	return classification, evidence
 }
 func auditBKBEngine(repositoryRoot, kbAbsolute, kbRelative string) (string, string) {
-	ledger := filepath.Join(kbAbsolute, "usage-ledger.jsonl")
-	events, newest, hitCited := 0, time.Time{}, 0
-	data, _ := os.ReadFile(ledger)
-	scanner := bufio.NewScanner(strings.NewReader(string(data)))
-	for scanner.Scan() {
-		var entry map[string]any
-		if json.Unmarshal(scanner.Bytes(), &entry) != nil {
-			continue
+	now := nowUTC()
+	ledger := collectLedgerAudit(filepath.Join(kbAbsolute, "usage-ledger.jsonl"), "query", now)
+	wikiPages := 0
+	_ = filepath.WalkDir(filepath.Join(kbAbsolute, "wiki"), func(path string, entry os.DirEntry, err error) error {
+		if err == nil && !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
+			wikiPages++
 		}
-		stamp, _ := time.Parse(time.RFC3339, stringValue(entry["ts"]))
-		if stamp.After(newest) {
-			newest = stamp
-		}
-		event := stringValue(entry["event"])
-		if event != "inject" && event != "capture" && !stamp.Before(nowUTC().AddDate(0, 0, -14)) {
-			events++
-		}
-		if event == "hit_cited" {
-			hitCited++
+		return nil
+	})
+	rawInbox := 0
+	if entries, err := os.ReadDir(filepath.Join(kbAbsolute, "raw", "inbox")); err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				rawInbox++
+			}
 		}
 	}
 	gitCount := 0
@@ -936,28 +1106,151 @@ func auditBKBEngine(repositoryRoot, kbAbsolute, kbRelative string) (string, stri
 			gitNewest, _ = time.Parse(time.RFC3339, lines[0])
 		}
 	}
+	authors := []string{}
+	if output, err := exec.Command("git", "-C", repositoryRoot, "log", "--format=%an", "--", kbRelative).Output(); err == nil {
+		seen := map[string]bool{}
+		for _, author := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+			if author != "" && !seen[author] {
+				seen[author] = true
+				authors = append(authors, author)
+			}
+		}
+		sort.Strings(authors)
+	}
 	logNewest := time.Time{}
+	log30, log90 := 0, 0
 	if logBytes, err := os.ReadFile(filepath.Join(kbAbsolute, "wiki", "log.md")); err == nil {
 		for _, match := range datePattern.FindAllString(string(logBytes), -1) {
-			if date, parseErr := time.Parse("2006-01-02", match); parseErr == nil && date.After(logNewest) {
-				logNewest = date
+			if date, parseErr := time.Parse("2006-01-02", match); parseErr == nil {
+				if date.After(logNewest) {
+					logNewest = date
+				}
+				if !date.Before(now.AddDate(0, 0, -30)) {
+					log30++
+				}
+				if !date.Before(now.AddDate(0, 0, -90)) {
+					log90++
+				}
 			}
 		}
 	}
-	activityNewest := newest
+	inbound := countBKBInboundReferences(repositoryRoot, kbAbsolute)
+	activityNewest := ledger.newest
 	if gitNewest.After(activityNewest) {
 		activityNewest = gitNewest
 	}
 	if logNewest.After(activityNewest) {
 		activityNewest = logNewest
 	}
-	classification := "Idle"
-	if activityNewest.IsZero() || activityNewest.Before(nowUTC().AddDate(0, 0, -30)) {
-		classification = "Stale"
-	} else if events >= 3 && hitCited >= 1 || !gitNewest.IsZero() && !gitNewest.Before(nowUTC().AddDate(0, 0, -14)) || !logNewest.IsZero() && !logNewest.Before(nowUTC().AddDate(0, 0, -14)) {
-		classification = "Active"
+	preLedgerRecent := !gitNewest.IsZero() && !gitNewest.Before(now.AddDate(0, 0, -14)) || !logNewest.IsZero() && !logNewest.Before(now.AddDate(0, 0, -14))
+	classification := classifyAudit(activityNewest, ledger.events14, ledger.hitCited14, now, preLedgerRecent)
+	rate := 0.0
+	if ledger.retrievals28 > 0 {
+		rate = float64(ledger.hitCited28) / float64(ledger.retrievals28)
 	}
-	return classification, fmt.Sprintf("non_automatic_14d=%d hit_cited=%d ledger_newest=%s git_commits=%d git_newest=%s log_newest=%s ledger_committed=true", events, hitCited, displayAuditTime(newest), gitCount, displayAuditTime(gitNewest), displayAuditTime(logNewest))
+	return classification, fmt.Sprintf("wiki_pages=%d raw_inbox=%d git_commits=%d git_authors=%d authors=%s git_newest=%s log_30d=%d log_90d=%d log_newest=%s inbound_refs=%d weeks=%s retrievals_28d=%d hit_cited_28d=%d hit_cited_rate=%.2f non_automatic_14d=%d hit_cited_14d=%d ledger_first=%s ledger_newest=%s malformed_ledger=%d ledger_committed=true fairness=git_and_log_cover_pre_ledger",
+		wikiPages, rawInbox, gitCount, len(authors), strings.Join(authors, ","), displayAuditTime(gitNewest), log30, log90, displayAuditTime(logNewest), inbound, formatLedgerWeeks(ledger.weeks), ledger.retrievals28, ledger.hitCited28, rate, ledger.events14, ledger.hitCited14, displayAuditTime(ledger.first), displayAuditTime(ledger.newest), ledger.malformed)
+}
+
+func collectLedgerAudit(path, retrievalEvent string, now time.Time) ledgerAuditStats {
+	stats := ledgerAuditStats{}
+	for index := range stats.weeks {
+		stats.weeks[index] = map[string]int{}
+	}
+	data, _ := os.ReadFile(path)
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	known := map[string]bool{"inject": true, "capture": true, "write": true, "recall": true, "query": true, "ingest": true, "hit_cited": true}
+	for scanner.Scan() {
+		var entry map[string]any
+		if json.Unmarshal(scanner.Bytes(), &entry) != nil {
+			stats.malformed++
+			continue
+		}
+		stamp, err := time.Parse(time.RFC3339, stringValue(entry["ts"]))
+		if err != nil {
+			stats.malformed++
+			continue
+		}
+		if stats.first.IsZero() || stamp.Before(stats.first) {
+			stats.first = stamp
+		}
+		if stamp.After(stats.newest) {
+			stats.newest = stamp
+		}
+		event := stringValue(entry["event"])
+		ageDays := int(now.Sub(stamp).Hours() / 24)
+		if ageDays >= 0 && ageDays < 28 {
+			bucketEvent := event
+			if !known[bucketEvent] {
+				bucketEvent = "other"
+			}
+			stats.weeks[ageDays/7][bucketEvent]++
+			if event == retrievalEvent {
+				stats.retrievals28++
+			}
+			if event == "hit_cited" {
+				stats.hitCited28++
+			}
+		}
+		if !stamp.After(now) && !stamp.Before(now.AddDate(0, 0, -14)) && event != "inject" && event != "capture" {
+			stats.events14++
+			if event == "hit_cited" {
+				stats.hitCited14++
+			}
+		}
+	}
+	return stats
+}
+
+func formatLedgerWeeks(weeks [4]map[string]int) string {
+	parts := make([]string, 0, len(weeks))
+	for index, bucket := range weeks {
+		keys := make([]string, 0, len(bucket))
+		for key := range bucket {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		values := make([]string, 0, len(keys))
+		for _, key := range keys {
+			values = append(values, fmt.Sprintf("%s:%d", key, bucket[key]))
+		}
+		parts = append(parts, fmt.Sprintf("w%d[%s]", index, strings.Join(values, ",")))
+	}
+	return strings.Join(parts, ";")
+}
+
+func classifyAudit(newest time.Time, events14, hitCited14 int, now time.Time, equivalentRecent bool) string {
+	if newest.IsZero() || newest.Before(now.AddDate(0, 0, -30)) {
+		return "Stale"
+	}
+	if events14 >= 3 && hitCited14 >= 1 || equivalentRecent {
+		return "Active"
+	}
+	return "Idle"
+}
+
+func countBKBInboundReferences(repositoryRoot, kbRoot string) int {
+	count := 0
+	_ = filepath.WalkDir(repositoryRoot, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if entry.IsDir() {
+			if pathInside(kbRoot, path) || entry.Name() == ".git" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(entry.Name(), ".md") {
+			return nil
+		}
+		data, readError := os.ReadFile(path)
+		if readError == nil && (strings.Contains(string(data), "wiki/") || strings.Contains(string(data), "[[")) {
+			count++
+		}
+		return nil
+	})
+	return count
 }
 func displayAuditTime(value time.Time) string {
 	if value.IsZero() {
@@ -1038,5 +1331,3 @@ func countLines(reader *bufio.Scanner) int {
 	}
 	return count
 }
-
-var _ = strconv.Itoa

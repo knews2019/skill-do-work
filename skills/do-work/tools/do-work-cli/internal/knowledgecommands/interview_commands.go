@@ -48,6 +48,14 @@ var rootedCreateTestHook func(repositoryRoot, relative string)
 
 func parseInterviewOptions(arguments []string, mutable bool) (interviewOptions, error) {
 	options := interviewOptions{kb: "kb"}
+	seen := map[string]bool{}
+	singleton := func(name string) error {
+		if seen[name] {
+			return fmt.Errorf("%s may be specified only once", name)
+		}
+		seen[name] = true
+		return nil
+	}
 	for index := 0; index < len(arguments); index++ {
 		argument := arguments[index]
 		value := func(name string) (string, error) {
@@ -60,25 +68,49 @@ func parseInterviewOptions(arguments []string, mutable bool) (interviewOptions, 
 		var err error
 		switch {
 		case argument == "--knowledge-root":
-			options.knowledgeRoot, err = value(argument)
+			err = singleton("--knowledge-root")
+			if err == nil {
+				options.knowledgeRoot, err = value(argument)
+			}
 		case strings.HasPrefix(argument, "--knowledge-root="):
-			options.knowledgeRoot = strings.TrimPrefix(argument, "--knowledge-root=")
+			err = singleton("--knowledge-root")
+			if err == nil {
+				options.knowledgeRoot = strings.TrimPrefix(argument, "--knowledge-root=")
+			}
 		case argument == "--template":
-			options.template, err = value(argument)
+			err = singleton("--template")
+			if err == nil {
+				options.template, err = value(argument)
+			}
 		case strings.HasPrefix(argument, "--template="):
-			options.template = strings.TrimPrefix(argument, "--template=")
+			err = singleton("--template")
+			if err == nil {
+				options.template = strings.TrimPrefix(argument, "--template=")
+			}
 		case argument == "--kb":
-			options.kb, err = value(argument)
+			err = singleton("--kb")
+			if err == nil {
+				options.kb, err = value(argument)
+			}
 		case strings.HasPrefix(argument, "--kb="):
-			options.kb = strings.TrimPrefix(argument, "--kb=")
+			err = singleton("--kb")
+			if err == nil {
+				options.kb = strings.TrimPrefix(argument, "--kb=")
+			}
 		case argument == "--dry-run" && mutable:
-			options.dryRun = true
+			err = singleton("--dry-run")
+			options.dryRun = err == nil
 		case argument == "--commit" && mutable:
-			options.commit = true
+			err = singleton("--commit")
+			options.commit = err == nil
 		case argument == "--confirm" && mutable:
-			options.confirm = true
+			err = singleton("--confirm")
+			options.confirm = err == nil
 		case !strings.HasPrefix(argument, "-") && options.template == "":
-			options.template = argument
+			err = singleton("--template")
+			if err == nil {
+				options.template = argument
+			}
 		default:
 			return options, fmt.Errorf("unknown option %q", argument)
 		}
@@ -184,6 +216,7 @@ func handleInterviewVersions(executionContext commandruntime.ExecutionContext, a
 	}
 	records := []versionRecord{}
 	malformed := []resultmodel.CommandFinding{}
+	versionNames := map[int][]string{}
 	pattern := regexp.MustCompile(`^v([0-9]+)-([0-9]{4}-[0-9]{2}-[0-9]{2})$`)
 	for _, entry := range entries {
 		if !entry.IsDir() {
@@ -196,6 +229,7 @@ func handleInterviewVersions(executionContext commandruntime.ExecutionContext, a
 			continue
 		}
 		number, _ := strconv.Atoi(match[1])
+		versionNames[number] = append(versionNames[number], entry.Name())
 		data, readErr := os.ReadFile(filepath.Join(versionsRoot, entry.Name(), "session.json"))
 		if readErr != nil {
 			malformed = append(malformed, interviewFinding(CommandInterviewVersions, "INTERVIEW-VERSION-MALFORMED", resultmodel.SeverityWarning, display, readErr.Error(), resultmodel.FixabilityManual, "archives are immutable; inspect manually"))
@@ -208,6 +242,13 @@ func handleInterviewVersions(executionContext commandruntime.ExecutionContext, a
 		}
 		layers, entriesCount := sessionCounts(session)
 		records = append(records, versionRecord{number: number, name: entry.Name(), finding: interviewFinding(CommandInterviewVersions, "INTERVIEW-VERSION", resultmodel.SeverityInfo, display, fmt.Sprintf("%s layers=%d entries=%d", entry.Name(), layers, entriesCount), resultmodel.FixabilityManual, "")})
+	}
+	for number, names := range versionNames {
+		if len(names) < 2 {
+			continue
+		}
+		sort.Strings(names)
+		malformed = append(malformed, interviewFinding(CommandInterviewVersions, "INTERVIEW-VERSION-DUPLICATE-ID", resultmodel.SeverityError, filepath.ToSlash(filepath.Join("do-work/interview", options.template, "versions")), fmt.Sprintf("numeric version v%d is used by %s", number, strings.Join(names, ", ")), resultmodel.FixabilityManual, "archives are immutable; resolve the duplicate IDs manually"))
 	}
 	sort.Slice(records, func(i, j int) bool {
 		if records[i].number != records[j].number {
@@ -352,7 +393,8 @@ func handleInterviewIngest(executionContext commandruntime.ExecutionContext, arg
 	if locateError != nil {
 		return interviewFindingResult(CommandInterviewIngest, "INTERVIEW-INGEST-KB-MISSING", resultmodel.SeverityWarning, options.kb, locateError.Error(), resultmodel.OutcomeRefused)
 	}
-	if !pathInside(executionContext.RepositoryRoot, kbAbsolute) {
+	physicalRepositoryRoot, physicalRootError := physicalPath(filepath.Clean(executionContext.RepositoryRoot))
+	if physicalRootError != nil || !pathInside(physicalRepositoryRoot, kbAbsolute) {
 		return interviewFailure(CommandInterviewIngest, "INTERVIEW-INGEST-KB-OUTSIDE-REPOSITORY", options.kb, errors.New("mutating ingest target must be inside the repository"))
 	}
 	exportsRoot := filepath.Join(executionContext.RepositoryRoot, "do-work", "interview", options.template, "exports")
@@ -364,6 +406,7 @@ func handleInterviewIngest(executionContext commandruntime.ExecutionContext, arg
 	inbox := filepath.Join(kbAbsolute, "raw", "inbox")
 	capture := filepath.Join(kbAbsolute, "raw", "capture")
 	writes := map[string][]byte{}
+	reservedNames := map[string]bool{}
 	for _, entry := range exportEntries {
 		if entry.IsDir() {
 			continue
@@ -377,7 +420,11 @@ func handleInterviewIngest(executionContext commandruntime.ExecutionContext, arg
 		}
 		exportStem := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
 		name := options.template + "-" + exportStem + ".md"
-		name = collisionName(inbox, capture, name, stamp)
+		name, collisionError := collisionName(inbox, capture, name, stamp, reservedNames)
+		if collisionError != nil {
+			return interviewFailure(CommandInterviewIngest, "INTERVIEW-INGEST-COLLISION-CHECK-FAILED", name, collisionError)
+		}
+		reservedNames[name] = true
 		body := string(data)
 		if strings.EqualFold(filepath.Ext(entry.Name()), ".json") {
 			body = "```json\n" + strings.TrimSpace(body) + "\n```\n"
@@ -388,7 +435,11 @@ func handleInterviewIngest(executionContext commandruntime.ExecutionContext, arg
 	for _, layer := range template.Layers {
 		layerValue := mapValue(mapValue(session["layers"])[layer.ID])
 		entries := sliceValue(layerValue["entries"])
-		name := collisionName(inbox, capture, options.template+"-"+layer.ID+".md", stamp)
+		name, collisionError := collisionName(inbox, capture, options.template+"-"+layer.ID+".md", stamp, reservedNames)
+		if collisionError != nil {
+			return interviewFailure(CommandInterviewIngest, "INTERVIEW-INGEST-COLLISION-CHECK-FAILED", layer.ID, collisionError)
+		}
+		reservedNames[name] = true
 		var body strings.Builder
 		fmt.Fprintf(&body, "# %s\n\n", layer.Title)
 		confirmed, synthesized := 0, 0
@@ -412,6 +463,9 @@ func handleInterviewIngest(executionContext commandruntime.ExecutionContext, arg
 	queueBytes, queueError := os.ReadFile(filepath.Join(executionContext.RepositoryRoot, filepath.FromSlash(queuePath)))
 	if queueError != nil {
 		return interviewFailure(CommandInterviewIngest, "INTERVIEW-INGEST-QUEUE-MISSING", queuePath, queueError)
+	}
+	if !validInboxQueue(queueBytes) {
+		return interviewFindingResult(CommandInterviewIngest, "INTERVIEW-INGEST-QUEUE-MALFORMED", resultmodel.SeverityError, queuePath, "queue must contain the canonical Inbox Queue heading and Markdown table separator", resultmodel.OutcomeRefused)
 	}
 	if len(queueBytes) > 0 && queueBytes[len(queueBytes)-1] != '\n' {
 		queueBytes = append(queueBytes, '\n')
@@ -478,46 +532,48 @@ func handleInterviewReset(executionContext commandruntime.ExecutionContext, argu
 		return interviewFailure(CommandInterviewReset, "INTERVIEW-TEMPLATE-MALFORMED", options.template, templateError)
 	}
 	base := filepath.Join(executionContext.RepositoryRoot, "do-work", "interview", options.template)
-	sessionBytes, readError := os.ReadFile(filepath.Join(base, "session.json"))
+	sessionBytes, readError := readRegularInterviewFile(filepath.Join(base, "session.json"))
 	if readError != nil {
 		return interviewFailure(CommandInterviewReset, "INTERVIEW-SESSION-MISSING", sessionPath(options.template), readError)
 	}
-	next := nextInterviewVersion(filepath.Join(base, "versions"))
+	next, versionError := nextInterviewVersion(filepath.Join(base, "versions"))
+	if versionError != nil {
+		return interviewFailure(CommandInterviewReset, "INTERVIEW-RESET-VERSIONS-INVALID", filepath.ToSlash(filepath.Join("do-work/interview", options.template, "versions")), versionError)
+	}
 	operationTime := nowUTC()
 	versionName := fmt.Sprintf("v%d-%s", next, operationTime.Format("2006-01-02"))
 	archiveRelative := filepath.ToSlash(filepath.Join("do-work/interview", options.template, "versions", versionName))
 	archiveAbsolute := filepath.Join(executionContext.RepositoryRoot, filepath.FromSlash(archiveRelative))
 	if _, statError := os.Lstat(archiveAbsolute); statError == nil {
 		return interviewFindingResult(CommandInterviewReset, "INTERVIEW-RESET-ARCHIVE-COLLISION", resultmodel.SeverityWarning, archiveRelative, "the exact archive already exists and is immutable", resultmodel.OutcomeRefused)
+	} else if !os.IsNotExist(statError) {
+		return interviewFailure(CommandInterviewReset, "INTERVIEW-RESET-ARCHIVE-INSPECT-FAILED", archiveRelative, statError)
 	}
 	writes := map[string][]byte{filepath.ToSlash(filepath.Join(archiveRelative, "session.json")): sessionBytes}
 	oldPaths := []string{}
 	for _, directory := range []string{"checkpoints", "exports"} {
-		root := filepath.Join(base, directory)
-		_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkError error) error {
-			if walkError != nil || entry.IsDir() {
-				return nil
-			}
-			rel, _ := filepath.Rel(executionContext.RepositoryRoot, path)
-			rel = filepath.ToSlash(rel)
-			data, err := os.ReadFile(path)
-			if err == nil {
-				archivePath := filepath.ToSlash(filepath.Join(archiveRelative, directory, strings.TrimPrefix(rel, filepath.ToSlash(filepath.Join("do-work/interview", options.template, directory))+"/")))
-				writes[archivePath] = data
-				oldPaths = append(oldPaths, rel)
-			}
-			return nil
-		})
+		workingDirectory := filepath.Join(base, directory)
+		files, collectError := collectInterviewStateFiles(executionContext.RepositoryRoot, workingDirectory, filepath.ToSlash(filepath.Join(archiveRelative, directory)))
+		if collectError != nil {
+			return interviewFailure(CommandInterviewReset, "INTERVIEW-RESET-STATE-READ-FAILED", filepath.ToSlash(filepath.Join("do-work/interview", options.template, directory)), collectError)
+		}
+		for _, file := range files {
+			writes[file.archivePath] = file.data
+			oldPaths = append(oldPaths, file.workingPath)
+		}
 	}
 	now := operationTime.Format(time.RFC3339)
-	fresh := map[string]any{"template": options.template, "template_version": template.Version, "session_id": randomID(), "started_at": now, "last_activity_at": now, "status": "in_progress", "pending_layer": firstLayer(template), "previous_version": nil, "review_completed_at": nil, "review_runs": 0, "last_exported_at": nil, "layers": map[string]any{}}
+	fresh := map[string]any{"template": options.template, "template_version": template.Version, "session_id": randomID(), "started_at": now, "last_activity_at": now, "status": "in_progress", "pending_layer": firstLayer(template), "previous_version": fmt.Sprintf("v%d", next), "review_completed_at": nil, "review_runs": 0, "last_exported_at": nil, "layers": map[string]any{}}
 	freshBytes, _ := json.MarshalIndent(fresh, "", "  ")
 	freshBytes = append(freshBytes, '\n')
 	writes[sessionPath(options.template)] = freshBytes
 	changelogPath := filepath.ToSlash(filepath.Join("do-work/interview", options.template, "CHANGELOG.md"))
-	changelog, _ := os.ReadFile(filepath.Join(executionContext.RepositoryRoot, filepath.FromSlash(changelogPath)))
-	if len(changelog) == 0 {
+	changelogAbsolute := filepath.Join(executionContext.RepositoryRoot, filepath.FromSlash(changelogPath))
+	changelog, changelogError := readRegularInterviewFile(changelogAbsolute)
+	if os.IsNotExist(changelogError) {
 		changelog = []byte("# Interview CHANGELOG — " + options.template + "\n\n")
+	} else if changelogError != nil {
+		return interviewFailure(CommandInterviewReset, "INTERVIEW-CHANGELOG-READ-FAILED", changelogPath, changelogError)
 	}
 	changelog = append(changelog, []byte(fmt.Sprintf("\n## %s — reset (archived as v%d)\nFresh session started; v%d retained for reference.\n", operationTime.Format("2006-01-02 15:04"), next, next))...)
 	writes[changelogPath] = changelog
@@ -526,10 +582,15 @@ func handleInterviewReset(executionContext commandruntime.ExecutionContext, argu
 		targets = append(targets, path)
 	}
 	targets = uniqueSorted(targets)
-	dirs := []string{archiveRelative}
+	dirs := []string{filepath.ToSlash(filepath.Dir(archiveRelative)), archiveRelative}
 	for path := range writes {
 		if strings.HasPrefix(path, archiveRelative+"/") {
-			dirs = append(dirs, filepath.ToSlash(filepath.Dir(path)))
+			for directory := filepath.ToSlash(filepath.Dir(path)); strings.HasPrefix(directory, archiveRelative); directory = filepath.ToSlash(filepath.Dir(directory)) {
+				dirs = append(dirs, directory)
+				if directory == archiveRelative {
+					break
+				}
+			}
 		}
 	}
 	createdDirs := absentDirectories(executionContext.RepositoryRoot, uniqueSorted(dirs))
@@ -563,6 +624,49 @@ func handleInterviewReset(executionContext commandruntime.ExecutionContext, argu
 		result.Changes = plannedChanges(targets)
 	}
 	return retargetInterviewResult(result, options)
+}
+
+type interviewStateFile struct {
+	workingPath string
+	archivePath string
+	data        []byte
+}
+
+func collectInterviewStateFiles(repositoryRoot, workingDirectory, archiveDirectory string) ([]interviewStateFile, error) {
+	files := []interviewStateFile{}
+	err := filepath.WalkDir(workingDirectory, func(path string, entry os.DirEntry, walkError error) error {
+		if walkError != nil {
+			return walkError
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		if entry.Type()&os.ModeSymlink != 0 || !entry.Type().IsRegular() {
+			return fmt.Errorf("%s is not a regular file", path)
+		}
+		data, readError := readRegularInterviewFile(path)
+		if readError != nil {
+			return readError
+		}
+		workingRelative, relativeError := filepath.Rel(repositoryRoot, path)
+		if relativeError != nil {
+			return relativeError
+		}
+		insideDirectory, relativeError := filepath.Rel(workingDirectory, path)
+		if relativeError != nil || insideDirectory == ".." || strings.HasPrefix(insideDirectory, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("state path %s escaped its declared directory", path)
+		}
+		files = append(files, interviewStateFile{workingPath: filepath.ToSlash(workingRelative), archivePath: filepath.ToSlash(filepath.Join(archiveDirectory, insideDirectory)), data: data})
+		return nil
+	})
+	if os.IsNotExist(err) {
+		return files, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].workingPath < files[j].workingPath })
+	return files, nil
 }
 
 func locateKnowledgeRoot(repositoryRoot, supplied string) (string, error) {
@@ -771,7 +875,7 @@ func renderInterviewExports(template interviewTemplate, root map[string]any) (ma
 		if end < 0 {
 			return nil, fmt.Errorf("export %s render block is unterminated", name)
 		}
-		rendered, err := renderTemplateBlock(template.Raw[bodyStart:bodyStart+end], root, root, 0, 1)
+		rendered, err := renderTemplateBlock(template.Raw[bodyStart:bodyStart+end], root, root, 0, 1, strings.EqualFold(filepath.Ext(name), ".json"))
 		if err != nil {
 			return nil, fmt.Errorf("render %s: %w", name, err)
 		}
@@ -780,7 +884,7 @@ func renderInterviewExports(template interviewTemplate, root map[string]any) (ma
 	return renders, nil
 }
 
-func renderTemplateBlock(template string, root, current map[string]any, itemIndex, itemCount int) (string, error) {
+func renderTemplateBlock(template string, root, current map[string]any, itemIndex, itemCount int, jsonOutput bool) (string, error) {
 	for {
 		start := strings.Index(template, "{{#each ")
 		if start < 0 {
@@ -801,7 +905,7 @@ func renderTemplateBlock(template string, root, current map[string]any, itemInde
 		var replacement strings.Builder
 		for index, raw := range items {
 			item := mapValue(raw)
-			rendered, err := renderTemplateBlock(body, root, item, index, len(items))
+			rendered, err := renderTemplateBlock(body, root, item, index, len(items), jsonOutput)
 			if err != nil {
 				return "", err
 			}
@@ -825,8 +929,28 @@ func renderTemplateBlock(template string, root, current map[string]any, itemInde
 		}
 		template = template[:start] + body + template[end+len("{{/unless}}"):]
 	}
-	pattern := regexp.MustCompile(`\{\{\s*([^{}]+?)\s*\}\}`)
 	var renderError error
+	if jsonOutput {
+		quotedPattern := regexp.MustCompile(`"\{\{\s*([^{}]+?)\s*\}\}"`)
+		template = quotedPattern.ReplaceAllStringFunc(template, func(token string) string {
+			expr := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(token, `"{{`), `}}"`))
+			if strings.HasPrefix(expr, "json ") || strings.HasPrefix(expr, "json_entries ") {
+				return token
+			}
+			value, found := resolveScopedFound(root, current, expr)
+			if !found {
+				renderError = fmt.Errorf("unresolved template field %q", expr)
+				return ""
+			}
+			encoded, err := json.Marshal(value)
+			if err != nil {
+				renderError = fmt.Errorf("encode template field %q: %w", expr, err)
+				return ""
+			}
+			return string(encoded)
+		})
+	}
+	pattern := regexp.MustCompile(`\{\{\s*([^{}]+?)\s*\}\}`)
 	template = pattern.ReplaceAllStringFunc(template, func(token string) string {
 		expr := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(token, "{{"), "}}"))
 		var value any
@@ -841,11 +965,20 @@ func renderTemplateBlock(template string, root, current map[string]any, itemInde
 			bytes, _ := json.Marshal(value)
 			return string(bytes)
 		default:
-			value = resolveScoped(root, current, expr)
+			var found bool
+			value, found = resolveScopedFound(root, current, expr)
+			if !found {
+				renderError = fmt.Errorf("unresolved template field %q", expr)
+				return ""
+			}
 		}
-		if value == nil {
-			renderError = fmt.Errorf("unresolved template field %q", expr)
-			return ""
+		if jsonOutput {
+			encoded, err := json.Marshal(value)
+			if err != nil {
+				renderError = fmt.Errorf("encode template field %q: %w", expr, err)
+				return ""
+			}
+			return string(encoded)
 		}
 		return displayTemplateValue(value)
 	})
@@ -1335,12 +1468,22 @@ func intValue(value any) int {
 	}
 }
 func resolveScoped(root, current map[string]any, path string) any {
-	if value := resolveValue(current, path); value != nil {
+	if value, found := resolveValueFound(current, path); found {
 		return value
 	}
 	return resolveValue(root, path)
 }
+func resolveScopedFound(root, current map[string]any, path string) (any, bool) {
+	if value, found := resolveValueFound(current, path); found {
+		return value, true
+	}
+	return resolveValueFound(root, path)
+}
 func resolveValue(value any, path string) any {
+	resolved, _ := resolveValueFound(value, path)
+	return resolved
+}
+func resolveValueFound(value any, path string) (any, bool) {
 	current := value
 	for _, part := range strings.Split(path, ".") {
 		if part == "this" {
@@ -1348,11 +1491,15 @@ func resolveValue(value any, path string) any {
 		}
 		object, ok := current.(map[string]any)
 		if !ok {
-			return nil
+			return nil, false
 		}
-		current = object[part]
+		var exists bool
+		current, exists = object[part]
+		if !exists {
+			return nil, false
+		}
 	}
-	return current
+	return current, true
 }
 func displayTemplateValue(value any) string {
 	switch typed := value.(type) {
@@ -1410,39 +1557,82 @@ func randomID() string {
 	}
 	return hex.EncodeToString(bytes)
 }
-func nextInterviewVersion(root string) int {
-	entries, _ := os.ReadDir(root)
+func nextInterviewVersion(root string) (int, error) {
+	entries, readError := os.ReadDir(root)
+	if os.IsNotExist(readError) {
+		return 1, nil
+	}
+	if readError != nil {
+		return 0, readError
+	}
 	maximum := 0
 	pattern := regexp.MustCompile(`^v([0-9]+)-`)
+	seen := map[int]string{}
 	for _, entry := range entries {
 		match := pattern.FindStringSubmatch(entry.Name())
 		if match != nil {
 			number, _ := strconv.Atoi(match[1])
+			if previous, duplicate := seen[number]; duplicate {
+				return 0, fmt.Errorf("duplicate numeric version v%d: %s and %s", number, previous, entry.Name())
+			}
+			seen[number] = entry.Name()
 			if number > maximum {
 				maximum = number
 			}
 		}
 	}
-	return maximum + 1
+	return maximum + 1, nil
 }
-func collisionName(inbox, capture, name string, stamp time.Time) string {
-	if _, err := os.Lstat(filepath.Join(inbox, name)); err == nil {
-		return stamp.Format("150405") + "-" + name
+func collisionName(inbox, capture, name string, stamp time.Time, reserved map[string]bool) (string, error) {
+	prefix := stamp.Format("150405")
+	for attempt := 0; ; attempt++ {
+		candidate := name
+		if attempt == 1 {
+			candidate = prefix + "-" + name
+		} else if attempt > 1 {
+			candidate = fmt.Sprintf("%s-%d-%s", prefix, attempt, name)
+		}
+		if reserved[candidate] {
+			continue
+		}
+		taken, err := collisionTargetExists(inbox, capture, candidate)
+		if err != nil {
+			return "", err
+		}
+		if !taken {
+			return candidate, nil
+		}
 	}
-	collision := false
-	_ = filepath.WalkDir(capture, func(path string, entry os.DirEntry, walkError error) error {
-		if walkError != nil || collision {
-			return nil
+}
+func collisionTargetExists(inbox, capture, name string) (bool, error) {
+	if _, err := os.Lstat(filepath.Join(inbox, name)); err == nil {
+		return true, nil
+	} else if !os.IsNotExist(err) {
+		return false, err
+	}
+	found := false
+	err := filepath.WalkDir(capture, func(path string, entry os.DirEntry, walkError error) error {
+		if os.IsNotExist(walkError) && path == capture {
+			return filepath.SkipDir
+		}
+		if walkError != nil {
+			return walkError
 		}
 		if !entry.IsDir() && entry.Name() == name {
-			collision = true
+			found = true
+			return filepath.SkipAll
 		}
 		return nil
 	})
-	if collision {
-		return stamp.Format("150405") + "-" + name
+	return found, err
+}
+func validInboxQueue(data []byte) bool {
+	normalized := strings.ReplaceAll(string(data), "\r\n", "\n")
+	if !strings.Contains(normalized, "# Inbox Queue") {
+		return false
 	}
-	return name
+	separator := regexp.MustCompile(`(?m)^\|(?:\s*:?-{3,}:?\s*\|){3,}\s*$`)
+	return separator.MatchString(normalized)
 }
 func pathInside(root, target string) bool {
 	relative, err := filepath.Rel(root, target)

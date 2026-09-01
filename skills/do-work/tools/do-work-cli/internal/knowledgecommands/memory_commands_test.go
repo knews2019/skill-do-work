@@ -1,6 +1,7 @@
 package knowledgecommands
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -210,5 +211,154 @@ func TestLexicalRecallMatchesRetainedScriptAtRecencyBoundaries(t *testing.T) {
 		if len(fields) != 5 || fields[0] != fmt.Sprint(hit.Score) || fields[4] != hit.Content {
 			t.Fatalf("differential row %d script=%q Go=%#v", index, lines[index], hit)
 		}
+	}
+}
+
+func TestForgetAndBootstrapNeverFollowPrivateSymlinksOrDiscloseOutsideBytes(t *testing.T) {
+	root := newMemoryRepository(t)
+	outside := filepath.Join(t.TempDir(), "outside-secret.md")
+	const canary = "outside-secret-canary-417"
+	if err := os.WriteFile(outside, []byte(canary+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "memory", "logs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "memory", "logs", "2026-09-01.md")); err != nil {
+		t.Fatal(err)
+	}
+	forget := handleMemoryForget(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"outside secret"})
+	forgetJSON, _ := json.Marshal(forget)
+	if forget.Outcome != resultmodel.OutcomeFailure || strings.Contains(string(forgetJSON), canary) {
+		t.Fatalf("forget followed/disclosed outside target: %s", forgetJSON)
+	}
+	if err := os.Remove(filepath.Join(root, "memory", "logs", "2026-09-01.md")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "memory", ".bootstrap-imported")); err != nil {
+		t.Fatal(err)
+	}
+	bootstrap := handleMemoryBootstrap(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--confirm", "--manifest", filepath.Join(root, "missing.json")})
+	bootstrapJSON, _ := json.Marshal(bootstrap)
+	if bootstrap.Outcome != resultmodel.OutcomeFailure || strings.Contains(string(bootstrapJSON), canary) {
+		t.Fatalf("bootstrap followed/disclosed outside sentinel: %s", bootstrapJSON)
+	}
+}
+
+func TestRememberForgetAndStatusNeverPersistOrRediscloseProtectedTextInLedger(t *testing.T) {
+	root := newMemoryRepository(t)
+	const canary = "protected-fact-canary-417"
+	remember := handleMemoryRemember(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--section", "notes", "--commit", canary})
+	if remember.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("remember = %#v", remember)
+	}
+	ledgerPath := filepath.Join(root, "memory", "usage-ledger.jsonl")
+	ledger, err := os.ReadFile(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(ledger), canary) || strings.Contains(string(ledger), "protected fact") {
+		t.Fatalf("remember ledger retained fact: %s", ledger)
+	}
+	if err := os.WriteFile(ledgerPath, append(ledger, []byte(`{"ts":"2026-09-01T10:00:00Z","engine":"memory","event":"recall","query":"protected-fact-canary-417","hits":1,"source":"fixture","note":"raw-secret"}`+"\n")...), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	status := handleMemoryStatus(commandruntime.ExecutionContext{RepositoryRoot: root}, nil)
+	statusJSON, _ := json.Marshal(status)
+	if strings.Contains(string(statusJSON), canary) || strings.Contains(string(statusJSON), "raw-secret") {
+		t.Fatalf("status redisclosed protected ledger fields: %s", statusJSON)
+	}
+	discovery := handleMemoryForget(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{canary})
+	if len(discovery.Findings) == 0 {
+		t.Fatalf("forget discovery = %#v", discovery)
+	}
+	id := discovery.Findings[0].AffectedIDs[0]
+	forgotten := handleMemoryForget(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--confirm", "--match", id, canary})
+	if forgotten.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("forget = %#v", forgotten)
+	}
+	ledger, _ = os.ReadFile(ledgerPath)
+	lines := strings.Split(strings.TrimSpace(string(ledger)), "\n")
+	if strings.Contains(lines[len(lines)-1], canary) || strings.Contains(lines[len(lines)-1], "protected fact") {
+		t.Fatalf("forget ledger retained query: %s", lines[len(lines)-1])
+	}
+}
+
+func TestMemoryAuditReportsRequiredProbesAndOldCitationDoesNotMakeActive(t *testing.T) {
+	root := newMemoryRepository(t)
+	writeInterviewFixture(t, root, ".claude/settings.json", `{"hooks":{"SessionStart":"memory-session-start.sh","Stop":"memory-stop-capture.sh"}}`)
+	writeInterviewFixture(t, root, "memory/logs/2026-08-31.md", "## 09:00 UTC session capture abcdef01\n> captured\n\n## 10:00 UTC note\ncurated\n")
+	writeInterviewFixture(t, root, "memory/usage-ledger.jsonl", strings.Join([]string{
+		`{"ts":"2026-08-31T09:00:00Z","engine":"memory","event":"recall","hits":1}`,
+		`{"ts":"2026-08-31T10:00:00Z","engine":"memory","event":"write","hits":1}`,
+		`{"ts":"2026-08-31T11:00:00Z","engine":"memory","event":"other-new-event","hits":0}`,
+		`{"ts":"2026-07-01T11:00:00Z","engine":"memory","event":"hit_cited","hits":1}`,
+	}, "\n")+"\n")
+	previous := nowUTC
+	nowUTC = func() time.Time { return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { nowUTC = previous })
+	result := handleMemoryAudit(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--engine", "memory"})
+	if result.Outcome != resultmodel.OutcomeSuccess || len(result.Findings) != 1 {
+		t.Fatalf("audit = %#v", result)
+	}
+	evidence := strings.Join(result.Findings[0].Evidence, " ")
+	for _, required := range []string{"classification=Idle", "working_present=true", "section_fill=", "hook_start=true", "hook_stop=true", "log_days=1", "captures=1", "notes=1", "retrievals_28d=1", "hit_cited_28d=0", "weeks="} {
+		if !strings.Contains(evidence, required) {
+			t.Fatalf("audit missing %q: %s", required, evidence)
+		}
+	}
+}
+
+func TestMemoryAuditUsesExactFourteenDayBoundary(t *testing.T) {
+	root := t.TempDir()
+	ledger := filepath.Join(root, "usage-ledger.jsonl")
+	writeInterviewFixture(t, root, "usage-ledger.jsonl", strings.Join([]string{
+		`{"ts":"2026-08-18T12:00:00Z","event":"write"}`,
+		`{"ts":"2026-08-18T12:00:00Z","event":"recall"}`,
+		`{"ts":"2026-08-18T12:00:00Z","event":"hit_cited"}`,
+		`{"ts":"2026-08-18T11:59:59Z","event":"hit_cited"}`,
+	}, "\n")+"\n")
+	now := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	stats := collectLedgerAudit(ledger, "recall", now)
+	if stats.events14 != 3 || stats.hitCited14 != 1 {
+		t.Fatalf("14-day stats = events:%d cited:%d", stats.events14, stats.hitCited14)
+	}
+	if classification := classifyAudit(stats.newest, stats.events14, stats.hitCited14, now, false); classification != "Active" {
+		t.Fatalf("classification = %s", classification)
+	}
+	if classification := classifyAudit(now.AddDate(0, 0, -30), 0, 0, now, false); classification != "Idle" {
+		t.Fatalf("exact 30-day classification = %s", classification)
+	}
+	if classification := classifyAudit(now.AddDate(0, 0, -30).Add(-time.Second), 0, 0, now, false); classification != "Stale" {
+		t.Fatalf("older than 30-day classification = %s", classification)
+	}
+}
+
+func TestMemorySingletonOptionsRejectRepetition(t *testing.T) {
+	for _, arguments := range [][]string{
+		{"--memory-root", "memory", "--path", "memory"},
+		{"--section", "notes", "--section", "notes", "fact"},
+		{"--replace", "one", "--replace-id", "two", "fact"},
+		{"--engine", "memory", "--engine", "both"},
+		{"--kb", "one", "--kb", "two"},
+		{"--manifest", "one", "--manifest", "two"},
+		{"--text", "one", "--query", "two"},
+		{"--dry-run", "--dry-run", "fact"},
+		{"--commit", "--commit", "fact"},
+		{"--confirm", "--confirm", "fact"},
+	} {
+		if _, err := parseMemoryOptions(arguments, true); err == nil {
+			t.Fatalf("repeated singleton accepted: %#v", arguments)
+		}
+	}
+}
+
+func TestMemoryRememberDryRunPlansWithoutChangingAnyBytes(t *testing.T) {
+	root := newMemoryRepository(t)
+	before := treeDigest(t, root)
+	result := handleMemoryRemember(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--section", "notes", "--dry-run", "planned fact"})
+	after := treeDigest(t, root)
+	if result.Outcome != resultmodel.OutcomeSuccess || len(result.Changes) != 2 || before != after {
+		t.Fatalf("dry run=%#v tree changed=%v", result, before != after)
 	}
 }

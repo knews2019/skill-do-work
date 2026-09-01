@@ -97,6 +97,35 @@ func TestRealRuntimeTextAndJSONProjectSameDreamFindings(t *testing.T) {
 	}
 }
 
+func TestRealRuntimeTextAndJSONProjectSameInterviewAndMemoryFindings(t *testing.T) {
+	root := t.TempDir()
+	writeInterviewFixture(t, root, "knowledge/interviews/tiny.md", tinyInterviewTemplate)
+	writeInterviewFixture(t, root, "memory/working-memory.md", workingMemoryFixture)
+	for _, arguments := range [][]string{
+		{CommandInterviewList, "--knowledge-root", "knowledge"},
+		{CommandMemoryAudit, "--engine", "memory"},
+	} {
+		var jsonOutput bytes.Buffer
+		jsonArguments := append([]string{"--repo-root", root, "--format", "json"}, arguments...)
+		jsonStatus := commandruntime.NewRuntime(&jsonOutput, Handlers()).Run(jsonArguments)
+		var result resultmodel.CommandResult
+		if err := json.Unmarshal(jsonOutput.Bytes(), &result); err != nil {
+			t.Fatalf("%s JSON: %v\n%s", arguments[0], err, jsonOutput.String())
+		}
+		var textOutput bytes.Buffer
+		textArguments := append([]string{"--repo-root", root}, arguments...)
+		textStatus := commandruntime.NewRuntime(&textOutput, Handlers()).Run(textArguments)
+		if textStatus != jsonStatus {
+			t.Fatalf("%s text=%d JSON=%d", arguments[0], textStatus, jsonStatus)
+		}
+		for _, finding := range result.Findings {
+			if !strings.Contains(textOutput.String(), finding.Code) {
+				t.Fatalf("%s text omitted %s", arguments[0], finding.Code)
+			}
+		}
+	}
+}
+
 func TestParseOptionsAcceptsDocumentedPathsAndRejectsMixedMutationModes(t *testing.T) {
 	for _, target := range []string{"../outside", filepath.Join(t.TempDir(), "absolute-kb")} {
 		options, err := parseBKBOptions([]string{"--kb", target}, true)

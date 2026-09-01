@@ -3,9 +3,12 @@ package gittransaction
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -84,6 +87,10 @@ type publishedPrivateState struct {
 	info   os.FileInfo
 	digest [sha256.Size]byte
 }
+
+// privateTransactionTestHook is nil outside deterministic adversarial tests.
+// Stage names describe identity boundaries, never production behavior.
+var privateTransactionTestHook func(stage, path string)
 
 // RecordCreatedDirectory records an exact directory created by this invocation.
 // Rollback removes it only if it is empty, deepest first.
@@ -321,11 +328,11 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 			}
 			state.privateUntracked = true
 			if state.existed {
-				fileInfo, digest, snapshotError := rootedRegularSnapshot(root, state.path)
+				fileInfo, digest, originalBytes, snapshotError := rootedRegularPreimage(root, state.path)
 				if snapshotError != nil {
 					return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, snapshotError.Error(), state.path)
 				}
-				state.originalBytes, _ = root.ReadFile(state.path)
+				state.originalBytes = originalBytes
 				state.originalMode = completeRegularFileMode(fileInfo.Mode())
 				state.originalDigest = digest
 			}
@@ -414,6 +421,9 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 				fmt.Errorf("changed path %q was created but was not recorded as created", path))
 		}
 	}
+	if verifyError := verifyPublishedPrivateTargets(root, states, recorder, changedPaths); verifyError != nil {
+		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation, verifyError)
+	}
 	if !options.Commit || len(changedPaths) == 0 {
 		return result
 	}
@@ -455,7 +465,34 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 			return committedRisk(result, verifyErr.Error(), commitSHA)
 		}
 	}
+	if verifyError := verifyPublishedPrivateTargets(root, states, recorder, changedPaths); verifyError != nil {
+		return committedRisk(result, verifyError.Error(), commitSHA)
+	}
 	return result
+}
+
+func verifyPublishedPrivateTargets(root *os.Root, states []targetState, recorder *MutationRecorder, changedPaths []string) error {
+	changed := stringSet(changedPaths)
+	for _, state := range states {
+		if !state.privateUntracked {
+			continue
+		}
+		if _, isChanged := changed[state.path]; !isChanged {
+			continue
+		}
+		published, recorded := recorder.publishedPrivate[state.path]
+		if !recorded {
+			return fmt.Errorf("changed private target %q was not identity-recorded", state.path)
+		}
+		if privateTransactionTestHook != nil {
+			privateTransactionTestHook("before-private-final-verify", state.path)
+		}
+		info, digest, err := rootedRegularSnapshot(root, state.path)
+		if err != nil || !os.SameFile(published.info, info) || published.digest != digest {
+			return fmt.Errorf("private target %q changed after publication", state.path)
+		}
+	}
+	return nil
 }
 
 func committableChangedPaths(repositoryRoot string, states []targetState, changedPaths []string) ([]string, error) {
@@ -693,24 +730,12 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 				rollback.Errors = append(rollback.Errors, "private target was not identity-recorded: "+state.path)
 				continue
 			}
-			currentInfo, currentDigest, snapshotError := rootedRegularSnapshot(root, state.path)
-			if snapshotError != nil || !os.SameFile(published.info, currentInfo) || published.digest != currentDigest {
-				rollback.Errors = append(rollback.Errors, "private target changed after publication; preserved replacement: "+state.path)
+			action, privateRollbackError := quarantineAndRollbackPrivate(root, state, published)
+			if privateRollbackError != nil {
+				rollback.Errors = append(rollback.Errors, privateRollbackError.Error())
 				continue
 			}
-			if removeError := root.Remove(state.path); removeError != nil {
-				rollback.Errors = append(rollback.Errors, fmt.Sprintf("remove owned private target %s: %v", state.path, removeError))
-				continue
-			}
-			if state.existed {
-				if restoreError := rootedCreateRegular(root, state.path, state.originalBytes, state.originalMode); restoreError != nil {
-					rollback.Errors = append(rollback.Errors, fmt.Sprintf("restore private target %s: %v", state.path, restoreError))
-				} else {
-					rollback.Actions = append(rollback.Actions, "restored private target "+state.path)
-				}
-			} else {
-				rollback.Actions = append(rollback.Actions, "removed owned private target "+state.path)
-			}
+			rollback.Actions = append(rollback.Actions, action)
 			continue
 		}
 		if state.existingUntrackedAllowed {
@@ -815,6 +840,50 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 	return failTransaction(result, resultmodel.OutcomeRolledBack, failureKind, operationError.Error(), rolledBackPaths...)
 }
 
+func quarantineAndRollbackPrivate(root *os.Root, state targetState, published publishedPrivateState) (string, error) {
+	if privateTransactionTestHook != nil {
+		privateTransactionTestHook("before-private-rollback-quarantine", state.path)
+	}
+	random := make([]byte, 12)
+	if _, err := rand.Read(random); err != nil {
+		return "", fmt.Errorf("allocate private rollback quarantine: %w", err)
+	}
+	directory := ".do-work-private-rollback-" + hex.EncodeToString(random)
+	if err := root.Mkdir(directory, 0o700); err != nil {
+		return "", fmt.Errorf("create private rollback quarantine: %w", err)
+	}
+	quarantined := filepath.Join(directory, "object")
+	cleanupDirectory := func() { _ = root.Remove(directory) }
+	if err := root.Rename(filepath.FromSlash(state.path), quarantined); err != nil {
+		cleanupDirectory()
+		return "", fmt.Errorf("quarantine private target %s: %w", state.path, err)
+	}
+	currentInfo, currentDigest, snapshotError := rootedRegularSnapshot(root, quarantined)
+	if snapshotError != nil || !os.SameFile(published.info, currentInfo) || published.digest != currentDigest {
+		if _, targetError := root.Lstat(filepath.FromSlash(state.path)); os.IsNotExist(targetError) {
+			if restoreError := root.Rename(quarantined, filepath.FromSlash(state.path)); restoreError != nil {
+				return "", fmt.Errorf("private target changed after publication; replacement retained at %s: %v", quarantined, restoreError)
+			}
+			cleanupDirectory()
+			return "", fmt.Errorf("private target changed after publication; preserved replacement: %s", state.path)
+		}
+		return "", fmt.Errorf("private target changed after publication; replacements preserved at %s and %s", state.path, quarantined)
+	}
+	if state.existed {
+		if err := rootedCreateRegular(root, state.path, state.originalBytes, state.originalMode); err != nil {
+			return "", fmt.Errorf("restore private target %s (published bytes retained at %s): %w", state.path, quarantined, err)
+		}
+	}
+	if err := root.Remove(quarantined); err != nil {
+		return "", fmt.Errorf("remove quarantined private publication %s: %w", quarantined, err)
+	}
+	cleanupDirectory()
+	if state.existed {
+		return "restored private target " + state.path, nil
+	}
+	return "removed owned private target " + state.path, nil
+}
+
 func privateStateStillOriginal(root *os.Root, state targetState) bool {
 	if !state.existed {
 		_, err := root.Lstat(filepath.FromSlash(state.path))
@@ -825,22 +894,48 @@ func privateStateStillOriginal(root *os.Root, state targetState) bool {
 }
 
 func rootedRegularSnapshot(root *os.Root, path string) (os.FileInfo, [sha256.Size]byte, error) {
+	info, digest, _, err := rootedOpenSnapshot(root, path, "")
+	return info, digest, err
+}
+
+func rootedRegularPreimage(root *os.Root, path string) (os.FileInfo, [sha256.Size]byte, []byte, error) {
+	return rootedOpenSnapshot(root, path, "after-private-preimage-lstat")
+}
+
+func rootedOpenSnapshot(root *os.Root, path, hookStage string) (os.FileInfo, [sha256.Size]byte, []byte, error) {
 	var empty [sha256.Size]byte
 	if root == nil {
-		return nil, empty, errors.New("rooted filesystem handle is unavailable")
+		return nil, empty, nil, errors.New("rooted filesystem handle is unavailable")
 	}
-	info, err := root.Lstat(filepath.FromSlash(path))
+	rootPath := filepath.FromSlash(path)
+	lstatInfo, err := root.Lstat(rootPath)
 	if err != nil {
-		return nil, empty, fmt.Errorf("inspect private target %q: %w", path, err)
+		return nil, empty, nil, fmt.Errorf("inspect private target %q: %w", path, err)
 	}
-	if !info.Mode().IsRegular() {
-		return nil, empty, fmt.Errorf("private target %q is not a regular file", path)
+	if !lstatInfo.Mode().IsRegular() {
+		return nil, empty, nil, fmt.Errorf("private target %q is not a regular file", path)
 	}
-	data, err := root.ReadFile(filepath.FromSlash(path))
+	if hookStage != "" && privateTransactionTestHook != nil {
+		privateTransactionTestHook(hookStage, path)
+	}
+	file, err := root.Open(rootPath)
 	if err != nil {
-		return nil, empty, fmt.Errorf("read private target %q: %w", path, err)
+		return nil, empty, nil, fmt.Errorf("open private target %q: %w", path, err)
 	}
-	return info, sha256.Sum256(data), nil
+	defer file.Close()
+	openedInfo, err := file.Stat()
+	if err != nil || !openedInfo.Mode().IsRegular() || !os.SameFile(lstatInfo, openedInfo) {
+		return nil, empty, nil, fmt.Errorf("private target %q changed while it was opened", path)
+	}
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return nil, empty, nil, fmt.Errorf("read private target %q: %w", path, err)
+	}
+	finalInfo, err := file.Stat()
+	if err != nil || !os.SameFile(openedInfo, finalInfo) || openedInfo.Size() != finalInfo.Size() || !openedInfo.ModTime().Equal(finalInfo.ModTime()) || int64(len(data)) != finalInfo.Size() {
+		return nil, empty, nil, fmt.Errorf("private target %q changed while it was read", path)
+	}
+	return finalInfo, sha256.Sum256(data), data, nil
 }
 
 func rootedCreateRegular(root *os.Root, path string, contents []byte, mode os.FileMode) error {
