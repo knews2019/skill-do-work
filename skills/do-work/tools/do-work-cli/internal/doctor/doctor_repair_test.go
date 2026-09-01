@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -69,6 +70,15 @@ func TestRepairTimestampsRefusesDirtyTargetAndCommitWithDirtyIndex(t *testing.T)
 	if result.Outcome != "refused" && result.Outcome != "findings" {
 		t.Fatalf("dirty target result = %#v", result)
 	}
+	if len(result.Findings) != 1 {
+		t.Fatalf("dirty target findings = %#v", result.Findings)
+	}
+	dirtyTargetFinding := result.Findings[0]
+	if dirtyTargetFinding.Code != "GIT-DIRTY-TARGET" ||
+		!reflect.DeepEqual(dirtyTargetFinding.NextArgv, []string{"git", "status", "--short", "--", "do-work/queue/REQ-031-time.md"}) ||
+		!reflect.DeepEqual(dirtyTargetFinding.VerificationArgv, []string{"git", "diff", "--quiet", "--exit-code", "--", "do-work/queue/REQ-031-time.md"}) {
+		t.Fatalf("dirty target remediation = %#v", dirtyTargetFinding)
+	}
 	command := exec.Command("git", "-C", repositoryRoot, "restore", "--", "do-work/queue/REQ-031-time.md")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("restore: %v: %s", err, output)
@@ -85,6 +95,15 @@ func TestRepairTimestampsRefusesDirtyTargetAndCommitWithDirtyIndex(t *testing.T)
 	result = ApplyTimestampPlan(context.Background(), snapshot, plans, RepairOptions{Commit: true})
 	if result.Outcome != "refused" {
 		t.Fatalf("dirty index result = %#v", result)
+	}
+	if len(result.Findings) != 1 {
+		t.Fatalf("dirty index findings = %#v", result.Findings)
+	}
+	finding := result.Findings[0]
+	if finding.Code != "GIT-DIRTY-INDEX" ||
+		!reflect.DeepEqual(finding.NextArgv, []string{"git", "diff", "--cached", "--name-only"}) ||
+		!reflect.DeepEqual(finding.VerificationArgv, []string{"git", "diff", "--cached", "--quiet", "--exit-code"}) {
+		t.Fatalf("dirty index remediation = %#v", finding)
 	}
 }
 
