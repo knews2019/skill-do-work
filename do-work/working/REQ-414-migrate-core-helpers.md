@@ -15,6 +15,21 @@ effort_estimate: effort-substantive
 related: [REQ-406, REQ-407, REQ-408, REQ-409, REQ-410, REQ-411, REQ-412, REQ-413, REQ-415, REQ-416, REQ-417, REQ-418, REQ-419, REQ-420]
 batch: go-no-llm-command-platform
 claimed_at: 2026-09-01T00:24:42Z
+route: C
+estimate:
+  p50_active_minutes: 135
+  confidence: low
+  calculated_at: 2026-09-01T00:25:26Z
+  basis:
+    - Route C
+    - 30-file write set
+    - 20 new files
+    - 10 subsystems involved
+    - 4 acceptance criteria
+    - dependency depth 1
+    - persistence changes
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Migrate Remaining Core Checks, Publication Helpers, Git Helpers, and Surveys
@@ -55,6 +70,14 @@ See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
 ---
 *Source: UR-081 (Replace LLM bookkeeping and shipped utility logic with a Go command platform)*
 
+## Triage
+
+**Route: C** — Complex
+
+**Reasoning:** This migrates many independently observable shell utilities into one typed command platform, spans multiple mutation and inspection domains, and requires broad parity plus compatibility-shim evidence.
+
+**Planning:** Required
+
 ## Folded From REQ-390 (2026-08-30)
 
 - **`tools/checks/scope-drift.sh` reads every backticked token in a "Files I will
@@ -67,4 +90,3 @@ See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
   check. The path is the first backticked token on the bullet; the rest is prose.
   Worth closing when this REQ ports the checks to Go, where the extraction can be
   written once and tested.
-

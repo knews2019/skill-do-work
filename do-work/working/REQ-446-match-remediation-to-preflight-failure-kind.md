@@ -15,6 +15,13 @@ sweep: true
 sweep_key: preflight-failure-kind-remediation
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 claimed_at: 2026-09-01T00:24:50Z
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-09-01T00:25:26Z
+  basis:
+    - trivial short-circuit
 ---
 
 # Review Fix: Match Remediation to Preflight Failure Kind
@@ -57,3 +64,17 @@ Found during review of REQ-432 (Enforce the commit guard for consumed scratch cl
   so recovery and verification commands match the actual preflight failure kind, including
   simultaneous dirty-index and dirty-target regression coverage. Nothing from the captured scope
   was put out of scope.
+
+## Triage
+
+**Route: A** — Simple
+
+**Reasoning:** The review provides the exact failure-kind projection seam, target behavior, and simultaneous-state regression; this is a focused bug fix with a bounded caller audit.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** — Route A: Direct implementation
+
+*Skipped by work action*

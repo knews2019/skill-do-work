@@ -60,3 +60,6 @@ Status: in-progress
 | Discovered | REQ-460 | condition-complete delimiter containment | REQ-413 F5 | `do-work/queue/REQ-460-make-outside-text-delimiter-containment-condition-complete.md` | done |
 | Discovered | REQ-461 | affirmative project-owned release targets | REQ-413 F7 | `do-work/queue/REQ-461-require-affirmative-project-owned-release-targets.md` | done |
 | Folded | REQ-419 | shell-safe publication recipe arguments | REQ-413 F8 | `do-work/queue/REQ-419-add-flat-just-recipes-action-delegation.md` | done |
+| Planner | REQ-414 plan | read-only | REQ plus UR and shell prime | `REQ-414-plan.md` | pending |
+| 1 | REQ-414 | `worktree-agent-REQ-414-migrate-core-helpers` | `REQ-414-brief.md` | `REQ-414-handback.md` | pending |
+| 2 | REQ-446 | `worktree-agent-REQ-446-match-remediation-to-preflight-failure-kind` | `REQ-446-brief.md` | `REQ-446-handback.md` | pending |
