@@ -112,3 +112,32 @@ actionable-findings acceptance bullet is satisfied only when:
 - Mutation tests that replace a specific action or collapse structured dirty rows
   fail the characterization gate.
 
+## Folded From REQ-418 fresh re-review (2026-09-01)
+
+Two residual findings from REQ-418's fresh re-review (`completed-with-issues`,
+remediation allowance exhausted), folded here by maintainer disposition 2026-09-01:
+both are goal-shaped output/documentation criteria for the toolbox family whose
+parity this REQ proves, not shipped-behavior defects — the retained scripts remain
+the shipped implementations until this REQ converts them. The critical loop and dead
+`--commit` from the same re-review went to standalone REQ-483, not here.
+
+**Finding 6 residual (portfolio refusal visibility)** — the parity requirement is
+satisfied for `publish-portfolio-summary` only when a snapshot-first canonical
+refusal is visible: `portfolio.go:99-105` sets `ExactTextOutput` on the failure
+branch (every sibling guards it on `OutcomeSuccess`), and `resultmodel.go:384-385`
+returns it in place of the rendered block, so text mode shows only the snapshot path
+and exit 2 — no refusal reason, no snapshot-retained warning. The retained script
+reports both; the parity fixtures must compare that failure-branch output.
+
+**N3 (usage-string restatements)** — the shim conversion's acceptance includes
+self-consistent command documentation: five usage strings still advertise the
+trailing `[--dry-run|--commit]` form the leading-only option region deliberately
+stopped accepting (`architecture.go:38`, `report_image.go:38`, `report_image.go:103`,
+`portfolio.go:20`, `last30days.go:33`; verified: trailing `--dry-run` is a
+wrong-argument-count error for portfolio and becomes the `[source-repository]`
+positional for last30days). Sweep wording variants, not only these five sites.
+
+Provenance: `do-work/runs/work-2026-08-31-165510/REQ-418-rereview.md` while the run
+scratch survives; durably, the `## Review` section of
+`do-work/archive/REQ-418-migrate-toolbox-absorb-audit-metrics.md`.
+
