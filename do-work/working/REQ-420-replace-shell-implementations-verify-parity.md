@@ -8,7 +8,7 @@ domain: testing
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: true
 suggested_spec:
-depends_on: [REQ-419]
+depends_on: [REQ-419, REQ-478]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
@@ -16,7 +16,151 @@ related: [REQ-406, REQ-407, REQ-408, REQ-409, REQ-410, REQ-411, REQ-412, REQ-413
 batch: go-no-llm-command-platform
 sweep: true
 sweep_key: canonical-command-shim-parity-and-authority
+write_set:
+  - skills/do-work-knowledge/hooks/memory-session-start.sh
+  - skills/do-work-knowledge/hooks/memory-stop-capture.sh
+  - skills/do-work-knowledge/scripts/install-memory-hooks.sh
+  - skills/do-work-knowledge/scripts/lexical-memory-recall.sh
+  - skills/do-work-toolbox/scripts/architecture-report-preflight.sh
+  - skills/do-work-toolbox/scripts/generate-report-image-batch.sh
+  - skills/do-work-toolbox/scripts/generate-report-image.sh
+  - skills/do-work-toolbox/scripts/install-last30days.sh
+  - skills/do-work-toolbox/scripts/publish-portfolio-summary.sh
+  - skills/do-work/hooks/session-start.sh
+  - skills/do-work/scripts/add-local-git-exclude.sh
+  - skills/do-work/scripts/atomic-download.sh
+  - skills/do-work/scripts/audit-archive-timestamps.sh
+  - skills/do-work/scripts/capture-screenshot.sh
+  - skills/do-work/scripts/cleanup-req-reservations.sh
+  - skills/do-work/scripts/handoff-state-survey.sh
+  - skills/do-work/scripts/protected-inventory.sh
+  - skills/do-work/scripts/repair-req-timestamps.sh
+  - skills/do-work/scripts/run-blocked-check.sh
+  - skills/do-work/scripts/show-commit-diff.sh
+  - skills/do-work/scripts/stage-exact-deletion.sh
+  - skills/do-work/tools/checks/archive-collision.sh
+  - skills/do-work/tools/checks/associate-files.sh
+  - skills/do-work/tools/checks/blanked-req-scan.sh
+  - skills/do-work/tools/checks/preflight.sh
+  - skills/do-work/tools/checks/qualify.sh
+  - skills/do-work/tools/checks/record-commit-hash.sh
+  - skills/do-work/tools/checks/scope-drift.sh
+  - skills/do-work/tools/checks/uncommitted-inventory.sh
+  - skills/do-work/tools/do-work-cli.sh
+  - skills/do-work/tools/do-work-update.sh
+  - skills/do-work/tools/estimate-p50.sh
+  - skills/do-work/tools/fetch-upstream-archive.sh
+  - skills/do-work/tools/install-do-work-suite.sh
+  - skills/do-work/tools/replace-text-section.sh
+  - skills/do-work/tools/select-simple-reqs.sh
+  - skills/do-work/tools/validate-suite-manifest.sh
+  - tools/fetch-upstream-archive.sh
+  - tools/install-do-work-suite.sh
+  - tools/replace-text-section.sh
+  - tools/validate-suite-manifest.sh
+  - _dev/tests/fixtures/shipped-shell-command-map.tsv
+  - _dev/tests/shipped-shell-parity.sh
+  - _dev/tests/shipped-shell-thinness.sh
+  - _dev/tests/contract-regressions.sh
+  - _dev/tests/maintainer-verify.sh
+  - _dev/tests/prescribed-shell-canonicalization.sh
+  - _dev/tests/prescribed-shell-cases/install-memory-hooks.sh
+  - _dev/tests/staged-skills-contract.sh
+  - skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/checks_test.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/commands_test.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/git_helpers.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/git_helpers_test.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/handoff.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/handoff_test.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/publication.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/publication_test.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/reservations.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/reservations_test.go
+  - skills/do-work/tools/do-work-cli/internal/doctor/doctor_commands.go
+  - skills/do-work/tools/do-work-cli/internal/doctor/doctor_commands_test.go
+  - skills/do-work/tools/do-work-cli/internal/doctor/doctor_scan.go
+  - skills/do-work/tools/do-work-cli/internal/doctor/doctor_scan_test.go
+  - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
+  - skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_init.go
+  - skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_init_test.go
+  - skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_scan.go
+  - skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_scan_test.go
+  - skills/do-work/tools/do-work-cli/internal/knowledgecommands/commands.go
+  - skills/do-work/tools/do-work-cli/internal/knowledgecommands/commands_test.go
+  - skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go
+  - skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands_test.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture_test.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/audit_churn_test.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/audit_inventory_test.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/audit_metrics_test.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/last30days.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/last30days_test.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/portfolio.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/portfolio_test.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_test.go
+  - README.md
+  - _dev/primes/prime-kanban-board.md
+  - skills/do-work/actions/capture.md
+  - skills/do-work/actions/work-reference.md
+  - skills/do-work-board/tools/queue-kanban/frontmatter_cli.go
+  - skills/do-work-board/tools/queue-kanban/frontmatter_cli_test.go
+  - skills/do-work-board/tools/queue-kanban/prime-do-kanban.md
+  - skills/do-work-board/tools/queue-kanban/timestamp.go
+  - skills/do-work-board/tools/queue-kanban/timestamp_test.go
+  - skills/do-work-board/tools/queue-kanban/verify.go
+  - skills/do-work-board/tools/queue-kanban/verify_test.go
+  - skills/do-work-toolbox/tools/audit-metrics/.gitignore
+  - skills/do-work-toolbox/tools/audit-metrics/churn.go
+  - skills/do-work-toolbox/tools/audit-metrics/churn_test.go
+  - skills/do-work-toolbox/tools/audit-metrics/distribution.go
+  - skills/do-work-toolbox/tools/audit-metrics/distribution_test.go
+  - skills/do-work-toolbox/tools/audit-metrics/git_support.go
+  - skills/do-work-toolbox/tools/audit-metrics/go.mod
+  - skills/do-work-toolbox/tools/audit-metrics/inventory.go
+  - skills/do-work-toolbox/tools/audit-metrics/inventory_test.go
+  - skills/do-work-toolbox/tools/audit-metrics/main.go
+  - skills/do-work-toolbox/tools/audit-metrics/prime-audit-metrics.md
+  - _dev/tests/prescribed-shell-cases/generate-report-image.sh
+  - _dev/tests/prescribed-shell-cases/generate-report-image-batch.sh
+  - _dev/tests/prescribed-shell-cases/repair-req-timestamps.sh
+  - _dev/tests/prescribed-shell-cases/add-local-git-exclude.sh
+  - _dev/tests/prescribed-shell-cases/architecture-report-preflight.sh
+  - _dev/tests/prescribed-shell-cases/atomic-download.sh
+  - _dev/tests/prescribed-shell-cases/audit-archive-timestamps.sh
+  - _dev/tests/prescribed-shell-cases/capture-screenshot.sh
+  - _dev/tests/prescribed-shell-cases/cleanup-req-reservations.sh
+  - _dev/tests/prescribed-shell-cases/install-last30days.sh
+  - _dev/tests/prescribed-shell-cases/lexical-memory-recall.sh
+  - _dev/tests/prescribed-shell-cases/protected-inventory.sh
+  - _dev/tests/prescribed-shell-cases/publish-portfolio-summary.sh
+  - _dev/tests/prescribed-shell-cases/qualify.sh
+  - _dev/tests/prescribed-shell-cases/run-blocked-check.sh
+  - _dev/tests/prescribed-shell-cases/show-commit-diff.sh
+  - _dev/tests/prescribed-shell-cases/stage-exact-deletion.sh
 claimed_at: 2026-09-01T15:16:17Z
+route: C
+estimate:
+  p50_active_minutes: 210
+  confidence: low
+  calculated_at: 2026-09-01T15:26:01Z
+  basis:
+    - Route C
+    - 110-file write set
+    - 3 new files
+    - 12 subsystems involved
+    - 20 acceptance criteria
+    - dependency depth 1
+    - persistence changes
+    - async lifecycle behavior
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Replace Shell Implementations with Shims and Prove Whole-Suite Parity
@@ -25,7 +169,7 @@ claimed_at: 2026-09-01T15:16:17Z
 Complete the migration by making every retained shell path a thin launcher and enforcing full suite parity mechanically.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Preserve the existing shell behavior suite as the legacy-first oracle, add a complete path-to-command inventory and launcher-only ratchet, close the characterized Go gaps, then cut over the retained paths before deleting audit-metrics and reconciling authority text. Verify each phase with focused shell and Go tests; leave the complete maintainer gate to orchestration.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -223,3 +367,195 @@ requirement is satisfied for the BKB audit surface only when:
 - Text/JSON parity and byte-for-byte read-only behavior are proven.
 
 Provenance: `do-work/archive/REQ-417-implement-interview-memory-commands.md`.
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** This is a repository-wide compatibility migration across 41 public shell paths, several Go command families, Git/filesystem effects, board behavior, authority documentation, and the canonical verification gate. Behavioral characterization must precede the destructive cutover.
+
+**Planning:** Required
+
+## Plan
+
+1. Capture a non-vacuous legacy oracle before deleting shell implementations: inventory all 41 shipped paths and add differential fixtures that compare status, ordered output/facts, argv, Git/index/private state, and filesystem effects, including the full 17-command core-helper matrix and mutation dimensions.
+2. Close Go compatibility gaps before cutover: add missing compatibility commands and correct actionable findings, portfolio refusal output, usage text, SessionStart ownership/remedies, BKB outside-root initialization, master-index status counts, and committed BKB audit coverage.
+3. Convert all 41 retained paths in dependency-safe order to argv-preserving build-and-exec launchers; keep only the documented pre-install bootstrap seam where the CLI cannot exist yet.
+4. Delete the standalone audit-metrics implementation after its behavior and tests are owned by `do-work-cli`, and reconcile every live authority/compiler/fallback restatement.
+5. Run thinness, differential parity, mutation, no-Python/no-jq, installer/updater, Just, Go, board, and full canonical maintainer verification against the final state.
+
+**Plan validation:** Every detailed and folded requirement maps to at least one task, and no task is orphaned. Warning: the plan has 5 tasks; quality normally degrades past 3, but splitting would make the required pre-cutover oracle and final whole-suite cutover independently vacuous, so the builder must preserve this order within one REQ.
+
+*Generated by Plan agent*
+
+## Exploration
+
+- The shipped inventory is exactly 41 tracked shell paths: 37 below `skills/` and 4 root installer-tool mirrors.
+- Existing Go owners already cover most shell behavior under `skills/do-work/tools/do-work-cli/internal/`; the missing compatibility seams are memory-hook installation, P50 estimation, archive-collision and blanked-REQ checks, plus a few core-helper inputs that remain shell-derived.
+- The 17 core helpers already share result rendering, but current tests are smoke/renderer checks rather than exact differential parity. New fixtures must be recorded before the shim cutover so the oracle cannot accidentally compare Go to itself.
+- The shell cutover should use `skills/do-work/tools/do-work-cli.sh` as the single build-on-demand launcher and preserve argv byte boundaries with `exec`; the two installer entry points may need their static bootstrap-print behavior before installation.
+- The standalone `skills/do-work-toolbox/tools/audit-metrics/` module is redundant with `internal/toolboxcommands` and can be removed only after its focused behavior is represented in the retained Go tests and maintainer gate.
+- Board parity work is localized to queue-kanban command wiring, timestamp/frontmatter authority wording, verify findings/remedies, and their focused tests. Live documentation restatements span the root README plus do-work, board, knowledge, and toolbox guidance.
+
+*Generated by Explore agent*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work-knowledge/hooks/memory-session-start.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work-knowledge/hooks/memory-stop-capture.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work-knowledge/scripts/install-memory-hooks.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work-knowledge/scripts/lexical-memory-recall.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work-toolbox/scripts/architecture-report-preflight.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work-toolbox/scripts/generate-report-image-batch.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work-toolbox/scripts/generate-report-image.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work-toolbox/scripts/install-last30days.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work-toolbox/scripts/publish-portfolio-summary.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/hooks/session-start.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/scripts/add-local-git-exclude.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/scripts/atomic-download.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/scripts/audit-archive-timestamps.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/scripts/capture-screenshot.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/scripts/cleanup-req-reservations.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/scripts/handoff-state-survey.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/scripts/protected-inventory.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/scripts/repair-req-timestamps.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/scripts/run-blocked-check.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/scripts/show-commit-diff.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/scripts/stage-exact-deletion.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/checks/archive-collision.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/checks/associate-files.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/checks/blanked-req-scan.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/checks/preflight.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/checks/qualify.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/checks/record-commit-hash.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/checks/scope-drift.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/checks/uncommitted-inventory.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/do-work-cli.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/do-work-update.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/estimate-p50.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/fetch-upstream-archive.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/install-do-work-suite.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/replace-text-section.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/select-simple-reqs.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/validate-suite-manifest.sh` (modify) — preserve path as a thin compatibility launcher
+- `tools/fetch-upstream-archive.sh` (modify) — preserve path as a thin compatibility launcher
+- `tools/install-do-work-suite.sh` (modify) — preserve path as a thin compatibility launcher
+- `tools/replace-text-section.sh` (modify) — preserve path as a thin compatibility launcher
+- `tools/validate-suite-manifest.sh` (modify) — preserve path as a thin compatibility launcher
+- `_dev/tests/fixtures/shipped-shell-command-map.tsv` (new) — parity/thinness evidence
+- `_dev/tests/shipped-shell-parity.sh` (new) — parity/thinness evidence
+- `_dev/tests/shipped-shell-thinness.sh` (new) — parity/thinness evidence
+- `_dev/tests/contract-regressions.sh` (modify) — preserve path as a thin compatibility launcher
+- `_dev/tests/maintainer-verify.sh` (modify) — preserve path as a thin compatibility launcher
+- `_dev/tests/prescribed-shell-canonicalization.sh` (modify) — preserve path as a thin compatibility launcher
+- `_dev/tests/prescribed-shell-cases/install-memory-hooks.sh` (modify) — preserve path as a thin compatibility launcher
+- `_dev/tests/staged-skills-contract.sh` (modify) — preserve path as a thin compatibility launcher
+- `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/checks_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/commands_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/git_helpers.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/git_helpers_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/handoff.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/handoff_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/publication.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/publication_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/reservations.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/reservations_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/doctor/doctor_commands.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/doctor/doctor_commands_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/doctor/doctor_scan.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/doctor/doctor_scan_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_init.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_init_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_scan.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_scan_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/commands.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/commands_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/audit_churn_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/audit_inventory_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/audit_metrics_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/last30days.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/last30days_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/portfolio.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/portfolio_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `README.md` (modify) — close the corresponding Go, test, board, or authority contract
+- `_dev/primes/prime-kanban-board.md` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/actions/capture.md` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work/actions/work-reference.md` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work-board/tools/queue-kanban/frontmatter_cli.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work-board/tools/queue-kanban/frontmatter_cli_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work-board/tools/queue-kanban/timestamp.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work-board/tools/queue-kanban/timestamp_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work-board/tools/queue-kanban/verify.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work-board/tools/queue-kanban/verify_test.go` (modify) — close the corresponding Go, test, board, or authority contract
+- `skills/do-work-toolbox/tools/audit-metrics/.gitignore` (delete) — retire standalone audit implementation
+- `skills/do-work-toolbox/tools/audit-metrics/churn.go` (delete) — retire standalone audit implementation
+- `skills/do-work-toolbox/tools/audit-metrics/churn_test.go` (delete) — retire standalone audit implementation
+- `skills/do-work-toolbox/tools/audit-metrics/distribution.go` (delete) — retire standalone audit implementation
+- `skills/do-work-toolbox/tools/audit-metrics/distribution_test.go` (delete) — retire standalone audit implementation
+- `skills/do-work-toolbox/tools/audit-metrics/git_support.go` (delete) — retire standalone audit implementation
+- `skills/do-work-toolbox/tools/audit-metrics/go.mod` (delete) — retire standalone audit implementation
+- `skills/do-work-toolbox/tools/audit-metrics/inventory.go` (delete) — retire standalone audit implementation
+- `skills/do-work-toolbox/tools/audit-metrics/inventory_test.go` (delete) — retire standalone audit implementation
+- `skills/do-work-toolbox/tools/audit-metrics/main.go` (delete) — retire standalone audit implementation
+- `skills/do-work-toolbox/tools/audit-metrics/prime-audit-metrics.md` (delete) — retire standalone audit implementation
+- `_dev/tests/prescribed-shell-cases/generate-report-image.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/generate-report-image-batch.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/repair-req-timestamps.sh` (modify) — assert behavior instead of shell-owned domain constants
+- `_dev/tests/prescribed-shell-cases/add-local-git-exclude.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/architecture-report-preflight.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/atomic-download.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/audit-archive-timestamps.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/capture-screenshot.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/cleanup-req-reservations.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/install-last30days.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/lexical-memory-recall.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/protected-inventory.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/publish-portfolio-summary.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/qualify.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/run-blocked-check.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/show-commit-diff.sh` (modify) — preserve behavioral assertions through the canonical launcher
+- `_dev/tests/prescribed-shell-cases/stage-exact-deletion.sh` (modify) — preserve behavioral assertions through the canonical launcher
+
+**Files I will NOT touch:** Version/changelog release files, unrelated queue items, and the pre-existing untracked REQ-418 run artifacts.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] All 41 tracked shell paths remain present but contain launcher/bootstrap mechanics only, with no Python, jq, or domain implementation branches.
+- [ ] A legacy-first differential oracle proves exact status, ordered facts/output, argv, Git/index/private state, and filesystem parity across earned fixtures and mutation dimensions.
+- [ ] Every non-clean core-helper condition emits typed per-path findings with condition-specific next and verification argv.
+- [ ] Portfolio refusal text, trailing-option usage families, memory-hook installation, P50 estimation, archive-collision, blanked-REQ scan, and other compatibility seams match retained contracts.
+- [ ] BKB outside-root init, master-index status counts, and the committed audit matrix pass in text/JSON with read-only guarantees.
+- [ ] SessionStart, board compiler/fallback, and recovery-command authority restatements identify the Go owner and emit runnable canonical argv.
+- [ ] The standalone audit-metrics module is deleted only after its behavior and tests are absorbed into do-work-cli; the maintainer gate has no separate audit lane.
+- [ ] Final install/update succeeds without Python or jq, every managed Just command runs without an LLM, aliases remain unchanged, and actionable commands avoid rescans.
+- [ ] Focused Go/board tests, shell thinness/parity suites, contract regressions, and the unpiped canonical maintainer gate all pass.
+
+## Decisions
+
+### D-01 — DECIDE & STATE: move isolated legacy fixtures to the canonical runtime
+
+The prescribed-shell fixture family copied retained scripts into isolated directories, intercepted shell utilities such as `cp`/`mv`, or required domain constants to remain literally shell-owned. REQ-420 explicitly requires launcher-only retained paths, so those implementation-shaped contracts contradicted the accepted behavior. Expand Scope and `write_set` to all 18 fixture owners, retain their behavioral assertions through the canonical CLI, and do not make Go shell out or preserve domain code merely to satisfy obsolete injection seams.
+
+### D-02 — DECIDE & STATE: serialize the overlapping REQ-478 authority edit
+
+REQ-478 was claimed by another live writer during this build and modifies `skills/do-work/actions/capture.md` and `skills/do-work/actions/work-reference.md`, both declared by REQ-420. Add REQ-478 as a dependency so a restarted default run cannot resume REQ-420's authority sweep until that foreign claim completes; fan-out remains 1 while the shared checkout is dirty.
+
+## Decisions
+
+- **D1 — Preserve the legacy oracle in executable fixtures.** The existing per-script behavior cases are retained as the pre-cutover expected status/output/effect oracle. The new parity gate runs those fixtures through every retained path after cutover and separately proves every path maps to a registered canonical command. This avoids comparing the Go command to a shim that already invokes the same Go command.
+- **D2 — Treat bootstrap text as the sole pre-install exception.** The two installer mirrors may retain the static quoted bootstrap heredoc because the canonical binary cannot exist yet. The thinness gate otherwise rejects Python, jq, and shell domain implementations.
