@@ -23,6 +23,7 @@ related: [REQ-437, REQ-438, REQ-439, REQ-440, REQ-441, REQ-442, REQ-444]
 batch: accepted-feedback-regressions
 claimed_at: 2026-09-01T22:14:46Z
 completed_at: 2026-09-01T22:41:36Z
+commit: 40c74ea8
 ---
 
 # Keep Git Fallback Archive Prefixes to One Component
