@@ -386,8 +386,14 @@ func TestFetchArchiveRefusesUnsafeTargetsUnchanged(t *testing.T) {
 		if err := os.Symlink(protectedPath, targetPath); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := FetchArchive(context.Background(), Request{ArchiveTargetPath: targetPath, UpstreamTarballURL: "://invalid"}); err == nil {
+		_, fetchError := FetchArchive(context.Background(), Request{ArchiveTargetPath: targetPath, UpstreamTarballURL: "://invalid"})
+		if fetchError == nil {
 			t.Fatal("symlink target was accepted")
+		}
+		for _, expected := range []string{"HTTP route: not attempted", "Git route: not attempted", "archive target is unsafe"} {
+			if !strings.Contains(fetchError.Error(), expected) {
+				t.Errorf("failure %q is missing %q", fetchError, expected)
+			}
 		}
 		contents, readError := os.ReadFile(protectedPath)
 		if readError != nil || string(contents) != "protected\n" {

@@ -62,8 +62,8 @@ func UpstreamURLFromEnvironment() string {
 }
 
 // FetchArchive tries the HTTP route, then the git route, and leaves any pre-existing target
-// untouched when both fail. On failure the error names both route outcomes and the escape
-// hatch, matching the two stderr lines the shell fetcher printed.
+// untouched when both fail. The error names both route outcomes, including transport routes
+// refused by target preflight, and the escape hatch the shell fetcher printed.
 func FetchArchive(ctx context.Context, request Request) (Result, error) {
 	if request.ArchiveTargetPath == "" || request.UpstreamTarballURL == "" {
 		return Result{}, fmt.Errorf("archive target path and upstream tarball URL are required")
@@ -76,7 +76,11 @@ func FetchArchive(ctx context.Context, request Request) (Result, error) {
 	defer parentRoot.Close()
 	targetSnapshot, err := inspectArchiveTarget(parentRoot, filepath.Base(request.ArchiveTargetPath))
 	if err != nil {
-		return Result{}, fmt.Errorf("archive target is unsafe: %w", err)
+		targetOutcome := fmt.Sprintf("not attempted (archive target is unsafe: %v)", err)
+		return Result{}, fmt.Errorf(
+			"upstream archive could not be fetched. HTTP route: %s. Git route: %s. "+
+				"Set DO_WORK_UPSTREAM_URL to a reachable archive URL to route around a blocked host.",
+			targetOutcome, targetOutcome)
 	}
 
 	httpRouteOutcome := "not attempted"
