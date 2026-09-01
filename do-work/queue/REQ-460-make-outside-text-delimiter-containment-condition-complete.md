@@ -18,6 +18,7 @@ review_generated: true
 addendum_to: REQ-413
 sweep: true
 sweep_key: markdown-delimiter-containment-prefix-gaps
+status_changed_at: 2026-09-01T18:54:11Z
 ---
 
 # Make Outside-Text Delimiter Containment Condition-Complete
