@@ -30,6 +30,7 @@ estimate:
     - cross-route regression gates
 kb_status: pending
 completed_at: 2026-09-01T15:56:55Z
+commit: 74b1fd41
 ---
 
 # Family-Keyed Lessons, Intelligent Index, and Mandatory Trap Promotion
