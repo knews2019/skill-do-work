@@ -63,7 +63,8 @@ Status: in-progress
 | Planner | REQ-414 plan | read-only | REQ plus UR and shell prime | `REQ-414-plan.md` | done |
 | Explorer | REQ-414 exploration | read-only | accepted plan plus repository | `REQ-414-exploration.md` | done |
 | 1 | REQ-414 | `worktree-agent-REQ-414-migrate-core-helpers` | `REQ-414-brief.md` | `REQ-414-handback.md` | done |
-| Reviewer | REQ-414 review | integration range `fd243be9..ec8e80ea` | REQ plus UR-081 | `REQ-414-review.md` | pending |
+| Reviewer | REQ-414 review | integration range `fd243be9..ec8e80ea` | REQ plus UR-081 | `REQ-414-review.md` | changes-requested |
+| Remediation | REQ-414 | `worktree-agent-REQ-414-migrate-core-helpers` | F1-F9 contract closure | `REQ-414-remediation-handback.md` | pending |
 | 2 | REQ-446 | `worktree-agent-REQ-446-match-remediation-to-preflight-failure-kind` | `REQ-446-brief.md` | `REQ-446-handback.md` | done |
 | Reviewer | REQ-446 review | integration range `73bae0ae..75fedbe1` | REQ plus REQ-432 | `REQ-446-review.md` | changes-requested |
 | Remediation | REQ-446 | `worktree-agent-REQ-446-match-remediation-to-preflight-failure-kind` | simultaneous-state fixture and all-caller projection | `REQ-446-remediation-handback.md` | done |

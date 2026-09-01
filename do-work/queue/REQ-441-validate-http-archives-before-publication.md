@@ -8,7 +8,7 @@ domain: backend
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 tdd: true
 suggested_spec: bug-fix
-depends_on: []
+depends_on: [REQ-414]
 maintenance: false
 impact: impact-critical
 effort_estimate: effort-substantive
@@ -31,6 +31,7 @@ Download HTTP archive candidates to a private sibling, validate them there, and 
 
 - **Verbatim claim / severity:** `[P1] Validate HTTP downloads before replacing the target.`
 - **Evidence:** `archive_fetch.go:117-124` passes `ArchiveTargetPath` directly to `atomic-download.sh` and validates only after the helper has published it.
+- **REQ-414 seam reconciliation:** REQ-414 removes the shell-publication call and validates the HTTP body inside Go before no-overwrite publication. Once REQ-414 is terminal, re-triage this REQ against the remaining cross-route target-shape/replacement contract; do not replay the superseded `atomic-download.sh` evidence.
 - **Origin / earned by:** The Go port `f27f564d` inherited the behavior from shell commit `0e8cf0d9`. A successful HTTP transfer containing an unreadable tar followed by failed Git fallback replaced a pre-existing archive despite `FetchArchive`'s preservation contract.
 - **Surface-cost:** Earned. The destructive replay and symlink/special-target class justify one private stage lifecycle and target-mode guard; tests must preserve an old regular target and refuse non-regular targets.
 
