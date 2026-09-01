@@ -30,6 +30,7 @@ estimate:
     - cross-route regression gates
 kb_status: pending
 completed_at: 2026-09-01T16:28:16Z
+commit: 9a1b7bfb
 ---
 
 # Enforce Required-Lessons Reads and Audit Un-Promoted Families
