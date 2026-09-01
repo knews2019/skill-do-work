@@ -6,7 +6,8 @@ created_at: 2026-08-04T19:44:17Z
 claimed_at: 2026-08-04T21:16:51Z
 completed_at: 2026-08-04T21:30:00Z
 commit: 0cf9420
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-099-automatic-wave-dispatch-the-work-loop-co.md
 user_request: UR-018
 domain: general
 prime_files: []

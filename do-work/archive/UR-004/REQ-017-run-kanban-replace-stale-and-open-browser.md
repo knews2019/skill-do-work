@@ -16,7 +16,6 @@ depends_on: []
 maintenance: false
 kb_status: promoted
 kb_entry: REQ-017-just-run-kanban-replace-a-stale-board-se.md
-kb_entry:
 ---
 
 # `just run-kanban`: replace a stale board server on the port and open the default browser

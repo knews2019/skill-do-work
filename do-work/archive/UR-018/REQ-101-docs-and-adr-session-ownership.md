@@ -6,7 +6,8 @@ created_at: 2026-08-04T19:44:17Z
 claimed_at: 2026-08-04T21:28:46Z
 completed_at: 2026-08-04T21:36:00Z
 commit: e452989
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-101-docs-adr-multi-checkout-guide-and-the-se.md
 user_request: UR-018
 domain: general
 prime_files: []

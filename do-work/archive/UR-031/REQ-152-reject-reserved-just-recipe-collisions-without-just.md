@@ -6,8 +6,8 @@ completed_at: 2026-08-08T19:56:48Z
 commit: e2230b8
 claimed_at: 2026-08-08T19:31:35Z
 domain: general
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-152-review-fix-reject-reserved-just-recipe-c.md
 created_at: 2026-08-08T18:32:01Z
 user_request: UR-031
 addendum_to: REQ-146

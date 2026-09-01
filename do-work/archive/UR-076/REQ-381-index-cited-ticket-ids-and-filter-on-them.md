@@ -40,7 +40,8 @@ estimate:
   calculated_at: '2026-08-27T12:11:18Z'
 completed_at: '2026-08-27T12:27:56Z'
 commit: 961fbf84
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-381-index-cited-ticket-ids-and-let-the-filte.md
 ---
 
 # Index Cited Ticket Ids And Let The Filter Box Match Them

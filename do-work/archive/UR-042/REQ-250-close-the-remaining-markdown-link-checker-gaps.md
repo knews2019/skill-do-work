@@ -6,7 +6,8 @@ created_at: 2026-08-18T13:55:32Z
 claimed_at: 2026-08-18T18:25:40Z
 completed_at: 2026-08-18T18:58:44Z
 commit: 330797b
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-250-close-the-remaining-markdown-link-checke.md
 route: B
 status_changed_at: 2026-08-18T13:55:32Z
 user_request: UR-042

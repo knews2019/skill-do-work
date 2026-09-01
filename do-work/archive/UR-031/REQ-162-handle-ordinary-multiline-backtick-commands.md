@@ -19,8 +19,8 @@ write_set:
   - tools/replace-text-section.sh
   - skills/do-work/tools/replace-text-section.sh
   - _dev/tests/contract-regressions.sh
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-162-review-fix-handle-ordinary-multiline-bac.md
 ---
 
 # Review Fix: Handle Ordinary Multiline Backtick Commands

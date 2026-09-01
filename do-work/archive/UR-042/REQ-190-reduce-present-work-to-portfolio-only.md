@@ -6,8 +6,8 @@ claimed_at: 2026-08-15T16:38:32Z
 route: C
 completed_at: 2026-08-15T17:10:21Z
 commit: c66d11c
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-190-reduce-present-work-to-portfolio-only-be.md
 created_at: 2026-08-15T09:10:53Z
 user_request: UR-042
 domain: general

@@ -5,7 +5,8 @@ status: completed
 created_at: 2026-08-19T15:48:05Z
 claimed_at: 2026-08-21T02:00:14Z
 completed_at: 2026-08-21T02:27:01Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-293-make-the-impact-effort-lock-in-checks-pi.md
 commit: df976d9
 route: B
 user_request: UR-060

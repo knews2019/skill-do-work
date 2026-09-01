@@ -6,7 +6,8 @@ created_at: 2026-08-18T23:53:40Z
 status_changed_at: 2026-08-20T13:21:13Z
 claimed_at: 2026-08-21T01:50:55Z
 completed_at: 2026-08-21T01:56:42Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-277-state-the-mark-label-face-constant-s-rea.md
 commit: 54282b0
 route: B
 user_request: UR-051

@@ -8,8 +8,8 @@ status_changed_at: 2026-08-09T18:01:17Z
 claimed_at: 2026-08-09T20:05:21Z
 route: C
 domain: general
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-157-review-fix-complete-the-retired-core-ali.md
 created_at: 2026-08-08T20:13:29Z
 user_request: UR-031
 addendum_to: REQ-153

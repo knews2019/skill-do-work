@@ -13,8 +13,8 @@ prime_files: []
 tdd: false
 depends_on: []
 maintenance: false
-kb_status: pending
-kb_entry: ""
+kb_status: promoted
+kb_entry: REQ-114-the-three-remaining-shell-logic-extracti.md
 related: [REQ-111, REQ-112]
 batch: census-durable-findings
 ---

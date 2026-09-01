@@ -16,8 +16,8 @@ sweep: true
 sweep_key: markdown-rendered-region-classification
 write_set:
   - _dev/tests/shipped-package-reference-contract.sh
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-161-review-fix-complete-escaped-link-and-lis.md
 ---
 
 # Review Fix: Complete Escaped-Link and List-Paragraph Classification

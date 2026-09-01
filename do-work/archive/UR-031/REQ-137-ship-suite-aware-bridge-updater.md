@@ -11,8 +11,8 @@ user_request: UR-031
 domain: general
 prime_files: [tools/prime-do-work-update.md]
 tdd: true
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-137-ship-the-suite-aware-bridge-updater.md
 suggested_spec: refactor
 depends_on: [REQ-136]
 maintenance: false

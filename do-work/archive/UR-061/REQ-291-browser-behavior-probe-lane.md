@@ -6,7 +6,8 @@ created_at: 2026-08-19T14:36:44Z
 status_changed_at: 2026-08-19T14:36:44Z
 claimed_at: 2026-08-21T01:01:12Z
 completed_at: 2026-08-21T01:12:05Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-291-browser-behavior-probe-lane-beside-the-n.md
 commit: 6fa130d
 route: B
 user_request: UR-061

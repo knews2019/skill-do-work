@@ -6,7 +6,8 @@ created_at: 2026-08-18T20:07:08Z
 status_changed_at: 2026-08-20T13:21:13Z
 claimed_at: 2026-08-21T01:41:56Z
 completed_at: 2026-08-21T01:47:35Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-266-name-builds-beside-the-js-renderer-s-mea.md
 commit: 8fe9eb6
 route: A
 user_request: UR-051

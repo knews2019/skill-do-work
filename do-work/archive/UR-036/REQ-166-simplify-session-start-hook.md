@@ -17,8 +17,8 @@ claimed_at: 2026-08-11T12:23:14Z
 route: A
 completed_at: 2026-08-11T12:28:07Z
 commit: 6538bdd
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-166-simplify-session-start-hook-and-fix-dead.md
 ---
 
 # Simplify Session-Start Hook and Fix Dead Fail-Soft Fallback

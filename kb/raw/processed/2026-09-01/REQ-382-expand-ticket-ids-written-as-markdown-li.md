@@ -1,0 +1,30 @@
+---
+source_type: req_lesson
+req_id: REQ-382
+req_path: do-work/archive/UR-075/REQ-382-expand-ticket-ids-written-as-markdown-links.md
+date: 2026-08-27
+domain: frontend
+module: _dev/primes
+tags: [frontend, expand, ticket, written, markdown]
+---
+
+# Lessons from REQ-382: Expand ticket ids written as Markdown links
+
+## What the REQ was about
+
+A REQ body that writes a ticket as an explicit Markdown link — `[REQ-123](https://…)` — gets neither
+a title nor a glossary entry. `linkifyDetailBody` skips any text node already inside an `<a>`, so the
+one place an author has gone out of their way to mark a reference is the one place REQ-378 does not
+reach.
+
+## Solution summary
+
+- `skills/do-work-board/tools/queue-kanban/web/board-detail.js` (modified). Reuses existing ticket resolution, title shortening and glossary accounting for text inside authored anchors. Adds inert title-bearing spans with non-navigation identity metadata, skips renderer-shaped autolinks and unknown
+
+## What worked
+
+- Skipping generated DOM on a second pass prevents nesting but does not preserve first-mention/glossary memory. Reconstruct state in document order from the original mention identity while refusing to scan inserted title text; a drawer-root cache would become stale when the next ticket replaces its HTML.
+
+## Back-reference
+
+See `do-work/archive/UR-075/REQ-382-expand-ticket-ids-written-as-markdown-links.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `59caf025`.

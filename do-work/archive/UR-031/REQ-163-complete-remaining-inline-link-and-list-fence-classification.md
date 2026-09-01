@@ -17,8 +17,8 @@ sweep: true
 sweep_key: markdown-rendered-region-classification
 write_set:
   - _dev/tests/shipped-package-reference-contract.sh
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-163-review-fix-complete-remaining-inline-lin.md
 ---
 
 # Review Fix: Complete Remaining Inline-Link and List-Fence Classification

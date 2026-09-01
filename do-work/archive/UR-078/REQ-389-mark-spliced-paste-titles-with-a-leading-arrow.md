@@ -30,7 +30,8 @@ estimate:
   calculated_at: '2026-08-27T13:20:59Z'
 completed_at: '2026-08-27T13:26:08Z'
 commit: 4ed31496
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-389-addendum-mark-spliced-paste-titles-with-.md
 ---
 
 # Addendum: Mark Spliced Paste Titles With A Leading Arrow

@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-14T10:27:30Z
 completed_at: 2026-08-14T10:33:56Z
 commit: e530dde
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-179-make-scope-drift-sh-parse-scope-headers-.md
 created_at: 2026-08-14T09:49:31Z
 user_request: UR-040
 addendum_to: REQ-178

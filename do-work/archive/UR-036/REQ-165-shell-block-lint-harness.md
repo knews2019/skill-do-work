@@ -17,8 +17,8 @@ claimed_at: 2026-08-11T11:59:35Z
 route: C
 completed_at: 2026-08-11T12:20:15Z
 commit: a45d5c4
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-165-shell-block-lint-harness-for-shipped-act.md
 ---
 
 # Shell-Block Lint Harness for Shipped Action Files

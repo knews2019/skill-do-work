@@ -16,8 +16,8 @@ depends_on: [REQ-136, REQ-138]
 maintenance: true
 related: [REQ-135, REQ-136, REQ-137, REQ-138, REQ-139, REQ-141, REQ-142, REQ-143, REQ-144, REQ-145, REQ-146]
 batch: do-work-four-skill-suite
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-140-stage-the-modular-board-skill.md
 ---
 
 # Stage the Modular Board Skill

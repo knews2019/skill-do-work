@@ -7,7 +7,8 @@ user_request: UR-081
 domain: testing
 prime_files: [_dev/primes/prime-shell-commands.md]
 required_lessons: [skills/do-work/tools/do-work-cli/lessons-do-work-cli.md]
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-420-replace-shell-implementations-with-shims.md
 tdd: true
 suggested_spec:
 depends_on: [REQ-419, REQ-478]

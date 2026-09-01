@@ -5,7 +5,8 @@ status: completed
 created_at: 2026-08-19T13:42:45Z
 claimed_at: 2026-08-20T23:48:22Z
 completed_at: 2026-08-20T23:57:51Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-280-probe-timestamp-ordering-and-point-check.md
 commit: 5e180d0
 route: B
 user_request: UR-057

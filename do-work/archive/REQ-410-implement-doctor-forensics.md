@@ -32,7 +32,8 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-406, REQ-407, REQ-408, REQ-409, REQ-411, REQ-412, REQ-413, REQ-414, REQ-415, REQ-416, REQ-417, REQ-418, REQ-419, REQ-420]
 batch: go-no-llm-command-platform
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-410-implement-doctor-deterministic-forensics.md
 ---
 
 # Implement Doctor, Deterministic Forensics, and Metadata Repairs

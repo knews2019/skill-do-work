@@ -17,8 +17,8 @@ batch: go-no-llm-command-platform
 claimed_at: 2026-09-01T12:53:31Z
 completed_at: 2026-09-01T15:06:50Z
 route: C
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-419-add-flat-just-recipes-collision-validati.md
 estimate:
   p50_active_minutes: 105
   confidence: low

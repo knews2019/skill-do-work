@@ -16,8 +16,8 @@ effort_estimate: trivial
 prime_files: [_dev/primes/prime-shell-commands.md]
 write_set: [_dev/tests/contract-regressions.sh]
 route: A
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-180-fix-contract-regressions-sh-justfile-cas.md
 ---
 
 # Fix contract-regressions.sh Justfile Case Mismatch Aborting Late Checks

@@ -31,7 +31,8 @@ estimate:
   calculated_at: '2026-08-27T11:57:50Z'
 completed_at: '2026-08-27T12:11:02Z'
 commit: 259b1479
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-385-treat-an-underscore-as-a-ticket-id-bound.md
 ---
 
 # Treat An Underscore As A Ticket-Id Boundary On Both Surfaces

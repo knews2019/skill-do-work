@@ -15,8 +15,8 @@ tdd: true
 suggested_spec: bug-fix
 depends_on: []
 maintenance: false
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-134-addendum-make-queue-kanban-atomic-replac.md
 ---
 
 # Addendum: Make Queue-Kanban Atomic Replacement Cross-Platform and Symlink-Safe

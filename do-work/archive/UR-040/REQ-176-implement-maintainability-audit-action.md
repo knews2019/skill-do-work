@@ -6,7 +6,8 @@ created_at: 2026-08-13T22:35:10Z
 claimed_at: 2026-08-14T09:51:18Z
 completed_at: 2026-08-14T10:21:01Z
 commit: f845e1c
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-176-implement-the-maintainability-audit-acti.md
 user_request: UR-040
 domain: general
 prime_files: [_dev/primes/prime-action-files.md, _dev/primes/prime-shell-commands.md]

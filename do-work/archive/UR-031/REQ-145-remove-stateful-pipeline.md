@@ -6,8 +6,8 @@ claimed_at: 2026-08-08T17:03:56Z
 completed_at: 2026-08-08T17:48:23Z
 commit: c42f228
 route: C
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-145-remove-the-stateful-pipeline.md
 created_at: 2026-08-07T18:58:02Z
 user_request: UR-031
 domain: general

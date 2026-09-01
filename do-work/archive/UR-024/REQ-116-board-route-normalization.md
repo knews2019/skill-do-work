@@ -7,7 +7,8 @@ claimed_at: 2026-08-06T10:56:55Z
 completed_at: 2026-08-06T11:03:00Z
 commit: 2a2cd59
 route: A
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-116-normalize-route-at-the-board-s-read-site.md
 user_request: UR-024
 domain: general
 prime_files: [tools/queue-kanban/prime-do-kanban.md]

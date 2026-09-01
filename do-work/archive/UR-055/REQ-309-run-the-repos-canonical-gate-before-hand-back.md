@@ -28,7 +28,8 @@ estimate:
     - full-suite verification
 depends_on: []
 maintenance: true
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-309-run-the-repo-s-canonical-gate-before-han.md
 write_set:
 - skills/do-work/actions/work.md
 - _dev/tests/contract-regressions.sh

@@ -26,8 +26,8 @@ estimate:
 user_request: UR-081
 domain: backend
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-408-build-shared-request-schema-dependency-a.md
 tdd: true
 suggested_spec:
 depends_on: [REQ-407]

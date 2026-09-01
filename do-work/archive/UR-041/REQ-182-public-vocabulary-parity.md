@@ -18,8 +18,8 @@ related: [REQ-181, REQ-183, REQ-184, REQ-185, REQ-186, REQ-187, REQ-188]
 batch: audit-findings-2026-08-14
 write_set: [README.md, skills/do-work/SKILL.md, skills/do-work/docs/work-guide.md, skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh]
 route: C
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-182-public-work-and-schema-vocabularies-drif.md
 ---
 
 # Public Work and Schema Vocabularies Drift While Suites Stay Green

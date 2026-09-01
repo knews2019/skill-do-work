@@ -6,7 +6,8 @@ created_at: 2026-08-20T08:37:41Z
 status_changed_at: 2026-08-21T08:30:38Z
 claimed_at: 2026-08-21T08:30:38Z
 completed_at: 2026-08-21T08:40:45Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-305-say-the-timeline-forecast-describes-the-.md
 commit: ef0cc55
 user_request: UR-062
 domain: frontend

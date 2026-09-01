@@ -7,8 +7,8 @@ commit: 0ed7786
 claimed_at: 2026-08-07T22:51:17Z
 status_changed_at: 2026-08-07T22:51:17Z
 route: A
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-148-addendum-preserve-association-candidates.md
 created_at: 2026-08-07T22:40:46Z
 user_request: UR-034
 addendum_to: REQ-128

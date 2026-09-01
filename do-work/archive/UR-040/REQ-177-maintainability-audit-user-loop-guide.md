@@ -6,7 +6,7 @@ created_at: 2026-08-13T22:35:10Z
 claimed_at: 2026-08-14T10:21:48Z
 completed_at: 2026-08-14T10:25:56Z
 commit: 03ddf5a
-kb_status: pending
+kb_status: skipped
 user_request: UR-040
 domain: general
 prime_files: [_dev/primes/prime-action-files.md]

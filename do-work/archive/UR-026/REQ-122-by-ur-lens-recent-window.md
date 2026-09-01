@@ -7,7 +7,8 @@ claimed_at: 2026-08-06T15:44:00Z
 completed_at: 2026-08-06T15:51:16Z
 commit: 684f507
 route: A
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-122-the-by-ur-lens-counts-recently-done-work.md
 user_request: UR-026
 domain: general
 prime_files: [tools/queue-kanban/prime-do-kanban.md]

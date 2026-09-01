@@ -17,8 +17,8 @@ depends_on: []
 related: [REQ-134]
 maintenance: false
 route: B
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-147-addendum-reserve-request-numbers-during-.md
 ---
 
 # Addendum: Reserve Request Numbers During Allocation

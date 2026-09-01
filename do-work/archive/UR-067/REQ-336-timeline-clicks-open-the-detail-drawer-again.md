@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-23T19:41:18Z
 completed_at: 2026-08-23T20:09:24Z
 commit: 4527a50
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-336-timeline-clicks-open-the-detail-drawer-a.md
 created_at: 2026-08-23T18:30:26Z
 user_request: UR-067
 addendum_to: REQ-333

@@ -6,7 +6,8 @@ created_at: 2026-08-21T16:17:46Z
 claimed_at: 2026-08-21T19:15:13Z
 completed_at: 2026-08-21T19:35:38Z
 commit: a9259d7
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-317-review-fix-preserve-canonical-gate-holds.md
 route: B
 user_request: UR-055
 addendum_to: REQ-309

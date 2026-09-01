@@ -14,8 +14,8 @@ tdd: true
 suggested_spec: refactor
 depends_on: [REQ-137, REQ-143]
 maintenance: true
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-144-activate-the-four-skill-distribution.md
 write_set: [.gitattributes, README.md, justfile, CLAUDE.md, VERSION, CHANGELOG.md, skills/do-work/SKILL.md, skills/do-work/next-steps.md, skills/do-work/actions/help.md, skills/do-work/actions/moved-command-shim.md, skills/do-work/actions/version.md, skills/do-work/VERSION, skills/do-work/CHANGELOG.md, skills/do-work/actions/capture.md, skills/do-work/actions/kb-lessons-handoff.md, skills/do-work/actions/pipeline-reference.md, skills/do-work/actions/pipeline.md, skills/do-work/actions/roadmap.md, skills/do-work/actions/work-reference.md, skills/do-work/actions/work.md, skills/do-work/crew-members/interviewer.md, skills/do-work/docs/roadmap-guide.md, skills/do-work/docs/standing-preferences.md, skills/do-work-board/actions/board.md, skills/do-work-board/docs/board-guide.md, skills/do-work-board/tools/queue-kanban/prime-do-kanban.md, skills/do-work-knowledge/docs/dream-guide.md, _dev/tests/staged-skills-contract.sh, _dev/tests/contract-regressions.sh, _dev/tests/update-script-behavior.sh, _dev/tests/install-suite-behavior.sh, SKILL.md, next-steps.md, actions/**, crew-members/**, docs/**, hooks/**, interviews/**, prompts/**, specs/**, tools/checks/**, tools/do-work-update.sh, tools/queue-kanban/**, tools/prime-do-work-update.md]
 related: [REQ-135, REQ-136, REQ-137, REQ-138, REQ-139, REQ-140, REQ-141, REQ-142, REQ-143, REQ-145, REQ-146]
 batch: do-work-four-skill-suite

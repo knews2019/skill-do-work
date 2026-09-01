@@ -7,7 +7,8 @@ claimed_at: 2026-08-06T11:34:00Z
 completed_at: 2026-08-06T11:38:00Z
 commit: 27080ba
 route: A
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-120-shipped-files-stop-citing-the-export-ign.md
 user_request: UR-025
 domain: general
 prime_files: [tools/queue-kanban/prime-do-kanban.md]

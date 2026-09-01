@@ -15,7 +15,8 @@ sweep: true
 sweep_key: preflight-failure-kind-remediation
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 claimed_at: 2026-09-01T00:24:50Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-446-review-fix-match-remediation-to-prefligh.md
 route: A
 estimate:
   p50_active_minutes: 5

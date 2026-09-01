@@ -31,7 +31,8 @@ estimate:
   calculated_at: '2026-08-27T13:09:29Z'
 completed_at: '2026-08-27T13:20:36Z'
 commit: a0d0b350
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-387-keep-a-spliced-title-from-changing-how-t.md
 ---
 
 # Keep A Spliced Title From Changing How The Pasted Markdown Parses

@@ -34,7 +34,8 @@ write_set:
 - README.md
 completed_at: '2026-08-27T11:57:36Z'
 commit: c32e1d53
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-384-deliver-the-architecture-report-as-a-fre.md
 ---
 
 # Deliver the Architecture Report as a Freeform HTML Bundle

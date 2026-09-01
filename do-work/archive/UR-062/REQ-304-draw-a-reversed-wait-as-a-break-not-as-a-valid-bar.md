@@ -6,7 +6,8 @@ created_at: 2026-08-20T08:37:41Z
 status_changed_at: 2026-08-21T08:16:04Z
 claimed_at: 2026-08-21T08:16:04Z
 completed_at: 2026-08-21T08:26:15Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-304-draw-a-reversed-wait-as-a-break-not-as-a.md
 commit: 5e08a31
 user_request: UR-062
 domain: frontend

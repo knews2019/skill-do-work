@@ -6,7 +6,8 @@ created_at: 2026-08-18T13:55:32Z
 claimed_at: 2026-08-18T18:25:40Z
 completed_at: 2026-08-18T18:41:26Z
 commit: 96bb593
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-251-retire-the-stale-copies-of-the-future-st.md
 route: A
 status_changed_at: 2026-08-18T13:55:32Z
 user_request: UR-055

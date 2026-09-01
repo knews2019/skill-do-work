@@ -6,7 +6,8 @@ created_at: 2026-08-18T13:54:59Z
 claimed_at: 2026-08-18T16:09:27Z
 completed_at: 2026-08-18T18:08:42Z
 commit: cc1083c
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-249-decide-the-cross-package-citation-path-f.md
 route: B
 status_changed_at: 2026-08-18T14:12:05Z
 user_request: UR-055

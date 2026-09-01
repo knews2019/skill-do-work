@@ -16,8 +16,8 @@ claimed_at: 2026-08-11T12:57:58Z
 route: B
 completed_at: 2026-08-11T13:03:16Z
 commit: 063bb88
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-169-validate-feedback-flags-remedies-that-ad.md
 ---
 
 # validate-feedback Flags Remedies That Add Unearned Defensive Surface

@@ -17,8 +17,8 @@ sweep: true
 sweep_key: markdown-rendered-region-classification
 write_set:
   - _dev/tests/shipped-package-reference-contract.sh
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-158-review-fix-complete-rendered-region-clas.md
 ---
 
 # Review Fix: Complete Rendered-Region Classification in Shipped Markdown References

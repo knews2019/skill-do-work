@@ -28,7 +28,8 @@ estimate:
     - 2 subsystems involved
     - 6 acceptance criteria
     - cross-route regression gates
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-477-family-keyed-lessons-intelligent-index-a.md
 completed_at: 2026-09-01T15:56:55Z
 commit: 74b1fd41
 ---

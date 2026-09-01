@@ -13,7 +13,8 @@ addendum_to: REQ-304
 domain: frontend
 review_generated: true
 impact: impact-user-visible
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-313-count-the-breaks-the-timeline-actually-d.md
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 depends_on: []

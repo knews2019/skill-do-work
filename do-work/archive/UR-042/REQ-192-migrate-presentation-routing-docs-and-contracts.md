@@ -6,8 +6,8 @@ claimed_at: 2026-08-15T17:48:42Z
 route: C
 completed_at: 2026-08-15T18:46:00Z
 commit: a00ee67
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-192-migrate-completed-work-presentation-rout.md
 created_at: 2026-08-15T09:10:53Z
 user_request: UR-042
 domain: testing

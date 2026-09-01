@@ -17,8 +17,8 @@ depends_on: []
 maintenance: false
 effort_estimate: normal
 write_set: [skills/do-work-board/tools/queue-kanban/html_preview.go, skills/do-work-board/tools/queue-kanban/html_preview_test.go, skills/do-work-board/tools/queue-kanban/serve.go, skills/do-work-board/tools/queue-kanban/filementions_test.go, _dev/primes/prime-kanban-board.md, skills/do-work-board/tools/queue-kanban/prime-do-kanban.md, CLAUDE.md, CHANGELOG.md, VERSION, skills/do-work/CHANGELOG.md, skills/do-work/VERSION, skills/do-work/actions/version.md, do-work/archive/UR-046/input.md, do-work/archive/UR-046/REQ-207-render-html-file-mentions-as-folder-aware-previews.md]
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-207-render-html-file-mentions-as-folder-awar.md
 ---
 
 # Render HTML File Mentions as Folder-Aware Previews

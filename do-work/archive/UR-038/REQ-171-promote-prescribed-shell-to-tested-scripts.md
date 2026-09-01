@@ -4,8 +4,8 @@ title: "Addendum: promote prescribed shell primitives to shipped, fixture-tested
 status: completed
 completed_at: 2026-08-11T21:17:02Z
 commit: 5a18faf
-kb_status: pending
-kb_entry: Shell quoting does not disable Git pathspec magic at exact-path boundaries
+kb_status: promoted
+kb_entry: REQ-171-addendum-promote-prescribed-shell-primit.md
 created_at: 2026-08-11T13:58:25Z
 user_request: UR-038
 addendum_to: REQ-165

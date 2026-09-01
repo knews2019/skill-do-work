@@ -6,7 +6,8 @@ created_at: 2026-08-04T19:44:17Z
 claimed_at: 2026-08-04T21:03:58Z
 completed_at: 2026-08-04T21:12:00Z
 commit: 13328a8
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-097-assigned-to-advisory-field-schema-line-s.md
 user_request: UR-018
 domain: backend
 prime_files: []

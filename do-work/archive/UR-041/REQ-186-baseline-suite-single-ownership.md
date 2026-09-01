@@ -18,8 +18,8 @@ related: [REQ-181, REQ-182, REQ-183, REQ-184, REQ-185, REQ-187, REQ-188]
 batch: audit-findings-2026-08-14
 write_set: [CLAUDE.md, _dev/tests/contract-regressions.sh, _dev/tests/staged-skills-contract.sh]
 route: A
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-186-required-baseline-verification-executes-.md
 ---
 
 # Required Baseline Verification Executes Two Child Suites Twice

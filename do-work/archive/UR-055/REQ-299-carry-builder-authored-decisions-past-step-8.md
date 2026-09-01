@@ -6,7 +6,8 @@ created_at: 2026-08-19T20:03:19Z
 status_changed_at: 2026-08-20T08:22:51Z
 claimed_at: 2026-08-21T02:52:01Z
 completed_at: 2026-08-21T03:20:43Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-299-review-fix-carry-builder-authored-sectio.md
 commit: 3469b39
 route: C
 user_request: UR-055

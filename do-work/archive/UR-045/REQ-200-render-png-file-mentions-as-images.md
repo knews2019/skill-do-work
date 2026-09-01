@@ -14,8 +14,8 @@ tdd: true
 suggested_spec: bug-fix
 depends_on: []
 maintenance: false
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-200-render-png-file-mentions-as-images.md
 ---
 
 # Render PNG File Mentions as Images

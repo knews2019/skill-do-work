@@ -5,7 +5,8 @@ status: completed
 created_at: 2026-08-19T14:33:51Z
 claimed_at: 2026-08-21T00:34:42Z
 completed_at: 2026-08-21T00:57:58Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-288-fix-the-three-unfiled-contradictions-in-.md
 commit: c25ee71
 route: C
 user_request: UR-059

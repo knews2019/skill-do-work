@@ -11,7 +11,8 @@ user_request: UR-039
 domain: testing
 prime_files: [skills/do-work/tools/prime-do-work-update.md]
 tdd: true
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-173-handle-first-line-bom-in-just-collision-.md
 suggested_spec: bug-fix
 depends_on: []
 maintenance: false

@@ -17,8 +17,8 @@ related: [REQ-194]
 batch: closed-ur-documentation-hardening
 write_set: [skills/do-work/actions/review-work.md, skills/do-work/actions/work.md, _dev/tests/contract-regressions.sh]
 route: B
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-193-keep-archived-urs-closed-during-standalo.md
 ---
 
 # Keep Archived URs Closed During Standalone Review

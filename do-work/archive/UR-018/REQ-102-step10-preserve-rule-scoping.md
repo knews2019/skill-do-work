@@ -7,7 +7,8 @@ claimed_at: 2026-08-04T20:10:49Z
 completed_at: 2026-08-04T20:15:26Z
 commit: 44d4563
 route: A
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-102-scope-work-md-step-10-preserve-rules-to-.md
 user_request: UR-018
 addendum_to: REQ-094
 domain: general

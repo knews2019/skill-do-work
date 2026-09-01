@@ -7,7 +7,8 @@ claimed_at: 2026-08-05T11:51:58Z
 completed_at: 2026-08-05T11:59:04Z
 commit: 5f50fb7
 route: A
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-109-work-md-session-start-note-still-enumera.md
 created_at: 2026-08-05T11:44:27Z
 user_request: UR-018
 addendum_to: REQ-108

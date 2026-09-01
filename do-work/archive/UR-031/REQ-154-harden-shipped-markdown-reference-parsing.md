@@ -13,8 +13,8 @@ user_request: UR-031
 addendum_to: REQ-150
 review_generated: true
 effort_estimate: normal
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-154-review-fix-harden-shipped-markdown-refer.md
 write_set:
   - _dev/tests/shipped-package-reference-contract.sh
 ---

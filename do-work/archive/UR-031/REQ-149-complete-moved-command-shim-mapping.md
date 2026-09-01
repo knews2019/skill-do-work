@@ -6,8 +6,8 @@ completed_at: 2026-08-08T18:52:55Z
 commit: dd509cd
 claimed_at: 2026-08-08T18:36:03Z
 domain: general
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-149-review-fix-complete-moved-command-shim-m.md
 created_at: 2026-08-08T15:38:44Z
 user_request: UR-031
 addendum_to: REQ-144

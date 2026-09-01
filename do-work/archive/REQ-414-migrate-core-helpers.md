@@ -32,7 +32,8 @@ estimate:
     - full-suite verification
 completed_at: 2026-09-01T02:26:12Z
 commit: 0689970c
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-414-migrate-remaining-core-checks-publicatio.md
 ---
 
 # Migrate Remaining Core Checks, Publication Helpers, Git Helpers, and Surveys

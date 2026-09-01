@@ -35,7 +35,8 @@ estimate:
   calculated_at: '2026-08-27T12:54:55Z'
 completed_at: '2026-08-27T13:09:12Z'
 commit: 59caf025
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-382-expand-ticket-ids-written-as-markdown-li.md
 ---
 
 # Expand Ticket Ids Written As Markdown Links

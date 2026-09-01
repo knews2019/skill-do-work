@@ -1,0 +1,38 @@
+# Topic Index: Suite and Package Architecture
+
+Total articles: 32
+
+## Articles
+
+- [[concept-modular-suite-architecture]]
+- [[REQ-093-six-shipped-go-source-sites-cite-the-exp]]
+- [[REQ-120-shipped-files-stop-citing-the-export-ign]]
+- [[REQ-136-define-the-four-skill-suite-contract]]
+- [[REQ-137-ship-the-suite-aware-bridge-updater]]
+- [[REQ-138-add-managed-text-section-replacement]]
+- [[REQ-139-stage-the-modular-core-skill]]
+- [[REQ-142-stage-the-modular-toolbox-skill]]
+- [[REQ-143-build-the-full-suite-installer-and-recon]]
+- [[REQ-144-activate-the-four-skill-distribution]]
+- [[REQ-145-remove-the-stateful-pipeline]]
+- [[REQ-146-remove-modular-migration-compatibility-s]]
+- [[REQ-149-review-fix-complete-moved-command-shim-m]]
+- [[REQ-150-review-fix-repair-live-modular-package-r]]
+- [[REQ-153-review-fix-sweep-retired-core-command-re]]
+- [[REQ-154-review-fix-harden-shipped-markdown-refer]]
+- [[REQ-157-review-fix-complete-the-retired-core-ali]]
+- [[REQ-158-review-fix-complete-rendered-region-clas]]
+- [[REQ-160-review-fix-make-retired-core-alias-match]]
+- [[REQ-161-review-fix-complete-escaped-link-and-lis]]
+- [[REQ-162-review-fix-handle-ordinary-multiline-bac]]
+- [[REQ-163-review-fix-complete-remaining-inline-lin]]
+- [[REQ-174-validate-root-markdown-fence-info]]
+- [[REQ-182-public-work-and-schema-vocabularies-drif]]
+- [[REQ-186-required-baseline-verification-executes-]]
+- [[REQ-249-decide-the-cross-package-citation-path-f]]
+- [[REQ-250-close-the-remaining-markdown-link-checke]]
+- [[REQ-269-draw-the-cross-package-citation-class-by]]
+- [[REQ-303-run-the-pinned-live-archive-assertions-o]]
+- [[REQ-312-resolve-same-package-citations-in-the-sh]]
+- [[REQ-408-build-shared-request-schema-dependency-a]]
+- [[REQ-420-replace-shell-implementations-with-shims]]

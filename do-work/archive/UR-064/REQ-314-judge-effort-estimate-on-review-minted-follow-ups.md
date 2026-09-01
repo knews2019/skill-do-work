@@ -7,7 +7,8 @@ status_changed_at: 2026-08-21T18:51:21Z
 claimed_at: 2026-08-21T18:20:11Z
 completed_at: 2026-08-21T18:51:21Z
 commit: 328767f
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-314-judge-effort-estimate-on-review-minted-f.md
 route: B
 user_request: UR-064
 addendum_to: REQ-308

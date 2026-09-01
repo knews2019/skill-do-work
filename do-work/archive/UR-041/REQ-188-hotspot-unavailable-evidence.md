@@ -18,8 +18,8 @@ related: [REQ-181, REQ-182, REQ-183, REQ-184, REQ-185, REQ-186, REQ-187]
 batch: audit-findings-2026-08-14
 write_set: [skills/do-work-toolbox/tools/audit-metrics/churn.go, skills/do-work-toolbox/tools/audit-metrics/churn_test.go, skills/do-work-toolbox/tools/audit-metrics/main.go]
 route: B
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-188-hotspot-output-silently-drops-unavailabl.md
 ---
 
 # Hotspot Output Silently Drops Unavailable Tracked Paths

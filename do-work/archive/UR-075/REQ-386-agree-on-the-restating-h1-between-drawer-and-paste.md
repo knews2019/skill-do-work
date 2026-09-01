@@ -33,7 +33,8 @@ estimate:
   calculated_at: '2026-08-27T12:28:08Z'
 completed_at: '2026-08-27T12:45:11Z'
 commit: 59577def
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-386-make-the-drawer-and-the-paste-agree-abou.md
 ---
 
 # Make The Drawer And The Paste Agree About A Body H1 That Restates The Title

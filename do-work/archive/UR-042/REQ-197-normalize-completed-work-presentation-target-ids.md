@@ -6,8 +6,8 @@ claimed_at: 2026-08-15T18:49:02Z
 route: B
 completed_at: 2026-08-15T19:20:09Z
 commit: 89d068e
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-197-normalize-completed-work-presentation-ta.md
 domain: general
 created_at: 2026-08-15T16:34:08Z
 user_request: UR-042

@@ -18,8 +18,8 @@ related: [REQ-181, REQ-182, REQ-183, REQ-184, REQ-186, REQ-187, REQ-188]
 batch: audit-findings-2026-08-14
 write_set: [skills/do-work-board/tools/queue-kanban/generate_test.go, skills/do-work-board/tools/queue-kanban/web/board.js]
 route: B
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-185-javascript-behavior-probes-can-all-skip-.md
 ---
 
 # JavaScript Behavior Probes Can All Skip While the Board Suite Passes

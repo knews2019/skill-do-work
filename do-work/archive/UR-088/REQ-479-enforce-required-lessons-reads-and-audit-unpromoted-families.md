@@ -28,7 +28,8 @@ estimate:
     - 9 acceptance criteria
     - dependency depth 2
     - cross-route regression gates
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-479-enforce-required-lessons-reads-and-audit.md
 completed_at: 2026-09-01T16:28:16Z
 commit: 9a1b7bfb
 ---

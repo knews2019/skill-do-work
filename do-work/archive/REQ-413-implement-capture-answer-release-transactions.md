@@ -16,7 +16,8 @@ related: [REQ-406, REQ-407, REQ-408, REQ-409, REQ-410, REQ-411, REQ-412, REQ-414
 batch: go-no-llm-command-platform
 claimed_at: 2026-08-31T22:07:13Z
 completed_at: 2026-09-01T00:17:17Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-413-implement-capture-file-answer-release-ve.md
 route: C
 write_set:
   - skills/do-work/tools/do-work-cli/internal/publication/publication_types.go

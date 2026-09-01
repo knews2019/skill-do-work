@@ -4,8 +4,8 @@ title: Validate root Markdown fence info
 status: completed
 completed_at: 2026-08-11T20:23:00Z
 commit: bd5ecf6
-kb_status: pending
-kb_entry: Markdown fence classification must align marker, info-string, and paragraph state
+kb_status: promoted
+kb_entry: REQ-174-validate-root-markdown-fence-info.md
 created_at: 2026-08-11T17:00:04Z
 user_request: UR-039
 domain: testing

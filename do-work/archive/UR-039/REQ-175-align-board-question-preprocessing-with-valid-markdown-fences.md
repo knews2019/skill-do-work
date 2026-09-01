@@ -20,8 +20,8 @@ maintenance: false
 related: [REQ-174]
 write_set: [skills/do-work-board/tools/queue-kanban/render.go, skills/do-work-board/tools/queue-kanban/generate_test.go]
 route: B
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-175-align-board-question-preprocessing-with-.md
 ---
 
 # Align Board Question Preprocessing with Valid Markdown Fences

@@ -6,7 +6,8 @@ created_at: 2026-08-13T22:35:10Z
 claimed_at: 2026-08-14T09:19:43Z
 completed_at: 2026-08-14T09:49:31Z
 commit: 1afe780
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-178-build-the-audit-metrics-tool-for-mechani.md
 user_request: UR-040
 domain: general
 prime_files: [_dev/primes/prime-shell-commands.md]

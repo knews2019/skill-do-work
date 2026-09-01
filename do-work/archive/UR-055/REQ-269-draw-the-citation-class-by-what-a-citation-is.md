@@ -6,7 +6,8 @@ created_at: 2026-08-18T21:44:57Z
 status_changed_at: 2026-08-18T22:20:09Z
 claimed_at: 2026-08-20T23:21:54Z
 completed_at: 2026-08-20T23:36:44Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-269-draw-the-cross-package-citation-class-by.md
 commit: f71dfee
 user_request: UR-055
 addendum_to: REQ-259

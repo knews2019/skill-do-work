@@ -18,8 +18,8 @@ effort_estimate: normal
 related: [REQ-180, REQ-187]
 write_set: [_dev/tests/contract-regressions.sh]
 route: A
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-196-remaining-late-contract-assertions-use-c.md
 ---
 
 # Remaining Late Contract Assertions Use Capitalized Root Justfile

@@ -27,7 +27,7 @@ estimate:
   calculated_at: '2026-08-27T11:27:28Z'
 completed_at: '2026-08-27T11:33:05Z'
 commit: 253b294
-kb_status: pending
+kb_status: skipped
 ---
 
 # Cross-Reference Convention For Newly Authored REQ And UR Ids

@@ -37,7 +37,8 @@ write_set:
 - skills/do-work-board/tools/queue-kanban/user_request_clipboard_browser_probe_test.go
 completed_at: '2026-08-27T13:38:28Z'
 commit: 54de194b
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-375-restore-the-strict-browser-lane-on-curre.md
 ---
 
 # Restore the Strict Browser Lane on Current Chromium

@@ -17,8 +17,8 @@ claimed_at: 2026-08-11T12:30:27Z
 route: C
 completed_at: 2026-08-11T12:43:36Z
 commit: 1a27c07
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-167-deduplicate-copy-pasted-shell-primitives.md
 ---
 
 # Deduplicate Copy-Pasted Shell Primitives Across Action Files

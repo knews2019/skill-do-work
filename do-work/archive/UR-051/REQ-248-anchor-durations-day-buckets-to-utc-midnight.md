@@ -6,7 +6,8 @@ created_at: 2026-08-18T13:54:59Z
 claimed_at: 2026-08-18T16:09:27Z
 completed_at: 2026-08-18T18:24:42Z
 commit: 1cb897f
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-248-anchor-the-durations-day-buckets-to-utc-.md
 route: B
 status_changed_at: 2026-08-18T13:54:59Z
 user_request: UR-051

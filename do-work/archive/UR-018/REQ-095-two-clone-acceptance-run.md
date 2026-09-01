@@ -6,7 +6,8 @@ created_at: 2026-08-04T19:44:17Z
 claimed_at: 2026-08-04T20:38:51Z
 completed_at: 2026-08-04T21:20:00Z
 commit: 0526e44
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-095-two-clone-acceptance-run-checkpoint-pois.md
 user_request: UR-018
 domain: testing
 prime_files: []

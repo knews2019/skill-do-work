@@ -18,8 +18,8 @@ related: [REQ-181, REQ-182, REQ-183, REQ-185, REQ-186, REQ-187, REQ-188]
 batch: audit-findings-2026-08-14
 write_set: [skills/do-work-board/tools/queue-kanban/serve.go, skills/do-work-board/tools/queue-kanban/testing_api.go, skills/do-work-board/tools/queue-kanban/testing_test.go, skills/do-work-board/tools/queue-kanban/filementions_test.go]
 route: C
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-184-live-board-origin-checks-have-no-trusted.md
 ---
 
 # Live Board Origin Checks Have No Trusted Host Anchor

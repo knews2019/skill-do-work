@@ -6,7 +6,8 @@ created_at: 2026-08-18T17:48:08Z
 claimed_at: 2026-08-18T20:08:45Z
 completed_at: 2026-08-18T20:21:34Z
 commit: fbc14e8
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-256-disclose-the-session-hook-s-queue-write-.md
 route: A
 user_request: UR-056
 addendum_to: REQ-246

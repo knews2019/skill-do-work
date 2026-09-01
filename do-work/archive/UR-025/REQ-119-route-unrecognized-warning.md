@@ -7,7 +7,8 @@ claimed_at: 2026-08-06T11:28:00Z
 completed_at: 2026-08-06T11:32:00Z
 commit: c327f24
 route: A
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-119-an-off-vocabulary-route-warns-on-the-boa.md
 user_request: UR-025
 domain: general
 prime_files: [tools/queue-kanban/prime-do-kanban.md]

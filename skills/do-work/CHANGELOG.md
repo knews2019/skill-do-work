@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.4 — Complete Knowledge-Base Backlog Ingestion and Synthesis (2026-09-02)
+
+Processed the entire pending knowledge-base backlog across all archived REQs, compiling 185 sources into an interlinked Markdown wiki with typed cross-references and topic indexes.
+
+- Promoted 147 eligible archived REQs with substantive Lessons Learned to structured inbox sources and updated their frontmatter to `kb_status: promoted`.
+- Skipped 2 ineligible REQs without lessons learned sections (`REQ-177`, `REQ-380`) and repaired duplicate `kb_entry` in `REQ-017`.
+- Triaged and ingested 185 sources into 200 wiki articles across 11 topic clusters, generating daily logs, manifest records, and usage ledger events.
+- Validated complete structural health with `bkb-status` and `bkb-lint-structure`.
+
 ## 0.260.3 — Static Board Publication Refuses Non-File Output Targets (2026-09-01)
 
 Generating the static board could move a directory or symlink sitting at one of its three output names into a private backup and then delete it on success, taking whatever was underneath with it. Publication now inspects all three targets first and refuses anything that is not a regular file, leaving every byte where it was.

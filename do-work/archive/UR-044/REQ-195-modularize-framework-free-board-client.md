@@ -12,8 +12,8 @@ prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec: refactor
 route: C
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-195-modularize-the-framework-free-queue-boar.md
 depends_on: []
 maintenance: false
 effort_estimate: normal

@@ -10,8 +10,8 @@ status_changed_at: 2026-08-07T21:40:04Z
 created_at: 2026-08-07T18:58:02Z
 user_request: UR-031
 domain: general
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-146-remove-modular-migration-compatibility-s.md
 prime_files: [skills/do-work/tools/prime-do-work-update.md]
 write_set:
   - README.md

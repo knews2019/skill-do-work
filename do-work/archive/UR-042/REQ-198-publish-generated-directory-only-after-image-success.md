@@ -6,8 +6,8 @@ claimed_at: 2026-08-15T19:22:38Z
 route: B
 completed_at: 2026-08-15T19:39:11Z
 commit: 00db46c
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-198-publish-generated-directory-only-after-i.md
 domain: general
 created_at: 2026-08-15T16:34:08Z
 user_request: UR-042

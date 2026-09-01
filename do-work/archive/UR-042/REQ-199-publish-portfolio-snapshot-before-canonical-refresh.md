@@ -6,8 +6,8 @@ claimed_at: 2026-08-15T19:41:49Z
 route: B
 completed_at: 2026-08-15T20:01:55Z
 commit: 74f2220
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-199-publish-portfolio-snapshot-before-canoni.md
 domain: general
 created_at: 2026-08-15T17:09:44Z
 user_request: UR-042

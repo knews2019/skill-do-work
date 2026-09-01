@@ -28,7 +28,8 @@ estimate:
     - full-suite verification
 depends_on: []
 maintenance: false
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-310-check-a-template-payload-s-citations-aga.md
 write_set:
 - skills/do-work-toolbox/actions/code-review.md
 - skills/do-work-toolbox/actions/validate-feedback.md

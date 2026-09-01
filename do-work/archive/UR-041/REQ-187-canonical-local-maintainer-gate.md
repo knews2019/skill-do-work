@@ -18,8 +18,8 @@ related: [REQ-181, REQ-182, REQ-183, REQ-184, REQ-185, REQ-186, REQ-188]
 batch: audit-findings-2026-08-14
 write_set: [CLAUDE.md, justfile, _dev/tests/maintainer-verify.sh, _dev/tests/contract-regressions.sh]
 route: C
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-187-no-single-local-maintainer-command-prove.md
 ---
 
 # No Single Local Maintainer Command Proves Shell Plus Both Go Modules

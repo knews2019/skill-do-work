@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-23T18:57:07Z
 completed_at: 2026-08-23T19:29:47Z
 commit: 92413b9
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-325-stop-the-report-image-interruption-path-.md
 status_changed_at: 2026-08-23T11:42:00Z
 created_at: 2026-08-23T02:09:42Z
 user_request: UR-065

@@ -6,7 +6,8 @@ created_at: 2026-08-18T13:56:12Z
 claimed_at: 2026-08-18T19:12:47Z
 completed_at: 2026-08-18T20:08:09Z
 commit: c752529
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-252-record-the-browser-with-every-measured-f.md
 route: B
 status_changed_at: 2026-08-18T13:56:12Z
 user_request: UR-051

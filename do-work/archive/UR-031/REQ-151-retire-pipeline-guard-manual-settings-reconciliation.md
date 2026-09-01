@@ -6,8 +6,8 @@ completed_at: 2026-08-08T19:30:20Z
 commit: 1ab5ed8
 claimed_at: 2026-08-08T19:18:15Z
 domain: general
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-151-review-fix-retire-the-pipeline-guard-in-.md
 created_at: 2026-08-08T17:47:25Z
 user_request: UR-031
 addendum_to: REQ-145

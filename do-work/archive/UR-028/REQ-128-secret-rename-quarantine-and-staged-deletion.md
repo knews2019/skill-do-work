@@ -17,7 +17,8 @@ maintenance: true
 related: [REQ-121]
 effort_estimate: normal
 route: B
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-128-secret-rename-quarantine-survives-re-inv.md
 write_set: [tools/checks/uncommitted-inventory.sh, actions/commit.md, actions/inspect.md, _dev/tests/contract-regressions.sh, actions/version.md, CHANGELOG.md]
 ---
 

@@ -6,8 +6,8 @@ completed_at: 2026-08-08T19:17:28Z
 commit: 6dbb1cf
 claimed_at: 2026-08-08T18:53:44Z
 domain: general
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-150-review-fix-repair-live-modular-package-r.md
 created_at: 2026-08-08T15:38:44Z
 user_request: UR-031
 addendum_to: REQ-144

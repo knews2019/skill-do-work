@@ -27,7 +27,8 @@ write_set:
 - skills/do-work-board/tools/queue-kanban/completion_contrast_browser_test.go
 completed_at: '2026-08-27T11:45:22Z'
 commit: 8dfdb24
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-376-raise-the-done-line-s-faint-text-to-read.md
 ---
 
 # Raise the Done Line's Faint Text to Readable Contrast

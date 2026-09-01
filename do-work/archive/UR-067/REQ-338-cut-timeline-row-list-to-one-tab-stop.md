@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-23T20:32:41Z
 completed_at: 2026-08-23T20:47:14Z
 commit: cac6718
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-338-cut-the-timeline-row-list-to-one-tab-sto.md
 created_at: 2026-08-23T18:30:26Z
 user_request: UR-067
 addendum_to: REQ-333

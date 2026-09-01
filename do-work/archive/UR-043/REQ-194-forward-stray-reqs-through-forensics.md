@@ -17,8 +17,8 @@ related: [REQ-193]
 batch: closed-ur-documentation-hardening
 write_set: [skills/do-work-board/tools/queue-kanban/model.go, skills/do-work-board/tools/queue-kanban/verify.go, skills/do-work-board/tools/queue-kanban/verify_test.go, skills/do-work/actions/forensics.md, skills/do-work/actions/work-reference.md]
 route: C
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-194-forward-stray-reqs-through-verify-and-fo.md
 ---
 
 # Forward Stray REQs Through Verify and Forensics

@@ -7,7 +7,8 @@ claimed_at: 2026-08-04T19:48:36Z
 completed_at: 2026-08-04T20:08:59Z
 commit: 9c305c0
 route: B
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-094-checkpoint-writer-label-crash-recovery-i.md
 user_request: UR-018
 domain: general
 prime_files: []

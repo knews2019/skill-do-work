@@ -8,8 +8,8 @@ claimed_at: 2026-08-15T20:33:47Z
 completed_at: 2026-08-15T20:53:26Z
 route: B
 commit: 536fbd6
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-202-complete-unsafe-remotion-preview-mutatio.md
 user_request: UR-042
 addendum_to: REQ-192
 review_generated: true

@@ -17,8 +17,8 @@ maintenance: false
 related: [REQ-135, REQ-136, REQ-137, REQ-138, REQ-139, REQ-140, REQ-141, REQ-142, REQ-144, REQ-145, REQ-146]
 batch: do-work-four-skill-suite
 write_set: [tools/install-do-work-suite.sh, suite/modules.tsv, README.md, _dev/tests/contract-regressions.sh, _dev/tests/install-suite-behavior.sh]
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-143-build-the-full-suite-installer-and-recon.md
 ---
 
 # Build the Full-Suite Installer and Reconciler

@@ -28,7 +28,8 @@ estimate:
     - 7 acceptance criteria
     - dependency depth 1
     - cross-route regression gates
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-478-capture-stamps-required-lessons-under-a-.md
 completed_at: 2026-09-01T16:11:59Z
 commit: 47ff6c85
 ---

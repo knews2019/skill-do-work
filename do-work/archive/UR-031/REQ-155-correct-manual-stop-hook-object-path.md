@@ -13,8 +13,8 @@ user_request: UR-031
 addendum_to: REQ-151
 review_generated: true
 effort_estimate: normal
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-155-review-fix-correct-the-manual-stop-hook-.md
 write_set:
   - tools/install-do-work-suite.sh
   - skills/do-work/tools/install-do-work-suite.sh

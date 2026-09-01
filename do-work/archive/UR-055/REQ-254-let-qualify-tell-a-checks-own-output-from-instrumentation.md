@@ -6,7 +6,8 @@ created_at: 2026-08-18T14:04:16Z
 claimed_at: 2026-08-18T19:12:47Z
 completed_at: 2026-08-18T19:53:41Z
 commit: 116eec6
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-254-let-qualify-tell-a-check-s-own-output-fr.md
 route: B
 status_changed_at: 2026-08-18T14:04:16Z
 user_request: UR-055

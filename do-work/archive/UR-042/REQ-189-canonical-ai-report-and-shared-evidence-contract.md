@@ -6,8 +6,8 @@ claimed_at: 2026-08-15T16:01:10Z
 route: C
 completed_at: 2026-08-15T16:35:04Z
 commit: bb7ae54
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-189-canonicalize-ai-report-and-the-shared-co.md
 created_at: 2026-08-15T09:10:53Z
 user_request: UR-042
 domain: general

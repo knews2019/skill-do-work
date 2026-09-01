@@ -7,7 +7,8 @@ status_changed_at: 2026-08-21T19:11:08Z
 claimed_at: 2026-08-21T18:55:41Z
 completed_at: 2026-08-21T19:11:08Z
 commit: 68d9ad9
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-316-audit-the-calibration-log-write-step-for.md
 route: B
 user_request: UR-057
 addendum_to: REQ-311

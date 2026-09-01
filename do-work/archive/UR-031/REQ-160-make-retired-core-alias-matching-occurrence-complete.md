@@ -17,8 +17,8 @@ sweep: true
 sweep_key: retired-core-alias-match-occurrence-completeness
 write_set:
   - _dev/tests/staged-skills-contract.sh
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-160-review-fix-make-retired-core-alias-match.md
 ---
 
 # Review Fix: Make Retired Core Alias Matching Occurrence-Complete

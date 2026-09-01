@@ -7,7 +7,8 @@ claimed_at: 2026-08-06T11:05:05Z
 completed_at: 2026-08-06T11:09:00Z
 commit: 42f71e2
 route: A
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-117-an-unrecognized-domain-must-leave-a-foot.md
 user_request: UR-024
 domain: general
 prime_files: [tools/queue-kanban/prime-do-kanban.md]

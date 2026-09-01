@@ -6,7 +6,8 @@ created_at: 2026-08-20T22:00:52Z
 status_changed_at: 2026-08-21T08:45:00Z
 claimed_at: 2026-08-21T08:45:00Z
 completed_at: 2026-08-21T08:57:04Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-308-judge-effort-estimate-on-every-capture-a.md
 commit: 9bce005
 user_request: UR-064
 domain: general

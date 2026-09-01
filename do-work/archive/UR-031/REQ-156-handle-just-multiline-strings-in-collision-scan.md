@@ -13,8 +13,8 @@ user_request: UR-031
 addendum_to: REQ-152
 review_generated: true
 effort_estimate: normal
-kb_status: pending
-kb_entry:
+kb_status: promoted
+kb_entry: REQ-156-review-fix-handle-just-multiline-strings.md
 write_set:
   - tools/replace-text-section.sh
   - skills/do-work/tools/replace-text-section.sh

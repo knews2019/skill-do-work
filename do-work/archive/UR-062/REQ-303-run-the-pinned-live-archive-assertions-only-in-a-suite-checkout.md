@@ -6,7 +6,8 @@ created_at: 2026-08-20T08:37:41Z
 status_changed_at: 2026-08-21T08:00:57Z
 claimed_at: 2026-08-21T08:00:57Z
 completed_at: 2026-08-21T08:10:58Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-303-run-the-pinned-live-archive-assertions-o.md
 commit: 69f3319
 user_request: UR-062
 domain: testing

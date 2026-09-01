@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-23T20:16:43Z
 completed_at: 2026-08-23T20:26:47Z
 commit: 77ca13e
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-337-a-check-that-can-catch-timeline-click-re.md
 created_at: 2026-08-23T18:30:26Z
 user_request: UR-067
 addendum_to: REQ-324

@@ -6,7 +6,8 @@ completed_at: 2026-08-05T11:44:27Z
 commit: 53929a2
 claimed_at: 2026-08-05T11:38:54Z
 created_at: 2026-08-05T11:36:39Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-108-review-fix-in-progress-record-still-enum.md
 user_request: UR-018
 addendum_to: REQ-104
 domain: general

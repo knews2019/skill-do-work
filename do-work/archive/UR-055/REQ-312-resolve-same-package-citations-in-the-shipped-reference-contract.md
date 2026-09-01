@@ -13,7 +13,8 @@ domain: general
 route: C
 review_generated: true
 impact: impact-rule-change
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-312-resolve-same-package-citations-in-the-sh.md
 prime_files: [_dev/primes/prime-action-files.md, _dev/primes/prime-shell-commands.md]
 tdd: false
 estimate:

@@ -6,7 +6,8 @@ created_at: 2026-08-04T19:44:17Z
 claimed_at: 2026-08-04T20:55:49Z
 completed_at: 2026-08-04T21:35:00Z
 commit: 7024c4a
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-096-execution-model-re-grain-claim-anywhere-.md
 user_request: UR-018
 domain: general
 prime_files: []

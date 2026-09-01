@@ -7,7 +7,8 @@ claimed_at: 2026-08-06T11:10:18Z
 completed_at: 2026-08-06T11:14:00Z
 commit: 8d1a9f2
 route: A
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-118-the-normalize-flag-must-stop-calling-voc.md
 user_request: UR-024
 domain: general
 prime_files: [tools/queue-kanban/prime-do-kanban.md]
