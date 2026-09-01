@@ -320,7 +320,13 @@ Append validation findings to the `## Plan` section (if any issues found). These
 
 (append the skip note per the **Plan Skip Note — Routes A/B (Step 4)** in `actions/work-reference.md`)
 
-### Step 5: Exploration (Routes B and C)
+### Step 5: Required-Lessons Consult (all routes) and Exploration (Routes B and C)
+
+**Required-lessons consult — every REQ.** Before exploration, read the REQ's existing `required_lessons` entries in order, then consult `do-work/lessons-index.md` even when the field is absent. Existing entries are mandatory reads and consume the budget first. Match additional rows against the request text, Plan/current `write_set`, likely touched paths, and `prime_files`, using the ranking, entry forms, full-coverage targeting rule, mechanical costs, and single limit owned by `actions/capture-reference.md` → **Required Lessons Budget Contract**. Prefer narrowing an eligible bare match before dropping it. Refresh `required_lessons` with the fitting existing-plus-new set; never add an entry without an index match. Preserve and read captured entries when the index itself is absent, but add nothing.
+
+Read the resolved set now: a bare path means the whole satellite; `path#family-slug` means only bullet lines carrying `[family: family-slug]`. A missing listed file never blocks exploration — record the missing entry in `## Exploration` when that section exists and always in the builder hand-back, then continue. Replace any existing `## Required Lessons — Dropped for Budget` body section with the current claim-time drops (entry, cost, matching reason), or remove that section when nothing was dropped; a drop is never silent. Omit `required_lessons` when the refreshed set is empty. This consult closes the capture-time gap for old REQs and for later members of a serial batch whose matching lesson did not exist when the batch was captured.
+
+**Route A:** stop this step after the consult and resolved reads; only exploration is skipped. **Routes B and C:** continue below.
 
 Spawn an **Explore agent** to find relevant files, existing patterns, types/interfaces, and testing conventions.
 
@@ -400,8 +406,10 @@ Spawn a **general-purpose agent** with the loaded rules, any files listed in the
 
 All routes include these instructions to the agent (pointers — the underlying rules live in the loaded crew-members files and in the REQ frontmatter the orchestrator already wrote):
 
+**Required-lesson regime — three additive layers, never substitutes.** Before implementation, the builder reads every current `required_lessons` entry unconditionally (captured stamps plus Step 5 claim-time matches), using whole-satellite or matching-family-bullets semantics. Independently, the touch-conditional Lessons Discipline rule still applies to every REQ, stamped or not, so a relevant satellite excluded by the budget can still be required by the touched prime. If any required path is missing, proceed without it and name the missing entry in the hand-back; never turn missing lesson context into a build blocker.
+
 - **Crew rules govern behavior:** `crew-members/general.md` (always loaded) carries the Prime Files philosophy, Lessons-discipline, test-writing posture, cross-REQ test-break rules, and Discovered-Tasks contract. `crew-members/coding-guardrails.md` (always loaded) carries the implementation-time guardrails — that file is authoritative for which ones, and is deliberately not re-enumerated here. Domain/testing/caveman crews layer on top per Step 6's loading order. The builder reads these — do not re-state their contents inline.
-- **Prime files come first:** Read every path in `prime_files` before touching code. If the primary utility you are modifying has no prime, investigate and create one (`prime-[name].md`), then update REQ frontmatter. Each prime's `lessons-[name].md` satellite encodes prior mistakes in that area — read it when your change touches code the prime's Read-first or Traps entries name (`crew-members/general.md` → Lessons Discipline).
+- **Prime files come first:** Read every path in `prime_files` before touching code. If the primary utility you are modifying has no prime, investigate and create one (`prime-[name].md`), then update REQ frontmatter. Each prime's `lessons-[name].md` satellite encodes prior mistakes in that area — the unconditional `required_lessons` reads above are additive to reading it whenever the change touches code the prime's Read-first or Traps entries name (`crew-members/general.md` → Lessons Discipline).
 - **P-A-U phasing is mandatory:** Edit the REQ's "AI Execution State (P-A-U Loop)" checkboxes in real time. [PLAN] writes a brief technical approach. [APPLY] stays in declared scope. [UNIFY] runs `git diff --stat`, runs native linters, verifies no debug artifacts, and lists each file checked (the orchestrator audits this in Step 6.3).
 - **TDD mode when `tdd: true`:** Follow RED → GREEN → REFACTOR. Anchor RED on the REQ's `## Red-Green Proof` section if present — it arrived with the REQ and is not yours to write. Report the red-green evidence (test name, failure-before, pass-after) — Step 6.5 verifies it.
 - **Captured proof first:** If `## Red-Green Proof` is present, its RED prompt/case and GREEN outcome are the primary behavior tests must prove. Only adapt with documented reason.
@@ -410,6 +418,7 @@ All routes include these instructions to the agent (pointers — the underlying 
 - **In worktree dispatch mode, never write the main tree:** commit on your own branch and hand back the manifest — the orchestrator is the sole integrator and merges. A shared file that needs one line of wiring is an **integration seam**: hand back the exact line and where it goes rather than editing the shared file yourself (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**).
 - **Out-of-scope finds go to `## Discovered Tasks`** (a separate section, not nested inside Implementation Summary) — do not fix inline. Step 8 classifies and queues them. **In worktree dispatch mode that section goes in your hand-back**, under the same heading, because the REQ file is one of the main-tree paths the bullet above forbids you to write.
 - **Report back the file manifest:** list every source file created/modified/deleted with the action verb, plus tests touched. The orchestrator writes the formal `## Implementation Summary` from your report — that section is not yours to write.
+- **Report lesson evidence:** list each `required_lessons` entry read, whether it was whole-satellite or family-targeted, and every missing entry that was skipped. This evidence belongs in the hand-back even when the implementation file manifest is otherwise short.
 - **Standard freedoms and obligations:** Full file/shell access. Escalate to explore or plan if the work proves harder than triaged. Document blockers explicitly. Identify and run related existing tests; honor any test-command map in the prime file (takes precedence over generic detection).
 
 **Hand-back merge (worktree dispatch mode only — the orchestrator's job, not the builder's).** When the builder returns its manifest, integrate here, at the end of Step 6, **before** Step 6.25: every evidence step from 6.25 onward reads the merged tree, so a merge deferred past that point leaves qualify and review with nothing to check. Before running any hand-back command, read the canonical full sequence in `actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)** → **When to merge, and the range every evidence step reads.** On the integration branch, its condensed sequence is:
@@ -699,7 +708,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 □ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions; a user answer obtained mid-run is written in as - [x] before dispatch — never - [~], no D-XX)
 □ Step 3.6: Estimate (ensure estimate: block — reuse frozen block, mechanical-effort short-circuit, or extract signals + run tools/estimate-p50.sh; print before planning; never block on estimation)
 □ Step 4: Plan (Route C: spawn Plan agent + validate plan / Routes A & B: note skipped)
-□ Step 5: Explore (Routes B & C: spawn Explore agent, include prime file lessons)
+□ Step 5: Consult required lessons (all routes); then Explore (Routes B & C only)
 □ Step 5.5: Scope Declaration (Routes B & C: declare files + acceptance criteria in REQ)
 □ Step 5.75: Pre-Flight Check (Routes B & C: repository state, test baseline, dependencies)
 □ Step 6: Implement (spawn agent with lessons + TDD mode if set, log decisions as D-XX)

@@ -245,6 +245,17 @@ glob **/known-bugs-*.md
 
 For each satellite doc, verify its parent directory also has a prime file. Flag orphaned satellites (satellite exists but no prime in the same utility). A `lessons-<name>.md` must pair with the `prime-<name>.md` of the same name — a mismatched pair means one of the two was renamed alone, and the prime's pointer link is dead.
 
+For every source `lessons-*.md` satellite (using Step 1's build/dependency/scratch exclusions), audit `do-work/lessons-index.md` mechanically:
+
+1. **Missing index row:** compare the repository-relative satellite path literally against the index's `Satellite` cells. No row is `LESSONS-INDEX-MISSING`.
+2. **Dead index path:** walk every index row and test its literal repository-relative path. A path that does not exist is `LESSONS-INDEX-DEAD-PATH`.
+3. **Estimate drift:** recompute `ceil(bytes / 4)` with `wc -c`. Let `indexed` be the row's token integer and `actual` the recomputed value; `abs(indexed - actual) * 4 > actual` is more than 25% drift and is `LESSONS-INDEX-ESTIMATE-DRIFT`.
+4. **Family-set drift:** collect and sort the unique slugs in literal `[family: <slug>]` markers on lesson bullets. Compare that set in both directions with the row's `Families` cell (the hook's canonical slug set; `none` means empty). Any difference is `LESSONS-INDEX-FAMILY-DRIFT`.
+5. **False full coverage:** when the row says `slugged: full`, every lesson bullet line beginning `- ` must carry at least one family marker. Any unmarked bullet is `LESSONS-INDEX-FALSE-FULL`.
+6. **Missed Trap promotion:** count occurrences of each literal family marker in the satellite. At two or more, the paired prime's `## Traps` must contain the same literal `[family: <slug>]`; absence is `LESSONS-TRAP-PROMOTION-MISSING`. Pre-slug bullets are not guessed into a family by this mechanical audit.
+
+The index itself may be absent: flag `LESSONS-INDEX-MISSING` once for every discovered lesson satellite, then continue the rest of the prime audit. These checks are read-only health findings; the existing Step 6.6 promotion exception remains the only audit path that writes `## Traps`.
+
 ### Step 5: Verify CLAUDE.md registry (if applicable)
 
 Read CLAUDE.md and check whether it has a prime file registry section. If it does:
@@ -304,6 +315,7 @@ Report findings as a structured checklist:
 - Utilities missing primes: N
 - Stakes: added M, refreshed N, current K   ← the write audit performs
 - Shrink: N primes over budget, M lines relocated to satellites   ← the write that removes
+- Lesson routing: N missing rows, N dead paths, N drift findings, N missed Trap promotions
 - Largest prime: `path/prime-foo.md` at N lines (budget ~60)
 
 ### Issues
@@ -341,6 +353,12 @@ Report findings as a structured checklist:
 - [ ] `path/known-bugs-foo.md` exists but no prime in that directory
 - [ ] ...
 
+#### Lesson routing and index drift
+- [ ] `path/lessons-foo.md` — `LESSONS-TRAP-PROMOTION-MISSING`: family `rollback-boundary` appears 2 times but `path/prime-foo.md` has no matching Trap marker
+- [ ] `path/lessons-bar.md` — `LESSONS-INDEX-ESTIMATE-DRIFT`: indexed 400, recomputed 600 (>25%)
+- [ ] `do-work/lessons-index.md` — `LESSONS-INDEX-DEAD-PATH`: `path/lessons-removed.md` does not exist
+- [ ] ...
+
 #### CLAUDE.md registry
 - [ ] All registered paths valid: YES/NO
 - [ ] No utility-specific primes registered: YES/NO
@@ -361,6 +379,7 @@ Be concise. Only flag actual issues. "Everything looks fine" for a prime is not 
 - A prime file lists line numbers or reproduces code — violates the "pointers over copies" principle; rewrite.
 - The **Traps** section contains truisms or facts derivable from the code — the Q3 litmus test wasn't applied; a trap must be a repo-specific fact an AI would read wrong.
 - Audit flags missing primes for paths the user doesn't care about (experimental, deprecated) — add an exclusion rather than forcing creation.
+- Audit reports lesson routing as healthy without comparing every source satellite to `do-work/lessons-index.md` in both directions — a missing row and a dead row are different failures, and either one breaks claim-time routing.
 
 ## Verification Checklist
 
@@ -369,5 +388,6 @@ Be concise. Only flag actual issues. "Everything looks fine" for a prime is not 
 - [ ] `audit` actually wrote `## Stakes` where missing/stale (added or rewrote it, not just flagged it) and reported the `added/refreshed/current` counts — it did not describe itself as read-only across the board.
 - [ ] No line numbers, no reproduced code, no volatile metrics in the generated prime.
 - [ ] `audit` output names each issue by file path and type (stale ref / broken link / missing prime).
+- [ ] `audit` recomputed lesson index paths, estimates, family sets, coverage, and twice-seen Trap promotion; each finding uses its named `LESSONS-*` type.
 - [ ] "Everything looks fine" primes are omitted from the audit report (only issues are listed).
 - [ ] Generated primes follow the PRIME Files Philosophy from `crew-members/general.md`.

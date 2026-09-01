@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.0 — Claim-Time Lesson Enforcement (2026-09-01)
+
+Lessons no longer depend on a request being captured after the lesson exists. Every claim rechecks the current index within the shared budget, builders must read the resolved context, and prime audit catches routing drift before it compounds.
+
+- Capture stamps, all-route claim-time matches, and touched-prime reads are explicitly additive.
+- Missing lesson files never block implementation, but builders record the miss in their hand-back.
+- Prime audit names missing/dead rows, estimate and family drift, false full coverage, and missed twice-seen Trap promotion.
+
 ## 0.259.0 — Budgeted Required-Lessons Routing (2026-09-01)
 
 Future work can now start with the relevant lesson without loading the whole archive. Capture ranks indexed failure families, narrows fully slugged matches when needed, and records anything the shared token budget leaves out.

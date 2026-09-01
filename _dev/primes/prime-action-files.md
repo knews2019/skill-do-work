@@ -105,6 +105,7 @@ A skill or action description is loaded whether or not the thing gets used, so i
 ## Traps
 
 - [family: alternate-writer-contract-drift] Changing an emitted artifact only at its primary writer leaves alternate modes silently producing the old contract; grep for every writer before declaring the format shipped.
+- [family: budgeted-context-routing] Routing lessons only when a REQ is captured → old REQs and later serial siblings miss lessons written before their claim; re-run the same bounded projection at claim for every route, counting captured entries first.
 
 ## Lessons
 
