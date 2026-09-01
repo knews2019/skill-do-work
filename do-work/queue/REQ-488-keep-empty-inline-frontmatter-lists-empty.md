@@ -9,7 +9,6 @@ domain: backend
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 tdd: true
 suggested_spec: bug-fix
-depends_on: []
 maintenance: false
 impact: impact-critical
 effort_estimate: effort-mechanical

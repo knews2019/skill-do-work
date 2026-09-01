@@ -1,8 +1,8 @@
 ---
-session_ended: 2026-09-01T19:33:04Z
-last_completed: REQ-420
-queue_state: 30 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 1 in-progress
-reqs_processed_this_session: 0
+session_ended: 2026-09-01T19:48:29Z
+last_completed: REQ-440
+queue_state: 31 pending, 1 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
+reqs_processed_this_session: 1
 session_depth: light
 ---
 
@@ -24,11 +24,15 @@ session_depth: light
 - REQ-411 — dependency-aware queue selection and actionable summaries merged as `6209227b`, independently approved at 98% after one remediation.
 - REQ-436 — atomic replacement and cleanup moves now preserve complete special modes; merged as `f0715c41`, independently approved at 98%.
 - REQ-412 — canonical request lifecycle transactions merged as `7fc958be`; independently accepted at 83% after one remediation, with residual findings routed to REQ-447 and REQ-459.
+- REQ-440 — static board publication refuses non-regular output targets; implementation `cdf1732c`, metadata `8fde4f48`, release 0.260.3, review Approve 96%. Discovered follow-ups REQ-488 (pending, impact-critical) and REQ-489 (pending-answers).
 
 ## In Progress
 
 
 ## Still Queued
+
+- REQ-488 — selector reads `depends_on: []` as a dependency named `[]`; run this first, it unblocks 20 excluded REQs.
+- REQ-489 — checkpoint entry removal leaves orphan detail lines; awaits consent via `do-work clarify`.
 
 - REQ-413 through REQ-420 remain in the ordered UR-081 chain.
 - REQ-437 through REQ-444 remain queued.
@@ -38,6 +42,9 @@ session_depth: light
 - REQ-446 awaits user consent through `do-work clarify` before it can enter the runnable queue.
 
 ## Session Notes
+
+- 2026-09-01: pre-existing ShellCheck SC2034 in `_dev/tests/shipped-shell-thinness.sh` held REQ-440 at the gate; fixed standalone as `2d140f63` (0.260.2). REQ-469/470 in the queue address that hold shape.
+- 2026-09-01: `complete` left orphan detail lines under `## In Progress (interrupted)` for REQ-418 and REQ-440; both removed by hand here (REQ-489 tracks the cause).
 
 - REQ-411 now provides the canonical typed selector used to compute subsequent waves.
 - REQ-412 established canonical request-state transactions; downstream UR-081 work can now consume them instead of duplicating lifecycle writes.
