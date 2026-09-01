@@ -1,7 +1,7 @@
 ---
 id: REQ-447
 title: '[impact-rule-change] Preserve special mode bits in queue-kanban publication'
-status: pending
+status: claimed
 created_at: 2026-08-31T20:30:00Z
 status_changed_at: 2026-08-31T20:30:00Z
 user_request: UR-081
@@ -15,6 +15,7 @@ effort_estimate: effort-mechanical
 addendum_to: REQ-436
 sweep: true
 sweep_key: preserve-special-mode-bits-in-file-publication
+claimed_at: 2026-09-01T04:10:28Z
 ---
 
 # Preserve Special Mode Bits in Queue-Kanban Publication
