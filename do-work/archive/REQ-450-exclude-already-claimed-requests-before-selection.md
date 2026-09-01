@@ -43,6 +43,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/nextselection/next_commands_test.go
 completed_at: 2026-09-01T23:48:27Z
 release_at: 2026-09-01T23:49:50Z
+commit: 88a6c4f9
 ---
 
 # Exclude Already-Claimed Requests Before Selection
