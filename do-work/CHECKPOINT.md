@@ -38,3 +38,5 @@
 ## In Progress (interrupted)
 
 - REQ-418: Migrate toolbox commands and absorb audit-metrics into do-work-cli — claimed 2026-09-01T08:41:56Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-462: Review fix: Preserve deletion precedence across Git XY inventory states — claimed 2026-09-01T08:42:07Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

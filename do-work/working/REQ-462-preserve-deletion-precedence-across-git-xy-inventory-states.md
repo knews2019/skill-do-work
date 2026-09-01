@@ -1,7 +1,7 @@
 ---
 id: REQ-462
 title: 'Review fix: Preserve deletion precedence across Git XY inventory states'
-status: pending
+status: claimed
 created_at: 2026-09-01T02:23:45Z
 user_request: UR-081
 domain: backend
@@ -18,6 +18,7 @@ review_generated: true
 addendum_to: REQ-414
 sweep: true
 sweep_key: git-porcelain-xy-deletion-precedence
+claimed_at: 2026-09-01T08:42:07Z
 ---
 
 # Preserve Deletion Precedence Across Git XY Inventory States
