@@ -3,6 +3,7 @@ package archivefetch
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -436,6 +437,64 @@ func TestFetchArchiveRefusesUnsafeTargetsUnchanged(t *testing.T) {
 		}
 		assertNoArchiveScratch(t, directory)
 	})
+}
+
+func TestMissingArchiveTargetParentReportsUnattemptedRoutesInTextAndJSON(t *testing.T) {
+	directory := t.TempDir()
+	missingParent := filepath.Join(directory, "missing-parent")
+	targetPath := filepath.Join(missingParent, "upstream.tar.gz")
+	var requestCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requestCount.Add(1)
+		_, _ = response.Write([]byte("network route should not run"))
+	}))
+	defer server.Close()
+
+	for _, outputFormat := range []string{"text", "json"} {
+		t.Run(outputFormat, func(t *testing.T) {
+			command := exec.Command("go", "run", "./cmd/do-work-cli", "--format", outputFormat,
+				"fetch-archive", "--target", targetPath, "--url", server.URL)
+			command.Dir = filepath.Join("..", "..")
+			var standardOutput bytes.Buffer
+			var standardError bytes.Buffer
+			command.Stdout = &standardOutput
+			command.Stderr = &standardError
+			if err := command.Run(); err == nil {
+				t.Fatal("fetch-archive unexpectedly accepted a missing target parent")
+			}
+
+			projectedEvidence := standardOutput.String()
+			if outputFormat == "json" {
+				var result struct {
+					Findings []struct {
+						ObservedEvidence []string `json:"observed_evidence"`
+					} `json:"findings"`
+				}
+				if err := json.Unmarshal(standardOutput.Bytes(), &result); err != nil {
+					t.Fatalf("decode JSON projection: %v\nstdout=%s\nstderr=%s", err, standardOutput.String(), standardError.String())
+				}
+				if len(result.Findings) != 1 {
+					t.Fatalf("findings=%d, want 1", len(result.Findings))
+				}
+				projectedEvidence = strings.Join(result.Findings[0].ObservedEvidence, "\n")
+			}
+			for _, expected := range []string{
+				"HTTP route: not attempted",
+				"Git route: not attempted",
+				"Set DO_WORK_UPSTREAM_URL",
+			} {
+				if !strings.Contains(projectedEvidence, expected) {
+					t.Errorf("%s projection %q is missing %q", outputFormat, projectedEvidence, expected)
+				}
+			}
+		})
+	}
+	if requestCount.Load() != 0 {
+		t.Fatalf("parent preflight made %d network request(s)", requestCount.Load())
+	}
+	if _, err := os.Lstat(missingParent); !os.IsNotExist(err) {
+		t.Fatalf("missing target parent was mutated: %v", err)
+	}
 }
 
 func TestAbsentArchiveTargetRacePreservesTheCompetingCreation(t *testing.T) {
