@@ -1,7 +1,7 @@
 ---
 id: REQ-446
 title: 'Review fix: Match remediation to preflight failure kind'
-status: completed
+status: claimed
 domain: general
 created_at: 2026-08-31T16:40:15Z
 status_changed_at: 2026-08-31T19:24:17Z
@@ -15,7 +15,6 @@ sweep: true
 sweep_key: preflight-failure-kind-remediation
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 claimed_at: 2026-09-01T00:24:50Z
-completed_at: 2026-09-01T00:44:53Z
 kb_status: pending
 route: A
 estimate:
