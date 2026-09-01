@@ -75,3 +75,40 @@ See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
   fixture directory behind. Pre-existing and cosmetic — it does not mask the failure
   or change the exit status — but this REQ is already editing that file.
 
+## Folded From REQ-464 and REQ-465 (2026-09-01)
+
+Both were REQ-414 fresh re-review findings (3 and 4; see
+`do-work/runs/work-2026-08-31-165510/REQ-414-rereview.md`) spawned as standalone
+REQs only because this REQ was dependency-gated at capture time and therefore not
+fold-eligible. The maintainer folded them here on 2026-09-01: their whole substance
+is parity/actionability acceptance criteria for the shim conversion this REQ owns,
+and building either as a separate framework first would be duplicated work.
+
+**From REQ-465 (core-helper differential parity)** — the parity requirement in this
+REQ's third bullet is satisfied for the 17 core helper commands only when:
+
+- Every retained helper runs beside its Go command on the same characterized
+  fixtures in text and JSON modes; exact semantic status, ordered facts, affected
+  paths, recovery/verification argv, and filesystem/index/private-state effects are
+  compared mechanically — not the current registration/smoke matrix in
+  `internal/corehelpers/commands_test.go`, which accepts any exit status up to one
+  and checks renderer agreement only.
+- Fixtures cover happy, non-clean, hostile-path, combined-state, dry-run, refusal,
+  and concurrent-change cases earned by each helper's retained contract.
+- Mutation tests prove the parity adapter cannot silently accept a divergence
+  across status, fact, action, path, and effect dimensions (RED case: a controlled
+  `AD` inventory misclassification or wrong recovery argv must fail the matrix).
+
+**From REQ-464 (specifically actionable structured findings)** — the
+actionable-findings acceptance bullet is satisfied only when:
+
+- Each non-clean core-helper finding carries next/verification argv whose success
+  specifically resolves or proves that exact condition — no family-wide `git
+  status`/`git diff`/rerun fallbacks (`internal/corehelpers/commands.go`).
+- Each dirty path/state is one typed handoff record (spaces, newlines, renames,
+  missing/prunable worktrees, simultaneous rows) rather than one newline-bearing
+  opaque evidence string (`internal/corehelpers/handoff.go`), with deterministic
+  text/JSON parity from the same observation set.
+- Mutation tests that replace a specific action or collapse structured dirty rows
+  fail the characterization gate.
+

@@ -1,7 +1,7 @@
 ---
 id: REQ-464
 title: 'Review fix: Make core helper findings specifically actionable and structured'
-status: pending
+status: cancelled
 created_at: 2026-09-01T02:23:45Z
 user_request: UR-081
 domain: backend
@@ -18,6 +18,7 @@ review_generated: true
 addendum_to: REQ-414
 sweep: true
 sweep_key: core-helper-specific-structured-projections
+completed_at: 2026-09-01T09:18:39Z
 ---
 
 # Make Core Helper Findings Specifically Actionable and Structured
@@ -58,3 +59,9 @@ See `do-work/user-requests/UR-081/input.md` and `do-work/runs/work-2026-08-31-16
 
 ---
 *Source: REQ-414 fresh re-review finding 3.*
+
+## Cancelled
+
+- **When:** 2026-09-01T09:18:39Z
+- **Why:** folded into REQ-420 as actionable-findings acceptance criteria (maintainer decision, 2026-09-01 queue analysis)
+- **Decided by:** user, via `do-work abandon`

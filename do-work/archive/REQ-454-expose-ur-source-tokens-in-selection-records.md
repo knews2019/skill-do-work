@@ -1,7 +1,7 @@
 ---
 id: REQ-454
 title: 'Expose UR source tokens in selection records'
-status: pending
+status: cancelled
 created_at: 2026-08-31T20:49:21Z
 user_request: UR-085
 domain: backend
@@ -14,6 +14,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 related: [REQ-450, REQ-451, REQ-452, REQ-453, REQ-455, REQ-456, REQ-457]
 batch: accepted-validate-feedback-root-causes
+completed_at: 2026-09-01T09:18:45Z
 ---
 
 # Expose UR Source Tokens In Selection Records
@@ -78,3 +79,9 @@ See `do-work/user-requests/UR-085/input.md` for complete verbatim input.
 
 ---
 *Source: validate-feedback Finding #13, captured by UR-085.*
+
+## Cancelled
+
+- **When:** 2026-09-01T09:18:45Z
+- **Why:** reporting polish with no current consumer; recapture if a multi-UR caller that needs selection-record provenance appears (maintainer decision, 2026-09-01 queue analysis)
+- **Decided by:** user, via `do-work abandon`

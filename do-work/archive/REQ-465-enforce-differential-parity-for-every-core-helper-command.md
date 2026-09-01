@@ -1,7 +1,7 @@
 ---
 id: REQ-465
 title: '[impact-rule-change] Review fix: Enforce differential parity for every core helper command'
-status: pending
+status: cancelled
 created_at: 2026-09-01T02:23:45Z
 user_request: UR-081
 domain: testing
@@ -18,6 +18,7 @@ review_generated: true
 addendum_to: REQ-414
 sweep: true
 sweep_key: core-helper-command-differential-parity
+completed_at: 2026-09-01T09:18:35Z
 ---
 
 # Enforce Differential Parity for Every Core Helper Command
@@ -59,3 +60,9 @@ See `do-work/user-requests/UR-081/input.md` and `do-work/runs/work-2026-08-31-16
 
 ---
 *Source: REQ-414 fresh re-review finding 4.*
+
+## Cancelled
+
+- **When:** 2026-09-01T09:18:35Z
+- **Why:** folded into REQ-420 as parity acceptance criteria (maintainer decision, 2026-09-01 queue analysis); no separate parity framework before the shim conversion
+- **Decided by:** user, via `do-work abandon`

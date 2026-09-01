@@ -1,7 +1,7 @@
 ---
 id: REQ-455
 title: 'Summarize estimates for the complete run set'
-status: pending
+status: cancelled
 created_at: 2026-08-31T20:49:21Z
 user_request: UR-085
 domain: backend
@@ -14,6 +14,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-450, REQ-451, REQ-452, REQ-453, REQ-454, REQ-456, REQ-457]
 batch: accepted-validate-feedback-root-causes
+completed_at: 2026-09-01T09:18:45Z
 ---
 
 # Summarize Estimates For The Complete Run Set
@@ -80,3 +81,9 @@ See `do-work/user-requests/UR-085/input.md` for complete verbatim input.
 
 ---
 *Source: validate-feedback Finding #14, captured by UR-085.*
+
+## Cancelled
+
+- **When:** 2026-09-01T09:18:45Z
+- **Why:** reporting polish with no current consumer; recapture if run-set estimate totals gain a consumer (maintainer decision, 2026-09-01 queue analysis)
+- **Decided by:** user, via `do-work abandon`

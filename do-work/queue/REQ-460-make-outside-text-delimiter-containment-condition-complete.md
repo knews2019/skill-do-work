@@ -8,7 +8,7 @@ domain: general
 prime_files: [_dev/primes/prime-action-files.md]
 tdd: true
 suggested_spec: bug-fix
-depends_on: []
+depends_on: [REQ-420]
 maintenance: false
 impact: impact-rule-change
 effort_estimate: effort-substantive
@@ -21,6 +21,11 @@ sweep_key: markdown-delimiter-containment-prefix-gaps
 ---
 
 # Make Outside-Text Delimiter Containment Condition-Complete
+
+> **Deferred (maintainer, 2026-09-01):** substantive-effort edge-case hardening; hold
+> until REQ-420's parity work ships rather than spending a pipeline slot on it while
+> the UR-081 spine is unfinished. The `depends_on: [REQ-420]` gate above is this
+> decision made mechanical — remove it to un-defer.
 
 ## What
 
