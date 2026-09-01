@@ -24,6 +24,16 @@ func handleInventory(executionContext commandruntime.ExecutionContext, arguments
 	if err != nil {
 		return usageResult(CommandInventory, err.Error())
 	}
+	findings := inventoryFindings(rows)
+	result := successResult(nil, findings)
+	if len(rows) == 0 {
+		result.Outcome = resultmodel.OutcomeFindings
+		result.Findings = []resultmodel.CommandFinding{helperFinding("INVENTORY-CLEAN", resultmodel.SeverityInfo, nil, "no uncommitted files", resultmodel.FixabilityAutomatic, "", nil, []string{"git", "status", "--short"})}
+	}
+	return result
+}
+
+func inventoryFindings(rows []inventoryRow) []resultmodel.CommandFinding {
 	findings := make([]resultmodel.CommandFinding, 0, len(rows))
 	for _, row := range rows {
 		evidence := row.Classification
@@ -32,12 +42,7 @@ func handleInventory(executionContext commandruntime.ExecutionContext, arguments
 		}
 		findings = append(findings, helperFinding("INVENTORY-"+row.Classification, resultmodel.SeverityInfo, []string{row.Path}, evidence, resultmodel.FixabilityManual, "", nil, []string{"git", "status", "--short", "--", row.Path}))
 	}
-	result := successResult(nil, findings)
-	if len(rows) == 0 {
-		result.Outcome = resultmodel.OutcomeFindings
-		result.Findings = []resultmodel.CommandFinding{helperFinding("INVENTORY-CLEAN", resultmodel.SeverityInfo, nil, "no uncommitted files", resultmodel.FixabilityAutomatic, "", nil, []string{"git", "status", "--short"})}
-	}
-	return result
+	return findings
 }
 
 func readInventory(repositoryRoot string) ([]inventoryRow, error) {
@@ -130,6 +135,9 @@ func handleAssociate(executionContext commandruntime.ExecutionContext, arguments
 	}
 	if err := scanner.Err(); err != nil {
 		return usageResult(CommandAssociate, err.Error())
+	}
+	if len(candidates) == 0 {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("ASSOCIATION-NO-CANDIDATES", resultmodel.SeverityInfo, nil, "candidate input contains no nonblank paths", resultmodel.FixabilityAutomatic, "", nil, []string{"test", "-s", pathsFile})}}
 	}
 	associations, err := associatePaths(executionContext.RepositoryRoot, candidates)
 	if err != nil {
@@ -234,9 +242,12 @@ func handleProtectedInventory(executionContext commandruntime.ExecutionContext, 
 		return usageResult(CommandProtectedInventory, "start or associate is required")
 	}
 	mode := arguments[0]
-	quarantineName := "do-work-protected-inventory"
+	quarantineName := "do-work-commit-secret-quarantine"
+	dryRun := false
 	for index := 1; index < len(arguments); index++ {
-		if arguments[index] == "--quarantine-name" || strings.HasPrefix(arguments[index], "--quarantine-name=") {
+		if arguments[index] == "--dry-run" {
+			dryRun = true
+		} else if arguments[index] == "--quarantine-name" || strings.HasPrefix(arguments[index], "--quarantine-name=") {
 			value, err := optionValue(arguments, &index, "--quarantine-name")
 			if err != nil {
 				return usageResult(CommandProtectedInventory, err.Error())
@@ -264,38 +275,79 @@ func handleProtectedInventory(executionContext commandruntime.ExecutionContext, 
 	if err != nil {
 		return usageResult(CommandProtectedInventory, err.Error())
 	}
+	if len(rows) == 0 {
+		changes := []resultmodel.RecordedChange{}
+		if mode == "start" {
+			if _, statError := os.Lstat(quarantinePath); statError == nil {
+				changes = append(changes, resultmodel.RecordedChange{Path: quarantinePath, Kind: "deleted", Detail: map[bool]string{true: "would remove stale clean-run quarantine", false: "removed stale clean-run quarantine"}[dryRun]})
+				if !dryRun {
+					_ = os.Remove(quarantinePath)
+				}
+			}
+		}
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Changes: changes, Findings: []resultmodel.CommandFinding{helperFinding("INVENTORY-CLEAN", resultmodel.SeverityInfo, nil, "no uncommitted files", resultmodel.FixabilityAutomatic, "", nil, []string{"git", "status", "--short"})}}
+	}
 	protected := []string{}
-	ordinary := []string{}
+	candidates := []string{}
 	for _, row := range rows {
-		if row.Classification == "X" || row.Classification == "XD" {
+		if row.Classification == "X" {
 			protected = append(protected, row.Path)
 		} else {
-			ordinary = append(ordinary, row.Path)
+			candidates = append(candidates, row.Path)
 		}
 	}
 	if mode == "start" {
-		if len(protected) == 0 {
-			_ = os.Remove(quarantinePath)
-		} else {
-			if err := writePrivateAtomic(quarantinePath, []byte(strings.Join(uniqueSorted(protected), "\n")+"\n"), 0o600); err != nil {
+		if !dryRun {
+			if err := writePrivateAtomic(quarantinePath, newlineList(protected), 0o600); err != nil {
 				return usageResult(CommandProtectedInventory, err.Error())
 			}
 		}
-		return successResult([]resultmodel.RecordedChange{{Path: quarantinePath, Kind: "git-private", Detail: fmt.Sprintf("recorded %d protected paths", len(protected))}}, nil)
+		detail := fmt.Sprintf("recorded %d X-classified protected paths", len(protected))
+		if dryRun {
+			detail = fmt.Sprintf("would record %d X-classified protected paths", len(protected))
+		}
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: []resultmodel.RecordedChange{{Path: quarantinePath, Kind: "git-private", Detail: detail}}, Findings: inventoryFindings(rows)}
 	}
-	existing, _ := os.ReadFile(quarantinePath)
-	quarantined := stringSet(append(nonblankLines(existing), protected...))
+	quarantineInfo, statError := os.Lstat(quarantinePath)
+	if statError != nil || !quarantineInfo.Mode().IsRegular() {
+		return usageResult(CommandProtectedInventory, "protected inventory has not been started with a regular Git-private quarantine file")
+	}
+	existing, readError := os.ReadFile(quarantinePath)
+	if readError != nil {
+		return usageResult(CommandProtectedInventory, readError.Error())
+	}
+	union := uniqueSorted(append(nonblankLines(existing), protected...))
+	if !dryRun {
+		if err := writePrivateAtomic(quarantinePath, newlineList(union), 0o600); err != nil {
+			return usageResult(CommandProtectedInventory, err.Error())
+		}
+	}
+	quarantined := stringSet(union)
 	candidateFile, err := os.CreateTemp("", "do-work-associate-*.txt")
 	if err != nil {
 		return usageResult(CommandProtectedInventory, err.Error())
 	}
 	candidatePath := candidateFile.Name()
 	defer os.Remove(candidatePath)
-	for _, path := range ordinary {
+	for _, path := range candidates {
 		if !quarantined[path] {
 			fmt.Fprintln(candidateFile, path)
 		}
 	}
 	_ = candidateFile.Close()
-	return handleAssociate(executionContext, []string{"--paths-file", candidatePath})
+	result := handleAssociate(executionContext, []string{"--paths-file", candidatePath})
+	detail := fmt.Sprintf("persisted %d protected paths before association", len(union))
+	if dryRun {
+		detail = fmt.Sprintf("would persist %d protected paths before association", len(union))
+	}
+	result.Changes = append([]resultmodel.RecordedChange{{Path: quarantinePath, Kind: "git-private", Detail: detail}}, result.Changes...)
+	return result
+}
+
+func newlineList(values []string) []byte {
+	values = uniqueSorted(values)
+	if len(values) == 0 {
+		return nil
+	}
+	return []byte(strings.Join(values, "\n") + "\n")
 }

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // The branch derivation decides which ref the git route clones. Substituting HEAD for a
@@ -69,6 +70,7 @@ func TestGitRouteDerivationOnlyReadsBranchTarballUrls(t *testing.T) {
 }
 
 func TestDownloadAtomicRetriesThreeTimesAfterInitial429AndUsesTokenPrecedence(t *testing.T) {
+	setAtomicRetryTiming(t, time.Millisecond, time.Second)
 	directory := t.TempDir()
 	var attempts atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -99,6 +101,36 @@ func TestDownloadAtomicRetriesThreeTimesAfterInitial429AndUsesTokenPrecedence(t 
 	info, _ := os.Stat(target)
 	if info.Mode().Perm() != 0o600 {
 		t.Fatalf("mode=%o", info.Mode().Perm())
+	}
+}
+
+func TestDownloadAtomicUsesFixedRetryDelayAndNoWholeRequestTimeout(t *testing.T) {
+	if atomicHTTPClient.Timeout != 0 {
+		t.Fatalf("HTTP client imposes a shorter whole-request timeout: %s", atomicHTTPClient.Timeout)
+	}
+	setAtomicRetryTiming(t, 20*time.Millisecond, time.Second)
+	requestTimes := []time.Time{}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requestTimes = append(requestTimes, time.Now())
+		if len(requestTimes) < 3 {
+			response.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		for index := 0; index < 4; index++ {
+			_, _ = response.Write(make([]byte, 256*1024))
+			time.Sleep(5 * time.Millisecond)
+		}
+	}))
+	defer server.Close()
+	target := filepath.Join(t.TempDir(), "streamed.bin")
+	result := DownloadAtomic(context.Background(), server.URL, target)
+	if result.Err != nil || result.Attempts != 3 || result.BytesWritten != 1024*1024 {
+		t.Fatalf("result=%#v", result)
+	}
+	for index := 1; index < len(requestTimes); index++ {
+		if delay := requestTimes[index].Sub(requestTimes[index-1]); delay < 15*time.Millisecond {
+			t.Fatalf("retry delay %s is shorter than configured fixed delay", delay)
+		}
 	}
 }
 
@@ -318,6 +350,15 @@ func TestUpstreamUrlFromEnvironmentHonoursTheEscapeHatch(t *testing.T) {
 	if url := UpstreamURLFromEnvironment(); url != "https://mirror.example.com/suite.tar.gz" {
 		t.Errorf("overridden URL = %q", url)
 	}
+}
+
+func setAtomicRetryTiming(t *testing.T, delay, budget time.Duration) {
+	t.Helper()
+	previousDelay, previousBudget := atomicRetryDelay, atomicRetryBudget
+	atomicRetryDelay, atomicRetryBudget = delay, budget
+	t.Cleanup(func() {
+		atomicRetryDelay, atomicRetryBudget = previousDelay, previousBudget
+	})
 }
 
 func newFixtureArchive(t *testing.T, directory, entryName string) string {

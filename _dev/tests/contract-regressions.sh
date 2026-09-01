@@ -4636,8 +4636,8 @@ if ! bash -n "$core_root/scripts/run-blocked-check.sh"; then
 fi
 assert_contains \
   "actions/work.md" \
-  'run-blocked-check.sh' \
-  'actions/work.md must invoke the shipped blocked-check timeout runner.'
+  'selector owns the probe set:.*in-process owned process-group runner with a 30-second bound' \
+  'actions/work.md must describe the selector-owned in-process blocked-check runner and its bound.'
 
 # Target ID Resolution contract (REQ-067). The run tokenizer recognized exactly one token
 # shape (REQ- + digits); every other token was residue by construction, so a UR argument was

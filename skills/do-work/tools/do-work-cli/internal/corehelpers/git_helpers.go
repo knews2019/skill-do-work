@@ -13,6 +13,11 @@ import (
 )
 
 func handleAddExclude(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	filtered, dryRun, dryRunError := extractDryRun(arguments)
+	if dryRunError != nil {
+		return usageResult(CommandAddExclude, dryRunError.Error())
+	}
+	arguments = filtered
 	probePath, pattern := "", ""
 	for index := 0; index < len(arguments); index++ {
 		switch {
@@ -64,6 +69,9 @@ func handleAddExclude(executionContext commandruntime.ExecutionContext, argument
 			return successResult(nil, nil)
 		}
 	}
+	if dryRun {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: []resultmodel.RecordedChange{{Path: excludePath, Kind: "git-private", Detail: "would append exact local exclude pattern " + pattern}}, Findings: []resultmodel.CommandFinding{helperFinding("GIT-EXCLUDE-DRY-RUN", resultmodel.SeverityInfo, []string{probePath}, "ignore and exclude-file preconditions validated; Git-private state was not changed", resultmodel.FixabilityAutomatic, "", nil, []string{"git", "check-ignore", "--", probePath})}}
+	}
 	handle, err := os.OpenFile(excludePath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600)
 	if err != nil {
 		return usageResult(CommandAddExclude, err.Error())
@@ -105,12 +113,23 @@ func handleShowCommitDiff(executionContext commandruntime.ExecutionContext, argu
 }
 
 func handleStageDeletion(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	filtered, dryRun, dryRunError := extractDryRun(arguments)
+	if dryRunError != nil {
+		return usageResult(CommandStageDeletion, dryRunError.Error())
+	}
+	arguments = filtered
 	path, parseResult := requiredPathOption(arguments, "--path", CommandStageDeletion)
 	if parseResult != nil {
 		return *parseResult
 	}
 	if exactCachedDeletion(executionContext.RepositoryRoot, path) {
 		return successResult(nil, []resultmodel.CommandFinding{helperFinding("DELETION-ALREADY-STAGED", resultmodel.SeverityInfo, []string{path}, "exact cached deletion already exists", resultmodel.FixabilityAutomatic, "", nil, []string{"git", "diff", "--cached", "--name-status", "--", path})})
+	}
+	if dryRun {
+		if !exactWorktreeDeletion(executionContext.RepositoryRoot, path) {
+			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{helperFinding("DELETION-DRY-RUN-NOT-DELETED", resultmodel.SeverityError, []string{path}, "path is not one exact unstaged tracked deletion", resultmodel.FixabilityManual, "the index was left unchanged", []string{"git", "status", "--short", "--", path}, []string{"git", "diff", "--name-status", "--", path})}}
+		}
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: []resultmodel.RecordedChange{{Path: path, Kind: "staged-deletion", Detail: "would stage one exact tracked deletion"}}, Findings: []resultmodel.CommandFinding{helperFinding("DELETION-DRY-RUN", resultmodel.SeverityInfo, []string{path}, "exact unstaged deletion verified; index was not changed", resultmodel.FixabilityAutomatic, "", nil, []string{"git", "diff", "--cached", "--name-status", "--", path})}}
 	}
 	command := exec.Command("git", "-C", executionContext.RepositoryRoot, "--literal-pathspecs", "add", "-u", "--", path)
 	if output, err := command.CombinedOutput(); err != nil {
@@ -120,6 +139,15 @@ func handleStageDeletion(executionContext commandruntime.ExecutionContext, argum
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{helperFinding("DELETION-STAGE-VERIFY-FAILED", resultmodel.SeverityError, []string{path}, "index does not contain one exact deletion", resultmodel.FixabilityManual, "unrelated index state was not accepted as success", nil, []string{"git", "diff", "--cached", "--name-status", "--", path})}}
 	}
 	return successResult([]resultmodel.RecordedChange{{Path: path, Kind: "staged-deletion", Detail: "staged one exact tracked deletion"}}, nil)
+}
+
+func exactWorktreeDeletion(repositoryRoot, path string) bool {
+	output, err := gitOutput(repositoryRoot, "diff", "--name-status", "-z", "--", path)
+	if err != nil {
+		return false
+	}
+	records := bytes.Split(output, []byte{0})
+	return len(records) == 3 && string(records[0]) == "D" && string(records[1]) == path
 }
 
 func exactCachedDeletion(repositoryRoot, path string) bool {

@@ -17,6 +17,11 @@ import (
 var beforePrivateCopyPublish = func() {}
 
 func handleCaptureScreenshot(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	filtered, dryRun, dryRunError := extractDryRun(arguments)
+	if dryRunError != nil {
+		return usageResult(CommandCaptureScreenshot, dryRunError.Error())
+	}
+	arguments = filtered
 	sourcePath, destinationPath := "", ""
 	staged, keepSource := false, false
 	for index := 0; index < len(arguments); index++ {
@@ -53,6 +58,16 @@ func handleCaptureScreenshot(executionContext commandruntime.ExecutionContext, a
 	if sourceIdentityError != nil || !sourceIdentity.Mode().IsRegular() {
 		return usageResult(CommandCaptureScreenshot, "source must be a readable regular file")
 	}
+	if dryRun {
+		if _, err := os.Lstat(destinationAbsolute); err == nil {
+			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{helperFinding("SCREENSHOT-DESTINATION-OCCUPIED", resultmodel.SeverityError, []string{destinationPath}, "destination already exists", resultmodel.FixabilityManual, "dry-run preserves the occupied destination", nil, []string{"test", "-e", destinationPath})}}
+		}
+		changes := []resultmodel.RecordedChange{{Path: destinationPath, Kind: "created", Detail: "would publish a byte-verified private screenshot copy"}}
+		if staged {
+			changes = append(changes, resultmodel.RecordedChange{Path: sourcePath, Kind: "deleted", Detail: "would remove the exact staged source after publication verification"})
+		}
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: changes, Findings: []resultmodel.CommandFinding{helperFinding("SCREENSHOT-DRY-RUN", resultmodel.SeverityInfo, []string{sourcePath, destinationPath}, "source and destination preconditions validated; no filesystem changes were made", resultmodel.FixabilityAutomatic, "", nil, []string{"test", "-f", sourcePath})}}
+	}
 	if err := publishPrivateCopy(sourceAbsolute, destinationAbsolute); err != nil {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{helperFinding("SCREENSHOT-PUBLISH-FAILED", resultmodel.SeverityError, []string{sourcePath, destinationPath}, err.Error(), resultmodel.FixabilityManual, "source was preserved and no partial destination was authorized", []string{"do-work-cli", CommandCaptureScreenshot, "--keep-source", "--source", sourcePath, "--destination", destinationPath}, []string{"test", "-f", sourcePath})}}
 	}
@@ -66,10 +81,30 @@ func handleCaptureScreenshot(executionContext commandruntime.ExecutionContext, a
 			findings = append(findings, helperFinding("SCREENSHOT-SOURCE-CLEANUP-WARNING", resultmodel.SeverityWarning, []string{sourcePath}, err.Error(), resultmodel.FixabilityManual, "publication succeeded; cleanup can be retried independently", []string{"rm", "--", sourcePath}, []string{"test", "-f", destinationPath}))
 		} else {
 			changes = append(changes, resultmodel.RecordedChange{Path: sourcePath, Kind: "deleted", Detail: "removed staged source after destination verification"})
-			_ = os.Remove(filepath.Dir(sourceAbsolute))
+			stagingDirectory := filepath.Dir(sourceAbsolute)
+			if empty, inspectError := directoryEmpty(stagingDirectory); inspectError != nil {
+				findings = append(findings, helperFinding("SCREENSHOT-STAGING-CLEANUP-WARNING", resultmodel.SeverityWarning, []string{stagingDirectory}, inspectError.Error(), resultmodel.FixabilityManual, "publication succeeded; staging-directory cleanup can be retried", []string{"rmdir", "--", stagingDirectory}, []string{"test", "-f", destinationPath}))
+			} else if empty {
+				if removeError := os.Remove(stagingDirectory); removeError != nil {
+					findings = append(findings, helperFinding("SCREENSHOT-STAGING-CLEANUP-WARNING", resultmodel.SeverityWarning, []string{stagingDirectory}, removeError.Error(), resultmodel.FixabilityManual, "publication succeeded; empty staging-directory cleanup failed", []string{"rmdir", "--", stagingDirectory}, []string{"test", "-f", destinationPath}))
+				}
+			}
 		}
 	}
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: changes, Findings: findings}
+}
+
+func directoryEmpty(path string) (bool, error) {
+	directory, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer directory.Close()
+	entries, err := directory.Readdirnames(1)
+	if err == io.EOF {
+		return true, nil
+	}
+	return len(entries) == 0, err
 }
 
 func publishPrivateCopy(sourcePath, destinationPath string) error {

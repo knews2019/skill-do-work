@@ -2,6 +2,7 @@ package requeststate
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -212,7 +213,7 @@ func TestRecordCommitProvenanceChangesOnlyTopLevelScalar(t *testing.T) {
 	runStateGit(t, root, "commit", "-qm", "fixture")
 	hash := strings.TrimSpace(runStateGit(t, root, "rev-parse", "HEAD"))
 	before := readStateFile(t, root, relativePath)
-	result := RecordCommitProvenance(context.Background(), root, relativePath, hash, false)
+	result := RecordCommitProvenance(context.Background(), root, relativePath, hash, false, false)
 	if result.Outcome != resultmodel.OutcomeSuccess {
 		t.Fatalf("result=%#v", result)
 	}
@@ -220,6 +221,113 @@ func TestRecordCommitProvenanceChangesOnlyTopLevelScalar(t *testing.T) {
 	if !strings.Contains(after, "commit: "+hash) || strings.Replace(before, "commit: oldhash0", "commit: "+hash, 1) != after {
 		t.Fatalf("unexpected rewrite:\n%s", after)
 	}
+}
+
+func TestRecordCommitProvenanceVerifyProvesExactMetadataPatch(t *testing.T) {
+	root := newStateRepository(t)
+	configureStateGit(t, root)
+	relativePath := "do-work/archive/REQ-315.md"
+	writeStateRequest(t, root, relativePath, "REQ-315", "completed", "completed_at: 2026-08-31T21:00:00Z\ncommit: oldhash0\n")
+	runStateGit(t, root, "add", relativePath)
+	runStateGit(t, root, "commit", "-qm", "implementation")
+	hash := strings.TrimSpace(runStateGit(t, root, "rev-parse", "HEAD"))
+	writeResult := RecordCommitProvenance(context.Background(), root, relativePath, hash, false, false)
+	if writeResult.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("write result=%#v", writeResult)
+	}
+	runStateGit(t, root, "add", relativePath)
+	runStateGit(t, root, "commit", "-qm", "metadata")
+	verifyResult := RecordCommitProvenance(context.Background(), root, relativePath, hash, true, false)
+	if verifyResult.Outcome != resultmodel.OutcomeSuccess || !hasStateFinding(verifyResult, "PROVENANCE-VERIFIED") {
+		t.Fatalf("verify result=%#v", verifyResult)
+	}
+}
+
+func TestRecordCommitProvenanceVerifyRejectsRestagedBodyRewrite(t *testing.T) {
+	root := newStateRepository(t)
+	configureStateGit(t, root)
+	relativePath := "do-work/archive/REQ-316.md"
+	writeStateRequest(t, root, relativePath, "REQ-316", "completed", "completed_at: 2026-08-31T21:00:00Z\ncommit: oldhash0\n")
+	runStateGit(t, root, "add", relativePath)
+	runStateGit(t, root, "commit", "-qm", "implementation")
+	hash := strings.TrimSpace(runStateGit(t, root, "rev-parse", "HEAD"))
+	path := filepath.Join(root, filepath.FromSlash(relativePath))
+	corrupted := strings.Replace(readStateFile(t, root, relativePath), "commit: oldhash0", "commit: "+hash, 1)
+	corrupted = strings.Replace(corrupted, "Body\n", "Body rewritten by hook\n", 1)
+	if err := os.WriteFile(path, []byte(corrupted), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runStateGit(t, root, "add", relativePath)
+	runStateGit(t, root, "commit", "-qm", "metadata with restaged rewrite")
+	result := RecordCommitProvenance(context.Background(), root, relativePath, hash, true, false)
+	if result.Outcome == resultmodel.OutcomeSuccess || !hasStateFinding(result, "PROVENANCE-VERIFY-PATCH") {
+		t.Fatalf("unsafe metadata commit verified: %#v", result)
+	}
+}
+
+func TestRecordCommitProvenanceDryRunLeavesBytesUnchanged(t *testing.T) {
+	root := newStateRepository(t)
+	configureStateGit(t, root)
+	relativePath := "do-work/archive/REQ-317.md"
+	writeStateRequest(t, root, relativePath, "REQ-317", "completed", "completed_at: 2026-08-31T21:00:00Z\ncommit: oldhash0\n")
+	runStateGit(t, root, "add", relativePath)
+	runStateGit(t, root, "commit", "-qm", "fixture")
+	hash := strings.TrimSpace(runStateGit(t, root, "rev-parse", "HEAD"))
+	before := readStateFile(t, root, relativePath)
+	result := RecordCommitProvenance(context.Background(), root, relativePath, hash, false, true)
+	if result.Outcome != resultmodel.OutcomeSuccess || !hasStateFinding(result, "PROVENANCE-DRY-RUN") {
+		t.Fatalf("result=%#v", result)
+	}
+	if after := readStateFile(t, root, relativePath); after != before {
+		t.Fatalf("dry-run changed bytes:\n%s", after)
+	}
+}
+
+func TestRecordCommitProvenanceFailsClosedWhenGitCannotAnswerGuardQueries(t *testing.T) {
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name      string
+		condition string
+	}{
+		{"unreadable HEAD blob size", `[ "$3" = "cat-file" ] && [ "$4" = "-s" ]`},
+		{"failed pending numstat", `[ "$3" = "diff" ] && [ "$4" = "--numstat" ]`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := newStateRepository(t)
+			configureStateGit(t, root)
+			relativePath := "do-work/archive/REQ-318.md"
+			writeStateRequest(t, root, relativePath, "REQ-318", "completed", "completed_at: 2026-08-31T21:00:00Z\ncommit: oldhash0\n")
+			runStateGit(t, root, "add", relativePath)
+			runStateGit(t, root, "commit", "-qm", "fixture")
+			hash := strings.TrimSpace(runStateGit(t, root, "rev-parse", "HEAD"))
+			before := readStateFile(t, root, relativePath)
+			stubDirectory := t.TempDir()
+			stub := fmt.Sprintf("#!/bin/sh\nif %s; then exit 73; fi\nexec \"%s\" \"$@\"\n", test.condition, realGit)
+			if err := os.WriteFile(filepath.Join(stubDirectory, "git"), []byte(stub), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PATH", stubDirectory+string(os.PathListSeparator)+os.Getenv("PATH"))
+			result := RecordCommitProvenance(context.Background(), root, relativePath, hash, false, false)
+			if result.Outcome == resultmodel.OutcomeSuccess || !hasStateFinding(result, "PROVENANCE-PREIMAGE-GUARD") {
+				t.Fatalf("Git guard failure was accepted: %#v", result)
+			}
+			if after := readStateFile(t, root, relativePath); after != before {
+				t.Fatalf("Git guard failure changed bytes:\n%s", after)
+			}
+		})
+	}
+}
+
+func hasStateFinding(result resultmodel.CommandResult, code string) bool {
+	for _, finding := range result.Findings {
+		if finding.Code == code {
+			return true
+		}
+	}
+	return false
 }
 
 func newStateRepository(t *testing.T) string {
