@@ -74,3 +74,5 @@ Status: in-progress
 | Reviewer | REQ-446 review | integration range `73bae0ae..75fedbe1` | REQ plus REQ-432 | `REQ-446-review.md` | changes-requested |
 | Remediation | REQ-446 | `worktree-agent-REQ-446-match-remediation-to-preflight-failure-kind` | simultaneous-state fixture and all-caller projection | `REQ-446-remediation-handback.md` | done |
 | Reviewer | REQ-446 re-review | integration range `73bae0ae..6f173a12` | REQ plus initial findings | `REQ-446-rereview.md` | done |
+| Planner/Explorer | REQ-415 hook migration | read-only | REQ plus UR-081, primes, hooks, tests | `REQ-415-plan.md`, `REQ-415-exploration.md` | done |
+| Planner/Explorer | REQ-441 archive refresh | read-only | REQ plus UR-083, REQ-414, archivefetch | `REQ-441-plan.md`, `REQ-441-exploration.md` | done |

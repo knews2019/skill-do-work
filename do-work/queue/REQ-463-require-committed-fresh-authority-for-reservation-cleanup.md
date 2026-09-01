@@ -8,7 +8,7 @@ domain: backend
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 tdd: true
 suggested_spec: bug-fix
-depends_on: [REQ-414]
+depends_on: [REQ-415]
 maintenance: false
 impact: impact-critical
 effort_estimate: effort-substantive
@@ -25,6 +25,8 @@ sweep_key: reservation-cleanup-committed-fresh-authority
 ## What
 
 Delete a REQ reservation only from committed request evidence when inside any Git worktree and only after identity and eligibility are revalidated immediately before deletion. Done means uncommitted files and stale observations can never authorize removal of in-flight coordination state.
+
+REQ-415 consumes this cleanup operation from core SessionStart and has owner-approved scope to implement this exact critical closure. This dependency prevents a parallel write collision; after REQ-415 review, disposition this sweep from the same regression evidence rather than duplicating the fix.
 
 The fold-first scan found no eligible pending or pending-answers REQ, sweep or otherwise, in any UR that shares this reservation-authority root cause. REQ-457 governs rollback ownership of transaction-created destinations, not the committed-evidence and fresh-eligibility predicate for reservation cleanup.
 

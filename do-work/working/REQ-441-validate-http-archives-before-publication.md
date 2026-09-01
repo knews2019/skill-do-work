@@ -15,6 +15,19 @@ effort_estimate: effort-substantive
 related: [REQ-437, REQ-438, REQ-439, REQ-440, REQ-442, REQ-443, REQ-444]
 batch: accepted-feedback-regressions
 claimed_at: 2026-09-01T02:34:54Z
+route: B
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  calculated_at: 2026-09-01T02:42:22Z
+  basis:
+    - Route B
+    - 3-file write set
+    - 5 acceptance criteria
+    - dependency depth 1
+    - asynchronous publication behavior
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Validate HTTP Archives Before Publication
@@ -24,7 +37,7 @@ claimed_at: 2026-09-01T02:34:54Z
 Download HTTP archive candidates to a private sibling, validate them there, and only then publish onto an absent or regular non-symlink target. A failed HTTP validation followed by failed Git fallback must leave every pre-existing target byte-identical.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Reconciled the superseded shell seam and accepted a shared cross-route publication plan for validated replacement of an unchanged regular target.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -60,6 +73,48 @@ Download HTTP archive candidates to a private sibling, validate them there, and 
 ## Builder Guidance
 
 Certainty level: Firm on staging and target preservation. Reuse existing publication mechanics where that reduces, rather than expands, surface.
+
+## Triage
+
+**Route: B** — Medium
+
+**Reasoning:** REQ-414 delivered private staging and validation but narrowed both routes to absent-only targets. The remaining delta is one archivefetch package policy with a bounded cross-route race matrix.
+
+**Planning:** Exploration-guided plan completed in `do-work/runs/work-2026-08-31-165510/REQ-441-plan.md`; repository evidence is in `REQ-441-exploration.md`.
+
+## Plan
+
+1. Replace the occupied-target refusal lock-in with RED fixtures for valid HTTP refresh and invalid-HTTP/valid-Git refresh of a seeded regular target, plus preservation, unsafe-shape, concurrent-change, parent-swap, absent-target, and final-mode cases.
+2. Open the target parent once, snapshot absence or regular identity/content, let HTTP and Git prepare validated private candidates under that root, and publish through one shared helper: exclusive link for initial absence or rooted atomic rename after final identity/digest revalidation for an initially regular target.
+3. Keep standalone `DownloadAtomic` no-overwrite, update the CLI prime to distinguish the two policies, and run focused/full Go, vet, exact Go 1.25, update/contract, scope/diff, and canonical gates.
+
+## Decisions
+
+### D-01: Restore validated replacement for unchanged regular archive targets
+
+**Decision:** DECIDE & STATE — `FetchArchive` may replace an initially regular non-symlink target only after candidate validation and final identity/content revalidation through one held root. Absent targets remain exclusive-create; changed, missing, symlinked, or special targets refuse unchanged.
+
+**Reasoning:** The request's accepted target set is absent or regular. REQ-414 fixed destructive pre-validation publication but its absent-only policy left successful refresh unimplemented.
+
+### D-02: Keep generic download no-overwrite and candidate mode private
+
+**Decision:** DECIDE & STATE — public `DownloadAtomic` remains no-overwrite; only `FetchArchive` owns validated refresh. A successful archive replacement publishes the private candidate's 0600 mode.
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch.go` (modified) — shared rooted target snapshot, candidate preparation, and publication.
+- `skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch_test.go` (modified) — cross-route replacement, preservation, unsafe-target, and race fixtures.
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — distinguish generic no-overwrite from validated archive refresh.
+
+**Files I will NOT touch:** retained fetch/download shell paths, `corehelpers`, `atomicfile`, suiteinstall callers, update fixtures, actions, hooks, recipes, release metadata, or REQ-414 residual packages. Expansion requires a focused RED and owner approval.
+
+**Acceptance criteria:**
+- [ ] Valid HTTP can replace an unchanged regular archive only after validation, with final mode 0600 and no scratch.
+- [ ] Invalid HTTP followed by valid Git applies the same validated replacement contract and reports the winning route truthfully.
+- [ ] Total failure preserves pre-existing bytes/mode; absent targets remain exclusive and unsafe/changed targets refuse unchanged.
+- [ ] Parent swaps and competing creations/replacements cannot redirect or clobber publication.
+- [ ] Focused/full Go, compatibility, update/contract, scope/diff, and canonical gates pass within exactly three files.
 
 ## Full Context
 
