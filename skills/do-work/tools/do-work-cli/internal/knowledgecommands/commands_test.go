@@ -95,9 +95,12 @@ func TestRealRuntimeTextAndJSONProjectSameDreamFindings(t *testing.T) {
 	}
 }
 
-func TestParseOptionsRejectsEscapingAndMixedMutationModes(t *testing.T) {
-	if _, err := parseBKBOptions([]string{"--kb", "../outside"}, true); err == nil {
-		t.Fatal("escaping target was accepted")
+func TestParseOptionsAcceptsDocumentedPathsAndRejectsMixedMutationModes(t *testing.T) {
+	for _, target := range []string{"../outside", filepath.Join(t.TempDir(), "absolute-kb")} {
+		options, err := parseBKBOptions([]string{"--kb", target}, true)
+		if err != nil || options.target != filepath.Clean(target) {
+			t.Fatalf("documented target %q: options=%+v err=%v", target, options, err)
+		}
 	}
 	if _, err := parseBKBOptions([]string{"--dry-run", "--commit"}, true); err == nil {
 		t.Fatal("mixed dry-run and commit was accepted")

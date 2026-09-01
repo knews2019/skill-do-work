@@ -1,6 +1,7 @@
 package knowledgecommands
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -182,19 +183,19 @@ func fencedContentAfter(t *testing.T, source, marker string) string {
 	return source[contentStart:contentStart+contentEnd] + "\n"
 }
 
-func TestBKBInitRefusesSymlinkParent(t *testing.T) {
+func TestBKBInitNormalizesSymlinkSpelledTarget(t *testing.T) {
 	root := t.TempDir()
 	outside := t.TempDir()
 	if err := os.Symlink(outside, filepath.Join(root, "kb")); err != nil {
 		t.Fatal(err)
 	}
 	result := handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--kb", "kb", "--fill-gaps"})
-	if result.Outcome != resultmodel.OutcomeRefused {
-		t.Fatalf("outcome = %s, want refused", result.Outcome)
+	if result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("outcome = %s, want success", result.Outcome)
 	}
 	entries, _ := os.ReadDir(outside)
-	if len(entries) != 0 {
-		t.Fatal("symlink target was mutated")
+	if len(entries) == 0 {
+		t.Fatal("physical symlink target was not initialized")
 	}
 }
 
@@ -214,6 +215,134 @@ func TestBKBInitRefusesNestedScaffoldSymlink(t *testing.T) {
 	entries, _ := os.ReadDir(outside)
 	if len(entries) != 0 {
 		t.Fatal("nested symlink target was mutated")
+	}
+}
+
+func TestBKBInitRootedPublicationRejectsValidatedParentSwap(t *testing.T) {
+	for _, flow := range []string{"git", "standalone"} {
+		t.Run(flow, func(t *testing.T) {
+			root, outside := t.TempDir(), t.TempDir()
+			if flow == "git" {
+				runGitFixture(t, root, "init")
+			}
+			if err := os.MkdirAll(filepath.Join(root, "kb", "raw"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			previous := knowledgeMutationHook
+			knowledgeMutationHook = func(event, gotFlow, path string) error {
+				if event == "after-validation" && gotFlow == flow {
+					if err := os.Rename(filepath.Join(root, "kb"), filepath.Join(root, "kb.original")); err != nil {
+						return err
+					}
+					return os.Symlink(outside, filepath.Join(root, "kb"))
+				}
+				return nil
+			}
+			t.Cleanup(func() { knowledgeMutationHook = previous })
+			var result resultmodel.CommandResult
+			if flow == "git" {
+				result = handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--kb", "kb", "--fill-gaps"})
+			} else {
+				result = initializeWithoutRepository(root, bkbOptions{target: "kb", fillGaps: true}, time.Now())
+			}
+			if result.Outcome != resultmodel.OutcomeRolledBack {
+				t.Fatalf("outcome=%s findings=%+v", result.Outcome, result.Findings)
+			}
+			entries, _ := os.ReadDir(outside)
+			if len(entries) != 0 {
+				t.Fatalf("outside target mutated: %v", entries)
+			}
+		})
+	}
+}
+
+func TestBKBInitRollbackPreservesReplacedObjectsAndParents(t *testing.T) {
+	for _, flow := range []string{"git", "standalone"} {
+		for _, replacement := range []string{"object", "parent"} {
+			t.Run(flow+"/"+replacement, func(t *testing.T) {
+				root := t.TempDir()
+				if flow == "git" {
+					runGitFixture(t, root, "init")
+				}
+				previous := knowledgeMutationHook
+				fired := false
+				knowledgeMutationHook = func(event, gotFlow, path string) error {
+					if fired || event != "after-create" || gotFlow != flow || !strings.HasSuffix(path, "raw/_inbox_queue.md") {
+						return nil
+					}
+					fired = true
+					queue := filepath.Join(root, filepath.FromSlash(path))
+					if replacement == "object" {
+						if err := os.Remove(queue); err != nil {
+							return err
+						}
+						if err := os.WriteFile(queue, []byte("replacement\n"), 0o644); err != nil {
+							return err
+						}
+					} else {
+						raw := filepath.Dir(queue)
+						if err := os.Rename(raw, raw+".owned"); err != nil {
+							return err
+						}
+						if err := os.Mkdir(raw, 0o755); err != nil {
+							return err
+						}
+						if err := os.WriteFile(filepath.Join(raw, "replacement.txt"), []byte("preserve\n"), 0o644); err != nil {
+							return err
+						}
+					}
+					return fmt.Errorf("injected failure")
+				}
+				t.Cleanup(func() { knowledgeMutationHook = previous })
+				var result resultmodel.CommandResult
+				if flow == "git" {
+					result = handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--kb", "kb"})
+				} else {
+					result = initializeWithoutRepository(root, bkbOptions{target: "kb"}, time.Now())
+				}
+				if result.Outcome != resultmodel.OutcomeRisk {
+					t.Fatalf("outcome=%s findings=%+v rollback=%+v", result.Outcome, result.Findings, result.Rollback)
+				}
+				if replacement == "object" {
+					data, err := os.ReadFile(filepath.Join(root, "kb", "raw", "_inbox_queue.md"))
+					if err != nil || string(data) != "replacement\n" {
+						t.Fatalf("replacement deleted: %q %v", data, err)
+					}
+				} else if data, err := os.ReadFile(filepath.Join(root, "kb", "raw", "replacement.txt")); err != nil || string(data) != "preserve\n" {
+					t.Fatalf("parent replacement deleted: %q %v", data, err)
+				}
+			})
+		}
+	}
+}
+
+func TestStandaloneBKBInitRollbackPreservesReplacedGitDirectory(t *testing.T) {
+	root := t.TempDir()
+	previous := knowledgeMutationHook
+	knowledgeMutationHook = func(event, flow, path string) error {
+		if event != "after-create" || flow != "standalone" || !strings.HasSuffix(path, "/.git") {
+			return nil
+		}
+		gitPath := filepath.Join(root, filepath.FromSlash(path))
+		if err := os.Rename(gitPath, gitPath+".owned"); err != nil {
+			return err
+		}
+		if err := os.Mkdir(gitPath, 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(gitPath, "replacement"), []byte("preserve\n"), 0o644); err != nil {
+			return err
+		}
+		return fmt.Errorf("injected Git-directory failure")
+	}
+	t.Cleanup(func() { knowledgeMutationHook = previous })
+	result := initializeWithoutRepository(root, bkbOptions{target: "kb"}, time.Now())
+	if result.Outcome != resultmodel.OutcomeRisk {
+		t.Fatalf("outcome=%s rollback=%+v", result.Outcome, result.Rollback)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "kb", ".git", "replacement"))
+	if err != nil || string(data) != "preserve\n" {
+		t.Fatalf("replacement .git deleted: %q %v", data, err)
 	}
 }
 

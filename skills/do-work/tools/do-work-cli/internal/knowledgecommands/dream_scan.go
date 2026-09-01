@@ -2,7 +2,6 @@ package knowledgecommands
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -45,7 +44,11 @@ func handleDreamScan(executionContext commandruntime.ExecutionContext, arguments
 	if err != nil {
 		return scanFailure(CommandDreamScan, options.target, err)
 	}
-	pages, err := loadDreamPages(wikiRoot, indexPath, executionContext.RepositoryRoot)
+	physicalRoot, err := ensureSafeTarget(executionContext.RepositoryRoot, ".")
+	if err != nil {
+		return scanFailure(CommandDreamScan, options.target, err)
+	}
+	pages, err := loadDreamPages(wikiRoot, indexPath, physicalRoot)
 	if err != nil {
 		return scanFailure(CommandDreamScan, options.target, err)
 	}
@@ -53,7 +56,7 @@ func handleDreamScan(executionContext commandruntime.ExecutionContext, arguments
 	if err != nil {
 		return scanFailure(CommandDreamScan, options.target, err)
 	}
-	findings := scanDreamWorklist(options.target, pages, string(indexBytes))
+	findings := scanDreamWorklist(options.target, evidencePath(physicalRoot, indexPath), pages, string(indexBytes))
 	sortFindings(findings)
 	if len(findings) == 0 {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: []resultmodel.CommandFinding{scanFinding(CommandDreamScan, options.target, "DREAM-SCAN-CLEAN", resultmodel.SeverityInfo, nil, fmt.Sprintf("all seven deterministic scans passed for %d pages", len(pages)), resultmodel.FixabilityManual, "semantic consolidation remains action-owned")}}
@@ -61,7 +64,7 @@ func handleDreamScan(executionContext commandruntime.ExecutionContext, arguments
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: findings}
 }
 
-func scanDreamWorklist(target string, pages []dreamPage, indexText string) []resultmodel.CommandFinding {
+func scanDreamWorklist(target, indexEvidence string, pages []dreamPage, indexText string) []resultmodel.CommandFinding {
 	findings := []resultmodel.CommandFinding{}
 	pageByStem, inbound := map[string]dreamPage{}, map[string]int{}
 	for _, page := range pages {
@@ -107,7 +110,7 @@ func scanDreamWorklist(target string, pages []dreamPage, indexText string) []res
 	}
 	for stem := range indexStems {
 		if _, exists := pageByStem[stem]; !exists {
-			findings = append(findings, dreamFinding(target, "DREAM-DANGLING-INDEX", nil, "remove from index (dangling): "+stem, "index editing remains action-owned"))
+			findings = append(findings, dreamFinding(target, "DREAM-DANGLING-INDEX", []string{indexEvidence}, "remove from index (dangling): "+stem, "index editing remains action-owned"))
 		}
 	}
 	for stem, count := range inbound {
@@ -159,30 +162,38 @@ func findDreamWiki(target, indexPath string) (string, error) {
 
 func loadDreamPages(wikiRoot, indexPath, repositoryRoot string) ([]dreamPage, error) {
 	pages := []dreamPage{}
-	err := filepath.WalkDir(wikiRoot, func(path string, entry fs.DirEntry, walkError error) error {
-		if walkError != nil {
-			return walkError
-		}
+	entries, err := os.ReadDir(wikiRoot)
+	if err != nil {
+		return nil, err
+	}
+	stems := map[string]string{}
+	for _, entry := range entries {
+		path := filepath.Join(wikiRoot, entry.Name())
 		if entry.Type()&os.ModeSymlink != 0 {
-			return fmt.Errorf("scan path %q is a symlink", path)
+			return nil, fmt.Errorf("scan path %q is a symlink", path)
 		}
 		if entry.IsDir() || !strings.EqualFold(filepath.Ext(path), ".md") || path == indexPath {
-			return nil
+			continue
 		}
 		base := filepath.Base(path)
 		if base == "MEMORY.md" || base == "_master_index.md" || base == "index.md" || base == "log.md" {
-			return nil
+			continue
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		frontmatter, body, err := parseFrontmatter(string(data))
 		if err != nil {
-			return fmt.Errorf("%s: %w", path, err)
+			return nil, fmt.Errorf("%s: %w", path, err)
 		}
-		relative, _ := filepath.Rel(repositoryRoot, path)
-		page := dreamPage{path: filepath.ToSlash(relative), stem: strings.TrimSuffix(base, ".md"), title: frontmatter["name"], body: body, frontmatter: frontmatter, links: normalizedLinks(body)}
+		stem := strings.TrimSuffix(base, filepath.Ext(base))
+		key := strings.ToLower(normalizeLink(stem))
+		if previous, exists := stems[key]; exists {
+			return nil, fmt.Errorf("duplicate page stem %q in %s and %s", stem, previous, path)
+		}
+		stems[key] = path
+		page := dreamPage{path: evidencePath(repositoryRoot, path), stem: stem, title: frontmatter["name"], body: body, frontmatter: frontmatter, links: normalizedLinks(body)}
 		if page.title == "" {
 			page.title = frontmatter["title"]
 		}
@@ -190,10 +201,17 @@ func loadDreamPages(wikiRoot, indexPath, repositoryRoot string) ([]dreamPage, er
 			page.title = firstHeading(body, page.stem)
 		}
 		pages = append(pages, page)
-		return nil
-	})
+	}
 	sort.Slice(pages, func(i, j int) bool { return pages[i].path < pages[j].path })
-	return pages, err
+	return pages, nil
+}
+
+func evidencePath(repositoryRoot, path string) string {
+	relative, err := filepath.Rel(repositoryRoot, path)
+	if err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return filepath.ToSlash(relative)
+	}
+	return filepath.ToSlash(path)
 }
 
 func preferredDreamDate(frontmatter map[string]string) (time.Time, bool) {
