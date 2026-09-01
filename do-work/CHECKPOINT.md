@@ -42,3 +42,5 @@
   Known issues: no post-remediation residual is recorded yet; the fresh review agents were interrupted for handoff before writing `REQ-418-rereview.md`. Resume with a new independent reviewer, then complete/archive/release or route every residual Important finding because the remediation allowance is exhausted.
 
 - REQ-420: Replace shell implementations with shims and prove whole-suite parity — claimed 2026-09-01T15:16:17Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-479: [impact-rule-change] Enforce required-lessons reads and audit un-promoted families — claimed 2026-09-01T16:15:11Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
