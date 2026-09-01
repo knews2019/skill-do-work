@@ -40,3 +40,5 @@
   Last known state: Initial builder `a7c975c5` merged as `94560fde`; initial review found nine Important issues. The sole remediation `a43b2587` merged as `82534d36`, passed the full focused/race/full/vet/Go 1.25/Windows/differential/contract/install/update/canonical stack, and has not yet received its required fresh re-review.
   Key files being modified: `skills/do-work/tools/do-work-cli/internal/toolboxcommands/`, `internal/gittransaction/git_transaction.go`, `internal/gittransaction/git_transaction_test.go`, command/result registration, and the CLI prime (documented 32-path ceiling).
   Known issues: no post-remediation residual is recorded yet; the fresh review agents were interrupted for handoff before writing `REQ-418-rereview.md`. Resume with a new independent reviewer, then complete/archive/release or route every residual Important finding because the remediation allowance is exhausted.
+
+- REQ-420: Replace shell implementations with shims and prove whole-suite parity — claimed 2026-09-01T15:16:17Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

@@ -1,7 +1,7 @@
 ---
 id: REQ-420
 title: 'Replace shell implementations with shims and prove whole-suite parity'
-status: pending
+status: claimed
 created_at: 2026-08-29T20:28:26Z
 user_request: UR-081
 domain: testing
@@ -16,6 +16,7 @@ related: [REQ-406, REQ-407, REQ-408, REQ-409, REQ-410, REQ-411, REQ-412, REQ-413
 batch: go-no-llm-command-platform
 sweep: true
 sweep_key: canonical-command-shim-parity-and-authority
+claimed_at: 2026-09-01T15:16:17Z
 ---
 
 # Replace Shell Implementations with Shims and Prove Whole-Suite Parity
