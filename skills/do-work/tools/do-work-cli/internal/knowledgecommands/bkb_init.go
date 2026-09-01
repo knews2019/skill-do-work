@@ -1,0 +1,666 @@
+package knowledgecommands
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+)
+
+type scaffoldFile struct{ path, content string }
+
+var scaffoldDirectories = []string{
+	"raw/inbox", "raw/capture/web", "raw/capture/papers", "raw/capture/repos", "raw/capture/images", "raw/capture/notes", "raw/capture/audio", "raw/capture/video", "raw/processed",
+	"wiki/topics", "wiki/concepts", "wiki/entities", "wiki/sources", "wiki/comparisons", "wiki/daily", "wiki/monthly", "agents",
+}
+
+var scaffoldFiles = []scaffoldFile{
+	{"raw/_inbox_queue.md", "# Inbox Queue\n\nItems pending triage. Updated automatically during triage.\n\n| # | File | Source Type | Status |\n|---|---|---|---|\n"},
+	{"raw/processed/_manifest.md", "# Processing Manifest\n\n| File | Date Processed | Processed Path | Wiki Articles Produced | Status |\n|---|---|---|---|---|\n"},
+	{"wiki/_master_index.md", "# Master Index\n\nLast updated: {today} | Total articles: 0 | Topic clusters: 0\n\n## Topic Clusters\n\n(none yet — run `do-work-knowledge bkb ingest` to add your first source)\n\n## Recent Activity\n\n- {today}: Knowledge base initialized\n"},
+	{"wiki/log.md", "# Activity Log\n\n## [{today}] init | Knowledge base created\n\nStructure initialized. Ready for first source.\n"},
+	{"wiki/overview.md", "# Knowledge Base Overview\n\nThis knowledge base was initialized on {today}. No sources have been ingested yet.\n\nAdd sources to `raw/inbox/` and run `do-work-knowledge bkb triage` followed by `do-work-knowledge bkb ingest` to begin building.\n"},
+	{"wiki/agent.md", "# Retrieval Agent\n\nLearned patterns from past queries. Read this file FIRST during `bkb query` to prioritize which topic clusters and articles to check.\n\n## Hot Topics\n\n(none yet — patterns emerge after 3+ queries)\n\n## Query Log\n\n| Date | Query | Topics Checked | Articles Used | Useful? |\n|---|---|---|---|---|\n"},
+	{"agents/architect.md", architectTemplate}, {"agents/sorter.md", sorterTemplate}, {"agents/compiler.md", compilerTemplate}, {"agents/seeker.md", seekerTemplate},
+	{"agents/connector.md", connectorTemplate}, {"agents/librarian.md", librarianTemplate}, {"agents/reviewer.md", reviewerTemplate}, {"agents/editor.md", editorTemplate},
+	{"CLAUDE.md", schemaTemplate},
+}
+
+const architectTemplate = `# Architect
+
+You are the Architect. You own the KB's structure and schema.
+
+## Focus
+- Directory layout and naming conventions
+- Schema enforcement (CLAUDE.md rules)
+- Index hierarchy (master → topic → article)
+- Init, fill-gaps, and structural repair
+
+## When active
+- ` + "`bkb init`" + ` — you design and create the full structure
+- ` + "`bkb lint`" + ` — you verify index integrity and schema compliance
+- ` + "`bkb defrag`" + ` — you evaluate and reshape cluster boundaries
+- ` + "`bkb crew`" + ` — you guide custom agent creation and validate definitions
+
+## Standards
+- Master index stays under 80 lines
+- Topic indexes stay under 60 lines; split when a cluster exceeds 40 articles
+- Every article in exactly one topic index
+- Every topic index in the master index
+- The KB schema file (` + "`<kb>/CLAUDE.md`" + `) is the single source of truth for conventions
+`
+
+const sorterTemplate = `# Sorter
+
+You are the Sorter. You classify and route incoming files.
+
+## Focus
+- File type detection by extension and content
+- Inbox → capture routing
+- Queue management (_inbox_queue.md)
+- Filename collision handling
+
+## When active
+- ` + "`bkb triage`" + ` — you own the entire triage pass
+
+## Standards
+- Classify by extension first, content second
+- .md files: check for URL in frontmatter (web) vs. personal notes
+- Handle collisions with HHMMSS- prefix
+- Append-only to _inbox_queue.md — only add files moved in this pass
+- Unknown types stay in inbox with a flag, never silently dropped
+`
+
+const compilerTemplate = `# Compiler
+
+You are the Compiler. You transform raw sources into wiki knowledge.
+
+## Focus
+- Reading and understanding source material
+- Creating source summaries, concept pages, entity pages
+- Duplicate detection (exact → merge, near → cross-link)
+- Per-file processing with independent fault tolerance
+
+## When active
+- ` + "`bkb ingest`" + ` — you own the source-to-wiki compilation (including enhanced transcript handling for audio/video)
+
+## Standards
+- Every page gets YAML frontmatter with all required fields
+- Sources field always uses raw/processed/ paths (final location)
+- New pages default to confidence: medium
+- Process each file independently — if file 4 fails, files 1-3 are done
+- Move source to processed/ immediately after successful compilation
+- Non-text sources: images get LLM vision description, audio/video need transcripts
+`
+
+const seekerTemplate = `# Seeker
+
+You are the Seeker. You find and synthesize knowledge from the wiki.
+
+## Focus
+- Reading the retrieval agent (wiki/agent.md) for query prioritization
+- Two-hop navigation: master index → topic index → articles
+- Answer synthesis with [[wiki-link]] citations
+- Three-tier query routing (Synthesize / Record / Skip)
+
+## When active
+- ` + "`bkb query`" + ` — you own search and synthesis
+
+## Standards
+- Always read wiki/agent.md first — check hot topics before scanning cold
+- Cite sources with [[wiki-links]], never make unsupported claims
+- Synthesize tier: answer connects 2+ sources → file as comparison page
+- Record tier: substantive single-source answer → log but don't file
+- Skip tier: simple lookup → return only, no logging
+- Update wiki/agent.md query log after every query
+`
+
+const connectorTemplate = `# Connector
+
+You are the Connector. You discover and maintain relationships between pages.
+
+## Focus
+- Typed relationships (extends, contradicts, evidence-for, complements, supersedes, depends-on)
+- Bidirectional link maintenance
+- Contradiction detection and flagging
+- Relationship density management (8-per-page cap)
+
+## When active
+- ` + "`bkb ingest`" + ` — you add cross-references after the Compiler creates pages
+- ` + "`bkb lint`" + ` — you verify relationship validity and density
+- ` + "`bkb defrag`" + ` — you assess how relationships span across cluster boundaries
+- ` + "`bkb garden`" + ` — you audit relationship types, reciprocity, and density
+
+## Standards
+- Every relationship is bidirectional — if A extends B, B gets a link back to A
+- Choose the most specific relationship type; default to complements when unsure
+- contradicts auto-flags in the daily log and lowers confidence to low
+- When a page hits 8 relationships, drop the weakest (lowest-confidence target or oldest complements)
+- Every rel: value must be one of the six allowed types
+`
+
+const librarianTemplate = `# Librarian
+
+You are the Librarian. You maintain wiki health and track history.
+
+## Focus
+- Lint checks (contradictions, orphans, broken links, stale claims, index integrity)
+- Contradiction resolution workflow
+- Monthly rollups with trend analysis
+- Queue archival and manifest maintenance
+- Daily/monthly log management
+
+## When active
+- ` + "`bkb lint`" + ` — you run all health checks
+- ` + "`bkb resolve`" + ` — you walk through contradictions
+- ` + "`bkb rollup`" + ` — you produce the monthly summary
+- ` + "`bkb close`" + ` — you finalize the day
+- ` + "`bkb garden`" + ` — you audit topic cluster balance and identify orphaned indexes
+
+## Standards
+- Lint findings go to wiki/daily/{today}.md AND wiki/log.md
+- Contradictions use the [RESOLVED] convention for tracking
+- Rollups archive queue entries older than 30 days
+- Never auto-fix without reporting what changed
+`
+
+const reviewerTemplate = `# Reviewer
+
+You are the Reviewer. You are the QA gate — you verify claims, challenge confidence levels, and flag gaps.
+
+## Focus
+- Confidence auditing: are pages rated correctly (high/medium/low)?
+- Source verification: do sources actually support the claims made?
+- Coverage gaps: concepts mentioned 3+ times without their own page
+- Stale claims: content superseded by newer sources
+- Untested assertions: claims with no source trail
+
+## When active
+- ` + "`bkb lint`" + ` — you check confidence accuracy and source backing
+- ` + "`bkb ingest`" + ` — you challenge the Compiler's confidence assignments
+- ` + "`bkb resolve`" + ` — you evaluate which side of a contradiction has better evidence
+
+## Standards
+- A page rated high must have a primary source or 2+ independent sources agree — flag if not
+- A page rated medium with 2+ confirming sources should be upgraded to high — flag if not
+- Claims that appear in wiki pages but trace to no raw/processed/ source are untested — flag them
+- Never silently accept confidence: high without checking the sources list
+`
+
+const editorTemplate = `# Editor
+
+You are the Editor. You ensure the wiki is clear, navigable, and well-structured for human readers.
+
+## Focus
+- Article readability: clear titles, logical section flow, concise language
+- Navigation quality: can a human find what they need in 2 hops?
+- Consistency: similar topics use similar page structures
+- Frontmatter hygiene: titles match content, topic_cluster assignments make sense
+- Overview freshness: wiki/overview.md reflects the current state
+
+## When active
+- ` + "`bkb close`" + ` — you review today's new/updated pages for readability
+- ` + "`bkb lint`" + ` — you check for thin articles, unclear titles, and navigation dead ends
+- ` + "`bkb rollup`" + ` — you refresh the overview and flag readability issues
+- ` + "`bkb defrag`" + ` — you ensure restructured clusters have clear, intuitive names
+
+## Standards
+- Articles should be scannable — headers, short paragraphs, no walls of text
+- Titles should be specific nouns or noun phrases, not sentences
+- Every concept page should be understandable without reading its sources
+- Topic cluster names should be intuitive — a new reader should guess what's inside
+- Flag pages that are stubs (under 3 substantive sentences) for expansion
+`
+
+const schemaTemplate = `# LLM Knowledge Base Schema
+
+## Project Structure
+- ` + "`raw/`" + ` — source documents with lifecycle pipeline. NEVER modify originals.
+- ` + "`raw/inbox/`" + ` — zero-friction drop zone. Sort into capture/ before processing.
+- ` + "`raw/capture/`" + ` — type-sorted staging area.
+- ` + "`raw/processed/YYYY-MM-DD/`" + ` — ingested sources, moved here after successful compilation.
+- ` + "`raw/_inbox_queue.md`" + ` — append-only triage ledger. Only updated with files moved in the current triage pass.
+- ` + "`wiki/`" + ` — LLM-generated wiki. You own this entirely.
+- ` + "`wiki/_master_index.md`" + ` — top-level catalog. Read FIRST on every query.
+- ` + "`wiki/topics/_index_[topic].md`" + ` — second-level indexes by topic cluster.
+- ` + "`wiki/daily/YYYY-MM-DD.md`" + ` — daily changelog.
+- ` + "`wiki/monthly/YYYY-MM.md`" + ` — monthly rollup and trends.
+- ` + "`wiki/log.md`" + ` — append-only activity log.
+- ` + "`wiki/agent.md`" + ` — retrieval agent. Learns query patterns to prioritize future lookups.
+
+## Retrieval Agent
+- ` + "`wiki/agent.md`" + ` tracks query history and hot topics.
+- Read FIRST during ` + "`bkb query`" + ` to prioritize topic clusters.
+- Hot Topics regenerated every 5 queries from the Query Log.
+- Bounded to ~150 lines. Prune oldest log entries when exceeded.
+
+## Page Conventions
+Every wiki page MUST have YAML frontmatter:
+
+    ---
+    title: Page Title
+    type: concept | entity | source-summary | comparison | daily-log | monthly-rollup
+    topic_cluster: [which topic index this belongs to]
+    sources: [list of raw/processed/ paths — stable final location]
+    related:
+      - page: other-page-name
+        rel: extends | contradicts | evidence-for | complements | supersedes | depends-on
+    created: YYYY-MM-DD
+    updated: YYYY-MM-DD
+    confidence: high | medium | low
+    ---
+
+## Typed Relationships
+- ` + "`extends`" + ` — builds on target's ideas
+- ` + "`contradicts`" + ` — conflicting claims (auto-flags contradiction)
+- ` + "`evidence-for`" + ` — supporting data for target's claims
+- ` + "`complements`" + ` — related but distinct ground
+- ` + "`supersedes`" + ` — replaces/updates the target
+- ` + "`depends-on`" + ` — requires target as prerequisite
+- Max 8 relationships per page; drop weakest when adding a 9th
+
+## Confidence Rules
+- **high**: primary source (paper, official docs) OR 2+ independent sources agree
+- **medium**: single secondary source (blog, tutorial). Default for new pages.
+- **low**: no direct source, or active contradiction flagged
+- Transitions: medium → high (corroborated), high → low (contradiction), low → medium/high (resolved)
+
+## Non-Text Sources
+- Images: use LLM vision to describe. Companion .md used if present. Both files move together.
+- Audio/Video: require a companion transcript (.txt or .md). Skip and flag if missing.
+
+## Contradiction Tracking
+- Flag format in logs: ` + "`contradiction: <description>`" + `
+- Resolution format: ` + "`[RESOLVED] contradiction: <description>`" + `
+- A contradiction is open if no ` + "`[RESOLVED]`" + ` entry matches the original flag.
+
+## Index Rules
+- _master_index.md: max 80 lines, one line per topic cluster
+- Topic indexes: max 60 lines, one line per article in the cluster
+- Split threshold: 40 articles per topic index
+- Every article in exactly one topic index
+- Every topic index listed in _master_index.md
+
+## Crew (Agent Dispatch)
+- ` + "`agents/`" + ` — 8 built-in role definitions + custom agents, read before each sub-command (skipped if directory absent — see Agent Dispatch guard)
+- **init**: Architect | **triage**: Sorter | **ingest**: Compiler → Connector → Reviewer
+- **query**: Seeker | **lint**: Librarian + Reviewer + Connector + Editor
+- **resolve**: Librarian + Reviewer | **close**: Librarian + Editor | **rollup**: Librarian + Editor
+- **defrag**: Architect + Connector + Editor | **garden**: Connector + Librarian
+- **crew**: Architect
+- Arrow (→) = sequential handoff. Plus (+) = concurrent standards.
+- Custom agents (files with ` + "`## Custom Agent`" + ` section) activate based on their ` + "`## When active`" + ` section.
+
+## Custom Agents
+- Custom agent files live in ` + "`agents/`" + ` alongside built-ins.
+- Custom agents have a ` + "`## Custom Agent`" + ` section with Created/Updated dates.
+- Built-in agents (8) are never modified. Custom agents extend the crew.
+- Custom agents specify which sub-commands they activate during.
+
+## Transcript Handling
+- Audio/video transcripts get enhanced processing: speaker detection, decisions, action items, open questions.
+- Source summaries for transcripts use the structured format: Overview, Speakers, Key Points, Decisions, Action Items, Open Questions.
+- Entity pages created for identified speakers (confidence: low).
+
+## Workflows
+- **triage**: Sort inbox → capture, append only new items to _inbox_queue.md
+- **ingest**: Read source → duplicate check → create/update wiki pages (enhanced transcript handling for audio/video) → update indexes → write daily log → move source to processed/{today}/ → update manifest → update queue
+- **query**: Read agent.md → master index → topic index → articles → synthesize → route (Synthesize/Record/Skip) → update agent
+- **lint**: Check contradictions, orphans, missing pages, stale claims, index integrity, broken links, relationship density/validity, agent staleness
+- **resolve**: Walk through open contradictions, propose and apply resolutions with user confirmation
+- **close**: Finalize daily log, verify index counts, refresh overview.md, suggest git commit
+- **rollup**: Monthly summary with volume, themes, integrity, recommendations
+- **defrag**: Read structure → evaluate cluster boundaries → check promotions/demotions → refresh master index → apply changes → generate report
+- **garden**: Cluster balance → relationship distribution → orphaned indexes → reciprocity check → reclassification suggestions → apply reciprocity fixes
+- **crew**: list/create/edit/remove custom agents in agents/
+`
+
+func renderScaffold(content, today string) string {
+	return strings.ReplaceAll(content, "{today}", today)
+}
+
+func handleBKBInit(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	options, err := parseBKBOptions(arguments, true)
+	if err != nil {
+		return usageResult(CommandBKBInit, err)
+	}
+	targetPath, err := ensureSafeTarget(executionContext.RepositoryRoot, options.target)
+	if err != nil {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{knowledgeFinding(CommandBKBInit, "BKB-INIT-UNSAFE-TARGET", resultmodel.SeverityError, []string{options.target}, err.Error(), resultmodel.FixabilityRefused, "a symlink or unsafe target component prevents confined publication")}}
+	}
+	if err := validateScaffoldTarget(targetPath); err != nil {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{knowledgeFinding(CommandBKBInit, "BKB-INIT-UNSAFE-COLLISION", resultmodel.SeverityError, []string{options.target}, err.Error(), resultmodel.FixabilityRefused, "a scaffold path has an unsafe type and cannot be preserved as a file or directory")}}
+	}
+	if !options.fillGaps && isKnowledgeBase(targetPath) {
+		finding := knowledgeFinding(CommandBKBInit, "BKB-INIT-EXISTS", resultmodel.SeverityWarning, []string{options.target}, "knowledge base already contains raw/ and wiki/", resultmodel.FixabilityAutomatic, "existing content is never overwritten; use --fill-gaps")
+		finding.NextArgv = []string{"do-work-cli", CommandBKBInit, "--kb", options.target, "--fill-gaps"}
+		finding.NextJustRecipe = CommandBKBInit + " " + quoteRecipeArgument(options.target) + " --fill-gaps"
+		finding.VerificationArgv = []string{"do-work-cli", "--format", "json", CommandBKBInit, "--kb", options.target, "--fill-gaps", "--dry-run"}
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{finding}}
+	}
+	if info, statError := os.Stat(targetPath); statError == nil && info.IsDir() {
+		if gitRoot, gitError := enclosingGitRoot(targetPath); gitError == nil {
+			return initializeInRepository(gitRoot, targetPath, options, nowUTC())
+		}
+	}
+	if gitRoot, gitError := enclosingGitRoot(executionContext.RepositoryRoot); gitError == nil {
+		return initializeInRepository(gitRoot, targetPath, options, nowUTC())
+	}
+	if options.dryRun {
+		return plannedScaffoldResult(targetPath, options.target, nowUTC())
+	}
+	return initializeWithoutRepository(executionContext.RepositoryRoot, options, nowUTC())
+}
+
+func plannedScaffoldResult(targetPath, targetRelative string, now time.Time) resultmodel.CommandResult {
+	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Rollback: resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded}}
+	for _, file := range scaffoldFiles {
+		if _, err := os.Lstat(filepath.Join(targetPath, filepath.FromSlash(file.path))); os.IsNotExist(err) {
+			result.Changes = append(result.Changes, resultmodel.RecordedChange{Path: filepath.ToSlash(filepath.Join(targetRelative, file.path)), Kind: "planned_create", Detail: "canonical BKB scaffold file"})
+		} else {
+			result.SkippedWork = append(result.SkippedWork, resultmodel.SkippedWork{Code: "BKB-INIT-PRESERVE-EXISTING", Reason: filepath.ToSlash(filepath.Join(targetRelative, file.path))})
+		}
+	}
+	return result
+}
+
+func initializeInRepository(gitRoot, targetPath string, options bkbOptions, now time.Time) resultmodel.CommandResult {
+	targetRelative, err := filepath.Rel(gitRoot, targetPath)
+	if err != nil || targetRelative == ".." || strings.HasPrefix(targetRelative, ".."+string(filepath.Separator)) {
+		return usageResult(CommandBKBInit, fmt.Errorf("target is outside the enclosing Git repository"))
+	}
+	missingFiles, existingFiles := scaffoldInventory(targetPath, filepath.ToSlash(targetRelative))
+	missingDirectories := missingDirectoryInventory(targetPath, filepath.ToSlash(targetRelative))
+	if len(missingFiles) == 0 {
+		result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess}
+		for _, path := range existingFiles {
+			result.SkippedWork = append(result.SkippedWork, resultmodel.SkippedWork{Code: "BKB-INIT-PRESERVE-EXISTING", Reason: path})
+		}
+		return result
+	}
+	transaction := gittransaction.ExecuteTransaction(context.Background(), gittransaction.TransactionOptions{RepositoryRoot: gitRoot, TargetPaths: missingFiles, CreatedDirectoryPaths: missingDirectories, DryRun: options.dryRun, Commit: options.commit, CommitMessage: "bkb: initialize knowledge base"}, func(recorder *gittransaction.MutationRecorder) error {
+		for _, directory := range missingDirectories {
+			if err := os.Mkdir(filepath.Join(gitRoot, filepath.FromSlash(directory)), 0o755); err != nil {
+				return err
+			}
+			if err := recorder.RecordCreatedDirectory(directory); err != nil {
+				return err
+			}
+		}
+		for _, file := range scaffoldFiles {
+			repositoryPath := filepath.ToSlash(filepath.Join(targetRelative, file.path))
+			if !containsString(missingFiles, repositoryPath) {
+				continue
+			}
+			absolutePath := filepath.Join(gitRoot, filepath.FromSlash(repositoryPath))
+			fileHandle, openError := os.OpenFile(absolutePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+			if openError != nil {
+				return openError
+			}
+			_, writeError := fileHandle.WriteString(renderScaffold(file.content, now.Format("2006-01-02")))
+			closeError := fileHandle.Close()
+			if writeError != nil {
+				return writeError
+			}
+			if closeError != nil {
+				return closeError
+			}
+			if err := recorder.RecordCreated(repositoryPath); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	result := gittransaction.BuildCommandResult(CommandBKBInit, transaction)
+	if options.dryRun && transaction.Outcome == resultmodel.OutcomeSuccess {
+		result = plannedScaffoldResult(targetPath, filepath.ToSlash(targetRelative), now)
+		result.Rollback = transaction.Rollback
+	}
+	for _, path := range existingFiles {
+		result.SkippedWork = append(result.SkippedWork, resultmodel.SkippedWork{Code: "BKB-INIT-PRESERVE-EXISTING", Reason: path})
+	}
+	return result
+}
+
+func initializeWithoutRepository(root string, options bkbOptions, now time.Time) resultmodel.CommandResult {
+	targetPath, err := ensureSafeTarget(root, options.target)
+	if err != nil {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{knowledgeFinding(CommandBKBInit, "BKB-INIT-UNSAFE-TARGET", resultmodel.SeverityError, []string{options.target}, err.Error(), resultmodel.FixabilityRefused, "the target is unsafe")}}
+	}
+	missingFiles, existingFiles := scaffoldInventory(targetPath, options.target)
+	missingDirectories := missingDirectoryInventory(targetPath, options.target)
+	createdFiles, createdDirectories := []string{}, []string{}
+	gitDirectoryCreated := false
+	rollback := func(cause error) resultmodel.CommandResult {
+		rollbackErrors := []string{}
+		if gitDirectoryCreated {
+			if removeError := os.RemoveAll(filepath.Join(targetPath, ".git")); removeError != nil {
+				rollbackErrors = append(rollbackErrors, removeError.Error())
+			}
+		}
+		for index := len(createdFiles) - 1; index >= 0; index-- {
+			if removeError := os.Remove(createdFiles[index]); removeError != nil && !os.IsNotExist(removeError) {
+				rollbackErrors = append(rollbackErrors, removeError.Error())
+			}
+		}
+		for index := len(createdDirectories) - 1; index >= 0; index-- {
+			if removeError := os.Remove(createdDirectories[index]); removeError != nil && !os.IsNotExist(removeError) {
+				rollbackErrors = append(rollbackErrors, removeError.Error())
+			}
+		}
+		outcome, status := resultmodel.OutcomeRolledBack, resultmodel.RollbackSucceeded
+		if len(rollbackErrors) > 0 {
+			outcome, status = resultmodel.OutcomeRisk, resultmodel.RollbackIncomplete
+		}
+		return resultmodel.CommandResult{Outcome: outcome, Findings: []resultmodel.CommandFinding{knowledgeFinding(CommandBKBInit, "BKB-INIT-FAILED", resultmodel.SeverityError, []string{options.target}, cause.Error(), resultmodel.FixabilityManual, "initialization failed")}, Rollback: resultmodel.RollbackResult{Status: status, Actions: append([]string(nil), createdFiles...), Errors: rollbackErrors}}
+	}
+	for _, relative := range missingDirectories {
+		path := filepath.Join(root, filepath.FromSlash(relative))
+		if err := os.Mkdir(path, 0o755); err != nil {
+			return rollback(err)
+		}
+		createdDirectories = append(createdDirectories, path)
+	}
+	for _, file := range scaffoldFiles {
+		relative := filepath.ToSlash(filepath.Join(options.target, file.path))
+		if !containsString(missingFiles, relative) {
+			continue
+		}
+		path := filepath.Join(root, filepath.FromSlash(relative))
+		fileHandle, openError := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		if openError != nil {
+			return rollback(openError)
+		}
+		_, writeError := fileHandle.WriteString(renderScaffold(file.content, now.Format("2006-01-02")))
+		closeError := fileHandle.Close()
+		if writeError != nil {
+			return rollback(writeError)
+		}
+		if closeError != nil {
+			return rollback(closeError)
+		}
+		createdFiles = append(createdFiles, path)
+	}
+	if _, err := exec.LookPath("git"); err != nil {
+		return rollback(fmt.Errorf("Git is required to initialize a standalone knowledge base: %w", err))
+	}
+	_, gitStatError := os.Lstat(filepath.Join(targetPath, ".git"))
+	gitDirectoryAbsent := os.IsNotExist(gitStatError)
+	command := exec.Command("git", "-C", targetPath, "init")
+	if output, err := command.CombinedOutput(); err != nil {
+		if gitDirectoryAbsent {
+			if _, statError := os.Lstat(filepath.Join(targetPath, ".git")); statError == nil {
+				gitDirectoryCreated = true
+			}
+		}
+		return rollback(fmt.Errorf("git init: %s: %w", strings.TrimSpace(string(output)), err))
+	}
+	gitDirectoryCreated = gitDirectoryAbsent
+	if options.commit && len(missingFiles) > 0 {
+		commitPaths := make([]string, 0, len(missingFiles))
+		for _, path := range missingFiles {
+			commitPaths = append(commitPaths, strings.TrimPrefix(strings.TrimPrefix(path, options.target), "/"))
+		}
+		addArguments := append([]string{"-C", targetPath, "add", "-A", "--"}, commitPaths...)
+		if output, addError := exec.Command("git", addArguments...).CombinedOutput(); addError != nil {
+			return rollback(fmt.Errorf("git add exact scaffold paths: %s: %w", strings.TrimSpace(string(output)), addError))
+		}
+		if output, commitError := exec.Command("git", "-C", targetPath, "commit", "-m", "bkb: initialize knowledge base").CombinedOutput(); commitError != nil {
+			return rollback(fmt.Errorf("git commit exact scaffold paths: %s: %w", strings.TrimSpace(string(output)), commitError))
+		}
+		output, showError := exec.Command("git", "-C", targetPath, "show", "--name-only", "--pretty=format:", "HEAD").Output()
+		if showError != nil {
+			return standaloneCommittedRisk(targetPath, options.target, showError)
+		}
+		actualPaths := strings.Fields(string(output))
+		sort.Strings(actualPaths)
+		sort.Strings(commitPaths)
+		if strings.Join(actualPaths, "\x00") != strings.Join(commitPaths, "\x00") {
+			return standaloneCommittedRisk(targetPath, options.target, fmt.Errorf("committed paths %v differ from exact scaffold paths %v", actualPaths, commitPaths))
+		}
+	}
+	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Rollback: resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded}}
+	for _, relative := range missingFiles {
+		result.Changes = append(result.Changes, resultmodel.RecordedChange{Path: relative, Kind: "created", Detail: "canonical BKB scaffold file"})
+	}
+	for _, relative := range existingFiles {
+		result.SkippedWork = append(result.SkippedWork, resultmodel.SkippedWork{Code: "BKB-INIT-PRESERVE-EXISTING", Reason: relative})
+	}
+	return result
+}
+
+func standaloneCommittedRisk(targetPath, targetRelative string, operationError error) resultmodel.CommandResult {
+	commitOutput, commitError := exec.Command("git", "-C", targetPath, "rev-parse", "HEAD").Output()
+	commitSHA := strings.TrimSpace(string(commitOutput))
+	finding := knowledgeFinding(CommandBKBInit, "BKB-INIT-COMMITTED-RISK", resultmodel.SeverityError, []string{targetRelative}, operationError.Error(), resultmodel.FixabilityManual, "the commit landed but exact paths could not be verified; revert that commit before retrying")
+	if commitError == nil && commitSHA != "" {
+		finding.NextArgv = []string{"git", "-C", targetPath, "revert", commitSHA}
+		finding.NextJustRecipe = ""
+		finding.VerificationArgv = []string{"git", "-C", targetPath, "show", "--name-only", "--pretty=format:", commitSHA}
+	}
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRisk, Findings: []resultmodel.CommandFinding{finding}}
+}
+
+func scaffoldInventory(targetPath, targetRelative string) ([]string, []string) {
+	missing, existing := []string{}, []string{}
+	for _, file := range scaffoldFiles {
+		relative := filepath.ToSlash(filepath.Join(targetRelative, file.path))
+		if _, err := os.Lstat(filepath.Join(targetPath, filepath.FromSlash(file.path))); os.IsNotExist(err) {
+			missing = append(missing, relative)
+		} else {
+			existing = append(existing, relative)
+		}
+	}
+	sort.Strings(missing)
+	sort.Strings(existing)
+	return missing, existing
+}
+
+func missingDirectoryInventory(targetPath, targetRelative string) []string {
+	allDirectories := []string{}
+	for _, directory := range scaffoldDirectorySuffixes() {
+		allDirectories = append(allDirectories, filepath.ToSlash(filepath.Join(targetRelative, directory)))
+	}
+	seen, missing := map[string]bool{}, []string{}
+	for _, relative := range allDirectories {
+		if seen[relative] {
+			continue
+		}
+		seen[relative] = true
+		suffix := strings.TrimPrefix(filepath.FromSlash(relative), filepath.FromSlash(targetRelative))
+		suffix = strings.TrimPrefix(suffix, string(filepath.Separator))
+		absolutePath := targetPath
+		if suffix != "" {
+			absolutePath = filepath.Join(targetPath, suffix)
+		}
+		if _, err := os.Lstat(absolutePath); os.IsNotExist(err) {
+			missing = append(missing, relative)
+		}
+	}
+	sort.Slice(missing, func(i, j int) bool {
+		ai, aj := strings.Count(missing[i], "/"), strings.Count(missing[j], "/")
+		if ai != aj {
+			return ai < aj
+		}
+		return missing[i] < missing[j]
+	})
+	return missing
+}
+
+func enclosingGitRoot(root string) (string, error) {
+	output, err := exec.Command("git", "-C", root, "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Clean(strings.TrimSpace(string(output))), nil
+}
+
+func isKnowledgeBase(path string) bool {
+	raw, rawErr := os.Stat(filepath.Join(path, "raw"))
+	wiki, wikiErr := os.Stat(filepath.Join(path, "wiki"))
+	return rawErr == nil && wikiErr == nil && raw.IsDir() && wiki.IsDir()
+}
+
+func validateScaffoldTarget(targetPath string) error {
+	for _, directory := range scaffoldDirectorySuffixes() {
+		path := filepath.Join(targetPath, filepath.FromSlash(directory))
+		info, err := os.Lstat(path)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("directory scaffold path %q is not a real directory", path)
+		}
+	}
+	for _, file := range scaffoldFiles {
+		path := filepath.Join(targetPath, filepath.FromSlash(file.path))
+		info, err := os.Lstat(path)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("file scaffold path %q is not a regular file", path)
+		}
+	}
+	return nil
+}
+
+func scaffoldDirectorySuffixes() []string {
+	directories, seen := []string{"."}, map[string]bool{".": true}
+	for _, directory := range scaffoldDirectories {
+		parts := strings.Split(directory, "/")
+		for index := range parts {
+			path := filepath.ToSlash(filepath.Join(parts[:index+1]...))
+			if !seen[path] {
+				seen[path] = true
+				directories = append(directories, path)
+			}
+		}
+	}
+	sort.Slice(directories, func(i, j int) bool {
+		leftDepth, rightDepth := strings.Count(directories[i], "/"), strings.Count(directories[j], "/")
+		if leftDepth != rightDepth {
+			return leftDepth < rightDepth
+		}
+		return directories[i] < directories[j]
+	})
+	return directories
+}
+func containsString(values []string, wanted string) bool {
+	index := sort.SearchStrings(values, wanted)
+	return index < len(values) && values[index] == wanted
+}

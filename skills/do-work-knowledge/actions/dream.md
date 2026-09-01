@@ -77,53 +77,11 @@ You now know what exists, what's typed how, and what was touched recently.
 
 ### Step 3: Phase 2 — Gather signal (read-only deterministic checks)
 
-Run all seven checks below and collect findings into a worklist for Phase 3. **Each check is mechanical** — the LLM is doing what a script would do, deterministically.
+Invoke the installed core launcher once with `--repo-root <project-root> --format json dream-scan --path <dir>`. The returned typed findings are the sole Phase-2 evidence and worklist. They cover exactly these seven classes: disk pages absent from the index, dangling index entries, broken wiki links, no-inbound-link orphans, frontmatter dates older than 90 days, relative-date phrases, and likely-duplicate titles.
 
-**Setup.** Build `pages = {stem -> info}` from the Phase-1 map. For each page, also extract:
-- `links`: every `[[target]]` match via regex `\[\[([^\]]+?)\]\]`. Normalize each target (strip `.md`, take basename after last `/`, strip surrounding whitespace).
-- `relative_dates`: every match of the relative-date regex (see Check 6 below).
+Project those findings into the preview by stable code and affected path. Do not rescan page bodies or recompute a finding after the command returns. The optional newer-source probe is not part of the seven-scan command and remains a separate action-owned judgment if the pass needs it.
 
-Then run each check in turn:
-
-**Check 1 — Pages on disk missing from index.**
-Pull `index_stems` from `<index>` via the same wiki-link regex plus markdown links: `\]\(([^)]+\.md)\)`. Normalize identically. Compute `set(pages.keys()) - index_stems`. Worklist payload: `Add to index: <stem>`.
-
-**Check 2 — Index entries with no matching page.**
-Compute `index_stems - set(pages.keys())`. Worklist payload: `Remove from index (dangling): <stem>`.
-
-**Check 3 — Broken `[[wiki-links]]`.**
-For each `(stem, info)` in `pages`, for each `target` in `info.links`: if `target not in pages`, add `<stem>.md -> [[<target>]]` to the worklist.
-
-**Check 4 — Orphan pages (no inbound links).**
-Initialize `inbound = {stem: 0 for stem in pages}`. For each `(stem, info)`, for each `target` in `info.links`: if `target in inbound and target != stem`, increment `inbound[target]`. Worklist: every stem with `inbound == 0`. Note: orphans aren't automatically wrong (some pages are genuine top-level entities) — Phase 3 decides per case.
-
-**Check 5 — Stale pages (frontmatter date older than 90 days).**
-For each page, prefer `last_updated`, then `updated`, then `created`. Parse with `%Y-%m-%d` or `%Y/%m/%d`. Compute `(today - parsed_date).days`. If `> 90`, add `<stem>.md (updated <N> days ago)` to the worklist. Use the system's current date as `today`.
-
-**Check 6 — Relative-date occurrences.**
-For each page body, grep with this regex (case-insensitive, word-bounded):
-
-```
-\b(yesterday|today|tomorrow|tonight|last\s+(?:night|week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|next\s+(?:week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|this\s+(?:week|month|year|morning|afternoon|evening)|a\s+(?:few\s+)?(?:days?|weeks?|months?)\s+ago|recently|just\s+now|earlier\s+today|the\s+other\s+day)\b
-```
-
-Shell equivalent (preferred if `grep` is available):
-
-```
-grep -E -i -no '<the regex above>' <wiki>/*.md
-```
-
-Worklist payload per page: `<stem>.md — <comma-separated unique lowercased matches>`.
-
-**Check 7 — Likely-duplicate pages by title.**
-Compare every unordered pair of page titles (lowercased, whitespace-normalized). Flag a pair as a likely duplicate if **any** of these hold:
-- One title is a substring of the other (after stripping trailing punctuation).
-- They share ≥80% of word tokens (count tokens that appear in both / count tokens in the shorter title).
-- They differ only by trailing plural / version suffix / punctuation (e.g., `redis-decision` vs `redis-decisions`, `migration-v1` vs `migration-v2`).
-
-This approximates SequenceMatcher ratio ≥0.82. Worklist payload: `<a>.md ~ <b>.md (similar title)`.
-
-**Bonus check — Sources newer than citing pages.** If `<dir>/sources/` exists, list each source file's mtime (`ls -la --time-style=long-iso <dir>/sources/` or equivalent). For each page whose body contains a literal reference to a source filename, compare the source's mtime with the page's `last_updated`. Flag any page older than its source.
+If the launcher is missing, JSON is invalid, or the command fails, remove the action-owned `<dir>/.lock`, report the canonical failure and its exact next command, then stop. Never fall back to prose scans or continue to consent/consolidation from a partial worklist.
 
 ### Step 3.5: Phase 2.5 — Preview & Confirm (consent gate before Phase 3)
 
@@ -247,7 +205,7 @@ Audit: run `git diff <dir>` for the full record of changes.
 
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
-| "I'll skip the seven checks — I can spot the issues by reading the pages" | Run all seven checks first; collect the worklist before any judgment | Mechanical checks are deterministic and free; semantic judgment is expensive. Get the worklist before spending tokens. |
+| "I'll skip the canonical seven-check command — I can spot the issues by reading the pages" | Run `dream-scan` once and consume its complete typed worklist before any judgment | Mechanical checks need one reproducible authority; an action rescan can drift from the direct command. |
 | "I'll merge these two pages without checking inbound links" | Repoint every inbound `[[link]]` before deleting the loser | Silent link breakage is the worst kind of rot — it propagates to every page that referenced the loser. |
 | "I can't establish a date for 'recently' — I'll guess from context" | Rewrite to lose the false precision ("recently" → "at some point") and flag in the summary | A confident wrong date is worse than vague phrasing. |
 | "The index looks fine — I'll skip the rebuild" | Always rebuild `<index>` in Phase 4 | Edits in Phase 3 may have added or removed pages; the index must reflect disk. |
@@ -275,7 +233,7 @@ Audit: run `git diff <dir>` for the full record of changes.
 - [ ] Target directory resolved (or stopped with "no memory directory found")
 - [ ] Index file (`MEMORY.md` / `_master_index.md` / `index.md`) located before Phase 1
 - [ ] `.lock` created in Step 1 and removed in Phase 4
-- [ ] All seven Phase-2 checks executed; findings collected into a worklist
+- [ ] Canonical `dream-scan` completed all seven Phase-2 checks; its typed findings are the sole worklist
 - [ ] Phase 2.5 confirmation was presented (worklist preview + `Apply these N fixes? [all / dry-run / specific clusters / none]`) before any Phase 3 write
 - [ ] No Phase 3 writes occurred if the user declined or chose `dry-run`
 - [ ] Mechanical fixes applied before semantic fixes

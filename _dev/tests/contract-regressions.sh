@@ -4503,7 +4503,38 @@ for kanban_recipe_file in "skills/do-work-board/justfile.template" "justfile"; d
     "$kanban_recipe_file" \
     '^run-do-work-update:' \
     "$kanban_recipe_file must ship the project-local do-work update shortcut."
+  for knowledge_recipe_name in bkb-init bkb-status bkb-lint-structure dream-scan; do
+    assert_contains \
+      "$kanban_recipe_file" \
+      "^${knowledge_recipe_name} " \
+      "$kanban_recipe_file must ship the flat ${knowledge_recipe_name} recipe."
+  done
+  assert_contains \
+    "$kanban_recipe_file" \
+    'do-work-cli\.sh.*--repo-root.*bkb-init' \
+    "$kanban_recipe_file bkb-init recipe must delegate through the installed core launcher."
+  assert_contains \
+    "$kanban_recipe_file" \
+    'do-work-cli\.sh.*--repo-root.*dream-scan' \
+    "$kanban_recipe_file dream-scan recipe must delegate through the installed core launcher."
 done
+
+assert_contains \
+  skills/do-work-knowledge/actions/bkb.md \
+  'bkb-lint-structure --kb <kb>.*exactly once' \
+  'bkb lint must consume one canonical structural scan.'
+assert_contains \
+  skills/do-work-knowledge/actions/bkb.md \
+  'Do not fall back to free-form structural scanning' \
+  'bkb lint must stop rather than regain deterministic scan ownership.'
+assert_contains \
+  skills/do-work-knowledge/actions/dream.md \
+  'dream-scan --path <dir>.*sole Phase-2 evidence and worklist' \
+  'dream must consume the canonical seven-scan worklist.'
+assert_contains \
+  skills/do-work-knowledge/actions/dream.md \
+  'remove the action-owned `<dir>/\.lock`.*Never fall back to prose scans' \
+  'dream command failure must release its action-owned lock and stop without a fallback scan.'
 
 # Execute the canonical shutdown line with command seams. A queue-kanban PID that remains a
 # listener throughout the bounded wait must make the recipe line fail before build+serve, and
@@ -6722,7 +6753,7 @@ else
   ' "$repo_root/skills/do-work-board/justfile.template" > "$reserved_section_file"
 
   collision_index=0
-  for reserved_recipe_name in run-kanban run-kanban-cli kanban-static kanban-summary run-do-work-update; do
+  for reserved_recipe_name in run-kanban run-kanban-cli kanban-static kanban-summary run-do-work-update bkb-init bkb-status bkb-lint-structure dream-scan; do
     collision_index=$((collision_index + 1))
     collision_target="$section_workdir/collision-$collision_index.just"
     case "$reserved_recipe_name" in
@@ -6740,6 +6771,9 @@ else
         ;;
       run-do-work-update)
         printf 'run-do-work-update:\r\n    echo collision\r\n' > "$collision_target"
+        ;;
+      bkb-init|bkb-status|bkb-lint-structure|dream-scan)
+        printf '%s:\n    echo collision\n' "$reserved_recipe_name" > "$collision_target"
         ;;
     esac
     cp "$collision_target" "$collision_target.before"
