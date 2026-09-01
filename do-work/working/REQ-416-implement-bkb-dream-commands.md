@@ -132,6 +132,29 @@ Four source/installed recipes now invoke the canonical launcher. BKB and Dream a
 - Builder full Go, vet, exact Go 1.25, real recipe invocation, staged/install/update, diff hygiene, and final canonical maintainer gate passed; the optional browser lane skipped normally.
 - RED evidence begins at absent commands. GREEN fixtures cover exact scaffold/reference bytes, dry-run/preflight/commit/rollback, nested unsafe entries, BKB structural/status cases, all seven Dream classes, deterministic/read-only results, source/installed recipes, action delegation, and lock release on command failure.
 
+## Review — Initial
+
+**Overall: 50%** | 2026-09-01
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 70% |
+| Code Quality | 55% |
+| Test Adequacy | 50% |
+| Scope | 100% |
+| Risk | Critical |
+| Acceptance | Fail |
+
+**Important findings:**
+- F1 — impact-critical — pathname-based scaffold creation and rollback can escape the root or delete replacement objects after parent/object swaps.
+- F2 — impact-user-visible — documented absolute BKB/Dream targets fail, and symlink-spelled roots can emit escaping affected paths.
+- F3 — impact-user-visible — structural lint silently drops dangling topic-index article links.
+- F4 — impact-user-visible — Dream recursively widened the frozen flat `<wiki>/*.md` scan scope.
+
+Two Minor findings cover missing affected paths for dangling Dream index findings and a focused matrix narrower than the handback claims. All findings enter the single remediation pass.
+
+*Reviewed independently; full evidence is in `do-work/runs/work-2026-08-31-165510/REQ-416-review.md`.*
+
 ## Full Context
 See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
 

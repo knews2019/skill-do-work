@@ -86,7 +86,8 @@ Status: in-progress
 | Planner/Explorer | REQ-416 knowledge commands | read-only | REQ plus UR-081, actions, primes, runtime | `REQ-416-plan.md`, `REQ-416-exploration.md` | done |
 | Planner/Explorer | REQ-447 special modes | read-only | REQ plus REQ-436/REQ-412 and both modules | `REQ-447-plan.md`, `REQ-447-exploration.md` | done |
 | 1 | REQ-416 | `worktree-agent-REQ-416-implement-bkb-dream-commands` | `REQ-416-brief.md` | `REQ-416-handback.md` | done |
-| Reviewer | REQ-416 review | integration range `5e341946..3519b315` | REQ plus UR-081 and action boundaries | `REQ-416-review.md` | pending |
+| Reviewer | REQ-416 review | integration range `5e341946..3519b315` | REQ plus UR-081 and action boundaries | `REQ-416-review.md` | changes-requested |
+| Remediation | REQ-416 | `worktree-agent-REQ-416-implement-bkb-dream-commands` | F1-F4 rooted safety and scan/path parity closure | `REQ-416-remediation-handback.md` | in-progress |
 | 2 | REQ-447 | `worktree-agent-REQ-447-preserve-special-mode-bits` | `REQ-447-brief.md` | `REQ-447-handback.md` | done |
 | Reviewer | REQ-447 review | integration range `5e341946..96de7f69` | REQ plus REQ-436/REQ-412 | `REQ-447-review.md` | done |
 | Reviewer | REQ-441 review | builder range `eec9ea36..bab4bbae` plus coordinated prime | REQ plus UR-083 and REQ-414 | `REQ-441-review.md` | changes-requested |
