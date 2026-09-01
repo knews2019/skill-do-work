@@ -45,6 +45,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-detail.js
   - skills/do-work-board/tools/queue-kanban/web/board-cards.js
 completed_at: 2026-09-01T23:16:59Z
+commit: 01a16769
 ---
 
 # Record Per-Phase Timestamps Through the Work Pipeline
