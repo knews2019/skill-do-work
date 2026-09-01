@@ -144,6 +144,7 @@ estimate:
     - cross-route regression gates
     - full-suite verification
 completed_at: 2026-09-01T18:15:09Z
+commit: 8fcba42f
 ---
 
 # Replace Shell Implementations with Shims and Prove Whole-Suite Parity
