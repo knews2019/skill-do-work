@@ -64,3 +64,5 @@ Status: in-progress
 | Explorer | REQ-414 exploration | read-only | accepted plan plus repository | `REQ-414-exploration.md` | pending |
 | 1 | REQ-414 | `worktree-agent-REQ-414-migrate-core-helpers` | `REQ-414-brief.md` | `REQ-414-handback.md` | pending |
 | 2 | REQ-446 | `worktree-agent-REQ-446-match-remediation-to-preflight-failure-kind` | `REQ-446-brief.md` | `REQ-446-handback.md` | done |
+| Reviewer | REQ-446 review | integration range `73bae0ae..75fedbe1` | REQ plus REQ-432 | `REQ-446-review.md` | changes-requested |
+| Remediation | REQ-446 | `worktree-agent-REQ-446-match-remediation-to-preflight-failure-kind` | simultaneous-state fixture and all-caller projection | `REQ-446-remediation-handback.md` | pending |

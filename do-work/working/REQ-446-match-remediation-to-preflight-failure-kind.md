@@ -114,3 +114,24 @@ Passed — the two-file manifest is exact, both files are substantive in `73bae0
 - `go vet ./...` — passed.
 - Exact Go 1.25 compatibility suite — passed across the full CLI module.
 - Builder full CLI tests and diff hygiene — passed per the durable hand-back.
+
+## Review — Initial
+
+**Overall: 50%** | 2026-09-01
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 50% |
+| Code Quality | 90% |
+| Test Adequacy | 50% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Fail |
+
+**Important findings:**
+- F1 — impact-negligible — the named regression restores the dirty request before staging the unrelated file, so it never creates simultaneous dirty-index plus dirty-target state and never proves byte-identical target retention.
+- F2 — impact-user-visible — cleanup special-cases dirty index but still sends other reachable shared-preflight kinds such as not-Git and invalid options through generic target guidance.
+
+**Acceptance:** Fail under the Finding-Closure Ratchet. Both findings remain inside this REQ's failure-kind projection and proof boundary and enter the single remediation pass.
+
+*Reviewed independently; full evidence is in `do-work/runs/work-2026-08-31-165510/REQ-446-review.md`.*
