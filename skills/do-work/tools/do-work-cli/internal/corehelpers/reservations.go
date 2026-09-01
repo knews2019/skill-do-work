@@ -15,13 +15,24 @@ import (
 
 var reservationNamePattern = regexp.MustCompile(`^REQ-(\d{6})$`)
 var requestFilePattern = regexp.MustCompile(`^REQ-(\d+)(?:-|\.md)`)
+var beforeReservationRemoval = func(string) {}
+
+// CleanupReservations runs the fail-soft reservation cleanup operation used by the
+// public helper and SessionStart hook. Hook callers consume the typed changes directly.
+func CleanupReservations(repositoryRoot string) resultmodel.CommandResult {
+	return cleanupReservations(repositoryRoot, false)
+}
 
 func handleCleanupReservations(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
 	filtered, dryRun, dryRunError := extractDryRun(arguments)
 	if dryRunError != nil || len(filtered) != 0 {
 		return usageResult(CommandCleanupReservations, "cleanup-req-reservations accepts no options")
 	}
-	doWorkRoot := filepath.Join(executionContext.RepositoryRoot, "do-work")
+	return cleanupReservations(executionContext.RepositoryRoot, dryRun)
+}
+
+func cleanupReservations(repositoryRoot string, dryRun bool) resultmodel.CommandResult {
+	doWorkRoot := filepath.Join(repositoryRoot, "do-work")
 	if info, err := os.Lstat(doWorkRoot); err == nil && (info.Mode()&os.ModeSymlink != 0 || !info.IsDir()) {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{helperFinding("RESERVATION-ROOT-UNSAFE", resultmodel.SeverityError, []string{"do-work"}, "do-work root is not a real directory", resultmodel.FixabilityRefused, "cleanup refuses link traversal", nil, nil)}}
 	}
@@ -45,7 +56,7 @@ func handleCleanupReservations(executionContext commandruntime.ExecutionContext,
 	if statError != nil || !os.SameFile(rootInfo, openedInfo) {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{helperFinding("RESERVATION-ROOT-RACED", resultmodel.SeverityError, []string{"do-work/.req-reservations"}, "reservation root identity changed before inspection", resultmodel.FixabilityRefused, "cleanup has no authority over the replacement directory", nil, nil)}}
 	}
-	claimed := claimedRequestNumbers(executionContext.RepositoryRoot)
+	claimed := claimedRequestNumbers(repositoryRoot)
 	entries, err := fs.ReadDir(rootHandle.FS(), ".")
 	if err != nil {
 		return usageResult(CommandCleanupReservations, err.Error())
@@ -75,13 +86,21 @@ func handleCleanupReservations(executionContext commandruntime.ExecutionContext,
 			continue
 		}
 		if !dryRun {
+			beforeReservationRemoval(markerPath)
+			finalInfo, finalError := rootHandle.Lstat(entry.Name())
+			finalClaimed := claimedRequestNumbers(repositoryRoot)[number]
+			finalEligible := finalError == nil && finalInfo.Mode().IsRegular() && os.SameFile(secondInfo, finalInfo) &&
+				(finalClaimed || time.Since(finalInfo.ModTime()) >= 48*time.Hour)
+			if !finalEligible {
+				continue
+			}
 			if err := rootHandle.Remove(entry.Name()); err != nil {
 				findings = append(findings, helperFinding("RESERVATION-REMOVE-FAILED", resultmodel.SeverityWarning, []string{markerPath}, err.Error(), resultmodel.FixabilityManual, "cleanup is fail-soft", nil, nil))
 				continue
 			}
 		}
 		reason := "stale for at least 48 hours"
-		if claimed[number] {
+		if claimedRequestNumbers(repositoryRoot)[number] {
 			reason = "matching request exists"
 		}
 		if dryRun {
@@ -103,6 +122,11 @@ func claimedRequestNumbers(repositoryRoot string) map[int]bool {
 				numbers[number] = true
 			}
 		}
+		return numbers
+	}
+	if _, gitRepositoryError := gitOutput(repositoryRoot, "rev-parse", "--is-inside-work-tree"); gitRepositoryError == nil {
+		// An unborn repository has no landed authority. Do not reinterpret the
+		// working tree as committed merely because HEAD does not exist yet.
 		return numbers
 	}
 	for _, rootName := range []string{"queue", "working", "archive"} {

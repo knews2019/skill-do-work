@@ -146,6 +146,35 @@ func TestRenderRejectsUnknownFormat(t *testing.T) {
 	}
 }
 
+func TestProtocolOutputIsExactInTextAndTypedInJSON(t *testing.T) {
+	exact := "hook bytes\nwithout generic prose\n"
+	result := CommandResult{Command: "session-start", Outcome: OutcomeSuccess, ProtocolOutput: &exact}
+	textOutput, err := RenderResult(result, FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(textOutput) != exact {
+		t.Fatalf("text output = %q, want %q", textOutput, exact)
+	}
+	jsonOutput, err := RenderResult(result, FormatJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded CommandResult
+	if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.ProtocolOutput == nil || *decoded.ProtocolOutput != exact {
+		t.Fatalf("JSON protocol output = %#v, want %q", decoded.ProtocolOutput, exact)
+	}
+
+	empty := ""
+	textOutput, err = RenderResult(CommandResult{Command: "memory-stop-capture", Outcome: OutcomeSuccess, ProtocolOutput: &empty}, FormatText)
+	if err != nil || len(textOutput) != 0 {
+		t.Fatalf("explicit empty protocol output = %q, err=%v", textOutput, err)
+	}
+}
+
 // The parity test covers findings; changes, skipped work and rollback errors render
 // unasserted. A reader who only ever sees the text form would not notice one of these three
 // sections disappearing, so each is pinned to the exact line it produces.

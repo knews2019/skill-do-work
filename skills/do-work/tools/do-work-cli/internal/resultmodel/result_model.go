@@ -161,6 +161,7 @@ type CommandResult struct {
 	Excluded         []SelectionExclusion `json:"excluded"`
 	SelectionSummary SelectionSummary     `json:"selection_summary"`
 	Rollback         RollbackResult       `json:"rollback"`
+	ProtocolOutput   *string              `json:"protocol_output,omitempty"`
 }
 
 // ExitCode is the single authority for the 0-4 process status contract. Nothing else in
@@ -276,6 +277,9 @@ func RenderResult(result CommandResult, outputFormat OutputFormat) ([]byte, erro
 }
 
 func renderText(result CommandResult) []byte {
+	if result.ProtocolOutput != nil {
+		return []byte(*result.ProtocolOutput)
+	}
 	var output strings.Builder
 	fmt.Fprintf(&output, "%s: %s\n", result.Command, result.Outcome)
 	fmt.Fprintf(&output, "repository: %s\n", result.RepositoryRoot)

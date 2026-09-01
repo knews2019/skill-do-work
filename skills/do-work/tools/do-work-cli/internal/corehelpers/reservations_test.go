@@ -8,6 +8,61 @@ import (
 	"time"
 )
 
+func TestReservationCleanupDoesNotTrustUncommittedRequestInUnbornGitRepository(t *testing.T) {
+	repository := t.TempDir()
+	runFixtureGitCommand(t, repository, "init", "-q")
+	root := filepath.Join(repository, "do-work", ".req-reservations")
+	if err := os.MkdirAll(filepath.Join(repository, "do-work", "working"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, "REQ-000203")
+	if err := os.WriteFile(marker, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repository, "do-work", "working", "REQ-203-uncommitted.md"), []byte("---\nid: REQ-203\n---\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result := handleCleanupReservations(testContext(repository), nil)
+	if result.Outcome != "success" {
+		t.Fatalf("result=%+v", result)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("uncommitted request authorized marker removal in unborn repository: %v", err)
+	}
+}
+
+func TestReservationCleanupRevalidatesFinalEligibility(t *testing.T) {
+	repository := t.TempDir()
+	root := filepath.Join(repository, "do-work", ".req-reservations")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, "REQ-000204")
+	if err := os.WriteFile(marker, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-49 * time.Hour)
+	if err := os.Chtimes(marker, old, old); err != nil {
+		t.Fatal(err)
+	}
+	original := beforeReservationRemoval
+	beforeReservationRemoval = func(string) {
+		fresh := time.Now()
+		_ = os.Chtimes(marker, fresh, fresh)
+	}
+	t.Cleanup(func() { beforeReservationRemoval = original })
+	result := handleCleanupReservations(testContext(repository), nil)
+	if result.Outcome != "success" {
+		t.Fatalf("result=%+v", result)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("marker that became ineligible was removed: %v", err)
+	}
+}
+
 func TestReservationCleanupRemovesOldAndPreservesFresh(t *testing.T) {
 	repository := t.TempDir()
 	root := filepath.Join(repository, "do-work", ".req-reservations")
