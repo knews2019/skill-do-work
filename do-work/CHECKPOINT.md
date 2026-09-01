@@ -37,4 +37,4 @@
 
 ## In Progress (interrupted)
 
-
+- REQ-463: [impact-critical] Review fix: Require committed fresh authority for reservation cleanup — claimed 2026-09-01T04:02:52Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
