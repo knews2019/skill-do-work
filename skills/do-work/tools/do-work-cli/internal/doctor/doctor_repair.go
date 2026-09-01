@@ -39,10 +39,12 @@ func applyTimestampPlan(ctx context.Context, snapshot *repositorymodel.Repositor
 	for _, plan := range plans {
 		preflight := gittransaction.PreflightTargets(ctx, snapshot.RepositoryRoot, []string{plan.RelativePath}, options.Commit)
 		if preflight.Failure != nil {
-			result.Findings = append(result.Findings, doctorFinding(gittransaction.FindingCode(preflight.Failure.Kind), resultmodel.SeverityWarning,
-				nil, preflight.Failure.Paths, preflight.Failure.Reason, resultmodel.FixabilityRefused,
-				"the exact timestamp target is dirty, untracked, or cannot satisfy the commit guard",
-				[]string{"git", "status", "--short", "--", plan.RelativePath}, []string{"git", "diff", "--quiet", "--exit-code", "--", plan.RelativePath}))
+			preflightResult := gittransaction.BuildCommandResult("doctor", gittransaction.TransactionResult{
+				Outcome:        resultmodel.OutcomeRefused,
+				RepositoryRoot: preflight.RepositoryRoot,
+				Failure:        preflight.Failure,
+			})
+			result.Findings = append(result.Findings, preflightResult.Findings...)
 			continue
 		}
 		eligiblePlans = append(eligiblePlans, plan)
