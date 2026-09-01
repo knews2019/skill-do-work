@@ -62,6 +62,104 @@ func TestDirtyGroupIsRefusedWithoutBlockingIndependentSafeGroup(t *testing.T) {
 	}
 }
 
+func TestCleanupPreflightRemediationMatchesEveryReachableFailureKind(t *testing.T) {
+	tests := []struct {
+		name              string
+		groupCode         string
+		affectedID        string
+		setup             func(*testing.T) (CleanupPlan, ApplyOptions)
+		wantFailureCode   string
+		wantReason        string
+		wantAffectedPaths []string
+		wantNextArgv      []string
+		wantVerifyArgv    []string
+	}{
+		{
+			name:       "not git repository",
+			groupCode:  "NOT-GIT-GROUP",
+			affectedID: "REQ-501",
+			setup: func(t *testing.T) (CleanupPlan, ApplyOptions) {
+				repositoryRoot := t.TempDir()
+				return CleanupPlan{RepositoryRoot: repositoryRoot, Groups: []OperationGroup{{Code: "NOT-GIT-GROUP", AffectedID: "REQ-501", Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "target.txt", Contents: []byte("replacement\n")}}}}}, ApplyOptions{}
+			},
+			wantFailureCode: "GIT-NOT-GIT-REPOSITORY",
+			wantReason:      "mutating commands require a Git repository",
+			wantNextArgv:    []string{"do-work-cli", "--repo-root", "<git-repository>", "cleanup"},
+			wantVerifyArgv:  []string{"git", "rev-parse", "--show-toplevel"},
+		},
+		{
+			name:       "invalid empty targets",
+			groupCode:  "INVALID-GROUP",
+			affectedID: "REQ-502",
+			setup: func(t *testing.T) (CleanupPlan, ApplyOptions) {
+				repositoryRoot := cleanupRepository(t)
+				return CleanupPlan{RepositoryRoot: repositoryRoot, Groups: []OperationGroup{{Code: "INVALID-GROUP", AffectedID: "REQ-502"}}}, ApplyOptions{}
+			},
+			wantFailureCode: "GIT-INVALID-OPTIONS",
+			wantReason:      "at least one exact target path is required",
+			wantNextArgv:    []string{"do-work-cli", "--format", "text", "cleanup"},
+			wantVerifyArgv:  []string{"do-work-cli", "--format", "json", "cleanup"},
+		},
+		{
+			name:       "dirty target",
+			groupCode:  "DIRTY-TARGET-GROUP",
+			affectedID: "REQ-503",
+			setup: func(t *testing.T) (CleanupPlan, ApplyOptions) {
+				repositoryRoot := cleanupRepository(t)
+				writeCleanupFile(t, repositoryRoot, "target.txt", "original\n")
+				commitCleanupFixture(t, repositoryRoot)
+				writeCleanupFile(t, repositoryRoot, "target.txt", "user edit\n")
+				return CleanupPlan{RepositoryRoot: repositoryRoot, Groups: []OperationGroup{{Code: "DIRTY-TARGET-GROUP", AffectedID: "REQ-503", Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "target.txt", Contents: []byte("replacement\n")}}}}}, ApplyOptions{}
+			},
+			wantFailureCode:   "GIT-DIRTY-TARGET",
+			wantReason:        "already dirty",
+			wantAffectedPaths: []string{"target.txt"},
+			wantNextArgv:      []string{"git", "status", "--short", "--", "target.txt"},
+			wantVerifyArgv:    []string{"git", "diff", "--quiet", "--exit-code", "--", "target.txt"},
+		},
+		{
+			name:       "dirty index",
+			groupCode:  "DIRTY-INDEX-GROUP",
+			affectedID: "REQ-504",
+			setup: func(t *testing.T) (CleanupPlan, ApplyOptions) {
+				repositoryRoot := cleanupRepository(t)
+				writeCleanupFile(t, repositoryRoot, "target.txt", "original\n")
+				writeCleanupFile(t, repositoryRoot, "unrelated.txt", "original\n")
+				commitCleanupFixture(t, repositoryRoot)
+				writeCleanupFile(t, repositoryRoot, "unrelated.txt", "staged\n")
+				runCleanupGit(t, repositoryRoot, "add", "unrelated.txt")
+				return CleanupPlan{RepositoryRoot: repositoryRoot, Groups: []OperationGroup{{Code: "DIRTY-INDEX-GROUP", AffectedID: "REQ-504", Operations: []CleanupOperation{{Kind: OperationReplace, SourcePath: "target.txt", Contents: []byte("replacement\n")}}}}}, ApplyOptions{Commit: true, CommitMessage: "cleanup"}
+			},
+			wantFailureCode: "GIT-DIRTY-INDEX",
+			wantReason:      "--commit requires an empty existing index",
+			wantNextArgv:    []string{"git", "diff", "--cached", "--name-only"},
+			wantVerifyArgv:  []string{"git", "diff", "--cached", "--quiet", "--exit-code"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			plan, options := test.setup(t)
+			result := ApplyPlan(context.Background(), plan, options)
+			if result.Outcome != resultmodel.OutcomeFindings || len(result.Findings) != 1 || len(result.Changes) != 0 {
+				t.Fatalf("preflight result = %#v", result)
+			}
+			finding := result.Findings[0]
+			evidence := strings.Join(finding.Evidence, " ")
+			if finding.Code != "CLEANUP-GROUP-REFUSED" ||
+				!reflect.DeepEqual(finding.AffectedIDs, []string{test.affectedID}) ||
+				!reflect.DeepEqual(finding.AffectedPaths, test.wantAffectedPaths) ||
+				!strings.Contains(evidence, test.groupCode) ||
+				!strings.Contains(evidence, test.wantFailureCode) ||
+				!strings.Contains(evidence, test.wantReason) ||
+				!reflect.DeepEqual(finding.NextArgv, test.wantNextArgv) ||
+				!reflect.DeepEqual(finding.VerificationArgv, test.wantVerifyArgv) {
+				t.Fatalf("preflight finding = %#v", finding)
+			}
+		})
+	}
+}
+
 func TestURClosureWaitsForRequiredMemberArchival(t *testing.T) {
 	repositoryRoot := cleanupRepository(t)
 	writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-430-zulu.md", cleanupRequest("REQ-430", "completed", "UR-430"))
@@ -246,16 +344,25 @@ func TestOperationGroupPrerequisitesFailClosed(t *testing.T) {
 		t.Errorf("structural refusal counts = %d total, %d duplicate; want 10 total, 2 duplicate: %#v", structuralRefusalCount, duplicateRefusalCount, result.Findings)
 	}
 
-	for groupCode, wantNextArgv := range map[string][]string{
-		"DIRECT":    {"git", "status", "--short", "--", "direct.txt"},
-		"COLLISION": {"git", "status", "--short", "--", "archive/collision.txt"},
+	for groupCode, wantCommands := range map[string]struct {
+		nextArgv   []string
+		verifyArgv []string
+	}{
+		"DIRECT": {
+			nextArgv:   []string{"git", "status", "--short", "--", "direct.txt"},
+			verifyArgv: []string{"git", "diff", "--quiet", "--exit-code", "--", "direct.txt"},
+		},
+		"COLLISION": {
+			nextArgv:   []string{"git", "status", "--short", "--", "archive/collision.txt"},
+			verifyArgv: []string{"do-work-cli", "cleanup", "--dry-run"},
+		},
 	} {
 		foundExactPath := false
 		for _, finding := range result.Findings {
 			evidence := strings.Join(finding.Evidence, " ")
 			if finding.Code == "CLEANUP-GROUP-REFUSED" && strings.HasPrefix(evidence, groupCode+": ") {
 				foundExactPath = true
-				if !reflect.DeepEqual(finding.AffectedPaths, wantNextArgv[4:]) || !reflect.DeepEqual(finding.NextArgv, wantNextArgv) || !reflect.DeepEqual(finding.VerificationArgv, []string{"do-work-cli", "cleanup", "--dry-run"}) {
+				if !reflect.DeepEqual(finding.AffectedPaths, wantCommands.nextArgv[4:]) || !reflect.DeepEqual(finding.NextArgv, wantCommands.nextArgv) || !reflect.DeepEqual(finding.VerificationArgv, wantCommands.verifyArgv) {
 					t.Errorf("%s path-bearing refusal = paths %#v next %#v verify %#v", groupCode, finding.AffectedPaths, finding.NextArgv, finding.VerificationArgv)
 				}
 			}
