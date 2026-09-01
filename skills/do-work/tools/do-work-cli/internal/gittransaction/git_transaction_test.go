@@ -146,6 +146,204 @@ func TestExecuteTransactionExistingUntrackedRollbackPreservesCompleteMode(t *tes
 	}
 }
 
+func TestPrivateUntrackedTargetsAreObservedRolledBackAndNeverCommitted(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "memory/working-memory.md", "old memory\n")
+	commitAll(t, repositoryRoot, "initial")
+	if err := os.WriteFile(filepath.Join(repositoryRoot, ".git", "info", "exclude"), []byte("/memory/logs/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	privatePath := "memory/logs/2026-09-01.md"
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot:              repositoryRoot,
+		TargetPaths:                 []string{"memory/working-memory.md", privatePath},
+		PrivateUntrackedTargetPaths: []string{privatePath},
+		CreatedDirectoryPaths:       []string{"memory/logs"},
+		Commit:                      true,
+		CommitMessage:               "remember fact",
+	}, func(recorder *MutationRecorder) error {
+		if err := recorder.RecordTouched("memory/working-memory.md"); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(repositoryRoot, "memory", "working-memory.md"), []byte("new memory\n"), 0o644); err != nil {
+			return err
+		}
+		if err := os.Mkdir(filepath.Join(repositoryRoot, "memory", "logs"), 0o755); err != nil {
+			return err
+		}
+		if err := recorder.RecordCreatedDirectory("memory/logs"); err != nil {
+			return err
+		}
+		if err := recorder.RecordCreated(privatePath); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(repositoryRoot, filepath.FromSlash(privatePath)), []byte("private note\n"), 0o600); err != nil {
+			return err
+		}
+		return recorder.RecordPublished(privatePath)
+	})
+	if result.Outcome != resultmodel.OutcomeSuccess || result.CommitSHA == "" {
+		t.Fatalf("mixed transaction = %#v", result)
+	}
+	if got := strings.TrimSpace(runFixtureGit(t, repositoryRoot, "show", "--pretty=", "--name-only", result.CommitSHA)); got != "memory/working-memory.md" {
+		t.Fatalf("committed paths = %q", got)
+	}
+	if got := readFile(t, repositoryRoot, privatePath); got != "private note\n" {
+		t.Fatalf("private bytes = %q", got)
+	}
+}
+
+func TestPrivateUntrackedRollbackRestoresExistingAndRemovesOwnedIgnoredCreation(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "memory/logs/existing.md", "old\n")
+	if err := os.WriteFile(filepath.Join(repositoryRoot, ".git", "info", "exclude"), []byte("/memory/logs/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	createdPath := "memory/logs/created.md"
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot:              repositoryRoot,
+		TargetPaths:                 []string{"memory/logs/existing.md", createdPath},
+		PrivateUntrackedTargetPaths: []string{"memory/logs/existing.md", createdPath},
+	}, func(recorder *MutationRecorder) error {
+		for _, path := range []string{"memory/logs/existing.md", createdPath} {
+			if path == createdPath {
+				if err := recorder.RecordCreated(path); err != nil {
+					return err
+				}
+			} else if err := recorder.RecordTouched(path); err != nil {
+				return err
+			}
+			if err := os.WriteFile(filepath.Join(repositoryRoot, filepath.FromSlash(path)), []byte("new\n"), 0o600); err != nil {
+				return err
+			}
+			if err := recorder.RecordPublished(path); err != nil {
+				return err
+			}
+		}
+		return errors.New("force rollback")
+	})
+	if result.Outcome != resultmodel.OutcomeRolledBack || result.Rollback.Status != resultmodel.RollbackSucceeded {
+		t.Fatalf("rollback = %#v", result)
+	}
+	if got := readFile(t, repositoryRoot, "memory/logs/existing.md"); got != "old\n" {
+		t.Fatalf("restored = %q", got)
+	}
+	if _, err := os.Lstat(filepath.Join(repositoryRoot, filepath.FromSlash(createdPath))); !os.IsNotExist(err) {
+		t.Fatalf("created target remains: %v", err)
+	}
+}
+
+func TestPrivateRollbackIgnoresDeclaredTargetsNotYetMutated(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "memory/logs/existing.md", "old\n")
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot,
+		TargetPaths: []string{
+			"memory/logs/existing.md",
+			"memory/logs/not-created.md",
+		},
+		PrivateUntrackedTargetPaths: []string{
+			"memory/logs/existing.md",
+			"memory/logs/not-created.md",
+		},
+	}, func(*MutationRecorder) error {
+		return errors.New("fail before the private publication phase")
+	})
+	if result.Outcome != resultmodel.OutcomeRolledBack || result.Rollback.Status != resultmodel.RollbackSucceeded {
+		t.Fatalf("untouched private rollback = %#v", result)
+	}
+	if got := readFile(t, repositoryRoot, "memory/logs/existing.md"); got != "old\n" {
+		t.Fatalf("untouched private bytes = %q", got)
+	}
+}
+
+func TestPrivateRollbackPreservesReplacementPublishedByAnotherWriter(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	privatePath := "memory/logs/created.md"
+	if err := os.MkdirAll(filepath.Join(repositoryRoot, "memory", "logs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repositoryRoot, ".git", "info", "exclude"), []byte("/memory/logs/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot:              repositoryRoot,
+		TargetPaths:                 []string{privatePath},
+		PrivateUntrackedTargetPaths: []string{privatePath},
+	}, func(recorder *MutationRecorder) error {
+		if err := recorder.RecordCreated(privatePath); err != nil {
+			return err
+		}
+		absolute := filepath.Join(repositoryRoot, filepath.FromSlash(privatePath))
+		if err := os.WriteFile(absolute, []byte("ours\n"), 0o600); err != nil {
+			return err
+		}
+		if err := recorder.RecordPublished(privatePath); err != nil {
+			return err
+		}
+		replacement := absolute + ".replacement"
+		if err := os.WriteFile(replacement, []byte("theirs\n"), 0o600); err != nil {
+			return err
+		}
+		if err := os.Rename(replacement, absolute); err != nil {
+			return err
+		}
+		return errors.New("force rollback")
+	})
+	if result.Outcome != resultmodel.OutcomeRisk || result.Rollback.Status != resultmodel.RollbackIncomplete {
+		t.Fatalf("replacement rollback = %#v", result)
+	}
+	if got := readFile(t, repositoryRoot, privatePath); got != "theirs\n" {
+		t.Fatalf("replacement was deleted: %q", got)
+	}
+}
+
+func TestPrivateRollbackPreservesReplacementParentDirectory(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	privatePath := "memory/logs/created.md"
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot:              repositoryRoot,
+		TargetPaths:                 []string{privatePath},
+		PrivateUntrackedTargetPaths: []string{privatePath},
+		CreatedDirectoryPaths:       []string{"memory", "memory/logs"},
+	}, func(recorder *MutationRecorder) error {
+		for _, directory := range []string{"memory", "memory/logs"} {
+			if err := os.Mkdir(filepath.Join(repositoryRoot, filepath.FromSlash(directory)), 0o755); err != nil {
+				return err
+			}
+			if err := recorder.RecordCreatedDirectory(directory); err != nil {
+				return err
+			}
+		}
+		if err := recorder.RecordCreated(privatePath); err != nil {
+			return err
+		}
+		absolute := filepath.Join(repositoryRoot, filepath.FromSlash(privatePath))
+		if err := os.WriteFile(absolute, []byte("ours\n"), 0o600); err != nil {
+			return err
+		}
+		if err := recorder.RecordPublished(privatePath); err != nil {
+			return err
+		}
+		if err := os.Rename(filepath.Join(repositoryRoot, "memory", "logs"), filepath.Join(repositoryRoot, "memory", "ours-moved")); err != nil {
+			return err
+		}
+		if err := os.Mkdir(filepath.Join(repositoryRoot, "memory", "logs"), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(repositoryRoot, "memory", "logs", "replacement.md"), []byte("theirs\n"), 0o600); err != nil {
+			return err
+		}
+		return errors.New("force rollback")
+	})
+	if result.Outcome != resultmodel.OutcomeRisk || result.Rollback.Status != resultmodel.RollbackIncomplete {
+		t.Fatalf("replacement-parent rollback = %#v", result)
+	}
+	if got := readFile(t, repositoryRoot, "memory/logs/replacement.md"); got != "theirs\n" {
+		t.Fatalf("replacement parent was removed: %q", got)
+	}
+}
+
 func gitTransactionGoModeFromUnix(mode os.FileMode) os.FileMode {
 	goMode := mode.Perm()
 	if mode&0o4000 != 0 {

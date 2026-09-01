@@ -4503,7 +4503,10 @@ for kanban_recipe_file in "skills/do-work-board/justfile.template" "justfile"; d
     "$kanban_recipe_file" \
     '^run-do-work-update:' \
     "$kanban_recipe_file must ship the project-local do-work update shortcut."
-  for knowledge_recipe_name in bkb-init bkb-status bkb-lint-structure dream-scan; do
+  for knowledge_recipe_name in \
+    bkb-init bkb-status bkb-lint-structure dream-scan \
+    interview-list interview-status interview-export interview-ingest interview-reset interview-versions \
+    memory-remember memory-forget memory-recall memory-status memory-bootstrap memory-audit; do
     assert_contains \
       "$kanban_recipe_file" \
       "^${knowledge_recipe_name} " \
@@ -4535,6 +4538,31 @@ assert_contains \
   skills/do-work-knowledge/actions/dream.md \
   'remove the action-owned `<dir>/\.lock`.*Never fall back to prose scans' \
   'dream command failure must release its action-owned lock and stop without a fallback scan.'
+
+for interview_command in interview-list interview-status interview-export interview-ingest interview-reset interview-versions; do
+  assert_contains \
+    skills/do-work-knowledge/actions/interview.md \
+    "$interview_command" \
+    "interview action must delegate $interview_command to the canonical CLI."
+done
+assert_contains \
+  skills/do-work-knowledge/actions/interview.md \
+  'Never reproduce the mechanical steps below as a prose fallback' \
+  'interview deterministic phases must stop instead of regaining mechanical ownership.'
+for memory_command in memory-remember memory-forget memory-recall memory-status memory-bootstrap memory-audit; do
+  assert_contains \
+    skills/do-work-knowledge/actions/memory.md \
+    "$memory_command" \
+    "memory action must delegate $memory_command to the canonical CLI."
+done
+assert_contains \
+  skills/do-work-knowledge/actions/memory.md \
+  'never fall back to direct prose mutation or a shell scan' \
+  'memory deterministic phases must stop instead of regaining store ownership.'
+assert_contains \
+  skills/do-work-knowledge/actions/memory-value.md \
+  'memory-audit --engine <bkb|memory|both>.*sole executable authority' \
+  'memory value action must consume canonical mechanical audit evidence.'
 
 # Execute the canonical shutdown line with command seams. A queue-kanban PID that remains a
 # listener throughout the bounded wait must make the recipe line fail before build+serve, and
@@ -6753,7 +6781,11 @@ else
   ' "$repo_root/skills/do-work-board/justfile.template" > "$reserved_section_file"
 
   collision_index=0
-  for reserved_recipe_name in run-kanban run-kanban-cli kanban-static kanban-summary run-do-work-update bkb-init bkb-status bkb-lint-structure dream-scan; do
+  for reserved_recipe_name in \
+    run-kanban run-kanban-cli kanban-static kanban-summary run-do-work-update \
+    bkb-init bkb-status bkb-lint-structure dream-scan \
+    interview-list interview-status interview-export interview-ingest interview-reset interview-versions \
+    memory-remember memory-forget memory-recall memory-status memory-bootstrap memory-audit; do
     collision_index=$((collision_index + 1))
     collision_target="$section_workdir/collision-$collision_index.just"
     case "$reserved_recipe_name" in
@@ -6772,7 +6804,7 @@ else
       run-do-work-update)
         printf 'run-do-work-update:\r\n    echo collision\r\n' > "$collision_target"
         ;;
-      bkb-init|bkb-status|bkb-lint-structure|dream-scan)
+      bkb-init|bkb-status|bkb-lint-structure|dream-scan|interview-list|interview-status|interview-export|interview-ingest|interview-reset|interview-versions|memory-remember|memory-forget|memory-recall|memory-status|memory-bootstrap|memory-audit)
         printf '%s:\n    echo collision\n' "$reserved_recipe_name" > "$collision_target"
         ;;
     esac

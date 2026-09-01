@@ -17,13 +17,15 @@ import (
 
 func TestHandlersRegisterKnowledgeCommands(t *testing.T) {
 	handlers := Handlers()
-	for _, name := range []string{CommandBKBInit, CommandBKBStatus, CommandBKBLintStructure, CommandDreamScan} {
+	for _, name := range []string{CommandBKBInit, CommandBKBStatus, CommandBKBLintStructure, CommandDreamScan,
+		CommandInterviewList, CommandInterviewStatus, CommandInterviewExport, CommandInterviewIngest, CommandInterviewReset, CommandInterviewVersions,
+		CommandMemoryRemember, CommandMemoryForget, CommandMemoryRecall, CommandMemoryStatus, CommandMemoryBootstrap, CommandMemoryAudit} {
 		if handlers[name] == nil {
 			t.Fatalf("handler %q is not registered", name)
 		}
 	}
-	if len(handlers) != 4 {
-		t.Fatalf("registered %d handlers, want exactly 4", len(handlers))
+	if len(handlers) != 16 {
+		t.Fatalf("registered %d handlers, want exactly 16", len(handlers))
 	}
 }
 
