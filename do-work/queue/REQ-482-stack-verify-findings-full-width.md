@@ -12,6 +12,12 @@ depends_on: []
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-09-01T12:51:51Z
+  basis:
+    - trivial short-circuit
 write_set: [skills/do-work-board/tools/queue-kanban/web/board.css, skills/do-work-board/tools/queue-kanban/web/template.html, skills/do-work-board/tools/queue-kanban/web/board-cards.js, skills/do-work-board/tools/queue-kanban/*_test.go]
 ---
 
@@ -35,6 +41,9 @@ The current side-by-side boxes look like REQ cards, which they are not — the r
 ## Constraints
 - The anomalies strip shares the `board-anomalies-cards` layout class and hosts real REQ cards (`makeRequestCard`) — those should keep their REQ-card look and multi-column layout. Give the findings strip its own layout rather than restyling the shared class.
 - Board changes follow `_dev/primes/prime-kanban-board.md` (versioning, parser lock-step, build outputs).
+
+## Builder Guidance
+Firm: each finding card full width, findings stacked vertically. Latitude granted: the user asked to "basically improve the UI/UX" — polish the strip's overall look while making it read as findings, not REQ cards, is in scope beyond the minimal layout swap.
 
 ## Red-Green Proof
 **RED prompt/case:** Open the board (Board view) with two or more verify findings present at desktop width — e.g. the state in the captured screenshot (CLAIM-NEEDS-ATTENTION and MERGED-WORKTREE-LEFTOVER). The finding cards render side by side in ~260px-min columns, visually similar to REQ cards. Runnable form: a browser/layout test in the existing `skills/do-work-board/tools/queue-kanban/*_browser_test.go` pattern asserting that with ≥2 findings, each `.board-finding`'s rendered width equals the strip's content width (single column) — fails today.
