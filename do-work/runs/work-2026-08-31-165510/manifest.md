@@ -62,7 +62,7 @@ Status: in-progress
 | Folded | REQ-419 | shell-safe publication recipe arguments | REQ-413 F8 | `do-work/queue/REQ-419-add-flat-just-recipes-action-delegation.md` | done |
 | Planner | REQ-414 plan | read-only | REQ plus UR and shell prime | `REQ-414-plan.md` | done |
 | Explorer | REQ-414 exploration | read-only | accepted plan plus repository | `REQ-414-exploration.md` | done |
-| 1 | REQ-414 | `worktree-agent-REQ-414-migrate-core-helpers` | `REQ-414-brief.md` | `REQ-414-handback.md` | pending |
+| 1 | REQ-414 | `worktree-agent-REQ-414-migrate-core-helpers` | `REQ-414-brief.md` | `REQ-414-handback.md` | done |
 | 2 | REQ-446 | `worktree-agent-REQ-446-match-remediation-to-preflight-failure-kind` | `REQ-446-brief.md` | `REQ-446-handback.md` | done |
 | Reviewer | REQ-446 review | integration range `73bae0ae..75fedbe1` | REQ plus REQ-432 | `REQ-446-review.md` | changes-requested |
 | Remediation | REQ-446 | `worktree-agent-REQ-446-match-remediation-to-preflight-failure-kind` | simultaneous-state fixture and all-caller projection | `REQ-446-remediation-handback.md` | done |
