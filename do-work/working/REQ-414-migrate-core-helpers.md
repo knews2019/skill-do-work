@@ -152,9 +152,16 @@ With those decisions, the initial 30-file boundary below was sufficient for the 
 
 **Reasoning:** The independent restatement sweep found a live orchestrator instruction that contradicts the migrated runtime. This is part of making the replacement authoritative, not a separate feature.
 
+### D-09: Reconcile the blocked-probe lock-in assertion
+
+**Decision:** EXPAND SCOPE — add `_dev/tests/contract-regressions.sh` so the canonical contract gate requires the selector-owned in-process blocked probe rather than the removed shell runner.
+
+**Reasoning:** The canonical maintainer gate supplied the focused RED after D-08: its assertion still mandates the obsolete implementation seam and fails on the corrected orchestrator text.
+
 ## Scope
 
 **Files I will touch:**
+- `_dev/tests/contract-regressions.sh` (modified) — lock the selector-owned in-process blocked-probe contract.
 - `skills/do-work/actions/work.md` (modified) — reconcile the selector's blocked-probe restatement with in-process ownership.
 - `skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go` (new) — handler family and typed projections.
 - `skills/do-work/tools/do-work-cli/internal/corehelpers/commands_test.go` (new) — real command text/JSON and registration coverage.
@@ -207,6 +214,7 @@ Added 17 registered typed commands for the remaining core checks, inventories, p
 The implementation preserves the recorded 0–4/raw-status boundary, ordered-fact parity, private 0600 publication mode, initial-plus-three HTTP retry behavior, and final no-overwrite publication with no pathname rollback. D-06 and D-07 removed stale suiteinstall callers and migrated the update characterization harness to local HTTP fixtures.
 
 **Files changed:**
+- `_dev/tests/contract-regressions.sh` (modified)
 - `_dev/tests/update-script-behavior.sh` (modified)
 - `skills/do-work/actions/work.md` (modified)
 - `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go` (modified)
