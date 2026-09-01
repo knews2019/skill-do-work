@@ -4,7 +4,7 @@
 
 **Read-only toward the work pipeline.** The board never writes the pipeline's state — it never changes `status`, claims REQs, or moves files. It writes exactly three things: the compiled binary (gitignored); in `static` mode, a throwaway HTML artifact under `build/` (kept out of `git status` via a one-line `.git/info/exclude` entry — see Step 5); and, from the **Testing view** in `serve` mode only, the testing-track placeholders — the `testing_status` / `tested_by` / `testing_updated_at` / `testing_feedback` frontmatter fields of a REQ plus the `do-work/testers.md` profile list (see "Testing view" below). Those testing writes are the point: the Markdown files are the database of who tested what, with git as the history — there is deliberately no locking or concurrency control, because every write lands in the working tree where it can be reviewed and committed.
 
-The tool is a standalone Go module that ships inside the skill at `tools/queue-kanban/` (its module, `go.mod`, and embedded `web/` frontend). It rides do-work version bumps, so `do-work update` from the core sibling carries the latest board into every repo. Because it's compiled, this action needs the **Go toolchain** — the one action that does. It degrades gracefully when Go is absent: it reports and stops, never blocking the rest of the skill.
+The tool is a standalone Go module that ships inside the skill at `tools/queue-kanban/` (its module, `go.mod`, and embedded `web/` frontend). It rides do-work version bumps, so `do-work update` from the core sibling carries the latest board into every repo. Because it is compiled, this action needs the **Go toolchain**, as does the core deterministic command platform. It degrades gracefully when Go is absent: it reports and stops, never blocking unrelated natural-language work.
 
 ## When to Use
 
@@ -51,7 +51,7 @@ The board needs the Go toolchain (see tools/queue-kanban/go.mod for the required
 Install it from https://go.dev/dl/ then re-run `do-work-board board`.
 ```
 
-Do not attempt to install Go, and do not block any other do-work action — this is the only action with a toolchain dependency.
+Do not attempt to install Go. Report the missing prerequisite for this invocation and stop instead of substituting prose for the board command.
 
 ### Step 3: Resolve the queue's repo root
 
@@ -102,7 +102,7 @@ The served board's **Testing** view — the only one that writes anything, and t
 
 The main Board view shows a `testing` badge on any card carrying a record, so testing state is visible without switching views. In `static` mode the Testing view renders read-only (no server, no actions). There is no locking: changes land in the working tree and git is the audit trail — when the user asks "who tested REQ-NNN?", the frontmatter (or `git log` on the REQ file) answers.
 
-**Standing shortcut:** if the user wants the board runnable without the agent, the full-suite installer (`justfile.template`) appends `just run-kanban` / `run-kanban-cli` / `kanban-static` / `kanban-summary` recipes to the project's justfile — same build-then-run contract as this action — plus `just run-do-work-update` for the guarded project-local skill updater. Re-running it on a project whose installed recipes have drifted from the shipped block offers a diff-and-consent upgrade. One difference: `just run-kanban` auto-opens your default browser at the board URL (a user-initiated shortcut, not an agent action); this action's serve mode (Step 5) never does.
+**Standing shortcut:** the full-suite installer publishes one managed flat recipe surface. Run `just --list` for its live inventory: it includes the four board recipes, direct deterministic core/knowledge/toolbox commands, canonical `just do-work-update`, and compatibility `just run-do-work-update`. Re-running the installer on a project whose managed block drifted offers a diff-and-consent upgrade. One difference: `just run-kanban` auto-opens your default browser at the board URL (a user-initiated shortcut, not an agent action); this action's serve mode (Step 5) never does.
 
 ## Output Format
 

@@ -1,6 +1,7 @@
 package publication
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
@@ -79,6 +80,50 @@ func TestRemediationF8FindingsCarryExactManifestProtocol(t *testing.T) {
 	}
 	if finding.NextJustRecipe == "" {
 		t.Fatal("publication finding has no actionable recipe equivalent")
+	}
+}
+
+func TestPublicationRecipePreservesHostileManifestArgvAcrossShellBoundary(t *testing.T) {
+	fixtureRoot := t.TempDir()
+	launcherDirectory := filepath.Join(fixtureRoot, ".claude", "skills", "do-work", "tools")
+	if err := os.MkdirAll(launcherDirectory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	receivedPath := filepath.Join(fixtureRoot, "received.argv")
+	commandPath := filepath.Join(launcherDirectory, "do-work-cli.sh")
+	commandBytes := []byte("#!/bin/sh\nprintf '%s\\0' \"$@\" > \"$RECEIVED_ARGV\"\n")
+	if err := os.WriteFile(commandPath, commandBytes, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	hostileManifest := "space 'single' \"double\" $HOME $(printf substituted) `printf backtick`\ttab\nnewline"
+	hostileAnswerAt := "2026-08-29T20:28:26Z"
+	nextArgv, _, recipe := publicationProtocol(OperationAnswer, hostileManifest, hostileAnswerAt)
+	wantNext := []string{"do-work-cli", "answer", "--manifest", hostileManifest, "--at", hostileAnswerAt}
+	if !reflect.DeepEqual(nextArgv, wantNext) {
+		t.Fatalf("next argv changed: %#v, want %#v", nextArgv, wantNext)
+	}
+	shippedTemplatePath := filepath.Join("..", "..", "..", "..", "..", "do-work-board", "justfile.template")
+	justfileBytes, err := os.ReadFile(shippedTemplatePath)
+	if err != nil {
+		t.Fatalf("read shipped managed template: %v", err)
+	}
+	justfilePath := filepath.Join(fixtureRoot, "justfile")
+	if err := os.WriteFile(justfilePath, justfileBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	commandLine := "just --justfile " + quotePublicationRecipeArgument(justfilePath) + " " + recipe
+	command := exec.Command("/bin/sh", "-c", commandLine)
+	command.Env = append(os.Environ(), "RECEIVED_ARGV="+receivedPath)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("execute generated recipe: %v\n%s\nrecipe=%q", err, output, recipe)
+	}
+	receivedBytes, err := os.ReadFile(receivedPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantBytes := []byte("--repo-root\x00" + fixtureRoot + "\x00answer\x00--manifest\x00" + hostileManifest + "\x00--at\x00" + hostileAnswerAt + "\x00")
+	if !bytes.Equal(receivedBytes, wantBytes) {
+		t.Fatalf("shell recipe argv bytes changed:\n got %q\nwant %q\nrecipe=%q", receivedBytes, wantBytes, recipe)
 	}
 }
 

@@ -1,6 +1,6 @@
 # Maintainability-Audit Reference
 
-> **Companion file for `maintainability-audit.md`.** Contains the default bands, the calibration procedure, the default exclude list, the `audit-metrics` command reference, the manual fallback commands, the lock-in-limit guidance, the finding-class template, and the report template. Not invoked directly — loaded by the audit action at the steps that name each section.
+> **Companion file for `maintainability-audit.md`.** Contains the default bands, the calibration procedure, the default exclude list, the canonical `audit-metrics` command reference, the lock-in-limit guidance, the finding-class template, and the report template. Not invoked directly — loaded by the audit action at the steps that name each section.
 
 ---
 
@@ -15,9 +15,9 @@ Bands decide *eligibility* only. Severity comes from the 1-5 `Impact` score (chu
 
 | metric | WATCH > | FLAG > | measured by |
 |---|---:|---:|---|
-| FOLDER_FILES | 15 | 30 | `audit-metrics folders` (manual fallback below) |
-| FILE_LINES | 300 (tests: 450) | 600 (tests: 900) | `audit-metrics inventory` (manual fallback below) |
-| FILE_WORDS (markdown/prose) | no universal default — propose from the repo p95 | no universal default — propose from the repo p95 | `audit-metrics inventory` (manual fallback below) |
+| FOLDER_FILES | 15 | 30 | canonical `do-work-cli audit-metrics folders` |
+| FILE_LINES | 300 (tests: 450) | 600 (tests: 900) | canonical `do-work-cli audit-metrics inventory` |
+| FILE_WORDS (markdown/prose) | no universal default — propose from the repo p95 | no universal default — propose from the repo p95 | canonical `do-work-cli audit-metrics inventory` |
 | FN_LINES | 40 | 80 | `lizard` (or a language-native tool) — no manual fallback: declined/absent ⇒ NOT-MEASURED |
 | FN_CCN | 10 | 15 | `lizard` — no manual fallback: declined/absent ⇒ NOT-MEASURED |
 | FILE_CCN | 80 | 150 | `lizard` — no manual fallback: declined/absent ⇒ NOT-MEASURED |
@@ -56,12 +56,10 @@ For churn and hotspots, additionally exclude the **release-ceremony files named 
 
 ## audit-metrics Command Reference
 
-The shipped tool lives at `tools/audit-metrics/` inside this skill (own Go module; see its `prime-audit-metrics.md`). Build on demand and run it from anywhere:
+The absorbed command runs through the installed core launcher. Invoke it from anywhere without building or reaching into the retained standalone source tree:
 
 ```bash
-# Build once (cached after the first run), then invoke by absolute path.
-(cd <suite-root>/do-work-toolbox/tools/audit-metrics && go build -o audit-metrics .) 2>/dev/null \
-  && <suite-root>/do-work-toolbox/tools/audit-metrics/audit-metrics inventory --repo-root <project-root>
+<core-skill-root>/tools/do-work-cli.sh --repo-root <project-root> audit-metrics inventory
 ```
 
 Four subcommands, all read-only (they print markdown tables and write nothing):
@@ -81,64 +79,7 @@ Caller guidance (these are the tool's contract, not optional habits):
 - **Shallow clones are reported by the tool**, never silently truncated: churn/hotspots output carries a warning line when the history is shallow. Treat that warning as "churn undercounts" and say so in the report.
 - **The exclude list is yours.** The tool defaults to empty on purpose; pass every prefix from the agreed scope on every invocation.
 - **Quote multi-word windows**: `--since-window '12 months'`.
-- **Separate Go module** — build inside `tools/audit-metrics/`; a repo-root `go build ./...` never reaches it.
-
-## Manual Fallback Commands
-
-For when `go` is absent or the build fails. Each block is self-contained — run it as-is from the repo root, adjusting excludes and the window to the agreed config. These approximate; the report must say which path produced each number.
-
-**Inventory fallback** — tracked files by line count, largest first (includes binaries; ignore obvious binary rows):
-
-```bash
-git ls-files -z -- . ':!do-work/' ':!kb/' ':!ai-reports/' \
-  | xargs -0 wc -l 2>/dev/null | sort -rn | head -25
-```
-
-**Distribution fallback** — the calibration gate derives FLAG from repo p95, so the manual path must produce the same nearest-rank distributions the tool prints. One file per `wc` invocation (`-n1`) so no `total` rows pollute the numbers; run once for lines and once with `wc -w` for words:
-
-```bash
-git ls-files -z -- . ':!do-work/' ':!kb/' ':!ai-reports/' \
-  | xargs -0 -n1 wc -l 2>/dev/null | awk '{print $1}' | sort -n \
-  | awk '{ v[NR] = $1 } END { if (NR == 0) exit 1;
-      printf "file lines: count %d  median %d  p90 %d  p95 %d  max %d\n", \
-        NR, v[int((NR*50+99)/100)], v[int((NR*90+99)/100)], v[int((NR*95+99)/100)], v[NR] }'
-```
-
-```bash
-git ls-files -z -- . ':!do-work/' ':!kb/' ':!ai-reports/' \
-  | xargs -0 -n1 wc -w 2>/dev/null | awk '{print $1}' | sort -n \
-  | awk '{ v[NR] = $1 } END { if (NR == 0) exit 1;
-      printf "file words: count %d  median %d  p90 %d  p95 %d  max %d\n", \
-        NR, v[int((NR*50+99)/100)], v[int((NR*90+99)/100)], v[int((NR*95+99)/100)], v[NR] }'
-```
-
-Binaries are included in these approximations (the tool's NUL-sniff exclusion has no cheap shell equivalent) — say so in the report when the fallback produced the numbers.
-
-**Folder-shape fallback** — files per folder (direct children), crowded first (root-level files count under `.`):
-
-```bash
-git ls-files -- . ':!do-work/' ':!kb/' ':!ai-reports/' \
-  | sed -e 's|/[^/]*$||' -e 's|^[^/]*$|.|' | sort | uniq -c | sort -rn | head -25
-```
-
-**Churn fallback — run the shallow check FIRST.** A shallow clone undercounts churn silently; the tool detects this for you, the manual path must check by hand:
-
-```bash
-git rev-parse --is-shallow-repository
-```
-
-If it prints `true`, deepen/unshallow the clone first, or mark churn NOT-MEASURED — never present shallow counts as full-window churn. Then:
-
-```bash
-git log -M --since='12 months' --format= --name-only -- . ':!do-work/' ':!kb/' ':!ai-reports/' \
-  | sed '/^$/d' | sort | uniq -c | sort -rn | head -25
-```
-
-**Rename-fidelity caveat:** this manual pipeline counts touches against the path name *at the time of each commit* — a renamed or restructured file's history splits across dead paths (the tool normalizes renames and copies; this pipeline cannot). Treat manual churn as approximate, and **cross-check the resulting hotspot list against the do-work record**: archived REQ frontmatter `write_set:` entries (and body `## Scope` / `**Files I will touch:**` lists) are rename-immune, shallow-proof evidence of where work actually landed. Count archived REQs touching each candidate hotspot and note the caveat that legacy REQs may lack both fields, so the count is a floor.
-
-**Duplication has no fallback.** There is no `wc`/`grep` approximation of duplication. jscpd declined or absent ⇒ `DUP_PCT: NOT-MEASURED`, stated in the report.
-
-**Function length / complexity have no manual fallback** either — lizard (or the agreed language-native tool: `gocyclo`, `radon`, an eslint complexity rule) measures them or they are NOT-MEASURED.
+- **Fail closed.** Missing, failed, or malformed canonical tooling stops the audit actionably. There is no manual shell or standalone-binary fallback for these four deterministic metric families.
 
 ## Lock-In Limits
 
@@ -196,7 +137,7 @@ Write `do-work/audits/audit-YYYY-MM-DD.md` (today's date; create `do-work/audits
 - Audited commit: [full SHA]  ([clean | DIRTY — findings may not reproduce at this SHA])
 - Agreed bands: [the locked table from the calibration gate]
 - Tool availability: [tool → version | NOT-MEASURED (declined/absent)] per tool used or skipped
-- Measurement path: [audit-metrics | manual fallback] per metric family
+- Measurement path: canonical `do-work-cli audit-metrics` subcommand per deterministic metric family
 
 ## Metrics Summary
 [Per-metric distribution stats and band results — pasted tool output.]

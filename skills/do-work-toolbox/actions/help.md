@@ -27,3 +27,5 @@ do-work-toolbox — reviews, reports, discovery, and repository utilities
 ```
 
 Queue execution is `do-work`; the board is `do-work-board`; retained knowledge is `do-work-knowledge`.
+
+Deterministic note, report-publication, image, last30days, and audit-metrics phases are directly runnable as flat Just recipes. Run `just --list` for the live inventory; toolbox actions retain judgment, drafting, and consent.

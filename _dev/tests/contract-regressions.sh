@@ -4,6 +4,31 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 fail_count=0
+
+# Every natural-language action that retained a deterministic toolbox/update phase must
+# call the canonical core launcher and state the same fail-closed boundary. The action
+# still owns judgment and consent; it may not revive a legacy script or manual mutation
+# when the typed command is missing, fails, or returns malformed output (REQ-419).
+for canonical_action_contract in \
+  'skills/do-work-toolbox/actions/note.md:do-work-note' \
+  'skills/do-work-toolbox/actions/architecture-report.md:architecture-report-preflight' \
+  'skills/do-work-toolbox/actions/ai-report-reference.md:generate-report-image' \
+  'skills/do-work-toolbox/actions/present-work.md:publish-portfolio-summary' \
+  'skills/do-work-toolbox/actions/install.md:install-last30days' \
+  'skills/do-work-toolbox/actions/maintainability-audit.md:audit-metrics' \
+  'skills/do-work/actions/version.md:update-suite'
+do
+  canonical_action_file="${canonical_action_contract%%:*}"
+  canonical_action_command="${canonical_action_contract#*:}"
+  if ! grep -Fq 'tools/do-work-cli.sh' "$repo_root/$canonical_action_file" \
+    || ! grep -Fq "$canonical_action_command" "$repo_root/$canonical_action_file" \
+    || ! grep -Eiq 'missing.*failed.*malformed|missing, failed, or malformed' "$repo_root/$canonical_action_file" \
+    || ! grep -Eiq 'no (prose |manual |free-form )?fallback|never fall back|do not fall back' "$repo_root/$canonical_action_file"; then
+    printf 'FAIL: %s must delegate %s through the canonical launcher and stop on missing/failed/malformed tooling without fallback.\n' \
+      "$canonical_action_file" "$canonical_action_command" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
 core_root="$repo_root/skills/do-work"
 board_root="$repo_root/skills/do-work-board"
 knowledge_root="$repo_root/skills/do-work-knowledge"
@@ -101,6 +126,66 @@ assert_file_not_contains() {
     fail_count=$((fail_count + 1))
   fi
 }
+
+# Managed variadic recipes must receive Just's original positional argv. Raw
+# interpolation reparses data as shell source and is forbidden at this boundary.
+if ! python3 - "$repo_root/justfile" "$repo_root/skills/do-work-board/justfile.template" <<'PY'
+import pathlib
+import re
+import sys
+
+for justfile_name in sys.argv[1:]:
+    lines = pathlib.Path(justfile_name).read_text().splitlines()
+    for index, line in enumerate(lines):
+        if not re.match(r"^[A-Za-z0-9_-]+.*\*args:\s*$", line):
+            continue
+        if index == 0 or lines[index - 1] != "[positional-arguments]":
+            raise SystemExit(f"{justfile_name}:{index + 1}: variadic recipe lacks positional-arguments")
+        if index + 1 >= len(lines) or '"$@"' not in lines[index + 1] or "{{args}}" in lines[index + 1]:
+            raise SystemExit(f"{justfile_name}:{index + 1}: variadic recipe does not forward quoted positional argv")
+PY
+then
+  printf 'FAIL: managed variadic Just recipes must forward byte-preserving positional argv.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+assert_contains \
+  "skills/do-work/tools/prime-do-work-update.md" \
+  'do-work-cli\.sh.*update-suite.*singular update implementation' \
+  'the update prime must assign singular ownership to the canonical update-suite command.'
+assert_contains \
+  "skills/do-work-toolbox/tools/audit-metrics/prime-audit-metrics.md" \
+  'active action invokes the absorbed core route' \
+  'the retained audit-metrics prime must identify the active canonical core route.'
+assert_contains \
+  "skills/do-work/docs/prescribed-shell-primitives.md" \
+  'tools/do-work-cli\.sh.*generate-report-image-batch' \
+  'the prescribed primitive guide must name the canonical image-batch route.'
+assert_file_not_contains \
+  "skills/do-work/docs/prescribed-shell-primitives.md" \
+  'do-work-toolbox/scripts/(generate-report-image|publish-portfolio-summary|install-last30days)' \
+  'the prescribed primitive guide must not assign active ownership to retained toolbox scripts.'
+for managed_inventory_guide in \
+  "skills/do-work-board/actions/board.md" \
+  "skills/do-work-board/docs/board-guide.md"
+do
+  assert_contains "$managed_inventory_guide" 'just --list' \
+    "$managed_inventory_guide must point to the live managed recipe inventory."
+  assert_contains "$managed_inventory_guide" 'just do-work-update' \
+    "$managed_inventory_guide must name the canonical update recipe."
+done
+assert_file_not_contains \
+  "skills/do-work-toolbox/actions/maintainability-audit.md" \
+  'manual fallbacks|shipped `tools/audit-metrics|run the shipped tool' \
+  'the maintainability action must not retain stale standalone/manual ownership wording.'
+assert_file_not_contains \
+  "skills/do-work-toolbox/actions/maintainability-audit-reference.md" \
+  'Measurement path: \[audit-metrics \| manual fallback\]|manual fallback below' \
+  'the maintainability reference table/template must name only the canonical metric path.'
+assert_file_not_contains \
+  "skills/do-work-toolbox/actions/ai-report-reference.md" \
+  'generate-report-image\.sh|GEN="\$\(|prints the published directory on stdout' \
+  'the image reference must consume canonical typed results rather than retained-script/stdout contracts.'
 
 skill_dispatch_block="$(sed -n '/^## Routing/,/^## Dispatch/p' "$core_root/SKILL.md")"
 review_archived_input_block="$(sed -n '/^### Step 3: Read the Original Input/,/^### Step 4:/p' "$core_root/actions/review-work.md")"
@@ -1017,7 +1102,7 @@ for predicate in (
     r"byte-identical",
     r"never delete a snapshot automatically",
     r"never truncate or replace",
-    r"<skill-root>/scripts/publish-portfolio-summary\.sh",
+    r"tools/do-work-cli\.sh[^\n]*publish-portfolio-summary",
     r"--canonical-only",
     r"--with-snapshot",
 ):
@@ -1489,8 +1574,8 @@ assert_contains \
 ai_image_backend_block="$(sed -n '/^## Image Generation Backend/,/^## SVG Data-Viz Rules/p' "$toolbox_root/actions/ai-report-reference.md")"
 assert_block_contains \
   "$ai_image_backend_block" \
-  '<skill-root>/scripts/generate-report-image-batch\.sh' \
-  'ai-report-reference.md must delegate the image batch to the shipped batch script.'
+  'tools/do-work-cli\.sh.*generate-report-image-batch' \
+  'ai-report-reference.md must delegate the image batch to the canonical command.'
 assert_block_not_contains \
   "$ai_image_backend_block" \
   'launch_report_image|image_generation_pids|terminate_report_image_batch' \
@@ -1567,8 +1652,8 @@ assert_contains \
 
 assert_contains \
   "actions/version.md" \
-  'tools/do-work-update\.sh.*--project-root' \
-  'actions/version.md update flow must delegate mutation to the shared updater engine.'
+  'tools/do-work-cli\.sh.*update-suite' \
+  'actions/version.md update flow must delegate mutation to the canonical update command.'
 
 assert_contains \
   "actions/version.md" \
@@ -4501,8 +4586,12 @@ for kanban_recipe_file in "skills/do-work-board/justfile.template" "justfile"; d
     "$kanban_recipe_file must wait on listener ownership, not process existence."
   assert_contains \
     "$kanban_recipe_file" \
-    '^run-do-work-update:' \
+    '^run-do-work-update ' \
     "$kanban_recipe_file must ship the project-local do-work update shortcut."
+  assert_contains \
+    "$kanban_recipe_file" \
+    '^do-work-update ' \
+    "$kanban_recipe_file must ship the canonical project-local update recipe."
   for knowledge_recipe_name in \
     bkb-init bkb-status bkb-lint-structure dream-scan \
     interview-list interview-status interview-export interview-ingest interview-reset interview-versions \
@@ -6781,33 +6870,10 @@ else
   ' "$repo_root/skills/do-work-board/justfile.template" > "$reserved_section_file"
 
   collision_index=0
-  for reserved_recipe_name in \
-    run-kanban run-kanban-cli kanban-static kanban-summary run-do-work-update \
-    bkb-init bkb-status bkb-lint-structure dream-scan \
-    interview-list interview-status interview-export interview-ingest interview-reset interview-versions \
-    memory-remember memory-forget memory-recall memory-status memory-bootstrap memory-audit; do
+  while IFS= read -r reserved_recipe_name; do
     collision_index=$((collision_index + 1))
     collision_target="$section_workdir/collision-$collision_index.just"
-    case "$reserved_recipe_name" in
-      run-kanban)
-        printf 'run-kanban:\n    echo collision\n' > "$collision_target"
-        ;;
-      run-kanban-cli)
-        printf '@run-kanban-cli $view="open:all": dependency-recipe\n    echo collision\n' > "$collision_target"
-        ;;
-      kanban-static)
-        printf 'kanban-static destination="build/output": dependency-recipe\n    echo collision\n' > "$collision_target"
-        ;;
-      kanban-summary)
-        printf 'alias kanban-summary := custom-summary\n' > "$collision_target"
-        ;;
-      run-do-work-update)
-        printf 'run-do-work-update:\r\n    echo collision\r\n' > "$collision_target"
-        ;;
-      bkb-init|bkb-status|bkb-lint-structure|dream-scan|interview-list|interview-status|interview-export|interview-ingest|interview-reset|interview-versions|memory-remember|memory-forget|memory-recall|memory-status|memory-bootstrap|memory-audit)
-        printf '%s:\n    echo collision\n' "$reserved_recipe_name" > "$collision_target"
-        ;;
-    esac
+    printf '%s:\n    echo collision\n' "$reserved_recipe_name" > "$collision_target"
     cp "$collision_target" "$collision_target.before"
     collision_output="$section_workdir/collision-$collision_index.out"
     if "$replace_section_tool" --target "$collision_target" --section-file "$reserved_section_file" \
@@ -6821,7 +6887,7 @@ else
       printf 'FAIL: replace-text-section changed the target after rejecting collision %s.\n' "$reserved_recipe_name" >&2
       fail_count=$((fail_count + 1))
     fi
-  done
+  done < <(just --justfile "$reserved_section_file" --summary | tr ' ' '\n' | LC_ALL=C sort)
 
   multiline_header_index=0
   for multiline_header_kind in \
@@ -7246,7 +7312,7 @@ expected_root_patterns = (
     r'^# >>> do-work:recipes >>>$',
     r'^# <<< do-work:recipes <<<$',
     r'skills/do-work-board/tools/queue-kanban',
-    r'skill_root="\$project_root/skills/do-work".*\$skill_root/tools/do-work-update\.sh',
+    r'skill_root="\$project_root/skills/do-work".*\$skill_root/tools/do-work-cli\.sh.*update-suite',
 )
 
 problems = []
@@ -7293,8 +7359,8 @@ assert_contains \
   'root Justfile must build the canonical board sibling source.'
 assert_contains \
   "justfile" \
-  'skill_root="\$project_root/skills/do-work".*\$skill_root/tools/do-work-update\.sh' \
-  'root Justfile fallback must invoke the canonical modular core updater.'
+  'skill_root="\$project_root/skills/do-work".*\$skill_root/tools/do-work-cli\.sh.*update-suite' \
+  'root justfile fallback must invoke the canonical modular core update-suite command.'
 assert_contains \
   "skills/do-work/tools/do-work-cli/internal/managedsection/managed_section.go" \
   'os\.CreateTemp\(parentDirectory' \

@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 
@@ -43,10 +44,6 @@ const (
 	instructionsBeginMarker = "<!-- >>> do-work:communication-style >>> -->"
 	instructionsEndMarker   = "<!-- <<< do-work:communication-style <<< -->"
 )
-
-// reservedRecipeNames must all survive into the installed Justfile; a candidate missing one
-// is a broken managed section, not a customisation.
-var reservedRecipeNames = []string{"run-kanban", "run-kanban-cli", "kanban-static", "kanban-summary", "run-do-work-update"}
 
 // justfileCandidateNames is the discovery order. The first existing entry wins, and its real
 // directory-entry spelling is what recovery restores (REQ-180).
@@ -552,7 +549,11 @@ func (transaction *installTransaction) validateJustCandidate(ctx context.Context
 		return failInstall("Justfile candidate has invalid managed markers")
 	}
 	definedNames := managedsection.JustDefinitionNames(candidateData)
-	for _, recipeName := range reservedRecipeNames {
+	managedRecipeNames, deriveError := transaction.managedRecipeNames()
+	if deriveError != nil {
+		return deriveError
+	}
+	for _, recipeName := range managedRecipeNames {
 		if _, defined := definedNames[recipeName]; !defined {
 			return failInstall("Justfile candidate is missing %s", recipeName)
 		}
@@ -563,6 +564,24 @@ func (transaction *installTransaction) validateJustCandidate(ctx context.Context
 		}
 	}
 	return nil
+}
+
+func (transaction *installTransaction) managedRecipeNames() ([]string, error) {
+	templatePath := filepath.Join(transaction.sourceRoot, "skills", "do-work-board", "justfile.template")
+	templateData, readError := os.ReadFile(templatePath)
+	if readError != nil {
+		return nil, failInstall("board Justfile template could not be read")
+	}
+	definitionSet := managedsection.JustDefinitionNames(templateData)
+	if len(definitionSet) == 0 {
+		return nil, failInstall("board Justfile template defines no managed recipes or aliases")
+	}
+	definitionNames := make([]string, 0, len(definitionSet))
+	for definitionName := range definitionSet {
+		definitionNames = append(definitionNames, definitionName)
+	}
+	sort.Strings(definitionNames)
+	return definitionNames, nil
 }
 
 // discoverJustTarget records the real directory-entry spelling, so a failed install restores

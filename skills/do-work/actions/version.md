@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.256.1
+**Current version**: 0.257.0
 
 **Prerequisite:** Go 1.25.0 or newer. The update engine is the `do-work-cli` command, built from source on first use; `tools/do-work-cli.sh` refuses with an actionable message when the toolchain is missing or too old.
 
@@ -36,7 +36,7 @@ The user's phrasing selects one mode:
 
 ## Responding to Update Checks
 
-All update discovery, review, confirmation, mutation, byte verification, and recovery is owned by `tools/do-work-update.sh`. This action and `just run-do-work-update` must execute that same engine; do not duplicate its archive or overwrite logic here.
+All update discovery, review, confirmation, mutation, byte verification, and recovery is owned by the canonical `update-suite` command. This action, `just do-work-update`, and the compatibility recipe `just run-do-work-update` execute that same command; do not duplicate its archive or overwrite logic here.
 
 1. Resolve `<skill-root>` as the directory containing this action's parent `SKILL.md`.
 2. Resolve `<project-root>` from the invocation directory with the repository fallback:
@@ -45,14 +45,14 @@ All update discovery, review, confirmation, mutation, byte verification, and rec
    ```
 3. Execute the engine yourself and relay its output:
    ```bash
-   bash "<skill-root>/tools/do-work-update.sh" --project-root "$PROJECT_ROOT"
+   bash "<skill-root>/tools/do-work-cli.sh" --repo-root "$PROJECT_ROOT" --format json update-suite --skill-root "<skill-root>"
    ```
-4. Do not download a second archive, perform a second diff, add another confirmation, or fall back to a direct `curl | tar` mutation. If the engine refuses or fails, report that exact failure; it is the authoritative safety boundary.
+4. Render the typed result. Do not download a second archive, perform a second diff, add another confirmation, or fall back to a direct `curl | tar` mutation. Missing, failed, or malformed canonical tooling stops actionably. Do not fall back to prose or a script.
 
 The engine already tries two routes before giving up: the anonymous tarball over HTTP, then a shallow git clone repacked with `git archive`. Its failure message names the outcome of both. When it reports that neither route reached the host — a corporate proxy, a blocked domain, a rate limiter that outlasts the retries — the supported escape hatch is `DO_WORK_UPSTREAM_URL`, which points both the updater and the installer at a different archive URL for that invocation:
 
 ```bash
-DO_WORK_UPSTREAM_URL=https://example.internal/do-work/main.tar.gz bash "<skill-root>/tools/do-work-update.sh" --project-root "$PROJECT_ROOT"
+bash "<skill-root>/tools/do-work-cli.sh" --repo-root "$PROJECT_ROOT" update-suite --skill-root "<skill-root>" --upstream-url https://example.internal/do-work/main.tar.gz
 ```
 
 Relay that suggestion when the engine reports a total fetch failure. Editing a vendored file is never the answer.
@@ -84,7 +84,7 @@ When the user asks for a recap:
 
 ## Red Flags
 
-- The update path is about to run any mutation other than `tools/do-work-update.sh --project-root …` — stop; the two entry points have drifted.
+- The update path is about to run any mutation outside `tools/do-work-cli.sh … update-suite` — stop; the entry points have drifted.
 - The engine reports the skill outside the project or the project is not a Git worktree — stop rather than improvising a global or unrecoverable update.
 - The engine reports a malformed suite archive, unsafe manifest, older upstream version, or failed recovery — report the failure; do not bypass it.
 - Recap lists the same UR from active and archive sources — keep only the archive version.
@@ -93,7 +93,7 @@ When the user asks for a recap:
 ## Verification Checklist
 
 - [ ] Version output includes the local version and five releases with the newest last.
-- [ ] Update mode executed `<skill-root>/tools/do-work-update.sh --project-root <project-root>` rather than reproducing update steps.
+- [ ] Update mode executed `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> update-suite --skill-root <skill-root>` rather than reproducing update steps.
 - [ ] No second download, diff, confirmation, or extraction occurred in the action path.
 - [ ] Global/shared installs and non-Git projects were refused by the engine.
 - [ ] Recap merged, deduplicated, sorted, and labeled active/archive URs correctly.

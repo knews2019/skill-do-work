@@ -35,15 +35,15 @@ The report is repo-wide and describes the current architecture. It is not a revi
 
 ### Step 1: Pre-flight
 
-Run the shipped helper from the repository root:
+Run the canonical command from the repository root:
 
 ```bash
-<skill-root>/scripts/architecture-report-preflight.sh --scan ai-reports
+<skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format json architecture-report-preflight --scan ai-reports
 ```
 
 `ai-reports` is the reports directory, shared with `actions/ai-report.md` so every dated report a project publishes sits in one place. Each run gets its own bundle there — `<yyyy-mm-dd>_<hhmm>_architecture-report/`, holding only `index.html`. The directory is an argument to the scan verb; a project that keeps its reports elsewhere passes that path instead and uses the same directory on every run.
 
-The helper emits `head_hash`, `report_slug`, `report_candidate`, `prior_report`, `prior_hash`, and `prior_hash_resolves` as `key=value` lines. Read the project version at `head_hash` from whatever the repository uses to declare one; record `unversioned` when it declares none.
+The typed result and exact text output emit `head_hash`, `report_slug`, `report_candidate`, `prior_report`, `prior_hash`, and `prior_hash_resolves` as `key=value` lines. Read the project version at `head_hash` from whatever the repository uses to declare one; record `unversioned` when it declares none. Missing, failed, or malformed canonical tooling stops actionably; do not fall back to a prose scan or the compatibility script.
 
 **Verify against a committed tree, never the working tree.** The watermark names the commit whose tree every claim in the report was checked against, so commit the work being described *before* running this action. Read source and line numbers from that captured commit, even if local files change during the run. A claim checked against an uncommitted edit is labeled `VERIFIED` at a commit where it is not yet true. Publish the report as a child commit of the one it watermarks, carrying the report and nothing else. If `HEAD` moves during authoring, restart verification against the new commit before publication.
 
@@ -101,10 +101,10 @@ Run the current principles in `../../do-work/crew-members/anti-slop.md` over the
 Read and follow `actions/completed-work-presentation-reference.md` → **Collision-Safe Publication**, then publish the finished HTML draft:
 
 ```bash
-<skill-root>/scripts/architecture-report-preflight.sh --publish <draft-path> <report-candidate>
+<skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format json architecture-report-preflight --publish <draft-path> <report-candidate>
 ```
 
-The helper implements that contract for this action's output shape: it reserves a fresh directory, keeps incomplete copy bytes out of `index.html`, verifies the copy, and prints the published HTML path. On collision it selects the first free `-2`, `-3`, … sibling directory. Use the printed path everywhere afterwards. A failed run's occupied path is never reused; report it for inspection. Verify the final HTML from that location, including its relative links, before committing only the new bundle.
+The canonical command implements that contract for this action's output shape: it reserves a fresh directory, keeps incomplete copy bytes out of `index.html`, verifies the copy, and prints the published HTML path. On collision it selects the first free `-2`, `-3`, … sibling directory. Use the printed path everywhere afterwards. A failed run's occupied path is never reused; report it for inspection. Missing, failed, or malformed canonical tooling stops actionably with no manual fallback. Verify the final HTML from that location, including its relative links, before committing only the new bundle.
 
 ### Step 7: Report the Result
 

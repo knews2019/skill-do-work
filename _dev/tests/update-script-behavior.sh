@@ -326,6 +326,11 @@ assert_file_contains "$suite_project/Justfile" '\.claude/skills/do-work-board/to
   'suite update: points board recipes at the board sibling'
 assert_file_contains "$suite_project/Justfile" '^custom-before:$' \
   'suite update: preserves custom Just content'
+updated_recipe_summary="$(just --justfile "$suite_project/Justfile" --summary | tr ' ' '\n' | grep -v '^custom-before$' | LC_ALL=C sort | paste -sd' ' -)"
+template_recipe_summary="$(just --justfile "$repo_root/skills/do-work-board/justfile.template" --summary | tr ' ' '\n' | LC_ALL=C sort | paste -sd' ' -)"
+if [ "$updated_recipe_summary" != "$template_recipe_summary" ]; then
+  record_failure 'suite update: managed recipe surface differs from the board-owned template'
+fi
 assert_file_contains "$suite_project/.claude/settings.json" \
   '\.claude/skills/do-work-knowledge/hooks/memory-session-start\.sh' \
   'suite update: preserves the current memory SessionStart path'
@@ -739,8 +744,8 @@ for suite_launcher in \
 done
 
 # The agent-facing path must delegate mutation to the same tested engine.
-if ! grep -q 'tools/do-work-update\.sh.*--project-root' "$repo_root/skills/do-work/actions/version.md"; then
-  record_failure 'entry-point parity: modular actions/version.md does not delegate to tools/do-work-update.sh'
+if ! grep -q 'tools/do-work-cli\.sh.*update-suite' "$repo_root/skills/do-work/actions/version.md"; then
+  record_failure 'entry-point parity: modular actions/version.md does not delegate to the canonical update-suite command'
 fi
 
 if [ "$fail_count" -gt 0 ]; then

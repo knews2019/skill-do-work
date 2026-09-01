@@ -2,7 +2,7 @@
 
 Renders the `do-work/` queue as a Kanban board in your browser, plus a queue activity calendar and a testing track. Read-only toward the work pipeline — it never claims a REQ or edits a `status`. The one thing it writes is the testing record (see Testing view).
 
-> **Needs the Go toolchain** — the only do-work capability that does. Without `go` on your `PATH` the board reports and stops; nothing else in the skill is affected.
+> **Needs the Go toolchain.** The board and the core deterministic command platform are compiled Go programs. Without `go` on your `PATH`, the requested command reports the missing prerequisite and stops instead of falling back to prose mutation.
 
 ## Modes
 
@@ -69,4 +69,4 @@ do-work-board cli
 do-work-board board
 ```
 
-the full-suite installer adds `just run-kanban` / `run-kanban-cli` / `kanban-static` / `kanban-summary` recipes if you'd rather run the board without the agent, plus `just run-do-work-update` for the guarded project-local skill updater.
+The full-suite installer publishes a managed flat recipe surface for board, core, knowledge, and toolbox commands. Run `just --list` for the live inventory. Board shortcuts remain `just run-kanban`, `run-kanban-cli`, `kanban-static`, and `kanban-summary`; `just do-work-update` is canonical, while `just run-do-work-update` remains a compatibility alias over the same transaction.

@@ -27,21 +27,19 @@ If `$ARGUMENTS` is empty after stripping, do not write an empty note — print t
 
 ## Steps
 
-### Step 1: Normalize the text
+### Step 1: Delegate the mechanical note write
 
-1. Take `$ARGUMENTS` verbatim.
-2. Strip a single leading `add ` token if present (handles `do-work-toolbox note add …`).
-3. Strip a matching pair of surrounding quotes (`"…"` or `'…'`) if present.
-4. Trim leading/trailing whitespace.
-5. If the result is empty, print usage and stop (Input section).
+Resolve `<project-root>` and the installed core `<skill-root>`, then invoke the canonical command once:
 
-### Step 2: Append the dated line
+```bash
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json do-work-note "$ARGUMENTS"
+```
 
-1. Resolve today's date as `YYYY-MM-DD` (e.g. via `date +%F`).
-2. Ensure the `do-work/` directory exists first (`mkdir -p do-work/`) — it may be absent if `note` is the first do-work command run in a fresh repo — then create `do-work/notes.md` if it isn't there yet (the file is a plain list — no header, no frontmatter).
-3. Append a single line: `- [YYYY-MM-DD] <text>`.
+The command owns normalization, the date, directory creation, exact append bytes, Git target guards, rollback, and the empty-input refusal. Treat its typed changes and exact text output as the complete write result. Missing, failed, or malformed canonical tooling stops actionably; do not fall back to direct prose or shell mutation.
 
-Do not deduplicate, sort, or reformat existing lines — only append. The file stays in chronological (append) order; the user curates it by hand.
+### Step 2: Preserve the action boundary
+
+Do not deduplicate, sort, reformat, capture, or commit. The action retains only the judgment that the user's input is a lightweight note rather than a task; the canonical command performs the deterministic append.
 
 ### Step 3: Report
 
@@ -69,5 +67,6 @@ Do **not** create a UR or REQ, do not move into the work loop, and do not run a 
 - **The bullet is what makes a line a note.** Users do add a `#` heading, a prose preamble, and `<!-- ... -->` blocks parking pruned entries, so every *reader* of this file (`../../do-work/actions/roadmap.md` Step 0, the `do-work-board board` Notes strip) strips HTML comments first, then renders only the bullet lines. A reader that treats every non-blank line as a note renders the boilerplate — and the bullets buried inside the pruned-entries comment — as notes.
 - **The action never commits; the file is committable.** `do-work-toolbox note` only appends — it runs no git command. `do-work/notes.md` is committed alongside the rest of `do-work/` (the Trail of Intent). `do-work/runs/` is committable while a run is live and is deleted once its findings are consumed (see `crew-members/background-agents.md`). On a merge conflict it's append-only, so keep both sides.
 - **Empty input is a no-op** with usage, not an empty `- [date]` line.
+- **One canonical writer.** Only `do-work-note` may append from this action; missing, failed, or malformed command output never permits a manual fallback.
 
 (The Rules above are the complete contract — every guard this action needs is stated there once.)

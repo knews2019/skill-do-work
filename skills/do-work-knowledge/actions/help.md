@@ -19,3 +19,5 @@ do-work-knowledge — retained knowledge and memory workflows
 ```
 
 Fresh suite installs leave memory hooks disabled. `setup-memory` is the only enabling route.
+
+Deterministic BKB, Dream, interview, and memory phases are directly runnable as flat Just recipes. Run `just --list` for the live inventory; the natural-language workflows retain semantic judgment and consent.

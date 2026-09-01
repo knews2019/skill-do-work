@@ -226,7 +226,7 @@ The `last30days` target vendors the engagement-ranked social-research engine (ht
 Run the shipped full-guarantee check (complete runtime payload, ignore rule, Python 3.12+). The runtime payload requires, at minimum, non-empty `SKILL.md` and `<project-root>/.claude/skills/last30days/scripts/last30days.py`; the installer and checker share that predicate so a sentinel-only or half-copied tree cannot masquerade as installed.
 
 ```bash
-<skill-root>/scripts/install-last30days.sh check "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+<skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format json install-last30days check <project-root>
 ```
 
 - **All checks pass** (the ignore rule counts as passing when the project isn't a git repo) → report "already installed" and stop.
@@ -238,7 +238,7 @@ Run the shipped full-guarantee check (complete runtime payload, ignore rule, Pyt
 The upstream repo keeps the actual skill at `skills/last30days/` (self-contained — `SKILL.md`, `scripts/`, and supporting directories). The installer shallow-clones to temporary storage, rejects an incomplete source, copies the full subtree into a private staging directory adjacent to the destination, and validates the staged payload before a same-filesystem rename publishes it. When replacing an incomplete destination, it holds the prior tree in a private adjacent backup until the validated replacement is live; a publication failure restores the prior tree byte-for-byte. A complete destination keeps the existing no-op/ignore-repair behavior.
 
 ```bash
-<skill-root>/scripts/install-last30days.sh install "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+<skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format json install-last30days install <project-root>
 ```
 
 If the block prints FAILED (offline, incomplete upstream payload, copy failure, or publication failure), **stop here** and report the error. The final path remains either the prior incomplete tree or a fully validated replacement; the installer never merges files from different upstream versions and cleans private staging/backup paths on exit.
@@ -255,8 +255,10 @@ Two hard constraints on this phase:
 Check every guarantee the workflow promises, one line per component (this is also the Phase 1 detect check):
 
 ```bash
-<skill-root>/scripts/install-last30days.sh check "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+<skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format json install-last30days check <project-root>
 ```
+
+Missing, failed, or malformed canonical tooling stops actionably; do not fall back to the compatibility script, a fresh clone, or direct filesystem mutation.
 
 Report "Installed successfully" only when no line prints FAILED. The engine resolves a Python 3.12+ interpreter at run time (upstream keeps it in `LAST30DAYS_PYTHON`), so no qualifying interpreter is a real failure, not a warning — report the install as failed and name Python 3.12+ as the missing piece. A FAILED ignore line means the vendored ~15 MB is committable in the consuming repo — that's a broken install even though the engine itself would run.
 

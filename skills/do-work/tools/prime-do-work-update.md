@@ -1,12 +1,12 @@
 # Prime: do-work update shortcut
 
-`tools/do-work-update.sh` is the terminal-facing implementation behind `just run-do-work-update`. It updates only a four-skill do-work suite installed inside the invoking project; the already-installed full-suite installer owns module/configuration reconciliation, and `actions/version.md` remains the canonical agent-driven update contract.
+`tools/do-work-cli.sh … update-suite` is the singular update implementation behind canonical `just do-work-update`, compatibility `just run-do-work-update`, and the natural-language version action. It updates only a four-skill do-work suite installed inside the invoking project; the install transaction owns module/configuration reconciliation, and `actions/version.md` owns the agent's judgment and rendering contract.
 
 The five public shell entry points are compatibility launchers over the `do-work-cli` command, which owns the logic. **Updating requires Go 1.25.0 or newer**, which the `do-work-cli.sh` launcher enforces before it builds or runs anything.
 
 ## Read first
 
-- `tools/do-work-update.sh` — the launcher: project-root argv, installed-skill-root derivation, delegation to `update-suite`.
+- `tools/do-work-cli.sh` — the canonical launcher: repository-root argv, toolchain validation, and dispatch to `update-suite`; `tools/do-work-update.sh` remains a compatibility launcher only.
 - `tools/do-work-cli/internal/suiteinstall/update_transaction.go` — the update transaction: shared-install refusal, fetch, extract, manifest validation, version comparison, in-process install delegation, post-update verification.
 - `tools/do-work-cli/internal/suiteinstall/install_transaction.go` — trusted installed module, managed-configuration (Just section, agent-instructions section, hook composition), verification, and exact recovery transaction. The install transaction is authoritative for the current surface set; any list here is illustrative and must not be read as closed.
 - `tools/do-work-cli/internal/managedsection/managed_section.go` — byte-preserving managed-section replacement for whichever marker pair the caller names, plus the no-Just reserved-recipe collision scanner in `just_definitions.go`.
@@ -26,8 +26,8 @@ The five public shell entry points are compatibility launchers over the `do-work
 
 ## Stakes
 
-- `do-work-update.sh` → `update-suite` — project-local overwrite boundary
-  Req: reject a skill root outside the invoking project, require `--project-root` to name the Git worktree root, refuse an upstream version that is not newer, review the diff and take the single confirmation through the install transaction (whose declined confirmation is a success with skipped work, not a failure), and verify the installed version afterward.
+- `do-work-cli.sh` → `update-suite` — project-local overwrite boundary
+  Req: reject a skill root outside the invoking project, require `--repo-root` to name the Git worktree root, refuse an upstream version that is not newer, review the diff and take the single confirmation through the install transaction (whose declined confirmation is a success with skipped work, not a failure), and verify the installed version afterward. Missing, failed, or malformed canonical tooling stops; compatibility launchers are never mutation fallbacks.
   Value: users can update without an agent turn while retaining the protection against clobbering a shared install or local customization.
   Risk: weakening any guard can overwrite user work or runtime queue data. The update transaction requires the project Git root and validates the suite archive before delegating to the install transaction in-process. That transaction reviews modules plus every owned configuration change, snapshots exact managed originals, and restores them plus the Git index on failure — a new managed surface earns a diff section, a backup, a recovery branch, and a post-write byte check in the same commit that adds it. Runtime, KB, application paths, unrelated settings, and any bytes outside a managed marker span must never enter that plan. Dirty module changes are named before the one confirmation; accepting discards them from both index and worktree before installation. `_dev/tests/update-script-behavior.sh` holds current-suite, hostile-manifest, dirty-consent, and forced-recovery behavior.
 

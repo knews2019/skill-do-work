@@ -190,10 +190,10 @@ for sibling_script_contract in \
   'skills/do-work-board/actions/board.md|<skill-root>/../do-work/scripts/add-local-git-exclude.sh|skills/do-work/scripts/add-local-git-exclude.sh' \
   'skills/do-work-knowledge/actions/setup-memory.md|<skill-root>/../do-work/scripts/add-local-git-exclude.sh|skills/do-work/scripts/add-local-git-exclude.sh' \
   'skills/do-work-toolbox/actions/install.md|<skill-root>/../do-work/scripts/atomic-download.sh|skills/do-work/scripts/atomic-download.sh' \
-  'skills/do-work-toolbox/actions/present-work.md|<skill-root>/scripts/publish-portfolio-summary.sh|skills/do-work-toolbox/scripts/publish-portfolio-summary.sh' \
-  'skills/do-work-toolbox/actions/install.md|<skill-root>/scripts/install-last30days.sh|skills/do-work-toolbox/scripts/install-last30days.sh' \
-  'skills/do-work-toolbox/actions/ai-report-reference.md|<skill-root>/scripts/generate-report-image-batch.sh|skills/do-work-toolbox/scripts/generate-report-image-batch.sh' \
-  'skills/do-work-toolbox/actions/architecture-report.md|<skill-root>/scripts/architecture-report-preflight.sh|skills/do-work-toolbox/scripts/architecture-report-preflight.sh'
+  'skills/do-work-toolbox/actions/present-work.md|<core-skill-root>/tools/do-work-cli.sh|skills/do-work/tools/do-work-cli.sh' \
+  'skills/do-work-toolbox/actions/install.md|<skill-root>/../do-work/tools/do-work-cli.sh|skills/do-work/tools/do-work-cli.sh' \
+  'skills/do-work-toolbox/actions/ai-report-reference.md|<skill-root>/../do-work/tools/do-work-cli.sh|skills/do-work/tools/do-work-cli.sh' \
+  'skills/do-work-toolbox/actions/architecture-report.md|<skill-root>/../do-work/tools/do-work-cli.sh|skills/do-work/tools/do-work-cli.sh'
 do
   caller_path="${sibling_script_contract%%|*}"
   sibling_contract_rest="${sibling_script_contract#*|}"
@@ -903,12 +903,16 @@ for line in template_lines[header_indexes[0] + 1 :]:
     recipe_body_lines.append(line)
 recipe_body = "\n".join(recipe_body_lines)
 
-core_updater_path = ".claude/skills/do-work/tools/do-work-update.sh"
+core_updater_path = "$skill_root/tools/do-work-cli.sh"
 core_updater_invocation = re.compile(
-    r'\bbash\s+"\$project_root/' + re.escape(core_updater_path) + r'"'
+    r'\bbash\s+"' + re.escape(core_updater_path) + r'"'
 )
-if recipe_body.count(core_updater_path) != 1 or len(core_updater_invocation.findall(recipe_body)) != 1:
-    raise SystemExit("run-do-work-update must invoke the core updater exactly once")
+if (
+    recipe_body.count(core_updater_path) != 1
+    or len(core_updater_invocation.findall(recipe_body)) != 1
+    or recipe_body.count("update-suite") != 1
+):
+    raise SystemExit("run-do-work-update must invoke the canonical update-suite command exactly once")
 
 for forbidden_board_call in ("run-kanban", "do-work-board", "queue-kanban"):
     if forbidden_board_call in recipe_body:

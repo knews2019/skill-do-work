@@ -6,9 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/managedsection"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
@@ -312,6 +314,65 @@ func TestReservedRecipeCollisionIsRefusedBeforeAnyConfirmation(t *testing.T) {
 	}
 	if _, err := os.Lstat(filepath.Join(projectRoot, ".claude")); err == nil {
 		t.Errorf("a refused collision installed modules")
+	}
+}
+
+func TestJustCandidateCompletenessDerivesEveryManagedTemplateDefinition(t *testing.T) {
+	sourceRoot := newSuiteSourceTree(t, fixtureSuiteVersion)
+	templatePath := filepath.Join(sourceRoot, "skills", "do-work-board", "justfile.template")
+	expandedTemplate := strings.Replace(
+		justfileTemplateBytes,
+		"# <<< do-work:recipes <<<",
+		"do-work-cleanup *args:\n    echo cleanup {{args}}\n# <<< do-work:recipes <<<",
+		1,
+	)
+	writeTestFile(t, templatePath, expandedTemplate)
+
+	candidatePath := filepath.Join(t.TempDir(), "justfile.candidate")
+	writeTestFile(t, candidatePath, justfileTemplateBytes)
+	transaction := &installTransaction{sourceRoot: sourceRoot}
+	err := transaction.validateJustCandidate(context.Background(), candidatePath, "candidate parse failed")
+	if err == nil {
+		t.Fatal("candidate omitted a definition owned by the managed template")
+	}
+	if !strings.Contains(err.Error(), "do-work-cleanup") {
+		t.Fatalf("missing-definition failure does not name the dynamically derived recipe: %v", err)
+	}
+}
+
+func TestEveryShippedManagedDefinitionRejectsAnExteriorCollision(t *testing.T) {
+	shippedTemplatePath := filepath.Join("..", "..", "..", "..", "..", "do-work-board", "justfile.template")
+	shippedTemplate, err := os.ReadFile(shippedTemplatePath)
+	if err != nil {
+		t.Fatalf("read shipped managed template: %v", err)
+	}
+	definitionSet := managedsection.JustDefinitionNames(shippedTemplate)
+	definitionNames := make([]string, 0, len(definitionSet))
+	for definitionName := range definitionSet {
+		definitionNames = append(definitionNames, definitionName)
+	}
+	sort.Strings(definitionNames)
+	if len(definitionNames) != 40 {
+		t.Fatalf("shipped managed definitions = %d, want 40: %v", len(definitionNames), definitionNames)
+	}
+	for _, definitionName := range definitionNames {
+		t.Run(definitionName, func(t *testing.T) {
+			projectRoot := newProjectRepository(t)
+			sourceRoot := newSuiteSourceTree(t, fixtureSuiteVersion)
+			writeTestFile(t, filepath.Join(sourceRoot, "skills", "do-work-board", "justfile.template"), string(shippedTemplate))
+			writeTestFile(t, filepath.Join(projectRoot, "justfile"), definitionName+":\n    echo exterior collision\n")
+			before := readTestFile(t, filepath.Join(projectRoot, "justfile"))
+			result, narration := runInstallFixture(t, projectRoot, sourceRoot, "y\n")
+			if result.Outcome != resultmodel.OutcomeFailure || !strings.Contains(result.FailureReason, definitionName) {
+				t.Fatalf("collision outcome=%q reason=%q\n%s", result.Outcome, result.FailureReason, narration)
+			}
+			if readTestFile(t, filepath.Join(projectRoot, "justfile")) != before {
+				t.Fatal("collision refusal changed exterior bytes")
+			}
+			if strings.Contains(narration, "Install this complete four-skill suite?") {
+				t.Fatal("collision was not refused before confirmation")
+			}
+		})
 	}
 }
 

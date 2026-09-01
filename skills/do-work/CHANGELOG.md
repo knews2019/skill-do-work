@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.257.0 — Flat Deterministic Just Interface (2026-09-01)
+
+Installed projects can now run the complete deterministic command surface directly through flat Just recipes, while natural-language actions keep judgment and delegate mechanical work to the typed CLI. Recipe ownership comes from the managed template itself, so publication and collision validation stay aligned.
+
+- Forty flat definitions cover core lifecycle, BKB, Dream, Interview, Memory, toolbox, board, and update operations without an LLM.
+- Just positional arguments and shell-literal recovery commands preserve hostile paths byte for byte through the actual shipped template.
+- Installer and updater checks derive every reserved name dynamically, while `run-do-work-update` remains a compatibility alias for canonical `do-work-update`.
+- REQ-419 completed with issues: the remaining retired board-only compiler/fallback restatements are folded into REQ-420's whole-suite shim and parity sweep.
+
 ## 0.256.1 — Deletion-First Git Inventory (2026-09-01)
 
 Uncommitted inventory now classifies Git porcelain XY rows from the path's usable state, so a deletion in either column always wins over addition or modification.

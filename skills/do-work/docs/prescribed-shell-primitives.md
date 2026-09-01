@@ -1,10 +1,10 @@
 # Prescribed Shell Primitives
 
-This is the canonical shipped rationale and executable-home contract for shell used across do-work actions. Reusable mechanics live in shipped scripts; callers keep one line of local intent plus an invocation. A caller-specific gate always wins; this guide owns the shared primitive, not the action's policy.
+This is the canonical shipped rationale and executable-home contract for deterministic mechanics used across do-work actions. New command-platform mechanics live behind `tools/do-work-cli.sh`; retained scripts remain compatibility/parity surfaces only where stated. Callers keep one line of local intent plus an invocation. A caller-specific gate always wins; this guide owns the shared primitive, not the action's policy.
 
 ## Shipped executable homes
 
-| Script | Mechanics owned |
+| Canonical executable route | Mechanics owned |
 |---|---|
 | `scripts/show-commit-diff.sh` | Ordinary versus first-parent merge display |
 | `scripts/add-local-git-exclude.sh` | Worktree-safe local exclude resolution and idempotent append |
@@ -15,10 +15,10 @@ This is the canonical shipped rationale and executable-home contract for shell u
 | `scripts/stage-exact-deletion.sh` | Cached-metadata-only exact deletion staging |
 | `../../do-work-knowledge/scripts/lexical-memory-recall.sh` | Query sanitization, lexical ranking, and attribution |
 | `../../do-work-knowledge/scripts/install-memory-hooks.sh` | Independent hook merge, verification, and rollback |
-| `../../do-work-toolbox/scripts/generate-report-image.sh` | Backend selection, launched-process-tree ownership, verified exact invocation-private publication, and exact opt-in agentic scratch |
-| `../../do-work-toolbox/scripts/generate-report-image-batch.sh` | Parallel batch launch, retained per-image statuses, launched-process-tree ownership, and verified all-or-nothing directory publication |
-| `../../do-work-toolbox/scripts/publish-portfolio-summary.sh` | Verified single-source canonical refresh and snapshot-first exclusive publication |
-| `../../do-work-toolbox/scripts/install-last30days.sh` | Complete-payload validation and verified exact transactional project-local publication/repair |
+| `tools/do-work-cli.sh … generate-report-image` | Backend selection, launched-process-tree ownership, verified exact invocation-private publication, and exact opt-in agentic scratch |
+| `tools/do-work-cli.sh … generate-report-image-batch` | Parallel batch launch, retained per-image statuses, launched-process-tree ownership, and verified all-or-nothing directory publication |
+| `tools/do-work-cli.sh … publish-portfolio-summary` | Verified single-source canonical refresh and snapshot-first exclusive publication |
+| `tools/do-work-cli.sh … install-last30days` | Complete-payload validation and verified exact transactional project-local publication/repair |
 
 `tools/install-do-work-suite.sh` is a compatibility launcher over the `do-work-cli` `install-suite` command, which owns the install transaction. It stays self-contained in one respect only: `--print-bootstrap-command` prints a literal heredoc and needs no Go toolchain, because that snippet has to run before anything is installed. Everything else the installer does requires Go 1.25.0 or newer. Atomic REQ reservation remains owned only by the board package's Go tool; it has no shell twin.
 
@@ -83,19 +83,19 @@ Publication here makes the [Verified exact publication](#verified-exact-publicat
 
 ## Portfolio summary publication
 
-Invoke `../../do-work-toolbox/scripts/publish-portfolio-summary.sh` with one retained source and the action-selected mode. The helper copies and verifies that source into a private file adjacent to the canonical target, once per output. `--canonical-only` atomically replaces only the canonical file. `--with-snapshot` first publishes an exclusive snapshot from its own verified copy, advances occupied candidates with numeric suffixes, and only then atomically replaces the canonical file from the same bytes.
+Invoke `tools/do-work-cli.sh --repo-root <project-root> publish-portfolio-summary` with one retained source and the action-selected mode. The canonical command copies and verifies that source into a private file adjacent to the canonical target, once per output. `--canonical-only` atomically replaces only the canonical file. `--with-snapshot` first publishes an exclusive snapshot from its own verified copy, advances occupied candidates with numeric suffixes, and only then atomically replaces the canonical file from the same bytes. Missing, failed, or malformed canonical tooling stops the caller; the retained toolbox script is not a fallback.
 
-The two outputs carry identical bytes but never share storage: a snapshot linked to the canonical file would follow every later in-place edit of it. Each publication makes the [Verified exact publication](#verified-exact-publication) check, and this helper's answers to it are that a snapshot candidate occupied by a directory advances to the next suffix, a canonical path occupied by a directory fails closed, and neither leaves a private file nested inside it.
+The two outputs carry identical bytes but never share storage: a snapshot linked to the canonical file would follow every later in-place edit of it. Each publication makes the [Verified exact publication](#verified-exact-publication) check, and the canonical command's answers are that a snapshot candidate occupied by a directory advances to the next suffix, a canonical path occupied by a directory fails closed, and neither leaves a private file nested inside it.
 
 An exclusive snapshot failure leaves the prior canonical unchanged. A later canonical replacement failure leaves the new snapshot published and reports that partial outcome. Existing snapshots are never truncated, replaced, or automatically removed.
 
 ## Report image batch publication
 
-Generate a report's images through `../../do-work-toolbox/scripts/generate-report-image-batch.sh <report-directory> <style-brief> <target-name>:<prompt> …` rather than orchestrating the per-image helper yourself. Each pair splits on its first colon, and a target name must be a bare filename because the batch joins it to its own invocation-private staging directory adjacent to `generated/`.
+Generate a report's images through `tools/do-work-cli.sh --repo-root <project-root> generate-report-image-batch <report-directory> <style-brief> <target-name>:<prompt> …` rather than orchestrating the retained scripts yourself. Each pair splits on its first colon, and a target name must be a bare filename because the canonical command joins it to its own invocation-private staging directory adjacent to `generated/`. Missing, failed, or malformed canonical tooling stops the caller; a retained script is not a fallback.
 
 The batch launches one helper per image, retains every PID and status, and waits each one even after an earlier failure — a bare `wait` would discard the mixed statuses that decide which images are current. An image is current only when its own helper status is zero and its staged target is non-empty; failed targets are removed. Publication happens once, as a single same-filesystem rename of the complete verified batch, and only when at least one image is current. `generated/` must be absent both before staging and immediately before the rename, and the rename makes the [Verified exact publication](#verified-exact-publication) check: a nested stage means someone else owns `generated/`, so the batch discards only its own stage, leaves that directory untouched, and exits nonzero.
 
-An all-failed batch is not an error. It removes its exact private directory, prints nothing, and exits zero so the caller falls back to hand-authored diagrams. Success prints the published directory on stdout; every diagnostic goes to stderr so the caller can read the path directly.
+An all-failed batch is not an error. It removes its exact private directory and returns a typed successful fallback outcome so the caller uses hand-authored diagrams. A publication success returns the verified directory in the canonical result; callers never infer freshness from stdout emptiness or target presence.
 
 The batch owns the process tree it starts. Each helper is launched under job control so it leads its own process group, and that group is signalled only when it verifies as the helper's own and not the batch's — an unverified group degrades to bare-PID signalling, because the only group it could otherwise hit is its own. An interrupted batch terminates, escalates, and reaps everything it launched *before* staging is removed; nothing it started may keep writing into a directory it is about to delete.
 

@@ -38,6 +38,8 @@ Extensions installed beside core — run <package> help for usage on any of thes
                      note · stray-check · tidy-repo · tutorial · install
 ```
 
+Deterministic operations also have flat, no-agent recipes. Run `just --list` for the live inventory and see `docs/command-line-guide.md`; examples include `just do-work-doctor`, `just do-work-next`, and canonical `just do-work-update`.
+
 ## Full cycle without persistent state
 
 `do-work run` already owns implementation, testing, and review for every REQ, so a full cycle composes the public commands without a separate testing stage or resumable state file. Copy this prompt and replace the final placeholder:

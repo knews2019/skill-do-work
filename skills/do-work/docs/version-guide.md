@@ -19,7 +19,10 @@ Fetches the upstream version and compares. If an update is available, runs the u
 ```
 do-work update
 do-work check for updates
+just do-work-update
 ```
+
+`just do-work-update` is the canonical no-agent entry point. Existing installations may continue using `just run-do-work-update`; it is a compatibility alias over the same `update-suite` transaction.
 
 ## Recap
 
@@ -33,8 +36,9 @@ do-work recap
 
 ```
 do-work version              # current version + last 5 releases
-do-work update               # check for and apply upstream updates
-just run-do-work-update      # installed just shortcut; reviews diff and asks before overwriting
+do-work update               # natural-language route to the canonical update transaction
+just do-work-update          # canonical no-agent recipe; reviews diff and asks before overwriting
+just run-do-work-update      # compatibility alias for the same transaction
 do-work what's new           # same as version
 do-work release notes        # same as version
 do-work history              # same as version

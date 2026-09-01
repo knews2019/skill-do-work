@@ -20,13 +20,55 @@ kanban-static:
 kanban-summary:
     cd "{{justfile_directory()}}/.claude/skills/do-work-board/tools/queue-kanban" && go build -o queue-kanban . && ./queue-kanban summary --repo-root "{{justfile_directory()}}"
 
-# Update the project-local do-work suite without an agent (one reviewed archive, one confirmation, managed-path recovery)
-run-do-work-update:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-update.sh" --project-root "$project_root"
+# Run deterministic core operations through the installed canonical command platform
+[positional-arguments]
+do-work-cleanup *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" cleanup "$@"
+[positional-arguments]
+do-work-doctor *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" doctor "$@"
+[positional-arguments]
+do-work-next *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" next "$@"
+[positional-arguments]
+do-work-claim *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" claim "$@"
+[positional-arguments]
+do-work-complete *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" complete "$@"
+[positional-arguments]
+do-work-fail *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" fail "$@"
+[positional-arguments]
+do-work-cancel *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" cancel "$@"
+[positional-arguments]
+do-work-unblock *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" unblock "$@"
+[positional-arguments]
+do-work-answer *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" answer "$@"
+[positional-arguments]
+do-work-capture-files *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" capture-files "$@"
+[positional-arguments]
+do-work-release *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" release "$@"
+
+# Update the project-local suite through the canonical update transaction
+[positional-arguments]
+do-work-update *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" update-suite --skill-root "$skill_root" "$@"
+
+# Compatibility alias for the pre-flat-recipe update entry point
+[positional-arguments]
+run-do-work-update *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" update-suite --skill-root "$skill_root" "$@"
 
 # Initialize or fill gaps in a BKB scaffold through the canonical Go command
+[positional-arguments]
 bkb-init kb="kb" *args:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" bkb-init --kb {{quote(kb)}} {{args}}
+    kb="$1"; shift; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" bkb-init --kb "$kb" "$@"
 
 # Read a deterministic BKB status snapshot
 bkb-status kb="kb":
@@ -40,51 +82,86 @@ bkb-lint-structure kb="kb":
 dream-scan path="memory":
     project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" dream-scan --path {{quote(path)}}
 # List installed interview templates
+[positional-arguments]
 interview-list *args:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" interview-list {{args}}
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" interview-list "$@"
 
 # Read interview progress without mutating the session
+[positional-arguments]
 interview-status template *args:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" interview-status --template {{quote(template)}} {{args}}
+    template="$1"; shift; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" interview-status --template "$template" "$@"
 
 # Render approved interview exports
+[positional-arguments]
 interview-export template *args:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" interview-export --template {{quote(template)}} {{args}}
+    template="$1"; shift; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" interview-export --template "$template" "$@"
 
 # Ingest interview exports into BKB
+[positional-arguments]
 interview-ingest template *args:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" interview-ingest --template {{quote(template)}} {{args}}
+    template="$1"; shift; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" interview-ingest --template "$template" "$@"
 
 # Archive and reset an interview after explicit confirmation
+[positional-arguments]
 interview-reset template *args:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" interview-reset --template {{quote(template)}} {{args}}
+    template="$1"; shift; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" interview-reset --template "$template" "$@"
 
 # List immutable interview versions
+[positional-arguments]
 interview-versions template *args:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" interview-versions --template {{quote(template)}} {{args}}
+    template="$1"; shift; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" interview-versions --template "$template" "$@"
 
 # Curate an explicit fact into working memory
+[positional-arguments]
 memory-remember text *args:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-remember {{args}} {{quote(text)}}
+    text="$1"; shift; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-remember "$@" "$text"
 
 # Discover or apply confirmed memory-forget matches
+[positional-arguments]
 memory-forget query *args:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-forget {{args}} {{quote(query)}}
+    query="$1"; shift; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-forget "$@" "$query"
 
 # Run bounded attributed lexical memory recall
+[positional-arguments]
 memory-recall query="" *args:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-recall {{args}} {{quote(query)}}
+    query="$1"; shift; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-recall "$@" "$query"
 
 # Read memory store health
+[positional-arguments]
 memory-status *args:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-status {{args}}
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-status "$@"
 
 # Publish an approved one-time bootstrap manifest
+[positional-arguments]
 memory-bootstrap manifest *args:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-bootstrap --manifest {{quote(manifest)}} {{args}}
+    manifest="$1"; shift; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-bootstrap --manifest "$manifest" "$@"
 
 # Collect deterministic memory-engine audit evidence
+[positional-arguments]
 memory-audit *args:
-    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-audit {{args}}
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-audit "$@"
+
+# Run deterministic toolbox operations through the installed canonical command platform
+[positional-arguments]
+do-work-note *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" do-work-note "$@"
+[positional-arguments]
+architecture-report-preflight *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" architecture-report-preflight "$@"
+[positional-arguments]
+generate-report-image *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" generate-report-image "$@"
+[positional-arguments]
+generate-report-image-batch *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" generate-report-image-batch "$@"
+[positional-arguments]
+publish-portfolio-summary *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" publish-portfolio-summary "$@"
+[positional-arguments]
+install-last30days *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" install-last30days "$@"
+[positional-arguments]
+audit-metrics *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" audit-metrics "$@"
 
 # <<< do-work:recipes <<<

@@ -1,6 +1,6 @@
 # Prime: audit-metrics
 
-audit-metrics — standalone Go module (`tools/audit-metrics/`, own `go.mod`) that computes the maintainability audit's deterministic numbers as pasteable markdown tables. Subcommands: `inventory` | `folders` | `churn` | `hotspots`. Read-only: it prints, and writes nothing — the audit action owns the report write. Vendored like queue-kanban: built on demand, invoked as an accelerator with a manual fallback, never a dependency.
+audit-metrics — retained standalone Go parity module (`tools/audit-metrics/`, own `go.mod`) for the maintainability audit's deterministic tables. The active action invokes the absorbed core route, `do-work-cli audit-metrics`; this tree remains buildable so differential/compatibility checks can keep `inventory` | `folders` | `churn` | `hotspots` semantics aligned. It is read-only and is never an action fallback.
 
 ## Read first
 - `main.go` — subcommand dispatch + all flags (`--repo-root`, repeatable `--exclude-path`, `--top-count`, `--since-window`, band thresholds `--watch-*`/`--flag-*`); the file-top comment is the CLI contract
@@ -14,7 +14,7 @@ audit-metrics — standalone Go module (`tools/audit-metrics/`, own `go.mod`) th
 - `go.sum` — managed by the Go toolchain (absent while there are no dependencies)
 
 ## Must build
-- `cd <skill-dir>/tools/audit-metrics && go build -o audit-metrics .` → `./audit-metrics inventory --repo-root <project-root>`. The binary is gitignored in-place. Needs the Go toolchain (see `go.mod`); callers without it fall back to the audit action's manual commands.
+- Maintainers verify this parity module with `cd <skill-dir>/tools/audit-metrics && go test ./...` and `go vet ./...`; its binary remains gitignored in-place. Consumers invoke `<core-skill-root>/tools/do-work-cli.sh --repo-root <project-root> audit-metrics …`. Missing, failed, or malformed canonical tooling stops the action instead of selecting this tree or manual shell as a fallback.
 
 ## Traps
 - **Bands come ONLY from flags** — no flag, no band section; value == threshold is NOT flagged, strictly greater is. Never hardcode a threshold: calibration lives in the audit conversation.
@@ -22,7 +22,7 @@ audit-metrics — standalone Go module (`tools/audit-metrics/`, own `go.mod`) th
 - **Rename normalization walks newest→oldest** — an `R` entry counts as a touch of the resolved new path and records old→current, so alpha-era touches land on beta.md. Staged migrations (copy first, delete the original later — how the skills/ restructure happened) need the `-C --find-copies-harder` copy detection: a dead copy-source hands its history to the survivor. Only dead paths with no surviving copy drop (via the final `ls-files` filter). Reordering the walk breaks attribution silently.
 - **Shallow clones are reported, never silently truncated** — `rev-parse --is-shallow-repository` answers on stdout; a non-zero exit is an error, not "false".
 - **Git exit codes are three-valued** — 0 / 1 = "no" / other = git declining to answer; never fold a 128 into a default (see `git_support.go`'s file-top comment).
-- **Separate Go module** — build inside `tools/audit-metrics/`; a repo-root `go build ./...` never reaches it.
+- **Retained separate Go module** — maintainer parity checks run inside `tools/audit-metrics/`; a repo-root `go build ./...` never reaches it, and actions never execute it as a fallback.
 
 ## Stakes
 

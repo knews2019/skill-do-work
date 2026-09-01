@@ -34,7 +34,7 @@ The installer validates all four modules before the first managed write, asks on
 
 Claude Code can invoke the four skill names directly. In Codex or Gemini, point the agent at the appropriate sibling `SKILL.md` once per session, or add those pointers to the project's agent instructions. Commit all four `.claude/skills/do-work*` directories so each repository carries its suite.
 
-**Updating:** `do-work update` and `just run-do-work-update` call the same installed core engine, which needs the same Go 1.25.0 or newer prerequisite as the install. Both review one archive, reconcile all four module trees plus the managed Just/settings surfaces behind one confirmation, and either verify the complete resulting suite or recover every managed path. Never delete the repository-root `do-work/` queue or `kb/`; neither update entry point manages them.
+**Updating:** `do-work update`, canonical `just do-work-update`, and compatibility `just run-do-work-update` call the same installed `update-suite` command, which needs the same Go 1.25.0 or newer prerequisite as the install. They review one archive, reconcile all four module trees plus the managed Just/settings surfaces behind one confirmation, and either verify the complete resulting suite or recover every managed path. Never delete the repository-root `do-work/` queue or `kb/`; no update entry point manages them.
 
 ### Upgrade an existing installation with an AI agent
 
@@ -44,7 +44,7 @@ Paste this into an AI agent from the root of a repository that already has do-wo
 >
 > Work only inside the current Git repository. Locate its installed four-skill do-work suite, normally under `.claude/skills/`, and confirm the core updater, manifest validator, and full-suite installer are present. If the current suite installation or updater is missing, stop and tell me what is missing instead of attempting a fresh installation.
 >
-> Run the installed `tools/do-work-update.sh` with this repository's Git root passed through `--project-root`. Use that updater as the only mutation path. Show me its complete managed-file diff and preserve its built-in confirmation before overwriting anything; do not answer the confirmation automatically.
+> Run the installed `tools/do-work-cli.sh` with this repository's Git root passed through `--repo-root`, then `update-suite --skill-root <installed-core-root>`. Use that command as the only mutation path. Show me its complete managed-file diff and preserve its built-in confirmation before overwriting anything; do not answer the confirmation automatically.
 >
 > Do not modify the repository's `do-work/` queue, `kb/` data, application files, or unrelated configuration. When finished, verify the installed version and report the previous version, resulting version, and whether the update completed or was cancelled.
 
@@ -115,9 +115,13 @@ For repository comprehension, `do-work-toolbox architecture-report` writes a new
 
 Common extension calls also include `do-work-board board`, `do-work-knowledge bkb`, `do-work-knowledge memory`, `do-work-toolbox code-review`, and `do-work-toolbox inspect`.
 
+### Deterministic commands without an agent
+
+Fresh installs expose the deterministic core, knowledge, and toolbox command platform as flat Just recipes. Run `just --list` for the live inventory, then invoke a recipe directly, such as `just do-work-doctor`, `just memory-status`, or `just audit-metrics inventory`. Natural-language actions remain the judgment and consent layer; their mechanical phases call the same canonical CLI and stop with its actionable result when tooling is missing, fails, or returns malformed output. See the [Command-Line Guide](skills/do-work/docs/command-line-guide.md).
+
 ### Queue board (`do-work-board board`)
 
-`do-work-board board` builds and runs the board sibling's Go tool, serving the queue at `http://localhost:8090`. `do-work-board static` writes a self-contained snapshot, `do-work-board summary` prints column counts, and `do-work-board cli` prints the in-flight digest. The board is the suite's only Go-toolchain dependency; updates keep it synchronized with core.
+`do-work-board board` builds and runs the separate board/UI binary, serving the queue at `http://localhost:8090`. `do-work-board static` writes a self-contained snapshot, `do-work-board summary` prints column counts, and `do-work-board cli` prints the in-flight digest. Updates keep the board synchronized with the core command platform without absorbing it into the core binary.
 
 ## File structure
 

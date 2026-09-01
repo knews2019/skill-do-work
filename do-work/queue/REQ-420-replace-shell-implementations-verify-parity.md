@@ -14,6 +14,8 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-406, REQ-407, REQ-408, REQ-409, REQ-410, REQ-411, REQ-412, REQ-413, REQ-414, REQ-415, REQ-416, REQ-417, REQ-418, REQ-419]
 batch: go-no-llm-command-platform
+sweep: true
+sweep_key: canonical-command-shim-parity-and-authority
 ---
 
 # Replace Shell Implementations with Shims and Prove Whole-Suite Parity
@@ -49,6 +51,11 @@ Certainty level: Firm. Retire implementations only after their parity fixtures p
 **Why RED now:** All 41 scripts/hooks still contain or route to shell domain implementations, and audit-metrics has a separate verification lane.
 **GREEN when:** The mechanical contract proves launcher-only shell, parity fixtures pass, audit-metrics is consolidated, Go/board maintainer lanes pass uncached, and final no-Python/no-jq acceptance succeeds.
 **Validation:** User confirmed via the supplied implementation plan.
+
+## Instances
+
+- [ ] All retained shell utilities/hooks and the standalone audit-metrics implementation: replace domain logic with launcher-only shims and prove whole-suite behavioral parity. (original REQ-420 / UR-081)
+- [ ] `_dev/primes/prime-kanban-board.md:16`, `skills/do-work/actions/work-reference.md:105,113`, `skills/do-work-board/tools/queue-kanban/timestamp.go:19-22`, and `frontmatter_cli.go:24-32`: retire the board-only compiler and mandatory shell-fallback contract now contradicted by build-on-demand `do-work-cli`. (found by REQ-419 / UR-081)
 
 ## Full Context
 See `do-work/user-requests/UR-081/input.md` for complete verbatim input.

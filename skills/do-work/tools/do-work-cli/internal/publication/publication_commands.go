@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -459,11 +458,15 @@ func publicationProtocol(operation OperationName, manifestPath, answerAt string)
 	}
 	verification := append([]string{"do-work-cli", "--format", "json"}, next[1:]...)
 	verification = append(verification, "--dry-run")
-	recipe := "do-work-" + string(operation) + " " + strconv.Quote(manifestPath)
+	recipe := "do-work-" + string(operation) + " --manifest " + quotePublicationRecipeArgument(manifestPath)
 	if operation == OperationAnswer && answerAt != "" {
-		recipe += " " + strconv.Quote(answerAt)
+		recipe += " --at " + quotePublicationRecipeArgument(answerAt)
 	}
 	return next, verification, recipe
+}
+
+func quotePublicationRecipeArgument(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }
 
 func parseAnswerAt(value string) time.Time {
