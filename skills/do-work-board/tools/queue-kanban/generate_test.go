@@ -7475,6 +7475,76 @@ process.stdout.write(JSON.stringify({
 	}
 }
 
+// A pure timelineTrailingWindow case supplied with unpadded bounds cannot catch
+// the production ordering bug: drawTimeline pads boundEndMs before its nested
+// chip caller invokes the helper. Drive those shipped production statements so
+// the test sees both the semantic end and the cosmetic display range.
+func TestJavaScriptBehaviorTimelineTrailingWindowAnchorsBeforeDisplayPadding(t *testing.T) {
+	indexHTML := generateLiveSite(t)
+	boundsStartToken := "var boundStartMs = Date.parse(timeline.rangeStart);"
+	boundsEndToken := "if (!timelineViewState.fitted ||"
+	boundsStart := strings.Index(indexHTML, boundsStartToken)
+	if boundsStart < 0 {
+		t.Fatalf("generated page has no production timeline bounds block beginning %q", boundsStartToken)
+	}
+	boundsEndOffset := strings.Index(indexHTML[boundsStart:], boundsEndToken)
+	if boundsEndOffset < 0 {
+		t.Fatalf("generated page has no production timeline bounds block ending %q", boundsEndToken)
+	}
+	boundsSource := indexHTML[boundsStart : boundsStart+boundsEndOffset]
+	applySource := sliceBalancedBlockAfter(t, indexHTML, "function applyTrailingWindow(")
+
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS") +
+		sliceBalancedBlockAfter(t, indexHTML, "function timelineZoomedWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHTML, "function timelineTrailingWindow(") + `
+var recordedStartMs = Date.UTC(2026, 0, 1);
+var meaningfulEndMs = recordedStartMs + 95 * TIMELINE_DAY_MS;
+var nowMs = meaningfulEndMs + 10 * TIMELINE_DAY_MS;
+var timeline = {
+  rangeStart: new Date(recordedStartMs).toISOString(),
+  rangeEnd: new Date(meaningfulEndMs).toISOString()
+};
+var projection = { queueEnd: "" };
+var filterMatchedRows = [{}];
+(function () {
+` + boundsSource + "\n" + applySource + `
+var timelineViewState = { windowStartMs: boundStartMs, windowEndMs: boundEndMs };
+applyTrailingWindow("1");
+process.stdout.write(JSON.stringify({
+  recordedStartMs: recordedStartMs,
+  meaningfulEndMs: meaningfulEndMs,
+  displayStartMs: boundStartMs,
+  displayEndMs: boundEndMs,
+  windowStartMs: timelineViewState.windowStartMs,
+  windowEndMs: timelineViewState.windowEndMs,
+  dayMs: TIMELINE_DAY_MS
+}));
+}());`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "production trailing window with display padding", javascriptProbe)
+	var result struct {
+		RecordedStartMs float64 `json:"recordedStartMs"`
+		MeaningfulEndMs float64 `json:"meaningfulEndMs"`
+		DisplayStartMs  float64 `json:"displayStartMs"`
+		DisplayEndMs    float64 `json:"displayEndMs"`
+		WindowStartMs   float64 `json:"windowStartMs"`
+		WindowEndMs     float64 `json:"windowEndMs"`
+		DayMs           float64 `json:"dayMs"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode production trailing-window padding behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if result.DisplayStartMs >= result.RecordedStartMs || result.DisplayEndMs <= result.MeaningfulEndMs+result.DayMs {
+		t.Fatalf("production bounds did not retain the 95-day range's cosmetic padding: recorded %.0f→%.0f, display %.0f→%.0f",
+			result.RecordedStartMs, result.MeaningfulEndMs, result.DisplayStartMs, result.DisplayEndMs)
+	}
+	if result.WindowEndMs != result.MeaningfulEndMs || result.WindowStartMs != result.MeaningfulEndMs-result.DayMs {
+		t.Fatalf("production Last day landed on %.0f→%.0f, want the day ending at meaningful endpoint %.0f; the display end %.0f is cosmetic padding",
+			result.WindowStartMs, result.WindowEndMs, result.MeaningfulEndMs, result.DisplayEndMs)
+	}
+}
+
 // The toolbar's ‹ and › are the reader's undo for each other, and near the right
 // bound they stopped being it: timelinePannedWindow CLAMPS, so a forward step
 // with less than a screenful of room ahead moved a partial screenful while the

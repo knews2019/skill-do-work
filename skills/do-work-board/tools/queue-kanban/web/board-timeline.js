@@ -367,20 +367,21 @@
     return Date.UTC(instant.getUTCFullYear(), instant.getUTCMonth(), instant.getUTCDate());
   }
 
-  // One trailing window, ending at the most recent instant the board can show and
-  // reaching back the span the chip names. "all" — and anything else that is not a
-  // positive number of days — means the whole recorded range, which is the window
-  // the view opens on.
+  // One trailing window, ending at the most recent meaningful instant and reaching
+  // back the span the chip names. The display bounds may extend past that instant
+  // for cosmetic breathing room; finite chips must not treat that empty padding as
+  // recorded time. "all" — and anything else that is not a positive number of days
+  // — still means the whole display range, which is the window the view opens on.
   //
-  // THAT INSTANT IS NOW ONLY WHILE NOW IS INSIDE THE BOUNDS, which is why the span
-  // hangs off an anchor rather than off nowMs directly. timelineRange (timeline.go)
+  // THAT INSTANT IS NOW ONLY WHILE NOW IS INSIDE THE MEANINGFUL RANGE, which is
+  // why the span hangs off an anchor rather than off nowMs directly. timelineRange (timeline.go)
   // stretches the payload's range end to now only while some row still has an open
   // wait or an open work segment; drain the queue and the range ends at the last
   // completion instant with now days or months past it. Anchored on now there, a
   // chip's whole span sits beyond the range end, clamps to zero width and settles
   // onto the one-hour zoom floor — ten days idle put Last day and Last 7 days on
   // the SAME dead window, so pressing one lit the other, and a hundred days did it
-  // to four of the five. Anchored on now CLAMPED INTO THE BOUNDS, each chip reads
+  // to four of the five. Anchored on now CLAMPED TO THE MEANINGFUL END, each chip reads
   // as the last N days OF THE RECORDED RANGE: distinct per chip, non-degenerate,
   // and the only reading with any data in it.
   //
@@ -398,9 +399,13 @@
   // SHORT at the range start and still ends at the anchor; the state readout then
   // says "part of" rather than claiming a span the board does not have. This is
   // the same distinction timelineTypedWindow documents at its own clamp.
-  function timelineTrailingWindow(trailingWindowValue, nowMs, boundStartMs, boundEndMs) {
+  function timelineTrailingWindow(trailingWindowValue, nowMs, boundStartMs, boundEndMs, meaningfulEndMs) {
     var trailingDayCount = Number(trailingWindowValue);
-    var anchorEndMs = Math.min(Math.max(nowMs, boundStartMs), boundEndMs);
+    if (!isFinite(meaningfulEndMs)) {
+      meaningfulEndMs = boundEndMs;
+    }
+    meaningfulEndMs = Math.min(Math.max(meaningfulEndMs, boundStartMs), boundEndMs);
+    var anchorEndMs = Math.min(Math.max(nowMs, boundStartMs), meaningfulEndMs);
     var candidateStartMs = boundStartMs;
     var candidateEndMs = boundEndMs;
     var askedSpanMs = 0;
@@ -1708,6 +1713,9 @@
     if (!isNaN(queueEndMs) && queueEndMs > boundEndMs) {
       boundEndMs = queueEndMs;
     }
+    // Controls need the latest RECORDED, DRAWN OR PROJECTED endpoint. Preserve it
+    // before the display-only breathing room widens the clamp bounds below.
+    var trailingWindowEndMs = boundEndMs;
     // A little breathing room so a bar that ends exactly at the range edge is
     // not drawn flush against the frame.
     var boundPaddingMs = Math.max((boundEndMs - boundStartMs) * 0.02, 60 * 1000);
@@ -2490,7 +2498,8 @@
       var firstUnclippedChip = null;
       document.querySelectorAll("#view-timeline [data-timeline-period]").forEach(function (chip) {
         var trailingWindowValue = chip.getAttribute("data-timeline-period");
-        var candidate = timelineTrailingWindow(trailingWindowValue, nowMs, boundStartMs, boundEndMs);
+        var candidate = timelineTrailingWindow(
+          trailingWindowValue, nowMs, boundStartMs, boundEndMs, trailingWindowEndMs);
         if (candidate.windowStartMs !== timelineViewState.windowStartMs ||
           candidate.windowEndMs !== timelineViewState.windowEndMs) {
           return;
@@ -3181,12 +3190,12 @@
     }
 
     // The window controls: five trailing windows and a step either way. A chip
-    // picks a WIDTH ending at now; the arrows then walk that width back and forth
-    // through the archive. Two rules where there used to be three, because a
-    // window anchored at now has no calendar grid for a step to follow.
+    // picks a WIDTH ending at now while now is meaningful, or at the latest
+    // recorded/drawn/projected endpoint after the queue drains; the arrows then
+    // walk that width through the archive. There is no calendar grid to follow.
     function applyTrailingWindow(trailingWindowValue) {
       var trailingWindow = timelineTrailingWindow(
-        trailingWindowValue, nowMs, boundStartMs, boundEndMs);
+        trailingWindowValue, nowMs, boundStartMs, boundEndMs, trailingWindowEndMs);
       timelineViewState.windowStartMs = trailingWindow.windowStartMs;
       timelineViewState.windowEndMs = trailingWindow.windowEndMs;
     }

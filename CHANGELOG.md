@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.8 — Anchor Timeline Windows Before Display Padding (2026-09-02)
+
+Trailing-window controls could land entirely in the chart's breathing room after a long queue drained. Finite chips now anchor to the last meaningful endpoint while rendering keeps its padded bounds.
+
+- The renderer preserves the latest recorded, drawn, or projected endpoint before adding cosmetic range padding.
+- A production-caller regression covers “Last day” on a drained 95-day history and proves the padded display range remains intact.
+
 ## 0.260.7 — Refuse Mismatched Git Transaction Roots (2026-09-02)
 
 A nested repository root could let cleanup mutate one directory while Git guarded another, producing false success with no commit. Mutating commands now stop at the transaction boundary unless both paths identify the same worktree.

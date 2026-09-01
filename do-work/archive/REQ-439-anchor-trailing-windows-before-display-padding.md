@@ -1,7 +1,7 @@
 ---
 id: REQ-439
 title: 'Anchor trailing timeline windows before display padding'
-status: claimed
+status: completed
 route: A
 created_at: 2026-08-31T14:19:37Z
 user_request: UR-083
@@ -22,6 +22,7 @@ estimate:
 related: [REQ-437, REQ-438, REQ-440, REQ-441, REQ-442, REQ-443, REQ-444]
 batch: accepted-feedback-regressions
 claimed_at: 2026-09-01T21:48:36Z
+completed_at: 2026-09-01T22:01:29Z
 ---
 
 # Anchor Trailing Timeline Windows Before Display Padding
