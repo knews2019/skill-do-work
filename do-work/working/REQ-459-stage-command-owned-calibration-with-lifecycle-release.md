@@ -1,7 +1,7 @@
 ---
 id: REQ-459
 title: 'Review fix: Stage command-owned calibration with lifecycle release'
-status: pending
+status: claimed
 domain: general
 created_at: 2026-08-31T21:54:18Z
 user_request: UR-081
@@ -11,6 +11,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 tdd: true
 prime_files: [_dev/primes/prime-action-files.md]
+claimed_at: 2026-09-01T06:08:17Z
 ---
 
 # Review Fix: Stage Command-Owned Calibration with Lifecycle Release
