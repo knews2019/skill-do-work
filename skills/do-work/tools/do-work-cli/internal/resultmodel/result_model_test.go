@@ -148,7 +148,11 @@ func TestRenderRejectsUnknownFormat(t *testing.T) {
 
 func TestProtocolOutputIsExactInTextAndTypedInJSON(t *testing.T) {
 	exact := "hook bytes\nwithout generic prose\n"
-	result := CommandResult{Command: "session-start", Outcome: OutcomeSuccess, ProtocolOutput: &exact}
+	result := CommandResult{
+		Command: "session-start", Outcome: OutcomeSuccess, ProtocolOutput: &exact,
+		Findings: []CommandFinding{{Code: "HOOK-EVIDENCE", Severity: SeverityWarning}},
+		Changes:  []RecordedChange{{Path: "do-work/.req-reservations/REQ-000001", Kind: "deleted", Detail: "matching committed request exists"}},
+	}
 	textOutput, err := RenderResult(result, FormatText)
 	if err != nil {
 		t.Fatal(err)
@@ -166,6 +170,9 @@ func TestProtocolOutputIsExactInTextAndTypedInJSON(t *testing.T) {
 	}
 	if decoded.ProtocolOutput == nil || *decoded.ProtocolOutput != exact {
 		t.Fatalf("JSON protocol output = %#v, want %q", decoded.ProtocolOutput, exact)
+	}
+	if len(decoded.Findings) != 1 || decoded.Findings[0].Code != "HOOK-EVIDENCE" || len(decoded.Changes) != 1 || decoded.Changes[0].Kind != "deleted" {
+		t.Fatalf("JSON protocol projection lost typed operation evidence: %+v", decoded)
 	}
 
 	empty := ""

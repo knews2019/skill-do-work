@@ -35,7 +35,7 @@ func TestReservationCleanupDoesNotTrustUncommittedRequestInUnbornGitRepository(t
 }
 
 func TestReservationCleanupRevalidatesFinalEligibility(t *testing.T) {
-	repository := t.TempDir()
+	repository := newGitFixture(t)
 	root := filepath.Join(repository, "do-work", ".req-reservations")
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestReservationCleanupRevalidatesFinalEligibility(t *testing.T) {
 }
 
 func TestReservationCleanupRemovesOldAndPreservesFresh(t *testing.T) {
-	repository := t.TempDir()
+	repository := newGitFixture(t)
 	root := filepath.Join(repository, "do-work", ".req-reservations")
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
@@ -119,7 +119,7 @@ func TestReservationCleanupRequiresCommittedRequestInGitRepository(t *testing.T)
 }
 
 func TestReservationCleanupDryRunPreservesEligibleMarker(t *testing.T) {
-	repository := t.TempDir()
+	repository := newGitFixture(t)
 	root := filepath.Join(repository, "do-work", ".req-reservations")
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
@@ -136,5 +136,54 @@ func TestReservationCleanupDryRunPreservesEligibleMarker(t *testing.T) {
 	}
 	if _, err := os.Stat(marker); err != nil {
 		t.Fatalf("dry-run removed marker: %v", err)
+	}
+}
+
+func TestReservationCleanupPreservesEveryMarkerWhenGitIsUnavailable(t *testing.T) {
+	repository := t.TempDir()
+	runFixtureGitCommand(t, repository, "init", "-q")
+	root := filepath.Join(repository, "do-work", ".req-reservations")
+	working := filepath.Join(repository, "do-work", "working")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(working, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, "REQ-000203")
+	if err := os.WriteFile(marker, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(working, "REQ-203-uncommitted.md"), []byte("---\nid: REQ-203\n---\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", filepath.Join(repository, "missing-bin"))
+	result := handleCleanupReservations(testContext(repository), nil)
+	if result.Outcome != "success" || len(result.Findings) != 1 || result.Findings[0].Code != "RESERVATION-GIT-AUTHORITY-UNAVAILABLE" {
+		t.Fatalf("result=%+v", result)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("Git-unavailable cleanup removed marker: %v", err)
+	}
+}
+
+func TestReservationCleanupPreservesStaleMarkerOutsideGit(t *testing.T) {
+	repository := t.TempDir()
+	root := filepath.Join(repository, "do-work", ".req-reservations")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, "REQ-000777")
+	if err := os.WriteFile(marker, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-49 * time.Hour)
+	_ = os.Chtimes(marker, past, past)
+	result := handleCleanupReservations(testContext(repository), nil)
+	if len(result.Findings) != 1 || result.Findings[0].Code != "RESERVATION-GIT-AUTHORITY-UNAVAILABLE" {
+		t.Fatalf("result=%+v", result)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("non-Git cleanup removed stale marker: %v", err)
 	}
 }

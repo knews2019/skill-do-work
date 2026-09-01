@@ -10,11 +10,14 @@ if [ ! -f "$CLI_LAUNCHER" ]; then
   exit 0
 fi
 
-bash "$CLI_LAUNCHER" \
+launcher_error="$(bash "$CLI_LAUNCHER" \
   --repo-root "${CLAUDE_PROJECT_DIR:-.}" \
-  memory-stop-capture
+  memory-stop-capture 2>&1 >/dev/null)"
 launcher_status=$?
 if [ "$launcher_status" -ne 0 ]; then
-  printf 'memory Stop capture skipped: canonical do-work launcher failed with status %s; verify Go 1.26.1 or newer and reinstall the suite.\n' "$launcher_status" >&2
+  printf 'memory Stop capture skipped: canonical do-work launcher failed with status %s (%s); verify Go 1.26.1 or newer and reinstall the suite.\n' \
+    "$launcher_status" "${launcher_error:-no diagnostic}" >&2
+elif [ -n "$launcher_error" ]; then
+  printf '%s\n' "$launcher_error" >&2
 fi
 exit 0

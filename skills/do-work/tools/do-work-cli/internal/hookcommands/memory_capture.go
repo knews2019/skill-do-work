@@ -95,19 +95,33 @@ func handleMemoryStopCapture(executionContext commandruntime.ExecutionContext, a
 	quoted := "> " + strings.ReplaceAll(captureText, "\n", "\n> ")
 	section := fmt.Sprintf("\n## %s UTC session capture %s\n\n%s\n> Session capture — final exchange between the user and the agent:\n>\n%s\n",
 		now.Format("15:04"), hash, captureBodySentinel, quoted)
-	logFile, openError := os.OpenFile(todayLog, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600)
+	logRelative := filepath.ToSlash(filepath.Join("memory", "logs", now.Format("2006-01-02")+".md"))
+	logFile, openError := os.OpenFile(todayLog, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o666)
 	if openError != nil {
-		return emptyResult
+		return protocolResult("", resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: []resultmodel.CommandFinding{hookFinding(
+			"MEMORY-CAPTURE-APPEND-SKIPPED", logRelative, openError.Error(), "Stop capture is nonblocking",
+		)}})
 	}
 	_, writeError := logFile.Write([]byte(section))
 	closeError := logFile.Close()
 	if writeError != nil || closeError != nil {
-		return emptyResult
+		evidence := "capture append failed"
+		if writeError != nil {
+			evidence = writeError.Error()
+		} else if closeError != nil {
+			evidence = closeError.Error()
+		}
+		return protocolResult("", resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: []resultmodel.CommandFinding{hookFinding(
+			"MEMORY-CAPTURE-APPEND-SKIPPED", logRelative, evidence, "Stop capture is nonblocking",
+		)}})
 	}
-	appendLedger(filepath.Join(executionContext.RepositoryRoot, "memory", "usage-ledger.jsonl"), fmt.Sprintf(
+	captureChange := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: []resultmodel.RecordedChange{{
+		Path: logRelative, Kind: "appended", Detail: "recorded redacted session capture " + hash,
+	}}}
+	ledger := appendLedger(executionContext.RepositoryRoot, filepath.Join(executionContext.RepositoryRoot, "memory", "usage-ledger.jsonl"), fmt.Sprintf(
 		`{"ts":"%s","engine":"memory","event":"capture","query":"","hits":0,"source":"hooks/memory-stop-capture.sh","note":"%s"}`+"\n",
 		now.Format("2006-01-02T15:04:05Z"), hash))
-	return emptyResult
+	return protocolResult("", captureChange, ledger)
 }
 
 func finalTranscriptTexts(path string) (string, string, error) {
@@ -120,6 +134,12 @@ func finalTranscriptTexts(path string) (string, string, error) {
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(make([]byte, 64*1024), 16*1024*1024)
 	for scanner.Scan() {
+		if len(bytes.TrimSpace(scanner.Bytes())) == 0 {
+			continue
+		}
+		if !utf8.Valid(scanner.Bytes()) {
+			return "", "", fmt.Errorf("malformed transcript")
+		}
 		var entry transcriptEntry
 		if json.Unmarshal(scanner.Bytes(), &entry) != nil {
 			return "", "", fmt.Errorf("malformed transcript")

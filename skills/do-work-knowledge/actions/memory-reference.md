@@ -100,7 +100,7 @@ The cap is the design, not an obstacle: it forces the standing memory to stay hi
 
 ## Usage-Ledger Contract (canonical — both engines)
 
-Files: `memory/usage-ledger.jsonl` (memory engine) and `usage-ledger.jsonl` at the KB root (bkb — canonically `kb/usage-ledger.jsonl`; the root is resolved per `actions/bkb.md`'s "Locating the Knowledge Base"). Append-only, one JSON object per line, no trailing commas, UTC timestamps. Writers: `actions/memory.md`, `actions/bkb.md` (query step 8b, ingest step 7b), `hooks/memory-session-start.sh`, `hooks/memory-stop-capture.sh` — plus any future surface that reads from or writes to either engine (the trigger condition is "an engine event occurred", not membership in this list).
+Files: `memory/usage-ledger.jsonl` (memory engine) and `usage-ledger.jsonl` at the KB root (bkb — canonically `kb/usage-ledger.jsonl`; the root is resolved per `actions/bkb.md`'s "Locating the Knowledge Base"). Append-only, one JSON object per line, no trailing commas, UTC timestamps. Writers: `actions/memory.md`, `actions/bkb.md` (query step 8b, ingest step 7b), and the core CLI's `memory-session-start` / `memory-stop-capture` Go commands under `internal/hookcommands` — plus any future surface that reads from or writes to either engine (the trigger condition is "an engine event occurred", not membership in this list). The retained `.sh` hook paths are launch-only compatibility surfaces.
 
 ```json
 {"ts":"2026-07-22T18:04:11Z","engine":"memory","event":"recall","query":"dark mode decision","hits":3,"source":"actions/memory.md","note":""}
@@ -113,7 +113,7 @@ Files: `memory/usage-ledger.jsonl` (memory engine) and `usage-ledger.jsonl` at t
 | `event` | memory: `inject`, `capture`, `write`, `recall`, `hit_cited` · bkb: `query`, `ingest`, `hit_cited` (illustrative — new events allowed, auditor buckets unknown events as "other") |
 | `query` | recall/query events only; sanitized token form (same text-operation sanitize as lexical recall), never raw user text |
 | `hits` | integer result/page count; 0 when not applicable |
-| `source` | file path of the writer (e.g. `hooks/memory-stop-capture.sh`) |
+| `source` | stable event-source identity (hook events retain values such as `hooks/memory-stop-capture.sh` for compatibility; this is not a writer-file or implementation-owner pointer) |
 | `note` | free text, usually empty |
 
 Prescribed append (derive-then-substitute; `$utc_now`, `$safe_query` and `$hit_count` are already-derived values — `$utc_now` per the Timestamp rule, `../../do-work/actions/work-reference.md`):
@@ -139,10 +139,10 @@ Used by the core CLI's `memory-stop-capture` command. The retained `hooks/memory
 
 ## Capture Redaction Spec
 
-The memory store is split by durability: the curated `working-memory.md` is **committed plaintext**, while `memory/logs/` and `memory/usage-ledger.jsonl` are **machine-local** — `actions/setup-memory.md`'s memory-module Phase 2 adds them to the repo's `.git/info/exclude`. That split is the first barrier, not the only one, and redaction is defense in depth behind it: the exclude entries exist only where the installer ran (a hand-scaffolded `memory/` has none), logs stay plaintext on disk where they can be read, grepped, or pasted elsewhere, and a curated fact promoted out of a log lands in the committed file. A verbatim capture must therefore never persist a credential in the first place. `hooks/memory-stop-capture.sh`:
+The memory store is split by durability: the curated `working-memory.md` is **committed plaintext**, while `memory/logs/` and `memory/usage-ledger.jsonl` are **machine-local** — `actions/setup-memory.md`'s memory-module Phase 2 adds them to the repo's `.git/info/exclude`. That split is the first barrier, not the only one, and redaction is defense in depth behind it: the exclude entries exist only where the installer ran (a hand-scaffolded `memory/` has none), logs stay plaintext on disk where they can be read, grepped, or pasted elsewhere, and a curated fact promoted out of a log lands in the committed file. A verbatim capture must therefore never persist a credential in the first place. The core CLI's `internal/hookcommands` memory Stop owner:
 
 - **Drops the whole capture** (exit 0) when the full extracted text contains a `PRIVATE KEY-----` block marker — key material spans lines, so line-based redaction can't be trusted.
-- **Replaces credential-shaped substrings with `[REDACTED]`** via `sed -E`, applied to the full extracted messages **before truncation** (and therefore before hashing or writing) — every pattern needs a complete token shape, so redacting after a byte-budget cut would let a token severed by the cut persist as an unmatched fragment. Shipped patterns (illustrative, not exhaustive — the trigger condition is "text shaped like a credential", and `memory remember` curation remains the real gate): GitHub tokens (`ghp_…`, `github_pat_…`), `sk-…` API keys, AWS `AKIA…` key ids, Slack `xox?-…` tokens, `eyJ…`-prefixed JWTs, `Bearer <token>` headers, and `password/passwd/secret/token/api_key = <value>` assignments.
+- **Replaces credential-shaped substrings with `[REDACTED]`** in Go, applied to the full extracted messages **before truncation** (and therefore before hashing or writing) — every pattern needs a complete token shape, so redacting after a byte-budget cut would let a token severed by the cut persist as an unmatched fragment. Shipped patterns (illustrative, not exhaustive — the trigger condition is "text shaped like a credential", and `memory remember` curation remains the real gate): GitHub tokens (`ghp_…`, `github_pat_…`), `sk-…` API keys, AWS `AKIA…` key ids, Slack `xox?-…` tokens, `eyJ…`-prefixed JWTs, `Bearer <token>` headers, and `password/passwd/secret/token/api_key = <value>` assignments.
 - **Skips the capture entirely if the redaction pipeline itself fails** — the unredacted text is never the fallback.
 
 ## Hook Install Internals (used by actions/setup-memory.md → memory-module)

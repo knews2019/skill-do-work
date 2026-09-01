@@ -30,8 +30,22 @@ type zeroReader struct{}
 
 func (zeroReader) Read([]byte) (int, error) { return 0, io.EOF }
 
-func protocolResult(output string) resultmodel.CommandResult {
-	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, ProtocolOutput: &output}
+func protocolResult(output string, operations ...resultmodel.CommandResult) resultmodel.CommandResult {
+	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, ProtocolOutput: &output}
+	for _, operation := range operations {
+		result.Findings = append(result.Findings, operation.Findings...)
+		result.Changes = append(result.Changes, operation.Changes...)
+		result.SkippedWork = append(result.SkippedWork, operation.SkippedWork...)
+	}
+	return result
+}
+
+func hookFinding(code, path, evidence, stopReason string) resultmodel.CommandFinding {
+	return resultmodel.CommandFinding{
+		Code: code, Severity: resultmodel.SeverityWarning, AffectedPaths: []string{path},
+		Evidence: []string{evidence}, Fixability: resultmodel.FixabilityManual,
+		AutomationStopReason: stopReason,
+	}
 }
 
 func usageResult(commandName, evidence string) resultmodel.CommandResult {

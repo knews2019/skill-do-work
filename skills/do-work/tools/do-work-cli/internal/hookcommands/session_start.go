@@ -41,14 +41,17 @@ func handleSessionStart(executionContext commandruntime.ExecutionContext, argume
 	fmt.Fprintf(&output, "do-work v%s loaded. %d pending REQ(s). Say 'do-work help' for commands.\n",
 		installedVersion(skillRoot), directQueueCount(executionContext.RepositoryRoot))
 	cleanup := corehelpers.CleanupReservations(executionContext.RepositoryRoot)
+	operations := []resultmodel.CommandResult{cleanup}
 	if len(cleanup.Changes) > 0 {
 		fmt.Fprintf(&output, "do-work: removed %d stale REQ reservation marker(s) from do-work/.req-reservations/ — stage and commit the deletion(s).\n", len(cleanup.Changes))
 	}
 
 	snapshot, discoveryError := repositorymodel.DiscoverRepository(executionContext.RepositoryRoot)
 	if discoveryError == nil {
-		plans, _ := doctor.BuildTimestampPlanForScope(context.Background(), snapshot, hookClock(), doctor.TimestampScopeActive)
+		plans, planFindings := doctor.BuildTimestampPlanForScope(context.Background(), snapshot, hookClock(), doctor.TimestampScopeActive)
+		operations = append(operations, resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: planFindings})
 		repair := doctor.ApplyUncommittedTimestampPlans(snapshot, plans)
+		operations = append(operations, repair)
 		applied := map[string]int{}
 		for _, change := range repair.Changes {
 			applied[change.Path]++
@@ -74,7 +77,7 @@ func handleSessionStart(executionContext commandruntime.ExecutionContext, argume
 			fmt.Fprintf(&output, "do-work: repaired %d detectably wrong timestamp(s) — review and commit the correction(s) with the next housekeeping commit.\n", repairCount)
 		}
 	}
-	return protocolResult(output.String())
+	return protocolResult(output.String(), operations...)
 }
 
 func installedVersion(skillRoot string) string {

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -18,6 +19,8 @@ func TestMemorySessionStartIsSilentWithoutStore(t *testing.T) {
 }
 
 func TestMemorySessionStartFiltersQuotedAndLegacyCaptures(t *testing.T) {
+	originalUmask := syscall.Umask(0o022)
+	t.Cleanup(func() { syscall.Umask(originalUmask) })
 	repository := t.TempDir()
 	memoryRoot := filepath.Join(repository, "memory")
 	if err := os.MkdirAll(filepath.Join(memoryRoot, "logs"), 0o755); err != nil {
@@ -36,6 +39,13 @@ func TestMemorySessionStartFiltersQuotedAndLegacyCaptures(t *testing.T) {
 	ledger, err := os.ReadFile(filepath.Join(memoryRoot, "usage-ledger.jsonl"))
 	if err != nil || !strings.Contains(string(ledger), `"source":"hooks/memory-session-start.sh"`) {
 		t.Fatalf("ledger=%q err=%v", ledger, err)
+	}
+	ledgerInfo, statError := os.Stat(filepath.Join(memoryRoot, "usage-ledger.jsonl"))
+	if statError != nil || ledgerInfo.Mode().Perm() != 0o644 {
+		t.Fatalf("ledger mode=%v err=%v, want legacy umask-derived 0644", ledgerInfo.Mode().Perm(), statError)
+	}
+	if len(result.Changes) != 1 || result.Changes[0].Path != "memory/usage-ledger.jsonl" {
+		t.Fatalf("typed result lost ledger append: %+v", result.Changes)
 	}
 	want := "<background-memory>\n" + memoryInstruction + "\n\nstanding\n\n" +
 		"## Today's log (2026-09-01) — curated entries only; raw session captures load via `do-work-knowledge memory recall`\n" +
