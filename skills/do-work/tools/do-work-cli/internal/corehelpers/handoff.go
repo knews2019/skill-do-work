@@ -76,5 +76,5 @@ func handleHandoffSurvey(executionContext commandruntime.ExecutionContext, argum
 		}
 		findings = append(findings, helperFinding(code, severity, []string{relative}, evidence, resultmodel.FixabilityManual, map[bool]string{true: "dirty files require disposition before handoff", false: ""}[len(status) > 0], nil, []string{"git", "-C", worktreePath, "status", "--short", "--untracked-files=all"}))
 	}
-	return successResult(nil, findings)
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: findings}
 }

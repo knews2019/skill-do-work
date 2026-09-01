@@ -148,7 +148,7 @@ func handleAssociate(executionContext commandruntime.ExecutionContext, arguments
 		}
 		findings = append(findings, helperFinding(code, severity, []string{candidate}, evidence, resultmodel.FixabilityManual, map[bool]string{true: "assign or quarantine the path", false: ""}[id == ""], nil, nil))
 	}
-	return successResult(nil, findings)
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: findings}
 }
 
 func associatePaths(repositoryRoot string, candidates []string) (map[string]string, error) {

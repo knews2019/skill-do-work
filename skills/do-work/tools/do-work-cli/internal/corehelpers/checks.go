@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -180,23 +181,226 @@ func handleQualify(executionContext commandruntime.ExecutionContext, arguments [
 		changed = append(changed, nonblankLines(untracked)...)
 	}
 	changedSet := stringSet(changed)
+	entries, entryError := qualificationSummaryEntries(string(contents))
+	if entryError != nil {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("QUALIFY-SUMMARY-MALFORMED", resultmodel.SeverityError, []string{requestPath}, entryError.Error(), resultmodel.FixabilityManual, "qualification claims cannot be interpreted", nil, nil)}}
+	}
 	findings := []resultmodel.CommandFinding{}
 	nonDoWork := 0
-	for _, path := range withoutDoWork(paths) {
+	for _, entry := range entries {
+		path := entry.path
+		if path == "do-work" || strings.HasPrefix(path, "do-work/") {
+			continue
+		}
 		nonDoWork++
-		if _, err := os.Lstat(absoluteFromRoot(executionContext.RepositoryRoot, path)); err != nil && os.IsNotExist(err) && !changedSet[path] {
+		_, statError := os.Lstat(absoluteFromRoot(executionContext.RepositoryRoot, path))
+		if entry.verb == "deleted" {
+			if statError == nil {
+				findings = append(findings, helperFinding("QUALIFY-DELETED-PATH-PRESENT", resultmodel.SeverityError, []string{path}, "listed as deleted but still on disk", resultmodel.FixabilityManual, "the implementation claim is unsupported", nil, nil))
+			} else if !changedSet[path] {
+				findings = append(findings, helperFinding("QUALIFY-PATH-NOT-IN-DIFF", resultmodel.SeverityWarning, []string{path}, "claimed deletion is not in the selected diff", resultmodel.FixabilityManual, "verify the path belongs to this REQ", nil, nil))
+			}
+			continue
+		}
+		if statError != nil && os.IsNotExist(statError) {
 			findings = append(findings, helperFinding("QUALIFY-CLAIMED-PATH-MISSING", resultmodel.SeverityError, []string{path}, "claimed path is absent and has no deletion evidence", resultmodel.FixabilityManual, "the implementation claim is unsupported", nil, nil))
 		} else if !changedSet[path] {
 			findings = append(findings, helperFinding("QUALIFY-PATH-NOT-IN-DIFF", resultmodel.SeverityWarning, []string{path}, "claimed path is not in the selected diff", resultmodel.FixabilityManual, "verify the path belongs to this REQ", nil, nil))
+		}
+		if entry.verb == "new" && statError == nil && !qualificationHasStaticReference(executionContext.RepositoryRoot, path, changed) {
+			findings = append(findings, helperFinding("QUALIFY-NEW-FILE-UNWIRED", resultmodel.SeverityWarning, []string{path}, "new file has no static reference outside itself", resultmodel.FixabilityManual, "judge entry-point or dynamic-wiring exceptions", nil, nil))
 		}
 	}
 	if nonDoWork == 0 {
 		findings = append(findings, helperFinding("QUALIFY-NO-PROJECT-FILES", resultmodel.SeverityError, nil, "Implementation Summary contains only do-work paths", resultmodel.FixabilityManual, "no implementation was claimed", nil, nil))
 	}
-	if !strings.Contains(string(contents), "[UNIFY]") {
+	unifyPattern := regexp.MustCompile(`(?m)^\s*-\s*\[[ x~]\]\s*\*\*\[UNIFY\]`)
+	uncheckedPattern := regexp.MustCompile(`(?m)^\s*-\s*\[ \]\s*\*\*\[(PLAN|APPLY|UNIFY)\]`)
+	if !unifyPattern.Match(contents) {
 		findings = append(findings, helperFinding("QUALIFY-UNIFY-DISARMED", resultmodel.SeverityWarning, []string{requestPath}, "no [UNIFY] box exists", resultmodel.FixabilityManual, "P-A-U audit is not armed", nil, nil))
 	}
-	return successResult(nil, findings)
+	if count := len(uncheckedPattern.FindAll(contents, -1)); count > 0 {
+		findings = append(findings, helperFinding("QUALIFY-PAU-UNCHECKED", resultmodel.SeverityError, []string{requestPath}, fmt.Sprintf("%d P-A-U checkbox(es) remain unchecked", count), resultmodel.FixabilityManual, "the builder has not completed every phase", nil, nil))
+	}
+	addedLines, artifactError := qualificationAddedLines(executionContext.RepositoryRoot, diffRange)
+	if artifactError != nil {
+		return usageResult(CommandQualify, artifactError.Error())
+	}
+	for path, lines := range addedLines {
+		if path == "do-work" || strings.HasPrefix(path, "do-work/") {
+			continue
+		}
+		for _, line := range lines {
+			if regexp.MustCompile(`\b(debugger|TODO|FIXME)\b`).MatchString(line) {
+				findings = append(findings, helperFinding("QUALIFY-DEBUG-ARTIFACT", resultmodel.SeverityError, []string{path}, line, resultmodel.FixabilityManual, "unfinished/debug-only code is present in the change", nil, nil))
+			}
+			if regexp.MustCompile(`console\.log|(^|[^[:alnum:]_])print\s*\(`).MatchString(line) {
+				severity := resultmodel.SeverityError
+				code := "QUALIFY-LIBRARY-OUTPUT"
+				stop := "library output has no terminal audience and is presumptively debug instrumentation"
+				if qualificationPathOwnsExit(executionContext.RepositoryRoot, path, diffRange) {
+					severity, code, stop = resultmodel.SeverityWarning, "QUALIFY-REPORTER-OUTPUT", "reporter output requires human judgment"
+				}
+				findings = append(findings, helperFinding(code, severity, []string{path}, line, resultmodel.FixabilityManual, stop, nil, nil))
+			}
+		}
+	}
+	outcome := resultmodel.OutcomeSuccess
+	for _, finding := range findings {
+		if finding.Severity == resultmodel.SeverityError {
+			outcome = resultmodel.OutcomeFindings
+			break
+		}
+	}
+	return resultmodel.CommandResult{Outcome: outcome, Findings: findings}
+}
+
+type qualificationSummaryEntry struct{ path, verb string }
+
+func qualificationSummaryEntries(contents string) ([]qualificationSummaryEntry, error) {
+	lines, found, err := sectionLines(contents, "Implementation Summary")
+	if err != nil || !found {
+		return nil, err
+	}
+	verbPattern := regexp.MustCompile(`\((new|modified|modify|deleted)\)`)
+	entries := []qualificationSummaryEntry{}
+	for _, line := range lines {
+		if !strings.HasPrefix(strings.TrimSpace(line), "- `") {
+			continue
+		}
+		parts := strings.Split(line, "`")
+		if len(parts)%2 == 0 {
+			return nil, fmt.Errorf("unmatched backtick in Implementation Summary")
+		}
+		verb := ""
+		if match := verbPattern.FindStringSubmatch(line); len(match) == 2 {
+			verb = match[1]
+			if verb == "modify" {
+				verb = "modified"
+			}
+		}
+		for index := 1; index < len(parts); index += 2 {
+			if parts[index] != "" {
+				entries = append(entries, qualificationSummaryEntry{parts[index], verb})
+			}
+		}
+	}
+	return entries, nil
+}
+
+func qualificationHasStaticReference(repositoryRoot, path string, changed []string) bool {
+	stem := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+	if stem == "" {
+		return false
+	}
+	output, _ := gitOutput(repositoryRoot, "grep", "-l", "-F", stem, "--", ".")
+	for _, candidate := range nonblankLines(output) {
+		if candidate != path && candidate != "do-work" && !strings.HasPrefix(candidate, "do-work/") {
+			return true
+		}
+	}
+	for _, candidate := range changed {
+		if candidate == path || candidate == "do-work" || strings.HasPrefix(candidate, "do-work/") {
+			continue
+		}
+		if contents, err := os.ReadFile(absoluteFromRoot(repositoryRoot, candidate)); err == nil && bytes.Contains(contents, []byte(stem)) {
+			return true
+		}
+	}
+	return false
+}
+
+func qualificationAddedLines(repositoryRoot, diffRange string) (map[string][]string, error) {
+	result := map[string][]string{}
+	diffs := [][]byte{}
+	if diffRange != "" {
+		output, err := gitOutput(repositoryRoot, "diff", "--no-ext-diff", "--no-color", "--unified=0", diffRange)
+		if err != nil {
+			return nil, err
+		}
+		diffs = append(diffs, output)
+	} else {
+		for _, args := range [][]string{{"diff", "--no-ext-diff", "--no-color", "--unified=0"}, {"diff", "--cached", "--no-ext-diff", "--no-color", "--unified=0"}} {
+			output, err := gitOutput(repositoryRoot, args...)
+			if err != nil {
+				return nil, err
+			}
+			diffs = append(diffs, output)
+		}
+	}
+	for _, diff := range diffs {
+		path := ""
+		for _, line := range strings.Split(string(diff), "\n") {
+			if strings.HasPrefix(line, "+++ b/") {
+				path = strings.TrimPrefix(line, "+++ b/")
+				continue
+			}
+			if path != "" && strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
+				result[path] = append(result[path], strings.TrimPrefix(line, "+"))
+			}
+		}
+	}
+	if diffRange == "" {
+		untracked, err := gitOutput(repositoryRoot, "ls-files", "--others", "--exclude-standard", "-z")
+		if err != nil {
+			return nil, err
+		}
+		for _, path := range strings.Split(string(untracked), "\x00") {
+			if path == "" {
+				continue
+			}
+			contents, err := os.ReadFile(absoluteFromRoot(repositoryRoot, path))
+			if err != nil || bytes.IndexByte(contents, 0) >= 0 {
+				continue
+			}
+			result[path] = append(result[path], strings.Split(string(contents), "\n")...)
+		}
+	}
+	return result, nil
+}
+
+func qualificationPathOwnsExit(repositoryRoot, path, diffRange string) bool {
+	base := "HEAD"
+	if diffRange != "" {
+		base = strings.SplitN(diffRange, "..", 2)[0]
+	}
+	basePath := path
+	if _, err := gitOutput(repositoryRoot, "cat-file", "-e", base+":"+basePath); err != nil {
+		basePath = qualificationRenameOrigin(repositoryRoot, base, path, diffRange)
+	}
+	var contents []byte
+	if basePath != "" {
+		contents, _ = gitOutput(repositoryRoot, "show", base+":"+basePath)
+	} else {
+		contents, _ = os.ReadFile(absoluteFromRoot(repositoryRoot, path))
+	}
+	exitPattern := regexp.MustCompile(`(?m)(^|[;&|]\s*|\b(then|else|do)\s+)exit\s+[0-9$][^\s;)}#]*\s*([;)}#]|$)|sys\.exit\s*\(|raise\s+SystemExit|os\._exit\s*\(|process\.exit\s*\(`)
+	return exitPattern.Match(contents)
+}
+
+func qualificationRenameOrigin(repositoryRoot, base, path, diffRange string) string {
+	args := []string{"diff", "--find-renames", "--name-status", "-z"}
+	if diffRange != "" {
+		args = append(args, diffRange)
+	} else {
+		args = append(args, base)
+	}
+	output, _ := gitOutput(repositoryRoot, args...)
+	fields := strings.Split(string(output), "\x00")
+	for index := 0; index+2 < len(fields); {
+		status := fields[index]
+		index++
+		if strings.HasPrefix(status, "R") || strings.HasPrefix(status, "C") {
+			origin, destination := fields[index], fields[index+1]
+			index += 2
+			if destination == path {
+				return origin
+			}
+		} else {
+			index++
+		}
+	}
+	return ""
 }
 
 func requiredPathOption(arguments []string, optionName, commandName string) (string, *resultmodel.CommandResult) {

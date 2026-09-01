@@ -69,7 +69,7 @@ func handleCaptureScreenshot(executionContext commandruntime.ExecutionContext, a
 			_ = os.Remove(filepath.Dir(sourceAbsolute))
 		}
 	}
-	return successResult(changes, findings)
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: changes, Findings: findings}
 }
 
 func publishPrivateCopy(sourcePath, destinationPath string) error {

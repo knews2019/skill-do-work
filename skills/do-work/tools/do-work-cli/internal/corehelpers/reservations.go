@@ -83,7 +83,7 @@ func handleCleanupReservations(executionContext commandruntime.ExecutionContext,
 		}
 		changes = append(changes, resultmodel.RecordedChange{Path: filepath.ToSlash(filepath.Join("do-work/.req-reservations", entry.Name())), Kind: "deleted", Detail: reason})
 	}
-	return successResult(changes, findings)
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: changes, Findings: findings}
 }
 
 func claimedRequestNumbers(repositoryRoot string) map[int]bool {
