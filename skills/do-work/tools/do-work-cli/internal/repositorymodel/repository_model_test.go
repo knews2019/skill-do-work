@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 func writeRepositoryFixture(t *testing.T, repositoryRoot string, relativePath string, contents string) {
@@ -55,6 +56,27 @@ func TestDiscoverRepositoryCoversLiveArchiveReservationAndExcludedLayouts(t *tes
 	root, err := FindRepositoryRoot(filepath.Join(repositoryRoot, "do-work", "archive", "UR-080"))
 	if err != nil || root != repositoryRoot {
 		t.Fatalf("FindRepositoryRoot = %q, %v; want %q", root, err, repositoryRoot)
+	}
+}
+
+func TestDiscoverRepositoryRetainsRequestModificationTime(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	relativePath := "do-work/working/REQ-001-working.md"
+	writeRepositoryFixture(t, repositoryRoot, relativePath, requestFixture("REQ-001", "claimed"))
+	modifiedAt := time.Date(2026, 8, 30, 19, 15, 12, 0, time.FixedZone("UTC+2", 2*60*60))
+	absolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(relativePath))
+	if err := os.Chtimes(absolutePath, modifiedAt, modifiedAt); err != nil {
+		t.Fatal(err)
+	}
+
+	snapshot, err := DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requestFile := snapshot.RequestsByID["REQ-001"][0]
+	wantModifiedAt := modifiedAt.UTC().Truncate(time.Second)
+	if !requestFile.ModifiedAt.Equal(wantModifiedAt) {
+		t.Fatalf("modified_at = %s, want %s", requestFile.ModifiedAt, wantModifiedAt)
 	}
 }
 

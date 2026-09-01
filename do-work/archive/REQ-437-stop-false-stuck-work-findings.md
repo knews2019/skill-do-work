@@ -1,7 +1,7 @@
 ---
 id: REQ-437
 title: 'Stop false stuck-work findings for active and terminal REQs'
-status: claimed
+status: completed
 route: B
 created_at: 2026-08-31T14:19:37Z
 user_request: UR-083
@@ -32,6 +32,7 @@ write_set:
 related: [REQ-438, REQ-439, REQ-440, REQ-441, REQ-442, REQ-443, REQ-444]
 batch: accepted-feedback-regressions
 claimed_at: 2026-09-01T21:20:23Z
+completed_at: 2026-09-01T21:33:40Z
 ---
 
 # Stop False Stuck-Work Findings for Active and Terminal REQs

@@ -165,6 +165,49 @@ func TestCanonicalPredicatesRetainStuckHollowAndStaleEvidence(t *testing.T) {
 	}
 }
 
+func TestStuckWorkSkipsTerminalAndRecentlyModifiedClaims(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	now := time.Date(2026, 8, 30, 20, 0, 0, 0, time.UTC)
+	terminalPath := "do-work/working/REQ-130-terminal.md"
+	recentPath := "do-work/working/REQ-131-recent.md"
+	inactivePath := "do-work/working/REQ-132-inactive.md"
+	writeDoctorFixture(t, repositoryRoot, terminalPath, doctorRequest("REQ-130", "completed", "created_at: 2026-08-20T00:00:00Z\nclaimed_at: 2026-08-20T01:00:00Z\n", "## Qualification\nDone"))
+	writeDoctorFixture(t, repositoryRoot, recentPath, doctorRequest("REQ-131", "claimed", "created_at: 2026-08-20T00:00:00Z\nclaimed_at: 2026-08-20T01:00:00Z\n", "## Testing\nStill running"))
+	writeDoctorFixture(t, repositoryRoot, inactivePath, doctorRequest("REQ-132", "claimed", "created_at: 2026-08-20T00:00:00Z\nclaimed_at: 2026-08-20T01:00:00Z\n", "## Testing\nInterrupted"))
+	for relativePath, modificationTime := range map[string]time.Time{
+		terminalPath: now.Add(-26 * time.Hour),
+		recentPath:   now.Add(-30 * time.Minute),
+		inactivePath: now.Add(-26 * time.Hour),
+	} {
+		if err := os.Chtimes(filepath.Join(repositoryRoot, filepath.FromSlash(relativePath)), modificationTime, modificationTime); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := ScanRepository(context.Background(), snapshot, ScanOptions{Now: now})
+	byIDAndCode := map[string]repositoryFinding{}
+	for _, finding := range result.Findings {
+		for _, id := range finding.AffectedIDs {
+			byIDAndCode[id+"/"+finding.Code] = repositoryFinding{severity: string(finding.Severity), evidence: strings.Join(finding.Evidence, " ")}
+		}
+	}
+	for _, id := range []string{"REQ-130", "REQ-131"} {
+		if _, found := byIDAndCode[id+"/STUCK-WORK"]; found {
+			t.Fatalf("%s unexpectedly reported as stuck: %#v", id, result.Findings)
+		}
+	}
+	if _, found := byIDAndCode["REQ-130/STRANDED-TERMINAL-REQUEST"]; !found {
+		t.Fatalf("terminal working request lost its location finding: %#v", result.Findings)
+	}
+	if finding, found := byIDAndCode["REQ-132/STUCK-WORK"]; !found || finding.severity != "error" {
+		t.Fatalf("inactive request stuck finding = %#v", finding)
+	}
+}
+
 type repositoryFinding struct {
 	severity string
 	evidence string

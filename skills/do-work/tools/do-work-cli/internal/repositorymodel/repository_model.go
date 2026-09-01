@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/atomicfile"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
@@ -34,6 +35,7 @@ type RequestFile struct {
 	TypedRecord    requestmodel.RequestRecord
 	ParsedDocument *requestmodel.RequestDocument
 	ContentBytes   []byte
+	ModifiedAt     time.Time
 	ParseFailure   string
 }
 
@@ -186,7 +188,7 @@ func DiscoverRepository(repositoryRoot string) (*RepositorySnapshot, error) {
 
 		baseName := directoryEntry.Name()
 		if topSection == "runs" && len(pathParts) == 3 && baseName == "manifest.md" {
-			fileBytes, readError := readContainedRegularFile(discoveryRoot, relativeSlashPath, absolutePath)
+			fileBytes, _, readError := readContainedRegularFile(discoveryRoot, relativeSlashPath, absolutePath)
 			if readError != nil {
 				snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot read run manifest %s: %v", absolutePath, readError))
 				return nil
@@ -438,12 +440,13 @@ func loadRequestFile(snapshot *RepositorySnapshot, discoveryRoot *os.Root, absol
 		AbsolutePath: absolutePath, RelativePath: relativePath, TreeSection: section,
 		FilenameID: requestIDFromText(filepath.Base(absolutePath)),
 	}
-	fileBytes, readError := readContainedRegularFile(discoveryRoot, relativePath, absolutePath)
+	fileBytes, fileInfo, readError := readContainedRegularFile(discoveryRoot, relativePath, absolutePath)
 	if readError != nil {
 		snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot read request %s: %v", absolutePath, readError))
 		return requestFile
 	}
 	requestFile.ContentBytes = append([]byte(nil), fileBytes...)
+	requestFile.ModifiedAt = fileInfo.ModTime().UTC().Truncate(time.Second)
 	document, parseError := requestmodel.ParseDocument(fileBytes)
 	if parseError != nil {
 		requestFile.ParseFailure = parseError.Error()
@@ -467,7 +470,7 @@ func loadRequestFile(snapshot *RepositorySnapshot, discoveryRoot *os.Root, absol
 
 func loadUserRequestFile(snapshot *RepositorySnapshot, discoveryRoot *os.Root, absolutePath string, relativePath string, section string) *UserRequestFile {
 	userRequest := &UserRequestFile{AbsolutePath: absolutePath, RelativePath: relativePath, TreeSection: section}
-	fileBytes, readError := readContainedRegularFile(discoveryRoot, relativePath, absolutePath)
+	fileBytes, _, readError := readContainedRegularFile(discoveryRoot, relativePath, absolutePath)
 	if readError != nil {
 		snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot read user request %s: %v", absolutePath, readError))
 		return userRequest
@@ -487,7 +490,7 @@ func loadUserRequestFile(snapshot *RepositorySnapshot, discoveryRoot *os.Root, a
 }
 
 func loadStandaloneUserRequestRecord(snapshot *RepositorySnapshot, discoveryRoot *os.Root, absolutePath, relativePath string) {
-	fileBytes, readError := readContainedRegularFile(discoveryRoot, relativePath, absolutePath)
+	fileBytes, _, readError := readContainedRegularFile(discoveryRoot, relativePath, absolutePath)
 	if readError != nil {
 		snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot read user request record %s: %v", absolutePath, readError))
 		return
@@ -501,36 +504,36 @@ func loadStandaloneUserRequestRecord(snapshot *RepositorySnapshot, discoveryRoot
 	}
 }
 
-func readContainedRegularFile(discoveryRoot *os.Root, relativePath string, absolutePath string) ([]byte, error) {
+func readContainedRegularFile(discoveryRoot *os.Root, relativePath string, absolutePath string) ([]byte, fs.FileInfo, error) {
 	rootedPath := filepath.FromSlash(relativePath)
 	pathInfo, lstatError := discoveryRoot.Lstat(rootedPath)
 	if lstatError != nil {
-		return nil, lstatError
+		return nil, nil, lstatError
 	}
 	if pathInfo.Mode()&os.ModeSymlink != 0 {
-		return nil, fmt.Errorf("%s is a symlink; refusing to read linked content", absolutePath)
+		return nil, nil, fmt.Errorf("%s is a symlink; refusing to read linked content", absolutePath)
 	}
 	if !pathInfo.Mode().IsRegular() {
-		return nil, fmt.Errorf("%s is not a regular file", absolutePath)
+		return nil, nil, fmt.Errorf("%s is not a regular file", absolutePath)
 	}
 	openedFile, openError := discoveryRoot.Open(rootedPath)
 	if openError != nil {
-		return nil, openError
+		return nil, nil, openError
 	}
 	defer openedFile.Close()
 	openedInfo, openedStatError := openedFile.Stat()
 	if openedStatError != nil || !openedInfo.Mode().IsRegular() || !os.SameFile(pathInfo, openedInfo) {
-		return nil, fmt.Errorf("%s changed before its contained read", absolutePath)
+		return nil, nil, fmt.Errorf("%s changed before its contained read", absolutePath)
 	}
 	fileBytes, readError := io.ReadAll(openedFile)
 	if readError != nil {
-		return nil, readError
+		return nil, nil, readError
 	}
 	afterInfo, afterStatError := openedFile.Stat()
 	if afterStatError != nil || !os.SameFile(openedInfo, afterInfo) || openedInfo.Size() != afterInfo.Size() || !openedInfo.ModTime().Equal(afterInfo.ModTime()) {
-		return nil, fmt.Errorf("%s changed during its contained read", absolutePath)
+		return nil, nil, fmt.Errorf("%s changed during its contained read", absolutePath)
 	}
-	return fileBytes, nil
+	return fileBytes, afterInfo, nil
 }
 
 func requestNumberFromText(requestText string) (int, bool) {

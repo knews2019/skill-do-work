@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.6 — Stop False Stuck-Work Findings (2026-09-02)
+
+Doctor no longer labels live or terminal work as abandoned solely because it was claimed long ago. Its findings now distinguish an actually inactive claim from a recent edit or a terminal record waiting to be moved.
+
+- Request snapshots retain the verified file modification time from their contained read.
+- STUCK-WORK excludes terminal statuses and files modified within the active one-hour window, while stranded-terminal and inactive-claim findings remain.
+
 ## 0.260.5 — Preserve Empty Frontmatter Lists (2026-09-02)
 
 Empty dependency lists were mistaken for a dependency literally named `[]`, quietly holding otherwise ready work out of the queue. The request reader now keeps an explicit empty list intact, so normal queue runs can advance those REQs again.

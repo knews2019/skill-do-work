@@ -201,6 +201,9 @@ func addStaleQueueFinding(result *resultmodel.CommandResult, requestFile *reposi
 
 func addStuckWorkFinding(result *resultmodel.CommandResult, requestFile *repositorymodel.RequestFile, requestID, body string, now time.Time) {
 	record := requestFile.TypedRecord
+	if schemanormalization.IsStopped(record.RequestStatus) || (!requestFile.ModifiedAt.After(now) && !requestFile.ModifiedAt.Before(now.Add(-time.Hour))) {
+		return
+	}
 	severity := resultmodel.SeverityWarning
 	ageEvidence := "claimed_at is absent"
 	shouldReport := record.ClaimedAt == ""
