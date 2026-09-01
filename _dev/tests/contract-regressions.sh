@@ -1819,7 +1819,7 @@ def calibration_source_defects(source):
 live_defects = calibration_source_defects(work_text)
 if live_defects:
     raise SystemExit(
-        "actions/work.md Step 8 substep 7.5 has an incomplete persisted-stamp "
+        "work-reference calibration evidence semantics have an incomplete persisted-stamp "
         f"source contract: {sorted(live_defects)}"
     )
 
@@ -7361,6 +7361,120 @@ assert_block_not_contains \
   "$work_complete_tail" \
   'Append the calibration-log line|append one line to `do-work/calibration-log\.tsv`|creating the file with the header' \
   'work must not append calibration after canonical complete already owns it.'
+
+# REQ-459 — all four serial/worktree staging surfaces must stage calibration
+# solely from the successful canonical complete result's reported target set.
+# Check each operative block independently so a correct neighboring surface
+# cannot mask a stale or unconditional staging instruction.
+if ! python3 - "$core_root/actions/work.md" "$core_root/actions/work-reference.md" <<'PY'
+import pathlib
+import re
+import sys
+
+work_text = pathlib.Path(sys.argv[1]).read_text()
+reference_text = pathlib.Path(sys.argv[2]).read_text()
+
+
+def between(source, start, end):
+    try:
+        return source.split(start, 1)[1].split(end, 1)[0]
+    except IndexError:
+        return ""
+
+
+work_commit = between(
+    work_text,
+    "### Step 9: Commit Phase (Git repos only)",
+    "### Step 10: Loop or Exit",
+)
+work_serial, separator, work_worktree = work_commit.partition(
+    "**In worktree dispatch mode the implementation commit already exists**"
+)
+reference_commit = between(
+    reference_text,
+    "## Commit & Metadata-Commit Procedure (Step 9)",
+    "## Session Checkpoint Template (Step 10)",
+)
+reference_serial, reference_separator, reference_worktree = reference_commit.partition(
+    "**In worktree dispatch mode**"
+)
+
+surfaces = {
+    "work serial Commit Phase": work_serial,
+    "work worktree Commit Phase": work_worktree if separator else "",
+    "work-reference serial procedure/example": reference_serial,
+    "work-reference worktree Commit Phase": (
+        reference_worktree if reference_separator else ""
+    ),
+}
+
+
+def defects(block, require_guarded_add=False):
+    flattened = " ".join(block.split())
+    failures = set()
+    if "do-work/calibration-log.tsv" not in block:
+        failures.add("literal-path")
+    if re.search(
+        r"successful canonical `complete` result",
+        flattened,
+        flags=re.IGNORECASE,
+    ) is None:
+        failures.add("canonical-complete-result")
+    if re.search(
+        r"(?:only when|when|if).{0,220}successful canonical `complete` result.{0,260}"
+        r"reports?.{0,160}(?:changes?|changed|affected).{0,100}(?:targets?|paths?)",
+        flattened,
+        flags=re.IGNORECASE,
+    ) is None:
+        failures.add("reported-target-condition")
+    if "Step 8 substep 7.5" in block:
+        failures.add("stale-step-condition")
+    if require_guarded_add and re.search(
+        r"if\b[^\n]*;\s*then\s*\n(?:[^\n]*\n){0,4}\s*git add do-work/calibration-log\.tsv\s*\n\s*fi\b",
+        block,
+        flags=re.IGNORECASE,
+    ) is None:
+        failures.add("guarded-exact-git-add")
+    return failures
+
+
+all_failures = []
+for name, block in surfaces.items():
+    surface_defects = defects(
+        block,
+        require_guarded_add=name == "work-reference serial procedure/example",
+    )
+    if surface_defects:
+        all_failures.append(f"{name}: {sorted(surface_defects)}")
+
+if all_failures:
+    raise SystemExit("; ".join(all_failures))
+
+# Prove the check rejects the two historical failure shapes independently.
+for name, block in surfaces.items():
+    stale = block.replace(
+        "the successful canonical `complete` result reports it among its changes or affected target paths",
+        "Step 8 substep 7.5 appended a line",
+        1,
+    )
+    if stale != block and not defects(stale):
+        raise SystemExit(f"{name}: contract accepted stale Step 8 substep 7.5 condition")
+
+serial_reference = surfaces["work-reference serial procedure/example"]
+unguarded = re.sub(
+    r"if\b[^\n]*;\s*then\s*\n(\s*git add do-work/calibration-log\.tsv\s*)\n\s*fi\b",
+    r"\1",
+    serial_reference,
+    count=1,
+    flags=re.IGNORECASE,
+)
+if unguarded != serial_reference and not defects(unguarded, require_guarded_add=True):
+    raise SystemExit("serial reference contract accepted unconditional calibration git add")
+PY
+then
+  printf 'FAIL: serial/worktree calibration staging is not wholly owned by the canonical complete result (REQ-459).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
 
 abandon_cancel_block="$(sed -n '/^### Step 5: Archive/,/^### Step 6: Report/p' "$core_root/actions/abandon.md")"
 assert_block_not_contains \
