@@ -1,7 +1,7 @@
 ---
 id: REQ-467
 title: '[impact-rule-change] Review fix: Reconcile SessionStart authority restatements'
-status: pending
+status: cancelled
 created_at: 2026-09-01T04:01:15Z
 user_request: UR-081
 domain: general
@@ -16,6 +16,7 @@ related: [REQ-415, REQ-420, REQ-463]
 batch: go-no-llm-command-platform
 review_generated: true
 addendum_to: REQ-415
+completed_at: 2026-09-01T12:02:28Z
 ---
 
 # Reconcile SessionStart Authority Restatements
@@ -57,3 +58,9 @@ See `do-work/user-requests/UR-081/input.md` and `do-work/runs/work-2026-08-31-16
 
 ---
 *Source: REQ-415 fresh re-review residual finding 2.*
+
+## Cancelled
+
+- **When:** 2026-09-01T12:02:28Z
+- **Why:** folded into REQ-420 as SessionStart-authority acceptance criteria (maintainer decision, 2026-09-01 queue analysis)
+- **Decided by:** user, via `do-work abandon`

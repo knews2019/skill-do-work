@@ -1,7 +1,7 @@
 ---
 id: REQ-473
 title: 'Review fix: Support documented outside-target BKB initialization'
-status: pending
+status: cancelled
 created_at: 2026-09-01T05:59:27Z
 user_request: UR-081
 domain: backend
@@ -16,6 +16,7 @@ related: [REQ-416, REQ-457]
 batch: go-no-llm-command-platform
 review_generated: true
 addendum_to: REQ-416
+completed_at: 2026-09-01T12:02:37Z
 ---
 
 # Support Documented Outside-Target BKB Initialization
@@ -50,3 +51,9 @@ See `do-work/user-requests/UR-081/input.md` and `do-work/runs/work-2026-08-31-16
 
 ---
 *Source: REQ-416 fresh re-review residual F2.*
+
+## Cancelled
+
+- **When:** 2026-09-01T12:02:37Z
+- **Why:** folded into REQ-420 as bkb-init outside-target parity fixtures (maintainer decision, 2026-09-01 queue analysis)
+- **Decided by:** user, via `do-work abandon`

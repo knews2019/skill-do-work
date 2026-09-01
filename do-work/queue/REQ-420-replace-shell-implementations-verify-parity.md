@@ -141,3 +141,77 @@ Provenance: `do-work/runs/work-2026-08-31-165510/REQ-418-rereview.md` while the 
 scratch survives; durably, the `## Review` section of
 `do-work/archive/REQ-418-migrate-toolbox-absorb-audit-metrics.md`.
 
+## Folded From REQ-467 (2026-09-01)
+
+REQ-415's fresh re-review residual finding 2, minted standalone only because this REQ
+was dependency-gated at capture time ("REQ-420 adjacent but not dependency-ready" —
+its own body). The maintainer folded it here on 2026-09-01: reconciling SessionStart
+authority guidance is intrinsic to this REQ's shim conversion of the very scripts the
+guidance misattributes. The shim-conversion bullet is satisfied for
+`cleanup-req-reservations.sh` and `repair-req-timestamps.sh` only when:
+
+- Every live shipped restatement of SessionStart reservation-cleanup/timestamp-repair
+  ownership — `README.md`, `skills/do-work/actions/capture.md`,
+  `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md`, and
+  `skills/do-work-board/tools/queue-kanban/verify.go` findings/remedies/tests —
+  identifies the registered Go hook/core owner, matching wording variants, not only
+  filenames; retained scripts are described only by their thin-launcher role, and no
+  guidance recommends the pre-REQ-463 fail-open cleanup path.
+- Board findings and recovery commands emit runnable canonical CLI argv instead of
+  retired script paths.
+- A contract test fails when live shipped guidance reintroduces the old ownership claim.
+
+Provenance: `do-work/archive/REQ-415-migrate-core-memory-hooks.md` (the re-review
+scratch it cited was pruned with the run directory).
+
+## Folded From REQ-473 (2026-09-01)
+
+REQ-416's fresh re-review residual F2, a documented-behavior divergence whose stated
+requirement is a differential parity proof — this REQ's parity suite is where that
+proof lives. The parity requirement is satisfied for `bkb-init` only when:
+
+- The characterized fixtures include the documented outside-target contract
+  (`bkb init ~/research` and a parent-relative equivalent) with the pre-migration
+  action as oracle: absolute and parent-relative targets outside the invocation Git
+  root route to the standalone initialization flow without weakening path safety, and
+  the invocation repository is left untouched.
+- Exact user-supplied targets are preserved in text/JSON next argv, Just recipes, and
+  verification argv for success, dry-run, and every refusal.
+- Fixtures cover invocation inside Git, target inside the same root, target outside
+  it, symlink-spelled paths, spaces, and ambiguous/unavailable Git evidence, with all
+  rooted publication/rollback protections retained.
+
+Provenance: `do-work/archive/REQ-416-implement-bkb-dream-commands.md`.
+
+## Folded From REQ-474 (2026-09-01)
+
+REQ-416's fresh re-review residual finding 3, a characterized parity break. The
+parity requirement is satisfied for `bkb-status` only when:
+
+- Article and topic-cluster counts parse from `wiki/_master_index.md` exactly as the
+  pre-migration status action defined them; disk inventories appear only where
+  separately named and are never relabeled as master-index counts.
+- The fixture matrix includes a master index declaring 17 articles / 3 topic clusters
+  while disk inventory differs (today's implementation reports 0/0), plus missing,
+  malformed, duplicate, and inconsistent count declarations returning actionable
+  typed findings.
+- Text/JSON parity and byte-for-byte read-only behavior are proven.
+
+Provenance: `do-work/archive/REQ-416-implement-bkb-dream-commands.md`.
+
+## Folded From REQ-476 (2026-09-01)
+
+REQ-417's fresh re-review residual finding 2 (sweep
+`memory-bkb-audit-tdd-coverage-missing`, impact-negligible, effort-mechanical): the
+plan-required committed BKB audit matrix, folded because this REQ's whole-suite
+characterization matrix must contain those rows regardless. The characterization
+requirement is satisfied for the BKB audit surface only when:
+
+- Real-command fixtures cover explicit, default, absolute, and parent BKB discovery;
+  repository shape; committed history/authors; inbound references; absent and
+  malformed ledger evidence; pre-ledger fairness; and exact classification boundaries.
+- `auditBKBEngine` and `countBKBInboundReferences` execute under the committed test
+  suite (both report 0.0% coverage today) with focused coverage evidence retained.
+- Text/JSON parity and byte-for-byte read-only behavior are proven.
+
+Provenance: `do-work/archive/REQ-417-implement-interview-memory-commands.md`.

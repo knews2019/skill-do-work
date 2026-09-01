@@ -1,7 +1,7 @@
 ---
 id: REQ-476
 title: '[impact-negligible] Review fix: Cover BKB audit with durable fixtures'
-status: pending
+status: cancelled
 created_at: 2026-09-01T08:32:57Z
 user_request: UR-081
 domain: backend
@@ -18,6 +18,7 @@ review_generated: true
 addendum_to: REQ-417
 sweep: true
 sweep_key: memory-bkb-audit-tdd-coverage-missing
+completed_at: 2026-09-01T12:02:37Z
 ---
 
 # Cover BKB Audit with Durable Fixtures
@@ -58,3 +59,9 @@ See `do-work/runs/work-2026-08-31-165510/REQ-417-rereview.md`.
 
 ---
 *Source: REQ-417 fresh re-review residual finding 2.*
+
+## Cancelled
+
+- **When:** 2026-09-01T12:02:37Z
+- **Why:** folded into REQ-420 as BKB audit characterization-matrix criteria (maintainer decision, 2026-09-01 queue analysis)
+- **Decided by:** user, via `do-work abandon`
