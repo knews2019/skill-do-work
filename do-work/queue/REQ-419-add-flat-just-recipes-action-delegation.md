@@ -54,3 +54,19 @@ See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
 
 ---
 *Source: UR-081 (Replace LLM bookkeeping and shipped utility logic with a Go command platform)*
+
+## Review Addendum — Shell-Safe Publication Recipe Arguments
+
+REQ-413's fresh re-review found that publication results render manifest paths with Go double-quoted strings. When pasted into a shell-backed Just recipe, valid paths containing `$HOME`, `$(...)`, or backticks can expand or execute even though machine `next_argv` remains exact.
+
+### Additional Requirements
+
+- Render every generated publication recipe argument with shell-safe, byte-preserving quoting suitable for direct execution by the emitted flat Just recipe.
+- Keep `next_argv` exact and ensure the human-runnable recipe represents the same argument bytes without expansion.
+- Cover spaces, single and double quotes, dollar signs, command substitutions, backticks, tabs, and newlines where the interface permits them.
+
+### Additional Red-Green Proof
+
+**RED prompt/case:** Generate a publication recovery recipe for manifest paths containing shell expansions and quoting metacharacters, execute it through the advertised Just/shell boundary, and compare received argv bytes.
+**Why RED now:** `strconv.Quote` emits Go double quotes, which are not shell-literal for `$`, command substitution, or backticks.
+**GREEN when:** The generated recipe executes without expansion and passes byte-identical arguments for every supported hostile path shape.

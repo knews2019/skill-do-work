@@ -55,4 +55,8 @@ Status: in-progress
 | Reviewer | REQ-445 review | integration range `a6724bee..6d14a046` | REQ plus REQ-430 | `REQ-445-review.md` | done |
 | Reviewer | REQ-413 review | integration range `4404fd97..d5adf29e` | REQ plus UR-081 | `REQ-413-review.md` | changes-requested |
 | Remediation | REQ-413 | `worktree-agent-REQ-413-implement-capture-answer-release-transactions` | F1-F10 publication boundary and contract closure | `REQ-413-remediation-handback.md` | done |
-| Reviewer | REQ-413 re-review | integration range `4404fd97..db7bb7c8` | REQ plus initial findings | `REQ-413-rereview.md` | pending |
+| Reviewer | REQ-413 re-review | integration range `4404fd97..db7bb7c8` | REQ plus initial findings | `REQ-413-rereview.md` | changes-requested |
+| Folded | REQ-457 | transaction-created-path rollback identity | REQ-413 F1 + F9 | `do-work/queue/REQ-457-record-cleanup-move-destinations-after-exclusive-creation.md` | done |
+| Discovered | REQ-460 | condition-complete delimiter containment | REQ-413 F5 | `do-work/queue/REQ-460-make-outside-text-delimiter-containment-condition-complete.md` | done |
+| Discovered | REQ-461 | affirmative project-owned release targets | REQ-413 F7 | `do-work/queue/REQ-461-require-affirmative-project-owned-release-targets.md` | done |
+| Folded | REQ-419 | shell-safe publication recipe arguments | REQ-413 F8 | `do-work/queue/REQ-419-add-flat-just-recipes-action-delegation.md` | done |

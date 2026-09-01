@@ -14,15 +14,22 @@ impact: impact-critical
 effort_estimate: effort-substantive
 related: [REQ-450, REQ-451, REQ-452, REQ-453, REQ-454, REQ-455, REQ-456]
 batch: accepted-validate-feedback-root-causes
+sweep: true
+sweep_key: transaction-created-path-rollback-identity
 ---
 
-# Record Cleanup Move Destinations After Exclusive Creation
+# Make Rollback Ownership Follow the Created Filesystem Object
 
 ## What
 
-Register a cleanup move destination as transaction-owned only after this process creates it exclusively, and before the later fallible source deletion. If transaction recording then fails, remove only the file this process just created. A losing writer must never roll back another writer's winning file.
+Make transaction-created-path ownership identify the filesystem object created by this invocation, rather than trusting a pathname that can later resolve to another writer's object. Register cleanup move destinations only after exclusive creation, and keep create/replace/move rollback confined after parent swaps at every later mutation point.
 
-The fold-first scan found no pending or pending-answers REQ, sweep or otherwise, in any UR that shares this premature cleanup-destination ownership root cause.
+This sweep now owns both premature cleanup-destination recording and REQ-413's post-record parent-swap rollback failure. Both share one invariant: rollback may remove only the same filesystem object this invocation created.
+
+## Instances
+
+- Cleanup records a move destination before exclusive creation, so a losing writer can delete the winner's file during rollback.
+- Publication creates and records a repository path, then a later parent swap can redirect pathname-only rollback to an outside same-named file.
 
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
@@ -49,6 +56,8 @@ The fold-first scan found no pending or pending-answers REQ, sweep or otherwise,
 - If recorder registration fails, remove only the destination just created by this process and leave the source intact.
 - If exclusive creation fails with `EEXIST`, never record or remove that destination during rollback.
 - Preserve no-overwrite semantics and exact transaction rollback behavior for paths the process genuinely owns.
+- Hold or revalidate rooted object identity for every created path through rollback after each later create, replace, or move mutation.
+- Never follow a swapped parent outside the repository or remove a different writer's replacement object.
 
 ## Constraints
 
@@ -65,9 +74,9 @@ Certainty level: Firm. The ownership event is successful exclusive creation; rec
 
 ## Red-Green Proof
 
-**RED prompt/case:** Coordinate two cleanup writers so both observe an absent destination, writer A wins exclusive creation, and writer B loses with `EEXIST` and rolls back.
-**Why RED now:** Writer B records ownership before it attempts exclusive creation, so its rollback can delete writer A's file.
-**GREEN when:** Writer A's bytes remain after writer B fails and rolls back; recorder-failure coverage removes only a destination created by the same process while preserving its source.
+**RED prompt/case:** Coordinate two cleanup writers around exclusive creation, then separately swap a created path's parent after it is recorded and fail each later mutation index while protecting same-named outside objects.
+**Why RED now:** Cleanup can record ownership before creation, and shared rollback later resolves recorded paths by pathname; both let one transaction delete an object it did not create.
+**GREEN when:** Losing-writer rollback preserves the winner, post-record parent swaps never delete outside or replacement objects, and recorder-failure cleanup removes only the object created by the same invocation while preserving its source.
 **Validation:** User confirmed after validate-feedback accepted Finding #16.
 
 ## Full Context
