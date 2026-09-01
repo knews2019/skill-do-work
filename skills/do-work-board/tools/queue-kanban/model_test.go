@@ -138,6 +138,54 @@ func TestResolveDependsOnPrefersCanonical(t *testing.T) {
 	}
 }
 
+func TestParseRequestTicketReadsOptionalPhaseTimestamps(t *testing.T) {
+	fixturePath := filepath.Join(t.TempDir(), "REQ-448-phase-stamps.md")
+	fixture := `---
+id: REQ-448
+title: phase stamps
+status: completed
+planning_at: 2026-09-01T10:01:00Z
+dispatch_at: 2026-09-01T10:02:00Z
+builder_handback_at: 2026-09-01T10:03:00Z
+integration_at: 2026-09-01T10:04:00Z
+review_at: 2026-09-01T10:05:00Z
+remediation_at: 2026-09-01T10:06:00Z
+re_review_at: 2026-09-01T10:07:00Z
+release_at: 2026-09-01T10:08:00Z
+---
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixture), 0o600); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+	ticket, parseError := parseRequestTicket(fixturePath, "archive")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	got := []string{
+		ticket.PlanningAt, ticket.DispatchAt, ticket.BuilderHandbackAt, ticket.IntegrationAt,
+		ticket.ReviewAt, ticket.RemediationAt, ticket.ReReviewAt, ticket.ReleaseAt,
+	}
+	want := []string{
+		"2026-09-01T10:01:00Z", "2026-09-01T10:02:00Z", "2026-09-01T10:03:00Z", "2026-09-01T10:04:00Z",
+		"2026-09-01T10:05:00Z", "2026-09-01T10:06:00Z", "2026-09-01T10:07:00Z", "2026-09-01T10:08:00Z",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("phase stamps = %v, want %v", got, want)
+	}
+
+	historicalPath := filepath.Join(t.TempDir(), "REQ-447-historical.md")
+	if writeError := os.WriteFile(historicalPath, []byte("---\nid: REQ-447\nstatus: completed\n---\n"), 0o600); writeError != nil {
+		t.Fatalf("write historical fixture: %v", writeError)
+	}
+	historical, parseError := parseRequestTicket(historicalPath, "archive")
+	if parseError != nil {
+		t.Fatalf("parse historical ticket: %v", parseError)
+	}
+	if historical.PlanningAt != "" || historical.ReleaseAt != "" {
+		t.Fatalf("absent phase stamps were fabricated: %#v", historical)
+	}
+}
+
 func TestDeriveRequestIdFromFilename(t *testing.T) {
 	testCases := map[string]string{
 		"/x/do-work/queue/REQ-1207-queue-kanban-parser.md": "REQ-1207",

@@ -408,6 +408,27 @@
     return listContainer;
   }
 
+  function appendPhaseBreakdownRows(phaseBreakdown) {
+    (phaseBreakdown || []).forEach(function (phase) {
+      var phaseValue = createElement("span");
+      phaseValue.appendChild(
+        makeInstantWithRelativeNode(phase.instant) ||
+          document.createTextNode(formatShortInstant(phase.instant))
+      );
+      if (phase.hasElapsed) {
+        var phaseMinutes = Number(phase.elapsedMinutes);
+        var phaseSign = phaseMinutes < 0 ? "−" : "+";
+        var phaseElapsed = formatElapsedDuration(0, Math.round(Math.abs(phaseMinutes) * 60000));
+        phaseValue.appendChild(
+          document.createTextNode(
+            " (" + phaseSign + phaseElapsed + " wall since " + phase.previousLabel + ")"
+          )
+        );
+      }
+      appendMetaRow("Phase · " + phase.label, phaseValue);
+    });
+  }
+
   function openRequestDetail(requestId) {
     var request = requestsById[requestId];
     if (!request) {
@@ -541,6 +562,7 @@
       completedRowValue.appendChild(document.createTextNode(" (" + request.completionTimeSource + ")"));
       appendMetaRow("Completed", completedRowValue);
     }
+    appendPhaseBreakdownRows(request.phaseBreakdown);
     if (request.completionAnomaly) {
       var anomalyValue = createElement("span", "detail-status-invalid");
       anomalyValue.appendChild(

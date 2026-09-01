@@ -9614,7 +9614,13 @@ func buildImplementationSpanFixturePayload(t *testing.T) generatedBoardData {
 	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
 		{"do-work/archive/REQ-901-ordinary-span.md", spanFixtureFrontmatter(
 			"REQ-901", "ordinary span", "completed",
-			claimInstant.Format(time.RFC3339), ordinaryCompletion.Format(time.RFC3339))},
+			claimInstant.Format(time.RFC3339), ordinaryCompletion.Format(time.RFC3339),
+			"planning_at: 2026-08-24T10:10:00Z",
+			"dispatch_at: 2026-08-24T10:15:00Z",
+			"builder_handback_at: 2026-08-24T12:00:00Z",
+			"integration_at: 2026-08-24T12:10:00Z",
+			"review_at: 2026-08-24T12:40:00Z",
+			"release_at: 2026-08-24T13:00:00Z")},
 		{"do-work/archive/REQ-902-paused-span.md", spanFixtureFrontmatter(
 			"REQ-902", "overnight span", "completed",
 			claimInstant.Format(time.RFC3339), claimInstant.Add(implementationSpanPausedFixtureSpan).Format(time.RFC3339))},
@@ -9741,6 +9747,96 @@ func TestGeneratedRequestCarriesTheDoneCardImplementationSpan(t *testing.T) {
 	}
 }
 
+func TestGeneratedRequestCarriesObservedPhaseBreakdown(t *testing.T) {
+	boardData := buildImplementationSpanFixturePayload(t)
+	request := boardData.Requests["REQ-901"]
+	if request.PlanningAt != "2026-08-24T10:10:00Z" || request.ReleaseAt != "2026-08-24T13:00:00Z" {
+		t.Fatalf("raw phase observations did not reach generated request: %#v", request)
+	}
+	wantFields := []string{
+		"planning_at", "dispatch_at", "builder_handback_at", "integration_at", "review_at", "completed_at", "release_at",
+	}
+	if len(request.PhaseBreakdown) != len(wantFields) {
+		t.Fatalf("phase payload has %d entries, want %d: %#v", len(request.PhaseBreakdown), len(wantFields), request.PhaseBreakdown)
+	}
+	for index, wantField := range wantFields {
+		if request.PhaseBreakdown[index].FieldName != wantField {
+			t.Errorf("phase payload entry %d field = %q, want %q", index, request.PhaseBreakdown[index].FieldName, wantField)
+		}
+	}
+	if historical := boardData.Requests["REQ-902"].PhaseBreakdown; len(historical) != 0 {
+		t.Fatalf("historical request without phase observations gained a breakdown: %#v", historical)
+	}
+}
+
+func TestJavaScriptBehaviorDetailRendersOnlyObservedPhaseBreakdown(t *testing.T) {
+	boardData := buildImplementationSpanFixturePayload(t)
+	phasePayload, encodeError := json.Marshal(boardData.Requests["REQ-901"].PhaseBreakdown)
+	if encodeError != nil {
+		t.Fatalf("encode phase payload: %v", encodeError)
+	}
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function appendPhaseBreakdownRows("),
+		sliceBalancedBlockAfter(t, indexHtml, "function formatElapsedDuration("),
+	}
+	javascriptProbe := `
+function makeNode(tagName) {
+  return {
+    tagName: tagName,
+    className: "",
+    textContent: "",
+    childNodes: [],
+    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; }
+  };
+}
+var document = {
+  createElement: function (tagName) { return makeNode(tagName); },
+  createTextNode: function (text) { return { nodeType: "text", text: text, childNodes: [] }; }
+};
+var futureInstantSkewAllowanceMs = 120000;
+var clockSkewMarkerText = "clock skew";
+function makeInstantWithRelativeNode(isoText) { return document.createTextNode(isoText); }
+function formatShortInstant(isoText) { return isoText; }
+function nodeText(node) {
+  if (node.nodeType === "text") { return node.text; }
+  return (node.textContent || "") + node.childNodes.map(nodeText).join("");
+}
+var rows = [];
+function appendMetaRow(label, value) { rows.push({ label: label, value: typeof value === "string" ? value : nodeText(value) }); }
+` + strings.Join(functionBlocks, "\n") + `
+appendPhaseBreakdownRows(` + string(phasePayload) + `);
+process.stdout.write(JSON.stringify(rows));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "detail phase breakdown", javascriptProbe)
+	var rows []struct {
+		Label string `json:"label"`
+		Value string `json:"value"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &rows); decodeError != nil {
+		t.Fatalf("decode phase rows: %v (output %q)", decodeError, probeOutput)
+	}
+	wantLabels := []string{
+		"Phase · Planning", "Phase · Dispatch", "Phase · Builder handback", "Phase · Integration",
+		"Phase · Review", "Phase · Completed", "Phase · Release",
+	}
+	if len(rows) != len(wantLabels) {
+		t.Fatalf("rendered %d phase rows, want %d: %#v", len(rows), len(wantLabels), rows)
+	}
+	for index, wantLabel := range wantLabels {
+		if rows[index].Label != wantLabel {
+			t.Errorf("phase row %d label = %q, want %q", index, rows[index].Label, wantLabel)
+		}
+		if !strings.Contains(rows[index].Value, " wall since ") {
+			t.Errorf("phase row %d omits honest wall-span wording: %q", index, rows[index].Value)
+		}
+	}
+	if !strings.Contains(rows[len(rows)-1].Value, "wall since Completed") {
+		t.Errorf("release tail was not separated from completion: %q", rows[len(rows)-1].Value)
+	}
+}
+
 // The rendered done line, built by the REAL makeRequestCard out of the generated
 // page and fed the REAL payload. The point of the whole REQ is what the card
 // SAYS, so a stubbed card would assert nothing: the instant node is the one
@@ -9859,14 +9955,14 @@ process.stdout.write(JSON.stringify(renderedCards));`
 		wantSpanText   string
 		requirement    string
 	}{
-		{"REQ-901", "done", "2026-08-24T12:45:00Z", "took 2h 40m", "an ordinary span reads in the card's own stopwatch vocabulary"},
-		{"REQ-902", "done", "2026-08-25T04:05:00Z", "took 18h 00m over 4h · assumed pause", "an over-ceiling span is marked as a duration-quality assumption, not a workflow state"},
+		{"REQ-901", "done", "2026-08-24T12:45:00Z", "wall time 2h 40m", "an ordinary calibration span is labeled as wall time"},
+		{"REQ-902", "done", "2026-08-25T04:05:00Z", "wall time 18h 00m over 4h · assumed pause", "an over-ceiling wall span is marked as a duration-quality assumption, not a workflow state"},
 		{"REQ-903", "done", "2026-08-24T10:05:00Z", "reversed stamps", "a reversed span refuses to state a number"},
 		{"REQ-904", "done", "2026-08-24T12:45:00Z", "", "no parseable claimed_at leaves the done line exactly as it was"},
 		{"REQ-905", "cancelled", "2026-08-24T12:45:00Z", "", "a cancelled card states no duration"},
 		{"REQ-906", "done", "2026-08-24T12:45:00Z", "", "a git-dated completion instant states no duration (D-01)"},
-		{"REQ-907", "done", "2026-08-24T10:39:00Z", "took 34m 00s", "a sub-hour span keeps seconds — the chart's \"34.0 min\" is a different vocabulary"},
-		{"REQ-908", "done", "2026-08-24T10:05:00Z", "took 0s", "a zero-minute span states zero, never NaN"},
+		{"REQ-907", "done", "2026-08-24T10:39:00Z", "wall time 34m 00s", "a sub-hour wall span keeps seconds — the chart's \"34.0 min\" is a different vocabulary"},
+		{"REQ-908", "done", "2026-08-24T10:05:00Z", "wall time 0s", "a zero-minute wall span states zero, never NaN"},
 	}
 	if len(renderedCards) != len(renderExpectations) {
 		t.Fatalf("probe rendered %d cards, want %d", len(renderedCards), len(renderExpectations))
@@ -9901,7 +9997,7 @@ process.stdout.write(JSON.stringify(renderedCards));`
 			t.Errorf("%s reached formatElapsedDuration's clock-skew branch; the Go verdict must be branched on first", expectation.requestId)
 		}
 		if expectation.requestId == "REQ-902" {
-			wantTitle := "Duration-quality marker only: this claim-to-completion span is longer than the board's " +
+			wantTitle := "Duration-quality marker only: this claim-to-completion wall span is longer than the board's " +
 				"single-session ceiling, so it is assumed to include a pause and excluded from duration medians. " +
 				"The REQ remains completed."
 			if rendered.MarkerTitle != wantTitle {

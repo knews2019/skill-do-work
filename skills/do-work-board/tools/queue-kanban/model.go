@@ -112,6 +112,18 @@ type RequestTicket struct {
 	ClaimedAt   string
 	CompletedAt string // raw frontmatter completed_at text, "" when absent
 
+	// Optional observed work-pipeline milestones. Missing or unparseable values
+	// are ignored by the phase-breakdown reader; they never fabricate a phase or
+	// alter the claimed_at -> completed_at calibration span.
+	PlanningAt        string
+	DispatchAt        string
+	BuilderHandbackAt string
+	IntegrationAt     string
+	ReviewAt          string
+	RemediationAt     string
+	ReReviewAt        string
+	ReleaseAt         string
+
 	// status_changed_at — stamped by actions on any status flip that has no
 	// dedicated *_at stamp of its own (answered → pending, unblock → pending,
 	// manual resets; see actions/work-reference.md).
@@ -814,6 +826,14 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		CreatedAt:                  coerceScalarToString(fields["created_at"]),
 		ClaimedAt:                  coerceScalarToString(fields["claimed_at"]),
 		CompletedAt:                coerceScalarToString(fields["completed_at"]),
+		PlanningAt:                 coerceScalarToString(fields["planning_at"]),
+		DispatchAt:                 coerceScalarToString(fields["dispatch_at"]),
+		BuilderHandbackAt:          coerceScalarToString(fields["builder_handback_at"]),
+		IntegrationAt:              coerceScalarToString(fields["integration_at"]),
+		ReviewAt:                   coerceScalarToString(fields["review_at"]),
+		RemediationAt:              coerceScalarToString(fields["remediation_at"]),
+		ReReviewAt:                 coerceScalarToString(fields["re_review_at"]),
+		ReleaseAt:                  coerceScalarToString(fields["release_at"]),
 		StatusChangedAt:            coerceScalarToString(fields["status_changed_at"]),
 		CommitHash:                 commitHashValue,
 		CommitHashField:            commitHashField,
@@ -1533,6 +1553,14 @@ func detectFutureTimestampFields(ticket *RequestTicket, now time.Time) []string 
 		{"created_at", ticket.CreatedAt},
 		{"claimed_at", ticket.ClaimedAt},
 		{"completed_at", ticket.CompletedAt},
+		{"planning_at", ticket.PlanningAt},
+		{"dispatch_at", ticket.DispatchAt},
+		{"builder_handback_at", ticket.BuilderHandbackAt},
+		{"integration_at", ticket.IntegrationAt},
+		{"review_at", ticket.ReviewAt},
+		{"remediation_at", ticket.RemediationAt},
+		{"re_review_at", ticket.ReReviewAt},
+		{"release_at", ticket.ReleaseAt},
 		{"status_changed_at", ticket.StatusChangedAt},
 		{"blocked_at", ticket.BlockedAt},
 		{"testing_updated_at", ticket.TestingUpdatedAt},

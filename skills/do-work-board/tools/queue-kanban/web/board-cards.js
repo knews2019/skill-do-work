@@ -36,8 +36,10 @@
     return badge;
   }
 
-  // How long the REQ took: the span from its claim to its completion, stated on
-  // the done line beside the completion instant it already carries.
+  // Claim-to-completion wall time, stated on the done line beside the
+  // completion instant it already carries. This is the calibration interval,
+  // not an assertion about active implementation time; the detail drawer's
+  // observed phase breakdown shows where the recorded wall span went.
   //
   // Both the number and its verdict arrive decided from Go (durations.go's
   // measureImplementationSpan). Go also supplies the completed pause-badge text,
@@ -65,7 +67,7 @@
       var reversedNode = createElement("span", "elapsed-duration implementation-span");
       var reversedFlag = createElement("span", "status-invalid-flag", "reversed stamps");
       reversedFlag.title =
-        "completed_at is earlier than claimed_at, so this REQ's implementation span cannot be stated — " +
+        "completed_at is earlier than claimed_at, so this REQ's claim-to-completion wall span cannot be stated — " +
         "see the card's anomaly badge for which stamp to rewrite.";
       reversedNode.appendChild(reversedFlag);
       return reversedNode;
@@ -82,7 +84,7 @@
       createElement(
         "span",
         "implementation-span-value",
-        "took " + formatElapsedDuration(spanOriginMs, spanEndMs)
+        "wall time " + formatElapsedDuration(spanOriginMs, spanEndMs)
       )
     );
     if (request.implementationSpanReason === "paused") {
@@ -93,7 +95,7 @@
         boardData.implementationSpanPausedBadgeText || "long span · assumed pause"
       );
       pausedFlag.title =
-        "Duration-quality marker only: this claim-to-completion span is longer than the board's " +
+        "Duration-quality marker only: this claim-to-completion wall span is longer than the board's " +
         "single-session ceiling, so it is assumed to include a pause and excluded from duration medians. " +
         "The REQ remains completed.";
       spanNode.appendChild(pausedFlag);

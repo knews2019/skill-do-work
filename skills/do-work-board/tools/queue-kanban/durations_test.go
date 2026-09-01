@@ -612,3 +612,82 @@ func TestImplementationSpanAgreesWithTheDurationsAggregate(t *testing.T) {
 			atCeiling.DayMedianExclusion, pastCeiling.DayMedianExclusion)
 	}
 }
+
+func TestPhaseBreakdownUsesObservedPipelineOrderAndKeepsCalibrationSpan(t *testing.T) {
+	ticket := &RequestTicket{
+		ClaimedAt:         "2026-09-01T10:00:00Z",
+		PlanningAt:        "2026-09-01T10:05:00Z",
+		DispatchAt:        "2026-09-01T10:10:00Z",
+		BuilderHandbackAt: "2026-09-01T10:30:00Z",
+		IntegrationAt:     "2026-09-01T10:35:00Z",
+		ReviewAt:          "2026-09-01T10:45:00Z",
+		RemediationAt:     "2026-09-01T11:00:00Z",
+		ReReviewAt:        "2026-09-01T11:10:00Z",
+		CompletedAt:       "2026-09-01T11:15:00Z",
+		ReleaseAt:         "2026-09-01T11:20:00Z",
+	}
+	breakdown := buildPhaseBreakdown(ticket)
+	want := []struct {
+		field    string
+		label    string
+		previous string
+		minutes  float64
+	}{
+		{"planning_at", "Planning", "Claimed", 5},
+		{"dispatch_at", "Dispatch", "Planning", 5},
+		{"builder_handback_at", "Builder handback", "Dispatch", 20},
+		{"integration_at", "Integration", "Builder handback", 5},
+		{"review_at", "Review", "Integration", 10},
+		{"remediation_at", "Remediation", "Review", 15},
+		{"re_review_at", "Re-review", "Remediation", 10},
+		{"completed_at", "Completed", "Re-review", 5},
+		{"release_at", "Release", "Completed", 5},
+	}
+	if len(breakdown) != len(want) {
+		t.Fatalf("phase breakdown has %d entries, want %d: %#v", len(breakdown), len(want), breakdown)
+	}
+	for index, expectation := range want {
+		got := breakdown[index]
+		if got.FieldName != expectation.field || got.Label != expectation.label ||
+			got.PreviousLabel != expectation.previous || !got.HasElapsed || got.ElapsedMinutes != expectation.minutes {
+			t.Errorf("phase %d = %#v, want field=%q label=%q previous=%q minutes=%v",
+				index, got, expectation.field, expectation.label, expectation.previous, expectation.minutes)
+		}
+	}
+
+	calibration := measureImplementationSpan(ticket)
+	if !calibration.StampsParsed || calibration.WallMinutes != 75 {
+		t.Fatalf("phase stamps changed claimed_at -> completed_at calibration: %#v", calibration)
+	}
+}
+
+func TestPhaseBreakdownOmitsSkippedMalformedAndHistoricalPhases(t *testing.T) {
+	skipped := &RequestTicket{
+		ClaimedAt:   "2026-09-01T10:00:00Z",
+		PlanningAt:  "not-a-timestamp",
+		DispatchAt:  "2026-09-01T10:10:00Z",
+		ReviewAt:    "2026-09-01T10:40:00Z",
+		CompletedAt: "2026-09-01T10:45:00Z",
+		ReleaseAt:   "2026-09-01T10:50:00Z",
+	}
+	breakdown := buildPhaseBreakdown(skipped)
+	wantFields := []string{"dispatch_at", "review_at", "completed_at", "release_at"}
+	wantPrevious := []string{"Claimed", "Dispatch", "Review", "Completed"}
+	wantMinutes := []float64{10, 30, 5, 5}
+	if len(breakdown) != len(wantFields) {
+		t.Fatalf("skipped-phase breakdown = %#v, want %d observed entries", breakdown, len(wantFields))
+	}
+	for index := range wantFields {
+		if breakdown[index].FieldName != wantFields[index] || breakdown[index].PreviousLabel != wantPrevious[index] || breakdown[index].ElapsedMinutes != wantMinutes[index] {
+			t.Errorf("entry %d = %#v, want %s since %s after %v min", index, breakdown[index], wantFields[index], wantPrevious[index], wantMinutes[index])
+		}
+	}
+
+	historical := &RequestTicket{ClaimedAt: "2026-09-01T10:00:00Z", CompletedAt: "2026-09-01T10:45:00Z"}
+	if got := buildPhaseBreakdown(historical); len(got) != 0 {
+		t.Fatalf("historical REQ with no phase observations fabricated a breakdown: %#v", got)
+	}
+	if got := buildPhaseBreakdown(nil); len(got) != 0 {
+		t.Fatalf("nil ticket fabricated a breakdown: %#v", got)
+	}
+}

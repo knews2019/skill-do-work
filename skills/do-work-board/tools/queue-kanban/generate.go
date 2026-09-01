@@ -186,6 +186,14 @@ type generatedRequest struct {
 	CreatedAt            string `json:"createdAt"`
 	ClaimedAt            string `json:"claimedAt"`
 	CompletedAt          string `json:"completedAt"`
+	PlanningAt           string `json:"planningAt,omitempty"`
+	DispatchAt           string `json:"dispatchAt,omitempty"`
+	BuilderHandbackAt    string `json:"builderHandbackAt,omitempty"`
+	IntegrationAt        string `json:"integrationAt,omitempty"`
+	ReviewAt             string `json:"reviewAt,omitempty"`
+	RemediationAt        string `json:"remediationAt,omitempty"`
+	ReReviewAt           string `json:"reReviewAt,omitempty"`
+	ReleaseAt            string `json:"releaseAt,omitempty"`
 	StatusChangedAt      string `json:"statusChangedAt,omitempty"` // last no-dedicated-stamp status flip (see RequestTicket.StatusChangedAt)
 	FileModifiedAt       string `json:"fileModifiedAt,omitempty"`  // file mtime at generation, RFC3339 — state-timer fallback only, never completion dating
 	CompletionTime       string `json:"completionTime"`
@@ -208,6 +216,11 @@ type generatedRequest struct {
 	ImplementationSpanMinutes float64 `json:"implementationSpanMinutes"`
 	ImplementationSpanReason  string  `json:"implementationSpanReason,omitempty"`
 
+	// Ordered, observed milestone data. Absent phases are omitted; elapsed time
+	// is always measured from the previous parseable observation in pipeline
+	// order. Historical REQs with no phase observations omit this field.
+	PhaseBreakdown []generatedPhaseBreakdownEntry `json:"phaseBreakdown,omitempty"`
+
 	CompletionAnomaly       bool   `json:"completionAnomaly,omitempty"`
 	CompletionAnomalyReason string `json:"completionAnomalyReason,omitempty"`
 
@@ -223,6 +236,15 @@ type generatedRequest struct {
 	TestedBy                  string `json:"testedBy,omitempty"`
 	TestingUpdatedAt          string `json:"testingUpdatedAt,omitempty"`
 	TestingFeedback           string `json:"testingFeedback,omitempty"`
+}
+
+type generatedPhaseBreakdownEntry struct {
+	FieldName      string  `json:"fieldName"`
+	Label          string  `json:"label"`
+	Instant        string  `json:"instant"`
+	PreviousLabel  string  `json:"previousLabel,omitempty"`
+	ElapsedMinutes float64 `json:"elapsedMinutes"`
+	HasElapsed     bool    `json:"hasElapsed"`
 }
 
 // generatedUserRequest is one UR node for the by-UR lens, with its grouped REQ
@@ -679,6 +701,18 @@ func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTick
 		if isCompletedStatus(ticket.Status) {
 			implementationSpan = measureImplementationSpan(ticket)
 		}
+		phaseBreakdown := buildPhaseBreakdown(ticket)
+		generatedPhaseBreakdown := make([]generatedPhaseBreakdownEntry, 0, len(phaseBreakdown))
+		for _, phase := range phaseBreakdown {
+			generatedPhaseBreakdown = append(generatedPhaseBreakdown, generatedPhaseBreakdownEntry{
+				FieldName:      phase.FieldName,
+				Label:          phase.Label,
+				Instant:        formatTimestamp(phase.Instant),
+				PreviousLabel:  phase.PreviousLabel,
+				ElapsedMinutes: phase.ElapsedMinutes,
+				HasElapsed:     phase.HasElapsed,
+			})
+		}
 		data.Requests[ticket.RequestId] = generatedRequest{
 			RequestId:                  ticket.RequestId,
 			Title:                      ticket.Title,
@@ -721,6 +755,14 @@ func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTick
 			CreatedAt:                  ticket.CreatedAt,
 			ClaimedAt:                  ticket.ClaimedAt,
 			CompletedAt:                ticket.CompletedAt,
+			PlanningAt:                 ticket.PlanningAt,
+			DispatchAt:                 ticket.DispatchAt,
+			BuilderHandbackAt:          ticket.BuilderHandbackAt,
+			IntegrationAt:              ticket.IntegrationAt,
+			ReviewAt:                   ticket.ReviewAt,
+			RemediationAt:              ticket.RemediationAt,
+			ReReviewAt:                 ticket.ReReviewAt,
+			ReleaseAt:                  ticket.ReleaseAt,
 			StatusChangedAt:            ticket.StatusChangedAt,
 			FileModifiedAt:             formatTimestamp(ticket.FileModifiedAt),
 			CompletionTime:             formatTimestamp(ticket.CompletionTime),
@@ -729,6 +771,7 @@ func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTick
 			HasImplementationSpan:     implementationSpan.StampsParsed,
 			ImplementationSpanMinutes: implementationSpan.WallMinutes,
 			ImplementationSpanReason:  implementationSpan.ExclusionReason,
+			PhaseBreakdown:            generatedPhaseBreakdown,
 
 			CompletionAnomaly:       ticket.CompletionAnomaly,
 			CompletionAnomalyReason: ticket.CompletionAnomalyReason,

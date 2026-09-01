@@ -1,7 +1,7 @@
 ---
 id: REQ-448
 title: 'Record per-phase timestamps through the work pipeline'
-status: claimed
+status: completed
 route: C
 created_at: 2026-08-31T20:38:40Z
 user_request: UR-084
@@ -32,6 +32,7 @@ dispatch_at: 2026-09-01T22:56:07Z
 builder_handback_at: 2026-09-01T23:07:16Z
 integration_at: 2026-09-01T23:07:16Z
 review_at: 2026-09-01T23:10:36Z
+release_at: 2026-09-01T23:18:12Z
 write_set:
   - skills/do-work/actions/work.md
   - skills/do-work/actions/work-reference.md
@@ -43,6 +44,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/generate_test.go
   - skills/do-work-board/tools/queue-kanban/web/board-detail.js
   - skills/do-work-board/tools/queue-kanban/web/board-cards.js
+completed_at: 2026-09-01T23:16:59Z
 ---
 
 # Record Per-Phase Timestamps Through the Work Pipeline

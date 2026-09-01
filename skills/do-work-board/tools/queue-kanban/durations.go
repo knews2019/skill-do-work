@@ -172,6 +172,88 @@ func measureImplementationSpan(ticket *RequestTicket) ImplementationSpan {
 	}
 }
 
+// PhaseBreakdownEntry is one observed pipeline milestone and, when an earlier
+// observed milestone parsed, its raw wall distance from that prior observation.
+// Missing phases are omitted rather than synthesized as zero-duration work.
+type PhaseBreakdownEntry struct {
+	FieldName      string
+	Label          string
+	Instant        time.Time
+	PreviousLabel  string
+	ElapsedMinutes float64
+	HasElapsed     bool
+}
+
+// buildPhaseBreakdown derives display-only phase observations. The declared
+// pipeline order is authoritative; timestamps are not sorted by their values,
+// so reversed bookkeeping remains visible instead of being silently repaired.
+// claimed_at and completed_at are anchors, not phase stamps. Historical REQs
+// with no parseable optional phase stamp return no breakdown at all.
+func buildPhaseBreakdown(ticket *RequestTicket) []PhaseBreakdownEntry {
+	if ticket == nil {
+		return nil
+	}
+
+	type milestone struct {
+		fieldName string
+		label     string
+		rawValue  string
+		optional  bool
+	}
+	milestones := []milestone{
+		{fieldName: "claimed_at", label: "Claimed", rawValue: ticket.ClaimedAt},
+		{fieldName: "planning_at", label: "Planning", rawValue: ticket.PlanningAt, optional: true},
+		{fieldName: "dispatch_at", label: "Dispatch", rawValue: ticket.DispatchAt, optional: true},
+		{fieldName: "builder_handback_at", label: "Builder handback", rawValue: ticket.BuilderHandbackAt, optional: true},
+		{fieldName: "integration_at", label: "Integration", rawValue: ticket.IntegrationAt, optional: true},
+		{fieldName: "review_at", label: "Review", rawValue: ticket.ReviewAt, optional: true},
+		{fieldName: "remediation_at", label: "Remediation", rawValue: ticket.RemediationAt, optional: true},
+		{fieldName: "re_review_at", label: "Re-review", rawValue: ticket.ReReviewAt, optional: true},
+		{fieldName: "completed_at", label: "Completed", rawValue: ticket.CompletedAt},
+		{fieldName: "release_at", label: "Release", rawValue: ticket.ReleaseAt, optional: true},
+	}
+
+	parsedOptional := false
+	for _, candidate := range milestones {
+		if !candidate.optional {
+			continue
+		}
+		if _, parsed := parseTimestamp(candidate.rawValue); parsed {
+			parsedOptional = true
+			break
+		}
+	}
+	if !parsedOptional {
+		return nil
+	}
+
+	var entries []PhaseBreakdownEntry
+	var previousInstant time.Time
+	previousLabel := ""
+	for _, candidate := range milestones {
+		instant, parsed := parseTimestamp(candidate.rawValue)
+		if !parsed {
+			continue
+		}
+		entry := PhaseBreakdownEntry{
+			FieldName: candidate.fieldName,
+			Label:     candidate.label,
+			Instant:   instant.UTC(),
+		}
+		if !previousInstant.IsZero() {
+			entry.PreviousLabel = previousLabel
+			entry.ElapsedMinutes = instant.Sub(previousInstant).Minutes()
+			entry.HasElapsed = true
+		}
+		if candidate.fieldName != "claimed_at" {
+			entries = append(entries, entry)
+		}
+		previousInstant = instant
+		previousLabel = candidate.label
+	}
+	return entries
+}
+
 // dayMedianExclusionReason applies the calibration's read-time rule to one span.
 func dayMedianExclusionReason(wallSpan time.Duration) string {
 	switch {

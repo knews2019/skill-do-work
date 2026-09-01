@@ -316,6 +316,8 @@ After triage, check if a specification template matches this REQ's domain or tas
 
 Append validation findings to the `## Plan` section (if any issues found). These are **warnings, not blockers** — the builder can adapt. But flag them visibly so the orchestrator and review step are aware.
 
+After the Route C plan is saved and this validation finishes, stamp `planning_at: <now>` using the current UTC instant (Timestamp rule, `actions/work-reference.md`). Stamp only this successful observed event. Routes A and B omit the field.
+
 **Routes A and B:** Append a skip note (if not already present):
 
 (append the skip note per the **Plan Skip Note — Routes A/B (Step 4)** in `actions/work-reference.md`)
@@ -404,6 +406,8 @@ Spawn a **general-purpose agent** with the loaded rules, any files listed in the
 - **Route B**: Request + exploration output — "follow existing patterns identified above"
 - **Route C**: Request + plan + exploration output — "implement according to the plan"
 
+Once the implementation builder has accepted that dispatch, stamp `dispatch_at: <now>` using the Timestamp rule. If dispatch fails before a builder accepts it, leave the field absent. When the builder returns its completed hand-back, stamp `builder_handback_at: <now>` before any hand-back merge or serial integration work begins.
+
 All routes include these instructions to the agent (pointers — the underlying rules live in the loaded crew-members files and in the REQ frontmatter the orchestrator already wrote):
 
 **Required-lesson regime — three additive layers, never substitutes.** Before implementation, the builder reads every current `required_lessons` entry unconditionally (captured stamps plus Step 5 claim-time matches), using whole-satellite or matching-family-bullets semantics. Independently, the touch-conditional Lessons Discipline rule still applies to every REQ, stamped or not, so a relevant satellite excluded by the budget can still be required by the touched prime. If any required path is missing, proceed without it and name the missing entry in the hand-back; never turn missing lesson context into a build blocker.
@@ -429,6 +433,8 @@ All routes include these instructions to the agent (pointers — the underlying 
 3. Run `git rev-parse --short HEAD` again and hold that hash as **`<merge_hash>`** — the upper bound of the range, and the hash Step 9 writes into `commit:`.
 
 Hold both hashes — and `<operative_name>` — as literals you re-type into each later command (shell variables do not survive between command blocks), and pass the range `<pre>..<merge_hash>` to Steps 6.3, 7, 8, and 9. The canonical reference carries the full rationale, remediation re-merge handling, and the queue guard's safe-direction over-inclusion caveat. Serial mode has no merge and no range — skip this entirely.
+
+After the hand-back is successfully merged, stamp `integration_at: <now>` using the Timestamp rule. In serial mode, stamp it after the returned builder changes have been accepted in the shared tree. A failed or empty hand-back does not create an integration observation.
 
 ### Step 6.25: Implementation Summary
 
@@ -528,6 +534,8 @@ The review reads the REQ (in `do-work/working/`), the original UR, and the curre
   3. The builder gets **ONE remediation attempt**.
   4. Re-run Steps 6.25 through 7 (Summary → Qualification → Testing → Review) on the remediated code.
   5. If still failing after remediation: update frontmatter to `status: completed-with-issues`, `completed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), append a `## Remediation` section documenting both attempts, and create follow-up REQs for all remaining Important findings (impact-stamped per `actions/review-work.md` Step 10, like every automatic follow-up). Then proceed to archive (Step 8) — the frontmatter is already set, so Step 8 should not overwrite it.
+
+After the first review result is recorded, stamp `review_at: <now>` using the Timestamp rule, regardless of its verdict. If remediation runs, stamp `remediation_at: <now>` only after that builder hand-back is successfully integrated, then stamp `re_review_at: <now>` only after the post-remediation review result is recorded. A passing first review leaves both remediation fields absent.
 
 The status `completed-with-issues` means the REQ was archived but has known unresolved problems. It counts toward UR completion for archiving purposes, but the follow-up REQs must be processed before the work is considered ship-ready. This status remains visible to recap and every completed-work presentation action; those readers inherit the Terminal-success status set from `actions/work-reference.md` rather than defining a caller-specific filter.
 
@@ -638,7 +646,7 @@ Classify the failure and queue the right follow-up per `actions/work-reference.m
   - **No merge completed** (the failure preceded hand-back, or the hand-back was empty) — probe for the branch before counting anything: if `git rev-parse --verify -q '<operative_name>'` fails, the branch was never created (dispatch did not get that far) and nothing landed, so flip to `blocked`. Do not reach for the count here — `rev-list` on a missing branch exits fatal and prints no number at all, so it cannot decide the very case the flip exists for. Only once the branch resolves: edits landed if and only if `git rev-list --count HEAD..<operative_name>` is greater than zero — `HEAD` because the orchestrator runs this from the integration branch it dispatched from — meaning the builder's branch carries commits the integration branch does not contain (integration is by merge and never rebase, so they stay recognizable as the builder's). A count of `0` is the other genuine nothing-happened-this-attempt case and still flips to `blocked`.
 
   Judge from the branch, not from the handed-back manifest: the manifest is the builder's claim about its own work, and the orchestrator reads actual git state rather than the builder's description of it (same stance as Step 6.3). Uncommitted edits sitting in the builder's worktree do not count as landed — the main tree is pristine, so a re-dispatch after the block starts clean, and the stray worktree is swept by `actions/work-reference.md` → **Crash Recovery (Step 1)** or `actions/cleanup.md` → **Pass 5: Orphaned Worktrees (consent-gated)**. Serial mode ignores this bullet entirely and uses the working-tree check above.
-- **If both hold**, do NOT fail. The orchestrator (never the builder — all file management is the orchestrator's) sets `status: blocked`, `blocked_by: '<condition>'`, `blocked_at: <now>` (current UTC instant — Timestamp rule, `actions/work-reference.md`); the condition is the user's own words, so it and any `blocked_check:` probe recorded beside it are written per the **Frontmatter Quoting** contract in that same file; removes `claimed_at` and `route`; appends a `## Blocked` section recording what's missing, how it was discovered, and — only if the user supplied or confirmed one — a `blocked_check:` probe command; then moves the file **back to `do-work/queue/`** (it is a hold, not an archive), removing the REQ's in-progress entry with that move like any other departure from `working/` (`actions/work-reference.md` → **In-Progress Record (Step 2)**), reports `[REQ-NNN] blocked on: <condition> — released, continuing`, and continues to the next REQ. The REQ re-enters selection on a future run via its `blocked_check` probe, `do-work clarify`, or a manual edit.
+- **If both hold**, do NOT fail. The orchestrator (never the builder — all file management is the orchestrator's) sets `status: blocked`, `blocked_by: '<condition>'`, `blocked_at: <now>` (current UTC instant — Timestamp rule, `actions/work-reference.md`); the condition is the user's own words, so it and any `blocked_check:` probe recorded beside it are written per the **Frontmatter Quoting** contract in that same file; removes `claimed_at`, `route`, and all eight optional phase stamps so a later attempt cannot inherit stale observations; appends a `## Blocked` section recording what's missing, how it was discovered, and — only if the user supplied or confirmed one — a `blocked_check:` probe command; then moves the file **back to `do-work/queue/`** (it is a hold, not an archive), removing the REQ's in-progress entry with that move like any other departure from `working/` (`actions/work-reference.md` → **In-Progress Record (Step 2)**), reports `[REQ-NNN] blocked on: <condition> — released, continuing`, and continues to the next REQ. The REQ re-enters selection on a future run via its `blocked_check` probe, `do-work clarify`, or a manual edit.
 - **If either fails** (real edits already landed, environment the user must fix, or retries exhausted), fall through to the Environment classification above and archive as `failed` with `error_type: environment`.
 
 ### Step 9: Commit Phase (Git repos only)
@@ -654,6 +662,8 @@ Before committing a successful REQ, judge the release source, bump level, mirror
 ```
 
 The manifest declares every version/lock mirror and changelog target, caller-selected old/new semver, unique caller-defined key/title, and exact insertion anchor. `release` validates and publishes them atomically; it does not choose policy or impose the house format. Missing/refused tooling stops the release tail with no hand-edit/helper fallback.
+
+Immediately after the canonical release transaction succeeds, stamp `release_at: <now>` on the archived REQ using the Timestamp rule. Never stamp an attempted or refused release. Then print the ordered observed phase breakdown: omit absent/unparseable phases, show each phase's wall time since the previous parseable observation, label `claimed_at` → `completed_at` as the **calibration wall span** (never implementation time), and when present label `completed_at` → `release_at` as the **release tail**. The calibration row itself remains unchanged and continues to use only `claimed_at` and `completed_at`.
 
 House-format entries are keyed `## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)`; other repositories keep their own format. Then: one commit per request, format `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Stage only the explicit implementation, lifecycle, and release paths reported by the canonical commands; see `## Rules` below. Stage `do-work/calibration-log.tsv` only when the successful canonical `complete` result reports it among its changes or affected target paths; otherwise do not stage it. Validate the staged file list against the Implementation Summary (successful REQs only). After the serial implementation commit, pass its verified hash and exact archived path to `complete --record-commit-hash --implementation-hash <hash> --request-path <archived-path> --commit`. A refusal stops; free-form hash edits and legacy helpers are not fallbacks. Full procedure: `actions/work-reference.md` → **Commit & Metadata-Commit Procedure (Step 9)**.
 
@@ -752,7 +762,7 @@ When the run finishes or pauses, hand back with the **Decision Brief** (`actions
 
 See [sample-archived-req.md](./sample-archived-req.md) for a complete example of what an archived REQ looks like after processing through the full pipeline (Route B). Every section shown there is generated by the steps above.
 
-**Timestamps tell the story:** `created_at` → `claimed_at` = queue wait time. `claimed_at` → `completed_at` = implementation time. Route + timestamps let you calibrate triage accuracy over time.
+**Timestamps tell the story:** `created_at` → `claimed_at` = queue wait time. `claimed_at` → `completed_at` = calibration wall span, not active implementation time. Optional phase stamps show the observed pipeline breakdown, and `completed_at` → `release_at` is the release tail. Route + timestamps let you calibrate triage accuracy over time.
 
 ## Rules
 

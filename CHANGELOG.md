@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.13 — Expose Work Pipeline Phase Timing (2026-09-02)
+
+Completed requests can now retain and display the successful milestones inside their claim-to-completion wall span without changing calibration or fabricating phases that were skipped.
+
+- Planning, dispatch, builder handback, integration, review, remediation, re-review, and release use optional observed timestamps with explicit recovery and blocked-release reset rules.
+- The queue board renders an ordered phase breakdown and separate release tail, while historical requests remain compatible and duration calibration stays anchored to `claimed_at` → `completed_at`.
+
 ## 0.260.12 — Refuse Uncommittable Scratch Deletion (2026-09-02)
 
 Cleanup commit mode no longer deletes entirely untracked consumed scratch outside the Git transaction it was asked to create. Such groups are preserved and reported with exact inventory evidence while independent tracked cleanup can still commit.
