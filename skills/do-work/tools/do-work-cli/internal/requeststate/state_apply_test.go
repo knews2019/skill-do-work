@@ -203,6 +203,25 @@ func TestSerialCompleteCreatesLifecycleAndMetadataCommits(t *testing.T) {
 	}
 }
 
+func TestRecordCommitProvenanceChangesOnlyTopLevelScalar(t *testing.T) {
+	root := newStateRepository(t)
+	configureStateGit(t, root)
+	relativePath := "do-work/archive/REQ-314.md"
+	writeStateRequest(t, root, relativePath, "REQ-314", "completed", "completed_at: 2026-08-31T21:00:00Z\ncommit: oldhash0\n")
+	runStateGit(t, root, "add", relativePath)
+	runStateGit(t, root, "commit", "-qm", "fixture")
+	hash := strings.TrimSpace(runStateGit(t, root, "rev-parse", "HEAD"))
+	before := readStateFile(t, root, relativePath)
+	result := RecordCommitProvenance(context.Background(), root, relativePath, hash, false)
+	if result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("result=%#v", result)
+	}
+	after := readStateFile(t, root, relativePath)
+	if !strings.Contains(after, "commit: "+hash) || strings.Replace(before, "commit: oldhash0", "commit: "+hash, 1) != after {
+		t.Fatalf("unexpected rewrite:\n%s", after)
+	}
+}
+
 func newStateRepository(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()

@@ -2,9 +2,6 @@ package nextselection
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -32,12 +29,7 @@ func handleNext(executionContext commandruntime.ExecutionContext, arguments []st
 		return nextFailure("NEXT-DISCOVERY-FAILED", discoveryError.Error())
 	}
 	graph := dependencygraph.BuildGraph(snapshot)
-	runnerPath, runnerError := blockedRunnerPath(executionContext.RepositoryRoot)
-	var runner ProbeRunner = func([]byte, int) (int, error) { return 125, runnerError }
-	if runnerError == nil {
-		runner = processProbeRunner(runnerPath)
-	}
-	result := Select(snapshot, graph, options, runner)
+	result := Select(snapshot, graph, options, RunBlockedProbe)
 	result.RepositoryRoot = executionContext.RepositoryRoot
 	return result
 }
@@ -112,48 +104,4 @@ func nextFailure(code, evidence string) resultmodel.CommandResult {
 		NextArgv: []string{"do-work-cli", "--format", "text", "next"}, NextJustRecipe: "do-work-next",
 		VerificationArgv: []string{"do-work-cli", "--format", "json", "next"},
 	}}}
-}
-
-func blockedRunnerPath(repositoryRoot string) (string, error) {
-	candidates := []string{
-		filepath.Join(repositoryRoot, "skills", "do-work", "scripts", "run-blocked-check.sh"),
-		filepath.Join(repositoryRoot, ".claude", "skills", "do-work", "scripts", "run-blocked-check.sh"),
-		filepath.Join(repositoryRoot, ".codex", "skills", "do-work", "scripts", "run-blocked-check.sh"),
-	}
-	if executablePath, err := os.Executable(); err == nil {
-		candidates = append(candidates, filepath.Clean(filepath.Join(filepath.Dir(executablePath), "..", "..", "scripts", "run-blocked-check.sh")))
-	}
-	for _, candidate := range candidates {
-		if fileInfo, err := os.Stat(candidate); err == nil && fileInfo.Mode().IsRegular() {
-			return candidate, nil
-		}
-	}
-	return "", fmt.Errorf("shipped run-blocked-check.sh was not found")
-}
-
-func processProbeRunner(runnerPath string) ProbeRunner {
-	return func(probeBytes []byte, timeoutSeconds int) (int, error) {
-		probeFile, err := os.CreateTemp("", "do-work-blocked-check-*.sh")
-		if err != nil {
-			return 125, err
-		}
-		probePath := probeFile.Name()
-		defer os.Remove(probePath)
-		if _, err := probeFile.Write(probeBytes); err != nil {
-			probeFile.Close()
-			return 125, err
-		}
-		if err := probeFile.Close(); err != nil {
-			return 125, err
-		}
-		command := exec.Command(runnerPath, probePath, strconv.Itoa(timeoutSeconds))
-		err = command.Run()
-		if err == nil {
-			return 0, nil
-		}
-		if exitError, ok := err.(*exec.ExitError); ok {
-			return exitError.ExitCode(), nil
-		}
-		return 125, err
-	}
 }

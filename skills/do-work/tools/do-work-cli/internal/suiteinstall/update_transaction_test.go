@@ -3,6 +3,8 @@ package suiteinstall
 import (
 	"bytes"
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,8 +14,8 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
-// newUpstreamArchiveServer stages a suite tree as a tarball and returns a download script
-// that publishes it, which is how an update is driven without a network.
+// newUpstreamArchiveServer stages a suite tree as a tarball and serves it over an in-process
+// HTTP endpoint, exercising the same Go transport used by production without a network.
 func newUpstreamArchiveServer(t *testing.T, suiteVersion string) (toolDirectory string, upstreamURL string) {
 	t.Helper()
 	sourceRoot := newSuiteSourceTree(t, suiteVersion)
@@ -27,15 +29,17 @@ func newUpstreamArchiveServer(t *testing.T, suiteVersion string) (toolDirectory 
 		t.Fatalf("build upstream archive: %v: %s", err, output)
 	}
 
-	// LocateAtomicDownloadScript probes <tools>/../scripts and <tools>/../skills/do-work/scripts.
 	toolDirectory = filepath.Join(t.TempDir(), "tools")
-	scriptPath := filepath.Join(filepath.Dir(toolDirectory), "scripts", "atomic-download.sh")
-	writeTestFile(t, scriptPath, "#!/usr/bin/env bash\nset -eu\ncp \""+archivePath+"\" \"$2\"\n")
-	chmodTestFile(t, scriptPath, 0o755)
 	if err := os.MkdirAll(toolDirectory, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	return toolDirectory, "https://example.invalid/suite.tar.gz"
+	archiveBytes, err := os.ReadFile(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { _, _ = response.Write(archiveBytes) }))
+	t.Cleanup(server.Close)
+	return toolDirectory, server.URL
 }
 
 // installSuiteForUpdate seeds a project with an installed suite so the updater has something

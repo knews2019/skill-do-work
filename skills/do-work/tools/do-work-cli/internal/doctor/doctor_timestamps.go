@@ -3,7 +3,9 @@ package doctor
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -24,10 +26,19 @@ type TimestampFieldChange struct {
 }
 
 type TimestampRepairPlan struct {
-	RelativePath string
-	UpdatedBytes []byte
-	Changes      []TimestampFieldChange
+	RelativePath  string
+	ExpectedBytes []byte
+	UpdatedBytes  []byte
+	Changes       []TimestampFieldChange
 }
+
+type TimestampScope string
+
+const (
+	TimestampScopeAll     TimestampScope = "all"
+	TimestampScopeActive  TimestampScope = "active"
+	TimestampScopeArchive TimestampScope = "archive"
+)
 
 var repairableTimestampPattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}:\d{2}Z?)?$`)
 
@@ -39,6 +50,28 @@ type timestampField struct {
 }
 
 func BuildTimestampPlan(ctx context.Context, snapshot *repositorymodel.RepositorySnapshot, now time.Time) ([]TimestampRepairPlan, []resultmodel.CommandFinding) {
+	return buildTimestampPlan(ctx, snapshot, now, TimestampScopeAll)
+}
+
+// BuildTimestampPlanForScope reuses the doctor's timestamp grammar while applying the
+// legacy source policy: active dirty/untracked records use mtime, archive uses Git only.
+func BuildTimestampPlanForScope(ctx context.Context, snapshot *repositorymodel.RepositorySnapshot, now time.Time, scope TimestampScope) ([]TimestampRepairPlan, []resultmodel.CommandFinding) {
+	if snapshot == nil {
+		return buildTimestampPlan(ctx, snapshot, now, scope)
+	}
+	filtered := *snapshot
+	filtered.RequestFiles = nil
+	for _, requestFile := range snapshot.RequestFiles {
+		path := requestRepositoryPath(requestFile)
+		isArchive := strings.HasPrefix(path, "do-work/archive/")
+		if scope == TimestampScopeArchive && isArchive || scope == TimestampScopeActive && !isArchive && (strings.HasPrefix(path, "do-work/queue/") || strings.HasPrefix(path, "do-work/working/")) {
+			filtered.RequestFiles = append(filtered.RequestFiles, requestFile)
+		}
+	}
+	return buildTimestampPlan(ctx, &filtered, now, scope)
+}
+
+func buildTimestampPlan(ctx context.Context, snapshot *repositorymodel.RepositorySnapshot, now time.Time, scope TimestampScope) ([]TimestampRepairPlan, []resultmodel.CommandFinding) {
 	if snapshot == nil {
 		return nil, []resultmodel.CommandFinding{doctorFinding("DOCTOR-SNAPSHOT-MISSING", resultmodel.SeverityError, nil, nil,
 			"repository snapshot is required", resultmodel.FixabilityManual, "no repository evidence was available", doctorArgv(), doctorJSONArgv())}
@@ -79,7 +112,7 @@ func BuildTimestampPlan(ctx context.Context, snapshot *repositorymodel.Repositor
 			if !repairableShape {
 				continue
 			}
-			replacement, source, deriveError := blameTimestamp(ctx, snapshot.RepositoryRoot, requestRepositoryPath(requestFile), field.evidence.LineNumber)
+			replacement, source, deriveError := scopedTimestampSource(ctx, snapshot.RepositoryRoot, requestRepositoryPath(requestFile), field.evidence.LineNumber, scope)
 			if deriveError != nil {
 				findings = append(findings, timestampRefusal(requestFile, field, deriveError.Error()))
 				continue
@@ -110,7 +143,7 @@ func BuildTimestampPlan(ctx context.Context, snapshot *repositorymodel.Repositor
 				if effective.Before(predecessorTime) {
 					findings = append(findings, timestampFinding("TIMESTAMP-ORDER", requestFile, *field,
 						fmt.Sprintf("line %d %s=%q precedes %s=%q", field.evidence.LineNumber, field.name, field.evidence.ScalarValue, predecessor.name, predecessor.evidence.ScalarValue)))
-					replacement, source, deriveError := blameTimestamp(ctx, snapshot.RepositoryRoot, requestRepositoryPath(requestFile), field.evidence.LineNumber)
+					replacement, source, deriveError := scopedTimestampSource(ctx, snapshot.RepositoryRoot, requestRepositoryPath(requestFile), field.evidence.LineNumber, scope)
 					if deriveError != nil {
 						findings = append(findings, timestampRefusal(requestFile, *field, deriveError.Error()))
 						predecessor = field
@@ -149,7 +182,7 @@ func BuildTimestampPlan(ctx context.Context, snapshot *repositorymodel.Repositor
 			changes = append(changes, change)
 		}
 		if len(changes) > 0 {
-			plans = append(plans, TimestampRepairPlan{RelativePath: requestRepositoryPath(requestFile), UpdatedBytes: document.DocumentBytes(), Changes: changes})
+			plans = append(plans, TimestampRepairPlan{RelativePath: requestRepositoryPath(requestFile), ExpectedBytes: append([]byte(nil), requestFile.ContentBytes...), UpdatedBytes: document.DocumentBytes(), Changes: changes})
 		}
 	}
 	sort.Slice(plans, func(leftIndex, rightIndex int) bool {
@@ -157,6 +190,21 @@ func BuildTimestampPlan(ctx context.Context, snapshot *repositorymodel.Repositor
 	})
 	sortFindings(findings)
 	return plans, findings
+}
+
+func scopedTimestampSource(ctx context.Context, repositoryRoot, relativePath string, lineNumber int, scope TimestampScope) (time.Time, string, error) {
+	if scope == TimestampScopeActive {
+		tracked := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "ls-files", "--error-unmatch", "--", relativePath).Run() == nil
+		clean := tracked && exec.CommandContext(ctx, "git", "-C", repositoryRoot, "diff", "--quiet", "HEAD", "--", relativePath).Run() == nil
+		if !clean {
+			info, err := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(relativePath)))
+			if err != nil {
+				return time.Time{}, "", fmt.Errorf("file mtime could not derive the field's source instant")
+			}
+			return info.ModTime().UTC().Truncate(time.Second), "file mtime", nil
+		}
+	}
+	return blameTimestamp(ctx, repositoryRoot, relativePath, lineNumber)
 }
 
 func effectiveTimestampFields(requestFile *repositorymodel.RequestFile) []timestampField {

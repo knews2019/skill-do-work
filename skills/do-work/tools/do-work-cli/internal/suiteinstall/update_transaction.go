@@ -81,9 +81,8 @@ func RunUpdate(ctx context.Context, options UpdateOptions) UpdateResult {
 		upstreamURL = archivefetch.UpstreamURLFromEnvironment()
 	}
 	if _, err := archivefetch.FetchArchive(ctx, archivefetch.Request{
-		ArchiveTargetPath:    upstreamTarball,
-		UpstreamTarballURL:   upstreamURL,
-		AtomicDownloadScript: archivefetch.LocateAtomicDownloadScript(options.ToolDirectory),
+		ArchiveTargetPath:  upstreamTarball,
+		UpstreamTarballURL: upstreamURL,
 	}); err != nil {
 		return updateFailure("upstream archive could not be fetched by any route; no files were changed")
 	}

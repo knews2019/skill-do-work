@@ -10,7 +10,6 @@ manifest_validator="$repo_root/tools/validate-suite-manifest.sh"
 suite_installer="$repo_root/tools/install-do-work-suite.sh"
 section_replacer="$repo_root/tools/replace-text-section.sh"
 upstream_fetcher_source="$repo_root/tools/fetch-upstream-archive.sh"
-atomic_download_source="$repo_root/skills/do-work/scripts/atomic-download.sh"
 do_work_cli_launcher="$repo_root/skills/do-work/tools/do-work-cli.sh"
 do_work_cli_module="$repo_root/skills/do-work/tools/do-work-cli"
 fail_count=0
@@ -53,6 +52,10 @@ export GIT_TERMINAL_PROMPT=0
 
 fixture_root="${DO_WORK_TEST_FIXTURE_ROOT:-$(mktemp -d)}"
 cleanup_fixture() {
+	if [ -n "${archive_server_pid:-}" ]; then
+		kill "$archive_server_pid" 2>/dev/null || true
+		wait "$archive_server_pid" 2>/dev/null || true
+	fi
   [ -z "${DO_WORK_TEST_FIXTURE_ROOT:-}" ] || return 0
   chmod -R u+rwX "$fixture_root" 2>/dev/null || true
   rm -rf "$fixture_root"
@@ -159,10 +162,6 @@ build_suite_install() {
   cp "$upstream_fetcher_source" \
     "$project_path/.claude/skills/do-work/tools/fetch-upstream-archive.sh"
   copy_do_work_cli_module "$project_path/.claude/skills/do-work/tools"
-  mkdir -p "$project_path/.claude/skills/do-work/scripts"
-  cp "$atomic_download_source" \
-    "$project_path/.claude/skills/do-work/scripts/atomic-download.sh"
-  chmod +x "$project_path/.claude/skills/do-work/scripts/"*.sh
   chmod +x "$project_path/.claude/skills/do-work/tools/"*.sh
   printf 'queue sentinel\n' > "$project_path/do-work/queue/sentinel.txt"
   printf 'kb sentinel\n' > "$project_path/kb/sentinel.txt"
@@ -201,9 +200,6 @@ build_suite_tree() {
   cp "$upstream_fetcher_source" \
     "$tree_root/skills/do-work/tools/fetch-upstream-archive.sh"
   copy_do_work_cli_module "$tree_root/skills/do-work/tools"
-  mkdir -p "$tree_root/skills/do-work/scripts"
-  cp "$atomic_download_source" "$tree_root/skills/do-work/scripts/atomic-download.sh"
-  chmod +x "$tree_root/skills/do-work/scripts/"*.sh
   chmod +x "$tree_root/skills/do-work/tools/"*.sh
   cp "$repo_root/skills/do-work/hooks/hooks.json" "$tree_root/skills/do-work/hooks/hooks.json"
   cp "$repo_root/skills/do-work/agent-instructions.template.md" \
@@ -228,27 +224,49 @@ archive_suite_tree "$suite_tree" "$suite_tarball"
 stub_bin="$fixture_root/stub-bin"
 mkdir -p "$stub_bin"
 real_cp="$(command -v cp)"
-printf '%s\n' '#!/usr/bin/env bash' \
-  'destination_path=""' \
-  'while [ "$#" -gt 0 ]; do' \
-  '  case "$1" in -o) destination_path="$2"; shift 2 ;; *) shift ;; esac' \
-  'done' \
-  '[ -n "$destination_path" ] || exit 2' \
-  'printf "download\\n" >> "$CURL_CALL_LOG"' \
-  '"$REAL_CP" "$FAKE_TARBALL" "$destination_path"' > "$stub_bin/curl"
-chmod +x "$stub_bin/curl"
 export PATH="$stub_bin:$PATH"
 export REAL_CP="$real_cp"
-export CURL_CALL_LOG="$fixture_root/curl-calls.log"
+HTTP_CALL_LOG="$fixture_root/http-calls.log"
+archive_server_source="$fixture_root/archive-server.go"
+archive_server_binary="$fixture_root/archive-server"
+cat > "$archive_server_source" <<'GOEOF'
+package main
+import("fmt";"net";"net/http";"os";"strconv")
+func main(){payload,err:=os.ReadFile(os.Args[1]);if err!=nil{panic(err)};listener,err:=net.Listen("tcp","127.0.0.1:0");if err!=nil{panic(err)};status:=200;if len(os.Args)>4{status,_=strconv.Atoi(os.Args[4])};if err:=os.WriteFile(os.Args[2],[]byte("http://"+listener.Addr().String()),0600);err!=nil{panic(err)};handler:=http.HandlerFunc(func(response http.ResponseWriter,request *http.Request){handle,_:=os.OpenFile(os.Args[3],os.O_CREATE|os.O_APPEND|os.O_WRONLY,0600);fmt.Fprintln(handle,request.URL.Path);handle.Close();response.WriteHeader(status);_,_=response.Write(payload)});panic(http.Serve(listener,handler))}
+GOEOF
+if ! go build -o "$archive_server_binary" "$archive_server_source"; then
+  printf 'FAIL: could not build the in-process archive fixture server.\n' >&2
+  exit 1
+fi
+archive_server_pid=''
+archive_server_url=''
+start_archive_server() {
+  local tarball_path="$1" status_code="${2:-200}" url_file="$fixture_root/archive-server-url"
+  : > "$HTTP_CALL_LOG"
+  rm -f "$url_file"
+  "$archive_server_binary" "$tarball_path" "$url_file" "$HTTP_CALL_LOG" "$status_code" &
+  archive_server_pid=$!
+  wait_count=0
+  while [ ! -s "$url_file" ] && [ "$wait_count" -lt 100 ]; do sleep 0.02; wait_count=$((wait_count + 1)); done
+  archive_server_url="$(cat "$url_file" 2>/dev/null)"
+  [ -n "$archive_server_url" ] || { record_failure 'archive fixture server did not start'; return 1; }
+}
+stop_archive_server() {
+  [ -n "$archive_server_pid" ] || return 0
+  kill "$archive_server_pid" 2>/dev/null || true
+  wait "$archive_server_pid" 2>/dev/null || true
+  archive_server_pid=''
+}
 
 run_updater() {
   local project_path="$1" answer_text="$2" tarball_path="$3"
-  : > "$CURL_CALL_LOG"
+  start_archive_server "$tarball_path" || return
   probe_output="$(printf '%s\n' "$answer_text" \
-    | FAKE_TARBALL="$tarball_path" \
+    | DO_WORK_UPSTREAM_URL="$archive_server_url/archive/refs/heads/main.tar.gz" \
       bash "$project_path/.claude/skills/do-work/tools/do-work-update.sh" \
         --project-root "$project_path" 2>&1)"
   probe_status=$?
+  stop_archive_server
 }
 
 # The bridge-only capability probe is no longer a public updater mode.
@@ -316,7 +334,7 @@ assert_file_contains "$suite_project/.claude/settings.json" \
   'suite update: preserves the current memory Stop path'
 assert_file_contains "$suite_project/.claude/settings.json" '"custom"[[:space:]]*:[[:space:]]*"keep"' \
   'suite update: preserves unrelated settings'
-if [ "$(wc -l < "$CURL_CALL_LOG" | tr -d ' ')" != 1 ]; then
+if [ "$(wc -l < "$HTTP_CALL_LOG" | tr -d ' ')" != 1 ]; then
   record_failure 'suite update: expected exactly one archive download'
 fi
 
@@ -328,10 +346,11 @@ init_project "$just_entry_project"
 commit_project "$just_entry_project" 'modular suite baseline'
 run_updater "$suite_project" y "$suite_tarball"
 assert_status 0 'entry-point parity: direct updater exits 0'
-: > "$CURL_CALL_LOG"
+start_archive_server "$suite_tarball"
 probe_output="$(cd "$just_entry_project" && printf 'y\n' \
-  | FAKE_TARBALL="$suite_tarball" just run-do-work-update 2>&1)"
+  | DO_WORK_UPSTREAM_URL="$archive_server_url/archive/refs/heads/main.tar.gz" just run-do-work-update 2>&1)"
 probe_status=$?
+stop_archive_server
 assert_status 0 'entry-point parity: managed Just updater exits 0'
 # The built do-work-cli binary is build output, not suite content: Go embeds the build
 # directory in it, so two projects that build it under different paths hold different bytes
@@ -540,20 +559,12 @@ else
   git -C "$upstream_fixture_repo" checkout -q main
 
   # Case 1: a host that answers 429 forever must not stop the fetch — the git route wins.
-  rate_limited_bin="$fetch_root/rate-limited-bin"
-  mkdir -p "$rate_limited_bin"
-  printf '%s\n' \
-    '#!/usr/bin/env bash' \
-    'output_path=""' \
-    'while [ "$#" -gt 0 ]; do case "$1" in -o) output_path="$2"; shift 2 ;; *) shift ;; esac; done' \
-    'exit 22' \
-    > "$rate_limited_bin/curl"
-  chmod +x "$rate_limited_bin/curl"
+  start_archive_server "$suite_tarball" 429
+  rate_limited_url="$archive_server_url"
 
   fallback_archive="$fetch_root/fallback.tar.gz"
-  fallback_report="$(PATH="$rate_limited_bin:$PATH" \
-    bash "$archive_fetcher" "$fallback_archive" \
-    'https://example.invalid/archive/refs/heads/main.tar.gz' "$upstream_fixture_repo" 2>/dev/null)" \
+  fallback_report="$(bash "$archive_fetcher" "$fallback_archive" \
+    "$rate_limited_url/archive/refs/heads/main.tar.gz" "$upstream_fixture_repo" 2>/dev/null)" \
     || record_failure 'upstream fetcher: sustained rate limiting was not survived by the git route'
   if ! tar tzf "$fallback_archive" >/dev/null 2>&1; then
     record_failure 'upstream fetcher: the git route did not produce a readable archive'
@@ -580,9 +591,8 @@ else
   # A canonical branch URL must select that exact ref. Default HEAD is retained only
   # when the URL does not match the branch grammar, and a missing requested ref fails.
   requested_branch_archive="$fetch_root/requested-branch.tar.gz"
-  probe_output="$(PATH="$rate_limited_bin:$PATH" \
-    bash "$archive_fetcher" "$requested_branch_archive" \
-    'https://example.invalid/archive/refs/heads/requested-branch.tar.gz' \
+  probe_output="$(bash "$archive_fetcher" "$requested_branch_archive" \
+    "$rate_limited_url/archive/refs/heads/requested-branch.tar.gz" \
     "$upstream_fixture_repo" 2>&1)"
   probe_status=$?
   assert_status 0 'upstream fetcher: requested branch exits 0'
@@ -603,9 +613,8 @@ else
     'upstream fetcher: ordinary branch content survives one-component extraction at the root'
 
   slashed_branch_archive="$fetch_root/slashed-branch.tar.gz"
-  probe_output="$(PATH="$rate_limited_bin:$PATH" \
-    bash "$archive_fetcher" "$slashed_branch_archive" \
-    'https://example.invalid/archive/refs/heads/feature/fix.tar.gz' \
+  probe_output="$(bash "$archive_fetcher" "$slashed_branch_archive" \
+    "$rate_limited_url/archive/refs/heads/feature/fix.tar.gz" \
     "$upstream_fixture_repo" 2>&1)"
   probe_status=$?
   assert_status 0 'upstream fetcher: slashed branch exits 0'
@@ -622,9 +631,8 @@ else
     'upstream fetcher: slashed branch does not leave a branch-name directory after stripping'
 
   missing_branch_archive="$fetch_root/missing-branch.tar.gz"
-  probe_output="$(PATH="$rate_limited_bin:$PATH" \
-    bash "$archive_fetcher" "$missing_branch_archive" \
-    'https://example.invalid/archive/refs/heads/missing-branch.tar.gz' \
+  probe_output="$(bash "$archive_fetcher" "$missing_branch_archive" \
+    "$rate_limited_url/archive/refs/heads/missing-branch.tar.gz" \
     "$upstream_fixture_repo" 2>&1)"
   probe_status=$?
   assert_status_nonzero 'upstream fetcher: missing requested branch fails'
@@ -632,9 +640,8 @@ else
     'upstream fetcher: missing requested branch publishes no archive'
 
   default_branch_archive="$fetch_root/default-branch.tar.gz"
-  probe_output="$(PATH="$rate_limited_bin:$PATH" \
-    bash "$archive_fetcher" "$default_branch_archive" \
-    'https://example.invalid/unparseable.tar.gz' "$upstream_fixture_repo" 2>&1)"
+  probe_output="$(bash "$archive_fetcher" "$default_branch_archive" \
+    "$rate_limited_url/unparseable.tar.gz" "$upstream_fixture_repo" 2>&1)"
   probe_status=$?
   assert_status 0 'upstream fetcher: unparseable URL uses default HEAD'
   if ! tar tzf "$default_branch_archive" 2>/dev/null | grep -q 'default-branch-marker\.txt'; then
@@ -651,7 +658,7 @@ else
     expected_signal_status="${signal_case##*:}"
     interrupted_archive="$fetch_root/interrupted-$signal_name.tar.gz"
     probe_output="$(FETCH_SIGNAL="$signal_name" FETCHER_PATH="$archive_fetcher" \
-      ARCHIVE_PATH="$interrupted_archive" UPSTREAM_REPO="$upstream_fixture_repo" \
+      ARCHIVE_PATH="$interrupted_archive" UPSTREAM_REPO="$upstream_fixture_repo" HTTP_BASE="$rate_limited_url" \
       "$bash_path" -c '
         bash() {
           kill -s "$FETCH_SIGNAL" "$$"
@@ -659,7 +666,7 @@ else
         }
         export -f bash
         exec "$1" "$FETCHER_PATH" "$ARCHIVE_PATH" \
-          "https://example.invalid/archive/refs/heads/main.tar.gz" "$UPSTREAM_REPO"
+          "$HTTP_BASE/archive/refs/heads/main.tar.gz" "$UPSTREAM_REPO"
       ' _ "$bash_path" 2>&1)"
     probe_status=$?
     assert_status "$expected_signal_status" \
@@ -674,9 +681,8 @@ else
   # private scratch is left behind.
   preserved_target="$fetch_root/preserved.tar.gz"
   printf 'previously downloaded archive\n' > "$preserved_target"
-  PATH="$rate_limited_bin:$PATH" \
-    bash "$archive_fetcher" "$preserved_target" \
-    'https://example.invalid/archive/refs/heads/main.tar.gz' "$fetch_root/no-such-repo" >/dev/null 2>&1 \
+  bash "$archive_fetcher" "$preserved_target" \
+    "$rate_limited_url/archive/refs/heads/main.tar.gz" "$fetch_root/no-such-repo" >/dev/null 2>&1 \
     && record_failure 'upstream fetcher: total failure reported success'
   if [ "$(cat "$preserved_target")" != 'previously downloaded archive' ]; then
     record_failure 'upstream fetcher: total failure changed the pre-existing target'
@@ -687,9 +693,8 @@ else
   if find "$fetch_root" -name 'preserved.tar.gz.fetching.*' -print -quit | grep -q .; then
     record_failure 'upstream fetcher: total failure leaked git-route scratch'
   fi
-  total_failure_report="$(PATH="$rate_limited_bin:$PATH" \
-    bash "$archive_fetcher" "$preserved_target" \
-    'https://example.invalid/archive/refs/heads/main.tar.gz' "$fetch_root/no-such-repo" 2>&1 >/dev/null || true)"
+  total_failure_report="$(bash "$archive_fetcher" "$preserved_target" \
+    "$rate_limited_url/archive/refs/heads/main.tar.gz" "$fetch_root/no-such-repo" 2>&1 >/dev/null || true)"
   case "$total_failure_report" in
     *'HTTP route'*'Git route'*) ;;
     *) record_failure 'upstream fetcher: total failure did not name both route outcomes' ;;
@@ -698,6 +703,7 @@ else
     *DO_WORK_UPSTREAM_URL*) ;;
     *) record_failure 'upstream fetcher: total failure did not name the DO_WORK_UPSTREAM_URL escape hatch' ;;
   esac
+  stop_archive_server
 fi
 
 # The install and update transactions moved into Go, so the two callers that used to shell
@@ -718,8 +724,9 @@ done
 if ! grep -q 'DO_WORK_UPSTREAM_URL' "$archive_fetch_source"; then
   record_failure 'upstream fetcher: archive_fetch.go does not honor DO_WORK_UPSTREAM_URL'
 fi
-if ! grep -q 'atomic-download\.sh' "$archive_fetch_source"; then
-  record_failure 'upstream fetcher: archive_fetch.go does not route the HTTP fetch through the shipped atomic-download primitive'
+if ! grep -q 'http\.NewRequestWithContext' "$archive_fetch_source" \
+  || grep -Eq 'exec\.CommandContext\([^\n]*(curl|atomic-download)' "$archive_fetch_source"; then
+  record_failure 'upstream fetcher: archive_fetch.go does not own HTTP transfer directly in Go'
 fi
 # The public shell entry points must still exist as launchers over the command.
 for suite_launcher in \

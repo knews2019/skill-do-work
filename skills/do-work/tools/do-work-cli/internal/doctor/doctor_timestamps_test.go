@@ -39,6 +39,36 @@ func TestTimestampAuditUsesEffectiveTopLevelFieldAndRefusesUnsupportedRepairShap
 	}
 }
 
+func TestActiveTimestampScopeUsesMtimeForDirtyRequest(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	initDoctorGit(t, repositoryRoot)
+	relativePath := "do-work/queue/REQ-029-dirty.md"
+	writeDoctorFixture(t, repositoryRoot, relativePath, doctorRequest("REQ-029", "pending", "created_at: 2099-01-01T00:00:00Z\n", "Body"))
+	commitDoctorFixture(t, repositoryRoot, "fixture")
+	absolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(relativePath))
+	handle, err := os.OpenFile(absolutePath, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = handle.WriteString("dirty\n")
+	_ = handle.Close()
+	mtime := time.Date(2026, 8, 30, 19, 15, 0, 0, time.UTC)
+	if err := os.Chtimes(absolutePath, mtime, mtime); err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plans, _ := BuildTimestampPlanForScope(context.Background(), snapshot, time.Date(2026, 8, 30, 20, 0, 0, 0, time.UTC), TimestampScopeActive)
+	if len(plans) != 1 || len(plans[0].Changes) != 1 {
+		t.Fatalf("plans=%#v", plans)
+	}
+	if plans[0].Changes[0].Source != "file mtime" || plans[0].Changes[0].NewValue != "2026-08-30T19:15:00Z" {
+		t.Fatalf("change=%#v", plans[0].Changes[0])
+	}
+}
+
 func TestTimestampRepairAcceptsQuotedASCIIInnerPaddingOnly(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	initDoctorGit(t, repositoryRoot)

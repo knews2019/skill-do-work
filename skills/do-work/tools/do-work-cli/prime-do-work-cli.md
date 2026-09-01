@@ -13,7 +13,9 @@ The standard-library Go module under this directory is the canonical implementat
 - `internal/schemanormalization/` owns schema aliases, defaults, warnings, and terminal predicates.
 - `internal/repositorymodel/` owns one-pass do-work discovery, exact paths, collisions, and REQ allocation.
 - `internal/dependencygraph/` derives readiness, reverse edges, cycles, and depth from a repository snapshot.
-- `internal/nextselection/` owns read-only target expansion, queue readiness, blocked probes, wave/fan-out bounds, estimates, and typed selected/excluded records.
+- `internal/nextselection/` owns read-only target expansion, queue readiness, process-tree-owned blocked probes, wave/fan-out bounds, estimates, and typed selected/excluded records.
+- `internal/corehelpers/` owns the remaining utility handlers and leaf check, inventory, Git, publication, reservation, and survey mechanics; shared download, timestamp, probe, and provenance primitives remain with their domain owners.
+- `internal/archivefetch/` owns in-process HTTP download/retry/redaction and archive transport fallback.
 - `internal/requeststate/` owns deterministic `claim`, `unblock`, `complete`, `fail`, and `cancel` plans and their coupled checkpoint, archive, UR, calibration, and provenance mutations.
 - `internal/publication/` is the sole deterministic owner of typed `capture-files`, `answer`, and `release` manifests, planning, containment, repository-root-confined parent handles, and atomic publication. Stakeholder history and overrides are typed, file-backed evidence; actions retain content and semantic/release judgment, and once supplied these durable mutations have no prose fallback.
 - `internal/cleanup/` plans safe Passes 0–4, consent-gated repairs, link repointing, and worktree evidence.
@@ -35,7 +37,8 @@ The standard-library Go module under this directory is the canonical implementat
 - Cleanup operation groups preflight independently; a dirty group is reported without blocking unrelated safe groups.
 - Entirely untracked `Status: consumed` run scratch is the sole non-rollback deletion; revalidate its exact inventory immediately before removal.
 - Doctor diagnosis is byte-for-byte read-only. Only `--repair-timestamps` mutates, and blank recovery remains exact cleanup consent.
-- Queue selection is byte-for-byte read-only. It may execute a scoped `blocked_check` only through `scripts/run-blocked-check.sh`; every record retains exact request-path and probe/unblock evidence, while successful probes affect that invocation's eligibility but never rewrite the REQ.
+- Queue selection is byte-for-byte read-only. It executes a scoped `blocked_check` only through the in-process owned process-group runner; every record retains exact request-path and raw probe/unblock evidence, while successful probes affect that invocation's eligibility but never rewrite the REQ.
+- Screenshot and HTTP targets publish private 0600 bytes as the final commit point through rooted no-overwrite operations. No later error path removes a published pathname.
 - Request-state commands validate selector-provided exact paths instead of selecting again. Actions retain confirmation, failure classification, terminal/review/release judgment, follow-up authoring, and dependent disposition; once supplied, deterministic lifecycle bytes have no free-form fallback.
 
 ## Verify
@@ -45,6 +48,7 @@ The standard-library Go module under this directory is the canonical implementat
 - Module regression: `go test -count=1 ./...`
 - Exact Go 1.25 compatibility: `bash _dev/tests/do-work-cli-go125-compatibility.sh` from the repository root
 - Windows atomic compile: `GOOS=windows GOARCH=amd64 go test -c ./internal/atomicfile -o <temporary-path>`
+- Windows blocked-probe compile: `GOOS=windows GOARCH=amd64 go test -c ./internal/nextselection -o <temporary-path>`
 - Repository baseline: run the unpiped `_dev/tests/maintainer-verify.sh` from the repository root when the integrating workflow calls for it.
 
 ## Stakes

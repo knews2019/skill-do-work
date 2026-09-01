@@ -419,9 +419,8 @@ func (transaction *installTransaction) resolveArchive(ctx context.Context) (stri
 		upstreamURL = archivefetch.UpstreamURLFromEnvironment()
 	}
 	if _, err := archivefetch.FetchArchive(ctx, archivefetch.Request{
-		ArchiveTargetPath:    archivePath,
-		UpstreamTarballURL:   upstreamURL,
-		AtomicDownloadScript: archivefetch.LocateAtomicDownloadScript(transaction.options.ToolDirectory),
+		ArchiveTargetPath:  archivePath,
+		UpstreamTarballURL: upstreamURL,
 	}); err != nil {
 		return "", failInstall("upstream archive could not be fetched by any route; no client files were changed")
 	}

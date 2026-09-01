@@ -1,8 +1,10 @@
 package doctor
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/atomicfile"
@@ -10,6 +12,43 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
+
+// ApplyUncommittedTimestampPlans is the guarded fail-soft authority for the retained
+// repair/audit helpers. Unlike doctor repair it intentionally accepts dirty and untracked
+// request files, never stages, and verifies each captured preimage immediately before the
+// atomic replacement.
+func ApplyUncommittedTimestampPlans(snapshot *repositorymodel.RepositorySnapshot, plans []TimestampRepairPlan) resultmodel.CommandResult {
+	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess}
+	if snapshot == nil {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{
+			doctorFinding("DOCTOR-SNAPSHOT-MISSING", resultmodel.SeverityError, nil, nil, "repository snapshot is required", resultmodel.FixabilityManual, "timestamp repair could not start", doctorArgv(), doctorJSONArgv()),
+		}}
+	}
+	result.RepositoryRoot = snapshot.RepositoryRoot
+	for _, plan := range plans {
+		absolutePath := filepath.Join(snapshot.RepositoryRoot, filepath.FromSlash(plan.RelativePath))
+		current, err := os.ReadFile(absolutePath)
+		if err != nil || !bytes.Equal(current, plan.ExpectedBytes) {
+			evidence := "request changed after inspection"
+			if err != nil {
+				evidence = err.Error()
+			}
+			result.Findings = append(result.Findings, doctorFinding("TIMESTAMP-PREIMAGE-CHANGED", resultmodel.SeverityError, nil, []string{plan.RelativePath}, evidence, resultmodel.FixabilityManual, "this file was left byte-identical by the repairer", doctorArgv(), doctorJSONArgv()))
+			continue
+		}
+		if err := atomicfile.ReplaceExisting(absolutePath, plan.UpdatedBytes); err != nil {
+			result.Findings = append(result.Findings, doctorFinding("TIMESTAMP-REPLACE-FAILED", resultmodel.SeverityError, nil, []string{plan.RelativePath}, err.Error(), resultmodel.FixabilityManual, "this file was left byte-identical by the repairer", doctorArgv(), doctorJSONArgv()))
+			continue
+		}
+		for _, change := range plan.Changes {
+			result.Changes = append(result.Changes, resultmodel.RecordedChange{Path: plan.RelativePath, Kind: "modified", Detail: fmt.Sprintf("repaired %s line %d: %s -> %s (%s)", change.FieldName, change.LineNumber, change.OldValue, change.NewValue, change.Source)})
+		}
+	}
+	if len(result.Findings) > 0 {
+		result.Outcome = resultmodel.OutcomeFindings
+	}
+	return result
+}
 
 type RepairOptions struct {
 	DryRun bool
