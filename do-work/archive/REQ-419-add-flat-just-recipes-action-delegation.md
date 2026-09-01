@@ -63,6 +63,7 @@ write_set:
   - _dev/tests/staged-skills-contract.sh
   - _dev/tests/install-suite-behavior.sh
   - _dev/tests/update-script-behavior.sh
+commit: cf7b8977
 ---
 
 # Add Flat Just Recipes, Collision Validation, Action Delegation, and Compatibility Aliases
