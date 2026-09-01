@@ -30,6 +30,7 @@ estimate:
     - cross-route regression gates
 kb_status: pending
 completed_at: 2026-09-01T16:11:59Z
+commit: 47ff6c85
 ---
 
 # Capture Stamps Required Lessons Under a Token Budget
