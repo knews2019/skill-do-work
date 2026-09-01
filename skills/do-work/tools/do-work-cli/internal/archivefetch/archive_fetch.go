@@ -71,16 +71,14 @@ func FetchArchive(ctx context.Context, request Request) (Result, error) {
 	upstreamBranch, repositoryURL := deriveGitRoute(request.UpstreamTarballURL, request.UpstreamRepositoryURL)
 	parentRoot, err := os.OpenRoot(filepath.Dir(request.ArchiveTargetPath))
 	if err != nil {
-		return Result{}, fmt.Errorf("open archive target parent: %w", err)
+		parentOutcome := fmt.Sprintf("not attempted (archive target parent is unavailable: %v)", err)
+		return Result{}, newArchiveFetchFailure(parentOutcome, parentOutcome)
 	}
 	defer parentRoot.Close()
 	targetSnapshot, err := inspectArchiveTarget(parentRoot, filepath.Base(request.ArchiveTargetPath))
 	if err != nil {
 		targetOutcome := fmt.Sprintf("not attempted (archive target is unsafe: %v)", err)
-		return Result{}, fmt.Errorf(
-			"upstream archive could not be fetched. HTTP route: %s. Git route: %s. "+
-				"Set DO_WORK_UPSTREAM_URL to a reachable archive URL to route around a blocked host.",
-			targetOutcome, targetOutcome)
+		return Result{}, newArchiveFetchFailure(targetOutcome, targetOutcome)
 	}
 
 	httpRouteOutcome := "not attempted"
@@ -105,7 +103,11 @@ func FetchArchive(ctx context.Context, request Request) (Result, error) {
 		}
 		gitRouteOutcome = "failed (clone, repack, or publication did not complete)"
 	}
-	return Result{}, fmt.Errorf(
+	return Result{}, newArchiveFetchFailure(httpRouteOutcome, gitRouteOutcome)
+}
+
+func newArchiveFetchFailure(httpRouteOutcome, gitRouteOutcome string) error {
+	return fmt.Errorf(
 		"upstream archive could not be fetched. HTTP route: %s. Git route: %s. "+
 			"Set DO_WORK_UPSTREAM_URL to a reachable archive URL to route around a blocked host.",
 		httpRouteOutcome, gitRouteOutcome)
