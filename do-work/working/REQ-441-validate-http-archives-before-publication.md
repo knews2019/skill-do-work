@@ -131,7 +131,9 @@ Certainty level: Firm on staging and target preservation. Reuse existing publica
 
 **Builder commit:** `bab4bbae470d19d150bf790a8292133893d5374b`
 
-**Initial integration range:** `196f25ff..1a0d447f`; the builder's final unsafe-target evidence amendment is pending its corrective merge.
+**Cumulative builder range:** `eec9ea36..bab4bbae`
+
+**Integrated merge commits:** `1a0d447f`, `e0d66f1f`
 
 The coordinated `prime-do-work-cli.md` restatement remains owned by the in-flight REQ-415 builder and must land before independent review.
 
@@ -139,12 +141,12 @@ The coordinated `prime-do-work-cli.md` restatement remains owned by the in-fligh
 
 ## Qualification
 
-- `DO_WORK_DIFF_RANGE=196f25ff..1a0d447f ... qualify.sh` — passed with no warnings.
-- `DO_WORK_DIFF_RANGE=196f25ff..1a0d447f ... scope-drift.sh` — passed with the exact two-file builder match.
+- `DO_WORK_DIFF_RANGE=eec9ea36..bab4bbae ... qualify.sh` — passed with no warnings after the final unsafe-target evidence amendment.
+- `DO_WORK_DIFF_RANGE=eec9ea36..bab4bbae ... scope-drift.sh` — passed with the exact two-file builder match.
 
 ## Testing
 
-- Merged `go test -race -count=1 ./internal/archivefetch` — passed.
+- Merged `go test -race -count=1 ./internal/archivefetch` and focused vet — passed after the final correction.
 - Merged focused archivefetch, suiteinstall, and corehelpers tests — passed.
 - Builder full Go, vet, exact Go 1.25, update behavior, contract regressions, canonical maintainer gate, and diff hygiene — passed per the durable handback.
 - Independent review is intentionally held until REQ-415 lands the coordinated prime restatement.
