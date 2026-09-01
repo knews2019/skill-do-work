@@ -79,16 +79,16 @@ func TestRepairTimestampsRefusesDirtyTargetAndCommitWithDirtyIndex(t *testing.T)
 		!reflect.DeepEqual(dirtyTargetFinding.VerificationArgv, []string{"git", "diff", "--quiet", "--exit-code", "--", "do-work/queue/REQ-031-time.md"}) {
 		t.Fatalf("dirty target remediation = %#v", dirtyTargetFinding)
 	}
-	command := exec.Command("git", "-C", repositoryRoot, "restore", "--", "do-work/queue/REQ-031-time.md")
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("restore: %v: %s", err, output)
-	}
 	if err := os.WriteFile(filepath.Join(repositoryRoot, "unrelated.txt"), []byte("staged\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	command = exec.Command("git", "-C", repositoryRoot, "add", "unrelated.txt")
+	command := exec.Command("git", "-C", repositoryRoot, "add", "unrelated.txt")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("stage: %v: %s", err, output)
+	}
+	dirtyTargetBytes, err := os.ReadFile(requestPath)
+	if err != nil {
+		t.Fatal(err)
 	}
 	snapshot, _ = repositorymodel.DiscoverRepository(repositoryRoot)
 	plans, _ = BuildTimestampPlan(context.Background(), snapshot, time.Date(2026, 8, 30, 20, 0, 0, 0, time.UTC))
@@ -101,9 +101,20 @@ func TestRepairTimestampsRefusesDirtyTargetAndCommitWithDirtyIndex(t *testing.T)
 	}
 	finding := result.Findings[0]
 	if finding.Code != "GIT-DIRTY-INDEX" ||
+		!reflect.DeepEqual(finding.Evidence, []string{"--commit requires an empty existing index"}) ||
 		!reflect.DeepEqual(finding.NextArgv, []string{"git", "diff", "--cached", "--name-only"}) ||
 		!reflect.DeepEqual(finding.VerificationArgv, []string{"git", "diff", "--cached", "--quiet", "--exit-code"}) {
 		t.Fatalf("dirty index remediation = %#v", finding)
+	}
+	if len(result.Changes) != 0 {
+		t.Fatalf("dirty index refusal reported changes = %#v", result.Changes)
+	}
+	retainedTargetBytes, err := os.ReadFile(requestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(retainedTargetBytes, dirtyTargetBytes) {
+		t.Fatalf("dirty target changed during index refusal: got %q, want %q", retainedTargetBytes, dirtyTargetBytes)
 	}
 }
 

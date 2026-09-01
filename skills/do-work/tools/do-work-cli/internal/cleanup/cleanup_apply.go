@@ -58,16 +58,7 @@ func ApplyPlan(ctx context.Context, plan CleanupPlan, options ApplyOptions) resu
 				scratchCandidates[groupIndex] = true
 				continue
 			}
-			path := ""
-			if len(preflight.Failure.Paths) > 0 {
-				path = preflight.Failure.Paths[0]
-			}
-			finding := refusedGroupFinding(group, path, preflight.Failure.Reason)
-			if preflight.Failure.Kind == gittransaction.FailureDirtyIndex {
-				finding.NextArgv = []string{"git", "diff", "--cached", "--name-only"}
-				finding.VerificationArgv = []string{"git", "diff", "--cached", "--quiet", "--exit-code"}
-			}
-			result.Findings = append(result.Findings, finding)
+			result.Findings = append(result.Findings, preflightRefusedGroupFinding(group, preflight))
 			continue
 		}
 		directlyEligible[groupIndex] = true
@@ -601,6 +592,24 @@ func refusedGroupFinding(group OperationGroup, path, reason string) resultmodel.
 	return resultmodel.CommandFinding{Code: "CLEANUP-GROUP-REFUSED", Severity: resultmodel.SeverityWarning, AffectedIDs: ids, AffectedPaths: paths,
 		Evidence: []string{group.Code + ": " + reason}, Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "this operation group did not pass exact-target guards",
 		NextArgv: nextArgv, VerificationArgv: []string{"do-work-cli", "cleanup", "--dry-run"}}
+}
+
+func preflightRefusedGroupFinding(group OperationGroup, preflight gittransaction.TargetPreflight) resultmodel.CommandFinding {
+	preflightResult := gittransaction.BuildCommandResult("cleanup", gittransaction.TransactionResult{
+		Outcome:        resultmodel.OutcomeRefused,
+		RepositoryRoot: preflight.RepositoryRoot,
+		Failure:        preflight.Failure,
+	})
+	finding := preflightResult.Findings[0]
+	failureCode := finding.Code
+	failureEvidence := strings.Join(finding.Evidence, "; ")
+	finding.Code = "CLEANUP-GROUP-REFUSED"
+	finding.AffectedIDs = nil
+	if group.AffectedID != "" {
+		finding.AffectedIDs = []string{group.AffectedID}
+	}
+	finding.Evidence = []string{group.Code + ": " + failureCode + ": " + failureEvidence}
+	return finding
 }
 
 func dependencyRefusedGroupFinding(group OperationGroup, blocker groupDependencyBlocker) resultmodel.CommandFinding {
