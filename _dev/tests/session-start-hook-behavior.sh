@@ -39,6 +39,52 @@ run_banner_case reformatted '**Version**: 9.8.7\n' 0 "do-work vunknown loaded. 0
 run_banner_case multiple '**Current version**: 1\n**Current version**: 2\n' 0 "do-work v1
 2 loaded. 0 pending REQ(s). Say 'do-work help' for commands."
 
+# Retained-vs-Go housekeeping matrix: the banner stays exact while JSON carries
+# the same deletion evidence, and unavailable Git preserves coordination state.
+authority_root="$fixture_root/authority"
+install_core_fixture "$authority_root"
+mkdir -p "$authority_root/project/do-work/working" "$authority_root/project/do-work/.req-reservations"
+printf '**Current version**: 9.8.7\n' > "$authority_root/skill/actions/version.md"
+git -C "$authority_root/project" init -q
+git -C "$authority_root/project" config user.email fixture@example.invalid
+git -C "$authority_root/project" config user.name Fixture
+printf -- '---\nid: REQ-203\nstatus: claimed\n---\n' > "$authority_root/project/do-work/working/REQ-203-landed.md"
+git -C "$authority_root/project" add do-work/working/REQ-203-landed.md
+git -C "$authority_root/project" commit -qm 'land request'
+touch "$authority_root/project/do-work/.req-reservations/REQ-000203"
+authority_json="$(CLAUDE_PROJECT_DIR="$authority_root/project" bash "$authority_root/skill/tools/do-work-cli.sh" --repo-root "$authority_root/project" --format json session-start --skill-root "$authority_root/skill")"
+if [ -e "$authority_root/project/do-work/.req-reservations/REQ-000203" ] || ! grep -q '"kind": "deleted"' <<<"$authority_json" || ! grep -q '"protocol_output": "do-work v9.8.7 loaded.' <<<"$authority_json"; then
+  printf 'FAIL: committed housekeeping did not retain typed deletion plus exact protocol output.\n' >&2
+  failure_count=$((failure_count + 1))
+fi
+printf -- '---\nid: REQ-204\nstatus: claimed\n---\n' > "$authority_root/project/do-work/working/REQ-204-uncommitted.md"
+touch "$authority_root/project/do-work/.req-reservations/REQ-000204"
+authority_binary="$authority_root/skill/tools/do-work-cli/do-work-cli"
+unavailable_json="$(PATH="$authority_root/no-git" "$authority_binary" --repo-root "$authority_root/project" --format json session-start --skill-root "$authority_root/skill")"
+if [ ! -e "$authority_root/project/do-work/.req-reservations/REQ-000204" ] || ! grep -q 'RESERVATION-GIT-AUTHORITY-UNAVAILABLE' <<<"$unavailable_json" || grep -q 'REQ-000204.*deleted' <<<"$unavailable_json"; then
+  printf 'FAIL: Git-unavailable SessionStart did not fail closed with typed evidence.\n' >&2
+  failure_count=$((failure_count + 1))
+fi
+
+# Launcher failure matrix: retained SessionStart propagates both too-old Go and
+# build failure with actionable diagnostics and no false banner.
+run_launcher_failure_case() {
+  local case_name="$1" go_body="$2" expected="$3"
+  local case_root="$fixture_root/$case_name" fake_bin="$fixture_root/$case_name-bin" status=0
+  install_core_fixture "$case_root"
+  mkdir -p "$case_root/project" "$fake_bin"
+  printf '**Current version**: 9.8.7\n' > "$case_root/skill/actions/version.md"
+  printf '%b' "$go_body" > "$fake_bin/go"
+  chmod +x "$fake_bin/go"
+  PATH="$fake_bin:/usr/bin:/bin" CLAUDE_PROJECT_DIR="$case_root/project" bash "$case_root/skill/hooks/session-start.sh" >"$case_root/stdout" 2>"$case_root/stderr" || status=$?
+  if [ "$status" -ne 2 ] || [ -s "$case_root/stdout" ] || ! grep -q "$expected" "$case_root/stderr"; then
+    printf 'FAIL: %s launcher boundary status=%s stderr=<%s>.\n' "$case_name" "$status" "$(tr '\n' ' ' < "$case_root/stderr")" >&2
+    failure_count=$((failure_count + 1))
+  fi
+}
+run_launcher_failure_case go-too-old '#!/usr/bin/env bash\nprintf "go version go1.24.0 fixture\\n"\n' 'Go 1.25.0 or newer is required'
+run_launcher_failure_case go-build-failure '#!/usr/bin/env bash\nif [ "${1:-}" = version ]; then printf "go version go1.25.0 fixture\\n"; exit 0; fi\nexit 1\n' 'build failed; stale output was not run'
+
 missing_root="$fixture_root/missing-launcher"
 mkdir -p "$missing_root/skill/hooks" "$missing_root/project"
 cp "$repo_root/skills/do-work/hooks/session-start.sh" "$missing_root/skill/hooks/"

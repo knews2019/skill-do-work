@@ -41,9 +41,9 @@ func handleMemorySessionStart(executionContext commandruntime.ExecutionContext, 
 		}
 	}
 	output.WriteString("</background-memory>\n")
-	appendLedger(filepath.Join(memoryRoot, "usage-ledger.jsonl"), fmt.Sprintf(
+	ledger := appendLedger(executionContext.RepositoryRoot, filepath.Join(memoryRoot, "usage-ledger.jsonl"), fmt.Sprintf(
 		`{"ts":"%s","engine":"memory","event":"inject","query":"","hits":0,"source":"hooks/memory-session-start.sh","note":""}`+"\n", now.Format("2006-01-02T15:04:05Z")))
-	return protocolResult(output.String())
+	return protocolResult(output.String(), ledger)
 }
 
 func curatedLog(contents string) string {
@@ -79,11 +79,31 @@ func isDailyLogHeading(line string) bool {
 		line[6] >= '0' && line[6] <= '9' && line[7] >= '0' && line[7] <= '9' && strings.HasPrefix(line[8:], " UTC ")
 }
 
-func appendLedger(path, line string) {
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600)
-	if err != nil {
-		return
+func appendLedger(repositoryRoot, path, line string) resultmodel.CommandResult {
+	relativePath, relativeError := filepath.Rel(repositoryRoot, path)
+	if relativeError != nil {
+		relativePath = path
 	}
-	_, _ = file.Write([]byte(line))
-	_ = file.Close()
+	relativePath = filepath.ToSlash(relativePath)
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o666)
+	if err != nil {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: []resultmodel.CommandFinding{hookFinding(
+			"MEMORY-LEDGER-APPEND-SKIPPED", relativePath, err.Error(), "memory instrumentation is best-effort",
+		)}}
+	}
+	_, writeError := file.Write([]byte(line))
+	closeError := file.Close()
+	if writeError != nil {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: []resultmodel.CommandFinding{hookFinding(
+			"MEMORY-LEDGER-APPEND-SKIPPED", relativePath, writeError.Error(), "memory instrumentation is best-effort",
+		)}}
+	}
+	if closeError != nil {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: []resultmodel.CommandFinding{hookFinding(
+			"MEMORY-LEDGER-CLOSE-FAILED", relativePath, closeError.Error(), "memory instrumentation is best-effort",
+		)}}
+	}
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: []resultmodel.RecordedChange{{
+		Path: relativePath, Kind: "appended", Detail: "recorded memory engine usage",
+	}}}
 }

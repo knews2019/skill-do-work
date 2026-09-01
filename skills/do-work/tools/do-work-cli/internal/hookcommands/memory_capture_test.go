@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 	"unicode/utf8"
@@ -13,6 +15,8 @@ import (
 )
 
 func TestMemoryStopCaptureSelectsRealTextRedactsAndDeduplicates(t *testing.T) {
+	originalUmask := syscall.Umask(0o022)
+	t.Cleanup(func() { syscall.Umask(originalUmask) })
 	repository := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(repository, "memory", "logs"), 0o755); err != nil {
 		t.Fatal(err)
@@ -46,13 +50,113 @@ func TestMemoryStopCaptureSelectsRealTextRedactsAndDeduplicates(t *testing.T) {
 	}
 	if info, statError := os.Stat(logPath); statError != nil {
 		t.Fatalf("stat capture: %v", statError)
-	} else if info.Mode().Perm() != 0o600 {
-		t.Fatalf("capture mode=%v, want 0600", info.Mode().Perm())
+	} else if info.Mode().Perm() != 0o644 {
+		t.Fatalf("capture mode=%v, want legacy umask-derived 0644", info.Mode().Perm())
+	}
+	if len(result.Changes) != 2 || result.Changes[0].Path != "memory/logs/2026-09-01.md" || result.Changes[1].Path != "memory/usage-ledger.jsonl" {
+		t.Fatalf("typed result lost capture effects: %+v", result.Changes)
 	}
 	_ = handleMemoryStopCapture(context, nil, strings.NewReader(input))
 	second, _ := os.ReadFile(logPath)
 	if string(second) != string(first) {
 		t.Fatal("duplicate stop event appended a second capture")
+	}
+}
+
+// These cases are preserved from the retained jq/slurp behavior. The table is a
+// differential characterization oracle: changing the Go parser must keep every
+// status/effect decision below, including jq-accepted blank separators.
+func TestRetainedStopDifferentialTranscriptMatrix(t *testing.T) {
+	tests := []struct {
+		name       string
+		transcript []byte
+		wantUser   string
+		wantAgent  string
+		wantError  bool
+	}{
+		{"string content", []byte("{\"type\":\"user\",\"message\":{\"content\":\"ask\"}}\n{\"type\":\"assistant\",\"message\":{\"content\":\"answer\"}}\n"), "ask", "answer", false},
+		{"blank separator", []byte("{\"type\":\"user\",\"message\":{\"content\":\"ask\"}}\n\n{\"type\":\"assistant\",\"message\":{\"content\":\"answer\"}}\n"), "ask", "answer", false},
+		{"tool blocks and meta skipped", []byte("{\"type\":\"user\",\"isMeta\":true,\"message\":{\"content\":\"meta\"}}\n{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"real\"}]} }\n{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\"}]}}\n"), "real", "", false},
+		{"malformed JSON", []byte("{\"type\":\"user\"}\nnot-json\n"), "", "", true},
+		{"invalid UTF-8 JSON", append([]byte("{\"type\":\"user\",\"message\":{\"content\":\""), []byte{0xff, '"', '}', '}', '\n'}...), "", "", true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "transcript.jsonl")
+			if err := os.WriteFile(path, test.transcript, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			user, agent, err := finalTranscriptTexts(path)
+			if (err != nil) != test.wantError || user != test.wantUser || agent != test.wantAgent {
+				t.Fatalf("user=%q agent=%q err=%v", user, agent, err)
+			}
+		})
+	}
+}
+
+func TestRetainedStopDifferentialUmaskMatrix(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		umask int
+		want  os.FileMode
+	}{{"ordinary", 0o022, 0o644}, {"restrictive", 0o077, 0o600}} {
+		t.Run(test.name, func(t *testing.T) {
+			originalUmask := syscall.Umask(test.umask)
+			defer syscall.Umask(originalUmask)
+			repository := t.TempDir()
+			_ = os.MkdirAll(filepath.Join(repository, "memory", "logs"), 0o755)
+			transcript := filepath.Join(repository, "transcript.jsonl")
+			_ = os.WriteFile(transcript, []byte("{\"type\":\"user\",\"message\":{\"content\":\"ask\"}}\n{\"type\":\"assistant\",\"message\":{\"content\":\"answer\"}}\n"), 0o600)
+			input := fmt.Sprintf(`{"transcript_path":%q}`, transcript)
+			_ = handleMemoryStopCapture(commandruntime.ExecutionContext{RepositoryRoot: repository}, nil, strings.NewReader(input))
+			for _, path := range []string{filepath.Join(repository, "memory", "logs", hookClock().UTC().Format("2006-01-02")+".md"), filepath.Join(repository, "memory", "usage-ledger.jsonl")} {
+				info, err := os.Stat(path)
+				if err != nil {
+					t.Fatalf("stat %s: %v", path, err)
+				}
+				if info.Mode().Perm() != test.want {
+					t.Fatalf("%s mode=%v, want %v", path, info.Mode().Perm(), test.want)
+				}
+			}
+		})
+	}
+}
+
+func TestMemoryStopCaptureReportsAppendFailureOnlyInTypedResult(t *testing.T) {
+	repository := t.TempDir()
+	logs := filepath.Join(repository, "memory", "logs")
+	_ = os.MkdirAll(logs, 0o755)
+	transcript := filepath.Join(repository, "transcript.jsonl")
+	_ = os.WriteFile(transcript, []byte("{\"type\":\"user\",\"message\":{\"content\":\"ask\"}}\n{\"type\":\"assistant\",\"message\":{\"content\":\"answer\"}}\n"), 0o600)
+	today := hookClock().UTC().Format("2006-01-02") + ".md"
+	_ = os.Mkdir(filepath.Join(logs, today), 0o755)
+	input := fmt.Sprintf(`{"transcript_path":%q}`, transcript)
+	result := handleMemoryStopCapture(commandruntime.ExecutionContext{RepositoryRoot: repository}, nil, strings.NewReader(input))
+	if result.ProtocolOutput == nil || *result.ProtocolOutput != "" || len(result.Findings) != 1 || result.Findings[0].Code != "MEMORY-CAPTURE-APPEND-SKIPPED" {
+		t.Fatalf("result=%+v", result)
+	}
+}
+
+func TestMemoryStopCaptureConcurrentDistinctWritesRemainWhole(t *testing.T) {
+	repository := t.TempDir()
+	_ = os.MkdirAll(filepath.Join(repository, "memory", "logs"), 0o755)
+	const captures = 8
+	var wait sync.WaitGroup
+	for index := 0; index < captures; index++ {
+		transcript := filepath.Join(repository, fmt.Sprintf("transcript-%d.jsonl", index))
+		_ = os.WriteFile(transcript, []byte(fmt.Sprintf("{\"type\":\"user\",\"message\":{\"content\":\"ask-%d\"}}\n{\"type\":\"assistant\",\"message\":{\"content\":\"answer-%d\"}}\n", index, index)), 0o600)
+		wait.Add(1)
+		go func(path string) {
+			defer wait.Done()
+			input := fmt.Sprintf(`{"transcript_path":%q}`, path)
+			_ = handleMemoryStopCapture(commandruntime.ExecutionContext{RepositoryRoot: repository}, nil, strings.NewReader(input))
+		}(transcript)
+	}
+	wait.Wait()
+	logPath := filepath.Join(repository, "memory", "logs", hookClock().UTC().Format("2006-01-02")+".md")
+	contents, err := os.ReadFile(logPath)
+	if err != nil || strings.Count(string(contents), " UTC session capture ") != captures || strings.Count(string(contents), captureBodySentinel) != captures {
+		t.Fatalf("concurrent capture structure drifted: err=%v headings=%d sentinels=%d", err, strings.Count(string(contents), " UTC session capture "), strings.Count(string(contents), captureBodySentinel))
 	}
 }
 
@@ -89,6 +193,17 @@ func TestCaptureBudgetPreservesUTF8(t *testing.T) {
 	composed := "User: " + user + "\n\nAgent: " + assistant
 	if len(composed) > captureBudgetBytes || !utf8.ValidString(composed) || !strings.Contains(composed, "[truncated]") {
 		t.Fatalf("bytes=%d valid=%t", len(composed), utf8.ValidString(composed))
+	}
+}
+
+func TestRetainedStopDifferentialRedactionBeforeBudgetBoundary(t *testing.T) {
+	credential := "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	fullUser := strings.Repeat("x", captureTextBudget-17) + credential
+	redactedUser := redactCredentials(fullUser)
+	user, agent := budgetCaptureSides(redactedUser, "answer")
+	composed := "User: " + user + "\n\nAgent: " + agent
+	if strings.Contains(composed, "ghp_") || !strings.Contains(composed, "[REDACTED]") || len(composed) > captureBudgetBytes || !utf8.ValidString(composed) {
+		t.Fatalf("redaction/budget boundary drifted: bytes=%d text=%q", len(composed), composed)
 	}
 }
 

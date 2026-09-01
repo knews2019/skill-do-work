@@ -56,7 +56,17 @@ func cleanupReservations(repositoryRoot string, dryRun bool) resultmodel.Command
 	if statError != nil || !os.SameFile(rootInfo, openedInfo) {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{helperFinding("RESERVATION-ROOT-RACED", resultmodel.SeverityError, []string{"do-work/.req-reservations"}, "reservation root identity changed before inspection", resultmodel.FixabilityRefused, "cleanup has no authority over the replacement directory", nil, nil)}}
 	}
-	claimed := claimedRequestNumbers(repositoryRoot)
+	claimed, committedAuthority := claimedRequestNumbers(repositoryRoot)
+	if !committedAuthority {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: []resultmodel.CommandFinding{helperFinding(
+			"RESERVATION-GIT-AUTHORITY-UNAVAILABLE", resultmodel.SeverityWarning,
+			[]string{"do-work/.req-reservations"},
+			"committed request authority could not be established with Git",
+			resultmodel.FixabilityRefused,
+			"all reservation markers are preserved when Git evidence is unavailable",
+			[]string{"git", "rev-parse", "--verify", "HEAD"}, nil,
+		)}}
+	}
 	entries, err := fs.ReadDir(rootHandle.FS(), ".")
 	if err != nil {
 		return usageResult(CommandCleanupReservations, err.Error())
@@ -88,8 +98,9 @@ func cleanupReservations(repositoryRoot string, dryRun bool) resultmodel.Command
 		if !dryRun {
 			beforeReservationRemoval(markerPath)
 			finalInfo, finalError := rootHandle.Lstat(entry.Name())
-			finalClaimed := claimedRequestNumbers(repositoryRoot)[number]
-			finalEligible := finalError == nil && finalInfo.Mode().IsRegular() && os.SameFile(secondInfo, finalInfo) &&
+			finalClaims, finalAuthority := claimedRequestNumbers(repositoryRoot)
+			finalClaimed := finalClaims[number]
+			finalEligible := finalAuthority && finalError == nil && finalInfo.Mode().IsRegular() && os.SameFile(secondInfo, finalInfo) &&
 				(finalClaimed || time.Since(finalInfo.ModTime()) >= 48*time.Hour)
 			if !finalEligible {
 				continue
@@ -100,7 +111,7 @@ func cleanupReservations(repositoryRoot string, dryRun bool) resultmodel.Command
 			}
 		}
 		reason := "stale for at least 48 hours"
-		if claimedRequestNumbers(repositoryRoot)[number] {
+		if claimed[number] {
 			reason = "matching request exists"
 		}
 		if dryRun {
@@ -111,7 +122,7 @@ func cleanupReservations(repositoryRoot string, dryRun bool) resultmodel.Command
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: changes, Findings: findings}
 }
 
-func claimedRequestNumbers(repositoryRoot string) map[int]bool {
+func claimedRequestNumbers(repositoryRoot string) (map[int]bool, bool) {
 	numbers := map[int]bool{}
 	tracked, err := gitOutput(repositoryRoot, "ls-tree", "-r", "--name-only", "-z", "HEAD", "--", "do-work/queue", "do-work/working", "do-work/archive")
 	if err == nil {
@@ -122,35 +133,15 @@ func claimedRequestNumbers(repositoryRoot string) map[int]bool {
 				numbers[number] = true
 			}
 		}
-		return numbers
+		return numbers, true
 	}
 	if _, gitRepositoryError := gitOutput(repositoryRoot, "rev-parse", "--is-inside-work-tree"); gitRepositoryError == nil {
 		// An unborn repository has no landed authority. Do not reinterpret the
 		// working tree as committed merely because HEAD does not exist yet.
-		return numbers
+		return numbers, true
 	}
-	for _, rootName := range []string{"queue", "working", "archive"} {
-		root := filepath.Join(repositoryRoot, "do-work", rootName)
-		_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return nil
-			}
-			if entry.Type()&os.ModeSymlink != 0 {
-				if entry.IsDir() {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-				return nil
-			}
-			match := requestFilePattern.FindStringSubmatch(entry.Name())
-			if match != nil {
-				number, _ := strconv.Atoi(match[1])
-				numbers[number] = true
-			}
-			return nil
-		})
-	}
-	return numbers
+	// A failed repository probe is ambiguous: the directory may be outside Git, or
+	// Git itself may be unavailable. Neither case supplies committed authority for
+	// unattended deletion, so preserve every marker.
+	return numbers, false
 }

@@ -41,7 +41,7 @@ The standard-library Go module under this directory is the canonical implementat
 - Queue selection is byte-for-byte read-only. It executes a scoped `blocked_check` only through the in-process owned process-group runner; every record retains exact request-path and raw probe/unblock evidence, while successful probes affect that invocation's eligibility but never rewrite the REQ.
 - Screenshot and HTTP targets publish private 0600 bytes as the final commit point through rooted no-overwrite operations. No later error path removes a published pathname.
 - Standalone `DownloadAtomic` stays rooted and no-overwrite. `FetchArchive` may refresh an initially regular target only after final validation proves its identity and content are unchanged.
-- Hook protocol bytes are an optional typed result projection. SessionStart launcher failures propagate actionably; memory Stop domain and launcher failures never block session end.
+- Hook protocol bytes are an optional typed result projection; JSON keeps the same output beside every typed finding and filesystem change. Reservation cleanup preserves every marker unless Git establishes committed request authority, including when Git itself is unavailable. New memory logs and ledgers use ordinary create permissions so the caller's umask retains the legacy filesystem effect. SessionStart launcher failures propagate actionably; memory Stop domain and launcher failures never block session end.
 - Request-state commands validate selector-provided exact paths instead of selecting again. Actions retain confirmation, failure classification, terminal/review/release judgment, follow-up authoring, and dependent disposition; once supplied, deterministic lifecycle bytes have no free-form fallback.
 
 ## Verify
