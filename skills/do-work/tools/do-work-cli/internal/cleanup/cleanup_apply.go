@@ -54,6 +54,10 @@ func ApplyPlan(ctx context.Context, plan CleanupPlan, options ApplyOptions) resu
 		preflight := gittransaction.PreflightTargets(ctx, plan.RepositoryRoot, targetPaths, options.Commit)
 		if preflight.Failure != nil {
 			if preflight.Failure.Kind == gittransaction.FailureDirtyTarget && isUntrackedConsumedScratch(ctx, plan.RepositoryRoot, group) {
+				if options.Commit {
+					result.Findings = append(result.Findings, consumedScratchCommitRefusedFinding(group))
+					continue
+				}
 				directlyEligible[groupIndex] = true
 				scratchCandidates[groupIndex] = true
 				continue
@@ -592,6 +596,19 @@ func refusedGroupFinding(group OperationGroup, path, reason string) resultmodel.
 	return resultmodel.CommandFinding{Code: "CLEANUP-GROUP-REFUSED", Severity: resultmodel.SeverityWarning, AffectedIDs: ids, AffectedPaths: paths,
 		Evidence: []string{group.Code + ": " + reason}, Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "this operation group did not pass exact-target guards",
 		NextArgv: nextArgv, VerificationArgv: []string{"do-work-cli", "cleanup", "--dry-run"}}
+}
+
+func consumedScratchCommitRefusedFinding(group OperationGroup) resultmodel.CommandFinding {
+	paths := groupTargetPaths(group)
+	ids := []string{}
+	if group.AffectedID != "" {
+		ids = append(ids, group.AffectedID)
+	}
+	verificationArgv := append([]string{"git", "status", "--short", "--"}, paths...)
+	return resultmodel.CommandFinding{Code: "CLEANUP-GROUP-REFUSED", Severity: resultmodel.SeverityWarning, AffectedIDs: ids, AffectedPaths: paths,
+		Evidence:   []string{group.Code + ": --commit cannot delete entirely untracked consumed scratch because Git cannot include its deletion in the requested commit"},
+		Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "this untracked scratch group cannot participate in commit mode",
+		NextArgv: []string{"do-work-cli", "cleanup"}, VerificationArgv: verificationArgv}
 }
 
 func preflightRefusedGroupFinding(group OperationGroup, preflight gittransaction.TargetPreflight) resultmodel.CommandFinding {

@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.12 — Refuse Uncommittable Scratch Deletion (2026-09-02)
+
+Cleanup commit mode no longer deletes entirely untracked consumed scratch outside the Git transaction it was asked to create. Such groups are preserved and reported with exact inventory evidence while independent tracked cleanup can still commit.
+
+- `--commit` refuses untracked consumed-scratch groups because Git cannot represent or roll back their deletion.
+- Scratch-only and mixed regressions prove byte preservation, truthful HEAD behavior, exact refusal paths, and unchanged non-commit cleanup.
+
 ## 0.260.11 — Lock Git Fallback Extraction Depth (2026-09-02)
 
 Slash-containing branch names can no longer alter the path depth of a Git fallback archive. An end-to-end regression now proves exact branch selection and one-component extraction through the production fetch path.

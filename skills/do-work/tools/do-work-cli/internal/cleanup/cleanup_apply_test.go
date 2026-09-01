@@ -583,6 +583,78 @@ func TestConsumedUntrackedRunIsDeletedWithTruthfulNonRollbackEvidence(t *testing
 	}
 }
 
+func TestConsumedUntrackedRunCommitRefusesScratchOnlyAndMixedDeletion(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		withTracked bool
+	}{
+		{name: "scratch only"},
+		{name: "beside eligible tracked cleanup", withTracked: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			repositoryRoot := cleanupRepository(t)
+			writeCleanupFile(t, repositoryRoot, "README.md", "tracked\n")
+			if test.withTracked {
+				writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-206-done.md", cleanupRequest("REQ-206", "completed", ""))
+			}
+			commitCleanupFixture(t, repositoryRoot)
+			originalHead := runCleanupGit(t, repositoryRoot, "rev-parse", "HEAD")
+
+			scratchContents := map[string][]byte{
+				"do-work/runs/spent/manifest.md": []byte("Status: consumed\n"),
+				"do-work/runs/spent/output.txt":  []byte("spent\n"),
+			}
+			for relativePath, contents := range scratchContents {
+				writeCleanupFile(t, repositoryRoot, relativePath, string(contents))
+			}
+			snapshot, discoveryErr := repositorymodel.DiscoverRepository(repositoryRoot)
+			if discoveryErr != nil {
+				t.Fatal(discoveryErr)
+			}
+			result := ApplyPlan(context.Background(), BuildPlan(snapshot), ApplyOptions{Commit: true, CommitMessage: "cleanup with spent scratch"})
+			if result.Outcome != resultmodel.OutcomeFindings {
+				t.Fatalf("commit result = %#v", result)
+			}
+
+			foundRefusal := false
+			for _, finding := range result.Findings {
+				if finding.Code != "CLEANUP-GROUP-REFUSED" || !strings.Contains(strings.Join(finding.Evidence, " "), "--commit cannot delete entirely untracked consumed scratch") {
+					continue
+				}
+				foundRefusal = true
+				wantPaths := []string{"do-work/runs/spent/manifest.md", "do-work/runs/spent/output.txt"}
+				if !reflect.DeepEqual(finding.AffectedPaths, wantPaths) {
+					t.Errorf("refusal paths = %#v, want %#v", finding.AffectedPaths, wantPaths)
+				}
+				if !reflect.DeepEqual(finding.NextArgv, []string{"do-work-cli", "cleanup"}) {
+					t.Errorf("refusal remediation = %#v", finding.NextArgv)
+				}
+			}
+			if !foundRefusal {
+				t.Fatalf("commit-mode scratch refusal missing: %#v", result.Findings)
+			}
+			for relativePath, wantContents := range scratchContents {
+				contents, readErr := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(relativePath)))
+				if readErr != nil || !reflect.DeepEqual(contents, wantContents) {
+					t.Errorf("scratch %s = %q, %v; want byte-for-byte %q", relativePath, contents, readErr, wantContents)
+				}
+			}
+
+			currentHead := runCleanupGit(t, repositoryRoot, "rev-parse", "HEAD")
+			if test.withTracked {
+				if currentHead == originalHead {
+					t.Fatal("eligible tracked cleanup was not committed")
+				}
+				if _, err := os.Stat(filepath.Join(repositoryRoot, "do-work/archive/REQ-206-done.md")); err != nil {
+					t.Fatalf("eligible tracked cleanup did not apply: %v", err)
+				}
+			} else if currentHead != originalHead {
+				t.Fatalf("scratch-only refusal changed HEAD from %s to %s", originalHead, currentHead)
+			}
+		})
+	}
+}
+
 func TestConsumedUntrackedRunCommitRefusesDirtyIndexBeforeDeletion(t *testing.T) {
 	repositoryRoot := cleanupRepository(t)
 	writeCleanupFile(t, repositoryRoot, "unrelated.txt", "initial\n")
