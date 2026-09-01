@@ -38,5 +38,3 @@
 ## In Progress (interrupted)
 
 - REQ-414: Migrate remaining core checks, publication helpers, Git helpers, and surveys — claimed 2026-09-01T00:24:42Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-
-- REQ-446: Review fix: Match remediation to preflight failure kind — claimed 2026-09-01T00:24:50Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

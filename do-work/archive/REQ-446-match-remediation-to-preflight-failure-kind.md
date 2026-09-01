@@ -1,7 +1,7 @@
 ---
 id: REQ-446
 title: 'Review fix: Match remediation to preflight failure kind'
-status: claimed
+status: completed
 domain: general
 created_at: 2026-08-31T16:40:15Z
 status_changed_at: 2026-08-31T19:24:17Z
@@ -23,6 +23,8 @@ estimate:
   calculated_at: 2026-09-01T00:25:26Z
   basis:
     - trivial short-circuit
+completed_at: 2026-09-01T00:45:26Z
+commit: 6f173a12
 ---
 
 # Review Fix: Match Remediation to Preflight Failure Kind

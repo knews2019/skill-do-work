@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.252.1 — Failure-Kind-Aware Preflight Guidance (2026-09-01)
+
+Doctor and cleanup now explain the preflight blocker that actually won, so recovery and verification commands inspect the right repository state.
+
+- Dirty-index refusals use cached-index diagnostics, while dirty-target refusals retain exact path-scoped commands.
+- Cleanup preserves operation-group identity while deriving every reachable preflight remediation from the shared failure renderer.
+- Simultaneous dirty-index and dirty-target coverage proves precedence, no mutation, and byte-identical target retention.
+
 ## 0.252.0 — Transactional Capture, Answers, and Releases (2026-09-01)
 
 Capture publication, question resolution, and release metadata now have typed CLI transactions with dry-run, exact-path commit, and rollback-aware results.
