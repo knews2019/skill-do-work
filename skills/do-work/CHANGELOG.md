@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.252.0 — Transactional Capture, Answers, and Releases (2026-09-01)
+
+Capture publication, question resolution, and release metadata now have typed CLI transactions with dry-run, exact-path commit, and rollback-aware results.
+
+- Capture atomically publishes linked URs, REQs, assets, folds, and reservations with canonical topology and byte-preserving payloads.
+- Answer transactions update clarify and stakeholder evidence, derive whole-record disposition, and couple terminal archival and structured overrides.
+- Release transactions validate caller-authored monotonic version and changelog mirrors; REQ-413 completed with issues because a critical post-record rollback-identity gap remains queued in REQ-457 and blocks ship-ready status.
+
 ## 0.251.15 — Runnable Pathless Cleanup Refusals (2026-08-31)
 
 Structural cleanup refusals now emit recovery commands that remain runnable when no concrete filesystem target exists.

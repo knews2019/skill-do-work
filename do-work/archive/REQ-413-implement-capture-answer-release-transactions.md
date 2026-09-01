@@ -15,7 +15,7 @@ effort_estimate: effort-substantive
 related: [REQ-406, REQ-407, REQ-408, REQ-409, REQ-410, REQ-411, REQ-412, REQ-414, REQ-415, REQ-416, REQ-417, REQ-418, REQ-419, REQ-420]
 batch: go-no-llm-command-platform
 claimed_at: 2026-08-31T22:07:13Z
-completed_at: 2026-09-01T00:12:38Z
+completed_at: 2026-09-01T00:17:17Z
 kb_status: pending
 route: C
 write_set:
@@ -57,6 +57,7 @@ estimate:
     - persistence changes
     - cross-route regression gates
     - full-suite verification
+commit: db7bb7c8
 ---
 
 # Implement Capture-File, Answer, Release, Version, and Changelog Transactions
