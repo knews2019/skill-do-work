@@ -97,6 +97,88 @@ func TestExecuteTransactionExistingUntrackedTargetsRequireOptInAndRestoreBytes(t
 	}
 }
 
+func TestExecuteTransactionExistingUntrackedRollbackPreservesCompleteMode(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		mode os.FileMode
+	}{
+		{name: "setuid", mode: 0o4640},
+		{name: "setgid", mode: 0o2640},
+		{name: "sticky", mode: 0o1640},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			repositoryRoot := newRepository(t)
+			requestPath := "do-work/queue/REQ-001.md"
+			absolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(requestPath))
+			writeFile(t, repositoryRoot, requestPath, "original untracked bytes\n")
+			if err := os.Chmod(absolutePath, gitTransactionGoModeFromUnix(test.mode)); err != nil {
+				t.Fatal(err)
+			}
+
+			result := ExecuteTransaction(context.Background(), TransactionOptions{
+				RepositoryRoot:               repositoryRoot,
+				TargetPaths:                  []string{requestPath},
+				ExistingUntrackedTargetPaths: []string{requestPath},
+			}, func(recorder *MutationRecorder) error {
+				if err := recorder.RecordTouched(requestPath); err != nil {
+					return err
+				}
+				if err := os.WriteFile(absolutePath, []byte("mutated\n"), 0o600); err != nil {
+					return err
+				}
+				return errors.New("force rollback")
+			})
+
+			if result.Outcome != resultmodel.OutcomeRolledBack || result.Rollback.Status != resultmodel.RollbackSucceeded {
+				t.Fatalf("rollback result = %#v", result)
+			}
+			if got := readFile(t, repositoryRoot, requestPath); got != "original untracked bytes\n" {
+				t.Fatalf("restored bytes = %q", got)
+			}
+			if mode := gitTransactionUnixModeOf(t, absolutePath); mode != test.mode {
+				t.Fatalf("mode = %04o, want %04o", mode, test.mode)
+			}
+			status := runFixtureGit(t, repositoryRoot, "status", "--short", "--", requestPath)
+			if !strings.HasPrefix(status, "?? ") {
+				t.Fatalf("restored target changed tracking state: %q", status)
+			}
+		})
+	}
+}
+
+func gitTransactionGoModeFromUnix(mode os.FileMode) os.FileMode {
+	goMode := mode.Perm()
+	if mode&0o4000 != 0 {
+		goMode |= os.ModeSetuid
+	}
+	if mode&0o2000 != 0 {
+		goMode |= os.ModeSetgid
+	}
+	if mode&0o1000 != 0 {
+		goMode |= os.ModeSticky
+	}
+	return goMode
+}
+
+func gitTransactionUnixModeOf(t *testing.T, path string) os.FileMode {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mode := info.Mode().Perm()
+	if info.Mode()&os.ModeSetuid != 0 {
+		mode |= 0o4000
+	}
+	if info.Mode()&os.ModeSetgid != 0 {
+		mode |= 0o2000
+	}
+	if info.Mode()&os.ModeSticky != 0 {
+		mode |= 0o1000
+	}
+	return mode
+}
+
 func TestExistingUntrackedMoveCommitStagesOnlyTheDestination(t *testing.T) {
 	repositoryRoot := newRepository(t)
 	writeFile(t, repositoryRoot, "do-work/queue/REQ-001.md", "original untracked bytes\n")

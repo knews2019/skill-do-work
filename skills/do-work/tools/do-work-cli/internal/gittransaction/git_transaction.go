@@ -231,7 +231,7 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 			}
 			state.existingUntrackedAllowed = true
 			state.originalBytes = originalBytes
-			state.originalMode = fileInfo.Mode().Perm()
+			state.originalMode = completeRegularFileMode(fileInfo.Mode())
 		}
 	}
 	for _, state := range states {
@@ -540,8 +540,10 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 				rollback.Errors = append(rollback.Errors, fmt.Sprintf("recreate parent for existing untracked target %s: %v", state.path, makeError))
 				continue
 			}
-			if writeError := os.WriteFile(absolutePath, state.originalBytes, state.originalMode); writeError != nil {
+			if writeError := os.WriteFile(absolutePath, state.originalBytes, state.originalMode.Perm()); writeError != nil {
 				rollback.Errors = append(rollback.Errors, fmt.Sprintf("restore existing untracked target %s: %v", state.path, writeError))
+			} else if chmodError := os.Chmod(absolutePath, state.originalMode); chmodError != nil {
+				rollback.Errors = append(rollback.Errors, fmt.Sprintf("restore mode for existing untracked target %s: %v", state.path, chmodError))
 			} else {
 				rollback.Actions = append(rollback.Actions, "restored existing untracked target "+state.path)
 			}
@@ -606,6 +608,10 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 		return failTransaction(result, resultmodel.OutcomeRisk, FailureRollback, operationError.Error(), rolledBackPaths...)
 	}
 	return failTransaction(result, resultmodel.OutcomeRolledBack, failureKind, operationError.Error(), rolledBackPaths...)
+}
+
+func completeRegularFileMode(fileMode os.FileMode) os.FileMode {
+	return fileMode.Perm() | (fileMode & (os.ModeSetuid | os.ModeSetgid | os.ModeSticky))
 }
 
 func committedPaths(ctx context.Context, repositoryRoot, commitSHA string) ([]string, error) {

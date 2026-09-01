@@ -31,9 +31,9 @@ func writeFileAtomically(filePath string, fileContents []byte) error {
 		temporaryFile.Close()
 		return fmt.Errorf("writing %s: %w", temporaryPath, writeError)
 	}
-	// CreateTemp opens 0600; retain the permission behavior of writing the
-	// existing file directly. Platform replacement may preserve more metadata.
-	if chmodError := temporaryFile.Chmod(originalInfo.Mode().Perm()); chmodError != nil {
+	// CreateTemp opens 0600. Apply the complete sanitized regular-file mode after
+	// writing because a content write may clear setuid or setgid.
+	if chmodError := temporaryFile.Chmod(completeRegularFileMode(originalInfo.Mode())); chmodError != nil {
 		temporaryFile.Close()
 		return fmt.Errorf("setting mode on %s: %w", temporaryPath, chmodError)
 	}
@@ -56,4 +56,8 @@ func writeFileAtomically(filePath string, fileContents []byte) error {
 		return fmt.Errorf("replacing %s: %w", filePath, replaceError)
 	}
 	return nil
+}
+
+func completeRegularFileMode(fileMode os.FileMode) os.FileMode {
+	return fileMode.Perm() | (fileMode & (os.ModeSetuid | os.ModeSetgid | os.ModeSticky))
 }
