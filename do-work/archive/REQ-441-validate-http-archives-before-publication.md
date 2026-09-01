@@ -1,7 +1,7 @@
 ---
 id: REQ-441
 title: '[impact-critical] Validate HTTP archives before publication'
-status: claimed
+status: completed
 created_at: 2026-08-31T14:19:37Z
 user_request: UR-083
 domain: backend
@@ -28,6 +28,8 @@ estimate:
     - asynchronous publication behavior
     - cross-route regression gates
     - full-suite verification
+completed_at: 2026-09-01T03:38:29Z
+commit: 7101e218
 ---
 
 # Validate HTTP Archives Before Publication

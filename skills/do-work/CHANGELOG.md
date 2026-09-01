@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.253.1 — Validated Archive Refresh (2026-09-01)
+
+Archive updates can now replace an unchanged regular target only after the HTTP or Git candidate has been privately staged and validated.
+
+- Both routes share one rooted target snapshot, final identity/content revalidation, and atomic publication policy; changed, removed, linked, or special targets remain untouched.
+- Total fetch failure preserves existing bytes and mode, while successful publication uses private `0600` mode and truthful winning-route evidence.
+- Parent preflight refusals report both routes as not attempted in text and JSON, retain the concrete local cause and escape hatch, and make no network attempt.
+
 ## 0.253.0 — Typed Core Helper Command Platform (2026-09-01)
 
 Seventeen remaining core helper surfaces now run through typed Go commands, with direct HTTP archive fetching and owned blocked-process execution replacing internal shell dependencies.
