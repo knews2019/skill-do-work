@@ -344,6 +344,99 @@ func TestPrivateRollbackPreservesReplacementParentDirectory(t *testing.T) {
 	}
 }
 
+func TestPrivatePreimageSnapshotRejectsReplacementDuringOpen(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	privatePath := "memory/logs/existing.md"
+	writeFile(t, repositoryRoot, privatePath, "original\n")
+	privateTransactionTestHook = func(stage, path string) {
+		if stage == "after-private-preimage-lstat" && path == privatePath {
+			replacement := filepath.Join(repositoryRoot, "replacement")
+			if err := os.WriteFile(replacement, []byte("replacement\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Rename(replacement, filepath.Join(repositoryRoot, filepath.FromSlash(privatePath))); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	t.Cleanup(func() { privateTransactionTestHook = nil })
+	called := false
+	result := ExecuteTransaction(context.Background(), TransactionOptions{RepositoryRoot: repositoryRoot, TargetPaths: []string{privatePath}, PrivateUntrackedTargetPaths: []string{privatePath}}, func(*MutationRecorder) error {
+		called = true
+		return nil
+	})
+	if called || result.Outcome != resultmodel.OutcomeFailure {
+		t.Fatalf("preimage race result=%#v called=%v", result, called)
+	}
+	if got := readFile(t, repositoryRoot, privatePath); got != "replacement\n" {
+		t.Fatalf("replacement changed: %q", got)
+	}
+}
+
+func TestPrivateFinalVerificationRejectsConcurrentReplacement(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	privatePath := "memory/logs/created.md"
+	if err := os.MkdirAll(filepath.Join(repositoryRoot, "memory", "logs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	privateTransactionTestHook = func(stage, path string) {
+		if stage == "before-private-final-verify" && path == privatePath {
+			replacement := filepath.Join(repositoryRoot, "replacement")
+			if err := os.WriteFile(replacement, []byte("concurrent\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Rename(replacement, filepath.Join(repositoryRoot, filepath.FromSlash(privatePath))); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	t.Cleanup(func() { privateTransactionTestHook = nil })
+	result := ExecuteTransaction(context.Background(), TransactionOptions{RepositoryRoot: repositoryRoot, TargetPaths: []string{privatePath}, PrivateUntrackedTargetPaths: []string{privatePath}}, func(recorder *MutationRecorder) error {
+		if err := recorder.RecordCreated(privatePath); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(repositoryRoot, filepath.FromSlash(privatePath)), []byte("ours\n"), 0o600); err != nil {
+			return err
+		}
+		return recorder.RecordPublished(privatePath)
+	})
+	if result.Outcome != resultmodel.OutcomeRisk || result.Rollback.Status != resultmodel.RollbackIncomplete {
+		t.Fatalf("final identity race = %#v", result)
+	}
+	if got := readFile(t, repositoryRoot, privatePath); got != "concurrent\n" {
+		t.Fatalf("concurrent replacement changed: %q", got)
+	}
+}
+
+func TestOuterPrivateRollbackPreservesNestedTransactionCreation(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	privatePath := "memory/logs/nested.md"
+	if err := os.MkdirAll(filepath.Join(repositoryRoot, "memory", "logs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outer := ExecuteTransaction(context.Background(), TransactionOptions{RepositoryRoot: repositoryRoot, TargetPaths: []string{privatePath}, PrivateUntrackedTargetPaths: []string{privatePath}}, func(*MutationRecorder) error {
+		inner := ExecuteTransaction(context.Background(), TransactionOptions{RepositoryRoot: repositoryRoot, TargetPaths: []string{privatePath}, PrivateUntrackedTargetPaths: []string{privatePath}}, func(recorder *MutationRecorder) error {
+			if err := recorder.RecordCreated(privatePath); err != nil {
+				return err
+			}
+			if err := os.WriteFile(filepath.Join(repositoryRoot, filepath.FromSlash(privatePath)), []byte("inner\n"), 0o600); err != nil {
+				return err
+			}
+			return recorder.RecordPublished(privatePath)
+		})
+		if inner.Outcome != resultmodel.OutcomeSuccess {
+			t.Fatalf("inner transaction = %#v", inner)
+		}
+		return errors.New("outer fails")
+	})
+	if outer.Outcome != resultmodel.OutcomeRisk || outer.Rollback.Status != resultmodel.RollbackIncomplete {
+		t.Fatalf("outer transaction = %#v", outer)
+	}
+	if got := readFile(t, repositoryRoot, privatePath); got != "inner\n" {
+		t.Fatalf("nested creation changed: %q", got)
+	}
+}
+
 func gitTransactionGoModeFromUnix(mode os.FileMode) os.FileMode {
 	goMode := mode.Perm()
 	if mode&0o4000 != 0 {
