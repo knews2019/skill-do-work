@@ -2,6 +2,12 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.2 — Fix ShellCheck Warning Blocking the Maintainer Gate (2026-09-01)
+
+The canonical maintainer gate had been red since 0.260.1 on an unused `read` variable in the shipped-shell thinness check, which stalled every queue run at the testing step. The gate is green again and the queue can move.
+
+- `_dev/tests/shipped-shell-thinness.sh` discards the unused third TSV column with `_` instead of binding `fixture_owner`, so ShellCheck `SC2034` no longer fires at warning severity.
+
 ## 0.260.1 — Typed Shell Compatibility Platform (2026-09-01)
 
 Stable shell entry points no longer carry a second implementation that can drift from the typed command platform. One Go owner now powers all 41 retained paths, backed by an independent compatibility oracle.

@@ -6,7 +6,7 @@ command_map="$repo_root/_dev/tests/fixtures/shipped-shell-command-map.tsv"
 failure_count=0
 mapped_count=0
 
-while IFS=$'\t' read -r retained_path canonical_command fixture_owner; do
+while IFS=$'\t' read -r retained_path canonical_command _; do
   [[ "$retained_path" == \#* || -z "$retained_path" ]] && continue
   mapped_count=$((mapped_count + 1))
   retained_file="$repo_root/$retained_path"
