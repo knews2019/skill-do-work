@@ -23,6 +23,7 @@ related: [REQ-437, REQ-439, REQ-440, REQ-441, REQ-442, REQ-443, REQ-444]
 batch: accepted-feedback-regressions
 claimed_at: 2026-09-01T21:35:07Z
 completed_at: 2026-09-01T21:46:48Z
+commit: 81c5b02d
 ---
 
 # Refuse Mismatched Git Transaction Roots
