@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.253.0 — Typed Core Helper Command Platform (2026-09-01)
+
+Seventeen remaining core helper surfaces now run through typed Go commands, with direct HTTP archive fetching and owned blocked-process execution replacing internal shell dependencies.
+
+- Checks, inventories, publication, Git helpers, timestamp and reservation operations, provenance, and handoff surveys share text/JSON results with dry-run support on mutating surfaces.
+- Archive downloads stream through private rooted stages with retained retry timing, validation before publication, token redaction, and no-overwrite commit points.
+- Commit provenance now proves the exact metadata-only patch, protected inventory persists secret quarantine state, and qualification preserves relocation and deterministic ordering semantics.
+- REQ-414 completed with issues: residual inventory, reservation-authority, structured-projection, and differential-parity gaps are queued as REQ-462 through REQ-465.
+
 ## 0.252.1 — Failure-Kind-Aware Preflight Guidance (2026-09-01)
 
 Doctor and cleanup now explain the preflight blocker that actually won, so recovery and verification commands inspect the right repository state.
