@@ -313,6 +313,7 @@ After triage, check if a specification template matches this REQ's domain or tas
 1. **Requirement coverage:** Re-read the REQ's What/Detailed Requirements. Every requirement should map to at least one planned task. Flag uncovered requirements.
 2. **No orphan tasks:** Every planned task should trace back to at least one requirement. Tasks that don't address any requirement suggest scope creep.
 3. **Scope sanity:** Count the planned tasks. If 5+, flag: "Plan has [N] tasks — quality degrades past 3. Consider splitting this REQ into multiple smaller REQs."
+4. **Consumer field contract:** For every planned command whose output drives an action-owned mutation, verify that the plan identifies the exact per-record identity, provenance, state, and outcome fields required by its consumer, as applicable. Flag plans that omit the consumer's required fields. This is the plan-time counterpart of `actions/review-work.md`'s **Restatement Sweep**, not a replacement; the sweep still runs at review.
 
 Append validation findings to the `## Plan` section (if any issues found). These are **warnings, not blockers** — the builder can adapt. But flag them visibly so the orchestrator and review step are aware.
 

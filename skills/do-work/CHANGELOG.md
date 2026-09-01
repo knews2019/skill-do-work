@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.14 — Validate Mutation Consumer Fields During Planning (2026-09-02)
+
+Route C plan validation now warns when a decision command does not name the per-record evidence its action-owned mutation will consume.
+
+- Plans identify applicable identity, provenance, state, and outcome fields before implementation begins.
+- The new warning is the plan-time counterpart of the review-time Restatement Sweep; review reconciliation remains required.
+
 ## 0.260.13 — Expose Work Pipeline Phase Timing (2026-09-02)
 
 Completed requests can now retain and display the successful milestones inside their claim-to-completion wall span without changing calibration or fabricating phases that were skipped.

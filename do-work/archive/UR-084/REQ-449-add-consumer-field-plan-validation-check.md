@@ -1,7 +1,7 @@
 ---
 id: REQ-449
 title: '[impact-rule-change] Add warning-level consumer-field check to Route C plan validation'
-status: claimed
+status: completed
 route: A
 created_at: 2026-08-31T20:38:40Z
 user_request: UR-084
@@ -26,6 +26,8 @@ dispatch_at: 2026-09-01T23:19:53Z
 builder_handback_at: 2026-09-01T23:20:32Z
 integration_at: 2026-09-01T23:20:32Z
 review_at: 2026-09-01T23:20:32Z
+completed_at: 2026-09-01T23:26:52Z
+release_at: 2026-09-01T23:27:32Z
 ---
 
 # Add Warning-Level Consumer-Field Check to Route C Plan Validation
