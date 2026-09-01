@@ -171,6 +171,14 @@ The rooted publication, regular refresh, preservation, unsafe-target, race, mode
 
 *Reviewed independently; full evidence is in `do-work/runs/work-2026-08-31-165510/REQ-441-review.md`.*
 
+## Remediation
+
+The sole remediation pass committed `0fc171d5781006516007806e6be9699fdcc0c4e3` and remained within the frozen two-file scope. Target-parent open failures now use the shared archive-fetch failure envelope, preserving the concrete error while reporting both routes as not attempted and retaining the standard escape hatch. A real-command text/JSON RED-GREEN fixture proves both route outcomes, zero HTTP requests, and no parent mutation.
+
+**Remediation integration commit:** `7101e21878e4681a4cfd4991cd454adea5777679`
+
+*Generated from `do-work/runs/work-2026-08-31-165510/REQ-441-remediation-handback.md`.*
+
 ## Full Context
 
 See `do-work/user-requests/UR-083/input.md` for the complete capture provenance.
