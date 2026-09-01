@@ -1,7 +1,7 @@
 ---
 id: REQ-417
 title: 'Implement interview and deterministic memory store commands'
-status: claimed
+status: completed-with-issues
 created_at: 2026-08-29T20:28:26Z
 user_request: UR-081
 domain: general
@@ -26,6 +26,8 @@ estimate:
     - 4 new files
     - 12 command groups
     - persistence, privacy, and rollback changes
+completed_at: 2026-09-01T08:34:36Z
+commit: ecf77a3da1751d170c22ae94b782e1354337c67b
 ---
 
 # Implement Interview and Deterministic Memory Store Commands

@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.256.0 — Deterministic Interview and Memory Commands (2026-09-01)
+
+Six Interview and six Memory operations now run as direct typed commands with matching source and installed Just recipes.
+
+- Interview list, status, export, ingest, reset, and versions preserve declared templates, deterministic rendering, version backlinks, exact transactions, and action-owned elicitation judgment.
+- Memory remember, forget, recall, status, bootstrap, and audit preserve store formats, redaction, deduplication, lexical ordering, privacy-aware commits, and action-owned consent and semantic choices.
+- Private untracked transaction targets now participate in snapshot, rollback, and final identity verification without entering commits.
+- REQ-417 completed with issues: configured Memory recall/status/audit reader confinement is queued as critical REQ-475, and durable BKB-audit coverage is queued as REQ-476.
+
 ## 0.255.1 — Canonical Calibration Staging (2026-09-01)
 
 Serial and worktree release commits now stage calibration only when the canonical completion transaction reports `do-work/calibration-log.tsv` among its changed targets.
