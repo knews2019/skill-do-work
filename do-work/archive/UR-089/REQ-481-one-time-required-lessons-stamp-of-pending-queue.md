@@ -1,7 +1,7 @@
 ---
 id: REQ-481
 title: 'One-time required-lessons stamp of the pending queue'
-status: pending
+status: cancelled
 created_at: 2026-09-01T11:04:54Z
 user_request: UR-089
 domain: general
@@ -14,6 +14,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 related: [REQ-477, REQ-478, REQ-479]
 batch: lessons-transfer-routing
+completed_at: 2026-09-01T12:10:11Z
 ---
 
 # One-Time Required-Lessons Stamp of the Pending Queue
@@ -60,3 +61,9 @@ See `do-work/user-requests/UR-089/input.md` for complete verbatim input.
 
 ---
 *Source: UR-089 (v4 triage: lessons-routing refinements and fold-gate shape condition)*
+
+## Cancelled
+
+- **When:** 2026-09-01T12:10:11Z
+- **Why:** superseded by claim-time consult (REQ-479 addendum, 2026-09-01)
+- **Decided by:** user, via `do-work abandon`

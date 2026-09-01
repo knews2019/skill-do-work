@@ -1,7 +1,7 @@
 ---
 id: REQ-480
 title: '[impact-rule-change] Allow fold-first conversion into live dependency-gated destinations'
-status: pending
+status: cancelled
 created_at: 2026-09-01T10:47:44Z
 user_request: UR-088
 domain: general
@@ -13,6 +13,7 @@ maintenance: true
 impact: impact-rule-change
 effort_estimate: effort-mechanical
 write_set: [skills/do-work/actions/capture-reference.md, skills/do-work/actions/review-work.md, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh]
+completed_at: 2026-09-01T12:10:12Z
 ---
 
 # Allow Fold-First Conversion into Live Dependency-Gated Destinations
@@ -71,3 +72,9 @@ User added (v4 revision, validate-feedback Finding 8 — Accept):
 - The optional contract-regression predicate pins conditions (b)–(d).
 - The Red-Green Proof is unchanged and still valid: REQ-464/465 were goal-shaped (duplicates of REQ-420's acceptance goals) — exactly the case (b) admits.
 - Provenance: validate-feedback 2026-09-01, Finding 8. Surface-cost: Earned for the fold-record line — the REQ-464/465 cleanup required reconstructing fold provenance by hand (commit 593c5145); the record is one line per accepted fold. The shape condition itself narrows scope back to the original rule's rationale (N/A).
+
+## Cancelled
+
+- **When:** 2026-09-01T12:10:12Z
+- **Why:** wrong mechanism, recaptured per maintainer decision 2026-09-01: destination 2 is a sweep conversion that would mangle a terminal verification REQ, and its root-cause match never fires on the REQ-464/465 RED case; replaced by a same-UR verification-append destination captured fresh
+- **Decided by:** user, via `do-work abandon`
