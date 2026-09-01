@@ -39,6 +39,54 @@ bkb-lint-structure kb="kb":
 # Run Dream's seven read-only deterministic scans
 dream-scan path="memory":
     project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" dream-scan --path {{quote(path)}}
+# List installed interview templates
+interview-list *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" interview-list {{args}}
+
+# Read interview progress without mutating the session
+interview-status template *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" interview-status --template {{quote(template)}} {{args}}
+
+# Render approved interview exports
+interview-export template *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" interview-export --template {{quote(template)}} {{args}}
+
+# Ingest interview exports into BKB
+interview-ingest template *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" interview-ingest --template {{quote(template)}} {{args}}
+
+# Archive and reset an interview after explicit confirmation
+interview-reset template *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" interview-reset --template {{quote(template)}} {{args}}
+
+# List immutable interview versions
+interview-versions template *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" interview-versions --template {{quote(template)}} {{args}}
+
+# Curate an explicit fact into working memory
+memory-remember text *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" memory-remember {{args}} {{quote(text)}}
+
+# Discover or apply confirmed memory-forget matches
+memory-forget query *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" memory-forget {{args}} {{quote(query)}}
+
+# Run bounded attributed lexical memory recall
+memory-recall query="" *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" memory-recall {{args}} {{quote(query)}}
+
+# Read memory store health
+memory-status *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" memory-status {{args}}
+
+# Publish an approved one-time bootstrap manifest
+memory-bootstrap manifest *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" memory-bootstrap --manifest {{quote(manifest)}} {{args}}
+
+# Collect deterministic memory-engine audit evidence
+memory-audit *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" memory-audit {{args}}
+
 # <<< do-work:recipes <<<
 
 # Repository-only verification; the script owns the command inventory.

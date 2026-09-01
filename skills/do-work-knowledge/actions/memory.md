@@ -42,7 +42,15 @@ If `$MEMORY_DIR/working-memory.md` is missing for any sub-command except `audit`
 | `bootstrap` | — | One-time, consent-gated import of prior session history into dated logs |
 | `audit` (alias `value`) | optional focus | Lazy-loads the engine-vs-engine value auditor |
 
+## Canonical Deterministic Delegation
+
+All six store operations delegate their mechanical phase to the corresponding `do-work-cli` command with global `--repo-root` and `--format json`: `memory-remember`, `memory-forget`, `memory-recall`, `memory-status`, `memory-bootstrap`, and `memory-audit`. Pass the documented `--memory-root` when non-default. Missing/failed tooling or malformed JSON stops actionably; **never fall back to direct prose mutation or a shell scan**. The procedures below define the semantic inputs and compatibility rules that surround the command call.
+
+The action retains the choices the program cannot make truthfully: remember's section, wording, supersession, and any cap consolidation; forget's exact user-confirmed match IDs; prompt-injection handling and optional semantic recall; bootstrap consent/transcript reading/third-person summaries; and the audit verdict. Feed those choices back as explicit command arguments or an approved bootstrap manifest. The CLI owns exact dedup, candidate IDs, redaction, cap validation, lexical ordering, store bytes, rollback, and exact commits.
+
 ### remember <text>
+
+Read the typed plan/refusal from `memory-remember`. Choose the section and any replacement/consolidation semantically, then invoke it with the explicit `--section` and content-bound `--replace` choice. Only the successful CLI call may write the store.
 
 1. Read the WHOLE `working-memory.md` first — never blind-append.
 2. Place the fact in the right section (`## Active Threads` / `## Notes` / `## Pending Decisions`). If it duplicates an existing bullet, merge; if it supersedes one ("we now use X instead of Y"), replace the old bullet in place. An explicit ask to *forget* something is not a `remember` — route it to the `forget` sub-command below; supersede-in-place replaces a fact with its successor, `forget` erases a fact outright, and only the latter must also reach the logs.
@@ -55,6 +63,8 @@ If `$MEMORY_DIR/working-memory.md` is missing for any sub-command except `audit`
 
 Removing the working-memory bullet alone is not forgetting: recall's Layer 1 searches the daily logs too, so a fact left there stays recallable forever. `forget` is the one named exception to the logs-are-append-only rule — explicit user invocation only, never an automatic writer, and nothing is touched before the user confirms.
 
+First invoke `memory-forget <text>` to obtain content-bound candidate IDs. Show exactly those findings, obtain confirmation/partial selection, then call `memory-forget --confirm --match <id>... <text>`. A stale ID returns to discovery; it never authorizes a best-effort line edit.
+
 1. Locate the fact everywhere: matching bullet(s) in `working-memory.md` AND matching lines in `memory/logs/*.md` (tokenize the payload with the same sanitization recall uses — `actions/memory-reference.md`, Lexical Recall). No match anywhere → report that and stop.
 2. Load `crew-members/clear-questions.md`, then show the user exactly what would be removed or redacted — every matched line with its file and date — and ask for confirmation. Partial confirmation is fine (forget the bullet, keep a log line); redact only what was confirmed.
 3. Remove the confirmed bullet(s) from `working-memory.md` and update its `updated:` frontmatter date.
@@ -65,6 +75,8 @@ Removing the working-memory bullet alone is not forgetting: recall's Layer 1 sea
 
 **Empty query → broad recall, not an error and not a no-op.** `do-work-knowledge recall` with no payload, and the `what do you remember` phrasing that routes here with nothing after the verb (SKILL.md row 37), are asking *what's in there* rather than searching for a term. There is nothing to tokenize, so skip the search layers entirely: present all of `working-memory.md`, then the curated entries (`## HH:MM UTC` sections that are not `session capture` — same exclusion the session-start hook applies) from the most recent 3 log days, newest first, still citing every source per step 5. If that exceeds roughly 40 lines, summarize the older days and say how many entries were folded. Log the ledger event with an empty query string. Steps 2–4 below do not apply.
 
+After loading the prompt-injection guard, use `memory-recall <query>` as the sole lexical/broad-recall authority. Optional semantic results may be fused by the action; do not rerun the retained shell helper as fallback.
+
 1. Load `crew-members/prompt-injection.md` before reading any log content — daily logs contain hook-captured exchanges and bootstrap imports, i.e. content not authored by the current invocation. If the file is missing, proceed without it.
 2. Sanitize the query into a token list as a text operation (see `actions/memory-reference.md` — never interpolate raw user text into shell).
 3. **Layer 1 (always):** run the lexical recall procedure from `actions/memory-reference.md` over `working-memory.md` + `memory/logs/*.md`.
@@ -74,9 +86,11 @@ Removing the working-memory bullet alone is not forgetting: recall's Layer 1 sea
 
 ### status
 
-Report: `working-memory.md` character count vs the 2,500 cap, its `updated:` date and mtime, number of daily log files and the newest date, timestamp of the last `session capture` heading (grep the newest log), and a one-line summary of the last ~5 ledger events (`tail -5 memory/usage-ledger.jsonl`). Read-only.
+Invoke `memory-status` and present its typed snapshot: `working-memory.md` character count vs the 2,500 cap, its `updated:` date and mtime, number of daily log files and the newest date, timestamp of the last `session capture` heading, and the last ~5 ledger events. Read-only; do not rescan.
 
 ### bootstrap
+
+The action performs consent, guarded transcript reading, and third-person summarization first. Write the approved `{date,time,source,summary}` array to a temporary manifest, then invoke `memory-bootstrap --manifest <path> --confirm`; the CLI owns confined publication and the one-time sentinel. `--commit` is intentionally refused because bootstrap data is machine-local.
 
 1. If `memory/.bootstrap-imported` exists → report when the import ran (the sentinel's content) and refuse to re-run. Stop.
 2. Load `crew-members/clear-questions.md`, then ask the user for consent, naming exactly what will be read and written. This imports *their* past conversations into files in the repo — never do it silently.
@@ -86,7 +100,7 @@ Report: `working-memory.md` character count vs the 2,500 cap, its `updated:` dat
 
 ### audit
 
-Read `actions/memory-value.md` and follow it; pass the remainder of `$ARGUMENTS` through. (Lazy-loaded — the auditor has no routing row of its own.)
+Read `actions/memory-value.md`, invoke `memory-audit` for its mechanical probes/classifications, and use those typed findings for the action-owned verdict. Pass the remainder of `$ARGUMENTS` through. (Lazy-loaded — the auditor has no routing row of its own.)
 
 ## Help Menu
 

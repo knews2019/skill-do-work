@@ -66,7 +66,7 @@ Both halves are required. Dropping the sentinel makes legacy and current section
 
 ## Lexical Recall (Layer 1 — always runs)
 
-The shipped lexical recall helper applies the canonical [Raw text before shell quoting](../../do-work/docs/prescribed-shell-primitives.md#raw-text-before-shell-quoting) contract, scores grep matches with the documented recency weights, and emits at most eight attributed results:
+`do-work-cli memory-recall` is the executable authority for tokenization, scoring, recency weighting, attribution, sorting, and the eight-result bound, including the canonical [Raw text before shell quoting](../../do-work/docs/prescribed-shell-primitives.md#raw-text-before-shell-quoting) contract. The retained helper below is a compatibility surface until the whole-suite shim migration; actions must not call it after a canonical-command failure:
 
 ```bash
 <skill-root>/scripts/lexical-memory-recall.sh "$(git rev-parse --show-toplevel 2>/dev/null || pwd)/memory" "<raw query text>"

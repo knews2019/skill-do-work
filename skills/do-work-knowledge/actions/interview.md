@@ -66,11 +66,15 @@ Session state lives at `./do-work/interview/<template>/session.json` in the curr
 
 After locating an existing `session.json`, every sub-command that reads it (`<template>` resume, `status`, `review`, `export`, `ingest`) **must** run the **Session-Load Protocol** before any other read — `list` and `reset` skip it, and `versions` only enumerates archived sessions so it skips too. The protocol has two modes: **persist** (used by mutating subcommands — applies migration in-memory and writes the result back atomically) and **dry-run** (used by `status` — applies migration in-memory only and renders a staleness notice without touching disk). Full spec — mode-selection rationale, all four steps with substeps, version placeholder conventions, multi-major migration chains, atomic write semantics, and the concrete dry-run rendering — in `actions/interview-reference.md` (Session-Load Protocol). The per-subcommand sections below tell you which mode to invoke.
 
+## Canonical Deterministic Delegation
+
+Six subcommands are mechanically owned by `do-work-cli`: `interview-list`, `interview-status`, `interview-export`, `interview-ingest`, `interview-reset`, and `interview-versions`. Resolve the core launcher, invoke the matching command with global `--repo-root` and `--format json`, pass `--knowledge-root <skill-root>` plus `--template <template>` where applicable, and consume its typed findings/changes. `ingest` also passes the chosen `--kb`; reset passes `--confirm` only after the user confirms. A missing command, non-success exit, or malformed JSON stops that operation actionably. **Never reproduce the mechanical steps below as a prose fallback.** They remain the format and judgment contract used to interpret results. The bare interactive interview and `review` stay action-owned because they elicit, confirm, and resolve semantic content.
+
 ---
 
 ## Sub-Command: `list`
 
-List every template available in `<skill-root>/interviews/`.
+Delegate the complete listing to `do-work-cli --format json interview-list --knowledge-root <skill-root>` and present its ordered template findings. The steps below describe the promised projection, not an alternate scanner.
 
 ### Steps
 
@@ -176,6 +180,8 @@ For each layer in the template's declared order (starting from `pending_layer`):
 
 ## Sub-Command: `<template> status`
 
+Delegate the complete read to `do-work-cli --format json interview-status --knowledge-root <skill-root> --template <template>`. Consume its in-memory migration/status evidence; do not reread or migrate the session yourself.
+
 Run the **Session-Load Protocol** in **dry-run** mode — `status` is a pure read and must not mutate session.json or CHANGELOG.md. The protocol's dry-run branch handles staleness reporting and hands back an in-memory session object (migrated if a pending migration was detected). Render the status output directly from that in-memory object — do **not** re-read `session.json` from disk, since in dry-run mode the migrated shape is never written back and re-reading would discard it, producing output from stale pre-migration data.
 
 ### Output
@@ -242,7 +248,7 @@ Runs the cross-layer contradiction pass. Requires all layers approved.
 
 ## Sub-Command: `<template> export`
 
-Writes the template's declared export artifacts to `./do-work/interview/<template>/exports/`.
+After semantic review is complete, delegate publication to `do-work-cli --format json interview-export --knowledge-root <skill-root> --template <template>` (plus `--dry-run` or `--commit` when requested). The detailed contract below defines expected bytes and gates; it is not a fallback renderer or writer.
 
 ### Preconditions
 
@@ -285,7 +291,7 @@ Writes the template's declared export artifacts to `./do-work/interview/<templat
 
 ## Sub-Command: `<template> ingest`
 
-Copies exports into `<repo-root>/kb/raw/inbox/` with BKB-compatible frontmatter.
+Delegate the complete copy/queue transaction to `do-work-cli --format json interview-ingest --knowledge-root <skill-root> --template <template> --kb <kb-root>` (plus `--dry-run` or `--commit` when requested). The mapping below is a compatibility contract only.
 
 ### Preconditions
 
@@ -322,7 +328,7 @@ Follow the Ingest File Mapping section in `actions/interview-reference.md`. Two 
 
 ## Sub-Command: `<template> reset`
 
-Archives the current run as a version and starts fresh. Destructive — requires confirmation.
+Archives the current run as a version and starts fresh. Destructive — the action obtains confirmation, then delegates the exact transaction to `do-work-cli --format json interview-reset --knowledge-root <skill-root> --template <template> --confirm`. Never synthesize `--confirm` or archive manually after a tool failure.
 
 ### Steps
 
@@ -344,7 +350,7 @@ Archives the current run as a version and starts fresh. Destructive — requires
 
 ## Sub-Command: `<template> versions`
 
-Enumerates `./do-work/interview/<template>/versions/`.
+Delegate enumeration to `do-work-cli --format json interview-versions --template <template>` and present its numerically ordered findings. Do not rescan archives after a command failure.
 
 ### Output
 
@@ -373,7 +379,7 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 - `./do-work/interview/<template>/exports/<filename>` — export artifacts (overwritten on re-export).
 - `./do-work/interview/<template>/versions/v<N>-<date>/` — immutable archives (written by `fresh`, `version`, `reset`).
 - `./do-work/interview/<template>/CHANGELOG.md` — append-only activity log (one entry per approval, review, export, archive).
-- `<repo-root>/kb/raw/inbox/interview-<template>-*.md` — BKB-ready files (written by `ingest`).
+- `<repo-root>/kb/raw/inbox/<template>-*.md` — BKB-ready files (written by `ingest`).
 
 ---
 
@@ -424,7 +430,7 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 - [ ] Every `status` value is `active`, `stale`, or `aspirational`.
 - [ ] CHANGELOG has one `layer approved:` line per approved layer, in the order approvals occurred.
 - [ ] Export files exist in `./do-work/interview/<template>/exports/` for every declared export, and their content matches the schema in `actions/interview-reference.md`.
-- [ ] Ingest output lands in `kb/raw/inbox/` with filenames of the form `interview-<template>-<export-basename>.md`.
+- [ ] Ingest output lands in `kb/raw/inbox/` with filenames of the form `<template>-<export-basename>.md` and `<template>-<layer-id>.md`.
 - [ ] Versions directories follow the `v<N>-<YYYY-MM-DD>/` naming convention and `<N>` is monotonically increasing.
 - [ ] No checkpoint file was written to `session.json` without an explicit user approval recorded in the CHANGELOG.
 

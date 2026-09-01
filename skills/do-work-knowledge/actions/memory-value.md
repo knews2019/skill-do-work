@@ -4,6 +4,8 @@
 
 **Strictly read-only.** This action never modifies, moves, or deletes anything — not even ledger appends. It reads files and git history, and it reports. Retiring an engine is a human decision made on this report, executed later as a normal maintenance pass.
 
+`do-work-cli memory-audit --engine <bkb|memory|both>` is the sole executable authority for the probes and rubric classifications below. Consume its JSON findings and stop if the command is absent or fails; never reproduce the scans in prose. This action still owns the head-to-head interpretation, verdict, and recommendation because those are judgments rather than bookkeeping.
+
 ## When to Use
 
 **Use when:**
