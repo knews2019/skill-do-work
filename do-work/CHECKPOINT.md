@@ -45,11 +45,3 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-  Last known state: Initial builder `a7c975c5` merged as `94560fde`; initial review found nine Important issues. The sole remediation `a43b2587` merged as `82534d36`, passed the full focused/race/full/vet/Go 1.25/Windows/differential/contract/install/update/canonical stack, and has not yet received its required fresh re-review.
-  Key files being modified: `skills/do-work/tools/do-work-cli/internal/toolboxcommands/`, `internal/gittransaction/git_transaction.go`, `internal/gittransaction/git_transaction_test.go`, command/result registration, and the CLI prime (documented 32-path ceiling).
-  Known issues: no post-remediation residual is recorded yet; the fresh review agents were interrupted for handoff before writing `REQ-418-rereview.md`. Resume with a new independent reviewer, then complete/archive/release or route every residual Important finding because the remediation allowance is exhausted.
-
-- REQ-440: [impact-critical] Refuse non-file static board output targets — claimed 2026-09-01T18:55:29Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2 — stopped at testing
-  Last known state: Implementation and caller-seam TDD are complete; focused publication tests, the full queue-kanban suite, and vet pass. Review, archive, release, and commit have not run.
-  Key files being modified: `skills/do-work-board/tools/queue-kanban/generate.go`, `skills/do-work-board/tools/queue-kanban/generate_test.go`
-  Known issues: canonical `bash _dev/tests/maintainer-verify.sh` was re-run at 2026-09-01T19:33:04Z and still exits 1 on pre-existing ShellCheck `SC2034` for unused `fixture_owner` in `_dev/tests/shipped-shell-thinness.sh:9`, outside REQ-440's diff.

@@ -480,6 +480,159 @@ func TestGenerateFirstPublicationAndSuccessfulReplacement(t *testing.T) {
 	}
 }
 
+func TestGenerateRefusesNonRegularOutputTargetsWithoutMutation(t *testing.T) {
+	testCases := []struct {
+		name       string
+		targetName string
+		obstruct   func(*testing.T, string, string) func(*testing.T)
+	}{
+		{
+			name:       "directory",
+			targetName: "index.html",
+			obstruct: func(t *testing.T, _ string, targetPath string) func(*testing.T) {
+				if mkdirError := os.Mkdir(targetPath, 0o755); mkdirError != nil {
+					t.Fatalf("create target directory: %v", mkdirError)
+				}
+				keptPath := filepath.Join(targetPath, "kept.txt")
+				const keptContents = "directory contents stay untouched\n"
+				if writeError := os.WriteFile(keptPath, []byte(keptContents), 0o644); writeError != nil {
+					t.Fatalf("write nested target fixture: %v", writeError)
+				}
+				return func(t *testing.T) {
+					keptBytes, readError := os.ReadFile(keptPath)
+					if readError != nil {
+						t.Fatalf("read preserved nested target: %v", readError)
+					}
+					if string(keptBytes) != keptContents {
+						t.Errorf("nested target contents = %q, want %q", keptBytes, keptContents)
+					}
+				}
+			},
+		},
+		{
+			name:       "symlink",
+			targetName: boardMarkdownJsFilename,
+			obstruct: func(t *testing.T, caseRoot string, targetPath string) func(*testing.T) {
+				symlinkTargetPath := filepath.Join(caseRoot, "symlink-target.txt")
+				const targetContents = "symlink target stays untouched\n"
+				if writeError := os.WriteFile(symlinkTargetPath, []byte(targetContents), 0o644); writeError != nil {
+					t.Fatalf("write symlink target fixture: %v", writeError)
+				}
+				if symlinkError := os.Symlink(symlinkTargetPath, targetPath); symlinkError != nil {
+					t.Skipf("symlinks unavailable: %v", symlinkError)
+				}
+				return func(t *testing.T) {
+					linkDestination, readlinkError := os.Readlink(targetPath)
+					if readlinkError != nil {
+						t.Fatalf("read preserved target symlink: %v", readlinkError)
+					}
+					if linkDestination != symlinkTargetPath {
+						t.Errorf("target symlink destination = %q, want %q", linkDestination, symlinkTargetPath)
+					}
+					targetBytes, readError := os.ReadFile(symlinkTargetPath)
+					if readError != nil {
+						t.Fatalf("read symlink destination: %v", readError)
+					}
+					if string(targetBytes) != targetContents {
+						t.Errorf("symlink destination contents = %q, want %q", targetBytes, targetContents)
+					}
+				}
+			},
+		},
+		{
+			name:       "special file",
+			targetName: boardDataJsFilename,
+			obstruct: func(t *testing.T, _ string, targetPath string) func(*testing.T) {
+				mkfifoCommand := exec.Command("mkfifo", targetPath)
+				if mkfifoOutput, mkfifoError := mkfifoCommand.CombinedOutput(); mkfifoError != nil {
+					t.Skipf("named pipes unavailable: %v\n%s", mkfifoError, mkfifoOutput)
+				}
+				return func(t *testing.T) {
+					targetInfo, lstatError := os.Lstat(targetPath)
+					if lstatError != nil {
+						t.Fatalf("inspect preserved named-pipe target: %v", lstatError)
+					}
+					if targetInfo.Mode()&os.ModeNamedPipe == 0 {
+						t.Errorf("target mode = %v, want named pipe", targetInfo.Mode())
+					}
+				}
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			caseRoot := t.TempDir()
+			outputDirectory := filepath.Join(caseRoot, "static-board")
+			if mkdirError := os.Mkdir(outputDirectory, 0o755); mkdirError != nil {
+				t.Fatalf("create output directory: %v", mkdirError)
+			}
+			originalTargets := map[string]string{
+				boardDataJsFilename:     "old board data\n",
+				boardMarkdownJsFilename: "old board markdown\n",
+				"index.html":            "old index\n",
+			}
+			for targetName, targetContents := range originalTargets {
+				targetPath := filepath.Join(outputDirectory, targetName)
+				if writeError := os.WriteFile(targetPath, []byte(targetContents), 0o644); writeError != nil {
+					t.Fatalf("write %s fixture: %v", targetName, writeError)
+				}
+			}
+
+			obstructedPath := filepath.Join(outputDirectory, testCase.targetName)
+			if removeError := os.Remove(obstructedPath); removeError != nil {
+				t.Fatalf("remove regular %s fixture: %v", testCase.targetName, removeError)
+			}
+			assertObstructionPreserved := testCase.obstruct(t, caseRoot, obstructedPath)
+
+			board := publicationTestBoard(
+				"Replacement title",
+				"## What\n\nReplacement body.\n",
+				"replacement-project",
+				time.Date(2026, 8, 16, 11, 0, 0, 0, time.UTC),
+			)
+			publishCalls := 0
+			countedPublisher := func(stagedPath string, targetPath string) error {
+				publishCalls++
+				return os.Rename(stagedPath, targetPath)
+			}
+			if generationError := generateStaticSiteWithPublisher(outputDirectory, board, countedPublisher); generationError == nil {
+				t.Error("generateStaticSiteWithPublisher succeeded with a non-regular output target")
+			}
+			if publishCalls != 0 {
+				t.Errorf("publication calls = %d, want 0 before refusing a non-regular target", publishCalls)
+			}
+
+			assertObstructionPreserved(t)
+			for targetName, targetContents := range originalTargets {
+				if targetName == testCase.targetName {
+					continue
+				}
+				targetBytes, readError := os.ReadFile(filepath.Join(outputDirectory, targetName))
+				if readError != nil {
+					t.Errorf("read preserved %s: %v", targetName, readError)
+					continue
+				}
+				if string(targetBytes) != targetContents {
+					t.Errorf("%s contents = %q, want %q", targetName, targetBytes, targetContents)
+				}
+			}
+
+			outputEntries, readDirectoryError := os.ReadDir(outputDirectory)
+			if readDirectoryError != nil {
+				t.Fatalf("read output directory: %v", readDirectoryError)
+			}
+			if len(outputEntries) != len(originalTargets) {
+				entryNames := make([]string, 0, len(outputEntries))
+				for _, outputEntry := range outputEntries {
+					entryNames = append(entryNames, outputEntry.Name())
+				}
+				t.Errorf("refused publication left private residue: entries = %v", entryNames)
+			}
+		})
+	}
+}
+
 func TestGeneratePublicationFailureRestoresThePreviousBundle(t *testing.T) {
 	outputDirectory := t.TempDir()
 	oldBoard := publicationTestBoard(

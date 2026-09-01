@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.3 — Static Board Publication Refuses Non-File Output Targets (2026-09-01)
+
+Generating the static board could move a directory or symlink sitting at one of its three output names into a private backup and then delete it on success, taking whatever was underneath with it. Publication now inspects all three targets first and refuses anything that is not a regular file, leaving every byte where it was.
+
+- `queue-kanban generate` preflights `index.html`, `board-data.js`, and `board-markdown.js` with `Lstat` before creating its private staging directory or renaming any backup; directories, symlinks, and special files are refused with no residue.
+- A caller-seam regression covers all three non-regular kinds and proves the publisher never runs and the existing targets stay unchanged.
+
 ## 0.260.2 — Fix ShellCheck Warning Blocking the Maintainer Gate (2026-09-01)
 
 The canonical maintainer gate had been red since 0.260.1 on an unused `read` variable in the shipped-shell thinness check, which stalled every queue run at the testing step. The gate is green again and the queue can move.

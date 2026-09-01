@@ -450,6 +450,20 @@ func generateStaticSiteWithPublisher(outputDirectory string, board *Board, publi
 // The renames are not cross-file atomic, but a handled failure restores every
 // target to its pre-invocation bytes before returning.
 func publishStaticSiteOutputs(outputDirectory string, staticOutputs [3]staticSiteOutput, publishFile func(string, string) error) (returnError error) {
+	for _, staticOutput := range staticOutputs {
+		targetPath := filepath.Join(outputDirectory, staticOutput.TargetName)
+		targetInfo, statError := os.Lstat(targetPath)
+		if statError != nil {
+			if os.IsNotExist(statError) {
+				continue
+			}
+			return fmt.Errorf("queue-kanban: cannot inspect %s before publication: %w", targetPath, statError)
+		}
+		if !targetInfo.Mode().IsRegular() {
+			return fmt.Errorf("queue-kanban: %s is not a regular file — refusing static-site publication", targetPath)
+		}
+	}
+
 	privateDirectory, temporaryDirectoryError := os.MkdirTemp(outputDirectory, ".queue-kanban-static-")
 	if temporaryDirectoryError != nil {
 		return fmt.Errorf("queue-kanban: cannot create private static-site directory: %w", temporaryDirectoryError)
