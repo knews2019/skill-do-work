@@ -237,7 +237,9 @@ func (document *RequestDocument) FieldValue(fieldName string) (FieldEvidence, bo
 		return FieldEvidence{}, false
 	}
 	evidence := spans[len(spans)-1].evidence
-	evidence.ListValues = append([]string(nil), evidence.ListValues...)
+	if evidence.ListValues != nil {
+		evidence.ListValues = append([]string{}, evidence.ListValues...)
+	}
 	if evidence.NestedValues != nil {
 		evidence.NestedValues = cloneStringMap(evidence.NestedValues)
 	}

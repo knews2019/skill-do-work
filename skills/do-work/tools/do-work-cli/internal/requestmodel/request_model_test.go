@@ -290,3 +290,38 @@ func TestEffectiveFieldEvidenceCarriesExactSourceLine(t *testing.T) {
 		t.Fatalf("effective source evidence = %#v, found=%v", field, found)
 	}
 }
+
+func TestTypedRecordPreservesEmptyInlineListEvidence(t *testing.T) {
+
+	tests := []struct {
+		name             string
+		frontmatter      string
+		wantDependencies []string
+		wantListPresent  bool
+	}{
+		{"absent", "", nil, false},
+		{"scalar", "depends_on: REQ-101\n", []string{"REQ-101"}, false},
+		{"populated flow list", "depends_on: [REQ-101, REQ-102]\n", []string{"REQ-101", "REQ-102"}, true},
+		{"empty flow list", "depends_on: []\n", []string{}, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			document, err := ParseDocument([]byte("---\nid: REQ-100\nstatus: pending\n" + test.frontmatter + "---\nBody\n"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			record := document.TypedRecord()
+			if !reflect.DeepEqual(record.DependsOn, test.wantDependencies) {
+				t.Fatalf("DependsOn = %#v, want %#v", record.DependsOn, test.wantDependencies)
+			}
+			field, found := document.FieldValue("depends_on")
+			if found != (test.frontmatter != "") {
+				t.Fatalf("FieldValue found = %v", found)
+			}
+			if found && (field.ListValues != nil) != test.wantListPresent {
+				t.Fatalf("ListValues presence = %v, want %v", field.ListValues != nil, test.wantListPresent)
+			}
+		})
+	}
+}

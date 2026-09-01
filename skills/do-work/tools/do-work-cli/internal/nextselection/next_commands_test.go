@@ -60,6 +60,29 @@ func TestNextCommandMixedFixture(t *testing.T) {
 	}
 }
 
+func TestNextCommandTreatsEmptyInlineDependencyListAsReady(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-110-empty-dependency-list.md", "REQ-110", "pending", "depends_on: []\n")
+
+	command := exec.Command("go", "run", "../../cmd/do-work-cli", "--repo-root", repositoryRoot, "--format", "json", "next")
+	output, runError := command.CombinedOutput()
+	if runError != nil {
+		t.Fatalf("next command returned %v:\n%s", runError, output)
+	}
+	var result commandSelectionResult
+	if err := json.Unmarshal(output, &result); err != nil {
+		t.Fatalf("decode next JSON: %v\n%s", err, output)
+	}
+	if got := selectedRequestIDs(result.Selected); !equalStrings(got, []string{"REQ-110"}) {
+		t.Fatalf("selected ids = %v, want [REQ-110]; exclusions=%#v", got, result.Excluded)
+	}
+	for _, exclusion := range result.Excluded {
+		if exclusion.RequestID == "REQ-110" && exclusion.Code == "DEPENDENCY-MISSING" {
+			t.Fatalf("empty list was treated as a missing dependency: %#v", exclusion)
+		}
+	}
+}
+
 func TestNextCommandUsesInProcessBlockedProbeAuthority(t *testing.T) {
 	status, err := RunBlockedProbe([]byte("exit 19"), 2)
 	if err != nil || status != 19 {

@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.5 — Preserve Empty Frontmatter Lists (2026-09-02)
+
+Empty dependency lists were mistaken for a dependency literally named `[]`, quietly holding otherwise ready work out of the queue. The request reader now keeps an explicit empty list intact, so normal queue runs can advance those REQs again.
+
+- `FieldValue` preserves a present empty list while retaining scalar fallback behavior for absent and scalar fields.
+- Model and command-level regressions cover empty list projection and dependency-ready selection.
+
 ## 0.260.4 — Complete Knowledge-Base Backlog Ingestion and Synthesis (2026-09-02)
 
 Processed the entire pending knowledge-base backlog across all archived REQs, compiling 185 sources into an interlinked Markdown wiki with typed cross-references and topic indexes.
