@@ -39,8 +39,8 @@ Move all remaining core utility domain logic into `do-work-cli` subcommands.
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Accepted a three-task plan for leaf helper commands over existing domain authorities, condition-complete runtime/publication ownership, and real-command typed parity.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** Implemented all 17 typed helper commands, reused the two existing authorities, and removed archivefetch/nextselection shell implementation dependencies in the approved 35-file scope.
+- [x] **[UNIFY]:** Reviewed all 35 changed files; focused/full Go, vet, exact Go 1.25, Windows compile, legacy characterization, scope/diff hygiene, and the canonical maintainer gate pass on the builder branch.
 
 ## Detailed Requirements
 - Migrate preflight, qualification, scope drift, protected/uncommitted inventories, file association, and commit-hash recording.
@@ -188,10 +188,71 @@ With those decisions, the initial 30-file boundary below was sufficient for the 
 **Files I will NOT touch:** `resultmodel`, `commandruntime`, `gittransaction`, `atomicfile`, retained shell utilities, hooks, actions, Justfiles, release metadata, or later migration REQs. Any expansion requires a focused failing fixture and an owner-approved scope revision before implementation.
 
 **Acceptance criteria (restated from REQ):**
-- [ ] All 17 remaining helper surfaces are registered and every shipped utility is explicitly mapped to a new or existing typed authority.
-- [ ] Preflight/check/inventory/association/provenance/survey semantics preserve ordered facts, statuses, and Git/filesystem effects, including REQ-390's first-path scope fix.
-- [ ] Publication, blocked-process, Git, timestamp, reservation, and download mechanics preserve exact safety, byte, mode, retry, redaction, and failure behavior without shell implementation dependencies.
-- [ ] Text and JSON findings are actionable from one typed observation set, retained compatibility scripts remain unchanged, and the full characterization/gate matrix passes.
+- [x] All 17 remaining helper surfaces are registered and every shipped utility is explicitly mapped to a new or existing typed authority.
+- [x] Preflight/check/inventory/association/provenance/survey semantics preserve ordered facts, statuses, and Git/filesystem effects, including REQ-390's first-path scope fix.
+- [x] Publication, blocked-process, Git, timestamp, reservation, and download mechanics preserve exact safety, byte, mode, retry, redaction, and failure behavior without shell implementation dependencies.
+- [x] Text and JSON findings are actionable from one typed observation set, retained compatibility scripts remain unchanged, and the full characterization/gate matrix passes.
+
+## Implementation Summary
+
+Added 17 registered typed commands for the remaining core checks, inventories, publication, Git, process, timestamp, reservation, provenance, and survey surfaces. Archive collision and damaged-record recovery remain on their existing typed authorities. `archivefetch` now performs direct Go HTTP publication and Git fallback without locating Bash/curl helpers; `nextselection` owns the blocked process tree in-process; timestamp policy remains shared through doctor; and commit provenance remains shared through requeststate.
+
+The implementation preserves the recorded 0–4/raw-status boundary, ordered-fact parity, private 0600 publication mode, initial-plus-three HTTP retry behavior, and final no-overwrite publication with no pathname rollback. D-06 and D-07 removed stale suiteinstall callers and migrated the update characterization harness to local HTTP fixtures.
+
+**Files changed:**
+- `_dev/tests/update-script-behavior.sh` (modified)
+- `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/checks_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/commands_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/git_helpers.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/git_helpers_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/handoff.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/handoff_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/publication.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/publication_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/reservations.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/reservations_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/doctor/doctor_repair.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/doctor/doctor_repair_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/doctor/doctor_timestamps.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/doctor/doctor_timestamps_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_unix.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_windows.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_commands.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_commands_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified)
+
+**Builder commits:** `bf739a0073f11ced4fd14b920484ca46c76eafb6`, `1612f20091aeb98183826b34cb25db3d02daf5ac`, `b369e06aa4e4a34982f9faef0d759b305f5fde9a`
+
+**Integration range:** `fd243be9..ec8e80ea`
+
+## Qualification
+
+- `DO_WORK_DIFF_RANGE=fd243be9..ec8e80ea bash skills/do-work/tools/checks/qualify.sh do-work/working/REQ-414-migrate-core-helpers.md` — passed; static-reference warnings were limited to Go package/test/platform files covered by the qualification exception categories.
+- `DO_WORK_DIFF_RANGE=fd243be9..ec8e80ea bash skills/do-work/tools/checks/scope-drift.sh do-work/working/REQ-414-migrate-core-helpers.md` — passed with an exact 35-file match.
+- The initial integrated qualifier exposed a self-match in the detector source; builder commit `b369e06aa4e4a34982f9faef0d759b305f5fde9a` removed the literal signature and the cumulative range passed on re-run.
+
+## Testing
+
+- Focused Go packages, full `go test -count=1 ./...`, and `go vet ./...` — passed on the integrated range.
+- `bash _dev/tests/do-work-cli-go125-compatibility.sh` — passed.
+- `bash _dev/tests/update-script-behavior.sh` — passed in an isolated authoritative run after a concurrent invocation contended during fixture startup.
+
+*Generated by work action from the builder hand-back*
 
 ## Folded From REQ-390 (2026-08-30)
 
