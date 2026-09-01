@@ -179,6 +179,23 @@ The sole remediation pass committed `0fc171d5781006516007806e6be9699fdcc0c4e3` a
 
 *Generated from `do-work/runs/work-2026-08-31-165510/REQ-441-remediation-handback.md`.*
 
+## Review — Fresh Re-review
+
+**Overall: 98%** | 2026-09-01
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 97% |
+| Test Adequacy | 96% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+Initial F1 is closed. Missing and non-directory parent failures now independently prove truthful text/JSON route evidence, the concrete local cause, the standard escape hatch, zero network attempts, and no mutation. No Important, Minor, or Nit findings remain.
+
+*Re-reviewed independently; full evidence is in `do-work/runs/work-2026-08-31-165510/REQ-441-rereview.md`.*
+
 ## Full Context
 
 See `do-work/user-requests/UR-083/input.md` for the complete capture provenance.

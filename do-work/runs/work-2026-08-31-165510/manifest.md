@@ -82,4 +82,4 @@ Status: in-progress
 | Remediation | REQ-415 | `worktree-agent-REQ-415-migrate-core-memory-hooks` | F1-F5 authority, typed evidence, parity, differential, and restatement closure | `REQ-415-remediation-handback.md` | in-progress |
 | Reviewer | REQ-441 review | builder range `eec9ea36..bab4bbae` plus coordinated prime | REQ plus UR-083 and REQ-414 | `REQ-441-review.md` | changes-requested |
 | Remediation | REQ-441 | `worktree-agent-REQ-441-validate-http-archives-before-publication` | truthful parent-open route evidence | `REQ-441-remediation-handback.md` | done |
-| Reviewer | REQ-441 fresh re-review | cumulative builder range `eec9ea36..0fc171d5` plus coordinated prime | REQ plus initial finding | `REQ-441-rereview.md` | pending |
+| Reviewer | REQ-441 fresh re-review | cumulative builder range `eec9ea36..0fc171d5` plus coordinated prime | REQ plus initial finding | `REQ-441-rereview.md` | done |
