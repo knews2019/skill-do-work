@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-303-run-the-pinned-live-archive-assertions-o.md]
 related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+  - page: REQ-304-draw-a-reversed-wait-as-a-break-not-as-a
+    rel: complements
+  - page: REQ-305-say-the-timeline-forecast-describes-the-
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -35,7 +37,7 @@ pinned figures moved unchanged into `calibratedLiveArchiveFindings`, which retur
 disagreement instead of fataling, so a second test can feed it wrong figures and prove it still
 bites. Production code is untouched.
 
-## What worked
+## Worth knowing
 
 - **An inline `t.Fatalf` chain cannot be proven to still bite.** A pinned check that silently
   stopped biting is indistinguishable from a passing one, and editing the check to test it proves

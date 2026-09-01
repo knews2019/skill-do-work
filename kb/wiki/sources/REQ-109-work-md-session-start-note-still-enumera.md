@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: checkpoint-and-crash-recovery
 sources: [raw/processed/2026-09-01/REQ-109-work-md-session-start-note-still-enumera.md]
 related:
-  - page: concept-session-checkpoints-and-recovery
-    rel: evidence-for
+  - page: REQ-104-label-less-checkpoint-entries-locally-mo
+    rel: complements
+  - page: REQ-108-review-fix-in-progress-record-still-enum
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -31,9 +33,15 @@ Rewrote the first sentence of item 2 in Step 10's session-start note: it now sta
 
 ## What worked
 
-**What worked:** Reusing REQ-108's exact fix shape (state the condition, defer the enumeration, reuse the canonical "byte-identical" term) made the two passages read as one contract instead of two paraphrases.
-**What didn't:** N/A — no dead ends on a one-sentence fix.
-**Worth knowing:** The review's restatement sweep found a fourth instance of this same drift class in the same file (`actions/work.md:774`, Verification Checklist — "a reported foreign claim" is under-inclusive for the label-less/unknown-origin case). The pattern: REQ-104 changed the classification vocabulary, and each sweep since has caught one more stale restatement (REQ-108 → work-reference.md, REQ-109 → work.md line 655, now line 774). When a vocabulary changes, grep for the old term across *every* shipped file in the first fix, not one file per follow-up.
+Reusing REQ-108's exact fix shape (state the condition, defer the enumeration, reuse the canonical "byte-identical" term) made the two passages read as one contract instead of two paraphrases.
+
+## What didn't work
+
+N/A — no dead ends on a one-sentence fix.
+
+## Worth knowing
+
+The review's restatement sweep found a fourth instance of this same drift class in the same file (`actions/work.md:774`, Verification Checklist — "a reported foreign claim" is under-inclusive for the label-less/unknown-origin case). The pattern: REQ-104 changed the classification vocabulary, and each sweep since has caught one more stale restatement (REQ-108 → work-reference.md, REQ-109 → work.md line 655, now line 774). When a vocabulary changes, grep for the old term across *every* shipped file in the first fix, not one file per follow-up.
 
 ## Back-reference
 

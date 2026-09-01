@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: timeline-and-metrics
 sources: [raw/processed/2026-09-01/REQ-305-say-the-timeline-forecast-describes-the-.md]
 related:
-  - page: concept-duration-estimation-and-breaks
-    rel: evidence-for
+  - page: REQ-303-run-the-pinned-live-archive-assertions-o
+    rel: complements
+  - page: REQ-304-draw-a-reversed-wait-as-a-break-not-as-a
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -31,7 +33,7 @@ answer and the function cannot. When it is true the forecast paragraph and the e
 with "Filters are on; this covers the whole queue, not the rows shown." and " from the whole queue".
 Nothing about the projection changed — it is still built Go-side and consumed verbatim.
 
-## What worked
+## Worth knowing
 
 - **A test that calls the function under test directly cannot hold its call site.** Five mutations
   of the copy were caught and the sixth — the one that reverted the actual defect — passed clean.

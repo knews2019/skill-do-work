@@ -3,11 +3,9 @@ title: "Lessons from REQ-064: Restore blanked archived REQs from git history in 
 type: source-summary
 topic_cluster: shell-and-automation
 sources: [raw/processed/2026-09-01/REQ-064-restore-blanked-archived-reqs-from-git-h.md]
-related:
-  - page: concept-prescribed-shell-commands
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

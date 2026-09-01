@@ -18,7 +18,7 @@ REQ-246 made the SessionStart hook a *write* surface on consumer queue files —
 
 Both doc sites now disclose the SessionStart hook's queue write surface. README's hook bullet says session-start.sh also writes to consumer queue files — reaping stale reservation markers and mechanically repairing detectably wrong `*_at` stamps — citing both scripts root-relatively. capture.md gained one paragraph beside the Immutability Rule's timestamp-repair exception, framing the session-start repair as the same metadata-correction class with an explicit "never archive". A class sweep (grep for session-start/SessionStart over shipped markdown) confirmed the two instances were the whole site class.
 
-## What worked
+## Worth knowing
 
 Route A, no surprises — skipped per the rule (the class sweep confirming the REQ's instance list was complete is already recorded in P-A-U).
 

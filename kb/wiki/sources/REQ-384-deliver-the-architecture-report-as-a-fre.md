@@ -3,11 +3,9 @@ title: "Lessons from REQ-384: Deliver the architecture report as a freeform HTML
 type: source-summary
 topic_cluster: presentation-and-reporting
 sources: [raw/processed/2026-09-01/REQ-384-deliver-the-architecture-report-as-a-fre.md]
-related:
-  - page: concept-completed-work-presentation
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -23,7 +21,7 @@ Change `do-work-toolbox architecture-report` so a run publishes one beautifully 
 
 Changed the architecture-report capability, without invoking it or generating a report. Existing Markdown history remains unchanged; each future report has one self-contained index.html, an authored opening change account, and freely designed diagrams/navigation.
 
-## What worked
+## Worth knowing
 
 A filename used as a publication marker should become visible only after the copy is complete and verified. Separating machine-readable metadata from visible structure allows deterministic history lookup without fixing the report's design.
 

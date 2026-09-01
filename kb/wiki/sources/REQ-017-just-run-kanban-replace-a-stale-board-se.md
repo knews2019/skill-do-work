@@ -3,11 +3,9 @@ title: "Lessons from REQ-017: `just run-kanban`: replace a stale board server on
 type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-017-just-run-kanban-replace-a-stale-board-se.md]
-related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

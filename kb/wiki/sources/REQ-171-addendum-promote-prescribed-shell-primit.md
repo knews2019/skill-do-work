@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: shell-and-automation
 sources: [raw/processed/2026-09-01/REQ-171-addendum-promote-prescribed-shell-primit.md]
 related:
-  - page: concept-prescribed-shell-commands
-    rel: evidence-for
+  - page: REQ-167-deduplicate-copy-pasted-shell-primitives
+    rel: extends
+  - page: REQ-170-finding-closure-ratchet-and-canonical-ea
+    rel: extends
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -24,7 +26,7 @@ Graduate the canonical prescribed-shell primitives from documented prose to real
 - The executable ownership map is `skills/do-work/docs/prescribed-shell-primitives.md`; the durable 17/21/2 census lives in `decisions/audits/2026-08-11-prescribed-shell-primitives.md`.
 - Start behavioral changes in `_dev/tests/prescribed-shell-scripts-behavior.sh`, then keep canonicalization, staged-package, and action-shell lint green.
 
-## What worked
+## Worth knowing
 
 - Shell quoting and Git path literalness are different layers: quotes stop the shell, but Git pathspec magic still needs an explicit literal-path boundary.
 - Promotion inventories must mirror exact changed paths in both Scope and `write_set`; grouped glob prose is useful explanation but not an auditable boundary.

@@ -3,11 +3,9 @@ title: "Lessons from REQ-076: Go utility emits the canonical UTC timestamp, pref
 type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-076-go-utility-emits-the-canonical-utc-tim.md]
-related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

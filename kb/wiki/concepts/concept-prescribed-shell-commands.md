@@ -2,12 +2,30 @@
 title: "Shell and Automation"
 type: concept
 topic_cluster: shell-and-automation
-sources: [raw/processed/2026-09-01/REQ-064-restore-blanked-archived-reqs-from-git-h.md]
+sources:
+  - raw/processed/2026-09-01/REQ-064-restore-blanked-archived-reqs-from-git-h.md
+  - raw/processed/2026-09-01/REQ-066-clear-two-shellcheck-warnings-in-the-com.md
+  - raw/processed/2026-09-01/REQ-072-go-utility-allocates-req-ids-and-version.md
+  - raw/processed/2026-09-01/REQ-114-the-three-remaining-shell-logic-extracti.md
+  - raw/processed/2026-09-01/REQ-152-review-fix-reject-reserved-just-recipe-c.md
+  - raw/processed/2026-09-01/REQ-156-review-fix-handle-just-multiline-strings.md
+  - raw/processed/2026-09-01/REQ-159-review-fix-complete-multiline-literal-st.md
+  - raw/processed/2026-09-01/REQ-165-shell-block-lint-harness-for-shipped-act.md
+  - raw/processed/2026-09-01/REQ-167-deduplicate-copy-pasted-shell-primitives.md
+  - raw/processed/2026-09-01/REQ-171-addendum-promote-prescribed-shell-primit.md
+  - raw/processed/2026-09-01/REQ-172-make-screenshot-source-cleanup-best-effo.md
+  - raw/processed/2026-09-01/REQ-173-handle-first-line-bom-in-just-collision-.md
+  - raw/processed/2026-09-01/REQ-187-no-single-local-maintainer-command-prove.md
+  - raw/processed/2026-09-01/REQ-298-review-fix-sweep-the-unchecked-exit-stat.md
+  - raw/processed/2026-09-01/REQ-409-implement-safe-cleanup-passes-and-explic.md
+  - raw/processed/2026-09-01/REQ-413-implement-capture-file-answer-release-ve.md
+  - raw/processed/2026-09-01/REQ-414-migrate-remaining-core-checks-publicatio.md
+  - raw/processed/2026-09-01/REQ-419-add-flat-just-recipes-collision-validati.md
 related:
   - page: entity-do-work-cli
     rel: extends
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: high
 ---
 

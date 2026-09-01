@@ -18,12 +18,10 @@ Restore parity at the public work-guide/router and testing-schema/normalizer sea
 
 **Behavior:** Public aliases and testing-status aliases now have one documented inventory each plus executable parity mirrors; any one-sided addition, removal, or testing-alias remap fails the existing contract suite. Queue summaries no longer hide dependency-cycle holds.
 
-## What worked
+## Worth knowing
 
 - When prose is intentionally authoritative but runtime must remain independently readable, a seam-local exact comparison with bilateral mutation probes is enough to prevent drift without introducing a generator.
 - A duplicate public inventory is itself a third drift surface; replace it with an anchored pointer before asserting parity between the remaining owner and mirror.
-
-**Knowledge handoff:** Pending human triage. No knowledge-base file was written automatically.
 
 ## Back-reference
 

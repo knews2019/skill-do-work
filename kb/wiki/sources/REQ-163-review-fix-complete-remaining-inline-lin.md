@@ -3,11 +3,9 @@ title: "Lessons from REQ-163: Review fix: Complete remaining inline-link and lis
 type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-163-review-fix-complete-remaining-inline-lin.md]
-related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

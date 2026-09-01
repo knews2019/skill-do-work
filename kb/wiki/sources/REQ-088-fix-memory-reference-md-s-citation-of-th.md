@@ -3,11 +3,9 @@ title: "Lessons from REQ-088: Confirm: fix memory-reference.md's citation of the
 type: source-summary
 topic_cluster: knowledge-and-memory
 sources: [raw/processed/2026-09-01/REQ-088-fix-memory-reference-md-s-citation-of-th.md]
-related:
-  - page: concept-knowledge-and-memory-systems
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

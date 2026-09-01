@@ -4,10 +4,14 @@ type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-174-validate-root-markdown-fence-info.md]
 related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+  - page: REQ-172-make-screenshot-source-cleanup-best-effo
+    rel: complements
+  - page: REQ-173-handle-first-line-bom-in-just-collision-
+    rel: complements
+  - page: REQ-175-align-board-question-preprocessing-with-
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -23,7 +27,7 @@ Make root and list fence classification share the CommonMark rule that a backtic
 
 Centralized marker-aware fence info-string validation across root and list openings plus paragraph/container state, and added root/list/tilde differential fixtures that preserve the existing classifier contracts.
 
-## What worked
+## Worth knowing
 
 - Markdown fence recognition is a compound contract: marker kind, info-string validity, and paragraph/container state must change together or a locally correct opener check can still mask rendered content.
 - Differential fixtures against the pinned renderer catch classifier drift more reliably than asserting regex structure.

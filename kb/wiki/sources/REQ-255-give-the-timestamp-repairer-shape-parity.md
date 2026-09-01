@@ -3,11 +3,9 @@ title: "Lessons from REQ-255: Give the timestamp repairer shape parity with the 
 type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-255-give-the-timestamp-repairer-shape-parity.md]
-related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,11 +23,15 @@ All six shape-parity instances fixed at the shared primitive in `repair-req-time
 
 ## What worked
 
-**What worked:** Fixing at the primitive rather than per symptom — one span-exact extractor/rewrite pair closed four shapes at once and, under deliberate sabotage, the pre-existing size guards still refused to write a corrupted file. Reproducing all six shapes against the shipped script *before* writing code made every RED honest.
+Fixing at the primitive rather than per symptom — one span-exact extractor/rewrite pair closed four shapes at once and, under deliberate sabotage, the pre-existing size guards still refused to write a corrupted file. Reproducing all six shapes against the shipped script *before* writing code made every RED honest.
 
-**What didn't:** The fuzz found two shapes the six-instance list never contemplated, one of which can wedge the SessionStart hook into permanent failure. An instance list — even a six-item one assembled from two independent reviews — is still a sample; the value space is what needed enumerating.
+## What didn't work
 
-**Worth knowing:** The board treats an unterminated fence as *no frontmatter*; the repairer scans to EOF. Padded-inside-quotes stamps are board-parseable and refused here. The archive auditor's "clean" is not yet trustworthy (REQ-268). The forensics check number cited in the script header is off by one.
+The fuzz found two shapes the six-instance list never contemplated, one of which can wedge the SessionStart hook into permanent failure. An instance list — even a six-item one assembled from two independent reviews — is still a sample; the value space is what needed enumerating.
+
+## Worth knowing
+
+The board treats an unterminated fence as *no frontmatter*; the repairer scans to EOF. Padded-inside-quotes stamps are board-parseable and refused here. The archive auditor's "clean" is not yet trustworthy (REQ-268). The forensics check number cited in the script header is off by one.
 
 ## Back-reference
 

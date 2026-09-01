@@ -28,6 +28,10 @@ Co-locate the archived-UR invariant with standalone review's archived-input read
 - The first wording treated orchestrated review as universally open-UR, overlooking review-generated work whose UR deliberately stays archived.
 - The first broad regex required the archive path token but let deletion or negation of `already exists` survive.
 
+## Worth knowing
+
+The in-place archive override is legitimate only when both `review_generated: true` and the matching archived UR folder already exist. Generic live REQs under closed URs remain anomalies for REQ-194's detector path.
+
 ## Back-reference
 
 See `do-work/archive/UR-043/REQ-193-keep-archived-urs-closed-during-review.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `6fcc433`.

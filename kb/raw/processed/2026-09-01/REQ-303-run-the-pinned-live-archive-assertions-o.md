@@ -30,7 +30,7 @@ pinned figures moved unchanged into `calibratedLiveArchiveFindings`, which retur
 disagreement instead of fataling, so a second test can feed it wrong figures and prove it still
 bites. Production code is untouched.
 
-## What worked
+## Worth knowing
 
 - **An inline `t.Fatalf` chain cannot be proven to still bite.** A pinned check that silently
   stopped biting is indistinguishable from a passing one, and editing the check to test it proves

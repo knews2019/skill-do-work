@@ -18,7 +18,7 @@ Correct REQ-128's commit and unscoped-inspect quarantine merge so an empty run-l
 
 [MAP UNCHANGED] Commit and inspect still own their candidate filtering inline; only the first-input discriminator changed, with no new tool or interface.
 
-## What worked
+## Worth knowing
 
 - `NR == FNR` is not a safe first-file test when an input may be empty; identify that input explicitly through `FILENAME` and `ARGV`.
 - A regression for a two-input merge must cover the zero-record first input, not only populated joins.

@@ -4,10 +4,20 @@ type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-170-finding-closure-ratchet-and-canonical-ea.md]
 related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+  - page: REQ-165-shell-block-lint-harness-for-shipped-act
+    rel: complements
+  - page: REQ-166-simplify-session-start-hook-and-fix-dead
+    rel: complements
+  - page: REQ-167-deduplicate-copy-pasted-shell-primitives
+    rel: complements
+  - page: REQ-168-delete-or-test-audit-of-defensive-code-i
+    rel: complements
+  - page: REQ-169-validate-feedback-flags-remedies-that-ad
+    rel: complements
+  - page: REQ-171-addendum-promote-prescribed-shell-primit
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -27,7 +37,7 @@ Two small, single-home rules that make the review loop converge instead of plate
 - The canonical closure rule lives in `skills/do-work/actions/work-reference.md`; capture and review only enforce/cite it.
 - Producer compatibility is pinned in `_dev/tests/contract-regressions.sh` across core `review-work.md` and toolbox `code-review.md`.
 
-## What worked
+## Worth knowing
 
 - A universal consumer gate is incomplete until every real producer is enumerated and shown to emit compatible data; testing the first named caller only can leave a second package silently broken.
 - Condition-driven inventory (exact marker fields matched to fenced templates) is safer than a filename list because it makes newly introduced producers fail closed.

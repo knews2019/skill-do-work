@@ -3,11 +3,9 @@ title: "Lessons from REQ-310: Check a template payload's citations against where
 type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-310-check-a-template-payload-s-citations-aga.md]
-related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -29,15 +27,19 @@ This is a leaf repair to the action/template reference contract; no new destinat
 
 ## What worked
 
-**What worked:** Counting the affected payloads before designing selected the direct repair, while
+Counting the affected payloads before designing selected the direct repair, while
 running both citation gates exposed the existing assertion that encoded the wrong source-relative
 form.
 
-**What didn't:** The first replacement used `actions/...`, matching core-generated REQs but failing
+## What didn't work
+
+The first replacement used `actions/...`, matching core-generated REQs but failing
 the staged toolbox reference gate. A consumer-root installed path is stable across queue, working,
 and archive moves and satisfies both readers.
 
-**Worth knowing:** Template citations have two locations: the producer and the emitted artifact.
+## Worth knowing
+
+Template citations have two locations: the producer and the emitted artifact.
 Source-package correctness says nothing about the destination; tests must judge the emitted form.
 
 ## Back-reference

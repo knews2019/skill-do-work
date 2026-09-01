@@ -4,10 +4,18 @@ type: source-summary
 topic_cluster: checkpoint-and-crash-recovery
 sources: [raw/processed/2026-09-01/REQ-095-two-clone-acceptance-run-checkpoint-pois.md]
 related:
-  - page: concept-session-checkpoints-and-recovery
-    rel: evidence-for
+  - page: REQ-094-checkpoint-writer-label-crash-recovery-i
+    rel: depends-on
+  - page: REQ-096-execution-model-re-grain-claim-anywhere-
+    rel: complements
+  - page: REQ-100-live-auto-wave-acceptance-run-prove-real
+    rel: complements
+  - page: REQ-104-label-less-checkpoint-entries-locally-mo
+    rel: complements
+  - page: REQ-108-review-fix-in-progress-record-still-enum
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

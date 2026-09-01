@@ -28,6 +28,10 @@ Added the explicit source-only walkthrough action and guide with shared complete
 - The first action draft delegated publication canonically and then restated the collision branch in later steps and checks; REQ-201 now sweeps that duplicated-rule class.
 - Qualification's tracked-reference heuristic warned on the new guide because both linked files were untracked; full-file inspection and the shipped-reference suite were needed to judge the actual link.
 
+## Worth knowing
+
+Source-only video work still needs a complete, internally consistent package contract. Keep consumer-specific preferred naming and scene validity local, but leave archive, evidence, and publication algorithms in the shared completed-work presentation reference.
+
 ## Back-reference
 
 See `do-work/archive/UR-042/REQ-191-extract-explicit-present-video-action.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `c5d040a`.

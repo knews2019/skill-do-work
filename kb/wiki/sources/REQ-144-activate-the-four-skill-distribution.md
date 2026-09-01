@@ -4,10 +4,24 @@ type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-144-activate-the-four-skill-distribution.md]
 related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+  - page: REQ-136-define-the-four-skill-suite-contract
+    rel: complements
+  - page: REQ-137-ship-the-suite-aware-bridge-updater
+    rel: depends-on
+  - page: REQ-138-add-managed-text-section-replacement
+    rel: complements
+  - page: REQ-139-stage-the-modular-core-skill
+    rel: complements
+  - page: REQ-140-stage-the-modular-board-skill
+    rel: complements
+  - page: REQ-143-build-the-full-suite-installer-and-recon
+    rel: depends-on
+  - page: REQ-145-remove-the-stateful-pipeline
+    rel: complements
+  - page: REQ-146-remove-modular-migration-compatibility-s
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

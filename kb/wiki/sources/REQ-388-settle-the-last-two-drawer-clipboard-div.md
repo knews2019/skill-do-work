@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-388-settle-the-last-two-drawer-clipboard-div.md]
 related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+  - page: REQ-382-expand-ticket-ids-written-as-markdown-li
+    rel: complements
+  - page: REQ-386-make-the-drawer-and-the-paste-agree-abou
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -24,7 +26,7 @@ Decide which surface is right in each case and make them agree.
 
 The drawer and copied appendix now list the same external references for fence metadata and file-path cases. Static boards no longer turn part of a file path into a ticket link, while live file navigation remains available.
 
-## What worked
+## Worth knowing
 
 When two projections differ, compare their final reference lists over the same source and exercise both static and live production paths. Merely finding the same regex candidates misses a drawer retry that exists only after a path fails to become a link. Keep annotation suppression independent from source-search citation collection.
 

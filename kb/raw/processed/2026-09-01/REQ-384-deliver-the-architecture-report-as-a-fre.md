@@ -18,7 +18,7 @@ Change `do-work-toolbox architecture-report` so a run publishes one beautifully 
 
 Changed the architecture-report capability, without invoking it or generating a report. Existing Markdown history remains unchanged; each future report has one self-contained index.html, an authored opening change account, and freely designed diagrams/navigation.
 
-## What worked
+## Worth knowing
 
 A filename used as a publication marker should become visible only after the copy is complete and verified. Separating machine-readable metadata from visible structure allows deterministic history lookup without fixing the report's design.
 

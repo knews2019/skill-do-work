@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: checkpoint-and-crash-recovery
 sources: [raw/processed/2026-09-01/REQ-086-the-in-progress-record-s-rule-is-unstate.md]
 related:
-  - page: concept-session-checkpoints-and-recovery
-    rel: evidence-for
+  - page: REQ-077-crash-recovery-s-own-crash-branch-is-unr
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

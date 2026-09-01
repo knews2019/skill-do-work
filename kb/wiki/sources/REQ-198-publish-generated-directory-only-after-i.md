@@ -3,11 +3,9 @@ title: "Lessons from REQ-198: Publish generated directory only after image succe
 type: source-summary
 topic_cluster: presentation-and-reporting
 sources: [raw/processed/2026-09-01/REQ-198-publish-generated-directory-only-after-i.md]
-related:
-  - page: concept-completed-work-presentation
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -33,6 +31,10 @@ Made raster generation batch-private until status-backed success exists, conditi
 ## What didn't work
 
 - Normal all-failed/mixed cases were not enough to prove the complete batch lifecycle: caller interruption can orphan children, and plain `mv` has destination-directory nesting semantics under a coordinated collision.
+
+## Worth knowing
+
+Publishing a directory safely is a process-tree and filesystem-transaction problem together. Test signal ownership and a destination appearing at the final boundary, not only successful and failed backend statuses.
 
 ## Back-reference
 

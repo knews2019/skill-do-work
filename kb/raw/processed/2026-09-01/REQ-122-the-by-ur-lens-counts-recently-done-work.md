@@ -25,7 +25,7 @@ Four defects, all in `tools/queue-kanban/web/`:
 
 Files changed:
 
-## What worked
+## Worth knowing
 
 - **A predicate that reads as a property of the data can silently be a property of the
   clock.** `userRequestIsActive` looked like a pure status question and was really "is

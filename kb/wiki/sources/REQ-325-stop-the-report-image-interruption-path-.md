@@ -3,11 +3,9 @@ title: "Lessons from REQ-325: Stop the report-image interruption path orphaning 
 type: source-summary
 topic_cluster: presentation-and-reporting
 sources: [raw/processed/2026-09-01/REQ-325-stop-the-report-image-interruption-path-.md]
-related:
-  - page: concept-completed-work-presentation
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

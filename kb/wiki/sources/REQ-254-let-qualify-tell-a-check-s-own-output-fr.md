@@ -3,11 +3,9 @@ title: "Lessons from REQ-254: Let qualify tell a check's own output from leftove
 type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-254-let-qualify-tell-a-check-s-own-output-fr.md]
-related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,11 +23,15 @@ Part of the [[concept-contract-verification-gates]] cluster.
 
 ## What worked
 
-**What worked:** Grounding the condition in the real fired case (REQ-244's actual remediation diff) instead of the REQ's abstract description — that is what disqualified three plausible candidate signals before any code. Safe-degradation as a design property: an unknown language's exit idiom falls back to the old FAIL-and-override behavior, never a silent pass.
+Grounding the condition in the real fired case (REQ-244's actual remediation diff) instead of the REQ's abstract description — that is what disqualified three plausible candidate signals before any code. Safe-degradation as a design property: an unknown language's exit idiom falls back to the old FAIL-and-override behavior, never a silent pass.
 
-**What didn't:** The condition-as-implemented (whole-file grep for exit-idiom text) is weaker than the condition-as-stated (file ends its own process) — the ninth instance-vs-class occurrence, this time in the fix for the gate that hunts that shape. And the pipeline's own paperwork had the same hole one level up: review-generated REQs carry no P-A-U block, so the box audit was silently disarmed for exactly the REQs this session processed, and a false "transcription" claim in a commit message went unnoticed until the review re-armed the audit.
+## What didn't work
 
-**Worth knowing:** WARN is qualify's judgment channel and FAIL its gate; REQ-254 moved one token class between them, and `work.md:750`'s Because-cell is now conditionally stale (over-compliance direction). A forgotten debug print inside any exit-owning script WARNs — the honest boundary of intent-blindness.
+The condition-as-implemented (whole-file grep for exit-idiom text) is weaker than the condition-as-stated (file ends its own process) — the ninth instance-vs-class occurrence, this time in the fix for the gate that hunts that shape. And the pipeline's own paperwork had the same hole one level up: review-generated REQs carry no P-A-U block, so the box audit was silently disarmed for exactly the REQs this session processed, and a false "transcription" claim in a commit message went unnoticed until the review re-armed the audit.
+
+## Worth knowing
+
+WARN is qualify's judgment channel and FAIL its gate; REQ-254 moved one token class between them, and `work.md:750`'s Because-cell is now conditionally stale (over-compliance direction). A forgotten debug print inside any exit-owning script WARNs — the honest boundary of intent-blindness.
 
 ## Back-reference
 

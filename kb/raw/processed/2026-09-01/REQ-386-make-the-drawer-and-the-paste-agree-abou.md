@@ -20,7 +20,7 @@ and apply it to both.
 
 Saving a copied ticket back to disk no longer breaks duplicate-heading suppression. The drawer and Copy agree about which visible prose occurrence first receives the ticket title.
 
-## What worked
+## Worth knowing
 
 Rendered heading text is not the Markdown heading source. Reuse the renderer, account for its preprocessing, and explicitly match JavaScript whitespace and full lowercase before claiming two languages perform the same comparison. When reparsing a fragment, carry reference definitions from the document or the fragment can silently change a heading's text. A copy/save/rebuild test catches heading annotation that a single-surface title test misses.
 

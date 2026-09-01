@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: queue-orchestration-and-lifecycle
 sources: [raw/processed/2026-09-01/REQ-001-code-review-split-actions-work-md-into-o.md]
 related:
-  - page: concept-queue-task-lifecycle
-    rel: evidence-for
+  - page: REQ-006-code-review-replace-work-md-step-number
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

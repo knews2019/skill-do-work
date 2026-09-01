@@ -18,7 +18,7 @@ Make root and list fence classification share the CommonMark rule that a backtic
 
 Centralized marker-aware fence info-string validation across root and list openings plus paragraph/container state, and added root/list/tilde differential fixtures that preserve the existing classifier contracts.
 
-## What worked
+## Worth knowing
 
 - Markdown fence recognition is a compound contract: marker kind, info-string validity, and paragraph/container state must change together or a locally correct opener check can still mask rendered content.
 - Differential fixtures against the pinned renderer catch classifier drift more reliably than asserting regex structure.

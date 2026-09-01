@@ -3,11 +3,9 @@ title: "Lessons from REQ-079: Two guards pin the weaker fingerprint of the premi
 type: source-summary
 topic_cluster: queue-orchestration-and-lifecycle
 sources: [raw/processed/2026-09-01/REQ-079-two-guards-pin-the-weaker-fingerprint-of.md]
-related:
-  - page: concept-queue-task-lifecycle
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

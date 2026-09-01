@@ -4,10 +4,14 @@ type: source-summary
 topic_cluster: timeline-and-metrics
 sources: [raw/processed/2026-09-01/REQ-304-draw-a-reversed-wait-as-a-break-not-as-a.md]
 related:
-  - page: concept-duration-estimation-and-breaks
-    rel: evidence-for
+  - page: REQ-280-probe-timestamp-ordering-and-point-check
+    rel: complements
+  - page: REQ-303-run-the-pinned-live-archive-assertions-o
+    rel: complements
+  - page: REQ-305-say-the-timeline-forecast-describes-the-
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -31,7 +35,7 @@ reasoning. The test runs the real `renderTimelineView` over a stub DOM and asser
 in one render pass — reversed, ordinary closed, and open — because a fix that turned every wait into
 a break would satisfy a reversed-only test.
 
-## What worked
+## Worth knowing
 
 - **A missing-branch fix needs a fixture that can fail in both directions.** The obvious test is the
   reversed row alone, and `if (true)` passes it. Rendering the reversed, ordinary and open shapes

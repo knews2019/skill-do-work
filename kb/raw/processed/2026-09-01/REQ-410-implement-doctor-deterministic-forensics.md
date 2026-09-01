@@ -20,11 +20,15 @@ Added canonical `doctor` diagnosis and guarded timestamp repair using one typed 
 
 ## What worked
 
-**What worked:** One typed snapshot/result path, exact Git guards, live-corpus acceptance, and named adversarial regressions removed duplicate mechanical authorities and closed the initial false-positive and committed-state defects.
+One typed snapshot/result path, exact Git guards, live-corpus acceptance, and named adversarial regressions removed duplicate mechanical authorities and closed the initial false-positive and committed-state defects.
 
-**What didn't:** Migrating the producer without tracing every downstream report field and reference left the action contract half-landed. Treating “parseable” as “eligible for repair ordering” also let a diagnosis-only timestamp influence a mutation.
+## What didn't work
 
-**Worth knowing:** A canonical-tool migration is complete only when every consumer can produce its required output from that tool and all legacy anchors are swept. For repair logic, comparison eligibility must be the same supported-shape predicate as mutation eligibility; unsupported evidence must remain observational and byte-identical.
+Migrating the producer without tracing every downstream report field and reference left the action contract half-landed. Treating “parseable” as “eligible for repair ordering” also let a diagnosis-only timestamp influence a mutation.
+
+## Worth knowing
+
+A canonical-tool migration is complete only when every consumer can produce its required output from that tool and all legacy anchors are swept. For repair logic, comparison eligibility must be the same supported-shape predicate as mutation eligibility; unsupported evidence must remain observational and byte-identical.
 
 ## Back-reference
 

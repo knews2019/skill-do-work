@@ -3,11 +3,9 @@ title: "Lessons from REQ-308: Judge effort_estimate on every capture, as impact 
 type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-308-judge-effort-estimate-on-every-capture-a.md]
-related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -35,7 +33,7 @@ a small, already-identified set of files — and both directions of the never-wr
 rule are named, so `effort-substantive` by default is called out as the same failure as an invented
 `effort-mechanical`.
 
-## What worked
+## Worth knowing
 
 - **Two rules that should be the same rule can be pinned by comparing them, not by quoting them.**
   Asserting a phrase is present is what REQ-293 ruled against; asserting that two sentences are

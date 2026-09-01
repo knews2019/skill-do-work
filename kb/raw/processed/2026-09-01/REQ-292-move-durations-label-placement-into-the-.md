@@ -32,13 +32,17 @@ Moved Durations direct-label placement out of Go and into the renderer, where it
 
 ## What worked
 
-**What worked:** Deleting in an order that kept the build compiling — sample fields, then the functions that used them, then the constants, then the payload — so every step's breakage named exactly what still referenced the thing being removed. `go vet` became the worklist. And running the real board in a browser at the end: the probes were all green before that, and only the rendered chart shows that the remainder sentence actually clears its neighbour on the row.
+Deleting in an order that kept the build compiling — sample fields, then the functions that used them, then the constants, then the payload — so every step's breakage named exactly what still referenced the thing being removed. `go vet` became the worklist. And running the real board in a browser at the end: the probes were all green before that, and only the rendered chart shows that the remainder sentence actually clears its neighbour on the row.
 
-**What didn't:** A regex-driven "drop this function and its doc comment" helper, used to delete sixteen declarations, repeatedly clipped one character off the following declaration — leaving `f// comment`, `ffunc`, and a bare `/` at end of file. Every one was caught by the compiler, so nothing shipped wrong, but it cost several rounds. For a bulk deletion of Go declarations, deleting by explicit start/end line after listing them beats a comment-walking heuristic; the heuristic's failure mode is silent damage to the *neighbour*, not to the target.
+## What didn't work
+
+A regex-driven "drop this function and its doc comment" helper, used to delete sixteen declarations, repeatedly clipped one character off the following declaration — leaving `f// comment`, `ffunc`, and a bare `/` at end of file. Every one was caught by the compiler, so nothing shipped wrong, but it cost several rounds. For a bulk deletion of Go declarations, deleting by explicit start/end line after listing them beats a comment-walking heuristic; the heuristic's failure mode is silent damage to the *neighbour*, not to the target.
 
 Also: the first port measured the remainder reserve from a string that did not match the one drawn ("with a reversed span" against "reversed"). Caught by reading, not by a test, and it would have under-reserved by ~100 units. When two call sites must compose the same sentence, the composer belongs in one function — which is what `composeDurationsRemainderText` now is.
 
-**Worth knowing:** The reason this defect was undetectable, not merely undetected. A width model multiplies a character count by a constant, so it returns the *same* number for every face — which means the slots it assigns never move, and a wider face draws past them silently. No amount of pinning the constant could catch that, because the constant was never wrong in its own terms; it was answering a question about a face nobody had. That is why the replacement test asserts the geometry *changes* under a wider face rather than asserting any particular width: the property that matters is responsiveness, not accuracy.
+## Worth knowing
+
+The reason this defect was undetectable, not merely undetected. A width model multiplies a character count by a constant, so it returns the *same* number for every face — which means the slots it assigns never move, and a wider face draws past them silently. No amount of pinning the constant could catch that, because the constant was never wrong in its own terms; it was answering a question about a face nobody had. That is why the replacement test asserts the geometry *changes* under a wider face rather than asserting any particular width: the property that matters is responsiveness, not accuracy.
 
 ## Back-reference
 

@@ -4,10 +4,16 @@ type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-097-assigned-to-advisory-field-schema-line-s.md]
 related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+  - page: REQ-094-checkpoint-writer-label-crash-recovery-i
+    rel: complements
+  - page: REQ-096-execution-model-re-grain-claim-anywhere-
+    rel: depends-on
+  - page: REQ-098-verify-probes-assigned-elsewhere-claimed
+    rel: complements
+  - page: REQ-101-docs-adr-multi-checkout-guide-and-the-se
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

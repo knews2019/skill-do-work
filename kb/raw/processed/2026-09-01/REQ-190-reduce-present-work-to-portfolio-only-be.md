@@ -28,6 +28,10 @@ Reduced `present-work` from a mixed item/portfolio artifact generator to one cro
 - The first dispatcher described canonical-looking UR/REQ tokens without inheriting the suite-wide case-insensitive, numeric-value token grammar.
 - Resolving a collision-safe snapshot name was not enough; the first publication wording refreshed the canonical file before exclusive snapshot success, permitting partial completion.
 
+## Worth knowing
+
+A non-writing migration path is still an ID-taking action and inherits Target ID Resolution. For a branch promising an immutable snapshot plus a mutable canonical file, publish the no-clobber artifact first and atomically replace the mutable target only after success.
+
 ## Back-reference
 
 See `do-work/archive/UR-042/REQ-190-reduce-present-work-to-portfolio-only.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `c66d11c`.

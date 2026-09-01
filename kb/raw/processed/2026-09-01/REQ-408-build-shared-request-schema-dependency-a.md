@@ -28,6 +28,10 @@ Added the standard-library shared repository-model layer for safe atomic publica
 - Inode, size, and timestamp checks alone did not detect restored-metadata in-place edits; content evidence was required.
 - The first review phrased portable atomic replacement as compare-and-swap against arbitrary writers, a guarantee the standard-library replacement primitives cannot provide; narrowing the contract made the real safety boundary reviewable.
 
+## Worth knowing
+
+Collision evidence is a first-class repository fact and should be consulted before any dependency winner is selected. Unknown schema values remain evidence even when they are unrecognized.
+
 ## Back-reference
 
 See `do-work/archive/REQ-408-build-shared-repository-model.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `ac2e3acd`.

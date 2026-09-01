@@ -41,6 +41,12 @@ filtered counts, and the healthy zero-clause behavior without changing the row m
   it does not join those two observations by row ID. That leaves the `row.hasWork` guard defended by
   code review and production payload shape rather than a single end-to-end assertion.
 
+## Worth knowing
+
+Do not tally only materialized SVG rows. Timeline rows are virtualized, so a DOM
+count would change with scrolling; summary counts must use the filtered data population. The legacy
+`row.anomaly` cause stays in the union even where an anomaly is not a reversed-span marker.
+
 ## Back-reference
 
 See `do-work/archive/UR-062/REQ-313-count-the-breaks-the-timeline-actually-draws.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `0761a10`.

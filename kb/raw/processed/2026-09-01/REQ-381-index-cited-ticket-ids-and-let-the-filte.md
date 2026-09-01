@@ -20,7 +20,7 @@ shipped per request, so the filter reads an index rather than re-scanning bodies
 
 The board can now answer “which cards cite this ticket?” before Copy data loads. Citation-only hits carry a small explanation, and static generation and live refresh use the same resolved index.
 
-## What worked
+## Worth knowing
 
 - Preserve exact-record precedence before case-folded alias resolution. Sending the filter's lowercase needle directly to a case-sensitive exact resolver can incorrectly choose a compound alias.
 - Search sets and annotatable occurrences have different exclusions. Derive them together, but collect citations before clipboard-only suppressions so later presentation changes cannot silently remove search results.

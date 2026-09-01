@@ -20,11 +20,15 @@ REQ-116 made the board normalize `route` and REQ-117 gave `domain` an unrecogniz
 
 ## What worked
 
-**What worked:** Taking the reviewer's finding at face value only after checking it. Codex's claim was that the board was out of lock-step with the contract for `route`, and reading the read site confirmed it exactly — normalization without a recognition result. The finding was also *structurally* predictable: REQ-116 and REQ-117 were captured from the same review round and split by field, so the first shipped normalization before the second had established the channel. Splitting one contract leg across two REQs leaves a window where the fields disagree.
+Taking the reviewer's finding at face value only after checking it. Codex's claim was that the board was out of lock-step with the contract for `route`, and reading the read site confirmed it exactly — normalization without a recognition result. The finding was also *structurally* predictable: REQ-116 and REQ-117 were captured from the same review round and split by field, so the first shipped normalization before the second had established the channel. Splitting one contract leg across two REQs leaves a window where the fields disagree.
 
-**What didn't:** Nothing failed, but the first instinct — derive the flag with a second `resolveSchemaField` call for symmetry with domain — would have been wrong. For route that call returns the empty-string default, so the flag would have been right and the value destroyed. `isKnownSchemaFieldValue` on the already-normalized value is the correct pairing when a field has no default.
+## What didn't work
 
-**Worth knowing:** The board's two contract-field warnings now share one collector, so adding a third field is a slice entry plus its read-site flag — but the two halves are useless apart, and nothing enforces that pairing except the doc comment. A field given a flag and no `Original*` value would warn naming an empty string; a field given `Original*` and no flag would never warn at all.
+Nothing failed, but the first instinct — derive the flag with a second `resolveSchemaField` call for symmetry with domain — would have been wrong. For route that call returns the empty-string default, so the flag would have been right and the value destroyed. `isKnownSchemaFieldValue` on the already-normalized value is the correct pairing when a field has no default.
+
+## Worth knowing
+
+The board's two contract-field warnings now share one collector, so adding a third field is a slice entry plus its read-site flag — but the two halves are useless apart, and nothing enforces that pairing except the doc comment. A field given a flag and no `Original*` value would warn naming an empty string; a field given `Original*` and no flag would never warn at all.
 
 ## Back-reference
 

@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: queue-orchestration-and-lifecycle
 sources: [raw/processed/2026-09-01/REQ-081-next-version-ignores-flags-placed-after.md]
 related:
-  - page: concept-queue-task-lifecycle
-    rel: evidence-for
+  - page: REQ-072-go-utility-allocates-req-ids-and-version
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

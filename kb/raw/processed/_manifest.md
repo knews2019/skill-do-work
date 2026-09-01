@@ -1,5 +1,11 @@
 # Processing Manifest
 
+## Repair notes
+
+- 2026-09-02: Audited all 147 backlog handoffs promoted by commit `33570cc6`; amended only their generated defective sources in place under the user's explicit exception, restored 18 omitted `Worth knowing` sections, normalized lesson boundaries, and preserved every filename, processed path, queue identity, and REQ `kb_entry`.
+
+## Completed sources
+
 | File | Date Processed | Processed Path | Wiki Articles Produced | Status |
 |---|---|---|---|---|
 | REQ-001-code-review-split-actions-work-md-into-o.md | 2026-09-01 | raw/processed/2026-09-01/REQ-001-code-review-split-actions-work-md-into-o.md | [[REQ-001-code-review-split-actions-work-md-into-o]] | done |

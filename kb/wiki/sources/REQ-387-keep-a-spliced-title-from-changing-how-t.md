@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-387-keep-a-spliced-title-from-changing-how-t.md]
 related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+  - page: REQ-382-expand-ticket-ids-written-as-markdown-li
+    rel: depends-on
+  - page: REQ-389-addendum-mark-spliced-paste-titles-with-
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,7 +27,7 @@ the cut leaves unbalanced.
 
 - `skills/do-work-board/tools/queue-kanban/web/board-clipboard.js` (modified). Sanitizes only the existing shortened title before splicing: remove code-span backticks, then escape every ASCII punctuation character in one pass. Full appendix, offsets and drawer title helper stay unchanged. Six additi
 
-## What worked
+## Worth knowing
 
 A Markdown source delimiter count is not a parse oracle. GFM can silently discard surplus cells, and two backticks can be an unmatched delimiter. Test the real rendered structure, preserved neighboring cell contents and author code; escape pre-existing backslashes before inserting a literal pipe escape.
 

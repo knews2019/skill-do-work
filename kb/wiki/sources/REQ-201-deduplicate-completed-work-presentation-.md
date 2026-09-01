@@ -3,11 +3,9 @@ title: "Lessons from REQ-201: Deduplicate completed-work presentation publicatio
 type: source-summary
 topic_cluster: presentation-and-reporting
 sources: [raw/processed/2026-09-01/REQ-201-deduplicate-completed-work-presentation-.md]
-related:
-  - page: concept-completed-work-presentation
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -31,6 +29,10 @@ Made Collision-Safe Publication consumer-neutral and complete, moved generic imm
 ## What didn't work
 
 - The first ratchet accepted a passive checklist heading as an active application pointer and missed a paraphrased whole-artifact path algorithm.
+
+## Worth knowing
+
+Canonicalization tests need to prove an active directive at the execution boundary, not the mere presence of a section name anywhere. Include paraphrase mutations for the rule's meaning, not only copied keywords.
 
 ## Back-reference
 

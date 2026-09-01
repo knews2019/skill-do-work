@@ -4,10 +4,24 @@ type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-143-build-the-full-suite-installer-and-recon.md]
 related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+  - page: REQ-136-define-the-four-skill-suite-contract
+    rel: complements
+  - page: REQ-137-ship-the-suite-aware-bridge-updater
+    rel: complements
+  - page: REQ-138-add-managed-text-section-replacement
+    rel: depends-on
+  - page: REQ-139-stage-the-modular-core-skill
+    rel: depends-on
+  - page: REQ-140-stage-the-modular-board-skill
+    rel: depends-on
+  - page: REQ-141-stage-the-modular-knowledge-skill
+    rel: depends-on
+  - page: REQ-142-stage-the-modular-toolbox-skill
+    rel: depends-on
+  - page: REQ-144-activate-the-four-skill-distribution
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

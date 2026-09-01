@@ -3,11 +3,9 @@ title: "Lessons from REQ-313: Count the breaks the timeline actually draws"
 type: source-summary
 topic_cluster: timeline-and-metrics
 sources: [raw/processed/2026-09-01/REQ-313-count-the-breaks-the-timeline-actually-d.md]
-related:
-  - page: concept-duration-estimation-and-breaks
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -45,6 +43,12 @@ filtered counts, and the healthy zero-clause behavior without changing the row m
 - The test fixture proves summary semantics and the adjacent REQ-304 test proves marker emission, but
   it does not join those two observations by row ID. That leaves the `row.hasWork` guard defended by
   code review and production payload shape rather than a single end-to-end assertion.
+
+## Worth knowing
+
+Do not tally only materialized SVG rows. Timeline rows are virtualized, so a DOM
+count would change with scrolling; summary counts must use the filtered data population. The legacy
+`row.anomaly` cause stays in the union even where an anomaly is not a reversed-span marker.
 
 ## Back-reference
 

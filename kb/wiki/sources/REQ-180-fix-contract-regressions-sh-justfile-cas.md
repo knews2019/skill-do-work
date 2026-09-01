@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-180-fix-contract-regressions-sh-justfile-cas.md]
 related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+  - page: REQ-196-remaining-late-contract-assertions-use-c
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,9 +25,15 @@ Replaced the two capitalized `Justfile` inputs with the tracked lowercase `justf
 
 ## What worked
 
-**What worked:** The captured case-sensitive Linux failure named the exact byte-level mismatch, so the repair stayed at two literals and the full suite proved late checks were reachable again.
-**What didn't:** Reproducing RED on a default macOS filesystem was not meaningful because case-insensitive lookup masks the bug; a disk-image workaround added ceremony without improving the captured evidence.
-**Worth knowing:** Shell test fixtures and prescribed paths must use the tracked filename's exact casing even when a developer filesystem accepts variants.
+The captured case-sensitive Linux failure named the exact byte-level mismatch, so the repair stayed at two literals and the full suite proved late checks were reachable again.
+
+## What didn't work
+
+Reproducing RED on a default macOS filesystem was not meaningful because case-insensitive lookup masks the bug; a disk-image workaround added ceremony without improving the captured evidence.
+
+## Worth knowing
+
+Shell test fixtures and prescribed paths must use the tracked filename's exact casing even when a developer filesystem accepts variants.
 
 ## Back-reference
 

@@ -20,11 +20,15 @@ The board's `route` read in `parseRequestTicket` now goes through `normalizeSche
 
 ## What worked
 
-**What worked:** Writing the test at parse level rather than at the normalizer. The normalizer's own table test (`{"route", "a", "A"}`) was green the entire time the board was wrong — the test existed, passed, and proved nothing about the field the user sees. Choosing the altitude of the assertion mattered more than the number of assertions.
+Writing the test at parse level rather than at the normalizer. The normalizer's own table test (`{"route", "a", "A"}`) was green the entire time the board was wrong — the test existed, passed, and proved nothing about the field the user sees. Choosing the altitude of the assertion mattered more than the number of assertions.
 
-**What didn't:** Nothing failed, but one instinct was wrong: `resolveSchemaField` is the natural sibling call and would have been a defect here. Its contract substitutes the field's documented default, and route's default is the empty string, so `route: z` would have arrived as absent — indistinguishable from a REQ with no route at all, in the exact field re-triage reads to find the problem. The two helpers are one word apart and differ in whether the caller may invent a value.
+## What didn't work
 
-**Worth knowing:** The reason route drifted is recorded in the wrong place to prevent it. `CLAUDE.md`'s lock-step sentence names the fields the board parses for display and obliges any contract change to be mirrored in `model.go` — and `route` was never in that list, so a field that was parsed, badged and drawer-rowed carried no mirroring obligation. When a "keep these in sync" rule is expressed as a field enumeration, a field's absence from the list is silent permission to drift. Five of the contract's nine fields remain unread by the board on purpose; the guard against re-drift is the enumeration, not the code.
+Nothing failed, but one instinct was wrong: `resolveSchemaField` is the natural sibling call and would have been a defect here. Its contract substitutes the field's documented default, and route's default is the empty string, so `route: z` would have arrived as absent — indistinguishable from a REQ with no route at all, in the exact field re-triage reads to find the problem. The two helpers are one word apart and differ in whether the caller may invent a value.
+
+## Worth knowing
+
+The reason route drifted is recorded in the wrong place to prevent it. `CLAUDE.md`'s lock-step sentence names the fields the board parses for display and obliges any contract change to be mirrored in `model.go` — and `route` was never in that list, so a field that was parsed, badged and drawer-rowed carried no mirroring obligation. When a "keep these in sync" rule is expressed as a field enumeration, a field's absence from the list is silent permission to drift. Five of the contract's nine fields remain unread by the board on purpose; the guard against re-drift is the enumeration, not the code.
 
 ## Back-reference
 

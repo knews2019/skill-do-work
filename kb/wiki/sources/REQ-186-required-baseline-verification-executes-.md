@@ -4,10 +4,18 @@ type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-186-required-baseline-verification-executes-.md]
 related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+  - page: REQ-182-public-work-and-schema-vocabularies-drif
+    rel: complements
+  - page: REQ-184-live-board-origin-checks-have-no-trusted
+    rel: complements
+  - page: REQ-185-javascript-behavior-probes-can-all-skip-
+    rel: complements
+  - page: REQ-187-no-single-local-maintainer-command-prove
+    rel: complements
+  - page: REQ-188-hotspot-output-silently-drops-unavailabl
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -23,12 +31,10 @@ Give each duplicated baseline child suite one owner: remove the aggregate's redu
 
 **Verified unchanged:** `_dev/tests/staged-skills-contract.sh` still invokes `prescribed-shell-scripts-behavior.sh` for standalone-semantics coverage.
 
-## What worked
+## Worth knowing
 
 - A required aggregate should give each identical child invocation one owner. If a nested suite already preserves the needed standalone semantics and failure propagation, a second direct edge adds runtime without adding evidence.
 - Maintainer hand-back instructions should name the aggregate baseline once and reserve standalone child runs for genuinely distinct modes, fixtures, or touched-area focus.
-
-**Knowledge handoff:** Pending human triage. No knowledge-base file was written automatically.
 
 ## Back-reference
 

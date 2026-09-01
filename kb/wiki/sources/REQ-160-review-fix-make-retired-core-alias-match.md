@@ -3,11 +3,9 @@ title: "Lessons from REQ-160: Review fix: Make retired core alias matching occur
 type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-160-review-fix-make-retired-core-alias-match.md]
-related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

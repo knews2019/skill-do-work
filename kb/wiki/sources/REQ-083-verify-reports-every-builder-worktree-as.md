@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: worktree-and-parallel-dispatch
 sources: [raw/processed/2026-09-01/REQ-083-verify-reports-every-builder-worktree-as.md]
 related:
-  - page: concept-worktree-isolation-and-parallelism
-    rel: evidence-for
+  - page: REQ-072-go-utility-allocates-req-ids-and-version
+    rel: complements
+  - page: REQ-084-verify-s-queue-state-probe-misses-a-buil
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

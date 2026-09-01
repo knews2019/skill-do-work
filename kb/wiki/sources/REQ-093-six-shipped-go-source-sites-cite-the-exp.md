@@ -3,11 +3,9 @@ title: "Lessons from REQ-093: Confirm: six shipped Go-source sites cite the expo
 type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-093-six-shipped-go-source-sites-cite-the-exp.md]
-related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

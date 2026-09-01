@@ -26,7 +26,7 @@ answer and the function cannot. When it is true the forecast paragraph and the e
 with "Filters are on; this covers the whole queue, not the rows shown." and " from the whole queue".
 Nothing about the projection changed — it is still built Go-side and consumed verbatim.
 
-## What worked
+## Worth knowing
 
 - **A test that calls the function under test directly cannot hold its call site.** Five mutations
   of the copy were caught and the sixth — the one that reverted the actual defect — passed clean.

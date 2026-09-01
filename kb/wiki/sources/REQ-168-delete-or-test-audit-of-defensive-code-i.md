@@ -4,10 +4,18 @@ type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-168-delete-or-test-audit-of-defensive-code-i.md]
 related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+  - page: REQ-165-shell-block-lint-harness-for-shipped-act
+    rel: depends-on
+  - page: REQ-166-simplify-session-start-hook-and-fix-dead
+    rel: complements
+  - page: REQ-167-deduplicate-copy-pasted-shell-primitives
+    rel: complements
+  - page: REQ-169-validate-feedback-flags-remedies-that-ad
+    rel: complements
+  - page: REQ-170-finding-closure-ratchet-and-canonical-ea
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

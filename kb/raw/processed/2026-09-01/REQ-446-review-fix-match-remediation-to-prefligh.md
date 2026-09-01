@@ -22,7 +22,7 @@ Fold-first scan found no pending or pending-answers REQ, sweep or otherwise, in 
 - **Lifecycle result:** completed after one remediation and fresh passing re-review.
 - **Shared seam:** doctor and cleanup both derive actionable preflight guidance from `gittransaction.BuildCommandResult`.
 
-## What worked
+## Worth knowing
 
 - A test name is not closure evidence: the fixture must keep every simultaneous blocker present through the one invocation whose precedence it claims to prove.
 - Shared failure kinds need one canonical remediation renderer, while callers may layer domain identity around that evidence without replacing it.

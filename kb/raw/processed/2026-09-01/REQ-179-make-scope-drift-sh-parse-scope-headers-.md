@@ -20,9 +20,15 @@ Fixed the silent self-disable: an annotated `**Files I will touch (…):**` head
 
 ## What worked
 
-**What worked:** Reproducing RED against the real defect artifact (REQ-178's archive) instead of only synthetic fixtures — it also surfaced the bare-filename Scope formatting as a bonus signal.
-**What didn't:** N/A — first pass green.
-**Worth knowing:** `contract-regressions.sh` aborts at line ~1797 on case-sensitive filesystems (`Justfile` vs `justfile`, REQ-180) — everything after never runs there, so a green-looking late-suite check may simply be unreached. The process-tree probe is confirmed flaky in this sandbox (failed at RED, passed at GREEN, no related change).
+Reproducing RED against the real defect artifact (REQ-178's archive) instead of only synthetic fixtures — it also surfaced the bare-filename Scope formatting as a bonus signal.
+
+## What didn't work
+
+N/A — first pass green.
+
+## Worth knowing
+
+`contract-regressions.sh` aborts at line ~1797 on case-sensitive filesystems (`Justfile` vs `justfile`, REQ-180) — everything after never runs there, so a green-looking late-suite check may simply be unreached. The process-tree probe is confirmed flaky in this sandbox (failed at RED, passed at GREEN, no related change).
 
 ## Back-reference
 

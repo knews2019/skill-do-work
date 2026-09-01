@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: timeline-and-metrics
 sources: [raw/processed/2026-09-01/REQ-252-record-the-browser-with-every-measured-f.md]
 related:
-  - page: concept-duration-estimation-and-breaks
-    rel: evidence-for
+  - page: REQ-248-anchor-the-durations-day-buckets-to-utc-
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,11 +25,15 @@ Every browser-measured constant in the Durations suite (7 `durationsMeasured*` c
 
 ## What worked
 
-**What worked:** Enforcing a documentation convention with a real AST-walking test (vacuity-guarded, mutation-falsifiable) instead of trusting comments to stay honest — RED on all seven constants proved the gap before any edit. Recording provenance identifiers exactly as the archives state them, inconsistencies included, rather than inventing tidier versions.
+Enforcing a documentation convention with a real AST-walking test (vacuity-guarded, mutation-falsifiable) instead of trusting comments to stay honest — RED on all seven constants proved the gap before any edit. Recording provenance identifiers exactly as the archives state them, inconsistencies included, rather than inventing tidier versions.
 
-**What didn't:** Discovered Tasks that live only in hand-back prose are one integration slip from evaporating — the review caught that neither had a durable artifact. Capture them in the REQ's own section at hand-back time.
+## What didn't work
 
-**Worth knowing:** The 11px mark-label box measures LARGER than its recorded constant on Chromium 141 (12.9631 vs 12.84) — the raise is REQ-265; until it lands, the pitch-13 floor clears reality by 0.037 units, not the 0.16 the constant implies. Even the hyphen-vs-U+2212 delta is per-browser (1.73 recorded vs 5.24 measured here). The `durationsMeasured` prefix is a convention the test enforces comments for; a smuggled number under another name is review's job.
+Discovered Tasks that live only in hand-back prose are one integration slip from evaporating — the review caught that neither had a durable artifact. Capture them in the REQ's own section at hand-back time.
+
+## Worth knowing
+
+The 11px mark-label box measures LARGER than its recorded constant on Chromium 141 (12.9631 vs 12.84) — the raise is REQ-265; until it lands, the pitch-13 floor clears reality by 0.037 units, not the 0.16 the constant implies. Even the hyphen-vs-U+2212 delta is per-browser (1.73 recorded vs 5.24 measured here). The `durationsMeasured` prefix is a convention the test enforces comments for; a smuggled number under another name is review's job.
 
 ## Back-reference
 

@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-386-make-the-drawer-and-the-paste-agree-abou.md]
 related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+  - page: REQ-381-index-cited-ticket-ids-and-let-the-filte
+    rel: depends-on
+  - page: REQ-388-settle-the-last-two-drawer-clipboard-div
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,7 +27,7 @@ and apply it to both.
 
 Saving a copied ticket back to disk no longer breaks duplicate-heading suppression. The drawer and Copy agree about which visible prose occurrence first receives the ticket title.
 
-## What worked
+## Worth knowing
 
 Rendered heading text is not the Markdown heading source. Reuse the renderer, account for its preprocessing, and explicitly match JavaScript whitespace and full lowercase before claiming two languages perform the same comparison. When reparsing a fragment, carry reference definitions from the document or the fragment can silently change a heading's text. A copy/save/rebuild test catches heading annotation that a single-surface title test misses.
 

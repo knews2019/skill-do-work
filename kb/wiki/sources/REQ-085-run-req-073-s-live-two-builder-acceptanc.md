@@ -4,10 +4,16 @@ type: source-summary
 topic_cluster: worktree-and-parallel-dispatch
 sources: [raw/processed/2026-09-01/REQ-085-run-req-073-s-live-two-builder-acceptanc.md]
 related:
-  - page: concept-worktree-isolation-and-parallelism
-    rel: evidence-for
+  - page: REQ-073-fan-out-dispatch-n-concurrent-builders-u
+    rel: complements
+  - page: REQ-082-the-fan-out-hand-back-file-has-no-legal
+    rel: complements
+  - page: REQ-091-the-hand-back-merge-fails-while-the-owne
+    rel: complements
+  - page: REQ-092-actions-work-md-has-no-wave-selection-or
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

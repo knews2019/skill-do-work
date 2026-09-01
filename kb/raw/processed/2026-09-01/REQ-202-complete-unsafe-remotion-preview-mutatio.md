@@ -22,13 +22,15 @@ The live presentation files and in-memory replay cases now use one detector seam
 
 ## What worked
 
-**What worked:** Extracting a source-text detector made executable-safety rules directly mutation-testable without modifying shipped presentation instructions. Family-labeled assertions also prevented one unsafe pattern from accidentally masking another.
+Extracting a source-text detector made executable-safety rules directly mutation-testable without modifying shipped presentation instructions. Family-labeled assertions also prevented one unsafe pattern from accidentally masking another.
 
-**What didn't:** The first matcher expansion overfit the exact one-line examples. Independent adversarial review exposed shell-significant indentation and continuation plus a multi-line documentation shape that the initial tests omitted.
+## What didn't work
 
-**Worth knowing:** Safety matchers for Markdown command examples need two bounded grammars: shell continuation for executable content and local structural continuation for explanatory prohibition examples. Crossing arbitrary newlines in either direction creates false negatives or false positives.
+The first matcher expansion overfit the exact one-line examples. Independent adversarial review exposed shell-significant indentation and continuation plus a multi-line documentation shape that the initial tests omitted.
 
-**Knowledge handoff:** Pending human consent. No knowledge-base file was written automatically.
+## Worth knowing
+
+Safety matchers for Markdown command examples need two bounded grammars: shell continuation for executable content and local structural continuation for explanatory prohibition examples. Crossing arbitrary newlines in either direction creates false negatives or false positives.
 
 ## Back-reference
 

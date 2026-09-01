@@ -3,11 +3,9 @@ title: "Lessons from UR-018: Traps the parallel-building batch session already h
 type: source-summary
 topic_cluster: worktree-and-parallel-dispatch
 sources: [raw/processed/2026-09-01/UR-018-parallel-building-batch-session-traps.md]
-related:
-  - page: concept-worktree-isolation-and-parallelism
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

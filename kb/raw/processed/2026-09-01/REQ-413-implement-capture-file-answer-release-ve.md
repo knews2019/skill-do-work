@@ -21,7 +21,7 @@ Move deterministic publication and resolution phases for capture, answers, and r
 - **Critical blocker:** REQ-457 owns transaction-created-path rollback identity.
 - **Other routed work:** REQ-460 (delimiter containment), REQ-461 (release ownership), and REQ-419 (shell-safe Just recipe arguments).
 
-## What worked
+## Worth knowing
 
 - A rooted forward write is not a complete filesystem safety boundary: rollback must prove that the object it removes is the same object this invocation created, even after every later mutation point.
 - Safety predicates stated as conditions cannot be implemented as finite example-prefix or directory-name lists; tests must generate representatives across the condition's classes.

@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: timeline-and-metrics
 sources: [raw/processed/2026-09-01/REQ-248-anchor-the-durations-day-buckets-to-utc-.md]
 related:
-  - page: concept-duration-estimation-and-breaks
-    rel: evidence-for
+  - page: REQ-252-record-the-browser-with-every-measured-f
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,11 +25,15 @@ The Durations axis domain is anchored to whole UTC days — first completion flo
 
 ## What worked
 
-**What worked:** The mark-position agreement assertion is the class-closure this board's geometry work had been missing — it fails in *both* drift directions (JS-only revert, Go-only revert), so renderer and planner cannot silently become two definitions of the domain again. Sweeping day counts to 400 caught the hole behind the instance (the 4-unit minimum bar width overhanging past ~280 days), which the floor/ceil fix alone did not close. Driving the full real `renderDurationsView` over a DOM stub found what sliced-function tests hide.
+The mark-position agreement assertion is the class-closure this board's geometry work had been missing — it fails in *both* drift directions (JS-only revert, Go-only revert), so renderer and planner cannot silently become two definitions of the domain again. Sweeping day counts to 400 caught the hole behind the instance (the 4-unit minimum bar width overhanging past ~280 days), which the floor/ceil fix alone did not close. Driving the full real `renderDurationsView` over a DOM stub found what sliced-function tests hide.
 
-**What didn't:** The captured write set excluded `durations.go` on a collision theory that was empty (REQ-252 is gated behind this REQ), and criterion 4 was unsatisfiable without it — the D-01 escalation cost a scope negotiation mid-build. When a REQ's own guidance says "check the other readers of this domain", the files encoding those readers belong in the write set from the start.
+## What didn't work
 
-**Worth knowing:** Day buckets centre on noon, not midnight — a bar at its floored midnight straddles the previous slot. The axis end label deliberately names the last *active* day, not the domain's exclusive end (D-04, currently unpinned by any test). `durationLabelPlotX`'s zero-width-domain guard is now unreachable and its comment stale (review Minor 1).
+The captured write set excluded `durations.go` on a collision theory that was empty (REQ-252 is gated behind this REQ), and criterion 4 was unsatisfiable without it — the D-01 escalation cost a scope negotiation mid-build. When a REQ's own guidance says "check the other readers of this domain", the files encoding those readers belong in the write set from the start.
+
+## Worth knowing
+
+Day buckets centre on noon, not midnight — a bar at its floored midnight straddles the previous slot. The axis end label deliberately names the last *active* day, not the domain's exclusive end (D-04, currently unpinned by any test). `durationLabelPlotX`'s zero-width-domain guard is now unreachable and its comment stale (review Minor 1).
 
 ## Back-reference
 

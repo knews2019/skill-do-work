@@ -4,10 +4,16 @@ type: source-summary
 topic_cluster: checkpoint-and-crash-recovery
 sources: [raw/processed/2026-09-01/REQ-108-review-fix-in-progress-record-still-enum.md]
 related:
-  - page: concept-session-checkpoints-and-recovery
-    rel: evidence-for
+  - page: REQ-094-checkpoint-writer-label-crash-recovery-i
+    rel: extends
+  - page: REQ-095-two-clone-acceptance-run-checkpoint-pois
+    rel: extends
+  - page: REQ-104-label-less-checkpoint-entries-locally-mo
+    rel: extends
+  - page: REQ-109-work-md-session-start-note-still-enumera
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -42,8 +48,11 @@ Carried REQ-104's drop through the two contract sites that still assumed the old
 
 ## What worked
 
-**What worked:** Stating the condition and deleting the copy (rather than widening the list) resolved the enumeration drift permanently — there is no second case list left to go stale.
-**Worth knowing:** When a classification case loses its auto-path, sweep every *lifecycle* rule scoped to the old classes (removal, cleanup, delete gates) — REQ-104 fixed the classifier and this REQ had to fix the two removal rules it orphaned. The pair is one change conceptually; try to land them together next time.
+Stating the condition and deleting the copy (rather than widening the list) resolved the enumeration drift permanently — there is no second case list left to go stale.
+
+## Worth knowing
+
+When a classification case loses its auto-path, sweep every *lifecycle* rule scoped to the old classes (removal, cleanup, delete gates) — REQ-104 fixed the classifier and this REQ had to fix the two removal rules it orphaned. The pair is one change conceptually; try to land them together next time.
 
 ## Back-reference
 

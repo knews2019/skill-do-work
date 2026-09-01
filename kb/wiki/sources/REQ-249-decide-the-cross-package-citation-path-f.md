@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-249-decide-the-cross-package-citation-path-f.md]
 related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+  - page: REQ-253-decide-the-timestamp-rule-s-two-uncovere
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,11 +25,15 @@ Every backticked cross-package citation in shipped markdown now resolves as a re
 
 ## What worked
 
-**What worked:** Deriving the extent mechanically (condition over the corpus) instead of trusting the capture counts — the brief's grep said 140, the condition said 122+19, and the review's independent scanner reconciled to the same 141 exactly. Making the sweep's condition BE the checker's condition means the two cannot disagree by construction. Refactoring the existing CommonMark walk instead of writing a second parser kept the fixtures as the identity proof.
+Deriving the extent mechanically (condition over the corpus) instead of trusting the capture counts — the brief's grep said 140, the condition said 122+19, and the review's independent scanner reconciled to the same 141 exactly. Making the sweep's condition BE the checker's condition means the two cannot disagree by construction. Refactoring the existing CommonMark walk instead of writing a second parser kept the fixtures as the identity proof.
 
-**What didn't:** The class boundary was drawn at backtick spans — the letter of the decided rule — and the retired *reading* survived at three bare-text sites, including the core SKILL.md stating the old resolution rule as prose (REQ-259). Seventh consecutive occurrence of the instance-vs-class shape; the class this time was "the reading", not "the spelling".
+## What didn't work
 
-**Worth knowing:** `do-work` names both the core package and the consumer queue root, so the checker deliberately skips core-package spans whose tail names nothing real — a citation to a *deleted core* file is invisible to it (documented, fixture-pinned; the other three packages still catch deletions). Anchor fragments on backticked citations are discarded, not validated. Fenced blocks are exempt by design.
+The class boundary was drawn at backtick spans — the letter of the decided rule — and the retired *reading* survived at three bare-text sites, including the core SKILL.md stating the old resolution rule as prose (REQ-259). Seventh consecutive occurrence of the instance-vs-class shape; the class this time was "the reading", not "the spelling".
+
+## Worth knowing
+
+`do-work` names both the core package and the consumer queue root, so the checker deliberately skips core-package spans whose tail names nothing real — a citation to a *deleted core* file is invisible to it (documented, fixture-pinned; the other three packages still catch deletions). Anchor fragments on backticked citations are discarded, not validated. Fenced blocks are exempt by design.
 
 ## Back-reference
 

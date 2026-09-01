@@ -4,10 +4,14 @@ type: source-summary
 topic_cluster: presentation-and-reporting
 sources: [raw/processed/2026-09-01/REQ-190-reduce-present-work-to-portfolio-only-be.md]
 related:
-  - page: concept-completed-work-presentation
-    rel: evidence-for
+  - page: REQ-189-canonicalize-ai-report-and-the-shared-co
+    rel: complements
+  - page: REQ-191-extract-an-explicit-standalone-present-v
+    rel: complements
+  - page: REQ-192-migrate-completed-work-presentation-rout
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -32,6 +36,10 @@ Reduced `present-work` from a mixed item/portfolio artifact generator to one cro
 
 - The first dispatcher described canonical-looking UR/REQ tokens without inheriting the suite-wide case-insensitive, numeric-value token grammar.
 - Resolving a collision-safe snapshot name was not enough; the first publication wording refreshed the canonical file before exclusive snapshot success, permitting partial completion.
+
+## Worth knowing
+
+A non-writing migration path is still an ID-taking action and inherits Target ID Resolution. For a branch promising an immutable snapshot plus a mutable canonical file, publish the no-clobber artifact first and atomically replace the mutable target only after success.
 
 ## Back-reference
 

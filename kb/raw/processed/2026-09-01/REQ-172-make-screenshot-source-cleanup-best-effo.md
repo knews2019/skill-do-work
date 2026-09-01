@@ -20,9 +20,15 @@ Staged-source removal now warns without invalidating an already verified permane
 
 ## What worked
 
-**What worked:** Replaying only the staged-source `rm` separated post-install cleanup from the strict installation boundary.
-**What didn't:** Treating every cleanup failure as transactional failure created a state that the normal retry could not repair.
-**Worth knowing:** Once the permanent asset is byte-verified and no-clobber installed, cleanup warnings must not revoke its validity.
+Replaying only the staged-source `rm` separated post-install cleanup from the strict installation boundary.
+
+## What didn't work
+
+Treating every cleanup failure as transactional failure created a state that the normal retry could not repair.
+
+## Worth knowing
+
+Once the permanent asset is byte-verified and no-clobber installed, cleanup warnings must not revoke its validity.
 
 ## Back-reference
 

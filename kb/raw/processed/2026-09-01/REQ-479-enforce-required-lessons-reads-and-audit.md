@@ -20,11 +20,15 @@ Every claimed REQ now re-evaluates the current lessons index before implementati
 
 ## What worked
 
-**What worked:** Treating claim as a second projection point closes the exact time-order gap capture cannot see, while reusing the same named budget contract avoids a competing rule.
+Treating claim as a second projection point closes the exact time-order gap capture cannot see, while reusing the same named budget contract avoids a competing rule.
 
-**What didn't:** Nesting the consult under the original “Routes B and C” exploration heading initially excluded Route A; checking the trigger against every route exposed it before release.
+## What didn't work
 
-**Worth knowing:** Context routing that runs at capture only is stale by construction for serial batches; enforce it again at claim, and make that consult independent of whether the route performs exploration.
+Nesting the consult under the original “Routes B and C” exploration heading initially excluded Route A; checking the trigger against every route exposed it before release.
+
+## Worth knowing
+
+Context routing that runs at capture only is stale by construction for serial batches; enforce it again at claim, and make that consult independent of whether the route performs exploration.
 
 ## Back-reference
 

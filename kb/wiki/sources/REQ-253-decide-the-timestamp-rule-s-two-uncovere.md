@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-253-decide-the-timestamp-rule-s-two-uncovere.md]
 related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+  - page: REQ-249-decide-the-cross-package-citation-path-f
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,9 +25,11 @@ Both user-answered decisions implemented; the Timestamp rule did not grow a thir
 
 ## What worked
 
-**What worked:** Closing the class by condition ("writes or templates the heading") instead of the REQ's line list — the listed line turned out to be a read site, and the real write sites were elsewhere. Uniqueness-asserted scripted edits made six small text changes safe in one pass.
+Closing the class by condition ("writes or templates the heading") instead of the REQ's line list — the listed line turned out to be a read site, and the real write sites were elsewhere. Uniqueness-asserted scripted edits made six small text changes safe in one pass.
 
-**Worth knowing:** The `## HH:MM UTC` shape is defined once in memory-reference.md § Daily-Log Entry Conventions; the site markers are pointers to it. The date-only paragraph now carries a tripped tripwire — it says "revisit if a second consumer appears" and ui-review is that second consumer (REQ-261 asks the question).
+## Worth knowing
+
+The `## HH:MM UTC` shape is defined once in memory-reference.md § Daily-Log Entry Conventions; the site markers are pointers to it. The date-only paragraph now carries a tripped tripwire — it says "revisit if a second consumer appears" and ui-review is that second consumer (REQ-261 asks the question).
 
 ## Back-reference
 

@@ -3,11 +3,9 @@ title: "Lessons from REQ-375: Restore the strict browser lane on current Chromiu
 type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-375-restore-the-strict-browser-lane-on-curre.md]
-related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -23,7 +21,7 @@ Part of the [[concept-contract-verification-gates]] cluster.
 
 - `skills/do-work-board/tools/queue-kanban/browser_probe_test.go` (modified). Reuses the existing DevTools-pipe session for measurement probes, waits for a populated result node on the page's real clock, reads literal textContent, and retains object-shape/caller JSON validation and strict probe coun
 
-## What worked
+## Worth knowing
 
 Browser process exit is not a reliable result-readiness signal: this Chrome build emitted complete dump-DOM output but did not exit, even for a tiny local page. A bounded protocol read of the completed result node restores observability without relaxing product assertions. Read textContent when the contract is JSON text; serializing HTML can silently change literal clipboard content. A failed mutation-isolator trial identifies that trial's missing event, not all event behavior in that engine or every older release.
 

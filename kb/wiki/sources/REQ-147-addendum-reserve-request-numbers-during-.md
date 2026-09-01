@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: queue-orchestration-and-lifecycle
 sources: [raw/processed/2026-09-01/REQ-147-addendum-reserve-request-numbers-during-.md]
 related:
-  - page: concept-queue-task-lifecycle
-    rel: evidence-for
+  - page: REQ-134-addendum-make-queue-kanban-atomic-replac
+    rel: extends
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -23,7 +23,7 @@ Change `queue-kanban next-req` from a read-only maximum scan into an atomic rese
 
 [MAP CHANGED] `queue-kanban next-req` is now the third write surface. Its only mutation is an empty marker under `do-work/.req-reservations/`, which capture retains and stages with the matching REQ/UR records.
 
-## What worked
+## Worth knowing
 
 - A read-only max scan cannot allocate an identifier; allocation needs a durable ownership event before output.
 - Per-id exclusive markers avoid stale-lock recovery entirely: a stopped caller creates a safe gap, not a lock that another process must guess how to break.

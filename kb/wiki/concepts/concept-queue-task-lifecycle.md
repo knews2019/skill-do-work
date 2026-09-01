@@ -2,12 +2,41 @@
 title: "Queue Orchestration and Task Lifecycle"
 type: concept
 topic_cluster: queue-orchestration-and-lifecycle
-sources: [raw/processed/2026-09-01/REQ-001-code-review-split-actions-work-md-into-o.md]
+sources:
+  - raw/processed/2026-09-01/REQ-001-code-review-split-actions-work-md-into-o.md
+  - raw/processed/2026-09-01/REQ-012-add-do-work-note-command-for-lightweight.md
+  - raw/processed/2026-09-01/REQ-014-add-crew-members-maintenance-md-codifyin.md
+  - raw/processed/2026-09-01/REQ-060-no-mechanism-resolves-a-failed-req-so-a.md
+  - raw/processed/2026-09-01/REQ-079-two-guards-pin-the-weaker-fingerprint-of.md
+  - raw/processed/2026-09-01/REQ-080-the-capture-template-emits-a-stray-instr.md
+  - raw/processed/2026-09-01/REQ-081-next-version-ignores-flags-placed-after.md
+  - raw/processed/2026-09-01/REQ-091-the-hand-back-merge-fails-while-the-owne.md
+  - raw/processed/2026-09-01/REQ-102-scope-work-md-step-10-preserve-rules-to-.md
+  - raw/processed/2026-09-01/REQ-147-addendum-reserve-request-numbers-during-.md
+  - raw/processed/2026-09-01/REQ-151-review-fix-retire-the-pipeline-guard-in-.md
+  - raw/processed/2026-09-01/REQ-155-review-fix-correct-the-manual-stop-hook-.md
+  - raw/processed/2026-09-01/REQ-193-keep-archived-urs-closed-during-standalo.md
+  - raw/processed/2026-09-01/REQ-288-fix-the-three-unfiled-contradictions-in-.md
+  - raw/processed/2026-09-01/REQ-291-browser-behavior-probe-lane-beside-the-n.md
+  - raw/processed/2026-09-01/REQ-299-review-fix-carry-builder-authored-sectio.md
+  - raw/processed/2026-09-01/REQ-389-addendum-mark-spliced-paste-titles-with-.md
 related:
+  - page: concept-completed-work-presentation
+    rel: complements
+  - page: concept-modular-suite-architecture
+    rel: complements
   - page: concept-queue-task-lifecycle
     rel: complements
+  - page: concept-queue-task-lifecycle
+    rel: complements
+  - page: concept-session-checkpoints-and-recovery
+    rel: complements
+  - page: concept-timestamp-and-metadata-governance
+    rel: complements
+  - page: concept-worktree-isolation-and-parallelism
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: high
 ---
 

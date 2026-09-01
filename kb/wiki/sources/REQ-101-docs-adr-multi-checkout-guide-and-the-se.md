@@ -4,10 +4,16 @@ type: source-summary
 topic_cluster: worktree-and-parallel-dispatch
 sources: [raw/processed/2026-09-01/REQ-101-docs-adr-multi-checkout-guide-and-the-se.md]
 related:
-  - page: concept-worktree-isolation-and-parallelism
-    rel: evidence-for
+  - page: REQ-094-checkpoint-writer-label-crash-recovery-i
+    rel: complements
+  - page: REQ-096-execution-model-re-grain-claim-anywhere-
+    rel: depends-on
+  - page: REQ-097-assigned-to-advisory-field-schema-line-s
+    rel: depends-on
+  - page: REQ-099-automatic-wave-dispatch-the-work-loop-co
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

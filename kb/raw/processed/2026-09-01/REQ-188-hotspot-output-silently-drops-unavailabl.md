@@ -28,6 +28,10 @@ Keep unreadable or otherwise unavailable tracked paths visible in hotspot output
 - Treating a per-path measurement failure as a harmless `continue` produced a plausible but incomplete report.
 - A one-measured-row fixture cannot mutation-lock numeric ordering or capping even when it proves unavailable rows bypass the cap.
 
+## Worth knowing
+
+`topCount` applies only to numeric hotspot entries. Every churn-bearing unavailable path remains evidence, keeps its known commit count, and renders uncapped in deterministic path order.
+
 ## Back-reference
 
 See `do-work/archive/UR-041/REQ-188-hotspot-unavailable-evidence.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `8d63070`.

@@ -1,13 +1,11 @@
 ---
-title: "Lessons from REQ-274: Retire the "the SessionStart hook exits nonzero" framing where it is still stated"
+title: 'Lessons from REQ-274: Retire the "the SessionStart hook exits nonzero" framing where it is still stated'
 type: source-summary
 topic_cluster: checkpoint-and-crash-recovery
 sources: [raw/processed/2026-09-01/REQ-274-retire-the-the-sessionstart-hook-exits-n.md]
-related:
-  - page: concept-session-checkpoints-and-recovery
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -27,11 +25,15 @@ Swept every live statement of what a timestamp-repairer failure does to the Sess
 
 ## What worked
 
-**What worked:** Refusing to inherit the REQ's premise. This REQ exists because a claim travelled three documents deep without anyone re-deriving it, so accepting "the hook exits 0, verified against a wedge fixture" on the REQ's word would have reproduced the exact failure being fixed. Re-deriving it also produced something the REQ did not have: the refusal shape it names does *not* reproduce the wedge (voicing is opt-in), so the proof needed a stub repairer that actually fails. The REQ's conclusion was right and its named fixture would not have demonstrated it.
+Refusing to inherit the REQ's premise. This REQ exists because a claim travelled three documents deep without anyone re-deriving it, so accepting "the hook exits 0, verified against a wedge fixture" on the REQ's word would have reproduced the exact failure being fixed. Re-deriving it also produced something the REQ did not have: the refusal shape it names does *not* reproduce the wedge (voicing is opt-in), so the proof needed a stub repairer that actually fails. The REQ's conclusion was right and its named fixture would not have demonstrated it.
 
-**What didn't:** Two attempts at reproducing a real repairer failure failed before the stub worked — the refusal path is silent by design, and an unwritable-directory trip does nothing when the session runs as root. Worth knowing for any future probe of this script: root defeats every permission-based failure path in it, so simulate the failure at the seam instead of trying to provoke it.
+## What didn't work
 
-**Worth knowing:** The rule's canonical home is the comment block at `skills/do-work/scripts/repair-req-timestamps.sh:108-117`, and it has been correct all along. Every false restatement was downstream of it in a *lesson link* or a *run artifact* — narrative surfaces, not contract surfaces. That is the pattern worth watching: the contract text stayed true while the stories told about it drifted, and the stories are what the next reader reaches first.
+Two attempts at reproducing a real repairer failure failed before the stub worked — the refusal path is silent by design, and an unwritable-directory trip does nothing when the session runs as root. Worth knowing for any future probe of this script: root defeats every permission-based failure path in it, so simulate the failure at the seam instead of trying to provoke it.
+
+## Worth knowing
+
+The rule's canonical home is the comment block at `skills/do-work/scripts/repair-req-timestamps.sh:108-117`, and it has been correct all along. Every false restatement was downstream of it in a *lesson link* or a *run artifact* — narrative surfaces, not contract surfaces. That is the pattern worth watching: the contract text stayed true while the stories told about it drifted, and the stories are what the next reader reaches first.
 
 ## Back-reference
 

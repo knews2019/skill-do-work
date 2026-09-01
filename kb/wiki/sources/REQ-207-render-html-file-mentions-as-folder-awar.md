@@ -3,11 +3,9 @@ title: "Lessons from REQ-207: Render HTML file mentions as folder-aware previews
 type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-207-render-html-file-mentions-as-folder-awar.md]
-related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -27,13 +25,15 @@ Active HTML links now redirect from the board to a preview server rooted at the 
 
 ## What worked
 
-**What worked:** Modeling an HTML preview as a small folder-hosting boundary, rather than as another MIME exception, solved the entire authored-page behavior at once: relative and root-relative assets, scripts, fetches, and storage all align with ordinary browser origin rules. Keying origins by canonical folder then made reuse and isolation the same design decision.
+Modeling an HTML preview as a small folder-hosting boundary, rather than as another MIME exception, solved the entire authored-page behavior at once: relative and root-relative assets, scripts, fetches, and storage all align with ordinary browser origin rules. Keying origins by canonical folder then made reuse and isolation the same design decision.
 
-**What didn't:** Implementation started directly from the chat plan without first capturing a paired UR/REQ, then stopped at a verified working tree without committing. The technical result existed, but neither the durable intent nor the code itself had a complete Git-history handoff until the user noticed both omissions. A fully specified implementation request still needs request capture before code changes, and passing verification is not completion until the coherent change is committed and its hash recorded.
+## What didn't work
 
-**Worth knowing:** HTML cannot safely follow the PNG fix's shape. A content-type exception on `/file` would execute repository scripts on the board origin; an HTML-only secondary response would break the page's resource graph. The containing directory is both the functional web root and the enforceable least-authority filesystem boundary. Keep the board origin and every active repository preview origin distinct.
+Implementation started directly from the chat plan without first capturing a paired UR/REQ, then stopped at a verified working tree without committing. The technical result existed, but neither the durable intent nor the code itself had a complete Git-history handoff until the user noticed both omissions. A fully specified implementation request still needs request capture before code changes, and passing verification is not completion until the coherent change is committed and its hash recorded.
 
-**Knowledge handoff:** The user explicitly requested durable prime promotion. The maintainer prime links this record; the shipped queue-kanban prime inlines the portable security and capture lessons because installed packages do not contain this repository's `do-work/` archive. `CLAUDE.md` now carries the repository-wide commit-completion rule. Formal BKB handoff remains pending.
+## Worth knowing
+
+HTML cannot safely follow the PNG fix's shape. A content-type exception on `/file` would execute repository scripts on the board origin; an HTML-only secondary response would break the page's resource graph. The containing directory is both the functional web root and the enforceable least-authority filesystem boundary. Keep the board origin and every active repository preview origin distinct.
 
 ## Back-reference
 

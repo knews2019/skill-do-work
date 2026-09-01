@@ -24,15 +24,19 @@ This is a leaf repair to the action/template reference contract; no new destinat
 
 ## What worked
 
-**What worked:** Counting the affected payloads before designing selected the direct repair, while
+Counting the affected payloads before designing selected the direct repair, while
 running both citation gates exposed the existing assertion that encoded the wrong source-relative
 form.
 
-**What didn't:** The first replacement used `actions/...`, matching core-generated REQs but failing
+## What didn't work
+
+The first replacement used `actions/...`, matching core-generated REQs but failing
 the staged toolbox reference gate. A consumer-root installed path is stable across queue, working,
 and archive moves and satisfies both readers.
 
-**Worth knowing:** Template citations have two locations: the producer and the emitted artifact.
+## Worth knowing
+
+Template citations have two locations: the producer and the emitted artifact.
 Source-package correctness says nothing about the destination; tests must judge the emitted form.
 
 ## Back-reference

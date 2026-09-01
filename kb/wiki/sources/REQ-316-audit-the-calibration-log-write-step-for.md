@@ -3,11 +3,9 @@ title: "Lessons from REQ-316: Audit the calibration-log write step for the REQ-2
 type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-316-audit-the-calibration-log-write-step-for.md]
-related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -40,6 +38,12 @@ Timestamp rule and historical calibration corpus remain unchanged.
 - The original instruction named the correct arithmetic but left the value source implicit. That
   let an earlier context-held timestamp look interchangeable with the persisted frontmatter stamp,
   producing a valid-looking but wrong calibration row.
+
+## Worth knowing
+
+A durable cross-file projection needs to read the record that actually landed on
+disk at the point of derivation. Stamp-generation rules do not automatically establish that
+readback boundary, and broad whole-step greps cannot prove it is attached to the writer.
 
 ## Back-reference
 

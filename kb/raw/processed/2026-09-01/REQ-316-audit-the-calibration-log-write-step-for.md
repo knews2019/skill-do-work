@@ -36,6 +36,12 @@ Timestamp rule and historical calibration corpus remain unchanged.
   let an earlier context-held timestamp look interchangeable with the persisted frontmatter stamp,
   producing a valid-looking but wrong calibration row.
 
+## Worth knowing
+
+A durable cross-file projection needs to read the record that actually landed on
+disk at the point of derivation. Stamp-generation rules do not automatically establish that
+readback boundary, and broad whole-step greps cannot prove it is attached to the writer.
+
 ## Back-reference
 
 See `do-work/archive/UR-057/REQ-316-audit-the-calibration-log-write-step-for-the-req-274-bug-class.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `68d9ad9`.

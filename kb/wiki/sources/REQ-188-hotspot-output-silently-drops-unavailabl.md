@@ -4,10 +4,18 @@ type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-188-hotspot-output-silently-drops-unavailabl.md]
 related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+  - page: REQ-182-public-work-and-schema-vocabularies-drif
+    rel: complements
+  - page: REQ-184-live-board-origin-checks-have-no-trusted
+    rel: complements
+  - page: REQ-185-javascript-behavior-probes-can-all-skip-
+    rel: complements
+  - page: REQ-186-required-baseline-verification-executes-
+    rel: complements
+  - page: REQ-187-no-single-local-maintainer-command-prove
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -32,6 +40,10 @@ Keep unreadable or otherwise unavailable tracked paths visible in hotspot output
 
 - Treating a per-path measurement failure as a harmless `continue` produced a plausible but incomplete report.
 - A one-measured-row fixture cannot mutation-lock numeric ordering or capping even when it proves unavailable rows bypass the cap.
+
+## Worth knowing
+
+`topCount` applies only to numeric hotspot entries. Every churn-bearing unavailable path remains evidence, keeps its known commit count, and renders uncapped in deterministic path order.
 
 ## Back-reference
 

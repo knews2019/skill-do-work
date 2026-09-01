@@ -37,6 +37,13 @@ the ordinary remediation/follow-up/archive route.
 - REQ-309 originally tested only the newly added lane. That left a broader later directive free to
   reverse its failure disposition even though the local contract was completely green.
 
+## Worth knowing
+
+A preservation exception must narrow downstream catch-all error handlers, not
+only be stated where the exception originates. Attributable current-diff failures still use the
+ordinary remediation/Code/archive path; the hold is only for unrelated or pre-existing canonical
+gate failures.
+
 ## Back-reference
 
 See `do-work/archive/UR-055/REQ-317-preserve-canonical-gate-holds-in-error-handling.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `a9259d7`.

@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: queue-orchestration-and-lifecycle
 sources: [raw/processed/2026-09-01/REQ-389-addendum-mark-spliced-paste-titles-with-.md]
 related:
-  - page: concept-queue-task-lifecycle
-    rel: evidence-for
+  - page: REQ-387-keep-a-spliced-title-from-changing-how-t
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -27,7 +27,7 @@ parenthetical was inserted by the board, not written by the ticket's author.
 - `skills/do-work-board/tools/queue-kanban/web/board-clipboard.js` (modified). Changes the single in-body insertion prefix to the exact ASCII arrow and space. Safe-title escaping, offsets and the appendix are unchanged. One line replaced.
 - `skills/do-work-board/tools/queue-kanban/generate_test.go`
 
-## What worked
+## Worth knowing
 
 No new reusable lesson beyond the existing clipboard representation and actual-renderer lessons. This change deliberately distinguishes inserted text from author prose; do not later remove that marker to make clipboard text identical to drawer styling.
 

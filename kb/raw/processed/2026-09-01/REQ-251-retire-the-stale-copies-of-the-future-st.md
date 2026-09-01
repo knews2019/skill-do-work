@@ -20,9 +20,11 @@ Retired the two surviving copies of the pre-REQ-245 future-stamp wording. The `v
 
 ## What worked
 
-**What worked:** Deriving fixture text from production (helper call) instead of re-pasting the current wording — the third copy would have stranded at the next message move exactly as the first two did.
+Deriving fixture text from production (helper call) instead of re-pasting the current wording — the third copy would have stranded at the next message move exactly as the first two did.
 
-**Worth knowing:** `reversedSpanAnomalyReason(t)` in `timestamp_test.go` is the canonical way for any test in the package to obtain the production reversed-span reason; new fixtures should call it, never paste.
+## Worth knowing
+
+`reversedSpanAnomalyReason(t)` in `timestamp_test.go` is the canonical way for any test in the package to obtain the production reversed-span reason; new fixtures should call it, never paste.
 
 ## Back-reference
 

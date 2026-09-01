@@ -4,10 +4,14 @@ type: source-summary
 topic_cluster: presentation-and-reporting
 sources: [raw/processed/2026-09-01/REQ-192-migrate-completed-work-presentation-rout.md]
 related:
-  - page: concept-completed-work-presentation
-    rel: evidence-for
+  - page: REQ-189-canonicalize-ai-report-and-the-shared-co
+    rel: depends-on
+  - page: REQ-190-reduce-present-work-to-portfolio-only-be
+    rel: depends-on
+  - page: REQ-191-extract-an-explicit-standalone-present-v
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -32,6 +36,10 @@ Migrated live routing, discovery, full-cycle guidance, caller descriptions, and 
 
 - The first GREEN contract block under-specified load order, retired portfolio workflows, and unsafe guide commands. Qualification caught those gaps and sent the test seam back for focused correction.
 - The widened unsafe-preview matcher still encoded literal examples too narrowly; review mutation probes exposed fixed-port flag and nonliteral platform-opener escapes, now owned by REQ-202.
+
+## Worth knowing
+
+Presentation routing aliases must remain exact and mutually exclusive, while guardrail applicability should be condition-based with action names treated only as examples. Test executable command segments separately from negative explanatory prose so safety assertions can be both broad and precise.
 
 ## Back-reference
 

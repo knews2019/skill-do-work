@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.10 — Repair Knowledge-Base Backlog Integrity (2026-09-02)
+
+The backlog ingest now preserves every factual lesson, exposes malformed YAML and one-way relationships mechanically, and carries a verified reciprocal evidence graph without changing REQ source identities.
+
+- Restored 18 omitted `Worth knowing` sections, normalized all promoted lesson layouts in processed sources and wiki summaries, repaired two malformed titles, and backfilled 185 daily-log source labels.
+- Replaced one-way typed metadata with 201 bounded reciprocal pairs, synchronized concept evidence, and completed semantic lint, garden, defrag, manifest, overview, index, and usage-ledger records.
+- `bkb-lint-structure` now reports malformed quoted top-level scalars and non-reciprocal typed edges with exact actionable paths, backed by read-only regression tests.
+
 ## 0.260.9 — Reserve Forecast Time for Untimed Claims (2026-09-02)
 
 An active claim with a missing or malformed timestamp could disappear from the board's serial forecast, letting pending work appear to start immediately. The forecast now reserves a conservative bucket-median span while leaving timestamp diagnosis and stored metadata untouched.
@@ -44,7 +52,7 @@ Processed the entire pending knowledge-base backlog across all archived REQs, co
 - Promoted 147 eligible archived REQs with substantive Lessons Learned to structured inbox sources and updated their frontmatter to `kb_status: promoted`.
 - Skipped 2 ineligible REQs without lessons learned sections (`REQ-177`, `REQ-380`) and repaired duplicate `kb_entry` in `REQ-017`.
 - Triaged and ingested 185 sources into 200 wiki articles across 11 topic clusters, generating daily logs, manifest records, and usage ledger events.
-- Validated complete structural health with `bkb-status` and `bkb-lint-structure`.
+- Ran `bkb-status`, which reported that defrag and garden had never run, and `bkb-lint-structure`, which returned clean under its then-current checks.
 
 ## 0.260.3 — Static Board Publication Refuses Non-File Output Targets (2026-09-01)
 

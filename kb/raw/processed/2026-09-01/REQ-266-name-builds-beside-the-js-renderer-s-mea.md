@@ -20,11 +20,15 @@ Removed the last undated measured number from the renderer's comments and replac
 
 ## What worked
 
-**What worked:** Doing the re-read the REQ asked for instead of trusting its own expected outcome. The REQ said twice that closing as no-longer-applicable was expected, and REQ-292 had just landed — it would have been easy and defensible to close it. One of the three instances had survived, along with a citation to a test deleted an hour earlier in the same run.
+Doing the re-read the REQ asked for instead of trusting its own expected outcome. The REQ said twice that closing as no-longer-applicable was expected, and REQ-292 had just landed — it would have been easy and defensible to close it. One of the three instances had survived, along with a citation to a test deleted an hour earlier in the same run.
 
-**What didn't:** The first mutation test of the new check passed when it should have failed, because the defect was reinserted into a comment block that already named two REQs. That is the check's real anchoring behaviour, not a mistake in the mutation — and finding it took writing a mutation that *should* fail and being surprised. A mutation test that passes is either a working guard or a broken check, and the only way to tell is to write the second mutation.
+## What didn't work
 
-**Worth knowing:** The useful distinction here generalises past this file. A number in a comment is doing one of two jobs: asserting something true *now* about the environment, or citing evidence for a decision *then*. The first goes stale invisibly and needs dating; the second is already dated by the decision it supports. Demanding provenance for both makes the rule annoying enough to be ignored, which is roughly how the undated numbers got there.
+The first mutation test of the new check passed when it should have failed, because the defect was reinserted into a comment block that already named two REQs. That is the check's real anchoring behaviour, not a mistake in the mutation — and finding it took writing a mutation that *should* fail and being surprised. A mutation test that passes is either a working guard or a broken check, and the only way to tell is to write the second mutation.
+
+## Worth knowing
+
+The useful distinction here generalises past this file. A number in a comment is doing one of two jobs: asserting something true *now* about the environment, or citing evidence for a decision *then*. The first goes stale invisibly and needs dating; the second is already dated by the decision it supports. Demanding provenance for both makes the rule annoying enough to be ignored, which is roughly how the undated numbers got there.
 
 ## Back-reference
 

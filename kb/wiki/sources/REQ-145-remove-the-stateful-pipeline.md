@@ -4,10 +4,16 @@ type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-145-remove-the-stateful-pipeline.md]
 related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+  - page: REQ-141-stage-the-modular-knowledge-skill
+    rel: complements
+  - page: REQ-142-stage-the-modular-toolbox-skill
+    rel: complements
+  - page: REQ-144-activate-the-four-skill-distribution
+    rel: depends-on
+  - page: REQ-146-remove-modular-migration-compatibility-s
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

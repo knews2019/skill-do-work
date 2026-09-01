@@ -3,11 +3,9 @@ title: "Lessons from REQ-066: Clear two shellcheck warnings in the commit-hash g
 type: source-summary
 topic_cluster: shell-and-automation
 sources: [raw/processed/2026-09-01/REQ-066-clear-two-shellcheck-warnings-in-the-com.md]
-related:
-  - page: concept-prescribed-shell-commands
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-006-code-review-replace-work-md-step-number.md]
 related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+  - page: REQ-001-code-review-split-actions-work-md-into-o
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

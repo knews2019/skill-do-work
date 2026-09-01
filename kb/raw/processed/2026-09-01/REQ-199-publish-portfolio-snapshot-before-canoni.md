@@ -30,6 +30,10 @@ Promoted portfolio output into a shipped helper that verifies one retained sourc
 - Hard-link identity proved byte equality at publication but coupled later mutable canonical writes back into the durable snapshot.
 - Two-operand `ln` and `mv` interpret directory destinations as containers; without exact-path type guards, successful status does not prove the requested path was published.
 
+## Worth knowing
+
+Immutable evidence needs independent file contents, not merely a second directory entry for the same inode. Publication helpers must test exact target type/identity because core utilities treat directories differently from file destinations.
+
 ## Back-reference
 
 See `do-work/archive/UR-042/REQ-199-publish-portfolio-snapshot-before-canonical-refresh.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `74f2220`.

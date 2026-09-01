@@ -18,12 +18,10 @@ Add an explicit maintainer-strict JavaScript behavior lane so the board suite ca
 
 **Behavior:** Maintainers can select one stable strict test entrypoint that fails if no JavaScript behavior probe actually starts. Ordinary package tests still skip when Node is unavailable, while Node-capable runs execute the production predicates, empty-state decisions, recent-window refresh, testing view copy, and confirmed testing transition.
 
-## What worked
+## Worth knowing
 
 - An optional-tool test lane needs two separate contracts: ordinary consumers may skip unavailable probes, while the maintainer entrypoint must count attempted behavior and reject an otherwise green zero-probe run.
 - Executing pure helpers is not enough when the regression lives in caller composition or a hidden-state branch. Mutation-resistant coverage must observe the production caller and each cache/render branch whose transition is part of the claim.
-
-**Knowledge handoff:** Pending human triage. No knowledge-base file was written automatically.
 
 ## Back-reference
 

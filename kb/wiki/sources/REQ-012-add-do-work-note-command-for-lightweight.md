@@ -3,11 +3,9 @@ title: "Lessons from REQ-012: Add do-work note command for lightweight roadmap n
 type: source-summary
 topic_cluster: queue-orchestration-and-lifecycle
 sources: [raw/processed/2026-09-01/REQ-012-add-do-work-note-command-for-lightweight.md]
-related:
-  - page: concept-queue-task-lifecycle
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

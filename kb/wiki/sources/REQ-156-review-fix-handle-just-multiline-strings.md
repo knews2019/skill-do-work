@@ -3,11 +3,9 @@ title: "Lessons from REQ-156: Review fix: Handle Just multiline strings in colli
 type: source-summary
 topic_cluster: shell-and-automation
 sources: [raw/processed/2026-09-01/REQ-156-review-fix-handle-just-multiline-strings.md]
-related:
-  - page: concept-prescribed-shell-commands
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

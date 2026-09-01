@@ -3,11 +3,9 @@ title: "Lessons from REQ-161: Review fix: Complete escaped-link and list-paragra
 type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-161-review-fix-complete-escaped-link-and-lis.md]
-related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

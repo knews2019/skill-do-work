@@ -29,6 +29,10 @@ Made raster generation batch-private until status-backed success exists, conditi
 
 - Normal all-failed/mixed cases were not enough to prove the complete batch lifecycle: caller interruption can orphan children, and plain `mv` has destination-directory nesting semantics under a coordinated collision.
 
+## Worth knowing
+
+Publishing a directory safely is a process-tree and filesystem-transaction problem together. Test signal ownership and a destination appearing at the final boundary, not only successful and failed backend statuses.
+
 ## Back-reference
 
 See `do-work/archive/UR-042/REQ-198-publish-generated-directory-only-after-image-success.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `00db46c`.

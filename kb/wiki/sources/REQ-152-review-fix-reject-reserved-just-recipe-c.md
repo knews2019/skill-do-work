@@ -3,11 +3,9 @@ title: "Lessons from REQ-152: Review fix: Reject reserved Just recipe collisions
 type: source-summary
 topic_cluster: shell-and-automation
 sources: [raw/processed/2026-09-01/REQ-152-review-fix-reject-reserved-just-recipe-c.md]
-related:
-  - page: concept-prescribed-shell-commands
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

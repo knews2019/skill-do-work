@@ -2,12 +2,19 @@
 title: "Knowledge Base and Memory"
 type: concept
 topic_cluster: knowledge-and-memory
-sources: [raw/processed/2026-09-01/REQ-013-forensics-detect-corrections-recurring-a.md]
+sources:
+  - raw/processed/2026-09-01/REQ-013-forensics-detect-corrections-recurring-a.md
+  - raw/processed/2026-09-01/REQ-088-fix-memory-reference-md-s-citation-of-th.md
+  - raw/processed/2026-09-01/REQ-141-stage-the-modular-knowledge-skill.md
+  - raw/processed/2026-09-01/REQ-262-govern-the-prompt-kit-templates-date-hea.md
+  - raw/processed/2026-09-01/REQ-477-family-keyed-lessons-intelligent-index-a.md
+  - raw/processed/2026-09-01/REQ-478-capture-stamps-required-lessons-under-a-.md
+  - raw/processed/2026-09-01/REQ-479-enforce-required-lessons-reads-and-audit.md
 related:
   - page: entity-bkb-engine
     rel: extends
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: high
 ---
 

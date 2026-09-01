@@ -3,11 +3,9 @@ title: "Lessons from REQ-040: Board overlap badge: use path.Match and document t
 type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-040-board-overlap-badge-use-path-match-and-d.md]
-related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

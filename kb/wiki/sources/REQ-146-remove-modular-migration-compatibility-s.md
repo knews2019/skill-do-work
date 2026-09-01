@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-146-remove-modular-migration-compatibility-s.md]
 related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+  - page: REQ-144-activate-the-four-skill-distribution
+    rel: depends-on
+  - page: REQ-145-remove-the-stateful-pipeline
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

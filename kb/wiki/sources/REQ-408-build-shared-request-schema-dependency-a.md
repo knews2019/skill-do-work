@@ -4,10 +4,20 @@ type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-408-build-shared-request-schema-dependency-a.md]
 related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+  - page: REQ-409-implement-safe-cleanup-passes-and-explic
+    rel: complements
+  - page: REQ-410-implement-doctor-deterministic-forensics
+    rel: complements
+  - page: REQ-413-implement-capture-file-answer-release-ve
+    rel: complements
+  - page: REQ-414-migrate-remaining-core-checks-publicatio
+    rel: complements
+  - page: REQ-419-add-flat-just-recipes-collision-validati
+    rel: complements
+  - page: REQ-420-replace-shell-implementations-with-shims
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -32,6 +42,10 @@ Added the standard-library shared repository-model layer for safe atomic publica
 
 - Inode, size, and timestamp checks alone did not detect restored-metadata in-place edits; content evidence was required.
 - The first review phrased portable atomic replacement as compare-and-swap against arbitrary writers, a guarantee the standard-library replacement primitives cannot provide; narrowing the contract made the real safety boundary reviewable.
+
+## Worth knowing
+
+Collision evidence is a first-class repository fact and should be consulted before any dependency winner is selected. Unknown schema values remain evidence even when they are unrecognized.
 
 ## Back-reference
 

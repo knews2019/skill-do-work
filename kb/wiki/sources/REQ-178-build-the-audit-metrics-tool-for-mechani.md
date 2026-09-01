@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-178-build-the-audit-metrics-tool-for-mechani.md]
 related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+  - page: REQ-176-implement-the-maintainability-audit-acti
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,9 +25,15 @@ Built the vendored audit-metrics Go CLI (zero dependencies, queue-kanban convent
 
 ## What worked
 
-**What worked:** Mirroring queue-kanban's conventions wholesale (renderer/io.Writer split, per-subcommand FlagSets, real-git fixtures in t.TempDir()) meant zero design churn; the real-repo spot-check during build caught the biggest correctness bug (staged-copy migration) before review.
-**What didn't:** `-M` rename detection alone missed the 2026-08-08 skills/ restructure entirely (8 vs 214 touches) — it was a staged copy-then-delete, invisible to rename detection; only `-C --find-copies-harder` plus dead-copy-source reassignment reproduces `git log --follow`. Also: phrasing the Scope header with a parenthetical silently disabled scope-drift.sh (→ REQ-179).
-**Worth knowing:** Churn numbers from this tool are only trustworthy because of copy detection — anyone replacing it with a plain `git log --name-only | sort | uniq -c` resurrects the dead-path split. Shallow clones are detected and reported, never silently truncated. The tool is a separate Go module — a repo-root `go build ./...` never reaches it.
+Mirroring queue-kanban's conventions wholesale (renderer/io.Writer split, per-subcommand FlagSets, real-git fixtures in t.TempDir()) meant zero design churn; the real-repo spot-check during build caught the biggest correctness bug (staged-copy migration) before review.
+
+## What didn't work
+
+`-M` rename detection alone missed the 2026-08-08 skills/ restructure entirely (8 vs 214 touches) — it was a staged copy-then-delete, invisible to rename detection; only `-C --find-copies-harder` plus dead-copy-source reassignment reproduces `git log --follow`. Also: phrasing the Scope header with a parenthetical silently disabled scope-drift.sh (→ REQ-179).
+
+## Worth knowing
+
+Churn numbers from this tool are only trustworthy because of copy detection — anyone replacing it with a plain `git log --name-only | sort | uniq -c` resurrects the dead-path split. Shallow clones are detected and reported, never silently truncated. The tool is a separate Go module — a repo-root `go build ./...` never reaches it.
 
 ## Back-reference
 

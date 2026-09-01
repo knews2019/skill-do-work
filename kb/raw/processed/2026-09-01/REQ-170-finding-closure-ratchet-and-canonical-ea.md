@@ -22,7 +22,7 @@ Two small, single-home rules that make the review loop converge instead of plate
 - The canonical closure rule lives in `skills/do-work/actions/work-reference.md`; capture and review only enforce/cite it.
 - Producer compatibility is pinned in `_dev/tests/contract-regressions.sh` across core `review-work.md` and toolbox `code-review.md`.
 
-## What worked
+## Worth knowing
 
 - A universal consumer gate is incomplete until every real producer is enumerated and shown to emit compatible data; testing the first named caller only can leave a second package silently broken.
 - Condition-driven inventory (exact marker fields matched to fenced templates) is safer than a filename list because it makes newly introduced producers fail closed.

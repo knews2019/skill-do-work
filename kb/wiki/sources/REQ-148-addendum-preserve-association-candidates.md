@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-148-addendum-preserve-association-candidates.md]
 related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+  - page: REQ-128-secret-rename-quarantine-survives-re-inv
+    rel: extends
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -23,7 +23,7 @@ Correct REQ-128's commit and unscoped-inspect quarantine merge so an empty run-l
 
 [MAP UNCHANGED] Commit and inspect still own their candidate filtering inline; only the first-input discriminator changed, with no new tool or interface.
 
-## What worked
+## Worth knowing
 
 - `NR == FNR` is not a safe first-file test when an input may be empty; identify that input explicitly through `FILENAME` and `ARGV`.
 - A regression for a two-input merge must cover the zero-record first input, not only populated joins.

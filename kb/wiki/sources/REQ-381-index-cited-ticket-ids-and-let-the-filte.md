@@ -4,10 +4,14 @@ type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-381-index-cited-ticket-ids-and-let-the-filte.md]
 related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+  - page: REQ-382-expand-ticket-ids-written-as-markdown-li
+    rel: complements
+  - page: REQ-385-treat-an-underscore-as-a-ticket-id-bound
+    rel: depends-on
+  - page: REQ-386-make-the-drawer-and-the-paste-agree-abou
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,7 +29,7 @@ shipped per request, so the filter reads an index rather than re-scanning bodies
 
 The board can now answer “which cards cite this ticket?” before Copy data loads. Citation-only hits carry a small explanation, and static generation and live refresh use the same resolved index.
 
-## What worked
+## Worth knowing
 
 - Preserve exact-record precedence before case-folded alias resolution. Sending the filter's lowercase needle directly to a case-sensitive exact resolver can incorrectly choose a compound alias.
 - Search sets and annotatable occurrences have different exclusions. Derive them together, but collect citations before clipboard-only suppressions so later presentation changes cannot silently remove search results.

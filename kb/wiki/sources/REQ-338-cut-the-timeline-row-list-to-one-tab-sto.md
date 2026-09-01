@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: timeline-and-metrics
 sources: [raw/processed/2026-09-01/REQ-338-cut-the-timeline-row-list-to-one-tab-sto.md]
 related:
-  - page: concept-duration-estimation-and-breaks
-    rel: evidence-for
+  - page: REQ-336-timeline-clicks-open-the-detail-drawer-a
+    rel: complements
+  - page: REQ-337-a-check-that-can-catch-timeline-click-re
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

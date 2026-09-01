@@ -22,13 +22,17 @@ Added a timestamp-ordering probe to `queue-kanban verify` covering queue, workin
 
 ## What worked
 
-**What worked:** Running the captured RED before writing code, again. It confirmed the fixture reproduces the blind spot and — more usefully — the *shape* of the REQ's proof was already right, so the test could be the fixture rather than an invention. Second: running the finished probe against the repository's own 250+ REQs. A new failing condition on a gate everyone runs is only safe if you have measured its false-positive rate on real data, and "zero on 250" is the sentence that makes it safe to ship.
+Running the captured RED before writing code, again. It confirmed the fixture reproduces the blind spot and — more usefully — the *shape* of the REQ's proof was already right, so the test could be the fixture rather than an invention. Second: running the finished probe against the repository's own 250+ REQs. A new failing condition on a gate everyone runs is only safe if you have measured its false-positive rate on real data, and "zero on 250" is the sentence that makes it safe to ship.
 
-**What didn't:** Writing the Go source through an **unquoted** shell heredoc. Backticks inside a Go comment were command-substituted away, leaving `Not Fixable —  does not rewrite stamps` — which compiles, passes vet, passes gofmt, and passes every test. Only re-reading the written block caught it. For any generated file with backticks or `$` in it, quote the heredoc delimiter (`<<'PY'`); a build is not evidence that a comment survived.
+## What didn't work
+
+Writing the Go source through an **unquoted** shell heredoc. Backticks inside a Go comment were command-substituted away, leaving `Not Fixable —  does not rewrite stamps` — which compiles, passes vet, passes gofmt, and passes every test. Only re-reading the written block caught it. For any generated file with backticks or `$` in it, quote the heredoc delimiter (`<<'PY'`); a build is not evidence that a comment survived.
 
 Also: the REQ's two named pairs were not the whole rule. Implementing them exactly left `created_at > completed_at` with an absent `claimed_at` passing — and my own carve-out fixture was the thing that walked into it. The instance list was again narrower than the class, which is the third time this session.
 
-**Worth knowing:** The ordering predicate now exists in two languages — `scripts/repair-req-timestamps.sh` (repair) and `verify.go` (read). Nothing holds them together mechanically; the Go comment names the shell file and its two boundary decisions (strict comparison, absent stamp is other checks' territory) precisely because that is the seam most likely to drift. If a third spelling is ever proposed, that is the moment to build the shared-fixture harness instead.
+## Worth knowing
+
+The ordering predicate now exists in two languages — `scripts/repair-req-timestamps.sh` (repair) and `verify.go` (read). Nothing holds them together mechanically; the Go comment names the shell file and its two boundary decisions (strict comparison, absent stamp is other checks' territory) precisely because that is the seam most likely to drift. If a third spelling is ever proposed, that is the moment to build the shared-fixture harness instead.
 
 ## Back-reference
 

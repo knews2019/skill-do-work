@@ -3,11 +3,9 @@ title: "Lessons from REQ-153: Review fix: Sweep retired core command restatement
 type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-153-review-fix-sweep-retired-core-command-re.md]
-related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

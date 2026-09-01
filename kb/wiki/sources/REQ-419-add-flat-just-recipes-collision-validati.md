@@ -4,10 +4,20 @@ type: source-summary
 topic_cluster: shell-and-automation
 sources: [raw/processed/2026-09-01/REQ-419-add-flat-just-recipes-collision-validati.md]
 related:
-  - page: concept-prescribed-shell-commands
-    rel: evidence-for
+  - page: REQ-408-build-shared-request-schema-dependency-a
+    rel: complements
+  - page: REQ-409-implement-safe-cleanup-passes-and-explic
+    rel: complements
+  - page: REQ-410-implement-doctor-deterministic-forensics
+    rel: complements
+  - page: REQ-413-implement-capture-file-answer-release-ve
+    rel: complements
+  - page: REQ-414-migrate-remaining-core-checks-publicatio
+    rel: complements
+  - page: REQ-420-replace-shell-implementations-with-shims
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,13 +35,15 @@ Published a 40-definition flat Just interface backed by one managed template, ma
 
 ## What worked
 
-**What worked:** Reproducing the failure through the actual managed template with command-substitution sentinels exposed the real shell boundary; Just's per-recipe `[positional-arguments]` plus `"$@"` preserved every original argument byte.
+Reproducing the failure through the actual managed template with command-substitution sentinels exposed the real shell boundary; Just's per-recipe `[positional-arguments]` plus `"$@"` preserved every original argument byte.
 
-**What didn't:** POSIX-quoting the outer generated command was insufficient while inner recipes interpolated `{{args}}` as shell source. The first test used an invented safer recipe and therefore proved the wrong seam.
+## What didn't work
 
-**Worth knowing:** Publication recipes must preserve two boundaries together: shell-literal outer arguments and positional inner Just arguments. Named leading parameters need capture-and-shift before canonical CLI flags are rebuilt.
+POSIX-quoting the outer generated command was insufficient while inner recipes interpolated `{{args}}` as shell source. The first test used an invented safer recipe and therefore proved the wrong seam.
 
-*Verified by work action*
+## Worth knowing
+
+Publication recipes must preserve two boundaries together: shell-literal outer arguments and positional inner Just arguments. Named leading parameters need capture-and-shift before canonical CLI flags are rebuilt.
 
 ## Back-reference
 

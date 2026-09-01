@@ -3,11 +3,9 @@ title: "Lessons from REQ-157: Review fix: Complete the retired core alias guard"
 type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-157-review-fix-complete-the-retired-core-ali.md]
-related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

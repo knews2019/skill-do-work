@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: checkpoint-and-crash-recovery
 sources: [raw/processed/2026-09-01/REQ-035-represent-concurrent-claims-in-the-orche.md]
 related:
-  - page: concept-session-checkpoints-and-recovery
-    rel: evidence-for
+  - page: REQ-036-re-validate-write-set-disjointness-when
+    rel: complements
+  - page: REQ-037-place-the-worktree-merge-in-the-step-seq
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

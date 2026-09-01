@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-128-secret-rename-quarantine-survives-re-inv.md]
 related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+  - page: REQ-148-addendum-preserve-association-candidates
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -32,6 +32,10 @@ Inventory now overrides disabled rename detection, buffers classifications, and 
 
 - Relying on Git's current rename record loses provenance after an index reset; later inventories need both an ambiguity rule and a run-level quarantine.
 - The first action draft assumed a shell variable could survive separate prescribed command blocks; re-deriving a deterministic Git-private path is required.
+
+## Worth knowing
+
+`git add -u -- <path>` can reject a rename source whose deletion is already present in the index, so deletion-only workflows must verify cached metadata before deciding whether to stage.
 
 ## Back-reference
 

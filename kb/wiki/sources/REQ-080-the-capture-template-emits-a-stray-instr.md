@@ -3,11 +3,9 @@ title: "Lessons from REQ-080: The capture template emits a stray instruction lin
 type: source-summary
 topic_cluster: queue-orchestration-and-lifecycle
 sources: [raw/processed/2026-09-01/REQ-080-the-capture-template-emits-a-stray-instr.md]
-related:
-  - page: concept-queue-task-lifecycle
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

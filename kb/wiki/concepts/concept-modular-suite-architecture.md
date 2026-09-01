@@ -2,12 +2,43 @@
 title: "Suite and Package Architecture"
 type: concept
 topic_cluster: suite-and-package-architecture
-sources: [raw/processed/2026-09-01/REQ-093-six-shipped-go-source-sites-cite-the-exp.md]
+sources:
+  - raw/processed/2026-09-01/REQ-093-six-shipped-go-source-sites-cite-the-exp.md
+  - raw/processed/2026-09-01/REQ-120-shipped-files-stop-citing-the-export-ign.md
+  - raw/processed/2026-09-01/REQ-136-define-the-four-skill-suite-contract.md
+  - raw/processed/2026-09-01/REQ-137-ship-the-suite-aware-bridge-updater.md
+  - raw/processed/2026-09-01/REQ-138-add-managed-text-section-replacement.md
+  - raw/processed/2026-09-01/REQ-139-stage-the-modular-core-skill.md
+  - raw/processed/2026-09-01/REQ-142-stage-the-modular-toolbox-skill.md
+  - raw/processed/2026-09-01/REQ-143-build-the-full-suite-installer-and-recon.md
+  - raw/processed/2026-09-01/REQ-144-activate-the-four-skill-distribution.md
+  - raw/processed/2026-09-01/REQ-145-remove-the-stateful-pipeline.md
+  - raw/processed/2026-09-01/REQ-146-remove-modular-migration-compatibility-s.md
+  - raw/processed/2026-09-01/REQ-149-review-fix-complete-moved-command-shim-m.md
+  - raw/processed/2026-09-01/REQ-150-review-fix-repair-live-modular-package-r.md
+  - raw/processed/2026-09-01/REQ-153-review-fix-sweep-retired-core-command-re.md
+  - raw/processed/2026-09-01/REQ-154-review-fix-harden-shipped-markdown-refer.md
+  - raw/processed/2026-09-01/REQ-157-review-fix-complete-the-retired-core-ali.md
+  - raw/processed/2026-09-01/REQ-158-review-fix-complete-rendered-region-clas.md
+  - raw/processed/2026-09-01/REQ-160-review-fix-make-retired-core-alias-match.md
+  - raw/processed/2026-09-01/REQ-161-review-fix-complete-escaped-link-and-lis.md
+  - raw/processed/2026-09-01/REQ-162-review-fix-handle-ordinary-multiline-bac.md
+  - raw/processed/2026-09-01/REQ-163-review-fix-complete-remaining-inline-lin.md
+  - raw/processed/2026-09-01/REQ-174-validate-root-markdown-fence-info.md
+  - raw/processed/2026-09-01/REQ-182-public-work-and-schema-vocabularies-drif.md
+  - raw/processed/2026-09-01/REQ-186-required-baseline-verification-executes-.md
+  - raw/processed/2026-09-01/REQ-249-decide-the-cross-package-citation-path-f.md
+  - raw/processed/2026-09-01/REQ-250-close-the-remaining-markdown-link-checke.md
+  - raw/processed/2026-09-01/REQ-269-draw-the-cross-package-citation-class-by.md
+  - raw/processed/2026-09-01/REQ-303-run-the-pinned-live-archive-assertions-o.md
+  - raw/processed/2026-09-01/REQ-312-resolve-same-package-citations-in-the-sh.md
+  - raw/processed/2026-09-01/REQ-408-build-shared-request-schema-dependency-a.md
+  - raw/processed/2026-09-01/REQ-420-replace-shell-implementations-with-shims.md
 related:
   - page: concept-queue-task-lifecycle
     rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: high
 ---
 

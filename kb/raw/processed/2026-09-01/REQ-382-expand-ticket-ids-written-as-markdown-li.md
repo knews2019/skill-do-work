@@ -21,7 +21,7 @@ reach.
 
 - `skills/do-work-board/tools/queue-kanban/web/board-detail.js` (modified). Reuses existing ticket resolution, title shortening and glossary accounting for text inside authored anchors. Adds inert title-bearing spans with non-navigation identity metadata, skips renderer-shaped autolinks and unknown
 
-## What worked
+## Worth knowing
 
 - Skipping generated DOM on a second pass prevents nesting but does not preserve first-mention/glossary memory. Reconstruct state in document order from the original mention identity while refusing to scan inserted title text; a drawer-root cache would become stale when the next ticket replaces its HTML.
 

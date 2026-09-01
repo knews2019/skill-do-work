@@ -27,6 +27,10 @@ Made Collision-Safe Publication consumer-neutral and complete, moved generic imm
 
 - The first ratchet accepted a passive checklist heading as an active application pointer and missed a paraphrased whole-artifact path algorithm.
 
+## Worth knowing
+
+Canonicalization tests need to prove an active directive at the execution boundary, not the mere presence of a section name anywhere. Include paraphrase mutations for the rule's meaning, not only copied keywords.
+
 ## Back-reference
 
 See `do-work/archive/UR-042/REQ-201-deduplicate-completed-work-publication-mechanics.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `54da281`.

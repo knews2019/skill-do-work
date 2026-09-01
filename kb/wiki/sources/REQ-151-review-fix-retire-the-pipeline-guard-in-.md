@@ -3,11 +3,9 @@ title: "Lessons from REQ-151: Review fix: Retire the pipeline guard in manual se
 type: source-summary
 topic_cluster: queue-orchestration-and-lifecycle
 sources: [raw/processed/2026-09-01/REQ-151-review-fix-retire-the-pipeline-guard-in-.md]
-related:
-  - page: concept-queue-task-lifecycle
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

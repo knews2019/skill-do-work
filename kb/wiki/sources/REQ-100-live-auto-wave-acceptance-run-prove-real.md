@@ -4,10 +4,14 @@ type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-100-live-auto-wave-acceptance-run-prove-real.md]
 related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+  - page: REQ-094-checkpoint-writer-label-crash-recovery-i
+    rel: complements
+  - page: REQ-095-two-clone-acceptance-run-checkpoint-pois
+    rel: complements
+  - page: REQ-099-automatic-wave-dispatch-the-work-loop-co
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

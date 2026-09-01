@@ -2,12 +2,44 @@
 title: "Kanban Board and UI"
 type: concept
 topic_cluster: kanban-board-and-ui
-sources: [raw/processed/2026-09-01/REQ-015-sync-the-deferred-status-between-the-que.md]
+sources:
+  - raw/processed/2026-09-01/REQ-015-sync-the-deferred-status-between-the-que.md
+  - raw/processed/2026-09-01/REQ-016-remove-the-producer-less-severity-frontm.md
+  - raw/processed/2026-09-01/REQ-017-just-run-kanban-replace-a-stale-board-se.md
+  - raw/processed/2026-09-01/REQ-040-board-overlap-badge-use-path-match-and-d.md
+  - raw/processed/2026-09-01/REQ-087-the-board-and-verify-hand-the-user-the-p.md
+  - raw/processed/2026-09-01/REQ-089-the-board-drawer-s-copy-button-omits-the.md
+  - raw/processed/2026-09-01/REQ-097-assigned-to-advisory-field-schema-line-s.md
+  - raw/processed/2026-09-01/REQ-116-normalize-route-at-the-board-s-read-site.md
+  - raw/processed/2026-09-01/REQ-117-an-unrecognized-domain-must-leave-a-foot.md
+  - raw/processed/2026-09-01/REQ-119-an-off-vocabulary-route-warns-on-the-boa.md
+  - raw/processed/2026-09-01/REQ-122-the-by-ur-lens-counts-recently-done-work.md
+  - raw/processed/2026-09-01/REQ-134-addendum-make-queue-kanban-atomic-replac.md
+  - raw/processed/2026-09-01/REQ-140-stage-the-modular-board-skill.md
+  - raw/processed/2026-09-01/REQ-175-align-board-question-preprocessing-with-.md
+  - raw/processed/2026-09-01/REQ-184-live-board-origin-checks-have-no-trusted.md
+  - raw/processed/2026-09-01/REQ-185-javascript-behavior-probes-can-all-skip-.md
+  - raw/processed/2026-09-01/REQ-195-modularize-the-framework-free-queue-boar.md
+  - raw/processed/2026-09-01/REQ-200-render-png-file-mentions-as-images.md
+  - raw/processed/2026-09-01/REQ-207-render-html-file-mentions-as-folder-awar.md
+  - raw/processed/2026-09-01/REQ-266-name-builds-beside-the-js-renderer-s-mea.md
+  - raw/processed/2026-09-01/REQ-277-state-the-mark-label-face-constant-s-rea.md
+  - raw/processed/2026-09-01/REQ-284-emit-every-verify-finding-from-the-board.md
+  - raw/processed/2026-09-01/REQ-285-render-a-verify-findings-strip-on-the-bo.md
+  - raw/processed/2026-09-01/REQ-376-raise-the-done-line-s-faint-text-to-read.md
+  - raw/processed/2026-09-01/REQ-381-index-cited-ticket-ids-and-let-the-filte.md
+  - raw/processed/2026-09-01/REQ-382-expand-ticket-ids-written-as-markdown-li.md
+  - raw/processed/2026-09-01/REQ-385-treat-an-underscore-as-a-ticket-id-bound.md
+  - raw/processed/2026-09-01/REQ-386-make-the-drawer-and-the-paste-agree-abou.md
+  - raw/processed/2026-09-01/REQ-387-keep-a-spliced-title-from-changing-how-t.md
+  - raw/processed/2026-09-01/REQ-388-settle-the-last-two-drawer-clipboard-div.md
 related:
+  - page: concept-duration-estimation-and-breaks
+    rel: complements
   - page: entity-queue-kanban
     rel: extends
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: high
 ---
 

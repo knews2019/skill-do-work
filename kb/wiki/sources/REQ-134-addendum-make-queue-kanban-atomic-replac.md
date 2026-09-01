@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-134-addendum-make-queue-kanban-atomic-replac.md]
 related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+  - page: REQ-147-addendum-reserve-request-numbers-during-
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -23,7 +23,7 @@ Correct the shared queue-kanban atomic replacement path so its crash-safety cont
 
 [MAP CHANGED] Queue-kanban complete-file writes now live in `atomic_write.go`; the final primitive is selected by the `atomic_replace_*` build-tag files and is shared by Testing frontmatter writes and `next-version`.
 
-## What worked
+## Worth knowing
 
 - A cross-platform API name does not imply a cross-platform atomicity contract; the last filesystem mutation needs an OS-specific proof.
 - Validate write-target identity with `Lstat` before temporary-file creation when replacing a pathname rather than following it.

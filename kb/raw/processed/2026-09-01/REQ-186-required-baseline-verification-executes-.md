@@ -18,12 +18,10 @@ Give each duplicated baseline child suite one owner: remove the aggregate's redu
 
 **Verified unchanged:** `_dev/tests/staged-skills-contract.sh` still invokes `prescribed-shell-scripts-behavior.sh` for standalone-semantics coverage.
 
-## What worked
+## Worth knowing
 
 - A required aggregate should give each identical child invocation one owner. If a nested suite already preserves the needed standalone semantics and failure propagation, a second direct edge adds runtime without adding evidence.
 - Maintainer hand-back instructions should name the aggregate baseline once and reserve standalone child runs for genuinely distinct modes, fixtures, or touched-area focus.
-
-**Knowledge handoff:** Pending human triage. No knowledge-base file was written automatically.
 
 ## Back-reference
 

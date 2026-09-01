@@ -20,13 +20,15 @@ The canonical maintainer aggregate now uses the tracked lowercase root `justfile
 
 ## What worked
 
-**What worked:** Parsing the exact live assertion source shape provides case-sensitive evidence even when the host filesystem aliases `Justfile` and `justfile`. Pinning each expected pattern separately also proves all four late assertions remain present and reachable.
+Parsing the exact live assertion source shape provides case-sensitive evidence even when the host filesystem aliases `Justfile` and `justfile`. Pinning each expected pattern separately also proves all four late assertions remain present and reachable.
 
-**What didn't:** Fixing only the first two occurrences in REQ-180 left four later inputs hidden by macOS case-insensitive lookup. A local green aggregate was therefore not sufficient evidence that every live path used tracked casing.
+## What didn't work
 
-**Worth knowing:** Keep intentional filename variants in prose and fixture loops; the enforceable boundary is the path argument consumed by a live root-file assertion, not every textual occurrence of “Justfile.”
+Fixing only the first two occurrences in REQ-180 left four later inputs hidden by macOS case-insensitive lookup. A local green aggregate was therefore not sufficient evidence that every live path used tracked casing.
 
-**Knowledge handoff:** Pending human triage. No knowledge-base file was written automatically.
+## Worth knowing
+
+Keep intentional filename variants in prose and fixture loops; the enforceable boundary is the path argument consumed by a live root-file assertion, not every textual occurrence of “Justfile.”
 
 ## Back-reference
 

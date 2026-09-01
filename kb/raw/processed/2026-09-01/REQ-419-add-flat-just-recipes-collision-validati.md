@@ -20,13 +20,15 @@ Published a 40-definition flat Just interface backed by one managed template, ma
 
 ## What worked
 
-**What worked:** Reproducing the failure through the actual managed template with command-substitution sentinels exposed the real shell boundary; Just's per-recipe `[positional-arguments]` plus `"$@"` preserved every original argument byte.
+Reproducing the failure through the actual managed template with command-substitution sentinels exposed the real shell boundary; Just's per-recipe `[positional-arguments]` plus `"$@"` preserved every original argument byte.
 
-**What didn't:** POSIX-quoting the outer generated command was insufficient while inner recipes interpolated `{{args}}` as shell source. The first test used an invented safer recipe and therefore proved the wrong seam.
+## What didn't work
 
-**Worth knowing:** Publication recipes must preserve two boundaries together: shell-literal outer arguments and positional inner Just arguments. Named leading parameters need capture-and-shift before canonical CLI flags are rebuilt.
+POSIX-quoting the outer generated command was insufficient while inner recipes interpolated `{{args}}` as shell source. The first test used an invented safer recipe and therefore proved the wrong seam.
 
-*Verified by work action*
+## Worth knowing
+
+Publication recipes must preserve two boundaries together: shell-literal outer arguments and positional inner Just arguments. Named leading parameters need capture-and-shift before canonical CLI flags are rebuilt.
 
 ## Back-reference
 

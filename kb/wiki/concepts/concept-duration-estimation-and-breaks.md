@@ -2,12 +2,21 @@
 title: "Timeline and Metrics"
 type: concept
 topic_cluster: timeline-and-metrics
-sources: [raw/processed/2026-09-01/REQ-248-anchor-the-durations-day-buckets-to-utc-.md]
+sources:
+  - raw/processed/2026-09-01/REQ-248-anchor-the-durations-day-buckets-to-utc-.md
+  - raw/processed/2026-09-01/REQ-252-record-the-browser-with-every-measured-f.md
+  - raw/processed/2026-09-01/REQ-292-move-durations-label-placement-into-the-.md
+  - raw/processed/2026-09-01/REQ-304-draw-a-reversed-wait-as-a-break-not-as-a.md
+  - raw/processed/2026-09-01/REQ-305-say-the-timeline-forecast-describes-the-.md
+  - raw/processed/2026-09-01/REQ-313-count-the-breaks-the-timeline-actually-d.md
+  - raw/processed/2026-09-01/REQ-336-timeline-clicks-open-the-detail-drawer-a.md
+  - raw/processed/2026-09-01/REQ-337-a-check-that-can-catch-timeline-click-re.md
+  - raw/processed/2026-09-01/REQ-338-cut-the-timeline-row-list-to-one-tab-sto.md
 related:
   - page: concept-kanban-board-architecture
     rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: high
 ---
 

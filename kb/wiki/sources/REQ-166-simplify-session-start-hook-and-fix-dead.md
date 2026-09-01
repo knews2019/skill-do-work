@@ -4,10 +4,16 @@ type: source-summary
 topic_cluster: checkpoint-and-crash-recovery
 sources: [raw/processed/2026-09-01/REQ-166-simplify-session-start-hook-and-fix-dead.md]
 related:
-  - page: concept-session-checkpoints-and-recovery
-    rel: evidence-for
+  - page: REQ-165-shell-block-lint-harness-for-shipped-act
+    rel: complements
+  - page: REQ-167-deduplicate-copy-pasted-shell-primitives
+    rel: complements
+  - page: REQ-168-delete-or-test-audit-of-defensive-code-i
+    rel: complements
+  - page: REQ-170-finding-closure-ratchet-and-canonical-ea
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

@@ -3,11 +3,9 @@ title: "Lessons from REQ-298: Review fix: sweep the unchecked-exit-status primit
 type: source-summary
 topic_cluster: shell-and-automation
 sources: [raw/processed/2026-09-01/REQ-298-review-fix-sweep-the-unchecked-exit-stat.md]
-related:
-  - page: concept-prescribed-shell-commands
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -39,11 +37,15 @@ Reproduced the fail-open in the repo's own incident guard, fixed it by asking wh
 
 ## What worked
 
-**What worked:** Building the broad check *first*, running it, and counting. The REQ recorded a dissent that predicted false positives and a user decision to build it anyway with an evidence-based escape hatch — and the only honest way to use that hatch is to have built the thing and measured it. Fifteen flagged, zero defects is a number; "I think it would flag too much" is an opinion, and the REQ was explicit that only the former would do.
+Building the broad check *first*, running it, and counting. The REQ recorded a dissent that predicted false positives and a user decision to build it anyway with an evidence-based escape hatch — and the only honest way to use that hatch is to have built the thing and measured it. Fifteen flagged, zero defects is a number; "I think it would flag too much" is an opinion, and the REQ was explicit that only the former would do.
 
-**What didn't:** The first attempt to run `record-commit-hash-guards.sh` directly failed with "must exist and be executable" against a file that plainly was. The suite tests the *canonical* `tools/checks/` path, and `contract-regressions.sh` invokes it through a `sed` that repoints it at the shipped copy. Worth knowing before debugging a phantom permissions problem: in this repo a `_dev/tests/*.sh` file is not necessarily runnable on its own terms, because nothing auto-discovers them and some are rewritten at their call site.
+## What didn't work
 
-**Worth knowing:** The sharpest form of this defect is that **the fallback value looked like an answer**. `|| true` on a size query produces `""`, and `""` is what "there is no blob" also produces — so the guard could not tell a missing file from a broken tool, and the safe-looking branch was the wrong one for one of them. The general shape to watch: whenever a fallback value is in the same domain as a legitimate result, the failure has been laundered into data. `'?'` is safe precisely because it is not a number.
+The first attempt to run `record-commit-hash-guards.sh` directly failed with "must exist and be executable" against a file that plainly was. The suite tests the *canonical* `tools/checks/` path, and `contract-regressions.sh` invokes it through a `sed` that repoints it at the shipped copy. Worth knowing before debugging a phantom permissions problem: in this repo a `_dev/tests/*.sh` file is not necessarily runnable on its own terms, because nothing auto-discovers them and some are rewritten at their call site.
+
+## Worth knowing
+
+The sharpest form of this defect is that **the fallback value looked like an answer**. `|| true` on a size query produces `""`, and `""` is what "there is no blob" also produces — so the guard could not tell a missing file from a broken tool, and the safe-looking branch was the wrong one for one of them. The general shape to watch: whenever a fallback value is in the same domain as a legitimate result, the failure has been laundered into data. `'?'` is safe precisely because it is not a number.
 
 ## Back-reference
 

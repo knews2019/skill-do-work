@@ -3,11 +3,9 @@ title: "Lessons from REQ-060: No mechanism resolves a `failed` REQ, so a UR cont
 type: source-summary
 topic_cluster: queue-orchestration-and-lifecycle
 sources: [raw/processed/2026-09-01/REQ-060-no-mechanism-resolves-a-failed-req-so-a.md]
-related:
-  - page: concept-queue-task-lifecycle
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

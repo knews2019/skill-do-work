@@ -3,11 +3,9 @@ title: "Lessons from REQ-251: Retire the stale copies of the future-stamp messag
 type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-251-retire-the-stale-copies-of-the-future-st.md]
-related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,9 +23,11 @@ Retired the two surviving copies of the pre-REQ-245 future-stamp wording. The `v
 
 ## What worked
 
-**What worked:** Deriving fixture text from production (helper call) instead of re-pasting the current wording — the third copy would have stranded at the next message move exactly as the first two did.
+Deriving fixture text from production (helper call) instead of re-pasting the current wording — the third copy would have stranded at the next message move exactly as the first two did.
 
-**Worth knowing:** `reversedSpanAnomalyReason(t)` in `timestamp_test.go` is the canonical way for any test in the package to obtain the production reversed-span reason; new fixtures should call it, never paste.
+## Worth knowing
+
+`reversedSpanAnomalyReason(t)` in `timestamp_test.go` is the canonical way for any test in the package to obtain the production reversed-span reason; new fixtures should call it, never paste.
 
 ## Back-reference
 

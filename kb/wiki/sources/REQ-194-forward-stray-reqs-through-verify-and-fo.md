@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-194-forward-stray-reqs-through-verify-and-fo.md]
 related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+  - page: REQ-193-keep-archived-urs-closed-during-standalo
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -32,6 +32,10 @@ Make forensics surface every REQ file that the board already detects outside `qu
 
 - The first integration tests allowed verify to reconstruct identical output from warning prose, so the forbidden coupling survived mutation.
 - Forensics initially claimed every Go-backed probe had a manual equivalent, contradicting the deliberate no-second-scan boundary for strays.
+
+## Worth knowing
+
+Apply the archived-UR ownership checks in order: terminal queue/working members remain stranded-finished evidence; among non-terminal members, only exact `review_generated: true` is legitimate under a closed UR. Ordinary siblings must still report.
 
 ## Back-reference
 

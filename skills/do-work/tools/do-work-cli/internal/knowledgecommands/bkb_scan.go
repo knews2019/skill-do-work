@@ -20,13 +20,14 @@ var wikiLinkPattern = regexp.MustCompile(`\[\[([^\]]+?)\]\]`)
 var datePattern = regexp.MustCompile(`\b\d{4}-\d{2}-\d{2}\b`)
 
 type knowledgePage struct {
-	path        string
-	stem        string
-	title       string
-	body        string
-	frontmatter map[string]string
-	links       []string
-	relations   []pageRelation
+	path             string
+	stem             string
+	title            string
+	body             string
+	frontmatter      map[string]string
+	frontmatterError string
+	links            []string
+	relations        []pageRelation
 }
 type pageRelation struct{ page, relation string }
 
@@ -227,9 +228,25 @@ func frontmatterFindings(relative string, page knowledgePage, pageByStem map[str
 		if !allowedRelations[normalizedRelation] {
 			findings = append(findings, scanFinding(CommandBKBLintStructure, relative, "BKB-RELATIONSHIP-ENUM", resultmodel.SeverityWarning, []string{page.path}, fmt.Sprintf("%s uses invalid rel=%q", page.stem, relation.relation), resultmodel.FixabilityManual, "the action chooses the semantic relationship"))
 		}
-		if _, exists := pageByStem[normalizeLink(relation.page)]; !exists {
+		targetStem := normalizeLink(relation.page)
+		target, exists := pageByStem[targetStem]
+		if !exists {
 			findings = append(findings, scanFinding(CommandBKBLintStructure, relative, "BKB-RELATIONSHIP-TARGET", resultmodel.SeverityWarning, []string{page.path}, fmt.Sprintf("%s relates to missing page %q", page.stem, relation.page), resultmodel.FixabilityManual, "the action chooses repair or removal"))
+			continue
 		}
+		reciprocal := false
+		for _, candidate := range target.relations {
+			if normalizeLink(candidate.page) == page.stem {
+				reciprocal = true
+				break
+			}
+		}
+		if !reciprocal {
+			findings = append(findings, scanFinding(CommandBKBLintStructure, relative, "BKB-RELATIONSHIP-RECIPROCITY", resultmodel.SeverityWarning, []string{page.path, target.path}, fmt.Sprintf("%s relates to %s without a reciprocal typed relationship", page.stem, targetStem), resultmodel.FixabilityManual, "the action chooses the truthful reciprocal relationship or removes the one-way edge"))
+		}
+	}
+	if page.frontmatterError != "" {
+		findings = append(findings, scanFinding(CommandBKBLintStructure, relative, "BKB-FRONTMATTER-MALFORMED", resultmodel.SeverityWarning, []string{page.path}, page.frontmatterError, resultmodel.FixabilityManual, "repair the malformed YAML scalar without changing unrelated frontmatter"))
 	}
 	return findings
 }
@@ -258,10 +275,13 @@ func loadKnowledgePages(target, relativeTarget string) ([]knowledgePage, error) 
 			return readError
 		}
 		frontmatter, body, parseError := parseFrontmatter(string(data))
-		if parseError != nil {
-			return fmt.Errorf("%s: %w", relative, parseError)
+		if frontmatter == nil {
+			frontmatter = map[string]string{}
 		}
 		page := knowledgePage{path: filepath.ToSlash(filepath.Join(relativeTarget, "wiki", relative)), stem: strings.TrimSuffix(base, ".md"), title: frontmatter["title"], body: body, frontmatter: frontmatter, links: normalizedLinks(body), relations: parseRelations(string(data))}
+		if parseError != nil {
+			page.frontmatterError = parseError.Error()
+		}
 		if page.title == "" {
 			page.title = firstHeading(body, page.stem)
 		}
@@ -287,18 +307,73 @@ func parseFrontmatter(content string) (map[string]string, string, error) {
 		return nil, "", fmt.Errorf("unterminated YAML frontmatter")
 	}
 	frontmatterText := content[4 : 4+end]
-	for _, line := range strings.Split(frontmatterText, "\n") {
+	var parseError error
+	for lineIndex, line := range strings.Split(frontmatterText, "\n") {
 		if strings.HasPrefix(line, " ") || !strings.Contains(line, ":") {
 			continue
 		}
 		parts := strings.SplitN(line, ":", 2)
-		fields[strings.TrimSpace(parts[0])] = strings.Trim(strings.TrimSpace(parts[1]), "[]\"'")
+		fieldName := strings.TrimSpace(parts[0])
+		value, valueError := parseFrontmatterScalar(strings.TrimSpace(parts[1]))
+		fields[fieldName] = value
+		if valueError != nil && parseError == nil {
+			parseError = fmt.Errorf("frontmatter line %d field %s: %w", lineIndex+2, fieldName, valueError)
+		}
 	}
 	bodyStart := 4 + end + 4
 	if bodyStart < len(content) && content[bodyStart] == '\n' {
 		bodyStart++
 	}
-	return fields, content[bodyStart:], nil
+	return fields, content[bodyStart:], parseError
+}
+
+func parseFrontmatterScalar(value string) (string, error) {
+	if value == "" {
+		return "", nil
+	}
+	if strings.HasPrefix(value, "\"") {
+		return parseDoubleQuotedYAMLScalar(value)
+	}
+	if strings.HasPrefix(value, "'") {
+		return parseSingleQuotedYAMLScalar(value)
+	}
+	return strings.Trim(value, "[]"), nil
+}
+
+func parseDoubleQuotedYAMLScalar(value string) (string, error) {
+	for index := 1; index < len(value); index++ {
+		if value[index] == '\\' {
+			index++
+			continue
+		}
+		if value[index] != '"' {
+			continue
+		}
+		remainder := strings.TrimSpace(value[index+1:])
+		if remainder != "" && !strings.HasPrefix(remainder, "#") {
+			return strings.ReplaceAll(value[1:index], `\"`, `"`), fmt.Errorf("unexpected content after closing double quote")
+		}
+		return strings.ReplaceAll(value[1:index], `\"`, `"`), nil
+	}
+	return strings.TrimPrefix(value, "\""), fmt.Errorf("unterminated double-quoted scalar")
+}
+
+func parseSingleQuotedYAMLScalar(value string) (string, error) {
+	for index := 1; index < len(value); index++ {
+		if value[index] != '\'' {
+			continue
+		}
+		if index+1 < len(value) && value[index+1] == '\'' {
+			index++
+			continue
+		}
+		remainder := strings.TrimSpace(value[index+1:])
+		if remainder != "" && !strings.HasPrefix(remainder, "#") {
+			return strings.ReplaceAll(value[1:index], "''", "'"), fmt.Errorf("unexpected content after closing single quote")
+		}
+		return strings.ReplaceAll(value[1:index], "''", "'"), nil
+	}
+	return strings.TrimPrefix(value, "'"), fmt.Errorf("unterminated single-quoted scalar")
 }
 
 func parseRelations(content string) []pageRelation {

@@ -3,11 +3,9 @@ title: "Lessons from REQ-149: Review fix: Complete moved-command shim mapping"
 type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-149-review-fix-complete-moved-command-shim-m.md]
-related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

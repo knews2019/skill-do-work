@@ -2,12 +2,25 @@
 title: "Checkpoint and Crash Recovery"
 type: concept
 topic_cluster: checkpoint-and-crash-recovery
-sources: [raw/processed/2026-09-01/REQ-035-represent-concurrent-claims-in-the-orche.md]
+sources:
+  - raw/processed/2026-09-01/REQ-035-represent-concurrent-claims-in-the-orche.md
+  - raw/processed/2026-09-01/REQ-071-crash-recovery-must-respect-a-live-claim.md
+  - raw/processed/2026-09-01/REQ-077-crash-recovery-s-own-crash-branch-is-unr.md
+  - raw/processed/2026-09-01/REQ-086-the-in-progress-record-s-rule-is-unstate.md
+  - raw/processed/2026-09-01/REQ-094-checkpoint-writer-label-crash-recovery-i.md
+  - raw/processed/2026-09-01/REQ-095-two-clone-acceptance-run-checkpoint-pois.md
+  - raw/processed/2026-09-01/REQ-104-label-less-checkpoint-entries-locally-mo.md
+  - raw/processed/2026-09-01/REQ-108-review-fix-in-progress-record-still-enum.md
+  - raw/processed/2026-09-01/REQ-109-work-md-session-start-note-still-enumera.md
+  - raw/processed/2026-09-01/REQ-166-simplify-session-start-hook-and-fix-dead.md
+  - raw/processed/2026-09-01/REQ-246-repair-detectably-wrong-queue-and-workin.md
+  - raw/processed/2026-09-01/REQ-256-disclose-the-session-hook-s-queue-write-.md
+  - raw/processed/2026-09-01/REQ-274-retire-the-the-sessionstart-hook-exits-n.md
 related:
   - page: concept-queue-task-lifecycle
     rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: high
 ---
 

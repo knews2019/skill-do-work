@@ -28,6 +28,10 @@ Inventory now overrides disabled rename detection, buffers classifications, and 
 - Relying on Git's current rename record loses provenance after an index reset; later inventories need both an ambiguity rule and a run-level quarantine.
 - The first action draft assumed a shell variable could survive separate prescribed command blocks; re-deriving a deterministic Git-private path is required.
 
+## Worth knowing
+
+`git add -u -- <path>` can reject a rename source whose deletion is already present in the index, so deletion-only workflows must verify cached metadata before deciding whether to stage.
+
 ## Back-reference
 
 See `do-work/archive/UR-028/REQ-128-secret-rename-quarantine-and-staged-deletion.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `7bb03d2`.

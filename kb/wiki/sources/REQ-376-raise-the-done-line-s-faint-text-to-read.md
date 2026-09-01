@@ -3,11 +3,9 @@ title: "Lessons from REQ-376: Raise the done line''s faint text to readable cont
 type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-376-raise-the-done-line-s-faint-text-to-read.md]
-related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -23,7 +21,7 @@ The done line's faint companions â€” `.relative-time` and `.elapsed-duration` â€
 
 Completion relative-time and elapsed-duration text now clears 4.5:1 against both the actual card and page backgrounds without changing pending or claimed text.
 
-## What worked
+## Worth knowing
 
 The completion-looking CSS class also appears on pending and claimed lines; scope a done-card change by status and keep a nonterminal control. The cards are opaque even though the chart SVG is transparent, so measure the actual card as well as the body. Time-sensitive browser fixtures must remain inside the production Recently Done window.
 

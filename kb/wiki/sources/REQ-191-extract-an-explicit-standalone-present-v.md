@@ -4,10 +4,14 @@ type: source-summary
 topic_cluster: presentation-and-reporting
 sources: [raw/processed/2026-09-01/REQ-191-extract-an-explicit-standalone-present-v.md]
 related:
-  - page: concept-completed-work-presentation
-    rel: evidence-for
+  - page: REQ-189-canonicalize-ai-report-and-the-shared-co
+    rel: depends-on
+  - page: REQ-190-reduce-present-work-to-portfolio-only-be
+    rel: complements
+  - page: REQ-192-migrate-completed-work-presentation-rout
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -32,6 +36,10 @@ Added the explicit source-only walkthrough action and guide with shared complete
 
 - The first action draft delegated publication canonically and then restated the collision branch in later steps and checks; REQ-201 now sweeps that duplicated-rule class.
 - Qualification's tracked-reference heuristic warned on the new guide because both linked files were untracked; full-file inspection and the shipped-reference suite were needed to judge the actual link.
+
+## Worth knowing
+
+Source-only video work still needs a complete, internally consistent package contract. Keep consumer-specific preferred naming and scene validity local, but leave archive, evidence, and publication algorithms in the shared completed-work presentation reference.
 
 ## Back-reference
 

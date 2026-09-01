@@ -28,6 +28,10 @@ Extracted shared completed-work resolution and evidence rules into one toolbox r
 - The first shared resolver described exact archive lookup without inheriting the suite-wide ID-token normalization contract; a canonical reference must also inherit every upstream input grammar it consumes.
 - The retained image-generation block still created its public directory before success was known, contradicting the newly conditional bundle shape.
 
+## Worth knowing
+
+When an instruction says an output directory exists only on success, audit the prescribed shell block itself—not just surrounding prose—for eager `mkdir`. Completed-work ID readers inherit `work-reference.md`'s Target ID Resolution contract even when their search locations differ.
+
 ## Back-reference
 
 See `do-work/archive/UR-042/REQ-189-canonical-ai-report-and-shared-evidence-contract.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `bb7ae54`.

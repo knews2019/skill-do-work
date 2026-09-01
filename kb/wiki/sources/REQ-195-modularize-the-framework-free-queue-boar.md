@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-195-modularize-the-framework-free-queue-boar.md]
 related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+  - page: REQ-185-javascript-behavior-probes-can-all-skip-
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,13 +25,15 @@ Split the framework-free queue-kanban browser client from one approximately 2,52
 
 ## What worked
 
-**What worked:** Recording the fresh source hash before cutting and comparing the first production assembly before changing factual comments isolated the migration itself from later non-runtime edits. A wildcard embed makes authored inventory observable while a separate literal manifest keeps execution order reviewable and deterministic.
+Recording the fresh source hash before cutting and comparing the first production assembly before changing factual comments isolated the migration itself from later non-runtime edits. A wildcard embed makes authored inventory observable while a separate literal manifest keeps execution order reviewable and deterministic.
 
-**What didn't:** Counting only the full placeholder line was not equivalent to proving one raw marker token; a second marker without the canonical newline survived both replacement and the first tests. Raw-token uniqueness, canonical placement, and post-assembly absence are three separate invariants and need separate assertions.
+## What didn't work
 
-**Worth knowing:** Keep fragment files as raw statements inside the shell's existing IIFE. Separator blank lines belong to the assembler, so fragment endings and manifest joins are part of the byte contract even though the browser would tolerate many equivalent layouts.
+Counting only the full placeholder line was not equivalent to proving one raw marker token; a second marker without the canonical newline survived both replacement and the first tests. Raw-token uniqueness, canonical placement, and post-assembly absence are three separate invariants and need separate assertions.
 
-**Knowledge handoff:** Pending human triage. No knowledge-base file was written automatically.
+## Worth knowing
+
+Keep fragment files as raw statements inside the shell's existing IIFE. Separator blank lines belong to the assembler, so fragment endings and manifest joins are part of the byte contract even though the browser would tolerate many equivalent layouts.
 
 ## Back-reference
 

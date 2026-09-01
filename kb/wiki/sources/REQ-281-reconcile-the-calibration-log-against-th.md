@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-281-reconcile-the-calibration-log-against-th.md]
 related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+  - page: REQ-280-probe-timestamp-ordering-and-point-check
+    rel: depends-on
+  - page: REQ-284-emit-every-verify-finding-from-the-board
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -27,11 +29,15 @@ Added a read-only probe to `queue-kanban verify` that recomputes every `do-work/
 
 ## What worked
 
-**What worked:** Writing a throwaway Python recomputation *before* the Go probe, then comparing the two on 72 real rows. It confirmed the REQ's measurement independently, and later it was the acceptance evidence — a fixture proves a probe handles the case you imagined, while two independent implementations agreeing on real data proves it handles the ones you did not. Also: checking whether the new failing condition breaks the canonical gate *before* claiming the REQ was done. It did not, but that was luck, and finding out at review time rather than at commit time was not.
+Writing a throwaway Python recomputation *before* the Go probe, then comparing the two on 72 real rows. It confirmed the REQ's measurement independently, and later it was the acceptance evidence — a fixture proves a probe handles the case you imagined, while two independent implementations agreeing on real data proves it handles the ones you did not. Also: checking whether the new failing condition breaks the canonical gate *before* claiming the REQ was done. It did not, but that was luck, and finding out at review time rather than at commit time was not.
 
-**What didn't:** Nothing failed outright, but the probe immediately flagged a row **this session had written wrong four hours earlier** — REQ-274's, logged as 7 against a true span of 5, because the calibration arithmetic used a hardcoded `claimed_at` string instead of reading back the one actually stamped into the file. The REQ was built to catch exactly that class and caught its own author. The habit worth taking: when a step writes a derived value from a stamp, read the stamp back from the file it was written to rather than reusing the variable.
+## What didn't work
 
-**Worth knowing:** REQ-241, REQ-243 and REQ-245 log three different spans against one identical `claimed_at` of `2026-08-18T12:43:06Z`. That pattern reads like a fan-out wave whose members all recorded the wave's dispatch instant — which would mean the *frontmatter* is the wrong record for those three, not the log. If that is confirmed in REQ-311, REQ-280's ordering probe is currently reading three REQs' spans wrong too. Nobody should batch-rewrite this file before that question is settled.
+Nothing failed outright, but the probe immediately flagged a row **this session had written wrong four hours earlier** — REQ-274's, logged as 7 against a true span of 5, because the calibration arithmetic used a hardcoded `claimed_at` string instead of reading back the one actually stamped into the file. The REQ was built to catch exactly that class and caught its own author. The habit worth taking: when a step writes a derived value from a stamp, read the stamp back from the file it was written to rather than reusing the variable.
+
+## Worth knowing
+
+REQ-241, REQ-243 and REQ-245 log three different spans against one identical `claimed_at` of `2026-08-18T12:43:06Z`. That pattern reads like a fan-out wave whose members all recorded the wave's dispatch instant — which would mean the *frontmatter* is the wrong record for those three, not the log. If that is confirmed in REQ-311, REQ-280's ordering probe is currently reading three REQs' spans wrong too. Nobody should batch-rewrite this file before that question is settled.
 
 ## Back-reference
 

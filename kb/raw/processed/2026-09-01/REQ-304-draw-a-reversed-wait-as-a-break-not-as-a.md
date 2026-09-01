@@ -26,7 +26,7 @@ reasoning. The test runs the real `renderTimelineView` over a stub DOM and asser
 in one render pass — reversed, ordinary closed, and open — because a fix that turned every wait into
 a break would satisfy a reversed-only test.
 
-## What worked
+## Worth knowing
 
 - **A missing-branch fix needs a fixture that can fail in both directions.** The obvious test is the
   reversed row alone, and `if (true)` passes it. Rendering the reversed, ordinary and open shapes

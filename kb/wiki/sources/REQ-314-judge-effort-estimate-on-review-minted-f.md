@@ -3,11 +3,9 @@ title: "Lessons from REQ-314: Judge effort_estimate on review-minted follow-ups 
 type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-314-judge-effort-estimate-on-review-minted-f.md]
-related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -46,6 +44,12 @@ contract independently verifies both field-anchored instructions and the emitted
 - A section-wide keyword scan initially looked semantic but allowed unrelated Step 10 prose to
   satisfy the ask-user and never-copy-default legs. Fenced payload isolation alone was insufficient;
   the check also had to isolate the paragraph containing the actual `effort_estimate` directive.
+
+## Worth knowing
+
+Schema prose and its Go mirror are active contract surfaces even when parser
+behavior does not change. When a writer population changes, those read-side descriptions must move
+in the same commit or they will keep teaching the old boundary.
 
 ## Back-reference
 

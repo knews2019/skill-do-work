@@ -3,11 +3,9 @@ title: "Lessons from REQ-122: The By UR lens counts recently-done work as active
 type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-122-the-by-ur-lens-counts-recently-done-work.md]
-related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -30,7 +28,7 @@ Four defects, all in `tools/queue-kanban/web/`:
 
 Files changed:
 
-## What worked
+## Worth knowing
 
 - **A predicate that reads as a property of the data can silently be a property of the
   clock.** `userRequestIsActive` looked like a pure status question and was really "is

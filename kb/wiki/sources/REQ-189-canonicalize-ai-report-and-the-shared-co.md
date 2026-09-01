@@ -4,10 +4,14 @@ type: source-summary
 topic_cluster: presentation-and-reporting
 sources: [raw/processed/2026-09-01/REQ-189-canonicalize-ai-report-and-the-shared-co.md]
 related:
-  - page: concept-completed-work-presentation
-    rel: evidence-for
+  - page: REQ-190-reduce-present-work-to-portfolio-only-be
+    rel: complements
+  - page: REQ-191-extract-an-explicit-standalone-present-v
+    rel: complements
+  - page: REQ-192-migrate-completed-work-presentation-rout
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -32,6 +36,10 @@ Extracted shared completed-work resolution and evidence rules into one toolbox r
 
 - The first shared resolver described exact archive lookup without inheriting the suite-wide ID-token normalization contract; a canonical reference must also inherit every upstream input grammar it consumes.
 - The retained image-generation block still created its public directory before success was known, contradicting the newly conditional bundle shape.
+
+## Worth knowing
+
+When an instruction says an output directory exists only on success, audit the prescribed shell block itself—not just surrounding prose—for eager `mkdir`. Completed-work ID readers inherit `work-reference.md`'s Target ID Resolution contract even when their search locations differ.
 
 ## Back-reference
 

@@ -20,11 +20,15 @@ Added the canonical `cleanup` command and its safe planning/application layer fo
 
 ## What worked
 
-**What worked:** Exact rooted evidence, transaction-result relabeling after outcome, and focused adversarial fixtures closed the original safety defects without broadening the write set.
+Exact rooted evidence, transaction-result relabeling after outcome, and focused adversarial fixtures closed the original safety defects without broadening the write set.
 
-**What didn't:** Modeling each move as locally safe was insufficient; safety also depends on explicit prerequisites between operation groups. Unit coverage of isolated groups missed refusal combinations until end-to-end re-review.
+## What didn't work
 
-**Worth knowing:** Cleanup planners need a dependency graph, not just deterministic ordering: every derived mutation must name the successful operation that makes it valid, while unrelated groups remain independently eligible.
+Modeling each move as locally safe was insufficient; safety also depends on explicit prerequisites between operation groups. Unit coverage of isolated groups missed refusal combinations until end-to-end re-review.
+
+## Worth knowing
+
+Cleanup planners need a dependency graph, not just deterministic ordering: every derived mutation must name the successful operation that makes it valid, while unrelated groups remain independently eligible.
 
 ## Back-reference
 

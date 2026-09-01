@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-285-render-a-verify-findings-strip-on-the-bo.md]
 related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+  - page: REQ-284-emit-every-verify-finding-from-the-board
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -26,11 +26,15 @@ Added a second always-visible strip to the board client rendering `verifyFinding
 
 ## What worked
 
-**What worked:** Actually opening the page. Two defects were invisible to every other check and both were obvious on sight — a phrase breaking across two lines, and a mangled path in the skipped footer. `node --check` passed, `go test` passed, the strict JS lane passed, and the page was still wrong. For a rendering REQ the screenshot is not a nicety, it is the test.
+Actually opening the page. Two defects were invisible to every other check and both were obvious on sight — a phrase breaking across two lines, and a mangled path in the skipped footer. `node --check` passed, `go test` passed, the strict JS lane passed, and the page was still wrong. For a rendering REQ the screenshot is not a nicety, it is the test.
 
-**What didn't:** The first browser probe used `[data-view]` and found no view buttons at all, silently reporting an empty list instead of failing. The real attribute is `data-view-target`. A probe that finds nothing and says so calmly is indistinguishable from a probe that found nothing because there was nothing — the check should have asserted it found five buttons before using them.
+## What didn't work
 
-**Worth knowing:** The path-reduction defect (D-02) is the more interesting one. `reduceAbsolutePaths` ran two passes — replace the repo root with a relative path, then strip anything still absolute — and the second pass ate the first pass's output, because RE2 has no lookbehind and a bare `/` matches mid-token. Any two-pass text reduction where the second pass's pattern can match the first pass's product has this shape. The ordering is load-bearing and the boundary capture is what makes it safe; both are commented at the regex.
+The first browser probe used `[data-view]` and found no view buttons at all, silently reporting an empty list instead of failing. The real attribute is `data-view-target`. A probe that finds nothing and says so calmly is indistinguishable from a probe that found nothing because there was nothing — the check should have asserted it found five buttons before using them.
+
+## Worth knowing
+
+The path-reduction defect (D-02) is the more interesting one. `reduceAbsolutePaths` ran two passes — replace the repo root with a relative path, then strip anything still absolute — and the second pass ate the first pass's output, because RE2 has no lookbehind and a bare `/` matches mid-token. Any two-pass text reduction where the second pass's pattern can match the first pass's product has this shape. The ordering is load-bearing and the boundary capture is what makes it safe; both are commented at the regex.
 
 ## Back-reference
 

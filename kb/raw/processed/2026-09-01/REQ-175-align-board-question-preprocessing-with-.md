@@ -20,9 +20,15 @@ The question-option preprocessor now rejects invalid backtick fence candidates u
 
 ## What worked
 
-**What worked:** A production-seam RED/GREEN renderer test exposed the preprocessor/Goldmark disagreement directly, and the marker-aware info check kept the fix small.
-**What didn't:** Prefix-only fence detection duplicated only part of Markdown's fence contract, so invalid prose was silently classified as code before Goldmark rendered it.
-**Worth knowing:** Backtick-fence info strings cannot contain backticks; tilde-fence info strings can. Any lightweight Markdown preprocessor must preserve that marker-specific distinction.
+A production-seam RED/GREEN renderer test exposed the preprocessor/Goldmark disagreement directly, and the marker-aware info check kept the fix small.
+
+## What didn't work
+
+Prefix-only fence detection duplicated only part of Markdown's fence contract, so invalid prose was silently classified as code before Goldmark rendered it.
+
+## Worth knowing
+
+Backtick-fence info strings cannot contain backticks; tilde-fence info strings can. Any lightweight Markdown preprocessor must preserve that marker-specific distinction.
 
 ## Back-reference
 

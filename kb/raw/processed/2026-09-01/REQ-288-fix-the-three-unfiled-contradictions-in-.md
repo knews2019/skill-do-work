@@ -21,11 +21,15 @@ Fixed all three contradictions in one pass. The durable record now includes its 
 
 ## What worked
 
-**What worked:** Checking whether the marker K4 asked for already existed before adding one. It did — `builder_decided: true`, stamped by exactly the right emitter and absent from exactly the REQs that must not take that branch — so the fix collapsed from "new field, second emitter, contract row, migration" to "route on this, add the missing row". `maintenance.md`'s deletion questions are what prompted the check; the REQ itself said "add a marker" and would have been followed literally otherwise.
+Checking whether the marker K4 asked for already existed before adding one. It did — `builder_decided: true`, stamped by exactly the right emitter and absent from exactly the REQs that must not take that branch — so the fix collapsed from "new field, second emitter, contract row, migration" to "route on this, add the missing row". `maintenance.md`'s deletion questions are what prompted the check; the REQ itself said "add a marker" and would have been followed literally otherwise.
 
-**What didn't:** The mutation runs kept hitting the command timeout, because `contract-regressions.sh` runs the whole prescribed-shell suite before its own assertions and takes minutes. Two mutations were lost to timeouts before switching to extracting the block and running the two `grep` patterns directly against an original and a mutated copy — same assertion, seconds instead of minutes. For a prose-assertion check, testing the pattern against two copies of the file is equivalent to running the suite and is the right loop to iterate in.
+## What didn't work
 
-**Worth knowing:** K4's failure mode is worth remembering as a shape, not just as a bug. `review-work.md` had *documented* it — it knew the routing was prose-keyed, knew a rewording would misroute an approved follow-up into being archived unbuilt, and defended it by requiring an exact sentence in every consent question it wrote. A rule that requires every future author to reproduce a magic string is a defense with a per-use failure probability. The marker moves the decision to something the emitter sets once and nobody retypes.
+The mutation runs kept hitting the command timeout, because `contract-regressions.sh` runs the whole prescribed-shell suite before its own assertions and takes minutes. Two mutations were lost to timeouts before switching to extracting the block and running the two `grep` patterns directly against an original and a mutated copy — same assertion, seconds instead of minutes. For a prose-assertion check, testing the pattern against two copies of the file is equivalent to running the suite and is the right loop to iterate in.
+
+## Worth knowing
+
+K4's failure mode is worth remembering as a shape, not just as a bug. `review-work.md` had *documented* it — it knew the routing was prose-keyed, knew a rewording would misroute an approved follow-up into being archived unbuilt, and defended it by requiring an exact sentence in every consent question it wrote. A rule that requires every future author to reproduce a magic string is a defense with a per-use failure probability. The marker moves the decision to something the emitter sets once and nobody retypes.
 
 ## Back-reference
 

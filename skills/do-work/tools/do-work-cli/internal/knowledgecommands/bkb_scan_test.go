@@ -104,6 +104,56 @@ func TestBKBStatusMasterIndexCountMatrixIsActionableAndReadOnly(t *testing.T) {
 	}
 }
 
+func TestBKBLintReportsMalformedQuotedScalarAndMissingReciprocal(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "kb", "raw"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFixture(t, root, "kb/wiki/_master_index.md", "# Master\n\nTotal articles: 2 | Topic clusters: 1\n- [[_index_core]]\n")
+	writeFixture(t, root, "kb/wiki/topics/_index_core.md", "# Core\n\nTotal articles: 2\n- [[alpha]]\n- [[beta]]\n")
+	writeFixture(t, root, "kb/wiki/concepts/alpha.md", "---\ntitle: \"Alpha \"quoted\" title\"\ntype: concept\ntopic_cluster: core\nsources: [raw/processed/alpha.md]\nrelated:\n  - page: beta\n    rel: complements\ncreated: 2026-01-01\nupdated: 2026-01-01\nconfidence: medium\n---\n# Alpha\n[[beta]]\n")
+	writeFixture(t, root, "kb/wiki/concepts/beta.md", "---\ntitle: Beta\ntype: concept\ntopic_cluster: core\nsources: [raw/processed/beta.md]\nrelated: []\ncreated: 2026-01-01\nupdated: 2026-01-01\nconfidence: medium\n---\n# Beta\n[[alpha]]\n")
+	before := treeDigest(t, filepath.Join(root, "kb"))
+	result := handleBKBLint(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--kb", "kb"})
+	for _, code := range []string{"BKB-FRONTMATTER-MALFORMED", "BKB-RELATIONSHIP-RECIPROCITY"} {
+		if !resultHasFindingCode(result, code) {
+			t.Fatalf("missing %s: %#v", code, result.Findings)
+		}
+	}
+	for _, finding := range result.Findings {
+		switch finding.Code {
+		case "BKB-FRONTMATTER-MALFORMED":
+			if len(finding.AffectedPaths) != 1 || !strings.HasSuffix(finding.AffectedPaths[0], "wiki/concepts/alpha.md") || len(finding.Evidence) == 0 || !strings.Contains(finding.Evidence[0], "field title") {
+				t.Fatalf("malformed finding is not actionable: %#v", finding)
+			}
+		case "BKB-RELATIONSHIP-RECIPROCITY":
+			if len(finding.AffectedPaths) != 2 || !strings.Contains(strings.Join(finding.AffectedPaths, " "), "alpha.md") || !strings.Contains(strings.Join(finding.AffectedPaths, " "), "beta.md") || len(finding.NextArgv) == 0 || len(finding.VerificationArgv) == 0 {
+				t.Fatalf("reciprocity finding is not actionable: %#v", finding)
+			}
+		}
+	}
+	if after := treeDigest(t, filepath.Join(root, "kb")); after != before {
+		t.Fatal("BKB lint changed bytes while reporting malformed YAML or reciprocity")
+	}
+}
+
+func TestBKBLintAcceptsQuotedScalarsAndReciprocalRelationships(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "kb", "raw"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFixture(t, root, "kb/wiki/_master_index.md", "# Master\n\nTotal articles: 2 | Topic clusters: 1\n- [[_index_core]]\n")
+	writeFixture(t, root, "kb/wiki/topics/_index_core.md", "# Core\n\nTotal articles: 2\n- [[alpha]]\n- [[beta]]\n")
+	writeFixture(t, root, "kb/wiki/concepts/alpha.md", "---\ntitle: \"Alpha \\\"quoted\\\" title\" # valid YAML comment\ntype: concept\ntopic_cluster: core\nsources: [raw/processed/alpha.md]\nrelated:\n  - page: beta\n    rel: complements\ncreated: 2026-01-01\nupdated: 2026-01-01\nconfidence: medium\n---\n# Alpha\n[[beta]]\n")
+	writeFixture(t, root, "kb/wiki/concepts/beta.md", "---\ntitle: 'Beta''s page' # valid YAML comment\ntype: concept\ntopic_cluster: core\nsources: [raw/processed/beta.md]\nrelated:\n  - page: alpha\n    rel: complements\ncreated: 2026-01-01\nupdated: 2026-01-01\nconfidence: medium\n---\n# Beta\n[[alpha]]\n")
+	result := handleBKBLint(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--kb", "kb"})
+	for _, code := range []string{"BKB-FRONTMATTER-MALFORMED", "BKB-RELATIONSHIP-RECIPROCITY"} {
+		if resultHasFindingCode(result, code) {
+			t.Fatalf("unexpected %s: %#v", code, result.Findings)
+		}
+	}
+}
+
 func TestBKBScanPreservesAbsoluteAndParentRelativeTargets(t *testing.T) {
 	root := t.TempDir()
 	outside := t.TempDir()

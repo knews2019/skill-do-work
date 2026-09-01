@@ -2,14 +2,36 @@
 title: "Verification and Testing"
 type: concept
 topic_cluster: verification-and-testing
-sources: [raw/processed/2026-09-01/REQ-006-code-review-replace-work-md-step-number.md]
+sources:
+  - raw/processed/2026-09-01/REQ-006-code-review-replace-work-md-step-number.md
+  - raw/processed/2026-09-01/REQ-084-verify-s-queue-state-probe-misses-a-buil.md
+  - raw/processed/2026-09-01/REQ-098-verify-probes-assigned-elsewhere-claimed.md
+  - raw/processed/2026-09-01/REQ-168-delete-or-test-audit-of-defensive-code-i.md
+  - raw/processed/2026-09-01/REQ-169-validate-feedback-flags-remedies-that-ad.md
+  - raw/processed/2026-09-01/REQ-170-finding-closure-ratchet-and-canonical-ea.md
+  - raw/processed/2026-09-01/REQ-176-implement-the-maintainability-audit-acti.md
+  - raw/processed/2026-09-01/REQ-178-build-the-audit-metrics-tool-for-mechani.md
+  - raw/processed/2026-09-01/REQ-179-make-scope-drift-sh-parse-scope-headers-.md
+  - raw/processed/2026-09-01/REQ-180-fix-contract-regressions-sh-justfile-cas.md
+  - raw/processed/2026-09-01/REQ-188-hotspot-output-silently-drops-unavailabl.md
+  - raw/processed/2026-09-01/REQ-194-forward-stray-reqs-through-verify-and-fo.md
+  - raw/processed/2026-09-01/REQ-196-remaining-late-contract-assertions-use-c.md
+  - raw/processed/2026-09-01/REQ-254-let-qualify-tell-a-check-s-own-output-fr.md
+  - raw/processed/2026-09-01/REQ-293-make-the-impact-effort-lock-in-checks-pi.md
+  - raw/processed/2026-09-01/REQ-309-run-the-repo-s-canonical-gate-before-han.md
+  - raw/processed/2026-09-01/REQ-317-review-fix-preserve-canonical-gate-holds.md
+  - raw/processed/2026-09-01/REQ-375-restore-the-strict-browser-lane-on-curre.md
+  - raw/processed/2026-09-01/REQ-410-implement-doctor-deterministic-forensics.md
+  - raw/processed/2026-09-01/REQ-446-review-fix-match-remediation-to-prefligh.md
 related:
-  - page: entity-maintainer-verify
-    rel: extends
   - page: concept-contract-verification-gates
     rel: evidence-for
+  - page: concept-contract-verification-gates
+    rel: evidence-for
+  - page: entity-maintainer-verify
+    rel: extends
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: high
 ---
 

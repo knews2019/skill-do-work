@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: checkpoint-and-crash-recovery
 sources: [raw/processed/2026-09-01/REQ-246-repair-detectably-wrong-queue-and-workin.md]
 related:
-  - page: concept-session-checkpoints-and-recovery
-    rel: evidence-for
+  - page: REQ-247-archive-timestamp-audit-tool-driven-by-g
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,11 +25,15 @@ Built `skills/do-work/scripts/repair-req-timestamps.sh`, a POSIX-floor mechanica
 
 ## What worked
 
-**What worked:** Cloning the guard architecture of `record-commit-hash.sh` wholesale (verify-before-replace, atomic rename, byte-identical on trip) survived every adversarial mutant the review threw at it — including a fabricated future mtime. Small commits (script+RED, GREEN, hook wiring) made two transport-level interruptions nearly free to resume.
+Cloning the guard architecture of `record-commit-hash.sh` wholesale (verify-before-replace, atomic rename, byte-identical on trip) survived every adversarial mutant the review threw at it — including a fabricated future mtime. Small commits (script+RED, GREEN, hook wiring) made two transport-level interruptions nearly free to resume.
 
-**What didn't:** The repair-side parser was hand-rolled instead of derived from the read-side detectors it claims parity with — so it recognizes strictly fewer shapes than the board (space-separated instants, CRLF/BOM fences), and in one shape (unquoted space-separated) it half-rewrites and corrupts. The session's standing class-vs-instance warning fired anyway, one layer deeper than the builder looked: D-01 closed quoted stamps and the review found the shapes D-01 missed (REQ-255).
+## What didn't work
 
-**Worth knowing:** The hook's `2>/dev/null` is safe only because the repairer deliberately prints failure lines to stdout (D-03) — anyone adding stderr output to the script will silently lose it in the banner. `comparison_key_for`'s space-fold is dead code until REQ-255 resolves it. The 120s skew constant now has a fourth hand-kept copy.
+The repair-side parser was hand-rolled instead of derived from the read-side detectors it claims parity with — so it recognizes strictly fewer shapes than the board (space-separated instants, CRLF/BOM fences), and in one shape (unquoted space-separated) it half-rewrites and corrupts. The session's standing class-vs-instance warning fired anyway, one layer deeper than the builder looked: D-01 closed quoted stamps and the review found the shapes D-01 missed (REQ-255).
+
+## Worth knowing
+
+The hook's `2>/dev/null` is safe only because the repairer deliberately prints failure lines to stdout (D-03) — anyone adding stderr output to the script will silently lose it in the banner. `comparison_key_for`'s space-fold is dead code until REQ-255 resolves it. The 120s skew constant now has a fourth hand-kept copy.
 
 ## Back-reference
 

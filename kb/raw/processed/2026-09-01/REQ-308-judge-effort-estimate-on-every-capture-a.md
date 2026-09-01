@@ -30,7 +30,7 @@ a small, already-identified set of files — and both directions of the never-wr
 rule are named, so `effort-substantive` by default is called out as the same failure as an invented
 `effort-mechanical`.
 
-## What worked
+## Worth knowing
 
 - **Two rules that should be the same rule can be pinned by comparing them, not by quoting them.**
   Asserting a phrase is present is what REQ-293 ruled against; asserting that two sentences are

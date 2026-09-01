@@ -20,13 +20,15 @@ The live file endpoint now returns `image/png` only when Go's byte-level content
 
 ## What worked
 
-**What worked:** Byte-level PNG detection created the smallest safe exception to the file view's inert-text rule; a real encoded PNG plus a misleading `.png` fixture proved both sides of the boundary.
+Byte-level PNG detection created the smallest safe exception to the file view's inert-text rule; a real encoded PNG plus a misleading `.png` fixture proved both sides of the boundary.
 
-**What didn't:** Updating the handler alone left one test diagnostic restating the old “never the file's own type” contract; the restatement sweep caught it before release.
+## What didn't work
 
-**Worth knowing:** The `/file` route applies `X-Content-Type-Options: nosniff` globally and deliberately keeps HTML/SVG and mislabeled files as `text/plain`. Any future inline format must be explicitly allowlisted with a regression test for both valid bytes and a misleading extension.
+Updating the handler alone left one test diagnostic restating the old “never the file's own type” contract; the restatement sweep caught it before release.
 
-**Knowledge handoff:** Pending explicit user consent. No knowledge-base file was written automatically.
+## Worth knowing
+
+The `/file` route applies `X-Content-Type-Options: nosniff` globally and deliberately keeps HTML/SVG and mislabeled files as `text/plain`. Any future inline format must be explicitly allowlisted with a regression test for both valid bytes and a misleading extension.
 
 ## Back-reference
 

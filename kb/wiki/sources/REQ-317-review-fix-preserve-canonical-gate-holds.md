@@ -3,11 +3,9 @@ title: "Lessons from REQ-317: Review fix: Preserve canonical-gate holds in error
 type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-317-review-fix-preserve-canonical-gate-holds.md]
-related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -41,6 +39,13 @@ the ordinary remediation/follow-up/archive route.
 
 - REQ-309 originally tested only the newly added lane. That left a broader later directive free to
   reverse its failure disposition even though the local contract was completely green.
+
+## Worth knowing
+
+A preservation exception must narrow downstream catch-all error handlers, not
+only be stated where the exception originates. Attributable current-diff failures still use the
+ordinary remediation/Code/archive path; the hold is only for unrelated or pre-existing canonical
+gate failures.
 
 ## Back-reference
 

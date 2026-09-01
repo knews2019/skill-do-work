@@ -3,11 +3,9 @@ title: "Lessons from REQ-154: Review fix: Harden shipped Markdown reference pars
 type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-154-review-fix-harden-shipped-markdown-refer.md]
-related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

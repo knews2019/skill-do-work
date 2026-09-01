@@ -28,13 +28,17 @@ Added a browser behavior probe lane beside the existing Node lane, built to the 
 
 ## What worked
 
-**What worked:** Smoke-testing `--headless --dump-dom` from a shell before writing a line of Go. It settled the driver question — the REQ's "prefer no package manager, reach for Playwright only if that proves insufficient" needed an answer to "insufficient for what", and thirty seconds of shell gave it. Building the whole lane against a driver that then turned out to need npm would have been the expensive version of the same discovery.
+Smoke-testing `--headless --dump-dom` from a shell before writing a line of Go. It settled the driver question — the REQ's "prefer no package manager, reach for Playwright only if that proves insufficient" needed an answer to "insufficient for what", and thirty seconds of shell gave it. Building the whole lane against a driver that then turned out to need npm would have been the expensive version of the same discovery.
 
-**What didn't:** The first `maintainer-verify.sh` wiring failed the script's own self-test, and the reason is worth keeping: the self-test runs the script against a fixture repo with **stub binaries on a controlled PATH**, but it inherits the rest of the environment. An exported `QUEUE_KANBAN_BROWSER` therefore pointed the fixture's browser lane at a real engine while its `go` was a shim. Any environment variable a new stage reads has to be neutralized at those fixture invocations, right beside the `PATH=` line that is already doing exactly that job for the same reason.
+## What didn't work
+
+The first `maintainer-verify.sh` wiring failed the script's own self-test, and the reason is worth keeping: the self-test runs the script against a fixture repo with **stub binaries on a controlled PATH**, but it inherits the rest of the environment. An exported `QUEUE_KANBAN_BROWSER` therefore pointed the fixture's browser lane at a real engine while its `go` was a shim. Any environment variable a new stage reads has to be neutralized at those fixture invocations, right beside the `PATH=` line that is already doing exactly that job for the same reason.
 
 Also: `shellcheck` rejects `VAR= \` as a probable typo (SC1007) and wants `VAR='' \`. Worth knowing before writing three of them.
 
-**Worth knowing:** `getBBox()` returns zeros for an unrendered or detached element, so a browser probe's default failure mode is a *successful-looking measurement of nothing*. That is why the result node is written last and only once, and why the assertions check positive-and-finite plus a known font size rather than merely "no error". A browser lane that renders nothing measurable passes forever, and that is the specific failure this probe was built to be incapable of.
+## Worth knowing
+
+`getBBox()` returns zeros for an unrendered or detached element, so a browser probe's default failure mode is a *successful-looking measurement of nothing*. That is why the result node is written last and only once, and why the assertions check positive-and-finite plus a known font size rather than merely "no error". A browser lane that renders nothing measurable passes forever, and that is the specific failure this probe was built to be incapable of.
 
 ## Back-reference
 

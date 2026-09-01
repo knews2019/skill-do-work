@@ -3,11 +3,9 @@ title: "Lessons from REQ-293: Make the impact/effort lock-in checks pin the prop
 type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-293-make-the-impact-effort-lock-in-checks-pi.md]
-related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -30,11 +28,15 @@ Rewrote REQ-289's four lock-in checks so each holds its property rather than one
 
 ## What worked
 
-**What worked:** Computing what the *old* check would have done to each mutation, instead of only checking that the new one catches it. That is what turns "the new check is better" from a claim into a measurement, and it showed that one of my three chosen mutations would have been caught anyway — by an unrelated clause — which I would otherwise have counted as evidence it wasn't.
+Computing what the *old* check would have done to each mutation, instead of only checking that the new one catches it. That is what turns "the new check is better" from a claim into a measurement, and it showed that one of my three chosen mutations would have been caught anyway — by an unrelated clause — which I would otherwise have counted as evidence it wasn't.
 
-**What didn't:** The first widening of Check A's window went from `[^.]{0,80}` to `.*` and immediately false-positived on four lines of correct prose. The second attempt, `.{0,60}`, still failed on one line — because the action file **states the rule in as many words**: "`effort_estimate` is a different axis and is never derived from that token." A check written to catch a sentence will catch its own contract being stated, and the negation guard is the price. Worth knowing before writing any prose-grep guard: the file most likely to contain your forbidden phrasing is the file that defines why it is forbidden.
+## What didn't work
 
-**Worth knowing:** REQ-289's mutation test used the word "stamping" — the single verb its own check greps. That is the sharpest form of the self-confirming test: the mutation was drawn from the same imagination as the pattern, so it could only ever pass. The REQ's acceptance criterion ("use a different verb and a different markup shape than the one already in the file") is the general fix, and it is worth applying to every guard, not just this one: **choose the mutation before looking at the pattern, or you will choose the mutation the pattern already catches.**
+The first widening of Check A's window went from `[^.]{0,80}` to `.*` and immediately false-positived on four lines of correct prose. The second attempt, `.{0,60}`, still failed on one line — because the action file **states the rule in as many words**: "`effort_estimate` is a different axis and is never derived from that token." A check written to catch a sentence will catch its own contract being stated, and the negation guard is the price. Worth knowing before writing any prose-grep guard: the file most likely to contain your forbidden phrasing is the file that defines why it is forbidden.
+
+## Worth knowing
+
+REQ-289's mutation test used the word "stamping" — the single verb its own check greps. That is the sharpest form of the self-confirming test: the mutation was drawn from the same imagination as the pattern, so it could only ever pass. The REQ's acceptance criterion ("use a different verb and a different markup shape than the one already in the file") is the general fix, and it is worth applying to every guard, not just this one: **choose the mutation before looking at the pattern, or you will choose the mutation the pattern already catches.**
 
 ## Back-reference
 

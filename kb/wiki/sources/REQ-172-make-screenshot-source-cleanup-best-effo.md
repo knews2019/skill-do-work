@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: shell-and-automation
 sources: [raw/processed/2026-09-01/REQ-172-make-screenshot-source-cleanup-best-effo.md]
 related:
-  - page: concept-prescribed-shell-commands
-    rel: evidence-for
+  - page: REQ-173-handle-first-line-bom-in-just-collision-
+    rel: complements
+  - page: REQ-174-validate-root-markdown-fence-info
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,9 +27,15 @@ Staged-source removal now warns without invalidating an already verified permane
 
 ## What worked
 
-**What worked:** Replaying only the staged-source `rm` separated post-install cleanup from the strict installation boundary.
-**What didn't:** Treating every cleanup failure as transactional failure created a state that the normal retry could not repair.
-**Worth knowing:** Once the permanent asset is byte-verified and no-clobber installed, cleanup warnings must not revoke its validity.
+Replaying only the staged-source `rm` separated post-install cleanup from the strict installation boundary.
+
+## What didn't work
+
+Treating every cleanup failure as transactional failure created a state that the normal retry could not repair.
+
+## Worth knowing
+
+Once the permanent asset is byte-verified and no-clobber installed, cleanup warnings must not revoke its validity.
 
 ## Back-reference
 

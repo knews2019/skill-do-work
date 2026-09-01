@@ -20,9 +20,15 @@ Built the vendored audit-metrics Go CLI (zero dependencies, queue-kanban convent
 
 ## What worked
 
-**What worked:** Mirroring queue-kanban's conventions wholesale (renderer/io.Writer split, per-subcommand FlagSets, real-git fixtures in t.TempDir()) meant zero design churn; the real-repo spot-check during build caught the biggest correctness bug (staged-copy migration) before review.
-**What didn't:** `-M` rename detection alone missed the 2026-08-08 skills/ restructure entirely (8 vs 214 touches) — it was a staged copy-then-delete, invisible to rename detection; only `-C --find-copies-harder` plus dead-copy-source reassignment reproduces `git log --follow`. Also: phrasing the Scope header with a parenthetical silently disabled scope-drift.sh (→ REQ-179).
-**Worth knowing:** Churn numbers from this tool are only trustworthy because of copy detection — anyone replacing it with a plain `git log --name-only | sort | uniq -c` resurrects the dead-path split. Shallow clones are detected and reported, never silently truncated. The tool is a separate Go module — a repo-root `go build ./...` never reaches it.
+Mirroring queue-kanban's conventions wholesale (renderer/io.Writer split, per-subcommand FlagSets, real-git fixtures in t.TempDir()) meant zero design churn; the real-repo spot-check during build caught the biggest correctness bug (staged-copy migration) before review.
+
+## What didn't work
+
+`-M` rename detection alone missed the 2026-08-08 skills/ restructure entirely (8 vs 214 touches) — it was a staged copy-then-delete, invisible to rename detection; only `-C --find-copies-harder` plus dead-copy-source reassignment reproduces `git log --follow`. Also: phrasing the Scope header with a parenthetical silently disabled scope-drift.sh (→ REQ-179).
+
+## Worth knowing
+
+Churn numbers from this tool are only trustworthy because of copy detection — anyone replacing it with a plain `git log --name-only | sort | uniq -c` resurrects the dead-path split. Shallow clones are detected and reported, never silently truncated. The tool is a separate Go module — a repo-root `go build ./...` never reaches it.
 
 ## Back-reference
 

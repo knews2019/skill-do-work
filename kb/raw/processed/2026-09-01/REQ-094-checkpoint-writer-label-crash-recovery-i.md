@@ -20,11 +20,15 @@ In-Progress checkpoint entries now carry `— writer: <hostname>:<absolute-check
 
 ## What worked
 
-**What worked:** A pre-build exploration inventory of every restatement site (3 copies of "no second owner reads it", 2 non-obvious label-destruction paths in Step 10's wholesale rewrite and the session-start delete, 5 pinned contract-test phrases) — the build touched 8 files with zero suite breakage because the collision surface was mapped first. Pinning the tripwire ban and its carve-out to the *same paragraph* via a new assertion (a carve-out that drifts into its own paragraph reads as general permission).
+A pre-build exploration inventory of every restatement site (3 copies of "no second owner reads it", 2 non-obvious label-destruction paths in Step 10's wholesale rewrite and the session-start delete, 5 pinned contract-test phrases) — the build touched 8 files with zero suite breakage because the collision surface was mapped first. Pinning the tripwire ban and its carve-out to the *same paragraph* via a new assertion (a carve-out that drifts into its own paragraph reads as general permission).
 
-**What didn't:** The builder's Step 10 echoes narrowed "every entry this checkout did not write" to "another checkout's label" — an echo written from memory of the canonical clause, not from it. Echo sites should quote the canonical condition, not paraphrase it (that's REQ-102).
+## What didn't work
 
-**Worth knowing:** The checkpoint travels between checkouts on any install that commits `do-work/` — every rule about it now has four claim-origin cases (own-label / foreign-label / label-less / unnamed), and the three-hour takeover ladder serves only the last two. `checkpointMentionedRequestIds` in `tools/queue-kanban` extracts ids by regex, so entry-format suffixes are parser-transparent.
+The builder's Step 10 echoes narrowed "every entry this checkout did not write" to "another checkout's label" — an echo written from memory of the canonical clause, not from it. Echo sites should quote the canonical condition, not paraphrase it (that's REQ-102).
+
+## Worth knowing
+
+The checkpoint travels between checkouts on any install that commits `do-work/` — every rule about it now has four claim-origin cases (own-label / foreign-label / label-less / unnamed), and the three-hour takeover ladder serves only the last two. `checkpointMentionedRequestIds` in `tools/queue-kanban` extracts ids by regex, so entry-format suffixes are parser-transparent.
 
 ## Back-reference
 

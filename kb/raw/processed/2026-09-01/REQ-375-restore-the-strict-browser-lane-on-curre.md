@@ -18,7 +18,7 @@ tags: [testing, restore, strict, browser, lane]
 
 - `skills/do-work-board/tools/queue-kanban/browser_probe_test.go` (modified). Reuses the existing DevTools-pipe session for measurement probes, waits for a populated result node on the page's real clock, reads literal textContent, and retains object-shape/caller JSON validation and strict probe coun
 
-## What worked
+## Worth knowing
 
 Browser process exit is not a reliable result-readiness signal: this Chrome build emitted complete dump-DOM output but did not exit, even for a tiny local page. A bounded protocol read of the completed result node restores observability without relaxing product assertions. Read textContent when the contract is JSON text; serializing HTML can silently change literal clipboard content. A failed mutation-isolator trial identifies that trial's missing event, not all event behavior in that engine or every older release.
 

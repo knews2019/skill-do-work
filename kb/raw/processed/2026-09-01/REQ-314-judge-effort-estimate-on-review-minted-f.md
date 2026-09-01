@@ -42,6 +42,12 @@ contract independently verifies both field-anchored instructions and the emitted
   satisfy the ask-user and never-copy-default legs. Fenced payload isolation alone was insufficient;
   the check also had to isolate the paragraph containing the actual `effort_estimate` directive.
 
+## Worth knowing
+
+Schema prose and its Go mirror are active contract surfaces even when parser
+behavior does not change. When a writer population changes, those read-side descriptions must move
+in the same commit or they will keep teaching the old boundary.
+
 ## Back-reference
 
 See `do-work/archive/UR-064/REQ-314-judge-effort-estimate-on-review-minted-follow-ups.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `328767f`.

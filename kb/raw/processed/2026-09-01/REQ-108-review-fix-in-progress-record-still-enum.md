@@ -37,8 +37,11 @@ Carried REQ-104's drop through the two contract sites that still assumed the old
 
 ## What worked
 
-**What worked:** Stating the condition and deleting the copy (rather than widening the list) resolved the enumeration drift permanently — there is no second case list left to go stale.
-**Worth knowing:** When a classification case loses its auto-path, sweep every *lifecycle* rule scoped to the old classes (removal, cleanup, delete gates) — REQ-104 fixed the classifier and this REQ had to fix the two removal rules it orphaned. The pair is one change conceptually; try to land them together next time.
+Stating the condition and deleting the copy (rather than widening the list) resolved the enumeration drift permanently — there is no second case list left to go stale.
+
+## Worth knowing
+
+When a classification case loses its auto-path, sweep every *lifecycle* rule scoped to the old classes (removal, cleanup, delete gates) — REQ-104 fixed the classifier and this REQ had to fix the two removal rules it orphaned. The pair is one change conceptually; try to land them together next time.
 
 ## Back-reference
 

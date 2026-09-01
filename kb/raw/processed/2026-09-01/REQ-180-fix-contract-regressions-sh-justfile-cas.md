@@ -20,9 +20,15 @@ Replaced the two capitalized `Justfile` inputs with the tracked lowercase `justf
 
 ## What worked
 
-**What worked:** The captured case-sensitive Linux failure named the exact byte-level mismatch, so the repair stayed at two literals and the full suite proved late checks were reachable again.
-**What didn't:** Reproducing RED on a default macOS filesystem was not meaningful because case-insensitive lookup masks the bug; a disk-image workaround added ceremony without improving the captured evidence.
-**Worth knowing:** Shell test fixtures and prescribed paths must use the tracked filename's exact casing even when a developer filesystem accepts variants.
+The captured case-sensitive Linux failure named the exact byte-level mismatch, so the repair stayed at two literals and the full suite proved late checks were reachable again.
+
+## What didn't work
+
+Reproducing RED on a default macOS filesystem was not meaningful because case-insensitive lookup masks the bug; a disk-image workaround added ceremony without improving the captured evidence.
+
+## Worth knowing
+
+Shell test fixtures and prescribed paths must use the tracked filename's exact casing even when a developer filesystem accepts variants.
 
 ## Back-reference
 

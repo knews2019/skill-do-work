@@ -4,10 +4,18 @@ type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-184-live-board-origin-checks-have-no-trusted.md]
 related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+  - page: REQ-182-public-work-and-schema-vocabularies-drif
+    rel: complements
+  - page: REQ-185-javascript-behavior-probes-can-all-skip-
+    rel: complements
+  - page: REQ-186-required-baseline-verification-executes-
+    rel: complements
+  - page: REQ-187-no-single-local-maintainer-command-prove
+    rel: complements
+  - page: REQ-188-hotspot-output-silently-drops-unavailabl
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -23,12 +31,10 @@ Anchor live-board request authority to the actual configured listener so matchin
 
 **Behavior:** Production requests are now authorized against the configured bind and actual post-bind listener port before the inner router runs. Wildcard binds accept only the accepted connection's concrete numeric local address, with loopback aliases limited to loopback connections; arbitrary DNS Host values never inherit wildcard authority.
 
-## What worked
+## Worth knowing
 
 - When HTTP Host is an authority boundary, matching it to Origin is not enough because both are request-controlled; accepted authorities must be derived after bind from the listener and, for wildcard sockets, from the accepted connection's concrete local address.
 - Wildcard network reachability does not justify wildcard DNS authority. Numeric local destinations preserve intentional LAN access without reopening DNS-rebinding-style Host trust.
-
-**Knowledge handoff:** Pending human triage. No knowledge-base file was written automatically.
 
 ## Back-reference
 

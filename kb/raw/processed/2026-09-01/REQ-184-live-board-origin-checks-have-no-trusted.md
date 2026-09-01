@@ -18,12 +18,10 @@ Anchor live-board request authority to the actual configured listener so matchin
 
 **Behavior:** Production requests are now authorized against the configured bind and actual post-bind listener port before the inner router runs. Wildcard binds accept only the accepted connection's concrete numeric local address, with loopback aliases limited to loopback connections; arbitrary DNS Host values never inherit wildcard authority.
 
-## What worked
+## Worth knowing
 
 - When HTTP Host is an authority boundary, matching it to Origin is not enough because both are request-controlled; accepted authorities must be derived after bind from the listener and, for wildcard sockets, from the accepted connection's concrete local address.
 - Wildcard network reachability does not justify wildcard DNS authority. Numeric local destinations preserve intentional LAN access without reopening DNS-rebinding-style Host trust.
-
-**Knowledge handoff:** Pending human triage. No knowledge-base file was written automatically.
 
 ## Back-reference
 

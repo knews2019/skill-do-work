@@ -3,11 +3,9 @@ title: "Lessons from REQ-179: Make scope-drift.sh parse Scope headers with trail
 type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-179-make-scope-drift-sh-parse-scope-headers-.md]
-related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,9 +23,15 @@ Fixed the silent self-disable: an annotated `**Files I will touch (…):**` head
 
 ## What worked
 
-**What worked:** Reproducing RED against the real defect artifact (REQ-178's archive) instead of only synthetic fixtures — it also surfaced the bare-filename Scope formatting as a bonus signal.
-**What didn't:** N/A — first pass green.
-**Worth knowing:** `contract-regressions.sh` aborts at line ~1797 on case-sensitive filesystems (`Justfile` vs `justfile`, REQ-180) — everything after never runs there, so a green-looking late-suite check may simply be unreached. The process-tree probe is confirmed flaky in this sandbox (failed at RED, passed at GREEN, no related change).
+Reproducing RED against the real defect artifact (REQ-178's archive) instead of only synthetic fixtures — it also surfaced the bare-filename Scope formatting as a bonus signal.
+
+## What didn't work
+
+N/A — first pass green.
+
+## Worth knowing
+
+`contract-regressions.sh` aborts at line ~1797 on case-sensitive filesystems (`Justfile` vs `justfile`, REQ-180) — everything after never runs there, so a green-looking late-suite check may simply be unreached. The process-tree probe is confirmed flaky in this sandbox (failed at RED, passed at GREEN, no related change).
 
 ## Back-reference
 

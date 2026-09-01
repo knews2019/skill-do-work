@@ -20,11 +20,15 @@ Captured requests can now carry only the most relevant lesson reads that fit one
 
 ## What worked
 
-**What worked:** Separating the one budget/cost contract from its consumers kept the number unique while letting capture and the next claim-time REQ share it; a focused request-model test proved the preservation seam directly.
+Separating the one budget/cost contract from its consumers kept the number unique while letting capture and the next claim-time REQ share it; a focused request-model test proved the preservation seam directly.
 
-**What didn't:** The shared tree's paused REQ-420 work overlapped two documentation files, so whole-file staging and dirty-tree qualification could not establish attribution.
+## What didn't work
 
-**Worth knowing:** A budgeted context pointer needs both a single limit and a mechanical cost for every entry form; otherwise a “cheaper” targeted form makes compliance impossible to verify.
+The shared tree's paused REQ-420 work overlapped two documentation files, so whole-file staging and dirty-tree qualification could not establish attribution.
+
+## Worth knowing
+
+A budgeted context pointer needs both a single limit and a mechanical cost for every entry form; otherwise a “cheaper” targeted form makes compliance impossible to verify.
 
 ## Back-reference
 

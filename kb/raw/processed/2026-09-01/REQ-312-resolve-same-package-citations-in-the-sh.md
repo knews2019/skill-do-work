@@ -40,6 +40,12 @@ behavior; consumer-owned and deliberately absent paths are explicitly rooted in 
 - The original eleven-file scope missed an existing contract pin for the last30days prose. The
   canonical gate caught the stale expectation; D-02 expanded the scope without weakening the pin.
 
+## Worth knowing
+
+A newly added immediate content directory in any manifest module intentionally
+broadens the same-package citation grammar. Consumer-owned or deliberately absent path examples must
+declare their root explicitly; missing targets are never an exemption.
+
 ## Back-reference
 
 See `do-work/archive/UR-055/REQ-312-resolve-same-package-citations-in-the-shipped-reference-contract.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `99ea028`.

@@ -3,11 +3,9 @@ title: "Lessons from REQ-074: A recovered REQ loses the timestamp that says when
 type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-074-recovered-req-loses-its-status-change-ti.md]
-related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

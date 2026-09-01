@@ -20,9 +20,15 @@ The fallback definition scanner removes one UTF-8 BOM only from its first-line c
 
 ## What worked
 
-**What worked:** Replaying the no-Just installer path preserved the real pre-confirmation and byte-identity boundaries while isolating the scanner defect.
-**What didn't:** An ASCII-anchored identifier matcher silently assumed the first physical byte belonged to the Just grammar.
-**Worth knowing:** UTF-8 BOM handling belongs only in the first-line classification view; the byte-preserving target and all later lines stay untouched.
+Replaying the no-Just installer path preserved the real pre-confirmation and byte-identity boundaries while isolating the scanner defect.
+
+## What didn't work
+
+An ASCII-anchored identifier matcher silently assumed the first physical byte belonged to the Just grammar.
+
+## Worth knowing
+
+UTF-8 BOM handling belongs only in the first-line classification view; the byte-preserving target and all later lines stay untouched.
 
 ## Back-reference
 

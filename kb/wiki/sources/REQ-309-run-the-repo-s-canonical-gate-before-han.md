@@ -3,11 +3,9 @@ title: "Lessons from REQ-309: Run the repo's canonical gate before hand-back, no
 type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-309-run-the-repo-s-canonical-gate-before-han.md]
-related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -30,13 +28,17 @@ align the remaining downstream error-handling reader.
 
 ## What worked
 
-**What worked:** A semantic detector plus adversarial mutations turned a prose policy into an
+A semantic detector plus adversarial mutations turned a prose policy into an
 executable contract, and replaying REQ-283 proved the new gate catches the exact escaped defect.
 
-**What didn't:** Testing only the newly inserted Step 6.5 lane missed a later generic Error Handling
+## What didn't work
+
+Testing only the newly inserted Step 6.5 lane missed a later generic Error Handling
 row that can oppose it. REQ-317 carries that downstream-reader reconciliation.
 
-**Worth knowing:** Focused tests establish attribution; a project-declared repository gate establishes
+## Worth knowing
+
+Focused tests establish attribution; a project-declared repository gate establishes
 whether the final tree is hand-backable. They are complementary verdicts, not substitutes.
 
 ## Back-reference

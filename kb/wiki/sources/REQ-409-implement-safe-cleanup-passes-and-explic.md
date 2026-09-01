@@ -4,10 +4,20 @@ type: source-summary
 topic_cluster: shell-and-automation
 sources: [raw/processed/2026-09-01/REQ-409-implement-safe-cleanup-passes-and-explic.md]
 related:
-  - page: concept-prescribed-shell-commands
-    rel: evidence-for
+  - page: REQ-408-build-shared-request-schema-dependency-a
+    rel: depends-on
+  - page: REQ-410-implement-doctor-deterministic-forensics
+    rel: complements
+  - page: REQ-413-implement-capture-file-answer-release-ve
+    rel: complements
+  - page: REQ-414-migrate-remaining-core-checks-publicatio
+    rel: complements
+  - page: REQ-419-add-flat-just-recipes-collision-validati
+    rel: complements
+  - page: REQ-420-replace-shell-implementations-with-shims
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,11 +35,15 @@ Added the canonical `cleanup` command and its safe planning/application layer fo
 
 ## What worked
 
-**What worked:** Exact rooted evidence, transaction-result relabeling after outcome, and focused adversarial fixtures closed the original safety defects without broadening the write set.
+Exact rooted evidence, transaction-result relabeling after outcome, and focused adversarial fixtures closed the original safety defects without broadening the write set.
 
-**What didn't:** Modeling each move as locally safe was insufficient; safety also depends on explicit prerequisites between operation groups. Unit coverage of isolated groups missed refusal combinations until end-to-end re-review.
+## What didn't work
 
-**Worth knowing:** Cleanup planners need a dependency graph, not just deterministic ordering: every derived mutation must name the successful operation that makes it valid, while unrelated groups remain independently eligible.
+Modeling each move as locally safe was insufficient; safety also depends on explicit prerequisites between operation groups. Unit coverage of isolated groups missed refusal combinations until end-to-end re-review.
+
+## Worth knowing
+
+Cleanup planners need a dependency graph, not just deterministic ordering: every derived mutation must name the successful operation that makes it valid, while unrelated groups remain independently eligible.
 
 ## Back-reference
 

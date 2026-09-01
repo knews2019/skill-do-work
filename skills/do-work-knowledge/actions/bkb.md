@@ -325,7 +325,7 @@ Health check the wiki for consistency and accuracy.
 
 ### Checks
 
-1. Invoke the installed core launcher with `--repo-root <project-root> --format json bkb-lint-structure --kb <kb>` exactly once. Treat its typed findings as canonical for orphans, index integrity, broken links, ingestion-day coverage, required frontmatter and enum shape, relationship density/targets/enums, and mechanical agent-query staleness. Project each finding into the combined report without rescanning those categories.
+1. Invoke the installed core launcher with `--repo-root <project-root> --format json bkb-lint-structure --kb <kb>` exactly once. Treat its typed findings as canonical for orphans, index integrity, broken links, ingestion-day coverage, required frontmatter and enum shape, malformed quoted top-level scalars, relationship density/targets/enums/reciprocity, and mechanical agent-query staleness. Project each finding into the combined report without rescanning those categories.
 2. If the launcher is missing or the command fails, stop with its actionable finding. Do not fall back to free-form structural scanning and do not write the lint report or log entry.
 3. Apply the active Librarian, Reviewer, Connector, and Editor judgment to the retained semantic checks only: contradictions, missing-concept design, superseded or stale claims, confidence/source-quality fit, editorial thinness/navigation, reciprocity and garden work, and the repair choice for every structural finding.
 

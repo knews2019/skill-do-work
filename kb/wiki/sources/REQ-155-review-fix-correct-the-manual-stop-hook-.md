@@ -3,11 +3,9 @@ title: "Lessons from REQ-155: Review fix: Correct the manual Stop-hook object pa
 type: source-summary
 topic_cluster: queue-orchestration-and-lifecycle
 sources: [raw/processed/2026-09-01/REQ-155-review-fix-correct-the-manual-stop-hook-.md]
-related:
-  - page: concept-queue-task-lifecycle
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

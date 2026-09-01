@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-277-state-the-mark-label-face-constant-s-rea.md]
 related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+  - page: REQ-292-move-durations-label-placement-into-the-
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -28,11 +28,15 @@ Ran the sweep the REQ requires and reported it in full; verified all three named
 
 ## What worked
 
-**What worked:** Doing the sweep mechanically instead of reading the three named lines. Enumerating every `durationsMeasured*` name against its readers took one shell loop, proved all three instances moot in one table, and — because the table made the block's contents concrete — led straight to reading the block header that turned out to be the real defect. The REQ predicted its own instances would be moot and asked for the sweep anyway; that instruction is what earned the finding.
+Doing the sweep mechanically instead of reading the three named lines. Enumerating every `durationsMeasured*` name against its readers took one shell loop, proved all three instances moot in one table, and — because the table made the block's contents concrete — led straight to reading the block header that turned out to be the real defect. The REQ predicted its own instances would be moot and asked for the sweep anyway; that instruction is what earned the finding.
 
-**What didn't:** Nothing failed in this REQ's own work, but it caught a mistake made a few hours earlier in this same run. REQ-292's justification for deleting a guard — "no such constant survives" — was checked against the two files that REQ was clearing and not against the package. The lesson is narrow and repeatable: **when a deletion is justified by "nothing uses this any more", the scope of that claim has to be the scope of the thing being deleted.** The guard was package-wide; the check was file-wide.
+## What didn't work
 
-**Worth knowing:** A removed guard is more dangerous than an absent one, because the prose that described it usually survives. Here the block header went on asserting that every measured constant's build was enforced for hours after the enforcement was gone — and it read as true, because it had been. When deleting a check, grep for what *claims* it exists.
+Nothing failed in this REQ's own work, but it caught a mistake made a few hours earlier in this same run. REQ-292's justification for deleting a guard — "no such constant survives" — was checked against the two files that REQ was clearing and not against the package. The lesson is narrow and repeatable: **when a deletion is justified by "nothing uses this any more", the scope of that claim has to be the scope of the thing being deleted.** The guard was package-wide; the check was file-wide.
+
+## Worth knowing
+
+A removed guard is more dangerous than an absent one, because the prose that described it usually survives. Here the block header went on asserting that every measured constant's build was enforced for hours after the enforcement was gone — and it read as true, because it had been. When deleting a check, grep for what *claims* it exists.
 
 ## Back-reference
 

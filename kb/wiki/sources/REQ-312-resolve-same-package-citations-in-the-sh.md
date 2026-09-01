@@ -3,11 +3,9 @@ title: "Lessons from REQ-312: Resolve same-package citations in the shipped refe
 type: source-summary
 topic_cluster: suite-and-package-architecture
 sources: [raw/processed/2026-09-01/REQ-312-resolve-same-package-citations-in-the-sh.md]
-related:
-  - page: concept-modular-suite-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -44,6 +42,12 @@ behavior; consumer-owned and deliberately absent paths are explicitly rooted in 
 
 - The original eleven-file scope missed an existing contract pin for the last30days prose. The
   canonical gate caught the stale expectation; D-02 expanded the scope without weakening the pin.
+
+## Worth knowing
+
+A newly added immediate content directory in any manifest module intentionally
+broadens the same-package citation grammar. Consumer-owned or deliberately absent path examples must
+declare their root explicitly; missing targets are never an exemption.
 
 ## Back-reference
 

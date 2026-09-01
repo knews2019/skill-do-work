@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: verification-and-testing
 sources: [raw/processed/2026-09-01/REQ-169-validate-feedback-flags-remedies-that-ad.md]
 related:
-  - page: concept-contract-verification-gates
-    rel: evidence-for
+  - page: REQ-168-delete-or-test-audit-of-defensive-code-i
+    rel: complements
+  - page: REQ-170-finding-closure-ratchet-and-canonical-ea
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

@@ -4,10 +4,14 @@ type: source-summary
 topic_cluster: queue-orchestration-and-lifecycle
 sources: [raw/processed/2026-09-01/REQ-091-the-hand-back-merge-fails-while-the-owne.md]
 related:
-  - page: concept-queue-task-lifecycle
-    rel: evidence-for
+  - page: REQ-073-fan-out-dispatch-n-concurrent-builders-u
+    rel: complements
+  - page: REQ-085-run-req-073-s-live-two-builder-acceptanc
+    rel: complements
+  - page: REQ-092-actions-work-md-has-no-wave-selection-or
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

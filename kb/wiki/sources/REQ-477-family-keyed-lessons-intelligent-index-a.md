@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: knowledge-and-memory
 sources: [raw/processed/2026-09-01/REQ-477-family-keyed-lessons-intelligent-index-a.md]
 related:
-  - page: concept-knowledge-and-memory-systems
-    rel: evidence-for
+  - page: REQ-478-capture-stamps-required-lessons-under-a-
+    rel: complements
+  - page: REQ-479-enforce-required-lessons-reads-and-audit
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,11 +27,15 @@ Lesson writers now emit a literal family discriminator, refresh one reproducible
 
 ## What worked
 
-**What worked:** Enumerating live writers before editing prevented the standalone review path from silently bypassing the new contract; testing the patch on a clean detached worktree separated REQ-477 evidence from paused REQ-420 changes.
+Enumerating live writers before editing prevented the standalone review path from silently bypassing the new contract; testing the patch on a clean detached worktree separated REQ-477 evidence from paused REQ-420 changes.
 
-**What didn't:** Running the repository contract suite directly in the shared dirty tree produced many unrelated REQ-420 failures and could not qualify this change.
+## What didn't work
 
-**Worth knowing:** An output-format rule is incomplete until every writer is swept, even when the REQ names only the primary writer.
+Running the repository contract suite directly in the shared dirty tree produced many unrelated REQ-420 failures and could not qualify this change.
+
+## Worth knowing
+
+An output-format rule is incomplete until every writer is swept, even when the REQ names only the primary writer.
 
 ## Back-reference
 

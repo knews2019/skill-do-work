@@ -20,7 +20,7 @@ commit, so the agreement test stays green.
 
 Underscores now delimit ticket IDs. Boundary checks run after candidate matching, preventing the regular expression from falling back to a shorter UR alternative. Ticket candidates remain consumed even when resolution intentionally suppresses them; only non-ticket runs keep the previous retry behavior.
 
-## What worked
+## Worth knowing
 
 Compound-first alternation does not guarantee compound-first behavior when a failing boundary permits fallback. Consume before checking boundaries, and keep intentionally suppressed ticket candidates consumed too: a caller's retry can recreate a fallback the regular expression no longer performs.
 

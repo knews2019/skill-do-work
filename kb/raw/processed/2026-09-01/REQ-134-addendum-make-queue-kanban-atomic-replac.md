@@ -18,7 +18,7 @@ Correct the shared queue-kanban atomic replacement path so its crash-safety cont
 
 [MAP CHANGED] Queue-kanban complete-file writes now live in `atomic_write.go`; the final primitive is selected by the `atomic_replace_*` build-tag files and is shared by Testing frontmatter writes and `next-version`.
 
-## What worked
+## Worth knowing
 
 - A cross-platform API name does not imply a cross-platform atomicity contract; the last filesystem mutation needs an OS-specific proof.
 - Validate write-target identity with `Lstat` before temporary-file creation when replacing a pathname rather than following it.

@@ -4,10 +4,24 @@ type: source-summary
 topic_cluster: checkpoint-and-crash-recovery
 sources: [raw/processed/2026-09-01/REQ-094-checkpoint-writer-label-crash-recovery-i.md]
 related:
-  - page: concept-session-checkpoints-and-recovery
-    rel: evidence-for
+  - page: REQ-095-two-clone-acceptance-run-checkpoint-pois
+    rel: complements
+  - page: REQ-096-execution-model-re-grain-claim-anywhere-
+    rel: complements
+  - page: REQ-097-assigned-to-advisory-field-schema-line-s
+    rel: complements
+  - page: REQ-098-verify-probes-assigned-elsewhere-claimed
+    rel: complements
+  - page: REQ-099-automatic-wave-dispatch-the-work-loop-co
+    rel: complements
+  - page: REQ-100-live-auto-wave-acceptance-run-prove-real
+    rel: complements
+  - page: REQ-101-docs-adr-multi-checkout-guide-and-the-se
+    rel: complements
+  - page: REQ-108-review-fix-in-progress-record-still-enum
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,11 +39,15 @@ In-Progress checkpoint entries now carry `— writer: <hostname>:<absolute-check
 
 ## What worked
 
-**What worked:** A pre-build exploration inventory of every restatement site (3 copies of "no second owner reads it", 2 non-obvious label-destruction paths in Step 10's wholesale rewrite and the session-start delete, 5 pinned contract-test phrases) — the build touched 8 files with zero suite breakage because the collision surface was mapped first. Pinning the tripwire ban and its carve-out to the *same paragraph* via a new assertion (a carve-out that drifts into its own paragraph reads as general permission).
+A pre-build exploration inventory of every restatement site (3 copies of "no second owner reads it", 2 non-obvious label-destruction paths in Step 10's wholesale rewrite and the session-start delete, 5 pinned contract-test phrases) — the build touched 8 files with zero suite breakage because the collision surface was mapped first. Pinning the tripwire ban and its carve-out to the *same paragraph* via a new assertion (a carve-out that drifts into its own paragraph reads as general permission).
 
-**What didn't:** The builder's Step 10 echoes narrowed "every entry this checkout did not write" to "another checkout's label" — an echo written from memory of the canonical clause, not from it. Echo sites should quote the canonical condition, not paraphrase it (that's REQ-102).
+## What didn't work
 
-**Worth knowing:** The checkpoint travels between checkouts on any install that commits `do-work/` — every rule about it now has four claim-origin cases (own-label / foreign-label / label-less / unnamed), and the three-hour takeover ladder serves only the last two. `checkpointMentionedRequestIds` in `tools/queue-kanban` extracts ids by regex, so entry-format suffixes are parser-transparent.
+The builder's Step 10 echoes narrowed "every entry this checkout did not write" to "another checkout's label" — an echo written from memory of the canonical clause, not from it. Echo sites should quote the canonical condition, not paraphrase it (that's REQ-102).
+
+## Worth knowing
+
+The checkpoint travels between checkouts on any install that commits `do-work/` — every rule about it now has four claim-origin cases (own-label / foreign-label / label-less / unnamed), and the three-hour takeover ladder serves only the last two. `checkpointMentionedRequestIds` in `tools/queue-kanban` extracts ids by regex, so entry-format suffixes are parser-transparent.
 
 ## Back-reference
 

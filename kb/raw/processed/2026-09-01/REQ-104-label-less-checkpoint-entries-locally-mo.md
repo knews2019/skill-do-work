@@ -25,11 +25,15 @@ Dropped the label-less authorship heuristic (D-01: DROP over NARROW). `docs/work
 
 ## What worked
 
-**What worked:** Pre-exploration that mapped the suite's sed-range boundaries and every pinned phrase before dispatch — the builder rewrote a heavily-pinned bullet without breaking a single existing assertion. Red-green demonstrated with the suite's own extraction idiom (run the sed + grep against HEAD to show both new pins would have failed pre-edit) made the proof mechanical instead of rhetorical.
+Pre-exploration that mapped the suite's sed-range boundaries and every pinned phrase before dispatch — the builder rewrote a heavily-pinned bullet without breaking a single existing assertion. Red-green demonstrated with the suite's own extraction idiom (run the sed + grep against HEAD to show both new pins would have failed pre-edit) made the proof mechanical instead of rhetorical.
 
-**What didn't:** The builder's mirror sweep grepped for the *retired inference* ("locally modified ⇒ own") and found exactly one site — but a sweep for *restatements of the classification itself* would have caught In-Progress Record's two-case enumeration in the very file being edited. Sweeping for the deleted phrase is not the same as sweeping for the rule.
+## What didn't work
 
-**Worth knowing:** Dropping a classification case can orphan its downstream lifecycle rules — the label-less case lost its authorship heuristic, which silently disconnected it from every own-entry removal rule (checkpoint entries now have no documented exit for that case; REQ-108). When deleting a case from a ladder, walk what *used to happen after* that case classified, not just the classification.
+The builder's mirror sweep grepped for the *retired inference* ("locally modified ⇒ own") and found exactly one site — but a sweep for *restatements of the classification itself* would have caught In-Progress Record's two-case enumeration in the very file being edited. Sweeping for the deleted phrase is not the same as sweeping for the rule.
+
+## Worth knowing
+
+Dropping a classification case can orphan its downstream lifecycle rules — the label-less case lost its authorship heuristic, which silently disconnected it from every own-entry removal rule (checkpoint entries now have no documented exit for that case; REQ-108). When deleting a case from a ladder, walk what *used to happen after* that case classified, not just the classification.
 
 ## Back-reference
 

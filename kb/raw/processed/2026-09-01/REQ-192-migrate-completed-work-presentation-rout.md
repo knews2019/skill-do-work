@@ -28,6 +28,10 @@ Migrated live routing, discovery, full-cycle guidance, caller descriptions, and 
 - The first GREEN contract block under-specified load order, retired portfolio workflows, and unsafe guide commands. Qualification caught those gaps and sent the test seam back for focused correction.
 - The widened unsafe-preview matcher still encoded literal examples too narrowly; review mutation probes exposed fixed-port flag and nonliteral platform-opener escapes, now owned by REQ-202.
 
+## Worth knowing
+
+Presentation routing aliases must remain exact and mutually exclusive, while guardrail applicability should be condition-based with action names treated only as examples. Test executable command segments separately from negative explanatory prose so safety assertions can be both broad and precise.
+
 ## Back-reference
 
 See `do-work/archive/UR-042/REQ-192-migrate-presentation-routing-docs-and-contracts.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `a00ee67`.

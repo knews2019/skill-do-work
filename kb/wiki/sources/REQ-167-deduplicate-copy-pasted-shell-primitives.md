@@ -4,10 +4,18 @@ type: source-summary
 topic_cluster: shell-and-automation
 sources: [raw/processed/2026-09-01/REQ-167-deduplicate-copy-pasted-shell-primitives.md]
 related:
-  - page: concept-prescribed-shell-commands
-    rel: evidence-for
+  - page: REQ-165-shell-block-lint-harness-for-shipped-act
+    rel: depends-on
+  - page: REQ-166-simplify-session-start-hook-and-fix-dead
+    rel: complements
+  - page: REQ-168-delete-or-test-audit-of-defensive-code-i
+    rel: complements
+  - page: REQ-170-finding-closure-ratchet-and-canonical-ea
+    rel: complements
+  - page: REQ-171-addendum-promote-prescribed-shell-primit
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

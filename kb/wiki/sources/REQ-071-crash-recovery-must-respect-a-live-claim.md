@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: checkpoint-and-crash-recovery
 sources: [raw/processed/2026-09-01/REQ-071-crash-recovery-must-respect-a-live-claim.md]
 related:
-  - page: concept-session-checkpoints-and-recovery
-    rel: evidence-for
+  - page: REQ-072-go-utility-allocates-req-ids-and-version
+    rel: complements
+  - page: REQ-073-fan-out-dispatch-n-concurrent-builders-u
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

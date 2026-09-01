@@ -3,11 +3,9 @@ title: "Lessons from REQ-159: Review fix: Complete multiline literal state in Ju
 type: source-summary
 topic_cluster: shell-and-automation
 sources: [raw/processed/2026-09-01/REQ-159-review-fix-complete-multiline-literal-st.md]
-related:
-  - page: concept-prescribed-shell-commands
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

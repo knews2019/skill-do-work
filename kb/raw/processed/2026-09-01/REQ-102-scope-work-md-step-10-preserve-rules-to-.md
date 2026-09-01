@@ -20,8 +20,11 @@ Step 10's checkpoint rewrite and session-start delete now preserve every in-prog
 
 ## What worked
 
-**What worked:** Proving assertion non-vacuity by running the full suite against `git show HEAD:<file>` and diffing the FAIL set — exactly two new lines, nothing else moved.
-**Worth knowing:** This closed the *second and third* copies of a scoping condition whose first copy was canonical — and turned up a fourth (the template comment in work-reference.md, routed to REQ-096). Echo sites that paraphrase a canonical condition drift; echoes should quote it.
+Proving assertion non-vacuity by running the full suite against `git show HEAD:<file>` and diffing the FAIL set — exactly two new lines, nothing else moved.
+
+## Worth knowing
+
+This closed the *second and third* copies of a scoping condition whose first copy was canonical — and turned up a fourth (the template comment in work-reference.md, routed to REQ-096). Echo sites that paraphrase a canonical condition drift; echoes should quote it.
 
 ## Back-reference
 

@@ -4,10 +4,12 @@ type: source-summary
 topic_cluster: worktree-and-parallel-dispatch
 sources: [raw/processed/2026-09-01/REQ-037-place-the-worktree-merge-in-the-step-seq.md]
 related:
-  - page: concept-worktree-isolation-and-parallelism
-    rel: evidence-for
+  - page: REQ-035-represent-concurrent-claims-in-the-orche
+    rel: complements
+  - page: REQ-036-re-validate-write-set-disjointness-when
+    rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

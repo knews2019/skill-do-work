@@ -4,10 +4,10 @@ type: source-summary
 topic_cluster: metadata-and-timestamps
 sources: [raw/processed/2026-09-01/REQ-247-archive-timestamp-audit-tool-driven-by-g.md]
 related:
-  - page: concept-timestamp-and-metadata-governance
-    rel: evidence-for
+  - page: REQ-246-repair-detectably-wrong-queue-and-workin
+    rel: depends-on
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -25,11 +25,15 @@ A deliberately-invoked archive auditor, `scripts/audit-archive-timestamps.sh`, s
 
 ## What worked
 
-**What worked:** Sharing by sourcing rather than a copied or third-file library — the reviewer verified by grep that the auditor holds zero predicate code, which is what turns REQ-255's future fix into a single edit that reaches both tools. The blameless lock-in that proves mtime is *never* a fallback (file left byte-identical although a valid mtime existed) is the strongest kind of negative evidence this suite has.
+Sharing by sourcing rather than a copied or third-file library — the reviewer verified by grep that the auditor holds zero predicate code, which is what turns REQ-255's future fix into a single edit that reaches both tools. The blameless lock-in that proves mtime is *never* a fallback (file left byte-identical although a valid mtime existed) is the strongest kind of negative evidence this suite has.
 
-**What didn't:** The ordering-clamp requirement's two clauses ("clamped to the anchor" and "no later than the introducing commit's time") are unsatisfiable together when the derived commit time precedes the anchor — the REQ text carried a latent contradiction nobody caught at capture or verify. Resolved in favor of ordering with a transparent audit annotation; a REQ stating two ceilings should state which one wins.
+## What didn't work
 
-**Worth knowing:** The library switches (`timestamp_repair_apply_mode`, `timestamp_repair_git_only`) read `${var:-default}`, so exported environment variables of those names override them — inert in practice, worth knowing before renaming. A symlinked archive REQ file is silently skipped and counted clean (review Minor 1). Mixed `--fix` runs write what they can and exit 1.
+The ordering-clamp requirement's two clauses ("clamped to the anchor" and "no later than the introducing commit's time") are unsatisfiable together when the derived commit time precedes the anchor — the REQ text carried a latent contradiction nobody caught at capture or verify. Resolved in favor of ordering with a transparent audit annotation; a REQ stating two ceilings should state which one wins.
+
+## Worth knowing
+
+The library switches (`timestamp_repair_apply_mode`, `timestamp_repair_git_only`) read `${var:-default}`, so exported environment variables of those names override them — inert in practice, worth knowing before renaming. A symlinked archive REQ file is silently skipped and counted clean (review Minor 1). Mixed `--fix` runs write what they can and exit 1.
 
 ## Back-reference
 

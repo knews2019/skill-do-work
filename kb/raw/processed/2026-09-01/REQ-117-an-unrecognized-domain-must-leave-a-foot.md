@@ -20,11 +20,15 @@ Since REQ-111 wired `domain` through `resolveSchemaField`, a typo'd `domain: qua
 
 ## What worked
 
-**What worked:** Reading the sibling field before designing anything. `testing_status` had already solved this exact contract leg — flag on the ticket, collector over all tickets, appended in `buildBoard` — so there was no design decision left to make, just a pattern to copy. The tests were a copy too, which is the strongest signal the shapes really match.
+Reading the sibling field before designing anything. `testing_status` had already solved this exact contract leg — flag on the ticket, collector over all tickets, appended in `buildBoard` — so there was no design decision left to make, just a pattern to copy. The tests were a copy too, which is the strongest signal the shapes really match.
 
-**What didn't:** The premise in the code comment was false, and it had been reviewed at 98% when it shipped. "The board has no warning channel for it" was three greps from being disproven: `board.Warnings` is declared with the words "surfaced, never silently dropped" in the same file, the sibling field feeds it, and the frontend renders it in a banner. A stated *reason* for a design choice is a factual claim and a review has to check it like any other — a plausible-sounding justification in a comment is exactly where a wrong premise survives longest.
+## What didn't work
 
-**Worth knowing:** `board.Warnings` is a free UI channel. Anything appended to it prints in `summary` and renders in the board's data-warnings banner with no frontend work, because `web/board.js` reads `boardData.warnings` generically. Two consequences: a new warning class costs one `append` line, and noise is cheap to introduce — which is why the recognized-alias and absent-field cases have their own test. The contract's absent-field carve-out (`resolveSchemaField` returns recognized=true for an empty value) is what keeps a real queue from warning on nearly every REQ.
+The premise in the code comment was false, and it had been reviewed at 98% when it shipped. "The board has no warning channel for it" was three greps from being disproven: `board.Warnings` is declared with the words "surfaced, never silently dropped" in the same file, the sibling field feeds it, and the frontend renders it in a banner. A stated *reason* for a design choice is a factual claim and a review has to check it like any other — a plausible-sounding justification in a comment is exactly where a wrong premise survives longest.
+
+## Worth knowing
+
+`board.Warnings` is a free UI channel. Anything appended to it prints in `summary` and renders in the board's data-warnings banner with no frontend work, because `web/board.js` reads `boardData.warnings` generically. Two consequences: a new warning class costs one `append` line, and noise is cheap to introduce — which is why the recognized-alias and absent-field cases have their own test. The contract's absent-field carve-out (`resolveSchemaField` returns recognized=true for an empty value) is what keeps a real queue from warning on nearly every REQ.
 
 ## Back-reference
 

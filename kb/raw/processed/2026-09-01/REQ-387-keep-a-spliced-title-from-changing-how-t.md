@@ -20,7 +20,7 @@ the cut leaves unbalanced.
 
 - `skills/do-work-board/tools/queue-kanban/web/board-clipboard.js` (modified). Sanitizes only the existing shortened title before splicing: remove code-span backticks, then escape every ASCII punctuation character in one pass. Full appendix, offsets and drawer title helper stay unchanged. Six additi
 
-## What worked
+## Worth knowing
 
 A Markdown source delimiter count is not a parse oracle. GFM can silently discard surplus cells, and two backticks can be an unmatched delimiter. Test the real rendered structure, preserved neighboring cell contents and author code; escape pre-existing backslashes before inserting a literal pipe escape.
 

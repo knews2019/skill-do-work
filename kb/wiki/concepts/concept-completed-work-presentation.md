@@ -2,12 +2,23 @@
 title: "Presentation and Reporting"
 type: concept
 topic_cluster: presentation-and-reporting
-sources: [raw/processed/2026-09-01/REQ-189-canonicalize-ai-report-and-the-shared-co.md]
+sources:
+  - raw/processed/2026-09-01/REQ-189-canonicalize-ai-report-and-the-shared-co.md
+  - raw/processed/2026-09-01/REQ-190-reduce-present-work-to-portfolio-only-be.md
+  - raw/processed/2026-09-01/REQ-191-extract-an-explicit-standalone-present-v.md
+  - raw/processed/2026-09-01/REQ-192-migrate-completed-work-presentation-rout.md
+  - raw/processed/2026-09-01/REQ-197-normalize-completed-work-presentation-ta.md
+  - raw/processed/2026-09-01/REQ-198-publish-generated-directory-only-after-i.md
+  - raw/processed/2026-09-01/REQ-199-publish-portfolio-snapshot-before-canoni.md
+  - raw/processed/2026-09-01/REQ-201-deduplicate-completed-work-presentation-.md
+  - raw/processed/2026-09-01/REQ-202-complete-unsafe-remotion-preview-mutatio.md
+  - raw/processed/2026-09-01/REQ-325-stop-the-report-image-interruption-path-.md
+  - raw/processed/2026-09-01/REQ-384-deliver-the-architecture-report-as-a-fre.md
 related:
   - page: concept-queue-task-lifecycle
     rel: complements
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: high
 ---
 

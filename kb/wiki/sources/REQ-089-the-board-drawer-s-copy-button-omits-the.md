@@ -3,11 +3,9 @@ title: "Lessons from REQ-089: The board drawer's Copy button omits the ticket's 
 type: source-summary
 topic_cluster: kanban-board-and-ui
 sources: [raw/processed/2026-09-01/REQ-089-the-board-drawer-s-copy-button-omits-the.md]
-related:
-  - page: concept-kanban-board-architecture
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 

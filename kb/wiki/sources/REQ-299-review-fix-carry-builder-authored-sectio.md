@@ -3,11 +3,9 @@ title: "Lessons from REQ-299: Review fix: carry builder-authored sections past S
 type: source-summary
 topic_cluster: queue-orchestration-and-lifecycle
 sources: [raw/processed/2026-09-01/REQ-299-review-fix-carry-builder-authored-sectio.md]
-related:
-  - page: concept-queue-task-lifecycle
-    rel: evidence-for
+related: []
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 confidence: medium
 ---
 
@@ -39,7 +37,7 @@ longer part of Step 8. It is a named section of `actions/work-reference.md` —
 cite, and `actions/work.md` Step 8, `actions/review-work.md` Step 4, and the Decision
 Brief all now cite it rather than restating it.
 
-## What worked
+## Worth knowing
 
 - **A rule scoped to a step cannot be inherited by readers at other steps.** REQ-270 wrote
   "Some substeps below" and closed one instance; the second instance was already in the file

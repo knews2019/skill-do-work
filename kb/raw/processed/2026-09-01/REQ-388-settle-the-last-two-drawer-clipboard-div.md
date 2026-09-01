@@ -19,7 +19,7 @@ Decide which surface is right in each case and make them agree.
 
 The drawer and copied appendix now list the same external references for fence metadata and file-path cases. Static boards no longer turn part of a file path into a ticket link, while live file navigation remains available.
 
-## What worked
+## Worth knowing
 
 When two projections differ, compare their final reference lists over the same source and exercise both static and live production paths. Merely finding the same regex candidates misses a drawer retry that exists only after a path fails to become a link. Keep annotation suppression independent from source-search citation collection.
 

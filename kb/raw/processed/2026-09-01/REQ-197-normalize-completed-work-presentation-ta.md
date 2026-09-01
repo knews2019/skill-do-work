@@ -30,6 +30,10 @@ Made both completed-work presentation ID entry paths inherit the canonical Targe
 - Attempt 1 copied examples into callers and tested for their presence, creating the drift the reference contract forbids.
 - The remediation removed the duplication but still used a substring-positive assertion; “read without applying” survived, so the single remediation attempt did not fully close the review finding.
 
+## Worth knowing
+
+When an instruction caller inherits a canonical contract, test the source definition once and test each caller's active, ordered application with adversarial negations. Positive keyword presence alone is not evidence that the directive remains operative.
+
 ## Back-reference
 
 See `do-work/archive/UR-042/REQ-197-normalize-completed-work-presentation-target-ids.md` for the full REQ — plan, exploration, implementation, review, and lessons. Commit `89d068e`.
