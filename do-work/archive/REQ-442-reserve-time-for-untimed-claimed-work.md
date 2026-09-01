@@ -1,7 +1,7 @@
 ---
 id: REQ-442
 title: 'Reserve forecast time for claimed work without a parseable stamp'
-status: claimed
+status: completed
 route: A
 created_at: 2026-08-31T14:19:37Z
 user_request: UR-083
@@ -22,6 +22,7 @@ estimate:
 related: [REQ-437, REQ-438, REQ-439, REQ-440, REQ-441, REQ-443, REQ-444]
 batch: accepted-feedback-regressions
 claimed_at: 2026-09-01T22:02:33Z
+completed_at: 2026-09-01T22:13:37Z
 ---
 
 # Reserve Forecast Time for Claimed Work Without a Parseable Stamp

@@ -400,12 +400,17 @@ func timelineChainStart(tickets []*RequestTicket, projection TimelineProjection,
 		if ticket == nil || ticket.Status != "claimed" {
 			continue
 		}
-		claimedInstant, claimedParsed := parseTimestamp(ticket.ClaimedAt)
-		if !claimedParsed {
-			continue
-		}
 		projectedSpan, _ := timelineProjectedSpan(ticket, projection)
-		projectedFinish := claimedInstant.UTC().Add(projectedSpan)
+		claimedInstant, claimedParsed := parseTimestamp(ticket.ClaimedAt)
+		projectedStart := now.UTC()
+		if claimedParsed {
+			projectedStart = claimedInstant.UTC()
+		} else {
+			// The timestamp defect is reported by verify; the forecast neither repairs
+			// nor trusts it. Reserving one whole bucket median from now is the
+			// conservative alternative to pretending the active work takes no time.
+		}
+		projectedFinish := projectedStart.Add(projectedSpan)
 		if projectedFinish.After(chainStart) {
 			chainStart = projectedFinish
 		}

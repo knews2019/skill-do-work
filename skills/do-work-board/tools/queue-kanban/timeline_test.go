@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 	"time"
 )
@@ -691,6 +692,74 @@ func TestTimelineProjectionStartsAfterWorkAlreadyInFlight(t *testing.T) {
 	}
 	if len(projection.Rows) != 1 || !projection.Rows[0].StartTime.Equal(wantStart) {
 		t.Fatalf("first projected REQ starts %+v, want %s", projection.Rows, wantStart)
+	}
+}
+
+func TestTimelineProjectionReservesTimeForUntimedClaimedWork(t *testing.T) {
+	now := time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)
+	tickets := []*RequestTicket{}
+	for spanIndex, spanMinutes := range []float64{20, 30, 40, 50, 60, 70} {
+		tickets = append(tickets, completedSpanTicket(
+			fmt.Sprintf("REQ-1%02d", spanIndex), effortSubstantive,
+			now.Add(-time.Duration(spanIndex+1)*time.Hour), spanMinutes))
+	}
+	for spanIndex, spanMinutes := range []float64{5, 8, 9, 11, 12, 15} {
+		tickets = append(tickets, completedSpanTicket(
+			fmt.Sprintf("REQ-2%02d", spanIndex), effortMechanical,
+			now.Add(-time.Duration(spanIndex+1)*time.Hour), spanMinutes))
+	}
+
+	missingStamp := timelineTicket("REQ-300", "claimed", "2026-06-01T09:00:00Z", "", "")
+	missingStamp.EffortEstimate = effortSubstantive
+	malformedStamp := timelineTicket("REQ-301", "claimed", "2026-06-01T09:00:00Z", "not-a-timestamp", "")
+	malformedStamp.EffortEstimate = effortMechanical
+	timedClaim := timelineTicket("REQ-302", "claimed", "2026-06-01T09:00:00Z",
+		now.Add(-10*time.Minute).Format(time.RFC3339), "")
+	timedClaim.EffortEstimate = effortSubstantive
+	dependent := projectionTicket("REQ-401", "pending", effortSubstantive,
+		[]string{"REQ-300", "REQ-301", "REQ-302"})
+	tickets = append(tickets, missingStamp, malformedStamp, timedClaim, dependent)
+	resolveUnmetDependenciesForTest(tickets)
+
+	projection := buildTimelineProjection(tickets, buildDurationAggregate(tickets), now)
+	if projection.NormalMedianMinutes != 45 || projection.TrivialMedianMinutes != 10 {
+		t.Fatalf("projection medians = substantive %.1f, mechanical %.1f; want 45 and 10",
+			projection.NormalMedianMinutes, projection.TrivialMedianMinutes)
+	}
+	wantStart := now.Add(45 * time.Minute)
+	if !projection.ChainStart.Equal(wantStart) {
+		t.Fatalf("chain starts %s, want %s — the maximum finish across untimed and timed claims",
+			projection.ChainStart, wantStart)
+	}
+	if len(projection.Rows) != 1 || projection.Rows[0].RequestId != dependent.RequestId ||
+		!projection.Rows[0].StartTime.Equal(wantStart) {
+		t.Fatalf("dependent projection = %+v, want REQ-401 starting at %s", projection.Rows, wantStart)
+	}
+	parseableOnlyStart := timelineChainStart([]*RequestTicket{timedClaim}, projection, now)
+	if wantParseableStart := now.Add(35 * time.Minute); !parseableOnlyStart.Equal(wantParseableStart) {
+		t.Fatalf("parseable claim starts chain at %s, want unchanged finish %s",
+			parseableOnlyStart, wantParseableStart)
+	}
+
+	report := VerifyReport{}
+	appendClaimFindings(&report, &Board{Columns: BoardColumns{Claimed: []*RequestTicket{
+		missingStamp, malformedStamp, timedClaim,
+	}}}, now)
+	for _, requestID := range []string{missingStamp.RequestId, malformedStamp.RequestId} {
+		found := false
+		for _, finding := range report.Findings {
+			if finding.Category == verifyCategoryClaimNeedsAttention && strings.Contains(finding.Detail, requestID) {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("verify findings lost the independent timestamp diagnosis for %s: %+v",
+				requestID, report.Findings)
+		}
+	}
+	if missingStamp.ClaimedAt != "" || malformedStamp.ClaimedAt != "not-a-timestamp" {
+		t.Fatalf("forecast fallback repaired stored timestamps: missing=%q malformed=%q",
+			missingStamp.ClaimedAt, malformedStamp.ClaimedAt)
 	}
 }
 

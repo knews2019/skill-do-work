@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.9 — Reserve Forecast Time for Untimed Claims (2026-09-02)
+
+An active claim with a missing or malformed timestamp could disappear from the board's serial forecast, letting pending work appear to start immediately. The forecast now reserves a conservative bucket-median span while leaving timestamp diagnosis and stored metadata untouched.
+
+- Untimed claims reserve `now +` their existing mechanical or substantive median, and the latest in-flight finish anchors the pending chain.
+- Regression coverage keeps parseable claim behavior, dependency scheduling, and timestamp-quality findings independent.
+
 ## 0.260.8 — Anchor Timeline Windows Before Display Padding (2026-09-02)
 
 Trailing-window controls could land entirely in the chart's breathing room after a long queue drained. Finite chips now anchor to the last meaningful endpoint while rendering keeps its padded bounds.
