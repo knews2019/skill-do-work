@@ -28,6 +28,7 @@ integration_at: 2026-09-01T23:20:32Z
 review_at: 2026-09-01T23:20:32Z
 completed_at: 2026-09-01T23:26:52Z
 release_at: 2026-09-01T23:27:32Z
+commit: bc7408f7
 ---
 
 # Add Warning-Level Consumer-Field Check to Route C Plan Validation
