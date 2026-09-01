@@ -321,7 +321,6 @@ func handleFetchArchive(context commandruntime.ExecutionContext, arguments []str
 		ArchiveTargetPath:     targetPath,
 		UpstreamTarballURL:    tarballURL,
 		UpstreamRepositoryURL: parsed.values["--repo-url"],
-		AtomicDownloadScript:  archivefetch.LocateAtomicDownloadScript(shippedToolsDirectory()),
 	})
 	if fetchErr != nil {
 		if narration != nil {

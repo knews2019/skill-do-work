@@ -2,10 +2,13 @@ package archivefetch
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -65,17 +68,98 @@ func TestGitRouteDerivationOnlyReadsBranchTarballUrls(t *testing.T) {
 	}
 }
 
+func TestDownloadAtomicRetriesThreeTimesAfterInitial429AndUsesTokenPrecedence(t *testing.T) {
+	directory := t.TempDir()
+	var attempts atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Header.Get("Authorization") != "Bearer preferred" {
+			t.Errorf("authorization=%q", request.Header.Get("Authorization"))
+		}
+		if attempts.Add(1) < 4 {
+			response.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		_, _ = response.Write([]byte("complete body"))
+	}))
+	defer server.Close()
+	t.Setenv("GH_TOKEN", "preferred")
+	t.Setenv("GITHUB_TOKEN", "fallback")
+	target := filepath.Join(directory, "download.bin")
+	result := DownloadAtomic(context.Background(), server.URL, target)
+	if result.Err != nil {
+		t.Fatal(result.Err)
+	}
+	if result.Attempts != 4 {
+		t.Fatalf("attempts=%d", result.Attempts)
+	}
+	contents, _ := os.ReadFile(target)
+	if string(contents) != "complete body" {
+		t.Fatalf("contents=%q", contents)
+	}
+	info, _ := os.Stat(target)
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("mode=%o", info.Mode().Perm())
+	}
+}
+
+func TestDownloadAtomicNeverLeaksTokenInFailure(t *testing.T) {
+	t.Setenv("GH_TOKEN", "top-secret-token")
+	result := DownloadAtomic(context.Background(), "://top-secret-token", filepath.Join(t.TempDir(), "target"))
+	if result.Err == nil {
+		t.Fatal("invalid URL succeeded")
+	}
+	if strings.Contains(result.Err.Error(), "top-secret-token") {
+		t.Fatalf("token leaked: %v", result.Err)
+	}
+}
+
+func TestDownloadAtomicParentSwapCannotOverwriteOutsideTarget(t *testing.T) {
+	directory := t.TempDir()
+	parent := filepath.Join(directory, "parent")
+	held := filepath.Join(directory, "held")
+	outside := filepath.Join(directory, "outside")
+	_ = os.Mkdir(parent, 0o755)
+	_ = os.Mkdir(outside, 0o755)
+	protected := filepath.Join(outside, "target")
+	_ = os.WriteFile(protected, []byte("protected"), 0o600)
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { _, _ = response.Write([]byte("download")) }))
+	defer server.Close()
+	originalHook := beforeAtomicDownloadPublish
+	defer func() { beforeAtomicDownloadPublish = originalHook }()
+	beforeAtomicDownloadPublish = func() {
+		if err := os.Rename(parent, held); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(outside, parent); err != nil {
+			t.Fatal(err)
+		}
+	}
+	result := DownloadAtomic(context.Background(), server.URL, filepath.Join(parent, "target"))
+	if result.Err != nil {
+		t.Fatal(result.Err)
+	}
+	if contents, _ := os.ReadFile(protected); string(contents) != "protected" {
+		t.Fatalf("outside target changed: %q", contents)
+	}
+	if contents, _ := os.ReadFile(filepath.Join(held, "target")); string(contents) != "download" {
+		t.Fatalf("rooted download missing: %q", contents)
+	}
+}
+
 func TestHttpRouteWinsWhenTheAtomicPrimitiveProducesAReadableArchive(t *testing.T) {
 	directory := t.TempDir()
 	sourceArchive := newFixtureArchive(t, directory, "payload.txt")
-	downloadScript := writeExecutableScript(t, filepath.Join(directory, "atomic-download.sh"),
-		"#!/usr/bin/env bash\nset -eu\ncp \""+sourceArchive+"\" \"$2\"\n")
+	archiveBytes, readError := os.ReadFile(sourceArchive)
+	if readError != nil {
+		t.Fatal(readError)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { _, _ = response.Write(archiveBytes) }))
+	defer server.Close()
 	targetPath := filepath.Join(directory, "upstream.tar.gz")
 
 	result, err := FetchArchive(context.Background(), Request{
-		ArchiveTargetPath:    targetPath,
-		UpstreamTarballURL:   "https://example.com/suite.tar.gz",
-		AtomicDownloadScript: downloadScript,
+		ArchiveTargetPath:  targetPath,
+		UpstreamTarballURL: server.URL,
 	})
 	if err != nil {
 		t.Fatalf("FetchArchive: %v", err)
@@ -92,15 +176,14 @@ func TestHttpRouteWinsWhenTheAtomicPrimitiveProducesAReadableArchive(t *testing.
 func TestAnUnreadableHttpDownloadFallsThroughToTheGitRoute(t *testing.T) {
 	directory := t.TempDir()
 	repositoryPath := newFixtureRepository(t, directory)
-	downloadScript := writeExecutableScript(t, filepath.Join(directory, "atomic-download.sh"),
-		"#!/usr/bin/env bash\nset -eu\nprintf 'rate limited\\n' > \"$2\"\n")
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { _, _ = response.Write([]byte("rate limited\n")) }))
+	defer server.Close()
 	targetPath := filepath.Join(directory, "upstream.tar.gz")
 
 	result, err := FetchArchive(context.Background(), Request{
 		ArchiveTargetPath:     targetPath,
-		UpstreamTarballURL:    "https://example.com/suite.tar.gz",
+		UpstreamTarballURL:    server.URL,
 		UpstreamRepositoryURL: repositoryPath,
-		AtomicDownloadScript:  downloadScript,
 	})
 	if err != nil {
 		t.Fatalf("FetchArchive: %v", err)
@@ -151,14 +234,10 @@ func TestTotalFailurePreservesTheTargetAndLeavesNoScratch(t *testing.T) {
 	if err := os.WriteFile(targetPath, []byte("existing archive bytes\n"), 0o644); err != nil {
 		t.Fatalf("seed target: %v", err)
 	}
-	downloadScript := writeExecutableScript(t, filepath.Join(directory, "atomic-download.sh"),
-		"#!/usr/bin/env bash\nexit 22\n")
-
 	_, err := FetchArchive(context.Background(), Request{
 		ArchiveTargetPath:     targetPath,
 		UpstreamTarballURL:    "https://example.com/suite.tar.gz",
 		UpstreamRepositoryURL: filepath.Join(directory, "no-such-repository"),
-		AtomicDownloadScript:  downloadScript,
 	})
 	if err == nil {
 		t.Fatalf("a total failure reported success")
@@ -191,6 +270,26 @@ func TestTotalFailurePreservesTheTargetAndLeavesNoScratch(t *testing.T) {
 	}
 }
 
+func TestGitFallbackNeverOverwritesAnOccupiedTarget(t *testing.T) {
+	directory := t.TempDir()
+	targetPath := filepath.Join(directory, "upstream.tar.gz")
+	if err := os.WriteFile(targetPath, []byte("owned bytes\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := FetchArchive(context.Background(), Request{
+		ArchiveTargetPath:     targetPath,
+		UpstreamTarballURL:    "://invalid",
+		UpstreamRepositoryURL: newFixtureRepository(t, directory),
+	})
+	if err == nil {
+		t.Fatal("occupied publication unexpectedly succeeded")
+	}
+	contents, readErr := os.ReadFile(targetPath)
+	if readErr != nil || string(contents) != "owned bytes\n" {
+		t.Fatalf("target=%q err=%v", contents, readErr)
+	}
+}
+
 // A repository URL that cannot be derived must report the route as unavailable rather than
 // attempting a clone of nothing.
 func TestUndeivableRepositoryUrlReportsAnUnavailableGitRoute(t *testing.T) {
@@ -205,8 +304,8 @@ func TestUndeivableRepositoryUrlReportsAnUnavailableGitRoute(t *testing.T) {
 	if !strings.Contains(err.Error(), "Git route: unavailable (no repository URL supplied and none derivable") {
 		t.Errorf("failure report %q does not name the underivable git route", err.Error())
 	}
-	if !strings.Contains(err.Error(), "HTTP route: unavailable (atomic-download.sh not found") {
-		t.Errorf("failure report %q does not name the missing HTTP primitive", err.Error())
+	if !strings.Contains(err.Error(), "HTTP route: failed") {
+		t.Errorf("failure report %q does not name the failed in-process HTTP route", err.Error())
 	}
 }
 

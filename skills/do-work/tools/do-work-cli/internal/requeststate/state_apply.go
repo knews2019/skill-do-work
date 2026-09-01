@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/atomicfile"
@@ -114,6 +116,100 @@ func ApplyPlan(ctx context.Context, plan StatePlan) resultmodel.CommandResult {
 		return applyCommitMetadata(ctx, plan, transactionResult, result)
 	}
 	return result
+}
+
+var provenanceHashPattern = regexp.MustCompile(`^[0-9a-f]{7,40}$`)
+
+// RecordCommitProvenance is the standalone guarded provenance authority shared by the
+// compatibility-shaped command and request-state lifecycle code. It rewrites only the
+// top-level commit scalar and refuses lossy or ambiguous documents.
+func RecordCommitProvenance(ctx context.Context, repositoryRoot, requestPath, implementationHash string, verifyOnly bool) resultmodel.CommandResult {
+	failure := func(code, evidence string) resultmodel.CommandResult {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, RepositoryRoot: repositoryRoot, Findings: []resultmodel.CommandFinding{{
+			Code: code, Severity: resultmodel.SeverityError, AffectedPaths: nonEmptyPaths(requestPath), Evidence: []string{evidence}, Fixability: resultmodel.FixabilityManual,
+			AutomationStopReason: "commit provenance could not be recorded safely",
+			NextArgv:             []string{"do-work-cli", "record-commit-hash", "--request-path", requestPath, "--implementation-hash", implementationHash},
+			VerificationArgv:     []string{"do-work-cli", "record-commit-hash", "--verify", "--request-path", requestPath, "--implementation-hash", implementationHash},
+		}}}
+	}
+	if requestPath == "" || !provenanceHashPattern.MatchString(implementationHash) {
+		return failure("PROVENANCE-USAGE", "request path and a 7-40 character lowercase hex hash are required")
+	}
+	absolutePath := requestPath
+	if !filepath.IsAbs(absolutePath) {
+		absolutePath = filepath.Join(repositoryRoot, filepath.FromSlash(requestPath))
+	}
+	info, err := os.Lstat(absolutePath)
+	if err != nil || !info.Mode().IsRegular() {
+		return failure("PROVENANCE-PATH-UNSAFE", "request path must be a regular non-symlink file")
+	}
+	contents, err := os.ReadFile(absolutePath)
+	if err != nil || len(contents) == 0 {
+		return failure("PROVENANCE-READ-FAILED", "request bytes are empty or unreadable")
+	}
+	if bytes.Contains(contents, []byte("\r\n")) {
+		return failure("PROVENANCE-CRLF-REFUSED", "normalize CRLF before guarded provenance recording")
+	}
+	document, err := requestmodel.ParseDocument(contents)
+	if err != nil {
+		return failure("PROVENANCE-FRONTMATTER-INVALID", err.Error())
+	}
+	record := document.TypedRecord()
+	if !strings.HasPrefix(record.RequestID, "REQ-") {
+		return failure("PROVENANCE-NOT-REQUEST", "frontmatter id is not a REQ")
+	}
+	commitEvidence := record.FieldEvidenceByName["commit"]
+	if commitEvidence.DuplicateCount > 1 {
+		return failure("PROVENANCE-COMMIT-AMBIGUOUS", "frontmatter has more than one commit field")
+	}
+	if err := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "rev-parse", "--verify", "--quiet", implementationHash+"^{commit}").Run(); err != nil {
+		return failure("PROVENANCE-HASH-UNRESOLVED", "implementation hash does not resolve to a commit")
+	}
+	relativePath := requestPath
+	if value, relativeError := filepath.Rel(repositoryRoot, absolutePath); relativeError == nil {
+		relativePath = filepath.ToSlash(value)
+	}
+	if verifyOnly {
+		committed, showError := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "show", "HEAD:"+relativePath).Output()
+		if showError != nil {
+			return failure("PROVENANCE-VERIFY-UNTRACKED", "HEAD does not contain the request path")
+		}
+		if !bytes.Equal(committed, contents) {
+			return failure("PROVENANCE-VERIFY-BYTES", "committed bytes differ from the worktree")
+		}
+		if commitEvidence.ScalarValue != implementationHash {
+			return failure("PROVENANCE-VERIFY-HASH", "committed frontmatter does not contain the expected hash")
+		}
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, RepositoryRoot: repositoryRoot, Findings: []resultmodel.CommandFinding{{Code: "PROVENANCE-VERIFIED", Severity: resultmodel.SeverityInfo, AffectedIDs: []string{record.RequestID}, AffectedPaths: []string{relativePath}, Evidence: []string{"HEAD bytes and top-level commit field verified"}, Fixability: resultmodel.FixabilityAutomatic, VerificationArgv: []string{"git", "show", "HEAD:" + relativePath}}}}
+	}
+	if committedSize, sizeError := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "cat-file", "-s", "HEAD:"+relativePath).Output(); sizeError == nil {
+		var size int64
+		if _, scanError := fmt.Sscan(strings.TrimSpace(string(committedSize)), &size); scanError == nil && size > 0 && int64(len(contents))*2 < size {
+			return failure("PROVENANCE-CONTENT-FLOOR", "worktree request is less than half the committed size")
+		}
+	}
+	if commitEvidence.ScalarValue == implementationHash {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, RepositoryRoot: repositoryRoot, Findings: []resultmodel.CommandFinding{{Code: "PROVENANCE-NOOP", Severity: resultmodel.SeverityInfo, AffectedIDs: []string{record.RequestID}, AffectedPaths: []string{relativePath}, Evidence: []string{"expected commit hash is already recorded"}, Fixability: resultmodel.FixabilityAutomatic}}}
+	}
+	if err := document.SetScalar("commit", implementationHash); err != nil {
+		return failure("PROVENANCE-EDIT-FAILED", err.Error())
+	}
+	updated := document.DocumentBytes()
+	updatedDocument, err := requestmodel.ParseDocument(updated)
+	if err != nil || updatedDocument.TypedRecord().RequestID != record.RequestID || updatedDocument.TypedRecord().RequestStatus != record.RequestStatus || updatedDocument.TypedRecord().FieldEvidenceByName["commit"].ScalarValue != implementationHash {
+		return failure("PROVENANCE-POSTIMAGE-INVALID", "the one-field rewrite did not preserve request identity and status")
+	}
+	if err := atomicfile.ReplaceExisting(absolutePath, updated); err != nil {
+		return failure("PROVENANCE-PUBLISH-FAILED", err.Error())
+	}
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, RepositoryRoot: repositoryRoot, Changes: []resultmodel.RecordedChange{{Path: relativePath, Kind: "modified", Detail: "recorded implementation commit hash"}}, Findings: []resultmodel.CommandFinding{{Code: "PROVENANCE-RECORDED", Severity: resultmodel.SeverityInfo, AffectedIDs: []string{record.RequestID}, AffectedPaths: []string{relativePath}, Evidence: []string{"only the top-level commit scalar was changed"}, Fixability: resultmodel.FixabilityAutomatic, VerificationArgv: []string{"do-work-cli", "record-commit-hash", "--verify", "--request-path", relativePath, "--implementation-hash", implementationHash}}}}
+}
+
+func nonEmptyPaths(path string) []string {
+	if path == "" {
+		return nil
+	}
+	return []string{path}
 }
 
 func verifyArchivedCalibrationEvidence(plan StatePlan) error {

@@ -50,6 +50,42 @@ func TestRepairTimestampsPreservesUnrelatedBytesCommentsCRLFAndMode(t *testing.T
 	}
 }
 
+func TestUncommittedTimestampApplyAcceptsDirtyPreimageAndRefusesRace(t *testing.T) {
+	root := t.TempDir()
+	relative := "do-work/queue/REQ-099.md"
+	absolute := filepath.Join(root, filepath.FromSlash(relative))
+	if err := os.MkdirAll(filepath.Dir(absolute), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	before := []byte("before\n")
+	after := []byte("after\n")
+	if err := os.WriteFile(absolute, before, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	snapshot := &repositorymodel.RepositorySnapshot{RepositoryRoot: root}
+	plan := TimestampRepairPlan{RelativePath: relative, ExpectedBytes: before, UpdatedBytes: after, Changes: []TimestampFieldChange{{FieldName: "created_at", LineNumber: 2, OldValue: "old", NewValue: "new", Source: "file mtime"}}}
+	result := ApplyUncommittedTimestampPlans(snapshot, []TimestampRepairPlan{plan})
+	if result.Outcome != "success" || string(readDoctorFixture(t, absolute)) != "after\n" {
+		t.Fatalf("result=%#v", result)
+	}
+	if err := os.WriteFile(absolute, []byte("raced\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	result = ApplyUncommittedTimestampPlans(snapshot, []TimestampRepairPlan{plan})
+	if result.Outcome != "findings" || string(readDoctorFixture(t, absolute)) != "raced\n" {
+		t.Fatalf("race result=%#v", result)
+	}
+}
+
+func readDoctorFixture(t *testing.T, path string) []byte {
+	t.Helper()
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return contents
+}
+
 func TestRepairTimestampsRefusesDirtyTargetAndCommitWithDirtyIndex(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	initDoctorGit(t, repositoryRoot)

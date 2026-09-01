@@ -13,12 +13,19 @@
 package archivefetch
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
+	"crypto/rand"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // DefaultUpstreamURL is the branch tarball the suite ships against. DO_WORK_UPSTREAM_URL
@@ -31,13 +38,11 @@ const gitArchivePrefix = "upstream/"
 
 const branchArchiveMarker = "/archive/refs/heads/"
 
-// Request names everything a fetch needs. AtomicDownloadScript is resolved by the caller,
-// because only it knows which of the two shipped layouts it is running from.
+// Request names everything a fetch needs. HTTP transfer is always in-process.
 type Request struct {
 	ArchiveTargetPath     string
 	UpstreamTarballURL    string
 	UpstreamRepositoryURL string
-	AtomicDownloadScript  string
 }
 
 // Result reports which route produced the archive, in the wording the shell fetcher printed
@@ -55,20 +60,6 @@ func UpstreamURLFromEnvironment() string {
 	return DefaultUpstreamURL
 }
 
-// LocateAtomicDownloadScript probes the two mirror-relative depths the shell fetcher probed,
-// so the primitive is found from either shipped layout.
-func LocateAtomicDownloadScript(scriptDirectory string) string {
-	for _, candidate := range []string{
-		filepath.Join(scriptDirectory, "..", "scripts", "atomic-download.sh"),
-		filepath.Join(scriptDirectory, "..", "skills", "do-work", "scripts", "atomic-download.sh"),
-	} {
-		if info, err := os.Stat(candidate); err == nil && info.Mode().IsRegular() {
-			return candidate
-		}
-	}
-	return ""
-}
-
 // FetchArchive tries the HTTP route, then the git route, and leaves any pre-existing target
 // untouched when both fail. On failure the error names both route outcomes and the escape
 // hatch, matching the two stderr lines the shell fetcher printed.
@@ -76,9 +67,7 @@ func FetchArchive(ctx context.Context, request Request) (Result, error) {
 	upstreamBranch, repositoryURL := deriveGitRoute(request.UpstreamTarballURL, request.UpstreamRepositoryURL)
 
 	httpRouteOutcome := "not attempted"
-	if request.AtomicDownloadScript == "" {
-		httpRouteOutcome = "unavailable (atomic-download.sh not found beside this script)"
-	} else if downloadThroughAtomicPrimitive(ctx, request) {
+	if transfer := downloadAtomicValidated(ctx, request.UpstreamTarballURL, request.ArchiveTargetPath, archiveBytesReadable); transfer.Err == nil {
 		return Result{RouteDescription: "upstream archive fetched over HTTP"}, nil
 	} else {
 		httpRouteOutcome = "failed (host unreachable, rate limited, or archive unreadable)"
@@ -110,14 +99,173 @@ func deriveGitRoute(tarballURL, suppliedRepositoryURL string) (upstreamBranch, r
 	return upstreamBranch, repositoryURL
 }
 
-func downloadThroughAtomicPrimitive(ctx context.Context, request Request) bool {
-	download := exec.CommandContext(ctx, "bash", request.AtomicDownloadScript,
-		request.UpstreamTarballURL, request.ArchiveTargetPath)
-	download.Stderr = nil
-	if err := download.Run(); err != nil {
-		return false
+type DownloadResult struct {
+	StatusCode   int
+	BytesWritten int64
+	Attempts     int
+	Err          error
+}
+
+var beforeAtomicDownloadPublish = func() {}
+
+// DownloadAtomic performs curl-compatible initial-plus-three eligible retries and publishes
+// a private adjacent file with no overwrite. Publication is the final commit point: after
+// the rooted link succeeds, no failure path removes the destination pathname.
+func DownloadAtomic(ctx context.Context, sourceURL, targetPath string) DownloadResult {
+	return downloadAtomicValidated(ctx, sourceURL, targetPath, nil)
+}
+
+func downloadAtomicValidated(ctx context.Context, sourceURL, targetPath string, validator func([]byte) error) DownloadResult {
+	if sourceURL == "" || targetPath == "" {
+		return DownloadResult{Err: fmt.Errorf("source URL and target path are required")}
 	}
-	return archiveIsReadable(ctx, request.ArchiveTargetPath)
+	client := &http.Client{Timeout: 30 * time.Second}
+	token := os.Getenv("GH_TOKEN")
+	if token == "" {
+		token = os.Getenv("GITHUB_TOKEN")
+	}
+	var body []byte
+	statusCode := 0
+	attempts := 0
+	var lastError error
+	for attempt := 0; attempt < 4; attempt++ {
+		attempts = attempt + 1
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, nil)
+		if err != nil {
+			return DownloadResult{Attempts: attempts, Err: redactedTransferError(fmt.Errorf("build HTTP request: %w", err), token)}
+		}
+		if token != "" {
+			request.Header.Set("Authorization", "Bearer "+token)
+		}
+		response, err := client.Do(request)
+		if err == nil {
+			statusCode = response.StatusCode
+			body, err = io.ReadAll(response.Body)
+			closeError := response.Body.Close()
+			if err == nil {
+				err = closeError
+			}
+			if err == nil && statusCode >= 200 && statusCode < 300 {
+				lastError = nil
+				break
+			}
+			if err == nil {
+				err = fmt.Errorf("HTTP status %d", statusCode)
+			}
+		}
+		lastError = err
+		if attempt == 3 || !retryEligible(statusCode, err) {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return DownloadResult{StatusCode: statusCode, Attempts: attempts, Err: ctx.Err()}
+		case <-time.After(time.Duration(attempt+1) * 25 * time.Millisecond):
+		}
+	}
+	if lastError != nil {
+		return DownloadResult{StatusCode: statusCode, Attempts: attempts, Err: redactedTransferError(lastError, token)}
+	}
+	if len(body) == 0 {
+		return DownloadResult{StatusCode: statusCode, Attempts: attempts, Err: fmt.Errorf("downloaded body is empty")}
+	}
+	if validator != nil {
+		if err := validator(body); err != nil {
+			return DownloadResult{StatusCode: statusCode, Attempts: attempts, Err: err}
+		}
+	}
+	parentRoot, err := os.OpenRoot(filepath.Dir(targetPath))
+	if err != nil {
+		return DownloadResult{StatusCode: statusCode, Attempts: attempts, Err: err}
+	}
+	defer parentRoot.Close()
+	targetName := filepath.Base(targetPath)
+	if _, err := parentRoot.Lstat(targetName); err == nil {
+		return DownloadResult{StatusCode: statusCode, Attempts: attempts, Err: fmt.Errorf("target already exists")}
+	} else if !os.IsNotExist(err) {
+		return DownloadResult{StatusCode: statusCode, Attempts: attempts, Err: err}
+	}
+	randomSuffix := make([]byte, 8)
+	if _, err := rand.Read(randomSuffix); err != nil {
+		return DownloadResult{StatusCode: statusCode, Attempts: attempts, Err: err}
+	}
+	stageName := fmt.Sprintf(".%s.fetching.%x", targetName, randomSuffix)
+	stage, err := parentRoot.OpenFile(stageName, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return DownloadResult{StatusCode: statusCode, Attempts: attempts, Err: err}
+	}
+	published := false
+	defer func() {
+		_ = stage.Close()
+		if !published {
+			_ = parentRoot.Remove(stageName)
+		}
+	}()
+	written, err := io.Copy(stage, bytes.NewReader(body))
+	if err == nil {
+		err = stage.Sync()
+	}
+	if closeError := stage.Close(); err == nil {
+		err = closeError
+	}
+	if err != nil || written != int64(len(body)) {
+		if err == nil {
+			err = fmt.Errorf("short staged write")
+		}
+		return DownloadResult{StatusCode: statusCode, Attempts: attempts, Err: err}
+	}
+	beforeAtomicDownloadPublish()
+	if err = parentRoot.Link(stageName, targetName); err != nil {
+		return DownloadResult{StatusCode: statusCode, Attempts: attempts, Err: err}
+	}
+	published = true
+	_ = parentRoot.Remove(stageName)
+	return DownloadResult{StatusCode: statusCode, BytesWritten: written, Attempts: attempts}
+}
+
+func archiveBytesReadable(contents []byte) error {
+	reader, err := gzip.NewReader(bytes.NewReader(contents))
+	if err != nil {
+		return fmt.Errorf("archive is not gzip: %w", err)
+	}
+	defer reader.Close()
+	tarReader := tar.NewReader(reader)
+	entryCount := 0
+	for {
+		_, nextError := tarReader.Next()
+		if nextError == io.EOF {
+			break
+		}
+		if nextError != nil {
+			return fmt.Errorf("archive tar stream is incomplete: %w", nextError)
+		}
+		entryCount++
+		if _, copyError := io.Copy(io.Discard, tarReader); copyError != nil {
+			return fmt.Errorf("archive entry is incomplete: %w", copyError)
+		}
+	}
+	if entryCount == 0 {
+		return fmt.Errorf("archive has no readable tar entry")
+	}
+	return nil
+}
+
+func retryEligible(status int, err error) bool {
+	if err != nil && status == 0 {
+		return true
+	}
+	switch status {
+	case 408, 429, 500, 502, 503, 504:
+		return true
+	}
+	return false
+}
+func redactedTransferError(err error, token string) error {
+	message := err.Error()
+	if token != "" {
+		message = strings.ReplaceAll(message, token, "[REDACTED]")
+	}
+	return fmt.Errorf("%s", message)
 }
 
 // fetchThroughGitRoute returns "" on success, or the outcome phrase describing why it did
@@ -135,18 +283,27 @@ func fetchThroughGitRoute(ctx context.Context, request Request, repositoryURL, u
 		return "failed (could not allocate private working paths)"
 	}
 	defer func() { _ = os.RemoveAll(cloneDirectory) }()
-	stageFile, err := os.CreateTemp(filepath.Dir(request.ArchiveTargetPath),
-		filepath.Base(request.ArchiveTargetPath)+".fetching.*")
+	parentRoot, err := os.OpenRoot(filepath.Dir(request.ArchiveTargetPath))
 	if err != nil {
 		return "failed (could not allocate private working paths)"
 	}
-	stagePath := stageFile.Name()
-	_ = stageFile.Close()
-	stagePublished := false
+	defer parentRoot.Close()
+	targetName := filepath.Base(request.ArchiveTargetPath)
+	if _, err := parentRoot.Lstat(targetName); err == nil || !os.IsNotExist(err) {
+		return "failed (clone, repack, or publication did not complete)"
+	}
+	randomSuffix := make([]byte, 8)
+	if _, err := rand.Read(randomSuffix); err != nil {
+		return "failed (could not allocate private working paths)"
+	}
+	stageName := fmt.Sprintf(".%s.fetching.%x", targetName, randomSuffix)
+	stageHandle, err := parentRoot.OpenFile(stageName, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return "failed (could not allocate private working paths)"
+	}
 	defer func() {
-		if !stagePublished {
-			_ = os.Remove(stagePath)
-		}
+		_ = stageHandle.Close()
+		_ = parentRoot.Remove(stageName)
 	}()
 
 	// git clone insists on creating the directory itself.
@@ -166,10 +323,6 @@ func fetchThroughGitRoute(ctx context.Context, request Request, repositoryURL, u
 		return "failed (clone, repack, or publication did not complete)"
 	}
 
-	stageHandle, err := os.OpenFile(stagePath, os.O_WRONLY|os.O_TRUNC, 0o600)
-	if err != nil {
-		return "failed (clone, repack, or publication did not complete)"
-	}
 	archiveCommand := exec.CommandContext(ctx, "git", "-C", cloneDirectory,
 		"archive", "--format=tar.gz", "--prefix="+gitArchivePrefix, "HEAD")
 	archiveCommand.Stdout = stageHandle
@@ -178,16 +331,16 @@ func fetchThroughGitRoute(ctx context.Context, request Request, repositoryURL, u
 	if archiveErr != nil || closeErr != nil {
 		return "failed (clone, repack, or publication did not complete)"
 	}
-	if info, err := os.Stat(stagePath); err != nil || info.Size() == 0 {
+	if info, err := parentRoot.Stat(stageName); err != nil || info.Size() == 0 {
 		return "failed (clone, repack, or publication did not complete)"
 	}
-	if !archiveIsReadable(ctx, stagePath) {
+	stagedBytes, err := parentRoot.ReadFile(stageName)
+	if err != nil || archiveBytesReadable(stagedBytes) != nil {
 		return "failed (clone, repack, or publication did not complete)"
 	}
-	if err := os.Rename(stagePath, request.ArchiveTargetPath); err != nil {
+	if err := parentRoot.Link(stageName, targetName); err != nil {
 		return "failed (clone, repack, or publication did not complete)"
 	}
-	stagePublished = true
 	return ""
 }
 

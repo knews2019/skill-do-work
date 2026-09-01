@@ -60,6 +60,13 @@ func TestNextCommandMixedFixture(t *testing.T) {
 	}
 }
 
+func TestNextCommandUsesInProcessBlockedProbeAuthority(t *testing.T) {
+	status, err := RunBlockedProbe([]byte("exit 19"), 2)
+	if err != nil || status != 19 {
+		t.Fatalf("raw status=%d err=%v", status, err)
+	}
+}
+
 func writeCommandRequest(t *testing.T, repositoryRoot, relativePath, requestID, status, extra string) {
 	t.Helper()
 	requestPath := filepath.Join(repositoryRoot, filepath.FromSlash(relativePath))
