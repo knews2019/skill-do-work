@@ -2,6 +2,12 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.15 — Kanban Board Prime Points at Shipped Stakes (2026-09-02)
+
+The maintainer-side Kanban board prime now carries a `## Stakes` section that points at the shipped `prime-do-kanban.md` instead of restating it, closing the missing link between the two primes for the same tool.
+
+- Found by `do-work-toolbox prime audit`; the other five primes' Stakes were already current, and the lessons index matched every satellite on disk.
+
 ## 0.260.14 — Validate Mutation Consumer Fields During Planning (2026-09-02)
 
 Route C plan validation now warns when a decision command does not name the per-record evidence its action-owned mutation will consume.
