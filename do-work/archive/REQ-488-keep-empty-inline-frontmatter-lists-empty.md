@@ -22,6 +22,7 @@ estimate:
   - trivial short-circuit
 calculated_at: 2026-09-01T21:05:56Z
 completed_at: 2026-09-01T21:17:41Z
+commit: 2a6a6d0a
 ---
 
 # Keep Empty Inline Frontmatter Lists Empty in Request Reads
