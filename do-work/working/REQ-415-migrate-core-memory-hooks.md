@@ -223,6 +223,25 @@ The Stop shim also emits one actionable launcher diagnostic while remaining nonb
 
 *Generated from `do-work/runs/work-2026-08-31-165510/REQ-415-remediation-handback.md`.*
 
+## Review — Fresh Re-review
+
+**Overall: 83%** | 2026-09-01
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 88% |
+| Code Quality | 92% |
+| Test Adequacy | 91% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial |
+
+All five initial Important findings are closed with pre-remediation RED and current GREEN evidence. REQ-463's two named Go-authority defects are closed. The Stop diagnostic Minor is closed; simultaneous identical first-capture dedup remains documented retained parity.
+
+Two residual Important findings remain after the sole remediation: hook mutations lack the UR-wide Git-worktree prerequisite, and live README/capture/board guidance still assigns SessionStart work to retired scripts. They are routed to REQ-466 and REQ-467 respectively, so this request completes with issues.
+
+*Re-reviewed independently; full evidence is in `do-work/runs/work-2026-08-31-165510/REQ-415-rereview.md`.*
+
 ## Red-Green Proof
 **RED prompt/case:** Replay captured valid, malformed, redacted, duplicate, and repair hook events against missing Go hook subcommands.
 **Why RED now:** Hook behavior currently resides in three shipped shell implementations.
