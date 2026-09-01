@@ -155,6 +155,20 @@ Two Minor findings cover missing affected paths for dangling Dream index finding
 
 *Reviewed independently; full evidence is in `do-work/runs/work-2026-08-31-165510/REQ-416-review.md`.*
 
+## Remediation
+
+The sole remediation pass committed `1ff0dd7227885ca797203d17df969f1356ff4877` and changed eight existing knowledgecommands files within the accepted 16-file scope.
+
+- F1: `os.Root`-confined exclusive creation, directory revalidation, and inode/device identity-owned cleanup now cover Git and standalone flows, including owned `.git`; deterministic parent/object swap hooks prove no outside write or replacement deletion.
+- F2: documented absolute/relative targets work, symlink-spelled roots normalize physically, and next/verification argv retain the user target.
+- F3: dangling topic-index targets produce actionable `BKB-TOPIC-DANGLING-ENTRY` findings.
+- F4: Dream scans only direct `<wiki>/*.md` pages and refuses duplicate normalized stems deterministically.
+- Minor closure: dangling Dream index findings name the index path, and the focused differential matrix now covers the review's target/path/depth/date/vocabulary/clean/malformed/race cases.
+
+**Remediation integration commit:** `684d4d828ecaaf6db190fe6642d56e3e12b41641`
+
+*Generated from `do-work/runs/work-2026-08-31-165510/REQ-416-remediation-handback.md`.*
+
 ## Full Context
 See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
 
