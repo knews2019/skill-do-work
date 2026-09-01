@@ -65,7 +65,11 @@ Status: in-progress
 | 1 | REQ-414 | `worktree-agent-REQ-414-migrate-core-helpers` | `REQ-414-brief.md` | `REQ-414-handback.md` | done |
 | Reviewer | REQ-414 review | integration range `fd243be9..ec8e80ea` | REQ plus UR-081 | `REQ-414-review.md` | changes-requested |
 | Remediation | REQ-414 | `worktree-agent-REQ-414-migrate-core-helpers` | F1-F9 contract closure | `REQ-414-remediation-handback.md` | done |
-| Reviewer | REQ-414 re-review | implementation range `baf05854..65e1de4a` | REQ plus initial findings | `REQ-414-rereview.md` | pending |
+| Reviewer | REQ-414 re-review | implementation range `baf05854..65e1de4a` | REQ plus initial findings | `REQ-414-rereview.md` | changes-requested |
+| Discovered | REQ-462 | Git porcelain XY deletion precedence | REQ-414 residual F1 | `do-work/queue/REQ-462-preserve-deletion-precedence-across-git-xy-inventory-states.md` | done |
+| Discovered | REQ-463 | committed fresh reservation-cleanup authority | REQ-414 residual F2 | `do-work/queue/REQ-463-require-committed-fresh-authority-for-reservation-cleanup.md` | done |
+| Discovered | REQ-464 | specific structured core-helper projections | REQ-414 residual F3 | `do-work/queue/REQ-464-make-core-helper-findings-specifically-actionable-and-structured.md` | done |
+| Discovered | REQ-465 | all-command differential parity | REQ-414 residual F4 | `do-work/queue/REQ-465-enforce-differential-parity-for-every-core-helper-command.md` | done |
 | 2 | REQ-446 | `worktree-agent-REQ-446-match-remediation-to-preflight-failure-kind` | `REQ-446-brief.md` | `REQ-446-handback.md` | done |
 | Reviewer | REQ-446 review | integration range `73bae0ae..75fedbe1` | REQ plus REQ-432 | `REQ-446-review.md` | changes-requested |
 | Remediation | REQ-446 | `worktree-agent-REQ-446-match-remediation-to-preflight-failure-kind` | simultaneous-state fixture and all-caller projection | `REQ-446-remediation-handback.md` | done |
