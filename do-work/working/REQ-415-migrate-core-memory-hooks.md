@@ -207,6 +207,22 @@ All five findings enter the single remediation pass. REQ-463 must remain open un
 
 *Reviewed independently; full evidence is in `do-work/runs/work-2026-08-31-165510/REQ-415-review.md`.*
 
+## Remediation
+
+The sole remediation pass committed `d9d373b5060fd572a1fe49fade4c004d6b7522d0` and changed 15 already-declared paths within the frozen 21-file scope.
+
+- F1: reservation cleanup now preserves markers whenever committed Git authority cannot be established and re-establishes authority immediately before removal.
+- F2: exact protocol projection aggregates the typed findings, changes, and skipped work produced by the same operations.
+- F3: blank JSONL separators, invalid UTF-8 handling, and umask-derived file modes match the retained jq/shell behavior.
+- F4: expanded retained-versus-Go matrices cover authority, timestamps, transcript/redaction/budget variants, concurrency, append failures, modes, and launcher/toolchain failures.
+- F5: memory reference and CLI prime now assign writer, redaction, typed-effect, cleanup, and mode authority to the Go owners while describing shell paths as launch-only.
+
+The Stop shim also emits one actionable launcher diagnostic while remaining nonblocking. Simultaneous identical first-capture dedup remains documented retained parity.
+
+**Remediation integration commit:** `168dc2937127940e75b1128fbc443ed016bd0c3d`
+
+*Generated from `do-work/runs/work-2026-08-31-165510/REQ-415-remediation-handback.md`.*
+
 ## Red-Green Proof
 **RED prompt/case:** Replay captured valid, malformed, redacted, duplicate, and repair hook events against missing Go hook subcommands.
 **Why RED now:** Hook behavior currently resides in three shipped shell implementations.
