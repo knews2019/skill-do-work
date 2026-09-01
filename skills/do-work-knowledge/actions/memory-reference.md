@@ -36,7 +36,7 @@ updated: YYYY-MM-DD
 ## Pending Decisions
 ```
 
-Snapshot semantics: hooks inject this file (plus today's log's **curated entries only** — `session capture` sections are excluded, because they are verbatim transcript text that must not enter context before a prompt-injection guard can load; they stay reachable via `do-work-knowledge memory recall`) once, at session start. The injected copy is **frozen for the session** — writes made during a session land in the files and surface at the NEXT session start.
+Snapshot semantics: the core CLI's `memory-session-start` command injects this file (plus today's log's **curated entries only** — `session capture` sections are excluded, because they are verbatim transcript text that must not enter context before a prompt-injection guard can load; they stay reachable via `do-work-knowledge memory recall`) once, at session start. `hooks/memory-session-start.sh` is only the retained event launcher. The injected copy is **frozen for the session** — writes made during a session land in the files and surface at the NEXT session start.
 
 ## Daily-Log Entry Conventions
 
@@ -49,7 +49,7 @@ Every entry in `memory/logs/YYYY-MM-DD.md` is a `##` heading followed by body te
 where `<kind>` is one of (illustrative, not exhaustive — new writers add new kinds without updating this list):
 
 - `note` — one-liner mirrored by `memory remember`, or overflow moved out of working memory by consolidation.
-- `session capture <hash8>` — appended by `hooks/memory-stop-capture.sh`; `<hash8>` is the first 8 hex chars of the sha256 of the captured text and is the dedup key.
+- `session capture <hash8>` — appended by the core CLI's `memory-stop-capture` command through retained launcher `hooks/memory-stop-capture.sh`; `<hash8>` is the first 8 hex chars of the sha256 of the captured text and is the dedup key.
 - `bootstrap import` — written once by `memory bootstrap`; body must name the source transcript.
 
 The heading's `HH:MM` is the entry's UTC **time-of-day label, outside the Timestamp rule's scope** (`../../do-work/actions/work-reference.md`): it is neither an instant nor a date-only stamp, because the log's dated filename already carries the date. A timestamp sweep walks past every `## HH:MM UTC` heading; the write sites point here.
@@ -127,7 +127,7 @@ printf '{"ts":"%s","engine":"memory","event":"recall","query":"%s","hits":%d,"so
 
 ## Stop-Capture Hash Dedup Spec
 
-Used by `hooks/memory-stop-capture.sh`:
+Used by the core CLI's `memory-stop-capture` command. The retained `hooks/memory-stop-capture.sh` path only launches it and preserves the nonblocking Stop boundary. Transcript selection is the full intended JSON behavior on every host; jq availability never changes capture semantics.
 
 1. Extract the final user message + final assistant message from the session transcript, **untruncated**. "Final message" means the last transcript entry that carries real text: pull only from blocks typed `text`, skip `isMeta` entries, and drop entries whose extracted text is blank. Claude Code records tool results as `type: "user"` entries holding `tool_result` blocks with no `.text`, so a naive `last` lands on a tool result and stores an empty `User:` side for any session whose final turn used a tool — the common case, not an edge case. The assistant side has the mirror problem when a turn ends in a `tool_use` block.
 2. Redact **both full extracted sides** per the Capture Redaction Spec below — redaction runs BEFORE truncation, not just before hashing. Every redaction pattern needs a complete token shape; a byte-budget cut through the middle of a token leaves a fragment (`ghp_1234567`) that no longer matches any pattern and would persist unredacted. The private-key drop is likewise judged on the full text. (Redact-before-hash follows for free: the dedup key is computed over already-redacted text.)

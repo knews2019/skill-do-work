@@ -1,150 +1,58 @@
 #!/usr/bin/env bash
-# Behavioral regression probes for the core SessionStart status hook.
+# Behavioral regression probes for the retained core SessionStart launcher and Go authority.
 set -uo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-hook_source="$repo_root/skills/do-work/hooks/session-start.sh"
-fixture_root="$(mktemp -d)" || {
-  printf 'FAIL: could not allocate SessionStart hook fixture root.\n' >&2
-  exit 1
-}
+fixture_root="$(mktemp -d)" || exit 1
 trap 'rm -rf "$fixture_root"' EXIT
-
 failure_count=0
 
-run_hook_case() {
-  local case_name="$1"
-  local version_mode="$2"
-  local queue_count="$3"
-  local expected_output="$4"
-  local case_root="$fixture_root/$case_name"
-  local skill_root="$case_root/skill"
-  local project_root="$case_root/project"
-  local stderr_path="$case_root/stderr.txt"
-  local actual_output=''
-  local hook_status=0
-  local request_index=0
+install_core_fixture() {
+  local case_root="$1"
+  mkdir -p "$case_root/skill/hooks" "$case_root/skill/actions" "$case_root/skill/tools"
+  cp "$repo_root/skills/do-work/hooks/session-start.sh" "$case_root/skill/hooks/"
+  cp "$repo_root/skills/do-work/tools/do-work-cli.sh" "$case_root/skill/tools/"
+  cp -R "$repo_root/skills/do-work/tools/do-work-cli" "$case_root/skill/tools/"
+  rm -f "$case_root/skill/tools/do-work-cli/do-work-cli"
+}
 
-  mkdir -p "$skill_root/hooks" "$skill_root/actions" "$project_root"
-  cp "$hook_source" "$skill_root/hooks/session-start.sh"
-  case "$version_mode" in
-    valid) printf '**Current version**: 9.8.7\n' > "$skill_root/actions/version.md" ;;
-    reformatted) printf '**Version**: 9.8.7\n' > "$skill_root/actions/version.md" ;;
-    missing) ;;
-    *)
-      printf 'FAIL: %s fixture has unknown version mode %s.\n' "$case_name" "$version_mode" >&2
-      failure_count=$((failure_count + 1))
-      return
-      ;;
-  esac
-
-  if [[ "$queue_count" -gt 0 ]]; then
-    mkdir -p "$project_root/do-work/queue"
-    while [[ "$request_index" -lt "$queue_count" ]]; do
-      request_index=$((request_index + 1))
-      printf -- '---\nid: REQ-%03d\nstatus: pending\n---\n' "$request_index" \
-        > "$project_root/do-work/queue/REQ-$(printf '%03d' "$request_index")-fixture.md"
-    done
-  fi
-
-  actual_output="$(CLAUDE_PROJECT_DIR="$project_root" \
-    bash "$skill_root/hooks/session-start.sh" 2> "$stderr_path")" || hook_status=$?
-  if [[ "$hook_status" -ne 0 ]]; then
-    printf 'FAIL: %s: hook exited %s; stderr: %s\n' \
-      "$case_name" "$hook_status" "$(tr '\n' ' ' < "$stderr_path")" >&2
-    failure_count=$((failure_count + 1))
-    return
-  fi
-  if [[ "$actual_output" != "$expected_output" ]]; then
-    printf 'FAIL: %s: expected <%s>, got <%s>.\n' \
-      "$case_name" "$expected_output" "$actual_output" >&2
+run_banner_case() {
+  local case_name="$1" version_text="$2" queue_count="$3" expected="$4"
+  local case_root="$fixture_root/$case_name" request_index=0 output='' status=0
+  install_core_fixture "$case_root"
+  mkdir -p "$case_root/project/do-work/queue"
+  printf '%b' "$version_text" > "$case_root/skill/actions/version.md"
+  while [ "$request_index" -lt "$queue_count" ]; do
+    request_index=$((request_index + 1))
+    printf -- '---\nid: REQ-%03d\n---\n' "$request_index" > "$case_root/project/do-work/queue/REQ-$(printf '%03d' "$request_index")-fixture.md"
+  done
+  output="$(CLAUDE_PROJECT_DIR="$case_root/project" bash "$case_root/skill/hooks/session-start.sh" 2>"$case_root/stderr")" || status=$?
+  if [ "$status" -ne 0 ] || [ "$output" != "$expected" ] || [ -s "$case_root/stderr" ]; then
+    printf 'FAIL: %s status=%s output=<%s> stderr=<%s>\n' "$case_name" "$status" "$output" "$(tr '\n' ' ' < "$case_root/stderr")" >&2
     failure_count=$((failure_count + 1))
   fi
 }
 
-run_hook_case \
-  happy-path valid 2 \
-  "do-work v9.8.7 loaded. 2 pending REQ(s). Say 'do-work help' for commands."
-run_hook_case \
-  missing-version-file missing 0 \
-  "do-work vunknown loaded. 0 pending REQ(s). Say 'do-work help' for commands."
-run_hook_case \
-  reformatted-version-line reformatted 0 \
-  "do-work vunknown loaded. 0 pending REQ(s). Say 'do-work help' for commands."
-run_hook_case \
-  missing-queue-directory valid 0 \
-  "do-work v9.8.7 loaded. 0 pending REQ(s). Say 'do-work help' for commands."
+run_banner_case valid '**Current version**: 9.8.7\n' 2 "do-work v9.8.7 loaded. 2 pending REQ(s). Say 'do-work help' for commands."
+run_banner_case missing '' 0 "do-work vunknown loaded. 0 pending REQ(s). Say 'do-work help' for commands."
+run_banner_case reformatted '**Version**: 9.8.7\n' 0 "do-work vunknown loaded. 0 pending REQ(s). Say 'do-work help' for commands."
+run_banner_case multiple '**Current version**: 1\n**Current version**: 2\n' 0 "do-work v1
+2 loaded. 0 pending REQ(s). Say 'do-work help' for commands."
 
-# With the cleanup script installed, a marker made redundant by its landed REQ file
-# is reaped at session start and the hook appends the cleanup summary to the banner.
-# The four cases above run without scripts/ present, pinning that a partial install
-# still emits the plain banner.
-cleanup_case_root="$fixture_root/reservation-cleanup"
-cleanup_skill_root="$cleanup_case_root/skill"
-cleanup_project_root="$cleanup_case_root/project"
-mkdir -p "$cleanup_skill_root/hooks" "$cleanup_skill_root/actions" "$cleanup_skill_root/scripts" \
-  "$cleanup_project_root/do-work/queue" "$cleanup_project_root/do-work/.req-reservations"
-cp "$hook_source" "$cleanup_skill_root/hooks/session-start.sh"
-cp "$repo_root/skills/do-work/scripts/cleanup-req-reservations.sh" "$cleanup_skill_root/scripts/"
-printf '**Current version**: 9.8.7\n' > "$cleanup_skill_root/actions/version.md"
-printf -- '---\nid: REQ-001\nstatus: pending\n---\n' \
-  > "$cleanup_project_root/do-work/queue/REQ-001-fixture.md"
-: > "$cleanup_project_root/do-work/.req-reservations/REQ-000001"
-cleanup_expected_output="do-work v9.8.7 loaded. 1 pending REQ(s). Say 'do-work help' for commands.
-do-work: removed 1 stale REQ reservation marker(s) from do-work/.req-reservations/ — stage and commit the deletion(s)."
-cleanup_actual_output="$(CLAUDE_PROJECT_DIR="$cleanup_project_root" \
-  bash "$cleanup_skill_root/hooks/session-start.sh" 2> "$cleanup_case_root/stderr.txt")" || {
-  printf 'FAIL: reservation-cleanup: hook exited nonzero; stderr: %s\n' \
-    "$(tr '\n' ' ' < "$cleanup_case_root/stderr.txt")" >&2
-  failure_count=$((failure_count + 1))
-}
-if [[ "$cleanup_actual_output" != "$cleanup_expected_output" ]]; then
-  printf 'FAIL: reservation-cleanup: expected <%s>, got <%s>.\n' \
-    "$cleanup_expected_output" "$cleanup_actual_output" >&2
-  failure_count=$((failure_count + 1))
-fi
-if [[ -e "$cleanup_project_root/do-work/.req-reservations/REQ-000001" ]]; then
-  printf 'FAIL: reservation-cleanup: the redundant marker survived the session start.\n' >&2
+missing_root="$fixture_root/missing-launcher"
+mkdir -p "$missing_root/skill/hooks" "$missing_root/project"
+cp "$repo_root/skills/do-work/hooks/session-start.sh" "$missing_root/skill/hooks/"
+missing_status=0
+CLAUDE_PROJECT_DIR="$missing_root/project" bash "$missing_root/skill/hooks/session-start.sh" >"$missing_root/stdout" 2>"$missing_root/stderr" || missing_status=$?
+if [ "$missing_status" -eq 0 ] || ! grep -q 'canonical launcher is missing' "$missing_root/stderr"; then
+  printf 'FAIL: core SessionStart did not stop actionably when the canonical launcher was absent.\n' >&2
   failure_count=$((failure_count + 1))
 fi
 
-# With the timestamp repairer installed, a detectably wrong stamp in the queue is
-# mechanically repaired at session start — before any agent or board render reads
-# the file — and the hook appends the audit trail to the banner. The cases above
-# run without scripts/ present, pinning that a partial install still emits the
-# plain banner.
-repair_case_root="$fixture_root/timestamp-repair"
-repair_skill_root="$repair_case_root/skill"
-repair_project_root="$repair_case_root/project"
-mkdir -p "$repair_skill_root/hooks" "$repair_skill_root/actions" "$repair_skill_root/scripts" \
-  "$repair_project_root/do-work/queue"
-cp "$hook_source" "$repair_skill_root/hooks/session-start.sh"
-cp "$repo_root/skills/do-work/scripts/repair-req-timestamps.sh" "$repair_skill_root/scripts/"
-printf '**Current version**: 9.8.7\n' > "$repair_skill_root/actions/version.md"
-printf -- '---\nid: REQ-001\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z\n---\nbody\n' \
-  > "$repair_project_root/do-work/queue/REQ-001-fixture.md"
-TZ=UTC touch -m -t 202608101200.00 "$repair_project_root/do-work/queue/REQ-001-fixture.md"
-repair_expected_output="do-work v9.8.7 loaded. 1 pending REQ(s). Say 'do-work help' for commands.
-do-work: repaired do-work/queue/REQ-001-fixture.md created_at: 2093-01-01T00:00:00Z -> 2026-08-10T12:00:00Z (file mtime)
-do-work: repaired 1 detectably wrong timestamp(s) — review and commit the correction(s) with the next housekeeping commit."
-repair_actual_output="$(CLAUDE_PROJECT_DIR="$repair_project_root" \
-  bash "$repair_skill_root/hooks/session-start.sh" 2> "$repair_case_root/stderr.txt")" || {
-  printf 'FAIL: timestamp-repair: hook exited nonzero; stderr: %s\n' \
-    "$(tr '\n' ' ' < "$repair_case_root/stderr.txt")" >&2
-  failure_count=$((failure_count + 1))
-}
-if [[ "$repair_actual_output" != "$repair_expected_output" ]]; then
-  printf 'FAIL: timestamp-repair: expected <%s>, got <%s>.\n' \
-    "$repair_expected_output" "$repair_actual_output" >&2
-  failure_count=$((failure_count + 1))
-fi
-if ! grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_project_root/do-work/queue/REQ-001-fixture.md"; then
-  printf 'FAIL: timestamp-repair: the future stamp survived the session start.\n' >&2
+if grep -Eq 'cleanup-req-reservations\.sh|repair-req-timestamps\.sh|sed |awk |find ' "$repo_root/skills/do-work/hooks/session-start.sh"; then
+  printf 'FAIL: retained SessionStart path contains domain logic instead of a thin launcher.\n' >&2
   failure_count=$((failure_count + 1))
 fi
 
-if [[ "$failure_count" -gt 0 ]]; then
-  exit 1
-fi
-
+[ "$failure_count" -eq 0 ] || exit 1
 printf 'SessionStart hook behavior probes passed.\n'

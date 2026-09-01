@@ -19,7 +19,7 @@ resolve_runtime_file() {
       printf '%s/%s\n' "$knowledge_root" "$relative_path" ;;
     actions/ai-report*|actions/architecture-report.md|actions/code-review.md|actions/completed-work-presentation-reference.md|actions/deep-explore*|actions/inspect.md|actions/install.md|actions/note.md|actions/present-video.md|actions/present-work.md|actions/prime.md|actions/quick-wins.md|actions/scan-ideas.md|actions/slop-check.md|actions/stray-check.md|actions/tidy-repo.md|actions/tutorial.md|actions/ui-review.md|actions/validate-feedback.md|docs/ai-report-guide.md|docs/code-review-guide.md|docs/inspect-guide.md|docs/present-video-guide.md|docs/present-work-guide.md|docs/prime-guide.md|docs/quick-wins-guide.md|docs/slop-check-guide.md|docs/stray-check-guide.md|docs/ui-review-guide.md)
       printf '%s/%s\n' "$toolbox_root" "$relative_path" ;;
-    actions/*|crew-members/*|docs/*|hooks/*|scripts/*|specs/*|tools/checks/*|tools/estimate-p50.sh|tools/do-work-update.sh|tools/prime-do-work-update.md)
+    actions/*|crew-members/*|docs/*|hooks/*|scripts/*|specs/*|tools/checks/*|tools/do-work-cli/*|tools/estimate-p50.sh|tools/do-work-update.sh|tools/prime-do-work-update.md)
       printf '%s/%s\n' "$core_root" "$relative_path" ;;
     tools/queue-kanban/*) printf '%s/%s\n' "$board_root" "$relative_path" ;;
     *) printf '%s/%s\n' "$repo_root" "$relative_path" ;;
@@ -4713,9 +4713,9 @@ assert_block_contains \
 # core guardrails (cap, prompt-injection load, compose-don't-clobber install)
 # must stay stated where agents read them.
 assert_contains \
-  "hooks/memory-stop-capture.sh" \
+  "tools/do-work-cli/internal/hookcommands/memory_capture.go" \
   'stop_hook_active' \
-  'hooks/memory-stop-capture.sh must keep the stop_hook_active loop guard.'
+  'the Go memory Stop authority must keep the stop_hook_active loop guard.'
 
 assert_file_not_contains \
   "hooks/memory-stop-capture.sh" \
@@ -4750,9 +4750,9 @@ assert_contains \
   'knowledge setup-memory hook merge must back up settings.json before composing entries.'
 
 assert_contains \
-  "hooks/memory-stop-capture.sh" \
+  "tools/do-work-cli/internal/hookcommands/memory_capture.go" \
   'REDACTED' \
-  'hooks/memory-stop-capture.sh must redact credential-shaped text before persisting captures — defense in depth behind the machine-local store.'
+  'the Go memory Stop authority must redact credential-shaped text before persisting captures — defense in depth behind the machine-local store.'
 
 # Raw captures and the per-machine ledger must never become committable: the installer
 # adds them to .git/info/exclude (machine-local), never the project's .gitignore.
@@ -4767,9 +4767,9 @@ assert_contains \
   'knowledge setup-memory must add memory/usage-ledger.jsonl to .git/info/exclude.'
 
 assert_contains \
-  "hooks/memory-session-start.sh" \
+  "tools/do-work-cli/internal/hookcommands/memory_start.go" \
   'session capture' \
-  'hooks/memory-session-start.sh must strip raw session-capture sections from the startup injection — unvetted transcript text must not enter context before a prompt-injection guard can load.'
+  'the Go memory SessionStart authority must strip raw session-capture sections from the startup injection — unvetted transcript text must not enter context before a prompt-injection guard can load.'
 
 # CLAUDE.md/AGENTS.md are the maintainer doc, export-ignored since 0.136.0 so they never
 # land in consumer installs (nested CLAUDE.md is auto-loaded into consumer agents' context).
