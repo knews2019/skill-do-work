@@ -3,6 +3,7 @@ package toolboxcommands
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
@@ -60,5 +61,14 @@ func TestRemediationPortfolioRetainsSnapshotWhenCanonicalIsDirectory(t *testing.
 	}
 	if contents, err := os.ReadFile(snapshot); err != nil || string(contents) != "summary\n" {
 		t.Fatalf("snapshot not retained: %q %v result=%+v", contents, err, result)
+	}
+	output, err := resultmodel.RenderResult(result, resultmodel.FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{"PORTFOLIO-CANONICAL-UNSAFE", "PORTFOLIO-SNAPSHOT-RETAINED", snapshot} {
+		if !strings.Contains(string(output), required) {
+			t.Fatalf("portfolio refusal output omitted %q: %s", required, output)
+		}
 	}
 }

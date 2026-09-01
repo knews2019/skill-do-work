@@ -13,22 +13,24 @@ import (
 )
 
 const (
-	CommandBKBInit           = "bkb-init"
-	CommandBKBStatus         = "bkb-status"
-	CommandBKBLintStructure  = "bkb-lint-structure"
-	CommandDreamScan         = "dream-scan"
-	CommandInterviewList     = "interview-list"
-	CommandInterviewStatus   = "interview-status"
-	CommandInterviewExport   = "interview-export"
-	CommandInterviewIngest   = "interview-ingest"
-	CommandInterviewReset    = "interview-reset"
-	CommandInterviewVersions = "interview-versions"
-	CommandMemoryRemember    = "memory-remember"
-	CommandMemoryForget      = "memory-forget"
-	CommandMemoryRecall      = "memory-recall"
-	CommandMemoryStatus      = "memory-status"
-	CommandMemoryBootstrap   = "memory-bootstrap"
-	CommandMemoryAudit       = "memory-audit"
+	CommandBKBInit             = "bkb-init"
+	CommandBKBStatus           = "bkb-status"
+	CommandBKBLintStructure    = "bkb-lint-structure"
+	CommandDreamScan           = "dream-scan"
+	CommandInterviewList       = "interview-list"
+	CommandInterviewStatus     = "interview-status"
+	CommandInterviewExport     = "interview-export"
+	CommandInterviewIngest     = "interview-ingest"
+	CommandInterviewReset      = "interview-reset"
+	CommandInterviewVersions   = "interview-versions"
+	CommandMemoryRemember      = "memory-remember"
+	CommandMemoryForget        = "memory-forget"
+	CommandMemoryRecall        = "memory-recall"
+	CommandMemoryStatus        = "memory-status"
+	CommandMemoryBootstrap     = "memory-bootstrap"
+	CommandMemoryAudit         = "memory-audit"
+	CommandInstallMemoryHooks  = "install-memory-hooks"
+	CommandLexicalMemoryRecall = "lexical-memory-recall"
 )
 
 var nowUTC = func() time.Time { return time.Now().UTC() }
@@ -42,22 +44,24 @@ type bkbOptions struct {
 
 func Handlers() map[string]commandruntime.CommandHandler {
 	return map[string]commandruntime.CommandHandler{
-		CommandBKBInit:           handleBKBInit,
-		CommandBKBStatus:         handleBKBStatus,
-		CommandBKBLintStructure:  handleBKBLint,
-		CommandDreamScan:         handleDreamScan,
-		CommandInterviewList:     handleInterviewList,
-		CommandInterviewStatus:   handleInterviewStatus,
-		CommandInterviewExport:   handleInterviewExport,
-		CommandInterviewIngest:   handleInterviewIngest,
-		CommandInterviewReset:    handleInterviewReset,
-		CommandInterviewVersions: handleInterviewVersions,
-		CommandMemoryRemember:    handleMemoryRemember,
-		CommandMemoryForget:      handleMemoryForget,
-		CommandMemoryRecall:      handleMemoryRecall,
-		CommandMemoryStatus:      handleMemoryStatus,
-		CommandMemoryBootstrap:   handleMemoryBootstrap,
-		CommandMemoryAudit:       handleMemoryAudit,
+		CommandBKBInit:             handleBKBInit,
+		CommandBKBStatus:           handleBKBStatus,
+		CommandBKBLintStructure:    handleBKBLint,
+		CommandDreamScan:           handleDreamScan,
+		CommandInterviewList:       handleInterviewList,
+		CommandInterviewStatus:     handleInterviewStatus,
+		CommandInterviewExport:     handleInterviewExport,
+		CommandInterviewIngest:     handleInterviewIngest,
+		CommandInterviewReset:      handleInterviewReset,
+		CommandInterviewVersions:   handleInterviewVersions,
+		CommandMemoryRemember:      handleMemoryRemember,
+		CommandMemoryForget:        handleMemoryForget,
+		CommandMemoryRecall:        handleMemoryRecall,
+		CommandMemoryStatus:        handleMemoryStatus,
+		CommandMemoryBootstrap:     handleMemoryBootstrap,
+		CommandMemoryAudit:         handleMemoryAudit,
+		CommandInstallMemoryHooks:  handleInstallMemoryHooks,
+		CommandLexicalMemoryRecall: handleLexicalMemoryRecall,
 	}
 }
 

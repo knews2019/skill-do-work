@@ -1,6 +1,7 @@
 package knowledgecommands
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,6 +48,59 @@ func TestBKBStatusAndLintAreReadOnlyAndActionable(t *testing.T) {
 	after := treeDigest(t, filepath.Join(root, "kb"))
 	if before != after {
 		t.Fatal("read-only BKB scans changed bytes")
+	}
+}
+
+func TestBKBStatusMasterIndexCountMatrixIsActionableAndReadOnly(t *testing.T) {
+	tests := []struct {
+		name   string
+		master string
+		codes  []string
+	}{
+		{"declared inventory mismatch", "Total articles: 17 | Topic clusters: 3\n", []string{"BKB-STATUS-ARTICLE-COUNT-DISK-MISMATCH", "BKB-STATUS-TOPIC-COUNT-DISK-MISMATCH"}},
+		{"missing", "# Master\n", []string{"BKB-STATUS-ARTICLE-COUNT-MISSING", "BKB-STATUS-TOPIC-COUNT-MISSING"}},
+		{"malformed", "Total articles: many | Topic clusters: ?\n", []string{"BKB-STATUS-ARTICLE-COUNT-MALFORMED", "BKB-STATUS-TOPIC-COUNT-MALFORMED"}},
+		{"duplicate", "Total articles: 0\nTotal articles: 0\nTopic clusters: 0\nTopic clusters: 0\n", []string{"BKB-STATUS-ARTICLE-COUNT-DUPLICATE", "BKB-STATUS-TOPIC-COUNT-DUPLICATE"}},
+		{"inconsistent", "Total articles: 1\nTotal articles: 2\nTopic clusters: 3\nTopic clusters: 4\n", []string{"BKB-STATUS-ARTICLE-COUNT-INCONSISTENT", "BKB-STATUS-TOPIC-COUNT-INCONSISTENT"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeFixture(t, root, "kb/wiki/_master_index.md", test.master)
+			writeFixture(t, root, "kb/wiki/log.md", "# Log\n")
+			if err := os.MkdirAll(filepath.Join(root, "kb", "raw", "inbox"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			before := treeDigest(t, filepath.Join(root, "kb"))
+			result := handleBKBStatus(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--kb", "kb"})
+			for _, code := range test.codes {
+				if !resultHasFindingCode(result, code) {
+					t.Fatalf("missing %s: %#v", code, result.Findings)
+				}
+			}
+			for _, finding := range result.Findings {
+				if finding.Severity != resultmodel.SeverityInfo && (len(finding.NextArgv) == 0 || len(finding.VerificationArgv) == 0) {
+					t.Fatalf("finding %s is not actionable: %#v", finding.Code, finding)
+				}
+			}
+			textOutput, textError := resultmodel.RenderResult(result, resultmodel.FormatText)
+			jsonOutput, jsonError := resultmodel.RenderResult(result, resultmodel.FormatJSON)
+			if textError != nil || jsonError != nil {
+				t.Fatalf("render text=%v json=%v", textError, jsonError)
+			}
+			var decoded resultmodel.CommandResult
+			if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
+				t.Fatal(err)
+			}
+			for _, code := range test.codes {
+				if !strings.Contains(string(textOutput), code) || !resultHasFindingCode(decoded, code) {
+					t.Fatalf("text/json parity lost %s: text=%s json=%s", code, textOutput, jsonOutput)
+				}
+			}
+			if after := treeDigest(t, filepath.Join(root, "kb")); after != before {
+				t.Fatal("BKB status count matrix changed bytes")
+			}
+		})
 	}
 }
 

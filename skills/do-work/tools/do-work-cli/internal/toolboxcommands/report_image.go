@@ -35,7 +35,7 @@ func handleReportImage(executionContext commandruntime.ExecutionContext, argumen
 	rest, dryRun, commit, err := parseMutationFlags(arguments)
 	if err != nil || len(rest) != 3 {
 		if err == nil {
-			err = fmt.Errorf("Usage: generate-report-image <absolute-output-png> <style-brief> <sanitized-description> [--dry-run|--commit]")
+			err = fmt.Errorf("Usage: generate-report-image [--dry-run|--commit] <absolute-output-png> <style-brief> <sanitized-description>")
 		}
 		return usageResult(CommandReportImage, err.Error())
 	}
@@ -55,9 +55,9 @@ func handleReportImage(executionContext commandruntime.ExecutionContext, argumen
 	_, preexistingError := os.Lstat(absolute)
 	preexisting := preexistingError == nil
 
-	invocationContext, stopSignals, interrupted := imageSignalContext()
+	invocationContext, stopSignals, interrupted := mutationSignalContext()
 	defer stopSignals()
-	result := runTransactionContext(invocationContext, CommandReportImage, executionContext.RepositoryRoot, []string{relative}, nil, dryRun, commit, "[do-work] Generate report image", func(recorder *gittransaction.MutationRecorder) error {
+	generateAndPublish := func() error {
 		stageDirectory, stageErr := os.MkdirTemp("", "do-work-report-image.*")
 		if stageErr != nil {
 			return stageErr
@@ -75,14 +75,36 @@ func handleReportImage(executionContext commandruntime.ExecutionContext, argumen
 		if readErr != nil {
 			return readErr
 		}
-		if publishErr := rootedPublishFile(executionContext.RepositoryRoot, relative, contents, 0o600, preexisting); publishErr != nil {
-			return publishErr
+		return rootedPublishFile(executionContext.RepositoryRoot, relative, contents, 0o600, preexisting)
+	}
+	existingUntracked := []string{}
+	if preexisting {
+		existingUntracked = append(existingUntracked, relative)
+	}
+	result := resultmodel.CommandResult{}
+	if !dryRun && !commit {
+		if publishErr := generateAndPublish(); publishErr != nil {
+			result = resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, RepositoryRoot: executionContext.RepositoryRoot,
+				Findings: []resultmodel.CommandFinding{toolboxFinding(CommandReportImage, "REPORT-IMAGE-GENERATION-FAILED", resultmodel.SeverityWarning, []string{relative}, publishErr.Error(), resultmodel.FixabilityManual, "the target was left unchanged")}}
+		} else {
+			kind := "created"
+			if preexisting {
+				kind = "modified"
+			}
+			result = resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, RepositoryRoot: executionContext.RepositoryRoot,
+				Changes: []resultmodel.RecordedChange{{Path: relative, Kind: kind, Detail: "published a status-backed nonempty report image"}}}
 		}
-		if preexisting {
-			return recorder.RecordTouched(relative)
-		}
-		return recorder.RecordCreated(relative)
-	})
+	} else {
+		result = runTransactionContextWithExisting(invocationContext, CommandReportImage, executionContext.RepositoryRoot, []string{relative}, existingUntracked, nil, dryRun, commit, "[do-work] Generate report image", func(recorder *gittransaction.MutationRecorder) error {
+			if publishErr := generateAndPublish(); publishErr != nil {
+				return publishErr
+			}
+			if preexisting {
+				return recorder.RecordTouched(relative)
+			}
+			return recorder.RecordCreated(relative)
+		})
+	}
 	if status := interrupted(); status != 0 {
 		result.ExitCodeOverride = status
 	}
@@ -100,7 +122,7 @@ func handleReportImageBatch(executionContext commandruntime.ExecutionContext, ar
 	rest, dryRun, commit, err := parseMutationFlags(arguments)
 	if err != nil || len(rest) < 3 {
 		if err == nil {
-			err = fmt.Errorf("Usage: generate-report-image-batch <report-directory> <style-brief> <target-name>:<prompt>... [--dry-run|--commit]")
+			err = fmt.Errorf("Usage: generate-report-image-batch [--dry-run|--commit] <report-directory> <style-brief> <target-name>:<prompt>...")
 		}
 		return usageResult(CommandReportImageBatch, err.Error())
 	}
@@ -134,7 +156,7 @@ func handleReportImageBatch(executionContext commandruntime.ExecutionContext, ar
 		targets = append(targets, filepath.ToSlash(filepath.Join(generatedRel, request.Name)))
 	}
 
-	invocationContext, stopSignals, interrupted := imageSignalContext()
+	invocationContext, stopSignals, interrupted := mutationSignalContext()
 	defer stopSignals()
 	succeeded := 0
 	failedNames := []string{}
@@ -210,7 +232,6 @@ func handleReportImageBatch(executionContext commandruntime.ExecutionContext, ar
 	if result.Outcome == resultmodel.OutcomeSuccess {
 		var output strings.Builder
 		for _, name := range failedNames {
-			fmt.Fprintf(&output, "MISSING: %s → fall back to SVG/Mermaid for that section\n", name)
 			result.Findings = append(result.Findings, toolboxFinding(CommandReportImageBatch, "REPORT-IMAGE-MISSING", resultmodel.SeverityWarning, []string{name}, "backend failed or produced no nonempty image", resultmodel.FixabilityManual, "use SVG or Mermaid for this section"))
 		}
 		if dryRun {
@@ -311,7 +332,7 @@ func nonemptyRegular(path string) bool {
 	return err == nil && info.Mode().IsRegular() && info.Size() > 0
 }
 
-func imageSignalContext() (context.Context, func(), func() int) {
+func mutationSignalContext() (context.Context, func(), func() int) {
 	ctx, cancel := context.WithCancel(context.Background())
 	signals := make(chan os.Signal, 1)
 	observed := make(chan int, 1)

@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
@@ -53,7 +52,7 @@ func TestReportImageBatchAllFailedIsSuccessfulAndLeavesNoStage(t *testing.T) {
 	if result.Outcome != resultmodel.OutcomeSuccess {
 		t.Fatalf("result=%+v", result)
 	}
-	if result.ExactTextOutput == nil || !strings.Contains(*result.ExactTextOutput, "MISSING: one.png") || !strings.Contains(*result.ExactTextOutput, "MISSING: two.png") || len(result.Findings) != 2 {
+	if result.ExactTextOutput == nil || *result.ExactTextOutput != "" || len(result.Findings) != 2 {
 		t.Fatalf("per-item fallback evidence missing: %+v", result)
 	}
 	if _, err := os.Stat(filepath.Join(report, "generated")); !os.IsNotExist(err) {

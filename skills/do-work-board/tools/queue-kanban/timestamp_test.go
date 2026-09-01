@@ -195,8 +195,8 @@ func TestFutureStampDiagnosesKeepTheirFixInstruction(t *testing.T) {
 	}
 
 	verifyRemedy := futureClaimVerifyFinding(t).Remedy
-	if !strings.Contains(verifyRemedy, "queue-kanban now") {
-		t.Errorf("verify future-claim remedy lost its `queue-kanban now` instruction; got: %s", verifyRemedy)
+	if !strings.Contains(verifyRemedy, "do-work-cli.sh --format text now") {
+		t.Errorf("verify future-claim remedy lost its canonical `do-work-cli now` instruction; got: %s", verifyRemedy)
 	}
 }
 

@@ -39,8 +39,8 @@ func TestRemediationArchitectureAbsoluteScanAndReadDirFailure(t *testing.T) {
 			t.Fatalf("scan %q=%+v", reports, result)
 		}
 	}
-	if result := architectureScan(context, "missing-reports"); result.Outcome != resultmodel.OutcomeFindings {
-		t.Fatalf("ReadDir failure collapsed to clean result: %+v", result)
+	if result := architectureScan(context, "missing-reports"); result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("absent first-run report directory was not treated as an empty history: %+v", result)
 	}
 }
 

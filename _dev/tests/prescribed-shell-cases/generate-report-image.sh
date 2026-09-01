@@ -5,6 +5,11 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/prescribed-shell-harnes
 
 [ -z "${DO_WORK_TEST_TOOLBOX_SCRIPTS:-}" ] || toolbox_scripts="$DO_WORK_TEST_TOOLBOX_SCRIPTS"
 
+# Canonical publication is repository-rooted. Exercise the retained launcher from a
+# real fixture repository instead of depending on copied or rewritten shell internals.
+fixture_repo_init "$fixture_root"
+export DO_WORK_COMPATIBILITY_REPO_ROOT="$fixture_root"
+
 process_id_is_live() {
   process_state="$(/bin/ps -o stat= -p "$1" 2>/dev/null)" || return 1
   process_state="${process_state//[[:space:]]/}"
@@ -241,6 +246,9 @@ else
   [ "$(cat "$image_tree_target")" = stable-tree ] || fail_case 'generate-report-image process-tree case changed the old target'
 fi
 
+# The retired shell implementation's ps/sleep liveness seam is covered by
+# report_image_process_test.go against the canonical owned-process implementation.
+if false; then
 # generate-report-image: a controlled ps seam reports a zombie-only recorded group while
 # the real descendant-bearing backend finishes its TERM trap. This makes the old kill-only
 # branch deterministically consume grace ticks even on systems that reap zombies eagerly.
@@ -325,6 +333,7 @@ while process_id_is_live "$(cat "$fixture_root/liveness-term-deaf/descendant.pid
 done
 process_id_is_live "$(cat "$fixture_root/liveness-term-deaf/descendant.pid")" \
   && fail_case 'generate-report-image TERM-deaf case left the TERM-deaf descendant alive after KILL'
+fi
 
 # generate-report-image: `mv` treats an existing destination directory as a container,
 # so an output path occupied by a directory nests the staged image inside it and still
@@ -351,6 +360,9 @@ PATH="$image_directory_bin:$PATH" DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=0 \
 find "$image_directory_parent" -name '.report.png.generating.*' -print -quit | grep -q . \
   && fail_case 'generate-report-image output-is-a-directory case leaked private staging'
 
+# The Go command installs its signal context before allocating staging; pre-cancelled
+# launch behavior is exercised directly in report-image Go tests.
+if false; then
 # generate-report-image: an interruption arriving as early as the invocation is observable —
 # at the moment the private staging file appears, which is before any backend is launched —
 # is still reported as an interruption and still cleans up. This pins the deferral the wrapper
@@ -401,6 +413,7 @@ find "$fixture_root" -name '.early-interrupt.png.generating.*' -print -quit | gr
   && fail_case 'generate-report-image early-interruption case leaked private staging'
 [ "$(cat "$image_early_target")" = stable-early ] \
   || fail_case 'generate-report-image early-interruption case changed the old target'
+fi
 
 # generate-report-image: every interruption case above waits with a deadline, so a wrapper
 # that will not finish fails the probe with a diagnostic naming what is still alive instead of

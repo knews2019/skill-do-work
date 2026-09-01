@@ -77,6 +77,42 @@ func TestUncommittedTimestampApplyAcceptsDirtyPreimageAndRefusesRace(t *testing.
 	}
 }
 
+func TestUncommittedTimestampPlanGuardCountsOnlyPlanDelta(t *testing.T) {
+	root := t.TempDir()
+	relative := "do-work/queue/REQ-100.md"
+	absolute := filepath.Join(root, filepath.FromSlash(relative))
+	if err := os.MkdirAll(filepath.Dir(absolute), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	before := []byte("created_at: old\npreexisting dirty line\n")
+	after := []byte("created_at: new\npreexisting dirty line\n")
+	if err := os.WriteFile(absolute, before, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	plan := TimestampRepairPlan{RelativePath: relative, ExpectedBytes: before, UpdatedBytes: after, Changes: []TimestampFieldChange{{FieldName: "created_at"}}}
+	result := ApplyUncommittedTimestampPlans(&repositorymodel.RepositorySnapshot{RepositoryRoot: root}, []TimestampRepairPlan{plan})
+	if result.Outcome != "success" || !bytes.Equal(readDoctorFixture(t, absolute), after) {
+		t.Fatalf("dirty preimage was miscounted: %#v", result)
+	}
+
+	oversized := TimestampRepairPlan{
+		RelativePath:  relative,
+		ExpectedBytes: after,
+		UpdatedBytes:  []byte("created_at: newest\nunrelated rewrite\n"),
+		Changes:       []TimestampFieldChange{{FieldName: "created_at"}},
+	}
+	result = ApplyUncommittedTimestampPlans(&repositorymodel.RepositorySnapshot{RepositoryRoot: root}, []TimestampRepairPlan{oversized})
+	if result.Outcome != "findings" || len(result.Findings) != 1 || result.Findings[0].Code != "TIMESTAMP-PLAN-GUARD-TRIPPED" {
+		t.Fatalf("oversized plan was accepted: %#v", result)
+	}
+	if !bytes.Equal(readDoctorFixture(t, absolute), after) {
+		t.Fatal("oversized plan changed the request")
+	}
+	if !timestampPlanTooLarge([]byte("one\ntwo\n"), []byte("one\n"), 1) {
+		t.Fatal("truncating plan passed the line guard")
+	}
+}
+
 func readDoctorFixture(t *testing.T, path string) []byte {
 	t.Helper()
 	contents, err := os.ReadFile(path)

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# do-work-cli compatibility launcher: retained public path
 # Fetch the upstream suite archive by whichever route works, and publish it only whole.
 #
 # The implementation lives in the do-work-cli `fetch-archive` command; this file is the

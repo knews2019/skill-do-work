@@ -21,15 +21,10 @@ import (
 // resulting bug: filtering on the literal `completed` and silently dropping
 // `completed-with-issues`.
 //
-// THE FLOOR STILL WINS. This is an accelerator in the same class as `next-req`,
-// `next-version`, and `now`: an action may name it as the PREFERRED source for
-// something it can already obtain with shell primitives, gated on the binary
-// being already built, with the prose procedure documented as the fallback.
-// Nothing may build the tool to read a field, and no action may lose its floor
-// path — `do-work-board board` is the only capability allowed to *need* a compiler,
-// which is why `actions/board.md` precondition-checks `go` and degrades instead
-// of blocking. `actions/work-reference.md` → Timestamp rule states the same
-// already-built-and-falls-back shape for `now`.
+// COMPATIBILITY SURFACE. Canonical deterministic field reads belong to the
+// build-on-demand do-work-cli `frontmatter` command. This board-local spelling remains
+// read-only for existing board callers; shipped guidance must not require a separately
+// prebuilt queue-kanban binary merely to read one field.
 //
 // READ-ONLY, deliberately. The tool has exactly three write surfaces — the
 // board's Testing view, `next-version`, and `next-req`'s reservation markers —

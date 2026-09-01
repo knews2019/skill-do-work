@@ -1,6 +1,7 @@
 package corehelpers
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -28,7 +29,22 @@ func handleCleanupReservations(executionContext commandruntime.ExecutionContext,
 	if dryRunError != nil || len(filtered) != 0 {
 		return usageResult(CommandCleanupReservations, "cleanup-req-reservations accepts no options")
 	}
-	return cleanupReservations(executionContext.RepositoryRoot, dryRun)
+	result := cleanupReservations(executionContext.RepositoryRoot, dryRun)
+	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+		output := ""
+		if len(result.Changes) > 0 {
+			noun := "markers"
+			if len(result.Changes) == 1 {
+				noun = "marker"
+			}
+			output = fmt.Sprintf("removed %d stale REQ reservation %s\n", len(result.Changes), noun)
+		}
+		result.ExactTextOutput = &output
+		if result.Outcome == resultmodel.OutcomeRefused {
+			result.Outcome = resultmodel.OutcomeSuccess
+		}
+	}
+	return result
 }
 
 func cleanupReservations(repositoryRoot string, dryRun bool) resultmodel.CommandResult {

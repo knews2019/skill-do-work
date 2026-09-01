@@ -17,7 +17,7 @@ func handlePortfolio(ctx commandruntime.ExecutionContext, args []string) resultm
 		return usageResult(CommandPortfolio, err.Error())
 	}
 	if len(rest) != 3 && len(rest) != 4 {
-		return usageResult(CommandPortfolio, "Usage: publish-portfolio-summary (--canonical-only <source> <canonical> | --with-snapshot <source> <canonical> <candidate>) [--dry-run|--commit]")
+		return usageResult(CommandPortfolio, "Usage: publish-portfolio-summary [--dry-run|--commit] (--canonical-only <source> <canonical> | --with-snapshot <source> <canonical> <candidate>)")
 	}
 	mode := rest[0]
 	if mode != "--canonical-only" && mode != "--with-snapshot" {
@@ -55,55 +55,8 @@ func handlePortfolio(ctx commandruntime.ExecutionContext, args []string) resultm
 		directories = append(directories, filepath.ToSlash(filepath.Dir(snapshotRel)))
 	}
 	createdDirectories := absentTransactionDirectories(ctx.RepositoryRoot, directories...)
-	if mode == "--with-snapshot" && !commit && !dryRun {
-		snapshotDirectories := absentTransactionDirectories(ctx.RepositoryRoot, filepath.ToSlash(filepath.Dir(snapshotRel)))
-		snapshotResult := runTransaction(CommandPortfolio, ctx.RepositoryRoot, []string{snapshotRel}, snapshotDirectories, false, false, "[do-work] Publish portfolio snapshot", func(recorder *gittransaction.MutationRecorder) error {
-			for _, directory := range snapshotDirectories {
-				if err := rootedMkdirAll(ctx.RepositoryRoot, directory, 0o755); err != nil {
-					return err
-				}
-				if err := recorder.RecordCreatedDirectory(directory); err != nil {
-					return err
-				}
-			}
-			if err := rootedPublishFile(ctx.RepositoryRoot, snapshotRel, data, 0o644, false); err != nil {
-				return err
-			}
-			return recorder.RecordCreated(snapshotRel)
-		})
-		if snapshotResult.Outcome != resultmodel.OutcomeSuccess {
-			return snapshotResult
-		}
-		canonicalDirectories := absentTransactionDirectories(ctx.RepositoryRoot, filepath.ToSlash(filepath.Dir(canonicalRel)))
-		canonicalResult := runTransaction(CommandPortfolio, ctx.RepositoryRoot, []string{canonicalRel}, canonicalDirectories, false, false, "[do-work] Publish portfolio canonical", func(recorder *gittransaction.MutationRecorder) error {
-			for _, directory := range canonicalDirectories {
-				if err := rootedMkdirAll(ctx.RepositoryRoot, directory, 0o755); err != nil {
-					return err
-				}
-				if err := recorder.RecordCreatedDirectory(directory); err != nil {
-					return err
-				}
-			}
-			if canonicalExisted {
-				if err := rootedPublishFile(ctx.RepositoryRoot, canonicalRel, data, 0o644, true); err != nil {
-					return err
-				}
-				return recorder.RecordTouched(canonicalRel)
-			}
-			if err := rootedPublishFile(ctx.RepositoryRoot, canonicalRel, data, 0o644, false); err != nil {
-				return err
-			}
-			return recorder.RecordCreated(canonicalRel)
-		})
-		canonicalResult.Changes = append(snapshotResult.Changes, canonicalResult.Changes...)
-		output := snapshotRel + "\n"
-		if canonicalResult.Outcome == resultmodel.OutcomeSuccess {
-			output = canonicalRel + "\n" + snapshotRel + "\n"
-		} else {
-			canonicalResult.Findings = append(canonicalResult.Findings, toolboxFinding(CommandPortfolio, "PORTFOLIO-SNAPSHOT-RETAINED", resultmodel.SeverityWarning, []string{snapshotRel}, "immutable snapshot published before canonical failure and intentionally retained", resultmodel.FixabilityManual, "repair the canonical destination without deleting the snapshot"))
-		}
-		canonicalResult.ExactTextOutput = &output
-		return canonicalResult
+	if !commit && !dryRun {
+		return publishPortfolioDirect(ctx.RepositoryRoot, data, canonicalRel, canonicalAbs, canonicalExisted, mode, rest)
 	}
 	result := runTransaction(CommandPortfolio, ctx.RepositoryRoot, targets, createdDirectories, dryRun, commit, "[do-work] Publish portfolio summary", func(recorder *gittransaction.MutationRecorder) error {
 		for _, dir := range createdDirectories {
@@ -150,6 +103,76 @@ func handlePortfolio(ctx commandruntime.ExecutionContext, args []string) resultm
 			output = "would publish\n" + output
 		}
 		result.ExactTextOutput = &output
+	}
+	return result
+}
+
+func publishPortfolioDirect(repositoryRoot string, data []byte, canonicalRel, canonicalAbs string, canonicalExisted bool, mode string, arguments []string) resultmodel.CommandResult {
+	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, RepositoryRoot: repositoryRoot}
+	publishedSnapshotRel := ""
+	publishedSnapshotDisplay := ""
+	if mode == "--with-snapshot" {
+		for {
+			snapshotRel, snapshotAbs, err := firstFreePortfolioPath(repositoryRoot, arguments[3])
+			if err != nil {
+				return portfolioDirectFailure(repositoryRoot, "PORTFOLIO-SNAPSHOT-PATH-FAILED", arguments[3], err, "canonical was not changed", "")
+			}
+			if err := rootedMkdirAll(repositoryRoot, filepath.ToSlash(filepath.Dir(snapshotRel)), 0o755); err != nil {
+				return portfolioDirectFailure(repositoryRoot, "PORTFOLIO-SNAPSHOT-DIRECTORY-FAILED", snapshotRel, err, "canonical was not changed", "")
+			}
+			if err := rootedPublishFile(repositoryRoot, snapshotRel, data, 0o644, false); err != nil {
+				if _, statErr := os.Lstat(snapshotAbs); statErr == nil {
+					continue
+				}
+				return portfolioDirectFailure(repositoryRoot, "PORTFOLIO-SNAPSHOT-PUBLISH-FAILED", snapshotRel, err, "canonical was not changed", "")
+			}
+			publishedSnapshotRel = snapshotRel
+			publishedSnapshotDisplay = portfolioDisplayPath(arguments[3], snapshotAbs)
+			result.Changes = append(result.Changes, resultmodel.RecordedChange{Path: snapshotRel, Kind: "created", Detail: "published immutable portfolio snapshot"})
+			break
+		}
+	}
+	if err := rootedMkdirAll(repositoryRoot, filepath.ToSlash(filepath.Dir(canonicalRel)), 0o755); err != nil {
+		return portfolioDirectFailure(repositoryRoot, "PORTFOLIO-CANONICAL-DIRECTORY-FAILED", canonicalRel, err, "snapshot retained when present", publishedSnapshotDisplay)
+	}
+	if canonicalExisted {
+		info, err := os.Lstat(canonicalAbs)
+		if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+			if err == nil {
+				err = fmt.Errorf("Portfolio canonical path is unsafe: %s", canonicalRel)
+			}
+			return portfolioDirectFailure(repositoryRoot, "PORTFOLIO-CANONICAL-UNSAFE", canonicalRel, err, "snapshot retained when present", publishedSnapshotDisplay)
+		}
+	}
+	if err := rootedPublishFile(repositoryRoot, canonicalRel, data, 0o644, canonicalExisted); err != nil {
+		return portfolioDirectFailure(repositoryRoot, "PORTFOLIO-CANONICAL-PUBLISH-FAILED", canonicalRel, err, "snapshot retained when present", publishedSnapshotDisplay)
+	}
+	kind := "created"
+	if canonicalExisted {
+		kind = "modified"
+	}
+	result.Changes = append(result.Changes, resultmodel.RecordedChange{Path: canonicalRel, Kind: kind, Detail: "published canonical portfolio summary"})
+	output := arguments[2] + "\n"
+	if publishedSnapshotRel != "" {
+		output += publishedSnapshotDisplay + "\n"
+	}
+	result.ExactTextOutput = &output
+	return result
+}
+
+func portfolioDisplayPath(original, chosenAbsolute string) string {
+	chosenBase := filepath.Base(chosenAbsolute)
+	if separator := strings.LastIndexAny(original, `/\\`); separator >= 0 {
+		return original[:separator+1] + chosenBase
+	}
+	return chosenBase
+}
+
+func portfolioDirectFailure(repositoryRoot, code, path string, err error, stopReason, retainedSnapshot string) resultmodel.CommandResult {
+	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, RepositoryRoot: repositoryRoot,
+		Findings: []resultmodel.CommandFinding{toolboxFinding(CommandPortfolio, code, resultmodel.SeverityWarning, []string{path}, err.Error(), resultmodel.FixabilityManual, stopReason)}}
+	if retainedSnapshot != "" {
+		result.Findings = append(result.Findings, toolboxFinding(CommandPortfolio, "PORTFOLIO-SNAPSHOT-RETAINED", resultmodel.SeverityWarning, []string{retainedSnapshot}, "immutable snapshot published before canonical failure and intentionally retained", resultmodel.FixabilityManual, "repair the canonical destination without deleting the snapshot"))
 	}
 	return result
 }

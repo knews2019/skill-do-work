@@ -46,7 +46,7 @@ func handlePreflight(executionContext commandruntime.ExecutionContext, arguments
 			}
 		}
 		if len(outside) > 0 {
-			findings = append(findings, helperFinding("PREFLIGHT-DIRTY", resultmodel.SeverityWarning, outside, "pre-existing changes outside do-work/", resultmodel.FixabilityManual, "preserve and exclude unrelated changes from staging", []string{"git", "status", "--short", "--untracked-files=all"}, []string{"git", "diff", "--check"}))
+			findings = append(findings, helperFinding("PREFLIGHT-DIRTY", resultmodel.SeverityWarning, outside, "pre-existing changes outside do-work/", resultmodel.FixabilityManual, "preserve and exclude unrelated changes from staging", append([]string{"git", "diff", "--"}, outside...), append([]string{"git", "diff", "--check", "--"}, outside...)))
 		}
 	}
 	if len(arguments) > 0 {
@@ -112,7 +112,12 @@ func handlePreflight(executionContext commandruntime.ExecutionContext, arguments
 		}
 	}
 	// Preflight findings are advisory by contract.
-	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: findings, Changes: changes}
+	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: findings, Changes: changes}
+	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+		exact := preflightCompatibilityText(arguments, findings, changes)
+		result.ExactTextOutput = &exact
+	}
+	return result
 }
 
 func handleScopeDrift(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
@@ -124,10 +129,27 @@ func handleScopeDrift(executionContext commandruntime.ExecutionContext, argument
 	if err != nil {
 		return usageResult(CommandScopeDrift, err.Error())
 	}
-	declared, scopeFound, scopeError := firstBacktickedPaths(string(contents), "Scope", true)
+	declared, scopeFound, touchHeaderFound, scopeError := scopeDeclaredPaths(string(contents))
 	implemented, summaryFound, summaryError := allBacktickedPaths(string(contents), "Implementation Summary")
 	if scopeError != nil || summaryError != nil {
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("SCOPE-PATH-LIST-MALFORMED", resultmodel.SeverityError, []string{requestPath}, firstError(scopeError, summaryError).Error(), resultmodel.FixabilityManual, "the path lists cannot be compared", nil, nil)}}
+		result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("SCOPE-PATH-LIST-MALFORMED", resultmodel.SeverityError, []string{requestPath}, firstError(scopeError, summaryError).Error(), resultmodel.FixabilityManual, "the path lists cannot be compared", nil, nil)}}
+		if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+			exact := "FAIL: the request path list has an unmatched backtick — close every backticked path\n"
+			result.ExactTextOutput = &exact
+		}
+		return result
+	}
+	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" && (!scopeFound || !touchHeaderFound) {
+		exact := "SKIP: no '## Scope' file list found (Route A REQs have none — skip the comparison)\n"
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, ExactTextOutput: &exact, ExitCodeOverride: 2}
+	}
+	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" && touchHeaderFound && len(declared) == 0 {
+		exact := "FAIL: a '**Files I will touch**' header is present in ## Scope but no backticked paths parse from it — fix the list formatting (backtick every path)\n"
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, ExactTextOutput: &exact}
+	}
+	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" && (!summaryFound || len(implemented) == 0) {
+		exact := "SKIP: no '## Implementation Summary' file list found — run this after Step 6.25\n"
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, ExactTextOutput: &exact, ExitCodeOverride: 2}
 	}
 	if !scopeFound || !summaryFound {
 		return usageResult(CommandScopeDrift, "both ## Scope and ## Implementation Summary are required")
@@ -143,7 +165,75 @@ func handleScopeDrift(executionContext commandruntime.ExecutionContext, argument
 	for _, path := range extra {
 		findings = append(findings, helperFinding("SCOPE-UNDECLARED-TOUCH", resultmodel.SeverityError, []string{path}, "present in Implementation Summary but absent from Scope", resultmodel.FixabilityManual, "the implementation exceeded its write set", nil, nil))
 	}
-	return successResult(nil, findings)
+	result := successResult(nil, findings)
+	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+		var output strings.Builder
+		if len(extra) > 0 {
+			output.WriteString("DRIFT: touched but never declared in ## Scope:\n")
+			for _, path := range extra {
+				fmt.Fprintf(&output, "  %s\n", path)
+			}
+		}
+		if len(missing) > 0 {
+			output.WriteString("DRIFT: declared in ## Scope but never touched:\n")
+			for _, path := range missing {
+				fmt.Fprintf(&output, "  %s\n", path)
+			}
+		}
+		if len(extra) == 0 && len(missing) == 0 {
+			output.WriteString("OK: Implementation Summary matches the Scope declaration\n")
+		}
+		exact := output.String()
+		result.ExactTextOutput = &exact
+	}
+	return result
+}
+
+func preflightCompatibilityText(arguments []string, findings []resultmodel.CommandFinding, changes []resultmodel.RecordedChange) string {
+	var output strings.Builder
+	hadRepositoryState := false
+	for _, finding := range findings {
+		switch finding.Code {
+		case "PREFLIGHT-DIRTY":
+			hadRepositoryState = true
+			output.WriteString("WARN: pre-existing uncommitted changes detected outside do-work/ — preserve them and, unless they prevent the active REQ, exclude them from its staging; account for them in repository-wide qualification/review evidence:\n")
+			for _, path := range finding.AffectedPaths {
+				fmt.Fprintf(&output, "  %s\n", path)
+			}
+		case "PREFLIGHT-GIT-UNAVAILABLE":
+			hadRepositoryState = true
+			output.WriteString("WARN: not a git repository — no clean-tree or diff-based checks available\n")
+		case "PREFLIGHT-STATUS-FAILED":
+			hadRepositoryState = true
+			output.WriteString("WARN: git status could not read the working tree\n")
+		case "PREFLIGHT-BASELINE-RED":
+			output.WriteString("WARN: baseline tests failing BEFORE any changes — builder is not to blame for these\n")
+		case "PREFLIGHT-BASELINE-NOT-LAUNCHED":
+			output.WriteString("WARN: could not run the test command — no baseline recorded\n")
+		case "PREFLIGHT-NODE-MODULES-MISSING":
+			output.WriteString("WARN: package.json exists but node_modules/ does not — dependencies may not be installed\n")
+		case "PREFLIGHT-VIRTUALENV-MISSING":
+			output.WriteString("WARN: requirements.txt exists but no active virtualenv detected\n")
+		}
+	}
+	if !hadRepositoryState {
+		output.WriteString("OK: working tree clean outside do-work/\n")
+	}
+	if len(arguments) == 0 {
+		output.WriteString("SKIP: no test command supplied — baseline check skipped\n")
+	} else {
+		recorded := false
+		for _, change := range changes {
+			if change.Path == "do-work/working/baseline.json" {
+				recorded = true
+				break
+			}
+		}
+		if recorded && !strings.Contains(output.String(), "baseline tests failing") && !strings.Contains(output.String(), "could not run the test command") {
+			output.WriteString("OK: test baseline passing\n")
+		}
+	}
+	return output.String()
 }
 
 func handleQualify(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
@@ -179,7 +269,7 @@ func handleQualify(executionContext commandruntime.ExecutionContext, arguments [
 		if parseError != nil {
 			evidence = parseError.Error()
 		}
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("QUALIFY-SUMMARY-MISSING", resultmodel.SeverityError, []string{requestPath}, evidence, resultmodel.FixabilityManual, "qualification has no claimed files", nil, nil)}}
+		return qualificationCompatibilityResult(resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("QUALIFY-SUMMARY-MISSING", resultmodel.SeverityError, []string{requestPath}, evidence, resultmodel.FixabilityManual, "qualification has no claimed files", nil, nil)}})
 	}
 	changed := []string{}
 	if diffRange != "" {
@@ -207,7 +297,7 @@ func handleQualify(executionContext commandruntime.ExecutionContext, arguments [
 	changedSet := stringSet(changed)
 	entries, entryError := qualificationSummaryEntries(string(contents))
 	if entryError != nil {
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("QUALIFY-SUMMARY-MALFORMED", resultmodel.SeverityError, []string{requestPath}, entryError.Error(), resultmodel.FixabilityManual, "qualification claims cannot be interpreted", nil, nil)}}
+		return qualificationCompatibilityResult(resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("QUALIFY-SUMMARY-MALFORMED", resultmodel.SeverityError, []string{requestPath}, entryError.Error(), resultmodel.FixabilityManual, "qualification claims cannot be interpreted", nil, nil)}})
 	}
 	findings := []resultmodel.CommandFinding{}
 	nonDoWork := 0
@@ -227,7 +317,7 @@ func handleQualify(executionContext commandruntime.ExecutionContext, arguments [
 			continue
 		}
 		if statError != nil && os.IsNotExist(statError) {
-			findings = append(findings, helperFinding("QUALIFY-CLAIMED-PATH-MISSING", resultmodel.SeverityError, []string{path}, "claimed path is absent and has no deletion evidence", resultmodel.FixabilityManual, "the implementation claim is unsupported", nil, nil))
+			findings = append(findings, helperFinding("QUALIFY-CLAIMED-PATH-MISSING", resultmodel.SeverityError, []string{path}, fmt.Sprintf("listed (%s) but not on disk", entry.verb), resultmodel.FixabilityManual, "the implementation claim is unsupported", nil, nil))
 		} else if !changedSet[path] {
 			findings = append(findings, helperFinding("QUALIFY-PATH-NOT-IN-DIFF", resultmodel.SeverityWarning, []string{path}, "claimed path is not in the selected diff", resultmodel.FixabilityManual, "verify the path belongs to this REQ", nil, nil))
 		}
@@ -254,25 +344,39 @@ func handleQualify(executionContext commandruntime.ExecutionContext, arguments [
 	for path := range lineChanges {
 		changedPaths = append(changedPaths, path)
 	}
-	sort.Strings(changedPaths)
+	sort.Slice(changedPaths, func(left, right int) bool {
+		leftHasRemovedMarker := containsMatchingLine(lineChanges[changedPaths[left]].Removed, qualificationDebugArtifactPattern)
+		rightHasRemovedMarker := containsMatchingLine(lineChanges[changedPaths[right]].Removed, qualificationDebugArtifactPattern)
+		if leftHasRemovedMarker != rightHasRemovedMarker {
+			return leftHasRemovedMarker
+		}
+		return changedPaths[left] < changedPaths[right]
+	})
 	outputPattern := regexp.MustCompile(`console\.log|(^|[^[:alnum:]_])print\s*\(`)
+	removedMarkerLines := map[string]int{}
+	for _, path := range changedPaths {
+		for _, line := range lineChanges[path].Removed {
+			if qualificationDebugArtifactPattern.MatchString(line) {
+				removedMarkerLines[line]++
+			}
+		}
+	}
 	for _, path := range changedPaths {
 		if path == "do-work" || strings.HasPrefix(path, "do-work/") {
 			continue
 		}
 		changes := lineChanges[path]
-		addedMarkers, removedMarkers := matchedCounts(changes.Added, qualificationDebugArtifactPattern), matchedCounts(changes.Removed, qualificationDebugArtifactPattern)
-		markers := make([]string, 0, len(addedMarkers))
-		for marker := range addedMarkers {
-			markers = append(markers, marker)
-		}
-		sort.Strings(markers)
-		for _, marker := range markers {
+		for _, line := range changes.Added {
+			if !qualificationDebugArtifactPattern.MatchString(line) {
+				continue
+			}
 			code, severity := "QUALIFY-DEBUG-ARTIFACT", resultmodel.SeverityError
-			evidence := fmt.Sprintf("%s added %d time(s), removed %d time(s)", marker, addedMarkers[marker], removedMarkers[marker])
+			evidence := line
 			stop := "unfinished/debug-only code is newly introduced by the change"
-			if addedMarkers[marker] <= removedMarkers[marker] {
+			if removedMarkerLines[line] > 0 {
+				removedMarkerLines[line]--
 				code, severity = "QUALIFY-DEBUG-ARTIFACT-RELOCATED", resultmodel.SeverityWarning
+				evidence += " — relocated, not added"
 				stop = "the marker was relocated rather than introduced; inspect its retained intent"
 			}
 			findings = append(findings, helperFinding(code, severity, []string{path}, evidence, resultmodel.FixabilityManual, stop, nil, nil))
@@ -299,7 +403,58 @@ func handleQualify(executionContext commandruntime.ExecutionContext, arguments [
 			break
 		}
 	}
-	return resultmodel.CommandResult{Outcome: outcome, Findings: findings}
+	return qualificationCompatibilityResult(resultmodel.CommandResult{Outcome: outcome, Findings: findings})
+}
+
+func qualificationCompatibilityResult(result resultmodel.CommandResult) resultmodel.CommandResult {
+	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+		exact := qualificationCompatibilityText(result)
+		result.ExactTextOutput = &exact
+	}
+	return result
+}
+
+func qualificationCompatibilityText(result resultmodel.CommandResult) string {
+	var output strings.Builder
+	for _, finding := range result.Findings {
+		level := "WARN"
+		if finding.Severity == resultmodel.SeverityError {
+			level = "FAIL"
+		}
+		path := ""
+		if len(finding.AffectedPaths) > 0 {
+			path = finding.AffectedPaths[0]
+		}
+		evidence := strings.Join(finding.Evidence, "; ")
+		switch finding.Code {
+		case "QUALIFY-REPORTER-OUTPUT":
+			fmt.Fprintf(&output, "WARN: reporting output in %s: %s\n", path, evidence)
+		case "QUALIFY-LIBRARY-OUTPUT":
+			fmt.Fprintf(&output, "FAIL: leftover instrumentation in %s; file never ends its own process: %s\n", path, evidence)
+		case "QUALIFY-DEBUG-ARTIFACT":
+			fmt.Fprintf(&output, "FAIL: debug artifacts in %s: %s\n", path, evidence)
+		case "QUALIFY-DEBUG-ARTIFACT-RELOCATED":
+			fmt.Fprintf(&output, "WARN: relocated debug artifacts in %s: %s\n", path, evidence)
+		case "QUALIFY-CLAIMED-PATH-MISSING":
+			fmt.Fprintf(&output, "FAIL: %s: %s\n", evidence, path)
+		case "QUALIFY-NEW-FILE-UNWIRED":
+			fmt.Fprintf(&output, "WARN: (new) file has no static reference anywhere: %s\n", path)
+		case "QUALIFY-OUTPUT-RELOCATED":
+			fmt.Fprintf(&output, "WARN: relocated output in %s: %s\n", path, evidence)
+		case "QUALIFY-UNIFY-DISARMED":
+			fmt.Fprintf(&output, "WARN: P-A-U qualification is DISARMED: %s\n", evidence)
+		default:
+			if path != "" {
+				fmt.Fprintf(&output, "%s: %s: %s (%s)\n", level, finding.Code, evidence, path)
+			} else {
+				fmt.Fprintf(&output, "%s: %s: %s\n", level, finding.Code, evidence)
+			}
+		}
+	}
+	if result.Outcome == resultmodel.OutcomeSuccess {
+		output.WriteString("OK: mechanical qualification passed\n")
+	}
+	return output.String()
 }
 
 type qualificationLineChanges struct {
@@ -307,14 +462,13 @@ type qualificationLineChanges struct {
 	Removed []string
 }
 
-func matchedCounts(lines []string, pattern *regexp.Regexp) map[string]int {
-	counts := map[string]int{}
+func containsMatchingLine(lines []string, pattern *regexp.Regexp) bool {
 	for _, line := range lines {
-		for _, match := range pattern.FindAllString(line, -1) {
-			counts[match]++
+		if pattern.MatchString(line) {
+			return true
 		}
 	}
-	return counts
+	return false
 }
 
 func countMatchingLines(lines []string, pattern *regexp.Regexp) int {
@@ -454,7 +608,7 @@ func qualificationPathOwnsExit(repositoryRoot, path, diffRange string) bool {
 	} else {
 		contents, _ = os.ReadFile(absoluteFromRoot(repositoryRoot, path))
 	}
-	exitPattern := regexp.MustCompile(`(?m)(^|[;&|]\s*|\b(then|else|do)\s+)exit\s+[0-9$][^\s;)}#]*\s*([;)}#]|$)|sys\.exit\s*\(|raise\s+SystemExit|os\._exit\s*\(|process\.exit\s*\(`)
+	exitPattern := regexp.MustCompile(`(?m)(^\s*|[;&|]\s*|\b(then|else|do)\s+)exit\s+[0-9$][^\s;)}#]*\s*([;)}#]|$)|sys\.exit\s*\(|raise\s+SystemExit|os\._exit\s*\(|process\.exit\s*\(`)
 	return exitPattern.Match(contents)
 }
 
@@ -472,6 +626,18 @@ func qualificationRenameOrigin(repositoryRoot, base, path, diffRange string) str
 		output, _ := gitOutput(repositoryRoot, args...)
 		if origin := renameOriginFromStatus(output, path); origin != "" {
 			return origin
+		}
+	}
+	deletedArgs := []string{"diff", "--name-only", "--diff-filter=D"}
+	if diffRange != "" {
+		deletedArgs = append(deletedArgs, diffRange)
+	}
+	deletedOutput, _ := gitOutput(repositoryRoot, deletedArgs...)
+	destinationBytes, _ := os.ReadFile(absoluteFromRoot(repositoryRoot, path))
+	for _, deletedPath := range nonblankLines(deletedOutput) {
+		baseBytes, err := gitOutput(repositoryRoot, "show", base+":"+deletedPath)
+		if err == nil && len(baseBytes) > 0 && bytes.Contains(destinationBytes, baseBytes) {
+			return deletedPath
 		}
 	}
 	return ""
@@ -515,6 +681,56 @@ func requiredPathOption(arguments []string, optionName, commandName string) (str
 		return "", &result
 	}
 	return path, nil
+}
+
+func scopeDeclaredPaths(contents string) ([]string, bool, bool, error) {
+	lines, scopeFound, err := sectionLines(contents, "Scope")
+	if err != nil {
+		return nil, scopeFound, false, err
+	}
+	headerPattern := regexp.MustCompile(`\*\*Files I will touch[^:]*:`)
+	paths := []string{}
+	headerFound := false
+	taking := false
+	for _, line := range lines {
+		if match := headerPattern.FindStringIndex(line); match != nil {
+			headerFound = true
+			taking = true
+			headerRest := line[match[1]:]
+			parsed, parseErr := backtickedPathsOnLine(headerRest)
+			if parseErr != nil {
+				return nil, scopeFound, headerFound, fmt.Errorf("unmatched backtick in Scope")
+			}
+			paths = append(paths, parsed...)
+			continue
+		}
+		trimmed := strings.TrimSpace(line)
+		if taking && strings.HasPrefix(trimmed, "**") {
+			taking = false
+		}
+		if taking && strings.HasPrefix(trimmed, "- `") {
+			parsed, parseErr := backtickedPathsOnLine(line)
+			if parseErr != nil {
+				return nil, scopeFound, headerFound, fmt.Errorf("unmatched backtick in Scope")
+			}
+			paths = append(paths, parsed...)
+		}
+	}
+	return uniqueSorted(paths), scopeFound, headerFound, nil
+}
+
+func backtickedPathsOnLine(line string) ([]string, error) {
+	parts := strings.Split(line, "`")
+	if len(parts)%2 == 0 {
+		return nil, fmt.Errorf("unmatched backtick")
+	}
+	paths := []string{}
+	for index := 1; index < len(parts); index += 2 {
+		if parts[index] != "" {
+			paths = append(paths, parts[index])
+		}
+	}
+	return paths, nil
 }
 
 func firstBacktickedPaths(contents, heading string, pathLed bool) ([]string, bool, error) {

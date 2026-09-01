@@ -5,7 +5,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/atomicfile"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
@@ -36,6 +39,19 @@ func ApplyUncommittedTimestampPlans(snapshot *repositorymodel.RepositorySnapshot
 			result.Findings = append(result.Findings, doctorFinding("TIMESTAMP-PREIMAGE-CHANGED", resultmodel.SeverityError, nil, []string{plan.RelativePath}, evidence, resultmodel.FixabilityManual, "this file was left byte-identical by the repairer", doctorArgv(), doctorJSONArgv()))
 			continue
 		}
+		tracked, baselineSize, floorError := timestampBaselineSize(snapshot.RepositoryRoot, plan.RelativePath)
+		if floorError != nil {
+			result.Findings = append(result.Findings, doctorFinding("TIMESTAMP-TRUNCATION-FLOOR-UNAVAILABLE", resultmodel.SeverityError, nil, []string{plan.RelativePath}, "the truncation floor could not be inspected: "+floorError.Error(), resultmodel.FixabilityManual, "this file was left byte-identical by the repairer", doctorArgv(), doctorJSONArgv()))
+			continue
+		}
+		if tracked && int64(len(current))*2 < baselineSize {
+			result.Findings = append(result.Findings, doctorFinding("TIMESTAMP-CONTENT-LOSS", resultmodel.SeverityError, nil, []string{plan.RelativePath}, "content was lost before this run; the request is below half its committed size", resultmodel.FixabilityManual, "this file was left byte-identical by the repairer", doctorArgv(), doctorJSONArgv()))
+			continue
+		}
+		if timestampPlanTooLarge(plan.ExpectedBytes, plan.UpdatedBytes, len(plan.Changes)) {
+			result.Findings = append(result.Findings, doctorFinding("TIMESTAMP-PLAN-GUARD-TRIPPED", resultmodel.SeverityError, nil, []string{plan.RelativePath}, "the proposed repair changes more lines than its timestamp plan allows", resultmodel.FixabilityManual, "this file was left byte-identical by the repairer", doctorArgv(), doctorJSONArgv()))
+			continue
+		}
 		if err := atomicfile.ReplaceExisting(absolutePath, plan.UpdatedBytes); err != nil {
 			result.Findings = append(result.Findings, doctorFinding("TIMESTAMP-REPLACE-FAILED", resultmodel.SeverityError, nil, []string{plan.RelativePath}, err.Error(), resultmodel.FixabilityManual, "this file was left byte-identical by the repairer", doctorArgv(), doctorJSONArgv()))
 			continue
@@ -48,6 +64,38 @@ func ApplyUncommittedTimestampPlans(snapshot *repositorymodel.RepositorySnapshot
 		result.Outcome = resultmodel.OutcomeFindings
 	}
 	return result
+}
+
+func timestampBaselineSize(repositoryRoot, relativePath string) (bool, int64, error) {
+	object := "HEAD:" + filepath.ToSlash(relativePath)
+	exists := exec.Command("git", "-C", repositoryRoot, "cat-file", "-e", object).Run()
+	if exists != nil {
+		return false, 0, nil
+	}
+	output, err := exec.Command("git", "-C", repositoryRoot, "cat-file", "-s", object).Output()
+	if err != nil {
+		return true, 0, err
+	}
+	size, err := strconv.ParseInt(strings.TrimSpace(string(output)), 10, 64)
+	if err != nil {
+		return true, 0, err
+	}
+	return true, size, nil
+}
+
+func timestampPlanTooLarge(before, after []byte, plannedChanges int) bool {
+	beforeLines := bytes.SplitAfter(before, []byte("\n"))
+	afterLines := bytes.SplitAfter(after, []byte("\n"))
+	if len(beforeLines) != len(afterLines) {
+		return true
+	}
+	changed := 0
+	for index := range beforeLines {
+		if !bytes.Equal(beforeLines[index], afterLines[index]) {
+			changed++
+		}
+	}
+	return changed > plannedChanges
 }
 
 type RepairOptions struct {

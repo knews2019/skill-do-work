@@ -22,13 +22,31 @@ func handleInventory(executionContext commandruntime.ExecutionContext, arguments
 	}
 	rows, err := readInventory(executionContext.RepositoryRoot)
 	if err != nil {
+		if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+			exact := "STATUS-FAILED: git status could not read the working tree\n"
+			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, ExactTextOutput: &exact, ExitCodeOverride: 2}
+		}
 		return usageResult(CommandInventory, err.Error())
 	}
 	findings := inventoryFindings(rows)
 	result := successResult(nil, findings)
+	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+		var output strings.Builder
+		for _, row := range rows {
+			fmt.Fprintf(&output, "%s\t%s\n", row.Classification, row.Path)
+		}
+		exact := output.String()
+		result.ExactTextOutput = &exact
+	}
 	if len(rows) == 0 {
 		result.Outcome = resultmodel.OutcomeFindings
 		result.Findings = []resultmodel.CommandFinding{helperFinding("INVENTORY-CLEAN", resultmodel.SeverityInfo, nil, "no uncommitted files", resultmodel.FixabilityAutomatic, "", nil, []string{"git", "status", "--short"})}
+		if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+			exact := ""
+			result.ExactTextOutput = &exact
+			result.Outcome = resultmodel.OutcomeSuccess
+			result.ExitCodeOverride = 1
+		}
 	}
 	return result
 }
@@ -141,10 +159,25 @@ func handleAssociate(executionContext commandruntime.ExecutionContext, arguments
 		return usageResult(CommandAssociate, err.Error())
 	}
 	if len(candidates) == 0 {
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("ASSOCIATION-NO-CANDIDATES", resultmodel.SeverityInfo, nil, "candidate input contains no nonblank paths", resultmodel.FixabilityAutomatic, "", nil, []string{"test", "-s", pathsFile})}}
+		result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("ASSOCIATION-NO-CANDIDATES", resultmodel.SeverityInfo, nil, "candidate input contains no nonblank paths", resultmodel.FixabilityAutomatic, "", nil, []string{"test", "-s", pathsFile})}}
+		if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+			exact := ""
+			result.ExactTextOutput = &exact
+		}
+		return result
+	}
+	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+		if info, statErr := os.Stat(filepath.Join(executionContext.RepositoryRoot, "do-work")); statErr != nil || !info.IsDir() {
+			exact := "NO-DO-WORK-DIR: nothing to associate against\n"
+			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, ExactTextOutput: &exact, ExitCodeOverride: 2}
+		}
 	}
 	associations, err := associatePaths(executionContext.RepositoryRoot, candidates)
 	if err != nil {
+		if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" && strings.Contains(err.Error(), "unmatched backtick") {
+			exact := "PARSE-FAILED: " + err.Error() + "\n"
+			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, ExactTextOutput: &exact, ExitCodeOverride: 2}
+		}
 		return usageResult(CommandAssociate, err.Error())
 	}
 	findings := []resultmodel.CommandFinding{}
@@ -160,7 +193,20 @@ func handleAssociate(executionContext commandruntime.ExecutionContext, arguments
 		}
 		findings = append(findings, helperFinding(code, severity, []string{candidate}, evidence, resultmodel.FixabilityManual, map[bool]string{true: "assign or quarantine the path", false: ""}[id == ""], nil, nil))
 	}
-	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: findings}
+	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: findings}
+	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+		var output strings.Builder
+		for _, candidate := range candidates {
+			owner := associations[candidate]
+			if owner == "" {
+				owner = "-"
+			}
+			fmt.Fprintf(&output, "%s\t%s\n", owner, candidate)
+		}
+		exact := output.String()
+		result.ExactTextOutput = &exact
+	}
+	return result
 }
 
 func associatePaths(repositoryRoot string, candidates []string) (map[string]string, error) {
@@ -310,7 +356,16 @@ func handleProtectedInventory(executionContext commandruntime.ExecutionContext, 
 		if dryRun {
 			detail = fmt.Sprintf("would record %d X-classified protected paths", len(protected))
 		}
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: []resultmodel.RecordedChange{{Path: quarantinePath, Kind: "git-private", Detail: detail}}, Findings: inventoryFindings(rows)}
+		result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: []resultmodel.RecordedChange{{Path: quarantinePath, Kind: "git-private", Detail: detail}}, Findings: inventoryFindings(rows)}
+		if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+			var output strings.Builder
+			for _, row := range rows {
+				fmt.Fprintf(&output, "%s\t%s\n", row.Classification, row.Path)
+			}
+			exact := output.String()
+			result.ExactTextOutput = &exact
+		}
+		return result
 	}
 	quarantineInfo, statError := os.Lstat(quarantinePath)
 	if statError != nil || !quarantineInfo.Mode().IsRegular() {
@@ -345,6 +400,18 @@ func handleProtectedInventory(executionContext commandruntime.ExecutionContext, 
 		detail = fmt.Sprintf("would persist %d protected paths before association", len(union))
 	}
 	result.Changes = append([]resultmodel.RecordedChange{{Path: quarantinePath, Kind: "git-private", Detail: detail}}, result.Changes...)
+	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+		var output strings.Builder
+		for _, finding := range result.Findings {
+			if finding.Code != "ASSOCIATION-FOUND" || len(finding.AffectedPaths) == 0 || len(finding.Evidence) == 0 {
+				continue
+			}
+			owner := strings.TrimPrefix(finding.Evidence[0], "owned by ")
+			fmt.Fprintf(&output, "%s\t%s\n", owner, finding.AffectedPaths[0])
+		}
+		exact := output.String()
+		result.ExactTextOutput = &exact
+	}
 	return result
 }
 

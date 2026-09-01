@@ -15,6 +15,7 @@ if [ "$script_directory" = "$script_path" ]; then
   script_directory='.'
 fi
 repo_root="$(cd "$script_directory/../.." && pwd)"
+self_test_exit_root=''
 
 # Returns 0 when $1 is at or above the floor $2. Compares dot-separated components as
 # integers, so 0.11.0 clears a 0.9.9 floor where a lexical compare would not. A missing
@@ -48,6 +49,13 @@ version_at_least() {
 fail_self_test() {
   printf 'FAIL: maintainer-verify self-test: %s\n' "$1" >&2
   return 1
+}
+
+cleanup_self_test_exit() {
+  if [ -n "$self_test_exit_root" ]; then
+    rm -rf -- "$self_test_exit_root"
+    self_test_exit_root=''
+  fi
 }
 
 write_command_shim() {
@@ -113,16 +121,6 @@ case "$command_name" in
         elif [ "$#" -eq 3 ] && [ "$1" = 'test' ] && \
           [ "$2" = '-count=1' ] && [ "$3" = './...' ]; then
           record_stage 'cli-test'
-        else
-          exit 64
-        fi
-        ;;
-      */skills/do-work-toolbox/tools/audit-metrics)
-        if [ "$#" -eq 2 ] && [ "$1" = 'vet' ] && [ "$2" = './...' ]; then
-          record_stage 'audit-vet'
-        elif [ "$#" -eq 3 ] && [ "$1" = 'test' ] && \
-          [ "$2" = '-count=1' ] && [ "$3" = './...' ]; then
-          record_stage 'audit-test'
         else
           exit 64
         fi
@@ -212,15 +210,15 @@ assert_success_stages() {
   local expected_stage
   local actual_count
   local total_count=0
-  local expected_count=11
+  local expected_count=9
   local stage_line
 
   if [ "$expect_strict" = 'yes' ]; then
-    expected_count=12
+    expected_count=10
   fi
   for expected_stage in \
     go-version shellcheck-version shellcheck-lint gofmt-lint aggregate \
-    board-vet board-test audit-vet audit-test cli-vet cli-test; do
+    board-vet board-test cli-vet cli-test; do
     actual_count="$(count_stage_occurrences "$expected_stage" "$log_path")"
     if [ "$actual_count" -ne 1 ]; then
       fail_self_test "$expected_stage ran $actual_count times; want exactly once"
@@ -263,7 +261,8 @@ run_self_test() {
   local mutation_output
 
   self_test_root="$(mktemp -d)"
-  trap 'rm -rf -- "$self_test_root"' EXIT
+  self_test_exit_root="$self_test_root"
+  trap cleanup_self_test_exit EXIT
   fixture_root="$self_test_root/repository"
   fixture_script="$fixture_root/_dev/tests/maintainer-verify.sh"
   fixture_go_root="$self_test_root/go-root"
@@ -272,7 +271,6 @@ run_self_test() {
   mkdir -p \
     "$fixture_root/_dev/tests" \
     "$fixture_root/skills/do-work-board/tools/queue-kanban" \
-    "$fixture_root/skills/do-work-toolbox/tools/audit-metrics" \
     "$fixture_root/skills/do-work/tools/do-work-cli" \
     "$fixture_go_root/bin" "$with_node_bin" "$without_node_bin"
   cp "$script_path" "$fixture_script"
@@ -343,7 +341,7 @@ run_self_test() {
 
   for stage_name in \
     go-version shellcheck-version shellcheck-lint gofmt-lint gofmt-unformatted \
-    aggregate board-vet board-test board-strict audit-vet audit-test \
+    aggregate board-vet board-test board-strict \
     cli-vet cli-test; do
     failure_log="$self_test_root/failure-$stage_name.log"
     failure_output="$self_test_root/failure-$stage_name.out"
@@ -385,8 +383,8 @@ run_self_test() {
     return 1
   fi
 
-  rm -rf -- "$self_test_root"
   trap - EXIT
+  cleanup_self_test_exit
   printf 'Maintainer verification self-test passed.\n'
 }
 
@@ -458,7 +456,9 @@ run_verification() {
   )
 
   while IFS= read -r -d '' tracked_go_file; do
-    tracked_go_files+=("$tracked_go_file")
+    if [ -f "$repo_root/$tracked_go_file" ]; then
+      tracked_go_files+=("$tracked_go_file")
+    fi
   done < <(git -C "$repo_root" ls-files -z -- '*.go')
   if [ "${#tracked_go_files[@]}" -eq 0 ]; then
     printf 'maintainer-verify: git reported no tracked Go files\n' >&2
@@ -532,17 +532,6 @@ run_verification() {
   printf 'maintainer-verify: do-work-cli uncached tests\n'
   (
     cd "$repo_root/skills/do-work/tools/do-work-cli"
-    go test -count=1 ./...
-  )
-
-  printf 'maintainer-verify: audit-metrics go vet\n'
-  (
-    cd "$repo_root/skills/do-work-toolbox/tools/audit-metrics"
-    go vet ./...
-  )
-  printf 'maintainer-verify: audit-metrics uncached tests\n'
-  (
-    cd "$repo_root/skills/do-work-toolbox/tools/audit-metrics"
     go test -count=1 ./...
   )
 

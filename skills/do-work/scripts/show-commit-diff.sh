@@ -1,20 +1,9 @@
 #!/usr/bin/env bash
-# Display an ordinary or merge commit without losing the merge diff.
-set -u
+# do-work-cli compatibility launcher: show-commit-diff
+set -euo pipefail
 
-if [ "$#" -ne 1 ]; then
-  printf 'Usage: %s <commit>\n' "$0" >&2
-  exit 2
+script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+if [[ "$#" -eq 1 ]]; then
+  set -- --commit "$1"
 fi
-
-commit_revision="$1"
-if ! git rev-parse --verify -q "${commit_revision}^{commit}" >/dev/null; then
-  printf 'Commit does not resolve: %s\n' "$commit_revision" >&2
-  exit 2
-fi
-
-if git rev-parse --verify -q "${commit_revision}^2" >/dev/null; then
-  git show --first-parent -m "$commit_revision" --
-else
-  git show "$commit_revision" --
-fi
+exec bash "$script_directory/../tools/do-work-cli.sh" --format text show-commit-diff "$@"

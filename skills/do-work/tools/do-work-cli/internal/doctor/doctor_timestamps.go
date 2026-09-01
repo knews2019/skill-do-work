@@ -42,6 +42,8 @@ const (
 
 var repairableTimestampPattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}:\d{2}Z?)?$`)
 
+const timestampFutureSkewAllowance = 2 * time.Minute
+
 type timestampField struct {
 	name       string
 	evidence   requestmodel.FieldEvidence
@@ -80,7 +82,7 @@ func buildTimestampPlan(ctx context.Context, snapshot *repositorymodel.Repositor
 	if now.IsZero() {
 		now = time.Now().UTC().Truncate(time.Second)
 	}
-	horizon := now.Add(2 * time.Minute)
+	horizon := now.Add(timestampFutureSkewAllowance)
 	plans := []TimestampRepairPlan{}
 	findings := []resultmodel.CommandFinding{}
 	for _, requestFile := range snapshot.RequestFiles {
@@ -278,7 +280,7 @@ func fieldNamed(fields []timestampField, fieldName string) *timestampField {
 
 func newTimestampChange(field timestampField, replacement time.Time, source string) TimestampFieldChange {
 	return TimestampFieldChange{FieldName: field.name, LineNumber: field.evidence.LineNumber,
-		OldValue: field.evidence.ScalarValue, NewValue: requestmodel.CanonicalTimestamp(replacement), Source: source}
+		OldValue: field.evidence.RawValue, NewValue: requestmodel.CanonicalTimestamp(replacement), Source: source}
 }
 
 func timestampFinding(code string, requestFile *repositorymodel.RequestFile, field timestampField, evidence string) resultmodel.CommandFinding {

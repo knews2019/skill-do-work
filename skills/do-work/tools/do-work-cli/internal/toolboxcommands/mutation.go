@@ -54,8 +54,12 @@ func runTransaction(command, repositoryRoot string, targets, directories []strin
 }
 
 func runTransactionContext(ctx context.Context, command, repositoryRoot string, targets, directories []string, dryRun, commit bool, message string, mutate func(*gittransaction.MutationRecorder) error) resultmodel.CommandResult {
+	return runTransactionContextWithExisting(ctx, command, repositoryRoot, targets, nil, directories, dryRun, commit, message, mutate)
+}
+
+func runTransactionContextWithExisting(ctx context.Context, command, repositoryRoot string, targets, existingUntracked, directories []string, dryRun, commit bool, message string, mutate func(*gittransaction.MutationRecorder) error) resultmodel.CommandResult {
 	transaction := gittransaction.ExecuteTransaction(ctx, gittransaction.TransactionOptions{
-		RepositoryRoot: repositoryRoot, TargetPaths: targets, CreatedDirectoryPaths: directories,
+		RepositoryRoot: repositoryRoot, TargetPaths: targets, ExistingUntrackedTargetPaths: existingUntracked, CreatedDirectoryPaths: directories,
 		DryRun: dryRun, Commit: commit, CommitMessage: message,
 	}, mutate)
 	return transactionResult(command, transaction, "")

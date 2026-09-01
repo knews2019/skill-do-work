@@ -334,6 +334,74 @@ func TestMemoryAuditUsesExactFourteenDayBoundary(t *testing.T) {
 	}
 }
 
+func TestBKBAuditEngineCoversDiscoveryHistoryInboundLedgerAndReadOnlyParity(t *testing.T) {
+	root := t.TempDir()
+	runGitFixture(t, root, "init")
+	runGitFixture(t, root, "config", "user.email", "fixture@example.com")
+	runGitFixture(t, root, "config", "user.name", "BKB Fixture")
+	writeInterviewFixture(t, root, "kb/wiki/_master_index.md", "Total articles: 1 | Topic clusters: 0\n")
+	writeInterviewFixture(t, root, "kb/wiki/log.md", "2026-08-31 | garden | maintained\n")
+	writeInterviewFixture(t, root, "kb/wiki/concepts/alpha.md", "# Alpha\n")
+	writeInterviewFixture(t, root, "kb/raw/inbox/source.md", "raw\n")
+	writeInterviewFixture(t, root, "kb/usage-ledger.jsonl", strings.Join([]string{
+		`{"ts":"2026-08-31T09:00:00Z","event":"query"}`,
+		`{"ts":"2026-08-31T10:00:00Z","event":"query"}`,
+		`{"ts":"2026-08-31T11:00:00Z","event":"hit_cited"}`,
+		`not-json`,
+	}, "\n")+"\n")
+	writeInterviewFixture(t, root, "docs/reference.md", "See kb/wiki/concepts/alpha.md and [[alpha]].\n")
+	if err := os.MkdirAll(filepath.Join(root, "subdir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runGitFixture(t, root, "add", ".")
+	runGitFixture(t, root, "commit", "-m", "BKB history")
+	previous := nowUTC
+	nowUTC = func() time.Time { return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { nowUTC = previous })
+	before := treeDigest(t, filepath.Join(root, "kb"))
+	if inbound := countBKBInboundReferences(root, filepath.Join(root, "kb")); inbound != 1 {
+		t.Fatalf("inbound=%d want 1", inbound)
+	}
+	classification, evidence := auditBKBEngine(root, filepath.Join(root, "kb"), "kb")
+	if classification != "Active" {
+		t.Fatalf("classification=%s evidence=%s", classification, evidence)
+	}
+	for _, required := range []string{"wiki_pages=3", "raw_inbox=1", "git_commits=1", "git_authors=1", "authors=BKB Fixture", "inbound_refs=1", "retrievals_28d=2", "hit_cited_28d=1", "malformed_ledger=1", "fairness=git_and_log_cover_pre_ledger"} {
+		if !strings.Contains(evidence, required) {
+			t.Fatalf("audit evidence missing %q: %s", required, evidence)
+		}
+	}
+	contexts := []struct {
+		root string
+		args []string
+	}{
+		{root, []string{"--engine", "bkb"}},
+		{root, []string{"--engine", "bkb", "--kb", "./kb"}},
+		{root, []string{"--engine", "bkb", "--kb", filepath.Join(root, "kb")}},
+		{filepath.Join(root, "subdir"), []string{"--engine", "bkb", "--kb", "../kb"}},
+	}
+	for _, fixture := range contexts {
+		result := handleMemoryAudit(commandruntime.ExecutionContext{RepositoryRoot: fixture.root}, fixture.args)
+		if result.Outcome != resultmodel.OutcomeSuccess || !resultHasFindingCode(result, "MEMORY-AUDIT-BKB") {
+			t.Fatalf("discovery root=%q args=%v result=%#v", fixture.root, fixture.args, result)
+		}
+		textOutput, _ := resultmodel.RenderResult(result, resultmodel.FormatText)
+		jsonOutput, _ := resultmodel.RenderResult(result, resultmodel.FormatJSON)
+		if !strings.Contains(string(textOutput), "classification=Active") || !strings.Contains(string(jsonOutput), "classification=Active") {
+			t.Fatalf("text/json classification parity failed: text=%s json=%s", textOutput, jsonOutput)
+		}
+	}
+	if after := treeDigest(t, filepath.Join(root, "kb")); after != before {
+		t.Fatal("BKB audit changed bytes")
+	}
+	if stale := classifyAudit(time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC), 0, 0, nowUTC(), false); stale != "Stale" {
+		t.Fatalf("stale boundary=%s", stale)
+	}
+	if idle := classifyAudit(nowUTC().AddDate(0, 0, -1), 1, 0, nowUTC(), false); idle != "Idle" {
+		t.Fatalf("idle boundary=%s", idle)
+	}
+}
+
 func TestMemorySingletonOptionsRejectRepetition(t *testing.T) {
 	for _, arguments := range [][]string{
 		{"--memory-root", "memory", "--path", "memory"},

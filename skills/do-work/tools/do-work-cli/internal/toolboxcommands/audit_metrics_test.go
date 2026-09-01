@@ -1,12 +1,8 @@
 package toolboxcommands
 
 import (
-	"bytes"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
@@ -23,10 +19,7 @@ func TestAuditPercentilesAndBands(t *testing.T) {
 	}
 }
 
-func TestRemediationAuditStandaloneDifferentialAndTypedOrder(t *testing.T) {
-	if strings.HasPrefix(runtime.Version(), "go1.25") {
-		t.Skip("the retained standalone oracle declares Go 1.26; the canonical CLI itself remains covered by the Go 1.25 lane")
-	}
+func TestRemediationAuditCanonicalTextAndTypedOrder(t *testing.T) {
 	repository := toolboxTestRepository(t)
 	if err := os.MkdirAll(filepath.Join(repository, "src"), 0o755); err != nil {
 		t.Fatal(err)
@@ -47,30 +40,14 @@ func TestRemediationAuditStandaloneDifferentialAndTypedOrder(t *testing.T) {
 	}
 	toolboxTestGit(t, repository, "add", "-A")
 	toolboxTestGit(t, repository, "commit", "-m", "rename")
-	oracleSource, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "..", "do-work-toolbox", "tools", "audit-metrics"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	oracle := filepath.Join(t.TempDir(), "audit-metrics")
-	command := exec.Command("go", "build", "-o", oracle, ".")
-	command.Dir = oracleSource
-	if output, buildErr := command.CombinedOutput(); buildErr != nil {
-		t.Fatalf("build standalone oracle: %v: %s", buildErr, output)
-	}
 	context := commandruntime.ExecutionContext{RepositoryRoot: repository}
 	for _, testCase := range []struct {
 		mode  string
 		flags []string
 	}{{"inventory", []string{"--top-count", "2", "--watch-lines", "1"}}, {"folders", []string{"--top-count", "2", "--watch-files", "1"}}, {"churn", []string{"--since-window", "20 years"}}, {"hotspots", []string{"--since-window", "20 years"}}} {
-		arguments := append([]string{testCase.mode, "--repo-root", repository}, testCase.flags...)
-		oracleCommand := exec.Command(oracle, arguments...)
-		oracleOutput, oracleErr := oracleCommand.Output()
-		if oracleErr != nil {
-			t.Fatalf("oracle %s: %v", testCase.mode, oracleErr)
-		}
 		result := handleAuditMetrics(context, append([]string{testCase.mode, "--repo-root", repository}, testCase.flags...))
-		if result.Outcome != resultmodel.OutcomeSuccess || result.ExactTextOutput == nil || !bytes.Equal(oracleOutput, []byte(*result.ExactTextOutput)) {
-			t.Fatalf("%s differential mismatch\nold=%s\nnew=%+v", testCase.mode, oracleOutput, result)
+		if result.Outcome != resultmodel.OutcomeSuccess || result.ExactTextOutput == nil || *result.ExactTextOutput == "" {
+			t.Fatalf("%s missing canonical text projection: %+v", testCase.mode, result)
 		}
 		if result.AuditMetrics == nil || result.AuditMetrics.Kind != testCase.mode {
 			t.Fatalf("%s missing typed projection", testCase.mode)

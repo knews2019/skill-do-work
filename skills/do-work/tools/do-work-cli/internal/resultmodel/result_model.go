@@ -233,8 +233,8 @@ type CommandResult struct {
 	// JSON with an opaque duplicate. It must be derived from the same typed
 	// observation carried by the result.
 	ExactTextOutput *string `json:"-"`
-	// ExitCodeOverride is reserved for cleaned-up operating-system
-	// interruptions (129/130/143). Ordinary outcomes always use ExitCode.
+	// ExitCodeOverride preserves compatibility commands whose public contract is
+	// an underlying process status (including cleaned-up interruptions).
 	ExitCodeOverride int `json:"-"`
 }
 

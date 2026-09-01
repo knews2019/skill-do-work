@@ -102,8 +102,8 @@ This tree exists in the **main working tree only**. Worktree dispatch mode's bui
 
 Obtain the instant from the first of these that applies:
 
-1. `<skill-root>/../do-work-board/tools/queue-kanban/queue-kanban now` — **only if that binary is already built.** It prints exactly this shape and nothing else. **Never build the tool to get a timestamp:** `go build`/`go run` costs a compile per stamp and is strictly worse than option 2, and `../../do-work-board/actions/board.md` is the only thing that builds it — so "already built" is the real condition, not "Go is installed."
-2. `date -u +%Y-%m-%dT%H:%M:%SZ` — the POSIX floor. The order above it is a convenience, not a dependency: a compiler is optional in this skill and this line is what makes that true.
+1. `<skill-root>/tools/do-work-cli.sh --format text now` — the canonical build-on-demand command. It prints exactly this shape and nothing else.
+2. `date -u +%Y-%m-%dT%H:%M:%SZ` — the POSIX emergency floor when the canonical launcher cannot run.
 3. **Windows, where option 2's flag form does not exist.** In PowerShell: `(Get-Date).ToUniversalTime().ToString("yyyy-MM-dd\THH:mm:ss\Z")`. From `cmd`, where a cmdlet is not a command at all, invoke it explicitly: `powershell -NoProfile -Command "(Get-Date).ToUniversalTime().ToString('yyyy-MM-dd\THH:mm:ss\Z')"`.
 
    Three things about that form are load-bearing. **`.ToUniversalTime()`, not `-AsUTC`** — the flag reads better but arrived in PowerShell 7, which ships as `pwsh.exe` and is absent from a stock box; `powershell.exe` is Windows PowerShell 5.1, where `-AsUTC` is an unrecognized parameter and the call fails outright. **The `\T` and `\Z` escapes** — in a .NET custom format string the specifiers are case-sensitive (`t`/`tt` are the AM/PM designators, `z`/`zz`/`zzz` the UTC offset), so bare `T` and `Z` happen to fall through to "copied unchanged"; the backslash says *literal* outright instead of depending on that. **`-NoProfile`** — a user profile can print banners into stdout and corrupt the captured value.

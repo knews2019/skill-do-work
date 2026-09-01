@@ -16,12 +16,8 @@ import (
 // readers (parseTimestamp in model.go, the future-stamp guard) also means writer
 // and readers agree by construction — timestamp_test.go asserts the round trip.
 //
-// It does NOT become the required source. The Go toolchain is optional in this
-// skill by design — the board is the one capability that needs a compiler — and
-// timestamps are written by nearly every action, so the rule keeps `date -u` as
-// its documented fallback and reaches for this only when the binary is already
-// built. Read-only: nothing here touches a file, which is why the tool's
-// two-write-surface contract is unchanged.
+// This board-local spelling is retained read-only compatibility. Shipped guidance uses
+// the build-on-demand core `do-work-cli now` command as the canonical owner.
 
 // canonicalTimestampLayout is the Timestamp rule's shape. Deliberately not
 // time.RFC3339: that layout emits a numeric offset for a non-UTC instant
@@ -43,7 +39,7 @@ func formatCanonicalTimestamp(instant time.Time) string {
 }
 
 // writeCanonicalTimestamp prints the stamp and a single newline — nothing else,
-// so `STAMP=$(queue-kanban now)` is usable directly, the way
+// so compatibility callers can capture `queue-kanban now` directly, the way
 // `REQ-$(queue-kanban next-req)` already is.
 func writeCanonicalTimestamp(outputWriter io.Writer, instant time.Time) {
 	fmt.Fprintf(outputWriter, "%s\n", formatCanonicalTimestamp(instant))

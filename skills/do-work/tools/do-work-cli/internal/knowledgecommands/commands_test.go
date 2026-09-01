@@ -19,13 +19,13 @@ func TestHandlersRegisterKnowledgeCommands(t *testing.T) {
 	handlers := Handlers()
 	for _, name := range []string{CommandBKBInit, CommandBKBStatus, CommandBKBLintStructure, CommandDreamScan,
 		CommandInterviewList, CommandInterviewStatus, CommandInterviewExport, CommandInterviewIngest, CommandInterviewReset, CommandInterviewVersions,
-		CommandMemoryRemember, CommandMemoryForget, CommandMemoryRecall, CommandMemoryStatus, CommandMemoryBootstrap, CommandMemoryAudit} {
+		CommandMemoryRemember, CommandMemoryForget, CommandMemoryRecall, CommandMemoryStatus, CommandMemoryBootstrap, CommandMemoryAudit, CommandInstallMemoryHooks, CommandLexicalMemoryRecall} {
 		if handlers[name] == nil {
 			t.Fatalf("handler %q is not registered", name)
 		}
 	}
-	if len(handlers) != 16 {
-		t.Fatalf("registered %d handlers, want exactly 16", len(handlers))
+	if len(handlers) != 18 {
+		t.Fatalf("registered %d handlers, want exactly 18", len(handlers))
 	}
 }
 

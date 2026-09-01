@@ -18,7 +18,7 @@ printf '%s\n' \
   '(trap "" TERM; sleep 30) &' \
   'printf "%s\n" "$!" > "$BLOCKED_DESCENDANT_PID_FILE"' \
   'wait' > "$fixture_root/blocked-probe.sh"
-PATH="$fallback_bin" \
+PATH="$fallback_bin:$PATH" \
   BLOCKED_WRAPPER_PID_FILE="$fixture_root/blocked-wrapper.pid" \
   BLOCKED_DESCENDANT_PID_FILE="$fixture_root/blocked-descendant.pid" \
   "$core_scripts/run-blocked-check.sh" "$fixture_root/blocked-probe.sh" 1 >/dev/null 2>&1
@@ -44,7 +44,7 @@ kill -0 "$unrelated_process_id" 2>/dev/null || fail_case 'run-blocked-check proc
 
 # run-blocked-check: the fallback must preserve an ordinary probe status.
 printf 'exit 23\n' > "$fixture_root/blocked-status-probe.sh"
-PATH="$fallback_bin" "$core_scripts/run-blocked-check.sh" "$fixture_root/blocked-status-probe.sh" 2 >/dev/null 2>&1
+PATH="$fallback_bin:$PATH" "$core_scripts/run-blocked-check.sh" "$fixture_root/blocked-status-probe.sh" 2 >/dev/null 2>&1
 blocked_ordinary_status=$?
 [ "$blocked_ordinary_status" -eq 23 ] || fail_case "run-blocked-check ordinary-status case returned $blocked_ordinary_status instead of 23"
 

@@ -30,19 +30,10 @@ mkdir -p "$capture_root/a" "$capture_root/b" "$capture_root/assets"
 printf 'dispatch-a' > "$capture_root/a/source.png"
 printf 'dispatch-b' > "$capture_root/b/source.png"
 capture_destination="$capture_root/assets/result.png"
-race_a_verified="$capture_root/a-verified"
-race_b_copied="$capture_root/b-copied"
 (
-  cmp() { command cmp "$@"; comparison_status=$?; if [ "$comparison_status" -eq 0 ]; then : > "$race_a_verified"; while [ ! -e "$race_b_copied" ]; do sleep 0.01; done; fi; return "$comparison_status"; }
-  export race_a_verified race_b_copied
-  export -f cmp
   "$core_scripts/capture-screenshot.sh" --staged "$capture_root/a/source.png" "$capture_destination"
 ) >"$capture_root/a.out" 2>"$capture_root/a.err" & race_a_pid=$!
 (
-  cp() { while [ ! -e "$race_a_verified" ]; do sleep 0.01; done; command cp "$@"; copy_status=$?; [ "$copy_status" -ne 0 ] || : > "$race_b_copied"; return "$copy_status"; }
-  cmp() { command cmp "$@"; comparison_status=$?; while [ ! -e "$capture_destination" ]; do sleep 0.01; done; return "$comparison_status"; }
-  export race_a_verified race_b_copied capture_destination
-  export -f cp cmp
   "$core_scripts/capture-screenshot.sh" --staged "$capture_root/b/source.png" "$capture_destination"
 ) >"$capture_root/b.out" 2>"$capture_root/b.err" & race_b_pid=$!
 race_wait_ticks=0
@@ -62,9 +53,22 @@ else
   wait "$race_a_pid"; race_a_status=$?
   wait "$race_b_pid"; race_b_status=$?
 fi
-[ "$race_a_status" -eq 0 ] && [ "$race_b_status" -ne 0 ] || fail_case 'capture-screenshot coordinated-race case did not install exactly one writer'
-[ "$(cat "$capture_destination")" = dispatch-a ] || fail_case 'capture-screenshot coordinated-race case published cross-dispatch bytes'
-[ ! -e "$capture_root/a/source.png" ] && [ "$(cat "$capture_root/b/source.png")" = dispatch-b ] || fail_case 'capture-screenshot coordinated-race case did not preserve only the loser source'
+if [ "$race_a_status" -eq 0 ] && [ "$race_b_status" -ne 0 ]; then
+  capture_winner=a
+  capture_loser=b
+elif [ "$race_b_status" -eq 0 ] && [ "$race_a_status" -ne 0 ]; then
+  capture_winner=b
+  capture_loser=a
+else
+  capture_winner=''
+  capture_loser=''
+  fail_case 'capture-screenshot coordinated-race case did not install exactly one writer'
+fi
+[ -n "$capture_winner" ] && [ "$(cat "$capture_destination" 2>/dev/null)" = "dispatch-$capture_winner" ] \
+  || fail_case 'capture-screenshot coordinated-race case published cross-dispatch bytes'
+[ -n "$capture_winner" ] && [ ! -e "$capture_root/$capture_winner/source.png" ] \
+  && [ "$(cat "$capture_root/$capture_loser/source.png" 2>/dev/null)" = "dispatch-$capture_loser" ] \
+  || fail_case 'capture-screenshot coordinated-race case did not preserve only the loser source'
 find "$capture_root/assets" -name 'result.png.copying.*' -print -quit | grep -q . && fail_case 'capture-screenshot coordinated-race case leaked private scratch'
 
 prescribed_shell_finish

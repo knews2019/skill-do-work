@@ -153,10 +153,9 @@ assert_contains \
   "skills/do-work/tools/prime-do-work-update.md" \
   'do-work-cli\.sh.*update-suite.*singular update implementation' \
   'the update prime must assign singular ownership to the canonical update-suite command.'
-assert_contains \
+assert_file_missing \
   "skills/do-work-toolbox/tools/audit-metrics/prime-audit-metrics.md" \
-  'active action invokes the absorbed core route' \
-  'the retained audit-metrics prime must identify the active canonical core route.'
+  'the retired standalone audit-metrics prime must stay removed.'
 assert_contains \
   "skills/do-work/docs/prescribed-shell-primitives.md" \
   'tools/do-work-cli\.sh.*generate-report-image-batch' \
@@ -1591,54 +1590,10 @@ assert_block_contains \
   'repository, credentials, network, and external services' \
   'ai-report-reference.md must describe exact agentic opt-in as full-host authority, not containment.'
 
-# REQ-221 moved these mechanics out of the action file into their executable home, so the
-# guarantees REQ-198 and REQ-204 locked in are replayed against the script. Deleting one
-# must fail here rather than pass because the code changed address.
-ai_image_batch_source="$(cat "$toolbox_root/scripts/generate-report-image-batch.sh")"
-assert_block_contains \
-  "$ai_image_batch_source" \
-  'image_generation_pids' \
-  'generate-report-image-batch.sh must retain every parallel image helper PID.'
-assert_block_contains \
-  "$ai_image_batch_source" \
-  'wait "\${image_generation_pids\[\$image_index\]}".*image_status=\$\?' \
-  'generate-report-image-batch.sh must wait each image PID and retain its individual status.'
-assert_block_contains \
-  "$ai_image_batch_source" \
-  'image_generation_statuses\[\$image_index\]' \
-  'generate-report-image-batch.sh must evaluate invocation statuses rather than infer freshness from target presence.'
-assert_block_not_contains \
-  "$ai_image_batch_source" \
-  '^wait$' \
-  'generate-report-image-batch.sh must not discard mixed background-job statuses with a bare wait.'
-assert_block_contains \
-  "$ai_image_batch_source" \
-  'mktemp -d "\$report_directory/\.generated\.staging\.XXXXXX"' \
-  'generate-report-image-batch.sh must allocate one invocation-private staging directory adjacent to generated/.'
-assert_block_contains \
-  "$ai_image_batch_source" \
-  '\[ ! -e "\$generated_directory" \].*exit 1' \
-  'generate-report-image-batch.sh must fail closed instead of clobbering an existing generated/ directory.'
-assert_block_contains \
-  "$ai_image_batch_source" \
-  'image_generation_success_count=0' \
-  'generate-report-image-batch.sh must count only status-backed successful images before publication.'
-assert_block_contains \
-  "$ai_image_batch_source" \
-  '\[ "\$image_generation_success_count" -gt 0 \]' \
-  'generate-report-image-batch.sh must make publication conditional on at least one status-backed successful image.'
-assert_block_contains \
-  "$ai_image_batch_source" \
-  'mv "\$image_generation_stage" "\$generated_directory"' \
-  'generate-report-image-batch.sh must publish the complete verified batch with one adjacent same-filesystem rename.'
-assert_block_contains \
-  "$ai_image_batch_source" \
-  'cleanup_report_image_stage' \
-  'generate-report-image-batch.sh must clean the exact invocation-private directory on all-failed and interrupted runs.'
-assert_block_contains \
-  "$ai_image_batch_source" \
-  'nested_image_generation_stage' \
-  'generate-report-image-batch.sh must verify the publishing rename instead of trusting a zero-exit mv onto a directory.'
+# Batch mechanics now live in the Go command and are covered by the promoted
+# prescribed-shell parity suite plus focused process/publication unit tests. The
+# retained shell path is intentionally launcher-only, so source-shape assertions
+# against the former shell implementation would contradict the thinness ratchet.
 
 assert_contains \
   "actions/ai-report.md" \
@@ -3731,12 +3686,10 @@ for check_script_entry in "${hardened_check_scripts[@]}"; do
     "$referencing_action_file must reference $check_script — the hardened step's pointer was removed without un-hardening."
 done
 
-for delegated_inventory_check in uncommitted-inventory.sh associate-files.sh; do
-  assert_contains \
-    "scripts/protected-inventory.sh" \
-    "$delegated_inventory_check" \
-    "protected-inventory.sh must continue delegating to $delegated_inventory_check."
-done
+assert_contains \
+  "scripts/protected-inventory.sh" \
+  'do-work-cli\.sh.*protected-inventory' \
+  'protected-inventory.sh must delegate the composed inventory operation to the canonical command.'
 
 # Pre-flight dirty-tree relevance (feedback 2026-08-04). The serial qualifier and
 # reviewer inspect the repository-wide working/staged diff, so changes that predate
@@ -3914,19 +3867,8 @@ rm -rf -- "$ordinary_addition_probe_dir"
 # NR == FNR and is swallowed as if it belonged to the exclusion table. Pin the
 # portable filename discriminator in every active bridge/modular copy, then
 # exercise both an empty quarantine and a populated once-X-always-X set.
-association_candidate_action_files=(
-  scripts/protected-inventory.sh
-)
-for association_candidate_action_file in "${association_candidate_action_files[@]}"; do
-  assert_contains \
-    "$association_candidate_action_file" \
-    'FILENAME == ARGV\[1\] \{ excluded\[\$0\] = 1; next \}' \
-    "$association_candidate_action_file must distinguish the quarantine by filename so an empty first file cannot swallow every inventory candidate."
-  assert_file_not_contains \
-    "$association_candidate_action_file" \
-    'NR == FNR \{ excluded\[\$0\] = 1; next \}' \
-    "$association_candidate_action_file must not use NR == FNR for the possibly-empty quarantine merge."
-done
+# The quarantine merge moved into the typed protected-inventory command. Keep
+# the behavior probes below; the retained shell file is launcher-only.
 
 association_candidate_probe_dir="$(mktemp -d)"
 association_empty_quarantine="$association_candidate_probe_dir/empty-quarantine.txt"
@@ -4225,27 +4167,8 @@ else
 fi
 rm -rf -- "$inventory_failure_probe_dir"
 
-assert_contains \
-  "tools/checks/preflight.sh" \
-  'git -c status\.renames=copies status --porcelain=v1 --untracked-files=all -z' \
-  'tools/checks/preflight.sh must keep NUL-safe repository-wide dirty-file detection — serial qualification and review read the repository-wide working/staged diff.'
-
-preflight_dirty_warning_line="$(grep -E '^[[:space:]]*echo "WARN: .*uncommitted changes' "$core_root/tools/checks/preflight.sh" || true)"
-
-assert_block_contains \
-  "$preflight_dirty_warning_line" \
-  'unless they prevent the active REQ' \
-  'tools/checks/preflight.sh dirty-file warning must stay subordinate to Current-REQ relevance instead of turning unexpected state into a blocker.'
-
-assert_block_contains \
-  "$preflight_dirty_warning_line" \
-  'qualification/review evidence' \
-  'tools/checks/preflight.sh must explain dirty files as possible qualification/review evidence contamination, not as files the explicit commit step will automatically stage.'
-
-assert_block_not_contains \
-  "$preflight_dirty_warning_line" \
-  'may stage unrelated files|swept into (the )?commit' \
-  'tools/checks/preflight.sh must not claim dirty files are automatically staged — Step 9 stages explicit paths.'
+# Preflight's NUL-safe inventory and warning rendering now live in corehelpers;
+# staged-skills-contract exercises the launcher against hostile filenames.
 
 preflight_template_block="$(sed -n '/^## Pre-Flight Template/,/^## Implementation Summary Template/p' "$core_root/actions/work-reference.md")"
 
@@ -4744,24 +4667,8 @@ assert_contains \
   'runRecoveryIfNeeded' \
   'The installed suite transaction must automatically recover its validated managed paths after a destructive-region failure.'
 
-assert_file_not_contains \
-  "scripts/run-blocked-check.sh" \
-  'else probe_wrapper=""' \
-  'run-blocked-check.sh must not drop the blocked-check time limit when timeout/gtimeout is unavailable.'
-
-assert_contains \
-  "scripts/run-blocked-check.sh" \
-  'exit 124' \
-  'run-blocked-check.sh must preserve a bounded portable fallback and report a timed-out blocked check as exit 124.'
-
-assert_contains \
-  "scripts/run-blocked-check.sh" \
-  'probe_group_is_safe' \
-  'run-blocked-check.sh must verify an isolated process group before executing fallback probe code.'
-assert_contains \
-  "scripts/run-blocked-check.sh" \
-  'kill -"\$probe_signal" -- "-\$probe_process_group_id"' \
-  'run-blocked-check.sh must signal the verified probe group rather than only its wrapper PID.'
+# The process-group timeout implementation moved into nextselection. Its shell
+# path is covered behaviorally by prescribed-shell parity and its Go process tests.
 
 assert_contains \
   "actions/install.md" \
@@ -6698,21 +6605,9 @@ elif ! bash "$defensive_surface_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
-# Behavioral probes for tools/checks/record-commit-hash.sh. Kept in their own file because
-# they build a throwaway git repo and run the real script rather than grepping prose — but
-# invoked from here, since nothing auto-discovers _dev/tests/*.sh and an uninvoked probe file
-# is dead weight that reads as coverage.
-record_commit_hash_probe="$repo_root/_dev/tests/record-commit-hash-guards.sh"
-if [ ! -f "$record_commit_hash_probe" ]; then
-  printf 'FAIL: _dev/tests/record-commit-hash-guards.sh is missing — the write-back guards have no behavioral coverage.\n' >&2
-  fail_count=$((fail_count + 1))
-elif ! bash <(sed \
-  -e "s|^repo_root=.*|repo_root=\"$repo_root\"|" \
-  -e 's|\$repo_root/tools/checks/|\$repo_root/skills/do-work/tools/checks/|g' \
-  "$record_commit_hash_probe"); then
-  printf 'FAIL: record-commit-hash guard probes failed (see the FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
-fi
+# Provenance write-back and blanked-record recovery are now separate typed Go
+# authorities. Their exhaustive mutation/forensics tests run in the uncached CLI
+# lane; the former combined shell probe encoded retired --restore behavior.
 
 # Behavioral probes for tools/do-work-update.sh — same reasoning as above, and the same
 # no-auto-discovery caveat. These build a synthetic install plus a stubbed upstream fetch

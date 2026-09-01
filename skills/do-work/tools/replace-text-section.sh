@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# do-work-cli compatibility launcher: retained public path
 # Atomically create, append, or replace do-work's managed text section.
 #
 # The implementation lives in the do-work-cli `replace-section` command; this file is the

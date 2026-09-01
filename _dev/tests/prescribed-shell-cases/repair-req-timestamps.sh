@@ -344,99 +344,13 @@ printf '%s' "$repair_padded_quote_output" | grep -q 'REQ-825-padded-quote.md cre
 printf '%s' "$repair_padded_quote_output" | grep -q 'REQ-826' \
   && fail_case 'repair-req-timestamps padded-quote case logged a correction for the refused non-ASCII-padded value'
 
-# repair-req-timestamps: an extractor that could not run is a failure, not a file with no
-# timestamp fields. With a failing awk the repairer once returned byte-identical, silent,
-# and exit 0 on a file carrying a future stamp (REQ-268 instance 3).
-repair_extract_project="$fixture_root/repair-extract-project"
-mkdir -p "$repair_extract_project/do-work/queue"
-printf -- '---\nid: REQ-919\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z\n---\nbody\n' \
-  > "$repair_extract_project/do-work/queue/REQ-919-future.md"
-cp "$repair_extract_project/do-work/queue/REQ-919-future.md" "$fixture_root/repair-extract-before.md"
-repair_extract_bin="$fixture_root/repair-extract-bin"
-mkdir -p "$repair_extract_bin"
-printf '%s\n' '#!/usr/bin/env bash' 'exit 2' > "$repair_extract_bin/awk"
-chmod +x "$repair_extract_bin/awk"
-repair_extract_output="$(PATH="$repair_extract_bin:$PATH" "$core_scripts/repair-req-timestamps.sh" "$repair_extract_project" 2>&1)" \
-  && fail_case 'repair-req-timestamps failed-extraction case exited zero after the extraction failed'
-printf '%s' "$repair_extract_output" | grep -q 'REQ-919-future.md' \
-  || fail_case 'repair-req-timestamps failed-extraction case never named the file it could not inspect'
-cmp -s "$fixture_root/repair-extract-before.md" "$repair_extract_project/do-work/queue/REQ-919-future.md" \
-  || fail_case 'repair-req-timestamps failed-extraction case wrote to a file it could not read'
+# The retired implementation's two awk-failure probes now belong to the Go
+# requestmodel/doctor unit tests. Keeping PATH-injected awk assertions here would
+# test a dependency the compatibility launcher deliberately no longer has.
 
-# repair-req-timestamps: the verify-before-replace re-parse must actually run. Its output
-# was consumed through a herestring, so an extractor that failed there produced zero rows,
-# every planned field went unchecked, `guard_verdict` stayed ok, and the rewrite was
-# accepted unverified — the guard whose whole job is verification passing vacuously
-# (REQ-268, found by the sweep the REQ asked for rather than listed in it).
-repair_reparse_project="$fixture_root/repair-reparse-project"
-mkdir -p "$repair_reparse_project/do-work/queue"
-printf -- '---\nid: REQ-922\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z\n---\nbody\n' \
-  > "$repair_reparse_project/do-work/queue/REQ-922-future.md"
-cp "$repair_reparse_project/do-work/queue/REQ-922-future.md" "$fixture_root/repair-reparse-before.md"
-repair_reparse_bin="$fixture_root/repair-reparse-bin"
-mkdir -p "$repair_reparse_bin"
-# Fails only the SECOND frontmatter extraction — the post-rewrite re-parse. The first
-# extraction plans the repair, and the rewrite awk in between carries no `utf8_bom`, so
-# the counter names exactly the verification call and nothing else.
-{
-  printf '%s\n' '#!/usr/bin/env bash'
-  printf 'real_awk=%q\n' "$(command -v awk)"
-  printf 'counter_file=%q\n' "$repair_reparse_bin/extraction-count"
-  printf '%s\n' \
-    'for awk_argument in "$@"; do' \
-    '  case "$awk_argument" in' \
-    '    *utf8_bom*)' \
-    '      extraction_count=0' \
-    '      [ -f "$counter_file" ] && extraction_count="$(cat "$counter_file")"' \
-    '      extraction_count=$((extraction_count + 1))' \
-    '      printf %s "$extraction_count" > "$counter_file"' \
-    '      [ "$extraction_count" -ge 2 ] && exit 4' \
-    '      ;;' \
-    '  esac' \
-    'done' \
-    'exec "$real_awk" "$@"'
-} > "$repair_reparse_bin/awk"
-chmod +x "$repair_reparse_bin/awk"
-repair_reparse_output="$(PATH="$repair_reparse_bin:$PATH" "$core_scripts/repair-req-timestamps.sh" "$repair_reparse_project" 2>&1)" \
-  && fail_case 'repair-req-timestamps unverified-rewrite case exited zero after its verification never ran'
-printf '%s' "$repair_reparse_output" | grep -q 'repaired do-work/queue/REQ-922-future.md' \
-  && fail_case 'repair-req-timestamps unverified-rewrite case reported a repair it never verified'
-cmp -s "$fixture_root/repair-reparse-before.md" "$repair_reparse_project/do-work/queue/REQ-922-future.md" \
-  || fail_case 'repair-req-timestamps unverified-rewrite case replaced the file without verifying the rewrite'
-
-# repair-req-timestamps: a guard that could not run is a tripped guard. The post-rename
-# diff check is the last thing standing between a bad rewrite and a `repaired` line, and
-# it read git's answer through a herestring: a git that could not answer fell back to a
-# 0/0 count, `[ 0 -gt threshold ]` is false for every threshold, and the check silently
-# passed on a file already renamed into place (REQ-268 review, finding I1).
-repair_postguard_project="$fixture_root/repair-postguard-project"
-fixture_repo_init "$repair_postguard_project"
-mkdir -p "$repair_postguard_project/do-work/queue"
-printf -- '---\nid: REQ-923\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z\n---\nbody\n' \
-  > "$repair_postguard_project/do-work/queue/REQ-923-future.md"
-fixture_repo_commit_all "$repair_postguard_project" fixture
-cp "$repair_postguard_project/do-work/queue/REQ-923-future.md" "$fixture_root/repair-postguard-before.md"
-repair_postguard_bin="$fixture_root/repair-postguard-bin"
-mkdir -p "$repair_postguard_bin"
-# Answers every git query the run needs except `diff --numstat`, which is the one the
-# post-rename guard depends on. Failing all of git would stop the run far earlier and
-# would never reach the guard this case exists to pin.
-{
-  printf '%s\n' '#!/usr/bin/env bash'
-  printf 'real_git=%q\n' "$(command -v git)"
-  printf '%s\n' \
-    'for git_argument in "$@"; do' \
-    '  [ "$git_argument" = "--numstat" ] && exit 9' \
-    'done' \
-    'exec "$real_git" "$@"'
-} > "$repair_postguard_bin/git"
-chmod +x "$repair_postguard_bin/git"
-repair_postguard_output="$(PATH="$repair_postguard_bin:$PATH" "$core_scripts/repair-req-timestamps.sh" "$repair_postguard_project" 2>&1)" \
-  && fail_case 'repair-req-timestamps unrunnable-guard case exited zero with its diff check unable to run'
-printf '%s' "$repair_postguard_output" | grep -q 'repaired do-work/queue/REQ-923-future.md' \
-  && fail_case 'repair-req-timestamps unrunnable-guard case reported a repair its last guard never checked'
-cmp -s "$fixture_root/repair-postguard-before.md" "$repair_postguard_project/do-work/queue/REQ-923-future.md" \
-  || fail_case 'repair-req-timestamps unrunnable-guard case left the rewrite in place instead of restoring it'
+# The retired post-rename `git diff --numstat` seam is replaced by the Go plan
+# delta guard, exercised directly in doctor_repair_test.go. Pre-existing dirty
+# lines are therefore excluded from the repair's own change budget.
 
 # repair-req-timestamps: an unreadable HEAD blob size is a failed inspection, not an
 # absent baseline. Both used to collapse to 0 behind `|| echo 0`, which skipped the
@@ -485,8 +399,9 @@ grep -q '^created_at: 2093-01-01T00:00:00Z$' "$repair_uncommitted_project/do-wor
 # with the board's futureTimestampSkewAllowance — a fourth hand-kept copy of
 # the same allowance, pinned the way the repo pins cause-clause pairs
 # (REQ-255 rider; REQ-246 review nit).
-grep -q '^future_stamp_skew_seconds=120$' "$core_scripts/repair-req-timestamps.sh" \
-  || fail_case 'repair-req-timestamps skew-constant case: the repairer no longer declares future_stamp_skew_seconds=120'
+grep -q '^const timestampFutureSkewAllowance = 2 \* time\.Minute$' \
+  "$repo_root/skills/do-work/tools/do-work-cli/internal/doctor/doctor_timestamps.go" \
+  || fail_case 'repair-req-timestamps skew-constant case: the canonical repairer allowance moved or changed'
 grep -q '^const futureTimestampSkewAllowance = 2 \* time\.Minute$' \
   "$repo_root/skills/do-work-board/tools/queue-kanban/model.go" \
   || fail_case 'repair-req-timestamps skew-constant case: the board constant moved or changed — keep the two allowances in lock-step'

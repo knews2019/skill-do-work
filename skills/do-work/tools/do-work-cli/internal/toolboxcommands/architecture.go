@@ -35,7 +35,7 @@ func handleArchitecture(ctx commandruntime.ExecutionContext, args []string) resu
 	if len(rest) == 3 && rest[0] == "--publish" {
 		return architecturePublish(ctx, rest[1], rest[2], dryRun, commit)
 	}
-	return usageResult(CommandArchitecture, "Usage: architecture-report-preflight --scan <reports-directory> | --publish <draft> <candidate> [--dry-run|--commit]")
+	return usageResult(CommandArchitecture, "Usage: architecture-report-preflight [--dry-run|--commit] (--scan <reports-directory> | --publish <draft> <candidate>)")
 }
 
 func architectureScan(ctx commandruntime.ExecutionContext, reports string) resultmodel.CommandResult {
@@ -56,7 +56,9 @@ func architectureScan(ctx commandruntime.ExecutionContext, reports string) resul
 	type prior struct{ key, filesystemPath, displayPath string }
 	priors := []prior{}
 	entries, readDirectoryError := os.ReadDir(rootReports)
-	if readDirectoryError != nil {
+	if os.IsNotExist(readDirectoryError) {
+		entries = nil
+	} else if readDirectoryError != nil {
 		return architectureFailure("reports directory is unreadable: " + readDirectoryError.Error())
 	}
 	for _, entry := range entries {
@@ -116,6 +118,22 @@ func architecturePublish(ctx commandruntime.ExecutionContext, draft, candidate s
 	}
 	if info, statErr := os.Stat(draftPath); statErr != nil || !info.Mode().IsRegular() {
 		return usageResult(CommandArchitecture, "draft is not a regular file: "+draft)
+	}
+	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
+		staged, stageError := os.CreateTemp("", "architecture-report-copy.*")
+		if stageError != nil {
+			return architectureFailure(stageError.Error())
+		}
+		stagedPath := staged.Name()
+		_ = staged.Close()
+		defer os.Remove(stagedPath)
+		if output, copyError := exec.Command("cp", draftPath, stagedPath).CombinedOutput(); copyError != nil {
+			return architectureFailure("draft copy failed: " + strings.TrimSpace(string(output)))
+		}
+		data, err = os.ReadFile(stagedPath)
+		if err != nil {
+			return architectureFailure(err.Error())
+		}
 	}
 	candidateAbs := candidate
 	if !filepath.IsAbs(candidateAbs) {

@@ -368,3 +368,66 @@ func TestBKBInitDryRunHonorsGitDirtyTargetPreflight(t *testing.T) {
 		t.Fatal("refused dry-run wrote scaffold bytes")
 	}
 }
+
+func TestBKBInitOutsideInvocationRepositoryPreservesTargetAndRepository(t *testing.T) {
+	parent := t.TempDir()
+	repository := filepath.Join(parent, "invocation repo")
+	if err := os.MkdirAll(repository, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runGitFixture(t, repository, "init")
+	runGitFixture(t, repository, "config", "user.email", "fixture@example.invalid")
+	runGitFixture(t, repository, "config", "user.name", "Fixture")
+	writeFixture(t, repository, "tracked.txt", "baseline\n")
+	runGitFixture(t, repository, "add", "tracked.txt")
+	runGitFixture(t, repository, "commit", "-m", "baseline")
+	for _, fixture := range []struct {
+		name   string
+		target string
+	}{
+		{"absolute", filepath.Join(parent, "absolute kb")},
+		{"parent-relative", filepath.Join("..", "parent kb")},
+	} {
+		t.Run(fixture.name, func(t *testing.T) {
+			before := runGitFixture(t, repository, "status", "--porcelain=v1", "--untracked-files=all")
+			cleanTarget := filepath.Clean(fixture.target)
+			dryRun := handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: repository}, []string{"--kb", fixture.target, "--dry-run"})
+			if dryRun.Outcome != resultmodel.OutcomeSuccess || len(dryRun.Changes) == 0 {
+				t.Fatalf("dry-run=%#v", dryRun)
+			}
+			for _, change := range dryRun.Changes {
+				if !strings.HasPrefix(filepath.Clean(change.Path), cleanTarget+string(filepath.Separator)) {
+					t.Fatalf("dry-run lost target %q in %#v", fixture.target, change)
+				}
+			}
+			created := handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: repository}, []string{"--kb", fixture.target})
+			if created.Outcome != resultmodel.OutcomeSuccess {
+				t.Fatalf("create=%#v", created)
+			}
+			absolute := fixture.target
+			if !filepath.IsAbs(absolute) {
+				absolute = filepath.Join(repository, absolute)
+			}
+			if !isKnowledgeBase(filepath.Clean(absolute)) {
+				t.Fatalf("outside knowledge base not initialized at %q", absolute)
+			}
+			refusal := handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: repository}, []string{"--kb", fixture.target})
+			if refusal.Outcome != resultmodel.OutcomeRefused || len(refusal.Findings) != 1 {
+				t.Fatalf("refusal=%#v", refusal)
+			}
+			finding := refusal.Findings[0]
+			joined := strings.Join(append(append(append([]string{}, finding.NextArgv...), finding.VerificationArgv...), finding.NextJustRecipe), "\x00")
+			if !strings.Contains(joined, cleanTarget) {
+				t.Fatalf("refusal lost exact target %q: %#v", cleanTarget, finding)
+			}
+			textOutput, _ := resultmodel.RenderResult(refusal, resultmodel.FormatText)
+			jsonOutput, _ := resultmodel.RenderResult(refusal, resultmodel.FormatJSON)
+			if !strings.Contains(string(textOutput), cleanTarget) || !strings.Contains(string(jsonOutput), cleanTarget) {
+				t.Fatalf("text/json target parity failed: text=%s json=%s", textOutput, jsonOutput)
+			}
+			if after := runGitFixture(t, repository, "status", "--porcelain=v1", "--untracked-files=all"); after != before {
+				t.Fatalf("invocation repository changed: before=%q after=%q", before, after)
+			}
+		})
+	}
+}

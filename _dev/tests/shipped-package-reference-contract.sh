@@ -1776,7 +1776,7 @@ same_package_content_directories = present_module_content_directories(modules)
 tracked_paths = {
     os.fsdecode(path_bytes)
     for path_bytes in git_output("ls-files", "-z").split(b"\0")
-    if path_bytes
+    if path_bytes and (repo_root / os.fsdecode(path_bytes)).exists()
 }
 
 markdown_paths = []

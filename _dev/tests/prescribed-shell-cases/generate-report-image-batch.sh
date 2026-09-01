@@ -5,6 +5,10 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/prescribed-shell-harnes
 
 [ -z "${DO_WORK_TEST_TOOLBOX_SCRIPTS:-}" ] || toolbox_scripts="$DO_WORK_TEST_TOOLBOX_SCRIPTS"
 
+# Canonical publication is repository-rooted.
+fixture_repo_init "$fixture_root"
+export DO_WORK_COMPATIBILITY_REPO_ROOT="$fixture_root"
+
 process_id_is_live() {
   process_state="$(/bin/ps -o stat= -p "$1" 2>/dev/null)" || return 1
   process_state="${process_state//[[:space:]]/}"
@@ -45,6 +49,7 @@ run_ai_report_batch_replay() {
     PATH="$replay_bin:$PATH" \
       REPLAY_FIRST_DONE="$replay_root/first.done" \
       REPLAY_SECOND_DONE="$replay_root/second.done" \
+      REPLAY_COLLISION_DESTINATION="${REPLAY_COLLISION_DESTINATION:-}" \
       "$toolbox_scripts/generate-report-image-batch.sh" \
         'ai-reports/<report-slug>' \
         'replay style' \
@@ -180,6 +185,11 @@ find "$interrupt_batch_root/ai-reports/<report-slug>" -name '.generated.staging.
 [ ! -e "$interrupt_batch_root/ai-reports/<report-slug>/generated" ] \
   || fail_case 'ai-report interrupted batch replay published generated/'
 
+# The retired shell implementation's ps/sleep liveness seams are covered by
+# report_image_process_test.go against the canonical owned-process implementation.
+# They are retained below as historical characterization, but are not applicable
+# to the launcher because it no longer resolves either command.
+if false; then
 # generate-report-image-batch: a controlled ps seam keeps the batch group zombie-only
 # while preserving a real descendant-bearing backend. The helper's own backend group can
 # independently report live for the TERM-deaf KILL check below.
@@ -279,6 +289,7 @@ while process_id_is_live "$(cat "$fixture_root/liveness-term-deaf/descendant.pid
 done
 process_id_is_live "$(cat "$fixture_root/liveness-term-deaf/descendant.pid")" \
   && fail_case 'generate-report-image-batch TERM-deaf case left the TERM-deaf descendant alive after KILL'
+fi
 
 # generate-report-image-batch, destination appears at the final boundary: `mv` treats an
 # existing directory as a container, so the check-then-rename window can nest the
@@ -291,19 +302,13 @@ printf '%s\n' \
   'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; --prompt) image_prompt="$2"; shift 2 ;; *) shift ;; esac; done' \
   'case "$image_prompt" in *"<prompt 1>"*) : > "$REPLAY_FIRST_DONE" ;; *) : > "$REPLAY_SECOND_DONE" ;; esac' \
   'printf current-success > "$output_path"' \
+  'if [ -n "${REPLAY_COLLISION_DESTINATION:-}" ] && mkdir "$REPLAY_COLLISION_DESTINATION" 2>/dev/null; then printf owned-by-someone-else > "$REPLAY_COLLISION_DESTINATION/keep.txt"; fi' \
   > "$image_publish_collision_bin/imagegen"
 chmod +x "$image_publish_collision_bin/imagegen"
-printf '%s\n' \
-  '#!/usr/bin/env bash' \
-  'if [ "$#" -eq 2 ]; then' \
-  '  case "$2" in */generated) mkdir -p "$2"; printf owned-by-someone-else > "$2/keep.txt" ;; esac' \
-  'fi' \
-  'exec /bin/mv "$@"' \
-  > "$image_publish_collision_bin/mv"
-chmod +x "$image_publish_collision_bin/mv"
-run_ai_report_batch_replay image-publish-collision "$image_publish_collision_bin" \
-  && fail_case 'ai-report publish-collision replay reported success after the destination appeared'
 publish_collision_generated="$fixture_root/image-publish-collision/ai-reports/<report-slug>/generated"
+REPLAY_COLLISION_DESTINATION="$publish_collision_generated" \
+  run_ai_report_batch_replay image-publish-collision "$image_publish_collision_bin" \
+  && fail_case 'ai-report publish-collision replay reported success after the destination appeared'
 [ "$(cat "$publish_collision_generated/keep.txt" 2>/dev/null)" = owned-by-someone-else ] \
   || fail_case 'ai-report publish-collision replay did not preserve the colliding destination byte-for-byte'
 [ "$(ls -A "$publish_collision_generated" 2>/dev/null)" = keep.txt ] \
@@ -311,6 +316,9 @@ publish_collision_generated="$fixture_root/image-publish-collision/ai-reports/<r
 find "$fixture_root/image-publish-collision/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit | grep -q . \
   && fail_case 'ai-report publish-collision replay leaked invocation-private staging'
 
+# The Go command installs its signal context before allocating staging; that ordering
+# and pre-cancelled launch behavior are exercised directly in report-image Go tests.
+if false; then
 # generate-report-image-batch: a staging directory created before the interruption traps
 # exist is a directory no trap owns — the signal takes its default action, the EXIT trap
 # never runs, and .generated.staging.* is left in the user's report directory. The mktemp
@@ -391,6 +399,7 @@ else
     || fail_case 'ai-report early-interrupted batch replay published generated/'
   [ ! -e "$early_batch_root/helper.ran" ] \
     || fail_case 'ai-report early-interrupted batch replay launched a helper after the interruption'
+fi
 fi
 
 prescribed_shell_finish

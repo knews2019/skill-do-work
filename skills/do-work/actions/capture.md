@@ -66,14 +66,14 @@ Files in `working/` and `archive/` are **immutable**. If someone wants to add to
 
 **Exception (mechanical timestamp repair):** `scripts/audit-archive-timestamps.sh` may rewrite a detectably wrong `*_at` stamp in an archived REQ to the author time of the git commit that introduced it — a mechanical correction of recorded metadata sourced from git history, not a content change. It is never wired into any hook: the user invokes it deliberately as an audit, and the repaired files are committed through the normal flow. These are the only exceptions; neither is a precedent for editing archived content.
 
-**Session-start stamp repair (queue/working, never archive):** `scripts/repair-req-timestamps.sh` (run by the SessionStart hook) mechanically corrects detectably wrong `*_at` stamps in `do-work/queue/` and `do-work/working/` at session start — the same metadata-correction class, not a content change.
+**Session-start stamp repair (queue/working, never archive):** the registered Go SessionStart hook owner mechanically corrects detectably wrong `*_at` stamps in `do-work/queue/` and `do-work/working/` at session start — the same metadata-correction class, not a content change. `scripts/repair-req-timestamps.sh` is only a compatibility launcher for the canonical command.
 
 ## File Naming
 
 - **REQ files:** `REQ-[number]-[slug].md` in `do-work/queue/`
 - **UR folders:** `do-work/user-requests/UR-[number]/` containing `input.md` and optional `assets/`
 - **Assets:** `do-work/user-requests/UR-NNN/assets/REQ-[num]-[descriptive-name].png`
-- **REQ reservations:** `do-work/.req-reservations/REQ-NNNNNN` — durable markers written exclusively by Step 5's `capture-files` transaction beside their REQ payloads. Retention afterwards is mechanical: `scripts/cleanup-req-reservations.sh` removes a marker once its REQ file is committed, or after a two-day timeout.
+- **REQ reservations:** `do-work/.req-reservations/REQ-NNNNNN` — durable markers written exclusively by Step 5's `capture-files` transaction beside their REQ payloads. Retention afterwards is owned by the registered Go SessionStart hook/core cleanup command: it removes a marker once its REQ file is committed, or after a two-day timeout. `scripts/cleanup-req-reservations.sh` is a compatibility launcher only.
 
 To get the next REQ number, check existing `REQ-*.md` files across `do-work/queue/`, `do-work/working/`, and `do-work/archive/` (including inside `do-work/archive/UR-*/`) plus reservation marker names under `do-work/.req-reservations/`, then increment from the highest number in either set. For the next UR number, check `do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`. REQ and UR use separate numbering sequences. If no existing records or markers are found anywhere, start at 1.
 

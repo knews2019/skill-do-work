@@ -2,6 +2,7 @@ package toolboxcommands
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/fs"
@@ -20,6 +21,9 @@ var last30DaysLookPath = exec.LookPath
 var last30DaysPythonQualifies = func(path string) bool {
 	return exec.Command(path, "-c", "import sys; raise SystemExit(0 if sys.version_info >= (3, 12) else 1)").Run() == nil
 }
+var last30DaysCopyTree = copyLast30DaysTree
+var last30DaysRename = os.Rename
+var last30DaysMkdir = os.Mkdir
 
 func handleLast30Days(ctx commandruntime.ExecutionContext, args []string) resultmodel.CommandResult {
 	rest, dryRun, commit, err := parseMutationFlags(args)
@@ -30,7 +34,7 @@ func handleLast30Days(ctx commandruntime.ExecutionContext, args []string) result
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{toolboxFinding(CommandLast30Days, "LAST30DAYS-COMMIT-PRIVATE", resultmodel.SeverityWarning, nil, "last30days is deliberately project-local and Git-ignored", resultmodel.FixabilityRefused, "there is no committable target")}}
 	}
 	if len(rest) < 2 || len(rest) > 3 {
-		return usageResult(CommandLast30Days, "Usage: install-last30days (check|install) <project-root> [source-repository] [--dry-run]")
+		return usageResult(CommandLast30Days, "Usage: install-last30days [--dry-run|--commit] (check|install) <project-root> [source-repository]")
 	}
 	mode, project := rest[0], absoluteFromRoot(ctx.RepositoryRoot, rest[1])
 	if mode != "check" && mode != "install" {
@@ -66,14 +70,18 @@ func handleLast30Days(ctx commandruntime.ExecutionContext, args []string) result
 				_ = undoExclude()
 			}
 		}()
+		invocationContext, stopSignals, interrupted := mutationSignalContext()
+		defer stopSignals()
 		cloneRoot, cloneErr := os.MkdirTemp("", "do-work-last30days-*")
 		if cloneErr != nil {
 			return last30DaysFailure(cloneErr)
 		}
 		defer os.RemoveAll(cloneRoot)
-		command := exec.Command("git", "clone", "--depth", "1", source, cloneRoot)
+		command := exec.CommandContext(invocationContext, "git", "clone", "--depth", "1", source, cloneRoot)
 		if output, runErr := command.CombinedOutput(); runErr != nil {
-			return last30DaysFailure(fmt.Errorf("clone/source validation FAILED: %v: %s", runErr, output))
+			result := last30DaysFailure(fmt.Errorf("clone/source validation FAILED: %v: %s", runErr, output))
+			result.ExitCodeOverride = interrupted()
+			return result
 		}
 		sourceTree := filepath.Join(cloneRoot, "skills", "last30days")
 		if !last30DaysComplete(sourceTree) {
@@ -81,8 +89,10 @@ func handleLast30Days(ctx commandruntime.ExecutionContext, args []string) result
 		}
 		if dryRun {
 			changes = append(changes, resultmodel.RecordedChange{Path: filepath.ToSlash(target), Kind: "planned", Detail: "would install complete last30days payload"})
-		} else if publishErr := publishLast30Days(sourceTree, target); publishErr != nil {
-			return last30DaysFailure(publishErr)
+		} else if publishErr := publishLast30Days(invocationContext, sourceTree, target); publishErr != nil {
+			result := last30DaysFailure(publishErr)
+			result.ExitCodeOverride = interrupted()
+			return result
 		} else {
 			changes = append(changes, resultmodel.RecordedChange{Path: filepath.ToSlash(target), Kind: "published", Detail: "installed complete last30days payload"})
 			keepExclude = true
@@ -138,7 +148,7 @@ func last30DaysFailure(err error) resultmodel.CommandResult {
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{toolboxFinding(CommandLast30Days, "LAST30DAYS-FAILED", resultmodel.SeverityError, nil, err.Error(), resultmodel.FixabilityManual, "installation or verification did not complete")}}
 }
 
-func publishLast30Days(source, target string) error {
+func publishLast30Days(ctx context.Context, source, target string) error {
 	parent := filepath.Dir(target)
 	if err := os.MkdirAll(parent, 0o755); err != nil {
 		return err
@@ -148,26 +158,52 @@ func publishLast30Days(source, target string) error {
 		return err
 	}
 	defer os.RemoveAll(stage)
-	if err := copyLast30DaysTree(source, stage); err != nil {
+	if err := last30DaysCopyTree(source, stage); err != nil {
 		return fmt.Errorf("clone/copy FAILED: %w", err)
 	}
 	if !last30DaysComplete(stage) {
 		return fmt.Errorf("clone/copy FAILED")
 	}
 	backup := ""
+	keepBackup := false
 	if _, err := os.Lstat(target); err == nil {
 		backup, err = os.MkdirTemp(parent, ".last30days.backup.*")
 		if err != nil {
 			return err
 		}
-		defer os.RemoveAll(backup)
-		if err := os.Rename(target, filepath.Join(backup, "previous")); err != nil {
+		defer func() {
+			if !keepBackup {
+				_ = os.RemoveAll(backup)
+			}
+		}()
+		if err := last30DaysRename(target, filepath.Join(backup, "previous")); err != nil {
 			return fmt.Errorf("existing-tree backup FAILED: %w", err)
 		}
 	}
-	if err := os.Mkdir(target, 0o700); err != nil {
+	restoreBackup := func() error {
 		if backup != "" {
-			_ = os.Rename(filepath.Join(backup, "previous"), target)
+			return last30DaysRename(filepath.Join(backup, "previous"), target)
+		}
+		return nil
+	}
+	if err := ctx.Err(); err != nil {
+		if restoreErr := restoreBackup(); restoreErr != nil {
+			keepBackup = true
+			return fmt.Errorf("publication interrupted; rollback FAILED; prior tree remains at %s: %w", filepath.Join(backup, "previous"), restoreErr)
+		}
+		return err
+	}
+	if err := last30DaysMkdir(target, 0o700); err != nil {
+		if _, collisionErr := os.Lstat(target); collisionErr == nil {
+			if backup != "" {
+				keepBackup = true
+				return fmt.Errorf("publication FAILED; %s reappeared — prior tree remains at %s", target, filepath.Join(backup, "previous"))
+			}
+			return fmt.Errorf("publication FAILED; %s reappeared", target)
+		}
+		if restoreErr := restoreBackup(); restoreErr != nil {
+			keepBackup = true
+			return fmt.Errorf("publication claim FAILED: %v; rollback FAILED; prior tree remains at %s: %w", err, filepath.Join(backup, "previous"), restoreErr)
 		}
 		return fmt.Errorf("publication claim FAILED: %w", err)
 	}
@@ -184,16 +220,29 @@ func publishLast30Days(source, target string) error {
 			return removeErr
 		}
 		if backup != "" {
-			return os.Rename(filepath.Join(backup, "previous"), target)
+			return last30DaysRename(filepath.Join(backup, "previous"), target)
 		}
 		return nil
 	}
-	if err := copyLast30DaysTree(stage, target); err != nil {
-		_ = restore()
+	if err := last30DaysCopyTree(stage, target); err != nil {
+		if restoreErr := restore(); restoreErr != nil {
+			keepBackup = true
+			return fmt.Errorf("publication copy FAILED: %v; rollback FAILED; prior tree remains at %s: %w", err, filepath.Join(backup, "previous"), restoreErr)
+		}
 		return fmt.Errorf("publication copy FAILED: %w", err)
 	}
+	if err := ctx.Err(); err != nil {
+		if restoreErr := restore(); restoreErr != nil {
+			keepBackup = true
+			return fmt.Errorf("publication interrupted; rollback FAILED; prior tree remains at %s: %w", filepath.Join(backup, "previous"), restoreErr)
+		}
+		return err
+	}
 	if !last30DaysComplete(target) {
-		_ = restore()
+		if restoreErr := restore(); restoreErr != nil {
+			keepBackup = true
+			return fmt.Errorf("publication verification FAILED; rollback FAILED; prior tree remains at %s: %w", filepath.Join(backup, "previous"), restoreErr)
+		}
 		return fmt.Errorf("publication verification FAILED; previous tree restored")
 	}
 	return nil

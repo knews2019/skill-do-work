@@ -19,7 +19,7 @@ type commandOptions struct {
 var discoverRepository = repositorymodel.DiscoverRepository
 
 func Handlers() map[string]commandruntime.CommandHandler {
-	return map[string]commandruntime.CommandHandler{"doctor": handleDoctor}
+	return map[string]commandruntime.CommandHandler{"doctor": handleDoctor, "blanked-req-scan": handleDoctor}
 }
 
 func handleDoctor(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {

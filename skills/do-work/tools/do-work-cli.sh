@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
+# do-work-cli compatibility launcher: retained public path
 set -euo pipefail
 
-script_dir="$(cd "$(dirname "$0")" && pwd)"
+script_dir="${BASH_SOURCE[0]%/*}"
+[[ "$script_dir" != "${BASH_SOURCE[0]}" ]] || script_dir=.
+script_dir="$(cd "$script_dir" && pwd -P)"
 module_dir="$script_dir/do-work-cli"
 binary_path="$module_dir/do-work-cli"
 minimum_go_version="1.25.0"
@@ -23,8 +26,25 @@ version_at_least() {
 needs_build=0
 if [ ! -x "$binary_path" ]; then
   needs_build=1
-elif find "$module_dir" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \) -newer "$binary_path" -print -quit | grep -q .; then
-  needs_build=1
+else
+  source_tree_is_newer() {
+    local source_directory="$1"
+    local source_path
+    for source_path in "$source_directory"/*; do
+      [ -e "$source_path" ] || continue
+      if [ -d "$source_path" ]; then
+        source_tree_is_newer "$source_path" && return 0
+      elif [[ "$source_path" == *.go && "$source_path" -nt "$binary_path" ]]; then
+        return 0
+      fi
+    done
+    return 1
+  }
+  if source_tree_is_newer "$module_dir" \
+    || [ "$module_dir/go.mod" -nt "$binary_path" ] \
+    || { [ -e "$module_dir/go.sum" ] && [ "$module_dir/go.sum" -nt "$binary_path" ]; }; then
+    needs_build=1
+  fi
 fi
 
 if [ "$needs_build" -eq 1 ]; then

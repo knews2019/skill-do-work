@@ -495,9 +495,8 @@ func appendCompletionAnomalyFindings(report *VerifyReport, repoRoot string, boar
 // where nothing auto-repairs, because the SessionStart repairer never touches it.
 //
 // The predicate is NOT a fourth spelling of the ordering rule. It is the same
-// created_at <= claimed_at <= completed_at that scripts/repair-req-timestamps.sh
-// enforces as a repair, restated in Go only because the read side cannot source
-// shell. Two boundary decisions are held identical to the shell side on purpose:
+// created_at <= claimed_at <= completed_at that the registered Go SessionStart
+// repair owner enforces. Two boundary decisions are shared by both read and repair sides:
 // the comparison is strict (equal stamps are legal — Step 2's claim and Step 3.6's
 // estimate can read the same instant), and an absent or unparseable stamp is other
 // checks' territory rather than a violation here, matching detectCompletionAnomaly's
@@ -542,16 +541,15 @@ func appendTimestampOrderingFindings(report *VerifyReport, board *Board) {
 // timestampOrderingFinding names both fields and both raw values, and routes the
 // remedy by where the file actually lives — a reader must never be sent to do by
 // hand what an installed script already does. The archive repair is deliberately a
-// conscious invocation and is never hook-wired (scripts/audit-archive-timestamps.sh
-// header), which is why the two halves of this remedy differ.
+// conscious invocation and is never hook-wired, which is why the two halves of this
+// remedy differ.
 func timestampOrderingFinding(
 	ticket *RequestTicket, earlierField string, earlierValue string,
 	laterField string, laterValue string, plainSummary string,
 ) VerifyFinding {
-	remedy := "queue/ and working/ stamps are repaired mechanically by the SessionStart hook " +
-		"(skills/do-work/scripts/repair-req-timestamps.sh) on the next session — no hand edit needed"
+	remedy := "queue/ and working/ stamps are repaired mechanically by the registered Go SessionStart hook owner on the next session — no hand edit needed; run `skills/do-work/tools/do-work-cli.sh --format text repair-req-timestamps` for immediate recovery"
 	if ticket.TreeSection == "archive" {
-		remedy = "run skills/do-work/scripts/audit-archive-timestamps.sh to report, and --fix to " +
+		remedy = "run `skills/do-work/tools/do-work-cli.sh --format text audit-archive-timestamps` to report, and add --fix to " +
 			"repair from the stamp's own git history — the SessionStart repairer deliberately never " +
 			"touches the archive, so this one is a conscious invocation"
 	}
@@ -644,13 +642,7 @@ func appendClaimFindings(report *VerifyReport, board *Board, now time.Time) {
 				Category: verifyCategoryClaimNeedsAttention,
 				Detail: fmt.Sprintf("%s has a future-dated claimed_at (%s) — usually %s",
 					claimedTicket.RequestId, rawClaimStamp, futureStampCauseClause),
-				// A command survives here because this is CLI output, read next to a
-				// shell — but it is `queue-kanban now`, the Timestamp rule's own
-				// first-choice source, which prints the right shape on every platform.
-				// The rule's POSIX floor is deliberately not spelled here: anyone
-				// reading this line already has the binary built, and a hardcoded
-				// `date -u +…` is precisely what does not exist on Windows.
-				Remedy: "re-stamp it with the current UTC instant — `queue-kanban now` prints exactly that shape on any platform (the Timestamp rule in actions/work-reference.md)",
+				Remedy: "re-stamp it with the current UTC instant — `skills/do-work/tools/do-work-cli.sh --format text now` prints exactly that shape on any platform (the Timestamp rule in actions/work-reference.md)",
 			})
 			continue
 		}
@@ -1165,8 +1157,8 @@ const calibrationToleranceMinutes = 1
 //
 // It reports and never repairs, and it deliberately does NOT pick a winner. Either
 // record can legitimately be the wrong one: the log line is written once, while the
-// frontmatter can be rewritten afterwards by scripts/repair-req-timestamps.sh at
-// session start, by scripts/audit-archive-timestamps.sh --fix, or by a crash-recovery
+// frontmatter can be rewritten afterwards by the registered Go SessionStart repair
+// owner, by the canonical audit command's --fix mode, or by a crash-recovery
 // pass that cleared and re-stamped a claim. Resolving the disagreement needs a human
 // who knows which happened, which is also why nothing here is Fixable.
 //

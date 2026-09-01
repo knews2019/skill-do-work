@@ -1335,8 +1335,8 @@ func TestVerifyFlagsCreatedAfterClaimed(t *testing.T) {
 		}
 	}
 	// An archived file's remedy must name the archive repair, not hand git archaeology.
-	if !strings.Contains(orderingFindings[0].Remedy, "audit-archive-timestamps.sh") {
-		t.Errorf("archive remedy %q does not name audit-archive-timestamps.sh", orderingFindings[0].Remedy)
+	if !strings.Contains(orderingFindings[0].Remedy, "do-work-cli.sh --format text audit-archive-timestamps") {
+		t.Errorf("archive remedy %q does not name the canonical audit command", orderingFindings[0].Remedy)
 	}
 	// `do-work cleanup` cannot rewrite stamps, so the fixable count must not claim it can.
 	if orderingFindings[0].Fixable {
@@ -1389,8 +1389,8 @@ func TestVerifyRoutesQueueOrderingRemedyToTheSessionStartRepairer(t *testing.T) 
 	if len(orderingFindings) != 1 {
 		t.Fatalf("got %d ordering findings, want 1:\n%s", len(orderingFindings), renderVerifyReport(report))
 	}
-	if !strings.Contains(orderingFindings[0].Remedy, "repair-req-timestamps.sh") {
-		t.Errorf("queue remedy %q does not name the SessionStart repairer", orderingFindings[0].Remedy)
+	if !strings.Contains(orderingFindings[0].Remedy, "do-work-cli.sh --format text repair-req-timestamps") {
+		t.Errorf("queue remedy %q does not name the canonical repair command", orderingFindings[0].Remedy)
 	}
 	if strings.Contains(orderingFindings[0].Remedy, "audit-archive-timestamps.sh") {
 		t.Errorf("queue remedy %q sends the reader to the archive-only tool", orderingFindings[0].Remedy)

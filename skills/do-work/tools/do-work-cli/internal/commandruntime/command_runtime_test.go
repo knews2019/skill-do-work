@@ -459,8 +459,8 @@ func TestUnknownAndMissingCommandFindingsListTheRegisteredCommands(t *testing.T)
 	}
 }
 
-func TestRuntimeAcceptsOnlyConventionalInterruptionOverride(t *testing.T) {
-	for _, testCase := range []struct{ override, want int }{{130, 130}, {99, 0}} {
+func TestRuntimePreservesDeclaredCompatibilityStatus(t *testing.T) {
+	for _, testCase := range []struct{ override, want int }{{130, 130}, {99, 99}, {0, 0}} {
 		var output bytes.Buffer
 		runtime := NewRuntime(&output, map[string]CommandHandler{"media": func(ExecutionContext, []string) resultmodel.CommandResult {
 			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, ExitCodeOverride: testCase.override}

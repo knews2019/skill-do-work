@@ -1,7 +1,7 @@
 ---
 id: REQ-420
 title: 'Replace shell implementations with shims and prove whole-suite parity'
-status: claimed
+status: completed-with-issues
 created_at: 2026-08-29T20:28:26Z
 user_request: UR-081
 domain: testing
@@ -143,6 +143,7 @@ estimate:
     - async lifecycle behavior
     - cross-route regression gates
     - full-suite verification
+completed_at: 2026-09-01T18:15:09Z
 ---
 
 # Replace Shell Implementations with Shims and Prove Whole-Suite Parity

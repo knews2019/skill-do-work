@@ -1,9 +1,11 @@
 package corehelpers
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
@@ -82,22 +84,63 @@ func handleHandoffSurvey(executionContext commandruntime.ExecutionContext, argum
 			findings = append(findings, helperFinding("HANDOFF-WORKTREE-MISSING", resultmodel.SeverityWarning, []string{worktreePath}, "worktree path is missing or prunable", resultmodel.FixabilityManual, "prune or restore the worktree", []string{"git", "worktree", "prune", "--dry-run"}, nil))
 			continue
 		}
-		status, err := gitOutput(worktreePath, "status", "--short", "--untracked-files=all")
+		status, err := gitOutput(worktreePath, "status", "--porcelain=v1", "-z", "--untracked-files=all")
 		if err != nil {
 			return usageResult(CommandHandoffSurvey, fmt.Sprintf("status %s: %v", worktreePath, err))
-		}
-		code, evidence := "HANDOFF-WORKTREE-CLEAN", "clean"
-		severity := resultmodel.SeverityInfo
-		if len(status) > 0 {
-			code, evidence, severity = "HANDOFF-WORKTREE-DIRTY", string(status), resultmodel.SeverityWarning
 		}
 		relative := worktreePath
 		if value, err := filepath.Rel(executionContext.RepositoryRoot, worktreePath); err == nil {
 			relative = value
 		}
-		findings = append(findings, helperFinding(code, severity, []string{relative}, evidence, resultmodel.FixabilityManual, map[bool]string{true: "dirty files require disposition before handoff", false: ""}[len(status) > 0], nil, []string{"git", "-C", worktreePath, "status", "--short", "--untracked-files=all"}))
+		dirtyRows, parseError := parseHandoffStatus(status)
+		if parseError != nil {
+			return usageResult(CommandHandoffSurvey, fmt.Sprintf("status %s: %v", worktreePath, parseError))
+		}
+		if len(dirtyRows) == 0 {
+			findings = append(findings, helperFinding("HANDOFF-WORKTREE-CLEAN", resultmodel.SeverityInfo, []string{relative}, "clean", resultmodel.FixabilityManual, "", nil, []string{"git", "-C", worktreePath, "status", "--short", "--untracked-files=all"}))
+			continue
+		}
+		for _, row := range dirtyRows {
+			evidence := []string{"worktree=" + strconv.Quote(worktreePath), "xy=" + row.status, "path=" + strconv.Quote(row.path)}
+			affected := []string{row.path}
+			if row.origin != "" {
+				evidence = append(evidence, "origin="+strconv.Quote(row.origin))
+				affected = append(affected, row.origin)
+			}
+			findings = append(findings, resultmodel.CommandFinding{Code: "HANDOFF-WORKTREE-DIRTY", Severity: resultmodel.SeverityWarning, AffectedPaths: affected, Evidence: evidence, Fixability: resultmodel.FixabilityManual, AutomationStopReason: "this exact dirty path requires disposition before handoff", NextArgv: []string{"git", "-C", worktreePath, "diff", "--", row.path}, VerificationArgv: []string{"git", "-C", worktreePath, "status", "--short", "--", row.path}})
+		}
 	}
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: findings}
+}
+
+type handoffStatusRow struct {
+	status string
+	path   string
+	origin string
+}
+
+func parseHandoffStatus(contents []byte) ([]handoffStatusRow, error) {
+	records := bytes.Split(contents, []byte{0})
+	rows := []handoffStatusRow{}
+	for index := 0; index < len(records); index++ {
+		record := records[index]
+		if len(record) == 0 {
+			continue
+		}
+		if len(record) < 4 || record[2] != ' ' {
+			return nil, fmt.Errorf("short porcelain record")
+		}
+		row := handoffStatusRow{status: string(record[:2]), path: string(record[3:])}
+		if strings.ContainsAny(row.status, "RC") {
+			index++
+			if index >= len(records) || len(records[index]) == 0 {
+				return nil, fmt.Errorf("rename/copy origin missing")
+			}
+			row.origin = string(records[index])
+		}
+		rows = append(rows, row)
+	}
+	return rows, nil
 }
 
 func nonemptyNULFields(contents []byte) []string {

@@ -538,12 +538,14 @@ func handleBKBInit(executionContext commandruntime.ExecutionContext, arguments [
 		}
 	}
 	if gitRoot, gitError := enclosingGitRoot(executionContext.RepositoryRoot); gitError == nil {
-		return initializeInRepository(gitRoot, targetPath, options, nowUTC())
+		if targetRelative, relativeError := filepath.Rel(gitRoot, targetPath); relativeError == nil && targetRelative != ".." && !strings.HasPrefix(targetRelative, ".."+string(filepath.Separator)) {
+			return initializeInRepository(gitRoot, targetPath, options, nowUTC())
+		}
 	}
 	if options.dryRun {
 		return plannedScaffoldResult(targetPath, options.target, nowUTC())
 	}
-	return initializeWithoutRepository(executionContext.RepositoryRoot, options, nowUTC())
+	return initializeStandaloneTarget(targetPath, options, nowUTC())
 }
 
 func plannedScaffoldResult(targetPath, targetRelative string, now time.Time) resultmodel.CommandResult {
@@ -727,6 +729,10 @@ func initializeWithoutRepository(root string, options bkbOptions, now time.Time)
 	if err != nil {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{knowledgeFinding(CommandBKBInit, "BKB-INIT-UNSAFE-TARGET", resultmodel.SeverityError, []string{options.target}, err.Error(), resultmodel.FixabilityRefused, "the target is unsafe")}}
 	}
+	return initializeStandaloneTarget(targetPath, options, now)
+}
+
+func initializeStandaloneTarget(targetPath string, options bkbOptions, now time.Time) resultmodel.CommandResult {
 	base, prefix, err := standaloneRoot(targetPath)
 	if err != nil {
 		return initializationFailure(options.target, err, resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded})

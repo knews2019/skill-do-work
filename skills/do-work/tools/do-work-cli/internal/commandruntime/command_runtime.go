@@ -64,7 +64,7 @@ func (runtime *CommandRuntime) Run(arguments []string) int {
 	result.Command = command
 	result.RepositoryRoot = context.RepositoryRoot
 	exitCode := runtime.writeResult(context.Format, result)
-	if result.ExitCodeOverride == 129 || result.ExitCodeOverride == 130 || result.ExitCodeOverride == 143 {
+	if result.ExitCodeOverride > 0 && result.ExitCodeOverride <= 255 {
 		return result.ExitCodeOverride
 	}
 	return exitCode

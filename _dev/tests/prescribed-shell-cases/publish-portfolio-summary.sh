@@ -3,6 +3,10 @@
 # shellcheck source=_dev/tests/prescribed-shell-harness.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/prescribed-shell-harness.sh"
 
+# Canonical publication is repository-rooted.
+fixture_repo_init "$fixture_root"
+export DO_WORK_COMPATIBILITY_REPO_ROOT="$fixture_root"
+
 portfolio_root="$fixture_root/portfolio"
 mkdir -p "$portfolio_root/deliverables/portfolio-snapshots"
 portfolio_source="$portfolio_root/retained-summary.md"
@@ -67,10 +71,11 @@ portfolio_ln_failure_bin="$fixture_root/portfolio-ln-failure-bin"
 mkdir -p "$portfolio_ln_failure_bin"
 printf '%s\n' '#!/usr/bin/env bash' 'exit 1' > "$portfolio_ln_failure_bin/ln"
 chmod +x "$portfolio_ln_failure_bin/ln"
-portfolio_failure_candidate="$portfolio_root/deliverables/portfolio-snapshots/portfolio-summary-20260815T140000Z.md"
+portfolio_failure_parent="$portfolio_root/deliverables/blocked-snapshot-parent"
+printf 'not a directory\n' > "$portfolio_failure_parent"
+portfolio_failure_candidate="$portfolio_failure_parent/portfolio-summary-20260815T140000Z.md"
 printf 'stable before snapshot failure\n' > "$portfolio_canonical"
-PATH="$portfolio_ln_failure_bin:$PATH" \
-  "$toolbox_scripts/publish-portfolio-summary.sh" --with-snapshot "$portfolio_source" "$portfolio_canonical" "$portfolio_failure_candidate" >/dev/null 2>&1 \
+"$toolbox_scripts/publish-portfolio-summary.sh" --with-snapshot "$portfolio_source" "$portfolio_canonical" "$portfolio_failure_candidate" >/dev/null 2>&1 \
   && fail_case 'publish-portfolio-summary snapshot-failure case returned success'
 [ "$(cat "$portfolio_canonical")" = 'stable before snapshot failure' ] \
   || fail_case 'publish-portfolio-summary snapshot-failure case changed the prior canonical'
@@ -90,13 +95,12 @@ printf '%s\n' \
   > "$portfolio_mv_failure_bin/mv"
 chmod +x "$portfolio_mv_failure_bin/mv"
 portfolio_late_failure_candidate="$portfolio_root/deliverables/portfolio-snapshots/portfolio-summary-20260815T150000Z.md"
-printf 'stable before canonical failure\n' > "$portfolio_canonical"
-PORTFOLIO_FAIL_CANONICAL="$portfolio_canonical" \
-PORTFOLIO_REAL_MV="$(command -v mv)" \
-PATH="$portfolio_mv_failure_bin:$PATH" \
-  "$toolbox_scripts/publish-portfolio-summary.sh" --with-snapshot "$portfolio_source" "$portfolio_canonical" "$portfolio_late_failure_candidate" >/dev/null 2>&1 \
+portfolio_late_failure_canonical="$portfolio_root/deliverables/canonical-failure-directory.md"
+mkdir -p "$portfolio_late_failure_canonical"
+printf 'stable before canonical failure\n' > "$portfolio_late_failure_canonical/occupant.txt"
+"$toolbox_scripts/publish-portfolio-summary.sh" --with-snapshot "$portfolio_source" "$portfolio_late_failure_canonical" "$portfolio_late_failure_candidate" >/dev/null 2>&1 \
   && fail_case 'publish-portfolio-summary canonical-failure case returned success'
-[ "$(cat "$portfolio_canonical")" = 'stable before canonical failure' ] \
+[ "$(cat "$portfolio_late_failure_canonical/occupant.txt")" = 'stable before canonical failure' ] \
   || fail_case 'publish-portfolio-summary canonical-failure case changed the prior canonical'
 cmp -s "$portfolio_source" "$portfolio_late_failure_candidate" \
   || fail_case 'publish-portfolio-summary canonical-failure case did not retain the published snapshot'

@@ -6,7 +6,7 @@ Plain routing index for lesson satellites. Each satellite has exactly one table 
 | --- | --- | --- | ---: | --- |
 | `_dev/primes/lessons-action-files.md` | Changing action routing, pipeline fields, status contracts, downstream readers, alternate artifact writers, or budgeted context routing | `alternate-writer-contract-drift, budgeted-context-routing` | 3337 | `slugged: partial` |
 | `_dev/primes/lessons-kanban-board.md` | Changing queue-kanban parsing, views, static output, timeline behavior, or board publication | `none` | 4707 | `slugged: partial` |
-| `_dev/primes/lessons-shell-commands.md` | Changing shipped shell, argv/quoting, prescribed command blocks, or publication scripts | `none` | 3305 | `slugged: partial` |
+| `_dev/primes/lessons-shell-commands.md` | Changing shipped shell, argv/quoting, prescribed command blocks, publication scripts, or migration parity fixtures | `legacy-fixture-implementation-shape` | 3385 | `slugged: partial` |
 | `skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md` | Changing queue-kanban model, parser, UI, timeline, testing, or browser behavior | `none` | 5083 | `slugged: partial` |
 | `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` | Changing rollback/deletion/final-boundary identity, structured evidence projection, or migration parity in do-work-cli internals | `final-boundary-identity, opaque-evidence-projection, smoke-vs-characterization` | 1757 | `slugged: partial` |
 | `skills/do-work/tools/lessons-do-work-update.md` | Changing updater managed paths, preservation rules, receipts, or source/install parity | `none` | 628 | `slugged: partial` |

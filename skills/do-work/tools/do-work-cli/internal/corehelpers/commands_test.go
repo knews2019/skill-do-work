@@ -13,7 +13,7 @@ import (
 )
 
 func TestEveryRemainingUtilityHasOneHandler(t *testing.T) {
-	expected := []string{CommandPreflight, CommandQualify, CommandScopeDrift, CommandInventory, CommandAssociate, CommandProtectedInventory, CommandRecordCommit, CommandCaptureScreenshot, CommandAtomicDownload, CommandAddExclude, CommandBlockedCheck, CommandShowCommitDiff, CommandStageDeletion, CommandCleanupReservations, CommandRepairTimestamps, CommandAuditTimestamps, CommandHandoffSurvey}
+	expected := []string{CommandPreflight, CommandQualify, CommandScopeDrift, CommandInventory, CommandAssociate, CommandProtectedInventory, CommandRecordCommit, CommandCaptureScreenshot, CommandAtomicDownload, CommandAddExclude, CommandBlockedCheck, CommandShowCommitDiff, CommandStageDeletion, CommandCleanupReservations, CommandRepairTimestamps, CommandAuditTimestamps, CommandHandoffSurvey, CommandArchiveCollision, CommandEstimateP50, CommandNow, CommandFrontmatter}
 	handlers := Handlers()
 	if len(handlers) != len(expected) {
 		t.Fatalf("handlers=%d want %d", len(handlers), len(expected))
@@ -32,10 +32,10 @@ func TestNonInformationalFindingsReceiveCommandSpecificActions(t *testing.T) {
 		wantNext   string
 		wantVerify string
 	}{
-		{"SCOPE-UNDECLARED-TOUCH", []string{"internal/new.go"}, "git status --short -- internal/new.go", "git diff --name-status -- internal/new.go"},
-		{"QUALIFY-DEBUG-TOKEN-INTRODUCED", []string{"internal/new.go"}, "git diff -- internal/new.go", "git diff --check"},
+		{"SCOPE-UNDECLARED-TOUCH", []string{"internal/new.go"}, "git diff -- internal/new.go", "git diff --name-only -- internal/new.go"},
+		{"QUALIFY-DEBUG-TOKEN-INTRODUCED", []string{"internal/new.go"}, "git diff -U0 -- internal/new.go", "git diff --check -- internal/new.go"},
 		{"RESERVATION-MALFORMED", []string{"do-work/.req-reservations/bad"}, "do-work-cli cleanup-req-reservations --dry-run", "do-work-cli --format json cleanup-req-reservations --dry-run"},
-		{"PREFLIGHT-NODE-MODULES-MISSING", []string{"package.json"}, "do-work-cli preflight --dry-run", "do-work-cli --format json preflight --dry-run"},
+		{"PREFLIGHT-NODE-MODULES-MISSING", []string{"package.json"}, "npm install", "test -d node_modules"},
 	}
 	for _, test := range tests {
 		finding := helperFinding(test.code, resultmodel.SeverityWarning, test.paths, "evidence", resultmodel.FixabilityManual, "blocked", nil, nil)
@@ -44,6 +44,34 @@ func TestNonInformationalFindingsReceiveCommandSpecificActions(t *testing.T) {
 		}
 		if strings.Contains(strings.Join(append(append([]string{}, finding.NextArgv...), finding.VerificationArgv...), " "), "doctor") {
 			t.Errorf("%s retained generic doctor placeholder", test.code)
+		}
+	}
+}
+
+type coreDifferentialObservation struct {
+	status  int
+	facts   []string
+	actions []string
+	paths   []string
+	effects []string
+}
+
+func coreObservationsEqual(left, right coreDifferentialObservation) bool {
+	return left.status == right.status && strings.Join(left.facts, "\x00") == strings.Join(right.facts, "\x00") && strings.Join(left.actions, "\x00") == strings.Join(right.actions, "\x00") && strings.Join(left.paths, "\x00") == strings.Join(right.paths, "\x00") && strings.Join(left.effects, "\x00") == strings.Join(right.effects, "\x00")
+}
+
+func TestCoreHelperDifferentialComparatorRejectsEveryRequiredMutationDimension(t *testing.T) {
+	legacy := coreDifferentialObservation{status: 1, facts: []string{"INVENTORY-D|deleted"}, actions: []string{"git diff -- deleted.txt", "git status --short -- deleted.txt"}, paths: []string{"deleted.txt"}, effects: []string{"index=unchanged", "worktree=deleted"}}
+	mutations := map[string]coreDifferentialObservation{
+		"status": {status: 0, facts: legacy.facts, actions: legacy.actions, paths: legacy.paths, effects: legacy.effects},
+		"fact":   {status: legacy.status, facts: []string{"INVENTORY-A|added"}, actions: legacy.actions, paths: legacy.paths, effects: legacy.effects},
+		"action": {status: legacy.status, facts: legacy.facts, actions: []string{"git status --short"}, paths: legacy.paths, effects: legacy.effects},
+		"path":   {status: legacy.status, facts: legacy.facts, actions: legacy.actions, paths: []string{"other.txt"}, effects: legacy.effects},
+		"effect": {status: legacy.status, facts: legacy.facts, actions: legacy.actions, paths: legacy.paths, effects: []string{"index=changed"}},
+	}
+	for dimension, mutation := range mutations {
+		if coreObservationsEqual(legacy, mutation) {
+			t.Fatalf("%s mutation escaped exact differential comparator", dimension)
 		}
 	}
 }
@@ -181,27 +209,61 @@ func TestAllSeventeenPublicCommandsRunInTextAndJSONWithStableStatusAndNoDryRunEf
 	for _, commandCase := range commands {
 		t.Run(commandCase.name, func(t *testing.T) {
 			statuses := map[string]int{}
+			outputs := map[string][]byte{}
+			var jsonResult resultmodel.CommandResult
 			for _, format := range []string{"text", "json"} {
 				arguments := []string{"--repo-root", repository, "--format", format, commandCase.name}
 				arguments = append(arguments, commandCase.args...)
 				command := exec.Command(binary, arguments...)
 				output, runError := command.CombinedOutput()
+				outputs[format] = output
 				status := commandExitStatus(runError)
 				statuses[format] = status
 				if status > 1 {
 					t.Fatalf("%s status=%d err=%v output=%s", format, status, runError, output)
 				}
 				if format == "json" {
-					var decoded map[string]any
-					if err := json.Unmarshal(output, &decoded); err != nil || decoded["command"] != commandCase.name || decoded["findings"] == nil || decoded["changes"] == nil {
+					var decoded resultmodel.CommandResult
+					if err := json.Unmarshal(output, &decoded); err != nil || decoded.Command != commandCase.name || decoded.Findings == nil || decoded.Changes == nil {
 						t.Fatalf("JSON err=%v decoded=%v output=%s", err, decoded, output)
 					}
+					for _, finding := range decoded.Findings {
+						if finding.Severity == resultmodel.SeverityInfo {
+							continue
+						}
+						if len(finding.NextArgv) == 0 || len(finding.VerificationArgv) == 0 {
+							t.Fatalf("%s finding %s lacks exact actions: %#v", commandCase.name, finding.Code, finding)
+						}
+						for _, action := range [][]string{finding.NextArgv, finding.VerificationArgv} {
+							joined := strings.Join(action, " ")
+							if joined == "git status --short" || joined == "git diff" || joined == "git diff --check" || joined == "do-work-cli "+commandCase.name || joined == "do-work-cli --format json "+commandCase.name {
+								t.Fatalf("%s finding %s retained family-wide action %q", commandCase.name, finding.Code, joined)
+							}
+						}
+					}
+					jsonResult = decoded
 				} else if !strings.Contains(string(output), commandCase.name+":") {
 					t.Fatalf("text output lacks command identity: %s", output)
 				}
 			}
 			if statuses["text"] != statuses["json"] {
 				t.Fatalf("format status mismatch: %v", statuses)
+			}
+			textOutput := string(outputs["text"])
+			cursor := 0
+			for _, finding := range jsonResult.Findings {
+				token := "finding " + finding.Code + " [" + string(finding.Severity) + "]: " + strings.Join(finding.Evidence, "; ")
+				position := strings.Index(textOutput[cursor:], token)
+				if position < 0 {
+					t.Fatalf("%s text lost ordered fact %q: %s", commandCase.name, token, textOutput)
+				}
+				cursor += position + len(token)
+			}
+			for _, change := range jsonResult.Changes {
+				token := "change " + change.Path + " [" + change.Kind + "]: " + change.Detail
+				if !strings.Contains(textOutput, token) {
+					t.Fatalf("%s text lost exact effect %q: %s", commandCase.name, token, textOutput)
+				}
 			}
 		})
 	}

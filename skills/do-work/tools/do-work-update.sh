@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# do-work-cli compatibility launcher: retained public path
 # Update a project-local four-module do-work suite.
 #
 # The transaction lives in the do-work-cli `update-suite` command; this file is the

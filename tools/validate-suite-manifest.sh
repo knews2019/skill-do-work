@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# do-work-cli compatibility launcher: retained public path
 # Validates the complete do-work suite in an extracted archive or staging tree.
 #
 # The implementation lives in the do-work-cli `validate-manifest` command; this file is the

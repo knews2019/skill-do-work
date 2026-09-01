@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.1 — Typed Shell Compatibility Platform (2026-09-01)
+
+Stable shell entry points no longer carry a second implementation that can drift from the typed command platform. One Go owner now powers all 41 retained paths, backed by an independent compatibility oracle.
+
+- A 110-case differential suite across 18 fixture owners preserves exact status, output, argv, filesystem, Git/index, and mutation behavior; a separate ratchet keeps every retained shell launcher-only.
+- Audit metrics now lives in `do-work-cli`, alongside corrected actionable findings, BKB discovery/status/audit behavior, portfolio publication, and transactional last30days installation.
+- Installer and updater acceptance passes without Python or jq, all 40 managed Just definitions run without an LLM, and the canonical maintainer gate exercises Go, board, staged-package, alias, and reference contracts.
+
 ## 0.260.0 — Claim-Time Lesson Enforcement (2026-09-01)
 
 Lessons no longer depend on a request being captured after the lesson exists. Every claim rechecks the current index within the shared budget, builders must read the resolved context, and prime audit catches routing drift before it compounds.

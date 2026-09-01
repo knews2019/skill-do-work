@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# do-work-cli compatibility launcher: retained public path
 # Compatibility entry point for the canonical typed queue selector.
 set -euo pipefail
 

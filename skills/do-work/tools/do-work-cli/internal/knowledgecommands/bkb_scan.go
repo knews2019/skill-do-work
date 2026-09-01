@@ -48,6 +48,11 @@ func handleBKBStatus(executionContext commandruntime.ExecutionContext, arguments
 		return scanFailure(CommandBKBStatus, relative, scanError)
 	}
 	topicIndexes, _ := filepath.Glob(filepath.Join(target, "wiki", "topics", "_index_*.md"))
+	masterPath := filepath.Join(target, "wiki", "_master_index.md")
+	masterData, masterError := os.ReadFile(masterPath)
+	articleCounts := inspectNamedCounts(string(masterData), "Total articles:")
+	topicCounts := inspectNamedCounts(string(masterData), "Topic clusters:")
+	masterArticles, masterTopics := articleCounts.value, topicCounts.value
 	inboxCount := countRegularEntries(filepath.Join(target, "raw", "inbox"))
 	queueReady := countLinesContaining(filepath.Join(target, "raw", "_inbox_queue.md"), "ready")
 	latestActivity := latestNamedDate(filepath.Join(target, "wiki", "daily"))
@@ -56,8 +61,15 @@ func handleBKBStatus(executionContext commandruntime.ExecutionContext, arguments
 	lastDefrag := latestLogDate(string(logBytes), "defrag |")
 	lastGarden := latestLogDate(string(logBytes), "garden |")
 	customAgents := countCustomAgents(filepath.Join(target, "agents"))
-	evidence := fmt.Sprintf("location=%s articles=%d topic_clusters=%d inbox=%d ready=%d last_activity=%s last_lint=%s last_defrag=%s last_garden=%s agents=8 built-in+%d custom", relative, len(pages), len(topicIndexes), inboxCount, queueReady, displayDate(latestActivity), displayDate(lastLint), displayDate(lastDefrag), displayDate(lastGarden), customAgents)
+	evidence := fmt.Sprintf("location=%s articles=%d topic_clusters=%d disk_articles=%d disk_topic_clusters=%d inbox=%d ready=%d last_activity=%s last_lint=%s last_defrag=%s last_garden=%s agents=8 built-in+%d custom", relative, masterArticles, masterTopics, len(pages), len(topicIndexes), inboxCount, queueReady, displayDate(latestActivity), displayDate(lastLint), displayDate(lastDefrag), displayDate(lastGarden), customAgents)
 	findings := []resultmodel.CommandFinding{scanFinding(CommandBKBStatus, relative, "BKB-STATUS", resultmodel.SeverityInfo, nil, evidence, resultmodel.FixabilityManual, "")}
+	masterRelative := filepath.ToSlash(filepath.Join(relative, "wiki/_master_index.md"))
+	if masterError != nil {
+		findings = append(findings, scanFinding(CommandBKBStatus, relative, "BKB-STATUS-MASTER-MISSING", resultmodel.SeverityError, []string{masterRelative}, masterError.Error(), resultmodel.FixabilityManual, "restore the canonical master index before trusting status counts"))
+	} else {
+		findings = append(findings, namedCountFindings(relative, masterRelative, "ARTICLE", "Total articles", articleCounts, len(pages))...)
+		findings = append(findings, namedCountFindings(relative, masterRelative, "TOPIC", "Topic clusters", topicCounts, len(topicIndexes))...)
+	}
 	for _, maintenance := range []struct{ name, date string }{{"defrag", lastDefrag}, {"garden", lastGarden}} {
 		days := daysSince(maintenance.date)
 		if maintenance.date == "" || days >= 14 {
@@ -71,7 +83,7 @@ func handleBKBStatus(executionContext commandruntime.ExecutionContext, arguments
 	sortFindings(findings)
 	outcome := resultmodel.OutcomeSuccess
 	for _, finding := range findings {
-		if finding.Severity == resultmodel.SeverityWarning {
+		if finding.Severity != resultmodel.SeverityInfo {
 			outcome = resultmodel.OutcomeFindings
 		}
 	}
@@ -392,17 +404,67 @@ func containsNormalizedLink(content, stem string) bool {
 	return false
 }
 func extractNamedCount(content, label string) (int, bool) {
-	index := strings.Index(content, label)
-	if index < 0 {
-		return 0, false
+	inspection := inspectNamedCounts(content, label)
+	return inspection.value, inspection.occurrences > 0 && !inspection.malformed
+}
+
+type namedCountInspection struct {
+	value       int
+	values      []int
+	occurrences int
+	malformed   bool
+}
+
+func inspectNamedCounts(content, label string) namedCountInspection {
+	inspection := namedCountInspection{}
+	remaining := content
+	for {
+		index := strings.Index(remaining, label)
+		if index < 0 {
+			break
+		}
+		inspection.occurrences++
+		rest := strings.TrimSpace(remaining[index+len(label):])
+		fields := strings.Fields(rest)
+		if len(fields) == 0 {
+			inspection.malformed = true
+		} else if value, err := strconv.Atoi(strings.Trim(fields[0], "|")); err != nil || value < 0 {
+			inspection.malformed = true
+		} else {
+			inspection.values = append(inspection.values, value)
+			if len(inspection.values) == 1 {
+				inspection.value = value
+			}
+		}
+		remaining = remaining[index+len(label):]
 	}
-	rest := strings.TrimSpace(content[index+len(label):])
-	fields := strings.Fields(rest)
-	if len(fields) == 0 {
-		return 0, false
+	return inspection
+}
+
+func namedCountFindings(relative, masterPath, kind, label string, inspection namedCountInspection, diskCount int) []resultmodel.CommandFinding {
+	findings := []resultmodel.CommandFinding{}
+	prefix := "BKB-STATUS-" + kind + "-COUNT-"
+	if inspection.occurrences == 0 {
+		return []resultmodel.CommandFinding{scanFinding(CommandBKBStatus, relative, prefix+"MISSING", resultmodel.SeverityWarning, []string{masterPath}, "master index has no "+label+" declaration", resultmodel.FixabilityManual, "add one canonical master-index count declaration")}
 	}
-	value, err := strconv.Atoi(strings.Trim(fields[0], "|"))
-	return value, err == nil
+	if inspection.malformed || len(inspection.values) != inspection.occurrences {
+		findings = append(findings, scanFinding(CommandBKBStatus, relative, prefix+"MALFORMED", resultmodel.SeverityWarning, []string{masterPath}, "master index has an unparseable "+label+" declaration", resultmodel.FixabilityManual, "repair every declared master-index count"))
+	}
+	if inspection.occurrences > 1 {
+		findings = append(findings, scanFinding(CommandBKBStatus, relative, prefix+"DUPLICATE", resultmodel.SeverityWarning, []string{masterPath}, fmt.Sprintf("master index has %d %s declarations", inspection.occurrences, label), resultmodel.FixabilityManual, "retain exactly one canonical master-index count declaration"))
+	}
+	if len(inspection.values) > 1 {
+		for _, value := range inspection.values[1:] {
+			if value != inspection.values[0] {
+				findings = append(findings, scanFinding(CommandBKBStatus, relative, prefix+"INCONSISTENT", resultmodel.SeverityWarning, []string{masterPath}, fmt.Sprintf("master-index %s declarations disagree: %v", label, inspection.values), resultmodel.FixabilityManual, "reconcile duplicate declarations to one truthful count"))
+				break
+			}
+		}
+	}
+	if !inspection.malformed && len(inspection.values) > 0 && inspection.value != diskCount {
+		findings = append(findings, scanFinding(CommandBKBStatus, relative, prefix+"DISK-MISMATCH", resultmodel.SeverityWarning, []string{masterPath}, fmt.Sprintf("master declares %d but disk inventory has %d", inspection.value, diskCount), resultmodel.FixabilityManual, "rebuild the master index or reconcile the disk inventory"))
+	}
+	return findings
 }
 func countRegularEntries(path string) int {
 	entries, _ := os.ReadDir(path)

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# do-work-cli compatibility launcher: retained public path
 # Install and reconcile the complete four-skill do-work suite in one recoverable transaction.
 #
 # The transaction lives in the do-work-cli `install-suite` command; this file is the

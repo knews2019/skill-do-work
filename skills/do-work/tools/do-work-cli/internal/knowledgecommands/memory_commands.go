@@ -23,7 +23,100 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/settingshooks"
 )
+
+func handleInstallMemoryHooks(_ commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	if len(arguments) != 2 {
+		return usageResult(CommandInstallMemoryHooks, errors.New("Usage: install-memory-hooks <project-root> <memory-hooks-fragment>"))
+	}
+	projectRoot, fragmentPath := arguments[0], arguments[1]
+	fragmentData, err := os.ReadFile(fragmentPath)
+	if err != nil {
+		return memoryFailure(CommandInstallMemoryHooks, "MEMORY-HOOK-FRAGMENT-MISSING", fragmentPath, err)
+	}
+	settingsPath := filepath.Join(projectRoot, ".claude", "settings.json")
+	settingsData, err := os.ReadFile(settingsPath)
+	settingsExisted := err == nil
+	if os.IsNotExist(err) {
+		settingsData = []byte("{}\n")
+	} else if err != nil {
+		return memoryFailure(CommandInstallMemoryHooks, "MEMORY-HOOK-SETTINGS-READ-FAILED", settingsPath, err)
+	}
+	fragmentData = omitAlreadyInstalledMemoryHookEvents(settingsData, fragmentData)
+	composed, err := settingshooks.ComposeSettings(settingsData, fragmentData)
+	if err != nil {
+		return memoryFailure(CommandInstallMemoryHooks, "MEMORY-HOOK-SETTINGS-INVALID", settingsPath, err)
+	}
+	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
+		return memoryFailure(CommandInstallMemoryHooks, "MEMORY-HOOK-SETTINGS-WRITE-FAILED", settingsPath, err)
+	}
+	if settingsExisted {
+		if err := os.WriteFile(settingsPath+".pre-memory-module", settingsData, 0o600); err != nil {
+			return memoryFailure(CommandInstallMemoryHooks, "MEMORY-HOOK-BACKUP-FAILED", settingsPath, err)
+		}
+	}
+	temporaryPath := settingsPath + ".merge-tmp"
+	if err := os.WriteFile(temporaryPath, composed, 0o600); err != nil {
+		return memoryFailure(CommandInstallMemoryHooks, "MEMORY-HOOK-SETTINGS-WRITE-FAILED", settingsPath, err)
+	}
+	if err := os.Rename(temporaryPath, settingsPath); err != nil {
+		_ = os.Remove(temporaryPath)
+		return memoryFailure(CommandInstallMemoryHooks, "MEMORY-HOOK-SETTINGS-PUBLISH-FAILED", settingsPath, err)
+	}
+	output := "hooks: INSTALLED\n"
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: []resultmodel.RecordedChange{{Path: settingsPath, Kind: "updated", Detail: "memory hooks composed"}}, ExactTextOutput: &output}
+}
+
+func omitAlreadyInstalledMemoryHookEvents(settingsData, fragmentData []byte) []byte {
+	var fragment map[string]any
+	if json.Unmarshal(fragmentData, &fragment) != nil {
+		return fragmentData
+	}
+	hooks, ok := fragment["hooks"].(map[string]any)
+	if !ok {
+		return fragmentData
+	}
+	settingsText := string(settingsData)
+	if strings.Contains(settingsText, "memory-session-start.sh") {
+		delete(hooks, "SessionStart")
+	}
+	if strings.Contains(settingsText, "memory-stop-capture.sh") {
+		delete(hooks, "Stop")
+	}
+	adjusted, err := json.Marshal(fragment)
+	if err != nil {
+		return fragmentData
+	}
+	return adjusted
+}
+
+func handleLexicalMemoryRecall(_ commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	if len(arguments) != 2 {
+		return usageResult(CommandLexicalMemoryRecall, errors.New("Usage: lexical-memory-recall <memory-directory> <query-text>"))
+	}
+	memoryRoot, err := filepath.Abs(arguments[0])
+	if err != nil {
+		return memoryFailure(CommandLexicalMemoryRecall, "MEMORY-RECALL-SCAN-FAILED", arguments[0], err)
+	}
+	if info, statError := os.Stat(memoryRoot); statError != nil || !info.IsDir() {
+		if statError == nil {
+			statError = fmt.Errorf("not a directory")
+		}
+		return memoryFailure(CommandLexicalMemoryRecall, "MEMORY-NOT-SET-UP", arguments[0], statError)
+	}
+	hits, err := lexicalMemoryRecall(memoryRoot, filepath.Base(memoryRoot), arguments[1])
+	if err != nil {
+		return memoryFailure(CommandLexicalMemoryRecall, "MEMORY-RECALL-SCAN-FAILED", arguments[0], err)
+	}
+	var output strings.Builder
+	for _, hit := range hits {
+		relativeSource := strings.TrimPrefix(hit.Path, filepath.Base(memoryRoot)+"/")
+		fmt.Fprintf(&output, "%d\t%s:%d\t%s\t%s\t%s\n", hit.Score, filepath.Join(memoryRoot, filepath.FromSlash(relativeSource)), hit.Line, hit.Date, hit.Heading, hit.Content)
+	}
+	text := output.String()
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, ExactTextOutput: &text}
+}
 
 const memoryCharacterLimit = 2500
 
