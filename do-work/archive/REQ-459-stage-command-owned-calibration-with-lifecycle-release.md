@@ -1,7 +1,7 @@
 ---
 id: REQ-459
 title: 'Review fix: Stage command-owned calibration with lifecycle release'
-status: claimed
+status: completed
 domain: general
 created_at: 2026-08-31T21:54:18Z
 user_request: UR-081
@@ -21,6 +21,8 @@ estimate:
     - Route B
     - 3-file write set
     - one structural contract
+completed_at: 2026-09-01T06:45:28Z
+commit: 1c0132399f2fbe2abe57e7280175e2565c848044
 ---
 
 # Review Fix: Stage Command-Owned Calibration with Lifecycle Release

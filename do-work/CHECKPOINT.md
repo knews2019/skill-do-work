@@ -38,5 +38,3 @@
 ## In Progress (interrupted)
 
 - REQ-417: Implement interview and deterministic memory store commands — claimed 2026-09-01T06:08:08Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-
-- REQ-459: Review fix: Stage command-owned calibration with lifecycle release — claimed 2026-09-01T06:08:17Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

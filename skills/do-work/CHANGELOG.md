@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.255.1 — Canonical Calibration Staging (2026-09-01)
+
+Serial and worktree release commits now stage calibration only when the canonical completion transaction reports `do-work/calibration-log.tsv` among its changed targets.
+
+- All four active Commit Phase surfaces follow the same command-owned target-set condition instead of the removed Step 8 substep 7.5.
+- The serial recipe guards its exact `git add` and explicitly forbids filesystem inference.
+- A structural RED/GREEN contract independently protects each serial and worktree staging surface.
+
 ## 0.255.0 — Deterministic BKB and Dream Commands (2026-09-01)
 
 BKB scaffolding, status, structural lint, and Dream's seven deterministic scans now run as direct typed commands with matching source and installed Just recipes.
