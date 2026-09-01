@@ -102,6 +102,10 @@ A skill or action description is loaded whether or not the thing gets used, so i
 
 **Good:** "Use when the user asks to monitor, watch, or babysit a PR."
 
+## Traps
+
+- [family: alternate-writer-contract-drift] Changing an emitted artifact only at its primary writer leaves alternate modes silently producing the old contract; grep for every writer before declaring the format shipped.
+
 ## Lessons
 
 See [`lessons-action-files.md`](lessons-action-files.md) — read it before changing what **Read first** or **Traps** name above.

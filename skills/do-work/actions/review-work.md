@@ -316,15 +316,16 @@ After presenting the review report, perform a self-validation pass — no human 
 
 4. **Update prime lesson satellites (Standalone mode only).** Check the REQ's `prime_files` frontmatter. For each listed prime file where the lesson is relevant, write to the prime's satellite `lessons-<name>.md` (beside `prime-<name>.md`; create it with an `# Lessons: <name>` heading and a one-line pointer back to the prime if absent). **Never append to the prime itself** — a prime is read in full every time its area is touched (`crew-members/general.md` → PRIME Files Philosophy).
 
-   - Append one bullet:
+   - Choose one short kebab-case failure-family slug, scan the satellite for its literal marker and any clearly same-family pre-slug bullets, then append one bullet:
 
      ```markdown
-     - [REQ-NNN: 1-line summary](<relative-path-or-canonical-url>#lessons-learned)
+     - [family: <family-slug>] [REQ-NNN: 1-line summary](<relative-path-or-canonical-url>#lessons-learned)
      ```
 
      **Path must be relative to the satellite's location**, not the repo root. Compute it from the satellite's directory to the archived REQ file — if the satellite is at `src/utils/lessons-auth.md` and the REQ is at `do-work/archive/UR-005/REQ-042-auth-fix.md`, the link is `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`. When that path does not resolve because the satellite ships in a package whose consumers never receive `do-work/archive/`, write the canonical repository URL instead (`https://github.com/<owner>/<repo>/blob/main/<repo-root-relative-path>#lessons-learned`). Never write an unresolvable link — leave the bullet unlinked and report it.
 
-   - If the lesson constrains **any** change to the utility, also add or amend one `## Traps` line in the prime, in the `what you'd naturally do → what silently goes wrong` shape. That is the only write to the prime, and it replaces rather than accumulates.
+   - In the same edit, create or refresh this satellite's one-line entry in `do-work/lessons-index.md`: repository-relative path; a when-it-applies hook; the exact family-slug set present; `tokens: N`, computed as `wc -c` bytes divided by four and rounded up; and `slugged: full|partial`, where `full` means every lesson bullet carries a family marker.
+   - If the append creates the second or later same-family occurrence, add or amend one generalized `## Traps` line in the prime, citing `[family: <family-slug>]`, and note the promotion in the hand-back. This is mandatory. On the first occurrence, promote immediately only when the lesson constrains any change to the utility. A covered family is amended, never duplicated.
 
    Only record lessons relevant to that prime file's scope. In **orchestrated mode**, actions/work.md's Lessons-Capture Phase handles these updates.
 

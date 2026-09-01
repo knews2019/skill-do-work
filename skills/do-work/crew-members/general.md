@@ -17,7 +17,7 @@ When asked to read or create a Prime file (`prime-*.md`), adhere strictly to the
 
 A prime's accumulated lessons live beside it in `lessons-<name>.md`, not inside the prime. Read that satellite **before implementing** whenever your change touches code the prime's `## Read first` or `## Traps` sections name, or whenever you are about to do something a trap warns against. These encode prior mistakes and discoveries from this exact area of the codebase. Pay particular attention to "What didn't work" entries — they prevent repeating failed approaches. If a lesson directly contradicts your planned approach, note the conflict in your `[PLAN]` phase and explain why you're proceeding differently (or adjust the plan).
 
-A lesson that constrains **any** change to the utility is not a lesson entry at all — it is a trap, and belongs in the prime's `## Traps` section as one line. The satellite holds what is scoped to one file, function, or subcommand.
+Every new satellite bullet carries a literal `[family: short-kebab-slug]` marker. The writer refreshes that satellite's row in `do-work/lessons-index.md` in the same edit, including the exact slug set, a mechanical size estimate, and honest slug coverage. When a family appears for the second time, promote or amend one generalized `[family: <slug>]` line in the prime's `## Traps` and report it; recurrence makes promotion mandatory. A first lesson that constrains **any** change to the utility is promoted immediately. The satellite keeps the per-REQ narrative; the prime keeps only the generalized trap.
 
 ## Test-Writing Posture
 

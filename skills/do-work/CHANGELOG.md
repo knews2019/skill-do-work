@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.258.0 — Family-Keyed Lessons Routing (2026-09-01)
+
+Lessons now move into future work instead of only accumulating in archive notes. Writers tag failure families, maintain a compact routing index, and promote repeated failures into prime traps.
+
+- Both orchestrated and standalone review lesson writes use `[family: ...]` markers and refresh path, hook, size, and coverage together.
+- The initial index covers every tracked lesson satellite; targeted routing can distinguish full from partial slug coverage.
+- Three recurring do-work-cli families are seeded in lessons and generalized prime traps without backfilling unrelated history.
+
 ## 0.257.0 — Flat Deterministic Just Interface (2026-09-01)
 
 Installed projects can now run the complete deterministic command surface directly through flat Just recipes, while natural-language actions keep judgment and delegate mechanical work to the typed CLI. Recipe ownership comes from the managed template itself, so publication and collision validation stay aligned.
