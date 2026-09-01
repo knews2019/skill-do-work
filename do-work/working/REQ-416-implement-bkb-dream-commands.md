@@ -37,8 +37,8 @@ Move deterministic knowledge-base and Dream scans into `do-work-cli` while retai
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Accepted a three-task plan for one typed knowledge-command family, safe BKB scaffolding/structural scans, exactly seven read-only Dream scans, narrow recipes, and action consumption with semantic judgment retained.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** Added the four typed commands, exact safe scaffold transaction, BKB/Dream scans, narrow recipes, and action delegation in the frozen 16-file scope.
+- [x] **[UNIFY]:** Reviewed all 16 files; focused/race/full Go, vet, exact Go 1.25, recipe/action/contract/staged/install/update, qualification/scope, diff, and final canonical gates pass.
 
 ## Detailed Requirements
 - Implement `bkb-init`, `bkb-status`, and `bkb-lint-structure` as direct commands and flat recipes.
@@ -107,11 +107,30 @@ Certainty level: Firm for deterministic scans; explicitly retain action ownershi
 **Files I will NOT touch:** `internal/gittransaction`, queue-kanban atomic publication, broad help/guides/SKILL interface migration, retained shell utilities, audit-metrics, release metadata, or REQ-417–420 surfaces beyond the four narrowly required recipes.
 
 **Acceptance criteria:**
-- [ ] All four commands are registered, direct, typed, actionable, and deterministic in text/JSON.
-- [ ] BKB scaffold/status/structural fixtures preserve exact formats/effects while semantic lint remains action-owned.
-- [ ] Dream exposes exactly seven read-only scans and its action consumes the canonical worklist without fallback or lock leakage.
-- [ ] Four flat recipes work in source and installed topology with collision/delegation contracts.
-- [ ] Exact 16-file scope and focused/race/full/compatibility/install/update/canonical gates pass.
+- [x] All four commands are registered, direct, typed, actionable, and deterministic in text/JSON.
+- [x] BKB scaffold/status/structural fixtures preserve exact formats/effects while semantic lint remains action-owned.
+- [x] Dream exposes exactly seven read-only scans and its action consumes the canonical worklist without fallback or lock leakage.
+- [x] Four flat recipes work in source and installed topology with collision/delegation contracts.
+- [x] Exact 16-file scope and focused/race/full/compatibility/install/update/canonical gates pass.
+
+## Implementation Summary
+
+Registered `bkb-init`, `bkb-status`, `bkb-lint-structure`, and `dream-scan` through one typed `internal/knowledgecommands` family. BKB init owns the exact scaffold, fill-gaps, dry-run, exact-path commit, Git/standalone setup, no-overwrite publication, nested unsafe-entry refusal, and invocation-only rollback. Status and structural lint are deterministic/read-only. Dream exposes exactly seven normalized, sorted, read-only finding classes.
+
+Four source/installed recipes now invoke the canonical launcher. BKB and Dream actions consume command JSON without fallback while retaining semantic judgment, reports, lock/consent, consolidation, reindexing, and audit ownership.
+
+**Builder commit:** `fd59155568d304ad37002367c78856ef442c85e3`
+
+**Integration range:** `5e341946..3519b315`
+
+**Files changed:** the exact 16 paths declared in Scope.
+
+## Qualification and Testing
+
+- Mechanical qualification and scope drift passed with the exact 16-file builder range.
+- Owner focused race package tests and the full contract regression suite passed after integration.
+- Builder full Go, vet, exact Go 1.25, real recipe invocation, staged/install/update, diff hygiene, and final canonical maintainer gate passed; the optional browser lane skipped normally.
+- RED evidence begins at absent commands. GREEN fixtures cover exact scaffold/reference bytes, dry-run/preflight/commit/rollback, nested unsafe entries, BKB structural/status cases, all seven Dream classes, deterministic/read-only results, source/installed recipes, action delegation, and lock release on command failure.
 
 ## Full Context
 See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
