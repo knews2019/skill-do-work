@@ -91,19 +91,23 @@ func readInventory(repositoryRoot string) ([]inventoryRow, error) {
 }
 
 func classifyInventory(status, path, origin string) string {
+	classification := "M"
+	// Porcelain reports the index and worktree independently. A deletion in
+	// either column means the path is not a readable addition, even when the
+	// other column says it was newly staged (AD). Only index-column A and ?? are
+	// additions; worktree-column A is an unmerged/combined state.
+	if strings.Contains(status, "D") {
+		classification = "D"
+	} else if status == "??" || len(status) > 0 && status[0] == 'A' {
+		classification = "A"
+	}
 	if secretPath(path) || secretPath(origin) {
-		if strings.Contains(status, "D") {
+		if classification == "D" {
 			return "XD"
 		}
 		return "X"
 	}
-	if status == "??" || strings.Contains(status, "A") {
-		return "A"
-	}
-	if strings.Contains(status, "D") {
-		return "D"
-	}
-	return "M"
+	return classification
 }
 func secretPath(path string) bool {
 	if path == "" {
