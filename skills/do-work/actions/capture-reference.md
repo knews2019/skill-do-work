@@ -64,6 +64,17 @@ This boundary governs what the minting flows *create*, never what already exists
 
 ## Request File Formats
 
+### Required Lessons Budget Contract
+
+`REQUIRED_LESSONS_TOKEN_BUDGET = 2000` tokens per REQ. This is the single budget constant for both capture-time selection and claim-time enforcement; consumers cite this section instead of restating the number.
+
+Each `required_lessons` entry has exactly one of these forms:
+
+- `path` — read the whole lesson satellite. Its cost is the `tokens` estimate on that satellite's `do-work/lessons-index.md` row.
+- `path#family-slug` — read only bullets carrying `[family: family-slug]`. This targeted form is legal only when that row says `slugged: full`; find the matching bullet lines with fixed-string `grep`, count their bytes with `wc -c`, and charge `ceil(bytes / 4)` tokens, the same formula the index uses. A `slugged: partial` satellite is selected bare or not selected.
+
+Capture sums the selected entries' costs and never exceeds the budget. It first narrows an over-budget bare match to an eligible targeted entry, then drops the lowest-ranked candidates until the set fits. Any dropped candidate is recorded in the REQ body under the exact heading `## Required Lessons — Dropped for Budget`, with its candidate entry, cost, and matching reason. When nothing matches the index, omit both `required_lessons` and the dropped-candidates heading.
+
 ### Simple REQ
 
 ```markdown
@@ -75,6 +86,7 @@ created_at: 2025-01-26T10:00:00Z  # current UTC instant, never local time with a
 user_request: UR-001
 domain: frontend  # choose one: frontend, backend, ui-design, general, security, testing, or cms
 prime_files: []  # list paths to relevant prime-*.md files, or leave empty
+required_lessons: []  # OPTIONAL capture-authored list governed by Required Lessons Budget Contract above; entries are `path` or eligible `path#family-slug`. Omit when the lessons index has no relevant match.
 tdd: true  # default true when a runnable RED test can be written in this project's harness; false otherwise (see heuristic below)
 suggested_spec:  # optional — spec template name if one clearly matches (e.g., "api-endpoint", "bug-fix")
 depends_on: []  # optional — list of REQ IDs that must complete before this REQ runs; honored by actions/work.md's selection scan

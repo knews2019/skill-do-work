@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.259.0 — Budgeted Required-Lessons Routing (2026-09-01)
+
+Future work can now start with the relevant lesson without loading the whole archive. Capture ranks indexed failure families, narrows fully slugged matches when needed, and records anything the shared token budget leaves out.
+
+- `required_lessons` accepts whole satellites or eligible family-targeted pointers, each with a reproducible cost.
+- One 2000-token contract governs capture-time selection and claim-time enforcement; no index match emits no field.
+- A focused request-model test proves normalization and lifecycle writes preserve the new field byte for byte.
+
 ## 0.258.0 — Family-Keyed Lessons Routing (2026-09-01)
 
 Lessons now move into future work instead of only accumulating in archive notes. Writers tag failure families, maintain a compact routing index, and promote repeated failures into prime traps.

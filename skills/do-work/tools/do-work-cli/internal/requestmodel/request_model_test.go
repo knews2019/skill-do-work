@@ -75,6 +75,34 @@ func TestSetScalarChangesOnlyAuthorizedBytes(t *testing.T) {
 	}
 }
 
+func TestRequiredLessonsSurviveNormalizedWriterRoundTrip(t *testing.T) {
+	original := []byte("---\n" +
+		"id: REQ-478\n" +
+		"status: pending\n" +
+		"required_lessons: [skills/do-work/actions/lessons-actions.md, skills/do-work/tools/do-work-cli/lessons-do-work-cli.md#final-boundary-identity]\n" +
+		"---\nBody\n")
+	document, err := ParseDocument(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// TypedRecord exercises schemanormalization before the requestmodel writer
+	// performs an ordinary state transition.
+	_ = document.TypedRecord()
+	if err := document.SetScalar("status", "claimed"); err != nil {
+		t.Fatal(err)
+	}
+
+	wantLessons := []byte("required_lessons: [skills/do-work/actions/lessons-actions.md, skills/do-work/tools/do-work-cli/lessons-do-work-cli.md#final-boundary-identity]\n")
+	if bytes.Count(document.DocumentBytes(), wantLessons) != 1 {
+		t.Fatalf("required_lessons changed during normalized write: %q", document.DocumentBytes())
+	}
+	want := bytes.Replace(original, []byte("status: pending"), []byte("status: claimed"), 1)
+	if !bytes.Equal(document.DocumentBytes(), want) {
+		t.Fatalf("normalized write changed unrelated bytes:\n%q\nwant:\n%q", document.DocumentBytes(), want)
+	}
+}
+
 func TestLiteralBlockScalarAndUnrelatedCommentsSurviveFieldEdits(t *testing.T) {
 	original := []byte("---\nblocked_by: |-\n  first line\n  second: line\n# keep this comment\nstatus: pending\n---\nBody\n")
 	document, err := ParseDocument(original)

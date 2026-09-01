@@ -227,11 +227,12 @@ Prepare the final UR/REQ bytes, raw verbatim-input bytes, assets, expected/new f
 The wrapper invocation below follows the canonical [Prescribed shell primitives](../docs/prescribed-shell-primitives.md); do not restate its shared shell safety mechanics here.
 
 **For all requests (simple and complex):**
-1. Author the final `do-work/user-requests/UR-NNN/input.md` payload per the **UR input.md** template in `actions/capture-reference.md`, with its complete final `requests` array. Apply `actions/clarify.md` Step 4's **Outside-text containment** to the Full Verbatim Input body; also supply the raw input payload so the command proves containment from the source bytes.
-2. Author final REQ payloads using the **Simple REQ** or **Complex REQ (additional sections)** template in `actions/capture-reference.md` — **excluding any request Step 2's fold-first scan already resolved**. Put fold expected/new payloads in the same manifest instead of editing their destinations directly.
-3. If the request is behavior-changing and has a meaningful RED/GREEN proof target, add a `## Red-Green Proof` section. If `tdd: true`, this section is required.
-4. Include all created REQ IDs in the final UR payload. Folded requests created no REQ, so they never enter the array.
-5. Invoke the canonical command exactly once for the complete capture:
+1. Read `do-work/lessons-index.md` when it exists and route relevant lesson entries per `actions/capture-reference.md` → **Required Lessons Budget Contract**. Judge candidates in this order: (a) the request text or likely touched paths match a failure-family slug named in an index hook; (b) the satellite's owning prime governs a path the request names; (c) the most recent recurrence of the same family. Prefer an eligible targeted entry before dropping an over-budget bare match. Stamp the fitting set as `required_lessons` and record every remaining drop under the contract's fixed body heading. If the index is absent or no row matches, emit no field and invent nothing.
+2. Author the final `do-work/user-requests/UR-NNN/input.md` payload per the **UR input.md** template in `actions/capture-reference.md`, with its complete final `requests` array. Apply `actions/clarify.md` Step 4's **Outside-text containment** to the Full Verbatim Input body; also supply the raw input payload so the command proves containment from the source bytes.
+3. Author final REQ payloads using the **Simple REQ** or **Complex REQ (additional sections)** template in `actions/capture-reference.md` — **excluding any request Step 2's fold-first scan already resolved**. Put fold expected/new payloads in the same manifest instead of editing their destinations directly.
+4. If the request is behavior-changing and has a meaningful RED/GREEN proof target, add a `## Red-Green Proof` section. If `tdd: true`, this section is required.
+5. Include all created REQ IDs in the final UR payload. Folded requests created no REQ, so they never enter the array.
+6. Invoke the canonical command exactly once for the complete capture:
 
    ```bash
    <skill-root>/tools/do-work-cli.sh --repo-root "<project-root>" --format json capture-files --manifest "<manifest-path>" --commit
@@ -303,6 +304,7 @@ Guard against these during capture:
 - [ ] Every distinct request in the input is accounted for — a created REQ file, or a line under `## Folded Requests` in the UR's `input.md` naming the REQ that absorbed it
 - [ ] Every REQ's `impact:` is a judged verdict, or the judgment was put to the user, or the field was left absent because neither was possible — never a copied default
 - [ ] Every REQ's `effort_estimate:` is a judged verdict, or the judgment was put to the user, or the field was left absent because neither was possible — never a copied default
+- [ ] Every emitted `required_lessons` list is index-backed, within `actions/capture-reference.md`'s one budget, and accompanied by the fixed dropped-candidates heading when a relevant candidate did not fit; no index match means no field
 - [ ] Every REQ whose `impact:` is not `impact-user-visible` carries the matching `[<impact token>] ` tag in its `title:`, quoted per the **Frontmatter Quoting** contract (`actions/work-reference.md` → Request File Schema), and none carries it in its filename
 - [ ] RED/GREEN proof captured for behavioral requests (or explicitly noted as not applicable)
 - [ ] All Open Questions resolved during capture or marked with recommended resolution
