@@ -1,7 +1,9 @@
 package archivefetch
 
 import (
+	"bytes"
 	"context"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -145,6 +147,32 @@ func TestDownloadAtomicNeverLeaksTokenInFailure(t *testing.T) {
 	}
 }
 
+func TestDownloadAtomicStillRefusesAnOccupiedTarget(t *testing.T) {
+	directory := t.TempDir()
+	targetPath := filepath.Join(directory, "download.bin")
+	if err := os.WriteFile(targetPath, []byte("owned bytes\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	var requestCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requestCount.Add(1)
+		_, _ = response.Write([]byte("replacement"))
+	}))
+	defer server.Close()
+
+	result := DownloadAtomic(context.Background(), server.URL, targetPath)
+	if result.Err == nil {
+		t.Fatal("occupied generic download target was replaced")
+	}
+	if requestCount.Load() != 0 {
+		t.Fatalf("download made %d request(s) after the occupied-target refusal", requestCount.Load())
+	}
+	contents, readError := os.ReadFile(targetPath)
+	if readError != nil || string(contents) != "owned bytes\n" {
+		t.Fatalf("target=%q err=%v", contents, readError)
+	}
+}
+
 func TestDownloadAtomicParentSwapCannotOverwriteOutsideTarget(t *testing.T) {
 	directory := t.TempDir()
 	parent := filepath.Join(directory, "parent")
@@ -201,6 +229,48 @@ func TestHttpRouteWinsWhenTheAtomicPrimitiveProducesAReadableArchive(t *testing.
 	}
 	if _, statErr := os.Stat(targetPath); statErr != nil {
 		t.Errorf("the archive was not published: %v", statErr)
+	}
+}
+
+func TestHttpRouteReplacesAnUnchangedRegularArchiveAfterValidation(t *testing.T) {
+	directory := t.TempDir()
+	sourceArchive := newFixtureArchive(t, directory, "replacement.txt")
+	archiveBytes, readError := os.ReadFile(sourceArchive)
+	if readError != nil {
+		t.Fatal(readError)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		_, _ = response.Write(archiveBytes)
+	}))
+	defer server.Close()
+	targetPath := filepath.Join(directory, "upstream.tar.gz")
+	if err := os.WriteFile(targetPath, []byte("old archive bytes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := FetchArchive(context.Background(), Request{
+		ArchiveTargetPath:  targetPath,
+		UpstreamTarballURL: server.URL,
+	})
+	if err != nil {
+		t.Fatalf("FetchArchive: %v", err)
+	}
+	if result.RouteDescription != "upstream archive fetched over HTTP" {
+		t.Fatalf("route = %q, want the HTTP route", result.RouteDescription)
+	}
+	contents, readError := os.ReadFile(targetPath)
+	if readError != nil {
+		t.Fatal(readError)
+	}
+	if !bytes.Equal(contents, archiveBytes) {
+		t.Fatal("HTTP route did not publish the validated replacement")
+	}
+	info, statError := os.Stat(targetPath)
+	if statError != nil {
+		t.Fatal(statError)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("mode=%o, want private candidate mode 600", info.Mode().Perm())
 	}
 }
 
@@ -262,13 +332,17 @@ func TestGitRouteHonoursExportIgnore(t *testing.T) {
 // beside it, so a failed update cannot destroy an archive an operator already had.
 func TestTotalFailurePreservesTheTargetAndLeavesNoScratch(t *testing.T) {
 	directory := t.TempDir()
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		_, _ = response.Write([]byte("not an archive\n"))
+	}))
+	defer server.Close()
 	targetPath := filepath.Join(directory, "upstream.tar.gz")
 	if err := os.WriteFile(targetPath, []byte("existing archive bytes\n"), 0o644); err != nil {
 		t.Fatalf("seed target: %v", err)
 	}
 	_, err := FetchArchive(context.Background(), Request{
 		ArchiveTargetPath:     targetPath,
-		UpstreamTarballURL:    "https://example.com/suite.tar.gz",
+		UpstreamTarballURL:    server.URL,
 		UpstreamRepositoryURL: filepath.Join(directory, "no-such-repository"),
 	})
 	if err == nil {
@@ -291,35 +365,290 @@ func TestTotalFailurePreservesTheTargetAndLeavesNoScratch(t *testing.T) {
 	if string(preserved) != "existing archive bytes\n" {
 		t.Errorf("the pre-existing target was overwritten: %q", preserved)
 	}
-	entries, dirErr := os.ReadDir(directory)
-	if dirErr != nil {
-		t.Fatalf("read directory: %v", dirErr)
+	preservedInfo, statError := os.Stat(targetPath)
+	if statError != nil {
+		t.Fatal(statError)
 	}
-	for _, entry := range entries {
-		if strings.Contains(entry.Name(), ".fetching.") {
-			t.Errorf("a scratch file survived a total failure: %s", entry.Name())
+	if preservedInfo.Mode().Perm() != 0o644 {
+		t.Errorf("the pre-existing target mode changed: %o", preservedInfo.Mode().Perm())
+	}
+	assertNoArchiveScratch(t, directory)
+}
+
+func TestFetchArchiveRefusesUnsafeTargetsUnchanged(t *testing.T) {
+	t.Run("symlink", func(t *testing.T) {
+		directory := t.TempDir()
+		protectedPath := filepath.Join(directory, "protected.tar.gz")
+		if err := os.WriteFile(protectedPath, []byte("protected\n"), 0o640); err != nil {
+			t.Fatal(err)
 		}
+		targetPath := filepath.Join(directory, "upstream.tar.gz")
+		if err := os.Symlink(protectedPath, targetPath); err != nil {
+			t.Fatal(err)
+		}
+		_, fetchError := FetchArchive(context.Background(), Request{ArchiveTargetPath: targetPath, UpstreamTarballURL: "://invalid"})
+		if fetchError == nil {
+			t.Fatal("symlink target was accepted")
+		}
+		for _, expected := range []string{"HTTP route: not attempted", "Git route: not attempted", "archive target is unsafe"} {
+			if !strings.Contains(fetchError.Error(), expected) {
+				t.Errorf("failure %q is missing %q", fetchError, expected)
+			}
+		}
+		contents, readError := os.ReadFile(protectedPath)
+		if readError != nil || string(contents) != "protected\n" {
+			t.Fatalf("protected target=%q err=%v", contents, readError)
+		}
+		if info, err := os.Lstat(targetPath); err != nil || info.Mode()&os.ModeSymlink == 0 {
+			t.Fatalf("symlink target changed: info=%v err=%v", info, err)
+		}
+		assertNoArchiveScratch(t, directory)
+	})
+
+	t.Run("directory", func(t *testing.T) {
+		directory := t.TempDir()
+		targetPath := filepath.Join(directory, "upstream.tar.gz")
+		if err := os.Mkdir(targetPath, 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := FetchArchive(context.Background(), Request{ArchiveTargetPath: targetPath, UpstreamTarballURL: "://invalid"}); err == nil {
+			t.Fatal("directory target was accepted")
+		}
+		if info, err := os.Lstat(targetPath); err != nil || !info.IsDir() {
+			t.Fatalf("directory target changed: info=%v err=%v", info, err)
+		}
+		assertNoArchiveScratch(t, directory)
+	})
+
+	t.Run("special file", func(t *testing.T) {
+		directory := t.TempDir()
+		targetPath := filepath.Join(directory, "upstream.tar.gz")
+		listener, listenError := net.Listen("unix", targetPath)
+		if listenError != nil {
+			t.Skipf("Unix sockets unavailable: %v", listenError)
+		}
+		defer listener.Close()
+		if _, err := FetchArchive(context.Background(), Request{ArchiveTargetPath: targetPath, UpstreamTarballURL: "://invalid"}); err == nil {
+			t.Fatal("special-file target was accepted")
+		}
+		if info, err := os.Lstat(targetPath); err != nil || info.Mode()&os.ModeSocket == 0 {
+			t.Fatalf("special-file target changed: info=%v err=%v", info, err)
+		}
+		assertNoArchiveScratch(t, directory)
+	})
+}
+
+func TestAbsentArchiveTargetRacePreservesTheCompetingCreation(t *testing.T) {
+	directory := t.TempDir()
+	sourceArchive := newFixtureArchive(t, directory, "payload.txt")
+	archiveBytes := readFixtureBytes(t, sourceArchive)
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { _, _ = response.Write(archiveBytes) }))
+	defer server.Close()
+	targetPath := filepath.Join(directory, "upstream.tar.gz")
+	setBeforeArchiveFetchPublish(t, func() {
+		if err := os.WriteFile(targetPath, []byte("competing creation\n"), 0o640); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	if _, err := FetchArchive(context.Background(), Request{ArchiveTargetPath: targetPath, UpstreamTarballURL: server.URL}); err == nil {
+		t.Fatal("competing creation was overwritten")
+	}
+	contents, readError := os.ReadFile(targetPath)
+	if readError != nil || string(contents) != "competing creation\n" {
+		t.Fatalf("competing target=%q err=%v", contents, readError)
+	}
+	assertNoArchiveScratch(t, directory)
+}
+
+func TestRegularArchiveTargetRacesPreserveTheCurrentObject(t *testing.T) {
+	tests := []struct {
+		name   string
+		change func(*testing.T, string)
+		want   string
+	}{
+		{
+			name: "in-place mutation",
+			change: func(t *testing.T, targetPath string) {
+				if err := os.WriteFile(targetPath, []byte("mutated in place\n"), 0o640); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "mutated in place\n",
+		},
+		{
+			name: "replacement",
+			change: func(t *testing.T, targetPath string) {
+				if err := os.Remove(targetPath); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(targetPath, []byte("competing replacement\n"), 0o640); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "competing replacement\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			directory := t.TempDir()
+			sourceArchive := newFixtureArchive(t, directory, "payload.txt")
+			archiveBytes := readFixtureBytes(t, sourceArchive)
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { _, _ = response.Write(archiveBytes) }))
+			defer server.Close()
+			targetPath := filepath.Join(directory, "upstream.tar.gz")
+			if err := os.WriteFile(targetPath, []byte("original bytes\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			setBeforeArchiveFetchPublish(t, func() { test.change(t, targetPath) })
+
+			if _, err := FetchArchive(context.Background(), Request{ArchiveTargetPath: targetPath, UpstreamTarballURL: server.URL}); err == nil {
+				t.Fatal("concurrently changed target was overwritten")
+			}
+			contents, readError := os.ReadFile(targetPath)
+			if readError != nil || string(contents) != test.want {
+				t.Fatalf("current target=%q err=%v", contents, readError)
+			}
+			assertNoArchiveScratch(t, directory)
+		})
 	}
 }
 
-func TestGitFallbackNeverOverwritesAnOccupiedTarget(t *testing.T) {
+func TestRegularArchiveTargetRemovalBeforePublicationIsNotRecreated(t *testing.T) {
 	directory := t.TempDir()
+	sourceArchive := newFixtureArchive(t, directory, "payload.txt")
+	archiveBytes := readFixtureBytes(t, sourceArchive)
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { _, _ = response.Write(archiveBytes) }))
+	defer server.Close()
 	targetPath := filepath.Join(directory, "upstream.tar.gz")
-	if err := os.WriteFile(targetPath, []byte("owned bytes\n"), 0o600); err != nil {
+	if err := os.WriteFile(targetPath, []byte("original bytes\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	setBeforeArchiveFetchPublish(t, func() {
+		if err := os.Remove(targetPath); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	if _, err := FetchArchive(context.Background(), Request{ArchiveTargetPath: targetPath, UpstreamTarballURL: server.URL}); err == nil {
+		t.Fatal("removed target was recreated")
+	}
+	if _, err := os.Lstat(targetPath); !os.IsNotExist(err) {
+		t.Fatalf("removed target was changed: %v", err)
+	}
+	assertNoArchiveScratch(t, directory)
+}
+
+func TestArchiveFetchParentSwapCannotRedirectRegularReplacement(t *testing.T) {
+	directory := t.TempDir()
+	parent := filepath.Join(directory, "parent")
+	held := filepath.Join(directory, "held")
+	outside := filepath.Join(directory, "outside")
+	if err := os.Mkdir(parent, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(outside, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	targetPath := filepath.Join(parent, "upstream.tar.gz")
+	if err := os.WriteFile(targetPath, []byte("old archive\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	protectedPath := filepath.Join(outside, "upstream.tar.gz")
+	if err := os.WriteFile(protectedPath, []byte("protected\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	sourceArchive := newFixtureArchive(t, directory, "replacement.txt")
+	archiveBytes := readFixtureBytes(t, sourceArchive)
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { _, _ = response.Write(archiveBytes) }))
+	defer server.Close()
+	setBeforeArchiveFetchPublish(t, func() {
+		if err := os.Rename(parent, held); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(outside, parent); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	result, err := FetchArchive(context.Background(), Request{ArchiveTargetPath: targetPath, UpstreamTarballURL: server.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.RouteDescription != "upstream archive fetched over HTTP" {
+		t.Fatalf("route=%q", result.RouteDescription)
+	}
+	protectedContents := readFixtureBytes(t, protectedPath)
+	if string(protectedContents) != "protected\n" {
+		t.Fatalf("outside target changed: %q", protectedContents)
+	}
+	publishedContents := readFixtureBytes(t, filepath.Join(held, "upstream.tar.gz"))
+	if !bytes.Equal(publishedContents, archiveBytes) {
+		t.Fatal("replacement was not confined to the opened parent")
+	}
+	assertNoArchiveScratch(t, held)
+}
+
+func TestGitFallbackReplacesAnUnchangedRegularArchiveAfterValidation(t *testing.T) {
+	directory := t.TempDir()
+	targetPath := filepath.Join(directory, "upstream.tar.gz")
+	if err := os.WriteFile(targetPath, []byte("old archive bytes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := FetchArchive(context.Background(), Request{
+		ArchiveTargetPath:     targetPath,
+		UpstreamTarballURL:    "://invalid",
+		UpstreamRepositoryURL: newFixtureRepository(t, directory),
+	})
+	if err != nil {
+		t.Fatalf("FetchArchive: %v", err)
+	}
+	if !strings.HasPrefix(result.RouteDescription, "upstream archive fetched with git (HTTP route failed") {
+		t.Fatalf("route = %q, want Git after failed HTTP", result.RouteDescription)
+	}
+	if !archiveIsReadable(context.Background(), targetPath) {
+		t.Fatal("Git route did not publish a readable replacement")
+	}
+	if names := archiveEntryNames(t, targetPath); !strings.Contains(names, gitArchivePrefix+"tracked.txt") {
+		t.Fatalf("archive entries = %q, want the Git route payload", names)
+	}
+	info, statError := os.Stat(targetPath)
+	if statError != nil {
+		t.Fatal(statError)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("mode=%o, want private candidate mode 600", info.Mode().Perm())
+	}
+}
+
+func TestGitFallbackPreservesAConcurrentRegularTargetReplacement(t *testing.T) {
+	directory := t.TempDir()
+	targetPath := filepath.Join(directory, "upstream.tar.gz")
+	if err := os.WriteFile(targetPath, []byte("old archive bytes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	setBeforeArchiveFetchPublish(t, func() {
+		if err := os.Remove(targetPath); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(targetPath, []byte("competing Git-route replacement\n"), 0o640); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	_, err := FetchArchive(context.Background(), Request{
 		ArchiveTargetPath:     targetPath,
 		UpstreamTarballURL:    "://invalid",
 		UpstreamRepositoryURL: newFixtureRepository(t, directory),
 	})
 	if err == nil {
-		t.Fatal("occupied publication unexpectedly succeeded")
+		t.Fatal("Git fallback overwrote a competing replacement")
 	}
-	contents, readErr := os.ReadFile(targetPath)
-	if readErr != nil || string(contents) != "owned bytes\n" {
-		t.Fatalf("target=%q err=%v", contents, readErr)
+	contents, readError := os.ReadFile(targetPath)
+	if readError != nil || string(contents) != "competing Git-route replacement\n" {
+		t.Fatalf("current target=%q err=%v", contents, readError)
 	}
+	assertNoArchiveScratch(t, directory)
 }
 
 // A repository URL that cannot be derived must report the route as unavailable rather than
@@ -359,6 +688,41 @@ func setAtomicRetryTiming(t *testing.T, delay, budget time.Duration) {
 	t.Cleanup(func() {
 		atomicRetryDelay, atomicRetryBudget = previousDelay, previousBudget
 	})
+}
+
+func setBeforeArchiveFetchPublish(t *testing.T, action func()) {
+	t.Helper()
+	previousHook := beforeArchiveFetchPublish
+	callCount := 0
+	beforeArchiveFetchPublish = func() {
+		if callCount == 0 {
+			action()
+		}
+		callCount++
+	}
+	t.Cleanup(func() { beforeArchiveFetchPublish = previousHook })
+}
+
+func assertNoArchiveScratch(t *testing.T, directory string) {
+	t.Helper()
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		t.Fatalf("read directory: %v", err)
+	}
+	for _, entry := range entries {
+		if strings.Contains(entry.Name(), ".fetching.") {
+			t.Errorf("archive scratch survived: %s", entry.Name())
+		}
+	}
+}
+
+func readFixtureBytes(t *testing.T, path string) []byte {
+	t.Helper()
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	return contents
 }
 
 func newFixtureArchive(t *testing.T, directory, entryName string) string {
