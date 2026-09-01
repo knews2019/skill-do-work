@@ -77,4 +77,4 @@ Status: in-progress
 | Planner/Explorer | REQ-415 hook migration | read-only | REQ plus UR-081, primes, hooks, tests | `REQ-415-plan.md`, `REQ-415-exploration.md` | done |
 | Planner/Explorer | REQ-441 archive refresh | read-only | REQ plus UR-083, REQ-414, archivefetch | `REQ-441-plan.md`, `REQ-441-exploration.md` | done |
 | 1 | REQ-415 | `worktree-agent-REQ-415-migrate-core-memory-hooks` | `REQ-415-brief.md` | `REQ-415-handback.md` | pending |
-| 2 | REQ-441 | `worktree-agent-REQ-441-validate-http-archives-before-publication` | `REQ-441-brief.md` | `REQ-441-handback.md` | pending |
+| 2 | REQ-441 | `worktree-agent-REQ-441-validate-http-archives-before-publication` | `REQ-441-brief.md` | `REQ-441-handback.md` | done |
