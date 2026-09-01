@@ -57,13 +57,26 @@ func handleReportImage(executionContext commandruntime.ExecutionContext, argumen
 
 	invocationContext, stopSignals, interrupted := imageSignalContext()
 	defer stopSignals()
-	result := runTransaction(CommandReportImage, executionContext.RepositoryRoot, []string{relative}, nil, dryRun, commit, "[do-work] Generate report image", func(recorder *gittransaction.MutationRecorder) error {
-		generated := generateImage(invocationContext, absolute, rest[1], rest[2])
+	result := runTransactionContext(invocationContext, CommandReportImage, executionContext.RepositoryRoot, []string{relative}, nil, dryRun, commit, "[do-work] Generate report image", func(recorder *gittransaction.MutationRecorder) error {
+		stageDirectory, stageErr := os.MkdirTemp("", "do-work-report-image.*")
+		if stageErr != nil {
+			return stageErr
+		}
+		defer os.RemoveAll(stageDirectory)
+		stageOutput := filepath.Join(stageDirectory, filepath.Base(absolute))
+		generated := generateImage(invocationContext, stageOutput, rest[1], rest[2])
 		if generated.Interrupted {
 			return context.Canceled
 		}
 		if generated.Err != nil {
 			return generated.Err
+		}
+		contents, readErr := os.ReadFile(stageOutput)
+		if readErr != nil {
+			return readErr
+		}
+		if publishErr := rootedPublishFile(executionContext.RepositoryRoot, relative, contents, 0o600, preexisting); publishErr != nil {
+			return publishErr
 		}
 		if preexisting {
 			return recorder.RecordTouched(relative)
@@ -124,8 +137,9 @@ func handleReportImageBatch(executionContext commandruntime.ExecutionContext, ar
 	invocationContext, stopSignals, interrupted := imageSignalContext()
 	defer stopSignals()
 	succeeded := 0
-	result := runTransaction(CommandReportImageBatch, executionContext.RepositoryRoot, targets, []string{generatedRel}, dryRun, commit, "[do-work] Generate report image batch", func(recorder *gittransaction.MutationRecorder) error {
-		stage, createErr := os.MkdirTemp(reportDirectory, ".generated.staging.*")
+	failedNames := []string{}
+	result := runTransactionContext(invocationContext, CommandReportImageBatch, executionContext.RepositoryRoot, targets, []string{generatedRel}, dryRun, commit, "[do-work] Generate report image batch", func(recorder *gittransaction.MutationRecorder) error {
+		stage, createErr := os.MkdirTemp("", "do-work-generated-staging.*")
 		if createErr != nil {
 			return createErr
 		}
@@ -146,6 +160,7 @@ func handleReportImageBatch(executionContext commandruntime.ExecutionContext, ar
 			}
 			if outcome.Err != nil {
 				_ = os.Remove(filepath.Join(stage, requests[index].Name))
+				failedNames = append(failedNames, requests[index].Name)
 				continue
 			}
 			succeeded++
@@ -153,35 +168,58 @@ func handleReportImageBatch(executionContext commandruntime.ExecutionContext, ar
 		if succeeded == 0 {
 			return nil
 		}
-		if _, statErr := os.Lstat(generatedDirectory); !os.IsNotExist(statErr) {
+		ownedDirectory, mkdirErr := rootedMkdirExclusive(executionContext.RepositoryRoot, generatedRel, 0o700)
+		if mkdirErr != nil {
 			return errorsNewGeneratedAppeared()
 		}
-		if renameErr := os.Rename(stage, generatedDirectory); renameErr != nil {
-			return renameErr
-		}
+		published := false
+		defer func() {
+			if !published {
+				root, openErr := os.OpenRoot(executionContext.RepositoryRoot)
+				if openErr == nil {
+					if current, statErr := root.Lstat(filepath.FromSlash(generatedRel)); statErr == nil && os.SameFile(ownedDirectory, current) {
+						_ = root.RemoveAll(filepath.FromSlash(generatedRel))
+					}
+					root.Close()
+				}
+			}
+		}()
 		if err := recorder.RecordCreatedDirectory(generatedRel); err != nil {
 			return err
 		}
 		for index, outcome := range outcomes {
 			if outcome.Err == nil {
+				contents, readErr := os.ReadFile(filepath.Join(stage, requests[index].Name))
+				if readErr != nil {
+					return readErr
+				}
+				if publishErr := rootedPublishInOwnedDirectory(executionContext.RepositoryRoot, generatedRel, ownedDirectory, requests[index].Name, contents, 0o600); publishErr != nil {
+					return publishErr
+				}
 				if err := recorder.RecordCreated(targets[index]); err != nil {
 					return err
 				}
 			}
 		}
+		published = true
 		return nil
 	})
 	if status := interrupted(); status != 0 {
 		result.ExitCodeOverride = status
 	}
 	if result.Outcome == resultmodel.OutcomeSuccess {
-		output := ""
-		if dryRun {
-			output = "would generate " + generatedDirectory + "\n"
-		} else if succeeded > 0 {
-			output = generatedDirectory + "\n"
+		var output strings.Builder
+		for _, name := range failedNames {
+			fmt.Fprintf(&output, "MISSING: %s → fall back to SVG/Mermaid for that section\n", name)
+			result.Findings = append(result.Findings, toolboxFinding(CommandReportImageBatch, "REPORT-IMAGE-MISSING", resultmodel.SeverityWarning, []string{name}, "backend failed or produced no nonempty image", resultmodel.FixabilityManual, "use SVG or Mermaid for this section"))
 		}
-		result.ExactTextOutput = &output
+		if dryRun {
+			fmt.Fprintf(&output, "would generate %s\n", generatedDirectory)
+		} else if succeeded > 0 {
+			fmt.Fprintf(&output, "%s\n", generatedDirectory)
+		}
+		exact := output.String()
+		result.ExactTextOutput = &exact
 	}
 	return result
 }

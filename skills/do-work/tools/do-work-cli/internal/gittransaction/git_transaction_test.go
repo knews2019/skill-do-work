@@ -489,7 +489,7 @@ func TestExistingUntrackedMoveCommitStagesOnlyTheDestination(t *testing.T) {
 		return recorder.RecordCreated("do-work/working/REQ-001.md")
 	})
 	if result.Outcome != resultmodel.OutcomeSuccess || result.CommitSHA == "" {
-		t.Fatalf("untracked move commit = %#v", result)
+		t.Fatalf("untracked move commit = %#v failure=%+v", result, result.Failure)
 	}
 	if paths := runFixtureGit(t, repositoryRoot, "show", "--pretty=", "--name-only", result.CommitSHA); strings.TrimSpace(paths) != "do-work/working/REQ-001.md" {
 		t.Fatalf("committed paths = %q", paths)
@@ -926,6 +926,41 @@ func TestRefusedCommitRollsBackAndReportsCommitFailed(t *testing.T) {
 	finding := BuildCommandResult("apply", result).Findings[0]
 	if finding.Code != FindingCode(FailureCommit) {
 		t.Errorf("finding code = %q, want %q", finding.Code, FindingCode(FailureCommit))
+	}
+}
+
+func TestRemediationTrackedRollbackPreservesConcurrentReplacement(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	target := filepath.Join(repositoryRoot, "tracked.txt")
+	if err := os.WriteFile(target, []byte("original\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runFixtureGit(t, repositoryRoot, "add", "tracked.txt")
+	runFixtureGit(t, repositoryRoot, "commit", "-m", "baseline")
+	hooksDirectory := runFixtureGit(t, repositoryRoot, "rev-parse", "--git-path", "hooks")
+	if !filepath.IsAbs(hooksDirectory) {
+		hooksDirectory = filepath.Join(repositoryRoot, strings.TrimSpace(hooksDirectory))
+	}
+	if err := os.MkdirAll(strings.TrimSpace(hooksDirectory), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	hook := "#!/bin/sh\nprintf 'second writer\\n' > tracked.txt\nexit 1\n"
+	if err := os.WriteFile(filepath.Join(strings.TrimSpace(hooksDirectory), "pre-commit"), []byte(hook), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot, TargetPaths: []string{"tracked.txt"}, Commit: true, CommitMessage: "fail",
+	}, func(recorder *MutationRecorder) error {
+		if err := os.WriteFile(target, []byte("ours\n"), 0o644); err != nil {
+			return err
+		}
+		return recorder.RecordTouched("tracked.txt")
+	})
+	if result.Outcome != resultmodel.OutcomeRisk || result.Rollback.Status != resultmodel.RollbackIncomplete {
+		t.Fatalf("result=%+v", result)
+	}
+	if contents, err := os.ReadFile(target); err != nil || string(contents) != "second writer\n" {
+		t.Fatalf("replacement=%q err=%v", contents, err)
 	}
 }
 
