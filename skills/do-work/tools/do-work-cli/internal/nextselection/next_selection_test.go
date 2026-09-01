@@ -129,6 +129,72 @@ func TestExplicitREQOverridesDependencyAssignmentAndNegligibleFilters(t *testing
 	}
 }
 
+func TestClaimEvidenceVetoesEverySelectionModeBeforePolicyOrProbe(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-701-frontmatter.md", "REQ-701", "pending", "user_request: UR-701\nclaimed_at: 2026-09-01T11:00:00Z\neffort_estimate: effort-mechanical\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-702-checkpoint.md", "REQ-702", "blocked", "user_request: UR-701\nblocked_check: must-not-run\neffort_estimate: effort-mechanical\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-703-control.md", "REQ-703", "pending", "effort_estimate: effort-mechanical\n")
+	checkpoint := "- REQ-999: Unrelated — claimed earlier — writer: elsewhere:/repo\n" +
+		"- REQ-701: Matching checkpoint owner — claimed 2026-09-01T11:00:30Z — writer: host-frontmatter:/repo\n" +
+		"- REQ-702: First owner — claimed 2026-09-01T11:01:00Z — writer: host-a:/repo\n" +
+		"- REQ-702: Second owner — claimed 2026-09-01T11:02:00Z — writer: host-b:/repo\n"
+	writeRepositorySelectionFixture(t, repositoryRoot, "do-work/CHECKPOINT.md", checkpoint)
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph := dependencygraph.BuildGraph(snapshot)
+	probeCalls := 0
+	probeRunner := func([]byte, int) (int, error) {
+		probeCalls++
+		return 0, nil
+	}
+	limit := 4
+	for mode, options := range map[string]SelectionOptions{
+		"default":      {},
+		"fan-out":      {FanOutLimit: &limit},
+		"simple":       {SimpleOnly: true},
+		"explicit-req": {TargetTokens: []string{"REQ-701", "REQ-702", "REQ-703"}, FanOutLimit: &limit},
+		"ur-expanded":  {TargetTokens: []string{"UR-701"}, FanOutLimit: &limit},
+	} {
+		result := Select(snapshot, graph, options, probeRunner)
+		assertExclusionCode(t, result, "REQ-701", "ALREADY-CLAIMED")
+		assertExclusionCode(t, result, "REQ-702", "ALREADY-CLAIMED")
+		if mode != "ur-expanded" {
+			if got := selectedRequestIDsFromModel(result.Selected); !equalStrings(got, []string{"REQ-703"}) {
+				t.Fatalf("%s selected = %v, want control REQ-703; result=%#v", mode, got, result)
+			}
+		}
+		frontmatter := exclusionByID(t, result, "REQ-701")
+		if frontmatter.Provenance == "" || len(frontmatter.ClaimEvidence) != 2 || frontmatter.ClaimEvidence[0].Source != "request-frontmatter" || frontmatter.ClaimEvidence[0].ClaimedAt != "2026-09-01T11:00:00Z" || frontmatter.ClaimEvidence[1].Source != "checkpoint" || frontmatter.ClaimEvidence[1].Writer != "host-frontmatter:/repo" {
+			t.Fatalf("%s frontmatter evidence = %#v", mode, frontmatter)
+		}
+		checkpointExclusion := exclusionByID(t, result, "REQ-702")
+		if len(checkpointExclusion.ClaimEvidence) != 2 || checkpointExclusion.ClaimEvidence[0].Writer != "host-a:/repo" || checkpointExclusion.ClaimEvidence[1].Writer != "host-b:/repo" {
+			t.Fatalf("%s checkpoint evidence = %#v", mode, checkpointExclusion)
+		}
+	}
+	if probeCalls != 0 {
+		t.Fatalf("claimed blocked request ran its probe %d times", probeCalls)
+	}
+}
+
+func TestSelectionUsesDiscoveredCheckpointEvidenceWithoutRescan(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-710-owned.md", "REQ-710", "pending", "")
+	checkpointPath := filepath.Join(repositoryRoot, "do-work", "CHECKPOINT.md")
+	writeRepositorySelectionFixture(t, repositoryRoot, "do-work/CHECKPOINT.md", "- REQ-710: Owned — claimed now — writer: host:/repo\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(checkpointPath); err != nil {
+		t.Fatal(err)
+	}
+	result := Select(snapshot, dependencygraph.BuildGraph(snapshot), SelectionOptions{TargetTokens: []string{"REQ-710"}}, nil)
+	assertExclusionCode(t, result, "REQ-710", "ALREADY-CLAIMED")
+}
+
 func TestBlockedProbeReceivesExactBytesAndDoesNotMutateRequest(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	probe := "printf 'service ready\\n' >/dev/null\n"
@@ -283,4 +349,26 @@ func assertExclusionCode(t *testing.T, result resultmodel.CommandResult, identif
 		}
 	}
 	t.Fatalf("missing %s/%s exclusion in %#v", identifier, code, result.Excluded)
+}
+
+func exclusionByID(t *testing.T, result resultmodel.CommandResult, identifier string) resultmodel.SelectionExclusion {
+	t.Helper()
+	for _, exclusion := range result.Excluded {
+		if exclusion.RequestID == identifier {
+			return exclusion
+		}
+	}
+	t.Fatalf("missing exclusion %s in %#v", identifier, result.Excluded)
+	return resultmodel.SelectionExclusion{}
+}
+
+func writeRepositorySelectionFixture(t *testing.T, repositoryRoot, relativePath, contents string) {
+	t.Helper()
+	absolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(relativePath))
+	if err := os.MkdirAll(filepath.Dir(absolutePath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(absolutePath, []byte(contents), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }

@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.16 — Exclude Already-Claimed Queue Work (2026-09-02)
+
+The canonical selector now rejects queued work that still carries durable request or checkpoint ownership evidence before any probe, policy override, dependency, or fan-out decision.
+
+- One-pass repository discovery retains ordered writer-bearing checkpoint claims without adding liveness, lease, or stale-claim policy.
+- Default, simple, fan-out, explicit-REQ, and UR-expanded results return the same typed `ALREADY-CLAIMED` evidence in JSON and text; explicit targeting cannot steal ownership.
+
 ## 0.260.15 — Kanban Board Prime Points at Shipped Stakes (2026-09-02)
 
 The maintainer-side Kanban board prime now carries a `## Stakes` section that points at the shipped `prime-do-kanban.md` instead of restating it, closing the missing link between the two primes for the same tool.

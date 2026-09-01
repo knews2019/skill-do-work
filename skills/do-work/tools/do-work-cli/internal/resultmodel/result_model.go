@@ -166,23 +166,34 @@ type SelectionRecord struct {
 	VerificationArgv []string             `json:"verification_argv"`
 }
 
+// SelectionClaimEvidence is one exact ownership fact that vetoed selection.
+type SelectionClaimEvidence struct {
+	Source     string `json:"source"`
+	ClaimedAt  string `json:"claimed_at"`
+	Writer     string `json:"writer"`
+	Path       string `json:"path"`
+	SourceLine int    `json:"source_line"`
+	HeaderText string `json:"header_text"`
+}
+
 // SelectionExclusion is one considered request that cannot be selected. Code
 // is stable for machines; Reason is actionable for people.
 type SelectionExclusion struct {
-	RequestID        string               `json:"request_id"`
-	RequestPath      string               `json:"request_path"`
-	Title            string               `json:"title"`
-	Provenance       string               `json:"provenance"`
-	OriginalStatus   string               `json:"original_status"`
-	ProbeStatus      SelectionProbeStatus `json:"probe_status"`
-	ProbeAttempted   bool                 `json:"probe_attempted"`
-	ProbeExitCode    int                  `json:"probe_exit_code"`
-	UnblockRequired  bool                 `json:"unblock_required"`
-	Code             string               `json:"code"`
-	Reason           string               `json:"reason"`
-	NextArgv         []string             `json:"next_argv"`
-	NextJustRecipe   string               `json:"next_just_recipe"`
-	VerificationArgv []string             `json:"verification_argv"`
+	RequestID        string                   `json:"request_id"`
+	RequestPath      string                   `json:"request_path"`
+	Title            string                   `json:"title"`
+	Provenance       string                   `json:"provenance"`
+	OriginalStatus   string                   `json:"original_status"`
+	ProbeStatus      SelectionProbeStatus     `json:"probe_status"`
+	ProbeAttempted   bool                     `json:"probe_attempted"`
+	ProbeExitCode    int                      `json:"probe_exit_code"`
+	UnblockRequired  bool                     `json:"unblock_required"`
+	Code             string                   `json:"code"`
+	Reason           string                   `json:"reason"`
+	ClaimEvidence    []SelectionClaimEvidence `json:"claim_evidence"`
+	NextArgv         []string                 `json:"next_argv"`
+	NextJustRecipe   string                   `json:"next_just_recipe"`
+	VerificationArgv []string                 `json:"verification_argv"`
 }
 
 // SelectionSummary is the queue projection rendered beside selected and
@@ -302,6 +313,9 @@ func NormalizeResult(result CommandResult) CommandResult {
 		}
 		if exclusion.NextArgv == nil {
 			exclusion.NextArgv = []string{}
+		}
+		if exclusion.ClaimEvidence == nil {
+			exclusion.ClaimEvidence = []SelectionClaimEvidence{}
 		}
 		if exclusion.VerificationArgv == nil {
 			exclusion.VerificationArgv = []string{}
@@ -449,6 +463,12 @@ func renderText(result CommandResult) []byte {
 			fmt.Fprint(&output, "; unblock required")
 		}
 		fmt.Fprintln(&output)
+		for _, claim := range exclusion.ClaimEvidence {
+			fmt.Fprintf(&output, "  claim %s: claimed_at=%s writer=%s path=%s line=%d\n", claim.Source, claim.ClaimedAt, claim.Writer, claim.Path, claim.SourceLine)
+			if claim.HeaderText != "" {
+				fmt.Fprintf(&output, "    header: %s\n", claim.HeaderText)
+			}
+		}
 		if len(exclusion.NextArgv) > 0 {
 			fmt.Fprintf(&output, "  next: %s\n", joinArgv(exclusion.NextArgv))
 		}

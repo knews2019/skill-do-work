@@ -50,7 +50,7 @@ func TestNextCommandMixedFixture(t *testing.T) {
 		"REQ-105": "ASSIGNED-ELSEWHERE",
 		"REQ-106": "IMPACT-NEGLIGIBLE",
 		"REQ-108": "DEPENDENCY-MISSING",
-		"REQ-109": "STATUS-NOT-PENDING",
+		"REQ-109": "ALREADY-CLAIMED",
 	}
 	for _, exclusion := range result.Excluded {
 		deleteIfEqual(wantExclusions, exclusion.RequestID, exclusion.Code)

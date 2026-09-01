@@ -22,6 +22,8 @@ import (
 var ErrRepositoryNotFound = errors.New("do-work repository not found")
 
 var requestNumberPattern = regexp.MustCompile(`(?i)^REQ-0*([0-9]+)`)
+var checkpointClaimPattern = regexp.MustCompile(`^\s*-\s+(REQ-0*[0-9]+)\s*:.*\s+—\s+writer:\s*(\S(?:.*\S)?)\s*$`)
+var checkpointClaimedAtPattern = regexp.MustCompile(`\s+—\s+claimed\s+(.*?)\s+—\s+writer:`)
 
 // beforeReservationMarkerCreate is a test seam for a deterministic directory swap.
 var beforeReservationMarkerCreate = func(string) {}
@@ -83,19 +85,31 @@ type CollisionEvidence struct {
 	ClaimPaths []string
 }
 
+// CheckpointClaimEvidence is one writer-bearing checkpoint claim header. It is
+// policy-free discovery evidence; callers decide whether a claim blocks work.
+type CheckpointClaimEvidence struct {
+	RequestID    string
+	ClaimedAt    string
+	Writer       string
+	RelativePath string
+	SourceLine   int
+	HeaderText   string
+}
+
 // RepositorySnapshot is one complete typed read of a do-work tree.
 type RepositorySnapshot struct {
-	RepositoryRoot    string
-	DoWorkRoot        string
-	RequestFiles      []*RequestFile
-	RequestsByID      map[string][]*RequestFile
-	UserRequestFiles  []*UserRequestFile
-	RunManifestFiles  []RunManifestFile
-	ReservationFiles  []ReservationFile
-	CollisionEntries  []CollisionEvidence
-	DamagedRecords    []DamagedRecordFile
-	StrayRequestPaths []string
-	WarningMessages   []string
+	RepositoryRoot       string
+	DoWorkRoot           string
+	RequestFiles         []*RequestFile
+	RequestsByID         map[string][]*RequestFile
+	CheckpointClaimsByID map[string][]CheckpointClaimEvidence
+	UserRequestFiles     []*UserRequestFile
+	RunManifestFiles     []RunManifestFile
+	ReservationFiles     []ReservationFile
+	CollisionEntries     []CollisionEvidence
+	DamagedRecords       []DamagedRecordFile
+	StrayRequestPaths    []string
+	WarningMessages      []string
 }
 
 // FindRepositoryRoot walks upward from a file or directory to a queue root.
@@ -138,9 +152,10 @@ func DiscoverRepository(repositoryRoot string) (*RepositorySnapshot, error) {
 		return nil, fmt.Errorf("do-work root %s is not a real directory", doWorkRoot)
 	}
 	snapshot := &RepositorySnapshot{
-		RepositoryRoot: absoluteRoot,
-		DoWorkRoot:     doWorkRoot,
-		RequestsByID:   map[string][]*RequestFile{},
+		RepositoryRoot:       absoluteRoot,
+		DoWorkRoot:           doWorkRoot,
+		RequestsByID:         map[string][]*RequestFile{},
+		CheckpointClaimsByID: map[string][]CheckpointClaimEvidence{},
 	}
 	discoveryRoot, rootError := os.OpenRoot(doWorkRoot)
 	if rootError != nil {
@@ -183,6 +198,15 @@ func DiscoverRepository(repositoryRoot string) (*RepositorySnapshot, error) {
 					RequestNumber: requestNumber, RequestID: formatRequestID(requestNumber), AbsolutePath: absolutePath,
 				})
 			}
+			return nil
+		}
+		if relativeSlashPath == "CHECKPOINT.md" {
+			fileBytes, _, readError := readContainedRegularFile(discoveryRoot, relativeSlashPath, absolutePath)
+			if readError != nil {
+				snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot read checkpoint %s: %v", absolutePath, readError))
+				return nil
+			}
+			projectCheckpointClaims(snapshot, relativeSlashPath, fileBytes)
 			return nil
 		}
 
@@ -306,6 +330,28 @@ func manifestStatus(fileBytes []byte) string {
 		}
 	}
 	return ""
+}
+
+func projectCheckpointClaims(snapshot *RepositorySnapshot, relativePath string, fileBytes []byte) {
+	for lineIndex, headerText := range strings.Split(string(fileBytes), "\n") {
+		headerText = strings.TrimSuffix(headerText, "\r")
+		claimMatch := checkpointClaimPattern.FindStringSubmatch(headerText)
+		if claimMatch == nil {
+			continue
+		}
+		requestID := requestIDFromText(claimMatch[1])
+		if requestID == "" {
+			continue
+		}
+		claimedAt := ""
+		if claimedMatch := checkpointClaimedAtPattern.FindStringSubmatch(headerText); claimedMatch != nil {
+			claimedAt = strings.TrimSpace(claimedMatch[1])
+		}
+		snapshot.CheckpointClaimsByID[requestID] = append(snapshot.CheckpointClaimsByID[requestID], CheckpointClaimEvidence{
+			RequestID: requestID, ClaimedAt: claimedAt, Writer: strings.TrimSpace(claimMatch[2]),
+			RelativePath: relativePath, SourceLine: lineIndex + 1, HeaderText: headerText,
+		})
+	}
 }
 
 // ReserveNextRequestID exclusively creates and returns the next marker.

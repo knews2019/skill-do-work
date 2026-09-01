@@ -85,7 +85,8 @@ func TestSelectionTextAndJSONCarryTheSameTypedCommands(t *testing.T) {
 			RequestID: "REQ-008", RequestPath: "do-work/queue/REQ-008-waiting.md", Title: "Waiting work", Provenance: "ur-expanded", OriginalStatus: "pending",
 			ProbeStatus: ProbeNotApplicable, ProbeExitCode: -1,
 			Code: "DEPENDENCIES-UNMET", Reason: "waits on REQ-007",
-			NextArgv: []string{"do-work", "run", "REQ-007"}, NextJustRecipe: "do-work-run REQ-007",
+			ClaimEvidence: []SelectionClaimEvidence{{Source: "checkpoint", ClaimedAt: "2026-09-01T10:00:00Z", Writer: "host:/repo", Path: "do-work/CHECKPOINT.md", SourceLine: 12, HeaderText: "- REQ-008: Waiting work — claimed 2026-09-01T10:00:00Z — writer: host:/repo"}},
+			NextArgv:      []string{"do-work", "run", "REQ-007"}, NextJustRecipe: "do-work-run REQ-007",
 			VerificationArgv: []string{"do-work-cli", "--format", "json", "next", "REQ-008"},
 		}},
 		SelectionSummary: SelectionSummary{Pending: 2, TotalEstimatedMinutes: 10},
@@ -101,6 +102,8 @@ func TestSelectionTextAndJSONCarryTheSameTypedCommands(t *testing.T) {
 		"excluded REQ-008 [ur-expanded] DEPENDENCIES-UNMET: waits on REQ-007",
 		"request: do-work/queue/REQ-008-waiting.md (original status: pending)",
 		"probe not_applicable (attempted: false, exit: -1)",
+		"claim checkpoint: claimed_at=2026-09-01T10:00:00Z writer=host:/repo path=do-work/CHECKPOINT.md line=12",
+		"header: - REQ-008: Waiting work — claimed 2026-09-01T10:00:00Z — writer: host:/repo",
 		"next: do-work run REQ-007", "just: just do-work-run REQ-007",
 		"verify: do-work-cli --format json next REQ-008", "run_set: REQ-007",
 	} {
@@ -116,8 +119,22 @@ func TestSelectionTextAndJSONCarryTheSameTypedCommands(t *testing.T) {
 	if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if len(decoded.Selected) != 1 || len(decoded.Excluded) != 1 || decoded.Selected[0].NextArgv[2] != "REQ-007" || decoded.Excluded[0].Code != "DEPENDENCIES-UNMET" || decoded.Selected[0].RequestPath != "do-work/queue/REQ-007-ready.md" || !decoded.Selected[0].UnblockRequired || decoded.Selected[0].ProbeStatus != ProbeSucceeded {
+	if len(decoded.Selected) != 1 || len(decoded.Excluded) != 1 || decoded.Selected[0].NextArgv[2] != "REQ-007" || decoded.Excluded[0].Code != "DEPENDENCIES-UNMET" || len(decoded.Excluded[0].ClaimEvidence) != 1 || decoded.Excluded[0].ClaimEvidence[0].SourceLine != 12 || decoded.Selected[0].RequestPath != "do-work/queue/REQ-007-ready.md" || !decoded.Selected[0].UnblockRequired || decoded.Selected[0].ProbeStatus != ProbeSucceeded {
 		t.Fatalf("selection JSON lost typed records: %#v", decoded)
+	}
+}
+
+func TestNormalizeResultUsesEmptyClaimEvidenceArray(t *testing.T) {
+	normalized := NormalizeResult(CommandResult{Excluded: []SelectionExclusion{{RequestID: "REQ-001"}}})
+	if normalized.Excluded[0].ClaimEvidence == nil {
+		t.Fatal("claim evidence remained nil")
+	}
+	encoded, err := json.Marshal(normalized)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(encoded), `"claim_evidence":[]`) {
+		t.Fatalf("normalized JSON = %s", encoded)
 	}
 }
 

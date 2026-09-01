@@ -1,7 +1,7 @@
 ---
 id: REQ-450
 title: 'Exclude already-claimed requests before selection'
-status: claimed
+status: completed
 route: C
 created_at: 2026-08-31T20:49:21Z
 user_request: UR-085
@@ -41,6 +41,8 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go
   - skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go
   - skills/do-work/tools/do-work-cli/internal/nextselection/next_commands_test.go
+completed_at: 2026-09-01T23:48:27Z
+release_at: 2026-09-01T23:49:50Z
 ---
 
 # Exclude Already-Claimed Requests Before Selection

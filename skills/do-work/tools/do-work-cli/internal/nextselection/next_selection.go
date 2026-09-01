@@ -20,7 +20,7 @@ func Select(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygraph
 	result.Excluded = append(result.Excluded, targetExclusions...)
 	eligible := []resultmodel.SelectionRecord{}
 	for _, candidate := range candidates {
-		record, exclusion, probed, probeSucceeded := evaluateCandidate(candidate, graph, options, probeRunner)
+		record, exclusion, probed, probeSucceeded := evaluateCandidate(snapshot, candidate, graph, options, probeRunner)
 		if probed {
 			result.SelectionSummary.Probed++
 		}
@@ -86,7 +86,7 @@ func nextVerificationArgv(options SelectionOptions) []string {
 	return arguments
 }
 
-func evaluateCandidate(candidate selectionCandidate, graph *dependencygraph.DependencyGraph, options SelectionOptions, probeRunner ProbeRunner) (*resultmodel.SelectionRecord, *resultmodel.SelectionExclusion, bool, bool) {
+func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate selectionCandidate, graph *dependencygraph.DependencyGraph, options SelectionOptions, probeRunner ProbeRunner) (*resultmodel.SelectionRecord, *resultmodel.SelectionExclusion, bool, bool) {
 	requestFile := candidate.RequestFile
 	record := requestFile.TypedRecord
 	identifier := candidate.RequestID
@@ -105,6 +105,12 @@ func evaluateCandidate(candidate selectionCandidate, graph *dependencygraph.Depe
 			reason = requestFile.ParseFailure
 		}
 		exclusion := newExclusion("INVALID-REQUEST", reason, []string{"do-work", "doctor"})
+		return nil, &exclusion, false, false
+	}
+	claimEvidence := selectionClaimEvidence(requestFile, identifier, snapshot.CheckpointClaimsByID[identifier])
+	if len(claimEvidence) > 0 {
+		exclusion := newExclusion("ALREADY-CLAIMED", alreadyClaimedReason(claimEvidence), []string{"do-work", "doctor"})
+		exclusion.ClaimEvidence = claimEvidence
 		return nil, &exclusion, false, false
 	}
 
@@ -227,6 +233,48 @@ func evaluateCandidate(candidate selectionCandidate, graph *dependencygraph.Depe
 		VerificationArgv: []string{"do-work-cli", "--format", "json", "next", identifier},
 	}
 	return &selected, nil, probed, probeSucceeded
+}
+
+func selectionClaimEvidence(requestFile *repositorymodel.RequestFile, identifier string, checkpointClaims []repositorymodel.CheckpointClaimEvidence) []resultmodel.SelectionClaimEvidence {
+	evidence := []resultmodel.SelectionClaimEvidence{}
+	claimedAtField := requestFile.TypedRecord.FieldEvidenceByName["claimed_at"]
+	if strings.TrimSpace(requestFile.TypedRecord.ClaimedAt) != "" {
+		evidence = append(evidence, resultmodel.SelectionClaimEvidence{
+			Source: "request-frontmatter", ClaimedAt: claimedAtField.RawValue,
+			Path: pathForSelection(requestFile), SourceLine: claimedAtField.LineNumber,
+		})
+	}
+	for _, checkpointClaim := range checkpointClaims {
+		if checkpointClaim.RequestID != identifier || strings.TrimSpace(checkpointClaim.Writer) == "" {
+			continue
+		}
+		evidence = append(evidence, resultmodel.SelectionClaimEvidence{
+			Source: "checkpoint", ClaimedAt: checkpointClaim.ClaimedAt, Writer: checkpointClaim.Writer,
+			Path:       filepath.ToSlash(filepath.Join("do-work", filepath.FromSlash(checkpointClaim.RelativePath))),
+			SourceLine: checkpointClaim.SourceLine, HeaderText: checkpointClaim.HeaderText,
+		})
+	}
+	return evidence
+}
+
+func alreadyClaimedReason(evidence []resultmodel.SelectionClaimEvidence) string {
+	requestClaims := 0
+	checkpointClaims := 0
+	for _, claim := range evidence {
+		if claim.Source == "request-frontmatter" {
+			requestClaims++
+		} else if claim.Source == "checkpoint" {
+			checkpointClaims++
+		}
+	}
+	switch {
+	case requestClaims > 0 && checkpointClaims > 0:
+		return "request carries claimed_at and checkpoint retains a writer claim"
+	case requestClaims > 0:
+		return "request carries claimed_at"
+	default:
+		return "checkpoint retains a writer claim"
+	}
 }
 
 func summarizeQueue(snapshot *repositorymodel.RepositorySnapshot) resultmodel.SelectionSummary {

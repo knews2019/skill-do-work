@@ -80,6 +80,42 @@ func TestDiscoverRepositoryRetainsRequestModificationTime(t *testing.T) {
 	}
 }
 
+func TestDiscoverRepositoryProjectsCheckpointClaimsInSourceOrder(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeRepositoryFixture(t, repositoryRoot, "do-work/queue/REQ-001-first.md", requestFixture("REQ-001", "pending"))
+	writeRepositoryFixture(t, repositoryRoot, "do-work/CHECKPOINT.md", strings.Join([]string{
+		"# Session Checkpoint",
+		"",
+		"## Arbitrary placement",
+		"- REQ-000001: First claim — claimed 2026-09-01T10:00:00Z — writer: host-a:/repo",
+		"- REQ-999: Unrelated — claimed earlier — writer: host-z:/repo",
+		"- REQ-001: Duplicate claim — claimed 2026-09-01T10:01:00Z — writer: host-b:/repo",
+		"- REQ-001: Missing writer — claimed 2026-09-01T10:02:00Z",
+		"ordinary prose mentioning REQ-001 — writer: host-c:/repo",
+	}, "\n"))
+
+	snapshot, err := DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims := snapshot.CheckpointClaimsByID["REQ-001"]
+	if len(claims) != 2 {
+		t.Fatalf("REQ-001 checkpoint claims = %#v, want two writer-bearing headers", claims)
+	}
+	if claims[0].Writer != "host-a:/repo" || claims[0].ClaimedAt != "2026-09-01T10:00:00Z" || claims[0].SourceLine != 4 || claims[0].RelativePath != "CHECKPOINT.md" {
+		t.Fatalf("first checkpoint claim = %#v", claims[0])
+	}
+	if claims[1].Writer != "host-b:/repo" || claims[1].ClaimedAt != "2026-09-01T10:01:00Z" || claims[1].SourceLine != 6 {
+		t.Fatalf("second checkpoint claim = %#v", claims[1])
+	}
+	if claims[0].HeaderText != "- REQ-000001: First claim — claimed 2026-09-01T10:00:00Z — writer: host-a:/repo" {
+		t.Fatalf("header text = %q", claims[0].HeaderText)
+	}
+	if unrelated := snapshot.CheckpointClaimsByID["REQ-999"]; len(unrelated) != 1 || unrelated[0].Writer != "host-z:/repo" {
+		t.Fatalf("unrelated checkpoint projection = %#v", unrelated)
+	}
+}
+
 func TestDiscoverRepositoryRetainsCollisionEvidence(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeRepositoryFixture(t, repositoryRoot, "do-work/queue/REQ-010-first.md", requestFixture("REQ-011", "pending"))
