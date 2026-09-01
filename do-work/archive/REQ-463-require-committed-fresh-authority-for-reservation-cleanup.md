@@ -1,7 +1,7 @@
 ---
 id: REQ-463
 title: '[impact-critical] Review fix: Require committed fresh authority for reservation cleanup'
-status: claimed
+status: completed
 created_at: 2026-09-01T02:23:45Z
 user_request: UR-081
 domain: backend
@@ -19,6 +19,8 @@ addendum_to: REQ-414
 sweep: true
 sweep_key: reservation-cleanup-committed-fresh-authority
 claimed_at: 2026-09-01T04:02:52Z
+completed_at: 2026-09-01T04:03:21Z
+commit: 168dc293
 ---
 
 # Require Committed Fresh Authority for Reservation Cleanup

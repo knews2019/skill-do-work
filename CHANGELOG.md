@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.254.0 — Typed SessionStart and Memory Hooks (2026-09-01)
+
+Core SessionStart plus memory injection and Stop capture now run through registered Go commands while the three shipped hook paths remain installed-layout launchers.
+
+- Exact hook protocol bytes coexist with typed JSON changes/findings, and the retained differential matrix covers transcript selection, redaction, UTF-8 budgets, deduplication, concurrency, modes, ledgers, and launcher failures.
+- Reservation cleanup now requires committed Git authority, preserves markers when evidence is unavailable or ambiguous, and revalidates marker identity plus final eligibility immediately before deletion, closing REQ-463.
+- REQ-415 completed with issues: the cross-hook Git mutation prerequisite and stale SessionStart ownership restatements are queued as REQ-466 and REQ-467.
+
 ## 0.253.1 — Validated Archive Refresh (2026-09-01)
 
 Archive updates can now replace an unchanged regular target only after the HTTP or Git candidate has been privately staged and validated.
