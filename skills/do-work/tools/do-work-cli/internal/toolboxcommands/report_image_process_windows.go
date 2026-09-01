@@ -13,3 +13,4 @@ func configureOwnedProcess(*exec.Cmd) error {
 
 func terminateOwnedProcess(int) error { return nil }
 func killOwnedProcess(int) error      { return nil }
+func ownedProcessGroupAlive(int) bool { return false }

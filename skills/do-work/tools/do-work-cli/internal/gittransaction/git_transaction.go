@@ -12,8 +12,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
@@ -80,12 +83,19 @@ type MutationRecorder struct {
 	createdDirectories        map[string]struct{}
 	repositoryRoot            string
 	publishedPrivate          map[string]publishedPrivateState
+	publishedTracked          map[string]publishedTrackedState
 	publishedDirectories      map[string]os.FileInfo
 }
 
 type publishedPrivateState struct {
 	info   os.FileInfo
 	digest [sha256.Size]byte
+}
+
+type publishedTrackedState struct {
+	existed bool
+	info    os.FileInfo
+	digest  [sha256.Size]byte
 }
 
 // privateTransactionTestHook is nil outside deterministic adversarial tests.
@@ -396,6 +406,9 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	if mutationErr := mutate(recorder); mutationErr != nil {
 		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation, mutationErr)
 	}
+	if captureError := recorder.captureTrackedPublications(root); captureError != nil {
+		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation, captureError)
+	}
 	changedPaths, err := changedTargets(ctx, repositoryRoot, states)
 	if err != nil {
 		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation, err)
@@ -471,6 +484,21 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	return result
 }
 
+func (recorder *MutationRecorder) captureTrackedPublications(root *os.Root) error {
+	for path := range recorder.touchedPaths {
+		info, digest, err := rootedRegularSnapshot(root, path)
+		if errors.Is(err, os.ErrNotExist) {
+			recorder.publishedTracked[path] = publishedTrackedState{}
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("identity-record changed target %q: %w", path, err)
+		}
+		recorder.publishedTracked[path] = publishedTrackedState{existed: true, info: info, digest: digest}
+	}
+	return nil
+}
+
 func verifyPublishedPrivateTargets(root *os.Root, states []targetState, recorder *MutationRecorder, changedPaths []string) error {
 	changed := stringSet(changedPaths)
 	for _, state := range states {
@@ -540,6 +568,7 @@ func newMutationRecorder(repositoryRoot string, states []targetState, createdDir
 		createdDirectories:        map[string]struct{}{},
 		repositoryRoot:            repositoryRoot,
 		publishedPrivate:          map[string]publishedPrivateState{},
+		publishedTracked:          map[string]publishedTrackedState{},
 		publishedDirectories:      map[string]os.FileInfo{},
 	}
 }
@@ -712,6 +741,9 @@ func changedTargets(ctx context.Context, repositoryRoot string, states []targetS
 }
 
 func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRoot string, states []targetState, recorder *MutationRecorder, failureKind FailureKind, operationError error) TransactionResult {
+	// Cancellation stops the requested operation, never the cleanup needed to
+	// restore or safely preserve exact targets.
+	ctx = context.WithoutCancel(ctx)
 	rollback := resultmodel.RollbackResult{Status: resultmodel.RollbackSucceeded, Actions: []string{}, Errors: []string{}}
 	root, rootError := os.OpenRoot(repositoryRoot)
 	if rootError != nil {
@@ -771,6 +803,14 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 		if !dirty {
 			continue
 		}
+		published, recorded := recorder.publishedTracked[state.path]
+		if recorded && !trackedPublicationStillOwned(root, state.path, published) {
+			if _, unstageError := runGit(ctx, repositoryRoot, "restore", "--staged", "--", state.path); unstageError != nil {
+				rollback.Errors = append(rollback.Errors, unstageError.Error())
+			}
+			rollback.Errors = append(rollback.Errors, "tracked target changed after publication; preserved replacement: "+state.path)
+			continue
+		}
 		if _, err := runGit(ctx, repositoryRoot, "restore", "--source=HEAD", "--staged", "--worktree", "--", state.path); err != nil {
 			rollback.Errors = append(rollback.Errors, err.Error())
 		} else {
@@ -792,11 +832,15 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 		if private {
 			continue
 		}
-		absolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(path))
 		if _, err := runGit(ctx, repositoryRoot, "rm", "--cached", "--ignore-unmatch", "--", path); err != nil {
 			rollback.Errors = append(rollback.Errors, fmt.Sprintf("unstage created target %s: %v", path, err))
 		}
-		if err := os.Remove(absolutePath); err != nil && !os.IsNotExist(err) {
+		published, recorded := recorder.publishedTracked[path]
+		if recorded && !trackedPublicationStillOwned(root, path, published) {
+			rollback.Errors = append(rollback.Errors, "created target changed after publication; preserved replacement: "+path)
+			continue
+		}
+		if err := root.Remove(filepath.FromSlash(path)); err != nil && !os.IsNotExist(err) {
 			rollback.Errors = append(rollback.Errors, fmt.Sprintf("remove created target %s: %v", path, err))
 		} else {
 			rollback.Actions = append(rollback.Actions, "removed created target "+path)
@@ -838,6 +882,18 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 		return failTransaction(result, resultmodel.OutcomeRisk, FailureRollback, operationError.Error(), rolledBackPaths...)
 	}
 	return failTransaction(result, resultmodel.OutcomeRolledBack, failureKind, operationError.Error(), rolledBackPaths...)
+}
+
+func trackedPublicationStillOwned(root *os.Root, path string, published publishedTrackedState) bool {
+	if root == nil {
+		return false
+	}
+	if !published.existed {
+		_, err := root.Lstat(filepath.FromSlash(path))
+		return os.IsNotExist(err)
+	}
+	info, digest, err := rootedRegularSnapshot(root, path)
+	return err == nil && os.SameFile(published.info, info) && published.digest == digest
 }
 
 func quarantineAndRollbackPrivate(root *os.Root, state targetState, published publishedPrivateState) (string, error) {
@@ -1008,6 +1064,7 @@ func failTransaction(result TransactionResult, outcome resultmodel.CommandOutcom
 func runGit(ctx context.Context, repositoryRoot string, args ...string) (string, error) {
 	commandArgs := append([]string{"-C", repositoryRoot, "--literal-pathspecs"}, args...)
 	command := exec.CommandContext(ctx, "git", commandArgs...)
+	configureCancellableProcessGroup(command)
 	var standardOutput bytes.Buffer
 	var standardError bytes.Buffer
 	command.Stdout = &standardOutput
@@ -1016,6 +1073,41 @@ func runGit(ctx context.Context, repositoryRoot string, args ...string) (string,
 		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(standardError.String()))
 	}
 	return standardOutput.String(), nil
+}
+
+// configureCancellableProcessGroup uses reflection so the shared file still
+// cross-compiles on platforms whose syscall.SysProcAttr has no Setpgid field.
+// On Unix, cancellation reaches Git hooks and their descendants as one owned
+// group, escalates after grace, and WaitDelay prevents inherited pipes from
+// holding the caller forever.
+func configureCancellableProcessGroup(command *exec.Cmd) {
+	attributes := &syscall.SysProcAttr{}
+	setProcessGroup := reflect.ValueOf(attributes).Elem().FieldByName("Setpgid")
+	if !setProcessGroup.IsValid() || !setProcessGroup.CanSet() || setProcessGroup.Kind() != reflect.Bool {
+		return
+	}
+	setProcessGroup.SetBool(true)
+	command.SysProcAttr = attributes
+	command.WaitDelay = 2 * time.Second
+	command.Cancel = func() error {
+		if command.Process == nil {
+			return os.ErrProcessDone
+		}
+		processGroup, findError := os.FindProcess(-command.Process.Pid)
+		if findError != nil {
+			return findError
+		}
+		termError := processGroup.Signal(syscall.Signal(15))
+		go func(processID int) {
+			timer := time.NewTimer(time.Second)
+			defer timer.Stop()
+			<-timer.C
+			if group, err := os.FindProcess(-processID); err == nil {
+				_ = group.Signal(os.Kill)
+			}
+		}(command.Process.Pid)
+		return termError
+	}
 }
 
 func splitNUL(value string) []string {

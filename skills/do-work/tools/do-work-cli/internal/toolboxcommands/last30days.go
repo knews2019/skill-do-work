@@ -1,6 +1,7 @@
 package toolboxcommands
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/fs"
@@ -41,7 +42,30 @@ func handleLast30Days(ctx commandruntime.ExecutionContext, args []string) result
 	}
 	target := filepath.Join(project, ".claude", "skills", "last30days")
 	changes := []resultmodel.RecordedChange{}
+	if mode == "install" && last30DaysComplete(target) && !dryRun {
+		_, excludeErr := prepareLast30DaysExclude(project)
+		if excludeErr != nil {
+			return last30DaysFailure(excludeErr)
+		}
+	}
 	if mode == "install" && !last30DaysComplete(target) {
+		if eligibilityErr := preflightLast30DaysTarget(project, target); eligibilityErr != nil {
+			return last30DaysFailure(eligibilityErr)
+		}
+		undoExclude := func() error { return nil }
+		var excludeErr error
+		if !dryRun {
+			undoExclude, excludeErr = prepareLast30DaysExclude(project)
+			if excludeErr != nil {
+				return last30DaysFailure(excludeErr)
+			}
+		}
+		keepExclude := false
+		defer func() {
+			if !keepExclude {
+				_ = undoExclude()
+			}
+		}()
 		cloneRoot, cloneErr := os.MkdirTemp("", "do-work-last30days-*")
 		if cloneErr != nil {
 			return last30DaysFailure(cloneErr)
@@ -61,11 +85,7 @@ func handleLast30Days(ctx commandruntime.ExecutionContext, args []string) result
 			return last30DaysFailure(publishErr)
 		} else {
 			changes = append(changes, resultmodel.RecordedChange{Path: filepath.ToSlash(target), Kind: "published", Detail: "installed complete last30days payload"})
-		}
-	}
-	if mode == "install" && !dryRun {
-		if err := ensureLast30DaysExclude(project); err != nil {
-			return last30DaysFailure(err)
+			keepExclude = true
 		}
 	}
 	lines := []string{}
@@ -145,11 +165,36 @@ func publishLast30Days(source, target string) error {
 			return fmt.Errorf("existing-tree backup FAILED: %w", err)
 		}
 	}
-	if err := os.Rename(stage, target); err != nil {
+	if err := os.Mkdir(target, 0o700); err != nil {
 		if backup != "" {
 			_ = os.Rename(filepath.Join(backup, "previous"), target)
 		}
-		return fmt.Errorf("publication FAILED: %w", err)
+		return fmt.Errorf("publication claim FAILED: %w", err)
+	}
+	publishedInfo, statErr := os.Lstat(target)
+	if statErr != nil {
+		return statErr
+	}
+	restore := func() error {
+		currentInfo, currentErr := os.Lstat(target)
+		if currentErr != nil || !os.SameFile(publishedInfo, currentInfo) {
+			return fmt.Errorf("published target changed; replacement preserved")
+		}
+		if removeErr := os.RemoveAll(target); removeErr != nil {
+			return removeErr
+		}
+		if backup != "" {
+			return os.Rename(filepath.Join(backup, "previous"), target)
+		}
+		return nil
+	}
+	if err := copyLast30DaysTree(stage, target); err != nil {
+		_ = restore()
+		return fmt.Errorf("publication copy FAILED: %w", err)
+	}
+	if !last30DaysComplete(target) {
+		_ = restore()
+		return fmt.Errorf("publication verification FAILED; previous tree restored")
 	}
 	return nil
 }
@@ -201,6 +246,91 @@ func copyLast30DaysTree(source, target string) error {
 func gitRepository(root string) bool {
 	return exec.Command("git", "-C", root, "rev-parse", "--git-dir").Run() == nil
 }
+
+func preflightLast30DaysTarget(project, target string) error {
+	relative, err := filepath.Rel(project, target)
+	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("last30days target escapes project root")
+	}
+	if err := validateNoLinkedAncestors(project, filepath.ToSlash(relative), false); err != nil {
+		return err
+	}
+	if !gitRepository(project) {
+		return nil
+	}
+	tracked, err := exec.Command("git", "-C", project, "ls-files", "-z", "--", filepath.ToSlash(relative)).Output()
+	if err != nil {
+		return err
+	}
+	if len(tracked) > 0 {
+		return fmt.Errorf("tracked vendored path must be untracked before installation; existing bytes were preserved")
+	}
+	return nil
+}
+
+func prepareLast30DaysExclude(root string) (func() error, error) {
+	noUndo := func() error { return nil }
+	if !gitRepository(root) {
+		return noUndo, nil
+	}
+	pathBytes, err := exec.Command("git", "-C", root, "rev-parse", "--git-path", "info/exclude").Output()
+	if err != nil {
+		return noUndo, err
+	}
+	exclude := strings.TrimSpace(string(pathBytes))
+	if !filepath.IsAbs(exclude) {
+		exclude = filepath.Join(root, exclude)
+	}
+	original, readErr := os.ReadFile(exclude)
+	existed := readErr == nil
+	if readErr != nil && !os.IsNotExist(readErr) {
+		return noUndo, readErr
+	}
+	undo := func() error {
+		if existed {
+			return os.WriteFile(exclude, original, 0o600)
+		}
+		return os.Remove(exclude)
+	}
+	if exec.Command("git", "-C", root, "check-ignore", "-q", ".claude/skills/last30days/SKILL.md").Run() != nil {
+		handle, openErr := os.OpenFile(exclude, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		if openErr != nil {
+			return noUndo, openErr
+		}
+		_, writeErr := handle.WriteString("\n**/.claude/skills/last30days/\n")
+		closeErr := handle.Close()
+		if writeErr != nil {
+			_ = undo()
+			return noUndo, writeErr
+		}
+		if closeErr != nil {
+			_ = undo()
+			return noUndo, closeErr
+		}
+	}
+	publishedInfo, publishedStatErr := os.Lstat(exclude)
+	publishedBytes, publishedReadErr := os.ReadFile(exclude)
+	if publishedStatErr != nil || publishedReadErr != nil || !publishedInfo.Mode().IsRegular() {
+		return noUndo, fmt.Errorf("local exclude publication identity unavailable")
+	}
+	undo = func() error {
+		currentInfo, statErr := os.Lstat(exclude)
+		currentBytes, currentReadErr := os.ReadFile(exclude)
+		if statErr != nil || currentReadErr != nil || !os.SameFile(publishedInfo, currentInfo) || !bytes.Equal(publishedBytes, currentBytes) {
+			return fmt.Errorf("local exclude changed after publication; preserved replacement")
+		}
+		if existed {
+			return os.WriteFile(exclude, original, 0o600)
+		}
+		return os.Remove(exclude)
+	}
+	if exec.Command("git", "-C", root, "check-ignore", "-q", ".claude/skills/last30days/SKILL.md").Run() != nil {
+		_ = undo()
+		return noUndo, fmt.Errorf("local exclude verification FAILED")
+	}
+	return undo, nil
+}
+
 func ensureLast30DaysExclude(root string) error {
 	if !gitRepository(root) {
 		return nil

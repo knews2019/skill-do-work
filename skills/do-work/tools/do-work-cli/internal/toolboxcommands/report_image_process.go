@@ -21,8 +21,14 @@ func runOwnedProcess(ctx context.Context, directory string, argv ...string) owne
 	}
 	command := exec.Command(argv[0], argv[1:]...)
 	command.Dir = directory
+	if err := ctx.Err(); err != nil {
+		return ownedProcessResult{Status: 1, Interrupted: true, Err: err}
+	}
 	if err := configureOwnedProcess(command); err != nil {
 		return ownedProcessResult{Status: 1, Err: err}
+	}
+	if err := ctx.Err(); err != nil {
+		return ownedProcessResult{Status: 1, Interrupted: true, Err: err}
 	}
 	if err := command.Start(); err != nil {
 		return ownedProcessResult{Status: 1, Err: err}
@@ -34,13 +40,27 @@ func runOwnedProcess(ctx context.Context, directory string, argv ...string) owne
 		return completedProcessResult(err)
 	case <-ctx.Done():
 		_ = terminateOwnedProcess(command.Process.Pid)
-		timer := time.NewTimer(reportImageGracePeriod)
-		defer timer.Stop()
-		select {
-		case <-done:
-		case <-timer.C:
-			_ = killOwnedProcess(command.Process.Pid)
+		deadline := time.Now().Add(reportImageGracePeriod)
+		leaderDone := false
+		for time.Now().Before(deadline) {
+			if !leaderDone {
+				select {
+				case <-done:
+					leaderDone = true
+				default:
+				}
+			}
+			if leaderDone && !ownedProcessGroupAlive(command.Process.Pid) {
+				return ownedProcessResult{Status: 1, Interrupted: true, Err: ctx.Err()}
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+		_ = killOwnedProcess(command.Process.Pid)
+		if !leaderDone {
 			<-done
+		}
+		for attempts := 0; attempts < 50 && ownedProcessGroupAlive(command.Process.Pid); attempts++ {
+			time.Sleep(20 * time.Millisecond)
 		}
 		return ownedProcessResult{Status: 1, Interrupted: true, Err: ctx.Err()}
 	}

@@ -11,13 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/knews2019/skill-do-work/do-work-cli/internal/atomicfile"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
 var architectureNow = func() time.Time { return time.Now().UTC() }
+var architectureAfterClaim = func(string) {}
 var architectureName = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2}_\d{4})_architecture-report(?:-(\d+))?$`)
 var architectureWatermark = regexp.MustCompile(`(?m)^\s*<meta name="architecture-report-verified-at" content="([0-9a-f]{7,40})">\s*$`)
 
@@ -53,9 +53,12 @@ func architectureScan(ctx commandruntime.ExecutionContext, reports string) resul
 	if !filepath.IsAbs(rootReports) {
 		rootReports = filepath.Join(ctx.RepositoryRoot, rootReports)
 	}
-	type prior struct{ key, path string }
+	type prior struct{ key, filesystemPath, displayPath string }
 	priors := []prior{}
-	entries, _ := os.ReadDir(rootReports)
+	entries, readDirectoryError := os.ReadDir(rootReports)
+	if readDirectoryError != nil {
+		return architectureFailure("reports directory is unreadable: " + readDirectoryError.Error())
+	}
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -73,13 +76,14 @@ func architectureScan(ctx commandruntime.ExecutionContext, reports string) resul
 		if statErr != nil || !info.Mode().IsRegular() || info.Size() == 0 {
 			continue
 		}
-		priors = append(priors, prior{fmt.Sprintf("%s %012d", match[1], sequence), filepath.ToSlash(filepath.Join(reports, entry.Name(), "index.html"))})
+		priors = append(priors, prior{fmt.Sprintf("%s %012d", match[1], sequence), index, filepath.ToSlash(filepath.Join(reports, entry.Name(), "index.html"))})
 	}
 	sort.Slice(priors, func(i, j int) bool { return priors[i].key > priors[j].key })
 	priorPath, priorHash, resolves := "", "", "n/a"
 	if len(priors) > 0 {
-		priorPath = priors[0].path
-		data, _ := os.ReadFile(filepath.Join(ctx.RepositoryRoot, filepath.FromSlash(priorPath)))
+		priorFilesystemPath := priors[0].filesystemPath
+		priorPath = priors[0].displayPath
+		data, _ := os.ReadFile(priorFilesystemPath)
 		match := architectureWatermark.FindSubmatch(data)
 		priorHash = "unreadable"
 		if match != nil {
@@ -117,40 +121,50 @@ func architecturePublish(ctx commandruntime.ExecutionContext, draft, candidate s
 	if !filepath.IsAbs(candidateAbs) {
 		candidateAbs = filepath.Join(ctx.RepositoryRoot, candidate)
 	}
-	chosen := candidateAbs
-	for sequence := 2; ; sequence++ {
-		if _, err := os.Lstat(chosen); os.IsNotExist(err) {
+	baseRelative, _, pathErr := repositoryPath(ctx.RepositoryRoot, candidateAbs)
+	if pathErr != nil {
+		return usageResult(CommandArchitecture, pathErr.Error())
+	}
+	relative := baseRelative
+	sequence := 1
+	for {
+		root, openErr := os.OpenRoot(ctx.RepositoryRoot)
+		if openErr != nil {
+			return architectureFailure(openErr.Error())
+		}
+		_, statErr := root.Lstat(filepath.FromSlash(relative))
+		root.Close()
+		if os.IsNotExist(statErr) {
 			break
 		}
-		chosen = candidateAbs + fmt.Sprintf("-%d", sequence)
+		sequence++
+		relative = fmt.Sprintf("%s-%d", baseRelative, sequence)
 	}
-	relative, err := filepath.Rel(ctx.RepositoryRoot, chosen)
-	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-		return usageResult(CommandArchitecture, "candidate must stay inside repository root")
-	}
-	relative = filepath.ToSlash(relative)
 	indexRel := filepath.ToSlash(filepath.Join(relative, "index.html"))
-	parentRel := filepath.ToSlash(filepath.Dir(relative))
-	createdDirectories := absentTransactionDirectories(ctx.RepositoryRoot, parentRel, relative)
-	result := runTransaction(CommandArchitecture, ctx.RepositoryRoot, []string{indexRel}, createdDirectories, dryRun, commit, "[do-work] Publish architecture report", func(recorder *gittransaction.MutationRecorder) error {
-		if err := os.MkdirAll(filepath.Dir(chosen), 0o755); err != nil {
-			return err
+	preflight := runTransaction(CommandArchitecture, ctx.RepositoryRoot, []string{indexRel}, nil, true, commit, "[do-work] Publish architecture report", nil)
+	if preflight.Outcome != resultmodel.OutcomeSuccess || dryRun {
+		if dryRun && preflight.Outcome == resultmodel.OutcomeSuccess {
+			output := "would publish " + indexRel + "\n"
+			preflight.ExactTextOutput = &output
 		}
-		for _, directory := range createdDirectories {
-			if directory == relative {
-				continue
-			}
-			if err := recorder.RecordCreatedDirectory(directory); err != nil {
-				return err
-			}
+		return preflight
+	}
+	if parentErr := rootedMkdirAll(ctx.RepositoryRoot, filepath.ToSlash(filepath.Dir(relative)), 0o755); parentErr != nil {
+		return architectureFailure(parentErr.Error())
+	}
+	var ownedBundle os.FileInfo
+	for {
+		var claimErr error
+		if ownedBundle, claimErr = rootedMkdirExclusive(ctx.RepositoryRoot, relative, 0o755); claimErr == nil {
+			break
 		}
-		if err := os.Mkdir(chosen, 0o755); err != nil {
-			return err
-		}
-		if err := recorder.RecordCreatedDirectory(relative); err != nil {
-			return err
-		}
-		if err := atomicfile.CreateExclusive(filepath.Join(chosen, "index.html"), data, 0o644); err != nil {
+		sequence++
+		relative = fmt.Sprintf("%s-%d", baseRelative, sequence)
+		indexRel = filepath.ToSlash(filepath.Join(relative, "index.html"))
+	}
+	architectureAfterClaim(filepath.Join(ctx.RepositoryRoot, filepath.FromSlash(relative)))
+	result := runTransaction(CommandArchitecture, ctx.RepositoryRoot, []string{indexRel}, nil, false, commit, "[do-work] Publish architecture report", func(recorder *gittransaction.MutationRecorder) error {
+		if err := rootedPublishInOwnedDirectory(ctx.RepositoryRoot, relative, ownedBundle, "index.html", data, 0o644); err != nil {
 			return err
 		}
 		return recorder.RecordCreated(indexRel)

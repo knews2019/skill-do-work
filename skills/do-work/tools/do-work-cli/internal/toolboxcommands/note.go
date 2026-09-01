@@ -3,11 +3,9 @@ package toolboxcommands
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/knews2019/skill-do-work/do-work-cli/internal/atomicfile"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
@@ -25,11 +23,13 @@ func handleNote(executionContext commandruntime.ExecutionContext, arguments []st
 		return usageResult(CommandNote, `Usage: do-work-note [--dry-run|--commit] "<text>"`)
 	}
 	relative := "do-work/notes.md"
-	absolute := filepath.Join(executionContext.RepositoryRoot, filepath.FromSlash(relative))
+	if confinementErr := validateNoLinkedAncestors(executionContext.RepositoryRoot, relative, false); confinementErr != nil {
+		return usageResult(CommandNote, confinementErr.Error())
+	}
 	createdDirectories := absentTransactionDirectories(executionContext.RepositoryRoot, "do-work")
 	line := fmt.Sprintf("- [%s] %s\n", toolboxNow().Format("2006-01-02"), text)
 	result := runTransaction(CommandNote, executionContext.RepositoryRoot, []string{relative}, createdDirectories, dryRun, commit, "[do-work] Add note", func(recorder *gittransaction.MutationRecorder) error {
-		if err := os.MkdirAll(filepath.Dir(absolute), 0o755); err != nil {
+		if err := rootedMkdirAll(executionContext.RepositoryRoot, "do-work", 0o755); err != nil {
 			return err
 		}
 		for _, directory := range createdDirectories {
@@ -37,9 +37,9 @@ func handleNote(executionContext commandruntime.ExecutionContext, arguments []st
 				return err
 			}
 		}
-		current, readErr := os.ReadFile(absolute)
+		current, readErr := rootedReadFile(executionContext.RepositoryRoot, relative)
 		if os.IsNotExist(readErr) {
-			if err := atomicfile.CreateExclusive(absolute, []byte(line), 0o644); err != nil {
+			if err := rootedPublishFile(executionContext.RepositoryRoot, relative, []byte(line), 0o644, false); err != nil {
 				return err
 			}
 			return recorder.RecordCreated(relative)
@@ -47,7 +47,7 @@ func handleNote(executionContext commandruntime.ExecutionContext, arguments []st
 		if readErr != nil {
 			return readErr
 		}
-		if err := atomicfile.ReplaceExisting(absolute, append(current, []byte(line)...)); err != nil {
+		if err := rootedPublishFile(executionContext.RepositoryRoot, relative, append(current, []byte(line)...), 0o644, true); err != nil {
 			return err
 		}
 		return recorder.RecordTouched(relative)

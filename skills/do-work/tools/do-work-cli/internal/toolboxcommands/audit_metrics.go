@@ -25,6 +25,7 @@ type auditOptions struct {
 	top                                                                 int
 	window                                                              string
 	watchLines, flagLines, watchWords, flagWords, watchFiles, flagFiles int
+	present                                                             map[string]bool
 }
 
 func handleAuditMetrics(ctx commandruntime.ExecutionContext, args []string) resultmodel.CommandResult {
@@ -58,7 +59,7 @@ func handleAuditMetrics(ctx commandruntime.ExecutionContext, args []string) resu
 
 func parseAuditOptions(defaultRoot string, args []string) (auditOptions, error) {
 	o := auditOptions{repoRoot: defaultRoot, top: auditDefaultTop, window: auditDefaultWindow,
-		watchLines: -1, flagLines: -1, watchWords: -1, flagWords: -1, watchFiles: -1, flagFiles: -1}
+		watchLines: -1, flagLines: -1, watchWords: -1, flagWords: -1, watchFiles: -1, flagFiles: -1, present: map[string]bool{}}
 	if len(args) == 0 {
 		return o, fmt.Errorf("audit-metrics requires inventory | folders | churn | hotspots")
 	}
@@ -75,7 +76,9 @@ func parseAuditOptions(defaultRoot string, args []string) (auditOptions, error) 
 		if valueErr != nil {
 			return o, valueErr
 		}
-		switch strings.SplitN(name, "=", 2)[0] {
+		optionName := strings.SplitN(name, "=", 2)[0]
+		o.present[optionName] = true
+		switch optionName {
 		case "--repo-root":
 			o.repoRoot = value
 		case "--exclude-path":
@@ -103,13 +106,13 @@ func parseAuditOptions(defaultRoot string, args []string) (auditOptions, error) 
 			return o, valueErr
 		}
 	}
-	if o.kind != "inventory" && (o.watchLines != auditThresholdUnset || o.flagLines != auditThresholdUnset || o.watchWords != auditThresholdUnset || o.flagWords != auditThresholdUnset) {
+	if o.kind != "inventory" && (o.present["--watch-lines"] || o.present["--flag-lines"] || o.present["--watch-words"] || o.present["--flag-words"]) {
 		return o, fmt.Errorf("file band flags are valid only for inventory")
 	}
-	if o.kind != "folders" && (o.watchFiles != auditThresholdUnset || o.flagFiles != auditThresholdUnset) {
+	if o.kind != "folders" && (o.present["--watch-files"] || o.present["--flag-files"]) {
 		return o, fmt.Errorf("folder band flags are valid only for folders")
 	}
-	if o.kind != "churn" && o.kind != "hotspots" && o.window != auditDefaultWindow {
+	if o.kind != "churn" && o.kind != "hotspots" && o.present["--since-window"] {
 		return o, fmt.Errorf("--since-window is valid only for churn or hotspots")
 	}
 	return o, nil

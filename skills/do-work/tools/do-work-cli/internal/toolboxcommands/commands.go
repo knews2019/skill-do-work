@@ -47,7 +47,17 @@ func toolboxFinding(command, code string, severity resultmodel.FindingSeverity, 
 }
 
 func parseMutationFlags(arguments []string) (rest []string, dryRun, commit bool, err error) {
+	optionRegion := true
 	for _, argument := range arguments {
+		if optionRegion && argument == "--" {
+			optionRegion = false
+			continue
+		}
+		if !optionRegion || len(rest) > 0 {
+			rest = append(rest, argument)
+			optionRegion = false
+			continue
+		}
 		switch argument {
 		case "--dry-run":
 			dryRun = true
@@ -55,6 +65,7 @@ func parseMutationFlags(arguments []string) (rest []string, dryRun, commit bool,
 			commit = true
 		default:
 			rest = append(rest, argument)
+			optionRegion = false
 		}
 	}
 	if dryRun && commit {

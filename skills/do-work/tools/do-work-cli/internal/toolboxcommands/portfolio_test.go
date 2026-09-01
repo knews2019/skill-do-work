@@ -42,3 +42,23 @@ func TestPortfolioCreatesDistinctCanonicalAndSnapshot(t *testing.T) {
 		t.Fatal("canonical and immutable snapshot share an inode")
 	}
 }
+
+func TestRemediationPortfolioRetainsSnapshotWhenCanonicalIsDirectory(t *testing.T) {
+	repository := toolboxTestRepository(t)
+	source := filepath.Join(repository, "source.md")
+	if err := os.WriteFile(source, []byte("summary\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	canonical := filepath.Join(repository, "portfolio", "latest.md")
+	if err := os.MkdirAll(canonical, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	snapshot := filepath.Join(repository, "portfolio", "snapshot.md")
+	result := handlePortfolio(commandruntime.ExecutionContext{RepositoryRoot: repository}, []string{"--with-snapshot", source, canonical, snapshot})
+	if result.Outcome == resultmodel.OutcomeSuccess {
+		t.Fatal("unsafe canonical directory unexpectedly succeeded")
+	}
+	if contents, err := os.ReadFile(snapshot); err != nil || string(contents) != "summary\n" {
+		t.Fatalf("snapshot not retained: %q %v result=%+v", contents, err, result)
+	}
+}
