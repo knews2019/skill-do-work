@@ -57,3 +57,17 @@ See `do-work/user-requests/UR-088/input.md` for complete verbatim input.
 
 ---
 *Source: UR-088 (Lessons routing with token-budgeted mandatory reads and a fold-gate fix)*
+
+## Addendum (2026-09-01)
+
+User added (v4 revision, validate-feedback Finding 8 — Accept):
+
+> ```
+> (b) the finding is goal-shaped, not defect-shaped — it restates, refines, or extends the destination's acceptance goals rather than reporting behavior that is broken in what currently ships; a shipped-behavior defect keeps today's behavior (minted standalone) regardless of impact, because a fix must never wait behind a gate; [...] A fold accepted into a gated destination is recorded in the destination body with the fold date and source, so a stalled chain carrying folds is visible to review-work Step 10 (and to the board, if it already surfaces gated REQs). [...] add a contract-regression predicate pinning conditions (b)–(d) if the builder judges the wording load-bearing.
+> ```
+
+- New condition inserted as (b): the finding must be **goal-shaped** — it restates, refines, or extends the destination's acceptance goals. A **shipped-behavior defect** (behavior broken in what currently ships) keeps today's behavior — minted standalone — regardless of impact, because a fix must never wait behind a gate. The original conditions (b) and (c) re-letter to (c) and (d); the amended rule states all four.
+- A fold accepted into a gated destination is recorded in the destination body with the fold date and source, so a stalled chain carrying folds stays visible to review-work Step 10 (and to the board, if it already surfaces gated REQs).
+- The optional contract-regression predicate pins conditions (b)–(d).
+- The Red-Green Proof is unchanged and still valid: REQ-464/465 were goal-shaped (duplicates of REQ-420's acceptance goals) — exactly the case (b) admits.
+- Provenance: validate-feedback 2026-09-01, Finding 8. Surface-cost: Earned for the fold-record line — the REQ-464/465 cleanup required reconstructing fold provenance by hand (commit 593c5145); the record is one line per accepted fold. The shape condition itself narrows scope back to the original rule's rationale (N/A).

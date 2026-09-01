@@ -66,3 +66,17 @@ See `do-work/user-requests/UR-088/input.md` for complete verbatim input.
 
 ---
 *Source: UR-088 (Lessons routing with token-budgeted mandatory reads and a fold-gate fix)*
+
+## Addendum (2026-09-01)
+
+User added (v4 revision, validate-feedback Finding 1 — Accept):
+
+> ```
+> a when-it-applies hook that names the failure-family slugs inside (e.g. "rollback/deletion/final-boundary work in do-work-cli internals — final-boundary-identity, opaque-evidence-projection"); a mechanical size estimate; and a slug-coverage flag (`slugged: full` when every bullet carries a family slug, `partial` otherwise). Maintained by work.md's Lessons-Capture Phase: whenever a lesson is appended (Step 8's satellite write), the same edit creates or refreshes that satellite's index line — hook slugs, estimate, and coverage flag included.
+> ```
+
+- The index hook names the exact family-slug set present in the satellite, not just prose — capture's targeted stamping greps against it.
+- Each index line adds a slug-coverage flag: `slugged: full` when every bullet carries a family slug, `partial` otherwise.
+- The Lessons-Capture write maintains hook slugs, size estimate, and coverage flag in the same edit as the lesson append.
+- Seeding the three known families makes `lessons-do-work-cli.md`'s coverage flag honest, whatever it ends up being.
+- Provenance: validate-feedback 2026-09-01, Finding 1. Surface-cost: Earned — a targeted `path#slug` read against a partially-slugged satellite would silently skip pre-slug same-family bullets (replay: `#final-boundary-identity` misses the REQ-436/447/463 bullets); the flag is one token per line, policed by the audit (REQ-479 addendum).

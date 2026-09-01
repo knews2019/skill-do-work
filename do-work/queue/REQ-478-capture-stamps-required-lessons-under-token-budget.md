@@ -66,3 +66,19 @@ See `do-work/user-requests/UR-088/input.md` for complete verbatim input.
 
 ---
 *Source: UR-088 (Lessons routing with token-budgeted mandatory reads and a fold-gate fix)*
+
+## Addendum (2026-09-01)
+
+User added (v4 revision, validate-feedback Findings 2 and 5 — Accept):
+
+> ```
+> Two entry forms: a bare `path` (whole satellite) or `path#family-slug` (targeted; only the bullets carrying that slug). Targeted entries are permitted only for satellites whose index line says `slugged: full`; a `partial` satellite is stamped bare or not at all, so an un-slugged bullet can never be grepped past. [...] Cost rule, stated next to the constant: a bare path costs its index estimate; a targeted entry costs the size of its matching bullets (grep the slug, wc the lines, same formula as the index). Relevance ranking, in order: (a) the request text or its likely touched paths match a family named in the hook; (b) the satellite's owning prime governs a path the request names; (c) most recent same-family recurrence. Over budget, capture prefers narrowing a match to a targeted entry over dropping it; anything still dropped is listed in the REQ body under a fixed heading, never silently. [...] add a round-trip predicate to _dev/tests/contract-regressions.sh proving `required_lessons` survives internal/requestmodel/internal/schemanormalization unchanged (do not assume unknown-field preservation covers it — prove it)
+> ```
+
+- Entry forms are fixed: bare `path` (whole satellite) or `path#family-slug` (only the bullets carrying that slug).
+- Targeted entries only when the satellite's index line says `slugged: full`; a `partial` satellite is stamped bare or not at all.
+- Cost rule sits next to the budget constant: bare path costs its index estimate; a targeted entry costs the size of its matching bullets (grep the slug, `wc` the lines, same formula as the index). This supersedes the original "summed index estimates" wording, which left a targeted entry's cost undefined.
+- Relevance ranking, in order: (a) request text or likely touched paths match a family named in the hook; (b) the satellite's owning prime governs a path the request names; (c) most recent same-family recurrence.
+- Over budget, prefer narrowing a match to a targeted entry over dropping it; anything still dropped is listed in the REQ body under one fixed heading.
+- The schema check upgrades from "verify whether" to a required round-trip predicate proving `required_lessons` survives the `internal/requestmodel`/`internal/schemanormalization` writers unchanged — do not assume unknown-field preservation covers it; prove it. Home is `_dev/tests/contract-regressions.sh` or a focused Go test, builder's call.
+- Provenance: validate-feedback 2026-09-01, Findings 2 and 5. Surface-cost: N/A (specification of the accepted mechanism plus a proof test).

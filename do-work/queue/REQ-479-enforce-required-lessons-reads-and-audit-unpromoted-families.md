@@ -61,3 +61,16 @@ See `do-work/user-requests/UR-088/input.md` for complete verbatim input.
 
 ---
 *Source: UR-088 (Lessons routing with token-budgeted mandatory reads and a fold-gate fix)*
+
+## Addendum (2026-09-01)
+
+User added (v4 revision, validate-feedback Findings 4 and 6 — Accept):
+
+> ```
+> Today's touch-conditional rule at work.md:404 stays in force for all REQs, stamped or not; the mandatory read is additive, not a replacement, and Step 6 says so in one sentence so a builder never guesses which regime applies. A missing listed file is proceed-without-it, per the existing missing-rules-file convention, and the miss is recorded in the hand-back. [...] Extend skills/do-work-toolbox/actions/prime.md audit to flag, all mechanically: [...] an index estimate more than ~25% off the recomputed value; an index hook whose slug set does not match the slug set actually present in the satellite (either direction); a `slugged: full` flag on a satellite that still has un-slugged bullets.
+> ```
+
+- Resolved conflict: the Detailed Requirements sentence "which stays in force for unstamped REQs" is superseded — the touch-conditional rule at work.md:404 stays in force for ALL REQs, stamped or not. The mandatory `required_lessons` read is additive, never a replacement, and Step 6 states this in one sentence. (The original wording would have dropped the conditional read for satellites the budget excluded from a stamped REQ.)
+- A missing listed file still proceeds-without-it, and the miss is recorded in the hand-back.
+- The audit gains three further mechanical checks: an index estimate more than ~25% off the recomputed value; an index hook whose slug set does not match the satellite's actual slug set (either direction); a `slugged: full` flag on a satellite that still has un-slugged bullets.
+- Provenance: validate-feedback 2026-09-01, Findings 4 and 6. Surface-cost: additive-read fix N/A (removes an accidental narrowing); audit checks Earned — the index becomes a routing and budgeting authority, and all three checks are read-only recompute/grep comparisons inside the existing milestone audit.
