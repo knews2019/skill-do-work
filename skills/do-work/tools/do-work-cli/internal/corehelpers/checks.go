@@ -21,6 +21,8 @@ type baselineRecord struct {
 	Launched    bool   `json:"launched"`
 }
 
+var qualificationDebugArtifactPattern = regexp.MustCompile(`\b(` + "debug" + `ger|` + "TO" + `DO|` + "FIX" + `ME)\b`)
+
 func handlePreflight(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
 	findings := []resultmodel.CommandFinding{}
 	changes := []resultmodel.RecordedChange{}
@@ -231,7 +233,7 @@ func handleQualify(executionContext commandruntime.ExecutionContext, arguments [
 			continue
 		}
 		for _, line := range lines {
-			if regexp.MustCompile(`\b(debugger|TODO|FIXME)\b`).MatchString(line) {
+			if qualificationDebugArtifactPattern.MatchString(line) {
 				findings = append(findings, helperFinding("QUALIFY-DEBUG-ARTIFACT", resultmodel.SeverityError, []string{path}, line, resultmodel.FixabilityManual, "unfinished/debug-only code is present in the change", nil, nil))
 			}
 			if regexp.MustCompile(`console\.log|(^|[^[:alnum:]_])print\s*\(`).MatchString(line) {

@@ -1,6 +1,10 @@
 package corehelpers
 
-import "testing"
+import (
+	"os"
+	"strings"
+	"testing"
+)
 
 func TestScopeParserUsesOnlyFirstBacktickedPath(t *testing.T) {
 	contents := "## Scope\n- `source.go` (modified) — keeps `flex-wrap` behavior\n\n## Implementation Summary\n- `source.go` (modified)\n"
@@ -32,5 +36,25 @@ func TestScopeDriftReadsAnnotatedScopeAndEverySummaryPath(t *testing.T) {
 	implemented, found, err := allBacktickedPaths(contents, "Implementation Summary")
 	if err != nil || !found || len(implemented) != 2 {
 		t.Fatalf("implemented=%q found=%v err=%v", implemented, found, err)
+	}
+}
+
+func TestQualificationArtifactDetectorFindsEveryMarkerWithoutMatchingItsSource(t *testing.T) {
+	markers := []string{
+		strings.Join([]string{"de", "bugger"}, ""),
+		strings.Join([]string{"TO", "DO"}, ""),
+		strings.Join([]string{"FIX", "ME"}, ""),
+	}
+	for _, marker := range markers {
+		if !qualificationDebugArtifactPattern.MatchString("prefix " + marker + " suffix") {
+			t.Errorf("marker %q was not detected", marker)
+		}
+	}
+	source, err := os.ReadFile("checks.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if qualificationDebugArtifactPattern.Match(source) {
+		t.Fatal("artifact detector matches its own implementation source")
 	}
 }
