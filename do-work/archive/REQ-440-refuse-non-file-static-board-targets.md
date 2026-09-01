@@ -23,6 +23,7 @@ related: [REQ-437, REQ-438, REQ-439, REQ-441, REQ-442, REQ-443, REQ-444]
 batch: accepted-feedback-regressions
 claimed_at: 2026-09-01T18:55:29Z
 completed_at: 2026-09-01T19:45:42Z
+commit: cdf1732c
 ---
 
 # Refuse Non-File Static Board Output Targets
