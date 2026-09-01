@@ -13,6 +13,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/publication"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/suiteinstall"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/toolboxcommands"
 )
 
 func main() {
@@ -45,6 +46,9 @@ func main() {
 		handlers[name] = handler
 	}
 	for name, handler := range knowledgecommands.Handlers() {
+		handlers[name] = handler
+	}
+	for name, handler := range toolboxcommands.Handlers() {
 		handlers[name] = handler
 	}
 	runtime := commandruntime.NewRuntime(os.Stdout, handlers)

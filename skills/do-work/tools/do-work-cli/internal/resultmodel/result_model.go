@@ -67,6 +67,72 @@ type SkippedWork struct {
 	Reason string `json:"reason"`
 }
 
+// AuditMetricsResult is the machine projection of the maintainability-audit
+// measurements. Compatibility Markdown and JSON are rendered from this same
+// ordered data; consumers never need to parse a table back into numbers.
+type AuditMetricsResult struct {
+	Kind             string                   `json:"kind"`
+	SinceWindow      string                   `json:"since_window"`
+	ShallowClone     bool                     `json:"shallow_clone"`
+	CommitCount      int                      `json:"commit_count"`
+	BinaryCount      int                      `json:"binary_count"`
+	UnreadableCount  int                      `json:"unreadable_count"`
+	Aggregates       []AuditAggregate         `json:"aggregates"`
+	Distributions    []AuditDistribution      `json:"distributions"`
+	Files            []AuditFileMeasurement   `json:"files"`
+	Folders          []AuditFolderMeasurement `json:"folders"`
+	Bands            []AuditBand              `json:"bands"`
+	Churn            []AuditChurnMeasurement  `json:"churn"`
+	Hotspots         []AuditHotspot           `json:"hotspots"`
+	UnavailablePaths []string                 `json:"unavailable_paths"`
+}
+
+type AuditAggregate struct {
+	Extension string `json:"extension"`
+	Files     int    `json:"files"`
+	Lines     int    `json:"lines"`
+	Words     int    `json:"words"`
+}
+
+type AuditDistribution struct {
+	Metric string `json:"metric"`
+	Median int    `json:"median"`
+	P90    int    `json:"p90"`
+	P95    int    `json:"p95"`
+	Max    int    `json:"max"`
+}
+
+type AuditFileMeasurement struct {
+	Path   string `json:"path"`
+	Lines  int    `json:"lines"`
+	Words  int    `json:"words"`
+	Binary bool   `json:"binary"`
+}
+
+type AuditFolderMeasurement struct {
+	Folder string `json:"folder"`
+	Files  int    `json:"files"`
+}
+
+type AuditBand struct {
+	Path   string `json:"path"`
+	Metric string `json:"metric"`
+	Value  int    `json:"value"`
+	Band   string `json:"band"`
+}
+
+type AuditChurnMeasurement struct {
+	Path    string `json:"path"`
+	Commits int    `json:"commits"`
+}
+
+type AuditHotspot struct {
+	Path    string `json:"path"`
+	Commits int    `json:"commits"`
+	Lines   int    `json:"lines"`
+	Score   int    `json:"score"`
+}
+
 type SelectionProbeStatus string
 
 const (
@@ -162,6 +228,14 @@ type CommandResult struct {
 	SelectionSummary SelectionSummary     `json:"selection_summary"`
 	Rollback         RollbackResult       `json:"rollback"`
 	ProtocolOutput   *string              `json:"protocol_output,omitempty"`
+	AuditMetrics     *AuditMetricsResult  `json:"audit_metrics,omitempty"`
+	// ExactTextOutput preserves compatibility-shaped stdout without polluting
+	// JSON with an opaque duplicate. It must be derived from the same typed
+	// observation carried by the result.
+	ExactTextOutput *string `json:"-"`
+	// ExitCodeOverride is reserved for cleaned-up operating-system
+	// interruptions (129/130/143). Ordinary outcomes always use ExitCode.
+	ExitCodeOverride int `json:"-"`
 }
 
 // ExitCode is the single authority for the 0-4 process status contract. Nothing else in
@@ -239,6 +313,33 @@ func NormalizeResult(result CommandResult) CommandResult {
 	if result.Rollback.Errors == nil {
 		result.Rollback.Errors = []string{}
 	}
+	if result.AuditMetrics != nil {
+		metrics := result.AuditMetrics
+		if metrics.Aggregates == nil {
+			metrics.Aggregates = []AuditAggregate{}
+		}
+		if metrics.Distributions == nil {
+			metrics.Distributions = []AuditDistribution{}
+		}
+		if metrics.Files == nil {
+			metrics.Files = []AuditFileMeasurement{}
+		}
+		if metrics.Folders == nil {
+			metrics.Folders = []AuditFolderMeasurement{}
+		}
+		if metrics.Bands == nil {
+			metrics.Bands = []AuditBand{}
+		}
+		if metrics.Churn == nil {
+			metrics.Churn = []AuditChurnMeasurement{}
+		}
+		if metrics.Hotspots == nil {
+			metrics.Hotspots = []AuditHotspot{}
+		}
+		if metrics.UnavailablePaths == nil {
+			metrics.UnavailablePaths = []string{}
+		}
+	}
 	for index := range result.Findings {
 		finding := &result.Findings[index]
 		if finding.AffectedIDs == nil {
@@ -279,6 +380,9 @@ func RenderResult(result CommandResult, outputFormat OutputFormat) ([]byte, erro
 func renderText(result CommandResult) []byte {
 	if result.ProtocolOutput != nil {
 		return []byte(*result.ProtocolOutput)
+	}
+	if result.ExactTextOutput != nil {
+		return []byte(*result.ExactTextOutput)
 	}
 	var output strings.Builder
 	fmt.Fprintf(&output, "%s: %s\n", result.Command, result.Outcome)

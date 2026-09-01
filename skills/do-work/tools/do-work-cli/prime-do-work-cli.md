@@ -17,6 +17,7 @@ The standard-library Go module under this directory is the canonical implementat
 - `internal/corehelpers/` owns the remaining utility handlers and leaf check, inventory, Git, publication, reservation, and survey mechanics; shared download, timestamp, probe, and provenance primitives remain with their domain owners.
 - `internal/hookcommands/` owns core and memory SessionStart plus memory Stop protocols; retained hook scripts only launch these commands.
 - `internal/knowledgecommands/` owns BKB scaffold/status/structural scans, Dream's seven deterministic scans, Interview list/status/export/ingest/reset/version mechanics, and Memory's exact store plans, lexical recall, status/bootstrap/audit probes; actions retain semantic judgment, reports, locks, consent, consolidation, transcript summarization, optional semantic recall, and repair/recommendation choice.
+- `internal/toolboxcommands/` owns notes, architecture preflight/publication, report-image generation, portfolio publication, last30days installation/checks, and typed maintainability audit metrics. Retained toolbox executables and standalone audit-metrics remain read-only differential oracles until their compatibility-shim retirement work.
 - `internal/archivefetch/` owns in-process HTTP download/retry/redaction and archive transport fallback.
 - `internal/requeststate/` owns deterministic `claim`, `unblock`, `complete`, `fail`, and `cancel` plans and their coupled checkpoint, archive, UR, calibration, and provenance mutations.
 - `internal/publication/` is the sole deterministic owner of typed `capture-files`, `answer`, and `release` manifests, planning, containment, repository-root-confined parent handles, and atomic publication. Stakeholder history and overrides are typed, file-backed evidence; actions retain content and semantic/release judgment, and once supplied these durable mutations have no prose fallback.
@@ -47,6 +48,7 @@ The standard-library Go module under this directory is the canonical implementat
 - Knowledge scans are read-only, normalized, sorted typed evidence. `bkb-init` never overwrites; Dream's optional newer-source probe is action-owned and is not an eighth scan.
 - Interview templates remain data: the CLI renders only the declared mechanical dialect, publishes every artifact before stamping `last_exported_at`, and treats version archives as immutable. Interactive elicitation, approval, and contradiction resolution remain action-owned.
 - Memory's tracked `working-memory.md` and private-untracked logs may share one transaction. Declared private targets are observed even when Git-ignored, rolled back through rooted identity checks, and never staged. Ledger appends remain best-effort; bootstrap has no committable target. Remember section/consolidation, forget selection, transcript summaries, semantic fusion, and the final audit verdict require explicit caller judgment.
+- Toolbox compatibility Markdown and typed audit JSON come from one result. Image backends receive prompts only as argv, run inside owned Unix process groups, and are reaped before scratch cleanup; platforms without provable descendant ownership fail closed. Batch output appears only as one verified `generated/` publication, while an all-failed batch intentionally succeeds with no output.
 
 ## Verify
 
@@ -59,6 +61,7 @@ The standard-library Go module under this directory is the canonical implementat
 - Private memory transactions: `go test -race ./internal/gittransaction` and verify a mixed tracked/private `--commit` contains only `working-memory.md`.
 - Windows atomic compile: `GOOS=windows GOARCH=amd64 go test -c ./internal/atomicfile -o <temporary-path>`
 - Windows blocked-probe compile: `GOOS=windows GOARCH=amd64 go test -c ./internal/nextselection -o <temporary-path>`
+- Toolbox migration: `go test -race ./internal/toolboxcommands`, exact old/new Markdown comparisons for all four audit modes, and `GOOS=windows GOARCH=amd64 go test -c ./internal/toolboxcommands -o <temporary-path>`.
 - Repository baseline: run the unpiped `_dev/tests/maintainer-verify.sh` from the repository root when the integrating workflow calls for it.
 
 ## Stakes
