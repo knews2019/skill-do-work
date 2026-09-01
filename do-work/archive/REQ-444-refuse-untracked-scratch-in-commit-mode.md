@@ -23,6 +23,7 @@ related: [REQ-437, REQ-438, REQ-439, REQ-440, REQ-441, REQ-442, REQ-443]
 batch: accepted-feedback-regressions
 claimed_at: 2026-09-01T22:42:19Z
 completed_at: 2026-09-01T22:51:43Z
+commit: 2311e76e
 ---
 
 # Refuse Untracked Consumed Scratch in Cleanup Commit Mode
