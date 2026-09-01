@@ -1,7 +1,7 @@
 ---
 id: REQ-418
 title: 'Migrate toolbox commands and absorb audit-metrics into do-work-cli'
-status: pending
+status: claimed
 created_at: 2026-08-29T20:28:26Z
 user_request: UR-081
 domain: general
@@ -14,6 +14,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-406, REQ-407, REQ-408, REQ-409, REQ-410, REQ-411, REQ-412, REQ-413, REQ-414, REQ-415, REQ-416, REQ-417, REQ-419, REQ-420]
 batch: go-no-llm-command-platform
+claimed_at: 2026-09-01T08:41:56Z
 ---
 
 # Migrate Toolbox Commands and Absorb Audit-Metrics into Do-Work-CLI

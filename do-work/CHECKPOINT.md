@@ -36,3 +36,5 @@
 - REQ-427 resolved the compatibility floor at exact Go 1.25.0 after exact Go 1.23 and 1.24 failed on the rooted-filesystem API boundary.
 
 ## In Progress (interrupted)
+
+- REQ-418: Migrate toolbox commands and absorb audit-metrics into do-work-cli — claimed 2026-09-01T08:41:56Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
