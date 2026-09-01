@@ -38,3 +38,5 @@
 ## In Progress (interrupted)
 
 - REQ-415: Migrate the core SessionStart and memory hooks into Go subcommands — claimed 2026-09-01T02:34:48Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-441: [impact-critical] Validate HTTP archives before publication — claimed 2026-09-01T02:34:54Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

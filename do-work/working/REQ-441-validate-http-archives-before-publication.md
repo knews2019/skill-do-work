@@ -1,7 +1,7 @@
 ---
 id: REQ-441
 title: '[impact-critical] Validate HTTP archives before publication'
-status: pending
+status: claimed
 created_at: 2026-08-31T14:19:37Z
 user_request: UR-083
 domain: backend
@@ -14,6 +14,7 @@ impact: impact-critical
 effort_estimate: effort-substantive
 related: [REQ-437, REQ-438, REQ-439, REQ-440, REQ-442, REQ-443, REQ-444]
 batch: accepted-feedback-regressions
+claimed_at: 2026-09-01T02:34:54Z
 ---
 
 # Validate HTTP Archives Before Publication
