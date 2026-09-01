@@ -706,6 +706,7 @@ else
   stop_archive_server
 fi
 
+# REQ-414 D-07 moved the install/update characterization seam to direct Go HTTP fetching.
 # The install and update transactions moved into Go, so the two callers that used to shell
 # out to the fetcher now call the archivefetch package. These assertions follow the behaviour
 # to the file that owns it rather than being retired: the point is still that neither caller

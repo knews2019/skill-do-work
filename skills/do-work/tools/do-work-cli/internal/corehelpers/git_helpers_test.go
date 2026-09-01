@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -26,6 +27,43 @@ func TestStageExactDeletionStagesOnlyNamedPath(t *testing.T) {
 	if string(output) != "first.txt\n" {
 		t.Fatalf("staged=%q", output)
 	}
+}
+
+func TestMutatingGitHelpersDryRunLeavesIndexAndExcludeUnchanged(t *testing.T) {
+	repository := newGitFixture(t)
+	if err := os.Remove(filepath.Join(repository, "first.txt")); err != nil {
+		t.Fatal(err)
+	}
+	stageResult := handleStageDeletion(testContext(repository), []string{"--path", "first.txt", "--dry-run"})
+	if stageResult.Outcome != "success" || !hasFinding(stageResult, "DELETION-DRY-RUN") {
+		t.Fatalf("stage dry-run=%#v", stageResult)
+	}
+	if cached := runGitOutput(t, repository, "diff", "--cached", "--name-only"); cached != "" {
+		t.Fatalf("dry-run changed index: %q", cached)
+	}
+	excludeOutput := runGitOutput(t, repository, "rev-parse", "--git-path", "info/exclude")
+	excludePath := strings.TrimSpace(excludeOutput)
+	if !filepath.IsAbs(excludePath) {
+		excludePath = filepath.Join(repository, excludePath)
+	}
+	before, _ := os.ReadFile(excludePath)
+	excludeResult := handleAddExclude(testContext(repository), []string{"--probe-path", "private/cache", "--dry-run"})
+	if excludeResult.Outcome != "success" || !hasFinding(excludeResult, "GIT-EXCLUDE-DRY-RUN") {
+		t.Fatalf("exclude dry-run=%#v", excludeResult)
+	}
+	after, _ := os.ReadFile(excludePath)
+	if string(after) != string(before) {
+		t.Fatalf("dry-run changed exclude: before=%q after=%q", before, after)
+	}
+}
+
+func runGitOutput(t *testing.T, repository string, args ...string) string {
+	t.Helper()
+	output, err := exec.Command("git", append([]string{"-C", repository}, args...)...).CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v: %v: %s", args, err, output)
+	}
+	return string(output)
 }
 func newGitFixture(t *testing.T) string {
 	t.Helper()

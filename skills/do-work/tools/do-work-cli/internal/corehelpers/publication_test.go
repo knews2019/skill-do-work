@@ -72,3 +72,25 @@ func TestPrivateCopyParentSwapCannotRedirectPublicationOrCleanup(t *testing.T) {
 		t.Fatalf("rooted publication missing: %q", contents)
 	}
 }
+
+func TestCaptureScreenshotDryRunDoesNotPublishOrRemoveSource(t *testing.T) {
+	repository := t.TempDir()
+	source := filepath.Join(repository, "staging", "source.png")
+	destination := filepath.Join(repository, "assets", "result.png")
+	if err := os.MkdirAll(filepath.Dir(source), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(source, []byte("image"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result := handleCaptureScreenshot(testContext(repository), []string{"--staged", "--source", source, "--destination", destination, "--dry-run"})
+	if result.Outcome != "success" || !hasFinding(result, "SCREENSHOT-DRY-RUN") {
+		t.Fatalf("result=%#v", result)
+	}
+	if contents, err := os.ReadFile(source); err != nil || string(contents) != "image" {
+		t.Fatalf("source changed: %q err=%v", contents, err)
+	}
+	if _, err := os.Stat(destination); !os.IsNotExist(err) {
+		t.Fatalf("destination published during dry-run: %v", err)
+	}
+}

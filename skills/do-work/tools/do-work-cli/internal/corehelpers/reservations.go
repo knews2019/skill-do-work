@@ -17,7 +17,8 @@ var reservationNamePattern = regexp.MustCompile(`^REQ-(\d{6})$`)
 var requestFilePattern = regexp.MustCompile(`^REQ-(\d+)(?:-|\.md)`)
 
 func handleCleanupReservations(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
-	if len(arguments) != 0 {
+	filtered, dryRun, dryRunError := extractDryRun(arguments)
+	if dryRunError != nil || len(filtered) != 0 {
 		return usageResult(CommandCleanupReservations, "cleanup-req-reservations accepts no options")
 	}
 	doWorkRoot := filepath.Join(executionContext.RepositoryRoot, "do-work")
@@ -73,13 +74,18 @@ func handleCleanupReservations(executionContext commandruntime.ExecutionContext,
 			findings = append(findings, helperFinding("RESERVATION-RACED", resultmodel.SeverityWarning, []string{filepath.ToSlash(filepath.Join("do-work/.req-reservations", entry.Name()))}, "marker identity changed before removal", resultmodel.FixabilityRefused, "the current object is not the inspected marker", nil, nil))
 			continue
 		}
-		if err := rootHandle.Remove(entry.Name()); err != nil {
-			findings = append(findings, helperFinding("RESERVATION-REMOVE-FAILED", resultmodel.SeverityWarning, []string{markerPath}, err.Error(), resultmodel.FixabilityManual, "cleanup is fail-soft", nil, nil))
-			continue
+		if !dryRun {
+			if err := rootHandle.Remove(entry.Name()); err != nil {
+				findings = append(findings, helperFinding("RESERVATION-REMOVE-FAILED", resultmodel.SeverityWarning, []string{markerPath}, err.Error(), resultmodel.FixabilityManual, "cleanup is fail-soft", nil, nil))
+				continue
+			}
 		}
 		reason := "stale for at least 48 hours"
 		if claimed[number] {
 			reason = "matching request exists"
+		}
+		if dryRun {
+			reason = "would remove: " + reason
 		}
 		changes = append(changes, resultmodel.RecordedChange{Path: filepath.ToSlash(filepath.Join("do-work/.req-reservations", entry.Name())), Kind: "deleted", Detail: reason})
 	}

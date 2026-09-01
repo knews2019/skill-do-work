@@ -4,7 +4,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
 func TestInventoryClassificationProtectsSecretProvenance(t *testing.T) {
@@ -64,4 +67,123 @@ func TestTerminalSuccessAliases(t *testing.T) {
 	if terminalSuccessStatus("cancelled") {
 		t.Fatal("cancelled request was treated as successful ownership evidence")
 	}
+}
+
+func TestProtectedInventoryPersistsLaterXAndRequiresStartedState(t *testing.T) {
+	repository := newGitFixture(t)
+	if err := os.WriteFile(filepath.Join(repository, "first.txt"), []byte("changed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	start := handleProtectedInventory(testContext(repository), []string{"start"})
+	if start.Outcome != "success" || !hasFinding(start, "INVENTORY-M") {
+		t.Fatalf("start=%#v", start)
+	}
+	quarantineOutput, err := gitOutput(repository, "rev-parse", "--git-path", "do-work-commit-secret-quarantine")
+	if err != nil {
+		t.Fatal(err)
+	}
+	quarantinePath := strings.TrimSpace(string(quarantineOutput))
+	if !filepath.IsAbs(quarantinePath) {
+		quarantinePath = filepath.Join(repository, quarantinePath)
+	}
+	if contents, err := os.ReadFile(quarantinePath); err != nil || len(contents) != 0 {
+		t.Fatalf("initial quarantine=%q err=%v", contents, err)
+	}
+	secretPath := filepath.Join(repository, ".env.local")
+	if err := os.WriteFile(secretPath, []byte("TOKEN=x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	associate := handleProtectedInventory(testContext(repository), []string{"associate"})
+	if associate.Outcome != "success" {
+		t.Fatalf("associate=%#v", associate)
+	}
+	contents, err := os.ReadFile(quarantinePath)
+	if err != nil || string(contents) != ".env.local\n" {
+		t.Fatalf("persisted quarantine=%q err=%v", contents, err)
+	}
+	if err := os.Remove(secretPath); err != nil {
+		t.Fatal(err)
+	}
+	second := handleProtectedInventory(testContext(repository), []string{"associate"})
+	if second.Outcome != "success" {
+		t.Fatalf("second associate=%#v", second)
+	}
+	contents, _ = os.ReadFile(quarantinePath)
+	if string(contents) != ".env.local\n" {
+		t.Fatalf("durable quarantine was lost: %q", contents)
+	}
+
+	unstarted := newGitFixture(t)
+	if err := os.WriteFile(filepath.Join(unstarted, "first.txt"), []byte("changed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	missing := handleProtectedInventory(testContext(unstarted), []string{"associate"})
+	if missing.Outcome != "failure" {
+		t.Fatalf("missing start state accepted: %#v", missing)
+	}
+}
+
+func TestProtectedInventoryCleanStatusAndXDIsNotQuarantined(t *testing.T) {
+	repository := newGitFixture(t)
+	clean := handleProtectedInventory(testContext(repository), []string{"start"})
+	if clean.Outcome != "findings" || !hasFinding(clean, "INVENTORY-CLEAN") {
+		t.Fatalf("clean=%#v", clean)
+	}
+	secret := filepath.Join(repository, "secret.pem")
+	if err := os.WriteFile(secret, []byte("secret\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runFixtureGitCommand(t, repository, "add", "secret.pem")
+	runFixtureGitCommand(t, repository, "commit", "-qm", "secret fixture")
+	if err := os.Remove(secret); err != nil {
+		t.Fatal(err)
+	}
+	result := handleProtectedInventory(testContext(repository), []string{"start"})
+	if result.Outcome != "success" || !hasFinding(result, "INVENTORY-XD") {
+		t.Fatalf("XD start=%#v", result)
+	}
+	quarantineOutput, _ := gitOutput(repository, "rev-parse", "--git-path", "do-work-commit-secret-quarantine")
+	quarantinePath := strings.TrimSpace(string(quarantineOutput))
+	if !filepath.IsAbs(quarantinePath) {
+		quarantinePath = filepath.Join(repository, quarantinePath)
+	}
+	if contents, err := os.ReadFile(quarantinePath); err != nil || len(contents) != 0 {
+		t.Fatalf("XD was quarantined: %q err=%v", contents, err)
+	}
+}
+
+func TestAssociateEmptyAndProtectedDryRunPreserveStatusAndState(t *testing.T) {
+	repository := newGitFixture(t)
+	empty := filepath.Join(repository, "empty-paths")
+	if err := os.WriteFile(empty, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	association := handleAssociate(testContext(repository), []string{"--paths-file", empty})
+	if association.Outcome != "findings" || !hasFinding(association, "ASSOCIATION-NO-CANDIDATES") {
+		t.Fatalf("empty association=%#v", association)
+	}
+	if err := os.WriteFile(filepath.Join(repository, ".env.local"), []byte("TOKEN=x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result := handleProtectedInventory(testContext(repository), []string{"start", "--dry-run"})
+	if result.Outcome != "success" || !hasFinding(result, "INVENTORY-X") {
+		t.Fatalf("protected dry-run=%#v", result)
+	}
+	quarantineOutput, _ := gitOutput(repository, "rev-parse", "--git-path", "do-work-commit-secret-quarantine")
+	quarantinePath := strings.TrimSpace(string(quarantineOutput))
+	if !filepath.IsAbs(quarantinePath) {
+		quarantinePath = filepath.Join(repository, quarantinePath)
+	}
+	if _, err := os.Stat(quarantinePath); !os.IsNotExist(err) {
+		t.Fatalf("protected dry-run wrote quarantine: %v", err)
+	}
+}
+
+func hasFinding(result resultmodel.CommandResult, code string) bool {
+	for _, finding := range result.Findings {
+		if finding.Code == code {
+			return true
+		}
+	}
+	return false
 }

@@ -123,7 +123,7 @@ var provenanceHashPattern = regexp.MustCompile(`^[0-9a-f]{7,40}$`)
 // RecordCommitProvenance is the standalone guarded provenance authority shared by the
 // compatibility-shaped command and request-state lifecycle code. It rewrites only the
 // top-level commit scalar and refuses lossy or ambiguous documents.
-func RecordCommitProvenance(ctx context.Context, repositoryRoot, requestPath, implementationHash string, verifyOnly bool) resultmodel.CommandResult {
+func RecordCommitProvenance(ctx context.Context, repositoryRoot, requestPath, implementationHash string, verifyOnly, dryRun bool) resultmodel.CommandResult {
 	failure := func(code, evidence string) resultmodel.CommandResult {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, RepositoryRoot: repositoryRoot, Findings: []resultmodel.CommandFinding{{
 			Code: code, Severity: resultmodel.SeverityError, AffectedPaths: nonEmptyPaths(requestPath), Evidence: []string{evidence}, Fixability: resultmodel.FixabilityManual,
@@ -169,8 +169,11 @@ func RecordCommitProvenance(ctx context.Context, repositoryRoot, requestPath, im
 	if value, relativeError := filepath.Rel(repositoryRoot, absolutePath); relativeError == nil {
 		relativePath = filepath.ToSlash(value)
 	}
+	if relativePath == ".." || strings.HasPrefix(relativePath, "../") || filepath.IsAbs(relativePath) {
+		return failure("PROVENANCE-PATH-OUTSIDE-REPOSITORY", "request path must remain inside the repository")
+	}
 	if verifyOnly {
-		committed, showError := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "show", "HEAD:"+relativePath).Output()
+		committed, showError := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "cat-file", "blob", "HEAD:"+relativePath).Output()
 		if showError != nil {
 			return failure("PROVENANCE-VERIFY-UNTRACKED", "HEAD does not contain the request path")
 		}
@@ -180,13 +183,13 @@ func RecordCommitProvenance(ctx context.Context, repositoryRoot, requestPath, im
 		if commitEvidence.ScalarValue != implementationHash {
 			return failure("PROVENANCE-VERIFY-HASH", "committed frontmatter does not contain the expected hash")
 		}
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, RepositoryRoot: repositoryRoot, Findings: []resultmodel.CommandFinding{{Code: "PROVENANCE-VERIFIED", Severity: resultmodel.SeverityInfo, AffectedIDs: []string{record.RequestID}, AffectedPaths: []string{relativePath}, Evidence: []string{"HEAD bytes and top-level commit field verified"}, Fixability: resultmodel.FixabilityAutomatic, VerificationArgv: []string{"git", "show", "HEAD:" + relativePath}}}}
-	}
-	if committedSize, sizeError := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "cat-file", "-s", "HEAD:"+relativePath).Output(); sizeError == nil {
-		var size int64
-		if _, scanError := fmt.Sscan(strings.TrimSpace(string(committedSize)), &size); scanError == nil && size > 0 && int64(len(contents))*2 < size {
-			return failure("PROVENANCE-CONTENT-FLOOR", "worktree request is less than half the committed size")
+		if verifyError := verifyProvenanceCommitPatch(ctx, repositoryRoot, relativePath, implementationHash); verifyError != nil {
+			return failure("PROVENANCE-VERIFY-PATCH", verifyError.Error())
 		}
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, RepositoryRoot: repositoryRoot, Findings: []resultmodel.CommandFinding{{Code: "PROVENANCE-VERIFIED", Severity: resultmodel.SeverityInfo, AffectedIDs: []string{record.RequestID}, AffectedPaths: []string{relativePath}, Evidence: []string{"HEAD bytes match the worktree and HEAD changed only the exact top-level commit field"}, Fixability: resultmodel.FixabilityAutomatic, VerificationArgv: []string{"git", "diff", "--unified=0", "HEAD^", "HEAD", "--", relativePath}}}}
+	}
+	if guardError := guardProvenancePreimage(ctx, repositoryRoot, relativePath, contents); guardError != nil {
+		return failure("PROVENANCE-PREIMAGE-GUARD", guardError.Error())
 	}
 	if commitEvidence.ScalarValue == implementationHash {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, RepositoryRoot: repositoryRoot, Findings: []resultmodel.CommandFinding{{Code: "PROVENANCE-NOOP", Severity: resultmodel.SeverityInfo, AffectedIDs: []string{record.RequestID}, AffectedPaths: []string{relativePath}, Evidence: []string{"expected commit hash is already recorded"}, Fixability: resultmodel.FixabilityAutomatic}}}
@@ -199,10 +202,171 @@ func RecordCommitProvenance(ctx context.Context, repositoryRoot, requestPath, im
 	if err != nil || updatedDocument.TypedRecord().RequestID != record.RequestID || updatedDocument.TypedRecord().RequestStatus != record.RequestStatus || updatedDocument.TypedRecord().FieldEvidenceByName["commit"].ScalarValue != implementationHash {
 		return failure("PROVENANCE-POSTIMAGE-INVALID", "the one-field rewrite did not preserve request identity and status")
 	}
+	originalWithoutCommit, stripOriginalError := requestmodel.ParseDocument(contents)
+	updatedWithoutCommit, stripUpdatedError := requestmodel.ParseDocument(updated)
+	if stripOriginalError != nil || stripUpdatedError != nil || originalWithoutCommit.DeleteField("commit") != nil || updatedWithoutCommit.DeleteField("commit") != nil || !bytes.Equal(originalWithoutCommit.DocumentBytes(), updatedWithoutCommit.DocumentBytes()) {
+		return failure("PROVENANCE-DELTA-GUARD", "rewrite changed bytes outside the top-level commit field")
+	}
+	plannedChange := resultmodel.RecordedChange{Path: relativePath, Kind: "modified", Detail: "recorded implementation commit hash"}
+	if dryRun {
+		plannedChange.Detail = "would record implementation commit hash after all guards"
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, RepositoryRoot: repositoryRoot, Changes: []resultmodel.RecordedChange{plannedChange}, Findings: []resultmodel.CommandFinding{{Code: "PROVENANCE-DRY-RUN", Severity: resultmodel.SeverityInfo, AffectedIDs: []string{record.RequestID}, AffectedPaths: []string{relativePath}, Evidence: []string{"all preimage and one-field delta guards passed; no bytes were written"}, Fixability: resultmodel.FixabilityAutomatic}}}
+	}
 	if err := atomicfile.ReplaceExisting(absolutePath, updated); err != nil {
 		return failure("PROVENANCE-PUBLISH-FAILED", err.Error())
 	}
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, RepositoryRoot: repositoryRoot, Changes: []resultmodel.RecordedChange{{Path: relativePath, Kind: "modified", Detail: "recorded implementation commit hash"}}, Findings: []resultmodel.CommandFinding{{Code: "PROVENANCE-RECORDED", Severity: resultmodel.SeverityInfo, AffectedIDs: []string{record.RequestID}, AffectedPaths: []string{relativePath}, Evidence: []string{"only the top-level commit scalar was changed"}, Fixability: resultmodel.FixabilityAutomatic, VerificationArgv: []string{"do-work-cli", "record-commit-hash", "--verify", "--request-path", relativePath, "--implementation-hash", implementationHash}}}}
+}
+
+func guardProvenancePreimage(ctx context.Context, repositoryRoot, relativePath string, contents []byte) error {
+	if err := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "rev-parse", "--verify", "--quiet", "HEAD^{commit}").Run(); err != nil {
+		return fmt.Errorf("HEAD does not resolve; Git object guards cannot run")
+	}
+	tracked := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "ls-files", "--error-unmatch", "--", relativePath).Run() == nil
+	if !tracked {
+		return nil
+	}
+	blob := "HEAD:" + relativePath
+	if err := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "cat-file", "-e", blob).Run(); err != nil {
+		return nil
+	}
+	sizeOutput, err := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "cat-file", "-s", blob).Output()
+	if err != nil {
+		return fmt.Errorf("HEAD blob exists but its size could not be read")
+	}
+	var size int64
+	if _, err := fmt.Sscan(strings.TrimSpace(string(sizeOutput)), &size); err != nil || size < 0 {
+		return fmt.Errorf("HEAD blob size is not a valid integer")
+	}
+	if size > 0 && int64(len(contents))*2 < size {
+		return fmt.Errorf("worktree request is less than half the committed size")
+	}
+	numstat, err := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "diff", "--numstat", "--no-renames", "HEAD", "--", relativePath).Output()
+	if err != nil {
+		return fmt.Errorf("Git numstat preimage guard could not run")
+	}
+	if line := strings.TrimSpace(string(numstat)); line != "" {
+		fields := strings.Split(line, "\t")
+		if len(fields) < 3 || !decimalString(fields[0]) || !decimalString(fields[1]) {
+			return fmt.Errorf("Git reports a binary or malformed pending delta")
+		}
+	}
+	return nil
+}
+
+func verifyProvenanceCommitPatch(ctx context.Context, repositoryRoot, relativePath, implementationHash string) error {
+	for _, revision := range []string{"HEAD^{commit}", "HEAD^"} {
+		if err := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "rev-parse", "--verify", "--quiet", revision).Run(); err != nil {
+			return fmt.Errorf("%s does not resolve; metadata patch cannot be isolated", revision)
+		}
+	}
+	if exec.CommandContext(ctx, "git", "-C", repositoryRoot, "rev-parse", "--verify", "--quiet", "HEAD^2").Run() == nil {
+		return fmt.Errorf("HEAD is a merge commit, not an isolatable metadata commit")
+	}
+	parentBlob := "HEAD^:" + relativePath
+	parent, err := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "cat-file", "blob", parentBlob).Output()
+	if err != nil {
+		return fmt.Errorf("request does not have a readable parent blob")
+	}
+	if _, err := requestmodel.ParseDocument(parent); err != nil {
+		return fmt.Errorf("parent request frontmatter is not safely parseable: %w", err)
+	}
+	parentCommitLine, err := topLevelFieldLine(parent, "commit")
+	if err != nil {
+		return err
+	}
+	patch, err := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "--no-pager", "diff", "--unified=0", "--no-color", "--no-ext-diff", "--no-textconv", "--no-renames", "HEAD^", "HEAD", "--", relativePath).Output()
+	if err != nil || len(patch) == 0 {
+		return fmt.Errorf("HEAD does not expose a readable metadata patch for the request")
+	}
+	added, removed := netPatchLines(patch)
+	if len(added) != 1 || added[0] != "commit: "+implementationHash {
+		return fmt.Errorf("metadata commit net-added %d line(s), not the exact expected commit field", len(added))
+	}
+	if parentCommitLine == "" {
+		if len(removed) != 0 {
+			return fmt.Errorf("metadata insert removed %d unexpected line(s)", len(removed))
+		}
+	} else if len(removed) != 1 || removed[0] != parentCommitLine {
+		return fmt.Errorf("metadata replacement did not remove exactly HEAD^'s frontmatter commit field")
+	}
+	return nil
+}
+
+func topLevelFieldLine(contents []byte, field string) (string, error) {
+	lines := strings.Split(strings.TrimSuffix(string(contents), "\n"), "\n")
+	if len(lines) == 0 || lines[0] != "---" {
+		return "", fmt.Errorf("request has no closed frontmatter")
+	}
+	for index := 1; index < len(lines); index++ {
+		if lines[index] == "---" {
+			return "", nil
+		}
+		if strings.HasPrefix(lines[index], field+":") {
+			return lines[index], nil
+		}
+	}
+	return "", fmt.Errorf("request frontmatter is not closed")
+}
+
+func netPatchLines(patch []byte) ([]string, []string) {
+	added, removed := []string{}, []string{}
+	inHunk := false
+	for _, line := range strings.Split(string(patch), "\n") {
+		if strings.HasPrefix(line, "@@") {
+			inHunk = true
+			continue
+		}
+		if !inHunk || line == "" {
+			continue
+		}
+		if line[0] == '+' {
+			added = append(added, line[1:])
+		} else if line[0] == '-' {
+			removed = append(removed, line[1:])
+		}
+	}
+	return cancelMatchingLines(added, removed)
+}
+
+func cancelMatchingLines(added, removed []string) ([]string, []string) {
+	removedCounts := map[string]int{}
+	for _, line := range removed {
+		removedCounts[line]++
+	}
+	netAdded := []string{}
+	for _, line := range added {
+		if removedCounts[line] > 0 {
+			removedCounts[line]--
+		} else {
+			netAdded = append(netAdded, line)
+		}
+	}
+	addedCounts := map[string]int{}
+	for _, line := range added {
+		addedCounts[line]++
+	}
+	netRemoved := []string{}
+	for _, line := range removed {
+		if addedCounts[line] > 0 {
+			addedCounts[line]--
+		} else {
+			netRemoved = append(netRemoved, line)
+		}
+	}
+	return netAdded, netRemoved
+}
+
+func decimalString(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, character := range value {
+		if character < '0' || character > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func nonEmptyPaths(path string) []string {

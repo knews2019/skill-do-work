@@ -3,6 +3,7 @@ package corehelpers
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -59,5 +60,26 @@ func TestReservationCleanupRequiresCommittedRequestInGitRepository(t *testing.T)
 	}
 	if _, err := os.Stat(marker); !os.IsNotExist(err) {
 		t.Fatalf("landed marker remains: %v", err)
+	}
+}
+
+func TestReservationCleanupDryRunPreservesEligibleMarker(t *testing.T) {
+	repository := t.TempDir()
+	root := filepath.Join(repository, "do-work", ".req-reservations")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, "REQ-000777")
+	if err := os.WriteFile(marker, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-49 * time.Hour)
+	_ = os.Chtimes(marker, past, past)
+	result := handleCleanupReservations(testContext(repository), []string{"--dry-run"})
+	if result.Outcome != "success" || len(result.Changes) != 1 || !strings.Contains(result.Changes[0].Detail, "would remove") {
+		t.Fatalf("result=%#v", result)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("dry-run removed marker: %v", err)
 	}
 }

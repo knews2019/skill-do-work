@@ -24,6 +24,11 @@ type baselineRecord struct {
 var qualificationDebugArtifactPattern = regexp.MustCompile(`\b(` + "debug" + `ger|` + "TO" + `DO|` + "FIX" + `ME)\b`)
 
 func handlePreflight(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	filteredArguments, dryRun, dryRunError := extractDryRun(arguments)
+	if dryRunError != nil {
+		return usageResult(CommandPreflight, dryRunError.Error())
+	}
+	arguments = filteredArguments
 	findings := []resultmodel.CommandFinding{}
 	changes := []resultmodel.RecordedChange{}
 	statusOutput, statusError := gitOutput(executionContext.RepositoryRoot, "-c", "status.renames=copies", "status", "--porcelain=v1", "--untracked-files=all", "-z")
@@ -45,48 +50,65 @@ func handlePreflight(executionContext commandruntime.ExecutionContext, arguments
 		}
 	}
 	if len(arguments) > 0 {
-		commandLine := strings.Join(arguments, " ")
-		var command *exec.Cmd
-		if len(arguments) == 1 && strings.IndexFunc(arguments[0], func(r rune) bool { return r == ' ' || r == '\t' || r == '\n' }) >= 0 {
-			command = exec.Command("sh", "-c", arguments[0])
+		if dryRun {
+			changes = append(changes, resultmodel.RecordedChange{Path: "do-work/working/baseline.json", Kind: "modified", Detail: "would run the supplied baseline command and record its status"})
+			findings = append(findings, helperFinding("PREFLIGHT-BASELINE-DRY-RUN", resultmodel.SeverityInfo, nil, "baseline command was not executed and no baseline files were changed", resultmodel.FixabilityAutomatic, "", arguments, []string{"test", "!", "-e", "do-work/working/baseline.json"}))
 		} else {
-			command = exec.Command(arguments[0], arguments[1:]...)
-		}
-		command.Dir = executionContext.RepositoryRoot
-		output, runError := command.CombinedOutput()
-		status := 0
-		launched := true
-		if runError != nil {
-			if exitError, ok := runError.(*exec.ExitError); ok {
-				status = exitError.ExitCode()
+			commandLine := strings.Join(arguments, " ")
+			var command *exec.Cmd
+			if len(arguments) == 1 && strings.IndexFunc(arguments[0], func(r rune) bool { return r == ' ' || r == '\t' || r == '\n' }) >= 0 {
+				command = exec.Command("sh", "-c", arguments[0])
 			} else {
-				status = 127
+				command = exec.Command(arguments[0], arguments[1:]...)
 			}
-			launched = status != 126 && status != 127
-		}
-		baselineDirectory := filepath.Join(executionContext.RepositoryRoot, "do-work", "working")
-		if makeError := os.MkdirAll(baselineDirectory, 0o755); makeError != nil {
-			return usageResult(CommandPreflight, makeError.Error())
-		}
-		recordBytes, _ := json.MarshalIndent(baselineRecord{TestCommand: commandLine, ExitStatus: status, Launched: launched}, "", "  ")
-		recordBytes = append(recordBytes, '\n')
-		baselinePath := filepath.Join(baselineDirectory, "baseline.json")
-		if writeError := writePrivateAtomic(baselinePath, recordBytes, 0o644); writeError != nil {
-			return usageResult(CommandPreflight, writeError.Error())
-		}
-		changes = append(changes, resultmodel.RecordedChange{Path: "do-work/working/baseline.json", Kind: "modified", Detail: "recorded test baseline"})
-		failurePath := filepath.Join(baselineDirectory, "baseline-failures.txt")
-		if launched && status != 0 {
-			if writeError := writePrivateAtomic(failurePath, output, 0o644); writeError != nil {
+			command.Dir = executionContext.RepositoryRoot
+			output, runError := command.CombinedOutput()
+			status := 0
+			launched := true
+			if runError != nil {
+				if exitError, ok := runError.(*exec.ExitError); ok {
+					status = exitError.ExitCode()
+				} else {
+					status = 127
+				}
+				launched = status != 126 && status != 127
+			}
+			baselineDirectory := filepath.Join(executionContext.RepositoryRoot, "do-work", "working")
+			if makeError := os.MkdirAll(baselineDirectory, 0o755); makeError != nil {
+				return usageResult(CommandPreflight, makeError.Error())
+			}
+			recordBytes, _ := json.MarshalIndent(baselineRecord{TestCommand: commandLine, ExitStatus: status, Launched: launched}, "", "  ")
+			recordBytes = append(recordBytes, '\n')
+			baselinePath := filepath.Join(baselineDirectory, "baseline.json")
+			if writeError := writePrivateAtomic(baselinePath, recordBytes, 0o644); writeError != nil {
 				return usageResult(CommandPreflight, writeError.Error())
 			}
-			changes = append(changes, resultmodel.RecordedChange{Path: "do-work/working/baseline-failures.txt", Kind: "modified", Detail: "recorded baseline failure output"})
-			findings = append(findings, helperFinding("PREFLIGHT-BASELINE-RED", resultmodel.SeverityWarning, []string{"do-work/working/baseline-failures.txt"}, fmt.Sprintf("test baseline exited %d", status), resultmodel.FixabilityManual, "compare later failures against this baseline", nil, arguments))
-		} else {
-			_ = os.Remove(failurePath)
-			if !launched {
-				findings = append(findings, helperFinding("PREFLIGHT-BASELINE-NOT-LAUNCHED", resultmodel.SeverityWarning, nil, fmt.Sprintf("test command could not launch (status %d)", status), resultmodel.FixabilityManual, "there is no valid red baseline", arguments, arguments))
+			changes = append(changes, resultmodel.RecordedChange{Path: "do-work/working/baseline.json", Kind: "modified", Detail: "recorded test baseline"})
+			failurePath := filepath.Join(baselineDirectory, "baseline-failures.txt")
+			if launched && status != 0 {
+				if writeError := writePrivateAtomic(failurePath, output, 0o644); writeError != nil {
+					return usageResult(CommandPreflight, writeError.Error())
+				}
+				changes = append(changes, resultmodel.RecordedChange{Path: "do-work/working/baseline-failures.txt", Kind: "modified", Detail: "recorded baseline failure output"})
+				findings = append(findings, helperFinding("PREFLIGHT-BASELINE-RED", resultmodel.SeverityWarning, []string{"do-work/working/baseline-failures.txt"}, fmt.Sprintf("test baseline exited %d", status), resultmodel.FixabilityManual, "compare later failures against this baseline", nil, arguments))
+			} else {
+				_ = os.Remove(failurePath)
+				if !launched {
+					findings = append(findings, helperFinding("PREFLIGHT-BASELINE-NOT-LAUNCHED", resultmodel.SeverityWarning, nil, fmt.Sprintf("test command could not launch (status %d)", status), resultmodel.FixabilityManual, "there is no valid red baseline", arguments, arguments))
+				}
 			}
+		}
+	}
+	if _, err := os.Stat(filepath.Join(executionContext.RepositoryRoot, "package.json")); err == nil {
+		if info, moduleError := os.Stat(filepath.Join(executionContext.RepositoryRoot, "node_modules")); moduleError != nil || !info.IsDir() {
+			findings = append(findings, helperFinding("PREFLIGHT-NODE-MODULES-MISSING", resultmodel.SeverityWarning, []string{"package.json"}, "package.json exists but node_modules/ does not", resultmodel.FixabilityManual, "dependency-backed checks may not launch", []string{"npm", "install"}, []string{"test", "-d", "node_modules"}))
+		}
+	}
+	if _, err := os.Stat(filepath.Join(executionContext.RepositoryRoot, "requirements.txt")); err == nil && os.Getenv("VIRTUAL_ENV") == "" {
+		python := exec.Command("python3", "-c", "import sys; raise SystemExit(0 if sys.prefix != sys.base_prefix else 1)")
+		python.Dir = executionContext.RepositoryRoot
+		if python.Run() != nil {
+			findings = append(findings, helperFinding("PREFLIGHT-VIRTUALENV-MISSING", resultmodel.SeverityWarning, []string{"requirements.txt"}, "requirements.txt exists but no active Python virtual environment was detected", resultmodel.FixabilityManual, "dependency-backed checks may use the wrong interpreter", []string{"python3", "-m", "venv", ".venv"}, []string{"python3", "-c", "import sys; print(sys.prefix)"}))
 		}
 	}
 	// Preflight findings are advisory by contract.
@@ -224,23 +246,46 @@ func handleQualify(executionContext commandruntime.ExecutionContext, arguments [
 	if count := len(uncheckedPattern.FindAll(contents, -1)); count > 0 {
 		findings = append(findings, helperFinding("QUALIFY-PAU-UNCHECKED", resultmodel.SeverityError, []string{requestPath}, fmt.Sprintf("%d P-A-U checkbox(es) remain unchecked", count), resultmodel.FixabilityManual, "the builder has not completed every phase", nil, nil))
 	}
-	addedLines, artifactError := qualificationAddedLines(executionContext.RepositoryRoot, diffRange)
+	lineChanges, artifactError := qualificationChangedLines(executionContext.RepositoryRoot, diffRange)
 	if artifactError != nil {
 		return usageResult(CommandQualify, artifactError.Error())
 	}
-	for path, lines := range addedLines {
+	changedPaths := make([]string, 0, len(lineChanges))
+	for path := range lineChanges {
+		changedPaths = append(changedPaths, path)
+	}
+	sort.Strings(changedPaths)
+	outputPattern := regexp.MustCompile(`console\.log|(^|[^[:alnum:]_])print\s*\(`)
+	for _, path := range changedPaths {
 		if path == "do-work" || strings.HasPrefix(path, "do-work/") {
 			continue
 		}
-		for _, line := range lines {
-			if qualificationDebugArtifactPattern.MatchString(line) {
-				findings = append(findings, helperFinding("QUALIFY-DEBUG-ARTIFACT", resultmodel.SeverityError, []string{path}, line, resultmodel.FixabilityManual, "unfinished/debug-only code is present in the change", nil, nil))
+		changes := lineChanges[path]
+		addedMarkers, removedMarkers := matchedCounts(changes.Added, qualificationDebugArtifactPattern), matchedCounts(changes.Removed, qualificationDebugArtifactPattern)
+		markers := make([]string, 0, len(addedMarkers))
+		for marker := range addedMarkers {
+			markers = append(markers, marker)
+		}
+		sort.Strings(markers)
+		for _, marker := range markers {
+			code, severity := "QUALIFY-DEBUG-ARTIFACT", resultmodel.SeverityError
+			evidence := fmt.Sprintf("%s added %d time(s), removed %d time(s)", marker, addedMarkers[marker], removedMarkers[marker])
+			stop := "unfinished/debug-only code is newly introduced by the change"
+			if addedMarkers[marker] <= removedMarkers[marker] {
+				code, severity = "QUALIFY-DEBUG-ARTIFACT-RELOCATED", resultmodel.SeverityWarning
+				stop = "the marker was relocated rather than introduced; inspect its retained intent"
 			}
-			if regexp.MustCompile(`console\.log|(^|[^[:alnum:]_])print\s*\(`).MatchString(line) {
+			findings = append(findings, helperFinding(code, severity, []string{path}, evidence, resultmodel.FixabilityManual, stop, nil, nil))
+		}
+		addedOutput, removedOutput := countMatchingLines(changes.Added, outputPattern), countMatchingLines(changes.Removed, outputPattern)
+		for _, line := range changes.Added {
+			if outputPattern.MatchString(line) {
 				severity := resultmodel.SeverityError
 				code := "QUALIFY-LIBRARY-OUTPUT"
 				stop := "library output has no terminal audience and is presumptively debug instrumentation"
-				if qualificationPathOwnsExit(executionContext.RepositoryRoot, path, diffRange) {
+				if addedOutput <= removedOutput {
+					severity, code, stop = resultmodel.SeverityWarning, "QUALIFY-OUTPUT-RELOCATED", "output was relocated rather than introduced; inspect its retained intent"
+				} else if qualificationPathOwnsExit(executionContext.RepositoryRoot, path, diffRange) {
 					severity, code, stop = resultmodel.SeverityWarning, "QUALIFY-REPORTER-OUTPUT", "reporter output requires human judgment"
 				}
 				findings = append(findings, helperFinding(code, severity, []string{path}, line, resultmodel.FixabilityManual, stop, nil, nil))
@@ -255,6 +300,31 @@ func handleQualify(executionContext commandruntime.ExecutionContext, arguments [
 		}
 	}
 	return resultmodel.CommandResult{Outcome: outcome, Findings: findings}
+}
+
+type qualificationLineChanges struct {
+	Added   []string
+	Removed []string
+}
+
+func matchedCounts(lines []string, pattern *regexp.Regexp) map[string]int {
+	counts := map[string]int{}
+	for _, line := range lines {
+		for _, match := range pattern.FindAllString(line, -1) {
+			counts[match]++
+		}
+	}
+	return counts
+}
+
+func countMatchingLines(lines []string, pattern *regexp.Regexp) int {
+	count := 0
+	for _, line := range lines {
+		if pattern.MatchString(line) {
+			count++
+		}
+	}
+	return count
 }
 
 type qualificationSummaryEntry struct{ path, verb string }
@@ -312,8 +382,8 @@ func qualificationHasStaticReference(repositoryRoot, path string, changed []stri
 	return false
 }
 
-func qualificationAddedLines(repositoryRoot, diffRange string) (map[string][]string, error) {
-	result := map[string][]string{}
+func qualificationChangedLines(repositoryRoot, diffRange string) (map[string]qualificationLineChanges, error) {
+	result := map[string]qualificationLineChanges{}
 	diffs := [][]byte{}
 	if diffRange != "" {
 		output, err := gitOutput(repositoryRoot, "diff", "--no-ext-diff", "--no-color", "--unified=0", diffRange)
@@ -338,7 +408,13 @@ func qualificationAddedLines(repositoryRoot, diffRange string) (map[string][]str
 				continue
 			}
 			if path != "" && strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
-				result[path] = append(result[path], strings.TrimPrefix(line, "+"))
+				changes := result[path]
+				changes.Added = append(changes.Added, strings.TrimPrefix(line, "+"))
+				result[path] = changes
+			} else if path != "" && strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---") {
+				changes := result[path]
+				changes.Removed = append(changes.Removed, strings.TrimPrefix(line, "-"))
+				result[path] = changes
 			}
 		}
 	}
@@ -355,7 +431,9 @@ func qualificationAddedLines(repositoryRoot, diffRange string) (map[string][]str
 			if err != nil || bytes.IndexByte(contents, 0) >= 0 {
 				continue
 			}
-			result[path] = append(result[path], strings.Split(string(contents), "\n")...)
+			changes := result[path]
+			changes.Added = append(changes.Added, strings.Split(string(contents), "\n")...)
+			result[path] = changes
 		}
 	}
 	return result, nil
@@ -381,13 +459,25 @@ func qualificationPathOwnsExit(repositoryRoot, path, diffRange string) bool {
 }
 
 func qualificationRenameOrigin(repositoryRoot, base, path, diffRange string) string {
-	args := []string{"diff", "--find-renames", "--name-status", "-z"}
+	queries := [][]string{}
 	if diffRange != "" {
-		args = append(args, diffRange)
+		queries = append(queries, []string{"diff", "--find-renames", "--name-status", "-z", diffRange})
 	} else {
-		args = append(args, base)
+		queries = append(queries,
+			[]string{"diff", "--find-renames", "--name-status", "-z"},
+			[]string{"diff", "--cached", "--find-renames", "--name-status", "-z", base},
+			[]string{"diff", "--find-renames", "--name-status", "-z", base})
 	}
-	output, _ := gitOutput(repositoryRoot, args...)
+	for _, args := range queries {
+		output, _ := gitOutput(repositoryRoot, args...)
+		if origin := renameOriginFromStatus(output, path); origin != "" {
+			return origin
+		}
+	}
+	return ""
+}
+
+func renameOriginFromStatus(output []byte, path string) string {
 	fields := strings.Split(string(output), "\x00")
 	for index := 0; index+2 < len(fields); {
 		status := fields[index]
