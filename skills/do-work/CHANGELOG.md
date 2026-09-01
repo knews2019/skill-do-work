@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.255.0 — Deterministic BKB and Dream Commands (2026-09-01)
+
+BKB scaffolding, status, structural lint, and Dream's seven deterministic scans now run as direct typed commands with matching source and installed Just recipes.
+
+- BKB/Dream actions consume canonical JSON without fallback while retaining semantic judgment, reports, locks, consent, consolidation, reindexing, and repair choice.
+- BKB scaffold/reference bytes, fill-gaps, dry-run, exact-path commit, nested unsafe-entry refusal, topic-index findings, flat Dream depth, duplicate refusal, path normalization, and scan ordering are fixture-backed.
+- REQ-416 completed with issues: final-boundary rollback/Git identity remains in REQ-457, outside-target initialization is REQ-473, and master-index count parity is REQ-474.
+
 ## 0.254.1 — Complete Modes Across Atomic Rollback (2026-09-01)
 
 Queue-kanban replacement and existing-untracked Git rollback now preserve setuid, setgid, and sticky bits alongside ordinary permissions.

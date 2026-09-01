@@ -1,7 +1,7 @@
 ---
 id: REQ-416
 title: 'Implement deterministic BKB and Dream commands'
-status: claimed
+status: completed-with-issues
 created_at: 2026-08-29T20:28:26Z
 user_request: UR-081
 domain: general
@@ -28,6 +28,8 @@ estimate:
     - dependency depth 11
     - cross-route regression gates
     - full-suite verification
+completed_at: 2026-09-01T06:00:40Z
+commit: 684d4d82
 ---
 
 # Implement Deterministic BKB and Dream Commands
