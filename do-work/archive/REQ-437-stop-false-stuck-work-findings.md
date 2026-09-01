@@ -33,6 +33,7 @@ related: [REQ-438, REQ-439, REQ-440, REQ-441, REQ-442, REQ-443, REQ-444]
 batch: accepted-feedback-regressions
 claimed_at: 2026-09-01T21:20:23Z
 completed_at: 2026-09-01T21:33:40Z
+commit: 406cfc5d
 ---
 
 # Stop False Stuck-Work Findings for Active and Terminal REQs
