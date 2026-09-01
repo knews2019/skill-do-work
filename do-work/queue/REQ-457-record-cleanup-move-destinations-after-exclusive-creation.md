@@ -30,6 +30,7 @@ This sweep now owns both premature cleanup-destination recording and REQ-413's p
 
 - Cleanup records a move destination before exclusive creation, so a losing writer can delete the winner's file during rollback.
 - Publication creates and records a repository path, then a later parent swap can redirect pathname-only rollback to an outside same-named file.
+- `internal/knowledgecommands/bkb_init.go`: BKB scaffold rollback checks identity and then separately removes by pathname; Git subprocesses ignore the opened root, and incomplete writes can escape ownership recording. Final-boundary replacements can therefore be deleted or mutated despite the recorded identity. (found by REQ-416 / UR-081)
 
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)

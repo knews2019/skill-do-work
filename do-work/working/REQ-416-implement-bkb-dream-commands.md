@@ -169,6 +169,25 @@ The sole remediation pass committed `1ff0dd7227885ca797203d17df969f1356ff4877` a
 
 *Generated from `do-work/runs/work-2026-08-31-165510/REQ-416-remediation-handback.md`.*
 
+## Review — Fresh Re-review
+
+**Overall: 50%** | 2026-09-01
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 78% |
+| Code Quality | 65% |
+| Test Adequacy | 72% |
+| Scope | 100% |
+| Risk | Critical |
+| Acceptance | Fail |
+
+Initial F3/F4 and the Dream affected-index Minor are closed. F1 remains open at the final identity-to-delete/Git boundary; F2 remains partial for outside absolute/parent-relative `bkb-init`; and BKB status substitutes disk counts for the characterized master-index counts. The focused matrix Minor remains partial.
+
+The critical identity residual is folded into the existing REQ-457 sweep. Outside-target initialization and master-index count parity are routed to REQ-473 and REQ-474. With the sole remediation spent, REQ-416 completes with issues.
+
+*Freshly re-reviewed independently; full evidence is in `do-work/runs/work-2026-08-31-165510/REQ-416-rereview.md`.*
+
 ## Full Context
 See `do-work/user-requests/UR-081/input.md` for complete verbatim input.
 

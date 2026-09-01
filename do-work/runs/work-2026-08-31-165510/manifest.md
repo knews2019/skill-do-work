@@ -88,7 +88,10 @@ Status: in-progress
 | 1 | REQ-416 | `worktree-agent-REQ-416-implement-bkb-dream-commands` | `REQ-416-brief.md` | `REQ-416-handback.md` | done |
 | Reviewer | REQ-416 review | integration range `5e341946..3519b315` | REQ plus UR-081 and action boundaries | `REQ-416-review.md` | changes-requested |
 | Remediation | REQ-416 | `worktree-agent-REQ-416-implement-bkb-dream-commands` | F1-F4 rooted safety and scan/path parity closure | `REQ-416-remediation-handback.md` | done |
-| Reviewer | REQ-416 fresh re-review | cumulative builder range `5e341946..1ff0dd72` | REQ plus initial findings | `REQ-416-rereview.md` | pending |
+| Reviewer | REQ-416 fresh re-review | cumulative builder range `5e341946..1ff0dd72` | REQ plus initial findings | `REQ-416-rereview.md` | changes-requested |
+| Folded | REQ-457 | final-boundary BKB rollback/Git identity ownership | REQ-416 residual F1 | `do-work/queue/REQ-457-record-cleanup-move-destinations-after-exclusive-creation.md` | done |
+| Discovered | REQ-473 | documented outside-target BKB initialization | REQ-416 residual F2 | `do-work/queue/REQ-473-support-outside-target-bkb-initialization.md` | done |
+| Discovered | REQ-474 | master-index count-source parity | REQ-416 residual F3 | `do-work/queue/REQ-474-preserve-master-index-counts-in-bkb-status.md` | done |
 | 2 | REQ-447 | `worktree-agent-REQ-447-preserve-special-mode-bits` | `REQ-447-brief.md` | `REQ-447-handback.md` | done |
 | Reviewer | REQ-447 review | integration range `5e341946..96de7f69` | REQ plus REQ-436/REQ-412 | `REQ-447-review.md` | done |
 | Reviewer | REQ-441 review | builder range `eec9ea36..bab4bbae` plus coordinated prime | REQ plus UR-083 and REQ-414 | `REQ-441-review.md` | changes-requested |
