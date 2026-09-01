@@ -78,6 +78,7 @@ Status: in-progress
 | Planner/Explorer | REQ-441 archive refresh | read-only | REQ plus UR-083, REQ-414, archivefetch | `REQ-441-plan.md`, `REQ-441-exploration.md` | done |
 | 1 | REQ-415 | `worktree-agent-REQ-415-migrate-core-memory-hooks` | `REQ-415-brief.md` | `REQ-415-handback.md` | done |
 | 2 | REQ-441 | `worktree-agent-REQ-441-validate-http-archives-before-publication` | `REQ-441-brief.md` | `REQ-441-handback.md` | done |
-| Reviewer | REQ-415 review | integration range `ff9ed994..a18bf17a` | REQ plus UR-081 and REQ-463 | `REQ-415-review.md` | pending |
+| Reviewer | REQ-415 review | integration range `ff9ed994..a18bf17a` | REQ plus UR-081 and REQ-463 | `REQ-415-review.md` | changes-requested |
+| Remediation | REQ-415 | `worktree-agent-REQ-415-migrate-core-memory-hooks` | F1-F5 authority, typed evidence, parity, differential, and restatement closure | `REQ-415-remediation-handback.md` | in-progress |
 | Reviewer | REQ-441 review | builder range `eec9ea36..bab4bbae` plus coordinated prime | REQ plus UR-083 and REQ-414 | `REQ-441-review.md` | changes-requested |
 | Remediation | REQ-441 | `worktree-agent-REQ-441-validate-http-archives-before-publication` | truthful parent-open route evidence | `REQ-441-remediation-handback.md` | in-progress |

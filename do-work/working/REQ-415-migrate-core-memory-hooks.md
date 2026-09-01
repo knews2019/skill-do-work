@@ -183,6 +183,30 @@ The three retained hook paths are installed-layout sibling-CLI launchers. Sessio
 - Builder full Go, vet, exact Go 1.25, contract/staged/install/update, shell syntax, diff hygiene, and canonical maintainer gate — passed per the durable handback.
 - REQ-463's unborn-Git and final eligibility-revalidation fixtures pass in the merged corehelpers package.
 
+## Review — Initial
+
+**Overall: 50%** | 2026-09-01
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 58% |
+| Code Quality | 60% |
+| Test Adequacy | 35% |
+| Scope | 100% |
+| Risk | Critical |
+| Acceptance | Fail |
+
+**Important findings:**
+- F1 — impact-critical — Git-evidence failure is misclassified as non-Git and allows uncommitted working-tree requests to authorize destructive reservation cleanup; REQ-463 remains open.
+- F2 — impact-user-visible — exact protocol projection drops typed mutation evidence from JSON findings/changes.
+- F3 — impact-user-visible — blank-line transcript handling and new memory-file modes diverge from retained jq/shell behavior.
+- F4 — impact-rule-change — the required retained-versus-Go characterization matrix is absent; current coverage is smoke-only for key migration dimensions.
+- F5 — impact-rule-change — the canonical memory reference still assigns redaction and writer ownership to the thin shell shims.
+
+All five findings enter the single remediation pass. REQ-463 must remain open unless a fresh independent re-review proves F1 closed.
+
+*Reviewed independently; full evidence is in `do-work/runs/work-2026-08-31-165510/REQ-415-review.md`.*
+
 ## Red-Green Proof
 **RED prompt/case:** Replay captured valid, malformed, redacted, duplicate, and repair hook events against missing Go hook subcommands.
 **Why RED now:** Hook behavior currently resides in three shipped shell implementations.
