@@ -327,6 +327,192 @@ func renderScaffold(content, today string) string {
 	return strings.ReplaceAll(content, "{today}", today)
 }
 
+var knowledgeMutationHook = func(_, _, _ string) error { return nil }
+
+type rootedObject struct {
+	path      string
+	identity  os.FileInfo
+	recursive bool
+}
+
+type rootedScaffoldWriter struct {
+	root        *os.Root
+	flow        string
+	directories map[string]os.FileInfo
+	created     []rootedObject
+}
+
+func newRootedScaffoldWriter(rootPath, flow string) (*rootedScaffoldWriter, error) {
+	root, err := os.OpenRoot(rootPath)
+	if err != nil {
+		return nil, err
+	}
+	identity, err := root.Stat(".")
+	if err != nil {
+		_ = root.Close()
+		return nil, err
+	}
+	return &rootedScaffoldWriter{root: root, flow: flow, directories: map[string]os.FileInfo{".": identity}}, nil
+}
+
+func (writer *rootedScaffoldWriter) close() { _ = writer.root.Close() }
+
+func (writer *rootedScaffoldWriter) snapshotDirectories(paths []string) error {
+	for _, path := range paths {
+		path = cleanRootPath(path)
+		info, err := writer.root.Lstat(path)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("scaffold parent %q is not a real directory", path)
+		}
+		writer.directories[path] = info
+	}
+	return nil
+}
+
+func (writer *rootedScaffoldWriter) validateParents(path string) error {
+	parent := cleanRootPath(filepath.Dir(path))
+	for knownPath, identity := range writer.directories {
+		if !rootPathContains(parent, knownPath) {
+			continue
+		}
+		var current os.FileInfo
+		var err error
+		if knownPath == "." {
+			current, err = writer.root.Stat(knownPath)
+		} else {
+			current, err = writer.root.Lstat(knownPath)
+		}
+		if err != nil {
+			return fmt.Errorf("revalidate scaffold parent %q: %w", knownPath, err)
+		}
+		if !os.SameFile(identity, current) {
+			return fmt.Errorf("scaffold parent %q changed after validation", knownPath)
+		}
+	}
+	return nil
+}
+
+func (writer *rootedScaffoldWriter) createDirectory(path string, recursive bool) error {
+	path = cleanRootPath(path)
+	if err := writer.validateParents(path); err != nil {
+		return err
+	}
+	if err := knowledgeMutationHook("before-create", writer.flow, path); err != nil {
+		return err
+	}
+	if err := writer.validateParents(path); err != nil {
+		return err
+	}
+	if err := writer.root.Mkdir(path, 0o755); err != nil {
+		return err
+	}
+	info, err := writer.root.Lstat(path)
+	if err != nil {
+		return err
+	}
+	writer.directories[path] = info
+	writer.created = append(writer.created, rootedObject{path: path, identity: info, recursive: recursive})
+	return knowledgeMutationHook("after-create", writer.flow, path)
+}
+
+func (writer *rootedScaffoldWriter) createFile(path, content string) error {
+	path = cleanRootPath(path)
+	if err := writer.validateParents(path); err != nil {
+		return err
+	}
+	if err := knowledgeMutationHook("before-create", writer.flow, path); err != nil {
+		return err
+	}
+	if err := writer.validateParents(path); err != nil {
+		return err
+	}
+	fileHandle, err := writer.root.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return err
+	}
+	_, writeError := fileHandle.WriteString(content)
+	closeError := fileHandle.Close()
+	if writeError != nil {
+		return writeError
+	}
+	if closeError != nil {
+		return closeError
+	}
+	info, err := writer.root.Lstat(path)
+	if err != nil {
+		return err
+	}
+	writer.created = append(writer.created, rootedObject{path: path, identity: info})
+	return knowledgeMutationHook("after-create", writer.flow, path)
+}
+
+func (writer *rootedScaffoldWriter) rollback() resultmodel.RollbackResult {
+	result := resultmodel.RollbackResult{Status: resultmodel.RollbackSucceeded, Actions: []string{}, Errors: []string{}}
+	for index := len(writer.created) - 1; index >= 0; index-- {
+		created := writer.created[index]
+		_ = knowledgeMutationHook("before-rollback", writer.flow, created.path)
+		current, err := writer.root.Lstat(created.path)
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("preserve %s: %v", created.path, err))
+			continue
+		}
+		if !os.SameFile(created.identity, current) {
+			result.Errors = append(result.Errors, fmt.Sprintf("preserve replacement at %s: identity changed", created.path))
+			continue
+		}
+		if created.recursive {
+			err = writer.root.RemoveAll(created.path)
+		} else {
+			err = writer.root.Remove(created.path)
+		}
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("remove owned %s: %v", created.path, err))
+			continue
+		}
+		result.Actions = append(result.Actions, "removed owned "+created.path)
+	}
+	if len(result.Errors) > 0 {
+		result.Status = resultmodel.RollbackIncomplete
+	}
+	return result
+}
+
+func cleanRootPath(path string) string {
+	clean := filepath.ToSlash(filepath.Clean(path))
+	if clean == "" {
+		return "."
+	}
+	return clean
+}
+func rootPathContains(path, candidate string) bool {
+	path, candidate = cleanRootPath(path), cleanRootPath(candidate)
+	return candidate == "." || path == candidate || strings.HasPrefix(path, candidate+"/")
+}
+
+func runGitInRoot(root *os.Root, rootPath string, arguments ...string) ([]byte, error) {
+	command := exec.Command("git", arguments...)
+	beforeIdentity, err := os.Stat(rootPath)
+	if err != nil {
+		return nil, err
+	}
+	command.Dir = rootPath
+	output, err := command.CombinedOutput()
+	afterIdentity, identityError := os.Stat(rootPath)
+	if identityError != nil || !os.SameFile(beforeIdentity, afterIdentity) {
+		return output, fmt.Errorf("root changed during Git operation")
+	}
+	if err != nil {
+		return output, fmt.Errorf("git %s: %s: %w", strings.Join(arguments, " "), strings.TrimSpace(string(output)), err)
+	}
+	return output, nil
+}
+
 func handleBKBInit(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
 	options, err := parseBKBOptions(arguments, true)
 	if err != nil {
@@ -386,43 +572,51 @@ func initializeInRepository(gitRoot, targetPath string, options bkbOptions, now 
 		}
 		return result
 	}
-	transaction := gittransaction.ExecuteTransaction(context.Background(), gittransaction.TransactionOptions{RepositoryRoot: gitRoot, TargetPaths: missingFiles, CreatedDirectoryPaths: missingDirectories, DryRun: options.dryRun, Commit: options.commit, CommitMessage: "bkb: initialize knowledge base"}, func(recorder *gittransaction.MutationRecorder) error {
-		for _, directory := range missingDirectories {
-			if err := os.Mkdir(filepath.Join(gitRoot, filepath.FromSlash(directory)), 0o755); err != nil {
-				return err
-			}
-			if err := recorder.RecordCreatedDirectory(directory); err != nil {
-				return err
-			}
+	preflight := gittransaction.PreflightTargets(context.Background(), gitRoot, missingFiles, options.commit)
+	if preflight.Failure != nil {
+		outcome := resultmodel.OutcomeFailure
+		if preflight.Failure.Kind == gittransaction.FailureDirtyIndex || preflight.Failure.Kind == gittransaction.FailureDirtyTarget {
+			outcome = resultmodel.OutcomeRefused
 		}
-		for _, file := range scaffoldFiles {
-			repositoryPath := filepath.ToSlash(filepath.Join(targetRelative, file.path))
-			if !containsString(missingFiles, repositoryPath) {
-				continue
-			}
-			absolutePath := filepath.Join(gitRoot, filepath.FromSlash(repositoryPath))
-			fileHandle, openError := os.OpenFile(absolutePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-			if openError != nil {
-				return openError
-			}
-			_, writeError := fileHandle.WriteString(renderScaffold(file.content, now.Format("2006-01-02")))
-			closeError := fileHandle.Close()
-			if writeError != nil {
-				return writeError
-			}
-			if closeError != nil {
-				return closeError
-			}
-			if err := recorder.RecordCreated(repositoryPath); err != nil {
-				return err
-			}
+		return gittransaction.BuildCommandResult(CommandBKBInit, gittransaction.TransactionResult{Outcome: outcome, RepositoryRoot: preflight.RepositoryRoot, Failure: preflight.Failure, Rollback: resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded}})
+	}
+	if options.dryRun {
+		result := plannedScaffoldResult(targetPath, filepath.ToSlash(targetRelative), now)
+		for _, path := range existingFiles {
+			result.SkippedWork = append(result.SkippedWork, resultmodel.SkippedWork{Code: "BKB-INIT-PRESERVE-EXISTING", Reason: path})
 		}
-		return nil
-	})
-	result := gittransaction.BuildCommandResult(CommandBKBInit, transaction)
-	if options.dryRun && transaction.Outcome == resultmodel.OutcomeSuccess {
-		result = plannedScaffoldResult(targetPath, filepath.ToSlash(targetRelative), now)
-		result.Rollback = transaction.Rollback
+		return result
+	}
+	writer, openError := newRootedScaffoldWriter(gitRoot, "git")
+	if openError != nil {
+		return initializationFailure(options.target, openError, resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded})
+	}
+	defer writer.close()
+	if err := writer.snapshotDirectories(scaffoldRootDirectories(filepath.ToSlash(targetRelative))); err != nil {
+		return initializationFailure(options.target, err, resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded})
+	}
+	if err := knowledgeMutationHook("after-validation", writer.flow, filepath.ToSlash(targetRelative)); err != nil {
+		return initializationFailure(options.target, err, writer.rollback())
+	}
+	if err := applyRootedScaffold(writer, filepath.ToSlash(targetRelative), missingDirectories, missingFiles, now); err != nil {
+		return initializationFailure(options.target, err, writer.rollback())
+	}
+	if options.commit {
+		if _, err := runGitInRoot(writer.root, gitRoot, append([]string{"add", "-A", "--"}, missingFiles...)...); err != nil {
+			unstageRootedPaths(writer.root, gitRoot, missingFiles)
+			return initializationFailure(options.target, err, writer.rollback())
+		}
+		if _, err := runGitInRoot(writer.root, gitRoot, "commit", "-m", "bkb: initialize knowledge base"); err != nil {
+			unstageRootedPaths(writer.root, gitRoot, missingFiles)
+			return initializationFailure(options.target, err, writer.rollback())
+		}
+		if err := verifyRootedCommit(writer.root, gitRoot, missingFiles); err != nil {
+			return rootedCommittedRisk(writer.root, gitRoot, options.target, err)
+		}
+	}
+	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, RepositoryRoot: gitRoot, Rollback: resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded}}
+	for _, path := range missingFiles {
+		result.Changes = append(result.Changes, resultmodel.RecordedChange{Path: path, Kind: "created", Detail: "canonical BKB scaffold file"})
 	}
 	for _, path := range existingFiles {
 		result.SkippedWork = append(result.SkippedWork, resultmodel.SkippedWork{Code: "BKB-INIT-PRESERVE-EXISTING", Reason: path})
@@ -430,109 +624,172 @@ func initializeInRepository(gitRoot, targetPath string, options bkbOptions, now 
 	return result
 }
 
+func scaffoldRootDirectories(prefix string) []string {
+	paths := make([]string, 0, len(scaffoldDirectorySuffixes()))
+	for _, suffix := range scaffoldDirectorySuffixes() {
+		paths = append(paths, cleanRootPath(filepath.Join(prefix, suffix)))
+	}
+	return paths
+}
+
+func applyRootedScaffold(writer *rootedScaffoldWriter, prefix string, missingDirectories, missingFiles []string, now time.Time) error {
+	for _, directory := range missingDirectories {
+		if err := writer.createDirectory(directory, false); err != nil {
+			return err
+		}
+	}
+	for _, file := range scaffoldFiles {
+		path := cleanRootPath(filepath.Join(prefix, file.path))
+		if containsString(missingFiles, path) {
+			if err := writer.createFile(path, renderScaffold(file.content, now.Format("2006-01-02"))); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func standaloneRoot(targetPath string) (string, string, error) {
+	ancestor := filepath.Dir(targetPath)
+	for {
+		info, err := os.Stat(ancestor)
+		if err == nil {
+			if !info.IsDir() {
+				return "", "", fmt.Errorf("standalone ancestor %q is not a directory", ancestor)
+			}
+			prefix, relErr := filepath.Rel(ancestor, targetPath)
+			return ancestor, cleanRootPath(prefix), relErr
+		}
+		if !os.IsNotExist(err) {
+			return "", "", err
+		}
+		parent := filepath.Dir(ancestor)
+		if parent == ancestor {
+			return "", "", fmt.Errorf("no existing standalone ancestor for %q", targetPath)
+		}
+		ancestor = parent
+	}
+}
+
+func initializationFailure(target string, cause error, rollback resultmodel.RollbackResult) resultmodel.CommandResult {
+	outcome := resultmodel.OutcomeRolledBack
+	if rollback.Status == resultmodel.RollbackNotNeeded {
+		outcome = resultmodel.OutcomeFailure
+	}
+	if rollback.Status == resultmodel.RollbackIncomplete {
+		outcome = resultmodel.OutcomeRisk
+	}
+	return resultmodel.CommandResult{Outcome: outcome, Findings: []resultmodel.CommandFinding{knowledgeFinding(CommandBKBInit, "BKB-INIT-FAILED", resultmodel.SeverityError, []string{target}, cause.Error(), resultmodel.FixabilityManual, "initialization failed; inspect preserved replacements before retrying")}, Rollback: rollback}
+}
+
+func verifyRootedCommit(root *os.Root, rootPath string, expected []string) error {
+	output, err := runGitInRoot(root, rootPath, "show", "--name-only", "--pretty=format:", "HEAD")
+	if err != nil {
+		return err
+	}
+	actual := strings.Fields(string(output))
+	expected = append([]string(nil), expected...)
+	sort.Strings(actual)
+	sort.Strings(expected)
+	if strings.Join(actual, "\x00") != strings.Join(expected, "\x00") {
+		return fmt.Errorf("committed paths %v differ from exact scaffold paths %v", actual, expected)
+	}
+	if _, err := runGitInRoot(root, rootPath, "diff", "--cached", "--quiet", "--exit-code"); err != nil {
+		return fmt.Errorf("index is not empty after commit: %w", err)
+	}
+	return nil
+}
+
+func unstageRootedPaths(root *os.Root, rootPath string, paths []string) {
+	if _, err := runGitInRoot(root, rootPath, append([]string{"reset", "--quiet", "--"}, paths...)...); err != nil {
+		_, _ = runGitInRoot(root, rootPath, append([]string{"rm", "--cached", "-r", "--force", "--ignore-unmatch", "--"}, paths...)...)
+	}
+}
+
+func rootedCommittedRisk(root *os.Root, targetPath, target string, operationError error) resultmodel.CommandResult {
+	output, err := runGitInRoot(root, targetPath, "rev-parse", "HEAD")
+	sha := strings.TrimSpace(string(output))
+	finding := knowledgeFinding(CommandBKBInit, "BKB-INIT-COMMITTED-RISK", resultmodel.SeverityError, []string{target}, operationError.Error(), resultmodel.FixabilityManual, "the commit landed but exact paths could not be verified; revert that commit before retrying")
+	if err == nil && sha != "" {
+		finding.NextArgv = []string{"git", "-C", targetPath, "revert", sha}
+		finding.VerificationArgv = []string{"git", "-C", targetPath, "show", "--name-only", "--pretty=format:", sha}
+	}
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRisk, Findings: []resultmodel.CommandFinding{finding}}
+}
+
+func displayScaffoldPath(rootPath, prefix, target string) string {
+	suffix := strings.TrimPrefix(strings.TrimPrefix(cleanRootPath(rootPath), cleanRootPath(prefix)), "/")
+	return filepath.ToSlash(filepath.Join(target, filepath.FromSlash(suffix)))
+}
+
 func initializeWithoutRepository(root string, options bkbOptions, now time.Time) resultmodel.CommandResult {
 	targetPath, err := ensureSafeTarget(root, options.target)
 	if err != nil {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{knowledgeFinding(CommandBKBInit, "BKB-INIT-UNSAFE-TARGET", resultmodel.SeverityError, []string{options.target}, err.Error(), resultmodel.FixabilityRefused, "the target is unsafe")}}
 	}
-	missingFiles, existingFiles := scaffoldInventory(targetPath, options.target)
-	missingDirectories := missingDirectoryInventory(targetPath, options.target)
-	createdFiles, createdDirectories := []string{}, []string{}
-	gitDirectoryCreated := false
-	rollback := func(cause error) resultmodel.CommandResult {
-		rollbackErrors := []string{}
-		if gitDirectoryCreated {
-			if removeError := os.RemoveAll(filepath.Join(targetPath, ".git")); removeError != nil {
-				rollbackErrors = append(rollbackErrors, removeError.Error())
-			}
-		}
-		for index := len(createdFiles) - 1; index >= 0; index-- {
-			if removeError := os.Remove(createdFiles[index]); removeError != nil && !os.IsNotExist(removeError) {
-				rollbackErrors = append(rollbackErrors, removeError.Error())
-			}
-		}
-		for index := len(createdDirectories) - 1; index >= 0; index-- {
-			if removeError := os.Remove(createdDirectories[index]); removeError != nil && !os.IsNotExist(removeError) {
-				rollbackErrors = append(rollbackErrors, removeError.Error())
-			}
-		}
-		outcome, status := resultmodel.OutcomeRolledBack, resultmodel.RollbackSucceeded
-		if len(rollbackErrors) > 0 {
-			outcome, status = resultmodel.OutcomeRisk, resultmodel.RollbackIncomplete
-		}
-		return resultmodel.CommandResult{Outcome: outcome, Findings: []resultmodel.CommandFinding{knowledgeFinding(CommandBKBInit, "BKB-INIT-FAILED", resultmodel.SeverityError, []string{options.target}, cause.Error(), resultmodel.FixabilityManual, "initialization failed")}, Rollback: resultmodel.RollbackResult{Status: status, Actions: append([]string(nil), createdFiles...), Errors: rollbackErrors}}
+	base, prefix, err := standaloneRoot(targetPath)
+	if err != nil {
+		return initializationFailure(options.target, err, resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded})
 	}
-	for _, relative := range missingDirectories {
-		path := filepath.Join(root, filepath.FromSlash(relative))
-		if err := os.Mkdir(path, 0o755); err != nil {
-			return rollback(err)
+	missingFiles, existingFiles := scaffoldInventory(targetPath, filepath.ToSlash(prefix))
+	missingDirectories := missingDirectoryInventory(targetPath, filepath.ToSlash(prefix))
+	if len(missingFiles) == 0 {
+		result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Rollback: resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded}}
+		for _, path := range existingFiles {
+			result.SkippedWork = append(result.SkippedWork, resultmodel.SkippedWork{Code: "BKB-INIT-PRESERVE-EXISTING", Reason: displayScaffoldPath(path, prefix, options.target)})
 		}
-		createdDirectories = append(createdDirectories, path)
+		return result
 	}
-	for _, file := range scaffoldFiles {
-		relative := filepath.ToSlash(filepath.Join(options.target, file.path))
-		if !containsString(missingFiles, relative) {
-			continue
-		}
-		path := filepath.Join(root, filepath.FromSlash(relative))
-		fileHandle, openError := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-		if openError != nil {
-			return rollback(openError)
-		}
-		_, writeError := fileHandle.WriteString(renderScaffold(file.content, now.Format("2006-01-02")))
-		closeError := fileHandle.Close()
-		if writeError != nil {
-			return rollback(writeError)
-		}
-		if closeError != nil {
-			return rollback(closeError)
-		}
-		createdFiles = append(createdFiles, path)
+	writer, err := newRootedScaffoldWriter(base, "standalone")
+	if err != nil {
+		return initializationFailure(options.target, err, resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded})
+	}
+	defer writer.close()
+	if err := writer.snapshotDirectories(scaffoldRootDirectories(prefix)); err != nil {
+		return initializationFailure(options.target, err, resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded})
+	}
+	if err := knowledgeMutationHook("after-validation", writer.flow, prefix); err != nil {
+		return initializationFailure(options.target, err, writer.rollback())
+	}
+	if err := applyRootedScaffold(writer, prefix, missingDirectories, missingFiles, now); err != nil {
+		return initializationFailure(options.target, err, writer.rollback())
 	}
 	if _, err := exec.LookPath("git"); err != nil {
-		return rollback(fmt.Errorf("Git is required to initialize a standalone knowledge base: %w", err))
+		return initializationFailure(options.target, fmt.Errorf("Git is required to initialize a standalone knowledge base: %w", err), writer.rollback())
 	}
-	_, gitStatError := os.Lstat(filepath.Join(targetPath, ".git"))
-	gitDirectoryAbsent := os.IsNotExist(gitStatError)
-	command := exec.Command("git", "-C", targetPath, "init")
-	if output, err := command.CombinedOutput(); err != nil {
-		if gitDirectoryAbsent {
-			if _, statError := os.Lstat(filepath.Join(targetPath, ".git")); statError == nil {
-				gitDirectoryCreated = true
-			}
-		}
-		return rollback(fmt.Errorf("git init: %s: %w", strings.TrimSpace(string(output)), err))
+	gitPath := cleanRootPath(filepath.Join(prefix, ".git"))
+	if err := writer.createDirectory(gitPath, true); err != nil {
+		return initializationFailure(options.target, err, writer.rollback())
 	}
-	gitDirectoryCreated = gitDirectoryAbsent
+	targetRoot, err := writer.root.OpenRoot(prefix)
+	if err != nil {
+		return initializationFailure(options.target, err, writer.rollback())
+	}
+	defer targetRoot.Close()
+	if _, err := runGitInRoot(targetRoot, targetPath, "init"); err != nil {
+		return initializationFailure(options.target, err, writer.rollback())
+	}
 	if options.commit && len(missingFiles) > 0 {
 		commitPaths := make([]string, 0, len(missingFiles))
 		for _, path := range missingFiles {
-			commitPaths = append(commitPaths, strings.TrimPrefix(strings.TrimPrefix(path, options.target), "/"))
+			commitPaths = append(commitPaths, strings.TrimPrefix(strings.TrimPrefix(path, cleanRootPath(prefix)), "/"))
 		}
-		addArguments := append([]string{"-C", targetPath, "add", "-A", "--"}, commitPaths...)
-		if output, addError := exec.Command("git", addArguments...).CombinedOutput(); addError != nil {
-			return rollback(fmt.Errorf("git add exact scaffold paths: %s: %w", strings.TrimSpace(string(output)), addError))
+		if _, err := runGitInRoot(targetRoot, targetPath, append([]string{"add", "-A", "--"}, commitPaths...)...); err != nil {
+			return initializationFailure(options.target, err, writer.rollback())
 		}
-		if output, commitError := exec.Command("git", "-C", targetPath, "commit", "-m", "bkb: initialize knowledge base").CombinedOutput(); commitError != nil {
-			return rollback(fmt.Errorf("git commit exact scaffold paths: %s: %w", strings.TrimSpace(string(output)), commitError))
+		if _, err := runGitInRoot(targetRoot, targetPath, "commit", "-m", "bkb: initialize knowledge base"); err != nil {
+			return initializationFailure(options.target, err, writer.rollback())
 		}
-		output, showError := exec.Command("git", "-C", targetPath, "show", "--name-only", "--pretty=format:", "HEAD").Output()
-		if showError != nil {
-			return standaloneCommittedRisk(targetPath, options.target, showError)
-		}
-		actualPaths := strings.Fields(string(output))
-		sort.Strings(actualPaths)
-		sort.Strings(commitPaths)
-		if strings.Join(actualPaths, "\x00") != strings.Join(commitPaths, "\x00") {
-			return standaloneCommittedRisk(targetPath, options.target, fmt.Errorf("committed paths %v differ from exact scaffold paths %v", actualPaths, commitPaths))
+		if err := verifyRootedCommit(targetRoot, targetPath, commitPaths); err != nil {
+			return rootedCommittedRisk(targetRoot, targetPath, options.target, err)
 		}
 	}
 	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Rollback: resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded}}
 	for _, relative := range missingFiles {
-		result.Changes = append(result.Changes, resultmodel.RecordedChange{Path: relative, Kind: "created", Detail: "canonical BKB scaffold file"})
+		result.Changes = append(result.Changes, resultmodel.RecordedChange{Path: displayScaffoldPath(relative, prefix, options.target), Kind: "created", Detail: "canonical BKB scaffold file"})
 	}
 	for _, relative := range existingFiles {
-		result.SkippedWork = append(result.SkippedWork, resultmodel.SkippedWork{Code: "BKB-INIT-PRESERVE-EXISTING", Reason: relative})
+		result.SkippedWork = append(result.SkippedWork, resultmodel.SkippedWork{Code: "BKB-INIT-PRESERVE-EXISTING", Reason: displayScaffoldPath(relative, prefix, options.target)})
 	}
 	return result
 }

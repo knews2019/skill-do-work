@@ -68,11 +68,10 @@ func parseBKBOptions(arguments []string, mutable bool) (bkbOptions, error) {
 	if options.dryRun && options.commit {
 		return options, fmt.Errorf("--dry-run and --commit cannot be combined")
 	}
-	cleaned := filepath.Clean(options.target)
-	if options.target == "" || filepath.IsAbs(options.target) || cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(filepath.Separator)) {
-		return options, fmt.Errorf("target %q must stay within --repo-root", options.target)
+	if strings.TrimSpace(options.target) == "" {
+		return options, fmt.Errorf("target path must not be empty")
 	}
-	options.target = filepath.ToSlash(cleaned)
+	options.target = filepath.Clean(options.target)
 	return options, nil
 }
 
@@ -86,7 +85,7 @@ func knowledgeFinding(commandName, code string, severity resultmodel.FindingSeve
 	commandArgv := []string{"do-work-cli", commandName}
 	verification := []string{"do-work-cli", "--format", "json", commandName}
 	recipe := commandName
-	if len(paths) > 0 && paths[0] != "." && paths[0] != ".." && !strings.HasPrefix(paths[0], "../") {
+	if len(paths) > 0 && paths[0] != "." {
 		target := paths[0]
 		commandArgv = append(commandArgv, "--path", target)
 		verification = append(verification, "--path", target)
@@ -110,22 +109,39 @@ func ensureSafeTarget(root, relative string) (string, error) {
 	if physicalRoot, resolveError := filepath.EvalSymlinks(absoluteRoot); resolveError == nil {
 		absoluteRoot = physicalRoot
 	}
-	absoluteTarget := filepath.Join(absoluteRoot, filepath.FromSlash(relative))
-	current := absoluteRoot
-	for _, part := range strings.Split(filepath.FromSlash(relative), string(filepath.Separator)) {
-		current = filepath.Join(current, part)
-		info, statError := os.Lstat(current)
-		if os.IsNotExist(statError) {
-			continue
-		}
-		if statError != nil {
-			return "", statError
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return "", fmt.Errorf("target component %q is a symlink", current)
-		}
+	absoluteTarget := relative
+	if !filepath.IsAbs(absoluteTarget) {
+		absoluteTarget = filepath.Join(absoluteRoot, relative)
 	}
-	return absoluteTarget, nil
+	return physicalPath(filepath.Clean(absoluteTarget))
+}
+
+func physicalPath(path string) (string, error) {
+	missingParts := []string{}
+	current := path
+	for {
+		_, err := os.Lstat(current)
+		if err == nil {
+			break
+		}
+		if !os.IsNotExist(err) {
+			return "", err
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return "", err
+		}
+		missingParts = append(missingParts, filepath.Base(current))
+		current = parent
+	}
+	physical, err := filepath.EvalSymlinks(current)
+	if err != nil {
+		return "", err
+	}
+	for index := len(missingParts) - 1; index >= 0; index-- {
+		physical = filepath.Join(physical, missingParts[index])
+	}
+	return filepath.Clean(physical), nil
 }
 
 func sortFindings(findings []resultmodel.CommandFinding) {

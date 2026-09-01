@@ -153,6 +153,8 @@ func lintKnowledgeBase(target, relative string, pages []knowledgePage) []resultm
 		for _, stem := range links {
 			if _, exists := pageByStem[stem]; exists {
 				indexMembership[stem] = append(indexMembership[stem], indexRelative)
+			} else {
+				findings = append(findings, scanFinding(CommandBKBLintStructure, relative, "BKB-TOPIC-DANGLING-ENTRY", resultmodel.SeverityWarning, []string{indexRelative}, fmt.Sprintf("%s links to missing article [[%s]]", indexStem, stem), resultmodel.FixabilityManual, "the action chooses rename, stub, or removal from the topic index"))
 			}
 		}
 	}
