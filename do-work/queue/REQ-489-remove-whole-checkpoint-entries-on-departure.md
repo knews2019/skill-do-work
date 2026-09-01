@@ -1,7 +1,7 @@
 ---
 id: REQ-489
 title: 'Remove whole checkpoint entries when a REQ leaves working'
-status: pending-answers
+status: pending
 created_at: 2026-09-01T19:46:57Z
 user_request: UR-083
 addendum_to: REQ-440
@@ -13,6 +13,7 @@ depends_on: []
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
+status_changed_at: 2026-09-01T21:05:20Z
 ---
 
 # Remove Whole Checkpoint Entries When a REQ Leaves Working
@@ -45,7 +46,7 @@ Found during REQ-440's archive on 2026-09-01: after `complete REQ-440` the check
 **Validation:** Discovered task from REQ-440; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
 
 ## Open Questions
-- [ ] I discovered this out-of-scope task while working on REQ-440: the canonical archive command leaves orphaned detail lines in the session checkpoint when it removes a finished REQ's in-progress entry. Should I process this as a new task?
+- [x] I discovered this out-of-scope task while working on REQ-440: the canonical archive command leaves orphaned detail lines in the session checkpoint when it removes a finished REQ's in-progress entry. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
 
@@ -53,3 +54,11 @@ Found during REQ-440's archive on 2026-09-01: after `complete REQ-440` the check
 
 ---
 *Source: discovered task recorded during REQ-440 (work action Step 8).*
+
+
+## Answer Notes
+
+- 2026-09-01 - [ ] I discovered this out-of-scope task while working on REQ-440: the canonical archive command leaves orphaned detail lines in the session checkpoint when it removes a finished REQ's in-progress entry. Should I process this as a new task?: Confirmed: Yes, add to queue
+> ```
+> Add this checkpoint-cleanup fix to the queue for normal implementation. No scope is excluded.
+> ```
