@@ -74,3 +74,38 @@ User added (v4 revision, validate-feedback Findings 4 and 6 — Accept):
 - A missing listed file still proceeds-without-it, and the miss is recorded in the hand-back.
 - The audit gains three further mechanical checks: an index estimate more than ~25% off the recomputed value; an index hook whose slug set does not match the satellite's actual slug set (either direction); a `slugged: full` flag on a satellite that still has un-slugged bullets.
 - Provenance: validate-feedback 2026-09-01, Findings 4 and 6. Surface-cost: additive-read fix N/A (removes an accidental narrowing); audit checks Earned — the index becomes a routing and budgeting authority, and all three checks are read-only recompute/grep comparisons inside the existing milestone audit.
+
+## Addendum (2026-09-01, claim-time consult)
+
+User added (approved UR-081 improvement plan, 2026-09-01 session):
+
+> ```
+> At claim, work.md Step 5 consults the lessons index for EVERY REQ — stamped or
+> not: grep the index's family hooks against the REQ's scope/prime files and treat
+> matches as required reading, recording the resolved list in the run scratch or
+> refreshing required_lessons on the REQ (builder's choice). The consult uses the
+> same budget constant, entry forms, cost rule, and full-only targeting as
+> REQ-478's stamping, counting entries already stamped on the REQ against the
+> budget first; budget-dropped matches are recorded, never silent. This covers
+> REQ-457 and every other pre-existing REQ at claim, and it is what covers a
+> serial UR whose later REQs were stamped before their siblings' lessons existed —
+> capture-time stamping cannot see a lesson written at an earlier REQ's archive
+> (work.md Step 7), and Trap promotion fires only on the second same-family lesson
+> write, catching recurrence #3, not #2 (the REQ-414-to-415 shape).
+> ```
+
+- Resolved conflict: this supersedes the body's capture-stamped-only scope for the
+  mandatory read — the enforced read now has two triggers: stamped `required_lessons`
+  entries (body) and claim-time index matches (this addendum). The first addendum's
+  rule that the touch-conditional read at work.md:404 stays in force for ALL REQs is
+  unchanged; the claim-time consult is a third additive layer, and Step 6's
+  one-sentence regime statement must name all three.
+- Depends on REQ-478's budget constant, entry forms, and cost rule (already this
+  REQ's `depends_on`) and on REQ-477's index hooks.
+- REQ-481 (the one-time stamping pass) is superseded by this addendum and was
+  cancelled 2026-09-01: every pending REQ now receives the same decision at claim,
+  so a one-shot pass adds nothing it would not redo.
+- Provenance: maintainer-approved plan, 2026-09-01 session (UR-081 never-ending-story
+  analysis). Surface-cost: Earned — the 2026-08-31 run's recurrences (REQ-414→415)
+  happened between REQs captured in one batch before any lesson existed, the exact
+  window capture-time stamping cannot reach.
