@@ -1,7 +1,7 @@
 ---
 id: REQ-500
 title: 'Surface unfinished finalizations in doctor and the session-start banner'
-status: pending
+status: claimed
 created_at: 2026-09-02T13:31:12Z
 user_request: UR-097
 domain: backend
@@ -15,6 +15,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 write_set: [skills/do-work/tools/do-work-cli/internal/doctor/doctor_scan.go, skills/do-work/tools/do-work-cli/internal/doctor/doctor_scan_test.go, skills/do-work/tools/do-work-cli/internal/hookcommands/session_start.go, skills/do-work/tools/do-work-cli/internal/hookcommands/session_start_test.go, _dev/tests/session-start-hook-behavior.sh]
+claimed_at: 2026-09-02T16:41:44Z
 ---
 
 # Surface Unfinished Finalizations in Doctor and the Session-Start Banner

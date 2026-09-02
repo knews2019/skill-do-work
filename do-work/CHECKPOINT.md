@@ -53,3 +53,5 @@ session_depth: light
 ## In Progress (interrupted)
 
 - REQ-499: [impact-critical] Add recover-finalization --assume-sole-releaser for ambiguous shared metadata — claimed 2026-09-02T16:41:36Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-500: Surface unfinished finalizations in doctor and the session-start banner — claimed 2026-09-02T16:41:44Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
