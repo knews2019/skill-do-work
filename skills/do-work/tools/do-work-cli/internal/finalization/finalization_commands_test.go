@@ -98,6 +98,7 @@ func TestReadJournalRejectsNoncanonicalPayloadDirectory(t *testing.T) {
 			ProvenanceMode: ProvenancePrimaryCommit,
 		},
 	}
+	journal.ImageSetSHA256 = journalImageDigest(&journal)
 	contents, _ := json.Marshal(journal)
 	if err := os.WriteFile(journalPath, contents, 0o600); err != nil {
 		t.Fatal(err)

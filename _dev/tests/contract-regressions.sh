@@ -2739,9 +2739,9 @@ def repository_gate_defects(work, reference):
         "repair failure continuation": ("baseline", r"failed, cancelled, or dependency-gated repairs.*continue unrelated runnable work"),
         "saved range resume gate": ("baseline", r"merge in current `head` ancestry.*rename-aware.*path history"),
         "late base attribution": ("testing", r"isolated detached diagnostic worktree at saved `<pre>`"),
-        "repair final same-fingerprint failure": ("testing", r"repository_gate_repair: true.*same fingerprint.*terminally fails.*canonical `fail`"),
-        "repair final different-fingerprint failure": ("testing", r"repository_gate_repair: true.*different fingerprint.*terminally fails.*canonical `fail`"),
-        "repair final unverifiable-fingerprint failure": ("testing", r"repository_gate_repair: true.*missing/malformed fingerprint evidence.*terminally fails.*canonical `fail`"),
+        "repair final same-fingerprint failure": ("testing", r"repository_gate_repair: true.*same fingerprint.*prepares a terminal `fail` finalization manifest"),
+        "repair final different-fingerprint failure": ("testing", r"repository_gate_repair: true.*different fingerprint.*prepares a terminal `fail` finalization manifest"),
+        "repair final unverifiable-fingerprint failure": ("testing", r"repository_gate_repair: true.*missing/malformed fingerprint evidence.*prepares a terminal `fail` finalization manifest"),
         "repair final non-recursive continuation": ("testing", r"never calls `defer-gate`.*leaves every parent dependency-gated.*recomputes selection.*continues unrelated runnable work"),
         "matching fingerprint deferral": ("testing", r"exact saved fingerprint.*defer-gate.*`<pre>` plus `<merge_hash>`"),
         "non-force cleanup": ("testing", r"git branch -d.*never force"),
@@ -2761,9 +2761,9 @@ def repository_gate_defects(work, reference):
         "no-op exact summary": ("lifecycle", r"files changed:\*\* none — verified repository-gate repair no-op.*no implementation changes were necessary"),
         "no-op qualification exception": ("lifecycle", r"do not run the ordinary diff-requiring qualifier.*durable gate evidence verified and project diff empty"),
         "no-op independent review": ("lifecycle", r"independent review.*matches the expected fingerprint.*project diff remains empty.*self-review is insufficient"),
-        "no-op canonical completion": ("lifecycle", r"invoke canonical `complete` normally.*archives as terminal success.*dependency readiness can resume parents"),
-        "no-op release exclusion": ("lifecycle", r"skip `release`.*no changelog, version/lock mirror, or `release_at`"),
-        "no-op exact stage and metadata": ("lifecycle", r"stage only exact lifecycle/archive/calibration.*refuse any project, changelog, version, lockfile.*ordinary separate metadata commit"),
+        "no-op canonical completion": ("lifecycle", r"strict finalization manifest.*canonical finalization engine archives terminal success.*dependency readiness can resume parents"),
+        "no-op release exclusion": ("lifecycle", r"no release payload.*changelog, version, lockfile.*refuses this no-op finalization"),
+        "no-op exact stage and metadata": ("lifecycle", r"commits only its exact lifecycle allowlist.*records provenance.*verifies.*cleans up"),
         "composed lifecycle summaries": ("lifecycle", r"run summaries compose.*deferred parent.*no-change repair.*repair failure/cancellation.*unrelated req"),
         "no blocked lifecycle": ("lifecycle", r"no branch writes `blocked` or `pending-answers`"),
     }
@@ -2842,9 +2842,9 @@ mutations = (
     ("reference", "**Files changed:** None — verified repository-gate repair no-op.", "**Files changed:** None.", "no-op exact summary"),
     ("reference", "Do not run the ordinary diff-requiring qualifier", "Run the ordinary qualifier", "no-op qualification exception"),
     ("reference", "self-review is insufficient", "self-review is accepted", "no-op independent review"),
-    ("reference", "invoke canonical `complete` normally", "edit status by hand", "no-op canonical completion"),
-    ("reference", "Skip `release`", "Run `release`", "no-op release exclusion"),
-    ("reference", "refuse any project, changelog, version, lockfile, or unrelated staged path", "stage any path", "no-op exact stage and metadata"),
+    ("reference", "author the ordinary strict finalization manifest", "edit status by hand", "no-op canonical completion"),
+    ("reference", "no release payload", "a release payload", "no-op release exclusion"),
+    ("reference", "commits only its exact lifecycle allowlist", "commits any available paths", "no-op exact stage and metadata"),
     ("reference", "No branch writes `blocked` or `pending-answers`", "A branch writes `blocked`", "no blocked lifecycle"),
 )
 
@@ -3022,15 +3022,15 @@ def already_green_noop_defects(work, review, reference):
         ),
         "canonical completion": (
             "lifecycle",
-            r"invoke canonical `complete` normally.*terminal success",
+            r"strict finalization manifest.*archives terminal success",
         ),
         "release excluded": (
             "lifecycle",
-            r"skip `release`.*no changelog, version/lock mirror, or `release_at`",
+            r"no release payload.*changelog, version, lockfile.*refuses this no-op finalization",
         ),
         "lifecycle-only commit": (
             "lifecycle",
-            r"stage only exact lifecycle/archive/calibration.*refuse any project, changelog, version, lockfile, or unrelated staged path",
+            r"commits only its exact lifecycle allowlist.*records provenance.*verifies.*cleans up",
         ),
         "parent reselection": (
             "lifecycle",
@@ -7962,8 +7962,8 @@ assert_contains \
   'work success must delegate terminal/archive/checkpoint/UR/calibration/release/commit mechanics to finalization.'
 assert_contains \
   "skills/do-work/actions/work.md" \
-  'fail REQ-NNN --request-path <exact-working-path> --error' \
-  'work failure must delegate classified failure mechanics.'
+  'transition: "fail"' \
+  'work failure must route the classified terminal transition through finalization.'
 assert_contains \
   "skills/do-work/actions/abandon.md" \
   'cancel REQ-NNN --request-path <exact-path> --confirmed --reason' \

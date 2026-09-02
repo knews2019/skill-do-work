@@ -116,6 +116,9 @@ func journalLocations(repositoryRoot, requestID string) (string, string, error) 
 
 func writeJournal(journal *Journal) error {
 	journal.UpdatedAt = time.Now().UTC().Truncate(time.Second)
+	if journal.ImageSetSHA256 == "" {
+		journal.ImageSetSHA256 = journalImageDigest(journal)
+	}
 	contents, err := json.MarshalIndent(journal, "", "  ")
 	if err != nil {
 		return err
@@ -174,6 +177,9 @@ func readJournal(repositoryRoot, path string) (*Journal, error) {
 	if journal.Version != journalVersion || filepath.Clean(journal.JournalPath) != path || !requestIDPattern.MatchString(journal.Manifest.RequestID) {
 		return nil, fmt.Errorf("journal identity or version is invalid")
 	}
+	if !digestPattern.MatchString(journal.ImageSetSHA256) || journal.ImageSetSHA256 != journalImageDigest(&journal) {
+		return nil, fmt.Errorf("journal lifecycle/release images failed their integrity check")
+	}
 	if filepath.Base(path) != journal.Manifest.RequestID+".json" {
 		return nil, fmt.Errorf("journal filename does not match request identity")
 	}
@@ -196,11 +202,21 @@ func readJournal(repositoryRoot, path string) (*Journal, error) {
 		}
 	}
 	switch journal.Phase {
-	case PhasePrepared, PhaseLifecycleApplied, PhaseReleaseApplied, PhasePrimaryCommitted, PhaseMetadataCommitted:
+	case PhasePrepared, PhaseLifecycleApplied, PhaseReleaseApplied, PhasePrimaryCommitted, PhaseMetadataCommitted, PhaseVerified, PhaseCleanupComplete:
 	default:
 		return nil, fmt.Errorf("journal phase is invalid: %s", journal.Phase)
 	}
 	return &journal, nil
+}
+
+func journalImageDigest(journal *Journal) string {
+	contents, _ := json.Marshal(struct {
+		LifecyclePreimages  []FileImage `json:"lifecycle_preimages"`
+		LifecyclePostimages []FileImage `json:"lifecycle_postimages"`
+		ReleasePreimages    []FileImage `json:"release_preimages"`
+		ReleasePostimages   []FileImage `json:"release_postimages"`
+	}{journal.LifecyclePreimages, journal.LifecyclePostimages, journal.ReleasePreimages, journal.ReleasePostimages})
+	return digestBytes(contents)
 }
 
 func imageSetContainsPath(images []FileImage, expectedPath string) bool {
