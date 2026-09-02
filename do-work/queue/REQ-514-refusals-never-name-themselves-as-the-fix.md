@@ -8,7 +8,7 @@ domain: backend
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 tdd: true
 suggested_spec:
-depends_on: []
+depends_on: [REQ-513]
 maintenance: false
 impact: impact-rule-change
 effort_estimate: effort-substantive
@@ -60,7 +60,7 @@ Findings carry `next_argv` in several result-model types (`internal/resultmodel/
 
 ## Dependencies
 
-REQ-515 (Per-REQ recovery findings never stop the loop) consumes the set-aside shape this REQ defines. Related to REQ-512.
+Depends on REQ-513 (Commit the claim footprint in every mode): the maintainer asked for A1 first, so this REQ and everything behind it wait for it. REQ-515 (Per-REQ recovery findings never stop the loop) consumes the set-aside shape this REQ defines. Related to REQ-512.
 
 ## Builder Guidance
 
@@ -71,7 +71,7 @@ Certainty level: Firm on the invariant, latitude on where the invoking argv thre
 **RED prompt/case:** Build the `FINALIZATION-LIFECYCLE-APPLY` refusal for a dirty checkpoint and compare its `next_argv` to the invoking argv.
 **Why RED now:** Both are `recover-finalization`; nothing in the result model rejects a self-referential refusal.
 **GREEN when:** The table-driven test fails on that fixture before the fix and passes after, and no refusal in the suite names its own command as `next_argv`.
-**Validation:** Inferred during capture; the A1 through A5 list this REQ transcribes was confirmed by the maintainer in the same conversation.
+**Validation:** User confirmed (verify-requests, 2026-09-02).
 
 ## Required Lessons — Dropped for Budget
 

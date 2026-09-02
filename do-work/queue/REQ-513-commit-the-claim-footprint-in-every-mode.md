@@ -72,7 +72,7 @@ Certainty level: Firm. The flag exists; the work is wiring, predicate cleanup, a
 **RED prompt/case:** Run a serial Route A REQ through Step 2 and inspect `git status` before Step 3.
 **Why RED now:** The queue file shows as deleted, the working file as untracked, and `do-work/CHECKPOINT.md` as modified; nothing committed the claim.
 **GREEN when:** After Step 2 the tree is clean for those three paths and `git log -1` is the claim's bookkeeping commit; the same is true when dispatch runs the claim in worktree mode.
-**Validation:** Inferred during capture; the A1 through A5 list this REQ transcribes was confirmed by the maintainer in the same conversation.
+**Validation:** User confirmed (verify-requests, 2026-09-02).
 
 ## Required Lessons — Dropped for Budget
 

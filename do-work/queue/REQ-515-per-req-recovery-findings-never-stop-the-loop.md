@@ -72,7 +72,7 @@ Certainty level: Firm on the behavior, latitude on how the exclusion is projecte
 **RED prompt/case:** With REQ-456's journal at `prepared` and its checkpoint dirty, run `do-work run` on a queue with other claimable REQs.
 **Why RED now:** Step 1 stops at the first refused finalization record and no other REQ is selected.
 **GREEN when:** The same state reports REQ-456 as set aside with its reason code, selects the next claimable REQ, and the exit summary lists the set-aside with a resolving verb.
-**Validation:** Inferred during capture; the A1 through A5 list this REQ transcribes was confirmed by the maintainer in the same conversation.
+**Validation:** User confirmed (verify-requests, 2026-09-02).
 
 ## Required Lessons — Dropped for Budget
 

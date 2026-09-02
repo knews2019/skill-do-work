@@ -15,6 +15,12 @@ effort_estimate: effort-mechanical
 related: [REQ-513, REQ-514, REQ-515, REQ-516]
 batch: recovery-never-traps
 write_set: [skills/do-work/tools/do-work-cli/internal/finalization/]
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-09-02T20:42:19Z
+  basis:
+    - trivial short-circuit
 ---
 
 # Pin the serial claim-to-recovery trap
@@ -42,12 +48,11 @@ The factory halt behind REQ-456 was never pinned. Route C REQs commit the claim 
 
 - One Go test in the finalization package: serial claim through `claim --commit`, a one-line tracked-file change, `complete`, then `recover-finalization --discover`.
 - Assert terminal phase `cleanup_complete`, empty `blocked_paths` and `reason_codes`, and that the primary commit contains the checkpoint, archive, and implementation paths.
-- A second case runs the pre-REQ-513 shape, claim without commit, and asserts the refusal names a verb other than `recover-finalization` once REQ-514 lands; until then it asserts only the refusal code.
 - No new fixture helper if the existing ones suffice.
 
 ## Constraints
 
-- Focused, not a smoke suite; two cases, each naming the failure it pins.
+- Focused, not a smoke suite; one case, naming the failure it pins. The maintainer confirmed one test only during verify-requests.
 - Runs under `go test ./...` and the maintainer verify script without a real browser or network.
 
 ## Batch Constraints
@@ -70,7 +75,7 @@ Certainty level: Firm. Reuse the recovery test fixtures; do not build a new harn
 **RED prompt/case:** Run the new test against the tree before REQ-513.
 **Why RED now:** The serial shape leaves the checkpoint dirty at complete time and `recover-finalization` refuses at lifecycle apply.
 **GREEN when:** The test passes after REQ-513, and deleting the `--commit` from the claim step in the fixture makes it fail again with the refusal code.
-**Validation:** Inferred during capture; the A1 through A5 list this REQ transcribes was confirmed by the maintainer in the same conversation.
+**Validation:** User confirmed (verify-requests, 2026-09-02).
 
 ## Required Lessons — Dropped for Budget
 

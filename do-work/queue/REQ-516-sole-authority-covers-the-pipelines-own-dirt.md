@@ -71,7 +71,7 @@ Certainty level: Firm on the rule, latitude on where the hash comparison lives. 
 **RED prompt/case:** With a journal at `prepared` whose `expected_checkpoint_sha256` equals the dirty `do-work/CHECKPOINT.md`, run `recover-finalization --discover --assume-sole-releaser`.
 **Why RED now:** Lifecycle apply refuses with `FINALIZATION-LIFECYCLE-APPLY` because the checkpoint is dirty, although the journal proves the dirt is its own.
 **GREEN when:** The same invocation reaches `cleanup_complete`, and the same journal with a checkpoint whose bytes differ from the recorded hash still refuses with a finding naming a verb other than `recover-finalization`.
-**Validation:** Inferred during capture; the A1 through A5 list this REQ transcribes was confirmed by the maintainer in the same conversation.
+**Validation:** User confirmed (verify-requests, 2026-09-02).
 
 ## Required Lessons — Dropped for Budget
 
