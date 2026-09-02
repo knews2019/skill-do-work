@@ -1,7 +1,7 @@
 ---
 id: REQ-489
 title: '[impact-critical] Remove whole checkpoint entries when a REQ leaves working'
-status: pending
+status: claimed
 created_at: 2026-09-01T19:46:57Z
 user_request: UR-083
 addendum_to: REQ-440
@@ -16,6 +16,7 @@ effort_estimate: effort-mechanical
 sweep: true
 sweep_key: checkpoint-section-blind-line-editing
 status_changed_at: 2026-09-01T21:05:20Z
+claimed_at: 2026-09-02T13:45:32Z
 ---
 
 # Remove Whole Checkpoint Entries When a REQ Leaves Working
