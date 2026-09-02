@@ -647,8 +647,8 @@ interrupt_status=0
 {
   printf 'y\n' | PATH="$interrupt_bin:$PATH" bash "$installer" --project-root "$interrupt_project" --archive "$archive_file"
 } >"$workdir/interruption.out" 2>&1 || interrupt_status=$?
-if [ "$interrupt_status" -eq 0 ]; then
-  fail 'installer reported success after a TERM during module installation'
+if [ "$interrupt_status" -ne 130 ]; then
+  fail "installer exited $interrupt_status after a TERM during module installation (want 130)"
 elif ! diff -qr "$interrupt_snapshot/.claude/skills" "$interrupt_project/.claude/skills" >/dev/null \
   || ! cmp -s "$interrupt_snapshot/justfile" "$interrupt_project/justfile" \
   || ! cmp -s "$interrupt_snapshot/.claude/settings.json" "$interrupt_project/.claude/settings.json"; then

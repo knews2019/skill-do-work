@@ -745,7 +745,7 @@ func (transaction *installTransaction) reviewAndConfirm(ctx context.Context) (bo
 		return false, err
 	}
 	transaction.narrateWithoutNewline("Install this complete four-skill suite? [y/N] ")
-	return transaction.readConfirmation(), nil
+	return transaction.readConfirmation(ctx), nil
 }
 
 // narrateDiff treats a diff status above 1 as a hard failure: 1 means "files differ", which
@@ -785,16 +785,41 @@ func (transaction *installTransaction) warnAboutDirtyManagedPaths(ctx context.Co
 	return nil
 }
 
-func (transaction *installTransaction) readConfirmation() bool {
-	if transaction.options.ConfirmationInput == nil {
+func (transaction *installTransaction) readConfirmation(ctx context.Context) bool {
+	confirmationInput := transaction.options.ConfirmationInput
+	if confirmationInput == nil {
 		return false
 	}
-	reader := bufio.NewReader(transaction.options.ConfirmationInput)
-	line, err := reader.ReadString('\n')
-	if err != nil && line == "" {
+	if ctx.Err() != nil {
 		return false
 	}
-	switch strings.TrimRight(line, "\r\n") {
+	type confirmationReadResult struct {
+		line string
+		err  error
+	}
+	readResult := make(chan confirmationReadResult, 1)
+	go func() {
+		reader := bufio.NewReader(confirmationInput)
+		line, err := reader.ReadString('\n')
+		readResult <- confirmationReadResult{line: line, err: err}
+	}()
+
+	var result confirmationReadResult
+	select {
+	case <-ctx.Done():
+		return false
+	case result = <-readResult:
+	}
+	// If cancellation and an affirmative read become ready together, cancellation owns the
+	// boundary. The buffered result channel also lets a generic reader finish later without
+	// leaving its sender blocked after this call has returned.
+	if ctx.Err() != nil {
+		return false
+	}
+	if result.err != nil && result.line == "" {
+		return false
+	}
+	switch strings.TrimRight(result.line, "\r\n") {
 	case "y", "Y", "yes", "YES":
 		return true
 	default:

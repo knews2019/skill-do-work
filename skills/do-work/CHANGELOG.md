@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.18 — Stop Signals from Hanging Confirmation Prompts (2026-09-02)
+
+Install and update can now stop promptly when a signal arrives at the confirmation prompt, without weakening transactional recovery after writes begin.
+
+- Confirmation input observes cancellation before mutation and no longer needs another byte to release the command.
+- Real CLI regressions keep stdin open while HUP, INT, and TERM each produce the documented exit 130 for both install and update; mutation-time TERM still proves full recovery.
+
 ## 0.260.17 — Fix Date-Bound Knowledge Tests Blocking the Maintainer Gate (2026-09-02)
 
 Two `knowledgecommands` tests were written against a fixed 2026-09-01 date and went red at UTC midnight, which held REQ-451 at the canonical gate. Test-only fix; no production behavior changed.

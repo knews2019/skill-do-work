@@ -1,7 +1,7 @@
 ---
 id: REQ-451
 title: 'Make confirmation input interruptible'
-status: claimed
+status: completed
 route: C
 created_at: 2026-08-31T20:49:21Z
 user_request: UR-085
@@ -41,6 +41,9 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction_test.go
   - skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go
   - _dev/tests/install-suite-behavior.sh
+completed_at: 2026-09-02T00:55:13Z
+release_at: 2026-09-02T00:56:47Z
+commit: ''
 ---
 
 # Make Confirmation Input Interruptible

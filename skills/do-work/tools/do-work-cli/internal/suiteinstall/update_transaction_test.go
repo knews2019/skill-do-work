@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
@@ -127,6 +128,55 @@ func TestACancelledUpdateIsSuccessWithSkippedWorkAndNoEnvironmentVariable(t *tes
 	}
 	if readTestFile(t, filepath.Join(skillRoot, "VERSION")) != installedVersionBefore {
 		t.Errorf("a cancelled update changed the installed version")
+	}
+}
+
+func TestUpdateCancellationReturnsWhileConfirmationReaderRemainsBlocked(t *testing.T) {
+	projectRoot := newProjectRepository(t)
+	skillRoot := installSuiteForUpdate(t, projectRoot, "0.100.0")
+	toolDirectory, upstreamURL := newUpstreamArchiveServer(t, "0.200.0")
+	installedVersionBefore := readTestFile(t, filepath.Join(skillRoot, "VERSION"))
+	confirmationReader := newBlockingConfirmationReader("yes\n")
+	promptObserver := newConfirmationPromptObserver()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	defer confirmationReader.unblock()
+	resultChannel := make(chan UpdateResult, 1)
+	go func() {
+		resultChannel <- RunUpdate(ctx, UpdateOptions{
+			ProjectRoot:        projectRoot,
+			InstalledSkillRoot: skillRoot,
+			UpstreamURL:        upstreamURL,
+			ToolDirectory:      toolDirectory,
+			Narration:          promptObserver,
+			ConfirmationInput:  confirmationReader,
+		})
+	}()
+
+	waitForTestSignal(t, promptObserver.promptSeen, "update confirmation prompt")
+	waitForTestSignal(t, confirmationReader.started, "blocked update confirmation read")
+	cancel()
+
+	var result UpdateResult
+	select {
+	case result = <-resultChannel:
+	case <-time.After(5 * time.Second):
+		confirmationReader.unblock()
+		<-resultChannel
+		t.Fatal("update cancellation waited for another confirmation byte")
+	}
+	confirmationReader.unblock()
+	waitForTestSignal(t, confirmationReader.readFinished, "late update confirmation reader completion")
+
+	if result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("cancelled update outcome = %q, reason = %q\n%s",
+			result.Outcome, result.FailureReason, promptObserver.String())
+	}
+	if len(result.SkippedWork) != 1 || result.SkippedWork[0].Code != SkipCodeUpdateCancelled {
+		t.Fatalf("skipped work = %#v, want one %s", result.SkippedWork, SkipCodeUpdateCancelled)
+	}
+	if installedVersion := readTestFile(t, filepath.Join(skillRoot, "VERSION")); installedVersion != installedVersionBefore {
+		t.Errorf("cancelled blocked update changed VERSION from %q to %q", installedVersionBefore, installedVersion)
 	}
 }
 

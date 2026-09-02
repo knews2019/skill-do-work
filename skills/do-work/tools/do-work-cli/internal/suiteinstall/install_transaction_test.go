@@ -3,12 +3,15 @@ package suiteinstall
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/managedsection"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
@@ -59,6 +62,73 @@ const coreHooksFragmentBytes = `{
 `
 
 var fixtureModuleNames = []string{"do-work", "do-work-board", "do-work-knowledge", "do-work-toolbox"}
+
+type blockingConfirmationReader struct {
+	started      chan struct{}
+	release      chan struct{}
+	readFinished chan struct{}
+	line         string
+	startOnce    sync.Once
+	releaseOnce  sync.Once
+	finishOnce   sync.Once
+}
+
+func newBlockingConfirmationReader(line string) *blockingConfirmationReader {
+	return &blockingConfirmationReader{
+		started:      make(chan struct{}),
+		release:      make(chan struct{}),
+		readFinished: make(chan struct{}),
+		line:         line,
+	}
+}
+
+func (reader *blockingConfirmationReader) Read(buffer []byte) (int, error) {
+	reader.startOnce.Do(func() { close(reader.started) })
+	<-reader.release
+	count := copy(buffer, reader.line)
+	reader.finishOnce.Do(func() { close(reader.readFinished) })
+	return count, io.EOF
+}
+
+func (reader *blockingConfirmationReader) unblock() {
+	reader.releaseOnce.Do(func() { close(reader.release) })
+}
+
+type confirmationPromptObserver struct {
+	mutex      sync.Mutex
+	output     bytes.Buffer
+	promptSeen chan struct{}
+	promptOnce sync.Once
+}
+
+func newConfirmationPromptObserver() *confirmationPromptObserver {
+	return &confirmationPromptObserver{promptSeen: make(chan struct{})}
+}
+
+func (observer *confirmationPromptObserver) Write(buffer []byte) (int, error) {
+	observer.mutex.Lock()
+	defer observer.mutex.Unlock()
+	count, err := observer.output.Write(buffer)
+	if strings.Contains(observer.output.String(), "Install this complete four-skill suite? [y/N]") {
+		observer.promptOnce.Do(func() { close(observer.promptSeen) })
+	}
+	return count, err
+}
+
+func (observer *confirmationPromptObserver) String() string {
+	observer.mutex.Lock()
+	defer observer.mutex.Unlock()
+	return observer.output.String()
+}
+
+func waitForTestSignal(t *testing.T, signal <-chan struct{}, description string) {
+	t.Helper()
+	select {
+	case <-signal:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("timed out waiting for %s", description)
+	}
+}
 
 // newSuiteSourceTree builds a suite an installer accepts. It is synthesised rather than
 // copied so a test can vary one thing about it without dragging the whole repository in.
@@ -241,6 +311,81 @@ func TestDecliningTheConfirmationChangesNothingAndReportsSkippedWork(t *testing.
 	}
 	if !strings.Contains(narration, "Installation cancelled; no files were changed.") {
 		t.Errorf("narration does not report the cancellation:\n%s", narration)
+	}
+}
+
+func TestConfirmationReadPreservesAffirmativeAndEOFBehavior(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    io.Reader
+		accepted bool
+	}{
+		{name: "nil reader", input: nil, accepted: false},
+		{name: "empty EOF", input: strings.NewReader(""), accepted: false},
+		{name: "yes at EOF", input: strings.NewReader("yes"), accepted: true},
+		{name: "uppercase yes with newline", input: strings.NewReader("YES\n"), accepted: true},
+		{name: "decline", input: strings.NewReader("n\n"), accepted: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			transaction := &installTransaction{options: InstallOptions{ConfirmationInput: test.input}}
+			if accepted := transaction.readConfirmation(context.Background()); accepted != test.accepted {
+				t.Errorf("accepted = %t, want %t", accepted, test.accepted)
+			}
+		})
+	}
+}
+
+func TestCancelledConfirmationWinsAnAlreadyReadableAffirmativeLine(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	transaction := &installTransaction{options: InstallOptions{ConfirmationInput: strings.NewReader("yes\n")}}
+	if transaction.readConfirmation(ctx) {
+		t.Fatal("a cancelled confirmation accepted an affirmative line")
+	}
+}
+
+func TestInstallCancellationReturnsWhileConfirmationReaderRemainsBlocked(t *testing.T) {
+	projectRoot := newProjectRepository(t)
+	sourceRoot := newSuiteSourceTree(t, fixtureSuiteVersion)
+	confirmationReader := newBlockingConfirmationReader("yes\n")
+	promptObserver := newConfirmationPromptObserver()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	defer confirmationReader.unblock()
+	resultChannel := make(chan InstallResult, 1)
+	go func() {
+		resultChannel <- RunInstall(ctx, InstallOptions{
+			ProjectRoot:         projectRoot,
+			ExtractedSourceRoot: sourceRoot,
+			Narration:           promptObserver,
+			ConfirmationInput:   confirmationReader,
+		})
+	}()
+
+	waitForTestSignal(t, promptObserver.promptSeen, "install confirmation prompt")
+	waitForTestSignal(t, confirmationReader.started, "blocked confirmation read")
+	cancel()
+
+	var result InstallResult
+	select {
+	case result = <-resultChannel:
+	case <-time.After(5 * time.Second):
+		confirmationReader.unblock()
+		<-resultChannel
+		t.Fatal("install cancellation waited for another confirmation byte")
+	}
+	confirmationReader.unblock()
+	waitForTestSignal(t, confirmationReader.readFinished, "late confirmation reader completion")
+
+	if !result.Cancelled || result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("cancelled install outcome = %q, cancelled = %t, reason = %q\n%s",
+			result.Outcome, result.Cancelled, result.FailureReason, promptObserver.String())
+	}
+	for _, absentPath := range []string{".claude", "justfile", "CLAUDE.md"} {
+		if _, err := os.Lstat(filepath.Join(projectRoot, absentPath)); err == nil {
+			t.Errorf("cancelled blocked confirmation created %s", absentPath)
+		}
 	}
 }
 

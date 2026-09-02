@@ -3,11 +3,14 @@ package suiteinstall
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/managedsection"
@@ -258,6 +261,130 @@ func TestInstallNarrationNeverReachesStandardOutput(t *testing.T) {
 			t.Errorf("narration phrase %q leaked onto stdout:\n%s", narrationOnlyPhrase, standardOutput)
 		}
 	}
+}
+
+func TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation(t *testing.T) {
+	binaryPath := buildTestCLIBinary(t)
+	signals := []struct {
+		name   string
+		signal os.Signal
+	}{
+		{name: "HUP", signal: syscall.SIGHUP},
+		{name: "INT", signal: syscall.SIGINT},
+		{name: "TERM", signal: syscall.SIGTERM},
+	}
+	for _, commandName := range []string{CommandInstallSuite, CommandUpdateSuite} {
+		for _, signalCase := range signals {
+			t.Run(commandName+"/"+signalCase.name, func(t *testing.T) {
+				projectRoot := newProjectRepository(t)
+				arguments := []string{"--repo-root", projectRoot, "--format", "json", commandName}
+				var installedVersionPath string
+				if commandName == CommandInstallSuite {
+					sourceRoot := newSuiteSourceTree(t, fixtureSuiteVersion)
+					arguments = append(arguments, "--archive", buildArchiveFromSourceTree(t, sourceRoot))
+				} else {
+					skillRoot := installSuiteForUpdate(t, projectRoot, "0.100.0")
+					_, upstreamURL := newUpstreamArchiveServer(t, "0.200.0")
+					installedVersionPath = filepath.Join(skillRoot, "VERSION")
+					arguments = append(arguments, "--skill-root", skillRoot, "--upstream-url", upstreamURL)
+				}
+
+				runBuiltCLIAtBlockedConfirmation(t, binaryPath, signalCase.signal, arguments)
+				if commandName == CommandInstallSuite {
+					for _, absentPath := range []string{".claude", "justfile", "CLAUDE.md"} {
+						if _, err := os.Lstat(filepath.Join(projectRoot, absentPath)); err == nil {
+							t.Errorf("%s created %s before confirmation", signalCase.name, absentPath)
+						}
+					}
+				} else if installedVersion := readTestFile(t, installedVersionPath); installedVersion != "0.100.0\n" {
+					t.Errorf("%s changed installed VERSION before confirmation: %q", signalCase.name, installedVersion)
+				}
+			})
+		}
+	}
+}
+
+func buildTestCLIBinary(t *testing.T) string {
+	t.Helper()
+	moduleRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	binaryPath := filepath.Join(t.TempDir(), "do-work-cli")
+	command := exec.Command("go", "build", "-o", binaryPath, "./cmd/do-work-cli")
+	command.Dir = moduleRoot
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("build do-work-cli: %v: %s", err, output)
+	}
+	return binaryPath
+}
+
+func runBuiltCLIAtBlockedConfirmation(t *testing.T, binaryPath string, interrupt os.Signal, arguments []string) {
+	t.Helper()
+	stdinReader, stdinWriter, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stdinReader.Close()
+	defer stdinWriter.Close()
+	stderrPath := filepath.Join(t.TempDir(), "stderr")
+	stderrFile, err := os.Create(stderrPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stderrFile.Close()
+	stdoutFile, err := os.Create(filepath.Join(t.TempDir(), "stdout"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stdoutFile.Close()
+
+	command := exec.Command(binaryPath, arguments...)
+	command.Stdin = stdinReader
+	command.Stdout = stdoutFile
+	command.Stderr = stderrFile
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	_ = stdinReader.Close()
+	waitForPromptInFile(t, command, stderrPath)
+	// Keep stdin open and send no byte: the signal itself must release confirmation.
+	if err := command.Process.Signal(interrupt); err != nil {
+		_ = command.Process.Kill()
+		_ = command.Wait()
+		t.Fatalf("send %v: %v", interrupt, err)
+	}
+	waitResult := make(chan error, 1)
+	go func() { waitResult <- command.Wait() }()
+	select {
+	case waitErr := <-waitResult:
+		var exitError *exec.ExitError
+		if !errors.As(waitErr, &exitError) || exitError.ExitCode() != 130 {
+			output, _ := os.ReadFile(stderrPath)
+			t.Fatalf("signal %v exit = %v, want 130\nstderr:\n%s", interrupt, waitErr, output)
+		}
+	case <-time.After(5 * time.Second):
+		_ = command.Process.Kill()
+		<-waitResult
+		output, _ := os.ReadFile(stderrPath)
+		t.Fatalf("signal %v did not stop blocked confirmation without input\nstderr:\n%s", interrupt, output)
+	}
+}
+
+func waitForPromptInFile(t *testing.T, command *exec.Cmd, path string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		output, err := os.ReadFile(path)
+		if err == nil && bytes.Contains(output, []byte("Install this complete four-skill suite? [y/N]")) {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	_ = command.Process.Kill()
+	_ = command.Wait()
+	output, _ := os.ReadFile(path)
+	t.Fatalf("built CLI did not reach confirmation prompt:\n%s", output)
 }
 
 func buildArchiveFromSourceTree(t *testing.T, sourceRoot string) string {
