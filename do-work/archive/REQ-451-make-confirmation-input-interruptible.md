@@ -43,7 +43,7 @@ write_set:
   - _dev/tests/install-suite-behavior.sh
 completed_at: 2026-09-02T00:55:13Z
 release_at: 2026-09-02T00:56:47Z
-commit: ''
+commit: 21036776
 ---
 
 # Make Confirmation Input Interruptible
