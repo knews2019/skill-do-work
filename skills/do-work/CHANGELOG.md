@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.266.0 — Commit Every Claim Footprint (2026-09-03)
+
+Claim bookkeeping no longer leaks into implementation or finalization, so serial and worktree runs now start from the same durable boundary.
+
+- Step 2 invokes the existing atomic `claim --commit` transaction in every execution mode.
+- Worktree hand-back no longer re-stages request moves or checkpoint changes already owned by the claim.
+- Action contracts, the user guide, and behavior tests agree on the exact commit footprint and dirty-checkpoint refusal.
+
 ## 0.265.2 — Handoff Prompt Is Addressed To The Next Session (2026-09-02)
 
 The restart handoff now says who the paste block is talking to, so it reads as instructions an agent runs rather than a status report a person skims.

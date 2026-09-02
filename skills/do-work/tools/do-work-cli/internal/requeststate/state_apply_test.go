@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -101,6 +102,69 @@ func TestLifecycleApplySynchronizesClaimUnblockCompleteFailAndCancel(t *testing.
 			}
 		}
 	})
+}
+
+func TestClaimCommitLandsExactFootprintAndLeavesCleanTree(t *testing.T) {
+	root := newStateRepository(t)
+	configureStateGit(t, root)
+	writeStateRequest(t, root, "do-work/queue/REQ-513.md", "REQ-513", "pending", "")
+	writeStateCheckpoint(t, root, "- REQ-999: Foreign claim — writer: other:/repo\n")
+	runStateGit(t, root, "add", "do-work")
+	runStateGit(t, root, "commit", "-qm", "seed")
+
+	result := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionClaim,
+		[]string{"REQ-513", "--request-path", "do-work/queue/REQ-513.md", "--provenance", "default", "--writer", "host:/repo", "--commit", "--at", "2026-09-02T20:35:18Z"})
+	assertStateSuccess(t, result)
+
+	if status := runStateGit(t, root, "status", "--porcelain"); status != "" {
+		t.Fatalf("committed claim left lifecycle targets dirty: %q", status)
+	}
+	if subject := strings.TrimSpace(runStateGit(t, root, "log", "-1", "--format=%s")); subject != "[REQ-513] claim request lifecycle" {
+		t.Fatalf("claim commit subject = %q", subject)
+	}
+	changedPaths := strings.Fields(runStateGit(t, root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"))
+	sort.Strings(changedPaths)
+	wantPaths := []string{"do-work/CHECKPOINT.md", "do-work/queue/REQ-513.md", "do-work/working/REQ-513.md"}
+	if fmt.Sprint(changedPaths) != fmt.Sprint(wantPaths) {
+		t.Fatalf("claim commit paths = %v, want %v", changedPaths, wantPaths)
+	}
+	working := readStateFile(t, root, "do-work/working/REQ-513.md")
+	if !strings.Contains(working, "status: claimed") || !strings.Contains(working, "claimed_at: 2026-09-02T20:35:18Z") {
+		t.Fatalf("claim commit did not contain the claimed postimage:\n%s", working)
+	}
+	checkpoint := readStateFile(t, root, "do-work/CHECKPOINT.md")
+	if !strings.Contains(checkpoint, "REQ-513") || !strings.Contains(checkpoint, "writer: host:/repo") || !strings.Contains(checkpoint, "REQ-999") {
+		t.Fatalf("claim commit did not preserve and extend checkpoint state:\n%s", checkpoint)
+	}
+}
+
+func TestClaimCommitRefusesDirtyCheckpointWithExternalRemedy(t *testing.T) {
+	root := newStateRepository(t)
+	configureStateGit(t, root)
+	writeStateRequest(t, root, "do-work/queue/REQ-514.md", "REQ-514", "pending", "")
+	writeStateCheckpoint(t, root, "- REQ-999: Foreign claim — writer: other:/repo\n")
+	runStateGit(t, root, "add", "do-work")
+	runStateGit(t, root, "commit", "-qm", "seed")
+
+	checkpointPath := filepath.Join(root, "do-work", "CHECKPOINT.md")
+	if err := os.WriteFile(checkpointPath, []byte(readStateFile(t, root, "do-work/CHECKPOINT.md")+"\nlocal dirt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionClaim,
+		[]string{"REQ-514", "--request-path", "do-work/queue/REQ-514.md", "--provenance", "default", "--writer", "host:/repo", "--commit", "--at", "2026-09-02T20:35:18Z"})
+	if result.Outcome != resultmodel.OutcomeRefused || len(result.Findings) != 1 || result.Findings[0].Code != "GIT-DIRTY-TARGET" {
+		t.Fatalf("dirty checkpoint claim = %#v", result)
+	}
+	finding := result.Findings[0]
+	if fmt.Sprint(finding.AffectedPaths) != fmt.Sprint([]string{"do-work/CHECKPOINT.md"}) {
+		t.Fatalf("dirty checkpoint finding paths = %v", finding.AffectedPaths)
+	}
+	if len(finding.NextArgv) == 0 || finding.NextArgv[0] != "git" {
+		t.Fatalf("dirty checkpoint named claim as its own remedy: %v", finding.NextArgv)
+	}
+	if _, err := os.Stat(filepath.Join(root, "do-work", "working", "REQ-514.md")); !os.IsNotExist(err) {
+		t.Fatalf("refused claim created a working request: %v", err)
+	}
 }
 
 func TestRecoverClaimCommitsCleanOwnershipTransferAndPreservesUnrelatedWork(t *testing.T) {
@@ -341,6 +405,9 @@ func TestLifecycleStalePreimageRollsBackAndDirtyTargetRefuses(t *testing.T) {
 		result := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionClaim, []string{"REQ-312", "--writer", "host:/repo", "--at", "2026-08-31T21:00:00Z"})
 		if result.Outcome != resultmodel.OutcomeRefused || len(result.Findings) == 0 || result.Findings[0].Code != "GIT-DIRTY-TARGET" {
 			t.Fatalf("dirty target = %#v", result)
+		}
+		if len(result.Findings[0].NextArgv) == 0 || result.Findings[0].NextArgv[0] != "git" {
+			t.Fatalf("dirty claim target named the claim command as its own fix: %#v", result.Findings[0].NextArgv)
 		}
 	})
 }

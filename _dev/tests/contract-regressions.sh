@@ -3664,7 +3664,7 @@ assert_block_contains \
 worktree_dispatch_block="$(sed -n '/^## Worktree Dispatch Mode (Step 1)/,/^## Composed Exit Summary/p' "$core_root/actions/work-reference.md")"
 
 # actions/work.md is the executable, condensed hand-back path. It must retain the two
-# pre-merge guards from the canonical reference: isolate owner bookkeeping from any
+# pre-merge guards from the canonical reference: isolate owner run artifacts from any
 # unrelated staged work, and reject builder commits under do-work/ while the branch
 # diff can still see them. A trailing pointer to the reference is too late because a
 # reader following the numbered commands has already merged by then.
@@ -3705,6 +3705,19 @@ do
     "$handback_staging_block" \
     'stop and surface.*every other `do-work/` path' \
     'Hand-back step 0 must stop on do-work paths outside the explicit bookkeeping and scratch categories.'
+done
+
+for handback_staging_block in "$worktree_dispatch_block" "$work_action_handback_block"
+do
+  assert_block_not_contains \
+    "$handback_staging_block" \
+    'stage.*Step 2 claim moves' \
+    'Hand-back step 0 must not defer the Step 2 claim move to a later bookkeeping commit after claim --commit made the claim footprint atomic (REQ-513).'
+
+  assert_block_not_contains \
+    "$handback_staging_block" \
+    'stage.*CHECKPOINT\.md' \
+    'Hand-back step 0 must not stage CHECKPOINT.md after claim --commit already committed the checkpoint entry (REQ-513).'
 done
 
 assert_block_not_contains \
@@ -4099,6 +4112,16 @@ assert_block_contains \
   "$work_step_two_block" \
   'In Progress \(interrupted\)' \
   'actions/work.md Step 2 must record the claim in CHECKPOINT.md In Progress (interrupted) at claim time — with Step 10 (session end) as the only write site, a hard crash leaves recovery no classification input and the REQ strands in working/ forever (REQ-077).'
+
+assert_block_contains \
+  "$work_step_two_block" \
+  'claim REQ-NNN.*--commit' \
+  'actions/work.md Step 2 must invoke the canonical claim transaction with --commit so the queue move and checkpoint entry land atomically before serial or worktree implementation begins (REQ-513).'
+
+assert_file_not_contains \
+  "skills/do-work/docs/work-guide.md" \
+  'later bookkeeping commit' \
+  'docs/work-guide.md must not tell users a successful claim remains local until later bookkeeping after Step 2 made claim --commit the canonical path (REQ-513).'
 
 in_progress_record_block="$(sed -n '/^## In-Progress Record (Step 2)/,/^## Triage Section Template/p' "$core_root/actions/work-reference.md")"
 
