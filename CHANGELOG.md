@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.260.17 — Fix Date-Bound Knowledge Tests Blocking the Maintainer Gate (2026-09-02)
+
+Two `knowledgecommands` tests were written against a fixed 2026-09-01 date and went red at UTC midnight, which held REQ-451 at the canonical gate. Test-only fix; no production behavior changed.
+
+- `TestMemoryForgetRequiresContentBoundConfirmationAndPreservesCaptureQuote` now pins the package clock like its neighbors, so the literal redaction stamp it asserts stays valid.
+- `TestLexicalRecallMatchesRetainedScriptAtRecencyBoundaries` now builds its 7/8/30/31-day fixtures from one captured UTC day and retries if midnight crosses while the retained shell script runs.
+
 ## 0.260.16 — Exclude Already-Claimed Queue Work (2026-09-02)
 
 The canonical selector now rejects queued work that still carries durable request or checkpoint ownership evidence before any probe, policy override, dependency, or fan-out decision.

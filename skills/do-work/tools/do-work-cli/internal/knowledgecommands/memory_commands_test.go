@@ -99,6 +99,10 @@ func TestMemoryRememberUsesExplicitSectionAndCommitsOnlyWorkingMemory(t *testing
 func TestMemoryForgetRequiresContentBoundConfirmationAndPreservesCaptureQuote(t *testing.T) {
 	root := newMemoryRepository(t)
 	writeInterviewFixture(t, root, "memory/logs/2026-08-31.md", "## 10:00 UTC session capture deadbeef\n<!-- do-work:capture-body quoted -->\n> Ship the command platform\n")
+	// Pin the clock: the redaction stamp below is asserted as a literal date.
+	previous := nowUTC
+	nowUTC = func() time.Time { return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { nowUTC = previous })
 	discovery := handleMemoryForget(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"command platform"})
 	if discovery.Outcome != resultmodel.OutcomeFindings || len(discovery.Findings) < 2 {
 		t.Fatalf("discovery = %#v", discovery)
@@ -176,42 +180,54 @@ func TestPrivatePublicationDoesNotFollowParentSwapOutsideRepository(t *testing.T
 }
 
 func TestLexicalRecallMatchesRetainedScriptAtRecencyBoundaries(t *testing.T) {
-	root := newMemoryRepository(t)
-	for _, fixture := range []struct {
-		date, text string
-	}{
-		{"2026-08-25", "alpha beta seven"},
-		{"2026-08-24", "alpha beta eight"},
-		{"2026-08-02", "alpha beta thirty"},
-		{"2026-08-01", "alpha beta thirty-one"},
-	} {
-		writeInterviewFixture(t, root, "memory/logs/"+fixture.date+".md", "## 10:00 UTC note\n"+fixture.text+"\n")
-	}
-	previous := nowUTC
-	nowUTC = func() time.Time { return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC) }
-	t.Cleanup(func() { nowUTC = previous })
-	hits, err := lexicalMemoryRecall(filepath.Join(root, "memory"), "memory", "ALPHA!!! beta alpha")
-	if err != nil {
-		t.Fatal(err)
-	}
-	scriptPath, err := filepath.Abs("../../../../../do-work-knowledge/scripts/lexical-memory-recall.sh")
-	if err != nil {
-		t.Fatal(err)
-	}
-	output, err := exec.Command("bash", scriptPath, filepath.Join(root, "memory"), "ALPHA!!! beta alpha").CombinedOutput()
-	if err != nil {
-		t.Fatalf("retained recall script: %v\n%s", err, output)
-	}
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	if len(lines) != len(hits) {
-		t.Fatalf("script lines=%d Go hits=%d\n%s\n%#v", len(lines), len(hits), output, hits)
-	}
-	for index, hit := range hits {
-		fields := strings.Split(lines[index], "\t")
-		if len(fields) != 5 || fields[0] != fmt.Sprint(hit.Score) || fields[4] != hit.Content {
-			t.Fatalf("differential row %d script=%q Go=%#v", index, lines[index], hit)
+	// The retained script runs in a separate process on the real clock, so the
+	// in-process nowUTC stub cannot reach it. Both sides therefore share one
+	// captured wall-clock day. Retry once if UTC midnight crosses while the
+	// external comparison is running rather than comparing two different days.
+	for attempt := 0; attempt < 2; attempt++ {
+		runNow := nowUTC()
+		runDay := runNow.Format("2006-01-02")
+		root := newMemoryRepository(t)
+		for _, fixture := range []struct {
+			daysAgo int
+			text    string
+		}{
+			{7, "alpha beta seven"},
+			{8, "alpha beta eight"},
+			{30, "alpha beta thirty"},
+			{31, "alpha beta thirty-one"},
+		} {
+			date := runNow.AddDate(0, 0, -fixture.daysAgo).Format("2006-01-02")
+			writeInterviewFixture(t, root, "memory/logs/"+date+".md", "## 10:00 UTC note\n"+fixture.text+"\n")
 		}
+		hits, err := lexicalMemoryRecall(filepath.Join(root, "memory"), "memory", "ALPHA!!! beta alpha")
+		if err != nil {
+			t.Fatal(err)
+		}
+		scriptPath, err := filepath.Abs("../../../../../do-work-knowledge/scripts/lexical-memory-recall.sh")
+		if err != nil {
+			t.Fatal(err)
+		}
+		output, err := exec.Command("bash", scriptPath, filepath.Join(root, "memory"), "ALPHA!!! beta alpha").CombinedOutput()
+		if err != nil {
+			t.Fatalf("retained recall script: %v\n%s", err, output)
+		}
+		if nowUTC().Format("2006-01-02") != runDay {
+			continue
+		}
+		lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+		if len(lines) != len(hits) {
+			t.Fatalf("script lines=%d Go hits=%d\n%s\n%#v", len(lines), len(hits), output, hits)
+		}
+		for index, hit := range hits {
+			fields := strings.Split(lines[index], "\t")
+			if len(fields) != 5 || fields[0] != fmt.Sprint(hit.Score) || fields[4] != hit.Content {
+				t.Fatalf("differential row %d script=%q Go=%#v", index, lines[index], hit)
+			}
+		}
+		return
 	}
+	t.Fatal("UTC day changed during both retained-script comparison attempts")
 }
 
 func TestForgetAndBootstrapNeverFollowPrivateSymlinksOrDiscloseOutsideBytes(t *testing.T) {
