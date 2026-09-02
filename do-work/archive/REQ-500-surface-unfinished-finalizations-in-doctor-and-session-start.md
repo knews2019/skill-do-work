@@ -24,6 +24,8 @@ review_at: 2026-09-02T17:15:12Z
 remediation_at: 2026-09-02T17:37:20Z
 re_review_at: 2026-09-02T17:48:52Z
 completed_at: 2026-09-02T17:48:52Z
+commit: ad260b5d
+release_at: 2026-09-02T17:54:45Z
 ---
 
 # Surface Unfinished Finalizations in Doctor and the Session-Start Banner

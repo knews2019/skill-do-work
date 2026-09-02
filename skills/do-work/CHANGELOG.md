@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.263.1 — Expose Unfinished Finalization Tails (2026-09-02)
+
+Interrupted finalization no longer stays invisible until the next claim fails: doctor and SessionStart now point directly at the recovery path.
+
+- Doctor reports canonical journals as `UNFINISHED-FINALIZATION` and dirty terminal archives with blank provenance as `ARCHIVED-WITHOUT-COMMIT`.
+- SessionStart projects one deterministic recovery pointer while keeping valid committed blank-provenance archives quiet.
+- Malformed or unreadable journals and failed Git inventory retain typed evidence; one repository-wide archive probe replaces the previous per-archive subprocess loop.
+- REQ-500 ships as `completed-with-issues`: REQ-511 tracks disabling optional Git locks so read-only diagnostics cannot refresh `.git/index`.
+
 ## 0.263.0 — Resume Finalization Before New Work (2026-09-02)
 
 Interrupted archive, release, commit, and provenance tails now have one journaled recovery path, so a later run can settle owned state before selecting another request.
