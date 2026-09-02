@@ -18,6 +18,7 @@ claimed_at: 2026-09-02T13:46:20Z
 planning_at: 2026-09-02T14:00:49Z
 dispatch_at: 2026-09-02T14:10:30Z
 builder_handback_at: 2026-09-02T14:50:42Z
+integration_at: 2026-09-02T14:51:46Z
 estimate:
   p50_active_minutes: 70
   confidence: low
@@ -153,6 +154,42 @@ Primary integration hazard: `REQ-489` concurrently fixes checkpoint section/entr
 
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 2409 tokens; matches finalization, request-state, publication, Git-transaction, and typed-evidence changes, but the partially slugged satellite cannot be narrowed below the 2000-token budget. Read anyway under the prime's touch-conditional Lessons rule.
 - `_dev/primes/lessons-action-files.md` — 3436 tokens; matches work/commit pipeline delegation and downstream contract readers, but the partially slugged satellite cannot be narrowed below the 2000-token budget. Read anyway under the action-file prime's touch-conditional Lessons rule.
+
+## Implementation Summary
+
+**Files changed:**
+- `_dev/tests/contract-regressions.sh` (modified)
+- `skills/do-work/actions/commit.md` (modified)
+- `skills/do-work/actions/work-reference.md` (modified)
+- `skills/do-work/actions/work.md` (modified)
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go` (created)
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_journal.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go` (created)
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_types.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified)
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified)
+
+**What was done:** The finalization engine now discovers safe legacy no-journal tails, replays them through the existing phase journal, binds provenance and exact commit identity, rolls back pre-primary owned state exactly, exposes ordered typed records, and runs before selection or ordinary commit association. Work and commit actions delegate their lifecycle/release/commit/provenance tails to this resumable authority.
+
+## Root Cause
+
+Finalization authority existed in separate lifecycle, release, staging, commit, and provenance steps. Once an interruption moved a REQ out of `working/`, startup no longer had a durable owner record from which to resume the remaining shared-state tail, so later claims encountered dirty shared metadata with no safe automatic recovery path.
+
+## Qualification
+
+Passed — the exact merge range `e8e5a79d..75648a49` contains the 14 declared implementation files, including the justified finalization command-test expansion. Mechanical qualification confirmed substantive project changes, complete P-A-U evidence, traced requirements, scope alignment, and no queue-state leakage from the builder branch.
+
+## Testing
+
+**Merged-state checks:** `go test -count=1 ./internal/finalization`; `go test -race ./internal/finalization ./internal/gittransaction ./internal/requeststate ./internal/publication`; `go vet ./...`; `go test -count=1 ./...`; `bash _dev/tests/do-work-cli-go125-compatibility.sh`; `bash _dev/tests/contract-regressions.sh`; and `bash _dev/tests/maintainer-verify.sh`.
+
+**Result:** Every focused, race, static, full-module, Go 1.25, action-contract, and canonical repository gate check passed on the merged tree. The maintainer gate's optional strict browser lane reported the repository's normal no-browser skip; queue-kanban and strict JavaScript lanes passed.
+
+**RED→GREEN:** `TestRecoverFinalizationDiscoversLegacyNoJournalTail` failed before implementation because `recover-finalization --discover` returned `FINALIZATION-USAGE` and created no recovery commit or provenance. It passes after implementation, proving one discovered record, distinct primary/metadata commits, canonical `commit:` provenance, untouched unrelated work, journal cleanup, idempotent replay, and successful selection/claim of the next REQ.
 
 ---
 *Source: implement and capture the resumable orchestrator finalization plan*
