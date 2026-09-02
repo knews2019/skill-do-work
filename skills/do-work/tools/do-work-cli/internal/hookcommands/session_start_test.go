@@ -35,6 +35,95 @@ func TestSessionStartRendersExactBanner(t *testing.T) {
 	}
 }
 
+func TestSessionStartProjectsOneUnfinishedFinalizationLineReadOnly(t *testing.T) {
+	for _, testCase := range []struct {
+		name      string
+		requestID string
+		setupTail func(t *testing.T, repository string) string
+	}{
+		{
+			name:      "journal",
+			requestID: "REQ-710",
+			setupTail: func(t *testing.T, repository string) string {
+				t.Helper()
+				command := exec.Command("git", "-C", repository, "rev-parse", "--git-path", "do-work-finalization")
+				output, err := command.Output()
+				if err != nil {
+					t.Fatal(err)
+				}
+				journalRoot := strings.TrimSpace(string(output))
+				if !filepath.IsAbs(journalRoot) {
+					journalRoot = filepath.Join(repository, journalRoot)
+				}
+				if err := os.MkdirAll(journalRoot, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				journalPath := filepath.Join(journalRoot, "REQ-710.json")
+				if err := os.WriteFile(journalPath, []byte("{\"phase\":\"lifecycle_applied\",\"manifest\":{\"request_id\":\"REQ-710\"}}\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				return journalPath
+			},
+		},
+		{
+			name:      "archived-without-commit",
+			requestID: "REQ-711",
+			setupTail: func(t *testing.T, repository string) string {
+				t.Helper()
+				requestPath := filepath.Join(repository, "do-work", "archive", "REQ-711-tail.md")
+				if err := os.MkdirAll(filepath.Dir(requestPath), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				contents := "---\nid: REQ-711\nstatus: completed\ncreated_at: 2026-09-01T00:00:00Z\ncommit:\n---\n## Implementation Summary\n- `src/x.go` (modified)\n\n## Qualification\nVerified\n"
+				if err := os.WriteFile(requestPath, []byte(contents), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				return requestPath
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			repository := t.TempDir()
+			skillRoot := filepath.Join(t.TempDir(), "skill")
+			if err := os.MkdirAll(filepath.Join(repository, "do-work", "queue"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(skillRoot, "actions"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(skillRoot, "actions", "version.md"), []byte("**Current version**: 9.8.7\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			runHookGit(t, repository, "init", "-q")
+			tailPath := testCase.setupTail(t, repository)
+			before, err := os.ReadFile(tailPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			result := handleSessionStart(commandruntime.ExecutionContext{RepositoryRoot: repository}, []string{"--skill-root", skillRoot})
+			want := "do-work v9.8.7 loaded. 0 pending REQ(s). Say 'do-work help' for commands.\n" +
+				"do-work: unfinished finalization for " + testCase.requestID + " — 'do-work run' resumes it; 'do-work run-with-recovery' if this checkout is the only writer.\n"
+			if result.ProtocolOutput == nil || *result.ProtocolOutput != want {
+				t.Fatalf("output=%q, want %q", valueOrEmpty(result.ProtocolOutput), want)
+			}
+			tailFindingCount := 0
+			for _, finding := range result.Findings {
+				if finding.Code == "UNFINISHED-FINALIZATION" || finding.Code == "ARCHIVED-WITHOUT-COMMIT" {
+					tailFindingCount++
+				}
+			}
+			if tailFindingCount != 1 {
+				t.Fatalf("typed tail findings = %d: %+v", tailFindingCount, result.Findings)
+			}
+			after, err := os.ReadFile(tailPath)
+			if err != nil || string(after) != string(before) {
+				t.Fatalf("session-start changed tail bytes: err=%v before=%q after=%q", err, before, after)
+			}
+		})
+	}
+}
+
 func TestSessionStartCombinesReservationAndTimestampHousekeeping(t *testing.T) {
 	repository := t.TempDir()
 	skillRoot := filepath.Join(t.TempDir(), "skill")

@@ -5,11 +5,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
 func writeDoctorFixture(t *testing.T, repositoryRoot, relativePath, contents string) {
@@ -241,5 +243,83 @@ func TestManualFindingsKeepPathsAvoidDuplicateStatusAndAdvanceInspection(t *test
 	}
 	if invalidStatusCount != 1 {
 		t.Fatalf("invalid status findings = %d: %#v", invalidStatusCount, result.Findings)
+	}
+}
+
+func TestScanRepositoryReportsFinalizationTailsWithoutCommittedBlankCommitFalsePositive(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	initDoctorGit(t, repositoryRoot)
+	requestBody := "## Implementation Summary\n**Files changed:**\n- `src/x.go` (modified)\n\n## Qualification\nVerified"
+	cleanPath := "do-work/archive/REQ-700-clean.md"
+	modifiedPath := "do-work/archive/REQ-701-modified.md"
+	writeDoctorFixture(t, repositoryRoot, cleanPath, doctorRequest("REQ-700", "completed", "created_at: 2026-08-30T19:00:00Z\ncommit:\n", requestBody))
+	writeDoctorFixture(t, repositoryRoot, modifiedPath, doctorRequest("REQ-701", "completed-with-issues", "created_at: 2026-08-30T19:00:00Z\ncommit:\n", requestBody))
+	commitDoctorFixture(t, repositoryRoot, "archive blank-commit controls")
+	modifiedAbsolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(modifiedPath))
+	modifiedBytes, err := os.ReadFile(modifiedAbsolutePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(modifiedAbsolutePath, append(modifiedBytes, []byte("\npost-archive tail\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	untrackedPath := "do-work/archive/REQ-702-untracked.md"
+	writeDoctorFixture(t, repositoryRoot, untrackedPath, doctorRequest("REQ-702", "completed", "created_at: 2026-08-30T19:00:00Z\ncommit:\n", requestBody))
+
+	gitPath := exec.Command("git", "-C", repositoryRoot, "rev-parse", "--git-path", "do-work-finalization")
+	journalRootBytes, err := gitPath.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	journalRoot := strings.TrimSpace(string(journalRootBytes))
+	if !filepath.IsAbs(journalRoot) {
+		journalRoot = filepath.Join(repositoryRoot, journalRoot)
+	}
+	if err := os.MkdirAll(journalRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	journalPath := filepath.Join(journalRoot, "REQ-703.json")
+	journalBytes := []byte("{\"phase\":\"release_applied\",\"manifest\":{\"request_id\":\"REQ-703\"}}\n")
+	if err := os.WriteFile(journalPath, journalBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := ScanRepository(context.Background(), snapshot, ScanOptions{Now: time.Date(2026, 8, 30, 20, 0, 0, 0, time.UTC)})
+	findings := map[string]resultmodel.CommandFinding{}
+	for _, finding := range result.Findings {
+		for _, requestID := range finding.AffectedIDs {
+			findings[requestID+"/"+finding.Code] = finding
+		}
+	}
+	if _, found := findings["REQ-700/ARCHIVED-WITHOUT-COMMIT"]; found {
+		t.Fatalf("committed blank commit produced false positive: %#v", result.Findings)
+	}
+	for _, requestID := range []string{"REQ-701", "REQ-702"} {
+		finding, found := findings[requestID+"/ARCHIVED-WITHOUT-COMMIT"]
+		if !found || finding.Fixability != resultmodel.FixabilityRefused {
+			t.Fatalf("%s archived tail finding = %#v", requestID, finding)
+		}
+		if !strings.Contains(strings.Join(finding.Evidence, " "), requestID) || !strings.Contains(strings.Join(finding.Evidence, " "), "do-work run-with-recovery") {
+			t.Fatalf("%s archived tail lost recovery evidence: %#v", requestID, finding)
+		}
+	}
+	journalFinding, found := findings["REQ-703/UNFINISHED-FINALIZATION"]
+	if !found || journalFinding.Fixability != resultmodel.FixabilityRefused {
+		t.Fatalf("journal tail finding = %#v", journalFinding)
+	}
+	if evidence := strings.Join(journalFinding.Evidence, " "); !strings.Contains(evidence, "REQ-703") || !strings.Contains(evidence, "release_applied") {
+		t.Fatalf("journal tail lost request or phase evidence: %#v", journalFinding)
+	}
+	wantRecoveryArgv := []string{"do-work-cli", "--format", "json", "recover-finalization", "--discover"}
+	if !reflect.DeepEqual(journalFinding.NextArgv, wantRecoveryArgv) || !reflect.DeepEqual(findings["REQ-701/ARCHIVED-WITHOUT-COMMIT"].NextArgv, wantRecoveryArgv) {
+		t.Fatalf("tail recovery argv drifted: journal=%v archive=%v", journalFinding.NextArgv, findings["REQ-701/ARCHIVED-WITHOUT-COMMIT"].NextArgv)
+	}
+	journalAfter, err := os.ReadFile(journalPath)
+	if err != nil || !reflect.DeepEqual(journalAfter, journalBytes) {
+		t.Fatalf("doctor changed journal bytes: err=%v after=%q", err, journalAfter)
 	}
 }
