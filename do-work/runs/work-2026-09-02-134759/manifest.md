@@ -23,5 +23,7 @@ Status: in-progress
 | remediation-500 | Preserve tail inspection evidence and collapse Git probes | worktree-agent-REQ-500-remediation-1 | inline hand-back | done — builder `cd72002a`, merge `ad260b5d` |
 | rereview-500 | Re-review REQ-500 after `ad260b5d` | n/a | inline review | done — Partial 83%, residual auto-queued as REQ-511 |
 | remediation-499 | Close exact follow-up and workspace mirror ownership | worktree-agent-REQ-499-remediation-1 | inline hand-back | done — builder `d717d0fb`, merge `04bcb8c8` |
+| rereview-499 | Re-review REQ-499 after `04bcb8c8` | n/a | inline review | done — Fail 50%, residuals auto-queued as REQ-512 |
+| finalize-500 | Journaled lifecycle/release/commit tail | n/a | `/tmp/req500-finalization.dhMico` | done — completed-with-issues, release 0.263.1, commit `d484dfb1` |
 
 The run directory makes fan-out recoverable from disk; it does not prevent harness or provider failures.

@@ -1,7 +1,7 @@
 ---
 id: REQ-499
 title: '[impact-critical] Add recover-finalization --assume-sole-releaser for ambiguous shared metadata'
-status: claimed
+status: completed-with-issues
 created_at: 2026-09-02T13:31:12Z
 user_request: UR-097
 domain: backend
@@ -22,6 +22,8 @@ builder_handback_at: 2026-09-02T17:19:21Z
 integration_at: 2026-09-02T17:19:54Z
 review_at: 2026-09-02T17:28:32Z
 remediation_at: 2026-09-02T17:56:20Z
+re_review_at: 2026-09-02T18:08:38Z
+completed_at: 2026-09-02T18:08:38Z
 ---
 
 # Add recover-finalization --assume-sole-releaser for Ambiguous Shared Metadata
@@ -127,6 +129,17 @@ The one remediation pass must also add public acceptance coverage for UR-folder 
 The single remediation pass tightened tracked follow-up association to one exact append-only named fold with no foreign prelude, tail, or second top-level section. Release discovery now enumerates the configured tracked set fail-closed with typed `FINALIZATION-DISCOVERY-RELEASE-ENUMERATION`, relates nested npm/Cargo/uv workspace manifests to root lock member entries, requires each related lock, and admits only exact owned old-to-new version replacements.
 
 Persisted regressions cover Review/Recovery folds and foreign-section negatives, stale and updated npm/Cargo/uv workspace mirrors, enumeration failure, and the public sole-releaser UR active-to-archive flow followed by a real committed claim. Focused, race, vet, full-module, Go 1.25, and canonical gates passed. Remediation builder `d717d0fb`; merge `04bcb8c8`.
+
+## Re-review
+
+**Overall: 50%** | **Acceptance: Fail** | **Risk: Critical**
+
+Enumeration failure and the public recovery-to-claim seam closed, and supplied foreign-heading plus npm/Cargo/uv stale-lock fixtures pass. Two semantic boundaries remain after the single remediation:
+
+- A valid named fold followed by an unheaded foreign paragraph is still treated as wholly owned and can be committed by strict recovery (`impact-critical`).
+- An npm workspace member-only release is refused when the unchanged root package happens to share the member's old version, incorrectly requiring root manifest/lock copies that the canonical release rule says stay put (`impact-user-visible`).
+
+The one-remediation allowance is exhausted. Both residuals are consolidated under critical sweep REQ-512, keyed `legacy-finalization-semantic-ownership-incomplete`. Terminal disposition: `completed-with-issues`.
 
 ## Open Questions
 None.
