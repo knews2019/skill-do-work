@@ -1,7 +1,8 @@
 ---
 id: REQ-493
 title: '[impact-rule-change] Review fix: Complete repository-gate deferral preflight topology'
-status: pending
+status: claimed
+route: C
 domain: backend
 created_at: 2026-09-02T02:24:22Z
 user_request: UR-095
@@ -15,12 +16,15 @@ depends_on: [REQ-491]
 related: [REQ-492]
 sweep: true
 sweep_key: defer-gate-preflight-topology-incomplete
+claimed_at: 2026-09-02T03:48:12Z
+planning_at: 2026-09-02T03:51:55Z
+write_set: [skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go, skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go, skills/do-work/actions/work-reference.md]
 ---
 
 # Review Fix: Complete Repository-Gate Deferral Preflight Topology
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Route C. Add planning-time `Lstat` refusal for an occupied parent queue destination, classify the folded repair with parent/checkpoint preimages, retain the transaction's staged-input and final-boundary guards, and pin success plus every rollback position before changing production code.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -55,3 +59,17 @@ Found during the post-remediation review of REQ-491 (Add canonical repository-ga
 
 - [ ] `impact-user-visible` — A same-fingerprint parent cannot fold into a tracked-dirty repair even though the manifest binds the repair’s exact preimage.
 - [ ] `impact-rule-change` — An occupied parent queue destination is detected during apply instead of at the no-mutation planning boundary.
+
+## Scope
+
+- `skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go` — classify the folded repair and refuse occupied parent destinations during planning.
+- `skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go` — prove RED/GREEN success, staged refusal, planning collision, and exact rollback at every fold mutation.
+- `skills/do-work/actions/work-reference.md` — align the canonical topology contract with all classified preimages and move destinations.
+
+## Plan
+
+1. Add named failing tests for a manifest-bound tracked-dirty fold and an occupied parent queue destination; record the exact pre-fix failures.
+2. Add rollback coverage after each of the three fold mutations and retain a focused staged-repair refusal test.
+3. Preflight the parent queue destination before any mutation is appended, while preserving exclusive apply-time creation as the race guard.
+4. Include the fold repair in shared preimage classification, deduplicating its tracked-dirty or untracked opt-in without weakening absent-reservation authority.
+5. Update the owning action contract, close both review instances only after focused GREEN, and run race, vet, full CLI, and canonical maintainer verification.
