@@ -722,29 +722,55 @@ func checkpointWithoutClaim(existing []byte, requestID, writer string) []byte {
 		return existing
 	}
 	lines := strings.Split(string(existing), "\n")
-	filtered := lines[:0]
-	for _, line := range lines {
+	headingLine, sectionEnd, found := sectionLineBounds(lines, "In Progress (interrupted)")
+	if !found {
+		return existing
+	}
+	filtered := append([]string(nil), lines[:headingLine+1]...)
+	for lineIndex := headingLine + 1; lineIndex < sectionEnd; lineIndex++ {
+		line := lines[lineIndex]
 		if strings.HasPrefix(line, "- "+requestID+":") && strings.Contains(line, "writer: "+writer) {
+			for lineIndex+1 < sectionEnd && strings.TrimSpace(lines[lineIndex+1]) != "" && (strings.HasPrefix(lines[lineIndex+1], " ") || strings.HasPrefix(lines[lineIndex+1], "\t")) {
+				lineIndex++
+			}
 			continue
 		}
 		filtered = append(filtered, line)
 	}
+	filtered = append(filtered, lines[sectionEnd:]...)
 	return []byte(strings.Join(filtered, "\n"))
 }
 
 func appendSectionEntry(contents []byte, section, entry string) []byte {
 	text := strings.TrimRight(string(contents), "\n")
-	heading := "## " + section
-	position := strings.Index(text, heading)
-	if position < 0 {
+	lines := strings.Split(text, "\n")
+	_, sectionEnd, found := sectionLineBounds(lines, section)
+	if !found {
+		heading := "## " + section
 		return []byte(text + "\n\n" + heading + "\n\n" + entry + "\n")
 	}
-	sectionEnd := strings.Index(text[position+len(heading):], "\n## ")
-	if sectionEnd < 0 {
+	if sectionEnd == len(lines) {
 		return []byte(text + "\n\n" + entry + "\n")
 	}
-	insertAt := position + len(heading) + sectionEnd
-	return []byte(strings.TrimRight(text[:insertAt], "\n") + "\n\n" + entry + "\n" + text[insertAt:] + "\n")
+	sectionText := strings.TrimRight(strings.Join(lines[:sectionEnd], "\n"), "\n")
+	followingText := strings.Join(lines[sectionEnd:], "\n")
+	return []byte(sectionText + "\n\n" + entry + "\n\n" + followingText + "\n")
+}
+
+func sectionLineBounds(lines []string, section string) (int, int, bool) {
+	heading := "## " + section
+	for lineIndex, line := range lines {
+		if line != heading {
+			continue
+		}
+		for sectionEnd := lineIndex + 1; sectionEnd < len(lines); sectionEnd++ {
+			if strings.HasPrefix(lines[sectionEnd], "## ") {
+				return lineIndex, sectionEnd, true
+			}
+		}
+		return lineIndex, len(lines), true
+	}
+	return 0, 0, false
 }
 
 func cancellationReasonBlock(reason, summary string) string {

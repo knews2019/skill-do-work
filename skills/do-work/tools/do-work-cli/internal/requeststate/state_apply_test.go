@@ -103,6 +103,46 @@ func TestLifecycleApplySynchronizesClaimUnblockCompleteFailAndCancel(t *testing.
 	})
 }
 
+func TestCheckpointClaimRemovalIncludesIndentedContinuationLines(t *testing.T) {
+	existing := []byte("# Session Checkpoint\n\n## In Progress (interrupted)\n\n" +
+		"- REQ-489: Own claim — claimed now — writer: host:/repo\n" +
+		"  - **Last known state:** implementation in progress\n" +
+		"  - **Key files being modified:** `state_apply.go`\n" +
+		"  - **Known issues:** removal leaves orphaned lines\n" +
+		"- REQ-999: Foreign claim — claimed earlier — writer: other:/repo\n" +
+		"  - **Last known state:** must remain\n")
+	want := "# Session Checkpoint\n\n## In Progress (interrupted)\n\n" +
+		"- REQ-999: Foreign claim — claimed earlier — writer: other:/repo\n" +
+		"  - **Last known state:** must remain\n"
+
+	if got := string(checkpointWithoutClaim(existing, "REQ-489", "host:/repo")); got != want {
+		t.Fatalf("claim removal left continuation lines or damaged the foreign entry:\n%s", got)
+	}
+}
+
+func TestCheckpointClaimUsesWholeInProgressHeadingLine(t *testing.T) {
+	existing := []byte("# Session Checkpoint\n\n## Session Notes\n\n" +
+		"- REQ-489: Historical note mentioning `## In Progress (interrupted)` — writer: host:/repo\n" +
+		"  - This continuation must remain.\n\n" +
+		"## In Progress (interrupted)\n\n" +
+		"- REQ-999: Foreign claim — claimed earlier — writer: other:/repo\n" +
+		"  - Foreign continuation must remain.\n")
+	wantClaimed := string(existing) + "\n- REQ-489: Whole-heading fix — claimed 2026-09-02T10:00:00Z — writer: host:/repo\n"
+
+	claimed := checkpointWithClaim(existing, "REQ-489", "Whole-heading fix", "2026-09-02T10:00:00Z", "host:/repo")
+	if got := string(claimed); got != wantClaimed {
+		t.Fatalf("claim was not inserted under the whole In Progress heading:\n%s", got)
+	}
+	departed := string(checkpointWithoutClaim(claimed, "REQ-489", "host:/repo"))
+	sectionParts := strings.SplitN(departed, "\n## In Progress (interrupted)\n", 2)
+	if len(sectionParts) != 2 || !strings.Contains(sectionParts[0], "- REQ-489: Historical note mentioning `## In Progress (interrupted)` — writer: host:/repo\n  - This continuation must remain.") {
+		t.Fatalf("departure removed content outside the whole In Progress section:\n%s", departed)
+	}
+	if strings.Contains(sectionParts[1], "REQ-489") || !strings.Contains(sectionParts[1], "  - Foreign continuation must remain.") {
+		t.Fatalf("departure did not remove only the real claim entry:\n%s", departed)
+	}
+}
+
 func TestCancelContainsMultilineReasonAndPreservesOptionalFailureHistory(t *testing.T) {
 	t.Run("multiline reason uses summary and byte-identical fenced blockquote", func(t *testing.T) {
 		root := newStateRepository(t)
