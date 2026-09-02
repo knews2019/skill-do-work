@@ -34,6 +34,7 @@ dispatch_at: 2026-09-02T18:16:50Z
 builder_handback_at: 2026-09-02T18:30:12Z
 integration_at: 2026-09-02T18:31:02Z
 review_at: 2026-09-02T18:43:42Z
+remediation_at: 2026-09-02T19:18:00Z
 ---
 
 # Add do-work run-with-recovery and Record the One-Broken-Pipe Principle
@@ -119,6 +120,13 @@ All firm public surfaces are present and the static mutation lanes pass, but an 
 - Direct canonical `claim` refuses `GIT-DIRTY-TARGET`.
 
 The single remediation must establish one clean canonical ownership-transfer boundary, remove the exact prior checkpoint entry, preserve unrelated implementation bytes, and add a behavioral public recovery-to-selection-to-claim fixture. If that cannot close, the residual folds into pending REQ-504, which already owns moving Crash Recovery mechanics behind a canonical command.
+
+## Remediation — Attempt 1
+
+- Added a guarded canonical `recover-claim` request-state transaction requiring the invocation-scoped sole-writer assertion, exactly one checkpoint-evidence mode, and an exact-path lifecycle commit.
+- Recovery now resets and moves only the asserted working REQ, removes only its checkpoint entry, preserves unrelated unstaged implementation bytes, and leaves plain `claim`/`run` dirty-target guards unchanged.
+- Added executable recovery-to-`next`-to-fresh-`claim` coverage plus negative authority, evidence, commit, and rollback cases.
+- Verification passed: focused race tests, full Go tests and vet, Go 1.25 compatibility, contract regressions, and the canonical maintainer gate. The optional browser lane skipped because no browser was available.
 
 ## Open Questions
 None.
