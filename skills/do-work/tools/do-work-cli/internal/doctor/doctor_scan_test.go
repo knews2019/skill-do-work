@@ -2,6 +2,7 @@ package doctor
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -321,5 +322,113 @@ func TestScanRepositoryReportsFinalizationTailsWithoutCommittedBlankCommitFalseP
 	journalAfter, err := os.ReadFile(journalPath)
 	if err != nil || !reflect.DeepEqual(journalAfter, journalBytes) {
 		t.Fatalf("doctor changed journal bytes: err=%v after=%q", err, journalAfter)
+	}
+}
+
+func TestFinalizationTailFindingsPreserveMalformedAndUnreadableJournalEvidence(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	initDoctorGit(t, repositoryRoot)
+	if err := os.MkdirAll(filepath.Join(repositoryRoot, "do-work", "queue"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitPath := exec.Command("git", "-C", repositoryRoot, "rev-parse", "--git-path", "do-work-finalization")
+	journalRootBytes, err := gitPath.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	journalRoot := strings.TrimSpace(string(journalRootBytes))
+	if !filepath.IsAbs(journalRoot) {
+		journalRoot = filepath.Join(repositoryRoot, journalRoot)
+	}
+	if err := os.MkdirAll(journalRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	malformedPath := filepath.Join(journalRoot, "REQ-720.json")
+	malformedBytes := []byte("{malformed\n")
+	if err := os.WriteFile(malformedPath, malformedBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	unreadablePath := filepath.Join(journalRoot, "REQ-721.json")
+	if err := os.Symlink("missing-journal", unreadablePath); err != nil {
+		t.Fatal(err)
+	}
+
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings := FinalizationTailFindings(context.Background(), snapshot)
+	byRequest := map[string]resultmodel.CommandFinding{}
+	for _, finding := range findings {
+		for _, requestID := range finding.AffectedIDs {
+			byRequest[requestID] = finding
+		}
+	}
+	for _, requestID := range []string{"REQ-720", "REQ-721"} {
+		finding, found := byRequest[requestID]
+		if !found || finding.Code != "UNFINISHED-FINALIZATION" || finding.Fixability != resultmodel.FixabilityRefused {
+			t.Fatalf("%s missing typed unfinished-journal evidence: %#v", requestID, finding)
+		}
+		if evidence := strings.Join(finding.Evidence, " "); !strings.Contains(evidence, requestID) || !strings.Contains(evidence, "inspection failed") {
+			t.Fatalf("%s missing inspection failure detail: %#v", requestID, finding)
+		}
+		if !reflect.DeepEqual(finding.NextArgv, finalizationRecoveryArgv()) {
+			t.Fatalf("%s recovery argv=%v", requestID, finding.NextArgv)
+		}
+	}
+	malformedAfter, err := os.ReadFile(malformedPath)
+	if err != nil || !reflect.DeepEqual(malformedAfter, malformedBytes) {
+		t.Fatalf("malformed journal changed: err=%v after=%q", err, malformedAfter)
+	}
+	linkAfter, err := os.Readlink(unreadablePath)
+	if err != nil || linkAfter != "missing-journal" {
+		t.Fatalf("unreadable journal object changed: err=%v target=%q", err, linkAfter)
+	}
+}
+
+func TestFinalizationTailFindingsUseOneArchiveGitInventory(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	initDoctorGit(t, repositoryRoot)
+	requestBody := "## Implementation Summary\n- `src/x.go` (modified)\n\n## Qualification\nVerified"
+	for requestNumber := 800; requestNumber < 1000; requestNumber++ {
+		requestID := fmt.Sprintf("REQ-%d", requestNumber)
+		writeDoctorFixture(t, repositoryRoot, "do-work/archive/"+requestID+"-clean.md",
+			doctorRequest(requestID, "completed", "created_at: 2026-08-30T19:00:00Z\ncommit:\n", requestBody))
+	}
+	commitDoctorFixture(t, repositoryRoot, "committed blank-provenance scale fixture")
+
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	probeRoot := t.TempDir()
+	probeLog := filepath.Join(probeRoot, "git-calls.log")
+	wrapper := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$DO_WORK_GIT_PROBE_LOG\"\nexec \"$DO_WORK_REAL_GIT\" \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(probeRoot, "git"), []byte(wrapper), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("DO_WORK_REAL_GIT", realGit)
+	t.Setenv("DO_WORK_GIT_PROBE_LOG", probeLog)
+	t.Setenv("PATH", probeRoot+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if findings := FinalizationTailFindings(context.Background(), snapshot); len(findings) != 0 {
+		t.Fatalf("committed scale fixture produced findings: %#v", findings)
+	}
+	probeBytes, err := os.ReadFile(probeLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	archiveStatusProbes := 0
+	for _, line := range strings.Split(string(probeBytes), "\n") {
+		if strings.Contains(line, " status ") && strings.Contains(line, "do-work/archive") {
+			archiveStatusProbes++
+		}
+	}
+	if archiveStatusProbes != 1 {
+		t.Fatalf("archive Git inventory probes=%d, want 1; calls:\n%s", archiveStatusProbes, probeBytes)
 	}
 }
