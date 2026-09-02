@@ -20,6 +20,7 @@ dispatch_at: 2026-09-02T14:10:30Z
 builder_handback_at: 2026-09-02T14:50:42Z
 integration_at: 2026-09-02T14:51:46Z
 review_at: 2026-09-02T15:11:25Z
+remediation_at: 2026-09-02T15:14:26Z
 estimate:
   p50_active_minutes: 70
   confidence: low
