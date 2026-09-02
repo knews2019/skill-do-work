@@ -73,7 +73,7 @@ write_set:
   - _dev/tests/contract-regressions.sh
 completed_at: 2026-09-02T02:25:16Z
 release_at: 2026-09-02T02:26:42Z
-commit: ''
+commit: 0a5d4e44
 ---
 
 # Add Canonical Repository-Gate Deferral Lifecycle
