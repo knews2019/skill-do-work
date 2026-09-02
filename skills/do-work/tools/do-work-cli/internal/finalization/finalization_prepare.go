@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -13,6 +14,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/dependencygraph"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/publication"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
 )
 
@@ -26,13 +28,16 @@ func prepareJournal(ctx context.Context, repositoryRoot, manifestPath string) (*
 	if err != nil {
 		return nil, false, err
 	}
+	if err := exec.Command("git", "-C", repositoryRoot, "diff", "--cached", "--quiet", "--exit-code").Run(); err != nil {
+		return nil, false, fmt.Errorf("finalization requires an empty existing index")
+	}
 	journalPath, payloadDirectory, err := journalLocations(repositoryRoot, manifest.RequestID)
 	if err != nil {
 		return nil, false, err
 	}
 	manifestDigest := digestBytes(manifestBytes)
 	if _, err := os.Lstat(journalPath); err == nil {
-		journal, readError := readJournal(journalPath)
+		journal, readError := readJournal(repositoryRoot, journalPath)
 		if readError != nil {
 			return nil, false, readError
 		}
@@ -116,6 +121,15 @@ func prepareJournal(ctx context.Context, repositoryRoot, manifestPath string) (*
 			return nil, false, err
 		}
 		releasePostimages = publicationPostimages(releasePlan)
+		archiveBefore, archiveAfter, stampError := releaseStampImages(statePlan.DestinationPath, journalLifecyclePostimages, manifest.ReleaseAt)
+		if stampError != nil {
+			_ = os.RemoveAll(payloadDirectory)
+			return nil, false, stampError
+		}
+		releasePreimages = append(releasePreimages, archiveBefore)
+		releasePostimages = append(releasePostimages, archiveAfter)
+		releasePreimages = sortedUniqueImages(releasePreimages)
+		releasePostimages = sortedUniqueImages(releasePostimages)
 	}
 
 	effectiveCommitPaths, err := normalizeRepositoryPaths(manifest.CommitPaths)
@@ -150,6 +164,39 @@ func prepareJournal(ctx context.Context, repositoryRoot, manifestPath string) (*
 		return nil, false, err
 	}
 	return journal, false, nil
+}
+
+func releaseStampImages(archivedPath string, lifecyclePostimages []FileImage, releaseAt string) (FileImage, FileImage, error) {
+	for _, image := range lifecyclePostimages {
+		if image.Path != archivedPath || !image.Exists {
+			continue
+		}
+		document, err := requestmodel.ParseDocument(image.Bytes)
+		if err != nil {
+			return FileImage{}, FileImage{}, err
+		}
+		if err := document.SetScalar("release_at", releaseAt); err != nil {
+			return FileImage{}, FileImage{}, err
+		}
+		after := image
+		after.Bytes = document.DocumentBytes()
+		return image, after, nil
+	}
+	return FileImage{}, FileImage{}, fmt.Errorf("release_at archive postimage is missing")
+}
+
+func sortedUniqueImages(images []FileImage) []FileImage {
+	byPath := imagesByPath(images)
+	paths := make([]string, 0, len(byPath))
+	for path := range byPath {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	result := make([]FileImage, 0, len(paths))
+	for _, path := range paths {
+		result = append(result, byPath[path])
+	}
+	return result
 }
 
 func snapshotImages(repositoryRoot string, paths []string) ([]FileImage, error) {

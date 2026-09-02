@@ -11,6 +11,11 @@ import (
 
 const journalVersion = 1
 
+const (
+	ProvenancePrimaryCommit  = "primary_commit"
+	ProvenanceSuppliedCommit = "supplied_commit"
+)
+
 type Phase string
 
 const (
@@ -34,6 +39,7 @@ type Manifest struct {
 	ExpectedCheckpointSHA256 string   `json:"expected_checkpoint_sha256"`
 	CommitPaths              []string `json:"commit_paths"`
 	CommitMessage            string   `json:"commit_message"`
+	ProvenanceMode           string   `json:"provenance_mode"`
 	ImplementationHash       string   `json:"implementation_hash,omitempty"`
 	ReleaseManifestPath      string   `json:"release_manifest_path,omitempty"`
 	ReleaseAt                string   `json:"release_at,omitempty"`
@@ -62,6 +68,8 @@ type Journal struct {
 	ReleasePreimages     []FileImage           `json:"release_preimages"`
 	ReleasePostimages    []FileImage           `json:"release_postimages"`
 	EffectiveCommitPaths []string              `json:"effective_commit_paths"`
+	PreparedHead         string                `json:"prepared_head"`
+	PreparedDiffSHA256   string                `json:"prepared_diff_sha256"`
 	PrimaryCommit        string                `json:"primary_commit,omitempty"`
 	MetadataCommit       string                `json:"metadata_commit,omitempty"`
 	Discovered           bool                  `json:"discovered,omitempty"`

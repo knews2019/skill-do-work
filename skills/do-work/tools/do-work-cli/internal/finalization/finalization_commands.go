@@ -33,35 +33,86 @@ func handleFinalize(executionContext commandruntime.ExecutionContext, arguments 
 }
 
 func handleRecoverFinalization(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
-	if len(arguments) != 0 {
-		return commandFailure(executionContext.RepositoryRoot, CommandRecoverFinalization, "FINALIZATION-USAGE", "recover-finalization accepts no options in the journal-replay slice")
+	discover, err := parseRecoverArguments(arguments)
+	if err != nil {
+		return commandFailure(executionContext.RepositoryRoot, CommandRecoverFinalization, "FINALIZATION-USAGE", err.Error())
 	}
 	paths, err := listJournals(executionContext.RepositoryRoot)
 	if err != nil {
 		return commandFailure(executionContext.RepositoryRoot, CommandRecoverFinalization, "FINALIZATION-JOURNAL-LIST", err.Error())
 	}
-	if len(paths) == 0 {
+	if len(paths) == 0 && !discover {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: []resultmodel.CommandFinding{{
 			Code: "FINALIZATION-NONE", Severity: resultmodel.SeverityInfo, Evidence: []string{"no unfinished finalization journals"},
 			Fixability: resultmodel.FixabilityAutomatic, VerificationArgv: []string{"do-work-cli", "--format", "json", CommandRecoverFinalization},
 		}}}
 	}
-	aggregate := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess}
+	aggregate := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Finalizations: []resultmodel.FinalizationResult{}}
 	for _, path := range paths {
-		journal, readError := readJournal(path)
+		journal, readError := readJournal(executionContext.RepositoryRoot, path)
 		if readError != nil {
 			return commandFailure(executionContext.RepositoryRoot, CommandRecoverFinalization, "FINALIZATION-JOURNAL-INVALID", readError.Error())
 		}
 		result := advanceJournal(context.Background(), executionContext.RepositoryRoot, journal, true)
 		aggregate.Findings = append(aggregate.Findings, result.Findings...)
 		aggregate.Changes = append(aggregate.Changes, result.Changes...)
-		aggregate.Finalization = result.Finalization
+		appendFinalizationResult(&aggregate, result)
 		if result.Outcome != resultmodel.OutcomeSuccess {
 			aggregate.Outcome = result.Outcome
 			return aggregate
 		}
 	}
+	if discover {
+		journals, discoveryResult := discoverFinalizationJournals(executionContext.RepositoryRoot)
+		if discoveryResult != nil {
+			for _, record := range aggregate.Finalizations {
+				discoveryResult.Finalizations = append([]resultmodel.FinalizationResult{record}, discoveryResult.Finalizations...)
+			}
+			if len(discoveryResult.Finalizations) == 1 {
+				discoveryResult.Finalization = &discoveryResult.Finalizations[0]
+			}
+			return *discoveryResult
+		}
+		for _, journal := range journals {
+			result := advanceJournal(context.Background(), executionContext.RepositoryRoot, journal, true)
+			aggregate.Findings = append(aggregate.Findings, result.Findings...)
+			aggregate.Changes = append(aggregate.Changes, result.Changes...)
+			appendFinalizationResult(&aggregate, result)
+			if result.Outcome != resultmodel.OutcomeSuccess {
+				aggregate.Outcome = result.Outcome
+				return aggregate
+			}
+		}
+	}
+	if len(aggregate.Finalizations) == 0 {
+		aggregate.Findings = append(aggregate.Findings, resultmodel.CommandFinding{Code: "FINALIZATION-NONE", Severity: resultmodel.SeverityInfo,
+			Evidence: []string{"no unfinished or safely discoverable finalizations"}, Fixability: resultmodel.FixabilityAutomatic,
+			VerificationArgv: []string{"do-work-cli", "--format", "json", CommandRecoverFinalization, "--discover"}})
+	}
 	return aggregate
+}
+
+func parseRecoverArguments(arguments []string) (bool, error) {
+	if len(arguments) == 0 {
+		return false, nil
+	}
+	if len(arguments) == 1 && arguments[0] == "--discover" {
+		return true, nil
+	}
+	return false, fmt.Errorf("recover-finalization accepts only --discover")
+}
+
+func appendFinalizationResult(aggregate *resultmodel.CommandResult, result resultmodel.CommandResult) {
+	if result.Finalization == nil {
+		return
+	}
+	aggregate.Finalizations = append(aggregate.Finalizations, *result.Finalization)
+	if len(aggregate.Finalizations) == 1 {
+		record := aggregate.Finalizations[0]
+		aggregate.Finalization = &record
+	} else {
+		aggregate.Finalization = nil
+	}
 }
 
 func parseFinalizeArguments(arguments []string) (string, error) {

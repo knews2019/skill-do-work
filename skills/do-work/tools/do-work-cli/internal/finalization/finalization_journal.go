@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -36,13 +37,13 @@ func decodeManifest(repositoryRoot, manifestPath string) (Manifest, []byte, erro
 	if err := decoder.Decode(&struct{}{}); err != io.EOF {
 		return Manifest{}, nil, fmt.Errorf("finalization manifest must contain one JSON object")
 	}
-	if err := validateManifest(manifest); err != nil {
+	if err := validateManifest(repositoryRoot, manifest); err != nil {
 		return Manifest{}, nil, err
 	}
 	return manifest, contents, nil
 }
 
-func validateManifest(manifest Manifest) error {
+func validateManifest(repositoryRoot string, manifest Manifest) error {
 	if !requestIDPattern.MatchString(manifest.RequestID) {
 		return fmt.Errorf("request_id must be an exact REQ-NNN id")
 	}
@@ -70,6 +71,21 @@ func validateManifest(manifest Manifest) error {
 	}
 	if strings.TrimSpace(manifest.CommitMessage) == "" || len(manifest.CommitPaths) == 0 {
 		return fmt.Errorf("commit_message and a non-empty commit_paths allowlist are required")
+	}
+	switch manifest.ProvenanceMode {
+	case ProvenancePrimaryCommit:
+		if manifest.ImplementationHash != "" {
+			return fmt.Errorf("primary_commit provenance forbids implementation_hash")
+		}
+	case ProvenanceSuppliedCommit:
+		if !regexp.MustCompile(`^[0-9a-f]{7,40}$`).MatchString(manifest.ImplementationHash) {
+			return fmt.Errorf("supplied_commit provenance requires a 7-40 lowercase hex implementation_hash")
+		}
+		if err := validateSuppliedCommit(repositoryRoot, manifest.ImplementationHash); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("provenance_mode must be primary_commit or supplied_commit")
 	}
 	if manifest.ReleaseManifestPath == "" && manifest.ReleaseAt != "" || manifest.ReleaseManifestPath != "" && manifest.ReleaseAt == "" {
 		return fmt.Errorf("release_manifest_path and release_at must be supplied together")
@@ -138,7 +154,7 @@ func writeJournal(journal *Journal) error {
 	return nil
 }
 
-func readJournal(path string) (*Journal, error) {
+func readJournal(repositoryRoot, path string) (*Journal, error) {
 	path = filepath.Clean(path)
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
@@ -161,12 +177,23 @@ func readJournal(path string) (*Journal, error) {
 	if filepath.Base(path) != journal.Manifest.RequestID+".json" {
 		return nil, fmt.Errorf("journal filename does not match request identity")
 	}
-	if err := validateManifest(journal.Manifest); err != nil {
+	if err := validateManifest(repositoryRoot, journal.Manifest); err != nil {
 		return nil, fmt.Errorf("journal manifest is invalid: %w", err)
 	}
 	expectedPayloadDirectory := filepath.Join(filepath.Dir(path), journal.Manifest.RequestID+".payloads")
 	if journal.PayloadDirectory != "" && filepath.Clean(journal.PayloadDirectory) != expectedPayloadDirectory {
 		return nil, fmt.Errorf("journal payload directory is outside its private request slot")
+	}
+	if (journal.PreparedHead == "") != (journal.PreparedDiffSHA256 == "") {
+		return nil, fmt.Errorf("journal prepared commit identity is incomplete")
+	}
+	if journal.PreparedHead != "" && (!regexp.MustCompile(`^[0-9a-f]{40,64}$`).MatchString(journal.PreparedHead) || !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(journal.PreparedDiffSHA256)) {
+		return nil, fmt.Errorf("journal prepared commit identity is invalid")
+	}
+	if journal.Manifest.ReleaseManifestPath != "" {
+		if journal.ReleaseManifest == nil || !imageSetContainsPath(journal.ReleasePreimages, journal.ArchivedPath) || !imageSetContainsPath(journal.ReleasePostimages, journal.ArchivedPath) {
+			return nil, fmt.Errorf("journal release_at images are incomplete")
+		}
 	}
 	switch journal.Phase {
 	case PhasePrepared, PhaseLifecycleApplied, PhaseReleaseApplied, PhasePrimaryCommitted, PhaseMetadataCommitted:
@@ -174,6 +201,15 @@ func readJournal(path string) (*Journal, error) {
 		return nil, fmt.Errorf("journal phase is invalid: %s", journal.Phase)
 	}
 	return &journal, nil
+}
+
+func imageSetContainsPath(images []FileImage, expectedPath string) bool {
+	for _, image := range images {
+		if image.Path == expectedPath {
+			return true
+		}
+	}
+	return false
 }
 
 func listJournals(repositoryRoot string) ([]string, error) {
@@ -194,7 +230,7 @@ func listJournals(repositoryRoot string) ([]string, error) {
 	for _, entry := range entries {
 		if entry.Type().IsRegular() && strings.HasPrefix(entry.Name(), "REQ-") && strings.HasSuffix(entry.Name(), ".json") {
 			path := filepath.Join(directory, entry.Name())
-			journal, readError := readJournal(path)
+			journal, readError := readJournal(repositoryRoot, path)
 			if readError != nil {
 				return nil, readError
 			}
@@ -212,6 +248,16 @@ func listJournals(repositoryRoot string) ([]string, error) {
 		paths = append(paths, journal.path)
 	}
 	return paths, nil
+}
+
+func validateSuppliedCommit(repositoryRoot, commitHash string) error {
+	if err := exec.Command("git", "-C", repositoryRoot, "rev-parse", "--verify", commitHash+"^{commit}").Run(); err != nil {
+		return fmt.Errorf("supplied implementation_hash does not resolve to a commit")
+	}
+	if err := exec.Command("git", "-C", repositoryRoot, "merge-base", "--is-ancestor", commitHash, "HEAD").Run(); err != nil {
+		return fmt.Errorf("supplied implementation_hash is not an ancestor of HEAD")
+	}
+	return nil
 }
 
 func removeJournal(journal *Journal) error {

@@ -7958,8 +7958,8 @@ assert_contains \
   'work Step 2 must delegate exact-path claim mechanics.'
 assert_contains \
   "skills/do-work/actions/work.md" \
-  'complete REQ-NNN --request-path <exact-working-path> --terminal-status' \
-  'work success must delegate terminal/archive/checkpoint/UR/calibration mechanics.'
+  'finalize --manifest "<finalization-manifest-path>"' \
+  'work success must delegate terminal/archive/checkpoint/UR/calibration/release/commit mechanics to finalization.'
 assert_contains \
   "skills/do-work/actions/work.md" \
   'fail REQ-NNN --request-path <exact-working-path> --error' \
@@ -7974,8 +7974,37 @@ assert_contains \
   'clarify must retain human confirmation and delegate deterministic unblock.'
 assert_contains \
   "skills/do-work/actions/work-reference.md" \
-  'there is no hand-edit or helper fallback' \
+  'There is no hand-edit or helper fallback' \
   'lifecycle metadata writes must fail closed without free-form fallback.'
+
+# REQ-498: startup recovery is an active first operation and both action tails
+# consume the typed ordered records rather than reconstructing Git state.
+if ! python3 - "$core_root/actions/work.md" "$core_root/actions/commit.md" <<'PY'
+import pathlib
+import sys
+
+work = pathlib.Path(sys.argv[1]).read_text()
+commit = pathlib.Path(sys.argv[2]).read_text()
+step_one = work.split("### Step 1: Find Next Request", 1)[1].split("### Step 2.0", 1)[0]
+recovery = step_one.find("recover-finalization --discover")
+checkpoint = step_one.find("read `do-work/CHECKPOINT.md`")
+selector = step_one.find("--format json next")
+if min(recovery, checkpoint, selector) < 0 or not recovery < checkpoint < selector:
+    raise SystemExit("work startup recovery is not before checkpoint and selector reads")
+for token in ("ordered `finalizations`", "empty `blocked_paths` and `reason_codes`", "finalize --manifest"):
+    if token not in work:
+        raise SystemExit(f"work omits active typed finalization directive: {token}")
+commit_step = commit.split("### Step 1: Preflight", 1)[1].split("### Step 2: Read Changes", 1)[0]
+if commit_step.find("recover-finalization --discover") > commit_step.find("protected-inventory.sh start"):
+    raise SystemExit("commit discovery runs after protected inventory")
+for token in ("ordered `finalizations`", "empty `blocked_paths` and `reason_codes`", "Group only the changes left after recovery"):
+    if token not in commit_step:
+        raise SystemExit(f"commit omits typed recovery consumption: {token}")
+PY
+then
+  printf 'FAIL: work/commit finalization recovery ordering or typed consumption regressed.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
 
 work_complete_archive_block="$(sed -n '/^6\. \*\*Archive through the canonical transaction/,/^7\. \*\*Execute deferred lesson writes/p' "$core_root/actions/work.md")"
 assert_block_not_contains \
@@ -8026,14 +8055,7 @@ reference_serial, reference_separator, reference_worktree = reference_commit.par
     "**In worktree dispatch mode**"
 )
 
-surfaces = {
-    "work serial Commit Phase": work_serial,
-    "work worktree Commit Phase": work_worktree if separator else "",
-    "work-reference serial procedure/example": reference_serial,
-    "work-reference worktree Commit Phase": (
-        reference_worktree if reference_separator else ""
-    ),
-}
+surfaces = {"work Commit Phase": work_commit, "work-reference procedure": reference_commit}
 
 
 def defects(block, require_guarded_add=False):
@@ -8041,19 +8063,15 @@ def defects(block, require_guarded_add=False):
     failures = set()
     if "do-work/calibration-log.tsv" not in block:
         failures.add("literal-path")
+    if "finalization manifest" not in flattened.lower():
+        failures.add("canonical-finalization-manifest")
     if re.search(
-        r"successful canonical `complete` result",
+        r"(?:only when|when|if).{0,220}canonical lifecycle plan.{0,260}"
+        r"reports?.{0,160}(?:exact )?targets?",
         flattened,
         flags=re.IGNORECASE,
     ) is None:
-        failures.add("canonical-complete-result")
-    if re.search(
-        r"(?:only when|when|if).{0,220}successful canonical `complete` result.{0,260}"
-        r"reports?.{0,160}(?:changes?|changed|affected).{0,100}(?:targets?|paths?)",
-        flattened,
-        flags=re.IGNORECASE,
-    ) is None:
-        failures.add("reported-target-condition")
+        failures.add("planned-target-condition")
     if "Step 8 substep 7.5" in block:
         failures.add("stale-step-condition")
     if require_guarded_add and re.search(
@@ -8069,7 +8087,7 @@ all_failures = []
 for name, block in surfaces.items():
     surface_defects = defects(
         block,
-        require_guarded_add=name == "work-reference serial procedure/example",
+        require_guarded_add=False,
     )
     if surface_defects:
         all_failures.append(f"{name}: {sorted(surface_defects)}")
@@ -8087,16 +8105,6 @@ for name, block in surfaces.items():
     if stale != block and not defects(stale):
         raise SystemExit(f"{name}: contract accepted stale Step 8 substep 7.5 condition")
 
-serial_reference = surfaces["work-reference serial procedure/example"]
-unguarded = re.sub(
-    r"if\b[^\n]*;\s*then\s*\n(\s*git add do-work/calibration-log\.tsv\s*)\n\s*fi\b",
-    r"\1",
-    serial_reference,
-    count=1,
-    flags=re.IGNORECASE,
-)
-if unguarded != serial_reference and not defects(unguarded, require_guarded_add=True):
-    raise SystemExit("serial reference contract accepted unconditional calibration git add")
 PY
 then
   printf 'FAIL: serial/worktree calibration staging is not wholly owned by the canonical complete result (REQ-459).\n' >&2
@@ -8190,8 +8198,8 @@ assert_contains \
   'verify repair must delegate resolved ambiguous question bytes to answer.'
 assert_contains \
   "skills/do-work/actions/work.md" \
-  'release --manifest' \
-  'the successful release tail must delegate version and changelog publication.'
+  'optional copied release manifest plus `release_at`' \
+  'the successful finalization tail must delegate version and changelog publication through its nested release manifest.'
 release_reference_block="$(sed -n '/^## Changelog Entry Procedure (Step 9)/,/^## Commit & Metadata-Commit Procedure/p' "$core_root/actions/work-reference.md")"
 assert_block_not_contains \
   "$release_reference_block" \
