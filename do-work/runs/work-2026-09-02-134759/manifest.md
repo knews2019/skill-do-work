@@ -22,5 +22,6 @@ Status: in-progress
 | review-499 | Review merged REQ-499 range `c5c74c6f..8faefeb9` | n/a | inline review | done — Fail 50%, remediation required |
 | remediation-500 | Preserve tail inspection evidence and collapse Git probes | worktree-agent-REQ-500-remediation-1 | inline hand-back | done — builder `cd72002a`, merge `ad260b5d` |
 | rereview-500 | Re-review REQ-500 after `ad260b5d` | n/a | inline review | done — Partial 83%, residual auto-queued as REQ-511 |
+| remediation-499 | Close exact follow-up and workspace mirror ownership | worktree-agent-REQ-499-remediation-1 | inline hand-back | done — builder `d717d0fb`, merge `04bcb8c8` |
 
 The run directory makes fan-out recoverable from disk; it does not prevent harness or provider failures.

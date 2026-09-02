@@ -21,6 +21,7 @@ dispatch_at: 2026-09-02T16:44:00Z
 builder_handback_at: 2026-09-02T17:19:21Z
 integration_at: 2026-09-02T17:19:54Z
 review_at: 2026-09-02T17:28:32Z
+remediation_at: 2026-09-02T17:56:20Z
 ---
 
 # Add recover-finalization --assume-sole-releaser for Ambiguous Shared Metadata
@@ -120,6 +121,12 @@ The flag's primary flow, typed attribution, multi-tail/protected-path safeguards
 - Workspace-member release discovery can finalize a nested package while its root lockfile member mirror stays stale, and release-member enumeration errors fail open; configured npm, Cargo, and uv workspace mirrors must be complete or refusal must be typed and fail-closed.
 
 The one remediation pass must also add public acceptance coverage for UR-folder attribution and a subsequent real `claim`, alongside adversarial named-fold and workspace mirror fixtures.
+
+## Remediation
+
+The single remediation pass tightened tracked follow-up association to one exact append-only named fold with no foreign prelude, tail, or second top-level section. Release discovery now enumerates the configured tracked set fail-closed with typed `FINALIZATION-DISCOVERY-RELEASE-ENUMERATION`, relates nested npm/Cargo/uv workspace manifests to root lock member entries, requires each related lock, and admits only exact owned old-to-new version replacements.
+
+Persisted regressions cover Review/Recovery folds and foreign-section negatives, stale and updated npm/Cargo/uv workspace mirrors, enumeration failure, and the public sole-releaser UR active-to-archive flow followed by a real committed claim. Focused, race, vet, full-module, Go 1.25, and canonical gates passed. Remediation builder `d717d0fb`; merge `04bcb8c8`.
 
 ## Open Questions
 None.
