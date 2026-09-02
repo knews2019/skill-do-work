@@ -20,6 +20,7 @@ planning_at: 2026-09-02T16:43:00Z
 dispatch_at: 2026-09-02T16:44:00Z
 builder_handback_at: 2026-09-02T16:59:18Z
 integration_at: 2026-09-02T17:00:04Z
+review_at: 2026-09-02T17:15:12Z
 ---
 
 # Surface Unfinished Finalizations in Doctor and the Session-Start Banner
@@ -80,6 +81,18 @@ None.
 - `bash _dev/tests/session-start-hook-behavior.sh` passed.
 - `go vet ./...`, `go test -count=1 ./...`, and `go test -race ./internal/doctor ./internal/hookcommands` passed.
 - Go 1.25 compatibility and `bash _dev/tests/maintainer-verify.sh` passed; the optional browser lane skipped because no browser was available.
+
+## Review — Attempt 1
+
+**Overall: 78%** | **Acceptance: Partial** | **Risk: Low**
+
+Independent review approved the valid-tail behavior with follow-ups: both typed doctor findings, the exact one-line SessionStart projection, byte identity, and the committed blank-provenance false-positive control work. One bounded remediation is required for two Important findings:
+
+- Preserve unreadable/malformed journal and Git-inventory observation failures as typed evidence instead of silently treating them as no unfinished finalization; SessionStart must still project the recovery pointer.
+- Replace the per-archive `git status` subprocess loop with one repository-level inventory/probe so the common legacy blank-provenance population does not make SessionStart materially slow.
+- Persist negative tests for malformed/unreadable journals, Git failure, scale behavior, and the committed-archive/no-banner control at the hook seam.
+
+The reviewer measured 200 committed blank-provenance archives at 1.62 seconds versus 0.03 seconds with nonblank provenance. The stale README SessionStart summary was routed to `do-work/prose-backlog.md` under the fold-first prose rule.
 
 ## Open Questions
 None.
