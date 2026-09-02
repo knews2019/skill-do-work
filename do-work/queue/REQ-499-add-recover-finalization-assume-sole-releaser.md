@@ -73,6 +73,16 @@ Before adding the sole-releaser override, close REQ-498's remaining strict-disco
 
 **Source:** Critical and user-visible residual findings from REQ-498's post-remediation re-review; folded here because this pending request owns the next `internal/finalization` discovery extension and cannot safely add an override atop an incomplete strict boundary.
 
+## Recovery Fold — REQ-498 Replacement-Mode Verification
+
+Close the release-image verifier defect exposed by REQ-498's own journal resume before adding the override:
+
+- Treat publication replacement mode `0` as the planner's preserve-current-mode sentinel when preparing or verifying journal images; do not serialize it as a literal file mode that can never match a normal `0644` replacement.
+- Add an interruption/resume fixture whose release plan replaces regular files with an omitted mutation mode, and prove recovery reaches `cleanup_complete` without changing their permissions.
+- Keep exact mode verification for images that carry an explicit nonzero mode.
+
+**Source:** REQ-498 finalization recovery reached `metadata_committed` but refused its byte-identical release postimages because three replacement entries recorded mode `0`; a verifier-only compatibility shim was used to complete that already-committed journal and was removed immediately afterward.
+
 ## Open Questions
 None.
 

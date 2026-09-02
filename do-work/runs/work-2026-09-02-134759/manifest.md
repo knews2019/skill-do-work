@@ -15,5 +15,6 @@ Status: in-progress
 | review-498 | Review merged REQ-498 range `e8e5a79d..75648a49` | n/a | REQ-498-review.md | done — Fail 50% |
 | remediation-498 | Close semantic legacy-finalization findings | worktree-agent-REQ-498-remediation-1 | REQ-498-remediation-handback.md | done |
 | rereview-498 | Re-review cumulative REQ-498 range `e8e5a79d..1249e856` | n/a | REQ-498-rereview.md | done — Fail 50% |
+| finalize-498 | Resume journaled lifecycle/release/commit tail | n/a | external scratch backup | done — completed-with-issues, release 0.263.0, commit `41446a1b` |
 
 The run directory makes fan-out recoverable from disk; it does not prevent harness or provider failures.
