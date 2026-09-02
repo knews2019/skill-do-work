@@ -1,7 +1,7 @@
 ---
 id: REQ-493
 title: '[impact-rule-change] Review fix: Complete repository-gate deferral preflight topology'
-status: claimed
+status: completed
 route: C
 domain: backend
 created_at: 2026-09-02T02:24:22Z
@@ -22,8 +22,10 @@ dispatch_at: 2026-09-02T03:52:19Z
 builder_handback_at: 2026-09-02T04:02:18Z
 integration_at: 2026-09-02T04:02:19Z
 review_at: 2026-09-02T04:10:16Z
+release_at: 2026-09-02T04:18:52Z
 kb_status: pending
 write_set: [skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go, skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh]
+completed_at: 2026-09-02T04:17:51Z
 ---
 
 # Review Fix: Complete Repository-Gate Deferral Preflight Topology

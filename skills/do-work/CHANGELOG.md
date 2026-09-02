@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.261.2 — Complete Repository-Gate Deferral Preflight Topology (2026-09-02)
+
+Repository-gate deferral now admits every valid fold topology and refuses occupied parent destinations before mutation.
+
+- Manifest-bound tracked-dirty repair sweeps can fold when the exact reservation and preimage authorize them; staged repair bytes remain refused.
+- Parent, checkpoint, and folded-repair preimages share one complete tracked-clean, tracked-dirty, or untracked classification.
+- Occupied parent queue destinations return a typed zero-mutation planning refusal while exclusive apply-time creation remains the final race guard.
+- Rollback regressions restore exact bytes, complete modes, and Git status after each fold mutation.
+
 ## 0.261.1 — Integrate Repository-Gate Deferral into do-work run (2026-09-02)
 
 `do-work run` now owns a dependency-based response to attributable repository-gate failures instead of unconditionally stopping the entire run.

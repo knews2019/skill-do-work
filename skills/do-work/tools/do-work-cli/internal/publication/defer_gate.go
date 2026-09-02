@@ -38,6 +38,11 @@ func BuildDeferGatePlan(repositoryRoot string, manifest Manifest) PublicationPla
 	repairPath, _ := containedPath(gate.RepairPath)
 	reservationPath, _ := containedPath(gate.ReservationPath)
 	queueParentPath := "do-work/queue/" + filepath.Base(parentPath)
+	if _, statError := os.Lstat(filepath.Join(repositoryRoot, filepath.FromSlash(queueParentPath))); statError == nil {
+		return refusedPlan(plan, "DEFER-GATE-PARENT-DESTINATION-COLLISION", "parent queue destination already exists", []string{gate.ParentID}, queueParentPath)
+	} else if !os.IsNotExist(statError) {
+		return refusedPlan(plan, "DEFER-GATE-INSPECTION-FAILED", statError.Error(), []string{gate.ParentID}, queueParentPath)
+	}
 
 	parentBytes, _, payloadError := readPayload(repositoryRoot, gate.ExpectedParent)
 	if payloadError != nil {
@@ -178,9 +183,13 @@ func BuildDeferGatePlan(repositoryRoot string, manifest Manifest) PublicationPla
 	if plan.Refusal != nil {
 		return plan
 	}
-	dirtyInputs, untrackedInputs, classificationError := classifyGatePreimages(repositoryRoot, parentPath, checkpointPath)
+	preimagePaths := []string{parentPath, checkpointPath}
+	if repairOutcome == "folded" {
+		preimagePaths = append(preimagePaths, repairPath)
+	}
+	dirtyInputs, untrackedInputs, classificationError := classifyGatePreimages(repositoryRoot, preimagePaths...)
 	if classificationError != nil {
-		return refusedPlan(plan, "DEFER-GATE-PREIMAGE-CLASSIFICATION-FAILED", classificationError.Error(), []string{gate.ParentID}, parentPath, checkpointPath)
+		return refusedPlan(plan, "DEFER-GATE-PREIMAGE-CLASSIFICATION-FAILED", classificationError.Error(), []string{gate.ParentID}, preimagePaths...)
 	}
 	plan.ExistingDirtyTargetPaths = dirtyInputs
 	plan.ExistingUntrackedTargetPaths = appendUniqueSorted(plan.ExistingUntrackedTargetPaths, untrackedInputs...)
@@ -480,7 +489,7 @@ func classifyGatePreimages(repositoryRoot string, paths ...string) ([]string, []
 			untracked = append(untracked, path)
 			continue
 		}
-		command := exec.Command("git", "-C", repositoryRoot, "diff", "--quiet", "--", path)
+		command := exec.Command("git", "-C", repositoryRoot, "diff", "--quiet", "HEAD", "--", path)
 		commandError := command.Run()
 		if commandError == nil {
 			continue
