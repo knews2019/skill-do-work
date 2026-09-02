@@ -1,7 +1,7 @@
 ---
 id: REQ-499
 title: '[impact-critical] Add recover-finalization --assume-sole-releaser for ambiguous shared metadata'
-status: pending
+status: claimed
 created_at: 2026-09-02T13:31:12Z
 user_request: UR-097
 domain: backend
@@ -15,6 +15,7 @@ maintenance: false
 impact: impact-critical
 effort_estimate: effort-substantive
 write_set: [skills/do-work/tools/do-work-cli/internal/finalization/]
+claimed_at: 2026-09-02T16:41:36Z
 ---
 
 # Add recover-finalization --assume-sole-releaser for Ambiguous Shared Metadata
