@@ -61,8 +61,13 @@ type TransactionOptions struct {
 	TargetPaths    []string
 	// ExistingDirtyTargetPaths is a narrow opt-in for exact tracked files whose
 	// unstaged bytes are intentional transaction input. Staged targets remain
-	// refused. The exact bytes, mode, and identity are restored on rollback.
+	// refused. A tracked deletion is also an eligible exact preimage. The exact
+	// presence, bytes, mode, and identity are restored on rollback.
 	ExistingDirtyTargetPaths []string
+	// CommitExistingDirtyTargets permits a semantic transaction owner to commit
+	// only the postimages it produced from ExistingDirtyTargetPaths. The default
+	// remains refusal so ordinary callers cannot launder arbitrary dirty bytes.
+	CommitExistingDirtyTargets bool
 	// ExistingUntrackedTargetPaths is a narrow opt-in for exact durable state
 	// that is intentionally untracked in some consumer repositories. Each path
 	// must also be a target. Its bytes and mode are snapshotted for rollback;
@@ -374,9 +379,9 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	for stateIndex := range states {
 		state := &states[stateIndex]
 		if _, allowed := dirtyAllowedSet[state.path]; allowed {
-			if !state.existed || !state.tracked {
+			if !state.tracked {
 				return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions,
-					fmt.Sprintf("existing dirty opt-in path %q must exist and be tracked", state.path), state.path)
+					fmt.Sprintf("existing dirty opt-in path %q must be tracked", state.path), state.path)
 			}
 			indexEmpty, indexError := indexIsEmpty(ctx, repositoryRoot, state.path)
 			if indexError != nil || !indexEmpty {
@@ -394,14 +399,16 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 				}
 				return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, reason, state.path)
 			}
-			fileInfo, digest, originalBytes, snapshotError := rootedRegularPreimage(root, state.path)
-			if snapshotError != nil {
-				return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, snapshotError.Error(), state.path)
+			if state.existed {
+				fileInfo, digest, originalBytes, snapshotError := rootedRegularPreimage(root, state.path)
+				if snapshotError != nil {
+					return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, snapshotError.Error(), state.path)
+				}
+				state.originalBytes = originalBytes
+				state.originalMode = completeRegularFileMode(fileInfo.Mode())
+				state.originalDigest = digest
 			}
 			state.existingDirtyAllowed = true
-			state.originalBytes = originalBytes
-			state.originalMode = completeRegularFileMode(fileInfo.Mode())
-			state.originalDigest = digest
 			continue
 		}
 		if _, private := privateSet[state.path]; private {
@@ -454,8 +461,11 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 		}
 	}
 	if options.Commit {
-		if len(allowedDirtyTargets) > 0 {
+		if len(allowedDirtyTargets) > 0 && !options.CommitExistingDirtyTargets {
 			return failTransaction(result, resultmodel.OutcomeRefused, FailureDirtyTarget, "--commit cannot include pre-existing dirty target bytes", allowedDirtyTargets...)
+		}
+		if options.CommitExistingDirtyTargets && len(allowedDirtyTargets) == 0 {
+			return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, "dirty-target commit authority requires at least one exact dirty target")
 		}
 		empty, indexErr := indexIsEmpty(ctx, repositoryRoot)
 		if indexErr != nil {
@@ -623,6 +633,13 @@ func committableChangedPaths(repositoryRoot string, states []targetState, change
 			if statError != nil {
 				return nil, statError
 			}
+		}
+		dirty, statusError := targetIsDirty(context.Background(), repositoryRoot, path)
+		if statusError != nil {
+			return nil, statusError
+		}
+		if !dirty {
+			continue
 		}
 		paths = append(paths, path)
 	}
@@ -797,6 +814,17 @@ func changedTargets(ctx context.Context, repositoryRoot string, states []targetS
 	defer root.Close()
 	for _, state := range states {
 		if state.existingDirtyAllowed {
+			if !state.existed {
+				_, statError := root.Lstat(filepath.FromSlash(state.path))
+				if statError == nil {
+					changed = append(changed, state.path)
+					continue
+				}
+				if !os.IsNotExist(statError) {
+					return nil, statError
+				}
+				continue
+			}
 			currentInfo, currentDigest, snapshotError := rootedRegularSnapshot(root, state.path)
 			if isMissingPathError(snapshotError) || snapshotError == nil && (currentDigest != state.originalDigest || completeRegularFileMode(currentInfo.Mode()) != state.originalMode) {
 				changed = append(changed, state.path)
@@ -865,6 +893,10 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 	}
 	for _, state := range states {
 		if state.existingDirtyAllowed {
+			if _, unstageError := runGit(ctx, repositoryRoot, "restore", "--staged", "--", state.path); unstageError != nil {
+				rollback.Errors = append(rollback.Errors, fmt.Sprintf("unstage dirty tracked target %s: %v", state.path, unstageError))
+				continue
+			}
 			published, recorded := recorder.publishedTracked[state.path]
 			if !recorded {
 				if root != nil && privateStateStillOriginal(root, state) {
@@ -950,14 +982,14 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 		return strings.Count(createdPaths[first], "/") > strings.Count(createdPaths[second], "/")
 	})
 	for _, path := range createdPaths {
-		private := false
+		alreadyRestored := false
 		for _, state := range states {
-			if state.path == path && state.privateUntracked {
-				private = true
+			if state.path == path && (state.privateUntracked || state.existingDirtyAllowed || state.existingUntrackedAllowed) {
+				alreadyRestored = true
 				break
 			}
 		}
-		if private {
+		if alreadyRestored {
 			continue
 		}
 		if _, err := runGit(ctx, repositoryRoot, "rm", "--cached", "--ignore-unmatch", "--", path); err != nil {

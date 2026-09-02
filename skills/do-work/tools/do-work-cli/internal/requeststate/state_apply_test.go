@@ -103,6 +103,84 @@ func TestLifecycleApplySynchronizesClaimUnblockCompleteFailAndCancel(t *testing.
 	})
 }
 
+func TestRecoverClaimCommitsCleanOwnershipTransferAndPreservesUnrelatedWork(t *testing.T) {
+	root := newStateRepository(t)
+	configureStateGit(t, root)
+	writeStateRequest(t, root, "do-work/queue/REQ-501.md", "REQ-501", "pending", "write_set: [owned.go]\n")
+	writeStateCheckpoint(t, root, "- REQ-999: Unrelated — claimed earlier — writer: other:/repo\n")
+	if err := os.WriteFile(filepath.Join(root, "implementation.txt"), []byte("committed base\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runStateGit(t, root, "add", "do-work", "implementation.txt")
+	runStateGit(t, root, "commit", "-qm", "seed")
+
+	claimed := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionClaim,
+		[]string{"REQ-501", "--request-path", "do-work/queue/REQ-501.md", "--provenance", "explicit-req", "--writer", "foreign:/checkout", "--at", "2026-09-02T01:00:00Z"})
+	assertStateSuccess(t, claimed)
+	workingPath := filepath.Join(root, "do-work", "working", "REQ-501.md")
+	working := readStateFile(t, root, "do-work/working/REQ-501.md")
+	working = strings.Replace(working, "---\nBody\n", "planning_at: 2026-09-02T01:10:00Z\n---\nBody\n\n## Open Questions\n\n- [ ] Keep this question\n\n## Scope\n\nGenerated scope\n\n## Testing\n\nPartial evidence\n", 1)
+	if err := os.WriteFile(workingPath, []byte(working), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "implementation.txt"), []byte("committed base\nuncommitted implementation survives\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	recovered := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionRecover,
+		[]string{"REQ-501", "--request-path", "do-work/working/REQ-501.md", "--checkpoint-writer", "foreign:/checkout", "--assume-sole-writer", "--commit", "--at", "2026-09-02T02:00:00Z"})
+	assertStateSuccess(t, recovered)
+	queue := readStateFile(t, root, "do-work/queue/REQ-501.md")
+	for _, token := range []string{"status: pending-answers", "status_changed_at: 2026-09-02T02:00:00Z", "## Open Questions", "- [ ] Keep this question"} {
+		if !strings.Contains(queue, token) {
+			t.Errorf("recovered request missing %q:\n%s", token, queue)
+		}
+	}
+	for _, token := range []string{"claimed_at:", "planning_at:", "write_set:", "## Scope", "## Testing"} {
+		if strings.Contains(queue, token) {
+			t.Errorf("recovered request retained %q:\n%s", token, queue)
+		}
+	}
+	checkpoint := readStateFile(t, root, "do-work/CHECKPOINT.md")
+	if strings.Contains(checkpoint, "foreign:/checkout") || !strings.Contains(checkpoint, "REQ-999") {
+		t.Fatalf("checkpoint transfer damaged ownership evidence:\n%s", checkpoint)
+	}
+	if got := readStateFile(t, root, "implementation.txt"); !strings.Contains(got, "uncommitted implementation survives") {
+		t.Fatalf("unrelated implementation bytes changed: %q", got)
+	}
+	if status := runStateGit(t, root, "status", "--porcelain"); status != " M implementation.txt\n" {
+		t.Fatalf("ownership transfer did not leave only unrelated work dirty: %q", status)
+	}
+
+	reclaimed := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionClaim,
+		[]string{"REQ-501", "--request-path", "do-work/queue/REQ-501.md", "--provenance", "explicit-req", "--writer", "current:/checkout", "--at", "2026-09-02T03:00:00Z"})
+	if reclaimed.Outcome != resultmodel.OutcomeRefused || !hasStateFinding(reclaimed, "CLAIM-STATUS") {
+		t.Fatalf("pending-answers must remain unclaimable until clarified: %#v", reclaimed)
+	}
+}
+
+func TestRecoverClaimRequiresSoleAuthorityCheckpointEvidenceAndCommit(t *testing.T) {
+	root := newStateRepository(t)
+	writeStateRequest(t, root, "do-work/working/REQ-502.md", "REQ-502", "claimed", "claimed_at: 2026-09-02T01:00:00Z\n")
+	tests := []struct {
+		name string
+		args []string
+		code string
+	}{
+		{"authority", []string{"REQ-502", "--checkpoint-absent", "--commit"}, "RECOVER-CLAIM-AUTHORITY"},
+		{"evidence", []string{"REQ-502", "--assume-sole-writer", "--commit"}, "RECOVER-CLAIM-CHECKPOINT-EVIDENCE"},
+		{"commit", []string{"REQ-502", "--checkpoint-absent", "--assume-sole-writer"}, "RECOVER-CLAIM-COMMIT-REQUIRED"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionRecover, test.args)
+			if result.Outcome != resultmodel.OutcomeRefused || !hasStateFinding(result, test.code) {
+				t.Fatalf("result = %#v, want %s", result, test.code)
+			}
+		})
+	}
+}
+
 func TestCheckpointClaimRemovalIncludesIndentedContinuationLines(t *testing.T) {
 	existing := []byte("# Session Checkpoint\n\n## In Progress (interrupted)\n\n" +
 		"- REQ-489: Own claim — claimed now — writer: host:/repo\n" +
@@ -140,6 +218,50 @@ func TestCheckpointClaimUsesWholeInProgressHeadingLine(t *testing.T) {
 	}
 	if strings.Contains(sectionParts[1], "REQ-489") || !strings.Contains(sectionParts[1], "  - Foreign continuation must remain.") {
 		t.Fatalf("departure did not remove only the real claim entry:\n%s", departed)
+	}
+}
+
+func TestAuthorizedCheckpointRemovalMatchesTheWholeWriterLabel(t *testing.T) {
+	existing := []byte("# Session Checkpoint\n\n## In Progress (interrupted)\n\n" +
+		"- REQ-501: Prefix collision — writer: host:/repo-other\n" +
+		"- REQ-501: Exact entry — writer: host:/repo\n")
+	updated, removed := checkpointWithoutAuthorizedClaim(existing, "REQ-501", "host:/repo", false)
+	if !removed || strings.Contains(string(updated), "Exact entry") || !strings.Contains(string(updated), "Prefix collision") {
+		t.Fatalf("checkpoint writer evidence was not exact:\n%s", updated)
+	}
+}
+
+func TestAuthorizedCheckpointRemovalCanSelectOnlyTheUnlabeledEntry(t *testing.T) {
+	existing := []byte("# Session Checkpoint\n\n## In Progress (interrupted)\n\n" +
+		"- REQ-501: Legacy entry — claimed earlier\n" +
+		"  - **Last known state:** legacy detail\n" +
+		"- REQ-501: Labeled entry — writer: live:/checkout\n")
+	updated, removed := checkpointWithoutAuthorizedClaim(existing, "REQ-501", "", true)
+	if !removed || strings.Contains(string(updated), "Legacy entry") || strings.Contains(string(updated), "legacy detail") || !strings.Contains(string(updated), "Labeled entry") {
+		t.Fatalf("unlabeled checkpoint evidence was not isolated:\n%s", updated)
+	}
+}
+
+func TestRecoverySectionStripPreservesUserAuthoredSections(t *testing.T) {
+	generated := []string{"Triage", "Exploration", "Plan", "Scope", "Pre-Flight", "Implementation Summary", "Qualification", "Testing", "Review", "Lessons Learned", "Orientation", "Decisions", "Discovered Tasks"}
+	contents := "---\nid: REQ-501\ntitle: Fixture\nstatus: claimed\n---\n\n# User title\n\nUser introduction.\n"
+	for _, heading := range generated {
+		contents += "\n## " + heading + "\n\ngenerated " + heading + "\n"
+	}
+	contents += "\n## Open Questions\n\n- [ ] Preserved question\n\n## User Notes\n\nPreserved note.\n"
+	stripped, err := stripGeneratedRecoverySections([]byte(contents))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, heading := range generated {
+		if strings.Contains(string(stripped), "## "+heading+"\n") {
+			t.Errorf("generated heading survived: %s", heading)
+		}
+	}
+	for _, token := range []string{"# User title", "User introduction.", "## Open Questions", "Preserved question", "## User Notes", "Preserved note."} {
+		if !strings.Contains(string(stripped), token) {
+			t.Errorf("user-authored token was removed: %s", token)
+		}
 	}
 }
 

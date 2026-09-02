@@ -11,6 +11,7 @@ type Transition string
 
 const (
 	TransitionClaim    Transition = "claim"
+	TransitionRecover  Transition = "recover-claim"
 	TransitionUnblock  Transition = "unblock"
 	TransitionComplete Transition = "complete"
 	TransitionFail     Transition = "fail"
@@ -50,6 +51,10 @@ type StateOptions struct {
 	CancellationConfirmed bool
 	DependentDisposition  string
 	WriterLabel           string
+	CheckpointWriter      string
+	CheckpointUnlabeled   bool
+	CheckpointAbsent      bool
+	AssumeSoleWriter      bool
 	Now                   time.Time
 	DryRun                bool
 	Commit                bool
@@ -78,6 +83,7 @@ type StatePlan struct {
 	ExpectedTargetBytes          []byte
 	TargetPaths                  []string
 	ExistingUntrackedTargetPaths []string
+	ExistingDirtyTargetPaths     []string
 	CreatedDirectoryPaths        []string
 	AdditionalMoves              []FileMove
 	CheckpointPath               string

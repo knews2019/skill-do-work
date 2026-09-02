@@ -56,6 +56,8 @@ func BuildPlan(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygr
 	switch options.Transition {
 	case TransitionClaim:
 		plan.DestinationPath = filepath.ToSlash(filepath.Join("do-work", "working", filepath.Base(target.RelativePath)))
+	case TransitionRecover:
+		plan.DestinationPath = filepath.ToSlash(filepath.Join("do-work", "queue", filepath.Base(target.RelativePath)))
 	case TransitionComplete, TransitionCancel:
 		if target.TreeSection == "archive" {
 			plan.DestinationPath = plan.SourcePath
@@ -115,6 +117,29 @@ func validateTransition(target *repositorymodel.RequestFile, graph *dependencygr
 				}
 				return refuse("CLAIM-DEPENDENCY-FAILED", reason, sourcePath)
 			}
+		}
+	case TransitionRecover:
+		if target.TreeSection != "working" || (status != "claimed" && (status != "blocked" || strings.TrimSpace(target.TypedRecord.FieldEvidenceByName["blocked_by"].ScalarValue) == "")) {
+			return refuse("RECOVER-CLAIM-STATUS", "recover-claim requires one claimed working REQ, or a blocked working REQ with blocked_by", sourcePath)
+		}
+		if !options.AssumeSoleWriter {
+			return refuse("RECOVER-CLAIM-AUTHORITY", "recover-claim requires the invocation-scoped --assume-sole-writer assertion", sourcePath)
+		}
+		if !options.DryRun && !options.Commit {
+			return refuse("RECOVER-CLAIM-COMMIT-REQUIRED", "recover-claim must commit its exact ownership-transfer paths before selection resumes", sourcePath)
+		}
+		evidenceModes := 0
+		if strings.TrimSpace(options.CheckpointWriter) != "" {
+			evidenceModes++
+		}
+		if options.CheckpointUnlabeled {
+			evidenceModes++
+		}
+		if options.CheckpointAbsent {
+			evidenceModes++
+		}
+		if evidenceModes != 1 {
+			return refuse("RECOVER-CLAIM-CHECKPOINT-EVIDENCE", "recover-claim requires exactly one of --checkpoint-writer, --checkpoint-unlabeled, or --checkpoint-absent", sourcePath)
 		}
 	case TransitionUnblock:
 		if target.TreeSection != "queue" || status != "blocked" {
@@ -254,7 +279,7 @@ func closureMoves(snapshot *repositorymodel.RepositorySnapshot, target *reposito
 }
 
 func planCheckpoint(snapshot *repositorymodel.RepositorySnapshot, plan *StatePlan) {
-	needsCheckpoint := plan.Transition == TransitionClaim || (plan.Target.TreeSection == "working" && (plan.Transition == TransitionComplete || plan.Transition == TransitionFail || plan.Transition == TransitionCancel))
+	needsCheckpoint := plan.Transition == TransitionClaim || (plan.Target.TreeSection == "working" && (plan.Transition == TransitionRecover || plan.Transition == TransitionComplete || plan.Transition == TransitionFail || plan.Transition == TransitionCancel))
 	if !needsCheckpoint {
 		return
 	}
@@ -265,6 +290,10 @@ func planCheckpoint(snapshot *repositorymodel.RepositorySnapshot, plan *StatePla
 		plan.CheckpointExisted = true
 	} else if !os.IsNotExist(readError) {
 		plan.Refusal = refuse("CHECKPOINT-READ-FAILED", readError.Error(), plan.CheckpointPath)
+		return
+	}
+	if plan.Transition == TransitionRecover {
+		planRecoverCheckpoint(existingBytes, plan)
 		return
 	}
 	if plan.Transition != TransitionClaim && !plan.CheckpointExisted {
@@ -283,6 +312,34 @@ func planCheckpoint(snapshot *repositorymodel.RepositorySnapshot, plan *StatePla
 	} else {
 		plan.CheckpointBytes = checkpointWithoutClaim(existingBytes, plan.Target.TypedRecord.RequestID, writerLabel)
 	}
+}
+
+func planRecoverCheckpoint(existingBytes []byte, plan *StatePlan) {
+	requestID := plan.Target.TypedRecord.RequestID
+	if !plan.CheckpointExisted {
+		if !plan.Options.CheckpointAbsent {
+			plan.Refusal = refuse("RECOVER-CLAIM-CHECKPOINT-EVIDENCE", "the asserted checkpoint entry does not exist", plan.SourcePath, plan.CheckpointPath)
+			return
+		}
+		plan.CheckpointPath = ""
+		plan.SkippedWork = append(plan.SkippedWork, resultmodel.SkippedWork{Code: "CHECKPOINT-ENTRY-NOT-PRESENT", Reason: "the caller explicitly proved no checkpoint entry was present"})
+		return
+	}
+	if plan.Options.CheckpointAbsent {
+		if checkpointHasRequestEntry(existingBytes, requestID) {
+			plan.Refusal = refuse("RECOVER-CLAIM-CHECKPOINT-EVIDENCE", "checkpoint-absent was asserted but an entry for the REQ exists", plan.SourcePath, plan.CheckpointPath)
+			return
+		}
+		plan.CheckpointPath = ""
+		plan.SkippedWork = append(plan.SkippedWork, resultmodel.SkippedWork{Code: "CHECKPOINT-ENTRY-NOT-PRESENT", Reason: "the checkpoint contains no entry for the recovered REQ"})
+		return
+	}
+	updated, removed := checkpointWithoutAuthorizedClaim(existingBytes, requestID, plan.Options.CheckpointWriter, plan.Options.CheckpointUnlabeled)
+	if !removed {
+		plan.Refusal = refuse("RECOVER-CLAIM-CHECKPOINT-EVIDENCE", "the exact asserted checkpoint entry does not exist", plan.SourcePath, plan.CheckpointPath)
+		return
+	}
+	plan.CheckpointBytes = updated
 }
 
 func planCalibration(plan *StatePlan) {
@@ -349,7 +406,24 @@ func planTargets(plan *StatePlan) {
 	}
 	sort.Strings(plan.TargetPaths)
 	plan.ExistingUntrackedTargetPaths = existingUntrackedPaths(plan.RepositoryRoot, plan.TargetPaths)
+	if plan.Transition == TransitionRecover {
+		plan.ExistingDirtyTargetPaths = existingDirtyTrackedPaths(plan.RepositoryRoot, plan.TargetPaths)
+	}
 	plan.CreatedDirectoryPaths = missingParentDirectories(plan.RepositoryRoot, plan.TargetPaths)
+}
+
+func existingDirtyTrackedPaths(repositoryRoot string, paths []string) []string {
+	var dirty []string
+	for _, path := range paths {
+		if command := exec.Command("git", "-C", repositoryRoot, "ls-files", "--error-unmatch", "--", path); command.Run() != nil {
+			continue
+		}
+		output, statusError := exec.Command("git", "-C", repositoryRoot, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", path).Output()
+		if statusError == nil && len(output) > 0 {
+			dirty = append(dirty, path)
+		}
+	}
+	return dirty
 }
 
 func existingUntrackedPaths(repositoryRoot string, paths []string) []string {

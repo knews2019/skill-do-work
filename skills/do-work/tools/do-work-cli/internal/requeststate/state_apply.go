@@ -32,6 +32,8 @@ func ApplyPlan(ctx context.Context, plan StatePlan) resultmodel.CommandResult {
 	transactionResult := gittransaction.ExecuteTransaction(ctx, gittransaction.TransactionOptions{
 		RepositoryRoot: plan.RepositoryRoot, TargetPaths: plan.TargetPaths,
 		ExistingUntrackedTargetPaths: plan.ExistingUntrackedTargetPaths,
+		ExistingDirtyTargetPaths:     plan.ExistingDirtyTargetPaths,
+		CommitExistingDirtyTargets:   plan.Transition == TransitionRecover && len(plan.ExistingDirtyTargetPaths) > 0,
 		CreatedDirectoryPaths:        plan.CreatedDirectoryPaths, Commit: plan.Options.Commit,
 		CommitMessage:    fmt.Sprintf("[%s] %s request lifecycle", plan.Target.TypedRecord.RequestID, plan.Transition),
 		PostCommitVerify: func(context.Context, string) error { return verifyAppliedState(plan) },
@@ -111,12 +113,19 @@ func ApplyPlan(ctx context.Context, plan StatePlan) resultmodel.CommandResult {
 	}
 	for findingIndex := range result.Findings {
 		result.Findings[findingIndex].AffectedIDs = []string{plan.Target.TypedRecord.RequestID}
-		result.Findings[findingIndex].NextJustRecipe = "do-work-" + string(plan.Transition) + " " + plan.Target.TypedRecord.RequestID
+		result.Findings[findingIndex].NextJustRecipe = stateJustRecipe(plan.Transition, plan.Target.TypedRecord.RequestID)
 	}
 	if transactionResult.Failure == nil && plan.Options.Commit && plan.Transition == TransitionComplete && plan.Options.ImplementationHash == "" {
 		return applyCommitMetadata(ctx, plan, transactionResult, result)
 	}
 	return result
+}
+
+func stateJustRecipe(transition Transition, requestID string) string {
+	if transition == TransitionRecover {
+		return ""
+	}
+	return "do-work-" + string(transition) + " " + requestID
 }
 
 // PlannedPostimages projects the exact lifecycle result before mutation. It is
@@ -469,6 +478,32 @@ func lifecycleRequestBytes(plan StatePlan) ([]byte, error) {
 				return nil, err
 			}
 		}
+	case TransitionRecover:
+		blocked := plan.Target.TypedRecord.RequestStatus == "blocked"
+		hasScope := markdownSectionExists(document.BodyBytes(), "Scope")
+		if !blocked {
+			status := "pending"
+			if markdownSectionContains(document.BodyBytes(), "Open Questions", regexp.MustCompile(`(?m)^- \[ \]`)) {
+				status = "pending-answers"
+			}
+			if err := document.SetScalar("status", status); err != nil {
+				return nil, err
+			}
+			if err := document.SetScalar("status_changed_at", timestamp); err != nil {
+				return nil, err
+			}
+		}
+		for _, field := range []string{"claimed_at", "route", "planning_at", "dispatch_at", "builder_handback_at", "integration_at", "review_at", "remediation_at", "re_review_at", "release_at"} {
+			if err := document.DeleteField(field); err != nil {
+				return nil, err
+			}
+		}
+		if hasScope {
+			if err := document.DeleteField("write_set"); err != nil {
+				return nil, err
+			}
+		}
+		return stripGeneratedRecoverySections(document.DocumentBytes())
 	case TransitionUnblock:
 		condition := plan.Target.TypedRecord.FieldEvidenceByName["blocked_by"].ScalarValue
 		if err := document.SetScalar("status", "pending"); err != nil {
@@ -610,7 +645,7 @@ func verifyAppliedState(plan StatePlan) error {
 		}
 		return nil
 	}
-	wantStatus := map[Transition]string{TransitionClaim: "claimed", TransitionUnblock: "pending", TransitionComplete: plan.Options.TerminalStatus, TransitionFail: "failed", TransitionCancel: "cancelled"}[plan.Transition]
+	wantStatus := map[Transition]string{TransitionClaim: "claimed", TransitionRecover: recoveredStatus(plan), TransitionUnblock: "pending", TransitionComplete: plan.Options.TerminalStatus, TransitionFail: "failed", TransitionCancel: "cancelled"}[plan.Transition]
 	if wantStatus == "" && plan.Transition == TransitionComplete {
 		wantStatus = "completed"
 	}
@@ -618,6 +653,17 @@ func verifyAppliedState(plan StatePlan) error {
 		return fmt.Errorf("post-transaction status %s, want %s", status, wantStatus)
 	}
 	return nil
+}
+
+func recoveredStatus(plan StatePlan) string {
+	if plan.Target.TypedRecord.RequestStatus == "blocked" {
+		return "blocked"
+	}
+	document, parseError := requestmodel.ParseDocument(plan.Target.ContentBytes)
+	if parseError == nil && markdownSectionContains(document.BodyBytes(), "Open Questions", regexp.MustCompile(`(?m)^- \[ \]`)) {
+		return "pending-answers"
+	}
+	return "pending"
 }
 
 func applyCommitMetadata(ctx context.Context, plan StatePlan, lifecycle gittransaction.TransactionResult, result resultmodel.CommandResult) resultmodel.CommandResult {
@@ -680,10 +726,11 @@ func applyCommitMetadata(ctx context.Context, plan StatePlan, lifecycle gittrans
 }
 
 func refusalResult(plan StatePlan) resultmodel.CommandResult {
+	nextRecipe := stateJustRecipe(plan.Transition, plan.Options.RequestID)
 	return resultmodel.CommandResult{Command: string(plan.Transition), Outcome: resultmodel.OutcomeRefused, RepositoryRoot: plan.RepositoryRoot, Findings: []resultmodel.CommandFinding{{
 		Code: plan.Refusal.Code, Severity: resultmodel.SeverityWarning, AffectedIDs: []string{plan.Options.RequestID}, AffectedPaths: plan.Refusal.Paths,
 		Evidence: []string{plan.Refusal.Reason}, Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "the lifecycle precondition did not hold",
-		NextArgv: []string{"do-work-cli", string(plan.Transition), plan.Options.RequestID}, NextJustRecipe: "do-work-" + string(plan.Transition) + " " + plan.Options.RequestID,
+		NextArgv: []string{"do-work-cli", string(plan.Transition), plan.Options.RequestID}, NextJustRecipe: nextRecipe,
 		VerificationArgv: []string{"do-work-cli", "--format", "json", string(plan.Transition), plan.Options.RequestID},
 	}}}
 }
@@ -703,7 +750,7 @@ func stateSuccessFinding(plan StatePlan, dryRun bool) resultmodel.CommandFinding
 	return resultmodel.CommandFinding{
 		Code: code, Severity: resultmodel.SeverityInfo, AffectedIDs: []string{plan.Options.RequestID}, AffectedPaths: append([]string(nil), plan.TargetPaths...),
 		Evidence: []string{evidence}, Fixability: resultmodel.FixabilityAutomatic,
-		NextArgv: []string{"do-work-cli", string(plan.Transition), plan.Options.RequestID}, NextJustRecipe: "do-work-" + string(plan.Transition) + " " + plan.Options.RequestID,
+		NextArgv: []string{"do-work-cli", string(plan.Transition), plan.Options.RequestID}, NextJustRecipe: stateJustRecipe(plan.Transition, plan.Options.RequestID),
 		VerificationArgv: verification,
 	}
 }
@@ -718,18 +765,29 @@ func checkpointWithClaim(existing []byte, requestID, title, claimedAt, writer st
 }
 
 func checkpointWithoutClaim(existing []byte, requestID, writer string) []byte {
+	updated, _ := checkpointWithoutAuthorizedClaim(existing, requestID, writer, false)
+	return updated
+}
+
+func checkpointWithoutAuthorizedClaim(existing []byte, requestID, writer string, unlabeled bool) ([]byte, bool) {
 	if len(existing) == 0 {
-		return existing
+		return existing, false
 	}
 	lines := strings.Split(string(existing), "\n")
 	headingLine, sectionEnd, found := sectionLineBounds(lines, "In Progress (interrupted)")
 	if !found {
-		return existing
+		return existing, false
 	}
 	filtered := append([]string(nil), lines[:headingLine+1]...)
+	removed := false
 	for lineIndex := headingLine + 1; lineIndex < sectionEnd; lineIndex++ {
 		line := lines[lineIndex]
-		if strings.HasPrefix(line, "- "+requestID+":") && strings.Contains(line, "writer: "+writer) {
+		writerMatches := strings.HasSuffix(strings.TrimRight(line, "\r"), "writer: "+writer)
+		if unlabeled {
+			writerMatches = !strings.Contains(line, " — writer: ")
+		}
+		if strings.HasPrefix(line, "- "+requestID+":") && writerMatches {
+			removed = true
 			for lineIndex+1 < sectionEnd && strings.TrimSpace(lines[lineIndex+1]) != "" && (strings.HasPrefix(lines[lineIndex+1], " ") || strings.HasPrefix(lines[lineIndex+1], "\t")) {
 				lineIndex++
 			}
@@ -738,7 +796,68 @@ func checkpointWithoutClaim(existing []byte, requestID, writer string) []byte {
 		filtered = append(filtered, line)
 	}
 	filtered = append(filtered, lines[sectionEnd:]...)
-	return []byte(strings.Join(filtered, "\n"))
+	return []byte(strings.Join(filtered, "\n")), removed
+}
+
+func checkpointHasRequestEntry(existing []byte, requestID string) bool {
+	lines := strings.Split(string(existing), "\n")
+	headingLine, sectionEnd, found := sectionLineBounds(lines, "In Progress (interrupted)")
+	if !found {
+		return false
+	}
+	for _, line := range lines[headingLine+1 : sectionEnd] {
+		if strings.HasPrefix(line, "- "+requestID+":") {
+			return true
+		}
+	}
+	return false
+}
+
+var generatedRecoveryHeading = regexp.MustCompile(`(?m)^## (Triage|Exploration|Plan|Scope|Pre-Flight|Implementation Summary|Qualification|Testing|Review|Lessons Learned|Orientation|Decisions|Discovered Tasks)[ \t]*\r?$`)
+var markdownHeading = regexp.MustCompile(`(?m)^## [^\r\n]+[ \t]*\r?$`)
+
+func stripGeneratedRecoverySections(contents []byte) ([]byte, error) {
+	document, parseError := requestmodel.ParseDocument(contents)
+	if parseError != nil {
+		return nil, parseError
+	}
+	body := document.BodyBytes()
+	matches := generatedRecoveryHeading.FindAllIndex(body, -1)
+	for matchIndex := len(matches) - 1; matchIndex >= 0; matchIndex-- {
+		start := matches[matchIndex][0]
+		end := len(body)
+		if next := markdownHeading.FindIndex(body[matches[matchIndex][1]:]); next != nil {
+			end = matches[matchIndex][1] + next[0]
+		}
+		if replaceError := document.ReplaceBodySpan(start, end, nil); replaceError != nil {
+			return nil, replaceError
+		}
+		body = document.BodyBytes()
+		matches = generatedRecoveryHeading.FindAllIndex(body, -1)
+	}
+	return document.DocumentBytes(), nil
+}
+
+func markdownSectionExists(body []byte, section string) bool {
+	return markdownSectionBytes(body, section) != nil
+}
+
+func markdownSectionContains(body []byte, section string, pattern *regexp.Regexp) bool {
+	sectionBytes := markdownSectionBytes(body, section)
+	return sectionBytes != nil && pattern.Match(sectionBytes)
+}
+
+func markdownSectionBytes(body []byte, section string) []byte {
+	heading := regexp.MustCompile(`(?m)^## ` + regexp.QuoteMeta(section) + `[ \t]*\r?$`)
+	match := heading.FindIndex(body)
+	if match == nil {
+		return nil
+	}
+	end := len(body)
+	if next := markdownHeading.FindIndex(body[match[1]:]); next != nil {
+		end = match[1] + next[0]
+	}
+	return body[match[0]:end]
 }
 
 func appendSectionEntry(contents []byte, section, entry string) []byte {

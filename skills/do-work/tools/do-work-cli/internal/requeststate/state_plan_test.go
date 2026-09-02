@@ -9,13 +9,14 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
-func TestFiveLifecycleTransitionsProduceRunnablePlans(t *testing.T) {
+func TestSixLifecycleTransitionsProduceRunnablePlans(t *testing.T) {
 	now := time.Date(2026, 8, 31, 20, 30, 0, 0, time.UTC)
 	tests := []struct {
 		name, path, status, extra string
 		options                   StateOptions
 	}{
 		{"claim", "do-work/queue/REQ-101.md", "pending", "", StateOptions{Transition: TransitionClaim, RequestID: "REQ-101", Provenance: ProvenanceDefault, Now: now}},
+		{"recover", "do-work/working/REQ-106.md", "claimed", "claimed_at: 2026-08-31T20:00:00Z\n", StateOptions{Transition: TransitionRecover, RequestID: "REQ-106", CheckpointAbsent: true, AssumeSoleWriter: true, DryRun: true, Now: now}},
 		{"unblock", "do-work/queue/REQ-102.md", "blocked", "blocked_by: service ready\nblocked_check: test -e ready\n", StateOptions{Transition: TransitionUnblock, RequestID: "REQ-102", OriginalStatus: "blocked", ProbeStatus: resultmodel.ProbeSucceeded, UnblockRequired: true, UnblockSource: UnblockProbe, Now: now}},
 		{"complete", "do-work/working/REQ-103.md", "claimed", "claimed_at: 2026-08-31T20:00:00Z\n", StateOptions{Transition: TransitionComplete, RequestID: "REQ-103", TerminalStatus: "completed", ImplementationHash: "abcdef0", WriterLabel: "host:/repo", Now: now}},
 		{"fail", "do-work/working/REQ-104.md", "claimed", "claimed_at: 2026-08-31T20:00:00Z\n", StateOptions{Transition: TransitionFail, RequestID: "REQ-104", FailureError: "tests failed", FailureType: "code", WriterLabel: "host:/repo", Now: now}},
