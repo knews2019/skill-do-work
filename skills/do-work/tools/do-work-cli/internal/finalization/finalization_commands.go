@@ -33,7 +33,7 @@ func handleFinalize(executionContext commandruntime.ExecutionContext, arguments 
 }
 
 func handleRecoverFinalization(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
-	discover, err := parseRecoverArguments(arguments)
+	options, err := parseRecoverArguments(arguments)
 	if err != nil {
 		return commandFailure(executionContext.RepositoryRoot, CommandRecoverFinalization, "FINALIZATION-USAGE", err.Error())
 	}
@@ -41,7 +41,7 @@ func handleRecoverFinalization(executionContext commandruntime.ExecutionContext,
 	if err != nil {
 		return commandFailure(executionContext.RepositoryRoot, CommandRecoverFinalization, "FINALIZATION-JOURNAL-LIST", err.Error())
 	}
-	if len(paths) == 0 && !discover {
+	if len(paths) == 0 && !options.Discover {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: []resultmodel.CommandFinding{{
 			Code: "FINALIZATION-NONE", Severity: resultmodel.SeverityInfo, Evidence: []string{"no unfinished finalization journals"},
 			Fixability: resultmodel.FixabilityAutomatic, VerificationArgv: []string{"do-work-cli", "--format", "json", CommandRecoverFinalization},
@@ -62,8 +62,8 @@ func handleRecoverFinalization(executionContext commandruntime.ExecutionContext,
 			return aggregate
 		}
 	}
-	if discover {
-		journals, discoveryResult := discoverFinalizationJournals(executionContext.RepositoryRoot)
+	if options.Discover {
+		journals, discoveryResult := discoverFinalizationJournals(executionContext.RepositoryRoot, options.AssumeSoleReleaser)
 		if discoveryResult != nil {
 			for _, record := range aggregate.Finalizations {
 				discoveryResult.Finalizations = append([]resultmodel.FinalizationResult{record}, discoveryResult.Finalizations...)
@@ -92,14 +92,28 @@ func handleRecoverFinalization(executionContext commandruntime.ExecutionContext,
 	return aggregate
 }
 
-func parseRecoverArguments(arguments []string) (bool, error) {
-	if len(arguments) == 0 {
-		return false, nil
+func parseRecoverArguments(arguments []string) (commandOptions, error) {
+	options := commandOptions{}
+	for _, argument := range arguments {
+		switch argument {
+		case "--discover":
+			if options.Discover {
+				return commandOptions{}, fmt.Errorf("--discover may be supplied only once")
+			}
+			options.Discover = true
+		case "--assume-sole-releaser":
+			if options.AssumeSoleReleaser {
+				return commandOptions{}, fmt.Errorf("--assume-sole-releaser may be supplied only once")
+			}
+			options.AssumeSoleReleaser = true
+		default:
+			return commandOptions{}, fmt.Errorf("unknown recover-finalization option %q", argument)
+		}
 	}
-	if len(arguments) == 1 && arguments[0] == "--discover" {
-		return true, nil
+	if options.AssumeSoleReleaser && !options.Discover {
+		return commandOptions{}, fmt.Errorf("--assume-sole-releaser requires --discover")
 	}
-	return false, fmt.Errorf("recover-finalization accepts only --discover")
+	return options, nil
 }
 
 func appendFinalizationResult(aggregate *resultmodel.CommandResult, result resultmodel.CommandResult) {

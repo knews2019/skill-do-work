@@ -467,6 +467,8 @@ func seedSemanticLegacyTail(t *testing.T, repositoryRoot string) semanticLegacyF
 	writeFinalizationFile(t, repositoryRoot, "VERSION", "1.0.0\n")
 	writeFinalizationFile(t, repositoryRoot, "skills/do-work/VERSION", "1.0.0\n")
 	writeFinalizationFile(t, repositoryRoot, "skills/do-work/actions/version.md", "**Current version**: 1.0.0\n")
+	writeFinalizationFile(t, repositoryRoot, "package.json", "{\"name\":\"fixture\",\"version\":\"1.0.0\"}\n")
+	writeFinalizationFile(t, repositoryRoot, "package-lock.json", "{\"name\":\"fixture\",\"version\":\"1.0.0\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"fixture\",\"version\":\"1.0.0\"}}}\n")
 	writeFinalizationFile(t, repositoryRoot, "CHANGELOG.md", "# Changelog\n\n## 1.0.0 — Seed\n")
 	writeFinalizationFile(t, repositoryRoot, "skills/do-work/CHANGELOG.md", "# Changelog\n\n## 1.0.0 — Seed\n")
 	writeFinalizationFile(t, repositoryRoot, "notes.txt", "before\n")
@@ -493,6 +495,8 @@ func seedSemanticLegacyTail(t *testing.T, repositoryRoot string) semanticLegacyF
 	writeFinalizationFile(t, repositoryRoot, "VERSION", "1.0.1\n")
 	writeFinalizationFile(t, repositoryRoot, "skills/do-work/VERSION", "1.0.1\n")
 	writeFinalizationFile(t, repositoryRoot, "skills/do-work/actions/version.md", "**Current version**: 1.0.1\n")
+	writeFinalizationFile(t, repositoryRoot, "package.json", "{\"name\":\"fixture\",\"version\":\"1.0.1\"}\n")
+	writeFinalizationFile(t, repositoryRoot, "package-lock.json", "{\"name\":\"fixture\",\"version\":\"1.0.1\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"fixture\",\"version\":\"1.0.1\"}}}\n")
 	changelog := "# Changelog\n\n## 1.0.1 — REQ-700 semantic recovery\n\nOwned entry.\n\n## 1.0.0 — Seed\n"
 	writeFinalizationFile(t, repositoryRoot, "CHANGELOG.md", changelog)
 	writeFinalizationFile(t, repositoryRoot, "skills/do-work/CHANGELOG.md", changelog)
@@ -501,7 +505,7 @@ func seedSemanticLegacyTail(t *testing.T, repositoryRoot string) semanticLegacyF
 		"CHANGELOG.md", "VERSION", archivePath, "do-work/CHECKPOINT.md", "do-work/archive/REQ-699-prior.md",
 		"do-work/archive/UR-700/REQ-699-prior.md", "do-work/archive/UR-700/input.md", "do-work/calibration-log.tsv",
 		"do-work/queue/REQ-701-follow-up.md", "do-work/user-requests/UR-700/input.md", "implementation.txt",
-		"skills/do-work/CHANGELOG.md", "skills/do-work/VERSION", "skills/do-work/actions/version.md", workingPath,
+		"package-lock.json", "package.json", "skills/do-work/CHANGELOG.md", "skills/do-work/VERSION", "skills/do-work/actions/version.md", workingPath,
 	})}
 }
 
