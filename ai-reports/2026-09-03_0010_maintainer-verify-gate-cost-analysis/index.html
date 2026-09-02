@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>The Maintainer Gate: What Six and a Half Minutes Buy</title>
+<style>
+:root {
+  --bg: #faf7f2; --surface: #ffffff; --surface-2: #f3eee6;
+  --text: #2b2620; --muted: #6f675c; --accent: #1d4ed8; --accent-soft: #dbe3f7;
+  --rule: #e2dbcf; --keep: #2563eb; --dup: #b45309; --dup-soft: #fef3c7; --keep-soft: #dbeafe;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #201d18; --surface: #2a261f; --surface-2: #322d25;
+    --text: #ece7de; --muted: #a89f91; --accent: #7c9aef; --accent-soft: #33405e;
+    --rule: #3d372d; --keep: #3b82f6; --dup: #d97706; --dup-soft: #3d2f0a; --keep-soft: #1e2f4d;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+.page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }
+.kicker { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 48px 0 10px; }
+h1 { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: clamp(30px, 3.4vw, 40px); line-height: 1.15; margin: 0 0 8px; font-weight: 600; }
+h2 { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: 26px; margin: 0 0 16px; font-weight: 600; }
+h3 { font-size: 17px; margin: 0 0 8px; }
+.dateline { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+.measure { max-width: 74ch; }
+section { padding: 40px 0 8px; border-top: 1px solid var(--rule); margin-top: 32px; }
+.verdict { border-top: none; margin-top: 24px; padding-top: 0; font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: 20px; line-height: 1.55; }
+.verdict strong { color: var(--accent); }
+.row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 22px 24px; flex: 1 1 320px; min-width: 0; overflow-x: auto; }
+.card.wide { flex: 3 1 560px; }
+.card.stat-card { flex: 1 1 200px; }
+.stat { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: 34px; line-height: 1; margin: 6px 0 4px; }
+.stat small { font-size: 14px; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--muted); display: block; margin-top: 8px; line-height: 1.4; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--surface-2); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+pre code { background: none; padding: 0; }
+.tag { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.tag.keep { background: var(--keep-soft); color: var(--keep); }
+.tag.dup { background: var(--dup-soft); color: var(--dup); }
+.note { font-size: 13.5px; color: var(--muted); }
+/* phase chart: one horizontal bar per phase, two series (unique work, repeated work) */
+.chart { display: grid; grid-template-columns: minmax(180px, 260px) 1fr 60px; gap: 6px 12px; align-items: center; font-size: 14px; }
+.chart .label { color: var(--text); }
+.chart .track { height: 14px; background: var(--surface-2); border-radius: 4px; overflow: hidden; display: flex; gap: 2px; }
+.chart .track span { display: block; height: 100%; }
+.chart .track .k { background: var(--keep); border-radius: 4px 0 0 4px; }
+.chart .track .d { background: var(--dup); }
+.chart .track .k:only-child { border-radius: 4px; }
+.chart .val { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.legend { display: flex; gap: 20px; font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
+.legend i.k { background: var(--keep); } .legend i.d { background: var(--dup); }
+ol.seq { padding-left: 22px; } ol.seq li { margin-bottom: 10px; }
+footer { margin-top: 56px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--rule); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<p class="kicker">do-work analysis report · skill-do-work2 · maintainer question</p>
+<h1>The Maintainer Gate: What Six and a Half Minutes Buy</h1>
+<p class="dateline">2026-09-03 · target: <code>_dev/tests/maintainer-verify.sh</code> at commit ca5dacbb · evidence mode: non-visual</p>
+
+<section class="verdict measure">
+<p><strong>Verdict.</strong> The gate is a reasonable <em>release</em> check and an unreasonable <em>per-REQ</em> check, and today it is both. Of its 6.5 minutes, about 40% is the same work run two or three times: the board's JavaScript probes execute in three layers, and the aggregate suite runs its sub-suites one after another on an eight-core machine. The bigger cost is outside the script. The work pipeline runs the whole gate twice per REQ (baseline before dispatch, again at Step 6.5), and 167 REQ commits landed in the last 14 days. That is on the order of 30 hours of gate wall-clock in two weeks. First fix: run it once per REQ. Second: a path-scoped fast lane. Third: dedupe the probes.</p>
+</section>
+
+<section>
+<p class="kicker">1 · What it tests, in plain terms, and why each part exists</p>
+<p class="measure">The gate is one bash script that runs nine stages in order and stops at the first red one. Every stage below names what it contains, what it proves, and the request that put it there.</p>
+<div class="row">
+  <div class="card" style="flex-basis:100%">
+  <table>
+    <thead><tr><th>Stage</th><th class="num">Seconds</th><th>What it contains</th><th>What it proves, in plain terms</th><th>Why it exists</th></tr></thead>
+    <tbody>
+      <tr><td>Tool floors</td><td class="num">&lt;1</td><td>Two version checks: Go 1.26.1 or newer, ShellCheck 0.11.0 or newer. gofmt is taken from that Go's own install directory, not from PATH.</td><td>The machine has the tools the rest of the gate needs, and the same tools every other run used.</td><td>gofmt's output changes between Go releases, so a verdict from a stray older gofmt would disagree with everyone else's. REQ-427 confirmed the floor.</td></tr>
+      <tr><td>ShellCheck</td><td class="num">5</td><td>Static analysis of the 83 tracked shell scripts at warning severity.</td><td>No shipped script has a known bash trap: an unquoted variable, a wrong test form, a word-split path.</td><td>The shipped scripts run inside users' repositories on whatever platform they have. A quoting bug there edits someone else's queue.</td></tr>
+      <tr><td>gofmt</td><td class="num">0.1</td><td>Formatting check over 216 Go files.</td><td>Every Go file is formatted the way the toolchain formats it.</td><td>REQ-260 added it so a builder's editor never produces whitespace-only diffs that hide real changes.</td></tr>
+      <tr><td>Contract suite, inline predicates</td><td class="num">≈9</td><td>About 7,300 lines of <code>contract-regressions.sh</code>: 197 FAIL predicates built from grep and 26 embedded Python programs that read the action Markdown files and check that specific sentences, routing rows, section orders, and cross-references are still there. 84 REQs are cited as the origin of individual predicates.</td><td>The prompts the agent follows still say what they said when a bug was fixed. Example: run-with-recovery routes above the broader run row; every action that delegates to the CLI says it never falls back to prose.</td><td>The action files are the program, and Markdown has no compiler. Each predicate was added when a REQ fixed a behavior that only existed as a sentence, so the sentence could not silently drift. Its size is the growth problem named in section 4.</td></tr>
+      <tr><td>Contract suite, self-test</td><td class="num">1</td><td>The gate's own self-test: 148 of the script's 556 lines. It copies the script into a temp repo, replaces go, shellcheck, git and bash with shims, and runs it 15 times.</td><td>Every stage runs exactly once on a green run, any single failing stage turns the gate red, and a newer toolchain is accepted.</td><td>REQ-187: a gate that silently skipped a stage would be worse than no gate, because it would say green.</td></tr>
+      <tr><td>Contract suite, 14 behavior sub-suites</td><td class="num">≈140</td><td>Each builds a throwaway git repository under <code>mktemp</code> and runs the real shipped scripts against it. The updater (62 fixtures, 60 s), the suite installer (42 s), the staged-package boundary (19 s), 18 shipped shell scripts across 110 cases (17 s), the SessionStart hook (10 s), the shell-block lint, the CLI launcher, the p50 estimator, the cheaper-model selector, and four small contracts.</td><td>The scripts that install, update, clean up and repair a user's <code>do-work/</code> folder do exactly the declared writes and nothing else, restore on failure, and refuse unsafe input.</td><td>These scripts mutate other people's repositories. Each sub-suite was added when one of them did something wrong in a fixture that a grep could not have caught.</td></tr>
+      <tr><td>queue-kanban vet and tests</td><td class="num">160</td><td>The Kanban board tool: a Go module of 25 source files plus 10 client JavaScript files under <code>web/</code>. 451 tests. About 370 are ordinary Go tests over the Markdown parser, the request model, the number allocator, the verify probes, and HTML generation. 55 are JavaScript probes: each pipes the assembled board client into Node and asserts behavior such as timeline zoom, clipboard splicing, and filter folding. Two meta-tests re-execute the test binary to prove the strict guards fire.</td><td>The board reads the queue correctly and its browser-side behavior does what the tests say, without needing a browser.</td><td>The board is the human view of the queue. Its JavaScript had no harness at all until the Node lane; the meta-tests exist so a run where every probe skipped cannot pass.</td></tr>
+      <tr><td>queue-kanban strict JS lane</td><td class="num">51</td><td>The same 55 Node probes, run again with a marker that makes "zero probes executed" a failure.</td><td>Node was actually present and the JavaScript was actually tested.</td><td>The ordinary run skips the probes when Node is missing. Without this lane a machine without Node reports green having tested no JavaScript.</td></tr>
+      <tr><td>queue-kanban browser lane</td><td class="num">0 (skipped)</td><td>Drives a real headless Chromium over the DevTools pipe against the generated board: pointer capture, font metrics, timeline geometry.</td><td>Measurements the board relies on match what a real browser renders.</td><td>REQ-291: those numbers used to be pasted by hand from Playwright and went stale. REQ-375 restored the lane on current Chromium. It runs only when a Chrome-family binary is on PATH.</td></tr>
+      <tr><td>do-work-cli vet and tests</td><td class="num">39</td><td>The pipeline's transactional CLI: 23 Go packages, 522 tests in 74 files. Claim, finalize, capture-files, defer-gate and release are git transactions; the rest is request parsing, schema normalization, install and update, cleanup, doctor. 76 tests spawn subprocesses and most build throwaway git repositories.</td><td>Every mechanical pipeline step does its declared writes atomically, rolls back on failure, and refuses when the repository is not in the expected state.</td><td>The action prose delegates to this CLI with "no fallback". A bug here stops the factory, which is exactly what REQ-456 did last week.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+<div class="row" style="margin-top:28px">
+  <div class="card">
+    <h3>Why the gate exists at all</h3>
+    <p>Before REQ-187 (2026-08-15) a hand-back meant coordinating five command families by hand, and nothing proved shell and both Go modules together. REQ-187 made one script the single source of truth and the <code>justfile</code> delegate to it.</p>
+    <p>The per-REQ cost came five days later. REQ-283 archived green on area-scoped tests while this gate had been red for three REQs. REQ-309 (2026-08-20) made the pipeline run the whole gate per REQ instead of only the changed area's tests. That is the rule the report proposes to keep, but to satisfy with a recorded green revision plus a fast lane instead of two full runs.</p>
+  </div>
+  <div class="card">
+    <h3>Underlying technology</h3>
+    <table>
+      <tbody>
+        <tr><td>Orchestration</td><td>bash with <code>set -euo pipefail</code>; a <code>just</code> recipe wraps it. The self-test replaces tools with shell shims on PATH.</td></tr>
+        <tr><td>Shell lint</td><td>ShellCheck 0.11.0, a Haskell static analyzer, at warning severity.</td></tr>
+        <tr><td>Go</td><td>Go 1.26.1: <code>gofmt</code>, <code>go vet</code>, <code>go test -count=1</code>. Both modules use only the standard <code>testing</code> package; queue-kanban's one dependency is the goldmark Markdown parser. Subprocess cases re-execute the test binary with <code>os/exec</code>.</td></tr>
+        <tr><td>JavaScript probes</td><td>Node 22. The board client is assembled from <code>web/*.js</code> and piped to Node on stdin, one process per probe, because the assembled client exceeds Linux's per-argument limit.</td></tr>
+        <tr><td>Browser lane</td><td>Headless Chromium launched with <code>--remote-debugging-pipe</code>; the test speaks the DevTools Protocol over that pipe. No Playwright.</td></tr>
+        <tr><td>Contract predicates</td><td>grep and 26 Python 3 heredocs inside the bash file, parsing Markdown sections by regex.</td></tr>
+        <tr><td>Fixtures</td><td>git 2.50 throwaway repositories under <code>mktemp -d</code>, one per sub-suite process and per Go test that needs one.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</section>
+
+<section>
+<p class="kicker">2 · How long each stage takes</p>
+<div class="row">
+  <div class="card wide">
+  <p class="measure">It is one bash script that runs nine stages in series and exits non-zero at the first failure. Tool floors and lint come first, then the aggregate contract suite, then two Go modules each with <code>go vet</code> and uncached tests, plus a strict JavaScript lane for the board and a browser lane that skips here.</p>
+  <table>
+    <thead><tr><th>Stage</th><th>What it checks</th><th class="num">Seconds</th></tr></thead>
+    <tbody>
+      <tr><td>Tool floors</td><td>Go ≥ 1.26.1 and ShellCheck ≥ 0.11.0 are on PATH; gofmt is taken from that Go's GOROOT</td><td class="num">&lt;1</td></tr>
+      <tr><td>ShellCheck</td><td>83 tracked <code>.sh</code> files at warning severity</td><td class="num">5</td></tr>
+      <tr><td>gofmt</td><td>216 tracked <code>.go</code> files are formatted</td><td class="num">0.1</td></tr>
+      <tr><td>Aggregate contract suite</td><td><code>contract-regressions.sh</code>: 8,417 lines of prose-contract predicates, then 14 behavioral sub-suites</td><td class="num">149</td></tr>
+      <tr><td>queue-kanban vet + tests</td><td>451 tests, uncached (<code>-count=1</code>), zero <code>t.Parallel</code></td><td class="num">160</td></tr>
+      <tr><td>queue-kanban strict JS lane</td><td>Re-runs the 55 Node probes with a guard that fails if none executed</td><td class="num">51</td></tr>
+      <tr><td>queue-kanban browser lane</td><td>Skipped: no Chrome-family binary on PATH</td><td class="num">0</td></tr>
+      <tr><td>do-work-cli vet + tests</td><td>522 tests across 23 packages, uncached; packages run in parallel</td><td class="num">39</td></tr>
+      <tr><td><strong>Total</strong></td><td>Measured 405 s in this analysis; your run showed 388 s</td><td class="num"><strong>405</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="card stat-card"><div class="stat">388 s <small>your run, wall-clock. 271 s user CPU, 100 s system. The machine was 95% busy, so this is not idle waiting.</small></div></div>
+  <div class="card stat-card"><div class="stat">2× <small>gate runs per REQ in the work pipeline: the baseline before dispatch and the attribution run at Step 6.5, both the same argv.</small></div></div>
+  <div class="card stat-card"><div class="stat">167 <small>REQ-tagged commits in the last 14 days. At two gate runs each that is roughly 36 hours of gate time.</small></div></div>
+</div>
+</section>
+
+<section>
+<p class="kicker">3 · Where the time goes, and how much of it is repeated</p>
+<div class="row">
+  <div class="card wide">
+    <div class="chart" role="img" aria-label="Seconds per stage, split into unique and repeated work">
+      <div class="label">contract suite · sub-suites</div><div class="track"><span class="k" style="width:22%" title="unique 60s"></span><span class="d" style="width:29%" title="serial-order cost ≈80s"></span></div><div class="val">140</div>
+      <div class="label">contract suite · inline predicates</div><div class="track"><span class="k" style="width:3%" title="unique ≈9s"></span></div><div class="val">≈9</div>
+      <div class="label">kanban · JS probes (ordinary run)</div><div class="track"><span class="k" style="width:25%" title="unique 70s"></span></div><div class="val">70</div>
+      <div class="label">kanban · zero-probe meta-tests</div><div class="track"><span class="d" style="width:21%" title="repeated 59s"></span></div><div class="val">59</div>
+      <div class="label">kanban · strict JS lane</div><div class="track"><span class="d" style="width:18%" title="repeated 51s"></span></div><div class="val">51</div>
+      <div class="label">kanban · other 370 tests</div><div class="track"><span class="k" style="width:11%" title="unique 30s"></span></div><div class="val">30</div>
+      <div class="label">do-work-cli tests</div><div class="track"><span class="k" style="width:14%" title="unique 39s"></span></div><div class="val">39</div>
+      <div class="label">ShellCheck + gofmt + vet</div><div class="track"><span class="k" style="width:2%" title="unique 6s"></span></div><div class="val">6</div>
+    </div>
+    <p class="legend"><span><i class="k"></i>Unique work</span><span><i class="d"></i>Repeated or serialized work (≈190 s)</span></p>
+    <p class="note">Bar widths are seconds on one shared scale (280 s full width). The sub-suite bar's amber part is the serial-order cost: run standalone the 14 sub-suites sum to about 160 s, and the longest single one is 60 s.</p>
+  </div>
+  <div class="card">
+    <h3>The JavaScript probes run three times</h3>
+    <p>There are 55 <code>TestJavaScriptBehavior*</code> tests. Each spawns Node with the assembled board client on stdin, about 1.2 s apiece.</p>
+    <ol class="seq">
+      <li><strong>Ordinary run</strong> (≈70 s). Node is on PATH, so they execute.</li>
+      <li><strong>Zero-probe meta-tests</strong> (43 s + 16 s). Two tests re-execute the test binary over the whole probe set to prove the strict guard rejects an all-skipped run.</li>
+      <li><strong>Strict lane</strong> (51 s). The script runs the same probes again with the guard marker set.</li>
+    </ol>
+    <p class="note">Layer 1 is the coverage. Layers 2 and 3 exist to prove a skip cannot be mistaken for green. That property is worth one cheap test, not 110 s.</p>
+  </div>
+  <div class="card">
+    <h3>Inside the aggregate suite</h3>
+    <table>
+      <thead><tr><th>Sub-suite</th><th class="num">s</th></tr></thead>
+      <tbody>
+        <tr><td>update-script-behavior (62 fixtures)</td><td class="num">60</td></tr>
+        <tr><td>install-suite-behavior</td><td class="num">42</td></tr>
+        <tr><td>staged-skills-contract</td><td class="num">19</td></tr>
+        <tr><td>prescribed-shell-scripts (110 cases)</td><td class="num">17</td></tr>
+        <tr><td>session-start-hook-behavior</td><td class="num">10</td></tr>
+        <tr><td>action-shell-blocks (ShellCheck again)</td><td class="num">4</td></tr>
+        <tr><td>canonicalization, launcher, self-test, 5 others</td><td class="num">≈10</td></tr>
+        <tr><td>7,300 lines of inline grep/python predicates</td><td class="num">≈9</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Every sub-suite is its own process with a private <code>mktemp</code> root. Nothing forces them to run one at a time.</p>
+  </div>
+</div>
+</section>
+
+<section>
+<p class="kicker">4 · Is it overkill?</p>
+<div class="row">
+  <div class="card">
+    <h3><span class="tag keep">keep</span> The checks themselves</h3>
+    <p>ShellCheck, gofmt, vet, and real behavior tests for two Go tools and 18 shipped shell scripts are what a release gate should be. 973 Go tests plus 110 shell cases for a suite this size is proportionate. The 6 s of lint is free.</p>
+  </div>
+  <div class="card">
+    <h3><span class="tag dup">overkill</span> Running it twice per REQ</h3>
+    <p>The pipeline runs the identical argv before dispatch and after integration so an unrelated failure can be attributed. A recorded green revision hash does the same job: if HEAD equals the last green hash, the baseline is known without running anything. This alone halves gate time and touches no test.</p>
+  </div>
+  <div class="card">
+    <h3><span class="tag dup">overkill</span> One tier for every purpose</h3>
+    <p>There is no fast lane. A one-line prose edit to an action file pays for 211 s of board tests and 39 s of CLI tests that cannot be affected by it. <code>-count=1</code> disables Go's test cache everywhere, so untouched packages are never free.</p>
+  </div>
+  <div class="card">
+    <h3><span class="tag dup">overkill</span> The growth curve of the contract file</h3>
+    <p><code>contract-regressions.sh</code> was 162 lines 60 days ago, 940 at 30 days, 4,757 at 14 days, 8,417 today. 197 FAIL predicates and 26 embedded Python programs pin sentences in the action files. Its wall-clock cost is small; its maintenance cost is the subject of the 2026-09-02 orchestrator report, which found it is what keeps deletable prose in place.</p>
+  </div>
+</div>
+</section>
+
+<section>
+<p class="kicker">5 · Improvements, in the order to do them</p>
+<div class="row" style="margin-bottom:28px">
+  <div class="card stat-card"><div class="stat">≈40 s <small>projected fast lane for a typical REQ after A2, against 388 s today.</small></div></div>
+  <div class="card stat-card"><div class="stat">≈2.5 min <small>projected full gate after A3 to A5, against 6.5 min today.</small></div></div>
+  <div class="card stat-card"><div class="stat">1 <small>full gate run per REQ after A1, against 2 today.</small></div></div>
+</div>
+<div class="row">
+  <div class="card" style="flex-basis:100%">
+  <table>
+    <thead><tr><th>Id</th><th>Change</th><th>Saves</th><th>Effort and risk</th></tr></thead>
+    <tbody>
+      <tr><td>A1</td><td><strong>Run the gate once per REQ.</strong> Record the revision hash of the last green run. Before dispatch, if HEAD equals that hash, take the baseline as green without running. Keep the Step 6.5 run.</td><td>6.5 min per REQ, half of all gate time</td><td>Edits in <code>work.md</code> §Step 5.75 and <code>work-reference.md</code> §Repository Gate Deferral, plus whichever contract predicates pin the twice-run wording. Attribution still works: the recorded hash is the baseline.</td></tr>
+      <tr><td>A2</td><td><strong>Path-scoped fast lane.</strong> <code>maintainer-verify.sh --changed</code>: lint and vet always; Go tests only for a module whose files changed, with the test cache on; the aggregate only when <code>skills/**/*.md</code>, scripts, or <code>_dev/tests</code> changed. The full uncached gate stays the integration-commit check.</td><td>Typical REQ from 388 s to 30–60 s</td><td>One script; the self-test already models stages, so it extends naturally. Risk is a cross-module change that the path rule misses, which the full run at integration catches.</td></tr>
+      <tr><td>A3</td><td><strong>Run the JS probes once.</strong> Set the strict marker on the ordinary run whenever Node is present, so <code>TestMain</code>'s zero-probe guard applies to that run, and delete the separate lane. Narrow the two zero-probe meta-tests to re-execute one cheap test instead of the whole set.</td><td>≈110 s per full run</td><td>Small Go change in <code>generate_test.go</code> and <code>browser_probe_test.go</code>; the script's self-test stage list shrinks by one.</td></tr>
+      <tr><td>A4</td><td><strong>Run aggregate sub-suites in parallel.</strong> Launch the 14 sub-suite processes together and collect statuses; they already own private fixture roots.</td><td>≈80 s per full run (149 s → about 65 s, bounded by update-script at 60 s)</td><td>Output interleaves; buffer each to a file and print on completion. Then profile update-script-behavior's 62 fixtures separately.</td></tr>
+      <tr><td>A5</td><td><strong><code>t.Parallel()</code> in queue-kanban.</strong> 0 of 451 tests opt in; the package runs strictly serial on 8 cores.</td><td>≈100 s per full run (146 s of test time → 40–50 s wall)</td><td>Audit for tests that <code>chdir</code>, set env, or share the process-helper pattern in <code>allocate_test.go</code>; mark the rest.</td></tr>
+      <tr><td>A6</td><td><strong>Freeze the contract file.</strong> A new sentence-predicate lane must delete one or land as a Go behavior test. Split what exists by owning action file.</td><td>Little wall-clock; stops the maintenance curve</td><td>Policy plus a one-line ratchet on line count. Pairs with the orchestrator report's per-step move-to-Go plan.</td></tr>
+      <tr><td>A7</td><td><strong>Log and commit every gate run.</strong> Each run writes one tracked file with the start instant, duration, exit status, and full output, and commits it by exact path. Added at capture on 2026-09-03.</td><td>Nothing; it buys a history to measure A1 to A5 against</td><td>Shell in <code>maintainer-verify.sh</code> plus its self-test; the log commit must not touch an unrelated dirty tree.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+</section>
+
+<section>
+<p class="kicker">6 · Evidence</p>
+<p class="measure">UI captures were not expected for this work. The numbers come from one instrumented run of each stage in sequence on this machine on 2026-09-03, with <code>go test -json</code> for per-test elapsed time, plus your screenshot for the cross-check. Two caveats. The instrumented run executed at background priority, so absolute seconds may read a few percent high; the Go stage times matched your run within 2 s. And two cases in update-script-behavior failed only in the instrumented run because it ran under <code>nohup</code>, which ignores SIGHUP; the cases test that the fetcher exits 129 on HUP. Your run passed them, and the failure is an artifact of my harness, not of the suite.</p>
+<div class="row">
+  <div class="card">
+    <h3>Key files</h3>
+    <table>
+      <tbody>
+        <tr><td><code>_dev/tests/maintainer-verify.sh</code></td><td>the gate, 556 lines, half of it its own self-test</td></tr>
+        <tr><td><code>_dev/tests/contract-regressions.sh</code></td><td>the aggregate, 8,417 lines</td></tr>
+        <tr><td><code>skills/do-work-board/tools/queue-kanban/generate_test.go</code></td><td>10,112 lines; JS probes, strict lane, zero-probe meta-tests</td></tr>
+        <tr><td><code>skills/do-work/actions/work.md</code> lines 402 and 531</td><td>the two gate runs per REQ</td></tr>
+        <tr><td><code>CLAUDE.md</code> §Verify</td><td>declares the script as the canonical gate</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card wide">
+    <h3>Verify it yourself</h3>
+<pre><code># stage timings (run, ~7 min)
+time bash _dev/tests/maintainer-verify.sh
+
+# slowest board tests (run)
+cd skills/do-work-board/tools/queue-kanban
+go test -count=1 -json ./... | jq -r 'select(.Action=="pass" and .Test and (.Test|test("/")|not)) | "\(.Elapsed)\t\(.Test)"' | sort -rn | head
+
+# no test parallelism in the board package (run)
+grep -c 't.Parallel()' skills/do-work-board/tools/queue-kanban/*_test.go | awk -F: '{s+=$2} END{print s}'
+
+# growth of the contract file (run)
+for d in 60 30 14 7; do c=$(git rev-list -1 --before="$d days ago" main); printf '%s days ago: %s lines\n' $d "$(git show $c:_dev/tests/contract-regressions.sh | wc -l)"; done
+
+# gate runs per REQ (run)
+grep -n 'canonical repository gate' skills/do-work/actions/work.md
+
+# REQ commits in two weeks (run)
+git log --since='14 days ago' --format='%s' | grep -oE '^\[REQ-[0-9]+\]' | sort -u | wc -l</code></pre>
+  </div>
+</div>
+</section>
+
+<section>
+<p class="kicker">7 · Open questions</p>
+<p class="measure"><strong>Q1</strong> Does serial mode need the baseline run at all when HEAD is already the recorded green revision, or only fan-out mode where the merge base can move? <strong>Q2</strong> Which zero-probe protection is the real one: the TestMain guard, or the two meta-tests that re-execute the suite to prove the guard fires? Keeping one is enough. <strong>Q3</strong> Should the fast lane be the gate the pipeline runs at Step 6.5 for a builder, with the full gate reserved for the queue owner's integrating commit at Step 9, mirroring how version bumps are already owner-only?</p>
+</section>
+
+<footer>Analysis report, not a completed-REQ report: no UR or REQ was resolved, so the archive-evidence contract did not apply. Layout was render-checked in light and dark at desktop width. Generated 2026-09-03 for skill-do-work2 at commit ca5dacbb; section 1 added the same day at the maintainer's request.</footer>
+</div>
+</body>
+</html>
