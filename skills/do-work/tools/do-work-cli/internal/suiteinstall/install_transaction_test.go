@@ -497,8 +497,8 @@ func TestEveryShippedManagedDefinitionRejectsAnExteriorCollision(t *testing.T) {
 		definitionNames = append(definitionNames, definitionName)
 	}
 	sort.Strings(definitionNames)
-	if len(definitionNames) != 40 {
-		t.Fatalf("shipped managed definitions = %d, want 40: %v", len(definitionNames), definitionNames)
+	if len(definitionNames) != 41 {
+		t.Fatalf("shipped managed definitions = %d, want 41: %v", len(definitionNames), definitionNames)
 	}
 	for _, definitionName := range definitionNames {
 		t.Run(definitionName, func(t *testing.T) {

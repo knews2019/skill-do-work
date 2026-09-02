@@ -236,7 +236,7 @@ func initializedGitRepository(t *testing.T) string {
 
 func TestHandlersRegisterEveryPublicationCommand(t *testing.T) {
 	handlers := Handlers()
-	for _, commandName := range []string{"capture-files", "answer", "release"} {
+	for _, commandName := range []string{"capture-files", "answer", "release", "defer-gate"} {
 		handler, found := handlers[commandName]
 		if !found {
 			t.Fatalf("missing handler %q", commandName)

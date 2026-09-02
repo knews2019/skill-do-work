@@ -875,6 +875,49 @@ A consolidation sweep.
 	}
 }
 
+func TestParseRequestTicketConsumesCanonicalRepositoryGateRepairSweep(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-901-repair-repository-gate.md")
+	fixtureContent := `---
+id: REQ-901
+title: Repair repository gate failure
+status: pending
+user_request: UR-095
+repository_gate_repair: true
+sweep: true
+sweep_key: repository-gate-sha256-gate-red
+related: [REQ-101, REQ-102]
+---
+
+## What
+
+Repair the repository-gate failure recorded below so dependency-gated requests can resume.
+
+## Instances
+
+- [ ] repository gate: sha256:gate-red affecting REQ-101 (found by REQ-101 / UR-095)
+- [ ] repository gate: sha256:gate-red affecting REQ-102 (found by REQ-102 / UR-095)
+
+## Repository Gate Repair Intake
+
+- **Diagnostic fingerprint:** sha256:gate-red
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if !ticket.Sweep || ticket.SweepInstancesOpen != 2 || ticket.SweepInstancesDone != 0 {
+		t.Fatalf("repository-gate sweep projection = sweep:%v open:%d done:%d", ticket.Sweep, ticket.SweepInstancesOpen, ticket.SweepInstancesDone)
+	}
+	if !reflect.DeepEqual(ticket.Related, []string{"REQ-101", "REQ-102"}) {
+		t.Fatalf("repository-gate related projection = %v", ticket.Related)
+	}
+}
+
 func TestParseRequestTicketNonCanonicalSweepMarkerReadsFalse(t *testing.T) {
 	temporaryDirectory := t.TempDir()
 	fixturePath := filepath.Join(temporaryDirectory, "REQ-571-noncanonical.md")

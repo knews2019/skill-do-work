@@ -13,14 +13,16 @@ const (
 	OperationCaptureFiles OperationName = "capture-files"
 	OperationAnswer       OperationName = "answer"
 	OperationRelease      OperationName = "release"
+	OperationDeferGate    OperationName = "defer-gate"
 )
 
 type Manifest struct {
-	Operation     OperationName    `json:"operation"`
-	CommitMessage string           `json:"commit_message,omitempty"`
-	Capture       *CaptureManifest `json:"capture,omitempty"`
-	Answer        *AnswerManifest  `json:"answer,omitempty"`
-	Release       *ReleaseManifest `json:"release,omitempty"`
+	Operation     OperationName      `json:"operation"`
+	CommitMessage string             `json:"commit_message,omitempty"`
+	Capture       *CaptureManifest   `json:"capture,omitempty"`
+	Answer        *AnswerManifest    `json:"answer,omitempty"`
+	Release       *ReleaseManifest   `json:"release,omitempty"`
+	DeferGate     *DeferGateManifest `json:"defer_gate,omitempty"`
 }
 
 type PayloadFile struct {
@@ -122,6 +124,29 @@ type ReleaseManifest struct {
 	Changelogs        []ChangelogTarget `json:"changelogs"`
 }
 
+type DeferGateManifest struct {
+	ParentID                    string       `json:"parent_id"`
+	ParentPath                  string       `json:"parent_path"`
+	ExpectedParent              PayloadFile  `json:"expected_parent"`
+	ExpectedStatus              string       `json:"expected_status"`
+	CheckpointPath              string       `json:"checkpoint_path"`
+	ExpectedCheckpoint          PayloadFile  `json:"expected_checkpoint"`
+	WriterLabel                 string       `json:"writer_label"`
+	GateCommand                 []string     `json:"gate_command"`
+	GateExitStatus              int          `json:"gate_exit_status"`
+	DiagnosticFingerprint       string       `json:"diagnostic_fingerprint"`
+	DiagnosticEvidence          []string     `json:"diagnostic_evidence"`
+	SweepKey                    string       `json:"sweep_key"`
+	RepairID                    string       `json:"repair_id"`
+	RepairPath                  string       `json:"repair_path"`
+	RepairTitle                 string       `json:"repair_title"`
+	RepairCreatedAt             string       `json:"repair_created_at"`
+	ReservationPath             string       `json:"reservation_path"`
+	ExpectedRepair              *PayloadFile `json:"expected_repair,omitempty"`
+	DeferredImplementationBase  string       `json:"deferred_implementation_base,omitempty"`
+	DeferredImplementationMerge string       `json:"deferred_implementation_merge,omitempty"`
+}
+
 type MutationKind string
 
 const (
@@ -156,9 +181,11 @@ type PublicationPlan struct {
 	Mutations                    []PlannedMutation
 	TargetPaths                  []string
 	ExistingUntrackedTargetPaths []string
+	ExistingDirtyTargetPaths     []string
 	CreatedDirectoryPaths        []string
 	Changes                      []resultmodel.RecordedChange
 	Refusal                      *Refusal
+	GateDeferral                 *resultmodel.GateDeferralResult
 }
 
 func (plan PublicationPlan) Runnable() bool {

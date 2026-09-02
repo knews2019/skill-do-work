@@ -26,11 +26,12 @@ type commandOptions struct {
 }
 
 var beforePublicationMutation = func(int, PlannedMutation) error { return nil }
+var afterPublicationMutation = func(int, PlannedMutation) error { return nil }
 var afterPublicationCommit = func(PublicationPlan) error { return nil }
 
 func Handlers() map[string]commandruntime.CommandHandler {
 	handlers := map[string]commandruntime.CommandHandler{}
-	for _, operation := range []OperationName{OperationCaptureFiles, OperationAnswer, OperationRelease} {
+	for _, operation := range []OperationName{OperationCaptureFiles, OperationAnswer, OperationRelease, OperationDeferGate} {
 		selectedOperation := operation
 		handlers[string(operation)] = func(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
 			return handlePublicationCommand(executionContext, selectedOperation, arguments)
@@ -64,6 +65,8 @@ func handlePublicationCommand(executionContext commandruntime.ExecutionContext, 
 		plan = BuildAnswerPlan(executionContext.RepositoryRoot, manifest, options.answerTime)
 	case OperationRelease:
 		plan = BuildReleasePlan(executionContext.RepositoryRoot, manifest)
+	case OperationDeferGate:
+		plan = BuildDeferGatePlan(executionContext.RepositoryRoot, manifest)
 	}
 	plan.ManifestPath = options.manifestPath
 	if !options.answerTime.IsZero() {
@@ -133,7 +136,7 @@ func ApplyPlan(ctx context.Context, plan PublicationPlan, dryRun, commit bool) r
 	if !plan.Runnable() {
 		return commandFailureWithManifest(plan.RepositoryRoot, plan.Operation, plan.ManifestPath, parseAnswerAt(plan.AnswerAt), "PUBLICATION-PLAN-INVALID", "publication plan has no mutations")
 	}
-	transaction := gittransaction.ExecuteTransaction(ctx, gittransaction.TransactionOptions{RepositoryRoot: plan.RepositoryRoot, TargetPaths: plan.TargetPaths, ExistingUntrackedTargetPaths: plan.ExistingUntrackedTargetPaths, CreatedDirectoryPaths: plan.CreatedDirectoryPaths, DryRun: dryRun, Commit: commit, CommitMessage: plan.CommitMessage, PostCommitVerify: func(context.Context, string) error {
+	transaction := gittransaction.ExecuteTransaction(ctx, gittransaction.TransactionOptions{RepositoryRoot: plan.RepositoryRoot, TargetPaths: plan.TargetPaths, ExistingUntrackedTargetPaths: plan.ExistingUntrackedTargetPaths, ExistingDirtyTargetPaths: plan.ExistingDirtyTargetPaths, CreatedDirectoryPaths: plan.CreatedDirectoryPaths, DryRun: dryRun, Commit: commit, CommitMessage: plan.CommitMessage, PostCommitVerify: func(context.Context, string) error {
 		if err := afterPublicationCommit(plan); err != nil {
 			return err
 		}
@@ -150,6 +153,9 @@ func ApplyPlan(ctx context.Context, plan PublicationPlan, dryRun, commit bool) r
 			}
 			if makeError := repositoryHandle.Mkdir(filepath.FromSlash(directory), 0o755); makeError != nil {
 				return makeError
+			}
+			if recordError := recorder.RecordCreatedDirectory(directory); recordError != nil {
+				return recordError
 			}
 		}
 		movedSourceDirectories := map[string]bool{}
@@ -177,6 +183,9 @@ func ApplyPlan(ctx context.Context, plan PublicationPlan, dryRun, commit bool) r
 					if replaceError := replaceRootedFile(plan.RepositoryRoot, mutation.Path, mutation.ExpectedBytes, mutation.Contents); replaceError != nil {
 						return replaceError
 					}
+					if recordError := recorder.RecordTouched(mutation.Path); recordError != nil {
+						return recordError
+					}
 				}
 				expectedMoveBytes := mutation.ExpectedBytes
 				if len(mutation.Contents) > 0 {
@@ -194,6 +203,9 @@ func ApplyPlan(ctx context.Context, plan PublicationPlan, dryRun, commit bool) r
 				movedSourceDirectories[filepath.ToSlash(filepath.Dir(filepath.FromSlash(mutation.Path)))] = true
 			default:
 				return fmt.Errorf("unknown publication mutation %q", mutation.Kind)
+			}
+			if injectedError := afterPublicationMutation(mutationIndex, mutation); injectedError != nil {
+				return injectedError
 			}
 		}
 		if verifyError := verifyPublicationPlan(plan); verifyError != nil {
@@ -217,6 +229,11 @@ func ApplyPlan(ctx context.Context, plan PublicationPlan, dryRun, commit bool) r
 			result.Changes[index].Detail = detail
 		}
 		result.Findings = append(result.Findings, successFinding(plan, code, evidence))
+		if plan.GateDeferral != nil {
+			gateDeferral := *plan.GateDeferral
+			gateDeferral.GateCommand = append([]string(nil), gateDeferral.GateCommand...)
+			result.GateDeferral = &gateDeferral
+		}
 	}
 	return result
 }
@@ -444,7 +461,12 @@ func commandFailureWithManifest(repositoryRoot string, operation OperationName, 
 
 func successFinding(plan PublicationPlan, code, evidence string) resultmodel.CommandFinding {
 	nextArgv, verification, recipe := publicationProtocol(plan.Operation, plan.ManifestPath, plan.AnswerAt)
-	return resultmodel.CommandFinding{Code: code, Severity: resultmodel.SeverityInfo, AffectedPaths: plan.TargetPaths, Evidence: []string{evidence},
+	affectedIDs := []string(nil)
+	if plan.GateDeferral != nil {
+		affectedIDs = []string{plan.GateDeferral.ParentID, plan.GateDeferral.RepairID}
+		evidence = fmt.Sprintf("%s; repair %s; fingerprint %s", evidence, plan.GateDeferral.RepairOutcome, plan.GateDeferral.DiagnosticFingerprint)
+	}
+	return resultmodel.CommandFinding{Code: code, Severity: resultmodel.SeverityInfo, AffectedIDs: affectedIDs, AffectedPaths: plan.TargetPaths, Evidence: []string{evidence},
 		Fixability: resultmodel.FixabilityAutomatic, NextArgv: nextArgv, NextJustRecipe: recipe, VerificationArgv: verification}
 }
 

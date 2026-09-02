@@ -3,6 +3,7 @@ package nextselection
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -36,6 +37,11 @@ func Select(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygraph
 			continue
 		}
 		eligible = append(eligible, *record)
+	}
+	if len(options.TargetTokens) == 0 {
+		sort.SliceStable(eligible, func(leftIndex, rightIndex int) bool {
+			return priorityRank(eligible[leftIndex].SelectionPriority) < priorityRank(eligible[rightIndex].SelectionPriority)
+		})
 	}
 
 	limit := len(eligible)
@@ -96,6 +102,7 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 	}
 	newExclusion := func(code, reason string, nextArgv []string) resultmodel.SelectionExclusion {
 		exclusion := exclusionFor(identifier, record.RequestTitle, candidate.Provenance, code, reason, nextArgv)
+		exclusion.SelectionPriority = candidate.Priority
 		applySelectionEvidenceToExclusion(&exclusion, evidence)
 		return exclusion
 	}
@@ -225,7 +232,8 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 	}
 	selected := resultmodel.SelectionRecord{
 		RequestID: identifier, RequestPath: evidence.RequestPath, Title: record.RequestTitle, Provenance: candidate.Provenance,
-		OriginalStatus: evidence.OriginalStatus, ProbeStatus: evidence.ProbeStatus,
+		SelectionPriority: candidate.Priority,
+		OriginalStatus:    evidence.OriginalStatus, ProbeStatus: evidence.ProbeStatus,
 		ProbeAttempted: evidence.ProbeAttempted, ProbeExitCode: evidence.ProbeExitCode, UnblockRequired: evidence.UnblockRequired,
 		DependencyDepth: depth, Dependencies: append([]string(nil), record.DependsOn...),
 		EstimateMinutes: estimateMinutes, EstimateKnown: estimateKnown,
@@ -329,6 +337,7 @@ func applySelectionEvidenceToExclusion(exclusion *resultmodel.SelectionExclusion
 }
 
 func copySelectionEvidenceToExclusion(exclusion *resultmodel.SelectionExclusion, selection resultmodel.SelectionRecord) {
+	exclusion.SelectionPriority = selection.SelectionPriority
 	applySelectionEvidenceToExclusion(exclusion, selectionEvidence{
 		RequestPath: selection.RequestPath, OriginalStatus: selection.OriginalStatus,
 		ProbeStatus: selection.ProbeStatus, ProbeAttempted: selection.ProbeAttempted,
@@ -338,9 +347,20 @@ func copySelectionEvidenceToExclusion(exclusion *resultmodel.SelectionExclusion,
 
 func exclusionFor(identifier, title, provenance, code, reason string, nextArgv []string) resultmodel.SelectionExclusion {
 	return resultmodel.SelectionExclusion{
-		RequestID: identifier, Title: title, Provenance: provenance, Code: code, Reason: reason,
+		RequestID: identifier, Title: title, Provenance: provenance, SelectionPriority: PriorityOrdinary, Code: code, Reason: reason,
 		NextArgv: nextArgv, NextJustRecipe: justRecipeFor(nextArgv),
 		VerificationArgv: []string{"do-work-cli", "--format", "json", "next", identifier},
+	}
+}
+
+func priorityRank(priority string) int {
+	switch priority {
+	case PriorityRepositoryGateRepair:
+		return 0
+	case PriorityDeferredParent:
+		return 1
+	default:
+		return 2
 	}
 }
 

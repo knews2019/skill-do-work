@@ -9,8 +9,31 @@ import (
 )
 
 type commandSelectionRecord struct {
-	RequestID string `json:"request_id"`
-	Code      string `json:"code"`
+	RequestID         string `json:"request_id"`
+	Code              string `json:"code"`
+	SelectionPriority string `json:"selection_priority"`
+}
+
+func TestNextCommandProjectsGateSelectionPriority(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-811-ordinary.md", "REQ-811", "pending", "")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-812-deferred.md", "REQ-812", "pending", "gate_deferred: true\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-813-repair.md", "REQ-813", "pending", "repository_gate_repair: true\n")
+	command := exec.Command("go", "run", "../../cmd/do-work-cli", "--repo-root", repositoryRoot, "--format", "json", "next", "--fan-out", "3")
+	output, runError := command.CombinedOutput()
+	if runError != nil {
+		t.Fatalf("next command returned %v:\n%s", runError, output)
+	}
+	var result commandSelectionResult
+	if err := json.Unmarshal(output, &result); err != nil {
+		t.Fatal(err)
+	}
+	if got := selectedRequestIDs(result.Selected); !equalStrings(got, []string{"REQ-813", "REQ-812", "REQ-811"}) {
+		t.Fatalf("priority ids = %v", got)
+	}
+	if result.Selected[0].SelectionPriority != PriorityRepositoryGateRepair || result.Selected[1].SelectionPriority != PriorityDeferredParent || result.Selected[2].SelectionPriority != PriorityOrdinary {
+		t.Fatalf("priority evidence = %#v", result.Selected)
+	}
 }
 
 type commandSelectionResult struct {

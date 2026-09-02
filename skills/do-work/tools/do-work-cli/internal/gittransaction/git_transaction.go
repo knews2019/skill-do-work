@@ -59,6 +59,10 @@ type TransactionResult struct {
 type TransactionOptions struct {
 	RepositoryRoot string
 	TargetPaths    []string
+	// ExistingDirtyTargetPaths is a narrow opt-in for exact tracked files whose
+	// unstaged bytes are intentional transaction input. Staged targets remain
+	// refused. The exact bytes, mode, and identity are restored on rollback.
+	ExistingDirtyTargetPaths []string
 	// ExistingUntrackedTargetPaths is a narrow opt-in for exact durable state
 	// that is intentionally untracked in some consumer repositories. Each path
 	// must also be a target. Its bytes and mode are snapshotted for rollback;
@@ -87,6 +91,7 @@ type MutationRecorder struct {
 	publishedPrivate          map[string]publishedPrivateState
 	publishedTracked          map[string]publishedTrackedState
 	publishedDirectories      map[string]os.FileInfo
+	dirtyTrackedPaths         map[string]struct{}
 }
 
 type publishedPrivateState struct {
@@ -198,6 +203,21 @@ func (recorder *MutationRecorder) RecordTouched(path string) error {
 		return fmt.Errorf("path %q is outside the declared transaction targets", path)
 	}
 	recorder.touchedPaths[normalized] = struct{}{}
+	if _, dirtyTracked := recorder.dirtyTrackedPaths[normalized]; dirtyTracked {
+		root, rootError := os.OpenRoot(recorder.repositoryRoot)
+		if rootError != nil {
+			return rootError
+		}
+		defer root.Close()
+		info, digest, snapshotError := rootedRegularSnapshot(root, normalized)
+		if isMissingPathError(snapshotError) {
+			recorder.publishedTracked[normalized] = publishedTrackedState{}
+		} else if snapshotError != nil {
+			return snapshotError
+		} else {
+			recorder.publishedTracked[normalized] = publishedTrackedState{existed: true, info: info, digest: digest}
+		}
+	}
 	return nil
 }
 
@@ -268,6 +288,7 @@ type targetState struct {
 	existed                  bool
 	existingUntrackedAllowed bool
 	privateUntracked         bool
+	existingDirtyAllowed     bool
 	originalBytes            []byte
 	originalDigest           [sha256.Size]byte
 	originalMode             os.FileMode
@@ -305,6 +326,11 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	}
 	targetSet := stringSet(targetPaths)
 	allowedSet := stringSet(allowedExistingUntracked)
+	allowedDirtyTargets, err := normalizeTargetPaths(options.ExistingDirtyTargetPaths)
+	if err != nil {
+		return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, err.Error())
+	}
+	dirtyAllowedSet := stringSet(allowedDirtyTargets)
 	privatePaths, err := normalizeTargetPaths(options.PrivateUntrackedTargetPaths)
 	if err != nil {
 		return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, err.Error())
@@ -326,6 +352,20 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 				fmt.Sprintf("private untracked path %q cannot use both untracked options", path), path)
 		}
 	}
+	for _, path := range allowedDirtyTargets {
+		if _, targeted := targetSet[path]; !targeted {
+			return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions,
+				fmt.Sprintf("existing dirty opt-in path %q is not a declared target", path), path)
+		}
+		if _, legacy := allowedSet[path]; legacy {
+			return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions,
+				fmt.Sprintf("existing dirty path %q cannot also be an untracked target", path), path)
+		}
+		if _, private := privateSet[path]; private {
+			return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions,
+				fmt.Sprintf("existing dirty path %q cannot also be a private target", path), path)
+		}
+	}
 	root, rootErr := os.OpenRoot(repositoryRoot)
 	if rootErr != nil {
 		return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, rootErr.Error())
@@ -333,6 +373,37 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	defer root.Close()
 	for stateIndex := range states {
 		state := &states[stateIndex]
+		if _, allowed := dirtyAllowedSet[state.path]; allowed {
+			if !state.existed || !state.tracked {
+				return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions,
+					fmt.Sprintf("existing dirty opt-in path %q must exist and be tracked", state.path), state.path)
+			}
+			indexEmpty, indexError := indexIsEmpty(ctx, repositoryRoot, state.path)
+			if indexError != nil || !indexEmpty {
+				reason := fmt.Sprintf("existing dirty opt-in path %q must not be staged", state.path)
+				if indexError != nil {
+					reason = indexError.Error()
+				}
+				return failTransaction(result, resultmodel.OutcomeRefused, FailureDirtyIndex, reason, state.path)
+			}
+			dirty, statusError := targetIsDirty(ctx, repositoryRoot, state.path)
+			if statusError != nil || !dirty {
+				reason := fmt.Sprintf("existing dirty opt-in path %q is not dirty", state.path)
+				if statusError != nil {
+					reason = statusError.Error()
+				}
+				return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, reason, state.path)
+			}
+			fileInfo, digest, originalBytes, snapshotError := rootedRegularPreimage(root, state.path)
+			if snapshotError != nil {
+				return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, snapshotError.Error(), state.path)
+			}
+			state.existingDirtyAllowed = true
+			state.originalBytes = originalBytes
+			state.originalMode = completeRegularFileMode(fileInfo.Mode())
+			state.originalDigest = digest
+			continue
+		}
 		if _, private := privateSet[state.path]; private {
 			if state.tracked {
 				return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions,
@@ -375,7 +446,7 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 		if statusErr != nil {
 			return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, statusErr.Error(), state.path)
 		}
-		if dirty && !state.existingUntrackedAllowed && !state.privateUntracked {
+		if dirty && !state.existingUntrackedAllowed && !state.privateUntracked && !state.existingDirtyAllowed {
 			return failTransaction(result, resultmodel.OutcomeRefused, FailureDirtyTarget, fmt.Sprintf("target path %q is already dirty", state.path), state.path)
 		}
 		if state.existed && !state.tracked && !state.existingUntrackedAllowed && !state.privateUntracked {
@@ -383,6 +454,9 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 		}
 	}
 	if options.Commit {
+		if len(allowedDirtyTargets) > 0 {
+			return failTransaction(result, resultmodel.OutcomeRefused, FailureDirtyTarget, "--commit cannot include pre-existing dirty target bytes", allowedDirtyTargets...)
+		}
 		empty, indexErr := indexIsEmpty(ctx, repositoryRoot)
 		if indexErr != nil {
 			return failTransaction(result, resultmodel.OutcomeFailure, FailureInvalidOptions, indexErr.Error())
@@ -488,8 +562,11 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 
 func (recorder *MutationRecorder) captureTrackedPublications(root *os.Root) error {
 	for path := range recorder.touchedPaths {
+		if _, captured := recorder.publishedTracked[path]; captured {
+			continue
+		}
 		info, digest, err := rootedRegularSnapshot(root, path)
-		if errors.Is(err, os.ErrNotExist) {
+		if isMissingPathError(err) {
 			recorder.publishedTracked[path] = publishedTrackedState{}
 			continue
 		}
@@ -555,10 +632,14 @@ func committableChangedPaths(repositoryRoot string, states []targetState, change
 func newMutationRecorder(repositoryRoot string, states []targetState, createdDirectories []string) *MutationRecorder {
 	allowed := make(map[string]struct{}, len(states))
 	creatable := make(map[string]struct{}, len(states))
+	dirtyTracked := make(map[string]struct{})
 	for _, state := range states {
 		allowed[state.path] = struct{}{}
 		if !state.existed {
 			creatable[state.path] = struct{}{}
+		}
+		if state.existingDirtyAllowed {
+			dirtyTracked[state.path] = struct{}{}
 		}
 	}
 	return &MutationRecorder{
@@ -572,6 +653,7 @@ func newMutationRecorder(repositoryRoot string, states []targetState, createdDir
 		publishedPrivate:          map[string]publishedPrivateState{},
 		publishedTracked:          map[string]publishedTrackedState{},
 		publishedDirectories:      map[string]os.FileInfo{},
+		dirtyTrackedPaths:         dirtyTracked,
 	}
 }
 
@@ -714,10 +796,21 @@ func changedTargets(ctx context.Context, repositoryRoot string, states []targetS
 	}
 	defer root.Close()
 	for _, state := range states {
+		if state.existingDirtyAllowed {
+			currentInfo, currentDigest, snapshotError := rootedRegularSnapshot(root, state.path)
+			if isMissingPathError(snapshotError) || snapshotError == nil && (currentDigest != state.originalDigest || completeRegularFileMode(currentInfo.Mode()) != state.originalMode) {
+				changed = append(changed, state.path)
+				continue
+			}
+			if snapshotError != nil {
+				return nil, snapshotError
+			}
+			continue
+		}
 		if state.privateUntracked {
 			if state.existed {
 				currentInfo, currentDigest, snapshotError := rootedRegularSnapshot(root, state.path)
-				if os.IsNotExist(snapshotError) || snapshotError == nil && (currentDigest != state.originalDigest || completeRegularFileMode(currentInfo.Mode()) != state.originalMode) {
+				if isMissingPathError(snapshotError) || snapshotError == nil && (currentDigest != state.originalDigest || completeRegularFileMode(currentInfo.Mode()) != state.originalMode) {
 					changed = append(changed, state.path)
 					continue
 				}
@@ -771,6 +864,23 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 		defer root.Close()
 	}
 	for _, state := range states {
+		if state.existingDirtyAllowed {
+			published, recorded := recorder.publishedTracked[state.path]
+			if !recorded {
+				if root != nil && privateStateStillOriginal(root, state) {
+					continue
+				}
+				rollback.Errors = append(rollback.Errors, "dirty tracked target was not identity-recorded: "+state.path)
+				continue
+			}
+			action, restoreError := rollbackDirtyTracked(root, state, published)
+			if restoreError != nil {
+				rollback.Errors = append(rollback.Errors, restoreError.Error())
+				continue
+			}
+			rollback.Actions = append(rollback.Actions, action)
+			continue
+		}
 		if state.privateUntracked {
 			published, recorded := recorder.publishedPrivate[state.path]
 			if !recorded {
@@ -900,6 +1010,23 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 		return failTransaction(result, resultmodel.OutcomeRisk, FailureRollback, operationError.Error(), rolledBackPaths...)
 	}
 	return failTransaction(result, resultmodel.OutcomeRolledBack, failureKind, operationError.Error(), rolledBackPaths...)
+}
+
+func rollbackDirtyTracked(root *os.Root, state targetState, published publishedTrackedState) (string, error) {
+	if root == nil {
+		return "", errors.New("rollback root is unavailable")
+	}
+	if !published.existed {
+		if _, statError := root.Lstat(filepath.FromSlash(state.path)); !os.IsNotExist(statError) {
+			return "", fmt.Errorf("dirty tracked target changed after publication; preserved replacement: %s", state.path)
+		}
+		if err := rootedCreateRegular(root, state.path, state.originalBytes, state.originalMode); err != nil {
+			return "", fmt.Errorf("restore dirty tracked target %s: %w", state.path, err)
+		}
+		return "restored dirty tracked target " + state.path, nil
+	}
+	privatePublished := publishedPrivateState{info: published.info, digest: published.digest}
+	return quarantineAndRollbackPrivate(root, state, privatePublished)
 }
 
 func trackedPublicationStillOwned(root *os.Root, path string, published publishedTrackedState) bool {
@@ -1051,6 +1178,10 @@ func rootedCreateRegular(root *os.Root, path string, contents []byte, mode os.Fi
 
 func completeRegularFileMode(fileMode os.FileMode) os.FileMode {
 	return fileMode.Perm() | (fileMode & (os.ModeSetuid | os.ModeSetgid | os.ModeSticky))
+}
+
+func isMissingPathError(err error) bool {
+	return os.IsNotExist(err) || errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOENT)
 }
 
 func committedPaths(ctx context.Context, repositoryRoot, commitSHA string) ([]string, error) {

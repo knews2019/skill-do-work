@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.261.0 — Canonical Repository-Gate Deferral Transaction (2026-09-02)
+
+`do-work-cli` can now atomically turn an unrelated repository-gate failure into explicit repair work and return the affected request to the dependency-gated queue.
+
+- The strict `defer-gate --manifest` transaction creates or folds a canonical repair sweep, records exact gate evidence, removes only the owning checkpoint claim, and restores declared preimages on publication failure.
+- Default and UR-expanded selection prioritize ready repairs, then deferred parents, then ordinary work while preserving explicit REQ anchors and stable order.
+- Exact fingerprint and writer identities, merge ancestry, schema projections, recipes, documentation, and board sweep consumers now share the same contract.
+- REQ-493 remains queued to extend preflight classification to tracked-dirty repair folds and occupied parent queue destinations.
+
 ## 0.260.18 — Stop Signals from Hanging Confirmation Prompts (2026-09-02)
 
 Install and update can now stop promptly when a signal arrives at the confirmation prompt, without weakening transactional recovery after writes begin.

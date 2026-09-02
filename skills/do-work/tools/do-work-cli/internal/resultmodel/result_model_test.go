@@ -2,6 +2,7 @@ package resultmodel
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -96,10 +97,10 @@ func TestSelectionTextAndJSONCarryTheSameTypedCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, required := range []string{
-		"selected REQ-007 [explicit-req, depth 0, 10 min]",
+		"selected REQ-007 [explicit-req, ordinary, depth 0, 10 min]",
 		"request: do-work/queue/REQ-007-ready.md (original status: blocked)",
 		"probe succeeded (attempted: true, exit: 0); unblock required",
-		"excluded REQ-008 [ur-expanded] DEPENDENCIES-UNMET: waits on REQ-007",
+		"excluded REQ-008 [ur-expanded, ordinary] DEPENDENCIES-UNMET: waits on REQ-007",
 		"request: do-work/queue/REQ-008-waiting.md (original status: pending)",
 		"probe not_applicable (attempted: false, exit: -1)",
 		"claim checkpoint: claimed_at=2026-09-01T10:00:00Z writer=host:/repo path=do-work/CHECKPOINT.md line=12",
@@ -233,6 +234,38 @@ func TestTextRenderingNamesChangesSkippedWorkAndRollbackErrors(t *testing.T) {
 	} {
 		if !containsExactLine(string(rendered), expectedLine) {
 			t.Errorf("text output is missing the exact line %q:\n%s", expectedLine, rendered)
+		}
+	}
+}
+
+func TestGateDeferralEvidenceHasTypedJSONAndTextParity(t *testing.T) {
+	result := CommandResult{Command: "defer-gate", Outcome: OutcomeSuccess, GateDeferral: &GateDeferralResult{
+		ParentID: "REQ-101", ParentPath: "do-work/queue/REQ-101.md", RepairID: "REQ-901", RepairPath: "do-work/queue/REQ-901.md",
+		CheckpointPath: "do-work/CHECKPOINT.md", RepairOutcome: "folded", RepairDependency: "REQ-901",
+		DiagnosticFingerprint: "sha256:red", SweepKey: "repository-gate-red", GateCommand: []string{"go", "test", "./..."}, GateExitStatus: 1,
+	}}
+	jsonBytes, err := RenderResult(result, FormatJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded CommandResult
+	if err := json.Unmarshal(jsonBytes, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.GateDeferral == nil || decoded.GateDeferral.RepairOutcome != "folded" || !reflect.DeepEqual(decoded.GateDeferral.GateCommand, []string{"go", "test", "./..."}) {
+		t.Fatalf("typed gate deferral = %#v", decoded.GateDeferral)
+	}
+	textBytes, err := RenderResult(result, FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		"parent=REQ-101", "repair=REQ-901", "outcome=folded", "go test ./... (exit: 1)",
+		"parent path: do-work/queue/REQ-101.md", "repair path: do-work/queue/REQ-901.md",
+		"checkpoint path: do-work/CHECKPOINT.md", "repair dependency: REQ-901", "sweep key: repository-gate-red",
+	} {
+		if !strings.Contains(string(textBytes), required) {
+			t.Fatalf("text omitted %q:\n%s", required, textBytes)
 		}
 	}
 }

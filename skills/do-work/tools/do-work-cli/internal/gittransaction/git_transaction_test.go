@@ -1041,3 +1041,53 @@ func TestAnUnrecordedCreationIsRolledBackRatherThanReportedAsSuccess(t *testing.
 		t.Logf("the unrecorded creation was removed by rollback, which is acceptable")
 	}
 }
+
+func TestExistingDirtyTargetOptInRestoresExactPreimageAndRefusesStagedInput(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "parent.md", "committed\n")
+	commitAll(t, repositoryRoot, "seed")
+	dirtyPath := filepath.Join(repositoryRoot, "parent.md")
+	if err := os.WriteFile(dirtyPath, []byte("intentional dirty\n"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dirtyPath, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot:           repositoryRoot,
+		TargetPaths:              []string{"parent.md", "created.md"},
+		ExistingDirtyTargetPaths: []string{"parent.md"},
+	}, func(recorder *MutationRecorder) error {
+		if err := os.Remove(dirtyPath); err != nil {
+			return err
+		}
+		if err := recorder.RecordTouched("parent.md"); err != nil {
+			return err
+		}
+		writeFile(t, repositoryRoot, "created.md", "created\n")
+		if err := recorder.RecordCreated("created.md"); err != nil {
+			return err
+		}
+		return errors.New("injected after every mutation")
+	})
+	if result.Outcome != resultmodel.OutcomeRolledBack || result.Rollback.Status != resultmodel.RollbackSucceeded {
+		t.Fatalf("result = %#v", result)
+	}
+	if got := readFile(t, repositoryRoot, "parent.md"); got != "intentional dirty\n" {
+		t.Fatalf("dirty preimage = %q", got)
+	}
+	if info, err := os.Stat(dirtyPath); err != nil || info.Mode().Perm() != 0o750 {
+		t.Fatalf("dirty mode = %v, err=%v", info, err)
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, "created.md")); !os.IsNotExist(err) {
+		t.Fatalf("created target survived rollback: %v", err)
+	}
+
+	runFixtureGit(t, repositoryRoot, "add", "parent.md")
+	staged := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot, TargetPaths: []string{"parent.md"}, ExistingDirtyTargetPaths: []string{"parent.md"},
+	}, func(*MutationRecorder) error { return nil })
+	if staged.Outcome != resultmodel.OutcomeRefused || staged.Failure == nil || staged.Failure.Kind != FailureDirtyIndex {
+		t.Fatalf("staged dirty opt-in = %#v", staged)
+	}
+}

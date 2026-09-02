@@ -13,6 +13,7 @@ type fieldContract struct {
 	aliasValues     map[string]string
 	defaultValue    string
 	upperCase       bool
+	verbatim        bool
 }
 
 var fieldContracts = map[string]fieldContract{
@@ -85,6 +86,18 @@ var fieldContracts = map[string]fieldContract{
 		aliasValues:     map[string]string{},
 		defaultValue:    "false",
 	},
+	"gate_deferred": {
+		canonicalValues: []string{"true", "false"},
+		aliasValues:     map[string]string{"yes": "true", "on": "true", "t": "true", "no": "false", "off": "false", "f": "false"},
+		defaultValue:    "false",
+	},
+	"repository_gate_repair": {
+		canonicalValues: []string{"true", "false"},
+		aliasValues:     map[string]string{"yes": "true", "on": "true", "t": "true", "no": "false", "off": "false", "f": "false"},
+		defaultValue:    "false",
+	},
+	"deferred_implementation_base":  {verbatim: true},
+	"deferred_implementation_merge": {verbatim: true},
 }
 
 // FieldResult is the complete evidence for one schema-backed field read.
@@ -116,6 +129,9 @@ func NormalizeField(fieldName string, rawValue string) FieldResult {
 	}
 	if trimmedValue == "" {
 		return FieldResult{FieldName: fieldName, OriginalValue: rawValue, ResolvedValue: contract.defaultValue, IsRecognized: true, IsDefaulted: true}
+	}
+	if contract.verbatim {
+		return FieldResult{FieldName: fieldName, OriginalValue: rawValue, ResolvedValue: trimmedValue, IsRecognized: true}
 	}
 	normalizedValue := strings.ToLower(trimmedValue)
 	if contract.upperCase {

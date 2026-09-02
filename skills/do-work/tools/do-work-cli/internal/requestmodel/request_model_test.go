@@ -75,6 +75,27 @@ func TestSetScalarChangesOnlyAuthorizedBytes(t *testing.T) {
 	}
 }
 
+func TestSetListCanonicalizesOwnedFieldAndPreservesOutsideBytes(t *testing.T) {
+	original := []byte("---\r\nid: REQ-9\r\ndepends_on:\r\n  - REQ-1\r\nunknown: [keep, me]\r\n---\r\nBODY\r\n")
+	document, err := ParseDocument(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := document.SetList("depends_on", []string{"REQ-1", "REQ-2"}); err != nil {
+		t.Fatal(err)
+	}
+	want := []byte("---\r\nid: REQ-9\r\ndepends_on: [REQ-1, REQ-2]\r\nunknown: [keep, me]\r\n---\r\nBODY\r\n")
+	if !bytes.Equal(document.DocumentBytes(), want) {
+		t.Fatalf("SetList bytes = %q, want %q", document.DocumentBytes(), want)
+	}
+	if err := document.SetList("related", []string{}); err != nil {
+		t.Fatal(err)
+	}
+	if field, found := document.FieldValue("related"); !found || field.ListValues == nil || len(field.ListValues) != 0 {
+		t.Fatalf("empty list evidence = %#v, found=%t", field, found)
+	}
+}
+
 func TestRequiredLessonsSurviveNormalizedWriterRoundTrip(t *testing.T) {
 	original := []byte("---\n" +
 		"id: REQ-478\n" +
@@ -200,6 +221,10 @@ func TestTypedRecordCarriesEveryNormalizedSchemaFieldAndGenericEvidence(t *testi
 		"id: REQ-42\n" +
 		"status: done\n" +
 		"builder_decided: true\n" +
+		"gate_deferred: yes\n" +
+		"repository_gate_repair: true\n" +
+		"deferred_implementation_base: abc123\n" +
+		"deferred_implementation_merge: def456\n" +
 		"caveman: light\n" +
 		"domain: back_end\n" +
 		"effort_estimate: trivial\n" +
@@ -227,12 +252,16 @@ func TestTypedRecordCarriesEveryNormalizedSchemaFieldAndGenericEvidence(t *testi
 	}{
 		{"builder_decided", "BuilderDecidedValue", "BuilderDecidedEvidence", "true", "true", true},
 		{"caveman", "CavemanValue", "CavemanEvidence", "light", "lite", true},
+		{"deferred_implementation_base", "DeferredImplementationBaseValue", "DeferredImplementationBaseEvidence", "abc123", "abc123", true},
+		{"deferred_implementation_merge", "DeferredImplementationMergeValue", "DeferredImplementationMergeEvidence", "def456", "def456", true},
 		{"domain", "DomainValue", "DomainEvidence", "back_end", "backend", true},
 		{"effort_estimate", "EffortEstimateValue", "EffortEstimateEvidence", "trivial", "effort-mechanical", true},
 		{"error_type", "ErrorTypeValue", "ErrorTypeEvidence", "spec", "spec", true},
+		{"gate_deferred", "GateDeferredValue", "GateDeferredEvidence", "yes", "true", true},
 		{"impact", "ImpactValue", "ImpactEvidence", "surprising", "impact-user-visible", false},
 		{"kb_status", "KBStatusValue", "KBStatusEvidence", "skip", "skipped", true},
 		{"maintenance", "MaintenanceValue", "MaintenanceEvidence", "yes", "true", true},
+		{"repository_gate_repair", "RepositoryGateRepairValue", "RepositoryGateRepairEvidence", "true", "true", true},
 		{"route", "RouteValue", "RouteEvidence", "b", "B", true},
 		{"status", "RequestStatus", "StatusEvidence", "done", "completed", true},
 		{"tdd", "TDDValue", "TDDEvidence", "test_first", "true", true},

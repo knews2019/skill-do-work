@@ -5,7 +5,7 @@ repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
 template="$repo_root/skills/do-work-board/justfile.template"
 root_justfile="$repo_root/justfile"
 
-expected_recipes='architecture-report-preflight audit-metrics bkb-init bkb-lint-structure bkb-status do-work-answer do-work-cancel do-work-capture-files do-work-claim do-work-cleanup do-work-complete do-work-doctor do-work-fail do-work-next do-work-release do-work-unblock do-work-update dream-scan generate-report-image generate-report-image-batch install-last30days interview-export interview-ingest interview-list interview-reset interview-status interview-versions kanban-static kanban-summary memory-audit memory-bootstrap memory-forget memory-recall memory-remember memory-status publish-portfolio-summary run-do-work-update run-kanban run-kanban-cli do-work-note'
+expected_recipes='architecture-report-preflight audit-metrics bkb-init bkb-lint-structure bkb-status do-work-answer do-work-cancel do-work-capture-files do-work-claim do-work-cleanup do-work-complete do-work-defer-gate do-work-doctor do-work-fail do-work-next do-work-release do-work-unblock do-work-update dream-scan generate-report-image generate-report-image-batch install-last30days interview-export interview-ingest interview-list interview-reset interview-status interview-versions kanban-static kanban-summary memory-audit memory-bootstrap memory-forget memory-recall memory-remember memory-status publish-portfolio-summary run-do-work-update run-kanban run-kanban-cli do-work-note'
 expected_recipes="$(tr ' ' '\n' <<<"$expected_recipes" | LC_ALL=C sort | paste -sd' ' -)"
 
 for justfile_path in "$template" "$root_justfile"; do
@@ -83,4 +83,4 @@ for recipe_name in $expected_recipes; do
   esac
 done
 
-printf 'flat Just recipe behavior passed (40 definitions)\n'
+printf 'flat Just recipe behavior passed (41 definitions)\n'

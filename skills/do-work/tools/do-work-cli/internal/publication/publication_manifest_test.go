@@ -23,6 +23,16 @@ func TestDecodeManifestIsStrictAndOperationSpecific(t *testing.T) {
 	}
 }
 
+func TestDecodeManifestAcceptsOnlyTypedDeferGateBody(t *testing.T) {
+	valid := `{"operation":"defer-gate","defer_gate":{"parent_id":"REQ-1","parent_path":"do-work/working/REQ-1.md","expected_parent":{"source_path":"parent"},"expected_status":"claimed","checkpoint_path":"do-work/CHECKPOINT.md","expected_checkpoint":{"source_path":"checkpoint"},"writer_label":"host:/repo","gate_command":["go","test"],"gate_exit_status":1,"diagnostic_fingerprint":"fingerprint","diagnostic_evidence":["failed"],"sweep_key":"gate-fingerprint","repair_id":"REQ-2","repair_path":"do-work/queue/REQ-2.md","repair_title":"Repair gate","repair_created_at":"2026-09-02T01:02:03Z","reservation_path":"do-work/.req-reservations/REQ-2"}}`
+	if _, err := DecodeManifest(strings.NewReader(valid), OperationDeferGate); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DecodeManifest(strings.NewReader(strings.Replace(valid, `}}`, `,"invented":true}}`, 1)), OperationDeferGate); err == nil {
+		t.Fatal("unknown defer-gate field accepted")
+	}
+}
+
 func TestReadPayloadRejectsSymlinkSource(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "payload/real", []byte("data"), 0o644)

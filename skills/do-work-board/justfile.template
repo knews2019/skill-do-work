@@ -52,6 +52,9 @@ do-work-answer *args:
 do-work-capture-files *args:
     project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" capture-files "$@"
 [positional-arguments]
+do-work-defer-gate *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" defer-gate "$@"
+[positional-arguments]
 do-work-release *args:
     project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" release "$@"
 

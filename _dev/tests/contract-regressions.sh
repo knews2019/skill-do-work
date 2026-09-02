@@ -7502,13 +7502,33 @@ assert_contains \
 assert_contains \
   "skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go" \
   'publication\.Handlers' \
-  'the shipped binary must register capture-files, answer, and release.'
-for publication_command in capture-files answer release; do
+  'the shipped binary must register capture-files, answer, release, and defer-gate.'
+for publication_command in capture-files answer release defer-gate; do
   assert_contains \
     "skills/do-work/tools/do-work-cli/internal/publication/publication_types.go" \
     "= \"$publication_command\"" \
     "publication must retain the typed $publication_command operation."
 done
+assert_contains \
+  "skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go" \
+  'SetScalar\("status", "pending"\)' \
+  'defer-gate must return the parent to pending rather than blocked or pending-answers.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go" \
+  'SetList\("depends_on"' \
+  'defer-gate must persist repair work as a canonical dependency.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go" \
+  'checkpointWithoutOwnedClaim' \
+  'defer-gate must remove only the exact writer claim through the transaction owner.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go" \
+  '\{"sweep", "true"\}' \
+  'defer-gate repair requests must remain canonical consolidation sweeps.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go" \
+  '## Instances' \
+  'defer-gate repair requests must project occurrences for alternate sweep consumers.'
 assert_contains \
   "skills/do-work/actions/capture.md" \
   'capture-files --manifest.*--commit' \

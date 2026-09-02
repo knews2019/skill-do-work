@@ -7,7 +7,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
 )
 
-func TestTargetResolutionPreservesExplicitProvenanceOverURExpansion(t *testing.T) {
+func TestTargetResolutionPreservesMixedTokenOrderAndExplicitProvenance(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-042-first.md", "REQ-042", "pending", "user_request: UR-011\ndepends_on: [REQ-099]\n")
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-043-second.md", "REQ-043", "pending", "user_request: UR-011\n")
@@ -20,11 +20,11 @@ func TestTargetResolutionPreservesExplicitProvenanceOverURExpansion(t *testing.T
 	if len(exclusions) != 0 || len(candidates) != 2 {
 		t.Fatalf("resolution = %#v, exclusions=%#v", candidates, exclusions)
 	}
-	if candidates[0].RequestID != "REQ-042" || candidates[0].Provenance != ProvenanceExplicit {
-		t.Fatalf("REQ reached both ways did not retain explicit provenance: %#v", candidates[0])
+	if candidates[0].RequestID != "REQ-043" || candidates[0].Provenance != ProvenanceUserRequest {
+		t.Fatalf("UR expansion did not retain its token position: %#v", candidates[0])
 	}
-	if candidates[1].RequestID != "REQ-043" || candidates[1].Provenance != ProvenanceUserRequest {
-		t.Fatalf("UR member provenance = %#v", candidates[1])
+	if candidates[1].RequestID != "REQ-042" || candidates[1].Provenance != ProvenanceExplicit {
+		t.Fatalf("explicit duplicate was not reserved for its caller position: %#v", candidates[1])
 	}
 
 	_, missing := resolveTargets(snapshot, graph, SelectionOptions{TargetTokens: []string{"REQ-999", "UR-999"}})

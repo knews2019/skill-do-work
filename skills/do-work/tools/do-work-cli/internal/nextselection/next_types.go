@@ -17,6 +17,12 @@ const (
 	ProvenanceSimple      = "simple-selector"
 )
 
+const (
+	PriorityRepositoryGateRepair = "repository-gate-repair"
+	PriorityDeferredParent       = "gate-deferred"
+	PriorityOrdinary             = "ordinary"
+)
+
 type SelectionOptions struct {
 	TargetTokens         []string
 	WaveDepth            *int
@@ -30,6 +36,7 @@ type selectionCandidate struct {
 	RequestID   string
 	Provenance  string
 	SourceToken string
+	Priority    string
 }
 
 type ProbeRunner func(probeBytes []byte, timeoutSeconds int) (int, error)

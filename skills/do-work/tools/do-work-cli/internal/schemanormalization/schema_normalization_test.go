@@ -17,6 +17,9 @@ func TestNormalizeFieldAppliesAliasesDefaultsAndExactWarnings(t *testing.T) {
 		{"route case", "route", "b", "B", true, false, ""},
 		{"testing alias", "testing_status", "returned with feedback", "returned", true, false, ""},
 		{"legacy effort", "effort_estimate", "trivial", "effort-mechanical", true, false, ""},
+		{"gate deferred alias", "gate_deferred", "yes", "true", true, false, ""},
+		{"repair default", "repository_gate_repair", "", "false", true, true, ""},
+		{"deferred base is verbatim", "deferred_implementation_base", " abc123 ", "abc123", true, false, ""},
 		{"absent default is quiet", "impact", "", "impact-user-visible", true, true, ""},
 		{
 			"unknown warns and defaults", "domain", "server", "general", false, true,

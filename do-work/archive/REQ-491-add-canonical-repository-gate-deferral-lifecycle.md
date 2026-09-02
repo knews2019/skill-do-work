@@ -1,7 +1,7 @@
 ---
 id: REQ-491
 title: 'Add canonical repository-gate deferral lifecycle'
-status: claimed
+status: completed
 route: C
 created_at: 2026-09-01T19:56:26Z
 user_request: UR-095
@@ -71,6 +71,9 @@ write_set:
   - _dev/tests/install-suite-behavior.sh
   - _dev/tests/flat-just-recipes-behavior.sh
   - _dev/tests/contract-regressions.sh
+completed_at: 2026-09-02T02:25:16Z
+release_at: 2026-09-02T02:26:42Z
+commit: ''
 ---
 
 # Add Canonical Repository-Gate Deferral Lifecycle

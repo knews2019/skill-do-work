@@ -33,6 +33,16 @@ func resolveTargets(snapshot *repositorymodel.RepositorySnapshot, graph *depende
 	ordered := []selectionCandidate{}
 	indexByID := map[string]int{}
 	exclusions := []resultmodel.SelectionExclusion{}
+	explicitIDs := map[string]bool{}
+	for _, token := range options.TargetTokens {
+		if !hasIDPrefix(token, "REQ-") {
+			continue
+		}
+		number, _ := numericID(token, "REQ-")
+		if requestFile := requestByNumber[number]; requestFile != nil {
+			explicitIDs[requestID(requestFile)] = true
+		}
+	}
 	for _, token := range options.TargetTokens {
 		switch {
 		case hasIDPrefix(token, "REQ-"):
@@ -44,13 +54,11 @@ func resolveTargets(snapshot *repositorymodel.RepositorySnapshot, graph *depende
 				continue
 			}
 			identifier := requestID(requestFile)
-			if existingIndex, found := indexByID[identifier]; found {
-				ordered[existingIndex].Provenance = ProvenanceExplicit
-				ordered[existingIndex].SourceToken = canonical
+			if _, found := indexByID[identifier]; found {
 				continue
 			}
 			indexByID[identifier] = len(ordered)
-			ordered = append(ordered, selectionCandidate{RequestFile: requestFile, RequestID: identifier, Provenance: ProvenanceExplicit, SourceToken: canonical})
+			ordered = append(ordered, selectionCandidate{RequestFile: requestFile, RequestID: identifier, Provenance: ProvenanceExplicit, SourceToken: canonical, Priority: selectionPriority(requestFile)})
 		case hasIDPrefix(token, "UR-"):
 			userRequestNumber, _ := numericID(token, "UR-")
 			canonical, _ := canonicalToken(token, "UR-")
@@ -65,6 +73,11 @@ func resolveTargets(snapshot *repositorymodel.RepositorySnapshot, graph *depende
 				}
 			}
 			sort.SliceStable(members, func(leftIndex, rightIndex int) bool {
+				leftPriority := priorityRank(selectionPriority(members[leftIndex]))
+				rightPriority := priorityRank(selectionPriority(members[rightIndex]))
+				if leftPriority != rightPriority {
+					return leftPriority < rightPriority
+				}
 				leftID := requestID(members[leftIndex])
 				rightID := requestID(members[rightIndex])
 				leftDepth := graphDepth(graph, leftID)
@@ -79,11 +92,14 @@ func resolveTargets(snapshot *repositorymodel.RepositorySnapshot, graph *depende
 			}
 			for _, requestFile := range members {
 				identifier := requestID(requestFile)
+				if explicitIDs[identifier] {
+					continue
+				}
 				if _, found := indexByID[identifier]; found {
 					continue
 				}
 				indexByID[identifier] = len(ordered)
-				ordered = append(ordered, selectionCandidate{RequestFile: requestFile, RequestID: identifier, Provenance: ProvenanceUserRequest, SourceToken: canonical})
+				ordered = append(ordered, selectionCandidate{RequestFile: requestFile, RequestID: identifier, Provenance: ProvenanceUserRequest, SourceToken: canonical, Priority: selectionPriority(requestFile)})
 			}
 		}
 	}
@@ -94,13 +110,23 @@ func queueCandidates(snapshot *repositorymodel.RepositorySnapshot, provenance st
 	candidates := []selectionCandidate{}
 	for _, requestFile := range snapshot.RequestFiles {
 		if requestFile.TreeSection == "queue" {
-			candidates = append(candidates, selectionCandidate{RequestFile: requestFile, RequestID: requestID(requestFile), Provenance: provenance})
+			candidates = append(candidates, selectionCandidate{RequestFile: requestFile, RequestID: requestID(requestFile), Provenance: provenance, Priority: selectionPriority(requestFile)})
 		}
 	}
 	sort.SliceStable(candidates, func(leftIndex, rightIndex int) bool {
 		return requestIDLess(candidates[leftIndex].RequestID, candidates[rightIndex].RequestID)
 	})
 	return candidates
+}
+
+func selectionPriority(requestFile *repositorymodel.RequestFile) string {
+	if requestFile != nil && requestFile.TypedRecord.RepositoryGateRepairValue == "true" {
+		return PriorityRepositoryGateRepair
+	}
+	if requestFile != nil && requestFile.TypedRecord.GateDeferredValue == "true" {
+		return PriorityDeferredParent
+	}
+	return PriorityOrdinary
 }
 
 func hasIDPrefix(token, prefix string) bool {

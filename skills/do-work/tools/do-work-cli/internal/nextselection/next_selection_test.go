@@ -314,6 +314,81 @@ func TestWaveDepthAndFanOutAreSeparateSelectionAxes(t *testing.T) {
 	assertExclusionCode(t, result, "REQ-303", "WAVE-MISMATCH")
 }
 
+func TestReadyGateWorkPriorityPreservesExplicitOrder(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-801-ordinary.md", "REQ-801", "pending", "user_request: UR-801\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-802-deferred.md", "REQ-802", "pending", "user_request: UR-801\ngate_deferred: true\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-803-repair.md", "REQ-803", "pending", "user_request: UR-801\nrepository_gate_repair: true\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph := dependencygraph.BuildGraph(snapshot)
+	limit := 3
+	for name, options := range map[string]SelectionOptions{
+		"default":     {FanOutLimit: &limit},
+		"ur-expanded": {TargetTokens: []string{"UR-801"}, FanOutLimit: &limit},
+	} {
+		result := Select(snapshot, graph, options, nil)
+		if got := selectedRequestIDsFromModel(result.Selected); !equalStrings(got, []string{"REQ-803", "REQ-802", "REQ-801"}) {
+			t.Fatalf("%s priority order = %v", name, got)
+		}
+		if result.Selected[0].SelectionPriority != PriorityRepositoryGateRepair || result.Selected[1].SelectionPriority != PriorityDeferredParent || result.Selected[2].SelectionPriority != PriorityOrdinary {
+			t.Fatalf("%s priority evidence = %#v", name, result.Selected)
+		}
+	}
+	explicit := Select(snapshot, graph, SelectionOptions{TargetTokens: []string{"REQ-801", "REQ-803", "REQ-802"}, FanOutLimit: &limit}, nil)
+	if got := selectedRequestIDsFromModel(explicit.Selected); !equalStrings(got, []string{"REQ-801", "REQ-803", "REQ-802"}) {
+		t.Fatalf("explicit order changed: %v", got)
+	}
+}
+
+func TestMixedExplicitAndURTargetsKeepCallerAnchorsAndPriorityEachExpansion(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-811-ordinary.md", "REQ-811", "pending", "user_request: UR-811\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-812-explicit-deferred.md", "REQ-812", "pending", "user_request: UR-811\ngate_deferred: true\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-813-repair.md", "REQ-813", "pending", "user_request: UR-811\nrepository_gate_repair: true\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-814-deferred.md", "REQ-814", "pending", "user_request: UR-811\ngate_deferred: true\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-815-explicit-ordinary.md", "REQ-815", "pending", "user_request: UR-811\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph := dependencygraph.BuildGraph(snapshot)
+	limit := 5
+	for name, test := range map[string]struct {
+		tokens []string
+		want   []string
+	}{
+		"explicit then expansion with duplicate": {
+			tokens: []string{"REQ-815", "UR-811", "REQ-812", "REQ-815"},
+			want:   []string{"REQ-815", "REQ-813", "REQ-814", "REQ-811", "REQ-812"},
+		},
+		"expansion then explicit anchors": {
+			tokens: []string{"UR-811", "REQ-812", "REQ-815"},
+			want:   []string{"REQ-813", "REQ-814", "REQ-811", "REQ-812", "REQ-815"},
+		},
+		"duplicate expansion": {
+			tokens: []string{"UR-811", "UR-811", "REQ-812"},
+			want:   []string{"REQ-813", "REQ-814", "REQ-811", "REQ-815", "REQ-812"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			result := Select(snapshot, graph, SelectionOptions{TargetTokens: test.tokens, FanOutLimit: &limit}, nil)
+			if got := selectedRequestIDsFromModel(result.Selected); !equalStrings(got, test.want) {
+				t.Fatalf("mixed order = %v, want %v", got, test.want)
+			}
+			seen := map[string]bool{}
+			for _, selected := range result.Selected {
+				if seen[selected.RequestID] {
+					t.Fatalf("duplicate selected record: %#v", result.Selected)
+				}
+				seen[selected.RequestID] = true
+			}
+		})
+	}
+}
+
 func TestSimpleSelectionRetainsSpecializedVetoesAndFrozenEstimate(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-401-good.md", "REQ-401", "pending", "effort_estimate: trivial\nestimate:\n  p50_active_minutes: 15\n")

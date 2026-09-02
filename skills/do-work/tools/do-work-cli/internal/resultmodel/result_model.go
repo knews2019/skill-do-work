@@ -148,22 +148,23 @@ const (
 // Commands are carried as argv rather than display strings so every renderer
 // preserves the same pasteable next action.
 type SelectionRecord struct {
-	RequestID        string               `json:"request_id"`
-	RequestPath      string               `json:"request_path"`
-	Title            string               `json:"title"`
-	Provenance       string               `json:"provenance"`
-	OriginalStatus   string               `json:"original_status"`
-	ProbeStatus      SelectionProbeStatus `json:"probe_status"`
-	ProbeAttempted   bool                 `json:"probe_attempted"`
-	ProbeExitCode    int                  `json:"probe_exit_code"`
-	UnblockRequired  bool                 `json:"unblock_required"`
-	DependencyDepth  int                  `json:"dependency_depth"`
-	Dependencies     []string             `json:"dependencies"`
-	EstimateMinutes  int                  `json:"estimate_minutes"`
-	EstimateKnown    bool                 `json:"estimate_known"`
-	NextArgv         []string             `json:"next_argv"`
-	NextJustRecipe   string               `json:"next_just_recipe"`
-	VerificationArgv []string             `json:"verification_argv"`
+	RequestID         string               `json:"request_id"`
+	RequestPath       string               `json:"request_path"`
+	Title             string               `json:"title"`
+	Provenance        string               `json:"provenance"`
+	SelectionPriority string               `json:"selection_priority"`
+	OriginalStatus    string               `json:"original_status"`
+	ProbeStatus       SelectionProbeStatus `json:"probe_status"`
+	ProbeAttempted    bool                 `json:"probe_attempted"`
+	ProbeExitCode     int                  `json:"probe_exit_code"`
+	UnblockRequired   bool                 `json:"unblock_required"`
+	DependencyDepth   int                  `json:"dependency_depth"`
+	Dependencies      []string             `json:"dependencies"`
+	EstimateMinutes   int                  `json:"estimate_minutes"`
+	EstimateKnown     bool                 `json:"estimate_known"`
+	NextArgv          []string             `json:"next_argv"`
+	NextJustRecipe    string               `json:"next_just_recipe"`
+	VerificationArgv  []string             `json:"verification_argv"`
 }
 
 // SelectionClaimEvidence is one exact ownership fact that vetoed selection.
@@ -179,21 +180,22 @@ type SelectionClaimEvidence struct {
 // SelectionExclusion is one considered request that cannot be selected. Code
 // is stable for machines; Reason is actionable for people.
 type SelectionExclusion struct {
-	RequestID        string                   `json:"request_id"`
-	RequestPath      string                   `json:"request_path"`
-	Title            string                   `json:"title"`
-	Provenance       string                   `json:"provenance"`
-	OriginalStatus   string                   `json:"original_status"`
-	ProbeStatus      SelectionProbeStatus     `json:"probe_status"`
-	ProbeAttempted   bool                     `json:"probe_attempted"`
-	ProbeExitCode    int                      `json:"probe_exit_code"`
-	UnblockRequired  bool                     `json:"unblock_required"`
-	Code             string                   `json:"code"`
-	Reason           string                   `json:"reason"`
-	ClaimEvidence    []SelectionClaimEvidence `json:"claim_evidence"`
-	NextArgv         []string                 `json:"next_argv"`
-	NextJustRecipe   string                   `json:"next_just_recipe"`
-	VerificationArgv []string                 `json:"verification_argv"`
+	RequestID         string                   `json:"request_id"`
+	RequestPath       string                   `json:"request_path"`
+	Title             string                   `json:"title"`
+	Provenance        string                   `json:"provenance"`
+	SelectionPriority string                   `json:"selection_priority"`
+	OriginalStatus    string                   `json:"original_status"`
+	ProbeStatus       SelectionProbeStatus     `json:"probe_status"`
+	ProbeAttempted    bool                     `json:"probe_attempted"`
+	ProbeExitCode     int                      `json:"probe_exit_code"`
+	UnblockRequired   bool                     `json:"unblock_required"`
+	Code              string                   `json:"code"`
+	Reason            string                   `json:"reason"`
+	ClaimEvidence     []SelectionClaimEvidence `json:"claim_evidence"`
+	NextArgv          []string                 `json:"next_argv"`
+	NextJustRecipe    string                   `json:"next_just_recipe"`
+	VerificationArgv  []string                 `json:"verification_argv"`
 }
 
 // SelectionSummary is the queue projection rendered beside selected and
@@ -226,6 +228,22 @@ type RollbackResult struct {
 	Errors  []string       `json:"errors"`
 }
 
+type GateDeferralResult struct {
+	ParentID                    string   `json:"parent_id"`
+	ParentPath                  string   `json:"parent_path"`
+	RepairID                    string   `json:"repair_id"`
+	RepairPath                  string   `json:"repair_path"`
+	CheckpointPath              string   `json:"checkpoint_path"`
+	RepairOutcome               string   `json:"repair_outcome"`
+	RepairDependency            string   `json:"repair_dependency"`
+	DiagnosticFingerprint       string   `json:"diagnostic_fingerprint"`
+	SweepKey                    string   `json:"sweep_key"`
+	GateCommand                 []string `json:"gate_command"`
+	GateExitStatus              int      `json:"gate_exit_status"`
+	DeferredImplementationBase  string   `json:"deferred_implementation_base,omitempty"`
+	DeferredImplementationMerge string   `json:"deferred_implementation_merge,omitempty"`
+}
+
 type CommandResult struct {
 	SchemaVersion    int                  `json:"schema_version"`
 	Command          string               `json:"command"`
@@ -240,6 +258,7 @@ type CommandResult struct {
 	Rollback         RollbackResult       `json:"rollback"`
 	ProtocolOutput   *string              `json:"protocol_output,omitempty"`
 	AuditMetrics     *AuditMetricsResult  `json:"audit_metrics,omitempty"`
+	GateDeferral     *GateDeferralResult  `json:"gate_deferral,omitempty"`
 	// ExactTextOutput preserves compatibility-shaped stdout without polluting
 	// JSON with an opaque duplicate. It must be derived from the same typed
 	// observation carried by the result.
@@ -287,6 +306,9 @@ func NormalizeResult(result CommandResult) CommandResult {
 	}
 	for index := range result.Selected {
 		selection := &result.Selected[index]
+		if selection.SelectionPriority == "" {
+			selection.SelectionPriority = "ordinary"
+		}
 		if selection.ProbeStatus == "" {
 			selection.ProbeStatus = ProbeNotApplicable
 		}
@@ -305,6 +327,9 @@ func NormalizeResult(result CommandResult) CommandResult {
 	}
 	for index := range result.Excluded {
 		exclusion := &result.Excluded[index]
+		if exclusion.SelectionPriority == "" {
+			exclusion.SelectionPriority = "ordinary"
+		}
 		if exclusion.ProbeStatus == "" {
 			exclusion.ProbeStatus = ProbeNotApplicable
 		}
@@ -353,6 +378,9 @@ func NormalizeResult(result CommandResult) CommandResult {
 		if metrics.UnavailablePaths == nil {
 			metrics.UnavailablePaths = []string{}
 		}
+	}
+	if result.GateDeferral != nil && result.GateDeferral.GateCommand == nil {
+		result.GateDeferral.GateCommand = []string{}
 	}
 	for index := range result.Findings {
 		finding := &result.Findings[index]
@@ -426,6 +454,19 @@ func renderText(result CommandResult) []byte {
 	for _, change := range result.Changes {
 		fmt.Fprintf(&output, "change %s [%s]: %s\n", change.Path, change.Kind, change.Detail)
 	}
+	if result.GateDeferral != nil {
+		gate := result.GateDeferral
+		fmt.Fprintf(&output, "gate deferral: parent=%s repair=%s outcome=%s fingerprint=%s\n", gate.ParentID, gate.RepairID, gate.RepairOutcome, gate.DiagnosticFingerprint)
+		fmt.Fprintf(&output, "  parent path: %s\n", gate.ParentPath)
+		fmt.Fprintf(&output, "  repair path: %s\n", gate.RepairPath)
+		fmt.Fprintf(&output, "  checkpoint path: %s\n", gate.CheckpointPath)
+		fmt.Fprintf(&output, "  repair dependency: %s\n", gate.RepairDependency)
+		fmt.Fprintf(&output, "  sweep key: %s\n", gate.SweepKey)
+		fmt.Fprintf(&output, "  gate command: %s (exit: %d)\n", joinArgv(gate.GateCommand), gate.GateExitStatus)
+		if gate.DeferredImplementationBase != "" {
+			fmt.Fprintf(&output, "  implementation range: %s..%s\n", gate.DeferredImplementationBase, gate.DeferredImplementationMerge)
+		}
+	}
 	for _, skipped := range result.SkippedWork {
 		fmt.Fprintf(&output, "skipped %s: %s\n", skipped.Code, skipped.Reason)
 	}
@@ -441,7 +482,7 @@ func renderText(result CommandResult) []byte {
 		if selection.EstimateKnown {
 			estimate = fmt.Sprintf("%d min", selection.EstimateMinutes)
 		}
-		fmt.Fprintf(&output, "selected %s [%s, depth %d, %s]: %s\n", selection.RequestID, selection.Provenance, selection.DependencyDepth, estimate, selection.Title)
+		fmt.Fprintf(&output, "selected %s [%s, %s, depth %d, %s]: %s\n", selection.RequestID, selection.Provenance, selection.SelectionPriority, selection.DependencyDepth, estimate, selection.Title)
 		fmt.Fprintf(&output, "  request: %s (original status: %s)\n", selection.RequestPath, selection.OriginalStatus)
 		fmt.Fprintf(&output, "  probe %s (attempted: %t, exit: %d)", selection.ProbeStatus, selection.ProbeAttempted, selection.ProbeExitCode)
 		if selection.UnblockRequired {
@@ -456,7 +497,7 @@ func renderText(result CommandResult) []byte {
 		selectedIDs = append(selectedIDs, selection.RequestID)
 	}
 	for _, exclusion := range result.Excluded {
-		fmt.Fprintf(&output, "excluded %s [%s] %s: %s\n", exclusion.RequestID, exclusion.Provenance, exclusion.Code, exclusion.Reason)
+		fmt.Fprintf(&output, "excluded %s [%s, %s] %s: %s\n", exclusion.RequestID, exclusion.Provenance, exclusion.SelectionPriority, exclusion.Code, exclusion.Reason)
 		fmt.Fprintf(&output, "  request: %s (original status: %s)\n", exclusion.RequestPath, exclusion.OriginalStatus)
 		fmt.Fprintf(&output, "  probe %s (attempted: %t, exit: %d)", exclusion.ProbeStatus, exclusion.ProbeAttempted, exclusion.ProbeExitCode)
 		if exclusion.UnblockRequired {

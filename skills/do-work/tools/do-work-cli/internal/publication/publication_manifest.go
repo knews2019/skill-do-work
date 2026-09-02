@@ -38,10 +38,13 @@ func DecodeManifest(reader io.Reader, expectedOperation OperationName) (Manifest
 	if manifest.Release != nil {
 		bodyCount++
 	}
+	if manifest.DeferGate != nil {
+		bodyCount++
+	}
 	if bodyCount != 1 {
 		return manifest, fmt.Errorf("publication manifest requires exactly one operation body")
 	}
-	if expectedOperation == OperationCaptureFiles && manifest.Capture == nil || expectedOperation == OperationAnswer && manifest.Answer == nil || expectedOperation == OperationRelease && manifest.Release == nil {
+	if expectedOperation == OperationCaptureFiles && manifest.Capture == nil || expectedOperation == OperationAnswer && manifest.Answer == nil || expectedOperation == OperationRelease && manifest.Release == nil || expectedOperation == OperationDeferGate && manifest.DeferGate == nil {
 		return manifest, fmt.Errorf("publication manifest body does not match operation %q", expectedOperation)
 	}
 	return manifest, nil
@@ -146,6 +149,13 @@ func finalizePlan(plan PublicationPlan) PublicationPlan {
 				return firstRank < secondRank
 			}
 		}
+		if plan.Operation == OperationDeferGate {
+			firstRank := deferGateMutationRank(plan.Mutations[first])
+			secondRank := deferGateMutationRank(plan.Mutations[second])
+			if firstRank != secondRank {
+				return firstRank < secondRank
+			}
+		}
 		firstPath, secondPath := plan.Mutations[first].Path, plan.Mutations[second].Path
 		if plan.Mutations[first].Kind == MutationMove {
 			firstPath = plan.Mutations[first].DestinationPath
@@ -192,6 +202,22 @@ func finalizePlan(plan PublicationPlan) PublicationPlan {
 	}
 	sort.Slice(plan.Changes, func(i, j int) bool { return plan.Changes[i].Path < plan.Changes[j].Path })
 	return plan
+}
+
+func deferGateMutationRank(mutation PlannedMutation) int {
+	path := mutation.Path
+	switch {
+	case strings.HasPrefix(path, "do-work/.req-reservations/"):
+		return 0
+	case strings.HasPrefix(path, "do-work/queue/REQ-"):
+		return 1
+	case strings.HasPrefix(path, "do-work/working/REQ-"):
+		return 2
+	case path == "do-work/CHECKPOINT.md":
+		return 3
+	default:
+		return 4
+	}
 }
 
 func captureMutationRank(mutation PlannedMutation) int {

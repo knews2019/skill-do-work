@@ -32,45 +32,53 @@ type FieldEvidence struct {
 
 // RequestRecord is the typed REQ/UR evidence consumed by repository snapshots.
 type RequestRecord struct {
-	RequestID              string
-	RequestTitle           string
-	RequestStatus          string
-	OriginalStatus         string
-	StatusEvidence         schemanormalization.FieldResult
-	UserRequestID          string
-	DependsOn              []string
-	DependencySource       string
-	AddendumTo             string
-	AddendumSource         string
-	RelatedIDs             []string
-	WritePaths             []string
-	AssignedTo             string
-	CreatedAt              string
-	ClaimedAt              string
-	CompletedAt            string
-	CavemanValue           string
-	CavemanEvidence        schemanormalization.FieldResult
-	DomainValue            string
-	DomainEvidence         schemanormalization.FieldResult
-	RouteValue             string
-	RouteEvidence          schemanormalization.FieldResult
-	ImpactValue            string
-	ImpactEvidence         schemanormalization.FieldResult
-	EffortEstimateValue    string
-	EffortEstimateEvidence schemanormalization.FieldResult
-	MaintenanceValue       string
-	MaintenanceEvidence    schemanormalization.FieldResult
-	TDDValue               string
-	TDDEvidence            schemanormalization.FieldResult
-	ErrorTypeValue         string
-	ErrorTypeEvidence      schemanormalization.FieldResult
-	KBStatusValue          string
-	KBStatusEvidence       schemanormalization.FieldResult
-	TestingStatusValue     string
-	TestingStatusEvidence  schemanormalization.FieldResult
-	BuilderDecidedValue    string
-	BuilderDecidedEvidence schemanormalization.FieldResult
-	FieldEvidenceByName    map[string]FieldEvidence
+	RequestID                           string
+	RequestTitle                        string
+	RequestStatus                       string
+	OriginalStatus                      string
+	StatusEvidence                      schemanormalization.FieldResult
+	UserRequestID                       string
+	DependsOn                           []string
+	DependencySource                    string
+	AddendumTo                          string
+	AddendumSource                      string
+	RelatedIDs                          []string
+	WritePaths                          []string
+	AssignedTo                          string
+	CreatedAt                           string
+	ClaimedAt                           string
+	CompletedAt                         string
+	CavemanValue                        string
+	CavemanEvidence                     schemanormalization.FieldResult
+	DomainValue                         string
+	DomainEvidence                      schemanormalization.FieldResult
+	RouteValue                          string
+	RouteEvidence                       schemanormalization.FieldResult
+	ImpactValue                         string
+	ImpactEvidence                      schemanormalization.FieldResult
+	EffortEstimateValue                 string
+	EffortEstimateEvidence              schemanormalization.FieldResult
+	MaintenanceValue                    string
+	MaintenanceEvidence                 schemanormalization.FieldResult
+	TDDValue                            string
+	TDDEvidence                         schemanormalization.FieldResult
+	ErrorTypeValue                      string
+	ErrorTypeEvidence                   schemanormalization.FieldResult
+	KBStatusValue                       string
+	KBStatusEvidence                    schemanormalization.FieldResult
+	TestingStatusValue                  string
+	TestingStatusEvidence               schemanormalization.FieldResult
+	BuilderDecidedValue                 string
+	BuilderDecidedEvidence              schemanormalization.FieldResult
+	GateDeferredValue                   string
+	GateDeferredEvidence                schemanormalization.FieldResult
+	RepositoryGateRepairValue           string
+	RepositoryGateRepairEvidence        schemanormalization.FieldResult
+	DeferredImplementationBaseValue     string
+	DeferredImplementationBaseEvidence  schemanormalization.FieldResult
+	DeferredImplementationMergeValue    string
+	DeferredImplementationMergeEvidence schemanormalization.FieldResult
+	FieldEvidenceByName                 map[string]FieldEvidence
 }
 
 // RequestDocument is one lossless frontmatter-plus-Markdown document.
@@ -261,6 +269,10 @@ func (document *RequestDocument) TypedRecord() RequestRecord {
 	kbStatusEvidence := schemanormalization.NormalizeField("kb_status", document.scalarValue("kb_status"))
 	testingStatusEvidence := schemanormalization.NormalizeField("testing_status", document.scalarValue("testing_status"))
 	builderDecidedEvidence := schemanormalization.NormalizeField("builder_decided", document.scalarValue("builder_decided"))
+	gateDeferredEvidence := schemanormalization.NormalizeField("gate_deferred", document.scalarValue("gate_deferred"))
+	repositoryGateRepairEvidence := schemanormalization.NormalizeField("repository_gate_repair", document.scalarValue("repository_gate_repair"))
+	deferredImplementationBaseEvidence := schemanormalization.NormalizeField("deferred_implementation_base", document.scalarValue("deferred_implementation_base"))
+	deferredImplementationMergeEvidence := schemanormalization.NormalizeField("deferred_implementation_merge", document.scalarValue("deferred_implementation_merge"))
 	dependencyValues, dependencySource := document.preferredList("depends_on", "dependencies")
 	addendumValues, addendumSource := document.preferredList("addendum_to", "amends", "parent", "amendment_to")
 	addendumValue := ""
@@ -294,8 +306,42 @@ func (document *RequestDocument) TypedRecord() RequestRecord {
 		KBStatusValue: kbStatusEvidence.ResolvedValue, KBStatusEvidence: kbStatusEvidence,
 		TestingStatusValue: testingStatusEvidence.ResolvedValue, TestingStatusEvidence: testingStatusEvidence,
 		BuilderDecidedValue: builderDecidedEvidence.ResolvedValue, BuilderDecidedEvidence: builderDecidedEvidence,
+		GateDeferredValue: gateDeferredEvidence.ResolvedValue, GateDeferredEvidence: gateDeferredEvidence,
+		RepositoryGateRepairValue: repositoryGateRepairEvidence.ResolvedValue, RepositoryGateRepairEvidence: repositoryGateRepairEvidence,
+		DeferredImplementationBaseValue: deferredImplementationBaseEvidence.ResolvedValue, DeferredImplementationBaseEvidence: deferredImplementationBaseEvidence,
+		DeferredImplementationMergeValue: deferredImplementationMergeEvidence.ResolvedValue, DeferredImplementationMergeEvidence: deferredImplementationMergeEvidence,
 		FieldEvidenceByName: fieldEvidenceByName,
 	}
+}
+
+// SetList replaces or appends one top-level field using the canonical inline-list form.
+func (document *RequestDocument) SetList(fieldName string, values []string) error {
+	if !validFieldName(fieldName) {
+		return fmt.Errorf("invalid frontmatter field name %q", fieldName)
+	}
+	encodedItems := make([]string, len(values))
+	for valueIndex, fieldValue := range values {
+		if strings.ContainsAny(fieldValue, "\x00\r\n") {
+			return fmt.Errorf("frontmatter list %q contains an unsupported control character", fieldName)
+		}
+		encodedItems[valueIndex] = encodeScalar(fieldValue, document.lineEnding)
+	}
+	encodedValue := "[" + strings.Join(encodedItems, ", ") + "]"
+	updatedBytes := document.dataBytes
+	spans := document.fieldSpans[fieldName]
+	if len(spans) == 0 {
+		fieldLine := []byte(fieldName + ": " + encodedValue + document.lineEnding)
+		updatedBytes = replaceByteSpan(updatedBytes, document.closingFenceOffset, document.closingFenceOffset, fieldLine)
+	} else {
+		span := spans[len(spans)-1]
+		if span.evidence.RawValue == "" {
+			fieldText := fieldName + ": " + encodedValue + document.lineEnding
+			updatedBytes = replaceByteSpan(updatedBytes, span.lineStart, span.blockEnd, []byte(fieldText))
+		} else {
+			updatedBytes = replaceByteSpan(updatedBytes, span.valueStart, span.valueEnd, []byte(encodedValue))
+		}
+	}
+	return document.reparse(updatedBytes)
 }
 
 // SetScalar replaces or appends one top-level scalar field.
