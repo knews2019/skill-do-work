@@ -37,6 +37,7 @@ write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-referenc
 claimed_at: 2026-09-02T20:45:12Z
 completed_at: 2026-09-02T21:33:21Z
 release_at: 2026-09-02T21:33:21Z
+commit: 33852cb4a9c0e8af197d789fea6f2624beb68ffe
 ---
 
 # Commit the claim footprint in every mode
