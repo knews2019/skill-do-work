@@ -35,6 +35,7 @@ builder_handback_at: 2026-09-02T18:30:12Z
 integration_at: 2026-09-02T18:31:02Z
 review_at: 2026-09-02T18:43:42Z
 remediation_at: 2026-09-02T19:18:00Z
+re_review_at: 2026-09-02T19:25:35Z
 ---
 
 # Add do-work run-with-recovery and Record the One-Broken-Pipe Principle
@@ -127,6 +128,18 @@ The single remediation must establish one clean canonical ownership-transfer bou
 - Recovery now resets and moves only the asserted working REQ, removes only its checkpoint entry, preserves unrelated unstaged implementation bytes, and leaves plain `claim`/`run` dirty-target guards unchanged.
 - Added executable recovery-to-`next`-to-fresh-`claim` coverage plus negative authority, evidence, commit, and rollback cases.
 - Verification passed: focused race tests, full Go tests and vet, Go 1.25 compatibility, contract regressions, and the canonical maintainer gate. The optional browser lane skipped because no browser was available.
+
+## Re-Review — Attempt 1
+
+**Overall: 50%** | **Acceptance: Fail** | **Risk: Critical**
+
+The guarded `recover-claim` transaction closes the primitive-level ownership-transfer defect, including exact-path commit/rollback and unrelated-dirt preservation, but the public action remains unable to guarantee a fresh claim:
+
+- `recover-finalization --discover` runs first and refuses the normal interrupted-claim topology as `FINALIZATION-DISCOVERY-AMBIGUOUS`, so claim recovery is unreachable.
+- A supported multiple-writer-label checkpoint leaves a second entry behind, and `next` then excludes the recovered REQ as `ALREADY-CLAIMED`.
+- The prescribed shell command interpolates an observed writer label inside single quotes instead of transporting it structurally.
+
+The single remediation allowance is exhausted. REQ-501 is therefore terminal `completed-with-issues`; all three residuals are folded into pending REQ-504, which already owns the canonical Crash Recovery/run-with-recovery boundary and behavior-level replacement tests.
 
 ## Open Questions
 None.

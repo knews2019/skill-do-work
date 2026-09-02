@@ -29,5 +29,6 @@ Status: in-progress
 | builder-501 | Implement run-with-recovery action and principle | worktree-agent-REQ-501-run-with-recovery | inline hand-back | done — builder `d5972f0c`, merge `44000f50` |
 | review-501 | Review merged REQ-501 range `e54e414d..44000f50` | n/a | inline review | done — Fail 50%, remediation required |
 | remediation-501 | Add canonical ownership-transfer boundary and behavioral fixture | worktree-agent-REQ-501-remediation-1 | inline hand-back | done — builder `5eb04120`, merge `49a23f23` |
+| rereview-501 | Re-review cumulative REQ-501 range `e54e414d..d91f5b2f` | n/a | inline review | done — Fail 50%, residuals folded into REQ-504 |
 
 The run directory makes fan-out recoverable from disk; it does not prevent harness or provider failures.

@@ -67,6 +67,15 @@ Firm on the boundary between mechanics and judgment as classified in the report'
 
 These are active operative restatements found by REQ-498's post-remediation re-review. Fold them into this request's action-prose collapse and replace any guarding sentence predicates with behavior-level finalization/advance coverage.
 
+## Review Instances — REQ-501
+
+- [ ] Exercise the complete public order, including initial `recover-finalization`, so a normal interrupted claim reaches ownership recovery instead of stopping at `FINALIZATION-DISCOVERY-AMBIGUOUS`.
+- [ ] Recover every supported checkpoint evidence shape, including one REQ recorded under multiple writer labels, without leaving `ALREADY-CLAIMED` residue.
+- [ ] Discover or transport checkpoint evidence structurally; never interpolate an observed writer label into shell source.
+- [ ] Prove uninterrupted public `run-with-recovery` → `next` → fresh `claim` behavior rather than starting the fixture at the internal `recover-claim` primitive.
+
+These critical public-boundary residuals survived REQ-501's one remediation attempt. Fold them into this request's canonical recovery-command boundary and behavior-test replacement; the isolated `recover-claim` transaction itself already covers authority/evidence/commit guards, exact-path rollback, and unrelated-dirt preservation.
+
 ## Open Questions
 None.
 
