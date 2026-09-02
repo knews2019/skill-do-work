@@ -42,6 +42,14 @@ commit action
 
 ### Step 1: Preflight
 
+Before protected association or reading any uncommitted path, invoke the canonical legacy-tail recovery:
+
+```bash
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json recover-finalization --discover
+```
+
+Continue only on typed `success` with every ordered `finalizations` record carrying empty `blocked_paths` and `reason_codes`. Recovery commits all safe finalization groups in its returned order and refuses before this action selects ordinary groups when staged, protected, shared, or multiply-owned evidence remains ambiguous. Group only the changes left after recovery; never re-associate a recovered path.
+
 Start the protected inventory wrapper; it owns the worktree-safe run quarantine and delegates low-level classification to the existing checks:
 
 ```bash

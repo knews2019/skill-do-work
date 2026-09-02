@@ -24,7 +24,30 @@ import (
 
 var afterFinalizationPhase = func(Phase) error { return nil }
 
-func advanceJournal(ctx context.Context, repositoryRoot string, journal *Journal, resumed bool) resultmodel.CommandResult {
+func advanceJournal(ctx context.Context, repositoryRoot string, journal *Journal, resumed bool) (result resultmodel.CommandResult) {
+	defer func() {
+		if journal.Discovered || result.Outcome == resultmodel.OutcomeSuccess || journal.Phase == PhasePrimaryCommitted || journal.Phase == PhaseMetadataCommitted {
+			return
+		}
+		actions, rollbackErrors := rollbackBeforePrimary(repositoryRoot, journal)
+		result.Rollback.Actions = actions
+		result.Rollback.Errors = rollbackErrors
+		if len(rollbackErrors) == 0 {
+			result.Outcome = resultmodel.OutcomeRolledBack
+			result.Rollback.Status = resultmodel.RollbackSucceeded
+		} else {
+			result.Rollback.Status = resultmodel.RollbackIncomplete
+			if result.Finalization != nil {
+				result.Finalization.ReasonCodes = append(result.Finalization.ReasonCodes, "FINALIZATION-ROLLBACK-INCOMPLETE")
+			}
+		}
+		if result.Finalization != nil {
+			result.Finalization.Phase = string(journal.Phase)
+		}
+		if len(result.Finalizations) == 1 {
+			result.Finalizations[0] = *result.Finalization
+		}
+	}()
 	if journal.Phase == PhasePrepared {
 		state, err := imageSetState(repositoryRoot, journal.LifecyclePreimages, journal.LifecyclePostimages)
 		if err != nil {
@@ -87,7 +110,17 @@ func advanceJournal(ctx context.Context, repositoryRoot string, journal *Journal
 	}
 
 	if journal.Phase == PhaseReleaseApplied {
-		if recoveredSHA, ok := matchingHeadCommit(repositoryRoot, journal.Manifest.CommitMessage, journal.EffectiveCommitPaths); ok {
+		if journal.PreparedHead == "" || journal.PreparedDiffSHA256 == "" {
+			preparedHead, preparedDiff, err := preparedCommitIdentity(repositoryRoot, journal.EffectiveCommitPaths)
+			if err != nil {
+				return finalizationFailure(journal, resumed, "FINALIZATION-PREPARED-IDENTITY", err.Error(), journal.EffectiveCommitPaths)
+			}
+			journal.PreparedHead, journal.PreparedDiffSHA256 = preparedHead, preparedDiff
+			if err := writeJournal(journal); err != nil {
+				return finalizationFailure(journal, resumed, "FINALIZATION-JOURNAL-WRITE", err.Error(), nil)
+			}
+		}
+		if recoveredSHA, ok := matchingHeadCommit(repositoryRoot, journal); ok {
 			journal.PrimaryCommit = recoveredSHA
 		} else {
 			if blockedCode, blockedReason, blockedPaths := commitSafety(repositoryRoot, journal); blockedCode != "" {
@@ -145,11 +178,48 @@ func advanceJournal(ctx context.Context, repositoryRoot string, journal *Journal
 	if err := verifyFinalState(repositoryRoot, journal); err != nil {
 		return finalizationFailure(journal, resumed, "FINALIZATION-VERIFY", err.Error(), []string{journal.ArchivedPath})
 	}
-	result := finalizationSuccess(journal, resumed)
+	result = finalizationSuccess(journal, resumed)
 	if err := removeJournal(journal); err != nil {
 		return finalizationFailure(journal, resumed, "FINALIZATION-JOURNAL-CLEANUP", err.Error(), []string{journal.JournalPath})
 	}
 	return result
+}
+
+func rollbackBeforePrimary(repositoryRoot string, journal *Journal) ([]string, []string) {
+	actions := []string{}
+	rollbackErrors := []string{}
+	if len(journal.ReleasePostimages) > 0 {
+		if err := convergeImages(repositoryRoot, journal.ReleasePostimages, journal.ReleasePreimages); err != nil {
+			rollbackErrors = append(rollbackErrors, "release rollback: "+err.Error())
+		} else {
+			actions = append(actions, "restored exact release images")
+		}
+	}
+	if len(rollbackErrors) == 0 && len(journal.LifecyclePostimages) > 0 {
+		if err := convergeImages(repositoryRoot, journal.LifecyclePostimages, journal.LifecyclePreimages); err != nil {
+			rollbackErrors = append(rollbackErrors, "lifecycle rollback: "+err.Error())
+		} else {
+			actions = append(actions, "restored exact lifecycle images")
+		}
+	}
+	if len(rollbackErrors) > 0 {
+		return actions, rollbackErrors
+	}
+	ownedPaths := uniqueSorted(append(imagePaths(journal.LifecyclePostimages), imagePaths(journal.ReleasePostimages)...))
+	if len(ownedPaths) > 0 {
+		arguments := append([]string{"-C", repositoryRoot, "reset", "-q", "HEAD", "--"}, ownedPaths...)
+		if output, err := exec.Command("git", arguments...).CombinedOutput(); err != nil {
+			return actions, append(rollbackErrors, "index rollback: "+strings.TrimSpace(string(output)))
+		}
+		actions = append(actions, "cleared finalizer-owned index entries")
+	}
+	journal.Phase = PhasePrepared
+	journal.PreparedHead = ""
+	journal.PreparedDiffSHA256 = ""
+	if err := writeJournal(journal); err != nil {
+		return actions, append(rollbackErrors, "journal rollback: "+err.Error())
+	}
+	return actions, rollbackErrors
 }
 
 func lifecyclePlan(repositoryRoot string, manifest Manifest) (requeststate.StatePlan, error) {
@@ -253,6 +323,9 @@ func convergeImages(repositoryRoot string, preimages, postimages []FileImage) er
 			if err := atomicfile.ReplaceExisting(absolutePath, target.Bytes); err != nil {
 				return err
 			}
+			if err := os.Chmod(absolutePath, os.FileMode(target.Mode)); err != nil {
+				return err
+			}
 		} else {
 			mode := os.FileMode(target.Mode)
 			if mode == 0 {
@@ -307,7 +380,7 @@ func imagesByPath(images []FileImage) map[string]FileImage {
 }
 
 func equalImage(left, right FileImage) bool {
-	return left.Exists == right.Exists && (!left.Exists || bytes.Equal(left.Bytes, right.Bytes))
+	return left.Exists == right.Exists && (!left.Exists || bytes.Equal(left.Bytes, right.Bytes) && left.Mode == right.Mode)
 }
 
 func imagePaths(images []FileImage) []string {
@@ -357,6 +430,18 @@ func commitSafety(repositoryRoot string, journal *Journal) (string, string, []st
 	for _, path := range journal.EffectiveCommitPaths {
 		allowed[path] = true
 	}
+	if journal.Discovered {
+		if journalPaths, listError := listJournals(repositoryRoot); listError == nil {
+			for _, journalPath := range journalPaths {
+				other, readError := readJournal(repositoryRoot, journalPath)
+				if readError == nil && other.Discovered {
+					for _, path := range other.EffectiveCommitPaths {
+						allowed[path] = true
+					}
+				}
+			}
+		}
+	}
 	releasePaths := map[string]bool{}
 	for _, image := range journal.ReleasePostimages {
 		releasePaths[image.Path] = true
@@ -378,30 +463,38 @@ func commitSafety(repositoryRoot string, journal *Journal) (string, string, []st
 	return "", "", nil
 }
 
-func matchingHeadCommit(repositoryRoot, expectedMessage string, allowedPaths []string) (string, bool) {
-	message, err := exec.Command("git", "-C", repositoryRoot, "show", "-s", "--format=%B", "HEAD").Output()
-	if err != nil || strings.TrimSpace(string(message)) != strings.TrimSpace(expectedMessage) {
+func matchingHeadCommit(repositoryRoot string, journal *Journal) (string, bool) {
+	commits, err := exec.Command("git", "-C", repositoryRoot, "rev-list", "--reverse", "--ancestry-path", journal.PreparedHead+"..HEAD").Output()
+	if err != nil || len(strings.Fields(string(commits))) == 0 {
 		return "", false
 	}
-	pathsOutput, err := exec.Command("git", "-C", repositoryRoot, "diff-tree", "--root", "--no-commit-id", "--name-only", "-r", "HEAD").Output()
+	candidate := strings.Fields(string(commits))[0]
+	parent, err := exec.Command("git", "-C", repositoryRoot, "rev-parse", candidate+"^").Output()
+	if err != nil || strings.TrimSpace(string(parent)) != journal.PreparedHead {
+		return "", false
+	}
+	arguments := append([]string{"-C", repositoryRoot, "diff", "--binary", journal.PreparedHead, candidate, "--"}, journal.EffectiveCommitPaths...)
+	diff, err := exec.Command("git", arguments...).Output()
+	if err != nil {
+		return "", false
+	}
+	if digestBytes(diff) != journal.PreparedDiffSHA256 {
+		return "", false
+	}
+	changed, err := exec.Command("git", "-C", repositoryRoot, "diff-tree", "--no-commit-id", "--name-only", "-r", candidate).Output()
 	if err != nil {
 		return "", false
 	}
 	allowed := map[string]bool{}
-	for _, path := range allowedPaths {
+	for _, path := range journal.EffectiveCommitPaths {
 		allowed[path] = true
 	}
-	seen := false
-	for _, path := range strings.Fields(string(pathsOutput)) {
-		seen = true
+	for _, path := range strings.Fields(string(changed)) {
 		if !allowed[path] {
 			return "", false
 		}
 	}
-	if !seen {
-		return "", false
-	}
-	return currentHead(repositoryRoot), true
+	return candidate, true
 }
 
 func currentHead(repositoryRoot string) string {
@@ -461,29 +554,43 @@ func verifyFinalState(repositoryRoot string, journal *Journal) error {
 }
 
 func finalizationSuccess(journal *Journal, resumed bool) resultmodel.CommandResult {
-	verification := []string{"do-work-cli", "--format", "json", "recover-finalization"}
+	verification := recoveryArgv(journal)
+	record := finalizationRecord(journal, resumed, nil, nil)
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: []resultmodel.CommandFinding{{
 		Code: "FINALIZATION-COMPLETE", Severity: resultmodel.SeverityInfo, AffectedIDs: []string{journal.Manifest.RequestID},
 		AffectedPaths: []string{journal.ArchivedPath}, Evidence: []string{"resumable finalization reached verified metadata state"},
 		Fixability: resultmodel.FixabilityAutomatic, VerificationArgv: verification,
-	}}, Finalization: &resultmodel.FinalizationResult{
-		RequestID: journal.Manifest.RequestID, JournalPath: journal.JournalPath, Phase: string(journal.Phase), Resumed: resumed,
-		Discovered: journal.Discovered, PrimaryCommit: journal.PrimaryCommit, MetadataCommit: journal.MetadataCommit,
-		BlockedPaths: []string{}, ReasonCodes: []string{}, VerificationArgv: verification,
-	}}
+	}}, Finalization: &record, Finalizations: []resultmodel.FinalizationResult{record}}
 }
 
 func finalizationFailure(journal *Journal, resumed bool, code, reason string, paths []string) resultmodel.CommandResult {
-	verification := []string{"do-work-cli", "--format", "json", "recover-finalization"}
+	verification := recoveryArgv(journal)
+	record := finalizationRecord(journal, resumed, paths, []string{code})
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{{
 		Code: code, Severity: resultmodel.SeverityError, AffectedIDs: []string{journal.Manifest.RequestID}, AffectedPaths: paths,
 		Evidence: []string{reason}, Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "finalization evidence is incomplete or ambiguous",
 		NextArgv: verification, VerificationArgv: verification,
-	}}, Finalization: &resultmodel.FinalizationResult{
-		RequestID: journal.Manifest.RequestID, JournalPath: journal.JournalPath, Phase: string(journal.Phase), Resumed: resumed,
-		Discovered: journal.Discovered, PrimaryCommit: journal.PrimaryCommit, MetadataCommit: journal.MetadataCommit,
-		BlockedPaths: append([]string(nil), paths...), ReasonCodes: []string{code}, VerificationArgv: verification,
-	}}
+	}}, Finalization: &record, Finalizations: []resultmodel.FinalizationResult{record}}
+}
+
+func finalizationRecord(journal *Journal, resumed bool, paths, reasonCodes []string) resultmodel.FinalizationResult {
+	verification := recoveryArgv(journal)
+	return resultmodel.FinalizationResult{
+		RequestID: journal.Manifest.RequestID, RequestPath: journal.Manifest.RequestPath, ArchivePath: journal.ArchivedPath,
+		JournalPath: journal.JournalPath, Phase: string(journal.Phase), TerminalStatus: journal.Manifest.TerminalStatus,
+		Resumed: resumed, Discovered: journal.Discovered, CommitPaths: append([]string(nil), journal.EffectiveCommitPaths...),
+		PrimaryCommit: journal.PrimaryCommit, MetadataCommit: journal.MetadataCommit,
+		BlockedPaths: append([]string(nil), paths...), ReasonCodes: append([]string(nil), reasonCodes...),
+		NextArgv: verification, VerificationArgv: verification,
+	}
+}
+
+func recoveryArgv(journal *Journal) []string {
+	arguments := []string{"do-work-cli", "--format", "json", "recover-finalization"}
+	if journal.Discovered {
+		arguments = append(arguments, "--discover")
+	}
+	return arguments
 }
 
 func resultFromNestedFailure(journal *Journal, resumed bool, code string, nested resultmodel.CommandResult) resultmodel.CommandResult {

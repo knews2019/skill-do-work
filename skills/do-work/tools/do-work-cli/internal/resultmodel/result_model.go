@@ -249,14 +249,19 @@ type GateDeferralResult struct {
 // infer recovery progress from Git status or prose findings.
 type FinalizationResult struct {
 	RequestID        string   `json:"request_id"`
+	RequestPath      string   `json:"request_path"`
+	ArchivePath      string   `json:"archive_path"`
 	JournalPath      string   `json:"journal_path"`
 	Phase            string   `json:"phase"`
+	TerminalStatus   string   `json:"terminal_status"`
 	Resumed          bool     `json:"resumed"`
 	Discovered       bool     `json:"discovered"`
+	CommitPaths      []string `json:"commit_paths"`
 	PrimaryCommit    string   `json:"primary_commit,omitempty"`
 	MetadataCommit   string   `json:"metadata_commit,omitempty"`
 	BlockedPaths     []string `json:"blocked_paths"`
 	ReasonCodes      []string `json:"reason_codes"`
+	NextArgv         []string `json:"next_argv"`
 	VerificationArgv []string `json:"verification_argv"`
 }
 
@@ -276,6 +281,7 @@ type CommandResult struct {
 	AuditMetrics     *AuditMetricsResult  `json:"audit_metrics,omitempty"`
 	GateDeferral     *GateDeferralResult  `json:"gate_deferral,omitempty"`
 	Finalization     *FinalizationResult  `json:"finalization,omitempty"`
+	Finalizations    []FinalizationResult `json:"finalizations"`
 	// ExactTextOutput preserves compatibility-shaped stdout without polluting
 	// JSON with an opaque duplicate. It must be derived from the same typed
 	// observation carried by the result.
@@ -320,6 +326,24 @@ func NormalizeResult(result CommandResult) CommandResult {
 	}
 	if result.Excluded == nil {
 		result.Excluded = []SelectionExclusion{}
+	}
+	if result.Finalizations == nil {
+		result.Finalizations = []FinalizationResult{}
+	}
+	if len(result.Finalizations) == 0 && result.Finalization != nil {
+		result.Finalizations = append(result.Finalizations, *result.Finalization)
+	}
+	if len(result.Finalizations) == 1 {
+		record := result.Finalizations[0]
+		result.Finalization = &record
+	} else if len(result.Finalizations) > 1 {
+		result.Finalization = nil
+	}
+	for index := range result.Finalizations {
+		normalizeFinalization(&result.Finalizations[index])
+	}
+	if result.Finalization != nil {
+		normalizeFinalization(result.Finalization)
 	}
 	for index := range result.Selected {
 		selection := &result.Selected[index]
@@ -418,6 +442,24 @@ func NormalizeResult(result CommandResult) CommandResult {
 		}
 	}
 	return result
+}
+
+func normalizeFinalization(record *FinalizationResult) {
+	if record.CommitPaths == nil {
+		record.CommitPaths = []string{}
+	}
+	if record.BlockedPaths == nil {
+		record.BlockedPaths = []string{}
+	}
+	if record.ReasonCodes == nil {
+		record.ReasonCodes = []string{}
+	}
+	if record.NextArgv == nil {
+		record.NextArgv = []string{}
+	}
+	if record.VerificationArgv == nil {
+		record.VerificationArgv = []string{}
+	}
 }
 
 func RenderResult(result CommandResult, outputFormat OutputFormat) ([]byte, error) {

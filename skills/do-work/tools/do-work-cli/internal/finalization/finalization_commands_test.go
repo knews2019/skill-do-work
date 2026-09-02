@@ -28,8 +28,9 @@ func TestRecoverFinalizationResumesJournalAfterLifecycleInterruption(t *testing.
 		RequestID: "REQ-700", RequestPath: requestPath, WriterLabel: "host:/repo", Transition: "complete",
 		TerminalStatus: "completed", CompletedAt: "2026-09-02T09:00:00Z",
 		ExpectedRequestSHA256: digestFile(t, repositoryRoot, requestPath), ExpectedCheckpointSHA256: digestFile(t, repositoryRoot, checkpointPath),
-		CommitPaths:   []string{requestPath, "do-work/archive/REQ-700.md", checkpointPath, "implementation.txt"},
-		CommitMessage: "[REQ-700] finalize fixture",
+		CommitPaths:    []string{requestPath, "do-work/archive/REQ-700.md", checkpointPath, "implementation.txt"},
+		CommitMessage:  "[REQ-700] finalize fixture",
+		ProvenanceMode: ProvenancePrimaryCommit,
 	}
 	manifestPath := filepath.Join(t.TempDir(), "manifest.json")
 	manifestBytes, err := json.Marshal(manifest)
@@ -50,7 +51,7 @@ func TestRecoverFinalizationResumesJournalAfterLifecycleInterruption(t *testing.
 	first := handleFinalize(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--manifest", manifestPath})
 	afterFinalizationPhase = previousHook
 	t.Cleanup(func() { afterFinalizationPhase = previousHook })
-	if first.Outcome != resultmodel.OutcomeRefused || first.Finalization == nil || first.Finalization.Phase != string(PhaseLifecycleApplied) {
+	if first.Outcome != resultmodel.OutcomeRolledBack || first.Finalization == nil || first.Rollback.Status != resultmodel.RollbackSucceeded {
 		t.Fatalf("interrupted result = %#v", first)
 	}
 
@@ -94,13 +95,14 @@ func TestReadJournalRejectsNoncanonicalPayloadDirectory(t *testing.T) {
 			RequestID: "REQ-701", RequestPath: "do-work/working/REQ-701.md", WriterLabel: "writer", Transition: "complete",
 			TerminalStatus: "completed", CompletedAt: "2026-09-02T09:00:00Z", ExpectedRequestSHA256: strings.Repeat("a", 64),
 			ExpectedCheckpointSHA256: strings.Repeat("b", 64), CommitPaths: []string{"one"}, CommitMessage: "commit",
+			ProvenanceMode: ProvenancePrimaryCommit,
 		},
 	}
 	contents, _ := json.Marshal(journal)
 	if err := os.WriteFile(journalPath, contents, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := readJournal(journalPath); err == nil || !strings.Contains(err.Error(), "payload directory") {
+	if _, err := readJournal(repositoryRoot, journalPath); err == nil || !strings.Contains(err.Error(), "payload directory") {
 		t.Fatalf("unsafe journal error = %v", err)
 	}
 }

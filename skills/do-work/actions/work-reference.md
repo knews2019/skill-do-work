@@ -1064,86 +1064,21 @@ now a contract, not a hope.
 
 ## Commit & Metadata-Commit Procedure (Step 9)
 
+The action writes one strict JSON finalization manifest after semantic review and release judgment. It contains the exact working REQ path and digest, checkpoint digest, terminal transition and timestamp, writer identity, exact implementation/lifecycle/release commit allowlist, commit message, and optional release manifest plus `release_at`. Include `do-work/calibration-log.tsv` only when the canonical lifecycle plan reports it as an exact target.
+
+- Serial work sets `provenance_mode: "primary_commit"` and omits `implementation_hash`.
+- Worktree work sets `provenance_mode: "supplied_commit"` and supplies the durable 7–40 lowercase hex merge hash. The hash must resolve and be an ancestor of current `HEAD`; include `do-work/calibration-log.tsv` only when the canonical lifecycle plan reports it as an exact target.
+- An already-green repair omits release data and lists only its exact lifecycle paths.
+
+Invoke the single finalization owner:
+
 ```bash
-# Stage implementation files + archived REQ + the changelog entry
-git add src/stores/theme-store.ts src/components/settings/SettingsPanel.tsx \
-  do-work/archive/UR-002/REQ-003-dark-mode.md CHANGELOG.md
-
-# Stage the bumped version file — only when the changelog resolved to a repo
-# version file (source 1). Tag-versioned and unversioned repos have none.
-git add package.json
-
-# Plus the lockfile that mirrors it, when the repo keeps one — see the Changelog
-# Entry Procedure's "Lockfile mirror" note for the condition and for which field(s)
-# to edit by hand. package-lock.json here; Cargo.lock / uv.lock in those
-# ecosystems. Omit this line entirely when the repo has no such lockfile:
-# `git add` on a path that does not exist exits 128 and aborts the commit step.
-git add package-lock.json
-
-# Set this guard true only when the successful canonical `complete` result reports
-# do-work/calibration-log.tsv among its changes or affected target paths. Otherwise
-# leave it false; never infer calibration staging from the filesystem.
-if [ "${calibration_changed:-false}" = true ]; then
-  git add do-work/calibration-log.tsv
-fi
-
-# Stage follow-up REQs created in Step 8 (if any), AND any existing sweep REQs
-# the review appended instances to — an append modifies a queue file rather than
-# creating one, so "created follow-ups" alone leaves the new ## Instances lines
-# unstaged.
-git add do-work/queue/REQ-025-confirm-sidebar-palette.md
-git add do-work/queue/REQ-021-existing-sweep.md
-
-# Stage the stakeholder REQ Step 8 substep 3 routed questions into (minted or
-# folded), plus the fresh report bundle that regeneration published — the
-# blocked_by: path must resolve on every checkout, not only this one. Omit both
-# lines when this REQ routed no stakeholder questions; omit the bundle line
-# where the project ignores ai-reports/ (`git add` on an ignored path fails and
-# aborts the commit step).
-git add do-work/queue/REQ-030-stakeholder-questions-priya-design.md
-git add ai-reports/2026-08-21_1140_REQ-030-questions-priya-design/
-
-# Stage the prose backlog when this REQ touched it — a Step 8 review append
-# (actions/review-work.md Step 10) or a drain's ticks. The orchestrator writes
-# this file in the main tree, so nothing else stages it. Omit this line when the
-# REQ never touched it: `git add` on a path that does not exist exits 128 and
-# aborts the commit step.
-git add do-work/prose-backlog.md
-
-# Stage UR-folder move (if this was the last REQ and the UR moved to archive/)
-# Both the old path (deletion) and new path (addition) must be staged.
-# Exception: if the UR was never committed (capture's commit step was skipped,
-# or the repo wasn't git at capture time), the old path matches nothing and
-# `git add` exits 128 — stage only the new archive path in that case.
-git add do-work/user-requests/UR-002/ do-work/archive/UR-002/
-
-git commit -m "$(cat <<'EOF'
-[REQ-003] Dark Mode (Route C)
-
-Implements: do-work/archive/UR-002/REQ-003-dark-mode.md
-
-- Created src/stores/theme-store.ts
-- Modified src/components/settings/SettingsPanel.tsx
-
-EOF
-)"
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json finalize --manifest <finalization-manifest-path>
 ```
 
-**Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Add a co-author trailer if your platform convention calls for one (e.g., `Co-Authored-By: Agent <agent@example.com>`), otherwise omit.
+`finalize` journals before lifecycle mutation, composes canonical lifecycle and optional release plans, commits only the manifest allowlist, records provenance in a separate metadata commit when primary mode created the implementation commit, verifies the exact final state, and removes its Git-private journal. The action never runs direct `complete`, `release`, `git add`, `git commit`, or record-commit-hash commands for this tail.
 
-One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, the `CHANGELOG.md` entry and the version file it bumped plus any lockfile mirroring that version, if any (successful REQs only — see the Changelog Entry Procedure above), any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/queue/`), any stakeholder REQ Step 8 substep 3 minted or folded into (a `stakeholder:` file in `do-work/queue/`) together with the fresh `ai-reports/` bundle that regeneration published — the path recorded in `blocked_by:` must resolve on every checkout, not only this one; skip the bundle where the project ignores `ai-reports/` — `do-work/prose-backlog.md` when this REQ touched it — a Step 8 review append lands there as well as a drain's ticks, and any UR-folder moves to `archive/`. Stage `do-work/calibration-log.tsv` only when the successful canonical `complete` result reports it among its changes or affected target paths; otherwise do not stage it. If Step 8 substep 7 wrote prime-file lessons links, the modified prime files must also be staged — they are part of the REQ's lifecycle changes even though they aren't listed in the Implementation Summary's `Files changed`. Do not use `git add -A` or `git add .`, and never bypass a commit hook (see `actions/commit.md` § Rules for the full guard). Failed requests get committed too.
-
-**In worktree dispatch mode** the builder's implementation is already committed and merged (Step 6's `--no-ff` merge), so do **not** stage implementation files here — stage only the archived REQ, the `CHANGELOG.md` entry, any bumped version file and its lockfile mirror, follow-up REQs, any stakeholder REQ Step 8 substep 3 minted or folded into plus the fresh `ai-reports/` bundle that regeneration published (skip the bundle where the project ignores `ai-reports/`), UR-folder moves, `do-work/calibration-log.tsv` only when the successful canonical `complete` result reports it among its changes or affected target paths, `do-work/prose-backlog.md` when this REQ touched it — a Step 8 review append lands there as well as a drain's ticks, and prime-file lessons links. **Both `do-work/` files are the orchestrator's writes in the main tree, not the builder's**, so they are never in the merge and this list is the only thing that stages them — omitted, an appended or ticked backlog item and an appended calibration line stay a dirty tree. The `commit:` field gets the `--no-ff` merge commit's hash (`<merge_hash>`, captured in Step 6 — the **latest** merge if remediation re-merged; **Worktree Dispatch Mode (Step 1)** above), not this changelog commit's hash.
-
-**Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, `CHANGELOG.md`, and/or the version file it bumped together with any lockfile mirroring that version (the changelog entry and the version bump describe the implementation, they aren't the implementation — and a lockfile carrying only the mirrored version is part of the bump, not a deliverable), flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected. **In worktree dispatch mode** the implementation files live in the merge commit, not this commit's stage, so validate the `## Implementation Summary` file list against `git diff --name-only <pre>..<merge_hash>` (the merge range, excluding `do-work/` paths) instead of the staged set — a stage of only the changelog/version/`do-work/` metadata is correct here, not a mismatch.
-
-**Already-green repair validation exception:** only the exact no-op evidence and summary shape above may validate with no project files. Its stage must contain only canonical lifecycle/archive/calibration paths and any exact UR move reported by `complete`; the presence of a project, changelog, version, lockfile, or unrelated path is a mismatch rather than something to absorb.
-
-**Write commit hash back to the archived REQ.** After the commit succeeds, resolve the implementation hash — **serially** it is the commit you just made, so read it with `git rev-parse --short HEAD`; **in worktree dispatch mode do NOT rev-parse `HEAD` here**, because HEAD is the changelog commit and the implementation lives in Step 6's `--no-ff` merge — use the `<merge_hash>` literal held since Step 6 (the latest merge, if remediation re-merged). Pass the hash and exact archived path to `complete --record-commit-hash --implementation-hash <hash> --request-path <path> --commit`. This metadata-only lifecycle mode validates the archived terminal-success preimage, edits only `commit:`, creates a **separate metadata commit**, and verifies the committed bytes. Never amend/reset, and never substitute a free-form edit or legacy helper. `OK`, `NOOP`, refusal, rollback, and committed-risk are returned through the same typed result contract as every other lifecycle transition, including exact verification or revert argv.
-
-**If the canonical request-state command is missing, stop.** A consumer on an older tarball must upgrade before performing lifecycle metadata writes; there is no hand-edit or helper fallback.
-
-This ensures the `commit:` field in the archived REQ contains the real implementation commit hash — the commit just made serially, the `--no-ff` merge commit in worktree dispatch mode — which review-work and completed-work presentation actions depend on for traceability. The metadata commit is a lightweight bookkeeping entry — it does not contain implementation changes.
+Consume ordered `finalizations`; singular `finalization` is compatibility-only when exactly one record exists. Continue only on typed success with empty `blocked_paths` and `reason_codes`. Each record supplies the exact request/archive/journal identities, phase, discovered/resumed flags, commit paths, primary and metadata hashes, and next/verification argv. On interruption, run `recover-finalization --discover` before any later queue read. There is no hand-edit or helper fallback, and no free-form Git fallback.
 
 ## Session Checkpoint Template (Step 10)
 
