@@ -526,6 +526,8 @@ Omit `Red-green validation` if no request-specific tests were written or identif
 
 When the REQ includes `## Red-Green Proof`, the `Red-green validation` entries should trace back to that captured RED/GREEN pair. If the implemented test uses a nearby equivalent instead of the exact captured prompt/case, explain why.
 
+**Already-green repository-gate repair exception:** Before applying ordinary TDD verification, permit the missing RED/GREEN pair only for a claimed `repository_gate_repair: true` REQ whose pre-build direct exit status is 0 before source edits, whose exact `## Repository Gate Repair No-Op`, `## Implementation Summary`, and `## Qualification` shapes match `actions/work-reference.md`, and whose no-op project diff is empty. That exact evidence proves the recorded failure no longer reproduces before implementation. Any ordinary, malformed, or non-empty implementation remains subject to the ordinary RED/GREEN requirement below.
+
 **TDD verification:** If the REQ has `tdd: true`, the `Red-green validation` section is mandatory — the builder must show test-first evidence that they used RED/GREEN TDD. Qualifying evidence is a runnable test in the project's existing automated test harness, written before implementation, observed failing before the change and passing after it, and re-runnable by another agent. A repeatable check outside that harness is regression proof, not `tdd: true` evidence. If qualifying evidence is missing, treat it as a test failure: return to implementation (same path as step 4 above) with explicit instructions to provide red/green evidence — write the failing test first, confirm it fails, then make it pass.
 
 ### Step 7: Review
