@@ -6,6 +6,7 @@ created_at: 2026-09-01T19:46:57Z
 user_request: UR-083
 addendum_to: REQ-440
 domain: backend
+route: A
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 tdd: true
 suggested_spec: bug-fix
@@ -17,6 +18,14 @@ sweep: true
 sweep_key: checkpoint-section-blind-line-editing
 status_changed_at: 2026-09-01T21:05:20Z
 claimed_at: 2026-09-02T13:45:32Z
+dispatch_at: 2026-09-02T14:02:54Z
+builder_handback_at: 2026-09-02T14:11:03Z
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-09-02T13:47:59Z
+  basis:
+    - trivial short-circuit
 ---
 
 # Remove Whole Checkpoint Entries When a REQ Leaves Working
@@ -71,3 +80,21 @@ Found during REQ-440's archive on 2026-09-01: after `complete REQ-440` the check
 > ```
 > Add this checkpoint-cleanup fix to the queue for normal implementation. No scope is excluded.
 > ```
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The request names the exact request-state helper, its faulty line-oriented behavior, the required boundary cases, and the regression tests that prove the fix.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+## Required Lessons — Dropped for Budget
+
+- `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 2409 tokens; matches canonical request-state checkpoint mutation, but this partially slugged satellite cannot be narrowed below the 2000-token budget. Read anyway under the prime's touch-conditional Lessons rule.
