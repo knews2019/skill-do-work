@@ -2,6 +2,12 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.265.2 — Handoff Prompt Is Addressed To The Next Session (2026-09-02)
+
+The restart handoff now says who the paste block is talking to, so it reads as instructions an agent runs rather than a status report a person skims.
+
+- `restart-with-parallel-handoff` Step 4 adds the addressing clause to the paste-block rule.
+
 ## 0.265.1 — Settle Theme Animations Before Contrast Checks (2026-09-02)
 
 Contrast checks no longer race the board's theme transition, so dark-mode verification measures the settled palette instead of a transient intermediate color.
