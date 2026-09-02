@@ -244,6 +244,37 @@ type GateDeferralResult struct {
 	DeferredImplementationMerge string   `json:"deferred_implementation_merge,omitempty"`
 }
 
+type GateEvidenceState string
+
+const (
+	GateEvidenceRecorded                    GateEvidenceState = "recorded"
+	GateEvidenceMissing                     GateEvidenceState = "missing"
+	GateEvidenceExactRevisionMatch          GateEvidenceState = "exact_revision_match"
+	GateEvidenceLogDescendantMatch          GateEvidenceState = "gate_log_descendant_match"
+	GateEvidenceDifferentRepository         GateEvidenceState = "different_repository"
+	GateEvidenceDifferentArgv               GateEvidenceState = "different_argv"
+	GateEvidenceRecordedRevisionMissing     GateEvidenceState = "recorded_revision_missing"
+	GateEvidenceRecordedRevisionNotAncestor GateEvidenceState = "recorded_revision_not_ancestor"
+	GateEvidenceInvalidated                 GateEvidenceState = "invalidated_by_non_gate_log_commit"
+	GateEvidenceInvalidRecord               GateEvidenceState = "invalid_record"
+	GateEvidenceNotGreen                    GateEvidenceState = "gate_not_green"
+)
+
+type GateEvidenceResult struct {
+	RepositoryIdentity string            `json:"repository_identity"`
+	GateCommand        []string          `json:"gate_command"`
+	GateCommandSHA256  string            `json:"gate_command_sha256"`
+	RecordPath         string            `json:"record_path"`
+	RecordProvenance   string            `json:"record_provenance"`
+	GateExitStatus     int               `json:"gate_exit_status"`
+	RecordedRevision   string            `json:"recorded_revision"`
+	HeadRevision       string            `json:"head_revision"`
+	State              GateEvidenceState `json:"state"`
+	Matches            bool              `json:"matches"`
+	MatchBasis         string            `json:"match_basis"`
+	BaselineRevision   string            `json:"baseline_revision"`
+}
+
 // FinalizationResult is the stable machine projection for one resumable REQ
 // release tail. Phase names are durable journal states; callers never need to
 // infer recovery progress from Git status or prose findings.
@@ -283,6 +314,7 @@ type CommandResult struct {
 	ProtocolOutput   *string              `json:"protocol_output,omitempty"`
 	AuditMetrics     *AuditMetricsResult  `json:"audit_metrics,omitempty"`
 	GateDeferral     *GateDeferralResult  `json:"gate_deferral,omitempty"`
+	GateEvidence     *GateEvidenceResult  `json:"gate_evidence,omitempty"`
 	Finalization     *FinalizationResult  `json:"finalization,omitempty"`
 	Finalizations    []FinalizationResult `json:"finalizations"`
 	// ExactTextOutput preserves compatibility-shaped stdout without polluting
@@ -426,6 +458,9 @@ func NormalizeResult(result CommandResult) CommandResult {
 	if result.GateDeferral != nil && result.GateDeferral.GateCommand == nil {
 		result.GateDeferral.GateCommand = []string{}
 	}
+	if result.GateEvidence != nil && result.GateEvidence.GateCommand == nil {
+		result.GateEvidence.GateCommand = []string{}
+	}
 	for index := range result.Findings {
 		finding := &result.Findings[index]
 		if finding.AffectedIDs == nil {
@@ -531,6 +566,14 @@ func renderText(result CommandResult) []byte {
 		if gate.DeferredImplementationBase != "" {
 			fmt.Fprintf(&output, "  implementation range: %s..%s\n", gate.DeferredImplementationBase, gate.DeferredImplementationMerge)
 		}
+	}
+	if result.GateEvidence != nil {
+		gate := result.GateEvidence
+		fmt.Fprintf(&output, "gate evidence: state=%s matches=%t basis=%s\n", gate.State, gate.Matches, gate.MatchBasis)
+		fmt.Fprintf(&output, "  repository identity: %s\n", gate.RepositoryIdentity)
+		fmt.Fprintf(&output, "  gate command: %s (sha256: %s, exit: %d)\n", joinArgv(gate.GateCommand), gate.GateCommandSHA256, gate.GateExitStatus)
+		fmt.Fprintf(&output, "  record: %s (provenance: %s)\n", gate.RecordPath, gate.RecordProvenance)
+		fmt.Fprintf(&output, "  revisions: recorded=%s head=%s baseline=%s\n", gate.RecordedRevision, gate.HeadRevision, gate.BaselineRevision)
 	}
 	for _, skipped := range result.SkippedWork {
 		fmt.Fprintf(&output, "skipped %s: %s\n", skipped.Code, skipped.Reason)

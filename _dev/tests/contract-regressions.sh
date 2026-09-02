@@ -2901,7 +2901,7 @@ def repository_gate_defects(work, reference):
     }
     predicates = {
         "pre-build gate": ("baseline", r"before dispatch or any step 6 source edit"),
-        "structured direct baseline": ("baseline", r"structured argv.*directly from the project root"),
+        "structured direct baseline": ("baseline", r"structured argv.*<skill-root>/tools/do-work-cli\.sh --repo-root <project-root> --format json check-green-gate.*typed `gate_evidence`.*matches: true.*baseline_revision.*matches: false.*directly from the project root.*direct zero exit.*<skill-root>/tools/do-work-cli\.sh --repo-root <project-root> --format json record-green-gate"),
         "ordinary deferral": ("baseline", r"ordinary parent.*defer-gate --manifest"),
         "repair non-recursion": ("baseline", r"matching red baseline.*never recursively defers"),
         "repair no-op completion": ("baseline", r"green baseline.*durable reviewed no-op completion"),
@@ -2910,7 +2910,7 @@ def repository_gate_defects(work, reference):
         "explicit parent suppression": ("baseline", r"parent_id.*session-local suppression.*explicitly targeted"),
         "repair failure continuation": ("baseline", r"failed, cancelled, or dependency-gated repairs.*continue unrelated runnable work"),
         "saved range resume gate": ("baseline", r"merge in current `head` ancestry.*rename-aware.*path history"),
-        "late base attribution": ("testing", r"isolated detached diagnostic worktree at saved `<pre>`"),
+        "late base attribution": ("testing", r"direct zero exit.*<skill-root>/tools/do-work-cli\.sh --repo-root <project-root> --format json record-green-gate.*isolated detached diagnostic worktree at saved `<pre>`"),
         "repair final same-fingerprint failure": ("testing", r"repository_gate_repair: true.*same fingerprint.*prepares a terminal `fail` finalization manifest"),
         "repair final different-fingerprint failure": ("testing", r"repository_gate_repair: true.*different fingerprint.*prepares a terminal `fail` finalization manifest"),
         "repair final unverifiable-fingerprint failure": ("testing", r"repository_gate_repair: true.*missing/malformed fingerprint evidence.*prepares a terminal `fail` finalization manifest"),
@@ -2989,12 +2989,12 @@ if live_defects:
     )
 
 mutations = (
-    ("work", "before dispatch or any Step 6 source edit", "after builder dispatch", "pre-build gate"),
+    ("work", "check-green-gate", "legacy-cache-check", "structured direct baseline"),
     ("work", "Consume only the typed `gate_deferral` result", "Parse the text result", "typed result consumption"),
     ("work", "even when explicitly targeted", "unless the user named it", "explicit parent suppression"),
     ("work", "never recursively defer", "defer again", "repair non-recursion"),
     ("work", "continue unrelated runnable work", "stop the run", "repair failure continuation"),
-    ("work", "isolated detached diagnostic worktree at saved `<pre>`", "current working tree", "late base attribution"),
+    ("work", "`check-green-gate` is never consulted here. After a direct zero exit, invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json record-green-gate --gate-exit-status 0 -- <gate argv...>`", "`check-green-gate` is never consulted here. After a direct zero exit, continue without durable evidence", "late base attribution"),
     ("work", "same fingerprint, different fingerprint, missing/malformed fingerprint evidence, or launch failure", "launch failure", "repair final same-fingerprint failure"),
     ("work", "same fingerprint, different fingerprint, missing/malformed fingerprint evidence, or launch failure", "same fingerprint or launch failure", "repair final different-fingerprint failure"),
     ("work", "same fingerprint, different fingerprint, missing/malformed fingerprint evidence, or launch failure", "same fingerprint, different fingerprint, or launch failure", "repair final unverifiable-fingerprint failure"),

@@ -139,6 +139,48 @@ func TestNormalizeResultUsesEmptyClaimEvidenceArray(t *testing.T) {
 	}
 }
 
+func TestGateEvidenceTextAndJSONCarryTheSameTypedState(t *testing.T) {
+	result := CommandResult{
+		Command: "check-green-gate", Outcome: OutcomeSuccess, RepositoryRoot: "/tmp/example",
+		GateEvidence: &GateEvidenceResult{
+			RepositoryIdentity: "/tmp/example/.git", GateCommand: []string{"bash", "verify.sh"},
+			GateCommandSHA256: "abc123", RecordPath: "/tmp/example/.git/do-work-green-gates/abc123.json",
+			RecordProvenance: "persisted_green_run", GateExitStatus: 0,
+			RecordedRevision: "1111111", HeadRevision: "2222222", State: GateEvidenceLogDescendantMatch,
+			Matches: true, MatchBasis: "gate_log_only_descendant", BaselineRevision: "2222222",
+		},
+	}
+	textOutput, err := RenderResult(result, FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		"gate evidence: state=gate_log_descendant_match matches=true basis=gate_log_only_descendant",
+		"repository identity: /tmp/example/.git", "gate command: bash verify.sh (sha256: abc123, exit: 0)",
+		"provenance: persisted_green_run", "recorded=1111111 head=2222222 baseline=2222222",
+	} {
+		if !strings.Contains(string(textOutput), expected) {
+			t.Errorf("text output missing %q:\n%s", expected, textOutput)
+		}
+	}
+	jsonOutput, err := RenderResult(result, FormatJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded CommandResult
+	if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.GateEvidence == nil || decoded.GateEvidence.State != GateEvidenceLogDescendantMatch || !decoded.GateEvidence.Matches || decoded.GateEvidence.BaselineRevision != "2222222" || !reflect.DeepEqual(decoded.GateEvidence.GateCommand, []string{"bash", "verify.sh"}) {
+		t.Fatalf("JSON lost typed gate evidence: %#v", decoded.GateEvidence)
+	}
+
+	normalized := NormalizeResult(CommandResult{GateEvidence: &GateEvidenceResult{}})
+	if normalized.GateEvidence.GateCommand == nil {
+		t.Fatal("gate command remained nil")
+	}
+}
+
 func TestOutcomeExitCodes(t *testing.T) {
 	tests := []struct {
 		outcome CommandOutcome

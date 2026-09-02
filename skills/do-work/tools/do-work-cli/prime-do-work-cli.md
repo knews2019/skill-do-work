@@ -22,6 +22,7 @@ The standard-library Go module under this directory is the canonical implementat
 - `internal/requeststate/` owns deterministic `claim`, `unblock`, `complete`, `fail`, and `cancel` plans and their coupled checkpoint, archive, UR, calibration, and provenance mutations.
 - `internal/publication/` is the sole deterministic owner of typed `capture-files`, `answer`, `release`, and `defer-gate` manifests, planning, containment, repository-root-confined parent handles, and atomic publication. Gate deferral binds exact parent/checkpoint preimages, repair identity, and diagnostic evidence; a fold is authorized by the exact pending repair preimage and tolerates an absent reservation after committed-request cleanup, while a present marker must still match. Actions retain gate execution, fingerprinting, revision attribution, path-drift judgment, scheduling, content, diagnosis, and semantic/release judgment, and once supplied these durable mutations have no prose fallback.
 - `internal/finalization/` composes request-state, optional release, exact commit, and provenance authorities behind a Git-private phase journal. `finalize --manifest` creates and advances one journal; `recover-finalization --discover` replays journals oldest-first, preserves unstaged protected rows without reading them, and admits only lifecycle/release-semantic unjournaled tails into the same phase engine.
+- `internal/gateevidence/` owns exact-argv, repository-bound green-gate records in Git-private state and validates revision ancestry before a baseline may be reused.
 - `internal/cleanup/` plans safe Passes 0–4, consent-gated repairs, link repointing, and worktree evidence.
 - `internal/doctor/` owns read-only mechanical forensics and guarded blame-derived timestamp repair; recurring lesson judgment and board verification remain outside it.
 - `internal/atomicfile/` owns safe existing-file replacement and exclusive marker creation.
@@ -61,6 +62,7 @@ The standard-library Go module under this directory is the canonical implementat
 ## Verify
 
 - Focused package: `go test ./internal/<package>`
+- Green-gate evidence: `go test ./internal/gateevidence`
 - Static analysis: `go vet ./...`
 - Module regression: `go test -count=1 ./...`
 - Exact Go 1.25 compatibility: `bash _dev/tests/do-work-cli-go125-compatibility.sh` from the repository root
