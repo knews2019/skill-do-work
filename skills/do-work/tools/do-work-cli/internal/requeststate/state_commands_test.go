@@ -18,7 +18,7 @@ func TestLifecycleCommandsAreRegistered(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(repositoryRoot, "do-work", "queue"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, commandName := range []string{"claim", "unblock", "complete", "fail", "cancel"} {
+	for _, commandName := range []string{"claim", "recover-claim", "unblock", "complete", "fail", "cancel"} {
 		command := exec.Command("go", "run", "../../cmd/do-work-cli", "--repo-root", repositoryRoot, "--format", "json", commandName)
 		output, _ := command.CombinedOutput()
 		if bytes.Contains(output, []byte("UNKNOWN-COMMAND")) || !strings.Contains(string(output), `"command": "`+commandName+`"`) {

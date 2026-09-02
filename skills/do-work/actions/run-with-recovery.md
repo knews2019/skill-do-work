@@ -42,9 +42,15 @@ This is the only mid-step continuation this verb provides. A stopped build resta
 
 ### Step 0.3: Recover every working REQ under the authority assertion
 
-Read `do-work/CHECKPOINT.md`, then apply `actions/work-reference.md` → **Crash Recovery (Step 1)** with the authority override that section defines. Every `REQ-*.md` in `do-work/working/` classifies as this checkout's own crash. Run recovery substeps 1–3 for each one without a prompt and without the three-hour takeover ladder. Report each takeover with the `writer:` label its checkpoint entry carried; report `no writer label` when it carried none.
+Read `do-work/CHECKPOINT.md`, then classify every `REQ-*.md` in `do-work/working/` as this checkout's own crash, without a prompt or the three-hour takeover ladder. For each REQ, select exactly one checkpoint-evidence argument: `--checkpoint-writer '<exact label>'` when its entry carries a `writer:` label, `--checkpoint-unlabeled` when its entry has no label, or `--checkpoint-absent` when no entry names it. Report the observed label, or `no writer label`, then invoke the canonical ownership-transfer boundary from the project root:
 
-Recovery returns the REQ to claimable state and strips incomplete generated sections, but it does not discard an uncommitted implementation diff elsewhere in the project tree. `actions/work.md` pre-flight reports that diff, and the fresh builder may reuse it after judging it against the REQ. Mid-step build resumption remains out of scope.
+```bash
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json recover-claim REQ-NNN --request-path do-work/working/REQ-NNN-<slug>.md <checkpoint-evidence-argument> --assume-sole-writer --commit
+```
+
+The command consumes one snapshot, resets and moves the exact REQ, removes only the asserted checkpoint entry and its indented detail, and commits only its ownership-transfer postimages. Continue only on typed `success`. If the canonical launcher is missing, failed, or malformed, stop with its finding; there is no prose, manual, helper, or free-form fallback. Do not run Crash Recovery's mutation substeps separately.
+
+Recovery returns the REQ to claimable state and strips incomplete generated sections, but its exact-path commit does not stage or discard an uncommitted implementation diff elsewhere in the project tree. `actions/work.md` pre-flight reports that diff, and the fresh builder may reuse it after judging it against the REQ. Mid-step build resumption remains out of scope.
 
 ### Step 1: Hand off to the work pipeline
 
@@ -69,5 +75,5 @@ Report recovered finalization records and working-REQ takeovers first, then use 
 ## Verification Checklist
 
 - [ ] Recovery used the canonical launcher with `--discover --assume-sole-releaser`, with no fallback
-- [ ] Every working REQ was reset through Crash Recovery substeps 1–3 and its prior label was reported
+- [ ] Every working REQ was reset through canonical `recover-claim`, its exact checkpoint evidence was supplied, and its prior label was reported
 - [ ] The work handoff received the original `$ARGUMENTS` verbatim

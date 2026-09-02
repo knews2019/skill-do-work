@@ -1091,3 +1091,75 @@ func TestExistingDirtyTargetOptInRestoresExactPreimageAndRefusesStagedInput(t *t
 		t.Fatalf("staged dirty opt-in = %#v", staged)
 	}
 }
+
+func TestDirtyTargetPostimageCommitIsExplicitAndPreservesUnrelatedWork(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "queue.md", "pending before claim\n")
+	writeFile(t, repositoryRoot, "unrelated.txt", "committed\n")
+	commitAll(t, repositoryRoot, "seed")
+	if err := os.Remove(filepath.Join(repositoryRoot, "queue.md")); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, repositoryRoot, "unrelated.txt", "committed\nuncommitted implementation\n")
+
+	defaultResult := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot, TargetPaths: []string{"queue.md"}, ExistingDirtyTargetPaths: []string{"queue.md"},
+		Commit: true, CommitMessage: "must refuse",
+	}, func(*MutationRecorder) error { return nil })
+	if defaultResult.Outcome != resultmodel.OutcomeRefused || defaultResult.Failure == nil || defaultResult.Failure.Kind != FailureDirtyTarget {
+		t.Fatalf("default dirty commit guard = %#v", defaultResult)
+	}
+
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot, TargetPaths: []string{"queue.md"}, ExistingDirtyTargetPaths: []string{"queue.md"},
+		CommitExistingDirtyTargets: true, Commit: true, CommitMessage: "commit recovered postimage",
+	}, func(recorder *MutationRecorder) error {
+		writeFile(t, repositoryRoot, "queue.md", "pending after recovery\n")
+		return recorder.RecordCreated("queue.md")
+	})
+	if result.Outcome != resultmodel.OutcomeSuccess || result.CommitSHA == "" {
+		t.Fatalf("dirty postimage commit = %#v", result)
+	}
+	if got := readFile(t, repositoryRoot, "queue.md"); got != "pending after recovery\n" {
+		t.Fatalf("committed postimage = %q", got)
+	}
+	if got := readFile(t, repositoryRoot, "unrelated.txt"); got != "committed\nuncommitted implementation\n" {
+		t.Fatalf("unrelated bytes changed = %q", got)
+	}
+	if status := runFixtureGit(t, repositoryRoot, "status", "--porcelain"); status != "M unrelated.txt" {
+		t.Fatalf("unexpected post-commit status = %q", status)
+	}
+	if paths := runFixtureGit(t, repositoryRoot, "show", "--format=", "--name-only", result.CommitSHA); strings.TrimSpace(paths) != "queue.md" {
+		t.Fatalf("commit escaped exact recovered target: %q", paths)
+	}
+}
+
+func TestDirtyDeletedTargetCommitFailureRestoresTheExactDeletedPreimage(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "queue.md", "committed queue bytes\n")
+	commitAll(t, repositoryRoot, "seed")
+	if err := os.Remove(filepath.Join(repositoryRoot, "queue.md")); err != nil {
+		t.Fatal(err)
+	}
+	hookPath := filepath.Join(repositoryRoot, ".git", "hooks", "pre-commit")
+	if err := os.WriteFile(hookPath, []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot, TargetPaths: []string{"queue.md"}, ExistingDirtyTargetPaths: []string{"queue.md"},
+		CommitExistingDirtyTargets: true, Commit: true, CommitMessage: "must roll back",
+	}, func(recorder *MutationRecorder) error {
+		writeFile(t, repositoryRoot, "queue.md", "recovered queue bytes\n")
+		return recorder.RecordCreated("queue.md")
+	})
+	if result.Outcome != resultmodel.OutcomeRolledBack || result.Rollback.Status != resultmodel.RollbackSucceeded || result.Failure == nil || result.Failure.Kind != FailureCommit {
+		t.Fatalf("commit failure rollback = %#v", result)
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, "queue.md")); !os.IsNotExist(err) {
+		t.Fatalf("rollback did not restore the exact deleted preimage: %v", err)
+	}
+	if status := runFixtureGit(t, repositoryRoot, "status", "--porcelain"); status != "D queue.md" {
+		t.Fatalf("rollback changed the original dirty deletion: %q", status)
+	}
+}

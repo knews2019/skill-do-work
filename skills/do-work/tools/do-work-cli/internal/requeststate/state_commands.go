@@ -16,7 +16,7 @@ var discoverRepository = repositorymodel.DiscoverRepository
 
 func Handlers() map[string]commandruntime.CommandHandler {
 	handlers := map[string]commandruntime.CommandHandler{}
-	for _, transition := range []Transition{TransitionClaim, TransitionUnblock, TransitionComplete, TransitionFail, TransitionCancel} {
+	for _, transition := range []Transition{TransitionClaim, TransitionRecover, TransitionUnblock, TransitionComplete, TransitionFail, TransitionCancel} {
 		selectedTransition := transition
 		handlers[string(transition)] = func(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
 			return handleStateCommand(executionContext, selectedTransition, arguments)
@@ -50,13 +50,19 @@ func parseStateOptions(transition Transition, arguments []string) (StateOptions,
 			options.DryRun = true
 		case "--commit":
 			options.Commit = true
+		case "--checkpoint-unlabeled":
+			options.CheckpointUnlabeled = true
+		case "--checkpoint-absent":
+			options.CheckpointAbsent = true
+		case "--assume-sole-writer":
+			options.AssumeSoleWriter = true
 		case "--record-commit-hash":
 			options.RecordCommitHashOnly = true
 		case "--unblock-required":
 			options.UnblockRequired = true
 		case "--confirmed":
 			options.CancellationConfirmed = true
-		case "--request-path", "--provenance", "--original-status", "--probe-status", "--source", "--terminal-status", "--implementation-hash", "--error", "--error-type", "--reason", "--reason-summary", "--dependent-disposition", "--writer", "--at":
+		case "--request-path", "--provenance", "--original-status", "--probe-status", "--source", "--terminal-status", "--implementation-hash", "--error", "--error-type", "--reason", "--reason-summary", "--dependent-disposition", "--writer", "--checkpoint-writer", "--at":
 			index++
 			if index >= len(arguments) {
 				return options, fmt.Errorf("%s requires a value", argument)
@@ -89,6 +95,8 @@ func parseStateOptions(transition Transition, arguments []string) (StateOptions,
 				options.DependentDisposition = value
 			case "--writer":
 				options.WriterLabel = value
+			case "--checkpoint-writer":
+				options.CheckpointWriter = value
 			case "--at":
 				parsed, err := time.Parse(time.RFC3339, value)
 				if err != nil {
