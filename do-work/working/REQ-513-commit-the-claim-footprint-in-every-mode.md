@@ -1,7 +1,7 @@
 ---
 id: REQ-513
 title: '[impact-rule-change] Commit the claim footprint in every mode'
-status: pending
+status: claimed
 created_at: 2026-09-02T20:35:18Z
 user_request: UR-099
 domain: general
@@ -15,6 +15,7 @@ effort_estimate: effort-substantive
 related: [REQ-514, REQ-515, REQ-516, REQ-517]
 batch: recovery-never-traps
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/requeststate/]
+claimed_at: 2026-09-02T20:45:12Z
 ---
 
 # Commit the claim footprint in every mode

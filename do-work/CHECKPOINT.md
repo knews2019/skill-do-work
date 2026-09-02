@@ -52,3 +52,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-513: [impact-rule-change] Commit the claim footprint in every mode — claimed 2026-09-02T20:45:12Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
