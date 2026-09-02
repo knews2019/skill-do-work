@@ -1,7 +1,7 @@
 ---
 id: REQ-518
 title: '[impact-rule-change] Run the full gate once per REQ'
-status: pending
+status: claimed
 created_at: 2026-09-02T21:27:16Z
 user_request: UR-100
 domain: backend
@@ -27,6 +27,7 @@ estimate:
     - 7 acceptance criteria
     - persistence changes
     - cross-route regression gates
+claimed_at: 2026-09-02T21:47:31Z
 ---
 
 # Run the Full Gate Once per REQ
