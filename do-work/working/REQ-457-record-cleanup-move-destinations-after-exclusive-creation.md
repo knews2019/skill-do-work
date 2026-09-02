@@ -17,6 +17,26 @@ batch: accepted-validate-feedback-root-causes
 sweep: true
 sweep_key: transaction-created-path-rollback-identity
 claimed_at: 2026-09-02T23:27:17Z
+route: B
+write_set:
+  - skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go
+  - skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_apply.go
+  - skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go
+  - skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_init.go
+  - skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go
+  - skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_apply_test.go
+estimate:
+  p50_active_minutes: 45
+  confidence: medium
+  calculated_at: 2026-09-02T23:49:40Z
+  basis:
+    - Route B
+    - 6-file write set
+    - 3 subsystems involved
+    - 7 acceptance criteria
+    - async lifecycle behavior
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Make Rollback Ownership Follow the Created Filesystem Object
@@ -87,3 +107,67 @@ See `do-work/user-requests/UR-085/input.md` for complete verbatim input.
 
 ---
 *Source: validate-feedback Finding #16, captured by UR-085.*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The outcome and constraints are fully specified by the finding, but the ownership mechanism the fix must hook into — where created-path identity is captured and where rollback consumes it — had to be discovered across three packages before any edit could be scoped.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Exploration
+
+**Ownership recording.** `internal/gittransaction/git_transaction.go` holds `MutationRecorder`. `RecordCreated` (line 229) validates the path against `creatablePaths`, adds it to `createdPaths`, then captures identities for *directories* only (`captureCreatedDirectoryIdentities`, line 244). No identity is captured for the created **file** itself.
+
+**Rollback.** `rollbackFailure` (line 882) walks `createdPaths` deepest-first and calls `root.Remove(path)` (line 1002). The only identity guard on that branch is `recorder.publishedTracked[path]`, which `RecordTouched` fills **solely for paths already in `dirtyTrackedPaths`** — never for a freshly created path. So a created path is removed by pathname with no proof the object at that pathname is the one this invocation created. Created *directories* already have the correct shape (`publishedDirectories` + `os.SameFile`, line 1013), and `bkb_init.go`'s `rootedScaffoldWriter.rollback` has it too — the file branch of the shared recorder is the one that does not.
+
+**Record/create ordering across all thirteen `RecordCreated` call sites.** Eleven create first and record second (publication, requeststate, toolbox report-image/note/architecture/portfolio). Exactly two record *before* creating:
+- `internal/cleanup/cleanup_apply.go:291` — records `operation.DestinationPath`, then `moveWithoutOverwrite` performs the exclusive create at line 359. This is the finding's race: writer B's `CreateExclusiveAt` returns `EEXIST` after writer A published, and B's rollback then removes A's file.
+- `internal/knowledgecommands/interview_commands.go:1182` — records, then `createRootedFile`. Same class; there is even a `rootedCreateTestHook` between the two, which is the seam an adversarial test uses.
+
+**Escaped ownership in the BKB scaffold.** `rootedScaffoldWriter.createFile` (line 423) opens the file `O_CREATE|O_EXCL`, then writes, closes, and `Lstat`s — appending to `writer.created` only after all of that succeeds. A failed write, close, or `Lstat` leaves a file on disk that rollback never sees. `createDirectory` (line 400) has the same shape around `Mkdir`.
+
+**Why `os.SameFile` alone is the right guard, and where it is not enough.** `atomicfile.ReplaceExisting` publishes by rename, so any legitimate later replacement of a created path by this same transaction changes the inode. A pure record-time snapshot would therefore disown our own second write. The recorder is told about every one of its own later mutations (`RecordTouched`/`RecordCreated` are called for each), so re-capturing on those calls — and only on those calls — distinguishes our own re-publication from a foreign writer's swap, which never routes through the recorder.
+
+*Generated in-session (no separate explore agent — single-pass discovery)*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go` (modify) — capture and revalidate created-path identity; gate created-path rollback removal on it
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_apply.go` (modify) — record the move destination only after exclusive creation succeeds, before source deletion
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go` (modify) — record after `createRootedFile`, not before
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_init.go` (modify) — record scaffold ownership immediately after exclusive creation so incomplete writes cannot escape it
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go` (modify) — RED/GREEN for post-record parent swap and pathname-only removal
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_apply_test.go` (modify) — RED/GREEN for the losing-writer `EEXIST` race and recorder-failure cleanup
+
+**Files I will NOT touch:** `internal/atomicfile/atomic_file.go` (its exclusive-create contract is what the fix depends on and must not be weakened), `internal/publication/publication_commands.go` (already creates before recording; it is fixed by the shared recorder change alone), `prime-do-work-cli.md` (exact-path transaction contract is preserved, not changed).
+
+**Acceptance criteria (restated from REQ):**
+- [ ] The exclusive destination create runs before the destination is registered as created by this transaction
+- [ ] Registration happens immediately after a successful create and before the source is deleted
+- [ ] A failed registration removes only the destination this process just created and leaves the source intact
+- [ ] An `EEXIST` exclusive create never records the destination and never removes it during rollback
+- [ ] No-overwrite semantics and exact-path rollback are preserved for paths the process genuinely owns
+- [ ] Rooted object identity is held or revalidated for every created path through rollback, after each later create, replace, or move mutation
+- [ ] Rollback never follows a swapped parent outside the repository and never removes another writer's replacement object
+
+## Pre-Flight
+
+**Git:** ✓ clean outside `do-work/`
+**Tests baseline:** ⚠ RED — `bash _dev/tests/maintainer-verify.sh` exits 1 at `008f3d3` with two pre-existing failures, recorded in `do-work/working/baseline-failures.txt`:
+- `internal/knowledgecommands` → `TestBKBInitRollbackPreservesReplacedObjectsAndParents` — **this REQ's own captured RED** (the `bkb_init.go` instance in `## Instances`). It must go GREEN here.
+- `internal/toolboxcommands` → `TestRemediationCancellationReachesMediaGitCommitAndRollback` ("media commit hook survived cancellation") — unrelated to this REQ's ownership invariant; excluded from this REQ's gate attribution and routed to its own REQ.
+
+**Dependencies:** ⚠ this checkout shipped none of the gate's required toolchain — Go 1.26.1, ShellCheck 0.11.0, and `just` (board template needs ≥ 1.4x) were all installed before the baseline could run. Not a repository change.
+
+*Checked by work action*

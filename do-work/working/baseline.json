@@ -1,0 +1,8 @@
+{
+  "launched": true,
+  "command": "bash _dev/tests/maintainer-verify.sh",
+  "recorded_at": "2026-09-02T23:50:00Z",
+  "head_revision": "008f3d3ccbd059a10826b1f4cfc77b09825259ee",
+  "exit_status": 1,
+  "failure_count": 2
+}
