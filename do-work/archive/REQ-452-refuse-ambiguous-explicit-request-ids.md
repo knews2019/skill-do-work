@@ -31,6 +31,7 @@ estimate:
   basis:
     - trivial short-circuit
   calculated_at: 2026-09-02T11:18:48Z
+commit: bbc57391
 ---
 
 # Refuse Ambiguous Explicit Request IDs
