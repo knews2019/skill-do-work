@@ -1,6 +1,7 @@
 package doctor
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -101,6 +102,7 @@ func FinalizationTailFindings(ctx context.Context, snapshot *repositorymodel.Rep
 
 func buildFinalizationTailFindings(ctx context.Context, snapshot *repositorymodel.RepositorySnapshot) []resultmodel.CommandFinding {
 	findings := unfinishedJournalFindings(ctx, snapshot.RepositoryRoot)
+	archiveCandidates := []*repositorymodel.RequestFile{}
 	for _, requestFile := range snapshot.RequestFiles {
 		if requestFile.TreeSection != "archive" || requestFile.ParsedDocument == nil || !schemanormalization.IsTerminalSuccess(requestFile.TypedRecord.RequestStatus) {
 			continue
@@ -109,14 +111,30 @@ func buildFinalizationTailFindings(ctx context.Context, snapshot *repositorymode
 		if !found || strings.TrimSpace(commitField.ScalarValue) != "" {
 			continue
 		}
+		archiveCandidates = append(archiveCandidates, requestFile)
+	}
+	if len(archiveCandidates) == 0 {
+		sortFindings(findings)
+		return findings
+	}
+	gitStates, gitInventoryError := archivedRequestGitStates(ctx, snapshot.RepositoryRoot)
+	for _, requestFile := range archiveCandidates {
 		requestPath := requestRepositoryPath(requestFile)
-		gitState, dirty := archivedRequestGitState(ctx, snapshot.RepositoryRoot, requestPath)
-		if !dirty {
-			continue
-		}
 		requestID := requestFile.TypedRecord.RequestID
 		if requestID == "" {
 			requestID = requestFile.FilenameID
+		}
+		if gitInventoryError != nil {
+			findings = append(findings, doctorFinding("FINALIZATION-TAIL-INSPECTION-FAILED", resultmodel.SeverityError,
+				nonEmptyString(requestID), []string{requestPath},
+				fmt.Sprintf("%s archived terminal-success REQ has blank commit; Git inventory failed: %s; finalization state is unknown", requestID, gitInventoryError),
+				resultmodel.FixabilityRefused, "finalization state cannot be excluded without repository-level Git evidence",
+				finalizationRecoveryArgv(), finalizationRecoveryArgv()))
+			continue
+		}
+		gitState, dirty := gitStates[requestPath]
+		if !dirty {
+			continue
 		}
 		findings = append(findings, doctorFinding("ARCHIVED-WITHOUT-COMMIT", resultmodel.SeverityError,
 			nonEmptyString(requestID), []string{requestPath},
@@ -132,7 +150,7 @@ func unfinishedJournalFindings(ctx context.Context, repositoryRoot string) []res
 	command := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "rev-parse", "--git-path", "do-work-finalization")
 	output, err := command.Output()
 	if err != nil {
-		return nil
+		return []resultmodel.CommandFinding{finalizationInspectionFinding(nil, nil, "Git could not locate the finalization journal directory: "+err.Error())}
 	}
 	displayRoot := strings.TrimSpace(string(output))
 	journalRoot := displayRoot
@@ -141,26 +159,47 @@ func unfinishedJournalFindings(ctx context.Context, repositoryRoot string) []res
 	}
 	entries, err := os.ReadDir(filepath.Clean(journalRoot))
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return []resultmodel.CommandFinding{finalizationInspectionFinding(nil, []string{filepath.ToSlash(displayRoot)}, "finalization journal directory inspection failed: "+err.Error())}
 	}
 	findings := []resultmodel.CommandFinding{}
 	for _, entry := range entries {
-		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || filepath.Ext(entry.Name()) != ".json" {
+		if filepath.Ext(entry.Name()) != ".json" {
 			continue
 		}
 		journalPath := filepath.Join(journalRoot, entry.Name())
+		displayPath := filepath.ToSlash(filepath.Join(displayRoot, entry.Name()))
+		filenameRequestID := strings.TrimSuffix(entry.Name(), ".json")
+		if !finalizationRequestIDPattern.MatchString(filenameRequestID) {
+			filenameRequestID = ""
+		}
+		entryInfo, infoError := entry.Info()
+		if infoError != nil {
+			findings = append(findings, unfinishedJournalInspectionFinding(filenameRequestID, displayPath, "journal metadata inspection failed: "+infoError.Error()))
+			continue
+		}
+		if !entryInfo.Mode().IsRegular() {
+			findings = append(findings, unfinishedJournalInspectionFinding(filenameRequestID, displayPath, "journal is not a readable regular file"))
+			continue
+		}
 		journalBytes, readError := os.ReadFile(journalPath)
 		if readError != nil {
+			findings = append(findings, unfinishedJournalInspectionFinding(filenameRequestID, displayPath, "journal read failed: "+readError.Error()))
 			continue
 		}
 		var journal finalizationJournalEvidence
-		if json.Unmarshal(journalBytes, &journal) != nil || !finalizationRequestIDPattern.MatchString(journal.Manifest.RequestID) ||
-			entry.Name() != journal.Manifest.RequestID+".json" || strings.TrimSpace(journal.Phase) == "" {
+		if unmarshalError := json.Unmarshal(journalBytes, &journal); unmarshalError != nil {
+			findings = append(findings, unfinishedJournalInspectionFinding(filenameRequestID, displayPath, "journal JSON is malformed: "+unmarshalError.Error()))
 			continue
 		}
-		displayPath := filepath.Join(displayRoot, entry.Name())
+		if !finalizationRequestIDPattern.MatchString(journal.Manifest.RequestID) || entry.Name() != journal.Manifest.RequestID+".json" || strings.TrimSpace(journal.Phase) == "" {
+			findings = append(findings, unfinishedJournalInspectionFinding(filenameRequestID, displayPath, "journal identity or phase is invalid"))
+			continue
+		}
 		findings = append(findings, doctorFinding("UNFINISHED-FINALIZATION", resultmodel.SeverityError,
-			[]string{journal.Manifest.RequestID}, []string{filepath.ToSlash(displayPath)},
+			[]string{journal.Manifest.RequestID}, []string{displayPath},
 			fmt.Sprintf("%s finalization journal is unfinished at phase %s", journal.Manifest.RequestID, journal.Phase),
 			resultmodel.FixabilityRefused, "the durable journal must be resumed by the finalization owner",
 			finalizationRecoveryArgv(), finalizationRecoveryArgv()))
@@ -168,16 +207,46 @@ func unfinishedJournalFindings(ctx context.Context, repositoryRoot string) []res
 	return findings
 }
 
-func archivedRequestGitState(ctx context.Context, repositoryRoot, requestPath string) (string, bool) {
-	command := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "--literal-pathspecs", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", requestPath)
-	output, err := command.Output()
-	if err != nil || len(output) < 2 {
-		return "", false
+func unfinishedJournalInspectionFinding(requestID, displayPath, detail string) resultmodel.CommandFinding {
+	return doctorFinding("UNFINISHED-FINALIZATION", resultmodel.SeverityError,
+		nonEmptyString(requestID), nonEmptyString(displayPath),
+		fmt.Sprintf("%s finalization journal inspection failed; phase=unknown; %s", fallbackDash(requestID), detail),
+		resultmodel.FixabilityRefused, "the durable journal must be inspected and resumed by the finalization owner",
+		finalizationRecoveryArgv(), finalizationRecoveryArgv())
+}
+
+func finalizationInspectionFinding(ids, paths []string, detail string) resultmodel.CommandFinding {
+	return doctorFinding("FINALIZATION-TAIL-INSPECTION-FAILED", resultmodel.SeverityError, ids, paths, detail,
+		resultmodel.FixabilityRefused, "finalization state could not be inspected completely",
+		finalizationRecoveryArgv(), finalizationRecoveryArgv())
+}
+
+func archivedRequestGitStates(ctx context.Context, repositoryRoot string) (map[string]string, error) {
+	command := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "--literal-pathspecs", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames", "--", "do-work/archive")
+	output, err := command.CombinedOutput()
+	if err != nil {
+		detail := strings.TrimSpace(string(output))
+		if detail == "" {
+			detail = err.Error()
+		}
+		return nil, fmt.Errorf("%s", detail)
 	}
-	if string(output[:2]) == "??" {
-		return "untracked", true
+	states := map[string]string{}
+	for _, record := range bytes.Split(output, []byte{0}) {
+		if len(record) == 0 {
+			continue
+		}
+		if len(record) < 4 || record[2] != ' ' {
+			return nil, fmt.Errorf("Git status returned a malformed porcelain record")
+		}
+		requestPath := filepath.ToSlash(string(record[3:]))
+		if string(record[:2]) == "??" {
+			states[requestPath] = "untracked"
+		} else {
+			states[requestPath] = "modified relative to HEAD"
+		}
 	}
-	return "modified relative to HEAD", true
+	return states, nil
 }
 
 func finalizationRecoveryArgv() []string {

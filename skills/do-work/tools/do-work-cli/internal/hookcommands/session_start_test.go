@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
 func TestSessionStartRendersExactBanner(t *testing.T) {
@@ -124,6 +125,123 @@ func TestSessionStartProjectsOneUnfinishedFinalizationLineReadOnly(t *testing.T)
 	}
 }
 
+func TestSessionStartProjectsMalformedAndUnreadableJournalEvidence(t *testing.T) {
+	for _, testCase := range []struct {
+		name      string
+		requestID string
+		writeTail func(t *testing.T, journalPath string)
+	}{
+		{
+			name:      "malformed",
+			requestID: "REQ-712",
+			writeTail: func(t *testing.T, journalPath string) {
+				t.Helper()
+				if err := os.WriteFile(journalPath, []byte("{malformed\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+		{
+			name:      "unreadable",
+			requestID: "REQ-713",
+			writeTail: func(t *testing.T, journalPath string) {
+				t.Helper()
+				if err := os.Symlink("missing-journal", journalPath); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			repository, skillRoot := setupSessionStartFixture(t)
+			runHookGit(t, repository, "init", "-q")
+			journalRoot := runHookGitOutput(t, repository, "rev-parse", "--git-path", "do-work-finalization")
+			if !filepath.IsAbs(journalRoot) {
+				journalRoot = filepath.Join(repository, journalRoot)
+			}
+			if err := os.MkdirAll(journalRoot, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			testCase.writeTail(t, filepath.Join(journalRoot, testCase.requestID+".json"))
+
+			result := handleSessionStart(commandruntime.ExecutionContext{RepositoryRoot: repository}, []string{"--skill-root", skillRoot})
+			want := "do-work v9.8.7 loaded. 0 pending REQ(s). Say 'do-work help' for commands.\n" +
+				"do-work: unfinished finalization for " + testCase.requestID + " — 'do-work run' resumes it; 'do-work run-with-recovery' if this checkout is the only writer.\n"
+			if result.ProtocolOutput == nil || *result.ProtocolOutput != want {
+				t.Fatalf("output=%q, want %q", valueOrEmpty(result.ProtocolOutput), want)
+			}
+			finding, found := findingForRequest(result, testCase.requestID)
+			if !found || finding.Code != "UNFINISHED-FINALIZATION" || !strings.Contains(strings.Join(finding.Evidence, " "), "inspection failed") {
+				t.Fatalf("typed malformed/unreadable evidence missing: %+v", result.Findings)
+			}
+		})
+	}
+}
+
+func TestSessionStartProjectsArchiveGitInventoryFailure(t *testing.T) {
+	repository, skillRoot := setupSessionStartFixture(t)
+	runHookGit(t, repository, "init", "-q")
+	requestPath := filepath.Join(repository, "do-work", "archive", "REQ-714-tail.md")
+	if err := os.MkdirAll(filepath.Dir(requestPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	contents := "---\nid: REQ-714\nstatus: completed\ncreated_at: 2026-09-01T00:00:00Z\ncommit:\n---\n"
+	if err := os.WriteFile(requestPath, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitDirectory := runHookGitOutput(t, repository, "rev-parse", "--git-dir")
+	if !filepath.IsAbs(gitDirectory) {
+		gitDirectory = filepath.Join(repository, gitDirectory)
+	}
+	if err := os.WriteFile(filepath.Join(gitDirectory, "index"), []byte("invalid index\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	result := handleSessionStart(commandruntime.ExecutionContext{RepositoryRoot: repository}, []string{"--skill-root", skillRoot})
+	want := "do-work v9.8.7 loaded. 0 pending REQ(s). Say 'do-work help' for commands.\n" +
+		"do-work: unfinished finalization for REQ-714 — 'do-work run' resumes it; 'do-work run-with-recovery' if this checkout is the only writer.\n"
+	if result.ProtocolOutput == nil || *result.ProtocolOutput != want {
+		t.Fatalf("output=%q, want %q", valueOrEmpty(result.ProtocolOutput), want)
+	}
+	finding, found := findingForRequest(result, "REQ-714")
+	if !found || finding.Code != "FINALIZATION-TAIL-INSPECTION-FAILED" || !strings.Contains(strings.Join(finding.Evidence, " "), "Git inventory failed") {
+		t.Fatalf("typed Git-inventory failure missing: %+v", result.Findings)
+	}
+	after, err := os.ReadFile(requestPath)
+	if err != nil || string(after) != contents {
+		t.Fatalf("Git-inventory failure changed archived request: err=%v after=%q", err, after)
+	}
+}
+
+func TestSessionStartOmitsTailLineForCommittedBlankProvenanceArchive(t *testing.T) {
+	repository, skillRoot := setupSessionStartFixture(t)
+	runHookGit(t, repository, "init", "-q")
+	runHookGit(t, repository, "config", "user.email", "fixture@example.invalid")
+	runHookGit(t, repository, "config", "user.name", "Fixture")
+	requestPath := filepath.Join(repository, "do-work", "archive", "REQ-715-clean.md")
+	if err := os.MkdirAll(filepath.Dir(requestPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	contents := "---\nid: REQ-715\nstatus: completed\ncreated_at: 2026-09-01T00:00:00Z\ncommit:\n---\n"
+	if err := os.WriteFile(requestPath, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runHookGit(t, repository, "add", "do-work/archive/REQ-715-clean.md")
+	runHookGit(t, repository, "commit", "-qm", "committed blank provenance")
+
+	result := handleSessionStart(commandruntime.ExecutionContext{RepositoryRoot: repository}, []string{"--skill-root", skillRoot})
+	want := "do-work v9.8.7 loaded. 0 pending REQ(s). Say 'do-work help' for commands.\n"
+	if result.ProtocolOutput == nil || *result.ProtocolOutput != want {
+		t.Fatalf("output=%q, want %q", valueOrEmpty(result.ProtocolOutput), want)
+	}
+	if _, found := findingForRequest(result, "REQ-715"); found {
+		t.Fatalf("committed blank-provenance archive produced tail finding: %+v", result.Findings)
+	}
+	if status := runHookGitOutput(t, repository, "status", "--porcelain=v1"); status != "" {
+		t.Fatalf("SessionStart changed committed archive fixture: %q", status)
+	}
+}
+
 func TestSessionStartCombinesReservationAndTimestampHousekeeping(t *testing.T) {
 	repository := t.TempDir()
 	skillRoot := filepath.Join(t.TempDir(), "skill")
@@ -181,6 +299,43 @@ func runHookGit(t *testing.T, repository string, arguments ...string) {
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("git %v: %v\n%s", arguments, err, output)
 	}
+}
+
+func runHookGitOutput(t *testing.T, repository string, arguments ...string) string {
+	t.Helper()
+	command := exec.Command("git", append([]string{"-C", repository}, arguments...)...)
+	output, err := command.Output()
+	if err != nil {
+		t.Fatalf("git %v: %v", arguments, err)
+	}
+	return strings.TrimSpace(string(output))
+}
+
+func setupSessionStartFixture(t *testing.T) (string, string) {
+	t.Helper()
+	repository := t.TempDir()
+	skillRoot := filepath.Join(t.TempDir(), "skill")
+	if err := os.MkdirAll(filepath.Join(repository, "do-work", "queue"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(skillRoot, "actions"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillRoot, "actions", "version.md"), []byte("**Current version**: 9.8.7\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return repository, skillRoot
+}
+
+func findingForRequest(result resultmodel.CommandResult, requestID string) (resultmodel.CommandFinding, bool) {
+	for _, finding := range result.Findings {
+		for _, affectedID := range finding.AffectedIDs {
+			if affectedID == requestID {
+				return finding, true
+			}
+		}
+	}
+	return resultmodel.CommandFinding{}, false
 }
 
 func TestSessionStartPreservesMultipleVersionLineQuirk(t *testing.T) {

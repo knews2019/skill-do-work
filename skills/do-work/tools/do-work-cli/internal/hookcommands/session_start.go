@@ -51,8 +51,8 @@ func handleSessionStart(executionContext commandruntime.ExecutionContext, argume
 		finalizationTailFindings := doctor.FinalizationTailFindings(context.Background(), snapshot)
 		if len(finalizationTailFindings) > 0 {
 			operations = append(operations, resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: finalizationTailFindings})
-			if len(finalizationTailFindings[0].AffectedIDs) > 0 {
-				fmt.Fprintf(&output, "do-work: unfinished finalization for %s — 'do-work run' resumes it; 'do-work run-with-recovery' if this checkout is the only writer.\n", finalizationTailFindings[0].AffectedIDs[0])
+			if requestID := firstFinalizationTailRequestID(finalizationTailFindings); requestID != "" {
+				fmt.Fprintf(&output, "do-work: unfinished finalization for %s — 'do-work run' resumes it; 'do-work run-with-recovery' if this checkout is the only writer.\n", requestID)
 			}
 		}
 		plans, planFindings := doctor.BuildTimestampPlanForScope(context.Background(), snapshot, hookClock(), doctor.TimestampScopeActive)
@@ -85,6 +85,15 @@ func handleSessionStart(executionContext commandruntime.ExecutionContext, argume
 		}
 	}
 	return protocolResult(output.String(), operations...)
+}
+
+func firstFinalizationTailRequestID(findings []resultmodel.CommandFinding) string {
+	for _, finding := range findings {
+		if len(finding.AffectedIDs) > 0 {
+			return finding.AffectedIDs[0]
+		}
+	}
+	return ""
 }
 
 func installedVersion(skillRoot string) string {
