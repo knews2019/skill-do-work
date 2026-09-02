@@ -1,7 +1,7 @@
 ---
 id: REQ-489
 title: '[impact-critical] Remove whole checkpoint entries when a REQ leaves working'
-status: claimed
+status: completed
 created_at: 2026-09-01T19:46:57Z
 user_request: UR-083
 addendum_to: REQ-440
@@ -29,6 +29,9 @@ estimate:
   calculated_at: 2026-09-02T13:47:59Z
   basis:
     - trivial short-circuit
+completed_at: 2026-09-02T14:31:16Z
+release_at: 2026-09-02T14:33:40Z
+commit: 6e92e536
 ---
 
 # Remove Whole Checkpoint Entries When a REQ Leaves Working

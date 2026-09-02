@@ -52,6 +52,5 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-489: [impact-critical] Remove whole checkpoint entries when a REQ leaves working — claimed 2026-09-02T13:45:32Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-498: Make orchestrator finalization resumable — claimed 2026-09-02T13:46:20Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

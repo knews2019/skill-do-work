@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.262.2 — Remove Whole Checkpoint Entries (2026-09-02)
+
+Completed requests no longer leave detached checkpoint details behind, and heading-like prose elsewhere in the checkpoint cannot attract lifecycle edits.
+
+- Request-state departure removes the owning claim header together with its indented continuation block while preserving foreign entries byte-for-byte.
+- Checkpoint insertion and removal locate the real `## In Progress (interrupted)` heading as a whole line.
+- Focused regressions cover enriched claims and inline or backticked heading mentions; REQ-502 tracks the remaining cleanup-mover instance found by independent review.
+
 ## 0.262.1 — Drain Targeted Dependency Closures (2026-09-02)
 
 Targeted `do-work run UR-NNN` invocations now retain and drain the initial dependency closure instead of silently stopping after the first runnable set.
