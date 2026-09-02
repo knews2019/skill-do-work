@@ -52,4 +52,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-
+- REQ-501: [impact-rule-change] Add do-work run-with-recovery and record the one-broken-pipe principle — claimed 2026-09-02T18:10:47Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

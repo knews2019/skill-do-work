@@ -1,7 +1,7 @@
 ---
 id: REQ-501
 title: '[impact-rule-change] Add do-work run-with-recovery and record the one-broken-pipe principle'
-status: pending
+status: claimed
 created_at: 2026-09-02T13:31:12Z
 user_request: UR-097
 domain: general
@@ -28,6 +28,7 @@ estimate:
     - cross-route regression gates
     - full-suite verification
 write_set: [skills/do-work/actions/run-with-recovery.md, skills/do-work/SKILL.md, skills/do-work/actions/help.md, skills/do-work/crew-members/communication-style.md, skills/do-work/next-steps.md, skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, decisions/records/adr-022-one-broken-pipe-does-not-stop-the-factory.md, decisions/log.md, decisions/topics/_index_workflow-orchestration.md, CLAUDE.md, _dev/tests/contract-regressions.sh]
+claimed_at: 2026-09-02T18:10:47Z
 ---
 
 # Add do-work run-with-recovery and Record the One-Broken-Pipe Principle
