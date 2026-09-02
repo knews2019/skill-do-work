@@ -33,6 +33,7 @@ planning_at: 2026-09-02T18:16:50Z
 dispatch_at: 2026-09-02T18:16:50Z
 builder_handback_at: 2026-09-02T18:30:12Z
 integration_at: 2026-09-02T18:31:02Z
+review_at: 2026-09-02T18:43:42Z
 ---
 
 # Add do-work run-with-recovery and Record the One-Broken-Pipe Principle
@@ -106,6 +107,18 @@ Firm on the verb name and the three homes for the principle. Latitude on exact p
 - GREEN: `bash _dev/tests/contract-regressions.sh` passed.
 - `bash _dev/tests/maintainer-verify.sh` passed; the optional browser lane had the normal no-browser skip.
 - `git diff --check` passed.
+
+## Review — Attempt 1
+
+**Overall: 50%** | **Acceptance: Fail** | **Risk: Critical**
+
+All firm public surfaces are present and the static mutation lanes pass, but an isolated executable takeover fixture cannot reach a fresh claim. The action directly resets and moves a foreign working REQ through Crash Recovery substeps 1–3, leaves the queue/working rename dirty and the foreign checkpoint entry in place, then hands off to strict plain `run`:
+
+- `recover-finalization --discover` refuses `FINALIZATION-DISCOVERY-AMBIGUOUS` on the dirty pair.
+- `next` excludes the target as `ALREADY-CLAIMED` because the checkpoint residue remains.
+- Direct canonical `claim` refuses `GIT-DIRTY-TARGET`.
+
+The single remediation must establish one clean canonical ownership-transfer boundary, remove the exact prior checkpoint entry, preserve unrelated implementation bytes, and add a behavioral public recovery-to-selection-to-claim fixture. If that cannot close, the residual folds into pending REQ-504, which already owns moving Crash Recovery mechanics behind a canonical command.
 
 ## Open Questions
 None.
