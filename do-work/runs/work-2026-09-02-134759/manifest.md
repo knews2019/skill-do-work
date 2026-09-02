@@ -26,6 +26,6 @@ Status: in-progress
 | rereview-499 | Re-review REQ-499 after `04bcb8c8` | n/a | inline review | done — Fail 50%, residuals auto-queued as REQ-512 |
 | finalize-500 | Journaled lifecycle/release/commit tail | n/a | `/tmp/req500-finalization.dhMico` | done — completed-with-issues, release 0.263.1, commit `d484dfb1` |
 | finalize-499 | Journaled lifecycle/release/commit tail | n/a | `/tmp/req499-finalization.JVWfMx` | done — completed-with-issues, release 0.264.0, commit `36c87b3d` |
-| builder-501 | Implement run-with-recovery action and principle | worktree-agent-REQ-501-run-with-recovery | inline hand-back | dispatched |
+| builder-501 | Implement run-with-recovery action and principle | worktree-agent-REQ-501-run-with-recovery | inline hand-back | done — builder `d5972f0c`, merge `44000f50` |
 
 The run directory makes fan-out recoverable from disk; it does not prevent harness or provider failures.

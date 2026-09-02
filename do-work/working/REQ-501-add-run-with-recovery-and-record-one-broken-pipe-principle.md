@@ -29,6 +29,10 @@ estimate:
     - full-suite verification
 write_set: [skills/do-work/actions/run-with-recovery.md, skills/do-work/SKILL.md, skills/do-work/actions/help.md, skills/do-work/crew-members/communication-style.md, skills/do-work/next-steps.md, skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, decisions/records/adr-022-one-broken-pipe-does-not-stop-the-factory.md, decisions/log.md, decisions/topics/_index_workflow-orchestration.md, CLAUDE.md, _dev/tests/contract-regressions.sh]
 claimed_at: 2026-09-02T18:10:47Z
+planning_at: 2026-09-02T18:16:50Z
+dispatch_at: 2026-09-02T18:16:50Z
+builder_handback_at: 2026-09-02T18:30:12Z
+integration_at: 2026-09-02T18:31:02Z
 ---
 
 # Add do-work run-with-recovery and Record the One-Broken-Pipe Principle
@@ -37,9 +41,9 @@ claimed_at: 2026-09-02T18:10:47Z
 Add the `do-work run-with-recovery` verb: `run` under the user's assertion that this checkout is the queue's only writer, so every ownership refusal `run` makes is answered "mine", then hand off to `run` with all arguments passed through. Record the maintainer's running principle, "one broken pipe doesn't stop the rest of the factory from running", as ADR-022, as a paragraph in `work-reference.md`'s Execution Model, and as one bullet in `CLAUDE.md`.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Loaded every requested action, shell, recovery, decision, and agent-compatibility contract; designed a thin recovery wrapper with no new mutation mechanism.
+- [x] **[APPLY]:** Added the action, routing/help/alias/next-step integration, exact sole-releaser recovery and crash semantics, ADR-022 and indexes, the one-broken-pipe principle, and mutation-tested regression lanes.
+- [x] **[UNIFY]:** Reviewed all 12 files, checked the complete diff and debug artifacts, ran focused and canonical verification, committed the branch, and left the worktree clean.
 
 ## Why
 Authority is already `run`'s default (`actions/work.md:124`, `actions/work-reference.md:65`). What `run` never does is answer an ownership question with "mine": Crash Recovery leaves foreign, unlabeled, or unnamed `working/` claims untouched and gates takeover on a human after three hours (`work-reference.md:341-365`), and REQ-498 stops on ambiguous shared metadata. After a context compaction the user is often certain that no other writer exists and wants one command that resumes in a fresh context without a prompt. The principle needs a citable home so future orchestration work is judged against it.
@@ -82,6 +86,26 @@ Firm on the verb name and the three homes for the principle. Latitude on exact p
 
 ## Required Lessons — Dropped for Budget
 - `_dev/primes/lessons-action-files.md` — 3436 tokens, over the 2000-token budget; `slugged: partial` so no targeted form. Matched on "changing action routing" and family `cross-action-exception-closure`.
+
+## Implementation Summary
+
+- Added `actions/run-with-recovery.md` as a thin, invocation-scoped sole-writer wrapper around canonical finalization recovery and ordinary `run`.
+- Wired first-match routing, help, the `rwr` alias, and next-step guidance without changing plain `run` semantics.
+- Recorded the one-broken-pipe principle in work-reference, CLAUDE, ADR-022, the decision log, and the workflow topic index.
+- Added canonical-launcher, router-order, handoff, and mutation-tested recovery/continuation contract regressions.
+
+## Decisions
+
+- D-01: validate `work.md`'s argument grammar before recovery, then preserve `$ARGUMENTS` verbatim.
+- D-02: treat successful recovery records as Step 9 continuation evidence; do not create a parallel archive/release mechanism.
+- D-03: keep sole authority invocation-scoped through a separate verb, preserving plain `run` semantics.
+
+## Testing
+
+- RED: contract regressions failed on the missing action, route, and recovery predicates.
+- GREEN: `bash _dev/tests/contract-regressions.sh` passed.
+- `bash _dev/tests/maintainer-verify.sh` passed; the optional browser lane had the normal no-browser skip.
+- `git diff --check` passed.
 
 ## Open Questions
 None.
