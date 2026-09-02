@@ -15,6 +15,18 @@ effort_estimate: effort-substantive
 related: [REQ-518, REQ-520, REQ-521, REQ-522, REQ-523]
 batch: cheap-maintainer-gate
 write_set: [_dev/tests/maintainer-verify.sh, skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, CLAUDE.md, justfile, _dev/tests/contract-regressions.sh]
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  calculated_at: 2026-09-02T21:34:07Z
+  basis:
+    - Route B
+    - 6-file write set
+    - 2 subsystems involved
+    - 7 acceptance criteria
+    - dependency depth 1
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Path-Scoped Fast Lane for the Maintainer Gate
@@ -40,12 +52,13 @@ The gate's self-test already models its stage set with shimmed tools and asserts
 
 ## Detailed Requirements
 
-- `maintainer-verify.sh --changed` derives the changed path set from `git diff --name-only` against the last recorded green revision (REQ-518) plus the working tree, and selects stages by path class: `*.sh` and Markdown shell fences select ShellCheck and the shell-block lint; `*.go` under a module selects that module's `go vet` and `go test` (cached, no `-count=1`); `skills/**/*.md`, `skills/*/scripts/**`, `tools/**`, or `_dev/tests/**` select the aggregate contract suite; the JavaScript probes run only when `skills/do-work-board/tools/queue-kanban/web/**` or its Go tests changed.
-- Version floors and the gofmt check run in every lane.
+- `maintainer-verify.sh --changed` derives the changed path set from `git diff --name-only` against the last recorded green revision (REQ-518) plus the working tree, and selects the expensive stages by path class: `*.go` under a module selects that module's `go test` (cached, no `-count=1`); `skills/**/*.md`, `skills/*/scripts/**`, `tools/**`, or `_dev/tests/**` select the aggregate contract suite; the JavaScript probes run only when `skills/do-work-board/tools/queue-kanban/web/**` or its Go tests changed.
+- Version floors, ShellCheck, gofmt and `go vet` for both modules run in every lane; together they cost about 6 seconds, and the input says "lint and vet always". (verify-requests, 2026-09-03: the earlier path-scoped lint and vet contradicted the What section.)
 - The lane prints, before running, which stages it selected and which it skipped and why, so a skip is never silent.
 - The self-test gains fixtures for the fast lane: a Markdown-only change runs no Go tests; a queue-kanban-only change runs only that module; an empty change set runs floors, lint and gofmt only.
 - `actions/work.md` Step 6.5 runs the fast lane for a builder's hand-back; Step 9's integrating commit runs the full gate. `CLAUDE.md` § Verify and `work-reference.md` say the same thing once.
 - A6 policy: `CLAUDE.md` gains one sentence under Verify: a new sentence-predicate lane in `contract-regressions.sh` must delete one or land as a Go behavior test. The self-test (or the aggregate itself) fails when `contract-regressions.sh` exceeds 8,417 lines; lowering the ratchet is a one-line edit whenever the file shrinks.
+- Out of scope, by the maintainer's capture-time choice (Q1): splitting the existing `contract-regressions.sh` by owning action file. The verbatim input's A6 mentions it; do not do it under this REQ. (verify-requests, 2026-09-03)
 
 ## Constraints
 

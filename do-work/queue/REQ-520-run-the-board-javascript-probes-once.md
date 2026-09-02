@@ -71,7 +71,7 @@ Certainty level: Firm. Read the Kanban prime's versioning and test notes first.
 **RED prompt/case:** `time bash _dev/tests/maintainer-verify.sh` and count how many times the queue-kanban probe set runs.
 **Why RED now:** Three times; the queue-kanban stages take 211 seconds.
 **GREEN when:** The probes run exactly once per gate run, the queue-kanban stages take under 100 seconds on the maintainer's machine, and a strict run under an empty PATH still fails with the zero-probe diagnostic (the narrowed meta-test proves it).
-**Validation:** Inferred during capture.
+**Validation:** User confirmed (verify-requests, 2026-09-03: the per-stage threshold stands as the GREEN target).
 
 ## Required Lessons — Dropped for Budget
 

@@ -71,7 +71,7 @@ Certainty level: Firm on the goal, latitude on which tests stay serial. Prefer m
 **RED prompt/case:** `cd skills/do-work-board/tools/queue-kanban && time go test -count=1 ./...`.
 **Why RED now:** About 160 seconds wall-clock for 146 seconds of summed test time; zero tests opt in.
 **GREEN when:** The same command finishes under 60 seconds on the maintainer's machine with the same pass count, and `go test -count=1 -race ./...` is green.
-**Validation:** Inferred during capture.
+**Validation:** User confirmed (verify-requests, 2026-09-03: the per-stage threshold stands as the GREEN target).
 
 ## Required Lessons — Dropped for Budget
 

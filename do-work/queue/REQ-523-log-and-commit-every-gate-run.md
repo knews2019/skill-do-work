@@ -15,6 +15,12 @@ effort_estimate: effort-mechanical
 related: [REQ-518, REQ-519, REQ-520, REQ-521, REQ-522]
 batch: cheap-maintainer-gate
 write_set: [_dev/tests/maintainer-verify.sh, _dev/gate-runs/, CLAUDE.md]
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-09-02T21:34:07Z
+  basis:
+    - trivial short-circuit
 ---
 
 # Log and Commit Every Maintainer Gate Run
@@ -46,6 +52,7 @@ The gate runs both by hand and inside the work pipeline on a dirty tree, so the 
 - The commit stages exactly the new log file and the index, with message `[gate] <lane> <status> in <duration>s at <start>`; a dirty tree elsewhere is untouched. If the commit cannot be made (no repository, detached fixture, commit refused), the log file still exists and the gate's own exit status is unchanged.
 - The self-test asserts a log file and commit exist after the all-success fixture and after one failing-stage fixture.
 - `CLAUDE.md` § Verify gains one sentence naming the log location.
+- The log commit happens before the green-revision record of REQ-518 (Run the full gate once per REQ) is written, so that record names the log commit itself; the two REQs share this rule and whichever lands second wires it. (verify-requests, 2026-09-03)
 
 ## Constraints
 

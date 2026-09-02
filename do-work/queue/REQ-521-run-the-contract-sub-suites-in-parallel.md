@@ -72,7 +72,7 @@ Certainty level: Firm on parallel dispatch with buffered output; latitude on the
 **RED prompt/case:** `time bash _dev/tests/contract-regressions.sh` on a green tree, then make one sub-suite fail (for example, remove a shipped script's executable bit in a scratch copy) and run again.
 **Why RED now:** The green run takes about 149 seconds; the sub-suites start one at a time.
 **GREEN when:** The green run takes under 75 seconds on the maintainer's machine, every sub-suite's summary line still appears, and the failing run exits non-zero with that sub-suite's FAIL lines printed contiguously.
-**Validation:** Inferred during capture.
+**Validation:** User confirmed (verify-requests, 2026-09-03: the per-stage threshold stands as the GREEN target).
 
 ## Required Lessons — Dropped for Budget
 

@@ -15,6 +15,18 @@ effort_estimate: effort-substantive
 related: [REQ-519, REQ-520, REQ-521, REQ-522, REQ-523]
 batch: cheap-maintainer-gate
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, skills/do-work/tools/do-work-cli/, _dev/tests/contract-regressions.sh]
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  calculated_at: 2026-09-02T21:34:07Z
+  basis:
+    - Route B
+    - 4-file write set
+    - 1 new files
+    - 2 subsystems involved
+    - 7 acceptance criteria
+    - persistence changes
+    - cross-route regression gates
 ---
 
 # Run the Full Gate Once per REQ
@@ -45,6 +57,7 @@ The baseline exists for attribution: a red Step 6.5 result is compared to the pr
 - Every green gate run in the pipeline (baseline or Step 6.5) records its revision, so the next REQ in the same run skips its baseline.
 - Attribution at Step 6.5 and the deferral lifecycle work unchanged from a recorded baseline; the fingerprint procedure is untouched.
 - A fingerprint or record that names a different argv, a different repository, or a revision not in `HEAD` ancestry never counts as a match.
+- The record points at the revision after the gate's own log commit (REQ-523, Log and commit every maintainer gate run): the gate records its green revision after it has committed its log, and a commit whose only paths are under `_dev/gate-runs/` never invalidates a recorded green revision. Without this the log commit moves `HEAD` off the record after every run and the skip never fires. (verify-requests, 2026-09-03)
 - The self-referential refusal invariant from REQ-514 applies to any new finding.
 
 ## Constraints
@@ -72,7 +85,7 @@ Certainty level: Firm on the rule (one full gate run per REQ when the revision i
 
 **RED prompt/case:** Run `do-work run REQ-NNN` on a revision whose gate was just green, and count gate invocations before the builder is dispatched.
 **Why RED now:** The pipeline runs the full gate again at the baseline although `HEAD` has not moved since the green run; there is no record to consult.
-**GREEN when:** A Go test records a green revision, sets `HEAD` to it, and asserts the check reports a match; a second test moves `HEAD` and asserts no match. The work action reads that check and a run on an already-green revision performs exactly one full gate run, at Step 6.5.
+**GREEN when:** A Go test records a green revision, sets `HEAD` to it, and asserts the check reports a match; a second test moves `HEAD` and asserts no match; a third adds one commit touching only `_dev/gate-runs/` on top of the record and asserts the match still holds. The work action reads that check and a run on an already-green revision performs exactly one full gate run, at Step 6.5.
 **Validation:** User confirmed (capture-time answer Q3, 2026-09-03).
 
 ## Required Lessons — Dropped for Budget
