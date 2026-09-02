@@ -1,7 +1,7 @@
 ---
 id: REQ-500
 title: 'Surface unfinished finalizations in doctor and the session-start banner'
-status: claimed
+status: completed-with-issues
 created_at: 2026-09-02T13:31:12Z
 user_request: UR-097
 domain: backend
@@ -22,6 +22,8 @@ builder_handback_at: 2026-09-02T16:59:18Z
 integration_at: 2026-09-02T17:00:04Z
 review_at: 2026-09-02T17:15:12Z
 remediation_at: 2026-09-02T17:37:20Z
+re_review_at: 2026-09-02T17:48:52Z
+completed_at: 2026-09-02T17:48:52Z
 ---
 
 # Surface Unfinished Finalizations in Doctor and the Session-Start Banner
@@ -100,6 +102,14 @@ The reviewer measured 200 committed blank-provenance archives at 1.62 seconds ve
 The single remediation pass closed both Important findings. Doctor now reads one repository-wide NUL-delimited archive inventory, keeps committed blank-provenance archives quiet, and emits typed `FINALIZATION-TAIL-INSPECTION-FAILED` evidence when inventory observation fails. Malformed, unreadable, nonregular, or identity/phase-invalid canonical journal files retain `UNFINISHED-FINALIZATION` identity with `phase=unknown`, and SessionStart projects the same exact recovery pointer from the first affected request.
 
 Persisted regressions cover malformed/unreadable journals, corrupt-index Git failure, 200 archives with one inventory probe, committed-archive/no-banner at the hook seam, recovery argv, byte identity, and read-only behavior. Focused, race, vet, full-module, Go 1.25, retained hook, and canonical maintainer gates passed. Remediation builder `cd72002a`; merge `ad260b5d`.
+
+## Re-review
+
+**Overall: 83%** | **Acceptance: Partial** | **Risk: Low**
+
+Both original Important findings closed under the finding-closure ratchet: incomplete observations now retain typed evidence and exact pointer projection, and 200 blank-provenance archives use one inventory probe (0.05 seconds in the reviewer fixture, down from 1.62 seconds). The committed blank-provenance/no-banner hook control is persisted.
+
+One new Important residual remains after the single remediation: the repository-level `git status` probe permits Git optional locks, so a read-only SessionStart can refresh `.git/index` while porcelain status stays clean. This violates the explicit byte-for-byte read-only contract. The multi-site rule and exact index-byte regression are auto-queued as REQ-511 (`impact-rule-change`). Terminal disposition: `completed-with-issues`.
 
 ## Open Questions
 None.

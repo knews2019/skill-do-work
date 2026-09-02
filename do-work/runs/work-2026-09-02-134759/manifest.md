@@ -21,5 +21,6 @@ Status: in-progress
 | review-500 | Review merged REQ-500 range `6f0d5bf0..608c57aa` | n/a | inline review | done — Partial 78%, remediation required |
 | review-499 | Review merged REQ-499 range `c5c74c6f..8faefeb9` | n/a | inline review | done — Fail 50%, remediation required |
 | remediation-500 | Preserve tail inspection evidence and collapse Git probes | worktree-agent-REQ-500-remediation-1 | inline hand-back | done — builder `cd72002a`, merge `ad260b5d` |
+| rereview-500 | Re-review REQ-500 after `ad260b5d` | n/a | inline review | done — Partial 83%, residual auto-queued as REQ-511 |
 
 The run directory makes fan-out recoverable from disk; it does not prevent harness or provider failures.
