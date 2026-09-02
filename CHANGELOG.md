@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.262.1 — Drain Targeted Dependency Closures (2026-09-02)
+
+Targeted `do-work run UR-NNN` invocations now retain and drain the initial dependency closure instead of silently stopping after the first runnable set.
+
+- UR-expanded dependents remain typed as `TARGET-DEPENDENCY-DEFERRED` until their in-run prerequisites integrate; they never become concurrently runnable early.
+- Targeted replay observes the complete canonical ready set, projects onto frozen membership, and only then applies the saved serial or fan-out dispatch bound.
+- New same-UR members cannot enter or starve an active run, while failed, cancelled, external, missing, ambiguous, cyclic, assigned, and filtered prerequisites remain truthful blockers.
+
 ## 0.262.0 — Journal Finalization Transactions (2026-09-02)
 
 `do-work-cli` now has a crash-resumable transaction boundary for validated REQ lifecycle, optional release, exact-path commit, and provenance phases.

@@ -5220,6 +5220,131 @@ assert_block_contains \
   'UR-NNN' \
   'actions/work.md Input must accept UR-NNN targeting tokens (usage string offers UR-NNN and the tokenizer recognizes the UR- shape) per the Target ID Resolution contract — a UR argument must no longer fall through to the unrecognized-argument guard.'
 
+# A targeted UR result must retain its dependency closure without teaching the action to
+# reconstruct selector state from queue files. Pin the semantic relationships in the active
+# targeted directives, then mutate each load-bearing edge so nearby vocabulary cannot satisfy
+# a weakened contract.
+if ! python3 - "$core_root/actions/work.md" "$core_root/actions/work-reference.md" <<'PY'
+import pathlib
+import re
+import sys
+
+work_text = pathlib.Path(sys.argv[1]).read_text()
+reference_text = pathlib.Path(sys.argv[2]).read_text()
+
+
+def section(text, start, end):
+    match = re.search(start + r"(.*?)" + end, text, re.S)
+    if not match:
+        raise SystemExit(f"missing contract section between {start!r} and {end!r}")
+    return match.group(1).lower()
+
+
+def targeted_ledger_defects(work_source, reference_source):
+    targeted = section(work_source, r"\*\*Targeted mode:\*\*", r"\*\*Assigned REQs")
+    step_ten = section(work_source, r"### Step 10: Loop or Exit", r"#### Context Wipe")
+    ledger = section(reference_source, r"### Targeted Run Ledger", r"## Crash Recovery")
+    defects = set()
+    if not (
+        "freeze a session-local targeted ledger" in targeted
+        and "every `selected` record plus only" in targeted
+        and "`fan-out-limit` or `target-dependency-deferred`" in targeted
+    ):
+        defects.add("frozen membership")
+    if not (
+        "after each successful serial integration" in targeted
+        and "fan-out wave" in targeted
+        and "exact original targeting tokens and every original non-fan-out selection flag" in targeted
+        and "exact original targeting tokens and every original non-fan-out selection flag" in step_ten
+    ):
+        defects.add("canonical replay")
+    if not (
+        "freeze the effective numeric fan-out bound" in targeted
+        and "omit `--fan-out` from replay observation" in targeted
+        and "omit `--fan-out` from replay observation" in ledger
+        and "apply the saved bound only when dispatching projected `selected` records" in ledger
+    ):
+        defects.add("replay before bound")
+    if not (
+        "consume only frozen-ledger ids" in targeted
+        and "never add a newly expanded member" in targeted
+        and "consume only frozen ids" in ledger
+        and "membership never grows" in ledger
+    ):
+        defects.add("frozen consumption")
+    if not (
+        "absent record or `target-not-found` as drained only when this run already integrated that exact id" in targeted
+        and "absent id or `target-not-found` is drained only when this run has already integrated that exact ledger member" in ledger
+    ):
+        defects.add("truthful disappearance")
+    if not (
+        "`target-dependency-deferred` is retained work, not concurrently runnable work" in targeted
+        and "dispatching only `selected`" in ledger
+        and "pending, including a ready prerequisite held by `fan-out-limit`" in ledger
+    ):
+        defects.add("dependency-safe dispatch")
+    if not (
+        "never rescan, parse, or sort the queue" in targeted
+        and "do not glob, parse, or sort the queue" in step_ten
+        and "never glob, scan, parse, or sort queue files" in ledger
+        and "never parse `reason`" in ledger
+    ):
+        defects.add("selector authority")
+    if not (
+        "genuine blocker" in targeted
+        and "failed, cancelled, externally blocked" in ledger
+        and "stops only when every frozen member is consumed or a genuine blocker" in ledger
+    ):
+        defects.add("terminal blocker")
+    return defects
+
+
+baseline = targeted_ledger_defects(work_text, reference_text)
+if baseline:
+    raise SystemExit(f"targeted ledger contract is incomplete: {sorted(baseline)!r}")
+
+mutations = (
+    (
+        "every `selected` record plus only the `excluded` records coded",
+        "every selected and excluded record, including records coded",
+        "frozen membership",
+    ),
+    (
+        "Treat an absent record or `TARGET-NOT-FOUND` as drained only when this run already integrated that exact id.",
+        "Treat an absent record or `TARGET-NOT-FOUND` as drained.",
+        "truthful disappearance",
+    ),
+    (
+        "Dependency safety comes from dispatching only `selected`",
+        "Dependency safety comes from dispatching frozen ledger members",
+        "dependency-safe dispatch",
+    ),
+    (
+        "omit `--fan-out` from replay observation",
+        "preserve `--fan-out` during replay observation",
+        "replay before bound",
+    ),
+)
+for old, new, expected in mutations:
+    if old in work_text:
+        mutated_work = work_text.replace(old, new, 1)
+        mutated_reference = reference_text
+    elif old in reference_text:
+        mutated_work = work_text
+        mutated_reference = reference_text.replace(old, new, 1)
+    else:
+        raise SystemExit(f"targeted ledger mutation changed nothing: {old!r}")
+    defects = targeted_ledger_defects(mutated_work, mutated_reference)
+    if expected not in defects:
+        raise SystemExit(
+            f"targeted ledger mutation {old!r} escaped {expected!r}; found {sorted(defects)!r}"
+        )
+PY
+then
+  printf 'FAIL: actions/work.md and actions/work-reference.md must freeze, replay, and dependency-safely drain targeted UR closures from canonical selector records (REQ-453).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # UR ids accepted by abandon (REQ-068). The action keyed entirely on REQ-NNN tokens; a UR
 # argument had no defined handling (abandon's globs substitute a REQ number). Its Input section
 # must name the UR- shape and cite the shared Target ID Resolution contract rather than restating

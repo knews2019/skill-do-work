@@ -389,6 +389,149 @@ func TestMixedExplicitAndURTargetsKeepCallerAnchorsAndPriorityEachExpansion(t *t
 	}
 }
 
+func TestTargetedURDependencyClosureRetainsDeferredChainsAcrossFanOut(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-901-root.md", "REQ-901", "pending", "user_request: UR-900\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-902-child.md", "REQ-902", "pending", "user_request: UR-900\ndepends_on: [REQ-901]\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-903-grandchild.md", "REQ-903", "pending", "user_request: UR-900\ndepends_on: [REQ-902]\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-904-second-root.md", "REQ-904", "pending", "user_request: UR-900\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-905-second-child.md", "REQ-905", "pending", "user_request: UR-900\ndepends_on: [REQ-904]\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-906-fork-child.md", "REQ-906", "pending", "user_request: UR-900\ndepends_on: [REQ-901]\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	limit := 1
+	options := SelectionOptions{TargetTokens: []string{"REQ-904", "UR-900"}, FanOutLimit: &limit}
+	result := Select(snapshot, dependencygraph.BuildGraph(snapshot), options, nil)
+
+	if got := selectedRequestIDsFromModel(result.Selected); !equalStrings(got, []string{"REQ-904"}) {
+		t.Fatalf("selected = %v, want only explicit root REQ-904", got)
+	}
+	if result.Selected[0].Provenance != ProvenanceExplicit {
+		t.Fatalf("explicit root provenance = %q", result.Selected[0].Provenance)
+	}
+	assertExclusionCode(t, result, "REQ-901", "FAN-OUT-LIMIT")
+	for _, identifier := range []string{"REQ-902", "REQ-903", "REQ-905", "REQ-906"} {
+		assertExclusionCode(t, result, identifier, "TARGET-DEPENDENCY-DEFERRED")
+	}
+	deferred := exclusionByID(t, result, "REQ-903")
+	wantVerification := []string{"do-work-cli", "--format", "json", "next", "REQ-904", "UR-900", "--fan-out", "1"}
+	if deferred.RequestPath != "do-work/queue/REQ-903-grandchild.md" ||
+		deferred.Title != "Fixture REQ-903" ||
+		deferred.Provenance != ProvenanceUserRequest ||
+		deferred.SelectionPriority != PriorityOrdinary ||
+		deferred.OriginalStatus != "pending" ||
+		deferred.ProbeStatus != resultmodel.ProbeNotApplicable ||
+		deferred.ProbeAttempted || deferred.ProbeExitCode != -1 || deferred.UnblockRequired ||
+		!equalStrings(deferred.NextArgv, []string{"do-work", "run", "REQ-902"}) ||
+		!equalStrings(deferred.VerificationArgv, wantVerification) {
+		t.Fatalf("deferred record lost identity, provenance, state, or replay evidence: %#v", deferred)
+	}
+	if got := deferred.Reason; got != "deferred until targeted prerequisites integrate: REQ-902" {
+		t.Fatalf("deferred reason = %q", got)
+	}
+}
+
+func TestTargetedURReplayObservesFrozenReadyWorkBeforeApplyingSavedFanOut(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-921-root.md", "REQ-921", "pending", "user_request: UR-920\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-923-child.md", "REQ-923", "pending", "user_request: UR-920\ndepends_on: [REQ-921]\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	savedFanOut := 1
+	initialOptions := SelectionOptions{
+		TargetTokens:         []string{"UR-920"},
+		SkipImpactNegligible: true,
+		FanOutLimit:          &savedFanOut,
+	}
+	initial := Select(snapshot, dependencygraph.BuildGraph(snapshot), initialOptions, nil)
+	if got := selectedRequestIDsFromModel(initial.Selected); !equalStrings(got, []string{"REQ-921"}) {
+		t.Fatalf("initial selected = %v, want root REQ-921", got)
+	}
+	assertExclusionCode(t, initial, "REQ-923", "TARGET-DEPENDENCY-DEFERRED")
+
+	// Simulate successful integration of A, followed by capture of a new same-UR root C
+	// whose lower id makes it sort before the now-ready frozen member B.
+	if err := os.Remove(filepath.Join(repositoryRoot, "do-work/queue/REQ-921-root.md")); err != nil {
+		t.Fatal(err)
+	}
+	writeCommandRequest(t, repositoryRoot, "do-work/archive/REQ-921-root.md", "REQ-921", "completed", "user_request: UR-920\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-922-new-root.md", "REQ-922", "pending", "user_request: UR-920\n")
+	snapshot, err = repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph := dependencygraph.BuildGraph(snapshot)
+
+	boundedReplay := Select(snapshot, graph, initialOptions, nil)
+	if got := selectedRequestIDsFromModel(boundedReplay.Selected); !equalStrings(got, []string{"REQ-922"}) {
+		t.Fatalf("bounded replay selected = %v, want new out-of-ledger root REQ-922", got)
+	}
+	assertExclusionCode(t, boundedReplay, "REQ-923", "FAN-OUT-LIMIT")
+
+	replayOptions := SelectionOptions{
+		TargetTokens:         append([]string(nil), initialOptions.TargetTokens...),
+		SkipImpactNegligible: initialOptions.SkipImpactNegligible,
+	}
+	authoritativeReplay := Select(snapshot, graph, replayOptions, nil)
+	if got := selectedRequestIDsFromModel(authoritativeReplay.Selected); !equalStrings(got, []string{"REQ-922", "REQ-923"}) {
+		t.Fatalf("unbounded replay selected = %v, want all ready targeted records", got)
+	}
+	wantReplayArgv := []string{"do-work-cli", "--format", "json", "next", "UR-920", "--skip-impact-negligible"}
+	for _, record := range authoritativeReplay.Selected {
+		if !equalStrings(record.VerificationArgv, wantReplayArgv) {
+			t.Fatalf("replay argv = %v, want original non-fan-out selection flags only", record.VerificationArgv)
+		}
+	}
+
+	frozenUnconsumed := map[string]bool{"REQ-923": true}
+	projected := []resultmodel.SelectionRecord{}
+	for _, record := range authoritativeReplay.Selected {
+		if frozenUnconsumed[record.RequestID] {
+			projected = append(projected, record)
+		}
+	}
+	if len(projected) > savedFanOut {
+		projected = projected[:savedFanOut]
+	}
+	if got := selectedRequestIDsFromModel(projected); !equalStrings(got, []string{"REQ-923"}) {
+		t.Fatalf("bounded frozen projection = %v, want ready frozen child REQ-923", got)
+	}
+}
+
+func TestTargetedURDependencyDeferralRequiresProgressableScopedPrerequisites(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-910-missing.md", "REQ-910", "pending", "user_request: UR-910\ndepends_on: [REQ-999]\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-911-after-missing.md", "REQ-911", "pending", "user_request: UR-910\ndepends_on: [REQ-910]\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-912-failed.md", "REQ-912", "failed", "user_request: UR-910\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-913-after-failed.md", "REQ-913", "pending", "user_request: UR-910\ndepends_on: [REQ-912]\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-914-assigned.md", "REQ-914", "pending", "user_request: UR-910\nassigned_to: another-session\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-915-after-assigned.md", "REQ-915", "pending", "user_request: UR-910\ndepends_on: [REQ-914]\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-916-blocked.md", "REQ-916", "blocked", "user_request: UR-910\nblocked_by: external service\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-917-after-blocked.md", "REQ-917", "pending", "user_request: UR-910\ndepends_on: [REQ-916]\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := Select(snapshot, dependencygraph.BuildGraph(snapshot), SelectionOptions{TargetTokens: []string{"UR-910"}}, nil)
+
+	assertExclusionCode(t, result, "REQ-910", "DEPENDENCY-MISSING")
+	assertExclusionCode(t, result, "REQ-912", "STATUS-NOT-PENDING")
+	assertExclusionCode(t, result, "REQ-914", "ASSIGNED-ELSEWHERE")
+	assertExclusionCode(t, result, "REQ-916", "BLOCKED")
+	for _, identifier := range []string{"REQ-911", "REQ-913", "REQ-915", "REQ-917"} {
+		assertExclusionCode(t, result, identifier, "DEPENDENCIES-UNMET")
+	}
+	for _, exclusion := range result.Excluded {
+		if exclusion.Code == "TARGET-DEPENDENCY-DEFERRED" {
+			t.Fatalf("genuine blocker was falsely deferred: %#v", exclusion)
+		}
+	}
+}
+
 func TestSimpleSelectionRetainsSpecializedVetoesAndFrozenEstimate(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-401-good.md", "REQ-401", "pending", "effort_estimate: trivial\nestimate:\n  p50_active_minutes: 15\n")

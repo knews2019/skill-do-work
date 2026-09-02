@@ -1,7 +1,7 @@
 ---
 id: REQ-453
 title: 'Keep targeted UR dependency closures in the run'
-status: claimed
+status: completed
 created_at: 2026-08-31T20:49:21Z
 user_request: UR-085
 domain: backend
@@ -41,6 +41,8 @@ estimate:
     - cross-route regression gates
     - full-suite verification
   calculated_at: 2026-09-02T12:10:44Z
+completed_at: 2026-09-02T13:28:36Z
+release_at: 2026-09-02T13:31:23Z
 ---
 
 # Keep Targeted UR Dependency Closures in the Run

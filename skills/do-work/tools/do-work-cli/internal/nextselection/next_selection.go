@@ -38,6 +38,7 @@ func Select(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygraph
 		}
 		eligible = append(eligible, *record)
 	}
+	deferTargetDependencies(result.Excluded, eligible, graph)
 	if len(options.TargetTokens) == 0 {
 		sort.SliceStable(eligible, func(leftIndex, rightIndex int) bool {
 			return priorityRank(eligible[leftIndex].SelectionPriority) < priorityRank(eligible[rightIndex].SelectionPriority)
@@ -72,6 +73,40 @@ func Select(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygraph
 		result.Excluded[index].VerificationArgv = append([]string(nil), verificationArgv...)
 	}
 	return result
+}
+
+func deferTargetDependencies(exclusions []resultmodel.SelectionExclusion, eligible []resultmodel.SelectionRecord, graph *dependencygraph.DependencyGraph) {
+	progressable := map[string]bool{}
+	for _, record := range eligible {
+		progressable[record.RequestID] = true
+	}
+	for changed := true; changed; {
+		changed = false
+		for index := range exclusions {
+			exclusion := &exclusions[index]
+			if exclusion.Code != "DEPENDENCIES-UNMET" || exclusion.Provenance != ProvenanceUserRequest {
+				continue
+			}
+			node := graph.NodesByID[exclusion.RequestID]
+			if node == nil || len(node.UnmetDependencies) == 0 {
+				continue
+			}
+			allProgressable := true
+			for _, dependencyID := range node.UnmetDependencies {
+				if !progressable[dependencyID] {
+					allProgressable = false
+					break
+				}
+			}
+			if !allProgressable {
+				continue
+			}
+			exclusion.Code = "TARGET-DEPENDENCY-DEFERRED"
+			exclusion.Reason = "deferred until targeted prerequisites integrate: " + strings.Join(node.UnmetDependencies, ", ")
+			progressable[exclusion.RequestID] = true
+			changed = true
+		}
+	}
 }
 
 func nextVerificationArgv(options SelectionOptions) []string {
