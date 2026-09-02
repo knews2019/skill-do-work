@@ -16,6 +16,7 @@ for canonical_action_contract in \
   'skills/do-work-toolbox/actions/present-work.md:publish-portfolio-summary' \
   'skills/do-work-toolbox/actions/install.md:install-last30days' \
   'skills/do-work-toolbox/actions/maintainability-audit.md:audit-metrics' \
+  'skills/do-work/actions/run-with-recovery.md:recover-finalization' \
   'skills/do-work/actions/version.md:update-suite'
 do
   canonical_action_file="${canonical_action_contract%%:*}"
@@ -29,6 +30,94 @@ do
     fail_count=$((fail_count + 1))
   fi
 done
+
+# REQ-501: the recovery wrapper must win first-match routing, and its two
+# execution predicates must remain operative rather than decorative prose.
+if ! python3 - \
+  "$repo_root/skills/do-work/SKILL.md" \
+  "$repo_root/skills/do-work/actions/work-reference.md" \
+  "$repo_root/skills/do-work/actions/run-with-recovery.md" \
+  "$repo_root/skills/do-work/actions/help.md" \
+  "$repo_root/skills/do-work/crew-members/communication-style.md" <<'PY'
+import pathlib
+import re
+import sys
+
+router_text = pathlib.Path(sys.argv[1]).read_text()
+reference_text = pathlib.Path(sys.argv[2]).read_text()
+action_text = pathlib.Path(sys.argv[3]).read_text()
+help_text = pathlib.Path(sys.argv[4]).read_text()
+communication_text = pathlib.Path(sys.argv[5]).read_text()
+
+recovery_row = re.search(
+    r"^\| `run-with-recovery`, `rwr`, `run-all-here`, `recover and run`, `run with authority` \| `\./actions/run-with-recovery\.md` \|$",
+    router_text,
+    re.MULTILINE,
+)
+run_row = re.search(r"^\| `run`, `go`, .*\| `\./actions/work\.md` \|$", router_text, re.MULTILINE)
+if recovery_row is None or run_row is None or recovery_row.start() >= run_row.start():
+    raise SystemExit("run-with-recovery must route above the broader run row")
+if "do-work run $ARGUMENTS" not in action_text or "preserve `$ARGUMENTS` verbatim" not in action_text:
+    raise SystemExit("run-with-recovery does not preserve the work handoff arguments")
+if "do-work run-with-recovery [REQ|UR ...]" not in help_text:
+    raise SystemExit("core help omits run-with-recovery")
+if "`rwr` — Run with recovery: follow `actions/run-with-recovery.md`" not in communication_text:
+    raise SystemExit("the standalone rwr alias does not load run-with-recovery")
+
+execution_block = reference_text.split(
+    "## Execution Model — Claim Anywhere, One Releaser", 1
+)[1].split("## Folder Structure", 1)[0]
+crash_block = reference_text.split("## Crash Recovery (Step 1)", 1)[1].split(
+    "## Repository Gate Deferral and Resumption", 1
+)[0]
+
+
+def recovery_predicate_defects(execution, crash):
+    defects = []
+    if "Whenever a failure is local to one REQ, set that REQ aside with a typed finding and keep draining" not in execution:
+        defects.append("local REQ failures do not set aside and continue")
+    if "Only shared-target dirt stops the loop" not in execution or "`do-work run-with-recovery`" not in execution:
+        defects.append("shared-target stop does not name the recovery verb")
+    if "Under `do-work run-with-recovery`, every REQ in `do-work/working/` classifies as this checkout's own crash" not in crash:
+        defects.append("sole-authority working claims are not own crashes")
+    return defects
+
+
+live_defects = recovery_predicate_defects(execution_block, crash_block)
+if live_defects:
+    raise SystemExit(f"live run-with-recovery predicates are incomplete: {live_defects!r}")
+
+mutations = (
+    (
+        "Whenever a failure is local to one REQ, set that REQ aside with a typed finding and keep draining",
+        "Whenever a failure is local to one REQ, stop the run",
+        "local REQ failures do not set aside and continue",
+        "execution",
+    ),
+    (
+        "Under `do-work run-with-recovery`, every REQ in `do-work/working/` classifies as this checkout's own crash",
+        "Under `do-work run-with-recovery`, some REQs may classify as this checkout's own crash",
+        "sole-authority working claims are not own crashes",
+        "crash",
+    ),
+)
+for old, new, expected, owner in mutations:
+    mutated_execution = execution_block
+    mutated_crash = crash_block
+    if owner == "execution":
+        mutated_execution = mutated_execution.replace(old, new, 1)
+    else:
+        mutated_crash = mutated_crash.replace(old, new, 1)
+    if mutated_execution == execution_block and mutated_crash == crash_block:
+        raise SystemExit(f"run-with-recovery mutation changed nothing: {old!r}")
+    defects = recovery_predicate_defects(mutated_execution, mutated_crash)
+    if expected not in defects:
+        raise SystemExit(f"run-with-recovery mutation escaped {expected!r}; found {defects!r}")
+PY
+then
+  printf 'FAIL: run-with-recovery routing or crash-continuation predicates regressed (REQ-501).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
 core_root="$repo_root/skills/do-work"
 board_root="$repo_root/skills/do-work-board"
 knowledge_root="$repo_root/skills/do-work-knowledge"

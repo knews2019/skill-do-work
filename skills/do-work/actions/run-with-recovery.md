@@ -1,0 +1,73 @@
+# Run With Recovery Action
+
+> **Part of the do-work skill.** Recovers this queue under the user's explicit sole-writer assertion, then completes `actions/work.md` with the original arguments. It belongs in core because it resolves core finalization and claim ownership before handing control back to core's work pipeline.
+
+## When to Use
+
+**Use when:**
+
+- A previous `do-work run` was interrupted and the user asserts that this checkout is now the queue's only writer and releaser.
+- Ordinary `run` refused ambiguous shared finalization metadata or left stale claims for a human ownership decision.
+
+**Do NOT use when:**
+
+- Another checkout may still be capturing, claiming, building, or releasing against this queue — use `do-work run`, which preserves foreign and unattributed claims.
+- The archive itself needs diagnosis or repair — use `do-work cleanup`.
+
+## Input
+
+Accept exactly the targeting tokens and selection flags documented by `actions/work.md` → **Input**. Validate that grammar before recovery and reject any unrecognized residue with `actions/work.md`'s usage error. After validation, preserve `$ARGUMENTS` verbatim for Step 1; this action does not reinterpret, add, or remove a work-pipeline argument.
+
+Choosing this verb is the user's deliberate assertion that this checkout has sole queue authority for this invocation. It is not persisted and never changes plain `do-work run`.
+
+## Steps
+
+### Step 0.1: Recover finalization with sole-releaser authority
+
+From the project root, invoke the canonical launcher exactly once:
+
+```bash
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json recover-finalization --discover --assume-sole-releaser
+```
+
+Continue only on typed `success` with every ordered `finalizations` record carrying terminal phase `cleanup_complete` and empty `blocked_paths` and `reason_codes`. The singular `finalization` field is only the one-record compatibility projection. If the canonical launcher is missing, failed, or malformed, stop with its finding; there is no prose, manual, helper, or free-form fallback.
+
+The assertion widens only the shared metadata classes owned by `--assume-sole-releaser`. It never widens recovery to secret-classified or project paths. Honor any refusal and its exact `next_argv` or `verification_argv`.
+
+### Step 0.2: Continue an interrupted archive, release, or commit tail
+
+Treat each successful recovered finalization as a resumed `actions/work.md` Step 9, not as new work. When the interrupted tail left its implementation diff uncommitted or never wrote its release, the recovery command resumes that tail; its returned exact lifecycle and commit paths stand in for the canonical completion result wherever Step 9 consumes that result. Do not rerun `complete`, reconstruct staging, or infer provenance from the filesystem.
+
+This is the only mid-step continuation this verb provides. A stopped build restarts from claim in Step 0.3; only the archive/release/commit tail resumes where it stopped.
+
+### Step 0.3: Recover every working REQ under the authority assertion
+
+Read `do-work/CHECKPOINT.md`, then apply `actions/work-reference.md` → **Crash Recovery (Step 1)** with the authority override that section defines. Every `REQ-*.md` in `do-work/working/` classifies as this checkout's own crash. Run recovery substeps 1–3 for each one without a prompt and without the three-hour takeover ladder. Report each takeover with the `writer:` label its checkpoint entry carried; report `no writer label` when it carried none.
+
+Recovery returns the REQ to claimable state and strips incomplete generated sections, but it does not discard an uncommitted implementation diff elsewhere in the project tree. `actions/work.md` pre-flight reports that diff, and the fresh builder may reuse it after judging it against the REQ. Mid-step build resumption remains out of scope.
+
+### Step 1: Hand off to the work pipeline
+
+Hand off with the validated original arguments unchanged:
+
+```text
+do-work run $ARGUMENTS
+```
+
+From here, follow `actions/work.md` unchanged. Do not reimplement selection, claiming, building, testing, review, or finalization in this action.
+
+## Output Format
+
+Report recovered finalization records and working-REQ takeovers first, then use `actions/work.md`'s ordinary progress and final hand-back formats.
+
+## Common Rationalizations
+
+| If you're thinking... | STOP. Instead... | Because... |
+| --- | --- | --- |
+| "The checkpoint says another writer, so I'll leave that REQ claimed" | Recover it and report the checkpoint's label | The user asserted sole queue authority by choosing `run-with-recovery`; preserving that claim would silently discard the verb's purpose |
+
+## Verification Checklist
+
+- [ ] Recovery used the canonical launcher with `--discover --assume-sole-releaser`, with no fallback
+- [ ] Every working REQ was reset through Crash Recovery substeps 1–3 and its prior label was reported
+- [ ] The work handoff received the original `$ARGUMENTS` verbatim

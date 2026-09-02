@@ -9,6 +9,8 @@ do-work — core request and queue orchestration
 
   do-work capture-request: <task>   Preserve intent as a UR and linked REQs
   do-work run [REQ|UR ...]          Build, test, review, archive, and commit ready work
+  do-work run-with-recovery [REQ|UR ...]
+                                      Assert sole queue authority, recover interrupted work, then run
   do-work run-simple-reqs           Run only the mechanical REQs — lists them with an estimate first
   do-work verify-requests [REQ|UR|--against source ...]
                                       Check capture quality or revalidate queued work after a reversal

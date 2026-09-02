@@ -31,8 +31,10 @@ related:
     rel: complements
   - page: adr-018-regrain-session-ownership-to-claim-anywhere-one-releaser
     rel: complements
+  - page: adr-022-one-broken-pipe-does-not-stop-the-factory
+    rel: complements
 created: 2026-04-15
-updated: 2026-08-08
+updated: 2026-09-02
 confidence: high
 ---
 
@@ -48,6 +50,7 @@ How pending work is stored and how the work orchestrator coordinates queue proce
 - [[adr-014-considered-declined-autonomous-loop-until-done]] — [ADR-014](../records/adr-014-considered-declined-autonomous-loop-until-done.md) (**declined**): Do not re-add the `ultracode-fable` / loop-until-done workflow — its model-agnostic capabilities already survive as canon, and the model-specific tier table is intentionally out of scope.
 - [[adr-015-load-maintenance-crew-via-req-marker]] — [ADR-015](../records/adr-015-load-maintenance-crew-via-req-marker.md): Load `crew-members/maintenance.md` in work.md Step 6 via a `maintenance: true` REQ marker (set by capture for removal findings on the skill's own instructions) — marker-only, no description heuristic. Resolves ADR-014/REQ-014's deferred D-01 loader gap.
 - [[adr-018-regrain-session-ownership-to-claim-anywhere-one-releaser]] — [ADR-018](../records/adr-018-regrain-session-ownership-to-claim-anywhere-one-releaser.md): Re-grain ownership from `one queue owner per checkout` to `one releaser per queue` — any checkout may capture, claim and build; exactly one runs the release tail. Advisory `assigned_to` field (reserve verb/status stay dead), a static checkpoint writer label that is not liveness machinery, capture-anywhere with fix-at-merge, and `--fan-out` auto-wave superseding "nothing computes the set". Partially reverses the 0.161.0 exclusive-session decision, which had no ADR of its own.
+- [[adr-022-one-broken-pipe-does-not-stop-the-factory]] — [ADR-022](../records/adr-022-one-broken-pipe-does-not-stop-the-factory.md): Set aside failures local to one REQ and keep draining unrelated runnable work; stop only on shared-target dirt, with `do-work run-with-recovery` as the deliberate sole-authority resolution path.
 
 ## Cross-Cluster Links
 

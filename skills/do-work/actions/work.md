@@ -135,6 +135,8 @@ After that typed success, **read `do-work/CHECKPOINT.md`** (Step 10 → **On ses
 
 **Crash Recovery:** if `do-work/working/` contains any `REQ-*.md`, a claim outlived the run that made it. **A claimed REQ is not automatically this session's to reclaim** — recovery resets frontmatter and strips thirteen generated sections that nothing has committed yet, so it runs only on a REQ the checkpoint records **under this checkout's own `writer:` label** as this session's interrupted work. Any other claimed REQ is left byte-identical and reported: one the checkpoint attributes to a different checkout is reported as that checkout's claim and never offered for takeover, and one nothing accounts for is offered for takeover only once it is stale — where a human, never the threshold, authorizes the takeover. Full classification, the writer label, the staleness threshold and its timestamp guard, and the unattended path: `actions/work-reference.md` → **Crash Recovery (Step 1)**. Once every `working/` file is recovered, taken over, or left alone, proceed with finding the next request.
 
+`do-work run-with-recovery` is the deliberate authority variant: it resolves finalization and working-REQ ownership first, then enters this action with the original arguments.
+
 Invoke the canonical read-only selector once, passing the run's targeting tokens and selection flags exactly as parsed in **Input**:
 
 ```bash
