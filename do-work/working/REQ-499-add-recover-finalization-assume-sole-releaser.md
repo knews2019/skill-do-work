@@ -16,6 +16,10 @@ impact: impact-critical
 effort_estimate: effort-substantive
 write_set: [skills/do-work/tools/do-work-cli/internal/finalization/]
 claimed_at: 2026-09-02T16:41:36Z
+planning_at: 2026-09-02T16:43:00Z
+dispatch_at: 2026-09-02T16:44:00Z
+builder_handback_at: 2026-09-02T17:19:21Z
+integration_at: 2026-09-02T17:19:54Z
 ---
 
 # Add recover-finalization --assume-sole-releaser for Ambiguous Shared Metadata
@@ -24,9 +28,9 @@ claimed_at: 2026-09-02T16:41:36Z
 Add one flag to REQ-498's `recover-finalization --discover`: `--assume-sole-releaser`. When exactly one legacy (unjournaled) finalization tail is discovered, attribute the remaining `do-work/CHECKPOINT.md`, `do-work/calibration-log.tsv`, and UR-folder move hunks to that tail instead of refusing them as ambiguous, then commit exact paths and record provenance as REQ-498 does for the unambiguous case.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read the CLI prime, touch-conditional lesson satellite, builder action, and backend/testing crew rules; planned strict semantic-discovery closure first, then the narrow sole-releaser override, with interruption and negative fixtures before production changes.
+- [x] **[APPLY]:** Added `--assume-sole-releaser`, exact one-tail/shared-path attribution and typed evidence, complete configured release-mirror and tracked-followup proof, replacement-mode preservation, and the captured behavior matrix entirely within `internal/finalization/`.
+- [x] **[UNIFY]:** Reviewed all seven changed files and the full diff, ran gofmt, focused/race/full Go tests, vet, Go 1.25 compatibility, `git diff --check`, and the canonical maintainer gate; found no debug artifacts and left the branch clean.
 
 ## Why
 REQ-498 (Make orchestrator finalization resumable) deliberately stops when shared-metadata hunks are not exactly the tail's own entry removal. A real checkpoint usually carries other hunks (Session Notes edits, a misplaced entry from the bug folded into REQ-489), so plain `run` will refuse the common shape. The user, having asserted that this checkout is the only writer, needs a way to answer that ownership question "mine" without hand-editing files or running `do-work commit`.
@@ -83,6 +87,27 @@ Close the release-image verifier defect exposed by REQ-498's own journal resume 
 - Keep exact mode verification for images that carry an explicit nonzero mode.
 
 **Source:** REQ-498 finalization recovery reached `metadata_committed` but refused its byte-identical release postimages because three replacement entries recorded mode `0`; a verifier-only compatibility shim was used to complete that already-committed journal and was removed immediately afterward.
+
+## Implementation Summary
+
+- Added the discover-only `--assume-sole-releaser` assertion with exact one-tail/shared-path attribution, multi-tail refusal, and sorted typed evidence.
+- Closed strict discovery over configured project/version/package/Cargo/uv release mirrors and exact append-only tracked follow-up folds; ambiguous ownership fails closed.
+- Preserved publication replacement modes when mutation mode `0` is the planner sentinel, while retaining exact nonzero-mode verification.
+- Added the sole-releaser, semantic ownership, hook interruption, planned/no-release, partial mirror, tracked-follow-up, and mode-preserving recovery matrix.
+
+## Decisions
+
+- D-01: configured-mirror discovery recognizes known version and own-package lock surfaces and refuses ambiguous workspace lock ownership instead of guessing.
+- D-02: tracked follow-ups qualify only through the exact append-only named-fold shape; arbitrary tracked edits refuse.
+
+## Testing
+
+- RED covered the unknown flag, multi-tail assertion, incorrectly admitted partial mirrors/foreign tracked follow-ups, mode-0 verification refusal, and incomplete semantic fixture mirrors.
+- `go test -count=1 ./internal/finalization` passed.
+- `go test -race ./internal/finalization ./internal/gittransaction ./internal/requeststate ./internal/publication` passed.
+- `go vet ./...`, `go test -count=1 ./...`, and `bash _dev/tests/do-work-cli-go125-compatibility.sh` passed.
+- `bash _dev/tests/maintainer-verify.sh` passed twice; the optional browser lane had the normal no-browser skip.
+- `git diff --check` passed.
 
 ## Open Questions
 None.
