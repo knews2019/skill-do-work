@@ -1,7 +1,7 @@
 ---
 id: REQ-494
 title: '[impact-critical] Review fix: Complete already-green repository-gate repair lifecycle'
-status: claimed
+status: completed-with-issues
 route: C
 domain: general
 created_at: 2026-09-02T03:32:03Z
@@ -26,6 +26,7 @@ remediation_at: 2026-09-02T04:50:18Z
 re_review_at: 2026-09-02T04:53:21Z
 kb_status: pending
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/review-work.md, _dev/tests/contract-regressions.sh]
+completed_at: 2026-09-02T04:54:36Z
 ---
 
 # Review Fix: Complete Already-Green Repository-Gate Repair Lifecycle
