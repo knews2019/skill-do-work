@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Simplifying the do-work Orchestrator</title>
+<style>
+:root {
+  --bg: #faf7f2; --surface: #ffffff; --surface-2: #f3eee6;
+  --text: #2b2620; --muted: #6f675c; --accent: #1d4ed8; --accent-soft: #dbe3f7;
+  --rule: #e2dbcf; --mech: #166534; --mech-soft: #dcfce7; --judge: #92400e; --judge-soft: #fef3c7;
+  --mixed: #6d28d9; --mixed-soft: #ede9fe;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #201d18; --surface: #2a261f; --surface-2: #322d25;
+    --text: #ece7de; --muted: #a89f91; --accent: #7c9aef; --accent-soft: #33405e;
+    --rule: #3d372d; --mech: #4ade80; --mech-soft: #14361f; --judge: #fbbf24; --judge-soft: #3d2f0a;
+    --mixed: #c4b5fd; --mixed-soft: #2e2547;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+.page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }
+.kicker { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 48px 0 10px; }
+h1 { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: clamp(30px, 3.4vw, 40px); line-height: 1.15; margin: 0 0 8px; font-weight: 600; }
+h2 { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: 26px; margin: 0 0 16px; font-weight: 600; }
+h3 { font-size: 17px; margin: 0 0 8px; }
+.dateline { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+.measure { max-width: 74ch; }
+section { padding: 40px 0 8px; border-top: 1px solid var(--rule); margin-top: 32px; }
+.verdict { border-top: none; margin-top: 24px; padding-top: 0; font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: 20px; line-height: 1.55; }
+.verdict strong { color: var(--accent); }
+.row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 22px 24px; flex: 1 1 320px; }
+.card.wide { flex: 3 1 560px; }
+.card.stat-card { flex: 1 1 200px; }
+.mermaid svg { width: 100%; min-height: 170px; }
+.stat { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: 34px; line-height: 1; margin: 6px 0 4px; }
+.stat small { font-size: 14px; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--muted); display: block; margin-top: 8px; line-height: 1.4; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tag { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.tag.mech { background: var(--mech-soft); color: var(--mech); }
+.tag.judge { background: var(--judge-soft); color: var(--judge); }
+.tag.mixed { background: var(--mixed-soft); color: var(--mixed); }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--surface-2); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+pre code { background: none; padding: 0; }
+.bar { height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; margin-top: 6px; }
+.bar span { display: block; height: 100%; }
+.bar .m { background: var(--mech); }
+.legend { font-size: 13px; color: var(--muted); margin-top: 10px; }
+ol.seq { padding-left: 22px; }
+ol.seq li { margin-bottom: 10px; }
+.mermaid { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 12px; }
+.note { font-size: 13.5px; color: var(--muted); }
+footer { margin-top: 56px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--rule); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<p class="kicker">do-work analysis report · skill-do-work2 · maintainer question</p>
+<h1>Simplifying the do-work Orchestrator</h1>
+<p class="dateline">2026-09-02 · target: the run action as it stands at commit 721c2fb4 · evidence mode: non-visual</p>
+
+<section class="verdict measure">
+<p><strong>Verdict.</strong> The orchestrator can drop roughly half of its run-action prose without changing behavior. About 55% of <code>work.md</code>'s step text describes mechanics the Go CLI already owns or is about to own. The thing holding that prose in place is not its value but the contract suite that pins its sentences. The way through is one mechanical step per REQ: move it into a CLI command, delete its prose, delete its sentence-predicates, add a behavior test. Not a rewrite.</p>
+</section>
+
+<section>
+<p class="kicker">1 · Where the weight is</p>
+<div class="row">
+  <div class="card stat-card"><div class="stat">850 <small>lines in <code>work.md</code> across 20 numbered steps, with 132 MUST / never / always.</small></div></div>
+  <div class="card stat-card"><div class="stat">1,250 <small>lines in <code>work-reference.md</code>, referenced 66 times from <code>work.md</code>.</small></div></div>
+  <div class="card stat-card"><div class="stat">101k <small>words across all action files; 15k more in 18 crew members.</small></div></div>
+  <div class="card stat-card"><div class="stat">69 <small>CLI commands in the Go tool. Five of them are prescribed by name inside <code>work.md</code>.</small></div></div>
+  <div class="card stat-card"><div class="stat">8,237 <small>lines in <code>contract-regressions.sh</code>, with 220 references into the two work files.</small></div></div>
+</div>
+</section>
+
+<section>
+<p class="kicker">2 · Each step, by nature</p>
+<div class="row">
+<div class="card wide">
+<p class="measure">Every step of <code>work.md</code>, with its prose weight and whether it describes a procedure a program can run or a judgment only an agent can make. Line counts are the step's own body in the current file.</p>
+<table>
+<thead><tr><th>Step</th><th class="num">Lines</th><th>Nature</th><th>CLI today</th><th>Where it should live</th></tr></thead>
+<tbody>
+<tr><td>1 Find Next Request</td><td class="num">95</td><td><span class="tag mech">mechanical</span></td><td><code>next</code></td><td><code>advance</code>; one selection principle in prose</td></tr>
+<tr><td>2.0 Archive Collision</td><td class="num">11</td><td><span class="tag mech">mechanical</span></td><td><code>archive-collision</code></td><td>fold into <code>claim</code></td></tr>
+<tr><td>2 Claim</td><td class="num">8</td><td><span class="tag mech">mechanical</span></td><td><code>claim</code></td><td>already there</td></tr>
+<tr><td>3 Triage</td><td class="num">9</td><td><span class="tag judge">judgment</span></td><td>—</td><td>prose principle: route criteria</td></tr>
+<tr><td>3.5 Open Questions</td><td class="num">27</td><td><span class="tag judge">judgment</span></td><td>—</td><td>prose, compressed</td></tr>
+<tr><td>3.6 Estimate</td><td class="num">16</td><td><span class="tag mech">mechanical</span></td><td><code>estimate-p50</code></td><td>run automatically at claim</td></tr>
+<tr><td>3.7 Spec Loading</td><td class="num">12</td><td><span class="tag mech">mechanical</span></td><td>—</td><td><code>advance</code> lists the matching spec</td></tr>
+<tr><td>4 Planning</td><td class="num">20</td><td><span class="tag judge">judgment</span></td><td>—</td><td>prose</td></tr>
+<tr><td>5 Lessons + Exploration</td><td class="num">23</td><td><span class="tag mixed">mixed</span></td><td>—</td><td>budget arithmetic to CLI; exploration stays prose</td></tr>
+<tr><td>5.5 Scope Declaration</td><td class="num">19</td><td><span class="tag mixed">mixed</span></td><td><code>scope-drift</code></td><td>format to CLI validator; the choice stays prose</td></tr>
+<tr><td>5.75 Pre-Flight</td><td class="num">25</td><td><span class="tag mech">mechanical</span></td><td><code>preflight</code></td><td>already there; delete the prose</td></tr>
+<tr><td>6 Implementation</td><td class="num">53</td><td><span class="tag judge">judgment</span></td><td>—</td><td>prose; <code>advance</code> can name which crew members to load</td></tr>
+<tr><td>6.25 Implementation Summary</td><td class="num">18</td><td><span class="tag mech">mechanical</span></td><td>—</td><td>template validated by the schema layer</td></tr>
+<tr><td>6.3 Qualify</td><td class="num">40</td><td><span class="tag mixed">mixed</span></td><td><code>qualify</code></td><td>checks are in Go; keep the anti-rationalization table as principle</td></tr>
+<tr><td>6.5 Testing</td><td class="num">22</td><td><span class="tag mixed">mixed</span></td><td><code>run-blocked-check</code>, baseline files</td><td>gate to CLI; Finding-Closure Ratchet stays prose</td></tr>
+<tr><td>7 Review</td><td class="num">34</td><td><span class="tag judge">judgment</span></td><td>—</td><td>prose; dispatch mechanics to CLI</td></tr>
+<tr><td>7.5 Lessons Capture</td><td class="num">35</td><td><span class="tag judge">judgment</span></td><td>—</td><td>prose, compressed</td></tr>
+<tr><td>8 Archive</td><td class="num">66</td><td><span class="tag mixed">mixed</span></td><td><code>complete</code></td><td>archive to <code>finalize</code>; Fold-First minting stays prose</td></tr>
+<tr><td>9 Commit</td><td class="num">21</td><td><span class="tag mech">mechanical</span></td><td><code>release</code>, <code>record-commit-hash</code></td><td><code>finalize</code> (REQ-498)</td></tr>
+<tr><td>10 Loop or Exit</td><td class="num">155</td><td><span class="tag mech">mechanical</span></td><td><code>next</code> replay, checkpoint writes</td><td><code>advance</code> + <code>recover-finalization</code>; one loop sentence in prose</td></tr>
+</tbody>
+</table>
+</div>
+<div class="card">
+<h3>Prose that describes mechanics</h3>
+<div class="stat">≈55% <small>of step lines (about 390 of 709) are mechanical or the mechanical half of a mixed step.</small></div>
+<div class="bar"><span class="m" style="width:55%"></span></div>
+<p class="legend">Three steps carry it: Find Next (95), Archive (66), Loop or Exit (155). Together they are 45% of all step prose and they are exactly what <code>next</code>, <code>complete</code>, <code>finalize</code> and <code>recover-finalization</code> do.</p>
+<h3 style="margin-top:22px">Prose that must stay</h3>
+<p class="note">Route judgment, planning, the Finding-Closure Ratchet, review depth, Fold-First minting, lessons, changelog prose, and the ten Common Rationalizations tables. That is the part an agent cannot get from a program, and it fits in roughly 150 lines once the mechanics leave.</p>
+</div>
+</div>
+</section>
+
+<section>
+<p class="kicker">3 · Why the prose has not shrunk on its own</p>
+<div class="row">
+<div class="card">
+<p class="measure">Mechanics have moved into Go before. Selection, claim, archive and release are all CLI transactions today. The prose stayed each time because the test for the prose stayed. The contract suite pins sentences with mutation-tested predicates, so deleting a paragraph fails a lane, and a builder under review keeps the paragraph.</p>
+<table>
+<thead><tr><th>Step</th><th class="num">Predicates naming it</th></tr></thead>
+<tbody>
+<tr><td>Step 1</td><td class="num">16</td></tr><tr><td>Step 2</td><td class="num">10</td></tr><tr><td>Step 3</td><td class="num">17</td></tr>
+<tr><td>Step 4</td><td class="num">16</td></tr><tr><td>Step 5</td><td class="num">26</td></tr><tr><td>Step 6</td><td class="num">32</td></tr>
+<tr><td>Step 7</td><td class="num">4</td></tr><tr><td>Step 8</td><td class="num">14</td></tr><tr><td>Step 9</td><td class="num">5</td></tr><tr><td>Step 10</td><td class="num">12</td></tr>
+</tbody>
+</table>
+<p class="note">Counts are mentions of "Step N" in <code>_dev/tests/contract-regressions.sh</code>. They undercount lanes that quote a sentence without naming its step.</p>
+</div>
+<div class="card">
+<h3>The rule that unlocks deletion</h3>
+<p class="measure">A step leaves prose only as a unit: the CLI command that owns it, the deleted paragraph, the deleted sentence-predicates, and a new behavior test on the command. Any one of the four without the others recreates today's state. The REQ that moves a step names all four in its write set, so the review can refuse a half-move.</p>
+<h3 style="margin-top:22px">The floor agent gets better, not worse</h3>
+<p class="measure">CLAUDE.md requires the simplest agent that can read files and run shell to follow the action. A numbered 850-line procedure is hard for that agent. A CLI that prints the exact next command and the evidence still missing is easier, because the agent no longer has to hold the state machine in its head.</p>
+</div>
+</div>
+</section>
+
+<section>
+<p class="kicker">4 · The shape after</p>
+<div class="row">
+<div class="card wide">
+<p class="measure">One new command, <code>do-work-cli advance REQ-NNN</code>, composes the commands that already exist into a lifecycle state machine. It reports the current phase for the REQ's route, the evidence still missing, and the next command, and it refuses a transition with a typed finding. <code>work.md</code> becomes a loop of one sentence plus principles: ask where you are, do the judgment the phase needs, record the evidence, ask again.</p>
+<pre class="mermaid">
+flowchart LR
+  S([advance REQ]) --> P1[select · claim<br/>next · claim · estimate-p50]
+  P1 --> J1{{triage · plan<br/>agent judgment}}
+  J1 --> P2[gates<br/>preflight · scope-drift]
+  P2 --> J2{{implement · summarize<br/>agent judgment}}
+  J2 --> P3[qualify · test gate<br/>qualify · run-blocked-check]
+  P3 --> J3{{review · lessons<br/>agent judgment}}
+  J3 --> P4[finalize<br/>complete · release · commit · provenance]
+  P4 --> L[loop<br/>next replay · checkpoint · recover-finalization]
+  L --> S
+  classDef mech fill:#dcfce7,stroke:#166534,color:#14532d;
+  classDef judge fill:#fef3c7,stroke:#92400e,color:#78350f;
+  class P1,P2,P3,P4,L mech;
+  class J1,J2,J3 judge;
+</pre>
+<p class="note">Green boxes are phases the CLI drives end to end. Amber are the judgment phases that remain prose. Diagram is hand-authored from the current step list, not generated.</p>
+</div>
+<div class="card">
+<h3>What <code>work.md</code> keeps</h3>
+<p class="measure">The loop sentence. Route criteria. When to ask versus decide. The Finding-Closure Ratchet. Review depth by impact. Fold-First minting. The one-broken-pipe principle. Communication style. Each keyed on its condition, with examples marked illustrative.</p>
+<h3 style="margin-top:22px">What <code>work-reference.md</code> keeps</h3>
+<p class="measure">The Execution Model, the schema read contract, and templates reduced to a minimal example that points at the Go validator. Sections that restate a CLI contract go with the step they served.</p>
+</div>
+</div>
+</section>
+
+<section>
+<p class="kicker">5 · Sequence, one REQ per move</p>
+<div class="row">
+<div class="card wide">
+<ol class="seq measure">
+<li><strong>Read-only <code>advance</code>.</strong> Reports phase, missing evidence, next command. Changes no behavior, so it lands without touching prose. Everything else depends on it.</li>
+<li><strong>Loop, checkpoint and session start.</strong> After REQ-498, REQ-499 and REQ-501 land, Step 10 and Crash Recovery collapse to "run recovery; the result says what to do". This is the largest single deletion, 155 lines plus the reference section.</li>
+<li><strong>Selection and claim.</strong> Steps 1, 2.0 and 2 become <code>advance</code> phases; the selection principle stays as one paragraph.</li>
+<li><strong>Evidence gates.</strong> Estimate, pre-flight, qualify and the test gate run from <code>advance</code>; the anti-rationalization table and the Ratchet stay as principles.</li>
+<li><strong>Archive and commit tails.</strong> Steps 8 and 9 hand to <code>finalize</code>; Fold-First minting stays prose.</li>
+<li><strong>Templates.</strong> <code>capture-reference.md</code> keeps one minimal example per record and points at the schema layer for every rule it now enforces.</li>
+<li><strong>Crew members.</strong> The ten Common Rationalizations tables merge into one crew member loaded at implementation.</li>
+<li><strong>Reference sweep.</strong> Delete every <code>work-reference.md</code> section whose contract is now a CLI behavior test.</li>
+</ol>
+</div>
+<div class="card">
+<h3>Not this</h3>
+<p class="measure">A one-shot rewrite of <code>work.md</code>. The suite goes red in hundreds of places at once and a real regression becomes indistinguishable from a deleted sentence. The unit is one step, one REQ, with the four-part write set.</p>
+<h3 style="margin-top:22px">Risks</h3>
+<p class="measure"><strong>R1</strong> Hard-won traps live in sentence-predicates; each move must carry its trap into a Go test or a lessons satellite. <strong>R2</strong> <code>advance</code> must not become a second prose surface; its output is typed findings, not paragraphs. <strong>R3</strong> Two orchestrators against one queue during the migration; run it in one session.</p>
+</div>
+</div>
+</section>
+
+<section>
+<p class="kicker">6 · Evidence and key files</p>
+<div class="row">
+<div class="card">
+<h3>Evidence</h3>
+<p class="measure">UI captures were not expected for this work. Every figure above comes from counting the current tree at 721c2fb4 with the commands below, run during this analysis on 2026-09-02. The per-step classification is judgment, listed step by step so it can be disputed one row at a time.</p>
+<h3 style="margin-top:22px">Key files</h3>
+<table>
+<tbody>
+<tr><td><code>skills/do-work/actions/work.md</code></td><td>the run action; the 20 steps</td></tr>
+<tr><td><code>skills/do-work/actions/work-reference.md</code></td><td>companion contracts and templates</td></tr>
+<tr><td><code>skills/do-work/tools/do-work-cli/</code></td><td>Go CLI, 69 commands; <code>internal/finalization/</code> is REQ-498's foundation at 761d8e6a</td></tr>
+<tr><td><code>_dev/tests/contract-regressions.sh</code></td><td>the sentence-predicate suite</td></tr>
+<tr><td><code>skills/do-work/crew-members/</code></td><td>18 rule files, 1,339 lines</td></tr>
+</tbody>
+</table>
+</div>
+<div class="card wide">
+<h3>Verify it yourself <span class="note">(all run)</span></h3>
+<pre><code>wc -lw skills/do-work/actions/*.md | sort -rn | head -3
+grep -c "^### Step" skills/do-work/actions/work.md
+grep -o -i "\bMUST\b\|\bnever\b\|\balways\b" skills/do-work/actions/work.md | wc -l
+awk '/^### Step/{if(name)print n, name; name=$0; n=0; next}{n++} END{print n, name}' skills/do-work/actions/work.md
+grep -c "do-work-cli.sh" skills/do-work/actions/work.md
+bash skills/do-work/tools/do-work-cli.sh 2&gt;&amp;1 | grep -o "available commands are.*" | tr ',' '\n' | wc -l
+wc -l _dev/tests/contract-regressions.sh
+grep -c "work.md\|work-reference.md" _dev/tests/contract-regressions.sh
+for s in 1 2 3 4 5 6 7 8 9 10; do printf "Step %s: %s\n" $s "$(grep -c "Step $s\b" _dev/tests/contract-regressions.sh)"; done
+grep -c "work-reference.md" skills/do-work/actions/work.md
+wc -l skills/do-work/crew-members/*.md | tail -1</code></pre>
+</div>
+</div>
+</section>
+
+<section>
+<p class="kicker">7 · Open questions</p>
+<p class="measure">Q1 Does <code>advance</code> live in core or as a thin composition layer in the toolbox? Core, because the run action is core, but it is a real choice. Q2 Which lanes of the contract suite are traps worth keeping as Go tests versus prose that only ever guarded prose? That is decided per move, not up front. Q3 Should REQ-498's stale "stop after one slice" constraint get a queued addendum before its builder claims it? Yes, and it is not done yet.</p>
+</section>
+
+<footer>Analysis report, hand-authored. Diagram is hand-authored Mermaid, not generated. Render-verified: full-page light and dark captures at 1600px viewport via Playwright on 2026-09-02, two passes.</footer>
+</div>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, theme: "base", themeVariables: { fontFamily: "ui-monospace, Menlo, monospace", fontSize: "16px" } });
+</script>
+</body>
+</html>
