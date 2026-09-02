@@ -1,7 +1,7 @@
 ---
 id: REQ-498
 title: 'Make orchestrator finalization resumable'
-status: claimed
+status: completed-with-issues
 created_at: 2026-09-02T13:07:19Z
 user_request: UR-096
 domain: backend
@@ -36,6 +36,9 @@ estimate:
     - async lifecycle behavior
     - cross-route regression gates
     - full-suite verification
+completed_at: 2026-09-02T16:27:19Z
+commit: 1249e856
+release_at: 2026-09-02T16:27:20Z
 ---
 
 # Make Orchestrator Finalization Resumable

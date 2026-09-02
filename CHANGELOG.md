@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.263.0 — Resume Finalization Before New Work (2026-09-02)
+
+Interrupted archive, release, commit, and provenance tails now have one journaled recovery path, so a later run can settle owned state before selecting another request.
+
+- `finalize --manifest` and `recover-finalization --discover` share exact lifecycle/release images, durable terminal phases, provenance modes, rollback, verification, and typed result records.
+- Startup and ordinary commit preflight invoke recovery before checkpoint handling, selection, or loose-change association; unrelated unstaged and protected work remains untouched.
+- Legacy discovery now covers the primary suite release-tail shape, multi-group commits, enriched checkpoints, calibration, UR moves, and originating follow-ups with behavior-level interruption and idempotence coverage.
+- REQ-498 ships as `completed-with-issues`: widened REQ-499 tracks strict required-mirror and tracked-follow-up ownership plus remaining hook/no-op/planned-release negatives before the sole-releaser override is added.
+
 ## 0.262.2 — Remove Whole Checkpoint Entries (2026-09-02)
 
 Completed requests no longer leave detached checkpoint details behind, and heading-like prose elsewhere in the checkpoint cannot attract lifecycle edits.
