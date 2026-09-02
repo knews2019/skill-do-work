@@ -248,21 +248,24 @@ type GateDeferralResult struct {
 // release tail. Phase names are durable journal states; callers never need to
 // infer recovery progress from Git status or prose findings.
 type FinalizationResult struct {
-	RequestID        string   `json:"request_id"`
-	RequestPath      string   `json:"request_path"`
-	ArchivePath      string   `json:"archive_path"`
-	JournalPath      string   `json:"journal_path"`
-	Phase            string   `json:"phase"`
-	TerminalStatus   string   `json:"terminal_status"`
-	Resumed          bool     `json:"resumed"`
-	Discovered       bool     `json:"discovered"`
-	CommitPaths      []string `json:"commit_paths"`
-	PrimaryCommit    string   `json:"primary_commit,omitempty"`
-	MetadataCommit   string   `json:"metadata_commit,omitempty"`
-	BlockedPaths     []string `json:"blocked_paths"`
-	ReasonCodes      []string `json:"reason_codes"`
-	NextArgv         []string `json:"next_argv"`
-	VerificationArgv []string `json:"verification_argv"`
+	RequestID             string   `json:"request_id"`
+	RequestPath           string   `json:"request_path"`
+	ArchivePath           string   `json:"archive_path"`
+	JournalPath           string   `json:"journal_path"`
+	Phase                 string   `json:"phase"`
+	TerminalStatus        string   `json:"terminal_status"`
+	Resumed               bool     `json:"resumed"`
+	Discovered            bool     `json:"discovered"`
+	CommitPaths           []string `json:"commit_paths"`
+	PrimaryCommit         string   `json:"primary_commit"`
+	MetadataCommit        string   `json:"metadata_commit"`
+	CreatedPrimaryCommit  string   `json:"created_primary_commit"`
+	CreatedMetadataCommit string   `json:"created_metadata_commit"`
+	BlockedPaths          []string `json:"blocked_paths"`
+	ReasonCodes           []string `json:"reason_codes"`
+	NextArgv              []string `json:"next_argv"`
+	VerificationArgv      []string `json:"verification_argv"`
+	CollectionArgv        []string `json:"collection_argv"`
 }
 
 type CommandResult struct {
@@ -459,6 +462,9 @@ func normalizeFinalization(record *FinalizationResult) {
 	}
 	if record.VerificationArgv == nil {
 		record.VerificationArgv = []string{}
+	}
+	if record.CollectionArgv == nil {
+		record.CollectionArgv = []string{}
 	}
 }
 
