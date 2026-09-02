@@ -30,6 +30,7 @@ kb_status: pending
 kb_entry:
 completed_at: 2026-09-02T20:14:45Z
 release_at: 2026-09-02T20:14:46Z
+commit: 0ac93b69399a23c1940b1ab62277b5799da488ad
 ---
 
 # Wait For Theme Transitions Before Contrast Measurement
