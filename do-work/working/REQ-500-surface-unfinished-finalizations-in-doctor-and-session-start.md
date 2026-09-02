@@ -16,6 +16,10 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 write_set: [skills/do-work/tools/do-work-cli/internal/doctor/doctor_scan.go, skills/do-work/tools/do-work-cli/internal/doctor/doctor_scan_test.go, skills/do-work/tools/do-work-cli/internal/hookcommands/session_start.go, skills/do-work/tools/do-work-cli/internal/hookcommands/session_start_test.go, _dev/tests/session-start-hook-behavior.sh]
 claimed_at: 2026-09-02T16:41:44Z
+planning_at: 2026-09-02T16:43:00Z
+dispatch_at: 2026-09-02T16:44:00Z
+builder_handback_at: 2026-09-02T16:59:18Z
+integration_at: 2026-09-02T17:00:04Z
 ---
 
 # Surface Unfinished Finalizations in Doctor and the Session-Start Banner
@@ -24,9 +28,9 @@ claimed_at: 2026-09-02T16:41:44Z
 Give the archived-but-uncommitted state a name. `doctor` gains two findings, and the SessionStart hook prints one read-only pointer line when either fires.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read the CLI prime, touch-conditional lesson satellite, builder rules, and existing doctor/SessionStart seams. Add doctor-owned read-only detection for canonical finalization journals and Git-dirty archived terminal-success REQs with blank commits; project the first deterministic finding through SessionStart; prove valid tails, committed-archive false-positive control, exact output, and byte identity.
+- [x] **[APPLY]:** Added `UNFINISHED-FINALIZATION` and `ARCHIVED-WITHOUT-COMMIT` safely-refused findings, canonical recovery argv/evidence, and a one-line SessionStart projection sourced from the same typed doctor findings. Added Go and retained-launcher regression coverage.
+- [x] **[UNIFY]:** Reviewed `git diff --stat`, every changed file, `git diff --check`, and added-line debug-artifact scans. Verified doctor detection and Git false-positive controls, hook aggregation and exact banner behavior, retained launcher byte identity, and shell portability. The full canonical maintainer gate passed.
 
 ## Why
 Today nothing reports the REQ-494 shape: `doctor` skips archived REQs with a blank `commit:` (`internal/doctor/doctor_scan.go:302-305`), `PREFLIGHT-DIRTY` filters `do-work/` out, `cleanup` refuses untracked archived REQs, and the session-start hook never reads `working/`, the checkpoint, or git status. The first sign of trouble was a claim refusal on an unrelated REQ.
@@ -58,6 +62,24 @@ Firm. Follow the adjective-noun finding naming already in doctor (`STUCK-WORK`, 
 
 ## Required Lessons — Dropped for Budget
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 2299 tokens, over the 2000-token budget; `slugged: partial` so no targeted form. Matched on family `opaque-evidence-projection` (typed findings and evidence shape).
+
+## Implementation Summary
+
+- Added doctor-owned read-only detection for unfinished finalization journals and dirty archived terminal-success requests with blank provenance.
+- Projected the first deterministic tail finding through SessionStart as the exact one-line recovery pointer.
+- Added package and retained-launcher regressions for both tail shapes, committed-archive false positives, exact banner output, and byte identity.
+
+## Decisions
+
+None.
+
+## Testing
+
+- RED: `go test ./internal/doctor ./internal/hookcommands` failed because both findings and the SessionStart pointer were absent.
+- GREEN: focused doctor and hookcommands tests passed.
+- `bash _dev/tests/session-start-hook-behavior.sh` passed.
+- `go vet ./...`, `go test -count=1 ./...`, and `go test -race ./internal/doctor ./internal/hookcommands` passed.
+- Go 1.25 compatibility and `bash _dev/tests/maintainer-verify.sh` passed; the optional browser lane skipped because no browser was available.
 
 ## Open Questions
 None.

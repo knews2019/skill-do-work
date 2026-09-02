@@ -17,6 +17,6 @@ Status: in-progress
 | rereview-498 | Re-review cumulative REQ-498 range `e8e5a79d..1249e856` | n/a | REQ-498-rereview.md | done — Fail 50% |
 | finalize-498 | Resume journaled lifecycle/release/commit tail | n/a | external scratch backup | done — completed-with-issues, release 0.263.0, commit `41446a1b` |
 | builder-499 | Implement REQ-499 plus folded REQ-498 closure | worktree-agent-REQ-499-assume-sole-releaser | REQ-499-handback.md | dispatched |
-| builder-500 | Implement REQ-500 finalization diagnostics | worktree-agent-REQ-500-finalization-diagnostics | REQ-500-handback.md | dispatched |
+| builder-500 | Implement REQ-500 finalization diagnostics | worktree-agent-REQ-500-finalization-diagnostics | inline hand-back | done — builder `4c5e1d79`, merge `608c57aa` |
 
 The run directory makes fan-out recoverable from disk; it does not prevent harness or provider failures.
