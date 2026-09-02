@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.264.0 — Assert Sole-Releaser Recovery (2026-09-02)
+
+A checkout that is known to be the queue's only writer can now attribute the remaining shared finalization tail explicitly instead of stopping for hand repair.
+
+- `recover-finalization --discover --assume-sole-releaser` accepts exactly one legacy tail and widens ownership only to checkpoint, calibration, and the candidate UR move.
+- Multiple tails, staged protected paths, unrelated project changes, and ordinary strict discovery retain typed refusal behavior.
+- Recovery now fails closed on release enumeration, preserves replacement file modes, covers hook/no-release/planned-release interruptions, and exercises a public UR move followed by a real claim.
+- REQ-499 ships as `completed-with-issues`: critical sweep REQ-512 tracks complete whole-fold provenance and equal-version workspace source identity.
+
 ## 0.263.1 — Expose Unfinished Finalization Tails (2026-09-02)
 
 Interrupted finalization no longer stays invisible until the next claim fails: doctor and SessionStart now point directly at the recovery path.

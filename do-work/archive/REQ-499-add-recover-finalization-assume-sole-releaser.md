@@ -24,6 +24,8 @@ review_at: 2026-09-02T17:28:32Z
 remediation_at: 2026-09-02T17:56:20Z
 re_review_at: 2026-09-02T18:08:38Z
 completed_at: 2026-09-02T18:08:38Z
+commit: 04bcb8c8
+release_at: 2026-09-02T18:09:49Z
 ---
 
 # Add recover-finalization --assume-sole-releaser for Ambiguous Shared Metadata
