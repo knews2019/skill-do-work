@@ -59,6 +59,14 @@ Firm on the boundary between mechanics and judgment as classified in the report'
 ## Required Lessons — Dropped for Budget
 - `_dev/primes/lessons-action-files.md` — 3436 tokens, over the 2000-token budget; `slugged: partial` so no targeted form. Matched on "changing action routing, pipeline fields, status contracts, downstream readers".
 
+## Review Instances — REQ-498
+
+- [ ] `skills/do-work/actions/work.md` overview still says the orchestrator owns moves, frontmatter updates, and archiving although finalization owns those mutations.
+- [ ] `skills/do-work/actions/commit.md` opening restatement still describes direct request-state delegation, exact-path committing, and a separate serial metadata commit.
+- [ ] Rename or rewrite Step 8's “Archive” heading/body so its judgment-only preparation role cannot be mistaken for the actual mutation boundary.
+
+These are active operative restatements found by REQ-498's post-remediation re-review. Fold them into this request's action-prose collapse and replace any guarding sentence predicates with behavior-level finalization/advance coverage.
+
 ## Open Questions
 None.
 

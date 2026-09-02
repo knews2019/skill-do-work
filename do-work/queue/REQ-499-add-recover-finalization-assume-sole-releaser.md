@@ -61,6 +61,18 @@ Firm. Reuse REQ-498's discovery and commit-safety code paths; the flag relaxes o
 ## Required Lessons — Dropped for Budget
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 2299 tokens, over the 2000-token budget; `slugged: partial` so no targeted form. Matched on families `cross-action-exception-closure` and `final-boundary-identity` (the flag is a cross-action exception at a commit boundary).
 
+## Review Fold — REQ-498 Semantic Ownership Closure
+
+Before adding the sole-releaser override, close REQ-498's remaining strict-discovery boundary under the same semantic legacy-finalization root cause:
+
+- Derive and require the complete configured release mirror set, including consumer project version sources and package/lock mirrors; a dirty subset must refuse byte-identically rather than finalize partial release state.
+- For an already tracked originating follow-up, prove the exact creation/fold preimage and whole diff before association. A current `addendum_to` match alone is insufficient and foreign edits must refuse.
+- Add negative behavior fixtures for partial required mirrors and foreign edits in a tracked follow-up.
+- Exercise a real failing pre-commit hook followed by journal resume, the already-green/no-release manifest, and a planned release manifest across the relevant interruption boundaries.
+- Keep normal `recover-finalization --discover` strict. Only after those controls pass may `--assume-sole-releaser` widen the three explicitly authorized shared path classes, and its typed evidence must distinguish assertion-based attribution from strict semantic proof.
+
+**Source:** Critical and user-visible residual findings from REQ-498's post-remediation re-review; folded here because this pending request owns the next `internal/finalization` discovery extension and cannot safely add an override atop an incomplete strict boundary.
+
 ## Open Questions
 None.
 

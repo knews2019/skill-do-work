@@ -14,6 +14,7 @@ depends_on: []
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+kb_status: pending
 claimed_at: 2026-09-02T13:46:20Z
 planning_at: 2026-09-02T14:00:49Z
 dispatch_at: 2026-09-02T14:10:30Z
@@ -21,6 +22,7 @@ builder_handback_at: 2026-09-02T14:50:42Z
 integration_at: 2026-09-02T14:51:46Z
 review_at: 2026-09-02T15:11:25Z
 remediation_at: 2026-09-02T15:14:26Z
+re_review_at: 2026-09-02T16:22:06Z
 estimate:
   p50_active_minutes: 70
   confidence: low
@@ -207,6 +209,37 @@ Independent review accepted the journal foundation, explicit provenance modes, s
 - Remove active direct-`complete`/release/stage/provenance restatements from work action prose.
 
 *Full independent artifact: `do-work/runs/work-2026-09-02-134759/REQ-498-review.md`.*
+
+## Remediation
+
+The single remediation pass replaced generic discovery with semantic grouping, added image-set integrity and durable verified/cleanup phases, searched the full descendant chain for exact primary commits, preserved unstaged protected state, distinguished staged refusal reasons, completed ordered result evidence, expanded phase/provenance/idempotence tests, and removed the originally identified direct-tail sequences. The authoritative remediation merge is `1249e856`.
+
+## Re-review
+
+**Overall: 50%** | **Acceptance: Fail** | **Risk: Critical**
+
+The remediation closed multi-group recovery, protected-state classification, and typed terminal/refusal evidence. It substantially expanded the behavior matrix, but fresh review found the central semantic boundary still incomplete:
+
+- Release discovery validates only dirty hard-coded mirrors and does not prove configured required-mirror completeness or consumer version/lock sources.
+- A tracked follow-up whose current `addendum_to` points here can still carry foreign edits without creation/fold preimage proof.
+- Hook-failure resume, already-green/no-release, planned-release, partial-mirror, and dirty tracked-follow-up negative cases remain absent.
+- Two operative restatements remain in the work/commit action overview prose.
+
+The one-remediation limit is exhausted. REQ-499 is widened to close the semantic ownership and acceptance-matrix gaps before adding its sole-releaser override; REQ-504 records the remaining prose instances. Terminal disposition: `completed-with-issues`.
+
+*Full independent artifact: `do-work/runs/work-2026-09-02-134759/REQ-498-rereview.md`.*
+
+## Lessons Learned
+
+**What worked:** Reusing the journal phase engine, exact image identity, and typed result authority produced reliable phase replay, multi-group commit recognition, protected-state preservation, and actionable terminal evidence.
+
+**What didn't:** Inferring legacy ownership from only the dirty paths and current document metadata was too weak. A positive end-to-end fixture did not prove completeness: missing configured mirrors and pre-existing follow-up edits require negative preimage/required-set cases.
+
+**Worth knowing:** Recovery association is safe only when it proves both sides of the boundary—every required member is present and every admitted byte belongs to the REQ. “All observed paths look coherent” is not equivalent to “the semantic set is complete.”
+
+## Orientation
+
+[MAP CHANGED] Resumable finalization now lives in the do-work CLI finalization subsystem and is invoked before selection and ordinary commit association. Planned journal recovery, durable terminal phases, typed evidence, and most legacy-tail recovery are available; strict legacy release/follow-up ownership remains explicitly tracked in widened REQ-499 before sole-releaser recovery ships.
 
 ---
 *Source: implement and capture the resumable orchestrator finalization plan*
