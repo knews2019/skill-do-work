@@ -48,6 +48,13 @@ func handleSessionStart(executionContext commandruntime.ExecutionContext, argume
 
 	snapshot, discoveryError := repositorymodel.DiscoverRepository(executionContext.RepositoryRoot)
 	if discoveryError == nil {
+		finalizationTailFindings := doctor.FinalizationTailFindings(context.Background(), snapshot)
+		if len(finalizationTailFindings) > 0 {
+			operations = append(operations, resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: finalizationTailFindings})
+			if len(finalizationTailFindings[0].AffectedIDs) > 0 {
+				fmt.Fprintf(&output, "do-work: unfinished finalization for %s — 'do-work run' resumes it; 'do-work run-with-recovery' if this checkout is the only writer.\n", finalizationTailFindings[0].AffectedIDs[0])
+			}
+		}
 		plans, planFindings := doctor.BuildTimestampPlanForScope(context.Background(), snapshot, hookClock(), doctor.TimestampScopeActive)
 		operations = append(operations, resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: planFindings})
 		repair := doctor.ApplyUncommittedTimestampPlans(snapshot, plans)

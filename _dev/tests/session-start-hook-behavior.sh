@@ -39,6 +39,44 @@ run_banner_case reformatted '**Version**: 9.8.7\n' 0 "do-work vunknown loaded. 0
 run_banner_case multiple '**Current version**: 1\n**Current version**: 2\n' 0 "do-work v1
 2 loaded. 0 pending REQ(s). Say 'do-work help' for commands."
 
+run_tail_case() {
+  local case_name="$1" request_id="$2" tail_kind="$3"
+  local case_root="$fixture_root/$case_name" journal_root='' output='' expected='' before='' after='' status=0
+  install_core_fixture "$case_root"
+  mkdir -p "$case_root/project/do-work/queue"
+  printf '**Current version**: 9.8.7\n' > "$case_root/skill/actions/version.md"
+  git -C "$case_root/project" init -q
+  if [ "$tail_kind" = journal ]; then
+    journal_root="$(git -C "$case_root/project" rev-parse --git-path do-work-finalization)"
+    case "$journal_root" in
+      /*) ;;
+      *) journal_root="$case_root/project/$journal_root" ;;
+    esac
+    mkdir -p "$journal_root"
+    printf '{"phase":"release_applied","manifest":{"request_id":"%s"}}\n' "$request_id" > "$journal_root/$request_id.json"
+    before="$(shasum -a 256 "$journal_root/$request_id.json" | cut -d' ' -f1)"
+  else
+    mkdir -p "$case_root/project/do-work/archive"
+    printf -- '---\nid: %s\nstatus: completed\ncreated_at: 2026-09-01T00:00:00Z\ncommit:\n---\n## Implementation Summary\n- `src/x.go` (modified)\n\n## Qualification\nVerified\n' "$request_id" > "$case_root/project/do-work/archive/$request_id-tail.md"
+    before="$(shasum -a 256 "$case_root/project/do-work/archive/$request_id-tail.md" | cut -d' ' -f1)"
+  fi
+  output="$(CLAUDE_PROJECT_DIR="$case_root/project" bash "$case_root/skill/hooks/session-start.sh" 2>"$case_root/stderr")" || status=$?
+  expected="do-work v9.8.7 loaded. 0 pending REQ(s). Say 'do-work help' for commands.
+do-work: unfinished finalization for $request_id — 'do-work run' resumes it; 'do-work run-with-recovery' if this checkout is the only writer."
+  if [ "$tail_kind" = journal ]; then
+    after="$(shasum -a 256 "$journal_root/$request_id.json" | cut -d' ' -f1)"
+  else
+    after="$(shasum -a 256 "$case_root/project/do-work/archive/$request_id-tail.md" | cut -d' ' -f1)"
+  fi
+  if [ "$status" -ne 0 ] || [ "$output" != "$expected" ] || [ -s "$case_root/stderr" ] || [ "$before" != "$after" ]; then
+    printf 'FAIL: %s status=%s output=<%s> stderr=<%s> before=%s after=%s\n' "$case_name" "$status" "$output" "$(tr '\n' ' ' < "$case_root/stderr")" "$before" "$after" >&2
+    failure_count=$((failure_count + 1))
+  fi
+}
+
+run_tail_case unfinished-journal REQ-710 journal
+run_tail_case archived-without-commit REQ-711 archive
+
 # Retained-vs-Go housekeeping matrix: the banner stays exact while JSON carries
 # the same deletion evidence, and unavailable Git preserves coordination state.
 authority_root="$fixture_root/authority"

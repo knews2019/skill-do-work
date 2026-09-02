@@ -2,6 +2,7 @@ package doctor
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -23,6 +24,14 @@ type ScanOptions struct {
 }
 
 var commitHashPattern = regexp.MustCompile(`^[0-9a-fA-F]{7,40}$`)
+var finalizationRequestIDPattern = regexp.MustCompile(`^REQ-[0-9]+$`)
+
+type finalizationJournalEvidence struct {
+	Phase    string `json:"phase"`
+	Manifest struct {
+		RequestID string `json:"request_id"`
+	} `json:"manifest"`
+}
 
 func ScanRepository(ctx context.Context, snapshot *repositorymodel.RepositorySnapshot, options ScanOptions) resultmodel.CommandResult {
 	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Rollback: resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded}}
@@ -71,6 +80,7 @@ func ScanRepository(ctx context.Context, snapshot *repositorymodel.RepositorySna
 	if !isGitRepository(ctx, snapshot.RepositoryRoot) {
 		result.SkippedWork = append(result.SkippedWork, resultmodel.SkippedWork{Code: "GIT-DIVERGENCE-NOT-APPLICABLE", Reason: "repository has no Git history; read-only filesystem diagnosis completed"})
 	} else {
+		result.Findings = append(result.Findings, buildFinalizationTailFindings(ctx, snapshot)...)
 		addGitDivergenceFindings(ctx, &result, snapshot)
 	}
 	sortFindings(result.Findings)
@@ -78,6 +88,100 @@ func ScanRepository(ctx context.Context, snapshot *repositorymodel.RepositorySna
 		result.Outcome = resultmodel.OutcomeFindings
 	}
 	return result
+}
+
+// FinalizationTailFindings returns the read-only recovery evidence shared by
+// doctor and SessionStart without importing the finalization package.
+func FinalizationTailFindings(ctx context.Context, snapshot *repositorymodel.RepositorySnapshot) []resultmodel.CommandFinding {
+	if snapshot == nil || !isGitRepository(ctx, snapshot.RepositoryRoot) {
+		return nil
+	}
+	return buildFinalizationTailFindings(ctx, snapshot)
+}
+
+func buildFinalizationTailFindings(ctx context.Context, snapshot *repositorymodel.RepositorySnapshot) []resultmodel.CommandFinding {
+	findings := unfinishedJournalFindings(ctx, snapshot.RepositoryRoot)
+	for _, requestFile := range snapshot.RequestFiles {
+		if requestFile.TreeSection != "archive" || requestFile.ParsedDocument == nil || !schemanormalization.IsTerminalSuccess(requestFile.TypedRecord.RequestStatus) {
+			continue
+		}
+		commitField, found := requestFile.TypedRecord.FieldEvidenceByName["commit"]
+		if !found || strings.TrimSpace(commitField.ScalarValue) != "" {
+			continue
+		}
+		requestPath := requestRepositoryPath(requestFile)
+		gitState, dirty := archivedRequestGitState(ctx, snapshot.RepositoryRoot, requestPath)
+		if !dirty {
+			continue
+		}
+		requestID := requestFile.TypedRecord.RequestID
+		if requestID == "" {
+			requestID = requestFile.FilenameID
+		}
+		findings = append(findings, doctorFinding("ARCHIVED-WITHOUT-COMMIT", resultmodel.SeverityError,
+			nonEmptyString(requestID), []string{requestPath},
+			fmt.Sprintf("%s archived terminal-success REQ has blank commit; Git state=%s; do-work run-with-recovery is the sole-writer recovery path", requestID, gitState),
+			resultmodel.FixabilityRefused, "archived finalization evidence must be recovered by the resumable finalization owner",
+			finalizationRecoveryArgv(), finalizationRecoveryArgv()))
+	}
+	sortFindings(findings)
+	return findings
+}
+
+func unfinishedJournalFindings(ctx context.Context, repositoryRoot string) []resultmodel.CommandFinding {
+	command := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "rev-parse", "--git-path", "do-work-finalization")
+	output, err := command.Output()
+	if err != nil {
+		return nil
+	}
+	displayRoot := strings.TrimSpace(string(output))
+	journalRoot := displayRoot
+	if !filepath.IsAbs(journalRoot) {
+		journalRoot = filepath.Join(repositoryRoot, journalRoot)
+	}
+	entries, err := os.ReadDir(filepath.Clean(journalRoot))
+	if err != nil {
+		return nil
+	}
+	findings := []resultmodel.CommandFinding{}
+	for _, entry := range entries {
+		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+		journalPath := filepath.Join(journalRoot, entry.Name())
+		journalBytes, readError := os.ReadFile(journalPath)
+		if readError != nil {
+			continue
+		}
+		var journal finalizationJournalEvidence
+		if json.Unmarshal(journalBytes, &journal) != nil || !finalizationRequestIDPattern.MatchString(journal.Manifest.RequestID) ||
+			entry.Name() != journal.Manifest.RequestID+".json" || strings.TrimSpace(journal.Phase) == "" {
+			continue
+		}
+		displayPath := filepath.Join(displayRoot, entry.Name())
+		findings = append(findings, doctorFinding("UNFINISHED-FINALIZATION", resultmodel.SeverityError,
+			[]string{journal.Manifest.RequestID}, []string{filepath.ToSlash(displayPath)},
+			fmt.Sprintf("%s finalization journal is unfinished at phase %s", journal.Manifest.RequestID, journal.Phase),
+			resultmodel.FixabilityRefused, "the durable journal must be resumed by the finalization owner",
+			finalizationRecoveryArgv(), finalizationRecoveryArgv()))
+	}
+	return findings
+}
+
+func archivedRequestGitState(ctx context.Context, repositoryRoot, requestPath string) (string, bool) {
+	command := exec.CommandContext(ctx, "git", "-C", repositoryRoot, "--literal-pathspecs", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", requestPath)
+	output, err := command.Output()
+	if err != nil || len(output) < 2 {
+		return "", false
+	}
+	if string(output[:2]) == "??" {
+		return "untracked", true
+	}
+	return "modified relative to HEAD", true
+}
+
+func finalizationRecoveryArgv() []string {
+	return []string{"do-work-cli", "--format", "json", "recover-finalization", "--discover"}
 }
 
 func addCoreRequestFindings(result *resultmodel.CommandResult, snapshot *repositorymodel.RepositorySnapshot, now time.Time) {
