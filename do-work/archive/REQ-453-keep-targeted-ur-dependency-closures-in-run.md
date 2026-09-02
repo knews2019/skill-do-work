@@ -43,6 +43,7 @@ estimate:
   calculated_at: 2026-09-02T12:10:44Z
 completed_at: 2026-09-02T13:28:36Z
 release_at: 2026-09-02T13:31:23Z
+commit: 62ef510d
 ---
 
 # Keep Targeted UR Dependency Closures in the Run
