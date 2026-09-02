@@ -1,7 +1,7 @@
 ---
 id: REQ-457
 title: '[impact-critical] Record cleanup move destinations after exclusive creation'
-status: pending
+status: claimed
 created_at: 2026-08-31T20:49:21Z
 user_request: UR-085
 domain: backend
@@ -16,6 +16,7 @@ related: [REQ-450, REQ-451, REQ-452, REQ-453, REQ-454, REQ-455, REQ-456]
 batch: accepted-validate-feedback-root-causes
 sweep: true
 sweep_key: transaction-created-path-rollback-identity
+claimed_at: 2026-09-02T23:27:17Z
 ---
 
 # Make Rollback Ownership Follow the Created Filesystem Object
