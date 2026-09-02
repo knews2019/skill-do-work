@@ -20,6 +20,7 @@ planning_at: 2026-09-02T16:43:00Z
 dispatch_at: 2026-09-02T16:44:00Z
 builder_handback_at: 2026-09-02T17:19:21Z
 integration_at: 2026-09-02T17:19:54Z
+review_at: 2026-09-02T17:28:32Z
 ---
 
 # Add recover-finalization --assume-sole-releaser for Ambiguous Shared Metadata
@@ -108,6 +109,17 @@ Close the release-image verifier defect exposed by REQ-498's own journal resume 
 - `go vet ./...`, `go test -count=1 ./...`, and `bash _dev/tests/do-work-cli-go125-compatibility.sh` passed.
 - `bash _dev/tests/maintainer-verify.sh` passed twice; the optional browser lane had the normal no-browser skip.
 - `git diff --check` passed.
+
+## Review — Attempt 1
+
+**Overall: 50%** | **Acceptance: Fail** | **Risk: Critical**
+
+The flag's primary flow, typed attribution, multi-tail/protected-path safeguards, hook/no-release/planned-release interruption coverage, and mode preservation work. The finding-closure ratchet failed on the two semantic-ownership defects folded from REQ-498:
+
+- `followupPathProves` accepts an append that starts with a valid named fold even when unrelated sections follow; it must prove the complete append-only diff and refuse any foreign bytes before or after the one exact fold.
+- Workspace-member release discovery can finalize a nested package while its root lockfile member mirror stays stale, and release-member enumeration errors fail open; configured npm, Cargo, and uv workspace mirrors must be complete or refusal must be typed and fail-closed.
+
+The one remediation pass must also add public acceptance coverage for UR-folder attribution and a subsequent real `claim`, alongside adversarial named-fold and workspace mirror fixtures.
 
 ## Open Questions
 None.

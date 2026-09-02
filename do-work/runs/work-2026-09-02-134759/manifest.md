@@ -19,5 +19,6 @@ Status: in-progress
 | builder-499 | Implement REQ-499 plus folded REQ-498 closure | worktree-agent-REQ-499-assume-sole-releaser | inline hand-back | done — builder `9c0cfdbf`, merge `8faefeb9` |
 | builder-500 | Implement REQ-500 finalization diagnostics | worktree-agent-REQ-500-finalization-diagnostics | inline hand-back | done — builder `4c5e1d79`, merge `608c57aa` |
 | review-500 | Review merged REQ-500 range `6f0d5bf0..608c57aa` | n/a | inline review | done — Partial 78%, remediation required |
+| review-499 | Review merged REQ-499 range `c5c74c6f..8faefeb9` | n/a | inline review | done — Fail 50%, remediation required |
 
 The run directory makes fan-out recoverable from disk; it does not prevent harness or provider failures.
