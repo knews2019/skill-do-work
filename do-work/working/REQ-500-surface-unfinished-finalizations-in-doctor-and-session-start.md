@@ -21,6 +21,7 @@ dispatch_at: 2026-09-02T16:44:00Z
 builder_handback_at: 2026-09-02T16:59:18Z
 integration_at: 2026-09-02T17:00:04Z
 review_at: 2026-09-02T17:15:12Z
+remediation_at: 2026-09-02T17:37:20Z
 ---
 
 # Surface Unfinished Finalizations in Doctor and the Session-Start Banner
@@ -93,6 +94,12 @@ Independent review approved the valid-tail behavior with follow-ups: both typed 
 - Persist negative tests for malformed/unreadable journals, Git failure, scale behavior, and the committed-archive/no-banner control at the hook seam.
 
 The reviewer measured 200 committed blank-provenance archives at 1.62 seconds versus 0.03 seconds with nonblank provenance. The stale README SessionStart summary was routed to `do-work/prose-backlog.md` under the fold-first prose rule.
+
+## Remediation
+
+The single remediation pass closed both Important findings. Doctor now reads one repository-wide NUL-delimited archive inventory, keeps committed blank-provenance archives quiet, and emits typed `FINALIZATION-TAIL-INSPECTION-FAILED` evidence when inventory observation fails. Malformed, unreadable, nonregular, or identity/phase-invalid canonical journal files retain `UNFINISHED-FINALIZATION` identity with `phase=unknown`, and SessionStart projects the same exact recovery pointer from the first affected request.
+
+Persisted regressions cover malformed/unreadable journals, corrupt-index Git failure, 200 archives with one inventory probe, committed-archive/no-banner at the hook seam, recovery argv, byte identity, and read-only behavior. Focused, race, vet, full-module, Go 1.25, retained hook, and canonical maintainer gates passed. Remediation builder `cd72002a`; merge `ad260b5d`.
 
 ## Open Questions
 None.
