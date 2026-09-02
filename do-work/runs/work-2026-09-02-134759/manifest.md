@@ -3,7 +3,7 @@
 Run dir: `do-work/runs/work-2026-09-02-134759/`
 Concurrency: 2 (wave size)
 Target ledger: REQ-489, REQ-498, REQ-499, REQ-500, REQ-501
-Status: in-progress
+Status: completed
 
 | Agent | Slice | Operative name | Output file | Status |
 |---|---|---|---|---|
@@ -30,5 +30,7 @@ Status: in-progress
 | review-501 | Review merged REQ-501 range `e54e414d..44000f50` | n/a | inline review | done — Fail 50%, remediation required |
 | remediation-501 | Add canonical ownership-transfer boundary and behavioral fixture | worktree-agent-REQ-501-remediation-1 | inline hand-back | done — builder `5eb04120`, merge `49a23f23` |
 | rereview-501 | Re-review cumulative REQ-501 range `e54e414d..d91f5b2f` | n/a | inline review | done — Fail 50%, residuals folded into REQ-504 |
+| finalize-501 | Journaled lifecycle/release/commit tail | n/a | `/tmp/req501-finalization.nYhTD2` | done — completed-with-issues, release 0.265.0, commit `0c6237e8` |
+| replay | Exact `next REQ-489 REQ-498 UR-097`, projected to frozen ledger | n/a | typed CLI result | done — frozen ledger empty; REQ-511/REQ-512 excluded as later discoveries |
 
 The run directory makes fan-out recoverable from disk; it does not prevent harness or provider failures.
