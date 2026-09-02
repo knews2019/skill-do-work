@@ -14,12 +14,15 @@ depends_on: []
 maintenance: false
 impact: impact-critical
 effort_estimate: effort-mechanical
+kb_status: pending
 sweep: true
 sweep_key: checkpoint-section-blind-line-editing
 status_changed_at: 2026-09-01T21:05:20Z
 claimed_at: 2026-09-02T13:45:32Z
 dispatch_at: 2026-09-02T14:02:54Z
 builder_handback_at: 2026-09-02T14:11:03Z
+integration_at: 2026-09-02T14:11:43Z
+review_at: 2026-09-02T14:27:05Z
 estimate:
   p50_active_minutes: 5
   confidence: high
@@ -31,9 +34,9 @@ estimate:
 # Remove Whole Checkpoint Entries When a REQ Leaves Working
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read the CLI prime, full touch-required lessons, crew rules, and bug-fix spec. Isolated the two faults: global line filtering orphaned continuations and substring heading lookup targeted inline prose.
+- [x] **[APPLY]:** Added both captured regressions first, then implemented exact heading-line bounds and matching-entry continuation removal without changing foreign entries.
+- [x] **[UNIFY]:** Reviewed both changed files, ran focused and full request-state/module tests plus `go vet`, `git diff --check`, and debug-artifact checks; the builder branch was clean after commit.
 
 ## What
 
@@ -98,3 +101,66 @@ Found during REQ-440's archive on 2026-09-01: after `complete REQ-440` the check
 ## Required Lessons — Dropped for Budget
 
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 2409 tokens; matches canonical request-state checkpoint mutation, but this partially slugged satellite cannot be narrowed below the 2000-token budget. Read anyway under the prime's touch-conditional Lessons rule.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go` (modified)
+
+**What was done:** Checkpoint claim insertion and removal now locate the real `## In Progress (interrupted)` heading as a whole line. Departure removes the matching own-label header and its indented continuation block while preserving bare entries, foreign entries, section boundaries, and inline/backticked heading mentions.
+
+## Root Cause
+
+Checkpoint mutation treated the document as undifferentiated text: departure filtered one matching line globally, while insertion selected the first heading substring. The code had neither exact section bounds nor a representation of continuation-line ownership.
+
+## Qualification
+
+Passed — 2 files verified, 4 requirements traced, P-A-U confirmed. The merge range contains only the request-state helper and its focused regressions; both changes are substantive, exact-section bounded, and preserve foreign content.
+
+## Testing
+
+**Tests run:** `go test -count=1 ./internal/requeststate -run 'TestCheckpointClaim(RemovalIncludesIndentedContinuationLines|UsesWholeInProgressHeadingLine)$'`, `go test -count=1 ./internal/requeststate`, and `bash _dev/tests/maintainer-verify.sh`
+
+**Result:** All focused and package tests passed on the merged tree. The canonical maintainer gate exited 0 after ShellCheck, formatting, contract, queue-kanban, strict JavaScript, vet, and uncached do-work-cli suites. Its optional strict browser lane reported the repository's normal no-browser skip.
+
+**Red-green validation:**
+- `TestCheckpointClaimRemovalIncludesIndentedContinuationLines`: ✗ before implementation — all three own-label continuation lines remained orphaned → ✓ after implementation — the whole own entry is removed and the foreign entry remains.
+- `TestCheckpointClaimUsesWholeInProgressHeadingLine`: ✗ before implementation — inline/backticked heading prose attracted insertion and could be removed → ✓ after implementation — only the real heading bounds insertion/removal and Session Notes remain byte-preserved.
+
+**New tests added:** the two focused regressions above in `state_apply_test.go`.
+
+## Review
+
+**Overall: 75%** | 2026-09-02T14:27:05Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 75% |
+| Code Quality | 90% |
+| Test Adequacy | 75% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- `internal/cleanup.ownedCheckpointRemoval` remains an alternate header-only departure writer and can orphan the same enriched continuation block — `impact-user-visible` → REQ-502 created as the next `checkpoint-section-blind-line-editing` sweep.
+
+**Minor findings:** 0 (report only)
+**Acceptance:** Partial — canonical request-state departures pass both captured regressions, but cleanup's recovery mover still carries the same root cause.
+**Suggested testing:** 1 item — extend cleanup's working-archive regression with enriched own and foreign entries.
+**Follow-ups created:** REQ-502; **sweeps appended to:** None
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Exact-section RED cases exposed both the orphaned continuation block and the inline-heading attraction bug with a small two-file diff.
+
+**What didn't:** Treating the canonical request-state helper as the only departure writer missed cleanup's independent checkpoint-removal implementation.
+
+**Worth knowing:** A stored-format contract is not closed until every alternate writer of that format is swept; package-local green tests can still leave a repository-wide lifecycle path stale.
+
+## Orientation
+
+Canonical request-state departures now remove complete checkpoint entries and ignore inline heading mentions; the behavior lives in the do-work CLI request-state subsystem. The alternate cleanup mover is explicitly tracked by REQ-502. Map unchanged.
