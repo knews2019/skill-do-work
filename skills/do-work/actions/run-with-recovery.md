@@ -32,7 +32,7 @@ From the project root, invoke the canonical launcher exactly once:
 
 Continue only on typed `success` with every ordered `finalizations` record carrying terminal phase `cleanup_complete` and empty `blocked_paths` and `reason_codes`. The singular `finalization` field is only the one-record compatibility projection. If the canonical launcher is missing, failed, or malformed, stop with its finding; there is no prose, manual, helper, or free-form fallback.
 
-The assertion widens only the shared metadata classes owned by `--assume-sole-releaser`. It never widens recovery to secret-classified or project paths. Honor any refusal and its exact `next_argv` or `verification_argv`.
+The assertion widens only the shared metadata classes owned by `--assume-sole-releaser`. It never widens recovery to secret-classified or project paths. Dirt the pipeline itself wrote earlier in the run — a working REQ or checkpoint whose bytes still hash to the journal's recorded preimage — is finalization input under every verb, so a remaining refusal names a path this run did not write. Honor any refusal and its exact `next_argv` or `verification_argv`.
 
 ### Step 0.2: Continue an interrupted archive, release, or commit tail
 

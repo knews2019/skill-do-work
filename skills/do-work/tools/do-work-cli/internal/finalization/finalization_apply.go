@@ -55,7 +55,7 @@ func advanceJournal(ctx context.Context, repositoryRoot string, journal *Journal
 		}
 		switch state {
 		case "pre":
-			plan, planError := lifecyclePlan(repositoryRoot, journal.Manifest)
+			plan, planError := lifecyclePlan(repositoryRoot, journal.Manifest, journal.LifecyclePreimages)
 			if planError != nil {
 				return finalizationFailure(journal, resumed, "FINALIZATION-LIFECYCLE-PLAN", planError.Error(), nil)
 			}
@@ -244,13 +244,17 @@ func rollbackBeforePrimary(repositoryRoot string, journal *Journal) ([]string, [
 	return actions, rollbackErrors
 }
 
-func lifecyclePlan(repositoryRoot string, manifest Manifest) (requeststate.StatePlan, error) {
+// lifecyclePlan builds the terminal transition. The journal's recorded lifecycle
+// preimages are passed down as accepted dirt: a working REQ or checkpoint the
+// pipeline itself wrote earlier in the run is finalization input, never a
+// dirty-target refusal, and only while its bytes still hash to the recorded image.
+func lifecyclePlan(repositoryRoot string, manifest Manifest, preimages []FileImage) (requeststate.StatePlan, error) {
 	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
 	if err != nil {
 		return requeststate.StatePlan{}, err
 	}
 	completedAt, _ := time.Parse(time.RFC3339, manifest.CompletedAt)
-	options := requeststate.StateOptions{RequestID: manifest.RequestID, RequestPath: manifest.RequestPath, WriterLabel: manifest.WriterLabel, Now: completedAt, ImplementationHash: manifest.ImplementationHash}
+	options := requeststate.StateOptions{RequestID: manifest.RequestID, RequestPath: manifest.RequestPath, WriterLabel: manifest.WriterLabel, Now: completedAt, ImplementationHash: manifest.ImplementationHash, AcceptedPreimageDigests: recordedPreimageDigests(preimages)}
 	if manifest.Transition == "complete" {
 		options.Transition = requeststate.TransitionComplete
 		options.TerminalStatus = manifest.TerminalStatus
@@ -267,6 +271,16 @@ func lifecyclePlan(repositoryRoot string, manifest Manifest) (requeststate.State
 		return plan, fmt.Errorf("lifecycle plan is not runnable")
 	}
 	return plan, nil
+}
+
+func recordedPreimageDigests(preimages []FileImage) map[string]string {
+	digests := map[string]string{}
+	for _, image := range preimages {
+		if image.Exists {
+			digests[image.Path] = digestBytes(image.Bytes)
+		}
+	}
+	return digests
 }
 
 func persistPhase(journal *Journal) error {

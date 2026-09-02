@@ -2,6 +2,8 @@ package requeststate
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -408,6 +410,8 @@ func planTargets(plan *StatePlan) {
 	plan.ExistingUntrackedTargetPaths = existingUntrackedPaths(plan.RepositoryRoot, plan.TargetPaths)
 	if plan.Transition == TransitionRecover {
 		plan.ExistingDirtyTargetPaths = existingDirtyTrackedPaths(plan.RepositoryRoot, plan.TargetPaths)
+	} else if len(plan.Options.AcceptedPreimageDigests) > 0 {
+		plan.ExistingDirtyTargetPaths = preimageProvenDirtyPaths(plan.RepositoryRoot, existingDirtyTrackedPaths(plan.RepositoryRoot, plan.TargetPaths), plan.Options.AcceptedPreimageDigests)
 	}
 	plan.CreatedDirectoryPaths = missingParentDirectories(plan.RepositoryRoot, plan.TargetPaths)
 }
@@ -424,6 +428,28 @@ func existingDirtyTrackedPaths(repositoryRoot string, paths []string) []string {
 		}
 	}
 	return dirty
+}
+
+// preimageProvenDirtyPaths keeps only the dirty tracked paths whose current bytes
+// hash to the digest a journal recorded for them. Acceptance is by recorded hash,
+// never by path class, so a dirty deletion or foreign edit stays refused.
+func preimageProvenDirtyPaths(repositoryRoot string, dirtyPaths []string, acceptedDigests map[string]string) []string {
+	var proven []string
+	for _, path := range dirtyPaths {
+		expected, recorded := acceptedDigests[path]
+		if !recorded {
+			continue
+		}
+		current, readError := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(path)))
+		if readError != nil {
+			continue
+		}
+		digest := sha256.Sum256(current)
+		if hex.EncodeToString(digest[:]) == expected {
+			proven = append(proven, path)
+		}
+	}
+	return proven
 }
 
 func existingUntrackedPaths(repositoryRoot string, paths []string) []string {

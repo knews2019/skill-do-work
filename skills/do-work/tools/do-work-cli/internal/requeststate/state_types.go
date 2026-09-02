@@ -59,6 +59,11 @@ type StateOptions struct {
 	DryRun                bool
 	Commit                bool
 	RecordCommitHashOnly  bool
+	// AcceptedPreimageDigests maps an exact target path to the hex SHA-256 of
+	// dirty tracked bytes a journal recorded as its own preimage. A dirty target
+	// whose current bytes hash to its entry is transaction input rather than a
+	// refusal; every other dirty target keeps the default refusal.
+	AcceptedPreimageDigests map[string]string
 }
 
 type StateRefusal struct {
