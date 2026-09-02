@@ -11,6 +11,7 @@ I love to build. I focus on building complex things as simply as possible, and I
 - **Delete before you add.** When an instruction has drifted, first ask whether removing it fixes the problem.
 - **Programs beat prose for anything mechanical.** If a paragraph describes an exact sequence of shell commands, write the script and leave a pointer; judgment stays in prose.
 - **State conditions, not lists.** When a rule applies "whenever X happens", key it on the condition and mark any list of examples illustrative — hand-maintained lists go stale (full rule: `_dev/primes/prime-shell-commands.md` § Closed Enumerations Go Stale).
+- **One broken pipe doesn't stop the rest of the factory.** A failed or interrupted REQ is set aside with a typed finding and the loop continues; only shared-target dirt may stop it, and then the finding names the verb that resolves it.
 
 ## Coding Preferences
 

@@ -68,4 +68,4 @@ These exact standalone tokens are user shorthand. When one arrives as the messag
   - Keep real IDs, dates, and figures in the prose, written as they are spoken.
   - Appendix under a `## Reference` heading: exact paths with line numbers, paste-ready commands, URLs, one line per ID.
 - `phandoff` — Hand off to a fresh session: follow `actions/restart-with-parallel-handoff.md`.
-
+- `rwr` — Run with recovery: follow `actions/run-with-recovery.md`.
