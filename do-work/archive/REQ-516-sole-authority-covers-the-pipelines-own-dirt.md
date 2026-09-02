@@ -1,7 +1,7 @@
 ---
 id: REQ-516
 title: '[impact-rule-change] Sole-authority assertion covers the pipeline's own dirt'
-status: pending
+status: cancelled
 created_at: 2026-09-02T20:35:18Z
 user_request: UR-099
 domain: backend
@@ -15,6 +15,7 @@ effort_estimate: effort-substantive
 related: [REQ-513, REQ-514, REQ-515, REQ-517]
 batch: recovery-never-traps
 write_set: [skills/do-work/actions/run-with-recovery.md, skills/do-work/tools/do-work-cli/internal/finalization/, skills/do-work/tools/do-work-cli/internal/requeststate/]
+completed_at: 2026-09-02T22:44:37Z
 ---
 
 # Sole-authority assertion covers the pipeline's own dirt
@@ -84,3 +85,9 @@ See `do-work/user-requests/UR-099/input.md` for complete verbatim input.
 
 ---
 *Source: maintainer conversation of 2026-09-02, item A4 of "how can I update the orchestrator to not end up in a trap like this?", captured by UR-099.*
+
+## Cancelled
+
+- **When:** 2026-09-02T22:44:37Z
+- **Why:** superseded by 19256ba0: finalize accepts pipeline dirt by recorded preimage hash without a flag gate
+- **Decided by:** user, via `do-work abandon`
