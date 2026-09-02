@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.261.3 — Refuse Ambiguous Explicit Request IDs (2026-09-02)
+
+Explicit REQ targeting now refuses genuine numeric-equivalent queue identities instead of letting discovery order choose an arbitrary record.
+
+- Repository collision evidence preserves every contributing path across normalized IDs such as `REQ-452` and `REQ-0452`.
+- Explicit dependency, assignment, and impact overrides remain unchanged for unique identities, with caller-seam replays covering both discovery orders.
+- REQ-497 remains queued to keep suffix-tolerant filename parsing from treating malformed frontmatter such as `REQ-452junk` as the same identity.
+
 ## 0.261.2 — Complete Repository-Gate Deferral Preflight Topology (2026-09-02)
 
 Repository-gate deferral now admits every valid fold topology and refuses occupied parent destinations before mutation.

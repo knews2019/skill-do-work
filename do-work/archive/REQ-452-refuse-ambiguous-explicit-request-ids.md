@@ -22,7 +22,8 @@ integration_at: 2026-09-02T11:31:50Z
 review_at: 2026-09-02T11:46:20Z
 remediation_at: 2026-09-02T11:52:48Z
 re_review_at: 2026-09-02T12:03:38Z
-completed_at: 2026-09-02T12:03:38Z
+completed_at: 2026-09-02T12:05:54Z
+release_at: 2026-09-02T12:08:02Z
 kb_status: pending
 estimate:
   p50_active_minutes: 5

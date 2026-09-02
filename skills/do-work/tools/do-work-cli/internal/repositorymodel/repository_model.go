@@ -272,6 +272,9 @@ func DiscoverRepository(repositoryRoot string) (*RepositorySnapshot, error) {
 			if claimID == "" {
 				continue
 			}
+			if normalizedID := requestIDFromText(claimID); normalizedID != "" {
+				claimID = normalizedID
+			}
 			if claimedPathsByID[claimID] == nil {
 				claimedPathsByID[claimID] = map[string]bool{}
 			}

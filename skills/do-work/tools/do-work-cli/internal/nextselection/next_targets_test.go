@@ -1,11 +1,124 @@
 package nextselection
 
 import (
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/dependencygraph"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
+
+func TestExplicitREQRefusesAmbiguousQueueIdentityIndependentOfDiscoveryOrder(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	firstPath := "do-work/queue/REQ-452-first.md"
+	secondPath := "do-work/queue/REQ-0452-second.md"
+	writeCommandRequest(t, repositoryRoot, firstPath, "REQ-452", "pending", "depends_on: [REQ-999]\nassigned_to: cloud-alpha\nimpact: impact-negligible\n")
+	writeCommandRequest(t, repositoryRoot, secondPath, "REQ-0452", "pending", "")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var firstExclusion *resultmodel.SelectionExclusion
+	for _, replay := range []struct {
+		name    string
+		reverse bool
+	}{
+		{name: "discovery order"},
+		{name: "reversed discovery order", reverse: true},
+	} {
+		t.Run(replay.name, func(t *testing.T) {
+			replaySnapshot := *snapshot
+			replaySnapshot.RequestFiles = append([]*repositorymodel.RequestFile(nil), snapshot.RequestFiles...)
+			if replay.reverse {
+				for left, right := 0, len(replaySnapshot.RequestFiles)-1; left < right; left, right = left+1, right-1 {
+					replaySnapshot.RequestFiles[left], replaySnapshot.RequestFiles[right] = replaySnapshot.RequestFiles[right], replaySnapshot.RequestFiles[left]
+				}
+			}
+			result := Select(&replaySnapshot, dependencygraph.BuildGraph(&replaySnapshot), SelectionOptions{
+				TargetTokens:         []string{"REQ-452"},
+				SkipImpactNegligible: true,
+			}, nil)
+			if len(result.Selected) != 0 {
+				t.Fatalf("ambiguous explicit target selected an arbitrary record: %#v", result.Selected)
+			}
+			if len(result.Excluded) != 1 {
+				t.Fatalf("exclusions = %#v, want one typed ambiguity exclusion", result.Excluded)
+			}
+			exclusion := result.Excluded[0]
+			if exclusion.Code != "DEPENDENCY-AMBIGUOUS" || exclusion.Provenance != ProvenanceExplicit || exclusion.RequestPath != "" {
+				t.Fatalf("ambiguity exclusion = %#v", exclusion)
+			}
+			for _, collisionPath := range []string{firstPath, secondPath} {
+				if !strings.Contains(exclusion.Reason, collisionPath) {
+					t.Errorf("ambiguity reason omitted collision path %q: %q", collisionPath, exclusion.Reason)
+				}
+			}
+			if firstExclusion == nil {
+				firstExclusion = &exclusion
+			} else if !reflect.DeepEqual(*firstExclusion, exclusion) {
+				t.Fatalf("discovery order changed exclusion:\nfirst: %#v\nnext:  %#v", *firstExclusion, exclusion)
+			}
+		})
+	}
+}
+
+func TestExplicitREQRefusesNormalizedFrontmatterIdentityCollisionIndependentOfDiscoveryOrder(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	firstPath := "do-work/queue/REQ-900-first.md"
+	secondPath := "do-work/queue/REQ-901-second.md"
+	writeCommandRequest(t, repositoryRoot, firstPath, "REQ-452", "pending", "depends_on: [REQ-999]\nassigned_to: cloud-alpha\nimpact: impact-negligible\n")
+	writeCommandRequest(t, repositoryRoot, secondPath, "REQ-0452", "pending", "")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var firstExclusion *resultmodel.SelectionExclusion
+	for _, replay := range []struct {
+		name    string
+		reverse bool
+	}{
+		{name: "discovery order"},
+		{name: "reversed discovery order", reverse: true},
+	} {
+		t.Run(replay.name, func(t *testing.T) {
+			replaySnapshot := *snapshot
+			replaySnapshot.RequestFiles = append([]*repositorymodel.RequestFile(nil), snapshot.RequestFiles...)
+			if replay.reverse {
+				for left, right := 0, len(replaySnapshot.RequestFiles)-1; left < right; left, right = left+1, right-1 {
+					replaySnapshot.RequestFiles[left], replaySnapshot.RequestFiles[right] = replaySnapshot.RequestFiles[right], replaySnapshot.RequestFiles[left]
+				}
+			}
+			result := Select(&replaySnapshot, dependencygraph.BuildGraph(&replaySnapshot), SelectionOptions{
+				TargetTokens:         []string{"REQ-452"},
+				SkipImpactNegligible: true,
+			}, nil)
+			if len(result.Selected) != 0 {
+				t.Fatalf("ambiguous explicit target selected an arbitrary record: %#v", result.Selected)
+			}
+			if len(result.Excluded) != 1 {
+				t.Fatalf("exclusions = %#v, want one typed ambiguity exclusion", result.Excluded)
+			}
+			exclusion := result.Excluded[0]
+			if exclusion.Code != "DEPENDENCY-AMBIGUOUS" || exclusion.Provenance != ProvenanceExplicit || exclusion.RequestPath != "" {
+				t.Fatalf("ambiguity exclusion = %#v", exclusion)
+			}
+			for _, collisionPath := range []string{firstPath, secondPath} {
+				if !strings.Contains(exclusion.Reason, collisionPath) {
+					t.Errorf("ambiguity reason omitted collision path %q: %q", collisionPath, exclusion.Reason)
+				}
+			}
+			if firstExclusion == nil {
+				firstExclusion = &exclusion
+			} else if !reflect.DeepEqual(*firstExclusion, exclusion) {
+				t.Fatalf("discovery order changed exclusion:\nfirst: %#v\nnext:  %#v", *firstExclusion, exclusion)
+			}
+		})
+	}
+}
 
 func TestTargetResolutionPreservesMixedTokenOrderAndExplicitProvenance(t *testing.T) {
 	repositoryRoot := t.TempDir()

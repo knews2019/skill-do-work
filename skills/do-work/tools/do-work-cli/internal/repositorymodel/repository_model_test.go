@@ -145,6 +145,30 @@ func TestCollisionEvidenceIncludesFilenameAndFrontmatterClaims(t *testing.T) {
 	}
 }
 
+func TestCollisionEvidenceNormalizesNumericFrontmatterIdentity(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	firstPath := "do-work/queue/REQ-900-first.md"
+	secondPath := "do-work/queue/REQ-901-second.md"
+	writeRepositoryFixture(t, repositoryRoot, firstPath, requestFixture("REQ-452", "pending"))
+	writeRepositoryFixture(t, repositoryRoot, secondPath, requestFixture("REQ-0452", "pending"))
+	snapshot, err := DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(snapshot.CollisionEntries) != 1 || snapshot.CollisionEntries[0].RequestID != "REQ-452" {
+		t.Fatalf("normalized collision evidence = %#v", snapshot.CollisionEntries)
+	}
+	wantPaths := []string{
+		filepath.Join(repositoryRoot, filepath.FromSlash(firstPath)),
+		filepath.Join(repositoryRoot, filepath.FromSlash(secondPath)),
+	}
+	claimPaths := snapshot.CollisionEntries[0].ClaimPaths
+	if len(claimPaths) != len(wantPaths) || claimPaths[0] != wantPaths[0] || claimPaths[1] != wantPaths[1] {
+		t.Fatalf("collision paths = %#v, want %#v", snapshot.CollisionEntries[0].ClaimPaths, wantPaths)
+	}
+}
+
 func TestReserveNextRequestIDIsCollisionFreeAcrossEvidenceAndRaces(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeRepositoryFixture(t, repositoryRoot, "do-work/queue/REQ-008-file.md", requestFixture("REQ-012", "pending"))

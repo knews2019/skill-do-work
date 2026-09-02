@@ -33,15 +33,13 @@ func resolveTargets(snapshot *repositorymodel.RepositorySnapshot, graph *depende
 	ordered := []selectionCandidate{}
 	indexByID := map[string]int{}
 	exclusions := []resultmodel.SelectionExclusion{}
-	explicitIDs := map[string]bool{}
+	explicitNumbers := map[int]bool{}
 	for _, token := range options.TargetTokens {
 		if !hasIDPrefix(token, "REQ-") {
 			continue
 		}
 		number, _ := numericID(token, "REQ-")
-		if requestFile := requestByNumber[number]; requestFile != nil {
-			explicitIDs[requestID(requestFile)] = true
-		}
+		explicitNumbers[number] = true
 	}
 	for _, token := range options.TargetTokens {
 		switch {
@@ -49,6 +47,10 @@ func resolveTargets(snapshot *repositorymodel.RepositorySnapshot, graph *depende
 			number, _ := numericID(token, "REQ-")
 			requestFile := requestByNumber[number]
 			canonical, _ := canonicalToken(token, "REQ-")
+			if collisionPaths := queueCollisionPaths(snapshot, number); len(collisionPaths) > 1 {
+				exclusions = append(exclusions, targetAmbiguous(canonical, collisionPaths))
+				continue
+			}
 			if requestFile == nil {
 				exclusions = append(exclusions, targetNotFound(canonical, ProvenanceExplicit))
 				continue
@@ -92,7 +94,8 @@ func resolveTargets(snapshot *repositorymodel.RepositorySnapshot, graph *depende
 			}
 			for _, requestFile := range members {
 				identifier := requestID(requestFile)
-				if explicitIDs[identifier] {
+				memberNumber, valid := numericID(identifier, "REQ-")
+				if valid && explicitNumbers[memberNumber] {
 					continue
 				}
 				if _, found := indexByID[identifier]; found {
@@ -104,6 +107,30 @@ func resolveTargets(snapshot *repositorymodel.RepositorySnapshot, graph *depende
 		}
 	}
 	return ordered, exclusions
+}
+
+func queueCollisionPaths(snapshot *repositorymodel.RepositorySnapshot, requestNumber int) []string {
+	queuePaths := map[string]string{}
+	for _, requestFile := range snapshot.RequestFiles {
+		if requestFile.TreeSection == "queue" {
+			queuePaths[requestFile.AbsolutePath] = pathForSelection(requestFile)
+		}
+	}
+	for _, collision := range snapshot.CollisionEntries {
+		number, valid := numericID(collision.RequestID, "REQ-")
+		if !valid || number != requestNumber {
+			continue
+		}
+		paths := []string{}
+		for _, claimPath := range collision.ClaimPaths {
+			if queuePath := queuePaths[claimPath]; queuePath != "" {
+				paths = append(paths, queuePath)
+			}
+		}
+		sort.Strings(paths)
+		return paths
+	}
+	return nil
 }
 
 func queueCandidates(snapshot *repositorymodel.RepositorySnapshot, provenance string) []selectionCandidate {
@@ -146,6 +173,16 @@ func targetNotFound(identifier, provenance string) resultmodel.SelectionExclusio
 	return resultmodel.SelectionExclusion{
 		RequestID: identifier, Provenance: provenance, Code: "TARGET-NOT-FOUND",
 		Reason:   fmt.Sprintf("%s did not resolve to a queued request", identifier),
+		NextArgv: nextArgv, NextJustRecipe: justRecipeFor(nextArgv),
+		VerificationArgv: []string{"do-work-cli", "--format", "json", "next", identifier},
+	}
+}
+
+func targetAmbiguous(identifier string, collisionPaths []string) resultmodel.SelectionExclusion {
+	nextArgv := []string{"do-work", "doctor"}
+	return resultmodel.SelectionExclusion{
+		RequestID: identifier, Provenance: ProvenanceExplicit, Code: "DEPENDENCY-AMBIGUOUS",
+		Reason:   "request identity is ambiguous across queue records: " + strings.Join(collisionPaths, ", "),
 		NextArgv: nextArgv, NextJustRecipe: justRecipeFor(nextArgv),
 		VerificationArgv: []string{"do-work-cli", "--format", "json", "next", identifier},
 	}
