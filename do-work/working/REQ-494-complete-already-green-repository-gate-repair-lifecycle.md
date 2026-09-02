@@ -1,7 +1,8 @@
 ---
 id: REQ-494
 title: '[impact-critical] Review fix: Complete already-green repository-gate repair lifecycle'
-status: pending
+status: claimed
+route: C
 domain: general
 created_at: 2026-09-02T03:32:03Z
 user_request: UR-095
@@ -15,12 +16,15 @@ depends_on: [REQ-492]
 related: [REQ-491, REQ-493]
 sweep: true
 sweep_key: repository-gate-repair-noop-downstream-guards
+claimed_at: 2026-09-02T04:25:25Z
+planning_at: 2026-09-02T04:28:18Z
+write_set: [skills/do-work/actions/work.md, skills/do-work/actions/review-work.md, _dev/tests/contract-regressions.sh]
 ---
 
 # Review Fix: Complete Already-Green Repository-Gate Repair Lifecycle
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Route C. Reuse the canonical exact no-op predicate, add narrow TDD and orchestrated-review branches, and prove the complete lifecycle plus negative neighboring cases through the existing semantic mutation harness.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -55,3 +59,20 @@ Found during post-remediation review of REQ-492 (Integrate repository-gate defer
 
 - [ ] `impact-critical` — The unconditional `tdd: true` RED/GREEN guard rejects the canonical already-green repair evidence.
 - [ ] `impact-critical` — Orchestrated `review-work` exits on the same repair’s intentionally empty implementation diff.
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/actions/work.md`
+- `skills/do-work/actions/review-work.md`
+- `_dev/tests/contract-regressions.sh`
+
+**Acceptance criteria:** Only a claimed `repository_gate_repair: true` request carrying the canonical exact no-op evidence and summary bypasses ordinary RED/GREEN and empty-diff review guards; malformed and ordinary empty work still refuses, while canonical completion, lifecycle-only commit, metadata recording, and dependency reselection remain executable without a release mutation.
+
+## Plan
+
+1. Add a semantic RED fixture that drives the canonical no-op shape through the active TDD and review guards and proves the current contradictions.
+2. Add negative fixtures for ordinary or malformed empty-diff work, nonempty project diffs, release plans, and forbidden staged paths.
+3. Exempt only the canonical exact predicate from Step 6.5 RED/GREEN and route review-work to lifecycle evidence before its ordinary empty-diff exit.
+4. Preserve the existing canonical qualification, complete/archive, lifecycle-only staging, metadata, and selector contracts; no CLI schema or command changes.
+5. Mutation-test both narrow branches, run the full contract suite, qualification, independent review, and canonical maintainer gate.
