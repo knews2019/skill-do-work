@@ -120,7 +120,7 @@ func prepareJournal(ctx context.Context, repositoryRoot, manifestPath string) (*
 			_ = os.RemoveAll(payloadDirectory)
 			return nil, false, err
 		}
-		releasePostimages = publicationPostimages(releasePlan)
+		releasePostimages = publicationPostimages(releasePlan, releasePreimages)
 		archiveBefore, archiveAfter, stampError := releaseStampImages(statePlan.DestinationPath, journalLifecyclePostimages, manifest.ReleaseAt)
 		if stampError != nil {
 			_ = os.RemoveAll(payloadDirectory)
@@ -224,12 +224,20 @@ func snapshotImages(repositoryRoot string, paths []string) ([]FileImage, error) 
 	return images, nil
 }
 
-func publicationPostimages(plan publication.PublicationPlan) []FileImage {
+func publicationPostimages(plan publication.PublicationPlan, preimageSets ...[]FileImage) []FileImage {
 	images := map[string]FileImage{}
+	preimages := map[string]FileImage{}
+	if len(preimageSets) > 0 {
+		preimages = imagesByPath(preimageSets[0])
+	}
 	for _, mutation := range plan.Mutations {
 		switch mutation.Kind {
 		case publication.MutationCreate, publication.MutationReplace:
-			images[mutation.Path] = FileImage{Path: mutation.Path, Exists: true, Bytes: append([]byte(nil), mutation.Contents...), Mode: uint32(mutation.Mode)}
+			mode := uint32(mutation.Mode)
+			if mutation.Kind == publication.MutationReplace && mode == 0 {
+				mode = preimages[mutation.Path].Mode
+			}
+			images[mutation.Path] = FileImage{Path: mutation.Path, Exists: true, Bytes: append([]byte(nil), mutation.Contents...), Mode: mode}
 		case publication.MutationMove:
 			images[mutation.Path] = FileImage{Path: mutation.Path}
 			contents := mutation.ExpectedBytes

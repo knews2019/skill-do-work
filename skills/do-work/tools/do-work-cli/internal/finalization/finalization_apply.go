@@ -586,11 +586,18 @@ func verifyFinalState(repositoryRoot string, journal *Journal) error {
 func finalizationSuccess(journal *Journal, resumed bool) resultmodel.CommandResult {
 	verification := recoveryArgv(journal)
 	record := finalizationRecord(journal, resumed, nil, nil)
-	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: []resultmodel.CommandFinding{{
+	findings := []resultmodel.CommandFinding{{
 		Code: "FINALIZATION-COMPLETE", Severity: resultmodel.SeverityInfo, AffectedIDs: []string{journal.Manifest.RequestID},
 		AffectedPaths: []string{journal.ArchivedPath}, Evidence: []string{"resumable finalization reached verified cleanup-complete state"},
 		Fixability: resultmodel.FixabilityAutomatic, VerificationArgv: verification,
-	}}, Finalization: &record, Finalizations: []resultmodel.FinalizationResult{record}}
+	}}
+	if len(journal.SoleReleaserAttributed) > 0 {
+		findings = append(findings, resultmodel.CommandFinding{Code: "FINALIZATION-SOLE-RELEASER-ATTRIBUTED", Severity: resultmodel.SeverityInfo,
+			AffectedIDs: []string{journal.Manifest.RequestID}, AffectedPaths: append([]string(nil), journal.SoleReleaserAttributed...),
+			Evidence: []string{"shared lifecycle paths were attributed by the invocation's sole-releaser assertion"}, Fixability: resultmodel.FixabilityAutomatic,
+			VerificationArgv: verification})
+	}
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: findings, Finalization: &record, Finalizations: []resultmodel.FinalizationResult{record}}
 }
 
 func finalizationFailure(journal *Journal, resumed bool, code, reason string, paths []string) resultmodel.CommandResult {

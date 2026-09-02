@@ -19,18 +19,19 @@ import (
 )
 
 type discoveryCandidate struct {
-	request        *repositorymodel.RequestFile
-	completedAt    time.Time
-	implementation []string
-	lifecyclePaths []string
-	releasePaths   []string
-	effectivePaths []string
+	request         *repositorymodel.RequestFile
+	completedAt     time.Time
+	implementation  []string
+	lifecyclePaths  []string
+	releasePaths    []string
+	effectivePaths  []string
+	attributedPaths []string
 }
 
 // discoverFinalizationJournals freezes one protected inventory before reading
 // request bytes. Staged state always refuses. Unstaged X/XD rows are deliberately
 // omitted from association, so their contents are never read, staged, or changed.
-func discoverFinalizationJournals(repositoryRoot string) ([]*Journal, *resultmodel.CommandResult) {
+func discoverFinalizationJournals(repositoryRoot string, assumeSoleReleaser bool) ([]*Journal, *resultmodel.CommandResult) {
 	rows, err := corehelpers.ReadProtectedInventory(repositoryRoot)
 	if err != nil {
 		failure := commandFailure(repositoryRoot, CommandRecoverFinalization, "FINALIZATION-DISCOVERY-INVENTORY", err.Error())
@@ -113,7 +114,19 @@ func discoverFinalizationJournals(repositoryRoot string) ([]*Journal, *resultmod
 			ambiguous = append(ambiguous, path)
 		}
 	}
+	if assumeSoleReleaser {
+		active := activeDiscoveryCandidates(candidates)
+		if len(active) > 1 {
+			paths := []string{}
+			for _, candidate := range active {
+				paths = append(paths, requestRepositoryPath(candidate.request.RelativePath))
+			}
+			failure := discoveryRefusal(repositoryRoot, "FINALIZATION-MULTIPLE-TAILS", "sole-releaser attribution requires exactly one legacy finalization tail", uniqueSorted(paths))
+			return nil, &failure
+		}
+	}
 
+	unresolvedShared := []string{}
 	for path := range dirty {
 		if !sharedFinalizationPath(path) {
 			continue
@@ -128,8 +141,34 @@ func discoverFinalizationJournals(repositoryRoot string) ([]*Journal, *resultmod
 			matches[0].lifecyclePaths = append(matches[0].lifecyclePaths, path)
 			matches[0].effectivePaths = append(matches[0].effectivePaths, path)
 		} else {
-			ambiguous = append(ambiguous, path)
+			unresolvedShared = append(unresolvedShared, path)
 		}
+	}
+	if assumeSoleReleaser {
+		active := activeDiscoveryCandidates(candidates)
+		if len(active) > 1 {
+			paths := []string{}
+			for _, candidate := range active {
+				paths = append(paths, requestRepositoryPath(candidate.request.RelativePath))
+			}
+			failure := discoveryRefusal(repositoryRoot, "FINALIZATION-MULTIPLE-TAILS", "sole-releaser attribution requires exactly one legacy finalization tail", uniqueSorted(paths))
+			return nil, &failure
+		}
+		if len(active) == 1 {
+			for _, path := range unresolvedShared {
+				if soleReleaserSharedPath(path, origins[path], destinations[path], active[0]) {
+					active[0].lifecyclePaths = append(active[0].lifecyclePaths, path)
+					active[0].effectivePaths = append(active[0].effectivePaths, path)
+					active[0].attributedPaths = append(active[0].attributedPaths, path)
+				} else {
+					ambiguous = append(ambiguous, path)
+				}
+			}
+		} else {
+			ambiguous = append(ambiguous, unresolvedShared...)
+		}
+	} else {
+		ambiguous = append(ambiguous, unresolvedShared...)
 	}
 	ambiguous = append(ambiguous, associateReleaseMetadata(repositoryRoot, dirty, candidates)...)
 	if len(ambiguous) > 0 {
@@ -140,9 +179,18 @@ func discoverFinalizationJournals(repositoryRoot string) ([]*Journal, *resultmod
 	admitted := make([]*discoveryCandidate, 0, len(candidates))
 	for _, candidate := range candidates {
 		candidate.effectivePaths = uniqueSorted(candidate.effectivePaths)
+		candidate.attributedPaths = uniqueSorted(candidate.attributedPaths)
 		if len(candidate.effectivePaths) > 0 {
 			admitted = append(admitted, candidate)
 		}
+	}
+	if assumeSoleReleaser && len(admitted) > 1 {
+		paths := []string{}
+		for _, candidate := range admitted {
+			paths = append(paths, requestRepositoryPath(candidate.request.RelativePath))
+		}
+		failure := discoveryRefusal(repositoryRoot, "FINALIZATION-MULTIPLE-TAILS", "sole-releaser attribution requires exactly one legacy finalization tail", uniqueSorted(paths))
+		return nil, &failure
 	}
 	sort.Slice(admitted, func(left, right int) bool {
 		if admitted[left].completedAt.Equal(admitted[right].completedAt) {
@@ -160,6 +208,34 @@ func discoverFinalizationJournals(repositoryRoot string) ([]*Journal, *resultmod
 		journals = append(journals, journal)
 	}
 	return journals, nil
+}
+
+func activeDiscoveryCandidates(candidates []*discoveryCandidate) []*discoveryCandidate {
+	active := []*discoveryCandidate{}
+	for _, candidate := range candidates {
+		if len(candidate.effectivePaths) > 0 {
+			active = append(active, candidate)
+		}
+	}
+	return active
+}
+
+func soleReleaserSharedPath(path, origin, destination string, candidate *discoveryCandidate) bool {
+	if path == "do-work/CHECKPOINT.md" || path == "do-work/calibration-log.tsv" {
+		return true
+	}
+	userRequestID := candidate.request.TypedRecord.UserRequestID
+	if userRequestID == "" || origin == "" && destination == "" {
+		return false
+	}
+	activePrefix := "do-work/user-requests/" + userRequestID + "/"
+	archivePrefix := "do-work/archive/" + userRequestID + "/"
+	for _, candidatePath := range []string{path, origin, destination} {
+		if strings.HasPrefix(candidatePath, activePrefix) || strings.HasPrefix(candidatePath, archivePrefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func ordinaryWholeDiffProves(repositoryRoot, path string) bool {
@@ -320,7 +396,25 @@ func followupPathProves(repositoryRoot, path, requestID string) bool {
 		return false
 	}
 	document, err := requestmodel.ParseDocument(current.Bytes)
-	return err == nil && document.TypedRecord().AddendumTo == requestID
+	if err != nil || document.TypedRecord().AddendumTo != requestID {
+		return false
+	}
+	before, err := headFileImage(repositoryRoot, path)
+	if err != nil {
+		return false
+	}
+	if !before.Exists {
+		return true
+	}
+	beforeDocument, err := requestmodel.ParseDocument(before.Bytes)
+	if err != nil || beforeDocument.TypedRecord().RequestID != document.TypedRecord().RequestID || beforeDocument.TypedRecord().AddendumTo != requestID {
+		return false
+	}
+	if !bytes.HasPrefix(current.Bytes, before.Bytes) {
+		return false
+	}
+	appended := strings.TrimSpace(string(current.Bytes[len(before.Bytes):]))
+	return (strings.HasPrefix(appended, "## Review Fold") || strings.HasPrefix(appended, "## Recovery Fold")) && strings.Contains(appended, requestID)
 }
 
 func userRequestMoveProves(repositoryRoot, path, origin, destination, userRequestID, requestID string) bool {
@@ -391,7 +485,7 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 		if err != nil || !before.Exists || !after.Exists {
 			return paths
 		}
-		if strings.HasSuffix(path, "CHANGELOG.md") {
+		if strings.HasPrefix(filepath.Base(path), "CHANGELOG") {
 			if firstChangelogBefore == nil {
 				firstChangelogBefore, firstChangelogAfter = before.Bytes, after.Bytes
 			} else if !bytes.Equal(firstChangelogBefore, before.Bytes) || !bytes.Equal(firstChangelogAfter, after.Bytes) {
@@ -402,7 +496,7 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 		}
 		oldVersion, oldOK := releaseVersion(path, before.Bytes)
 		newVersion, newOK := releaseVersion(path, after.Bytes)
-		if !oldOK || !newOK || !semverGreater(newVersion, oldVersion) || !singleVersionReplacement(before.Bytes, after.Bytes, oldVersion, newVersion) {
+		if !oldOK || !newOK || !semverGreater(newVersion, oldVersion) || !semanticVersionReplacement(path, before.Bytes, after.Bytes, oldVersion, newVersion) {
 			return paths
 		}
 		oldVersions[oldVersion] = struct{}{}
@@ -410,6 +504,20 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 	}
 	if len(changelogPaths) == 0 || len(versions) != 1 || len(oldVersions) != 1 {
 		return paths
+	}
+	oldVersion := ""
+	for version := range oldVersions {
+		oldVersion = version
+	}
+	requiredPaths := configuredReleaseMetadataPaths(repositoryRoot, oldVersion, firstChangelogBefore)
+	missingRequired := []string{}
+	for _, requiredPath := range requiredPaths {
+		if !dirty[requiredPath] {
+			missingRequired = append(missingRequired, requiredPath)
+		}
+	}
+	if len(missingRequired) > 0 {
+		return uniqueSorted(missingRequired)
 	}
 	newVersion := ""
 	for version := range versions {
@@ -457,12 +565,54 @@ func semverGreater(newVersion, oldVersion string) bool {
 }
 
 func releaseMetadataPath(path string) bool {
-	return path == "CHANGELOG.md" || path == "VERSION" || path == "skills/do-work/CHANGELOG.md" || path == "skills/do-work/VERSION" || path == "skills/do-work/actions/version.md"
+	base := filepath.Base(path)
+	return strings.HasPrefix(base, "CHANGELOG") || base == "VERSION" || base == "package.json" || base == "package-lock.json" || base == "Cargo.toml" || base == "Cargo.lock" || base == "pyproject.toml" || base == "uv.lock" || path == "skills/do-work/actions/version.md"
 }
 
 func releaseVersion(path string, contents []byte) (string, bool) {
 	value := strings.TrimSpace(string(contents))
-	if filepath.Base(path) != "VERSION" {
+	switch filepath.Base(path) {
+	case "package.json":
+		var document struct {
+			Version string `json:"version"`
+		}
+		if json.Unmarshal(contents, &document) != nil {
+			return "", false
+		}
+		value = document.Version
+	case "package-lock.json":
+		var document struct {
+			Version  string `json:"version"`
+			Packages map[string]struct {
+				Version string `json:"version"`
+			} `json:"packages"`
+		}
+		if json.Unmarshal(contents, &document) != nil || document.Version == "" {
+			return "", false
+		}
+		if rootPackage, ok := document.Packages[""]; ok && rootPackage.Version != "" && rootPackage.Version != document.Version {
+			return "", false
+		}
+		value = document.Version
+	case "Cargo.toml", "pyproject.toml":
+		sections := []string{"package"}
+		if filepath.Base(path) == "pyproject.toml" {
+			sections = []string{"project", "tool.poetry"}
+		}
+		sectionVersion, ok := tomlSectionVersion(contents, sections)
+		if !ok {
+			return "", false
+		}
+		value = sectionVersion
+	case "Cargo.lock", "uv.lock":
+		lockVersion, ok := projectLockVersion(filepath.Base(path), contents)
+		if !ok {
+			return "", false
+		}
+		value = lockVersion
+	case "VERSION":
+		// The whole trimmed file is the version.
+	default:
 		match := regexp.MustCompile(`(?m)^\*\*Current version\*\*:[ \t]*([0-9]+\.[0-9]+\.[0-9]+)[ \t]*$`).FindSubmatch(contents)
 		if len(match) != 2 {
 			return "", false
@@ -481,8 +631,203 @@ func releaseVersion(path string, contents []byte) (string, bool) {
 	return value, true
 }
 
+func tomlSectionVersion(contents []byte, acceptedSections []string) (string, bool) {
+	accepted := map[string]bool{}
+	for _, section := range acceptedSections {
+		accepted[section] = true
+	}
+	currentSection := ""
+	for _, line := range strings.Split(string(contents), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
+			currentSection = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(trimmed, "["), "]"))
+			continue
+		}
+		if !accepted[currentSection] {
+			continue
+		}
+		match := regexp.MustCompile(`^version[ \t]*=[ \t]*["']([0-9]+\.[0-9]+\.[0-9]+)["'][ \t]*$`).FindStringSubmatch(trimmed)
+		if len(match) == 2 {
+			return match[1], true
+		}
+	}
+	return "", false
+}
+
+func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelogBefore []byte) []string {
+	tracked, err := gitLines(repositoryRoot, "ls-files")
+	if err != nil {
+		return nil
+	}
+	paths := []string{}
+	for _, path := range tracked {
+		if strings.HasPrefix(path, "do-work/") || installedReleasePathForDiscovery(repositoryRoot, path) || !releaseMetadataPath(path) {
+			continue
+		}
+		before, err := headFileImage(repositoryRoot, path)
+		if err != nil || !before.Exists {
+			continue
+		}
+		if strings.HasPrefix(filepath.Base(path), "CHANGELOG") {
+			if bytes.Equal(before.Bytes, changelogBefore) {
+				paths = append(paths, path)
+			}
+			continue
+		}
+		if lockMirrorConfigured(repositoryRoot, path, oldVersion) {
+			paths = append(paths, path)
+			continue
+		}
+		if version, ok := releaseVersion(path, before.Bytes); ok && version == oldVersion {
+			paths = append(paths, path)
+		}
+	}
+	return uniqueSorted(paths)
+}
+
+func lockMirrorConfigured(repositoryRoot, path, oldVersion string) bool {
+	manifestName := ""
+	switch filepath.Base(path) {
+	case "Cargo.lock":
+		manifestName = "Cargo.toml"
+	case "uv.lock":
+		manifestName = "pyproject.toml"
+	default:
+		return false
+	}
+	manifestPath := filepath.ToSlash(filepath.Join(filepath.Dir(path), manifestName))
+	manifest, err := headFileImage(repositoryRoot, manifestPath)
+	if err != nil || !manifest.Exists {
+		return false
+	}
+	version, ok := releaseVersion(manifestPath, manifest.Bytes)
+	return ok && version == oldVersion
+}
+
+func installedReleasePathForDiscovery(repositoryRoot, path string) bool {
+	lower := strings.ToLower(filepath.ToSlash(path))
+	for _, prefix := range []string{".claude/skills/", ".codex/skills/", "node_modules/", "vendor/", "vendored/", "generated/", ".generated/"} {
+		if strings.HasPrefix(lower, prefix) {
+			return true
+		}
+	}
+	if strings.HasPrefix(lower, "skills/do-work/") {
+		manifest, _ := headFileImage(repositoryRoot, "suite/modules.tsv")
+		return !manifest.Exists
+	}
+	return false
+}
+
 func singleVersionReplacement(before, after []byte, oldVersion, newVersion string) bool {
 	return bytes.Equal(bytes.Replace(before, []byte(oldVersion), []byte(newVersion), 1), after) && bytes.Count(before, []byte(oldVersion)) == 1
+}
+
+func semanticVersionReplacement(path string, before, after []byte, oldVersion, newVersion string) bool {
+	switch filepath.Base(path) {
+	case "package.json":
+		return bytes.Equal(replaceJSONVersionValues(before, oldVersion, newVersion, 1), after)
+	case "package-lock.json":
+		var document struct {
+			Packages map[string]json.RawMessage `json:"packages"`
+		}
+		if json.Unmarshal(before, &document) != nil {
+			return false
+		}
+		count := 1
+		if _, ok := document.Packages[""]; ok {
+			count = 2
+		}
+		return bytes.Equal(replaceJSONVersionValues(before, oldVersion, newVersion, count), after)
+	case "Cargo.lock", "uv.lock":
+		return bytes.Equal(replaceProjectLockVersion(filepath.Base(path), before, oldVersion, newVersion), after)
+	default:
+		return singleVersionReplacement(before, after, oldVersion, newVersion)
+	}
+}
+
+func projectLockVersion(lockName string, contents []byte) (string, bool) {
+	versions := []string{}
+	for _, blockLocation := range projectLockBlockLocations(contents) {
+		block := contents[blockLocation[0]:blockLocation[1]]
+		owned := lockName == "Cargo.lock" && !regexp.MustCompile(`(?m)^source[ \t]*=`).Match(block)
+		if lockName == "uv.lock" {
+			owned = regexp.MustCompile(`(?m)^source[ \t]*=[ \t]*\{[^{\n]*(editable|virtual)[ \t]*=[ \t]*"\."`).Match(block)
+		}
+		if !owned {
+			continue
+		}
+		match := regexp.MustCompile(`(?m)^version[ \t]*=[ \t]*["']([0-9]+\.[0-9]+\.[0-9]+)["'][ \t]*$`).FindSubmatch(block)
+		if len(match) == 2 {
+			versions = append(versions, string(match[1]))
+		}
+	}
+	return exactSingleVersion(versions)
+}
+
+func exactSingleVersion(versions []string) (string, bool) {
+	if len(versions) != 1 {
+		return "", false
+	}
+	return versions[0], true
+}
+
+func replaceProjectLockVersion(lockName string, contents []byte, oldVersion, newVersion string) []byte {
+	blocks := projectLockBlockLocations(contents)
+	result := append([]byte(nil), contents...)
+	offset := 0
+	replaced := false
+	for _, blockLocation := range blocks {
+		start, end := blockLocation[0]+offset, blockLocation[1]+offset
+		block := result[start:end]
+		owned := lockName == "Cargo.lock" && !regexp.MustCompile(`(?m)^source[ \t]*=`).Match(block)
+		if lockName == "uv.lock" {
+			owned = regexp.MustCompile(`(?m)^source[ \t]*=[ \t]*\{[^{\n]*(editable|virtual)[ \t]*=[ \t]*"\."`).Match(block)
+		}
+		if !owned {
+			continue
+		}
+		updated := regexp.MustCompile(`(?m)(^version[ \t]*=[ \t]*["'])`+regexp.QuoteMeta(oldVersion)+`(["'][ \t]*$)`).ReplaceAll(block, []byte("${1}"+newVersion+"${2}"))
+		if bytes.Equal(updated, block) {
+			continue
+		}
+		result = append(append(append([]byte(nil), result[:start]...), updated...), result[end:]...)
+		offset += len(updated) - len(block)
+		replaced = true
+	}
+	if !replaced {
+		return nil
+	}
+	return result
+}
+
+func projectLockBlockLocations(contents []byte) [][2]int {
+	headers := regexp.MustCompile(`(?m)^\[\[package\]\][ \t]*\r?$`).FindAllIndex(contents, -1)
+	blocks := make([][2]int, 0, len(headers))
+	for index, header := range headers {
+		end := len(contents)
+		if index+1 < len(headers) {
+			end = headers[index+1][0]
+		}
+		blocks = append(blocks, [2]int{header[0], end})
+	}
+	return blocks
+}
+
+func replaceJSONVersionValues(contents []byte, oldVersion, newVersion string, count int) []byte {
+	pattern := regexp.MustCompile(`("version"[ \t\r\n]*:[ \t\r\n]*")` + regexp.QuoteMeta(oldVersion) + `(")`)
+	replaced := append([]byte(nil), contents...)
+	for index := 0; index < count; index++ {
+		location := pattern.FindSubmatchIndex(replaced)
+		if len(location) == 0 {
+			return nil
+		}
+		updated := make([]byte, 0, len(replaced)-len(oldVersion)+len(newVersion))
+		updated = append(updated, replaced[:location[3]]...)
+		updated = append(updated, newVersion...)
+		updated = append(updated, replaced[location[4]:]...)
+		replaced = updated
+	}
+	return replaced
 }
 
 func singleInsertion(before, after []byte) ([]byte, bool) {
@@ -545,6 +890,7 @@ func discoveredJournal(repositoryRoot string, candidate *discoveryCandidate) (*J
 		LifecyclePreimages: lifecyclePreimages, LifecyclePostimages: lifecyclePostimages,
 		ReleasePreimages: releasePreimages, ReleasePostimages: releasePostimages,
 		EffectiveCommitPaths: paths, PreparedHead: preparedHead, PreparedDiffSHA256: preparedDiff, Discovered: true,
+		SoleReleaserAttributed: append([]string(nil), candidate.attributedPaths...),
 	}
 	if err := writeJournal(journal); err != nil {
 		return nil, err
