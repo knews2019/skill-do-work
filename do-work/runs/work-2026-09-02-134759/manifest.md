@@ -12,5 +12,7 @@ Status: in-progress
 | builder-489 | Implement REQ-489 | worktree-agent-REQ-489-remove-whole-checkpoint-entries-on-departure | REQ-489-handback.md | done |
 | builder-498 | Implement REQ-498 | worktree-agent-REQ-498-make-orchestrator-finalization-resumable | REQ-498-handback.md | done |
 | review-489 | Review merged REQ-489 range `1832538d..6e92e536` | n/a | REQ-489-review.md | done |
+| review-498 | Review merged REQ-498 range `e8e5a79d..75648a49` | n/a | REQ-498-review.md | done — Fail 50% |
+| remediation-498 | Close semantic legacy-finalization findings | pending | REQ-498-remediation-handback.md | pending |
 
 The run directory makes fan-out recoverable from disk; it does not prevent harness or provider failures.

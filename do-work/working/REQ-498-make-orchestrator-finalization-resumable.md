@@ -19,6 +19,7 @@ planning_at: 2026-09-02T14:00:49Z
 dispatch_at: 2026-09-02T14:10:30Z
 builder_handback_at: 2026-09-02T14:50:42Z
 integration_at: 2026-09-02T14:51:46Z
+review_at: 2026-09-02T15:11:25Z
 estimate:
   p50_active_minutes: 70
   confidence: low
@@ -190,6 +191,21 @@ Passed — the exact merge range `e8e5a79d..75648a49` contains the 14 declared i
 **Result:** Every focused, race, static, full-module, Go 1.25, action-contract, and canonical repository gate check passed on the merged tree. The maintainer gate's optional strict browser lane reported the repository's normal no-browser skip; queue-kanban and strict JavaScript lanes passed.
 
 **RED→GREEN:** `TestRecoverFinalizationDiscoversLegacyNoJournalTail` failed before implementation because `recover-finalization --discover` returned `FINALIZATION-USAGE` and created no recovery commit or provenance. It passes after implementation, proving one discovered record, distinct primary/metadata commits, canonical `commit:` provenance, untouched unrelated work, journal cleanup, idempotent replay, and successful selection/claim of the next REQ.
+
+## Review — Attempt 1
+
+**Overall: 50%** | **Acceptance: Fail** | **Risk: Critical**
+
+Independent review accepted the journal foundation, explicit provenance modes, startup delegation, and exact declared scope, but found the motivating semantic legacy tail unsafe and under-tested. Required remediation is consolidated under incomplete semantic legacy-finalization ownership:
+
+- Prove lifecycle-aware ownership for calibration, UR/follow-up, changelog/version/release, `release_at`, implementation bytes, and whole-file/hunk boundaries; do not omit dirty release state or absorb foreign changes.
+- Search the full prepared-descendant chain for an exact matching primary commit so an earlier independent group does not strand a later group.
+- Preserve unrelated unstaged protected files while refusing staged protected/foreign state with distinct typed reasons.
+- Return complete ordered terminal/refusal records, including created versus settled commits, blockers/reasons, verification/cleanup completion, and non-null slices.
+- Add the full semantic, multi-group, protected-state, phase interruption, provenance-mode, idempotence, and duplicate-effect matrix.
+- Remove active direct-`complete`/release/stage/provenance restatements from work action prose.
+
+*Full independent artifact: `do-work/runs/work-2026-09-02-134759/REQ-498-review.md`.*
 
 ---
 *Source: implement and capture the resumable orchestrator finalization plan*
