@@ -90,6 +90,87 @@ func TestDeferGateFoldsSharedFingerprintWithoutOverwritingPriorParent(t *testing
 	}
 }
 
+func TestDeferGateFoldAcceptsCommittedRepairAfterReservationCleanup(t *testing.T) {
+	root := newDeferGateRepository(t, true)
+	first := deferGateManifest(root, "REQ-101", "REQ-901", "do-work/working/REQ-101-parent.md", nil)
+	if result := ApplyPlan(t.Context(), BuildDeferGatePlan(root, first), false, false); result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("seed deferral = %#v", result)
+	}
+	repairPath := "do-work/queue/REQ-901-repair-repository-gate.md"
+	runGitFixture(t, root, "add", repairPath, "do-work/.req-reservations/REQ-901")
+	runGitFixture(t, root, "commit", "-qm", "commit repair request")
+	if err := os.Remove(filepath.Join(root, "do-work/.req-reservations/REQ-901")); err != nil {
+		t.Fatal(err)
+	}
+	claimDeferParent(t, root, "REQ-102", "do-work/working/REQ-102-second.md", "Second parent")
+
+	fold := deferGateManifest(root, "REQ-102", "REQ-901", "do-work/working/REQ-102-second.md", &PayloadFile{SourcePath: repairPath})
+	plan := BuildDeferGatePlan(root, fold)
+	if plan.Refusal != nil {
+		t.Fatalf("fold after reservation cleanup refused = %#v", plan.Refusal)
+	}
+	result := ApplyPlan(t.Context(), plan, false, false)
+	if result.Outcome != resultmodel.OutcomeSuccess || result.GateDeferral == nil || result.GateDeferral.RepairOutcome != "folded" {
+		t.Fatalf("fold result = %#v", result)
+	}
+}
+
+func TestDeferGateFoldRefusesMismatchedSurvivingReservation(t *testing.T) {
+	root := newDeferGateRepository(t, true)
+	first := deferGateManifest(root, "REQ-101", "REQ-901", "do-work/working/REQ-101-parent.md", nil)
+	if result := ApplyPlan(t.Context(), BuildDeferGatePlan(root, first), false, false); result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("seed deferral = %#v", result)
+	}
+	repairPath := "do-work/queue/REQ-901-repair-repository-gate.md"
+	writeFixture(t, root, "do-work/.req-reservations/REQ-901", []byte("REQ-999\n"), 0o644)
+	claimDeferParent(t, root, "REQ-102", "do-work/working/REQ-102-second.md", "Second parent")
+
+	fold := deferGateManifest(root, "REQ-102", "REQ-901", "do-work/working/REQ-102-second.md", &PayloadFile{SourcePath: repairPath})
+	plan := BuildDeferGatePlan(root, fold)
+	if plan.Refusal == nil || plan.Refusal.Code != "DEFER-GATE-RESERVATION-STALE" {
+		t.Fatalf("mismatched reservation plan = %#v", plan.Refusal)
+	}
+}
+
+func TestDeferGateFoldWithoutReservationRequiresCleanCommittedRepair(t *testing.T) {
+	for name, prepare := range map[string]func(*testing.T, string, string){
+		"untracked repair": func(t *testing.T, root, _ string) {
+			if err := os.Remove(filepath.Join(root, "do-work/.req-reservations/REQ-901")); err != nil {
+				t.Fatal(err)
+			}
+		},
+		"tracked dirty repair": func(t *testing.T, root, repairPath string) {
+			runGitFixture(t, root, "add", repairPath, "do-work/.req-reservations/REQ-901")
+			runGitFixture(t, root, "commit", "-qm", "commit repair request")
+			if err := os.Remove(filepath.Join(root, "do-work/.req-reservations/REQ-901")); err != nil {
+				t.Fatal(err)
+			}
+			repairBytes, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(repairPath)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			writeFixture(t, root, repairPath, append(repairBytes, []byte("\nLocal dirty repair note.\n")...), 0o644)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := newDeferGateRepository(t, true)
+			first := deferGateManifest(root, "REQ-101", "REQ-901", "do-work/working/REQ-101-parent.md", nil)
+			if result := ApplyPlan(t.Context(), BuildDeferGatePlan(root, first), false, false); result.Outcome != resultmodel.OutcomeSuccess {
+				t.Fatalf("seed deferral = %#v", result)
+			}
+			repairPath := "do-work/queue/REQ-901-repair-repository-gate.md"
+			prepare(t, root, repairPath)
+			claimDeferParent(t, root, "REQ-102", "do-work/working/REQ-102-second.md", "Second parent")
+
+			fold := deferGateManifest(root, "REQ-102", "REQ-901", "do-work/working/REQ-102-second.md", &PayloadFile{SourcePath: repairPath})
+			plan := BuildDeferGatePlan(root, fold)
+			if plan.Refusal == nil || plan.Refusal.Code != "DEFER-GATE-REPAIR-COMMIT-AUTHORITY-MISSING" {
+				t.Fatalf("fold without committed authority = %#v", plan.Refusal)
+			}
+		})
+	}
+}
+
 func TestDeferGateClassifiesTrackedDirtyTrackedCleanAndUntrackedPreimagesIndependently(t *testing.T) {
 	for name, prepare := range map[string]func(*testing.T, string){
 		"dirty parent dirty checkpoint": func(*testing.T, string) {},

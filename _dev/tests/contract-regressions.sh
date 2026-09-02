@@ -2684,34 +2684,22 @@ assert_block_contains \
   'one worktree per builder regardless of overlap' \
   'actions/work.md Step 6 must preserve auto-waves stronger worktree-per-builder rule.'
 
-# REQ-309 — focused tests answer whether the changed area regressed; they do not prove
-# that a repository's declared whole-repo pass/fail contract is green. Pin the added
-# Step 6.5 lane and downstream Error Handling row by meaning, then mutate each behavior
-# that made REQ-283's hand-back possible so a broad vocabulary match cannot satisfy the
-# check. Extract the two sections independently so one cannot lend vocabulary to the other.
-if ! python3 - "$core_root/actions/work.md" <<'PY'
+# REQ-309/REQ-492 — the canonical gate is mandatory, and an unrelated failure now belongs
+# to the typed repair lifecycle instead of a session-wide hold. Pin baseline, attribution,
+# continuation, and resume predicates inside their owning sections, then mutate the
+# load-bearing wording so nearby vocabulary cannot satisfy the contract.
+if ! python3 - "$core_root/actions/work.md" "$core_root/actions/work-reference.md" <<'PY'
 import pathlib
 import re
 import sys
 
 work_text = pathlib.Path(sys.argv[1]).read_text()
+reference_text = pathlib.Path(sys.argv[2]).read_text()
 
 
-def extract_canonical_gate_lane(source):
-    testing_match = re.search(
-        r"^### Step 6\.5: Testing\n(?P<body>.*?)^### Step 7: Review$",
-        source,
-        flags=re.DOTALL | re.MULTILINE,
-    )
-    if testing_match is None:
-        return None
-    lane_match = re.search(
-        r"^\d+\. \*\*Run (?:the )?declared canonical repository gate\*\*.*?"
-        r"(?=^\d+\. \*\*|\Z)",
-        testing_match.group("body"),
-        flags=re.DOTALL | re.MULTILINE | re.IGNORECASE,
-    )
-    return None if lane_match is None else lane_match.group(0)
+def section(source, start, end):
+    match = re.search(start + r"(?P<body>.*?)" + end, source, re.DOTALL | re.MULTILINE)
+    return None if match is None else match.group("body")
 
 
 def extract_repeated_failure_row(source):
@@ -2723,41 +2711,65 @@ def extract_repeated_failure_row(source):
     if error_handling_match is None:
         return None
     for line in error_handling_match.group("body").splitlines():
-        if line.startswith("|") and "fail repeatedly" in line.lower():
+        if line.startswith("|") and "attributed current-diff" in line.lower():
             return line
     return None
 
 
-def canonical_gate_defects(source):
-    lane = extract_canonical_gate_lane(source)
-    if lane is None:
-        return {"missing canonical-gate lane"}
-
-    normalized = " ".join(lane.lower().split())
+def repository_gate_defects(work, reference):
+    baseline = section(work, r"^#### Repository-gate baseline, deferral, and resume\n", r"^### Step 6: Implementation$")
+    testing = section(work, r"^### Step 6\.5: Testing\n", r"^### Step 7: Review$")
+    lifecycle = section(reference, r"^## Repository Gate Deferral and Resumption\n", r"^## Worktree Dispatch Mode \(Step 1\)$")
+    if baseline is None or testing is None or lifecycle is None:
+        return {"missing repository-gate owner section"}
+    texts = {
+        "baseline": " ".join(baseline.lower().split()),
+        "testing": " ".join(testing.lower().split()),
+        "lifecycle": " ".join(lifecycle.lower().split()),
+    }
     predicates = {
-        "explicit project-guidance trigger":
-            r"if project guidance explicitly declares a canonical repository-wide pass/fail gate",
-        "additive to focused tests": r"in addition to (?:the )?focused tests",
-        "project-root execution": r"from (?:the )?project root",
-        "final or merged-state execution":
-            r"final implementation state.*(?:post-merge|merged) state",
-        "direct status verdict": r"direct exit status",
-        "zero required": r"(?:must|required? to|require) (?:be )?zero",
-        "no focused-test baseline exemption":
-            r"focused-test baseline (?:exclusions|exemptions).*do not apply",
-        "current-diff remediation":
-            r"failure (?:is )?caused by the current diff.*existing remediation loop",
-        "unrelated or pre-existing stop path":
-            r"(?:unrelated or pre-existing|pre-existing or unrelated) failure",
-        "claim and checkpoint preserved":
-            r"preserve the claimed req and (?:its )?checkpoint",
-        "stop before successful completion":
-            r"stop before successful archive, commit, or hand-back",
+        "pre-build gate": ("baseline", r"before dispatch or any step 6 source edit"),
+        "structured direct baseline": ("baseline", r"structured argv.*directly from the project root"),
+        "ordinary deferral": ("baseline", r"ordinary parent.*defer-gate --manifest"),
+        "repair non-recursion": ("baseline", r"matching red baseline.*never recursively defers"),
+        "repair no-op completion": ("baseline", r"green baseline.*durable reviewed no-op completion"),
+        "typed result consumption": ("baseline", r"consume only the typed `gate_deferral` result"),
+        "cross-UR repair closure": ("baseline", r"repair_id.*runnable repair closure.*another ur"),
+        "explicit parent suppression": ("baseline", r"parent_id.*session-local suppression.*explicitly targeted"),
+        "repair failure continuation": ("baseline", r"failed, cancelled, or dependency-gated repairs.*continue unrelated runnable work"),
+        "saved range resume gate": ("baseline", r"merge in current `head` ancestry.*rename-aware.*path history"),
+        "late base attribution": ("testing", r"isolated detached diagnostic worktree at saved `<pre>`"),
+        "repair final same-fingerprint failure": ("testing", r"repository_gate_repair: true.*same fingerprint.*terminally fails.*canonical `fail`"),
+        "repair final different-fingerprint failure": ("testing", r"repository_gate_repair: true.*different fingerprint.*terminally fails.*canonical `fail`"),
+        "repair final unverifiable-fingerprint failure": ("testing", r"repository_gate_repair: true.*missing/malformed fingerprint evidence.*terminally fails.*canonical `fail`"),
+        "repair final non-recursive continuation": ("testing", r"never calls `defer-gate`.*leaves every parent dependency-gated.*recomputes selection.*continues unrelated runnable work"),
+        "matching fingerprint deferral": ("testing", r"exact saved fingerprint.*defer-gate.*`<pre>` plus `<merge_hash>`"),
+        "non-force cleanup": ("testing", r"git branch -d.*never force"),
+        "late fail-safe branches": ("testing", r"fingerprint mismatch, launcher failure, an invalid range, or a serial dirty implementation.*stops safely"),
+        "pre-mutation collision retry": ("lifecycle", r"outcome: refused.*collision finding.*empty `changes` list.*rollback.status: not_needed"),
+        "rolled-back collision retry": ("lifecycle", r"outcome: rolled_back.*rollback.status: succeeded"),
+        "collision retry rejection": ("lifecycle", r"incomplete/failed rollback.*committed_risk.*non-collision refusal/finding.*non-empty refused-result changes stops"),
+        "cleaned reservation fold": ("lifecycle", r"sessionstart cleanup.*absent marker is valid fold topology.*present marker must still match"),
+        "present untracked fold preserved": ("lifecycle", r"present exact reservation.*untracked-repair fold remains supported"),
+        "absent dirty fold excluded": ("lifecycle", r"absent reservation.*untracked or tracked-dirty repair stays refused.*req-493"),
+        "exact typed fields": ("lifecycle", r"consume `gate_deferral` fields only"),
+        "rename-aware drift proof": ("lifecycle", r"rename detection.*both old and new paths.*commit history after merge.*staged, unstaged, untracked"),
+        "fresh resume evidence": ("lifecycle", r"rerun qualification.*focused tests.*canonical gate.*independent review"),
+        "drift invalidates trust": ("lifecycle", r"drift deletes the two saved pointers.*disregards all prior qualification/test/review"),
+        "no-op durable evidence": ("lifecycle", r"## repository gate repair no-op.*expected diagnostic fingerprint.*direct exit status:\*\* 0.*verified at"),
+        "no-op exact summary": ("lifecycle", r"files changed:\*\* none — verified repository-gate repair no-op.*no implementation changes were necessary"),
+        "no-op qualification exception": ("lifecycle", r"do not run the ordinary diff-requiring qualifier.*durable gate evidence verified and project diff empty"),
+        "no-op independent review": ("lifecycle", r"independent review.*matches the expected fingerprint.*project diff remains empty.*self-review is insufficient"),
+        "no-op canonical completion": ("lifecycle", r"invoke canonical `complete` normally.*archives as terminal success.*dependency readiness can resume parents"),
+        "no-op release exclusion": ("lifecycle", r"skip `release`.*no changelog, version/lock mirror, or `release_at`"),
+        "no-op exact stage and metadata": ("lifecycle", r"stage only exact lifecycle/archive/calibration.*refuse any project, changelog, version, lockfile.*ordinary separate metadata commit"),
+        "composed lifecycle summaries": ("lifecycle", r"run summaries compose.*deferred parent.*no-change repair.*repair failure/cancellation.*unrelated req"),
+        "no blocked lifecycle": ("lifecycle", r"no branch writes `blocked` or `pending-answers`"),
     }
     return {
-        defect_name
-        for defect_name, predicate in predicates.items()
-        if re.search(predicate, normalized) is None
+        defect
+        for defect, (owner, predicate) in predicates.items()
+        if re.search(predicate, texts[owner]) is None
     }
 
 
@@ -2773,19 +2785,18 @@ def repeated_failure_defects(source):
     action = " ".join(columns[1].lower().split())
     predicates = {
         "focused-test trigger": (trigger, r"focused tests?"),
-        "current-diff gate trigger":
-            (trigger, r"current-diff canonical repository gate"),
+        "attributed current-diff gate trigger":
+            (trigger, r"attributed current-diff canonical repository gate"),
         "three-attempt remediation": (action, r"after 3 fix attempts"),
         "Code classification": (action, r"classify as code failure"),
         "follow-up failure details":
             (action, r"create (?:a )?follow-up req with .*failure details"),
         "failed archive path": (action, r"archive as failed"),
-        "canonical hold exception":
-            (action, r"excludes an unrelated or pre-existing canonical repository gate failure"),
-        "claim and checkpoint preserved":
-            (action, r"preserve the claimed req and its checkpoint"),
-        "never archive hold": (action, r"never archive (?:it|the req)"),
-        "Step 6.5 hold owner": (action, r"step 6\.5 owns (?:that|the) hold"),
+        "unrelated deferral branch":
+            (action, r"matching unrelated gate failure.*repository-gate deferral lifecycle"),
+        "fail-safe stop branch":
+            (action, r"mismatch, launch failure, invalid range, or serial late failure.*fail-safe stop"),
+        "never archive as success": (action, r"never archived as success"),
     }
     defects = {
         defect_name
@@ -2797,39 +2808,57 @@ def repeated_failure_defects(source):
     return defects
 
 
-live_defects = canonical_gate_defects(work_text)
+live_defects = repository_gate_defects(work_text, reference_text)
 if live_defects:
     raise SystemExit(
-        "actions/work.md Step 6.5 canonical repository gate contract is incomplete: "
+        "repository-gate deferral/resumption contract is incomplete: "
         + ", ".join(sorted(live_defects))
     )
-live_lane = extract_canonical_gate_lane(work_text)
 
 mutations = (
-    ("implicit declaration", "explicitly declares", "implicitly suggests", "explicit project-guidance trigger"),
-    ("focused tests replaced", "in addition to focused tests", "instead of focused tests", "additive to focused tests"),
-    ("wrong working directory", "from the project root", "from the changed area's directory", "project-root execution"),
-    ("pre-final state", "final implementation state", "pre-flight state", "final or merged-state execution"),
-    ("summary verdict", "direct exit status", "reported summary", "direct status verdict"),
-    ("nonzero accepted", "must be zero", "may be nonzero", "zero required"),
-    ("baseline exemption restored", "do not apply", "still apply", "no focused-test baseline exemption"),
-    ("current diff waived", "use the existing remediation loop", "waive it", "current-diff remediation"),
-    ("unrelated failure omitted", "unrelated or pre-existing failure", "environmental note", "unrelated or pre-existing stop path"),
-    ("claim discarded", "preserve the claimed REQ and its checkpoint", "discard the claimed REQ and its checkpoint", "claim and checkpoint preserved"),
-    ("hand-back allowed", "stop before successful archive, commit, or hand-back", "continue through successful archive, commit, and hand-back", "stop before successful completion"),
+    ("work", "before dispatch or any Step 6 source edit", "after builder dispatch", "pre-build gate"),
+    ("work", "Consume only the typed `gate_deferral` result", "Parse the text result", "typed result consumption"),
+    ("work", "even when explicitly targeted", "unless the user named it", "explicit parent suppression"),
+    ("work", "never recursively defer", "defer again", "repair non-recursion"),
+    ("work", "continue unrelated runnable work", "stop the run", "repair failure continuation"),
+    ("work", "isolated detached diagnostic worktree at saved `<pre>`", "current working tree", "late base attribution"),
+    ("work", "same fingerprint, different fingerprint, missing/malformed fingerprint evidence, or launch failure", "launch failure", "repair final same-fingerprint failure"),
+    ("work", "same fingerprint, different fingerprint, missing/malformed fingerprint evidence, or launch failure", "same fingerprint or launch failure", "repair final different-fingerprint failure"),
+    ("work", "same fingerprint, different fingerprint, missing/malformed fingerprint evidence, or launch failure", "same fingerprint, different fingerprint, or launch failure", "repair final unverifiable-fingerprint failure"),
+    ("work", "continues unrelated runnable work", "stops selection", "repair final non-recursive continuation"),
+    ("work", "never force", "use --force when needed", "non-force cleanup"),
+    ("reference", "an empty `changes` list, and `rollback.status: not_needed`", "unknown changes", "pre-mutation collision retry"),
+    ("reference", "`rollback.status: succeeded`", "rollback attempted", "rolled-back collision retry"),
+    ("reference", "An incomplete/failed rollback, `committed_risk`, any non-collision refusal/finding, stale preimage, or non-empty refused-result changes stops without retry", "Other results may retry", "collision retry rejection"),
+    ("reference", "an absent marker is valid fold topology", "an absent marker is invalid", "cleaned reservation fold"),
+    ("reference", "the existing untracked-repair fold remains supported", "untracked folds are refused", "present untracked fold preserved"),
+    ("reference", "consume `gate_deferral` fields only", "scrape rendered text", "exact typed fields"),
+    ("reference", "both old and new paths are protected", "only the new path is protected", "rename-aware drift proof"),
+    ("reference", "rerun qualification", "reuse qualification", "fresh resume evidence"),
+    ("reference", "disregards all prior qualification/test/review claims", "trusts prior review", "drift invalidates trust"),
+    ("reference", "## Repository Gate Repair No-Op", "## Repair Note", "no-op durable evidence"),
+    ("reference", "**Files changed:** None — verified repository-gate repair no-op.", "**Files changed:** None.", "no-op exact summary"),
+    ("reference", "Do not run the ordinary diff-requiring qualifier", "Run the ordinary qualifier", "no-op qualification exception"),
+    ("reference", "self-review is insufficient", "self-review is accepted", "no-op independent review"),
+    ("reference", "invoke canonical `complete` normally", "edit status by hand", "no-op canonical completion"),
+    ("reference", "Skip `release`", "Run `release`", "no-op release exclusion"),
+    ("reference", "refuse any project, changelog, version, lockfile, or unrelated staged path", "stage any path", "no-op exact stage and metadata"),
+    ("reference", "No branch writes `blocked` or `pending-answers`", "A branch writes `blocked`", "no blocked lifecycle"),
 )
 
-for mutation_name, old, new, expected_defect in mutations:
-    mutated_lane = live_lane.replace(old, new, 1)
-    if mutated_lane == live_lane:
+for owner, old, new, expected_defect in mutations:
+    original = work_text if owner == "work" else reference_text
+    mutated = original.replace(old, new, 1)
+    if mutated == original:
         raise SystemExit(
-            f"canonical repository gate mutation {mutation_name!r} changed nothing"
+            f"repository-gate mutation {old!r} changed nothing"
         )
-    mutated_text = work_text.replace(live_lane, mutated_lane, 1)
-    mutation_defects = canonical_gate_defects(mutated_text)
+    mutated_work = mutated if owner == "work" else work_text
+    mutated_reference = mutated if owner == "reference" else reference_text
+    mutation_defects = repository_gate_defects(mutated_work, mutated_reference)
     if expected_defect not in mutation_defects:
         raise SystemExit(
-            f"canonical repository gate mutation {mutation_name!r} escaped "
+            f"repository-gate mutation {old!r} escaped "
             f"{expected_defect!r}; found {sorted(mutation_defects)!r}"
         )
 
@@ -2842,18 +2871,16 @@ if live_error_defects:
 live_error_row = extract_repeated_failure_row(work_text)
 
 error_mutations = (
-    ("broad trigger restored", "Focused tests or a current-diff canonical repository gate fail repeatedly", "Tests fail repeatedly", "broad repeated-test trigger"),
-    ("focused trigger removed", "Focused tests or a current-diff canonical repository gate", "Tests or a current-diff canonical repository gate", "focused-test trigger"),
-    ("current-diff trigger removed", "current-diff canonical repository gate", "canonical repository gate", "current-diff gate trigger"),
+    ("broad trigger restored", "Focused tests or an attributed current-diff canonical repository gate fail repeatedly", "Tests fail repeatedly", "broad repeated-test trigger"),
+    ("focused trigger removed", "Focused tests or an attributed current-diff canonical repository gate", "Tests or an attributed current-diff canonical repository gate", "focused-test trigger"),
+    ("attribution removed", "attributed current-diff canonical repository gate", "canonical repository gate", "attributed current-diff gate trigger"),
     ("three attempts removed", "After 3 fix attempts", "After remediation", "three-attempt remediation"),
     ("Code classification changed", "classify as Code failure", "classify as Environment failure", "Code classification"),
-    ("follow-up failure details removed", "create a follow-up REQ with the focused-test or current-diff gate failure details", "note the failure", "follow-up failure details"),
+    ("follow-up failure details removed", "create a follow-up REQ with the focused-test or attributed current-diff gate failure details", "note the failure", "follow-up failure details"),
     ("failed archive path removed", "archive as failed", "stop processing", "failed archive path"),
-    ("canonical hold exception removed", "excludes an unrelated or pre-existing canonical repository gate failure", "also consumes an unrelated or pre-existing canonical repository gate failure", "canonical hold exception"),
-    ("claim and checkpoint discarded", "preserve the claimed REQ and its checkpoint", "discard the claimed REQ and its checkpoint", "claim and checkpoint preserved"),
-    ("never-archive hold inverted", "never archive it", "always archive it", "never archive hold"),
-    ("never-archive hold removed", " and never archive it", "", "never archive hold"),
-    ("Step 6.5 hold owner removed", "Step 6.5 owns that hold", "the table owns that hold", "Step 6.5 hold owner"),
+    ("unrelated lifecycle removed", "matching unrelated gate failure instead uses the repository-gate deferral lifecycle", "matching unrelated gate failure stops", "unrelated deferral branch"),
+    ("fail-safe removed", "remains a fail-safe stop", "continues", "fail-safe stop branch"),
+    ("success archive allowed", "never archived as success", "archived as success", "never archive as success"),
 )
 
 for mutation_name, old, new, expected_defect in error_mutations:
@@ -2871,7 +2898,7 @@ for mutation_name, old, new, expected_defect in error_mutations:
         )
 PY
 then
-  printf 'FAIL: actions/work.md Step 6.5 and Error Handling must agree on the hold for an unrelated or pre-existing canonical repository gate failure (REQ-309/REQ-317).\n' >&2
+  printf 'FAIL: actions/work.md and work-reference.md must retain repository-gate deferral, attribution, continuation, and resumption semantics (REQ-309/REQ-317/REQ-492).\n' >&2
   fail_count=$((fail_count + 1))
 fi
 

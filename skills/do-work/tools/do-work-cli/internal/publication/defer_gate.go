@@ -114,8 +114,15 @@ func BuildDeferGatePlan(repositoryRoot string, manifest Manifest) PublicationPla
 		}
 		appendHistory(repairDocument, repairFoldHistory(gate, baseCommit, mergeCommit))
 		repairMutation = PlannedMutation{Kind: MutationReplace, Path: repairPath, ExpectedBytes: expectedRepairBytes, Contents: repairDocument.DocumentBytes(), AllowUntracked: !gitPathTracked(repositoryRoot, repairPath)}
-		if reservationReason := exactCurrentBytes(repositoryRoot, reservationPath, []byte(gate.RepairID+"\n")); reservationReason != "" {
-			return refusedPlan(plan, "DEFER-GATE-RESERVATION-STALE", reservationReason, []string{gate.RepairID}, reservationPath)
+		reservationBytes, reservationError := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(reservationPath)))
+		if reservationError == nil && !bytes.Equal(reservationBytes, []byte(gate.RepairID+"\n")) {
+			return refusedPlan(plan, "DEFER-GATE-RESERVATION-STALE", "current bytes do not match the exact reservation", []string{gate.RepairID}, reservationPath)
+		}
+		if os.IsNotExist(reservationError) && !gitPathCleanAgainstHead(repositoryRoot, repairPath) {
+			return refusedPlan(plan, "DEFER-GATE-REPAIR-COMMIT-AUTHORITY-MISSING", "an absent reservation requires a committed clean repair preimage", []string{gate.RepairID}, repairPath, reservationPath)
+		}
+		if reservationError != nil && !os.IsNotExist(reservationError) {
+			return refusedPlan(plan, "DEFER-GATE-RESERVATION-STALE", reservationError.Error(), []string{gate.RepairID}, reservationPath)
 		}
 	} else {
 		if gate.ExpectedRepair != nil {
@@ -505,5 +512,13 @@ func appendUniqueSorted(existing []string, additions ...string) []string {
 
 func gitPathTracked(repositoryRoot, path string) bool {
 	command := exec.Command("git", "-C", repositoryRoot, "ls-files", "--error-unmatch", "--", path)
+	return command.Run() == nil
+}
+
+func gitPathCleanAgainstHead(repositoryRoot, path string) bool {
+	if !gitPathTracked(repositoryRoot, path) {
+		return false
+	}
+	command := exec.Command("git", "-C", repositoryRoot, "diff", "--quiet", "HEAD", "--", path)
 	return command.Run() == nil
 }

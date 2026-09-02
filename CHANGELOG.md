@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.261.1 — Integrate Repository-Gate Deferral into do-work run (2026-09-02)
+
+`do-work run` now owns a dependency-based response to attributable repository-gate failures instead of unconditionally stopping the entire run.
+
+- A pre-build gate baseline can defer ordinary work, schedule the typed repair ID across explicit or cross-UR runs, suppress the parent, and continue unrelated runnable requests.
+- Repair failures terminate without recursive repair creation; late failures are attributed at an isolated base, and saved implementations require ancestry and path-drift validation plus fresh evidence before resume.
+- Existing clean committed repair sweeps remain foldable after their reservation marker is cleaned up, without absorbing REQ-493’s absent-reservation dirty/untracked topology work.
+- REQ-494 and REQ-495 remain queued for the already-green repair no-op and collision-retry wire-result seams; UR-095 is not ship-ready until they close.
+
 ## 0.261.0 — Canonical Repository-Gate Deferral Transaction (2026-09-02)
 
 `do-work-cli` can now atomically turn an unrelated repository-gate failure into explicit repair work and return the affected request to the dependency-gated queue.

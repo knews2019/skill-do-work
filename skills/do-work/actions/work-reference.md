@@ -361,6 +361,87 @@ For each `REQ-*.md` the classification above sent to recovery — an own crash, 
 
 Once every `working/` file has been recovered, taken over, or left alone as a reported foreign claim, proceed with finding the next request.
 
+## Repository Gate Deferral and Resumption
+
+This is the full action-owned algorithm behind `actions/work.md`'s baseline and Step 6.5 attribution lanes. The canonical gate is mandatory; deferral changes who owns an unrelated failure and what the selector runs next, never the pass requirement for completion.
+
+### Session state and baseline
+
+At run start hold two session-local sets: **suppressed parents** and **repair closure**. They are scheduling evidence, not REQ fields. A parent enters suppression only from a successful typed `gate_deferral` result and stays there until its repair dependency reaches terminal success. Suppression wins over explicit-REQ provenance, preventing a targeted parent from bypassing the dependency it just gained. Every returned repair id enters the closure even when its `user_request` is outside a targeted UR; this is the only cross-UR widening allowed. Recompute the canonical selector after every deferral and every repair terminal result—never reuse a prior selected record.
+
+After Step 5.75 and before dispatch or source edits, resolve the project-owned canonical gate once as structured argv. Run it directly from the project root and save the current revision, direct status, bounded diagnostic evidence, and a stable semantic fingerprint. Fingerprinting must discard volatile timestamps, scratch roots, and ordering noise but retain the failing command/test identity and normalized diagnostic; use the same procedure everywhere below. A launcher failure produces no comparable fingerprint and stops safely.
+
+The branch table is exhaustive:
+
+| Claimed REQ and baseline | Action |
+|---|---|
+| Ordinary REQ, exit 0 | Save the green baseline revision; dispatch normally. |
+| Ordinary REQ, non-zero | Defer before source edits through the canonical transaction, consume its typed result, suppress the parent, extend repair closure, and select again. |
+| `repository_gate_repair: true`, matching recorded red fingerprint | This is the repair's authorized baseline. Implement without recursive deferral. |
+| Repair, exit 0 | Complete through the reviewed no-change path; the defect was repaired elsewhere and parents may resume. |
+| Repair, different red fingerprint or launch failure | Stop/fail the repair safely; do not manufacture a second repair from it. Parents remain dependency-gated and unrelated ready work continues. |
+| Ready `gate_deferred: true` parent without a saved pair | Require a fresh green baseline, then dispatch normally. |
+| Ready deferred parent with a saved pair | Run the resume proof below before deciding whether builder work is reusable. |
+
+### Manifest authoring and collision retry
+
+The action authors exact evidence; `do-work-cli defer-gate --manifest <path>` alone mutates. Copy parent/checkpoint preimages to payload files, carry the exact writer label, structured gate argv, direct non-zero status, fingerprint/evidence, stable root-cause `sweep_key`, and optional paired implementation commits. Scan the same request and `.req-reservations/` evidence as capture, propose read-only max+1, and let `defer-gate` exclusively create the unpadded reservation. Do not call a helper that pre-creates a marker. Retry a collision only for one of two typed results: **(a)** pre-mutation `outcome: refused` with the collision finding, an empty `changes` list, and `rollback.status: not_needed`; or **(b)** post-mutation collision with `outcome: rolled_back` and `rollback.status: succeeded`. Rescan the live repository and propose its new max+1 before retrying. An incomplete/failed rollback, `committed_risk`, any non-collision refusal/finding, stale preimage, or non-empty refused-result changes stops without retry.
+
+Fold mode supplies the unique pending repair's exact preimage. A committed repair's SessionStart cleanup may already have removed its reservation, so an absent marker is valid fold topology only when that repair preimage is clean against `HEAD`; a present marker must still match exactly. With a present exact reservation, the existing untracked-repair fold remains supported. An absent reservation with an untracked or tracked-dirty repair stays refused, and this exception does not authorize an occupied parent destination—those remain REQ-493 transaction capabilities.
+
+On success consume `gate_deferral` fields only: `parent_id`, `parent_path`, `repair_id`, `repair_path`, `repair_outcome`, `repair_dependency`, `diagnostic_fingerprint`, `sweep_key`, command/status, and optional range. Never scrape text rendering or infer the repair from queue order. Validate that the returned parent and fingerprint equal the proposal before updating the session sets.
+
+### Late attribution
+
+The final gate uses the identical argv and fingerprint procedure. Exit zero continues. In worktree dispatch mode, a red current tree is attributed by creating an isolated detached diagnostic worktree at the saved `<pre>` and running the gate there directly. Always remove that diagnostic worktree without force after capturing its status and evidence.
+
+- Active `repository_gate_repair: true`: any same-fingerprint red, different-fingerprint red, missing/malformed fingerprint evidence, or launch-failed final gate is a terminal repair failure. Invoke canonical `fail` to archive it, never invoke `defer-gate`; every parent remains pending behind the failed dependency. Recompute the selector and continue unrelated runnable REQs.
+- Base exit 0: current implementation caused the failure; use the bounded remediation loop.
+- Base non-zero with the exact current failure fingerprint: unrelated failure; call `defer-gate` with full `<pre>` and `<merge_hash>` commits. After success, the normal archive path will not clean the builder, so immediately run `git worktree remove <path>`, `git branch -d <operative_name>` from the integration branch, then `git worktree prune`. A refusal stops; never add force.
+- Base fingerprint mismatch, diagnostic launcher failure, missing/unresolvable range, or inability to isolate the saved base: attribution is unverifiable and stops safely.
+
+Serial mode has no isolated committed implementation range. A late red serial tree therefore keeps the fail-safe stop unless the current diff is demonstrably the cause; it is never submitted as a late deferral with invented commits.
+
+### Saved-range resume proof
+
+Both fields must be present and resolve to commits. Require `base != merge`, base ancestry of merge, and merge ancestry of current `HEAD`. Derive the implementation paths with rename detection from `git diff --name-status -M <base>..<merge>`; for renames, both old and new paths are protected. Reject reuse when any protected path has commit history after merge, or has a current staged, unstaged, untracked, deleted, type-changed, or renamed state. Also reject an unreadable path, ambiguous rename, missing endpoint, side-branch merge, or any other unverifiable evidence.
+
+Valid proof reuses the already-merged implementation but discards old downstream verdicts: rerun qualification over the saved range, focused tests, the canonical gate, and independent review before completion. Drift deletes the two saved pointers from the claimed working REQ, disregards all prior qualification/test/review claims, and returns to Step 6 implementation. An invalid or malformed range stops safely instead of silently rebuilding or archiving; only proven path drift selects the rebuild branch.
+
+### Already-green repair no-op completion
+
+This branch exists only when a claimed `repository_gate_repair: true` REQ's pre-build gate exits 0 before source edits. Append durable evidence using this exact shape, with the gate argv encoded as one JSON array and `Verified at` written by the Timestamp rule:
+
+```markdown
+## Repository Gate Repair No-Op
+
+- **Expected diagnostic fingerprint:** <fingerprint recorded by repair intake>
+- **Gate command:** ["argv0","argv1"]
+- **Direct exit status:** 0
+- **Observed result:** green before implementation; repair already satisfied
+- **Verified at:** <now> (current UTC instant — Timestamp rule)
+```
+
+Write the mandatory summary exactly as:
+
+```markdown
+## Implementation Summary
+
+**Files changed:** None — verified repository-gate repair no-op.
+
+**What was done:** Re-ran the repair's recorded canonical repository gate before source edits and confirmed it is already green; no implementation changes were necessary.
+```
+
+Qualification is a narrow evidence check, not a vacuous diff pass: require the exact two sections above, rerun the JSON argv directly at exit 0, and prove no project path changed. Do not run the ordinary diff-requiring qualifier. Append `## Qualification\n\nPassed — repository-gate repair no-op; durable gate evidence verified and project diff empty.` Independent review reruns/validates the gate, matches the expected fingerprint to intake, proves the project diff remains empty, checks that no release mutation is planned, and records those facts in the ordinary `## Review`; self-review is insufficient.
+
+After review passes, invoke canonical `complete` normally so the repair archives as terminal success, its checkpoint claim leaves atomically, UR closure/calibration remain canonical, and dependency readiness can resume parents. Skip `release`: write no changelog, version/lock mirror, or `release_at`. Stage only exact lifecycle/archive/calibration and reported UR-move paths; refuse any project, changelog, version, lockfile, or unrelated staged path. The resulting lifecycle-only REQ commit is valid despite the empty project manifest, uses the normal commit format plus `Verified repository gate already green; no implementation changes.`, and becomes the implementation hash recorded by the ordinary separate metadata commit. No other empty implementation receives any of these exceptions.
+
+### Continuation and reporting
+
+A failed, cancelled, or still-gated repair never releases its parents. The selector naturally excludes those parents by `depends_on`; the action continues unrelated selected REQs instead of ending the run. A successful repair causes a fresh selection, where repair priority is exhausted before deferred-parent priority and ordinary work.
+
+Run summaries compose, rather than overwrite: report each deferred parent with its typed repair id and create/fold outcome; each no-change repair completion; each resumed parent as reused or rebuilt-after-drift; each repair failure/cancellation; and every unrelated REQ that continued afterward. The ordinary composed exit summary still reports dependency-gated parents under its blocked-by-dependencies section. No branch writes `blocked` or `pending-answers`, and no branch asks for user confirmation.
+
 ## Worktree Dispatch Mode (Step 1)
 
 **Optional, advanced harnesses only.** Each builder runs in its own git worktree on its own branch; the orchestrator stays in the main tree, merges those branches, and remains the only writer of `do-work/` state. Worktree isolation is what makes the ownership boundary hold (**Execution Model — Claim Anywhere, One Releaser**, above): it changes *where* a builder writes — its own tree instead of the main one — so a builder can neither touch queue state nor collide with a sibling, and an interrupted build leaves a branch to merge or discard rather than half-written files in the main tree. **Everything in this section is written per REQ and therefore already holds for any number of concurrent builders** — one `<operative_name>`, one hand-back sequence, one `<pre>..<merge_hash>` range, one cleanup, each per REQ. Fan-Out Dispatch (below) adds only who picks the set and what never parallelises.
@@ -898,6 +979,8 @@ This procedure owns judgment and payload authoring only. After choosing the sour
 
 Every successful REQ (`completed` / `completed-with-issues`) gets an entry in the target repo's root `CHANGELOG.md`, written **before** the commit so it ships inside it. Failed and cancelled REQs get no entry — the changelog records delivered change, not attempts. A changelog entry is a human-facing artifact: load `crew-members/anti-slop.md` before writing it (its JIT_CONTEXT condition already covers this — noted here so it isn't skipped).
 
+**Already-green repair exception:** a successfully reviewed repository-gate repair no-op delivered no project change, so it skips this entire procedure: no changelog entry, version/lock mirror, release transaction, or `release_at`. Its exact evidence, archive, and commit rules live in **Repository Gate Deferral and Resumption** → **Already-green repair no-op completion**.
+
 **Precedence check first.** If the repo already has a `CHANGELOG.md` whose entries follow a different convention (keep-a-changelog categories, generated conventional-commit logs, plain dated lists), **match the existing format** — never impose the house voice on a repo with its own. Everything below applies when there is no changelog yet or the existing one already follows this format.
 
 **Bootstrap.** If no root `CHANGELOG.md` exists, create one:
@@ -1037,6 +1120,8 @@ One commit per request. Stage all files created, modified, moved, or deleted dur
 **In worktree dispatch mode** the builder's implementation is already committed and merged (Step 6's `--no-ff` merge), so do **not** stage implementation files here — stage only the archived REQ, the `CHANGELOG.md` entry, any bumped version file and its lockfile mirror, follow-up REQs, any stakeholder REQ Step 8 substep 3 minted or folded into plus the fresh `ai-reports/` bundle that regeneration published (skip the bundle where the project ignores `ai-reports/`), UR-folder moves, `do-work/calibration-log.tsv` only when the successful canonical `complete` result reports it among its changes or affected target paths, `do-work/prose-backlog.md` when this REQ touched it — a Step 8 review append lands there as well as a drain's ticks, and prime-file lessons links. **Both `do-work/` files are the orchestrator's writes in the main tree, not the builder's**, so they are never in the merge and this list is the only thing that stages them — omitted, an appended or ticked backlog item and an appended calibration line stay a dirty tree. The `commit:` field gets the `--no-ff` merge commit's hash (`<merge_hash>`, captured in Step 6 — the **latest** merge if remediation re-merged; **Worktree Dispatch Mode (Step 1)** above), not this changelog commit's hash.
 
 **Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, `CHANGELOG.md`, and/or the version file it bumped together with any lockfile mirroring that version (the changelog entry and the version bump describe the implementation, they aren't the implementation — and a lockfile carrying only the mirrored version is part of the bump, not a deliverable), flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected. **In worktree dispatch mode** the implementation files live in the merge commit, not this commit's stage, so validate the `## Implementation Summary` file list against `git diff --name-only <pre>..<merge_hash>` (the merge range, excluding `do-work/` paths) instead of the staged set — a stage of only the changelog/version/`do-work/` metadata is correct here, not a mismatch.
+
+**Already-green repair validation exception:** only the exact no-op evidence and summary shape above may validate with no project files. Its stage must contain only canonical lifecycle/archive/calibration paths and any exact UR move reported by `complete`; the presence of a project, changelog, version, lockfile, or unrelated path is a mismatch rather than something to absorb.
 
 **Write commit hash back to the archived REQ.** After the commit succeeds, resolve the implementation hash — **serially** it is the commit you just made, so read it with `git rev-parse --short HEAD`; **in worktree dispatch mode do NOT rev-parse `HEAD` here**, because HEAD is the changelog commit and the implementation lives in Step 6's `--no-ff` merge — use the `<merge_hash>` literal held since Step 6 (the latest merge, if remediation re-merged). Pass the hash and exact archived path to `complete --record-commit-hash --implementation-hash <hash> --request-path <path> --commit`. This metadata-only lifecycle mode validates the archived terminal-success preimage, edits only `commit:`, creates a **separate metadata commit**, and verifies the committed bytes. Never amend/reset, and never substitute a free-form edit or legacy helper. `OK`, `NOOP`, refusal, rollback, and committed-risk are returned through the same typed result contract as every other lifecycle transition, including exact verification or revert argv.
 
