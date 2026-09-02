@@ -25,6 +25,21 @@ func TestEveryRemainingUtilityHasOneHandler(t *testing.T) {
 	}
 }
 
+func TestGenericAssociationNeverOwnsSharedDoWorkMetadata(t *testing.T) {
+	repository := newGitFixture(t)
+	writeMatrixFile(t, repository, "do-work/archive/REQ-904-owner.md", "---\nid: REQ-904\nstatus: completed\ncompleted_at: 2026-09-02T09:00:00Z\n---\n\n## Implementation Summary\n- `project.txt` (modified)\n- `do-work/CHECKPOINT.md` (modified)\n")
+	associations, err := AssociateProjectPaths(repository, []string{"project.txt", "do-work/CHECKPOINT.md"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if associations["project.txt"] != "REQ-904" {
+		t.Fatalf("project ownership = %q", associations["project.txt"])
+	}
+	if associations["do-work/CHECKPOINT.md"] != "" {
+		t.Fatalf("shared metadata inherited generic ownership: %q", associations["do-work/CHECKPOINT.md"])
+	}
+}
+
 func TestNonInformationalFindingsReceiveCommandSpecificActions(t *testing.T) {
 	tests := []struct {
 		code       string

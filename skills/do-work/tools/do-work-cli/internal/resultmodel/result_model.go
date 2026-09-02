@@ -244,6 +244,22 @@ type GateDeferralResult struct {
 	DeferredImplementationMerge string   `json:"deferred_implementation_merge,omitempty"`
 }
 
+// FinalizationResult is the stable machine projection for one resumable REQ
+// release tail. Phase names are durable journal states; callers never need to
+// infer recovery progress from Git status or prose findings.
+type FinalizationResult struct {
+	RequestID        string   `json:"request_id"`
+	JournalPath      string   `json:"journal_path"`
+	Phase            string   `json:"phase"`
+	Resumed          bool     `json:"resumed"`
+	Discovered       bool     `json:"discovered"`
+	PrimaryCommit    string   `json:"primary_commit,omitempty"`
+	MetadataCommit   string   `json:"metadata_commit,omitempty"`
+	BlockedPaths     []string `json:"blocked_paths"`
+	ReasonCodes      []string `json:"reason_codes"`
+	VerificationArgv []string `json:"verification_argv"`
+}
+
 type CommandResult struct {
 	SchemaVersion    int                  `json:"schema_version"`
 	Command          string               `json:"command"`
@@ -259,6 +275,7 @@ type CommandResult struct {
 	ProtocolOutput   *string              `json:"protocol_output,omitempty"`
 	AuditMetrics     *AuditMetricsResult  `json:"audit_metrics,omitempty"`
 	GateDeferral     *GateDeferralResult  `json:"gate_deferral,omitempty"`
+	Finalization     *FinalizationResult  `json:"finalization,omitempty"`
 	// ExactTextOutput preserves compatibility-shaped stdout without polluting
 	// JSON with an opaque duplicate. It must be derived from the same typed
 	// observation carried by the result.

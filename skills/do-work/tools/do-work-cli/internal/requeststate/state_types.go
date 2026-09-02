@@ -92,3 +92,13 @@ type StatePlan struct {
 }
 
 func (plan StatePlan) Runnable() bool { return plan.Refusal == nil && plan.Target != nil }
+
+// PlannedFileImage is an exact filesystem postcondition emitted by the
+// lifecycle planner for a higher-level resumable transaction. A missing image
+// is represented by Exists=false; Bytes are otherwise the complete file.
+type PlannedFileImage struct {
+	Path   string
+	Exists bool
+	Bytes  []byte
+	Mode   uint32
+}

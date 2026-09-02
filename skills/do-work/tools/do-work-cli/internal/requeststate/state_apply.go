@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/atomicfile"
@@ -116,6 +117,49 @@ func ApplyPlan(ctx context.Context, plan StatePlan) resultmodel.CommandResult {
 		return applyCommitMetadata(ctx, plan, transactionResult, result)
 	}
 	return result
+}
+
+// PlannedPostimages projects the exact lifecycle result before mutation. It is
+// consumed by finalization journaling so a restart can distinguish a phase
+// that never started from one that completed before its journal update.
+func PlannedPostimages(plan StatePlan) ([]PlannedFileImage, error) {
+	if !plan.Runnable() {
+		return nil, fmt.Errorf("lifecycle plan is not runnable")
+	}
+	requestBytes, err := lifecycleRequestBytes(plan)
+	if err != nil {
+		return nil, err
+	}
+	images := map[string]PlannedFileImage{}
+	put := func(path string, exists bool, contents []byte, mode uint32) {
+		images[path] = PlannedFileImage{Path: path, Exists: exists, Bytes: append([]byte(nil), contents...), Mode: mode}
+	}
+	if plan.SourcePath == plan.DestinationPath {
+		put(plan.SourcePath, true, requestBytes, 0o644)
+	} else {
+		put(plan.SourcePath, false, nil, 0)
+		put(plan.DestinationPath, true, requestBytes, 0o644)
+	}
+	for _, move := range plan.AdditionalMoves {
+		put(move.SourcePath, false, nil, 0)
+		put(move.DestinationPath, true, move.ExpectedBytes, 0o644)
+	}
+	if plan.CheckpointPath != "" {
+		put(plan.CheckpointPath, plan.CheckpointExisted || len(plan.CheckpointBytes) > 0, plan.CheckpointBytes, 0o644)
+	}
+	if plan.CalibrationPath != "" {
+		put(plan.CalibrationPath, plan.CalibrationExisted || len(plan.CalibrationBytes) > 0, plan.CalibrationBytes, 0o644)
+	}
+	paths := make([]string, 0, len(images))
+	for path := range images {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	result := make([]PlannedFileImage, 0, len(paths))
+	for _, path := range paths {
+		result = append(result, images[path])
+	}
+	return result, nil
 }
 
 var provenanceHashPattern = regexp.MustCompile(`^[0-9a-f]{7,40}$`)

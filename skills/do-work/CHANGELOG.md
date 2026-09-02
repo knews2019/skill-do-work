@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.262.0 — Journal Finalization Transactions (2026-09-02)
+
+`do-work-cli` now has a crash-resumable transaction boundary for validated REQ lifecycle, optional release, exact-path commit, and provenance phases.
+
+- `finalize --manifest` persists complete preimages, postimages, copied release payloads, and phase state in Git-private storage before tracked mutation.
+- `recover-finalization` replays existing journals oldest-first, converges only recorded images, recognizes an already-created primary commit, and rolls forward through the isolated provenance commit without duplicating either commit.
+- Exact-path commits preserve unrelated unstaged work, reject a dirty index and secret-classified allowlist paths, and verify the resulting commit path set.
+- REQ-498 remains queued for work-action/startup integration, legacy unjournaled tail discovery, and semantic multi-group association.
+
 ## 0.261.3 — Refuse Ambiguous Explicit Request IDs (2026-09-02)
 
 Explicit REQ targeting now refuses genuine numeric-equivalent queue identities instead of letting discovery order choose an arbitrary record.

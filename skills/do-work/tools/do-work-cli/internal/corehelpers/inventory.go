@@ -16,6 +16,24 @@ import (
 
 type inventoryRow struct{ Classification, Path, Origin string }
 
+// ProtectedInventoryRow exposes the canonical commit-action classification to
+// other mutation owners without making them parse compatibility text.
+type ProtectedInventoryRow struct{ Classification, Path, Origin string }
+
+// ReadProtectedInventory returns the complete Git inventory used by the
+// commit action, including X and XD secret handling.
+func ReadProtectedInventory(repositoryRoot string) ([]ProtectedInventoryRow, error) {
+	rows, err := readInventory(repositoryRoot)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]ProtectedInventoryRow, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, ProtectedInventoryRow(row))
+	}
+	return result, nil
+}
+
 func handleInventory(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
 	if len(arguments) != 0 {
 		return usageResult(CommandInventory, "uncommitted-inventory accepts no options")
@@ -256,6 +274,12 @@ func associatePaths(repositoryRoot string, candidates []string) (map[string]stri
 			}
 			completed, _ := requestmodel.ParseTimestamp(record.CompletedAt)
 			for _, claimed := range paths {
+				// Shared lifecycle state requires semantic ownership. It must not
+				// inherit this generic latest-completion tie-break merely because
+				// an Implementation Summary happened to name it.
+				if claimed == "do-work" || strings.HasPrefix(claimed, "do-work/") {
+					continue
+				}
 				current, exists := claims[claimed]
 				if !exists || completed.After(current.completed) {
 					claims[claimed] = struct {
@@ -276,6 +300,12 @@ func associatePaths(repositoryRoot string, candidates []string) (map[string]stri
 		output[candidate] = claims[candidate].id
 	}
 	return output, nil
+}
+
+// AssociateProjectPaths exposes Implementation Summary ownership for project
+// paths only. Shared do-work metadata is deliberately always unowned.
+func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[string]string, error) {
+	return associatePaths(repositoryRoot, candidates)
 }
 
 func terminalSuccessStatus(status string) bool {
