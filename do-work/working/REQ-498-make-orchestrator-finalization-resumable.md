@@ -7,7 +7,7 @@ user_request: UR-096
 domain: backend
 route: C
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md, _dev/primes/prime-action-files.md]
-write_set: [skills/do-work/tools/do-work-cli/internal/finalization/finalization_types.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_journal.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go, skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go, skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, skills/do-work/actions/commit.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
+write_set: [skills/do-work/tools/do-work-cli/internal/finalization/finalization_types.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands_test.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_journal.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go, skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go, skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, skills/do-work/actions/commit.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 tdd: true
 suggested_spec: bug-fix
 depends_on: []
@@ -17,6 +17,7 @@ effort_estimate: effort-substantive
 claimed_at: 2026-09-02T13:46:20Z
 planning_at: 2026-09-02T14:00:49Z
 dispatch_at: 2026-09-02T14:10:30Z
+builder_handback_at: 2026-09-02T14:50:42Z
 estimate:
   p50_active_minutes: 70
   confidence: low
@@ -38,9 +39,9 @@ estimate:
 Replace the crash-prone archive/release/commit tail with one CLI-owned, Git-private journaled finalization flow, and recover safe unfinished tails before selecting another REQ.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read the durable brief, both prime lesson satellites, crew rules, and bug-fix spec; chose protected-inventory-first discovery that converts exact legacy groups into the existing journal phase engine.
+- [x] **[APPLY]:** Added strict provenance modes, ordered typed finalization records, protected no-journal discovery, exact prepared-diff commit recognition, release-at images, exact pre-primary rollback, and action delegation.
+- [x] **[UNIFY]:** Reviewed all 14 files, ran focused/race/full Go suites, vet, Go 1.25 compatibility, contract regressions, diff checks, removed generated residue, committed `e191b266`, and left the branch clean.
 
 ## Why
 An interruption after archive removes the working claim that current recovery scans, while leaving shared checkpoint or release state dirty. Every later claim then fails on the same shared target and the orchestrator cannot make progress automatically.
@@ -120,6 +121,7 @@ Primary integration hazard: `REQ-489` concurrently fixes checkpoint section/entr
 **Files I will touch:**
 - `skills/do-work/tools/do-work-cli/internal/finalization/finalization_types.go` (modify) — provenance and aggregate-record contracts
 - `skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands.go` (modify) — `--discover` orchestration and replay aggregation
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands_test.go` (modify) — strict provenance fixture and exact rollback expectation required by the new contract
 - `skills/do-work/tools/do-work-cli/internal/finalization/finalization_journal.go` (modify) — strict manifest/journal validation and recovery identity
 - `skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go` (modify) — prepared evidence and discovery journal construction
 - `skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go` (modify) — image-bound release stamp, exact rollback, terminal projections
@@ -133,6 +135,8 @@ Primary integration hazard: `REQ-489` concurrently fixes checkpoint section/entr
 - `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modify) — finalized ownership map
 
 **Files I will NOT touch:** command registration, request-state/publication/Git-transaction authorities, `CHANGELOG.md`, version mirrors, queue/archive/checkpoint state from the builder worktree, or a general dirty-tree association framework.
+
+**Scope expansion accepted at handback:** `finalization_commands_test.go` was omitted from the brief, but the strict incoming provenance requirement made its foundation manifests invalid and exact hook rollback changed its expected terminal result. The minimum fixture/expectation update is requirements-implied; no other undeclared path changed.
 
 **Acceptance criteria (restated from REQ):**
 - [ ] Strict planned finalization and `recover-finalization --discover` share one Git-private journal/phase engine.
