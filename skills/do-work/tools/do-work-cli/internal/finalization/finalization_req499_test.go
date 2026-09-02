@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -141,6 +142,160 @@ func TestRecoverFinalizationAcceptsExactTrackedFollowupFold(t *testing.T) {
 	if result.Outcome != resultmodel.OutcomeSuccess || result.Finalization == nil || !containsFinalizationPath(result.Finalization.CommitPaths, followupPath) {
 		t.Fatalf("exact tracked follow-up fold = %#v", result)
 	}
+}
+
+func TestFollowupPathProvesTheEntireSingleNamedFold(t *testing.T) {
+	tests := []struct {
+		name   string
+		append string
+		want   bool
+	}{
+		{name: "review fold", append: "\n## Review Fold — REQ-754\n\nExact originating finding.\n", want: true},
+		{name: "recovery fold", append: "\n## Recovery Fold — REQ-754\n\nExact originating recovery.\n", want: true},
+		{name: "foreign bytes before", append: "\nforeign preface\n\n## Review Fold — REQ-754\n\nExact originating finding.\n"},
+		{name: "foreign section after", append: "\n## Review Fold — REQ-754\n\nExact originating finding.\n\n## Foreign Notes\n\nUnowned tail.\n"},
+		{name: "second allowed section after", append: "\n## Review Fold — REQ-754\n\nExact originating finding.\n\n## Recovery Fold — REQ-754\n\nUnowned second fold.\n"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repositoryRoot := newFinalizationRepository(t)
+			path := "do-work/queue/REQ-755-follow-up.md"
+			before := "---\nid: REQ-755\ntitle: Follow-up\nstatus: pending\naddendum_to: REQ-754\n---\n\nOriginal body.\n"
+			writeFinalizationFile(t, repositoryRoot, path, before)
+			runFinalizationGit(t, repositoryRoot, "add", ".")
+			runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed")
+			writeFinalizationFile(t, repositoryRoot, path, before+test.append)
+			if got := followupPathProves(repositoryRoot, path, "REQ-754"); got != test.want {
+				t.Fatalf("followupPathProves() = %t, want %t", got, test.want)
+			}
+		})
+	}
+}
+
+func TestRecoverFinalizationRequiresWorkspaceMemberLockMirrors(t *testing.T) {
+	tests := []struct {
+		name         string
+		manifestPath string
+		lockPath     string
+		manifestOld  string
+		manifestNew  string
+		lockOld      string
+		lockNew      string
+		extraFiles   map[string]string
+	}{
+		{
+			name: "npm", manifestPath: "consumer/packages/widget/package.json", lockPath: "consumer/package-lock.json",
+			manifestOld: "{\"name\":\"widget\",\"version\":\"1.0.0\"}\n", manifestNew: "{\"name\":\"widget\",\"version\":\"1.0.1\"}\n",
+			lockOld:    "{\"name\":\"consumer\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"consumer\"},\"packages/widget\":{\"name\":\"widget\",\"version\":\"1.0.0\"}}}\n",
+			lockNew:    "{\"name\":\"consumer\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"consumer\"},\"packages/widget\":{\"name\":\"widget\",\"version\":\"1.0.1\"}}}\n",
+			extraFiles: map[string]string{"consumer/package.json": "{\"name\":\"consumer\",\"private\":true,\"workspaces\":[\"packages/*\"]}\n"},
+		},
+		{
+			name: "cargo", manifestPath: "consumer-rust/crates/widget/Cargo.toml", lockPath: "consumer-rust/Cargo.lock",
+			manifestOld: "[package]\nname = \"widget\"\nversion = \"1.0.0\"\n", manifestNew: "[package]\nname = \"widget\"\nversion = \"1.0.1\"\n",
+			lockOld:    "[[package]]\nname = \"widget\"\nversion = \"1.0.0\"\n\n[[package]]\nname = \"helper\"\nversion = \"2.0.0\"\n",
+			lockNew:    "[[package]]\nname = \"widget\"\nversion = \"1.0.1\"\n\n[[package]]\nname = \"helper\"\nversion = \"2.0.0\"\n",
+			extraFiles: map[string]string{"consumer-rust/Cargo.toml": "[workspace]\nmembers = [\"crates/*\"]\n"},
+		},
+		{
+			name: "uv", manifestPath: "consumer-python/packages/widget/pyproject.toml", lockPath: "consumer-python/uv.lock",
+			manifestOld: "[project]\nname = \"widget\"\nversion = \"1.0.0\"\n", manifestNew: "[project]\nname = \"widget\"\nversion = \"1.0.1\"\n",
+			lockOld:    "[[package]]\nname = \"widget\"\nversion = \"1.0.0\"\nsource = { editable = \"packages/widget\" }\n\n[[package]]\nname = \"helper\"\nversion = \"2.0.0\"\nsource = { editable = \"packages/helper\" }\n",
+			lockNew:    "[[package]]\nname = \"widget\"\nversion = \"1.0.1\"\nsource = { editable = \"packages/widget\" }\n\n[[package]]\nname = \"helper\"\nversion = \"2.0.0\"\nsource = { editable = \"packages/helper\" }\n",
+			extraFiles: map[string]string{"consumer-python/pyproject.toml": "[tool.uv.workspace]\nmembers = [\"packages/*\"]\n"},
+		},
+	}
+	for _, test := range tests {
+		for _, updateLock := range []bool{false, true} {
+			name := "stale"
+			if updateLock {
+				name = "updated"
+			}
+			t.Run(test.name+"/"+name, func(t *testing.T) {
+				repositoryRoot := newFinalizationRepository(t)
+				seedSemanticLegacyTail(t, repositoryRoot)
+				writeFinalizationFile(t, repositoryRoot, test.manifestPath, test.manifestOld)
+				writeFinalizationFile(t, repositoryRoot, test.lockPath, test.lockOld)
+				tracked := []string{test.manifestPath, test.lockPath}
+				for path, contents := range test.extraFiles {
+					writeFinalizationFile(t, repositoryRoot, path, contents)
+					tracked = append(tracked, path)
+				}
+				runFinalizationGit(t, repositoryRoot, append([]string{"add", "--"}, tracked...)...)
+				runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed workspace")
+				writeFinalizationFile(t, repositoryRoot, test.manifestPath, test.manifestNew)
+				if updateLock {
+					writeFinalizationFile(t, repositoryRoot, test.lockPath, test.lockNew)
+				}
+
+				result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
+				if !updateLock {
+					assertDiscoveryReason(t, result, "FINALIZATION-DISCOVERY-AMBIGUOUS", test.lockPath)
+					return
+				}
+				if result.Outcome != resultmodel.OutcomeSuccess || result.Finalization == nil || result.Finalization.Phase != string(PhaseCleanupComplete) || !containsFinalizationPath(result.Finalization.CommitPaths, test.lockPath) {
+					t.Fatalf("updated workspace recovery = %#v", result)
+				}
+			})
+		}
+	}
+}
+
+func TestRecoverFinalizationReleaseEnumerationFailureIsTypedAndFailClosed(t *testing.T) {
+	repositoryRoot := newFinalizationRepository(t)
+	seedSemanticLegacyTail(t, repositoryRoot)
+	previous := enumerateTrackedReleasePaths
+	enumerateTrackedReleasePaths = func(string) ([]string, error) { return nil, os.ErrPermission }
+	t.Cleanup(func() { enumerateTrackedReleasePaths = previous })
+
+	result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
+	if result.Outcome != resultmodel.OutcomeRefused || result.Finalization == nil || !reflect.DeepEqual(result.Finalization.ReasonCodes, []string{"FINALIZATION-DISCOVERY-RELEASE-ENUMERATION"}) {
+		t.Fatalf("release enumeration refusal = %#v", result)
+	}
+	if status := strings.TrimSpace(runFinalizationGit(t, repositoryRoot, "status", "--short")); status == "" {
+		t.Fatal("enumeration refusal unexpectedly committed or removed the legacy tail")
+	}
+}
+
+func TestPublicRecoverFinalizationMovesURThenAllowsRealClaim(t *testing.T) {
+	repositoryRoot := newFinalizationRepository(t)
+	seedSemanticLegacyTail(t, repositoryRoot)
+	nextPath := "do-work/queue/REQ-799-next.md"
+	writeFinalizationFile(t, repositoryRoot, nextPath, "---\nid: REQ-799\ntitle: Next request\nstatus: pending\ncreated_at: 2026-09-02T09:10:00Z\n---\n")
+	runFinalizationGit(t, repositoryRoot, "add", "--", nextPath)
+	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed next request")
+
+	recovered := runPublicFinalizationCommand(t, repositoryRoot, "recover-finalization", "--discover", "--assume-sole-releaser")
+	if recovered.Outcome != resultmodel.OutcomeSuccess || recovered.Finalization == nil || recovered.Finalization.Phase != string(PhaseCleanupComplete) {
+		t.Fatalf("public recovery = %#v", recovered)
+	}
+	for _, path := range []string{"do-work/archive/UR-700/input.md", "do-work/user-requests/UR-700/input.md"} {
+		if !containsFinalizationPath(recovered.Finalization.CommitPaths, path) {
+			t.Fatalf("public recovery commit paths %v omit %s", recovered.Finalization.CommitPaths, path)
+		}
+	}
+	claimed := runPublicFinalizationCommand(t, repositoryRoot, "claim", "REQ-799", "--commit", "--writer", "fixture:/repo", "--at", "2026-09-02T09:15:00Z")
+	if claimed.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("public claim after recovery = %#v", claimed)
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, "do-work", "working", "REQ-799-next.md")); err != nil {
+		t.Fatalf("claimed request was not moved to working: %v", err)
+	}
+}
+
+func runPublicFinalizationCommand(t *testing.T, repositoryRoot string, arguments ...string) resultmodel.CommandResult {
+	t.Helper()
+	commandArguments := append([]string{"run", "../../cmd/do-work-cli", "--repo-root", repositoryRoot, "--format", "json"}, arguments...)
+	command := exec.Command("go", commandArguments...)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("public command %v: %v\n%s", arguments, err, output)
+	}
+	var result resultmodel.CommandResult
+	if err := json.Unmarshal(output, &result); err != nil {
+		t.Fatalf("decode public command %v: %v\n%s", arguments, err, output)
+	}
+	return result
 }
 
 func TestRecoverFinalizationResumesAfterRealPreCommitHookFailure(t *testing.T) {
