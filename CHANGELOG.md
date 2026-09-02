@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.265.1 — Settle Theme Animations Before Contrast Checks (2026-09-02)
+
+Contrast checks no longer race the board's theme transition, so dark-mode verification measures the settled palette instead of a transient intermediate color.
+
+- The real-browser probe waits for completion-card animations before reading computed foreground and background colors.
+- Mutation evidence proves the wait closes the 2.36:1 transient failure and still rejects genuinely low-contrast settled colors.
+
 ## 0.265.0 — Run With Recovery (2026-09-02)
 
 A stopped claim can now be recovered under an explicit sole-writer assertion, preserving unrelated implementation work while returning the request to normal selection.

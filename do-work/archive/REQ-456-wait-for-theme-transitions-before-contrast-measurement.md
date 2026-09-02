@@ -1,7 +1,7 @@
 ---
 id: REQ-456
 title: 'Wait for theme transitions before contrast measurement'
-status: claimed
+status: completed
 created_at: 2026-08-31T20:49:21Z
 user_request: UR-085
 domain: testing
@@ -28,6 +28,8 @@ estimate:
     - trivial short-circuit
 kb_status: pending
 kb_entry:
+completed_at: 2026-09-02T20:14:45Z
+release_at: 2026-09-02T20:14:46Z
 ---
 
 # Wait For Theme Transitions Before Contrast Measurement

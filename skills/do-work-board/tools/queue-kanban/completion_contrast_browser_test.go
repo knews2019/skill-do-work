@@ -52,6 +52,10 @@ func TestBrowserBehaviorCompletionCompanionsKeepReadableContrast(t *testing.T) {
 				session.callDevToolsMethod(t, "Emulation.setDeviceMetricsOverride", map[string]any{
 					"width": width, "height": 900, "deviceScaleFactor": 1, "mobile": false,
 				}, true)
+				session.evaluateInPage(t, `(function () {
+  var card = document.querySelector('.req-card[data-status="completed"]');
+  return Promise.all(card.getAnimations().map(function (animation) { return animation.finished; }));
+})()`)
 				var measured struct {
 					Href, Browser, Scheme, Body, Card string
 					FaintInk                          string
