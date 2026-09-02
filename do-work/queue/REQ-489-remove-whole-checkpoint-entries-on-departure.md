@@ -1,6 +1,6 @@
 ---
 id: REQ-489
-title: 'Remove whole checkpoint entries when a REQ leaves working'
+title: '[impact-critical] Remove whole checkpoint entries when a REQ leaves working'
 status: pending
 created_at: 2026-09-01T19:46:57Z
 user_request: UR-083
@@ -11,8 +11,10 @@ tdd: true
 suggested_spec: bug-fix
 depends_on: []
 maintenance: false
-impact: impact-user-visible
+impact: impact-critical
 effort_estimate: effort-mechanical
+sweep: true
+sweep_key: checkpoint-section-blind-line-editing
 status_changed_at: 2026-09-01T21:05:20Z
 ---
 
@@ -38,11 +40,17 @@ Found during REQ-440's archive on 2026-09-01: after `complete REQ-440` the check
 - Entry removal deletes the header and all of its indented continuation lines.
 - A checkpoint whose entry has no continuation lines behaves exactly as today.
 - Foreign-label entries and their continuation lines are untouched.
+- Insertion (`appendSectionEntry`) and removal (`checkpointWithoutClaim`) locate `## In Progress (interrupted)` by a whole heading line, never by substring; a backticked or inline mention of the heading elsewhere in the checkpoint must not attract or strip an entry.
+
+## Instances
+- [ ] `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go` `checkpointWithoutClaim`: removes only the `- REQ-NNN:` header line and orphans the indented detail lines (found by REQ-440 / UR-083)
+- [ ] `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go` `appendSectionEntry` (`strings.Index` on the heading text): the backticked mention of `## In Progress (interrupted)` in a Session Notes bullet of `do-work/CHECKPOINT.md` captured the live REQ-453 claim entry, leaving the real section empty so the claim reads as foreign to Crash Recovery and defeats REQ-498's entry-removal attribution (found by UR-097)
 
 ## Red-Green Proof
 **RED prompt/case:** A requeststate test that builds a checkpoint with an enriched own-label entry (header plus three indented detail lines), runs the departure removal, and asserts the section contains none of the four lines.
 **Why RED now:** Only the header line is removed; the three indented lines remain.
 **GREEN when:** The test passes and an existing removal test for a bare one-line entry still passes.
+**Second RED case (UR-097):** a checkpoint whose Session Notes bullet contains the backticked heading text followed later by the real `## In Progress (interrupted)` heading; `checkpointWithClaim` must place the new entry after the real heading, and `checkpointWithoutClaim` must leave the bullet untouched. Today the entry lands under Session Notes.
 **Validation:** Discovered task from REQ-440; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
 
 ## Open Questions
