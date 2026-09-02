@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.266.1 — Finalization Accepts Its Own Uncommitted Request Edits (2026-09-03)
+
+Serial finalization no longer refuses the working REQ it spent the whole run editing, which is what kept `run` and `run-with-recovery` replaying the same refusal at startup.
+
+- `finalize` passes the journal's recorded lifecycle preimages into the lifecycle plan; a dirty tracked target is accepted only while its bytes still hash to that recorded image.
+- Any other dirt keeps the `GIT-DIRTY-TARGET` refusal, and no flag is needed: dirt matching a recorded hash is the pipeline's own by definition.
+- `run-with-recovery` states the rule in one sentence, and two tests pin the exact `FINALIZATION-LIFECYCLE-APPLY` trap REQ-513 hit.
+
 ## 0.266.0 — Commit Every Claim Footprint (2026-09-03)
 
 Claim bookkeeping no longer leaks into implementation or finalization, so serial and worktree runs now start from the same durable boundary.
