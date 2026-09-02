@@ -1,7 +1,7 @@
 ---
 id: REQ-501
 title: '[impact-rule-change] Add do-work run-with-recovery and record the one-broken-pipe principle'
-status: claimed
+status: completed-with-issues
 created_at: 2026-09-02T13:31:12Z
 user_request: UR-097
 domain: general
@@ -36,6 +36,9 @@ integration_at: 2026-09-02T18:31:02Z
 review_at: 2026-09-02T18:43:42Z
 remediation_at: 2026-09-02T19:18:00Z
 re_review_at: 2026-09-02T19:25:35Z
+completed_at: 2026-09-02T19:25:35Z
+commit: 49a23f23
+release_at: 2026-09-02T19:26:41Z
 ---
 
 # Add do-work run-with-recovery and Record the One-Broken-Pipe Principle

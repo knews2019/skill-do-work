@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.265.0 — Run With Recovery (2026-09-02)
+
+A stopped claim can now be recovered under an explicit sole-writer assertion, preserving unrelated implementation work while returning the request to normal selection.
+
+- New `run-with-recovery` routing, help, `rwr` alias, continuation guidance, and ADR-022 record the one-broken-pipe principle.
+- Canonical `recover-claim` adds authority, checkpoint-evidence, exact-path commit, and rollback guards while leaving plain `run` strict.
+- Executable coverage proves direct recovery-to-selection-to-claim behavior and preservation of unrelated unstaged bytes.
+- REQ-501 ships as `completed-with-issues`: REQ-504 tracks public ordering, multi-writer checkpoint cleanup, and structured writer-evidence transport.
+
 ## 0.264.0 — Assert Sole-Releaser Recovery (2026-09-02)
 
 A checkout that is known to be the queue's only writer can now attribute the remaining shared finalization tail explicitly instead of stopping for hand repair.
