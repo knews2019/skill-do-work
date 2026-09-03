@@ -21,6 +21,8 @@ route: C
 planning_at: 2026-09-03T22:37:36Z
 exploration_at: 2026-09-03T22:37:36Z
 dispatch_at: 2026-09-03T22:39:03Z
+implementation_at: 2026-09-03T22:57:28Z
+builder_handback_at: 2026-09-03T22:57:28Z
 write_set:
   - skills/do-work/actions/work.md
   - skills/do-work/actions/review-work.md
@@ -52,9 +54,9 @@ estimate:
 Replace the duplicated prose/test decision for an already-green repository-gate repair with one executable validator consumed by both work and review.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Inventoried repair intake, durable no-op, past-revision gate evidence, canonical completion planning, Git observations, both action consumers, and the parallel contract oracle before freezing the 13-file authority boundary.
+- [x] **[APPLY]:** Added the shared executable validator and typed projections, rewired both consumers, and replaced the test oracle with real CLI/Git/completion behavior inside the declared write set.
+- [x] **[UNIFY]:** Reviewed all 13 declared paths; focused/full tests, vet, contract regressions, formatting, and diff checks pass with no lifecycle, release, board, generated, or debug drift.
 
 ## Requirements
 
@@ -116,3 +118,13 @@ The current action prose and `_dev/tests/contract-regressions.sh::action_decisio
 **Tests:** Direct canonical fast gate passed and was recorded at the shared wave baseline before source dispatch.
 
 **Dependencies:** REQ-494 is completed. REQ-492 is related but not a prerequisite; existing repair-intake, gate-evidence, and canonical request-state authorities are available for composition.
+
+## Implementation Summary
+
+**Builder commit:** `5790b0519b75ed59d4458727e5d7dd6fd6b18e2c`
+
+**Files changed:** The exact 13-path `write_set`: action consumers/reference, CLI guide/prime/registration, the new `internal/repairvalidation` package and tests, exported gate-evidence seam, typed result projection/tests, and `_dev/tests/contract-regressions.sh`.
+
+**What was done:** Added `validate-already-green-repair` as the sole executable authority for both `tdd_allowed` and `review_allowed`. It strictly joins repair intake to no-op evidence, verifies the extracted past green revision, observes project/staged paths NUL-safely, and authorizes staging only from exact canonical completion dry-run paths. Both actions now require their typed decision, and the contract fixture invokes the real CLI instead of reimplementing eligibility.
+
+**Builder verification:** Focused RED failed on the missing validator/result symbols. Focused packages, `go vet ./...`, full module tests, contract regressions, and diff hygiene pass after implementation. The real fixture covers exact and over-staged paths, malformed/self-asserted/dirty/release-mutated neighbors, real completion commits/metadata, and selector behavior. Durable evidence is in `do-work/runs/work-2026-09-03-214500/REQ-496-handback.md`.
