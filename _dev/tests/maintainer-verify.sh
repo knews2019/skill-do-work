@@ -16,6 +16,18 @@ if [ "$script_directory" = "$script_path" ]; then
   script_directory='.'
 fi
 repo_root="$(cd "$script_directory/../.." && pwd)"
+test_duration_log_path="$repo_root/do-work/test-durations.tsv"
+test_run_id="$(/bin/date -u +%Y%m%dT%H%M%SZ)-$$"
+other_gate_processes="$(
+  /bin/ps -Ao pid=,comm=,args= | /usr/bin/awk -v own_pid="$$" '
+    $1 != own_pid && $2 ~ /(^|\/)(ba)?sh$/ && $0 ~ /\/maintainer-verify\.sh( |$)/ { count++ }
+    END { print count + 0 }
+  '
+)"
+export DO_WORK_TEST_DURATION_LOG="$test_duration_log_path"
+export DO_WORK_TEST_RUN_ID="$test_run_id"
+export DO_WORK_TEST_OTHER_GATE_PROCESSES="$other_gate_processes"
+export DO_WORK_TEST_REPO_ROOT="$repo_root"
 self_test_exit_root=''
 # Self-test fixture context. Script-scoped rather than local to run_self_test because the
 # per-run assertion helpers below read it; only the self-test path ever assigns it.
@@ -53,6 +65,7 @@ print_usage_and_exit() {
 
 run_budgeted_go_tests() {
   local module_directory="$1"
+  local enforce_test_budget=yes
   shift
   if [ -n "${MAINTAINER_VERIFY_SELFTEST_LOG:-}" ]; then
     (
@@ -61,6 +74,10 @@ run_budgeted_go_tests() {
     )
     return
   fi
+  if [ "$verification_tier" = heavy ]; then
+    enforce_test_budget=no
+  fi
+  DO_WORK_TEST_ENFORCE_BUDGET="$enforce_test_budget" \
   DO_WORK_TEST_FILE_BUDGET_SECONDS="$test_file_budget_seconds" \
     bash "$repo_root/_dev/tests/run-go-tests-with-budget.sh" "$module_directory" "$@"
 }

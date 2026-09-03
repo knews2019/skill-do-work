@@ -61,11 +61,11 @@ for line in pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
 PY
   printf 'go-test budget: FAIL module=%s wall=%ss exit=%s\n' \
     "$module_directory" "$elapsed_seconds" "$test_status" >&2
-  exit "$test_status"
 fi
 
-python3 - "$result_file" "$module_directory" "$test_budget_seconds" "$elapsed_seconds" <<'PY'
+python3 - "$result_file" "$module_directory" "$test_budget_seconds" "$elapsed_seconds" "$test_status" <<'PY'
 import json
+import os
 import pathlib
 import re
 import sys
@@ -74,6 +74,8 @@ result_path = pathlib.Path(sys.argv[1])
 module_directory = sys.argv[2]
 budget_seconds = float(sys.argv[3])
 wall_seconds = int(sys.argv[4])
+test_status = int(sys.argv[5])
+enforce_budget = os.environ.get("DO_WORK_TEST_ENFORCE_BUDGET", "yes") == "yes" and test_status == 0
 durations = []
 test_file_by_name = {}
 for test_file in pathlib.Path(module_directory).rglob("*_test.go"):
@@ -87,19 +89,32 @@ for line in result_path.read_text(encoding="utf-8").splitlines():
     except json.JSONDecodeError:
         continue
     test_name = event.get("Test")
-    if event.get("Action") == "pass" and test_name and "/" not in test_name:
+    if event.get("Action") in {"pass", "fail"} and test_name and "/" not in test_name:
         durations.append((float(event.get("Elapsed", 0)), event.get("Package", ""), test_name))
 
 file_durations = {}
 for elapsed, _, test_name in durations:
     test_file = test_file_by_name.get(test_name, "<unknown test file>")
     file_durations[test_file] = file_durations.get(test_file, 0.0) + elapsed
-over_budget = [entry for entry in file_durations.items() if entry[1] >= budget_seconds]
+duration_log_path = os.environ.get("DO_WORK_TEST_DURATION_LOG")
+duration_run_id = os.environ.get("DO_WORK_TEST_RUN_ID")
+if duration_log_path and duration_run_id:
+    repository_root = pathlib.Path(os.environ["DO_WORK_TEST_REPO_ROOT"])
+    module_path = pathlib.Path(module_directory)
+    module_relative = module_path.relative_to(repository_root)
+    concurrent_count = os.environ.get("DO_WORK_TEST_OTHER_GATE_PROCESSES", "0")
+    with pathlib.Path(duration_log_path).open("a", encoding="utf-8") as duration_log:
+        for test_file, elapsed in sorted(file_durations.items()):
+            logged_file = (module_relative / test_file).as_posix()
+            duration_log.write(
+                f"{duration_run_id}\t{logged_file}\t{elapsed:.2f}\t{concurrent_count}\n"
+            )
+over_budget = [entry for entry in file_durations.items() if entry[1] >= budget_seconds] if enforce_budget else []
 slowest_file, slowest_duration = max(file_durations.items(), key=lambda entry: entry[1], default=("none", 0.0))
 print(
     f"go-test budget: module={module_directory} wall={wall_seconds}s "
     f"tests={len(durations)} slowest-file={slowest_file}:{slowest_duration:.2f}s "
-    f"limit=<{budget_seconds:g}s"
+    f"limit={'<' + format(budget_seconds, 'g') + 's' if enforce_budget else 'none (heavy)'}"
 )
 for test_file, elapsed in sorted(over_budget, key=lambda entry: entry[1], reverse=True):
     print(
@@ -110,3 +125,7 @@ for test_file, elapsed in sorted(over_budget, key=lambda entry: entry[1], revers
 if over_budget:
     raise SystemExit(1)
 PY
+
+if [ "$test_status" -ne 0 ]; then
+  exit "$test_status"
+fi
