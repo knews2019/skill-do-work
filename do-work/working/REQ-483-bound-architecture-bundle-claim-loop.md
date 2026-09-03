@@ -1,7 +1,7 @@
 ---
 id: REQ-483
 title: '[impact-critical] Review fix: Bound the architecture bundle-claim loop and restore --commit'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-01T11:51:27Z
 user_request: UR-081
@@ -17,6 +17,7 @@ related: [REQ-418, REQ-420]
 batch: go-no-llm-command-platform
 review_generated: true
 addendum_to: REQ-418
+claimed_at: 2026-09-03T21:43:37Z
 ---
 
 # Bound the Architecture Bundle-Claim Loop and Restore --commit

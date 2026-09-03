@@ -17,6 +17,8 @@ session_depth: light
 
 - REQ-475: [impact-critical] Review fix: Confine all configured Memory tree readers — claimed 2026-09-03T21:43:31Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
+- REQ-483: [impact-critical] Review fix: Bound the architecture bundle-claim loop and restore --commit — claimed 2026-09-03T21:43:37Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
 ## Still Queued
 
 - 47 pending requests remain. This targeted run drained REQ-531's frozen ledger and did not perform a full-queue selection.
