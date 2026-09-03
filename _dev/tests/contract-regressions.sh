@@ -3133,6 +3133,10 @@ if "def evaluate_" + "noop_fixture" in contract_text:
     raise SystemExit(
         "already-green lifecycle proof still comes from the synthetic evaluate_noop_fixture truth table"
     )
+if "def action_" + "decisions" in contract_text:
+    raise SystemExit(
+        "already-green lifecycle proof still comes from the parallel action_decisions oracle"
+    )
 
 
 def section(source, start, end):
@@ -3165,65 +3169,49 @@ def already_green_noop_defects(work, review, reference):
             "testing",
             r"already-green repository-gate repair exception.*before applying ordinary tdd verification",
         ),
-        "TDD exact claimed marker": (
+        "TDD invokes shared validator": (
             "testing",
-            r"claimed `repository_gate_repair: true` req",
+            r"validate-already-green-repair --request-path .* --writer .* --at ",
         ),
-        "TDD exact durable evidence": (
+        "TDD consumes typed decision": (
             "testing",
-            r"exact `## repository gate repair no-op`, `## implementation summary`, and `## qualification` shapes",
+            r"typed success and `already_green_repair\.tdd_allowed: true`",
         ),
-        "TDD green-before-edit proof": (
+        "TDD has no prose fallback": (
             "testing",
-            r"pre-build direct exit status is 0 before source edits",
-        ),
-        "TDD empty project diff": (
-            "testing",
-            r"no-op project diff is empty",
-        ),
-        "TDD negative fallback": (
-            "testing",
-            r"ordinary, malformed, or non-empty implementation.*ordinary red/green requirement",
+            r"validator is the sole decision authority.*do not reconstruct any part of that predicate",
         ),
         "review exception precedes empty exit": (
             "review",
             r"before the ordinary no implementation changes exit.*already-green repository-gate repair exception",
         ),
-        "review exact claimed marker": (
+        "review invokes shared validator": (
             "review",
-            r"orchestrated.*claimed `repository_gate_repair: true` req",
+            r"validate-already-green-repair --request-path .* --writer .* --at ",
         ),
-        "review exact durable evidence": (
+        "review consumes typed decision": (
             "review",
-            r"exact `## repository gate repair no-op`, `## implementation summary`, and `## qualification` shapes",
+            r"typed success with `already_green_repair\.review_allowed: true`",
         ),
-        "review record verification": (
+        "review has no prose fallback": (
             "review",
-            r"verify the recorded green-gate evidence.*--at-revision.*never relaunching the gate",
+            r"validator is the sole decision authority; do not separately parse",
         ),
-        "review intake identity": (
+        "review reports typed refusal": (
             "review",
-            r"expected diagnostic fingerprint.*repair intake",
+            r"typed reason codes and offending paths",
         ),
-        "review empty project diff": (
-            "review",
-            r"project diff is empty",
+        "shared evidence authority": (
+            "lifecycle",
+            r"validate-already-green-repair --request-path .* --writer .* --at ",
         ),
-        "review release exclusion": (
-            "review",
-            r"no release is planned.*changelog, version, lockfile, or `release_at`",
+        "shared decision projections": (
+            "lifecycle",
+            r"`already_green_repair\.tdd_allowed` and `already_green_repair\.review_allowed`",
         ),
-        "review exact stage allowlist": (
-            "review",
-            r"only canonical lifecycle/archive/calibration paths and any exact ur move reported by `complete`",
-        ),
-        "review forbidden stage refusal": (
-            "review",
-            r"project, changelog, version, lockfile, or unrelated staged path.*refuses the no-op review",
-        ),
-        "review negative fallback": (
-            "review",
-            r"ordinary, malformed, or non-empty implementation.*nothing to review and exit",
+        "shared exact result staging": (
+            "lifecycle",
+            r"exact staged-path allowlist from a successful canonical completion dry run",
         ),
         "canonical completion": (
             "lifecycle",
@@ -3274,110 +3262,39 @@ def write(repository_root, relative_path, contents):
     target.write_text(contents)
 
 
-def request_section(contents, heading):
-    match = re.search(
-        rf"^{re.escape(heading)}\n(?P<body>.*?)(?=^## |\Z)",
-        contents,
-        flags=re.DOTALL | re.MULTILINE,
-    )
-    return None if match is None else match.group("body").strip()
-
-
-def changed_paths(repository_root, staged=False):
-    arguments = ["diff", "--name-only"]
-    if staged:
-        arguments.insert(1, "--cached")
-    tracked = set(filter(None, git(repository_root, *arguments).splitlines()))
-    if not staged:
-        untracked = git(
+def validator_decisions(repository_root, request_path):
+    result = json.loads(
+        run(
+            [
+                str(cli_launcher),
+                "--repo-root",
+                str(repository_root),
+                "--format",
+                "json",
+                "validate-already-green-repair",
+                "--request-path",
+                request_path,
+                "--writer",
+                "fixture:/repo",
+                "--at",
+                "2026-09-02T05:00:00Z",
+            ],
             repository_root,
-            "ls-files",
-            "--others",
-            "--exclude-standard",
-        ).splitlines()
-        tracked.update(filter(None, untracked))
-    return tracked
-
-
-def action_decisions(repository_root, request_path):
-    contents = (repository_root / request_path).read_text()
-    history = request_section(contents, "## Repository Gate Repair No-Op")
-    summary = request_section(contents, "## Implementation Summary")
-    qualification = request_section(contents, "## Qualification")
-    marker_exact = bool(
-        re.search(r"(?m)^status: claimed$", contents)
-        and re.search(r"(?m)^repository_gate_repair: true$", contents)
+        ).stdout
     )
-    history_exact = history is not None and all(
-        token in history
-        for token in (
-            "- **Expected diagnostic fingerprint:** gate-red-fingerprint",
-            '- **Gate command:** ["sh","-c","exit 0"]',
-            "- **Direct exit status:** 0",
-            "- **Observed result:** green before implementation; repair already satisfied",
-            "- **Verified at:** 2026-09-02T04:40:00Z",
-        )
-    )
-    summary_exact = summary == (
-        "**Files changed:** None — verified repository-gate repair no-op.\n\n"
-        "**What was done:** Re-ran the repair's recorded canonical repository gate "
-        "before source edits and confirmed it is already green; no implementation "
-        "changes were necessary."
-    )
-    qualification_exact = qualification == (
-        "Passed — repository-gate repair no-op; durable gate evidence verified and "
-        "project diff empty."
-    )
-    gate_green = False
-    if history is not None:
-        command_match = re.search(r"(?m)^- \*\*Gate command:\*\* (?P<argv>\[.*\])$", history)
-        if command_match is not None:
-            try:
-                gate_argv = json.loads(command_match.group("argv"))
-            except json.JSONDecodeError:
-                gate_argv = None
-            if (
-                isinstance(gate_argv, list)
-                and gate_argv
-                and all(isinstance(argument, str) for argument in gate_argv)
-            ):
-                gate_green = run(gate_argv, repository_root, check=False).returncode == 0
-
-    project_diff_empty = all(
-        path.startswith("do-work/") for path in changed_paths(repository_root)
-    )
-    release_untouched = (
-        "release_at:" not in contents
-        and not ({"CHANGELOG.md", "VERSION"} & changed_paths(repository_root))
-    )
-    staged_paths = changed_paths(repository_root, staged=True)
-    allowed_staged = all(
-        path == request_path
-        or path.startswith("do-work/archive/")
-        or path in {"do-work/CHECKPOINT.md", "do-work/calibration-log.tsv"}
-        for path in staged_paths
-    )
-    exact_evidence = all(
-        (
-            marker_exact,
-            history_exact,
-            summary_exact,
-            qualification_exact,
-            gate_green,
-            project_diff_empty,
-        )
-    )
-    return {
-        "tdd_allowed": exact_evidence,
-        "review_allowed": exact_evidence and release_untouched and allowed_staged,
-    }
+    if result.get("outcome") != "success":
+        raise SystemExit(f"validator command failed: {result!r}")
+    validation = result.get("already_green_repair")
+    if not isinstance(validation, dict):
+        raise SystemExit(f"validator omitted typed projection: {result!r}")
+    return validation
 
 
 repair_name = "REQ-701-already-green-repair.md"
 repair_path = f"do-work/working/{repair_name}"
 archive_path = f"do-work/archive/{repair_name}"
 parent_path = "do-work/queue/REQ-702-deferred-parent.md"
-repair_contents = """---
+repair_intake_contents = """---
 id: REQ-701
 title: Already-green repository-gate repair
 status: claimed
@@ -3392,11 +3309,23 @@ estimate:
 
 # Already-Green Repository-Gate Repair
 
+## Repository Gate Repair Intake
+
+- **Parent:** REQ-702
+- **Gate command (argv JSON):** ["sh","-c","exit 0"]
+- **Direct exit status:** 1
+- **Diagnostic fingerprint:** gate-red-fingerprint
+- **Repair dependency:** REQ-701
+- **Diagnostic evidence:** "fixture gate was red before this repair was selected"
+"""
+repair_noop_template = """
+
 ## Repository Gate Repair No-Op
 
 - **Expected diagnostic fingerprint:** gate-red-fingerprint
 - **Gate command:** ["sh","-c","exit 0"]
 - **Direct exit status:** 0
+- **Recorded green revision:** <recorded-green-revision>
 - **Observed result:** green before implementation; repair already satisfied
 - **Verified at:** 2026-09-02T04:40:00Z
 
@@ -3431,17 +3360,49 @@ def create_repository(case_name):
     git(repository_root, "config", "user.email", "req494@example.invalid")
     write(repository_root, "VERSION", "9.9.9\n")
     write(repository_root, "CHANGELOG.md", "# Fixture Changelog\n")
-    write(repository_root, repair_path, repair_contents)
+    write(repository_root, repair_path, repair_intake_contents)
     write(repository_root, parent_path, parent_contents)
     git(repository_root, "add", "VERSION", "CHANGELOG.md", repair_path, parent_path)
     git(repository_root, "commit", "-qm", "fixture baseline")
+    recorded = json.loads(
+        run(
+            [
+                str(cli_launcher),
+                "--repo-root",
+                str(repository_root),
+                "--format",
+                "json",
+                "record-green-gate",
+                "--gate-exit-status",
+                "0",
+                "--",
+                "sh",
+                "-c",
+                "exit 0",
+            ],
+            repository_root,
+        ).stdout
+    )
+    revision = recorded.get("gate_evidence", {}).get("recorded_revision")
+    if recorded.get("outcome") != "success" or not revision:
+        raise SystemExit(f"green evidence fixture failed: {recorded!r}")
+    repair_contents = repair_intake_contents + repair_noop_template.replace(
+        "<recorded-green-revision>", revision
+    )
+    write(repository_root, repair_path, repair_contents)
+    git(repository_root, "add", repair_path)
+    git(repository_root, "commit", "-qm", "durable no-op evidence")
     return repository_root
 
 
 canonical_root = create_repository("canonical")
-canonical_decisions = action_decisions(canonical_root, repair_path)
-if canonical_decisions != {"tdd_allowed": True, "review_allowed": True}:
-    raise SystemExit(f"canonical no-op action decisions = {canonical_decisions!r}")
+canonical_decisions = validator_decisions(canonical_root, repair_path)
+if not canonical_decisions.get("tdd_allowed") or not canonical_decisions.get("review_allowed"):
+    raise SystemExit(f"canonical no-op validator decisions = {canonical_decisions!r}")
+if canonical_decisions.get("intake_fingerprint") != "gate-red-fingerprint":
+    raise SystemExit(f"validator did not source intake identity: {canonical_decisions!r}")
+if archive_path not in canonical_decisions.get("canonical_completion_paths", []):
+    raise SystemExit(f"validator omitted exact archive result: {canonical_decisions!r}")
 
 negative_cases = {
     "ordinary": ("repository_gate_repair: true", "repository_gate_repair: false", None),
@@ -3450,7 +3411,9 @@ negative_cases = {
     "malformed-qualification": ("durable gate evidence verified", "gate looked green", None),
     "nonempty": (None, None, ("app.txt", "project change\n", False)),
     "release": (None, None, ("VERSION", "10.0.0\n", False)),
-    "forbidden-stage": (None, None, ("do-work/queue/REQ-999-unrelated.md", "unrelated\n", True)),
+    "fingerprint-mismatch": ("Expected diagnostic fingerprint:** gate-red-fingerprint", "Expected diagnostic fingerprint:** gate-self-asserted", None),
+    "missing-recorded-revision": ("Recorded green revision:**", "Recorded green revision missing:**", None),
+    "forbidden-stage": (None, None, ("do-work/archive/REQ-999-unrelated.md", "unrelated\n", True)),
 }
 for case_name, (old, new, filesystem_change) in negative_cases.items():
     repository_root = create_repository(case_name)
@@ -3462,11 +3425,24 @@ for case_name, (old, new, filesystem_change) in negative_cases.items():
         write(repository_root, relative_path, contents)
         if stage:
             git(repository_root, "add", relative_path)
-    decisions = action_decisions(repository_root, repair_path)
-    if decisions["review_allowed"]:
+    decisions = validator_decisions(repository_root, repair_path)
+    if decisions.get("review_allowed"):
         raise SystemExit(f"{case_name} escaped no-op review from actual REQ/Git state")
-    if case_name == "forbidden-stage" and not decisions["tdd_allowed"]:
+    if case_name == "forbidden-stage" and not decisions.get("tdd_allowed"):
         raise SystemExit("forbidden-stage case did not isolate the review-stage allowlist")
+
+exact_stage_root = create_repository("exact-stage")
+write(exact_stage_root, repair_path, (exact_stage_root / repair_path).read_text() + "\n")
+git(exact_stage_root, "add", repair_path)
+exact_stage = validator_decisions(exact_stage_root, repair_path)
+if not exact_stage.get("review_allowed"):
+    raise SystemExit(f"exact canonical request staging was refused: {exact_stage!r}")
+
+write(exact_stage_root, "do-work/archive/REQ-999-unrelated.md", "unrelated\n")
+git(exact_stage_root, "add", "do-work/archive/REQ-999-unrelated.md")
+over_staged = validator_decisions(exact_stage_root, repair_path)
+if over_staged.get("review_allowed") or "REPAIR-STAGED-PATH-NOT-CANONICAL" not in over_staged.get("reason_codes", []):
+    raise SystemExit(f"exact paths plus unrelated archive escaped: {over_staged!r}")
 
 release_before = {
     path: (canonical_root / path).read_bytes() for path in ("VERSION", "CHANGELOG.md")
@@ -3553,21 +3529,14 @@ if live_defects:
 
 mutations = (
     ("work", "Before applying ordinary TDD verification", "After ordinary TDD verification", "TDD exception precedes ordinary guard"),
-    ("work", "claimed `repository_gate_repair: true` REQ", "claimed repair REQ", "TDD exact claimed marker"),
-    ("work", "exact `## Repository Gate Repair No-Op`, `## Implementation Summary`, and `## Qualification` shapes", "available no-op evidence", "TDD exact durable evidence"),
-    ("work", "pre-build direct exit status is 0 before source edits", "gate now exits 0", "TDD green-before-edit proof"),
-    ("work", "no-op project diff is empty", "no-op project diff is acceptable", "TDD empty project diff"),
-    ("work", "ordinary, malformed, or non-empty implementation", "ordinary implementation", "TDD negative fallback"),
+    ("work", "validate-already-green-repair --request-path", "inspect-already-green-repair --request-path", "TDD invokes shared validator"),
+    ("work", "already_green_repair.tdd_allowed: true", "already_green_repair.review_allowed: true", "TDD consumes typed decision"),
+    ("work", "The validator is the sole decision authority", "The validator is advisory", "TDD has no prose fallback"),
     ("review", "Before the ordinary no implementation changes exit", "After the ordinary no implementation changes exit", "review exception precedes empty exit"),
-    ("review", "orchestrated claimed `repository_gate_repair: true` REQ", "orchestrated repair REQ", "review exact claimed marker"),
-    ("review", "exact `## Repository Gate Repair No-Op`, `## Implementation Summary`, and `## Qualification` shapes", "available no-op evidence", "review exact durable evidence"),
-    ("review", "verify the recorded green-gate evidence", "inspect the gate command", "review record verification"),
-    ("review", "expected diagnostic fingerprint to repair intake", "expected diagnostic fingerprint", "review intake identity"),
-    ("review", "project diff is empty", "project diff is acceptable", "review empty project diff"),
-    ("review", "no release is planned", "release may be planned", "review release exclusion"),
-    ("review", "only canonical lifecycle/archive/calibration paths and any exact UR move reported by `complete`", "lifecycle paths", "review exact stage allowlist"),
-    ("review", "project, changelog, version, lockfile, or unrelated staged path", "unrelated staged path", "review forbidden stage refusal"),
-    ("review", "ordinary, malformed, or non-empty implementation", "ordinary implementation", "review negative fallback"),
+    ("review", "validate-already-green-repair --request-path", "inspect-already-green-repair --request-path", "review invokes shared validator"),
+    ("review", "already_green_repair.review_allowed: true", "already_green_repair.tdd_allowed: true", "review consumes typed decision"),
+    ("review", "The validator is the sole decision authority; do not separately parse", "The validator is advisory", "review has no prose fallback"),
+    ("review", "typed reason codes and offending paths", "a prose refusal", "review reports typed refusal"),
 )
 for owner, old, new, expected_defect in mutations:
     sources = {"work": work_text, "review": review_text, "reference": reference_text}

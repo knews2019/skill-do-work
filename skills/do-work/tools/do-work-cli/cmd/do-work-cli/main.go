@@ -13,6 +13,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/knowledgecommands"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/nextselection"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/publication"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/repairvalidation"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/suiteinstall"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/toolboxcommands"
@@ -45,6 +46,9 @@ func main() {
 		handlers[name] = handler
 	}
 	for name, handler := range gateevidence.Handlers() {
+		handlers[name] = handler
+	}
+	for name, handler := range repairvalidation.Handlers() {
 		handlers[name] = handler
 	}
 	for name, handler := range corehelpers.Handlers() {

@@ -74,14 +74,14 @@ func RecordGreenGate(repositoryRoot string, gateCommand []string) (resultmodel.G
 // CheckGreenGate answers whether the recorded green run for this exact gate argv
 // still covers the current HEAD. This is the HEAD-bound rule every ordinary REQ uses.
 func CheckGreenGate(repositoryRoot string, gateCommand []string) (resultmodel.GateEvidenceResult, error) {
-	return checkGreenGateAtRevision(repositoryRoot, gateCommand, "")
+	return CheckGreenGateAtRevision(repositoryRoot, gateCommand, "")
 }
 
-// checkGreenGateAtRevision answers the same question about targetRevisionSpec instead
+// CheckGreenGateAtRevision answers the same question about targetRevisionSpec instead
 // of HEAD; an empty spec means HEAD. An already-green repository-gate repair no-op
 // changes no project path, so an unrelated commit moving HEAD can never make it the
 // cause of a red gate — its evidence stays verifiable at its own recorded revision.
-func checkGreenGateAtRevision(repositoryRoot string, gateCommand []string, targetRevisionSpec string) (resultmodel.GateEvidenceResult, error) {
+func CheckGreenGateAtRevision(repositoryRoot string, gateCommand []string, targetRevisionSpec string) (resultmodel.GateEvidenceResult, error) {
 	context, err := resolveEvidenceContext(repositoryRoot, gateCommand)
 	if err != nil {
 		return invalidEvidence(gateCommand), err
@@ -161,6 +161,12 @@ func checkGreenGateAtRevision(repositoryRoot string, gateCommand []string, targe
 	result.MatchBasis = "gate_log_only_descendant"
 	result.BaselineRevision = targetRevision
 	return result, nil
+}
+
+// checkGreenGateAtRevision preserves the package-private test seam while the
+// exported function is shared with repair validation.
+func checkGreenGateAtRevision(repositoryRoot string, gateCommand []string, targetRevisionSpec string) (resultmodel.GateEvidenceResult, error) {
+	return CheckGreenGateAtRevision(repositoryRoot, gateCommand, targetRevisionSpec)
 }
 
 func GateCommandSHA256(gateCommand []string) string {

@@ -51,6 +51,12 @@ The action runs the canonical gate before source work, chooses create versus exa
 
 Collision retry is caller-owned and typed: retry only a collision refused before mutation with zero changes, or a post-mutation collision whose rollback succeeded. Repair REQs never defer themselves; a red or unverifiable final gate fails the repair canonically and leaves parents dependency-gated while unrelated selection continues. If the repair gate is already green before implementation, the action records the exact reviewed no-op evidence, completes/archives canonically, and skips changelog/version release mutation.
 
+## Validate an already-green repair
+
+`validate-already-green-repair --request-path <working REQ> --writer <completion writer> [--at <RFC3339>]` is the read-only authority shared by the work TDD exception and review's no-diff exception. It extracts the repair intake, no-op fingerprint, gate argv, and recorded revision from the request; callers cannot supply those values. It verifies the persisted green record at the recorded past revision, checks project/release state, performs canonical completion as a dry run, and compares staged paths to that exact result rather than authorizing an archive directory prefix.
+
+The typed `already_green_repair` object carries separate `tdd_allowed` and `review_allowed` decisions from one observation set. Review additionally requires a successful completion projection and an exact staged subset. It also carries canonical completion paths, staged/project paths, stable reason codes, offending paths, and the gate evidence. Actions stop on a missing, malformed, failed, or false decision and never reconstruct the predicate from prose. Reuse the same `--writer` and `--at` values in finalization because they can affect the exact completion paths.
+
 ## Update compatibility
 
 Use `just do-work-update` for the canonical no-agent update. `just run-do-work-update` remains available for compatibility and invokes the same `update-suite` transaction. Both retain the reviewed diff, confirmation, verification, and recovery boundary.
