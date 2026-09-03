@@ -60,9 +60,15 @@ func TestWorkingArchiveRemovesOnlyThisCheckoutCheckpointEntry(t *testing.T) {
 		hostname = hostname[:dotIndex]
 	}
 	writeCleanupFile(t, repositoryRoot, "do-work/working/REQ-109-done.md", cleanupRequest("REQ-109", "completed", ""))
-	checkpoint := "# Session Checkpoint\n\n## In Progress (interrupted)\n\n" +
+	checkpoint := "# Session Checkpoint\n\n## Session Notes\n\n" +
+		"- The real `## In Progress (interrupted)` section follows.\n\n" +
+		"## In Progress (interrupted)\n\n" +
 		"- REQ-109: own — writer: " + hostname + ":" + repositoryRoot + "\n" +
-		"- REQ-109: foreign — writer: other:/checkout\n"
+		"  Last known state: implementing\n" +
+		"  Key files being modified: cleanup_plan.go\n" +
+		"- REQ-109: foreign — writer: other:/checkout\n" +
+		"  Last known state: foreign work\n" +
+		"  Key files being modified: foreign.go\n"
 	writeCleanupFile(t, repositoryRoot, "do-work/CHECKPOINT.md", checkpoint)
 	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
 	if err != nil {
@@ -77,7 +83,13 @@ func TestWorkingArchiveRemovesOnlyThisCheckoutCheckpointEntry(t *testing.T) {
 			}
 		}
 	}
-	if strings.Contains(checkpointContents, "own —") || !strings.Contains(checkpointContents, "foreign —") {
+	if strings.Contains(checkpointContents, "own —") || strings.Contains(checkpointContents, "implementing") || strings.Contains(checkpointContents, "cleanup_plan.go") {
+		t.Fatalf("checkpoint retained own entry bytes = %q", checkpointContents)
+	}
+	if !strings.Contains(checkpointContents, "The real `## In Progress (interrupted)` section follows.") ||
+		!strings.Contains(checkpointContents, "foreign —") ||
+		!strings.Contains(checkpointContents, "Last known state: foreign work") ||
+		!strings.Contains(checkpointContents, "Key files being modified: foreign.go") {
 		t.Fatalf("checkpoint replacement = %q", checkpointContents)
 	}
 }

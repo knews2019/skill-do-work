@@ -765,8 +765,14 @@ func checkpointWithClaim(existing []byte, requestID, title, claimedAt, writer st
 }
 
 func checkpointWithoutClaim(existing []byte, requestID, writer string) []byte {
-	updated, _ := checkpointWithoutAuthorizedClaim(existing, requestID, writer, false)
+	updated, _ := RemoveOwnedCheckpointClaim(existing, requestID, writer)
 	return updated
+}
+
+// RemoveOwnedCheckpointClaim removes one writer-labelled entry from the real
+// In Progress section, including that entry's indented continuation lines.
+func RemoveOwnedCheckpointClaim(existing []byte, requestID, writer string) ([]byte, bool) {
+	return checkpointWithoutAuthorizedClaim(existing, requestID, writer, false)
 }
 
 func checkpointWithoutAuthorizedClaim(existing []byte, requestID, writer string, unlabeled bool) ([]byte, bool) {
