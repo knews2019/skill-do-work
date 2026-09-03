@@ -1,7 +1,7 @@
 ---
 id: REQ-514
 title: '[impact-rule-change] Refusals never name themselves as the fix'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-02T20:35:18Z
 user_request: UR-099
@@ -16,6 +16,7 @@ effort_estimate: effort-substantive
 related: [REQ-513, REQ-515, REQ-516, REQ-517]
 batch: recovery-never-traps
 write_set: [skills/do-work/tools/do-work-cli/internal/resultmodel/, skills/do-work/tools/do-work-cli/internal/finalization/, skills/do-work/tools/do-work-cli/internal/requeststate/]
+claimed_at: 2026-09-03T23:34:31Z
 ---
 
 # Refusals never name themselves as the fix
