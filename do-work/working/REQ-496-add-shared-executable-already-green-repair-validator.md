@@ -123,7 +123,20 @@ The current action prose and `_dev/tests/contract-regressions.sh::action_decisio
 
 **Builder commit:** `5790b0519b75ed59d4458727e5d7dd6fd6b18e2c`
 
-**Files changed:** The exact 13-path `write_set`: action consumers/reference, CLI guide/prime/registration, the new `internal/repairvalidation` package and tests, exported gate-evidence seam, typed result projection/tests, and `_dev/tests/contract-regressions.sh`.
+**Files changed:**
+- `skills/do-work/actions/work.md`
+- `skills/do-work/actions/review-work.md`
+- `skills/do-work/actions/work-reference.md`
+- `skills/do-work/docs/command-line-guide.md`
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md`
+- `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go`
+- `skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go`
+- `skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green_test.go`
+- `skills/do-work/tools/do-work-cli/internal/gateevidence/gate_evidence.go`
+- `skills/do-work/tools/do-work-cli/internal/gateevidence/gate_commands.go`
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go`
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go`
+- `_dev/tests/contract-regressions.sh`
 
 **What was done:** Added `validate-already-green-repair` as the sole executable authority for both `tdd_allowed` and `review_allowed`. It strictly joins repair intake to no-op evidence, verifies the extracted past green revision, observes project/staged paths NUL-safely, and authorizes staging only from exact canonical completion dry-run paths. Both actions now require their typed decision, and the contract fixture invokes the real CLI instead of reimplementing eligibility.
 
