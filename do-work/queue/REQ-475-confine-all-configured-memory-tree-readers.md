@@ -1,7 +1,7 @@
 ---
 id: REQ-475
 title: '[impact-critical] Review fix: Confine all configured Memory tree readers'
-status: claimed
+status: pending-heavy-testing
 priority: now
 created_at: 2026-09-01T08:32:57Z
 user_request: UR-081
@@ -38,6 +38,11 @@ exploration_at: 2026-09-03T21:53:38Z
 dispatch_at: 2026-09-03T21:55:13Z
 implementation_at: 2026-09-03T22:12:45Z
 builder_handback_at: 2026-09-03T22:13:52Z
+integration_at: 2026-09-03T22:20:33Z
+testing_at: 2026-09-03T22:24:22Z
+review_at: 2026-09-03T22:24:22Z
+status_changed_at: 2026-09-03T22:24:22Z
+commit: c6d457473d24cdb188070709100884f019323ebc
 write_set:
   - skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go
   - skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands_test.go
@@ -149,3 +154,25 @@ The defect is one authority split: rooted/no-follow helpers protect mutation and
 ## Remediation
 
 Builder commit `1ace19970e242d4c61409a53e81ab78800fb8065` routes ledger append acquisition through `openMemoryRoot`. A deterministic pre-open seam swaps the already-scanned root to an outside symlink: RED appended a recall event to the outside canary ledger; GREEN leaves those bytes unchanged. Focused/race/vet/full-module/contracts and diff hygiene pass.
+
+## Re-Review
+
+**Verdict:** Pass. The cumulative `63045c9e..c6d45747` implementation now applies the same verified-root boundary to the post-recall ledger mutation as to every configured read. All configured Memory file/directory reads are bounded and rooted, refused target bytes stay out of typed/text/JSON output, ordinary recall/status/audit semantics and BKB acquisition remain intact, and the documented limits match executable constants and inclusive-boundary tests.
+
+## Qualification
+
+Passed — mechanical qualification accepted the cumulative `63045c9e..c6d45747` range. The intervening REQ-485 commits are independently scoped and recorded; REQ-475's implementation is limited to its four declared files and its two-file remediation subset, with no builder-authored `do-work/` state.
+
+## Testing
+
+**Tests run:** focused and race `internal/knowledgecommands`; full do-work-cli `go vet ./...` and `go test ./...`; contract regressions; direct `bash _dev/tests/maintainer-verify.sh`.
+
+**Result:** Focused, race, full-module, contracts, and the fast canonical gate pass on final merge `c6d457473d24cdb188070709100884f019323ebc`; the exact gate revision is recorded. `memory_commands_test.go` matches the declared CLI heavy-test surface, so finalization requires exact-revision heavy permission.
+
+**Red-green validation:** The outside-object/root disclosure matrix, special/limit boundaries, and deterministic ledger-root swap all failed in their pre-fix states and pass on the merged implementation with byte-preservation and canary-absence assertions.
+
+## Open Questions
+
+- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `c6d457473d24cdb188070709100884f019323ebc`; did it exit 0?
+  Recommended: Yes
+  Also: No — report the failing lane
