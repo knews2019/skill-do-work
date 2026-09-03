@@ -204,3 +204,54 @@ All 8 prose rows pass at both ends, so the negative side is not an artifact of t
 **Existing tests updated:** none. No prior test asserted the ten-prefix behavior, which is itself worth noting — the enumeration was never pinned as a contract, only as an implementation.
 
 *Verified by work action*
+
+## Review
+
+**Overall: 89%** | 2026-09-03T03:05:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 88% |
+| Code Quality | 85% |
+| Test Adequacy | 85% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- F1 — `allResolvedQuestionsMatch` (`internal/publication/answer.go:410`) tests `bytes.Contains(line, marker)` across the whole `- [x] ` line, so a plain answer summary containing `→ Discarded:` makes an *answered* question read as discarded and the REQ is silently cancelled and archived; the `→ Confirmed:` variant reaches `completed` the same way. Reproduced in a scratch fixture. **Pre-existing — the old ten-prefix predicate inlined the same text — so not attributed to this diff**, but squarely on the contract this REQ redefined — `impact-critical` → REQ-528 created
+- F2 — `cancellationReasonBlock` (`internal/requeststate/state_apply.go:895-903`) makes the same inline-or-contain decision on a newline test alone, so a one-line reason of `***` or `## Notes` is written in as document structure; that package already has its own containment writer and validator, only the structural judgment is missing — `impact-rule-change` → REQ-529 created (`pending-answers`: whether the two seams share one predicate is a package-direction call)
+- F3 — restatement drift against `skills/do-work/actions/clarify.md`: `:105` conditions inlining on "cannot be a delimiter **where it lands**" while the code is position-blind, and `:106` says the containment branch keeps the summary after the `→` when the code writes `See contained answer note`. Also `_dev/tests/contract-regressions.sh:6605` requires the condition sentence exactly once across `skills/`, and this diff added a second wording of it in a Go doc comment — `impact-rule-change` → `do-work/prose-backlog.md` (prose-only, no root-cause match)
+
+**Minor findings:** 4 (report only) — M1 the `orderedListMarkerPattern` comment asserts a false universal (Pandoc `fancy_lists` opens ordered lists from letters and roman numerals, all still inlined, correctly); M2 dropping the trailing-space requirement over-catches `1.2.3`, `3.50`, `2026.` — consistent with D-01 but unrecorded by any test row; M3 no row exercises the empty/whitespace branch or the intentional over-catch; M4 the two stated rules contradict on paper for an all-whitespace summary, resolved silently by ordering and unreachable at the seam. M1 routed to the prose backlog with F3.
+
+**Acceptance:** Pass — package green at exit 0, revert-and-confirm independently reproduced at exactly 19 red subtests, both document shapes exercised end-to-end, and a 160,906-input differential of old against new predicate found **0 weakenings**, proving the new predicate is a strict superset that cannot bypass anything the old one caught.
+**Suggested testing:** 4 items — a `→ Discarded:` spoof row at the `BuildAnswerPlan` seam once REQ-528 lands, a cancel/abandon fixture for REQ-529's RED, a row recording the intentional over-catch so a future narrowing is visible, and a human read of one real clarify round trip on an answer starting with a quote or paren.
+**Follow-ups created:** REQ-528, REQ-529; **sweeps appended to:** None
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:**
+- Stating the condition in the doc comment *before* writing the body. The comment names the three line-start ingredients Markdown builds every block construct from, and the body is three tests against them — so the code reads as the contract rather than as a coincidence.
+- Taking the punctuation set wholesale from CommonMark's own ASCII-punctuation definition instead of the marks today's syntax uses. That is what catches `+++`, `:::note` and `$$` with nothing enumerating them, which is exactly what the REQ asked for by name.
+- A differential run of the old predicate against the new one over 160,906 inputs. It turned "this should be a superset" into "0 weakenings, proven", which is a much stronger claim than any fixture set gives.
+
+**What didn't:**
+- My stated justification for the widening was wrong, and the review caught it. I argued containment prevents "an unescaped delimiter written into the document"; a summary is only ever written mid-line, after `→ ` or after `: `, so it never starts a line and that hazard is unreachable at both write sites. `clarify.md:105` already said so. The decision survives as defence-in-depth for a future line-start writer, but it was defended on a hazard that does not exist here.
+- The sweep stopped at the prose that looked authoritative. It found `clarify.md` and concluded the prose already stated the condition correctly — but `clarify.md` is position-qualified and the code is position-blind, so the two now disagree in the opposite direction, and the sibling seam in `internal/requeststate` was missed entirely.
+- Only part of the thematic-break class was ever broken: `---` and `* * *` were caught, `***` and `___` were not. A partially-correct enumeration is worse than an obviously-empty one, because the passing cases make it look like the class is handled.
+
+**Worth knowing:**
+- A summary is written at exactly two sites (`answer.go:196`, `:200`), both mid-line. Any future reasoning about delimiter hazards here has to start from that, not from "a delimiter is dangerous".
+- `answer.go:136` already refuses an empty summary using the identical `TrimSpace(summary) == ""` expression the predicate's guard uses, so that guard is unreachable in production. Worth knowing before anyone "fixes" the apparent contradiction between it and the leading-whitespace rule.
+- Pandoc's `fancy_lists` opens ordered lists from letters and roman numerals. `A) yes, use the first option` stays inline, and that is the right call — but it means the digit case is the opener this predicate *chooses* to cover, not the only one that exists.
+
+## Orientation
+
+An answer summary is now carried as a file-backed payload whenever Markdown could read it as document structure, decided by one stated condition rather than a list of ten prefixes. Lives in the CLI's `publication` package, on the `answer` path that `do-work clarify` drives.
+
+`prime_files`: `_dev/primes/prime-action-files.md` — spot-checked, its referenced paths all still exist and it needed no change; the contract this REQ implements is stated in `skills/do-work/actions/clarify.md`, which the review found now disagrees with the code in two places (both on the prose backlog, not silently left).
+
+**[MAP CHANGED]** — no new module, but the same inline-or-contain decision is now condition-complete in one package and absent in its sibling (`internal/requeststate`), which is a split REQ-529 exists to close.
