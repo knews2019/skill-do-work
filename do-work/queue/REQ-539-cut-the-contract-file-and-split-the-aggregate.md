@@ -8,7 +8,7 @@ domain: testing
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: false
 suggested_spec:
-depends_on: [REQ-538]
+depends_on: []
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
@@ -85,3 +85,12 @@ User added (2026-09-03 21:29 local, in the test-budget session; 22:05 local, "up
 - Measured offenders on 2026-09-03 (`update-script-behavior.sh` about 60 s, `install-suite-behavior.sh` about 40 s) are heavy or cut, never left fast-with-an-exception; the maintainer's preference is honest severity over carve-outs.
 - GREEN additionally requires: every fast-tier probe file's recorded duration under 30 s, and the durations log carrying one row per fast-tier file after the proving `gate-runner.sh --once`.
 - Coherence check: no contradiction with the original sections; the addendum tightens the GREEN condition and adds the measurement mechanism.
+
+## Addendum (2026-09-03, 23:10 local)
+
+User added (23:00 local, "do 1, 2 and 3, I'll release the cloud claims", item 3 of the velocity report's handoff: "narrow REQ-539 to whatever 21dac2b8 did not do"):
+
+- Release 0.271.0 (21dac2b8) landed part of this REQ: the installer, updater, staged-package and expensive subprocess probes moved behind `--heavy`; the shell probe runner measures each standalone script against the 30 s ceiling and fails the fast tier over it; the installer and updater fixtures were narrowed. Do not redo those.
+- Still open on main and now the whole scope of this REQ: (1) the per-owner split of `_dev/tests/contract-regressions.sh` into files sourced by the aggregate, with the sentence-pin deletions the original What describes; (2) the durations log beside `do-work/calibration-log.tsv` with one row per file per run and the concurrent gate count (the 22:04 addendum), which 0.271.0 measures but does not persist; (3) the line-count ratchet on the fast contract file (UR-100's ceiling; the file is 8,479 lines and nothing on main fails when it grows); (4) confirm whether the heavy aggregate builds do-work-cli once, and land it if not.
+- `depends_on` changed from `[REQ-538]` to `[]`: REQ-538's code landed in 21dac2b8 and its record is being cancelled as landed in place, and a cancelled dependency never satisfies gating.
+- Coherence check: the original GREEN (fast contract file under 1,500 lines and under 30 s, heavy aggregate exits 0 under `--heavy`) still holds; the 30 s half is already true on main, the line-count half is not.
