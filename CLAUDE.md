@@ -54,13 +54,9 @@ A job is not done while its code exists only in the working tree. Commit each co
 
 ## Before Every Commit
 
-**Scope: the integrating commit only.** This ritual belongs to whoever commits the change into the integration branch — in the work pipeline, the queue owner at Step 9. A builder committing on its own `worktree-agent-*` branch **skips it entirely**: `skills/do-work/actions/version.md` and `CHANGELOG.md` are serial-only files owned by the integrator (`skills/do-work/actions/work-reference.md` → Worktree Dispatch Mode → Fan-Out Dispatch), and a builder bumping either would race every sibling.
+1. **Add a changelog entry** at the top of `CHANGELOG.md` (below the header). The title must **say what was delivered** — a reader scanning only headings should know what changed ("Board View Filters", not "The Fine Sieve"). No whimsical codenames. **Verify the title is not already used** by an earlier entry. Repository-only dated history must use canonical `https://github.com/knews2019/skill-do-work/blob/main/...` links, because the installed core package does not carry those sidecars.
 
-1. **Bump the shared version** in `VERSION`, `skills/do-work/VERSION`, and `skills/do-work/actions/version.md` (line starting with `**Current version**:`). Use semver — patch for fixes, minor for features, major for breaking changes. When in doubt, patch. **Verify the new version number is strictly greater than the first existing entry in `CHANGELOG.md`** — duplicate version numbers have occurred before.
-
-2. **Add a changelog entry** at the top of `CHANGELOG.md` (below the header). The title must **say what was delivered** — a reader scanning only headings should know what changed ("Board View Filters", not "The Fine Sieve"). No whimsical codenames. **Verify the title is not already used** by an earlier entry. Repository-only dated history must use canonical `https://github.com/knews2019/skill-do-work/blob/main/...` links, because the installed core package does not carry those sidecars.
-
-3. **Synchronize the installed changelog mirror** by copying root `CHANGELOG.md` to `skills/do-work/CHANGELOG.md` after the entry and any history-link edits are complete. The two files must be byte-identical before committing; `_dev/tests/shipped-package-reference-contract.sh` enforces this with the rest of the shipped reference contract.
+2. **Synchronize the installed changelog mirror** by copying root `CHANGELOG.md` to `skills/do-work/CHANGELOG.md` after the entry and any history-link edits are complete. The two files must be byte-identical before committing; `_dev/tests/shipped-package-reference-contract.sh` enforces this with the rest of the shipped reference contract.
 
 ```markdown
 ## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)
