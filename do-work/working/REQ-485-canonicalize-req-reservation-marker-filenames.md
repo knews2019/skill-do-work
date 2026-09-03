@@ -31,6 +31,8 @@ route: C
 planning_at: 2026-09-03T21:53:38Z
 exploration_at: 2026-09-03T21:53:38Z
 dispatch_at: 2026-09-03T21:55:13Z
+implementation_at: 2026-09-03T22:06:30Z
+builder_handback_at: 2026-09-03T22:07:29Z
 write_set:
   - skills/do-work-board/tools/queue-kanban/allocate.go
   - skills/do-work-board/tools/queue-kanban/allocate_test.go
@@ -63,9 +65,9 @@ The fold-first scan found no pending or pending-answers REQ, sweep or otherwise,
 any UR sharing this root cause.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Mapped every reservation writer, exact numeric reader, publication collision/fold seam, cleanup authority, and cross-module documentation contract before implementation.
+- [x] **[APPLY]:** Added literal independent RED fixtures, converged writers on minimum-three-digit stored IDs, retained width-compatible exact readers, and updated all declared tests and guidance.
+- [x] **[UNIFY]:** Reviewed the exact 15-file diff; verified rooted/exclusive-create and final cleanup revalidation stayed intact, both Go modules and vet passed, contracts passed, and no debug or lifecycle files entered the builder commit.
 
 ## Detailed Requirements
 
@@ -143,3 +145,26 @@ The two allocators independently emit fixed-six markers, while capture and defer
 **Tests:** Direct canonical fast gate passed and was recorded at the shared wave baseline before any builder dispatch.
 
 **Dependencies:** None. The board and CLI are separate modules and must each be verified independently.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/allocate.go`
+- `skills/do-work-board/tools/queue-kanban/allocate_test.go`
+- `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md`
+- `skills/do-work/actions/capture.md`
+- `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go`
+- `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model_test.go`
+- `skills/do-work/tools/do-work-cli/internal/publication/reservations.go`
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files.go`
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files_test.go`
+- `skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go`
+- `skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go`
+- `skills/do-work/tools/do-work-cli/internal/publication/answer_test.go`
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/reservations.go`
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/reservations_test.go`
+- `skills/do-work/tools/do-work-cli/internal/hookcommands/session_start_test.go`
+
+**What was done:** All current writers now use canonical minimum-three-digit stored-ID marker basenames. Exact numeric readers accept canonical and legacy widths for max scans, collisions, defer folds, and cleanup without admitting suffix junk; cleanup still revalidates each concrete alias at its final removal boundary. Builder commit: `271aa8ae28660cfaa3a23b5181478e9e103895e4`.
+
+**Builder verification:** Both module test/vet suites, changed-package reruns, contract regressions, formatting, and diff hygiene passed. Full evidence and migration risks are recorded in `do-work/runs/work-2026-09-03-214500/REQ-485-handback.md`.
