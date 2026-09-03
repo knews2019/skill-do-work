@@ -1,2 +1,0 @@
-github.com/knews2019/skill-do-work/do-work-cli/internal/knowledgecommands TestBKBInitRollbackPreservesReplacedObjectsAndParents
-github.com/knews2019/skill-do-work/do-work-cli/internal/toolboxcommands TestRemediationCancellationReachesMediaGitCommitAndRollback
