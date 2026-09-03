@@ -1,7 +1,7 @@
 ---
 id: REQ-528
 title: '[impact-critical] Anchor resolved-question marker matching to its position'
-status: pending
+status: claimed
 created_at: 2026-09-03T03:10:00Z
 user_request: UR-081
 domain: backend
@@ -19,6 +19,7 @@ review_generated: true
 write_set:
   - skills/do-work/tools/do-work-cli/internal/publication/answer.go
   - skills/do-work/tools/do-work-cli/internal/publication/answer_test.go
+claimed_at: 2026-09-03T09:10:13Z
 ---
 
 # Anchor Resolved-Question Marker Matching to Its Position

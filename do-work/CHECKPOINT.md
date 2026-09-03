@@ -52,3 +52,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-528: [impact-critical] Anchor resolved-question marker matching to its position — claimed 2026-09-03T09:10:13Z — writer: vm:/home/user/skill-do-work
