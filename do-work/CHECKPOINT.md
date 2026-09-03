@@ -21,6 +21,8 @@ session_depth: light
 
 - REQ-534: Review fix: run blocked probes from the repository root and propagate interruptions — claimed 2026-09-03T23:34:31Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
+- REQ-539: Cut the contract file to the incident core and split the aggregate into fast and heavy — claimed 2026-09-04T00:02:00Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
 ## Still Queued
 
 - 47 pending requests remain. This targeted run drained REQ-531's frozen ledger and did not perform a full-queue selection.

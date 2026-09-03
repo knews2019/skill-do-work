@@ -1,7 +1,7 @@
 ---
 id: REQ-539
 title: 'Cut the contract file to the incident core and split the aggregate into fast and heavy'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-03T14:49:02Z
 user_request: UR-104
@@ -21,6 +21,7 @@ write_set:
   - _dev/tests/*.sh
   - _dev/tests/contracts/
 status_changed_at: 2026-09-03T23:32:33Z
+claimed_at: 2026-09-04T00:02:00Z
 ---
 
 # Cut the Contract File to the Incident Core and Split the Aggregate Into Fast and Heavy
