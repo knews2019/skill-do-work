@@ -78,7 +78,7 @@
 <div class="page">
 
 <header>
-  <div class="kicker">do-work analysis report · skill-do-work2 · maintainer question · 2026-09-03 21:45 EEST · revised 22:10 · lessons and handoff added 22:25 · landing recorded 22:35</div>
+  <div class="kicker">do-work analysis report · skill-do-work2 · maintainer question · 2026-09-03 21:45 EEST · revised 22:10 · lessons and handoff added 22:25 · landing recorded 22:35 · audit follow-ups added 22:45</div>
   <h1 class="measure" style="margin-top:12px">Why the queue drains slowly, why it refills, and what to change</h1>
   <p class="lede measure">Development velocity of the do-work queue, measured from the archive, the calibration log, the recorded gate runs, the changelog and the queue on disk. Follow-up to the 00:10 gate-cost analysis, the 09-02 orchestrator analysis, the 09-01 queue analysis and the 08-20 treadmill report. Revised at 22:10 to carry both problems, after the maintainer read the 21:45 draft. Evidence mode: non-visual. UI captures were not expected for this work.</p>
 </header>
@@ -281,6 +281,7 @@
         <tr><td>L11</td><td><strong>Two checkouts on one port kill each other's board.</strong> <code>just run-kanban</code> stops any queue-kanban on 8090 by design. Give each checkout its own port.</td><td>The n1-weekly-signal-diff checkout took 8090 at 21:16 and killed this one's server; the browser looked "not opened".</td></tr>
         <tr><td>L12</td><td><strong>Draining faster does not empty a queue that refills itself.</strong> Review-born REQs below critical are the intake; REQ-531 closes that tap and belongs beside the gate fix, not after it.</td><td>395 created, 391 archived in 30 days; 126 review-born below critical.</td></tr>
         <tr><td>L13</td><td><strong>Amend queued REQs by addendum, verify by parsing.</strong> Append a dated Addendum section with the user's words contained (blockquote plus a fence longer than any backtick run), record a "Resolved conflict" line when the original is superseded, and prove the edit with <code>queue-kanban summary</code>.</td><td>Commit d00da469; the board parsed all four files, zero malformed.</td></tr>
+        <tr><td>L14</td><td><strong>When you delete gate work, keep its assertions.</strong> A test file can be dead as a gate step and still be the only home of a zero-hit guard. Before deleting one, grep it for the assertions it carries and re-home them in a fast file, or the guard is gone with the seconds.</td><td>0.266.9 (5e0e166c) deleted <code>_dev/tests/shipped-shell-thinness.sh</code> as "no gate path executes"; the 2026-09-03 maintainability audit found the "every shipped .sh reaches do-work-cli" assertion now has no home. REQ-551 re-homes it in <code>_dev/tests/audit-lockins.sh</code>.</td></tr>
       </table>
     </div>
   </div>
@@ -304,6 +305,16 @@
         <li>Build REQ-542 so the runner starts itself.</li>
         <li>Then <code>do-work run-with-recovery</code> over the ready set, with the REQ-502 chain in its own lane. The first held REQ will show what <code>pending-heavy-testing</code> looks like on the board; check that clarify's one prompt behaves as 0.271.0 says.</li>
       </ol>
+    </div>
+    <div class="card measure" style="flex: 1 1 100%">
+      <h3>Added 22:45: what the maintainability audit found about speed</h3>
+      <p>The 2026-09-03 maintainability audit (<code>do-work/audits/audit-2026-09-03.md</code>, audited at dc8a64e3) was captured as UR-105, REQ-549 to REQ-558, batch <code>maintainability-audit-2026-09-03</code>, plus an addendum to REQ-509. None of it changes the gate's wall time; two items touch speed and one touches the gate's guards.</p>
+      <ul class="plan" style="margin-bottom:0">
+        <li><strong>REQ-552</strong> (replace two coreutils exec sites): <code>audit-archive-timestamps</code> walks the archive twice per run, once with <code>find(1)</code> spawned only to harvest an error string and once with the Go walk. Runtime, not gate time; 485 archived REQs today.</li>
+        <li><strong>REQ-551</strong> (delete the five caller-less toolbox shims): the five prescribed-shell fixtures that test those subcommands stay and are re-pointed at <code>do-work-cli.sh</code>, so the fast tier loses no coverage and gains no seconds; it drops four rows from the canonicalization ratchet. The same REQ re-homes the launcher-only guard that 0.266.9 deleted (lesson L14).</li>
+        <li><strong>Lock-ins</strong> for all ten REQs land in one new fast file, <code>_dev/tests/audit-lockins.sh</code>, invoked from the aggregate the way <code>defensive-surface-audit.sh</code> is, so the aggregate does not grow against its line ceiling (8,479 today, ceiling 8,417 from UR-100).</li>
+        <li>The two biggest FLAG files the audit measured are the two the gate batch already owns: <code>generate_test.go</code> at 10,093 lines (REQ-538) and <code>contract-regressions.sh</code> at 8,479 (REQ-539). The audit did not re-capture them.</li>
+      </ul>
     </div>
   </div>
 </section>
