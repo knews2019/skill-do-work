@@ -281,8 +281,10 @@ func TestNextRequestNumberIgnoresReservationLikeSuffixJunk(t *testing.T) {
 	if mkdirError := os.Mkdir(reservationDirectory, 0o755); mkdirError != nil {
 		t.Fatalf("mkdir reservation directory: %v", mkdirError)
 	}
-	if writeError := os.WriteFile(filepath.Join(reservationDirectory, "REQ-999-copy"), nil, 0o644); writeError != nil {
-		t.Fatalf("write malformed reservation: %v", writeError)
+	for _, markerName := range []string{"REQ-999-copy", " REQ-998", "REQ-997 "} {
+		if writeError := os.WriteFile(filepath.Join(reservationDirectory, markerName), nil, 0o644); writeError != nil {
+			t.Fatalf("write malformed reservation %q: %v", markerName, writeError)
+		}
 	}
 
 	allocatedNumber, allocateError := nextRequestNumber(repoRoot)

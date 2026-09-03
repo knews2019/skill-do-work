@@ -38,6 +38,8 @@ func TestDiscoverRepositoryCoversLiveArchiveReservationAndExcludedLayouts(t *tes
 	writeRepositoryFixture(t, repositoryRoot, "do-work/.req-reservations/REQ-000009", "")
 	writeRepositoryFixture(t, repositoryRoot, "do-work/.req-reservations/REQ-010", "")
 	writeRepositoryFixture(t, repositoryRoot, "do-work/.req-reservations/REQ-999-copy", "")
+	writeRepositoryFixture(t, repositoryRoot, "do-work/.req-reservations/ REQ-998", "")
+	writeRepositoryFixture(t, repositoryRoot, "do-work/.req-reservations/REQ-997 ", "")
 	writeRepositoryFixture(t, repositoryRoot, "do-work/deliverables/REQ-090-copy.md", requestFixture("REQ-090", "pending"))
 	writeRepositoryFixture(t, repositoryRoot, "do-work/runs/run/REQ-091-copy.md", requestFixture("REQ-091", "pending"))
 	writeRepositoryFixture(t, repositoryRoot, "do-work/user-requests/REQ-006-stray.md", requestFixture("REQ-006", "pending"))

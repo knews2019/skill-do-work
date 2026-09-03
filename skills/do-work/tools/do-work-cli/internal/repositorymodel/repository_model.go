@@ -596,7 +596,7 @@ func requestNumberFromText(requestText string) (int, bool) {
 }
 
 func requestNumberFromReservationName(name string) (int, bool) {
-	match := reservationNumberPattern.FindStringSubmatch(strings.TrimSpace(name))
+	match := reservationNumberPattern.FindStringSubmatch(name)
 	if match == nil {
 		return 0, false
 	}

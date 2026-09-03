@@ -99,12 +99,12 @@ func BuildCapturePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 		if reservationError != nil || canonicalError != nil || reservationPath != canonicalPath {
 			return refusedPlan(plan, "CAPTURE-RESERVATION-MISMATCH", "reservation path must use the canonical stored-REQ-id spelling: "+canonicalPath, []string{request.ID}, request.ReservationPath)
 		}
-		existingReservations, inspectionError := existingReservationPaths(repositoryRoot, request.ID)
+		existingReservations, inspectionError := existingReservationMarkers(repositoryRoot, request.ID)
 		if inspectionError != nil {
 			return refusedPlan(plan, "CAPTURE-INSPECTION-FAILED", inspectionError.Error(), []string{request.ID}, publicationReservationDirectory)
 		}
 		if len(existingReservations) > 0 {
-			return refusedPlan(plan, "CAPTURE-COLLISION", "reservation number already exists under a canonical or legacy spelling", []string{request.ID}, existingReservations...)
+			return refusedPlan(plan, "CAPTURE-COLLISION", "reservation number already exists under a canonical or legacy spelling", []string{request.ID}, reservationMarkerPaths(existingReservations)...)
 		}
 		plan.Mutations = append(plan.Mutations,
 			PlannedMutation{Kind: MutationCreate, Path: reservationPath, Contents: []byte(request.ID + "\n"), Mode: 0o644},

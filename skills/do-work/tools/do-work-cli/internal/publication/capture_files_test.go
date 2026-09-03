@@ -61,6 +61,20 @@ func TestCaptureRefusesFixedSixReservationManifestPath(t *testing.T) {
 	}
 }
 
+func TestCaptureIgnoresWhitespaceWrappedReservationLikeNames(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, "do-work/.req-reservations/ REQ-482 ", nil, 0o644)
+	writeFixture(t, root, "payload/ur.md", []byte("---\nid: UR-1\nrequests: [REQ-482]\n---\n"), 0o644)
+	writeFixture(t, root, "payload/req.md", []byte("---\nid: REQ-482\nstatus: pending\nuser_request: UR-1\n---\n"), 0o644)
+	plan := BuildCapturePlan(root, Manifest{Operation: OperationCaptureFiles, Capture: &CaptureManifest{
+		UserRequestID: "UR-1", UserRequest: PublishedFile{Path: "do-work/user-requests/UR-1/input.md", Payload: PayloadFile{SourcePath: "payload/ur.md"}},
+		Requests: []CaptureRequest{{ID: "REQ-482", UserRequestID: "UR-1", File: PublishedFile{Path: "do-work/queue/REQ-482-new.md", Payload: PayloadFile{SourcePath: "payload/req.md"}}, ReservationPath: "do-work/.req-reservations/REQ-482"}},
+	}})
+	if plan.Refusal != nil {
+		t.Fatalf("whitespace-wrapped filename gained reservation authority: %#v", plan.Refusal)
+	}
+}
+
 func TestBuildCapturePlanBootstrapsAbsentDoWorkAndPinsRawInput(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeFixture(t, repositoryRoot, "payload/raw.txt", []byte("hello\n````\n## outside"), 0o600)

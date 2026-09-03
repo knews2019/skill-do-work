@@ -170,7 +170,7 @@ func requestReservationFileName(requestNumber int) string {
 // general request parser intentionally accepts filename prefixes and would turn
 // reservation-like suffix junk into allocation authority.
 func requestNumberFromReservationName(name string) (int, bool) {
-	match := requestReservationNumberPattern.FindStringSubmatch(strings.TrimSpace(name))
+	match := requestReservationNumberPattern.FindStringSubmatch(name)
 	if match == nil {
 		return 0, false
 	}
