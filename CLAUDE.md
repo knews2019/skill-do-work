@@ -48,13 +48,9 @@ READ the matching prime before changing that area — they hold the detail this 
 - `_dev/primes/prime-shell-commands.md` — writing or reviewing shell anywhere it ships: blocks prescribed inside actions, hooks, and tools. The hard-won trap list, plus Closed Enumerations Go Stale.
 - `_dev/primes/prime-kanban-board.md` — touching the Kanban board tool: versioning, parser lock-step, Go-toolchain fallback, build outputs.
 
-## Kanban Board Write Surfaces
-
-The Kanban board tool has exactly three write surfaces, and none touches pipeline state: (1) the board's Testing view writes only the testing placeholders plus `do-work/testers.md`; (2) `queue-kanban next-version` rewrites the single `**Current version**: X.Y.Z` line in one version file (`actions/version.md` by default, `--version-file` to point elsewhere); (3) `queue-kanban next-req` atomically creates one durable number marker under `do-work/.req-reservations/` — queue coordination metadata, not a REQ or pipeline-field edit; stale markers are reaped mechanically by core's `skills/do-work/scripts/cleanup-req-reservations.sh` (SessionStart hook), never by an agent. Everything else the tool does is read-only; the rule is the count, not any list of subcommands. Nothing in the tool writes `status`, any other pipeline field, or **`CHANGELOG.md`** — the changelog stays an owner-only, human-authored write. Adding a fourth write surface means amending this sentence in the same commit; that is the co-location rule applied to itself. Everything else about the board lives in `_dev/primes/prime-kanban-board.md`.
-
 ## Commit Completion
 
-A job is not done while its code exists only in the working tree. Commit each coherent, verified increment before hand-back; “commit often” means smaller complete slices, not unverified checkpoints. In a shared dirty tree, stage explicit paths so unrelated work stays untouched. For a completed REQ, commit the implementation with a blank `commit:` field, then record that implementation hash in the REQ and make the bookkeeping commit separately.
+A job is not done while its code exists only in the working tree. Commit each coherent, verified increment before hand-back; “commit often” means smaller complete slices.
 
 ## Before Every Commit
 
