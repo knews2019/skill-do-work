@@ -136,7 +136,7 @@ func TestRecoverFinalizationAcceptsExactTrackedFollowupFold(t *testing.T) {
 	runFinalizationGit(t, repositoryRoot, "add", ".")
 	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed")
 	writeFinalizationFile(t, repositoryRoot, "owned.txt", "after\n")
-	writeFinalizationFile(t, repositoryRoot, followupPath, followupBefore+"\n## Review Fold — REQ-752\n\nExact originating finding.\n")
+	writeFinalizationFile(t, repositoryRoot, followupPath, followupBefore+"\n## Review Fold — REQ-752\n\nExact originating finding.\n\n<!-- do-work:finalization-followup-fold-end kind=review request=REQ-752 -->\n")
 
 	result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
 	if result.Outcome != resultmodel.OutcomeSuccess || result.Finalization == nil || !containsFinalizationPath(result.Finalization.CommitPaths, followupPath) {
@@ -150,8 +150,8 @@ func TestFollowupPathProvesTheEntireSingleNamedFold(t *testing.T) {
 		append string
 		want   bool
 	}{
-		{name: "review fold", append: "\n## Review Fold — REQ-754\n\nExact originating finding.\n", want: true},
-		{name: "recovery fold", append: "\n## Recovery Fold — REQ-754\n\nExact originating recovery.\n", want: true},
+		{name: "review fold", append: "\n## Review Fold — REQ-754\n\nExact originating finding.\n\n<!-- do-work:finalization-followup-fold-end kind=review request=REQ-754 -->\n", want: true},
+		{name: "recovery fold", append: "\n## Recovery Fold — REQ-754\n\nExact originating recovery.\n\n<!-- do-work:finalization-followup-fold-end kind=recovery request=REQ-754 -->\n", want: true},
 		{name: "foreign bytes before", append: "\nforeign preface\n\n## Review Fold — REQ-754\n\nExact originating finding.\n"},
 		{name: "foreign section after", append: "\n## Review Fold — REQ-754\n\nExact originating finding.\n\n## Foreign Notes\n\nUnowned tail.\n"},
 		{name: "second allowed section after", append: "\n## Review Fold — REQ-754\n\nExact originating finding.\n\n## Recovery Fold — REQ-754\n\nUnowned second fold.\n"},
@@ -189,7 +189,8 @@ func TestRecoverFinalizationRequiresWorkspaceMemberLockMirrors(t *testing.T) {
 			lockOld: "{\"name\":\"consumer\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"consumer\"},\"packages/widget\":{\"name\":\"widget\",\"version\":\"1.0.0\"}}}\n",
 			lockNew: "{\"name\":\"consumer\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"consumer\"},\"packages/widget\":{\"name\":\"widget\",\"version\":\"1.0.1\"}}}\n",
 			extraFiles: map[string]string{
-				"package.json":          "{\"name\":\"root\",\"private\":true,\"workspaces\":[\"consumer\"]}\n",
+				"package.json":          "{\"name\":\"root\",\"version\":\"1.0.0\",\"private\":true,\"workspaces\":[\"consumer\"]}\n",
+				"package-lock.json":     "{\"name\":\"root\",\"version\":\"1.0.0\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"root\",\"version\":\"1.0.0\"}}}\n",
 				"consumer/package.json": "{\"name\":\"consumer\",\"private\":true,\"workspaces\":[\"packages/*\"]}\n",
 			},
 		},
