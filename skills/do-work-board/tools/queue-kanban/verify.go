@@ -881,18 +881,55 @@ func requestIdFromWorktreeName(leftoverName string) string {
 	return match[1]
 }
 
-// isRequestStillInFlight reports whether the REQ sits in do-work/working/, where
-// the pipeline keeps a request from claim until it reaches its final path.
+// requestPipelineState is what the board can honestly say about the REQ a
+// worktree name carries. Three answers rather than two, because a boolean folds
+// "the board has never seen this id" into "this REQ has moved on" and only the
+// second of those is something verify read (REQ-458).
 //
-// It reads the board's already-parsed request index rather than walking the tree
-// a second time — the same reuse appendStrandedFinishedFindings makes of
-// TreeSection, and one reader means one answer. This is a question about where a
-// file is, not about whether a builder process is running: REQ-073 forbids the
-// latter, and nothing here approaches it.
-func isRequestStillInFlight(board *Board, requestId string) bool {
+// Absence has causes verify cannot tell apart — a REQ file never created,
+// deleted, renamed, or parked somewhere the walk reports as a stray (see
+// appendStrayRequestFileFindings) — and none of them is evidence that the run
+// which created the worktree finished.
+type requestPipelineState int
+
+const (
+	// The REQ sits in do-work/working/, where the pipeline keeps a request from
+	// its claim until it reaches its final path.
+	requestPipelineStateInFlight requestPipelineState = iota
+	// The REQ is on the board and has left do-work/working/ — the only state in
+	// which "the run that created this worktree has finished" is a read rather
+	// than an assumption.
+	requestPipelineStateSettled
+	// The board's request index carries no REQ with this id at all.
+	requestPipelineStateAbsentFromBoard
+)
+
+// classifyRequestPipelineState reads the board's already-parsed request index
+// rather than walking the tree a second time — the same reuse
+// appendStrandedFinishedFindings makes of TreeSection, and one reader means one
+// answer. This is a question about where a file is, not about whether a builder
+// process is running: REQ-073 forbids the latter, and nothing here approaches it.
+func classifyRequestPipelineState(board *Board, requestId string) requestPipelineState {
 	ticket, exists := board.RequestsById[requestId]
-	return exists && ticket.TreeSection == "working"
+	switch {
+	case !exists:
+		return requestPipelineStateAbsentFromBoard
+	case ticket.TreeSection == "working":
+		return requestPipelineStateInFlight
+	default:
+		return requestPipelineStateSettled
+	}
 }
+
+// noOptionalLocksFlag keeps `git status` from refreshing the index it read.
+// Without it, a status run rewrites .git/worktrees/<name>/index whenever a stat
+// looks stale, so verify would leave a changed file behind on every run — which
+// contradicts runVerifyProbes' contract that it writes nothing anywhere, and the
+// board prime's "`frontmatter` and `verify` write nothing at all".
+//
+// It is a top-level git option, so it must come BEFORE -C and before the
+// subcommand; git rejects it after the subcommand name.
+const noOptionalLocksFlag = "--no-optional-locks"
 
 // worktreeHasUncommittedWork reports whether a builder's worktree holds any
 // uncommitted change at all — modified tracked files, staged edits, or untracked
@@ -907,7 +944,7 @@ func isRequestStillInFlight(board *Board, requestId string) bool {
 // as clean — VerifyReport's contract is that silence reads as "checked and clean,"
 // which is the one thing an unanswered probe must never say.
 func worktreeHasUncommittedWork(worktreePath string) (bool, error) {
-	command := exec.Command("git", "-C", worktreePath, "status", "--porcelain", "--untracked-files=all")
+	command := exec.Command("git", noOptionalLocksFlag, "-C", worktreePath, "status", "--porcelain", "--untracked-files=all")
 	output, runError := command.Output()
 	if runError != nil {
 		return false, fmt.Errorf("`git status` in %s failed, so whether it holds uncommitted work is unknown", worktreePath)
@@ -926,15 +963,23 @@ func worktreeHasUncommittedWork(worktreePath string) (bool, error) {
 // whether or not anyone still holds it, and a REQ in working/ is unfinished
 // whether or not its builder still runs.
 //
+// requestId is the REQ id the caller already read out of leftoverName, passed in
+// rather than re-derived so one name yields one id.
+//
 // The returned error is non-nil exactly when a fact could not be established; the
-// disposition is then worktreeLeftoverStateUnknown, never a silent "clean".
+// disposition is then worktreeLeftoverStateUnknown, never a silent "clean". A REQ
+// id the board does not carry is one of those unestablished facts, not a quiet
+// "finished": absence proves nothing about a run.
 //
 // Precedence among the merged sub-states is deliberate. An in-flight run is
 // reported first because it is the fact that decides what to do — a builder's
 // worktree being dirty during its own run is expected rather than notable, while
 // "this belongs to a run that has not finished" is the reason to leave it alone
-// either way.
-func classifyWorktreeLeftover(repoRoot string, board *Board, leftoverName string, worktreePath string, hasWorktree bool) (worktreeLeftoverDisposition, error) {
+// either way. Cleanliness is probed last, and only once the board has placed the
+// REQ outside working/: a worktree whose finishedness verify could not establish
+// gets inspected by hand whether or not it is also dirty, so the earlier question
+// is the one that decides.
+func classifyWorktreeLeftover(repoRoot string, board *Board, leftoverName string, requestId string, worktreePath string, hasWorktree bool) (worktreeLeftoverDisposition, error) {
 	switch classifyWorktreeMergeState(repoRoot, leftoverName) {
 	case worktreeMergeStateUnmerged:
 		return worktreeLeftoverUnmergedBranch, nil
@@ -942,13 +987,16 @@ func classifyWorktreeLeftover(repoRoot string, board *Board, leftoverName string
 		return worktreeLeftoverMergeStateUndetermined, nil
 	}
 
-	requestId := requestIdFromWorktreeName(leftoverName)
 	if requestId == "" {
 		return worktreeLeftoverStateUnknown, fmt.Errorf(
 			"%s carries no REQ-NNN id, so whether the run that created it has finished cannot be read from do-work/working/", leftoverName)
 	}
-	if isRequestStillInFlight(board, requestId) {
+	switch classifyRequestPipelineState(board, requestId) {
+	case requestPipelineStateInFlight:
 		return worktreeLeftoverRunInFlight, nil
+	case requestPipelineStateAbsentFromBoard:
+		return worktreeLeftoverStateUnknown, fmt.Errorf(
+			"%s names %s, which the board carries no REQ file for in do-work/queue/, working/ or archive/, so whether the run that created it has finished cannot be read from do-work/working/", leftoverName, requestId)
 	}
 
 	// A branch whose worktree is already gone has no working tree to be dirty:
@@ -1002,7 +1050,7 @@ func routeWorktreeLeftover(disposition worktreeLeftoverDisposition, requestId st
 			"this worktree is present, not leftover: " + requestId + " is still in do-work/working/, so the run that owns it has not reached review, remediation, or its final path. Leave it in place — worktree cleanup happens after the REQ is archived, not before"
 	case worktreeLeftoverStateUnknown:
 		return verifyCategoryWorktreePresentStateUnknown, false,
-			"this worktree is present and verify could not establish that it is both clean and finished (the skipped probe beside this finding names the read that failed) — inspect it by hand; an unestablished state is never advertised as mechanically removable"
+			"this worktree is present and verify could not establish that it is both clean and finished — the read that failed is named in this report's own skipped-probes list, under the `probe(s) could not run` footer on the board. Inspect it by hand; an unestablished state is never advertised as mechanically removable"
 	case worktreeLeftoverUnmergedBranch:
 		return verifyCategoryUnmergedWorktreeLeftover, false,
 			"this is either a builder still in flight or work that outlived a dead run — verify cannot tell those apart. Leave it alone during a run; otherwise cleanup Pass 5 asks before discarding it, because the branch may hold the only copy"
@@ -1018,9 +1066,9 @@ func routeWorktreeLeftover(disposition worktreeLeftoverDisposition, requestId st
 // stays home" and "sole integrator").
 //
 // Each name is classified rather than reported as one kind of thing, so the report
-// routes only the mechanically-resolvable ones to cleanup. The board is read for
-// one fact — whether a leftover's REQ still sits in do-work/working/ — and it is
-// the board this run already built, never a second walk of the tree.
+// routes only the mechanically-resolvable ones to cleanup. The board answers where
+// a leftover's REQ sits — in do-work/working/, past it, or nowhere the index knows
+// — and it is the board this run already built, never a second walk of the tree.
 func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board) {
 	if !gitBinaryAvailable() {
 		report.SkippedProbes = append(report.SkippedProbes, "worktree probes: git is not on PATH")
@@ -1066,12 +1114,13 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board)
 		if hasWorktree {
 			locationDetail = worktreePath
 		}
-		disposition, probeError := classifyWorktreeLeftover(repoRoot, board, leftoverName, worktreePath, hasWorktree)
+		requestId := requestIdFromWorktreeName(leftoverName)
+		disposition, probeError := classifyWorktreeLeftover(repoRoot, board, leftoverName, requestId, worktreePath, hasWorktree)
 		if probeError != nil {
 			report.SkippedProbes = append(report.SkippedProbes,
 				fmt.Sprintf("worktree removability probe for %s: %v", leftoverName, probeError))
 		}
-		category, fixable, remedy := routeWorktreeLeftover(disposition, requestIdFromWorktreeName(leftoverName))
+		category, fixable, remedy := routeWorktreeLeftover(disposition, requestId)
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: category,
 			Detail:   fmt.Sprintf("%s%s exists — %s", worktreeAgentNamePrefix, strings.TrimPrefix(leftoverName, worktreeAgentNamePrefix), locationDetail),
@@ -1221,7 +1270,7 @@ func listWorktreeAgentBranches(repoRoot string) []string {
 // stays home" rule being broken; a stale committed snapshot (which a worktree
 // legitimately carries where the consumer commits do-work/) is not.
 func worktreeDirtyQueueState(worktreePath string) []string {
-	command := exec.Command("git", "-C", worktreePath, "status", "--porcelain", "--untracked-files=all", "--", "do-work/")
+	command := exec.Command("git", noOptionalLocksFlag, "-C", worktreePath, "status", "--porcelain", "--untracked-files=all", "--", "do-work/")
 	output, runError := command.Output()
 	if runError != nil {
 		return nil
