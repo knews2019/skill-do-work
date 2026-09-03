@@ -1,7 +1,7 @@
 ---
 id: REQ-525
 title: 'Block the install confirmation before signalling it'
-status: pending
+status: claimed
 created_at: 2026-09-03T00:35:00Z
 user_request: UR-085
 domain: testing
@@ -13,6 +13,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 related: [REQ-457, REQ-524]
+claimed_at: 2026-09-03T11:44:30Z
 ---
 
 # Block the Install Confirmation Before Signalling It
