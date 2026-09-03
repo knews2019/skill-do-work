@@ -1,7 +1,7 @@
 ---
 id: REQ-468
 title: 'Per-REQ branch/worktree isolation for all implementation, serial included'
-status: pending
+status: claimed
 created_at: 2026-09-01T04:29:16Z
 user_request: UR-087
 domain: general
@@ -15,6 +15,7 @@ effort_estimate: effort-substantive
 related: [REQ-469, REQ-470, REQ-471, REQ-472]
 batch: non-blocking-orchestration
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, skills/do-work/crew-members/background-agents.md, _dev/tests/contract-regressions.sh]
+claimed_at: 2026-09-03T16:19:49Z
 ---
 
 # Per-REQ Branch/Worktree Isolation for All Implementation, Serial Included
