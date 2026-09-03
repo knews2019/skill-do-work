@@ -1,7 +1,7 @@
 ---
 id: REQ-461
 title: '[impact-user-visible] Require affirmative project-owned release targets'
-status: claimed
+status: completed
 created_at: 2026-09-01T00:12:38Z
 user_request: UR-081
 domain: general
@@ -31,6 +31,9 @@ estimate:
     - 1 subsystem involved
     - 5 acceptance criteria
     - cross-route regression gates
+completed_at: 2026-09-03T11:45:00Z
+commit: 5e0b4e9
+release_at: 2026-09-03T11:45:00Z
 ---
 
 # Require Affirmative Project-Owned Release Targets

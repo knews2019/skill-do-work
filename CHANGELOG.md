@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.268.0 — Release Targets Must Prove They Are Yours (2026-09-03)
+
+Releasing used to decide whether a target belonged to your project by checking the directory's name against a list — `vendor`, `node_modules`, `.claude/skills`, `generated`. Anything spelled differently got through, so a version file inside `third_party/`, `dist/`, or any cache directory was treated as yours to bump.
+
+- A target now has to be proven yours: tracked by your repository, and with no installed package's `SKILL.md` standing above it. No directory name is checked at all, so an unlisted spelling is no longer a way in.
+- Bootstrapping a changelog is attested by the directory it actually lands in, not by an ancestor that happens to exist. Creating one in a directory your repository has never tracked now refuses.
+- Each refusal names the target and what is missing, and tells you the matching fix — commit the file, drop the ignore rule, or that the subtree belongs to an installed package.
+- Maintainer releases are unaffected and never consult any of this.
+
 ## 0.267.0 — An Answer Can No Longer Cancel Its Own Request (2026-09-03)
 
 When you discard every open question on a request, `do-work clarify` cancels and archives it. Deciding that meant searching each resolved line for a marker — and your own answer text could supply that marker. Answering one question with something like `keep it → Discarded: not really` and discarding another was enough to cancel a request whose question you had actually answered.
