@@ -1,7 +1,7 @@
 ---
 id: REQ-527
 title: 'Teach cleanup Pass 5 that merged is not finished'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-03T02:00:00Z
 user_request: UR-086
@@ -19,6 +19,7 @@ addendum_to: REQ-458
 write_set:
   - skills/do-work/actions/cleanup.md
   - skills/do-work/docs/cleanup-guide.md
+claimed_at: 2026-09-03T23:34:31Z
 ---
 
 # Teach Cleanup Pass 5 That Merged Is Not Finished
