@@ -14,6 +14,6 @@ Wave 2 selector order: REQ-490, REQ-496, REQ-512.
 
 | Lane | REQ / description | Worktree | Handback | Status |
 |---|---|---|---|---|
-| lane-1 | REQ-490 — Compute wave depth from satisfied duplicate records | `worktree-agent-REQ-490-compute-wave-depth-from-satisfied-duplicate-records` | `REQ-490-handback.md` | scoped; awaiting dispatch |
-| lane-2 | REQ-496 — Add shared executable already-green repair validator | `worktree-agent-REQ-496-add-shared-executable-already-green-repair-validator` | `REQ-496-handback.md` | scoped; awaiting dispatch |
-| lane-3 | REQ-512 — Complete legacy finalization semantic ownership | `worktree-agent-REQ-512-complete-legacy-finalization-semantic-ownership` | `REQ-512-handback.md` | scoped; awaiting dispatch |
+| lane-1 | REQ-490 — Compute wave depth from satisfied duplicate records | `worktree-agent-REQ-490-compute-wave-depth-from-satisfied-duplicate-records` | `REQ-490-handback.md` | dispatched; building |
+| lane-2 | REQ-496 — Add shared executable already-green repair validator | `worktree-agent-REQ-496-add-shared-executable-already-green-repair-validator` | `REQ-496-handback.md` | dispatched; building |
+| lane-3 | REQ-512 — Complete legacy finalization semantic ownership | `worktree-agent-REQ-512-complete-legacy-finalization-semantic-ownership` | `REQ-512-handback.md` | dispatched; building |

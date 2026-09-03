@@ -20,6 +20,7 @@ claimed_at: 2026-09-03T22:25:28Z
 route: C
 planning_at: 2026-09-03T22:37:36Z
 exploration_at: 2026-09-03T22:37:36Z
+dispatch_at: 2026-09-03T22:39:03Z
 write_set:
   - skills/do-work/actions/work.md
   - skills/do-work/actions/review-work.md

@@ -19,6 +19,7 @@ claimed_at: 2026-09-03T22:25:28Z
 route: C
 planning_at: 2026-09-03T22:37:36Z
 exploration_at: 2026-09-03T22:37:36Z
+dispatch_at: 2026-09-03T22:39:03Z
 write_set:
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_req499_test.go
