@@ -40,9 +40,9 @@ estimate:
 Replace convention-based installed/generated path exclusions with condition-complete evidence that every release target is a project-owned source or declared maintainer mirror.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read both `prime_files`, `prime-do-work-cli.md` and `lessons-do-work-cli.md` in full (including this family's REQ-460 entry and REQ-528's necessary-is-not-sufficient entry), and the crew members. Approach: prove ownership from two declarations the repository already owns — Git's index and the `SKILL.md` package marker — with no directory name in the code.
+- [x] **[APPLY]:** Two files, both inside the declared Scope.
+- [x] **[UNIFY]:** Orchestrator independently re-ran `go build ./...`, `go vet ./...` (clean), `gofmt -l .` (silent) and `go test -count=1 ./internal/publication/` (`ok … 20.1s`), and read the whole new ownership block. Grepped the file for every directory name the old predicate carried: the only surviving mentions are two words inside a doc comment explaining what each half catches. No name is tested anywhere in the code.
 
 ## Finding Provenance
 
@@ -124,9 +124,33 @@ The constraint is the sharp edge here: *do not replace one directory-name denyli
 **Files I will NOT touch:** the semantic-version comparison and changelog-content judgment (the REQ preserves caller-selected judgment), and the changelog byte-identity mirror validation.
 
 **Acceptance criteria (restated from REQ):**
-- [ ] Every consumer release target requires affirmative, verifiable project-owned classification rather than the absence of known-bad directory names
-- [ ] Declared maintainer mirrors are permitted only through the existing explicit mirror contract, with changelog byte-identity validation retained
-- [ ] Installed skills, dependencies, vendored packages, caches, distribution outputs and generated trees refuse regardless of directory spelling
-- [ ] Fixtures cover `third_party/do-work`, `dist/skills/do-work`, and an arbitrarily named cache tree
-- [ ] Refusals name the target and the ownership evidence that is missing or inconsistent
-- [ ] No directory-name denylist, larger or otherwise, replaces the old one
+- [x] Every consumer release target requires affirmative, verifiable project-owned classification rather than the absence of known-bad directory names
+- [x] Declared maintainer mirrors are permitted only through the existing explicit mirror contract, with changelog byte-identity validation retained
+- [x] Installed skills, dependencies, vendored packages, caches, distribution outputs and generated trees refuse regardless of directory spelling
+- [x] Fixtures cover `third_party/do-work`, `dist/skills/do-work`, and an arbitrarily named cache tree
+- [x] Refusals name the target and the ownership evidence that is missing or inconsistent
+- [x] No directory-name denylist, larger or otherwise, replaces the old one
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/publication/release.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/publication/release_test.go` (modified)
+
+**What was done:** `installedReleasePath` is deleted. `releaseTargetOwnershipGap` replaces it and returns the missing or contradicted evidence rather than a boolean, so the refusal can name it. Ownership rests on two declarations the repository itself owns, both required: Git's index (a target that must already exist has to be tracked; one the release creates has to be un-ignored and sit in the nearest existing ancestor that holds tracked sources) and the absence of a `SKILL.md` between the repository root and the target's parent — the same discriminator `repositorymodel.FindRepositoryRoot` and the board's repo-root walk use to tell an install from a directory merely named `do-work`. The refusal code becomes `RELEASE-TARGET-OWNERSHIP-UNVERIFIED`. `maintainer_release: true` remains the only exemption and is checked before any ownership work runs. No directory name is tested anywhere in the new code.
+
+## Decisions
+
+- **D-01** — Proof mechanism: Git's index **plus** the `SKILL.md` package marker, both required. **ESCALATE.** **Value:** both are declarations the repository owns, so the planner verifies rather than trusting the manifest, and no directory name appears in the code — which is the REQ's constraint, not merely its requirement. **Risk:** the release planner now shells out to git and fails closed when git cannot answer, so a non-git root that plans today refuses tomorrow. Reversible in one function.
+- **D-02** — Reused the package-marker *idea*, not code. **DECIDE & STATE.** The CLI prime's **Package direction** rule forbids importing `queue-kanban`, and `repositorymodel.FindRepositoryRoot`'s marker test is inlined rather than exported, so nothing concrete crosses the boundary. The test is five lines and the doc comment cites both precedents. Inside the package the existing `gitPathTracked` helper (`defer_gate.go:521`) was reused rather than duplicated.
+- **D-03** — Refusal code renamed `RELEASE-INSTALLED-METADATA-REFUSED` → `RELEASE-TARGET-OWNERSHIP-UNVERIFIED`. **DECIDE & STATE.** The old name stopped describing the condition once it began firing for an untracked cache tree. Grepped repo-wide first: the string existed only in `release.go`, `release_test.go` and a stale compiled binary — no action file, ADR or doc keys on it. **Value:** the code names the real condition, so the next hardening cannot read it narrowly, which is exactly REQ-460's failure mode. **Risk:** a consumer runbook grepping the old code; trivially reversible.
+- **D-04** — Residual gaps, named rather than assumed away (REQ-528's lesson applied). **ESCALATE.**
+  - **R1** A committed vendored copy with *no* `SKILL.md` is tracked and unmarked, so it is accepted. For the class this guard exists to protect — installed do-work suite metadata — the gap is closed, because `suitemanifest.ValidateSuite` requires a non-empty `SKILL.md` for every module. For a generic third-party library a consumer committed, it is open. No name-free way to close it was found: every "package manifest" test (`package.json`, `Cargo.toml`, `go.mod`) is a denylist wearing a different hat, which the REQ's constraint forbids.
+  - **R2** The mirror image: a consumer who **authors** a skill in their own repository and wants to version `skills/my-skill/VERSION` in place is now refused by their own marker, with `maintainer_release` as the only door. The old predicate accepted it, because it denylisted only the literal `skills/do-work/`. The filesystem cannot distinguish a skill you wrote from one you installed — both are tracked and both carry the marker. **This is a behavior regression beyond the REQ's ask** and is routed to its own REQ rather than absorbed here.
+  - **R3** A repository with nothing tracked at all (fresh `git init`, no commit) cannot attest a bootstrap changelog location, so its first release refuses. Fail-closed with an actionable message; no carve-out added, because a carve-out here would be speculative defense.
+
+## Discovered Tasks
+
+- **The same defect one package over, and narrower:** `internal/finalization/finalization_discovery.go:1045` `installedReleasePathForDiscovery` carries a prefix denylist (`.claude/skills/`, `.codex/skills/`, `node_modules/`, `vendor/`, `vendored/`, `generated/`, `.generated/`), called at `:725` while enumerating configured release members. It admits the same three paths this REQ fixed, and being prefix-anchored rather than per-segment it also loses `packages/vendor/do-work/VERSION`, which the old release predicate caught. Half the fix is already present — the enumeration only walks tracked paths — so the missing half is exactly the package marker. Its `suite/modules.tsv`-at-HEAD test for "is this the maintainer repo" is itself an affirmative repository-owned declaration, which is supporting precedent for D-01.
+- `finalization_discovery.go:624` `releaseMetadataPath` is a closed list of metadata filenames. It is a *positive* enumeration, so a missing name means "not discovered" rather than "wrongly permitted" — stale rather than unsafe. Worth re-keying on a condition, or marking illustrative-and-extensible.
+- Checked and cleared as not this shape: `repositorymodel/repository_model.go:186` (queue structure), and `cleanup/cleanup_plan.go:344` plus `repositorymodel/repository_model.go:128`, which both already use the `SKILL.md` marker affirmatively.

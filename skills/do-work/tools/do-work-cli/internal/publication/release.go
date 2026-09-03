@@ -2,7 +2,9 @@ package publication
 
 import (
 	"bytes"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -31,8 +33,10 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 		if pathError != nil {
 			return refusedPlan(plan, "RELEASE-PATH-UNSAFE", pathError.Error(), nil, target.Path)
 		}
-		if !release.MaintainerRelease && installedReleasePath(path) {
-			return refusedPlan(plan, "RELEASE-INSTALLED-METADATA-REFUSED", "consumer releases cannot mutate installed or vendored suite metadata", nil, path)
+		if !release.MaintainerRelease {
+			if gap := releaseTargetOwnershipGap(repositoryRoot, path, false); gap != "" {
+				return refusedPlan(plan, "RELEASE-TARGET-OWNERSHIP-UNVERIFIED", ownershipRefusalReason(path, gap), nil, path)
+			}
 		}
 		if target.OldVersion != oldVersion || target.NewVersion != newVersion {
 			return refusedPlan(plan, "RELEASE-MIRROR-DISAGREEMENT", "all version mirrors must declare the same old and new versions", nil, path)
@@ -69,8 +73,10 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 		if pathError != nil {
 			return refusedPlan(plan, "RELEASE-PATH-UNSAFE", pathError.Error(), nil, changelog.Path)
 		}
-		if !release.MaintainerRelease && installedReleasePath(path) {
-			return refusedPlan(plan, "RELEASE-INSTALLED-METADATA-REFUSED", "consumer releases cannot mutate installed or vendored suite metadata", nil, path)
+		if !release.MaintainerRelease {
+			if gap := releaseTargetOwnershipGap(repositoryRoot, path, changelog.Create); gap != "" {
+				return refusedPlan(plan, "RELEASE-TARGET-OWNERSHIP-UNVERIFIED", ownershipRefusalReason(path, gap), nil, path)
+			}
 		}
 		newBytes, _, newError := readPayload(repositoryRoot, changelog.NewPayload)
 		if newError != nil {
@@ -167,23 +173,97 @@ func parseSemver(value string) ([3]int, bool) {
 	return result, true
 }
 
-func installedReleasePath(path string) bool {
-	lower := strings.ToLower(filepath.ToSlash(path))
-	parts := strings.Split(strings.Trim(lower, "/"), "/")
-	for index, part := range parts {
-		if part == "vendor" || part == "vendored" || part == "node_modules" {
-			return true
+func ownershipRefusalReason(path, gap string) string {
+	return fmt.Sprintf("consumer release target %s is not proven project-owned: %s; only maintainer_release may mutate a suite package's own metadata", path, gap)
+}
+
+// releaseTargetOwnershipGap proves a consumer release target is a project-owned
+// source instead of inferring that from the absence of known dependency
+// directory names. It returns the ownership evidence that is missing or
+// contradicted, or "" when ownership is established.
+//
+// Two declarations the repository itself owns supply the proof, and both are
+// required:
+//
+//   - Git's index is the repository's own statement of what its sources are, so
+//     a target that must already exist has to be tracked. A target the release
+//     creates cannot be in the index yet, so its attestation comes from the
+//     nearest ancestor directory that already exists — that directory must hold
+//     tracked sources — plus `.gitignore`, the repository's own statement of
+//     what is not source, not excluding the path.
+//   - No directory between the repository root and the target's parent may carry
+//     a `SKILL.md` package marker. That marker is how an installed suite package
+//     declares it owns its own subtree, and is the same discriminator
+//     `repositorymodel.FindRepositoryRoot` and queue-kanban's repo-root walk use
+//     to tell an install apart from a directory merely named `do-work`.
+//
+// Neither half is sufficient alone. A committed vendored package satisfies the
+// index claim and is exposed only by its marker; a distribution output or cache
+// tree carries no marker and is exposed only by the index refusing to claim it.
+// When Git cannot answer at all the target stays unproven and the release
+// refuses, which is the fail-closed direction.
+func releaseTargetOwnershipGap(repositoryRoot, path string, willCreate bool) string {
+	if marker := enclosingPackageMarker(repositoryRoot, path); marker != "" {
+		return fmt.Sprintf("%s declares an installed package that owns this subtree", marker)
+	}
+	if !willCreate {
+		if !gitPathTracked(repositoryRoot, path) {
+			return "the repository does not track it, so Git does not attest it as a project source"
 		}
-		if (part == ".codex" || part == ".claude") && index+1 < len(parts) && parts[index+1] == "skills" {
-			return true
+		return ""
+	}
+	if gitPathIgnored(repositoryRoot, path) {
+		return "the repository's own ignore rules exclude it from its sources"
+	}
+	ancestor := nearestExistingAncestorDirectory(repositoryRoot, path)
+	if !gitDirectoryHoldsTrackedSources(repositoryRoot, ancestor) {
+		return fmt.Sprintf("the repository tracks no source in %s, so the new target's location is unattested", ancestor)
+	}
+	return ""
+}
+
+// enclosingPackageMarker returns the repository-relative `SKILL.md` of the
+// outermost package that encloses path, or "" when no directory between the
+// repository root and the target's parent carries one. The repository root
+// itself is never examined: the marker means a nested unit owns its own
+// subtree, and a repository that is itself a package still owns its own files.
+func enclosingPackageMarker(repositoryRoot, path string) string {
+	segments := strings.Split(filepath.ToSlash(path), "/")
+	directory := ""
+	for _, segment := range segments[:len(segments)-1] {
+		if directory == "" {
+			directory = segment
+		} else {
+			directory += "/" + segment
 		}
-		if (part == "generated" || part == ".generated") && index+1 < len(parts) {
-			for _, descendant := range parts[index+1:] {
-				if descendant == "skills" || descendant == "do-work" {
-					return true
-				}
-			}
+		marker := directory + "/SKILL.md"
+		if info, statError := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(marker))); statError == nil && !info.IsDir() {
+			return marker
 		}
 	}
-	return strings.HasPrefix(lower, "skills/do-work/")
+	return ""
+}
+
+// nearestExistingAncestorDirectory returns the repository-relative directory
+// closest to path that already exists, or "." for the repository root.
+func nearestExistingAncestorDirectory(repositoryRoot, path string) string {
+	directory := filepath.ToSlash(filepath.Dir(filepath.FromSlash(path)))
+	for directory != "." && directory != "/" {
+		if info, statError := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(directory))); statError == nil && info.IsDir() {
+			return directory
+		}
+		directory = filepath.ToSlash(filepath.Dir(filepath.FromSlash(directory)))
+	}
+	return "."
+}
+
+func gitDirectoryHoldsTrackedSources(repositoryRoot, directory string) bool {
+	command := exec.Command("git", "-C", repositoryRoot, "ls-files", "--", directory)
+	output, commandError := command.Output()
+	return commandError == nil && len(bytes.TrimSpace(output)) > 0
+}
+
+func gitPathIgnored(repositoryRoot, path string) bool {
+	command := exec.Command("git", "-C", repositoryRoot, "check-ignore", "-q", "--", path)
+	return command.Run() == nil
 }
