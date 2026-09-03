@@ -48,9 +48,9 @@ estimate:
 Replace the finite prefix list used for answer-summary containment with a condition-complete classifier for lines that Markdown can interpret as document-owned delimiters or structure.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `prime-action-files.md` and its satellite, `prime-shell-commands.md` § Closed Enumerations Go Stale, `prime-kanban-board.md` (for the goldmark question), and CLAUDE.md. Approach: state the condition once — Markdown opens every block construct from one of three line-start ingredients — and test those three instead of enumerating constructs.
+- [x] **[APPLY]:** Two files, both inside the declared Scope. Nothing else touched.
+- [x] **[UNIFY]:** Orchestrator independently re-ran `go build ./...`, `go vet ./...` (clean) and `gofmt -l .` (silent), read the full `answer.go` diff, and confirmed `git status --porcelain` lists only the two Scope files. No debug artifacts; the added comments state the condition and the doubt-resolution direction rather than narrating steps.
 
 ## Finding Provenance
 
@@ -138,9 +138,41 @@ The safe direction is unambiguous here: a false positive costs a file-backed pay
 **Files I will NOT touch:** the C0/DEL and multiline containment checks (the REQ forbids weakening either), and every other file in `internal/publication`.
 
 **Acceptance criteria (restated from REQ):**
-- [ ] The containment boundary is defined by the semantic Markdown/document condition, not a hand-maintained prefix enumeration
-- [ ] A one-line answer summary that can be read as document structure or a delimiter requires a file-backed raw payload and canonical containment
-- [ ] Bytes stay lossless for safe plain summaries and for contained outside text
-- [ ] Adversarial cases are table-driven and span every supported structural class, including `***` and `___`
-- [ ] C0/DEL and multiline containment are not weakened
-- [ ] Examples in tests are fixtures, not the definition of the accepted set
+- [x] The containment boundary is defined by the semantic Markdown/document condition, not a hand-maintained prefix enumeration
+- [x] A one-line answer summary that can be read as document structure or a delimiter requires a file-backed raw payload and canonical containment
+- [x] Bytes stay lossless for safe plain summaries and for contained outside text
+- [x] Adversarial cases are table-driven and span every supported structural class, including `***` and `___`
+- [x] C0/DEL and multiline containment are not weakened
+- [x] Examples in tests are fixtures, not the definition of the accepted set
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/publication/answer.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/publication/answer_test.go` (modified)
+
+**What was done:** `summaryRequiresContainment` no longer tests membership in a ten-prefix list. Its doc comment states the condition once — Markdown builds every block construct at a line start from exactly three ingredients: block-significant leading whitespace, an ASCII punctuation mark, or a digit run forming an ordered-list marker — and the body tests those three. `isMarkdownBlockPunctuation` is four range comparisons covering the whole ASCII punctuation block, which is CommonMark's own definition of ASCII punctuation, so a construct a dialect adds from any of those characters is caught with no edit. `orderedListDelimiterPattern` became `orderedListMarkerPattern` and lost its trailing-space requirement, so bare `1.`, `1)` and `1234.` are caught. The leading-whitespace trim was removed from the front of the predicate: it used to discard the very bytes that make an indented code block, which is how that class was lost entirely.
+
+## Decisions
+
+- **D-01** — Doubt resolves toward containment at the **character** level, not the construct level: any leading ASCII punctuation requires containment, with no carve-out for marks no dialect currently uses. **ESCALATE.** (The builder recorded this as DECIDE & STATE; reclassified here, because it widens behavior for summaries a user would not think of as structural and is genuinely contestable.) **Value:** the predicate has no inert-punctuation list to revisit, so a dialect claiming `:`, `$`, `+` or `|` is caught the day it ships rather than the day someone notices — `+++`, `:::note` and `$$` are all caught today for exactly this reason, and the REQ asks for future syntax representatives by name. **Risk:** a plain summary like `(none)` or `"blue"` now takes a file-backed payload it does not need. No bytes are lost — the text still lands verbatim inside canonical containment and the checkbox reads `See contained answer note` — but it is extra ceremony for an innocuous answer, and a user who expected their two-word reply inline will see it moved. Reversible by narrowing the ranges; irreversible in no sense.
+- **D-02** — Any leading space or tab requires containment, without measuring indent depth. **DECIDE & STATE.** Four spaces opens an indented code block and one to three do not, but a summary that begins with whitespace is degenerate either way, and the depth rule would put indentation arithmetic inside a predicate whose whole point is stating one condition. The old code was strictly worse: it trimmed the whitespace away before testing.
+- **D-03** — One irreducible enumeration remains: the digit case. **DECIDE & STATE.** An ordered-list marker is the only Markdown block opener that can begin with a character prose also begins with, so it cannot be decided from the first byte. It stays a regex, documented as the single exception. The punctuation set is data (four ranges), not ten code paths.
+- **D-04** — No Markdown parser. **DECIDE & STATE.** `do-work-cli`'s `go.mod` declares zero dependencies and `go.mod`/`go.sum` are outside this write set. Beyond that, goldmark would answer the narrower question: it parses `+++`, `:::note` and `$$` as ordinary paragraphs, so a parser-backed predicate would inline all three — the wrong direction under D-01.
+
+## Discovered Tasks
+
+- `internal/publication/capture_files.go:59-66` validates and contains raw input bytes but never asks the structural question about any one-line field it inlines. Whether capture inlines a user-supplied line anywhere was not audited.
+- `internal/suiteinstall` → `TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation/update-suite/INT` failed once under full-module load and passed on re-run and `-count=3`. Same flake already tracked as REQ-525; this is a second sighting, on the `update-suite/INT` subtest rather than `install-suite`.
+
+## Qualification
+
+**Passed** — 2 files verified, 6 requirements traced, P-A-U confirmed.
+
+Mechanical: `tools/checks/qualify.sh` → `OK: mechanical qualification passed`; `tools/checks/scope-drift.sh` → `OK: Implementation Summary matches the Scope declaration`.
+
+Independent (orchestrator-run, not the builder's report):
+- `go build ./... && go vet ./...` clean; `gofmt -l .` printed nothing; `go test -count=1 ./internal/publication/` → `ok … 18.6s`.
+- Read the full `answer.go` diff. The predicate is three tests behind a doc comment that states the condition and the doubt-resolution direction; `isMarkdownBlockPunctuation` is four range comparisons, so the punctuation set is data rather than ten branches. No stub, no placeholder, no debug artifact.
+- Requirement trace: the boundary is now the condition (block-significant leading whitespace, ASCII punctuation, or an ordered-list digit run) rather than a prefix list; structural summaries route to the file-backed payload through the unchanged `BuildAnswerPlan` seam at `answer.go:117`; bytes are lossless on both paths because neither the inline nor the contained writer changed; the tests are table-driven with each row named by the class it represents; and `validateOutsideBytes` (C0/DEL) and `containedOutsideBytes` (multiline) in `publication_manifest.go` are untouched, which I confirmed against the diff rather than the report.
+- The removed `strings.TrimLeft(summary, " \t")` is the fix for the indented-code class, not a regression: trimming ran *before* the test, so the bytes that constitute the structure were discarded before anything could see them.

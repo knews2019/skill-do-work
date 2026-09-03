@@ -17,19 +17,55 @@ import (
 )
 
 var openQuestionPattern = regexp.MustCompile(`(?m)^- \[ \] `)
-var orderedListDelimiterPattern = regexp.MustCompile(`^[0-9]+[.)][ \t]`)
 
+// orderedListMarkerPattern matches the one Markdown block opener that starts with a character
+// prose also starts with: a digit run followed by "." or ")". Every other block construct
+// opens with block-significant leading whitespace or with an ASCII punctuation mark, which
+// summaryRequiresContainment tests directly.
+var orderedListMarkerPattern = regexp.MustCompile(`^[0-9]+[.)]`)
+
+// summaryRequiresContainment reports whether a one-line answer summary must be carried as a
+// file-backed raw payload under canonical containment instead of being written inline into the
+// request document.
+//
+// The rule is the condition, not a list of examples: a summary may be inlined only when no
+// Markdown reader can take it for the document's own delimiters or structure. Markdown builds
+// every block construct — headings, setext underlines, thematic breaks, code fences, block
+// quotes, bullet and ordered list markers, HTML blocks, link reference and footnote
+// definitions, tables, frontmatter fences, and whatever a dialect adds next — out of exactly
+// three ingredients at a line start: block-significant leading whitespace, an ASCII
+// punctuation mark, or a digit run forming an ordered-list marker. Testing those three
+// ingredients catches future syntax built from them with no example list to maintain.
+//
+// Doubt resolves toward containment. Containing a summary that did not need it costs one
+// file-backed payload and loses no bytes; inlining one that did writes an unescaped delimiter
+// into the document carrying it.
 func summaryRequiresContainment(summary string) bool {
-	trimmed := strings.TrimLeft(summary, " \t")
-	if trimmed == "" {
+	if strings.TrimSpace(summary) == "" {
 		return false
 	}
-	for _, prefix := range []string{"#", ">", "`", "~", "- ", "* ", "+ ", "[", "<", "---"} {
-		if strings.HasPrefix(trimmed, prefix) {
-			return true
-		}
+	firstByte := summary[0]
+	if firstByte == ' ' || firstByte == '\t' {
+		return true
 	}
-	return orderedListDelimiterPattern.MatchString(trimmed)
+	if isMarkdownBlockPunctuation(firstByte) {
+		return true
+	}
+	return orderedListMarkerPattern.MatchString(summary)
+}
+
+// isMarkdownBlockPunctuation reports whether a leading byte is one of the ASCII punctuation
+// marks Markdown can build a block opener from. The ranges are the whole ASCII punctuation
+// block — CommonMark's own definition of ASCII punctuation — taken wholesale rather than
+// narrowed to the marks today's block syntax happens to use: the narrower set would be an
+// enumeration to revisit every time a dialect adds a construct, which is the defect this
+// predicate replaced. A leading letter, digit, or non-ASCII rune reaches no block construct
+// except the ordered-list marker its caller tests.
+func isMarkdownBlockPunctuation(value byte) bool {
+	return value >= '!' && value <= '/' ||
+		value >= ':' && value <= '@' ||
+		value >= '[' && value <= '`' ||
+		value >= '{' && value <= '~'
 }
 
 func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.Time) PublicationPlan {
