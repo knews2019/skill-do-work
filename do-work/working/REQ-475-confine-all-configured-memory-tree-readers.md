@@ -33,6 +33,14 @@ estimate:
     - full-suite verification
 claimed_at: 2026-09-03T21:43:31Z
 route: C
+planning_at: 2026-09-03T21:53:38Z
+exploration_at: 2026-09-03T21:53:38Z
+write_set:
+  - skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go
+  - skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands_test.go
+  - skills/do-work/tools/do-work-cli/internal/knowledgecommands/commands_test.go
+  - skills/do-work-knowledge/actions/memory.md
+  - skills/do-work-knowledge/actions/memory-reference.md
 ---
 
 # Confine All Configured Memory Tree Readers
@@ -82,3 +90,37 @@ See `do-work/runs/work-2026-08-31-165510/REQ-417-rereview.md`.
 **Reasoning:** This security-sensitive confinement change spans every configured Memory reader, shared rooted/no-follow primitives, enumeration and size limits, text/JSON redaction, and adversarial parity tests. Planning and exploration are required before declaring the exact reader set.
 
 **Planning:** Required
+
+## Plan
+
+1. Add adversarial RED coverage for linked and special working, log, ledger, sentinel, directory, and outside-root paths across broad/lexical recall, status, and Memory audit, including typed/text/JSON canary absence and byte preservation.
+2. Introduce one handler-scoped, repository-contained Memory reader with bounded directory enumeration and bounded, identity-checked rooted regular-file reads that return metadata and distinguish missing from refusal.
+3. Migrate recall, status, and Memory audit to that reader, split ledger parsing from acquisition, and preserve ordering, scoring, classifications, and BKB acquisition behavior.
+4. Document the finite Memory-store read limits and repository-root policy, inventory away remaining direct configured-tree pathname reads, then run focused, race, vet, contract, and full-module verification.
+
+**Plan validation:** Every requirement maps to the reader primitive, its three consumer families, adversarial output proof, or the documented bounds. No board, hook, git-transaction, generated artifact, or screenshot surface is included.
+
+*Generated from delegated exploration; full evidence: `do-work/runs/work-2026-09-03-214500/REQ-475-exploration.md`.*
+
+## Exploration
+
+The defect is one authority split: rooted/no-follow helpers protect mutation and lexical seams, while broad recall, status, and Memory audit still use direct `os.ReadFile`, `os.Stat`, or `filepath.Glob` paths. A single opened-root reader must own both enumeration and final-file acquisition; preflight `Lstat` calls alone would preserve pathname races. Missing objects remain ordinary, while links, special objects, oversize objects, identity changes, and outside-repository configured roots must become path-bearing refusals without partial evidence or ledger writes.
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go`
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands_test.go`
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/commands_test.go` only if the real-runtime text/JSON projection needs a separate assertion
+- `skills/do-work-knowledge/actions/memory.md`
+- `skills/do-work-knowledge/actions/memory-reference.md`
+
+**Acceptance criteria:** Every configured Memory-tree reader uses one bounded rooted observation; linked, special, oversize, changed, and outside-root objects are refused by configured path without target bytes in typed, text, or JSON output; ordinary recall/status/audit semantics and BKB behavior remain stable.
+
+## Pre-Flight
+
+**Git:** The wave baseline was clean at `c27d349a` after the three claims, estimates, run manifest, and briefs were committed.
+
+**Tests:** Direct canonical fast gate passed and was recorded at the shared wave baseline before any builder dispatch.
+
+**Dependencies:** REQ-417 is completed. Its referenced scratch re-review artifact is absent from the current tree and Git object inventory, so the durable archive summary and remediation diff are the recoverable source evidence.

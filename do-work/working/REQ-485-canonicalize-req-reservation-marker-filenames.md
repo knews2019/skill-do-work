@@ -28,6 +28,24 @@ estimate:
     - full-suite verification
 claimed_at: 2026-09-03T21:43:41Z
 route: C
+planning_at: 2026-09-03T21:53:38Z
+exploration_at: 2026-09-03T21:53:38Z
+write_set:
+  - skills/do-work-board/tools/queue-kanban/allocate.go
+  - skills/do-work-board/tools/queue-kanban/allocate_test.go
+  - skills/do-work-board/tools/queue-kanban/prime-do-kanban.md
+  - skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go
+  - skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model_test.go
+  - skills/do-work/tools/do-work-cli/internal/publication/capture_files.go
+  - skills/do-work/tools/do-work-cli/internal/publication/capture_files_test.go
+  - skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go
+  - skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go
+  - skills/do-work/tools/do-work-cli/internal/publication/answer_test.go
+  - skills/do-work/tools/do-work-cli/internal/publication/reservations.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/reservations.go
+  - skills/do-work/tools/do-work-cli/internal/corehelpers/reservations_test.go
+  - skills/do-work/tools/do-work-cli/internal/hookcommands/session_start_test.go
+  - skills/do-work/actions/capture.md
 ---
 
 # Canonicalize REQ Reservation Marker Filenames Across Allocation Flows
@@ -92,3 +110,35 @@ See `do-work/user-requests/UR-092/input.md` for complete verbatim input.
 **Reasoning:** The canonical spelling must be selected once and applied atomically across board allocation, capture validation, cleanup compatibility, docs, and collision tests while preserving both legacy read spellings. The cross-writer contract needs a plan and source inventory.
 
 **Planning:** Required
+
+## Plan
+
+1. Add literal cross-writer RED fixtures proving the board allocator's six-digit marker and capture's stored-ID marker can reserve the same number independently.
+2. Make every current writer derive the canonical stored-ID basename (`REQ-%03d`, minimum width), and require canonical capture/defer manifest paths while retaining exclusive creation as the ownership event.
+3. Add exact, width-agnostic numeric reservation readers so allocation maxima, publication collision/fold handling, and cleanup recognize both canonical and legacy aliases without accepting suffix junk.
+4. Prove canonical collision, legacy blocking/folding, coexistence cleanup, malformed preservation, and rooted/race safeguards independently in both Go modules.
+5. Update capture and shipped board guidance, then run both module suites plus repository contract/release gates.
+
+**Plan validation:** The plan covers every writer, reader, cleanup, manifest, migration, and documentation acceptance criterion. The separate Go modules cannot share an internal helper, so literal cross-contract tests are required to prevent helper-coupled false greens.
+
+*Generated from delegated exploration; full evidence: `do-work/runs/work-2026-09-03-214500/REQ-485-exploration.md`.*
+
+## Exploration
+
+The two allocators independently emit fixed-six markers, while capture and defer-gate derive paths from the stored ID; cleanup then recognizes only six digits. Canonical writers must converge on the stored-ID spelling, while exact numeric readers remain width-compatible during migration. Publication must check numeric aliases before planning a create, defer fold must accept a matching legacy marker, and cleanup must revalidate and reap each concrete alias independently.
+
+## Scope
+
+**Files I will touch:** the allocator, repository-model, publication, cleanup, and delegated answer/hook tests listed in `write_set`, plus `skills/do-work/actions/capture.md` and the shipped board prime.
+
+**Files I will not touch:** board card/parser/UI code, generated board output, request-file numbering, marker contents, migration commands, or the cleanup shell launcher.
+
+**Acceptance criteria:** New writers use one minimum-three-digit basename; either legacy or canonical evidence blocks the number and participates in max scans/folds; both aliases reap under the existing authority/age policy; malformed adjacent names remain excluded; current writers collide at the canonical exclusive-create boundary.
+
+## Pre-Flight
+
+**Git:** The wave baseline was clean at `c27d349a` after the three claims, estimates, run manifest, and briefs were committed.
+
+**Tests:** Direct canonical fast gate passed and was recorded at the shared wave baseline before any builder dispatch.
+
+**Dependencies:** None. The board and CLI are separate modules and must each be verified independently.

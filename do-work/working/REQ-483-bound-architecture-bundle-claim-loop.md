@@ -26,6 +26,9 @@ estimate:
 claimed_at: 2026-09-03T21:43:37Z
 route: A
 dispatch_at: 2026-09-03T21:48:13Z
+write_set:
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture_test.go
 ---
 
 # Bound the Architecture Bundle-Claim Loop and Restore --commit
@@ -98,3 +101,19 @@ while the run scratch survives; the durable record is the `## Review` section of
 **Planning not required** - Route A: Direct implementation
 
 *Skipped by work action*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go`
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture_test.go`
+
+**Acceptance criteria:** Retry only exclusive-create collisions; return a typed path-and-cause finding for any other bundle-claim error; make caller-authored `--commit` publish and commit exactly the generated index; preserve rooted publication protections.
+
+## Pre-Flight
+
+**Git:** The wave baseline was clean at `c27d349a` after the three claims, estimates, run manifest, and briefs were committed.
+
+**Tests:** Direct canonical fast gate passed and was recorded at the shared wave baseline before dispatch.
+
+**Dependencies:** REQ-418 is completed; REQ-420 is adjacent but not a prerequisite.
