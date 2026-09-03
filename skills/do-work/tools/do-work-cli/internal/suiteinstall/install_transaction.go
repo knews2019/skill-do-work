@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"syscall"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/archivefetch"
@@ -104,9 +105,11 @@ type installTransaction struct {
 	recoveryFailed  bool
 	recoveryRan     bool
 
-	// recoveryFinished is closed once this transaction's cleanup has run. The signal handler
-	// waits on it so an interrupted install exits only after recovery has completed.
-	recoveryFinished chan struct{}
+	// interruptWasObserved records that HUP, INT or TERM reached this transaction. The signal
+	// handler only records and cancels; exitIfInterrupted is the transaction's single owner
+	// of the interrupted exit status, so no second goroutine can reach os.Exit with a status
+	// the signal contradicts (REQ-525).
+	interruptWasObserved atomic.Bool
 }
 
 type moduleInstallPlan struct {
@@ -138,14 +141,16 @@ func RunInstall(ctx context.Context, options InstallOptions) InstallResult {
 	// the same path a failed write takes.
 	workContext, cancelWork := context.WithCancel(ctx)
 	defer cancelWork()
-	transaction := &installTransaction{options: options, recoveryFinished: make(chan struct{})}
+	transaction := &installTransaction{options: options}
 
 	// Deferred calls run last-in-first-out, so these three run as: cleanup (which recovers),
-	// then the signal handler's release, then the signal subscription teardown. Signals stay
-	// armed for the whole of cleanup, which is when recovery actually happens.
+	// then the interrupted-exit owner, then the signal subscription teardown. Signals stay
+	// armed for the whole of cleanup, which is when recovery actually happens, and recovery
+	// therefore completes before any interrupted exit by defer order rather than by a
+	// handshake between two goroutines.
 	stopSignals := transaction.armSignalRecovery(cancelWork)
 	defer stopSignals()
-	defer close(transaction.recoveryFinished)
+	defer transaction.exitIfInterrupted()
 	defer transaction.cleanup()
 
 	if err := transaction.prepare(workContext); err != nil {
@@ -190,11 +195,18 @@ const interruptedInstallExitStatus = 130
 // armSignalRecovery makes an interruption take the same recovery path a failed write does. A
 // signal arriving mid-write must not leave a half-installed suite behind.
 //
-// The handler never recovers itself. It cancels the work context — which kills the in-flight
-// cp, tar or git and turns it into an ordinary write failure — and then waits for the main
-// goroutine to finish that recovery before exiting. Recovering from the handler instead would
-// race the writes it is trying to undo, and the recovery would sometimes report itself
-// incomplete because the main goroutine was still copying into a directory it had removed.
+// The handler neither recovers nor exits. It records the interruption and cancels the work
+// context — which kills the in-flight cp, tar, just or git and turns it into an ordinary
+// write failure — and the main goroutine then performs recovery and owns the exit status.
+// Recovering from the handler instead would race the writes it is trying to undo, and
+// exiting from the handler raced the ordinary return path for os.Exit: whichever goroutine
+// got there first decided the status, so an interrupted install reported success under CPU
+// contention (REQ-525).
+//
+// The record is stored BEFORE cancelWork, and cancellation is the only thing that releases a
+// main goroutine blocked on the confirmation read or an in-flight subprocess. Every path
+// that can observe the cancellation therefore observes the record too, which is what makes
+// the interrupted status deterministic rather than scheduling-dependent.
 func (transaction *installTransaction) armSignalRecovery(cancelWork context.CancelFunc) func() {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
@@ -202,9 +214,8 @@ func (transaction *installTransaction) armSignalRecovery(cancelWork context.Canc
 	go func() {
 		select {
 		case <-signalChannel:
+			transaction.interruptWasObserved.Store(true)
 			cancelWork()
-			<-transaction.recoveryFinished
-			os.Exit(interruptedInstallExitStatus)
 		case <-released:
 		}
 	}()
@@ -212,6 +223,23 @@ func (transaction *installTransaction) armSignalRecovery(cancelWork context.Canc
 		signal.Stop(signalChannel)
 		close(released)
 	}
+}
+
+// exitIfInterrupted is the transaction's single exit owner for an interruption. It is
+// deferred immediately before cleanup and therefore runs immediately after it, so recovery
+// has already restored every managed path and the Git index. That ordering is structural — a
+// defer sequence on one goroutine — rather than a channel handshake two goroutines have to
+// win in the right order.
+//
+// The interrupted status has to be taken here rather than returned, because an interrupted
+// install is otherwise indistinguishable from the outcome it interrupted: a cancelled
+// confirmation reads as a typed "N" and reports success, and a cancelled mid-write install
+// reports its rollback. Both then exit on their own outcome's number.
+func (transaction *installTransaction) exitIfInterrupted() {
+	if !transaction.interruptWasObserved.Load() {
+		return
+	}
+	os.Exit(interruptedInstallExitStatus)
 }
 
 func (transaction *installTransaction) failureResult(err error) InstallResult {

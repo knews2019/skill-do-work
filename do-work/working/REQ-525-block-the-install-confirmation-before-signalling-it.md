@@ -40,9 +40,9 @@ Make `TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation` w
 - `internal/suiteinstall` → `TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation/install-suite/INT` and `/install-suite/HUP` (`suite_commands_test.go:292`). Observed failing twice under `go test ./...` parallel load during the REQ-457 run, and passing 5/5 with `-count=5` in isolation immediately afterwards. It did not fail in the pre-REQ-457 baseline, and REQ-457's diff touches no file in this package.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Diagnosis pass first (read-only, no edits), which refuted the captured premise and my own hypothesis and confirmed a product defect. Implementation pass then took PF-A's property — one exit owner on the main goroutine, deferred after recovery — rather than PF-A's literal `ExitCodeOverride` plumbing, which is unreachable inside the write set.
+- [x] **[APPLY]:** Two files, both inside the widened Scope. `commandruntime`, `resultmodel` and `main.go` were left untouched; the builder stopped and reported rather than widening again.
+- [x] **[UNIFY]:** Orchestrator independently re-ran `go build ./...`, `go vet ./...` (clean), `gofmt -l .` (silent), `go test -count=1 ./internal/suiteinstall/` and `go test -race -count=1 ./internal/suiteinstall/` (both green — no data race on the new atomic flag), and read the whole `install_transaction.go` diff. No debug artifacts; every added comment states an invariant, including why the record is stored before `cancelWork`.
 
 ## Finding Provenance
 
@@ -138,6 +138,34 @@ Whichever goroutine reaches `os.Exit` first wins. The handler usually does, beca
 
 **Acceptance criteria (restated from REQ):**
 - [~] ~~The signal is delivered only after the installer has demonstrably reached its blocked confirmation read~~ — **premise refuted.** A 500 ms delay past that point still fails; the read is parked in its `select` and cancellation reaches it correctly. Replaced by: an interrupted confirmation reports exit 130 regardless of goroutine scheduling.
-- [ ] Exit 130 and the existing managed-path non-effect assertions are unchanged — this is a synchronization fix, not a weaker assertion
-- [ ] No sleep is lengthened to paper over the race, and the test is neither skipped nor made flaky-tolerant
-- [ ] The fix holds under `go test ./...` parallel load, not only under `-run` in isolation
+- [x] Exit 130 and the existing managed-path non-effect assertions are unchanged — this is a synchronization fix, not a weaker assertion
+- [x] No sleep is lengthened to paper over the race, and the test is neither skipped nor made flaky-tolerant
+- [x] The fix holds under `go test ./...` parallel load, not only under `-run` in isolation
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go` (modified)
+
+**What was done:** The `recoveryFinished` channel handshake is replaced by an `interruptWasObserved atomic.Bool`. The signal handler now only records the interruption and cancels the work context — its `os.Exit(130)` and its channel wait are gone. A new `exitIfInterrupted`, deferred immediately *before* `cleanup()` so it runs immediately *after* it, is the transaction's single owner of the interrupted exit status. Recovery-before-exit is therefore defer order on one goroutine rather than a race two goroutines have to win in the right order. On the test side both built-child helpers are pinned to `GOMAXPROCS=1`, and the previously uncovered mid-write interrupt case (F4) is added.
+
+## Decisions
+
+- **D-01** — Scope widened from test-only to the product after the root cause was confirmed. Recorded in **Confirmed Root Cause** above; the REQ's own constraint required saying so rather than widening silently.
+- **D-02** — Took PF-A's *property* rather than its literal mechanism. **ESCALATE.** PF-A as specified is unreachable inside the write set: `RunInstall` returns `InstallResult`, not `resultmodel.CommandResult`, so an `ExitCodeOverride` would have to be copied in `installResultToCommandResult` (`suite_commands.go:112`) **and** threaded through `UpdateResult` and `handleUpdateSuite` — two files outside Scope. Rather than widen again or fall back to PF-B, the builder kept the property that matters: exactly one goroutine can reach `os.Exit`, it is the main goroutine, and it does so from a deferred step after `cleanup()`. **Value:** strictly better than PF-B, which keeps two exit owners and adds a blocking wait. **Risk:** the interrupted status is *taken* rather than *returned*, so the rendered JSON result is never written on the interrupted path — a consumer capturing stdout sees nothing and must read the exit code. One line in each of those two files would make it returnable; recorded as a discovered task rather than done unilaterally.
+- **D-03** — The flag is stored **before** `cancelWork()`, and that ordering is the whole correctness argument. **DECIDE & STATE.** Cancellation is the only thing that releases a main goroutine parked in `readConfirmation`'s select or in an `exec.CommandContext` subprocess, so any path that can observe the cancellation necessarily observes the record. The interrupted status is deterministic rather than scheduling-dependent. A signal landing after `exitIfInterrupted` has read the flag exits on the ordinary status, which is correct — it arrived after the work concluded.
+- **D-04** — `recoveryFinished` deleted rather than left in place. **DECIDE & STATE.** With the handler no longer waiting, the channel had no reader.
+- **D-05** — An interrupted mid-write install exits **130, not the rollback's 3**. **DECIDE & STATE.** The process was killed by a signal, and 128+signo is what shells and CI read; `interruptedInstallExitStatus`'s existing doc already states 130 unconditionally for HUP/INT/TERM; and the rendered result still carries `outcome: rolled_back` with the full rollback record, so the number says "interrupted" and the payload says what happened. It is also the non-behaviour-changing choice — 130 is what this case already produced whenever the handler won the race.
+- **D-06** — The F4 fixture blocks in `just`, not in `cp`. **DECIDE & STATE.** `just` is invoked exactly twice per install (`:562` pre-confirmation, `:900` post-write validation), so a stub that succeeds once then parks pins the child with `writeStarted` set and every managed path already replaced. It reuses the proven shape of `installFlakyJust` and makes the test independent of whether the host has `just`.
+
+## Open Questions
+
+- [~] Should an interrupted confirmation get its own outcome, or keep reporting `OutcomeSuccess` / `Cancelled: true` and narrating "Installation cancelled; no files were changed."? → **D-07**: Builder chose the minimal fix — narration and outcome unchanged, exit status only. Reasoning: no second defect flows from the conflation. No filesystem effect differs, `writeStarted` is false, and the exit status now separates the two cases for anything that reads it; widening would change a `SkippedWork` code and an outcome other assertions read. **A JSON consumer still cannot distinguish "user declined" from "user interrupted"** — both render `outcome: success`, `Cancelled: true`, `INSTALL-CANCELLED` — and on the interrupted path the rendered result is never written at all, because `exitIfInterrupted` takes the process before `installResultToCommandResult`. **Value:** a distinct interrupted outcome would let an automated caller retry a genuine interruption while honouring a deliberate decline, and would make the interrupted result renderable instead of swallowed by the exit. **Risk:** a new outcome needs a number in `resultmodel.ExitCode` and would move `install-suite`'s cancelled path off exit 0, which the public shell path depends on; a new skip code alone is cheap but changes bytes existing consumers may match on.
+
+<!-- D-XX counter: last used D-07. Next decision: D-08. -->
+
+## Discovered Tasks
+
+- `installResultToCommandResult` and the `UpdateResult` path have no way to carry a status override, which is why the interrupted exit must be taken inside `RunInstall` rather than returned. Plumbing `ExitCodeOverride` through those two files would let the interrupted result actually reach stdout before the exit — which is what the Open Question above needs in order to be actionable.
+- `runBuiltCLIAtBlockedConfirmation` and `runBuiltCLIInterruptedAtMarker` now share most of their body. Not worth merging while their synchronization points differ, but a third built-child interruption test should collapse them.

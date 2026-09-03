@@ -265,16 +265,8 @@ func TestInstallNarrationNeverReachesStandardOutput(t *testing.T) {
 
 func TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation(t *testing.T) {
 	binaryPath := buildTestCLIBinary(t)
-	signals := []struct {
-		name   string
-		signal os.Signal
-	}{
-		{name: "HUP", signal: syscall.SIGHUP},
-		{name: "INT", signal: syscall.SIGINT},
-		{name: "TERM", signal: syscall.SIGTERM},
-	}
 	for _, commandName := range []string{CommandInstallSuite, CommandUpdateSuite} {
-		for _, signalCase := range signals {
+		for _, signalCase := range interruptingSignalCases() {
 			t.Run(commandName+"/"+signalCase.name, func(t *testing.T) {
 				projectRoot := newProjectRepository(t)
 				arguments := []string{"--repo-root", projectRoot, "--format", "json", commandName}
@@ -302,6 +294,71 @@ func TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation(t *
 			})
 		}
 	}
+}
+
+// An interruption that lands AFTER the first write must still exit on the signal status,
+// not on the rollback outcome's number. This case had no coverage: it recovers correctly and
+// returns OutcomeRolledBack (exit 3), so before the single-exit-owner fix it raced the
+// handler's 130 exactly as the pre-confirmation case did, and reported 3 whenever the
+// ordinary return path won. 130 is the right answer for both — the process was killed by a
+// signal, the rendered result still carries the rollback record, and the shell installer's
+// interrupted status is what callers already assert.
+func TestBuiltInstallExits130AfterRecoveringASignalInterruptedMidWriteInstall(t *testing.T) {
+	binaryPath := buildTestCLIBinary(t)
+	for _, signalCase := range interruptingSignalCases() {
+		t.Run(signalCase.name, func(t *testing.T) {
+			projectRoot := newProjectRepository(t)
+			sourceRoot := newSuiteSourceTree(t, fixtureSuiteVersion)
+			archivePath := buildArchiveFromSourceTree(t, sourceRoot)
+			blockedMarkerPath := installPostWriteBlockingJust(t)
+
+			narration := runBuiltCLIInterruptedAtMarker(t, binaryPath, signalCase.signal, blockedMarkerPath,
+				[]string{"--repo-root", projectRoot, "--format", "json", CommandInstallSuite, "--archive", archivePath})
+
+			if !strings.Contains(narration, "restored every managed path and the Git index to their exact pre-install state") {
+				t.Errorf("%s exited before recovery reported completion:\n%s", signalCase.name, narration)
+			}
+			for _, absentPath := range []string{
+				"justfile",
+				"CLAUDE.md",
+				filepath.Join(".claude", "settings.json"),
+				filepath.Join(".claude", "skills", "do-work"),
+			} {
+				if _, err := os.Lstat(filepath.Join(projectRoot, absentPath)); err == nil {
+					t.Errorf("%s left %s behind instead of recovering it", signalCase.name, absentPath)
+				}
+			}
+		})
+	}
+}
+
+// interruptingSignalCases are the three signals RunInstall arms for. Every interruption test
+// covers all three, because they share one handler and one exit status.
+func interruptingSignalCases() []struct {
+	name   string
+	signal os.Signal
+} {
+	return []struct {
+		name   string
+		signal os.Signal
+	}{
+		{name: "HUP", signal: syscall.SIGHUP},
+		{name: "INT", signal: syscall.SIGINT},
+		{name: "TERM", signal: syscall.SIGTERM},
+	}
+}
+
+// singleProcessorEnvironment pins the built child to one scheduler processor.
+//
+// The interrupted exit status used to be decided by whichever goroutine reached os.Exit
+// first — the signal handler's 130 or the ordinary return path's own outcome number — and at
+// default GOMAXPROCS the handler usually won, so the defect surfaced as an occasional
+// failure under parallel load (3 of 7 full-module runs). At one processor the handler is
+// starved for a slot and the ordinary path wins every time, which turned that flake class
+// into a guaranteed pre-fix failure and makes these tests a real lock-in rather than a
+// scheduling coincidence (REQ-525).
+func singleProcessorEnvironment() []string {
+	return append(os.Environ(), "GOMAXPROCS=1")
 }
 
 func buildTestCLIBinary(t *testing.T) string {
@@ -340,6 +397,7 @@ func runBuiltCLIAtBlockedConfirmation(t *testing.T, binaryPath string, interrupt
 	defer stdoutFile.Close()
 
 	command := exec.Command(binaryPath, arguments...)
+	command.Env = singleProcessorEnvironment()
 	command.Stdin = stdinReader
 	command.Stdout = stdoutFile
 	command.Stderr = stderrFile
@@ -385,6 +443,94 @@ func waitForPromptInFile(t *testing.T, command *exec.Cmd, path string) {
 	_ = command.Wait()
 	output, _ := os.ReadFile(path)
 	t.Fatalf("built CLI did not reach confirmation prompt:\n%s", output)
+}
+
+// installPostWriteBlockingJust puts a `just` on PATH that succeeds for the pre-confirmation
+// candidate check and then parks forever on its second invocation, which is the installed
+// Justfile's post-write validation. `just` is invoked exactly twice per install, so the
+// second invocation pins the child mid-transaction: writeStarted is set, every managed
+// module and configuration file is already replaced, and recovery is required. It returns
+// the marker path the stub touches once it is parked.
+func installPostWriteBlockingJust(t *testing.T) string {
+	t.Helper()
+	stubDirectory := t.TempDir()
+	counterPath := filepath.Join(stubDirectory, "invocations")
+	blockedMarkerPath := filepath.Join(stubDirectory, "blocked")
+	writeTestFile(t, filepath.Join(stubDirectory, "just"),
+		"#!/usr/bin/env bash\nset -u\ncount=0\n[ ! -f \""+counterPath+"\" ] || count=\"$(cat \""+counterPath+"\")\"\n"+
+			"count=$((count + 1))\nprintf '%s\\n' \"$count\" > \""+counterPath+"\"\n"+
+			"[ \"$count\" -ne 1 ] || exit 0\n"+
+			// exec so cancelling the work context kills the sleep itself, not a shell wrapper.
+			"printf 'blocked\\n' > \""+blockedMarkerPath+"\"\nexec sleep 600\n")
+	chmodTestFile(t, filepath.Join(stubDirectory, "just"), 0o755)
+	t.Setenv("PATH", stubDirectory+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return blockedMarkerPath
+}
+
+// runBuiltCLIInterruptedAtMarker confirms the install, waits for the child to park at the
+// named marker, signals it, and requires the interrupted status. It returns the narration so
+// the caller can assert on recovery.
+func runBuiltCLIInterruptedAtMarker(t *testing.T, binaryPath string, interrupt os.Signal,
+	markerPath string, arguments []string) string {
+	t.Helper()
+	stderrPath := filepath.Join(t.TempDir(), "stderr")
+	stderrFile, err := os.Create(stderrPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stderrFile.Close()
+	stdoutFile, err := os.Create(filepath.Join(t.TempDir(), "stdout"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stdoutFile.Close()
+
+	command := exec.Command(binaryPath, arguments...)
+	command.Env = singleProcessorEnvironment()
+	command.Stdin = strings.NewReader("y\n")
+	command.Stdout = stdoutFile
+	command.Stderr = stderrFile
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	waitForMarkerFile(t, command, markerPath, stderrPath)
+	if err := command.Process.Signal(interrupt); err != nil {
+		_ = command.Process.Kill()
+		_ = command.Wait()
+		t.Fatalf("send %v: %v", interrupt, err)
+	}
+	waitResult := make(chan error, 1)
+	go func() { waitResult <- command.Wait() }()
+	select {
+	case waitErr := <-waitResult:
+		narration, _ := os.ReadFile(stderrPath)
+		var exitError *exec.ExitError
+		if !errors.As(waitErr, &exitError) || exitError.ExitCode() != 130 {
+			t.Fatalf("signal %v exit = %v, want 130\nstderr:\n%s", interrupt, waitErr, narration)
+		}
+		return string(narration)
+	case <-time.After(30 * time.Second):
+		_ = command.Process.Kill()
+		<-waitResult
+		narration, _ := os.ReadFile(stderrPath)
+		t.Fatalf("signal %v did not stop the mid-write install\nstderr:\n%s", interrupt, narration)
+		return ""
+	}
+}
+
+func waitForMarkerFile(t *testing.T, command *exec.Cmd, markerPath, narrationPath string) {
+	t.Helper()
+	deadline := time.Now().Add(60 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Lstat(markerPath); err == nil {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	_ = command.Process.Kill()
+	_ = command.Wait()
+	narration, _ := os.ReadFile(narrationPath)
+	t.Fatalf("built CLI did not reach %s:\n%s", markerPath, narration)
 }
 
 func buildArchiveFromSourceTree(t *testing.T, sourceRoot string) string {
