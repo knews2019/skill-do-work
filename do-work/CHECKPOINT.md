@@ -52,6 +52,5 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-460: [impact-rule-change] Make outside-text delimiter containment condition-complete — claimed 2026-09-03T02:13:10Z — writer: vm:/home/user/skill-do-work
 
 - REQ-461: [impact-user-visible] Require affirmative project-owned release targets — claimed 2026-09-03T09:44:13Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
