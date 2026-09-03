@@ -86,6 +86,19 @@ Decisions taken at capture:
 
 - `_dev/primes/lessons-shell-commands.md` — 3385 tokens, over the 2000-token budget and `slugged: partial`, so no targeted form is legal. Matched because this REQ changes shipped-shell parity fixtures and prescribed command blocks.
 
+## Addendum (2026-09-03)
+
+User added:
+
+> ```text
+> [board capture: REQ-533 Repair CLAUDE.md write-surface count contract, minted as a gate repair after CLAUDE.md lost the Kanban write-surface paragraph]
+> this is what we need to resolve
+> ```
+
+The gate failure that deferred this REQ was a sentence pin on maintainer documentation: `_dev/tests/contract-regressions.sh:4296` requires `_dev/primes/prime-kanban-board.md` to state "exactly three write surfaces". A maintainer trimming CLAUDE.md turned that into an `impact-critical` route C repair REQ. Delete that pin here as one more instance of dead gate work; the count lives in the prime and in the Go tool's tests, and a prose count needs no test.
+
+- Remove the `three write surfaces` assertion block (about lines 4290 to 4298) and any sibling pin whose subject is a sentence in `CLAUDE.md`, `AGENTS.md`, or `_dev/primes/*.md` rather than a shipped file under `skills/`. The condition is the rule; list the deleted pins in the Testing section.
+
 ## Full Context
 See `do-work/user-requests/UR-102/input.md` for complete verbatim input.
 

@@ -94,6 +94,23 @@ Certainty level: Firm on the rule (one full gate run per REQ when the revision i
 - `_dev/primes/lessons-shell-commands.md` — 3385 tokens, over the 2000-token budget; `slugged: partial` so no targeted family form. Matched on adding exact argv command blocks to shipped action prose.
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 2643 tokens, over the 2000-token budget; `slugged: partial` so no targeted family form. Matched on structured evidence projection and Git-private atomic persistence.
 
+## Addendum (2026-09-03)
+
+User added:
+
+> ```text
+> what does a no-op ticket take 24+ minutes to run?
+> [board capture: REQ-533 Repair CLAUDE.md write-surface count contract, claimed 24m 33s, impact-critical, route C]
+> this is what we need to resolve
+> ```
+
+Observed on REQ-533, an already-green repository-gate repair with an empty project diff: the full gate ran three times, about 7 minutes each. Once as the pre-build proof, once more after a peer commit moved `HEAD` and invalidated the recorded green revision, and once more because the no-op review contract says "rerun the JSON-array gate argv directly". The `gateevidence` package this REQ added in 3eae8110 already records a green revision; the no-op branch of the contract is the one consumer that still insists on re-running.
+
+- For a `repository_gate_repair: true` REQ whose pre-build gate exits 0 (`actions/work-reference.md` → Already-green repair no-op completion), the pre-build run is the only gate run. It records its green revision through the gate-evidence command; qualification and independent review verify that record (exact argv, exit 0, the recorded revision, the expected fingerprint, an empty project diff) and never run the gate again. Rewrite the "rerun the JSON argv directly" sentences in `actions/work.md` Step 6.5 and Step 7, `actions/work-reference.md` § Already-green repair no-op completion, and `actions/review-work.md` Step 1 to say so; delete or rewrite their pins in `_dev/tests/contract-regressions.sh` without the file growing.
+- A no-op repair has no diff, so a `HEAD` move caused by someone else's commit cannot make it the cause of a red gate; its recorded evidence stays valid for its own claim revision. Ordinary REQs keep the existing rule (a moved `HEAD` re-runs).
+- Done means a no-op repair completes in one gate run plus bookkeeping: under ten minutes wall clock on the maintainer's machine, recorded in the Testing section.
+- State: the Go side landed in 3eae8110 (`internal/gateevidence`, CLI wiring, result model) before the claim was recovered back to the queue; the builder starts from that code, not from scratch.
+
 ## Full Context
 
 See `do-work/user-requests/UR-100/input.md` for complete verbatim input.
