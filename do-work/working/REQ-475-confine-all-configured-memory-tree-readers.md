@@ -36,6 +36,8 @@ route: C
 planning_at: 2026-09-03T21:53:38Z
 exploration_at: 2026-09-03T21:53:38Z
 dispatch_at: 2026-09-03T21:55:13Z
+implementation_at: 2026-09-03T22:12:45Z
+builder_handback_at: 2026-09-03T22:13:52Z
 write_set:
   - skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go
   - skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands_test.go
@@ -53,9 +55,9 @@ Apply one rooted, no-follow, bounded-read contract to every command that reads c
 The fold-first scan found no pending or pending-answers REQ, sweep or otherwise, in any UR that owns this configured Memory reader root cause.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Inventoried every configured Memory-tree reader and designed one handler-scoped, bounded, rooted/no-follow acquisition contract with exact-path refusal evidence.
+- [x] **[APPLY]:** Migrated recall, status, audit, mutator, ledger, sentinel, and log-directory reads; added adversarial link/special/limit/root fixtures and documented finite transport ceilings.
+- [x] **[UNIFY]:** Reviewed the exact four-file builder diff; focused, race, vet, full-module, contract, formatting, and diff checks pass with no debug, BKB, lifecycle, generated, or release drift.
 
 ## Instances
 
@@ -125,3 +127,15 @@ The defect is one authority split: rooted/no-follow helpers protect mutation and
 **Tests:** Direct canonical fast gate passed and was recorded at the shared wave baseline before any builder dispatch.
 
 **Dependencies:** REQ-417 is completed. Its referenced scratch re-review artifact is absent from the current tree and Git object inventory, so the durable archive summary and remediation diff are the recoverable source evidence.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go`
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands_test.go`
+- `skills/do-work-knowledge/actions/memory.md`
+- `skills/do-work-knowledge/actions/memory-reference.md`
+
+**What was done:** Added one opened-root Memory reader with bounded identity-checked file and directory operations, migrated every configured Memory consumer to it, separated ledger parsing from acquisition, propagated exact configured child failures without partial/canary evidence, enforced repository-contained configured roots, and documented the finite transport ceilings. Builder commit: `0f288b7ccbf454c7c73935a8dd6aa3b8f211932b`.
+
+**Builder verification:** Handler-level RED reproduced outside-byte disclosure and outside-root acceptance. Focused, race, vet, full-module, contract, inclusive-limit, and diff checks are green; full evidence is in `do-work/runs/work-2026-09-03-214500/REQ-475-handback.md`.
