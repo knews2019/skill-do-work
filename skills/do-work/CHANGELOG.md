@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.273.1 — Contract Tests Split by Functional Owner (2026-09-04)
+
+The fast contract aggregate is now a 77-line launcher instead of an 8,448-line mix of behavioral tests and sentence pins. The retained incident probes live with their functional owner and the obsolete extracted-Markdown assertions are gone.
+
+- Four sourced owner files retain the request-state recovery, core checks, queue-kanban shutdown, and managed-section replacement incidents. The fast aggregate fell from 27 seconds to 13 seconds locally; each owner file finished in at most 2 seconds.
+- Every executed shell or Go test file appends its run id, duration, and count of other maintainer gates to the ignored local `do-work/test-durations.tsv` log. The fast tier still enforces the strict 30-second ceiling; heavy runs record time without applying that budget.
+- Heavy contract probes build `do-work-cli` once in the aggregate's private directory and pass that binary to the updater and installer lanes, which can now run independently without writing a shared source-tree binary.
+
 ## 0.273.0 — Priority-Ordered Queue Selection and Board Tags (2026-09-04)
 
 REQs can now carry an authored `priority: now | next | later` that persists the maintainer's intended order across runs and makes that order visible on the board.

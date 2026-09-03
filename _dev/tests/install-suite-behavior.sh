@@ -9,6 +9,8 @@ fi
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 installer="$repo_root/tools/install-do-work-suite.sh"
 fail_count=0
+workdir="$(mktemp -d "${TMPDIR:-/tmp}/do-work-suite-install-test.XXXXXX")"
+trap 'rm -rf "$workdir"' EXIT
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -146,19 +148,19 @@ for retired_runtime_path in SKILL.md actions tools/do-work-update.sh tools/queue
   fi
 done
 
-# The installer delegates to do-work-cli, so build the binary once here. The restricted-PATH
-# lanes below deliberately omit `go`, and the launcher rebuilds whenever any source is newer
-# than the binary — `cp -R` copies in readdir order, so the mtimes are set explicitly rather
-# than left to copy order (REQ-407 C10).
+# The aggregate gives both expensive probes one private build. A direct run still
+# builds privately. Restricted-PATH fixtures copy that artifact into their archive.
 cli_module_root="$repo_root/skills/do-work/tools/do-work-cli"
-if ! (cd "$cli_module_root" && go build -ldflags='-s -w' -o do-work-cli ./cmd/do-work-cli); then
+do_work_cli_binary="${DO_WORK_TEST_DO_WORK_CLI_BINARY:-$workdir/do-work-cli}"
+if [ -n "${DO_WORK_TEST_DO_WORK_CLI_BINARY:-}" ]; then
+  if [ ! -x "$do_work_cli_binary" ]; then
+    printf 'FAIL: shared do-work-cli is missing or not executable: %s\n' "$do_work_cli_binary" >&2
+    exit 1
+  fi
+elif ! (cd "$cli_module_root" && go build -ldflags='-s -w' -o "$do_work_cli_binary" ./cmd/do-work-cli); then
   printf 'FAIL: could not pre-build do-work-cli for the restricted-PATH lanes.\n' >&2
   exit 1
 fi
-touch "$cli_module_root/do-work-cli"
-
-workdir="$(mktemp -d "${TMPDIR:-/tmp}/do-work-suite-install-test.XXXXXX")"
-trap 'rm -rf "$workdir"' EXIT
 
 archive_parent="$workdir/archive-source"
 archive_root="$archive_parent/skill-do-work-main"
@@ -166,11 +168,12 @@ mkdir -p "$archive_root/tools"
 cp "$repo_root/VERSION" "$archive_root/VERSION"
 cp -R "$repo_root/suite" "$archive_root/suite"
 cp -R "$repo_root/skills" "$archive_root/skills"
+cp "$do_work_cli_binary" "$archive_root/skills/do-work/tools/do-work-cli/do-work-cli"
+chmod +x "$archive_root/skills/do-work/tools/do-work-cli/do-work-cli"
 cp "$installer" "$archive_root/tools/install-do-work-suite.sh"
 cp "$repo_root/tools/validate-suite-manifest.sh" "$archive_root/tools/validate-suite-manifest.sh"
 cp "$repo_root/tools/replace-text-section.sh" "$archive_root/tools/replace-text-section.sh"
 chmod +x "$archive_root/tools/"*.sh
-touch "$archive_root/skills/do-work/tools/do-work-cli/do-work-cli"
 archive_file="$workdir/do-work-suite.tar.gz"
 tar czf "$archive_file" -C "$archive_parent" skill-do-work-main
 

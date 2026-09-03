@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154 # This file is sourced by contract-regressions.sh.
 # Parallel launcher for the aggregate contract suite's behavioral sub-suites. Sourced by
 # _dev/tests/contract-regressions.sh; expects `fail_count` in the caller's scope.
 #
@@ -8,6 +9,8 @@
 probe_batch_root="$(mktemp -d "${TMPDIR:-/tmp}/contract-probe-batch.XXXXXX")"
 probe_batch_names=()
 probe_file_budget_seconds="${DO_WORK_TEST_FILE_BUDGET_SECONDS:-30}"
+# shellcheck source=_dev/tests/test-duration-log.sh
+source "$repo_root/_dev/tests/test-duration-log.sh"
 
 launch_probe() {
   local probe_name="$1"
@@ -20,13 +23,19 @@ launch_probe() {
   (
     probe_status=0
     for probe_script in "$@"; do
+      probe_budget_label="<${probe_file_budget_seconds}s"
+      if [ "${DO_WORK_MAINTAINER_TIER:-fast}" = heavy ]; then
+        probe_budget_label='none (heavy)'
+      fi
       probe_started_at="$(date +%s)"
       current_probe_status=0
       bash "$probe_script" || current_probe_status=$?
       probe_elapsed_seconds=$(( $(date +%s) - probe_started_at ))
-      printf 'test-file duration: %s %ss (limit <%ss)\n' \
-        "${probe_script##*/}" "$probe_elapsed_seconds" "$probe_file_budget_seconds"
-      if [ "$probe_elapsed_seconds" -ge "$probe_file_budget_seconds" ]; then
+      printf 'test-file duration: %s %ss (limit %s)\n' \
+        "${probe_script##*/}" "$probe_elapsed_seconds" "$probe_budget_label"
+      record_test_duration "${probe_script#"$repo_root/"}" "$probe_elapsed_seconds"
+      if [ "${DO_WORK_MAINTAINER_TIER:-fast}" != heavy ] \
+        && [ "$probe_elapsed_seconds" -ge "$probe_file_budget_seconds" ]; then
         printf 'FAIL: %s took %ss; each test file must finish under %ss\n' \
           "$probe_script" "$probe_elapsed_seconds" "$probe_file_budget_seconds" >&2
         current_probe_status=1

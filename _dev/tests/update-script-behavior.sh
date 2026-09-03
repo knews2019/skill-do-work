@@ -19,13 +19,30 @@ do_work_cli_launcher="$repo_root/skills/do-work/tools/do-work-cli.sh"
 do_work_cli_module="$repo_root/skills/do-work/tools/do-work-cli"
 fail_count=0
 
-# The updater, installer, validator, replacer and fetcher are all launchers over do-work-cli
-# now, so the command is built once here and copied into every fixture below.
-if ! (cd "$do_work_cli_module" && go build -ldflags='-s -w' -o do-work-cli ./cmd/do-work-cli); then
+fixture_root="${DO_WORK_TEST_FIXTURE_ROOT:-$(mktemp -d)}"
+cleanup_fixture() {
+	if [ -n "${archive_server_pid:-}" ]; then
+		kill "$archive_server_pid" 2>/dev/null || true
+		wait "$archive_server_pid" 2>/dev/null || true
+	fi
+  [ -z "${DO_WORK_TEST_FIXTURE_ROOT:-}" ] || return 0
+  chmod -R u+rwX "$fixture_root" 2>/dev/null || true
+  rm -rf "$fixture_root"
+}
+trap cleanup_fixture EXIT
+
+# The aggregate gives both expensive probes one private build. A direct run still
+# builds privately, never into the source tree.
+do_work_cli_binary="${DO_WORK_TEST_DO_WORK_CLI_BINARY:-$fixture_root/do-work-cli}"
+if [ -n "${DO_WORK_TEST_DO_WORK_CLI_BINARY:-}" ]; then
+  if [ ! -x "$do_work_cli_binary" ]; then
+    printf 'FAIL: shared do-work-cli is missing or not executable: %s\n' "$do_work_cli_binary" >&2
+    exit 1
+  fi
+elif ! (cd "$do_work_cli_module" && go build -ldflags='-s -w' -o "$do_work_cli_binary" ./cmd/do-work-cli); then
   printf 'FAIL: could not pre-build do-work-cli for the update fixtures.\n' >&2
   exit 1
 fi
-touch "$do_work_cli_module/do-work-cli"
 
 for required_command in bash git tar diff; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
@@ -54,18 +71,6 @@ done
 export GIT_CONFIG_GLOBAL=/dev/null
 export GIT_CONFIG_SYSTEM=/dev/null
 export GIT_TERMINAL_PROMPT=0
-
-fixture_root="${DO_WORK_TEST_FIXTURE_ROOT:-$(mktemp -d)}"
-cleanup_fixture() {
-	if [ -n "${archive_server_pid:-}" ]; then
-		kill "$archive_server_pid" 2>/dev/null || true
-		wait "$archive_server_pid" 2>/dev/null || true
-	fi
-  [ -z "${DO_WORK_TEST_FIXTURE_ROOT:-}" ] || return 0
-  chmod -R u+rwX "$fixture_root" 2>/dev/null || true
-  rm -rf "$fixture_root"
-}
-trap cleanup_fixture EXIT
 
 probe_output=''
 probe_status=0
@@ -139,7 +144,7 @@ copy_do_work_cli_module() {
   cp "$do_work_cli_launcher" "$tools_directory/do-work-cli.sh"
   chmod +x "$tools_directory/do-work-cli.sh"
   mkdir -p "$tools_directory/do-work-cli"
-  cp "$do_work_cli_module/do-work-cli" "$tools_directory/do-work-cli/do-work-cli"
+  cp "$do_work_cli_binary" "$tools_directory/do-work-cli/do-work-cli"
   chmod +x "$tools_directory/do-work-cli/do-work-cli"
 }
 
