@@ -2,6 +2,7 @@
 id: REQ-549
 title: '[impact-negligible] Drop the eight dead path tokens from the decision indexes and the lessons prime'
 status: pending
+priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
 domain: general

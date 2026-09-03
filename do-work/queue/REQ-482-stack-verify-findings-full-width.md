@@ -2,6 +2,7 @@
 id: REQ-482
 title: 'Stack verify-findings cards full width so they stop reading as REQ cards'
 status: pending
+priority: later
 created_at: 2026-09-01T11:55:00Z
 user_request: UR-090
 domain: ui-design

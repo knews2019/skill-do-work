@@ -2,6 +2,7 @@
 id: REQ-496
 title: '[impact-critical] Review fix: Add shared executable already-green repair validator'
 status: pending
+priority: now
 domain: backend
 created_at: 2026-09-02T04:53:21Z
 user_request: UR-095

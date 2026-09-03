@@ -2,6 +2,7 @@
 id: REQ-547
 title: '[impact-rule-change] Stop finalize refusing a REQ that has no checkpoint entry'
 status: pending
+priority: now
 created_at: 2026-09-03T16:40:00Z
 user_request: UR-085
 domain: backend

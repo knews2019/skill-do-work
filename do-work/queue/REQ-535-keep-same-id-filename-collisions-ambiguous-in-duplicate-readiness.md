@@ -2,6 +2,7 @@
 id: REQ-535
 title: 'Review fix: keep same-id filename collisions ambiguous in duplicate readiness'
 status: pending
+priority: now
 created_at: 2026-09-03T12:20:21Z
 user_request: UR-103
 domain: backend

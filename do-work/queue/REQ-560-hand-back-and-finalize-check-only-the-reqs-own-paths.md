@@ -2,6 +2,7 @@
 id: REQ-560
 title: '[impact-rule-change] Hand-back and finalize check cleanliness only on the REQ''s own paths'
 status: pending
+priority: now
 created_at: 2026-09-03T20:05:46Z
 user_request: UR-106
 domain: backend

@@ -2,6 +2,7 @@
 id: REQ-542
 title: 'SessionStart launches the background gate runner'
 status: pending
+priority: now
 created_at: 2026-09-03T14:49:02Z
 user_request: UR-104
 domain: general

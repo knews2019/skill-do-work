@@ -2,6 +2,7 @@
 id: REQ-551
 title: '[impact-negligible] Delete the five caller-less toolbox shell shims and re-point their fixtures at do-work-cli'
 status: pending
+priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
 domain: general

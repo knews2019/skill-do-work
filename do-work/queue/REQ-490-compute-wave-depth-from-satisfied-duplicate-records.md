@@ -2,6 +2,7 @@
 id: REQ-490
 title: 'Review fix: compute wave depth from satisfied duplicate records'
 status: pending
+priority: now
 created_at: 2026-09-01T19:54:39Z
 user_request: UR-094
 domain: backend

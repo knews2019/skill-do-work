@@ -41,7 +41,15 @@ func Select(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygraph
 	deferTargetDependencies(result.Excluded, eligible, graph)
 	if len(options.TargetTokens) == 0 {
 		sort.SliceStable(eligible, func(leftIndex, rightIndex int) bool {
-			return priorityRank(eligible[leftIndex].SelectionPriority) < priorityRank(eligible[rightIndex].SelectionPriority)
+			leftClassRank := priorityRank(eligible[leftIndex].SelectionPriority)
+			rightClassRank := priorityRank(eligible[rightIndex].SelectionPriority)
+			if leftClassRank != rightClassRank {
+				return leftClassRank < rightClassRank
+			}
+			if eligible[leftIndex].SelectionPriority == PriorityOrdinary {
+				return requestPriorityRank(eligible[leftIndex].RequestPriority) < requestPriorityRank(eligible[rightIndex].RequestPriority)
+			}
+			return false
 		})
 	}
 
@@ -138,6 +146,7 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 	newExclusion := func(code, reason string, nextArgv []string) resultmodel.SelectionExclusion {
 		exclusion := exclusionFor(identifier, record.RequestTitle, candidate.Provenance, code, reason, nextArgv)
 		exclusion.SelectionPriority = candidate.Priority
+		exclusion.RequestPriority = record.RequestPriorityValue
 		applySelectionEvidenceToExclusion(&exclusion, evidence)
 		return exclusion
 	}
@@ -268,6 +277,7 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 	selected := resultmodel.SelectionRecord{
 		RequestID: identifier, RequestPath: evidence.RequestPath, Title: record.RequestTitle, Provenance: candidate.Provenance,
 		SelectionPriority: candidate.Priority,
+		RequestPriority:   record.RequestPriorityValue,
 		OriginalStatus:    evidence.OriginalStatus, ProbeStatus: evidence.ProbeStatus,
 		ProbeAttempted: evidence.ProbeAttempted, ProbeExitCode: evidence.ProbeExitCode, UnblockRequired: evidence.UnblockRequired,
 		DependencyDepth: depth, Dependencies: append([]string(nil), record.DependsOn...),
@@ -375,6 +385,7 @@ func applySelectionEvidenceToExclusion(exclusion *resultmodel.SelectionExclusion
 
 func copySelectionEvidenceToExclusion(exclusion *resultmodel.SelectionExclusion, selection resultmodel.SelectionRecord) {
 	exclusion.SelectionPriority = selection.SelectionPriority
+	exclusion.RequestPriority = selection.RequestPriority
 	applySelectionEvidenceToExclusion(exclusion, selectionEvidence{
 		RequestPath: selection.RequestPath, OriginalStatus: selection.OriginalStatus,
 		ProbeStatus: selection.ProbeStatus, ProbeAttempted: selection.ProbeAttempted,
@@ -384,7 +395,7 @@ func copySelectionEvidenceToExclusion(exclusion *resultmodel.SelectionExclusion,
 
 func exclusionFor(identifier, title, provenance, code, reason string, nextArgv []string) resultmodel.SelectionExclusion {
 	return resultmodel.SelectionExclusion{
-		RequestID: identifier, Title: title, Provenance: provenance, SelectionPriority: PriorityOrdinary, Code: code, Reason: reason,
+		RequestID: identifier, Title: title, Provenance: provenance, SelectionPriority: PriorityOrdinary, RequestPriority: RequestPriorityNext, Code: code, Reason: reason,
 		NextArgv: nextArgv, NextJustRecipe: justRecipeFor(nextArgv),
 		VerificationArgv: []string{"do-work-cli", "--format", "json", "next", identifier},
 	}
@@ -398,6 +409,17 @@ func priorityRank(priority string) int {
 		return 1
 	default:
 		return 2
+	}
+}
+
+func requestPriorityRank(requestPriority string) int {
+	switch requestPriority {
+	case RequestPriorityNow:
+		return 0
+	case RequestPriorityLater:
+		return 2
+	default:
+		return 1
 	}
 }
 
@@ -441,6 +463,7 @@ func appendSchemaWarnings(result *resultmodel.CommandResult, requestFile *reposi
 		{"status", record.StatusEvidence.IsRecognized, record.StatusEvidence.WarningMessage},
 		{"effort_estimate", record.EffortEstimateEvidence.IsRecognized, record.EffortEstimateEvidence.WarningMessage},
 		{"impact", record.ImpactEvidence.IsRecognized, record.ImpactEvidence.WarningMessage},
+		{"priority", record.RequestPriorityEvidence.IsRecognized, record.RequestPriorityEvidence.WarningMessage},
 		{"domain", record.DomainEvidence.IsRecognized, record.DomainEvidence.WarningMessage},
 		{"maintenance", record.MaintenanceEvidence.IsRecognized, record.MaintenanceEvidence.WarningMessage},
 	} {

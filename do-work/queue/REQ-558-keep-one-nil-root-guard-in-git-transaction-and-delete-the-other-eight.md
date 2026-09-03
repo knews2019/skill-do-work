@@ -2,6 +2,7 @@
 id: REQ-558
 title: '[impact-negligible] Keep one nil-root guard in git_transaction.go and delete the other eight'
 status: pending
+priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
 domain: backend

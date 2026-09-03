@@ -2,6 +2,7 @@
 id: REQ-512
 title: '[impact-critical] Review fix: Complete legacy finalization semantic ownership'
 status: pending
+priority: now
 domain: backend
 created_at: 2026-09-02T18:08:38Z
 user_request: UR-097

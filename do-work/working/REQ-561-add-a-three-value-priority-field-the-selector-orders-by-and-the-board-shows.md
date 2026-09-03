@@ -48,7 +48,6 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/model.go
   - skills/do-work-board/tools/queue-kanban/model_test.go
   - skills/do-work-board/tools/queue-kanban/generate.go
-  - skills/do-work-board/tools/queue-kanban/generate_test.go
   - skills/do-work-board/tools/queue-kanban/serve_test.go
   - skills/do-work-board/tools/queue-kanban/priority_browser_probe_test.go
   - skills/do-work-board/tools/queue-kanban/web/board-cards.js
@@ -63,6 +62,7 @@ planning_at: 2026-09-03T21:10:13Z
 exploration_at: 2026-09-03T21:17:07Z
 dispatch_at: 2026-09-03T21:18:56Z
 builder_handback_at: 2026-09-03T21:35:57Z
+integration_at: 2026-09-03T21:37:20Z
 ---
 
 # Add a Three-Value Priority Field the Selector Orders By and the Board Shows
@@ -72,9 +72,9 @@ builder_handback_at: 2026-09-03T21:35:57Z
 Add one optional frontmatter field to the REQ schema, `priority`, with the closed set `now`, `next`, `later`; absent reads as `next`, anything else normalizes to `next` with a warning under the Schema Read Contract. The selector orders ready work inside its ordinary class by priority (`now` before `next` before `later`) and keeps the existing queue order inside each value; the gate-repair and deferred-parent classes stay above it and `depends_on` stays the hard gate. The board sorts the pending column by priority inside its ready and waiting groups and shows a small `now` or `later` tag on the card (no tag for `next`, the default), the way impact tags are shown today. Capture may set the field from the user's words at Step 1 and addenda may change it. The landing commit stamps the current queue per the 23:20 triage table in `ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html`: the build-now set `now`, the deferred set `later`, the rest untouched.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Added and validated the schema → typed model → selector → board → capture → release plan, then corrected the UR-target, browser-test, and addendum seams during exploration.
+- [x] **[APPLY]:** Implemented the closed priority enum, distinct typed projection, ordinary-only stable ordering, Ready/Waiting board ordering and tags, capture contracts, release mirrors, and exact pending queue stamp.
+- [x] **[UNIFY]:** Reviewed the 23-file builder manifest plus release/queue integration paths; focused/full Go tests, vet, contract checks, strict light/dark Chromium evidence, mirror checks, and diff hygiene passed. Generated output, screenshots, foreign claims, and REQ-530's archive were untouched.
 
 ## Why
 
@@ -195,3 +195,20 @@ The builder worktree predates REQ-502's checkpoint-cleanup merge, but their sour
 - `skills/do-work/tools/checks/preflight.sh`: working tree clean outside `do-work/`; no source drift detected.
 - Canonical gate evidence: exact revision `056d54d68fa7ead5e370cb184c1c5505038b4b5a` matches a persisted green `bash _dev/tests/maintainer-verify.sh` run.
 - Integration hazards: the builder starts from claim commit `4e765265`; integrate serially onto current main and verify the exact branch manifest. REQ-502's merged files do not overlap this scope.
+
+## Implementation Summary
+
+Added `priority: now | next | later` to the executable schema and independent board parser with absent/invalid fallback to `next`. Canonical selection now retains repair/deferred-parent class precedence and dependency gating, then orders only ordinary work by authored priority before fan-out. Selected and excluded JSON expose authored `priority` separately from `selection_priority`; explicit REQ order remains caller-authored and UR expansions sort internally.
+
+The board stable-sorts Pending Ready and Pending Waiting independently, keeps their union Ready-then-Waiting, projects invalid provenance, and renders only `now`/`later` badges. Capture emits priority only from explicit ranking language and lets queued addenda set, change, or remove it. The release advances to 0.273.0 and stamps the report's 27 still-pending build-now REQs as `now` and 12 deferred REQs as `later`.
+
+## Decisions
+
+- **D-01 — Keep both priority axes.** `selection_priority` remains the internal scheduling class; authored `priority` is a separate typed field. Overloading the old field would erase repair/deferred-parent evidence.
+- **D-02 — Preserve explicit target order.** Priority affects default scans and each UR expansion, never an explicitly ordered REQ token list.
+- **D-03 — Reuse the shared static/live projection test.** `serve_test.go` decodes generated static data and live server data from real fixture files; a second `generate_test.go` fixture would duplicate the same seam.
+- **D-04 — Do not amend REQ-530 by hand.** REQ-530 was already archived as cancelled before this landing and the canonical CLI exposes no post-terminal amendment command. Its supersession is recorded here with this integration rather than fabricating a second cancellation or mutating terminal bytes outside an authority.
+
+## Discovered Tasks
+
+- No critical follow-up. A second live-HTTP DOM probe would duplicate the tested shared client/payload route and remains report-only.

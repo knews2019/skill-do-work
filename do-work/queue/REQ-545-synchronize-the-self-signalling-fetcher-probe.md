@@ -2,6 +2,7 @@
 id: REQ-545
 title: 'Synchronize the self-signalling upstream-fetcher probe'
 status: pending
+priority: now
 created_at: 2026-09-03T15:25:00Z
 user_request: UR-104
 domain: testing

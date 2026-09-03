@@ -2,6 +2,7 @@
 id: REQ-534
 title: 'Review fix: run blocked probes from the repository root and propagate interruptions'
 status: pending
+priority: now
 created_at: 2026-09-03T12:20:21Z
 user_request: UR-103
 domain: backend

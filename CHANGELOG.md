@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.273.0 — Priority-Ordered Queue Selection and Board Tags (2026-09-04)
+
+REQs can now carry an authored `priority: now | next | later` that persists the maintainer's intended order across runs and makes that order visible on the board.
+
+- The canonical selector orders ordinary ready work by priority before applying fan-out, while repository-gate repairs, deferred parents, dependencies, explicit REQ order, and stable ties keep their existing authority.
+- Selected and excluded JSON records expose authored `priority` separately from scheduling-class `selection_priority`; absent and invalid values conservatively resolve to `next`, with invalid input warned.
+- The board sorts Ready and Waiting groups independently and shows compact `now`/`later` tags; capture writes priority only from explicit user ranking words and supports queued addendum changes.
+
 ## 0.272.1 — Cancelling a Claimed REQ No Longer Trips Over Its Own Checkpoint (2026-09-03)
 
 `do-work abandon` on a REQ in `working/` whose checkpoint entry was written by another session, or had already been cleared, rolled back with "path do-work/CHECKPOINT.md is outside the declared transaction targets". The plan computed byte-identical checkpoint bytes, declared no checkpoint target, and wrote the file anyway. A landed REQ whose claiming session had died could not be cancelled at all.

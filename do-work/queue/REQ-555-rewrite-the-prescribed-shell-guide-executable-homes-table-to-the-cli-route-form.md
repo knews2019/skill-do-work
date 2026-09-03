@@ -2,6 +2,7 @@
 id: REQ-555
 title: '[impact-negligible] Rewrite the prescribed-shell guide executable-homes table to the do-work-cli route form'
 status: pending
+priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
 domain: general

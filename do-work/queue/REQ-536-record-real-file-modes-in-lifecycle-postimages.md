@@ -2,6 +2,7 @@
 id: REQ-536
 title: 'Review fix: record real file modes in lifecycle postimages'
 status: pending
+priority: now
 created_at: 2026-09-03T12:20:21Z
 user_request: UR-103
 domain: backend

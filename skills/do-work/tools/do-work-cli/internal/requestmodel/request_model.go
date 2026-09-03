@@ -56,6 +56,8 @@ type RequestRecord struct {
 	RouteEvidence                       schemanormalization.FieldResult
 	ImpactValue                         string
 	ImpactEvidence                      schemanormalization.FieldResult
+	RequestPriorityValue                string
+	RequestPriorityEvidence             schemanormalization.FieldResult
 	EffortEstimateValue                 string
 	EffortEstimateEvidence              schemanormalization.FieldResult
 	MaintenanceValue                    string
@@ -262,6 +264,7 @@ func (document *RequestDocument) TypedRecord() RequestRecord {
 	domainEvidence := schemanormalization.NormalizeField("domain", document.scalarValue("domain"))
 	routeEvidence := schemanormalization.NormalizeField("route", document.scalarValue("route"))
 	impactEvidence := schemanormalization.NormalizeField("impact", document.scalarValue("impact"))
+	requestPriorityEvidence := schemanormalization.NormalizeField("priority", document.scalarValue("priority"))
 	effortEstimateEvidence := schemanormalization.NormalizeField("effort_estimate", document.scalarValue("effort_estimate"))
 	maintenanceEvidence := schemanormalization.NormalizeField("maintenance", document.scalarValue("maintenance"))
 	tddEvidence := schemanormalization.NormalizeField("tdd", document.scalarValue("tdd"))
@@ -299,6 +302,7 @@ func (document *RequestDocument) TypedRecord() RequestRecord {
 		DomainValue: domainEvidence.ResolvedValue, DomainEvidence: domainEvidence,
 		RouteValue: routeEvidence.ResolvedValue, RouteEvidence: routeEvidence,
 		ImpactValue: impactEvidence.ResolvedValue, ImpactEvidence: impactEvidence,
+		RequestPriorityValue: requestPriorityEvidence.ResolvedValue, RequestPriorityEvidence: requestPriorityEvidence,
 		EffortEstimateValue: effortEstimateEvidence.ResolvedValue, EffortEstimateEvidence: effortEstimateEvidence,
 		MaintenanceValue: maintenanceEvidence.ResolvedValue, MaintenanceEvidence: maintenanceEvidence,
 		TDDValue: tddEvidence.ResolvedValue, TDDEvidence: tddEvidence,

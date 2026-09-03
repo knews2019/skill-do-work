@@ -2,6 +2,7 @@
 id: REQ-506
 title: '[impact-rule-change] Run the evidence gates from advance'
 status: pending
+priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
 domain: general

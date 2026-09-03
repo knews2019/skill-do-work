@@ -2,6 +2,7 @@
 id: REQ-514
 title: '[impact-rule-change] Refusals never name themselves as the fix'
 status: pending
+priority: now
 created_at: 2026-09-02T20:35:18Z
 user_request: UR-099
 domain: backend

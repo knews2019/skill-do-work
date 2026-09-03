@@ -1015,6 +1015,21 @@ body.is-resizing-detail {
 .badge-route {
   font-family: var(--font-mono);
 }
+.badge-priority {
+  font-family: var(--font-mono);
+  font-weight: 650;
+  padding-block: 2px;
+}
+.badge-priority-now {
+  color: var(--accent-pending);
+  background-color: var(--tint-pending);
+  border-color: rgba(216, 162, 74, 0.3);
+}
+.badge-priority-later {
+  color: var(--ink-soft);
+  background-color: var(--surface-3);
+  border-color: var(--line-firm);
+}
 /* "unblocks N" — this REQ is what N unresolved REQs are waiting on. Carries the
    done accent: landing it is what turns other cards green. */
 .badge-unblocks {

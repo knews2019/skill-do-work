@@ -2,6 +2,7 @@
 id: REQ-485
 title: 'Canonicalize REQ reservation marker filenames across allocation flows'
 status: pending
+priority: now
 created_at: 2026-09-01T12:11:03Z
 user_request: UR-092
 domain: backend

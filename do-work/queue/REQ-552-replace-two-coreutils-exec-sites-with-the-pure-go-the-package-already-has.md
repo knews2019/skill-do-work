@@ -2,6 +2,7 @@
 id: REQ-552
 title: '[impact-negligible] Replace two coreutils exec sites with the pure Go the package already has'
 status: pending
+priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
 domain: backend

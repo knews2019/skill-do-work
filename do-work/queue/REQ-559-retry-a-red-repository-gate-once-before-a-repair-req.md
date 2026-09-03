@@ -2,6 +2,7 @@
 id: REQ-559
 title: '[impact-rule-change] Retry a red repository gate once before deferring or minting a repair REQ'
 status: pending
+priority: now
 created_at: 2026-09-03T20:05:46Z
 user_request: UR-106
 domain: general

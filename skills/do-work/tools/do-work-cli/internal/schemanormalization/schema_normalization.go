@@ -68,6 +68,11 @@ var fieldContracts = map[string]fieldContract{
 		aliasValues:     map[string]string{},
 		defaultValue:    "impact-user-visible",
 	},
+	"priority": {
+		canonicalValues: []string{"now", "next", "later"},
+		aliasValues:     map[string]string{},
+		defaultValue:    "next",
+	},
 	"effort_estimate": {
 		canonicalValues: []string{"effort-mechanical", "effort-substantive"},
 		aliasValues:     map[string]string{"trivial": "effort-mechanical", "normal": "effort-substantive"},

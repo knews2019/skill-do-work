@@ -2,6 +2,7 @@
 id: REQ-557
 title: '[impact-negligible] Deduplicate six Go helper names defined fourteen times across do-work-cli'
 status: pending
+priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
 domain: backend

@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -134,6 +135,55 @@ func TestStaticAndLivePagesUseIdenticalAssembledClient(t *testing.T) {
 	liveClient := extractAssembledClient("live", livePage)
 	if staticClient != liveClient {
 		t.Fatal("static and live pages embedded different assembled client bytes")
+	}
+}
+
+func TestStaticAndLivePriorityPayloadsAgree(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"do-work/queue/REQ-301-next.md", "---\nid: REQ-301\ntitle: Next\nstatus: pending\n---\n"},
+		{"do-work/queue/REQ-302-later.md", "---\nid: REQ-302\ntitle: Later\nstatus: pending\npriority: later\n---\n"},
+		{"do-work/queue/REQ-303-now.md", "---\nid: REQ-303\ntitle: Now\nstatus: pending\npriority: now\n---\n"},
+		{"do-work/queue/REQ-304-invalid.md", "---\nid: REQ-304\ntitle: Invalid\nstatus: pending\npriority: urgent\ndepends_on: [REQ-999]\n---\n"},
+		{"do-work/queue/REQ-305-waiting-now.md", "---\nid: REQ-305\ntitle: Waiting now\nstatus: pending\npriority: now\ndepends_on: [REQ-998]\n---\n"},
+	})
+	board, err := buildBoard(repoRoot, time.Now().UTC(), defaultRecentWindow, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staticDirectory := t.TempDir()
+	if err := generateStaticSite(staticDirectory, board); err != nil {
+		t.Fatal(err)
+	}
+	staticPayload, err := os.ReadFile(filepath.Join(staticDirectory, boardDataJsFilename))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const assignmentPrefix = "window.queueKanbanBoardData = "
+	jsonText := strings.TrimSuffix(strings.TrimPrefix(string(staticPayload), assignmentPrefix), ";\n")
+	var staticData generatedBoardData
+	if err := json.Unmarshal([]byte(jsonText), &staticData); err != nil {
+		t.Fatal(err)
+	}
+	liveHTTPServer := httptest.NewServer(newLiveBoardServer(repoRoot, defaultRecentWindow))
+	defer liveHTTPServer.Close()
+	liveData := fetchServedBoardData(t, liveHTTPServer.URL)
+	if !reflect.DeepEqual(staticData.Columns, liveData.Columns) || !reflect.DeepEqual(staticData.Requests, liveData.Requests) || !reflect.DeepEqual(staticData.Warnings, liveData.Warnings) {
+		t.Fatalf("static and live priority payloads disagree\nstatic=%#v\nlive=%#v", staticData, liveData)
+	}
+	if !reflect.DeepEqual(staticData.Columns.PendingReady, []string{"REQ-303", "REQ-301", "REQ-302"}) || !reflect.DeepEqual(staticData.Columns.PendingWaiting, []string{"REQ-305", "REQ-304"}) {
+		t.Fatalf("priority columns = ready %v waiting %v", staticData.Columns.PendingReady, staticData.Columns.PendingWaiting)
+	}
+	if staticData.Requests["REQ-303"].Priority != requestPriorityNow || staticData.Requests["REQ-301"].Priority != requestPriorityNext || staticData.Requests["REQ-302"].Priority != requestPriorityLater || staticData.Requests["REQ-304"].Priority != requestPriorityNext || !staticData.Requests["REQ-304"].PriorityUnrecognized {
+		t.Fatalf("priority projections = %#v", staticData.Requests)
+	}
+	foundPriorityWarning := false
+	for _, warning := range staticData.Warnings {
+		if strings.Contains(warning, "REQ-304") && strings.Contains(warning, "priority") && strings.Contains(warning, "Treating as 'next'") {
+			foundPriorityWarning = true
+		}
+	}
+	if !foundPriorityWarning {
+		t.Fatalf("invalid priority warning missing: %v", staticData.Warnings)
 	}
 }
 

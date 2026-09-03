@@ -2,6 +2,7 @@
 id: REQ-553
 title: '[impact-negligible] Source one do-work-cli launcher preamble instead of hand-rolling it in every launcher'
 status: pending
+priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
 domain: general

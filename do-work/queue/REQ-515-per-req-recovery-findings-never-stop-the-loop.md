@@ -2,6 +2,7 @@
 id: REQ-515
 title: '[impact-rule-change] Per-REQ recovery findings never stop the loop'
 status: pending
+priority: now
 created_at: 2026-09-02T20:35:18Z
 user_request: UR-099
 domain: general

@@ -23,6 +23,12 @@ const (
 	PriorityOrdinary             = "ordinary"
 )
 
+const (
+	RequestPriorityNow   = "now"
+	RequestPriorityNext  = "next"
+	RequestPriorityLater = "later"
+)
+
 type SelectionOptions struct {
 	TargetTokens         []string
 	WaveDepth            *int

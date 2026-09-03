@@ -2,6 +2,7 @@
 id: REQ-503
 title: 'Add the read-only advance lifecycle command'
 status: pending
+priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
 domain: backend

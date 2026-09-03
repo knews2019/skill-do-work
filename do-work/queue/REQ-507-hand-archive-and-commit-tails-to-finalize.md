@@ -2,6 +2,7 @@
 id: REQ-507
 title: '[impact-rule-change] Hand the archive and commit tails to finalize'
 status: pending
+priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
 domain: general

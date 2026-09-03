@@ -153,6 +153,7 @@ type SelectionRecord struct {
 	Title             string               `json:"title"`
 	Provenance        string               `json:"provenance"`
 	SelectionPriority string               `json:"selection_priority"`
+	RequestPriority   string               `json:"priority"`
 	OriginalStatus    string               `json:"original_status"`
 	ProbeStatus       SelectionProbeStatus `json:"probe_status"`
 	ProbeAttempted    bool                 `json:"probe_attempted"`
@@ -185,6 +186,7 @@ type SelectionExclusion struct {
 	Title             string                   `json:"title"`
 	Provenance        string                   `json:"provenance"`
 	SelectionPriority string                   `json:"selection_priority"`
+	RequestPriority   string                   `json:"priority"`
 	OriginalStatus    string                   `json:"original_status"`
 	ProbeStatus       SelectionProbeStatus     `json:"probe_status"`
 	ProbeAttempted    bool                     `json:"probe_attempted"`
@@ -387,6 +389,9 @@ func NormalizeResult(result CommandResult) CommandResult {
 		if selection.SelectionPriority == "" {
 			selection.SelectionPriority = "ordinary"
 		}
+		if selection.RequestPriority == "" {
+			selection.RequestPriority = "next"
+		}
 		if selection.ProbeStatus == "" {
 			selection.ProbeStatus = ProbeNotApplicable
 		}
@@ -407,6 +412,9 @@ func NormalizeResult(result CommandResult) CommandResult {
 		exclusion := &result.Excluded[index]
 		if exclusion.SelectionPriority == "" {
 			exclusion.SelectionPriority = "ordinary"
+		}
+		if exclusion.RequestPriority == "" {
+			exclusion.RequestPriority = "next"
 		}
 		if exclusion.ProbeStatus == "" {
 			exclusion.ProbeStatus = ProbeNotApplicable

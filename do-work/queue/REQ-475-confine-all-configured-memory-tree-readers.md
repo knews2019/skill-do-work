@@ -2,6 +2,7 @@
 id: REQ-475
 title: '[impact-critical] Review fix: Confine all configured Memory tree readers'
 status: pending
+priority: now
 created_at: 2026-09-01T08:32:57Z
 user_request: UR-081
 domain: backend

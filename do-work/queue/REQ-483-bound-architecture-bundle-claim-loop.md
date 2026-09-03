@@ -2,6 +2,7 @@
 id: REQ-483
 title: '[impact-critical] Review fix: Bound the architecture bundle-claim loop and restore --commit'
 status: pending
+priority: now
 created_at: 2026-09-01T11:51:27Z
 user_request: UR-081
 domain: backend

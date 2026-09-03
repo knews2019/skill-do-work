@@ -2,6 +2,7 @@
 id: REQ-544
 title: '[impact-critical] Anchor every lifecycle gate that reads caller-authored text'
 status: pending
+priority: now
 created_at: 2026-09-03T09:45:00Z
 user_request: UR-081
 domain: backend

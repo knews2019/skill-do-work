@@ -2,6 +2,7 @@
 id: REQ-554
 title: '[impact-negligible] Move the 46 lines commit.md and inspect.md share into the prescribed-shell guide'
 status: pending
+priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
 domain: general

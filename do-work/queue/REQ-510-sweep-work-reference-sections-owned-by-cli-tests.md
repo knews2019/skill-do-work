@@ -2,6 +2,7 @@
 id: REQ-510
 title: '[impact-rule-change] Sweep work-reference sections whose contract is now a CLI behavior test'
 status: pending
+priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
 domain: general

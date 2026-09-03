@@ -2,6 +2,7 @@
 id: REQ-508
 title: '[impact-rule-change] Reduce capture templates to minimal examples backed by the schema layer'
 status: pending
+priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
 domain: general

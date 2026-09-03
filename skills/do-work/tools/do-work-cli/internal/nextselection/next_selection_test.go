@@ -343,6 +343,75 @@ func TestReadyGateWorkPriorityPreservesExplicitOrder(t *testing.T) {
 	}
 }
 
+func TestRequestPriorityOrdersOrdinaryReadyWorkBeforeFanOut(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-821-later.md", "REQ-821", "pending", "priority: later\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-822-next.md", "REQ-822", "pending", "priority: next\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-823-now.md", "REQ-823", "pending", "priority: now\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	limit := 2
+	result := Select(snapshot, dependencygraph.BuildGraph(snapshot), SelectionOptions{FanOutLimit: &limit}, nil)
+	if got := selectedRequestIDsFromModel(result.Selected); !equalStrings(got, []string{"REQ-823", "REQ-822"}) {
+		t.Fatalf("priority-ordered selected records = %v, want [REQ-823 REQ-822]", got)
+	}
+	assertExclusionCode(t, result, "REQ-821", "FAN-OUT-LIMIT")
+	if result.Selected[0].RequestPriority != RequestPriorityNow || result.Selected[1].RequestPriority != RequestPriorityNext {
+		t.Fatalf("selected request priorities = %#v", result.Selected)
+	}
+	if exclusion := exclusionByID(t, result, "REQ-821"); exclusion.RequestPriority != RequestPriorityLater || exclusion.SelectionPriority != PriorityOrdinary {
+		t.Fatalf("fan-out exclusion lost distinct priority axes: %#v", exclusion)
+	}
+}
+
+func TestRequestPriorityNeverOverridesClassesOrDependencies(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-831-later-prerequisite.md", "REQ-831", "pending", "priority: later\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-832-now-dependent.md", "REQ-832", "pending", "priority: now\ndepends_on: [REQ-831]\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-833-invalid.md", "REQ-833", "pending", "priority: urgent\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-834-repair.md", "REQ-834", "pending", "priority: later\nrepository_gate_repair: true\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-835-deferred.md", "REQ-835", "pending", "priority: later\ngate_deferred: true\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	limit := 4
+	result := Select(snapshot, dependencygraph.BuildGraph(snapshot), SelectionOptions{FanOutLimit: &limit}, nil)
+	if got := selectedRequestIDsFromModel(result.Selected); !equalStrings(got, []string{"REQ-834", "REQ-835", "REQ-833", "REQ-831"}) {
+		t.Fatalf("class/dependency priority order = %v", got)
+	}
+	dependent := exclusionByID(t, result, "REQ-832")
+	if dependent.Code != "DEPENDENCIES-UNMET" || dependent.RequestPriority != RequestPriorityNow {
+		t.Fatalf("now dependent bypassed or lost dependency evidence: %#v", dependent)
+	}
+	if result.Selected[0].SelectionPriority != PriorityRepositoryGateRepair || result.Selected[1].SelectionPriority != PriorityDeferredParent || result.Selected[2].RequestPriority != RequestPriorityNext || result.Selected[3].RequestPriority != RequestPriorityLater {
+		t.Fatalf("selection axes = %#v", result.Selected)
+	}
+	priorityWarnings := 0
+	for _, skipped := range result.SkippedWork {
+		if skipped.Code == "SCHEMA-FALLBACK" && strings.Contains(skipped.Reason, "REQ-833 priority:") {
+			priorityWarnings++
+		}
+	}
+	if priorityWarnings != 1 {
+		t.Fatalf("invalid priority warnings = %d, want 1; skipped=%#v", priorityWarnings, result.SkippedWork)
+	}
+}
+
+func TestEqualRequestPriorityPreservesQueueOrder(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-841-first.md", "REQ-841", "pending", "priority: now\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-842-second.md", "REQ-842", "pending", "priority: now\n")
+	snapshot, _ := repositorymodel.DiscoverRepository(repositoryRoot)
+	limit := 2
+	result := Select(snapshot, dependencygraph.BuildGraph(snapshot), SelectionOptions{FanOutLimit: &limit}, nil)
+	if got := selectedRequestIDsFromModel(result.Selected); !equalStrings(got, []string{"REQ-841", "REQ-842"}) {
+		t.Fatalf("equal-priority queue order = %v", got)
+	}
+}
+
 func TestMixedExplicitAndURTargetsKeepCallerAnchorsAndPriorityEachExpansion(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-811-ordinary.md", "REQ-811", "pending", "user_request: UR-811\n")

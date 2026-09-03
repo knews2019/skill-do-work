@@ -2,6 +2,7 @@
 id: REQ-505
 title: '[impact-rule-change] Move selection and claim behind advance'
 status: pending
+priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
 domain: general
