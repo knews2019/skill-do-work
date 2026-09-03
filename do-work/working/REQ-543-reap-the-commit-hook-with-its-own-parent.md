@@ -13,11 +13,20 @@ maintenance: false
 impact: impact-critical
 effort_estimate: effort-substantive
 write_set:
+  - skills/do-work/tools/do-work-cli/internal/ownedprocess/owned_process_group.go
+  - skills/do-work/tools/do-work-cli/internal/ownedprocess/owned_process_group_unix.go
+  - skills/do-work/tools/do-work-cli/internal/ownedprocess/owned_process_group_unsupported.go
+  - skills/do-work/tools/do-work-cli/internal/ownedprocess/owned_process_group_unix_test.go
   - skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go
+  - skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_cancellation_test.go
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_process.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_process_unix.go
+  - skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_process_windows.go
+  - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
 related: [REQ-457]
 claimed_at: 2026-09-03T13:36:18Z
 route: B
+review_at: 2026-09-03T15:42:47Z
 estimate:
   p50_active_minutes: 30
   confidence: medium
@@ -197,3 +206,110 @@ Independent (orchestrator-run, not the builder's report):
 - **The builder did not read four always-load crew-member files**, reporting them absent when all 18 are present and tracked (`git ls-files skills/do-work/crew-members/ | wc -l` → 18). I therefore read the diff against those guardrails myself: the change *reduces* surface (a detached goroutine, a reflection probe and two build-tagged files deleted; three runners down to two), every added comment states an invariant, and names are greppable and multi-word — `ConfigureGroup`, `TerminateGroup`, `currentHeadDespiteCancellation`, `terminateWholeGroup`. It is consistent with those rules despite not having been read against them, and the underlying reliability question is filed as a discovered task.
 
 **Two guards the builder declared unearned, which I am recording rather than quietly accepting as coverage:** the zombie-tree predicate (`requireReaped=false` reddens nothing, because with correct ordering the parent reaps within one `ps` round-trip) and blocking-rather-than-detaching (`Cmd.Wait` cannot return before the leader is reaped, and the leader cannot exit before reaping its hook, so no case distinguishes them). Both are kept as defence-in-depth against a recycled pid; neither is claimed as tested.
+
+## Testing
+
+**Tests run** (from `skills/do-work/tools/do-work-cli/`): `go test -count=1 ./...`; `go test -count=5 ./internal/{ownedprocess,gittransaction,toolboxcommands,nextselection,suiteinstall}`; `go build ./...`; `go vet ./...`; `gofmt -l .`; `GOOS=windows GOARCH=amd64 go build ./...` plus `go vet` on the three packages; `GOOS=plan9 GOARCH=amd64 go build ./internal/ownedprocess/`.
+**Result:** ✓ full module **exit 0, 26 packages ok**, working tree unchanged by the run. `-count=5` on the five affected packages exit 0. `go vet` exit 0, `gofmt -l .` silent, both cross-builds OK. The full-module run was repeated once more when this record was closed: exit 0, 26 packages ok.
+
+**Provenance of this section, stated because it matters for how much it is worth:** the builder's hand-back never appended a Testing section, so this one is assembled from the orchestrator's own runs (recorded in `## Qualification`) and the independent review's re-verification at `1cc3beb`. Nothing below is the builder's self-report.
+
+**Red-green validation** — traces `## Red-Green Proof`:
+- `internal/toolboxcommands` → `TestRemediationCancellationReachesMediaGitCommitAndRollback`: ✗ `media commit hook survived cancellation` before → ✓ after, **unmodified** (the test file is absent from the implementation diff, which the review checked rather than assumed).
+
+**Neuter table** (each guard tested by breaking it, in a scratch copy; the working tree was never modified):
+
+| Neuter | Result |
+|--------|--------|
+| Teardown reverted to leader-first whole-group | **reds 4 tests across 3 packages**, including this REQ's original RED |
+| D-05's HEAD-advanced guard removed | **reds** `TestCancelledCommitThatLandsReportsCommittedRisk` — `outcome = "rolled_back", want "committed_state_risk"` |
+| Leader's SIGTERM dropped from the escalation | **reds** `TestTerminateGroupLetsTheGracefulSignalRunFirst` |
+| Every grace budget zeroed (member loop and leader loop) | **reds nothing** at `-count=3` in all three packages → finding F3 |
+| Escalation detached again (answers preserved) | **reds nothing** → finding F12 |
+| Zombie predicate neutered (`requireReaped=false`) | **reds nothing** → finding F12 |
+
+D-05's branch was measured as well as neutered: 15/15 runs took the committed-risk branch, so the guard is exercised deterministically even though its test tolerates both outcomes.
+
+**D-04 boundedness, checked rather than argued:** the level walk is bounded by construction — each pid is `placed` once, the loop exits on an empty level, orphans are handled outside the walk. A no-sleep respawn loop finished in 711 ms leaving 14 zombies and zero running survivors. No looping input could be constructed; the sweep misses a process only when it leaves the group (`setsid`) or under F1.
+
+**New tests added:**
+- `internal/ownedprocess/owned_process_group_unix_test.go` — `TestTerminateGroupLetsTheGracefulSignalRunFirst`, `TestTerminateGroupReportsAnAlreadyFinishedGroup`, `TestTerminateGroupEndsParentsThatKeepForkingChildren`.
+- `internal/gittransaction/git_transaction_cancellation_test.go` — `TestCancelledCommitKillsTermDeafHookBeforeReturning`, `TestCancelledCommitThatLandsReportsCommittedRisk`.
+
+**Existing tests updated:** none. No assertion anywhere was weakened, which is what let the original RED stand as proof.
+
+**Pre-existing red, not caused here:** `internal/nextselection` → `TestBlockedProbeTimeoutKillsDescendantGroup` fails under load. Answered in full in `## Review` below: latent flake, unrelated to this REQ. Cross-compilation stays red for plan9, js, wasip1, aix and solaris; only aix and solaris changed, which is finding F8.
+
+*Verified by work action*
+
+## Review
+
+**Overall: 83%** | 2026-09-03T15:42:47Z | **Verdict: Approve. Route B.** Re-verified against merged HEAD at implementation commit `1cc3beb`; the module is unchanged since.
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 92% |
+| Code Quality | 82% |
+| Test Adequacy | 70% |
+| Scope | 88% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- **F1** — a reaped leader is treated as an empty group, so a live group is never swept. `internal/ownedprocess/owned_process_group_unix.go:50`: `syscall.Getpgid(leaderPID)` returning `ESRCH` is routed into the D-07 "not isolated" branch, then `escalateOnProcess` sees the leader gone and returns `os.ErrProcessDone`. Measured at the seam: returns in 2.2 us while `kill(-pgid, 0)` still succeeds and a TERM-deaf descendant stays in state `R`. Left 1 live worker behind in 16 teardown-branch runs — `impact-rule-change` → REQ-546 created (sweep `owned-group-teardown-contract-gaps`)
+- **F2** — the exported contract over-claims and the prime restates it. `internal/ownedprocess/owned_process_group.go:30-34` ("blocks until they are gone, so a caller that returns afterwards has proved the group is dead") and `skills/do-work/tools/do-work-cli/prime-do-work-cli.md:30` ("`TerminateGroup` blocks until the group is gone"). Three measured counterexamples: an orphan left as `Z` and visible to `kill(pid, 0)`, a `setsid` escapee never signalled, and F1's reaped-leader no-op. The internal `escalateOnMembers` comment states the orphan distinction correctly, so only the two statements a caller and a future builder actually read are wrong — `impact-rule-change` → REQ-546
+- **F3** — the one test that claims to pin the escalation grace does not pin it. `internal/ownedprocess/owned_process_group_unix_test.go:16-21` says the pause "is the only thing that makes the SIGTERM mean anything ... This pins the window". Zeroing every grace budget leaves that test and both caller packages green at `-count=3`; it reds only when SIGTERM is dropped entirely. What gives the handler its window is the `ps` fork inside `leaderRuns()` between the two signals. The test pins TERM-before-KILL, not the budget — `impact-rule-change` → REQ-546
+- **F4** — `_dev/lessons/validated-runtime-boundaries.md:7` states the superseded shape: "signal that group on timeout, escalate when needed, and reap its leader. If isolation cannot be proved, fail closed". The canonical seam now signals descendants level-by-level rather than the group as a unit, and `runGit` deliberately degrades instead of failing closed (D-02). D-07 cites that file as the authority, so a future builder would read the stale text as the rule. Prose-only — `impact-rule-change` → appended to `do-work/prose-backlog.md`
+
+**Minor findings:** 8 (F5-F12) plus 2 nits, report only — with three exceptions handled at hand-back: F9 (missing lesson-family bullet) and F10 (`write_set` listed 2 files while 10 were touched) are bookkeeping this closure owes and does here, and F12 (blocking and the zombie predicate are both unearned — neutering either reds nothing) is folded into REQ-546 as an instance.
+
+**Acceptance:** Pass — full module exit 0, `-count=5` exit 0, and the neuter table confirms the fix rather than the tests merely passing.
+**Suggested testing:** 5 items — earn F12's two guards; a seam lock-in for F1; give `TestRemediationLeaderExitStillKillsTermDeafDescendant` the descendant assertion its name promises (F11); a cross-compile gate lane, since the prime's `GOOS=windows` Verify lines are run by no gate; real hook shapes (`husky`/`lint-staged`, a daemonizing hook, macOS BSD `ps`).
+**Follow-ups created:** REQ-546 (sweep: the owned-group teardown contract is stated and tested more strongly than it is implemented); **sweeps appended to:** None — the fold-first scan found six `pending` `sweep: true` REQs in `do-work/queue/` and no root-cause match.
+
+**Priority question that closure was waiting on — answered, and it does not change the verdict.** `internal/nextselection` → `TestBlockedProbeTimeoutKillsDescendantGroup` is a **pre-existing latent flake, neither caused nor meaningfully worsened by this REQ**. Four independent legs:
+
+1. Main's REQ-534 did not fix it. REQ-534 (running blocked probes from the repository root and propagating interruptions) is capture-only — `do-work/queue/REQ-534-...`, `status: pending`, never implemented.
+2. `internal/nextselection/` is **byte-identical from `546b7a3` through HEAD**: `git diff 546b7a3 HEAD -- .../internal/nextselection/` is empty, and so is the same diff from `8d0f994`. This REQ's pre-merge and post-merge code are identical too — `1cc3beb..HEAD` touches none of the three packages.
+3. The test is timing-dependent by construction: it polls `kill(pid, 0)` on an orphan zombie against a **2 s budget** (`blocked_probe_test.go:35`), while measured orphan reap latency on this host is **1.04 s idle and 1.44 s worst case** under 10 churn loops — roughly 0.6 s of headroom.
+4. It did not fail in **28 runs**: `-count=10` clean, `-count=10` under 6 CPU hogs, `-count=8` under 8 fork/`ps` churn loops, `-count=5` in the real tree.
+
+So the only variable between the failing gate run and the passing one is load. It is correctly filed as the builder's own discovered task and needs no REQ of its own. It will red again on a slower or differently-inited host, which is what that discovered task is for.
+
+**Scope limit of the fix, recorded so nobody reads the contract as wider than it is.** The zombie is gone only where the dying process's parent is a live group member. For the `git` shape it is genuinely gone. Two cases remain, and both are acknowledged rather than fixed:
+
+- an **orphan** (a hook forks a grandchild, then exits) is left as a zombie that still answers `kill(pid, 0)` — it is proved not-running, not reaped, because only init can reap it;
+- a **`setsid` escapee** leaves the group and is never signalled at all, so it survives running.
+
+Both are inherent to group ownership without `PR_SET_CHILD_SUBREAPER`, which this REQ's own `## Traps` rules out (it lives in `x/sys/unix`, and the prime requires standard-library-only dependencies). F2 is exactly the gap between these three real outcomes and the two sentences that claim one.
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:**
+- Measuring before diagnosing. Process-table sampling at 20 ms during a live failing run refuted three plausible causes (`Setpgid` is applied, the negative-PID group signal is delivered, `trap '' TERM` is inherited by `sleep`) and produced the descendants-first shape directly. A guessed fix here would have been "make the escalation synchronous", which does not work.
+- Testing every guard by breaking it. The neuter table is what turned "the tests pass" into "these four tests red when the fix is removed" — and it is the same instrument that found three guards nothing reds on (F3, F12). A green suite would have hidden both.
+- Cross-building for plan9. The builder's first attempt named the non-Unix fallback `*_windows.go`, whose implicit constraint left every other non-Unix target with no implementation. One cross-build caught it before merge; `_unsupported.go` is the fix.
+
+**What didn't:**
+- The builder reported four always-load crew-member files as absent from the tree. All 18 are present and tracked. The guardrails were never read; the orchestrator read the diff against them afterwards instead. Filed as a discovered task, because if the check was a relative `ls` from the Go module directory then every builder dispatched into a subdirectory silently skips the always-on guardrails.
+- The Scope declaration. Prose paths ("a new shared package under `.../internal/`") instead of literal ones, and backticked identifiers in the trailing descriptions, which `scope-drift.sh` reads as declared paths. **Second occurrence** — REQ-457 hit it first. The fix is that a Scope bullet's description carries no backticks; recording it a third time would not be a fix.
+- `write_set` was never amended when the file list grew from 2 to 10. `## Scope` drift was reconciled in prose and the frontmatter guard was not, and under fan-out it is the guard, not the prose, that prevents collisions (F10). Corrected in this record's frontmatter at closure.
+- The first sweep implementation re-derived terminable leaves each round and **hung the `generate-report-image` shell probes forever**: a backend that respawns a helper in a loop always has a live child, so the sweep never climbed to the parent. D-04's single-snapshot levelling is the replacement.
+
+**Worth knowing:**
+- **A zombie satisfies `kill(pid, 0)`.** That one fact is why making the escalation synchronous is not sufficient and why the ordering had to change: only letting `git` survive to `waitpid()` its own hook removes the window, because a wait on our own child ends in milliseconds while a wait on init is measured in seconds.
+- `ESRCH` from `Getpgid(leader)` does **not** mean "the group is not isolated" — the leader can be reaped while the group is still alive and running. `internal/nextselection`'s `cleanupReapedProcessGroup` (`blocked_probe_unix.go:54`) already handles exactly this case and is the reference behaviour F1 lacks.
+- Without `PR_SET_CHILD_SUBREAPER` — barred here, since it lives in `x/sys/unix` and this module is standard-library-only — an orphan can be proved not-running but never reaped, and a `setsid` escapee cannot be reached at all. Any future wording of this contract has to carry all three outcomes.
+- The prime's `GOOS=windows` Verify lines are run by no gate: `grep -n GOOS _dev/tests/*.sh` is empty. The portability contract is written down and unenforced.
+- The REQ's `## Traps` names `_dev/tests/do-work-cli-go125-compatibility.sh` as the Go 1.25 floor enforcer. Main deleted that script in `5e0e166` and the merge removed its prime Verify line, so the floor now rests on `go.mod`'s `go 1.25.0` alone. Not this REQ's doing, but the Traps text is stale for the next reader.
+- New lesson family **`reaped-by-its-own-parent`**, already promoted into the prime's `## Traps` (`prime-do-work-cli.md:56`). Its satellite bullet in `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` is **still owed** and is deliberately deferred to the release commit; `do-work/lessons-index.md:11`'s family set was updated here. **Stated as a disagreement rather than hidden:** for as long as that gap is open, the index row lists a family the satellite does not carry, which contradicts the index's own header rule ("`families` is the exact sorted set of `[family: <slug>]` markers present in lesson bullets"). The two halves belong in one commit; they are split here only because this closure may not write under `skills/`.
+
+## Orientation
+
+Cancelling a Git-committing transaction now ends the whole process tree it launched, including the grandchildren a `pre-commit` hook spawns, and it blocks until they are gone instead of returning over a detached SIGKILL. A cancelled commit that nevertheless lands is now reported as `committed_state_risk` rather than as a rollback that silently left the bytes in place. Lives in the CLI's new `internal/ownedprocess` package, which both `gittransaction` and `toolboxcommands` now call.
+
+`prime_files`: `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` — spot-checked at closure; every path it names still exists, and the builder's own edit (the package entry at `:30`, the `Package direction` edge at `:34`, the `reaped-by-its-own-parent` trap at `:56`, and the Windows Verify line at `:76`) is present and accurate except the one clause F2 names.
+
+**[MAP CHANGED]** — owned-process-group launch and teardown is now a single named seam with the platform split in one package, down from three divergent runners to two (`nextselection`'s blocked probe keeps its own, per D-03). `gittransaction` holds zero build-tagged production files and the `Setpgid` reflection probe is gone. Why it matters: the teardown ordering — descendants before parents, level by level, from one snapshot — is now the module's single answer to "kill the tree", and the two outcomes it cannot deliver (an unreaped orphan, a `setsid` escapee) are properties of that one seam rather than of each caller.
