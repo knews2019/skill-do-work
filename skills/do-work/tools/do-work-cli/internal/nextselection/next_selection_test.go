@@ -314,6 +314,25 @@ func TestWaveDepthAndFanOutAreSeparateSelectionAxes(t *testing.T) {
 	assertExclusionCode(t, result, "REQ-303", "WAVE-MISMATCH")
 }
 
+func TestWaveZeroIncludesDependentWithSatisfiedDuplicateRecords(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-311-duplicate.md", "REQ-311", "completed", "")
+	writeCommandRequest(t, repositoryRoot, "do-work/archive/REQ-311-duplicate.md", "REQ-311", "completed", "")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-312-dependent.md", "REQ-312", "pending", "depends_on: [REQ-311]\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wave := 0
+	result := Select(snapshot, dependencygraph.BuildGraph(snapshot), SelectionOptions{WaveDepth: &wave}, nil)
+	if got := selectedRequestIDsFromModel(result.Selected); !equalStrings(got, []string{"REQ-312"}) {
+		t.Fatalf("wave 0 selection = %v, want duplicate-satisfied dependent; result=%#v", got, result)
+	}
+	if result.Selected[0].DependencyDepth != 0 {
+		t.Fatalf("duplicate-satisfied dependent depth = %d, want 0", result.Selected[0].DependencyDepth)
+	}
+}
+
 func TestReadyGateWorkPriorityPreservesExplicitOrder(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-801-ordinary.md", "REQ-801", "pending", "user_request: UR-801\n")

@@ -486,7 +486,7 @@ func queueDependencyDepth(graph *dependencygraph.DependencyGraph, identifier str
 	for _, dependencyID := range node.DependencyIDs {
 		dependency := graph.NodesByID[dependencyID]
 		depth := 0
-		if dependency != nil && schemanormalization.IsTerminalSuccess(dependency.RequestStatus) {
+		if !requestIDInList(node.UnmetDependencies, dependencyID) {
 			depth = -1
 		} else if dependency != nil && dependency.RequestStatus == "pending" {
 			depth = queueDependencyDepth(graph, dependencyID, memo, visiting)
@@ -498,4 +498,13 @@ func queueDependencyDepth(graph *dependencygraph.DependencyGraph, identifier str
 	delete(visiting, identifier)
 	memo[identifier] = maximum + 1
 	return maximum + 1
+}
+
+func requestIDInList(requestIDs []string, targetID string) bool {
+	for _, requestID := range requestIDs {
+		if requestID == targetID {
+			return true
+		}
+	}
+	return false
 }
