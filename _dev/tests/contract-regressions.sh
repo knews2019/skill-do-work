@@ -2766,6 +2766,34 @@ assert_block_contains \
   'absolute main-tree path' \
   'Fan-Out Dispatch must state the brief-delivery trap: a repo-relative path resolves inside the worktree against its own stale copy of do-work/.'
 
+# REQ-468 — per-REQ implementation isolation is resident for EVERY run mode, serial
+# included. TRIGGER CONDITION: no shipped file may exempt a run mode from per-REQ
+# branch/worktree isolation. Serial implementation used to be written straight into the
+# shared working tree, so a REQ set aside mid-implementation left its edits there and the
+# next REQ inherited them in its diff, qualification, tests, staging and commit. The two
+# positives pin the resident rule and the branch rung of the degrade ladder; the two
+# negatives are the deletion ratchet, because "serial has no exemption" is only mechanically
+# checkable as the absence of the exemptions that existed.
+assert_contains \
+  "actions/work.md" \
+  'serial default included.*per-REQ branch or worktree' \
+  'actions/work.md must state that every run mode implements each REQ on its own per-REQ branch or worktree, serial default included — a default paragraph that reads as "serial builds in the shared tree" is exactly what lets a set-aside REQ contaminate the next one.'
+
+assert_contains \
+  "actions/work-reference.md" \
+  'own per-REQ branch in the shared working tree' \
+  'actions/work-reference.md must name the plain per-REQ branch rung of the isolation ladder — without it a harness that has no git worktree support silently loses isolation altogether instead of degrading to a branch.'
+
+assert_file_not_contains \
+  "actions/work.md" \
+  'Serial mode (has no merge|omits the variable|ignores this bullet)' \
+  'actions/work.md must not re-exempt serial mode from the merge range, from the qualification range, or from the landed-edits branch probe — each exemption sends an evidence step back to the working/staged diff, where a set-aside REQ edits qualify as the next REQ work.'
+
+assert_file_not_contains \
+  "actions/work-reference.md" \
+  'Optional, advanced harnesses only|no isolated committed implementation range' \
+  'actions/work-reference.md must not make per-REQ isolation opt-in again, and must not restore the serial exception that denied serial work an isolated committed range — that exception is what stopped repository-gate deferral from preserving a serial implementation.'
+
 # Overlapping parallel-writer isolation and hand-back (0.186.37). The shared guide's
 # former "reach for it" wording made worktrees optional and said nothing about bringing
 # completed branches home, so overlapping writers could interleave edits or strand
@@ -2917,7 +2945,7 @@ def repository_gate_defects(work, reference):
         "repair final non-recursive continuation": ("testing", r"never calls `defer-gate`.*leaves every parent dependency-gated.*recomputes selection.*continues unrelated runnable work"),
         "matching fingerprint deferral": ("testing", r"exact saved fingerprint.*defer-gate.*`<pre>` plus `<merge_hash>`"),
         "non-force cleanup": ("testing", r"git branch -d.*never force"),
-        "late fail-safe branches": ("testing", r"fingerprint mismatch, launcher failure, an invalid range, or a serial dirty implementation.*stops safely"),
+        "late fail-safe branches": ("testing", r"fingerprint mismatch, launcher failure, an invalid range, or an inability to isolate the saved base.*stops safely"),
         "pre-mutation collision retry": ("lifecycle", r"outcome: refused.*collision finding.*empty `changes` list.*rollback.status: not_needed"),
         "rolled-back collision retry": ("lifecycle", r"outcome: rolled_back.*rollback.status: succeeded"),
         "collision retry rejection": ("lifecycle", r"incomplete/failed rollback.*committed_risk.*non-collision refusal/finding.*non-empty refused-result changes stops"),
@@ -2968,7 +2996,7 @@ def repeated_failure_defects(source):
         "unrelated deferral branch":
             (action, r"matching unrelated gate failure.*repository-gate deferral lifecycle"),
         "fail-safe stop branch":
-            (action, r"mismatch, launch failure, invalid range, or serial late failure.*fail-safe stop"),
+            (action, r"mismatch, launch failure, invalid range, or unverifiable attribution.*fail-safe stop"),
         "never archive as success": (action, r"never archived as success"),
     }
     defects = {

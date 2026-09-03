@@ -173,8 +173,9 @@ worktree** on a separate branch before it writes. Read-only agents and concurren
 writers whose declarations are disjoint need no extra worktree; missing declarations
 do not count as declared overlap. This rule does not turn `write_set` into a gate — it
 remains display-only; use the ownership assigned in the fan-out brief or manifest.
-`do-work run --fan-out` remains deliberately stronger: it gives every builder a
-worktree whether or not declarations overlap.
+`do-work run` is deliberately stronger: it isolates every builder on its own
+per-REQ branch or worktree whether or not declarations overlap, in every run
+mode including its serial default.
 
 Every isolated writer commits on its own branch and hands that branch back. The
 integrator attempts every completed hand-back and integrates one branch at a time,
