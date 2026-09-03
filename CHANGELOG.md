@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.266.7 — Answer Containment Follows Structure (2026-09-03)
+
+Answer summaries that look like Markdown structure no longer slip past containment just because their prefix was not in a finite list. This keeps raw answer bytes intact across thematic breaks, tables, indentation, and future dialect fences while leaving ordinary prose inline.
+
+- The classifier now tests line-start structure—leading whitespace, ASCII punctuation, or an ordered-list digit marker—instead of ten remembered prefixes.
+- Table-driven coverage includes `***`, `___`, setext underlines, bare list markers, tables, indented blocks, and dialect fences.
+- The `BuildAnswerPlan` seam proves structural summaries require a matching raw payload and use canonical containment; safe prose stays byte-for-byte inline.
+
 ## 0.266.6 — Stuck Runs Hand Off to Judgment (2026-09-03)
 
 The refusal-clearing rule from 0.266.5 was scoped to one command. It is now the general rule for any stuck run: a deterministic refusal is a fact about what the command could prove, and reasoning about its cause is the orchestrator's job, strongest under `do-work run-with-recovery` where ownership is already asserted.
