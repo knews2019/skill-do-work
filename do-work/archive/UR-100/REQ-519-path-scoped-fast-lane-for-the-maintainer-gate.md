@@ -1,7 +1,7 @@
 ---
 id: REQ-519
 title: '[impact-rule-change] Path-scoped fast lane for the maintainer gate'
-status: pending
+status: cancelled
 created_at: 2026-09-02T21:27:16Z
 user_request: UR-100
 domain: general
@@ -27,6 +27,7 @@ estimate:
     - dependency depth 1
     - cross-route regression gates
     - full-suite verification
+completed_at: 2026-09-03T14:49:21Z
 ---
 
 # Path-Scoped Fast Lane for the Maintainer Gate
@@ -100,3 +101,9 @@ See `do-work/user-requests/UR-100/input.md` for complete verbatim input.
 
 ---
 *Source: maintainer conversation of 2026-09-03 on `_dev/tests/maintainer-verify.sh` taking 6.5 minutes, item A2 and A6 of the analysis report's improvements, captured by UR-100.*
+
+## Cancelled
+
+- **When:** 2026-09-03T14:49:21Z
+- **Why:** superseded by UR-104: REQ-537 owns the fast tier and REQ-539 the contract ratchet (maintainer decision, 2026-09-03)
+- **Decided by:** user, via `do-work abandon`

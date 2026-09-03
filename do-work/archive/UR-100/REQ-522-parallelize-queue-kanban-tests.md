@@ -1,7 +1,7 @@
 ---
 id: REQ-522
 title: 'Opt queue-kanban tests into t.Parallel'
-status: pending
+status: cancelled
 created_at: 2026-09-02T21:27:16Z
 user_request: UR-100
 domain: testing
@@ -15,6 +15,7 @@ effort_estimate: effort-substantive
 related: [REQ-518, REQ-519, REQ-520, REQ-521, REQ-523]
 batch: cheap-maintainer-gate
 write_set: [skills/do-work-board/tools/queue-kanban/*_test.go]
+completed_at: 2026-09-03T14:49:21Z
 ---
 
 # Opt queue-kanban Tests into t.Parallel
@@ -84,3 +85,9 @@ See `do-work/user-requests/UR-100/input.md` for complete verbatim input.
 
 ---
 *Source: maintainer conversation of 2026-09-03 on `_dev/tests/maintainer-verify.sh` taking 6.5 minutes, item A5 of the analysis report's improvements, captured by UR-100.*
+
+## Cancelled
+
+- **When:** 2026-09-03T14:49:21Z
+- **Why:** superseded by UR-104: REQ-538 owns the queue-kanban audit and t.Parallel opt-in (maintainer decision, 2026-09-03)
+- **Decided by:** user, via `do-work abandon`
