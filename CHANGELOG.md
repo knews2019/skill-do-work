@@ -2,6 +2,30 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.269.0 — Reconciled the Parallel Queue Runs (2026-09-03)
+
+Two checkouts worked this queue at once. This merge keeps one implementation of every REQ that both of them built, and renumbers the requests that were minted twice.
+
+- Release-target ownership keeps the explicit `project_owned_targets` declaration, which is the mechanism REQ-461 asked for and the one the action contract, the prime and a contract-regressions lock-in already speak.
+- The interrupted-install and process-group cancellation fixes are kept from this branch; the queue records that duplicated them are renumbered rather than overwritten.
+
+## 0.268.1 — Cancelling an Install Now Says It Was Cancelled (2026-09-03)
+
+Pressing Ctrl-C at the suite installer's confirmation prompt sometimes reported success. Nothing was installed either way, but the exit status and the JSON result said the run had gone fine, so anything reading them could not tell a cancelled install from a completed one.
+
+- Interrupting at the prompt now reliably reports exit 130 instead of depending on which part of the program reached the exit first.
+- Interrupting a partly-written install reports 130 too, after its recovery finishes; the result still describes the rollback in full.
+- A signal that arrives once the install has already finished and verified keeps the ordinary exit 0 and its normal result, rather than reporting a failure for work that succeeded.
+
+## 0.267.0 — An Answer Can No Longer Cancel Its Own Request (2026-09-03)
+
+When you discard every open question on a request, `do-work clarify` cancels and archives it. Deciding that meant searching each resolved line for a marker — and your own answer text could supply that marker. Answering one question with something like `keep it → Discarded: not really` and discarding another was enough to cancel a request whose question you had actually answered.
+
+- The marker is now read only where the tool itself writes it, so text elsewhere on the line cannot stand in for it.
+- An answer that would be indistinguishable from that marker is refused up front, and the refusal tells you to put the disposition in the outcome instead.
+- A resolved line the tool cannot read unambiguously sends the request back to the queue rather than archiving it, and now says which line stopped it.
+- A terminal archive path you supply is checked against what the command actually decided, instead of being ignored whenever the two disagreed.
+
 ## 0.266.9 — Maintainer Gate Drops Dead Work and Runs Its Sub-Suites in Parallel (2026-09-03)
 
 The gate was re-running its own self-test fifteen times per run, running the board's 55 JavaScript probes twice, linting six scripts nothing executes, and pinning a sentence in a maintainer prime. All of that is gone, and the twelve behavioral sub-suites now run at once.
