@@ -167,3 +167,58 @@ Result: no whitespace errors; staged stat was three files, 315 insertions and 51
 ## Discovered follow-up work
 
 None required for REQ-512 acceptance. If a future action begins producing tracked review/recovery folds, its contract should reuse the exact terminal-marker grammar added here rather than inventing a second format.
+
+## Remediation pass — exact structured mirrors and fail-closed authority
+
+Branch: `codex/REQ-512-finalization-ownership`
+
+Remediation commit: `c6c9195a042414b32f67b9dd3b1fdd1831bc6cf4` (`[REQ-512] remediate exact finalization ownership`)
+
+Changed files:
+
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_req512_test.go`
+
+No lifecycle metadata, run manifest, request, version, release, changelog, or other source file was changed. The existing three-file write set was respected; the third allowed test file did not require an edit.
+
+### Remediation behavior
+
+- A changed owned Cargo or uv source whose HEAD manifest does not yield an exact package/project identity now fails release enumeration closed instead of silently dropping its lock obligation.
+- A tracked same-root npm lock must parse before its root mirror count can be used; malformed JSON now produces `FINALIZATION-DISCOVERY-RELEASE-ENUMERATION` and leaves the legacy tail untouched.
+- npm workspace mirrors are reconstructed from the HEAD lock by locating only the exact root/member `version` JSON string values. Cargo and uv mirrors likewise replace only the exact identified member-version spans. The candidate lock must be byte-identical to that reconstruction, so unrelated fields and pre-existing occurrences of the target version remain unchanged while multiple changed members sharing one lock are accepted.
+- A review/recovery fold terminator must occupy its own final line. An inline comment that merely happens to be the byte suffix no longer proves the owned append boundary.
+
+### Literal RED evidence
+
+Before the remediation implementation:
+
+```sh
+go test ./internal/finalization -run 'TestREQ512(TrackedFoldRequiresClosedBoundary|MalformedWorkspaceIdentityAndNPMRootLockFailClosed|SharedWorkspaceLocksReplaceOnlyMultipleChangedMembers)' -count=1
+```
+
+Result: `FAIL`. The inline-marker case returned `true`; missing Cargo identity, malformed uv identity, and malformed npm lock each recovered successfully instead of refusing; and the npm/Cargo/uv shared-lock cases each refused `FINALIZATION-DISCOVERY-AMBIGUOUS` because an unrelated dependency already contained `1.0.1`.
+
+### GREEN and regression evidence
+
+The same focused command passed after implementation (`ok`, `6.225s`). Additional checks:
+
+```sh
+go test ./internal/finalization -run 'TestREQ(499|512)|TestRecoverFinalization' -count=1
+go test -race ./internal/finalization -run 'TestREQ512' -count=1
+go test ./...
+go vet ./...
+GOTOOLCHAIN=go1.25.0 go test ./internal/finalization -run 'TestREQ512|TestRecoverFinalization' -count=1
+DO_WORK_HEAVY_TESTS=1 go test ./internal/finalization -run TestPublicRecoverFinalizationMovesURThenAllowsRealClaim -count=1
+git diff --check
+git show --check --stat --oneline HEAD
+```
+
+Results: focused recovery/REQ-499/REQ-512 passed in `38.240s`; focused race passed in `15.213s`; the complete do-work CLI module passed on Go 1.26.1; vet exited `0`; the scoped Go 1.25 finalization matrix passed in `44.860s`; the heavy public recovery-to-claim path passed in `2.609s`; diff and committed-diff checks were clean.
+
+A full `GOTOOLCHAIN=go1.25.0 go test ./...` was also attempted. All packages except `internal/publication` passed; that package's cross-module fixture invokes queue-kanban, whose separate `go.mod` requires Go 1.26. This is an existing cross-module toolchain floor, not a failure in the remediated finalization package; the directly affected finalization suite is green on Go 1.25.
+
+### Risks and merge guidance
+
+- The JSON locator intentionally refuses malformed JSON, duplicate targeted keys, ambiguous member locations, and any candidate bytes beyond the exact selected version strings. This is stricter by design and preserves fail-closed ownership.
+- Cargo members remain identified by exact package name plus absence of a `source` field; uv members remain identified by exact package name plus exact editable/virtual relative path. Duplicate matching blocks refuse.
+- Cherry-pick `c6c9195a042414b32f67b9dd3b1fdd1831bc6cf4` after the original REQ-512 commit (or merge the branch containing both), then rerun the focused REQ-512 matrix and heavy public recovery test. No additional migration or lifecycle action is required by this remediation.

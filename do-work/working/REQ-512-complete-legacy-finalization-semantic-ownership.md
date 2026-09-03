@@ -131,3 +131,15 @@ None.
 **What was done:** Tracked legacy follow-ups now require one closed kind/request-bound fold ending in an exact terminal marker at EOF. Release association records dirty manifest transitions before selecting mirrors, then derives only each changed source's npm, Cargo, or uv workspace descriptors; clean equal-version roots remain topology, while changed roots retain their exact root-lock obligations. Source-less dirty release metadata and every enumeration/read/parse ambiguity continue to refuse before mutation.
 
 **Builder verification:** The unheaded foreign tail was accepted and all three member-only ecosystems refused their unchanged equal-version roots before the fix. The new fold/three-ecosystem matrix, existing stale-mirror recovery tests, race suite, vet, full module, Go 1.25, and heavy public recovery/protected-path checks all pass afterward. Durable evidence is in `do-work/runs/work-2026-09-03-214500/REQ-512-handback.md`.
+
+## Review
+
+**Verdict:** Request changes — one remediation pass required before final testing/finalization.
+
+- **Important:** Malformed Cargo/uv source identity and malformed npm root locks could silently erase a changed source's required mirror obligation instead of failing closed.
+- **Important:** Global old/new byte replacement falsely refused otherwise exact shared locks when unrelated entries already contained the target version.
+- **Minor:** A fold marker at EOF was accepted inline rather than requiring its own exact terminal line.
+
+## Remediation
+
+Commit `c6c9195a042414b32f67b9dd3b1fdd1831bc6cf4` makes malformed source/lock identity a typed fail-closed error, reconstructs candidate locks by replacing only exact structured root/member version spans across npm/Cargo/uv (including multiple changed members and pre-existing target-version neighbors), and requires the fold marker on its own final line. Behavior-level RED reproduced every finding; focused recovery/REQ-499/REQ-512, race, full module, vet, scoped Go 1.25, heavy public recovery, and diff checks pass after the two-file in-scope fix.
