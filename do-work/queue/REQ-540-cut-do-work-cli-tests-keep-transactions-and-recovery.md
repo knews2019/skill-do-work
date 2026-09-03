@@ -8,7 +8,7 @@ domain: testing
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 tdd: false
 suggested_spec:
-depends_on: [REQ-539]
+depends_on: []
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
@@ -61,3 +61,22 @@ Keep the transaction and recovery suites (finalization, publication, gittransact
 ## Full Context
 See `do-work/user-requests/UR-104/input.md` for complete verbatim input.
 
+
+## Addendum (2026-09-03)
+
+User added (2026-09-03 21:29 local, in the test-budget session; 22:05 local, "update the batch REQs per A1-A3 via queued addenda" referring to the velocity report at `ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/`, items A1 and A2):
+
+> ```
+> each test file should finish under 30 seconds (use the 80% value 20% effort principle until this is obtained)
+>
+> The rest of the test are accessible only when calling them with the --heavy parameter.
+>
+> the catch to call the --heavy parameter need to ask user for permission, and it should not block anything, meaning that where --heavy is required those tasks go into pending-testing status.
+>
+> Also because these tests tend to ballon, make sure to always measure the test duration, and adjust when the limits are reached.
+> ```
+
+- A1, dependency: `depends_on` changed from `[REQ-539]` to `[]`. This REQ edits do-work-cli test files and one argument line in `_dev/tests/maintainer-verify.sh`; REQ-539 edits the shell contract file and the aggregate. REQ-538 and this REQ are about 90% of the gate's seconds (board package 467 s, do-work-cli 111 s in-test of a 641 s run at 8d9d1bb) and can be built by two builders at once. REQ-539's `_dev/tests/*.sh` glob covers `maintainer-verify.sh` too; whichever of the two lands second rebases that one line.
+- A2, per-package budget, Go side: every do-work-cli package finishes under 30 s wall in the fast tier (`-short`). The gate measures per-package wall time from `go test -json`, prints it, appends one row per package per run to the durations log REQ-539 introduces (or introduces the log itself if it lands first, same columns: run id, file or package, seconds, concurrent gate count), and fails the fast tier when a package exceeds 30 s. `--heavy` has no budget. The original "finalization under 20 s, module under 25 s" targets stay; 30 s per package is the enforced ceiling.
+- GREEN additionally requires: every package's recorded fast-tier duration under 30 s in the proving run, and the durations log carrying one row per package.
+- Coherence check: no contradiction with the original sections; the dependency change is the only frontmatter edit.

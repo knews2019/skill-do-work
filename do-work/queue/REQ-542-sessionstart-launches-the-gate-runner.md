@@ -8,7 +8,7 @@ domain: general
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: false
 suggested_spec:
-depends_on: [REQ-541]
+depends_on: []
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
@@ -61,3 +61,10 @@ The SessionStart hook launches `_dev/tests/gate-runner.sh` in the background whe
 ## Full Context
 See `do-work/user-requests/UR-104/input.md` for complete verbatim input.
 
+
+## Addendum (2026-09-03)
+
+User added (2026-09-03 22:05 local, "update the batch REQs per A1-A3 via queued addenda" referring to the velocity report at `ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/`, item A1):
+
+- `depends_on` changed from `[REQ-541]` to `[]`. This REQ edits the SessionStart hook and the runner; REQ-541 edits the status vocabulary and the work loop. Nothing here reads REQ-541's output. Landing the runner start early also removes one of the two gate runs per REQ for every REQ built before the test cuts finish.
+- Coherence check: no contradiction with the original sections; the dependency change is the only frontmatter edit.

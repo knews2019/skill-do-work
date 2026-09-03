@@ -65,3 +65,23 @@ Delete every sentence assertion in `_dev/tests/contract-regressions.sh` whose su
 ## Full Context
 See `do-work/user-requests/UR-104/input.md` for complete verbatim input.
 
+
+## Addendum (2026-09-03)
+
+User added (2026-09-03 21:29 local, in the test-budget session; 22:05 local, "update the batch REQs per A1-A3 via queued addenda" referring to the velocity report at `ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/`, item A2):
+
+> ```
+> each test file should finish under 30 seconds (use the 80% value 20% effort principle until this is obtained)
+>
+> The rest of the test are accessible only when calling them with the --heavy parameter.
+>
+> the catch to call the --heavy parameter need to ask user for permission, and it should not block anything, meaning that where --heavy is required those tasks go into pending-testing status.
+>
+> Also because these tests tend to ballon, make sure to always measure the test duration, and adjust when the limits are reached.
+> ```
+
+- Per-file budget, shell side: every test file the fast tier runs finishes under 30 s wall. The existing "under about 10 s" classification line stays as the fast/heavy sorting rule; 30 s is the hard ceiling the gate enforces on whatever is classified fast.
+- The budget is a program, not a sentence: the aggregate (or `maintainer-verify.sh`, whichever already owns the timing loop) measures each probe file's wall time, prints it, appends one row per file per run to a durations log beside `do-work/calibration-log.tsv` (run id, file, seconds, and the number of other gate processes running on the machine so an over-budget row under load can be read correctly), and fails the fast tier when a fast-classified file exceeds 30 s. `--heavy` has no budget. Same shape as the line-count ratchet this REQ already lands; land both in the same place.
+- Measured offenders on 2026-09-03 (`update-script-behavior.sh` about 60 s, `install-suite-behavior.sh` about 40 s) are heavy or cut, never left fast-with-an-exception; the maintainer's preference is honest severity over carve-outs.
+- GREEN additionally requires: every fast-tier probe file's recorded duration under 30 s, and the durations log carrying one row per fast-tier file after the proving `gate-runner.sh --once`.
+- Coherence check: no contradiction with the original sections; the addendum tightens the GREEN condition and adds the measurement mechanism.
