@@ -51,6 +51,7 @@ func RecordGreenGate(repositoryRoot string, gateCommand []string) (resultmodel.G
 	result.RecordProvenance = reportedGateProvenance
 	result.RecordedRevision = context.headRevision
 	result.BaselineRevision = context.headRevision
+	result.TargetRevision = context.headRevision
 
 	record := storedGateEvidence{
 		SchemaVersion: gateEvidenceSchemaVersion, RepositoryIdentity: context.repositoryIdentity,
@@ -70,12 +71,31 @@ func RecordGreenGate(repositoryRoot string, gateCommand []string) (resultmodel.G
 	return result, nil
 }
 
+// CheckGreenGate answers whether the recorded green run for this exact gate argv
+// still covers the current HEAD. This is the HEAD-bound rule every ordinary REQ uses.
 func CheckGreenGate(repositoryRoot string, gateCommand []string) (resultmodel.GateEvidenceResult, error) {
+	return checkGreenGateAtRevision(repositoryRoot, gateCommand, "")
+}
+
+// checkGreenGateAtRevision answers the same question about targetRevisionSpec instead
+// of HEAD; an empty spec means HEAD. An already-green repository-gate repair no-op
+// changes no project path, so an unrelated commit moving HEAD can never make it the
+// cause of a red gate — its evidence stays verifiable at its own recorded revision.
+func checkGreenGateAtRevision(repositoryRoot string, gateCommand []string, targetRevisionSpec string) (resultmodel.GateEvidenceResult, error) {
 	context, err := resolveEvidenceContext(repositoryRoot, gateCommand)
 	if err != nil {
 		return invalidEvidence(gateCommand), err
 	}
 	result := evidenceResult(context, gateCommand)
+	targetRevision := context.headRevision
+	if targetRevisionSpec != "" {
+		targetRevision, err = resolveCommitRevision(repositoryRoot, targetRevisionSpec)
+		if err != nil {
+			result.State = resultmodel.GateEvidenceInvalidRecord
+			return result, err
+		}
+	}
+	result.TargetRevision = targetRevision
 	record, exists, err := readEvidenceRecord(context.recordPath)
 	if err != nil {
 		result.State = resultmodel.GateEvidenceInvalidRecord
@@ -110,15 +130,15 @@ func CheckGreenGate(repositoryRoot string, gateCommand []string) (resultmodel.Ga
 		result.State = resultmodel.GateEvidenceRecordedRevisionMissing
 		return result, nil
 	}
-	if record.RecordedRevision == context.headRevision {
+	if record.RecordedRevision == targetRevision {
 		result.State = resultmodel.GateEvidenceExactRevisionMatch
 		result.Matches = true
 		result.MatchBasis = "exact_revision"
-		result.BaselineRevision = context.headRevision
+		result.BaselineRevision = targetRevision
 		return result, nil
 	}
 
-	isAncestor, err := recordedRevisionIsAncestor(repositoryRoot, record.RecordedRevision, context.headRevision)
+	isAncestor, err := recordedRevisionIsAncestor(repositoryRoot, record.RecordedRevision, targetRevision)
 	if err != nil {
 		result.State = resultmodel.GateEvidenceInvalidRecord
 		return result, err
@@ -127,7 +147,7 @@ func CheckGreenGate(repositoryRoot string, gateCommand []string) (resultmodel.Ga
 		result.State = resultmodel.GateEvidenceRecordedRevisionNotAncestor
 		return result, nil
 	}
-	logOnly, err := interveningCommitsAreGateLogs(repositoryRoot, record.RecordedRevision, context.headRevision)
+	logOnly, err := interveningCommitsAreGateLogs(repositoryRoot, record.RecordedRevision, targetRevision)
 	if err != nil {
 		result.State = resultmodel.GateEvidenceInvalidRecord
 		return result, err
@@ -139,7 +159,7 @@ func CheckGreenGate(repositoryRoot string, gateCommand []string) (resultmodel.Ga
 	result.State = resultmodel.GateEvidenceLogDescendantMatch
 	result.Matches = true
 	result.MatchBasis = "gate_log_only_descendant"
-	result.BaselineRevision = context.headRevision
+	result.BaselineRevision = targetRevision
 	return result, nil
 }
 
@@ -290,6 +310,19 @@ func readEvidenceRecord(recordPath string) (storedGateEvidence, bool, error) {
 		return storedGateEvidence{}, false, fmt.Errorf("decode green-gate evidence: %w", err)
 	}
 	return record, true, nil
+}
+
+// resolveCommitRevision turns a caller-supplied revision specification into the exact
+// commit it names. An unresolvable specification is unverifiable evidence, not a miss.
+func resolveCommitRevision(repositoryRoot, revisionSpec string) (string, error) {
+	output, status, err := runGitStatus(repositoryRoot, "rev-parse", "--verify", revisionSpec+"^{commit}")
+	if err != nil {
+		return "", err
+	}
+	if status != 0 {
+		return "", fmt.Errorf("target revision %q does not name a commit in this repository", revisionSpec)
+	}
+	return strings.TrimSpace(string(output)), nil
 }
 
 func commitResolvesExactly(repositoryRoot, revision string) (bool, error) {

@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.266.8 — One Gate Run for an Already-Green Repair (2026-09-03)
+
+A repository-gate repair that finds the gate already green no longer runs that gate three times to prove it. The pre-build run is the only run, and everything downstream reads the record it wrote.
+
+- `check-green-gate` takes `--at-revision`, so a caller can ask whether the exact gate argv was proven green at a named commit instead of only at `HEAD`.
+- A no-op repair has no diff, so an unrelated commit moving `HEAD` no longer invalidates its evidence; ordinary REQs keep the `HEAD`-bound rule.
+- Qualification, Step 6.5 testing, and independent review now verify that record rather than relaunching the gate.
+
 ## 0.266.7 — Answer Containment Follows Structure (2026-09-03)
 
 Answer summaries that look like Markdown structure no longer slip past containment just because their prefix was not in a finite list. This keeps raw answer bytes intact across thematic breaks, tables, indentation, and future dialect fences while leaving ordinary prose inline.

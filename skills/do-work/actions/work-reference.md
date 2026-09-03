@@ -453,6 +453,7 @@ This branch exists only when a claimed `repository_gate_repair: true` REQ's pre-
 - **Expected diagnostic fingerprint:** <fingerprint recorded by repair intake>
 - **Gate command:** ["argv0","argv1"]
 - **Direct exit status:** 0
+- **Recorded green revision:** <`recorded_revision` returned by `record-green-gate`>
 - **Observed result:** green before implementation; repair already satisfied
 - **Verified at:** <now> (current UTC instant — Timestamp rule)
 ```
@@ -467,7 +468,9 @@ Write the mandatory summary exactly as:
 **What was done:** Re-ran the repair's recorded canonical repository gate before source edits and confirmed it is already green; no implementation changes were necessary.
 ```
 
-Qualification is a narrow evidence check, not a vacuous diff pass: require the exact two sections above, rerun the JSON argv directly at exit 0, and prove no project path changed. Do not run the ordinary diff-requiring qualifier. Append `## Qualification\n\nPassed — repository-gate repair no-op; durable gate evidence verified and project diff empty.` Independent review reruns/validates the gate, matches the expected fingerprint to intake, proves the project diff remains empty, checks that no release mutation is planned, and records those facts in the ordinary `## Review`; self-review is insufficient.
+**The pre-build run is this branch's only gate run.** After its direct zero exit, invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json record-green-gate --gate-exit-status 0 -- <gate argv...>`, require typed success, and write the returned `recorded_revision` into the evidence block above. Every later authority — qualification, Step 6.5 testing, and independent review — verifies that record instead of launching the gate again, with `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json check-green-gate --at-revision <recorded green revision> -- <gate argv...>` at typed success and `matches: true`. A no-op repair changes no project path, so a later `HEAD` move by an unrelated commit can never make it the cause of a red gate and never invalidates its recorded evidence at its own recorded revision; ordinary REQs keep the `HEAD`-bound rule in **Session state and baseline** above. Done means one gate run plus bookkeeping — under ten minutes of wall clock on the maintainer's machine — reported in the REQ's `## Testing` section.
+
+Qualification is a narrow evidence check, not a vacuous diff pass: require the exact two sections above, verify the recorded green-gate evidence at the recorded green revision at typed success with `matches: true`, and prove no project path changed. Do not run the ordinary diff-requiring qualifier and do not relaunch the gate. Append `## Qualification\n\nPassed — repository-gate repair no-op; durable gate evidence verified and project diff empty.` Independent review verifies that same record at that same revision rather than relaunching the gate, matches the expected fingerprint to intake, proves the project diff remains empty, checks that no release mutation is planned, and records those facts in the ordinary `## Review`; self-review is insufficient.
 
 After review passes, author the ordinary strict finalization manifest with the exact already-green evidence and no release payload. The canonical finalization engine archives terminal success, removes the checkpoint claim, applies any UR closure/calibration targets, commits only its exact lifecycle allowlist, records provenance, verifies, and cleans up. Any project, changelog, version, lockfile, or unrelated path refuses this no-op finalization. Dependency readiness can resume parents. No other empty implementation receives any of these exceptions.
 

@@ -3164,9 +3164,9 @@ def already_green_noop_defects(work, review, reference):
             "review",
             r"exact `## repository gate repair no-op`, `## implementation summary`, and `## qualification` shapes",
         ),
-        "review direct gate replay": (
+        "review record verification": (
             "review",
-            r"rerun the json-array gate argv directly.*exit 0",
+            r"verify the recorded green-gate evidence.*--at-revision.*never relaunching the gate",
         ),
         "review intake identity": (
             "review",
@@ -3528,7 +3528,7 @@ mutations = (
     ("review", "Before the ordinary no implementation changes exit", "After the ordinary no implementation changes exit", "review exception precedes empty exit"),
     ("review", "orchestrated claimed `repository_gate_repair: true` REQ", "orchestrated repair REQ", "review exact claimed marker"),
     ("review", "exact `## Repository Gate Repair No-Op`, `## Implementation Summary`, and `## Qualification` shapes", "available no-op evidence", "review exact durable evidence"),
-    ("review", "rerun the JSON-array gate argv directly", "inspect the gate command", "review direct gate replay"),
+    ("review", "verify the recorded green-gate evidence", "inspect the gate command", "review record verification"),
     ("review", "expected diagnostic fingerprint to repair intake", "expected diagnostic fingerprint", "review intake identity"),
     ("review", "project diff is empty", "project diff is acceptable", "review empty project diff"),
     ("review", "no release is planned", "release may be planned", "review release exclusion"),

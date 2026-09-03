@@ -269,6 +269,7 @@ type GateEvidenceResult struct {
 	GateExitStatus     int               `json:"gate_exit_status"`
 	RecordedRevision   string            `json:"recorded_revision"`
 	HeadRevision       string            `json:"head_revision"`
+	TargetRevision     string            `json:"target_revision"`
 	State              GateEvidenceState `json:"state"`
 	Matches            bool              `json:"matches"`
 	MatchBasis         string            `json:"match_basis"`
@@ -573,7 +574,7 @@ func renderText(result CommandResult) []byte {
 		fmt.Fprintf(&output, "  repository identity: %s\n", gate.RepositoryIdentity)
 		fmt.Fprintf(&output, "  gate command: %s (sha256: %s, exit: %d)\n", joinArgv(gate.GateCommand), gate.GateCommandSHA256, gate.GateExitStatus)
 		fmt.Fprintf(&output, "  record: %s (provenance: %s)\n", gate.RecordPath, gate.RecordProvenance)
-		fmt.Fprintf(&output, "  revisions: recorded=%s head=%s baseline=%s\n", gate.RecordedRevision, gate.HeadRevision, gate.BaselineRevision)
+		fmt.Fprintf(&output, "  revisions: recorded=%s head=%s baseline=%s target=%s\n", gate.RecordedRevision, gate.HeadRevision, gate.BaselineRevision, gate.TargetRevision)
 	}
 	for _, skipped := range result.SkippedWork {
 		fmt.Fprintf(&output, "skipped %s: %s\n", skipped.Code, skipped.Reason)

@@ -22,11 +22,11 @@ func Handlers() map[string]commandruntime.CommandHandler {
 }
 
 func handleCheckGreenGate(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
-	gateCommand, err := parseCheckArguments(arguments)
+	targetRevisionSpec, gateCommand, err := parseCheckArguments(arguments)
 	if err != nil {
 		return gateEvidenceFailure(CommandCheckGreenGate, resultmodel.GateEvidenceResult{}, "GATE-EVIDENCE-USAGE", err)
 	}
-	evidence, err := CheckGreenGate(executionContext.RepositoryRoot, gateCommand)
+	evidence, err := checkGreenGateAtRevision(executionContext.RepositoryRoot, gateCommand, targetRevisionSpec)
 	if err != nil {
 		return gateEvidenceFailure(CommandCheckGreenGate, evidence, "GATE-EVIDENCE-CHECK-FAILED", err)
 	}
@@ -60,11 +60,44 @@ func handleRecordGreenGate(executionContext commandruntime.ExecutionContext, arg
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: []resultmodel.RecordedChange{change}, GateEvidence: &evidence}
 }
 
-func parseCheckArguments(arguments []string) ([]string, error) {
-	if len(arguments) < 2 || arguments[0] != "--" {
-		return nil, fmt.Errorf("usage: %s -- <gate argv...>", CommandCheckGreenGate)
+// parseCheckArguments accepts an optional --at-revision before the mandatory `--`
+// separator. The returned specification is empty when the caller wants HEAD.
+func parseCheckArguments(arguments []string) (string, []string, error) {
+	targetRevisionSpec := ""
+	revisionSeen := false
+	separatorIndex := -1
+	for index := 0; index < len(arguments); index++ {
+		argument := arguments[index]
+		if argument == "--" {
+			separatorIndex = index
+			break
+		}
+		var value string
+		switch {
+		case argument == "--at-revision":
+			index++
+			if index >= len(arguments) {
+				return "", nil, fmt.Errorf("--at-revision requires a revision")
+			}
+			value = arguments[index]
+		case strings.HasPrefix(argument, "--at-revision="):
+			value = strings.TrimPrefix(argument, "--at-revision=")
+		default:
+			return "", nil, fmt.Errorf("unknown check-green-gate option %q", argument)
+		}
+		if revisionSeen {
+			return "", nil, fmt.Errorf("--at-revision may be supplied only once")
+		}
+		if strings.TrimSpace(value) == "" {
+			return "", nil, fmt.Errorf("--at-revision requires a revision")
+		}
+		targetRevisionSpec = value
+		revisionSeen = true
 	}
-	return append([]string(nil), arguments[1:]...), nil
+	if separatorIndex < 0 || separatorIndex == len(arguments)-1 {
+		return "", nil, fmt.Errorf("usage: %s [--at-revision <revision>] -- <gate argv...>", CommandCheckGreenGate)
+	}
+	return targetRevisionSpec, append([]string(nil), arguments[separatorIndex+1:]...), nil
 }
 
 func parseRecordArguments(arguments []string) (int, []string, error) {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
@@ -44,6 +45,77 @@ func TestGreenGateEvidenceIdentityAndHistory(t *testing.T) {
 	differentArgv, err := CheckGreenGate(repositoryRoot, []string{"bash", "other.sh"})
 	if err != nil || differentArgv.Matches || differentArgv.State != resultmodel.GateEvidenceMissing {
 		t.Fatalf("different argv = %#v, err=%v", differentArgv, err)
+	}
+}
+
+// An already-green repository-gate repair no-op has no diff, so an unrelated commit
+// moving HEAD cannot make it the cause of a red gate. Its recorded evidence must stay
+// verifiable at its own recorded revision while ordinary REQs keep the HEAD-bound rule.
+func TestGreenGateEvidenceStaysVerifiableAtRecordedRevisionAfterUnrelatedHeadMove(t *testing.T) {
+	repositoryRoot := newGateEvidenceRepository(t)
+	gateCommand := []string{"bash", "verify.sh"}
+	recorded, err := RecordGreenGate(repositoryRoot, gateCommand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recordedRevision := recorded.RecordedRevision
+
+	writeGateEvidenceTestFile(t, repositoryRoot, "peer.txt", "someone else's commit\n")
+	runGateEvidenceTestGit(t, repositoryRoot, "add", "peer.txt")
+	runGateEvidenceTestGit(t, repositoryRoot, "commit", "-qm", "unrelated peer commit")
+
+	headBound, err := CheckGreenGate(repositoryRoot, gateCommand)
+	if err != nil || headBound.Matches || headBound.State != resultmodel.GateEvidenceInvalidated {
+		t.Fatalf("ordinary HEAD-bound check must stop matching: %#v, err=%v", headBound, err)
+	}
+
+	atRecorded, err := checkGreenGateAtRevision(repositoryRoot, gateCommand, recordedRevision)
+	if err != nil || !atRecorded.Matches || atRecorded.State != resultmodel.GateEvidenceExactRevisionMatch {
+		t.Fatalf("recorded-revision check = %#v, err=%v", atRecorded, err)
+	}
+	if atRecorded.TargetRevision != recordedRevision || atRecorded.BaselineRevision != recordedRevision {
+		t.Fatalf("target/baseline must be the recorded revision, not HEAD: %#v", atRecorded)
+	}
+	if atRecorded.HeadRevision == recordedRevision {
+		t.Fatalf("fixture did not move HEAD: %#v", atRecorded)
+	}
+
+	atMovedHead, err := checkGreenGateAtRevision(repositoryRoot, gateCommand, atRecorded.HeadRevision)
+	if err != nil || atMovedHead.Matches || atMovedHead.State != resultmodel.GateEvidenceInvalidated {
+		t.Fatalf("an explicit target still honors the project-change rule: %#v, err=%v", atMovedHead, err)
+	}
+
+	differentArgv, err := checkGreenGateAtRevision(repositoryRoot, []string{"bash", "other.sh"}, recordedRevision)
+	if err != nil || differentArgv.Matches || differentArgv.State != resultmodel.GateEvidenceMissing {
+		t.Fatalf("different argv at the recorded revision = %#v, err=%v", differentArgv, err)
+	}
+
+	unresolvable, err := checkGreenGateAtRevision(repositoryRoot, gateCommand, "no-such-revision")
+	if err == nil || unresolvable.Matches || unresolvable.State != resultmodel.GateEvidenceInvalidRecord {
+		t.Fatalf("an unresolvable target is unverifiable, not a miss: %#v, err=%v", unresolvable, err)
+	}
+}
+
+// A gate-run log commit on top of the record must not invalidate an explicit target
+// either — the same tolerance the HEAD-bound lane already grants.
+func TestGreenGateEvidenceTargetToleratesGateLogCommits(t *testing.T) {
+	repositoryRoot := newGateEvidenceRepository(t)
+	gateCommand := []string{"bash", "verify.sh"}
+	if _, err := RecordGreenGate(repositoryRoot, gateCommand); err != nil {
+		t.Fatal(err)
+	}
+	writeGateEvidenceTestFile(t, repositoryRoot, "_dev/gate-runs/one.log", "pass\n")
+	runGateEvidenceTestGit(t, repositoryRoot, "add", "_dev/gate-runs/one.log")
+	runGateEvidenceTestGit(t, repositoryRoot, "commit", "-qm", "gate log")
+	logRevision := strings.TrimSpace(runGateEvidenceTestGit(t, repositoryRoot, "rev-parse", "HEAD"))
+
+	writeGateEvidenceTestFile(t, repositoryRoot, "peer.txt", "unrelated\n")
+	runGateEvidenceTestGit(t, repositoryRoot, "add", "peer.txt")
+	runGateEvidenceTestGit(t, repositoryRoot, "commit", "-qm", "unrelated peer commit")
+
+	atLog, err := checkGreenGateAtRevision(repositoryRoot, gateCommand, logRevision)
+	if err != nil || !atLog.Matches || atLog.State != resultmodel.GateEvidenceLogDescendantMatch || atLog.BaselineRevision != logRevision {
+		t.Fatalf("gate-log descendant target = %#v, err=%v", atLog, err)
 	}
 }
 
