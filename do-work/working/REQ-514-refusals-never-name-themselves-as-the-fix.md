@@ -15,7 +15,7 @@ impact: impact-rule-change
 effort_estimate: effort-substantive
 related: [REQ-513, REQ-515, REQ-516, REQ-517]
 batch: recovery-never-traps
-write_set: [skills/do-work/tools/do-work-cli/internal/resultmodel/, skills/do-work/tools/do-work-cli/internal/finalization/, skills/do-work/tools/do-work-cli/internal/requeststate/]
+write_set: [skills/do-work/tools/do-work-cli/internal/resultmodel/, skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime_test.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go]
 claimed_at: 2026-09-03T23:34:31Z
 route: C
 planning_at: 2026-09-03T23:37:51Z
@@ -44,7 +44,7 @@ Enforce one invariant in the result model: a refusal's `next_argv` must name a v
 The fold-first scan found no pending or pending-answers REQ in any UR that owns this invariant; REQ-512 (Complete legacy finalization semantic ownership) hardens what recovery accepts, not what a refusal may say.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Enforce the invariant at result normalization, preserve verification semantics, distinguish REQ-owned set-asides from global refusals, and correct ambiguous discovery's actual resolver.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -138,15 +138,12 @@ See `do-work/user-requests/UR-099/input.md` for complete verbatim input.
 
 ## Scope
 
-**Files I will touch:**
+**Files I will touch (reconciled before integration):**
 - `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modify) — enforce and normalize the refusal remedy invariant
 - `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modify) — table-driven result-contract coverage
-- `skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime.go` (modify) — apply the invoking-command identity before rendering
 - `skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime_test.go` (modify) — runtime set-aside and exit behavior coverage
-- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go` (modify) — provide truthful finalization refusal remedies
-- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_pipeline_dirt_test.go` (modify) — folded claim-to-recovery regression
-- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go` (modify) — replace self-referential lifecycle remedies
-- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go` (modify) — request-state refusal invariant coverage
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go` (modify) — provide the truthful inventory resolver for ambiguous discovery
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go` (modify) — verify the discovery remedy/verification split
 
 **Files I will NOT touch:** action prose, shell contract predicates, or queue-selection behavior.
 
@@ -156,3 +153,7 @@ See `do-work/user-requests/UR-099/input.md` for complete verbatim input.
 - [ ] A refusal with no truthful alternate remedy becomes REQ-scoped set-aside evidence with empty `next_argv` and a stop reason.
 - [ ] The REQ-456 self-loop fixture is red before the fix and all refusal builders pass after it.
 - [ ] The folded serial claim → implementation → complete → recovery fixture reaches `cleanup_complete`.
+
+## Decisions
+
+- **D-01 (scope reconciliation, 2026-09-04):** The planned `finalization_apply.go` edit did not own the ambiguous discovery refusal. Expand the exact scope to `finalization_discovery.go` and its existing recovery test file, and remove planned files that required no change. The directory-level request scope already covered finalization; `commandruntime/command_runtime_test.go` is added explicitly. The folded lifecycle fixture already exists in `finalization_recovery_test.go`, so duplicating it would reduce signal.

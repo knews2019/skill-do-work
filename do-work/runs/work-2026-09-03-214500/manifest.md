@@ -22,6 +22,6 @@ Wave 3 selector order: REQ-514, REQ-527, REQ-534.
 
 | Lane | REQ / description | Worktree | Handback | Status |
 |---|---|---|---|---|
-| lane-1 | REQ-514 — Refusals never name themselves as the fix | `worktree-agent-REQ-514-refusals-never-name-themselves-as-the-fix` | `REQ-514-handback.md` | dispatched |
+| lane-1 | REQ-514 — Refusals never name themselves as the fix | `worktree-agent-REQ-514-refusals-never-name-themselves-as-the-fix` | `REQ-514-handback.md` | built at `7611d7b8`; review pending |
 | lane-2 | REQ-527 — Teach cleanup Pass 5 that merged is not finished | `worktree-agent-REQ-527-teach-cleanup-pass-5-that-merged-is-not-finished` | `REQ-527-handback.md` | dispatched |
 | lane-3 | REQ-534 — Run blocked probes from repository root and propagate interruptions | `worktree-agent-REQ-534-run-blocked-probes-from-the-repository-root-and-propagate-interruptions` | `REQ-534-handback.md` | dispatched |
