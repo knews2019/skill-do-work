@@ -69,3 +69,39 @@ The first contract-regression run exposed an existing literal documentation guar
 ## Merge guidance
 
 Merge or cherry-pick `271aa8ae28660cfaa3a23b5181478e9e103895e4` into the orchestrator-owned integration branch. After integration, rerun both Go modules' `go test ./...` and `go vet ./...`, then `_dev/tests/contract-regressions.sh`. Lifecycle completion, main-tree request movement, release/version/changelog decisions, and any worktree cleanup remain orchestrator-owned.
+
+## Independent-review remediation
+
+- Remediation commit: `1425b9825ddf8e948ccde6b9f08701d8ed374919`
+- Subject: `[REQ-485] Harden reservation marker reads`
+- Parent commit: `271aa8ae28660cfaa3a23b5181478e9e103895e4`
+- Scope: nine files, all already present in REQ-485's declared write set.
+
+The review identified and the remediation closes two gaps:
+
+1. Queue-kanban, repository-model, and publication reservation parsers no longer trim filename text before exact matching. Literal basenames with leading or trailing whitespace (for example, ` REQ-482` or `REQ-482 `) are malformed non-authority, just like suffix junk.
+2. Defer fold no longer performs an unrooted `os.ReadFile` after alias discovery. Discovery snapshots rooted directory/file identities. Matching marker bytes are then read through a newly opened root only after verifying a regular non-symlink object, with directory and file identity revalidated before open, after open, and after read. A deterministic test seam proves an identity-to-symlink swap before open is refused; a pre-existing symlink with matching bytes is also refused. Capture/create scans continue to treat any exact numeric-name object as occupied without reading it.
+
+### Remediation RED evidence
+
+- Board: whitespace-wrapped literal filenames advanced `next-req` to 999 instead of leaving the next number at 43.
+- Repository-model: two whitespace-wrapped names increased discovered reservations from 2 to 4.
+- Publication capture: `do-work/.req-reservations/ REQ-482 ` incorrectly produced `CAPTURE-COLLISION`.
+- Defer fold: a symlink named `REQ-901` pointing to matching `REQ-901\n` bytes was accepted.
+
+### Remediation GREEN and verification
+
+- Focused queue-kanban malformed/canonical/legacy allocation tests: PASS.
+- Focused repository-model and publication whitespace, legacy, symlink, and identity-swap tests: PASS.
+- `go test ./...` in `skills/do-work-board/tools/queue-kanban`: PASS.
+- `go vet ./...` in `skills/do-work-board/tools/queue-kanban`: PASS.
+- `go test ./...` in `skills/do-work/tools/do-work-cli`: PASS.
+- `go vet ./...` in `skills/do-work/tools/do-work-cli`: PASS.
+- Final direct `go test ./internal/publication ./internal/repositorymodel`: PASS.
+- `bash _dev/tests/contract-regressions.sh`: PASS.
+- `git diff --check`: PASS.
+- Final remediation diff review: exactly nine declared-write-set files, no lifecycle/release/manifest edits, and a clean worktree after commit.
+
+### Updated merge guidance
+
+If the first commit has not yet been integrated, merge or cherry-pick both commits in order: `271aa8ae28660cfaa3a23b5181478e9e103895e4`, then `1425b9825ddf8e948ccde6b9f08701d8ed374919`. If the first commit is already present, apply only the remediation commit. The remediation commit is the branch tip and the required final REQ-485 state.

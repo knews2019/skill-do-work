@@ -177,3 +177,7 @@ The two allocators independently emit fixed-six markers, while capture and defer
 - **Critical — impact-critical:** Defer fold obtains an alias path from rooted directory enumeration but subsequently uses pathname `os.ReadFile`; a matching marker symlink or post-enumeration swap can therefore follow outside the validated reservation directory instead of being refused as an unsafe reservation object.
 
 **Required remediation:** Pin literal whitespace-adjacent malformed names and linked fold markers RED, remove filename trimming from all exact reservation parsers, and acquire fold marker bytes through a rooted, no-follow, identity-checked observation while keeping any matching object collision-authoritative for create flows.
+
+## Remediation
+
+Builder commit `1425b9825ddf8e948ccde6b9f08701d8ed374919` removes whitespace trimming from every exact marker reader and replaces defer-fold's pathname read with a rooted identity snapshot plus regular/no-follow and directory/file identity checks before open, after open, and after read. Literal whitespace basenames, a direct marker symlink, and a deterministic identity-to-symlink swap failed RED and pass GREEN. Both module suites/vets, focused publication/repository tests, contracts, and diff hygiene pass.
