@@ -22,7 +22,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/publication/release.go
   - skills/do-work/tools/do-work-cli/internal/publication/release_test.go
 estimate:
-  p50_active_minutes: 25
+  p50_active_minutes: 20
   confidence: medium
   calculated_at: 2026-09-03T10:33:01Z
   basis:
