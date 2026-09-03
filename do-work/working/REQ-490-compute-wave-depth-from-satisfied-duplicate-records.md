@@ -18,6 +18,8 @@ review_generated: false
 claimed_at: 2026-09-03T22:25:28Z
 route: A
 dispatch_at: 2026-09-03T22:39:03Z
+implementation_at: 2026-09-03T22:41:27Z
+builder_handback_at: 2026-09-03T22:41:27Z
 write_set:
   - skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go
   - skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go
