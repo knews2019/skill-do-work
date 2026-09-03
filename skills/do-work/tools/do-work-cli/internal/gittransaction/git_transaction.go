@@ -96,7 +96,17 @@ type MutationRecorder struct {
 	publishedPrivate          map[string]publishedPrivateState
 	publishedTracked          map[string]publishedTrackedState
 	publishedDirectories      map[string]os.FileInfo
+	createdObjects            map[string]createdObjectIdentity
 	dirtyTrackedPaths         map[string]struct{}
+}
+
+// createdObjectIdentity binds a created path to the exact filesystem object this
+// invocation published there. Inode identity alone is not enough: removing a file
+// and recreating it under the same name commonly reuses the inode, so the content
+// digest is part of the binding.
+type createdObjectIdentity struct {
+	info   os.FileInfo
+	digest [sha256.Size]byte
 }
 
 type publishedPrivateState struct {
@@ -208,12 +218,12 @@ func (recorder *MutationRecorder) RecordTouched(path string) error {
 		return fmt.Errorf("path %q is outside the declared transaction targets", path)
 	}
 	recorder.touchedPaths[normalized] = struct{}{}
+	root, rootError := os.OpenRoot(recorder.repositoryRoot)
+	if rootError != nil {
+		return rootError
+	}
+	defer root.Close()
 	if _, dirtyTracked := recorder.dirtyTrackedPaths[normalized]; dirtyTracked {
-		root, rootError := os.OpenRoot(recorder.repositoryRoot)
-		if rootError != nil {
-			return rootError
-		}
-		defer root.Close()
 		info, digest, snapshotError := rootedRegularSnapshot(root, normalized)
 		if isMissingPathError(snapshotError) {
 			recorder.publishedTracked[normalized] = publishedTrackedState{}
@@ -223,7 +233,55 @@ func (recorder *MutationRecorder) RecordTouched(path string) error {
 			recorder.publishedTracked[normalized] = publishedTrackedState{existed: true, info: info, digest: digest}
 		}
 	}
+	// This transaction is told about each of its own later mutations, so re-capturing the
+	// recorded path here keeps ownership across our own republication (which renames, and
+	// therefore changes the inode). A foreign writer's swap never routes through the
+	// recorder, which is what makes the remaining mismatch below a real swap.
+	if _, created := recorder.createdPaths[normalized]; created {
+		if captureError := recorder.captureCreatedObject(root, normalized); captureError != nil {
+			return captureError
+		}
+	}
+	return recorder.revalidateCreatedObjects(root, normalized)
+}
+
+// captureCreatedObject binds the object now standing at a created path to this
+// invocation. An absent path records no binding, and rollback then preserves
+// whatever it finds there instead of removing it by pathname.
+func (recorder *MutationRecorder) captureCreatedObject(root *os.Root, path string) error {
+	info, digest, err := rootedRegularSnapshot(root, path)
+	if isMissingPathError(err) {
+		delete(recorder.createdObjects, path)
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("identity-record created target %q: %w", path, err)
+	}
+	recorder.createdObjects[path] = createdObjectIdentity{info: info, digest: digest}
 	return nil
+}
+
+// revalidateCreatedObjects proves every other already-created path still holds the object
+// this invocation published there, so a swap surfaces at the next mutation point instead of
+// only at rollback.
+func (recorder *MutationRecorder) revalidateCreatedObjects(root *os.Root, excludedPath string) error {
+	for path, identity := range recorder.createdObjects {
+		if path == excludedPath {
+			continue
+		}
+		if !createdObjectStillOwned(root, path, identity) {
+			return fmt.Errorf("created target %q changed after publication", path)
+		}
+	}
+	return nil
+}
+
+func createdObjectStillOwned(root *os.Root, path string, identity createdObjectIdentity) bool {
+	if root == nil {
+		return false
+	}
+	info, digest, err := rootedRegularSnapshot(root, path)
+	return err == nil && os.SameFile(identity.info, info) && identity.digest == digest
 }
 
 func (recorder *MutationRecorder) RecordCreated(path string) error {
@@ -235,10 +293,15 @@ func (recorder *MutationRecorder) RecordCreated(path string) error {
 		return fmt.Errorf("path %q existed before the transaction and cannot be recorded as created", path)
 	}
 	recorder.createdPaths[normalized] = struct{}{}
-	if err := recorder.captureCreatedDirectoryIdentities(); err != nil {
-		return err
+	root, rootError := os.OpenRoot(recorder.repositoryRoot)
+	if rootError != nil {
+		return fmt.Errorf("open transaction root: %w", rootError)
 	}
-	return nil
+	defer root.Close()
+	if captureError := recorder.captureCreatedObject(root, normalized); captureError != nil {
+		return captureError
+	}
+	return recorder.captureCreatedDirectoryIdentities()
 }
 
 func (recorder *MutationRecorder) captureCreatedDirectoryIdentities() error {
@@ -670,6 +733,7 @@ func newMutationRecorder(repositoryRoot string, states []targetState, createdDir
 		publishedPrivate:          map[string]publishedPrivateState{},
 		publishedTracked:          map[string]publishedTrackedState{},
 		publishedDirectories:      map[string]os.FileInfo{},
+		createdObjects:            map[string]createdObjectIdentity{},
 		dirtyTrackedPaths:         dirtyTracked,
 	}
 }
@@ -997,6 +1061,22 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 		}
 		published, recorded := recorder.publishedTracked[path]
 		if recorded && !trackedPublicationStillOwned(root, path, published) {
+			rollback.Errors = append(rollback.Errors, "created target changed after publication; preserved replacement: "+path)
+			continue
+		}
+		identity, identityRecorded := recorder.createdObjects[path]
+		if !identityRecorded {
+			// An absent path holds nothing this invocation could wrongly remove; an object
+			// standing there is not provably ours, so it is preserved and reported.
+			if root != nil {
+				if _, statError := root.Lstat(filepath.FromSlash(path)); os.IsNotExist(statError) {
+					continue
+				}
+			}
+			rollback.Errors = append(rollback.Errors, "created target was not identity-recorded; preserved object: "+path)
+			continue
+		}
+		if !createdObjectStillOwned(root, path, identity) {
 			rollback.Errors = append(rollback.Errors, "created target changed after publication; preserved replacement: "+path)
 			continue
 		}

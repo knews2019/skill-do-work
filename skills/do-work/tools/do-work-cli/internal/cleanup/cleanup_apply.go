@@ -288,10 +288,12 @@ func applyOperation(repositoryRoot string, recorder *gittransaction.MutationReco
 		if err := recorder.RecordTouched(operation.SourcePath); err != nil {
 			return err
 		}
-		if err := recorder.RecordCreated(operation.DestinationPath); err != nil {
-			return err
-		}
-		return moveWithoutOverwrite(repositoryRoot, operation.SourcePath, operation.DestinationPath)
+		// Ownership of the destination is the successful exclusive create, never the plan.
+		// A losing writer receives EEXIST, records nothing, and so cannot roll back over the
+		// winner's file.
+		return moveWithoutOverwrite(repositoryRoot, operation.SourcePath, operation.DestinationPath, func() error {
+			return recorder.RecordCreated(operation.DestinationPath)
+		})
 	case OperationReplace:
 		if err := recorder.RecordTouched(operation.SourcePath); err != nil {
 			return err
@@ -317,7 +319,11 @@ func applyOperation(repositoryRoot string, recorder *gittransaction.MutationReco
 	}
 }
 
-func moveWithoutOverwrite(repositoryRoot, sourceRelativePath, destinationRelativePath string) error {
+// moveWithoutOverwrite publishes the destination through an exclusive create, then calls
+// registerDestination before deleting the source, so the transaction owns exactly the object
+// this process created. A failing registerDestination removes only that object and leaves the
+// source in place.
+func moveWithoutOverwrite(repositoryRoot, sourceRelativePath, destinationRelativePath string, registerDestination func() error) error {
 	sourcePath := filepath.Join(repositoryRoot, filepath.FromSlash(sourceRelativePath))
 	destinationPath := filepath.Join(repositoryRoot, filepath.FromSlash(destinationRelativePath))
 	sourceInfo, statError := os.Lstat(sourcePath)
@@ -366,8 +372,20 @@ func moveWithoutOverwrite(repositoryRoot, sourceRelativePath, destinationRelativ
 		_ = destinationHandle.Remove(destinationName)
 		return fmt.Errorf("move source %s changed before deletion", sourcePath)
 	}
+	destinationRegistered := false
+	if registerDestination != nil {
+		if registerError := registerDestination(); registerError != nil {
+			_ = destinationHandle.Remove(destinationName)
+			return registerError
+		}
+		destinationRegistered = true
+	}
 	if removeError := os.Remove(sourcePath); removeError != nil {
-		_ = destinationHandle.Remove(destinationName)
+		if !destinationRegistered {
+			_ = destinationHandle.Remove(destinationName)
+		}
+		// A registered destination is owned by the transaction, whose rollback proves the
+		// object is still the one this process published before removing it.
 		return fmt.Errorf("remove move source %s: %w", sourcePath, removeError)
 	}
 	return nil

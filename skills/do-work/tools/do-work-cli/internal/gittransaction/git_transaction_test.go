@@ -598,11 +598,13 @@ func TestPreCommitFailureRestoresTrackedAndRemovesOnlyCreatedTargets(t *testing.
 		if err := recorder.RecordTouched("tracked.txt"); err != nil {
 			return err
 		}
+		writeFile(t, repositoryRoot, "tracked.txt", "mutated\n")
+		// Ownership is the successful creation, so the fixture records after creating,
+		// exactly as every production caller does.
+		writeFile(t, repositoryRoot, "created.txt", "created\n")
 		if err := recorder.RecordCreated("created.txt"); err != nil {
 			return err
 		}
-		writeFile(t, repositoryRoot, "tracked.txt", "mutated\n")
-		writeFile(t, repositoryRoot, "created.txt", "created\n")
 		return errors.New("forced mutation failure")
 	})
 	if resultmodel.ExitCode(result.Outcome) != 3 || result.Rollback.Status != resultmodel.RollbackSucceeded {
@@ -790,10 +792,10 @@ func TestRollbackRemovesOnlyRecordedCreatedDirectoriesDeepestFirst(t *testing.T)
 		if err := recorder.RecordCreatedDirectory("new/tree"); err != nil {
 			return err
 		}
+		writeFile(t, repositoryRoot, "new/tree/file.txt", "created\n")
 		if err := recorder.RecordCreated("new/tree/file.txt"); err != nil {
 			return err
 		}
-		writeFile(t, repositoryRoot, "new/tree/file.txt", "created\n")
 		return errors.New("forced failure")
 	})
 	if result.Outcome != resultmodel.OutcomeRolledBack || result.Rollback.Status != resultmodel.RollbackSucceeded {
@@ -1161,5 +1163,40 @@ func TestDirtyDeletedTargetCommitFailureRestoresTheExactDeletedPreimage(t *testi
 	}
 	if status := runFixtureGit(t, repositoryRoot, "status", "--porcelain"); status != "D queue.md" {
 		t.Fatalf("rollback changed the original dirty deletion: %q", status)
+	}
+}
+
+// A created path used to be removed by pathname alone: nothing proved the object standing
+// there at rollback was the one this invocation published. Deleting and recreating a file in
+// the same directory commonly reuses its inode, so inode identity alone is not enough either.
+func TestCreatedTargetRollbackPreservesAnotherWritersReplacement(t *testing.T) {
+	repositoryRoot := newRepository(t)
+	writeFile(t, repositoryRoot, "tracked.txt", "seed\n")
+	commitAll(t, repositoryRoot, "seed")
+	createdPath := filepath.Join(repositoryRoot, "created.txt")
+
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot: repositoryRoot,
+		TargetPaths:    []string{"created.txt"},
+	}, func(recorder *MutationRecorder) error {
+		writeFile(t, repositoryRoot, "created.txt", "ours\n")
+		if err := recorder.RecordCreated("created.txt"); err != nil {
+			return err
+		}
+		if err := os.Remove(createdPath); err != nil {
+			return err
+		}
+		writeFile(t, repositoryRoot, "created.txt", "second writer\n")
+		return errors.New("forced mutation failure")
+	})
+
+	if result.Outcome != resultmodel.OutcomeRisk || result.Rollback.Status != resultmodel.RollbackIncomplete {
+		t.Fatalf("result = %#v", result)
+	}
+	if got := readPath(t, createdPath); got != "second writer\n" {
+		t.Fatalf("rollback deleted another writer's replacement: %q", got)
+	}
+	if !strings.Contains(strings.Join(result.Rollback.Errors, "\n"), "created target changed after publication; preserved replacement: created.txt") {
+		t.Fatalf("rollback errors = %#v", result.Rollback.Errors)
 	}
 }

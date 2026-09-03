@@ -2,7 +2,9 @@ package knowledgecommands
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -329,10 +331,16 @@ func renderScaffold(content, today string) string {
 
 var knowledgeMutationHook = func(_, _, _ string) error { return nil }
 
+// rootedObject is one filesystem object this invocation created. identity is nil when the
+// object escaped identity capture, which rollback reports instead of removing by pathname.
+// digestKnown marks a completely written file, whose content digest separates it from a
+// replacement that reused the same name and inode.
 type rootedObject struct {
-	path      string
-	identity  os.FileInfo
-	recursive bool
+	path        string
+	identity    os.FileInfo
+	digest      [sha256.Size]byte
+	digestKnown bool
+	recursive   bool
 }
 
 type rootedScaffoldWriter struct {
@@ -412,12 +420,16 @@ func (writer *rootedScaffoldWriter) createDirectory(path string, recursive bool)
 	if err := writer.root.Mkdir(path, 0o755); err != nil {
 		return err
 	}
+	// Mkdir is the ownership event. Recording before the fallible Lstat keeps a directory
+	// this invocation created from escaping rollback's inventory.
+	created := len(writer.created)
+	writer.created = append(writer.created, rootedObject{path: path, recursive: recursive})
 	info, err := writer.root.Lstat(path)
 	if err != nil {
 		return err
 	}
 	writer.directories[path] = info
-	writer.created = append(writer.created, rootedObject{path: path, identity: info, recursive: recursive})
+	writer.created[created].identity = info
 	return knowledgeMutationHook("after-create", writer.flow, path)
 }
 
@@ -436,6 +448,13 @@ func (writer *rootedScaffoldWriter) createFile(path, content string) error {
 	if err != nil {
 		return err
 	}
+	// The exclusive create is the ownership event, and the open handle names the object it
+	// produced. Recording here keeps an incomplete write from escaping rollback's inventory.
+	created := len(writer.created)
+	writer.created = append(writer.created, rootedObject{path: path})
+	if openedInfo, statError := fileHandle.Stat(); statError == nil {
+		writer.created[created].identity = openedInfo
+	}
 	_, writeError := fileHandle.WriteString(content)
 	closeError := fileHandle.Close()
 	if writeError != nil {
@@ -448,7 +467,9 @@ func (writer *rootedScaffoldWriter) createFile(path, content string) error {
 	if err != nil {
 		return err
 	}
-	writer.created = append(writer.created, rootedObject{path: path, identity: info})
+	writer.created[created].identity = info
+	writer.created[created].digest = sha256.Sum256([]byte(content))
+	writer.created[created].digestKnown = true
 	return knowledgeMutationHook("after-create", writer.flow, path)
 }
 
@@ -457,12 +478,16 @@ func (writer *rootedScaffoldWriter) rollback() resultmodel.RollbackResult {
 	for index := len(writer.created) - 1; index >= 0; index-- {
 		created := writer.created[index]
 		_ = knowledgeMutationHook("before-rollback", writer.flow, created.path)
+		if created.identity == nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("preserve %s: identity was not recorded", created.path))
+			continue
+		}
 		current, err := writer.root.Lstat(created.path)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("preserve %s: %v", created.path, err))
 			continue
 		}
-		if !os.SameFile(created.identity, current) {
+		if !os.SameFile(created.identity, current) || !scaffoldContentStillOwned(writer.root, created) {
 			result.Errors = append(result.Errors, fmt.Sprintf("preserve replacement at %s: identity changed", created.path))
 			continue
 		}
@@ -481,6 +506,26 @@ func (writer *rootedScaffoldWriter) rollback() resultmodel.RollbackResult {
 		result.Status = resultmodel.RollbackIncomplete
 	}
 	return result
+}
+
+// scaffoldContentStillOwned separates a completely written file from a replacement that
+// reused its name and inode, which removing and recreating a file in the same directory
+// routinely does.
+func scaffoldContentStillOwned(root *os.Root, created rootedObject) bool {
+	if !created.digestKnown {
+		return true
+	}
+	fileHandle, err := root.Open(created.path)
+	if err != nil {
+		return false
+	}
+	defer fileHandle.Close()
+	openedInfo, statError := fileHandle.Stat()
+	if statError != nil || !os.SameFile(created.identity, openedInfo) {
+		return false
+	}
+	contents, readError := io.ReadAll(fileHandle)
+	return readError == nil && sha256.Sum256(contents) == created.digest
 }
 
 func cleanRootPath(path string) string {

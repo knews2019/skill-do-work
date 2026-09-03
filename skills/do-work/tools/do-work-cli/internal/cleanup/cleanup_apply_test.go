@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
@@ -443,7 +444,7 @@ func TestMovePublicationNeverOverwritesAnExistingDestination(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeCleanupFile(t, repositoryRoot, "source.txt", "source\n")
 	writeCleanupFile(t, repositoryRoot, "archive/destination.txt", "user content\n")
-	if err := moveWithoutOverwrite(repositoryRoot, "source.txt", "archive/destination.txt"); err == nil {
+	if err := moveWithoutOverwrite(repositoryRoot, "source.txt", "archive/destination.txt", nil); err == nil {
 		t.Fatal("move overwrote an existing destination")
 	}
 	destinationContents, err := os.ReadFile(filepath.Join(repositoryRoot, "archive", "destination.txt"))
@@ -475,7 +476,7 @@ func TestMovePublicationPreservesCompleteSourceMode(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if err := moveWithoutOverwrite(repositoryRoot, "source.txt", "archive/destination.txt"); err != nil {
+			if err := moveWithoutOverwrite(repositoryRoot, "source.txt", "archive/destination.txt", nil); err != nil {
 				t.Fatalf("moveWithoutOverwrite: %v", err)
 			}
 			if _, err := os.Stat(filepath.Join(repositoryRoot, "source.txt")); !os.IsNotExist(err) {
@@ -732,5 +733,103 @@ func TestCommittedRiskPreservesExactRevertArgvAndDoesNotClaimApplied(t *testing.
 		if strings.HasPrefix(change.Detail, "applied ") {
 			t.Fatalf("risk claimed applied: %#v", result.Changes)
 		}
+	}
+}
+
+// Two writers can race the same absent destination. The move used to register the
+// destination before creating it, so the loser's EEXIST rolled back by deleting the
+// winner's published file.
+func TestLosingMoveWriterRollbackPreservesTheWinnersDestination(t *testing.T) {
+	repositoryRoot := cleanupRepository(t)
+	writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-601-done.md", "ours\n")
+	if err := os.MkdirAll(filepath.Join(repositoryRoot, "do-work", "archive"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	commitCleanupFixture(t, repositoryRoot)
+	destinationPath := filepath.Join(repositoryRoot, "do-work", "archive", "REQ-601-done.md")
+
+	result := gittransaction.ExecuteTransaction(context.Background(), gittransaction.TransactionOptions{
+		RepositoryRoot: repositoryRoot,
+		TargetPaths:    []string{"do-work/queue/REQ-601-done.md", "do-work/archive/REQ-601-done.md"},
+	}, func(recorder *gittransaction.MutationRecorder) error {
+		// The winner publishes the destination after this plan was built and preflighted.
+		if err := os.WriteFile(destinationPath, []byte("winner\n"), 0o644); err != nil {
+			return err
+		}
+		return applyOperation(repositoryRoot, recorder, CleanupOperation{
+			Kind:            OperationMove,
+			SourcePath:      "do-work/queue/REQ-601-done.md",
+			DestinationPath: "do-work/archive/REQ-601-done.md",
+		})
+	})
+
+	if result.Outcome == resultmodel.OutcomeSuccess {
+		t.Fatalf("the losing writer reported success: %#v", result)
+	}
+	if contents, err := os.ReadFile(destinationPath); err != nil || string(contents) != "winner\n" {
+		t.Fatalf("losing rollback destroyed the winner's file: %q %v", contents, err)
+	}
+	if contents, err := os.ReadFile(filepath.Join(repositoryRoot, "do-work", "queue", "REQ-601-done.md")); err != nil || string(contents) != "ours\n" {
+		t.Fatalf("losing writer lost its own source: %q %v", contents, err)
+	}
+}
+
+// Registration now happens between the exclusive create and the source deletion, which adds
+// one new failure point: a registration that fails must undo exactly the object this process
+// created and leave the source untouched.
+func TestFailedDestinationRegistrationRemovesOnlyTheCreatedDestination(t *testing.T) {
+	repositoryRoot := cleanupRepository(t)
+	writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-602-done.md", "ours\n")
+	if err := os.MkdirAll(filepath.Join(repositoryRoot, "do-work", "archive"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sourcePath := filepath.Join(repositoryRoot, "do-work", "queue", "REQ-602-done.md")
+	destinationPath := filepath.Join(repositoryRoot, "do-work", "archive", "REQ-602-done.md")
+
+	registrationError := errors.New("registration refused")
+	registered := false
+	moveError := moveWithoutOverwrite(repositoryRoot, "do-work/queue/REQ-602-done.md", "do-work/archive/REQ-602-done.md", func() error {
+		registered = true
+		// The exclusive create is the ownership event, so the object must already be
+		// published when registration runs.
+		if contents, err := os.ReadFile(destinationPath); err != nil || string(contents) != "ours\n" {
+			t.Fatalf("destination was registered before it was created: %q %v", contents, err)
+		}
+		if _, err := os.Lstat(sourcePath); err != nil {
+			t.Fatalf("source deleted before registration: %v", err)
+		}
+		return registrationError
+	})
+
+	if !registered || !errors.Is(moveError, registrationError) {
+		t.Fatalf("registered=%v move error=%v", registered, moveError)
+	}
+	if _, err := os.Lstat(destinationPath); !os.IsNotExist(err) {
+		t.Fatalf("unregistered destination remains: %v", err)
+	}
+	if contents, err := os.ReadFile(sourcePath); err != nil || string(contents) != "ours\n" {
+		t.Fatalf("source did not survive a failed registration: %q %v", contents, err)
+	}
+
+	// The same failure through the real recorder seam: an undeclared destination cannot be
+	// registered, so the transaction fails with the source intact and nothing published.
+	result := gittransaction.ExecuteTransaction(context.Background(), gittransaction.TransactionOptions{
+		RepositoryRoot: repositoryRoot,
+		TargetPaths:    []string{"do-work/queue/REQ-602-done.md"},
+	}, func(recorder *gittransaction.MutationRecorder) error {
+		return applyOperation(repositoryRoot, recorder, CleanupOperation{
+			Kind:            OperationMove,
+			SourcePath:      "do-work/queue/REQ-602-done.md",
+			DestinationPath: "do-work/archive/REQ-602-done.md",
+		})
+	})
+	if result.Outcome == resultmodel.OutcomeSuccess {
+		t.Fatalf("an unregistrable destination reported success: %#v", result)
+	}
+	if _, err := os.Lstat(destinationPath); !os.IsNotExist(err) {
+		t.Fatalf("unregistrable destination remains: %v", err)
+	}
+	if contents, err := os.ReadFile(sourcePath); err != nil || string(contents) != "ours\n" {
+		t.Fatalf("source lost to an unregistrable destination: %q %v", contents, err)
 	}
 }

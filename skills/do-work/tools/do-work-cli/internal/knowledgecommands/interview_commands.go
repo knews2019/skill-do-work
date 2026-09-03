@@ -1179,13 +1179,15 @@ func publishTransactionFile(repositoryRoot string, recorder *gittransaction.Muta
 			return err
 		}
 	} else if os.IsNotExist(err) {
-		if err := recorder.RecordCreated(relative); err != nil {
-			return err
-		}
 		if rootedCreateTestHook != nil {
 			rootedCreateTestHook(repositoryRoot, relative)
 		}
+		// Ownership is the successful rooted create, so the transaction learns about the
+		// destination only once this invocation has actually published it.
 		if err := createRootedFile(repositoryRoot, relative, contents, mode); err != nil {
+			return err
+		}
+		if err := recorder.RecordCreated(relative); err != nil {
 			return err
 		}
 	} else {
