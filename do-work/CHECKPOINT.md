@@ -15,13 +15,6 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-490: Review fix: compute wave depth from satisfied duplicate records — claimed 2026-09-03T22:25:28Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-
-- REQ-496: [impact-critical] Review fix: Add shared executable already-green repair validator — claimed 2026-09-03T22:25:28Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-
-- REQ-512: [impact-critical] Review fix: Complete legacy finalization semantic ownership — claimed 2026-09-03T22:25:28Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-
-
 ## Still Queued
 
 - 47 pending requests remain. This targeted run drained REQ-531's frozen ledger and did not perform a full-queue selection.
