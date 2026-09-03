@@ -53,4 +53,3 @@ session_depth: light
 ## In Progress (interrupted)
 
 
-- REQ-461: [impact-user-visible] Require affirmative project-owned release targets — claimed 2026-09-03T09:44:13Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
