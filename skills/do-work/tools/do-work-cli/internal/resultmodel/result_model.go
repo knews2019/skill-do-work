@@ -67,6 +67,23 @@ type SkippedWork struct {
 	Reason string `json:"reason"`
 }
 
+type HeavyLaneSelection struct {
+	LaneID      string   `json:"lane_id"`
+	CommandArgv []string `json:"command_argv"`
+	Reasons     []string `json:"reasons"`
+}
+
+type HeavyVerificationPlan struct {
+	ManifestPath   string               `json:"manifest_path"`
+	BaseRevision   string               `json:"base_revision"`
+	TargetRevision string               `json:"target_revision"`
+	ForcedAll      bool                 `json:"forced_all"`
+	Uncertain      bool                 `json:"uncertain"`
+	ChangedPaths   []string             `json:"changed_paths"`
+	UncoveredPaths []string             `json:"uncovered_paths"`
+	SelectedLanes  []HeavyLaneSelection `json:"selected_lanes"`
+}
+
 // AuditMetricsResult is the machine projection of the maintainability-audit
 // measurements. Compatibility Markdown and JSON are rendered from this same
 // ordered data; consumers never need to parse a table back into numbers.
@@ -341,6 +358,7 @@ type CommandResult struct {
 	AuditMetrics       *AuditMetricsResult           `json:"audit_metrics,omitempty"`
 	GateDeferral       *GateDeferralResult           `json:"gate_deferral,omitempty"`
 	GateEvidence       *GateEvidenceResult           `json:"gate_evidence,omitempty"`
+	HeavyVerification  *HeavyVerificationPlan        `json:"heavy_verification,omitempty"`
 	AlreadyGreenRepair *AlreadyGreenRepairValidation `json:"already_green_repair,omitempty"`
 	Finalization       *FinalizationResult           `json:"finalization,omitempty"`
 	Finalizations      []FinalizationResult          `json:"finalizations"`
@@ -391,6 +409,26 @@ func NormalizeResult(result CommandResult) CommandResult {
 	}
 	if result.Finalizations == nil {
 		result.Finalizations = []FinalizationResult{}
+	}
+	if result.HeavyVerification != nil {
+		if result.HeavyVerification.ChangedPaths == nil {
+			result.HeavyVerification.ChangedPaths = []string{}
+		}
+		if result.HeavyVerification.UncoveredPaths == nil {
+			result.HeavyVerification.UncoveredPaths = []string{}
+		}
+		if result.HeavyVerification.SelectedLanes == nil {
+			result.HeavyVerification.SelectedLanes = []HeavyLaneSelection{}
+		}
+		for laneIndex := range result.HeavyVerification.SelectedLanes {
+			lane := &result.HeavyVerification.SelectedLanes[laneIndex]
+			if lane.CommandArgv == nil {
+				lane.CommandArgv = []string{}
+			}
+			if lane.Reasons == nil {
+				lane.Reasons = []string{}
+			}
+		}
 	}
 	if len(result.Finalizations) == 0 && result.Finalization != nil {
 		result.Finalizations = append(result.Finalizations, *result.Finalization)
@@ -628,6 +666,22 @@ func renderText(result CommandResult) []byte {
 		fmt.Fprintf(&output, "  gate command: %s (sha256: %s, exit: %d)\n", joinArgv(gate.GateCommand), gate.GateCommandSHA256, gate.GateExitStatus)
 		fmt.Fprintf(&output, "  record: %s (provenance: %s)\n", gate.RecordPath, gate.RecordProvenance)
 		fmt.Fprintf(&output, "  revisions: recorded=%s head=%s baseline=%s target=%s\n", gate.RecordedRevision, gate.HeadRevision, gate.BaselineRevision, gate.TargetRevision)
+	}
+	if result.HeavyVerification != nil {
+		plan := result.HeavyVerification
+		fmt.Fprintf(&output, "heavy verification: selected=%d uncertain=%t force_all=%t\n", len(plan.SelectedLanes), plan.Uncertain, plan.ForcedAll)
+		fmt.Fprintf(&output, "  manifest: %s\n", plan.ManifestPath)
+		fmt.Fprintf(&output, "  revisions: %s..%s\n", plan.BaseRevision, plan.TargetRevision)
+		fmt.Fprintf(&output, "  changed paths: %s\n", strings.Join(plan.ChangedPaths, ", "))
+		if len(plan.UncoveredPaths) > 0 {
+			fmt.Fprintf(&output, "  uncovered paths: %s\n", strings.Join(plan.UncoveredPaths, ", "))
+		}
+		for _, lane := range plan.SelectedLanes {
+			fmt.Fprintf(&output, "  lane %s: %s\n", lane.LaneID, joinArgv(lane.CommandArgv))
+			for _, reason := range lane.Reasons {
+				fmt.Fprintf(&output, "    reason: %s\n", reason)
+			}
+		}
 	}
 	if result.AlreadyGreenRepair != nil {
 		validation := result.AlreadyGreenRepair

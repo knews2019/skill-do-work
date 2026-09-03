@@ -9,6 +9,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/doctor"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/finalization"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gateevidence"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/heavyverification"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/hookcommands"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/knowledgecommands"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/nextselection"
@@ -46,6 +47,9 @@ func main() {
 		handlers[name] = handler
 	}
 	for name, handler := range gateevidence.Handlers() {
+		handlers[name] = handler
+	}
+	for name, handler := range heavyverification.Handlers() {
 		handlers[name] = handler
 	}
 	for name, handler := range repairvalidation.Handlers() {

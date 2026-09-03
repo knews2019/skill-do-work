@@ -227,7 +227,7 @@ commit: abc1234               # required in a git repo — implementation commit
 error: "Description"          # Set when a REQ failed; RETAINED verbatim if that failed REQ is later cancelled via do-work abandon — the surviving failure signal on a status: cancelled REQ, NOT drift to strip
 error_type: intent|spec|code|environment   # Set with `error` on failure; likewise retained on a failed→cancelled flip
 
-# Set by work.md Step 6.5 when the merged diff requires the permission-gated heavy suite.
+# Set by work.md Step 6.5 when the merged diff selects permission-gated heavy lanes.
 # The REQ stays in queue and ordinary selection walks past it. `commit` above is the
 # exact implemented revision the Open Question names while other runnable REQs continue.
 status: pending-heavy-testing
@@ -840,6 +840,10 @@ The canonical `complete` command either appends the planned row once or reports 
 
 **Existing tests updated (cross-REQ impact):**
 - [test file] (from REQ-NNN): [what changed and why — intentional behavior change]
+
+**Heavy verification plan:** *(when lanes were selected)*
+- Range: [base revision]..[target revision]
+- [lane id]: [exact argv] — [selection reason]
 
 *Verified by work action*
 ```
