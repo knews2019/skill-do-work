@@ -1,7 +1,7 @@
 ---
 id: REQ-458
 title: 'Addendum: classify active worktrees as present and non-fixable'
-status: pending
+status: claimed
 created_at: 2026-08-31T21:38:14Z
 user_request: UR-086
 addendum_to: REQ-083
@@ -13,6 +13,7 @@ depends_on: []
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+claimed_at: 2026-09-03T00:59:09Z
 ---
 
 # Addendum: Classify Active Worktrees as Present and Non-Fixable

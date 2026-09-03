@@ -52,3 +52,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-458: Addendum: classify active worktrees as present and non-fixable — claimed 2026-09-03T00:59:09Z — writer: vm:/home/user/skill-do-work
