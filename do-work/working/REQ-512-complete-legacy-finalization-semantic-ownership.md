@@ -1,7 +1,7 @@
 ---
 id: REQ-512
 title: '[impact-critical] Review fix: Complete legacy finalization semantic ownership'
-status: pending
+status: claimed
 priority: now
 domain: backend
 created_at: 2026-09-02T18:08:38Z
@@ -15,6 +15,7 @@ suggested_spec: bug-fix
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 sweep: true
 sweep_key: legacy-finalization-semantic-ownership-incomplete
+claimed_at: 2026-09-03T22:25:28Z
 ---
 
 # Review Fix: Complete Legacy Finalization Semantic Ownership
