@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.272.1 — Cancelling a Claimed REQ No Longer Trips Over Its Own Checkpoint (2026-09-03)
+
+`do-work abandon` on a REQ in `working/` whose checkpoint entry was written by another session, or had already been cleared, rolled back with "path do-work/CHECKPOINT.md is outside the declared transaction targets". The plan computed byte-identical checkpoint bytes, declared no checkpoint target, and wrote the file anyway. A landed REQ whose claiming session had died could not be cancelled at all.
+
+- The cancel, complete and fail transitions skip the checkpoint write when there is no entry this writer may remove, and report `CHECKPOINT-ENTRY-NOT-PRESENT` as skipped work.
+- A foreign-labelled entry is left byte-identical; clearing it stays a human act, as crash recovery already says.
+
 ## 0.272.0 — Noncritical Findings Stay in Their Reports (2026-09-03)
 
 Reviews and builds were creating maintenance as quickly as the queue could drain it. Noncritical findings now stay where they were recorded, while only critical production, data-loss, or security issues enter the queue automatically.

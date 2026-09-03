@@ -620,3 +620,41 @@ func assertStateSuccess(t *testing.T, result resultmodel.CommandResult) {
 }
 
 var _ = time.UTC
+
+// A cancel from working/ whose checkpoint entry belongs to another writer, or
+// does not exist, must still succeed. The plan used to compute byte-identical
+// checkpoint bytes, declare no checkpoint target (targets are declared only
+// for changed bytes), and then write the file anyway — so the transaction
+// refused its own no-op and rolled back, and a landed REQ whose claiming
+// session had died could not be cancelled at all (REQ-468 and REQ-538,
+// 2026-09-03).
+func TestCancelFromWorkingLeavesForeignOrAbsentCheckpointEntryAndSucceeds(t *testing.T) {
+	now := "2026-09-03T21:00:00Z"
+	cancelArguments := func(id string) []string {
+		return []string{id, "--request-path", "do-work/working/" + id + ".md", "--confirmed", "--dependent-disposition", "leave", "--reason", "landed in place", "--writer", "host:/repo", "--at", now}
+	}
+	t.Run("foreign entry stays byte-identical", func(t *testing.T) {
+		root := newStateRepository(t)
+		writeStateRequest(t, root, "do-work/working/REQ-306.md", "REQ-306", "claimed", "claimed_at: 2026-09-03T16:00:00Z\n")
+		writeStateCheckpoint(t, root, "- REQ-306: Fixture — claimed 2026-09-03T16:00:00Z — writer: other:/repo\n")
+		before := readStateFile(t, root, "do-work/CHECKPOINT.md")
+		result := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionCancel, cancelArguments("REQ-306"))
+		assertStateSuccess(t, result)
+		if contents := readStateFile(t, root, "do-work/archive/REQ-306.md"); !strings.Contains(contents, "status: cancelled") {
+			t.Fatalf("cancel did not archive the REQ:\n%s", contents)
+		}
+		if after := readStateFile(t, root, "do-work/CHECKPOINT.md"); after != before {
+			t.Fatalf("foreign checkpoint entry was changed:\nbefore:\n%s\nafter:\n%s", before, after)
+		}
+	})
+	t.Run("absent entry", func(t *testing.T) {
+		root := newStateRepository(t)
+		writeStateRequest(t, root, "do-work/working/REQ-307.md", "REQ-307", "claimed", "claimed_at: 2026-09-03T16:00:00Z\n")
+		writeStateCheckpoint(t, root, "- REQ-999: Foreign — claimed earlier — writer: other:/repo\n")
+		result := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionCancel, cancelArguments("REQ-307"))
+		assertStateSuccess(t, result)
+		if checkpoint := readStateFile(t, root, "do-work/CHECKPOINT.md"); !strings.Contains(checkpoint, "REQ-999") {
+			t.Fatalf("unrelated checkpoint entry lost:\n%s", checkpoint)
+		}
+	})
+}

@@ -311,8 +311,16 @@ func planCheckpoint(snapshot *repositorymodel.RepositorySnapshot, plan *StatePla
 	}
 	if plan.Transition == TransitionClaim {
 		plan.CheckpointBytes = checkpointWithClaim(existingBytes, plan.Target.TypedRecord.RequestID, plan.Target.TypedRecord.RequestTitle, requestmodel.CanonicalTimestamp(plan.Options.Now), writerLabel)
-	} else {
-		plan.CheckpointBytes = checkpointWithoutClaim(existingBytes, plan.Target.TypedRecord.RequestID, writerLabel)
+		return
+	}
+	plan.CheckpointBytes = checkpointWithoutClaim(existingBytes, plan.Target.TypedRecord.RequestID, writerLabel)
+	if bytes.Equal(plan.CheckpointBytes, existingBytes) {
+		// Nothing this writer may remove: the entry is absent or carries another
+		// writer's label, which only a human clears. Targets are declared only for
+		// changed bytes, so writing the unchanged file would touch an undeclared
+		// path and roll the whole transition back on its own no-op.
+		plan.CheckpointPath = ""
+		plan.SkippedWork = append(plan.SkippedWork, resultmodel.SkippedWork{Code: "CHECKPOINT-ENTRY-NOT-PRESENT", Reason: "the checkpoint holds no entry this writer may remove for the REQ"})
 	}
 }
 
