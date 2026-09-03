@@ -1,7 +1,7 @@
 ---
 id: REQ-485
 title: 'Canonicalize REQ reservation marker filenames across allocation flows'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-01T12:11:03Z
 user_request: UR-092
@@ -14,6 +14,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 batch: go-no-llm-command-platform
+claimed_at: 2026-09-03T21:43:41Z
 ---
 
 # Canonicalize REQ Reservation Marker Filenames Across Allocation Flows
