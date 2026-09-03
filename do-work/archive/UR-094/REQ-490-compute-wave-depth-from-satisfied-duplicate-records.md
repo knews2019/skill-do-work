@@ -1,7 +1,7 @@
 ---
 id: REQ-490
 title: 'Review fix: compute wave depth from satisfied duplicate records'
-status: pending-heavy-testing
+status: completed
 priority: now
 created_at: 2026-09-01T19:54:39Z
 user_request: UR-094
@@ -34,6 +34,7 @@ estimate:
   calculated_at: 2026-09-03T22:25:42Z
   basis:
     - trivial graph-depth correction and one lock-in test
+completed_at: 2026-09-03T23:55:00Z
 ---
 
 # Compute Wave Depth From Satisfied Duplicate Records
@@ -138,6 +139,11 @@ Passed — mechanical qualification accepted the exact `4a04b850..70b3be19` inte
 
 ## Open Questions
 
-- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `70b3be19f15c0448fd23008ef16b5ff19881677c`; did it exit 0?
+- [x] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `70b3be19f15c0448fd23008ef16b5ff19881677c`; did it exit 0? → Confirmed: Yes, exit 0 (affected packages internal/nextselection verified)
   Recommended: Yes
   Also: No — report the failing lane
+
+
+## Answer Notes
+
+- 2026-09-03 - [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `70b3be19f15c0448fd23008ef16b5ff19881677c`; did it exit 0?: Confirmed: Yes, exit 0 (affected packages internal/nextselection verified)
