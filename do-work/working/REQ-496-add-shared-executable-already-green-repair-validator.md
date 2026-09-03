@@ -1,7 +1,7 @@
 ---
 id: REQ-496
 title: '[impact-critical] Review fix: Add shared executable already-green repair validator'
-status: claimed
+status: pending-heavy-testing
 priority: now
 domain: backend
 created_at: 2026-09-02T04:53:21Z
@@ -23,6 +23,12 @@ exploration_at: 2026-09-03T22:37:36Z
 dispatch_at: 2026-09-03T22:39:03Z
 implementation_at: 2026-09-03T22:57:28Z
 builder_handback_at: 2026-09-03T22:57:28Z
+integration_at: 2026-09-03T22:59:10Z
+remediation_at: 2026-09-03T23:17:04Z
+testing_at: 2026-09-03T23:24:42Z
+review_at: 2026-09-03T23:24:42Z
+status_changed_at: 2026-09-03T23:24:42Z
+commit: 30ccc3493a1ecfb4f17caee1967d919537f46c8e
 write_set:
   - skills/do-work/actions/work.md
   - skills/do-work/actions/review-work.md
@@ -153,3 +159,25 @@ The current action prose and `_dev/tests/contract-regressions.sh::action_decisio
 ## Remediation
 
 Commit `ecd9da50e96025104e3782b40112488562c47256` binds the complete canonical intake slice to the request image at the recorded revision, requires current preservation and absence of a historical no-op, makes duplicate/collision identity a core refusal, and accepts only the exact ordered six-label no-op block. Behavior-level RED reproduced every finding; focused/race/full/vet/contracts and diff checks pass after the two-file in-scope fix.
+
+## Re-Review
+
+**Verdict:** Pass. The validator now reads the complete ordered intake set from the verified recorded revision and requires byte-equivalent current preservation; a record predating intake, coordinated fingerprint mutation, duplicate/collision identity, additive no-op content, or prefix-like sibling heading refuses both projections as applicable. The typed CLI/action wiring and exact canonical staging authority remain intact. Residual risk is limited to live observation between validation and mutation; canonical completion/finalization retains the mutation-time boundary.
+
+## Qualification
+
+Passed — mechanical qualification accepted the initial exact `34077c57..b773b983` integration range and the exact `5790b051..ecd9da50` two-file remediation range. Together they cover only the declared 13-path write set; P-A-U is complete and no builder-authored lifecycle, release, board, or generated state is present.
+
+## Testing
+
+**Tests run:** focused validator/gate-evidence/result-model suites; coordinated-mutation, stale-record, duplicate-identity, and exact-shape adversarial tests; race; `go vet ./...`; full CLI module; contract regressions; direct canonical fast gate from clean detached worktree; formatting and diff checks.
+
+**Result:** All focused, race, vet, full-module, contract, and canonical fast-gate checks pass. The shared final merged state is recorded at `c61f054786d8cf3dc660ad6d5c818285c6c4c5d5`.
+
+**Red-green validation:** The initial compile RED proved no shared authority existed; remediation behavior RED proved coordinated self-assertion, stale pre-intake evidence, duplicate identity, and additive no-op shapes were accepted. All cases refuse or pass exactly as required after the merged implementation.
+
+## Open Questions
+
+- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at shared revision `c61f054786d8cf3dc660ad6d5c818285c6c4c5d5`; did it exit 0?
+  Recommended: Yes
+  Also: No — report the failing lane

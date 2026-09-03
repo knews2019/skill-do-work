@@ -1,7 +1,7 @@
 ---
 id: REQ-512
 title: '[impact-critical] Review fix: Complete legacy finalization semantic ownership'
-status: claimed
+status: pending-heavy-testing
 priority: now
 domain: backend
 created_at: 2026-09-02T18:08:38Z
@@ -22,6 +22,12 @@ exploration_at: 2026-09-03T22:37:36Z
 dispatch_at: 2026-09-03T22:39:03Z
 implementation_at: 2026-09-03T22:52:46Z
 builder_handback_at: 2026-09-03T22:52:46Z
+integration_at: 2026-09-03T22:54:02Z
+remediation_at: 2026-09-03T23:18:55Z
+testing_at: 2026-09-03T23:24:42Z
+review_at: 2026-09-03T23:24:42Z
+status_changed_at: 2026-09-03T23:24:42Z
+commit: c61f054786d8cf3dc660ad6d5c818285c6c4c5d5
 write_set:
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_req499_test.go
@@ -143,3 +149,30 @@ None.
 ## Remediation
 
 Commit `c6c9195a042414b32f67b9dd3b1fdd1831bc6cf4` makes malformed source/lock identity a typed fail-closed error, reconstructs candidate locks by replacing only exact structured root/member version spans across npm/Cargo/uv (including multiple changed members and pre-existing target-version neighbors), and requires the fold marker on its own final line. Behavior-level RED reproduced every finding; focused recovery/REQ-499/REQ-512, race, full module, vet, scoped Go 1.25, heavy public recovery, and diff checks pass after the two-file in-scope fix.
+
+## Re-Review
+
+**Verdict:** Completed with issues after the one permitted remediation pass. The global replacement and inline-marker findings are closed, as are malformed missing/unquoted identities and invalid npm JSON. Two fail-closed gaps remain: duplicate/competing Cargo or uv name declarations can satisfy the first-match identity parser, and parseable stale npm root lock copies can be omitted from a changed root's required mirror count. These require successor work rather than a second remediation pass.
+
+## Qualification
+
+Passed — mechanical qualification accepted the initial exact `08d93361..6210debd` three-file range and the exact `54023d91..c6c9195a` two-file remediation range. Both are inside the declared finalization write set, with no builder-authored lifecycle, release, generated, or unrelated source state.
+
+## Testing
+
+**Tests run:** focused REQ-512 fold/workspace and REQ-499/recovery matrices; focused remediation adversaries; finalization and repair-validation race suites; `go vet ./...`; full CLI module; scoped Go 1.25 finalization; heavy public recovery-to-claim; direct canonical fast gate from a clean detached worktree; formatting and diff checks.
+
+**Result:** All implemented-case focused, race, vet, full-module, compatibility, public-recovery, and canonical fast-gate checks pass. The shared final merged state is recorded at `c61f054786d8cf3dc660ad6d5c818285c6c4c5d5`. Full Go 1.25 `./...` remains blocked only by the existing queue-kanban Go 1.26 module floor; the affected finalization suite passes on Go 1.25.
+
+**Red-green validation:** Initial RED proved foreign-tail acceptance and false refusal for member-only npm/Cargo/uv releases. Remediation RED proved malformed source/lock admission, shared-lock false refusal with pre-existing target versions, and inline marker acceptance. Those cases are GREEN; the two re-review gaps above remain explicitly unresolved.
+
+## Discovered Tasks
+
+- **impact-critical** Require unique Cargo/uv source identity and all structurally present npm root lock copies before legacy finalization can own a changed workspace root.
+
+## Open Questions
+
+- [x] Auto-approved: critical severity (release/finalization ownership risk). → Added to queue immediately as the next available REQ.
+- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at shared revision `c61f054786d8cf3dc660ad6d5c818285c6c4c5d5`; did it exit 0?
+  Recommended: Yes
+  Also: No — report the failing lane
