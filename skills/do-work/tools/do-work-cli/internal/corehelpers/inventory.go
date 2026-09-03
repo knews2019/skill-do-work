@@ -98,6 +98,9 @@ func readInventory(repositoryRoot string) ([]inventoryRow, error) {
 			return nil, fmt.Errorf("short porcelain record")
 		}
 		status, path := string(record[:2]), string(record[3:])
+		if untrackedDoWorkMetadata(status, path) {
+			continue
+		}
 		origin := ""
 		if strings.ContainsAny(status, "RC") {
 			index++
@@ -124,6 +127,18 @@ func readInventory(repositoryRoot string) ([]inventoryRow, error) {
 		}
 	}
 	return rows, nil
+}
+
+// untrackedDoWorkMetadata drops an untracked hidden file under do-work/ from
+// the inventory. do-work writes no hidden files there, so such a path is
+// operating-system or editor metadata (Finder's .DS_Store, an editor swapfile),
+// never pipeline state. Dropping it at this one chokepoint keeps every
+// consumer — finalization discovery, commit safety, the inventory command —
+// from reading a stray as an interrupted finalization and stopping the run.
+// Hidden directories are untouched: do-work/.req-reservations/NNN markers are
+// queue metadata that still must be listed and committed.
+func untrackedDoWorkMetadata(status, path string) bool {
+	return status == "??" && strings.HasPrefix(path, "do-work/") && strings.HasPrefix(filepath.Base(path), ".")
 }
 
 func classifyInventory(status, path, origin string) string {

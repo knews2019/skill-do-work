@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.266.4 — Finder Metadata No Longer Stops the Run (2026-09-03)
+
+A stray `do-work/.DS_Store` made `do-work run` refuse `FINALIZATION-DISCOVERY-AMBIGUOUS` before it selected anything. Untracked hidden files under `do-work/` are Finder or editor metadata, never pipeline state, and the inventory now drops them.
+
+- `uncommitted-inventory`, `protected-inventory`, finalization discovery, and commit safety all read the same inventory, so the stray disappears from every gate at once instead of moving the stop one step later.
+- Hidden directories are untouched: `do-work/.req-reservations/NNN` markers still list and commit as before.
+- Two lock-in tests pin the exact failure: discovery with no terminal request, and a legacy tail that must recover around the stray without staging it.
+
 ## 0.266.3 — Active Worktrees Are No Longer Called Leftovers (2026-09-03)
 
 `do-work verify` used to tell you an active builder's worktree was safe to delete. A merged branch proves the commits are safe; it says nothing about the worktree, and verify was reading that one fact as both.
