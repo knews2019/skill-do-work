@@ -19,7 +19,20 @@ review_generated: true
 addendum_to: REQ-417
 sweep: true
 sweep_key: memory-configured-tree-readers-not-rooted
+estimate:
+  p50_active_minutes: 50
+  confidence: low
+  calculated_at: 2026-09-03T21:44:31Z
+  basis:
+    - Route C
+    - 8-file write set
+    - 3 subsystems involved
+    - 4 acceptance criteria
+    - persistence changes
+    - cross-route regression gates
+    - full-suite verification
 claimed_at: 2026-09-03T21:43:31Z
+route: C
 ---
 
 # Confine All Configured Memory Tree Readers
@@ -61,3 +74,11 @@ See `do-work/runs/work-2026-08-31-165510/REQ-417-rereview.md`.
 
 ---
 *Source: REQ-417 fresh re-review residual finding 1.*
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** This security-sensitive confinement change spans every configured Memory reader, shared rooted/no-follow primitives, enumeration and size limits, text/JSON redaction, and adversarial parity tests. Planning and exploration are required before declaring the exact reader set.
+
+**Planning:** Required

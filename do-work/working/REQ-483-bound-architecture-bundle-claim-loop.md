@@ -17,7 +17,14 @@ related: [REQ-418, REQ-420]
 batch: go-no-llm-command-platform
 review_generated: true
 addendum_to: REQ-418
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-09-03T21:44:31Z
+  basis:
+    - trivial short-circuit
 claimed_at: 2026-09-03T21:43:37Z
+route: A
 ---
 
 # Bound the Architecture Bundle-Claim Loop and Restore --commit
@@ -76,3 +83,17 @@ while the run scratch survives; the durable record is the `## Review` section of
 
 ---
 *Source: REQ-418 fresh re-review findings N1 (`impact-critical`) and N2 (same file, same fix surface).*
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Both reproduced regressions name the exact architecture command sites, expected branch behavior, and caller-seam tests. The change is a small control-flow correction with no architectural decision left open.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

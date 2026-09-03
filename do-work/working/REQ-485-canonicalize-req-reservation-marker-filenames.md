@@ -14,7 +14,20 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 batch: go-no-llm-command-platform
+estimate:
+  p50_active_minutes: 55
+  confidence: low
+  calculated_at: 2026-09-03T21:44:31Z
+  basis:
+    - Route C
+    - 8-file write set
+    - 4 subsystems involved
+    - 5 acceptance criteria
+    - persistence changes
+    - cross-route regression gates
+    - full-suite verification
 claimed_at: 2026-09-03T21:43:41Z
+route: C
 ---
 
 # Canonicalize REQ Reservation Marker Filenames Across Allocation Flows
@@ -71,3 +84,11 @@ See `do-work/user-requests/UR-092/input.md` for complete verbatim input.
 
 ---
 *Source: UR-092 (Canonicalize REQ reservation marker filenames across allocation flows)*
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** The canonical spelling must be selected once and applied atomically across board allocation, capture validation, cleanup compatibility, docs, and collision tests while preserving both legacy read spellings. The cross-writer contract needs a plan and source inventory.
+
+**Planning:** Required
