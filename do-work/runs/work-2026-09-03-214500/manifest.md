@@ -7,5 +7,5 @@ Integration owner: main checkout, serial releaser.
 | Lane | REQ / description | Worktree | Handback | Status |
 |---|---|---|---|---|
 | lane-1 | REQ-475 — Confine all configured Memory tree readers | `worktree-agent-REQ-475-confine-all-configured-memory-tree-readers` | `REQ-475-handback.md` | planning/exploration |
-| lane-2 | REQ-483 — Bound the architecture bundle-claim loop and restore `--commit` | `worktree-agent-REQ-483-bound-architecture-bundle-claim-loop` | `REQ-483-handback.md` | triaged |
+| lane-2 | REQ-483 — Bound the architecture bundle-claim loop and restore `--commit` | `worktree-agent-REQ-483-bound-architecture-bundle-claim-loop` | `REQ-483-handback.md` | implementing |
 | lane-3 | REQ-485 — Canonicalize REQ reservation marker filenames across allocation flows | `worktree-agent-REQ-485-canonicalize-req-reservation-marker-filenames` | `REQ-485-handback.md` | planning/exploration |

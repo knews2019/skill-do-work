@@ -25,6 +25,7 @@ estimate:
     - trivial short-circuit
 claimed_at: 2026-09-03T21:43:37Z
 route: A
+dispatch_at: 2026-09-03T21:48:13Z
 ---
 
 # Bound the Architecture Bundle-Claim Loop and Restore --commit
