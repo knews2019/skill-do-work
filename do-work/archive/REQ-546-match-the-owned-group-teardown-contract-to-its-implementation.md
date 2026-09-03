@@ -1,7 +1,7 @@
 ---
 id: REQ-546
 title: '[impact-rule-change] Make the owned-group teardown contract match what it implements'
-status: pending
+status: cancelled
 created_at: 2026-09-03T15:42:47Z
 user_request: UR-085
 domain: backend
@@ -24,6 +24,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_process_test.go
   - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
   - _dev/tests/prescribed-shell-cases/generate-report-image.sh
+completed_at: 2026-09-03T20:40:53Z
 ---
 
 # Make the Owned-Group Teardown Contract Match What It Implements
@@ -83,3 +84,9 @@ No request prerequisite: REQ-543's implementation is already committed at `1cc3b
 
 ---
 *Source: REQ-543 independent review, findings F1, F2, F3 and F12.*
+
+## Cancelled
+
+- **When:** 2026-09-03T20:40:53Z
+- **Why:** review-born below critical, unobserved hardening; under REQ-531's rule (fb0d06ca) this stays a report line. Maintainer's 2026-09-03 triage.
+- **Decided by:** user, via `do-work abandon`

@@ -1,7 +1,7 @@
 ---
 id: REQ-530
 title: 'Order ready work by the newest REQ it unblocks'
-status: pending
+status: cancelled
 created_at: 2026-09-03T10:59:01Z
 user_request: UR-101
 domain: backend
@@ -18,6 +18,7 @@ write_set:
   - skills/do-work/actions/work-reference.md
   - skills/do-work-board/tools/queue-kanban/
   - skills/do-work-board/tools/queue-kanban/prime-do-kanban.md
+completed_at: 2026-09-03T20:40:53Z
 ---
 
 # Order Ready Work by the Newest REQ It Unblocks
@@ -117,3 +118,9 @@ The picker already exists: `do-work-cli next` (`internal/nextselection/`), and `
 
 ---
 *Source: "when picking up the next REQuest it should be the latest LIFO not the oldest REQuest. Of course don't break the dependencies. The principle is that the one that I just captured I'm more interested in it."*
+
+## Cancelled
+
+- **When:** 2026-09-03T20:40:53Z
+- **Why:** superseded by REQ-561 (UR-107): a three-value priority field the maintainer sets replaces inferring order from REQ numbers. Maintainer's 2026-09-03 triage.
+- **Decided by:** user, via `do-work abandon`

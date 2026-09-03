@@ -1,7 +1,7 @@
 ---
 id: REQ-471
 title: 'Flow and reader consistency plus documentation for gate-blocked set-aside'
-status: pending
+status: cancelled
 created_at: 2026-09-01T04:29:16Z
 user_request: UR-087
 domain: general
@@ -15,6 +15,7 @@ effort_estimate: effort-substantive
 related: [REQ-468, REQ-469, REQ-470, REQ-472]
 batch: non-blocking-orchestration
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, skills/do-work/actions/roadmap.md, skills/do-work/actions/clarify.md, skills/do-work/actions/cleanup.md, skills/do-work/docs/work-guide.md, _dev/tests/contract-regressions.sh]
+completed_at: 2026-09-03T20:40:52Z
 ---
 
 # Flow and Reader Consistency Plus Documentation for Gate-Blocked Set-Aside
@@ -68,3 +69,9 @@ See `do-work/user-requests/UR-087/input.md` for complete verbatim input.
 
 ---
 *Source: UR-087 — "Apply the behavior consistently to default, targeted, wave, fan-out, crash-recovery, checkpoint, cleanup, roadmap, clarify, and composed-summary flows."*
+
+## Cancelled
+
+- **When:** 2026-09-03T20:40:52Z
+- **Why:** folded into REQ-510's sweep as one line; the gate-blocked set-aside it documents was superseded by the repository-gate deferral lifecycle that shipped as REQ-491 to REQ-494 on 2026-09-02. Maintainer's 2026-09-03 triage.
+- **Decided by:** user, via `do-work abandon`

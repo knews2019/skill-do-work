@@ -1,7 +1,7 @@
 ---
 id: REQ-466
 title: 'Review fix: Require Git authority for hook mutations'
-status: pending
+status: cancelled
 created_at: 2026-09-01T04:01:15Z
 user_request: UR-081
 domain: backend
@@ -30,6 +30,7 @@ batch: go-no-llm-command-platform
 review_generated: true
 addendum_to: REQ-415
 status_changed_at: 2026-09-03T18:19:02Z
+completed_at: 2026-09-03T20:40:52Z
 ---
 
 # Require Git Authority for Hook Mutations
@@ -74,3 +75,9 @@ See `do-work/user-requests/UR-081/input.md` and `do-work/runs/work-2026-08-31-16
 ## Required Lessons — Dropped for Budget
 
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 3215 tokens, over the 2000-token budget and `slugged: partial`, so no targeted form is legal. Matched because this REQ changes hook mutation authority, characterization coverage, and a condition-based Markdown classifier.
+
+## Cancelled
+
+- **When:** 2026-09-03T20:40:52Z
+- **Why:** review-born below critical, unobserved hardening; under REQ-531's rule (fb0d06ca) this stays a report line. Maintainer's 2026-09-03 triage.
+- **Decided by:** user, via `do-work abandon`

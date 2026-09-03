@@ -1,7 +1,7 @@
 ---
 id: REQ-469
 title: 'Replace the unrelated canonical-gate hold with a blocked set-aside'
-status: pending
+status: cancelled
 created_at: 2026-09-01T04:29:16Z
 user_request: UR-087
 domain: general
@@ -15,6 +15,7 @@ effort_estimate: effort-substantive
 related: [REQ-468, REQ-470, REQ-471, REQ-472]
 batch: non-blocking-orchestration
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh]
+completed_at: 2026-09-03T20:40:52Z
 ---
 
 # Replace the Unrelated Canonical-Gate Hold With a Blocked Set-Aside
@@ -87,3 +88,9 @@ See `do-work/user-requests/UR-087/input.md` for complete verbatim input.
 
 ---
 *Source: UR-087 — "Replace the unrelated/pre-existing canonical-gate hold that currently leaves a REQ claimed and stops the session"*
+
+## Cancelled
+
+- **When:** 2026-09-03T20:40:52Z
+- **Why:** superseded: the repository-gate deferral lifecycle that shipped as REQ-491 to REQ-494 on 2026-09-02 (defer-gate, repair REQ, continue unrelated work) is the set-aside this REQ asked for. Maintainer's 2026-09-03 triage.
+- **Decided by:** user, via `do-work abandon`

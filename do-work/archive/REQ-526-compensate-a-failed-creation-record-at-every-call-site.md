@@ -1,7 +1,7 @@
 ---
 id: REQ-526
 title: 'Compensate a failed creation record at every create-then-record call site'
-status: pending
+status: cancelled
 created_at: 2026-09-03T01:05:00Z
 user_request: UR-085
 domain: backend
@@ -17,6 +17,7 @@ sweep: true
 sweep_key: transaction-created-path-rollback-identity
 review_generated: true
 addendum_to: REQ-457
+completed_at: 2026-09-03T20:40:53Z
 ---
 
 # Compensate a Failed Creation Record at Every Create-Then-Record Call Site
@@ -76,3 +77,9 @@ Hand triage 2026-09-03, maintainer approved: REQ-497 and REQ-524 are cancelled a
 
 ---
 *Source: REQ-457 independent review finding F3.*
+
+## Cancelled
+
+- **When:** 2026-09-03T20:40:53Z
+- **Why:** review-born below critical, unobserved hardening; under REQ-531's rule (fb0d06ca) this stays a report line. Maintainer's 2026-09-03 triage.
+- **Decided by:** user, via `do-work abandon`

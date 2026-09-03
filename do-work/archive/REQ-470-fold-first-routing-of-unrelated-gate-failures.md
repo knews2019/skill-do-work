@@ -1,7 +1,7 @@
 ---
 id: REQ-470
 title: 'Fold-first routing of unrelated gate failures into pending-answers REQs'
-status: pending
+status: cancelled
 created_at: 2026-09-01T04:29:16Z
 user_request: UR-087
 domain: general
@@ -15,6 +15,7 @@ effort_estimate: effort-substantive
 related: [REQ-468, REQ-469, REQ-471, REQ-472]
 batch: non-blocking-orchestration
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/capture-reference.md, _dev/tests/contract-regressions.sh]
+completed_at: 2026-09-03T20:40:52Z
 ---
 
 # Fold-First Routing of Unrelated Gate Failures Into Pending-Answers REQs
@@ -67,3 +68,9 @@ See `do-work/user-requests/UR-087/input.md` for complete verbatim input.
 
 ---
 *Source: UR-087 — "Run the fold-first scan for each unrelated gate failure…"*
+
+## Cancelled
+
+- **When:** 2026-09-03T20:40:52Z
+- **Why:** superseded: the repository-gate deferral lifecycle that shipped as REQ-491 to REQ-494 on 2026-09-02 already routes an unrelated gate failure into a repair REQ and continues unrelated work; REQ-559 adds the retry before it. Maintainer's 2026-09-03 triage.
+- **Decided by:** user, via `do-work abandon`
