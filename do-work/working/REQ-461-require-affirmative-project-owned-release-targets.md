@@ -154,3 +154,37 @@ The constraint is the sharp edge here: *do not replace one directory-name denyli
 - **The same defect one package over, and narrower:** `internal/finalization/finalization_discovery.go:1045` `installedReleasePathForDiscovery` carries a prefix denylist (`.claude/skills/`, `.codex/skills/`, `node_modules/`, `vendor/`, `vendored/`, `generated/`, `.generated/`), called at `:725` while enumerating configured release members. It admits the same three paths this REQ fixed, and being prefix-anchored rather than per-segment it also loses `packages/vendor/do-work/VERSION`, which the old release predicate caught. Half the fix is already present — the enumeration only walks tracked paths — so the missing half is exactly the package marker. Its `suite/modules.tsv`-at-HEAD test for "is this the maintainer repo" is itself an affirmative repository-owned declaration, which is supporting precedent for D-01.
 - `finalization_discovery.go:624` `releaseMetadataPath` is a closed list of metadata filenames. It is a *positive* enumeration, so a missing name means "not discovered" rather than "wrongly permitted" — stale rather than unsafe. Worth re-keying on a condition, or marking illustrative-and-extensible.
 - Checked and cleared as not this shape: `repositorymodel/repository_model.go:186` (queue structure), and `cleanup/cleanup_plan.go:344` plus `repositorymodel/repository_model.go:128`, which both already use the `SKILL.md` marker affirmatively.
+
+## Testing
+
+**Tests run:** `go build ./... && go vet ./... && gofmt -l .`; `go test -count=1 ./internal/publication/`; `go test ./...`; canonical repository gate `bash _dev/tests/maintainer-verify.sh`.
+**Result:** ✓ `internal/publication` green (`ok … 20.1s`). Gate exits 1 on two failures, neither this diff's — see attribution below.
+
+**Red-green validation:** traces the REQ's Red-Green Proof, which asked for otherwise-valid targets beneath `third_party`, `dist`, and an unrecognized cache subtree.
+- `installed package under an unlisted dependency directory` (`third_party/do-work/VERSION`): ✗ `target without ownership evidence accepted: … Refusal:(*publication.Refusal)(nil)` → ✓
+- `distribution output tree` (`dist/skills/do-work/VERSION`): ✗ accepted with a full plan → ✓
+- `arbitrarily named cache tree` (`.stash-pantry/packages/do-work/VERSION` — a name appearing in no list anywhere): ✗ accepted → ✓
+- `TestBuildReleasePlanRefusesBootstrapChangelogInAnUnattestedLocation` (`dist/skills/do-work/CHANGELOG.md`, created rather than replaced): ✗ accepted → ✓
+
+**Three revert differentials, not one.** The four legacy denylist rows (`vendor/`, `node_modules/`, `.claude/skills/`, `skills/do-work/`) go red under a naive revert on the **refusal-code rename alone**, which proves nothing about the new condition. So each half was isolated separately:
+
+| Experiment | Rows that redden |
+|---|---|
+| old predicate, new refusal code — isolates the *condition* | third_party, dist, cache tree, bootstrap-create |
+| new code, `enclosingPackageMarker` disabled | third_party, vendor, `.claude/skills`, `skills/do-work` |
+| new code, tracked check disabled | dist, cache tree, node_modules |
+
+Every refusing row is a lock-in for one specific half, and no row is decorative. Each is named by the class it represents rather than by its path, per the REQ's requirement that examples are fixtures.
+
+**Refusal text, captured from the built code** — target and missing evidence both named:
+- `consumer release target third_party/do-work/VERSION is not proven project-owned: third_party/do-work/SKILL.md declares an installed package that owns this subtree; only maintainer_release may mutate a suite package's own metadata`
+- `… dist/skills/do-work/VERSION … : the repository does not track it, so Git does not attest it as a project source; …`
+- `… dist/skills/do-work/CHANGELOG.md … : the repository tracks no source in dist/skills/do-work, so the new target's location is unattested; …`
+
+**Maintainer-path regression proof.** `TestBuildReleasePlanPlansThisRepositorysOwnMaintainerReleaseShape` builds this repository's exact release shape — `VERSION`, `skills/do-work/VERSION`, `skills/do-work/actions/version.md`, `CHANGELOG.md`, `skills/do-work/CHANGELOG.md`, with `skills/do-work/SKILL.md` present, all six committed, `RequiredMirrors` set to the three version targets and `maintainer_release: true`. It plans 5 mutations with no refusal. Three of those targets sit under the very marker that refuses a consumer release, so this is the highest-risk regression in the change and it is now pinned rather than assumed.
+
+**Canonical repository gate — attribution.** Exits 1 on two failures, neither attributable to this diff, which touches only `internal/publication`:
+- `internal/toolboxcommands` → `TestRemediationCancellationReachesMediaGitCommitAndRollback`: in the recorded red baseline since `008f3d3`, identical text. Tracked as **REQ-524**.
+- `internal/suiteinstall` → `TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation/update-suite/INT`: **fourth sighting** of the load-dependent signal-timing flake, on a third distinct subtest. Confirmed `-count=3` green in isolation this run. Tracked as **REQ-525**; it has now disrupted roughly half this session's gate runs, which is itself an argument for pulling that REQ forward.
+
+*Verified by work action*
