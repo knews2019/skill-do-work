@@ -26,6 +26,8 @@ estimate:
 claimed_at: 2026-09-03T21:43:37Z
 route: A
 dispatch_at: 2026-09-03T21:48:13Z
+implementation_at: 2026-09-03T21:53:38Z
+builder_handback_at: 2026-09-03T21:55:13Z
 write_set:
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture_test.go
@@ -48,8 +50,8 @@ passthrough). REQ-420 is adjacent for the `--commit` parity half, but an
 code path, so both land here as one fix.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
+- [x] **[PLAN]:** Route A direct implementation: pin both reproduced regressions, then restrict retry to collision identity and separate the dry-run preflight from the caller's commit mutation.
+- [x] **[APPLY]:** Added deterministic RED tests and implemented the two control-flow corrections in exactly the declared architecture source and test files.
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
 ## Requirements
@@ -117,3 +119,11 @@ while the run scratch survives; the durable record is the `## Review` section of
 **Tests:** Direct canonical fast gate passed and was recorded at the shared wave baseline before dispatch.
 
 **Dependencies:** REQ-418 is completed; REQ-420 is adjacent but not a prerequisite.
+
+## Implementation Summary
+
+**Builder commit:** `f2ae022a49189acec1f9c934d0c85e83c42a52f1`
+
+**What was done:** The validation-only transaction always uses dry-run without commit; the real transaction retains the caller's commit choice. Exclusive bundle claims now retry only `fs.ErrExist` and otherwise return a typed `ARCHITECTURE-BUNDLE-CLAIM-FAILED` finding naming the candidate and cause. A package-local claim seam makes the permission refusal deterministic in tests without weakening production rooting.
+
+**Builder verification:** Both RED regressions turned GREEN; focused toolbox tests, full module tests, `go vet ./...`, formatting, and diff hygiene passed. Durable evidence is in `do-work/runs/work-2026-09-03-214500/REQ-483-handback.md`.

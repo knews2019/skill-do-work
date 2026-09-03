@@ -35,6 +35,7 @@ claimed_at: 2026-09-03T21:43:31Z
 route: C
 planning_at: 2026-09-03T21:53:38Z
 exploration_at: 2026-09-03T21:53:38Z
+dispatch_at: 2026-09-03T21:55:13Z
 write_set:
   - skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go
   - skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands_test.go

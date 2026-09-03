@@ -30,6 +30,7 @@ claimed_at: 2026-09-03T21:43:41Z
 route: C
 planning_at: 2026-09-03T21:53:38Z
 exploration_at: 2026-09-03T21:53:38Z
+dispatch_at: 2026-09-03T21:55:13Z
 write_set:
   - skills/do-work-board/tools/queue-kanban/allocate.go
   - skills/do-work-board/tools/queue-kanban/allocate_test.go
