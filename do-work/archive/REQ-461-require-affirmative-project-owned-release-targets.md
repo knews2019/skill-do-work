@@ -1,7 +1,7 @@
 ---
 id: REQ-461
 title: '[impact-user-visible] Require affirmative project-owned release targets'
-status: claimed
+status: completed-with-issues
 created_at: 2026-09-01T00:12:38Z
 user_request: UR-081
 domain: general
@@ -13,7 +13,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 kb_status: pending
-commit:
+commit: ca5735402c873afdc58b4eb9ae8e4b61fe9af73b
 estimate:
   p50_active_minutes: 50
   confidence: medium
@@ -49,6 +49,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/publication/release.go
   - skills/do-work/tools/do-work-cli/internal/publication/release_test.go
   - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
+completed_at: 2026-09-03T11:49:26Z
 ---
 
 # Require Affirmative Project-Owned Release Targets
