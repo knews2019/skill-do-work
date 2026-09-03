@@ -89,6 +89,66 @@ func TestDeferGateFoldAcceptsMatchingLegacyReservationAlias(t *testing.T) {
 	}
 }
 
+func TestDeferGateFoldRefusesSymlinkReservationMarker(t *testing.T) {
+	root := newDeferGateRepository(t, true)
+	first := deferGateManifest(root, "REQ-101", "REQ-901", "do-work/working/REQ-101-parent.md", nil)
+	if result := ApplyPlan(t.Context(), BuildDeferGatePlan(root, first), false, false); result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("seed deferral = %#v", result)
+	}
+	reservationPath := filepath.Join(root, "do-work/.req-reservations/REQ-901")
+	if err := os.Remove(reservationPath); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(root, "matching-reservation-bytes")
+	if err := os.WriteFile(outside, []byte("REQ-901\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, reservationPath); err != nil {
+		t.Fatal(err)
+	}
+	claimDeferParent(t, root, "REQ-102", "do-work/working/REQ-102-second.md", "Second parent")
+	repairPath := "do-work/queue/REQ-901-repair-repository-gate.md"
+	fold := deferGateManifest(root, "REQ-102", "REQ-901", "do-work/working/REQ-102-second.md", &PayloadFile{SourcePath: repairPath})
+	plan := BuildDeferGatePlan(root, fold)
+	if plan.Refusal == nil || plan.Refusal.Code != "DEFER-GATE-RESERVATION-STALE" {
+		t.Fatalf("symlink reservation marker was followed: %#v", plan.Refusal)
+	}
+}
+
+func TestDeferGateFoldRefusesReservationIdentitySwapBeforeOpen(t *testing.T) {
+	root := newDeferGateRepository(t, true)
+	first := deferGateManifest(root, "REQ-101", "REQ-901", "do-work/working/REQ-101-parent.md", nil)
+	if result := ApplyPlan(t.Context(), BuildDeferGatePlan(root, first), false, false); result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("seed deferral = %#v", result)
+	}
+	reservationPath := filepath.Join(root, "do-work/.req-reservations/REQ-901")
+	replacementPath := filepath.Join(root, "do-work/.req-reservations/replacement")
+	if err := os.WriteFile(replacementPath, []byte("REQ-901\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	originalHook := beforeReservationMarkerOpen
+	var swapError error
+	beforeReservationMarkerOpen = func(string) {
+		if removeError := os.Remove(reservationPath); removeError != nil {
+			swapError = removeError
+			return
+		}
+		swapError = os.Symlink("replacement", reservationPath)
+	}
+	t.Cleanup(func() { beforeReservationMarkerOpen = originalHook })
+	claimDeferParent(t, root, "REQ-102", "do-work/working/REQ-102-second.md", "Second parent")
+	repairPath := "do-work/queue/REQ-901-repair-repository-gate.md"
+	fold := deferGateManifest(root, "REQ-102", "REQ-901", "do-work/working/REQ-102-second.md", &PayloadFile{SourcePath: repairPath})
+	plan := BuildDeferGatePlan(root, fold)
+	beforeReservationMarkerOpen = originalHook
+	if swapError != nil {
+		t.Fatalf("swap reservation identity: %v", swapError)
+	}
+	if plan.Refusal == nil || plan.Refusal.Code != "DEFER-GATE-RESERVATION-STALE" {
+		t.Fatalf("reservation identity swap was accepted: %#v", plan.Refusal)
+	}
+}
+
 func TestDeferGateFoldsSharedFingerprintWithoutOverwritingPriorParent(t *testing.T) {
 	root := newDeferGateRepository(t, true)
 	first := deferGateManifest(root, "REQ-101", "REQ-901", "do-work/working/REQ-101-parent.md", nil)
