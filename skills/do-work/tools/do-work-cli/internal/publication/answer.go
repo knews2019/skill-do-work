@@ -149,6 +149,9 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 		if controlError := validateOutsideBytes([]byte(question.Summary)); controlError != nil {
 			return refusedPlan(plan, "ANSWER-TEXT-UNSAFE", controlError.Error(), []string{record.RequestID}, requestPath)
 		}
+		if label := answeredSummaryDispositionLabel(question); label != "" {
+			return refusedPlan(plan, "ANSWER-SUMMARY-INVALID", fmt.Sprintf("an answered summary must not open with the disposition label %q: at that position no reader can tell it from the label this writer places there, so carry that meaning in the outcome field instead", label), []string{record.RequestID}, requestPath)
+		}
 		var rawAnswerBytes []byte
 		if question.RawAnswer != nil {
 			rawBytes, _, rawError := readPayload(repositoryRoot, *question.RawAnswer)
@@ -323,18 +326,16 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 		}
 	}
 	if answer.CloseUserRequest != projectedURClosure {
-		return refusedPlan(plan, "ANSWER-UR-CLOSURE-MISMATCH", "close_user_request must match the whole repository record set", []string{record.RequestID, record.UserRequestID}, requestPath)
+		reason := "close_user_request must match the whole repository record set"
+		if answer.CloseUserRequest && !terminal {
+			reason += "; " + nonTerminalDispositionEvidence(resultStatus, questionsAfterEdits)
+		}
+		return refusedPlan(plan, "ANSWER-UR-CLOSURE-MISMATCH", reason, []string{record.RequestID, record.UserRequestID}, requestPath)
 	}
 	if terminal {
 		destinationPath = filepath.ToSlash(filepath.Join("do-work", "archive", filepath.Base(requestPath)))
 		if projectedURClosure {
 			destinationPath = filepath.ToSlash(filepath.Join("do-work", "archive", record.UserRequestID, filepath.Base(requestPath)))
-		}
-		if answer.ArchivePath != "" {
-			declaredArchive, archiveError := containedPath(answer.ArchivePath)
-			if archiveError != nil || declaredArchive != destinationPath {
-				return refusedPlan(plan, "ANSWER-ARCHIVE-PATH-MISMATCH", "declared archive path does not match the command-derived disposition", []string{record.RequestID}, answer.ArchivePath)
-			}
 		}
 		if projectedURClosure {
 			derivedUserRequestPath := filepath.ToSlash(filepath.Join("do-work", "user-requests", record.UserRequestID))
@@ -350,6 +351,20 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 			} else if activeError != nil || !activeInfo.IsDir() || activeInfo.Mode()&os.ModeSymlink != 0 {
 				return refusedPlan(plan, "ANSWER-UR-CLOSURE-SOURCE-INVALID", "UR closure needs either the exact active UR or an already archived real UR directory", []string{record.RequestID, record.UserRequestID}, derivedUserRequestPath, derivedArchiveDirectory)
 			}
+		}
+	}
+	// A declared archive path is the caller's own computed disposition, so it is checked against
+	// every derived verdict rather than only against a terminal one. Validating it inside the
+	// terminal branch alone silently dropped the disagreement that matters most: a REQ whose
+	// questions the caller read as all discarded going back to the queue as pending.
+	if answer.ArchivePath != "" {
+		declaredArchive, archiveError := containedPath(answer.ArchivePath)
+		if archiveError != nil || declaredArchive != destinationPath {
+			reason := "declared archive path does not match the command-derived disposition"
+			if !terminal {
+				reason += "; " + nonTerminalDispositionEvidence(resultStatus, questionsAfterEdits)
+			}
+			return refusedPlan(plan, "ANSWER-ARCHIVE-PATH-MISMATCH", reason, []string{record.RequestID}, answer.ArchivePath)
 		}
 	}
 	updatedBytes := document.DocumentBytes()
@@ -417,6 +432,30 @@ func findQuestionLine(body []byte, question QuestionAnswer) (int, int, error) {
 	return matches[0][0], matches[0][1], nil
 }
 
+// answeredSummaryDispositionLabel returns the disposition label an "answered" summary would
+// open with, or "" when the summary is safe to write.
+//
+// This is the write-side half of the disposition contract, and the reader cannot stand without
+// it. An answered summary is written at the one position a disposition label can occupy, and
+// the published line records nothing about which of the two supplied those bytes — so anchoring
+// the reader to that position cannot tell a label from a summary opening with one. Refusing the
+// collision here is what makes the position mean something: a label at the writer's position
+// can only have come from the writer's own outcome field. This check reads the same constants
+// the reader prefix-tests, so the two cannot drift.
+func answeredSummaryDispositionLabel(question QuestionAnswer) string {
+	if question.Outcome != "answered" {
+		// Any other outcome puts the writer's own label at the position first, so the summary
+		// behind it cannot change what a reader attributes to the line.
+		return ""
+	}
+	for _, labelPrefix := range []string{confirmedLabelPrefix, discardedLabelPrefix} {
+		if strings.HasPrefix(question.Summary, labelPrefix) {
+			return labelPrefix
+		}
+	}
+	return ""
+}
+
 // resolvedQuestionDisposition returns the text a resolved question line carries at the one
 // position BuildAnswerPlan can place a disposition, and whether that position is identifiable
 // on this line at all.
@@ -426,8 +465,14 @@ func findQuestionLine(body []byte, question QuestionAnswer) (int, int, error) {
 // appended. Both fields around that separator are human text — the question and the answer
 // summary — and either may contain the separator itself, so on a line carrying more than one
 // separator no reader can tell which one the writer wrote. That line has no identifiable
-// disposition, and it must not be read as carrying one: the alternative is letting a user's
-// own text supply the marker that decides a terminal status.
+// disposition and is not read as carrying one.
+//
+// What the position achieves and what it does not: it stops text elsewhere on the line from
+// supplying a disposition, and it makes an ambiguous line fail closed. It cannot tell a real
+// label from an answer summary that opens with those same bytes, because both occupy this one
+// position and the document distinguishes them nowhere. That case is closed on the write side,
+// by answeredSummaryDispositionLabel; without that refusal a user's own answer text could still
+// decide a terminal status here.
 func resolvedQuestionDisposition(line []byte) ([]byte, bool) {
 	separator := []byte(resolvedQuestionSeparator)
 	if bytes.Count(line, separator) != 1 {
@@ -436,25 +481,54 @@ func resolvedQuestionDisposition(line []byte) ([]byte, bool) {
 	return line[bytes.Index(line, separator)+len(separator):], true
 }
 
+// resolvedQuestionLines returns every resolved question line in a question section, with the
+// trailing carriage return of a CRLF document trimmed so a line reads identically in both
+// formats. One iteration serves the verdict and its evidence, so they cannot disagree about
+// which lines are being judged.
+func resolvedQuestionLines(body []byte) [][]byte {
+	var resolvedLines [][]byte
+	for _, rawLine := range bytes.Split(body, []byte("\n")) {
+		line := bytes.TrimSuffix(rawLine, []byte("\r"))
+		if bytes.HasPrefix(line, []byte("- [x] ")) {
+			resolvedLines = append(resolvedLines, line)
+		}
+	}
+	return resolvedLines
+}
+
 // allResolvedQuestionsMatch reports whether every resolved question in the section carries the
 // required disposition prefix at the writer's position. Its callers turn this verdict straight
 // into a terminal status and an archive move, so a resolved line whose disposition is not
 // identifiable fails the check: a section holding one lands on the non-terminal status instead
 // of being cancelled or completed on evidence that cannot be attributed to the writer.
 func allResolvedQuestionsMatch(body []byte, labelPrefix string) bool {
-	found := false
-	for _, rawLine := range bytes.Split(body, []byte("\n")) {
-		line := bytes.TrimSuffix(rawLine, []byte("\r"))
-		if !bytes.HasPrefix(line, []byte("- [x] ")) {
-			continue
-		}
-		found = true
+	resolvedLines := resolvedQuestionLines(body)
+	for _, line := range resolvedLines {
 		disposition, identifiable := resolvedQuestionDisposition(line)
 		if !identifiable || !bytes.HasPrefix(disposition, []byte(labelPrefix)) {
 			return false
 		}
 	}
-	return found
+	return len(resolvedLines) > 0
+}
+
+// nonTerminalDispositionEvidence explains a derived non-terminal status to a caller that
+// declared a terminal one, naming the resolved lines whose disposition cannot be attributed to
+// the writer. Those lines are why an otherwise uniform section fails the check, and a caller
+// cannot correct what the refusal does not name.
+func nonTerminalDispositionEvidence(status string, questionSection []byte) string {
+	evidence := fmt.Sprintf("the command derived the non-terminal status %q", status)
+	var unattributableLines []string
+	for _, line := range resolvedQuestionLines(questionSection) {
+		if _, identifiable := resolvedQuestionDisposition(line); !identifiable {
+			unattributableLines = append(unattributableLines, string(line))
+		}
+	}
+	if len(unattributableLines) == 0 {
+		return evidence
+	}
+	return fmt.Sprintf("%s; %d resolved question line(s) carry no disposition at the writer's position, first %q",
+		evidence, len(unattributableLines), unattributableLines[0])
 }
 
 func questionSectionBytes(body []byte) []byte {

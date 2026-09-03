@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -398,13 +399,27 @@ func buildClarifyRound(t *testing.T, root string, answers ...QuestionAnswer) Pub
 	return plan
 }
 
+// rewriteFixtureWithCarriageReturns republishes the current fixture with CRLF line endings, so
+// a case can exercise the format whose trailing carriage return the readers trim.
+func rewriteFixtureWithCarriageReturns(t *testing.T, root string) {
+	t.Helper()
+	current, readError := os.ReadFile(filepath.Join(root, filepath.FromSlash(clarifyRequestFixturePath)))
+	if readError != nil {
+		t.Fatalf("fixture unreadable: %v", readError)
+	}
+	writeFixture(t, root, clarifyRequestFixturePath, bytes.ReplaceAll(current, []byte("\n"), []byte("\r\n")), 0o644)
+}
+
 // requireClarifyStatus checks the status a round would publish together with the two effects
 // that status decides: a terminal status stamps completed_at and moves the REQ into the
 // archive, a non-terminal one leaves it in the queue with no completion timestamp.
 func requireClarifyStatus(t *testing.T, plan PublicationPlan, wantStatus string) {
 	t.Helper()
 	mutation := plan.Mutations[0]
-	if !bytes.Contains(mutation.Contents, []byte("status: "+wantStatus+"\n")) {
+	// A CRLF document publishes CRLF frontmatter, so the status line is matched against
+	// line-ending-normalized bytes; every other assertion here is ending-independent.
+	normalized := bytes.ReplaceAll(mutation.Contents, []byte("\r\n"), []byte("\n"))
+	if !bytes.Contains(normalized, []byte("status: "+wantStatus+"\n")) {
 		t.Fatalf("want status %q, published document = %s", wantStatus, mutation.Contents)
 	}
 	terminal := wantStatus == "cancelled" || wantStatus == "completed"
@@ -474,18 +489,138 @@ func TestBuildAnswerPlanJudgesPriorRoundResolvedLinesAtTheWriterPosition(t *test
 		name       string
 		priorLine  string
 		wantStatus string
+		carriage   bool
 	}{
-		{"disposition at the writer position is the real one", "- [x] Keep the flag? → Discarded: not needed", "cancelled"},
-		{"summary merely mentioning the marker is not a disposition", "- [x] Keep the flag? → keep it → Discarded: not really", "pending"},
-		{"answered line carries no disposition at all", "- [x] Keep the flag? → keep it", "pending"},
-		{"question text carrying the separator leaves no identifiable position", "- [x] Cancel → Discarded: yes? → Discarded: not needed", "pending"},
+		{"disposition at the writer position is the real one", "- [x] Keep the flag? → Discarded: not needed", "cancelled", false},
+		{"summary merely mentioning the marker is not a disposition", "- [x] Keep the flag? → keep it → Discarded: not really", "pending", false},
+		{"answered line carries no disposition at all", "- [x] Keep the flag? → keep it", "pending", false},
+		{"resolved line carrying no separator leaves no position to read", "- [x] Keep the flag?", "pending", false},
+		{"question text carrying the separator leaves no identifiable position", "- [x] Cancel → Discarded: yes? → Discarded: not needed", "pending", false},
+		{"CRLF document still reads the disposition at the writer position", "- [x] Keep the flag? → Discarded: not needed", "cancelled", true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()
 			writeClarifyFixture(t, root, false, test.priorLine+"\n- [ ] Drop the table?\n")
+			if test.carriage {
+				rewriteFixtureWithCarriageReturns(t, root)
+			}
 			round := buildClarifyRound(t, root, QuestionAnswer{ExpectedLine: "- [ ] Drop the table?", Outcome: "discarded", Summary: "not needed"})
 			requireClarifyStatus(t, round, test.wantStatus)
 		})
 	}
+}
+
+// TestBuildAnswerPlanRefusesAnAnsweredSummaryOpeningWithADispositionLabel closes the half of
+// REQ-528 the position anchor cannot reach. An answered summary lands at exactly the position
+// the writer would place "Confirmed: " or "Discarded: ", and the published line records nothing
+// about which of the two wrote those bytes — so a summary that opens with a disposition label
+// is a disposition as far as every later reader is concerned, and a following round that
+// discards the last open question cancels and archives the REQ. Position anchoring cannot
+// separate them; only the write side can, by refusing the collision it would create.
+func TestBuildAnswerPlanRefusesAnAnsweredSummaryOpeningWithADispositionLabel(t *testing.T) {
+	for _, labelPrefix := range []string{discardedLabelPrefix, confirmedLabelPrefix} {
+		t.Run("answered summary opening with "+strconv.Quote(labelPrefix), func(t *testing.T) {
+			root := t.TempDir()
+			writeClarifyFixture(t, root, true, "- [ ] Keep the flag?\n- [ ] Drop the table?\n")
+			plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: &AnswerManifest{
+				RequestPath: clarifyRequestFixturePath, ExpectedStatus: "pending-answers", Mode: "clarify",
+				Answers: []QuestionAnswer{{ExpectedLine: "- [ ] Keep the flag?", Outcome: "answered", Summary: labelPrefix + "not really"}},
+			}}, time.Date(2026, 9, 1, 1, 2, 3, 0, time.UTC))
+			if plan.Refusal == nil || plan.Refusal.Code != "ANSWER-SUMMARY-INVALID" {
+				t.Fatalf("forgeable answered summary accepted: refusal=%#v", plan.Refusal)
+			}
+			if !strings.Contains(plan.Refusal.Reason, strconv.Quote(labelPrefix)) {
+				t.Fatalf("refusal reason does not name the label it rejected: %q", plan.Refusal.Reason)
+			}
+			if len(plan.Mutations) != 0 {
+				t.Fatalf("refused plan still carries mutations: %#v", plan.Mutations)
+			}
+		})
+	}
+
+	// The guard is keyed on the one combination that can forge a verdict, not on the words: with
+	// the outcome carrying the disposition, the writer's own label already occupies the position
+	// and the summary behind it cannot change what any reader attributes to the line.
+	t.Run("the same label inside a discarded summary stays legal and still cancels", func(t *testing.T) {
+		root := t.TempDir()
+		writeClarifyFixture(t, root, false, "- [ ] Keep the flag?\n")
+		round := buildClarifyRound(t, root, QuestionAnswer{ExpectedLine: "- [ ] Keep the flag?", Outcome: "discarded", Summary: confirmedLabelPrefix + "keep the flag"})
+		if !bytes.Contains(round.Mutations[0].Contents, []byte(resolvedQuestionSeparator+discardedLabelPrefix+confirmedLabelPrefix+"keep the flag")) {
+			t.Fatalf("discarded summary not written verbatim behind the writer's label: %s", round.Mutations[0].Contents)
+		}
+		requireClarifyStatus(t, round, "cancelled")
+	})
+}
+
+// TestBuildAnswerPlanRefusesADeclaredArchivePathAgainstANonTerminalVerdict makes the blocked
+// terminal verdict visible. When a prior round's discard summary carries the project's own
+// "A → B" style, the resolved line holds two separators and no reader can attribute its
+// disposition, so a round that discards the last open question derives pending rather than
+// cancelled. That direction is deliberate, but silence about it is not: the caller declared the
+// archive path it had already computed, and publishing pending while ignoring that declaration
+// sends a REQ whose every question the user discarded back to the queue to be built.
+func TestBuildAnswerPlanRefusesADeclaredArchivePathAgainstANonTerminalVerdict(t *testing.T) {
+	const priorDiscardSummary = "superseded by A → B"
+	priorLine := "- [x] Keep the flag?" + resolvedQuestionSeparator + discardedLabelPrefix + priorDiscardSummary
+
+	buildDiscardingRound := func(t *testing.T, root string) PublicationPlan {
+		t.Helper()
+		return BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: &AnswerManifest{
+			RequestPath: clarifyRequestFixturePath, ExpectedStatus: "pending-answers", Mode: "clarify",
+			ArchivePath: "do-work/archive/REQ-1-test.md",
+			Answers:     []QuestionAnswer{{ExpectedLine: "- [ ] Drop the table?", Outcome: "discarded", Summary: "not needed"}},
+		}}, time.Date(2026, 9, 1, 1, 2, 3, 0, time.UTC))
+	}
+
+	t.Run("the refusal names the line that blocked the terminal verdict", func(t *testing.T) {
+		root := t.TempDir()
+		writeClarifyFixture(t, root, false, "- [ ] Keep the flag?\n- [ ] Drop the table?\n")
+		// Compose the prior line through the writer so the blocking line is exactly what
+		// production writes for a genuine discard whose summary carries the separator.
+		firstRound := buildClarifyRound(t, root, QuestionAnswer{ExpectedLine: "- [ ] Keep the flag?", Outcome: "discarded", Summary: priorDiscardSummary})
+		writeFixture(t, root, clarifyRequestFixturePath, firstRound.Mutations[0].Contents, 0o644)
+		if !bytes.Contains(firstRound.Mutations[0].Contents, []byte(priorLine)) {
+			t.Fatalf("prior round did not compose the expected blocking line: %s", firstRound.Mutations[0].Contents)
+		}
+		plan := buildDiscardingRound(t, root)
+		if plan.Refusal == nil || plan.Refusal.Code != "ANSWER-ARCHIVE-PATH-MISMATCH" {
+			t.Fatalf("declared terminal archive path silently ignored: refusal=%#v", plan.Refusal)
+		}
+		if len(plan.Mutations) != 0 {
+			t.Fatalf("refused plan still carries mutations: %#v", plan.Mutations)
+		}
+		for _, want := range []string{"pending", strconv.Quote(priorLine)} {
+			if !strings.Contains(plan.Refusal.Reason, want) {
+				t.Fatalf("refusal reason %q does not carry %s", plan.Refusal.Reason, want)
+			}
+		}
+	})
+
+	// The evidence quotes the line, so a CRLF document is where a dropped carriage-return trim
+	// becomes observable: the same blocking line must read identically in both formats.
+	t.Run("CRLF evidence quotes the blocking line without its carriage return", func(t *testing.T) {
+		root := t.TempDir()
+		writeClarifyFixture(t, root, false, priorLine+"\n- [ ] Drop the table?\n")
+		rewriteFixtureWithCarriageReturns(t, root)
+		plan := buildDiscardingRound(t, root)
+		if plan.Refusal == nil || plan.Refusal.Code != "ANSWER-ARCHIVE-PATH-MISMATCH" {
+			t.Fatalf("declared terminal archive path silently ignored: refusal=%#v", plan.Refusal)
+		}
+		if !strings.Contains(plan.Refusal.Reason, strconv.Quote(priorLine)) {
+			t.Fatalf("refusal reason %q does not quote the blocking line as written", plan.Refusal.Reason)
+		}
+	})
+
+	// The declaration is only refused where it disagrees: the same terminal path stays accepted
+	// when every resolved line does carry an attributable discard.
+	t.Run("a declared archive path matching a genuine cancellation is accepted", func(t *testing.T) {
+		root := t.TempDir()
+		writeClarifyFixture(t, root, false, "- [x] Keep the flag?"+resolvedQuestionSeparator+discardedLabelPrefix+"not needed\n- [ ] Drop the table?\n")
+		plan := buildDiscardingRound(t, root)
+		if plan.Refusal != nil {
+			t.Fatalf("genuine cancellation refused: %#v", plan.Refusal)
+		}
+		requireClarifyStatus(t, plan, "cancelled")
+	})
 }
