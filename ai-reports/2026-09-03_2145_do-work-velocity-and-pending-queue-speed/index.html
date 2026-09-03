@@ -78,7 +78,7 @@
 <div class="page">
 
 <header>
-  <div class="kicker">do-work analysis report · skill-do-work2 · maintainer question · 2026-09-03 21:45 EEST · revised 22:10</div>
+  <div class="kicker">do-work analysis report · skill-do-work2 · maintainer question · 2026-09-03 21:45 EEST · revised 22:10 · lessons and handoff added 22:25</div>
   <h1 class="measure" style="margin-top:12px">Why the queue drains slowly, why it refills, and what to change</h1>
   <p class="lede measure">Development velocity of the do-work queue, measured from the archive, the calibration log, the recorded gate runs, the changelog and the queue on disk. Follow-up to the 00:10 gate-cost analysis, the 09-02 orchestrator analysis, the 09-01 queue analysis and the 08-20 treadmill report. Revised at 22:10 to carry both problems, after the maintainer read the 21:45 draft. Evidence mode: non-visual. UI captures were not expected for this work.</p>
 </header>
@@ -254,6 +254,60 @@
 </section>
 
 <section>
+  <h2>Lessons learned today</h2>
+  <p class="measure">What this day taught about making the queue move, written so a session that has none of this context can act on it. Each lesson names the evidence and the rule that follows from it. Added at 22:25.</p>
+  <div class="row">
+    <div class="card" style="flex: 1 1 560px">
+      <div class="kicker" style="margin-bottom:10px">Gate and tests</div>
+      <table>
+        <tr><th style="width:3em">#</th><th>Lesson</th><th>Evidence</th></tr>
+        <tr><td>L1</td><td><strong>A tier is not a speedup until the heavy tests are excluded before they start.</strong> Skipping inside a test still pays its fixture setup. Exclude by test selection (run pattern or knob checked at the top of the test), then measure.</td><td>REQ-537: fast 629 s, heavy 631 s. Codex profiling: the JavaScript probes "skipped" after doing most of their setup, so the fast tier still took 109 s.</td></tr>
+        <tr><td>L2</td><td><strong>A time budget is a program, not a sentence.</strong> The gate times every file, logs the durations with the number of concurrent gate processes, and fails the fast tier over 30 s. Prose limits are never enforced; suites grow back.</td><td>UR-100's ceiling was 8,417 lines; the file was 8,479 with no ratchet. First budget run caught generate_test.go at 30.35 s; reusing its fixture brought it to 7.30 s.</td></tr>
+        <tr><td>L3</td><td><strong>One gate per machine.</strong> The same tier measured 301 s, 363 s and 641 s on the same day. Under load every timing is wrong, including the budget. Before starting a gate, look for another one running.</td><td>At 22:15 two contract-regressions runs and one <code>go test</code> were executing at once, from two sessions.</td></tr>
+        <tr><td>L4</td><td><strong>Delete before you skip.</strong> A meta-test that re-executes the whole binary is replaced by a unit test of the guard it protected. A sentence pin whose comment names no incident REQ, or whose target is not a shipped file, is deleted, not moved to heavy.</td><td>Codex diff: two <code>RejectsZeroProbes</code> meta-tests (41.8 s and 16.1 s) became one table-driven test of <code>strictProbeGuardFailed</code>.</td></tr>
+        <tr><td>L5</td><td><strong>The gate runner only helps if something starts it.</strong> It has existed since 0.266.9; nothing launched it, so every REQ paid two gate runs. Start it by hand until REQ-542 lands.</td><td>Two runs at 629 s are about 21 of the 65-minute median REQ.</td></tr>
+        <tr><td>L6</td><td><strong>A change to the gate lands in place, never through the pipeline.</strong> The pipeline would run the gate two or three times to ship a change to the gate.</td><td>UR-104's batch constraint; REQ-537 landed at 8d9d1bb that way.</td></tr>
+      </table>
+    </div>
+    <div class="card" style="flex: 1 1 420px">
+      <div class="kicker" style="margin-bottom:10px">Queue and coordination</div>
+      <table>
+        <tr><th style="width:3em">#</th><th>Lesson</th><th>Evidence</th></tr>
+        <tr><td>L7</td><td><strong>A batch order is not a dependency.</strong> Capture encodes "do A1 then A2" as a <code>depends_on</code> chain. Before accepting a chain, ask whether the dependent reads the other's output; if not, drop the link so builders can run in parallel.</td><td>REQ-540 and REQ-542 waited on REQs whose files they never touch; dropping both raised ready work from 20 to 22.</td></tr>
+        <tr><td>L8</td><td><strong>A claim without a worktree is a stall, and unclaimed parallel work is a collision.</strong> Check <code>git worktree list</code> and <code>do-work/working/</code> together. Only the maintainer releases another session's claim.</td><td>REQ-538 claimed at 19:49 by a cloud session that went idle; a Codex worktree did the same cuts on its own branch.</td></tr>
+        <tr><td>L9</td><td><strong>Several sessions in one checkout must announce before touching shared files.</strong> Cross-session messages work; use them. Land with explicit paths, never <code>git add -A</code>.</td><td>Four sessions touched this checkout tonight: the REQ-531 run, Codex, a report revision at 9d18e031, and this one. The other checkout asked by message before claiming REQ-267.</td></tr>
+        <tr><td>L10</td><td><strong>Two records of one duration disagree for known reasons; do not "fix" one to match the other.</strong> Log rows are written once and sometimes hand-rounded; frontmatter is re-stamped by crash recovery and measures only the last re-run. Say which is which.</td><td>REQ-460 log 421 min vs frontmatter 20; 17 of 203 log rows end in :00Z. The two rows were later rewritten to the frontmatter values.</td></tr>
+        <tr><td>L11</td><td><strong>Two checkouts on one port kill each other's board.</strong> <code>just run-kanban</code> stops any queue-kanban on 8090 by design. Give each checkout its own port.</td><td>The n1-weekly-signal-diff checkout took 8090 at 21:16 and killed this one's server; the browser looked "not opened".</td></tr>
+        <tr><td>L12</td><td><strong>Draining faster does not empty a queue that refills itself.</strong> Review-born REQs below critical are the intake; REQ-531 closes that tap and belongs beside the gate fix, not after it.</td><td>395 created, 391 archived in 30 days; 126 review-born below critical.</td></tr>
+        <tr><td>L13</td><td><strong>Amend queued REQs by addendum, verify by parsing.</strong> Append a dated Addendum section with the user's words contained (blockquote plus a fence longer than any backtick run), record a "Resolved conflict" line when the original is superseded, and prove the edit with <code>queue-kanban summary</code>.</td><td>Commit d00da469; the board parsed all four files, zero malformed.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Handoff for the next session</h2>
+  <div class="row">
+    <div class="card measure" style="flex: 1 1 460px">
+      <h3>State at 22:25 local (19:25Z)</h3>
+      <p>Main is at 9d18e031. Three worktrees: main, the REQ-531 builder (<code>worktree-agent-REQ-531-review-findings-critical-only</code>, 13 uncommitted files, no commit over main yet), and Codex on <code>codex/test-budget-heavy-consent</code> at 229aff55 (46 uncommitted files across <code>_dev/tests</code>, both Go tools, seven action files, both changelogs and both VERSION files). Codex reports the fast gate green under the 30 s budget: slowest shell probe 18 s, slowest board file 7.09 s, slowest CLI file 20.51 s. It has not run <code>--heavy</code>. Claims in <code>do-work/working/</code>: REQ-468, REQ-531, REQ-538 (idle cloud session). Two gates were running concurrently at 22:15.</p>
+      <p style="margin-bottom:0">The Codex diff and the REQ-531 branch both edit <code>_dev/tests/contract-regressions.sh</code>, <code>skills/do-work/actions/work.md</code> and <code>work-reference.md</code>. Expect conflicts in the contract file: REQ-531 replaced pins, Codex cut and split it.</p>
+    </div>
+    <div class="card measure" style="flex: 1 1 420px">
+      <h3>Do, in this order</h3>
+      <ol class="plan" style="margin-bottom:0">
+        <li>Let REQ-531 finish and archive through its own pipeline. Do not start another gate meanwhile.</li>
+        <li>Have Codex commit on its branch, rebase onto main, resolve the three-file overlap, and run its fast gate once.</li>
+        <li>Release REQ-538's idle claim (maintainer only), then land the Codex branch in place as the UR-104 batch: one commit per REQ where the diff separates cleanly (538 board tests, 539 contract file and aggregate, 540 do-work-cli tests, 541 <code>pending-heavy-testing</code>), otherwise one integrating commit that names all four with the landing hash; version bump and changelog per commit; close each REQ through its lifecycle.</li>
+        <li>Run <code>--heavy</code> once by hand at the end of the batch; that is the maintainer's permission boundary, not the loop's.</li>
+        <li>Start <code>bash _dev/tests/gate-runner.sh</code> in the background, then REQ-542 automates it.</li>
+        <li>Then <code>do-work run-with-recovery</code> over the ready set, with the REQ-502 chain in its own lane.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section>
   <h2>Verify it yourself</h2>
   <div class="row">
     <div style="flex: 1 1 420px">
@@ -283,7 +337,7 @@ cd skills/do-work-board/tools/queue-kanban &amp;&amp; go test -count=1 -json ./.
 
 <footer>
   Lineage: <a href="../2026-09-03_0010_maintainer-verify-gate-cost-analysis/index.html">2026-09-03 00:10 gate cost analysis</a> · <a href="../2026-09-02_1651_orchestrator-simplification-analysis/index.html">2026-09-02 orchestrator simplification</a> · <a href="../2026-09-01_0927_queue-analysis-time-cost-disposition/index.html">2026-09-01 queue analysis</a> · <a href="../2026-08-20_1131_remaining-work-and-the-req-treadmill/index.html">2026-08-20 the REQ treadmill</a>. Sources: do-work/archive frontmatter (83 REQ files plus UR folders), do-work/calibration-log.tsv at 73fc3c80, do-work/queue and do-work/working at HEAD d00da469, CHANGELOG.md, commits af6b29bc, eef2b8d2 and d00da469, UR-100 and UR-104 inputs, REQ-531's file, the Codex worktree diff, and the maintainer's 21:32 instruction in the pasted session transcript. Render status is stated below this line after the check.
-  <div id="render-status">22:10 revision render-verified in light and dark at 1440 px width, full page, no horizontal overflow.</div>
+  <div id="render-status">22:25 revision render-verified in light and dark at 1440 px width, full page, no horizontal overflow.</div>
 </footer>
 
 </div>
