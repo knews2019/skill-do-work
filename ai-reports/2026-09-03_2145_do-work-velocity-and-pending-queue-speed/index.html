@@ -78,7 +78,7 @@
 <div class="page">
 
 <header>
-  <div class="kicker">do-work analysis report · skill-do-work2 · maintainer question · 2026-09-03 21:45 EEST · revised 22:10 · lessons and handoff added 22:25 · landing recorded 22:35 · audit follow-ups added 22:45 · gate measured and triage proposed 23:20</div>
+  <div class="kicker">do-work analysis report · skill-do-work2 · maintainer question · 2026-09-03 21:45 EEST · revised 22:10 · lessons and handoff added 22:25 · landing recorded 22:35 · audit follow-ups added 22:45 · gate measured and triage proposed 23:20 · REQ-531 phase timings added 23:40</div>
   <h1 class="measure" style="margin-top:12px">Why the queue drains slowly, why it refills, and what to change</h1>
   <p class="lede measure">Development velocity of the do-work queue, measured from the archive, the calibration log, the recorded gate runs, the changelog and the queue on disk. Follow-up to the 00:10 gate-cost analysis, the 09-02 orchestrator analysis, the 09-01 queue analysis and the 08-20 treadmill report. Revised at 22:10 to carry both problems, after the maintainer read the 21:45 draft. Evidence mode: non-visual. UI captures were not expected for this work.</p>
 </header>
@@ -134,6 +134,29 @@
         <tr><td>Two gate runs at 629 s</td><td class="num">21</td><td>baseline + Step 6.5 when the runner has no cached green</td></tr>
       </table>
       <p class="measure" style="margin-bottom:0">Route mix of those 24: ten Route C, seven Route B, three Route A, four unrouted in-place landings. Over the whole calibration log (203 rows) Route C averages 96 minutes wall against a 66-minute estimate; Route A averages 22 against 7. Small work is priced most wrongly, but the hours are in Route C.</p>
+    </div>
+    <div class="card" style="flex: 1 1 100%">
+      <div class="kicker" style="margin-bottom:10px">One REQ's hour, phase by phase · the REQ-531 run, measured by the maintainer from persisted timestamps · added 23:40</div>
+      <p class="measure">The medians above say where a REQ's hour goes on average; this is one Route C run decomposed. REQ-531 (review findings below critical stay in the report) ran from the first durable operation at 21:19:03 EEST to the checkpoint commit at 22:46:42, 1 h 27 m 39 s. Phase endpoints are exact and agree with the archive (REQ-548 created 21:35:22, claimed 21:37:57, completed 21:46:38; REQ-531 re-claimed 21:47:36 after the detour, completed 22:44:58). Individual command durations inside a phase were not recorded, and the maintainer's original message has no timestamp, so thinking before the first durable write is outside the span.</p>
+      <table>
+        <tr><th>Phase</th><th>Interval (EEST)</th><th class="num">Duration</th><th class="num">Share</th></tr>
+        <tr><td>Recovery before the REQ-531 claim</td><td>21:19:03–21:19:19</td><td class="num">0:16</td><td class="num">—</td></tr>
+        <tr><td>Planning, exploration, scope, initial failed gate</td><td>21:19:19–21:37:50</td><td class="num">18:31</td><td class="num">21.2%</td></tr>
+        <tr><td>REQ-548 gate-repair detour</td><td>21:37:50–21:47:36</td><td class="num">9:46</td><td class="num">11.2%</td></tr>
+        <tr><td>Fresh baseline, implementation, builder tests</td><td>21:47:36–22:16:53</td><td class="num">29:17</td><td class="num">33.5%</td></tr>
+        <tr><td>Handback, concurrent conflict resolution, merge</td><td>22:16:53–22:29:21</td><td class="num">12:28</td><td class="num">14.3%</td></tr>
+        <tr><td>Post-merge qualification and testing marker</td><td>22:29:21–22:32:25</td><td class="num">3:04</td><td class="num">3.5%</td></tr>
+        <tr><td>Independent review</td><td>22:32:25–22:41:38</td><td class="num">9:13</td><td class="num">10.5%</td></tr>
+        <tr><td>Lessons, release, archive, finalization</td><td>22:41:38–22:45:43</td><td class="num">4:05</td><td class="num">4.7%</td></tr>
+        <tr><td>Cleanup and checkpoint</td><td>22:45:43–22:46:42</td><td class="num">0:59</td><td class="num">1.1%</td></tr>
+      </table>
+      <p class="measure" style="margin-top:14px">What this run says that the medians do not: the gate is not where the hour went. The detour it caused (the broken pipe that vanished on rerun) is 11%; the two largest blocks are the builder's own work (34%) and planning before the first edit (21%), and integration paid 14% for a merge conflict on the monolithic contract file. The four optimizations the measurement points at, and where each stands in the queue:</p>
+      <ol class="plan" style="margin-bottom:0">
+        <li><strong>Retry a transient gate failure once before minting a repair REQ.</strong> Would have removed most of the 9:46 detour plus part of the 18:31 diagnosis. <span class="tag good">captured</span> REQ-559 (UR-106, 23:20).</li>
+        <li><strong>Stop concurrent edits colliding on the 8,479-line contract file.</strong> Part of the 12:28 integration block was that conflict. <span class="tag good">captured</span> REQ-539 splits the aggregate per owner; REQ-560 scopes hand-back cleanliness to the REQ's own paths. Write-set reservation is not captured and is not proposed: <code>write_set</code> is display-only by decision (capture-reference, Populating write_set), and one orchestrator per queue is the standing rule.</li>
+        <li><strong>Reduce duplicated contract surfaces.</strong> The behaviour had to be synchronized across 13 files, which is much of the 29:17 build block. <span class="tag warn">partly captured</span> REQ-509 and REQ-510 give the action prose one loading point and sweep work-reference sections owned by CLI tests; the audit's REQ-554 and REQ-556 remove two measured prose duplicates. No REQ yet names a canonical policy section for the review-findings rule that the guides and alternate writers cite instead of restating.</li>
+        <li><strong>Record command-level timing.</strong> The lifecycle stores phase endpoints, not <code>started_at</code>, <code>ended_at</code>, <code>wall_seconds</code> per gate, test, agent, merge and finalizer invocation, so the 18:31 and 29:17 blocks cannot be split into thinking, test execution and bookkeeping. <span class="tag bad">not captured</span> REQ-539's durations log covers gate probe files only. Under the 23:20 rule (capture nothing until the queue is under twenty) this waits, or the maintainer captures it by hand; it is the one item here that makes every later measurement cheaper.</li>
+      </ol>
     </div>
   </div>
 </section>
@@ -304,6 +327,7 @@
         <tr><td>L12</td><td><strong>Draining faster does not empty a queue that refills itself.</strong> Review-born REQs below critical are the intake; REQ-531 closes that tap and belongs beside the gate fix, not after it.</td><td>395 created, 391 archived in 30 days; 126 review-born below critical.</td></tr>
         <tr><td>L13</td><td><strong>Amend queued REQs by addendum, verify by parsing.</strong> Append a dated Addendum section with the user's words contained (blockquote plus a fence longer than any backtick run), record a "Resolved conflict" line when the original is superseded, and prove the edit with <code>queue-kanban summary</code>.</td><td>Commit d00da469; the board parsed all four files, zero malformed.</td></tr>
         <tr><td>L14</td><td><strong>When you delete gate work, keep its assertions.</strong> A test file can be dead as a gate step and still be the only home of a zero-hit guard. Before deleting one, grep it for the assertions it carries and re-home them in a fast file, or the guard is gone with the seconds.</td><td>0.266.9 (5e0e166c) deleted <code>_dev/tests/shipped-shell-thinness.sh</code> as "no gate path executes"; the 2026-09-03 maintainability audit found the "every shipped .sh reaches do-work-cli" assertion now has no home. REQ-551 re-homes it in <code>_dev/tests/audit-lockins.sh</code>.</td></tr>
+        <tr><td>L15</td><td><strong>Measure one REQ phase by phase before optimizing the gate again.</strong> In the one run decomposed from persisted timestamps, the gate detour was 11% of the hour; the builder's own work was 34%, planning before the first edit 21%, integration 14%. The next second saved comes from retrying a transient red once, splitting the contract file, and one policy home per rule, not from the gate.</td><td>REQ-531 run, 21:19:03 to 22:46:42 EEST, 87 min 39 s; phase table under "Where a REQ's hour goes".</td></tr>
       </table>
     </div>
   </div>
