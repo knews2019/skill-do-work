@@ -129,7 +129,7 @@ So the fix has to recover the boundary between question text and disposition fro
 **Acceptance criteria (restated from REQ):**
 - [x] The disposition marker is recognized only at the position the answer writer places it; answer text containing the marker's characters does not satisfy it
 - [x] A resolved question whose answer text contains `→ Discarded:` or `→ Confirmed:` does not contribute to a terminal-status verdict as though it carried that disposition
-- [x] No terminal status is written on evidence a user's own answer text can forge
+- [ ] No terminal status is written on evidence a user's own answer text can forge — **not delivered by the first implementation** (review finding F1: a summary that *begins* `Discarded: ` sits at the writer's own position and is byte-identical to a genuine disposition). Ticked in error before review; remediation in progress.
 - [x] Genuinely uniform dispositions still reach `cancelled` and `completed` exactly as before
 
 ## Implementation Summary
