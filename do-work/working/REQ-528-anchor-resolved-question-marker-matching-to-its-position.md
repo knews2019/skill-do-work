@@ -22,7 +22,7 @@ write_set:
 claimed_at: 2026-09-03T09:10:13Z
 route: B
 estimate:
-  p50_active_minutes: 30
+  p50_active_minutes: 25
   confidence: medium
   calculated_at: 2026-09-03T09:11:00Z
   basis:
