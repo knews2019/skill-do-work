@@ -78,7 +78,7 @@
 <div class="page">
 
 <header>
-  <div class="kicker">do-work analysis report · skill-do-work2 · maintainer question · 2026-09-03 21:45 EEST · revised 22:10 · lessons and handoff added 22:25 · landing recorded 22:35 · audit follow-ups added 22:45</div>
+  <div class="kicker">do-work analysis report · skill-do-work2 · maintainer question · 2026-09-03 21:45 EEST · revised 22:10 · lessons and handoff added 22:25 · landing recorded 22:35 · audit follow-ups added 22:45 · gate measured and triage proposed 23:20</div>
   <h1 class="measure" style="margin-top:12px">Why the queue drains slowly, why it refills, and what to change</h1>
   <p class="lede measure">Development velocity of the do-work queue, measured from the archive, the calibration log, the recorded gate runs, the changelog and the queue on disk. Follow-up to the 00:10 gate-cost analysis, the 09-02 orchestrator analysis, the 09-01 queue analysis and the 08-20 treadmill report. Revised at 22:10 to carry both problems, after the maintainer read the 21:45 draft. Evidence mode: non-visual. UI captures were not expected for this work.</p>
 </header>
@@ -88,6 +88,7 @@
     <div class="verdict measure" style="flex: 2 1 480px">
       <h2>Verdict</h2>
       <p><strong>Update 22:35: the speed fix has landed.</strong> Commit 21dac2b8 (release 0.271.0, "Fast tests stay fast; heavy tests wait for consent") put the Codex work on main at 22:20: per-file 30-second budgets enforced by the gate, the installer, updater, staged-package, JavaScript-runtime and browser probes moved behind <code>--heavy</code>, and <code>pending-heavy-testing</code> as a first-class status. REQ-531 merged on top of it at 455462be and a green fast gate is recorded at that revision. What remains is bookkeeping and one measurement: close REQ-538 to REQ-541 against the landing hash, run <code>--heavy</code> once by hand, and record the new fast-gate wall time. The paragraphs below describe the day as it was before 22:20 and are kept as the record.</p>
+      <p><strong>Update 23:20: the gate is 75 s and the queue is the problem.</strong> Measured alone at 9f5cceb6, the fast gate exits green in 75 s, and the runner now records green for every new HEAD. Two lifecycle captures landed as UR-106 (REQ-559 gate retry-once, REQ-560 path-scoped cleanliness), REQ-540 and REQ-541 are cancelled as landed, REQ-539 is narrowed. The queue is 47 pending, 29 ready, and the triage proposal below is the next decision.</p>
       <p>Two problems, not one. The gate is slow and the fix for it is stalled; and the queue refills as fast as it drains, because the pipeline mints most of its own work. Fixing only the first drains the queue faster into the same equilibrium.</p>
       <p><strong>The speed fix is the right fix and it is stalled.</strong> REQ-537 (tiering the gate into fast and heavy) shipped at 16:06 with no speedup: the fast tier measured 629 s against the heavy tier's 631 s because the board's test package, which is 73% of the gate, is still not skippable until REQ-538 lands. REQ-538 (cutting the board tests to a fast core) has been claimed since 19:49 local by a cloud session that is now idle, and a separate Codex worktree is doing the same cuts on its own branch without the claim. The batch's REQ files moved at 22:04, when commit d00da469 applied this report's three edits; its code has not moved since 16:06.</p>
       <p><strong>The treadmill is the larger problem.</strong> In 30 days the pipeline created 395 REQs and archived 391, across 439 releases. 130 of the archived REQs were minted by a review handback and 182 were addenda to a prior REQ; 21 were <code>impact-critical</code>. The contract suite pins about 200 sentences of the action prose, so every prose edit that disagrees with a pin becomes a review finding, and every finding became a REQ. The brake is REQ-531 (review findings below critical stay in the report): claimed since 21:47, unblocked, not yet being built. The line-count ratchet UR-100 asked for never landed, and the contract file is 62 lines past its ceiling.</p>
@@ -95,7 +96,7 @@
     </div>
     <div class="row" style="flex: 1 1 440px; gap: 16px">
       <div class="card tile"><div class="label">Median claim to archive, last 24 REQs</div><div class="value">65 min</div><div class="sub">p80 88 min · archive frontmatter, 09-02 to 09-03</div></div>
-      <div class="card tile"><div class="label">Recorded fast-tier gate run</div><div class="value">629 s</div><div class="sub">8d9d1bb · heavy 631 s · target under 120 s</div></div>
+      <div class="card tile"><div class="label">Fast gate, measured alone at 23:03</div><div class="value">75 s</div><div class="sub">9f5cceb6 after 0.271.0 · was 629 s at 8d9d1bb · runner started 23:12</div></div>
       <div class="card tile"><div class="label">Pending REQs · ready now</div><div class="value">37 · 22</div><div class="sub">3 more in working · longest chain 10 deep</div></div>
       <div class="card tile"><div class="label">Created vs archived, 30 days</div><div class="value">395 · 391</div><div class="sub">130 review-born · 182 addenda · 439 releases</div></div>
     </div>
@@ -198,6 +199,27 @@
 </section>
 
 <section>
+  <h2>Triage proposal for the 47 pending, 23:20</h2>
+  <p class="measure">Every pending REQ read and judged against one question: does building it now make the queue drain faster, or does it protect the drain? The maintainer's standing preference from 09-03 morning applies: fold test-only work into parents, cancel unobserved hardening, defer board features. Nothing here is applied yet; cancellations go through <code>do-work abandon</code> after the maintainer's yes.</p>
+  <div class="row">
+    <div class="card" style="flex: 2 1 560px">
+      <table>
+        <tr><th style="width:9em">Disposition</th><th>REQs</th><th>Why</th></tr>
+        <tr><td><span class="tag good">build now</span> 27</td><td>REQ-502 to REQ-510 (the advance chain, 9); REQ-559, REQ-560 (lifecycle overhead); REQ-542 (runner autostart); REQ-539 (contract file split, ratchet, durations log); REQ-475, REQ-483, REQ-512, REQ-544 (impact-critical); REQ-514, REQ-515 (recovery never traps); REQ-485 (reservation marker padding: duplicate captures happened today); REQ-527 (cleanup must not remove an active builder worktree, which fan-out relies on); REQ-534 (next swallows Ctrl-C); REQ-547 (finalize refuses without a checkpoint entry, observed today); REQ-490, REQ-535, REQ-536, REQ-545 (mechanical fixes)</td><td>The chain is the critical path and starts first in its own lane. The rest either shortens the lifecycle, fixes something observed this week, or is critical. Seven of the 27 are <code>effort-mechanical</code> and go to the cheap lane: REQ-483, REQ-490, REQ-509, REQ-535, REQ-536, REQ-542, REQ-545.</td></tr>
+        <tr><td><span class="tag bad">cancel</span> 7</td><td>REQ-469, REQ-470 (superseded: the repository-gate deferral lifecycle they describe shipped as REQ-491 to REQ-494 on 09-02); REQ-471 (its consistency sweep folds into REQ-510's sweep); REQ-466, REQ-526, REQ-546 (review-born below critical, unobserved hardening; under REQ-531's rule they would be report lines); REQ-496 (an executable validator for the already-green repair path, which REQ-559 makes rare; the one cancellation I am least sure of, labelled critical by its review)</td><td>Cancel with the reason in the record. REQ-471 becomes one line in REQ-510's addendum.</td></tr>
+        <tr><td><span class="tag warn">defer</span> 13</td><td>REQ-549 to REQ-558 (UR-105 maintainability audit, all <code>impact-negligible</code> by their own label); REQ-482, REQ-530 (board card layout, selection ordering); REQ-486 (board UR groups, already behind REQ-510)</td><td>No file edits for the ten: run with <code>--skip-impact-negligible</code> and they wait without being touched. REQ-482 and REQ-530 get <code>assigned_to: 'after-drain'</code>, which the default scan skips and reports; explicit targeting clears it later.</td></tr>
+        <tr><td><span class="tag">after release</span> 2</td><td>REQ-468 (code landed at 7a099340), REQ-538 (code landed at 21dac2b8)</td><td>Both held by the dead cloud VM writer. Once released, cancel as landed in place, the same as REQ-540 and REQ-541.</td></tr>
+      </table>
+    </div>
+    <div class="card measure" style="flex: 1 1 320px">
+      <h3>The run after triage</h3>
+      <p>27 REQs to build, of which 9 are one serial chain. Start the chain first in its own lane; it will not finish before the rest regardless of builder count. Run everything else under one orchestrator with fan-out three or four and <code>--skip-impact-negligible</code>; integration stays serial on the 75 s gate, so more builders mostly queue behind it. Send the seven mechanical REQs through <code>do-work run-simple-reqs</code>. Capture nothing until the queue is under twenty.</p>
+      <p style="margin-bottom:0">Wall-clock floor: the chain, roughly nine REQs at the post-0.271.0 rate. Everything else fits inside that window with three builders. Then the thirteen deferred, of which ten are small deletions that the cheap lane can take in one pass.</p>
+    </div>
+  </div>
+</section>
+
+<section>
   <h2>Why the queue refills</h2>
   <div class="row">
     <div class="measure" style="flex: 1 1 460px">
@@ -291,19 +313,19 @@
   <h2>Handoff for the next session</h2>
   <div class="row">
     <div class="card measure" style="flex: 1 1 460px">
-      <h3>State at 22:35 local (19:35Z)</h3>
-      <p>Main is at 455462be: 21dac2b8 (0.271.0, the test budgets and <code>pending-heavy-testing</code>) then REQ-531's dispatch brief and integration merge. The Codex worktree is gone; its work is on main. One worktree remains, the REQ-531 builder at 7f1f47b2, and the REQ-531 session is in independent review, the last phase before finalize. A green fast gate is recorded in <code>.git/do-work-green-gates/</code> at 455462be (exit 0, no duration stored).</p>
-      <p style="margin-bottom:0">Claims in <code>do-work/working/</code>: REQ-531 (this checkout), and REQ-468 and REQ-538 both held by a cloud VM writer (<code>vm:/home/user/skill-do-work</code>) since 16:19Z and 16:49Z with no local worktree. The queue files for REQ-538 to REQ-541 still say pending or claimed although their code has landed.</p>
+      <h3>State at 23:20 local (20:20Z)</h3>
+      <p>Main is at c801d33c. Since 22:35: REQ-531 finalized (fb0d06ca); UR-105 added ten audit REQs (9fe7dbac); the fast gate measured 75 s alone and is recorded at 9f5cceb6; the gate runner is running in the background and records every new HEAD; UR-106 captured REQ-559 and REQ-560 (6c7e7435); REQ-540 and REQ-541 cancelled as landed (f64ddff0); REQ-539 narrowed and unblocked (c801d33c). No worktrees besides main. <code>--heavy</code> has still not run since 0.271.0.</p>
+      <p style="margin-bottom:0">Claims in <code>do-work/working/</code>: REQ-468 and REQ-538, both held by the cloud VM writer, both with their code already on main. The triage table above is proposed, not applied.</p>
     </div>
     <div class="card measure" style="flex: 1 1 420px">
       <h3>Do, in this order</h3>
       <ol class="plan" style="margin-bottom:0">
-        <li>Let REQ-531 finish review and finalize through its own pipeline. Start no gate meanwhile.</li>
-        <li>Run the fast gate once, alone on the machine, and write its wall time here and in the changelog: this is the number every earlier section of this report was waiting for. Then start <code>bash _dev/tests/gate-runner.sh</code> in the background.</li>
-        <li>Release the two cloud VM claims (REQ-468, REQ-538) if that session is dead; maintainer only. Then close REQ-538, REQ-540 and REQ-541 against 21dac2b8 through their lifecycle, each with its GREEN condition checked on main, and narrow REQ-539 to whatever 21dac2b8 did not do (the per-owner split, the durations log with concurrent-gate count, the line-count ratchet if the aggregate still lacks it).</li>
-        <li>Run <code>bash _dev/tests/maintainer-verify.sh --heavy</code> once by hand at 455462be or later; it has not run since the change and the changelog's claim about the heavy tier is unproven until it does.</li>
-        <li>Build REQ-542 so the runner starts itself.</li>
-        <li>Then <code>do-work run-with-recovery</code> over the ready set, with the REQ-502 chain in its own lane. The first held REQ will show what <code>pending-heavy-testing</code> looks like on the board; check that clarify's one prompt behaves as 0.271.0 says.</li>
+        <li>Maintainer decides the triage table: cancel 7, defer 13, or amend. Apply with <code>do-work abandon</code> (one prompt listing every member), the REQ-471 line into REQ-510, and the two earmarks.</li>
+        <li>Release the two cloud VM claims (REQ-468, REQ-538), then cancel both as landed in place.</li>
+        <li>Run <code>bash _dev/tests/maintainer-verify.sh --heavy</code> once by hand; the runner never does.</li>
+        <li>Start the REQ-502 chain in its own serial lane.</li>
+        <li><code>do-work run-with-recovery --fan-out 3 --skip-impact-negligible</code> over the rest under one orchestrator; <code>do-work run-simple-reqs</code> for the seven mechanical REQs.</li>
+        <li>Capture nothing until the queue is under twenty; findings go to the report or the prose backlog.</li>
       </ol>
     </div>
     <div class="card measure" style="flex: 1 1 100%">
@@ -349,7 +371,7 @@ cd skills/do-work-board/tools/queue-kanban &amp;&amp; go test -count=1 -json ./.
 
 <footer>
   Lineage: <a href="../2026-09-03_0010_maintainer-verify-gate-cost-analysis/index.html">2026-09-03 00:10 gate cost analysis</a> · <a href="../2026-09-02_1651_orchestrator-simplification-analysis/index.html">2026-09-02 orchestrator simplification</a> · <a href="../2026-09-01_0927_queue-analysis-time-cost-disposition/index.html">2026-09-01 queue analysis</a> · <a href="../2026-08-20_1131_remaining-work-and-the-req-treadmill/index.html">2026-08-20 the REQ treadmill</a>. Sources: do-work/archive frontmatter (83 REQ files plus UR folders), do-work/calibration-log.tsv at 73fc3c80, do-work/queue and do-work/working at HEAD d00da469, CHANGELOG.md, commits af6b29bc, eef2b8d2 and d00da469, UR-100 and UR-104 inputs, REQ-531's file, the Codex worktree diff, and the maintainer's 21:32 instruction in the pasted session transcript. Render status is stated below this line after the check.
-  <div id="render-status">22:35 revision render-verified in light and dark at 1440 px width, full page, no horizontal overflow.</div>
+  <div id="render-status">23:20 revision render-verified in light and dark at 1440 px width, full page, no horizontal overflow.</div>
 </footer>
 
 </div>
