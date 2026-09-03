@@ -96,6 +96,7 @@ suggested_spec:  # optional — spec template name if one clearly matches (e.g.,
 depends_on: []  # optional — list of REQ IDs that must complete before this REQ runs; honored by actions/work.md's selection scan
 maintenance: false  # set true ONLY for a deliberate removal/narrowing of the skill's OWN operating instructions — see Step 1's maintenance assessment; loads crew-members/maintenance.md in actions/work.md Step 6
 # impact: impact-user-visible   # EXPECTED on every REQ, but JUDGED, never copied: impact-critical | impact-user-visible | impact-rule-change | impact-negligible — whether anyone would ever notice the work, judged by Step 1's impact assessment. Deliberately commented out: an uncommented value gets copied more often than judged, and absence already reads as impact-user-visible, never as the user's stop signal (actions/work-reference.md → Request File Schema)
+# priority: now   # OPTIONAL authored order: now | next | later — emit only when the user's words explicitly rank timing/order; otherwise omit and let absence read as next
 # effort_estimate: effort-mechanical   # OPTIONAL in the schema, expected on every new REQ (effort-mechanical | effort-substantive; absent reads as effort-substantive) — the SIZE of the fix, a separate axis from impact, judged as size and never read off the impact verdict. Capture judges it on every REQ it mints, by the same three-way standard as `impact:` (`actions/capture.md` Step 1's effort assessment): judge it, or put the judgment to the user, or leave it absent because neither was possible. Never invent `effort-mechanical` for work whose size you haven't judged — and never assert `effort-substantive` because it is the default, which is the same failure wearing the safe answer.
 # assigned_to: 'cloud-alpha'   # OPTIONAL advisory earmark — emit ONLY when the user names a session to reserve this work for (Step 1's earmark assessment); verbatim, quoted per Frontmatter Quoting (actions/work-reference.md), never invented. The default work scan skips-and-reports it; explicit targeting clears it on claim (actions/work-reference.md → Request File Schema)
 # External-condition fields — set ONLY when the task waits on something outside the queue (see Step 1's external-condition assessment). Omit all three for normal REQs.
@@ -210,7 +211,7 @@ Several fields above accept legacy aliases at read time so muscle-memory typos f
 | `related` | `related_reqs` | `actions/roadmap.md` cross-REQ surfacing; verify-requests batch coverage |
 | `suggested_spec` | `spec_hint`, `suggested-spec` | `actions/work.md`'s spec pre-load hint |
 
-For enum-valued and boolean fields shared with `actions/work.md` (`status`, `domain`, `route`, `caveman`, `tdd`, `maintenance`, `error_type`, `kb_status`, `impact`, `effort_estimate`), capture honors the **normalize-and-warn contract** defined in the Schema Read Contract (in the companion `actions/work-reference.md`): invalid values trigger a warning and a documented default rather than silent acceptance. When writing the REQ files, if the captured value for any normalize-and-warn field doesn't match the canonical enum (after applying the contract's normalization), prompt the user to confirm the intended value before emitting the REQ — capture is the human-attention window for catching typos at the source. Never write a non-canonical value silently.
+For enum-valued and boolean fields shared with `actions/work.md` (`status`, `domain`, `route`, `caveman`, `tdd`, `maintenance`, `error_type`, `kb_status`, `impact`, `priority`, `effort_estimate`), capture honors the **normalize-and-warn contract** defined in the Schema Read Contract (in the companion `actions/work-reference.md`): invalid values trigger a warning and a documented default rather than silent acceptance. When writing the REQ files, if the captured value for any normalize-and-warn field doesn't match the canonical enum (after applying the contract's normalization), prompt the user to confirm the intended value before emitting the REQ — capture is the human-attention window for catching typos at the source. Never write a non-canonical value silently.
 
 ### UR input.md
 
@@ -263,6 +264,7 @@ created_at: 2025-01-27T09:00:00Z  # current UTC instant (Timestamp rule, actions
 user_request: UR-006        ← new UR created for this addendum
 addendum_to: REQ-005        ← links back to the original request
 # assigned_to: 'cloud-alpha'   # OPTIONAL advisory earmark — same contract as the Simple/Complex REQ template above: emit ONLY when the user names a session to reserve this work for (Step 1's earmark assessment), verbatim and quoted per Frontmatter Quoting, never invented
+# priority: now              ← OPTIONAL; apply Step 1's user-words-only priority assessment to this new addendum REQ
 ---
 
 # Addendum: Dark Mode Sidebar Support

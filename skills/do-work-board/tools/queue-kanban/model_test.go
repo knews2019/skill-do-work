@@ -477,6 +477,84 @@ func TestBucketColumns(t *testing.T) {
 	}
 }
 
+func TestPendingGroupsSortByRequestPriority(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	queueDirectory := filepath.Join(repositoryRoot, "do-work", "queue")
+	if err := os.MkdirAll(queueDirectory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fixtures := []struct {
+		identifier string
+		extra      string
+	}{
+		{"REQ-101", "priority: next\n"},
+		{"REQ-102", "priority: now\n"},
+		{"REQ-103", "priority: later\n"},
+		{"REQ-104", "priority: later\ndepends_on: [REQ-999]\n"},
+		{"REQ-105", "priority: now\ndepends_on: [REQ-998]\n"},
+	}
+	for _, fixture := range fixtures {
+		contents := "---\nid: " + fixture.identifier + "\ntitle: Priority fixture\nstatus: pending\n" + fixture.extra + "---\n"
+		if err := os.WriteFile(filepath.Join(queueDirectory, fixture.identifier+"-fixture.md"), []byte(contents), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	board, err := buildBoard(repositoryRoot, time.Now().UTC(), defaultRecentWindow, func(string, string) (time.Time, bool) {
+		return time.Time{}, false
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := requestIdsOf(board.Columns.PendingReady); !reflect.DeepEqual(got, []string{"REQ-102", "REQ-101", "REQ-103"}) {
+		t.Fatalf("pending ready order = %v, want [REQ-102 REQ-101 REQ-103]", got)
+	}
+	if got := requestIdsOf(board.Columns.PendingWaiting); !reflect.DeepEqual(got, []string{"REQ-105", "REQ-104"}) {
+		t.Fatalf("pending waiting order = %v, want [REQ-105 REQ-104]", got)
+	}
+	if got := requestIdsOf(board.Columns.Pending); !reflect.DeepEqual(got, []string{"REQ-102", "REQ-101", "REQ-103", "REQ-105", "REQ-104"}) {
+		t.Fatalf("pending compatibility union = %v, want ready then waiting", got)
+	}
+}
+
+func TestParseRequestTicketPriorityContract(t *testing.T) {
+	for _, testCase := range []struct {
+		name             string
+		rawLine          string
+		wantPriority     string
+		wantOriginal     string
+		wantUnrecognized bool
+		wantWarning      bool
+	}{
+		{"absent", "", requestPriorityNext, "", false, false},
+		{"now", "priority: now\n", requestPriorityNow, "now", false, false},
+		{"next", "priority: NEXT\n", requestPriorityNext, "NEXT", false, false},
+		{"later", "priority: later\n", requestPriorityLater, "later", false, false},
+		{"invalid", "priority: urgent\n", requestPriorityNext, "urgent", true, true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			fixturePath := filepath.Join(t.TempDir(), "REQ-201-priority.md")
+			contents := "---\nid: REQ-201\ntitle: Priority\nstatus: pending\n" + testCase.rawLine + "---\n"
+			if err := os.WriteFile(fixturePath, []byte(contents), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			ticket, err := parseRequestTicket(fixturePath, "queue")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ticket.Priority != testCase.wantPriority || ticket.OriginalPriority != testCase.wantOriginal || ticket.PriorityUnrecognized != testCase.wantUnrecognized {
+				t.Fatalf("priority evidence = effective %q original %q unrecognized %t", ticket.Priority, ticket.OriginalPriority, ticket.PriorityUnrecognized)
+			}
+			warnings := collectSchemaFieldWarnings([]*RequestTicket{ticket})
+			if (len(warnings) > 0) != testCase.wantWarning {
+				t.Fatalf("warnings = %v", warnings)
+			}
+			if testCase.wantWarning && (!strings.Contains(warnings[0], "priority") || !strings.Contains(warnings[0], "Treating as 'next'")) {
+				t.Fatalf("priority warning = %q", warnings[0])
+			}
+		})
+	}
+}
+
 // A bare blocked REQ whose dependency cannot complete yet belongs with the
 // Pending column's waiting group. The derived BoardColumns are the one source
 // read by the board payload, summary, and open-work counters, so this fixture

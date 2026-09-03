@@ -150,3 +150,36 @@ func TestTargetResolutionPreservesMixedTokenOrderAndExplicitProvenance(t *testin
 		}
 	}
 }
+
+func TestTargetResolutionOrdersUREntriesByRequestPriorityButKeepsExplicitOrder(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-851-later.md", "REQ-851", "pending", "user_request: UR-850\npriority: later\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-852-now.md", "REQ-852", "pending", "user_request: UR-850\npriority: now\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph := dependencygraph.BuildGraph(snapshot)
+	for _, testCase := range []struct {
+		name   string
+		tokens []string
+		want   []string
+	}{
+		{"UR expansion", []string{"UR-850"}, []string{"REQ-852", "REQ-851"}},
+		{"explicit caller order", []string{"REQ-851", "REQ-852"}, []string{"REQ-851", "REQ-852"}},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			candidates, exclusions := resolveTargets(snapshot, graph, SelectionOptions{TargetTokens: testCase.tokens})
+			if len(exclusions) != 0 {
+				t.Fatalf("exclusions = %#v", exclusions)
+			}
+			got := make([]string, 0, len(candidates))
+			for _, candidate := range candidates {
+				got = append(got, candidate.RequestID)
+			}
+			if !equalStrings(got, testCase.want) {
+				t.Fatalf("resolved order = %v, want %v", got, testCase.want)
+			}
+		})
+	}
+}

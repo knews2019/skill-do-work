@@ -218,6 +218,12 @@ type RequestTicket struct {
 	OriginalImpact     string // verbatim frontmatter impact before normalization ("" when absent)
 	ImpactUnrecognized bool
 
+	// priority is the user's authored ordering inside the Pending Ready and
+	// Pending Waiting groups. It never changes dependency readiness or status.
+	Priority             string
+	OriginalPriority     string
+	PriorityUnrecognized bool
+
 	// effort_estimate — the triage bit separating small mechanical fixes from
 	// real work (effort-mechanical | effort-substantive). A judgment about SIZE,
 	// made by whoever writes the REQ and never derived from the impact verdict;
@@ -801,6 +807,9 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		normalizedImpact, impactRecognized = resolveSchemaField("impact", originalImpact)
 		impactUnrecognized = !impactRecognized
 	}
+	originalPriority := coerceScalarToString(fields["priority"])
+	normalizedPriority, priorityRecognized := resolveSchemaField("priority", originalPriority)
+	priorityUnrecognized := strings.TrimSpace(originalPriority) != "" && !priorityRecognized
 	// Failure details are display-only. `error` has no vocabulary and therefore
 	// stays verbatim. `error_type` follows the present-value-only schema rule:
 	// resolve a declared value (including the default for an invalid value), but
@@ -862,6 +871,9 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		Impact:                     normalizedImpact,
 		OriginalImpact:             originalImpact,
 		ImpactUnrecognized:         impactUnrecognized,
+		Priority:                   normalizedPriority,
+		OriginalPriority:           originalPriority,
+		PriorityUnrecognized:       priorityUnrecognized,
 		EffortEstimate:             normalizedEffortEstimate,
 		OriginalEffortEstimate:     originalEffortEstimate,
 		EffortEstimateUnrecognized: effortEstimateUnrecognized,
@@ -1073,6 +1085,10 @@ const (
 	impactUserVisible = "impact-user-visible"
 	impactRuleChange  = "impact-rule-change"
 	impactNegligible  = "impact-negligible"
+
+	requestPriorityNow   = "now"
+	requestPriorityNext  = "next"
+	requestPriorityLater = "later"
 )
 
 type schemaFieldContract struct {
@@ -1162,6 +1178,11 @@ var schemaReadContractFields = map[string]schemaFieldContract{
 		canonicalValues: []string{impactCritical, impactUserVisible, impactRuleChange, impactNegligible},
 		aliases:         map[string]string{},
 		defaultValue:    impactUserVisible,
+	},
+	"priority": {
+		canonicalValues: []string{requestPriorityNow, requestPriorityNext, requestPriorityLater},
+		aliases:         map[string]string{},
+		defaultValue:    requestPriorityNext,
 	},
 	"effort_estimate": {
 		// Deliberately a closed two-value enum — a triage bit about SIZE, not an
@@ -1319,6 +1340,7 @@ func collectSchemaFieldWarnings(tickets []*RequestTicket) []string {
 			{"domain", ticket.DomainUnrecognized, ticket.OriginalDomain},
 			{"route", ticket.RouteUnrecognized, ticket.OriginalRoute},
 			{"impact", ticket.ImpactUnrecognized, ticket.OriginalImpact},
+			{"priority", ticket.PriorityUnrecognized, ticket.OriginalPriority},
 			{"effort_estimate", ticket.EffortEstimateUnrecognized, ticket.OriginalEffortEstimate},
 			{"error_type", ticket.ErrorTypeUnrecognized, ticket.OriginalErrorType},
 		} {
@@ -1651,7 +1673,24 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 	sort.SliceStable(columns.RecentlyDone, func(i, j int) bool {
 		return columns.RecentlyDone[i].CompletionTime.After(columns.RecentlyDone[j].CompletionTime)
 	})
+	for _, pendingGroup := range [][]*RequestTicket{columns.PendingReady, columns.PendingWaiting} {
+		sort.SliceStable(pendingGroup, func(leftIndex, rightIndex int) bool {
+			return requestPriorityRank(pendingGroup[leftIndex].Priority) < requestPriorityRank(pendingGroup[rightIndex].Priority)
+		})
+	}
+	columns.Pending = append(append([]*RequestTicket(nil), columns.PendingReady...), columns.PendingWaiting...)
 	return columns, statusWarnings
+}
+
+func requestPriorityRank(requestPriority string) int {
+	switch requestPriority {
+	case requestPriorityNow:
+		return 0
+	case requestPriorityLater:
+		return 2
+	default:
+		return 1
+	}
 }
 
 // isWithinRecentWindow reports whether a completion instant is non-zero and falls

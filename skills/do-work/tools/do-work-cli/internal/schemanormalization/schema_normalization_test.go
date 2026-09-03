@@ -21,6 +21,14 @@ func TestNormalizeFieldAppliesAliasesDefaultsAndExactWarnings(t *testing.T) {
 		{"repair default", "repository_gate_repair", "", "false", true, true, ""},
 		{"deferred base is verbatim", "deferred_implementation_base", " abc123 ", "abc123", true, false, ""},
 		{"absent default is quiet", "impact", "", "impact-user-visible", true, true, ""},
+		{"priority absent", "priority", "", "next", true, true, ""},
+		{"priority now", "priority", " now ", "now", true, false, ""},
+		{"priority next", "priority", "NEXT", "next", true, false, ""},
+		{"priority later", "priority", "later", "later", true, false, ""},
+		{
+			"priority invalid", "priority", "urgent", "next", false, true,
+			"⚠ priority: 'urgent' not recognized — expected one of [now, next, later]. Treating as 'next'.",
+		},
 		{
 			"unknown warns and defaults", "domain", "server", "general", false, true,
 			"⚠ domain: 'server' not recognized — expected one of [frontend, backend, ui-design, general, security, testing, cms]. Treating as 'general'.",

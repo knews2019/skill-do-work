@@ -80,6 +80,13 @@ func resolveTargets(snapshot *repositorymodel.RepositorySnapshot, graph *depende
 				if leftPriority != rightPriority {
 					return leftPriority < rightPriority
 				}
+				if selectionPriority(members[leftIndex]) == PriorityOrdinary {
+					leftRequestPriority := requestPriorityRank(members[leftIndex].TypedRecord.RequestPriorityValue)
+					rightRequestPriority := requestPriorityRank(members[rightIndex].TypedRecord.RequestPriorityValue)
+					if leftRequestPriority != rightRequestPriority {
+						return leftRequestPriority < rightRequestPriority
+					}
+				}
 				leftID := requestID(members[leftIndex])
 				rightID := requestID(members[rightIndex])
 				leftDepth := graphDepth(graph, leftID)

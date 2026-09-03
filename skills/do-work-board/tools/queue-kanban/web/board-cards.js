@@ -161,6 +161,16 @@
     if (request.userRequestId) {
       badges.appendChild(makeBadge("badge-ur", null, request.userRequestId));
     }
+    if (request.priority === "now" || request.priority === "later") {
+      var priorityBadge = makeBadge(
+        "badge-priority badge-priority-" + request.priority,
+        null,
+        request.priority
+      );
+      priorityBadge.title =
+        "priority: " + request.priority + " — authored queue order inside this dependency group";
+      badges.appendChild(priorityBadge);
+    }
     if (request.route) {
       var routeBadge = makeBadge("badge-route", "route", request.route);
       if (request.routeUnrecognized) {

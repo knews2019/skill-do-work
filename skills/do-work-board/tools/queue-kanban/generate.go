@@ -164,9 +164,12 @@ type generatedRequest struct {
 	// impact-user-visible default, plus a drawer row; never column or scheduling
 	// meaning. Same raw provenance as domain/route so the chip can say what was
 	// declared, not just what it normalized to.
-	Impact             string `json:"impact,omitempty"`
-	OriginalImpact     string `json:"originalImpact,omitempty"`
-	ImpactUnrecognized bool   `json:"impactUnrecognized,omitempty"`
+	Impact               string `json:"impact,omitempty"`
+	OriginalImpact       string `json:"originalImpact,omitempty"`
+	ImpactUnrecognized   bool   `json:"impactUnrecognized,omitempty"`
+	Priority             string `json:"priority"`
+	OriginalPriority     string `json:"originalPriority,omitempty"`
+	PriorityUnrecognized bool   `json:"priorityUnrecognized,omitempty"`
 	// Triage bit separating small mechanical fixes from real work (see
 	// RequestTicket.EffortEstimate). Display only — a card chip rendered only
 	// when effort-mechanical, plus a drawer row; never column or scheduling
@@ -744,6 +747,9 @@ func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTick
 			Impact:                     ticket.Impact,
 			OriginalImpact:             ticket.OriginalImpact,
 			ImpactUnrecognized:         ticket.ImpactUnrecognized,
+			Priority:                   ticket.Priority,
+			OriginalPriority:           ticket.OriginalPriority,
+			PriorityUnrecognized:       ticket.PriorityUnrecognized,
 			EffortEstimate:             ticket.EffortEstimate,
 			OriginalEffortEstimate:     ticket.OriginalEffortEstimate,
 			EffortEstimateUnrecognized: ticket.EffortEstimateUnrecognized,

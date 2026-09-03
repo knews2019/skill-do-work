@@ -230,6 +230,7 @@ func TestTypedRecordCarriesEveryNormalizedSchemaFieldAndGenericEvidence(t *testi
 		"effort_estimate: trivial\n" +
 		"error_type: spec\n" +
 		"impact: surprising\n" +
+		"priority: urgent\n" +
 		"kb_status: skip\n" +
 		"maintenance: yes\n" +
 		"route: b\n" +
@@ -261,6 +262,7 @@ func TestTypedRecordCarriesEveryNormalizedSchemaFieldAndGenericEvidence(t *testi
 		{"impact", "ImpactValue", "ImpactEvidence", "surprising", "impact-user-visible", false},
 		{"kb_status", "KBStatusValue", "KBStatusEvidence", "skip", "skipped", true},
 		{"maintenance", "MaintenanceValue", "MaintenanceEvidence", "yes", "true", true},
+		{"priority", "RequestPriorityValue", "RequestPriorityEvidence", "urgent", "next", false},
 		{"repository_gate_repair", "RepositoryGateRepairValue", "RepositoryGateRepairEvidence", "true", "true", true},
 		{"route", "RouteValue", "RouteEvidence", "b", "B", true},
 		{"status", "RequestStatus", "StatusEvidence", "done", "completed", true},
