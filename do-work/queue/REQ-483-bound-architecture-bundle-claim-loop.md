@@ -1,7 +1,7 @@
 ---
 id: REQ-483
 title: '[impact-critical] Review fix: Bound the architecture bundle-claim loop and restore --commit'
-status: claimed
+status: pending-heavy-testing
 priority: now
 created_at: 2026-09-01T11:51:27Z
 user_request: UR-081
@@ -28,6 +28,10 @@ route: A
 dispatch_at: 2026-09-03T21:48:13Z
 implementation_at: 2026-09-03T21:53:38Z
 builder_handback_at: 2026-09-03T21:55:13Z
+integration_at: 2026-09-03T21:57:28Z
+testing_at: 2026-09-03T22:00:11Z
+status_changed_at: 2026-09-03T22:00:11Z
+commit: 3eb87519df19a14103f407159b9f6e753b51ca7b
 write_set:
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture_test.go
@@ -52,7 +56,7 @@ code path, so both land here as one fix.
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Route A direct implementation: pin both reproduced regressions, then restrict retry to collision identity and separate the dry-run preflight from the caller's commit mutation.
 - [x] **[APPLY]:** Added deterministic RED tests and implemented the two control-flow corrections in exactly the declared architecture source and test files.
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[UNIFY]:** Reviewed both declared files and the complete branch diff; verified collision-only retry, typed path/cause evidence, commit passthrough, deterministic test seams, formatting, vet, focused tests, full module tests, and no debug artifacts.
 
 ## Requirements
 
@@ -124,6 +128,30 @@ while the run scratch survives; the durable record is the `## Review` section of
 
 **Builder commit:** `f2ae022a49189acec1f9c934d0c85e83c42a52f1`
 
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture_test.go` (modified)
+
 **What was done:** The validation-only transaction always uses dry-run without commit; the real transaction retains the caller's commit choice. Exclusive bundle claims now retry only `fs.ErrExist` and otherwise return a typed `ARCHITECTURE-BUNDLE-CLAIM-FAILED` finding naming the candidate and cause. A package-local claim seam makes the permission refusal deterministic in tests without weakening production rooting.
 
 **Builder verification:** Both RED regressions turned GREEN; focused toolbox tests, full module tests, `go vet ./...`, formatting, and diff hygiene passed. Durable evidence is in `do-work/runs/work-2026-09-03-214500/REQ-483-handback.md`.
+
+## Qualification
+
+Passed — the exact `6a7e49d4..3eb87519` integration range contains only the two declared architecture files, all requirements trace to the implementation and tests, P-A-U is complete, and no `do-work/` path was committed by the builder.
+
+## Testing
+
+**Tests run:** the two focused regressions; `go test ./internal/toolboxcommands`; `go vet ./...`; full `go test ./...`; and direct `bash _dev/tests/maintainer-verify.sh`.
+
+**Result:** All focused, module, vet, and fast canonical-gate checks passed. The direct fast gate started on merge `3eb87519`; while it ran, an unrelated report-only commit advanced main to `ed70391a`, so the green-gate record is conservatively stored at that descendant revision. The saved implementation range remains `6a7e49d4..3eb87519`.
+
+**Red-green validation:** The old loop exceeded the 500 ms deadline on a deterministic permission refusal and the old commit path returned `GIT-INVALID-OPTIONS`; both added tests pass after the fix.
+
+**Heavy boundary:** `architecture_test.go` matches `skills/do-work/tools/do-work-cli/**/*_test.go` from `maintainer-verify.sh --heavy-surfaces`; exact-revision heavy permission is therefore required before independent review and finalization.
+
+## Open Questions
+
+- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `3eb87519df19a14103f407159b9f6e753b51ca7b`; did it exit 0?
+  Recommended: Yes
+  Also: No — report the failing lane
