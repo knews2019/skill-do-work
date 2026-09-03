@@ -39,6 +39,99 @@ func TestValidateAlreadyGreenRepairUsesIntakeAndRecordedEvidence(t *testing.T) {
 	}
 }
 
+func TestValidateAlreadyGreenRepairRejectsCoordinatedCurrentFingerprintMutation(t *testing.T) {
+	repositoryRoot, requestPath := alreadyGreenRepository(t)
+	absolute := filepath.Join(repositoryRoot, filepath.FromSlash(requestPath))
+	contents, err := os.ReadFile(absolute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated := strings.ReplaceAll(string(contents), testGateFingerprint, "sha256:coordinated-self-assertion")
+	if err := os.WriteFile(absolute, []byte(updated), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	validation, _, err := Validate(repositoryRoot, Options{RequestPath: requestPath, WriterLabel: "fixture:/repo"})
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if validation.TDDAllowed || validation.ReviewAllowed || !contains(validation.ReasonCodes, "REPAIR-INTAKE-NOT-DURABLE") {
+		t.Fatalf("coordinated fingerprint mutation escaped durable intake proof: %#v", validation)
+	}
+}
+
+func TestValidateAlreadyGreenRepairRejectsGreenRecordPredatingIntake(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	git(t, repositoryRoot, "init", "-q")
+	git(t, repositoryRoot, "config", "user.name", "repair validator fixture")
+	git(t, repositoryRoot, "config", "user.email", "repair-validator@example.invalid")
+	writeFile(t, repositoryRoot, "seed.txt", "before intake\n")
+	git(t, repositoryRoot, "add", "seed.txt")
+	git(t, repositoryRoot, "commit", "-qm", "pre-intake baseline")
+	evidence, err := gateevidence.RecordGreenGate(repositoryRoot, []string{"sh", "-c", "exit 0"})
+	if err != nil {
+		t.Fatalf("RecordGreenGate: %v", err)
+	}
+	requestPath := "do-work/working/REQ-701-already-green-repair.md"
+	writeFile(t, repositoryRoot, requestPath, alreadyGreenRequestContents(evidence.RecordedRevision))
+	git(t, repositoryRoot, "add", requestPath)
+	git(t, repositoryRoot, "commit", "-qm", "intake and no-op after stale evidence")
+
+	validation, _, err := Validate(repositoryRoot, Options{RequestPath: requestPath, WriterLabel: "fixture:/repo"})
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if validation.TDDAllowed || validation.ReviewAllowed || !contains(validation.ReasonCodes, "REPAIR-INTAKE-NOT-DURABLE") {
+		t.Fatalf("pre-intake green record escaped durable intake proof: %#v", validation)
+	}
+}
+
+func TestValidateAlreadyGreenRepairRejectsAmbiguousRequestIdentityForBothDecisions(t *testing.T) {
+	repositoryRoot, requestPath := alreadyGreenRepository(t)
+	writeFile(t, repositoryRoot, "do-work/archive/REQ-701-duplicate.md", "---\nid: REQ-701\ntitle: Duplicate\nstatus: completed\n---\n")
+
+	validation, _, err := Validate(repositoryRoot, Options{RequestPath: requestPath, WriterLabel: "fixture:/repo"})
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if validation.TDDAllowed || validation.ReviewAllowed || !contains(validation.ReasonCodes, "REPAIR-REQUEST-IDENTITY") {
+		t.Fatalf("ambiguous request identity escaped core eligibility: %#v", validation)
+	}
+}
+
+func TestValidateAlreadyGreenRepairRequiresExactNoOpBlock(t *testing.T) {
+	tests := []struct {
+		name      string
+		insertion string
+	}{
+		{name: "foreign line", insertion: "\nForeign no-op claim.\n"},
+		{name: "foreign label", insertion: "\n- **Foreign authority:** self asserted\n"},
+		{name: "prefix-like duplicate heading", insertion: "\n## Repository Gate Repair No-Op Extra\n\nSelf asserted.\n"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repositoryRoot, requestPath := alreadyGreenRepository(t)
+			absolute := filepath.Join(repositoryRoot, filepath.FromSlash(requestPath))
+			contents, err := os.ReadFile(absolute)
+			if err != nil {
+				t.Fatal(err)
+			}
+			updated := strings.Replace(string(contents), "\n## Implementation Summary", test.insertion+"\n## Implementation Summary", 1)
+			if err := os.WriteFile(absolute, []byte(updated), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			validation, _, err := Validate(repositoryRoot, Options{RequestPath: requestPath, WriterLabel: "fixture:/repo"})
+			if err != nil {
+				t.Fatalf("Validate: %v", err)
+			}
+			if validation.TDDAllowed || validation.ReviewAllowed || !contains(validation.ReasonCodes, "REPAIR-NO-OP-SHAPE") {
+				t.Fatalf("additive no-op content escaped exact shape: %#v", validation)
+			}
+		})
+	}
+}
+
 func TestValidateAlreadyGreenRepairUsesCanonicalCompletionPathsForStageAuthority(t *testing.T) {
 	repositoryRoot, requestPath := alreadyGreenRepository(t)
 	requestAbsolute := filepath.Join(repositoryRoot, filepath.FromSlash(requestPath))
@@ -138,7 +231,20 @@ func alreadyGreenRepository(t *testing.T) (string, string) {
 	git(t, repositoryRoot, "config", "user.name", "repair validator fixture")
 	git(t, repositoryRoot, "config", "user.email", "repair-validator@example.invalid")
 	requestPath := "do-work/working/REQ-701-already-green-repair.md"
-	intake := `---
+	intake := alreadyGreenIntakeContents()
+	writeFile(t, repositoryRoot, requestPath, intake)
+	git(t, repositoryRoot, "add", requestPath)
+	git(t, repositoryRoot, "commit", "-qm", "fixture baseline")
+	evidence, err := gateevidence.RecordGreenGate(repositoryRoot, []string{"sh", "-c", "exit 0"})
+	if err != nil {
+		t.Fatalf("RecordGreenGate: %v", err)
+	}
+	writeFile(t, repositoryRoot, requestPath, alreadyGreenRequestContents(evidence.RecordedRevision))
+	return repositoryRoot, requestPath
+}
+
+func alreadyGreenIntakeContents() string {
+	return `---
 id: REQ-701
 title: Already-green repair
 status: claimed
@@ -158,20 +264,16 @@ claimed_at: 2026-09-02T04:00:00Z
 - **Diagnostic fingerprint:** ` + testGateFingerprint + `
 - **Repair dependency:** REQ-701
 `
-	writeFile(t, repositoryRoot, requestPath, intake)
-	git(t, repositoryRoot, "add", requestPath)
-	git(t, repositoryRoot, "commit", "-qm", "fixture baseline")
-	evidence, err := gateevidence.RecordGreenGate(repositoryRoot, []string{"sh", "-c", "exit 0"})
-	if err != nil {
-		t.Fatalf("RecordGreenGate: %v", err)
-	}
-	noOp := `
+}
+
+func alreadyGreenRequestContents(recordedRevision string) string {
+	return alreadyGreenIntakeContents() + `
 ## Repository Gate Repair No-Op
 
 - **Expected diagnostic fingerprint:** ` + testGateFingerprint + `
 - **Gate command:** ["sh","-c","exit 0"]
 - **Direct exit status:** 0
-- **Recorded green revision:** ` + evidence.RecordedRevision + `
+- **Recorded green revision:** ` + recordedRevision + `
 - **Observed result:** green before implementation; repair already satisfied
 - **Verified at:** 2026-09-02T04:40:00Z
 
@@ -185,8 +287,6 @@ claimed_at: 2026-09-02T04:00:00Z
 
 Passed — repository-gate repair no-op; durable gate evidence verified and project diff empty.
 `
-	writeFile(t, repositoryRoot, requestPath, intake+noOp)
-	return repositoryRoot, requestPath
 }
 
 func git(t *testing.T, repositoryRoot string, arguments ...string) string {
