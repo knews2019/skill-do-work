@@ -26,7 +26,7 @@ func handleCheckGreenGate(executionContext commandruntime.ExecutionContext, argu
 	if err != nil {
 		return gateEvidenceFailure(CommandCheckGreenGate, resultmodel.GateEvidenceResult{}, "GATE-EVIDENCE-USAGE", err)
 	}
-	evidence, err := checkGreenGateAtRevision(executionContext.RepositoryRoot, gateCommand, targetRevisionSpec)
+	evidence, err := CheckGreenGateAtRevision(executionContext.RepositoryRoot, gateCommand, targetRevisionSpec)
 	if err != nil {
 		return gateEvidenceFailure(CommandCheckGreenGate, evidence, "GATE-EVIDENCE-CHECK-FAILED", err)
 	}

@@ -187,6 +187,49 @@ func TestGateEvidenceTextAndJSONCarryTheSameTypedState(t *testing.T) {
 	}
 }
 
+func TestAlreadyGreenRepairTextAndJSONCarryTheSameTypedState(t *testing.T) {
+	result := CommandResult{
+		Command: "validate-already-green-repair", Outcome: OutcomeSuccess, RepositoryRoot: "/tmp/example",
+		AlreadyGreenRepair: &AlreadyGreenRepairValidation{
+			RequestID: "REQ-701", RequestPath: "do-work/working/REQ-701.md",
+			TDDAllowed: true, ReviewAllowed: false,
+			IntakeFingerprint: "sha256:intake", ExpectedFingerprint: "sha256:intake",
+			GateCommand: []string{"bash", "verify.sh"}, RecordedRevision: "1111111",
+			CanonicalCompletionPaths: []string{"do-work/archive/REQ-701.md", "do-work/working/REQ-701.md"},
+			StagedPaths:              []string{"do-work/archive/REQ-999.md"}, ReasonCodes: []string{"REPAIR-STAGED-PATH-NOT-CANONICAL"},
+			OffendingPaths: []string{"do-work/archive/REQ-999.md"}, Writer: "fixture:/repo", PlannedAt: "2026-09-02T05:00:00Z",
+		},
+	}
+	textOutput, err := RenderResult(result, FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		"already-green repair: request=REQ-701 tdd_allowed=true review_allowed=false",
+		"fingerprints: intake=sha256:intake expected=sha256:intake",
+		"reason codes: REPAIR-STAGED-PATH-NOT-CANONICAL",
+		"offending paths: do-work/archive/REQ-999.md",
+	} {
+		if !strings.Contains(string(textOutput), expected) {
+			t.Errorf("text output missing %q:\n%s", expected, textOutput)
+		}
+	}
+	jsonOutput, err := RenderResult(result, FormatJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded CommandResult
+	if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.AlreadyGreenRepair == nil || !decoded.AlreadyGreenRepair.TDDAllowed || decoded.AlreadyGreenRepair.ReviewAllowed || len(decoded.AlreadyGreenRepair.CanonicalCompletionPaths) != 2 {
+		t.Fatalf("JSON lost repair validation: %#v", decoded.AlreadyGreenRepair)
+	}
+	if normalized := NormalizeResult(CommandResult{AlreadyGreenRepair: &AlreadyGreenRepairValidation{}}); normalized.AlreadyGreenRepair.GateCommand == nil || normalized.AlreadyGreenRepair.ReasonCodes == nil || normalized.AlreadyGreenRepair.OffendingPaths == nil {
+		t.Fatalf("repair validation collections were not normalized: %#v", normalized.AlreadyGreenRepair)
+	}
+}
+
 func TestOutcomeExitCodes(t *testing.T) {
 	tests := []struct {
 		outcome CommandOutcome

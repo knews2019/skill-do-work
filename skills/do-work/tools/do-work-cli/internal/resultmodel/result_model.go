@@ -279,6 +279,28 @@ type GateEvidenceResult struct {
 	BaselineRevision   string            `json:"baseline_revision"`
 }
 
+// AlreadyGreenRepairValidation is the single machine projection consumed by
+// work's TDD exception and review's no-diff exception. Both decisions are
+// derived from the same observation set; review additionally requires exact
+// canonical-completion staging.
+type AlreadyGreenRepairValidation struct {
+	RequestID                string   `json:"request_id"`
+	RequestPath              string   `json:"request_path"`
+	TDDAllowed               bool     `json:"tdd_allowed"`
+	ReviewAllowed            bool     `json:"review_allowed"`
+	IntakeFingerprint        string   `json:"intake_fingerprint"`
+	ExpectedFingerprint      string   `json:"expected_fingerprint"`
+	GateCommand              []string `json:"gate_command"`
+	RecordedRevision         string   `json:"recorded_revision"`
+	CanonicalCompletionPaths []string `json:"canonical_completion_paths"`
+	StagedPaths              []string `json:"staged_paths"`
+	ProjectChangedPaths      []string `json:"project_changed_paths"`
+	ReasonCodes              []string `json:"reason_codes"`
+	OffendingPaths           []string `json:"offending_paths"`
+	Writer                   string   `json:"writer"`
+	PlannedAt                string   `json:"planned_at"`
+}
+
 // FinalizationResult is the stable machine projection for one resumable REQ
 // release tail. Phase names are durable journal states; callers never need to
 // infer recovery progress from Git status or prose findings.
@@ -304,23 +326,24 @@ type FinalizationResult struct {
 }
 
 type CommandResult struct {
-	SchemaVersion    int                  `json:"schema_version"`
-	Command          string               `json:"command"`
-	Outcome          CommandOutcome       `json:"outcome"`
-	RepositoryRoot   string               `json:"repository_root"`
-	Findings         []CommandFinding     `json:"findings"`
-	Changes          []RecordedChange     `json:"changes"`
-	SkippedWork      []SkippedWork        `json:"skipped_work"`
-	Selected         []SelectionRecord    `json:"selected"`
-	Excluded         []SelectionExclusion `json:"excluded"`
-	SelectionSummary SelectionSummary     `json:"selection_summary"`
-	Rollback         RollbackResult       `json:"rollback"`
-	ProtocolOutput   *string              `json:"protocol_output,omitempty"`
-	AuditMetrics     *AuditMetricsResult  `json:"audit_metrics,omitempty"`
-	GateDeferral     *GateDeferralResult  `json:"gate_deferral,omitempty"`
-	GateEvidence     *GateEvidenceResult  `json:"gate_evidence,omitempty"`
-	Finalization     *FinalizationResult  `json:"finalization,omitempty"`
-	Finalizations    []FinalizationResult `json:"finalizations"`
+	SchemaVersion      int                           `json:"schema_version"`
+	Command            string                        `json:"command"`
+	Outcome            CommandOutcome                `json:"outcome"`
+	RepositoryRoot     string                        `json:"repository_root"`
+	Findings           []CommandFinding              `json:"findings"`
+	Changes            []RecordedChange              `json:"changes"`
+	SkippedWork        []SkippedWork                 `json:"skipped_work"`
+	Selected           []SelectionRecord             `json:"selected"`
+	Excluded           []SelectionExclusion          `json:"excluded"`
+	SelectionSummary   SelectionSummary              `json:"selection_summary"`
+	Rollback           RollbackResult                `json:"rollback"`
+	ProtocolOutput     *string                       `json:"protocol_output,omitempty"`
+	AuditMetrics       *AuditMetricsResult           `json:"audit_metrics,omitempty"`
+	GateDeferral       *GateDeferralResult           `json:"gate_deferral,omitempty"`
+	GateEvidence       *GateEvidenceResult           `json:"gate_evidence,omitempty"`
+	AlreadyGreenRepair *AlreadyGreenRepairValidation `json:"already_green_repair,omitempty"`
+	Finalization       *FinalizationResult           `json:"finalization,omitempty"`
+	Finalizations      []FinalizationResult          `json:"finalizations"`
 	// ExactTextOutput preserves compatibility-shaped stdout without polluting
 	// JSON with an opaque duplicate. It must be derived from the same typed
 	// observation carried by the result.
@@ -471,6 +494,27 @@ func NormalizeResult(result CommandResult) CommandResult {
 	if result.GateEvidence != nil && result.GateEvidence.GateCommand == nil {
 		result.GateEvidence.GateCommand = []string{}
 	}
+	if result.AlreadyGreenRepair != nil {
+		validation := result.AlreadyGreenRepair
+		if validation.GateCommand == nil {
+			validation.GateCommand = []string{}
+		}
+		if validation.CanonicalCompletionPaths == nil {
+			validation.CanonicalCompletionPaths = []string{}
+		}
+		if validation.StagedPaths == nil {
+			validation.StagedPaths = []string{}
+		}
+		if validation.ProjectChangedPaths == nil {
+			validation.ProjectChangedPaths = []string{}
+		}
+		if validation.ReasonCodes == nil {
+			validation.ReasonCodes = []string{}
+		}
+		if validation.OffendingPaths == nil {
+			validation.OffendingPaths = []string{}
+		}
+	}
 	for index := range result.Findings {
 		finding := &result.Findings[index]
 		if finding.AffectedIDs == nil {
@@ -584,6 +628,20 @@ func renderText(result CommandResult) []byte {
 		fmt.Fprintf(&output, "  gate command: %s (sha256: %s, exit: %d)\n", joinArgv(gate.GateCommand), gate.GateCommandSHA256, gate.GateExitStatus)
 		fmt.Fprintf(&output, "  record: %s (provenance: %s)\n", gate.RecordPath, gate.RecordProvenance)
 		fmt.Fprintf(&output, "  revisions: recorded=%s head=%s baseline=%s target=%s\n", gate.RecordedRevision, gate.HeadRevision, gate.BaselineRevision, gate.TargetRevision)
+	}
+	if result.AlreadyGreenRepair != nil {
+		validation := result.AlreadyGreenRepair
+		fmt.Fprintf(&output, "already-green repair: request=%s tdd_allowed=%t review_allowed=%t\n", validation.RequestID, validation.TDDAllowed, validation.ReviewAllowed)
+		fmt.Fprintf(&output, "  request path: %s\n", validation.RequestPath)
+		fmt.Fprintf(&output, "  fingerprints: intake=%s expected=%s\n", validation.IntakeFingerprint, validation.ExpectedFingerprint)
+		fmt.Fprintf(&output, "  gate command: %s\n", joinArgv(validation.GateCommand))
+		fmt.Fprintf(&output, "  recorded revision: %s\n", validation.RecordedRevision)
+		fmt.Fprintf(&output, "  completion paths: %s\n", strings.Join(validation.CanonicalCompletionPaths, ", "))
+		fmt.Fprintf(&output, "  staged paths: %s\n", strings.Join(validation.StagedPaths, ", "))
+		fmt.Fprintf(&output, "  project changed paths: %s\n", strings.Join(validation.ProjectChangedPaths, ", "))
+		fmt.Fprintf(&output, "  reason codes: %s\n", strings.Join(validation.ReasonCodes, ", "))
+		fmt.Fprintf(&output, "  offending paths: %s\n", strings.Join(validation.OffendingPaths, ", "))
+		fmt.Fprintf(&output, "  completion authority: writer=%s at=%s\n", validation.Writer, validation.PlannedAt)
 	}
 	for _, skipped := range result.SkippedWork {
 		fmt.Fprintf(&output, "skipped %s: %s\n", skipped.Code, skipped.Reason)
