@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os/exec"
 	"time"
+
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/ownedprocess"
 )
 
 type ownedProcessResult struct {
@@ -13,7 +15,22 @@ type ownedProcessResult struct {
 	Err         error
 }
 
+// reportImageGracePeriod is the pause before each escalation while a cancelled
+// image backend's process group is torn down. It is a variable so a test can
+// shorten it.
 var reportImageGracePeriod = time.Second
+
+// configureOwnedProcess fails closed for image backends: a backend that keeps
+// running after cancellation can write into scratch this command is about to
+// remove, so a platform that cannot prove descendant ownership must not run
+// one at all. runGit makes the opposite choice for the same shared API,
+// because Git cannot be given up.
+func configureOwnedProcess(command *exec.Cmd) error {
+	if !ownedprocess.ConfigureGroup(command) {
+		return errors.New("report image generation is unavailable: descendant process ownership cannot be proved on this platform")
+	}
+	return nil
+}
 
 func runOwnedProcess(ctx context.Context, directory string, argv ...string) ownedProcessResult {
 	if len(argv) == 0 {
@@ -39,29 +56,11 @@ func runOwnedProcess(ctx context.Context, directory string, argv ...string) owne
 	case err := <-done:
 		return completedProcessResult(err)
 	case <-ctx.Done():
-		_ = terminateOwnedProcess(command.Process.Pid)
-		deadline := time.Now().Add(reportImageGracePeriod)
-		leaderDone := false
-		for time.Now().Before(deadline) {
-			if !leaderDone {
-				select {
-				case <-done:
-					leaderDone = true
-				default:
-				}
-			}
-			if leaderDone && !ownedProcessGroupAlive(command.Process.Pid) {
-				return ownedProcessResult{Status: 1, Interrupted: true, Err: ctx.Err()}
-			}
-			time.Sleep(20 * time.Millisecond)
-		}
-		_ = killOwnedProcess(command.Process.Pid)
-		if !leaderDone {
-			<-done
-		}
-		for attempts := 0; attempts < 50 && ownedProcessGroupAlive(command.Process.Pid); attempts++ {
-			time.Sleep(20 * time.Millisecond)
-		}
+		// TerminateGroup returns only once the group is gone, so the leader is
+		// exited by the time Wait is collected and scratch cleanup cannot race
+		// a backend that is still writing.
+		_ = ownedprocess.TerminateGroup(command.Process.Pid, reportImageGracePeriod)
+		<-done
 		return ownedProcessResult{Status: 1, Interrupted: true, Err: ctx.Err()}
 	}
 }

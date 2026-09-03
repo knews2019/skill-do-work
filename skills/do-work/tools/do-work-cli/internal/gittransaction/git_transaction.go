@@ -12,12 +12,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/ownedprocess"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
@@ -629,7 +629,19 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	if _, err := runGit(ctx, repositoryRoot, append([]string{"add", "-A", "--"}, commitPaths...)...); err != nil {
 		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureCommit, err)
 	}
+	headBeforeCommit := currentHeadDespiteCancellation(ctx, repositoryRoot)
 	if _, err := runGit(ctx, repositoryRoot, "commit", "-m", options.CommitMessage); err != nil {
+		// A reported commit failure does not prove nothing was committed. A hook
+		// can pass and the ref update land before the failure is observed, which
+		// cancellation makes reachable: the hook's own descendants are killed,
+		// the hook still exits zero, and git finishes the commit while the
+		// caller is already unwinding. Rolling the worktree back from the new
+		// HEAD would restore committed bytes and call it a preimage, so an
+		// advanced HEAD is a committed-state risk instead — the same answer
+		// ExecuteExactCommit gives.
+		if headAfterCommit := currentHeadDespiteCancellation(ctx, repositoryRoot); headAfterCommit != "" && headAfterCommit != headBeforeCommit {
+			return committedRisk(result, "Git reported a commit failure after HEAD advanced", headAfterCommit)
+		}
 		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureCommit, err)
 	}
 	commitSHA, err := runGit(ctx, repositoryRoot, "rev-parse", "HEAD")
@@ -888,6 +900,7 @@ func indexIsEmpty(ctx context.Context, repositoryRoot string, pathspecs ...strin
 		"diff", "--cached", "--quiet", "--exit-code", "--",
 	}, pathspecs...)
 	command := exec.CommandContext(ctx, "git", commandArgs...)
+	configureCancellableProcessGroup(command)
 	err := command.Run()
 	if err == nil {
 		return true, nil
@@ -1339,6 +1352,18 @@ func isMissingPathError(err error) bool {
 	return os.IsNotExist(err) || errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOENT)
 }
 
+// currentHeadDespiteCancellation reads HEAD ignoring cancellation, because its
+// only caller needs the answer precisely when the surrounding context is
+// already cancelled. An empty string means HEAD does not resolve — an unborn
+// branch answers that way — which is still comparable against a later read.
+func currentHeadDespiteCancellation(ctx context.Context, repositoryRoot string) string {
+	output, err := runGit(context.WithoutCancel(ctx), repositoryRoot, "rev-parse", "HEAD")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(output)
+}
+
 func committedPaths(ctx context.Context, repositoryRoot, commitSHA string) ([]string, error) {
 	output, err := runGit(ctx, repositoryRoot, "diff-tree", "--root", "--no-commit-id", "--name-only", "-r", "-z", commitSHA)
 	if err != nil {
@@ -1379,38 +1404,28 @@ func runGit(ctx context.Context, repositoryRoot string, args ...string) (string,
 	return standardOutput.String(), nil
 }
 
-// configureCancellableProcessGroup uses reflection so the shared file still
-// cross-compiles on platforms whose syscall.SysProcAttr has no Setpgid field.
-// On Unix, cancellation reaches Git hooks and their descendants as one owned
-// group, escalates after grace, and WaitDelay prevents inherited pipes from
-// holding the caller forever.
+// configureCancellableProcessGroup gives command its own process group so
+// cancellation reaches Git hooks and whatever those hooks spawn, then blocks
+// on the teardown so no Git call returns while a descendant it launched is
+// still running.
+//
+// Unlike an image backend, this must not fail closed: every Git transaction in
+// this module runs through runGit, so a platform that cannot prove group
+// ownership degrades to os/exec's default single-process cancellation instead
+// of losing Git entirely.
 func configureCancellableProcessGroup(command *exec.Cmd) {
-	attributes := &syscall.SysProcAttr{}
-	setProcessGroup := reflect.ValueOf(attributes).Elem().FieldByName("Setpgid")
-	if !setProcessGroup.IsValid() || !setProcessGroup.CanSet() || setProcessGroup.Kind() != reflect.Bool {
+	if !ownedprocess.ConfigureGroup(command) {
 		return
 	}
-	setProcessGroup.SetBool(true)
-	command.SysProcAttr = attributes
+	// WaitDelay is a last-resort backstop for an inherited pipe held open by a
+	// process the teardown could not reach. os/exec starts this timer only
+	// after Cancel returns, so the grace budget never races it.
 	command.WaitDelay = 2 * time.Second
 	command.Cancel = func() error {
 		if command.Process == nil {
 			return os.ErrProcessDone
 		}
-		processGroup, findError := os.FindProcess(-command.Process.Pid)
-		if findError != nil {
-			return findError
-		}
-		termError := processGroup.Signal(syscall.Signal(15))
-		go func(processID int) {
-			timer := time.NewTimer(time.Second)
-			defer timer.Stop()
-			<-timer.C
-			if group, err := os.FindProcess(-processID); err == nil {
-				_ = group.Signal(os.Kill)
-			}
-		}(command.Process.Pid)
-		return termError
+		return ownedprocess.TerminateGroup(command.Process.Pid, ownedprocess.DefaultGracePeriod)
 	}
 }
 

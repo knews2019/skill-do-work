@@ -42,9 +42,9 @@ Make cancellation of a media Git transaction terminate the whole owned process g
 - `internal/toolboxcommands` → `TestRemediationCancellationReachesMediaGitCommitAndRollback` fails with `media commit hook survived cancellation` (`report_image_process_test.go:85`). The transaction rolls back correctly and returns within the deadline; the orphaned hook process is the only unmet assertion.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `prime-do-work-cli.md` (including Package direction), `lessons-do-work-cli.md` (the `single-exit-owner` and `interruptible-blocking-io` entries), `CLAUDE.md`, `crew-members/communication-style.md`, and `_dev/lessons/validated-runtime-boundaries.md` (found by grep; it supplied D-07). **Did not read `general.md`, `coding-guardrails.md`, `testing.md` or `debugging.md` — the builder reported them absent from the tree, which is false; all 18 crew-member files are present and tracked.** See the Qualification note; the orchestrator checked the diff against those guardrails instead.
+- [x] **[APPLY]:** Four new files in a new `internal/ownedprocess/` package, three modified, two deleted (their contents moved into the shared package), plus one prime edit the REQ's own Traps section required. Scope drift recorded in Qualification rather than absorbed.
+- [x] **[UNIFY]:** Orchestrator independently re-ran `go build ./...`, `go vet ./...` (clean), `gofmt -l .` (silent), `GOOS=windows GOARCH=amd64 go build ./...` (OK), `GOOS=plan9 go build ./internal/ownedprocess/` (OK), and `go test -count=1 ./...` → **exit 0, zero failures**. Read the new package (551 lines across four files), the `git_transaction.go` diff including the D-05 guard, and the prime edit. No debug artifacts. Removed one untracked probe artifact (`do-work/working/baseline.json`) the builder flagged and correctly declined to touch.
 
 ## Finding Provenance
 
@@ -131,9 +131,69 @@ No request prerequisite.
 **Files I will NOT touch:** `internal/nextselection/blocked_probe_unix.go`'s `128+signal` status contract must not be flattened if that runner is consolidated; `report_image_process_windows.go`'s fail-closed behavior for image backends must stay fail-closed.
 
 **Acceptance criteria (restated from REQ):**
-- [ ] Cancelling a Git-committing transaction terminates every process it launched, including a hook's grandchildren, not only the direct child
-- [ ] A hook that ignores the graceful signal does not survive — escalation is not optional
-- [ ] Return-within-deadline and rollback-to-preimage behavior on cancellation are both preserved
-- [ ] A killed process group's exit status is not misreported as success
-- [ ] The owned-process-group runner stays the single seam for launched subprocesses; no second ad-hoc kill path is added
-- [ ] `TestRemediationCancellationReachesMediaGitCommitAndRollback` passes without modification
+- [x] Cancelling a Git-committing transaction terminates every process it launched, including a hook's grandchildren, not only the direct child
+- [x] A hook that ignores the graceful signal does not survive — escalation is not optional
+- [x] Return-within-deadline and rollback-to-preimage behavior on cancellation are both preserved
+- [x] A killed process group's exit status is not misreported as success
+- [x] The owned-process-group runner stays the single seam for launched subprocesses; no second ad-hoc kill path is added
+- [x] `TestRemediationCancellationReachesMediaGitCommitAndRollback` passes without modification
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/ownedprocess/owned_process_group.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/ownedprocess/owned_process_group_unix.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/ownedprocess/owned_process_group_unsupported.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/ownedprocess/owned_process_group_unix_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_cancellation_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_process.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_process_unix.go` (deleted)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_process_windows.go` (deleted)
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified)
+
+**What was done:** A new `internal/ownedprocess` package holds the whole owned-process-group seam — `ConfigureGroup`, `TerminateGroup`, `DefaultGracePeriod` — with the platform split in one place. Teardown is **descendants-first, levelled from a single snapshot**: every group member that is not the leader is signalled bottom-up, escalated to SIGKILL after the grace window, and only then is the leader signalled if it is still alive. That ordering is what removes the zombie entirely — `git` survives long enough to `waitpid()` its own hook, so nothing is orphaned to init and `kill(pid, 0)` has nothing stale to report. `TerminateGroup` blocks until the group is gone. `configureCancellableProcessGroup`'s detached escalation goroutine and its `Setpgid` reflection probe are deleted; `indexIsEmpty` is folded onto the same seam; and `toolboxcommands`' two build-tagged files are absorbed into the shared package.
+
+## Decisions
+
+- **D-01** — Shared package at `internal/ownedprocess/`. **DECIDE & STATE.** The prime's Package direction rule constrains import *edges*, not new packages; the new edges (`gittransaction → ownedprocess`, `toolboxcommands → ownedprocess`) are acyclic, stdlib-only, and register no command. Recorded in the prime in the same change. **Value:** the build-tagged platform split lives in one package, so `gittransaction` keeps zero build-tagged production files and the `Setpgid` reflection probe is deleted. **Risk:** a third import edge to sweep if the API changes.
+- **D-02** — One API, two behaviours via a returned boolean. **DECIDE & STATE.** `ConfigureGroup` reports whether ownership was established and refuses to decide what that means: `toolboxcommands` fails closed on `false`, `runGit` returns early and leaves `os/exec`'s default cancellation. **Value:** the asymmetry is stated once at each call site with its reason, rather than duplicated as two runners. **Risk:** a future caller could ignore the boolean; the doc comment names the obligation.
+- **D-03** — `nextselection`'s blocked probe deliberately **not** consolidated. **DECIDE & STATE.** Its runner couples signal forwarding, `128+signal` status derivation, and a post-*success* orphan cleanup to its teardown, and its `TestBlockedProbeCleansBackgroundDescendantAfterLeaderExits` case has no live leader — so the descendants-first reaping property does not even apply there. Consolidating would need a mode flag used by exactly one caller. Two runners remain, down from three, and the REQ's protected contract is untouched.
+- **D-04** — Snapshot-levelled sweep, not "signal whatever is childless now". **DECIDE & STATE.** The first implementation re-derived terminable leaves each round and **hung the `generate-report-image` shell probes forever**, because a backend that respawns a helper in a loop always has a live child, so the sweep never climbs to the parent. Levels now come from one snapshot, bounded by construction with no deadline. **Risk:** a child forked during the sweep is orphaned; a second pass ends it, and orphans are proved not-running rather than reaped, since only init can reap them.
+- **D-05** — A HEAD-advanced guard added to `ExecuteTransaction`. **ESCALATE.** Descendants-first lets `git` reach its own error path — which also means it can reach a *successful* ref update when the hook happens to exit zero. `ExecuteTransaction` had no such guard (`ExecuteExactCommit` already did), so it rolled the worktree back from an advanced HEAD and reported `rolled_back` with the committed bytes still in place. **Value:** satisfies "do not misreport a killed group's status" in the direction that actually bites, and closes a latent misreport this REQ's own fix would otherwise have made reachable. **Risk:** one extra `rev-parse` per committing transaction.
+- **D-06** — The leader gets the grace window to exit on its own before being signalled. **DECIDE & STATE.** After its descendants die, `git` releases `index.lock` and reports the hook failure, so the rollback does not trip over a stale lock. **Risk:** widens the window in which the commit can land, which is exactly what D-05 closes.
+- **D-07** — An isolation boundary check before any group signal. **DECIDE & STATE.** `Getpgid(leader) != leader` falls back to bare-pid escalation, per `_dev/lessons/validated-runtime-boundaries.md` and REQ-220. Unreachable from inside the module, so no test reddens it.
+- **D-08** — No `GOMAXPROCS=1` pin, despite REQ-525's precedent. **DECIDE & STATE.** That pin sharpens a goroutine race to `os.Exit`; here the ordering is enforced by process death and `Cmd.Wait`, not the Go scheduler. Every neuter below is already 100% deterministic unpinned, and `GOMAXPROCS=1 go test -count=5` on the new tests is green — the pin would add cost and no determinism. Recorded because declining a just-established precedent deserves a reason.
+
+## Discovered Tasks
+
+- `nextselection/blocked_probe_unix.go` still TERMs its whole group leader-first, so `TestBlockedProbeCleansBackgroundDescendantAfterLeaderExits` depends on init's reap latency inside a 2s window. It passes, but it is the same class this REQ fixed, and could move onto `ownedprocess` if the `128+signal` contract is preserved behind an explicit initial-signal parameter.
+- `ownedprocess.terminateWholeGroup` — the fallback for a Unix host where `ps` cannot be executed — has no test; no cheap way to simulate a missing `ps`.
+- `exact_commit.go`'s HEAD-advanced guard fails the whole transaction if the *pre*-commit `rev-parse` errors, so it cannot handle an unborn branch. `currentHeadDespiteCancellation` handles that case and could replace it.
+- **A builder reported four always-load crew-member files as absent from the tree when all 18 are present and tracked.** Worth understanding: if the check was a relative `ls` run from the Go module directory, every builder dispatched into a subdirectory could silently skip the always-on guardrails. That is a pipeline-reliability question, not a code one.
+
+## Qualification
+
+**Passed, with scope drift that is mostly mine** — 10 files verified, 6 requirements traced, P-A-U confirmed.
+
+Mechanical: `tools/checks/qualify.sh` → `OK: mechanical qualification passed`, with five `WARN: (new) file has no static reference anywhere` lines. Those are the expected exception: a new Go package is referenced by *import path*, not by filename, and the two `_test.go` files are test files — both named exceptions in the check's own rules.
+
+`tools/checks/scope-drift.sh` → exit 1 in both directions. Assessed rather than waved through:
+
+**Touched but not declared — three causes, only one of them the builder's:**
+- The four `internal/ownedprocess/` files and `git_transaction_cancellation_test.go`. **My Scope authoring.** I wrote "a new shared package under `.../internal/` (new)" without literal paths, and the check compares literal paths. The package was explicitly permitted, so this is an undeclared *file list*, not undeclared work.
+- `report_image_process_unix.go` and `report_image_process_windows.go`, deleted. A direct consequence of moving their contents into the shared package I permitted. Reasonable, and it should have been declared.
+- `prime-do-work-cli.md`. **REQ-mandated, correctly handled.** This REQ's own `## Traps` says "the prime's Verify section will need a matching `GOOS=windows` compile line for whatever package the runner lands in." `actions/work.md`'s builder rule covers exactly this: when the REQ's own requirements require a file class the Scope declaration contradicts, flag it and proceed with the required class. The builder flagged it.
+
+**Declared but never touched — both parser artifacts of my own prose, for the second time:**
+- `git_transaction_test.go`: the new tests went into a new build-tagged `git_transaction_cancellation_test.go` instead. Equivalent, arguably better — `//go:build unix` on a whole file rather than guards inside a shared one.
+- `configureCancellableProcessGroup`, `indexIsEmpty`, `reportImageGracePeriod`: backticked identifiers in my Scope bullets' trailing descriptions, which `scope-drift.sh` reads as declared paths. **This is the second time I have done this** — REQ-457 hit it and recorded it as a discovered task. Recording it again is not the fix; the fix is that a Scope bullet's description must carry no backticks, and the discovered task on the script stands.
+
+Independent (orchestrator-run, not the builder's report):
+- `go build ./... && go vet ./...` clean; `gofmt -l .` silent.
+- `GOOS=windows GOARCH=amd64 go build ./...` → OK. `GOOS=plan9 GOARCH=amd64 go build ./internal/ownedprocess/` → OK. Both matter: the builder's own first attempt named the fallback `*_windows.go`, whose implicit constraint left every other non-unix target with **no implementation** (`undefined: configureOwnedGroup`). It caught that itself by cross-building for plan9 and renamed the file to `_unsupported.go`.
+- **`go test -count=1 ./...` → exit 0, zero failures.** Verified here, not taken from the report. This is the first fully green full-module run of the session.
+- Read the new package (551 lines across four files), the `git_transaction.go` diff including D-05's guard, and the five-line prime edit.
+- **The builder did not read four always-load crew-member files**, reporting them absent when all 18 are present and tracked (`git ls-files skills/do-work/crew-members/ | wc -l` → 18). I therefore read the diff against those guardrails myself: the change *reduces* surface (a detached goroutine, a reflection probe and two build-tagged files deleted; three runners down to two), every added comment states an invariant, and names are greppable and multi-word — `ConfigureGroup`, `TerminateGroup`, `currentHeadDespiteCancellation`, `terminateWholeGroup`. It is consistent with those rules despite not having been read against them, and the underlying reliability question is filed as a discovered task.
+
+**Two guards the builder declared unearned, which I am recording rather than quietly accepting as coverage:** the zombie-tree predicate (`requireReaped=false` reddens nothing, because with correct ordering the parent reaps within one `ps` round-trip) and blocking-rather-than-detaching (`Cmd.Wait` cannot return before the leader is reaped, and the leader cannot exit before reaping its hook, so no case distinguishes them). Both are kept as defence-in-depth against a recycled pid; neither is claimed as tested.
