@@ -9,12 +9,22 @@ addendum_to: REQ-489
 review_generated: true
 impact: impact-user-visible
 effort_estimate: effort-mechanical
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-09-03T20:59:01Z
+  basis:
+    - trivial short-circuit
 tdd: true
 suggested_spec: bug-fix
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
+required_lessons: [skills/do-work/tools/do-work-cli/lessons-do-work-cli.md#alternate-writer-contract-drift]
 sweep: true
 sweep_key: checkpoint-section-blind-line-editing
 claimed_at: 2026-09-03T20:58:01Z
+dispatch_at: 2026-09-03T20:59:01Z
+builder_handback_at: 2026-09-03T21:02:28Z
 ---
 
 # Review Fix: Remove Enriched Checkpoint Entries in Cleanup Mover
@@ -52,3 +62,17 @@ Independent review of REQ-489 found that `internal/cleanup.ownedCheckpointRemova
 
 ---
 *Source: Important review finding from REQ-489; folded as the next same-root sweep after the claimed source REQ.*
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The request names the exact cleanup helper, the incorrect header-only behavior, and the focused regression that proves whole-entry removal while preserving foreign bytes.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
