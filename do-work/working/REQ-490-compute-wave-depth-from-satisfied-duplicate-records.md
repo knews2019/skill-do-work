@@ -16,6 +16,13 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 review_generated: false
 claimed_at: 2026-09-03T22:25:28Z
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-09-03T22:25:42Z
+  basis:
+    - trivial graph-depth correction and one lock-in test
 ---
 
 # Compute Wave Depth From Satisfied Duplicate Records
@@ -59,3 +66,17 @@ None.
 
 ---
 *Source: `do-work validate-feedback` triage of 2026-09-01, Finding 1 (Accept); full block preserved in UR-094 input.md.*
+
+## Triage
+
+**Route: A** — Simple
+
+**Reasoning:** The request names the stale depth helper, the already-authoritative graph verdict, the exact failing fixture, and one focused test seam. No design choice or cross-subsystem exploration remains.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

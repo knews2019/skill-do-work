@@ -16,6 +16,15 @@ prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 sweep: true
 sweep_key: legacy-finalization-semantic-ownership-incomplete
 claimed_at: 2026-09-03T22:25:28Z
+route: C
+estimate:
+  p50_active_minutes: 70
+  confidence: low
+  calculated_at: 2026-09-03T22:25:42Z
+  basis:
+    - Route C
+    - legacy append provenance and three workspace ecosystems
+    - recovery and fail-closed enumeration matrix
 ---
 
 # Review Fix: Complete Legacy Finalization Semantic Ownership
@@ -60,3 +69,11 @@ None.
 
 ---
 *Source: REQ-499 post-remediation review findings.*
+
+## Triage
+
+**Route: C** — Complex
+
+**Reasoning:** The fix must replace heuristic ownership with bounded preimage provenance and derive release mirrors from the actually changed workspace member across npm, Cargo, and uv while preserving recovery and strict-mode behavior. The current discovery/association matrix needs explicit planning and exploration.
+
+**Planning:** Required

@@ -1,0 +1,3 @@
+# REQ-512 exploration/builder brief
+
+Replace legacy finalization's heading heuristic with durable whole-append provenance, and select release mirrors from the workspace manifest that actually changed. Reject foreign append bytes and preserve exact strict/recovery behavior. Cover npm member-only releases without unchanged root copies and equivalent Cargo/uv changed-source-first cases, keeping enumeration typed and fail-closed. First write a source inventory, exact write set, RED/GREEN matrix, and integration risks to `REQ-512-exploration.md`; do not code until the orchestrator scopes and dispatches a worktree.

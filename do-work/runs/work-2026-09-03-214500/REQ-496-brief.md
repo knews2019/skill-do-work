@@ -1,0 +1,3 @@
+# REQ-496 exploration/builder brief
+
+Design and implement one executable already-green repair validator shared by TDD bypass and no-diff review. Authority must come from repair intake fingerprint and exact canonical completion result paths; unrelated archive staging and ordinary/malformed/nonempty/release-mutated/over-staged neighbors must refuse. Exercise real REQ/Git completion, metadata, and selection state. First write a source inventory, exact write set, RED/GREEN matrix, and integration risks to `REQ-496-exploration.md`; do not code until the orchestrator scopes and dispatches a worktree.
