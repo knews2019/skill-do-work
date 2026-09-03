@@ -17,6 +17,7 @@ depends_on: []
 related: [REQ-531]
 claimed_at: 2026-09-03T18:37:57Z
 completed_at: 2026-09-03T18:46:38Z
+commit: f527ca555ff4beb0493db5d1736761fcd1fd7ea8
 ---
 
 # Repair repository gate update-layout broken pipe
