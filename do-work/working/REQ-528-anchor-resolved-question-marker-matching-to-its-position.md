@@ -47,9 +47,9 @@ estimate:
 - The `→ Confirmed:` variant, with `builder_decided: true`, reaches `status: completed` by the same route.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `prime-do-work-cli.md` and `lessons-do-work-cli.md` in full (including REQ-460's `closed-enumeration-for-a-condition` entry), `clarify.md` Steps 4-5, and the crew members. Approach: share the writer's separator and disposition-prefix literals between writer and reader, read the disposition only at the position that separator marks, and treat a line where the separator is not unique as having no identifiable disposition.
+- [x] **[APPLY]:** Two files, both inside the declared Scope.
+- [x] **[UNIFY]:** Orchestrator independently re-ran `go build ./...`, `go vet ./...` (clean), `gofmt -l .` (silent) and `go test -count=1 ./internal/publication/` (`ok … 18.7s`), and read the full `answer.go` diff. No debug artifacts; the writer's three literals are now shared constants consumed by both the writer and the reader, which is what makes the two unable to drift.
 
 ## Finding Provenance
 
@@ -127,7 +127,32 @@ So the fix has to recover the boundary between question text and disposition fro
 **Files I will NOT touch:** `summaryRequiresContainment` and `isMarkdownBlockPunctuation` (REQ-460's predicate — the reviewer was explicit that containment is the wrong layer for this), and the C0/DEL and multiline validators.
 
 **Acceptance criteria (restated from REQ):**
-- [ ] The disposition marker is recognized only at the position the answer writer places it; answer text containing the marker's characters does not satisfy it
-- [ ] A resolved question whose answer text contains `→ Discarded:` or `→ Confirmed:` does not contribute to a terminal-status verdict as though it carried that disposition
-- [ ] No terminal status is written on evidence a user's own answer text can forge
-- [ ] Genuinely uniform dispositions still reach `cancelled` and `completed` exactly as before
+- [x] The disposition marker is recognized only at the position the answer writer places it; answer text containing the marker's characters does not satisfy it
+- [x] A resolved question whose answer text contains `→ Discarded:` or `→ Confirmed:` does not contribute to a terminal-status verdict as though it carried that disposition
+- [x] No terminal status is written on evidence a user's own answer text can forge
+- [x] Genuinely uniform dispositions still reach `cancelled` and `completed` exactly as before
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/publication/answer.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/publication/answer_test.go` (modified)
+
+**What was done:** The separator and the two disposition prefixes are now shared constants (`resolvedQuestionSeparator`, `confirmedLabelPrefix`, `discardedLabelPrefix`), consumed by the writer at `:197-206` and by the reader at `:444`, so the composed line and the line the terminal verdict reads cannot drift apart. `resolvedQuestionDisposition` returns the text at the one position the writer can place a disposition, plus whether that position is identifiable at all: both fields around the separator are human text, so a line carrying more than one separator has no attributable disposition. `allResolvedQuestionsMatch` now prefix-tests the disposition at that position instead of searching the whole line, and an unidentifiable line fails the check — which routes to the non-terminal status rather than cancelling or completing on evidence that cannot be attributed to the writer.
+
+## Decisions
+
+- **D-01** — The disposition is read only immediately after the single separator the writer appends; a resolved line carrying zero or more than one separator has no identifiable disposition and fails the check. **ESCALATE.** **Value:** the separator is the one byte sequence on that line the writer itself contributes, recoverable from prior-round and hand-edited lines alike — no new schema field, no format change, no new refusal code, and no second consumer to sweep (a repo-wide grep for `Discarded:` hits only `answer.go`). **Risk:** a genuinely uniform section in which a question text or a discard summary itself contains ` → ` now lands `pending` instead of `cancelled`/`completed`. That is the required failure direction — non-terminal, visible, hand-correctable — against archiving a REQ whose questions were answered. Locked in as a test row rather than left implicit.
+- **D-02** — Rejected anchoring to the last ` → ` on the line, confirming the REQ's Exploration by measurement rather than by assertion. **DECIDE & STATE.** `summaryRequiresContainment` decides on `summary[0]`, and `→` is U+2192 whose lead byte `0xE2` falls outside all four ASCII-punctuation ranges, so `a → b` is inlined today — the reproduction shows the spoof summary landing inline with no `ANSWER-RAW-PAYLOAD-REQUIRED`. Last-arrow anchoring *is* the spoof: in `keep it → Discarded: not really` the final arrow is the summary's own.
+- **D-03** — Rejected recording what this invocation wrote, and sharpened why. **DECIDE & STATE.** The REQ's Exploration said the function "must also judge lines this invocation did not write". Stronger: that is *all* it does. `allSubmittedDiscarded`/`allSubmittedConfirmed` (`:144-145`) already covers the submitted set, so a mixed batch can never reach a terminal status within one invocation — the spoof is only reachable across rounds. A writer-side record would answer for precisely the lines that never needed judging.
+- **D-04** — Kept the `- [x] ` prefix scan and the `found` semantics; declined a structured frontmatter field. **DECIDE & STATE.** The cheaper fix holds, so the REQ's own constraint rules the field out — and frontmatter is hand-editable too, so it would buy less than it appears to.
+- **D-05** — Did not touch `summaryRequiresContainment`, and added no write-side refusal for arrow-bearing summaries. **DECIDE & STATE.** The reader is now robust to them, so a refusal would be defense nothing earned.
+
+## Discovered Tasks
+
+- **Same shape, second terminal status, same file:** `answer.go:268` gates the stakeholder branch's `status: completed` + `completed_at` + archive move on `bytes.Contains(ToLower(blockedHistory), "resolved")` and `bytes.Contains(ToLower(implementation), "no code")`. Both payloads are caller-authored prose and both tokens are matched anywhere, so `still not resolved` and `no code review yet` each satisfy the gate.
+- **Same shape, non-terminal:** `answer.go:291` gates the `blocked_by` lifecycle write on `bytes.Contains(reportsHistory, reportPath)` over caller-authored history text, unanchored to any line or position.
+- **Adjacent, destructive:** `internal/cleanup/cleanup_plan.go:236` deletes a `do-work/CHECKPOINT.md` line that merely contains `- <REQ-ID>:` plus the writer token, with no position anchor. Narrower (both tokens must share a line) but the same unanchored-line-selection shape driving a destructive edit.
+- **Adjacent, bounded:** `internal/finalization/finalization_discovery.go:593` admits an unjournaled changelog tail into replay on `bytes.Contains(inserted, requestID)`; mitigated by `singleInsertion` bounding the searched bytes to one verified diff hunk.
+- **Prose disagrees with the writer:** `skills/do-work/actions/clarify.md:124` documents the discard form as `- [x] [question] → Discarded` — no colon, no summary — while the CLI writes `Discarded: <summary>` and now prefix-tests `Discarded: `. The CLI is the authority, so the prose line is the one to correct.
+- `internal/suiteinstall` → `TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation/update-suite/TERM` failed once in three full-suite runs and passed 4/4 in isolation. Third sighting of the flake tracked as REQ-525, now on a third subtest.

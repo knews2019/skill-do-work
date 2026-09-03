@@ -18,6 +18,16 @@ import (
 
 var openQuestionPattern = regexp.MustCompile(`(?m)^- \[ \] `)
 
+// The separator BuildAnswerPlan appends to a resolved question line, and the two disposition
+// prefixes it can place immediately after that separator. Writer and reader share these exact
+// literals so the line this package composes and the line its terminal-status verdict reads
+// cannot drift apart.
+const (
+	resolvedQuestionSeparator = " → "
+	confirmedLabelPrefix      = "Confirmed: "
+	discardedLabelPrefix      = "Discarded: "
+)
+
 // orderedListMarkerPattern matches the one Markdown block opener that starts with a character
 // prose also starts with: a digit run followed by "." or ")". Every other block construct
 // opens with block-significant leading whitespace or with an ASCII punctuation mark, which
@@ -187,13 +197,13 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 			answerLabel = "See contained answer note"
 		}
 		if question.Outcome == "confirmed" {
-			answerLabel = "Confirmed: " + answerLabel
+			answerLabel = confirmedLabelPrefix + answerLabel
 		}
 		if question.Outcome == "discarded" {
-			answerLabel = "Discarded: " + answerLabel
+			answerLabel = discardedLabelPrefix + answerLabel
 		}
 		resolvedLine := append([]byte("- [x] "), originalLine[len("- [ ] "):]...)
-		resolvedLine = append(resolvedLine, []byte(" → "+answerLabel)...)
+		resolvedLine = append(resolvedLine, []byte(resolvedQuestionSeparator+answerLabel)...)
 		if replaceError := document.ReplaceBodySpan(lineStart, lineEnd, resolvedLine); replaceError != nil {
 			return refusedPlan(plan, "ANSWER-EDIT-FAILED", replaceError.Error(), []string{record.RequestID}, requestPath)
 		}
@@ -217,10 +227,10 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 		status := "pending-answers"
 		if !remainingOpen {
 			status = "pending"
-			if allSubmittedDiscarded && allResolvedQuestionsMatch(questionsAfterEdits, "→ Discarded:") {
+			if allSubmittedDiscarded && allResolvedQuestionsMatch(questionsAfterEdits, discardedLabelPrefix) {
 				status = "cancelled"
 			}
-			if allSubmittedConfirmed && record.BuilderDecidedValue == "true" && allResolvedQuestionsMatch(questionsAfterEdits, "→ Confirmed:") {
+			if allSubmittedConfirmed && record.BuilderDecidedValue == "true" && allResolvedQuestionsMatch(questionsAfterEdits, confirmedLabelPrefix) {
 				status = "completed"
 			}
 		}
@@ -407,14 +417,41 @@ func findQuestionLine(body []byte, question QuestionAnswer) (int, int, error) {
 	return matches[0][0], matches[0][1], nil
 }
 
-func allResolvedQuestionsMatch(body []byte, marker string) bool {
+// resolvedQuestionDisposition returns the text a resolved question line carries at the one
+// position BuildAnswerPlan can place a disposition, and whether that position is identifiable
+// on this line at all.
+//
+// Every resolved line is composed as `- [x] <question text> → [Confirmed: |Discarded: ]<summary>`,
+// so a disposition begins immediately after the single resolvedQuestionSeparator the writer
+// appended. Both fields around that separator are human text — the question and the answer
+// summary — and either may contain the separator itself, so on a line carrying more than one
+// separator no reader can tell which one the writer wrote. That line has no identifiable
+// disposition, and it must not be read as carrying one: the alternative is letting a user's
+// own text supply the marker that decides a terminal status.
+func resolvedQuestionDisposition(line []byte) ([]byte, bool) {
+	separator := []byte(resolvedQuestionSeparator)
+	if bytes.Count(line, separator) != 1 {
+		return nil, false
+	}
+	return line[bytes.Index(line, separator)+len(separator):], true
+}
+
+// allResolvedQuestionsMatch reports whether every resolved question in the section carries the
+// required disposition prefix at the writer's position. Its callers turn this verdict straight
+// into a terminal status and an archive move, so a resolved line whose disposition is not
+// identifiable fails the check: a section holding one lands on the non-terminal status instead
+// of being cancelled or completed on evidence that cannot be attributed to the writer.
+func allResolvedQuestionsMatch(body []byte, labelPrefix string) bool {
 	found := false
-	for _, line := range bytes.Split(body, []byte("\n")) {
-		if bytes.HasPrefix(bytes.TrimSuffix(line, []byte("\r")), []byte("- [x] ")) {
-			found = true
-			if !bytes.Contains(line, []byte(marker)) {
-				return false
-			}
+	for _, rawLine := range bytes.Split(body, []byte("\n")) {
+		line := bytes.TrimSuffix(rawLine, []byte("\r"))
+		if !bytes.HasPrefix(line, []byte("- [x] ")) {
+			continue
+		}
+		found = true
+		disposition, identifiable := resolvedQuestionDisposition(line)
+		if !identifiable || !bytes.HasPrefix(disposition, []byte(labelPrefix)) {
+			return false
 		}
 	}
 	return found

@@ -370,3 +370,122 @@ func TestBuildAnswerPlanCarriesStructuralSummaryContainedAndProseInline(t *testi
 		}
 	})
 }
+
+// clarifyRequestFixturePath is the queue path every resolved-disposition case below answers
+// against; the cases differ only in what an earlier round left on the question lines.
+const clarifyRequestFixturePath = "do-work/queue/REQ-1-test.md"
+
+func writeClarifyFixture(t *testing.T, root string, builderDecided bool, questionSection string) {
+	t.Helper()
+	builderMarker := ""
+	if builderDecided {
+		builderMarker = "builder_decided: true\n"
+	}
+	writeFixture(t, root, clarifyRequestFixturePath, []byte("---\nid: REQ-1\nstatus: pending-answers\n"+builderMarker+"---\n## Open Questions\n\n"+questionSection), 0o644)
+}
+
+// buildClarifyRound answers one clarify round against the current fixture bytes. Chaining two
+// rounds through the writer keeps the earlier round's resolved line exactly as production
+// composes it instead of a hand-authored imitation of it.
+func buildClarifyRound(t *testing.T, root string, answers ...QuestionAnswer) PublicationPlan {
+	t.Helper()
+	plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: &AnswerManifest{
+		RequestPath: clarifyRequestFixturePath, ExpectedStatus: "pending-answers", Mode: "clarify", Answers: answers,
+	}}, time.Date(2026, 9, 1, 1, 2, 3, 0, time.UTC))
+	if plan.Refusal != nil {
+		t.Fatalf("clarify round refused: %#v", plan.Refusal)
+	}
+	return plan
+}
+
+// requireClarifyStatus checks the status a round would publish together with the two effects
+// that status decides: a terminal status stamps completed_at and moves the REQ into the
+// archive, a non-terminal one leaves it in the queue with no completion timestamp.
+func requireClarifyStatus(t *testing.T, plan PublicationPlan, wantStatus string) {
+	t.Helper()
+	mutation := plan.Mutations[0]
+	if !bytes.Contains(mutation.Contents, []byte("status: "+wantStatus+"\n")) {
+		t.Fatalf("want status %q, published document = %s", wantStatus, mutation.Contents)
+	}
+	terminal := wantStatus == "cancelled" || wantStatus == "completed"
+	if terminal != bytes.Contains(mutation.Contents, []byte("completed_at:")) {
+		t.Fatalf("completed_at presence does not match status %q: %s", wantStatus, mutation.Contents)
+	}
+	if terminal != (mutation.Kind == MutationMove) || terminal != strings.HasPrefix(mutation.DestinationPath, "do-work/archive/") {
+		t.Fatalf("archive disposition does not match status %q: %#v", wantStatus, mutation)
+	}
+}
+
+// TestBuildAnswerPlanRefusesDispositionForgedByAnswerText is REQ-528's lock-in. An answer
+// summary is user text and lands immediately after the " → " separator the writer appended, so
+// a summary reading "keep it → Discarded: not really" puts the marker bytes on a line whose
+// question was answered, not discarded. Matching the marker anywhere on the line turns that
+// text into a terminal status and archives the REQ; only the writer's own position counts.
+func TestBuildAnswerPlanRefusesDispositionForgedByAnswerText(t *testing.T) {
+	t.Run("discarded marker in an answer summary does not cancel the REQ", func(t *testing.T) {
+		root := t.TempDir()
+		writeClarifyFixture(t, root, false, "- [ ] Keep the flag?\n- [ ] Drop the table?\n")
+		firstRound := buildClarifyRound(t, root, QuestionAnswer{ExpectedLine: "- [ ] Keep the flag?", Outcome: "answered", Summary: "keep it → Discarded: not really"})
+		writeFixture(t, root, clarifyRequestFixturePath, firstRound.Mutations[0].Contents, 0o644)
+		secondRound := buildClarifyRound(t, root, QuestionAnswer{ExpectedLine: "- [ ] Drop the table?", Outcome: "discarded", Summary: "not needed"})
+		requireClarifyStatus(t, secondRound, "pending")
+	})
+
+	t.Run("confirmed marker in an answer summary does not complete the REQ", func(t *testing.T) {
+		root := t.TempDir()
+		writeClarifyFixture(t, root, true, "- [ ] Keep the flag?\n- [ ] Drop the table?\n")
+		firstRound := buildClarifyRound(t, root, QuestionAnswer{ExpectedLine: "- [ ] Keep the flag?", Outcome: "answered", Summary: "keep it → Confirmed: not really"})
+		writeFixture(t, root, clarifyRequestFixturePath, firstRound.Mutations[0].Contents, 0o644)
+		secondRound := buildClarifyRound(t, root, QuestionAnswer{ExpectedLine: "- [ ] Drop the table?", Outcome: "confirmed", Summary: "use the default"})
+		requireClarifyStatus(t, secondRound, "pending")
+	})
+}
+
+// TestBuildAnswerPlanKeepsGenuineMultiRoundDispositionsTerminal is the other half of the same
+// contract: a genuinely uniform disposition spread over two rounds must still reach its
+// terminal status, so the position fix cannot be a blanket refusal of prior-round lines.
+func TestBuildAnswerPlanKeepsGenuineMultiRoundDispositionsTerminal(t *testing.T) {
+	t.Run("every question discarded across two rounds still cancels", func(t *testing.T) {
+		root := t.TempDir()
+		writeClarifyFixture(t, root, false, "- [ ] Keep the flag?\n- [ ] Drop the table?\n")
+		firstRound := buildClarifyRound(t, root, QuestionAnswer{ExpectedLine: "- [ ] Keep the flag?", Outcome: "discarded", Summary: "the flag is gone"})
+		writeFixture(t, root, clarifyRequestFixturePath, firstRound.Mutations[0].Contents, 0o644)
+		secondRound := buildClarifyRound(t, root, QuestionAnswer{ExpectedLine: "- [ ] Drop the table?", Outcome: "discarded", Summary: "not needed"})
+		requireClarifyStatus(t, secondRound, "cancelled")
+	})
+
+	t.Run("every question confirmed across two rounds still completes", func(t *testing.T) {
+		root := t.TempDir()
+		writeClarifyFixture(t, root, true, "- [ ] Keep the flag?\n- [ ] Drop the table?\n")
+		firstRound := buildClarifyRound(t, root, QuestionAnswer{ExpectedLine: "- [ ] Keep the flag?", Outcome: "confirmed", Summary: "keep it"})
+		writeFixture(t, root, clarifyRequestFixturePath, firstRound.Mutations[0].Contents, 0o644)
+		secondRound := buildClarifyRound(t, root, QuestionAnswer{ExpectedLine: "- [ ] Drop the table?", Outcome: "confirmed", Summary: "use the default"})
+		requireClarifyStatus(t, secondRound, "completed")
+	})
+}
+
+// TestBuildAnswerPlanJudgesPriorRoundResolvedLinesAtTheWriterPosition covers the lines this
+// invocation did not write. A question resolved in an earlier round is already "- [x]" in the
+// body, and clarify's own contract has humans editing these files, so the line can carry
+// anything. Each row supplies one prior line and discards the one remaining question, which
+// makes the published status the whole verdict for that line.
+func TestBuildAnswerPlanJudgesPriorRoundResolvedLinesAtTheWriterPosition(t *testing.T) {
+	tests := []struct {
+		name       string
+		priorLine  string
+		wantStatus string
+	}{
+		{"disposition at the writer position is the real one", "- [x] Keep the flag? → Discarded: not needed", "cancelled"},
+		{"summary merely mentioning the marker is not a disposition", "- [x] Keep the flag? → keep it → Discarded: not really", "pending"},
+		{"answered line carries no disposition at all", "- [x] Keep the flag? → keep it", "pending"},
+		{"question text carrying the separator leaves no identifiable position", "- [x] Cancel → Discarded: yes? → Discarded: not needed", "pending"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeClarifyFixture(t, root, false, test.priorLine+"\n- [ ] Drop the table?\n")
+			round := buildClarifyRound(t, root, QuestionAnswer{ExpectedLine: "- [ ] Drop the table?", Outcome: "discarded", Summary: "not needed"})
+			requireClarifyStatus(t, round, test.wantStatus)
+		})
+	}
+}
