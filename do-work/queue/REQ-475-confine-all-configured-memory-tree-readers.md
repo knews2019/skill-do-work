@@ -1,7 +1,7 @@
 ---
 id: REQ-475
 title: '[impact-critical] Review fix: Confine all configured Memory tree readers'
-status: pending-heavy-testing
+status: pending
 priority: now
 created_at: 2026-09-01T08:32:57Z
 user_request: UR-081
@@ -41,7 +41,7 @@ builder_handback_at: 2026-09-03T22:13:52Z
 integration_at: 2026-09-03T22:20:33Z
 testing_at: 2026-09-03T22:24:22Z
 review_at: 2026-09-03T22:24:22Z
-status_changed_at: 2026-09-03T22:24:22Z
+status_changed_at: 2026-09-03T23:00:34Z
 commit: c6d457473d24cdb188070709100884f019323ebc
 write_set:
   - skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go
@@ -173,6 +173,11 @@ Passed — mechanical qualification accepted the cumulative `63045c9e..c6d45747`
 
 ## Open Questions
 
-- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `c6d457473d24cdb188070709100884f019323ebc`; did it exit 0?
+- [x] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `c6d457473d24cdb188070709100884f019323ebc`; did it exit 0? → No — exit 1; update-script-behavior.sh took 55s, exceeding the under-30s limit
   Recommended: Yes
   Also: No — report the failing lane
+
+
+## Answer Notes
+
+- 2026-09-03 - [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `c6d457473d24cdb188070709100884f019323ebc`; did it exit 0?: No — exit 1; update-script-behavior.sh took 55s, exceeding the under-30s limit
