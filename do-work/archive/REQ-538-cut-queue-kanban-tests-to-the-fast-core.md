@@ -1,7 +1,7 @@
 ---
 id: REQ-538
 title: 'Cut queue-kanban tests to the fast core and parallelize the rest'
-status: claimed
+status: cancelled
 created_at: 2026-09-03T14:49:02Z
 user_request: UR-104
 domain: testing
@@ -18,6 +18,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/*_test.go
   - _dev/tests/maintainer-verify.sh
 claimed_at: 2026-09-03T16:49:25Z
+completed_at: 2026-09-03T20:48:00Z
 ---
 
 # Cut queue-kanban Tests to the Fast Core and Parallelize the Rest
@@ -64,3 +65,8 @@ Bring the queue-kanban fast run under 30 s wall. Delete the two `RejectsZeroProb
 ## Full Context
 See `do-work/user-requests/UR-104/input.md` for complete verbatim input.
 
+## Cancelled
+
+- **When:** 2026-09-03T20:48:00Z
+- **Why:** landed in place by 21dac2b8 (release 0.271.0): the two meta-tests deleted, JavaScript probes sharded and excluded before setup, board fixture cached, fast gate 75 s at 9f5cceb6. The claim was held by the cloud VM writer that went idle; the maintainer released it on 2026-09-03 23:35 local.
+- **Decided by:** user, via `do-work abandon`

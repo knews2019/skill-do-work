@@ -1,7 +1,7 @@
 ---
 id: REQ-468
 title: 'Per-REQ branch/worktree isolation for all implementation, serial included'
-status: claimed
+status: cancelled
 created_at: 2026-09-01T04:29:16Z
 user_request: UR-087
 domain: general
@@ -16,6 +16,7 @@ related: [REQ-469, REQ-470, REQ-471, REQ-472]
 batch: non-blocking-orchestration
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, skills/do-work/crew-members/background-agents.md, skills/do-work-knowledge/crew-members/background-agents.md, skills/do-work-toolbox/crew-members/background-agents.md, _dev/tests/contract-regressions.sh]
 claimed_at: 2026-09-03T16:19:49Z
+completed_at: 2026-09-03T20:48:01Z
 ---
 
 # Per-REQ Branch/Worktree Isolation for All Implementation, Serial Included
@@ -163,3 +164,9 @@ All four failed on the unmodified tree in one run of the real suite before any p
 2. **`skills/do-work/actions/review-work.md` restates the serial-versus-worktree diff fork in three places.** With the working-diff branch no longer occurring in a git repository, those three restatements are stale. Outside this REQ's `write_set`; route to REQ-471.
 3. **`skills/do-work/actions/cleanup.md` Pass 5 step 1 skips the whole pass when there is no `worktree` subcommand.** On the branch rung a leftover is a branch with no worktree, so that precondition drops exactly the leftovers this REQ creates on a floor harness. The equivalent precondition in Crash Recovery was fixed here (D-07); Pass 5 is outside this REQ's `write_set` and needs the same one-line change. Behavioural, not doc consistency — worth its own REQ rather than folding into REQ-471.
 4. **`_dev/tests/contract-regressions.sh` REQ-459 calibration lane holds four dead partitions** (`work_serial`, `work_worktree`, `reference_serial`, `reference_worktree`): only the whole blocks feed `surfaces`, and the reference anchor never matches. Untouched here because this REQ did not edit their anchors. Cleanup, no behaviour change.
+
+## Cancelled
+
+- **When:** 2026-09-03T20:48:01Z
+- **Why:** landed in place by 7a099340 (per-REQ implementation isolation resident for every run mode). The claim was held by the cloud VM writer that went idle; the maintainer released it on 2026-09-03 23:35 local.
+- **Decided by:** user, via `do-work abandon`
