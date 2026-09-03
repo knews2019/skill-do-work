@@ -1,7 +1,7 @@
 ---
 id: REQ-466
 title: 'Review fix: Require Git authority for hook mutations'
-status: pending
+status: claimed
 created_at: 2026-09-01T04:01:15Z
 user_request: UR-081
 domain: backend
@@ -16,6 +16,7 @@ related: [REQ-415, REQ-463]
 batch: go-no-llm-command-platform
 review_generated: true
 addendum_to: REQ-415
+claimed_at: 2026-09-03T14:42:07Z
 ---
 
 # Require Git Authority for Hook Mutations
