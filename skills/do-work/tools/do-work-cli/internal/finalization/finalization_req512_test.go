@@ -1,6 +1,7 @@
 package finalization
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -35,6 +36,7 @@ func TestREQ512TrackedFoldRequiresClosedBoundary(t *testing.T) {
 		{name: "delimiter after", append: "\n## Review Fold — REQ-812\n\nFinding.\n\n<!-- do-work:finalization-followup-fold-end kind=review request=REQ-812 -->\n---\n"},
 		{name: "mismatched marker", append: "\n## Review Fold — REQ-812\n\nFinding.\n\n<!-- do-work:finalization-followup-fold-end kind=recovery request=REQ-812 -->\n"},
 		{name: "duplicate marker", append: "\n## Review Fold — REQ-812\n\n<!-- do-work:finalization-followup-fold-end kind=review request=REQ-812 -->\n<!-- do-work:finalization-followup-fold-end kind=review request=REQ-812 -->\n"},
+		{name: "inline marker", append: "\n## Review Fold — REQ-812\n\nFinding.<!-- do-work:finalization-followup-fold-end kind=review request=REQ-812 -->\n"},
 		{name: "second fold", append: "\n## Review Fold — REQ-812\n\nFinding.\n\n## Recovery Fold — REQ-812\n\nRecovery.\n\n<!-- do-work:finalization-followup-fold-end kind=review request=REQ-812 -->\n"},
 	}
 	for _, test := range tests {
@@ -48,6 +50,62 @@ func TestREQ512TrackedFoldRequiresClosedBoundary(t *testing.T) {
 			writeFinalizationFile(t, repositoryRoot, path, before+test.append)
 			if got := followupPathProves(repositoryRoot, path, "REQ-812"); got != test.want {
 				t.Fatalf("followupPathProves() = %t, want %t", got, test.want)
+			}
+		})
+	}
+}
+
+func TestREQ512MalformedWorkspaceIdentityAndNPMRootLockFailClosed(t *testing.T) {
+	tests := []struct {
+		name         string
+		manifestPath string
+		lockPath     string
+		before       string
+		after        string
+		lock         string
+	}{
+		{
+			name:         "cargo source missing package name",
+			manifestPath: "skills/do-work/broken-rust/Cargo.toml",
+			lockPath:     "skills/do-work/broken-rust/Cargo.lock",
+			before:       "[package]\nversion = \"1.0.0\"\n",
+			after:        "[package]\nversion = \"1.0.1\"\n",
+			lock:         "[[package]]\nname = \"broken\"\nversion = \"1.0.0\"\n",
+		},
+		{
+			name:         "uv source has malformed project name",
+			manifestPath: "skills/do-work/broken-python/pyproject.toml",
+			lockPath:     "skills/do-work/broken-python/uv.lock",
+			before:       "[project]\nname = broken\nversion = \"1.0.0\"\n",
+			after:        "[project]\nname = broken\nversion = \"1.0.1\"\n",
+			lock:         "[[package]]\nname = \"broken\"\nversion = \"1.0.0\"\nsource = { editable = \".\" }\n",
+		},
+		{
+			name:         "npm root lock is malformed json",
+			manifestPath: "skills/do-work/broken-npm/package.json",
+			lockPath:     "skills/do-work/broken-npm/package-lock.json",
+			before:       "{\"name\":\"broken\",\"version\":\"1.0.0\"}\n",
+			after:        "{\"name\":\"broken\",\"version\":\"1.0.1\"}\n",
+			lock:         "{\"name\":\"broken\",\"version\":\"1.0.0\",\"packages\":",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repositoryRoot := newFinalizationRepository(t)
+			writeFinalizationFile(t, repositoryRoot, test.manifestPath, test.before)
+			writeFinalizationFile(t, repositoryRoot, test.lockPath, test.lock)
+			seedSemanticLegacyTail(t, repositoryRoot)
+			writeFinalizationFile(t, repositoryRoot, test.manifestPath, test.after)
+
+			result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
+			if result.Outcome != resultmodel.OutcomeRefused || result.Finalization == nil || len(result.Finalization.ReasonCodes) != 1 || result.Finalization.ReasonCodes[0] != "FINALIZATION-DISCOVERY-RELEASE-ENUMERATION" {
+				t.Fatalf("malformed release authority did not fail closed: %#v", result)
+			}
+			if got := readFinalizationFile(t, repositoryRoot, test.manifestPath); got != test.after {
+				t.Fatalf("refusal changed source bytes: %q", got)
+			}
+			if got := readFinalizationFile(t, repositoryRoot, test.lockPath); got != test.lock {
+				t.Fatalf("refusal changed lock bytes: %q", got)
 			}
 		})
 	}
@@ -220,6 +278,84 @@ func TestREQ512WorkspaceMembersSelectChangedSourcesBeforeEqualVersionRoots(t *te
 			}
 			if got := readFinalizationFile(t, repositoryRoot, test.rootPath); got != rootBefore {
 				t.Fatalf("unchanged root bytes = %q, want %q", got, rootBefore)
+			}
+		})
+	}
+}
+
+func TestREQ512SharedWorkspaceLocksReplaceOnlyMultipleChangedMembers(t *testing.T) {
+	tests := []struct {
+		name         string
+		rootPath     string
+		rootContents string
+		lockPath     string
+		lockBefore   string
+		lockAfter    string
+		memberPaths  []string
+		memberBefore string
+		memberAfter  string
+	}{
+		{
+			name:         "npm",
+			rootPath:     "skills/do-work/multi-npm/package.json",
+			rootContents: "{\"name\":\"multi\",\"private\":true,\"workspaces\":[\"packages/*\"]}\n",
+			lockPath:     "skills/do-work/multi-npm/package-lock.json",
+			lockBefore:   "{\"name\":\"multi\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"multi\"},\"packages/alpha\":{\"name\":\"alpha\",\"version\":\"1.0.0\"},\"packages/beta\":{\"name\":\"beta\",\"version\":\"1.0.0\"},\"node_modules/dependency\":{\"name\":\"dependency\",\"version\":\"1.0.1\"}}}\n",
+			lockAfter:    "{\"name\":\"multi\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"multi\"},\"packages/alpha\":{\"name\":\"alpha\",\"version\":\"1.0.1\"},\"packages/beta\":{\"name\":\"beta\",\"version\":\"1.0.1\"},\"node_modules/dependency\":{\"name\":\"dependency\",\"version\":\"1.0.1\"}}}\n",
+			memberPaths:  []string{"skills/do-work/multi-npm/packages/alpha/package.json", "skills/do-work/multi-npm/packages/beta/package.json"},
+			memberBefore: "{\"name\":\"%s\",\"version\":\"1.0.0\"}\n",
+			memberAfter:  "{\"name\":\"%s\",\"version\":\"1.0.1\"}\n",
+		},
+		{
+			name:         "cargo",
+			rootPath:     "skills/do-work/multi-rust/Cargo.toml",
+			rootContents: "[workspace]\nmembers = [\"crates/*\"]\n",
+			lockPath:     "skills/do-work/multi-rust/Cargo.lock",
+			lockBefore:   "[[package]]\nname = \"alpha\"\nversion = \"1.0.0\"\n\n[[package]]\nname = \"beta\"\nversion = \"1.0.0\"\n\n[[package]]\nname = \"dependency\"\nversion = \"1.0.1\"\nsource = \"registry+https://example.invalid\"\n",
+			lockAfter:    "[[package]]\nname = \"alpha\"\nversion = \"1.0.1\"\n\n[[package]]\nname = \"beta\"\nversion = \"1.0.1\"\n\n[[package]]\nname = \"dependency\"\nversion = \"1.0.1\"\nsource = \"registry+https://example.invalid\"\n",
+			memberPaths:  []string{"skills/do-work/multi-rust/crates/alpha/Cargo.toml", "skills/do-work/multi-rust/crates/beta/Cargo.toml"},
+			memberBefore: "[package]\nname = \"%s\"\nversion = \"1.0.0\"\n",
+			memberAfter:  "[package]\nname = \"%s\"\nversion = \"1.0.1\"\n",
+		},
+		{
+			name:         "uv",
+			rootPath:     "skills/do-work/multi-python/pyproject.toml",
+			rootContents: "[tool.uv.workspace]\nmembers = [\"packages/*\"]\n",
+			lockPath:     "skills/do-work/multi-python/uv.lock",
+			lockBefore:   "[[package]]\nname = \"alpha\"\nversion = \"1.0.0\"\nsource = { editable = \"packages/alpha\" }\n\n[[package]]\nname = \"beta\"\nversion = \"1.0.0\"\nsource = { editable = \"packages/beta\" }\n\n[[package]]\nname = \"dependency\"\nversion = \"1.0.1\"\nsource = { registry = \"https://example.invalid\" }\n",
+			lockAfter:    "[[package]]\nname = \"alpha\"\nversion = \"1.0.1\"\nsource = { editable = \"packages/alpha\" }\n\n[[package]]\nname = \"beta\"\nversion = \"1.0.1\"\nsource = { editable = \"packages/beta\" }\n\n[[package]]\nname = \"dependency\"\nversion = \"1.0.1\"\nsource = { registry = \"https://example.invalid\" }\n",
+			memberPaths:  []string{"skills/do-work/multi-python/packages/alpha/pyproject.toml", "skills/do-work/multi-python/packages/beta/pyproject.toml"},
+			memberBefore: "[project]\nname = \"%s\"\nversion = \"1.0.0\"\n",
+			memberAfter:  "[project]\nname = \"%s\"\nversion = \"1.0.1\"\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repositoryRoot := newFinalizationRepository(t)
+			writeFinalizationFile(t, repositoryRoot, test.rootPath, test.rootContents)
+			writeFinalizationFile(t, repositoryRoot, test.lockPath, test.lockBefore)
+			for index, path := range test.memberPaths {
+				name := []string{"alpha", "beta"}[index]
+				writeFinalizationFile(t, repositoryRoot, path, fmt.Sprintf(test.memberBefore, name))
+			}
+			seedSemanticLegacyTail(t, repositoryRoot)
+			for index, path := range test.memberPaths {
+				name := []string{"alpha", "beta"}[index]
+				writeFinalizationFile(t, repositoryRoot, path, fmt.Sprintf(test.memberAfter, name))
+			}
+			writeFinalizationFile(t, repositoryRoot, test.lockPath, test.lockAfter)
+
+			result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
+			if result.Outcome != resultmodel.OutcomeSuccess || result.Finalization == nil || result.Finalization.Phase != string(PhaseCleanupComplete) {
+				t.Fatalf("shared lock recovery = %#v", result)
+			}
+			for _, path := range append(append([]string(nil), test.memberPaths...), test.lockPath) {
+				if !containsFinalizationPath(result.Finalization.CommitPaths, path) {
+					t.Fatalf("commit paths %v omit %s", result.Finalization.CommitPaths, path)
+				}
+			}
+			if got := readFinalizationFile(t, repositoryRoot, test.lockPath); got != test.lockAfter {
+				t.Fatalf("lock bytes changed unexpectedly:\n%s\nwant:\n%s", got, test.lockAfter)
 			}
 		})
 	}
