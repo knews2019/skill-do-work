@@ -498,6 +498,7 @@ func seedSemanticLegacyTail(t *testing.T, repositoryRoot string) semanticLegacyF
 	writeFinalizationFile(t, repositoryRoot, "VERSION", "1.0.0\n")
 	writeFinalizationFile(t, repositoryRoot, "skills/do-work/VERSION", "1.0.0\n")
 	writeFinalizationFile(t, repositoryRoot, "skills/do-work/actions/version.md", "**Current version**: 1.0.0\n")
+	writeFinalizationFile(t, repositoryRoot, "suite/modules.tsv", "source\tdestination\nskills/do-work\t.claude/skills/do-work\n")
 	writeFinalizationFile(t, repositoryRoot, "package.json", "{\"name\":\"fixture\",\"version\":\"1.0.0\"}\n")
 	writeFinalizationFile(t, repositoryRoot, "package-lock.json", "{\"name\":\"fixture\",\"version\":\"1.0.0\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"fixture\",\"version\":\"1.0.0\"}}}\n")
 	writeFinalizationFile(t, repositoryRoot, "CHANGELOG.md", "# Changelog\n\n## 1.0.0 — Seed\n")

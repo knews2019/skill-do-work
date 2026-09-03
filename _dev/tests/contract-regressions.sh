@@ -4269,8 +4269,8 @@ assert_file_not_contains \
 
 assert_contains \
   "actions/work-reference.md" \
-  'Exclude every installed skill, dependency, vendored package, and generated tree.*\.claude/skills/.*installed do-work suite.*VERSION.*actions/version\.md.*must never be selected or bumped' \
-  'The canonical project version-source procedure must exclude installed suite metadata, not only remove one unsafe accelerator call site.'
+  'Exclude every installed skill, dependency, vendored package, cache, distribution output, and generated tree.*lack of affirmative project ownership.*installed do-work suite.*VERSION.*actions/version\.md.*must never be selected or bumped' \
+  'The canonical project version-source procedure must require affirmative ownership and exclude installed suite metadata.'
 
 assert_contains \
   "tools/queue-kanban/main.go" \
@@ -8396,6 +8396,18 @@ assert_contains \
   'optional copied release manifest plus `release_at`' \
   'the successful finalization tail must delegate version and changelog publication through its nested release manifest.'
 release_reference_block="$(sed -n '/^## Changelog Entry Procedure (Step 9)/,/^## Commit & Metadata-Commit Procedure/p' "$core_root/actions/work-reference.md")"
+assert_block_contains \
+  "$release_reference_block" \
+  'project_owned_targets.*required_mirrors.*must equal the mutation paths' \
+  'release manifests must exhaustively and exactly classify every mutation path.'
+assert_block_contains \
+  "$release_reference_block" \
+  'Consumer releases leave `maintainer_release` false and `required_mirrors` empty' \
+  'consumer releases must not claim the suite maintainer mirror contract.'
+assert_block_contains \
+  "$release_reference_block" \
+  'lack of affirmative project ownership, not any directory spelling' \
+  'release source selection must be ownership-positive rather than a path denylist.'
 assert_block_not_contains \
   "$release_reference_block" \
   'Edit the mirrored value by hand|write the bumped value into the file|constraints on the hand edit|hand-edit(ed|ing)? (the )?(version|lockfile|mirror)' \
@@ -8418,6 +8430,22 @@ assert_contains \
   "skills/do-work/tools/do-work-cli/prime-do-work-cli.md" \
   'repository-root-confined parent handles' \
   'the CLI prime must retain the rooted publication boundary.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/prime-do-work-cli.md" \
+  'exhaustive exact normalized partition.*maintainer-only `required_mirrors`' \
+  'the CLI prime must retain the release ownership partition boundary.'
+assert_file_not_contains \
+  "skills/do-work/tools/do-work-cli/internal/publication/release.go" \
+  'installedReleasePath' \
+  'publication must not infer ownership from an installed-path denylist.'
+assert_file_not_contains \
+  "skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go" \
+  'installedReleasePathForDiscovery' \
+  'legacy finalization discovery must not retain an alternate path denylist.'
+assert_file_not_contains \
+  "skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go" \
+  'legacyMaintainerMirrors' \
+  'legacy finalization discovery must not treat an exact installed-suite path set as ownership evidence.'
 for stakeholder_manifest_field in stakeholder_report stakeholder_terminal override_capture; do
   assert_contains \
     "skills/do-work/actions/stakeholder-answers.md" \

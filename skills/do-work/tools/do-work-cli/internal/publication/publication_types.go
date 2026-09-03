@@ -116,12 +116,13 @@ type ChangelogTarget struct {
 }
 
 type ReleaseManifest struct {
-	MaintainerRelease bool              `json:"maintainer_release,omitempty"`
-	OldVersion        string            `json:"old_version,omitempty"`
-	NewVersion        string            `json:"new_version,omitempty"`
-	RequiredMirrors   []string          `json:"required_mirrors,omitempty"`
-	Targets           []ReleaseTarget   `json:"targets"`
-	Changelogs        []ChangelogTarget `json:"changelogs"`
+	MaintainerRelease   bool              `json:"maintainer_release,omitempty"`
+	OldVersion          string            `json:"old_version,omitempty"`
+	NewVersion          string            `json:"new_version,omitempty"`
+	ProjectOwnedTargets []string          `json:"project_owned_targets,omitempty"`
+	RequiredMirrors     []string          `json:"required_mirrors,omitempty"`
+	Targets             []ReleaseTarget   `json:"targets"`
+	Changelogs          []ChangelogTarget `json:"changelogs"`
 }
 
 type DeferGateManifest struct {
