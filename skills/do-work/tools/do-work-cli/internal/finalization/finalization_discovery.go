@@ -442,7 +442,8 @@ func boundedFollowupFoldProves(appended []byte, requestID string) bool {
 		return false
 	}
 	marker := []byte("<!-- do-work:finalization-followup-fold-end kind=" + kind + " request=" + requestID + " -->")
-	return bytes.HasSuffix(appended, append(append([]byte(nil), marker...), '\n')) || bytes.HasSuffix(appended, append(append([]byte(nil), marker...), '\r', '\n'))
+	terminalMarker := regexp.MustCompile(`(?:^|\r?\n)` + regexp.QuoteMeta(string(marker)) + `\r?\n\z`)
+	return terminalMarker.Match(appended)
 }
 
 func userRequestMoveProves(repositoryRoot, path, origin, destination, userRequestID, requestID string) bool {
@@ -814,6 +815,9 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 			return configuredReleaseSet{}, fmt.Errorf("read tracked workspace member %s", manifestPath)
 		}
 		packageName, ok := releasePackageName(base, manifest.Bytes)
+		if !ok {
+			return configuredReleaseSet{}, fmt.Errorf("parse tracked workspace member identity %s", manifestPath)
+		}
 		lockName, kind := workspaceLockName(base)
 		rootLockPath := filepath.ToSlash(filepath.Join(filepath.Dir(manifestPath), lockName))
 		if trackedSet[rootLockPath] {
@@ -824,17 +828,18 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 				if err != nil || !before.Exists {
 					return configuredReleaseSet{}, fmt.Errorf("read tracked workspace lock %s", rootLockPath)
 				}
-				mirror.rootCopies = npmRootVersionCopies(before.Bytes, oldVersion)
-			} else if ok {
+				rootCopies, parseError := npmRootVersionCopies(before.Bytes, oldVersion)
+				if parseError != nil {
+					return configuredReleaseSet{}, fmt.Errorf("parse tracked workspace lock %s: %w", rootLockPath, parseError)
+				}
+				mirror.rootCopies = rootCopies
+			} else {
 				mirror.members = appendWorkspaceReleaseMember(mirror.members, workspaceReleaseMember{relativePath: ".", packageName: packageName})
 			}
 			if mirror.rootCopies > 0 || len(mirror.members) > 0 {
 				mirrors[rootLockPath] = mirror
 				paths = append(paths, rootLockPath)
 			}
-		}
-		if !ok {
-			continue
 		}
 		workspaceManifest, memberPath, ok := findOwnedWorkspaceOwner(repositoryRoot, trackedSet, ownedManifests, manifestPath, base)
 		if !ok {
@@ -1100,15 +1105,15 @@ func tomlSectionScalar(contents []byte, sections []string, key string) (string, 
 	return "", false
 }
 
-func npmRootVersionCopies(contents []byte, oldVersion string) int {
+func npmRootVersionCopies(contents []byte, oldVersion string) (int, error) {
 	var document struct {
 		Version  string `json:"version"`
 		Packages map[string]struct {
 			Version string `json:"version"`
 		} `json:"packages"`
 	}
-	if json.Unmarshal(contents, &document) != nil {
-		return 0
+	if err := json.Unmarshal(contents, &document); err != nil {
+		return 0, err
 	}
 	copies := 0
 	if document.Version == oldVersion {
@@ -1117,58 +1122,248 @@ func npmRootVersionCopies(contents []byte, oldVersion string) int {
 	if document.Packages[""].Version == oldVersion {
 		copies++
 	}
-	return copies
+	return copies, nil
 }
 
 func workspaceMirrorReplacement(path string, before, after []byte, oldVersion, newVersion string, mirror workspaceReleaseMirror) bool {
 	expectedCopies := mirror.rootCopies + len(mirror.members)
-	if expectedCopies == 0 || bytes.Count(after, []byte(newVersion))-bytes.Count(before, []byte(newVersion)) != expectedCopies || !bytes.Equal(bytes.ReplaceAll(after, []byte(newVersion), []byte(oldVersion)), before) {
+	if expectedCopies == 0 {
 		return false
 	}
 	switch mirror.kind {
 	case "npm":
-		var beforeLock, afterLock struct {
+		var beforeLock struct {
 			Version  string `json:"version"`
 			Packages map[string]struct {
 				Name    string `json:"name"`
 				Version string `json:"version"`
 			} `json:"packages"`
 		}
-		if json.Unmarshal(before, &beforeLock) != nil || json.Unmarshal(after, &afterLock) != nil {
+		if json.Unmarshal(before, &beforeLock) != nil {
 			return false
 		}
-		if mirror.rootCopies > 0 && (beforeLock.Version == oldVersion && afterLock.Version != newVersion || beforeLock.Packages[""].Version == oldVersion && afterLock.Packages[""].Version != newVersion) {
+		replacements := []exactByteReplacement{}
+		rootReplacements := 0
+		if mirror.rootCopies > 0 {
+			if beforeLock.Version == oldVersion {
+				location, ok := jsonNestedStringFieldLocation(before, nil, "version", oldVersion)
+				if !ok {
+					return false
+				}
+				replacements = append(replacements, exactByteReplacement{start: location[0], end: location[1], value: []byte(strconv.Quote(newVersion))})
+				rootReplacements++
+			}
+			if rootPackage, ok := beforeLock.Packages[""]; ok && rootPackage.Version == oldVersion {
+				location, found := jsonNestedStringFieldLocation(before, []string{"packages", ""}, "version", oldVersion)
+				if !found {
+					return false
+				}
+				replacements = append(replacements, exactByteReplacement{start: location[0], end: location[1], value: []byte(strconv.Quote(newVersion))})
+				rootReplacements++
+			}
+		}
+		if rootReplacements != mirror.rootCopies {
 			return false
 		}
 		for _, member := range mirror.members {
 			beforeMember, beforeOK := beforeLock.Packages[member.relativePath]
-			afterMember, afterOK := afterLock.Packages[member.relativePath]
-			if !beforeOK || !afterOK || beforeMember.Name != member.packageName || afterMember.Name != member.packageName || beforeMember.Version != oldVersion || afterMember.Version != newVersion {
+			if !beforeOK || beforeMember.Name != member.packageName || beforeMember.Version != oldVersion {
 				return false
 			}
+			location, ok := jsonNestedStringFieldLocation(before, []string{"packages", member.relativePath}, "version", oldVersion)
+			if !ok {
+				return false
+			}
+			replacements = append(replacements, exactByteReplacement{start: location[0], end: location[1], value: []byte(strconv.Quote(newVersion))})
 		}
-		return true
+		expected, ok := applyExactByteReplacements(before, replacements)
+		return ok && bytes.Equal(expected, after)
 	case "cargo", "uv":
+		replacements := []exactByteReplacement{}
 		for _, member := range mirror.members {
-			if !workspaceLockMemberHasVersion(filepath.Base(path), before, member, oldVersion) || !workspaceLockMemberHasVersion(filepath.Base(path), after, member, newVersion) {
+			location, ok := workspaceLockMemberVersionLocation(filepath.Base(path), before, member, oldVersion)
+			if !ok {
 				return false
 			}
+			replacements = append(replacements, exactByteReplacement{start: location[0], end: location[1], value: []byte(newVersion)})
 		}
-		return true
+		expected, ok := applyExactByteReplacements(before, replacements)
+		return ok && bytes.Equal(expected, after)
 	default:
 		return false
 	}
 }
 
-func workspaceLockMemberHasVersion(lockName string, contents []byte, member workspaceReleaseMember, version string) bool {
-	matches := 0
+type exactByteReplacement struct {
+	start int
+	end   int
+	value []byte
+}
+
+func applyExactByteReplacements(contents []byte, replacements []exactByteReplacement) ([]byte, bool) {
+	sort.Slice(replacements, func(left, right int) bool { return replacements[left].start > replacements[right].start })
+	result := append([]byte(nil), contents...)
+	previousStart := len(contents)
+	for _, replacement := range replacements {
+		if replacement.start < 0 || replacement.end < replacement.start || replacement.end > previousStart {
+			return nil, false
+		}
+		result = append(append(append([]byte(nil), result[:replacement.start]...), replacement.value...), result[replacement.end:]...)
+		previousStart = replacement.start
+	}
+	return result, len(replacements) > 0
+}
+
+func jsonNestedStringFieldLocation(contents []byte, objectPath []string, field, want string) ([2]int, bool) {
+	if !json.Valid(contents) {
+		return [2]int{}, false
+	}
+	objectStart, objectEnd := 0, len(contents)
+	for _, key := range objectPath {
+		location, ok := jsonObjectValueLocation(contents[objectStart:objectEnd], key)
+		if !ok {
+			return [2]int{}, false
+		}
+		objectEnd = objectStart + location[1]
+		objectStart += location[0]
+	}
+	location, ok := jsonObjectValueLocation(contents[objectStart:objectEnd], field)
+	if !ok {
+		return [2]int{}, false
+	}
+	location[0] += objectStart
+	location[1] += objectStart
+	var value string
+	if json.Unmarshal(contents[location[0]:location[1]], &value) != nil || value != want {
+		return [2]int{}, false
+	}
+	return location, true
+}
+
+func jsonObjectValueLocation(object []byte, wantedKey string) ([2]int, bool) {
+	index := skipJSONWhitespace(object, 0)
+	if index >= len(object) || object[index] != '{' {
+		return [2]int{}, false
+	}
+	index++
+	found := [2]int{}
+	foundCount := 0
+	for {
+		index = skipJSONWhitespace(object, index)
+		if index >= len(object) {
+			return [2]int{}, false
+		}
+		if object[index] == '}' {
+			index = skipJSONWhitespace(object, index+1)
+			if index != len(object) || foundCount != 1 {
+				return [2]int{}, false
+			}
+			return found, true
+		}
+		keyEnd, ok := jsonStringEnd(object, index)
+		if !ok {
+			return [2]int{}, false
+		}
+		var key string
+		if json.Unmarshal(object[index:keyEnd], &key) != nil {
+			return [2]int{}, false
+		}
+		index = skipJSONWhitespace(object, keyEnd)
+		if index >= len(object) || object[index] != ':' {
+			return [2]int{}, false
+		}
+		valueStart := skipJSONWhitespace(object, index+1)
+		valueEnd, ok := jsonValueEnd(object, valueStart)
+		if !ok {
+			return [2]int{}, false
+		}
+		if key == wantedKey {
+			found = [2]int{valueStart, valueEnd}
+			foundCount++
+		}
+		index = skipJSONWhitespace(object, valueEnd)
+		if index < len(object) && object[index] == ',' {
+			index++
+			continue
+		}
+		if index >= len(object) || object[index] != '}' {
+			return [2]int{}, false
+		}
+	}
+}
+
+func skipJSONWhitespace(contents []byte, index int) int {
+	for index < len(contents) && (contents[index] == ' ' || contents[index] == '\t' || contents[index] == '\r' || contents[index] == '\n') {
+		index++
+	}
+	return index
+}
+
+func jsonStringEnd(contents []byte, start int) (int, bool) {
+	if start >= len(contents) || contents[start] != '"' {
+		return 0, false
+	}
+	for index := start + 1; index < len(contents); index++ {
+		switch contents[index] {
+		case '\\':
+			index++
+		case '"':
+			return index + 1, json.Valid(contents[start : index+1])
+		}
+	}
+	return 0, false
+}
+
+func jsonValueEnd(contents []byte, start int) (int, bool) {
+	if start >= len(contents) {
+		return 0, false
+	}
+	if contents[start] == '"' {
+		return jsonStringEnd(contents, start)
+	}
+	if contents[start] != '{' && contents[start] != '[' {
+		end := start
+		for end < len(contents) && contents[end] != ',' && contents[end] != '}' && contents[end] != ']' && contents[end] != ' ' && contents[end] != '\t' && contents[end] != '\r' && contents[end] != '\n' {
+			end++
+		}
+		return end, end > start && json.Valid(contents[start:end])
+	}
+	stack := []byte{contents[start]}
+	for index := start + 1; index < len(contents); index++ {
+		if contents[index] == '"' {
+			end, ok := jsonStringEnd(contents, index)
+			if !ok {
+				return 0, false
+			}
+			index = end - 1
+			continue
+		}
+		switch contents[index] {
+		case '{', '[':
+			stack = append(stack, contents[index])
+		case '}', ']':
+			open := stack[len(stack)-1]
+			if open == '{' && contents[index] != '}' || open == '[' && contents[index] != ']' {
+				return 0, false
+			}
+			stack = stack[:len(stack)-1]
+			if len(stack) == 0 {
+				return index + 1, json.Valid(contents[start : index+1])
+			}
+		}
+	}
+	return 0, false
+}
+
+func workspaceLockMemberVersionLocation(lockName string, contents []byte, member workspaceReleaseMember, version string) ([2]int, bool) {
+	locations := [][2]int{}
 	namePattern := regexp.MustCompile(`(?m)^name[ \t]*=[ \t]*["']([^"']+)["'][ \t]*\r?$`)
 	versionPattern := regexp.MustCompile(`(?m)^version[ \t]*=[ \t]*["']([0-9]+\.[0-9]+\.[0-9]+)["'][ \t]*\r?$`)
 	for _, location := range projectLockBlockLocations(contents) {
 		block := contents[location[0]:location[1]]
 		nameMatch := namePattern.FindSubmatch(block)
-		versionMatch := versionPattern.FindSubmatch(block)
-		if len(nameMatch) != 2 || len(versionMatch) != 2 || string(nameMatch[1]) != member.packageName {
+		versionMatch := versionPattern.FindSubmatchIndex(block)
+		if len(nameMatch) != 2 || len(versionMatch) < 4 || string(nameMatch[1]) != member.packageName {
 			continue
 		}
 		if lockName == "Cargo.lock" {
@@ -1181,12 +1376,15 @@ func workspaceLockMemberHasVersion(lockName string, contents []byte, member work
 				continue
 			}
 		}
-		if string(versionMatch[1]) != version {
-			return false
+		if string(block[versionMatch[2]:versionMatch[3]]) != version {
+			return [2]int{}, false
 		}
-		matches++
+		locations = append(locations, [2]int{location[0] + versionMatch[2], location[0] + versionMatch[3]})
 	}
-	return matches == 1
+	if len(locations) != 1 {
+		return [2]int{}, false
+	}
+	return locations[0], true
 }
 
 func singleVersionReplacement(before, after []byte, oldVersion, newVersion string) bool {
