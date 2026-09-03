@@ -1,7 +1,7 @@
 ---
 id: REQ-490
 title: 'Review fix: compute wave depth from satisfied duplicate records'
-status: claimed
+status: pending-heavy-testing
 priority: now
 created_at: 2026-09-01T19:54:39Z
 user_request: UR-094
@@ -20,6 +20,11 @@ route: A
 dispatch_at: 2026-09-03T22:39:03Z
 implementation_at: 2026-09-03T22:41:27Z
 builder_handback_at: 2026-09-03T22:41:27Z
+integration_at: 2026-09-03T22:42:04Z
+testing_at: 2026-09-03T22:45:30Z
+review_at: 2026-09-03T22:45:30Z
+status_changed_at: 2026-09-03T22:45:30Z
+commit: 70b3be19f15c0448fd23008ef16b5ff19881677c
 write_set:
   - skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go
   - skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go
@@ -114,3 +119,25 @@ None.
 **What was done:** `queueDependencyDepth` now treats a dependency edge absent from the current node's authoritative `UnmetDependencies` as already satisfied. This includes terminal-success duplicate records whose aggregate graph verdict is satisfied even though their ambiguous node status is blank; pending unmet dependencies still recurse and other unresolved cases retain their prior depth behavior.
 
 **Builder verification:** The new duplicate-satisfied fixture failed with REQ-312 excluded at depth 1 before the edit and passes with selection at wave 0/depth 0 afterward. Focused and full module tests, `go vet ./...`, formatting, and diff checks pass; durable evidence is in `do-work/runs/work-2026-09-03-214500/REQ-490-handback.md`.
+
+## Review
+
+**Verdict:** Pass. The exact two-file integration replaces only the stale status re-derivation with the graph's resolved edge verdict. Satisfied single-record and duplicate dependencies contribute no depth, pending unmet dependencies still recurse, and missing, cyclic, and genuinely ambiguous-unsatisfied paths retain their established exclusions. The lock-in names the reported failure and asserts both selection and projected depth.
+
+## Qualification
+
+Passed — mechanical qualification accepted the exact `4a04b850..70b3be19` integration range. The implementation is limited to the two declared next-selection files, P-A-U evidence is complete, and no builder-authored lifecycle, generated, or release path is present.
+
+## Testing
+
+**Tests run:** focused duplicate-satisfied and wave/fan-out tests; full `internal/nextselection`; `go vet ./...`; full `go test -count=1 ./...`; direct `bash _dev/tests/maintainer-verify.sh`; formatting and diff checks.
+
+**Result:** All focused, module, vet, full-suite, and canonical fast-gate checks pass. The exact canonical gate record is stored at descendant `93ebbfd8`, which contains the `70b3be19` implementation plus only its settled request evidence.
+
+**Red-green validation:** Before the production edit the new fixture excluded REQ-312 with `WAVE-MISMATCH` at depth 1; after the edit it selects REQ-312 at wave 0 with `DependencyDepth: 0`.
+
+## Open Questions
+
+- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `70b3be19f15c0448fd23008ef16b5ff19881677c`; did it exit 0?
+  Recommended: Yes
+  Also: No — report the failing lane
