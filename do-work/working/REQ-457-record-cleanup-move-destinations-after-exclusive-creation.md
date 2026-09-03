@@ -235,3 +235,71 @@ Independent (orchestrator-run, not the builder's report):
 - `internal/suiteinstall` → `TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation/install-suite/INT`: not in the recorded baseline, but in a package this diff does not touch. Re-run once per the flake rule: `-count=5` in isolation passes 5/5, and the captured stderr shows the installer still rendering its managed-install diff when the signal arrived — a test-side synchronization race that surfaces under full-module parallel load. Tracked as **REQ-525**.
 
 *Verified by work action*
+
+## Review
+
+**Overall: 82%** | 2026-09-03T01:00:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 80% |
+| Code Quality | 78% |
+| Test Adequacy | 70% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- F1 — `git_transaction.go:1079-1082`: `createdObjectStillOwned` returned false for `ENOENT`, so an *absent* created path reported `preserved replacement` and flipped a clean rollback to `committed_state_risk`; the pre-change code treated `ENOENT` as a completed removal — `impact-user-visible` → fixed in remediation (D-07, D-08)
+- F2 — `git_transaction.go:231-238`, `:267-277`: the D-04 mid-transaction revalidation and the own-republication re-capture branch had no test; neutering `revalidateCreatedObjects` to `return nil` left all three packages green, coverage 33.3% — `impact-rule-change` → fixed in remediation (three tests, coverage 100%)
+- F3 — a `RecordCreated` failure after a successful create leaves an unrecorded file on disk at the twelve create-then-record call sites; requirement 3's compensating removal is implemented only at the cleanup site — `impact-rule-change` → REQ-526 created
+
+**Minor findings:** 9 (report only) — M1 non-deterministic revalidation reporting order, M2 `private target` wording on a created target, M3 binding stored before a fallible directory capture, M4 O(n²) hashing on the recorder hot path, M5 `destinationRegistered` false only in tests, M6 residual identity→remove window (stdlib has no remove-this-inode primitive), M7 Instance 3's Git-subprocess clause unaddressed, M8 scaffold directories proven by inode alone, M9 prime Traps line still frames the family as existing-file replacement. **M1, M2, M3 and the Nit were fixed in remediation**; M9 is handled by this REQ's Lessons-Capture Phase. M4-M8 are recorded limits, not defects.
+
+**Acceptance:** Pass — touched packages green, RED→GREEN reproduced independently by the reviewer from the parent commit, and all three new tests confirmed to be genuine lock-ins by removing each guard in turn.
+**Suggested testing:** 6 items — three were implemented in remediation; the remaining three (a `publication` package fixture for Instance 2, a `-race` two-goroutine `EEXIST` smoke, and an operator-facing check on `committed_state_risk` wording) are recorded here, not queued.
+**Follow-ups created:** REQ-526; **sweeps appended to:** None
+
+*Reviewed by review-work action*
+
+## Remediation
+
+The review's verdict was Approve at 82%, which archives as `completed` without mandatory follow-ups. Two of its three Important findings were nonetheless fixed here rather than deferred, because both are this REQ's own unfinished work: F1 is a regression this diff introduced with a one-branch fix, and F2 is acceptance criterion 6 shipping with no test at all. Only F3, a cross-call-site rule, went to a follow-up.
+
+**Remediation commit:** `b877eb6`.
+
+- **D-07** — `createdObjectStillOwned` becomes a one-line wrapper over a tri-state `inspectCreatedObject` (`createdObjectAbsent` / `createdObjectOwned` / `createdObjectReplaced`). Absence gets its own answer instead of collapsing into "not owned", which is what produced F1.
+- **D-08** — Rollback treats `createdObjectAbsent` as a completed removal: `continue`, no error, and **no action string** — claiming `removed created target X` for a path this invocation did not remove would be a false report.
+- **D-09** — M3 fixed by reordering rather than by a compensating delete: `RecordCreated` runs `captureCreatedDirectoryIdentities` first and captures the object binding last. A failed call now leaves the path in `createdPaths` with no binding, which routes to the already-correct `!identityRecorded` branch.
+- **D-10** — M2: `rootedOpenSnapshot` gained a target-description parameter and a `rootedCreatedTargetSnapshot` wrapper. Existing callers still pass `private target`, so no private-path message changed.
+- **D-11** — The Nit: the tracked-publication guard now reports `changed after tracked publication`, the identity guard `changed after created-object capture`. A report can name which check preserved the object.
+- **D-12** — Revalidation stays **strict** about a created path vanishing mid-transaction while rollback tolerates it. A deliberate asymmetry with D-08, not an oversight: forward progress would otherwise stage a path that no longer exists, whereas rollback's goal *is* the path being gone.
+
+**Lock-in confirmed by neutering, one guard at a time, restored between each:**
+- `TestCreatedTargetSwapFailsTheNextRecorderCall` — `revalidateCreatedObjects` body → `return nil` ⇒ `next recorder call error = <nil>`
+- `TestCreatedTargetRepublishedByRenameIsStillRolledBack` — re-capture block deleted from `RecordTouched` ⇒ `committed_state_risk`, `created target changed after created-object capture; preserved replacement: created.txt`
+- `TestCreatedTargetRemovedByTheTransactionRollsBackCleanly` — rollback switch reverted to the boolean guard ⇒ same `committed_state_risk`
+
+**Coverage:** `revalidateCreatedObjects` 33.3% → **100.0%**; `inspectCreatedObject` 85.7%, `captureCreatedObject` 87.5%, `createdObjectStillOwned` 100%.
+
+## Lessons Learned
+
+**What worked:**
+- Taking the ownership event to be the *successful exclusive create* rather than the plan collapsed three separately-reported instances (cleanup's race, publication's parent swap, the BKB scaffold's escaped writes) into one invariant with one fix each. The sweep framing in the REQ was right.
+- Neutering a guard and watching the matching test go red is the only evidence that a test is a lock-in. It is what caught F2: two of the shipped mechanisms had no test at all, and every package stayed green with them removed.
+
+**What didn't:**
+- `os.SameFile` alone is not object identity. Deleting `kb/raw/_inbox_queue.md` and recreating it in the same directory reuses the inode, so the captured RED passed the identity check and rollback deleted the replacement anyway. Content digest had to become part of the binding (D-01).
+- Widening a guard without asking what *absence* means introduced F1: `ENOENT` collapsed into "not owned", so a created path that was simply gone reported a preserved replacement and raised `committed_state_risk` on a clean rollback. A boolean was the wrong return type; the tri-state was (D-07).
+- A record-time snapshot alone would have disowned this transaction's own second write, because `atomicfile.ReplaceExisting` publishes by rename and changes the inode. Re-capturing on our own recorder calls is what separates our republication from a foreign swap — a foreign writer never routes through the recorder.
+
+**Worth knowing:**
+- Created *directories* already had the correct identity shape (`publishedDirectories` + `os.SameFile`), and so did `bkb_init.go`'s scaffold rollback. Only the created-*file* branch of the shared recorder trusted a pathname. When one branch of a guard looks right, check whether its sibling was ever written.
+- `publishedTracked` is populated solely for paths already in `dirtyTrackedPaths`, which is why the created-path guard that reads it was dead for every fresh creation. A guard that only ever runs on a set you never join is indistinguishable from no guard.
+- Directories still cannot carry a content digest, so scaffold directory rollback is inode-only and a rmdir+mkdir inode reuse remains theoretically reachable for a `recursive: true` entry (M8). D-01's reasoning stops at files.
+
+## Orientation
+
+Transaction rollback in `do-work-cli` now proves object identity before it removes anything it created, so a second writer racing the same path can no longer have its file deleted by the loser's rollback. Lives in the `gittransaction` recorder, with the ordering half in `cleanup` and `knowledgecommands`.
+
+`prime_files`: `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` — spot-checked, its Read-first paths all still exist. Its `[family: final-boundary-identity]` trap is now stale in framing (it describes existing-file *replacement*; the family covers created objects too) and is amended by this REQ's lesson write.
