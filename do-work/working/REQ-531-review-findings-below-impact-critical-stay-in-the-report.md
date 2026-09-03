@@ -1,7 +1,7 @@
 ---
 id: REQ-531
 title: 'Review findings below impact-critical stay in the report'
-status: pending
+status: claimed
 created_at: 2026-09-03T11:42:36Z
 user_request: UR-102
 domain: general
@@ -42,6 +42,7 @@ estimate:
     - cross-route regression gates
     - full-suite verification
 gate_deferred: 'true'
+claimed_at: 2026-09-03T18:47:36Z
 ---
 
 # Review Findings Below Impact-Critical Stay in the Report
