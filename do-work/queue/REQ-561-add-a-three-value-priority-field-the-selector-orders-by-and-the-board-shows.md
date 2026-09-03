@@ -1,7 +1,7 @@
 ---
 id: REQ-561
 title: 'Add a three-value priority field the selector orders by and the board shows'
-status: pending-heavy-testing
+status: pending
 created_at: 2026-09-03T20:38:55Z
 user_request: UR-107
 domain: backend
@@ -63,7 +63,7 @@ exploration_at: 2026-09-03T21:17:07Z
 dispatch_at: 2026-09-03T21:18:56Z
 builder_handback_at: 2026-09-03T21:35:57Z
 integration_at: 2026-09-03T21:37:20Z
-status_changed_at: 2026-09-03T21:42:10Z
+status_changed_at: 2026-09-03T21:51:41Z
 commit: 2d052afa24759990b8c3bf417b3ad4579b1bfc16
 ---
 
@@ -257,6 +257,11 @@ Passed — the exact `ff1ddc1fdf0fa596e0816f7d573cbf584e2ea06b..2d052afa24759990
 
 ## Open Questions
 
-- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `2d052afa24759990b8c3bf417b3ad4579b1bfc16`; did it exit 0?
+- [x] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `2d052afa24759990b8c3bf417b3ad4579b1bfc16`; did it exit 0? → No, exit 1: staged-skills-contract.sh took 30s and update-script-behavior.sh took 57s, exceeding the under-30s test-file budget
   Recommended: Yes
   Also: No — report the failing lane
+
+
+## Answer Notes
+
+- 2026-09-03 - [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `2d052afa24759990b8c3bf417b3ad4579b1bfc16`; did it exit 0?: No, exit 1: staged-skills-contract.sh took 30s and update-script-behavior.sh took 57s, exceeding the under-30s test-file budget
