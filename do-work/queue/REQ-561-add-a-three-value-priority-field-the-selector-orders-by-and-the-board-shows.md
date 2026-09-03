@@ -1,7 +1,7 @@
 ---
 id: REQ-561
 title: 'Add a three-value priority field the selector orders by and the board shows'
-status: claimed
+status: pending-heavy-testing
 created_at: 2026-09-03T20:38:55Z
 user_request: UR-107
 domain: backend
@@ -63,6 +63,8 @@ exploration_at: 2026-09-03T21:17:07Z
 dispatch_at: 2026-09-03T21:18:56Z
 builder_handback_at: 2026-09-03T21:35:57Z
 integration_at: 2026-09-03T21:37:20Z
+status_changed_at: 2026-09-03T21:42:10Z
+commit: 2d052afa24759990b8c3bf417b3ad4579b1bfc16
 ---
 
 # Add a Three-Value Priority Field the Selector Orders By and the Board Shows
@@ -173,7 +175,6 @@ The builder worktree predates REQ-502's checkpoint-cleanup merge, but their sour
 - `skills/do-work-board/tools/queue-kanban/model.go` (modify) — independent parser and pending-group sort
 - `skills/do-work-board/tools/queue-kanban/model_test.go` (modify) — parser and group-order regressions
 - `skills/do-work-board/tools/queue-kanban/generate.go` (modify) — generated priority evidence
-- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modify) — static fixture projection
 - `skills/do-work-board/tools/queue-kanban/serve_test.go` (modify) — live/static agreement
 - `skills/do-work-board/tools/queue-kanban/priority_browser_probe_test.go` (new) — exact-URL Chromium order, badge, theme, and geometry evidence
 - `skills/do-work-board/tools/queue-kanban/web/board-cards.js` (modify) — now/later badges
@@ -202,6 +203,35 @@ Added `priority: now | next | later` to the executable schema and independent bo
 
 The board stable-sorts Pending Ready and Pending Waiting independently, keeps their union Ready-then-Waiting, projects invalid provenance, and renders only `now`/`later` badges. Capture emits priority only from explicit ranking language and lets queued addenda set, change, or remove it. The release advances to 0.273.0 and stamps the report's 27 still-pending build-now REQs as `now` and 12 deferred REQs as `later`.
 
+**Files changed:**
+- `skills/do-work-board/actions/board.md`
+- `skills/do-work-board/tools/queue-kanban/generate.go`
+- `skills/do-work-board/tools/queue-kanban/model.go`
+- `skills/do-work-board/tools/queue-kanban/model_test.go`
+- `skills/do-work-board/tools/queue-kanban/priority_browser_probe_test.go`
+- `skills/do-work-board/tools/queue-kanban/serve_test.go`
+- `skills/do-work-board/tools/queue-kanban/web/board-cards.js`
+- `skills/do-work-board/tools/queue-kanban/web/board.css`
+- `skills/do-work/actions/capture-reference.md`
+- `skills/do-work/actions/capture.md`
+- `skills/do-work/actions/work-reference.md`
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_commands_test.go`
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go`
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go`
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_targets.go`
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_targets_test.go`
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_types.go`
+- `skills/do-work/tools/do-work-cli/internal/requestmodel/request_model.go`
+- `skills/do-work/tools/do-work-cli/internal/requestmodel/request_model_test.go`
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go`
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go`
+- `skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go`
+- `skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization_test.go`
+- `CHANGELOG.md`
+- `VERSION`
+- `skills/do-work/CHANGELOG.md`
+- `skills/do-work/actions/version.md`
+
 ## Decisions
 
 - **D-01 — Keep both priority axes.** `selection_priority` remains the internal scheduling class; authored `priority` is a separate typed field. Overloading the old field would erase repair/deferred-parent evidence.
@@ -212,3 +242,21 @@ The board stable-sorts Pending Ready and Pending Waiting independently, keeps th
 ## Discovered Tasks
 
 - No critical follow-up. A second live-HTTP DOM probe would duplicate the tested shared client/payload route and remains report-only.
+
+## Qualification
+
+Passed — the exact `ff1ddc1fdf0fa596e0816f7d573cbf584e2ea06b..2d052afa24759990b8c3bf417b3ad4579b1bfc16` integration range qualified with all scoped implementation and release paths represented in the summary. P-A-U is complete; the queue stamp touched only the 39 named still-pending records, and no foreign claimed or generated file entered the merge.
+
+## Testing
+
+**Tests run:** full `go test -count=1 ./...` and `go vet ./...` in do-work-cli; full queue-kanban tests and vet; strict Chrome light/dark priority DOM probe; `bash _dev/tests/contract-regressions.sh`; `bash _dev/tests/shipped-package-reference-contract.sh`; `bash _dev/tests/maintainer-verify.sh`.
+
+**Result:** All focused, full-module, contract, browser, and fast canonical-gate checks passed on merge `2d052afa24759990b8c3bf417b3ad4579b1bfc16`. The fast gate was recorded for this exact revision. The diff changes Go test surfaces and therefore requires exact-revision heavy verification before review/finalization.
+
+**Red-green validation:** the schema RED preserved absent/invalid values instead of defaulting; the selector RED kept numeric order; the board RED kept numeric Pending order. The added tests then passed with default/warning projection, class/dependency precedence, fan-out timing, explicit/UR ordering, Ready/Waiting sorting, static/live agreement, and browser badges.
+
+## Open Questions
+
+- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `2d052afa24759990b8c3bf417b3ad4579b1bfc16`; did it exit 0?
+  Recommended: Yes
+  Also: No — report the failing lane
