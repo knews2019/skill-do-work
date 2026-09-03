@@ -66,3 +66,19 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 
 ---
 *Source: capture of the orchestrator simplification request (UR-098).*
+
+## Addendum (2026-09-03)
+
+User added (via the maintainability audit `do-work/audits/audit-2026-09-03.md`, Finding 11, sweep_key `rationalization-tables-not-duplicated`; the maintainer said "capture the requests" over the audit's §Plan, which carried this line):
+
+> ```
+> capture-request: [audit-2026-09-03 R11 · sweep_key: rationalization-tables-not-duplicated · JUDGMENT · addendum to REQ-509] Before REQ-509 runs, rewrite its Why clause and RED case: the 23 Common Rationalizations tables hold 125 rows with zero near-identical cross-file pairs (Finding 11's Reproduce), so "largely repeat each other" is refuted; either restate the goal as one loading point with a RED case that asserts loading, or cancel. Lock-in: near-identical cross-file rows = 0.
+> ```
+
+- Measured at dc8a64e3: the 23 `## Common Rationalizations` tables under `skills/` hold 125 rows and zero near-identical cross-file pairs (similarity above 0.75 on the trigger or the reason cell); the highest pair scores 0.77 and guards two different boundaries (capture stops before running the queue; validate-feedback stops before capturing). Reproduce: the Finding 11 command in the audit report.
+- The Why clause "largely repeat each other" is therefore not supported at the row level, and the current RED case (remove `capture.md`'s table, a predicate fails) passes before any merge work, so it proves nothing about repetition.
+- Resolved conflict: "the tables largely repeat each other" → the measured goal is one loading point for the tables' principles, not deduplication. Before this REQ is claimed, its What/Why are read as "one crew member is the loading point; each action keeps only rows unique to its own step", and its RED case becomes: `work.md` Step 6 does not name the merged file and no predicate pins it.
+- Lock-in to carry: the Finding 11 Reproduce command keeps printing `near_identical_cross_file_pairs 0`; red the moment a row is copied between two action files.
+- [ ] Keep REQ-509 as restated above, or cancel it because one loading point is not wanted?
+  Recommended: keep, restated (the maintainer approved the audit's plan line, which offered both).
+  Also: cancel via `do-work abandon` and recapture if a different goal emerges.
