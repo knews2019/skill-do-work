@@ -21,6 +21,7 @@ session_depth: light
 
 - REQ-534: Review fix: run blocked probes from the repository root and propagate interruptions — claimed 2026-09-03T23:34:31Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
+- REQ-563: Select affected heavy-test lanes from request changes — claimed 2026-09-03T23:40:37Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 

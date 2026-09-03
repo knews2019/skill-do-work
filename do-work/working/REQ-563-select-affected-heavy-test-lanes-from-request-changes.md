@@ -1,7 +1,7 @@
 ---
 id: REQ-563
 title: 'Select affected heavy-test lanes from request changes'
-status: pending
+status: claimed
 created_at: 2026-09-03T22:58:23Z
 user_request: UR-109
 domain: testing
@@ -14,6 +14,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-539, REQ-564]
 batch: smart-heavy-verification
+claimed_at: 2026-09-03T23:40:37Z
 ---
 
 # Select Affected Heavy-Test Lanes From Request Changes
