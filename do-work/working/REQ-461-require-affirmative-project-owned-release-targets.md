@@ -1,7 +1,7 @@
 ---
 id: REQ-461
 title: '[impact-user-visible] Require affirmative project-owned release targets'
-status: pending
+status: claimed
 created_at: 2026-09-01T00:12:38Z
 user_request: UR-081
 domain: general
@@ -16,6 +16,7 @@ related: [REQ-413]
 batch: go-no-llm-command-platform
 review_generated: true
 addendum_to: REQ-413
+claimed_at: 2026-09-03T10:32:09Z
 ---
 
 # Require Affirmative Project-Owned Release Targets

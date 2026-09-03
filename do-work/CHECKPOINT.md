@@ -52,3 +52,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-461: [impact-user-visible] Require affirmative project-owned release targets — claimed 2026-09-03T10:32:09Z — writer: vm:/home/user/skill-do-work
