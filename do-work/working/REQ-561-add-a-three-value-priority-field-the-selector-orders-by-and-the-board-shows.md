@@ -1,7 +1,7 @@
 ---
 id: REQ-561
 title: 'Add a three-value priority field the selector orders by and the board shows'
-status: pending
+status: claimed
 created_at: 2026-09-03T20:38:55Z
 user_request: UR-107
 domain: backend
@@ -25,6 +25,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-cards.js
   - skills/do-work-board/tools/queue-kanban/web/board.css
   - do-work/queue/
+claimed_at: 2026-09-03T20:58:09Z
 ---
 
 # Add a Three-Value Priority Field the Selector Orders By and the Board Shows
