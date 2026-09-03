@@ -129,7 +129,7 @@ Before the first checkpoint read, working-REQ recovery, selector invocation, or 
 <skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json recover-finalization --discover
 ```
 
-Continue only on typed `success` with every record in ordered `finalizations` carrying empty `blocked_paths` and `reason_codes`. Consume singular `finalization` only as the one-record compatibility projection. A refusal is a blocker to clear, not a stop: judge each `blocked_paths` entry, take the least destructive action that clears it, and re-run the record's exact `verification_argv` (`actions/work-reference.md` → **Recovery Refusals (Step 1)**). Only shared state whose owner the orchestrator cannot decide stops, and that stop names the verb that resolves it. Judgment covers the obstacle, never the finalization: no checkpoint, queue, release, staging, or provenance inference replaces the command.
+Continue only on typed `success` with every record in ordered `finalizations` carrying empty `blocked_paths` and `reason_codes`. Consume singular `finalization` only as the one-record compatibility projection. A refusal is a blocker to clear, not a stop: judge each `blocked_paths` entry, take the least destructive action that clears it, and re-run the record's exact `verification_argv` (`actions/work-reference.md` → **Stuck Runs Hand Off to Judgment (any step)**). Only shared state whose owner the orchestrator cannot decide stops, and that stop names the verb that resolves it. Judgment covers the obstacle, never the finalization: no checkpoint, queue, release, staging, or provenance inference replaces the command.
 
 After that typed success, **read `do-work/CHECKPOINT.md`** (Step 10 → **On session start**): it is Crash Recovery's input, not just resume context.
 
@@ -830,7 +830,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
-| "`recover-finalization` refused, so the run has to stop here" | Judge each blocked path and clear it, then re-run the exact `verification_argv` (`actions/work-reference.md` → **Recovery Refusals (Step 1)**) | The command refuses anything it cannot attribute and has no opinion about what the bytes are; a Finder `.DS_Store` under `do-work/` once parked an entire queue behind that refusal |
+| "`recover-finalization` refused, so the run has to stop here" | Judge each blocked path and clear it, then re-run the exact `verification_argv` (`actions/work-reference.md` → **Stuck Runs Hand Off to Judgment (any step)**) | The command refuses anything it cannot attribute and has no opinion about what the bytes are; a Finder `.DS_Store` under `do-work/` once parked an entire queue behind that refusal |
 | "I'll skip Pre-Flight — the baseline is probably stable" | Run `git status` and the test baseline anyway (Step 5.75) | Pre-existing failures get misattributed to the builder, and pre-existing dirty files can contaminate the repository-wide diff used for qualification and review |
 | "I wrote the test after the code but it fails without it, so this counts as TDD" | For `tdd: true`, write the failing test first and show it RED before the code | Post-hoc tests encode the implementation's quirks; the RED-before-GREEN ordering is the evidence Step 6.5 gates on |
 | "P-A-U is bookkeeping — I'll just tick the boxes" | Do each phase; Step 6.3 audits the diff against the checked boxes | A checked `[UNIFY]` over a diff containing `console.log` is a false claim the qualifier will catch |

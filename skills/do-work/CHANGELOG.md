@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.266.6 — Stuck Runs Hand Off to Judgment (2026-09-03)
+
+The refusal-clearing rule from 0.266.5 was scoped to one command. It is now the general rule for any stuck run: a deterministic refusal is a fact about what the command could prove, and reasoning about its cause is the orchestrator's job, strongest under `do-work run-with-recovery` where ownership is already asserted.
+
+- `actions/work-reference.md` section renamed to **Stuck Runs Hand Off to Judgment (any step)**, leading with the principle: the "no free-form fallback" sentences forbid hand-made mutations, not thinking, and under `run-with-recovery` the run stops only for a destructive or irreversible action.
+- `run-with-recovery` says so at the top of its Steps and in a rationalization row; `run` points at the same rule.
+- Lessons recorded in `_dev/primes/lessons-action-files.md` and `lessons-do-work-cli.md`, with the lessons index token counts refreshed.
+
 ## 0.266.5 — Recovery Refusals Are Cleared, Not Obeyed (2026-09-03)
 
 `do-work run` and `do-work run-with-recovery` used to treat any `recover-finalization` refusal as a full stop before queue selection. The command refuses whatever it cannot attribute byte-for-byte and has no opinion about what the bytes are, so the orchestrator now forms that opinion and clears the blocker itself.
