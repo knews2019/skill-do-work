@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.270.0 — Two-Tier Maintainer Gate (2026-09-03)
+
+The maintainer gate now has two tiers. A bare run is the canonical gate every pipeline step uses; the heavy lanes are the maintainer's to ask for, so the loop stops paying for them on every request.
+
+- `bash _dev/tests/maintainer-verify.sh` runs the toolchain floors, ShellCheck, gofmt, both `go vet` passes, the aggregate contract suite, the board tests and the do-work-cli tests.
+- `--heavy` adds the board's strict JavaScript behavior marker and the browser behavior lane, and stays the only tier that runs them.
+- `--heavy-surfaces` prints the path globs whose changes warrant a heavy run, one per line, so a caller can decide mechanically instead of from prose.
+- `--self-test` now asserts the expected stage list for each tier, including a heavy fixture run and the explicit skip a heavy run prints when Node is missing.
+
 ## 0.269.0 — Reconciled the Parallel Queue Runs (2026-09-03)
 
 Two checkouts worked this queue at once. This merge keeps one implementation of every REQ that both of them built, and renumbers the requests that were minted twice.

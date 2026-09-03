@@ -16,6 +16,61 @@ if [ "$script_directory" = "$script_path" ]; then
 fi
 repo_root="$(cd "$script_directory/../.." && pwd)"
 self_test_exit_root=''
+# Self-test fixture context. Script-scoped rather than local to run_self_test because the
+# per-run assertion helpers below read it; only the self-test path ever assigns it.
+self_test_root=''
+fixture_root=''
+fixture_script=''
+fixture_go_root=''
+with_node_bin=''
+
+# Path globs whose changes warrant a --heavy run, printed by --heavy-surfaces so a caller
+# can decide mechanically. A path belongs here when the only lanes covering it are the ones
+# the default tier does not run: the board's Node and browser probes, and the aggregate's
+# installer/updater probes. Directory-and-suffix globs are deliberately wider than the
+# minimum — an unnecessary heavy run costs minutes, a missed one costs the coverage.
+heavy_surface_globs=(
+  'skills/do-work-board/tools/queue-kanban/web/**'
+  'skills/do-work/tools/*.sh'
+  'skills/do-work/tools/checks/*.sh'
+  'tools/*.sh'
+  'suite/modules.tsv'
+)
+# The board test files that carry those probes have no shared filename token, so they are
+# derived from the probe entry points they call instead of hand-listed: a hand list goes
+# stale the first time a probe moves into a new file, and silently under-reports.
+board_probe_entry_points='runJavaScriptBehaviorProbe|runBrowserBehaviorProbe'
+board_probe_entry_points="$board_probe_entry_points|lookupNodeForJavaScriptProbe"
+board_probe_entry_points="$board_probe_entry_points|lookupBrowserForBehaviorProbe"
+
+print_usage_and_exit() {
+  printf 'usage: %s [--heavy|--heavy-surfaces|--self-test]\n' "$0" >&2
+  exit 2
+}
+
+# The grep runs inside a process substitution, whose exit status nothing can read, so an
+# absent grep and a genuine no-match arrive identically as an empty list. The zero-match
+# failure below is what keeps that from printing a short list a caller would trust.
+print_heavy_surfaces() {
+  local surface_glob
+  local probe_test_file
+  local probe_test_files=()
+
+  while IFS= read -r probe_test_file; do
+    if [ -n "$probe_test_file" ]; then
+      probe_test_files+=("$probe_test_file")
+    fi
+  done < <(cd "$repo_root" && grep -rlE "$board_probe_entry_points" \
+    --include='*_test.go' -- skills/do-work-board/tools/queue-kanban | sort)
+  if [ "${#probe_test_files[@]}" -eq 0 ]; then
+    printf 'maintainer-verify: no board test file calls a Node or browser probe entry point (%s); the heavy surface list cannot be derived\n' \
+      "$board_probe_entry_points" >&2
+    return 1
+  fi
+  for surface_glob in "${heavy_surface_globs[@]}" "${probe_test_files[@]}"; do
+    printf '%s\n' "$surface_glob"
+  done
+}
 
 # Returns 0 when $1 is at or above the floor $2. Compares dot-separated components as
 # integers, so 0.11.0 clears a 0.9.9 floor where a lexical compare would not. A missing
@@ -213,8 +268,9 @@ assert_success_stages() {
   local expected_board_stage='board-test'
   local stage_line
 
-  # With Node present the one board test run carries the strict JavaScript marker, so the
-  # shim records it under a different stage name; there is no separate strict lane.
+  # Only --heavy with Node present carries the strict JavaScript marker, so the shim records
+  # that one board test run under a different stage name; there is no separate strict lane.
+  # Both tiers run the same nine stages — the tier changes the board stage, not the count.
   if [ "$expect_strict" = 'yes' ]; then
     expected_board_stage='board-test-strict'
   fi
@@ -236,23 +292,63 @@ assert_success_stages() {
   fi
 }
 
+# Runs the shimmed fixture and asserts its stage list. The gate arguments after the fourth
+# positional select the tier, so one call covers a whole tier's expected stages.
+run_success_fixture() {
+  local fixture_label="$1"
+  local fixture_path_directory="$2"
+  local expect_strict="$3"
+  local newer_tools_marker="$4"
+  shift 4
+  local fixture_log="$self_test_root/$fixture_label.log"
+  local fixture_output="$self_test_root/$fixture_label.out"
+
+  : > "$fixture_log"
+  if ! PATH="$fixture_path_directory" \
+    QUEUE_KANBAN_BROWSER='' \
+    MAINTAINER_VERIFY_SELFTEST_LOG="$fixture_log" \
+    MAINTAINER_VERIFY_EXPECTED_REPO_ROOT="$fixture_root" \
+    MAINTAINER_VERIFY_SELFTEST_GOROOT="$fixture_go_root" \
+    MAINTAINER_VERIFY_SELFTEST_NEWER_TOOLS="$newer_tools_marker" \
+    /bin/bash "$fixture_script" "$@" > "$fixture_output" 2>&1; then
+    sed 's/^/  /' "$fixture_output" >&2
+    fail_self_test "the $fixture_label fixture exited nonzero"
+    return 1
+  fi
+  assert_success_stages "$fixture_log" "$expect_strict"
+}
+
+# Injects a failure at one stage and requires the gate to carry it out. A stage whose
+# nonzero status the gate swallowed would exit zero here.
+assert_failure_stage() {
+  local stage_name="$1"
+  shift
+  local failure_log="$self_test_root/failure-$stage_name.log"
+  local failure_output="$self_test_root/failure-$stage_name.out"
+
+  : > "$failure_log"
+  if PATH="$with_node_bin" \
+    QUEUE_KANBAN_BROWSER='' \
+    MAINTAINER_VERIFY_SELFTEST_LOG="$failure_log" \
+    MAINTAINER_VERIFY_EXPECTED_REPO_ROOT="$fixture_root" \
+    MAINTAINER_VERIFY_SELFTEST_GOROOT="$fixture_go_root" \
+    MAINTAINER_VERIFY_FAIL_STAGE="$stage_name" \
+    /bin/bash "$fixture_script" "$@" > "$failure_output" 2>&1; then
+    fail_self_test "$stage_name failure exited zero"
+    return 1
+  fi
+  if [ "$stage_name" = 'gofmt-unformatted' ] && \
+    ! grep -q '_dev/tests/fixture-go.go' "$failure_output"; then
+    fail_self_test 'the unformatted-Go failure did not name the offending file'
+    return 1
+  fi
+}
+
 run_self_test() {
-  local self_test_root
-  local fixture_root
-  local fixture_script
-  local fixture_go_root
-  local with_node_bin
   local without_node_bin
   local generic_shim
   local stage_name
-  local success_log
-  local success_output
-  local no_node_log
-  local no_node_output
-  local newer_tools_log
-  local newer_tools_output
-  local failure_log
-  local failure_output
+  local surfaces_output
   local mutated_fixture_script
   local mutation_output
 
@@ -285,78 +381,42 @@ run_self_test() {
   done
   ln -s "$generic_shim" "$fixture_go_root/bin/gofmt"
 
-  success_log="$self_test_root/success.log"
-  success_output="$self_test_root/success.out"
-  : > "$success_log"
-  if ! PATH="$with_node_bin" \
-    QUEUE_KANBAN_BROWSER='' \
-    MAINTAINER_VERIFY_SELFTEST_LOG="$success_log" \
-    MAINTAINER_VERIFY_EXPECTED_REPO_ROOT="$fixture_root" \
-    MAINTAINER_VERIFY_SELFTEST_GOROOT="$fixture_go_root" \
-    /bin/bash "$fixture_script" > "$success_output" 2>&1; then
-    sed 's/^/  /' "$success_output" >&2
-    fail_self_test 'the all-success fixture exited nonzero'
-    return 1
-  fi
-  assert_success_stages "$success_log" yes
-
-  no_node_log="$self_test_root/no-node.log"
-  no_node_output="$self_test_root/no-node.out"
-  : > "$no_node_log"
-  if ! PATH="$without_node_bin" \
-    QUEUE_KANBAN_BROWSER='' \
-    MAINTAINER_VERIFY_SELFTEST_LOG="$no_node_log" \
-    MAINTAINER_VERIFY_EXPECTED_REPO_ROOT="$fixture_root" \
-    MAINTAINER_VERIFY_SELFTEST_GOROOT="$fixture_go_root" \
-    /bin/bash "$fixture_script" > "$no_node_output" 2>&1; then
-    sed 's/^/  /' "$no_node_output" >&2
-    fail_self_test 'the no-Node fixture exited nonzero'
-    return 1
-  fi
-  assert_success_stages "$no_node_log" no
-  if ! grep -q 'SKIP: Node is unavailable; strict JavaScript behavior lane was not run.' "$no_node_output"; then
-    fail_self_test 'the no-Node success path did not print its explicit skip'
+  # The default tier is the gate the loop runs: no strict marker even with Node present, so
+  # the board stage records unstrict and Node presence changes no lane selection.
+  run_success_fixture default "$with_node_bin" no ''
+  # Floors, not exact pins: a toolchain newer than the floor must still pass the default tier.
+  run_success_fixture newer-tools "$with_node_bin" no yes
+  # --heavy is the only tier that carries the strict JavaScript marker.
+  run_success_fixture heavy "$with_node_bin" yes '' --heavy
+  # Without Node the heavy tier drops to the ordinary board run and must say which lane it
+  # gave up, since a silent drop is indistinguishable from a lane that passed.
+  run_success_fixture heavy-no-node "$without_node_bin" no '' --heavy
+  if ! grep -q 'SKIP: Node is unavailable; strict JavaScript behavior lane was not run.' \
+    "$self_test_root/heavy-no-node.out"; then
+    fail_self_test 'the no-Node heavy path did not print its explicit skip'
     return 1
   fi
 
-  newer_tools_log="$self_test_root/newer-tools.log"
-  newer_tools_output="$self_test_root/newer-tools.out"
-  : > "$newer_tools_log"
-  if ! PATH="$with_node_bin" \
-    QUEUE_KANBAN_BROWSER='' \
-    MAINTAINER_VERIFY_SELFTEST_LOG="$newer_tools_log" \
-    MAINTAINER_VERIFY_EXPECTED_REPO_ROOT="$fixture_root" \
-    MAINTAINER_VERIFY_SELFTEST_GOROOT="$fixture_go_root" \
-    MAINTAINER_VERIFY_SELFTEST_NEWER_TOOLS=yes \
-    /bin/bash "$fixture_script" > "$newer_tools_output" 2>&1; then
-    sed 's/^/  /' "$newer_tools_output" >&2
-    fail_self_test 'a toolchain newer than the floor was rejected — these gates are floors, not exact pins'
+  # Against the real script, not the fixture: the derived half of the list is only honest if
+  # it resolves against a tree that actually holds the board's probe test files.
+  surfaces_output="$self_test_root/heavy-surfaces.out"
+  if ! /bin/bash "$script_path" --heavy-surfaces > "$surfaces_output" 2>&1; then
+    sed 's/^/  /' "$surfaces_output" >&2
+    fail_self_test '--heavy-surfaces exited nonzero'
     return 1
   fi
-  assert_success_stages "$newer_tools_log" yes
+  if [ ! -s "$surfaces_output" ]; then
+    fail_self_test '--heavy-surfaces printed nothing; a caller would read that as no path needing a heavy run'
+    return 1
+  fi
 
   for stage_name in \
     go-version shellcheck-version shellcheck-lint gofmt-lint gofmt-unformatted \
-    aggregate board-vet board-test-strict \
+    aggregate board-vet board-test \
     cli-vet cli-test; do
-    failure_log="$self_test_root/failure-$stage_name.log"
-    failure_output="$self_test_root/failure-$stage_name.out"
-    : > "$failure_log"
-    if PATH="$with_node_bin" \
-      MAINTAINER_VERIFY_SELFTEST_LOG="$failure_log" \
-      MAINTAINER_VERIFY_EXPECTED_REPO_ROOT="$fixture_root" \
-      MAINTAINER_VERIFY_SELFTEST_GOROOT="$fixture_go_root" \
-      MAINTAINER_VERIFY_FAIL_STAGE="$stage_name" \
-      /bin/bash "$fixture_script" > "$failure_output" 2>&1; then
-      fail_self_test "$stage_name failure exited zero"
-      return 1
-    fi
-    if [ "$stage_name" = 'gofmt-unformatted' ] && \
-      ! grep -q '_dev/tests/fixture-go.go' "$failure_output"; then
-      fail_self_test 'the unformatted-Go failure did not name the offending file'
-      return 1
-    fi
+    assert_failure_stage "$stage_name"
   done
+  assert_failure_stage board-test-strict --heavy
 
   mutated_fixture_script="$self_test_root/maintainer-verify-mutated.sh"
   sed '/^run_verification()/,$ s/QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1/QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=0/' \
@@ -385,6 +445,7 @@ run_self_test() {
 }
 
 run_verification() {
+  local verification_tier="$1"
   local go_version_output
   local go_version_text
   local shellcheck_version_output
@@ -480,10 +541,17 @@ run_verification() {
     cd "$repo_root/skills/do-work-board/tools/queue-kanban"
     go vet ./...
   )
-  # One board test run. With Node present it carries the strict marker, so the package's
-  # TestMain refuses a green result whose JavaScript probes all skipped; without Node the
-  # probes skip and the run says so. There is no second lane re-running the same probes.
-  if command -v node >/dev/null 2>&1; then
+  # One board test run either way. The default tier runs the package plainly: no strict
+  # marker, so a run whose JavaScript probes all skipped is a legitimate green. --heavy
+  # carries the marker, which makes the package's TestMain refuse a green result whose
+  # probes never executed; without Node the probes skip and the run says so.
+  if [ "$verification_tier" != 'heavy' ]; then
+    printf 'maintainer-verify: queue-kanban uncached tests\n'
+    (
+      cd "$repo_root/skills/do-work-board/tools/queue-kanban"
+      go test -count=1 ./...
+    )
+  elif command -v node >/dev/null 2>&1; then
     printf 'maintainer-verify: queue-kanban uncached tests with strict JavaScript behavior probes\n'
     (
       cd "$repo_root/skills/do-work-board/tools/queue-kanban"
@@ -497,30 +565,33 @@ run_verification() {
       go test -count=1 ./...
     )
   fi
-  # The browser behavior lane, guarded exactly as the Node lane above is: run it when
-  # an engine is present, print an explicit SKIP naming what did not run when it is
-  # not. Either way this script exits 0 — the lane's own zero-probe guard is what
-  # stops a skipped run from being mistaken for a green one when it IS selected.
-  # QUEUE_KANBAN_BROWSER names an engine that is not on PATH under a well-known name.
-  browser_probe_binary=""
-  if [ -n "${QUEUE_KANBAN_BROWSER:-}" ]; then
-    browser_probe_binary="$QUEUE_KANBAN_BROWSER"
-  else
-    for browser_probe_candidate in google-chrome google-chrome-stable chromium chromium-browser chrome; do
-      if command -v "$browser_probe_candidate" >/dev/null 2>&1; then
-        browser_probe_binary="$browser_probe_candidate"
-        break
-      fi
-    done
-  fi
-  if [ -n "$browser_probe_binary" ]; then
-    printf 'maintainer-verify: queue-kanban strict browser behavior lane\n'
-    (
-      cd "$repo_root/skills/do-work-board/tools/queue-kanban"
-      go test -count=1 -run '^TestMaintainerStrictBrowserBehaviorLane$' -v .
-    )
-  else
-    printf 'SKIP: no browser is available; strict browser behavior lane was not run. Set QUEUE_KANBAN_BROWSER to name one.\n'
+  # The browser behavior lane is heavy-only, and inside that tier it is guarded exactly as
+  # the Node lane above is: run it when an engine is present, print an explicit SKIP naming
+  # what did not run when it is not. Either way this script exits 0 — the lane's own
+  # zero-probe guard is what stops a skipped run from being mistaken for a green one when it
+  # IS selected. QUEUE_KANBAN_BROWSER names an engine that is not on PATH under a well-known
+  # name.
+  if [ "$verification_tier" = 'heavy' ]; then
+    browser_probe_binary=""
+    if [ -n "${QUEUE_KANBAN_BROWSER:-}" ]; then
+      browser_probe_binary="$QUEUE_KANBAN_BROWSER"
+    else
+      for browser_probe_candidate in google-chrome google-chrome-stable chromium chromium-browser chrome; do
+        if command -v "$browser_probe_candidate" >/dev/null 2>&1; then
+          browser_probe_binary="$browser_probe_candidate"
+          break
+        fi
+      done
+    fi
+    if [ -n "$browser_probe_binary" ]; then
+      printf 'maintainer-verify: queue-kanban strict browser behavior lane\n'
+      (
+        cd "$repo_root/skills/do-work-board/tools/queue-kanban"
+        go test -count=1 -run '^TestMaintainerStrictBrowserBehaviorLane$' -v .
+      )
+    else
+      printf 'SKIP: no browser is available; strict browser behavior lane was not run. Set QUEUE_KANBAN_BROWSER to name one.\n'
+    fi
   fi
 
   printf 'maintainer-verify: do-work-cli go vet\n'
@@ -537,19 +608,13 @@ run_verification() {
   printf 'Maintainer verification passed.\n'
 }
 
+if [ "$#" -gt 1 ]; then
+  print_usage_and_exit
+fi
 case "${1:-}" in
-  --self-test)
-    if [ "$#" -ne 1 ]; then
-      printf 'usage: %s [--self-test]\n' "$0" >&2
-      exit 2
-    fi
-    run_self_test
-    ;;
-  '')
-    run_verification
-    ;;
-  *)
-    printf 'usage: %s [--self-test]\n' "$0" >&2
-    exit 2
-    ;;
+  --self-test) run_self_test ;;
+  --heavy-surfaces) print_heavy_surfaces ;;
+  --heavy) run_verification heavy ;;
+  '') run_verification fast ;;
+  *) print_usage_and_exit ;;
 esac
