@@ -18,7 +18,7 @@ route: B
 write_set:
   - skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go
 estimate:
-  p50_active_minutes: 25
+  p50_active_minutes: 20
   confidence: medium
   calculated_at: 2026-09-03T11:45:48Z
   basis:
