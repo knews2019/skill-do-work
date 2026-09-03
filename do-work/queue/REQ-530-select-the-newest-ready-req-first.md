@@ -1,6 +1,6 @@
 ---
 id: REQ-530
-title: 'Select the newest ready REQ first'
+title: 'Order ready work by the newest REQ it unblocks'
 status: pending
 created_at: 2026-09-03T10:59:01Z
 user_request: UR-101
@@ -18,7 +18,7 @@ write_set:
   - skills/do-work/actions/work-reference.md
 ---
 
-# Select the Newest Ready REQ First
+# Order Ready Work by the Newest REQ It Unblocks
 
 ## What
 
@@ -61,7 +61,7 @@ Default and UR-expanded selection in `do-work run` picks the oldest ready REQ (l
 **RED prompt/case:** A queue with REQ-811 (pending, no dependencies), REQ-815 (pending, no dependencies), and REQ-816 (pending, `depends_on: [REQ-815]`). Run `do-work-cli next` with no targeting tokens.
 **Why RED now:** REQ-811 is selected because the snapshot is walked in ascending number order and nothing reorders inside the ordinary class.
 **GREEN when:** REQ-815 is selected (it unblocks REQ-816, the newest), REQ-811 is a `FAN-OUT-LIMIT` exclusion; after REQ-815 completes, REQ-816 is selected before REQ-811. A second case with REQ-816 depending on REQ-811 instead selects REQ-811 over the newer REQ-815, which is what distinguishes prerequisite promotion from plain newest-ready-first.
-**Validation:** User confirmed the prerequisite-forward rule at capture (chosen from two options); the RED case is inferred during capture.
+**Validation:** User confirmed. The prerequisite-forward rule was chosen from two options at capture; the RED/GREEN case was confirmed at verify-requests on 2026-09-03.
 
 ## Required Lessons — Dropped for Budget
 
