@@ -1,7 +1,7 @@
 ---
 id: REQ-531
 title: 'Review findings below impact-critical stay in the report'
-status: pending
+status: claimed
 created_at: 2026-09-03T11:42:36Z
 user_request: UR-102
 domain: general
@@ -20,6 +20,7 @@ write_set:
   - skills/do-work/actions/work.md
   - skills/do-work/actions/capture-reference.md
   - _dev/tests/contract-regressions.sh
+claimed_at: 2026-09-03T18:19:18Z
 ---
 
 # Review Findings Below Impact-Critical Stay in the Report
