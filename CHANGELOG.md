@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.266.2 — Rollback Ownership Follows the Created Object (2026-09-03)
+
+Transaction rollback now proves it is deleting the same file it created, so two writers racing the same destination can no longer have the loser delete the winner's work.
+
+- Ownership starts at the successful exclusive create, not at the plan: a losing writer that gets `EEXIST` records nothing and rolls back over nothing.
+- A created path is bound to its inode **and** its content digest, because deleting and recreating a file in the same directory commonly reuses the inode.
+- A created path that is simply absent is a completed removal, not a replaced object, so a clean rollback no longer reports `committed_state_risk`.
+- The BKB scaffold records ownership at the create syscall, so a write that fails halfway can no longer leave a file rollback never sees.
+
 ## 0.266.1 — Finalization Accepts Its Own Uncommitted Request Edits (2026-09-03)
 
 Serial finalization no longer refuses the working REQ it spent the whole run editing, which is what kept `run` and `run-with-recovery` replaying the same refusal at startup.

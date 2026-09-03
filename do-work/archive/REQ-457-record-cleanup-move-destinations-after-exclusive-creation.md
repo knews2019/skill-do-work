@@ -1,7 +1,7 @@
 ---
 id: REQ-457
 title: '[impact-critical] Record cleanup move destinations after exclusive creation'
-status: claimed
+status: completed
 created_at: 2026-08-31T20:49:21Z
 user_request: UR-085
 domain: backend
@@ -37,6 +37,9 @@ estimate:
     - async lifecycle behavior
     - cross-route regression gates
     - full-suite verification
+completed_at: 2026-09-03T01:30:00Z
+commit: b877eb6
+release_at: 2026-09-03T01:30:00Z
 ---
 
 # Make Rollback Ownership Follow the Created Filesystem Object

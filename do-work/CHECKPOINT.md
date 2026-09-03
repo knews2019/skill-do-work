@@ -52,4 +52,3 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-457: [impact-critical] Record cleanup move destinations after exclusive creation — claimed 2026-09-02T23:27:17Z — writer: vm:/home/user/skill-do-work
