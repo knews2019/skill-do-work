@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.268.1 — Cancelling an Install Now Says It Was Cancelled (2026-09-03)
+
+Pressing Ctrl-C at the suite installer's confirmation prompt sometimes reported success. Nothing was installed either way, but the exit status and the JSON result said the run had gone fine, so anything reading them could not tell a cancelled install from a completed one.
+
+- Interrupting at the prompt now reliably reports exit 130 instead of depending on which part of the program reached the exit first.
+- Interrupting a partly-written install reports 130 too, after its recovery finishes; the result still describes the rollback in full.
+- A signal that arrives once the install has already finished and verified keeps the ordinary exit 0 and its normal result, rather than reporting a failure for work that succeeded.
+
 ## 0.268.0 — Release Targets Must Prove They Are Yours (2026-09-03)
 
 Releasing used to decide whether a target belonged to your project by checking the directory's name against a list — `vendor`, `node_modules`, `.claude/skills`, `generated`. Anything spelled differently got through, so a version file inside `third_party/`, `dist/`, or any cache directory was treated as yours to bump.

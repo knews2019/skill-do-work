@@ -52,4 +52,3 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-525: Block the install confirmation before signalling it — claimed 2026-09-03T11:44:30Z — writer: vm:/home/user/skill-do-work

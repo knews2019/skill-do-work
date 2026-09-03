@@ -1,7 +1,7 @@
 ---
 id: REQ-525
 title: 'Block the install confirmation before signalling it'
-status: claimed
+status: completed
 created_at: 2026-09-03T00:35:00Z
 user_request: UR-085
 domain: testing
@@ -27,6 +27,9 @@ estimate:
     - 1 subsystem involved
     - 4 acceptance criteria
     - async lifecycle behavior
+completed_at: 2026-09-03T13:05:00Z
+commit: 8c06caa
+release_at: 2026-09-03T13:05:00Z
 ---
 
 # Block the Install Confirmation Before Signalling It
