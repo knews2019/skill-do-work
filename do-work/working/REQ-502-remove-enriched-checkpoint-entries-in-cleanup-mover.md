@@ -1,7 +1,7 @@
 ---
 id: REQ-502
 title: 'Review fix: Remove enriched checkpoint entries in cleanup mover'
-status: pending
+status: claimed
 domain: backend
 created_at: 2026-09-02T14:26:49Z
 user_request: UR-083
@@ -14,6 +14,7 @@ suggested_spec: bug-fix
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 sweep: true
 sweep_key: checkpoint-section-blind-line-editing
+claimed_at: 2026-09-03T20:58:01Z
 ---
 
 # Review Fix: Remove Enriched Checkpoint Entries in Cleanup Mover
