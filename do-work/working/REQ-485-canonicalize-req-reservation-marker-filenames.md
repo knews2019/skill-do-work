@@ -168,3 +168,12 @@ The two allocators independently emit fixed-six markers, while capture and defer
 **What was done:** All current writers now use canonical minimum-three-digit stored-ID marker basenames. Exact numeric readers accept canonical and legacy widths for max scans, collisions, defer folds, and cleanup without admitting suffix junk; cleanup still revalidates each concrete alias at its final removal boundary. Builder commit: `271aa8ae28660cfaa3a23b5181478e9e103895e4`.
 
 **Builder verification:** Both module test/vet suites, changed-package reruns, contract regressions, formatting, and diff hygiene passed. Full evidence and migration risks are recorded in `do-work/runs/work-2026-09-03-214500/REQ-485-handback.md`.
+
+## Review
+
+**Verdict:** Request changes — one remediation pass required before testing/finalization.
+
+- **Important — impact-user-visible:** The new reservation basename parsers trim surrounding whitespace before applying the anchored matcher, so a concrete filename such as ` REQ-482 ` is incorrectly admitted as numeric reservation authority despite the exact whole-basename contract.
+- **Critical — impact-critical:** Defer fold obtains an alias path from rooted directory enumeration but subsequently uses pathname `os.ReadFile`; a matching marker symlink or post-enumeration swap can therefore follow outside the validated reservation directory instead of being refused as an unsafe reservation object.
+
+**Required remediation:** Pin literal whitespace-adjacent malformed names and linked fold markers RED, remove filename trimming from all exact reservation parsers, and acquire fold marker bytes through a rooted, no-follow, identity-checked observation while keeping any matching object collision-authoritative for create flows.
