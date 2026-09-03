@@ -6,7 +6,7 @@ priority: now
 created_at: 2026-09-03T02:00:00Z
 user_request: UR-086
 domain: backend
-prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
+prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md, _dev/primes/prime-action-files.md]
 tdd: true
 suggested_spec: bug-fix
 depends_on: [REQ-458]
@@ -17,9 +17,27 @@ related: [REQ-458]
 review_generated: true
 addendum_to: REQ-458
 write_set:
+  - skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_git.go
+  - skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_git_test.go
   - skills/do-work/actions/cleanup.md
   - skills/do-work/docs/cleanup-guide.md
+  - skills/do-work/actions/work-reference.md
 claimed_at: 2026-09-03T23:34:31Z
+route: C
+planning_at: 2026-09-03T23:39:35Z
+exploration_at: 2026-09-03T23:39:35Z
+estimate:
+  p50_active_minutes: 45
+  confidence: medium
+  calculated_at: 2026-09-03T23:39:35Z
+  basis:
+    - Route C
+    - 5-file write set
+    - 2 subsystems involved
+    - 5 acceptance criteria
+    - dependency depth 1
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Teach Cleanup Pass 5 That Merged Is Not Finished
@@ -69,3 +87,52 @@ Depends on REQ-458, which establishes the evidence and the corrected verify cate
 
 ---
 *Source: REQ-458 independent review finding F2.*
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** The captured two-document scope cannot fix the executable cleanup path. The behavioral correction spans Go cleanup planning/tests plus every shipped Pass 5 and crash-recovery restatement.
+
+**Planning:** Required
+
+## Plan
+
+1. Add RED fixtures for clean merged worktrees and branch-only leftovers whose exact REQ is still in `do-work/working/`, while preserving automatic removal for positively settled archived REQs.
+2. Discover current request-tree evidence at Pass 5 execution time, parse the owner only from the anchored `worktree-agent-REQ-NNN-...` name, and classify working/settled/unknown without a liveness signal.
+3. Admit automatic removal only when the candidate is clean, merged, and positively settled; route unfinished or unknown candidates through the existing consent-required finding without mutation.
+4. Update cleanup action, guide, and crash-recovery restatements to the same three-fact rule, then run focused cleanup tests, contract checks, vet, and the canonical gate.
+
+**Plan validation:** All detailed requirements map to these four tasks. The executable change and its exact tests are necessary to satisfy the user-visible behavior; prose changes only align the alternate consumers. No new force path or liveness mechanism is introduced.
+
+*Generated from the Plan-agent findings*
+
+## Exploration
+
+- `internal/cleanup/cleanup_git.go` currently decides from cleanliness and mergedness alone, then mechanically removes the candidate without consulting request-tree state.
+- Existing cleanup fixtures encode the old premise by removing clean merged REQ worktrees with no request evidence.
+- REQ-458 established the three facts that make residue fixable: merged branch, clean worktree, and a positively identified REQ outside `do-work/working/`; absent or ambiguous identity is unknown, not finished.
+- `actions/cleanup.md`, `docs/cleanup-guide.md`, and `actions/work-reference.md` all restate the merged-only rule and must move together under the alternate-writer contract.
+- The existing explicit `--discard-worktree` consent path already owns forced deletion; this REQ does not add force or widen automatic removal.
+
+*Generated from the Explore-agent findings*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_git.go` (modify) — require exact settled-REQ evidence before automatic removal
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_git_test.go` (modify) — active, settled, unknown, and branch-only RED/GREEN fixtures
+- `skills/do-work/actions/cleanup.md` (modify) — Pass 5 mechanics and consent wording
+- `skills/do-work/docs/cleanup-guide.md` (modify) — user-facing three-fact rule
+- `skills/do-work/actions/work-reference.md` (modify) — align crash-recovery cleanup semantics
+
+**Files I will NOT touch:** queue-kanban verify code, cleanup command registration, or the explicit-consent force path.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] A clean merged `worktree-agent-*` candidate whose REQ remains in `do-work/working/` is preserved and reported as unfinished.
+- [ ] Cleanup and verify derive finishedness from the same anchored REQ id and request-tree evidence.
+- [ ] No heartbeat, lock, PID, mtime, claim registry, or time threshold is introduced.
+- [ ] Clean merged residue with a positively settled REQ is still removed mechanically.
+- [ ] Cleanup action, guide, and crash-recovery reference state the same rule and retain the existing consent gate.

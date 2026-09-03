@@ -17,6 +17,21 @@ related: [REQ-513, REQ-515, REQ-516, REQ-517]
 batch: recovery-never-traps
 write_set: [skills/do-work/tools/do-work-cli/internal/resultmodel/, skills/do-work/tools/do-work-cli/internal/finalization/, skills/do-work/tools/do-work-cli/internal/requeststate/]
 claimed_at: 2026-09-03T23:34:31Z
+route: C
+planning_at: 2026-09-03T23:37:51Z
+exploration_at: 2026-09-03T23:37:51Z
+estimate:
+  p50_active_minutes: 50
+  confidence: low
+  calculated_at: 2026-09-03T23:37:51Z
+  basis:
+    - Route C
+    - 8-file write set
+    - 3 subsystems involved
+    - 5 acceptance criteria
+    - dependency depth 1
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Refusals never name themselves as the fix
@@ -89,3 +104,54 @@ See `do-work/user-requests/UR-099/input.md` for complete verbatim input.
 
 ---
 *Source: maintainer conversation of 2026-09-02, item A2 of "how can I update the orchestrator to not end up in a trap like this?", captured by UR-099.*
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** The invariant spans the shared result model, command runtime, lifecycle refusals, and finalization recovery. It also folds the REQ-517 end-to-end lifecycle fixture into the same behavior boundary.
+
+**Planning:** Required
+
+## Plan
+
+1. Add RED tests that enumerate refusal results and reject a non-empty `next_argv` whose verb is the invoking command, including the current `FINALIZATION-LIFECYCLE-APPLY` fixture.
+2. Put one invariant-enforcement boundary in the shared result/runtime path so all command families are checked consistently and a self-referential refusal becomes a REQ-scoped set-aside with an empty remedy.
+3. Correct existing lifecycle and finalization refusal builders to name an external resolving verb where one is known, preserving same-command `verification_argv`.
+4. Add the folded claim → implementation → completion → recovery regression, then run focused package tests, vet, and the canonical gate.
+
+**Plan validation:** All five detailed requirements map to these four tasks. The shared enforcement step owns the output contract; package-specific edits only supply truthful alternate remedies or fixture coverage. No action-owned mutation is driven by an untyped aggregate.
+
+*Generated inline under the Plan-agent fallback*
+
+## Exploration
+
+- `commandruntime.Run` assigns `Command` only after handlers return, immediately before rendering, while `resultmodel.NormalizeResult` currently normalizes nil collections without validating remedy identity.
+- `requeststate.refusalResult` mechanically points back to its own transition; finalization failures and discovery refusals mechanically reuse recovery argv as both `next_argv` and `verification_argv`.
+- `finalization_pipeline_dirt_test.go` already owns the REQ-513 claim-to-finalization regression shape and is the narrow place to add the folded REQ-517 lifecycle fixture.
+- The implementation must distinguish a recommended next action from a same-command verification rerun; only the former is forbidden.
+
+*Generated inline under the Explore-agent fallback*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modify) — enforce and normalize the refusal remedy invariant
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modify) — table-driven result-contract coverage
+- `skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime.go` (modify) — apply the invoking-command identity before rendering
+- `skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime_test.go` (modify) — runtime set-aside and exit behavior coverage
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go` (modify) — provide truthful finalization refusal remedies
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_pipeline_dirt_test.go` (modify) — folded claim-to-recovery regression
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go` (modify) — replace self-referential lifecycle remedies
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go` (modify) — request-state refusal invariant coverage
+
+**Files I will NOT touch:** action prose, shell contract predicates, or queue-selection behavior.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] Every refusal with a non-empty next command points to a different verb than the invocation.
+- [ ] Same-command verification remains allowed and read-only.
+- [ ] A refusal with no truthful alternate remedy becomes REQ-scoped set-aside evidence with empty `next_argv` and a stop reason.
+- [ ] The REQ-456 self-loop fixture is red before the fix and all refusal builders pass after it.
+- [ ] The folded serial claim → implementation → complete → recovery fixture reaches `cleanup_complete`.

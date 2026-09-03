@@ -15,8 +15,23 @@ batch: validate-feedback-2026-09-03
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
-write_set: [skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_unix.go, skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_commands.go, skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_test.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go]
+write_set: [skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe.go, skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_unix.go, skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_windows.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_commands.go, skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_test.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go]
 claimed_at: 2026-09-03T23:34:31Z
+route: C
+planning_at: 2026-09-03T23:38:54Z
+exploration_at: 2026-09-03T23:38:54Z
+estimate:
+  p50_active_minutes: 50
+  confidence: medium
+  calculated_at: 2026-09-03T23:38:54Z
+  basis:
+    - Route C
+    - 7-file write set
+    - 2 subsystems involved
+    - 4 acceptance criteria
+    - async lifecycle behavior
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Run Blocked Probes From the Repository Root and Propagate Interruptions
@@ -74,3 +89,54 @@ None.
 
 ---
 *Source: `do-work validate-feedback` triage of 2026-09-03, Findings 1, 2, and 3 (Accept); full blocks preserved in UR-103 input.md.*
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** The fix is localized to `nextselection`, but it changes signal ordering, process-group cleanup, typed interruption propagation, process exit status, and cross-platform build parity.
+
+**Planning:** Required
+
+## Plan
+
+1. Introduce a typed probe-interruption result and make the platform runner accept the selected repository root.
+2. Set the Unix command directory and install signal notification before process launch while preserving owned-group termination and reaping.
+3. Adapt `handleNext` with a root-capturing closure, then make selection short-circuit on typed interruption with a non-success result and `128+signal` exit override.
+4. Add RED/GREEN coverage for root-relative probes, real interruption cleanup, selection short-circuiting, timeout/launch compatibility, and Windows signature parity.
+
+**Plan validation:** Each requirement maps to one task. The output consumer keeps per-record probe status for ordinary failures while typed interruption bypasses candidate evaluation and controls the command result directly. Seven files are required because the build-tagged Windows runner must match the Unix signature.
+
+*Generated from the Plan-agent findings*
+
+## Exploration
+
+- `commandruntime` resolves `--repo-root` without changing the caller's current directory; `handleNext` currently passes bare `RunBlockedProbe`.
+- The Unix runner starts the child before installing `signal.Notify`, and returns `128+signal, nil`; `evaluateCandidate` therefore records an ordinary failed probe and continues.
+- `CommandResult.ExitCodeOverride` already carries process-style interruption status, so the result model and runtime need no change.
+- The existing `ProbeRunner` type can remain stable by passing a closure that captures `ExecutionContext.RepositoryRoot`.
+- `blocked_probe_windows.go` is a required signature-parity touch omitted from the captured write set.
+
+*Generated from the Explore-agent findings*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe.go` (modify) — typed interruption and root-aware runner contract
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_unix.go` (modify) — cwd, pre-launch signal registration, cleanup, and typed return
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_windows.go` (modify) — platform signature parity
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go` (modify) — interruption short-circuit and selection outcome
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_commands.go` (modify) — bind repository root and exit override
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_test.go` (modify) — root and real-signal regression coverage
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go` (modify) — no-further-candidate interruption coverage
+
+**Files I will NOT touch:** commandruntime, resultmodel, or unrelated selector packages.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] Relative blocked probes execute from the selected repository root even when the caller is elsewhere.
+- [ ] SIGINT, SIGHUP, and SIGTERM stop selection, select no later REQ, and exit with `128+signal` after cleanup.
+- [ ] Signal notification is installed before child launch.
+- [ ] Existing child-tree termination and reaping remain intact.
+- [ ] Timeout 124 and launch-failure 125 retain their current result shapes.
