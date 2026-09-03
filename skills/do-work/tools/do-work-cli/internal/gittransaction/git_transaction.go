@@ -249,13 +249,13 @@ func (recorder *MutationRecorder) RecordTouched(path string) error {
 // invocation. An absent path records no binding, and rollback then preserves
 // whatever it finds there instead of removing it by pathname.
 func (recorder *MutationRecorder) captureCreatedObject(root *os.Root, path string) error {
-	info, digest, err := rootedRegularSnapshot(root, path)
+	info, digest, err := rootedCreatedTargetSnapshot(root, path)
 	if isMissingPathError(err) {
 		delete(recorder.createdObjects, path)
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("identity-record created target %q: %w", path, err)
+		return fmt.Errorf("identity-record created object: %w", err)
 	}
 	recorder.createdObjects[path] = createdObjectIdentity{info: info, digest: digest}
 	return nil
@@ -263,25 +263,53 @@ func (recorder *MutationRecorder) captureCreatedObject(root *os.Root, path strin
 
 // revalidateCreatedObjects proves every other already-created path still holds the object
 // this invocation published there, so a swap surfaces at the next mutation point instead of
-// only at rollback.
+// only at rollback. Paths are checked in sorted order so two simultaneous swaps always
+// report the same path.
 func (recorder *MutationRecorder) revalidateCreatedObjects(root *os.Root, excludedPath string) error {
-	for path, identity := range recorder.createdObjects {
+	recordedPaths := make([]string, 0, len(recorder.createdObjects))
+	for path := range recorder.createdObjects {
+		recordedPaths = append(recordedPaths, path)
+	}
+	sort.Strings(recordedPaths)
+	for _, path := range recordedPaths {
 		if path == excludedPath {
 			continue
 		}
-		if !createdObjectStillOwned(root, path, identity) {
+		if !createdObjectStillOwned(root, path, recorder.createdObjects[path]) {
 			return fmt.Errorf("created target %q changed after publication", path)
 		}
 	}
 	return nil
 }
 
-func createdObjectStillOwned(root *os.Root, path string, identity createdObjectIdentity) bool {
+// createdObjectOwnership says what stands at a created path relative to the object this
+// invocation published there. Absence is its own answer: rollback wants the path gone, so
+// nothing standing there is nothing to preserve and nothing to remove.
+type createdObjectOwnership int
+
+const (
+	createdObjectAbsent createdObjectOwnership = iota
+	createdObjectOwned
+	createdObjectReplaced
+)
+
+func inspectCreatedObject(root *os.Root, path string, identity createdObjectIdentity) createdObjectOwnership {
 	if root == nil {
-		return false
+		return createdObjectReplaced
 	}
-	info, digest, err := rootedRegularSnapshot(root, path)
-	return err == nil && os.SameFile(identity.info, info) && identity.digest == digest
+	info, digest, err := rootedCreatedTargetSnapshot(root, path)
+	switch {
+	case isMissingPathError(err):
+		return createdObjectAbsent
+	case err == nil && os.SameFile(identity.info, info) && identity.digest == digest:
+		return createdObjectOwned
+	default:
+		return createdObjectReplaced
+	}
+}
+
+func createdObjectStillOwned(root *os.Root, path string, identity createdObjectIdentity) bool {
+	return inspectCreatedObject(root, path, identity) == createdObjectOwned
 }
 
 func (recorder *MutationRecorder) RecordCreated(path string) error {
@@ -298,10 +326,12 @@ func (recorder *MutationRecorder) RecordCreated(path string) error {
 		return fmt.Errorf("open transaction root: %w", rootError)
 	}
 	defer root.Close()
-	if captureError := recorder.captureCreatedObject(root, normalized); captureError != nil {
-		return captureError
+	// The binding is captured last so a failing directory capture cannot leave a recorded
+	// identity behind for a creation this call never finished registering.
+	if err := recorder.captureCreatedDirectoryIdentities(); err != nil {
+		return err
 	}
-	return recorder.captureCreatedDirectoryIdentities()
+	return recorder.captureCreatedObject(root, normalized)
 }
 
 func (recorder *MutationRecorder) captureCreatedDirectoryIdentities() error {
@@ -1061,7 +1091,7 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 		}
 		published, recorded := recorder.publishedTracked[path]
 		if recorded && !trackedPublicationStillOwned(root, path, published) {
-			rollback.Errors = append(rollback.Errors, "created target changed after publication; preserved replacement: "+path)
+			rollback.Errors = append(rollback.Errors, "created target changed after tracked publication; preserved replacement: "+path)
 			continue
 		}
 		identity, identityRecorded := recorder.createdObjects[path]
@@ -1076,8 +1106,13 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 			rollback.Errors = append(rollback.Errors, "created target was not identity-recorded; preserved object: "+path)
 			continue
 		}
-		if !createdObjectStillOwned(root, path, identity) {
-			rollback.Errors = append(rollback.Errors, "created target changed after publication; preserved replacement: "+path)
+		switch inspectCreatedObject(root, path, identity) {
+		case createdObjectAbsent:
+			// Already gone, which is the state this loop is trying to reach. The transaction
+			// removing its own creation is a completed removal, never a foreign replacement.
+			continue
+		case createdObjectReplaced:
+			rollback.Errors = append(rollback.Errors, "created target changed after created-object capture; preserved replacement: "+path)
 			continue
 		}
 		if err := root.Remove(filepath.FromSlash(path)); err != nil && !os.IsNotExist(err) {
@@ -1207,15 +1242,23 @@ func privateStateStillOriginal(root *os.Root, state targetState) bool {
 }
 
 func rootedRegularSnapshot(root *os.Root, path string) (os.FileInfo, [sha256.Size]byte, error) {
-	info, digest, _, err := rootedOpenSnapshot(root, path, "")
+	info, digest, _, err := rootedOpenSnapshot(root, path, "private target", "")
+	return info, digest, err
+}
+
+// rootedCreatedTargetSnapshot is rootedRegularSnapshot for a path this invocation created.
+// It differs only in how its failures name the target: a created cleanup or publication
+// target is not a private target.
+func rootedCreatedTargetSnapshot(root *os.Root, path string) (os.FileInfo, [sha256.Size]byte, error) {
+	info, digest, _, err := rootedOpenSnapshot(root, path, "created target", "")
 	return info, digest, err
 }
 
 func rootedRegularPreimage(root *os.Root, path string) (os.FileInfo, [sha256.Size]byte, []byte, error) {
-	return rootedOpenSnapshot(root, path, "after-private-preimage-lstat")
+	return rootedOpenSnapshot(root, path, "private target", "after-private-preimage-lstat")
 }
 
-func rootedOpenSnapshot(root *os.Root, path, hookStage string) (os.FileInfo, [sha256.Size]byte, []byte, error) {
+func rootedOpenSnapshot(root *os.Root, path, targetDescription, hookStage string) (os.FileInfo, [sha256.Size]byte, []byte, error) {
 	var empty [sha256.Size]byte
 	if root == nil {
 		return nil, empty, nil, errors.New("rooted filesystem handle is unavailable")
@@ -1223,30 +1266,30 @@ func rootedOpenSnapshot(root *os.Root, path, hookStage string) (os.FileInfo, [sh
 	rootPath := filepath.FromSlash(path)
 	lstatInfo, err := root.Lstat(rootPath)
 	if err != nil {
-		return nil, empty, nil, fmt.Errorf("inspect private target %q: %w", path, err)
+		return nil, empty, nil, fmt.Errorf("inspect %s %q: %w", targetDescription, path, err)
 	}
 	if !lstatInfo.Mode().IsRegular() {
-		return nil, empty, nil, fmt.Errorf("private target %q is not a regular file", path)
+		return nil, empty, nil, fmt.Errorf("%s %q is not a regular file", targetDescription, path)
 	}
 	if hookStage != "" && privateTransactionTestHook != nil {
 		privateTransactionTestHook(hookStage, path)
 	}
 	file, err := root.Open(rootPath)
 	if err != nil {
-		return nil, empty, nil, fmt.Errorf("open private target %q: %w", path, err)
+		return nil, empty, nil, fmt.Errorf("open %s %q: %w", targetDescription, path, err)
 	}
 	defer file.Close()
 	openedInfo, err := file.Stat()
 	if err != nil || !openedInfo.Mode().IsRegular() || !os.SameFile(lstatInfo, openedInfo) {
-		return nil, empty, nil, fmt.Errorf("private target %q changed while it was opened", path)
+		return nil, empty, nil, fmt.Errorf("%s %q changed while it was opened", targetDescription, path)
 	}
 	data, err := io.ReadAll(file)
 	if err != nil {
-		return nil, empty, nil, fmt.Errorf("read private target %q: %w", path, err)
+		return nil, empty, nil, fmt.Errorf("read %s %q: %w", targetDescription, path, err)
 	}
 	finalInfo, err := file.Stat()
 	if err != nil || !os.SameFile(openedInfo, finalInfo) || openedInfo.Size() != finalInfo.Size() || !openedInfo.ModTime().Equal(finalInfo.ModTime()) || int64(len(data)) != finalInfo.Size() {
-		return nil, empty, nil, fmt.Errorf("private target %q changed while it was read", path)
+		return nil, empty, nil, fmt.Errorf("%s %q changed while it was read", targetDescription, path)
 	}
 	return finalInfo, sha256.Sum256(data), data, nil
 }
