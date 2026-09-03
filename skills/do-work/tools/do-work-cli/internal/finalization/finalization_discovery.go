@@ -1666,6 +1666,6 @@ func discoveryRefusal(repositoryRoot, code, reason string, paths []string) resul
 	record := resultmodel.FinalizationResult{Phase: string(PhaseDiscoveryRefused), BlockedPaths: append([]string(nil), paths...), ReasonCodes: []string{code}, NextArgv: verification, VerificationArgv: verification, CollectionArgv: collection}
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, RepositoryRoot: repositoryRoot, Findings: []resultmodel.CommandFinding{{
 		Code: code, Severity: resultmodel.SeverityError, AffectedPaths: paths, Evidence: []string{reason}, Fixability: resultmodel.FixabilityRefused,
-		AutomationStopReason: "legacy finalization evidence is ambiguous", NextArgv: verification, VerificationArgv: verification,
+		AutomationStopReason: "legacy finalization evidence is ambiguous", NextArgv: collection, VerificationArgv: verification,
 	}}, Finalization: &record, Finalizations: []resultmodel.FinalizationResult{record}}
 }

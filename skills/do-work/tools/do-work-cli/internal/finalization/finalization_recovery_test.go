@@ -341,6 +341,22 @@ func TestDiscoveryRefusalRendersCompleteOrderedTypedEvidence(t *testing.T) {
 	}
 }
 
+func TestDiscoveryRefusalNamesInventoryAsTheResolvingVerb(t *testing.T) {
+	repositoryRoot := newFinalizationRepository(t)
+	result := discoveryRefusal(repositoryRoot, "FINALIZATION-DISCOVERY-AMBIGUOUS", "shared state has no exact owner", []string{"do-work/CHECKPOINT.md"})
+	if result.Outcome != resultmodel.OutcomeRefused || len(result.Findings) != 1 {
+		t.Fatalf("discovery refusal = %#v", result)
+	}
+	want := []string{"do-work-cli", "--format", "json", "uncommitted-inventory"}
+	if !reflect.DeepEqual(result.Findings[0].NextArgv, want) {
+		t.Fatalf("next argv = %#v, want inventory resolver %#v", result.Findings[0].NextArgv, want)
+	}
+	verification := []string{"do-work-cli", "--format", "json", "recover-finalization", "--discover"}
+	if !reflect.DeepEqual(result.Findings[0].VerificationArgv, verification) {
+		t.Fatalf("verification argv = %#v, want %#v", result.Findings[0].VerificationArgv, verification)
+	}
+}
+
 func TestRecoverFinalizationResumesEveryDurablePhaseExactlyOnce(t *testing.T) {
 	phases := []Phase{PhasePrepared, PhaseLifecycleApplied, PhaseReleaseApplied, PhasePrimaryCommitted, PhaseMetadataCommitted, PhaseVerified, PhaseCleanupComplete}
 	for _, interruptedPhase := range phases {
