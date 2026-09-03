@@ -34,8 +34,8 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 			return refusedPlan(plan, "RELEASE-PATH-UNSAFE", pathError.Error(), nil, target.Path)
 		}
 		if !release.MaintainerRelease {
-			if gap := releaseTargetOwnershipGap(repositoryRoot, path, false); gap != "" {
-				return refusedPlan(plan, "RELEASE-TARGET-OWNERSHIP-UNVERIFIED", ownershipRefusalReason(path, gap), nil, path)
+			if gap := releaseTargetOwnershipGap(repositoryRoot, path, false); !gap.ownershipProven() {
+				return refusedPlan(plan, "RELEASE-TARGET-OWNERSHIP-UNVERIFIED", gap.refusalReason(path), nil, path)
 			}
 		}
 		if target.OldVersion != oldVersion || target.NewVersion != newVersion {
@@ -74,8 +74,8 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 			return refusedPlan(plan, "RELEASE-PATH-UNSAFE", pathError.Error(), nil, changelog.Path)
 		}
 		if !release.MaintainerRelease {
-			if gap := releaseTargetOwnershipGap(repositoryRoot, path, changelog.Create); gap != "" {
-				return refusedPlan(plan, "RELEASE-TARGET-OWNERSHIP-UNVERIFIED", ownershipRefusalReason(path, gap), nil, path)
+			if gap := releaseTargetOwnershipGap(repositoryRoot, path, changelog.Create); !gap.ownershipProven() {
+				return refusedPlan(plan, "RELEASE-TARGET-OWNERSHIP-UNVERIFIED", gap.refusalReason(path), nil, path)
 			}
 		}
 		newBytes, _, newError := readPayload(repositoryRoot, changelog.NewPayload)
@@ -173,14 +173,30 @@ func parseSemver(value string) ([3]int, bool) {
 	return result, true
 }
 
-func ownershipRefusalReason(path, gap string) string {
-	return fmt.Sprintf("consumer release target %s is not proven project-owned: %s; only maintainer_release may mutate a suite package's own metadata", path, gap)
+// releaseOwnershipGap names the ownership declaration a release target is
+// missing and the action that supplies it. The zero value means ownership is
+// proven. The remedy travels with the gap rather than being appended to every
+// refusal, because `maintainer_release` resolves exactly one of these gaps: a
+// caller whose target is merely uncommitted or ignored needs to commit it or
+// drop the ignore rule, and offering the maintainer escape hatch there would
+// steer them past the fix their gap actually needs.
+type releaseOwnershipGap struct {
+	MissingEvidence string
+	Remedy          string
+}
+
+func (gap releaseOwnershipGap) ownershipProven() bool {
+	return gap.MissingEvidence == ""
+}
+
+func (gap releaseOwnershipGap) refusalReason(path string) string {
+	return fmt.Sprintf("consumer release target %s is not proven project-owned: %s; %s", path, gap.MissingEvidence, gap.Remedy)
 }
 
 // releaseTargetOwnershipGap proves a consumer release target is a project-owned
 // source instead of inferring that from the absence of known dependency
 // directory names. It returns the ownership evidence that is missing or
-// contradicted, or "" when ownership is established.
+// contradicted, or the zero gap when ownership is established.
 //
 // Two declarations the repository itself owns supply the proof, and both are
 // required:
@@ -188,38 +204,63 @@ func ownershipRefusalReason(path, gap string) string {
 //   - Git's index is the repository's own statement of what its sources are, so
 //     a target that must already exist has to be tracked. A target the release
 //     creates cannot be in the index yet, so its attestation comes from the
-//     nearest ancestor directory that already exists — that directory must hold
-//     tracked sources — plus `.gitignore`, the repository's own statement of
-//     what is not source, not excluding the path.
+//     directory it is created in: that directory must already exist and the
+//     index must claim a source inside it, and `.gitignore` — the repository's
+//     own statement of what is not source — must not exclude the path. The
+//     attestation deliberately does not walk further up the tree, because the
+//     repository root always holds tracked sources: a root-anchored walk
+//     attests every not-yet-built `dist/`, cache or install tree, which is the
+//     state a real repository is in before those trees exist.
 //   - No directory between the repository root and the target's parent may carry
 //     a `SKILL.md` package marker. That marker is how an installed suite package
 //     declares it owns its own subtree, and is the same discriminator
 //     `repositorymodel.FindRepositoryRoot` and queue-kanban's repo-root walk use
-//     to tell an install apart from a directory merely named `do-work`.
+//     to tell an install apart from a directory merely named `do-work`. It is
+//     checked for created and existing targets alike.
 //
 // Neither half is sufficient alone. A committed vendored package satisfies the
 // index claim and is exposed only by its marker; a distribution output or cache
 // tree carries no marker and is exposed only by the index refusing to claim it.
 // When Git cannot answer at all the target stays unproven and the release
 // refuses, which is the fail-closed direction.
-func releaseTargetOwnershipGap(repositoryRoot, path string, willCreate bool) string {
+func releaseTargetOwnershipGap(repositoryRoot, path string, willCreate bool) releaseOwnershipGap {
 	if marker := enclosingPackageMarker(repositoryRoot, path); marker != "" {
-		return fmt.Sprintf("%s declares an installed package that owns this subtree", marker)
+		return releaseOwnershipGap{
+			MissingEvidence: fmt.Sprintf("%s declares an installed package that owns this subtree", marker),
+			Remedy:          "only maintainer_release may mutate a suite package's own metadata",
+		}
 	}
 	if !willCreate {
 		if !gitPathTracked(repositoryRoot, path) {
-			return "the repository does not track it, so Git does not attest it as a project source"
+			return releaseOwnershipGap{
+				MissingEvidence: "the repository does not track it, so Git does not attest it as a project source",
+				Remedy:          "commit the target so Git attests it as a project source, then release again",
+			}
 		}
-		return ""
+		return releaseOwnershipGap{}
 	}
 	if gitPathIgnored(repositoryRoot, path) {
-		return "the repository's own ignore rules exclude it from its sources"
+		return releaseOwnershipGap{
+			MissingEvidence: "the repository's own ignore rules exclude it from its sources",
+			Remedy:          "drop the ignore rule covering the target, or release a target the repository claims as a source",
+		}
 	}
-	ancestor := nearestExistingAncestorDirectory(repositoryRoot, path)
-	if !gitDirectoryHoldsTrackedSources(repositoryRoot, ancestor) {
-		return fmt.Sprintf("the repository tracks no source in %s, so the new target's location is unattested", ancestor)
+	parentDirectory := releaseTargetParentDirectory(path)
+	parentDescription := releaseDirectoryDescription(parentDirectory)
+	locationRemedy := fmt.Sprintf("commit a project source in %s first, or create the target where the repository already tracks sources", parentDescription)
+	if !directoryExists(repositoryRoot, parentDirectory) {
+		return releaseOwnershipGap{
+			MissingEvidence: fmt.Sprintf("its parent directory %s does not exist, so no project directory attests the new target's location", parentDescription),
+			Remedy:          locationRemedy,
+		}
 	}
-	return ""
+	if !gitDirectoryHoldsTrackedSources(repositoryRoot, parentDirectory) {
+		return releaseOwnershipGap{
+			MissingEvidence: fmt.Sprintf("the repository tracks no source in %s, so the new target's location is unattested", parentDescription),
+			Remedy:          locationRemedy,
+		}
+	}
+	return releaseOwnershipGap{}
 }
 
 // enclosingPackageMarker returns the repository-relative `SKILL.md` of the
@@ -227,6 +268,13 @@ func releaseTargetOwnershipGap(repositoryRoot, path string, willCreate bool) str
 // repository root and the target's parent carries one. The repository root
 // itself is never examined: the marker means a nested unit owns its own
 // subtree, and a repository that is itself a package still owns its own files.
+//
+// Any filesystem entry at that name counts. A legitimate install cannot carry a
+// `SKILL.md` directory — both `suitemanifest.ValidateSuite` and the install
+// transaction require a non-empty regular file — and on a case-insensitive
+// filesystem an ancestor spelled `skill.md` is seen as a marker too. Both cases
+// refuse a release that could have been allowed rather than admitting one that
+// should not be, which is the direction to err in here.
 func enclosingPackageMarker(repositoryRoot, path string) string {
 	segments := strings.Split(filepath.ToSlash(path), "/")
 	directory := ""
@@ -237,30 +285,56 @@ func enclosingPackageMarker(repositoryRoot, path string) string {
 			directory += "/" + segment
 		}
 		marker := directory + "/SKILL.md"
-		if info, statError := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(marker))); statError == nil && !info.IsDir() {
+		if _, statError := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(marker))); statError == nil {
 			return marker
 		}
 	}
 	return ""
 }
 
-// nearestExistingAncestorDirectory returns the repository-relative directory
-// closest to path that already exists, or "." for the repository root.
-func nearestExistingAncestorDirectory(repositoryRoot, path string) string {
-	directory := filepath.ToSlash(filepath.Dir(filepath.FromSlash(path)))
-	for directory != "." && directory != "/" {
-		if info, statError := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(directory))); statError == nil && info.IsDir() {
-			return directory
-		}
-		directory = filepath.ToSlash(filepath.Dir(filepath.FromSlash(directory)))
+// releaseTargetParentDirectory returns the repository-relative directory the
+// target sits directly in, or "." when the target sits at the repository root.
+func releaseTargetParentDirectory(path string) string {
+	parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(path)))
+	if parent == "/" {
+		return "."
 	}
-	return "."
+	return parent
 }
 
+func releaseDirectoryDescription(directory string) string {
+	if directory == "." {
+		return "the repository root"
+	}
+	return directory
+}
+
+func directoryExists(repositoryRoot, directory string) bool {
+	info, statError := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(directory)))
+	return statError == nil && info.IsDir()
+}
+
+// gitDirectoryHoldsTrackedSources reports whether the index claims at least one
+// path inside directory. An index entry equal to the directory itself — a
+// submodule gitlink, or a tracked symlink standing where a directory appears to
+// be — is not a source the repository keeps in that directory and attests
+// nothing about a target created beneath it.
 func gitDirectoryHoldsTrackedSources(repositoryRoot, directory string) bool {
-	command := exec.Command("git", "-C", repositoryRoot, "ls-files", "--", directory)
+	command := exec.Command("git", "-C", repositoryRoot, "ls-files", "-z", "--", directory)
 	output, commandError := command.Output()
-	return commandError == nil && len(bytes.TrimSpace(output)) > 0
+	if commandError != nil {
+		return false
+	}
+	insidePrefix := ""
+	if directory != "." {
+		insidePrefix = directory + "/"
+	}
+	for _, entry := range strings.Split(string(output), "\x00") {
+		if entry != "" && entry != directory && strings.HasPrefix(entry, insidePrefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func gitPathIgnored(repositoryRoot, path string) bool {
