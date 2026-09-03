@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.272.0 — Noncritical Findings Stay in Their Reports (2026-09-03)
+
+Reviews and builds were creating maintenance as quickly as the queue could drain it. Noncritical findings now stay where they were recorded, while only critical production, data-loss, or security issues enter the queue automatically.
+
+- Every noncritical review or builder finding keeps its impact token and ends with `→ report only`; follow-up summaries list critical destinations only.
+- A maintainer can promote a report-only finding explicitly with `do-work capture`, quoting the complete finding line as the source.
+- The test-hygiene and generation-depth consent exceptions no longer create automatic noncritical work, and alternate writers, crew guidance, and user guides teach the same boundary.
+- The regression file replaces stale routing pins without growing beyond its 8,479-line pre-change ceiling.
+
 ## 0.271.0 — Fast Tests Stay Fast; Heavy Tests Wait for Consent (2026-09-03)
 
 Routine orchestration now runs only the fast tier, measures every test file, and refuses a green result when any file reaches 30 seconds. Coverage that needs the heavy tier waits without stopping unrelated queue work.
