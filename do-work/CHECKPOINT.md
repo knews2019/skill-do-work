@@ -21,7 +21,6 @@ session_depth: light
 
 - REQ-512: [impact-critical] Review fix: Complete legacy finalization semantic ownership — claimed 2026-09-03T22:25:28Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-539: Cut the contract file to the incident core and split the aggregate into fast and heavy — claimed 2026-09-03T23:11:12Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 
