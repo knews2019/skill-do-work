@@ -256,3 +256,117 @@ func TestBuildAnswerPlanRefusesArchivedReply(t *testing.T) {
 		t.Fatalf("refusal=%#v", plan.Refusal)
 	}
 }
+
+// TestSummaryContainmentDecidesByMarkdownStructureCondition pins the condition, not a prefix
+// list: a one-line summary needs canonical containment exactly when a Markdown reader could
+// take it for the document's own structure. Each row names the structural class it stands
+// for — the strings are fixtures for that class, never the definition of the accepted set.
+func TestSummaryContainmentDecidesByMarkdownStructureCondition(t *testing.T) {
+	structuralClasses := []struct {
+		class   string
+		summary string
+	}{
+		{"ATX heading", "## injected heading"},
+		{"setext heading underline, equals run", "==="},
+		{"setext heading underline, single equals", "="},
+		{"thematic break, hyphens", "---"},
+		{"thematic break, asterisks", "***"},
+		{"thematic break, underscores", "___"},
+		{"thematic break, spaced asterisks", "* * *"},
+		{"thematic break, spaced hyphens", "- - -"},
+		{"thematic break, long hyphen run", "-----"},
+		{"frontmatter fence, TOML form", "+++"},
+		{"fenced code, backticks", "```go"},
+		{"fenced code, tildes", "~~~"},
+		{"block quote", "> quoted answer"},
+		{"bullet list marker, hyphen", "- first option"},
+		{"bare bullet list marker, hyphen", "-"},
+		{"bare bullet list marker, asterisk", "*"},
+		{"bare bullet list marker, plus", "+"},
+		{"task list checkbox", "- [ ] a question the board would adopt"},
+		{"ordered list marker, period", "1. first option"},
+		{"bare ordered list marker, period", "1."},
+		{"bare ordered list marker, paren", "1)"},
+		{"ordered list marker, multi-digit", "1234."},
+		{"HTML block", "<div>"},
+		{"link reference definition", "[label]: https://example.test"},
+		{"footnote definition", "[^1]: a footnote"},
+		{"table row", "| option | cost |"},
+		{"table delimiter row", "|---|---|"},
+		{"indented code block, spaces", "    four spaces of code"},
+		{"indented block, tab", "\ttab-indented"},
+		{"directive or admonition fence", ":::note"},
+		{"math block fence", "$$"},
+	}
+	proseClasses := []struct {
+		class   string
+		summary string
+	}{
+		{"plain prose", "keep the default"},
+		{"prose with an internal hyphen", "use the x-height metric"},
+		{"prose opening with a digit", "42 requests remain"},
+		{"prose opening with a digit and a later period", "3 files changed. ship it"},
+		{"prose carrying a delimiter mid-line", "use --- as the separator"},
+		{"prose carrying backticks mid-line", "run `go test` first"},
+		{"prose whose first word carries a special character", "don't fence it in"},
+		{"non-ASCII prose", "Überschrift bleibt"},
+	}
+	for _, structural := range structuralClasses {
+		t.Run("structural/"+structural.class, func(t *testing.T) {
+			if !summaryRequiresContainment(structural.summary) {
+				t.Fatalf("%s accepted inline: %q", structural.class, structural.summary)
+			}
+		})
+	}
+	for _, prose := range proseClasses {
+		t.Run("prose/"+prose.class, func(t *testing.T) {
+			if summaryRequiresContainment(prose.summary) {
+				t.Fatalf("%s forced into containment: %q", prose.class, prose.summary)
+			}
+		})
+	}
+}
+
+// TestBuildAnswerPlanCarriesStructuralSummaryContainedAndProseInline proves the condition at
+// the caller seam for a class the earlier prefix list missed, and that neither branch loses a
+// byte: the structural summary lands contained and verbatim, the prose summary lands inline.
+func TestBuildAnswerPlanCarriesStructuralSummaryContainedAndProseInline(t *testing.T) {
+	t.Run("thematic break refuses an inline summary", func(t *testing.T) {
+		root := t.TempDir()
+		writeFixture(t, root, "do-work/queue/REQ-1-test.md", []byte("---\nid: REQ-1\nstatus: pending-answers\n---\n## Open Questions\n\n- [ ] Choice?\n"), 0o644)
+		plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: &AnswerManifest{RequestPath: "do-work/queue/REQ-1-test.md", ExpectedStatus: "pending-answers", Mode: "clarify", Answers: []QuestionAnswer{{ExpectedLine: "- [ ] Choice?", Outcome: "answered", Summary: "***"}}}}, time.Now())
+		if plan.Refusal == nil || plan.Refusal.Code != "ANSWER-RAW-PAYLOAD-REQUIRED" {
+			t.Fatalf("thematic-break summary accepted inline: %#v", plan.Refusal)
+		}
+	})
+
+	t.Run("thematic break lands contained and lossless", func(t *testing.T) {
+		root := t.TempDir()
+		writeFixture(t, root, "do-work/queue/REQ-1-test.md", []byte("---\nid: REQ-1\nstatus: pending-answers\n---\n## Open Questions\n\n- [ ] Choice?\n"), 0o644)
+		writeFixture(t, root, "payload/thematic-break", []byte("***"), 0o644)
+		plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: &AnswerManifest{RequestPath: "do-work/queue/REQ-1-test.md", ExpectedStatus: "pending-answers", Mode: "clarify", Answers: []QuestionAnswer{{ExpectedLine: "- [ ] Choice?", Outcome: "answered", Summary: "***", RawAnswer: &PayloadFile{SourcePath: "payload/thematic-break"}}}}}, time.Now())
+		if plan.Refusal != nil {
+			t.Fatalf("matching raw payload refused: %#v", plan.Refusal)
+		}
+		contents := plan.Mutations[0].Contents
+		if !bytes.Contains(contents, []byte("→ See contained answer note")) {
+			t.Fatalf("structural summary not replaced by the contained label: %s", contents)
+		}
+		if bytes.Contains(contents, []byte("→ ***")) || !bytes.Contains(contents, []byte("> ***")) {
+			t.Fatalf("thematic break not safely contained: %s", contents)
+		}
+	})
+
+	t.Run("prose stays inline and verbatim", func(t *testing.T) {
+		root := t.TempDir()
+		writeFixture(t, root, "do-work/queue/REQ-1-test.md", []byte("---\nid: REQ-1\nstatus: pending-answers\n---\n## Open Questions\n\n- [ ] Choice?\n"), 0o644)
+		summary := "use the x-height metric, not --- as a separator"
+		plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: &AnswerManifest{RequestPath: "do-work/queue/REQ-1-test.md", ExpectedStatus: "pending-answers", Mode: "clarify", Answers: []QuestionAnswer{{ExpectedLine: "- [ ] Choice?", Outcome: "answered", Summary: summary}}}}, time.Now())
+		if plan.Refusal != nil {
+			t.Fatalf("plain prose summary refused: %#v", plan.Refusal)
+		}
+		if !bytes.Contains(plan.Mutations[0].Contents, []byte("→ "+summary)) {
+			t.Fatalf("prose summary not written inline verbatim: %s", plan.Mutations[0].Contents)
+		}
+	})
+}

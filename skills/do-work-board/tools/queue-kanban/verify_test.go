@@ -674,6 +674,20 @@ func TestVerifyClassifiesWorktreeLeftoversByMergeState(t *testing.T) {
 	runGitInFixture(t, repoRoot, "worktree", "add", "--quiet", "-b", "my-own-feature",
 		filepath.Join(worktreeParent, "my-own-feature"))
 
+	// Both merged leftovers name a REQ that reached the archive. REQ-458 made
+	// merged-ness necessary and not sufficient, so "finished" is now read from
+	// the request index rather than assumed: an id the board has never seen is
+	// unknowable, and routes to state-unknown instead of to removable residue.
+	// These files supply that second axis, which is what keeps merge state the
+	// axis this test's assertions discriminate on.
+	for _, archivedRequest := range []struct{ requestId, fileName string }{
+		{"REQ-003", "REQ-003-merged-live.md"},
+		{"REQ-004", "REQ-004-merged-branch.md"},
+	} {
+		writeFixtureFile(t, repoRoot, "do-work/archive/"+archivedRequest.fileName,
+			"---\nid: "+archivedRequest.requestId+"\nstatus: completed\ntitle: finished work\nuser_request: UR-086\ncompleted_at: 2026-08-30T10:00:00Z\n---\n")
+	}
+
 	report, verifyError := runVerifyProbes(repoRoot, time.Now())
 	if verifyError != nil {
 		t.Fatalf("runVerifyProbes: %v", verifyError)
@@ -744,6 +758,296 @@ func TestVerifyReportsAnUndeterminedMergeStateSeparately(t *testing.T) {
 	if report.FixableCount() != 0 {
 		t.Errorf("FixableCount = %d, want 0:\n%s", report.FixableCount(), renderVerifyReport(report))
 	}
+}
+
+// mergeFixtureBranchIntoIntegration merges a builder branch into the repo-root
+// checkout, which is what makes `git merge-base --is-ancestor <branch> HEAD`
+// answer "merged". Setup only.
+func mergeFixtureBranchIntoIntegration(t *testing.T, repoRoot string, branchName string) {
+	t.Helper()
+	runGitInFixture(t, repoRoot, "merge", "--no-ff", "--no-edit", "--quiet", branchName)
+}
+
+// assertNotAdvertisedAsMechanicallyFixable holds the whole claim REQ-458 is
+// about, for one leftover: present, not fixable, and — because the marker the
+// board prints and the promise the remedy makes are two separate surfaces —
+// neither the `[fixable]` routing nor the "nothing is lost" sentence appears.
+func assertNotAdvertisedAsMechanicallyFixable(t *testing.T, report VerifyReport, category string, leftoverName string) VerifyFinding {
+	t.Helper()
+	renderedReport := renderVerifyReport(report)
+	findings := findingsMentioning(report, category)
+	if len(findings) != 1 {
+		t.Fatalf("got %d %s findings, want 1:\n%s", len(findings), category, renderedReport)
+	}
+	finding := findings[0]
+	if !strings.Contains(finding.Detail, leftoverName) {
+		t.Errorf("the finding must name the worktree it is about, got: %s", finding.Detail)
+	}
+	if finding.Fixable {
+		t.Errorf("%s must not be marked fixable — cleanup cannot resolve it mechanically", category)
+	}
+	if len(findingsMentioning(report, verifyCategoryMergedWorktreeLeftover)) != 0 {
+		t.Errorf("a merged branch tip alone must not classify this as removable residue:\n%s", renderedReport)
+	}
+	if report.FixableCount() != 0 {
+		t.Errorf("FixableCount = %d, want 0:\n%s", report.FixableCount(), renderedReport)
+	}
+	// "cleanup can fix" is the board's marker for Fixable (web/board-cards.js);
+	// the rendered report spells the same routing this way. Neither may appear.
+	if strings.Contains(renderedReport, "fixable: run do-work cleanup") {
+		t.Errorf("the report must not route the user to cleanup for this finding:\n%s", renderedReport)
+	}
+	if strings.Contains(finding.Remedy, "nothing is lost") {
+		t.Errorf("the remedy must not claim nothing is lost, got: %s", finding.Remedy)
+	}
+	if strings.Contains(finding.Remedy, "cleanup can fix") {
+		t.Errorf("the remedy must not advertise cleanup as the fix, got: %s", finding.Remedy)
+	}
+	return finding
+}
+
+// REQ-412's real shape: the builder's branch was merged, but its worktree still
+// holds uncommitted implementation edits. Merged-ness proves the COMMITS are
+// contained in HEAD, never that the working tree is disposable — and cleanup
+// Pass 5's `git worktree remove` runs without --force, so it would refuse this
+// worktree outright. Advertising it as mechanically fixable contradicts the very
+// command the remedy names.
+func TestVerifyDoesNotAdvertiseADirtyMergedWorktreeAsFixable(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	const leftoverName = "worktree-agent-REQ-412-dirty-after-merge"
+	builderWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, leftoverName)
+	commitFixtureWork(t, builderWorktree, "builder-output.txt")
+	mergeFixtureBranchIntoIntegration(t, repoRoot, leftoverName)
+
+	// An ordinary source-file edit, uncommitted and outside do-work/, so this is
+	// the dirtiness question and not the "state stays home" probe.
+	writeFixtureFile(t, builderWorktree, "builder-output.txt", "builder work, still being edited\n")
+
+	// The REQ reached the archive, so finishedness is established and the dirt is
+	// the only thing standing between this worktree and mechanical removal — which
+	// is what this test is about. REQ-458's classifier reads finishedness before
+	// cleanliness, so a fixture with no REQ file at all would be answering the
+	// earlier question (an id the board never saw) instead of this one.
+	writeFixtureFile(t, repoRoot, "do-work/archive/REQ-412-dirty-after-merge.md",
+		"---\nid: REQ-412\nstatus: completed\ntitle: finished work\nuser_request: UR-086\ncompleted_at: 2026-08-30T10:00:00Z\n---\n")
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	finding := assertNotAdvertisedAsMechanicallyFixable(t, report, verifyCategoryWorktreePresentUncommittedWork, leftoverName)
+	// The two non-fixable merged cases must be tellable apart by the reader who
+	// has to act on one of them, so each remedy names its own evidence.
+	if !strings.Contains(finding.Remedy, "uncommitted") {
+		t.Errorf("the remedy must name the uncommitted changes as what blocks removal, got: %s", finding.Remedy)
+	}
+	if findings := findingsMentioning(report, verifyCategoryWorktreeWroteQueueState); len(findings) != 0 {
+		t.Errorf("an ordinary source edit is not a queue-state write — got %d findings:\n%s", len(findings), renderVerifyReport(report))
+	}
+}
+
+// REQ-436's real shape: clean worktree, merged branch, and a REQ still sitting in
+// do-work/working/ before review and any remediation. The run owns the worktree
+// until its REQ reaches its final path, so this is present-and-non-fixable rather
+// than residue. The evidence is where the REQ file is, not whether any process is
+// alive — REQ-073 forbids asking that.
+func TestVerifyDoesNotAdvertiseAMergedWorktreeOfAnInFlightRequestAsFixable(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	const leftoverName = "worktree-agent-REQ-436-still-claimed"
+	builderWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, leftoverName)
+	commitFixtureWork(t, builderWorktree, "builder-output.txt")
+	mergeFixtureBranchIntoIntegration(t, repoRoot, leftoverName)
+
+	// Claimed recently enough that the stale-claim probe stays quiet: the subject
+	// here is where the REQ file sits, not how long it has sat there.
+	verifyInstant := time.Now().UTC()
+	writeFixtureFile(t, repoRoot, "do-work/working/REQ-436-still-claimed.md",
+		"---\nid: REQ-436\nstatus: claimed\ntitle: still in flight\nuser_request: UR-086\ncreated_at: "+
+			verifyInstant.Add(-2*time.Hour).Format("2006-01-02T15:04:05Z")+"\nclaimed_at: "+
+			verifyInstant.Add(-30*time.Minute).Format("2006-01-02T15:04:05Z")+"\n---\n")
+
+	report, verifyError := runVerifyProbes(repoRoot, verifyInstant)
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	finding := assertNotAdvertisedAsMechanicallyFixable(t, report, verifyCategoryWorktreePresentRunInFlight, leftoverName)
+	if !strings.Contains(finding.Remedy, "REQ-436") {
+		t.Errorf("the remedy must name the REQ whose run still owns this worktree, got: %s", finding.Remedy)
+	}
+	if !strings.Contains(finding.Remedy, "do-work/working/") {
+		t.Errorf("the remedy must name the evidence it used, got: %s", finding.Remedy)
+	}
+}
+
+// The other half of the correction: making merged-ness necessary must not make it
+// useless. A clean worktree whose REQ has reached the archive is genuinely
+// finished residue, and stays the one state cleanup Pass 5 resolves mechanically.
+func TestVerifyStillAdvertisesCleanFinishedMergedResidueAsFixable(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	const leftoverName = "worktree-agent-REQ-413-finished"
+	builderWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, leftoverName)
+	commitFixtureWork(t, builderWorktree, "builder-output.txt")
+	mergeFixtureBranchIntoIntegration(t, repoRoot, leftoverName)
+
+	// The REQ reached its final path — present in the tree, and not in working/.
+	writeFixtureFile(t, repoRoot, "do-work/archive/REQ-413-finished.md",
+		"---\nid: REQ-413\nstatus: completed\ntitle: finished work\nuser_request: UR-086\ncompleted_at: 2026-08-30T10:00:00Z\n---\n")
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	renderedReport := renderVerifyReport(report)
+	mergedFindings := findingsMentioning(report, verifyCategoryMergedWorktreeLeftover)
+	if len(mergedFindings) != 1 {
+		t.Fatalf("got %d merged-leftover findings, want 1:\n%s", len(mergedFindings), renderedReport)
+	}
+	if !strings.Contains(mergedFindings[0].Detail, leftoverName) {
+		t.Errorf("the finding must name the worktree it is about, got: %s", mergedFindings[0].Detail)
+	}
+	if !mergedFindings[0].Fixable {
+		t.Errorf("clean merged residue from finished work is exactly what cleanup Pass 5 resolves mechanically:\n%s", renderedReport)
+	}
+	if !strings.Contains(renderedReport, "fixable: run do-work cleanup") {
+		t.Errorf("the report must still route genuinely fixable residue to cleanup:\n%s", renderedReport)
+	}
+	for _, unwantedCategory := range []string{
+		verifyCategoryWorktreePresentUncommittedWork,
+		verifyCategoryWorktreePresentRunInFlight,
+		verifyCategoryWorktreePresentStateUnknown,
+	} {
+		if findings := findingsMentioning(report, unwantedCategory); len(findings) != 0 {
+			t.Errorf("finished residue must not be reported as %s — got %d findings:\n%s", unwantedCategory, len(findings), renderedReport)
+		}
+	}
+}
+
+// assertRemovabilityProbeSkipped pins the half of the fail-safe the category
+// alone does not cover: an unestablished state must also be REPORTED as
+// unverified. Without this line the report reads as "checked and clean" for a
+// question nobody answered, and the state-unknown remedy points the reader at a
+// skipped-probes list that never names the read that failed.
+func assertRemovabilityProbeSkipped(t *testing.T, report VerifyReport, leftoverName string, evidenceFragments ...string) {
+	t.Helper()
+	var matchingProbes []string
+	for _, skippedProbe := range report.SkippedProbes {
+		if strings.Contains(skippedProbe, "worktree removability probe for "+leftoverName) {
+			matchingProbes = append(matchingProbes, skippedProbe)
+		}
+	}
+	if len(matchingProbes) != 1 {
+		t.Fatalf("got %d skipped removability probes for %s, want 1:\n%s",
+			len(matchingProbes), leftoverName, renderVerifyReport(report))
+	}
+	for _, evidenceFragment := range evidenceFragments {
+		if !strings.Contains(matchingProbes[0], evidenceFragment) {
+			t.Errorf("the skipped probe must name %q as the read that failed, got: %s",
+				evidenceFragment, matchingProbes[0])
+		}
+	}
+}
+
+// The defect REQ-458's review reproduced twice at the CLI: a merged, clean
+// worktree whose REQ id the board has never seen printed as fixable residue,
+// with a remedy asserting the REQ "has left do-work/working/" — which verify had
+// not read. Absence is not archival. The id may name a REQ that was never
+// written, was renamed, or sits where the walk reports it as a stray, and none
+// of those says the run that created the worktree finished.
+func TestVerifyDoesNotAdvertiseAMergedWorktreeOfARequestTheBoardNeverSawAsFixable(t *testing.T) {
+	const leftoverName = "worktree-agent-REQ-777-unknown"
+	for _, fixtureCase := range []struct {
+		name             string
+		plantRequestFile func(t *testing.T, repoRoot string)
+	}{
+		{
+			name:             "no REQ file anywhere in the tree",
+			plantRequestFile: func(*testing.T, string) {},
+		},
+		{
+			// The board already warns about this shape on its own
+			// (stray-req-file): a REQ parked outside queue/working/archive never
+			// reaches the request index, so its `status: claimed` is unreadable
+			// here no matter what it says.
+			name: "the REQ file is parked outside the scanned sections",
+			plantRequestFile: func(t *testing.T, repoRoot string) {
+				writeFixtureFile(t, repoRoot, "do-work/user-requests/UR-086/REQ-777-unknown.md",
+					"---\nid: REQ-777\nstatus: claimed\ntitle: parked outside the queue\nuser_request: UR-086\n---\n")
+			},
+		},
+	} {
+		t.Run(fixtureCase.name, func(t *testing.T) {
+			repoRoot := newWorktreeFixtureRepo(t)
+			worktreeParent := t.TempDir()
+
+			builderWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, leftoverName)
+			commitFixtureWork(t, builderWorktree, "builder-output.txt")
+			mergeFixtureBranchIntoIntegration(t, repoRoot, leftoverName)
+			fixtureCase.plantRequestFile(t, repoRoot)
+
+			report, verifyError := runVerifyProbes(repoRoot, time.Now())
+			if verifyError != nil {
+				t.Fatalf("runVerifyProbes: %v", verifyError)
+			}
+			assertNotAdvertisedAsMechanicallyFixable(t, report, verifyCategoryWorktreePresentStateUnknown, leftoverName)
+			assertRemovabilityProbeSkipped(t, report, leftoverName, "REQ-777")
+		})
+	}
+}
+
+// The first path into the fail-safe: a name that follows the worktree-agent-*
+// convention but carries no REQ id, so there is no request to look up at all.
+func TestVerifyDoesNotAdvertiseAMergedWorktreeWithoutARequestIdAsFixable(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	const leftoverName = "worktree-agent-hotfix-without-an-id"
+	builderWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, leftoverName)
+	commitFixtureWork(t, builderWorktree, "builder-output.txt")
+	mergeFixtureBranchIntoIntegration(t, repoRoot, leftoverName)
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	assertNotAdvertisedAsMechanicallyFixable(t, report, verifyCategoryWorktreePresentStateUnknown, leftoverName)
+	assertRemovabilityProbeSkipped(t, report, leftoverName, "carries no REQ-NNN id")
+}
+
+// The third path: the REQ is on the board and archived, but `git status` inside
+// the worktree cannot answer, so cleanliness is unestablished. Deleting the
+// worktree directory produces exactly that — `git worktree list` still reports
+// the worktree (nothing has pruned it), while a status run in a path that is not
+// there fails.
+func TestVerifyDoesNotAdvertiseAMergedWorktreeWithAnUnreadableStatusAsFixable(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	const leftoverName = "worktree-agent-REQ-778-status-unreadable"
+	builderWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, leftoverName)
+	commitFixtureWork(t, builderWorktree, "builder-output.txt")
+	mergeFixtureBranchIntoIntegration(t, repoRoot, leftoverName)
+
+	// Archived, so the run is genuinely finished: the ONLY unestablished fact
+	// here is whether the worktree is clean.
+	writeFixtureFile(t, repoRoot, "do-work/archive/REQ-778-status-unreadable.md",
+		"---\nid: REQ-778\nstatus: completed\ntitle: finished work\nuser_request: UR-086\ncompleted_at: 2026-08-30T10:00:00Z\n---\n")
+
+	if removeError := os.RemoveAll(builderWorktree); removeError != nil {
+		t.Fatalf("remove worktree directory: %v", removeError)
+	}
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	assertNotAdvertisedAsMechanicallyFixable(t, report, verifyCategoryWorktreePresentStateUnknown, leftoverName)
+	assertRemovabilityProbeSkipped(t, report, leftoverName, "git status")
 }
 
 // writeFixtureFile writes one file under a checkout, creating parents. Used to

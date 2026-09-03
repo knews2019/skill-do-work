@@ -2,6 +2,24 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.266.3 — Active Worktrees Are No Longer Called Leftovers (2026-09-03)
+
+`do-work verify` used to tell you an active builder's worktree was safe to delete. A merged branch proves the commits are safe; it says nothing about the worktree, and verify was reading that one fact as both.
+
+- A merged branch whose worktree holds uncommitted work now reports as present and non-fixable — cleanup's own non-forced removal would have refused it anyway.
+- A clean merged worktree whose REQ is still in `do-work/working/` belongs to a run that has not finished, and is no longer called residue.
+- Anything the probes cannot establish — an unreadable `git status`, a REQ id the board never saw — reports as present with a skipped-probe line, instead of quietly reading as clean.
+- `verify`'s worktree probes pass `--no-optional-locks`, so inspecting a builder's worktree no longer rewrites its git index.
+
+## 0.266.2 — Rollback Ownership Follows the Created Object (2026-09-03)
+
+Transaction rollback now proves it is deleting the same file it created, so two writers racing the same destination can no longer have the loser delete the winner's work.
+
+- Ownership starts at the successful exclusive create, not at the plan: a losing writer that gets `EEXIST` records nothing and rolls back over nothing.
+- A created path is bound to its inode **and** its content digest, because deleting and recreating a file in the same directory commonly reuses the inode.
+- A created path that is simply absent is a completed removal, not a replaced object, so a clean rollback no longer reports `committed_state_risk`.
+- The BKB scaffold records ownership at the create syscall, so a write that fails halfway can no longer leave a file rollback never sees.
+
 ## 0.266.1 — Finalization Accepts Its Own Uncommitted Request Edits (2026-09-03)
 
 Serial finalization no longer refuses the working REQ it spent the whole run editing, which is what kept `run` and `run-with-recovery` replaying the same refusal at startup.

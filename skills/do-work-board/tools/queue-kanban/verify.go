@@ -15,27 +15,33 @@ import (
 // Verify probe categories. Each finding carries one so callers (and tests) can
 // name a probe instead of matching report prose.
 const (
-	verifyCategoryVersionChangelogMismatch      = "version-changelog-mismatch"
-	verifyCategoryChangelogVersionNotAhead      = "changelog-version-not-ahead"
-	verifyCategoryReusedChangelogTitle          = "reused-changelog-title"
-	verifyCategoryDuplicateRequestId            = "duplicate-req-id"
-	verifyCategoryStructurallyDamagedRequest    = "structurally-damaged-req"
-	verifyCategoryUnrecognizedRequestStatus     = "unrecognized-req-status"
-	verifyCategoryMergedWorktreeLeftover        = "merged-worktree-leftover"
-	verifyCategoryUnmergedWorktreeLeftover      = "unmerged-worktree-leftover"
-	verifyCategoryUndeterminedWorktreeLeftover  = "worktree-merge-state-undetermined"
-	verifyCategoryWorktreeWroteQueueState       = "worktree-wrote-queue-state"
-	verifyCategoryWorktreeCommittedQueueState   = "worktree-committed-queue-state"
-	verifyCategoryCheckpointGhostRequest        = "checkpoint-names-missing-req"
-	verifyCategoryClaimNeedsAttention           = "claim-needs-attention"
-	verifyCategoryStrandedFinishedRequest       = "stranded-finished-req"
-	verifyCategoryStrayRequestFile              = "stray-req-file"
-	verifyCategoryAssignedElsewhereClaimedHere  = "assigned-elsewhere-claimed-here"
-	verifyCategoryArchivedUserRequestLiveMember = "ur-archived-with-live-member"
-	verifyCategoryCompletionAnomaly             = "completion-anomaly"
-	verifyCategoryTimestampOrdering             = "timestamp-ordering"
-	verifyCategoryCalibrationLogMismatch        = "calibration-log-mismatch"
-	verifyCategoryCalibrationRowUnreconcilable  = "calibration-row-unreconcilable"
+	verifyCategoryVersionChangelogMismatch     = "version-changelog-mismatch"
+	verifyCategoryChangelogVersionNotAhead     = "changelog-version-not-ahead"
+	verifyCategoryReusedChangelogTitle         = "reused-changelog-title"
+	verifyCategoryDuplicateRequestId           = "duplicate-req-id"
+	verifyCategoryStructurallyDamagedRequest   = "structurally-damaged-req"
+	verifyCategoryUnrecognizedRequestStatus    = "unrecognized-req-status"
+	verifyCategoryMergedWorktreeLeftover       = "merged-worktree-leftover"
+	verifyCategoryUnmergedWorktreeLeftover     = "unmerged-worktree-leftover"
+	verifyCategoryUndeterminedWorktreeLeftover = "worktree-merge-state-undetermined"
+	// The three states in which a worktree-agent-* worktree is PRESENT rather
+	// than leftover: its branch is merged, but something the repository records
+	// says the worktree itself is not disposable. None of them is fixable.
+	verifyCategoryWorktreePresentUncommittedWork = "worktree-present-uncommitted-work"
+	verifyCategoryWorktreePresentRunInFlight     = "worktree-present-run-in-flight"
+	verifyCategoryWorktreePresentStateUnknown    = "worktree-present-state-unknown"
+	verifyCategoryWorktreeWroteQueueState        = "worktree-wrote-queue-state"
+	verifyCategoryWorktreeCommittedQueueState    = "worktree-committed-queue-state"
+	verifyCategoryCheckpointGhostRequest         = "checkpoint-names-missing-req"
+	verifyCategoryClaimNeedsAttention            = "claim-needs-attention"
+	verifyCategoryStrandedFinishedRequest        = "stranded-finished-req"
+	verifyCategoryStrayRequestFile               = "stray-req-file"
+	verifyCategoryAssignedElsewhereClaimedHere   = "assigned-elsewhere-claimed-here"
+	verifyCategoryArchivedUserRequestLiveMember  = "ur-archived-with-live-member"
+	verifyCategoryCompletionAnomaly              = "completion-anomaly"
+	verifyCategoryTimestampOrdering              = "timestamp-ordering"
+	verifyCategoryCalibrationLogMismatch         = "calibration-log-mismatch"
+	verifyCategoryCalibrationRowUnreconcilable   = "calibration-row-unreconcilable"
 )
 
 // staleClaimThreshold is how long a `claimed` REQ may sit before verify reports
@@ -156,7 +162,7 @@ func collectVerifyFindings(repoRoot string, board *Board, now time.Time) VerifyR
 	appendStrayRequestFileFindings(&report, board)
 	appendAssignedElsewhereFindings(&report, board)
 	appendArchivedUserRequestLiveMemberFindings(&report, board)
-	appendWorktreeFindings(&report, repoRoot)
+	appendWorktreeFindings(&report, repoRoot, board)
 
 	return report
 }
@@ -831,29 +837,221 @@ func classifyWorktreeMergeState(repoRoot string, leftoverName string) worktreeMe
 	return worktreeMergeStateUndetermined
 }
 
-// routeWorktreeLeftover maps a merge state onto the finding it produces.
+// worktreeLeftoverDisposition is the verdict for one worktree-agent-* name once
+// every probe has run. A merged branch tip is NECESSARY for mechanical removal
+// and never sufficient: `git merge-base --is-ancestor` proves the COMMITS are
+// contained in the integration branch, and says nothing about the worktree
+// holding them or about the run that created it (REQ-458). Two repository facts
+// finish the question, and neither is a liveness signal.
+type worktreeLeftoverDisposition int
+
+const (
+	// Merged, clean, and its REQ has left do-work/working/ — the one state
+	// cleanup Pass 5 resolves mechanically.
+	worktreeLeftoverFinishedResidue worktreeLeftoverDisposition = iota
+	// Merged, but the worktree holds uncommitted work. Pass 5's `git worktree
+	// remove` runs without --force and refuses exactly this, so calling it
+	// fixable would contradict the command the remedy names.
+	worktreeLeftoverUncommittedWork
+	// Merged and clean, but the REQ the name carries is still in
+	// do-work/working/ — the run owns the worktree until its REQ reaches its
+	// final path, which is after review and any remediation.
+	worktreeLeftoverRunInFlight
+	// A probe could not answer, so neither cleanliness nor finishedness is
+	// established. Fail safe: unestablished is never advertised as fixable.
+	worktreeLeftoverStateUnknown
+	worktreeLeftoverUnmergedBranch
+	worktreeLeftoverMergeStateUndetermined
+)
+
+// worktreeAgentRequestIdPattern reads a leftover's own REQ id out of the
+// worktree-agent-REQ-NNN-<suffix> convention (actions/work-reference.md →
+// Worktree Dispatch Mode, "Naming"). Anchored at the prefix on purpose: a suffix
+// derived from the REQ's title slug can mention another REQ id, and that mention
+// is not this worktree's owner.
+var worktreeAgentRequestIdPattern = regexp.MustCompile(`^` + worktreeAgentNamePrefix + `(REQ-\d+)`)
+
+// requestIdFromWorktreeName returns the REQ id the name carries, or "" when the
+// name does not follow the convention closely enough to name one.
+func requestIdFromWorktreeName(leftoverName string) string {
+	match := worktreeAgentRequestIdPattern.FindStringSubmatch(leftoverName)
+	if match == nil {
+		return ""
+	}
+	return match[1]
+}
+
+// requestPipelineState is what the board can honestly say about the REQ a
+// worktree name carries. Three answers rather than two, because a boolean folds
+// "the board has never seen this id" into "this REQ has moved on" and only the
+// second of those is something verify read (REQ-458).
 //
-// Fixable is true for merged residue and nothing else, because that is the only
+// Absence has causes verify cannot tell apart — a REQ file never created,
+// deleted, renamed, or parked somewhere the walk reports as a stray (see
+// appendStrayRequestFileFindings) — and none of them is evidence that the run
+// which created the worktree finished.
+type requestPipelineState int
+
+const (
+	// The REQ sits in do-work/working/, where the pipeline keeps a request from
+	// its claim until it reaches its final path.
+	requestPipelineStateInFlight requestPipelineState = iota
+	// The REQ is on the board and has left do-work/working/ — the only state in
+	// which "the run that created this worktree has finished" is a read rather
+	// than an assumption.
+	requestPipelineStateSettled
+	// The board's request index carries no REQ with this id at all.
+	requestPipelineStateAbsentFromBoard
+)
+
+// classifyRequestPipelineState reads the board's already-parsed request index
+// rather than walking the tree a second time — the same reuse
+// appendStrandedFinishedFindings makes of TreeSection, and one reader means one
+// answer. This is a question about where a file is, not about whether a builder
+// process is running: REQ-073 forbids the latter, and nothing here approaches it.
+func classifyRequestPipelineState(board *Board, requestId string) requestPipelineState {
+	ticket, exists := board.RequestsById[requestId]
+	switch {
+	case !exists:
+		return requestPipelineStateAbsentFromBoard
+	case ticket.TreeSection == "working":
+		return requestPipelineStateInFlight
+	default:
+		return requestPipelineStateSettled
+	}
+}
+
+// noOptionalLocksFlag keeps `git status` from refreshing the index it read.
+// Without it, a status run rewrites .git/worktrees/<name>/index whenever a stat
+// looks stale, so verify would leave a changed file behind on every run — which
+// contradicts runVerifyProbes' contract that it writes nothing anywhere, and the
+// board prime's "`frontmatter` and `verify` write nothing at all".
+//
+// It is a top-level git option, so it must come BEFORE -C and before the
+// subcommand; git rejects it after the subcommand name.
+const noOptionalLocksFlag = "--no-optional-locks"
+
+// worktreeHasUncommittedWork reports whether a builder's worktree holds any
+// uncommitted change at all — modified tracked files, staged edits, or untracked
+// files.
+//
+// Deliberately the WHOLE worktree, not the do-work/ subset worktreeDirtyQueueState
+// asks about. The two answer different questions: that one asks whether a builder
+// broke the "state stays home" rule, this one asks whether Pass 5's non-forced
+// `git worktree remove` would refuse, and it refuses for dirt anywhere.
+//
+// A non-nil error means the question went unanswered. Callers must not read that
+// as clean — VerifyReport's contract is that silence reads as "checked and clean,"
+// which is the one thing an unanswered probe must never say.
+func worktreeHasUncommittedWork(worktreePath string) (bool, error) {
+	command := exec.Command("git", noOptionalLocksFlag, "-C", worktreePath, "status", "--porcelain", "--untracked-files=all")
+	output, runError := command.Output()
+	if runError != nil {
+		return false, fmt.Errorf("`git status` in %s failed, so whether it holds uncommitted work is unknown", worktreePath)
+	}
+	return strings.TrimSpace(string(output)) != "", nil
+}
+
+// classifyWorktreeLeftover decides one leftover's disposition from repository
+// reads only: the merge probe, `git status` inside the worktree, and where the
+// REQ named by the worktree sits in the do-work tree.
+//
+// None of the three asks whether a builder is alive, and none may be replaced by
+// something that does — REQ-073 rules out a lock, heartbeat, PID check, mtime
+// heuristic and time threshold alike (see staleClaimThreshold's own comment). The
+// two added facts hold regardless of any process: a dirty worktree is dirty
+// whether or not anyone still holds it, and a REQ in working/ is unfinished
+// whether or not its builder still runs.
+//
+// requestId is the REQ id the caller already read out of leftoverName, passed in
+// rather than re-derived so one name yields one id.
+//
+// The returned error is non-nil exactly when a fact could not be established; the
+// disposition is then worktreeLeftoverStateUnknown, never a silent "clean". A REQ
+// id the board does not carry is one of those unestablished facts, not a quiet
+// "finished": absence proves nothing about a run.
+//
+// Precedence among the merged sub-states is deliberate. An in-flight run is
+// reported first because it is the fact that decides what to do — a builder's
+// worktree being dirty during its own run is expected rather than notable, while
+// "this belongs to a run that has not finished" is the reason to leave it alone
+// either way. Cleanliness is probed last, and only once the board has placed the
+// REQ outside working/: a worktree whose finishedness verify could not establish
+// gets inspected by hand whether or not it is also dirty, so the earlier question
+// is the one that decides.
+func classifyWorktreeLeftover(repoRoot string, board *Board, leftoverName string, requestId string, worktreePath string, hasWorktree bool) (worktreeLeftoverDisposition, error) {
+	switch classifyWorktreeMergeState(repoRoot, leftoverName) {
+	case worktreeMergeStateUnmerged:
+		return worktreeLeftoverUnmergedBranch, nil
+	case worktreeMergeStateUndetermined:
+		return worktreeLeftoverMergeStateUndetermined, nil
+	}
+
+	if requestId == "" {
+		return worktreeLeftoverStateUnknown, fmt.Errorf(
+			"%s carries no REQ-NNN id, so whether the run that created it has finished cannot be read from do-work/working/", leftoverName)
+	}
+	switch classifyRequestPipelineState(board, requestId) {
+	case requestPipelineStateInFlight:
+		return worktreeLeftoverRunInFlight, nil
+	case requestPipelineStateAbsentFromBoard:
+		return worktreeLeftoverStateUnknown, fmt.Errorf(
+			"%s names %s, which the board carries no REQ file for in do-work/queue/, working/ or archive/, so whether the run that created it has finished cannot be read from do-work/working/", leftoverName, requestId)
+	}
+
+	// A branch whose worktree is already gone has no working tree to be dirty:
+	// there is nothing left to hold uncommitted work, and nothing to remove but
+	// the branch. Answered explicitly rather than probed, because probing a path
+	// that does not exist would fail and be reported as an unanswered question.
+	if !hasWorktree {
+		return worktreeLeftoverFinishedResidue, nil
+	}
+	hasUncommittedWork, statusError := worktreeHasUncommittedWork(worktreePath)
+	if statusError != nil {
+		return worktreeLeftoverStateUnknown, statusError
+	}
+	if hasUncommittedWork {
+		return worktreeLeftoverUncommittedWork, nil
+	}
+	return worktreeLeftoverFinishedResidue, nil
+}
+
+// routeWorktreeLeftover maps a disposition onto the finding it produces.
+// requestId is the leftover's own REQ id, used to name the evidence in the
+// in-flight remedy; it may be empty for the states that do not cite it.
+//
+// Fixable is true for finished residue and nothing else, because that is the only
 // state actions/cleanup.md → Pass 5 resolves mechanically: `git worktree remove`
 // plus `git branch -d`, neither forcing. Every other state lands on Pass 5's
 // consent-gated path, where the pass "stops being mechanical" and asks — a human
 // decision, which VerifyFinding.Fixable's doc comment says must not be advertised
-// otherwise.
+// otherwise. The two present-and-non-fixable states earn separate categories and
+// separate remedies because their remedies genuinely differ: one asks the reader
+// to resolve uncommitted edits, the other asks them to leave the worktree alone.
 //
 // An unmerged leftover stays a reported finding during a live run rather than
 // being suppressed while builders are in flight. VerifyReport's doc comment is
-// explicit that silence reads as "checked and clean," and verify has no way to
-// know a run is active (see classifyWorktreeMergeState) — so suppression would
-// have to guess, and would hide genuinely stranded work whenever it guessed
-// wrong. This mirrors how version-changelog-mismatch handles its own expected
-// mid-release state: reported, with the transient case named in the remedy, and
-// not fixable.
-func routeWorktreeLeftover(mergeState worktreeMergeState) (category string, fixable bool, remedy string) {
-	switch mergeState {
-	case worktreeMergeStateMerged:
+// explicit that silence reads as "checked and clean," and for an unmerged branch
+// verify has no way to know a run is active (see classifyWorktreeMergeState) — so
+// suppression would have to guess, and would hide genuinely stranded work whenever
+// it guessed wrong. This mirrors how version-changelog-mismatch handles its own
+// expected mid-release state: reported, with the transient case named in the
+// remedy, and not fixable.
+func routeWorktreeLeftover(disposition worktreeLeftoverDisposition, requestId string) (category string, fixable bool, remedy string) {
+	switch disposition {
+	case worktreeLeftoverFinishedResidue:
 		return verifyCategoryMergedWorktreeLeftover, true,
-			"cleanup Pass 5 removes it mechanically — the branch is already contained in HEAD, so nothing is lost"
-	case worktreeMergeStateUnmerged:
+			"cleanup Pass 5 removes it mechanically — the branch is already contained in HEAD, the worktree is clean, and its REQ has left do-work/working/, so nothing is lost"
+	case worktreeLeftoverUncommittedWork:
+		return verifyCategoryWorktreePresentUncommittedWork, false,
+			"this worktree is present, not leftover: its branch is merged, but the worktree holds uncommitted changes that are in no commit. cleanup Pass 5 removes nothing here — its `git worktree remove` runs without --force and refuses a dirty worktree. Inspect the changes and commit or discard them in the worktree before anything is removed"
+	case worktreeLeftoverRunInFlight:
+		return verifyCategoryWorktreePresentRunInFlight, false,
+			"this worktree is present, not leftover: " + requestId + " is still in do-work/working/, so the run that owns it has not reached review, remediation, or its final path. Leave it in place — worktree cleanup happens after the REQ is archived, not before"
+	case worktreeLeftoverStateUnknown:
+		return verifyCategoryWorktreePresentStateUnknown, false,
+			"this worktree is present and verify could not establish that it is both clean and finished — the read that failed is named in this report's own skipped-probes list, under the `probe(s) could not run` footer on the board. Inspect it by hand; an unestablished state is never advertised as mechanically removable"
+	case worktreeLeftoverUnmergedBranch:
 		return verifyCategoryUnmergedWorktreeLeftover, false,
 			"this is either a builder still in flight or work that outlived a dead run — verify cannot tell those apart. Leave it alone during a run; otherwise cleanup Pass 5 asks before discarding it, because the branch may hold the only copy"
 	default:
@@ -867,9 +1065,11 @@ func routeWorktreeLeftover(mergeState worktreeMergeState) (category string, fixa
 // write queue state (actions/work-reference.md → Worktree Dispatch Mode, "state
 // stays home" and "sole integrator").
 //
-// Leftovers are classified by merge state rather than reported as one kind of
-// thing, so the report routes only the mechanically-resolvable ones to cleanup.
-func appendWorktreeFindings(report *VerifyReport, repoRoot string) {
+// Each name is classified rather than reported as one kind of thing, so the report
+// routes only the mechanically-resolvable ones to cleanup. The board answers where
+// a leftover's REQ sits — in do-work/working/, past it, or nowhere the index knows
+// — and it is the board this run already built, never a second walk of the tree.
+func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board) {
 	if !gitBinaryAvailable() {
 		report.SkippedProbes = append(report.SkippedProbes, "worktree probes: git is not on PATH")
 		return
@@ -914,7 +1114,13 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string) {
 		if hasWorktree {
 			locationDetail = worktreePath
 		}
-		category, fixable, remedy := routeWorktreeLeftover(classifyWorktreeMergeState(repoRoot, leftoverName))
+		requestId := requestIdFromWorktreeName(leftoverName)
+		disposition, probeError := classifyWorktreeLeftover(repoRoot, board, leftoverName, requestId, worktreePath, hasWorktree)
+		if probeError != nil {
+			report.SkippedProbes = append(report.SkippedProbes,
+				fmt.Sprintf("worktree removability probe for %s: %v", leftoverName, probeError))
+		}
+		category, fixable, remedy := routeWorktreeLeftover(disposition, requestId)
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: category,
 			Detail:   fmt.Sprintf("%s%s exists — %s", worktreeAgentNamePrefix, strings.TrimPrefix(leftoverName, worktreeAgentNamePrefix), locationDetail),
@@ -1064,7 +1270,7 @@ func listWorktreeAgentBranches(repoRoot string) []string {
 // stays home" rule being broken; a stale committed snapshot (which a worktree
 // legitimately carries where the consumer commits do-work/) is not.
 func worktreeDirtyQueueState(worktreePath string) []string {
-	command := exec.Command("git", "-C", worktreePath, "status", "--porcelain", "--untracked-files=all", "--", "do-work/")
+	command := exec.Command("git", noOptionalLocksFlag, "-C", worktreePath, "status", "--porcelain", "--untracked-files=all", "--", "do-work/")
 	output, runError := command.Output()
 	if runError != nil {
 		return nil
