@@ -27,6 +27,7 @@ route: C
 status_changed_at: 2026-09-03T12:38:36Z
 claimed_at: 2026-09-03T12:38:59Z
 completed_at: 2026-09-03T12:47:01Z
+commit: 729d0c513c4c3de2a418e3f8a6e7aee238ce8116
 ---
 
 # Repair CLAUDE.md write-surface count contract
