@@ -17,6 +17,18 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_process.go
 related: [REQ-457]
 claimed_at: 2026-09-03T13:36:18Z
+route: B
+estimate:
+  p50_active_minutes: 30
+  confidence: medium
+  calculated_at: 2026-09-03T13:36:30Z
+  basis:
+    - Route B
+    - 4-file write set
+    - 2 subsystems involved
+    - 5 acceptance criteria
+    - async lifecycle behavior
+    - cross-route regression gates
 ---
 
 # Kill the Owned Commit Process Group on Cancellation
@@ -93,3 +105,35 @@ No request prerequisite.
 
 ---
 *Source: REQ-457 pre-flight baseline, captured during the work run.*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The failure is one assertion in one test, but the diagnosis already recorded on this REQ shows the fix spans a shared subprocess seam with three divergent implementations and a Windows asymmetry that cuts the opposite way for `runGit` than for the image backends. Where the shared runner may live is a package-direction question, not a mechanical one.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation. The `## Diagnosis` and `## Required Shape` sections above are the exploration, measured by process-table sampling during a live failing run before this REQ was claimed.
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go` (modify) — replace the detached-goroutine escalation in `configureCancellableProcessGroup` with a blocking descendants-first termination that returns only once the group is gone
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go` (modify) — a cancellation lock-in for a TERM-deaf hook, and the `indexIsEmpty` seam
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_process.go` (modify) — source of the termination half being shared, keeping `reportImageGracePeriod` as its test seam
+- a new shared package under `skills/do-work/tools/do-work-cli/internal/` (new) — **only if** the CLI prime's **Package direction** rule permits it; if it does not, say so and keep the seam where the rule allows
+
+**Files I will NOT touch:** `internal/nextselection/blocked_probe_unix.go`'s `128+signal` status contract must not be flattened if that runner is consolidated; `report_image_process_windows.go`'s fail-closed behavior for image backends must stay fail-closed.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] Cancelling a Git-committing transaction terminates every process it launched, including a hook's grandchildren, not only the direct child
+- [ ] A hook that ignores the graceful signal does not survive — escalation is not optional
+- [ ] Return-within-deadline and rollback-to-preimage behavior on cancellation are both preserved
+- [ ] A killed process group's exit status is not misreported as success
+- [ ] The owned-process-group runner stays the single seam for launched subprocesses; no second ad-hoc kill path is added
+- [ ] `TestRemediationCancellationReachesMediaGitCommitAndRollback` passes without modification
