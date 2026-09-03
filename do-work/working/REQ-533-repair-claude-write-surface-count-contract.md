@@ -1,7 +1,7 @@
 ---
 id: REQ-533
 title: 'Repair CLAUDE.md write-surface count contract'
-status: pending
+status: claimed
 route: C
 created_at: 2026-09-03T12:06:41Z
 user_request: UR-102
@@ -15,6 +15,7 @@ sweep: 'true'
 sweep_key: claude-write-surface-count-stale
 depends_on: []
 related: [REQ-532]
+claimed_at: 2026-09-03T12:07:48Z
 ---
 
 # Repair CLAUDE.md write-surface count contract
