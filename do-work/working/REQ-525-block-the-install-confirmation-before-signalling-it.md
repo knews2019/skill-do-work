@@ -14,6 +14,19 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 related: [REQ-457, REQ-524]
 claimed_at: 2026-09-03T11:44:30Z
+route: B
+write_set:
+  - skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-09-03T11:45:48Z
+  basis:
+    - Route B
+    - 2-file write set
+    - 1 subsystem involved
+    - 4 acceptance criteria
+    - async lifecycle behavior
 ---
 
 # Block the Install Confirmation Before Signalling It
@@ -59,3 +72,45 @@ No request prerequisite.
 
 ---
 *Source: REQ-457 gate attribution, captured during the work run.*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** Captured as mechanical on the assumption that the test signalled on a timer. It does not — it polls for the prompt text — so the actual race is still unlocated and needs discovery before any edit.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Exploration
+
+Two things the capture assumed that are wrong, established before dispatch:
+
+1. **The test does not signal on a fixed delay.** `runBuiltCLIAtBlockedConfirmation` (`suite_commands_test.go:322`) starts the built CLI, then calls `waitForPromptInFile` (`:374`), which polls the stderr file every 10 ms for up to 10 s and returns as soon as the prompt text appears. Only then does it signal. So "deliver the signal after a fixed delay" is not the defect.
+2. **The prompt text is not install-only.** `grep` for `[y/N]` across `internal/suiteinstall` finds exactly one prompt, `install_transaction.go:747` — `update-suite` reaches the same one, because updating runs a full-suite install. So the failing `update-suite/*` subtests are not waiting on a string their command never prints.
+
+What remains is the seam at `install_transaction.go:747-748`: the prompt is written with `narrateWithoutNewline`, and only then does `readConfirmation(ctx)` run. The test's poll observes the *written bytes*, which is strictly earlier than the process being blocked in a cancellable read. Anything the process does between those two points is a window in which the signal can land somewhere that does not produce exit 130 — and the observed failure is exactly `exit = <nil>`, a clean exit rather than a missed signal.
+
+That window is the hypothesis to confirm or refute, not a conclusion. Four sightings this session, on three distinct subtests (`install-suite/INT`, `update-suite/INT`, `update-suite/TERM`, `update-suite/HUP`), always green in isolation and only failing under full-suite parallel load — which fits a window that widens when the machine is contended.
+
+*Generated in-session (single-pass discovery)*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go` (modify) — synchronize on the process actually being blocked in its confirmation read, rather than on the prompt bytes having been written
+
+**Files I will NOT touch:** `install_transaction.go` and the rest of the production path, unless the root cause proves to be a product defect rather than a test race — in which case the REQ's own constraint requires saying so explicitly instead of widening silently.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] The signal is delivered only after the installer has demonstrably reached its blocked confirmation read
+- [ ] Exit 130 and the existing managed-path non-effect assertions are unchanged — this is a synchronization fix, not a weaker assertion
+- [ ] No sleep is lengthened to paper over the race, and the test is neither skipped nor made flaky-tolerant
+- [ ] The fix holds under `go test ./...` parallel load, not only under `-run` in isolation
