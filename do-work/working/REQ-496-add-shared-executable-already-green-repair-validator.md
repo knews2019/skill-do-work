@@ -141,3 +141,15 @@ The current action prose and `_dev/tests/contract-regressions.sh::action_decisio
 **What was done:** Added `validate-already-green-repair` as the sole executable authority for both `tdd_allowed` and `review_allowed`. It strictly joins repair intake to no-op evidence, verifies the extracted past green revision, observes project/staged paths NUL-safely, and authorizes staging only from exact canonical completion dry-run paths. Both actions now require their typed decision, and the contract fixture invokes the real CLI instead of reimplementing eligibility.
 
 **Builder verification:** Focused RED failed on the missing validator/result symbols. Focused packages, `go vet ./...`, full module tests, contract regressions, and diff hygiene pass after implementation. The real fixture covers exact and over-staged paths, malformed/self-asserted/dirty/release-mutated neighbors, real completion commits/metadata, and selector behavior. Durable evidence is in `do-work/runs/work-2026-09-03-214500/REQ-496-handback.md`.
+
+## Review
+
+**Verdict:** Request changes — one remediation pass required before final testing/finalization.
+
+- **Critical:** Intake fingerprint evidence was read only from the mutable current request, so coordinated intake/expectation edits or a same-argv green record predating intake could self-assert eligibility.
+- **Critical:** Duplicate REQ identity disabled canonical completion/review but was not part of the earlier `tdd_allowed` core decision.
+- **Important:** Additive foreign lines/labels and prefix-like duplicate no-op headings were accepted despite the exact-shape requirement.
+
+## Remediation
+
+Commit `ecd9da50e96025104e3782b40112488562c47256` binds the complete canonical intake slice to the request image at the recorded revision, requires current preservation and absence of a historical no-op, makes duplicate/collision identity a core refusal, and accepts only the exact ordered six-label no-op block. Behavior-level RED reproduced every finding; focused/race/full/vet/contracts and diff checks pass after the two-file in-scope fix.

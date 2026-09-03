@@ -129,3 +129,76 @@ git diff --check
 ```
 
 No source remediation or out-of-scope follow-up is known at handback.
+
+## Independent-review remediation pass — 2026-09-04
+
+### Branch and commit
+
+- Branch: `codex/REQ-496-repair-validator`
+- Remediation commit: `ecd9da50e96025104e3782b40112488562c47256`
+- Parent builder commit: `5790b0519b75ed59d4458727e5d7dd6fd6b18e2c`
+
+This bounded pass closes the independent-review gaps without changing the public command/result contract. It makes request-ID uniqueness a core prerequisite for both projections, proves that the canonical intake already existed with identical bytes at the recorded green revision, requires the current intake to preserve that durable image, and constrains the no-op section to the exact ordered six-label block with no additive lines or prefix-like sibling heading.
+
+### Remediation files
+
+Only these two paths from the existing 13-file write set changed:
+
+1. `skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go`
+2. `skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green_test.go`
+
+No lifecycle/request state, run manifest, release/version/changelog state, or file outside the declared write set was edited by the remediation source commit.
+
+### Remediation RED evidence
+
+The adversarial tests were added before the implementation. This focused command failed with exit 1:
+
+```sh
+cd skills/do-work/tools/do-work-cli
+go test -count=1 ./internal/repairvalidation -run 'TestValidateAlreadyGreenRepair(RejectsCoordinatedCurrentFingerprintMutation|RejectsGreenRecordPredatingIntake|RejectsAmbiguousRequestIdentityForBothDecisions|RequiresExactNoOpBlock)' -v
+```
+
+The failing assertions showed:
+
+- coordinated mutation of both the current intake fingerprint and expected fingerprint was accepted with `TDDAllowed:true`, `ReviewAllowed:true`, both fingerprints equal to `sha256:coordinated-self-assertion`, and no reason codes;
+- a matching-argv green record created before the request/intake existed was accepted with `TDDAllowed:true`, `ReviewAllowed:true`, and no reason codes;
+- a colliding `REQ-701` identity left `TDDAllowed:true` and only disabled review through `REPAIR-CANONICAL-COMPLETION-REFUSED`;
+- each additive no-op mutation (`foreign line`, `foreign label`, and `prefix-like duplicate heading`) was accepted with `TDDAllowed:true`, `ReviewAllowed:true`, and no reason codes.
+
+These are literal behavior failures, not compile failures, and cover the four independent-review findings.
+
+### Remediation GREEN and regression evidence
+
+All commands passed after implementation:
+
+```sh
+cd skills/do-work/tools/do-work-cli
+go test -count=1 ./internal/repairvalidation -run 'TestValidateAlreadyGreenRepair(RejectsCoordinatedCurrentFingerprintMutation|RejectsGreenRecordPredatingIntake|RejectsAmbiguousRequestIdentityForBothDecisions|RequiresExactNoOpBlock)' -v
+go test -count=1 ./internal/repairvalidation ./internal/gateevidence ./internal/resultmodel
+go test -race -count=1 ./internal/repairvalidation ./internal/gateevidence ./internal/resultmodel
+go test -count=1 ./...
+go vet ./...
+
+cd ../../../..
+bash _dev/tests/contract-regressions.sh
+git diff --check
+```
+
+Observed results:
+
+- focused new adversarial cases: PASS, including all three exact-shape subtests;
+- focused validator/gate-evidence/result-model packages: PASS;
+- focused race run: PASS;
+- full CLI module: PASS;
+- `go vet ./...`: PASS;
+- contract regressions: PASS;
+- diff whitespace check: PASS;
+- post-commit branch status: clean.
+
+### Remediation risks and merge guidance
+
+- The past-revision proof uses the already validated contained request path and resolved gate-evidence target revision with `git show <revision>:<path>`; absence of the request or intake at that revision fails closed with `REPAIR-INTAKE-NOT-DURABLE`.
+- Durable comparison preserves the existing folded-intake policy: the complete ordered slice of canonical intake section bodies must equal the current ordered slice, and the recorded revision must contain no no-op section.
+- Duplicate/collision identity now adds `REPAIR-REQUEST-IDENTITY` before `TDDAllowed` is projected, so both TDD and review refuse independently of canonical-completion behavior.
+- The exact no-op block accepts only the six canonical labels, in order, one non-empty trimmed line each; additive prose, foreign labels, and headings beginning with the canonical no-op heading refuse.
+- Merge `ecd9da50e96025104e3782b40112488562c47256` after the original builder commit, or cherry-pick it onto an integration branch that already contains `5790b0519b75ed59d4458727e5d7dd6fd6b18e2c`.
