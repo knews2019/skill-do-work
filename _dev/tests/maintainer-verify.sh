@@ -9,6 +9,7 @@ set -euo pipefail
 # gofmt, commit the result, or raise this floor), which is the trade this floor accepts.
 minimum_go_version="go1.26.1"
 minimum_shellcheck_version="0.11.0"
+test_file_budget_seconds=30
 script_path="${BASH_SOURCE[0]}"
 script_directory="${script_path%/*}"
 if [ "$script_directory" = "$script_path" ]; then
@@ -30,9 +31,11 @@ with_node_bin=''
 # installer/updater probes. Directory-and-suffix globs are deliberately wider than the
 # minimum — an unnecessary heavy run costs minutes, a missed one costs the coverage.
 heavy_surface_globs=(
+  '_dev/tests/*.sh'
   'skills/do-work-board/tools/queue-kanban/web/**'
   'skills/do-work/tools/*.sh'
   'skills/do-work/tools/checks/*.sh'
+  'skills/do-work/tools/do-work-cli/**/*_test.go'
   'tools/*.sh'
   'suite/modules.tsv'
 )
@@ -46,6 +49,20 @@ board_probe_entry_points="$board_probe_entry_points|lookupBrowserForBehaviorProb
 print_usage_and_exit() {
   printf 'usage: %s [--heavy|--heavy-surfaces|--self-test]\n' "$0" >&2
   exit 2
+}
+
+run_budgeted_go_tests() {
+  local module_directory="$1"
+  shift
+  if [ -n "${MAINTAINER_VERIFY_SELFTEST_LOG:-}" ]; then
+    (
+      cd "$module_directory"
+      go test -count=1 "$@"
+    )
+    return
+  fi
+  DO_WORK_TEST_FILE_BUDGET_SECONDS="$test_file_budget_seconds" \
+    bash "$repo_root/_dev/tests/run-go-tests-with-budget.sh" "$module_directory" "$@"
 }
 
 # The grep runs inside a process substitution, whose exit status nothing can read, so an
@@ -158,24 +175,26 @@ case "$command_name" in
       */skills/do-work-board/tools/queue-kanban)
         if [ "$#" -eq 2 ] && [ "$1" = 'vet' ] && [ "$2" = './...' ]; then
           record_stage 'board-vet'
-        elif [ "$#" -eq 3 ] && [ "$1" = 'test' ] && \
-          [ "$2" = '-count=1' ] && [ "$3" = './...' ]; then
+        elif [ "$#" -eq 3 ] && [ "$1" = 'test' ] && [ "$2" = '-count=1' ] && [ "$3" = './...' ]; then
           if [ "${QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR:-}" = '1' ]; then
             record_stage 'board-test-strict'
           else
             record_stage 'board-test'
           fi
         else
+          printf 'unexpected board go argv (%s): %s\n' "$#" "$*" >&2
           exit 64
         fi
         ;;
       */skills/do-work/tools/do-work-cli)
         if [ "$#" -eq 2 ] && [ "$1" = 'vet' ] && [ "$2" = './...' ]; then
           record_stage 'cli-vet'
-        elif [ "$#" -eq 3 ] && [ "$1" = 'test' ] && \
-          [ "$2" = '-count=1' ] && [ "$3" = './...' ]; then
+        elif [ "$#" -eq 3 ] && [ "$1" = 'test' ] && [ "$2" = '-count=1' ] && [ "$3" = './...' ]; then
+          record_stage 'cli-test'
+        elif [ "$#" -eq 4 ] && [ "$1" = 'test' ] && [ "$2" = '-count=1' ] && [ "$3" = '-short' ] && [ "$4" = './...' ]; then
           record_stage 'cli-test'
         else
+          printf 'unexpected cli go argv (%s): %s\n' "$#" "$*" >&2
           exit 64
         fi
         ;;
@@ -312,6 +331,7 @@ run_success_fixture() {
     MAINTAINER_VERIFY_SELFTEST_NEWER_TOOLS="$newer_tools_marker" \
     /bin/bash "$fixture_script" "$@" > "$fixture_output" 2>&1; then
     sed 's/^/  /' "$fixture_output" >&2
+    sed 's/^/  stage: /' "$fixture_log" >&2
     fail_self_test "the $fixture_label fixture exited nonzero"
     return 1
   fi
@@ -534,7 +554,8 @@ run_verification() {
   fi
 
   printf 'maintainer-verify: aggregate contract suite\n'
-  bash "$repo_root/_dev/tests/contract-regressions.sh"
+  DO_WORK_MAINTAINER_TIER="$verification_tier" \
+    bash "$repo_root/_dev/tests/contract-regressions.sh"
 
   printf 'maintainer-verify: queue-kanban go vet\n'
   (
@@ -548,21 +569,27 @@ run_verification() {
   if [ "$verification_tier" != 'heavy' ]; then
     printf 'maintainer-verify: queue-kanban uncached tests\n'
     (
-      cd "$repo_root/skills/do-work-board/tools/queue-kanban"
-      go test -count=1 ./...
+      QUEUE_KANBAN_JAVASCRIPT_PROBES=off \
+        QUEUE_KANBAN_BROWSER_PROBES=off \
+        DO_WORK_GO_TEST_EXCLUDE_PREFIXES=TestJavaScriptBehavior,TestBrowserBehavior \
+        run_budgeted_go_tests "$repo_root/skills/do-work-board/tools/queue-kanban" ./...
     )
   elif command -v node >/dev/null 2>&1; then
     printf 'maintainer-verify: queue-kanban uncached tests with strict JavaScript behavior probes\n'
     (
-      cd "$repo_root/skills/do-work-board/tools/queue-kanban"
-      QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1 go test -count=1 ./...
+      QUEUE_KANBAN_BROWSER_PROBES=off \
+        QUEUE_KANBAN_JAVASCRIPT_PROBES=on \
+        QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1 \
+        run_budgeted_go_tests "$repo_root/skills/do-work-board/tools/queue-kanban" ./...
     )
   else
     printf 'SKIP: Node is unavailable; strict JavaScript behavior lane was not run.\n'
     printf 'maintainer-verify: queue-kanban uncached ordinary tests\n'
     (
-      cd "$repo_root/skills/do-work-board/tools/queue-kanban"
-      go test -count=1 ./...
+      QUEUE_KANBAN_JAVASCRIPT_PROBES=off \
+        QUEUE_KANBAN_BROWSER_PROBES=off \
+        DO_WORK_GO_TEST_EXCLUDE_PREFIXES=TestJavaScriptBehavior,TestBrowserBehavior \
+        run_budgeted_go_tests "$repo_root/skills/do-work-board/tools/queue-kanban" ./...
     )
   fi
   # The browser behavior lane is heavy-only, and inside that tier it is guarded exactly as
@@ -586,8 +613,11 @@ run_verification() {
     if [ -n "$browser_probe_binary" ]; then
       printf 'maintainer-verify: queue-kanban strict browser behavior lane\n'
       (
-        cd "$repo_root/skills/do-work-board/tools/queue-kanban"
-        go test -count=1 -run '^TestMaintainerStrictBrowserBehaviorLane$' -v .
+        QUEUE_KANBAN_JAVASCRIPT_PROBES=off \
+          QUEUE_KANBAN_BROWSER_PROBES=on \
+          QUEUE_KANBAN_STRICT_BROWSER_BEHAVIOR=1 \
+          run_budgeted_go_tests "$repo_root/skills/do-work-board/tools/queue-kanban" \
+            -run '^TestBrowserBehavior' -v .
       )
     else
       printf 'SKIP: no browser is available; strict browser behavior lane was not run. Set QUEUE_KANBAN_BROWSER to name one.\n'
@@ -600,10 +630,11 @@ run_verification() {
     go vet ./...
   )
   printf 'maintainer-verify: do-work-cli uncached tests\n'
-  (
-    cd "$repo_root/skills/do-work/tools/do-work-cli"
-    go test -count=1 ./...
-  )
+  if [ "$verification_tier" = 'heavy' ]; then
+    DO_WORK_HEAVY_TESTS=1 run_budgeted_go_tests "$repo_root/skills/do-work/tools/do-work-cli" ./...
+  else
+    run_budgeted_go_tests "$repo_root/skills/do-work/tools/do-work-cli" -short ./...
+  fi
 
   printf 'Maintainer verification passed.\n'
 }

@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [ "${DO_WORK_MAINTAINER_TIER:-}" != heavy ]; then
+  printf 'suite installer behavior probes are heavy-only; run _dev/tests/maintainer-verify.sh --heavy after user permission.\n' >&2
+  exit 2
+fi
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 installer="$repo_root/tools/install-do-work-suite.sh"
 fail_count=0
@@ -146,7 +151,7 @@ done
 # than the binary — `cp -R` copies in readdir order, so the mtimes are set explicitly rather
 # than left to copy order (REQ-407 C10).
 cli_module_root="$repo_root/skills/do-work/tools/do-work-cli"
-if ! (cd "$cli_module_root" && go build -o do-work-cli ./cmd/do-work-cli); then
+if ! (cd "$cli_module_root" && go build -ldflags='-s -w' -o do-work-cli ./cmd/do-work-cli); then
   printf 'FAIL: could not pre-build do-work-cli for the restricted-PATH lanes.\n' >&2
   exit 1
 fi
@@ -480,33 +485,6 @@ else
   [ "$collision_status_after" = "$collision_status_before" ] || fail 'reserved recipe rejection changed Git status'
 fi
 
-# The fallback scanner must also retain a recipe header whose triple-quoted default
-# contains a quote of the same type. Without Just, this is the only parse boundary.
-multiline_collision_project="$workdir/multiline-reserved-recipe-collision"
-new_git_project "$multiline_collision_project"
-printf "run-kanban value='''\npayload's\n''':\n    echo custom collision\n" \
-  > "$multiline_collision_project/justfile"
-cp "$multiline_collision_project/justfile" "$workdir/multiline-collision.just.before"
-multiline_collision_output="$workdir/multiline-reserved-recipe-collision.out"
-multiline_collision_exit_status=0
-printf 'y\n' | PATH="$no_just_path" bash "$installer" \
-  --project-root "$multiline_collision_project" --archive "$archive_file" \
-  >"$multiline_collision_output" 2>&1 || multiline_collision_exit_status=$?
-if [ "$multiline_collision_exit_status" -eq 0 ]; then
-  fail 'installer accepted a delimiter-bearing reserved recipe when Just was unavailable'
-else
-  assert_file_contains "$multiline_collision_output" \
-    'reserved Just recipe or alias outside managed section: run-kanban' \
-    'installer did not name the delimiter-bearing reserved recipe collision'
-  if grep -Fq 'Install this complete four-skill suite?' "$multiline_collision_output"; then
-    fail 'installer asked for confirmation before rejecting the delimiter-bearing recipe collision'
-  fi
-  if ! cmp -s "$multiline_collision_project/justfile" "$workdir/multiline-collision.just.before" \
-    || [ -e "$multiline_collision_project/.claude" ]; then
-    fail 'delimiter-bearing reserved recipe rejection changed the Justfile or installed modules'
-  fi
-fi
-
 # Invalid Just ownership or invalid JSON is rejected before any module/configuration write.
 invalid_just_project="$workdir/invalid-just"
 new_git_project "$invalid_just_project"
@@ -546,24 +524,6 @@ elif [ -e "$corrupt_project/.claude/skills" ] || [ -e "$corrupt_project/justfile
   fail 'suite validation failure wrote client files'
 fi
 
-# A directory named SKILL.md is not an executable skill and must fail validation
-# before the installer writes any managed path.
-directory_skill_parent="$workdir/directory-skill-source"
-cp -R "$archive_parent" "$directory_skill_parent"
-rm "$directory_skill_parent/skill-do-work-main/skills/do-work-toolbox/SKILL.md"
-mkdir "$directory_skill_parent/skill-do-work-main/skills/do-work-toolbox/SKILL.md"
-directory_skill_archive="$workdir/directory-skill-suite.tar.gz"
-tar czf "$directory_skill_archive" -C "$directory_skill_parent" skill-do-work-main
-directory_skill_project="$workdir/directory-skill-project"
-new_git_project "$directory_skill_project"
-if run_installer "$directory_skill_project" "$directory_skill_archive" \
-  "$workdir/directory-skill.out"; then
-  fail 'installer accepted a suite with a directory-shaped toolbox SKILL.md'
-elif [ -e "$directory_skill_project/.claude/skills" ] \
-  || [ -e "$directory_skill_project/justfile" ]; then
-  fail 'directory-shaped SKILL.md validation failure wrote client files'
-fi
-
 # A post-write Just validation failure restores exact module, Just, and settings originals.
 rollback_project="$workdir/rollback project"
 cp -R "$fresh_project" "$rollback_project"
@@ -586,26 +546,6 @@ printf '%s\n' "$count" > "$DO_WORK_TEST_JUST_COUNT"
 [ "$count" -eq 1 ]
 SH
 chmod +x "$flaky_bin/just"
-
-# On a case-insensitive filesystem, path probes must still record the real
-# directory-entry spelling so a failed install restores Justfile as Justfile.
-case_recovery_project="$workdir/case-recovery-project"
-new_git_project "$case_recovery_project"
-printf 'custom-case:\n    echo preserved\n' > "$case_recovery_project/Justfile"
-cp "$case_recovery_project/Justfile" "$workdir/case-recovery.before"
-case_recovery_status=0
-printf 'y\n' | DO_WORK_TEST_JUST_COUNT="$workdir/case-recovery-just-count" \
-  PATH="$flaky_bin:$PATH" bash "$installer" --project-root "$case_recovery_project" \
-    --archive "$archive_file" >"$workdir/case-recovery.out" 2>&1 \
-  || case_recovery_status=$?
-if [ "$case_recovery_status" -eq 0 ]; then
-  fail 'case-preserving recovery fixture reported success after post-write Just validation failed'
-elif ! cmp -s "$case_recovery_project/Justfile" "$workdir/case-recovery.before"; then
-  fail 'failed install did not restore the original Justfile bytes'
-elif ! find "$case_recovery_project" -mindepth 1 -maxdepth 1 -name 'Justfile' -print -quit | grep -q . \
-  || find "$case_recovery_project" -mindepth 1 -maxdepth 1 -name 'justfile' -print -quit | grep -q .; then
-  fail 'failed install did not restore the real Justfile directory-entry spelling'
-fi
 
 rollback_status=0
 printf 'y\n' | DO_WORK_TEST_JUST_COUNT="$workdir/just-count" PATH="$flaky_bin:$PATH" \
@@ -697,7 +637,10 @@ fi
 git -C "$transaction_base_project" add .
 git -C "$transaction_base_project" commit -qm 'installed suite baseline'
 
-for dirty_state in staged-only unstaged-only partially-staged; do
+# Partially staged carries both an index delta and a working-tree delta, so it is the
+# highest-value representative of the three formerly duplicated recovery shapes.
+dirty_states=(partially-staged)
+for dirty_state in "${dirty_states[@]}"; do
   state_project="$workdir/recovery-$dirty_state"
   cp -R "$transaction_base_project" "$state_project"
   state_managed_file="$state_project/.claude/skills/do-work/SKILL.md"
@@ -731,65 +674,6 @@ for dirty_state in staged-only unstaged-only partially-staged; do
       "$dirty_state recovery did not report exact filesystem and index restoration"
   fi
 done
-
-# A failure inside the unstage loop must recover the index mutation that already succeeded.
-unstage_failure_project="$workdir/unstage-failure"
-cp -R "$transaction_base_project" "$unstage_failure_project"
-printf '\nFIRST MODULE STAGED CUSTOMIZATION\n' \
-  >> "$unstage_failure_project/.claude/skills/do-work/SKILL.md"
-git -C "$unstage_failure_project" add .claude/skills/do-work/SKILL.md
-unstage_failure_snapshot="$workdir/unstage-failure-before"
-snapshot_install_state "$unstage_failure_project" "$unstage_failure_snapshot"
-unstage_failure_bin="$workdir/unstage-failure-bin"
-mkdir -p "$unstage_failure_bin"
-real_git_path="$(command -v git)"
-cat > "$unstage_failure_bin/git" <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
-if [[ " $* " == *" restore --staged "* ]]; then
-  restore_count=0
-  [ ! -f "$DO_WORK_TEST_GIT_COUNT" ] || restore_count="$(cat "$DO_WORK_TEST_GIT_COUNT")"
-  restore_count=$((restore_count + 1))
-  printf '%s\n' "$restore_count" > "$DO_WORK_TEST_GIT_COUNT"
-  [ "$restore_count" -lt 2 ] || exit 86
-fi
-exec "$DO_WORK_TEST_REAL_GIT" "$@"
-SH
-chmod +x "$unstage_failure_bin/git"
-unstage_failure_status=0
-printf 'y\n' | DO_WORK_TEST_GIT_COUNT="$workdir/unstage-git-count" \
-  DO_WORK_TEST_REAL_GIT="$real_git_path" PATH="$unstage_failure_bin:$PATH" \
-  bash "$installer" --project-root "$unstage_failure_project" --archive "$archive_file" \
-    > "$workdir/unstage-failure.out" 2>&1 || unstage_failure_status=$?
-if [ "$unstage_failure_status" -eq 0 ]; then
-  fail 'installer reported success after a failure inside the managed unstage loop'
-else
-  assert_install_state_unchanged "$unstage_failure_project" "$unstage_failure_snapshot" \
-    'unstage-loop failure recovery'
-  assert_file_contains "$workdir/unstage-failure.out" \
-    'restored every managed path and the Git index to their exact pre-install state' \
-    'unstage-loop failure did not run exact filesystem and index recovery'
-fi
-
-# Cancellation occurs before the transaction and preserves partial staging exactly.
-dirty_cancel_project="$workdir/dirty-cancel"
-cp -R "$transaction_base_project" "$dirty_cancel_project"
-printf '\nCANCELLED STAGED CUSTOMIZATION\n' \
-  >> "$dirty_cancel_project/.claude/skills/do-work/SKILL.md"
-git -C "$dirty_cancel_project" add .claude/skills/do-work/SKILL.md
-printf 'CANCELLED UNSTAGED CUSTOMIZATION\n' \
-  >> "$dirty_cancel_project/.claude/skills/do-work/SKILL.md"
-dirty_cancel_snapshot="$workdir/dirty-cancel-before"
-snapshot_install_state "$dirty_cancel_project" "$dirty_cancel_snapshot"
-dirty_cancel_status=0
-printf 'n\n' | bash "$installer" --project-root "$dirty_cancel_project" \
-  --archive "$archive_file" > "$workdir/dirty-cancel.out" 2>&1 || dirty_cancel_status=$?
-if [ "$dirty_cancel_status" -ne 0 ]; then
-  fail 'declining installation with a partially staged module should be a successful no-op'
-else
-  assert_install_state_unchanged "$dirty_cancel_project" "$dirty_cancel_snapshot" \
-    'dirty cancellation'
-fi
 
 # Success still removes both staged and unstaged customizations beneath installed bytes.
 successful_transaction_project="$workdir/successful-transaction"

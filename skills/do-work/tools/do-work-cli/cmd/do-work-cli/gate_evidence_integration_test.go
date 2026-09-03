@@ -9,6 +9,9 @@ import (
 )
 
 func TestGreenGateEvidenceLifecycle(t *testing.T) {
+	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
+		t.Skip("binary-building integration is heavy-only")
+	}
 	binaryPath := filepath.Join(t.TempDir(), "do-work-cli")
 	buildCommand := exec.Command("go", "build", "-o", binaryPath, ".")
 	if output, err := buildCommand.CombinedOutput(); err != nil {

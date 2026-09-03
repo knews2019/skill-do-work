@@ -266,6 +266,9 @@ func TestInstallNarrationNeverReachesStandardOutput(t *testing.T) {
 }
 
 func TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation(t *testing.T) {
+	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
+		t.Skip("built-binary signal integration is heavy-only")
+	}
 	binaryPath := buildTestCLIBinary(t)
 	for _, commandName := range []string{CommandInstallSuite, CommandUpdateSuite} {
 		for _, signalCase := range interruptingSignalCases() {
@@ -306,6 +309,9 @@ func TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation(t *
 // signal, the rendered result still carries the rollback record, and the shell installer's
 // interrupted status is what callers already assert.
 func TestBuiltInstallExits130AfterRecoveringASignalInterruptedMidWriteInstall(t *testing.T) {
+	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
+		t.Skip("built-binary signal integration is heavy-only")
+	}
 	binaryPath := buildTestCLIBinary(t)
 	for _, signalCase := range interruptingSignalCases() {
 		t.Run(signalCase.name, func(t *testing.T) {
@@ -347,6 +353,9 @@ func TestBuiltInstallExits130AfterRecoveringASignalInterruptedMidWriteInstall(t 
 // after setting installVerified — the success line — blocks until this test drains it, and
 // nothing can advance to the exit owner until then.
 func TestBuiltInstallExitsZeroWhenASignalLandsAfterTheInstallIsVerified(t *testing.T) {
+	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
+		t.Skip("built-binary signal integration is heavy-only")
+	}
 	binaryPath := buildTestCLIBinary(t)
 	for _, signalCase := range interruptingSignalCases() {
 		t.Run(signalCase.name, func(t *testing.T) {

@@ -27,7 +27,7 @@ func TestNormalizeFieldAppliesAliasesDefaultsAndExactWarnings(t *testing.T) {
 		},
 		{
 			"unknown without default retains evidence", "status", "almost-done", "almost-done", false, false,
-			"⚠ status: 'almost-done' not recognized — expected one of [pending, claimed, completed, completed-with-issues, failed, cancelled, pending-answers, blocked, blocked-archive-collision, blocked-dependency-cycle]. No default is defined; reporting it unchanged.",
+			"⚠ status: 'almost-done' not recognized — expected one of [pending, claimed, completed, completed-with-issues, failed, cancelled, pending-answers, pending-heavy-testing, blocked, blocked-archive-collision, blocked-dependency-cycle]. No default is defined; reporting it unchanged.",
 		},
 		{"verbatim field", "assigned_to", " Cloud-Alpha ", "Cloud-Alpha", true, false, ""},
 	}

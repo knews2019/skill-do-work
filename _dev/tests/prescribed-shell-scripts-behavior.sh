@@ -5,6 +5,11 @@
 # else. Callers (today: _dev/tests/staged-skills-contract.sh) consume only the exit status.
 set -uo pipefail
 
+if [ "${DO_WORK_MAINTAINER_TIER:-}" != heavy ]; then
+  printf 'prescribed-shell behavior probes are heavy-only; run _dev/tests/maintainer-verify.sh --heavy after user permission.\n' >&2
+  exit 2
+fi
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=_dev/tests/prescribed-shell-case-count.sh
 source "$repo_root/_dev/tests/prescribed-shell-case-count.sh"

@@ -61,7 +61,7 @@ Exactly two sections, in this order.
 **The paste block** — first thing in the file, one fenced code block, nothing above it. It is the complete restart prompt and must work with zero other reading. Write it as instructions addressed to the next session, not as a status document for a human. Line one is the resume command:
 
 - to build — `do-work run --fan-out N` (pick N per Step 5)
-- to answer questions — `do-work clarify`, included only if some REQ is at `pending-answers`; if both apply, list both with `clarify` first
+- to answer questions or authorize held heavy tests — `do-work clarify`, included only if some REQ is at `pending-answers` or `pending-heavy-testing`; if both apply, list both with `clarify` first
 
 Immediately after the command, write: `This command is sufficient; everything below it is context.` **If you cannot honestly write that sentence, return to Step 1 until you can.**
 

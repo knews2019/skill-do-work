@@ -7,6 +7,7 @@
 
 probe_batch_root="$(mktemp -d "${TMPDIR:-/tmp}/contract-probe-batch.XXXXXX")"
 probe_batch_names=()
+probe_file_budget_seconds="${DO_WORK_TEST_FILE_BUDGET_SECONDS:-30}"
 
 launch_probe() {
   local probe_name="$1"
@@ -19,7 +20,18 @@ launch_probe() {
   (
     probe_status=0
     for probe_script in "$@"; do
-      if ! bash "$probe_script"; then
+      probe_started_at="$(date +%s)"
+      current_probe_status=0
+      bash "$probe_script" || current_probe_status=$?
+      probe_elapsed_seconds=$(( $(date +%s) - probe_started_at ))
+      printf 'test-file duration: %s %ss (limit <%ss)\n' \
+        "${probe_script##*/}" "$probe_elapsed_seconds" "$probe_file_budget_seconds"
+      if [ "$probe_elapsed_seconds" -ge "$probe_file_budget_seconds" ]; then
+        printf 'FAIL: %s took %ss; each test file must finish under %ss\n' \
+          "$probe_script" "$probe_elapsed_seconds" "$probe_file_budget_seconds" >&2
+        current_probe_status=1
+      fi
+      if [ "$current_probe_status" -ne 0 ]; then
         probe_status=1
         break
       fi

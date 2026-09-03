@@ -482,6 +482,9 @@ func TestFetchArchiveRefusesUnsafeTargetsUnchanged(t *testing.T) {
 }
 
 func TestMissingArchiveTargetParentReportsUnattemptedRoutesInTextAndJSON(t *testing.T) {
+	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
+		t.Skip("go-run integration is heavy-only")
+	}
 	directory := t.TempDir()
 	missingParent := filepath.Join(directory, "missing-parent")
 	targetPath := filepath.Join(missingParent, "upstream.tar.gz")

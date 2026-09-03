@@ -14,6 +14,9 @@ import (
 )
 
 func TestLifecycleCommandsAreRegistered(t *testing.T) {
+	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
+		t.Skip("go-run integration is heavy-only")
+	}
 	repositoryRoot := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(repositoryRoot, "do-work", "queue"), 0o755); err != nil {
 		t.Fatal(err)

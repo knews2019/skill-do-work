@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.271.0 — Fast Tests Stay Fast; Heavy Tests Wait for Consent (2026-09-03)
+
+Routine orchestration now runs only the fast tier, measures every test file, and refuses a green result when any file reaches 30 seconds. Coverage that needs the heavy tier waits without stopping unrelated queue work.
+
+- `pending-heavy-testing` is a first-class non-runnable status across the work and clarify actions, schema normalization, selector summaries, board columns, calendar, and timeline. The hold preserves the exact implemented revision.
+- `do-work run` never invokes the heavy tier; at queue exhaustion it routes held REQs to `do-work clarify`, which asks once before running `maintainer-verify.sh --heavy`. Permission is scoped to the listed revisions, and silence or refusal is not a failed run.
+- The default contract suite omits installer, updater, staged-package, browser, JavaScript-runtime, and expensive CLI subprocess coverage. Those probes now require the heavy tier explicitly.
+- A shared duration wrapper attributes Go test time to source files, while the shell probe runner measures standalone scripts. Both enforce a strict `<30s` ceiling on every run.
+- The board's repeated immutable site generation is cached, cutting `generate_test.go` from 30.35s to about 7s; its JavaScript probes are split into three heavy shards. Lower-value duplicate installer fixtures were removed and updater fixtures copy only the binary they execute.
+
 ## 0.270.1 — Cancelled Commits Reap Their Own Hooks (2026-09-03)
 
 Cancelling a commit used to leave a `pre-commit` hook running after the command had already returned, so a hook that ignores `SIGTERM` outlived the transaction that started it. Cancellation now ends the whole process tree it launched, and waits for it instead of firing a detached kill.

@@ -27,7 +27,7 @@ var fieldContracts = map[string]fieldContract{
 		defaultValue: "general",
 	},
 	"status": {
-		canonicalValues: []string{"pending", "claimed", "completed", "completed-with-issues", "failed", "cancelled", "pending-answers", "blocked", "blocked-archive-collision", "blocked-dependency-cycle"},
+		canonicalValues: []string{"pending", "claimed", "completed", "completed-with-issues", "failed", "cancelled", "pending-answers", "pending-heavy-testing", "blocked", "blocked-archive-collision", "blocked-dependency-cycle"},
 		aliasValues: map[string]string{
 			"complete": "completed", "done": "completed", "finished": "completed", "closed": "completed",
 			"canceled": "cancelled", "abandoned": "cancelled", "wont-do": "cancelled", "wontfix": "cancelled",

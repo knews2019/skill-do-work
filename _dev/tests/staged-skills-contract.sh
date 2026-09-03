@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [ "${DO_WORK_MAINTAINER_TIER:-}" != heavy ]; then
+  printf 'staged-skill contract probes are heavy-only; run _dev/tests/maintainer-verify.sh --heavy after user permission.\n' >&2
+  exit 2
+fi
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 fail_count=0
 

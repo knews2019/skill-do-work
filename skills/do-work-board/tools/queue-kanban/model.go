@@ -1037,6 +1037,7 @@ func isStoppedStatus(normalizedStatus string) bool {
 func isNeedsInputOrBlockedStatus(normalizedStatus string) bool {
 	switch normalizedStatus {
 	case "pending-answers",
+		"pending-heavy-testing",
 		"blocked",
 		"blocked-archive-collision",
 		"blocked-dependency-cycle",
@@ -1192,7 +1193,7 @@ var schemaReadContractFields = map[string]schemaFieldContract{
 	"status": {
 		canonicalValues: []string{
 			"pending", "claimed", "completed", "completed-with-issues", "failed",
-			"cancelled", "pending-answers", "blocked", "blocked-archive-collision",
+			"cancelled", "pending-answers", "pending-heavy-testing", "blocked", "blocked-archive-collision",
 			"blocked-dependency-cycle",
 		},
 		aliases:      map[string]string{},

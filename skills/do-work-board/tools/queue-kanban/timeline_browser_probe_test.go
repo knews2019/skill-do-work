@@ -38,6 +38,7 @@ var timelineStatusProbeStatuses = []string{
 	"completed",
 	"completed-with-issues",
 	"pending-answers",
+	"pending-heavy-testing",
 	"blocked",
 	"blocked-archive-collision",
 	"blocked-dependency-cycle",
@@ -291,6 +292,7 @@ func assertTimelineStatusColours(t *testing.T, pageHTML string, schemeName strin
 	for _, pair := range [][2]string{
 		{"completed", "completed-with-issues"},
 		{"blocked", "pending-answers"},
+		{"blocked", "pending-heavy-testing"},
 		{"blocked", "blocked-archive-collision"},
 		{"blocked", "blocked-dependency-cycle"},
 		{"blocked", "failed"},

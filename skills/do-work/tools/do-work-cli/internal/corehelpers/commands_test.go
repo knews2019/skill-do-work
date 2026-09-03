@@ -92,6 +92,9 @@ func TestCoreHelperDifferentialComparatorRejectsEveryRequiredMutationDimension(t
 }
 
 func TestRealCommandRendersActionableTextAndJSON(t *testing.T) {
+	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
+		t.Skip("go-run integration is heavy-only")
+	}
 	workingDirectory, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -160,6 +163,9 @@ func TestDryRunSurfacesDoNotMutateBaselineDownloadOrTimestamps(t *testing.T) {
 }
 
 func TestAllSeventeenPublicCommandsRunInTextAndJSONWithStableStatusAndNoDryRunEffects(t *testing.T) {
+	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
+		t.Skip("binary-building integration is heavy-only")
+	}
 	workingDirectory, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)

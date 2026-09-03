@@ -17,6 +17,7 @@
       { group: "claimed", label: "claimed", statuses: ["claimed"] },
       { group: "pending", label: "pending", statuses: ["pending"] },
       { group: "needs-answers", label: "needs answers", statuses: ["pending-answers"] },
+      { group: "needs-heavy-testing", label: "needs heavy testing", statuses: ["pending-heavy-testing"] },
       {
         group: "blocked",
         label: "blocked",

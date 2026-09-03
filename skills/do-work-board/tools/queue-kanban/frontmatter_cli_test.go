@@ -340,6 +340,7 @@ func TestRunFrontmatterCommandWarnsOnUnrecognizedStatus(t *testing.T) {
 		{"status", "completedd", "completedd\n", true},   // typo must warn
 		{"status", "in-progress", "in-progress\n", true}, // hand-edited value must warn
 		{"status", "blocked-dependency-cycle", "blocked-dependency-cycle\n", false},
+		{"status", "pending-heavy-testing", "pending-heavy-testing\n", false},
 		{"testing_status", "in_testing", "in-testing\n", false},
 		{"testing_status", "half-tested", "half-tested\n", true},
 	}

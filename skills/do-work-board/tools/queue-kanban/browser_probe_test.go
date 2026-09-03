@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"flag"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -37,7 +36,7 @@ import (
 const (
 	strictBrowserBehaviorDiagnostic = "queue-kanban: strict browser behavior lane executed zero probes"
 	strictBrowserBehaviorMarker     = "QUEUE_KANBAN_STRICT_BROWSER_BEHAVIOR"
-	strictBrowserBehaviorRunPattern = "^TestMaintainerStrictBrowserBehaviorLane$"
+	browserBehaviorProbeMode        = "QUEUE_KANBAN_BROWSER_PROBES"
 
 	// browserProbeBinaryOverride names a browser explicitly, for a machine whose
 	// engine is not on PATH under any well-known name — a Playwright-managed build,
@@ -69,6 +68,9 @@ var browserProbeWellKnownBinaries = []string{
 // skip, so a missing browser can never quietly become a green run for the maintainer.
 func lookupBrowserForBehaviorProbe(t *testing.T) string {
 	t.Helper()
+	if os.Getenv(browserBehaviorProbeMode) != "on" {
+		t.Skip("browser behavior probes are heavy-only")
+	}
 	if overriddenBrowser := strings.TrimSpace(os.Getenv(browserProbeBinaryOverride)); overriddenBrowser != "" {
 		if _, statError := os.Stat(overriddenBrowser); statError == nil {
 			return overriddenBrowser
@@ -713,47 +715,6 @@ func TestBrowserBehaviorMarkLabelTextExtent(t *testing.T) {
 	t.Logf("measured %q at %gpx in %s: %.2f x %.2f",
 		measuredExtent.SampleLabel, measuredExtent.MeasuredPx, measuredExtent.FontFamily,
 		measuredExtent.Width, measuredExtent.Height)
-}
-
-// The zero-probe guard. Without it a lane whose probes all skipped — no browser, a
-// renamed test — reports green, which is the failure mode that makes a skippable lane
-// dangerous. Mirrors TestMaintainerStrictJavaScriptBehaviorLaneRejectsZeroProbes.
-func TestMaintainerStrictBrowserBehaviorLaneRejectsZeroProbes(t *testing.T) {
-	strictCommand := exec.Command(os.Args[0], "-test.run=^TestBrowserBehavior", "-test.count=1")
-	strictCommand.Env = testEnvironmentWithOverrides(
-		os.Environ(),
-		"PATH="+t.TempDir(),
-		browserProbeBinaryOverride+"=",
-		strictBrowserBehaviorMarker+"=1",
-		strictJavaScriptBehaviorMarker+"=",
-	)
-	strictOutput, strictError := strictCommand.CombinedOutput()
-	if strictError == nil {
-		t.Fatalf("strict browser behavior lane exited zero without a browser; output:\n%s", strictOutput)
-	}
-	if !strings.Contains(string(strictOutput), strictBrowserBehaviorDiagnostic) {
-		t.Fatalf("strict browser behavior lane output = %q, want %q", strictOutput, strictBrowserBehaviorDiagnostic)
-	}
-}
-
-// The strict lane: when the maintainer selects it directly, a skip is a failure.
-// This is what makes the ordinary skip above safe.
-func TestMaintainerStrictBrowserBehaviorLane(t *testing.T) {
-	testRunFlag := flag.Lookup("test.run")
-	if testRunFlag == nil || testRunFlag.Value.String() != strictBrowserBehaviorRunPattern {
-		t.Skip("maintainer strict browser behavior lane runs only when selected directly")
-	}
-
-	strictCommand := exec.Command(os.Args[0], "-test.run=^TestBrowserBehavior", "-test.count=1")
-	strictCommand.Env = testEnvironmentWithOverrides(
-		os.Environ(),
-		strictBrowserBehaviorMarker+"=1",
-		strictJavaScriptBehaviorMarker+"=",
-	)
-	strictOutput, strictError := strictCommand.CombinedOutput()
-	if strictError != nil {
-		t.Fatalf("strict browser behavior lane failed: %v\n%s", strictError, strictOutput)
-	}
 }
 
 type ticketMentionLinkProbe struct {

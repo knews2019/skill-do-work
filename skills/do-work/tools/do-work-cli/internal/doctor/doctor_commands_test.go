@@ -18,6 +18,9 @@ import (
 )
 
 func TestDoctorCommandIsRegisteredAndDefaultRunIsReadOnly(t *testing.T) {
+	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
+		t.Skip("go-run integration is heavy-only")
+	}
 	repositoryRoot := t.TempDir()
 	requestPath := filepath.Join(repositoryRoot, "do-work", "queue", "REQ-001-clean.md")
 	if err := os.MkdirAll(filepath.Dir(requestPath), 0o755); err != nil {

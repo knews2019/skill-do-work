@@ -532,6 +532,20 @@ func TestTargetedURDependencyDeferralRequiresProgressableScopedPrerequisites(t *
 	}
 }
 
+func TestPendingHeavyTestingIsCountedAndNeverSelected(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-930-heavy.md", "REQ-930", "pending-heavy-testing", "user_request: UR-930\ncommit: abc1234\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := Select(snapshot, dependencygraph.BuildGraph(snapshot), SelectionOptions{}, nil)
+	if len(result.Selected) != 0 || result.SelectionSummary.PendingHeavyTesting != 1 {
+		t.Fatalf("pending-heavy-testing selection = %#v", result)
+	}
+	assertExclusionCode(t, result, "REQ-930", "STATUS-NOT-PENDING")
+}
+
 func TestSimpleSelectionRetainsSpecializedVetoesAndFrozenEstimate(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-401-good.md", "REQ-401", "pending", "effort_estimate: trivial\nestimate:\n  p50_active_minutes: 15\n")

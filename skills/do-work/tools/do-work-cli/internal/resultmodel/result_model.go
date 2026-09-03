@@ -204,6 +204,7 @@ type SelectionSummary struct {
 	Pending                 int `json:"pending"`
 	FinishedAwaitingArchive int `json:"finished_awaiting_archive"`
 	PendingAnswers          int `json:"pending_answers"`
+	PendingHeavyTesting     int `json:"pending_heavy_testing"`
 	Blocked                 int `json:"blocked"`
 	BlockedArchiveCollision int `json:"blocked_archive_collision"`
 	BlockedDependencyCycle  int `json:"blocked_dependency_cycle"`
@@ -579,10 +580,10 @@ func renderText(result CommandResult) []byte {
 	for _, skipped := range result.SkippedWork {
 		fmt.Fprintf(&output, "skipped %s: %s\n", skipped.Code, skipped.Reason)
 	}
-	if result.Command == "next" || len(result.Selected) > 0 || len(result.Excluded) > 0 || result.SelectionSummary.Pending > 0 || result.SelectionSummary.Blocked > 0 {
-		fmt.Fprintf(&output, "queue: %d pending | %d finished (awaiting archive) | %d pending-answers | %d blocked | %d blocked-archive-collision | %d blocked-dependency-cycle\n",
+	if result.Command == "next" || len(result.Selected) > 0 || len(result.Excluded) > 0 || result.SelectionSummary.Pending > 0 || result.SelectionSummary.PendingHeavyTesting > 0 || result.SelectionSummary.Blocked > 0 {
+		fmt.Fprintf(&output, "queue: %d pending | %d finished (awaiting archive) | %d pending-answers | %d pending-heavy-testing | %d blocked | %d blocked-archive-collision | %d blocked-dependency-cycle\n",
 			result.SelectionSummary.Pending, result.SelectionSummary.FinishedAwaitingArchive,
-			result.SelectionSummary.PendingAnswers, result.SelectionSummary.Blocked,
+			result.SelectionSummary.PendingAnswers, result.SelectionSummary.PendingHeavyTesting, result.SelectionSummary.Blocked,
 			result.SelectionSummary.BlockedArchiveCollision, result.SelectionSummary.BlockedDependencyCycle)
 	}
 	selectedIDs := make([]string, 0, len(result.Selected))

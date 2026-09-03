@@ -409,6 +409,9 @@ func TestAffirmativeReleaseOwnershipRequiresRootedWorkspaceChain(t *testing.T) {
 }
 
 func TestPublicRecoverFinalizationMovesURThenAllowsRealClaim(t *testing.T) {
+	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
+		t.Skip("go-run integration is heavy-only")
+	}
 	repositoryRoot := newFinalizationRepository(t)
 	seedSemanticLegacyTail(t, repositoryRoot)
 	nextPath := "do-work/queue/REQ-799-next.md"

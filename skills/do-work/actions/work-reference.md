@@ -11,7 +11,7 @@ work action (orchestrator - lightweight, stays in loop)
   │
   ├── Read CHECKPOINT.md if exists (crash recovery's classification input, then resume context)
   │
-  ├── For each pending request (skip pending-answers):
+  ├── For each pending request (skip pending-answers and pending-heavy-testing):
   │     │
   │     ├── TRIAGE: Assess complexity (no agent, just read & categorize)
   │     │
@@ -226,6 +226,12 @@ commit: abc1234               # required in a git repo — implementation commit
 error: "Description"          # Set when a REQ failed; RETAINED verbatim if that failed REQ is later cancelled via do-work abandon — the surviving failure signal on a status: cancelled REQ, NOT drift to strip
 error_type: intent|spec|code|environment   # Set with `error` on failure; likewise retained on a failed→cancelled flip
 
+# Set by work.md Step 6.5 when the merged diff requires the permission-gated heavy suite.
+# The REQ stays in queue and ordinary selection walks past it. `commit` above is the
+# exact implemented revision the Open Question names while other runnable REQs continue.
+status: pending-heavy-testing
+status_changed_at: 2026-09-03T10:45:00Z
+
 # Set by abandon action (do-work abandon — user-directed won't-do decision).
 # Two entry paths: a not-yet-finished REQ (pending / pending-answers / blocked / ...), and an
 # already-archived `failed` REQ resolved after the fact — the latter keeps its `error`/`error_type`
@@ -262,7 +268,7 @@ The enum-or-boolean-valued fields above (one table row each, below) are covered 
 | Field (read sites) | Canonical enum | Normalization | Default on unknown |
 |---|---|---|---|
 | `domain` (Step 4 Route C plan-agent spawn, Step 6 crew load, Step 7 review-work spawn) | `frontend`, `backend`, `ui-design`, `general`, `security`, `testing`, `cms` | `back-end`/`back_end` → `backend`; `front-end`/`front_end` → `frontend`; `ui_design` → `ui-design`; `sec` → `security`; `test` → `testing`; `content-management`/`content_management` → `cms` | `general` |
-| `status` (Step 1 scan + categorization, Step 9 finalization, abandon action) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `cancelled`, `pending-answers`, `blocked`, `blocked-archive-collision`, `blocked-dependency-cycle` | `complete`/`done`/`finished`/`closed` → `completed`; `canceled`/`abandoned`/`wont-do`/`wontfix` → `cancelled` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
+| `status` (Step 1 scan + categorization, Step 6.5 heavy-test hold, Step 9 finalization, abandon action) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `cancelled`, `pending-answers`, `pending-heavy-testing`, `blocked`, `blocked-archive-collision`, `blocked-dependency-cycle` | `complete`/`done`/`finished`/`closed` → `completed`; `canceled`/`abandoned`/`wont-do`/`wontfix` → `cancelled` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
 | `route` (Step 3 dispatch, Step 5.5 scope declaration, Step 7 scope-drift comparison) | `A`, `B`, `C` | lowercase `a`/`b`/`c` → uppercase | treat as needing re-triage in Step 3 |
 | `caveman` (Step 6 crew load) | `false`, `true`, `lite`, `full`, `ultra` | truthy strings (`yes`/`on`) → `true`; `light` → `lite` | `false` |
 | `maintenance` (Step 6 crew load) | `true`, `false` (YAML boolean) | truthy strings (`yes`/`on`/`t`) → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 maintenance crew not loaded) |

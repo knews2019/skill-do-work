@@ -51,7 +51,7 @@ These lines render as a `## Notes` block at the very top of the report body (see
 
 Walk the do-work tree and collect:
 
-- `do-work/queue/REQ-*.md` — pending and `pending-answers`
+- `do-work/queue/REQ-*.md` — pending, `pending-answers`, and `pending-heavy-testing`
 - `do-work/working/REQ-*.md` — actively claimed
 - `do-work/archive/**/REQ-*.md` — terminal status (completed, completed-with-issues, failed, cancelled)
 - `do-work/user-requests/UR-*/` — open URs and their referenced REQs
@@ -65,7 +65,7 @@ All frontmatter reads honor the **Schema Read Contract** documented in `actions/
 For each REQ in `do-work/queue/`, assign a feasibility bucket using only what's visible in the file:
 
 - **Ready** — normalized `status` is `pending`, has a clear `## What`, no unresolved `addendum_to` chain (also recognizes the `amends`/`parent`/`amendment_to` aliases when `addendum_to` is absent, per the Schema Read Contract in `actions/work-reference.md`), no unmet `depends_on` references (every ID in `depends_on` — or in the legacy `dependencies:` alias if `depends_on` is absent, same back-compat rule as actions/work.md's dependency-aware selection — resolves to a REQ with `status: completed` or `completed-with-issues`).
-- **Needs clarification** — `status: pending-answers`, OR the request body contains explicit open questions, OR scope is too vague to triage (one-line title with no `## What` body).
+- **Needs clarification** — `status: pending-answers` or `status: pending-heavy-testing`, OR the request body contains explicit open questions, OR scope is too vague to triage (one-line title with no `## What` body). For `pending-heavy-testing`, name the recorded revision and say that `do-work clarify` owns the one permission prompt.
 - **Blocked** — references a REQ in `addendum_to` (or its `amends`/`parent`/`amendment_to` aliases) or `depends_on` (or its `dependencies:` alias) that is still pending or in-progress; OR has `status: blocked` (waiting on an external condition, with the condition named in `blocked_by` — cite that text as the evidence); OR has `status: blocked-dependency-cycle` (a cycle in its dependency graph, set by actions/work.md's dependency-aware selection); OR names an external dependency in prose (waiting on an API, a decision, a third-party).
 - **Stale** — `created_at` more than 30 days old AND not yet claimed. Flag for re-confirmation; the user may no longer want it.
 

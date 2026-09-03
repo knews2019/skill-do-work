@@ -521,6 +521,8 @@ func timelineExclusionReason(ticket *RequestTicket) string {
 	switch ticket.Status {
 	case "pending-answers":
 		return "waiting on an answer from you"
+	case "pending-heavy-testing":
+		return "waiting for permission to run heavy tests"
 	case "blocked":
 		return "waiting on an external condition"
 	case "blocked-archive-collision":

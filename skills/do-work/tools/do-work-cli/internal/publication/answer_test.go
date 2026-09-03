@@ -249,6 +249,40 @@ func TestBuildAnswerPlanDerivesClarifyDispositionFromWholeRecord(t *testing.T) {
 	}
 }
 
+func TestHeavyTestingAnswerCompletesOnGreenAndRequeuesOnFailure(t *testing.T) {
+	for _, testCase := range []struct {
+		name        string
+		outcome     string
+		summary     string
+		wantStatus  string
+		wantArchive bool
+	}{
+		{name: "green", outcome: "confirmed", summary: "yes, exit 0", wantStatus: "completed", wantArchive: true},
+		{name: "failed", outcome: "answered", summary: "no, browser lane failed", wantStatus: "pending"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			root := t.TempDir()
+			requestPath := "do-work/queue/REQ-3-heavy.md"
+			request := []byte("---\nid: REQ-3\nstatus: pending-heavy-testing\ncommit: abc1234\n---\n## Open Questions\n\n- [ ] Run heavy tests at abc1234; did they exit 0?\n")
+			writeFixture(t, root, requestPath, request, 0o644)
+			answer := &AnswerManifest{RequestPath: requestPath, ExpectedStatus: "pending-heavy-testing", Mode: "heavy-testing", Answers: []QuestionAnswer{{ExpectedLine: "- [ ] Run heavy tests at abc1234; did they exit 0?", Outcome: testCase.outcome, Summary: testCase.summary}}}
+			if testCase.wantArchive {
+				answer.ArchivePath = "do-work/archive/REQ-3-heavy.md"
+			}
+			plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: answer}, time.Date(2026, 9, 3, 20, 0, 0, 0, time.UTC))
+			if plan.Refusal != nil || len(plan.Mutations) != 1 {
+				t.Fatalf("heavy-testing plan = %#v", plan)
+			}
+			if !bytes.Contains(plan.Mutations[0].Contents, []byte("status: "+testCase.wantStatus)) {
+				t.Fatalf("heavy-testing contents = %s", plan.Mutations[0].Contents)
+			}
+			if testCase.wantArchive != (plan.Mutations[0].DestinationPath == "do-work/archive/REQ-3-heavy.md") {
+				t.Fatalf("heavy-testing destination = %q", plan.Mutations[0].DestinationPath)
+			}
+		})
+	}
+}
+
 func TestBuildAnswerPlanRefusesArchivedReply(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "do-work/archive/REQ-1-test.md", []byte("---\nid: REQ-1\nstatus: completed\n---\n- [ ] Old?\n"), 0o644)

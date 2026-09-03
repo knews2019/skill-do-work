@@ -4,6 +4,11 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 fail_count=0
+verification_tier="${DO_WORK_MAINTAINER_TIER:-fast}"
+if [ "$verification_tier" != fast ] && [ "$verification_tier" != heavy ]; then
+  printf 'FAIL: unsupported maintainer tier: %s\n' "$verification_tier" >&2
+  exit 2
+fi
 
 # Every natural-language action that retained a deterministic toolbox/update phase must
 # call the canonical core launcher and state the same fail-closed boundary. The action
@@ -7487,8 +7492,10 @@ staged_skills_probe="$repo_root/_dev/tests/staged-skills-contract.sh"
 if [ ! -f "$staged_skills_probe" ]; then
   printf 'FAIL: _dev/tests/staged-skills-contract.sh is missing — staged skill packages have no boundary coverage.\n' >&2
   fail_count=$((fail_count + 1))
-else
+elif [ "$verification_tier" = heavy ]; then
   launch_probe staged_skills_probe 'staged skills contract probes failed (see the FAIL lines above).' "$staged_skills_probe"
+else
+  printf 'SKIP: staged skills and prescribed-shell behavior are available through maintainer-verify.sh --heavy.\n'
 fi
 
 # Fresh installation is a four-module/configuration transaction with its own hermetic
@@ -7498,8 +7505,10 @@ suite_installer_probe="$repo_root/_dev/tests/install-suite-behavior.sh"
 if [ ! -f "$suite_installer_probe" ]; then
   printf 'FAIL: _dev/tests/install-suite-behavior.sh is missing — the full-suite installer has no behavioral coverage.\n' >&2
   fail_count=$((fail_count + 1))
-else
+elif [ "$verification_tier" = heavy ]; then
   launch_probe cli_build_lane 'update-script or suite installer behavior probes failed (see the FAIL lines above)' "$update_script_probe" "$suite_installer_probe"
+else
+  printf 'SKIP: updater and installer behavior probes are available through maintainer-verify.sh --heavy.\n'
 fi
 
 # The P50 estimator's contracts — deterministic output, nearest-5 rounding, the
@@ -8471,6 +8480,42 @@ assert_file_not_contains \
   "skills/do-work/actions/work-reference.md" \
   'constraints on the hand edit' \
   'the active release reference must not restate lockfile hand editing.'
+
+# Fast verification is the unattended contract. Heavy coverage must remain unreachable
+# without the explicit maintainer flag, and a REQ that needs it must have a durable,
+# selector-visible holding state rather than stopping unrelated queue work.
+assert_contains \
+  "skills/do-work/actions/work.md" \
+  'status: pending-heavy-testing' \
+  'work orchestration must persist the non-blocking heavy-test hold.'
+assert_contains \
+  "skills/do-work/actions/work.md" \
+  'asks the user once for permission to run.*maintainer-verify\.sh --heavy' \
+  'work orchestration must ask before running the exact heavy tier.'
+assert_contains \
+  "skills/do-work/actions/work-reference.md" \
+  '`pending-heavy-testing`' \
+  'the request schema must recognize the heavy-test holding status.'
+assert_contains \
+  "skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go" \
+  'pending-heavy-testing' \
+  'the canonical CLI schema must recognize pending-heavy-testing.'
+assert_contains \
+  "skills/do-work-board/tools/queue-kanban/model.go" \
+  'pending-heavy-testing' \
+  'the board schema and Needs-input projection must recognize pending-heavy-testing.'
+assert_contains \
+  "_dev/tests/maintainer-verify.sh" \
+  'DO_WORK_TEST_FILE_BUDGET_SECONDS' \
+  'the canonical gate must enforce the per-test-file duration budget.'
+assert_contains \
+  "_dev/tests/prescribed-shell-scripts-behavior.sh" \
+  'DO_WORK_MAINTAINER_TIER' \
+  'the prescribed-shell suite must refuse direct fast-tier execution.'
+assert_contains \
+  "_dev/tests/prescribed-shell-harness.sh" \
+  'DO_WORK_MAINTAINER_TIER' \
+  'individual prescribed-shell cases must refuse direct fast-tier execution.'
 
 if [ "$fail_count" -gt 0 ]; then
   exit 1

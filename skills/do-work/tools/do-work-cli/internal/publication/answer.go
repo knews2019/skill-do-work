@@ -250,6 +250,30 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 				return refusedPlan(plan, "ANSWER-EDIT-FAILED", timestampError.Error(), []string{record.RequestID}, requestPath)
 			}
 		}
+	case "heavy-testing":
+		if record.RequestStatus != "pending-heavy-testing" {
+			return refusedPlan(plan, "ANSWER-HEAVY-STATUS", "heavy-testing answers require pending-heavy-testing", []string{record.RequestID}, requestPath)
+		}
+		status := "pending-heavy-testing"
+		if !remainingOpen {
+			status = "pending"
+			if allSubmittedConfirmed {
+				status = "completed"
+			}
+		}
+		if setError := document.SetScalar("status", status); setError != nil {
+			return refusedPlan(plan, "ANSWER-EDIT-FAILED", setError.Error(), []string{record.RequestID}, requestPath)
+		}
+		resultStatus = status
+		if status == "completed" {
+			if timestampError := document.SetScalar("completed_at", canonicalTimestamp); timestampError != nil {
+				return refusedPlan(plan, "ANSWER-EDIT-FAILED", timestampError.Error(), []string{record.RequestID}, requestPath)
+			}
+		} else if status == "pending" {
+			if timestampError := document.SetScalar("status_changed_at", canonicalTimestamp); timestampError != nil {
+				return refusedPlan(plan, "ANSWER-EDIT-FAILED", timestampError.Error(), []string{record.RequestID}, requestPath)
+			}
+		}
 	case "stakeholder":
 		status := "blocked"
 		if !remainingOpen {
@@ -308,7 +332,7 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 	case "verify-repair":
 		// Verify owns prose judgment; the command owns only the exact question edit.
 	default:
-		return refusedPlan(plan, "ANSWER-MODE-INVALID", "answer mode must be clarify, stakeholder, or verify-repair", []string{record.RequestID}, requestPath)
+		return refusedPlan(plan, "ANSWER-MODE-INVALID", "answer mode must be clarify, heavy-testing, stakeholder, or verify-repair", []string{record.RequestID}, requestPath)
 	}
 	terminal := resultStatus == "completed" || resultStatus == "cancelled"
 	projectedURClosure := false

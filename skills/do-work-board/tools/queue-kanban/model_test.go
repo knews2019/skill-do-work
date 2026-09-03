@@ -30,6 +30,7 @@ func TestNormalizeStatus(t *testing.T) {
 		{"  Cancelled ", "cancelled"},
 		{"pending", "pending"},
 		{"pending-answers", "pending-answers"},
+		{"pending-heavy-testing", "pending-heavy-testing"},
 		{"blocked", "blocked"},
 		{"claimed", "claimed"},
 		{"custom-status", "custom-status"},
@@ -53,7 +54,7 @@ func TestStatusClassifiers(t *testing.T) {
 			t.Fatalf("%q is outside the terminal-success enum (completed | completed-with-issues) — a completed-prefixed typo must route through the unrecognized-status warning path, not classify as done", typoStatus)
 		}
 	}
-	for _, blocked := range []string{"pending-answers", "blocked", "blocked-archive-collision", "blocked-dependency-cycle", "failed"} {
+	for _, blocked := range []string{"pending-answers", "pending-heavy-testing", "blocked", "blocked-archive-collision", "blocked-dependency-cycle", "failed"} {
 		if !isNeedsInputOrBlockedStatus(blocked) {
 			t.Fatalf("%q should be a needs-input/blocked status", blocked)
 		}
@@ -92,7 +93,7 @@ func TestStatusClassifiers(t *testing.T) {
 			t.Fatalf("%q should classify as terminally resolved (Terminal-resolved status set, actions/work-reference.md)", resolved)
 		}
 	}
-	for _, notResolved := range []string{"failed", "pending", "claimed", "pending-answers"} {
+	for _, notResolved := range []string{"failed", "pending", "claimed", "pending-answers", "pending-heavy-testing"} {
 		if isTerminalResolvedStatus(notResolved) {
 			t.Fatalf("%q must not classify as terminally resolved", notResolved)
 		}

@@ -2,6 +2,11 @@
 # Hermetic behavioral probes for the current four-module suite updater.
 set -uo pipefail
 
+if [ "${DO_WORK_MAINTAINER_TIER:-}" != heavy ]; then
+  printf 'update-script behavior probes are heavy-only; run _dev/tests/maintainer-verify.sh --heavy after user permission.\n' >&2
+  exit 2
+fi
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=_dev/tests/fixture-repo.sh
 source "$repo_root/_dev/tests/fixture-repo.sh"
@@ -16,7 +21,7 @@ fail_count=0
 
 # The updater, installer, validator, replacer and fetcher are all launchers over do-work-cli
 # now, so the command is built once here and copied into every fixture below.
-if ! (cd "$do_work_cli_module" && go build -o do-work-cli ./cmd/do-work-cli); then
+if ! (cd "$do_work_cli_module" && go build -ldflags='-s -w' -o do-work-cli ./cmd/do-work-cli); then
   printf 'FAIL: could not pre-build do-work-cli for the update fixtures.\n' >&2
   exit 1
 fi
@@ -125,18 +130,17 @@ commit_project() {
   git -C "$project_path" commit -qm "$message_text"
 }
 
-# copy_do_work_cli_module places the Go command beside a fixture's launchers, with the binary
-# pre-built and its mtime pinned past every source. The launcher rebuilds whenever a source
-# is newer, and these fixtures must run without `go` deciding the outcome (REQ-407 C10).
+# copy_do_work_cli_module places the standalone pre-built command beside a fixture's
+# launcher. These updater scenarios exercise installed behavior, not source rebuilding;
+# copying the full Go source tree into every fixture made this one test file spend most of
+# its budget duplicating bytes that no assertion reads.
 copy_do_work_cli_module() {
   local tools_directory="$1"
   cp "$do_work_cli_launcher" "$tools_directory/do-work-cli.sh"
   chmod +x "$tools_directory/do-work-cli.sh"
   mkdir -p "$tools_directory/do-work-cli"
-  cp -R "$do_work_cli_module/." "$tools_directory/do-work-cli/"
-  find "$tools_directory/do-work-cli" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \) \
-    -exec touch -t 200001010000 {} +
-  touch "$tools_directory/do-work-cli/do-work-cli"
+  cp "$do_work_cli_module/do-work-cli" "$tools_directory/do-work-cli/do-work-cli"
+  chmod +x "$tools_directory/do-work-cli/do-work-cli"
 }
 
 build_suite_install() {

@@ -331,6 +331,8 @@ func summarizeQueue(snapshot *repositorymodel.RepositorySnapshot) resultmodel.Se
 			summary.Pending++
 		case "pending-answers":
 			summary.PendingAnswers++
+		case "pending-heavy-testing":
+			summary.PendingHeavyTesting++
 		case "blocked":
 			summary.Blocked++
 		case "blocked-archive-collision":

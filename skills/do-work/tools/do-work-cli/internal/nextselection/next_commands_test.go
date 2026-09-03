@@ -15,6 +15,9 @@ type commandSelectionRecord struct {
 }
 
 func TestNextCommandProjectsGateSelectionPriority(t *testing.T) {
+	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
+		t.Skip("go-run integration is heavy-only")
+	}
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-811-ordinary.md", "REQ-811", "pending", "")
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-812-deferred.md", "REQ-812", "pending", "gate_deferred: true\n")
@@ -42,6 +45,9 @@ type commandSelectionResult struct {
 }
 
 func TestNextCommandMixedFixture(t *testing.T) {
+	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
+		t.Skip("go-run integration is heavy-only")
+	}
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/archive/REQ-900-done.md", "REQ-900", "completed", "")
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-101-root.md", "REQ-101", "pending", "estimate:\n  p50_active_minutes: 10\n")
@@ -84,6 +90,9 @@ func TestNextCommandMixedFixture(t *testing.T) {
 }
 
 func TestNextCommandTreatsEmptyInlineDependencyListAsReady(t *testing.T) {
+	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
+		t.Skip("go-run integration is heavy-only")
+	}
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-110-empty-dependency-list.md", "REQ-110", "pending", "depends_on: []\n")
 

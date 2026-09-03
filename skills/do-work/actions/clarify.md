@@ -8,12 +8,13 @@ This is the second human-attention window in the pipeline. After actions/work.md
 
 **Use when:**
 - A work run just finished and left `pending-answers` REQs in the queue.
+- A work run left `pending-heavy-testing` REQs whose exact implementation revisions need permission before the heavy suite runs.
 - The user asks "what's blocked?", "show me pending questions", or similar.
 - The pipeline can't advance because builder-decided questions need sign-off.
 - `blocked` REQs are waiting on a **human-confirmable** external condition (a designer answered, a service is now up) and you want to confirm the condition is met so they re-enter the queue.
 
 **Do NOT use when:**
-- No `pending-answers` **and** no `blocked` REQs exist — tell the user the queue is clear and stop.
+- No `pending-answers`, `pending-heavy-testing`, **and** no `blocked` REQs exist — tell the user the queue is clear and stop.
 - The user wants to answer a *specific* open question by editing the REQ directly — that's just a file edit, not a batch review.
 - The queue has only `pending` REQs — those need `do-work run`, not clarify.
 - The `blocked` condition is **machine-checkable** (it carries a `blocked_check` probe) — `do-work run` auto-probes and unblocks those; clarify is for the human-confirmable ones.
@@ -27,11 +28,19 @@ Triggered by `do-work clarify` (also: `answers`, `questions`, `pending`, `what's
 
 ### Step 1: Scan the queue
 
-Find all `REQ-*.md` files in `do-work/queue/` with `status: pending-answers`. Also collect REQs with `status: blocked` (waiting on an external condition) for Step 5.5 — those split into two shapes there by the presence of a `stakeholder:` field (`actions/work-reference.md` → Request File Schema): plain external conditions, and stakeholder-questions REQs.
+Find all `REQ-*.md` files in `do-work/queue/` with `status: pending-answers` or `status: pending-heavy-testing`. Also collect REQs with `status: blocked` (waiting on an external condition) for Step 5.5 — those split into two shapes there by the presence of a `stakeholder:` field (`actions/work-reference.md` → Request File Schema): plain external conditions, and stakeholder-questions REQs.
 
 ### Step 2: Check for pending questions
 
-If neither any `pending-answers` REQ nor any `blocked` REQ is found: report "No pending questions or blocked REQs — queue is clear" and exit. If only `blocked` REQs exist (no `pending-answers`), skip Steps 3–5 and go straight to Step 5.5.
+If no `pending-answers`, `pending-heavy-testing`, or `blocked` REQ is found: report "No pending questions, heavy tests, or blocked REQs — queue is clear" and exit. If only `blocked` REQs exist, skip Steps 2.5–5 and go straight to Step 5.5.
+
+### Step 2.5: Ask once before heavy testing
+
+List every `pending-heavy-testing` REQ with its title and exact full `commit:` revision. Refuse malformed entries whose hash is absent or does not resolve; they stay held. Ask one batch question: `May I run bash _dev/tests/maintainer-verify.sh --heavy for these exact revisions?` A decline or no answer leaves every REQ unchanged and never delays ordinary `pending` work, which the work loop already finished before routing here.
+
+After permission, run the heavy command for each named revision in an isolated detached worktree at that revision, never at a later `HEAD`, and retain its per-test-file duration output. The work loop never runs this command; clarify is the explicit human-attention window that owns the permission.
+
+For each result, build one canonical `answer` manifest with `expected_status: pending-heavy-testing` and `mode: heavy-testing`. Use `confirmed` with the exit-0 evidence for green, which completes and archives the already-implemented REQ. Use `answered` with the failing lane and exit status for red, which flips the REQ to `pending` for remediation. Invoke the ordinary `answer --manifest ... --at ... --commit` transaction; there is no hand edit or free-form fallback. The stored Open Question and answer note are the durable consent and result evidence.
 
 ### Step 3: Present questions
 
@@ -39,7 +48,7 @@ If neither any `pending-answers` REQ nor any `blocked` REQ is found: report "No 
 
 Always lead with the builder's decision and its default — confirming is the intended fast path — and, for builder-decided follow-ups, show the **value and risk** so the user can judge in seconds instead of spelunking. This is the **DECISIONS FOR YOU** section of the Decision Brief (`actions/work-reference.md` → **Decision Brief (hand-back format)**).
 
-Present each `pending-answers` REQ in three layers — story, then decisions, then detail on request. The story layer is a clarify-local addition: the decision block underneath it is the Decision Brief's format, unchanged.
+Present each `pending-answers` REQ in three layers — story, then decisions, then detail on request. `pending-heavy-testing` was already handled by Step 2.5 and does not pass through this builder-decision renderer. The story layer is a clarify-local addition: the decision block underneath it is the Decision Brief's format, unchanged.
 
 **Layer 1 — the story (1–4 sentences, always present).** Write for a reader who knows what a UR and a REQ *are* and has forgotten everything about *this* one — the work may be days old. In plain sentences, answer three things: what the user originally asked for, what the builder ran into while building it, and why it couldn't be settled without them. That third part carries Principle 7 of `crew-members/clear-questions.md` — the escalation reason belongs in the story, not wedged into the question.
 
@@ -191,7 +200,7 @@ Note for the user which blocked REQs carry a `blocked_check` probe — those unb
 
 ### Step 6: Report
 
-Summary of what was resolved and what's still pending — include any `blocked` REQs unblocked (now `pending`) or left waiting, and any stakeholder-questions REQs handed off, reclaimed from, or left open, alongside the answered/confirmed/discarded questions. When Step 5.25 ran, append its evidence-backed candidate report. When the user deferred an over-threshold scan, say it was not run and include the combined explicit command.
+Summary of what was resolved and what's still pending — include every heavy-test REQ completed, returned to `pending`, or left awaiting permission; any `blocked` REQs unblocked (now `pending`) or left waiting; and any stakeholder-questions REQs handed off, reclaimed from, or left open, alongside the answered/confirmed/discarded questions. When Step 5.25 ran, append its evidence-backed candidate report. When the user deferred an over-threshold scan, say it was not run and include the combined explicit command.
 
 ## Builder Was Right / Discarded
 

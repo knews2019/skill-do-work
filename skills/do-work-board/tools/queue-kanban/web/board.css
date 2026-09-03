@@ -864,6 +864,7 @@ body.is-resizing-detail {
   --card-tint: var(--tint-claimed);
 }
 .req-card[data-status="pending-answers"],
+.req-card[data-status="pending-heavy-testing"],
 .req-card[data-status="blocked"],
 .req-card[data-status="blocked-archive-collision"],
 .req-card[data-status="blocked-dependency-cycle"],
@@ -1533,6 +1534,7 @@ body.is-resizing-detail {
   --chip-accent: var(--accent-pending);
 }
 .calendar-chip[data-status="pending-answers"],
+.calendar-chip[data-status="pending-heavy-testing"],
 .calendar-chip[data-status="blocked"],
 .calendar-chip[data-status="blocked-archive-collision"],
 .calendar-chip[data-status="blocked-dependency-cycle"],
@@ -2930,6 +2932,7 @@ body.is-resizing-detail .detail-resizer::before {
 }
 
 .timeline-row[data-status="pending-answers"],
+.timeline-row[data-status="pending-heavy-testing"],
 .timeline-row[data-status="blocked"],
 .timeline-row[data-status="blocked-archive-collision"],
 .timeline-row[data-status="blocked-dependency-cycle"],
