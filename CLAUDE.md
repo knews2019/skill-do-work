@@ -52,7 +52,7 @@ READ the matching prime before changing that area — they hold the detail this 
 
 ## Commit Completion
 
-A job is not done while its code exists only in the working tree. Commit each coherent, verified increment before hand-back; “commit often” means smaller complete slices. Verified means `bash _dev/tests/maintainer-verify.sh` exits 0, run unpiped from the repository root; a builder's report is a claim, not evidence.
+A job is not done while its code exists only in the working tree. Commit each coherent, verified increment before hand-back; “commit often” means smaller complete slices.
 
 ## Releases
 
