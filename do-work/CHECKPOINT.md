@@ -52,3 +52,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-524: Kill the owned commit process group on cancellation — claimed 2026-09-03T13:36:18Z — writer: vm:/home/user/skill-do-work

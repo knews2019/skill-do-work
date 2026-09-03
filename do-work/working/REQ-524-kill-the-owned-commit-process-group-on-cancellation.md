@@ -1,7 +1,7 @@
 ---
 id: REQ-524
 title: 'Kill the owned commit process group on cancellation'
-status: pending
+status: claimed
 created_at: 2026-09-02T23:58:00Z
 user_request: UR-085
 domain: backend
@@ -16,6 +16,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_process.go
 related: [REQ-457]
+claimed_at: 2026-09-03T13:36:18Z
 ---
 
 # Kill the Owned Commit Process Group on Cancellation
