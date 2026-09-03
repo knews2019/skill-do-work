@@ -1,7 +1,7 @@
 ---
 id: REQ-541
 title: 'The heavy gate is asked for through pending-heavy-testing, never run by the loop'
-status: pending
+status: cancelled
 created_at: 2026-09-03T14:49:02Z
 user_request: UR-104
 domain: general
@@ -23,6 +23,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/**/*.go
   - skills/do-work-board/tools/queue-kanban/model.go
   - skills/do-work-board/tools/queue-kanban/web/
+completed_at: 2026-09-03T20:06:07Z
 ---
 
 # The Heavy Gate Is Asked for Through pending-heavy-testing, Never Run by the Loop
@@ -96,3 +97,9 @@ User added (2026-09-03 21:29 and 21:34 local, in the test-budget session; 22:05 
 
 ## Full Context
 See `do-work/user-requests/UR-104/input.md` for complete verbatim input.
+
+## Cancelled
+
+- **When:** 2026-09-03T20:06:07Z
+- **Why:** landed in place by 21dac2b8 (release 0.271.0): pending-heavy-testing is a first-class non-runnable status across work, clarify, schema normalization, selector summaries and the board; the loop never runs --heavy. Difference from the 22:04 addendum: clarify asks once at queue exhaustion and runs --heavy itself for the listed revisions instead of the maintainer running it by hand.
+- **Decided by:** user, via `do-work abandon`

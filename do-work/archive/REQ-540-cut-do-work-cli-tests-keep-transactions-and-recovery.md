@@ -1,7 +1,7 @@
 ---
 id: REQ-540
 title: 'Cut do-work-cli tests: keep transactions and recovery, short-circuit the rest'
-status: pending
+status: cancelled
 created_at: 2026-09-03T14:49:02Z
 user_request: UR-104
 domain: testing
@@ -17,6 +17,7 @@ batch: two-tier-gate
 write_set:
   - skills/do-work/tools/do-work-cli/**/*_test.go
   - _dev/tests/maintainer-verify.sh
+completed_at: 2026-09-03T20:06:07Z
 ---
 
 # Cut do-work-cli Tests: Keep Transactions and Recovery, Short-Circuit the Rest
@@ -80,3 +81,9 @@ User added (2026-09-03 21:29 local, in the test-budget session; 22:05 local, "up
 - A2, per-package budget, Go side: every do-work-cli package finishes under 30 s wall in the fast tier (`-short`). The gate measures per-package wall time from `go test -json`, prints it, appends one row per package per run to the durations log REQ-539 introduces (or introduces the log itself if it lands first, same columns: run id, file or package, seconds, concurrent gate count), and fails the fast tier when a package exceeds 30 s. `--heavy` has no budget. The original "finalization under 20 s, module under 25 s" targets stay; 30 s per package is the enforced ceiling.
 - GREEN additionally requires: every package's recorded fast-tier duration under 30 s in the proving run, and the durations log carrying one row per package.
 - Coherence check: no contradiction with the original sections; the dependency change is the only frontmatter edit.
+
+## Cancelled
+
+- **When:** 2026-09-03T20:06:07Z
+- **Why:** landed in place by 21dac2b8 (release 0.271.0): _dev/tests/run-go-tests-with-budget.sh attributes Go test time to source files and fails the fast tier over 30 s; expensive CLI subprocess coverage moved behind --heavy; slowest CLI file 20.51 s on the landing run.
+- **Decided by:** user, via `do-work abandon`
