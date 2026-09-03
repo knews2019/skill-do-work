@@ -249,6 +249,60 @@ func TestOutcomeExitCodes(t *testing.T) {
 	}
 }
 
+func TestRefusalRemediesNeverNameTheInvokingCommand(t *testing.T) {
+	tests := []struct {
+		name        string
+		result      CommandResult
+		wantOutcome CommandOutcome
+		wantNext    []string
+	}{
+		{
+			name: "owned refusal becomes a set-aside",
+			result: CommandResult{Command: "recover-finalization", Outcome: OutcomeRefused, Findings: []CommandFinding{{
+				Code: "FINALIZATION-LIFECYCLE-APPLY", AffectedIDs: []string{"REQ-456"},
+				AutomationStopReason: "lifecycle apply refused", NextArgv: []string{"do-work-cli", "--format", "json", "recover-finalization", "--discover"},
+				VerificationArgv: []string{"do-work-cli", "--format", "json", "recover-finalization", "--discover"},
+			}}},
+			wantOutcome: OutcomeFindings,
+			wantNext:    []string{},
+		},
+		{
+			name: "different resolving verb is preserved",
+			result: CommandResult{Command: "claim", Outcome: OutcomeRefused, Findings: []CommandFinding{{
+				Code: "GIT-DIRTY-TARGET", AffectedIDs: []string{"REQ-513"},
+				AutomationStopReason: "target is dirty", NextArgv: []string{"git", "diff", "--", "do-work/CHECKPOINT.md"},
+				VerificationArgv: []string{"do-work-cli", "--format", "json", "claim", "REQ-513"},
+			}}},
+			wantOutcome: OutcomeRefused,
+			wantNext:    []string{"git", "diff", "--", "do-work/CHECKPOINT.md"},
+		},
+		{
+			name: "unowned self reference remains a global stop without a loop",
+			result: CommandResult{Command: "cleanup", Outcome: OutcomeRefused, Findings: []CommandFinding{{
+				Code: "CLEANUP-PREFLIGHT", Fixability: FixabilityRefused,
+				AutomationStopReason: "shared cleanup target is dirty", NextArgv: []string{"do-work-cli", "cleanup", "--dry-run"},
+				VerificationArgv: []string{"do-work-cli", "--format", "json", "cleanup", "--dry-run"},
+			}}},
+			wantOutcome: OutcomeRefused,
+			wantNext:    []string{},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			normalized := NormalizeResult(test.result)
+			if normalized.Outcome != test.wantOutcome {
+				t.Fatalf("outcome = %q, want %q", normalized.Outcome, test.wantOutcome)
+			}
+			if !reflect.DeepEqual(normalized.Findings[0].NextArgv, test.wantNext) {
+				t.Fatalf("next argv = %#v, want %#v", normalized.Findings[0].NextArgv, test.wantNext)
+			}
+			if !reflect.DeepEqual(normalized.Findings[0].VerificationArgv, test.result.Findings[0].VerificationArgv) {
+				t.Fatalf("verification argv changed: %#v", normalized.Findings[0].VerificationArgv)
+			}
+		})
+	}
+}
+
 func TestRenderRejectsUnknownFormat(t *testing.T) {
 	if _, err := RenderResult(CommandResult{Outcome: OutcomeSuccess}, OutputFormat("yaml")); err == nil {
 		t.Fatal("RenderResult accepted unsupported output format")

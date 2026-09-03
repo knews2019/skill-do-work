@@ -3,6 +3,7 @@ package resultmodel
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -515,6 +516,8 @@ func NormalizeResult(result CommandResult) CommandResult {
 			validation.OffendingPaths = []string{}
 		}
 	}
+	setAsideSelfRefusal := false
+	allRefusalBlockersOwned := true
 	for index := range result.Findings {
 		finding := &result.Findings[index]
 		if finding.AffectedIDs == nil {
@@ -532,8 +535,46 @@ func NormalizeResult(result CommandResult) CommandResult {
 		if finding.VerificationArgv == nil {
 			finding.VerificationArgv = []string{}
 		}
+		if finding.Fixability == FixabilityRefused && len(finding.AffectedIDs) == 0 {
+			allRefusalBlockersOwned = false
+		}
+		if result.Outcome == OutcomeRefused && nextCommandVerb(finding.NextArgv) == result.Command {
+			finding.NextArgv = []string{}
+			finding.NextJustRecipe = ""
+			if finding.AutomationStopReason == "" {
+				finding.AutomationStopReason = "no distinct resolving command is available"
+			}
+			if len(finding.AffectedIDs) > 0 {
+				setAsideSelfRefusal = true
+			}
+		}
+	}
+	if setAsideSelfRefusal && allRefusalBlockersOwned {
+		result.Outcome = OutcomeFindings
 	}
 	return result
+}
+
+func nextCommandVerb(arguments []string) string {
+	if len(arguments) == 0 {
+		return ""
+	}
+	executable := strings.TrimSuffix(filepath.Base(arguments[0]), ".sh")
+	if executable != "do-work-cli" {
+		return executable
+	}
+	for index := 1; index < len(arguments); index++ {
+		argument := arguments[index]
+		if argument == "--format" || argument == "--repo-root" {
+			index++
+			continue
+		}
+		if strings.HasPrefix(argument, "--format=") || strings.HasPrefix(argument, "--repo-root=") || strings.HasPrefix(argument, "-") {
+			continue
+		}
+		return argument
+	}
+	return ""
 }
 
 func normalizeFinalization(record *FinalizationResult) {

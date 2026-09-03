@@ -52,6 +52,34 @@ func TestReadOnlyHandlerRunsOutsideGitWithGlobalOptions(t *testing.T) {
 	}
 }
 
+func TestRuntimeSetsAsideOwnedSelfReferentialRefusal(t *testing.T) {
+	handlers := map[string]CommandHandler{
+		"recover-finalization": func(ExecutionContext, []string) resultmodel.CommandResult {
+			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{{
+				Code: "FINALIZATION-LIFECYCLE-APPLY", Fixability: resultmodel.FixabilityRefused,
+				AffectedIDs: []string{"REQ-456"}, AutomationStopReason: "lifecycle apply refused",
+				NextArgv:         []string{"do-work-cli", "--format", "json", "recover-finalization", "--discover"},
+				VerificationArgv: []string{"do-work-cli", "--format", "json", "recover-finalization", "--discover"},
+			}}}
+		},
+	}
+	var stdout bytes.Buffer
+	exitCode := NewRuntime(&stdout, handlers).Run([]string{"--format", "json", "recover-finalization", "--discover"})
+	if exitCode != 1 {
+		t.Fatalf("exit code = %d, want findings exit 1", exitCode)
+	}
+	var rendered resultmodel.CommandResult
+	if err := json.Unmarshal(stdout.Bytes(), &rendered); err != nil {
+		t.Fatalf("decode output: %v\n%s", err, stdout.String())
+	}
+	if rendered.Outcome != resultmodel.OutcomeFindings || len(rendered.Findings) != 1 {
+		t.Fatalf("runtime result = %#v", rendered)
+	}
+	if len(rendered.Findings[0].NextArgv) != 0 || len(rendered.Findings[0].VerificationArgv) == 0 {
+		t.Fatalf("set-aside command fields = %#v", rendered.Findings[0])
+	}
+}
+
 func TestRuntimeReportsUsageThroughSelectedRenderer(t *testing.T) {
 	var stdout bytes.Buffer
 	runtime := NewRuntime(&stdout, nil)
