@@ -1,7 +1,7 @@
 ---
 id: REQ-521
 title: 'Run the aggregate contract sub-suites in parallel'
-status: pending
+status: cancelled
 created_at: 2026-09-02T21:27:16Z
 user_request: UR-100
 domain: testing
@@ -15,6 +15,7 @@ effort_estimate: effort-mechanical
 related: [REQ-518, REQ-519, REQ-520, REQ-522, REQ-523]
 batch: cheap-maintainer-gate
 write_set: [_dev/tests/contract-regressions.sh]
+completed_at: 2026-09-03T13:21:16Z
 ---
 
 # Run the Aggregate Contract Sub-Suites in Parallel
@@ -84,3 +85,9 @@ See `do-work/user-requests/UR-100/input.md` for complete verbatim input.
 
 ---
 *Source: maintainer conversation of 2026-09-03 on `_dev/tests/maintainer-verify.sh` taking 6.5 minutes, item A4 of the analysis report's improvements, captured by UR-100.*
+
+## Cancelled
+
+- **When:** 2026-09-03T13:21:16Z
+- **Why:** _dev/tests/probe-batch.sh runs the behavioral sub-suites concurrently: landed in place by the maintainer's step-2 gate batch, commit 5e0e166c (release 0.266.9); recapture only if the behavior regresses (maintainer decision, 2026-09-03)
+- **Decided by:** user, via `do-work abandon`

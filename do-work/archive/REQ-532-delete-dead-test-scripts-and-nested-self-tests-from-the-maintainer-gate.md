@@ -1,7 +1,7 @@
 ---
 id: REQ-532
 title: 'Delete dead test scripts and nested self-tests from the maintainer gate'
-status: pending
+status: cancelled
 created_at: 2026-09-03T11:42:36Z
 user_request: UR-102
 domain: testing
@@ -33,6 +33,7 @@ write_set:
   - _dev/tests/shipped-shell-thinness.sh
   - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
 gate_deferred: 'true'
+completed_at: 2026-09-03T13:21:17Z
 ---
 
 # Delete Dead Test Scripts and Nested Self-Tests From the Maintainer Gate
@@ -128,3 +129,9 @@ See `do-work/user-requests/UR-102/input.md` for complete verbatim input.
 - **Diagnostic fingerprint:** contract-regressions:claude-write-surface-count-stale
 - **Repair dependency:** REQ-533
 - **Diagnostic evidence:** "CLAUDE.md must state the tool has exactly three write surfaces once next-req reserves ids; testing fields, next-version, and reservation markers are the complete set."
+
+## Cancelled
+
+- **When:** 2026-09-03T13:21:17Z
+- **Why:** six dead scripts, their fixture map, both nested harness self-tests, and the write-surface prose pin are deleted: landed in place by the maintainer's step-2 gate batch, commit 5e0e166c (release 0.266.9); recapture only if the behavior regresses (maintainer decision, 2026-09-03)
+- **Decided by:** user, via `do-work abandon`
