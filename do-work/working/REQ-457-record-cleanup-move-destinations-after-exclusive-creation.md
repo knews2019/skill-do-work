@@ -54,9 +54,9 @@ This sweep now owns both premature cleanup-destination recording and REQ-413's p
 - `internal/knowledgecommands/bkb_init.go`: BKB scaffold rollback checks identity and then separately removes by pathname; Git subprocesses ignore the opened root, and incomplete writes can escape ownership recording. Final-boundary replacements can therefore be deleted or mutated despite the recorded identity. (found by REQ-416 / UR-081)
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `prime-do-work-cli.md` and its `lessons-do-work-cli.md` satellite (the `[family: final-boundary-identity]` trap covers this change), plus `general.md`, `coding-guardrails.md`, `communication-style.md`, `testing.md`. Approach: bind each created path to the exact filesystem object published there (inode + sha256), re-capture on this transaction's own later mutations of that path, revalidate the others at each mutation point, and gate rollback removal on that binding. Separately, move every remaining record-before-create call site behind its successful exclusive create.
+- [x] **[APPLY]:** Six files, all inside the declared `## Scope` list; no file outside it was touched.
+- [x] **[UNIFY]:** `git diff --stat` → 6 files, +309/-28. Orchestrator re-ran `go build ./...`, `go vet ./...` (clean) and `gofmt -l .` (no output) independently of the builder's report, and read the full diff of `git_transaction.go`, `cleanup_apply.go` and `interview_commands.go` for debug artifacts — none present; every added comment states an invariant rather than narrating a step.
 
 ## Finding Provenance
 
@@ -145,10 +145,10 @@ See `do-work/user-requests/UR-085/input.md` for complete verbatim input.
 **Files I will touch:**
 - `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go` (modify) — capture and revalidate created-path identity; gate created-path rollback removal on it
 - `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_apply.go` (modify) — record the move destination only after exclusive creation succeeds, before source deletion
-- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go` (modify) — record after `createRootedFile`, not before
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go` (modify) — record after the rooted create succeeds, not before
 - `skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_init.go` (modify) — record scaffold ownership immediately after exclusive creation so incomplete writes cannot escape it
 - `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go` (modify) — RED/GREEN for post-record parent swap and pathname-only removal
-- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_apply_test.go` (modify) — RED/GREEN for the losing-writer `EEXIST` race and recorder-failure cleanup
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_apply_test.go` (modify) — RED/GREEN for the losing-writer exclusive-create race and recorder-failure cleanup
 
 **Files I will NOT touch:** `internal/atomicfile/atomic_file.go` (its exclusive-create contract is what the fix depends on and must not be weakened), `internal/publication/publication_commands.go` (already creates before recording; it is fixed by the shared recorder change alone), `prime-do-work-cli.md` (exact-path transaction contract is preserved, not changed).
 
@@ -171,3 +171,41 @@ See `do-work/user-requests/UR-085/input.md` for complete verbatim input.
 **Dependencies:** ⚠ this checkout shipped none of the gate's required toolchain — Go 1.26.1, ShellCheck 0.11.0, and `just` (board template needs ≥ 1.4x) were all installed before the baseline could run. Not a repository change.
 
 *Checked by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_apply.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_init.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_apply_test.go` (modified)
+
+**What was done:** `MutationRecorder` now binds every created path to the exact object this invocation published there — `os.FileInfo` plus a sha256 digest, in a new `createdObjects` map — captures that binding at `RecordCreated`, re-captures it when this same transaction mutates a path it already created, revalidates every other created path at each mutation point, and lets `rollbackFailure` remove a created path only while the binding still holds. Cleanup's `moveWithoutOverwrite` now takes a `registerDestination` callback it runs after the exclusive create and before source deletion, so a losing writer that receives `EEXIST` records nothing and cannot roll back over the winner's file; a failed registration removes only the object this process just created and leaves the source intact. The two remaining record-before-create call sites (`interview_commands.go`, and the BKB scaffold writer's `createFile`/`createDirectory`) now record ownership immediately after their exclusive creation succeeds, which also closes the gap where an incomplete write escaped ownership recording entirely.
+
+## Decisions
+
+- **D-01** — Content digest is part of created-object identity, not `os.SameFile` alone. **DECIDE & STATE.** The captured RED proved the need: deleting `kb/raw/_inbox_queue.md` and immediately recreating it in the same directory reuses the inode, so `os.SameFile` returned true and rollback deleted the replacement. Both the shared recorder and the BKB scaffold now bind inode plus sha256.
+- **D-02** — A created path with no recorded identity is preserved only when an object stands there; an absent path is skipped silently. **DECIDE & STATE.** Reporting an error for a path that does not exist would turn every legitimate "the create never happened" rollback into `rollback_incomplete` for no safety gain. Nothing is removed by pathname either way.
+- **D-03** — Two existing `gittransaction` fixtures were reordered rather than exempted. **DECIDE & STATE.** `TestPreCommitFailureRestoresTrackedAndRemovesOnlyCreatedTargets` and `TestRollbackRemovesOnlyRecordedCreatedDirectoriesDeepestFirst` called `RecordCreated` before writing the file, which the new contract treats as unowned. Both now create then record, matching all thirteen production call sites; their assertions are unchanged.
+- **D-04** — Revalidating another created path's identity fails the mutation instead of silently disowning it. **DECIDE & STATE.** The error routes into `rollbackFailure`, which preserves the swapped object and reports it while rolling the rest back — detection at the next mutation point, as the REQ requires, reaching the same end state a rollback-time-only check would.
+- **D-05** — A registered destination is not removed by `moveWithoutOverwrite` when source deletion fails. **ESCALATE.** That path previously removed the destination directly; the transaction now owns it and rollback removes it only after proving identity. **Value:** the removal goes through the same identity proof as every other created path, so a swapped destination is preserved rather than deleted. **Risk:** a future caller that registers and then suppresses rollback would leak the destination; the pre-registration direct removal is still guarded by `destinationRegistered` for the nil-callback case. Reversible in one line.
+- **D-06** — `RecordTouched` now opens the rooted repository handle on every call, not only for dirty tracked paths. **DECIDE & STATE.** One extra `openat` per recorder call, which is what makes re-capture and revalidation rooted.
+
+## Discovered Tasks
+
+- `internal/suiteinstall` → `TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation/install-suite/HUP` is flaky under full-suite parallel load: it failed once during a `go test ./...` run, then passed 3/3 in isolation and in a repeat full run, and did not fail in the pre-change baseline. A signal-timing race in the install confirmation path, unrelated to this REQ.
+- `moveWithoutOverwrite`'s two pre-registration failure paths (destination directory changed, source changed before deletion) still remove the destination by name through the destination handle with no identity check. Nothing is registered yet at those points so no transaction ownership is at stake, but it is the same class of pathname-trusting removal this sweep targets.
+- `skills/do-work/tools/checks/scope-drift.sh` reads every backticked token inside a `## Scope` "Files I will touch" bullet as a declared path, so an identifier named in a bullet's trailing description (`EEXIST`, `createRootedFile`) is reported as declared-but-never-touched. Worked around here by keeping identifiers out of those descriptions; the script should take only the leading path of each bullet.
+
+## Qualification
+
+**Passed** — 6 files verified, 7 requirements traced, P-A-U confirmed.
+
+Mechanical: `tools/checks/qualify.sh` → `OK: mechanical qualification passed`. `tools/checks/scope-drift.sh` → `OK: Implementation Summary matches the Scope declaration` (exit 0); the six touched files are exactly the six declared, with nothing outside them.
+
+Independent (orchestrator-run, not the builder's report):
+- `go build ./... && go vet ./...` clean; `gofmt -l .` printed nothing.
+- Read the full diff of `git_transaction.go`, `cleanup_apply.go` and `interview_commands.go`. No debug artifacts, no stubs, no placeholder returns. The new `createdObjects` map is consumed in three places (capture, revalidate, rollback gate), so the data path is live rather than recorded-and-ignored.
+- Requirement trace: exclusive-create-before-registration and registration-before-source-deletion are both visible in `moveWithoutOverwrite`'s new `registerDestination` block; the registration-failure branch removes only `destinationName` through the already-open rooted destination handle and returns before `os.Remove(sourcePath)`; an `EEXIST` return happens above that block, so nothing is recorded; `CreateExclusiveAt` is unchanged, so no-overwrite semantics are intact; identity is captured in `RecordCreated`, re-captured in `RecordTouched` for an already-created path, and revalidated for the others on every recorder call; every removal goes through the rooted `*os.Root`, so a swapped parent cannot redirect it outside the repository.
