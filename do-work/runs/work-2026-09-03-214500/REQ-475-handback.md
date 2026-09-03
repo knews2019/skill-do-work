@@ -88,3 +88,33 @@ Adversarial coverage now includes broad recall, lexical recall, status, Memory a
 ## Merge guidance
 
 Cherry-pick `0f288b7ccbf454c7c73935a8dd6aa3b8f211932b` into the orchestrator integration lane. Resolve no generated or lifecycle files from this branch: it contains only the four builder files above. After integration, the orchestrator should rerun its integration/full gates and retain ownership of request completion/archive, dependency unblocking, queue/run-manifest stamping, version/changelog/release work, cancellation handling, and any `--heavy` verification required for the overall wave.
+
+## Independent-review remediation
+
+- Remediation commit: `1ace19970e242d4c61409a53e81ab78800fb8065` (`[REQ-475] Verify ledger root before append`)
+- Additional changed files: `skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go` and `memory_commands_test.go` only.
+- Fix: the best-effort `appendMemoryLedger` acquisition now calls the identity-checked `openMemoryRoot` rather than `os.OpenRoot` directly. A deterministic pre-open seam swaps the already-scanned configured root to an outside symlink and proves a successful recall does not mutate the outside ledger or disclose its canary.
+
+Remediation RED:
+
+```text
+go test -count=1 -run TestMemoryRecallLedgerAppendRefusesConfiguredRootSwap ./internal/knowledgecommands
+--- FAIL: TestMemoryRecallLedgerAppendRefusesConfiguredRootSwap
+outside ledger changed after configured-root swap:
+before={"event":"configured-memory-ledger-root-swap-canary-475"}
+after={"event":"configured-memory-ledger-root-swap-canary-475"}
+{"engine":"memory","event":"recall","hits":1,"note":"","query":"command platform","source":"do-work-cli","ts":"2026-09-03T22:19:16Z"}
+FAIL
+```
+
+Remediation GREEN and gates:
+
+- Target seam: `go test -count=1 -run TestMemoryRecallLedgerAppendRefusesConfiguredRootSwap ./internal/knowledgecommands` — PASS, `ok ... 0.330s`.
+- Focused package: `go test -count=1 ./internal/knowledgecommands` — PASS, `ok ... 6.058s`.
+- Race: `go test -race -count=1 ./internal/knowledgecommands` — PASS, `ok ... 16.134s`.
+- Vet: `go vet ./...` — PASS, exit 0 with no output.
+- Full module: `go test -count=1 ./...` — PASS; all packages passed, including `internal/knowledgecommands 14.312s`.
+- Contract suite: `bash _dev/tests/contract-regressions.sh` — PASS, ending `Contract regression checks passed.`
+- `git diff --check` — PASS.
+
+Updated merge guidance: because the original builder commit is already integrated, cherry-pick only remediation commit `1ace19970e242d4c61409a53e81ab78800fb8065`. For a fresh integration, apply `0f288b7ccbf454c7c73935a8dd6aa3b8f211932b` first. The branch remains limited to the original four-file builder manifest; the remediation itself touches only the two Go paths. Orchestrator-owned lifecycle, queue, run-manifest, version, changelog, release, and integration work remains unchanged.

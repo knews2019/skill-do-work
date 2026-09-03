@@ -139,3 +139,13 @@ The defect is one authority split: rooted/no-follow helpers protect mutation and
 **What was done:** Added one opened-root Memory reader with bounded identity-checked file and directory operations, migrated every configured Memory consumer to it, separated ledger parsing from acquisition, propagated exact configured child failures without partial/canary evidence, enforced repository-contained configured roots, and documented the finite transport ceilings. Builder commit: `0f288b7ccbf454c7c73935a8dd6aa3b8f211932b`.
 
 **Builder verification:** Handler-level RED reproduced outside-byte disclosure and outside-root acceptance. Focused, race, vet, full-module, contract, inclusive-limit, and diff checks are green; full evidence is in `do-work/runs/work-2026-09-03-214500/REQ-475-handback.md`.
+
+## Review
+
+**Verdict:** Request changes — one remediation pass required before final testing/finalization.
+
+- **Critical — impact-critical:** `appendMemoryLedger` retained a direct `os.OpenRoot(memoryAbsolute)` after configured recall. A post-scan root swap to an outside symlink could therefore redirect the best-effort ledger mutation outside the validated Memory tree, bypassing the new root identity check and contradicting the no-follow contract for mutating surfaces.
+
+## Remediation
+
+Builder commit `1ace19970e242d4c61409a53e81ab78800fb8065` routes ledger append acquisition through `openMemoryRoot`. A deterministic pre-open seam swaps the already-scanned root to an outside symlink: RED appended a recall event to the outside canary ledger; GREEN leaves those bytes unchanged. Focused/race/vet/full-module/contracts and diff hygiene pass.
