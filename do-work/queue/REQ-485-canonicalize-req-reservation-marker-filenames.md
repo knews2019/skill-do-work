@@ -1,7 +1,7 @@
 ---
 id: REQ-485
 title: 'Canonicalize REQ reservation marker filenames across allocation flows'
-status: claimed
+status: pending-heavy-testing
 priority: now
 created_at: 2026-09-01T12:11:03Z
 user_request: UR-092
@@ -33,6 +33,11 @@ exploration_at: 2026-09-03T21:53:38Z
 dispatch_at: 2026-09-03T21:55:13Z
 implementation_at: 2026-09-03T22:06:30Z
 builder_handback_at: 2026-09-03T22:07:29Z
+integration_at: 2026-09-03T22:16:20Z
+testing_at: 2026-09-03T22:19:19Z
+review_at: 2026-09-03T22:19:19Z
+status_changed_at: 2026-09-03T22:19:19Z
+commit: 88446a576c9c2bcf80f1bdd06a54041b7f9baaba
 write_set:
   - skills/do-work-board/tools/queue-kanban/allocate.go
   - skills/do-work-board/tools/queue-kanban/allocate_test.go
@@ -181,3 +186,25 @@ The two allocators independently emit fixed-six markers, while capture and defer
 ## Remediation
 
 Builder commit `1425b9825ddf8e948ccde6b9f08701d8ed374919` removes whitespace trimming from every exact marker reader and replaces defer-fold's pathname read with a rooted identity snapshot plus regular/no-follow and directory/file identity checks before open, after open, and after read. Literal whitespace basenames, a direct marker symlink, and a deterministic identity-to-symlink swap failed RED and pass GREEN. Both module suites/vets, focused publication/repository tests, contracts, and diff hygiene pass.
+
+## Re-Review
+
+**Verdict:** Pass. Both review findings are closed in the cumulative `6b07c546..88446a57` range. Exact basename parsing no longer trims filesystem names, and defer fold reads the one discovered marker only through a re-opened rooted directory with regular/no-follow and directory/file identity checks across the read. Create paths continue to treat any exact numeric-name object as occupied, legacy widths remain readable, malformed names remain non-authority, and the original exclusive-create/removal safeguards are intact.
+
+## Qualification
+
+Passed — mechanical qualification accepted the cumulative `6b07c546..88446a57` range after both merges. The intervening REQ-475 merge is independently scoped and recorded; REQ-485's implementation remains exactly the declared 15 files plus its nine-file in-scope remediation subset, with no builder-authored `do-work/` state.
+
+## Testing
+
+**Tests run:** full `go vet ./...` and `go test ./...` in queue-kanban and do-work-cli; `bash _dev/tests/contract-regressions.sh`; direct `bash _dev/tests/maintainer-verify.sh`.
+
+**Result:** Both modules, contracts, and the fast canonical gate pass on final merge `88446a576c9c2bcf80f1bdd06a54041b7f9baaba`; the exact gate revision is recorded. The changed CLI and board test files match the declared heavy surfaces, so finalization requires exact-revision heavy permission.
+
+**Red-green validation:** Literal cross-writer, legacy alias, coexistence cleanup, whitespace malformed-name, direct symlink, and deterministic identity-swap cases all failed at their corresponding pre-fix states and pass in the final merged state.
+
+## Open Questions
+
+- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `88446a576c9c2bcf80f1bdd06a54041b7f9baaba`; did it exit 0?
+  Recommended: Yes
+  Also: No — report the failing lane
