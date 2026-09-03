@@ -1,10 +1,12 @@
 package toolboxcommands
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
@@ -82,5 +84,49 @@ func TestArchitecturePublishUsesFirstFreeNumericBundle(t *testing.T) {
 	contents, err := os.ReadFile(candidate + "-2/index.html")
 	if err != nil || string(contents) != "<html>complete</html>" {
 		t.Fatalf("published=%q err=%v", contents, err)
+	}
+}
+
+func TestArchitecturePublishStopsOnNonCollisionClaimFailure(t *testing.T) {
+	repository := toolboxTestRepository(t)
+	draft := filepath.Join(repository, "draft.html")
+	if err := os.WriteFile(draft, []byte("<html>complete</html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	original := architectureClaimBundle
+	architectureClaimBundle = func(_ string, relative string, _ os.FileMode) (os.FileInfo, error) {
+		return nil, &os.PathError{Op: "mkdir", Path: relative, Err: fs.ErrPermission}
+	}
+	t.Cleanup(func() { architectureClaimBundle = original })
+	candidate := filepath.Join(repository, "reports", "2026-09-01_1200_architecture-report")
+	resultChannel := make(chan resultmodel.CommandResult, 1)
+	go func() {
+		resultChannel <- handleArchitecture(commandruntime.ExecutionContext{RepositoryRoot: repository}, []string{"--publish", draft, candidate})
+	}()
+	select {
+	case result := <-resultChannel:
+		if result.Outcome != resultmodel.OutcomeFindings || len(result.Findings) != 1 || result.Findings[0].Code != "ARCHITECTURE-BUNDLE-CLAIM-FAILED" || !strings.Contains(strings.Join(result.Findings[0].AffectedPaths, " "), "2026-09-01_1200_architecture-report") || !strings.Contains(strings.Join(result.Findings[0].Evidence, " "), "permission denied") {
+			t.Fatalf("claim failure result = %#v", result)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("non-collision bundle claim failure did not terminate")
+	}
+}
+
+func TestArchitecturePublishCommitCommitsPublishedBundle(t *testing.T) {
+	repository := toolboxTestRepository(t)
+	draft := filepath.Join(repository, "draft.html")
+	if err := os.WriteFile(draft, []byte("<html>complete</html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	toolboxTestGit(t, repository, "add", "draft.html")
+	toolboxTestGit(t, repository, "commit", "-m", "draft")
+	candidate := filepath.Join(repository, "reports", "2026-09-01_1200_architecture-report")
+	result := handleArchitecture(commandruntime.ExecutionContext{RepositoryRoot: repository}, []string{"--commit", "--publish", draft, candidate})
+	if result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("commit publication = %#v", result)
+	}
+	if got := strings.TrimSpace(toolboxTestGit(t, repository, "show", "--name-only", "--format=", "HEAD")); got != "reports/2026-09-01_1200_architecture-report/index.html" {
+		t.Fatalf("committed paths = %q", got)
 	}
 }
