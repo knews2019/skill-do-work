@@ -176,3 +176,31 @@ Independent (orchestrator-run, not the builder's report):
 - Read the full `answer.go` diff. The predicate is three tests behind a doc comment that states the condition and the doubt-resolution direction; `isMarkdownBlockPunctuation` is four range comparisons, so the punctuation set is data rather than ten branches. No stub, no placeholder, no debug artifact.
 - Requirement trace: the boundary is now the condition (block-significant leading whitespace, ASCII punctuation, or an ordered-list digit run) rather than a prefix list; structural summaries route to the file-backed payload through the unchanged `BuildAnswerPlan` seam at `answer.go:117`; bytes are lossless on both paths because neither the inline nor the contained writer changed; the tests are table-driven with each row named by the class it represents; and `validateOutsideBytes` (C0/DEL) and `containedOutsideBytes` (multiline) in `publication_manifest.go` are untouched, which I confirmed against the diff rather than the report.
 - The removed `strings.TrimLeft(summary, " \t")` is the fix for the indented-code class, not a regression: trimming ran *before* the test, so the bytes that constitute the structure were discarded before anything could see them.
+
+## Testing
+
+**Tests run:** `go build ./... && go vet ./... && gofmt -l .`; `go test -count=1 ./internal/publication/`; `go test ./...` for the module; canonical repository gate `bash _dev/tests/maintainer-verify.sh`.
+**Result:** ✓ `internal/publication` green (`ok … 18.6s`). Gate exits 1 on the recorded baseline failure only — `internal/toolboxcommands` → `TestRemediationCancellationReachesMediaGitCommitAndRollback`, tracked as REQ-524 and in a package this diff does not touch.
+
+**Red-green validation:** traces the REQ's Red-Green Proof, which asked for `***`, `___`, and a representative from every Markdown structural class submitted as inline summaries without a raw payload.
+
+Under the old ten-prefix predicate, 19 subtests fail. By class:
+- Thematic breaks the list missed: `***`, `___`. (`---`, `* * *`, `- - -`, `-----` were already caught by the old `---`/`* `/`- ` prefixes and stayed green throughout — worth recording, since it means only part of that class was ever broken.)
+- Setext heading underlines: `===`, `=` — absent from the old list entirely.
+- Bare list markers: `-`, `*`, `+` — the old prefixes each required a trailing space.
+- Bare ordered markers: `1.`, `1)`, `1234.` — the old pattern required a trailing space or tab.
+- Indentation as structure: four leading spaces, one leading tab — the old code trimmed these away before testing, so the class was unreachable.
+- Tables: `| option | cost |`, `|---|---|`.
+- Dialect fences: `+++` (TOML frontmatter), `:::note` (directive/admonition), `$$` (math block).
+
+All 8 prose rows pass at both ends, so the negative side is not an artifact of the new predicate.
+
+**Caller-seam evidence:** `***` as an inline summary was accepted by `BuildAnswerPlan` with no refusal and written into the document as `- [x] Choice? → ***`. It now refuses with `ANSWER-RAW-PAYLOAD-REQUIRED`, and with a matching payload lands as `> ***` inside the canonical fenced blockquote with the checkbox reading `See contained answer note`. This is the finding's actual harm — an unescaped thematic break written into the REQ file it was being embedded in — reproduced and then closed.
+
+**New tests added:**
+- `TestSummaryContainmentDecidesByMarkdownStructureCondition` — 31 structural rows plus 8 prose rows, each row named by the class it stands for rather than by its input, per the REQ's requirement that examples are fixtures and not the definition of the accepted set.
+- `TestBuildAnswerPlanCarriesStructuralSummaryContainedAndProseInline` — three subtests through the `BuildAnswerPlan` seam, so the predicate is pinned at the caller and not only in isolation.
+
+**Existing tests updated:** none. No prior test asserted the ten-prefix behavior, which is itself worth noting — the enumeration was never pinned as a contract, only as an implementation.
+
+*Verified by work action*
