@@ -17,6 +17,9 @@ effort_estimate: effort-mechanical
 review_generated: false
 claimed_at: 2026-09-03T22:25:28Z
 route: A
+write_set:
+  - skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go
+  - skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go
 estimate:
   p50_active_minutes: 5
   confidence: high
@@ -80,3 +83,19 @@ None.
 **Planning not required** - Route A: Direct implementation
 
 *Skipped by work action*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go`
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go`
+
+**Acceptance criteria:** Reuse the graph's already-resolved satisfied edge when computing queue depth; select the exact two-completed-duplicate dependent at `--wave 0` with depth 0; preserve all single-record and genuinely ambiguous dependency behavior.
+
+## Pre-Flight
+
+**Git:** The shared wave baseline was clean at `b051879c` after claims, briefs, and Route C exploration artifacts were committed.
+
+**Tests:** Direct canonical fast gate passed and was recorded at the shared wave baseline before any source dispatch.
+
+**Dependencies:** None. The duplicate-satisfied graph behavior is already present and is the authority this selector-only fix consumes.

@@ -18,6 +18,22 @@ sweep: true
 sweep_key: already-green-repair-shared-validator-missing
 claimed_at: 2026-09-03T22:25:28Z
 route: C
+planning_at: 2026-09-03T22:37:36Z
+exploration_at: 2026-09-03T22:37:36Z
+write_set:
+  - skills/do-work/actions/work.md
+  - skills/do-work/actions/review-work.md
+  - skills/do-work/actions/work-reference.md
+  - skills/do-work/docs/command-line-guide.md
+  - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
+  - skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go
+  - skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go
+  - skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green_test.go
+  - skills/do-work/tools/do-work-cli/internal/gateevidence/gate_evidence.go
+  - skills/do-work/tools/do-work-cli/internal/gateevidence/gate_commands.go
+  - skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go
+  - skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go
+  - _dev/tests/contract-regressions.sh
 estimate:
   p50_active_minutes: 60
   confidence: low
@@ -70,3 +86,32 @@ Replace the duplicated prose/test decision for an already-green repository-gate 
 **Reasoning:** This replaces duplicated action prose/test authority with one executable validator spanning repair intake, exact completion output, staged-path ownership, TDD bypass, no-diff review, metadata, and selector behavior. Planning and source exploration are required before declaring the write boundary.
 
 **Planning:** Required
+
+## Plan
+
+1. Add one read-only `validate-already-green-repair` authority that strictly parses repair intake/no-op evidence, reuses past-revision gate evidence, observes NUL-safe Git state, and derives exact allowed lifecycle paths from canonical completion dry-run output.
+2. Emit one typed result with separate `tdd_allowed` and `review_allowed` projections; export the existing gate-evidence comparison rather than reimplementing it.
+3. Make `work` and `review-work` consume only their corresponding typed decision, document the contract, and remove the parallel Python decision oracle from contract regressions.
+4. Pin malformed/self-asserted evidence, nonempty or release-mutated neighbors, unrelated archive staging, exact canonical staging, and the real completion/metadata/selector tail with RED/GREEN tests.
+
+**Plan validation:** Every requirement maps to the shared validator, its two projections/consumers, exact completion-path authority, or the real lifecycle regression. No publication writer, finalization mutation, selector ordering, schema, board, or release surface is included.
+
+*Generated from delegated exploration; full evidence: `do-work/runs/work-2026-09-03-214500/REQ-496-exploration.md`.*
+
+## Exploration
+
+The current action prose and `_dev/tests/contract-regressions.sh::action_decisions()` are three drifting predicates. The fixture self-asserts its fingerprint, reruns the gate at current HEAD, and prefix-authorizes `do-work/archive/`. The replacement must source identity from canonical repair intake, compare the recorded past revision through `gateevidence`, and treat the exact successful `requeststate` completion dry run as the only staging allowlist.
+
+## Scope
+
+**Files I will touch:** The 13 paths declared in `write_set`, comprising the two action consumers, durable reference/docs/prime, command registration, the new validator package and tests, exported gate-evidence seam, typed result rendering/tests, and the contract regression fixture.
+
+**Acceptance criteria:** Both bypass decisions share one executable authority; intake fingerprint and recorded revision are independently verified; review staging is an exact subset of canonical completion output; malformed, ordinary, dirty, release-mutated, or over-staged neighbors refuse; deleting/corrupting either action consumer breaks the contract fixture.
+
+## Pre-Flight
+
+**Git:** The shared wave baseline was clean at `b051879c` after claims, briefs, and both Route C exploration artifacts were committed.
+
+**Tests:** Direct canonical fast gate passed and was recorded at the shared wave baseline before source dispatch.
+
+**Dependencies:** REQ-494 is completed. REQ-492 is related but not a prerequisite; existing repair-intake, gate-evidence, and canonical request-state authorities are available for composition.

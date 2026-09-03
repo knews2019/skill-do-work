@@ -17,6 +17,12 @@ sweep: true
 sweep_key: legacy-finalization-semantic-ownership-incomplete
 claimed_at: 2026-09-03T22:25:28Z
 route: C
+planning_at: 2026-09-03T22:37:36Z
+exploration_at: 2026-09-03T22:37:36Z
+write_set:
+  - skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go
+  - skills/do-work/tools/do-work-cli/internal/finalization/finalization_req499_test.go
+  - skills/do-work/tools/do-work-cli/internal/finalization/finalization_req512_test.go
 estimate:
   p50_active_minutes: 70
   confidence: low
@@ -77,3 +83,35 @@ None.
 **Reasoning:** The fix must replace heuristic ownership with bounded preimage provenance and derive release mirrors from the actually changed workspace member across npm, Cargo, and uv while preserving recovery and strict-mode behavior. The current discovery/association matrix needs explicit planning and exploration.
 
 **Planning:** Required
+
+## Plan
+
+1. Replace the open-ended tracked follow-up regex with a closed, line-bounded fold envelope whose opening and terminal marker both bind kind and request ID to the durable HEAD preimage.
+2. Record structured dirty manifest transitions first, then derive only those changed sources' declared npm, Cargo, and uv workspace mirrors; treat clean roots and siblings as topology rather than release participants.
+3. Keep root lock copies conditional on a changed root source, merge shared-lock descriptors deterministically, and preserve exact replacement plus typed fail-closed enumeration/read/parse behavior.
+4. Add tracked-fold rejection/atomicity coverage and member-only, stale-mirror, changed-root, and shared-lock matrices across all three ecosystems, then run focused, race, vet, full-module, and public recovery checks.
+
+**Plan validation:** Every requirement maps to the bounded fold parser, changed-source-first release association, ecosystem mirror derivation, or the strict recovery matrix. CLI schema, mutation/commit layout, unrelated metadata, and assume-mode widening are excluded.
+
+*Generated from delegated exploration; full evidence: `do-work/runs/work-2026-09-03-214500/REQ-512-exploration.md`.*
+
+## Exploration
+
+`followupPathProves` anchors the durable prefix but accepts an unrestricted suffix after a matching heading, so foreign unheaded bytes can be absorbed. Separately, release association scans clean manifests and locks for the common old version before identifying the dirty source, falsely requiring unchanged workspace roots. Ownership must instead flow from the exact bounded append and from a proven changed owned source through declared workspace topology to its exact mirror.
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_req499_test.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_req512_test.go` (new)
+
+**Acceptance criteria:** Foreign bytes outside one closed tracked fold refuse atomically; member-only npm/Cargo/uv releases select only the changed source and its exact mirror; unchanged equal-version roots remain untouched; changed-root controls and all typed strict recovery protections remain green.
+
+## Pre-Flight
+
+**Git:** The shared wave baseline was clean at `b051879c` after claims, briefs, and both Route C exploration artifacts were committed.
+
+**Tests:** Direct canonical fast gate passed and was recorded at the shared wave baseline before source dispatch.
+
+**Dependencies:** REQ-499 is completed and supplies the existing recovery/finalization authority and regression matrix this addendum tightens.
