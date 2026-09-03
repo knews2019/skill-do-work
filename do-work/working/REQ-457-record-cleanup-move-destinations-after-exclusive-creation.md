@@ -209,3 +209,29 @@ Independent (orchestrator-run, not the builder's report):
 - `go build ./... && go vet ./...` clean; `gofmt -l .` printed nothing.
 - Read the full diff of `git_transaction.go`, `cleanup_apply.go` and `interview_commands.go`. No debug artifacts, no stubs, no placeholder returns. The new `createdObjects` map is consumed in three places (capture, revalidate, rollback gate), so the data path is live rather than recorded-and-ignored.
 - Requirement trace: exclusive-create-before-registration and registration-before-source-deletion are both visible in `moveWithoutOverwrite`'s new `registerDestination` block; the registration-failure branch removes only `destinationName` through the already-open rooted destination handle and returns before `os.Remove(sourcePath)`; an `EEXIST` return happens above that block, so nothing is recorded; `CreateExclusiveAt` is unchanged, so no-overwrite semantics are intact; identity is captured in `RecordCreated`, re-captured in `RecordTouched` for an already-created path, and revalidated for the others on every recorder call; every removal goes through the rooted `*os.Root`, so a swapped parent cannot redirect it outside the repository.
+
+## Testing
+
+**Tests run:** `go build ./... && go vet ./... && gofmt -l .`; `go test ./...` (whole `do-work-cli` module); `go test -race ./internal/gittransaction ./internal/knowledgecommands ./internal/cleanup`; canonical repository gate `bash _dev/tests/maintainer-verify.sh`
+**Result:** ✓ Module green except two failures, neither attributable to this diff (attribution below). Race detector clean on all three touched packages.
+
+**Red-green validation:**
+- `TestBKBInitRollbackPreservesReplacedObjectsAndParents` (`internal/knowledgecommands`, subtests `git/object` + `standalone/object`) — the REQ's captured RED for the `bkb_init.go` instance: ✗ `bkb_init_test.go:304`, rollback action `removed owned kb/raw/_inbox_queue.md` → ✓ all four subtests pass. The test file was **not** modified.
+- `TestLosingMoveWriterRollbackPreservesTheWinnersDestination` (`internal/cleanup`, new) — traces the Red-Green Proof's "coordinate two cleanup writers around exclusive creation": ✗ `losing rollback destroyed the winner's file: "" open …/do-work/archive/REQ-601-done.md: no such file or directory` → ✓.
+- `TestFailedDestinationRegistrationRemovesOnlyTheCreatedDestination` (`internal/cleanup`, new) — traces "recorder-failure cleanup removes only the object created by the same invocation while preserving its source": ✗ `destination was registered before it was created` → ✓.
+- `TestCreatedTargetRollbackPreservesAnotherWritersReplacement` (`internal/gittransaction`, new) — traces "separately swap a created path's parent after it is recorded": ✗ rollback reported `removed created target created.txt` → ✓ rollback reports `created target changed after publication; preserved replacement: created.txt` and the file still reads `second writer`.
+
+**New tests added:**
+- `internal/cleanup/cleanup_apply_test.go`: `TestLosingMoveWriterRollbackPreservesTheWinnersDestination`, `TestFailedDestinationRegistrationRemovesOnlyTheCreatedDestination`
+- `internal/gittransaction/git_transaction_test.go`: `TestCreatedTargetRollbackPreservesAnotherWritersReplacement`
+
+**Existing tests updated (cross-REQ impact):**
+- `internal/gittransaction/git_transaction_test.go`: `TestPreCommitFailureRestoresTrackedAndRemovesOnlyCreatedTargets` and `TestRollbackRemovesOnlyRecordedCreatedDirectoriesDeepestFirst` recorded the created path before writing the file. Under the new contract that ordering is unowned, so both fixtures now create then record — matching all thirteen production call sites. Their assertions are unchanged; only the setup order moved (D-03).
+- `internal/cleanup/cleanup_apply_test.go`: two direct `moveWithoutOverwrite` calls updated for the new `registerDestination` parameter.
+
+**Canonical repository gate — attribution.** `bash _dev/tests/maintainer-verify.sh` exits 1 both before and after this change. Neither remaining failure belongs to this REQ, and the one the REQ *did* own is now green:
+- `internal/knowledgecommands` → **fixed by this REQ** (was in the recorded red baseline).
+- `internal/toolboxcommands` → `TestRemediationCancellationReachesMediaGitCommitAndRollback`: in the recorded red baseline at `008f3d3`, identical failure text, and it exercises `RecordTouched` on an existing tracked file so it never reaches created-path rollback. Tracked as **REQ-524**.
+- `internal/suiteinstall` → `TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation/install-suite/INT`: not in the recorded baseline, but in a package this diff does not touch. Re-run once per the flake rule: `-count=5` in isolation passes 5/5, and the captured stderr shows the installer still rendering its managed-install diff when the signal arrived — a test-side synchronization race that surfaces under full-module parallel load. Tracked as **REQ-525**.
+
+*Verified by work action*
