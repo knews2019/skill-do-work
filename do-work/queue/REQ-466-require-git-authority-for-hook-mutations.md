@@ -1,7 +1,7 @@
 ---
 id: REQ-466
 title: 'Review fix: Require Git authority for hook mutations'
-status: claimed
+status: pending
 created_at: 2026-09-01T04:01:15Z
 user_request: UR-081
 domain: backend
@@ -29,9 +29,7 @@ related: [REQ-415, REQ-463]
 batch: go-no-llm-command-platform
 review_generated: true
 addendum_to: REQ-415
-claimed_at: 2026-09-03T14:42:07Z
-route: C
-planning_at: 2026-09-03T14:43:58Z
+status_changed_at: 2026-09-03T18:19:02Z
 ---
 
 # Require Git Authority for Hook Mutations
@@ -72,26 +70,6 @@ See `do-work/user-requests/UR-081/input.md` and `do-work/runs/work-2026-08-31-16
 
 ---
 *Source: REQ-415 fresh re-review residual finding 1.*
-
-## Triage
-
-**Route: C** - Complex
-
-**Reasoning:** The change spans three public hook commands, a shared Git-authority precondition, Markdown delimiter safety, and real-command regression fixtures across success and refusal paths.
-
-**Planning:** Required
-
-## Plan
-
-1. Characterize all three hook commands at the real command boundary, then add failing fixtures for writable non-Git roots and unavailable Git. Assert exact hook status/stdout/stderr, typed `findings`/`changes`/`skipped_work`/`protocol_output`, and byte-identical mutation targets; keep valid-worktree fixtures as the compatibility control.
-2. Add one shared hook Git-authority precondition and call it before timestamp, reservation, memory-log, or usage-ledger writes. Preserve SessionStart failure propagation and Stop's nonblocking protocol while returning actionable typed evidence. Reuse the condition-complete outside-text delimiter predicate for cancellation reasons instead of adding a second example list.
-3. Run focused hook/request-state tests, retained hook behavior suites, Go vet and module tests, then the canonical maintainer gate. Sweep sibling hook mutation paths for the same missing precondition and record any out-of-scope instance rather than expanding silently.
-
-The command result remains the mutation consumer contract: every refusal must preserve request identity, Git-authority outcome, finding code/severity/evidence, exact target paths, skipped-work reason, and protocol bytes so the launcher and JSON reader observe one event without partial effects.
-
-*Generated inline after the Plan agent service failed twice*
-
-**Plan validation:** All four captured requirements and the folded cancellation-delimiter acceptance criterion map to the three tasks; no task is orphaned, the plan stays below the five-task warning threshold, and command-driven mutations name the identity, authority, outcome, and protocol fields their consumers require.
 
 ## Required Lessons — Dropped for Budget
 
