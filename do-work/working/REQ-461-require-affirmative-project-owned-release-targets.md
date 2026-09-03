@@ -213,3 +213,28 @@ The review scored 73% with Acceptance Partial, which mandates a follow-up REQ pe
 - package marker → `only maintainer_release may mutate a suite package's own metadata` (the one case where that remedy is correct)
 
 **Verification:** `go build`/`go vet`/`gofmt -l` clean; `go test -count=1 ./internal/publication/ ./internal/finalization/` both green (the latter is the other `BuildReleasePlan` consumer); `go test ./...` red only on REQ-524's known baseline failure. `maintainer_release` still short-circuits ahead of all ownership work, re-confirmed by panicking `releaseTargetOwnershipGap` and watching both maintainer tests pass. Repo-grep for directory-name literals in `release.go`: **zero**.
+
+## Lessons Learned
+
+**What worked:**
+- Refusing to let the fixtures define the fix. The REQ named three paths, and a denylist containing `third_party`, `dist` and `.cache` would have passed all three while failing the REQ's own constraint. Reading the constraint as the requirement is what produced a name-free predicate.
+- Two proofs neither of which is sufficient. Git's index catches what carries no marker; the marker catches what the index does claim. Stating that in the doc comment is what stopped the second half from looking redundant to a future reader.
+- Running one revert differential per half. The four legacy rows reddened on the refusal-code *rename*, which proves nothing about the condition — a single differential would have looked like proof and been worthless.
+
+**What didn't:**
+- The created-target half, which I scrutinised far less than the replace half and which the review broke by deleting one line of fixture. Attesting from the *nearest existing* ancestor reaches a repository root that always attests, so every not-yet-built tree passed. The guard caught the case where the tree already exists and missed the case that actually happens.
+- One shared remedy string across three different gaps. Two of the three then told a consumer whose file was simply uncommitted to assert `maintainer_release`, which is the escape hatch for mutating the suite's own metadata. The typed gap-with-remedy is the structural fix; rewording the strings would have left the next gap free to inherit the wrong one.
+- Believing a negative test proves a guard. That test's `placeholder` fixture, not the guard, was carrying it — and the neuter table exposed the same hole from the other direction by conspicuously *not* reddening it.
+
+**Worth knowing:**
+- `git ls-files -- <dir>` prints `<dir>` itself when it is a submodule gitlink or a tracked symlink, so "does this directory hold tracked sources" is not the same question as "does the index mention this path". Filter to entries strictly inside, and pass `-z` so git's quoting of unusual filenames cannot break the prefix test.
+- `containedPath` does not reject a leading-dash path. The `--` separator in every git invocation is the entire defense against option injection here, and it holds — but it is load-bearing, not belt-and-braces.
+- `maintainer_release` appears nowhere outside Go source: no action file, doc, guide, ADR or script sets or explains it, yet the refusals now name it as a remedy. Anything that points a user at that field is pointing at something undocumented.
+
+## Orientation
+
+A consumer release now has to prove its targets are project sources rather than merely not looking like dependencies, so bumping a version inside an installed, vendored, cached or generated tree refuses whatever that tree is called. Lives in the CLI's `publication` package, on the release-planning path.
+
+`prime_files`: `_dev/primes/prime-action-files.md` — spot-checked, referenced paths all still exist, no change needed. The CLI prime was touched under the touch-conditional rule: this is the `closed-enumeration-for-a-condition` family's second sighting in three REQs, so its trap is promoted from the satellite into `prime-do-work-cli.md § Traps` as the recurrence rule requires.
+
+**[MAP CHANGED]** — "project-owned" is now a proven property rather than an assumed one, and it currently means two different things in its two homes: this predicate requires Git tracking, while `work-reference.md:1020` says to exclude installed trees *regardless* of tracking. REQ-532 owns reconciling them, and the contract-regressions lock-in moves with whichever way it resolves.
