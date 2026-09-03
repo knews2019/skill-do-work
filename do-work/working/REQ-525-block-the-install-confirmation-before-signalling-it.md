@@ -200,3 +200,46 @@ Post-fix: all 9 green.
 **`internal/nextselection`**, which the diagnosis pass saw fail once in seven runs, did **not** fail once across the twelve runs here. Nothing to capture.
 
 *Verified by work action*
+
+## Review
+
+**Overall: 91%** | 2026-09-03T12:50:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 82% |
+| Test Adequacy | 88% |
+| Scope | 95% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- F1 — `exitIfInterrupted` had no `installVerified` guard, so a signal landing after the last context-aware subprocess (`just --list`, `:928`) exited **130 on a complete, verified install with zero bytes on stdout** while stderr reported success. Nothing after that point reads `ctx`, so main never observes the cancellation; `cleanup` skips recovery because `installVerified` is already true. The class pre-existed as a race — the same probe on the pre-fix tree gave `exit=0` once and `exit=3` twice — but this outcome was new and certain — `impact-user-visible` → fixed in remediation (D-08)
+- F2 — `os.Exit` in `RunInstall`'s defer skips `RunUpdate`'s `defer os.RemoveAll(updateTmp)`, so an interrupted `update-suite` leaks its extracted upstream tree. Measured twice: `/tmp/do-work-update.*` 258 → 261 pre-remediation, 306 → 309 after. Pre-existing, but previously the defer sometimes ran when main won the race and now it never does — `impact-negligible` (scratch under `TMPDIR`, no repository effect) → not fixed; `update_transaction.go` is outside Scope and there is no in-scope fix (D-10). Covered by the existing `ExitCodeOverride` discovered task.
+
+**Minor findings:** 4 (report only) — the `write_set` frontmatter mirror was not refreshed when `## Scope` widened; D-06 cited pre-diff line numbers (`:562`/`:900`, now `:590`/`:928`) though its two-call-site claim is correct; the built-child signal path is now exercised only at `GOMAXPROCS=1`, so the default-scheduling direction lost the coverage it had by accident; and the new helper's 60s/30s timeouts are 6× the existing helper's with no stated reason.
+
+**Acceptance:** Pass — independently re-run in a scratch copy, only the pre-existing REQ-524 failure remains. The reviewer worked through **eleven distinct concurrency windows** in a table and confirmed D-03's argument holds for every path that observes cancellation, identifying the single window it does not cover (F1). It also verified F4 asserts *recovery*, not just the exit status: with `runRecoveryIfNeeded` short-circuited, all three subtests fail on the narration assertion **and** all four managed-path assertions.
+**Suggested testing:** 5 items — the F1 lock-in (implemented), a manual Ctrl-C at a real prompt, one built-child case left at default `GOMAXPROCS`, a real `update-suite` interrupt to size F2, and a second signal during recovery to confirm "recovery is not abortable" is intended rather than an oversight. The last four are recorded, not queued.
+**Follow-ups created:** None — F1 was fixed here and F2 has no in-scope fix and is already covered; **sweeps appended to:** None
+
+**The most valuable thing this review found was not a defect.** D-05 (an interrupted mid-write install exits 130, not the rollback's 3) was recorded as a judgment call. It is **already the repository's written contract**: `_dev/tests/install-suite-behavior.sh:650` has been asserting exit 130 after a TERM during module installation all along, inside `contract-regressions.sh` inside the canonical gate. The reviewer then showed that assertion was *latently flaky in the same way* — pre-fix code under `GOMAXPROCS=1` fails it with `installer exited 3 after a TERM during module installation (want 130)`, fixed code passes. So this REQ turned a second, previously hidden gate assertion deterministically green. Nothing anywhere in the repository reads exit 3 from this path.
+
+*Reviewed by review-work action*
+
+## Remediation
+
+Verdict was Approve at 91% with F1 explicitly non-blocking. F1 was fixed anyway: it is a user-visible wrong exit status on a *successful* install, its fix is one guard, and `exitIfInterrupted`'s own doc comment already contained the argument for it.
+
+**Remediation commit:** see `commit:` below.
+
+- **D-08** — The guard is `installVerified` alone, not a broader "concluded successfully" condition. **DECIDE & STATE.** `cleanup` skips recovery in three states (`runRecoveryIfNeeded`, `:1012`): `!writeStarted`, `installVerified`, `recoveryRan`. Only the middle one may keep its ordinary status. **`!writeStarted` is the interrupted-confirmation case this exit owner exists for — and it also returns `OutcomeSuccess`, so any predicate phrased on outcome or on "success" would silently re-break REQ-525's own fix.** `recoveryRan` means the work was undone, so the interrupt is the informative status. **Value:** the condition is stated where it is decided and cannot be widened by accident into the cancelled-confirmation path. **Risk:** the flag is set one line before the narration, so anything inserted between it and the exit owner that can still fail would exit 0 on a broken install; the doc comment now names that invariant so a future writer has to contradict it in prose to break it.
+- **D-09** — The lock-in parks the child *inside* the window with stderr back-pressure rather than timing the signal. **ESCALATE.** The reviewer's proposed shape — a `just` stub that signals its parent and exits 0 — **does not reproduce F1**: built first, the neutered tree passed 1/1 and 3/3, because the window between the reaped subprocess and `exitIfInterrupted` is sub-millisecond. Signalling from inside the stub before it exits is worse: `exec.CommandContext`'s `watchCtx` injects `context.Canceled` whenever `Cancel()` succeeds, so a cancel landing before the parent reaps turns post-write validation into a failure and produces the *mid-write* case instead. The test therefore proves the reap with a detached grandchild spinning on `kill -0`, then hands the child a narration pipe filled to exactly one buffer so the success line — the first write after `installVerified = true` — blocks until the test drains it. **Value:** no sleep, no retry, no tolerance; 3/3 red when neutered on every run, 30/30 green with the guard. **Risk:** ~120 lines of helper machinery encoding two platform facts (`exec` restores blocking mode on an `*os.File` child descriptor via `Fd()`, so the buffer size is measured on a throwaway pipe; a sub-`PIPE_BUF` write cannot interleave with the filler, which is what makes the drained remainder exactly the child's own narration). Recorded as a discovered task: there are now three near-copy built-child helpers.
+- **D-10** — F2 not fixed; `update_transaction.go` untouched. **DECIDE & STATE.** `RunInstall` receives only `ExtractedSourceRoot` (`updateTmp/fresh`), so removing `updateTmp` from inside the install transaction means deleting a directory it did not create by guessing the caller's layout. There is no in-scope fix, and the Scope boundary holds rather than being widened a second time. The guard does narrow the class: an update interrupted *after* the install verifies now returns through `RunUpdate`, whose defer removes the tree.
+
+**F1 before and after, same test:** neutered → 3 of 3 red, `HUP/INT/TERM exit = 130, want 0; stdout carried 0 bytes`, with captured narration `Install this complete four-skill suite? [y/N] Installed do-work suite v0.200.0 with four verified modules.` — a verified install, exit 130, empty stdout. With the guard → 3 of 3 green: exit 0, stdout parses as one `CommandResult` with `outcome: success` and `rollback: not_needed`, installed `VERSION` reads `0.200.0`, no recovery line in the narration.
+
+**Neuter-and-confirm:** whole package on the neutered tree reddens **only** the new test; all nine pre-existing interrupt subtests and the `GOMAXPROCS=1` pin stay green.
+
+**The live shell consumer still gets 130.** `bash _dev/tests/install-suite-behavior.sh` exits 0 — its `:650` stub signals during `cp` of the second module, so `installVerified` is false and the guard correctly does not apply. Orchestrator re-ran this independently.

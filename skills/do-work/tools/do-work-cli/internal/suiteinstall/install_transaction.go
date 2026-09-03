@@ -231,12 +231,26 @@ func (transaction *installTransaction) armSignalRecovery(cancelWork context.Canc
 // defer sequence on one goroutine — rather than a channel handshake two goroutines have to
 // win in the right order.
 //
-// The interrupted status has to be taken here rather than returned, because an interrupted
-// install is otherwise indistinguishable from the outcome it interrupted: a cancelled
-// confirmation reads as a typed "N" and reports success, and a cancelled mid-write install
-// reports its rollback. Both then exit on their own outcome's number.
+// It takes the status only for an install the interruption actually changed. The status has
+// to be taken rather than returned in that case, because an interrupted install is otherwise
+// indistinguishable from the outcome it interrupted: a cancelled confirmation reads as a
+// typed "N" and reports success, and a cancelled mid-write install reports its rollback.
+// Both would then exit on their own outcome's number.
+//
+// A verified install is distinguishable, so it keeps its ordinary exit and its rendered
+// result. installVerified is the one state in which the whole transaction concluded and
+// nothing was undone: every managed byte is written and proven, cleanup skips recovery, and
+// the only work left is scratch removal. A signal arriving there arrived after the work
+// concluded — the same reason a signal arriving after this record is read exits on the
+// ordinary status — so taking 130 would report an empty stdout and a failure status for a
+// complete install the caller can see on disk. The other two states in which cleanup skips
+// recovery still take 130: nothing was written (the interrupted confirmation this exit owner
+// exists for), or recovery already ran and undid the work.
 func (transaction *installTransaction) exitIfInterrupted() {
 	if !transaction.interruptWasObserved.Load() {
+		return
+	}
+	if transaction.installVerified {
 		return
 	}
 	os.Exit(interruptedInstallExitStatus)

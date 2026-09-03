@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -332,6 +334,62 @@ func TestBuiltInstallExits130AfterRecoveringASignalInterruptedMidWriteInstall(t 
 	}
 }
 
+// A signal that lands after the install is verified must NOT take the process. The install's
+// last cancellable step is the installed Justfile's post-write validation; past it every
+// managed byte is written and proven, cleanup skips recovery, and the caller is owed exit 0
+// plus the rendered result on stdout. Without the installVerified guard this case exits 130
+// with an empty stdout while narration reports a complete install (REQ-525 F1).
+//
+// The window between that last subprocess and the interrupted-exit owner is sub-millisecond,
+// so a signal timed from outside loses it — an earlier attempt at this test signalled from
+// the stub itself and the child had already exited 0 every time. The child is parked inside
+// the window instead: its narration pipe is filled to capacity, so the one write it makes
+// after setting installVerified — the success line — blocks until this test drains it, and
+// nothing can advance to the exit owner until then.
+func TestBuiltInstallExitsZeroWhenASignalLandsAfterTheInstallIsVerified(t *testing.T) {
+	binaryPath := buildTestCLIBinary(t)
+	for _, signalCase := range interruptingSignalCases() {
+		t.Run(signalCase.name, func(t *testing.T) {
+			projectRoot := newProjectRepository(t)
+			sourceRoot := newSuiteSourceTree(t, fixtureSuiteVersion)
+			archivePath := buildArchiveFromSourceTree(t, sourceRoot)
+			reapMarkerPath := installReapMarkingJust(t)
+
+			exitCode, standardOutput, narration := runBuiltCLISignalledOnBlockedNarration(t, binaryPath,
+				signalCase.signal, reapMarkerPath,
+				[]string{"--repo-root", projectRoot, "--format", "json", CommandInstallSuite, "--archive", archivePath})
+
+			if exitCode != 0 {
+				t.Fatalf("%s exit = %d, want 0; stdout carried %d bytes\nstdout:\n%s\nnarration:\n%s",
+					signalCase.name, exitCode, len(standardOutput), standardOutput, narration)
+			}
+			var decoded resultmodel.CommandResult
+			if err := json.Unmarshal([]byte(standardOutput), &decoded); err != nil {
+				t.Fatalf("%s wrote no parseable result to stdout (%d bytes): %v\nnarration:\n%s",
+					signalCase.name, len(standardOutput), err, narration)
+			}
+			if decoded.Outcome != resultmodel.OutcomeSuccess {
+				t.Errorf("%s outcome = %q, want %q", signalCase.name, decoded.Outcome, resultmodel.OutcomeSuccess)
+			}
+			if decoded.Rollback.Status != resultmodel.RollbackNotNeeded {
+				t.Errorf("%s rollback status = %q, want %q",
+					signalCase.name, decoded.Rollback.Status, resultmodel.RollbackNotNeeded)
+			}
+			if installedVersion := readTestFile(t,
+				filepath.Join(projectRoot, ".claude", "skills", "do-work", "VERSION")); installedVersion != fixtureSuiteVersion+"\n" {
+				t.Errorf("%s installed VERSION = %q, want %q",
+					signalCase.name, installedVersion, fixtureSuiteVersion+"\n")
+			}
+			if !strings.Contains(narration, "Installed do-work suite v"+fixtureSuiteVersion) {
+				t.Errorf("%s did not report a complete install:\n%s", signalCase.name, narration)
+			}
+			if strings.Contains(narration, "recovering managed paths and Git index") {
+				t.Errorf("%s recovered a verified install:\n%s", signalCase.name, narration)
+			}
+		})
+	}
+}
+
 // interruptingSignalCases are the three signals RunInstall arms for. Every interruption test
 // covers all three, because they share one handler and one exit status.
 func interruptingSignalCases() []struct {
@@ -516,6 +574,245 @@ func runBuiltCLIInterruptedAtMarker(t *testing.T, binaryPath string, interrupt o
 		t.Fatalf("signal %v did not stop the mid-write install\nstderr:\n%s", interrupt, narration)
 		return ""
 	}
+}
+
+// installReapMarkingJust puts a `just` on PATH that succeeds for the pre-confirmation
+// candidate check and, on its second invocation — the installed Justfile's post-write
+// validation, the install's last cancellable subprocess — records that the installer has
+// collected its exit status, then exits 0. It returns that marker path.
+//
+// A detached grandchild writes the marker, and `kill -0` keeps succeeding for a zombie, so it
+// fails only once the installer has reaped the stub. The marker therefore proves no
+// subprocess is in flight, which is what makes it safe to signal: a signal delivered any
+// earlier cancels the work context with a subprocess still running, which is the
+// interrupted-mid-write case the preceding test covers.
+func installReapMarkingJust(t *testing.T) string {
+	t.Helper()
+	stubDirectory := t.TempDir()
+	counterPath := filepath.Join(stubDirectory, "invocations")
+	reapMarkerPath := filepath.Join(stubDirectory, "reaped")
+	writeTestFile(t, filepath.Join(stubDirectory, "just"), fmt.Sprintf(`#!/usr/bin/env bash
+set -u
+count=0
+[ ! -f %[1]q ] || count="$(cat %[1]q)"
+count=$((count + 1))
+printf '%%s\n' "$count" > %[1]q
+[ "$count" -ne 1 ] || exit 0
+bash -c 'while kill -0 "$1" 2>/dev/null && [ "$SECONDS" -lt 60 ]; do :; done; printf reaped > "$2"' \
+	marker-after-reap "$$" %[2]q &
+exit 0
+`, counterPath, reapMarkerPath))
+	chmodTestFile(t, filepath.Join(stubDirectory, "just"), 0o755)
+	t.Setenv("PATH", stubDirectory+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return reapMarkerPath
+}
+
+// runBuiltCLISignalledOnBlockedNarration drives the built CLI to a verified install, signals
+// it while it is parked on a narration write it cannot complete, then releases that write and
+// returns the exit status, stdout and the narration the installer produced after its
+// confirmation.
+//
+// Both the confirmation and the release are held by this test, which is what removes every
+// timing assumption: the pipe is filled before the install is allowed to start writing, and
+// it is drained only after the signal has been delivered to a child that cannot leave the
+// window.
+func runBuiltCLISignalledOnBlockedNarration(t *testing.T, binaryPath string, interrupt os.Signal,
+	reapMarkerPath string, arguments []string) (int, string, string) {
+	t.Helper()
+	confirmationReader, confirmationWriter, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer confirmationWriter.Close()
+	narrationReader, narrationWriter, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer narrationReader.Close()
+	defer narrationWriter.Close()
+	pipeCapacity := measurePipeCapacity(t)
+	stdoutPath := filepath.Join(t.TempDir(), "stdout")
+	stdoutFile, err := os.Create(stdoutPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stdoutFile.Close()
+
+	command := exec.Command(binaryPath, arguments...)
+	command.Env = singleProcessorEnvironment()
+	command.Stdin = confirmationReader
+	command.Stdout = stdoutFile
+	command.Stderr = narrationWriter
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	// The child holds its own duplicates of both pipe ends; the copies kept here are what
+	// apply the back-pressure and later release it.
+	_ = confirmationReader.Close()
+
+	promptNarration := readNarrationThroughPrompt(t, command, narrationReader)
+	fillerBytes := parkTheNextNarrationWrite(t, command, narrationReader, narrationWriter, pipeCapacity)
+	if _, err := confirmationWriter.WriteString("y\n"); err != nil {
+		_ = command.Process.Kill()
+		_ = command.Wait()
+		t.Fatalf("confirm the install: %v", err)
+	}
+	_ = confirmationWriter.Close()
+	waitForReapMarker(t, command, reapMarkerPath, promptNarration)
+
+	if err := command.Process.Signal(interrupt); err != nil {
+		_ = command.Process.Kill()
+		_ = command.Wait()
+		t.Fatalf("send %v: %v", interrupt, err)
+	}
+	// Closing this copy is what lets the drain below end at EOF; the child keeps its own.
+	_ = narrationWriter.Close()
+	drained := make(chan []byte, 1)
+	go func() {
+		remaining, _ := io.ReadAll(narrationReader)
+		drained <- remaining
+	}()
+	waitResult := make(chan error, 1)
+	go func() { waitResult <- command.Wait() }()
+	select {
+	case waitErr := <-waitResult:
+		var exitError *exec.ExitError
+		if waitErr != nil && !errors.As(waitErr, &exitError) {
+			t.Fatalf("wait for the released install: %v", waitErr)
+		}
+	case <-time.After(60 * time.Second):
+		_ = command.Process.Kill()
+		<-waitResult
+		t.Fatalf("signal %v left the install parked after its narration was released\nnarration:\n%s",
+			interrupt, promptNarration)
+	}
+	remaining := <-drained
+	if len(remaining) < fillerBytes {
+		t.Fatalf("narration pipe returned %d bytes, fewer than the %d filler bytes written",
+			len(remaining), fillerBytes)
+	}
+	return command.ProcessState.ExitCode(), readTestFile(t, stdoutPath),
+		promptNarration + string(remaining[fillerBytes:])
+}
+
+// readNarrationThroughPrompt drains the narration pipe up to and including the confirmation
+// prompt — the installer's last write before it reads stdin — which leaves the pipe empty for
+// the fill that follows.
+func readNarrationThroughPrompt(t *testing.T, command *exec.Cmd, narrationReader *os.File) string {
+	t.Helper()
+	if err := narrationReader.SetReadDeadline(time.Now().Add(30 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	var accumulated bytes.Buffer
+	buffer := make([]byte, 4096)
+	for !bytes.Contains(accumulated.Bytes(), []byte("Install this complete four-skill suite? [y/N]")) {
+		count, readErr := narrationReader.Read(buffer)
+		if count > 0 {
+			accumulated.Write(buffer[:count])
+		}
+		if readErr != nil {
+			_ = command.Process.Kill()
+			_ = command.Wait()
+			t.Fatalf("narration ended before the confirmation prompt: %v\n%s", readErr, accumulated.String())
+		}
+	}
+	if err := narrationReader.SetReadDeadline(time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	return accumulated.String()
+}
+
+// measurePipeCapacity fills a throwaway pipe until it refuses another byte, which is this
+// platform's pipe buffer size.
+//
+// The refusal has to be measured here rather than on the narration pipe itself: os.Pipe hands
+// back poller-backed descriptors whose writes report EAGAIN, but exec takes the raw
+// descriptor of any *os.File it gives a child, which puts that pipe back into blocking mode.
+// A fill attempted on it after Start would block instead of refusing.
+func measurePipeCapacity(t *testing.T) int {
+	t.Helper()
+	measuredReader, measuredWriter, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer measuredReader.Close()
+	defer measuredWriter.Close()
+	rawConnection, err := measuredWriter.SyscallConn()
+	if err != nil {
+		t.Fatal(err)
+	}
+	filler := bytes.Repeat([]byte("."), 4096)
+	capacity := 0
+	controlErr := rawConnection.Write(func(descriptor uintptr) bool {
+		for {
+			count, writeErr := syscall.Write(int(descriptor), filler)
+			if count > 0 {
+				capacity += count
+			}
+			if writeErr == nil || writeErr == syscall.EINTR {
+				continue
+			}
+			if writeErr != syscall.EAGAIN {
+				t.Errorf("measure the pipe buffer: %v", writeErr)
+			}
+			return true
+		}
+	})
+	if controlErr != nil {
+		t.Fatal(controlErr)
+	}
+	if capacity == 0 {
+		t.Fatal("a fresh pipe accepted no bytes")
+	}
+	return capacity
+}
+
+// parkTheNextNarrationWrite leaves the narration pipe holding exactly one full buffer of
+// filler, so whatever the installer writes next blocks until this test drains the pipe. It
+// returns the filler byte count, which is also the offset the installer's own bytes resume
+// at: pipe order is first-in-first-out, and each narrate call is a single sub-PIPE_BUF write
+// that cannot interleave with the filler.
+//
+// The pipe must be empty for a write of exactly one buffer to complete without blocking, so
+// emptiness is proven rather than assumed. It is provable here because the installer is
+// parked on its confirmation read and cannot narrate again until this test confirms.
+func parkTheNextNarrationWrite(t *testing.T, command *exec.Cmd,
+	narrationReader, narrationWriter *os.File, pipeCapacity int) int {
+	t.Helper()
+	if err := narrationReader.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	leftover := make([]byte, 4096)
+	if count, err := narrationReader.Read(leftover); !errors.Is(err, os.ErrDeadlineExceeded) {
+		_ = command.Process.Kill()
+		_ = command.Wait()
+		t.Fatalf("narration pipe was not drained to the prompt: read %d bytes (%v): %q",
+			count, err, leftover[:count])
+	}
+	if err := narrationReader.SetReadDeadline(time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	count, err := narrationWriter.Write(bytes.Repeat([]byte("."), pipeCapacity))
+	if err != nil {
+		t.Fatalf("fill the narration pipe: %v", err)
+	}
+	return count
+}
+
+// waitForReapMarker blocks until the just stub records that the installer reaped it, which is
+// the point past every cancellable step of the install.
+func waitForReapMarker(t *testing.T, command *exec.Cmd, markerPath, narration string) {
+	t.Helper()
+	deadline := time.Now().Add(60 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Lstat(markerPath); err == nil {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	_ = command.Process.Kill()
+	_ = command.Wait()
+	t.Fatalf("built CLI did not finish the post-write Justfile validation\nnarration:\n%s", narration)
 }
 
 func waitForMarkerFile(t *testing.T, command *exec.Cmd, markerPath, narrationPath string) {
