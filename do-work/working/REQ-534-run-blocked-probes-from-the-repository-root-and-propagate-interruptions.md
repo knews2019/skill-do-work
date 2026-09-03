@@ -44,9 +44,9 @@ The `next` command's blocked-probe runner has three defects in one file. It runs
 The fold-first scan found no pending or pending-answers REQ, sweep or otherwise, in any UR that shares these root causes. REQ-505 (moving selection and claim behind `advance`) re-homes the caller of `next`; it does not touch the probe runner.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Capture the selected root without widening the stable runner interface, register Unix signals before launch, propagate a typed interruption through selection, and retain the established exit-code owner.
+- [x] **[APPLY]:** Implemented the root-aware execution path, pre-launch signal registration, typed interruption/short-circuit behavior, platform parity, and three acceptance fixtures in the exact seven-file scope.
+- [x] **[UNIFY]:** Reviewed all seven files; focused, race, full-module, vet, Windows cross-compile, whitespace, and debug-artifact checks passed.
 
 ## Context
 
@@ -141,3 +141,29 @@ None.
 - [ ] Signal notification is installed before child launch.
 - [ ] Existing child-tree termination and reaping remain intact.
 - [ ] Timeout 124 and launch-failure 125 retain their current result shapes.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_unix.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_windows.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_commands.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go` (modified)
+
+**What was done:** The next command now runs blocked probes from the selected repository root. Unix signal ownership is installed before the child starts; an interrupt is forwarded, the owned group is terminated and reaped, and a typed interruption stops candidate evaluation with no selection and the shell-compatible exit override. Timeout, launch failure, ordinary probe behavior, and Windows fail-closed parity remain intact. Integrated at 8b488b5c7e89d8ecf2761f1367a7daf8fffbe020 from implementation range 5c06a7d7bd2c2511d0458b4724ffa1e14e651408..8b488b5c7e89d8ecf2761f1367a7daf8fffbe020.
+
+## Decisions
+
+- **D-01:** Keep the public probe-runner shape stable by binding the authoritative repository root in the next-command adapter.
+- **D-02:** Return a typed interruption to selection and let the existing command runtime remain the sole process-exit owner through ExitCodeOverride.
+- **D-03:** Preserve the current-cwd compatibility wrapper for direct callers while the command path uses the root-aware entry point.
+- **D-04:** Preserve the existing Windows launch-status refusal because standard-library process-tree ownership is unavailable there; verify signature parity by cross-compilation.
+
+## Testing
+
+- RED then PASS: root-relative probe, typed real-signal/group-reaping, and interruption short-circuit acceptance fixtures.
+- PASS: complete nextselection package and its race suite; `go vet ./...`; `go test -count=1 ./...`.
+- PASS: Windows amd64 nextselection cross-compile; `git diff --check`; no debug-artifact matches in the seven files.
