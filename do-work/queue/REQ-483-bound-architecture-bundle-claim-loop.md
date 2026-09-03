@@ -1,7 +1,7 @@
 ---
 id: REQ-483
 title: '[impact-critical] Review fix: Bound the architecture bundle-claim loop and restore --commit'
-status: pending-heavy-testing
+status: pending
 priority: now
 created_at: 2026-09-01T11:51:27Z
 user_request: UR-081
@@ -30,7 +30,7 @@ implementation_at: 2026-09-03T21:53:38Z
 builder_handback_at: 2026-09-03T21:55:13Z
 integration_at: 2026-09-03T21:57:28Z
 testing_at: 2026-09-03T22:00:11Z
-status_changed_at: 2026-09-03T22:00:11Z
+status_changed_at: 2026-09-03T23:00:34Z
 commit: 3eb87519df19a14103f407159b9f6e753b51ca7b
 write_set:
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go
@@ -152,6 +152,11 @@ Passed — the exact `6a7e49d4..3eb87519` integration range contains only the tw
 
 ## Open Questions
 
-- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `3eb87519df19a14103f407159b9f6e753b51ca7b`; did it exit 0?
+- [x] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `3eb87519df19a14103f407159b9f6e753b51ca7b`; did it exit 0? → No — exit 1; staged-skills-contract.sh took 45s, update-script-behavior.sh took 73s, and its interrupt-status probe failed
   Recommended: Yes
   Also: No — report the failing lane
+
+
+## Answer Notes
+
+- 2026-09-03 - [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `3eb87519df19a14103f407159b9f6e753b51ca7b`; did it exit 0?: No — exit 1; staged-skills-contract.sh took 45s, update-script-behavior.sh took 73s, and its interrupt-status probe failed
