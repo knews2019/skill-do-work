@@ -1,7 +1,7 @@
 ---
 id: REQ-532
 title: 'Delete dead test scripts and nested self-tests from the maintainer gate'
-status: pending
+status: claimed
 created_at: 2026-09-03T11:42:36Z
 user_request: UR-102
 domain: testing
@@ -25,6 +25,7 @@ write_set:
   - _dev/tests/shipped-shell-parity.sh
   - _dev/tests/shipped-shell-thinness.sh
   - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
+claimed_at: 2026-09-03T12:02:25Z
 ---
 
 # Delete Dead Test Scripts and Nested Self-Tests From the Maintainer Gate
