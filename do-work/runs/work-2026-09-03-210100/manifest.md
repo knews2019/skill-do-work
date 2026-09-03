@@ -10,6 +10,6 @@ Status: in-progress
 | root | REQ-502 implementation | `worktree-agent-REQ-502-remove-enriched-checkpoint-entries-in-cleanup-mover` | `REQ-502-handback.md` | parked: pending-heavy-testing at `ed692757` |
 | plan-561 | REQ-561 plan | read-only | `REQ-561-plan.md` | done |
 | explore-561 | REQ-561 exploration | read-only | `REQ-561-exploration.md` | done |
-| builder-561 | REQ-561 implementation | `worktree-agent-REQ-561-add-a-three-value-priority-field-the-selector-orders-by-and-the-board-shows` | `REQ-561-handback.md` | dispatched |
+| builder-561 | REQ-561 implementation | `worktree-agent-REQ-561-add-a-three-value-priority-field-the-selector-orders-by-and-the-board-shows` | `REQ-561-handback.md` | built: `f3d92379` |
 
 Heavy-test evidence: `bash _dev/tests/maintainer-verify.sh --heavy` exited 1. Assertions passed, but the time budget failed for `staged-skills-contract.sh` at 35s and `update-script-behavior.sh` at 61s.
