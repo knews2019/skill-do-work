@@ -156,3 +156,25 @@ So the fix has to recover the boundary between question text and disposition fro
 - **Adjacent, bounded:** `internal/finalization/finalization_discovery.go:593` admits an unjournaled changelog tail into replay on `bytes.Contains(inserted, requestID)`; mitigated by `singleInsertion` bounding the searched bytes to one verified diff hunk.
 - **Prose disagrees with the writer:** `skills/do-work/actions/clarify.md:124` documents the discard form as `- [x] [question] → Discarded` — no colon, no summary — while the CLI writes `Discarded: <summary>` and now prefix-tests `Discarded: `. The CLI is the authority, so the prose line is the one to correct.
 - `internal/suiteinstall` → `TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation/update-suite/TERM` failed once in three full-suite runs and passed 4/4 in isolation. Third sighting of the flake tracked as REQ-525, now on a third subtest.
+
+## Testing
+
+**Tests run:** `go build ./... && go vet ./... && gofmt -l .`; `go test -count=1 ./internal/publication/`; `go test ./...`; the built CLI's `answer --manifest` against a throwaway git repo across two clarify rounds; canonical repository gate `bash _dev/tests/maintainer-verify.sh`.
+**Result:** ✓ `internal/publication` green (`ok … 18.4s`). Gate exits 1 on the recorded baseline failure only — `internal/toolboxcommands` → `TestRemediationCancellationReachesMediaGitCommitAndRollback`, tracked as REQ-524, in a package this diff does not touch.
+
+**Red-green validation:** traces the REQ's Red-Green Proof, which asked for the two-round forgery and the preserved genuine routes.
+- `TestBuildAnswerPlanRefusesDispositionForgedByAnswerText` (both labels, new in remediation): ✗ `forgeable answered summary accepted: refusal=(*publication.Refusal)(nil)` → ✓
+- `…RefusesDispositionForgedByAnswerText` first form (position anchoring, first implementation): ✗ the round-2 document published `status: cancelled` with `completed_at` set → ✓ `pending`
+- `…JudgesPriorRoundResolvedLinesAtTheWriterPosition/summary merely mentioning the marker` and `/question text carrying the separator`: ✗ → ✓
+- F2 refusal subtests: ✗ `declared terminal archive path silently ignored: refusal=(*publication.Refusal)(nil)` → ✓ `ANSWER-ARCHIVE-PATH-MISMATCH` naming the blocking line
+- Genuine all-discarded → `cancelled` and genuine all-confirmed + `builder_decided` → `completed` are green throughout; they are the regression the fix could plausibly have broken, and the reviewer confirmed both redden under a blanket-refusal mutation, so they are controls rather than padding.
+
+**CLI evidence (built binary, throwaway repo, two rounds — not a test harness).** Before, at implementation `1d8c82c`: the forged round succeeded and round 2 landed `status: cancelled`, `completed_at: 2026-09-03T00:00:00Z`, path `do-work/archive/REQ-1-attack.md`; the `Confirmed: ` variant landed `completed` + archive. After: round 1 is refused with `ANSWER-SUMMARY-INVALID` and the reason `an answered summary must not open with the disposition label "Discarded: " …`, the question line is byte-unchanged, and round 2 lands `pending-answers` in `do-work/queue/`. The forged round writes nothing, so Q1 stays open.
+
+**F2 through the same CLI:** before, a genuine discard whose summary carried the house `A → B` cross-reference published `status: pending` with the caller's declared `archive_path` silently dropped. After, it refuses with `ANSWER-ARCHIVE-PATH-MISMATCH` naming the derived status and quoting the blocking line.
+
+**Neuter-and-confirm, six guards, one at a time, full package run each time:** the write-side label refusal reddens only the F1 test; the archive-path check moved back inside `if terminal` reddens only the two F2 refusal subtests and leaves the acceptance control green; dropping the evidence reddens only the two evidence assertions; removing the reader's `\r` trim reddens only the CRLF F2 subtest; removing `findQuestionLine`'s `\r` trim reddens the CRLF table row with `ANSWER-QUESTION-NOT-UNIQUE: question identity matched 0 lines`; and skipping unattributable lines instead of failing the check reddens the new zero-separator row plus both F1 controls and both ambiguous rows.
+
+**Corpus measurement (from the review, not re-derived):** 124 resolved question lines across 110 files under `do-work/` — 93 carry exactly one separator, 29 carry none, **2 carry more than one**, both from this project's own `A → B` cross-reference style inside answer text. Exactly **1** historical verdict would have changed, and it is already archived; **0** affected files in `do-work/queue/` or `do-work/working/`, so nothing in flight changes.
+
+*Verified by work action*
