@@ -1,7 +1,9 @@
 package toolboxcommands
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +20,7 @@ import (
 
 var architectureNow = func() time.Time { return time.Now().UTC() }
 var architectureAfterClaim = func(string) {}
+var architectureClaimBundle = rootedMkdirExclusive
 var architectureName = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2}_\d{4})_architecture-report(?:-(\d+))?$`)
 var architectureWatermark = regexp.MustCompile(`(?m)^\s*<meta name="architecture-report-verified-at" content="([0-9a-f]{7,40})">\s*$`)
 
@@ -159,7 +162,7 @@ func architecturePublish(ctx commandruntime.ExecutionContext, draft, candidate s
 		relative = fmt.Sprintf("%s-%d", baseRelative, sequence)
 	}
 	indexRel := filepath.ToSlash(filepath.Join(relative, "index.html"))
-	preflight := runTransaction(CommandArchitecture, ctx.RepositoryRoot, []string{indexRel}, nil, true, commit, "[do-work] Publish architecture report", nil)
+	preflight := runTransaction(CommandArchitecture, ctx.RepositoryRoot, []string{indexRel}, nil, true, false, "[do-work] Publish architecture report", nil)
 	if preflight.Outcome != resultmodel.OutcomeSuccess || dryRun {
 		if dryRun && preflight.Outcome == resultmodel.OutcomeSuccess {
 			output := "would publish " + indexRel + "\n"
@@ -173,8 +176,13 @@ func architecturePublish(ctx commandruntime.ExecutionContext, draft, candidate s
 	var ownedBundle os.FileInfo
 	for {
 		var claimErr error
-		if ownedBundle, claimErr = rootedMkdirExclusive(ctx.RepositoryRoot, relative, 0o755); claimErr == nil {
+		if ownedBundle, claimErr = architectureClaimBundle(ctx.RepositoryRoot, relative, 0o755); claimErr == nil {
 			break
+		}
+		if !errors.Is(claimErr, fs.ErrExist) {
+			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{
+				toolboxFinding(CommandArchitecture, "ARCHITECTURE-BUNDLE-CLAIM-FAILED", resultmodel.SeverityError, []string{relative}, "architecture bundle claim failed: "+claimErr.Error(), resultmodel.FixabilityManual, "architecture report bundle could not be claimed"),
+			}}
 		}
 		sequence++
 		relative = fmt.Sprintf("%s-%d", baseRelative, sequence)
