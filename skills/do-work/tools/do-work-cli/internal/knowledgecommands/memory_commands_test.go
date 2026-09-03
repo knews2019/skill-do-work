@@ -385,6 +385,60 @@ func TestConfiguredMemoryReadersRefuseLinkedConfiguredRoot(t *testing.T) {
 	}
 }
 
+func TestMemoryRecallLedgerAppendRefusesConfiguredRootSwap(t *testing.T) {
+	root := newMemoryRepository(t)
+	memoryRoot, err := physicalPath(filepath.Join(root, "memory"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalMemoryRoot := filepath.Join(filepath.Dir(memoryRoot), "memory-before-ledger-swap")
+	outsideRoot := t.TempDir()
+	outsideLedger := filepath.Join(outsideRoot, "usage-ledger.jsonl")
+	const canary = "configured-memory-ledger-root-swap-canary-475"
+	before := []byte(`{"event":"` + canary + `"}` + "\n")
+	if err := os.WriteFile(outsideLedger, before, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	previousHook := memoryLedgerBeforeRootOpen
+	hookRan := false
+	memoryLedgerBeforeRootOpen = func(path string) {
+		hookRan = true
+		if path != memoryRoot {
+			t.Fatalf("ledger root = %q, want %q", path, memoryRoot)
+		}
+		if err := os.Rename(memoryRoot, originalMemoryRoot); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(outsideRoot, memoryRoot); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Cleanup(func() { memoryLedgerBeforeRootOpen = previousHook })
+
+	result := handleMemoryRecall(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"command platform"})
+	if result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("recall = %#v", result)
+	}
+	if !hookRan {
+		t.Fatal("ledger root-swap hook did not run")
+	}
+	after, err := os.ReadFile(outsideLedger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Fatalf("outside ledger changed after configured-root swap:\nbefore=%s\nafter=%s", before, after)
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), canary) {
+		t.Fatalf("recall disclosed outside ledger canary: %s", encoded)
+	}
+}
+
 func TestConfiguredMemoryReadersRefuseSpecialObjects(t *testing.T) {
 	for _, fixture := range []struct {
 		name         string

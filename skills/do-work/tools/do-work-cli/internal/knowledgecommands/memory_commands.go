@@ -130,6 +130,8 @@ const (
 var (
 	errMemoryRootOutsideRepository = errors.New("memory root must be inside the repository")
 	errMemoryRootUnsafe            = errors.New("memory root must be a real directory")
+	// memoryLedgerBeforeRootOpen makes the post-scan root-replacement boundary deterministic in tests.
+	memoryLedgerBeforeRootOpen = func(string) {}
 )
 
 var credentialPattern = regexp.MustCompile(`(?i)(ghp_[A-Za-z0-9_]{12,}|github_pat_[A-Za-z0-9_]{12,}|sk-[A-Za-z0-9_-]{12,}|AKIA[A-Z0-9]{12,}|xox[a-z]-[A-Za-z0-9-]{8,}|eyJ[A-Za-z0-9_-]{12,}|Bearer\s+[A-Za-z0-9._~+/-]{8,}|(?:password|passwd|secret|token|api[_-]?key)\s*[:=]\s*\S+)`)
@@ -1245,7 +1247,8 @@ func resolveMemoryRoot(repositoryRoot, supplied string, _ bool) (string, string,
 func appendMemoryLedger(memoryAbsolute, event, query string, hits int, note string) {
 	entry := map[string]any{"ts": nowUTC().UTC().Format(time.RFC3339), "engine": "memory", "event": event, "query": query, "hits": hits, "source": "do-work-cli", "note": note}
 	data, _ := json.Marshal(entry)
-	root, err := os.OpenRoot(memoryAbsolute)
+	memoryLedgerBeforeRootOpen(memoryAbsolute)
+	root, err := openMemoryRoot(memoryAbsolute)
 	if err != nil {
 		return
 	}
