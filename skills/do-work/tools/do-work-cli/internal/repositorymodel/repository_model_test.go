@@ -36,6 +36,8 @@ func TestDiscoverRepositoryCoversLiveArchiveReservationAndExcludedLayouts(t *tes
 	writeRepositoryFixture(t, repositoryRoot, "do-work/user-requests/UR-081/input.md", "---\nid: UR-081\nrequests: [REQ-005]\n---\nInput\n")
 	writeRepositoryFixture(t, repositoryRoot, "do-work/archive/UR-001-100/UR-080/input.md", "---\nid: UR-080\n---\nArchived input\n")
 	writeRepositoryFixture(t, repositoryRoot, "do-work/.req-reservations/REQ-000009", "")
+	writeRepositoryFixture(t, repositoryRoot, "do-work/.req-reservations/REQ-010", "")
+	writeRepositoryFixture(t, repositoryRoot, "do-work/.req-reservations/REQ-999-copy", "")
 	writeRepositoryFixture(t, repositoryRoot, "do-work/deliverables/REQ-090-copy.md", requestFixture("REQ-090", "pending"))
 	writeRepositoryFixture(t, repositoryRoot, "do-work/runs/run/REQ-091-copy.md", requestFixture("REQ-091", "pending"))
 	writeRepositoryFixture(t, repositoryRoot, "do-work/user-requests/REQ-006-stray.md", requestFixture("REQ-006", "pending"))
@@ -44,8 +46,11 @@ func TestDiscoverRepositoryCoversLiveArchiveReservationAndExcludedLayouts(t *tes
 	if err != nil {
 		t.Fatalf("DiscoverRepository: %v", err)
 	}
-	if len(snapshot.RequestFiles) != 5 || len(snapshot.UserRequestFiles) != 2 || len(snapshot.ReservationFiles) != 1 {
+	if len(snapshot.RequestFiles) != 5 || len(snapshot.UserRequestFiles) != 2 || len(snapshot.ReservationFiles) != 2 {
 		t.Fatalf("snapshot counts: requests=%d URs=%d reservations=%d", len(snapshot.RequestFiles), len(snapshot.UserRequestFiles), len(snapshot.ReservationFiles))
+	}
+	if snapshot.ReservationFiles[0].RequestNumber != 9 || snapshot.ReservationFiles[1].RequestNumber != 10 {
+		t.Fatalf("reservation identities = %#v", snapshot.ReservationFiles)
 	}
 	if len(snapshot.StrayRequestPaths) != 1 || !strings.HasSuffix(filepath.ToSlash(snapshot.StrayRequestPaths[0]), "user-requests/REQ-006-stray.md") {
 		t.Fatalf("stray requests = %v", snapshot.StrayRequestPaths)
@@ -207,6 +212,9 @@ func TestReserveNextRequestIDIsCollisionFreeAcrossEvidenceAndRaces(t *testing.T)
 		numbers = append(numbers, reservation.RequestNumber)
 		if _, err := os.Stat(reservation.AbsolutePath); err != nil {
 			t.Errorf("reservation missing: %v", err)
+		}
+		if basename := filepath.Base(reservation.AbsolutePath); basename != "REQ-013" && basename != "REQ-014" {
+			t.Errorf("reservation basename = %q, want REQ-013 or REQ-014", basename)
 		}
 	}
 	sort.Ints(numbers)

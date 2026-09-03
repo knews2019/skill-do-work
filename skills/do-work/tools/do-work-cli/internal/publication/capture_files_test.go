@@ -2,10 +2,64 @@ package publication
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
+
+func TestCaptureCollidesWithQueueKanbanReservationForSameNumber(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, "do-work/queue/REQ-481-existing.md", []byte("---\nid: REQ-481\nstatus: pending\n---\n"), 0o644)
+	boardModule := filepath.Clean("../../../../../do-work-board/tools/queue-kanban")
+	command := exec.Command("go", "run", ".", "next-req", "--repo-root", root)
+	command.Dir = boardModule
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("queue-kanban next-req: %v\n%s", err, output)
+	}
+	if number := strings.TrimSpace(string(output)); number != "482" {
+		t.Fatalf("next-req output = %q, want 482", number)
+	}
+
+	writeFixture(t, root, "payload/ur.md", []byte("---\nid: UR-1\nrequests: [REQ-482]\n---\n"), 0o644)
+	writeFixture(t, root, "payload/req.md", []byte("---\nid: REQ-482\nstatus: pending\nuser_request: UR-1\n---\n"), 0o644)
+	plan := BuildCapturePlan(root, Manifest{Operation: OperationCaptureFiles, Capture: &CaptureManifest{
+		UserRequestID: "UR-1", UserRequest: PublishedFile{Path: "do-work/user-requests/UR-1/input.md", Payload: PayloadFile{SourcePath: "payload/ur.md"}},
+		Requests: []CaptureRequest{{ID: "REQ-482", UserRequestID: "UR-1", File: PublishedFile{Path: "do-work/queue/REQ-482-new.md", Payload: PayloadFile{SourcePath: "payload/req.md"}}, ReservationPath: "do-work/.req-reservations/REQ-482"}},
+	}})
+	if plan.Refusal == nil || plan.Refusal.Code != "CAPTURE-COLLISION" {
+		t.Fatalf("capture did not collide with board reservation: %#v", plan.Refusal)
+	}
+}
+
+func TestCaptureLegacyReservationAliasBlocksCanonicalCreate(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, "do-work/.req-reservations/REQ-000482", nil, 0o644)
+	writeFixture(t, root, "payload/ur.md", []byte("---\nid: UR-1\nrequests: [REQ-482]\n---\n"), 0o644)
+	writeFixture(t, root, "payload/req.md", []byte("---\nid: REQ-482\nstatus: pending\nuser_request: UR-1\n---\n"), 0o644)
+	plan := BuildCapturePlan(root, Manifest{Operation: OperationCaptureFiles, Capture: &CaptureManifest{
+		UserRequestID: "UR-1", UserRequest: PublishedFile{Path: "do-work/user-requests/UR-1/input.md", Payload: PayloadFile{SourcePath: "payload/ur.md"}},
+		Requests: []CaptureRequest{{ID: "REQ-482", UserRequestID: "UR-1", File: PublishedFile{Path: "do-work/queue/REQ-482-new.md", Payload: PayloadFile{SourcePath: "payload/req.md"}}, ReservationPath: "do-work/.req-reservations/REQ-482"}},
+	}})
+	if plan.Refusal == nil || plan.Refusal.Code != "CAPTURE-COLLISION" || !reflect.DeepEqual(plan.Refusal.Paths, []string{"do-work/.req-reservations/REQ-000482"}) {
+		t.Fatalf("legacy alias did not block capture: %#v", plan.Refusal)
+	}
+}
+
+func TestCaptureRefusesFixedSixReservationManifestPath(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, "payload/ur.md", []byte("---\nid: UR-1\nrequests: [REQ-482]\n---\n"), 0o644)
+	writeFixture(t, root, "payload/req.md", []byte("---\nid: REQ-482\nstatus: pending\nuser_request: UR-1\n---\n"), 0o644)
+	plan := BuildCapturePlan(root, Manifest{Operation: OperationCaptureFiles, Capture: &CaptureManifest{
+		UserRequestID: "UR-1", UserRequest: PublishedFile{Path: "do-work/user-requests/UR-1/input.md", Payload: PayloadFile{SourcePath: "payload/ur.md"}},
+		Requests: []CaptureRequest{{ID: "REQ-482", UserRequestID: "UR-1", File: PublishedFile{Path: "do-work/queue/REQ-482-new.md", Payload: PayloadFile{SourcePath: "payload/req.md"}}, ReservationPath: "do-work/.req-reservations/REQ-000482"}},
+	}})
+	if plan.Refusal == nil || plan.Refusal.Code != "CAPTURE-RESERVATION-MISMATCH" {
+		t.Fatalf("fixed-six manifest path accepted: %#v", plan.Refusal)
+	}
+}
 
 func TestBuildCapturePlanBootstrapsAbsentDoWorkAndPinsRawInput(t *testing.T) {
 	repositoryRoot := t.TempDir()
@@ -16,7 +70,7 @@ func TestBuildCapturePlanBootstrapsAbsentDoWorkAndPinsRawInput(t *testing.T) {
 	writeFixture(t, repositoryRoot, "payload/req.md", []byte("---\nid: REQ-1\nstatus: pending\nuser_request: UR-1\n---\n# Work\n"), 0o644)
 	manifest := Manifest{Operation: OperationCaptureFiles, Capture: &CaptureManifest{UserRequestID: "UR-1",
 		UserRequest: PublishedFile{Path: "do-work/user-requests/UR-1/input.md", Payload: PayloadFile{SourcePath: "payload/ur.md"}}, RawInput: &PayloadFile{SourcePath: "payload/raw.txt"},
-		Requests: []CaptureRequest{{ID: "REQ-1", UserRequestID: "UR-1", File: PublishedFile{Path: "do-work/queue/REQ-1-work.md", Payload: PayloadFile{SourcePath: "payload/req.md"}}, ReservationPath: "do-work/.req-reservations/REQ-1"}},
+		Requests: []CaptureRequest{{ID: "REQ-1", UserRequestID: "UR-1", File: PublishedFile{Path: "do-work/queue/REQ-1-work.md", Payload: PayloadFile{SourcePath: "payload/req.md"}}, ReservationPath: "do-work/.req-reservations/REQ-001"}},
 	}}
 	plan := BuildCapturePlan(repositoryRoot, manifest)
 	if plan.Refusal != nil {
@@ -57,7 +111,7 @@ func TestRemediationF2CaptureRequiresCanonicalURAndREQDestinations(t *testing.T)
 			writeFixture(t, root, "payload/req.md", []byte("---\nid: REQ-1\nstatus: pending\nuser_request: UR-1\n---\n"), 0o644)
 			plan := BuildCapturePlan(root, Manifest{Operation: OperationCaptureFiles, Capture: &CaptureManifest{UserRequestID: "UR-1",
 				UserRequest: PublishedFile{Path: test.urPath, Payload: PayloadFile{SourcePath: "payload/ur.md"}},
-				Requests:    []CaptureRequest{{ID: "REQ-1", UserRequestID: "UR-1", File: PublishedFile{Path: test.reqPath, Payload: PayloadFile{SourcePath: "payload/req.md"}}, ReservationPath: "do-work/.req-reservations/REQ-1"}},
+				Requests:    []CaptureRequest{{ID: "REQ-1", UserRequestID: "UR-1", File: PublishedFile{Path: test.reqPath, Payload: PayloadFile{SourcePath: "payload/req.md"}}, ReservationPath: "do-work/.req-reservations/REQ-001"}},
 			}})
 			if plan.Refusal == nil {
 				t.Fatalf("accepted noncanonical paths: %#v", plan)
@@ -76,7 +130,7 @@ func TestRemediationMinorCaptureMutationOrderIsMarkerURAssetsREQFold(t *testing.
 	writeFixture(t, root, "payload/fold-new", []byte("new\n"), 0o644)
 	plan := BuildCapturePlan(root, Manifest{Operation: OperationCaptureFiles, Capture: &CaptureManifest{UserRequestID: "UR-1",
 		UserRequest: PublishedFile{Path: "do-work/user-requests/UR-1/input.md", Payload: PayloadFile{SourcePath: "payload/ur.md"}},
-		Requests:    []CaptureRequest{{ID: "REQ-1", UserRequestID: "UR-1", File: PublishedFile{Path: "do-work/queue/REQ-1-work.md", Payload: PayloadFile{SourcePath: "payload/req.md"}}, ReservationPath: "do-work/.req-reservations/REQ-1"}},
+		Requests:    []CaptureRequest{{ID: "REQ-1", UserRequestID: "UR-1", File: PublishedFile{Path: "do-work/queue/REQ-1-work.md", Payload: PayloadFile{SourcePath: "payload/req.md"}}, ReservationPath: "do-work/.req-reservations/REQ-001"}},
 		Assets:      []PublishedFile{{Path: "do-work/user-requests/UR-1/assets/a.bin", Payload: PayloadFile{SourcePath: "payload/asset"}}},
 		Folds:       []ReplacementFile{{Path: "do-work/prose-backlog.md", ExpectedPayload: PayloadFile{SourcePath: "payload/fold-old"}, NewPayload: PayloadFile{SourcePath: "payload/fold-new"}}},
 	}})
@@ -87,7 +141,7 @@ func TestRemediationMinorCaptureMutationOrderIsMarkerURAssetsREQFold(t *testing.
 	for index, mutation := range plan.Mutations {
 		got[index] = mutation.Path
 	}
-	want := []string{"do-work/.req-reservations/REQ-1", "do-work/user-requests/UR-1/input.md", "do-work/user-requests/UR-1/assets/a.bin", "do-work/queue/REQ-1-work.md", "do-work/prose-backlog.md"}
+	want := []string{"do-work/.req-reservations/REQ-001", "do-work/user-requests/UR-1/input.md", "do-work/user-requests/UR-1/assets/a.bin", "do-work/queue/REQ-1-work.md", "do-work/prose-backlog.md"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("mutation order = %v, want %v", got, want)
 	}
@@ -95,7 +149,7 @@ func TestRemediationMinorCaptureMutationOrderIsMarkerURAssetsREQFold(t *testing.
 
 func TestRemediationF9CaptureRefusesCollisionAtEveryCreatePosition(t *testing.T) {
 	for _, collisionPath := range []string{
-		"do-work/.req-reservations/REQ-1",
+		"do-work/.req-reservations/REQ-001",
 		"do-work/user-requests/UR-1/input.md",
 		"do-work/user-requests/UR-1/assets/a.bin",
 		"do-work/queue/REQ-1-work.md",
@@ -108,7 +162,7 @@ func TestRemediationF9CaptureRefusesCollisionAtEveryCreatePosition(t *testing.T)
 			writeFixture(t, root, collisionPath, []byte("collision"), 0o644)
 			plan := BuildCapturePlan(root, Manifest{Operation: OperationCaptureFiles, Capture: &CaptureManifest{UserRequestID: "UR-1",
 				UserRequest: PublishedFile{Path: "do-work/user-requests/UR-1/input.md", Payload: PayloadFile{SourcePath: "payload/ur.md"}},
-				Requests:    []CaptureRequest{{ID: "REQ-1", UserRequestID: "UR-1", File: PublishedFile{Path: "do-work/queue/REQ-1-work.md", Payload: PayloadFile{SourcePath: "payload/req.md"}}, ReservationPath: "do-work/.req-reservations/REQ-1"}},
+				Requests:    []CaptureRequest{{ID: "REQ-1", UserRequestID: "UR-1", File: PublishedFile{Path: "do-work/queue/REQ-1-work.md", Payload: PayloadFile{SourcePath: "payload/req.md"}}, ReservationPath: "do-work/.req-reservations/REQ-001"}},
 				Assets:      []PublishedFile{{Path: "do-work/user-requests/UR-1/assets/a.bin", Payload: PayloadFile{SourcePath: "payload/asset"}}},
 			}})
 			if plan.Refusal == nil || plan.Refusal.Code != "CAPTURE-COLLISION" {

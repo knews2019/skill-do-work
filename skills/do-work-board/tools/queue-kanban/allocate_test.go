@@ -157,6 +157,19 @@ func TestNextRequestNumberReservesNumberForTheNextCall(t *testing.T) {
 	}
 }
 
+func TestRequestReservationFileNameUsesStoredRequestIDSpelling(t *testing.T) {
+	for number, expected := range map[int]string{
+		1:    "REQ-001",
+		42:   "REQ-042",
+		482:  "REQ-482",
+		1207: "REQ-1207",
+	} {
+		if actual := requestReservationFileName(number); actual != expected {
+			t.Errorf("requestReservationFileName(%d) = %q, want %q", number, actual, expected)
+		}
+	}
+}
+
 // Exclusive marker creation is the concurrency boundary: separate allocator
 // processes that all see the same highest REQ must race safely and each return a
 // different number.
@@ -240,21 +253,44 @@ func TestNextRequestNumberProcessHelper(t *testing.T) {
 // Reservation markers remain authoritative even when no matching REQ exists —
 // an interrupted capture consumes a number rather than making it reusable.
 func TestNextRequestNumberAdvancesPastExistingReservation(t *testing.T) {
+	for _, markerName := range []string{"REQ-088", "REQ-000088"} {
+		t.Run(markerName, func(t *testing.T) {
+			repoRoot := writeAllocationFixture(t, []string{"do-work/queue/REQ-042-only.md"})
+			reservationDirectory := filepath.Join(repoRoot, "do-work", requestReservationDirectoryName)
+			if mkdirError := os.Mkdir(reservationDirectory, 0o755); mkdirError != nil {
+				t.Fatalf("mkdir reservation directory: %v", mkdirError)
+			}
+			if writeError := os.WriteFile(filepath.Join(reservationDirectory, markerName), nil, 0o644); writeError != nil {
+				t.Fatalf("write existing reservation: %v", writeError)
+			}
+
+			allocatedNumber, allocateError := nextRequestNumber(repoRoot)
+			if allocateError != nil {
+				t.Fatalf("nextRequestNumber: %v", allocateError)
+			}
+			if allocatedNumber != 89 {
+				t.Fatalf("nextRequestNumber = %d, want 89 after reserved REQ-88", allocatedNumber)
+			}
+		})
+	}
+}
+
+func TestNextRequestNumberIgnoresReservationLikeSuffixJunk(t *testing.T) {
 	repoRoot := writeAllocationFixture(t, []string{"do-work/queue/REQ-042-only.md"})
 	reservationDirectory := filepath.Join(repoRoot, "do-work", requestReservationDirectoryName)
 	if mkdirError := os.Mkdir(reservationDirectory, 0o755); mkdirError != nil {
 		t.Fatalf("mkdir reservation directory: %v", mkdirError)
 	}
-	if writeError := os.WriteFile(filepath.Join(reservationDirectory, requestReservationFileName(88)), nil, 0o644); writeError != nil {
-		t.Fatalf("write existing reservation: %v", writeError)
+	if writeError := os.WriteFile(filepath.Join(reservationDirectory, "REQ-999-copy"), nil, 0o644); writeError != nil {
+		t.Fatalf("write malformed reservation: %v", writeError)
 	}
 
 	allocatedNumber, allocateError := nextRequestNumber(repoRoot)
 	if allocateError != nil {
 		t.Fatalf("nextRequestNumber: %v", allocateError)
 	}
-	if allocatedNumber != 89 {
-		t.Fatalf("nextRequestNumber = %d, want 89 after reserved REQ-88", allocatedNumber)
+	if allocatedNumber != 43 {
+		t.Fatalf("nextRequestNumber = %d, want 43 when suffix junk is not reservation evidence", allocatedNumber)
 	}
 }
 
