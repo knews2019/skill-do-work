@@ -88,6 +88,10 @@ func BuildDeferGatePlan(repositoryRoot string, manifest Manifest) PublicationPla
 		}
 		return refusedPlan(plan, "DEFER-GATE-REPAIR-AMBIGUOUS", "multiple repair requests carry the same sweep identity and diagnostic fingerprint", []string{gate.RepairID}, paths...)
 	}
+	existingReservations, reservationInspectionError := existingReservationPaths(repositoryRoot, gate.RepairID)
+	if reservationInspectionError != nil {
+		return refusedPlan(plan, "DEFER-GATE-INSPECTION-FAILED", reservationInspectionError.Error(), []string{gate.RepairID}, publicationReservationDirectory)
+	}
 
 	repairOutcome := "created"
 	var repairMutation PlannedMutation
@@ -119,15 +123,22 @@ func BuildDeferGatePlan(repositoryRoot string, manifest Manifest) PublicationPla
 		}
 		appendHistory(repairDocument, repairFoldHistory(gate, baseCommit, mergeCommit))
 		repairMutation = PlannedMutation{Kind: MutationReplace, Path: repairPath, ExpectedBytes: expectedRepairBytes, Contents: repairDocument.DocumentBytes(), AllowUntracked: !gitPathTracked(repositoryRoot, repairPath)}
-		reservationBytes, reservationError := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(reservationPath)))
-		if reservationError == nil && !bytes.Equal(reservationBytes, []byte(gate.RepairID+"\n")) {
-			return refusedPlan(plan, "DEFER-GATE-RESERVATION-STALE", "current bytes do not match the exact reservation", []string{gate.RepairID}, reservationPath)
+		if len(existingReservations) > 1 {
+			return refusedPlan(plan, "DEFER-GATE-RESERVATION-STALE", "multiple reservation spellings claim the repair id", []string{gate.RepairID}, existingReservations...)
 		}
-		if os.IsNotExist(reservationError) && !gitPathCleanAgainstHead(repositoryRoot, repairPath) {
+		if len(existingReservations) == 1 {
+			existingReservationPath := existingReservations[0]
+			reservationBytes, reservationError := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(existingReservationPath)))
+			if reservationError != nil || !bytes.Equal(reservationBytes, []byte(gate.RepairID+"\n")) {
+				reason := "current bytes do not match the exact reservation"
+				if reservationError != nil {
+					reason = reservationError.Error()
+				}
+				return refusedPlan(plan, "DEFER-GATE-RESERVATION-STALE", reason, []string{gate.RepairID}, existingReservationPath)
+			}
+		}
+		if len(existingReservations) == 0 && !gitPathCleanAgainstHead(repositoryRoot, repairPath) {
 			return refusedPlan(plan, "DEFER-GATE-REPAIR-COMMIT-AUTHORITY-MISSING", "an absent reservation requires a committed clean repair preimage", []string{gate.RepairID}, repairPath, reservationPath)
-		}
-		if reservationError != nil && !os.IsNotExist(reservationError) {
-			return refusedPlan(plan, "DEFER-GATE-RESERVATION-STALE", reservationError.Error(), []string{gate.RepairID}, reservationPath)
 		}
 	} else {
 		if gate.ExpectedRepair != nil {
@@ -136,12 +147,13 @@ func BuildDeferGatePlan(repositoryRoot string, manifest Manifest) PublicationPla
 		for _, requestFile := range snapshot.RequestsByID[gate.RepairID] {
 			return refusedPlan(plan, "DEFER-GATE-REPAIR-COLLISION", "repair id is already claimed by another request", []string{gate.RepairID}, "do-work/"+requestFile.RelativePath)
 		}
-		for _, targetPath := range []string{repairPath, reservationPath} {
-			if _, statError := os.Lstat(filepath.Join(repositoryRoot, filepath.FromSlash(targetPath))); statError == nil {
-				return refusedPlan(plan, "DEFER-GATE-REPAIR-COLLISION", "repair or reservation destination already exists", []string{gate.RepairID}, targetPath)
-			} else if !os.IsNotExist(statError) {
-				return refusedPlan(plan, "DEFER-GATE-INSPECTION-FAILED", statError.Error(), []string{gate.RepairID}, targetPath)
-			}
+		if len(existingReservations) > 0 {
+			return refusedPlan(plan, "DEFER-GATE-REPAIR-COLLISION", "repair reservation already exists under a canonical or legacy spelling", []string{gate.RepairID}, existingReservations...)
+		}
+		if _, statError := os.Lstat(filepath.Join(repositoryRoot, filepath.FromSlash(repairPath))); statError == nil {
+			return refusedPlan(plan, "DEFER-GATE-REPAIR-COLLISION", "repair or reservation destination already exists", []string{gate.RepairID}, repairPath)
+		} else if !os.IsNotExist(statError) {
+			return refusedPlan(plan, "DEFER-GATE-INSPECTION-FAILED", statError.Error(), []string{gate.RepairID}, repairPath)
 		}
 		repairBytes, authorError := authoredRepairBytes(gate, parentRecord.UserRequestID, baseCommit, mergeCommit)
 		if authorError != nil {
@@ -222,8 +234,9 @@ func validateDeferGateManifest(plan PublicationPlan, gate *DeferGateManifest) *P
 	if checkpointError != nil || checkpointPath != "do-work/CHECKPOINT.md" {
 		return refuse("DEFER-GATE-CHECKPOINT-PATH-INVALID", "checkpoint path must be do-work/CHECKPOINT.md", []string{gate.ParentID}, gate.CheckpointPath)
 	}
-	if reservationError != nil || reservationPath != "do-work/.req-reservations/"+gate.RepairID {
-		return refuse("DEFER-GATE-RESERVATION-PATH-INVALID", "reservation path must exactly match the repair id", []string{gate.RepairID}, gate.ReservationPath)
+	canonicalReservation, canonicalReservationError := canonicalReservationPath(gate.RepairID)
+	if reservationError != nil || canonicalReservationError != nil || reservationPath != canonicalReservation {
+		return refuse("DEFER-GATE-RESERVATION-PATH-INVALID", "reservation path must use the canonical stored-REQ-id spelling: "+canonicalReservation, []string{gate.RepairID}, gate.ReservationPath)
 	}
 	if gate.ExpectedStatus != "claimed" {
 		return refuse("DEFER-GATE-STATUS-INVALID", "expected_status must be claimed", []string{gate.ParentID}, gate.ParentPath)

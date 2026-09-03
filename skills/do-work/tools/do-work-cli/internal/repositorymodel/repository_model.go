@@ -22,6 +22,7 @@ import (
 var ErrRepositoryNotFound = errors.New("do-work repository not found")
 
 var requestNumberPattern = regexp.MustCompile(`(?i)^REQ-0*([0-9]+)`)
+var reservationNumberPattern = regexp.MustCompile(`^REQ-([0-9]+)$`)
 var checkpointClaimPattern = regexp.MustCompile(`^\s*-\s+(REQ-0*[0-9]+)\s*:.*\s+—\s+writer:\s*(\S(?:.*\S)?)\s*$`)
 var checkpointClaimedAtPattern = regexp.MustCompile(`\s+—\s+claimed\s+(.*?)\s+—\s+writer:`)
 
@@ -193,7 +194,7 @@ func DiscoverRepository(repositoryRoot string) (*RepositorySnapshot, error) {
 		}
 
 		if topSection == ".req-reservations" && len(pathParts) == 2 {
-			if requestNumber, parsed := requestNumberFromText(directoryEntry.Name()); parsed {
+			if requestNumber, parsed := requestNumberFromReservationName(directoryEntry.Name()); parsed {
 				snapshot.ReservationFiles = append(snapshot.ReservationFiles, ReservationFile{
 					RequestNumber: requestNumber, RequestID: formatRequestID(requestNumber), AbsolutePath: absolutePath,
 				})
@@ -382,7 +383,7 @@ func ReserveNextRequestID(snapshot *RepositorySnapshot) (ReservationFile, error)
 	}
 	defer reservationStore.closeStore()
 	for candidateNumber := highestNumber + 1; ; candidateNumber++ {
-		markerName := fmt.Sprintf("REQ-%06d", candidateNumber)
+		markerName := formatRequestID(candidateNumber)
 		markerPath := filepath.Join(reservationDirectory, markerName)
 		beforeReservationMarkerCreate(reservationDirectory)
 		createError := atomicfile.CreateExclusiveAt(reservationStore.directoryRoot, markerName, nil, 0o644)
@@ -592,6 +593,15 @@ func requestNumberFromText(requestText string) (int, bool) {
 	}
 	requestNumber, parseError := strconv.Atoi(match[1])
 	return requestNumber, parseError == nil
+}
+
+func requestNumberFromReservationName(name string) (int, bool) {
+	match := reservationNumberPattern.FindStringSubmatch(strings.TrimSpace(name))
+	if match == nil {
+		return 0, false
+	}
+	requestNumber, parseError := strconv.Atoi(match[1])
+	return requestNumber, parseError == nil && requestNumber > 0
 }
 
 func requestIDFromText(requestText string) string {

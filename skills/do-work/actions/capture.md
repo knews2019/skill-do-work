@@ -73,7 +73,7 @@ Files in `working/` and `archive/` are **immutable**. If someone wants to add to
 - **REQ files:** `REQ-[number]-[slug].md` in `do-work/queue/`
 - **UR folders:** `do-work/user-requests/UR-[number]/` containing `input.md` and optional `assets/`
 - **Assets:** `do-work/user-requests/UR-NNN/assets/REQ-[num]-[descriptive-name].png`
-- **REQ reservations:** `do-work/.req-reservations/REQ-NNNNNN` — durable markers written exclusively by Step 5's `capture-files` transaction beside their REQ payloads. Retention afterwards is owned by the registered Go SessionStart hook/core cleanup command: it removes a marker once its REQ file is committed, or after a two-day timeout. `scripts/cleanup-req-reservations.sh` is a compatibility launcher only.
+- **REQ reservations:** `do-work/.req-reservations/REQ-NNN` — durable markers use the stored REQ id's minimum-three-digit spelling and are written exclusively by Step 5's `capture-files` transaction beside their REQ payloads. Fixed-six legacy `do-work/.req-reservations/REQ-NNNNNN` and other all-digit widths remain read-only compatibility inputs for allocation and cleanup; a new manifest must declare the canonical stored-id path. Retention afterwards is owned by the registered Go SessionStart hook/core cleanup command: it removes a marker once its REQ file is committed, or after a two-day timeout. `scripts/cleanup-req-reservations.sh` is a compatibility launcher only.
 
 To get the next REQ number, check existing `REQ-*.md` files across `do-work/queue/`, `do-work/working/`, and `do-work/archive/` (including inside `do-work/archive/UR-*/`) plus reservation marker names under `do-work/.req-reservations/`, then increment from the highest number in either set. For the next UR number, check `do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`. REQ and UR use separate numbering sequences. If no existing records or markers are found anywhere, start at 1.
 
@@ -225,7 +225,7 @@ If the user provides one or more screenshots:
 
 **Open `actions/capture-reference.md` before preparing content** — this step names the template for every durable file, and none of them are restated here.
 
-Prepare the final UR/REQ bytes, raw verbatim-input bytes, assets, expected/new fold bytes, and one strict `capture-files` JSON manifest as regular payload files in a private temporary directory. The manifest carries every destination, exact ID/linkage, requested `do-work/.req-reservations/REQ-NNNNNN` marker, payload path and mode, and optional commit message. These are inputs, not durable queue writes.
+Prepare the final UR/REQ bytes, raw verbatim-input bytes, assets, expected/new fold bytes, and one strict `capture-files` JSON manifest as regular payload files in a private temporary directory. The manifest carries every destination, exact ID/linkage, canonical stored-id `do-work/.req-reservations/REQ-NNN` marker, payload path and mode, and optional commit message. These are inputs, not durable queue writes.
 
 The wrapper invocation below follows the canonical [Prescribed shell primitives](../docs/prescribed-shell-primitives.md); do not restate its shared shell safety mechanics here.
 

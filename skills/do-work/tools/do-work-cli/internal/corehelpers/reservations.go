@@ -14,7 +14,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
-var reservationNamePattern = regexp.MustCompile(`^REQ-(\d{6})$`)
+var reservationNamePattern = regexp.MustCompile(`^REQ-(\d+)$`)
 var requestFilePattern = regexp.MustCompile(`^REQ-(\d+)(?:-|\.md)`)
 var beforeReservationRemoval = func(string) {}
 
@@ -96,12 +96,16 @@ func cleanupReservations(repositoryRoot string, dryRun bool) resultmodel.Command
 			findings = append(findings, helperFinding("RESERVATION-MALFORMED", resultmodel.SeverityWarning, []string{filepath.ToSlash(filepath.Join("do-work/.req-reservations", entry.Name()))}, "marker name is not canonical", resultmodel.FixabilityRefused, "malformed entries are preserved", nil, nil))
 			continue
 		}
+		number, numberError := strconv.Atoi(match[1])
+		if numberError != nil || number <= 0 {
+			findings = append(findings, helperFinding("RESERVATION-MALFORMED", resultmodel.SeverityWarning, []string{filepath.ToSlash(filepath.Join("do-work/.req-reservations", entry.Name()))}, "marker name has no positive numeric identity", resultmodel.FixabilityRefused, "malformed entries are preserved", nil, nil))
+			continue
+		}
 		markerPath := filepath.Join(root, entry.Name())
 		firstInfo, err := rootHandle.Lstat(entry.Name())
 		if err != nil || !firstInfo.Mode().IsRegular() {
 			continue
 		}
-		number, _ := strconv.Atoi(match[1])
 		eligible := claimed[number] || now.Sub(firstInfo.ModTime()) >= 48*time.Hour
 		if !eligible {
 			continue

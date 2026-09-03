@@ -3,10 +3,51 @@ package corehelpers
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestReservationCleanupReapsCanonicalAndLegacyAliasesForCommittedRequest(t *testing.T) {
+	repository := newGitFixture(t)
+	root := filepath.Join(repository, "do-work", ".req-reservations")
+	request := filepath.Join(repository, "do-work", "working", "REQ-482-capture.md")
+	if err := os.MkdirAll(filepath.Dir(request), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(request, []byte("---\nid: REQ-482\n---\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"REQ-482", "REQ-000482"} {
+		if err := os.WriteFile(filepath.Join(root, name), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	runFixtureGitCommand(t, repository, "add", "do-work/working/REQ-482-capture.md")
+	runFixtureGitCommand(t, repository, "commit", "-qm", "land request")
+
+	result := handleCleanupReservations(testContext(repository), nil)
+	if result.Outcome != "success" {
+		t.Fatalf("result=%+v", result)
+	}
+	paths := make([]string, len(result.Changes))
+	for index, change := range result.Changes {
+		paths[index] = change.Path
+	}
+	expected := []string{"do-work/.req-reservations/REQ-000482", "do-work/.req-reservations/REQ-482"}
+	if !reflect.DeepEqual(paths, expected) {
+		t.Fatalf("removed paths = %v, want %v", paths, expected)
+	}
+	for _, path := range expected {
+		if _, err := os.Stat(filepath.Join(repository, filepath.FromSlash(path))); !os.IsNotExist(err) {
+			t.Fatalf("reservation survived at %s: %v", path, err)
+		}
+	}
+}
 
 func TestReservationCleanupDoesNotTrustUncommittedRequestInUnbornGitRepository(t *testing.T) {
 	repository := t.TempDir()
@@ -69,21 +110,47 @@ func TestReservationCleanupRemovesOldAndPreservesFresh(t *testing.T) {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	old := filepath.Join(root, "REQ-000101")
-	fresh := filepath.Join(root, "REQ-000102")
-	_ = os.WriteFile(old, nil, 0o600)
+	oldCanonical := filepath.Join(root, "REQ-101")
+	oldLegacy := filepath.Join(root, "REQ-000103")
+	fresh := filepath.Join(root, "REQ-102")
+	_ = os.WriteFile(oldCanonical, nil, 0o600)
+	_ = os.WriteFile(oldLegacy, nil, 0o600)
 	_ = os.WriteFile(fresh, nil, 0o600)
 	past := time.Now().Add(-49 * time.Hour)
-	_ = os.Chtimes(old, past, past)
+	_ = os.Chtimes(oldCanonical, past, past)
+	_ = os.Chtimes(oldLegacy, past, past)
 	result := handleCleanupReservations(testContext(repository), nil)
 	if result.Outcome != "success" {
 		t.Fatalf("result=%+v", result)
 	}
-	if _, err := os.Stat(old); !os.IsNotExist(err) {
-		t.Fatalf("old marker remains: %v", err)
+	for _, old := range []string{oldCanonical, oldLegacy} {
+		if _, err := os.Stat(old); !os.IsNotExist(err) {
+			t.Fatalf("old marker remains at %s: %v", old, err)
+		}
 	}
 	if _, err := os.Stat(fresh); err != nil {
 		t.Fatalf("fresh marker removed: %v", err)
+	}
+}
+
+func TestReservationCleanupPreservesReservationLikeSuffixJunk(t *testing.T) {
+	repository := newGitFixture(t)
+	root := filepath.Join(repository, "do-work", ".req-reservations")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, "REQ-482-copy")
+	if err := os.WriteFile(marker, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-49 * time.Hour)
+	_ = os.Chtimes(marker, past, past)
+	result := handleCleanupReservations(testContext(repository), nil)
+	if result.Outcome != "success" || len(result.Findings) != 1 || result.Findings[0].Code != "RESERVATION-MALFORMED" {
+		t.Fatalf("result=%+v", result)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("malformed marker was removed: %v", err)
 	}
 }
 

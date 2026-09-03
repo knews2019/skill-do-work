@@ -266,7 +266,7 @@ func TestSessionStartCombinesReservationAndTimestampHousekeeping(t *testing.T) {
 	runHookGit(t, repository, "add", "do-work/queue/REQ-001-fixture.md")
 	runHookGit(t, repository, "commit", "-qm", "land request")
 	_ = os.WriteFile(requestPath, append(requestBytes, []byte("dirty\n")...), 0o600)
-	_ = os.WriteFile(filepath.Join(reservationRoot, "REQ-000001"), nil, 0o600)
+	_ = os.WriteFile(filepath.Join(reservationRoot, "REQ-001"), nil, 0o600)
 	mtime := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
 	_ = os.Chtimes(requestPath, mtime, mtime)
 	originalClock := hookClock
@@ -284,7 +284,7 @@ func TestSessionStartCombinesReservationAndTimestampHousekeeping(t *testing.T) {
 	if len(result.Changes) != 2 {
 		t.Fatalf("typed JSON seam lost housekeeping changes: %+v", result.Changes)
 	}
-	if _, err := os.Stat(filepath.Join(reservationRoot, "REQ-000001")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(reservationRoot, "REQ-001")); !os.IsNotExist(err) {
 		t.Fatalf("reservation survived: %v", err)
 	}
 	updated, _ := os.ReadFile(requestPath)

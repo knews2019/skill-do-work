@@ -95,8 +95,16 @@ func BuildCapturePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 			return refusedPlan(plan, "CAPTURE-REQ-LINKAGE-INVALID", "REQ frontmatter id and user_request must match manifest", []string{request.ID, capture.UserRequestID}, requestPath)
 		}
 		reservationPath, reservationError := containedPath(request.ReservationPath)
-		if reservationError != nil || reservationPath != "do-work/.req-reservations/"+request.ID {
-			return refusedPlan(plan, "CAPTURE-RESERVATION-MISMATCH", "reservation path must exactly match the REQ id", []string{request.ID}, request.ReservationPath)
+		canonicalPath, canonicalError := canonicalReservationPath(request.ID)
+		if reservationError != nil || canonicalError != nil || reservationPath != canonicalPath {
+			return refusedPlan(plan, "CAPTURE-RESERVATION-MISMATCH", "reservation path must use the canonical stored-REQ-id spelling: "+canonicalPath, []string{request.ID}, request.ReservationPath)
+		}
+		existingReservations, inspectionError := existingReservationPaths(repositoryRoot, request.ID)
+		if inspectionError != nil {
+			return refusedPlan(plan, "CAPTURE-INSPECTION-FAILED", inspectionError.Error(), []string{request.ID}, publicationReservationDirectory)
+		}
+		if len(existingReservations) > 0 {
+			return refusedPlan(plan, "CAPTURE-COLLISION", "reservation number already exists under a canonical or legacy spelling", []string{request.ID}, existingReservations...)
 		}
 		plan.Mutations = append(plan.Mutations,
 			PlannedMutation{Kind: MutationCreate, Path: reservationPath, Contents: []byte(request.ID + "\n"), Mode: 0o644},

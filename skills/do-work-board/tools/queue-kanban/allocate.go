@@ -14,6 +14,7 @@ import (
 // "REQ-NNN-slug.md" filename. Zero-padding width is irrelevant — the value is
 // what orders ids, so REQ-0142 and REQ-142 are the same number.
 var requestIdNumberPattern = regexp.MustCompile(`^REQ-0*(\d+)`)
+var requestReservationNumberPattern = regexp.MustCompile(`^REQ-(\d+)$`)
 
 // requestReservationDirectoryName is the queue-local durable coordination
 // store used by next-req. The board walk skips hidden directories, so markers
@@ -72,7 +73,7 @@ func nextRequestNumber(repoRootOverride string) (int, error) {
 		if reservationEntry.IsDir() {
 			continue
 		}
-		if reservedNumber, parsedOk := requestNumberFromText(reservationEntry.Name()); parsedOk && reservedNumber > highestNumberInUse {
+		if reservedNumber, parsedOk := requestNumberFromReservationName(reservationEntry.Name()); parsedOk && reservedNumber > highestNumberInUse {
 			highestNumberInUse = reservedNumber
 		}
 	}
@@ -159,10 +160,22 @@ func ensureRequestReservationDirectory(repoRoot string) (*requestReservationStor
 	}
 }
 
-// requestReservationFileName uses fixed-width decimal names so directory
-// listings remain naturally ordered while numeric parsing stays width-agnostic.
+// requestReservationFileName uses the same minimum-three-digit spelling as
+// stored request ids. Readers remain width-agnostic for legacy six-digit markers.
 func requestReservationFileName(requestNumber int) string {
-	return fmt.Sprintf("REQ-%06d", requestNumber)
+	return fmt.Sprintf("REQ-%03d", requestNumber)
+}
+
+// requestNumberFromReservationName accepts only a whole marker basename. The
+// general request parser intentionally accepts filename prefixes and would turn
+// reservation-like suffix junk into allocation authority.
+func requestNumberFromReservationName(name string) (int, bool) {
+	match := requestReservationNumberPattern.FindStringSubmatch(strings.TrimSpace(name))
+	if match == nil {
+		return 0, false
+	}
+	number, err := strconv.Atoi(match[1])
+	return number, err == nil && number > 0
 }
 
 // requestNumbersInFile returns every REQ number a single file lays claim to: the

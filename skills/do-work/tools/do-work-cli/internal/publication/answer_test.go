@@ -105,7 +105,7 @@ func TestRemediationF5DelimiterSummaryRequiresMatchingRawPayload(t *testing.T) {
 }
 
 func TestRemediationF6OverrideUsesStructuredCaptureManifest(t *testing.T) {
-	fixture := `{"operation":"answer","answer":{"request_path":"do-work/queue/REQ-1.md","expected_status":"blocked","mode":"stakeholder","answers":[{"question_id":"Q-01","outcome":"answered","summary":"override"}],"override_capture":{"user_request_id":"UR-2","user_request":{"path":"do-work/user-requests/UR-2/input.md","payload":{"source_path":"payload/ur"}},"raw_input":{"source_path":"payload/raw"},"requests":[{"id":"REQ-2","user_request_id":"UR-2","file":{"path":"do-work/queue/REQ-2-change.md","payload":{"source_path":"payload/req"}},"reservation_path":"do-work/.req-reservations/REQ-2"}]}}}`
+	fixture := `{"operation":"answer","answer":{"request_path":"do-work/queue/REQ-1.md","expected_status":"blocked","mode":"stakeholder","answers":[{"question_id":"Q-01","outcome":"answered","summary":"override"}],"override_capture":{"user_request_id":"UR-2","user_request":{"path":"do-work/user-requests/UR-2/input.md","payload":{"source_path":"payload/ur"}},"raw_input":{"source_path":"payload/raw"},"requests":[{"id":"REQ-2","user_request_id":"UR-2","file":{"path":"do-work/queue/REQ-2-change.md","payload":{"source_path":"payload/req"}},"reservation_path":"do-work/.req-reservations/REQ-002"}]}}}`
 	if _, err := DecodeManifest(strings.NewReader(fixture), OperationAnswer); err != nil {
 		t.Fatalf("structured override capture rejected: %v", err)
 	}
@@ -125,8 +125,17 @@ func TestRemediationF6StructuredOverridePlansAndRollsBackWithAnswer(t *testing.T
 	writeFixture(t, root, "payload/req", []byte("---\nid: REQ-2\nstatus: pending\nuser_request: UR-2\n---\n"), 0o644)
 	writeFixture(t, root, "payload/blocked-history", []byte("## Blocked\n\n- Resolved after stakeholder override.\n"), 0o644)
 	writeFixture(t, root, "payload/implementation", []byte("## Implementation\n\nNo code changes.\n"), 0o644)
-	override := &CaptureManifest{UserRequestID: "UR-2", UserRequest: PublishedFile{Path: "do-work/user-requests/UR-2/input.md", Payload: PayloadFile{SourcePath: "payload/ur"}}, RawInput: &PayloadFile{SourcePath: "payload/raw"}, Requests: []CaptureRequest{{ID: "REQ-2", UserRequestID: "UR-2", File: PublishedFile{Path: "do-work/queue/REQ-2-change.md", Payload: PayloadFile{SourcePath: "payload/req"}}, ReservationPath: "do-work/.req-reservations/REQ-2"}}}
+	override := &CaptureManifest{UserRequestID: "UR-2", UserRequest: PublishedFile{Path: "do-work/user-requests/UR-2/input.md", Payload: PayloadFile{SourcePath: "payload/ur"}}, RawInput: &PayloadFile{SourcePath: "payload/raw"}, Requests: []CaptureRequest{{ID: "REQ-2", UserRequestID: "UR-2", File: PublishedFile{Path: "do-work/queue/REQ-2-change.md", Payload: PayloadFile{SourcePath: "payload/req"}}, ReservationPath: "do-work/.req-reservations/REQ-002"}}}
 	answer := &AnswerManifest{RequestPath: "do-work/queue/REQ-1-test.md", ExpectedStatus: "blocked", Mode: "stakeholder", ArchivePath: "do-work/archive/REQ-1-test.md", Answers: []QuestionAnswer{{QuestionID: "Q-01", Outcome: "answered", Summary: "override"}}, OverrideCapture: override, StakeholderTerminal: &StakeholderTerminalEvidence{BlockedHistory: PayloadFile{SourcePath: "payload/blocked-history"}, Implementation: PayloadFile{SourcePath: "payload/implementation"}}}
+	noncanonicalOverride := *override
+	noncanonicalOverride.Requests = append([]CaptureRequest(nil), override.Requests...)
+	noncanonicalOverride.Requests[0].ReservationPath = "do-work/.req-reservations/REQ-000002"
+	noncanonicalAnswer := *answer
+	noncanonicalAnswer.OverrideCapture = &noncanonicalOverride
+	noncanonicalPlan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: &noncanonicalAnswer}, time.Date(2026, 9, 1, 1, 2, 3, 0, time.UTC))
+	if noncanonicalPlan.Refusal == nil || noncanonicalPlan.Refusal.Code != "ANSWER-OVERRIDE-CAPTURE-CAPTURE-RESERVATION-MISMATCH" {
+		t.Fatalf("noncanonical override reservation accepted: %#v", noncanonicalPlan.Refusal)
+	}
 	plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: answer}, time.Date(2026, 9, 1, 1, 2, 3, 0, time.UTC))
 	if plan.Refusal != nil {
 		t.Fatal(plan.Refusal)
@@ -147,7 +156,7 @@ func TestRemediationF6StructuredOverridePlansAndRollsBackWithAnswer(t *testing.T
 	if err != nil || !bytes.Equal(got, request) {
 		t.Fatalf("answer target not restored: %v %q", err, got)
 	}
-	for _, path := range []string{"do-work/archive/REQ-1-test.md", "do-work/queue/REQ-2-change.md", "do-work/user-requests/UR-2/input.md", "do-work/.req-reservations/REQ-2"} {
+	for _, path := range []string{"do-work/archive/REQ-1-test.md", "do-work/queue/REQ-2-change.md", "do-work/user-requests/UR-2/input.md", "do-work/.req-reservations/REQ-002"} {
 		if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(path))); !os.IsNotExist(err) {
 			t.Fatalf("override path survived rollback %s: %v", path, err)
 		}

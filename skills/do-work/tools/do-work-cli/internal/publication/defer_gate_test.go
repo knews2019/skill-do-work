@@ -62,6 +62,33 @@ func TestDeferGateCreatePublishesOneAtomicDependencyLifecycle(t *testing.T) {
 	}
 }
 
+func TestDeferGateLegacyReservationAliasBlocksCreate(t *testing.T) {
+	root := newDeferGateRepository(t, false)
+	writeFixture(t, root, "do-work/.req-reservations/REQ-000901", nil, 0o644)
+	plan := BuildDeferGatePlan(root, deferGateManifest(root, "REQ-101", "REQ-901", "do-work/working/REQ-101-parent.md", nil))
+	if plan.Refusal == nil || plan.Refusal.Code != "DEFER-GATE-REPAIR-COLLISION" || !reflect.DeepEqual(plan.Refusal.Paths, []string{"do-work/.req-reservations/REQ-000901"}) {
+		t.Fatalf("legacy reservation alias did not block create: %#v", plan.Refusal)
+	}
+}
+
+func TestDeferGateFoldAcceptsMatchingLegacyReservationAlias(t *testing.T) {
+	root := newDeferGateRepository(t, true)
+	first := deferGateManifest(root, "REQ-101", "REQ-901", "do-work/working/REQ-101-parent.md", nil)
+	if result := ApplyPlan(t.Context(), BuildDeferGatePlan(root, first), false, false); result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("seed deferral = %#v", result)
+	}
+	if err := os.Rename(filepath.Join(root, "do-work/.req-reservations/REQ-901"), filepath.Join(root, "do-work/.req-reservations/REQ-000901")); err != nil {
+		t.Fatal(err)
+	}
+	claimDeferParent(t, root, "REQ-102", "do-work/working/REQ-102-second.md", "Second parent")
+	repairPath := "do-work/queue/REQ-901-repair-repository-gate.md"
+	fold := deferGateManifest(root, "REQ-102", "REQ-901", "do-work/working/REQ-102-second.md", &PayloadFile{SourcePath: repairPath})
+	plan := BuildDeferGatePlan(root, fold)
+	if plan.Refusal != nil {
+		t.Fatalf("matching legacy reservation alias refused: %#v", plan.Refusal)
+	}
+}
+
 func TestDeferGateFoldsSharedFingerprintWithoutOverwritingPriorParent(t *testing.T) {
 	root := newDeferGateRepository(t, true)
 	first := deferGateManifest(root, "REQ-101", "REQ-901", "do-work/working/REQ-101-parent.md", nil)
