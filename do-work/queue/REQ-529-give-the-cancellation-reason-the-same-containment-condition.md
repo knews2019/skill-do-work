@@ -1,7 +1,7 @@
 ---
 id: REQ-529
 title: 'Give the cancellation reason the same containment condition'
-status: pending-answers
+status: pending
 created_at: 2026-09-03T03:10:00Z
 user_request: UR-081
 domain: backend
@@ -19,6 +19,7 @@ review_generated: true
 write_set:
   - skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go
   - skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go
+status_changed_at: 2026-09-03T10:39:11Z
 ---
 
 # Give the Cancellation Reason the Same Containment Condition
@@ -45,7 +46,7 @@ REQ-460 made the answer-summary inline-or-contain decision condition-complete. T
 
 ## Open Questions
 
-- [ ] Should the two seams share one predicate, or keep separate ones with a shared test corpus? Sharing means a new exported helper crossing the `publication` → `requeststate` boundary, or a third package both import; the CLI prime's **Package direction** section constrains which imports are allowed, so this is a structural call rather than a mechanical one.
+- [x] Should the two seams share one predicate, or keep separate ones with a shared test corpus? Sharing means a new exported helper crossing the `publication` → `requeststate` boundary, or a third package both import; the CLI prime's **Package direction** section constrains which imports are allowed, so this is a structural call rather than a mechanical one. → Confirmed: one shared predicate
   - Recommended: a small shared package (or an exported predicate in whichever package the prime's direction rule permits importing), so the condition is stated exactly once — the whole point of REQ-460.
   - Also: duplicate the predicate in `requeststate` with a shared table-driven corpus, accepting two implementations pinned by one fixture set.
   - Also: leave them separate and unpinned — rejected, since that is the drift being fixed.
@@ -74,3 +75,11 @@ No request prerequisite. REQ-460 established the condition this applies.
 
 ---
 *Source: REQ-460 independent review finding F2.*
+
+
+## Answer Notes
+
+- 2026-09-03 - [ ] Should the two seams share one predicate, or keep separate ones with a shared test corpus? Sharing means a new exported helper crossing the `publication` → `requeststate` boundary, or a third package both import; the CLI prime's **Package direction** section constrains which imports are allowed, so this is a structural call rather than a mechanical one.: Confirmed: one shared predicate
+> ```
+> One shared predicate. A single implementation prevents answer summaries and cancellation reasons from drifting, and the small shared dependency is accepted. This clarification does not add another containment writer; the existing containment and validation paths remain in use.
+> ```
