@@ -1,7 +1,7 @@
 ---
 id: REQ-537
 title: 'Tier the maintainer gate: fast by default, --heavy on request'
-status: pending
+status: claimed
 created_at: 2026-09-03T14:49:02Z
 user_request: UR-104
 domain: testing
@@ -18,6 +18,7 @@ write_set:
   - _dev/tests/maintainer-verify.sh
   - _dev/tests/contract-regressions.sh
   - _dev/tests/probe-batch.sh
+claimed_at: 2026-09-03T15:02:38Z
 ---
 
 # Tier the Maintainer Gate: Fast by Default, --heavy on Request
