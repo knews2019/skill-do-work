@@ -135,7 +135,7 @@ Both are ordinary repository reads, so the no-liveness-signal constraint from RE
 - `skills/do-work-board/tools/queue-kanban/verify.go` (modified)
 - `skills/do-work-board/tools/queue-kanban/verify_test.go` (modified)
 
-**What was done:** `classifyWorktreeMergeState` is unchanged and still answers only the ancestry question; a new `worktreeLeftoverDisposition` layer sits over it and makes the merged branch state necessary but not sufficient for `Fixable`. Two repository reads feed it: `worktreeHasUncommittedWork` (`git -C <worktreePath> status --porcelain --untracked-files=all`, returning an error rather than a silent "clean") and `isRequestStillInFlight` (the leftover name's `REQ-NNN` id resolved through `board.RequestsById[id].TreeSection == "working"`). A merged leftover that is dirty, still in flight, or unreadable now reports as one of three new non-fixable categories — `worktree-present-uncommitted-work`, `worktree-present-run-in-flight`, `worktree-present-state-unknown` — none of which uses the words "leftover", "cleanup can fix", or "nothing is lost". Only a merged, clean, no-longer-in-`working/` leftover keeps `Fixable: true`, and its remedy now states all three conditions rather than the ancestry one alone. The `unmerged` and `undetermined` routing and remedies are byte-unchanged, as is the developer-owned-worktree exclusion.
+**What was done:** `classifyWorktreeMergeState` is unchanged and still answers only the ancestry question; a new `worktreeLeftoverDisposition` layer sits over it and makes the merged branch state necessary but not sufficient for `Fixable`. Two repository reads feed it: `worktreeHasUncommittedWork` (`git -C <worktreePath> status --porcelain --untracked-files=all`, returning an error rather than a silent "clean") and `classifyRequestPipelineState` (the leftover name's `REQ-NNN` id resolved through the board into `InFlight` / `Settled` / `AbsentFromBoard`). A merged leftover that is dirty, still in flight, or unreadable now reports as one of three new non-fixable categories — `worktree-present-uncommitted-work`, `worktree-present-run-in-flight`, `worktree-present-state-unknown` — none of which uses the words "leftover", "cleanup can fix", or "nothing is lost". Only a merged, clean, no-longer-in-`working/` leftover keeps `Fixable: true`, and its remedy now states all three conditions rather than the ancestry one alone. The `unmerged` and `undetermined` routing and remedies are byte-unchanged, as is the developer-owned-worktree exclusion.
 
 ## Decisions
 
@@ -165,3 +165,67 @@ Independent (orchestrator-run, not the builder's report):
 - Ran the three new tests plus `TestVerifyClassifiesWorktreeLeftoversByMergeState` (the REQ-083 fixture this REQ refines) and `TestVerifyWritesNothing` (the read-only invariant): all five pass.
 - Read the added declarations and functions in the diff. The only subprocess introduced is `git status --porcelain --untracked-files=all`, read-only, so `verify` gains no write surface and CLAUDE.md's three-write-surface rule is untouched. No heartbeat, lock, PID probe, mtime heuristic, claim registry, or time threshold appears anywhere in the diff — the REQ-073 constraint holds.
 - Requirement trace: dirtiness and in-flight state are both ordinary repository reads; the three new categories are all `Fixable: false` and none carries "leftover", "cleanup can fix", or "nothing is lost"; the clean-finished case keeps `Fixable: true`; the `worktree-agent-*` prefix guard and the `unmerged`/`undetermined` remedies are byte-unchanged.
+
+## Testing
+
+**Tests run:** `go build ./... && go vet ./... && gofmt -l .`; `go test ./...` for `queue-kanban`; canonical repository gate `bash _dev/tests/maintainer-verify.sh`; and the built binary run against a purpose-made five-leftover git fixture.
+**Result:** ✓ `queue-kanban` suite green (`ok … 422s`). Gate exits 1 on the recorded baseline failure only — `internal/toolboxcommands` → `TestRemediationCancellationReachesMediaGitCommitAndRollback`, tracked as REQ-524 and unrelated to the board tool.
+
+**Red-green validation:** traces the REQ's Red-Green Proof, which asked for the two mislabelled cases plus the preserved good case.
+- `TestVerifyDoesNotAdvertiseADirtyMergedWorktreeAsFixable` (REQ-412's shape): ✗ `got 0 worktree-present-uncommitted-work findings, want 1`, with the report showing `! merged-worktree-leftover [fixable]` and `1 fixable: run do-work cleanup` → ✓
+- `TestVerifyDoesNotAdvertiseAMergedWorktreeOfAnInFlightRequestAsFixable` (REQ-436's shape): ✗ `got 0 worktree-present-run-in-flight findings, want 1`, same `[fixable]` and "nothing is lost" remedy → ✓
+- `TestVerifyStillAdvertisesCleanFinishedMergedResidueAsFixable`: green throughout — it is the preserve-the-good-case guard and must never have gone red. Proven to pin "in `working/`" rather than "the REQ file exists" by widening the read to `return exists`, which reddens it alone.
+
+**New tests added:** `TestVerifyDoesNotAdvertiseADirtyMergedWorktreeAsFixable`, `TestVerifyDoesNotAdvertiseAMergedWorktreeOfAnInFlightRequestAsFixable`, `TestVerifyStillAdvertisesCleanFinishedMergedResidueAsFixable`, plus the three remediation tests below and the helpers `mergeFixtureBranchIntoIntegration`, `assertNotAdvertisedAsMechanicallyFixable`, `assertRemovabilityProbeSkipped`.
+
+**Existing tests updated (cross-REQ impact):** `TestVerifyClassifiesWorktreeLeftoversByMergeState` (from REQ-083) plants archived `REQ-003`/`REQ-004` files. It previously asserted `FixableCount() == 2` with no REQ file anywhere, which held only because the boolean read treated absent-from-board as finished. Its subject is the merge-state split; finishedness is the second axis this REQ adds, and the fixture was silent on it. Same categories, same count, now discriminating on merge state as intended. `TestVerifyDoesNotAdvertiseADirtyMergedWorktreeAsFixable` likewise plants an archived REQ-412 so dirt is the only unestablished fact it tests.
+
+**CLI evidence** (built binary, five-leftover fixture, not unit tests): dirty+archived → `worktree-present-uncommitted-work`; clean+in-flight → `worktree-present-run-in-flight`; clean+archived → `merged-worktree-leftover [fixable]`; clean+absent-from-board → `worktree-present-state-unknown` plus a skip line naming the REQ; name with no id → `worktree-present-state-unknown` plus `carries no REQ-NNN id`. Footer reads `1 fixable`. On `873b513` the fourth and fifth both printed `merged-worktree-leftover [fixable]`.
+
+*Verified by work action*
+
+## Review
+
+**Overall: 73%** | 2026-09-03T02:00:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 85% |
+| Code Quality | 82% |
+| Test Adequacy | 75% |
+| Scope | 90% |
+| Risk | Low |
+| Acceptance | Partial |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- F1 — a REQ id absent from `board.RequestsById` was read as "finished", so a live run's clean merged worktree still printed `merged-worktree-leftover [fixable]` with a remedy asserting its REQ had left `do-work/working/` (`verify.go:947-976`) — `impact-user-visible` → fixed in remediation (D-07)
+- F2 — `actions/cleanup.md:140` and `docs/cleanup-guide.md:29,56` still treat merged-plus-clean as automatically removable, so Pass 5 would mechanically remove the in-flight worktree verify now protects — `impact-user-visible` → REQ-527 created
+- F3 — `worktreeLeftoverStateUnknown` had no lock-in test: both entry paths could be replaced with `worktreeLeftoverFinishedResidue` and the suite stayed green — `impact-rule-change` → fixed in remediation (three tests plus a shared skipped-probe assertion)
+
+**Minor findings:** 7 (report only) — M1 the new `git status` refreshed the builder worktree's git index, against `prime-do-kanban.md`'s "`verify` write[s] nothing at all"; M2 `serve.go`'s stale ~40ms probe-set measurement; M3 a worktree both dirty and in-flight loses its dirtiness; M4 the state-unknown remedy pointed "beside this finding" where skipped probes never render; M5 double id derivation; M6 the declared-but-untouched `forensics.md` drift; M7 version/changelog (integrator-owned, Step 9). **M1, M4 and M5 were fixed in remediation.** M2, M3 and M6 are recorded as accepted.
+
+**Acceptance:** Partial at review time — both named regression cases closed end-to-end through the CLI, but a merged clean worktree whose REQ was invisible to the board still reported fixable. That gap is closed by the remediation and re-verified at the CLI.
+**Suggested testing:** 3 items — a live board-serve contention check, a badge-width render check for the longer category strings, and a Pass 5 dry run against an in-flight builder (now covered by REQ-527's own Red-Green Proof).
+**Follow-ups created:** REQ-527; **sweeps appended to:** None
+
+*Reviewed by review-work action*
+
+## Remediation
+
+The review's verdict was Approve with follow-ups at 73%, which requires a follow-up REQ for every Important finding. Two of the three were fixed here instead, because both are this REQ's own unfinished work: F1 is the very defect the REQ exists to prevent, still reachable through a third input class, and F3 is a shipped mechanism with no test on a `tdd: true` REQ. Only F2, which lives in two files this REQ declared out of scope, went to REQ-527.
+
+**Remediation commit:** see `commit:` below.
+
+- **D-07** — `isRequestStillInFlight(board, id) bool` replaced by `classifyRequestPipelineState` returning `InFlight` / `Settled` / `AbsentFromBoard`, the same tri-state shape as `worktreeMergeState`. `AbsentFromBoard` routes to `worktreeLeftoverStateUnknown` with an error, so it also emits a skipped-probe line. **DECIDE & STATE.** This covers both reviewer repros, including the stray REQ file parked under `do-work/user-requests/`: the walk files that as `StrayRequestFiles`, so it never enters `RequestsById` and its `status: claimed` is unreadable either way.
+- **D-08** — Kept the pipeline read ahead of the cleanliness probe rather than reordering, matching the existing precedence comment. **DECIDE & STATE.** Consequence recorded honestly: the dirty-worktree test had no REQ-412 file at all, so it began answering the earlier question; its fixture now plants an archived REQ-412 so dirt is the only unestablished fact it tests.
+- **D-09** — `--no-optional-locks` lifted into a named constant used by both `worktreeHasUncommittedWork` and `worktreeDirtyQueueState`, with the "top-level option, must precede `-C`" trap in its doc comment. **DECIDE & STATE.** Fixing only the new probe would have knowingly shipped the same violation next door.
+- **D-10** — REQ-083's fixture gains archived `REQ-003`/`REQ-004` files. **DECIDE & STATE.** Rationale in `## Testing` above.
+- **D-11** — The three state-unknown tests share `assertRemovabilityProbeSkipped`, which requires exactly one matching skip line and checks the evidence fragment inside it. **DECIDE & STATE.** Asserting the category alone would leave the `SkippedProbes` half unpinned, which was half of F3's complaint.
+- **D-12** — The absent-from-board test is table-driven over the reviewer's two repro shapes rather than two near-duplicate functions. **DECIDE & STATE.**
+
+**Lock-in confirmed by neutering, one guard at a time** — each replaced with `return worktreeLeftoverFinishedResidue, nil`; in every case exactly one test went red:
+- `requestId == ""` → `TestVerifyDoesNotAdvertiseAMergedWorktreeWithoutARequestIdAsFixable`: `got 0 worktree-present-state-unknown findings, want 1`
+- `case requestPipelineStateAbsentFromBoard` (F1's new path) → `TestVerifyDoesNotAdvertiseAMergedWorktreeOfARequestTheBoardNeverSawAsFixable`, **both** subtests
+- `statusError != nil` → `TestVerifyDoesNotAdvertiseAMergedWorktreeWithAnUnreadableStatusAsFixable`. The status path is reached without stubbing: the fixture merges, archives, then deletes the worktree directory, so `git worktree list` still reports it while `git status` in a vanished path fails.
+
+**M1 measured before and after**, all worktree files `touch`ed first to invalidate git's stat cache: before, all five `.git/worktrees/*/index` files changed hash (e.g. `ca98cf3cd74a → f508052409fa`); after, zero of five.
