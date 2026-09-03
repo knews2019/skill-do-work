@@ -31,20 +31,20 @@ I love to build. I focus on building complex things as simply as possible, and I
 
 Plain words for this repo's terms — describe things back to me in this vocabulary.
 
-| Term | Meaning |
-|---|---|
-| I / me | the maintainer |
-| user | someone who installed do-work into their own repo — never me |
-| UR | user request — the durable statement of intent |
-| REQ | one implementable request under a UR; the unit of work through the pipeline |
-| action | a `do-work <verb>` entry point; one file under `skills/do-work*/actions/`, routed by SKILL.md |
-| crew member | a rules file loaded just-in-time during a build (`skills/do-work/crew-members/`) |
-| prime file | a lazy-loaded context doc read only when working in its domain (`_dev/primes/` here) |
-| the queue | pending REQ files in `do-work/queue/` — not `do-work/` root |
-| the Kanban board | `skills/do-work-board/tools/queue-kanban` — the human view of the queue |
-| lock-in test | a test that keeps a fixed bug fixed; the `_dev/tests/` suites are full of them |
-| builder's report | what a worktree builder hands back — a claim, not evidence; judge from git state |
-| write set | the files a REQ may touch — the collision guard for parallel work; display-only on the board, never a safety guarantee |
+| Term             | Meaning                                                                                                                |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| I / me           | the maintainer                                                                                                         |
+| user             | someone who installed do-work into their own repo — never me                                                           |
+| UR               | user request — the durable statement of intent                                                                         |
+| REQ              | one implementable request under a UR; the unit of work through the pipeline                                            |
+| action           | a `do-work <verb>` entry point; one file under `skills/do-work*/actions/`, routed by SKILL.md                          |
+| crew member      | a rules file loaded just-in-time during a build (`skills/do-work/crew-members/`)                                       |
+| prime file       | a lazy-loaded context doc read only when working in its domain (`_dev/primes/` here)                                   |
+| the queue        | pending REQ files in `do-work/queue/` — not `do-work/` root                                                            |
+| the Kanban board | `skills/do-work-board/tools/queue-kanban` — the human view of the queue                                                |
+| lock-in test     | a test that keeps a fixed bug fixed; the `_dev/tests/` suites are full of them                                         |
+| builder's report | what a worktree builder hands back — a claim, not evidence; judge from git state                                       |
+| write set        | the files a REQ may touch — the collision guard for parallel work; display-only on the board, never a safety guarantee |
 
 ## Project Structure
 
@@ -99,10 +99,6 @@ A job is not done while its code exists only in the working tree. Commit each co
 ```
 
 Keep it brief, newest on top, lead with value not implementation. Every version gets an entry.
-
-## Verify
-
-`bash _dev/tests/maintainer-verify.sh` is the canonical baseline pass/fail check before any hand-back. Exit code zero is the only proof — never accept a summary or a builder's report as evidence that a check passed. Never pipe a check through `| tail` or similar: the pipeline's exit status hides the failure.
 
 ## Crew Members
 
