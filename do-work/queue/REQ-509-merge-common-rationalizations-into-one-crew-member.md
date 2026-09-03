@@ -79,6 +79,11 @@ User added (via the maintainability audit `do-work/audits/audit-2026-09-03.md`, 
 - The Why clause "largely repeat each other" is therefore not supported at the row level, and the current RED case (remove `capture.md`'s table, a predicate fails) passes before any merge work, so it proves nothing about repetition.
 - Resolved conflict: "the tables largely repeat each other" → the measured goal is one loading point for the tables' principles, not deduplication. Before this REQ is claimed, its What/Why are read as "one crew member is the loading point; each action keeps only rows unique to its own step", and its RED case becomes: `work.md` Step 6 does not name the merged file and no predicate pins it.
 - Lock-in to carry: the Finding 11 Reproduce command keeps printing `near_identical_cross_file_pairs 0`; red the moment a row is copied between two action files.
-- [ ] Keep REQ-509 as restated above, or cancel it because one loading point is not wanted?
+- [x] Keep REQ-509 as restated above, or cancel it because one loading point is not wanted? → Keep, restated as one loading point; the builder rewrites the Why clause and the RED case per the 2026-09-03 addendum before claiming (do-work verify-requests on UR-105, maintainer applied the recommended fix)
   Recommended: keep, restated (the maintainer approved the audit's plan line, which offered both).
   Also: cancel via `do-work abandon` and recapture if a different goal emerges.
+
+
+## Answer Notes
+
+- 2026-09-03 - [ ] Keep REQ-509 as restated above, or cancel it because one loading point is not wanted?: Keep, restated as one loading point; the builder rewrites the Why clause and the RED case per the 2026-09-03 addendum before claiming (do-work verify-requests on UR-105, maintainer applied the recommended fix)

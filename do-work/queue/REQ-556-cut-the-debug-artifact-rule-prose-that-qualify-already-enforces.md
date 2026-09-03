@@ -51,6 +51,8 @@ Source: `do-work/audits/audit-2026-09-03.md` (Finding 1, sweep_key `qualify-debu
 ## Dependencies
 No dependency. Overlaps queued REQ-510 on `work-reference.md`; overlap is not a dependency, the builder checks the site at claim time.
 
+Verify repair (2026-09-03, `do-work verify-requests` on UR-105): the audit's plan line said "fold the work-reference.md site into REQ-510"; this REQ deliberately owns all five sites instead, because REQ-510 is last in the nine-deep REQ-502 chain and a fold would park one sentence behind eight REQs. The maintainer accepted that shape.
+
 ## Builder Guidance
 Mixed: firm that one sentence naming the finding codes stays in `work.md` Step 6.3; latitude to keep a reviewer-side sentence if reading the code shows the review pass runs on a diff `qualify` never saw.
 
