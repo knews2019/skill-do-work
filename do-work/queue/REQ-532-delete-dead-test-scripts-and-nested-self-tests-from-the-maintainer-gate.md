@@ -1,17 +1,24 @@
 ---
 id: REQ-532
 title: 'Delete dead test scripts and nested self-tests from the maintainer gate'
-status: claimed
+status: pending
 created_at: 2026-09-03T11:42:36Z
 user_request: UR-102
 domain: testing
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: false
 suggested_spec:
-depends_on: []
+depends_on: [REQ-533]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+    - trivial short-circuit
+  calculated_at: 2026-09-03T12:02:36Z
 related: [REQ-531, REQ-519, REQ-520, REQ-521]
 batch: close-the-tap
 write_set:
@@ -25,7 +32,7 @@ write_set:
   - _dev/tests/shipped-shell-parity.sh
   - _dev/tests/shipped-shell-thinness.sh
   - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
-claimed_at: 2026-09-03T12:02:25Z
+gate_deferred: 'true'
 ---
 
 # Delete Dead Test Scripts and Nested Self-Tests From the Maintainer Gate
@@ -84,3 +91,27 @@ See `do-work/user-requests/UR-102/input.md` for complete verbatim input.
 
 ---
 *Source: D2 of the 2026-09-03 roadmap disposition, selected by the maintainer.*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The request names the exact scripts and references to remove, constrains the only retained self-test behavior, and defines concrete verification commands.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+## Repository Gate Deferral
+
+- **Gate command (argv JSON):** ["bash","_dev/tests/maintainer-verify.sh"]
+- **Direct exit status:** 1
+- **Diagnostic fingerprint:** contract-regressions:claude-write-surface-count-stale
+- **Repair dependency:** REQ-533
+- **Diagnostic evidence:** "CLAUDE.md must state the tool has exactly three write surfaces once next-req reserves ids; testing fields, next-version, and reservation markers are the complete set."
