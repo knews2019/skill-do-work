@@ -29,6 +29,8 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 MEMORY_DIR="$PROJECT_ROOT/memory"
 ```
 
+Configured Memory roots must resolve inside `PROJECT_ROOT` and the configured root itself must be a real directory, not a link. The deterministic CLI reads every object through one opened store root; linked or special working files, logs, ledgers, sentinels, and log directories are refused by their configured path without exposing target bytes. The finite transport limits are documented in `actions/memory-reference.md` under **Confined Store Reads**.
+
 If `$MEMORY_DIR/working-memory.md` is missing for any sub-command except `audit`: report that the memory engine isn't set up here and point at `do-work-knowledge setup-memory`, then stop.
 
 ## Sub-Commands
@@ -121,6 +123,7 @@ Each sub-command ends with a short plain-prose report: what was read, what chang
 ## Rules
 
 - The 2,500-character cap on `working-memory.md` is HARD. Consolidate; never raise it, never leave the file over-cap.
+- Never bypass a confined-read refusal with `cat`, globbing, or another pathname read. A linked, special, oversize, changed, or outside-project configured object is an actionable store error, not an absent file.
 - Consolidation runs only at `remember` time and only on `working-memory.md`. Never wire consolidation — or `actions/dream.md` — to a hook or timer; the only hook write is the append-only stop capture.
 - Every sub-command works without hooks installed. Hooks are optional enhancement, actions are the portable core.
 - Ledger appends are best-effort (`|| true`): never let instrumentation block or fail a sub-command.
