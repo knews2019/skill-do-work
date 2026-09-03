@@ -1,7 +1,7 @@
 ---
 id: REQ-529
 title: 'Give the cancellation reason the same containment condition'
-status: pending
+status: cancelled
 created_at: 2026-09-03T03:10:00Z
 user_request: UR-081
 domain: backend
@@ -20,6 +20,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go
   - skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go
 status_changed_at: 2026-09-03T10:39:11Z
+completed_at: 2026-09-03T11:47:25Z
 ---
 
 # Give the Cancellation Reason the Same Containment Condition
@@ -83,3 +84,9 @@ No request prerequisite. REQ-460 established the condition this applies.
 > ```
 > One shared predicate. A single implementation prevents answer summaries and cancellation reasons from drifting, and the small shared dependency is accepted. This clarification does not add another containment writer; the existing containment and validation paths remain in use.
 > ```
+
+## Cancelled
+
+- **When:** 2026-09-03T11:47:25Z
+- **Why:** folded into REQ-466 section Folded From REQ-529 as an acceptance criterion (maintainer decision, 2026-09-03 roadmap triage)
+- **Decided by:** user, via `do-work abandon`

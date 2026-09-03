@@ -77,6 +77,10 @@ Certainty level: Firm on the invariant, latitude on where the invoking argv thre
 
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 2643 tokens, over the 2000-token budget; `slugged: partial` so no targeted family form. Matched on semantic recovery completeness and structured evidence projection in do-work-cli internals.
 
+## Folded From REQ-517
+
+Hand triage 2026-09-03, maintainer approved: REQ-517 (Pin the serial claim-to-recovery trap) is cancelled and its test becomes this REQ's acceptance test. One end-to-end fixture test in the CLI's Go suite: claim, a one-line implementation change, complete, then `recover-finalization --discover`, asserting the terminal phase is `cleanup_complete`. Today that sequence stops at lifecycle apply, which is the real failure the test names.
+
 ## Full Context
 
 See `do-work/user-requests/UR-099/input.md` for complete verbatim input.

@@ -1,7 +1,7 @@
 ---
 id: REQ-487
 title: 'Review fix: Prove legacy differential behavior for every core-helper command'
-status: pending
+status: cancelled
 domain: testing
 created_at: 2026-09-01T18:13:23Z
 user_request: UR-081
@@ -11,6 +11,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: true
+completed_at: 2026-09-03T11:47:24Z
 ---
 
 # Review Fix: Prove Legacy Differential Behavior for Every Core-Helper Command
@@ -40,3 +41,9 @@ Found during the terminal re-review of REQ-420 after its single permitted remedi
 **Why RED now:** The current focused lane compares text and JSON from the same implementation, and its mutation comparator is connected only to one synthetic inventory observation, so shared regressions and per-command omissions pass.
 **GREEN when:** Immutable expectations cover all 17 commands and every named mutation is rejected through the real per-command comparator with the drifting command and dimension identified.
 **Validation:** Terminal REQ-420 review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
+
+## Cancelled
+
+- **When:** 2026-09-03T11:47:24Z
+- **Why:** UR-081 declared done at REQ-460; a synthetic-comparator parity proof for 17 helper commands is decorative test work (maintainer decision, 2026-09-03 roadmap triage)
+- **Decided by:** user, via `do-work abandon`

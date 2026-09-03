@@ -1,7 +1,7 @@
 ---
 id: REQ-517
 title: 'Pin the serial claim-to-recovery trap'
-status: pending
+status: cancelled
 created_at: 2026-09-02T20:35:18Z
 user_request: UR-099
 domain: testing
@@ -21,6 +21,7 @@ estimate:
   calculated_at: 2026-09-02T20:42:19Z
   basis:
     - trivial short-circuit
+completed_at: 2026-09-03T11:47:26Z
 ---
 
 # Pin the serial claim-to-recovery trap
@@ -87,3 +88,9 @@ See `do-work/user-requests/UR-099/input.md` for complete verbatim input.
 
 ---
 *Source: maintainer conversation of 2026-09-02, item A5 of "how can I update the orchestrator to not end up in a trap like this?", captured by UR-099.*
+
+## Cancelled
+
+- **When:** 2026-09-03T11:47:26Z
+- **Why:** folded into REQ-514 section Folded From REQ-517 as its acceptance test (maintainer decision, 2026-09-03 roadmap triage)
+- **Decided by:** user, via `do-work abandon`

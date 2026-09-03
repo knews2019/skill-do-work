@@ -9,13 +9,17 @@ domain: frontend
 prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec: ui-component
-depends_on: []
+depends_on: [REQ-510]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 ---
 
 # Addendum: Make UR Groups Collapsible and Show Progress Summaries
+
+## Deferral (2026-09-03)
+
+Hand triage, maintainer approved: deferred behind REQ-510, the end of the UR-098 orchestrator-simplification chain, so board feature work does not compete with pipeline simplification. Remove the `depends_on` edge to un-defer.
 
 ## What
 

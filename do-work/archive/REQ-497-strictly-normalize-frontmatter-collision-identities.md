@@ -1,7 +1,7 @@
 ---
 id: REQ-497
 title: 'Review fix: Strictly normalize frontmatter collision identities'
-status: pending
+status: cancelled
 created_at: 2026-09-02T12:03:38Z
 user_request: UR-085
 domain: backend
@@ -15,6 +15,7 @@ review_generated: true
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 related: [REQ-452]
+completed_at: 2026-09-03T11:47:25Z
 ---
 
 # Review Fix: Strictly Normalize Frontmatter Collision Identities
@@ -55,3 +56,9 @@ See `do-work/working/REQ-452-refuse-ambiguous-explicit-request-ids.md` until arc
 
 ---
 *Source: review of REQ-452.*
+
+## Cancelled
+
+- **When:** 2026-09-03T11:47:25Z
+- **Why:** folded into REQ-526 section Folded From REQ-497 and REQ-524 as an acceptance criterion (maintainer decision, 2026-09-03 roadmap triage)
+- **Decided by:** user, via `do-work abandon`

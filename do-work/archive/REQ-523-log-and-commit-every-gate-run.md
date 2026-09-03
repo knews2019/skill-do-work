@@ -1,7 +1,7 @@
 ---
 id: REQ-523
 title: 'Log and commit every maintainer gate run'
-status: pending
+status: cancelled
 created_at: 2026-09-02T21:27:16Z
 user_request: UR-100
 domain: general
@@ -21,6 +21,7 @@ estimate:
   calculated_at: 2026-09-02T21:34:07Z
   basis:
     - trivial short-circuit
+completed_at: 2026-09-03T11:47:25Z
 ---
 
 # Log and Commit Every Maintainer Gate Run
@@ -93,3 +94,9 @@ See `do-work/user-requests/UR-100/input.md` for complete verbatim input.
 
 ---
 *Source: maintainer conversation of 2026-09-03 on `_dev/tests/maintainer-verify.sh` taking 6.5 minutes, item A7 (gate run log, message 4) of the analysis report's improvements, captured by UR-100.*
+
+## Cancelled
+
+- **When:** 2026-09-03T11:47:25Z
+- **Why:** a committed log per gate run adds a commit per run; do-work/calibration-log.tsv already records per-REQ timing (maintainer decision, 2026-09-03 roadmap triage)
+- **Decided by:** user, via `do-work abandon`

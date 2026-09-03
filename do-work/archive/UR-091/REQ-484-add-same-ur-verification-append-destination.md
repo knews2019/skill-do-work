@@ -1,7 +1,7 @@
 ---
 id: REQ-484
 title: '[impact-rule-change] Add same-UR verification-append destination to Fold-First Rule'
-status: pending
+status: cancelled
 created_at: 2026-09-01T12:11:03Z
 user_request: UR-091
 domain: general
@@ -14,6 +14,7 @@ impact: impact-rule-change
 effort_estimate: effort-substantive
 related: [REQ-420]
 batch: lessons-transfer-routing
+completed_at: 2026-09-03T11:47:23Z
 ---
 
 # Add Same-UR Verification-Append Destination to Fold-First Rule
@@ -97,3 +98,9 @@ See `do-work/user-requests/UR-091/input.md` for complete verbatim input.
 
 ---
 *Source: UR-091 (Add a same-UR verification-append destination to the Fold-First Rule)*
+
+## Cancelled
+
+- **When:** 2026-09-03T11:47:23Z
+- **Why:** superseded by REQ-531 (Review findings below impact-critical stay in the report): non-critical findings no longer mint REQs, so no new Fold-First destination is needed (maintainer decision, 2026-09-03 roadmap triage)
+- **Decided by:** user, via `do-work abandon`

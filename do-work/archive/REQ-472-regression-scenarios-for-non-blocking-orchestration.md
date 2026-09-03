@@ -1,7 +1,7 @@
 ---
 id: REQ-472
 title: '[impact-rule-change] End-to-end regression scenarios for non-blocking orchestration'
-status: pending
+status: cancelled
 created_at: 2026-09-01T04:29:16Z
 user_request: UR-087
 domain: testing
@@ -15,6 +15,7 @@ batch: non-blocking-orchestration
 impact: impact-rule-change
 effort_estimate: effort-substantive
 write_set: [_dev/tests/contract-regressions.sh]
+completed_at: 2026-09-03T11:47:26Z
 ---
 
 # End-to-End Regression Scenarios for Non-Blocking Orchestration
@@ -70,3 +71,9 @@ See `do-work/user-requests/UR-087/input.md` for complete verbatim input.
 
 ---
 *Source: UR-087 — "Regression tests cover serial and fan-out execution, crash recovery, repeated runs, and UR closure with blocked members."*
+
+## Cancelled
+
+- **When:** 2026-09-03T11:47:26Z
+- **Why:** folded into REQ-469 section Folded From REQ-472 as acceptance criteria for REQ-469, REQ-470, and REQ-471 (maintainer decision, 2026-09-03 roadmap triage)
+- **Decided by:** user, via `do-work abandon`

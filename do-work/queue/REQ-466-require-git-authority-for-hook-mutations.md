@@ -44,6 +44,12 @@ The fold-first scan found no pending or pending-answers REQ, sweep or otherwise,
 **Why RED now:** The commands currently apply those writes successfully even though UR-081 requires Git for mutation and read-only behavior elsewhere.
 **GREEN when:** Every non-Git or ambiguous-authority case remains byte-identical with actionable typed evidence, while valid Git worktrees retain the characterized hook protocols and effects.
 
+## Folded From REQ-529
+
+Hand triage 2026-09-03, maintainer approved: REQ-529 (Give the cancellation reason the same containment condition) is cancelled and its requirement lands here as an acceptance criterion, so UR-081's remaining review leftovers are one REQ.
+
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go:895-903` `cancellationReasonBlock` inlines a reason on the sole test that it contains no newline, so a one-line reason of `***` or `## Notes` is written straight into the document. Apply the same condition-complete Markdown-delimiter classifier REQ-460 introduced for answer summaries, as one shared predicate. `skills/do-work/actions/abandon.md:66` already asks for that judgment.
+
 ## Full Context
 
 See `do-work/user-requests/UR-081/input.md` and `do-work/runs/work-2026-08-31-165510/REQ-415-rereview.md`.

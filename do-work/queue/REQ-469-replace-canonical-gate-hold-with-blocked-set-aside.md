@@ -69,6 +69,19 @@ Certainty: Firm on the behavior (the spec enumerates it and maps onto existing m
 **GREEN when:** The instructions route the unrelated case through the blocked set-aside (REQ blocked with gate evidence, out of `working/`, checkpoint entry removed, run continues to REQ-B) while the caused-by-current-diff case still remediates; the updated contract-regressions lane pins the new language and `bash _dev/tests/contract-regressions.sh` exits zero.
 **Validation:** Inferred during capture (from the spec's acceptance tests)
 
+## Folded From REQ-472
+
+Hand triage 2026-09-03, maintainer approved: REQ-472 (End-to-end regression scenarios for non-blocking orchestration) is cancelled. Its scenario list becomes the acceptance criteria for REQ-469, REQ-470, and REQ-471; each of those REQs proves the scenarios it owns in its own Testing section, and no separate test REQ exists. Every lock-in names the real failure it pins; no decorative smoke tests, and no new sentence pins in `_dev/tests/contract-regressions.sh`.
+
+- REQ-A hits an unrelated canonical-gate failure while REQ-B is pending: A becomes blocked and leaves `working/`; B is subsequently claimed and processed, in serial and fan-out modes. (REQ-469)
+- The unrelated failures create or fold into `pending-answers` REQs instead of being stored only in `CHECKPOINT.md`. (REQ-470)
+- A blocked REQ with implementation edits cannot affect another REQ's diff, qualification, tests, staging, or commit. (REQ-469, with REQ-468)
+- A blocked REQ's checkpoint entry is removed when it leaves `working/`. (REQ-469)
+- When the gate becomes green, the blocked REQ resumes from its preserved implementation and can complete normally. (REQ-469)
+- A gate failure caused by the current REQ still follows remediation and code-failure handling rather than being misclassified as unrelated. (REQ-469)
+- Repeated runs over a queue containing gate-blocked REQs stay stable: no re-hold, no duplicate fold targets, no checkpoint residue. (REQ-470, REQ-471)
+- A UR with gate-blocked members is not closed by UR-closure readers until those members resolve. (REQ-471)
+
 ## Full Context
 See `do-work/user-requests/UR-087/input.md` for complete verbatim input.
 

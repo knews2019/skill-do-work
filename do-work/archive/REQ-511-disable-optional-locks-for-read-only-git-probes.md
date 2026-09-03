@@ -1,7 +1,7 @@
 ---
 id: REQ-511
 title: '[impact-rule-change] Review fix: Disable optional locks for read-only Git probes'
-status: pending
+status: cancelled
 domain: backend
 created_at: 2026-09-02T17:48:52Z
 user_request: UR-097
@@ -14,6 +14,7 @@ suggested_spec: bug-fix
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 sweep: true
 sweep_key: read-only-git-probes-allow-index-writes
+completed_at: 2026-09-03T11:47:24Z
 ---
 
 # Review Fix: Disable Optional Locks for Read-Only Git Probes
@@ -57,3 +58,9 @@ None.
 
 ---
 *Source: REQ-500 post-remediation review finding.*
+
+## Cancelled
+
+- **When:** 2026-09-03T11:47:24Z
+- **Why:** no observed failure from optional Git locks on read-only probes; recapture on evidence (maintainer decision, 2026-09-03 roadmap triage)
+- **Decided by:** user, via `do-work abandon`

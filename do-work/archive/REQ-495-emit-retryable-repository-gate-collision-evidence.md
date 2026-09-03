@@ -1,7 +1,7 @@
 ---
 id: REQ-495
 title: 'Review fix: Emit retryable repository-gate collision evidence'
-status: pending
+status: cancelled
 domain: general
 created_at: 2026-09-02T03:32:03Z
 user_request: UR-095
@@ -13,6 +13,7 @@ tdd: true
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md, _dev/primes/prime-action-files.md]
 depends_on: [REQ-492]
 related: [REQ-491, REQ-493]
+completed_at: 2026-09-03T11:47:24Z
 ---
 
 # Review Fix: Emit Retryable Repository-Gate Collision Evidence
@@ -47,3 +48,9 @@ Found during post-remediation review of REQ-492 (Integrate repository-gate defer
 **GREEN when:** End-to-end typed-result fixtures prove planning collision and fully rolled-back collision each retry, while incomplete/committed-risk and non-collision outcomes stop without rescan.
 
 **Validation:** Post-remediation review finding from REQ-492; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
+
+## Cancelled
+
+- **When:** 2026-09-03T11:47:24Z
+- **Why:** edge-case hardening with no observed occurrence; recapture if a retry-contract mismatch is seen in a real run (maintainer decision, 2026-09-03 roadmap triage)
+- **Decided by:** user, via `do-work abandon`

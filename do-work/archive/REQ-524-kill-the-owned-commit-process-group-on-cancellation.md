@@ -1,7 +1,7 @@
 ---
 id: REQ-524
 title: 'Kill the owned commit process group on cancellation'
-status: pending
+status: cancelled
 created_at: 2026-09-02T23:58:00Z
 user_request: UR-085
 domain: backend
@@ -16,6 +16,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_process.go
 related: [REQ-457]
+completed_at: 2026-09-03T11:47:26Z
 ---
 
 # Kill the Owned Commit Process Group on Cancellation
@@ -92,3 +93,9 @@ No request prerequisite.
 
 ---
 *Source: REQ-457 pre-flight baseline, captured during the work run.*
+
+## Cancelled
+
+- **When:** 2026-09-03T11:47:26Z
+- **Why:** folded into REQ-526 section Folded From REQ-497 and REQ-524 as an acceptance criterion (maintainer decision, 2026-09-03 roadmap triage)
+- **Decided by:** user, via `do-work abandon`
