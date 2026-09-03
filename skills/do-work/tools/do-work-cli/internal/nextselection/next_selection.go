@@ -21,7 +21,7 @@ func Select(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygraph
 	result.Excluded = append(result.Excluded, targetExclusions...)
 	eligible := []resultmodel.SelectionRecord{}
 	for _, candidate := range candidates {
-		record, exclusion, probed, probeSucceeded := evaluateCandidate(snapshot, candidate, graph, options, probeRunner)
+		record, exclusion, probed, probeSucceeded, interruptionStatus := evaluateCandidate(snapshot, candidate, graph, options, probeRunner)
 		if probed {
 			result.SelectionSummary.Probed++
 		}
@@ -29,6 +29,19 @@ func Select(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygraph
 			result.SelectionSummary.ProbeSucceeded++
 		}
 		appendSchemaWarnings(&result, candidate.RequestFile)
+		if interruptionStatus != 0 {
+			result.Outcome = resultmodel.OutcomeFailure
+			result.ExitCodeOverride = interruptionStatus
+			result.Findings = append(result.Findings, resultmodel.CommandFinding{
+				Code: "BLOCKED-PROBE-INTERRUPTED", Severity: resultmodel.SeverityError,
+				AffectedIDs: []string{candidate.RequestID}, AffectedPaths: []string{pathForSelection(candidate.RequestFile)},
+				Evidence:   []string{fmt.Sprintf("blocked_check interrupted with exit %d", interruptionStatus)},
+				Fixability: resultmodel.FixabilityManual, AutomationStopReason: "queue selection was interrupted",
+				NextArgv: []string{"do-work-cli", "next", candidate.RequestID}, NextJustRecipe: "do-work-next " + candidate.RequestID,
+				VerificationArgv: []string{"do-work-cli", "--format", "json", "next", candidate.RequestID},
+			})
+			return result
+		}
 		if exclusion != nil {
 			if exclusion.Code == "IMPACT-NEGLIGIBLE" {
 				result.SelectionSummary.SkippedImpactNegligible++
@@ -135,7 +148,7 @@ func nextVerificationArgv(options SelectionOptions) []string {
 	return arguments
 }
 
-func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate selectionCandidate, graph *dependencygraph.DependencyGraph, options SelectionOptions, probeRunner ProbeRunner) (*resultmodel.SelectionRecord, *resultmodel.SelectionExclusion, bool, bool) {
+func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate selectionCandidate, graph *dependencygraph.DependencyGraph, options SelectionOptions, probeRunner ProbeRunner) (*resultmodel.SelectionRecord, *resultmodel.SelectionExclusion, bool, bool, int) {
 	requestFile := candidate.RequestFile
 	record := requestFile.TypedRecord
 	identifier := candidate.RequestID
@@ -156,13 +169,13 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 			reason = requestFile.ParseFailure
 		}
 		exclusion := newExclusion("INVALID-REQUEST", reason, []string{"do-work", "doctor"})
-		return nil, &exclusion, false, false
+		return nil, &exclusion, false, false, 0
 	}
 	claimEvidence := selectionClaimEvidence(requestFile, identifier, snapshot.CheckpointClaimsByID[identifier])
 	if len(claimEvidence) > 0 {
 		exclusion := newExclusion("ALREADY-CLAIMED", alreadyClaimedReason(claimEvidence), []string{"do-work", "doctor"})
 		exclusion.ClaimEvidence = claimEvidence
-		return nil, &exclusion, false, false
+		return nil, &exclusion, false, false, 0
 	}
 
 	status := record.RequestStatus
@@ -177,19 +190,22 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 				reason = "blocked by " + blockedBy
 			}
 			exclusion := newExclusion("BLOCKED", reason, []string{"do-work", "clarify"})
-			return nil, &exclusion, false, false
+			return nil, &exclusion, false, false, 0
 		}
 		if probeRunner == nil {
 			evidence.ProbeStatus = resultmodel.ProbeLaunchFailed
 			evidence.ProbeAttempted = true
 			evidence.ProbeExitCode = 125
 			exclusion := newExclusion("BLOCKED-PROBE-FAILED", "blocked_check could not launch: probe runner is unavailable", []string{"do-work-cli", "next", identifier})
-			return nil, &exclusion, true, false
+			return nil, &exclusion, true, false, 0
 		}
 		probed = true
 		evidence.ProbeAttempted = true
 		exitCode, probeError := probeRunner([]byte(blockedCheck), 30)
 		evidence.ProbeExitCode = exitCode
+		if interruptionStatus, interrupted := blockedProbeInterruptionStatus(probeError); interrupted {
+			return nil, nil, true, false, interruptionStatus
+		}
 		if probeError != nil || exitCode != 0 {
 			reason := fmt.Sprintf("blocked_check failed this run with exit %d", exitCode)
 			if probeError != nil {
@@ -201,7 +217,7 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 				evidence.ProbeStatus = resultmodel.ProbeFailed
 			}
 			exclusion := newExclusion("BLOCKED-PROBE-FAILED", reason, []string{"do-work-cli", "next", identifier})
-			return nil, &exclusion, true, false
+			return nil, &exclusion, true, false, 0
 		}
 		probeSucceeded = true
 		evidence.ProbeStatus = resultmodel.ProbeSucceeded
@@ -210,34 +226,34 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 	}
 	if status != "pending" {
 		exclusion := newExclusion("STATUS-NOT-PENDING", "status is "+status, []string{"do-work", "roadmap"})
-		return nil, &exclusion, probed, probeSucceeded
+		return nil, &exclusion, probed, probeSucceeded, 0
 	}
 
 	explicit := candidate.Provenance == ProvenanceExplicit
 	if !explicit && record.AssignedTo != "" {
 		exclusion := newExclusion("ASSIGNED-ELSEWHERE", "assigned to "+record.AssignedTo, []string{"do-work", "run", identifier})
-		return nil, &exclusion, probed, probeSucceeded
+		return nil, &exclusion, probed, probeSucceeded, 0
 	}
 	if options.SkipImpactNegligible && !explicit && record.ImpactValue == "impact-negligible" {
 		exclusion := newExclusion("IMPACT-NEGLIGIBLE", "impact-negligible and --skip-impact-negligible is set", []string{"do-work", "run", identifier})
-		return nil, &exclusion, probed, probeSucceeded
+		return nil, &exclusion, probed, probeSucceeded, 0
 	}
 	if options.SimpleOnly {
 		if record.EffortEstimateValue != "effort-mechanical" {
 			exclusion := newExclusion("NOT-MECHANICAL", "effort is not effort-mechanical", []string{"do-work", "run", identifier})
-			return nil, &exclusion, probed, probeSucceeded
+			return nil, &exclusion, probed, probeSucceeded, 0
 		}
 		if record.MaintenanceValue == "true" {
 			exclusion := newExclusion("MAINTENANCE-JUDGMENT", "maintenance: rule prose has no objective test", []string{"do-work", "run", identifier})
-			return nil, &exclusion, probed, probeSucceeded
+			return nil, &exclusion, probed, probeSucceeded, 0
 		}
 		if record.DomainValue == "security" {
 			exclusion := newExclusion("SECURITY-RISK", "security: cost of a miss is unbounded", []string{"do-work", "run", identifier})
-			return nil, &exclusion, probed, probeSucceeded
+			return nil, &exclusion, probed, probeSucceeded, 0
 		}
 		if record.ImpactValue == "impact-critical" {
 			exclusion := newExclusion("IMPACT-CRITICAL", "impact-critical work requires a full-strength session", []string{"do-work", "run", identifier})
-			return nil, &exclusion, probed, probeSucceeded
+			return nil, &exclusion, probed, probeSucceeded, 0
 		}
 	}
 
@@ -248,25 +264,25 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 	}
 	if options.WaveDepth != nil && depth != *options.WaveDepth {
 		exclusion := newExclusion("WAVE-MISMATCH", fmt.Sprintf("dependency depth is %d, not requested wave %d", depth, *options.WaveDepth), []string{"do-work-cli", "next", "--wave", strconv.Itoa(depth)})
-		return nil, &exclusion, probed, probeSucceeded
+		return nil, &exclusion, probed, probeSucceeded, 0
 	}
 	if !explicit {
 		switch {
 		case node == nil:
 			exclusion := newExclusion("DEPENDENCY-UNKNOWN", "dependency graph has no node for this request", []string{"do-work", "doctor"})
-			return nil, &exclusion, probed, probeSucceeded
+			return nil, &exclusion, probed, probeSucceeded, 0
 		case node.IsAmbiguous || len(node.AmbiguousTargets) > 0:
 			exclusion := newExclusion("DEPENDENCY-AMBIGUOUS", "dependency identity is ambiguous: "+strings.Join(node.AmbiguousTargets, ", "), []string{"do-work", "doctor"})
-			return nil, &exclusion, probed, probeSucceeded
+			return nil, &exclusion, probed, probeSucceeded, 0
 		case node.IsCyclic:
 			exclusion := newExclusion("DEPENDENCY-CYCLE", "dependency cycle must be broken before selection", []string{"do-work", "roadmap"})
-			return nil, &exclusion, probed, probeSucceeded
+			return nil, &exclusion, probed, probeSucceeded, 0
 		case len(node.MissingTargets) > 0:
 			exclusion := newExclusion("DEPENDENCY-MISSING", "missing dependencies: "+strings.Join(node.MissingTargets, ", "), []string{"do-work", "roadmap"})
-			return nil, &exclusion, probed, probeSucceeded
+			return nil, &exclusion, probed, probeSucceeded, 0
 		case !node.DependenciesSatisfied:
 			exclusion := newExclusion("DEPENDENCIES-UNMET", "waits on "+strings.Join(node.UnmetDependencies, ", "), []string{"do-work", "run", node.UnmetDependencies[0]})
-			return nil, &exclusion, probed, probeSucceeded
+			return nil, &exclusion, probed, probeSucceeded, 0
 		}
 	}
 
@@ -285,7 +301,7 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 		NextArgv: []string{"do-work", "run", identifier}, NextJustRecipe: "do-work-run " + identifier,
 		VerificationArgv: []string{"do-work-cli", "--format", "json", "next", identifier},
 	}
-	return &selected, nil, probed, probeSucceeded
+	return &selected, nil, probed, probeSucceeded, 0
 }
 
 func selectionClaimEvidence(requestFile *repositorymodel.RequestFile, identifier string, checkpointClaims []repositorymodel.CheckpointClaimEvidence) []resultmodel.SelectionClaimEvidence {

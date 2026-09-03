@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/dependencygraph"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
@@ -227,6 +228,62 @@ func TestBlockedProbeReceivesExactBytesAndDoesNotMutateRequest(t *testing.T) {
 	}
 	timedOut := Select(snapshot, graph, SelectionOptions{}, func([]byte, int) (int, error) { return 124, nil })
 	assertExclusionCode(t, timedOut, "REQ-210", "BLOCKED-PROBE-FAILED")
+}
+
+func TestBlockedProbeRunsFromSelectedRepositoryRoot(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-211-blocked.md", "REQ-211", "blocked", "blocked_check: test -e config/ready\n")
+	writeRepositorySelectionFixture(t, repositoryRoot, "config/ready", "ready\n")
+	t.Chdir(t.TempDir())
+
+	result := handleNext(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, nil)
+	if got := selectedRequestIDsFromModel(result.Selected); !equalStrings(got, []string{"REQ-211"}) {
+		t.Fatalf("selected = %v, want root-relative blocked probe success; result=%#v", got, result)
+	}
+	if result.Selected[0].ProbeStatus != resultmodel.ProbeSucceeded || result.Selected[0].ProbeExitCode != 0 {
+		t.Fatalf("root-relative probe evidence = %#v", result.Selected[0])
+	}
+}
+
+type selectionProbeInterruption struct {
+	exitStatus int
+}
+
+func (interruption selectionProbeInterruption) Error() string {
+	return "blocked probe interrupted"
+}
+
+func (interruption selectionProbeInterruption) InterruptionExitStatus() int {
+	return interruption.exitStatus
+}
+
+func TestBlockedProbeInterruptionStopsSelection(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-212-interrupted.md", "REQ-212", "blocked", "blocked_check: interrupt-probe\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-213-later-probe.md", "REQ-213", "blocked", "blocked_check: later-probe\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-214-pending.md", "REQ-214", "pending", "")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probeCalls := []string{}
+	result := Select(snapshot, dependencygraph.BuildGraph(snapshot), SelectionOptions{}, func(probeBytes []byte, _ int) (int, error) {
+		probe := strings.TrimSpace(string(probeBytes))
+		probeCalls = append(probeCalls, probe)
+		if probe == "interrupt-probe" {
+			return 130, selectionProbeInterruption{exitStatus: 130}
+		}
+		return 0, nil
+	})
+	if result.Outcome == resultmodel.OutcomeSuccess || result.ExitCodeOverride != 130 {
+		t.Fatalf("interrupted selection outcome=%s override=%d, want non-success/130", result.Outcome, result.ExitCodeOverride)
+	}
+	if len(result.Selected) != 0 || !equalStrings(probeCalls, []string{"interrupt-probe"}) {
+		t.Fatalf("interrupted selection continued: calls=%v selected=%#v", probeCalls, result.Selected)
+	}
+	if len(result.Findings) != 1 || result.Findings[0].Code != "BLOCKED-PROBE-INTERRUPTED" {
+		t.Fatalf("interruption finding = %#v", result.Findings)
+	}
 }
 
 func TestBlockedProbeOutcomesRemainDistinctPerRecord(t *testing.T) {

@@ -11,8 +11,12 @@ import (
 	"time"
 )
 
-func runOwnedProbe(probeBytes []byte, timeout time.Duration) (int, error) {
+func runOwnedProbe(repositoryRoot string, probeBytes []byte, timeout time.Duration) (int, error) {
+	signalChannel := make(chan os.Signal, 1)
+	signal.Notify(signalChannel, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(signalChannel)
 	command := exec.Command("sh", "-c", string(probeBytes))
+	command.Dir = repositoryRoot
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := command.Start(); err != nil {
 		return BlockedProbeLaunchStatus, err
@@ -30,9 +34,6 @@ func runOwnedProbe(probeBytes []byte, timeout time.Duration) (int, error) {
 	go func() { done <- command.Wait() }()
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
-	signalChannel := make(chan os.Signal, 1)
-	signal.Notify(signalChannel, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
-	defer signal.Stop(signalChannel)
 	select {
 	case waitError := <-done:
 		status := probeExitStatus(waitError)
@@ -47,7 +48,8 @@ func runOwnedProbe(probeBytes []byte, timeout time.Duration) (int, error) {
 			forwarded = syscall.SIGTERM
 		}
 		terminateOwnedProcessGroup(processGroup, forwarded, done)
-		return 128 + int(forwarded), nil
+		status := 128 + int(forwarded)
+		return status, BlockedProbeInterruption{ExitStatus: status}
 	}
 }
 

@@ -29,7 +29,9 @@ func handleNext(executionContext commandruntime.ExecutionContext, arguments []st
 		return nextFailure("NEXT-DISCOVERY-FAILED", discoveryError.Error())
 	}
 	graph := dependencygraph.BuildGraph(snapshot)
-	result := Select(snapshot, graph, options, RunBlockedProbe)
+	result := Select(snapshot, graph, options, func(probeBytes []byte, timeoutSeconds int) (int, error) {
+		return RunBlockedProbeAtRoot(executionContext.RepositoryRoot, probeBytes, timeoutSeconds)
+	})
 	result.RepositoryRoot = executionContext.RepositoryRoot
 	return result
 }
