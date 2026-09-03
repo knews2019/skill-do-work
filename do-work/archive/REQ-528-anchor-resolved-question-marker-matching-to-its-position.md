@@ -1,7 +1,7 @@
 ---
 id: REQ-528
 title: '[impact-critical] Anchor resolved-question marker matching to its position'
-status: claimed
+status: completed
 created_at: 2026-09-03T03:10:00Z
 user_request: UR-081
 domain: backend
@@ -32,6 +32,9 @@ estimate:
     - 4 acceptance criteria
     - persistence or schema changes
     - cross-route regression gates
+completed_at: 2026-09-03T10:15:00Z
+commit: f1197c6
+release_at: 2026-09-03T10:15:00Z
 ---
 
 # Anchor Resolved-Question Marker Matching to Its Position

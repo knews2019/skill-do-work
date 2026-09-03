@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.267.0 — An Answer Can No Longer Cancel Its Own Request (2026-09-03)
+
+When you discard every open question on a request, `do-work clarify` cancels and archives it. Deciding that meant searching each resolved line for a marker — and your own answer text could supply that marker. Answering one question with something like `keep it → Discarded: not really` and discarding another was enough to cancel a request whose question you had actually answered.
+
+- The marker is now read only where the tool itself writes it, so text elsewhere on the line cannot stand in for it.
+- An answer that would be indistinguishable from that marker is refused up front, and the refusal tells you to put the disposition in the outcome instead.
+- A resolved line the tool cannot read unambiguously sends the request back to the queue rather than archiving it, and now says which line stopped it.
+- A terminal archive path you supply is checked against what the command actually decided, instead of being ignored whenever the two disagreed.
+
 ## 0.266.4 — Answer Summaries Are Judged by Condition, Not by a Prefix List (2026-09-03)
 
 When `do-work clarify` records a one-line answer, it decides whether the text is safe to write straight into the REQ or has to be carried separately. That decision used to check ten specific line openings, so `***`, `___`, `+++`, `:::note`, `$$`, a bare `-`, a bare `1.`, a table row and indented text all slipped through as ordinary prose.
