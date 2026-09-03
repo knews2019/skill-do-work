@@ -45,8 +45,8 @@ The fold-first scan found no pending or pending-answers REQ in any UR that owns 
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Enforce the invariant at result normalization, preserve verification semantics, distinguish REQ-owned set-asides from global refusals, and correct ambiguous discovery's actual resolver.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** Added centralized self-remedy normalization, a distinct ambiguous-discovery resolver, and regression coverage in the reconciled five-file scope.
+- [x] **[UNIFY]:** Reviewed all five changed files; focused packages, full Go module except one transient timing test, isolated timing-test rerun, vet, and diff checks passed.
 
 ## Why
 
@@ -157,3 +157,19 @@ See `do-work/user-requests/UR-099/input.md` for complete verbatim input.
 ## Decisions
 
 - **D-01 (scope reconciliation, 2026-09-04):** The planned `finalization_apply.go` edit did not own the ambiguous discovery refusal. Expand the exact scope to `finalization_discovery.go` and its existing recovery test file, and remove planned files that required no change. The directory-level request scope already covered finalization; `commandruntime/command_runtime_test.go` is added explicitly. The folded lifecycle fixture already exists in `finalization_recovery_test.go`, so duplicating it would reduce signal.
+
+## Implementation Summary
+
+- `resultmodel.NormalizeResult` now removes a refusal finding's `next_argv` when it names the invoking command while preserving `verification_argv`.
+- A fully REQ-owned self-referential refusal normalizes to `outcome=findings`; a shared/global blocker remains `outcome=refused` without the false remedy.
+- Ambiguous finalization discovery now names `uncommitted-inventory` as its resolving verb and keeps `recover-finalization --discover` as verification.
+- Added table-driven result-model coverage, runtime JSON/exit coverage for the REQ-456 shape, and finalization-discovery resolver coverage.
+- Integrated commit: `e42ae1e57c9f2692a598cb08daca2fe99bec6a45`; implementation range: `26b3426886bfea6183502809a7e5e93799831a52..e42ae1e57c9f2692a598cb08daca2fe99bec6a45`.
+
+## Testing
+
+- PASS: `go test -count=1 ./internal/resultmodel ./internal/commandruntime ./internal/finalization ./internal/requeststate`
+- PASS: `go test -count=1 ./internal/gittransaction -run TestCancelledCommitThatLandsReportsCommittedRisk` (isolated rerun after the all-package run hit its pre-existing `hook.pid` timing flake)
+- PASS: `go vet ./...`
+- PASS: `git diff --check`
+- The existing folded lifecycle test `TestRecoverFinalizationResumesJournalAfterLifecycleInterruption` remains green and reaches terminal cleanup through recovery.
