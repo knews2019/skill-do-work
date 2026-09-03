@@ -52,7 +52,7 @@ Includes anti-rationalization tables, red flags (patterns that trigger extra scr
 
 ## Follow-ups
 
-Important findings generate follow-up REQ files automatically — each one first gets a recorded impact token (would anyone notice in real use? does the fix change a multi-site rule?), and that same token becomes the follow-up's `impact:` field, so the board shows at a glance which follow-ups nobody would notice. How big the fix is stays a separate judgment in `effort_estimate`. Minor findings stay in the report only.
+Every finding gets a recorded impact token (would anyone notice in real use? does the fix change a multi-site rule?). Only `impact-critical` findings generate follow-up REQs automatically. Every other finding stays in the report and its line ends `→ report only`; the review does not append to a sweep, `pending-answers` item, or prose backlog. To promote one later, run `do-work capture` with the complete finding line quoted as the capture source.
 
 ## Output
 

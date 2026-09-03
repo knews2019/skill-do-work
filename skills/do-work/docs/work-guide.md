@@ -26,7 +26,7 @@ When uncertain, the system defaults to Route B (under-planning is recoverable; o
 7. Implement (all routes — build the thing)
 8. Test (run tests, validate red-green if TDD)
 9. Review (requirements check, code quality, acceptance testing)
-10. Archive (move to archive/, create follow-ups if needed)
+10. Archive (move to archive/, auto-queue critical findings if needed)
 11. Commit (one commit per REQ, explicit file staging)
 12. Loop or exit (context wipe, pick next REQ)
 ```
@@ -56,7 +56,7 @@ As the request moves through the pipeline, sections are appended:
 - `## Testing` — test results, red-green validation
 - `## Review` — scores, findings, acceptance result
 - `## Decisions` — numbered implementation choices (D-01, D-02...)
-- `## Discovered Tasks` — out-of-scope issues found during work; critical items and small test-only hygiene fixes auto-queue, the rest await your OK via `do-work clarify`
+- `## Discovered Tasks` — out-of-scope issues found during work; only `impact-critical` items auto-queue, and every noncritical line ends `→ report only` in the archived REQ
 - `## Lessons Learned` — what worked, what didn't
 
 ## Review gate
@@ -66,7 +66,7 @@ After testing, a multi-dimensional review runs:
 | Result | Action |
 |--------|--------|
 | Pass (75%+) | Archive as completed |
-| Partial (50-74%) | Archive, create follow-up REQs for important findings |
+| Partial (50-74%) | Archive; auto-queue only `impact-critical` findings and keep the rest in the report |
 | Fail (<50%) | One remediation attempt, then archive with issues |
 
 ## Open Questions
@@ -92,7 +92,7 @@ A typical `do-work run` session:
 5. **Build** — implements the request (planning and exploration for B/C routes)
 6. **Test** — runs the project's test suite, validates red-green if TDD targets exist
 7. **Review** — scores the work against requirements, code quality, and acceptance criteria
-8. **Archive** — moves the REQ to `archive/`, creates follow-up REQs if the review flagged issues
+8. **Archive** — moves the REQ to `archive/`; only critical review/build findings auto-queue
 9. **Commit** — one atomic commit per REQ with explicit file staging
 10. **Loop** — wipes context and picks the next REQ (or exits if the queue is empty)
 
@@ -168,7 +168,7 @@ Use whichever feels natural. `continue` and `resume` read well after a break; `r
 ## Tips
 
 - **`continue` vs fresh `run`** — No functional difference. Both scan the queue and pick the next pending REQ. Use `continue` when you're resuming a session; use `run` when you're starting fresh. The checkpoint system handles the actual resume logic.
-- **Failed items** — If a REQ fails review, the system tries one remediation pass. If it still fails, it archives with issues noted and optionally creates a follow-up REQ. You don't need to intervene manually.
+- **Failed items** — If a REQ fails review, the system tries one remediation pass. If it still fails, it archives with issues noted and auto-queues only critical findings. Noncritical findings stay in that report; promote one by running `do-work capture` with its complete finding line quoted as the source.
 - **Context limits** — Long-running queues may hit context limits. `do-work/CHECKPOINT.md` is already current — it's written as each request is claimed, not just before stopping — so just run `do-work run` again in a new session and it picks up where it left off.
 - **One at a time** — The work action processes one REQ per loop iteration. This keeps commits atomic and reviews focused. Don't try to batch multiple REQs into one pass.
 

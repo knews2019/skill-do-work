@@ -44,7 +44,7 @@ work action (orchestrator - lightweight, stays in loop)
   │     │                                  Review ◄─── Fail? ──► Remediate ──► Re-review
   │     │                                            │
   │     │                                            ▼
-  │     ├── Archive ──► classify discovered tasks ──► queue follow-ups
+  │     ├── Archive ──► classify discovered tasks ──► queue critical findings only
   │     │                                            │
   │     │                                            ▼
   │     └── Commit (git repos only)
@@ -938,42 +938,27 @@ Q-NN ids are unique within one REQ and never reused — an answered or reclaimed
 
 ## Discovered Tasks Classification (Step 8)
 
-   The builder should classify each discovered task when appending them, using the impact vocabulary (**Request File Schema — Full Frontmatter** above) — the same four tokens the review flow records, so the token a builder writes here is the token the follow-up's `impact:` field carries:
+   The builder should classify each discovered task when appending it, using the impact vocabulary (**Request File Schema — Full Frontmatter** above). Every noncritical line ends with the literal suffix `→ report only`:
    ```
    ## Discovered Tasks
    - **impact-critical** SQL injection vulnerability in user search endpoint
-   - **impact-user-visible** The retry banner never clears after a successful reconnect
-   - **impact-rule-change** Three adapters hand-roll the retry loop the shared client already provides
-   - **impact-negligible** Variable naming inconsistency in auth module
+   - **impact-user-visible** The retry banner never clears after a successful reconnect → report only
+   - **impact-rule-change** Three adapters hand-roll the retry loop the shared client already provides → report only
+   - **impact-negligible** Variable naming inconsistency in auth module → report only
    ```
 
    If the builder did not classify them, classify each with the two questions in `actions/review-work.md` Step 10 — that step is the single home of the rubric, and a second copy here would drift from it.
 
-   **Fold before creating:** each classified discovery first runs the fold-first scan (`actions/capture-reference.md` → **Fold-First Rule**) — a `pending` or `pending-answers` REQ in any UR sharing the root cause receives it as an appended instance, and a prose-only discovery with no match lands on `do-work/prose-backlog.md`; an append needs no consent question because editing an existing queued REQ is not creation (`actions/review-work.md` Step 10 → the reroute governs creation only). Only a discovery with no destination in the ladder proceeds to the creation paths below.
+   **For every noncritical discovery:** Keep it in the current REQ's `## Discovered Tasks` section (or the builder hand-back that Step 8 copies into the archived REQ) and end its line `→ report only`. Do not create, append to, convert, or otherwise mutate a follow-up REQ, sweep, `pending-answers` item, prose backlog, or other deferred-work list. Test-only mechanical hygiene has no carve-out.
 
-   **Set `impact:` on every follow-up REQ this classification creates** (any token, either status path) to the discovery's recorded token, verbatim — the token IS the field value, and its title carries the matching `[<impact token>] ` tag under the same rule every other minted title follows (`actions/capture-reference.md` → **REQ Title Convention**; a follow-up that carries the field but not the tag is invisible to the board's title search, which is the whole reason the tag exists). `effort_estimate` is the other axis and is judged separately, as size: judge the fix and emit either `effort-mechanical` or `effort-substantive`; when the size is genuinely unclear, put that judgment to the user. Omit the field only when neither judging nor asking was possible, and never copy a default in either direction. Impact and effort are different axes — an `impact-negligible` style sweep can be substantive effort, and an `impact-user-visible` one-line fix can be mechanical.
+   If a maintainer decides one deserves queue work, report the promotion command: invoke `do-work capture` with the complete finding line quoted as the capture source. That explicit capture is new user intent; the builder path creates no placeholder.
 
-   **For `impact-critical` discoveries:** Create follow-up REQ with `status: pending` (not `pending-answers`) — these skip user confirmation and go straight into the work queue. Add a note in Open Questions: `- [x] Auto-approved: critical severity (security/data/production risk). → Added to queue immediately.` Report prominently: `⚠ CRITICAL discovered: [description] — auto-queued as REQ-NNN`
-
-   **Test-hygiene carve-out:** A non-`impact-critical` discovery ALSO auto-queues with `status: pending` (same as critical) when ALL three hold:
-   - The fix touches **only test files** (`tests/**`, `*.test.*`, `*.spec.*`, test helpers/fixtures) — zero production-source changes.
-   - It is **mechanical hygiene** — silencing warnings/console noise, deflaking, lint/format cleanup in tests — with no behavior or assertion-meaning changes.
-   - It is **small** — a single file or a couple of files, no new infrastructure.
-
-   Failing ANY bullet keeps the `pending-answers` flow below. The paper trail mirrors the critical flow: add a note in Open Questions: `- [x] Auto-approved: test-only mechanical hygiene ([impact token]). → Added to queue.` Report visibly: `↺ test-hygiene discovery auto-queued as REQ-NNN`. The user can still discard the REQ from the queue afterwards — that stays the escape hatch.
-
-   **For every non-critical discovery (when the test-hygiene carve-out does not apply):** Use the existing `pending-answers` flow:
-   - Set frontmatter: `status: pending-answers`, `user_request: [same UR]`, `addendum_to: [current REQ id]`, `domain: [same domain as current REQ]`.
-   - Add an `## Open Questions` section with this checkbox format:
-     `- [ ] I discovered this out-of-scope task while working on [current REQ]: [Task Description]. Should I process this as a new task?`
-     `  Recommended: Yes, add to queue (will flip to 'pending').`
-     `  Also: No, discard it.`
-   This ensures non-critical discoveries — other than qualifying test-only hygiene — require the user's explicit permission via `do-work clarify` before execution.
+   **For `impact-critical` discoveries only:** Run the fold-first scan (`actions/capture-reference.md` → **Fold-First Rule**). Append to an eligible root-cause home or create a follow-up REQ with `status: pending`; critical findings skip confirmation and go straight into the queue. Set `impact: impact-critical` verbatim and mirror `[<impact token>] ` in its title under the REQ Title Convention. `effort_estimate` is the other axis and is judged separately, as size: judge the fix and emit either `effort-mechanical` or `effort-substantive`; when the size is genuinely unclear, put that judgment to the user. Omit the field only when neither judging nor asking was possible, and never copy a default in either direction. Add `- [x] Auto-approved: critical severity (security/data/production risk). → Added to queue immediately.` to Open Questions and report `⚠ CRITICAL discovered: [description] — auto-queued as REQ-NNN` prominently.
 
 ## Failure Classification (Step 8)
 
 
-This classification runs at any generation: `review_generated: true` on the failed REQ does **not** suppress its failure follow-up — the cascade depth stop (`actions/review-work.md` Step 10 → **Generation ≥ 2**) governs review-*finding* follow-ups only, and a failed generation-≥2 REQ with no successor would die silently.
+This classification runs at any generation: `review_generated: true` on the failed REQ does **not** suppress its failure follow-up. The critical-only automatic rule in `actions/review-work.md` Step 10 governs review findings, not failed-work recovery; a failed REQ with no successor would die silently.
 
 Before classifying via the symptom table below, **check for upstream failure**. Cascades from a failed prerequisite often present as plausible-looking `code` or `spec` symptoms in the downstream REQ; misclassifying them sends the builder chasing phantom bugs in the wrong domain.
 

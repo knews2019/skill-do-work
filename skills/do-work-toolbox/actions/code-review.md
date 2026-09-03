@@ -2,7 +2,7 @@
 
 > **Part of the do-work-toolbox skill.** Standalone codebase review — not tied to the REQ/UR queue. Evaluates consistency, patterns, security, and architectural health across a scoped section of the codebase. User-facing walkthrough: [`docs/code-review-guide.md`](../docs/code-review-guide.md).
 
-**Source-code read-only** — this action does NOT modify any project source files. It produces a structured report only. It does write its own run state under `do-work/runs/code-review-<ts>/` (findings files + manifest — a committable path, then deleted once consumed; see Steps 1 and 10). May also write queue metadata (`do-work/queue/REQ-*` files) with explicit user confirmation — see Step 10.
+**Source-code read-only** — this action does NOT modify any project source files. It produces a structured report. It writes its own run state under `do-work/runs/code-review-<ts>/` (findings files + manifest — a committable path, then deleted once consumed; see Steps 1 and 10) and auto-queues only `impact-critical` findings.
 
 ## When to Use
 
@@ -207,6 +207,8 @@ If you can't run checks (missing dependencies, env issues), note what you couldn
 
 **Read the findings files from the run directory** (`do-work/runs/code-review-<ts>/*.md`) and assemble the report from them — not from what the sub-agents returned into the conversation. This is what makes a run recoverable: synthesis behaves identically in the original session and in a fresh recovery session that never saw the spawns. If a dimension's findings file is absent on disk (its sub-agent never completed), note that dimension as **not run** in the report rather than fabricating findings — and prefer re-spawning that dimension first (see the Step 1 resume check). Write the full assembled report to `do-work/runs/code-review-<ts>/report.md`, verify it exists, then set the manifest's `Status:` line to `synthesized`. Only after that durable write should the report be delivered to the user. A crash before delivery can now resume from `report.md` without re-running any dimension.
 
+Classify every finding with the impact rubric in `../../do-work/actions/review-work.md` Step 10 while synthesizing. Wherever a noncritical finding appears in the output, its finding text ends with the literal suffix `→ report only`.
+
 Produce a structured report:
 
 ```markdown
@@ -278,30 +280,27 @@ Produce a structured report:
 3. **{Third priority}** — {1 sentence, specific}
 
 {Rank by: Critical severity first, then Important, then by effort-to-impact ratio.}
+
+## Follow-ups created
+
+{Critical REQ destinations only, or `None (N findings report only)` when every finding is noncritical.}
 ```
 
-### Step 10: Create Follow-up REQs (Optional)
+### Step 10: Create Critical Follow-up REQs
 
-For **Critical** and **Important** findings that warrant action, offer to create REQ files:
+Judge every finding with the impact rubric in `../../do-work/actions/review-work.md` Step 10. Only `impact-critical` findings auto-queue. Every noncritical finding remains in the report and its line ends `→ report only`; do not create, append to, or mutate a REQ, sweep, `pending-answers` item, or prose backlog for it.
 
-```
-Found 3 Critical and 5 Important findings.
-Create REQ files for these? (The user can run `do-work run` to process them later.)
-```
-
-Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward.
-
-When the user confirms, first run the fold-first scan (`../../do-work/actions/capture-reference.md` → **Fold-First Rule**): a finding whose root cause already has a `pending` or `pending-answers` REQ — any UR — is appended there as an instance, and a prose-only finding with no match is appended to `do-work/prose-backlog.md` per that rule's destination 3; only the rest become new files. For each new file, judge `impact:` with the two questions in `../../do-work/actions/review-work.md` Step 10 and write the recorded token. Create REQ files using the standard format — `created_at` is the current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`). The `title:` follows `../../do-work/actions/capture-reference.md` → **REQ Title Convention** — quoted per the **Frontmatter Quoting** contract (`../../do-work/actions/work-reference.md` → Request File Schema), carrying the `[<impact token>] ` tag when the verdict is not the `impact-user-visible` default:
+For each `impact-critical` finding, run the Fold-First Rule (`../../do-work/actions/capture-reference.md`). Append it to an eligible root-cause home or create a pending REQ using the standard format below; `created_at` is the current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`). A maintainer who wants to promote a report-only finding invokes `do-work capture` with the complete finding line quoted as the capture source.
 
 ```markdown
 ---
 id: REQ-NNN
-title: '[<impact token>] Code review: [brief description]'   # omit the tag when the recorded token is impact-user-visible (.claude/skills/do-work/actions/capture-reference.md → REQ Title Convention)
+title: '[<impact token>] Code review: [brief description]'   # impact-critical here; .claude/skills/do-work/actions/capture-reference.md → REQ Title Convention
 status: pending
 created_at: <timestamp>
 review_generated: true
 source: code-review
-impact: [the finding's recorded token, verbatim]
+impact: impact-critical
 scope: [prime file or directory that surfaced this]
 ---
 
@@ -328,9 +327,9 @@ Found during code review of [scope]. [1 sentence on the specific finding.]
 **Validation:** Review finding; apply `.claude/skills/do-work/actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
 ```
 
-Do NOT auto-create REQs without confirmation. The report itself is the primary output.
+In `Follow-ups created`, list critical destinations only. When all N findings are noncritical, write `None (N findings report only)`.
 
-**Then mark consumed and delete the run directory.** Once the report has been delivered and the REQ-capture decision is made (created, declined, or skipped as non-interactive), the run's findings are fully consumed — the report and any REQs are the permanent record. If the user asked to keep the raw findings, copy them into `do-work/deliverables/` first. Set the manifest's `Status:` line to `consumed`, then delete `do-work/runs/code-review-<ts>/` as the final step (`crew-members/background-agents.md` step 5); the deletion rides the user's normal commit flow.
+**Then mark consumed and delete the run directory.** Once the report has been delivered and any critical destination recorded, the findings are fully consumed — the report and critical REQs are the permanent record. If the user asked to keep the raw findings, copy them into `do-work/deliverables/` first. Set the manifest's `Status:` line to `consumed`, then delete `do-work/runs/code-review-<ts>/` as the final step (`crew-members/background-agents.md` step 5); the deletion rides the user's normal commit flow.
 
 ## Health Rating Guidelines
 
@@ -344,7 +343,7 @@ Do NOT auto-create REQs without confirmation. The report itself is the primary o
 
 ## Rules
 
-- **Source-code read-only in every mode.** Writes are limited to this action's own run state (`do-work/runs/code-review-<ts>/`) and, with explicit user confirmation, queue metadata (Step 10) — never project source files.
+- **Source-code read-only in every mode.** Writes are limited to this action's own run state (`do-work/runs/code-review-<ts>/`) and automatic `impact-critical` queue metadata (Step 10) — never project source files.
 - **Be specific.** Every finding must include file paths and line references. "Error handling is inconsistent" is useless — "`src/api/users.ts:45` uses try/catch with custom AppError, but `src/api/orders.ts:72` uses bare throw with string messages" is useful.
 - **Show both sides.** For consistency findings, always show the two (or more) patterns you found. The user needs to see the contrast.
 - **Respect conventions from prime files.** If a prime file says "we use god files for route handlers," don't flag the god file as a problem. Prime files are the project's own voice.

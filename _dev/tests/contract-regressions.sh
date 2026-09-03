@@ -5796,45 +5796,12 @@ assert_contains \
   "actions/validate-feedback.md" \
   '\*\*Surface-cost:\*\* N/A / Earned / Flagged' \
   'validate-feedback per-finding output must expose the rubric result to the reader.'
-
-# Review finding-follow-up closure seam (REQ-170 remediation). The review consumer now
-# rejects a finding-origin REQ without matching closure evidence, so its own follow-up
-# producer must emit the canonical proof shape instead of creating work that cannot pass.
+# Review finding-follow-up closure seam (REQ-170): critical producers retain proof.
 review_finding_closure_gate_block="$(sed -n '/^6\. \*\*Enforce finding closure\*\*/,/^\*\*What NOT to do:\*\*/p' "$core_root/actions/review-work.md")"
-review_generated_followup_template_block="$(sed -n '/^For each finding that routes to its own REQ/,/^\*\*When the root cause is ambiguous requirements/p' "$core_root/actions/review-work.md")"
-
 assert_block_contains \
   "$review_finding_closure_gate_block" \
   'captured GREEN.*fails before/passes after.*exact named finding surface was deleted' \
   'review-work finding-closure consumer must keep the matching captured-GREEN-or-deletion gate.'
-
-assert_block_contains \
-  "$review_generated_followup_template_block" \
-  '^review_generated: true$' \
-  'review-work review-follow-up template probe must stay scoped to the review_generated producer.'
-
-for proof_field in 'RED prompt/case' 'Why RED now' 'GREEN when' 'Validation'; do
-  assert_block_contains \
-    "$review_generated_followup_template_block" \
-    "^\\*\\*${proof_field}:\\*\\*" \
-    "review-work review-generated follow-up template must emit the canonical Red-Green Proof field: ${proof_field}."
-done
-
-assert_block_contains \
-  "$review_generated_followup_template_block" \
-  'RED prompt/case:.*Named regression test/check that fails before the fix.*exact finding surface to delete' \
-  'review-work review-generated follow-up template must name a fail-before regression check or exact deletion surface.'
-
-assert_block_contains \
-  "$review_generated_followup_template_block" \
-  'GREEN when:.*same named test/check passes after the fix.*exact named finding surface is absent' \
-  'review-work review-generated follow-up template must pair the producer RED with matching pass-after or deletion GREEN.'
-
-assert_block_contains \
-  "$review_generated_followup_template_block" \
-  'Validation:.*actions/work-reference\.md.*Finding-Closure Ratchet' \
-  'review-work review-generated follow-up template must cite the canonical Finding-Closure Ratchet from its proof block.'
-
 # Every shipped action template that emits the exact marker inherits the same consumer
 # gate. Enumerate fenced producer blocks from the shipped actions so a future package or
 # producer cannot appear outside this ratchet merely because its filename was not listed.
@@ -8471,9 +8438,42 @@ assert_file_not_contains \
   "skills/do-work/actions/work-reference.md" \
   'constraints on the hand edit' \
   'the active release reference must not restate lockfile hand editing.'
-
-if [ "$fail_count" -gt 0 ]; then
-  exit 1
-fi
-
+# REQ-531 — automatic finding follow-ups are critical-only; lower-impact findings
+# stay in their report/current REQ, and explicit capture is the promotion boundary.
+review_followup_block="$(sed -n '/^### Step 10: Create Follow-up REQs/,/^### /p' "$core_root/actions/review-work.md")"
+discovered_tasks_block="$(sed -n '/^## Discovered Tasks Classification (Step 8)/,/^## Failure Classification/p' "$core_root/actions/work-reference.md")"
+fold_first_block="$(sed -n '/^## Fold-First Rule/,/^## Request File Formats/p' "$core_root/actions/capture-reference.md")"
+for report_writer_path in skills/do-work/actions/review-work.md skills/do-work-toolbox/actions/code-review.md; do
+  assert_contains "$report_writer_path" 'noncritical.*line.*ends.*report only' "$report_writer_path must suffix every noncritical finding line with report only (REQ-531)."
+  assert_contains "$report_writer_path" 'None \(N findings report only\)' "$report_writer_path must name the all-report-only Follow-ups created summary (REQ-531)."
+done
+assert_block_contains \
+  "$review_followup_block" \
+  'Only `impact-critical` findings.*auto-queue' \
+  'review-work Step 10 must limit automatic follow-up creation to impact-critical findings (REQ-531).'
+assert_block_contains \
+  "$review_followup_block" \
+  'do-work capture.*quot.*finding line' \
+  'review-work must explain how to promote a report-only finding through explicit capture (REQ-531).'
+assert_block_not_contains \
+  "$review_followup_block" \
+  'prose-backlog|status: pending-answers|new sweep' \
+  'review-work must not route noncritical findings into any automatic queue or prose-backlog destination (REQ-531).'
+assert_block_contains \
+  "$discovered_tasks_block" \
+  'noncritical discover.*current.*REQ.*report only' \
+  'builder discoveries below impact-critical must remain in the current REQ as report-only findings (REQ-531).'
+assert_block_not_contains \
+  "$discovered_tasks_block" \
+  'Test-hygiene carve-out|test-hygiene discovery|status: pending-answers' \
+  'Discovered Tasks Classification must not retain test-hygiene or consent-queue exceptions (REQ-531).'
+assert_block_contains \
+  "$fold_first_block" \
+  '4\. \*\*No match otherwise → report only' \
+  'Fold-First destination 4 must be report-only for automatic finding flows (REQ-531).'
+assert_block_contains \
+  "$fold_first_block" \
+  'explicit.*do-work capture.*quot.*finding line' \
+  'Fold-First must preserve explicit manual promotion of a quoted finding (REQ-531).'
+[ "$fail_count" -eq 0 ] || exit 1
 printf 'Contract regression checks passed.\n'
