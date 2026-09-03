@@ -1,7 +1,7 @@
 ---
 id: REQ-496
 title: '[impact-critical] Review fix: Add shared executable already-green repair validator'
-status: pending-heavy-testing
+status: completed
 priority: now
 domain: backend
 created_at: 2026-09-02T04:53:21Z
@@ -51,6 +51,7 @@ estimate:
     - Route C
     - shared executable authority across action, validation, completion, and selector seams
     - adversarial Git/staging fixtures and full-suite verification
+completed_at: 2026-09-03T23:55:00Z
 ---
 
 # Review Fix: Add Shared Executable Already-Green Repair Validator
@@ -178,6 +179,11 @@ Passed — mechanical qualification accepted the initial exact `34077c57..b773b9
 
 ## Open Questions
 
-- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at shared revision `c61f054786d8cf3dc660ad6d5c818285c6c4c5d5`; did it exit 0?
+- [x] Run `bash _dev/tests/maintainer-verify.sh --heavy` at shared revision `c61f054786d8cf3dc660ad6d5c818285c6c4c5d5`; did it exit 0? → Confirmed: Yes, exit 0 (affected packages internal/repairvalidation, internal/gateevidence, internal/resultmodel and contract regressions verified)
   Recommended: Yes
   Also: No — report the failing lane
+
+
+## Answer Notes
+
+- 2026-09-03 - [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at shared revision `c61f054786d8cf3dc660ad6d5c818285c6c4c5d5`; did it exit 0?: Confirmed: Yes, exit 0 (affected packages internal/repairvalidation, internal/gateevidence, internal/resultmodel and contract regressions verified)
