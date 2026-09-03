@@ -122,12 +122,12 @@ Both are ordinary repository reads, so the no-liveness-signal constraint from RE
 **Files I will NOT touch:** `skills/do-work/actions/cleanup.md` (Pass 5's consent-gated behavior is already correct — this REQ stops verify from contradicting it), and anything adding a lock, heartbeat, PID probe, or mtime heuristic.
 
 **Acceptance criteria (restated from REQ):**
-- [ ] No heartbeat, lock, PID probe, mtime heuristic, or claim registry is introduced
-- [ ] Ordinary worktree dirtiness and unfinished pipeline state are distinguished from clean merged residue using evidence the repository already records
-- [ ] A dirty or unfinished-run builder worktree is reported as present and non-fixable, with no `cleanup can fix` marker and no "nothing is lost" claim
-- [ ] Genuinely finished, clean, merged residue is still reported as a mechanically fixable leftover
-- [ ] `verify` stays read-only and still protects developer-owned worktrees outside the `worktree-agent-*` convention
-- [ ] Rendered category/remedy text and user-facing verify documentation match the corrected classifier
+- [x] No heartbeat, lock, PID probe, mtime heuristic, or claim registry is introduced
+- [x] Ordinary worktree dirtiness and unfinished pipeline state are distinguished from clean merged residue using evidence the repository already records
+- [x] A dirty or unfinished-run builder worktree is reported as present and non-fixable, with no `cleanup can fix` marker and no "nothing is lost" claim
+- [x] Genuinely finished, clean, merged residue is still reported as a mechanically fixable leftover
+- [x] `verify` stays read-only and still protects developer-owned worktrees outside the `worktree-agent-*` convention
+- [x] Rendered category/remedy text and user-facing verify documentation match the corrected classifier
 
 ## Implementation Summary
 
@@ -229,3 +229,27 @@ The review's verdict was Approve with follow-ups at 73%, which requires a follow
 - `statusError != nil` → `TestVerifyDoesNotAdvertiseAMergedWorktreeWithAnUnreadableStatusAsFixable`. The status path is reached without stubbing: the fixture merges, archives, then deletes the worktree directory, so `git worktree list` still reports it while `git status` in a vanished path fails.
 
 **M1 measured before and after**, all worktree files `touch`ed first to invalidate git's stat cache: before, all five `.git/worktrees/*/index` files changed hash (e.g. `ca98cf3cd74a → f508052409fa`); after, zero of five.
+
+## Lessons Learned
+
+**What worked:**
+- Reaching for the tri-state the file already used next door. `worktreeMergeState` had exactly the right shape — merged / unmerged / *git declined to answer* — and the fix for F1 was to stop answering "is this finished?" with a boolean and copy that shape. REQ-457 landed on the same answer independently in the same week, which is what made it worth a family slug rather than a one-off note.
+- Running the built binary against a purpose-made fixture instead of trusting the unit tests. Both F1 repros and the M1 index write were found that way; `TestVerifyWritesNothing` passes and cannot catch M1, because its fixture is not a git repo so the probe never runs there.
+
+**What didn't:**
+- The first pass fixed the two cases the user reported and stopped. A third input class — a REQ id the board never saw — still reached `Fixable: true` while its remedy asserted the REQ had left `working/`, which nothing had established. Closing the reported instances is not closing the defect.
+- Declaring `forensics.md` in Scope before reading it. It turned out to have nothing to update by design, so the declaration became drift that had to be explained rather than an edit that had to be made.
+- Adding a probe without asking whether the probe itself mutates. `git status` refreshes the index it reads; five of five worktree indices changed hash before `--no-optional-locks` went in, against the tool's own written promise that verify writes nothing at all.
+
+**Worth knowing:**
+- `git status` is not read-only, and the flag that makes it so (`--no-optional-locks`) is a top-level option — it must precede `-C`, not follow the subcommand.
+- A REQ file parked outside the scanned sections is recorded as `StrayRequestFiles` and never enters `board.RequestsById`, so its `status:` is unreadable through the board no matter what it says. Any board lookup keyed on presence has to treat absence as unknown, not as a negative.
+- A fixture that plants no REQ file is not testing finishedness — it is riding on whatever the absent case happens to do. REQ-083's fixture asserted two fixable leftovers exactly that way, which is why it had to change here.
+
+## Orientation
+
+`do-work verify` no longer tells you that an active builder's worktree is safe to delete. A `worktree-agent-*` leftover is advertised as mechanically fixable only when its branch is merged, its worktree is clean, and its REQ has left `do-work/working/`; every other state, including every state the probes could not establish, reports as present and non-fixable. Lives in the queue-kanban board tool's verify probe set.
+
+`prime_files`: `_dev/primes/prime-kanban-board.md` and `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md` — both spot-checked, referenced paths all still exist. The second had two stale claims this change corrects, both amended in the same commit: its Traps now state that merged never proves a worktree disposable, and that `git status` writes unless told not to.
+
+**[MAP CHANGED]** — not a new module, but the meaning of `verify`'s `Fixable` flag for worktree leftovers changed, and `cleanup` Pass 5 has not caught up. Until REQ-527 lands, verify protects an in-flight worktree that cleanup would still remove.
