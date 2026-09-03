@@ -141,6 +141,8 @@ func TestBlankedRestorationRequiresExactConsentAndUsesGitHistory(t *testing.T) {
 func TestMergedCleanBuilderWorktreeIsAutomaticButUnmergedNeedsExactConsent(t *testing.T) {
 	repositoryRoot := cleanupRepository(t)
 	writeCleanupFile(t, repositoryRoot, "README.md", "fixture\n")
+	writeCleanupFile(t, repositoryRoot, "do-work/archive/REQ-111-merged.md", cleanupRequest("REQ-111", "completed", ""))
+	writeCleanupFile(t, repositoryRoot, "do-work/archive/REQ-112-unmerged.md", cleanupRequest("REQ-112", "completed", ""))
 	commitCleanupFixture(t, repositoryRoot)
 	mergedName := "worktree-agent-REQ-111-merged"
 	mergedPath := filepath.Join(t.TempDir(), mergedName)
@@ -171,6 +173,98 @@ func TestMergedCleanBuilderWorktreeIsAutomaticButUnmergedNeedsExactConsent(t *te
 	}
 	if _, err := os.Stat(unmergedPath); !os.IsNotExist(err) {
 		t.Fatalf("discarded worktree remains: %v", err)
+	}
+}
+
+func TestMergedCleanBuilderWorktreeRequiresSettledRequestEvidence(t *testing.T) {
+	testCases := []struct {
+		name      string
+		requestID string
+		seed      func(*testing.T, string)
+		wantState string
+	}{
+		{
+			name:      "working request remains active",
+			requestID: "REQ-114",
+			seed: func(t *testing.T, repositoryRoot string) {
+				writeCleanupFile(t, repositoryRoot, "do-work/working/REQ-114-active.md", cleanupRequest("REQ-114", "claimed", ""))
+			},
+			wantState: "working",
+		},
+		{
+			name:      "request identity is absent",
+			requestID: "REQ-115",
+			seed: func(t *testing.T, repositoryRoot string) {
+				writeCleanupFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "# no request\n")
+			},
+			wantState: "absent",
+		},
+		{
+			name:      "request identity is ambiguous",
+			requestID: "REQ-116",
+			seed: func(t *testing.T, repositoryRoot string) {
+				writeCleanupFile(t, repositoryRoot, "do-work/queue/REQ-116-one.md", cleanupRequest("REQ-116", "pending", ""))
+				writeCleanupFile(t, repositoryRoot, "do-work/archive/REQ-116-two.md", cleanupRequest("REQ-116", "completed", ""))
+			},
+			wantState: "ambiguous",
+		},
+		{
+			name:      "request identity is malformed",
+			requestID: "REQ-117",
+			seed: func(t *testing.T, repositoryRoot string) {
+				writeCleanupFile(t, repositoryRoot, "do-work/archive/REQ-117-malformed.md", "not frontmatter\n")
+			},
+			wantState: "malformed",
+		},
+		{
+			name:      "request identity is unreadable",
+			requestID: "REQ-118",
+			seed: func(t *testing.T, repositoryRoot string) {
+				writeCleanupFile(t, repositoryRoot, "do-work/archive/target.md", cleanupRequest("REQ-118", "completed", ""))
+				linkPath := filepath.Join(repositoryRoot, "do-work", "archive", "REQ-118-linked.md")
+				if err := os.Symlink("target.md", linkPath); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantState: "unreadable",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			repositoryRoot := cleanupRepository(t)
+			writeCleanupFile(t, repositoryRoot, "README.md", "fixture\n")
+			testCase.seed(t, repositoryRoot)
+			commitCleanupFixture(t, repositoryRoot)
+			worktreeName := "worktree-agent-" + testCase.requestID + "-leftover"
+			worktreePath := filepath.Join(t.TempDir(), worktreeName)
+			runCleanupGit(t, repositoryRoot, "worktree", "add", "-q", "-b", worktreeName, worktreePath)
+
+			changes, findings := ApplyWorktreeRepairs(context.Background(), repositoryRoot, WorktreeRepairOptions{})
+			if len(changes) != 0 || len(findings) != 1 || findings[0].Code != "WORKTREE-REQUIRES-CONSENT" {
+				t.Fatalf("default cleanup changes=%#v findings=%#v", changes, findings)
+			}
+			if len(findings[0].AffectedIDs) != 1 || findings[0].AffectedIDs[0] != testCase.requestID {
+				t.Fatalf("affected ids = %#v", findings[0].AffectedIDs)
+			}
+			if len(findings[0].Evidence) != 1 || !strings.Contains(findings[0].Evidence[0], "request_state="+testCase.wantState) {
+				t.Fatalf("evidence = %#v", findings[0].Evidence)
+			}
+			if _, err := os.Stat(worktreePath); err != nil {
+				t.Fatalf("worktree was removed without consent: %v", err)
+			}
+			if !strings.Contains(runCleanupGit(t, repositoryRoot, "branch", "--list", worktreeName), worktreeName) {
+				t.Fatal("branch was removed without consent")
+			}
+
+			changes, findings = ApplyWorktreeRepairs(context.Background(), repositoryRoot, WorktreeRepairOptions{DiscardNames: []string{worktreeName}})
+			if len(findings) != 0 || len(changes) != 1 {
+				t.Fatalf("explicit discard changes=%#v findings=%#v", changes, findings)
+			}
+			if _, err := os.Stat(worktreePath); !os.IsNotExist(err) {
+				t.Fatalf("explicitly discarded worktree remains: %v", err)
+			}
+		})
 	}
 }
 
@@ -219,8 +313,9 @@ func TestBlankedRecoveryUsesRecordedImplementationHashAcrossAllLiveLayouts(t *te
 func TestWorktreeEnumerationHandlesNULNewlineDetachedAndAbsentConsent(t *testing.T) {
 	repositoryRoot := cleanupRepository(t)
 	writeCleanupFile(t, repositoryRoot, "README.md", "fixture\n")
+	writeCleanupFile(t, repositoryRoot, "do-work/archive/REQ-209-detached.md", cleanupRequest("REQ-209", "completed", ""))
 	commitCleanupFixture(t, repositoryRoot)
-	detachedPath := filepath.Join(t.TempDir(), "worktree-agent-REQ-209 space\nline")
+	detachedPath := filepath.Join(t.TempDir(), "worktree-agent-REQ-209-detached\nline")
 	runCleanupGit(t, repositoryRoot, "worktree", "add", "-q", "--detach", detachedPath, "HEAD")
 	changes, findings := ApplyWorktreeRepairs(context.Background(), repositoryRoot, WorktreeRepairOptions{})
 	if len(findings) != 0 || len(changes) != 1 {
