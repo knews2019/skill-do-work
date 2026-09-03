@@ -17,3 +17,11 @@ Wave 2 selector order: REQ-490, REQ-496, REQ-512.
 | lane-1 | REQ-490 — Compute wave depth from satisfied duplicate records | `worktree-agent-REQ-490-compute-wave-depth-from-satisfied-duplicate-records` | `REQ-490-handback.md` | parked: pending-heavy-testing at `70b3be19` |
 | lane-2 | REQ-496 — Add shared executable already-green repair validator | `worktree-agent-REQ-496-add-shared-executable-already-green-repair-validator` | `REQ-496-handback.md` | parked: pending-heavy-testing at `30ccc349` |
 | lane-3 | REQ-512 — Complete legacy finalization semantic ownership | `worktree-agent-REQ-512-complete-legacy-finalization-semantic-ownership` | `REQ-512-handback.md` | parked: pending-heavy-testing at `c61f0547`; terminal target completed-with-issues |
+
+Wave 3 selector order: REQ-514, REQ-527, REQ-534.
+
+| Lane | REQ / description | Worktree | Handback | Status |
+|---|---|---|---|---|
+| lane-1 | REQ-514 — Refusals never name themselves as the fix | `worktree-agent-REQ-514-refusals-never-name-themselves-as-the-fix` | `REQ-514-handback.md` | dispatched |
+| lane-2 | REQ-527 — Teach cleanup Pass 5 that merged is not finished | `worktree-agent-REQ-527-teach-cleanup-pass-5-that-merged-is-not-finished` | `REQ-527-handback.md` | dispatched |
+| lane-3 | REQ-534 — Run blocked probes from repository root and propagate interruptions | `worktree-agent-REQ-534-run-blocked-probes-from-the-repository-root-and-propagate-interruptions` | `REQ-534-handback.md` | dispatched |
