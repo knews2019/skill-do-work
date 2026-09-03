@@ -1,7 +1,7 @@
 ---
 id: REQ-460
 title: '[impact-rule-change] Make outside-text delimiter containment condition-complete'
-status: claimed
+status: completed
 created_at: 2026-09-01T00:12:38Z
 user_request: UR-081
 domain: general
@@ -34,6 +34,9 @@ estimate:
     - 1 subsystem involved
     - 4 acceptance criteria
     - cross-route regression gates
+completed_at: 2026-09-03T09:15:00Z
+commit: 7e16f05
+release_at: 2026-09-03T09:15:00Z
 ---
 
 # Make Outside-Text Delimiter Containment Condition-Complete

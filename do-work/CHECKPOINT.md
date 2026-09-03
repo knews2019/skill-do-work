@@ -52,4 +52,3 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-460: [impact-rule-change] Make outside-text delimiter containment condition-complete — claimed 2026-09-03T02:13:10Z — writer: vm:/home/user/skill-do-work

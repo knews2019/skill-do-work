@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.266.4 — Answer Summaries Are Judged by Condition, Not by a Prefix List (2026-09-03)
+
+When `do-work clarify` records a one-line answer, it decides whether the text is safe to write straight into the REQ or has to be carried separately. That decision used to check ten specific line openings, so `***`, `___`, `+++`, `:::note`, `$$`, a bare `-`, a bare `1.`, a table row and indented text all slipped through as ordinary prose.
+
+- The check now asks the actual question — could a Markdown reader take this for the document's own structure? — instead of matching a list of examples, so syntax nobody thought to list is covered too.
+- Confusing cases are carried separately rather than inlined. Your text is never altered or lost either way; a short plain answer that now gets carried is the cost of that choice.
+- The old check trimmed leading spaces before looking, which is how indented text escaped it entirely.
+
 ## 0.266.3 — Active Worktrees Are No Longer Called Leftovers (2026-09-03)
 
 `do-work verify` used to tell you an active builder's worktree was safe to delete. A merged branch proves the commits are safe; it says nothing about the worktree, and verify was reading that one fact as both.
