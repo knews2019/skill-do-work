@@ -9,6 +9,7 @@ prime_files: [_dev/primes/prime-kanban-board.md]
 tdd: true
 suggested_spec:
 depends_on: []
+assigned_to: 'after-drain'
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
@@ -56,3 +57,7 @@ Firm: each finding card full width, findings stacked vertically. Latitude grante
 
 ---
 *Source: do-work capture-request [Image #1] instead of boxes like this, make it a longer box (full width) and stacked vertically), basically improve the UI/UX at the moment it looks like it is a REQ card, which is not.*
+
+## Addendum (2026-09-03, 23:45 local)
+
+User added (23:35 local, applying the velocity report's triage table): deferred until the queue drain finishes. `assigned_to: 'after-drain'` makes the default scan skip and report this REQ; explicit targeting (`do-work run REQ-482`) clears it. Not a judgment on the change, only on when.

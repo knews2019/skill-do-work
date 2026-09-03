@@ -66,3 +66,10 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 
 ---
 *Source: capture of the orchestrator simplification request (UR-098).*
+
+## Addendum (2026-09-03, 23:45 local)
+
+User added (23:35 local, "yes, on the nine cancelation", applying the velocity report's triage table):
+
+- REQ-471 (flow and reader consistency plus documentation for the gate-blocked set-aside) was cancelled into this sweep. When deleting `work-reference.md` sections here, also sweep any surviving sentence that says an unrelated canonical-gate failure must preserve a claim and stop the session; the shipped behaviour is the deferral lifecycle (REQ-491 to REQ-494) plus the retry-once rule REQ-559 adds, and queue summaries must distinguish blocked work, pending user decisions and dependency-gated work. One sweep, no new section.
+- Coherence check: no contradiction; this widens the sweep's search condition by one sentence family.
