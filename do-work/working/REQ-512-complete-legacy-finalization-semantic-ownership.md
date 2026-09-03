@@ -20,6 +20,8 @@ route: C
 planning_at: 2026-09-03T22:37:36Z
 exploration_at: 2026-09-03T22:37:36Z
 dispatch_at: 2026-09-03T22:39:03Z
+implementation_at: 2026-09-03T22:52:46Z
+builder_handback_at: 2026-09-03T22:52:46Z
 write_set:
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_req499_test.go
@@ -37,9 +39,9 @@ estimate:
 # Review Fix: Complete Legacy Finalization Semantic Ownership
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Inventoried tracked follow-up and npm/Cargo/uv ownership seams, then froze a bounded-fold and changed-source-first three-file plan.
+- [x] **[APPLY]:** Added RED/GREEN fold/workspace matrices and implemented the closed envelope plus source-derived mirror selection within the declared files.
+- [x] **[UNIFY]:** Reviewed all three changed files; focused, race, vet, full-module, Go 1.25, public recovery, formatting, and diff checks pass with no lifecycle, release, generated, or debug drift.
 
 ## What
 
@@ -116,3 +118,16 @@ None.
 **Tests:** Direct canonical fast gate passed and was recorded at the shared wave baseline before source dispatch.
 
 **Dependencies:** REQ-499 is completed and supplies the existing recovery/finalization authority and regression matrix this addendum tightens.
+
+## Implementation Summary
+
+**Builder commit:** `54023d91063fb464eba028c07569a8377dd935a3`
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_req499_test.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_req512_test.go`
+
+**What was done:** Tracked legacy follow-ups now require one closed kind/request-bound fold ending in an exact terminal marker at EOF. Release association records dirty manifest transitions before selecting mirrors, then derives only each changed source's npm, Cargo, or uv workspace descriptors; clean equal-version roots remain topology, while changed roots retain their exact root-lock obligations. Source-less dirty release metadata and every enumeration/read/parse ambiguity continue to refuse before mutation.
+
+**Builder verification:** The unheaded foreign tail was accepted and all three member-only ecosystems refused their unchanged equal-version roots before the fix. The new fold/three-ecosystem matrix, existing stale-mirror recovery tests, race suite, vet, full module, Go 1.25, and heavy public recovery/protected-path checks all pass afterward. Durable evidence is in `do-work/runs/work-2026-09-03-214500/REQ-512-handback.md`.
