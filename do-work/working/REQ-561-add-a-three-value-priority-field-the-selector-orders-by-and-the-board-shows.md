@@ -61,6 +61,7 @@ write_set:
 claimed_at: 2026-09-03T20:58:09Z
 planning_at: 2026-09-03T21:10:13Z
 exploration_at: 2026-09-03T21:17:07Z
+dispatch_at: 2026-09-03T21:18:56Z
 ---
 
 # Add a Three-Value Priority Field the Selector Orders By and the Board Shows
