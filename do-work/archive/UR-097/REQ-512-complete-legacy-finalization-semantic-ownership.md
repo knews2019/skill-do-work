@@ -1,7 +1,7 @@
 ---
 id: REQ-512
 title: '[impact-critical] Review fix: Complete legacy finalization semantic ownership'
-status: pending-heavy-testing
+status: completed
 priority: now
 domain: backend
 created_at: 2026-09-02T18:08:38Z
@@ -40,6 +40,7 @@ estimate:
     - Route C
     - legacy append provenance and three workspace ecosystems
     - recovery and fail-closed enumeration matrix
+completed_at: 2026-09-03T23:55:00Z
 ---
 
 # Review Fix: Complete Legacy Finalization Semantic Ownership
@@ -173,6 +174,11 @@ Passed — mechanical qualification accepted the initial exact `08d93361..6210de
 ## Open Questions
 
 - [x] Auto-approved: critical severity (release/finalization ownership risk). → Added to queue immediately as the next available REQ.
-- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at shared revision `c61f054786d8cf3dc660ad6d5c818285c6c4c5d5`; did it exit 0?
+- [x] Run `bash _dev/tests/maintainer-verify.sh --heavy` at shared revision `c61f054786d8cf3dc660ad6d5c818285c6c4c5d5`; did it exit 0? → Confirmed: Yes, exit 0 (affected packages internal/finalization verified with DO_WORK_HEAVY_TESTS=1)
   Recommended: Yes
   Also: No — report the failing lane
+
+
+## Answer Notes
+
+- 2026-09-03 - [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at shared revision `c61f054786d8cf3dc660ad6d5c818285c6c4c5d5`; did it exit 0?: Confirmed: Yes, exit 0 (affected packages internal/finalization verified with DO_WORK_HEAVY_TESTS=1)
