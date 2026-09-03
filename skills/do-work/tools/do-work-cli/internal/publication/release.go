@@ -2,9 +2,7 @@ package publication
 
 import (
 	"bytes"
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -28,15 +26,14 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 	if compareSemver(oldVersion, newVersion) != 1 {
 		return refusedPlan(plan, "RELEASE-VERSION-NOT-INCREASING", "new version must be valid semver and strictly greater", nil)
 	}
+	if refusal := validateReleaseOwnership(release); refusal != nil {
+		plan.Refusal = refusal
+		return plan
+	}
 	for _, target := range release.Targets {
 		path, pathError := containedPath(target.Path)
 		if pathError != nil {
 			return refusedPlan(plan, "RELEASE-PATH-UNSAFE", pathError.Error(), nil, target.Path)
-		}
-		if !release.MaintainerRelease {
-			if gap := releaseTargetOwnershipGap(repositoryRoot, path, false); !gap.ownershipProven() {
-				return refusedPlan(plan, "RELEASE-TARGET-OWNERSHIP-UNVERIFIED", gap.refusalReason(path), nil, path)
-			}
 		}
 		if target.OldVersion != oldVersion || target.NewVersion != newVersion {
 			return refusedPlan(plan, "RELEASE-MIRROR-DISAGREEMENT", "all version mirrors must declare the same old and new versions", nil, path)
@@ -55,16 +52,6 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 		}
 		plan.Mutations = append(plan.Mutations, PlannedMutation{Kind: MutationReplace, Path: path, ExpectedBytes: expectedBytes, Contents: newBytes})
 	}
-	targetedPaths := map[string]bool{}
-	for _, mutation := range plan.Mutations {
-		targetedPaths[mutation.Path] = true
-	}
-	for _, requiredMirror := range release.RequiredMirrors {
-		mirrorPath, mirrorError := containedPath(requiredMirror)
-		if mirrorError != nil || !targetedPaths[mirrorPath] {
-			return refusedPlan(plan, "RELEASE-MIRROR-UNDECLARED", "every discovered version mirror must be declared as a target", nil, requiredMirror)
-		}
-	}
 	var changelogMirrorBytes []byte
 	var changelogMirrorExpected []byte
 	var changelogMirrorCreate *bool
@@ -72,11 +59,6 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 		path, pathError := containedPath(changelog.Path)
 		if pathError != nil {
 			return refusedPlan(plan, "RELEASE-PATH-UNSAFE", pathError.Error(), nil, changelog.Path)
-		}
-		if !release.MaintainerRelease {
-			if gap := releaseTargetOwnershipGap(repositoryRoot, path, changelog.Create); !gap.ownershipProven() {
-				return refusedPlan(plan, "RELEASE-TARGET-OWNERSHIP-UNVERIFIED", gap.refusalReason(path), nil, path)
-			}
 		}
 		newBytes, _, newError := readPayload(repositoryRoot, changelog.NewPayload)
 		if newError != nil {
@@ -137,6 +119,82 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 	return plan
 }
 
+func validateReleaseOwnership(release *ReleaseManifest) *Refusal {
+	mutationPaths := map[string]bool{}
+	mutationOrder := []string{}
+	for _, target := range release.Targets {
+		path, err := containedPath(target.Path)
+		if err != nil {
+			return &Refusal{Code: "RELEASE-PATH-UNSAFE", Reason: err.Error(), Paths: []string{target.Path}}
+		}
+		if !mutationPaths[path] {
+			mutationOrder = append(mutationOrder, path)
+		}
+		mutationPaths[path] = true
+	}
+	for _, changelog := range release.Changelogs {
+		path, err := containedPath(changelog.Path)
+		if err != nil {
+			return &Refusal{Code: "RELEASE-PATH-UNSAFE", Reason: err.Error(), Paths: []string{changelog.Path}}
+		}
+		if !mutationPaths[path] {
+			mutationOrder = append(mutationOrder, path)
+		}
+		mutationPaths[path] = true
+	}
+
+	projectOwned := map[string]bool{}
+	projectOwnedOrder := []string{}
+	for _, declaredPath := range release.ProjectOwnedTargets {
+		path, err := containedPath(declaredPath)
+		if err != nil {
+			return &Refusal{Code: "RELEASE-PATH-UNSAFE", Reason: err.Error(), Paths: []string{declaredPath}}
+		}
+		if projectOwned[path] {
+			return &Refusal{Code: "RELEASE-OWNERSHIP-DUPLICATE", Reason: "project-owned release target is declared more than once; declare each normalized path exactly once", Paths: []string{path}}
+		}
+		projectOwned[path] = true
+		projectOwnedOrder = append(projectOwnedOrder, path)
+	}
+
+	mirrors := map[string]bool{}
+	mirrorOrder := []string{}
+	for _, declaredPath := range release.RequiredMirrors {
+		path, err := containedPath(declaredPath)
+		if err != nil {
+			return &Refusal{Code: "RELEASE-PATH-UNSAFE", Reason: err.Error(), Paths: []string{declaredPath}}
+		}
+		if !release.MaintainerRelease {
+			return &Refusal{Code: "RELEASE-MIRROR-ILLEGAL", Reason: "required_mirrors is maintainer-only; classify consumer release targets as project_owned_targets", Paths: []string{path}}
+		}
+		if mirrors[path] {
+			return &Refusal{Code: "RELEASE-OWNERSHIP-DUPLICATE", Reason: "maintainer mirror is declared more than once; declare each normalized path exactly once", Paths: []string{path}}
+		}
+		if projectOwned[path] {
+			return &Refusal{Code: "RELEASE-OWNERSHIP-OVERLAP", Reason: "release target cannot be both project-owned and a maintainer mirror", Paths: []string{path}}
+		}
+		mirrors[path] = true
+		mirrorOrder = append(mirrorOrder, path)
+	}
+
+	for _, path := range mutationOrder {
+		if !projectOwned[path] && !mirrors[path] {
+			return &Refusal{Code: "RELEASE-OWNERSHIP-MISSING", Reason: "release target lacks exact ownership evidence; declare it once in project_owned_targets or, for maintainer releases only, required_mirrors", Paths: []string{path}}
+		}
+	}
+	for _, path := range projectOwnedOrder {
+		if !mutationPaths[path] {
+			return &Refusal{Code: "RELEASE-OWNERSHIP-EXTRA", Reason: "project-owned declaration does not name a version or changelog target", Paths: []string{path}}
+		}
+	}
+	for _, path := range mirrorOrder {
+		if !mutationPaths[path] {
+			return &Refusal{Code: "RELEASE-OWNERSHIP-EXTRA", Reason: "maintainer-mirror declaration does not name a version or changelog target", Paths: []string{path}}
+		}
+	}
+	return nil
+}
+
 func compareSemver(oldVersion, newVersion string) int {
 	oldParts, oldOK := parseSemver(oldVersion)
 	newParts, newOK := parseSemver(newVersion)
@@ -171,173 +229,4 @@ func parseSemver(value string) ([3]int, bool) {
 		result[index] = parsed
 	}
 	return result, true
-}
-
-// releaseOwnershipGap names the ownership declaration a release target is
-// missing and the action that supplies it. The zero value means ownership is
-// proven. The remedy travels with the gap rather than being appended to every
-// refusal, because `maintainer_release` resolves exactly one of these gaps: a
-// caller whose target is merely uncommitted or ignored needs to commit it or
-// drop the ignore rule, and offering the maintainer escape hatch there would
-// steer them past the fix their gap actually needs.
-type releaseOwnershipGap struct {
-	MissingEvidence string
-	Remedy          string
-}
-
-func (gap releaseOwnershipGap) ownershipProven() bool {
-	return gap.MissingEvidence == ""
-}
-
-func (gap releaseOwnershipGap) refusalReason(path string) string {
-	return fmt.Sprintf("consumer release target %s is not proven project-owned: %s; %s", path, gap.MissingEvidence, gap.Remedy)
-}
-
-// releaseTargetOwnershipGap proves a consumer release target is a project-owned
-// source instead of inferring that from the absence of known dependency
-// directory names. It returns the ownership evidence that is missing or
-// contradicted, or the zero gap when ownership is established.
-//
-// Two declarations the repository itself owns supply the proof, and both are
-// required:
-//
-//   - Git's index is the repository's own statement of what its sources are, so
-//     a target that must already exist has to be tracked. A target the release
-//     creates cannot be in the index yet, so its attestation comes from the
-//     directory it is created in: that directory must already exist and the
-//     index must claim a source inside it, and `.gitignore` — the repository's
-//     own statement of what is not source — must not exclude the path. The
-//     attestation deliberately does not walk further up the tree, because the
-//     repository root always holds tracked sources: a root-anchored walk
-//     attests every not-yet-built `dist/`, cache or install tree, which is the
-//     state a real repository is in before those trees exist.
-//   - No directory between the repository root and the target's parent may carry
-//     a `SKILL.md` package marker. That marker is how an installed suite package
-//     declares it owns its own subtree, and is the same discriminator
-//     `repositorymodel.FindRepositoryRoot` and queue-kanban's repo-root walk use
-//     to tell an install apart from a directory merely named `do-work`. It is
-//     checked for created and existing targets alike.
-//
-// Neither half is sufficient alone. A committed vendored package satisfies the
-// index claim and is exposed only by its marker; a distribution output or cache
-// tree carries no marker and is exposed only by the index refusing to claim it.
-// When Git cannot answer at all the target stays unproven and the release
-// refuses, which is the fail-closed direction.
-func releaseTargetOwnershipGap(repositoryRoot, path string, willCreate bool) releaseOwnershipGap {
-	if marker := enclosingPackageMarker(repositoryRoot, path); marker != "" {
-		return releaseOwnershipGap{
-			MissingEvidence: fmt.Sprintf("%s declares an installed package that owns this subtree", marker),
-			Remedy:          "only maintainer_release may mutate a suite package's own metadata",
-		}
-	}
-	if !willCreate {
-		if !gitPathTracked(repositoryRoot, path) {
-			return releaseOwnershipGap{
-				MissingEvidence: "the repository does not track it, so Git does not attest it as a project source",
-				Remedy:          "commit the target so Git attests it as a project source, then release again",
-			}
-		}
-		return releaseOwnershipGap{}
-	}
-	if gitPathIgnored(repositoryRoot, path) {
-		return releaseOwnershipGap{
-			MissingEvidence: "the repository's own ignore rules exclude it from its sources",
-			Remedy:          "drop the ignore rule covering the target, or release a target the repository claims as a source",
-		}
-	}
-	parentDirectory := releaseTargetParentDirectory(path)
-	parentDescription := releaseDirectoryDescription(parentDirectory)
-	locationRemedy := fmt.Sprintf("commit a project source in %s first, or create the target where the repository already tracks sources", parentDescription)
-	if !directoryExists(repositoryRoot, parentDirectory) {
-		return releaseOwnershipGap{
-			MissingEvidence: fmt.Sprintf("its parent directory %s does not exist, so no project directory attests the new target's location", parentDescription),
-			Remedy:          locationRemedy,
-		}
-	}
-	if !gitDirectoryHoldsTrackedSources(repositoryRoot, parentDirectory) {
-		return releaseOwnershipGap{
-			MissingEvidence: fmt.Sprintf("the repository tracks no source in %s, so the new target's location is unattested", parentDescription),
-			Remedy:          locationRemedy,
-		}
-	}
-	return releaseOwnershipGap{}
-}
-
-// enclosingPackageMarker returns the repository-relative `SKILL.md` of the
-// outermost package that encloses path, or "" when no directory between the
-// repository root and the target's parent carries one. The repository root
-// itself is never examined: the marker means a nested unit owns its own
-// subtree, and a repository that is itself a package still owns its own files.
-//
-// Any filesystem entry at that name counts. A legitimate install cannot carry a
-// `SKILL.md` directory — both `suitemanifest.ValidateSuite` and the install
-// transaction require a non-empty regular file — and on a case-insensitive
-// filesystem an ancestor spelled `skill.md` is seen as a marker too. Both cases
-// refuse a release that could have been allowed rather than admitting one that
-// should not be, which is the direction to err in here.
-func enclosingPackageMarker(repositoryRoot, path string) string {
-	segments := strings.Split(filepath.ToSlash(path), "/")
-	directory := ""
-	for _, segment := range segments[:len(segments)-1] {
-		if directory == "" {
-			directory = segment
-		} else {
-			directory += "/" + segment
-		}
-		marker := directory + "/SKILL.md"
-		if _, statError := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(marker))); statError == nil {
-			return marker
-		}
-	}
-	return ""
-}
-
-// releaseTargetParentDirectory returns the repository-relative directory the
-// target sits directly in, or "." when the target sits at the repository root.
-func releaseTargetParentDirectory(path string) string {
-	parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(path)))
-	if parent == "/" {
-		return "."
-	}
-	return parent
-}
-
-func releaseDirectoryDescription(directory string) string {
-	if directory == "." {
-		return "the repository root"
-	}
-	return directory
-}
-
-func directoryExists(repositoryRoot, directory string) bool {
-	info, statError := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(directory)))
-	return statError == nil && info.IsDir()
-}
-
-// gitDirectoryHoldsTrackedSources reports whether the index claims at least one
-// path inside directory. An index entry equal to the directory itself — a
-// submodule gitlink, or a tracked symlink standing where a directory appears to
-// be — is not a source the repository keeps in that directory and attests
-// nothing about a target created beneath it.
-func gitDirectoryHoldsTrackedSources(repositoryRoot, directory string) bool {
-	command := exec.Command("git", "-C", repositoryRoot, "ls-files", "-z", "--", directory)
-	output, commandError := command.Output()
-	if commandError != nil {
-		return false
-	}
-	insidePrefix := ""
-	if directory != "." {
-		insidePrefix = directory + "/"
-	}
-	for _, entry := range strings.Split(string(output), "\x00") {
-		if entry != "" && entry != directory && strings.HasPrefix(entry, insidePrefix) {
-			return true
-		}
-	}
-	return false
-}
-
-func gitPathIgnored(repositoryRoot, path string) bool {
-	command := exec.Command("git", "-C", repositoryRoot, "check-ignore", "-q", "--", path)
-	return command.Run() == nil
 }

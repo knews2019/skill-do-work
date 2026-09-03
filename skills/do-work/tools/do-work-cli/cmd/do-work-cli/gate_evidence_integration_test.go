@@ -49,6 +49,20 @@ func TestGreenGateEvidenceLifecycle(t *testing.T) {
 	if logOnly.Outcome != "success" || !logOnly.GateEvidence.Matches || logOnly.GateEvidence.MatchBasis != "gate_log_only_descendant" || logOnly.GateEvidence.BaselineRevision != logOnly.GateEvidence.HeadRevision {
 		t.Fatalf("log-only check = %#v", logOnly)
 	}
+
+	// The already-green repair no-op lane: an unrelated commit moves HEAD, and the
+	// public CLI must still verify the record at the revision the no-op wrote down.
+	recordedRevision := logOnly.GateEvidence.RecordedRevision
+	writeGateEvidenceFixture(t, repositoryRoot, "project.txt", "peer edit\n")
+	runGateEvidenceGit(t, repositoryRoot, "commit", "-qam", "unrelated peer commit")
+	movedHead := runGateEvidenceCLI(t, binaryPath, repositoryRoot, "check-green-gate", append([]string{"--"}, gateCommand...)...)
+	if movedHead.Outcome != "success" || movedHead.GateEvidence.Matches {
+		t.Fatalf("HEAD-bound check after peer commit = %#v", movedHead)
+	}
+	targeted := runGateEvidenceCLI(t, binaryPath, repositoryRoot, "check-green-gate", append([]string{"--at-revision", recordedRevision, "--"}, gateCommand...)...)
+	if targeted.Outcome != "success" || !targeted.GateEvidence.Matches || targeted.GateEvidence.TargetRevision != recordedRevision || targeted.GateEvidence.BaselineRevision != recordedRevision {
+		t.Fatalf("targeted check after peer commit = %#v", targeted)
+	}
 }
 
 type gateEvidenceCLIResult struct {
@@ -59,6 +73,8 @@ type gateEvidenceCLIResult struct {
 		MatchBasis       string `json:"match_basis"`
 		BaselineRevision string `json:"baseline_revision"`
 		HeadRevision     string `json:"head_revision"`
+		TargetRevision   string `json:"target_revision"`
+		RecordedRevision string `json:"recorded_revision"`
 	} `json:"gate_evidence"`
 }
 

@@ -725,6 +725,7 @@ func TestMaintainerStrictBrowserBehaviorLaneRejectsZeroProbes(t *testing.T) {
 		"PATH="+t.TempDir(),
 		browserProbeBinaryOverride+"=",
 		strictBrowserBehaviorMarker+"=1",
+		strictJavaScriptBehaviorMarker+"=",
 	)
 	strictOutput, strictError := strictCommand.CombinedOutput()
 	if strictError == nil {
@@ -747,6 +748,7 @@ func TestMaintainerStrictBrowserBehaviorLane(t *testing.T) {
 	strictCommand.Env = testEnvironmentWithOverrides(
 		os.Environ(),
 		strictBrowserBehaviorMarker+"=1",
+		strictJavaScriptBehaviorMarker+"=",
 	)
 	strictOutput, strictError := strictCommand.CombinedOutput()
 	if strictError != nil {

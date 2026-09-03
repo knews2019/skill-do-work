@@ -59,6 +59,10 @@ None.
 **GREEN when:** No shipped instruction or doc says an unrelated canonical-gate failure preserves a claim and stops the session; each of the ten flows is verified consistent (with edits or an explicit no-change finding); summaries/roadmap render the gate-blocked shape; contract assertions updated in the same commit and `bash _dev/tests/contract-regressions.sh` exits zero.
 **Validation:** Inferred during capture (from the spec's acceptance tests)
 
+## Folded From REQ-472
+
+Hand triage 2026-09-03: REQ-472's scenario list was folded into REQ-469 § Folded From REQ-472, with each scenario assigned to the REQ that owns it. This REQ proves the scenarios marked with its id there in its own Testing section; no separate test REQ exists.
+
 ## Full Context
 See `do-work/user-requests/UR-087/input.md` for complete verbatim input.
 

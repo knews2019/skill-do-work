@@ -146,7 +146,8 @@ func TestGateEvidenceTextAndJSONCarryTheSameTypedState(t *testing.T) {
 			RepositoryIdentity: "/tmp/example/.git", GateCommand: []string{"bash", "verify.sh"},
 			GateCommandSHA256: "abc123", RecordPath: "/tmp/example/.git/do-work-green-gates/abc123.json",
 			RecordProvenance: "persisted_green_run", GateExitStatus: 0,
-			RecordedRevision: "1111111", HeadRevision: "2222222", State: GateEvidenceLogDescendantMatch,
+			RecordedRevision: "1111111", HeadRevision: "2222222", TargetRevision: "3333333",
+			State:   GateEvidenceLogDescendantMatch,
 			Matches: true, MatchBasis: "gate_log_only_descendant", BaselineRevision: "2222222",
 		},
 	}
@@ -157,7 +158,7 @@ func TestGateEvidenceTextAndJSONCarryTheSameTypedState(t *testing.T) {
 	for _, expected := range []string{
 		"gate evidence: state=gate_log_descendant_match matches=true basis=gate_log_only_descendant",
 		"repository identity: /tmp/example/.git", "gate command: bash verify.sh (sha256: abc123, exit: 0)",
-		"provenance: persisted_green_run", "recorded=1111111 head=2222222 baseline=2222222",
+		"provenance: persisted_green_run", "recorded=1111111 head=2222222 baseline=2222222 target=3333333",
 	} {
 		if !strings.Contains(string(textOutput), expected) {
 			t.Errorf("text output missing %q:\n%s", expected, textOutput)
@@ -171,7 +172,7 @@ func TestGateEvidenceTextAndJSONCarryTheSameTypedState(t *testing.T) {
 	if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if decoded.GateEvidence == nil || decoded.GateEvidence.State != GateEvidenceLogDescendantMatch || !decoded.GateEvidence.Matches || decoded.GateEvidence.BaselineRevision != "2222222" || !reflect.DeepEqual(decoded.GateEvidence.GateCommand, []string{"bash", "verify.sh"}) {
+	if decoded.GateEvidence == nil || decoded.GateEvidence.State != GateEvidenceLogDescendantMatch || !decoded.GateEvidence.Matches || decoded.GateEvidence.BaselineRevision != "2222222" || decoded.GateEvidence.TargetRevision != "3333333" || !reflect.DeepEqual(decoded.GateEvidence.GateCommand, []string{"bash", "verify.sh"}) {
 		t.Fatalf("JSON lost typed gate evidence: %#v", decoded.GateEvidence)
 	}
 

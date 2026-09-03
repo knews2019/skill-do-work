@@ -107,6 +107,14 @@ A skill or action description is loaded whether or not the thing gets used, so i
 - [family: alternate-writer-contract-drift] Changing an emitted artifact only at its primary writer leaves alternate modes silently producing the old contract; grep for every writer before declaring the format shipped.
 - [family: budgeted-context-routing] Routing lessons only when a REQ is captured → old REQs and later serial siblings miss lessons written before their claim; re-run the same bounded projection at claim for every route, counting captured entries first.
 
+## Agent Compatibility
+
+Action files must work with **any** agentic coding tool:
+
+- Use generalized language ("spawn a subagent", "use your environment's ask-user prompt") — no tool-specific APIs in action files.
+- Each action file should work as a standalone prompt pasted into a basic chat interface.
+- Design for the floor: the simplest agent that can read/write files and run shell commands must be able to follow the instructions. Subagents and parallel execution are nice-to-haves.
+
 ## Lessons
 
 See [`lessons-action-files.md`](lessons-action-files.md) — read it before changing what **Read first** or **Traps** name above.

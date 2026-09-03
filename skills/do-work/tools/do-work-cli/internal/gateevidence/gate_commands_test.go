@@ -42,6 +42,32 @@ func TestRecordGreenGateRefusesNonzeroWithoutSelfReferentialRecovery(t *testing.
 	}
 }
 
+func TestCheckGreenGateHandlerHonorsExplicitTargetRevision(t *testing.T) {
+	repositoryRoot := newGateEvidenceRepository(t)
+	gateCommand := []string{"bash", "verify.sh"}
+	recorded, err := RecordGreenGate(repositoryRoot, gateCommand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeGateEvidenceTestFile(t, repositoryRoot, "peer.txt", "unrelated\n")
+	runGateEvidenceTestGit(t, repositoryRoot, "add", "peer.txt")
+	runGateEvidenceTestGit(t, repositoryRoot, "commit", "-qm", "unrelated peer commit")
+
+	executionContext := commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}
+	headBound := handleCheckGreenGate(executionContext, []string{"--", "bash", "verify.sh"})
+	if headBound.Outcome != resultmodel.OutcomeSuccess || headBound.GateEvidence.Matches {
+		t.Fatalf("HEAD-bound handler result = %#v", headBound.GateEvidence)
+	}
+	targeted := handleCheckGreenGate(executionContext, []string{"--at-revision", recorded.RecordedRevision, "--", "bash", "verify.sh"})
+	if targeted.Outcome != resultmodel.OutcomeSuccess || !targeted.GateEvidence.Matches || targeted.GateEvidence.TargetRevision != recorded.RecordedRevision {
+		t.Fatalf("targeted handler result = %#v", targeted.GateEvidence)
+	}
+	usage := handleCheckGreenGate(executionContext, []string{"--at-revision", "--", "bash"})
+	if usage.Outcome != resultmodel.OutcomeFailure || len(usage.Findings) != 1 || usage.Findings[0].Code != "GATE-EVIDENCE-USAGE" {
+		t.Fatalf("usage result = %#v", usage)
+	}
+}
+
 func TestGateEvidenceCommandsKeepTextAndJSONInParity(t *testing.T) {
 	repositoryRoot := newGateEvidenceRepository(t)
 	handlers := Handlers()
@@ -73,16 +99,34 @@ func TestGateEvidenceCommandsKeepTextAndJSONInParity(t *testing.T) {
 }
 
 func TestGateEvidenceArgumentParsersPreserveExactArgv(t *testing.T) {
-	check, err := parseCheckArguments([]string{"--", "sh", "-c", "printf '%s' one"})
-	if err != nil || !equalArgv(check, []string{"sh", "-c", "printf '%s' one"}) {
-		t.Fatalf("check=%#v err=%v", check, err)
+	targetRevision, check, err := parseCheckArguments([]string{"--", "sh", "-c", "printf '%s' one"})
+	if err != nil || targetRevision != "" || !equalArgv(check, []string{"sh", "-c", "printf '%s' one"}) {
+		t.Fatalf("check=%#v target=%q err=%v", check, targetRevision, err)
+	}
+	for _, arguments := range [][]string{
+		{"--at-revision", "abc123", "--", "bash", "verify.sh"},
+		{"--at-revision=abc123", "--", "bash", "verify.sh"},
+	} {
+		spec, argv, parseError := parseCheckArguments(arguments)
+		if parseError != nil || spec != "abc123" || !equalArgv(argv, []string{"bash", "verify.sh"}) {
+			t.Errorf("check %#v -> spec=%q argv=%#v err=%v", arguments, spec, argv, parseError)
+		}
 	}
 	status, record, err := parseRecordArguments([]string{"--gate-exit-status=0", "--", "sh", "-c", "printf '%s' one"})
 	if err != nil || status != 0 || !equalArgv(record, check) {
 		t.Fatalf("status=%d record=%#v err=%v", status, record, err)
 	}
-	for _, arguments := range [][]string{{}, {"bash", "verify.sh"}, {"--"}, {"--gate-exit-status", "x", "--", "bash"}} {
-		if _, err := parseCheckArguments(arguments); err == nil && (len(arguments) == 0 || arguments[0] != "--" || len(arguments) == 1) {
+	for _, arguments := range [][]string{
+		{},
+		{"bash", "verify.sh"},
+		{"--"},
+		{"--gate-exit-status", "x", "--", "bash"},
+		{"--at-revision", "--", "bash"},
+		{"--at-revision=", "--", "bash"},
+		{"--at-revision", "a", "--at-revision", "b", "--", "bash"},
+		{"--at-revision", "a"},
+	} {
+		if _, _, err := parseCheckArguments(arguments); err == nil {
 			t.Errorf("check accepted %#v", arguments)
 		}
 	}

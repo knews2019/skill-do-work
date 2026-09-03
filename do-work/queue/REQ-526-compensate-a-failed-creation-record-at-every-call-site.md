@@ -67,5 +67,12 @@ Depends on REQ-457, whose ordering change creates this surface.
 **Why RED now:** Only the cleanup move site removes the object it just created when registration fails; the other sites return the error with the file still on disk and unregistered, so rollback cannot see it.
 **GREEN when:** Every listed site leaves no unregistered object behind on a failed record, a foreign replacement at the same pathname is preserved rather than removed, and all existing typed-result assertions still hold.
 
+## Folded From REQ-497 and REQ-524
+
+Hand triage 2026-09-03, maintainer approved: REQ-497 and REQ-524 are cancelled and their requirements land here as acceptance criteria, so UR-085's remaining review leftovers are one REQ. They are separate root causes from this sweep's `sweep_key`; treat each as its own checklist item with its own lock-in test.
+
+- From REQ-497 (Strictly normalize frontmatter collision identities): repository collision evidence parses frontmatter REQ ids with the selector's strict whole-value numeric grammar while filename-derived claims stay suffix-tolerant. RED today: queue files whose frontmatter values are `REQ-452` and `REQ-452junk` alias each other and explicit selection of `REQ-452` returns `DEPENDENCY-AMBIGUOUS`. GREEN: the malformed value is not merged, explicit selection picks the unique valid record in both discovery orders, and the genuine `REQ-452`/`REQ-0452` collision regressions stay green.
+- From REQ-524 (Kill the owned commit process group on cancellation): cancelling a media Git transaction terminates the whole owned process group, not just the direct `git` child. RED today: `internal/toolboxcommands` `TestRemediationCancellationReachesMediaGitCommitAndRollback` fails with `media commit hook survived cancellation` (`report_image_process_test.go:85`). GREEN: that test passes with the hook process gone.
+
 ---
 *Source: REQ-457 independent review finding F3.*

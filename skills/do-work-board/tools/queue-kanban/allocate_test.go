@@ -172,7 +172,7 @@ func TestNextRequestNumberConcurrentProcessesReserveDistinctNumbers(t *testing.T
 		go func() {
 			defer processes.Done()
 			allocatorProcess := exec.Command(os.Args[0], "-test.run=^TestNextRequestNumberProcessHelper$", "--", repoRoot)
-			allocatorProcess.Env = append(os.Environ(), "QUEUE_KANBAN_ALLOCATOR_HELPER=1")
+			allocatorProcess.Env = testEnvironmentWithOverrides(os.Environ(), "QUEUE_KANBAN_ALLOCATOR_HELPER=1", strictJavaScriptBehaviorMarker+"=")
 			processOutput, processError := allocatorProcess.CombinedOutput()
 			if processError != nil {
 				allocationErrors <- fmt.Errorf("allocator process: %w: %s", processError, strings.TrimSpace(string(processOutput)))

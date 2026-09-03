@@ -497,6 +497,7 @@ type workspaceReleaseMirror struct {
 
 type configuredReleaseSet struct {
 	paths            []string
+	ownedPaths       map[string]bool
 	workspaceMirrors map[string]workspaceReleaseMirror
 }
 
@@ -548,6 +549,15 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 	configured, err := configuredReleaseMetadataPaths(repositoryRoot, oldVersion, firstChangelogBefore)
 	if err != nil {
 		return nil, &releaseDiscoveryFailure{code: "FINALIZATION-DISCOVERY-RELEASE-ENUMERATION", reason: "configured release-member enumeration failed closed: " + err.Error(), paths: paths}
+	}
+	unowned := []string{}
+	for _, path := range paths {
+		if !configured.ownedPaths[path] {
+			unowned = append(unowned, path)
+		}
+	}
+	if len(unowned) > 0 {
+		return nil, &releaseDiscoveryFailure{code: "FINALIZATION-DISCOVERY-RELEASE-OWNERSHIP", reason: "release metadata lacks affirmative repository-owned or maintainer-mirror topology evidence", paths: uniqueSorted(unowned)}
 	}
 	missingRequired := []string{}
 	for _, requiredPath := range configured.paths {
@@ -720,9 +730,14 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 	for _, path := range tracked {
 		trackedSet[filepath.ToSlash(filepath.Clean(path))] = true
 	}
+	ownedPaths, ownedManifests, err := affirmativeReleaseOwnership(repositoryRoot, tracked, trackedSet)
+	if err != nil {
+		return configuredReleaseSet{}, err
+	}
 	paths := []string{}
 	for _, path := range tracked {
-		if strings.HasPrefix(path, "do-work/") || installedReleasePathForDiscovery(repositoryRoot, path) || !releaseMetadataPath(path) {
+		path = filepath.ToSlash(filepath.Clean(path))
+		if !ownedPaths[path] || !releaseMetadataPath(path) {
 			continue
 		}
 		before, err := headFileImage(repositoryRoot, path)
@@ -745,8 +760,9 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 	}
 	mirrors := map[string]workspaceReleaseMirror{}
 	for _, manifestPath := range tracked {
+		manifestPath = filepath.ToSlash(filepath.Clean(manifestPath))
 		base := filepath.Base(manifestPath)
-		if base != "package.json" && base != "Cargo.toml" && base != "pyproject.toml" || installedReleasePathForDiscovery(repositoryRoot, manifestPath) {
+		if base != "package.json" && base != "Cargo.toml" && base != "pyproject.toml" || !ownedManifests[manifestPath] {
 			continue
 		}
 		manifest, readError := headFileImage(repositoryRoot, manifestPath)
@@ -761,7 +777,7 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 		if !ok {
 			continue
 		}
-		workspaceManifest, memberPath, ok := findWorkspaceOwner(repositoryRoot, trackedSet, manifestPath, base)
+		workspaceManifest, memberPath, ok := findOwnedWorkspaceOwner(repositoryRoot, trackedSet, ownedManifests, manifestPath, base)
 		if !ok {
 			continue
 		}
@@ -787,7 +803,102 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 		mirror.rootCopies = npmRootVersionCopies(before.Bytes, oldVersion)
 		mirrors[path] = mirror
 	}
-	return configuredReleaseSet{paths: uniqueSorted(paths), workspaceMirrors: mirrors}, nil
+	return configuredReleaseSet{paths: uniqueSorted(paths), ownedPaths: ownedPaths, workspaceMirrors: mirrors}, nil
+}
+
+func affirmativeReleaseOwnership(repositoryRoot string, tracked []string, trackedSet map[string]bool) (map[string]bool, map[string]bool, error) {
+	ownedRoots := map[string]bool{"": true}
+	ownedManifests := map[string]bool{}
+	maintainerRoots, err := declaredMaintainerReleaseRoots(repositoryRoot, trackedSet)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, manifestPath := range tracked {
+		manifestPath = filepath.ToSlash(filepath.Clean(manifestPath))
+		base := filepath.Base(manifestPath)
+		if base != "package.json" && base != "Cargo.toml" && base != "pyproject.toml" {
+			continue
+		}
+		manifest, err := headFileImage(repositoryRoot, manifestPath)
+		if err != nil || !manifest.Exists {
+			return nil, nil, fmt.Errorf("read tracked project manifest %s", manifestPath)
+		}
+		directory := normalizedReleaseDirectory(manifestPath)
+		if directory == "" || pathWithinReleaseRoots(manifestPath, maintainerRoots) {
+			ownedRoots[directory] = true
+			ownedManifests[manifestPath] = true
+		}
+	}
+	for promoted := true; promoted; {
+		promoted = false
+		for _, manifestPath := range tracked {
+			manifestPath = filepath.ToSlash(filepath.Clean(manifestPath))
+			base := filepath.Base(manifestPath)
+			if base != "package.json" && base != "Cargo.toml" && base != "pyproject.toml" || ownedManifests[manifestPath] {
+				continue
+			}
+			if _, _, ok := findOwnedWorkspaceOwner(repositoryRoot, trackedSet, ownedManifests, manifestPath, base); ok {
+				directory := normalizedReleaseDirectory(manifestPath)
+				ownedRoots[directory] = true
+				ownedManifests[manifestPath] = true
+				promoted = true
+			}
+		}
+	}
+
+	ownedPaths := map[string]bool{}
+	for _, path := range tracked {
+		path = filepath.ToSlash(filepath.Clean(path))
+		maintainerOwned := pathWithinReleaseRoots(path, maintainerRoots)
+		if releaseMetadataPath(path) && (ownedRoots[normalizedReleaseDirectory(path)] || maintainerOwned) {
+			ownedPaths[path] = true
+		}
+	}
+	return ownedPaths, ownedManifests, nil
+}
+
+func pathWithinReleaseRoots(path string, roots []string) bool {
+	for _, root := range roots {
+		if path == root || strings.HasPrefix(path, root+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizedReleaseDirectory(path string) string {
+	directory := filepath.ToSlash(filepath.Dir(filepath.FromSlash(path)))
+	if directory == "." {
+		return ""
+	}
+	return directory
+}
+
+func declaredMaintainerReleaseRoots(repositoryRoot string, trackedSet map[string]bool) ([]string, error) {
+	if !trackedSet["suite/modules.tsv"] {
+		return nil, nil
+	}
+	manifest, err := headFileImage(repositoryRoot, "suite/modules.tsv")
+	if err != nil || !manifest.Exists {
+		return nil, fmt.Errorf("read tracked suite/modules.tsv")
+	}
+	roots := []string{}
+	lines := strings.Split(strings.TrimSpace(string(manifest.Bytes)), "\n")
+	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "source\tdestination" {
+		return nil, fmt.Errorf("suite/modules.tsv has no source/destination header")
+	}
+	for _, line := range lines[1:] {
+		fields := strings.Split(line, "\t")
+		if len(fields) != 2 {
+			return nil, fmt.Errorf("suite/modules.tsv has an invalid module row")
+		}
+		source := filepath.ToSlash(filepath.Clean(strings.TrimSpace(fields[0])))
+		if source == "." || source == ".." || strings.HasPrefix(source, "../") || !trackedSet[source+"/VERSION"] {
+			continue
+		}
+		roots = append(roots, source)
+	}
+	return uniqueSorted(roots), nil
 }
 
 func releasePackageName(manifestName string, contents []byte) (string, bool) {
@@ -807,14 +918,14 @@ func releasePackageName(manifestName string, contents []byte) (string, bool) {
 	return tomlSectionScalar(contents, sections, "name")
 }
 
-func findWorkspaceOwner(repositoryRoot string, tracked map[string]bool, manifestPath, manifestName string) (string, string, bool) {
+func findOwnedWorkspaceOwner(repositoryRoot string, tracked, ownedManifests map[string]bool, manifestPath, manifestName string) (string, string, bool) {
 	memberDirectory := filepath.ToSlash(filepath.Dir(manifestPath))
 	for ownerDirectory := filepath.ToSlash(filepath.Dir(memberDirectory)); ; ownerDirectory = filepath.ToSlash(filepath.Dir(ownerDirectory)) {
 		if ownerDirectory == "." {
 			ownerDirectory = ""
 		}
 		ownerPath := filepath.ToSlash(filepath.Join(ownerDirectory, manifestName))
-		if tracked[ownerPath] {
+		if tracked[ownerPath] && ownedManifests[ownerPath] {
 			owner, err := headFileImage(repositoryRoot, ownerPath)
 			if err == nil && owner.Exists {
 				relative, relativeError := filepath.Rel(filepath.Dir(filepath.FromSlash(ownerPath)), filepath.FromSlash(memberDirectory))
@@ -1039,20 +1150,6 @@ func lockMirrorConfigured(repositoryRoot, path, oldVersion string) bool {
 	}
 	version, ok := releaseVersion(manifestPath, manifest.Bytes)
 	return ok && version == oldVersion
-}
-
-func installedReleasePathForDiscovery(repositoryRoot, path string) bool {
-	lower := strings.ToLower(filepath.ToSlash(path))
-	for _, prefix := range []string{".claude/skills/", ".codex/skills/", "node_modules/", "vendor/", "vendored/", "generated/", ".generated/"} {
-		if strings.HasPrefix(lower, prefix) {
-			return true
-		}
-	}
-	if strings.HasPrefix(lower, "skills/do-work/") {
-		manifest, _ := headFileImage(repositoryRoot, "suite/modules.tsv")
-		return !manifest.Exists
-	}
-	return false
 }
 
 func singleVersionReplacement(before, after []byte, oldVersion, newVersion string) bool {

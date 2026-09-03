@@ -1564,6 +1564,9 @@ func TestConsumerCheckoutRunsCitationFenceAndShippedPayloadInvariants(t *testing
 		"-test.v",
 	)
 	consumerCommand.Dir = toolDirectory
+	// The gate's board run sets the strict JavaScript marker; this child runs no
+	// JavaScript probe, so it must not inherit the marker's zero-probe guard.
+	consumerCommand.Env = testEnvironmentWithOverrides(os.Environ(), strictJavaScriptBehaviorMarker+"=")
 	consumerOutput, consumerError := consumerCommand.CombinedOutput()
 	if consumerError != nil {
 		t.Fatalf("consumer corpus checks failed: %v\n%s", consumerError, consumerOutput)

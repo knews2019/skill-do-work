@@ -204,6 +204,37 @@ func TestRecoverFinalizationDiscoversCompleteSemanticLegacyTail(t *testing.T) {
 	}
 }
 
+// Pins the real failure: a Finder .DS_Store under do-work/ made discovery refuse
+// FINALIZATION-DISCOVERY-AMBIGUOUS with no terminal request in sight, and again
+// blocked commit safety when a real legacy tail was there to recover.
+func TestRecoverFinalizationIgnoresFinderMetadataUnderDoWork(t *testing.T) {
+	t.Run("no terminal request", func(t *testing.T) {
+		repositoryRoot := newFinalizationRepository(t)
+		writeFinalizationFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "# Session Checkpoint\n")
+		runFinalizationGit(t, repositoryRoot, "add", ".")
+		runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed")
+		writeFinalizationFile(t, repositoryRoot, "do-work/.DS_Store", "finder\n")
+
+		result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
+		if result.Outcome != resultmodel.OutcomeSuccess || len(result.Finalizations) != 0 {
+			t.Fatalf("Finder metadata stopped discovery: %#v", result)
+		}
+	})
+	t.Run("legacy tail recovers around it", func(t *testing.T) {
+		repositoryRoot := newFinalizationRepository(t)
+		seedSemanticLegacyTail(t, repositoryRoot)
+		writeFinalizationFile(t, repositoryRoot, "do-work/.DS_Store", "finder\n")
+
+		result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
+		if result.Outcome != resultmodel.OutcomeSuccess || len(result.Finalizations) != 1 || result.Finalizations[0].Phase != string(PhaseCleanupComplete) {
+			t.Fatalf("Finder metadata blocked legacy recovery: %#v", result)
+		}
+		if status := runFinalizationGit(t, repositoryRoot, "status", "--porcelain", "--untracked-files=all", "--", "do-work/.DS_Store"); strings.TrimSpace(status) != "?? do-work/.DS_Store" {
+			t.Fatalf("recovery touched or committed Finder metadata: %q", status)
+		}
+	})
+}
+
 func TestRecoverFinalizationRefusesForeignSharedHunkByteIdentically(t *testing.T) {
 	repositoryRoot := newFinalizationRepository(t)
 	seedSemanticLegacyTail(t, repositoryRoot)
@@ -467,6 +498,7 @@ func seedSemanticLegacyTail(t *testing.T, repositoryRoot string) semanticLegacyF
 	writeFinalizationFile(t, repositoryRoot, "VERSION", "1.0.0\n")
 	writeFinalizationFile(t, repositoryRoot, "skills/do-work/VERSION", "1.0.0\n")
 	writeFinalizationFile(t, repositoryRoot, "skills/do-work/actions/version.md", "**Current version**: 1.0.0\n")
+	writeFinalizationFile(t, repositoryRoot, "suite/modules.tsv", "source\tdestination\nskills/do-work\t.claude/skills/do-work\n")
 	writeFinalizationFile(t, repositoryRoot, "package.json", "{\"name\":\"fixture\",\"version\":\"1.0.0\"}\n")
 	writeFinalizationFile(t, repositoryRoot, "package-lock.json", "{\"name\":\"fixture\",\"version\":\"1.0.0\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"fixture\",\"version\":\"1.0.0\"}}}\n")
 	writeFinalizationFile(t, repositoryRoot, "CHANGELOG.md", "# Changelog\n\n## 1.0.0 — Seed\n")

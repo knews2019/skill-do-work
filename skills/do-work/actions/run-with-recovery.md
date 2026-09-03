@@ -22,6 +22,8 @@ Choosing this verb is the user's deliberate assertion that this checkout has sol
 
 ## Steps
 
+This verb is where the orchestrator's judgment does the most work. Every canonical command below is deterministic and refuses what it cannot prove; when one refuses, the run is stuck and the user has already asserted sole authority, so the next move is to reason about the cause and clear it, not to hand the refusal back. `actions/work-reference.md` → **Stuck Runs Hand Off to Judgment (any step)** is the rule.
+
 ### Step 0.1: Recover finalization with sole-releaser authority
 
 From the project root, invoke the canonical launcher exactly once:
@@ -32,7 +34,7 @@ From the project root, invoke the canonical launcher exactly once:
 
 Continue only on typed `success` with every ordered `finalizations` record carrying terminal phase `cleanup_complete` and empty `blocked_paths` and `reason_codes`. The singular `finalization` field is only the one-record compatibility projection. If the canonical launcher is missing, failed, or malformed, stop with its finding; there is no prose, manual, helper, or free-form fallback.
 
-The assertion widens only the shared metadata classes owned by `--assume-sole-releaser`. It never widens recovery to secret-classified or project paths. Dirt the pipeline itself wrote earlier in the run — a working REQ or checkpoint whose bytes still hash to the journal's recorded preimage — is finalization input under every verb, so a remaining refusal names a path this run did not write. Honor any refusal and its exact `next_argv` or `verification_argv`.
+The assertion widens only the shared metadata classes owned by `--assume-sole-releaser`. It never widens recovery to secret-classified or project paths. Dirt the pipeline itself wrote earlier in the run — a working REQ or checkpoint whose bytes still hash to the journal's recorded preimage — is finalization input under every verb, so a remaining refusal names a path this run did not write. Clear it with judgment, not with another mechanical rule: the assertion has already answered the ownership question, so decide what the blocking bytes are, take the least destructive action that clears them, and re-run the exact command above (`actions/work-reference.md` → **Stuck Runs Hand Off to Judgment (any step)**). Under this verb, stop only for an action that would be destructive or irreversible.
 
 ### Step 0.2: Continue an interrupted archive, release, or commit tail
 
@@ -70,6 +72,7 @@ Report recovered finalization records and working-REQ takeovers first, then use 
 
 | If you're thinking... | STOP. Instead... | Because... |
 | --- | --- | --- |
+| "The command refused and the instructions say no fallback, so the run ends here" | Judge why it refused, clear the cause, re-run the exact command | The no-fallback rule forbids reproducing a mutation by hand, not thinking; a Finder `.DS_Store` under `do-work/` once stopped a run whose only real obstacle was that one file |
 | "The checkpoint says another writer, so I'll leave that REQ claimed" | Recover it and report the checkpoint's label | The user asserted sole queue authority by choosing `run-with-recovery`; preserving that claim would silently discard the verb's purpose |
 
 ## Verification Checklist

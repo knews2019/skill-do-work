@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.269.0 — Reconciled the Parallel Queue Runs (2026-09-03)
+
+Two checkouts worked this queue at once. This merge keeps one implementation of every REQ that both of them built, and renumbers the requests that were minted twice.
+
+- Release-target ownership keeps the explicit `project_owned_targets` declaration, which is the mechanism REQ-461 asked for and the one the action contract, the prime and a contract-regressions lock-in already speak.
+- The interrupted-install and process-group cancellation fixes are kept from this branch; the queue records that duplicated them are renumbered rather than overwritten.
+
 ## 0.268.1 — Cancelling an Install Now Says It Was Cancelled (2026-09-03)
 
 Pressing Ctrl-C at the suite installer's confirmation prompt sometimes reported success. Nothing was installed either way, but the exit status and the JSON result said the run had gone fine, so anything reading them could not tell a cancelled install from a completed one.
@@ -9,15 +16,6 @@ Pressing Ctrl-C at the suite installer's confirmation prompt sometimes reported 
 - Interrupting at the prompt now reliably reports exit 130 instead of depending on which part of the program reached the exit first.
 - Interrupting a partly-written install reports 130 too, after its recovery finishes; the result still describes the rollback in full.
 - A signal that arrives once the install has already finished and verified keeps the ordinary exit 0 and its normal result, rather than reporting a failure for work that succeeded.
-
-## 0.268.0 — Release Targets Must Prove They Are Yours (2026-09-03)
-
-Releasing used to decide whether a target belonged to your project by checking the directory's name against a list — `vendor`, `node_modules`, `.claude/skills`, `generated`. Anything spelled differently got through, so a version file inside `third_party/`, `dist/`, or any cache directory was treated as yours to bump.
-
-- A target now has to be proven yours: tracked by your repository, and with no installed package's `SKILL.md` standing above it. No directory name is checked at all, so an unlisted spelling is no longer a way in.
-- Bootstrapping a changelog is attested by the directory it actually lands in, not by an ancestor that happens to exist. Creating one in a directory your repository has never tracked now refuses.
-- Each refusal names the target and what is missing, and tells you the matching fix — commit the file, drop the ignore rule, or that the subtree belongs to an installed package.
-- Maintainer releases are unaffected and never consult any of this.
 
 ## 0.267.0 — An Answer Can No Longer Cancel Its Own Request (2026-09-03)
 
@@ -28,13 +26,56 @@ When you discard every open question on a request, `do-work clarify` cancels and
 - A resolved line the tool cannot read unambiguously sends the request back to the queue rather than archiving it, and now says which line stopped it.
 - A terminal archive path you supply is checked against what the command actually decided, instead of being ignored whenever the two disagreed.
 
-## 0.266.4 — Answer Summaries Are Judged by Condition, Not by a Prefix List (2026-09-03)
+## 0.266.9 — Maintainer Gate Drops Dead Work and Runs Its Sub-Suites in Parallel (2026-09-03)
 
-When `do-work clarify` records a one-line answer, it decides whether the text is safe to write straight into the REQ or has to be carried separately. That decision used to check ten specific line openings, so `***`, `___`, `+++`, `:::note`, `$$`, a bare `-`, a bare `1.`, a table row and indented text all slipped through as ordinary prose.
+The gate was re-running its own self-test fifteen times per run, running the board's 55 JavaScript probes twice, linting six scripts nothing executes, and pinning a sentence in a maintainer prime. All of that is gone, and the twelve behavioral sub-suites now run at once.
 
-- The check now asks the actual question — could a Markdown reader take this for the document's own structure? — instead of matching a list of examples, so syntax nobody thought to list is covered too.
-- Confusing cases are carried separately rather than inlined. Your text is never altered or lost either way; a short plain answer that now gets carried is the cost of that choice.
-- The old check trimmed leading spaces before looking, which is how indented text escaped it entirely.
+- Deleted the six `_dev/tests/` scripts no gate path executes, with their fixture map and prime references.
+- The harness self-tests (`maintainer-verify.sh --self-test`, `action-shell-blocks.sh --self-test`) run when you edit those harnesses, not inside every aggregate run.
+- One board test run carries the strict JavaScript marker when Node is present; the separate strict lane and its test are deleted, and the self-test mutates the marker instead of a regex.
+- `_dev/tests/probe-batch.sh` launches the behavioral sub-suites concurrently; the two that build `do-work-cli` share one sequential lane.
+- The prose pin on the Kanban write-surface count is deleted; a count in a maintainer prime needs no test.
+- `_dev/tests/gate-runner.sh` is a background scheduler: it runs the gate once per new `HEAD` and records green through `record-green-gate`, so a pipeline claim finds its baseline already proven and skips the run (`--once` for a single run).
+
+## 0.266.8 — One Gate Run for an Already-Green Repair (2026-09-03)
+
+A repository-gate repair that finds the gate already green no longer runs that gate three times to prove it. The pre-build run is the only run, and everything downstream reads the record it wrote.
+
+- `check-green-gate` takes `--at-revision`, so a caller can ask whether the exact gate argv was proven green at a named commit instead of only at `HEAD`.
+- A no-op repair has no diff, so an unrelated commit moving `HEAD` no longer invalidates its evidence; ordinary REQs keep the `HEAD`-bound rule.
+- Qualification, Step 6.5 testing, and independent review now verify that record rather than relaunching the gate.
+
+## 0.266.7 — Answer Containment Follows Structure (2026-09-03)
+
+Answer summaries that look like Markdown structure no longer slip past containment just because their prefix was not in a finite list. This keeps raw answer bytes intact across thematic breaks, tables, indentation, and future dialect fences while leaving ordinary prose inline.
+
+- The classifier now tests line-start structure—leading whitespace, ASCII punctuation, or an ordered-list digit marker—instead of ten remembered prefixes.
+- Table-driven coverage includes `***`, `___`, setext underlines, bare list markers, tables, indented blocks, and dialect fences.
+- The `BuildAnswerPlan` seam proves structural summaries require a matching raw payload and use canonical containment; safe prose stays byte-for-byte inline.
+
+## 0.266.6 — Stuck Runs Hand Off to Judgment (2026-09-03)
+
+The refusal-clearing rule from 0.266.5 was scoped to one command. It is now the general rule for any stuck run: a deterministic refusal is a fact about what the command could prove, and reasoning about its cause is the orchestrator's job, strongest under `do-work run-with-recovery` where ownership is already asserted.
+
+- `actions/work-reference.md` section renamed to **Stuck Runs Hand Off to Judgment (any step)**, leading with the principle: the "no free-form fallback" sentences forbid hand-made mutations, not thinking, and under `run-with-recovery` the run stops only for a destructive or irreversible action.
+- `run-with-recovery` says so at the top of its Steps and in a rationalization row; `run` points at the same rule.
+- Lessons recorded in `_dev/primes/lessons-action-files.md` and `lessons-do-work-cli.md`, with the lessons index token counts refreshed.
+
+## 0.266.5 — Recovery Refusals Are Cleared, Not Obeyed (2026-09-03)
+
+`do-work run` and `do-work run-with-recovery` used to treat any `recover-finalization` refusal as a full stop before queue selection. The command refuses whatever it cannot attribute byte-for-byte and has no opinion about what the bytes are, so the orchestrator now forms that opinion and clears the blocker itself.
+
+- New `actions/work-reference.md` → **Recovery Refusals (Step 1)**: judge each blocked path, take the least destructive clearing action (delete or locally exclude non-project files, revert or finish this session's own abandoned write, commit the user's unrelated work on its own with the hash reported), re-run the exact `verification_argv`, and stop only for shared state whose owner the orchestrator cannot decide, naming the verb that resolves it.
+- Judgment covers the obstacle, never the finalization: REQ frontmatter, staging, and provenance still belong to the command.
+- Both `run` and `run-with-recovery` point at the one rule instead of carrying their own stop sentence.
+
+## 0.266.4 — Finder Metadata No Longer Stops the Run (2026-09-03)
+
+A stray `do-work/.DS_Store` made `do-work run` refuse `FINALIZATION-DISCOVERY-AMBIGUOUS` before it selected anything. Untracked hidden files under `do-work/` are Finder or editor metadata, never pipeline state, and the inventory now drops them.
+
+- `uncommitted-inventory`, `protected-inventory`, finalization discovery, and commit safety all read the same inventory, so the stray disappears from every gate at once instead of moving the stop one step later.
+- Hidden directories are untouched: `do-work/.req-reservations/NNN` markers still list and commit as before.
+- Two lock-in tests pin the exact failure: discovery with no terminal request, and a legacy tail that must recover around the stray without staging it.
 
 ## 0.266.3 — Active Worktrees Are No Longer Called Leftovers (2026-09-03)
 

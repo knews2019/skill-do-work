@@ -40,6 +40,40 @@ func TestInventoryStagedAdditionDeletedFromWorktreeIsDeletion(t *testing.T) {
 	}
 }
 
+// Pins the real failure: a Finder .DS_Store under do-work/ was listed as an
+// untracked addition, finalization discovery read it as shared state with no
+// owner, and `do-work run` stopped before queue selection.
+func TestInventoryDropsUntrackedHiddenFilesUnderDoWork(t *testing.T) {
+	repository := newGitFixture(t)
+	for path, contents := range map[string]string{
+		"do-work/.DS_Store":                   "finder\n",
+		"do-work/queue/.REQ-1-fixture.md.swp": "editor\n",
+		"do-work/.req-reservations/041":       "reserved\n",
+		"do-work/queue/notes.txt":             "real\n",
+		".DS_Store":                           "finder at root\n",
+	} {
+		absolute := filepath.Join(repository, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(absolute), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(absolute, []byte(contents), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rows, err := readInventory(repository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []inventoryRow{
+		{Classification: "A", Path: ".DS_Store"},
+		{Classification: "A", Path: "do-work/.req-reservations/041"},
+		{Classification: "A", Path: "do-work/queue/notes.txt"},
+	}
+	if !reflect.DeepEqual(rows, want) {
+		t.Fatalf("rows=%+v, want %+v", rows, want)
+	}
+}
+
 func TestInventoryMatchesRetainedPorcelainXYMatrix(t *testing.T) {
 	statuses := []string{"??"}
 	for _, worktree := range []byte{'M', 'T', 'A', 'D', 'R', 'C'} {

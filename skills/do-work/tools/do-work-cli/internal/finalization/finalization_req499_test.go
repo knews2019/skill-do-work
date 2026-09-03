@@ -186,23 +186,32 @@ func TestRecoverFinalizationRequiresWorkspaceMemberLockMirrors(t *testing.T) {
 		{
 			name: "npm", manifestPath: "consumer/packages/widget/package.json", lockPath: "consumer/package-lock.json",
 			manifestOld: "{\"name\":\"widget\",\"version\":\"1.0.0\"}\n", manifestNew: "{\"name\":\"widget\",\"version\":\"1.0.1\"}\n",
-			lockOld:    "{\"name\":\"consumer\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"consumer\"},\"packages/widget\":{\"name\":\"widget\",\"version\":\"1.0.0\"}}}\n",
-			lockNew:    "{\"name\":\"consumer\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"consumer\"},\"packages/widget\":{\"name\":\"widget\",\"version\":\"1.0.1\"}}}\n",
-			extraFiles: map[string]string{"consumer/package.json": "{\"name\":\"consumer\",\"private\":true,\"workspaces\":[\"packages/*\"]}\n"},
+			lockOld: "{\"name\":\"consumer\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"consumer\"},\"packages/widget\":{\"name\":\"widget\",\"version\":\"1.0.0\"}}}\n",
+			lockNew: "{\"name\":\"consumer\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"consumer\"},\"packages/widget\":{\"name\":\"widget\",\"version\":\"1.0.1\"}}}\n",
+			extraFiles: map[string]string{
+				"package.json":          "{\"name\":\"root\",\"private\":true,\"workspaces\":[\"consumer\"]}\n",
+				"consumer/package.json": "{\"name\":\"consumer\",\"private\":true,\"workspaces\":[\"packages/*\"]}\n",
+			},
 		},
 		{
 			name: "cargo", manifestPath: "consumer-rust/crates/widget/Cargo.toml", lockPath: "consumer-rust/Cargo.lock",
 			manifestOld: "[package]\nname = \"widget\"\nversion = \"1.0.0\"\n", manifestNew: "[package]\nname = \"widget\"\nversion = \"1.0.1\"\n",
-			lockOld:    "[[package]]\nname = \"widget\"\nversion = \"1.0.0\"\n\n[[package]]\nname = \"helper\"\nversion = \"2.0.0\"\n",
-			lockNew:    "[[package]]\nname = \"widget\"\nversion = \"1.0.1\"\n\n[[package]]\nname = \"helper\"\nversion = \"2.0.0\"\n",
-			extraFiles: map[string]string{"consumer-rust/Cargo.toml": "[workspace]\nmembers = [\"crates/*\"]\n"},
+			lockOld: "[[package]]\nname = \"widget\"\nversion = \"1.0.0\"\n\n[[package]]\nname = \"helper\"\nversion = \"2.0.0\"\n",
+			lockNew: "[[package]]\nname = \"widget\"\nversion = \"1.0.1\"\n\n[[package]]\nname = \"helper\"\nversion = \"2.0.0\"\n",
+			extraFiles: map[string]string{
+				"Cargo.toml":               "[workspace]\nmembers = [\"consumer-rust\"]\n",
+				"consumer-rust/Cargo.toml": "[workspace]\nmembers = [\"crates/*\"]\n",
+			},
 		},
 		{
 			name: "uv", manifestPath: "consumer-python/packages/widget/pyproject.toml", lockPath: "consumer-python/uv.lock",
 			manifestOld: "[project]\nname = \"widget\"\nversion = \"1.0.0\"\n", manifestNew: "[project]\nname = \"widget\"\nversion = \"1.0.1\"\n",
-			lockOld:    "[[package]]\nname = \"widget\"\nversion = \"1.0.0\"\nsource = { editable = \"packages/widget\" }\n\n[[package]]\nname = \"helper\"\nversion = \"2.0.0\"\nsource = { editable = \"packages/helper\" }\n",
-			lockNew:    "[[package]]\nname = \"widget\"\nversion = \"1.0.1\"\nsource = { editable = \"packages/widget\" }\n\n[[package]]\nname = \"helper\"\nversion = \"2.0.0\"\nsource = { editable = \"packages/helper\" }\n",
-			extraFiles: map[string]string{"consumer-python/pyproject.toml": "[tool.uv.workspace]\nmembers = [\"packages/*\"]\n"},
+			lockOld: "[[package]]\nname = \"widget\"\nversion = \"1.0.0\"\nsource = { editable = \"packages/widget\" }\n\n[[package]]\nname = \"helper\"\nversion = \"2.0.0\"\nsource = { editable = \"packages/helper\" }\n",
+			lockNew: "[[package]]\nname = \"widget\"\nversion = \"1.0.1\"\nsource = { editable = \"packages/widget\" }\n\n[[package]]\nname = \"helper\"\nversion = \"2.0.0\"\nsource = { editable = \"packages/helper\" }\n",
+			extraFiles: map[string]string{
+				"pyproject.toml":                 "[tool.uv.workspace]\nmembers = [\"consumer-python\"]\n",
+				"consumer-python/pyproject.toml": "[tool.uv.workspace]\nmembers = [\"packages/*\"]\n",
+			},
 		},
 	}
 	for _, test := range tests {
@@ -254,6 +263,148 @@ func TestRecoverFinalizationReleaseEnumerationFailureIsTypedAndFailClosed(t *tes
 	}
 	if status := strings.TrimSpace(runFinalizationGit(t, repositoryRoot, "status", "--short")); status == "" {
 		t.Fatal("enumeration refusal unexpectedly committed or removed the legacy tail")
+	}
+}
+
+func TestRecoverFinalizationRefusesReleaseMetadataWithoutProjectOwnership(t *testing.T) {
+	for _, path := range []string{"third_party/do-work/VERSION", "dist/skills/do-work/VERSION", "cache-tree-9f3a/rebuilt/VERSION"} {
+		t.Run(path, func(t *testing.T) {
+			repositoryRoot := newFinalizationRepository(t)
+			seedSemanticLegacyTail(t, repositoryRoot)
+			writeFinalizationFile(t, repositoryRoot, path, "1.0.0\n")
+			runFinalizationGit(t, repositoryRoot, "add", "--", path)
+			runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed unowned release metadata")
+			writeFinalizationFile(t, repositoryRoot, path, "1.0.1\n")
+
+			result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
+			if result.Outcome != resultmodel.OutcomeRefused || result.Finalization == nil || !reflect.DeepEqual(result.Finalization.ReasonCodes, []string{"FINALIZATION-DISCOVERY-RELEASE-OWNERSHIP"}) || !containsFinalizationPath(result.Finalization.BlockedPaths, path) {
+				t.Fatalf("unowned release metadata refusal = %#v", result)
+			}
+			if got := readFinalizationFile(t, repositoryRoot, path); got != "1.0.1\n" {
+				t.Fatalf("ownership refusal changed %s: %q", path, got)
+			}
+		})
+	}
+}
+
+func TestRecoverFinalizationRefusesCompleteInstalledSuiteWithoutMaintainerTopology(t *testing.T) {
+	repositoryRoot := newFinalizationRepository(t)
+	seedSemanticLegacyTail(t, repositoryRoot)
+	runFinalizationGit(t, repositoryRoot, "rm", "-q", "--", "suite/modules.tsv")
+	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "remove suite maintainer topology")
+
+	result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
+	wantPaths := []string{"skills/do-work/CHANGELOG.md", "skills/do-work/VERSION", "skills/do-work/actions/version.md"}
+	if result.Outcome != resultmodel.OutcomeRefused || result.Finalization == nil || !reflect.DeepEqual(result.Finalization.ReasonCodes, []string{"FINALIZATION-DISCOVERY-RELEASE-OWNERSHIP"}) || !reflect.DeepEqual(result.Finalization.BlockedPaths, wantPaths) {
+		t.Fatalf("complete installed-suite refusal = %#v", result)
+	}
+}
+
+func TestRecoverFinalizationAcceptsSuiteMirrorsWithMaintainerTopology(t *testing.T) {
+	repositoryRoot := newFinalizationRepository(t)
+	seedSemanticLegacyTail(t, repositoryRoot)
+
+	result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
+	if result.Outcome != resultmodel.OutcomeSuccess || result.Finalization == nil || result.Finalization.Phase != string(PhaseCleanupComplete) {
+		t.Fatalf("declared suite topology recovery = %#v", result)
+	}
+}
+
+func TestAffirmativeReleaseOwnershipRequiresRootedWorkspaceChain(t *testing.T) {
+	tests := []struct {
+		name             string
+		files            map[string]string
+		ownedPaths       []string
+		unownedPaths     []string
+		ownedManifests   []string
+		unownedManifests []string
+	}{
+		{
+			name: "nested npm workspace cannot own itself",
+			files: map[string]string{
+				"third_party/dependency/package.json": "{\"name\":\"dependency\",\"workspaces\":[\"packages/*\"]}\n",
+				"third_party/dependency/VERSION":      "1.0.0\n",
+			},
+			unownedPaths: []string{"third_party/dependency/VERSION"}, unownedManifests: []string{"third_party/dependency/package.json"},
+		},
+		{
+			name: "nested cargo workspace cannot own itself",
+			files: map[string]string{
+				"third_party/dependency/Cargo.toml": "[workspace]\nmembers = [\"crates/*\"]\n",
+				"third_party/dependency/VERSION":    "1.0.0\n",
+			},
+			unownedPaths: []string{"third_party/dependency/VERSION"}, unownedManifests: []string{"third_party/dependency/Cargo.toml"},
+		},
+		{
+			name: "nested uv workspace cannot own itself",
+			files: map[string]string{
+				"third_party/dependency/pyproject.toml": "[tool.uv.workspace]\nmembers = [\"packages/*\"]\n",
+				"third_party/dependency/VERSION":        "1.0.0\n",
+			},
+			unownedPaths: []string{"third_party/dependency/VERSION"}, unownedManifests: []string{"third_party/dependency/pyproject.toml"},
+		},
+		{
+			name: "repository-root chain owns nested workspace member",
+			files: map[string]string{
+				"package.json":                                "{\"name\":\"root\",\"workspaces\":[\"packages/*\"]}\n",
+				"packages/owned/package.json":                 "{\"name\":\"owned\",\"workspaces\":[\"children/*\"]}\n",
+				"packages/owned/children/widget/package.json": "{\"name\":\"widget\",\"version\":\"1.0.0\"}\n",
+				"packages/owned/children/widget/VERSION":      "1.0.0\n",
+			},
+			ownedPaths: []string{"packages/owned/children/widget/VERSION"}, ownedManifests: []string{"package.json", "packages/owned/package.json", "packages/owned/children/widget/package.json"},
+		},
+		{
+			name: "unrooted chain remains unowned",
+			files: map[string]string{
+				"package.json":                                        "{\"name\":\"root\",\"workspaces\":[\"packages/*\"]}\n",
+				"third_party/dependency/package.json":                 "{\"name\":\"dependency\",\"workspaces\":[\"children/*\"]}\n",
+				"third_party/dependency/children/widget/package.json": "{\"name\":\"widget\",\"version\":\"1.0.0\"}\n",
+				"third_party/dependency/children/widget/VERSION":      "1.0.0\n",
+			},
+			unownedPaths: []string{"third_party/dependency/children/widget/VERSION"}, unownedManifests: []string{"third_party/dependency/package.json", "third_party/dependency/children/widget/package.json"},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repositoryRoot := newFinalizationRepository(t)
+			for path, contents := range test.files {
+				writeFinalizationFile(t, repositoryRoot, path, contents)
+			}
+			runFinalizationGit(t, repositoryRoot, "add", ".")
+			runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed ownership graph")
+			tracked, err := enumerateTrackedReleasePaths(repositoryRoot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			trackedSet := map[string]bool{}
+			for _, path := range tracked {
+				trackedSet[filepath.ToSlash(filepath.Clean(path))] = true
+			}
+			ownedPaths, ownedManifests, err := affirmativeReleaseOwnership(repositoryRoot, tracked, trackedSet)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, path := range test.ownedPaths {
+				if !ownedPaths[path] {
+					t.Errorf("owned path %s was not classified", path)
+				}
+			}
+			for _, path := range test.unownedPaths {
+				if ownedPaths[path] {
+					t.Errorf("unowned path %s was classified", path)
+				}
+			}
+			for _, path := range test.ownedManifests {
+				if !ownedManifests[path] {
+					t.Errorf("owned manifest %s was not classified", path)
+				}
+			}
+			for _, path := range test.unownedManifests {
+				if ownedManifests[path] {
+					t.Errorf("unowned manifest %s was classified", path)
+				}
+			}
+		})
 	}
 }
 
@@ -453,8 +604,9 @@ func seedPlannedReleaseFinalization(t *testing.T) (string, string) {
 	writeFinalizationFile(t, payloadRoot, "changelog-new", "# Changelog\n\n## 1.0.1 — REQ-760 Planned Release\n\nDelivered.\n\n## 1.0.0 — Seed\n")
 	releaseManifest := publication.Manifest{Operation: publication.OperationRelease, Release: &publication.ReleaseManifest{
 		OldVersion: "1.0.0", NewVersion: "1.0.1",
-		Targets:    []publication.ReleaseTarget{{Path: "VERSION", ExpectedPayload: publication.PayloadFile{SourcePath: filepath.Join(payloadRoot, "version-old")}, NewPayload: publication.PayloadFile{SourcePath: filepath.Join(payloadRoot, "version-new")}, OldVersion: "1.0.0", NewVersion: "1.0.1"}},
-		Changelogs: []publication.ChangelogTarget{{Path: "CHANGELOG.md", ExpectedPayload: publication.PayloadFile{SourcePath: filepath.Join(payloadRoot, "changelog-old")}, NewPayload: publication.PayloadFile{SourcePath: filepath.Join(payloadRoot, "changelog-new")}, InsertionAnchor: "## 1.0.0", EntryKey: "1.0.1", EntryTitle: "Planned Release"}},
+		ProjectOwnedTargets: []string{"VERSION", "CHANGELOG.md"},
+		Targets:             []publication.ReleaseTarget{{Path: "VERSION", ExpectedPayload: publication.PayloadFile{SourcePath: filepath.Join(payloadRoot, "version-old")}, NewPayload: publication.PayloadFile{SourcePath: filepath.Join(payloadRoot, "version-new")}, OldVersion: "1.0.0", NewVersion: "1.0.1"}},
+		Changelogs:          []publication.ChangelogTarget{{Path: "CHANGELOG.md", ExpectedPayload: publication.PayloadFile{SourcePath: filepath.Join(payloadRoot, "changelog-old")}, NewPayload: publication.PayloadFile{SourcePath: filepath.Join(payloadRoot, "changelog-new")}, InsertionAnchor: "## 1.0.0", EntryKey: "1.0.1", EntryTitle: "Planned Release"}},
 	}}
 	releasePath := filepath.Join(t.TempDir(), "release.json")
 	releaseBytes, _ := json.Marshal(releaseManifest)
