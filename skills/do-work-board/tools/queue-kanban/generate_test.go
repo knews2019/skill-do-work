@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"math"
 	"net/http/httptest"
@@ -24,7 +23,6 @@ import (
 const (
 	strictJavaScriptBehaviorDiagnostic = "queue-kanban: strict JavaScript behavior lane executed zero probes"
 	strictJavaScriptBehaviorMarker     = "QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR"
-	strictJavaScriptBehaviorRunPattern = "^TestMaintainerStrictJavaScriptBehaviorLane$"
 )
 
 var javaScriptBehaviorProbeCount atomic.Int64
@@ -244,23 +242,6 @@ func TestMaintainerStrictJavaScriptBehaviorLaneRejectsZeroProbes(t *testing.T) {
 	}
 	if !strings.Contains(string(strictOutput), strictJavaScriptBehaviorDiagnostic) {
 		t.Fatalf("strict JavaScript behavior lane output = %q, want %q", strictOutput, strictJavaScriptBehaviorDiagnostic)
-	}
-}
-
-func TestMaintainerStrictJavaScriptBehaviorLane(t *testing.T) {
-	testRunFlag := flag.Lookup("test.run")
-	if testRunFlag == nil || testRunFlag.Value.String() != strictJavaScriptBehaviorRunPattern {
-		t.Skip("maintainer strict JavaScript behavior lane runs only when selected directly")
-	}
-
-	strictCommand := exec.Command(os.Args[0], "-test.run=^TestJavaScriptBehavior", "-test.count=1")
-	strictCommand.Env = testEnvironmentWithOverrides(
-		os.Environ(),
-		strictJavaScriptBehaviorMarker+"=1",
-	)
-	strictOutput, strictError := strictCommand.CombinedOutput()
-	if strictError != nil {
-		t.Fatalf("strict JavaScript behavior lane failed: %v\n%s", strictError, strictOutput)
 	}
 }
 

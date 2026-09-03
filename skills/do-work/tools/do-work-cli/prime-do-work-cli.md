@@ -66,8 +66,7 @@ The standard-library Go module under this directory is the canonical implementat
 - Green-gate evidence: `go test ./internal/gateevidence`
 - Static analysis: `go vet ./...`
 - Module regression: `go test -count=1 ./...`
-- Exact Go 1.25 compatibility: `bash _dev/tests/do-work-cli-go125-compatibility.sh` from the repository root
-- Hook consumers: `bash _dev/tests/session-start-hook-behavior.sh && bash _dev/tests/memory-hook-behavior.sh`
+- Hook consumers: `bash _dev/tests/session-start-hook-behavior.sh`
 - Knowledge commands: `go test -race ./internal/knowledgecommands` plus action/recipe contracts in `_dev/tests/contract-regressions.sh`
 - Private memory transactions: `go test -race ./internal/gittransaction` and verify a mixed tracked/private `--commit` contains only `working-memory.md`.
 - Windows atomic compile: `GOOS=windows GOARCH=amd64 go test -c ./internal/atomicfile -o <temporary-path>`

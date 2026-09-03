@@ -105,12 +105,11 @@ case "$command_name" in
           record_stage 'board-vet'
         elif [ "$#" -eq 3 ] && [ "$1" = 'test' ] && \
           [ "$2" = '-count=1' ] && [ "$3" = './...' ]; then
-          record_stage 'board-test'
-        elif [ "$#" -eq 6 ] && [ "$1" = 'test' ] && \
-          [ "$2" = '-count=1' ] && [ "$3" = '-run' ] && \
-          [ "$4" = '^TestMaintainerStrictJavaScriptBehaviorLane$' ] && \
-          [ "$5" = '-v' ] && [ "$6" = '.' ]; then
-          record_stage 'board-strict'
+          if [ "${QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR:-}" = '1' ]; then
+            record_stage 'board-test-strict'
+          else
+            record_stage 'board-test'
+          fi
         else
           exit 64
         fi
@@ -211,26 +210,23 @@ assert_success_stages() {
   local actual_count
   local total_count=0
   local expected_count=9
+  local expected_board_stage='board-test'
   local stage_line
 
+  # With Node present the one board test run carries the strict JavaScript marker, so the
+  # shim records it under a different stage name; there is no separate strict lane.
   if [ "$expect_strict" = 'yes' ]; then
-    expected_count=10
+    expected_board_stage='board-test-strict'
   fi
   for expected_stage in \
     go-version shellcheck-version shellcheck-lint gofmt-lint aggregate \
-    board-vet board-test cli-vet cli-test; do
+    board-vet "$expected_board_stage" cli-vet cli-test; do
     actual_count="$(count_stage_occurrences "$expected_stage" "$log_path")"
     if [ "$actual_count" -ne 1 ]; then
       fail_self_test "$expected_stage ran $actual_count times; want exactly once"
       return 1
     fi
   done
-  actual_count="$(count_stage_occurrences 'board-strict' "$log_path")"
-  if { [ "$expect_strict" = 'yes' ] && [ "$actual_count" -ne 1 ]; } || \
-    { [ "$expect_strict" = 'no' ] && [ "$actual_count" -ne 0 ]; }; then
-    fail_self_test "board-strict ran $actual_count times with expect_strict=$expect_strict"
-    return 1
-  fi
   while IFS= read -r stage_line; do
     total_count=$((total_count + 1))
   done < "$log_path"
@@ -341,7 +337,7 @@ run_self_test() {
 
   for stage_name in \
     go-version shellcheck-version shellcheck-lint gofmt-lint gofmt-unformatted \
-    aggregate board-vet board-test board-strict \
+    aggregate board-vet board-test-strict \
     cli-vet cli-test; do
     failure_log="$self_test_root/failure-$stage_name.log"
     failure_output="$self_test_root/failure-$stage_name.out"
@@ -363,23 +359,23 @@ run_self_test() {
   done
 
   mutated_fixture_script="$self_test_root/maintainer-verify-mutated.sh"
-  sed '/^run_verification()/,$ s/TestMaintainerStrictJavaScriptBehaviorLane/TestDefinitelyWrongStrictLane/' \
+  sed '/^run_verification()/,$ s/QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1/QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=0/' \
     "$fixture_script" > "$mutated_fixture_script"
   if cmp -s "$fixture_script" "$mutated_fixture_script"; then
-    fail_self_test 'strict-regex mutation did not alter the production command'
+    fail_self_test 'strict-marker mutation did not alter the production command'
     return 1
   fi
   mv "$mutated_fixture_script" "$fixture_script"
   chmod +x "$fixture_script"
   mutation_output="$self_test_root/wrong-strict-regex.out"
   if /bin/bash "$fixture_script" --self-test > "$mutation_output" 2>&1; then
-    fail_self_test 'a wrong strict JavaScript test regex left --self-test green'
+    fail_self_test 'a disabled strict JavaScript marker left --self-test green'
     return 1
   fi
   cp "$script_path" "$fixture_script"
   chmod +x "$fixture_script"
   if ! cmp -s "$script_path" "$fixture_script"; then
-    fail_self_test 'the strict-regex mutation fixture was not restored'
+    fail_self_test 'the strict-marker mutation fixture was not restored'
     return 1
   fi
 
@@ -484,19 +480,22 @@ run_verification() {
     cd "$repo_root/skills/do-work-board/tools/queue-kanban"
     go vet ./...
   )
-  printf 'maintainer-verify: queue-kanban uncached ordinary tests\n'
-  (
-    cd "$repo_root/skills/do-work-board/tools/queue-kanban"
-    go test -count=1 ./...
-  )
+  # One board test run. With Node present it carries the strict marker, so the package's
+  # TestMain refuses a green result whose JavaScript probes all skipped; without Node the
+  # probes skip and the run says so. There is no second lane re-running the same probes.
   if command -v node >/dev/null 2>&1; then
-    printf 'maintainer-verify: queue-kanban strict JavaScript behavior lane\n'
+    printf 'maintainer-verify: queue-kanban uncached tests with strict JavaScript behavior probes\n'
     (
       cd "$repo_root/skills/do-work-board/tools/queue-kanban"
-      go test -count=1 -run '^TestMaintainerStrictJavaScriptBehaviorLane$' -v .
+      QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1 go test -count=1 ./...
     )
   else
     printf 'SKIP: Node is unavailable; strict JavaScript behavior lane was not run.\n'
+    printf 'maintainer-verify: queue-kanban uncached ordinary tests\n'
+    (
+      cd "$repo_root/skills/do-work-board/tools/queue-kanban"
+      go test -count=1 ./...
+    )
   fi
   # The browser behavior lane, guarded exactly as the Node lane above is: run it when
   # an engine is present, print an explicit SKIP naming what did not run when it is

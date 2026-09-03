@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.266.9 — Maintainer Gate Drops Dead Work and Runs Its Sub-Suites in Parallel (2026-09-03)
+
+The gate was re-running its own self-test fifteen times per run, running the board's 55 JavaScript probes twice, linting six scripts nothing executes, and pinning a sentence in a maintainer prime. All of that is gone, and the twelve behavioral sub-suites now run at once.
+
+- Deleted the six `_dev/tests/` scripts no gate path executes, with their fixture map and prime references.
+- The harness self-tests (`maintainer-verify.sh --self-test`, `action-shell-blocks.sh --self-test`) run when you edit those harnesses, not inside every aggregate run.
+- One board test run carries the strict JavaScript marker when Node is present; the separate strict lane and its test are deleted, and the self-test mutates the marker instead of a regex.
+- `_dev/tests/probe-batch.sh` launches the behavioral sub-suites concurrently; the two that build `do-work-cli` share one sequential lane.
+- The prose pin on the Kanban write-surface count is deleted; a count in a maintainer prime needs no test.
+- `_dev/tests/gate-runner.sh` is a background scheduler: it runs the gate once per new `HEAD` and records green through `record-green-gate`, so a pipeline claim finds its baseline already proven and skips the run (`--once` for a single run).
+
 ## 0.266.8 — One Gate Run for an Already-Green Repair (2026-09-03)
 
 A repository-gate repair that finds the gate already green no longer runs that gate three times to prove it. The pre-build run is the only run, and everything downstream reads the record it wrote.

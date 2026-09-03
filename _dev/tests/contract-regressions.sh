@@ -4291,10 +4291,6 @@ assert_file_not_contains \
   'queue-kanban next-req' \
   'capture must not create a reservation outside the canonical capture-files transaction.'
 
-assert_contains \
-  "_dev/primes/prime-kanban-board.md" \
-  'three write surfaces' \
-  '_dev/primes/prime-kanban-board.md must state the tool has exactly three write surfaces once next-req reserves ids — testing fields, next-version, and reservation markers are the complete set, and nothing but this sentence records the count (it moved out of CLAUDE.md in 0.266.7).'
 
 assert_contains \
   "actions/capture.md" \
@@ -7309,17 +7305,19 @@ assert_contains \
   'verify-requests \(re-reads UR input\.md verbatim or compares decision sources with complete queued REQs\)' \
   'the prompt-injection caller inventory must cover both verify-requests ingestion modes.'
 
-# The canonical repository-maintainer gate owns its production command inventory.
-# Exercise only its recursion-safe focused contract here; invoking normal mode would
-# recursively run this aggregate.
+# The canonical repository-maintainer gate owns its production command inventory. Its
+# shimmed `--self-test` is the check to run after editing that script; it is not part of
+# every gate run, and invoking normal mode here would recursively run this aggregate.
 maintainer_verify_probe="$repo_root/_dev/tests/maintainer-verify.sh"
 if [ ! -x "$maintainer_verify_probe" ]; then
   printf 'FAIL: _dev/tests/maintainer-verify.sh is missing or not executable — repository-native verification has no canonical gate.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$maintainer_verify_probe" --self-test; then
-  printf 'FAIL: canonical maintainer verification self-test failed (see the FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
 fi
+
+# Behavioral sub-suites run concurrently through _dev/tests/probe-batch.sh and report in
+# launch order; the two that build do-work-cli into one source-tree path share a lane.
+# shellcheck source=_dev/tests/probe-batch.sh
+source "$repo_root/_dev/tests/probe-batch.sh"
 
 # The suite manifest is executable input to both update paths and the fresh installer. Keep
 # its path-safety and exact-module contract in one behavioral probe rather than duplicating
@@ -7328,9 +7326,8 @@ suite_manifest_probe="$repo_root/_dev/tests/suite-manifest-contract.sh"
 if [ ! -f "$suite_manifest_probe" ]; then
   printf 'FAIL: _dev/tests/suite-manifest-contract.sh is missing — the suite layout has no behavioral coverage.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$suite_manifest_probe"; then
-  printf 'FAIL: suite manifest contract probes failed (see the FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
+else
+  launch_probe suite_manifest_probe 'suite manifest contract probes failed (see the FAIL lines above).' "$suite_manifest_probe"
 fi
 
 # Published package links have two valid execution contexts: this source tree and the
@@ -7341,9 +7338,8 @@ shipped_reference_probe="$repo_root/_dev/tests/shipped-package-reference-contrac
 if [ ! -f "$shipped_reference_probe" ]; then
   printf 'FAIL: _dev/tests/shipped-package-reference-contract.sh is missing — shipped package references have no source/install coverage.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$shipped_reference_probe"; then
-  printf 'FAIL: shipped package reference contract failed (see the FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
+else
+  launch_probe shipped_reference_probe 'shipped package reference contract failed (see the FAIL lines above).' "$shipped_reference_probe"
 fi
 
 # Markdown-prescribed shell is shipped executable guidance, while hook scripts are shipped
@@ -7353,12 +7349,8 @@ action_shell_probe="$repo_root/_dev/tests/action-shell-blocks.sh"
 if [ ! -x "$action_shell_probe" ]; then
   printf 'FAIL: _dev/tests/action-shell-blocks.sh is missing or not executable — shipped shell guidance has no lint coverage.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$action_shell_probe" --self-test; then
-  printf 'FAIL: action shell-block negative self-test failed (see the FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
-elif ! bash "$action_shell_probe"; then
-  printf 'FAIL: shipped shell-block lint failed (see the attributed FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
+else
+  launch_probe action_shell_probe 'shipped shell-block lint failed (see the attributed FAIL lines above).' "$action_shell_probe"
 fi
 
 # The SessionStart banner is deliberately fail-soft: malformed or missing runtime inputs must
@@ -7367,9 +7359,8 @@ session_start_probe="$repo_root/_dev/tests/session-start-hook-behavior.sh"
 if [ ! -x "$session_start_probe" ]; then
   printf 'FAIL: _dev/tests/session-start-hook-behavior.sh is missing or not executable — the startup banner fallback has no behavioral coverage.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$session_start_probe"; then
-  printf 'FAIL: SessionStart hook behavior probes failed (see the fixture FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
+else
+  launch_probe session_start_probe 'SessionStart hook behavior probes failed (see the fixture FAIL lines above).' "$session_start_probe"
 fi
 
 # Shared prescribed-shell rationale has one shipped home; callers retain only local intent,
@@ -7378,9 +7369,8 @@ prescribed_shell_probe="$repo_root/_dev/tests/prescribed-shell-canonicalization.
 if [ ! -x "$prescribed_shell_probe" ]; then
   printf 'FAIL: _dev/tests/prescribed-shell-canonicalization.sh is missing or not executable — shell primitive restatements have no ratchet.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$prescribed_shell_probe"; then
-  printf 'FAIL: prescribed shell primitive canonicalization failed (see the attributed FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
+else
+  launch_probe prescribed_shell_probe 'prescribed shell primitive canonicalization failed (see the attributed FAIL lines above).' "$prescribed_shell_probe"
 fi
 
 # The prescribed-shell suite reports how many cases it holds, and that figure is only as
@@ -7429,9 +7419,8 @@ defensive_surface_probe="$repo_root/_dev/tests/defensive-surface-audit.sh"
 if [ ! -x "$defensive_surface_probe" ]; then
   printf 'FAIL: _dev/tests/defensive-surface-audit.sh is missing or not executable — REQ-168 exact deletion regressions have no ratchet.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$defensive_surface_probe"; then
-  printf 'FAIL: defensive-surface exact deletion regression failed (see the attributed FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
+else
+  launch_probe defensive_surface_probe 'defensive-surface exact deletion regression failed (see the attributed FAIL lines above).' "$defensive_surface_probe"
 fi
 
 # Provenance write-back and blanked-record recovery are now separate typed Go
@@ -7446,9 +7435,6 @@ update_script_probe="$repo_root/_dev/tests/update-script-behavior.sh"
 if [ ! -f "$update_script_probe" ]; then
   printf 'FAIL: _dev/tests/update-script-behavior.sh is missing — the updater has no behavioral coverage.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$update_script_probe"; then
-  printf 'FAIL: update-script behavior probes failed (see the FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
 fi
 
 # Behavioral probes for skills/do-work/tools/do-work-cli.sh, the launcher that builds the
@@ -7462,9 +7448,8 @@ do_work_cli_launcher_probe="$repo_root/_dev/tests/do-work-cli-launcher-behavior.
 if [ ! -x "$do_work_cli_launcher_probe" ]; then
   printf 'FAIL: _dev/tests/do-work-cli-launcher-behavior.sh is missing or not executable — the do-work-cli launcher has no behavioral coverage.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$do_work_cli_launcher_probe"; then
-  printf 'FAIL: do-work-cli launcher behavior probes failed (see the FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
+else
+  launch_probe do_work_cli_launcher_probe 'do-work-cli launcher behavior probes failed (see the FAIL lines above).' "$do_work_cli_launcher_probe"
 fi
 
 # The live modular suite package boundaries need a contract independent from the active
@@ -7474,9 +7459,8 @@ staged_skills_probe="$repo_root/_dev/tests/staged-skills-contract.sh"
 if [ ! -f "$staged_skills_probe" ]; then
   printf 'FAIL: _dev/tests/staged-skills-contract.sh is missing — staged skill packages have no boundary coverage.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$staged_skills_probe"; then
-  printf 'FAIL: staged skills contract probes failed (see the FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
+else
+  launch_probe staged_skills_probe 'staged skills contract probes failed (see the FAIL lines above).' "$staged_skills_probe"
 fi
 
 # Fresh installation is a four-module/configuration transaction with its own hermetic
@@ -7486,9 +7470,8 @@ suite_installer_probe="$repo_root/_dev/tests/install-suite-behavior.sh"
 if [ ! -f "$suite_installer_probe" ]; then
   printf 'FAIL: _dev/tests/install-suite-behavior.sh is missing — the full-suite installer has no behavioral coverage.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$suite_installer_probe"; then
-  printf 'FAIL: suite installer behavior probes failed (see the FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
+else
+  launch_probe cli_build_lane 'update-script or suite installer behavior probes failed (see the FAIL lines above)' "$update_script_probe" "$suite_installer_probe"
 fi
 
 # The P50 estimator's contracts — deterministic output, nearest-5 rounding, the
@@ -7498,9 +7481,8 @@ p50_estimator_probe="$repo_root/_dev/tests/p50-estimator-determinism.sh"
 if [ ! -f "$p50_estimator_probe" ]; then
   printf 'FAIL: _dev/tests/p50-estimator-determinism.sh is missing — the P50 estimator has no lock-in coverage.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$p50_estimator_probe"; then
-  printf 'FAIL: P50 estimator probes failed (see the FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
+else
+  launch_probe p50_estimator_probe 'P50 estimator probes failed (see the FAIL lines above).' "$p50_estimator_probe"
 fi
 
 # The cheaper-model selector decides which queued REQs a smaller model may build.
@@ -7513,10 +7495,11 @@ select_simple_reqs_probe="$repo_root/_dev/tests/select-simple-reqs-behavior.sh"
 if [ ! -f "$select_simple_reqs_probe" ]; then
   printf 'FAIL: _dev/tests/select-simple-reqs-behavior.sh is missing — the cheaper-model selector has no lock-in coverage.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$select_simple_reqs_probe"; then
-  printf 'FAIL: cheaper-model selector probes failed (see the FAIL lines above).\n' >&2
-  fail_count=$((fail_count + 1))
+else
+  launch_probe select_simple_reqs_probe 'cheaper-model selector probes failed (see the FAIL lines above).' "$select_simple_reqs_probe"
 fi
+
+collect_probes
 
 # Managed Just sections are a byte-preserving ownership boundary, not a prose convention.
 # Exercise the real utility across replacement, append, creation, malformed
