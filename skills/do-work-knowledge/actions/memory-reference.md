@@ -17,6 +17,12 @@ All paths derive from `PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null
 
 `working-memory.md` is the only committable file in the store; the other three are added to `.git/info/exclude` by `actions/setup-memory.md`'s `memory-module` Phase 2. The sentinel is machine-local because `memory bootstrap` refuses to re-run when it exists — committed, it would block every other clone from importing that machine's own session history.
 
+## Confined Store Reads
+
+Every deterministic Memory command resolves its configured store inside the repository, refuses a linked store root, and reads descendants through one opened root. `working-memory.md`, daily `.md` logs, `usage-ledger.jsonl`, and `.bootstrap-imported` must be regular files; `logs/` must be a real directory. Links, special objects, identity changes during observation, and oversize objects are failures named by the configured path. A missing optional log directory, ledger, or sentinel remains ordinary absence.
+
+Reads are finite: `working-memory.md` is bounded at 64 KiB, each daily log and `usage-ledger.jsonl` at 8 MiB, `.bootstrap-imported` at 128 bytes, and a `logs/` enumeration at 4,096 entries. These are defensive transport ceilings, not content targets: the standing file still has its stricter 2,500-character semantic cap, and normal logs and ledgers should remain far below their refusal bounds. Commands never return partial bytes from an object that exceeds a ceiling.
+
 ## working-memory.md Template
 
 Created by `do-work-knowledge setup-memory` (only if absent — never overwritten):

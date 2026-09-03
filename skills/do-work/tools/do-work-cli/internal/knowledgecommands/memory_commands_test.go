@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -258,6 +259,369 @@ func TestForgetAndBootstrapNeverFollowPrivateSymlinksOrDiscloseOutsideBytes(t *t
 	bootstrapJSON, _ := json.Marshal(bootstrap)
 	if bootstrap.Outcome != resultmodel.OutcomeFailure || strings.Contains(string(bootstrapJSON), canary) {
 		t.Fatalf("bootstrap followed/disclosed outside sentinel: %s", bootstrapJSON)
+	}
+}
+
+func TestConfiguredMemoryReadersRefuseLinkedObjectsWithoutDisclosingTargetBytes(t *testing.T) {
+	const canary = "configured-memory-outside-canary-475"
+	type commandCase struct {
+		name      string
+		invoke    func(string) resultmodel.CommandResult
+		positions []string
+	}
+	commandCases := []commandCase{
+		{
+			name: "broad recall",
+			invoke: func(root string) resultmodel.CommandResult {
+				return handleMemoryRecall(commandruntime.ExecutionContext{RepositoryRoot: root}, nil)
+			},
+			positions: []string{"working", "logs directory", "log file"},
+		},
+		{
+			name: "lexical recall",
+			invoke: func(root string) resultmodel.CommandResult {
+				return handleLexicalMemoryRecall(commandruntime.ExecutionContext{}, []string{filepath.Join(root, "memory"), "configured memory outside"})
+			},
+			positions: []string{"working", "logs directory", "log file"},
+		},
+		{
+			name: "status",
+			invoke: func(root string) resultmodel.CommandResult {
+				return handleMemoryStatus(commandruntime.ExecutionContext{RepositoryRoot: root}, nil)
+			},
+			positions: []string{"working", "logs directory", "log file", "ledger"},
+		},
+		{
+			name: "memory audit",
+			invoke: func(root string) resultmodel.CommandResult {
+				return handleMemoryAudit(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--engine", "memory"})
+			},
+			positions: []string{"working", "logs directory", "log file", "ledger"},
+		},
+		{
+			name: "remember",
+			invoke: func(root string) resultmodel.CommandResult {
+				return handleMemoryRemember(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--section", "notes", "--commit", "ordinary fact"})
+			},
+			positions: []string{"working", "logs directory"},
+		},
+		{
+			name: "forget",
+			invoke: func(root string) resultmodel.CommandResult {
+				return handleMemoryForget(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"configured memory outside"})
+			},
+			positions: []string{"working", "logs directory", "log file"},
+		},
+	}
+
+	for _, commandCase := range commandCases {
+		for _, position := range commandCase.positions {
+			t.Run(commandCase.name+"/"+position, func(t *testing.T) {
+				root := newMemoryRepository(t)
+				expectedPath := installLinkedMemoryFixture(t, root, position, canary)
+				if commandCase.name == "lexical recall" {
+					expectedPath = filepath.Join(root, filepath.FromSlash(expectedPath))
+				}
+				before := treeDigest(t, filepath.Join(root, "memory"))
+				result := commandCase.invoke(root)
+				assertMemoryReadRefusal(t, result, expectedPath, canary)
+				if after := treeDigest(t, filepath.Join(root, "memory")); after != before {
+					t.Fatalf("refused %s changed Memory bytes", position)
+				}
+			})
+		}
+	}
+}
+
+func TestConfiguredMemoryReadersRefuseOutsideRepositoryRoot(t *testing.T) {
+	const canary = "configured-memory-outside-root-canary-475"
+	repositoryRoot := newMemoryRepository(t)
+	outsideRoot := t.TempDir()
+	writeInterviewFixture(t, outsideRoot, "working-memory.md", strings.Replace(workingMemoryFixture, "2026-08-01", canary, 1))
+	writeInterviewFixture(t, outsideRoot, "logs/2026-09-01.md", "## 10:00 UTC note\n"+canary+"\n")
+
+	for _, fixture := range []struct {
+		name   string
+		invoke func() resultmodel.CommandResult
+	}{
+		{"broad recall", func() resultmodel.CommandResult {
+			return handleMemoryRecall(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--memory-root", outsideRoot})
+		}},
+		{"status", func() resultmodel.CommandResult {
+			return handleMemoryStatus(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--memory-root", outsideRoot})
+		}},
+		{"memory audit", func() resultmodel.CommandResult {
+			return handleMemoryAudit(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--engine", "memory", "--memory-root", outsideRoot})
+		}},
+	} {
+		t.Run(fixture.name, func(t *testing.T) {
+			assertMemoryReadRefusal(t, fixture.invoke(), filepath.ToSlash(outsideRoot), canary)
+		})
+	}
+}
+
+func TestConfiguredMemoryReadersRefuseLinkedConfiguredRoot(t *testing.T) {
+	for _, fixture := range []struct {
+		name   string
+		invoke func(string) resultmodel.CommandResult
+	}{
+		{"status", func(root string) resultmodel.CommandResult {
+			return handleMemoryStatus(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--memory-root", "./memory"})
+		}},
+		{"audit", func(root string) resultmodel.CommandResult {
+			return handleMemoryAudit(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--engine", "memory", "--memory-root", "./memory"})
+		}},
+	} {
+		t.Run(fixture.name, func(t *testing.T) {
+			root := newMemoryRepository(t)
+			if err := os.Rename(filepath.Join(root, "memory"), filepath.Join(root, "memory-real")); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink("memory-real", filepath.Join(root, "memory")); err != nil {
+				t.Fatal(err)
+			}
+			assertMemoryReadRefusal(t, fixture.invoke(root), "./memory", "")
+		})
+	}
+}
+
+func TestConfiguredMemoryReadersRefuseSpecialObjects(t *testing.T) {
+	for _, fixture := range []struct {
+		name         string
+		position     string
+		expectedPath string
+		invoke       func(string) resultmodel.CommandResult
+	}{
+		{"working fifo", "working", "memory/working-memory.md", func(root string) resultmodel.CommandResult {
+			return handleMemoryStatus(commandruntime.ExecutionContext{RepositoryRoot: root}, nil)
+		}},
+		{"logs regular file", "logs", "memory/logs", func(root string) resultmodel.CommandResult {
+			return handleMemoryRecall(commandruntime.ExecutionContext{RepositoryRoot: root}, nil)
+		}},
+		{"log fifo", "log", "memory/logs/2026-09-01.md", func(root string) resultmodel.CommandResult {
+			return handleMemoryAudit(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--engine", "memory"})
+		}},
+		{"ledger directory", "ledger", "memory/usage-ledger.jsonl", func(root string) resultmodel.CommandResult {
+			return handleMemoryStatus(commandruntime.ExecutionContext{RepositoryRoot: root}, nil)
+		}},
+		{"sentinel directory", "sentinel", "memory/.bootstrap-imported", func(root string) resultmodel.CommandResult {
+			return handleMemoryBootstrap(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--confirm", "--manifest", filepath.Join(root, "missing.json")})
+		}},
+	} {
+		t.Run(fixture.name, func(t *testing.T) {
+			root := newMemoryRepository(t)
+			path := filepath.Join(root, filepath.FromSlash(fixture.expectedPath))
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			switch fixture.position {
+			case "working":
+				if err := os.Remove(path); err != nil {
+					t.Fatal(err)
+				}
+				if err := syscall.Mkfifo(path, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			case "logs":
+				if err := os.WriteFile(path, []byte("not a directory\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			case "log":
+				if err := syscall.Mkfifo(path, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			case "ledger", "sentinel":
+				if err := os.Mkdir(path, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			before := treeDigest(t, filepath.Join(root, "memory"))
+			assertMemoryReadRefusal(t, fixture.invoke(root), fixture.expectedPath, "")
+			if after := treeDigest(t, filepath.Join(root, "memory")); after != before {
+				t.Fatal("refused special object changed Memory bytes")
+			}
+		})
+	}
+}
+
+func TestConfiguredMemoryReadLimitsAreInclusiveAndDirectoryEnumerationIsBounded(t *testing.T) {
+	root := t.TempDir()
+	for _, fixture := range []struct {
+		path  string
+		limit int64
+	}{
+		{"working-memory.md", memoryWorkingReadLimit},
+		{"logs/2026-09-01.md", memoryLogReadLimit},
+		{"usage-ledger.jsonl", memoryLedgerReadLimit},
+		{".bootstrap-imported", memorySentinelReadLimit},
+	} {
+		path := filepath.Join(root, filepath.FromSlash(fixture.path))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Truncate(path, fixture.limit); err != nil {
+			t.Fatal(err)
+		}
+		memoryRoot, err := openMemoryRoot(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, exists, err := readOptionalRootedMemoryFile(memoryRoot, fixture.path)
+		_ = memoryRoot.Close()
+		if err != nil || !exists || int64(len(data)) != fixture.limit {
+			t.Fatalf("exact limit %s: len=%d exists=%t err=%v", fixture.path, len(data), exists, err)
+		}
+		if err := os.Truncate(path, fixture.limit+1); err != nil {
+			t.Fatal(err)
+		}
+		memoryRoot, err = openMemoryRoot(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, exists, err = readOptionalRootedMemoryFile(memoryRoot, fixture.path)
+		_ = memoryRoot.Close()
+		if err == nil || !exists || len(data) != 0 {
+			t.Fatalf("over limit %s: len=%d exists=%t err=%v", fixture.path, len(data), exists, err)
+		}
+	}
+
+	logs := filepath.Join(root, "bounded-logs")
+	if err := os.Mkdir(logs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for index := 0; index < memoryLogDirectoryEntryLimit; index++ {
+		if err := os.WriteFile(filepath.Join(logs, fmt.Sprintf("%04d", index)), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	memoryRoot, err := openMemoryRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err := readRootedMemoryDirectory(memoryRoot, "bounded-logs")
+	_ = memoryRoot.Close()
+	if err != nil || len(entries) != memoryLogDirectoryEntryLimit {
+		t.Fatalf("exact directory limit: len=%d err=%v", len(entries), err)
+	}
+	if err := os.WriteFile(filepath.Join(logs, "overflow"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	memoryRoot, err = openMemoryRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err = readRootedMemoryDirectory(memoryRoot, "bounded-logs")
+	_ = memoryRoot.Close()
+	if err == nil || len(entries) != 0 {
+		t.Fatalf("over directory limit: len=%d err=%v", len(entries), err)
+	}
+}
+
+func TestMemoryStatusAndAuditPreserveOrdinaryStoreBytes(t *testing.T) {
+	root := newMemoryRepository(t)
+	writeInterviewFixture(t, root, "memory/logs/2026-09-01.md", "## 10:00 UTC note\nordinary evidence\n")
+	writeInterviewFixture(t, root, "memory/usage-ledger.jsonl", "{\"ts\":\"2026-09-01T10:00:00Z\",\"event\":\"recall\",\"hits\":1}\n")
+	before := treeDigest(t, filepath.Join(root, "memory"))
+	for _, result := range []resultmodel.CommandResult{
+		handleMemoryStatus(commandruntime.ExecutionContext{RepositoryRoot: root}, nil),
+		handleMemoryAudit(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--engine", "memory"}),
+	} {
+		if result.Outcome != resultmodel.OutcomeSuccess {
+			t.Fatalf("ordinary reader = %#v", result)
+		}
+	}
+	if after := treeDigest(t, filepath.Join(root, "memory")); after != before {
+		t.Fatal("ordinary status/audit changed Memory bytes")
+	}
+}
+
+func installLinkedMemoryFixture(t *testing.T, repositoryRoot, position, canary string) string {
+	t.Helper()
+	memoryRoot := filepath.Join(repositoryRoot, "memory")
+	outsideRoot := t.TempDir()
+	workingBytes := strings.Replace(workingMemoryFixture, "2026-08-01", canary, 1) + "\n- " + canary + "\n"
+	logBytes := "## 09:00 UTC note\n" + canary + "\n\n## 10:00 UTC session capture " + canary + "\n"
+	ledgerBytes := `{"ts":"2026-09-01T10:00:00Z","engine":"memory","event":"` + canary + `","hits":1}` + "\n"
+
+	switch position {
+	case "working":
+		if err := os.Remove(filepath.Join(memoryRoot, "working-memory.md")); err != nil {
+			t.Fatal(err)
+		}
+		target := filepath.Join(outsideRoot, "working-memory.md")
+		if err := os.WriteFile(target, []byte(workingBytes), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(target, filepath.Join(memoryRoot, "working-memory.md")); err != nil {
+			t.Fatal(err)
+		}
+		return "memory/working-memory.md"
+	case "logs directory":
+		target := filepath.Join(outsideRoot, "logs")
+		if err := os.MkdirAll(target, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(target, "2026-09-01.md"), []byte(logBytes), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(target, filepath.Join(memoryRoot, "logs")); err != nil {
+			t.Fatal(err)
+		}
+		return "memory/logs"
+	case "log file":
+		if err := os.MkdirAll(filepath.Join(memoryRoot, "logs"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		target := filepath.Join(outsideRoot, "2026-09-01.md")
+		if err := os.WriteFile(target, []byte(logBytes), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(target, filepath.Join(memoryRoot, "logs", "2026-09-01.md")); err != nil {
+			t.Fatal(err)
+		}
+		return "memory/logs/2026-09-01.md"
+	case "ledger":
+		target := filepath.Join(outsideRoot, "usage-ledger.jsonl")
+		if err := os.WriteFile(target, []byte(ledgerBytes), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(target, filepath.Join(memoryRoot, "usage-ledger.jsonl")); err != nil {
+			t.Fatal(err)
+		}
+		return "memory/usage-ledger.jsonl"
+	default:
+		t.Fatalf("unknown fixture position %q", position)
+		return ""
+	}
+}
+
+func assertMemoryReadRefusal(t *testing.T, result resultmodel.CommandResult, expectedPath, canary string) {
+	t.Helper()
+	if result.Outcome != resultmodel.OutcomeFailure || len(result.Findings) != 1 {
+		t.Fatalf("result = %#v, want one failure finding", result)
+	}
+	if len(result.Findings[0].AffectedPaths) != 1 || result.Findings[0].AffectedPaths[0] != expectedPath {
+		t.Fatalf("affected paths = %#v, want %q", result.Findings[0].AffectedPaths, expectedPath)
+	}
+	typedBytes, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	textBytes, err := resultmodel.RenderResult(result, resultmodel.FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jsonBytes, err := resultmodel.RenderResult(result, resultmodel.FormatJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for format, output := range map[string][]byte{"typed": typedBytes, "text": textBytes, "json": jsonBytes} {
+		if canary != "" && strings.Contains(string(output), canary) {
+			t.Fatalf("%s output disclosed refused target bytes: %s", format, output)
+		}
 	}
 }
 
