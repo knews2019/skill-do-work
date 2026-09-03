@@ -1,7 +1,7 @@
 ---
 id: REQ-485
 title: 'Canonicalize REQ reservation marker filenames across allocation flows'
-status: pending-heavy-testing
+status: pending
 priority: now
 created_at: 2026-09-01T12:11:03Z
 user_request: UR-092
@@ -36,7 +36,7 @@ builder_handback_at: 2026-09-03T22:07:29Z
 integration_at: 2026-09-03T22:16:20Z
 testing_at: 2026-09-03T22:19:19Z
 review_at: 2026-09-03T22:19:19Z
-status_changed_at: 2026-09-03T22:19:19Z
+status_changed_at: 2026-09-03T23:00:34Z
 commit: 88446a576c9c2bcf80f1bdd06a54041b7f9baaba
 write_set:
   - skills/do-work-board/tools/queue-kanban/allocate.go
@@ -205,6 +205,11 @@ Passed — mechanical qualification accepted the cumulative `6b07c546..88446a57`
 
 ## Open Questions
 
-- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `88446a576c9c2bcf80f1bdd06a54041b7f9baaba`; did it exit 0?
+- [x] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `88446a576c9c2bcf80f1bdd06a54041b7f9baaba`; did it exit 0? → No — exit 1; staged-skills-contract.sh took 48s, update-script-behavior.sh took 76s, and its interrupt-status probe failed
   Recommended: Yes
   Also: No — report the failing lane
+
+
+## Answer Notes
+
+- 2026-09-03 - [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `88446a576c9c2bcf80f1bdd06a54041b7f9baaba`; did it exit 0?: No — exit 1; staged-skills-contract.sh took 48s, update-script-behavior.sh took 76s, and its interrupt-status probe failed
