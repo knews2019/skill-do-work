@@ -160,11 +160,14 @@ See `do-work/user-requests/UR-099/input.md` for complete verbatim input.
 
 ## Implementation Summary
 
-- `resultmodel.NormalizeResult` now removes a refusal finding's `next_argv` when it names the invoking command while preserving `verification_argv`.
-- A fully REQ-owned self-referential refusal normalizes to `outcome=findings`; a shared/global blocker remains `outcome=refused` without the false remedy.
-- Ambiguous finalization discovery now names `uncommitted-inventory` as its resolving verb and keeps `recover-finalization --discover` as verification.
-- Added table-driven result-model coverage, runtime JSON/exit coverage for the REQ-456 shape, and finalization-discovery resolver coverage.
-- Integrated commit: `e42ae1e57c9f2692a598cb08daca2fe99bec6a45`; implementation range: `26b3426886bfea6183502809a7e5e93799831a52..e42ae1e57c9f2692a598cb08daca2fe99bec6a45`.
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go` (modified)
+
+**What was done:** Result normalization now removes a refusal remedy when it names the invoking command while preserving verification. A fully REQ-owned self-reference becomes a findings outcome; a shared blocker remains refused without the false remedy. Ambiguous finalization discovery now names inventory collection as its resolver and recovery discovery as verification. Table-driven model, runtime JSON/exit, and discovery coverage pin those distinctions. Integrated at e42ae1e57c9f2692a598cb08daca2fe99bec6a45 from implementation range 26b3426886bfea6183502809a7e5e93799831a52..e42ae1e57c9f2692a598cb08daca2fe99bec6a45.
 
 ## Testing
 
