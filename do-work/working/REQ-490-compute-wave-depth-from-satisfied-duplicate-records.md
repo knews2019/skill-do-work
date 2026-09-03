@@ -40,9 +40,9 @@ When every duplicate record of a dependency is terminal-successful, the dependen
 The fold-first scan found no pending or pending-answers REQ, sweep or otherwise, in any UR that shares this wave-depth-versus-graph-readiness disagreement root cause. REQ-452 (refuse ambiguous explicit request IDs) concerns explicit-target identity, not depth; REQ-488 (keep empty inline frontmatter lists empty) concerns list parsing.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Route A direct implementation: pin the duplicate-satisfied wave-0 failure, then consume the dependency graph's resolved edge verdict in queue-depth calculation.
+- [x] **[APPLY]:** Added the exact RED/GREEN lock-in and changed only the declared selector helper and test file.
+- [x] **[UNIFY]:** Reviewed both changed files; focused/full tests, vet, formatting, and diff hygiene pass with no debug, lifecycle, generated, or release drift.
 
 ## Context
 
@@ -102,3 +102,15 @@ None.
 **Tests:** Direct canonical fast gate passed and was recorded at the shared wave baseline before any source dispatch.
 
 **Dependencies:** None. The duplicate-satisfied graph behavior is already present and is the authority this selector-only fix consumes.
+
+## Implementation Summary
+
+**Builder commit:** `87b72c7789d58152f1eaf4253629ba7b12bfa65f`
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go`
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go`
+
+**What was done:** `queueDependencyDepth` now treats a dependency edge absent from the current node's authoritative `UnmetDependencies` as already satisfied. This includes terminal-success duplicate records whose aggregate graph verdict is satisfied even though their ambiguous node status is blank; pending unmet dependencies still recurse and other unresolved cases retain their prior depth behavior.
+
+**Builder verification:** The new duplicate-satisfied fixture failed with REQ-312 excluded at depth 1 before the edit and passes with selection at wave 0/depth 0 afterward. Focused and full module tests, `go vet ./...`, formatting, and diff checks pass; durable evidence is in `do-work/runs/work-2026-09-03-214500/REQ-490-handback.md`.
