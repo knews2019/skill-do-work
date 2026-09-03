@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Do-Work Velocity: Why the Queue Drains Slowly and What to Change in the Speed Fix</title>
+<style>
+  :root {
+    --bg: #f7f4ee;
+    --surface: #fffdf9;
+    --text: #1f2530;
+    --muted: #5b6472;
+    --accent: #1d4ed8;
+    --rule: #d9d2c5;
+    --good: #15803d;
+    --warn: #b45309;
+    --bad: #b91c1c;
+    --bar: #1d4ed8;
+    --bar-2: #60a5fa;
+    --bar-3: #bfdbfe;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171c;
+      --surface: #1c2027;
+      --text: #e8e4dc;
+      --muted: #a7a196;
+      --accent: #7aa2ff;
+      --rule: #343a44;
+      --good: #4ade80;
+      --warn: #fbbf24;
+      --bad: #f87171;
+      --bar: #7aa2ff;
+      --bar-2: #3b6fd9;
+      --bar-3: #27437f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  .page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }
+  h1, h2, h3 { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+  h1 { font-size: clamp(30px, 3.2vw, 44px); line-height: 1.15; }
+  h2 { font-size: 26px; margin-bottom: 14px; }
+  h3 { font-size: 19px; margin-bottom: 8px; }
+  .kicker { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .measure { max-width: 74ch; }
+  header { padding: 56px 0 28px; border-bottom: 1px solid var(--rule); }
+  header .lede { font-size: 19px; margin-top: 18px; }
+  section { padding: 44px 0 8px; border-bottom: 1px solid var(--rule); }
+  .row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 22px 24px; }
+  .tile { flex: 1 1 42%; }
+  .tile .label { color: var(--muted); font-size: 14px; }
+  .tile .value { font-size: 40px; font-weight: 600; line-height: 1.1; margin: 4px 0; }
+  .tile .sub { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; }
+  code { background: color-mix(in srgb, var(--surface) 60%, var(--rule)); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 0; }
+  .verdict { border-left: 4px solid var(--accent); padding-left: 18px; }
+  .tag { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--rule); color: var(--muted); margin-right: 6px; }
+  .tag.good { color: var(--good); border-color: var(--good); }
+  .tag.warn { color: var(--warn); border-color: var(--warn); }
+  .tag.bad { color: var(--bad); border-color: var(--bad); }
+  svg text { fill: var(--text); font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; }
+  svg text.mut { fill: var(--muted); font-size: 12px; }
+  svg .axis { stroke: var(--rule); }
+  ol.plan { padding-left: 22px; }
+  ol.plan li { margin-bottom: 14px; }
+  footer { padding-top: 28px; color: var(--muted); font-size: 14px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div class="kicker">do-work analysis report · skill-do-work2 · maintainer question · 2026-09-03 21:45 EEST</div>
+  <h1 class="measure" style="margin-top:12px">Why the queue drains slowly, and what to change in the speed fix</h1>
+  <p class="lede measure">Development velocity of the do-work queue, measured from the archive, the calibration log, the recorded gate runs and the queue on disk. Follow-up to the 00:10 gate-cost analysis and the 2026-09-01 queue analysis. Evidence mode: non-visual. UI captures were not expected for this work.</p>
+</header>
+
+<section>
+  <div class="row">
+    <div class="verdict measure" style="flex: 2 1 480px">
+      <h2>Verdict</h2>
+      <p>The speed fix is the right fix and it is stalled. REQ-537 (tiering the gate into fast and heavy) shipped at 16:06 with no speedup: the fast tier measured 629 s against the heavy tier's 631 s because the board's test package, which is 73% of the gate, is still not skippable until REQ-538 lands. REQ-538 (cutting the board tests to a fast core) has been claimed since 19:49 local by a cloud session that is now idle, and a separate Codex worktree is doing the same cuts on its own branch without the claim. Nothing in the batch has moved for over two hours.</p>
+      <p>Three changes to the batch, in order: unblock REQ-540 from REQ-539 so the two Go-side cuts land first, add a mechanical 30-second-per-file budget that the gate measures and enforces, and rewrite REQ-541 so a REQ that touches a heavy surface goes to a <code>pending-heavy-testing</code> status instead of appending to a standing sweep. The maintainer said this afternoon that per-REQ status is the shape they want; that supersedes decision D4 in UR-104.</p>
+      <p>The gate is the largest single lever but not the only one. A REQ now takes a median of 65 minutes from claim to archive, and two gate runs cost about 21 of those minutes. The other structural cost is the queue's shape: 38 pending, 20 ready, and one serial chain of ten REQs (REQ-502 through REQ-510, then REQ-486) that no amount of parallel building shortens.</p>
+    </div>
+    <div class="row" style="flex: 1 1 440px; gap: 16px">
+      <div class="card tile"><div class="label">Median claim to archive, last 24 REQs</div><div class="value">65 min</div><div class="sub">p80 88 min · archive frontmatter, 09-02 to 09-03</div></div>
+      <div class="card tile"><div class="label">Recorded fast-tier gate run</div><div class="value">629 s</div><div class="sub">8d9d1bb · heavy 631 s · target under 120 s</div></div>
+      <div class="card tile"><div class="label">Pending REQs · ready now</div><div class="value">38 · 20</div><div class="sub">longest dependency chain 10 deep</div></div>
+      <div class="card tile"><div class="label">REQs archived today so far</div><div class="value">10</div><div class="sub">yesterday 14 · 09-01 28 · 08-31 14</div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Where a REQ's hour goes</h2>
+  <div class="row">
+    <div class="card" style="flex: 1 1 520px">
+      <div class="kicker" style="margin-bottom:10px">Recorded gate run at 8d9d1bb, seconds per component · from the REQ-537 closure record</div>
+      <svg viewBox="0 0 640 150" width="100%" role="img" aria-label="Gate seconds by component: queue-kanban 467, do-work-cli 111, aggregate and lint 63">
+        <text x="0" y="24">queue-kanban tests</text>
+        <rect x="170" y="10" width="437" height="20" fill="var(--bar)"/>
+        <text x="612" y="24" text-anchor="end" class="mut" style="fill:var(--bg)">467 s</text>
+        <text x="0" y="64">do-work-cli tests</text>
+        <rect x="170" y="50" width="104" height="20" fill="var(--bar-2)"/>
+        <text x="282" y="64" class="mut">111 s in-test, 26 packages</text>
+        <text x="0" y="104">aggregate + lint/vet/floors</text>
+        <rect x="170" y="90" width="59" height="20" fill="var(--bar-3)"/>
+        <text x="237" y="104" class="mut">about 63 s</text>
+        <line x1="170" y1="4" x2="170" y2="120" class="axis"/>
+        <text x="170" y="140" class="mut">0</text>
+        <text x="607" y="140" text-anchor="end" class="mut">641 s total</text>
+      </svg>
+      <p class="measure" style="margin-bottom:0">The board package alone is 73% of the run. REQ-538 targets it: delete the two meta-tests that re-execute the whole binary (41.8 s and 16.1 s), let the 55 JavaScript probes skip in the fast tier, and parallelize the rest. REQ-540 puts do-work-cli's binary-building and signal tests behind <code>-short</code>. Together they are the whole speedup; REQ-539 (the shell contract file) touches a lane that already runs its sub-suites concurrently and measured 110 s in the Codex session's timing.</p>
+    </div>
+    <div class="card" style="flex: 1 1 340px">
+      <div class="kicker" style="margin-bottom:10px">Per-REQ time, archived 09-02 to 09-03</div>
+      <table>
+        <tr><th>Phase</th><th class="num">Median min</th><th>Source</th></tr>
+        <tr><td>Claim to review handback</td><td class="num">38</td><td>17 REQs with a review stamp</td></tr>
+        <tr><td>Review to archive and release</td><td class="num">19</td><td>same 17</td></tr>
+        <tr><td>Claim to archive, all</td><td class="num">65</td><td>24 REQs</td></tr>
+        <tr><td>Two gate runs at 629 s</td><td class="num">21</td><td>baseline + Step 6.5 when the runner has no cached green</td></tr>
+      </table>
+      <p class="measure" style="margin-bottom:0">Route mix of those 24: ten Route C, seven Route B, three Route A, four unrouted in-place landings. Over the whole calibration log (203 rows) Route C averages 96 minutes wall against a 66-minute estimate; Route A averages 22 against 7. Small work is priced most wrongly, but the hours are in Route C.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The speed fix today</h2>
+  <div class="row">
+    <div style="flex: 1 1 560px">
+      <table>
+        <tr><th>REQ</th><th>What it does</th><th>State at 21:45</th></tr>
+        <tr><td>REQ-537</td><td>Tier the gate: fast by default, <code>--heavy</code> and <code>--heavy-surfaces</code></td><td><span class="tag good">archived</span> release 0.270.0; closure record says the tier ships, the speedup does not</td></tr>
+        <tr><td>REQ-538</td><td>Cut the board tests to a fast core, JavaScript probes skip through one knob, parallelize</td><td><span class="tag warn">claimed 19:49</span> by a cloud session that is idle; no local worktree or branch for it</td></tr>
+        <tr><td>REQ-539</td><td>Cut the contract file, split the aggregate fast/heavy, build do-work-cli once</td><td><span class="tag">pending</span> waits on 538</td></tr>
+        <tr><td>REQ-540</td><td>Keep transaction and recovery suites, <code>-short</code> the rest</td><td><span class="tag">pending</span> waits on 539, which it does not need</td></tr>
+        <tr><td>REQ-541</td><td>Heavy gate asked for through Needs Input, never run by the loop</td><td><span class="tag bad">design superseded</span> still specifies one standing sweep REQ; the maintainer now wants per-REQ <code>pending-heavy-testing</code></td></tr>
+        <tr><td>REQ-542</td><td>SessionStart launches the background gate runner</td><td><span class="tag">pending</span> waits on 541, which it does not need</td></tr>
+      </table>
+    </div>
+    <div class="card measure" style="flex: 1 1 320px">
+      <h3>The unclaimed parallel work</h3>
+      <p>A git worktree on branch <code>codex/test-budget-heavy-consent</code> holds an uncommitted diff of 34 insertions and 35 deletions in the board package. It deletes exactly the two <code>RejectsZeroProbes</code> meta-tests REQ-538 names, replaces them with a table-driven unit test of the guard, and adds <code>QUEUE_KANBAN_JAVASCRIPT_PROBES</code> and <code>QUEUE_KANBAN_BROWSER_PROBES</code> as off switches. That is REQ-538's first two requirements, done outside the claim. If the maintainer accepts it, the cheapest path is to fold it into REQ-538 and release the idle cloud claim; if not, the Codex branch should stop before it and the claimed session collide on the same files.</p>
+      <p style="margin-bottom:0">The same session measured the wider corpus: <code>update-script-behavior.sh</code> about 60 s, <code>install-suite-behavior.sh</code> about 40 s, one Go package about 35 s. Those are the first three files the 30-second budget would flag.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What to change in the batch</h2>
+  <div class="measure">
+    <ol class="plan">
+      <li><strong>Land the Go cuts first, in parallel.</strong> Drop <code>depends_on: [REQ-539]</code> from REQ-540 and <code>depends_on: [REQ-541]</code> from REQ-542; neither edits the other's files. REQ-538 and REQ-540 are 90% of the gate's seconds and can be built by two builders at once. REQ-539 keeps its place behind 538 only because both touch the aggregate runner.</li>
+      <li><strong>Make the 30-second budget a program, not a sentence.</strong> Each test file or Go package in the fast tier finishes under 30 s wall. The gate measures every file it runs, prints the durations, appends them to a log next to the calibration log, and fails the fast tier when a file exceeds the budget. The heavy tier has no budget. This is the same shape as REQ-519's line-count ratchet that REQ-539 already lands, so it belongs in REQ-539's acceptance criteria for shell files and REQ-540's for Go packages. The maintainer's instruction was to keep measuring because these suites grow back; a log that the board can read as a verify finding keeps that visible without anyone remembering to check.</li>
+      <li><strong>Rewrite REQ-541 for per-REQ status.</strong> After a green fast gate, a REQ whose diff matches <code>--heavy-surfaces</code> is archived as usual and its record moves to <code>pending-heavy-testing</code>; the loop continues. The status has to be recognized in three places at once: the do-work-cli status vocabulary and selection (skip it, never treat it as malformed), the board's parser and Needs Input classification (the prime asks for parser and board in lock-step), and Step 6.5 in <code>work.md</code>. The maintainer runs <code>--heavy</code> when they choose and clears the status by hand. The standing sweep REQ, its Open Question, and the "one file appended to" wording go.</li>
+      <li><strong>Start the runner now, not after REQ-542.</strong> The gate runner already exists since 0.266.9. Started by hand today, every claim finds its baseline green and skips one of the two runs, which is about 10 minutes per REQ at the current gate length. REQ-542 only automates the start.</li>
+      <li><strong>Run one gate on this machine at a time.</strong> UR-104 was briefed on a 301 s gate; the REQ-537 record shows 641 s for the same tier hours later, and the Codex session measured the heavy tier at 363 s. The spread is machine load: two checkouts, cloud sessions and a Codex worktree were building and testing at once. Budgets measured under that load will trip falsely. The duration log from item 2 should record the concurrent gate count with each row so an over-budget row can be read correctly.</li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <h2>The queue's shape</h2>
+  <div class="row">
+    <div class="measure" style="flex: 1 1 460px">
+      <p>Twenty of the 38 pending REQs are ready now; their dependencies are archived. The other 18 sit behind five chains. Most are two or three deep and clear as their head lands. One is different: REQ-502 through REQ-510 is a nine-step serial rewrite of the work loop (the read-only advance command, then selection, gates, archive and finalize moved behind it, then capture templates and work-reference sweeps), with REQ-486 behind it. Every link is a rule change that depends on the previous one, so it is genuinely serial. At the recent median that chain alone is about 11 hours of pipeline time, and it is the queue's critical path however many builders run.</p>
+      <p>Draining everything else is throughput-bound instead: 28 REQs at 65 minutes is about 30 hours serial, and the ready set can be built in parallel under one orchestrator. Shortening the gate takes roughly a third off both figures. Starting the advance chain early, in its own lane, takes the critical path off the end of the drain.</p>
+    </div>
+    <div class="card" style="flex: 1 1 340px">
+      <div class="kicker" style="margin-bottom:10px">Blocked pending REQs by chain</div>
+      <table>
+        <tr><th>Chain head</th><th>Behind it</th><th>Head state</th></tr>
+        <tr><td>REQ-468 (per-REQ isolation)</td><td>469, 470, 471</td><td>claimed, working</td></tr>
+        <tr><td>REQ-502 (checkpoint cleanup)</td><td>503 to 510, then 486</td><td>ready</td></tr>
+        <tr><td>REQ-514 (refusals never name the fix)</td><td>515</td><td>ready</td></tr>
+        <tr><td>REQ-548 (repair the gate's broken pipe)</td><td>531</td><td>claimed, working</td></tr>
+        <tr><td>REQ-538 (board test cuts)</td><td>539, 540, 541, 542</td><td>claimed, idle session</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Throughput, last six days</h2>
+  <div class="row">
+    <div class="card" style="flex: 1 1 520px">
+      <div class="kicker" style="margin-bottom:10px">REQs archived per day · archive frontmatter completed_at, UTC days · today is partial</div>
+      <svg viewBox="0 0 640 190" width="100%" role="img" aria-label="REQs archived per day: 08-29 4, 08-30 7, 08-31 14, 09-01 28, 09-02 14, 09-03 10">
+        <line x1="40" y1="150" x2="620" y2="150" class="axis"/>
+        <rect x="60" y="130" width="70" height="20" fill="var(--bar)"/><text x="95" y="124" text-anchor="middle">4</text><text x="95" y="170" text-anchor="middle" class="mut">08-29</text>
+        <rect x="155" y="115" width="70" height="35" fill="var(--bar)"/><text x="190" y="109" text-anchor="middle">7</text><text x="190" y="170" text-anchor="middle" class="mut">08-30</text>
+        <rect x="250" y="80" width="70" height="70" fill="var(--bar)"/><text x="285" y="74" text-anchor="middle">14</text><text x="285" y="170" text-anchor="middle" class="mut">08-31</text>
+        <rect x="345" y="10" width="70" height="140" fill="var(--bar)"/><text x="380" y="30" text-anchor="middle" style="fill:var(--bg)">28</text><text x="380" y="170" text-anchor="middle" class="mut">09-01</text>
+        <rect x="440" y="80" width="70" height="70" fill="var(--bar)"/><text x="475" y="74" text-anchor="middle">14</text><text x="475" y="170" text-anchor="middle" class="mut">09-02</text>
+        <rect x="535" y="100" width="70" height="50" fill="var(--bar-2)"/><text x="570" y="94" text-anchor="middle">10</text><text x="570" y="170" text-anchor="middle" class="mut">09-03 so far</text>
+      </svg>
+      <p class="measure" style="margin-bottom:0">Commits per day over the same window ran 18, 58, 87, 176, 128 and 134. The 09-01 peak was the parallel-queue day that 0.269.0 later reconciled; 09-02 and 09-03 are the sustainable rate with one orchestrator, and today's ten include five hours in which the batch that is supposed to speed everything up did not move.</p>
+    </div>
+    <div class="card measure" style="flex: 1 1 320px">
+      <h3>Data notes</h3>
+      <p>The calibration log in the working tree has two uncommitted row edits made by another process at about 21:30: REQ-460 and REQ-461 were rewritten to 20 and 16 minutes, matching their post-crash-recovery frontmatter rather than the original work. The per-route averages above were computed before that edit and would move by less than a minute. Estimates in the log are hand-rounded for 17 of 203 rows.</p>
+      <p style="margin-bottom:0">Gate seconds come from the REQ-537 closure record and UR-104's brief, not from a run made for this report; no gate was run. Per-REQ minutes are archive frontmatter stamps, which crash recovery can re-stamp, so they are a floor on build time rather than an exact measure.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Verify it yourself</h2>
+  <div class="row">
+    <div style="flex: 1 1 420px">
+      <div class="kicker" style="margin-bottom:8px">Run for this report</div>
+<pre>git show -s --format=%B af6b29bc          # REQ-537 closure: 629 s fast, 631 s heavy, 467 s board
+git worktree list                          # the codex/test-budget-heavy-consent worktree
+git -C "$(git worktree list | sed -n 2p | cut -d' ' -f1)" diff --stat
+sed -n 198,200p do-work/calibration-log.tsv
+ls do-work/queue | wc -l; ls do-work/working</pre>
+    </div>
+    <div style="flex: 1 1 420px">
+      <div class="kicker" style="margin-bottom:8px">Not run for this report</div>
+<pre>bash _dev/tests/maintainer-verify.sh       # fast tier, records nothing
+bash _dev/tests/gate-runner.sh --once      # one gate run that records green
+bash _dev/tests/maintainer-verify.sh --heavy-surfaces
+cd skills/do-work-board/tools/queue-kanban &amp;&amp; go test -count=1 -json ./... \
+  | grep '"Action":"pass"' | sort -t: -k5 -n | tail  # slowest tests</pre>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Lineage: <a href="../2026-09-03_0010_maintainer-verify-gate-cost-analysis/index.html">2026-09-03 00:10 gate cost analysis</a> · <a href="../2026-09-01_0927_queue-analysis-time-cost-disposition/index.html">2026-09-01 queue analysis</a>. Sources: do-work/archive frontmatter, do-work/calibration-log.tsv at 73fc3c80, do-work/queue and do-work/working at HEAD 06828843, commits af6b29bc and eef2b8d2, UR-104 input, the Codex worktree diff, and the maintainer's 21:32 instruction in the pasted session transcript. Render status is stated below this line after the check.
+  <div id="render-status">Layout render-verified in light and dark at 1440 px width.</div>
+</footer>
+
+</div>
+</body>
+</html>
