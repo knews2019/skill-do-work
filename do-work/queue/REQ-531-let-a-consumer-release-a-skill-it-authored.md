@@ -31,6 +31,7 @@ The old predicate accepted this, because it denylisted only the literal `skills/
 
 - A consumer repository containing an authored `skills/my-skill/SKILL.md` and `skills/my-skill/VERSION`, releasing without `maintainer_release`. Before REQ-461: accepted. After: refused with `RELEASE-TARGET-OWNERSHIP-UNVERIFIED` naming their own marker.
 - The same shape for an authored skill's `CHANGELOG.md`.
+- **In-repo sibling suite packages (folded from REQ-461's review).** `skills/do-work-board/`, `skills/do-work-knowledge/` and `skills/do-work-toolbox/` each carry their own `SKILL.md`, so any release-metadata file under them now needs `maintainer_release` where the old prefix-only predicate accepted them. Not currently live — `skills/do-work-board/tools/queue-kanban/VERSION` is `0.236.20`, not the suite version, so discovery skips it — but it is the same over-refusal inside this very repository, which makes it a useful test bed for whatever declaration this REQ settles on.
 
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)

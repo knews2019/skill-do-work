@@ -33,6 +33,14 @@ REQ-461 replaced the release planner's directory-name denylist with proof of pro
 - It admits the three REQ-461 fixed: `third_party/do-work/VERSION`, `dist/skills/do-work/VERSION`, and any arbitrarily named cache tree.
 - Because it is **prefix**-anchored rather than per-segment, it also admits `packages/vendor/do-work/VERSION` — which the old release predicate *did* catch, so this copy was already the weaker of the two.
 
+## Prose Restatement (folded from REQ-461's review)
+
+`skills/do-work/actions/work-reference.md:1020` is the prose home of this contract and says: "Exclude every installed skill, dependency, vendored package, and generated tree from candidate discovery **regardless of whether Git tracks it**."
+
+REQ-461's new predicate makes tracking *required* and, absent a `SKILL.md` marker, *sufficient* — so a tracked vendored or generated tree is admitted by the layer that backstops that sentence. `_dev/tests/contract-regressions.sh:4272-4273` pins the wording, so prose and code now disagree with a lock-in test standing on the prose's side.
+
+The counter-reading is real and should be weighed rather than dismissed: the prose governs *discovery* and the code governs *refusal*, and a stricter action-level rule is not itself wrong. The defect is that "project-owned" now means two different things in its two homes. This REQ owns the discovery half of that same sentence, so resolving both together is what keeps them from splitting again — and whichever way it resolves, the contract-regressions lock-in moves with it.
+
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
