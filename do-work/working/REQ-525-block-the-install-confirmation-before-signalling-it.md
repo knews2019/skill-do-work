@@ -169,3 +169,34 @@ Whichever goroutine reaches `os.Exit` first wins. The handler usually does, beca
 
 - `installResultToCommandResult` and the `UpdateResult` path have no way to carry a status override, which is why the interrupted exit must be taken inside `RunInstall` rather than returned. Plumbing `ExitCodeOverride` through those two files would let the interrupted result actually reach stdout before the exit — which is what the Open Question above needs in order to be actionable.
 - `runBuiltCLIAtBlockedConfirmation` and `runBuiltCLIInterruptedAtMarker` now share most of their body. Not worth merging while their synchronization points differ, but a third built-child interruption test should collapse them.
+
+## Testing
+
+**Tests run:** `go build ./... && go vet ./... && gofmt -l .`; `go test -count=1 ./internal/suiteinstall/`; `go test -race -count=1 ./internal/suiteinstall/`; `go test -count=1 ./...` twelve times; canonical repository gate `bash _dev/tests/maintainer-verify.sh`.
+**Result:** ✓ `internal/suiteinstall` green, including under `-race` (no data race on the new atomic flag). **The gate now fails on exactly one test** — `internal/toolboxcommands` → `TestRemediationCancellationReachesMediaGitCommitAndRollback`, the REQ-524 baseline. This REQ's own test no longer appears in it, and the gate is deterministic again for the first time this session.
+
+**Red-green validation:** traces the REQ's replacement acceptance criterion — an interrupted confirmation reports exit 130 regardless of goroutine scheduling.
+
+Neutered (production file restored from `HEAD`, tests kept), with the new `GOMAXPROCS=1` child pin — **9 of 9 subtests red**:
+- `TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation`, all six: `install-suite` and `update-suite` × HUP/INT/TERM, each `signal … exit = <nil>, want 130`
+- `TestBuiltInstallExits130AfterRecoveringASignalInterruptedMidWriteInstall`, all three: `signal … exit = exit status 3, want 130`
+
+That second failure text is the F4 conflation showing itself directly — `exit status 3` is `ExitCode(OutcomeRolledBack)`, so recovery ran correctly and the ordinary return path then reported the rollback instead of the interrupt.
+
+Post-fix: all 9 green.
+
+**The control, run in both directions — this is what makes the pin a lock-in rather than a preference.** On the *same neutered tree*, with `singleProcessorEnvironment()` temporarily returning bare `os.Environ()`, **0 of 9 subtests failed across 3 runs**. The defect is invisible at default `GOMAXPROCS`. So the one-processor pin is precisely what converts this flake class into a deterministic failure, at no cost.
+
+**Deterministic reproduction of the original bug** (from the diagnosis pass, before any edit): running the built child under `GOMAXPROCS=1` failed 6 of 6 confirmation subtests on every run, with or without a settle delay after the prompt. A 500 ms delay past the prompt bytes, with the read unquestionably parked in its `select`, still failed — which is what refuted the write-then-read window hypothesis rather than merely leaving it unconfirmed.
+
+**Baseline flakiness, for the record:** on the unmodified tree, `go test -count=1 ./...` failed this test in **3 of 7** runs. After the fix, **12 consecutive full-module runs** show exactly one failure each, always the REQ-524 baseline.
+
+**New tests added:**
+- `TestBuiltInstallExits130AfterRecoveringASignalInterruptedMidWriteInstall` — the mid-write interrupt case (F4), which had no coverage at all. Helpers `installPostWriteBlockingJust`, `runBuiltCLIInterruptedAtMarker`, `waitForMarkerFile`.
+- `singleProcessorEnvironment` and the extracted `interruptingSignalCases`, shared by both built-child helpers.
+
+**Existing tests updated:** `TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation` gained the `GOMAXPROCS=1` child pin. **No assertion was weakened** — the exit-130 check and the managed-path non-effect checks are byte-unchanged, which the REQ's constraints required.
+
+**`internal/nextselection`**, which the diagnosis pass saw fail once in seven runs, did **not** fail once across the twelve runs here. Nothing to capture.
+
+*Verified by work action*
