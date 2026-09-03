@@ -102,15 +102,42 @@ That window is the hypothesis to confirm or refute, not a conclusion. Four sight
 
 *Generated in-session (single-pass discovery)*
 
+## Confirmed Root Cause — Scope Widened to the Product
+
+The exploration hypothesis above is **refuted**, and so is this REQ's original title and premise. The defect is not the moment the test observes, and it is not test-side at all.
+
+**Two goroutines race to call `os.Exit`, and nothing orders them.**
+
+1. `install_transaction.go:200` arms signals for the whole run, long before the prompt. Its handler goroutine does `cancelWork()` → `<-transaction.recoveryFinished` → `os.Exit(130)` at `:207`.
+2. `install_transaction.go:809` — `readConfirmation`'s `case <-ctx.Done():` fires and returns `false`. Cancellation reaches the blocked read correctly, so REQ-451's `[family: interruptible-blocking-io]` contract is intact.
+3. `install_transaction.go:158-168` — **`!confirmed` is indistinguishable from a typed "N".** Main narrates "Installation cancelled; no files were changed." and returns `InstallResult{Outcome: OutcomeSuccess, Cancelled: true}`.
+4. Deferred, LIFO: `cleanup()` → `close(recoveryFinished)` → `stopSignals()`. The close releases the handler goroutine, now committed to `os.Exit(130)`.
+5. Main meanwhile marshals JSON and reaches `cmd/do-work-cli/main.go:63`, `os.Exit(ExitCode(OutcomeSuccess))` = **0**.
+
+Whichever goroutine reaches `os.Exit` first wins. The handler usually does, because main still has marshalling and a write ahead of it; under CPU contention main wins and the process exits 0 — which the test reads as `exit = <nil>`.
+
+**The evidence is in every failure's own captured stderr:** `Install this complete four-skill suite? [y/N] Installation cancelled; no files were changed.` Main took the declined branch and won the race.
+
+**Deterministic reproduction:** running the built child under `GOMAXPROCS=1` fails **6 of 6** subtests every run, with or without a settle delay after the prompt — starving the handler goroutine of a scheduler slot makes main win every time. A 500 ms delay after the prompt bytes appear, with the read unquestionably parked in its `select`, still fails: that is what refutes the write-then-read window hypothesis.
+
+**Baseline, 7 full-module runs on the unmodified tree:** this test failed in 3 of 7.
+
+**This is user-visible.** A person pressing Ctrl-C at the install prompt gets exit 0 and a JSON result claiming `outcome: success`. No partial install is possible — `writeStarted` is false and `readConfirmation:815` re-checks `ctx.Err()` — so the filesystem is safe and the *reported status* is the defect.
+
+**Scope decision (D-01, recorded below):** this REQ's constraint said "test-side only unless the product genuinely cannot signal readiness; if a product change is required, say so rather than widening silently." The builder said so, and the widening is deliberate rather than silent. The user-facing symptom is one thing, so it stays one REQ; the write set gains the production file.
+
 ## Scope
 
 **Files I will touch:**
-- `skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go` (modify) — synchronize on the process actually being blocked in its confirmation read, rather than on the prompt bytes having been written
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction.go` (modify) — make the interrupted install have exactly one exit owner, so the signal's status cannot lose a race to the ordinary return path
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go` (modify) — add the mid-write signal case that has no coverage, and make the existing signal test deterministic
 
-**Files I will NOT touch:** `install_transaction.go` and the rest of the production path, unless the root cause proves to be a product defect rather than a test race — in which case the REQ's own constraint requires saying so explicitly instead of widening silently.
+**Files I will NOT touch:** the recovery-ordering property at `install_transaction.go:190-197` is preserved, not rewritten; and no assertion in the existing signal test is weakened — the exit-130 and managed-path non-effect checks stand exactly as written.
+
+*Scope widened from test-only after the root cause was confirmed to be in the product — see* **Confirmed Root Cause** *above and D-01.*
 
 **Acceptance criteria (restated from REQ):**
-- [ ] The signal is delivered only after the installer has demonstrably reached its blocked confirmation read
+- [~] ~~The signal is delivered only after the installer has demonstrably reached its blocked confirmation read~~ — **premise refuted.** A 500 ms delay past that point still fails; the read is parked in its `select` and cancellation reaches it correctly. Replaced by: an interrupted confirmation reports exit 130 regardless of goroutine scheduling.
 - [ ] Exit 130 and the existing managed-path non-effect assertions are unchanged — this is a synchronization fix, not a weaker assertion
 - [ ] No sleep is lengthened to paper over the race, and the test is neither skipped nor made flaky-tolerant
 - [ ] The fix holds under `go test ./...` parallel load, not only under `-run` in isolation
