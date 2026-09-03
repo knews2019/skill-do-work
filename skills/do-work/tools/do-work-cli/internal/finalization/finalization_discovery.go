@@ -423,12 +423,26 @@ func followupPathProves(repositoryRoot, path, requestID string) bool {
 		return false
 	}
 	appended := current.Bytes[len(before.Bytes):]
-	headingPattern := regexp.MustCompile(`^\r?\n## (Review|Recovery) Fold — ` + regexp.QuoteMeta(requestID) + `[^\r\n]*\r?\n(?:[\s\S]*)$`)
-	if !headingPattern.Match(appended) {
+	return boundedFollowupFoldProves(appended, requestID)
+}
+
+func boundedFollowupFoldProves(appended []byte, requestID string) bool {
+	headingPattern := regexp.MustCompile(`^\r?\n## (Review|Recovery) Fold — ` + regexp.QuoteMeta(requestID) + `[^\r\n]*\r?\n`)
+	heading := headingPattern.FindSubmatch(appended)
+	if len(heading) != 2 {
 		return false
 	}
 	sectionHeadings := regexp.MustCompile(`(?m)^##[ \t]+`).FindAllIndex(appended, -1)
-	return len(sectionHeadings) == 1
+	if len(sectionHeadings) != 1 {
+		return false
+	}
+	kind := strings.ToLower(string(heading[1]))
+	markerPrefix := []byte("<!-- do-work:finalization-followup-fold-end ")
+	if bytes.Count(appended, markerPrefix) != 1 {
+		return false
+	}
+	marker := []byte("<!-- do-work:finalization-followup-fold-end kind=" + kind + " request=" + requestID + " -->")
+	return bytes.HasSuffix(appended, append(append([]byte(nil), marker...), '\n')) || bytes.HasSuffix(appended, append(append([]byte(nil), marker...), '\r', '\n'))
 }
 
 func userRequestMoveProves(repositoryRoot, path, origin, destination, userRequestID, requestID string) bool {
@@ -495,6 +509,12 @@ type workspaceReleaseMirror struct {
 	members    []workspaceReleaseMember
 }
 
+type releaseVersionChange struct {
+	path       string
+	oldVersion string
+	newVersion string
+}
+
 type configuredReleaseSet struct {
 	paths            []string
 	ownedPaths       map[string]bool
@@ -514,6 +534,7 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 	}
 	versions := map[string]struct{}{}
 	oldVersions := map[string]struct{}{}
+	changedSources := map[string]releaseVersionChange{}
 	changelogPaths := []string{}
 	var firstChangelogBefore, firstChangelogAfter []byte
 	for _, path := range paths {
@@ -538,6 +559,10 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 		}
 		oldVersions[oldVersion] = struct{}{}
 		versions[newVersion] = struct{}{}
+		switch filepath.Base(path) {
+		case "package.json", "Cargo.toml", "pyproject.toml":
+			changedSources[path] = releaseVersionChange{path: path, oldVersion: oldVersion, newVersion: newVersion}
+		}
 	}
 	if len(changelogPaths) == 0 || len(versions) != 1 || len(oldVersions) != 1 {
 		return paths, nil
@@ -546,7 +571,7 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 	for version := range oldVersions {
 		oldVersion = version
 	}
-	configured, err := configuredReleaseMetadataPaths(repositoryRoot, oldVersion, firstChangelogBefore)
+	configured, err := configuredReleaseMetadataPaths(repositoryRoot, oldVersion, firstChangelogBefore, changedSources)
 	if err != nil {
 		return nil, &releaseDiscoveryFailure{code: "FINALIZATION-DISCOVERY-RELEASE-ENUMERATION", reason: "configured release-member enumeration failed closed: " + err.Error(), paths: paths}
 	}
@@ -558,6 +583,19 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 	}
 	if len(unowned) > 0 {
 		return nil, &releaseDiscoveryFailure{code: "FINALIZATION-DISCOVERY-RELEASE-OWNERSHIP", reason: "release metadata lacks affirmative repository-owned or maintainer-mirror topology evidence", paths: uniqueSorted(unowned)}
+	}
+	configuredPaths := map[string]bool{}
+	for _, path := range configured.paths {
+		configuredPaths[path] = true
+	}
+	unassociated := []string{}
+	for _, path := range paths {
+		if !configuredPaths[path] {
+			unassociated = append(unassociated, path)
+		}
+	}
+	if len(unassociated) > 0 {
+		return uniqueSorted(unassociated), nil
 	}
 	missingRequired := []string{}
 	for _, requiredPath := range configured.paths {
@@ -721,7 +759,7 @@ func tomlSectionVersion(contents []byte, acceptedSections []string) (string, boo
 	return "", false
 }
 
-func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelogBefore []byte) (configuredReleaseSet, error) {
+func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelogBefore []byte, changedSources map[string]releaseVersionChange) (configuredReleaseSet, error) {
 	tracked, err := enumerateTrackedReleasePaths(repositoryRoot)
 	if err != nil {
 		return configuredReleaseSet{}, err
@@ -750,30 +788,51 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 			}
 			continue
 		}
-		if lockMirrorConfigured(repositoryRoot, path, oldVersion) {
-			paths = append(paths, path)
+		if filepath.Base(path) == "VERSION" || path == "skills/do-work/actions/version.md" {
+			if version, ok := releaseVersion(path, before.Bytes); ok && version == oldVersion {
+				paths = append(paths, path)
+			}
 			continue
 		}
-		if version, ok := releaseVersion(path, before.Bytes); ok && version == oldVersion {
+		if _, changed := changedSources[path]; changed {
 			paths = append(paths, path)
 		}
 	}
 	mirrors := map[string]workspaceReleaseMirror{}
-	for _, manifestPath := range tracked {
-		manifestPath = filepath.ToSlash(filepath.Clean(manifestPath))
+	manifestPaths := make([]string, 0, len(changedSources))
+	for manifestPath := range changedSources {
+		manifestPaths = append(manifestPaths, manifestPath)
+	}
+	for _, manifestPath := range uniqueSorted(manifestPaths) {
+		change := changedSources[manifestPath]
 		base := filepath.Base(manifestPath)
-		if base != "package.json" && base != "Cargo.toml" && base != "pyproject.toml" || !ownedManifests[manifestPath] {
+		if !ownedManifests[manifestPath] || change.oldVersion != oldVersion {
 			continue
 		}
 		manifest, readError := headFileImage(repositoryRoot, manifestPath)
 		if readError != nil || !manifest.Exists {
 			return configuredReleaseSet{}, fmt.Errorf("read tracked workspace member %s", manifestPath)
 		}
-		version, ok := releaseVersion(manifestPath, manifest.Bytes)
-		if !ok || version != oldVersion {
-			continue
-		}
 		packageName, ok := releasePackageName(base, manifest.Bytes)
+		lockName, kind := workspaceLockName(base)
+		rootLockPath := filepath.ToSlash(filepath.Join(filepath.Dir(manifestPath), lockName))
+		if trackedSet[rootLockPath] {
+			mirror := mirrors[rootLockPath]
+			mirror.kind = kind
+			if kind == "npm" {
+				before, err := headFileImage(repositoryRoot, rootLockPath)
+				if err != nil || !before.Exists {
+					return configuredReleaseSet{}, fmt.Errorf("read tracked workspace lock %s", rootLockPath)
+				}
+				mirror.rootCopies = npmRootVersionCopies(before.Bytes, oldVersion)
+			} else if ok {
+				mirror.members = appendWorkspaceReleaseMember(mirror.members, workspaceReleaseMember{relativePath: ".", packageName: packageName})
+			}
+			if mirror.rootCopies > 0 || len(mirror.members) > 0 {
+				mirrors[rootLockPath] = mirror
+				paths = append(paths, rootLockPath)
+			}
+		}
 		if !ok {
 			continue
 		}
@@ -781,29 +840,26 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 		if !ok {
 			continue
 		}
-		lockName, kind := workspaceLockName(base)
 		lockPath := filepath.ToSlash(filepath.Join(filepath.Dir(workspaceManifest), lockName))
 		if !trackedSet[lockPath] {
 			continue
 		}
 		mirror := mirrors[lockPath]
 		mirror.kind = kind
-		mirror.members = append(mirror.members, workspaceReleaseMember{relativePath: memberPath, packageName: packageName})
+		mirror.members = appendWorkspaceReleaseMember(mirror.members, workspaceReleaseMember{relativePath: memberPath, packageName: packageName})
 		mirrors[lockPath] = mirror
 		paths = append(paths, lockPath)
 	}
-	for path, mirror := range mirrors {
-		if mirror.kind != "npm" {
-			continue
-		}
-		before, readError := headFileImage(repositoryRoot, path)
-		if readError != nil || !before.Exists {
-			return configuredReleaseSet{}, fmt.Errorf("read tracked workspace lock %s", path)
-		}
-		mirror.rootCopies = npmRootVersionCopies(before.Bytes, oldVersion)
-		mirrors[path] = mirror
-	}
 	return configuredReleaseSet{paths: uniqueSorted(paths), ownedPaths: ownedPaths, workspaceMirrors: mirrors}, nil
+}
+
+func appendWorkspaceReleaseMember(members []workspaceReleaseMember, member workspaceReleaseMember) []workspaceReleaseMember {
+	for _, existing := range members {
+		if existing == member {
+			return members
+		}
+	}
+	return append(members, member)
 }
 
 func affirmativeReleaseOwnership(repositoryRoot string, tracked []string, trackedSet map[string]bool) (map[string]bool, map[string]bool, error) {
@@ -1081,7 +1137,7 @@ func workspaceMirrorReplacement(path string, before, after []byte, oldVersion, n
 		if json.Unmarshal(before, &beforeLock) != nil || json.Unmarshal(after, &afterLock) != nil {
 			return false
 		}
-		if beforeLock.Version == oldVersion && afterLock.Version != newVersion || beforeLock.Packages[""].Version == oldVersion && afterLock.Packages[""].Version != newVersion {
+		if mirror.rootCopies > 0 && (beforeLock.Version == oldVersion && afterLock.Version != newVersion || beforeLock.Packages[""].Version == oldVersion && afterLock.Packages[""].Version != newVersion) {
 			return false
 		}
 		for _, member := range mirror.members {
@@ -1131,25 +1187,6 @@ func workspaceLockMemberHasVersion(lockName string, contents []byte, member work
 		matches++
 	}
 	return matches == 1
-}
-
-func lockMirrorConfigured(repositoryRoot, path, oldVersion string) bool {
-	manifestName := ""
-	switch filepath.Base(path) {
-	case "Cargo.lock":
-		manifestName = "Cargo.toml"
-	case "uv.lock":
-		manifestName = "pyproject.toml"
-	default:
-		return false
-	}
-	manifestPath := filepath.ToSlash(filepath.Join(filepath.Dir(path), manifestName))
-	manifest, err := headFileImage(repositoryRoot, manifestPath)
-	if err != nil || !manifest.Exists {
-		return false
-	}
-	version, ok := releaseVersion(manifestPath, manifest.Bytes)
-	return ok && version == oldVersion
 }
 
 func singleVersionReplacement(before, after []byte, oldVersion, newVersion string) bool {
