@@ -33,7 +33,7 @@ The SessionStart hook launches `_dev/tests/gate-runner.sh` in the background whe
 ## Context
 
 - The runner exists since 0.266.9 and records green through `record-green-gate`; a pipeline claim that finds HEAD proven green skips its baseline. Nothing starts it today.
-- Chosen over a `just gate-watch` recipe at capture (Recommended in the draft; the maintainer did not object).
+- The approved draft left the choice open: SessionStart hook (Recommended) or a `just gate-watch` recipe. Capture took the recommended hook. If the hook turns out to need more than a few lines of fail-soft guarding, fall back to the recipe and say so in the commit body.
 - The hook must stay fail-soft: a missing runner, a non-maintainer checkout, or a runner already running prints one line and exits 0.
 
 ## Detailed Requirements

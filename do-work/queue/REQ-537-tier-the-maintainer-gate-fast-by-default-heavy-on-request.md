@@ -48,6 +48,7 @@ write_set:
 - `--heavy-surfaces`: prints globs, one per line: the board's `web/**` and its JavaScript probe test files, installer and updater sources under `skills/do-work/tools/` and `tools/`, and anything else you classify heavy. Keep the list in the script, not in prose.
 - Self-test: expected stage lists per tier; a `--heavy` fixture run; the marker-mutation check unchanged.
 - No caller under `skills/` or the gate runner passes `--heavy`.
+- Supersedes REQ-519's path-scoped `--changed` lane: the fast tier is the per-REQ check for every path, so no path scoping is built. If the fast tier cannot reach 120 s without it, record that in the commit body and capture path scoping separately; do not add it here silently.
 
 ## Constraints
 
