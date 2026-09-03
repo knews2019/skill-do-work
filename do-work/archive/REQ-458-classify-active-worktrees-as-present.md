@@ -1,7 +1,7 @@
 ---
 id: REQ-458
 title: 'Addendum: classify active worktrees as present and non-fixable'
-status: claimed
+status: completed
 created_at: 2026-08-31T21:38:14Z
 user_request: UR-086
 addendum_to: REQ-083
@@ -29,6 +29,9 @@ estimate:
     - 2 subsystems involved
     - 6 acceptance criteria
     - cross-route regression gates
+completed_at: 2026-09-03T02:30:00Z
+commit: ea2bab0
+release_at: 2026-09-03T02:30:00Z
 ---
 
 # Addendum: Classify Active Worktrees as Present and Non-Fixable
