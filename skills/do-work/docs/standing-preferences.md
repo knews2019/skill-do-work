@@ -8,7 +8,7 @@ If you find yourself pasting the same reminders every session, read this once. F
 
 | You often type... | Already built in? | How it works / where |
 | --- | --- | --- |
-| "when you see something, say something" / "keep writing lessons learned with improvement suggestions" | **Yes** | Every non-trivial REQ appends a `## Lessons Learned` section before archiving (`actions/work.md` Lessons-Capture Phase; standalone mode via `actions/review-work.md`). Out-of-scope things the builder notices go to `## Discovered Tasks` and are queued as follow-ups (`crew-members/general.md` Discovered-Tasks Contract). For a free-form jot, `do-work-toolbox note "…"` (`../../do-work-toolbox/actions/note.md`). Lessons can be promoted into a project knowledge base via `actions/kb-lessons-handoff.md`. |
+| "when you see something, say something" / "keep writing lessons learned with improvement suggestions" | **Yes** | Every non-trivial REQ appends a `## Lessons Learned` section before archiving (`actions/work.md` Lessons-Capture Phase; standalone mode via `actions/review-work.md`). Out-of-scope things the builder notices go to `## Discovered Tasks`; only `impact-critical` findings auto-queue, while every noncritical line ends `→ report only` in the archived REQ (`crew-members/general.md` Discovered-Tasks Contract). Promote one explicitly with `do-work capture`, quoting the full finding line. For a free-form jot, `do-work-toolbox note "…"` (`../../do-work-toolbox/actions/note.md`). |
 | "keep working until all the REQ's are done" | **Partly — bounded on purpose** | `do-work run` loops through every dependency-ready `pending` REQ, one at a time, until none remain (`actions/work.md` Loop-or-Exit). It exits when the current ready set is exhausted rather than running an unattended, infinite re-drain. A separate "loop until empty forever" runner was considered and **declined**: see `decisions/records/adr-014-*`. |
 | "use background agents / workflows to manage context" | **Yes (when your tool supports it)** | Actions that fan work out use the durability pattern in `crew-members/background-agents.md`; `SKILL.md` dispatches `work` and `cleanup` to the background when subagents are available; each REQ gets a fresh agent and a context wipe between iterations (`actions/work.md` Loop-or-Exit). Subagents are a nice-to-have, never a requirement. |
 | "it's safe to commit / `do-work commit` as a background agent" | **Commit: yes. Background: no, by design** | `do-work run` commits each finished REQ itself (`actions/work.md` Commit Phase); `do-work commit` batches loose changes into small atomic commits (`actions/commit.md`). Commit runs in the **foreground** on purpose — only `work` and `cleanup` are background-eligible in `SKILL.md`'s dispatch. |
@@ -21,8 +21,8 @@ If you find yourself pasting the same reminders every session, read this once. F
 
 - **"See something, say something" means capture — not fix.** When the builder notices an
   unrelated bug or bit of tech debt mid-task, the rule is to **log it in `## Discovered
-  Tasks` and queue a follow-up — not fix it inline** (`crew-members/general.md`
-  Discovered-Tasks Contract). Inline fixes blow the REQ's declared scope and inflate the
+  Tasks`, classify it, and end a noncritical line `→ report only` — not fix it inline or
+  queue it automatically** (`crew-members/general.md` Discovered-Tasks Contract). Inline fixes blow the REQ's declared scope and inflate the
   diff so it can't be reviewed safely. If you actually want trivial adjacent issues fixed
   in place, that is a deliberate change to this guardrail — say so explicitly; it isn't the
   default.

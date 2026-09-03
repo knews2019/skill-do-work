@@ -2,14 +2,14 @@
 
 > **Part of the do-work skill.** Invoked automatically after work completes or manually when the user requests a review. Evaluates whether the work actually delivers what was requested — through requirements checking, code review, acceptance testing, and additional testing recommendations. User-facing walkthrough: [`docs/review-work-guide.md`](../docs/review-work-guide.md).
 
-A post-work quality gate with three jobs: (1) confirm the implementation matches the requirements, (2) verify the code is solid, and (3) actually test that the thing works. Creates follow-up REQs for anything that needs fixing.
+A post-work quality gate with three jobs: (1) confirm the implementation matches the requirements, (2) verify the code is solid, and (3) actually test that the thing works. It records every finding and auto-queues only `impact-critical` fixes.
 
 ## Philosophy
 
 - **Did we build what was asked?** Requirements check comes first. Everything else is secondary if the wrong thing got built.
 - **Does it actually work?** Reading diffs catches logic errors. Running the code catches everything else. Do both.
 - **Traceability makes this powerful.** You have the original input (UR), the structured requirements (REQ), the triage/plan/exploration history, and the actual diff — use all of it.
-- **Actionable output.** Don't just report problems — create follow-up REQs for issues worth fixing.
+- **Actionable output.** Record every problem precisely. Critical fixes enter the queue; other findings stay in the report until a maintainer explicitly captures one.
 - **Proportional effort.** A Route A config change gets a quick scan. A Route C multi-file feature gets a thorough review.
 - **Suggest what's next.** After checking what you can, tell the user what else should be tested — manual checks, edge cases, integration scenarios, things only a human can verify.
 
@@ -61,7 +61,7 @@ Read the full REQ file. Extract:
 
 Find the UR via the REQ's `user_request` frontmatter field. Read `do-work/user-requests/UR-NNN/input.md`. If not found there (UR already archived), check `do-work/archive/UR-NNN/input.md`. This is the source of truth for what the user actually wanted.
 
-**Archived fallback is context-only.** Whenever this archived fallback is used, reading the archived input grants no authority to move, reopen, or re-consolidate the closed UR folder; it stays closed and in place. A follow-up keeps the same `user_request`, carries `review_generated: true`, and goes into `do-work/queue/`. Ordinary orchestrated review reads the active UR while it is still open; an orchestrated review of a `review_generated: true` follow-up whose UR is already archived inherits the same context-only, stays-closed boundary. The existing narrow exception for appending post-work Review metadata to the archived REQ remains unchanged.
+**Archived fallback is context-only.** Whenever this archived fallback is used, reading the archived input grants no authority to move, reopen, or re-consolidate the closed UR folder; it stays closed and in place. Any critical follow-up keeps the same `user_request`, carries `review_generated: true`, and goes into `do-work/queue/`. Ordinary orchestrated review reads the active UR while it is still open; an orchestrated review of a `review_generated: true` follow-up whose UR is already archived inherits the same context-only, stays-closed boundary. The existing narrow exception for appending post-work Review metadata to the archived REQ remains unchanged.
 
 If the REQ is a legacy file without `user_request`, use whatever context is available (the REQ content itself, any `context_ref` file).
 
@@ -131,7 +131,7 @@ Risk Assessment above covers the *code* consumers of a changed interface. This i
 
 1. **Trigger — ask the question, don't consult a list.** For each element the diff touches: *does this change the meaning of something that is stated in more than one place?* A contract token, a schema field's semantics, a gate's wording, what a stored value actually holds, the shape a prescribed command's output is consumed as — anything whose definition lives in one home while other files restate, gloss, parse, or act on it. Those are illustrative examples, not the set to check against; a hand-maintained token list goes stale the moment the contract grows, so ask the question of whatever *this* diff redefines.
 2. **Sweep each redefined element.** Grep the repo for every other statement or consumer of it — the token itself, the phrasings that gloss it, and the tests, tooling, and templates that parse or restate it — and verify each still agrees with the new meaning. This generalizes the rule already required for prescribed shell commands (when a fix changes a command primitive, grep that primitive across every action before calling it fixed — these get copy-pasted, so the fix is rarely local) from commands to contracts.
-3. **Every stale restatement is a finding.** Severity is your judgment: **Important** when the stale text would lead a reader or an agent to act on the old contract, **Minor** when it's cosmetic. **A stale restatement in a file the REQ never declared is still a finding** — drift between a canonical home and its restatements is exactly what this check exists to surface. Route the fix through Step 10's fold-first ladder — an existing pending REQ sharing the root cause receives it, and a prose-only restatement with no match lands on `do-work/prose-backlog.md`, never a new file (`actions/capture-reference.md` → **Fold-First Rule**); do not score it as the builder's scope drift.
+3. **Every stale restatement is a finding.** Severity is your judgment: **Important** when the stale text would lead a reader or an agent to act on the old contract, **Minor** when it's cosmetic. **A stale restatement in a file the REQ never declared is still a finding** — drift between a canonical home and its restatements is exactly what this check exists to surface. Record it in the report with its impact token; unless it is `impact-critical`, its line ends `→ report only` and no queue or prose-backlog destination is mutated. Do not score it as the builder's scope drift.
 4. **Skip it when nothing was redefined.** A typo fix, a new case inside one function, or text nothing else restates gets no sweep. The trigger is redefinition, not diff size — this is not a blanket "grep everything" pass on every change.
 
 Origin: the REQ-035–040 batch reviewed at 86–98%, yet every top defect a later independent pass found was this one class — a token changed in its canonical home with a restatement elsewhere left on the old semantics, and no review step forcing the sweep.
@@ -257,13 +257,13 @@ Route [A/B/C] | [commit hash or "uncommitted"]
 ### Findings
 
 **Important:**
-- [Specific finding with file:line reference] — [impact-critical | impact-user-visible | impact-rule-change | impact-negligible]
+- [Specific finding with file:line reference] — [impact-critical → auto-queued as REQ-NNN | impact-user-visible → report only | impact-rule-change → report only | impact-negligible → report only]
 
 **Minor:**
-- [Style nit or suggestion]
+- [Style nit or suggestion] — [impact token] → report only
 
 **Nit:**
-- [Optional stylistic suggestion — no score impact]
+- [Optional stylistic suggestion — no score impact] — [impact token] → report only
 
 ### Requirements Checklist
 
@@ -297,18 +297,18 @@ Route [A/B/C] | [commit hash or "uncommitted"]
 | Risk | None | — |
 | Acceptance | Pass | Feature works end-to-end |
 
-### Follow-up REQs Created
-- REQ-025: "Add edge case tests for dark mode toggle" (addendum_to: REQ-003)
+### Follow-ups created
+- [critical REQ entries only, or `None (N findings report only)` when every finding is noncritical]
 ```
 
-**Verdict mapping** (keep consistent with the score bands above and the work.md Step 7 gate): **Approve** = Acceptance Pass *and* Overall ≥ 75%. **Approve with follow-ups** = Acceptance Partial *or* Overall 50–74% (Important findings become follow-up REQs). **Request changes** = Acceptance Fail *or* Overall < 50%. The percentage still appears (under **Scores**) so the Step 7 gate and commit-message format read it unchanged — it just stops leading.
+**Verdict mapping** (keep consistent with the score bands above and the work.md Step 7 gate): **Approve** = Acceptance Pass *and* Overall ≥ 75%. **Approve with follow-ups** = Acceptance Partial *or* Overall 50–74% (only critical findings auto-queue; the label also covers report-only findings). **Request changes** = Acceptance Fail *or* Overall < 50%. The percentage still appears (under **Scores**) so the Step 7 gate and commit-message format read it unchanged — it just stops leading.
 
 ### Step 9.5: Self-Validation & Lessons Learned
 
 After presenting the review report, perform a self-validation pass — no human prompt needed.
 
 1. **Re-examine your own review.** Look for blind spots: did you test the happy path but skip error cases? Did you verify the feature works but not check for regressions? Did you assume something works because the code looks right without actually running it?
-2. **If self-validation reveals new issues:** Treat them as **Important** findings. Pass them to Step 10 so the system automatically generates follow-up REQ files (status: pending), linking back via `addendum_to`.
+2. **If self-validation reveals new issues:** Treat them as **Important** findings and pass them to Step 10. Only an `impact-critical` result auto-queues; every other line ends `→ report only`.
 3. **Capture lessons learned (Standalone mode only).** Append a `## Lessons Learned` section to the REQ file (create it if it doesn't exist) with:
    - **What worked:** Approaches, patterns, or tools that paid off during this review
    - **What didn't:** Dead ends, false assumptions, things the review missed initially
@@ -337,37 +337,30 @@ Self-validation runs in **both modes**. Lesson capture, prime file updates, and 
 
 ### Step 10: Create Follow-up REQs
 
-**The impact judgment runs first — every Important finding gets a recorded impact token before any REQ is created.** Ask two questions of the current state:
+**The impact judgment runs first — every finding gets a recorded impact token before any routing decision.** Ask two questions of the current state:
 
 - **(a)** Would any user or developer actually notice this issue in real use?
 - **(b)** Does fixing it establish or change a rule that applies in several places (a genuine maintainability rule, not a one-spot patch)?
 
-Record the answer on the finding's line — in the report and in the appended `## Review` section — as the bare token `impact-user-visible` (yes to a), `impact-rule-change` (yes to b; a wins when both are yes), or `impact-negligible` (no to both). A critical-grade finding — security vulnerability, data-loss risk, broken functionality in a production path — is `impact-critical` regardless of the two answers. **The token is mandatory and auditable, and it is written bare: it IS the value the follow-up's `impact:` field carries, so no translation table sits between this line and the frontmatter.** The pre-gate rule failed precisely because nothing recorded a checkable decision: one UR's review chain minted sixteen REQs over two days, fifteen of them facets of a single root cause, and every one was discovered trivial only by the user's own investigation (UR-489/UR-027). A finding line without a token is a gate that was skipped, and reviewers of the review can see it.
+Record the answer on the finding's line — in the report and in the appended `## Review` section — as the bare token `impact-user-visible` (yes to a), `impact-rule-change` (yes to b; a wins when both are yes), or `impact-negligible` (no to both). A critical-grade finding — security vulnerability, data-loss risk, broken functionality in a production path — is `impact-critical` regardless of the two answers. The token is mandatory and auditable. A finding line without one is a skipped judgment.
 
-**The impact judgment routes; it never re-scores.** Severity (Important/Minor/Nit) is judged exactly as before — a finding can be genuinely Important ("the guard is blind to one color notation") while its impact is `impact-negligible` (the current state is realistically fine to ship). Do not resolve that tension by downgrading severity: severity measures the issue, the impact token decides how its fix lands. Downgrading corrupts the severity axis the score bands read. One boundary worth naming: a refactor that leaves the system both simpler and more robust is legitimate work and judges as `impact-rule-change` on its merits — the brake exists for unjudged defaults and one-REQ-per-prose-discrepancy, not for pragmatic simplification.
+**The impact judgment routes; it never re-scores.** Severity (Important/Minor/Nit) is judged exactly as before. Do not downgrade a real issue to keep it out of the queue. Only `impact-critical` findings auto-queue. Every noncritical finding remains in this report and the appended `## Review`; its line must end with the literal suffix `→ report only`. Do not create, append to, convert, or otherwise mutate a REQ, sweep, `pending-answers` item, or prose backlog for it.
 
-**Sweep consolidation — same root cause, one REQ, never one REQ per facet.** Before drafting any individual follow-up, route each gated finding:
+If a maintainer later decides a report-only finding deserves queue work, tell them to invoke `do-work capture`, quoting the complete finding line as the capture source. That explicit capture is new user intent; the review never pre-creates a placeholder for it.
 
-- **Route every gated finding through the Fold-First Rule's scan and destination ladder** (`actions/capture-reference.md` → **Fold-First Rule** — candidate set, matching order, append format, conversion guards, escalation, and the prose-only test are stated once there; do not re-derive them here). Find candidate sweeps mechanically — `grep -rl "^sweep: true" do-work/queue/`, filtered to `status: pending` **or `pending-answers`** (a generation-≥2 review creates its sweeps as `pending-answers`, and excluding them would let a second review mint a duplicate for the same root cause before the user runs clarify; appending to one is fine — the user approves the sweep with its accumulated instances).
-- **A prose-only finding (the rule's test) never becomes a new REQ.** A stale restatement, wrong cross-reference, or superseded comment with no root-cause match is appended to `do-work/prose-backlog.md` per the rule's destination 3 — this is where the Restatement Sweep's findings (Step 6) land by default.
-- **Otherwise — no candidate shares the root cause and the finding is not prose-only — create ONE sweep REQ named for the ROOT CAUSE** (e.g. "tokenize all remaining hardcoded colors and make the guard catch every notation"), with the normal follow-up fields below plus `sweep: true`, a `sweep_key: <root-cause-slug>` (short kebab-case name for the root cause, e.g. `hardcoded-colors-untokenized` — the deterministic append discriminator future reviews grep first), and an `## Instances` checklist; `impact: impact-rule-change` when solving it establishes or changes a multi-site rule, `impact-negligible` otherwise.
-- **Done means the class cannot recur** — the rule is changed everywhere it applies, not N spots patched one drop at a time. State that in the sweep's What section.
-- **Only a genuinely non-trivial, thematically unrelated finding (`impact-user-visible`, standing alone) earns its own REQ** — and its body must state in one line what the fold-first scan found: no pending REQ, sweep or not, in any UR, shares the root cause.
-- At generation ≥ 2, appends stay allowed (the depth stop below is creation-only); a NEW sweep falls under the reroute like any other creation (`status: pending-answers`; critical pierces).
-
-For each finding that routes to its own REQ (and for each new sweep), create the follow-up carrying `impact:` set to the finding's recorded token, verbatim (schema: `actions/work-reference.md` → Request File Schema). The same token is mirrored into the REQ's title as a leading `[<impact token>] ` tag ahead of the `Review fix: ` prefix, per `actions/capture-reference.md` → **REQ Title Convention** — emitted only when the token is not the `impact-user-visible` default, and never in the filename slug. `effort_estimate` is a different axis and is never derived from that token. Judge the fix's size and emit either `effort-mechanical` or `effort-substantive`; when the size is genuinely unclear, put that judgment to the user. Omit the field only when neither judging nor asking was possible, and never copy a default in either direction. Its `created_at` is the current UTC instant (Timestamp rule, `actions/work-reference.md`):
+For each finding that routes to its own REQ — which now means `impact-critical` only — run the Fold-First Rule (`actions/capture-reference.md`). An existing eligible root-cause home may receive the critical instance; otherwise create one follow-up REQ. Carry `impact: impact-critical` verbatim and mirror the title as `[<impact token>] Review fix: ...` per `actions/capture-reference.md` → **REQ Title Convention**. `effort_estimate` is a different axis and is never derived from that token. Judge the fix's size and emit either `effort-mechanical` or `effort-substantive`; when the size is genuinely unclear, put that judgment to the user. Omit the field only when neither judging nor asking was possible, and never copy a default in either direction. Its `created_at` is the current UTC instant (Timestamp rule, `actions/work-reference.md`):
 
 ```markdown
 ---
 id: REQ-NNN
-title: '[<impact token>] Review fix: [brief description]'   # single-quoted per Frontmatter Quoting (actions/work-reference.md), apostrophes doubled; omit the tag when the recorded token is impact-user-visible (actions/capture-reference.md → REQ Title Convention)
+title: '[<impact token>] Review fix: [brief description]'   # impact-critical here; single-quoted per Frontmatter Quoting (actions/work-reference.md), apostrophes doubled
 status: pending
 domain: [same domain as the reviewed REQ]
 created_at: <timestamp>
 user_request: [same UR as the reviewed REQ]
 addendum_to: [reviewed REQ id]
 review_generated: true
-impact: [the finding's recorded token, verbatim — never omitted]
+impact: impact-critical
 effort_estimate: [the separately judged effort-mechanical or effort-substantive token; omit only when neither judging nor asking was possible]
 ---
 
@@ -394,33 +387,9 @@ Found during review of [REQ-id]. [1 sentence on what the review found.]
 **Validation:** Review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
 ```
 
-**When the root cause is ambiguous requirements** — not a code quality issue or missed implementation, but genuine ambiguity in what the user wanted — add an `## Open Questions` section to the follow-up REQ and set its status to `pending-answers`:
+**When the root cause is ambiguous requirements**, preserve that context in the critical follow-up's `## Context`; ambiguity does not turn a critical safety fix into a consent-gated item. A noncritical ambiguity remains report-only like every other noncritical finding. Failure-path, builder-decided, and stakeholder-requested follow-ups are separate contracts and are unchanged by this review-finding rule.
 
-```markdown
----
-status: pending-answers
----
-
-## Open Questions
-- [ ] [What needs clarification before this fix can be implemented]
-  Recommended: [best default based on review findings]
-  Also: [alternative A], [alternative B]
-```
-
-The `pending-answers` status means the work loop won't pick this up until the user reviews it, answers the questions, and flips the status to `pending`. The recommended choices let the user quickly pick an option without deep context-switching. Only add Open Questions when the ambiguity caused the issue — if the fix is clear (e.g., "missed a null check"), use `status: pending` and skip the Open Questions.
-
-**Author the question text for a cold reader** — load `crew-members/clear-questions.md` first, as with any Open Questions destined for `do-work clarify`: gloss every coined label, finding number, or spec §-reference, and state why the decision is the user's rather than the reviewer's (Principle 7). You have the review findings in your head right now; the user answering in a later clarify session has none of it.
-
-**Generation ≥ 2 — the cascade depth stop.** When the REQ under review itself carries `review_generated: true`, this review is reviewing review-spawned work — generation two or deeper. The marker is the entire test: marker-only, never inferred from a description (same posture as the `maintenance` marker). The review still records every Important finding as a follow-up REQ, but creates non-critical ones with `status: pending-answers` instead of `status: pending`: visible on the board with their impact chip, surfaced by `do-work clarify`, and unable to spawn autonomous work without the user's yes. The depth cap stops autonomous propagation, not record-keeping — nothing becomes report-only, and no finding is lost. (This is what hard-stops the UR-489 chain shape: sixteen auto-worked REQs where the user wanted one decision point.)
-
-- **Write the consent question for the reader, not for a string match.** `Recommended: Yes, add to queue (will flip to 'pending').` and `Also: No, discard it.` remain the house shape, and the phrase `Should I process this as a new task?` is a good opening — but clarify no longer routes on any of that wording. It routes on the `builder_decided: true` marker (`actions/clarify.md` Step 5), which a review follow-up never carries, so an approved follow-up flips to `pending` and gets built however the question is phrased. That replaces a literal-string defense that a valid rewording could defeat: the old failure was an approved follow-up archived `completed` without anyone building it. Load `crew-members/clear-questions.md` before authoring the question text, as with any clarify-bound Open Questions.
-- **Critical pierce:** an `impact-critical` finding creates `status: pending` at ANY depth, auto-queued with a prominent report line (`⚠ CRITICAL review finding auto-queued as REQ-NNN`). The pierce applies to folds the same way: an `impact-critical` finding folded into an existing sweep promotes the sweep to `impact: impact-critical` and flips a `pending-answers` sweep to `pending`, with the same prominent report line (`actions/capture-reference.md` → Fold-First Rule, escalation). The rubric for the token is stated once, above; `actions/work-reference.md` → **Discovered Tasks Classification (Step 8)** routes the same token the same way. Categorizing impact is the whole point of the judgment; burying a security finding behind a consent checkbox is the wrong trade.
-- **The reroute governs REQ *creation* only.** Editing an existing queued REQ — appending an instance to a `status: pending` sweep REQ (its own UR or another's), or the Fold-First Rule's one-time conversion of a pending REQ — is not creation and stays allowed at any generation. Failure-path follow-ups (`actions/work.md` Step 8 → **Failure Classification**) are likewise exempt at any depth: a failed generation-≥2 REQ still gets its Intent/Spec/Code follow-up, else failed work dies silently with no successor.
-- **The fixed point is intended — do not "fix" it.** Follow-ups created here carry `review_generated: true` themselves, so their own reviews fall under this same rule: the cascade converges at depth 2 by construction, with the user as the only escalation path.
-
-Follow-up REQs go in `do-work/queue/`. In orchestrated mode, the work loop picks them up on the next iteration. In standalone mode, they wait for the user to run `do-work run`.
-
-**Don't create follow-ups for minor issues.** Minor findings go in the report only. The threshold: would a senior engineer request changes on this in a PR review, or just leave a comment?
+Critical follow-up REQs go in `do-work/queue/` and are reported prominently as `⚠ CRITICAL review finding auto-queued as REQ-NNN`. In `### Follow-ups created`, list only these critical destinations. If all N findings are noncritical, write exactly `None (N findings report only)`.
 
 ### Append to REQ File
 
@@ -441,13 +410,13 @@ After generating the report, append a Review section to the REQ file — its `<t
 | Acceptance | [result] |
 
 **Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
-- [finding, one line] — [impact-critical | impact-user-visible | impact-rule-change | impact-negligible] → [REQ-NNN created / appended to REQ-NNN / rerouted pending-answers as REQ-NNN]
+- [finding, one line] — [impact-critical → REQ-NNN created/appended | impact-user-visible → report only | impact-rule-change → report only | impact-negligible → report only]
 [or "None"]
 
-**Minor findings:** [count] (report only)
+**Minor findings:** [each finding carries its impact token and ends `→ report only`, or "None"]
 **Acceptance:** [Pass/Partial/Fail/Untested] — [1-line summary]
 **Suggested testing:** [count] items
-**Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"; **sweeps appended to:** [REQ-NNN] or "None"
+**Follow-ups created:** [critical REQ destinations only] or `None (N findings report only)` when every finding is noncritical
 
 *Reviewed by review-work action*
 ```
@@ -456,7 +425,7 @@ In standalone mode, this is an exception to the archive immutability rule — re
 
 ### Commit (Standalone mode, git repos only)
 
-In **standalone mode**, after appending the Review section and creating any follow-up REQs, commit the changes. In **orchestrated mode**, skip this — actions/work.md's Commit Phase handles the commit.
+In **standalone mode**, after appending the Review section and creating any critical follow-up REQs, commit the changes. In **orchestrated mode**, skip this — actions/work.md's Commit Phase handles the commit.
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 
@@ -464,28 +433,26 @@ Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, ski
 # Stage the modified archived REQ (with appended Review section)
 git add do-work/archive/UR-NNN/REQ-NNN-slug.md
 
-# Stage any follow-up REQs created
+# Stage any critical follow-up REQs created
 git add do-work/queue/REQ-NNN-slug.md
 
-# Stage any EXISTING sweep REQs this review appended instances to — an append
-# modifies a queue file rather than creating one, so the created-files line
-# above never covers it and the new ## Instances entries would silently stay
-# unstaged.
+# Stage an EXISTING sweep only when this review appended an impact-critical
+# instance to it.
 git add do-work/queue/REQ-NNN-existing-sweep.md
 
 git commit -m "$(cat <<'EOF'
 [REQ-NNN] review: {score}% (Route {route})
 
 Reviewed: do-work/archive/UR-NNN/REQ-NNN-slug.md
-Follow-ups: {REQ-NNN, REQ-NNN} or "None"
+Critical follow-ups: {REQ-NNN, REQ-NNN} or "None"
 
 EOF
 )"
 ```
 
-**Format:** `[REQ-NNN] review: {score}% (Route {route})` — where `{score}` is the overall review percentage and `{route}` is the original triage route. List the reviewed file path and any follow-up REQs created.
+**Format:** `[REQ-NNN] review: {score}% (Route {route})` — where `{score}` is the overall review percentage and `{route}` is the original triage route. List the reviewed file path and any critical follow-up REQs created.
 
-Stage only the modified archived REQ, any new follow-up REQs, and any existing sweep REQs appended to — never `git add -A`/`.` or bypass a hook (see `actions/commit.md` § Rules for the full guard).
+Stage only the modified archived REQ and critical follow-up destinations — never `git add -A`/`.` or bypass a hook (see `actions/commit.md` § Rules for the full guard).
 
 ## Calibrating Review Depth
 
@@ -500,7 +467,7 @@ Match effort to complexity:
 ## What NOT to Do
 
 - Don't re-implement — you're reviewing, not building
-- Don't review your own review's follow-up REQs more strictly than the original work — avoid infinite loops of diminishing-return fixes. The Step 10 impact judgment is this rule's mechanism: an `impact-negligible` finding arrives labeled `impact: impact-negligible`, so diminishing returns are visible on the board instead of re-litigated each loop
+- Don't review a critical follow-up more strictly than the original work merely because it came from review; apply the same rubric and leave every new noncritical result in the report
 - Don't block on minor issues — report them but keep moving
 - Don't invent requirements — review against what the REQ says, not what you think it should say
 - Don't penalize the absence of things the project doesn't have (no test infrastructure = don't fail on test adequacy)
@@ -516,9 +483,9 @@ Guard against these when conducting the review:
 | "Requirements are met because the builder says so" | Walk the REQ requirements against the diff, line by line | Implementation summaries are claims, not evidence |
 | "Acceptance passes because unit tests pass" | Run the feature end-to-end | Unit tests and acceptance testing catch different defects |
 | "The score is borderline, I'll round up" | Apply the scoring guidelines mechanically | Rounding up defeats the quality gate |
-| "This finding is minor, not worth a follow-up REQ" | Judge severity honestly (senior-engineer test), then let the Step 10 impact judgment decide the landing — an `impact-negligible` verdict is recorded, never silently dropped | Downgrading severity to avoid queue traffic corrupts the score bands; the impact token is how a real-but-negligible finding lands lightly without disappearing |
+| "This finding is minor, so I can omit it" | Judge severity honestly, record its impact token, and end the line `→ report only` | Report-only means durable evidence, not silence |
 | "I can't run the code so I'll skip acceptance" | Score Untested and note exactly what you couldn't test | Skipping silently hides risk |
-| "That stale restatement is in a file this REQ never declared — out of scope" | Report it as a finding and route the fix to a follow-up REQ | The diff changed the meaning; leaving other statements of it on the old contract is the defect, and the REQ's Scope declaration bounds the *builder*, not the sweep |
+| "That stale restatement is in a file this REQ never declared — out of scope" | Report it with its impact token; auto-queue it only if it is `impact-critical` | The diff changed the meaning, but a noncritical review finding does not authorize new queue work |
 | "All requirements checked and tests pass, so it's good" | Apply the Klarna Test — did we optimize for measurable things (checkboxes, passing tests) at the expense of unmeasured intent? | Checkbox compliance + passing tests can still miss what the user actually wanted |
 
 ## Red Flags
@@ -543,6 +510,6 @@ Before presenting the review report:
 - [ ] Overall score computed using the documented formula
 - [ ] P-A-U checkboxes checked — if the REQ has an "AI Execution State (P-A-U Loop)" section, verify all three boxes (`[PLAN]`, `[APPLY]`, `[UNIFY]`) are marked `[x]`. Unchecked boxes suggest the builder skipped a phase — flag as a Minor finding.
 - [ ] Acceptance testing was attempted (or scored Untested with specific reason)
-- [ ] Each Important finding carries a recorded impact token, and each drafted follow-up REQ carries `impact:` set to it
+- [ ] Every finding carries a recorded impact token; every noncritical line ends `→ report only`; only critical follow-up destinations are listed
 - [ ] Suggested Additional Testing includes only items relevant to this change
 - [ ] Self-validation pass completed

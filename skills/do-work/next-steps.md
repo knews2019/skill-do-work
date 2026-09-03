@@ -20,7 +20,7 @@ Next steps:
 
 ## Non-Obvious Cases
 
-Most actions have a next step inferable from what just ran (after `code-review`, suggest `run` to process findings; after `commit`, suggest `inspect` or `review-work`). The rows below are the ones where the *same* action leaves the queue in genuinely different states, and the right suggestion depends on which — getting it wrong here isn't a missed nicety, it actively misleads (e.g. suggesting `commit` before anything ran):
+Most actions have a next step inferable from what just ran (after `code-review`, suggest `run` only when critical findings were auto-queued, or `do-work capture "<complete finding line>"` when the maintainer chooses to promote a report-only finding; after `commit`, suggest `inspect` or `review-work`). The rows below are the ones where the *same* action leaves the queue in genuinely different states, and the right suggestion depends on which — getting it wrong here isn't a missed nicety, it actively misleads (e.g. suggesting `commit` before anything ran):
 
 | After... | State | Suggest |
 | --- | --- | --- |

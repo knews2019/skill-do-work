@@ -115,7 +115,7 @@ Read the user's input. Determine:
 
 If `do-work/` is freshly bootstrapped (no existing REQ files anywhere), skip duplicate checking entirely.
 
-For each parsed request, check for similar existing ones across both tiers. For finding-shaped captures — review, triage, or consumer-report findings — the duplicate check extends to the fold-first scan (`actions/capture-reference.md` → **Fold-First Rule**): its destination ladder decides whether the finding is appended to an existing `pending`/`pending-answers` REQ in any UR, is appended to `do-work/prose-backlog.md` (a prose-only finding never mints a new file — the rule's prose-only test governs, exemptions included), or becomes a new REQ; whatever the destination, the capture names it. The table's queued-enhancement row below is the same move for same-request amendments; the Fold-First Rule generalizes it to root causes across URs.
+For each parsed request, check for similar existing ones across both tiers. A review, build, triage, or consumer-report finding reaches capture only when the user invokes `do-work capture` and quotes the complete report-only finding line as the source; automatic finding flows below `impact-critical` never call capture or pre-mutate a queue destination. That explicit invocation is new user intent. Run the fold-first scan (`actions/capture-reference.md` → **Fold-First Rule**) to reuse an eligible root-cause home; when none exists, create the ordinary requested REQ rather than sending the quoted promotion back to report-only storage. The table's queued-enhancement row below is the same move for same-request amendments.
 
 | Existing request is in... | Action | New REQ lands in |
 |---------------------------|--------|-----------------|
