@@ -1,7 +1,7 @@
 ---
 id: REQ-496
 title: '[impact-critical] Review fix: Add shared executable already-green repair validator'
-status: pending
+status: claimed
 priority: now
 domain: backend
 created_at: 2026-09-02T04:53:21Z
@@ -16,6 +16,7 @@ depends_on: [REQ-494]
 related: [REQ-492]
 sweep: true
 sweep_key: already-green-repair-shared-validator-missing
+claimed_at: 2026-09-03T22:25:28Z
 ---
 
 # Review Fix: Add Shared Executable Already-Green Repair Validator
