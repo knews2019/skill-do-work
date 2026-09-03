@@ -15,8 +15,6 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-502: Review fix: Remove enriched checkpoint entries in cleanup mover — claimed 2026-09-03T20:58:01Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-
 - REQ-561: Add a three-value priority field the selector orders by and the board shows — claimed 2026-09-03T20:58:09Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued

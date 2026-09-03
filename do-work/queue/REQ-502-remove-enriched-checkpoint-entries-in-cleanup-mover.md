@@ -1,7 +1,7 @@
 ---
 id: REQ-502
 title: 'Review fix: Remove enriched checkpoint entries in cleanup mover'
-status: claimed
+status: pending-heavy-testing
 domain: backend
 created_at: 2026-09-02T14:26:49Z
 user_request: UR-083
@@ -25,14 +25,17 @@ sweep_key: checkpoint-section-blind-line-editing
 claimed_at: 2026-09-03T20:58:01Z
 dispatch_at: 2026-09-03T20:59:01Z
 builder_handback_at: 2026-09-03T21:02:28Z
+integration_at: 2026-09-03T21:05:36Z
+status_changed_at: 2026-09-03T21:07:51Z
+commit: ed692757dfc642f3ad34b171dde9f6490c857beb
 ---
 
 # Review Fix: Remove Enriched Checkpoint Entries in Cleanup Mover
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Reproduce at the cleanup seam, then expose the existing request-state removal primitive instead of copying its stored-format parsing rules.
+- [x] **[APPLY]:** Added the focused regression first, observed the orphaned continuation lines, then delegated cleanup removal to the shared whole-entry primitive.
+- [x] **[UNIFY]:** Reviewed all three changed files; ran gofmt, focused and package tests, `go vet`, `git diff --check`, and a debug-artifact scan.
 
 ## What
 
@@ -76,3 +79,44 @@ Independent review of REQ-489 found that `internal/cleanup.ownedCheckpointRemova
 **Planning not required** - Route A: Direct implementation
 
 *Skipped by work action*
+
+## Decisions
+
+- **D-01 — DECIDE & STATE:** Export the narrow writer-labelled removal primitive from `requeststate` and let `cleanup` import it. This keeps the stored-format rule in its existing owner and avoids a new package for one reuse site.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_plan.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_plan_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go` (modified)
+
+**What was done:** Cleanup now calls request-state's exact-section, whole-entry checkpoint remover. Its regression covers enriched own and foreign entries plus an inline heading mention.
+
+## Root Cause
+
+Cleanup retained an older global header-line filter after request-state moved to section-bounded whole-entry removal. The alternate writer therefore shared the checkpoint format but not its mutation semantics.
+
+## Qualification
+
+Passed — 3 files verified, 4 requirements traced, P-A-U confirmed. The merge range contains only the shared request-state helper, cleanup's delegation, and the cleanup seam regression; no debug artifacts or hollow changes were found.
+
+## Testing
+
+**Tests run:** `go test -count=1 ./internal/cleanup -run '^TestWorkingArchiveRemovesOnlyThisCheckoutCheckpointEntry$'`; `go test -count=1 ./internal/cleanup ./internal/requeststate`; `go vet ./internal/cleanup ./internal/requeststate`; `bash _dev/tests/maintainer-verify.sh`
+
+**Result:** All focused, package, vet, and fast canonical-gate checks passed on merge `ed692757dfc642f3ad34b171dde9f6490c857beb`. Focused files completed below the 30-second file budget; the fast gate exited 0 and recorded this revision.
+
+**Red-green validation:**
+- `TestWorkingArchiveRemovesOnlyThisCheckoutCheckpointEntry`: failed before implementation because the owned continuation lines remained, then passed after cleanup delegated to the whole-entry remover.
+
+**Existing tests updated:**
+- `cleanup_plan_test.go` now proves whole-entry deletion, foreign-byte preservation, and real-heading selection at the cleanup seam.
+
+*Verified by work action*
+
+## Open Questions
+
+- [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `ed692757dfc642f3ad34b171dde9f6490c857beb`; did it exit 0?
+  Recommended: Yes
+  Also: No — report the failing lane
