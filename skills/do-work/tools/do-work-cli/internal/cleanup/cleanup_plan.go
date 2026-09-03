@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/schemanormalization"
 )
@@ -228,21 +229,11 @@ func ownedCheckpointRemoval(repositoryRoot, requestID string) (CleanupOperation,
 	if dotIndex := strings.IndexByte(hostname, '.'); dotIndex >= 0 {
 		hostname = hostname[:dotIndex]
 	}
-	writerToken := "writer: " + hostname + ":" + repositoryRoot
-	lines := strings.SplitAfter(string(contents), "\n")
-	updated := make([]string, 0, len(lines))
-	removed := false
-	for _, line := range lines {
-		if strings.Contains(line, "- "+requestID+":") && strings.Contains(line, writerToken) {
-			removed = true
-			continue
-		}
-		updated = append(updated, line)
-	}
+	updated, removed := requeststate.RemoveOwnedCheckpointClaim(contents, requestID, hostname+":"+repositoryRoot)
 	if !removed {
 		return CleanupOperation{}, false
 	}
-	return CleanupOperation{Kind: OperationReplace, SourcePath: "do-work/CHECKPOINT.md", Contents: []byte(strings.Join(updated, ""))}, true
+	return CleanupOperation{Kind: OperationReplace, SourcePath: "do-work/CHECKPOINT.md", Contents: updated}, true
 }
 
 func planDirectoryMove(repositoryRoot, sourceDirectory, destinationDirectory string) ([]CleanupOperation, *resultmodel.CommandFinding) {
