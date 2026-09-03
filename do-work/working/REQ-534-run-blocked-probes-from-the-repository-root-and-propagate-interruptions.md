@@ -1,7 +1,7 @@
 ---
 id: REQ-534
 title: 'Review fix: run blocked probes from the repository root and propagate interruptions'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-03T12:20:21Z
 user_request: UR-103
@@ -16,6 +16,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 write_set: [skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_unix.go, skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_commands.go, skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_test.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go]
+claimed_at: 2026-09-03T23:34:31Z
 ---
 
 # Run Blocked Probes From the Repository Root and Propagate Interruptions
