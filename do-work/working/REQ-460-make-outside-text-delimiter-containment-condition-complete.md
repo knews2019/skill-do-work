@@ -1,7 +1,7 @@
 ---
 id: REQ-460
 title: '[impact-rule-change] Make outside-text delimiter containment condition-complete'
-status: pending
+status: claimed
 created_at: 2026-09-01T00:12:38Z
 user_request: UR-081
 domain: general
@@ -19,6 +19,7 @@ addendum_to: REQ-413
 sweep: true
 sweep_key: markdown-delimiter-containment-prefix-gaps
 status_changed_at: 2026-09-01T18:54:11Z
+claimed_at: 2026-09-03T02:13:10Z
 ---
 
 # Make Outside-Text Delimiter Containment Condition-Complete
