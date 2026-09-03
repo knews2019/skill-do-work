@@ -14,6 +14,21 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 claimed_at: 2026-09-03T00:59:09Z
+route: B
+write_set:
+  - skills/do-work-board/tools/queue-kanban/verify.go
+  - skills/do-work-board/tools/queue-kanban/verify_test.go
+  - skills/do-work/actions/forensics.md
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-09-03T00:59:54Z
+  basis:
+    - Route B
+    - 3-file write set
+    - 2 subsystems involved
+    - 6 acceptance criteria
+    - cross-route regression gates
 ---
 
 # Addendum: Classify Active Worktrees as Present and Non-Fixable
@@ -65,3 +80,51 @@ REQ-083 added `classifyWorktreeMergeState` and `routeWorktreeLeftover`, split th
 
 ---
 *Source: user-approved `do-work validate-feedback` finding; full verbatim input in `do-work/user-requests/UR-086/input.md`.*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The correction is precisely specified and `## Prior Implementation` names the exact functions, but the two evidence sources the fix must consult — worktree dirtiness and the REQ's own pipeline state — are not currently reachable from `appendWorktreeFindings`, so where they come from had to be discovered.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Exploration
+
+`classifyWorktreeMergeState` (`verify.go:819`) runs exactly one probe — `git -C repoRoot merge-base --is-ancestor <branch> HEAD` — and collapses everything else into three states. `routeWorktreeLeftover` (`verify.go:851`) then maps `worktreeMergeStateMerged` to `Fixable: true` with the remedy "the branch is already contained in HEAD, so nothing is lost". That single ancestry bit is the whole basis for both claims, which is exactly the defect: ancestry says the *commits* are safe, never that the *worktree* is.
+
+Two facts the repository already records, neither of them a liveness signal:
+
+1. **Worktree dirtiness** — `appendWorktreeFindings` already holds `worktreePath` from `listWorktreeAgentWorktrees` (it uses it only for `locationDetail`). `git -C <worktreePath> status --porcelain --untracked-files=all` answers whether uncommitted work is present. This is the REQ-412 case: cleanup Pass 5's non-forced `git worktree remove` would itself refuse this worktree, so calling it mechanically fixable contradicts the very command the remedy names.
+2. **Unfinished pipeline state** — a `worktree-agent-REQ-NNN-*` name carries its REQ id, and a REQ still in flight is exactly the one sitting in `do-work/working/`. That is the REQ-436 case: clean, merged, and still owned by a run that has not reached review or remediation.
+
+Both are ordinary repository reads, so the no-liveness-signal constraint from REQ-073 holds: neither asks whether a process is alive, only what the repository already says.
+
+`Fixable`'s doc comment (`verify.go:66`) defines it as "`do-work cleanup` can mechanically resolve it", and `routeWorktreeLeftover`'s own comment says anything landing on Pass 5's consent-gated path must not be advertised otherwise. The fix is to make the merged branch state necessary but not sufficient.
+
+*Generated in-session (single-pass discovery)*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work-board/tools/queue-kanban/verify.go` (modify) — make merged-ness necessary but not sufficient; add the dirtiness and in-flight evidence and route both to present-and-non-fixable
+- `skills/do-work-board/tools/queue-kanban/verify_test.go` (modify) — real-Git fixtures for the REQ-412 and REQ-436 cases plus the still-fixable clean finished case
+- `skills/do-work/actions/forensics.md` (modify) — keep the rendered category and remedy text consistent with the corrected classifier
+
+**Files I will NOT touch:** `skills/do-work/actions/cleanup.md` (Pass 5's consent-gated behavior is already correct — this REQ stops verify from contradicting it), and anything adding a lock, heartbeat, PID probe, or mtime heuristic.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] No heartbeat, lock, PID probe, mtime heuristic, or claim registry is introduced
+- [ ] Ordinary worktree dirtiness and unfinished pipeline state are distinguished from clean merged residue using evidence the repository already records
+- [ ] A dirty or unfinished-run builder worktree is reported as present and non-fixable, with no `cleanup can fix` marker and no "nothing is lost" claim
+- [ ] Genuinely finished, clean, merged residue is still reported as a mechanically fixable leftover
+- [ ] `verify` stays read-only and still protects developer-owned worktrees outside the `worktree-agent-*` convention
+- [ ] Rendered category/remedy text and user-facing verify documentation match the corrected classifier
