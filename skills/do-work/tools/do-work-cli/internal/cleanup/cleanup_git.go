@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
@@ -211,6 +212,7 @@ type WorktreeRepairOptions struct {
 func ApplyWorktreeRepairs(ctx context.Context, repositoryRoot string, options WorktreeRepairOptions) ([]resultmodel.RecordedChange, []resultmodel.CommandFinding) {
 	changes := []resultmodel.RecordedChange{}
 	findings := []resultmodel.CommandFinding{}
+	repositorySnapshot, discoveryError := repositorymodel.DiscoverRepository(repositoryRoot)
 	discard := map[string]bool{}
 	for _, name := range options.DiscardNames {
 		discard[name] = true
@@ -246,6 +248,8 @@ func ApplyWorktreeRepairs(ctx context.Context, repositoryRoot string, options Wo
 	for _, name := range orderedCandidates {
 		discardApproved := discard[name]
 		delete(discard, name)
+		requestID := requestIDFromWorktree(name)
+		requestState := worktreeRequestState(repositorySnapshot, discoveryError, requestID)
 		tree := worktreeByName(trees, name)
 		path := tree.Path
 		clean := path == "" || worktreeClean(ctx, path)
@@ -254,10 +258,10 @@ func ApplyWorktreeRepairs(ctx context.Context, repositoryRoot string, options Wo
 			ancestryTarget = tree.Head
 		}
 		merged := ancestryTarget != "" && gitExitSuccess(ctx, repositoryRoot, "merge-base", "--is-ancestor", ancestryTarget, "HEAD")
-		if (!clean || !merged) && !discardApproved {
+		if (!clean || !merged || requestState != "settled") && !discardApproved {
 			findings = append(findings, resultmodel.CommandFinding{Code: "WORKTREE-REQUIRES-CONSENT", Severity: resultmodel.SeverityWarning,
-				AffectedIDs: []string{requestIDFromWorktree(name)}, AffectedPaths: nonEmpty(path), Evidence: []string{fmt.Sprintf("%s is dirty=%t merged=%t", name, !clean, merged)},
-				Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "unmerged or dirty builder work can be the only copy",
+				AffectedIDs: nonEmpty(requestID), AffectedPaths: nonEmpty(path), Evidence: []string{fmt.Sprintf("%s is dirty=%t merged=%t request_state=%s", name, !clean, merged, requestState)},
+				Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "dirty, unmerged, active, or unattributed builder work can be the only copy",
 				NextArgv: []string{"do-work-cli", "cleanup", "--discard-worktree", name}, VerificationArgv: []string{"git", "worktree", "list", "--porcelain"}})
 			continue
 		}
@@ -345,19 +349,56 @@ func worktreeClean(ctx context.Context, path string) bool {
 }
 
 func requestIDFromWorktree(name string) string {
-	marker := "REQ-"
-	markerIndex := strings.Index(name, marker)
-	if markerIndex < 0 {
+	const prefix = "worktree-agent-REQ-"
+	if !strings.HasPrefix(name, prefix) {
 		return ""
 	}
-	endIndex := markerIndex + len(marker)
+	endIndex := len(prefix)
 	for endIndex < len(name) && name[endIndex] >= '0' && name[endIndex] <= '9' {
 		endIndex++
 	}
-	if endIndex > markerIndex+len(marker) {
-		return name[markerIndex:endIndex]
+	if endIndex == len(prefix) || (endIndex < len(name) && name[endIndex] != '-') {
+		return ""
 	}
-	return ""
+	return strings.TrimPrefix(name[:endIndex], "worktree-agent-")
+}
+
+func worktreeRequestState(snapshot *repositorymodel.RepositorySnapshot, discoveryError error, requestID string) string {
+	if discoveryError != nil || snapshot == nil {
+		return "unreadable"
+	}
+	if requestID == "" {
+		return "absent"
+	}
+	for _, collision := range snapshot.CollisionEntries {
+		if collision.RequestID == requestID {
+			return "ambiguous"
+		}
+	}
+	requestFiles := snapshot.RequestsByID[requestID]
+	if len(requestFiles) == 0 {
+		return "absent"
+	}
+	if len(requestFiles) != 1 {
+		return "ambiguous"
+	}
+	requestFile := requestFiles[0]
+	if requestFile.ParseFailure != "" {
+		return "malformed"
+	}
+	if requestFile.ParsedDocument == nil {
+		return "unreadable"
+	}
+	if requestFile.FilenameID != requestID || requestFile.TypedRecord.RequestID != requestID {
+		return "malformed"
+	}
+	if requestFile.TreeSection == "working" {
+		return "working"
+	}
+	if requestFile.TreeSection == "queue" || requestFile.TreeSection == "archive" {
+		return "settled"
+	}
+	return "ambiguous"
 }
 
 func cleanupGit(ctx context.Context, repositoryRoot string, args ...string) (string, error) {

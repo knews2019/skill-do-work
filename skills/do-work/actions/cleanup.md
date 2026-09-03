@@ -13,7 +13,7 @@ The archive should be a collection of self-contained UR folders, each containing
 
 **Do NOT use when:**
 - User wants *diagnostics* on pipeline health — route to actions/forensics.md instead
-- User wants to *delete* or discard work — cleanup only reorganizes work items (URs, REQs), never deletes them. Three narrow exceptions: Pass 4 sweeps *consumed* run scratch (a `Status: consumed` directory under `do-work/runs/`) after its findings have been promoted — spent scratch, not work; Pass 5 removes orphaned `worktree-agent-*` git worktrees and branches, mechanically only when they are already merged, and otherwise only with the user's explicit consent; and Pass 6 *restores* content to archived REQs that were blanked by an unguarded write-back — it writes work back in rather than reorganizing it, which is why it asks first.
+- User wants to *delete* or discard work — cleanup only reorganizes work items (URs, REQs), never deletes them. Three narrow exceptions: Pass 4 sweeps *consumed* run scratch (a `Status: consumed` directory under `do-work/runs/`) after its findings have been promoted — spent scratch, not work; Pass 5 removes an orphaned `worktree-agent-*` git worktree and branch mechanically only when it is clean, merged, and its exact REQ is positively settled outside `do-work/working/`, and otherwise only with the user's explicit consent; and Pass 6 *restores* content to archived REQs that were blanked by an unguarded write-back — it writes work back in rather than reorganizing it, which is why it asks first.
 
 ## When This Runs
 
@@ -133,14 +133,14 @@ Tracked run files use the normal Git transaction and rollback. An entirely untra
 
 Removes the git worktrees and branches left behind when `actions/work.md`'s worktree dispatch mode is interrupted (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**). Only `worktree-agent-REQ-NNN-*` names are in scope — that naming convention is what makes a leftover attributable to a REQ; every other worktree is the user's own and is never touched.
 
-**Non-interactive runs report only, never delete.** <a id="interactivity-test"></a>A run is *interactive* only when both hold: your environment can put a prompt in front of a human (an ask-user mechanism exists), **and** the run was not launched unattended (subagent, cron, CI, `--yes`-style automation). An unconfirmed or ambiguous result counts as non-interactive. The automatic end-of-work-loop invocation (`actions/work.md` Step 10) is exactly that case — unattended, often dispatched as a subagent — so there it reports the orphans and stops.
+**Non-interactive runs never delete a consent-required leftover.** <a id="interactivity-test"></a>A run is *interactive* only when both hold: your environment can put a prompt in front of a human (an ask-user mechanism exists), **and** the run was not launched unattended (subagent, cron, CI, `--yes`-style automation). An unconfirmed or ambiguous result counts as non-interactive. The automatic end-of-work-loop invocation (`actions/work.md` Step 10) is exactly that case — unattended, often dispatched as a subagent — so it may remove a leftover proved clean, merged, and settled, but it only reports every other leftover.
 
 1. **`git worktree prune` first** — it drops administrative entries whose directories are already gone, so the enumeration below doesn't report ghosts. Not a git repo, or no `worktree` subcommand → skip the whole pass.
-2. **Enumerate** `git worktree list --porcelain` and `git branch --list 'worktree-agent-*'`. A branch with no worktree and a worktree with no branch each count as a leftover.
-3. **Try the non-destructive removal:** `git worktree remove <path>` (no `--force`), then `git branch -d <branch>` **from the integration branch the work was meant to merge into**. `-d` tests merged-ness against the current HEAD, so running it from an unrelated branch turns "refusal = unmerged" into "refusal = wrong branch." If you cannot establish which branch that is, delete nothing — report and ask. Both commands succeeding means the work was merged and the leftover was pure residue: report `Removed merged worktree <name>`.
-4. **A refusal means unmerged or dirty — this is where the pass stops being mechanical.** Never `-D`, never `--force`. List every refusing leftover with its branch, its worktree path, and its REQ id; then load `crew-members/clear-questions.md` and ask with your environment's ask-user prompt whether to discard the unmerged work, naming what is lost if the answer is yes. Delete only what the user explicitly names. No answer — or a non-interactive run — leaves it in place, reported.
+2. **Enumerate and attribute** with `git worktree list --porcelain`, `git branch --list 'worktree-agent-*'`, and one fresh repository discovery. A branch with no worktree and a worktree with no branch each count as a leftover. Read an exact REQ id only from the `worktree-agent-REQ-NNN-*` prefix; a missing, malformed, unreadable, or multiply claimed identity is not proof that the run finished.
+3. **Remove only when all three facts are positive:** the worktree is clean, its branch or detached head is merged into the current integration `HEAD`, and the exact readable, unambiguous REQ is outside `do-work/working/`. Then use `git worktree remove <path>` (no `--force`) and `git branch -d <branch>` **from that integration branch**, and report `Removed merged worktree <name>`. A stale initial discovery is not enough: Pass 5 discovers again after Passes 0–4 have applied, so a terminal REQ those passes just moved out of `working/` can qualify while a still-active one cannot.
+4. **Any missing fact requires consent.** Dirty, unmerged, still-working, absent, ambiguous, malformed, and unreadable cases all use the same consent-required finding. Never `-D`, never `--force` without the exact `--discard-worktree <name>` consent token. List the leftover with its branch, worktree path, REQ id when available, and failed facts; then load `crew-members/clear-questions.md` and ask with your environment's ask-user prompt whether to discard it, naming what is lost if the answer is yes. Delete only what the user explicitly names. No answer — or a non-interactive run — leaves it in place, reported.
 
-Unlike Pass 4, nothing here is spent scratch by construction: an unmerged `worktree-agent-*` branch can hold the only copy of a builder's work. That is why this is the one pass that asks before deleting.
+Unlike Pass 4, nothing here is spent scratch by construction: a `worktree-agent-*` lane without all three positive facts can still be active or hold the only copy of a builder's work. That is why this is the one pass that asks before deleting.
 
 ### Pass 6: Restore Blanked Archived REQs (consent-gated)
 
@@ -204,7 +204,7 @@ Archive cleanup complete:
   - Misplaced do-work/: relocated 7 REQs, 6 URs from exp/g3-segment-anything/do-work/
   - Fixed: 1 misplaced UR folder in archive
   - Swept runs: 2 consumed run directories
-  - Worktrees: removed 2 merged worktree-agent-* leftovers; 1 unmerged reported (awaiting consent)
+  - Worktrees: removed 2 clean, merged, settled worktree-agent-* leftovers; 1 unfinished or unattributed leftover reported (awaiting consent)
   - Restored: 2 blanked archived REQs (REQ-1282, REQ-1287); 1 unrecoverable reported
   - Repointed: 39 doc links in 5 files
   - Still open: UR-015 (2/4 REQs complete)
@@ -288,9 +288,9 @@ Stage only paths within `do-work/archive/`, `do-work/user-requests/`, any `do-wo
 
 ## What This Action Does NOT Do
 
-- Delete work items — only consumed run scratch (`Status: consumed`) is deleted outright; URs, REQs, and other durable artifacts are moved. Pass 5 removes orphaned `worktree-agent-*` worktrees and branches, but mechanically only when they are already merged; unmerged ones need the user's explicit consent
+- Delete work items — only consumed run scratch (`Status: consumed`) is deleted outright; URs, REQs, and other durable artifacts are moved. Pass 5 removes orphaned `worktree-agent-*` worktrees and branches, but mechanically only when they are clean, merged, and their exact REQ is settled outside `do-work/working/`; every other case needs the user's explicit consent
 - Modify file contents or frontmatter — files are relocated as-is. Exceptions: Pass 0 normalizes non-standard terminal statuses (`done` → `completed`, etc.) in frontmatter before moving; the Repoint Documentation Links step rewrites link targets in docs that reference moved files; and Pass 6, with the user's consent, rewrites a blanked file's whole content from git history and re-applies its `commit:` field through `tools/checks/record-commit-hash.sh`.
-- Touch **active** files in `do-work/queue/` (the queue) or `do-work/working/` — `pending`, `pending-answers`, `pending-heavy-testing`, `blocked`, and `claimed` REQs are actions/work.md's responsibility. Exceptions: Pass 0 sweeps REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from `do-work/queue/` and working/ to archive — that's recovering stranded finished work, not queue processing. Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery. Pass 5 is not an exception at all: it operates on git worktrees and branches only and never reads or writes a REQ file.
+- Touch **active** files in `do-work/queue/` (the queue) or `do-work/working/` — `pending`, `pending-answers`, `pending-heavy-testing`, `blocked`, and `claimed` REQs are actions/work.md's responsibility. Exceptions: Pass 0 sweeps REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from `do-work/queue/` and working/ to archive — that's recovering stranded finished work, not queue processing. Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery. Pass 5 reads exact REQ identity and location as deletion evidence but never changes a REQ file; finding the REQ in `working/` forbids automatic removal.
 - Archive UR folders that still have pending/in-progress REQs
 - Process any REQ files (use actions/work.md for that)
 
@@ -305,7 +305,7 @@ Guard against these during cleanup:
 | "This UR folder looks empty, delete it" | Check if REQs reference it via `user_request` field | Empty UR folders may have REQs still in the queue or working/ |
 | "The archive structure is fine, skip reorganization" | Run all 7 passes even if the archive looks clean | Loose files, consumed run scratch, orphaned worktrees, and blanked REQ content accumulate independently — any of them can need cleanup, and a tidy archive of 0-byte files looks clean to every pass but Pass 6 |
 | "That archived REQ is empty, so it must have been an empty REQ" | Run Pass 6's scanner before believing it | A 0-byte archived REQ is the signature of an unguarded `commit:` write-back, not of an empty request — six real REQs of 8–26 KB were lost that way, and their content is recoverable only until `git gc` runs |
-| "This `worktree-agent-*` branch is ancient, it's obviously abandoned — just `-D` it" | Try `git worktree remove` + `git branch -d` from the integration branch; on refusal, ask (Pass 5) | Age is not merged-ness. `-d`'s refusal is the signal that the branch still holds unmerged builder work, and `-D` discards it with no record that a merge was ever missed |
+| "This `worktree-agent-*` branch is ancient, clean, and merged, so it is obviously abandoned" | Require its exact REQ to be readable, unambiguous, and outside `do-work/working/`; otherwise ask (Pass 5) | Age, cleanliness, and merged-ness do not prove the run finished. A live REQ can have a clean merged builder checkout before its next source edit, and forced deletion discards its execution lane. |
 
 ## Red Flags
 
@@ -330,5 +330,5 @@ Guard against these during cleanup:
 - [ ] Every moved file's old path greps to zero hits in tracked markdown outside `do-work/`
 - [ ] Every `do-work/runs/` directory deleted by Pass 4 had `Status: consumed`; `in-progress`, `synthesized`, legacy `complete`, and missing-manifest runs remain
 - [ ] Every tracked consumed-run deletion is staged by its exact path
-- [ ] Every `worktree-agent-*` leftover Pass 5 removed came off a successful `git worktree remove` + `git branch -d` (never `-D`/`--force`); every refusal was either left in place and reported, or discarded only after the user named it
+- [ ] Every `worktree-agent-*` leftover Pass 5 removed automatically was clean, merged, and tied to one exact readable REQ outside `do-work/working/`, then came off a successful `git worktree remove` + `git branch -d` (never `-D`/`--force`); every other case was left in place and reported or discarded only after the user named it
 - [ ] Pass 6's scanner was run, and every file it restored was approved by the user first, written by `--restore` (not by hand), and staged by its exact path; every unrecoverable file was reported as a permanent loss
