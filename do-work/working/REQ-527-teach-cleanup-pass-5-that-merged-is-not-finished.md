@@ -54,9 +54,9 @@ REQ-458 stopped `verify` from advertising an active builder's worktree as a fixa
 - `skills/do-work/docs/cleanup-guide.md:56` — same contract restated.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Require a fresh, exact request-tree observation alongside cleanliness and mergedness; fail closed to the existing consent path for every absent, ambiguous, malformed, unreadable, or working state.
+- [x] **[APPLY]:** Added settled-request evidence to Pass 5, regression fixtures for every request state, and aligned the three shipped cleanup restatements.
+- [x] **[UNIFY]:** Reviewed the exact five-file diff; focused, race, full-module, vet, shipped-reference, sequential contract, and whitespace checks passed.
 
 ## Finding Provenance
 
@@ -137,3 +137,27 @@ Depends on REQ-458, which establishes the evidence and the corrected verify cate
 - [ ] No heartbeat, lock, PID, mtime, claim registry, or time threshold is introduced.
 - [ ] Clean merged residue with a positively settled REQ is still removed mechanically.
 - [ ] Cleanup action, guide, and crash-recovery reference state the same rule and retain the existing consent gate.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_git.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_git_test.go` (modified)
+- `skills/do-work/actions/cleanup.md` (modified)
+- `skills/do-work/docs/cleanup-guide.md` (modified)
+- `skills/do-work/actions/work-reference.md` (modified)
+
+**What was done:** Cleanup Pass 5 now automatically removes a builder residue only when a fresh observation proves the worktree clean, its branch or detached head merged into the integration head, and exactly one readable matching request settled outside the working tree. Every missing, negative, malformed, unreadable, or ambiguous fact uses the established consent-required finding and exact discard command without mutation. Shipped action, guide, and recovery wording now state the same three-fact rule. Integrated at 9ccbc9f2928a50ad155e7e3101880feff7393df0 from implementation range f57d9176..9ccbc9f2928a50ad155e7e3101880feff7393df0.
+
+## Decisions
+
+- **D-01:** Refresh repository discovery when Pass 5 begins so earlier cleanup passes cannot leave the deletion decision using stale lifecycle evidence.
+- **D-02:** Treat queue and archive as settled only when exactly one parseable request owns the anchored worktree REQ id; all collision or read evidence fails closed.
+- **D-03:** Reuse the existing consent finding and exact discard path rather than adding liveness, age, or new force mechanisms.
+
+## Testing
+
+- PASS: focused RED/GREEN cleanup fixture group covering active, absent, ambiguous, malformed, unreadable, settled, unmerged, detached, and explicit-discard behavior.
+- PASS: `go test -count=1 ./internal/cleanup`; `go test -race -count=1 ./internal/cleanup`; `go vet ./...`; `go test -count=1 ./...`.
+- PASS: `bash _dev/tests/shipped-package-reference-contract.sh`; sequential `bash _dev/tests/contract-regressions.sh`; `git diff --check`.
+- One parallel contract run crossed a per-file timing budget; its standalone fixture and the sequential complete rerun passed.
