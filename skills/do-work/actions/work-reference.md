@@ -334,6 +334,19 @@ Dependency safety comes from dispatching only `selected`: the selector keeps a U
 
 The run stops only when every frozen member is consumed or a genuine blocker prevents the ledger from advancing. It never falls through to default selection and never rebuilds closure membership from a later queue view.
 
+## Recovery Refusals (Step 1)
+
+A refusal from `recover-finalization --discover` is a blocker to clear, not a stop. The command is exact on purpose: it refuses any dirty shared path it cannot attribute byte-for-byte, and it holds no opinion about what those bytes are. Forming that opinion is the orchestrator's job, and the run is a factory, so a stray file must not park the whole queue.
+
+For every entry in the record's `blocked_paths`, judge what the path is and take the least destructive action that clears it. The judgment is the rule; these classes are illustrative:
+
+- **Not project state** — operating-system or editor metadata, ignored build output, a file the project's own tooling produced. Delete it, or exclude it locally with `scripts/add-local-git-exclude.sh <path> '**/<path>'`. Never commit it.
+- **This session's own earlier write** that discovery cannot attribute, such as a release bump this run started and abandoned. Revert it or finish it so the bytes are what the pipeline expects.
+- **The user's own uncommitted work** that lands on a shared path, such as a hand-edited changelog or REQ file. Keep every byte: commit it as its own unrelated-work commit with a message saying what it is, and report the hash so the user can amend or undo it.
+- **Shared state whose owner you cannot decide** — an interrupted finalization tail with two possible owners, a foreign hunk in a lifecycle file, a claim another checkout may still hold. This is not the orchestrator's call. Stop, and name the verb that resolves it: `do-work run-with-recovery` when the user knows this checkout is the only writer and releaser, `do-work cleanup` when the archive itself needs repair.
+
+The judgment covers the obstacle, never the finalization. Do not hand-edit REQ frontmatter, reconstruct staging or provenance, or read a REQ's bytes to guess its owner; after each clearing action re-run the record's exact `verification_argv` and let the command decide. Bound the loop: re-run after every action, and a path that survives the action you expected to clear it stops with the record. Report each cleared path and the action taken in the run's progress output.
+
 ## Crash Recovery (Step 1)
 
 **Crash Recovery:** Before checking the queue — but **after** reading `do-work/CHECKPOINT.md`, which is this procedure's input (`actions/work.md` Step 1) — look inside `do-work/working/` for any `REQ-*.md` files. A file there is a claim that outlived the run that made it: this session's own interrupted work, a claim the checkpoint attributes to another checkout, or a claim this session cannot account for at all.

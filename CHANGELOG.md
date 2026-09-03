@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.266.5 — Recovery Refusals Are Cleared, Not Obeyed (2026-09-03)
+
+`do-work run` and `do-work run-with-recovery` used to treat any `recover-finalization` refusal as a full stop before queue selection. The command refuses whatever it cannot attribute byte-for-byte and has no opinion about what the bytes are, so the orchestrator now forms that opinion and clears the blocker itself.
+
+- New `actions/work-reference.md` → **Recovery Refusals (Step 1)**: judge each blocked path, take the least destructive clearing action (delete or locally exclude non-project files, revert or finish this session's own abandoned write, commit the user's unrelated work on its own with the hash reported), re-run the exact `verification_argv`, and stop only for shared state whose owner the orchestrator cannot decide, naming the verb that resolves it.
+- Judgment covers the obstacle, never the finalization: REQ frontmatter, staging, and provenance still belong to the command.
+- Both `run` and `run-with-recovery` point at the one rule instead of carrying their own stop sentence.
+
 ## 0.266.4 — Finder Metadata No Longer Stops the Run (2026-09-03)
 
 A stray `do-work/.DS_Store` made `do-work run` refuse `FINALIZATION-DISCOVERY-AMBIGUOUS` before it selected anything. Untracked hidden files under `do-work/` are Finder or editor metadata, never pipeline state, and the inventory now drops them.
