@@ -119,7 +119,7 @@ func Validate(repositoryRoot string, options Options) (resultmodel.AlreadyGreenR
 	coreReasons := map[string]bool{}
 	addCore := func(code string) { coreReasons[code] = true }
 
-	if target.TreeSection != "working" || target.ParseFailure != "" || target.FilenameID == "" || target.FilenameID != target.TypedRecord.RequestID {
+	if target.TreeSection != "working" || target.ParseFailure != "" || target.FilenameID == "" || target.FilenameID != target.TypedRecord.RequestID || !requestIdentityIsUnique(snapshot, target.TypedRecord.RequestID) {
 		addCore("REPAIR-REQUEST-IDENTITY")
 	}
 	if !exactScalar(target, "status", "claimed") {
@@ -140,6 +140,9 @@ func Validate(repositoryRoot string, options Options) (resultmodel.AlreadyGreenR
 		body = string(target.ParsedDocument.BodyBytes())
 	}
 	sections := markdownSections(body)
+	if hasPrefixedSection(sections, "Repository Gate Repair No-Op") {
+		addCore("REPAIR-NO-OP-SHAPE")
+	}
 	intakes := sections["Repository Gate Repair Intake"]
 	if len(intakes) == 0 {
 		addCore("REPAIR-INTAKE-MISSING")
@@ -170,6 +173,9 @@ func Validate(repositoryRoot string, options Options) (resultmodel.AlreadyGreenR
 		addCore("REPAIR-NO-OP-SHAPE")
 	} else {
 		noOp := noOps[0]
+		if !exactLabeledBlock(noOp, []string{"Expected diagnostic fingerprint", "Gate command", "Direct exit status", "Recorded green revision", "Observed result", "Verified at"}) {
+			addCore("REPAIR-NO-OP-SHAPE")
+		}
 		expected, expectedOK := uniqueLabel(noOp, "Expected diagnostic fingerprint")
 		commandJSON, commandOK := uniqueLabel(noOp, "Gate command")
 		directStatus, statusOK := uniqueLabel(noOp, "Direct exit status")
@@ -203,14 +209,28 @@ func Validate(repositoryRoot string, options Options) (resultmodel.AlreadyGreenR
 	}
 
 	var gateResult *resultmodel.GateEvidenceResult
+	gateEvidenceMatches := false
 	if len(validation.GateCommand) > 0 && validation.RecordedRevision != "" {
 		checked, checkErr := gateevidence.CheckGreenGateAtRevision(repositoryRoot, validation.GateCommand, validation.RecordedRevision)
 		gateResult = &checked
 		if checkErr != nil || !checked.Matches || checked.RecordedRevision != validation.RecordedRevision {
 			addCore("REPAIR-GATE-EVIDENCE-UNVERIFIABLE")
+		} else {
+			gateEvidenceMatches = true
 		}
 	} else {
 		addCore("REPAIR-GATE-EVIDENCE-UNVERIFIABLE")
+	}
+	if gateEvidenceMatches {
+		durableBytes, durableErr := gitFileAtRevision(repositoryRoot, gateResult.TargetRevision, options.RequestPath)
+		if durableErr != nil {
+			addCore("REPAIR-INTAKE-NOT-DURABLE")
+		} else {
+			durableSections := markdownSections(string(durableBytes))
+			if !equalStrings(durableSections["Repository Gate Repair Intake"], intakes) || len(durableSections["Repository Gate Repair No-Op"]) != 0 {
+				addCore("REPAIR-INTAKE-NOT-DURABLE")
+			}
+		}
 	}
 
 	changedPaths, err := gitStatusPaths(repositoryRoot)
@@ -283,6 +303,18 @@ func requestAtPath(snapshot *repositorymodel.RepositorySnapshot, requestPath str
 	return nil
 }
 
+func requestIdentityIsUnique(snapshot *repositorymodel.RepositorySnapshot, requestID string) bool {
+	if requestID == "" || len(snapshot.RequestsByID[requestID]) != 1 {
+		return false
+	}
+	for _, collision := range snapshot.CollisionEntries {
+		if collision.RequestID == requestID {
+			return false
+		}
+	}
+	return true
+}
+
 func exactScalar(request *repositorymodel.RequestFile, field, expected string) bool {
 	evidence, found := request.TypedRecord.FieldEvidenceByName[field]
 	return found && evidence.DuplicateCount == 0 && evidence.ScalarValue == expected
@@ -307,6 +339,29 @@ func markdownSections(body string) map[string][]string {
 	}
 	flush(len(lines))
 	return sections
+}
+
+func hasPrefixedSection(sections map[string][]string, canonical string) bool {
+	for name := range sections {
+		if name != canonical && strings.HasPrefix(name, canonical) {
+			return true
+		}
+	}
+	return false
+}
+
+func exactLabeledBlock(section string, labels []string) bool {
+	lines := strings.Split(section, "\n")
+	if len(lines) != len(labels) {
+		return false
+	}
+	for index, label := range labels {
+		prefix := "- **" + label + ":** "
+		if !strings.HasPrefix(lines[index], prefix) || strings.TrimSpace(strings.TrimPrefix(lines[index], prefix)) == "" || lines[index] != strings.TrimSpace(lines[index]) {
+			return false
+		}
+	}
+	return true
 }
 
 func uniqueLabel(section, label string) (string, bool) {
@@ -359,6 +414,17 @@ func gitPaths(repositoryRoot string, arguments ...string) ([]string, error) {
 		return nil, err
 	}
 	return uniqueSorted(strings.FieldsFunc(string(output), func(r rune) bool { return r == 0 })), nil
+}
+
+func gitFileAtRevision(repositoryRoot, revision, path string) ([]byte, error) {
+	if revision == "" {
+		return nil, fmt.Errorf("recorded revision is empty")
+	}
+	output, err := exec.Command("git", "-C", repositoryRoot, "show", revision+":"+path).Output()
+	if err != nil {
+		return nil, fmt.Errorf("read durable repair intake at %s: %w", revision, err)
+	}
+	return output, nil
 }
 
 func equalStrings(left, right []string) bool {
