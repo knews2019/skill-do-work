@@ -4292,9 +4292,9 @@ assert_file_not_contains \
   'capture must not create a reservation outside the canonical capture-files transaction.'
 
 assert_contains \
-  "CLAUDE.md" \
+  "_dev/primes/prime-kanban-board.md" \
   'three write surfaces' \
-  'CLAUDE.md must state the tool has exactly three write surfaces once next-req reserves ids — testing fields, next-version, and reservation markers are the complete set, and nothing but this sentence records the count.'
+  '_dev/primes/prime-kanban-board.md must state the tool has exactly three write surfaces once next-req reserves ids — testing fields, next-version, and reservation markers are the complete set, and nothing but this sentence records the count (it moved out of CLAUDE.md in 0.266.7).'
 
 assert_contains \
   "actions/capture.md" \

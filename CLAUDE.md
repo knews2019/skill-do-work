@@ -33,6 +33,8 @@ skills/do-work-board/ # Queue-kanban, board action, and managed Just template
 skills/do-work-knowledge/ # BKB, memory, dreams, interviews, and prompts
 skills/do-work-toolbox/   # Reviews, reports, presentation, and repository utilities
 tools/                # Root bootstrap/manifest/managed-section distribution utilities only
+_dev/                 # Primes, lessons satellites, and the test suites; export-ignored
+do-work/              # This repo's own queue, tracked
 decisions/            # ADRs (records/), imported specs, topic indexes, decision log
 AGENTS.md             # Stub — redirects to CLAUDE.md
 CHANGELOG.md          # Release notes
@@ -50,9 +52,11 @@ READ the matching prime before changing that area — they hold the detail this 
 
 ## Commit Completion
 
-A job is not done while its code exists only in the working tree. Commit each coherent, verified increment before hand-back; “commit often” means smaller complete slices.
+A job is not done while its code exists only in the working tree. Commit each coherent, verified increment before hand-back; “commit often” means smaller complete slices. Verified means `bash _dev/tests/maintainer-verify.sh` exits 0, run unpiped from the repository root; a builder's report is a claim, not evidence.
 
-## Before Every Commit
+## Releases
+
+A commit that changes shipped files under `skills/`, `tools/`, or `suite/` is a release and does the following. Maintainer-only files (`CLAUDE.md`, `_dev/`, `do-work/`, `decisions/`) commit without one. Bump size, version mirrors, and the finalize transaction are decided per `skills/do-work/actions/work-reference.md` → Changelog Entry Procedure (Step 9); what follows are the house rules that procedure applies.
 
 1. **Add a changelog entry** at the top of `CHANGELOG.md` (below the header). The title must **say what was delivered** — a reader scanning only headings should know what changed ("Board View Filters", not "The Fine Sieve"). No whimsical codenames. **Verify the title is not already used** by an earlier entry. Repository-only dated history must use canonical `https://github.com/knews2019/skill-do-work/blob/main/...` links, because the installed core package does not carry those sidecars.
 
