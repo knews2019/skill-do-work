@@ -38,9 +38,9 @@ estimate:
 Correct REQ-083 (Verify reports every builder worktree as a fixable orphan, including active and unmerged ones) so a branch being merged into the integration branch is not, by itself, enough to call its worktree a leftover or mechanically fixable. A dirty worktree or a worktree belonging to an unfinished run must be reported as present and non-fixable; only clean merged residue from finished work may be reported as a fixable leftover.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read both `prime_files` and both `lessons-*` satellites, `CLAUDE.md` § Kanban Board Write Surfaces, and `actions/cleanup.md` → Pass 5. Approach: keep `classifyWorktreeMergeState` as-is and layer a `worktreeLeftoverDisposition` over it, fed by two repository reads — worktree dirtiness and whether the leftover's REQ id is still in `do-work/working/` — so merged-ness becomes necessary but not sufficient for `Fixable`.
+- [x] **[APPLY]:** Two files. `skills/do-work/actions/forensics.md` was declared in Scope and deliberately not written — see the Qualification note and D-05.
+- [x] **[UNIFY]:** `git diff --stat` → 2 files, +357/-40. Orchestrator independently re-ran `go build ./...`, `go vet ./...` (clean) and `gofmt -l .` (silent), and confirmed the five relevant tests pass, `TestVerifyWritesNothing` among them. Read the added declarations and functions in the diff — no debug artifacts, and the only subprocess added is a read-only `git status --porcelain`.
 
 ## Context
 
@@ -128,3 +128,40 @@ Both are ordinary repository reads, so the no-liveness-signal constraint from RE
 - [ ] Genuinely finished, clean, merged residue is still reported as a mechanically fixable leftover
 - [ ] `verify` stays read-only and still protects developer-owned worktrees outside the `worktree-agent-*` convention
 - [ ] Rendered category/remedy text and user-facing verify documentation match the corrected classifier
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/verify.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/verify_test.go` (modified)
+
+**What was done:** `classifyWorktreeMergeState` is unchanged and still answers only the ancestry question; a new `worktreeLeftoverDisposition` layer sits over it and makes the merged branch state necessary but not sufficient for `Fixable`. Two repository reads feed it: `worktreeHasUncommittedWork` (`git -C <worktreePath> status --porcelain --untracked-files=all`, returning an error rather than a silent "clean") and `isRequestStillInFlight` (the leftover name's `REQ-NNN` id resolved through `board.RequestsById[id].TreeSection == "working"`). A merged leftover that is dirty, still in flight, or unreadable now reports as one of three new non-fixable categories — `worktree-present-uncommitted-work`, `worktree-present-run-in-flight`, `worktree-present-state-unknown` — none of which uses the words "leftover", "cleanup can fix", or "nothing is lost". Only a merged, clean, no-longer-in-`working/` leftover keeps `Fixable: true`, and its remedy now states all three conditions rather than the ancestry one alone. The `unmerged` and `undetermined` routing and remedies are byte-unchanged, as is the developer-owned-worktree exclusion.
+
+## Decisions
+
+- **D-01** — Reuse `board.RequestsById` + `TreeSection` for the in-flight read rather than a second filesystem scan, mirroring `appendStrandedFinishedFindings`. **DECIDE & STATE.** Cost is one new `board` parameter on `appendWorktreeFindings`, whose only caller already had the board built.
+- **D-02** — Precedence among merged sub-states is in-flight → dirty → unknown → residue. **DECIDE & STATE.** A builder's worktree being dirty during its own run is expected, so "belongs to an unfinished run" is the fact that decides what to do. One finding per leftover name is preserved, so existing per-category counts and `FixableCount` assertions keep their meaning.
+- **D-03** — `worktreeHasUncommittedWork` probes the whole worktree, not the `do-work/` subset `worktreeDirtyQueueState` asks about. **DECIDE & STATE.** They answer different questions: that one asks whether "state stays home" was broken, this one asks whether Pass 5's non-forced `git worktree remove` would refuse — and it refuses for dirt anywhere. Both are kept.
+- **D-04** — Added a fourth disposition, `worktreeLeftoverStateUnknown`, covering a failed `git status` probe and a name carrying no `REQ-NNN` id. **DECIDE & STATE.** Both report present, non-fixable, plus a `SkippedProbes` line naming the failed read. This makes the fail-safe constraint structural rather than an inline nil-means-clean.
+- **D-05** — `skills/do-work/actions/forensics.md` was declared in Scope and deliberately left unchanged. **ESCALATE.** Check 14 has no per-category description to make stale: line 80 states the board-output mapping is "keyed on the output class, not a hand-maintained category list, so a new verify category inherits it immediately", and line 78's only `[fixable]` prose is pass-through ("Preserve each emitted `[fixable]` … classification exactly"). Verified against the file, not taken on the builder's word. **Value:** the three new categories and the new skipped-probe line inherit their rows automatically, and the file keeps the property it advertises. **Risk:** an unused Scope declaration is scope drift, so the acceptance criterion about user-facing verify documentation is met by an unchanged file rather than an edit; if a future reader expects a per-category row there, they will not find one. Fully reversible — adding a row later costs nothing but reintroduces the hand-maintained list the file says it does not keep.
+- **D-06** — The still-fixable residue remedy keeps "nothing is lost" but now names all three conditions: the branch is contained in HEAD, the worktree is clean, and its REQ has left `do-work/working/`. **DECIDE & STATE.** The claim is now true of everything it is asserted about.
+
+## Discovered Tasks
+
+- `worktreeDirtyQueueState` (`verify.go`) still returns `nil` when its `git status` fails, silently reporting "no queue-state writes found" for a probe that never ran — the same shape this REQ just fixed one level up, and the shape `VerifyReport`'s own doc comment argues against. `worktreeHasUncommittedWork` is the pattern to follow (error return plus a `SkippedProbes` line).
+- `appendWorktreeFindings` was already flagged in the REQ-084 lesson as "the file's longest function — the next change here should extract, not append". This REQ added a parameter and a branch rather than extracting, because extraction is a refactor outside this write set. It is now roughly 90 lines running four sub-probes per leftover.
+- `skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md:28` (REQ-083's entry) describes the superseded three-state model. The satellite is append-only, so the correction belongs in this REQ's own lesson bullet rather than an edit to that line.
+
+## Qualification
+
+**Passed with one declared-but-untouched scope drift** — 2 files verified, 6 requirements traced, P-A-U confirmed.
+
+Mechanical: `tools/checks/qualify.sh` → `OK: mechanical qualification passed`.
+
+`tools/checks/scope-drift.sh` → exit 1, `declared in ## Scope but never touched: skills/do-work/actions/forensics.md`. **Minor, and correct.** I checked the file rather than accepting the builder's reasoning: `forensics.md:80` states the board-output mapping is "keyed on the output class, not a hand-maintained category list, so a new verify category inherits it immediately", and `:78`'s only `[fixable]` prose is pass-through. There is no per-category row to make stale, so editing it would *add* the hand-maintained list the file says it does not keep. The Scope declaration was written before that was established; it stands as declared rather than being rewritten after the fact, with the reason recorded here and in D-05. Nothing outside the two remaining declared files was touched.
+
+Independent (orchestrator-run, not the builder's report):
+- `go build ./... && go vet ./...` clean; `gofmt -l .` printed nothing.
+- Ran the three new tests plus `TestVerifyClassifiesWorktreeLeftoversByMergeState` (the REQ-083 fixture this REQ refines) and `TestVerifyWritesNothing` (the read-only invariant): all five pass.
+- Read the added declarations and functions in the diff. The only subprocess introduced is `git status --porcelain --untracked-files=all`, read-only, so `verify` gains no write surface and CLAUDE.md's three-write-surface rule is untouched. No heartbeat, lock, PID probe, mtime heuristic, claim registry, or time threshold appears anywhere in the diff — the REQ-073 constraint holds.
+- Requirement trace: dirtiness and in-flight state are both ordinary repository reads; the three new categories are all `Fixable: false` and none carries "leftover", "cleanup can fix", or "nothing is lost"; the clean-finished case keeps `Fixable: true`; the `worktree-agent-*` prefix guard and the `unmerged`/`undetermined` remedies are byte-unchanged.
