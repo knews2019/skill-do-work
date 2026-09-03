@@ -1,7 +1,7 @@
 ---
 id: REQ-538
 title: 'Cut queue-kanban tests to the fast core and parallelize the rest'
-status: pending
+status: claimed
 created_at: 2026-09-03T14:49:02Z
 user_request: UR-104
 domain: testing
@@ -17,6 +17,7 @@ batch: two-tier-gate
 write_set:
   - skills/do-work-board/tools/queue-kanban/*_test.go
   - _dev/tests/maintainer-verify.sh
+claimed_at: 2026-09-03T16:49:25Z
 ---
 
 # Cut queue-kanban Tests to the Fast Core and Parallelize the Rest
