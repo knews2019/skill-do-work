@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.270.1 — Cancelled Commits Reap Their Own Hooks (2026-09-03)
+
+Cancelling a commit used to leave a `pre-commit` hook running after the command had already returned, so a hook that ignores `SIGTERM` outlived the transaction that started it. Cancellation now ends the whole process tree it launched, and waits for it instead of firing a detached kill.
+
+- Teardown signals descendants before their parents, one level at a time, so `git` survives long enough to reap its own hook rather than orphaning it to init.
+- A cancelled commit that nevertheless lands is now reported as `committed_state_risk`, not as a rollback that quietly left the bytes in place.
+- Owned-process launch and teardown live in one `internal/ownedprocess` package, so the platform split sits in a single file pair instead of three divergent runners.
+- Stated rather than hidden: an orphaned grandchild is proved not-running but never reaped, a `setsid` escapee leaves the group and is never signalled, and four review findings on this contract's wording and its tests are filed as open work.
+
 ## 0.270.0 — Two-Tier Maintainer Gate (2026-09-03)
 
 The maintainer gate now has two tiers. A bare run is the canonical gate every pipeline step uses; the heavy lanes are the maintainer's to ask for, so the loop stops paying for them on every request.

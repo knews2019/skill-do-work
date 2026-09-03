@@ -1,7 +1,7 @@
 ---
 id: REQ-543
 title: '[impact-critical] Reap the commit hook with its own parent'
-status: claimed
+status: completed
 created_at: 2026-09-02T23:58:00Z
 user_request: UR-085
 domain: backend
@@ -38,6 +38,9 @@ estimate:
     - 5 acceptance criteria
     - async lifecycle behavior
     - cross-route regression gates
+completed_at: 2026-09-03T16:35:08Z
+commit: 1cc3beb
+release_at: 2026-09-03T16:35:08Z
 ---
 
 # Kill the Owned Commit Process Group on Cancellation
@@ -180,6 +183,7 @@ No request prerequisite.
 - `ownedprocess.terminateWholeGroup` — the fallback for a Unix host where `ps` cannot be executed — has no test; no cheap way to simulate a missing `ps`.
 - `exact_commit.go`'s HEAD-advanced guard fails the whole transaction if the *pre*-commit `rev-parse` errors, so it cannot handle an unborn branch. `currentHeadDespiteCancellation` handles that case and could replace it.
 - **A builder reported four always-load crew-member files as absent from the tree when all 18 are present and tracked.** Worth understanding: if the check was a relative `ls` run from the Go module directory, every builder dispatched into a subdirectory could silently skip the always-on guardrails. That is a pipeline-reliability question, not a code one.
+- **impact-user-visible — `finalize` refuses any REQ that has no `## In Progress (interrupted)` entry in `do-work/CHECKPOINT.md`.** Found while closing this REQ, measured at the seam rather than inferred. `planTargets` adds the checkpoint to `plan.TargetPaths` **only when its bytes would change** (`internal/requeststate/state_plan.go:398`), while `PlannedPostimages` emits a checkpoint postimage **unconditionally** whenever `plan.CheckpointPath != ""` (`internal/requeststate/state_apply.go:156-158`). `finalization` takes its lifecycle *pre*images from `TargetPaths` and its *post*images from `PlannedPostimages`, so for a REQ with nothing to remove the two sets differ by exactly one path and `imageSetState` (`internal/finalization/finalization_apply.go:296`) refuses with `FINALIZATION-LIFECYCLE-CONFLICT: journal image sets have different path counts`. Verified from the refused journal: 3 preimage paths against 4 postimage paths, the extra one being `do-work/CHECKPOINT.md`. The refusal is safe (phase `prepared`, no commit, no release mutation applied) but it is unrecoverable in place — `recover-finalization` replays the same journal into the same refusal, and there is no discard verb, so the Git-private journal has to be removed by hand before a corrected manifest can be prepared. **Fold-first scan run, not assumed:** the six `sweep: true` pending REQs were checked; `REQ-502` (`sweep_key: checkpoint-section-blind-line-editing`) is the closest and is a **different** root cause — it is about the cleanup mover removing only an entry's header line, not about pre/postimage path symmetry in the finalize planner — so this is not a fold, and it needs its own REQ through the `pending-answers` consent flow rather than being minted silently here. Worked around for this closure by giving REQ-543 the checkpoint entry the Session Checkpoint template says it should already have had (it is claimed by this checkout and sitting in `do-work/working/`), inserted so that the planner's own removal reproduces the current bytes exactly and the committed checkpoint is byte-unchanged.
 
 ## Qualification
 
@@ -304,7 +308,7 @@ Both are inherent to group ownership without `PR_SET_CHILD_SUBREAPER`, which thi
 - Without `PR_SET_CHILD_SUBREAPER` — barred here, since it lives in `x/sys/unix` and this module is standard-library-only — an orphan can be proved not-running but never reaped, and a `setsid` escapee cannot be reached at all. Any future wording of this contract has to carry all three outcomes.
 - The prime's `GOOS=windows` Verify lines are run by no gate: `grep -n GOOS _dev/tests/*.sh` is empty. The portability contract is written down and unenforced.
 - The REQ's `## Traps` names `_dev/tests/do-work-cli-go125-compatibility.sh` as the Go 1.25 floor enforcer. Main deleted that script in `5e0e166` and the merge removed its prime Verify line, so the floor now rests on `go.mod`'s `go 1.25.0` alone. Not this REQ's doing, but the Traps text is stale for the next reader.
-- New lesson family **`reaped-by-its-own-parent`**, already promoted into the prime's `## Traps` (`prime-do-work-cli.md:56`). Its satellite bullet in `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` is **still owed** and is deliberately deferred to the release commit; `do-work/lessons-index.md:11`'s family set was updated here. **Stated as a disagreement rather than hidden:** for as long as that gap is open, the index row lists a family the satellite does not carry, which contradicts the index's own header rule ("`families` is the exact sorted set of `[family: <slug>]` markers present in lesson bullets"). The two halves belong in one commit; they are split here only because this closure may not write under `skills/`.
+- New lesson family **`reaped-by-its-own-parent`**, promoted into the prime's `## Traps` (`prime-do-work-cli.md:56`) by the implementation and now carried by its satellite bullet in `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` as well. The gap the review recorded as finding F9 — the index row at `do-work/lessons-index.md:11` listing a family the satellite did not carry, which contradicts the index's own header rule ("`families` is the exact sorted set of `[family: <slug>]` markers present in lesson bullets") — is closed in the release commit below, together with the `tokens` recount the header rule prescribes (`ceil(bytes / 4)`: 5127 to 5660). The disagreement recorded at hand-back stands as written: the two halves belonged in one commit and were split only because that closure could not write under `skills/`.
 
 ## Orientation
 
@@ -313,3 +317,20 @@ Cancelling a Git-committing transaction now ends the whole process tree it launc
 `prime_files`: `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` — spot-checked at closure; every path it names still exists, and the builder's own edit (the package entry at `:30`, the `Package direction` edge at `:34`, the `reaped-by-its-own-parent` trap at `:56`, and the Windows Verify line at `:76`) is present and accurate except the one clause F2 names.
 
 **[MAP CHANGED]** — owned-process-group launch and teardown is now a single named seam with the platform split in one package, down from three divergent runners to two (`nextselection`'s blocked probe keeps its own, per D-03). `gittransaction` holds zero build-tagged production files and the `Setpgid` reflection probe is gone. Why it matters: the teardown ordering — descendants before parents, level by level, from one snapshot — is now the module's single answer to "kill the tree", and the two outcomes it cannot deliver (an unreaped orphan, a `setsid` escapee) are properties of that one seam rather than of each caller.
+
+## Closure
+
+**Released as 0.270.1 — patch.** The implementation at `1cc3beb` changed shipped Go code under `skills/do-work/tools/do-work-cli/` and the prime beside it, which makes it a release under `_dev/primes/prime-releases.md`, and it landed without a version bump. This closure carries that release: `VERSION`, `skills/do-work/VERSION` and `skills/do-work/actions/version.md` go 0.270.0 to 0.270.1, and one entry lands in `CHANGELOG.md` and its byte-identical mirror `skills/do-work/CHANGELOG.md`. Patch and not minor because nothing user-invocable exists that did not exist before: this is a defect fix in an internal package plus a lessons bullet, no new command, flag, format or reversed default. The bump table's tie-breaker ("when genuinely torn between two levels, pick the smaller one") points the same way.
+
+**Finding F9 is closed here** — `lessons-do-work-cli.md` gains the `reaped-by-its-own-parent` bullet the prime and the index already pointed at, and `do-work/lessons-index.md`'s token count for that satellite is recomputed from `wc -c` per the index's own header rule.
+
+**This REQ does not close with a clean bill of health, and should not be read as one.** Its four Important review findings are filed, not fixed. They live on **REQ-546** (making the owned-group teardown contract match what it implements, `sweep_key: owned-group-teardown-contract-gaps`, `status: pending`), which carries all four as instances:
+
+- **F1** — a reaped leader is read as an empty group, so a live group is never swept (1 live worker left behind in 16 teardown-branch runs).
+- **F2** — the exported doc comment and the prime both claim one outcome where the mechanism has three.
+- **F3** — the test that says it pins the escalation grace window pins TERM-before-KILL instead; zeroing every budget reds nothing.
+- **F12** — blocking-rather-than-detaching and the zombie predicate are both kept and both unearned; neutering either reds nothing.
+
+REQ-546 also gained instance **F13** from REQ-537's closure: the prescribed-shell interrupt fixture TERMs the wrapper pid only and never asserts the backend stopped, which is the shell-side counterpart of F11.
+
+So what shipped is real and green — the module is `go test -count=1 ./...` exit 0 across 26 packages, re-run immediately before this release — while the contract's wording and three of its guards are known gaps with an owner.
