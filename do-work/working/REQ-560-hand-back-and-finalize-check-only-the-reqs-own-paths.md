@@ -225,3 +225,7 @@ The reviewer fired both refusals this REQ deliberately keeps rather than assumin
 Another session's or the user's uncommitted files no longer stop a run or get swept into its commits. Lives in the work pipeline's hand-back and finalization boundary: the rule in the work action and its reference at hand-back step 0, the mechanism in the do-work CLI's finalization commit-safety check, which now applies its shared-remainder refusal only to a recovery group inferred from the tree.
 
 Neither prime this REQ lists was made stale: `_dev/primes/prime-action-files.md` and `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` both still resolve every path they reference.
+
+## Post-Merge Verification
+
+`bash _dev/tests/maintainer-verify.sh` against the merged tree at `3430117`: **exit 0, no failures.** Run twice for this REQ — once after the first merge and once after the remediation merge — green both times.
