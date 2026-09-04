@@ -1,7 +1,7 @@
 ---
 id: REQ-566
 title: '[impact-rule-change] Run held heavy lanes at queue exhaustion without asking, and record per-lane wall time'
-status: pending-heavy-testing
+status: pending
 created_at: 2026-09-04T13:19:11Z
 user_request: UR-111
 domain: backend
@@ -13,7 +13,6 @@ maintenance: false
 impact: impact-rule-change
 priority: now
 effort_estimate: effort-substantive
-claimed_at: 2026-09-04T13:24:15Z
 write_set:
   - skills/do-work/tools/do-work-cli/internal/publication/publication_types.go
   - skills/do-work/tools/do-work-cli/internal/publication/answer.go
@@ -37,7 +36,7 @@ dispatch_at: 2026-09-04T13:40:45Z
 builder_handback_at: 2026-09-04T14:08:09Z
 integration_at: 2026-09-04T14:11:30Z
 testing_at: 2026-09-04T14:12:48Z
-status_changed_at: 2026-09-04T14:12:48Z
+status_changed_at: 2026-09-04T14:18:07Z
 commit: 4a28946e782cf42397a329ae65b51ad3d5694a1b
 estimate:
   p50_active_minutes: 50
@@ -50,6 +49,8 @@ estimate:
     - 5 acceptance criteria
     - persistence changes
     - cross-route regression gates
+heavy_verified_at: 2026-09-04T14:18:07Z
+heavy_verified_revision: 58e1c9c948bb68f3805e704b9c7db39fff38f504
 ---
 
 # Run Held Heavy Lanes At Queue Exhaustion Without Asking, And Record Per-Lane Wall Time
@@ -62,6 +63,15 @@ Two changes, in this order.
 2. **Lift the human permission prompt.** At queue exhaustion, the work loop runs the batched heavy plan itself at HEAD for every `pending-heavy-testing` REQ, then records green or red through the same `answer --manifest` transaction that `do-work clarify` uses today. The `pending-heavy-testing` status, the non-blocking hold, and the source-ready rule for dependents all stay. Only the permission question goes. `do-work clarify` keeps working for a maintainer who runs the lanes by hand.
 
 The fold-first scan found no pending or pending-answers REQ in any UR that shares this root cause. REQ-564 (reuse matching per-lane verification evidence for four hours) avoids rerunning unaffected lanes and REQ-559 (retry a red repository gate once before a repair REQ) handles a red gate; neither removes the permission prompt or records lane durations.
+Target revision: `4a28946e782cf42397a329ae65b51ad3d5694a1b`
+Execution revision: `58e1c9c948bb68f3805e704b9c7db39fff38f504`
+
+- queue-kanban-javascript: exit 0, 6s — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript`
+- queue-kanban-browser: exit 0, 82s — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser`
+- do-work-cli-integrations: exit 0, 67s — `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+- staged-skills: exit 0, 25s — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+- updater: exit 0, 52s — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+- installer: exit 0, 24s — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Builder read the crew rules, four primes and three lessons satellites, then the plan and exploration notes; approach settled before code: one `run-heavy-verification` command beside the planner, `wall_seconds` carried identically through resultmodel and publication, the engine skip made honest in the shell, and the permission-gate sweep. (Mirrored from the builder hand-back by the orchestrator.)
@@ -271,6 +281,11 @@ Manifest: `_dev/tests/heavy-lanes.json`
 
 ## Open Questions
 
-- [ ] Run the selected heavy lane commands at `4a28946e782cf42397a329ae65b51ad3d5694a1b`; did every command exit 0?
+- [x] Run the selected heavy lane commands at `4a28946e782cf42397a329ae65b51ad3d5694a1b`; did every command exit 0? → Confirmed: every selected heavy lane exited 0 at 58e1c9c948bb68f3805e704b9c7db39fff38f504 during the queue-exhaustion drain (queue-kanban-javascript 6s, queue-kanban-browser 82s, do-work-cli-integrations 67s, staged-skills 25s, updater 52s, installer 24s)
   Recommended: Yes
   Also: No — <failing lane>
+
+
+## Answer Notes
+
+- 2026-09-04 - [ ] Run the selected heavy lane commands at `4a28946e782cf42397a329ae65b51ad3d5694a1b`; did every command exit 0?: Confirmed: every selected heavy lane exited 0 at 58e1c9c948bb68f3805e704b9c7db39fff38f504 during the queue-exhaustion drain (queue-kanban-javascript 6s, queue-kanban-browser 82s, do-work-cli-integrations 67s, staged-skills 25s, updater 52s, installer 24s)
