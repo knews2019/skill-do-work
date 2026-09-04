@@ -712,8 +712,8 @@ func TestRecoverFinalizationSetsAsideRefusedRecordAndFinishesTheRest(t *testing.
 	if setAside.RequestID != "REQ-720" || settled.RequestID != "REQ-721" {
 		t.Fatalf("record order = %q, %q", setAside.RequestID, settled.RequestID)
 	}
-	if !containsFinalizationReason(setAside.ReasonCodes, setAsideReasonCode) {
-		t.Fatalf("set-aside record must carry %s: %#v", setAsideReasonCode, setAside)
+	if !containsFinalizationReason(setAside.ReasonCodes, SetAsideReasonCode) {
+		t.Fatalf("set-aside record must carry %s: %#v", SetAsideReasonCode, setAside)
 	}
 	if !containsFinalizationReason(setAside.ReasonCodes, "FINALIZATION-JOURNAL-WRITE") {
 		t.Fatalf("set-aside record must keep the refusal's own reason code: %#v", setAside)
@@ -727,7 +727,7 @@ func TestRecoverFinalizationSetsAsideRefusedRecordAndFinishesTheRest(t *testing.
 
 	setAsideFinding := resultmodel.CommandFinding{}
 	for _, finding := range recovered.Findings {
-		if finding.Code == setAsideReasonCode {
+		if finding.Code == SetAsideReasonCode {
 			setAsideFinding = finding
 		}
 	}
@@ -760,6 +760,93 @@ func TestRecoverFinalizationStopsWhenTheRefusalOwnsNoRequest(t *testing.T) {
 			t.Fatalf("a global stop must name a resolving verb: %#v", finding)
 		}
 	}
+}
+
+// REQ-515: shared-target dirt is the one stop the loop still takes. The Git
+// index belongs to the repository, not to the REQ whose journal happened to
+// reach it first, so recovery refuses the whole run instead of excluding that
+// REQ and draining the next journal into the same dirt.
+func TestRecoverFinalizationStopsOnSharedDirtInsteadOfSettingOneRequestAside(t *testing.T) {
+	repositoryRoot := seedTwoPlannedFinalizations(t)
+	writeFinalizationFile(t, repositoryRoot, "foreign.txt", "another session staged this\n")
+	runFinalizationGit(t, repositoryRoot, "add", "foreign.txt")
+
+	recovered := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, nil)
+	if recovered.Outcome == resultmodel.OutcomeSuccess {
+		t.Fatalf("shared dirt no REQ owns must stop the run: %#v", recovered)
+	}
+	if len(recovered.Finalizations) != 1 {
+		t.Fatalf("the run must stop at the shared refusal, not drain the rest: %#v", recovered.Finalizations)
+	}
+	stopped := recovered.Finalizations[0]
+	if containsFinalizationReason(stopped.ReasonCodes, SetAsideReasonCode) {
+		t.Fatalf("shared dirt must not become one REQ's exclusion: %#v", stopped)
+	}
+	if !containsFinalizationReason(stopped.ReasonCodes, "FINALIZATION-DIRTY-INDEX") {
+		t.Fatalf("the refusal must keep its own reason code: %#v", stopped)
+	}
+	sharedFinding := resultmodel.CommandFinding{}
+	for _, finding := range recovered.Findings {
+		if finding.Code == "FINALIZATION-DIRTY-INDEX" {
+			sharedFinding = finding
+		}
+	}
+	if len(sharedFinding.AffectedIDs) != 0 {
+		t.Fatalf("a shared cause names no owning REQ: %#v", sharedFinding)
+	}
+	if len(sharedFinding.NextArgv) == 0 || containsArgument(sharedFinding.NextArgv, CommandRecoverFinalization) {
+		t.Fatalf("a global stop names a resolving verb other than the one that refused: %#v", sharedFinding.NextArgv)
+	}
+}
+
+// REQ-515: an incomplete rollback is residue on paths the next claim would
+// write through, so it stops the run even though the refusal names one REQ.
+// This is the one false branch of the ownership gate that was live before this
+// REQ and untested until now.
+func TestRecoverFinalizationStopsWhenRollbackLeavesResidue(t *testing.T) {
+	repositoryRoot := seedTwoPlannedFinalizations(t)
+	previousHook := afterFinalizationPhase
+	afterFinalizationPhase = func(phase Phase) error {
+		if phase != PhaseLifecycleApplied {
+			return nil
+		}
+		archivePath := filepath.Join(repositoryRoot, "do-work", "archive", "REQ-720.md")
+		if _, err := os.Stat(archivePath); err != nil {
+			return nil
+		}
+		// Dirty the file the rollback has to restore exactly, so the rollback
+		// cannot converge and the record ends with residue on disk.
+		if err := os.WriteFile(archivePath, []byte("edited outside the journal\n"), 0o600); err != nil {
+			return err
+		}
+		return context.Canceled
+	}
+	t.Cleanup(func() { afterFinalizationPhase = previousHook })
+
+	recovered := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, nil)
+	afterFinalizationPhase = previousHook
+	if recovered.Outcome == resultmodel.OutcomeSuccess {
+		t.Fatalf("residue on disk must stop the run: %#v", recovered)
+	}
+	if len(recovered.Finalizations) != 1 {
+		t.Fatalf("the run must stop at the incomplete rollback: %#v", recovered.Finalizations)
+	}
+	stopped := recovered.Finalizations[0]
+	if containsFinalizationReason(stopped.ReasonCodes, SetAsideReasonCode) {
+		t.Fatalf("an incomplete rollback is not a clean exclusion: %#v", stopped)
+	}
+	if !containsFinalizationReason(stopped.ReasonCodes, "FINALIZATION-ROLLBACK-INCOMPLETE") {
+		t.Fatalf("the record must say the rollback left residue: %#v", stopped)
+	}
+}
+
+func containsArgument(argv []string, wanted string) bool {
+	for _, argument := range argv {
+		if argument == wanted {
+			return true
+		}
+	}
+	return false
 }
 
 func containsFinalizationReason(reasonCodes []string, wanted string) bool {

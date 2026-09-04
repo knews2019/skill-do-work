@@ -10,10 +10,10 @@ fail_count=0
 # The token is the command's, not the prose's. Read it from the Go constant so a
 # rename in the CLI reddens here instead of leaving the actions naming a code
 # nothing emits.
-set_aside_code="$(sed -n 's/^const setAsideReasonCode = "\(.*\)"$/\1/p' \
+set_aside_code="$(sed -n 's/^const SetAsideReasonCode = "\(.*\)"$/\1/p' \
   "$repo_root/skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands.go")"
 if [ -z "$set_aside_code" ]; then
-  printf 'FAIL: internal/finalization/finalization_commands.go no longer declares setAsideReasonCode; the actions below cite a code nothing emits.\n' >&2
+  printf 'FAIL: internal/finalization/finalization_commands.go no longer declares SetAsideReasonCode; the actions below cite a code nothing emits.\n' >&2
   fail_count=$((fail_count + 1))
 fi
 
@@ -29,7 +29,7 @@ require_action_phrase() {
   local action_file="$1"
   local required_phrase="$2"
   local why="$3"
-  if [ -n "$set_aside_code" ] && [ ! -f "$core_actions/$action_file" ]; then
+  if [ ! -f "$core_actions/$action_file" ]; then
     printf 'FAIL: actions/%s is missing; %s\n' "$action_file" "$why" >&2
     fail_count=$((fail_count + 1))
     return

@@ -13,10 +13,12 @@ const (
 	CommandRecoverFinalization = "recover-finalization"
 )
 
-// setAsideReasonCode marks a finalization record this run excluded from
+// SetAsideReasonCode marks a finalization record this run excluded from
 // selection instead of stopping for. It rides in the record's reason codes, so
-// every selector that already reads them sees the exclusion without a new field.
-const setAsideReasonCode = "FINALIZATION-SET-ASIDE"
+// every selector that already reads them sees the exclusion without a new
+// field. Claim recovery reads it too: a REQ this run excluded keeps its claim
+// (internal/lifecycleadvance).
+const SetAsideReasonCode = "FINALIZATION-SET-ASIDE"
 
 func Handlers() map[string]commandruntime.CommandHandler {
 	return map[string]commandruntime.CommandHandler{
@@ -135,10 +137,13 @@ func consumeRecoveryRecord(aggregate *resultmodel.CommandResult, requestID strin
 }
 
 // requestScopedRefusal answers whether a refused record belongs to exactly one
-// REQ. Ownership is REQ-514's test — every finding names this REQ — plus proof
-// that the attempt left nothing behind: an incomplete rollback is residue on
-// paths the next claim would write through, and a command-level failure is not
-// a per-record verdict at all.
+// REQ. Ownership is REQ-514's test — every finding names this REQ and no other
+// — plus proof that the attempt left nothing behind: an incomplete rollback is
+// residue on paths the next claim would write through, and a command-level
+// failure is not a per-record verdict at all. A refusal whose cause is shared
+// state is produced without ownership (sharedStateRefusal, discoveryRefusal),
+// so this returns false for it and the whole run stops, which is the one stop
+// the maintainer's principle allows.
 func requestScopedRefusal(requestID string, result resultmodel.CommandResult) bool {
 	if requestID == "" || result.Finalization == nil || len(result.Findings) == 0 {
 		return false
@@ -147,7 +152,7 @@ func requestScopedRefusal(requestID string, result resultmodel.CommandResult) bo
 		return false
 	}
 	for _, finding := range result.Findings {
-		if !namesRequestID(finding.AffectedIDs, requestID) {
+		if !namesOnlyRequestID(finding.AffectedIDs, requestID) {
 			return false
 		}
 	}
@@ -161,7 +166,7 @@ func requestScopedRefusal(requestID string, result resultmodel.CommandResult) bo
 // can pick (REQ-514: a refusal never names itself as the fix).
 func setAsideProjection(requestID string, result resultmodel.CommandResult) (resultmodel.FinalizationResult, resultmodel.CommandFinding) {
 	record := *result.Finalization
-	record.ReasonCodes = append(append([]string(nil), record.ReasonCodes...), setAsideReasonCode)
+	record.ReasonCodes = append(append([]string(nil), record.ReasonCodes...), SetAsideReasonCode)
 	record.NextArgv = nil
 	evidence := []string{}
 	for _, finding := range result.Findings {
@@ -169,7 +174,7 @@ func setAsideProjection(requestID string, result resultmodel.CommandResult) (res
 	}
 	evidence = append(evidence, "rollback: "+rollbackLabel(result.Rollback.Status))
 	return record, resultmodel.CommandFinding{
-		Code: setAsideReasonCode, Severity: resultmodel.SeverityWarning,
+		Code: SetAsideReasonCode, Severity: resultmodel.SeverityWarning,
 		AffectedIDs: []string{requestID}, AffectedPaths: append([]string(nil), record.BlockedPaths...),
 		Evidence: evidence, Fixability: resultmodel.FixabilityManual,
 		AutomationStopReason: requestID + " is set aside for this run; its finalization tail refused and the remaining REQs continue",
@@ -184,13 +189,11 @@ func rollbackLabel(status resultmodel.RollbackStatus) string {
 	return string(status)
 }
 
-func namesRequestID(affectedIDs []string, requestID string) bool {
-	for _, affected := range affectedIDs {
-		if affected == requestID {
-			return true
-		}
-	}
-	return false
+// namesOnlyRequestID is exclusive, not a membership test: a finding that names
+// this REQ alongside another one is not this REQ's private exclusion, and
+// setting it aside would hide the other REQ's evidence.
+func namesOnlyRequestID(affectedIDs []string, requestID string) bool {
+	return len(affectedIDs) == 1 && affectedIDs[0] == requestID
 }
 
 func appendFinalizationResult(aggregate *resultmodel.CommandResult, result resultmodel.CommandResult) {
