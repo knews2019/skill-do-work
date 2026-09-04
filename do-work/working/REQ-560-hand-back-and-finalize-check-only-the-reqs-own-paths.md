@@ -154,3 +154,31 @@ See `do-work/user-requests/UR-106/input.md` for complete verbatim input.
 - **impact-moderate, report only** — the two hand-back step-0 texts (`work-reference.md` and `work.md` Step 6's condensed copy) are a hand-maintained duplicate pair with no mechanical check pinning them together. Any future change to the sequence has to be made in both or they drift; `prime-action-files.md` names exactly this shape as `alternate-writer-contract-drift`.
 - **impact-moderate, report only** — `_dev/tests/session-start-hook-behavior.sh` fails inside a builder worktree because its launcher subshell resolves the system Go instead of the pinned toolchain, making the hook probes useless as a signal for any builder.
 - **impact-noncritical, report only** — `internal/publication`'s hostile-argv probe hard-fails when `just` is absent rather than skipping, turning a missing optional binary into a red module.
+
+## Qualification
+
+Passed — 4 files verified in the merge range `6adb8b9..cb3a831`, 6 acceptance criteria traced, P-A-U confirmed. `qualify.sh` returned `OK: mechanical qualification passed`. Its one WARN, that the new test file has no static reference, is the documented test-file exception. Judgment checks: the `finalization_apply.go` change is real control flow, not a stub; the declared-path refusal above it is untouched, which is the safety property the REQ promises to keep.
+
+## Testing
+
+**Tests run:** `go test ./internal/finalization/ -count=1` and `bash _dev/tests/maintainer-verify.sh`
+**Result:** ✓ Finalization package green (22.1s). Repository gate **exit 0, no failures**.
+
+**Red-green validation:**
+- `TestFinalizeIgnoresForeignTreeDirtOutsideTheManifest`: ✗ before implementation → ✓ after. The RED refusal, reproduced independently by the orchestrator against the pre-merge revision, is `FINALIZATION-AMBIGUOUS-SHARED-STATE` with `AffectedPaths: [do-work/audits/maintainability-draft.md, do-work/calibration-log.tsv]` and outcome `rolled_back`.
+
+**Field evidence from this same run.** Earlier, finalizing REQ-559 was refused by this exact code path:
+
+```
+FINALIZATION-AMBIGUOUS-SHARED-STATE
+paths: do-work/runs/work-2026-09-04-182017/REQ-515-handback.md,
+       do-work/runs/work-2026-09-04-182017/REQ-559-review.md,
+       do-work/runs/work-2026-09-04-182017/REQ-560-handback.md
+```
+
+Three files belonging to the other two REQs in this wave, none of them owned or declared by REQ-559, and none of them a reason that REQ could not complete. The orchestrator moved them aside, finalized, and moved them back — the manual version of what the pipeline used to reach by committing foreign work under its own name. The REQ was captured from a 2026-09-03 incident and the defect reproduced unprompted during its own fix's verification.
+
+**New tests added:**
+- `TestFinalizeIgnoresForeignTreeDirtOutsideTheManifest` — with a modified tracked `do-work/calibration-log.tsv` and an untracked `do-work/audits/maintainability-draft.md` that the REQ neither owns nor declares: `finalize --manifest` succeeds, both foreign paths are still dirty afterwards exactly as found, and the primary commit's file list contains neither.
+
+**Not weakened:** the whole finalization package passes unchanged, including `TestFinalizeAcceptsWorkingRequestDirtWrittenByThePipeline` and the recovery/discovery suite, so discovery keeps its original refusal.
