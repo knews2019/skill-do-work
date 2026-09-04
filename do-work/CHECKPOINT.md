@@ -20,4 +20,3 @@ session_depth: light
 
 
 
-- REQ-564: Reuse matching per-lane verification evidence for four hours — claimed 2026-09-04T20:02:18Z — writer: vm:/home/user/skill-do-work
