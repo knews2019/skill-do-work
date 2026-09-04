@@ -488,7 +488,18 @@ func commitSafety(repositoryRoot string, journal *Journal) (string, string, []st
 			blocked = append(blocked, row.Path)
 			continue
 		}
-		if !allowed[row.Path] && (row.Path == "do-work" || strings.HasPrefix(row.Path, "do-work/") || releasePaths[row.Path]) {
+		// Dirt outside the group implicates this transaction only when the group
+		// was inferred from the tree. A journaled finalize declares its exact
+		// write set in the manifest, so an uncommitted path it never declared
+		// belongs to somebody else — another session's untracked draft, another
+		// session's edit to a shared log. Refusing on those stopped runs that had
+		// nothing else wrong with them, and pushed the pipeline into committing
+		// foreign work under its own name to reach a clean tree (REQ-560). Leave
+		// them: the commit still carries the exact allowlist and nothing more.
+		if !journal.Discovered {
+			continue
+		}
+		if !allowed[row.Path] && (sharedFinalizationPath(row.Path) || releasePaths[row.Path]) {
 			blocked = append(blocked, row.Path)
 		}
 	}
