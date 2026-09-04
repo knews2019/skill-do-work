@@ -49,6 +49,7 @@ estimate:
     - full-suite verification
 planning_at: 2026-09-04T17:36:43Z
 exploration_at: 2026-09-04T17:41:25Z
+dispatch_at: 2026-09-04T17:44:35Z
 ---
 
 # Run the Evidence Gates From advance
