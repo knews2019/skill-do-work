@@ -1,0 +1,42 @@
+# REQ-552 read-only plan and exploration
+
+Status: preparation only; not claimed or executed. Observed HEAD `6eaac6674a8026f7d953a01047508fff608b6d2e`. No tests ran, no source or queue files changed, and no process or worktree remains from this preparation. Re-resolve the request, dependency REQ-550, source bytes, and exact scope at claim: REQ-506 remediation also touches `corehelpers/commands.go`.
+
+Read: queued REQ-552; UR-105 input (the actual parent); archived UR-106 input (gate retry/finalization only, no REQ-552 addendum); CLI prime and full CLI satellite; general, coding-guardrails, shared-principles, testing, backend, and shell prime. `maintenance: false`, so no maintenance crew applies. The builder still loads its normal implementation crews and whole shell satellite before editing the lock-in. CLI lessons are touch-conditional and additive despite their exclusion from the captured 2000-token required-lessons budget.
+
+## Findings that change the captured plan
+
+The captured reproduction remains exact: the two non-test hits are `corehelpers/commands.go:714` (`find`) and `toolboxcommands/architecture.go:133` (`cp`). Both Go modules were searched with the captured regex. This is structural RED evidence, not a test execution.
+
+The named inventory walk is not the timestamp inventory owner. `inventory.go` walks for `AssociateProjectPaths`; timestamps use `repositorymodel.DiscoverRepository`, which walks once but intentionally prunes hidden/assets directories, skips symlink traversal, and turns unreadable entries into textual warnings. The current `find` probe traverses more directories and fails before any timestamp repair. Reusing generic discovery warnings as an archive failure would alter both scope and error semantics. A small stdlib `WalkDir` replacement in the existing `archiveWalkFailure` is possible within the exact captured scope; it removes the process dependency but retains two traversals. Do not claim a one-pass speed improvement for that change. Unifying strict archive traversal with discovery requires an explicitly revised scope and typed error design; it is not an incidental refactor in this three-file request.
+
+There is also a concrete conflict between the “existing tests unchanged / no test files beyond the lock-in” constraint and the requested implementation. Existing prescribed-shell tests deliberately substitute the removed executables:
+
+- `_dev/tests/prescribed-shell-cases/audit-archive-timestamps.sh:220–236` installs a fake `find` exiting 3 and requires audit failure.
+- `_dev/tests/prescribed-shell-cases/architecture-report-preflight.sh:195–215` installs a fake `cp` writing partial bytes and exiting 1 and requires failed publication.
+
+After the requested removal, both injections become irrelevant and those tests fail by design. Do not preserve the dependency, sniff the fake executable, or weaken the new zero-site lock-in to satisfy them. At claim, explicitly resolve the constraint using the test-change traceability rule: revise these two existing fixtures to real filesystem failure boundaries, recording why REQ-268’s walk-failure guarantee and the architecture no-partial-publication guarantee remain enforced. If the exact no-other-test-files restriction is held literal, report this conflict before dispatch; a fully green implementation cannot honestly be promised inside three paths. No changes to either fixture were made in preparation.
+
+## Scope
+
+Captured implementation scope (three paths):
+
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go`
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go`
+- `_dev/tests/audit-lockins.sh`
+
+Necessary proposed fixture migration, pending explicit claim-time scope judgment: the two prescribed-shell case paths above. No `_test.go`, repository-model, inventory, recursive-copy, CLI schema, or dispatcher edits. The lock-in already exists, is wired through `contracts/probe-lanes.sh`, and its existing registration already checks missing/non-executable state. Do not add a duplicate dispatcher call.
+
+## Three implementation tasks
+
+1. Capture RED, then add the one zero-site assertion to `audit-lockins.sh` using the exact captured regex across non-test Go files in both modules. Fail with attributed matching lines. Distinguish regex no-match status 1 from a real `rg` error; do not let command-substitution or a blanket `|| true` turn scan failure into GREEN. Run it before source changes and retain the two-site failure. Rework only the two obsolete fault-injection fixtures if their migration has been declared in Scope; retain their observable contract rather than their deleted executable seam.
+2. Replace `find` in the existing archive helper with `os.Stat` plus `filepath.WalkDir` returning the first traversal error. Preserve missing-archive success, the public `TIMESTAMP-ARCHIVE-WALK-FAILED` finding, exact summary that nothing was inspected, and refusal before `--fix` can mutate. Preserve non-following of symlink directories and traversal of hidden/assets directories in this strict probe; do not impose discovery’s pruning on it. Do not infer readability from permission bits: use actual OS operations. The current non-directory archive returns the nonempty string `<nil>`; retain its refusal class and explain any clearer stdlib detail. Error detail may become Go’s path error instead of platform `find` stderr; the typed class and user-facing summary are the stable contract. No extra generic walker or shared platform abstraction.
+3. Replace compatibility-mode `cp` in `architecturePublish` with direct `io.Copy` from an opened draft to the already-owned `os.CreateTemp` handle. Do not reopen the staged pathname for writing or call the recursive tree-copy function. Check open/copy/close errors before reading staged bytes and publishing; retain `draft copy failed:` error class and cleanup. The existing temp target is 0600 and ordinary `cp` overwrites that existing target without adopting the draft’s mode; preserve 0600 rather than chmod to the source mode. The final report still publishes through the existing rooted primitive at 0644. `os.Open` follows a draft symlink just as the current read/stat/cp sequence does; do not add a new refusal rule. Run focused package tests, both existing prescribed-shell case files, the lock-in, and standard gate; review the exact diff against this scope.
+
+## Boundary verification and evidence
+
+Primary RED/GREEN is the requested count: two captured source hits before implementation, zero after; the new assertion must itself fail before source changes. Existing package safety net: from the CLI module, `go test -count=1 ./internal/corehelpers ./internal/toolboxcommands` (add `./internal/doctor ./internal/repositorymodel` only if a resulting integration concern earns it).
+
+At the real CLI/shim seam compare before/after outcomes, stable finding codes, output summary, file bytes and modes for: empty/missing archive; ordinary nested archive; hidden/assets subtree; unreadable archive directory or nested subtree; symlinked archive subtree without following it; archive path that is a regular file; report draft readable, missing, symlinked, and non-regular; publish success with content and final 0644 mode; copy failure with no published bundle. Reuse the existing prescribed-shell fixtures as the durable owner, and use temporary repository-private characterization fixtures for any boundary not already durable rather than adding forbidden test files.
+
+Permission-based failure must be observed under a nonprivileged effective user; `chmod 000` is not evidence when the runner still reads it. Choose a real reproducible copy failure seam supported by the platform (for example an unwritable/full staging destination with its actual error established), and do not introduce a shipped test-only environment hook or guess that a permission setup failed. If copy-failure injection cannot be migrated within the agreed scope, mark the exact check Untested instead of claiming the old fake-cp test still proves it. Capture the final gate’s result and selected heavy lanes canonically at the implemented revision; this preparation supplies no green verification evidence.

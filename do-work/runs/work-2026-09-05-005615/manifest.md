@@ -66,3 +66,9 @@ User scope: do-work run to completion, serial claims; do not finish while agents
 - REQ-504 completed/delivered: release0.284.0, finalizationac2196e172ceb8115c659394781ea95bde205d49, implementation6a11b60c83615791769d57b082580f0b69323984. Exact archive source and lesson promoted; schema/release mirror validation passed; branch/worktree removed withoutforce. Consumed handback deleted. All selected lanes passed afterspace restoration, none skipped.
 
 - REQ-505 claimed375735da, exactsavedrangeandheavyresume re-resolved; independentPartial71.25% accepted forcompletion withtwo noncriticalreportonlyfindings; finalizationpreparing.
+
+- REQ-505 completed/delivered:0.285.0, finalization6eaac6674a8026f7d953a01047508fff608b6d2e, originalimplementation716187b847d1de0402b69587a2fe5cf7e7bd8516 preserved, two noncriticalreport-onlyfindings.
+- Canonicalrecover blocked on activeother-session REQ-570 +runwork-2026-09-05-020017 manifest; bytespreserved, awaitingownerbookkeepingcommit before506claim.
+- Read-only later-step prep: prep_552 → REQ-552-plan.md pending; mainpreparingREQ565 ownernotes.
+
+- Read-only REQ-552 plan and REQ-565 owner notes complete; no agent, test process, or builder remains pending. REQ-552 requires claim-time judgment on two obsolete executable-fault fixtures. Foreign REQ-570 bookkeeping remains active and preserved.
