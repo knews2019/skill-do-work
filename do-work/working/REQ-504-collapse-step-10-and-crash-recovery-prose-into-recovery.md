@@ -1,7 +1,7 @@
 ---
 id: REQ-504
 title: '[impact-rule-change] Collapse Step 10 and Crash Recovery prose into recovery'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -64,6 +64,7 @@ estimate:
     - full-suite verification
 heavy_verified_at: 2026-09-04T21:00:44Z
 heavy_verified_revision: f412a8411057d0a833df5584657161008f315b84
+claimed_at: 2026-09-04T22:27:42Z
 ---
 
 # Collapse Step 10 and Crash Recovery Prose Into Recovery
