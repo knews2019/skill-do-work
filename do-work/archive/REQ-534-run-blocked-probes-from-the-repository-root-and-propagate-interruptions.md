@@ -1,7 +1,7 @@
 ---
 id: REQ-534
 title: 'Review fix: run blocked probes from the repository root and propagate interruptions'
-status: claimed
+status: completed
 priority: now
 created_at: 2026-09-03T12:20:21Z
 user_request: UR-103
@@ -33,6 +33,8 @@ estimate:
     - async lifecycle behavior
     - cross-route regression gates
     - full-suite verification
+completed_at: 2026-09-04T00:24:00Z
+commit: 8b488b5c7e89
 ---
 
 # Run Blocked Probes From the Repository Root and Propagate Interruptions
