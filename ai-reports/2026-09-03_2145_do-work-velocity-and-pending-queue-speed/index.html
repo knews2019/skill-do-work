@@ -135,15 +135,16 @@ footer{font-size:14px;}
 <div class="intro-copy">
 <h1>Less work around<br>each request.</h1>
 <p class="lede">The expensive gate and several avoidable delays have been addressed. The next defect is in the heavy-test return path: a passing heavy run sends a request back to the start of the queue instead of closing it, and that makes merged, verified work wait in line.</p>
-<p class="note">Snapshot: 5 September 2026, 01:36 EEST · source revision <code>e4fad583</code> · release 0.282.1.<br>This is a dated report, not a live queue monitor.</p>
+<p class="note">Snapshot: 5 September 2026, 01:45 EEST · source revision <code>6a11b60c</code> · release 0.282.1.<br>This is a dated report, not a live queue monitor.</p>
 </div>
 <aside class="decision" aria-label="Next task recommendation">
 <div class="step-label">The next new task</div>
-<h3>Green heavy tests close the request</h3>
-<p>Review before the heavy hold; a green drain finalizes directly. Delete the return trip through <code>pending</code>.</p>
-<pre><code>do-work capture-request: green heavy verification
-finalizes the request instead of returning it
-to pending (proposal P1 in the velocity report)</code></pre>
+<h3>Held requests stay claimed</h3>
+<p>Review before the heavy hold, keep the held request <code>claimed</code>, finalize on green at exhaustion. Delete the <code>pending-heavy-testing</code> status.</p>
+<pre><code>do-work capture-request: delete the
+pending-heavy-testing status; a held request
+stays claimed and a green drain finalizes it
+(proposal P1 in the velocity report)</code></pre>
 <p class="note">Capture after the current chain (REQ-504 to REQ-506, already merged and verified) has closed through the existing path. REQ-509 shipped as 0.282.1; REQ-510 is now unblocked and stays the next prose cut.</p>
 </aside>
 </div>
@@ -227,19 +228,21 @@ to pending (proposal P1 in the velocity report)</code></pre>
 <p>The finalization migration (REQ-507) has a recorded <code>staged-skills</code> failure (“core runtime must resolve actions/work.md through sibling do-work-board”) and returns to remediation. That is the red path working as designed.</p>
 </div>
 </div>
-<div class="callout"><strong>Proposal P1 (recommended): a green heavy drain finalizes the request. Nothing returns to <code>pending</code> on success.</strong>
-<p>Move Step 7 (review) and Step 7.5 (lessons) in <code>actions/work.md</code> ahead of the heavy hold, so a request is held only after fast tests, qualification and review have all passed. When the drain at queue exhaustion is green, the loop runs Step 8 and Step 9 for every green request in the same turn: terminal judgment, release judgment with the version assigned at that moment, and the single finalization transaction. Red keeps today’s behavior: back to <code>pending</code> for remediation, evidence cleared.</p>
-<p>The status flow becomes <code>pending → claimed → completed</code>, with <code>claimed → pending-heavy-testing → completed</code> as the only detour. What this deletes: the <code>resume_phase</code> projection and <code>matchingHeavyReviewPhase</code> in the selector, the green-returns-to-pending branch and the <code>ANSWER-HEAVY-ARCHIVE-FORBIDDEN</code> refusal in <code>answer.go</code>, one re-claim commit and one selection pass per request, the dependency gap above, and the board ambiguity. The <code>heavy_verified_*</code> fields stay as durable evidence on the archived record. The dependency rule does not change.</p>
-<p>Cost: review runs before the slow lanes. A lane that goes red after a passed review costs a fresh review after remediation, which is exactly today’s cost. Finalization must accept the held record from <code>do-work/queue/</code> rather than <code>do-work/working/</code>. Land it after REQ-504 to REQ-506 have closed, so no compatibility path is needed.</p>
+<div class="callout"><strong>Proposal P1 (recommended): the heavy hold is a phase of a claimed request, not a status. Delete <code>pending-heavy-testing</code>.</strong>
+<p>The work action already states the rule at line 93: intermediate phases are tracked by which sections exist in the request file, not by status changes. The heavy hold is such a phase, and it already has its marker: a <code>## Heavy Verification Plan</code> section plus a <code>commit:</code> on <code>main</code>. Giving it a status word broke that rule; the return trip through <code>pending</code> is the damage that followed.</p>
+<p>The change, in three parts. First, move Step 7 (review) and Step 7.5 (lessons) ahead of the hold, so a request is held only after fast tests, qualification and review have all passed. Second, the held request stays <code>claimed</code> in <code>do-work/working/</code>; the session that claimed it still owns it. Third, at queue exhaustion the same session runs the lanes and then, in the same turn, runs Step 8 and Step 9 for each green request (terminal judgment, release judgment with the version assigned at that moment, one finalization transaction) or enters ordinary remediation for each red one. No answer transaction, no re-queue, no re-claim.</p>
+<p>The status flow becomes <code>pending → claimed → completed</code> with no detour. What this deletes: the status value itself and its case in eight readers (checkpoint counts, the advance skip list, clarify Step 2.5, cleanup, roadmap, the restart handoff, the work action, and the <code>heavy-testing</code> answer mode with its five refusal codes); the <code>resume_phase</code> projection and <code>matchingHeavyReviewPhase</code> in the selector; one re-claim commit and one selection pass per request; the dependency gap above; and the board ambiguity. The <code>heavy_verified_*</code> fields stay as durable evidence on the archived record.</p>
+<p>Two conditions make it safe. <strong>Dependents keep building on landed code:</strong> the readiness rule accepts <code>claimed</code> with a nonblank <code>commit:</code> in place of <code>pending-heavy-testing</code> with one. Same fact, truer name; the commit field is written at integration, so a claimed request that has one is on <code>main</code>. <strong>Recovery reads the phase from the file, not the clock:</strong> if the session dies during the hold, the next session’s recover step finds a claimed request with a heavy plan and no live writer. It must route that request to its own exhaustion drain, not treat it as interrupted build work. The section already exists; this is a condition on recover, not new state.</p>
+<p>Cost: review runs before the slow lanes, so a lane that goes red after a passed review costs a fresh review after remediation, which is today’s cost too. The checkpoint will count held requests as in progress while only one builder is active; that is accurate and the plan section explains it. Land it after REQ-504 to REQ-506 have closed, so no compatibility path is needed.</p>
 </div>
 <div class="row">
 <div class="explain">
 <h3>P2 (patch only): widen the readiness rule</h3>
-<p>One extra condition in <code>DependencySourceReady</code>: <code>pending</code> with <code>heavy_verified_revision</code> equal to <code>commit:</code> counts as landed. Two focused tests, one clause in <code>work.md</code> line 97, one release. It removes the serial chain but keeps the round trip and the board ambiguity. Skip it if P1 is accepted; P1 deletes the code P2 would add.</p>
+<p>One extra condition in <code>DependencySourceReady</code>: <code>pending</code> with <code>heavy_verified_revision</code> equal to <code>commit:</code> counts as landed. Two focused tests, one clause in <code>work.md</code> line 97, one release. It removes the serial chain but keeps the status, the round trip and the board ambiguity. Skip it if P1 is accepted; P1 deletes the code P2 would add.</p>
 </div>
 <div class="explain">
 <h3>P3 (rejected): a new <code>pending-review</code> status</h3>
-<p>It would make the board honest, but it adds an enum value to the status alias map, the selector, cleanup, roadmap, clarify, the board parser and the checkpoint counts. Seven readers for a fact the record already carries in two fields. P1 makes the state disappear instead of naming it.</p>
+<p>It would make the board honest, but it adds an enum value to the status alias map, the selector, cleanup, roadmap, clarify, the board parser and the checkpoint counts. Seven readers for a fact the record already carries in two fields. P1 goes the other way and removes a status instead of adding one.</p>
 </div>
 <div class="explain">
 <h3>Then: REQ-510, the prose cut</h3>
@@ -262,7 +265,7 @@ to pending (proposal P1 in the velocity report)</code></pre>
 <article class="lesson"><span class="key">L23 · Remaining uncertainty</span><h3>Parallelism is not proven to be the only remaining lever.</h3><p>The later timing spread and unfinished prose cleanup leave serial opportunities. Measure stage time, retries and bookkeeping before declaring per-request execution optimized.</p></article>
 </div>
 <div class="row">
-<article class="lesson"><span class="key">L24 · Passing checks close</span><h3>A check that passes must never lower readiness.</h3><p>The green heavy answer moved a request from a state dependents could build on to one they could not. Every transition on the success path should end in a terminal state or keep at least the readiness it had. When a status word hides evidence, delete the transition rather than add a status.</p></article>
+<article class="lesson"><span class="key">L24 · Passing checks close</span><h3>A check that passes must never lower readiness.</h3><p>The green heavy answer moved a request from a state dependents could build on to one they could not. Every transition on the success path should end in a terminal state or keep at least the readiness it had. When a status word hides evidence, delete the status rather than add another; a phase belongs in the file’s sections, as the work action already says.</p></article>
 <article class="lesson"><span class="key">L25 · Read the rule, not the word</span><h3>The same status can mean two different things.</h3><p>“pending” covered both never-started and merged-verified-awaiting-review. When a board row looks wrong, read the request’s frontmatter fields and the selector’s typed exclusion reason before concluding anything from the status column.</p></article>
 </div>
 </section>
@@ -615,7 +618,7 @@ cd skills/do-work-board/tools/queue-kanban &amp;&amp; go test -count=1 -json ./.
 </details>
 </section>
 </main>
-<footer><p>Updated in place at the maintainer’s request. Guided explanation added on 5 September; the heavy-test return-path finding and proposal P1 added at 01:40 the same night; dated source sections preserved below it. No external fonts, scripts or build step.</p><p id="render-status">Render-checked in light and dark at 1440 px, and at 390 px mobile width. Historical chart checked expanded. No page-level horizontal overflow.</p></footer>
+<footer><p>Updated in place at the maintainer’s request. Guided explanation added on 5 September; the heavy-test return-path finding and proposal P1 added at 01:40 the same night and revised at 01:50 to delete the hold status rather than keep it; dated source sections preserved below it. No external fonts, scripts or build step.</p><p id="render-status">Render-checked in light and dark at 1440 px, and at 390 px mobile width. Historical chart checked expanded. No page-level horizontal overflow.</p></footer>
 </div>
 </body>
 </html>
