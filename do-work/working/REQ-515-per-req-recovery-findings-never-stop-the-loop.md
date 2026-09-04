@@ -266,3 +266,42 @@ The orchestrator verified this independently rather than accepting the report: w
 `bash _dev/tests/maintainer-verify.sh` against the remediated merged tree at `fe2de1e`: **exit 0, no failures**, green on the first run with no retry needed.
 
 The three remediation pins were each re-run on the merged tree and each proven red against the pre-remediation revision by the orchestrator, not only by the builder. F1's pin fails with `the set-aside REQ lost its claim: stat .../do-work/working/REQ-730.md: no such file or directory`, which is the reviewer's reproduction verbatim.
+
+## Re-Review
+
+**Verdict: Pass** — 79%, acceptance Partial. Full record: `do-work/runs/work-2026-09-04-182017/REQ-515-re-review.md`.
+
+All six returned findings verified closed, each by removing the fix and watching the original failure return rather than by reading the code: F1 (a set-aside REQ released back into the queue), F2 (shared-cause refusals set aside per REQ), F3 (a lock-in that never reached the new code), M1, M3 and M5. The reviewer confirmed the F1 fix sits ahead of the authority check, so it covers `--assume-sole-authority`, `--take-over`, plain observe mode, and a repeat invocation, and that removing affected ids from the two shared-cause findings breaks no Go, shell, or prose consumer.
+
+**Carried as report-only:** a set-aside REQ stops the run at the next queue boundary once `do-work/CHECKPOINT.md` moves, because a lifecycle conflict detected before anything is applied still drags a failed no-op rollback behind it and scores as residue. That undercuts "every other REQ still runs" beyond the first boundary. It shipped in the first pass rather than the remediation, its direction is fail-safe — the run parks with typed evidence instead of dispatching a builder onto a journal that will refuse — and against the behaviour this REQ replaces, where the first refused record parked the whole queue, it is still a clear improvement. It belongs in the queue as a follow-up, not in a third remediation round.
+
+## External Review (PR #180)
+
+An automated reviewer on the pull request raised two P1 findings after the re-review passed. Both were real, both were introduced by this REQ's own work, and both were fixed rather than filed.
+
+**Owned protected paths were being reported as shared dirt.** `commitSafety` returned one code for two different causes: a protected-classified path the journal *declares*, which is the REQ's own work, and shared remainder paths outside the group, which nobody owns. The remediation routed both through `sharedStateRefusal`, which strips the REQ id — so a REQ that deliberately changed a secret-shaped file would park the entire queue, reintroducing the exact behaviour this REQ removes. `commitSafety` now also reports whether the journal's own REQ owns the cause; an owned cause returns with the REQ still named so recovery sets that one aside and keeps draining, and the declared-path case carries its own `FINALIZATION-PROTECTED-DECLARED-PATH` code rather than borrowing the shared-state one, which never described it. Pinned by `TestCommitSafetyKeepsOwnershipForADeclaredProtectedPath`.
+
+**`do-work commit` could commit a set-aside REQ's in-flight paths.** The seam applied under D-06 made that action continue past a set-aside but never said what to do with the excluded REQ's paths, which sit in the tree with an open finalization transaction. Step 3 would associate them with the working REQ and Step 5 would commit them as ordinary changes, bypassing the transaction and leaving its lifecycle and provenance unresolved. The reviewer offered stopping or excluding; excluding is right, because stopping reinstates the whole-run gate this REQ retires. Those paths are now treated exactly as recovered paths — excluded from inventory grouping, never associated with another REQ, never committed — with each excluded REQ named once in the report.
+
+Worth recording: two independent review passes missed both. The re-review did check whether removing affected ids broke any consumer and concluded it did not — it checked the consumers of the output, not the two different producers feeding into it.
+
+## Lessons Learned
+
+**What worked:**
+- Making the shared-cause stop reachable by removing ownership at the producer rather than listing codes at the consumer. One condition — does any REQ own this cause — answers the question a code list would have to keep answering again for every new code.
+- Demanding revert-and-show-red evidence on every new test after a decorative one slipped through. All three remediation pins came with it, and the orchestrator reproduced the critical one independently.
+
+**What didn't:**
+- The first pass shipped a lock-in test that never reached the code it claimed to protect. It refused earlier in the call chain and would have passed even if the guard returned true for everything. A test that cannot fail is worse than no test, because it reads as coverage.
+- Collapsing two causes into one refusal code. `commitSafety` had always returned `FINALIZATION-AMBIGUOUS-SHARED-STATE` for both an owned protected path and unowned shared dirt, and that latent imprecision only became a bug when something downstream started acting on the distinction. The fix was to name the two causes apart, which is what the code should have done from the start.
+- Reasoning about a contract in one action without checking what the neighbouring action does with the same output. Both the `commit.md` seam and its later gap came from that.
+
+**Worth knowing:**
+- A set-aside REQ still stops the run at the next queue boundary once the checkpoint moves. Fail-safe, and better than parking on the first refused record, but the promise "every other REQ still runs" holds only within one boundary today.
+- `recover --take-over` on a set-aside REQ now preserves the claim rather than taking it over, because the same command's finalization pass just refused that REQ's tail.
+
+## Orientation
+
+A finalization that recovery cannot finish sets one REQ aside and the queue keeps draining. Lives in the recovery and finalization boundary: the per-record folding in the do-work CLI's finalization commands, claim preservation in its lifecycle-advance recovery, and the per-record contract in the work and run-with-recovery actions plus the commit action that reads the same records.
+
+Neither prime this REQ lists was made stale; both still resolve every path they reference.
