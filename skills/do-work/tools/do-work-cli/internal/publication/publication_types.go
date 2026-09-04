@@ -78,22 +78,6 @@ type StakeholderTerminalEvidence struct {
 	Implementation PayloadFile `json:"implementation"`
 }
 
-type HeavyLaneResult struct {
-	LaneID      string   `json:"lane_id"`
-	CommandArgv []string `json:"command_argv"`
-	ExitStatus  int      `json:"exit_status"`
-	Skipped     bool     `json:"skipped,omitempty"`
-	// WallSeconds is how long the lane ran, always present so a reader can
-	// compare durations across runs without inferring a missing zero.
-	WallSeconds int `json:"wall_seconds"`
-}
-
-type HeavyTestingEvidence struct {
-	TargetRevision    string            `json:"target_revision"`
-	ExecutionRevision string            `json:"execution_revision"`
-	Lanes             []HeavyLaneResult `json:"lanes"`
-}
-
 type AnswerManifest struct {
 	RequestPath         string                       `json:"request_path"`
 	ExpectedStatus      string                       `json:"expected_status"`
@@ -102,7 +86,6 @@ type AnswerManifest struct {
 	Report              *PublishedFile               `json:"report,omitempty"`
 	StakeholderReport   *StakeholderReportEvidence   `json:"stakeholder_report,omitempty"`
 	StakeholderTerminal *StakeholderTerminalEvidence `json:"stakeholder_terminal,omitempty"`
-	HeavyTesting        *HeavyTestingEvidence        `json:"heavy_testing,omitempty"`
 	OverrideCapture     *CaptureManifest             `json:"override_capture,omitempty"`
 	// OverrideCreates and OverrideFolds are decoded only to produce a stable
 	// refusal for obsolete unstructured manifests. New callers use OverrideCapture.

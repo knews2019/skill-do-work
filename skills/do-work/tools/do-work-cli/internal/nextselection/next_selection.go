@@ -2,12 +2,10 @@ package nextselection
 
 import (
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/dependencygraph"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
@@ -312,43 +310,10 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 		ProbeAttempted: evidence.ProbeAttempted, ProbeExitCode: evidence.ProbeExitCode, UnblockRequired: evidence.UnblockRequired,
 		DependencyDepth: depth, Dependencies: append([]string(nil), record.DependsOn...),
 		EstimateMinutes: estimateMinutes, EstimateKnown: estimateKnown,
-		ResumePhase: matchingHeavyReviewPhase(snapshot.RepositoryRoot, record),
-		NextArgv:    []string{"do-work", "run", identifier}, NextJustRecipe: "do-work-run " + identifier,
+		NextArgv: []string{"do-work", "run", identifier}, NextJustRecipe: "do-work-run " + identifier,
 		VerificationArgv: []string{"do-work-cli", "--format", "json", "next", identifier},
 	}
 	return &selected, nil, probed, probeSucceeded, 0
-}
-
-func matchingHeavyReviewPhase(repositoryRoot string, record requestmodel.RequestRecord) string {
-	if strings.TrimSpace(record.HeavyVerifiedAt) == "" || strings.TrimSpace(record.HeavyVerifiedRevision) == "" || strings.TrimSpace(record.ImplementationCommit) == "" {
-		return ""
-	}
-	if _, err := time.Parse(time.RFC3339, strings.TrimSpace(record.HeavyVerifiedAt)); err != nil {
-		return ""
-	}
-	targetCommit, targetOK := selectionRevision(repositoryRoot, record.ImplementationCommit)
-	executionCommit, executionOK := selectionRevision(repositoryRoot, record.HeavyVerifiedRevision)
-	headCommit, headOK := selectionRevision(repositoryRoot, "HEAD")
-	if !targetOK || !executionOK || !headOK {
-		return ""
-	}
-	if !selectionRevisionIsAncestor(repositoryRoot, targetCommit, executionCommit) || !selectionRevisionIsAncestor(repositoryRoot, executionCommit, headCommit) {
-		return ""
-	}
-	return "review"
-}
-
-func selectionRevision(repositoryRoot, revision string) (string, bool) {
-	command := exec.Command("git", "-C", repositoryRoot, "rev-parse", "--verify", revision+"^{commit}")
-	output, err := command.Output()
-	if err != nil {
-		return "", false
-	}
-	return strings.TrimSpace(string(output)), true
-}
-
-func selectionRevisionIsAncestor(repositoryRoot, ancestorRevision, descendantRevision string) bool {
-	return exec.Command("git", "-C", repositoryRoot, "merge-base", "--is-ancestor", ancestorRevision, descendantRevision).Run() == nil
 }
 
 func selectionClaimEvidence(requestFile *repositorymodel.RequestFile, identifier string, checkpointClaims []repositorymodel.CheckpointClaimEvidence) []resultmodel.SelectionClaimEvidence {
@@ -404,8 +369,6 @@ func summarizeQueue(snapshot *repositorymodel.RepositorySnapshot) resultmodel.Se
 			summary.Pending++
 		case "pending-answers":
 			summary.PendingAnswers++
-		case "pending-heavy-testing":
-			summary.PendingHeavyTesting++
 		case "blocked":
 			summary.Blocked++
 		case "blocked-archive-collision":

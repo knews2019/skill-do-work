@@ -27,7 +27,7 @@ var fieldContracts = map[string]fieldContract{
 		defaultValue: "general",
 	},
 	"status": {
-		canonicalValues: []string{"pending", "claimed", "completed", "completed-with-issues", "failed", "cancelled", "pending-answers", "pending-heavy-testing", "blocked", "blocked-archive-collision", "blocked-dependency-cycle"},
+		canonicalValues: []string{"pending", "claimed", "completed", "completed-with-issues", "failed", "cancelled", "pending-answers", "blocked", "blocked-archive-collision", "blocked-dependency-cycle"},
 		aliasValues: map[string]string{
 			"complete": "completed", "done": "completed", "finished": "completed", "closed": "completed",
 			"canceled": "cancelled", "abandoned": "cancelled", "wont-do": "cancelled", "wontfix": "cancelled",
@@ -234,11 +234,12 @@ func IsStopped(status string) bool {
 func DependencySatisfied(status string) bool { return IsTerminalSuccess(status) }
 
 // DependencySourceReady reports whether downstream work may build against a
-// dependency's durable source. Pending heavy verification is source-ready only
-// after the implementation commit has been recorded; returning it to pending
-// withdraws that authority until remediation lands a new commit.
+// dependency's durable source. A claimed request is source-ready only once its
+// implementation commit has been recorded — the state a request held for heavy
+// lanes after review is in; withdrawing that commit removes the authority again
+// until remediation lands a new one.
 func DependencySourceReady(status, implementationCommit string) bool {
 	normalizedStatus := NormalizeField("status", status).ResolvedValue
 	return IsTerminalSuccess(normalizedStatus) ||
-		(normalizedStatus == "pending-heavy-testing" && strings.TrimSpace(implementationCommit) != "")
+		(normalizedStatus == "claimed" && strings.TrimSpace(implementationCommit) != "")
 }
