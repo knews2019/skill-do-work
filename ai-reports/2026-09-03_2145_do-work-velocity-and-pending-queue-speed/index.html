@@ -134,21 +134,23 @@ footer{font-size:14px;}
 <div class="row" style="margin-top:20px">
 <div class="intro-copy">
 <h1>Less work around<br>each request.</h1>
-<p class="lede">The expensive gate and several avoidable delays have been addressed. The next opportunity is to finish simplifying the instructions an agent follows for every request.</p>
-<p class="note">Snapshot: 5 September 2026, 00:59 EEST · source revision <code>50048090</code> · release 0.281.1.<br>This is a dated report, not a live queue monitor.</p>
+<p class="lede">The expensive gate and several avoidable delays have been addressed. The next defect is in the heavy-test return path: a passing heavy run sends a request back to the start of the queue instead of closing it, and that makes merged, verified work wait in line.</p>
+<p class="note">Snapshot: 5 September 2026, 01:36 EEST · source revision <code>e4fad583</code> · release 0.282.1.<br>This is a dated report, not a live queue monitor.</p>
 </div>
 <aside class="decision" aria-label="Next task recommendation">
 <div class="step-label">The next new task</div>
-<h3>REQ-509 → REQ-510</h3>
-<p>Consolidate shared guidance, then delete obsolete workflow procedures.</p>
-<pre><code>do-work run REQ-509</code></pre>
-<p class="note">Send this to the agent running the skill. REQ-509 is ready and is the live selector’s choice. The expected speed benefit is mainly in REQ-510; it has not yet been measured.</p>
+<h3>Green heavy tests close the request</h3>
+<p>Review before the heavy hold; a green drain finalizes directly. Delete the return trip through <code>pending</code>.</p>
+<pre><code>do-work capture-request: green heavy verification
+finalizes the request instead of returning it
+to pending (proposal P1 in the velocity report)</code></pre>
+<p class="note">Capture after the current chain (REQ-504 to REQ-506, already merged and verified) has closed through the existing path. REQ-509 shipped as 0.282.1; REQ-510 is now unblocked and stays the next prose cut.</p>
 </aside>
 </div>
 <div class="fact-strip" aria-label="Snapshot facts">
-<div><b>19 + 1</b><span>Pending requests + one claimed</span></div>
+<div><b>17 + 1</b><span>Pending requests + REQ-504 claimed at review</span></div>
 <div><b>1,072 lines</b><span>Current workflow reference; REQ-510 targets &lt;700</span></div>
-<div><b>0.281.1</b><span>Latest release at this snapshot</span></div>
+<div><b>0.282.1</b><span>Latest release at this snapshot</span></div>
 </div>
 </header>
 <nav aria-label="Report sections">
@@ -166,6 +168,7 @@ footer{font-size:14px;}
 <tr><td data-label="Where time was lost">Repeating verification</td><td data-label="What shipped"><span class="status">Shipped · 0.274.1 / 0.281.0</span><br>Automatic gate runner; matching heavy-lane evidence reused for up to four hours</td><td data-label="Why it helps">Recent valid evidence can replace repeated execution. Reuse depends on matching inputs; browser lanes still execute.</td></tr>
 <tr><td data-label="Where time was lost">A transient failure became another request</td><td data-label="What shipped"><span class="status">Shipped · 0.277.0</span><br>One retry of the same gate command</td><td data-label="Why it helps">A green retry avoids the repair-request lifecycle. A second failure still enters diagnosis.</td></tr>
 <tr><td data-label="Where time was lost">Unrelated files or one stuck finalization stopped work</td><td data-label="What shipped"><span class="status">Shipped · 0.278.0–0.280.0</span><br>Scoped cleanliness, per-request recovery, finalization without checkpoint claims</td><td data-label="Why it helps">Unrelated work can continue; the pipeline no longer needs to commit another session’s files to proceed.</td></tr>
+<tr><td data-label="Where time was lost">Shared principles were loaded from several files</td><td data-label="What shipped"><span class="status">Shipped · 0.282.1</span><br>One crew member holds the shared implementation and review principles (REQ-509)</td><td data-label="Why it helps">Unblocks REQ-510, the workflow-reference cut. No speed measurement yet; see L21.</td></tr>
 <tr><td data-label="Where time was lost">The queue generated more maintenance as it drained</td><td data-label="What shipped"><span class="status">Shipped · 0.272.0</span><br>Noncritical findings stay in their reports</td><td data-label="Why it helps">Reduces automatic intake. Critical findings still enter the queue.</td></tr>
 </tbody></table></div>
 <p class="note">Sources: <a href="../../CHANGELOG.md">release notes</a> and the original report’s gate measurements. These are recorded results, not a fresh benchmark of today’s HEAD.</p>
@@ -206,25 +209,44 @@ footer{font-size:14px;}
 </section>
 <section id="next">
 <span class="step-label">03 / Choose the next task</span>
-<h2>Finish the simplification chain and close landed work.</h2>
+<h2>Close the heavy-test loop on green, then cut the reference prose.</h2>
 <div class="row">
 <div class="explain">
-<h3>Next new build: shared guidance</h3>
-<p><a href="../../do-work/queue/REQ-509-merge-common-rationalizations-into-one-crew-member.md">REQ-509</a> provides one loading point for shared principles and unlocks <a href="../../do-work/queue/REQ-510-sweep-work-reference-sections-owned-by-cli-tests.md">REQ-510</a>, the workflow-reference cleanup.</p>
-<p>The audit found <strong>zero near-identical cross-file rows</strong>. So the reason to do REQ-509 is consistent loading and its existing dependency role, not a proven deduplication saving.</p>
+<h3>What the live queue shows at 01:36</h3>
+<p>The advance chain is merged: REQ-504 (recovery prose into the CLI), REQ-505 (selection and claim), REQ-506 (evidence gates) and REQ-507 (finalization) each have their <code>commit:</code> on <code>main</code>, checked with <code>git merge-base --is-ancestor</code>. The first three passed every heavy lane at 20:57 to 21:02 UTC on 4 September.</p>
+<p>Yet the selector offers only REQ-504, with <code>resume_phase: review</code>, and excludes REQ-505, REQ-506 and REQ-507 as <code>DEPENDENCIES-UNMET</code>. The running loop re-claimed REQ-504 at 22:27 UTC, 85 minutes after its green result, and will review the three in series.</p>
 </div>
 <div class="explain">
-<h3>Main expected payoff: less procedural prose</h3>
-<p>REQ-510 removes reference sections whose rules already live in CLI behavior tests. The reference is now <strong>1,072 lines</strong>; the request targets <strong>fewer than 700</strong>.</p>
-<p>Fewer redundant instructions should reduce repeated context reading and mechanical reasoning. That is a hypothesis to measure, not a promised number of minutes saved.</p>
+<h3>Why: a green result lowers readiness</h3>
+<p>The dependency rule (<code>DependencySourceReady</code>, <code>schema_normalization.go</code> line 240) counts a dependency as landed when it is terminal, or when it is <code>pending-heavy-testing</code> with a commit. A green heavy answer flips the request back to plain <code>pending</code>, which the rule does not accept.</p>
+<p>So the request is <em>more</em> available to dependents while it waits for slow tests than after it has passed them. Three independent reviews that could run side by side are forced into a chain, and the board shows the same word for “never started” and “merged, verified, awaiting review”.</p>
 </div>
 <div class="explain">
-<h3>Existing work: finish the return path</h3>
-<p>The shipped-link repair (REQ-567) is now archived. The existing session has claimed the lifecycle command (REQ-503) again. Several chain implementations are already on main but still require closure.</p>
-<p>The finalization migration (REQ-507) has a recorded <code>staged-skills</code> heavy-test failure and must return to remediation. A landed commit alone does not make that request done.</p>
+<h3>Existing work: what still closes the old way</h3>
+<p>The lifecycle command (REQ-503) and the shared-principles crew member (REQ-509) are archived. REQ-504 to REQ-506 will finish through the current review-resume path tonight; do not touch them by hand.</p>
+<p>The finalization migration (REQ-507) has a recorded <code>staged-skills</code> failure (“core runtime must resolve actions/work.md through sibling do-work-board”) and returns to remediation. That is the red path working as designed.</p>
 </div>
 </div>
-<div class="callout"><strong>Timing instrumentation remains useful, but its return is indirect.</strong><p>REQ-562 would add flat stage/command timings and one final summary. Keep it lightweight: no separate agent turns or instrumentation-only commits. It helps choose future optimizations; its direct speed saving is unproven.</p></div>
+<div class="callout"><strong>Proposal P1 (recommended): a green heavy drain finalizes the request. Nothing returns to <code>pending</code> on success.</strong>
+<p>Move Step 7 (review) and Step 7.5 (lessons) in <code>actions/work.md</code> ahead of the heavy hold, so a request is held only after fast tests, qualification and review have all passed. When the drain at queue exhaustion is green, the loop runs Step 8 and Step 9 for every green request in the same turn: terminal judgment, release judgment with the version assigned at that moment, and the single finalization transaction. Red keeps today’s behavior: back to <code>pending</code> for remediation, evidence cleared.</p>
+<p>The status flow becomes <code>pending → claimed → completed</code>, with <code>claimed → pending-heavy-testing → completed</code> as the only detour. What this deletes: the <code>resume_phase</code> projection and <code>matchingHeavyReviewPhase</code> in the selector, the green-returns-to-pending branch and the <code>ANSWER-HEAVY-ARCHIVE-FORBIDDEN</code> refusal in <code>answer.go</code>, one re-claim commit and one selection pass per request, the dependency gap above, and the board ambiguity. The <code>heavy_verified_*</code> fields stay as durable evidence on the archived record. The dependency rule does not change.</p>
+<p>Cost: review runs before the slow lanes. A lane that goes red after a passed review costs a fresh review after remediation, which is exactly today’s cost. Finalization must accept the held record from <code>do-work/queue/</code> rather than <code>do-work/working/</code>. Land it after REQ-504 to REQ-506 have closed, so no compatibility path is needed.</p>
+</div>
+<div class="row">
+<div class="explain">
+<h3>P2 (patch only): widen the readiness rule</h3>
+<p>One extra condition in <code>DependencySourceReady</code>: <code>pending</code> with <code>heavy_verified_revision</code> equal to <code>commit:</code> counts as landed. Two focused tests, one clause in <code>work.md</code> line 97, one release. It removes the serial chain but keeps the round trip and the board ambiguity. Skip it if P1 is accepted; P1 deletes the code P2 would add.</p>
+</div>
+<div class="explain">
+<h3>P3 (rejected): a new <code>pending-review</code> status</h3>
+<p>It would make the board honest, but it adds an enum value to the status alias map, the selector, cleanup, roadmap, clarify, the board parser and the checkpoint counts. Seven readers for a fact the record already carries in two fields. P1 makes the state disappear instead of naming it.</p>
+</div>
+<div class="explain">
+<h3>Then: REQ-510, the prose cut</h3>
+<p>REQ-510 removes reference sections whose rules already live in CLI behavior tests. The reference is <strong>1,072 lines</strong>; the request targets <strong>fewer than 700</strong>. Fewer instructions should reduce context reading per request; that remains a hypothesis to measure (L21).</p>
+<p>REQ-562 (flat stage timings) stays lightweight and secondary: no separate agent turns, no instrumentation-only commits.</p>
+</div>
+</div>
 </section>
 <section id="lessons">
 <span class="step-label">04 / Lessons to keep</span>
@@ -232,12 +254,16 @@ footer{font-size:14px;}
 <div class="row">
 <article class="lesson"><span class="key">L18 · Measurement cost</span><h3>Instrumentation must be cheaper than the work.</h3><p>Write bounded raw events in Git-private state and fold one summary into finalization. Extra planning, artifacts and commits can overwhelm the small measurement they support.</p></article>
 <article class="lesson"><span class="key">L19 · Comparable samples</span><h3>A new median needs its sample beside it.</h3><p>The 65-, 11- and 51-minute figures cover different requests and intervals. Show counts, endpoints and caveats before using them to claim a speedup or regression.</p></article>
-<article class="lesson"><span class="key">L20 · Lifecycle state</span><h3>Implemented and completed are separate states.</h3><p>The chain has code on main while records await review or remediation. Finish that return path; do not infer closure from a commit or rebuild work just because its record is pending.</p></article>
+<article class="lesson"><span class="key">L20 · Lifecycle state</span><h3>Implemented and completed are separate states.</h3><p>The chain has code on main while records await review or remediation. Do not infer closure from a commit, and do not rebuild work because its record says <code>pending</code>. P1 shrinks this gap to the red path only.</p></article>
 </div>
 <div class="row">
 <article class="lesson"><span class="key">L21 · Expected return</span><h3>A prerequisite is not the source of the saving.</h3><p>REQ-509 unlocks REQ-510. The stronger speed hypothesis is removing obsolete procedures in REQ-510, not relocating unique guidance into a new file.</p></article>
 <article class="lesson"><span class="key">L22 · Safe reuse</span><h3>Reuse evidence when the inputs match.</h3><p>The heavy-lane cache is bounded by age and fingerprints. A recent timestamp alone cannot prove that changed code or fixtures were checked.</p></article>
 <article class="lesson"><span class="key">L23 · Remaining uncertainty</span><h3>Parallelism is not proven to be the only remaining lever.</h3><p>The later timing spread and unfinished prose cleanup leave serial opportunities. Measure stage time, retries and bookkeeping before declaring per-request execution optimized.</p></article>
+</div>
+<div class="row">
+<article class="lesson"><span class="key">L24 · Passing checks close</span><h3>A check that passes must never lower readiness.</h3><p>The green heavy answer moved a request from a state dependents could build on to one they could not. Every transition on the success path should end in a terminal state or keep at least the readiness it had. When a status word hides evidence, delete the transition rather than add a status.</p></article>
+<article class="lesson"><span class="key">L25 · Read the rule, not the word</span><h3>The same status can mean two different things.</h3><p>“pending” covered both never-started and merged-verified-awaiting-review. When a board row looks wrong, read the request’s frontmatter fields and the selector’s typed exclusion reason before concluding anything from the status column.</p></article>
 </div>
 </section>
 <section id="sources">
@@ -246,7 +272,10 @@ footer{font-size:14px;}
 <div class="row">
 <div class="explain">
 <h3>Reproduce this snapshot</h3>
-<pre><code>just do-work-next
+<pre><code>skills/do-work/tools/do-work-cli/do-work-cli --format json next
+git merge-base --is-ancestor 716187b8 main &amp;&amp; echo landed
+grep -E '^(status|commit|heavy_verified_revision):' \
+  do-work/queue/REQ-50[4-7]-*.md
 tail -n 12 do-work/calibration-log.tsv
 wc -l skills/do-work/actions/work.md \
   skills/do-work/actions/work-reference.md
@@ -255,7 +284,7 @@ git log -12 --oneline</code></pre>
 </div>
 <div class="explain">
 <h3>Evidence and limits</h3>
-<p><a href="../../CHANGELOG.md">Changelog</a>: shipped behavior through 0.281.1.<br><a href="../../do-work/calibration-log.tsv">Calibration log</a>: recorded wall minutes.<br><a href="../../skills/do-work/actions/work-reference.md">Workflow reference</a>: current 1,072-line source.<br><a href="../../do-work/queue/REQ-507-hand-archive-and-commit-tails-to-finalize.md">Finalization migration</a>: recorded heavy failure.</p>
+<p><a href="../../CHANGELOG.md">Changelog</a>: shipped behavior through 0.282.1.<br><a href="../../skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go">Readiness rule</a>: <code>DependencySourceReady</code>, the condition P1 leaves alone and P2 would widen.<br><a href="../../skills/do-work/actions/work.md">Work action</a>: status flow at line 91, hold and drain under Qualification and Testing Judgment.<br><a href="../../do-work/calibration-log.tsv">Calibration log</a>: recorded wall minutes.<br><a href="../../skills/do-work/actions/work-reference.md">Workflow reference</a>: current 1,072-line source.<br><a href="../../do-work/queue/REQ-507-hand-archive-and-commit-tails-to-finalize.md">Finalization migration</a>: recorded heavy failure.</p>
 <p class="note">Repository files support the new snapshot; the earlier report supplies historical measurements. This update is not an independent audit of every shipped feature. UI captures were not expected for this work.</p>
 </div>
 </div>
@@ -586,7 +615,7 @@ cd skills/do-work-board/tools/queue-kanban &amp;&amp; go test -count=1 -json ./.
 </details>
 </section>
 </main>
-<footer><p>Updated in place at the maintainer’s request. Guided explanation added on 5 September; dated source sections preserved below it. No external fonts, scripts or build step.</p><p id="render-status">Render-checked in light and dark at 1440 px, and at 390 px mobile width. Historical chart checked expanded. No page-level horizontal overflow.</p></footer>
+<footer><p>Updated in place at the maintainer’s request. Guided explanation added on 5 September; the heavy-test return-path finding and proposal P1 added at 01:40 the same night; dated source sections preserved below it. No external fonts, scripts or build step.</p><p id="render-status">Render-checked in light and dark at 1440 px, and at 390 px mobile width. Historical chart checked expanded. No page-level horizontal overflow.</p></footer>
 </div>
 </body>
 </html>
