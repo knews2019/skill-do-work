@@ -1,0 +1,15 @@
+# Queue run
+
+Status: in-progress
+
+User scope: do-work run UR-115 (UR-expanded; REQ-573 stays dependency-gated behind REQ-572).
+
+- recover refused with FINALIZATION-DISCOVERY-AMBIGUOUS on the other session's live REQ-570 paths (do-work/working/REQ-570-*.md, do-work/working/baseline.json, do-work/runs/work-2026-09-05-020017/*). Judged as a foreign live claim (builder branch commit bff3b803 minutes old), not this run's dirt; left byte-identical, run proceeded and queue-mode advance claimed normally.
+- REQ-572 claimed at f6c43d22 (ur-expanded, Route B). Frozen members: REQ-572 consumed, REQ-573 pending.
+- Estimate P50 40 min (medium). Explore agent explore-572 → REQ-572-exploration.md consumed into the REQ; Scope declared (6 files, write_set mirrored; board.css dropped, javascript_behavior_c_test.go added).
+- Worktree /Users/t2/Desktop/e1-experimental-repos/skill-do-work2-worktrees/worktree-agent-REQ-572-show-every-lifecycle-transition-of-a-req-as-its-own-activity-row on branch of the same name at f6c43d22. Brief written: REQ-572-brief.md; expected artifact REQ-572-handback.md.
+- Preflight baseline recorded to REQ-572-baseline.json in this run dir; do-work/working/baseline.json restored to the other session's bytes (sha256 c9b25e80…) because that shared path belongs to its live REQ-570 run.
+- Preflight: baseline green (queue-kanban go test, exit 0). Green-gate check found no record at HEAD; direct run of `bash _dev/tests/maintainer-verify.sh` started in the background at fab5bb35 while builder build_572 was dispatched at 2026-09-04T23:29:19Z (its work is isolated on its branch; the merge waits on the gate record). Main tree carries another session's uncommitted edits (do-work-cli.sh, go.mod, .gitignore, launcher-behavior test) and its commit fab5bb35 landed on main during preflight; left alone.
+- Pre-build direct gate run exited 1: four do-work-cli test files overran the 30s per-file budget (defer_gate_test 38.6s, finalization_req499_test 37.9s, finalization_recovery_test 35.7s, inventory_test 33.7s) while the builder compiled and a second session worked in the same checkout; every executed test passed and queue-kanban finished in 24s. Judged a load-induced timing overrun, not a code failure; the single rerun is deferred until the builder returns and taken on the merged tree, where the test-gate phase needs the record anyway.
+- Builder hand-back consumed from disk (2d8beb40, two commits, six files, all inside Scope). Queue guard empty. Merged --no-ff at fbdcd35e (<merge_hash>) on top of the other session's REQ-506 claim commit 7ad53bff (<pre>); range 7ad53bff..fbdcd35e. The owner-evidence commit intended below <pre> failed on a shell word-splitting slip, so it lands after the merge instead; the range still holds only the builder's six files.
+- Builder incident recorded in the hand-back: a stray `git stash pop` in the worktree applied the repository's pre-existing stash@{0} (REQ-539 recovery metadata) and conflicted one archived file; restored with checkout, stash entry intact, nothing reached the branch.
