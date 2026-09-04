@@ -164,11 +164,13 @@ See `do-work/user-requests/UR-099/input.md` for complete verbatim input.
 **Files changed:**
 - `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified)
 - `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified)
-- `skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_apply.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_apply_test.go` (modified)
 - `skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go` (modified)
 - `skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands_test.go` (modified)
 
-**What was done:** Result normalization now removes a refusal remedy when it names the invoking command while preserving verification. A fully REQ-owned self-reference becomes a findings outcome; a shared blocker remains refused without the false remedy. Ambiguous finalization discovery now names inventory collection as its resolver and recovery discovery as verification. Table-driven model, runtime JSON/exit, and discovery coverage pin those distinctions. Integrated at e42ae1e57c9f2692a598cb08daca2fe99bec6a45 from implementation range 26b3426886bfea6183502809a7e5e93799831a52..e42ae1e57c9f2692a598cb08daca2fe99bec6a45.
+**What was done:** The bounded remediation applies the refusal invariant independently of aggregate outcome and removes the cited cleanup producer's raw self-remedy. Singular and ordered finalization records now use the distinct inventory resolver. The lifecycle acceptance fixture executes the real committed claim handler before its implementation change and interrupted complete/recovery path. Remediation integrated at bbc1292809990afa72c5093ad29f31ff3dac7b48 from range f319cbbb..bbc1292809990afa72c5093ad29f31ff3dac7b48; the original runtime-output coverage remains in the earlier integrated range.
 
 ## Testing
 
@@ -177,6 +179,12 @@ See `do-work/user-requests/UR-099/input.md` for complete verbatim input.
 - PASS: `go vet ./...`
 - PASS: `git diff --check`
 - The existing folded lifecycle test `TestRecoverFinalizationResumesJournalAfterLifecycleInterruption` remains green and reaches terminal cleanup through recovery.
+- PASS after remediation: focused resultmodel, commandruntime, finalization, requeststate, and cleanup packages; `go vet ./...`; `git diff --check`; `go test -count=1 ./...`.
+- The folded lifecycle test now executes the real claim handler and verifies its claim commit before the one-line implementation and recovery path.
+
+## Qualification
+
+Passed after bounded remediation — 7 remediation files verified, all three review findings traced to exact changes, P-A-U confirmed, and no builder-branch queue state present.
 
 ## Review
 
