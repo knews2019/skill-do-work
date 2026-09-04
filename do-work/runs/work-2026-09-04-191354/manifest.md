@@ -8,4 +8,4 @@ Status: in-progress
 |-------|-------|-------------|--------|
 | plan | REQ-508 implementation plan | REQ-508-plan.md | done |
 | explore | REQ-508 repository exploration | REQ-508-explore.md | done |
-| builder | REQ-508 isolated implementation | REQ-508-handback.md | running |
+| builder | REQ-508 isolated implementation | REQ-508-handback.md | done |
