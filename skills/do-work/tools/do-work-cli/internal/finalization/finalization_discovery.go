@@ -1663,7 +1663,7 @@ func legacyTerminalSuccess(status string) bool {
 func discoveryRefusal(repositoryRoot, code, reason string, paths []string) resultmodel.CommandResult {
 	verification := []string{"do-work-cli", "--format", "json", CommandRecoverFinalization, "--discover"}
 	collection := []string{"do-work-cli", "--format", "json", "uncommitted-inventory"}
-	record := resultmodel.FinalizationResult{Phase: string(PhaseDiscoveryRefused), BlockedPaths: append([]string(nil), paths...), ReasonCodes: []string{code}, NextArgv: verification, VerificationArgv: verification, CollectionArgv: collection}
+	record := resultmodel.FinalizationResult{Phase: string(PhaseDiscoveryRefused), BlockedPaths: append([]string(nil), paths...), ReasonCodes: []string{code}, NextArgv: collection, VerificationArgv: verification, CollectionArgv: collection}
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, RepositoryRoot: repositoryRoot, Findings: []resultmodel.CommandFinding{{
 		Code: code, Severity: resultmodel.SeverityError, AffectedPaths: paths, Evidence: []string{reason}, Fixability: resultmodel.FixabilityRefused,
 		AutomationStopReason: "legacy finalization evidence is ambiguous", NextArgv: collection, VerificationArgv: verification,

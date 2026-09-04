@@ -10,19 +10,31 @@ import (
 	"testing"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
 func TestRecoverFinalizationResumesJournalAfterLifecycleInterruption(t *testing.T) {
 	repositoryRoot := newFinalizationRepository(t)
+	queuePath := "do-work/queue/REQ-700.md"
 	requestPath := "do-work/working/REQ-700.md"
 	checkpointPath := "do-work/CHECKPOINT.md"
-	writeFinalizationFile(t, repositoryRoot, requestPath, "---\nid: REQ-700\ntitle: Fixture\nstatus: claimed\nclaimed_at: 2026-09-02T08:00:00Z\n---\nBody\n")
-	writeFinalizationFile(t, repositoryRoot, checkpointPath, "# Session Checkpoint\n\n## In Progress (interrupted)\n\n- REQ-700: Fixture — claimed now — writer: host:/repo\n")
+	writeFinalizationFile(t, repositoryRoot, queuePath, "---\nid: REQ-700\ntitle: Fixture\nstatus: pending\n---\nBody\n")
+	writeFinalizationFile(t, repositoryRoot, checkpointPath, "# Session Checkpoint\n\n## In Progress (interrupted)\n")
 	writeFinalizationFile(t, repositoryRoot, "implementation.txt", "before\n")
 	runFinalizationGit(t, repositoryRoot, "add", ".")
 	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed")
+	claim := requeststate.Handlers()["claim"](commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{
+		"REQ-700", "--request-path", queuePath, "--provenance", "default", "--writer", "host:/repo", "--commit", "--at", "2026-09-02T08:00:00Z",
+	})
+	if claim.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("claim result = %#v", claim)
+	}
+	if subject := strings.TrimSpace(runFinalizationGit(t, repositoryRoot, "log", "-1", "--format=%s")); subject != "[REQ-700] claim request lifecycle" {
+		t.Fatalf("claim commit subject = %q", subject)
+	}
 	writeFinalizationFile(t, repositoryRoot, "implementation.txt", "after\n")
+	writeFinalizationFile(t, repositoryRoot, requestPath, readFinalizationFile(t, repositoryRoot, requestPath)+"\n## Review\n\nApproved after the claim commit.\n")
 
 	manifest := Manifest{
 		RequestID: "REQ-700", RequestPath: requestPath, WriterLabel: "host:/repo", Transition: "complete",

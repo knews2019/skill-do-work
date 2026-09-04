@@ -627,8 +627,8 @@ func TestConsumedUntrackedRunCommitRefusesScratchOnlyAndMixedDeletion(t *testing
 				if !reflect.DeepEqual(finding.AffectedPaths, wantPaths) {
 					t.Errorf("refusal paths = %#v, want %#v", finding.AffectedPaths, wantPaths)
 				}
-				if !reflect.DeepEqual(finding.NextArgv, []string{"do-work-cli", "cleanup"}) {
-					t.Errorf("refusal remediation = %#v", finding.NextArgv)
+				if len(finding.NextArgv) != 0 {
+					t.Errorf("self-referential refusal remediation = %#v", finding.NextArgv)
 				}
 			}
 			if !foundRefusal {

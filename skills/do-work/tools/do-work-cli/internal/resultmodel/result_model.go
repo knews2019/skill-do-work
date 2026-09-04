@@ -538,7 +538,8 @@ func NormalizeResult(result CommandResult) CommandResult {
 		if finding.Fixability == FixabilityRefused && len(finding.AffectedIDs) == 0 {
 			allRefusalBlockersOwned = false
 		}
-		if result.Outcome == OutcomeRefused && nextCommandVerb(finding.NextArgv) == result.Command {
+		isRefusalFinding := result.Outcome == OutcomeRefused || finding.Fixability == FixabilityRefused
+		if isRefusalFinding && nextCommandVerb(finding.NextArgv) == result.Command {
 			finding.NextArgv = []string{}
 			finding.NextJustRecipe = ""
 			if finding.AutomationStopReason == "" {
