@@ -107,3 +107,15 @@ See `do-work/user-requests/UR-109/input.md` for complete verbatim input.
 **Planning not required** - Route B: Exploration-guided implementation
 
 *Skipped by work action*
+
+## Handoff State (session interrupted 2026-09-04T20:2xZ)
+
+**Builder branch:** `worktree-agent-REQ-564-reuse-matching-per-lane-verification-evidence-for-four-hours` at `27b74c8`, pushed to origin. **Unmerged, and this commit is an orchestrator-authored WIP snapshot, not a builder hand-back.**
+
+The builder was interrupted mid-write with everything uncommitted. The orchestrator committed the working tree verbatim so an ephemeral container could not destroy it. There is no hand-back file, no file manifest, no decisions record, and **no red-green evidence for anything in it**.
+
+Snapshot contents: a new `heavy_evidence.go` and its test, a reworked `heavy_run.go`, changes across `heavy_commands`, `heavy_verification` and `resultmodel`, an extended `_dev/tests/heavy-lanes.json` fixture, and one-line edits to `work.md` and `clarify.md`.
+
+**Treat every line of it as unverified.** Re-run the package tests before trusting any of it, and require revert-and-show-red proof on each new test before merging. A test that cannot fail is the failure mode this session already hit once.
+
+**Sizing note, so the work is not oversold.** This REQ is queued as a queue-speed improvement. Measured this session: the repository gate ran nine times at roughly ten minutes each, about half the run's wall clock — but those were **fast-tier** runs, not heavy lanes. This REQ targets heavy lanes, so its benefit here is real but narrower than the title suggests. Do not widen scope to chase the fast tier; record it as a discovered task if a clean shape appears.

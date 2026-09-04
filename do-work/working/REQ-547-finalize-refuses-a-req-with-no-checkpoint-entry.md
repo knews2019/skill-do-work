@@ -130,3 +130,15 @@ into it.
 **Planning not required** - Route B: Exploration-guided implementation
 
 *Skipped by work action*
+
+## Handoff State (session stopped 2026-09-04T20:2xZ)
+
+**Builder branch:** `worktree-agent-REQ-547-finalize-refuses-a-req-with-no-checkpoint-entry` at `b3d25c8`, pushed to origin. **Unmerged, but complete.**
+
+The builder finished and wrote a full hand-back at `do-work/runs/work-2026-09-04-200249/REQ-547-handback.md`: file manifest, decisions, verification with revert-and-show-red evidence, discovered tasks. Nothing is missing from the builder side.
+
+**Resume at the Step 6 hand-back merge.** Do not re-dispatch a builder. The remaining pipeline is: merge the branch, capture the merge range, qualify, run the repository gate, independent review, lessons, release judgment, finalize. Nothing after the builder has been done.
+
+**What it delivered**, per the hand-back: planned postimages now emit exactly the plan's declared target paths and error on a declared target that cannot be projected, so a journal's preimage and postimage sets cannot name different paths; a terminal transition removes **every** checkpoint entry for the REQ it archives instead of only one carrying the manifest's writer label; and `recover-finalization --discard-journal REQ-NNN` is the bounded exit from a journal already written in a refusing state. Tests cover the absent-entry finalize, the foreign-writer-label clearing, the discard verb's four cases, and proof that genuinely disagreeing image sets still refuse.
+
+**This fixes a defect this session actually hit.** Three finalization manifests here passed a `writer_label` that did not match the label `advance` wrote into the checkpoint at claim time. `finalize` returned typed success and archived each REQ but silently left the checkpoint entry behind, so the checkpoint claimed three REQs were in flight that were already archived — no refusal, no report. The builder's second change is what closes it: entry removal keys on the REQ, not on the writer label. Verify that specific behaviour during review rather than taking the hand-back's word for it.
