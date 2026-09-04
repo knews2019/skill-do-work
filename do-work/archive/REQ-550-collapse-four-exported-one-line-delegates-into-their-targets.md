@@ -1,7 +1,7 @@
 ---
 id: REQ-550
 title: '[impact-negligible] Collapse four exported one-line Go delegates into their targets'
-status: claimed
+status: completed
 priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
@@ -24,6 +24,8 @@ estimate:
   basis:
     - Route A
 claimed_at: 2026-09-04T13:33:39Z
+completed_at: 2026-09-04T13:45:00Z
+commit: 667896dcb39062a9c889ea7533a9665a73ce01e7
 ---
 
 # Collapse four exported one-line Go delegates into their targets
