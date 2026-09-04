@@ -291,7 +291,7 @@ func TestHeavyTestingAnswerCompletesOnGreenAndRequeuesOnFailure(t *testing.T) {
 			answer := &AnswerManifest{
 				RequestPath: requestPath, ExpectedStatus: "pending-heavy-testing", Mode: "heavy-testing",
 				Answers:      []QuestionAnswer{{ExpectedLine: question, Outcome: testCase.outcome, Summary: testCase.summary}},
-				HeavyTesting: &HeavyTestingEvidence{TargetRevision: targetRevision, ExecutionRevision: executionRevision, Lanes: []HeavyLaneResult{{LaneID: "browser", CommandArgv: []string{"bash", "verify.sh", "browser"}, ExitStatus: laneExit}}},
+				HeavyTesting: &HeavyTestingEvidence{TargetRevision: targetRevision, ExecutionRevision: executionRevision, Lanes: []HeavyLaneResult{{LaneID: "browser", CommandArgv: []string{"bash", "verify.sh", "browser"}, ExitStatus: laneExit, WallSeconds: 26}}},
 			}
 			plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: answer}, time.Date(2026, 9, 3, 20, 0, 0, 0, time.UTC))
 			if plan.Refusal != nil || len(plan.Mutations) != 1 {
@@ -304,13 +304,93 @@ func TestHeavyTestingAnswerCompletesOnGreenAndRequeuesOnFailure(t *testing.T) {
 				t.Fatalf("heavy-testing should requeue without a stale claim: %#v\n%s", plan.Mutations[0], plan.Mutations[0].Contents)
 			}
 			if testCase.wantVerified {
-				for _, expected := range []string{"heavy_verified_at: 2026-09-03T20:00:00Z", "heavy_verified_revision: " + executionRevision, "## Heavy Verification Result", "browser: exit 0"} {
+				for _, expected := range []string{"heavy_verified_at: 2026-09-03T20:00:00Z", "heavy_verified_revision: " + executionRevision, "## Heavy Verification Result", "- browser: exit 0, 26s — "} {
 					if !bytes.Contains(plan.Mutations[0].Contents, []byte(expected)) {
 						t.Errorf("green result omitted %q:\n%s", expected, plan.Mutations[0].Contents)
 					}
 				}
-			} else if bytes.Contains(plan.Mutations[0].Contents, []byte("heavy_verified_")) {
-				t.Fatalf("failed result retained green evidence:\n%s", plan.Mutations[0].Contents)
+			} else {
+				if bytes.Contains(plan.Mutations[0].Contents, []byte("heavy_verified_")) {
+					t.Fatalf("failed result retained green evidence:\n%s", plan.Mutations[0].Contents)
+				}
+				if !bytes.Contains(plan.Mutations[0].Contents, []byte("- browser: exit 1, 26s — ")) {
+					t.Errorf("failed result omitted the red lane's wall time:\n%s", plan.Mutations[0].Contents)
+				}
+			}
+		})
+	}
+}
+
+// newHeavyAnswerFixture builds a two-commit repository holding one
+// pending-heavy-testing request whose commit is the first revision, and
+// returns the pieces a heavy-testing answer manifest needs.
+func newHeavyAnswerFixture(t *testing.T, requestID string) (root, requestPath, question, targetRevision, executionRevision string) {
+	t.Helper()
+	root = t.TempDir()
+	runGitFixture(t, root, "init", "-q")
+	writeFixture(t, root, "implementation.txt", []byte("implementation\n"), 0o644)
+	runGitFixture(t, root, "add", ".")
+	runGitFixture(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "implementation")
+	targetRevision = strings.TrimSpace(runGitFixtureOutput(t, root, "rev-parse", "HEAD"))
+	writeFixture(t, root, "execution.txt", []byte("execution\n"), 0o644)
+	runGitFixture(t, root, "add", ".")
+	runGitFixture(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "execution")
+	executionRevision = strings.TrimSpace(runGitFixtureOutput(t, root, "rev-parse", "HEAD"))
+	requestPath = "do-work/queue/" + requestID + "-heavy.md"
+	question = "- [ ] Run heavy tests at " + targetRevision + "; did they exit 0?"
+	request := []byte("---\nid: " + requestID + "\nstatus: pending-heavy-testing\nclaimed_at: 2026-09-03T18:00:00Z\ncommit: " + targetRevision + "\n---\n## Open Questions\n\n" + question + "\n")
+	writeFixture(t, root, requestPath, request, 0o644)
+	return root, requestPath, question, targetRevision, executionRevision
+}
+
+func TestHeavyTestingAnswerRejectsNegativeWallSeconds(t *testing.T) {
+	root, requestPath, question, targetRevision, executionRevision := newHeavyAnswerFixture(t, "REQ-5")
+	answer := &AnswerManifest{
+		RequestPath: requestPath, ExpectedStatus: "pending-heavy-testing", Mode: "heavy-testing",
+		Answers:      []QuestionAnswer{{ExpectedLine: question, Outcome: "confirmed", Summary: "green"}},
+		HeavyTesting: &HeavyTestingEvidence{TargetRevision: targetRevision, ExecutionRevision: executionRevision, Lanes: []HeavyLaneResult{{LaneID: "browser", CommandArgv: []string{"bash", "verify.sh", "browser"}, ExitStatus: 0, WallSeconds: -1}}},
+	}
+	plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: answer}, time.Now())
+	if plan.Refusal == nil || plan.Refusal.Code != "ANSWER-HEAVY-EVIDENCE-INVALID" {
+		t.Fatalf("negative wall seconds refusal = %#v", plan.Refusal)
+	}
+}
+
+// TestHeavyTestingAnswerRefusesConfirmedWithSkippedLane pins the answer half of
+// R1: a lane that did not execute can never stamp heavy_verified_*, and the
+// recorded evidence still carries the skip's wall time.
+func TestHeavyTestingAnswerRefusesConfirmedWithSkippedLane(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		outcome    string
+		wantCode   string
+		wantResult string
+	}{
+		{name: "confirmed", outcome: "confirmed", wantCode: "ANSWER-HEAVY-EVIDENCE-NOT-GREEN"},
+		{name: "answered", outcome: "answered", wantResult: "- browser: skipped, 1s — "},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			root, requestPath, question, targetRevision, executionRevision := newHeavyAnswerFixture(t, "REQ-6")
+			answer := &AnswerManifest{
+				RequestPath: requestPath, ExpectedStatus: "pending-heavy-testing", Mode: "heavy-testing",
+				Answers:      []QuestionAnswer{{ExpectedLine: question, Outcome: testCase.outcome, Summary: "browser lane skipped"}},
+				HeavyTesting: &HeavyTestingEvidence{TargetRevision: targetRevision, ExecutionRevision: executionRevision, Lanes: []HeavyLaneResult{{LaneID: "browser", CommandArgv: []string{"bash", "verify.sh", "browser"}, ExitStatus: 0, Skipped: true, WallSeconds: 1}}},
+			}
+			plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: answer}, time.Now())
+			if testCase.wantCode != "" {
+				if plan.Refusal == nil || plan.Refusal.Code != testCase.wantCode {
+					t.Fatalf("skipped-lane refusal = %#v", plan.Refusal)
+				}
+				return
+			}
+			if plan.Refusal != nil || len(plan.Mutations) != 1 {
+				t.Fatalf("skipped-lane plan = %#v", plan)
+			}
+			if !bytes.Contains(plan.Mutations[0].Contents, []byte(testCase.wantResult)) {
+				t.Fatalf("skipped-lane result omitted %q:\n%s", testCase.wantResult, plan.Mutations[0].Contents)
+			}
+			if bytes.Contains(plan.Mutations[0].Contents, []byte("heavy_verified_")) {
+				t.Fatalf("skipped-lane result stamped green evidence:\n%s", plan.Mutations[0].Contents)
 			}
 		})
 	}
