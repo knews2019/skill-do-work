@@ -1,7 +1,7 @@
 ---
 id: REQ-475
 title: '[impact-critical] Review fix: Confine all configured Memory tree readers'
-status: pending-heavy-testing
+status: pending
 priority: now
 created_at: 2026-09-01T08:32:57Z
 user_request: UR-081
@@ -40,7 +40,7 @@ builder_handback_at: 2026-09-03T22:13:52Z
 integration_at: 2026-09-03T22:20:33Z
 testing_at: 2026-09-03T22:24:22Z
 review_at: 2026-09-03T22:24:22Z
-status_changed_at: 2026-09-04T10:14:02Z
+status_changed_at: 2026-09-04T12:36:12Z
 commit: c6d457473d24cdb188070709100884f019323ebc
 write_set:
   - skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go
@@ -48,6 +48,8 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/knowledgecommands/commands_test.go
   - skills/do-work-knowledge/actions/memory.md
   - skills/do-work-knowledge/actions/memory-reference.md
+heavy_verified_at: 2026-09-04T12:36:12Z
+heavy_verified_revision: c0d8ce1cb44cc1830b167214c018d76ba87baffc
 ---
 
 # Confine All Configured Memory Tree Readers
@@ -195,7 +197,7 @@ Passed — mechanical qualification accepted the cumulative `63045c9e..c6d45747`
 
 ## Open Questions
 
-- [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?
+- [x] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0? → Confirmed: Yes
   Recommended: Yes
   Also: No — report the failing lane
 
@@ -203,3 +205,14 @@ Passed — mechanical qualification accepted the cumulative `63045c9e..c6d45747`
 ## Answer Notes
 
 - 2026-09-03 - [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `c6d457473d24cdb188070709100884f019323ebc`; did it exit 0?: No — exit 1; update-script-behavior.sh took 55s, exceeding the under-30s limit
+- 2026-09-04 - [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?: Confirmed: Yes
+
+## Heavy Verification Result
+
+Target revision: `c6d457473d24cdb188070709100884f019323ebc`
+Execution revision: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+
+- do-work-cli-integrations: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+- staged-skills: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+- updater: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+- installer: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
