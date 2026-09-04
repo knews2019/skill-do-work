@@ -20,4 +20,3 @@ session_depth: light
 
 - REQ-504: [impact-rule-change] Collapse Step 10 and Crash Recovery prose into recovery — claimed 2026-09-04T22:27:42Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-569: Refuse a release that leaves a version or changelog mirror undeclared — claimed 2026-09-04T22:56:08Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

@@ -1,7 +1,7 @@
 ---
 id: REQ-569
 title: 'Refuse a release that leaves a version or changelog mirror undeclared'
-status: claimed
+status: completed
 created_at: 2026-09-04T22:35:42Z
 user_request: UR-113
 domain: backend
@@ -14,6 +14,8 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-565]
 claimed_at: 2026-09-04T22:56:08Z
+completed_at: 2026-09-04T22:57:26Z
+commit: 48de169368181f7fcf09ed4deefce3dc36f85296
 ---
 
 # Refuse a Release That Leaves a Version or Changelog Mirror Undeclared
