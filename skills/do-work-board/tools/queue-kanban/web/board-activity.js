@@ -1,16 +1,17 @@
   // ---- activity -----------------------------------------------------------
-  // "What changed on the queue in the last N hours, and why." One row per REQ:
-  // its newest lifecycle stamp and the transition that stamp records, newest
-  // first. Status does not filter it — a held, blocked, claimed, completed,
-  // cancelled or failed REQ inside the window all belong here, which is the
-  // whole point: every other time surface on this board is status-shaped, so
-  // three REQs claimed, built, merged and held in one afternoon showed up on
-  // none of them and the question needed `git log`.
+  // "What changed on the queue in the last N hours, and why." One row per
+  // lifecycle STAMP, not per REQ: a REQ captured, claimed, dispatched, merged
+  // and completed inside the window carries five rows, interleaved with every
+  // other REQ by time, newest first. Status does not filter it — a held,
+  // blocked, claimed, completed, cancelled or failed REQ inside the window all
+  // belong here, which is the whole point: every other time surface on this
+  // board is status-shaped, so three REQs claimed, built, merged and held in
+  // one afternoon showed up on none of them and the question needed `git log`.
   //
-  // The rows arrive already ordered and already phrased. Go decided which stamp
-  // is newest and what it records (activity.go); this file windows them and
-  // draws them, and must not re-derive either — a second definition of "what
-  // this stamp means" is the thing the payload shape exists to prevent.
+  // The rows arrive already ordered and already phrased. Go decided which
+  // stamps exist and what each records (activity.go); this file windows them
+  // and draws them, and must not re-derive either — a second definition of
+  // "what this stamp means" is the thing the payload shape exists to prevent.
 
   function activityRowsWithin(windowHours) {
     // Anchored to the wall clock at render time rather than to generatedAt, for
@@ -51,15 +52,30 @@
     var windowHours = viewState.activityWindowHours || 24;
     // The shared filter chips apply here, as they do on the Timeline: "what
     // changed lately in this domain" is a straightforward question to ask of a
-    // queue. Two counts, because they answer different questions — how much
-    // moved in the window, and how much of that the filters are showing.
+    // queue. Three numbers, because they answer different questions — how many
+    // transitions the window holds, how many distinct REQs those belong to
+    // (one busy REQ can own six of them), and, when the chips hide something,
+    // how many transitions there were before filtering.
     var windowRows = activityRowsWithin(windowHours);
     var rows = windowRows.filter(function (row) {
       return requestMatchesFilters(row.id);
     });
 
-    var summaryText = rows.length + (rows.length === 1 ? " REQ" : " REQs") + " touched in the " + activityWindowPhrase(windowHours);
+    var requestIdsSeen = {};
+    var distinctRequestCount = 0;
+    rows.forEach(function (row) {
+      if (!requestIdsSeen[row.id]) {
+        requestIdsSeen[row.id] = true;
+        distinctRequestCount += 1;
+      }
+    });
+
+    var summaryText = rows.length + (rows.length === 1 ? " transition" : " transitions")
+      + " across " + distinctRequestCount + (distinctRequestCount === 1 ? " REQ" : " REQs")
+      + " in the " + activityWindowPhrase(windowHours);
     if (rows.length !== windowRows.length) {
+      // Transitions before filtering, matching the leading count rather than
+      // introducing a fourth unit no reader asked for.
       summaryText += " (" + windowRows.length + " before filters)";
     }
     summaryNode.textContent = summaryText;
@@ -68,6 +84,9 @@
     rows.forEach(function (row) {
       var request = requestsById[row.id] || {};
       var tableRow = document.createElement("tr");
+      // Deliberately NOT unique: several rows of one REQ carry the same id, so
+      // this attribute selects a REQ's whole set of transitions rather than a
+      // single row. A selector written as "the node for REQ-570" is wrong here.
       tableRow.setAttribute("data-activity-request", row.id);
       [
         { text: row.id, columnHeaderId: "activity-table-column-req", rowHeader: true },
@@ -107,6 +126,8 @@
     }
     emptyNode.hidden = false;
     emptyNode.textContent = windowRows.length === 0
-      ? "No REQ carries a lifecycle stamp inside the " + activityWindowPhrase(windowHours) + "."
-      : windowRows.length + " REQ(s) moved in this window, but the active filters hide all of them.";
+      ? "No lifecycle transition falls inside the " + activityWindowPhrase(windowHours) + "."
+      : windowRows.length + (windowRows.length === 1 ? " transition" : " transitions")
+        + " happened in this window, but the active filters hide "
+        + (windowRows.length === 1 ? "it." : "all of them.");
   }

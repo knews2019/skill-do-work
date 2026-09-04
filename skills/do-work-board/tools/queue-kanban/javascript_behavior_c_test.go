@@ -2388,3 +2388,136 @@ process.stdout.write(JSON.stringify(annotateClipboardPayload([{text: ` + mustMar
 		}
 	}
 }
+
+// TestJavaScriptBehaviorActivitySummaryCountsTransitionsAndRequests drives the
+// shipped renderActivity over a payload where one REQ owns two rows, which is
+// the shape REQ-572 introduced. The summary has to report both numbers,
+// because a transition count alone reads as a REQ count on a surface that used
+// to be one row per REQ, and the empty states have to count the same unit.
+func TestJavaScriptBehaviorActivitySummaryCountsTransitionsAndRequests(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function activityRowsWithin("),
+		sliceBalancedBlockAfter(t, indexHtml, "function activityWindowPhrase("),
+		sliceBalancedBlockAfter(t, indexHtml, "function renderActivity("),
+	}
+	javascriptProbe := `
+// A stub node whose textContent setter drops its children, as the real one
+// does: renderActivity clears the table body that way between renders, and a
+// stub that kept them would let row counts accumulate across the cases below.
+function makeStubNode() {
+  var node = {
+    childNodes: [],
+    attributes: {},
+    hidden: false,
+    scope: "",
+    stubText: "",
+    setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = attributeValue; },
+    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; }
+  };
+  Object.defineProperty(node, "textContent", {
+    get: function () { return this.stubText; },
+    set: function (nodeText) { this.stubText = nodeText; this.childNodes = []; }
+  });
+  return node;
+}
+var nodesById = {};
+var document = {
+  getElementById: function (nodeId) {
+    if (!nodesById[nodeId]) { nodesById[nodeId] = makeStubNode(); }
+    return nodesById[nodeId];
+  },
+  createElement: function (tagName) { var node = makeStubNode(); node.stubTag = tagName; return node; }
+};
+var viewState = { activityWindowHours: 24 };
+var requestsById = {
+  "REQ-800": { title: "Busy request", status: "completed" },
+  "REQ-801": { title: "Quiet request", status: "claimed" }
+};
+var hiddenRequestIds = {};
+function requestMatchesFilters(requestId) { return !hiddenRequestIds[requestId]; }
+function makeInstantWithRelativeNode() { return null; }
+function hoursAgo(hourCount) { return new Date(Date.now() - hourCount * 3600 * 1000).toISOString(); }
+var threeTransitions = [
+  { id: "REQ-800", stampField: "completed_at", stampAt: hoursAgo(1), transition: "completed" },
+  { id: "REQ-801", stampField: "claimed_at", stampAt: hoursAgo(2), transition: "claimed" },
+  { id: "REQ-800", stampField: "created_at", stampAt: hoursAgo(3), transition: "captured" }
+];
+var boardData = { activity: threeTransitions };
+` + strings.Join(functionBlocks, "\n") + `
+function renderCase() {
+  nodesById = {};
+  renderActivity();
+  var tableBody = nodesById["activity-table-body"];
+  return {
+    summary: nodesById["activity-summary"].textContent,
+    rowCount: tableBody.childNodes.length,
+    requestAttributes: tableBody.childNodes.map(function (tableRow) { return tableRow.attributes["data-activity-request"]; }),
+    emptyHidden: nodesById["activity-empty"].hidden,
+    emptyText: nodesById["activity-empty"].textContent
+  };
+}
+var results = {};
+results.everyTransition = renderCase();
+boardData.activity = [threeTransitions[0]];
+results.singleTransition = renderCase();
+boardData.activity = threeTransitions;
+hiddenRequestIds = { "REQ-801": true };
+results.oneRequestFiltered = renderCase();
+hiddenRequestIds = { "REQ-800": true, "REQ-801": true };
+results.everythingFiltered = renderCase();
+hiddenRequestIds = {};
+boardData.activity = [];
+results.nothingInWindow = renderCase();
+process.stdout.write(JSON.stringify(results));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "activity summary counts", javascriptProbe)
+
+	type activityRenderResult struct {
+		Summary           string   `json:"summary"`
+		RowCount          int      `json:"rowCount"`
+		RequestAttributes []string `json:"requestAttributes"`
+		EmptyHidden       bool     `json:"emptyHidden"`
+		EmptyText         string   `json:"emptyText"`
+	}
+	var results struct {
+		EveryTransition    activityRenderResult `json:"everyTransition"`
+		SingleTransition   activityRenderResult `json:"singleTransition"`
+		OneRequestFiltered activityRenderResult `json:"oneRequestFiltered"`
+		EverythingFiltered activityRenderResult `json:"everythingFiltered"`
+		NothingInWindow    activityRenderResult `json:"nothingInWindow"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
+		t.Fatalf("decode activity render results: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if results.EveryTransition.Summary != "3 transitions across 2 REQs in the last 24 hours" {
+		t.Fatalf("summary for three transitions of two REQs = %q, want both counts", results.EveryTransition.Summary)
+	}
+	if results.EveryTransition.RowCount != 3 {
+		t.Fatalf("rendered rows = %d, want 3 — one per transition, not one per REQ", results.EveryTransition.RowCount)
+	}
+	// REQ-573 highlights a REQ's sibling rows through this attribute, so the
+	// repeated id is the contract rather than an oversight.
+	wantAttributes := []string{"REQ-800", "REQ-801", "REQ-800"}
+	if !reflect.DeepEqual(results.EveryTransition.RequestAttributes, wantAttributes) {
+		t.Fatalf("data-activity-request values = %#v, want %#v (one REQ's rows repeat the id)",
+			results.EveryTransition.RequestAttributes, wantAttributes)
+	}
+	if !results.EveryTransition.EmptyHidden {
+		t.Fatalf("empty state showed while three transitions rendered")
+	}
+	if results.SingleTransition.Summary != "1 transition across 1 REQ in the last 24 hours" {
+		t.Fatalf("singular summary = %q", results.SingleTransition.Summary)
+	}
+	if results.OneRequestFiltered.Summary != "2 transitions across 1 REQ in the last 24 hours (3 before filters)" {
+		t.Fatalf("filtered summary = %q, want the filtered counts plus the transitions before filtering", results.OneRequestFiltered.Summary)
+	}
+	if results.EverythingFiltered.EmptyHidden ||
+		results.EverythingFiltered.EmptyText != "3 transitions happened in this window, but the active filters hide all of them." {
+		t.Fatalf("filters-hid-everything empty state = %q (hidden=%v)", results.EverythingFiltered.EmptyText, results.EverythingFiltered.EmptyHidden)
+	}
+	if results.NothingInWindow.EmptyHidden ||
+		results.NothingInWindow.EmptyText != "No lifecycle transition falls inside the last 24 hours." {
+		t.Fatalf("nothing-moved empty state = %q (hidden=%v)", results.NothingInWindow.EmptyText, results.NothingInWindow.EmptyHidden)
+	}
+}
