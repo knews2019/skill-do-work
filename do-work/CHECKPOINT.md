@@ -17,7 +17,6 @@ session_depth: light
 
 - REQ-535: Review fix: keep same-id filename collisions ambiguous in duplicate readiness — claimed 2026-09-04T12:47:52Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-475: [impact-critical] Review fix: Confine all configured Memory tree readers — claimed 2026-09-04T12:47:59Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 

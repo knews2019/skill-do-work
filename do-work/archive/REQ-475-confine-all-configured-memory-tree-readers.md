@@ -1,7 +1,7 @@
 ---
 id: REQ-475
 title: '[impact-critical] Review fix: Confine all configured Memory tree readers'
-status: claimed
+status: completed
 priority: now
 created_at: 2026-09-01T08:32:57Z
 user_request: UR-081
@@ -51,6 +51,7 @@ write_set:
 heavy_verified_at: 2026-09-04T12:36:12Z
 heavy_verified_revision: c0d8ce1cb44cc1830b167214c018d76ba87baffc
 claimed_at: 2026-09-04T12:47:59Z
+completed_at: 2026-09-04T12:54:00Z
 ---
 
 # Confine All Configured Memory Tree Readers
@@ -217,3 +218,49 @@ Execution revision: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
 - staged-skills: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
 - updater: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
 - installer: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
+
+## Independent Review
+
+**Overall: 96%** | 2026-09-04T12:52:00Z | **Verdict: Approve. Route C.** Fresh independent review across historical source ranges `63045c9e..a0207eaa` and `11061016..c6d45747`.
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 98% |
+| Code Quality | 96% |
+| Test Adequacy | 95% |
+| Scope | 95% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings:** None
+**Minor findings:** None
+**Acceptance:** Pass — Confined store reads, adversarial fixtures, outside-root and link refusals without byte disclosure, deterministic ledger swap protection, and inclusive read limits all pass and are verified across `63045c9e..a0207eaa` and `11061016..c6d45747`. Heavy verification lanes (do-work-cli-integrations, staged-skills, updater, installer) green at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`.
+**Suggested testing:** 2 items — filesystem event stress testing under high concurrency; testing symlink race handling across non-POSIX filesystems.
+**Follow-ups created:** None (0 findings report only)
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:**
+- Unifying all configured memory reads behind a single handler-scoped opened-root abstraction (`openMemoryRoot` + `readRootedMemoryFile`) that performs both pre-open and post-open identity checks (`os.SameFile`, mode, modTime) and bounds directory enumeration and file sizes.
+- Exposing a deterministic test hook (`memoryLedgerBeforeRootOpen`) to simulate a post-scan root swap to an outside symlink during ledger mutation, proving that the mutation fails closed without writing to the external canary.
+
+**What didn't:**
+- The initial builder implementation left `appendMemoryLedger` using a direct `os.OpenRoot(memoryAbsolute)` call rather than `openMemoryRoot`, creating an authority split between read operations and post-recall ledger appends that required remediation commit `1ace1997`.
+
+**Worth knowing:**
+- Belonging to `[family: final-boundary-identity]`: an opened root confines traversal during reading, but secondary mutations (such as best-effort ledger appends) must re-verify that the root has not been swapped or redirected before appending.
+- The 64 KiB, 8 MiB, 128-byte, and 4,096-entry store limits are defensive transport ceilings to prevent unbounded allocation; they do not replace tighter semantic constraints like the 2,500-character cap on `working-memory.md`.
+
+## Orientation
+
+All configured Memory-tree read operations (`working-memory.md`, `logs/*.md`, `usage-ledger.jsonl`, `.bootstrap-imported`) and log directory enumerations are now repository-contained, rooted, no-follow, and bounded, rejecting outside roots, symlinks, special files, and oversize objects without disclosing target bytes.
+
+`prime_files`: `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` — spot-checked at closure; all referenced paths and packages exist and remain accurate.
+
+**[MAP CHANGED]**: No — internal confinement and defensive hardening of existing memory commands without changing public CLI command signatures or external contracts.
+
+## Closure
+
+**Maintainer lifecycle finalization — no release required.** The implementation changes under `skills/` were committed and merged on main in historical commits `c6d45747` (`[REQ-475] integrate verified Memory ledger root`) and `a0207eaa` (`[REQ-475] integrate confined Memory readers`). This finalization commit touches only queue/archive lifecycle, calibration, and checkpoint state under `do-work/`. Under `_dev/primes/prime-releases.md`, maintainer-only files commit without a release. Provenance mode is `supplied_commit` with implementation commit `c6d457473d24cdb188070709100884f019323ebc`.
