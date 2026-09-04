@@ -97,7 +97,7 @@ if [ -e "$authority_root/project/do-work/.req-reservations/REQ-000203" ] || ! gr
 fi
 printf -- '---\nid: REQ-204\nstatus: claimed\n---\n' > "$authority_root/project/do-work/working/REQ-204-uncommitted.md"
 touch "$authority_root/project/do-work/.req-reservations/REQ-000204"
-authority_binary="$authority_root/skill/tools/do-work-cli/do-work-cli"
+authority_binary="$(go tool -C "$authority_root/skill/tools/do-work-cli" -n do-work-cli)"
 unavailable_json="$(PATH="$authority_root/no-git" "$authority_binary" --repo-root "$authority_root/project" --format json session-start --skill-root "$authority_root/skill")"
 if [ ! -e "$authority_root/project/do-work/.req-reservations/REQ-000204" ] || ! grep -q 'RESERVATION-GIT-AUTHORITY-UNAVAILABLE' <<<"$unavailable_json" || grep -q 'REQ-000204.*deleted' <<<"$unavailable_json"; then
   printf 'FAIL: Git-unavailable SessionStart did not fail closed with typed evidence.\n' >&2
@@ -121,7 +121,7 @@ run_launcher_failure_case() {
   fi
 }
 run_launcher_failure_case go-too-old '#!/usr/bin/env bash\nprintf "go version go1.24.0 fixture\\n"\n' 'Go 1.25.0 or newer is required'
-run_launcher_failure_case go-build-failure '#!/usr/bin/env bash\nif [ "${1:-}" = version ]; then printf "go version go1.25.0 fixture\\n"; exit 0; fi\nexit 1\n' 'build failed; stale output was not run'
+run_launcher_failure_case go-build-failure '#!/usr/bin/env bash\nif [ "${1:-}" = version ]; then printf "go version go1.25.0 fixture\\n"; exit 0; fi\nexit 1\n' 'could not build the command; nothing was run'
 
 missing_root="$fixture_root/missing-launcher"
 mkdir -p "$missing_root/skill/hooks" "$missing_root/project"

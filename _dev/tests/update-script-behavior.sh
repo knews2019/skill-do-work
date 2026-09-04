@@ -31,19 +31,6 @@ cleanup_fixture() {
 }
 trap cleanup_fixture EXIT
 
-# The aggregate gives both expensive probes one private build. A direct run still
-# builds privately, never into the source tree.
-do_work_cli_binary="${DO_WORK_TEST_DO_WORK_CLI_BINARY:-$fixture_root/do-work-cli}"
-if [ -n "${DO_WORK_TEST_DO_WORK_CLI_BINARY:-}" ]; then
-  if [ ! -x "$do_work_cli_binary" ]; then
-    printf 'FAIL: shared do-work-cli is missing or not executable: %s\n' "$do_work_cli_binary" >&2
-    exit 1
-  fi
-elif ! (cd "$do_work_cli_module" && go build -ldflags='-s -w' -o "$do_work_cli_binary" ./cmd/do-work-cli); then
-  printf 'FAIL: could not pre-build do-work-cli for the update fixtures.\n' >&2
-  exit 1
-fi
-
 for required_command in bash git tar diff; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
     printf 'SKIP: %s unavailable — update-script behavior probes not run.\n' "$required_command"
@@ -135,17 +122,16 @@ commit_project() {
   git -C "$project_path" commit -qm "$message_text"
 }
 
-# copy_do_work_cli_module places the standalone pre-built command beside a fixture's
-# launcher. These updater scenarios exercise installed behavior, not source rebuilding;
-# copying the full Go source tree into every fixture made this one test file spend most of
-# its budget duplicating bytes that no assertion reads.
+# copy_do_work_cli_module places the launcher and the module sources beside each other in a
+# fixture. The launcher runs `go tool` against the module's go.mod, so the sources must be
+# present; the Go build cache makes every fixture after the first reuse one compiled command.
 copy_do_work_cli_module() {
   local tools_directory="$1"
   cp "$do_work_cli_launcher" "$tools_directory/do-work-cli.sh"
   chmod +x "$tools_directory/do-work-cli.sh"
-  mkdir -p "$tools_directory/do-work-cli"
-  cp "$do_work_cli_binary" "$tools_directory/do-work-cli/do-work-cli"
-  chmod +x "$tools_directory/do-work-cli/do-work-cli"
+  rm -rf "$tools_directory/do-work-cli"
+  cp -R "$do_work_cli_module" "$tools_directory/do-work-cli"
+  rm -f "$tools_directory/do-work-cli/do-work-cli"
 }
 
 build_suite_install() {
@@ -366,31 +352,26 @@ probe_output="$(cd "$just_entry_project" && printf 'y\n' \
 probe_status=$?
 stop_archive_server
 assert_status 0 'entry-point parity: managed Just updater exits 0'
-# The built do-work-cli binary is build output, not suite content: Go embeds the build
-# directory in it, so two projects that build it under different paths hold different bytes
-# for identical sources. It is filtered out of the diff's OUTPUT rather than with `diff -x`,
-# because -x matches the basenames of directories too and `do-work-cli` is also the module
-# directory's name — excluding by name would blind this check to the entire Go source tree.
+# No build output lives in the managed tree: the launcher runs the command through
+# `go tool`, whose executable belongs to the Go build cache, so the trees compare whole.
 parity_diff_status=0
 parity_report="$(diff -qr "$suite_project/.claude/skills" "$just_entry_project/.claude/skills" 2>&1)" \
   || parity_diff_status=$?
 if [ "$parity_diff_status" -gt 1 ]; then
   record_failure "entry-point parity: managed skill trees could not be compared: $parity_report"
-else
-  parity_differences="$(printf '%s\n' "$parity_report" \
-    | grep -v 'tools/do-work-cli/do-work-cli ' | grep -v '^$' || true)"
-  if [ -n "$parity_differences" ]; then
-    record_failure "entry-point parity: direct and managed Just updates produced different managed bytes: $parity_differences"
-  fi
+elif [ -n "$parity_report" ]; then
+  record_failure "entry-point parity: direct and managed Just updates produced different managed bytes: $parity_report"
 fi
 if ! cmp -s "$suite_project/Justfile" "$just_entry_project/Justfile" \
   || ! cmp -s "$suite_project/.claude/settings.json" "$just_entry_project/.claude/settings.json"; then
   record_failure 'entry-point parity: direct and managed Just updates produced different managed configuration bytes'
 fi
-# Both entry points must have installed a runnable command, whoever built it.
+# Both entry points must have installed a runnable command: the launcher and the module
+# whose go.mod declares the tool it runs.
 for parity_project in "$suite_project" "$just_entry_project"; do
-  if [ ! -x "$parity_project/.claude/skills/do-work/tools/do-work-cli/do-work-cli" ]; then
-    record_failure "entry-point parity: ${parity_project##*/} has no executable do-work-cli after the update"
+  if [ ! -x "$parity_project/.claude/skills/do-work/tools/do-work-cli.sh" ] \
+    || ! grep -q '^tool .*/cmd/do-work-cli$' "$parity_project/.claude/skills/do-work/tools/do-work-cli/go.mod"; then
+    record_failure "entry-point parity: ${parity_project##*/} has no runnable do-work-cli after the update"
   fi
 done
 

@@ -164,7 +164,7 @@ fi
 # exact opt-in value, while exact 1 still exercises the explicitly authorized branch.
 agentic_bin="$fixture_root/agentic-bin"
 mkdir -p "$agentic_bin"
-for agentic_tool in bash chmod cp mktemp mv rm; do
+for agentic_tool in bash chmod cp go mktemp mv rm; do
   ln -s "$(command -v "$agentic_tool")" "$agentic_bin/$agentic_tool"
 done
 printf '%s\n' '#!/usr/bin/env bash' ': > "$AGENTIC_INVOKED_MARKER"' 'printf agentic-png > generated.png' > "$agentic_bin/codex"

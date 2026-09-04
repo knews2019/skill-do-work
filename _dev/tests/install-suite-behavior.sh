@@ -148,19 +148,6 @@ for retired_runtime_path in SKILL.md actions tools/do-work-update.sh tools/queue
   fi
 done
 
-# The aggregate gives both expensive probes one private build. A direct run still
-# builds privately. Restricted-PATH fixtures copy that artifact into their archive.
-cli_module_root="$repo_root/skills/do-work/tools/do-work-cli"
-do_work_cli_binary="${DO_WORK_TEST_DO_WORK_CLI_BINARY:-$workdir/do-work-cli}"
-if [ -n "${DO_WORK_TEST_DO_WORK_CLI_BINARY:-}" ]; then
-  if [ ! -x "$do_work_cli_binary" ]; then
-    printf 'FAIL: shared do-work-cli is missing or not executable: %s\n' "$do_work_cli_binary" >&2
-    exit 1
-  fi
-elif ! (cd "$cli_module_root" && go build -ldflags='-s -w' -o "$do_work_cli_binary" ./cmd/do-work-cli); then
-  printf 'FAIL: could not pre-build do-work-cli for the restricted-PATH lanes.\n' >&2
-  exit 1
-fi
 
 archive_parent="$workdir/archive-source"
 archive_root="$archive_parent/skill-do-work-main"
@@ -168,8 +155,6 @@ mkdir -p "$archive_root/tools"
 cp "$repo_root/VERSION" "$archive_root/VERSION"
 cp -R "$repo_root/suite" "$archive_root/suite"
 cp -R "$repo_root/skills" "$archive_root/skills"
-cp "$do_work_cli_binary" "$archive_root/skills/do-work/tools/do-work-cli/do-work-cli"
-chmod +x "$archive_root/skills/do-work/tools/do-work-cli/do-work-cli"
 cp "$installer" "$archive_root/tools/install-do-work-suite.sh"
 cp "$repo_root/tools/validate-suite-manifest.sh" "$archive_root/tools/validate-suite-manifest.sh"
 cp "$repo_root/tools/replace-text-section.sh" "$archive_root/tools/replace-text-section.sh"
@@ -449,7 +434,7 @@ fi
 # A BOM-prefixed reserved recipe is rejected without Just, before confirmation or client mutation.
 no_just_path="$workdir/no-just-path"
 mkdir -p "$no_just_path"
-for command_name in awk bash cat cp diff dirname find git grep gzip mkdir mktemp mv rm sed tar; do
+for command_name in awk bash cat cp diff dirname find git go grep gzip mkdir mktemp mv rm sed tar; do
   command_path="$(command -v "$command_name" 2>/dev/null || true)"
   [ -z "$command_path" ] || ln -s "$command_path" "$no_just_path/$command_name"
 done

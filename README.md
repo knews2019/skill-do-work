@@ -4,7 +4,7 @@ A four-skill task queue suite for agentic coding tools. Capture requests fast, p
 
 ## Installation
 
-**Prerequisite: Go 1.25.0 or newer.** Installing, updating and running the suite all go through the `do-work-cli` command, which is built from source on first use. `git`, `tar`, `diff` and `curl` are also needed; `just` is optional and only used to validate the managed recipe section when it is present.
+**Prerequisite: Go 1.25.0 or newer.** Installing, updating and running the suite all go through the `do-work-cli` command, which `go tool` compiles on first use and reuses from the Go build cache while its sources are unchanged. `git`, `tar`, `diff` and `curl` are also needed; `just` is optional and only used to validate the managed recipe section when it is present.
 
 Run this exact command from the root of the Git repository where you want the suite installed:
 

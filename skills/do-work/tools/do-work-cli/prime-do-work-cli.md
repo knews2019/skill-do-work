@@ -6,7 +6,7 @@ The standard-library Go module under this directory is the canonical implementat
 
 ## Read first
 
-- `go.mod` defines the module and Go floor.
+- `go.mod` defines the module, the Go floor, and the `tool` directive `tools/do-work-cli.sh` runs through `go tool`; the toolchain caches the executable in GOCACHE by content, so the launcher keeps no binary and no staleness check of its own.
 - `cmd/do-work-cli/main.go` is the command registration boundary. Shared packages must not register commands.
 - `internal/resultmodel/` and `internal/commandruntime/` own stable command results and rendering.
 - `internal/requestmodel/` owns lossless REQ/UR frontmatter documents and authorized field edits.
