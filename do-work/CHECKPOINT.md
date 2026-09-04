@@ -12,10 +12,6 @@ session_depth: light
 
 - REQ-483: Bound the architecture bundle-claim loop and restore --commit (Route A, 80%)
 
-## In Progress (interrupted)
-
-- REQ-505: [impact-rule-change] Move selection and claim behind advance — claimed 2026-09-04T16:39:30Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-
 ## Still Queued
 
 - 28 pending requests remain. This targeted run drained REQ-483's frozen ledger; the selector recommends REQ-485 next.

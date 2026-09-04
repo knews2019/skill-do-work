@@ -1,7 +1,7 @@
 ---
 id: REQ-505
 title: '[impact-rule-change] Move selection and claim behind advance'
-status: claimed
+status: pending-heavy-testing
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -46,6 +46,8 @@ preflight_at: 2026-09-04T16:52:22Z
 dispatch_at: 2026-09-04T16:52:56Z
 builder_handback_at: 2026-09-04T17:24:31Z
 integration_at: 2026-09-04T17:26:13Z
+status_changed_at: 2026-09-04T17:31:18Z
+commit: 716187b847d1de0402b69587a2fe5cf7e7bd8516
 estimate:
   p50_active_minutes: 50
   confidence: low
@@ -104,9 +106,6 @@ Firm on the boundary between mechanics and judgment as classified in the report'
 - `_dev/primes/lessons-action-files.md` — 4163 tokens, over the shared budget; `slugged: partial` so no targeted form. Matched on action routing, status contracts, and downstream readers.
 - `_dev/primes/lessons-shell-commands.md` — 3385 tokens, over the shared budget; `slugged: partial` so no targeted form. Matched on prescribed argv and migration-parity behavior.
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 6265 tokens, over the shared budget; `slugged: partial` so no targeted form. Matched on frozen-ledger projection, structured evidence, collision identity, and commit preflight ordering.
-
-## Open Questions
-None.
 
 ## Full Context
 See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
@@ -225,6 +224,27 @@ None.
 ## Qualification
 
 **Passed.** The exact merge range contains 18 substantive implementation files and no undeclared path. All five acceptance criteria trace to public queue-advance behavior and aligned action readers, and the checked P-A-U state matches the merged diff. The scope ceiling intentionally reserved five selector/request-state test seams that the implementation did not need; the scope checker reported only those declared-but-untouched paths. Its two static-reference warnings are expected for convention-discovered Go package files.
+
+## Testing
+
+**Red-green validation:** The captured prose-predicate RED had become stale after REQ-504 removed the root sentence-predicate ownership, so the builder used the equivalent live public seam. The focused queue-mode test first failed because no-argument advance returned usage and an explicit pending target only projected a claim command; it then passed after the composed queue transaction was implemented. The final public queue matrix passed in 4.55s.
+
+**Merged-state verification:** Focused lifecycle-advance, selector, request-state, and result-model packages passed in 16.38s; the same packages under the race detector passed in 20.73s; static analysis passed in 0.66s; the full Go module passed in 46.12s; and contract regressions passed in 16.34s. The direct, unpiped canonical maintainer gate passed with 375 board tests and 664 CLI tests. Green-gate evidence was recorded at revision `70c780c33e5411a6da8f36c5902e0eb5f19be7da`.
+
+## Heavy Verification Plan
+
+**Base revision:** `eb01a94f2dad78bf30f334e0614393d571ae362e`
+
+**Target revision:** `716187b847d1de0402b69587a2fe5cf7e7bd8516`
+
+- **do-work-cli-integrations** — argv: `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`; selected because the implementation changes the CLI lifecycle, selection, request-state, result-model, tests, and prime subtree.
+- **staged-skills** — argv: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`; selected because shipped action, guide, prime, and CLI files changed under the skills subtree.
+- **updater** — argv: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`; selected because shipped CLI subtree changes must survive updater integration.
+- **installer** — argv: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`; selected because shipped CLI subtree changes must survive installer integration.
+
+## Open Questions
+
+- [ ] Heavy lanes at `716187b847d1de0402b69587a2fe5cf7e7bd8516`: the work loop runs them at queue exhaustion and records the result here
 
 ## Orientation
 
