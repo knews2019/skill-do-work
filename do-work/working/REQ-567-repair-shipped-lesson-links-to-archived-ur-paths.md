@@ -18,6 +18,7 @@ related: [REQ-503]
 claimed_at: 2026-09-04T15:08:27Z
 planning_at: 2026-09-04T15:10:25Z
 exploration_at: 2026-09-04T15:10:25Z
+dispatch_at: 2026-09-04T15:12:02Z
 write_set: [skills/do-work/tools/do-work-cli/lessons-do-work-cli.md]
 estimate:
   p50_active_minutes: 30
