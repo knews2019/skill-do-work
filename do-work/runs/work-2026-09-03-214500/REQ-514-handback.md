@@ -66,3 +66,13 @@ The declared eight-file scope named `finalization_apply.go` and `finalization_pi
 - No new follow-up request is required.
 - Review the normalization boundary against any consumer that reads an unrendered `CommandResult`; this request changes the serialized/rendered contract, matching the runtime path.
 - Preserve the existing lifecycle recovery fixture rather than adding a second near-duplicate.
+
+## Bounded remediation handback
+
+- Branch: `worktree-agent-REQ-514-remediation`
+- Commit: `b63f911f3957f35fe03b8c31ab34af95bb741974`
+- Exact remediation files: `internal/resultmodel/result_model.go`, `internal/resultmodel/result_model_test.go`, `internal/finalization/finalization_discovery.go`, `internal/finalization/finalization_recovery_test.go`, `internal/finalization/finalization_commands_test.go`, `internal/cleanup/cleanup_apply.go`, and `internal/cleanup/cleanup_apply_test.go`, all below `skills/do-work/tools/do-work-cli/`.
+- F1 closed: refusal findings are normalized independently of aggregate outcome; the cited cleanup scratch refusal now emits no raw self-remedy; an `OutcomeFindings` regression pins the output boundary.
+- F2 closed: singular and ordered discovery finalization records now use inventory collection as their resolving command, with recovery discovery retained as verification.
+- F3 closed: the lifecycle recovery fixture now begins with a pending queue REQ and executes the real committed claim handler before the one-line implementation change and interrupted completion/recovery path.
+- Verification: focused resultmodel, commandruntime, finalization, requeststate, and cleanup packages passed; `go vet ./...`, `git diff --check`, and `go test -count=1 ./...` passed. Full-module package timings included finalization 41.360s and publication 23.936s; the repository wrapper owns per-file timing enforcement.

@@ -157,6 +157,7 @@ See `do-work/user-requests/UR-099/input.md` for complete verbatim input.
 ## Decisions
 
 - **D-01 (scope reconciliation, 2026-09-04):** The planned `finalization_apply.go` edit did not own the ambiguous discovery refusal. Expand the exact scope to `finalization_discovery.go` and its existing recovery test file, and remove planned files that required no change. The directory-level request scope already covered finalization; `commandruntime/command_runtime_test.go` is added explicitly. The folded lifecycle fixture already exists in `finalization_recovery_test.go`, so duplicating it would reduce signal.
+- **D-02 (review remediation, 2026-09-04):** Expand the bounded remediation scope to `internal/cleanup/cleanup_apply.go`, `internal/cleanup/cleanup_apply_test.go`, and `internal/finalization/finalization_commands_test.go`. The independent review proved the live `OutcomeFindings` counterexample and literal claim-path gap in those files; closing the cited findings requires owning their exact producer and fixture.
 
 ## Implementation Summary
 
