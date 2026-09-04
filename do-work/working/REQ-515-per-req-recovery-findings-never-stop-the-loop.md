@@ -260,3 +260,9 @@ The orchestrator verified this independently rather than accepting the report: w
 **D-13 — DECIDE & STATE, orchestrator-authorized. Two restatement sites outside the declared write set were corrected.** `work-reference.md` Crash Recovery and `docs/work-guide.md` both said `--assume-sole-authority` resets every working claim. That is false as of this commit and false *because of* it, so the same rule that pulled `commit.md` into scope pulls these in. One clause each.
 
 **D-14 — DECIDE & STATE. `recover --take-over REQ-NNN` on a set-aside REQ preserves the claim instead of taking it over.** The same command's finalization pass just refused that REQ's tail, so handing the claim to the run would dispatch a builder onto a REQ whose stale journal refuses again at finalize. Both the set-aside finding and the claim decision appear in the result, so the user sees why.
+
+## Post-Merge Verification
+
+`bash _dev/tests/maintainer-verify.sh` against the remediated merged tree at `fe2de1e`: **exit 0, no failures**, green on the first run with no retry needed.
+
+The three remediation pins were each re-run on the merged tree and each proven red against the pre-remediation revision by the orchestrator, not only by the builder. F1's pin fails with `the set-aside REQ lost its claim: stat .../do-work/working/REQ-730.md: no such file or directory`, which is the reviewer's reproduction verbatim.
