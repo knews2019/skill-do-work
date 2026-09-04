@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.275.4 — Minimal Capture Examples Backed by Schema Checks (2026-09-04)
+
+Capture examples now show the record shapes without repeating field rules in comments. New records are checked before publication, while existing records retain tolerant alias reads.
+
+- The four examples shrink from 137 to 67 lines, with copyable TDD proof and question shapes retained separately.
+- Publication rejects malformed fields, noncanonical values, unsafe user-text scalars, invalid blocked metadata, and mismatched UR membership before planning record writes.
+
 ## 0.275.3 — Held Heavy-Test REQs Wait With the Queue, Not in the Inbox (2026-09-04)
 
 0.275.0 made the work loop run held heavy lanes itself at queue exhaustion, but the board still filed every `pending-heavy-testing` REQ under Needs input · Blocked, and the hold line it carried still read as a Yes/No question for you. Nothing was being asked; now nothing looks asked.

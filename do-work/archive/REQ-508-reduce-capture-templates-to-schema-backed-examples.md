@@ -1,7 +1,7 @@
 ---
 id: REQ-508
 title: '[impact-rule-change] Reduce capture templates to minimal examples backed by the schema layer'
-status: claimed
+status: completed-with-issues
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -37,6 +37,9 @@ estimate:
     - dependency depth 4
     - cross-route regression gates
     - full-suite verification
+completed_at: 2026-09-04T20:09:36Z
+commit: c00227166b288b97c60377cc06e7a5bfa736a0e8
+release_at: 2026-09-04T20:09:36Z
 ---
 
 # Reduce Capture Templates to Minimal Examples Backed by the Schema Layer
