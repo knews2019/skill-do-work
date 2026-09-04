@@ -1,7 +1,7 @@
 ---
 id: REQ-570
 title: '[impact-rule-change] Delete the pending-heavy-testing status; held requests stay claimed'
-status: pending
+status: claimed
 created_at: 2026-09-04T22:52:00Z
 user_request: UR-114
 domain: general
@@ -39,6 +39,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go
   - skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go
   - _dev/tests/contracts/core-checks.sh
+claimed_at: 2026-09-04T23:00:17Z
 ---
 
 # Delete the pending-heavy-testing Status; Held Requests Stay Claimed
