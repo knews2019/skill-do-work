@@ -17,6 +17,7 @@ effort_estimate: effort-substantive
 write_set: [skills/do-work/actions/capture-reference.md, skills/do-work/actions/capture.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/schemanormalization/]
 claimed_at: 2026-09-04T19:13:19Z
 route: C
+planning_at: 2026-09-04T19:21:18Z
 estimate:
   p50_active_minutes: 55
   confidence: low
@@ -37,7 +38,7 @@ estimate:
 `capture-reference.md` keeps one minimal example per record (Simple REQ, Complex REQ, UR input, Addendum REQ) and points at the schema normalizer for every field rule it enforces; per-field rule comments leave the templates.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Centralize canonical authoring and legacy read aliases in the schema layer, make capture-files validate newly authored UR/REQ shape before planning mutations, prove the missing rules through public Go tests, and reduce the four examples without moving capture judgment into code.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -87,3 +88,11 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 **Route: C — Complex.** The change removes instructional contracts from four capture templates only after tracing each rule to schema or capture-file enforcement, adds missing behavior coverage, and updates the active predicate owner without weakening record shape.
 
 **Planning:** Required.
+
+## Plan
+
+1. Add public RED cases for alias keys/values, malformed record shape, timestamps/title scalars, blocked metadata, and phantom UR membership, plus positive fixtures for all four examples.
+2. Centralize the five read-only key-alias families and canonical-write evidence in schema normalization, then make requestmodel consume that registry without changing ordinary reads.
+3. Validate canonical new-record identity, linkage, field shapes, timestamps, user-text encoding, blocked-field pairing, and exact membership at the capture-files boundary before any mutation is planned.
+4. Replace the Simple, Complex, UR, and Addendum fences with copyable minimal examples while retaining the named judgment contracts and updating capture's authority pointer.
+5. Verify schema/read compatibility, publication behavior, template size/residue, race/module/contracts, and the direct repository gate.

@@ -6,6 +6,6 @@ Status: in-progress
 
 | Agent | Slice | Output file | Status |
 |-------|-------|-------------|--------|
-| plan | REQ-508 implementation plan | REQ-508-plan.md | pending |
+| plan | REQ-508 implementation plan | REQ-508-plan.md | done |
 | explore | REQ-508 repository exploration | REQ-508-explore.md | pending |
 | builder | REQ-508 isolated implementation | REQ-508-handback.md | pending |
