@@ -1572,35 +1572,86 @@ func isPlausibleCommitHash(text string) bool {
 // Unparseable and absent values are not this check's concern — other paths
 // (completion anomalies) own those.
 func detectFutureTimestampFields(ticket *RequestTicket, now time.Time) []string {
-	timestampFields := []struct {
-		fieldName string
-		rawValue  string
-	}{
-		{"created_at", ticket.CreatedAt},
-		{"claimed_at", ticket.ClaimedAt},
-		{"completed_at", ticket.CompletedAt},
-		{"planning_at", ticket.PlanningAt},
-		{"dispatch_at", ticket.DispatchAt},
-		{"builder_handback_at", ticket.BuilderHandbackAt},
-		{"integration_at", ticket.IntegrationAt},
-		{"review_at", ticket.ReviewAt},
-		{"remediation_at", ticket.RemediationAt},
-		{"re_review_at", ticket.ReReviewAt},
-		{"release_at", ticket.ReleaseAt},
-		{"status_changed_at", ticket.StatusChangedAt},
-		{"blocked_at", ticket.BlockedAt},
-		{"testing_updated_at", ticket.TestingUpdatedAt},
-	}
 	skewHorizon := now.Add(futureTimestampSkewAllowance)
 	var futureFieldEntries []string
-	for _, timestampField := range timestampFields {
-		parsedInstant, parsedOk := parseTimestamp(timestampField.rawValue)
+	for _, timestampField := range lifecycleTimestampFields(ticket) {
+		parsedInstant, parsedOk := parseTimestamp(timestampField.RawValue)
 		if parsedOk && parsedInstant.After(skewHorizon) {
 			futureFieldEntries = append(futureFieldEntries,
-				timestampField.fieldName+" "+strings.TrimSpace(timestampField.rawValue))
+				timestampField.FieldName+" "+strings.TrimSpace(timestampField.RawValue))
 		}
 	}
 	return futureFieldEntries
+}
+
+// LifecycleTimestamp is one frontmatter timestamp a REQ can carry: the field it
+// lives in, its raw text, and the transition that stamp records in words.
+type LifecycleTimestamp struct {
+	FieldName string
+	RawValue  string
+	// Transition is what happened at this instant, phrased for a reader rather
+	// than named after the field. Some entries depend on the ticket's status —
+	// status_changed_at on a held REQ is a heavy-testing hold, and completed_at
+	// on a cancelled one is a cancellation — which is why this is built per
+	// ticket rather than declared as a package-level table.
+	Transition string
+}
+
+// lifecycleTimestampFields is the ONE enumeration of every timestamp REQ
+// frontmatter can carry, and the transition each one records. Both the
+// future-stamp check (detectFutureTimestampFields, above) and the board's
+// Activity aggregation (activity.go) read it, so a stamp added to the schema
+// reaches both surfaces from a single edit. A second hand-maintained copy is
+// exactly the drift this shape exists to prevent, so do not inline this list
+// at a call site.
+func lifecycleTimestampFields(ticket *RequestTicket) []LifecycleTimestamp {
+	return []LifecycleTimestamp{
+		{"created_at", ticket.CreatedAt, "captured"},
+		{"claimed_at", ticket.ClaimedAt, "claimed"},
+		{"completed_at", ticket.CompletedAt, completionTransitionForStatus(ticket.Status)},
+		{"planning_at", ticket.PlanningAt, "planning finished"},
+		{"dispatch_at", ticket.DispatchAt, "builder dispatched"},
+		{"builder_handback_at", ticket.BuilderHandbackAt, "builder handed back"},
+		{"integration_at", ticket.IntegrationAt, "work merged"},
+		{"review_at", ticket.ReviewAt, "reviewed"},
+		{"remediation_at", ticket.RemediationAt, "remediation merged"},
+		{"re_review_at", ticket.ReReviewAt, "re-reviewed"},
+		{"release_at", ticket.ReleaseAt, "released"},
+		{"status_changed_at", ticket.StatusChangedAt, statusChangeTransitionForStatus(ticket.Status)},
+		{"blocked_at", ticket.BlockedAt, "blocked"},
+		{"testing_updated_at", ticket.TestingUpdatedAt, "testing notes updated"},
+	}
+}
+
+// completionTransitionForStatus names what a completed_at instant records. The
+// stamp is written on every terminal path, so the field alone cannot say
+// whether the REQ finished, was cancelled, or failed.
+func completionTransitionForStatus(status string) string {
+	switch status {
+	case "cancelled":
+		return "cancelled"
+	case "failed":
+		return "failed"
+	case "completed-with-issues":
+		return "completed with issues"
+	default:
+		return "completed"
+	}
+}
+
+// statusChangeTransitionForStatus names what a status_changed_at instant
+// records. The heavy-testing hold is the one flip worth naming outright — it is
+// the transition REQ-568 was raised for, and the wording matches the calendar's
+// existing label for the same state (web/board-calendar.js). Every other flip
+// reports the status it landed on rather than inventing a phrase for it.
+func statusChangeTransitionForStatus(status string) string {
+	if status == "pending-heavy-testing" {
+		return "held for heavy testing"
+	}
+	if status == "" {
+		return "status changed"
+	}
+	return "status changed to " + status
 }
 
 // parseTimestamp parses the timestamp shapes seen across REQ frontmatter:

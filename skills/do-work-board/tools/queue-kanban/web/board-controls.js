@@ -22,6 +22,7 @@
       calendar: document.getElementById("view-calendar"),
       durations: document.getElementById("view-durations"),
       timeline: document.getElementById("view-timeline"),
+      activity: document.getElementById("view-activity"),
       testing: document.getElementById("view-testing")
     };
     Object.keys(viewPanels).forEach(function (viewName) {
@@ -42,6 +43,7 @@
     document.getElementById("recent-window-group").hidden = viewState.view !== "board";
     document.getElementById("durations-colour-group").hidden = viewState.view !== "durations";
     document.getElementById("durations-window-group").hidden = viewState.view !== "durations";
+    document.getElementById("activity-window-group").hidden = viewState.view !== "activity";
     document.getElementById("filter-done-window").hidden = viewState.view !== "testing";
     document.getElementById("filter-clear").hidden = !hasActiveVisibleFilters();
 
@@ -56,6 +58,10 @@
     if (viewState.view === "timeline" && !renderedOnce.timeline) {
       renderTimelineView();
       renderedOnce.timeline = true;
+    }
+    if (viewState.view === "activity" && !renderedOnce.activity) {
+      renderActivity();
+      renderedOnce.activity = true;
     }
     if (viewState.view === "testing" && !renderedOnce.testing) {
       renderTestingView();
@@ -146,6 +152,12 @@
     document.querySelectorAll("[data-durations-window]").forEach(function (button) {
       button.addEventListener("click", function () {
         applyDurationsWindowSelection(button.getAttribute("data-durations-window"));
+      });
+    });
+
+    document.querySelectorAll("[data-activity-window]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        applyActivityWindowSelection(parseInt(button.getAttribute("data-activity-window"), 10));
       });
     });
 
