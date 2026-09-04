@@ -1,7 +1,7 @@
 ---
 id: REQ-545
 title: 'Synchronize the self-signalling upstream-fetcher probe'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-03T15:25:00Z
 user_request: UR-104
@@ -16,6 +16,7 @@ effort_estimate: effort-mechanical
 related: [REQ-525]
 write_set:
   - _dev/tests/update-script-behavior.sh
+claimed_at: 2026-09-04T13:17:16Z
 ---
 
 # Synchronize the Self-Signalling Upstream-Fetcher Probe

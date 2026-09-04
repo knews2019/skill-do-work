@@ -15,6 +15,7 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-545: Synchronize the self-signalling upstream-fetcher probe — claimed 2026-09-04T13:17:16Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 
