@@ -1,6 +1,7 @@
 package corehelpers
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -161,4 +162,115 @@ func writeQualificationRequest(t *testing.T, repository string, paths []string) 
 		t.Fatal(err)
 	}
 	return relative
+}
+
+// writeCountingBaselineScript writes a baseline command that records every invocation and
+// exits with redExitStatus on its first `redRunCount` runs, then zero.
+func writeCountingBaselineScript(t *testing.T, repository string, redRunCount int, redExitStatus int) (scriptPath string, counterPath string) {
+	t.Helper()
+	counterPath = filepath.Join(repository, "baseline-invocation-count.txt")
+	scriptPath = filepath.Join(repository, "counting-baseline.sh")
+	script := fmt.Sprintf(`#!/usr/bin/env bash
+set -u
+printf 'x' >> %q
+invocation_count=$(( $(wc -c < %q) ))
+echo "baseline run $invocation_count"
+if [ "$invocation_count" -le %d ]; then
+  exit %d
+fi
+exit 0
+`, counterPath, counterPath, redRunCount, redExitStatus)
+	if err := os.WriteFile(scriptPath, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return scriptPath, counterPath
+}
+
+func readBaselineInvocationCount(t *testing.T, counterPath string) int {
+	t.Helper()
+	contents, err := os.ReadFile(counterPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return len(contents)
+}
+
+// REQ-559: a red baseline is rerun once before anything classifies it, and only the rerun
+// is recorded — the transient failure that cost REQ-548 a whole repair lifecycle.
+func TestPreflightRerunsRedBaselineOnceAndRecordsOnlyTheRerun(t *testing.T) {
+	repository := t.TempDir()
+	scriptPath, counterPath := writeCountingBaselineScript(t, repository, 1, 3)
+	t.Setenv("DO_WORK_COMPATIBILITY_SHIM", "1")
+
+	result := handlePreflight(testContext(repository), []string{"bash", scriptPath})
+
+	if invocations := readBaselineInvocationCount(t, counterPath); invocations != 2 {
+		t.Fatalf("baseline command ran %d times, want exactly 2 (one run plus one retry)", invocations)
+	}
+	if !hasFinding(result, "PREFLIGHT-BASELINE-RETRIED") || hasFinding(result, "PREFLIGHT-BASELINE-RED") {
+		t.Fatalf("result=%#v", result)
+	}
+	var record baselineRecord
+	recordBytes, err := os.ReadFile(filepath.Join(repository, "do-work", "working", "baseline.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(recordBytes, &record); err != nil {
+		t.Fatal(err)
+	}
+	if record.ExitStatus != 0 || !record.Launched {
+		t.Fatalf("baseline.json recorded the first run instead of the rerun: %#v", record)
+	}
+	if _, err := os.Stat(filepath.Join(repository, "do-work", "working", "baseline-failures.txt")); !os.IsNotExist(err) {
+		t.Fatalf("a green rerun must leave no failures file (stat err=%v)", err)
+	}
+	if result.ExactTextOutput == nil {
+		t.Fatal("compatibility text output missing")
+	}
+	for _, expected := range []string{"exited 3 on its first run", "the rerun exited 0", "OK: test baseline passing"} {
+		if !strings.Contains(*result.ExactTextOutput, expected) {
+			t.Fatalf("progress output %q is missing %q", *result.ExactTextOutput, expected)
+		}
+	}
+	if strings.Count(*result.ExactTextOutput, "was rerun once") != 1 {
+		t.Fatalf("the retry must be reported on exactly one line: %q", *result.ExactTextOutput)
+	}
+}
+
+// REQ-559: a baseline that stays red after its one retry keeps the existing red path, with
+// the rerun's status and output as the recorded evidence.
+func TestPreflightKeepsRedBaselineWhenTheSingleRetryAlsoFails(t *testing.T) {
+	repository := t.TempDir()
+	scriptPath, counterPath := writeCountingBaselineScript(t, repository, 2, 3)
+	t.Setenv("DO_WORK_COMPATIBILITY_SHIM", "1")
+
+	result := handlePreflight(testContext(repository), []string{"bash", scriptPath})
+
+	if invocations := readBaselineInvocationCount(t, counterPath); invocations != 2 {
+		t.Fatalf("baseline command ran %d times, want exactly 2 — the retry is bounded at one", invocations)
+	}
+	if !hasFinding(result, "PREFLIGHT-BASELINE-RETRIED") || !hasFinding(result, "PREFLIGHT-BASELINE-RED") {
+		t.Fatalf("result=%#v", result)
+	}
+	var record baselineRecord
+	recordBytes, err := os.ReadFile(filepath.Join(repository, "do-work", "working", "baseline.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(recordBytes, &record); err != nil {
+		t.Fatal(err)
+	}
+	if record.ExitStatus != 3 || !record.Launched {
+		t.Fatalf("record=%#v", record)
+	}
+	failureBytes, err := os.ReadFile(filepath.Join(repository, "do-work", "working", "baseline-failures.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(failureBytes), "baseline run 2") {
+		t.Fatalf("failures file must hold the rerun's output, got %q", failureBytes)
+	}
+	if result.ExactTextOutput == nil || !strings.Contains(*result.ExactTextOutput, "the rerun exited 3") {
+		t.Fatalf("progress output=%v", result.ExactTextOutput)
+	}
 }
