@@ -290,7 +290,7 @@ Guard against these during capture:
 | "I'll clarify this during the build phase" | Resolve ambiguities now while the user is present | The capture phase is the first human-attention window — builders run autonomously |
 | "The user probably meant..." | Ask the user — present concrete options | Inventing intent is the fastest path to building the wrong thing |
 | "RED/GREEN isn't needed for this request" | Check if the request describes observable behavior | If it's testable, the RED/GREEN proof helps the builder verify correctness |
-| "I'll start processing after capture finishes" | STOP after writing files and reporting back | Capture ≠ Execute — the user decides when to run the queue |
+| "I'll start processing after capture finishes" | STOP after writing files and reporting back | Capturing intent does not authorize processing the resulting queue. |
 
 ## Red Flags
 

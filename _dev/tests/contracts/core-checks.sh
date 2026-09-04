@@ -761,5 +761,84 @@ if ! grep -qF 'request-bound execution of each mechanical evidence gate' "$cli_p
   printf 'FAIL: prime-do-work-cli.md must describe lifecycleadvance as the request-bound evidence-gate owner.\n' >&2
   fail_count=$((fail_count + 1))
 fi
+# REQ-509: one shared judgment contract must reach both active readers; local
+# rationalizations retain the audit's trigger-or-reason comparison unchanged.
+if ! python3 - "$repo_root" <<'PY_SHARED_PRINCIPLES'
+from pathlib import Path
+import difflib
+import re
+import sys
+
+repo_root = Path(sys.argv[1])
+shared_path = "skills/do-work/crew-members/shared-principles.md"
+reader_steps = {"skills/do-work/actions/work.md": "6", "skills/do-work/actions/review-work.md": "2"}
+source_files = {str(p.relative_to(repo_root)): p.read_text() for p in (repo_root / "skills").rglob("*.md")}
+
+def active_step(source_text, step_number):
+    source_text = re.sub(r"<!--.*?-->", "", source_text, flags=re.S)
+    source_text = re.sub(r"^(`{3,}|~{3,}).*?^\1[^\n]*$", "", source_text, flags=re.M | re.S)
+    match = re.search(r"^### Step " + step_number + r":.*?(?=^### |\Z)", source_text, re.M | re.S)
+    return match.group() if match else ""
+
+def rationalization_rows(file_sources):
+    rows = []
+    for file_path, source_text in sorted(file_sources.items()):
+        in_table = False
+        for line in source_text.split("\n"):
+            if line.startswith("## Common Rationalizations"):
+                in_table = True
+                continue
+            if in_table and line.startswith("## "):
+                in_table = False
+            if in_table and line.strip().startswith("|"):
+                cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+                if len(cells) >= 3 and not set(cells[0]) <= set("- ") and not cells[0].startswith("If you're thinking"):
+                    rows.append((file_path, cells[0], cells[2]))
+    return rows
+
+def shared_contract_errors(file_sources, action_rows):
+    errors = []
+    if not file_sources.get(shared_path, "").strip():
+        errors.append("shared principles file missing or empty")
+    for reader_path, step_number in reader_steps.items():
+        step_text = active_step(file_sources.get(reader_path, ""), step_number)
+        if not re.search(r"^(?:[0-9]+[a-z]?\. )?(?:\*\*)?(?:Always load|Read)(?:\*\*)? `crew-members/shared-principles\.md`", step_text, re.M):
+            errors.append(reader_path + " active shared principles load missing")
+    pair_count = sum(1 for index, first in enumerate(action_rows) for second in action_rows[index + 1:]
+                     if first[0] != second[0] and max(difflib.SequenceMatcher(None, first[1], second[1]).ratio(),
+                                                    difflib.SequenceMatcher(None, first[2], second[2]).ratio()) > 0.75)
+    if pair_count:
+        errors.append("near_identical_cross_file_pairs " + str(pair_count))
+    return errors
+
+errors = shared_contract_errors(source_files, rationalization_rows(source_files))
+if errors:
+    for error in errors:
+        print("FAIL: " + error, file=sys.stderr)
+    sys.exit(1)
+
+# Mutate only the named seam. Intact prose elsewhere cannot satisfy a missing,
+# commented, negated, or displaced load in its active step.
+for reader_path in reader_steps:
+    reader_source = source_files[reader_path]
+    load_line = next(line for line in reader_source.splitlines() if "shared-principles.md`" in line)
+    for replacement in ("", "<!-- " + load_line + " -->", "Do not load `crew-members/shared-principles.md`."):
+        mutant_sources = dict(source_files, **{reader_path: reader_source.replace(load_line, replacement, 1)})
+        assert shared_contract_errors(mutant_sources, []), "removed/disabled load survived: " + reader_path
+    mutant_sources[reader_path] = reader_source.replace(load_line, "", 1) + "\n## Displaced load\n" + load_line
+    assert shared_contract_errors(mutant_sources, []), "displaced load survived: " + reader_path
+mutant_sources = dict(source_files)
+mutant_sources.pop(shared_path)
+assert shared_contract_errors(mutant_sources, []), "missing shared file survived"
+fixture_row = '| "The queue needs a shortcut" | Keep its request boundary | Preserve the captured authorization |'
+fixture_sources = {"first.md": "## Common Rationalizations\n" + fixture_row,
+                   "second.md": "## Common Rationalizations\n" + fixture_row}
+assert shared_contract_errors(source_files, rationalization_rows(fixture_sources)), "copied cross-file row survived"
+print("shared principles loads and mutations passed; near_identical_cross_file_pairs 0")
+PY_SHARED_PRINCIPLES
+then
+  fail_count=$((fail_count + 1))
+fi
+
 [ "$fail_count" -eq 0 ] || exit 1
 printf 'core-checks contract probes passed.\n'
