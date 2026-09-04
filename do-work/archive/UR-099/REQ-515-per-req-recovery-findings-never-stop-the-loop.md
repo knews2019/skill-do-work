@@ -312,3 +312,15 @@ Neither prime this REQ lists was made stale; both still resolve every path they 
 ## Post-Merge Verification (final)
 
 `bash _dev/tests/maintainer-verify.sh` at `6211e3c`, after the two external findings were fixed: **exit 0, no failures.** The gate also ran green on the main-merge commit that brought in the advance chain, so this REQ is verified both against its own changes and against the rewritten pipeline it now sits inside.
+
+## Post-Release Findings (2026-09-04, after archival)
+
+Two P1 findings landed on knews2019/skill-do-work#180 after this REQ was archived and released as 0.279.0. Both were verified against the source. Neither is fixed; both are the next session's first work, recorded in `do-work/RESTART-PROMPT.md`.
+
+**P1-A — recovery accepts a committed-risk transaction.** `requestScopedRefusal` tests only `OutcomeFailure` and `RollbackIncomplete`. `gittransaction` defines `FailureCommittedRisk` and `exact_commit.go` returns it from seven sites *after HEAD has advanced*; a rollback that restored files but not HEAD reports `succeeded`, so no guard fires, the record passes as request-scoped, and recovery drains later journals with an unknown commit in history. **This widens what recovery accepts, which this REQ's own Constraints forbid.** Fix shape: preserve committed risk through `advanceJournal`'s `FINALIZATION-PRIMARY-COMMIT` wrap rather than flattening it to a rolled-back outcome, then treat it as shared state in the predicate. Pin it with a test that fails without the guard.
+
+**P1-B — a set-aside journal's shared lifecycle images go stale. This escalates the "carried as report-only" item above, and that earlier judgment was wrong.** When two prepared journals share `do-work/CHECKPOINT.md`, setting the first aside lets the second remove its own claim and commit; the first journal's images then match neither the original nor the current checkpoint, so its next recovery reports `FINALIZATION-LIFECYCLE-CONFLICT` with an incomplete rollback and the queue stops permanently.
+
+The re-review's reasoning for report-only — that it fails safe, and that it still beats the behaviour where the first refused record parked the whole queue — is true on both counts and does not carry the conclusion. The promise this REQ shipped is "every other REQ still runs", and that promise holds only within one queue boundary. A known hole in the headline claim shipped as a footnote. Treat it as P1.
+
+Fix shape, from the external reviewer and more specific than the re-review's wording: rebase the set-aside journal's shared lifecycle images as siblings settle, or make its later recovery tolerate sibling-owned checkpoint transitions.
