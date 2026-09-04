@@ -372,6 +372,39 @@ type FinalizationResult struct {
 	CollectionArgv        []string `json:"collection_argv"`
 }
 
+type AdvancePhaseKind string
+
+const (
+	AdvancePhaseMechanical    AdvancePhaseKind = "mechanical"
+	AdvancePhaseAgentJudgment AdvancePhaseKind = "agent_judgment"
+	AdvancePhaseComplete      AdvancePhaseKind = "complete"
+)
+
+// AdvanceMissingEvidence identifies one durable file, field, or Markdown
+// section that moves a request into its next lifecycle phase.
+type AdvanceMissingEvidence struct {
+	Kind     string `json:"kind"`
+	Path     string `json:"path"`
+	Field    string `json:"field,omitempty"`
+	Section  string `json:"section,omitempty"`
+	Expected string `json:"expected"`
+}
+
+// AdvanceLifecycleResult is the read-only per-REQ lifecycle projection. Exact
+// argv stays tokenized so text and JSON consumers never parse a display string.
+type AdvanceLifecycleResult struct {
+	RequestID        string                   `json:"request_id"`
+	RequestPath      string                   `json:"request_path"`
+	TreeSection      string                   `json:"tree_section"`
+	Status           string                   `json:"status"`
+	Route            string                   `json:"route"`
+	Phase            string                   `json:"phase"`
+	PhaseKind        AdvancePhaseKind         `json:"phase_kind"`
+	MissingEvidence  []AdvanceMissingEvidence `json:"missing_evidence"`
+	NextArgv         []string                 `json:"next_argv"`
+	VerificationArgv []string                 `json:"verification_argv"`
+}
+
 type CommandResult struct {
 	SchemaVersion        int                           `json:"schema_version"`
 	Command              string                        `json:"command"`
@@ -394,6 +427,7 @@ type CommandResult struct {
 	AlreadyGreenRepair   *AlreadyGreenRepairValidation `json:"already_green_repair,omitempty"`
 	Finalization         *FinalizationResult           `json:"finalization,omitempty"`
 	Finalizations        []FinalizationResult          `json:"finalizations"`
+	Advance              *AdvanceLifecycleResult       `json:"advance,omitempty"`
 	// ExactTextOutput preserves compatibility-shaped stdout without polluting
 	// JSON with an opaque duplicate. It must be derived from the same typed
 	// observation carried by the result.
@@ -599,6 +633,17 @@ func NormalizeResult(result CommandResult) CommandResult {
 			validation.OffendingPaths = []string{}
 		}
 	}
+	if result.Advance != nil {
+		if result.Advance.MissingEvidence == nil {
+			result.Advance.MissingEvidence = []AdvanceMissingEvidence{}
+		}
+		if result.Advance.NextArgv == nil {
+			result.Advance.NextArgv = []string{}
+		}
+		if result.Advance.VerificationArgv == nil {
+			result.Advance.VerificationArgv = []string{}
+		}
+	}
 	setAsideSelfRefusal := false
 	allRefusalBlockersOwned := true
 	for index := range result.Findings {
@@ -731,6 +776,28 @@ func renderText(result CommandResult) []byte {
 		}
 		if len(finding.VerificationArgv) > 0 {
 			fmt.Fprintf(&output, "  verify: %s\n", joinArgv(finding.VerificationArgv))
+		}
+	}
+	if result.Advance != nil {
+		advance := result.Advance
+		fmt.Fprintf(&output, "advance %s [%s, %s, route %s]: %s\n", advance.RequestID, advance.TreeSection, advance.Status, advance.Route, advance.Phase)
+		fmt.Fprintf(&output, "  request: %s\n", advance.RequestPath)
+		fmt.Fprintf(&output, "  phase kind: %s\n", advance.PhaseKind)
+		for _, evidence := range advance.MissingEvidence {
+			coordinate := evidence.Path
+			if evidence.Field != "" {
+				coordinate += " field=" + evidence.Field
+			}
+			if evidence.Section != "" {
+				coordinate += " section=" + strconv.Quote(evidence.Section)
+			}
+			fmt.Fprintf(&output, "  missing %s: %s expected=%s\n", evidence.Kind, coordinate, evidence.Expected)
+		}
+		if len(advance.NextArgv) > 0 {
+			fmt.Fprintf(&output, "  next: %s\n", joinArgv(advance.NextArgv))
+		}
+		if len(advance.VerificationArgv) > 0 {
+			fmt.Fprintf(&output, "  verify: %s\n", joinArgv(advance.VerificationArgv))
 		}
 	}
 	for _, change := range result.Changes {

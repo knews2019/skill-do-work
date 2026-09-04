@@ -280,6 +280,58 @@ func TestAlreadyGreenRepairTextAndJSONCarryTheSameTypedState(t *testing.T) {
 	}
 }
 
+func TestAdvanceTextAndJSONCarryTheSameTypedLifecycleState(t *testing.T) {
+	result := CommandResult{
+		Command: "advance", Outcome: OutcomeSuccess, RepositoryRoot: "/tmp/example",
+		Advance: &AdvanceLifecycleResult{
+			RequestID: "REQ-503", RequestPath: "do-work/working/REQ-503-advance.md",
+			TreeSection: "working", Status: "claimed", Route: "C",
+			Phase: "qualify", PhaseKind: AdvancePhaseMechanical,
+			MissingEvidence: []AdvanceMissingEvidence{{
+				Kind: "section", Path: "do-work/working/REQ-503-advance.md",
+				Section: "Qualification", Expected: "typed qualification result",
+			}},
+			NextArgv:         []string{"do-work-cli", "--format", "json", "qualify", "--request-path", "do-work/working/REQ-503-advance.md"},
+			VerificationArgv: []string{"do-work-cli", "--format", "json", "advance", "REQ-503"},
+		},
+	}
+
+	textOutput, err := RenderResult(result, FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		"advance REQ-503 [working, claimed, route C]: qualify",
+		"phase kind: mechanical",
+		`missing section: do-work/working/REQ-503-advance.md section="Qualification" expected=typed qualification result`,
+		"next: do-work-cli --format json qualify --request-path do-work/working/REQ-503-advance.md",
+		"verify: do-work-cli --format json advance REQ-503",
+	} {
+		if !strings.Contains(string(textOutput), expected) {
+			t.Errorf("text output missing %q:\n%s", expected, textOutput)
+		}
+	}
+
+	jsonOutput, err := RenderResult(result, FormatJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded CommandResult
+	if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.Advance == nil || decoded.Advance.Phase != "qualify" || decoded.Advance.PhaseKind != AdvancePhaseMechanical ||
+		!reflect.DeepEqual(decoded.Advance.NextArgv, result.Advance.NextArgv) || !reflect.DeepEqual(decoded.Advance.VerificationArgv, result.Advance.VerificationArgv) ||
+		len(decoded.Advance.MissingEvidence) != 1 || decoded.Advance.MissingEvidence[0].Section != "Qualification" {
+		t.Fatalf("JSON lost typed advance state: %#v", decoded.Advance)
+	}
+
+	normalized := NormalizeResult(CommandResult{Advance: &AdvanceLifecycleResult{}})
+	if normalized.Advance.MissingEvidence == nil || normalized.Advance.NextArgv == nil || normalized.Advance.VerificationArgv == nil {
+		t.Fatalf("advance collections must normalize non-null: %#v", normalized.Advance)
+	}
+}
+
 func TestOutcomeExitCodes(t *testing.T) {
 	tests := []struct {
 		outcome CommandOutcome

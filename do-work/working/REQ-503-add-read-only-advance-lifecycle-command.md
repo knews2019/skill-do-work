@@ -42,6 +42,7 @@ claimed_at: 2026-09-04T15:20:34Z
 preflight_at: 2026-09-04T15:22:08Z
 dispatch_at: 2026-09-04T15:22:56Z
 builder_handback_at: 2026-09-04T15:39:51Z
+integration_at: 2026-09-04T15:40:31Z
 ---
 
 # Add the Read-Only advance Lifecycle Command
@@ -51,8 +52,8 @@ Add `do-work-cli advance REQ-NNN`: for the REQ's route, report the current lifec
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** The Plan and Explore agents defined the six-file command/result-model/registration/prime boundary, route matrix, typed refusals, and test-first implementation order.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** Added the snapshot-driven read-only command, typed projection, registration, phase/refusal tests, and prime documentation in exactly the six declared files.
+- [x] **[UNIFY]:** Reviewed the complete six-file diff; focused tests, module tests, vet, the real CLI seam, diff checks, and the canonical repository gate passed on the builder branch.
 
 ## Why
 Every later move in this chain deletes prose by pointing at `advance`. Landing it read-only first means it changes no behavior, so it needs no prose deletion and every other REQ can depend on it.
@@ -169,3 +170,25 @@ The six-file scope is sufficient. No action prose, request parser, repository di
 **Dependencies:** Installed; Go 1.26.1 and the repository gate dependencies were verified by the recorded green run.
 
 *Checked by work action.*
+
+## Implementation Summary
+
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go` (new) — resolves one canonical request snapshot and classifies its next route-aware lifecycle phase without mutation.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go` (new) — covers Route A/B/C phase progression, typed refusals, exact argv, JSON/text output, and byte-for-byte read-only behavior.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified) — adds the first-class lifecycle advance projection and deterministic rendering.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified) — locks text/JSON parity and non-null collections for the new projection.
+- `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go` (modified) — registers the lifecycle advance command family once.
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — documents command ownership, the phase table, evidence boundaries, read-only guarantee, and refusal codes.
+
+## Decisions
+
+- **D-01 — canonical identity:** Reuse one repository snapshot and `requeststate.ResolveTarget` so lifecycle classification cannot drift from existing collision and identity authority.
+- **D-02 — local heading evidence:** Keep a narrow exact-heading scanner inside the new package because existing section helpers are private and parser expansion is outside this foundation's scope.
+- **D-03 — durable evidence only:** Project preflight at the Scope-to-Implementation-Summary boundary because successful preflight has no durable timestamp or section.
+- **D-04 — typed judgment boundary:** Leave `next_argv` empty for judgment phases; only existing deterministic commands receive complete tokenized argv.
+- **D-05 — current blocked owner:** Point blocked requests at targeted `next`, the current owner of the bounded probe, rather than the obsolete standalone blocked-check composition.
+- **D-06 — Route A exception:** Project Route A testing as agent judgment immediately after qualification because Route A does not run scope drift.
+
+## Discovered Tasks
+
+None.
