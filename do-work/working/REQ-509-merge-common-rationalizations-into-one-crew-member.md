@@ -1,7 +1,7 @@
 ---
 id: REQ-509
 title: '[impact-rule-change] Merge the Common Rationalizations tables into one crew member'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -15,6 +15,7 @@ maintenance: true
 impact: impact-rule-change
 effort_estimate: effort-mechanical
 write_set: [skills/do-work/crew-members/, skills/do-work/actions/, _dev/tests/contract-regressions.sh]
+claimed_at: 2026-09-04T22:05:00Z
 ---
 
 # Merge the Common Rationalizations Tables Into One Crew Member
