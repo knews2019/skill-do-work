@@ -268,13 +268,25 @@ func closureMoves(snapshot *repositorymodel.RepositorySnapshot, target *reposito
 			moves = append(moves, FileMove{SourcePath: source, DestinationPath: destination, ExpectedBytes: append([]byte(nil), requestFile.ContentBytes...)})
 		}
 	}
-	for _, userRequestFile := range snapshot.UserRequestFiles {
-		if userRequestFile.TypedRecord.RequestID != userRequestID || userRequestFile.TreeSection != "user-requests" {
-			continue
-		}
-		source := filepath.ToSlash(filepath.Join("do-work", filepath.FromSlash(userRequestFile.RelativePath)))
-		destination := filepath.ToSlash(filepath.Join(archivePrefix, filepath.Base(userRequestFile.RelativePath)))
-		moves = append(moves, FileMove{SourcePath: source, DestinationPath: destination, ExpectedBytes: append([]byte(nil), userRequestFile.ContentBytes...)})
+	activeURDir := filepath.Join(snapshot.RepositoryRoot, "do-work", "user-requests", userRequestID)
+	if info, err := os.Stat(activeURDir); err == nil && info.IsDir() {
+		_ = filepath.WalkDir(activeURDir, func(path string, entry os.DirEntry, err error) error {
+			if err != nil || entry.IsDir() {
+				return nil
+			}
+			rel, relErr := filepath.Rel(activeURDir, path)
+			if relErr != nil {
+				return nil
+			}
+			source := filepath.ToSlash(filepath.Join("do-work", "user-requests", userRequestID, rel))
+			destination := filepath.ToSlash(filepath.Join(archivePrefix, rel))
+			fileBytes, readErr := os.ReadFile(path)
+			if readErr != nil {
+				return nil
+			}
+			moves = append(moves, FileMove{SourcePath: source, DestinationPath: destination, ExpectedBytes: fileBytes})
+			return nil
+		})
 	}
 	sort.Slice(moves, func(i, j int) bool { return moves[i].SourcePath < moves[j].SourcePath })
 	return moves

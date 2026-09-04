@@ -83,14 +83,23 @@ func ApplyPlan(ctx context.Context, plan StatePlan) resultmodel.CommandResult {
 				return recordError
 			}
 		}
-		removedURDirectories := map[string]bool{}
+		var removedURDirectories []string
+		seenURDirs := map[string]bool{}
 		for _, move := range plan.AdditionalMoves {
 			if strings.HasPrefix(move.SourcePath, "do-work/user-requests/") {
-				removedURDirectories[filepath.Dir(move.SourcePath)] = true
+				for dir := filepath.Dir(move.SourcePath); strings.HasPrefix(dir, "do-work/user-requests/"); dir = filepath.Dir(dir) {
+					if !seenURDirs[dir] {
+						seenURDirs[dir] = true
+						removedURDirectories = append(removedURDirectories, dir)
+					}
+				}
 			}
 		}
-		for directory := range removedURDirectories {
-			if removeError := os.Remove(filepath.Join(plan.RepositoryRoot, filepath.FromSlash(directory))); removeError != nil {
+		sort.Slice(removedURDirectories, func(i, j int) bool {
+			return len(removedURDirectories[i]) > len(removedURDirectories[j])
+		})
+		for _, directory := range removedURDirectories {
+			if removeError := os.Remove(filepath.Join(plan.RepositoryRoot, filepath.FromSlash(directory))); removeError != nil && !os.IsNotExist(removeError) {
 				return fmt.Errorf("active UR directory was not empty after planned closure: %s: %w", directory, removeError)
 			}
 		}
