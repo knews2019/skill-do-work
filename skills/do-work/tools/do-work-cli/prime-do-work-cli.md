@@ -14,7 +14,7 @@ The standard-library Go module under this directory is the canonical implementat
 - `internal/repositorymodel/` owns one-pass do-work discovery, exact paths, collisions, and REQ allocation.
 - `internal/dependencygraph/` derives readiness, reverse edges, cycles, and depth from a repository snapshot.
 - `internal/nextselection/` owns read-only target expansion, queue readiness, process-tree-owned blocked probes, wave/fan-out bounds, estimates, and typed selected/excluded records.
-- `internal/lifecycleadvance/` owns queue selection-and-claim composition, read-only working/archive lifecycle projection, the public finalization-first recovery composition, and explicit session-end checkpoint mutation. Writer evidence stays structural and tokenized argv never interpolates it.
+- `internal/lifecycleadvance/` owns queue selection-and-claim composition, working/archive lifecycle projection, request-bound execution of each mechanical evidence gate through the existing core/gate-evidence handlers, the public finalization-first recovery composition, and explicit session-end checkpoint mutation. Gate inputs and findings stay structured, bounded, and tokenized; judgment remains in the action.
 - `internal/corehelpers/` owns the remaining utility handlers and leaf check, inventory, Git, publication, reservation, and survey mechanics; shared download, timestamp, probe, and provenance primitives remain with their domain owners.
 - `internal/hookcommands/` owns core and memory SessionStart plus memory Stop protocols; retained hook scripts only launch these commands.
 - `internal/knowledgecommands/` owns BKB scaffold/status/structural scans, Dream's seven deterministic scans, Interview list/status/export/ingest/reset/version mechanics, and Memory's exact store plans, lexical recall, status/bootstrap/audit probes; actions retain semantic judgment, reports, locks, consent, consolidation, transcript summarization, optional semantic recall, and repair/recommendation choice.
@@ -38,17 +38,17 @@ The standard-library Go module under this directory is the canonical implementat
 
 ## Advance phase table
 
-Queue-mode `advance` (no target, target tokens, or queue flags) selects from canonical `next` evidence, records archive-collision and dependency-cycle holds, runs blocked probes, and commits unblock/claim transactions per request. Its typed `queue_advance` evidence freezes targeted membership and returns stateless continuation argv. Exact working/archive targets remain byte-for-byte read-only lifecycle projection, while explicit `advance --checkpoint` may change only `do-work/CHECKPOINT.md` and preserves every structurally discovered live claim record. Mechanical phases return an exact `next_argv`; judgment phases return no command and are named `agent judgment: <what>`.
+Queue-mode `advance` (no target, target tokens, or queue flags) selects from canonical `next` evidence, records archive-collision and dependency-cycle holds, runs blocked probes, and commits unblock/claim transactions per request. Its typed `queue_advance` evidence freezes targeted membership and returns stateless continuation argv. Exact working/archive targets remain byte-for-byte read-only until a supported mechanical phase receives its exact request-bound inputs; that invocation runs the gate and returns ordered `gate_records`. A missing action-owned input returns `needs_input` with exact argv, while judgment phases return no command and are named `agent judgment: <what>`. Explicit `advance --checkpoint` may change only `do-work/CHECKPOINT.md` and preserves every structurally discovered live claim record.
 
 | Evidence boundary | Route A | Route B | Route C |
 |---|---|---|---|
 | Queue | queue-mode `advance` selects and commits the claim; successful blocked probes commit unblock then claim | same | same |
-| Claimed, before build | triage → `estimate-p50` → planning-skip judgment | triage → estimate → planning-skip → exploration → scope → `preflight` | triage → estimate → planning → exploration → scope → `preflight` |
-| Built | `qualify` → testing judgment | `qualify` → `scope-drift`/testing | same |
+| Claimed, before build | triage → advance executes `estimate-p50` → planning-skip judgment | triage → advance executes estimate → planning-skip → exploration → scope → `preflight` plus green-evidence check | triage → advance executes estimate → planning → exploration → scope → `preflight` plus green-evidence check |
+| Built | advance executes `qualify` → focused-test/green-gate evidence → testing judgment | advance executes `qualify` + `scope-drift` → focused-test/green-gate evidence → testing judgment | same |
 | Tested | review → lessons/orientation → finalization-manifest judgment | same | same |
 | Archive | missing terminal provenance → `recover-finalization --discover`; otherwise complete | same | same |
 
-Exact `##` sections are intermediate evidence. A clean preflight has no durable section, so the preflight phase remains current until `## Implementation Summary` exists. Finalization stays judgment until the action supplies a manifest path. `ADVANCE-EVIDENCE-MISSING` refuses contradictory ordering or unusable identity; `ADVANCE-PHASE-UNKNOWN` refuses impossible tree/status/route combinations. Queue-mode `advance` consumes `nextselection`'s blocked-probe evidence; `run-blocked-check` is not a second authority.
+Exact `##` sections are intermediate evidence. A clean preflight has no durable section, so the preflight phase remains current until `## Implementation Summary` exists. Finalization stays judgment until the action supplies a manifest path. `ADVANCE-EVIDENCE-MISSING` refuses contradictory ordering or unusable identity; `ADVANCE-PHASE-UNKNOWN` refuses impossible tree/status/route combinations. Every gate record binds the exact discovered request ID and path. Queue-mode `advance` and the focused-test gate consume `nextselection`'s bounded blocked-probe evidence; `run-blocked-check` is not a second authority.
 
 ## Traps
 

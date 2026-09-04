@@ -21,6 +21,24 @@ func TestBlockedProbePreservesRawStatus(t *testing.T) {
 		t.Fatalf("status=%d err=%v", status, err)
 	}
 }
+
+func TestBlockedProbeEvidenceBoundsAndNormalizesDiagnostics(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	probe := fmt.Sprintf("printf '%s\\r\\n'; yes x | head -c 70000; exit 29", repositoryRoot)
+	evidence, err := RunBlockedProbeEvidenceAtRoot(repositoryRoot, []byte(probe), 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if evidence.ExitStatus != 29 || !evidence.Launched || evidence.TimedOut {
+		t.Fatalf("evidence=%#v", evidence)
+	}
+	if strings.Contains(evidence.Diagnostic, repositoryRoot) || !strings.Contains(evidence.Diagnostic, "<repo-root>") || !strings.Contains(evidence.Diagnostic, "[diagnostic truncated]") {
+		t.Fatalf("diagnostic was not normalized and bounded: %q", evidence.Diagnostic)
+	}
+	if evidence.DiagnosticSHA256 == "" || len(evidence.Diagnostic) > blockedProbeDiagnosticLimit+64 {
+		t.Fatalf("diagnostic evidence=%#v", evidence)
+	}
+}
 func TestBlockedProbeTimeoutKillsDescendantGroup(t *testing.T) {
 	directory := t.TempDir()
 	pidPath := filepath.Join(directory, "child.pid")

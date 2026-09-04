@@ -4,6 +4,7 @@ package nextselection
 
 import (
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -11,20 +12,40 @@ import (
 	"time"
 )
 
-func runOwnedProbe(repositoryRoot string, probeBytes []byte, timeout time.Duration) (int, error) {
+func runOwnedProbe(repositoryRoot string, probeBytes []byte, timeout time.Duration, diagnosticWriter io.Writer) (int, error) {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(signalChannel)
+	diagnosticReader, diagnosticPipe, pipeError := os.Pipe()
+	if pipeError != nil {
+		return BlockedProbeLaunchStatus, pipeError
+	}
+	diagnosticDone := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(diagnosticWriter, diagnosticReader)
+		_ = diagnosticReader.Close()
+		close(diagnosticDone)
+	}()
+	finishDiagnostics := func() {
+		_ = diagnosticPipe.Close()
+		<-diagnosticDone
+	}
 	command := exec.Command("sh", "-c", string(probeBytes))
 	command.Dir = repositoryRoot
+	command.Stdout = diagnosticPipe
+	command.Stderr = diagnosticPipe
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := command.Start(); err != nil {
+		finishDiagnostics()
 		return BlockedProbeLaunchStatus, err
 	}
+	_ = diagnosticPipe.Close()
 	processGroup, err := syscall.Getpgid(command.Process.Pid)
 	if err != nil || processGroup != command.Process.Pid {
 		_ = command.Process.Kill()
 		_ = command.Wait()
+		_ = diagnosticReader.Close()
+		<-diagnosticDone
 		if err == nil {
 			err = errors.New("probe process group was not isolated")
 		}
@@ -38,9 +59,11 @@ func runOwnedProbe(repositoryRoot string, probeBytes []byte, timeout time.Durati
 	case waitError := <-done:
 		status := probeExitStatus(waitError)
 		cleanupReapedProcessGroup(processGroup)
+		<-diagnosticDone
 		return status, nil
 	case <-timer.C:
 		terminateOwnedProcessGroup(processGroup, syscall.SIGTERM, done)
+		<-diagnosticDone
 		return BlockedProbeTimeoutStatus, nil
 	case received := <-signalChannel:
 		forwarded, ok := received.(syscall.Signal)
@@ -48,6 +71,7 @@ func runOwnedProbe(repositoryRoot string, probeBytes []byte, timeout time.Durati
 			forwarded = syscall.SIGTERM
 		}
 		terminateOwnedProcessGroup(processGroup, forwarded, done)
+		<-diagnosticDone
 		status := 128 + int(forwarded)
 		return status, BlockedProbeInterruption{ExitStatus: status}
 	}

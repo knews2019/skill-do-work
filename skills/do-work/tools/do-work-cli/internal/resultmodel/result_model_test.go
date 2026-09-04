@@ -332,6 +332,12 @@ func TestAdvanceTextAndJSONCarryTheSameTypedLifecycleState(t *testing.T) {
 			}},
 			NextArgv:         []string{"do-work-cli", "--format", "json", "qualify", "--request-path", "do-work/working/REQ-503-advance.md"},
 			VerificationArgv: []string{"do-work-cli", "--format", "json", "advance", "REQ-503"},
+			GateRecords: []AdvanceGateRecord{{
+				RequestID: "REQ-503", RequestPath: "do-work/working/REQ-503-advance.md",
+				GateID: "run-blocked-check", Provenance: AdvanceGateBaselineRecord,
+				State: AdvanceGateFindings, Outcome: OutcomeFindings,
+				FocusedTest: &FocusedTestResult{ExitStatus: 9, Launched: true, DiagnosticSHA256: "abc", BaselineState: FocusedBaselineNewRed},
+			}},
 		},
 	}
 
@@ -345,6 +351,8 @@ func TestAdvanceTextAndJSONCarryTheSameTypedLifecycleState(t *testing.T) {
 		`missing section: do-work/working/REQ-503-advance.md section="Qualification" expected=typed qualification result`,
 		"next: do-work-cli --format json qualify --request-path do-work/working/REQ-503-advance.md",
 		"verify: do-work-cli --format json advance REQ-503",
+		"gate run-blocked-check [baseline_record, findings]: findings",
+		"focused test: status=9 baseline=new_red diagnostic=abc",
 	} {
 		if !strings.Contains(string(textOutput), expected) {
 			t.Errorf("text output missing %q:\n%s", expected, textOutput)
@@ -361,12 +369,13 @@ func TestAdvanceTextAndJSONCarryTheSameTypedLifecycleState(t *testing.T) {
 	}
 	if decoded.Advance == nil || decoded.Advance.Phase != "qualify" || decoded.Advance.PhaseKind != AdvancePhaseMechanical ||
 		!reflect.DeepEqual(decoded.Advance.NextArgv, result.Advance.NextArgv) || !reflect.DeepEqual(decoded.Advance.VerificationArgv, result.Advance.VerificationArgv) ||
-		len(decoded.Advance.MissingEvidence) != 1 || decoded.Advance.MissingEvidence[0].Section != "Qualification" {
+		len(decoded.Advance.MissingEvidence) != 1 || decoded.Advance.MissingEvidence[0].Section != "Qualification" ||
+		len(decoded.Advance.GateRecords) != 1 || decoded.Advance.GateRecords[0].FocusedTest == nil || decoded.Advance.GateRecords[0].FocusedTest.BaselineState != FocusedBaselineNewRed {
 		t.Fatalf("JSON lost typed advance state: %#v", decoded.Advance)
 	}
 
 	normalized := NormalizeResult(CommandResult{Advance: &AdvanceLifecycleResult{}})
-	if normalized.Advance.MissingEvidence == nil || normalized.Advance.NextArgv == nil || normalized.Advance.VerificationArgv == nil {
+	if normalized.Advance.MissingEvidence == nil || normalized.Advance.NextArgv == nil || normalized.Advance.VerificationArgv == nil || normalized.Advance.GateRecords == nil {
 		t.Fatalf("advance collections must normalize non-null: %#v", normalized.Advance)
 	}
 }

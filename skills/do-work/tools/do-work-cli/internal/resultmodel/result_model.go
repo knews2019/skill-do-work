@@ -326,6 +326,33 @@ type GateEvidenceResult struct {
 	BaselineRevision   string            `json:"baseline_revision"`
 }
 
+type FocusedTestBaselineState string
+
+const (
+	FocusedBaselineNotCompared FocusedTestBaselineState = "not_compared"
+	FocusedBaselineMissing     FocusedTestBaselineState = "baseline_missing"
+	FocusedBaselineUnusable    FocusedTestBaselineState = "baseline_unusable"
+	FocusedBaselineMatchingRed FocusedTestBaselineState = "matching_red"
+	FocusedBaselineNewRed      FocusedTestBaselineState = "new_red"
+	FocusedBaselineGreen       FocusedTestBaselineState = "green"
+)
+
+// FocusedTestResult is the bounded, machine-comparable result of one owned
+// focused-test probe. The diagnostic hash is computed from the same bounded
+// normalized bytes carried in Diagnostic.
+type FocusedTestResult struct {
+	ProbeFile        string                   `json:"probe_file"`
+	ExitStatus       int                      `json:"exit_status"`
+	Launched         bool                     `json:"launched"`
+	TimedOut         bool                     `json:"timed_out"`
+	Diagnostic       string                   `json:"diagnostic"`
+	DiagnosticSHA256 string                   `json:"diagnostic_sha256"`
+	BaselineState    FocusedTestBaselineState `json:"baseline_state"`
+	BaselineStatus   int                      `json:"baseline_exit_status"`
+	BaselineLaunched bool                     `json:"baseline_launched"`
+	CommandText      string                   `json:"command_text"`
+}
+
 // AlreadyGreenRepairValidation is the single machine projection consumed by
 // work's TDD exception and review's no-diff exception. Both decisions are
 // derived from the same observation set; review additionally requires exact
@@ -380,6 +407,43 @@ const (
 	AdvancePhaseComplete      AdvancePhaseKind = "complete"
 )
 
+type AdvanceGateState string
+
+const (
+	AdvanceGateNeedsInput AdvanceGateState = "needs_input"
+	AdvanceGateSatisfied  AdvanceGateState = "satisfied"
+	AdvanceGateFindings   AdvanceGateState = "findings"
+	AdvanceGateFailed     AdvanceGateState = "failed"
+)
+
+type AdvanceGateProvenance string
+
+const (
+	AdvanceGateExistingEvidence AdvanceGateProvenance = "existing_evidence"
+	AdvanceGateExecuted         AdvanceGateProvenance = "advance_executed"
+	AdvanceGateBaselineRecord   AdvanceGateProvenance = "baseline_record"
+	AdvanceGateMergedRange      AdvanceGateProvenance = "merged_range"
+)
+
+// AdvanceGateRecord binds one subordinate evidence command to the request the
+// caller selected. Its collections stay typed so an action never parses a
+// compatibility paragraph back into lifecycle state.
+type AdvanceGateRecord struct {
+	RequestID        string                `json:"request_id"`
+	RequestPath      string                `json:"request_path"`
+	GateID           string                `json:"gate_id"`
+	Provenance       AdvanceGateProvenance `json:"provenance"`
+	State            AdvanceGateState      `json:"state"`
+	Outcome          CommandOutcome        `json:"outcome"`
+	Findings         []CommandFinding      `json:"findings"`
+	Changes          []RecordedChange      `json:"changes"`
+	OutputLines      []string              `json:"output_lines"`
+	NextArgv         []string              `json:"next_argv"`
+	VerificationArgv []string              `json:"verification_argv"`
+	FocusedTest      *FocusedTestResult    `json:"focused_test,omitempty"`
+	GreenGate        *GateEvidenceResult   `json:"green_gate,omitempty"`
+}
+
 // AdvanceMissingEvidence identifies one durable file, field, or Markdown
 // section that moves a request into its next lifecycle phase.
 type AdvanceMissingEvidence struct {
@@ -403,6 +467,7 @@ type AdvanceLifecycleResult struct {
 	MissingEvidence  []AdvanceMissingEvidence `json:"missing_evidence"`
 	NextArgv         []string                 `json:"next_argv"`
 	VerificationArgv []string                 `json:"verification_argv"`
+	GateRecords      []AdvanceGateRecord      `json:"gate_records"`
 }
 
 // QueueAdvanceMember is one member of a queue invocation's frozen target set.
@@ -488,6 +553,7 @@ type CommandResult struct {
 	AuditMetrics         *AuditMetricsResult           `json:"audit_metrics,omitempty"`
 	GateDeferral         *GateDeferralResult           `json:"gate_deferral,omitempty"`
 	GateEvidence         *GateEvidenceResult           `json:"gate_evidence,omitempty"`
+	FocusedTest          *FocusedTestResult            `json:"focused_test,omitempty"`
 	HeavyVerification    *HeavyVerificationPlan        `json:"heavy_verification,omitempty"`
 	HeavyVerificationRun *HeavyVerificationRun         `json:"heavy_verification_run,omitempty"`
 	AlreadyGreenRepair   *AlreadyGreenRepairValidation `json:"already_green_repair,omitempty"`
@@ -712,6 +778,27 @@ func NormalizeResult(result CommandResult) CommandResult {
 		if result.Advance.VerificationArgv == nil {
 			result.Advance.VerificationArgv = []string{}
 		}
+		if result.Advance.GateRecords == nil {
+			result.Advance.GateRecords = []AdvanceGateRecord{}
+		}
+		for gateIndex := range result.Advance.GateRecords {
+			gate := &result.Advance.GateRecords[gateIndex]
+			if gate.Findings == nil {
+				gate.Findings = []CommandFinding{}
+			}
+			if gate.Changes == nil {
+				gate.Changes = []RecordedChange{}
+			}
+			if gate.OutputLines == nil {
+				gate.OutputLines = []string{}
+			}
+			if gate.NextArgv == nil {
+				gate.NextArgv = []string{}
+			}
+			if gate.VerificationArgv == nil {
+				gate.VerificationArgv = []string{}
+			}
+		}
 	}
 	if result.QueueAdvance != nil {
 		queueAdvance := result.QueueAdvance
@@ -912,6 +999,21 @@ func renderText(result CommandResult) []byte {
 		}
 		if len(advance.VerificationArgv) > 0 {
 			fmt.Fprintf(&output, "  verify: %s\n", joinArgv(advance.VerificationArgv))
+		}
+		for _, gate := range advance.GateRecords {
+			fmt.Fprintf(&output, "  gate %s [%s, %s]: %s\n", gate.GateID, gate.Provenance, gate.State, gate.Outcome)
+			for _, line := range gate.OutputLines {
+				fmt.Fprintf(&output, "    evidence: %s\n", line)
+			}
+			if gate.FocusedTest != nil {
+				fmt.Fprintf(&output, "    focused test: status=%d baseline=%s diagnostic=%s\n", gate.FocusedTest.ExitStatus, gate.FocusedTest.BaselineState, gate.FocusedTest.DiagnosticSHA256)
+			}
+			if gate.GreenGate != nil {
+				fmt.Fprintf(&output, "    green gate: state=%s matches=%t\n", gate.GreenGate.State, gate.GreenGate.Matches)
+			}
+			if len(gate.NextArgv) > 0 {
+				fmt.Fprintf(&output, "    next: %s\n", joinArgv(gate.NextArgv))
+			}
 		}
 	}
 	if result.QueueAdvance != nil {

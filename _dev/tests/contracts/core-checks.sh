@@ -681,5 +681,45 @@ EOF
   fi
 done
 rm -rf -- "$scope_drift_probe_dir"
+
+# Mechanical evidence gates are executed by advance. The action retains only
+# judgment and the two explicit anti-rationalization/closure boundaries.
+work_action="$core_root/actions/work.md"
+work_reference="$core_root/actions/work-reference.md"
+cli_prime="$core_root/tools/do-work-cli/prime-do-work-cli.md"
+if ! grep -qF '### Mechanical Evidence-Gate Loop' "$work_action" \
+    || ! grep -qF 'advance.gate_records' "$work_action"; then
+  printf 'FAIL: actions/work.md must route mechanical evidence through the named advance gate loop and consume typed gate records.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+for retired_heading in \
+  '### Step 3.6:' \
+  '### Step 5.75:' \
+  '### Step 6.3:' \
+  '### Step 6.5:'; do
+  if grep -qF "$retired_heading" "$work_action"; then
+    printf 'FAIL: actions/work.md must not restore the retired procedural heading %s\n' "$retired_heading" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+for retired_recipe in \
+  'tools/checks/preflight.sh' \
+  'tools/checks/qualify.sh' \
+  'check-green-gate --' \
+  'record-green-gate --gate-exit-status'; do
+  if grep -qF "$retired_recipe" "$work_action"; then
+    printf 'FAIL: actions/work.md must not duplicate the advance-owned mechanical recipe %s\n' "$retired_recipe" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+if ! grep -qF '## Qualification Anti-Rationalization Table (Step 6.3)' "$work_reference" \
+    || ! grep -qF '## Finding-Closure Ratchet (Step 6.5)' "$work_reference"; then
+  printf 'FAIL: work-reference.md must retain the judgment-owned qualification table and finding-closure ratchet.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+if ! grep -qF 'request-bound execution of each mechanical evidence gate' "$cli_prime"; then
+  printf 'FAIL: prime-do-work-cli.md must describe lifecycleadvance as the request-bound evidence-gate owner.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
 [ "$fail_count" -eq 0 ] || exit 1
 printf 'core-checks contract probes passed.\n'
