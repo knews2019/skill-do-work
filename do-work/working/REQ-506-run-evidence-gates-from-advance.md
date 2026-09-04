@@ -51,6 +51,7 @@ estimate:
 planning_at: 2026-09-04T17:36:43Z
 exploration_at: 2026-09-04T17:41:25Z
 dispatch_at: 2026-09-04T17:44:35Z
+builder_handback_at: 2026-09-04T18:15:00Z
 ---
 
 # Run the Evidence Gates From advance
