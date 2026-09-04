@@ -34,6 +34,9 @@ estimate:
 dispatch_at: 2026-09-04T18:23:51Z
 builder_handback_at: 2026-09-04T18:30:54Z
 integration_at: 2026-09-04T18:30:54Z
+review_at: 2026-09-04T18:47:19Z
+remediation_at: 2026-09-04T18:47:19Z
+re_review_at: 2026-09-04T18:47:19Z
 ---
 
 # Retry a Red Repository Gate Once Before Deferring or Minting a Repair REQ
@@ -181,3 +184,48 @@ Both RED results were reproduced independently by the orchestrator, by restoring
 - `TestPreflightKeepsRedBaselineWhenTheSingleRetryAlsoFails` — a command that always exits 3 is still invoked exactly twice, so the retry is bounded at one; `baseline.json` holds `exit_status: 3` and the failures file holds the second run's output.
 
 **Environment note:** this container shipped Go 1.24.7, no ShellCheck, and `just` 1.21.0. The gate requires Go 1.26.1, ShellCheck 0.11.0, and a `just` new enough for `[positional-arguments]`. All three were provisioned before the gate could run at all; none of those gaps was caused by this REQ.
+
+## Review
+
+**Verdict: Pass** — independent review, overall 90%, acceptance Pass. Full record: `do-work/runs/work-2026-09-04-182017/REQ-559-review.md`.
+
+The reviewer verified the retry end-to-end through the shipped launcher in a scratch repository, not only through the unit probes: a transient red (exit 7 then 0) records `exit_status: 0` and leaves no failures file; a persistent red (always exit 5) records the second run's status and output and reaches the existing red path unchanged; a command that cannot launch records `launched: false` with both warnings. The invocation counter reads exactly 2 in every red case and never 3, so the bound holds. The reviewer also reproduced both RED results independently in a scratch copy of the module.
+
+Both builder decisions under scrutiny were upheld. D-01 (retry in the Go handler rather than the `preflight.sh` file the write set named) is correct — the launcher contains no command execution to change, and running the shipped launcher against a flaky command produces the retry, so the behavior contract at the named entry point is genuinely satisfied. D-02 (rule keyed on the condition rather than the Step 6.5 site alone) is faithful rather than scope creep — the incident in this REQ's Why happened in the pre-build baseline lane, so a rule keyed only at Step 6.5 would not have prevented it.
+
+**Finding I1 — fixed, not deferred.** The reviewer classified it report-only, but Detailed Requirement 5 of this REQ is "delete any sentence that would now contradict the rule", so a surviving contradicting sentence is an unmet requirement of this REQ rather than a follow-up. Two sentences in `work-reference.md`'s already-green repair section asserted a single gate run ("the pre-build run is this branch's only gate run", "Done means one gate run plus bookkeeping"). Under the retry, a repair whose pre-build gate flakes reaches the same already-green no-op after two runs of one argv — the REQ-548 shape this REQ exists to remove — so the stale wording sat in the case that matters most, where an agent could read it as a hard budget and conclude the retry does not apply to a repair REQ's pre-build gate.
+
+A sweep for the same assumption found one further instance the review had not flagged, in `work.md` Step 6.5 item 4 ("its pre-build run is its only gate run"). Both now name the gate *lane* rather than a run count, which is the claim those sentences were actually making.
+
+**Remediation:** commits `b05d686` and `9e97666` on the REQ's branch, re-merged twice. `<pre>` was held at `904b4d3` across both re-merges per the cumulative-range rule, so the final merge range is `904b4d3..a835258` and covers the original work plus both fixes. Re-qualification against that range passed.
+
+Reviewer suggestions recorded but not implemented here (they add coverage rather than close a requirement): a probe that a green baseline command is invoked exactly once, and a probe for a retry whose second run cannot launch.
+
+## Lessons Learned
+
+**What worked:**
+- Looking for the site that actually runs the command instead of the site the write set named. `preflight.sh` is a launcher; the retry belongs where the process is spawned. The write set is a declaration of intent, not a map of where logic lives.
+- Keying the prose rule on the condition ("any direct non-zero exit of the canonical gate argv") rather than on one call site. Two lanes needed it and only one was named in the brief; a site-keyed rule would have shipped a fix that missed the incident it was written for.
+
+**What didn't:**
+- The first restatement sweep missed two sentences because it searched for the new concept ("retry") rather than for the old assumption ("only gate run", "one gate run"). Sweeping for what a change *invalidates* finds more than sweeping for what it introduces. The reviewer caught one instance; a follow-up grep for the same phrasing found the second.
+- Treating a red baseline as a signal about the code. Three separate gate failures in this run were missing or outdated tooling (Go, ShellCheck, `just`) and a wall-clock budget miss on a slow container. None was a defect. A gate that cannot start is not the same as a gate that fails.
+
+**Worth knowing:**
+- The retry records only the second run, so a failure seen once and not again never enters `baseline-failures.txt`. If it reappears at Step 6.5 it is treated as a candidate regression rather than silently excluded. That is the safe direction, and it is deliberate.
+- In this repository the same script is both the Step 5 pre-flight test command and the Step 5.75 canonical gate, so a genuinely red suite can now cost up to four full runs in one REQ. Bounded and correct, but it is the wall-clock price of a real failure here.
+- `preflightCompatibilityText` renders every finding as a hard-coded literal except the retry case, which reads `finding.Evidence[0]`. That is the only way to get both exit statuses into one line without a second data channel; it is worth a general evidence-carrying convention if another finding ever needs the same thing.
+
+## Orientation
+
+A repository gate that fails once and passes on the next run no longer costs a deferral and a minted repair REQ. Lives in the work-pipeline gate handling: the mechanics in the pre-flight command handler of the do-work CLI, the rule in the work action's reference under Repository Gate Deferral and Resumption, cited from both the pre-build baseline lane and the post-merge lane.
+
+Neither prime this REQ lists was made stale by the change: `_dev/primes/prime-action-files.md` and `_dev/primes/prime-shell-commands.md` both still resolve every path they reference.
+
+## Post-Merge Verification
+
+`bash _dev/tests/maintainer-verify.sh` against the merged tree at `a835258`: **exit 0, no failures.**
+
+The `session-start-hook-behavior.sh` budget failure recorded at baseline and after the first merge did not recur. It ran under the 30s limit this time with no code touching it, so it was a timing flake all along — the exact failure class this REQ exists to stop paying a REQ lifecycle for. Under the old rule that flake would have deferred this REQ and minted a repair REQ that then found the gate green. The evidence is on the record here rather than in an archived no-op.
+
+Run history for the gate in this REQ: red (44s over budget) at baseline, red (39s) after the first merge, green after the remediation merges. Three runs, one real state.
