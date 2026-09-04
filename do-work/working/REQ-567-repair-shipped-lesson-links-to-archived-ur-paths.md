@@ -20,6 +20,7 @@ planning_at: 2026-09-04T15:10:25Z
 exploration_at: 2026-09-04T15:10:25Z
 dispatch_at: 2026-09-04T15:12:02Z
 builder_handback_at: 2026-09-04T15:14:55Z
+integration_at: 2026-09-04T15:15:16Z
 write_set: [skills/do-work/tools/do-work-cli/lessons-do-work-cli.md]
 estimate:
   p50_active_minutes: 30
@@ -42,8 +43,8 @@ Repair the repository-gate failure recorded below so dependency-gated requests c
 ## AI Execution State (P-A-U Loop)
 
 - [x] **[PLAN]:** Bound the repair to the three fingerprinted shipped links and their verified canonical archive anchors.
-- [ ] **[APPLY]:** Change only the three declared URL destinations.
-- [ ] **[UNIFY]:** Review the exact diff and prove the unchanged canonical gate is green.
+- [x] **[APPLY]:** Changed only the three declared URL destinations to their canonical UR-095 archives and verified anchors.
+- [x] **[UNIFY]:** Reviewed the exact one-file diff; the isolated builder's focused contract and canonical gate both passed before integration.
 
 ## Instances
 
@@ -107,3 +108,17 @@ The only matching stale links are the three consecutive lesson bullets for REQ-4
 **Dependencies:** Installed; the unchanged canonical gate launched normally and reached the reference contract.
 
 *Checked by work action.*
+
+## Implementation Summary
+
+- Updated the REQ-491, REQ-492, and REQ-493 entries in `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` to their actual `do-work/archive/UR-095/` destinations.
+- Added the verified `#lessons-learned` anchors while preserving every family marker, label, and lesson sentence.
+- The isolated builder committed `dfcebb28e8711a3df6728830964afdb39ec7e4e2`; integration merged it as `2dda18a1f816e148258295b2b351f12695a049b4` after the queue-path guard confirmed no `do-work/` change on the builder branch.
+
+## Decisions
+
+- **D1 — canonical anchored destinations:** Use each file's actual UR-095 archive path plus `#lessons-learned`; all three destinations exist and contain the exact `## Lessons Learned` heading.
+
+## Discovered Tasks
+
+None.
