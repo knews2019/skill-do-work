@@ -1,7 +1,7 @@
 ---
 id: REQ-536
 title: 'Review fix: record real file modes in lifecycle postimages'
-status: claimed
+status: completed
 priority: now
 created_at: 2026-09-03T12:20:21Z
 user_request: UR-103
@@ -21,6 +21,8 @@ estimate:
   rationale: "Fix PlannedPostimages to stat source files for accurate postimage mode projection, add unit and recovery lock-in tests"
 write_set: [skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go, skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go]
 claimed_at: 2026-09-04T12:55:13Z
+completed_at: 2026-09-04T13:01:00Z
+commit: 2f9b4b5bcfbd9fa2bb526338c041f98fe84a0cd5
 ---
 
 # Record Real File Modes in Lifecycle Postimages
