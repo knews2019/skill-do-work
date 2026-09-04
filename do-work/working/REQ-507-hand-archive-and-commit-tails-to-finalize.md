@@ -16,6 +16,7 @@ impact: impact-rule-change
 effort_estimate: effort-substantive
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/]
 claimed_at: 2026-09-04T18:21:29Z
+route: C
 ---
 
 # Hand the Archive and Commit Tails to finalize
@@ -68,3 +69,9 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 
 ---
 *Source: capture of the orchestrator simplification request (UR-098).*
+
+## Triage
+
+**Route: C — Complex.** This rule-changing migration removes two finalization procedures, binds advance to the existing journaled finalizer, and must preserve four distinct completion paths plus release and follow-up judgment boundaries.
+
+**Planning:** Required.
