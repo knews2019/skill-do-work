@@ -522,7 +522,7 @@ func timelineExclusionReason(ticket *RequestTicket) string {
 	case "pending-answers":
 		return "waiting on an answer from you"
 	case "pending-heavy-testing":
-		return "waiting for permission to run heavy tests"
+		return "waiting for the heavy lanes to run at queue exhaustion"
 	case "blocked":
 		return "waiting on an external condition"
 	case "blocked-archive-collision":

@@ -649,6 +649,9 @@ func validateHeavyTestingEvidence(repositoryRoot string, record requestmodel.Req
 		if len(lane.CommandArgv) == 0 || lane.ExitStatus < 0 || lane.ExitStatus > 255 {
 			return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-INVALID", fmt.Errorf("heavy lane %s requires argv and an exit status from 0 to 255", lane.LaneID)
 		}
+		if lane.WallSeconds < 0 {
+			return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-INVALID", fmt.Errorf("heavy lane %s requires a wall time of zero seconds or more", lane.LaneID)
+		}
 		for _, argument := range lane.CommandArgv {
 			if argument == "" || strings.ContainsAny(argument, "`\r\n") {
 				return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-INVALID", fmt.Errorf("heavy lane %s argv contains an unsafe token", lane.LaneID)
@@ -657,7 +660,7 @@ func validateHeavyTestingEvidence(repositoryRoot string, record requestmodel.Req
 		if requireGreen && (lane.Skipped || lane.ExitStatus != 0) {
 			return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-NOT-GREEN", fmt.Errorf("heavy lane %s is not green", lane.LaneID)
 		}
-		resolved.Lanes = append(resolved.Lanes, HeavyLaneResult{LaneID: lane.LaneID, CommandArgv: append([]string(nil), lane.CommandArgv...), ExitStatus: lane.ExitStatus, Skipped: lane.Skipped})
+		resolved.Lanes = append(resolved.Lanes, HeavyLaneResult{LaneID: lane.LaneID, CommandArgv: append([]string(nil), lane.CommandArgv...), ExitStatus: lane.ExitStatus, Skipped: lane.Skipped, WallSeconds: lane.WallSeconds})
 	}
 	return resolved, "", nil
 }
@@ -689,7 +692,7 @@ func appendHeavyVerificationResult(document *requestmodel.RequestDocument, evide
 		if lane.Skipped {
 			outcome = "skipped"
 		}
-		lines = append(lines, fmt.Sprintf("- %s: %s — `%s`", lane.LaneID, outcome, strings.Join(lane.CommandArgv, " ")))
+		lines = append(lines, fmt.Sprintf("- %s: %s, %ds — `%s`", lane.LaneID, outcome, lane.WallSeconds, strings.Join(lane.CommandArgv, " ")))
 	}
 	return appendSectionEvidence(document, "## Heavy Verification Result", []byte(strings.Join(lines, lineEnding)+lineEnding), lineEnding)
 }

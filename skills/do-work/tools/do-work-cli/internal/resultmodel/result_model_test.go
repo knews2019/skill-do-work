@@ -187,6 +187,56 @@ func TestGateEvidenceTextAndJSONCarryTheSameTypedState(t *testing.T) {
 	}
 }
 
+func TestHeavyVerificationRunTextAndJSONCarryTheSameTypedLanes(t *testing.T) {
+	result := CommandResult{
+		Command: "run-heavy-verification", Outcome: OutcomeSuccess, RepositoryRoot: "/tmp/example",
+		HeavyVerificationRun: &HeavyVerificationRun{
+			ManifestPath: "_dev/tests/heavy-lanes.json", ExecutionRevision: "4444444",
+			Lanes: []HeavyLaneExecution{
+				{LaneID: "queue-kanban-browser", CommandArgv: []string{"bash", "verify.sh", "--heavy-lane", "queue-kanban-browser"}, ExitStatus: 0, Skipped: true, WallSeconds: 2},
+				{LaneID: "update-script", CommandArgv: []string{"bash", "verify.sh", "--heavy-lane", "update-script"}, ExitStatus: 3, WallSeconds: 41},
+			},
+		},
+	}
+	textOutput, err := RenderResult(result, FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		"heavy verification run: lanes=2",
+		"manifest: _dev/tests/heavy-lanes.json",
+		"execution revision: 4444444",
+		"lane queue-kanban-browser: skipped in 2s — bash verify.sh --heavy-lane queue-kanban-browser",
+		"lane update-script: exit 3 in 41s — bash verify.sh --heavy-lane update-script",
+	} {
+		if !strings.Contains(string(textOutput), expected) {
+			t.Errorf("text output missing %q:\n%s", expected, textOutput)
+		}
+	}
+	jsonOutput, err := RenderResult(result, FormatJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded CommandResult
+	if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.HeavyVerificationRun == nil || decoded.HeavyVerificationRun.ExecutionRevision != "4444444" || len(decoded.HeavyVerificationRun.Lanes) != 2 {
+		t.Fatalf("JSON lost the typed run: %#v", decoded.HeavyVerificationRun)
+	}
+	if decoded.HeavyVerificationRun.Lanes[0].WallSeconds != 2 || !decoded.HeavyVerificationRun.Lanes[0].Skipped || decoded.HeavyVerificationRun.Lanes[1].WallSeconds != 41 || decoded.HeavyVerificationRun.Lanes[1].ExitStatus != 3 {
+		t.Fatalf("JSON lost per-lane state: %#v", decoded.HeavyVerificationRun.Lanes)
+	}
+
+	normalized := NormalizeResult(CommandResult{HeavyVerificationRun: &HeavyVerificationRun{Lanes: []HeavyLaneExecution{{LaneID: "solo-lane"}}}})
+	if normalized.HeavyVerificationRun.Lanes[0].CommandArgv == nil {
+		t.Fatal("lane argv remained nil")
+	}
+	if NormalizeResult(CommandResult{HeavyVerificationRun: &HeavyVerificationRun{}}).HeavyVerificationRun.Lanes == nil {
+		t.Fatal("lanes remained nil")
+	}
+}
+
 func TestAlreadyGreenRepairTextAndJSONCarryTheSameTypedState(t *testing.T) {
 	result := CommandResult{
 		Command: "validate-already-green-repair", Outcome: OutcomeSuccess, RepositoryRoot: "/tmp/example",

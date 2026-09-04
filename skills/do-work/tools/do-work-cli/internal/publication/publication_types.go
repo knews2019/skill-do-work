@@ -83,6 +83,9 @@ type HeavyLaneResult struct {
 	CommandArgv []string `json:"command_argv"`
 	ExitStatus  int      `json:"exit_status"`
 	Skipped     bool     `json:"skipped,omitempty"`
+	// WallSeconds is how long the lane ran, always present so a reader can
+	// compare durations across runs without inferring a missing zero.
+	WallSeconds int `json:"wall_seconds"`
 }
 
 type HeavyTestingEvidence struct {

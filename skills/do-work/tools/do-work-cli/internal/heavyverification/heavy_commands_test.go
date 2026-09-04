@@ -48,6 +48,19 @@ func TestPlanHeavyRevalidationHandlerProjectsMultipleRanges(t *testing.T) {
 	}
 }
 
+func TestRunHeavyVerificationHandlerRejectsMissingLane(t *testing.T) {
+	result := handleRunHeavyVerification(commandruntime.ExecutionContext{RepositoryRoot: t.TempDir()}, []string{"--manifest", "heavy-lanes.json"})
+	if result.Outcome != resultmodel.OutcomeFailure || len(result.Findings) != 1 || result.Findings[0].Code != "HEAVY-RUN-USAGE" {
+		t.Fatalf("usage result = %#v", result)
+	}
+}
+
+func TestHandlersRegisterRunHeavyVerification(t *testing.T) {
+	if _, registered := Handlers()[CommandRunHeavyVerification]; !registered {
+		t.Fatalf("Handlers() = %v, missing %s", Handlers(), CommandRunHeavyVerification)
+	}
+}
+
 func TestPlanHeavyRevalidationHandlerRejectsIncompleteArguments(t *testing.T) {
 	result := handlePlanHeavyRevalidation(commandruntime.ExecutionContext{RepositoryRoot: t.TempDir()}, []string{"--execution-revision", "HEAD"})
 	if result.Outcome != resultmodel.OutcomeFailure || len(result.Findings) != 1 || result.Findings[0].Code != "HEAVY-REVALIDATION-USAGE" {

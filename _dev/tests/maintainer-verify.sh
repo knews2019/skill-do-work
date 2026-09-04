@@ -36,6 +36,31 @@ fixture_root=''
 fixture_script=''
 fixture_go_root=''
 with_node_bin=''
+# The exact line each engine-gated lane prints when it did not run. The whole heavy
+# tier and the isolated --heavy-lane path print the same bytes, so a caller that reads
+# one of them reads the other; the lane runner keys `skipped` on the SKIP: prefix.
+browser_lane_skip_line='SKIP: no browser is available; strict browser behavior lane was not run. Set QUEUE_KANBAN_BROWSER to name one.'
+node_lane_skip_line='SKIP: Node is unavailable; strict JavaScript behavior lane was not run.'
+
+# Reports whether a Node engine is available for the strict JavaScript behavior lane.
+node_engine_available() {
+  command -v node >/dev/null 2>&1
+}
+
+# Reports whether a browser engine is available for the strict browser behavior lane.
+# QUEUE_KANBAN_BROWSER names an engine that is not on PATH under a well-known name.
+browser_engine_available() {
+  local browser_probe_candidate
+  if [ -n "${QUEUE_KANBAN_BROWSER:-}" ]; then
+    return 0
+  fi
+  for browser_probe_candidate in google-chrome google-chrome-stable chromium chromium-browser chrome; do
+    if command -v "$browser_probe_candidate" >/dev/null 2>&1; then
+      return 0
+    fi
+  done
+  return 1
+}
 
 print_usage_and_exit() {
   printf 'usage: %s [--heavy|--heavy-lane <lane-id>|--self-test]\n' "$0" >&2
@@ -336,6 +361,30 @@ assert_failure_stage() {
   fi
 }
 
+# Asserts that an isolated --heavy-lane run with no engine available prints the lane's
+# own SKIP line and exits 0. A lane that exits red instead gives the caller no "did not
+# run" evidence to record, and a lane that exits 0 silently is indistinguishable from a
+# lane that passed.
+assert_isolated_lane_skips() {
+  local lane_id="$1"
+  local expected_skip_line="$2"
+  local engineless_path_directory="$3"
+  local lane_skip_output="$self_test_root/lane-skip-$lane_id.out"
+
+  if ! PATH="$engineless_path_directory" \
+    QUEUE_KANBAN_BROWSER='' \
+    /bin/bash "$fixture_script" --heavy-lane "$lane_id" > "$lane_skip_output" 2>&1; then
+    sed 's/^/  /' "$lane_skip_output" >&2
+    fail_self_test "the isolated $lane_id lane exited nonzero with no engine available"
+    return 1
+  fi
+  if ! grep -qF -- "$expected_skip_line" "$lane_skip_output"; then
+    sed 's/^/  /' "$lane_skip_output" >&2
+    fail_self_test "the isolated $lane_id lane did not print its explicit skip"
+    return 1
+  fi
+}
+
 run_self_test() {
   local without_node_bin
   local generic_shim
@@ -390,6 +439,10 @@ run_self_test() {
     fail_self_test 'the no-Node heavy path did not print its explicit skip'
     return 1
   fi
+  # The same contract one lane at a time: the planner selects lanes individually, so an
+  # isolated lane with no engine must announce the skip the whole tier announces.
+  assert_isolated_lane_skips queue-kanban-browser "$browser_lane_skip_line" "$without_node_bin" || return 1
+  assert_isolated_lane_skips queue-kanban-javascript "$node_lane_skip_line" "$without_node_bin" || return 1
 
   for stage_name in \
     go-version shellcheck-version shellcheck-lint gofmt-lint gofmt-unformatted \
@@ -555,7 +608,7 @@ run_verification() {
         DO_WORK_GO_TEST_EXCLUDE_PREFIXES=TestJavaScriptBehavior,TestBrowserBehavior \
         run_budgeted_go_tests "$repo_root/skills/do-work-board/tools/queue-kanban" ./...
     )
-  elif command -v node >/dev/null 2>&1; then
+  elif node_engine_available; then
     printf 'maintainer-verify: queue-kanban uncached tests with strict JavaScript behavior probes\n'
     (
       QUEUE_KANBAN_BROWSER_PROBES=off \
@@ -564,7 +617,7 @@ run_verification() {
         run_budgeted_go_tests "$repo_root/skills/do-work-board/tools/queue-kanban" ./...
     )
   else
-    printf 'SKIP: Node is unavailable; strict JavaScript behavior lane was not run.\n'
+    printf '%s\n' "$node_lane_skip_line"
     printf 'maintainer-verify: queue-kanban uncached ordinary tests\n'
     (
       QUEUE_KANBAN_JAVASCRIPT_PROBES=off \
@@ -580,18 +633,7 @@ run_verification() {
   # IS selected. QUEUE_KANBAN_BROWSER names an engine that is not on PATH under a well-known
   # name.
   if [ "$verification_tier" = 'heavy' ]; then
-    browser_probe_binary=""
-    if [ -n "${QUEUE_KANBAN_BROWSER:-}" ]; then
-      browser_probe_binary="$QUEUE_KANBAN_BROWSER"
-    else
-      for browser_probe_candidate in google-chrome google-chrome-stable chromium chromium-browser chrome; do
-        if command -v "$browser_probe_candidate" >/dev/null 2>&1; then
-          browser_probe_binary="$browser_probe_candidate"
-          break
-        fi
-      done
-    fi
-    if [ -n "$browser_probe_binary" ]; then
+    if browser_engine_available; then
       printf 'maintainer-verify: queue-kanban strict browser behavior lane\n'
       (
         QUEUE_KANBAN_JAVASCRIPT_PROBES=off \
@@ -601,7 +643,7 @@ run_verification() {
             -run '^TestBrowserBehavior' -v .
       )
     else
-      printf 'SKIP: no browser is available; strict browser behavior lane was not run. Set QUEUE_KANBAN_BROWSER to name one.\n'
+      printf '%s\n' "$browser_lane_skip_line"
     fi
   fi
 
@@ -665,6 +707,13 @@ run_heavy_lane() {
 
   case "$lane_id" in
     queue-kanban-javascript)
+      # An isolated lane announces "did not run" exactly as the whole heavy tier does.
+      # Without this the strict Go lane ran, skipped inside, and tripped its own
+      # zero-probe guard: a red exit and no SKIP line for a caller to record.
+      if ! node_engine_available; then
+        printf '%s\n' "$node_lane_skip_line"
+        return 0
+      fi
       QUEUE_KANBAN_BROWSER_PROBES=off \
         QUEUE_KANBAN_JAVASCRIPT_PROBES=on \
         QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1 \
@@ -672,6 +721,10 @@ run_heavy_lane() {
           -run '^TestJavaScriptBehavior' -v .
       ;;
     queue-kanban-browser)
+      if ! browser_engine_available; then
+        printf '%s\n' "$browser_lane_skip_line"
+        return 0
+      fi
       QUEUE_KANBAN_JAVASCRIPT_PROBES=off \
         QUEUE_KANBAN_BROWSER_PROBES=on \
         QUEUE_KANBAN_STRICT_BROWSER_BEHAVIOR=1 \
