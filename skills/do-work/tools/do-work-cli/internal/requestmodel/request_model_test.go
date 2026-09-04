@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -323,6 +324,77 @@ func TestEffectiveFieldEvidenceCarriesExactSourceLine(t *testing.T) {
 	field, found := document.FieldValue("created_at")
 	if !found || field.LineNumber != 4 || field.RawValue != "'2026-08-02'" || field.DuplicateCount != 2 {
 		t.Fatalf("effective source evidence = %#v, found=%v", field, found)
+	}
+}
+
+func TestTypedRecordProjectsAliasBackedCaptureFieldsWithCanonicalPrecedence(t *testing.T) {
+	document, err := ParseDocument([]byte("---\n" +
+		"id: REQ-200\n" +
+		"dependencies: [REQ-001]\n" +
+		"parent: REQ-002\n" +
+		"related_reqs: [REQ-003, REQ-004]\n" +
+		"batch_name: legacy-batch\n" +
+		"spec_hint: legacy-spec\n" +
+		"related: [REQ-005]\n" +
+		"batch: canonical-batch\n" +
+		"suggested_spec: canonical-spec\n" +
+		"---\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	record := document.TypedRecord()
+	if !reflect.DeepEqual(record.DependsOn, []string{"REQ-001"}) || record.DependencySource != "dependencies" {
+		t.Fatalf("dependencies = %v from %q", record.DependsOn, record.DependencySource)
+	}
+	if record.AddendumTo != "REQ-002" || record.AddendumSource != "parent" {
+		t.Fatalf("addendum = %q from %q", record.AddendumTo, record.AddendumSource)
+	}
+	if !reflect.DeepEqual(record.RelatedIDs, []string{"REQ-005"}) || record.RelatedSource != "related" {
+		t.Fatalf("related = %v from %q", record.RelatedIDs, record.RelatedSource)
+	}
+	if record.BatchName != "canonical-batch" || record.BatchSource != "batch" {
+		t.Fatalf("batch = %q from %q", record.BatchName, record.BatchSource)
+	}
+	if record.SuggestedSpec != "canonical-spec" || record.SuggestedSpecSource != "suggested_spec" {
+		t.Fatalf("suggested spec = %q from %q", record.SuggestedSpec, record.SuggestedSpecSource)
+	}
+}
+
+func TestTypedRecordSelectsEachReadAliasAndEmptyCanonicalKey(t *testing.T) {
+	for _, canonicalKey := range []string{"depends_on", "addendum_to", "related", "batch", "suggested_spec"} {
+		for _, aliasKey := range schemanormalization.SchemaFieldAliases(canonicalKey) {
+			for _, canonicalPresent := range []bool{false, true} {
+				frontmatter := "---\nid: REQ-200\n" + aliasKey + ": REQ-001\n"
+				if canonicalPresent {
+					frontmatter += canonicalKey + ":\n"
+				}
+				document, err := ParseDocument([]byte(frontmatter + "---\n"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				record := document.TypedRecord()
+				var value, source string
+				switch canonicalKey {
+				case "depends_on":
+					value, source = strings.Join(record.DependsOn, ","), record.DependencySource
+				case "addendum_to":
+					value, source = record.AddendumTo, record.AddendumSource
+				case "related":
+					value, source = strings.Join(record.RelatedIDs, ","), record.RelatedSource
+				case "batch":
+					value, source = record.BatchName, record.BatchSource
+				case "suggested_spec":
+					value, source = record.SuggestedSpec, record.SuggestedSpecSource
+				}
+				wantValue, wantSource := "REQ-001", aliasKey
+				if canonicalPresent {
+					wantValue, wantSource = "", canonicalKey
+				}
+				if value != wantValue || source != wantSource {
+					t.Errorf("%s canonical-present=%v: %q from %q, want %q from %q", aliasKey, canonicalPresent, value, source, wantValue, wantSource)
+				}
+			}
+		}
 	}
 }
 

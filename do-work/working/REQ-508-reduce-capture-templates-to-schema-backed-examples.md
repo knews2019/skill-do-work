@@ -21,6 +21,7 @@ planning_at: 2026-09-04T19:21:18Z
 exploration_at: 2026-09-04T19:28:16Z
 dispatch_at: 2026-09-04T19:33:24Z
 builder_handback_at: 2026-09-04T19:59:55Z
+integration_at: 2026-09-04T20:00:14Z
 estimate:
   p50_active_minutes: 55
   confidence: low
@@ -42,8 +43,8 @@ estimate:
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Centralize canonical authoring and legacy read aliases in the schema layer, make capture-files validate newly authored UR/REQ shape before planning mutations, prove the missing rules through public Go tests, and reduce the four examples without moving capture judgment into code.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** Implemented canonical capture validation and minimal examples within the nine declared source files.
+- [x] **[UNIFY]:** Reviewed every file listed in Implementation Summary for schema/read compatibility, safe publication refusals, copyable examples, and fixture intent. Diff check, Go vet, focused/race/module tests, contract regressions, and the direct builder gate passed; no debug artifacts remain.
 
 ## Why
 The Go schema layer already normalizes and validates frontmatter and `capture-files` refuses malformed records; the template comments restate those rules and drift from them.
@@ -138,3 +139,32 @@ The machine must not infer Simple versus Complex, field applicability, dependenc
 **Dependencies:** ✓ Existing Go and shell toolchains satisfy the maintainer gate.
 
 *Checked by work action*
+
+## Implementation Summary
+
+**What was done:** Replaced the four annotated capture examples with 67 fenced lines (previously 137), moved canonical authored-field validation into schema/publication code, and preserved tolerant legacy reads and capture judgment.
+
+**Files changed:**
+- `skills/do-work/actions/capture-reference.md` (modified) — minimal Simple, Complex extension, UR, and Addendum examples with schema pointers and separate optional proof/question shapes.
+- `skills/do-work/actions/capture.md` (modified) — publication authority pointer and corrected assignment-example reference.
+- `skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go` (modified) — shared key aliases and canonical-authoring evidence.
+- `skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization_test.go` (modified) — canonical/alias/default behavior and registry tests.
+- `skills/do-work/tools/do-work-cli/internal/requestmodel/request_model.go` (modified) — schema-backed key aliases and field projections.
+- `skills/do-work/tools/do-work-cli/internal/requestmodel/request_model_test.go` (modified) — legacy aliases and canonical-key precedence tests.
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files.go` (modified) — canonical record validation before exposing record mutations.
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files_test.go` (modified) — schema refusals, optional shapes, unordered membership, actual-example tests, and canonical fixtures.
+- `skills/do-work/tools/do-work-cli/internal/publication/answer_test.go` (modified) — canonical structured-override capture fixture without changing answer behavior.
+
+**Predicate deletion:** No active predicate still pinned the removed comments; this leg is an evidence-backed no-op. No replacement sentence predicate was added.
+
+## Decisions
+
+- D-01 — DECIDE & STATE: Minimal Simple and Addendum examples use tdd:false and omit optional verdicts to avoid claiming nonexistent proof. Capture still judges applicability and preserves the separate proof shape.
+- D-02 — DECIDE & STATE: UR membership is a duplicate-free set, independent of order. Existing missing-member findings stay specific; phantom/duplicate members receive schema findings.
+- D-03 — DECIDE & STATE: Only non-default impact is mirrored in the title, matching the existing title convention. The machine validates an authored verdict, never chooses it.
+- D-04 — DECIDE & STATE: No retired-comment predicate remains to delete; actual published examples are exercised through the public capture boundary instead.
+- D-05 — DECIDE & STATE: The user narrowed this run to finishing this request and stopping. Run its selected heavy lanes immediately at this scoped queue boundary, retain its claim through review/finalization, and neither claim later work nor drain other held requests.
+
+## Discovered Tasks
+
+- [impact-negligible] The staged-skills heavy-only guard still describes user permission even though selected lanes run automatically at exhaustion; the guard itself works. → report only
