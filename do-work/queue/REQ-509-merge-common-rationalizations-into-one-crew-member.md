@@ -20,7 +20,7 @@ write_set: [skills/do-work/crew-members/, skills/do-work/actions/, _dev/tests/co
 # Merge the Common Rationalizations Tables Into One Crew Member
 
 ## What
-The ten `## Common Rationalizations` tables across action files merge into one crew member loaded at implementation and review; each action keeps only rows unique to its own step.
+One crew member becomes the loading point for shared principles currently spread across action-level `## Common Rationalizations` tables. Load it at implementation and review; each action keeps rows specific to its own step.
 
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
@@ -28,7 +28,7 @@ The ten `## Common Rationalizations` tables across action files merge into one c
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
 ## Why
-The tables are principle-shaped already and largely repeat each other; ten copies drift.
+The audit found zero near-identical cross-file row pairs, so duplication is not the reason for this change. One loading point makes the shared principles available consistently during implementation and review while action-specific guidance stays with its action.
 
 ## Context
 Analysis: `ai-reports/2026-09-02_1651_orchestrator-simplification-analysis/index.html` (commit 1ddd7c70). Measured at 721c2fb4: `work.md` 850 lines and 20 steps; about 55% of step lines are mechanics; `_dev/tests/contract-regressions.sh` holds 220 references into the two work files and pins sentences with mutation-tested predicates, which is why earlier moves into Go left prose behind.
@@ -51,9 +51,9 @@ Depends on REQ-508.
 Firm on the boundary between mechanics and judgment as classified in the report's step table; dispute a row in the REQ before moving it. Latitude on prose wording. Read `_dev/primes/prime-action-files.md` before touching any action file.
 
 ## Red-Green Proof
-**RED prompt/case:** Remove the table from `capture.md` and run the contract suite.
-**Why RED now:** A predicate that quotes that table fails; no single file carries the union.
-**GREEN when:** Suite passes with the merged file's predicate; ten tables become one plus action-specific rows.
+**RED prompt/case:** Assert that implementation and review load the shared-principles crew member through the contract suite.
+**Why RED now:** Neither loading point names a shared-principles crew member, and no predicate protects that loading contract.
+**GREEN when:** Both loading points name the crew member and the contract suite proves that removing either load fails; action-specific rows remain local, and the audit's near-identical cross-file row count remains zero.
 **Validation:** User confirmed the direction ("more principles for the LLMs, not exact steps; the Go script does mechanics"); the per-REQ RED case is inferred during capture from the report.
 
 ## Required Lessons — Dropped for Budget
