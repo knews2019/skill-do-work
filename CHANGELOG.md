@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.281.0 — Reuse Matching Heavy Verification Results for Four Hours (2026-09-05)
+
+Heavy verification reuses recent successful lane results when their inputs still match. Each lane reports whether it executed or reused evidence.
+
+- Check the four-hour ceiling separately for each lane; reuse never extends it.
+- Revoke old successful evidence before a rerun, and fingerprint code, fixtures, tools, environment and relevant untracked inputs.
+- Execute when inputs are uncertain. Browser lanes always execute, and `--no-evidence-reuse` forces a fresh run.
+
 ## 0.280.0 — Finalize Requests Without Checkpoint Claims (2026-09-04)
 
 Requests can finish when their checkpoint claim is absent or carries a different writer label. An untouched prepared finalization journal can be discarded through the recovery command.

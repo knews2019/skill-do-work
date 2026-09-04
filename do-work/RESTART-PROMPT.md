@@ -1,3 +1,16 @@
+# Wave 2 completion — 2026-09-05
+
+The targeted resume `do-work run REQ-547 REQ-564 --fan-out 2` is complete. Do not redispatch those builders.
+
+- REQ-547 (finalization without checkpoint claims) completed in release 0.280.0; implementation merge `865dff21`, finalization `c5dff3db`. Archived under `do-work/archive/UR-085/`.
+- REQ-564 (four-hour heavy-lane evidence reuse) completed in release 0.281.0; implementation merge `e9b12501`, including reviewed remediation `0b470b91`. Archived under `do-work/archive/UR-109/`.
+- Full repository verification and all selected heavy lanes passed. REQ-564's real JavaScript lane also proved matching-evidence reuse; browser lanes deliberately always execute.
+- The separate REQ-515 recovery findings documented below remain open. This targeted run completed the two named requests and did not implement those separate fixes.
+
+The original handoff below is retained as history; its wave-2 claims and worktree paths describe the previous session.
+
+---
+
 # Restart Prompt — wave 2 of UR-106/UR-099 follow-on run (2026-09-04)
 
 ```
