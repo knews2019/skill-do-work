@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.275.0 — Heavy Lanes Run Themselves at Queue Exhaustion and Record Wall Time (2026-09-04)
+
+The heavy-test hold used to end in a question nobody was there to answer, so an unattended queue drain stopped on it. The loop now runs the held lanes itself once the queue is empty and records how long each lane took.
+
+- New `run-heavy-verification` command executes named manifest lanes at HEAD inside owned process groups with a timeout and returns exit status, skip state, and wall seconds per lane. A red or skipped lane is a typed warning; an unknown lane or a dirty tree outside `do-work/` is a typed refusal before anything runs.
+- `## Heavy Verification Result` and the `heavy_testing` answer evidence carry `wall_seconds`. A skipped lane never confirms: the REQ stays held with the lane named, and `do-work run` reports the remedy in its exit summary.
+- `do-work run` drains held REQs at queue exhaustion without asking; `do-work clarify` Step 2.5 remains the by-hand path and calls the same runner.
+- Isolated `queue-kanban-browser` and `queue-kanban-javascript` lanes now print the same `SKIP:` line as the full tier and exit 0 when their engine is absent, instead of a red exit with no explanation.
+
 ## 0.274.1 — SessionStart Launches the Background Gate Runner (2026-09-04)
 
 The SessionStart hook now launches the background maintainer gate runner (`_dev/tests/gate-runner.sh`) when it is not already running for this checkout, attaching gate evidence to revisions automatically without manual start commands.

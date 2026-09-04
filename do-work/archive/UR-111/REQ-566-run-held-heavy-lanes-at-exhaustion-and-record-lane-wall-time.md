@@ -1,7 +1,7 @@
 ---
 id: REQ-566
 title: '[impact-rule-change] Run held heavy lanes at queue exhaustion without asking, and record per-lane wall time'
-status: claimed
+status: completed
 created_at: 2026-09-04T13:19:11Z
 user_request: UR-111
 domain: backend
@@ -52,6 +52,10 @@ estimate:
 heavy_verified_at: 2026-09-04T14:18:07Z
 heavy_verified_revision: 58e1c9c948bb68f3805e704b9c7db39fff38f504
 claimed_at: 2026-09-04T14:18:08Z
+review_at: 2026-09-04T14:23:10Z
+kb_status: pending
+completed_at: 2026-09-04T14:27:48Z
+release_at: 2026-09-04T14:27:48Z
 ---
 
 # Run Held Heavy Lanes At Queue Exhaustion Without Asking, And Record Per-Lane Wall Time
@@ -290,3 +294,53 @@ Manifest: `_dev/tests/heavy-lanes.json`
 ## Answer Notes
 
 - 2026-09-04 - [ ] Run the selected heavy lane commands at `4a28946e782cf42397a329ae65b51ad3d5694a1b`; did every command exit 0?: Confirmed: every selected heavy lane exited 0 at 58e1c9c948bb68f3805e704b9c7db39fff38f504 during the queue-exhaustion drain (queue-kanban-javascript 6s, queue-kanban-browser 82s, do-work-cli-integrations 67s, staged-skills 25s, updater 52s, installer 24s)
+
+## Review
+
+**Overall: 95%** | 2026-09-04T14:23:10Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 90% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- `skills/do-work/actions/roadmap.md:68` still tells the roadmap action to say that `do-work clarify` owns "the one permission prompt" for a `pending-heavy-testing` REQ; that prompt no longer exists — impact-user-visible → report only
+
+**Minor findings:**
+- `skills/do-work/actions/restart-with-parallel-handoff.md:64` describes clarify as the way "to authorize held heavy tests"; the routing is right, the verb is stale — impact-user-visible → report only
+- `skills/do-work-board/actions/board.md:92` lists "heavy-test permission" among what makes a Needs-input card operator-actionable — impact-negligible → report only
+- Five maintainer probe scripts print "run `_dev/tests/maintainer-verify.sh --heavy` after user permission" (`_dev/tests/update-script-behavior.sh:6`, `prescribed-shell-harness.sh:12`, `install-suite-behavior.sh:5`, `prescribed-shell-scripts-behavior.sh:9`, `staged-skills-contract.sh:5`) — impact-negligible → report only
+- An interrupted run breaks the lane loop and still returns `outcome: success` with no typed finding that the run was cut short (`heavy_run.go:117`); the drain's "present in the run" condition fails closed, but a `HEAVY-RUN-INTERRUPTED` finding would make that mechanical — impact-rule-change → report only
+- The rename and copy branch of `refuseDirtyTrackedTree` (`heavy_run.go:141-148`) has no test case; both halves of `TestRunLanesRefusesDirtyTrackedTree` use plain modified paths — impact-negligible → report only
+- Nit: `WallSeconds` truncates, so a sub-second lane records `0s`, indistinguishable from an unset field — impact-negligible → report only
+- Nit: `defaultLaneTimeoutSeconds` sits apart from the const block its siblings share (`heavy_run.go:314`) — impact-negligible → report only
+
+**Acceptance:** Pass — focused Go tests and `go vet` green; self-test with the two new isolated-lane skip cases green; the isolated browser lane with no `QUEUE_KANBAN_BROWSER` printed its `SKIP:` line and exited 0 on this Chrome-less PATH; `--lane nope` returned `HEAVY-RUN-LANE-UNKNOWN` and a duplicated `--lane` returned `HEAVY-RUN-USAGE`; the recorded drain at `58e1c9c9` covers the full heavy tier through the new command.
+**Suggested testing:** 4 items — a rename case for the dirty-tree test; a multi-REQ drain with differing lane sets; an interrupted mid-lane drain; a drain on a checkout dirty outside `do-work/` to see the refusal reach the exit summary.
+**Follow-ups created:** None (8 findings report only)
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:**
+- Splitting the runner from planning and answering: `run-heavy-verification` only executes and times named lanes, `plan-heavy-verification` stays the one planner, and clarify's existing `answer` manifest records the result, so batching across held REQs fell out of the split instead of needing a super-command.
+- Dogfooding the drain on this REQ at its own queue exhaustion: the hold, the typed `HEAVY-RUN-LANE-SKIPPED` finding, the browser remedy, the green answer, and the `resume_phase: review` resume all ran unattended and matched the prose.
+
+**What didn't:**
+- The first drain skipped the browser lane because no Chrome is on PATH; the morning batch only passed that lane because a person had set `QUEUE_KANBAN_BROWSER`. A skip that surfaces as a typed finding with a named remedy is the right outcome, but the gate runner and any headless drain should export that variable, or the browser lane skips on every unattended run.
+- The hold leaves `claimed_at` in place until the answer clears it, so the selector reports a held REQ as `ALREADY-CLAIMED` rather than as heavy-held. Harmless for the drain, misleading in the replay output.
+
+**Worth knowing:**
+- The runner keys `skipped` on a `SKIP:` output line, never on a lane name, and the isolated browser and JavaScript lanes now print that line at their own source (`_dev/tests/maintainer-verify.sh`). A lane that skips silently inside its Go test still reads as red, so any new engine-gated lane must announce its skip the same way.
+- `wall_seconds` travels under one JSON tag through `resultmodel.HeavyLaneExecution` and `publication.HeavyLaneResult`, so the runner's `lanes` array pastes straight into `heavy_testing.lanes`.
+- The dirty-tree refusal ignores `do-work/` on purpose (D-01): the orchestrator's living-log edits are always uncommitted when a drain runs.
+
+## Orientation
+
+Now the work loop finishes held heavy verification on its own: at queue exhaustion it runs the selected lanes through `run-heavy-verification`, records exit status and wall seconds per lane, and returns green REQs for review without a human answering a prompt. Lives in the do-work-cli `heavyverification` and `publication` packages plus the work and clarify actions. [MAP CHANGED] The heavy-test hold is now a non-blocking pause the loop resolves itself; the permission gate is gone and `do-work clarify` is the by-hand fallback only. Prime spot-check: `prime-do-work-cli.md`'s `heavyverification`, `ownedprocess`, and package-direction sentences were updated in this REQ; `prime-action-files.md` references still resolve.

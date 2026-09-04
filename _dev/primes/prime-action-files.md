@@ -104,7 +104,7 @@ A skill or action description is loaded whether or not the thing gets used, so i
 
 ## Traps
 
-- [family: alternate-writer-contract-drift] Changing an emitted artifact or routing rule only at its primary writer leaves alternate modes and action-bearing readers silently following the old contract; grep every writer and downstream reader against the recorded scope before declaring it shipped.
+- [family: alternate-writer-contract-drift] Changing an emitted artifact or routing rule only at its primary writer leaves alternate modes and action-bearing readers silently following the old contract; grep every writer and downstream reader against the recorded scope before declaring it shipped — including sibling-package actions, board labels, and prime sentences that restate the rule (REQ-566 found six such restatements outside the three files that defined the contract).
 - [family: budgeted-context-routing] Routing lessons only when a REQ is captured → old REQs and later serial siblings miss lessons written before their claim; re-run the same bounded projection at claim for every route, counting captured entries first.
 
 ## Agent Compatibility
