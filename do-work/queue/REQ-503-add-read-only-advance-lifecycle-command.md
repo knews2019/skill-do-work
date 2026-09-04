@@ -1,7 +1,7 @@
 ---
 id: REQ-503
 title: 'Add the read-only advance lifecycle command'
-status: pending-heavy-testing
+status: pending
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -38,13 +38,14 @@ estimate:
     - cross-route regression gates
     - full-suite verification
 gate_deferred: 'true'
-claimed_at: 2026-09-04T15:20:34Z
 preflight_at: 2026-09-04T15:22:08Z
 dispatch_at: 2026-09-04T15:22:56Z
 builder_handback_at: 2026-09-04T15:39:51Z
 integration_at: 2026-09-04T15:40:31Z
-status_changed_at: 2026-09-04T15:43:36Z
+status_changed_at: 2026-09-04T20:59:59Z
 commit: f38a78b0ad80b34b3f5cd332b31e21ae63a7602d
+heavy_verified_at: 2026-09-04T20:59:59Z
+heavy_verified_revision: f38a78b0ad80b34b3f5cd332b31e21ae63a7602d
 ---
 
 # Add the Read-Only advance Lifecycle Command
@@ -216,8 +217,29 @@ Passed — 6 files verified, 5 acceptance criteria traced, and P-A-U confirmed. 
 
 ## Open Questions
 
-- [ ] Run the selected heavy lane commands at `f38a78b0ad80b34b3f5cd332b31e21ae63a7602d`; did every command exit 0?
+- [x] Run the selected heavy lane commands at `f38a78b0ad80b34b3f5cd332b31e21ae63a7602d`; did every command exit 0? → Confirmed: All 4 selected heavy lanes passed without skips at f38a78b0ad80b34b3f5cd332b31e21ae63a7602d.
 
 Recommended: Yes
 
 Also: No — <failing lane>
+
+
+## Answer Notes
+
+- 2026-09-04 - [ ] Run the selected heavy lane commands at `f38a78b0ad80b34b3f5cd332b31e21ae63a7602d`; did every command exit 0?: Confirmed: All 4 selected heavy lanes passed without skips at f38a78b0ad80b34b3f5cd332b31e21ae63a7602d.
+> ```
+> Exact-revision heavy verification via do-work clarify. Stored base, target, selected lanes, argv and coverage reasons matched the recomputed plan. All lane results came from the detached checkout at f38a78b0ad80b34b3f5cd332b31e21ae63a7602d.
+> All 4 selected heavy lanes passed without skips at f38a78b0ad80b34b3f5cd332b31e21ae63a7602d.
+> Initial attempt: staged-skills, updater and installer each exited 1 after 0 seconds before their tests started, reporting an invalid timing-log header. Preserved the original log and initialized a fresh log using the repository test-duration-log.sh helper. Reran only those three lanes at the same revision; all passed. The earlier passing CLI integration result remains applicable. No tracked source was changed.
+> Scope: verification results only; implementation changes, fresh review and archiving remain for do-work run. Date and timestamp follow skills/do-work/actions/work-reference.md, Timestamp rule and its date-only paragraph.
+> ```
+
+## Heavy Verification Result
+
+Target revision: `f38a78b0ad80b34b3f5cd332b31e21ae63a7602d`
+Execution revision: `f38a78b0ad80b34b3f5cd332b31e21ae63a7602d`
+
+- do-work-cli-integrations: exit 0, 53s — `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+- staged-skills: exit 0, 23s — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+- updater: exit 0, 52s — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+- installer: exit 0, 24s — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
